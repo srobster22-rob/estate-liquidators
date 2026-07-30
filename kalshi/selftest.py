@@ -1,0 +1,382 @@
+"""
+Harness validation. Run this before believing a single number out of `factory.py`.
+
+Every check here is aimed at one of the ways a backtest lies. In rough order of how much
+damage each failure would do:
+
+  1  fee arithmetic          hand-computed worked examples
+  2  martingale prices       E[p_{t+1} | p_t] = p_t, i.e. no drift to harvest
+  3  calibration             contracts quoted at 30 resolve YES 30% of the time
+  4  planted edge has the    the longshot bias is present, in the documented direction,
+     stated sign and size    at roughly the documented magnitude
+  5  no lookahead            structurally (View asserts) and textually (grep)
+  6  bracket coherence       true probabilities in an exclusive set sum to 1
+  7  PnL accounting          hand-computed entry, exit and settlement
+  8  the control is inert    NOTHING may survive multiplicity correction on a perfectly
+                             efficient market. Catches sign errors, double-counted payouts
+                             and free fills.
+ 8b  rare-loss tail          Wilson bound behaves, and a 99%-win-rate strategy is priced
+                             on the losses it has NOT yet observed
+  9  the gate rejects noise  random_control must fail
+ 10  FDR vs FWER             BH and Holm against worked examples, including the case that
+                             moved the gate from one to the other
+
+Checks 2, 3 and 8 are the ones that make the difference between a simulator and a
+random-number generator with good manners.
+
+Check 8 is worth reading before writing any check of your own. Its first version asserted
+that the BEST of ~455 configs on a no-edge market had a non-positive mean, and it failed at
++496c per market — not because there was an edge, but because the maximum of 455 noisy
+estimates is positive with near-certainty. The check was committing the exact error the rest
+of this directory exists to prevent. It now corrects across the whole family.
+"""
+
+from __future__ import annotations
+
+import math
+import pathlib
+import statistics
+import sys
+
+from . import backtest, evaluate, fees, markets, paths, strategies
+
+fails: list[str] = []
+checks = 0
+
+
+def ok(label, cond, detail=""):
+    global checks
+    checks += 1
+    if cond:
+        print(f"  PASS  {label}" + (f"  ({detail})" if detail else ""))
+    else:
+        print(f"  FAIL  {label}  {detail}")
+        fails.append(f"{label}: {detail}")
+
+
+def near(label, got, want, tol, unit=""):
+    ok(label, abs(got - want) <= tol, f"got {got:.4f}{unit}, want {want:.4f}+-{tol}{unit}")
+
+
+# ---------------------------------------------------------------------------
+print("\n1. FEE ARITHMETIC — hand-computed")
+# 100 contracts at 50c: 0.07 * 100 * 0.50 * 0.50 = $1.75 -> 175c exactly.
+ok("100 @ 50c = 175c", fees.taker_fee_cents(100, 50) == 175, str(fees.taker_fee_cents(100, 50)))
+# 1 contract at 50c: 0.07 * 1 * 0.25 = $0.0175 -> 1.75c -> rounds up to 2c.
+ok("1 @ 50c rounds up to 2c", fees.taker_fee_cents(1, 50) == 2, str(fees.taker_fee_cents(1, 50)))
+# 1 contract at 5c: 0.07 * 0.05 * 0.95 = $0.003325 -> 0.3325c -> 1c. A 3x rounding tax.
+ok("1 @ 5c rounds up to 1c", fees.taker_fee_cents(1, 5) == 1, str(fees.taker_fee_cents(1, 5)))
+# 100 at 5c: 0.07 * 100 * 0.05 * 0.95 = $0.3325 -> 33.25c -> 34c.
+ok("100 @ 5c = 34c", fees.taker_fee_cents(100, 5) == 34, str(fees.taker_fee_cents(100, 5)))
+ok("symmetric about 50c", fees.taker_fee_cents(100, 20) == fees.taker_fee_cents(100, 80))
+ok("zero qty is free", fees.taker_fee_cents(0, 50) == 0)
+ok("float error does not round up", fees.taker_fee_cents(4, 50) == 7,
+   f"4 @ 50c = {fees.taker_fee_cents(4, 50)}c, exact value is 7.0")
+near("breakeven edge at 50c", fees.breakeven_edge_cents(50, 100), 1.75, 0.001, "c")
+near("breakeven edge at 5c", fees.breakeven_edge_cents(5, 100), 0.34, 0.001, "c")
+
+# ---------------------------------------------------------------------------
+print("\n2. PRICES ARE A MARTINGALE — no drift exists to be harvested")
+for fam_name in ("crypto_hourly", "sports_game", "econ_print"):
+    fam = markets.FAMILIES[fam_name]
+    diffs = []
+    for gid in range(400):
+        g = markets.generate_group(fam, 900_000 + gid)
+        tp = g.legs[0].true_p
+        diffs.extend(tp[t + 1] - tp[t] for t in range(len(tp) - 1))
+    m = statistics.fmean(diffs)
+    se = statistics.pstdev(diffs) / math.sqrt(len(diffs))
+    ok(f"{fam_name}: true_p has no drift", abs(m) < 3 * se,
+       f"mean step {m:+.2e}, 3se {3 * se:.2e}, n={len(diffs)}")
+
+# ---------------------------------------------------------------------------
+print("\n3. CALIBRATION — a contract whose true probability is p resolves YES p of the time")
+# This check failed twice before it was right, and both failures were the check's fault:
+#
+#   (a) compared against each decile's MIDPOINT rather than the mean true_p inside it.
+#       true_p piles up against 0 and 1 as markets converge, so the extreme deciles have
+#       means nowhere near their midpoints, and a midpoint comparison reports a 5%
+#       calibration error on a perfectly calibrated series.
+#   (b) sampled every 7th step of each episode. Steps within an episode share an outcome, so
+#       that inflated n ~9x while adding almost no information, and the tolerance derived
+#       from the inflated n made a correct series look 3 sigma off.
+#
+# Now: one independent draw per episode, compared against the mean true_p in its decile,
+# each decile judged against its own binomial standard error.
+buckets = {i: [0, 0, 0.0] for i in range(10)}
+for fam_name in ("crypto_hourly", "sports_game", "weather_temp"):
+    fam = markets.FAMILIES[fam_name]
+    for gid in range(2500):
+        g = markets.generate_group(fam, 950_000 + gid)
+        ep = g.legs[0]
+        t = (gid * 7919) % ep.n                       # one independent draw per episode
+        b = min(9, int(ep.true_p[t] * 10))
+        buckets[b][0] += 1
+        buckets[b][1] += ep.outcome
+        buckets[b][2] += ep.true_p[t]
+worst_z, worst_detail, n_tot = 0.0, "", 0
+for b, (n, w, ptot) in buckets.items():
+    n_tot += n
+    if n < 100:
+        continue
+    expected = ptot / n
+    realized = w / n
+    se = math.sqrt(max(expected * (1 - expected), 1e-9) / n)
+    z = abs(realized - expected) / se
+    if z > worst_z:
+        worst_z = z
+        worst_detail = (f"decile {b}: quoted {expected:.3f}, resolved {realized:.3f}, "
+                        f"{z:.2f} sigma on n={n}")
+ok("realized frequency tracks true probability", worst_z < 3.0,
+   f"worst deviation {worst_detail}; {n_tot} independent episodes")
+
+# ---------------------------------------------------------------------------
+print("\n4. THE PLANTED EDGE IS PRESENT, SIGNED AND SIZED AS DOCUMENTED")
+# Longshots are measured on true_p in [0.02, 0.25]. The 2c floor is not squeamishness — see
+# the tick-floor check immediately below, which is why it has to be excluded here.
+for fam_name, want_sign in (("awards_thin", +1), ("politics_long", +1), ("efficient_control", 0)):
+    fam = markets.FAMILIES[fam_name]
+    errs = []
+    for gid in range(300):
+        g = markets.generate_group(fam, 960_000 + gid)
+        ep = g.legs[0]
+        for t in range(0, ep.n, 5):
+            if 0.02 <= ep.true_p[t] < 0.25:
+                errs.append(ep.mid(t) - 100 * ep.true_p[t])
+    m = statistics.fmean(errs)
+    if want_sign > 0:
+        ok(f"{fam_name}: longshots quote too HIGH", m > 0.5, f"mid - true = {m:+.2f}c")
+    else:
+        ok(f"{fam_name}: control has no bias above the tick floor", abs(m) < 0.20,
+           f"mid - true = {m:+.2f}c")
+
+# THE TICK FLOOR IS ITSELF AN EDGE, and nobody planted it. Kalshi cannot quote below 1c, so
+# a contract whose true probability is 0.3% must still trade at 1c or better, which makes it
+# structurally overpriced by ~0.7c. This shows up even in `efficient_control`, where gamma is
+# exactly 1.0 and no bias was inserted at all. Discovered by check 4 failing on the control:
+# the first read was "the control is broken", and it was not — the exchange's price grid
+# generates a real favourite-longshot bias on its own, before any behavioural story.
+fam = markets.FAMILIES["efficient_control"]
+floor_errs, above_errs = [], []
+for gid in range(400):
+    g = markets.generate_group(fam, 960_000 + gid)
+    ep = g.legs[0]
+    for t in range(0, ep.n, 5):
+        e = ep.mid(t) - 100 * ep.true_p[t]
+        (floor_errs if ep.true_p[t] < 0.02 else above_errs).append(e)
+fm, am = statistics.fmean(floor_errs), statistics.fmean(above_errs)
+ok("the 1c tick floor overprices sub-1c longshots even with zero planted bias",
+   fm > 0.5 and abs(am) < 0.15,
+   f"below 2c: {fm:+.3f}c (n={len(floor_errs)}) | above 2c: {am:+.3f}c (n={len(above_errs)})")
+
+# ---------------------------------------------------------------------------
+print("\n5. NO LOOKAHEAD — structurally, then textually")
+g = markets.generate_group(markets.FAMILIES["crypto_hourly"], 1)
+gv = backtest.GroupView(g)
+gv._advance(5)
+v = gv.legs[0]
+try:
+    v.bid(+1)
+    ok("View rejects future data", False, "no exception raised")
+except AssertionError:
+    ok("View rejects future data", True, "dt=+1 raises")
+ok("View has no episode reference", not any("_ep" in s or "true_p" in s for s in backtest.View.__slots__),
+   f"slots={backtest.View.__slots__}")
+src = (pathlib.Path(__file__).parent / "strategies.py").read_text(encoding="utf-8")
+code = "\n".join(ln for ln in src.splitlines() if not ln.strip().startswith("#"))
+body = code.split('"""')
+body = "".join(body[i] for i in range(0, len(body), 2))   # strip docstrings
+ok("strategies.py never names true_p", "true_p" not in body)
+ok("strategies.py never names outcome", "outcome" not in body)
+ok("strategies.py never imports markets", "import markets" not in body and "from .markets" not in body)
+
+# ---------------------------------------------------------------------------
+print("\n6. BRACKETS ARE COHERENT — true probabilities sum to exactly 1")
+fam = markets.FAMILIES["index_bracket_daily"]
+worst_sum = 0.0
+quoted_sums = []
+for gid in range(200):
+    g = markets.generate_group(fam, 970_000 + gid)
+    for t in range(0, g.steps, 9):
+        s = sum(leg.true_p[t] for leg in g.legs)
+        worst_sum = max(worst_sum, abs(s - 1.0))
+        quoted_sums.append(sum(leg.ask[t] for leg in g.legs))
+ok("true probs sum to 1", worst_sum < 1e-9, f"worst deviation {worst_sum:.2e}")
+winners = [sum(leg.outcome for leg in markets.generate_group(fam, 970_000 + i).legs) for i in range(50)]
+ok("exactly one bracket wins", all(w == 1 for w in winners), f"distinct totals {set(winners)}")
+ok("quoted asks sum above 100 on average", statistics.fmean(quoted_sums) > 100,
+   f"mean ask sum {statistics.fmean(quoted_sums):.2f}c — spread and noise make arbs rare, as they should be")
+
+# ---------------------------------------------------------------------------
+print("\n7. PnL ACCOUNTING — hand-computed entry, exit and settlement")
+
+
+class _BuyOnceHold(strategies.Strategy):
+    def decide(self, gv, pos):
+        return [backtest.taker(0, "yes", 100)] if (gv.legs[0].t == 0 and pos[0] is None) else []
+
+
+class _BuyThenSell(strategies.Strategy):
+    def decide(self, gv, pos):
+        t = gv.legs[0].t
+        if t == 0 and pos[0] is None:
+            return [backtest.taker(0, "yes", 100)]
+        if t == 1 and pos[0] is not None:
+            return [backtest.close(0)]
+        return []
+
+
+def _flat_group(outcome):
+    fam = markets.FAMILIES["crypto_hourly"]
+    ep = markets.Episode(fam, 0, 0, 3)
+    ep.bid, ep.ask, ep.depth = [40, 40, 40], [42, 42, 42], [1000, 1000, 1000]
+    ep.true_p = [0.41, 0.41, 0.41]
+    ep.outcome = outcome
+    return markets.Group(fam, 0, [ep])
+
+
+# Entry: 100 @ 42c = 4200c, fee = ceil(0.07*100*0.42*0.58*100) = ceil(170.52) = 171c.
+entry_cost = 4200 + 171
+r = backtest.run([_flat_group(1)], _BuyOnceHold())
+ok("YES settles at 100", r.total_pnl == 10000 - entry_cost,
+   f"got {r.total_pnl}, hand-computed {10000 - entry_cost}")
+r = backtest.run([_flat_group(0)], _BuyOnceHold())
+ok("YES settles at 0", r.total_pnl == -entry_cost, f"got {r.total_pnl}, hand-computed {-entry_cost}")
+# Exit: 100 @ 40c = 4000c, fee = ceil(0.07*100*0.40*0.60*100) = ceil(168) = 168c.
+exit_proceeds = 4000 - 168
+r = backtest.run([_flat_group(1)], _BuyThenSell())
+ok("round trip pays the spread and two fees", r.total_pnl == exit_proceeds - entry_cost,
+   f"got {r.total_pnl}, hand-computed {exit_proceeds - entry_cost} "
+   f"(= -2c spread x100 - 339c fees)")
+r = backtest.run([_flat_group(1)], _BuyOnceHold(), evaluate.stress_costs())
+ok("stress costs bite", r.total_pnl < 10000 - entry_cost,
+   f"stressed {r.total_pnl} < base {10000 - entry_cost}")
+
+# One book: NO must be the mirror of YES, never a second quote.
+ok("no_ask == 100 - yes_bid", v.no_ask() == 100 - v.bid())
+ok("no_bid == 100 - yes_ask", v.no_bid() == 100 - v.ask())
+
+# ---------------------------------------------------------------------------
+print("\n8. THE CONTROL MARKET IS INERT — no strategy may profit on it")
+# The first version of this check asserted that the BEST of ~455 configs had a
+# non-positive mean, and it failed: buy_longshot came in at +496c per market. That was not
+# an edge. Per-market PnL on 250-lot positions has a standard deviation around 10,000c, so
+# the standard error over 400 markets is ~500c and the maximum of 455 such estimates is
+# positive with near-certainty. The check was committing precisely the error the rest of
+# this directory exists to prevent — reading the top of a wide search as a discovery.
+#
+# So the control is now tested the same way a candidate is: every config gets a t
+# statistic, the whole family is Holm-corrected, and NONE may survive. That also exercises
+# the multiplicity machinery end to end against data guaranteed to contain no edge.
+ctrl = markets.dataset("efficient_control", 990_000, 800)
+rows = []
+for cls in strategies.ALL:
+    if cls.requires_brackets:
+        continue
+    for params in strategies.all_params(cls):
+        if "lo" in params and params["lo"] > params["hi"]:
+            continue                       # band_fade with an empty band never trades
+        st = cls(**params)
+        res = backtest.run(ctrl, st)
+        if res.n_trades == 0:
+            continue
+        s = evaluate.summarize(res, resamples=0)
+        p = 0.5 * math.erfc(s.t / math.sqrt(2.0))          # one-sided, normal approx
+        rows.append((st.label(), s.mean, s.t, p))
+adjusted = evaluate.holm([r[3] for r in rows])
+best_i = min(range(len(rows)), key=lambda i: rows[i][3])
+n_raw = sum(1 for r in rows if r[3] < 0.05)
+ok("nothing survives multiplicity correction on a market with no edge",
+   min(adjusted) > 0.05,
+   f"{len(rows)} configs tested, {n_raw} nominally significant at p<0.05, "
+   f"best={rows[best_i][0]} t={rows[best_i][2]:+.2f} -> Holm p={adjusted[best_i]:.3f}")
+ok("...and the check was not vacuous", len(rows) >= 200, f"{len(rows)} configs traded")
+ok("average expectancy across all configs is negative — crossing the spread costs money",
+   statistics.fmean(r[1] for r in rows) < 0,
+   f"mean over configs {statistics.fmean(r[1] for r in rows):+.1f}c per market")
+
+# ---------------------------------------------------------------------------
+print("\n8b. THE TAIL CHECK — Wilson bound on a rare-loss rate")
+near("Wilson upper on 0/1000", evaluate.wilson_upper(0, 1000), 0.0038, 0.0005)
+near("Wilson upper on 7/1024", evaluate.wilson_upper(7, 1024), 0.0140, 0.0005)
+ok("Wilson widens as evidence thins",
+   evaluate.wilson_upper(1, 50) > evaluate.wilson_upper(20, 1000),
+   f"1/50 -> {evaluate.wilson_upper(1, 50):.4f} vs 20/1000 -> {evaluate.wilson_upper(20, 1000):.4f}")
+ok("Wilson upper always exceeds the point estimate",
+   all(evaluate.wilson_upper(x, n) > x / n for x, n in ((0, 100), (5, 500), (250, 1000))))
+# A strategy that wins 99.3% at +162c and loses 89c: profitable as measured, and it must
+# still be profitable when losses are priced at the top of their confidence interval.
+pennies = backtest.Result()
+pennies.n_groups = 1200
+pennies.group_pnl = [0] * 1200
+pennies.trade_pnl = [162] * 1017 + [-8878] * 7
+pennies.n_trades = 1024
+pennies.max_position_cost = 9900
+ps = evaluate.summarize(pennies, resamples=0)
+ok("penny-in-front-of-steamroller is measured, not waved through",
+   ps.wilson_loss_hi > 2 * ps.loss_rate,
+   f"observed loss rate {ps.loss_rate * 100:.2f}%, Wilson upper {ps.wilson_loss_hi * 100:.2f}% "
+   f"-> tail-adjusted {ps.tail_mean:+.1f}c/market vs measured "
+   f"{ps.mean_per_trade * 1024 / 1200:+.1f}c/market")
+# Same edge, same win size, but the losses are 3x rarer and 3x bigger: same expectancy, far
+# less evidence about the thing that can hurt you, and the check must notice.
+thin = backtest.Result()
+thin.n_groups = 1200
+thin.group_pnl = [0] * 1200
+thin.trade_pnl = [162] * 1022 + [-26634] * 2
+thin.n_trades = 1024
+thin.max_position_cost = 9900
+ts = evaluate.summarize(thin, resamples=0)
+ok("a thinner-tailed version of the same expectancy scores worse",
+   ts.tail_mean < ps.tail_mean,
+   f"2 losses of -26634c -> {ts.tail_mean:+.1f}c/market vs 7 losses of -8878c -> "
+   f"{ps.tail_mean:+.1f}c/market (same raw mean)")
+
+print("\n9. THE GATE REJECTS NOISE")
+noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
+ns = evaluate.summarize(noise, resamples=800)
+verdict = evaluate.gate(ns, ns, ns, 0.5, 100)
+ok("random_control fails the gate", not verdict.passed, f"{len(verdict.reasons)} failing checks")
+ok("...and specifically on profitability", any("mean_positive" in r or "bootstrap" in r for r in verdict.reasons),
+   verdict.reasons[0] if verdict.reasons else "")
+
+# ---------------------------------------------------------------------------
+print("\n10. MULTIPLICITY — FDR and FWER, and why the gate binds on the second")
+adj = evaluate.benjamini_hochberg([0.001, 0.008, 0.039, 0.041, 0.042, 0.06, 0.074, 0.205])
+# m=8: 0.001*8/1=0.008, 0.008*8/2=0.032, 0.039*8/3=0.104, 0.041*8/4=0.082 -> monotone fix
+near("BH: smallest p adjusted", adj[0], 0.008, 1e-9)
+near("BH: second p adjusted", adj[1], 0.032, 1e-9)
+ok("BH is monotone", all(adj[i] <= adj[i + 1] + 1e-12 for i in range(len(adj) - 1)),
+   str([round(a, 4) for a in adj]))
+ok("a lone p is unchanged by either method",
+   abs(evaluate.benjamini_hochberg([0.03])[0] - 0.03) < 1e-12
+   and abs(evaluate.holm([0.03])[0] - 0.03) < 1e-12)
+
+hm = evaluate.holm([0.001, 0.008, 0.039, 0.041, 0.042, 0.06, 0.074, 0.205])
+near("Holm: smallest p x 8", hm[0], 0.008, 1e-9)
+near("Holm: second p x 7", hm[1], 0.056, 1e-9)
+ok("Holm is monotone", all(hm[i] <= hm[i + 1] + 1e-12 for i in range(len(hm) - 1)),
+   str([round(a, 4) for a in hm]))
+ok("Holm is never more lenient than BH", all(h >= b - 1e-12 for h, b in zip(hm, adj)))
+
+# The case that made the gate change instruments. 500 tests all at p=0.04: BH declares all
+# 500 discoveries and is RIGHT to — under a global null you would see ~25, not 500. But the
+# factory funds one bot, so "at most 5% of these are false" is not the guarantee needed.
+bh500 = evaluate.benjamini_hochberg([0.04] * 500)[0]
+holm500 = evaluate.holm([0.04] * 500)[0]
+ok("BH passes 500 tests at p=0.04 (FDR: correct, and not the question asked)", bh500 <= 0.05,
+   f"BH-adjusted {bh500:.3f}")
+ok("Holm rejects them (FWER: the question actually asked)", holm500 > 0.05,
+   f"Holm-adjusted {holm500:.3f} — one funded bot cannot absorb a 5% false-discovery rate")
+ok("Holm needs real evidence to survive a wide search",
+   evaluate.holm([1e-6] + [0.4] * 499)[0] < 0.05,
+   f"p=1e-6 among 500 tests -> Holm {evaluate.holm([1e-6] + [0.4] * 499)[0]:.2e}")
+
+# ---------------------------------------------------------------------------
+print(f"\n{'=' * 72}")
+if fails:
+    print(f"{len(fails)} of {checks} checks FAILED — nothing downstream of this is trustworthy:")
+    for f in fails:
+        print(f"  - {f}")
+    sys.exit(1)
+print(f"all {checks} harness checks pass")

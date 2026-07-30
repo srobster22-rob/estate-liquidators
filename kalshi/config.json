@@ -1,0 +1,62 @@
+{
+  "_doc": "Canonical constants for the Kalshi bot factory. Everything numeric that the backtester or the gate depends on lives here, so a value is never corrected in one module and left stale in another. Same role tuning.json plays for the game.",
+
+  "_UNVERIFIED": "fees.taker_rate and the maker schedule are from general knowledge, NOT from a live read of Kalshi's fee schedule (this environment has no network access to kalshi.com). The fee formula is the single largest determinant of whether ANY strategy here is profitable. Re-read https://kalshi.com/docs/kalshi-fee-schedule.pdf and correct this file before trusting a single result. See kalshi/README.md 'What is unverified'.",
+
+  "fees": {
+    "taker_rate": 0.07,
+    "taker_formula": "ceil_to_cent(rate * contracts * price * (1 - price)), price in dollars",
+    "maker_rate": 0.0,
+    "maker_rate_if_charged": 0.0025,
+    "maker_formula": "ceil_to_cent(rate * contracts * price)",
+    "settlement_fee_cents_per_contract": 0,
+    "fee_per_order_not_per_contract": true
+  },
+
+  "microstructure": {
+    "tick_cents": 1,
+    "min_price_cents": 1,
+    "max_price_cents": 99,
+    "maker_benign_fill_rate": 0.35,
+    "_maker_fill_note": "Probability a resting order at or inside the touch fills from uninformed flow in a step where price did NOT move through it. Pure guess. Market-making results are only as good as this number."
+  },
+
+  "capital": {
+    "bankroll_cents": 500000,
+    "max_position_cents_per_market": 20000,
+    "max_contracts_per_order": 250
+  },
+
+  "gate": {
+    "_doc": "The definition of 'proven profit'. A bot must clear EVERY line to pass. Loosening any of these is how a bot factory lies to itself.",
+    "min_trades_oos": 200,
+    "min_trades_holdout": 100,
+    "require_oos_mean_positive": true,
+    "require_bootstrap_lo95_positive": true,
+    "bootstrap_resamples": 3000,
+    "max_bh_adjusted_p": 0.05,
+    "require_holdout_mean_positive": true,
+    "require_stress_mean_positive": true,
+    "stress_fee_multiplier": 1.5,
+    "stress_extra_spread_ticks": 1,
+    "stress_maker_fill_multiplier": 0.5,
+    "min_annualized_return_on_locked_capital": 0.05
+  },
+
+  "loop": {
+    "max_generations": 12,
+    "population_per_generation": 48,
+    "insample_groups": 300,
+    "oos_groups": 1200,
+    "holdout_groups": 1200,
+    "survivors_to_oos": 12,
+    "mutations_per_survivor": 3
+  },
+
+  "seeds": {
+    "_doc": "Disjoint by construction. An episode drawn for in-sample can never appear in OOS or holdout, which is the only thing making the OOS number mean anything.",
+    "insample": 1000000,
+    "oos": 4000000,
+    "holdout": 7000000
+  }
+}

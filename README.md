@@ -35,6 +35,13 @@ falsification conditions.
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |
 
+### Not the game
+
+| Doc | What it is | Read it when |
+|---|---|---|
+| **[kalshi/README.md](kalshi/README.md)** | A Kalshi bot factory: nine market families × twelve strategies, bred in a loop against a market simulator and put through a nine-criterion gate. Shares this repo's habits (stdlib only, simulate before you believe) and nothing else. | Anything to do with the trading bots. |
+| **[KALSHI_LOOP_LOG.md](KALSHI_LOOP_LOG.md)** | Round log for that track, same format as `LOOP_LOG.md`. | To see what each round overturned. |
+
 **Reading order for someone new:** `DESIGN.md` §1–6 → `DECISIONS.md` (skim the FIRM entries)
 → whichever spec covers what you're building.
 
