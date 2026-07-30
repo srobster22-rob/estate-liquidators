@@ -6,6 +6,10 @@ The project moved from a Windows PC to an M2 Mac because the PC's drive was 100%
 The whole repository is **930 KB across 30 files** — plain text, Python, C# and HTML. Nothing
 platform-specific, no binaries, no build artifacts worth carrying.
 
+One later addition changes that slightly: `bots/` (the trading-strategy search, unrelated to
+the game) needs **numpy** — `pip install -r bots/requirements.txt`. The game's own sims in
+`sim/` are still pure stdlib and still run on a bare Python install.
+
 ---
 
 ## Moving it

@@ -38,6 +38,19 @@ falsification conditions.
 **Reading order for someone new:** `DESIGN.md` §1–6 → `DECISIONS.md` (skim the FIRM entries)
 → whichever spec covers what you're building.
 
+## Also in here: the bot factory
+
+**[bots/](bots/README.md)** is an unrelated subsystem that shares this repo — a
+trading-strategy search that generates bots across twelve market families and
+seven asset classes, puts each through a seven-gate validation ladder, and keeps
+expanding the search space until the target number survives. It has nothing to do
+with the game; it lives here because it was built in the same session and follows
+the same rule the sims do: *state what would disprove the result*.
+
+Read `bots/README.md` before any number in it. Short version: "proven" there means
+"survived seven gates on a synthetic market model at modelled costs" and does not
+mean the bot makes money.
+
 ## The five ideas everything else hangs off
 
 1. **The monster is an anti-thief.** Aggro follows loot, not people — so danger is a physical

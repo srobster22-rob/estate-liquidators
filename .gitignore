@@ -25,3 +25,12 @@ __pycache__/
 
 # Local
 *.log
+
+# Bot factory: the run ledger is a local artifact — 30k lines of candidate
+# hashes, needed only to `--resume` the run that produced it. The committed
+# record of a run is bots/REPORT.md and bots/state/LOOP_LOG.md, which carry the
+# trial counts the standard of proof depends on. A fresh clone starts a fresh
+# ledger, which is correct: a new search's luck bar should reflect that search.
+bots/state/run_state.json
+bots/state/*.prev
+bots/state/*.tmp
