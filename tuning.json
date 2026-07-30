@@ -1,0 +1,91 @@
+{
+  "_": "CANONICAL TUNING. Every implementation reads or is checked against this file.",
+  "_why": "The same rules exist in sim/*.py, proto/index.html and unity/Assets/Scripts/Core/*.cs. Without one source of truth they drift, and this project's main asset is that its numbers are trustworthy. Run sim/check_drift.py to verify agreement.",
+
+  "loudness": {
+    "_source": "AUDIO-SPEC.md 1.2",
+    "crouch_walk": 8,
+    "voice_whisper": 8,
+    "walk": 20,
+    "voice_normal": 25,
+    "dolly": 35,
+    "radio": 38,
+    "sprint": 45,
+    "voice_raised": 45,
+    "appraise": 48,
+    "door": 60,
+    "voice_shout": 65,
+    "crowbar": 75,
+    "break_small": 90,
+    "break_large": 100
+  },
+
+  "loudness_constants": {
+    "_source": "AUDIO-SPEC.md 1.1",
+    "hearing_radius_per_l": 0.33,
+    "impulse_disturbance_per_l": 0.09,
+    "sustained_disturbance_per_l": 0.02,
+    "occlusion_player": 0.60,
+    "occlusion_curator": 0.85,
+    "localisation_fuzz_m": 3.0,
+    "_sustained_sources": ["sprint", "dolly", "radio"],
+    "_note": "A dash in the spec's dDisturbance column is a hard zero. Walking is free."
+  },
+
+  "disturbance": {
+    "_source": "DESIGN.md 6.5, tuned LOOP_LOG R4, crew-scaled R12",
+    "decay_per_min_at_crew4": 50.0,
+    "ratchet_end": 55.0,
+    "per_cursed_item_floor": 7.0,
+    "light_wing_gain": 25.0,
+    "lever_kill_lights": 15.0,
+    "lever_go_quiet": 20.0,
+    "tier_patrol_at": 30.0,
+    "tier_pursue_at": 60.0,
+    "tier_collect_at": 85.0
+  },
+
+  "attention": {
+    "_source": "TECH-SPEC.md A3, corrected LOOP_LOG R2",
+    "_note": "MULTIPLICATIVE. Additive constants let an empty-handed player be hunted 100% of the time.",
+    "steal_threshold": 1.25,
+    "commit_seconds": 8.0,
+    "noise_multiplier_per_event": 0.20,
+    "light_multiplier": 1.30,
+    "recompute_seconds": 2.0
+  },
+
+  "curse": {
+    "_source": "ECONOMY.md 3 and 5, DESIGN.md 4.2",
+    "value_multiplier": { "clean": 1.0, "tainted": 2.5, "malignant": 6.0 },
+    "attention_multiplier": { "clean": 1.0, "tainted": 1.5, "malignant": 3.0 },
+    "ledger_fee": { "clean": 0.0, "tainted": 0.08, "malignant": 0.20 }
+  },
+
+  "van": {
+    "_source": "ECONOMY.md 1, LOOP_LOG R11",
+    "base_slots": 14,
+    "max_slots": 20,
+    "_ceiling_note": "The appraiser's edge hits zero between 24 and 32 slots. The ceiling is a guarantee, not a knob.",
+    "slot_cost": { "pocket": 0.5, "armful": 1.0, "two_man": 3.0, "cart": 5.0 },
+    "ruin_k": 0.015,
+    "ruin_exp": 1.8,
+    "_ruin_note": "Tail risk, not a fee. A linear cost cannot balance a multiplicative benefit."
+  },
+
+  "retrieval": {
+    "_source": "sim/integrated.py, LOOP_LOG R8",
+    "dormant": 0.0,
+    "patrol": 0.02,
+    "pursue": 0.10,
+    "collect": 0.25
+  },
+
+  "night": {
+    "_source": "DESIGN.md 3",
+    "seconds": 720,
+    "haul_window_seconds": 540,
+    "crew": 4,
+    "appraise_seconds": 3.0
+  }
+}

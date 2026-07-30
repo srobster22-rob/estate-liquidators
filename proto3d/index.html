@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Estate Liquidators — first-person prototype</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#d8d5cd;cursor:default}
+  canvas{display:block;width:100%;height:100%}
+  #hud{position:fixed;left:16px;top:14px;font-size:12px;line-height:1.75;
+    letter-spacing:.04em;pointer-events:none;text-shadow:0 2px 6px #000}
+  #hud b{color:#efeade;font-weight:600}
+  .bar{width:160px;height:4px;background:#1e2024;margin:3px 0 8px}
+  .bar i{display:block;height:100%;background:#8a6e24;transition:width .2s}
+  #cross{position:fixed;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;
+    border-radius:50%;background:#cfc9b8;opacity:.5;pointer-events:none}
+  #prompt{position:fixed;left:50%;top:calc(50% + 26px);transform:translateX(-50%);
+    font-size:12px;letter-spacing:.08em;color:#e6dfc9;pointer-events:none;
+    text-shadow:0 2px 6px #000;white-space:nowrap}
+  #start,#end{position:fixed;inset:0;background:rgba(6,7,9,.94);display:flex;
+    align-items:center;justify-content:center;text-align:center}
+  #end{display:none}
+  .panel{max-width:420px;font-size:13px;line-height:1.9}
+  .panel h1{font-family:Georgia,serif;font-weight:400;font-size:26px;letter-spacing:.04em;
+    margin:0 0 6px}
+  .panel .d{color:#8b8880}
+  .panel table{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px}
+  .panel td{padding:3px 0;border-bottom:1px solid #22242a}
+  .panel td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .g{color:#61a08d}.r{color:#c97155}
+  kbd{background:#1d2024;border:1px solid #2c3036;padding:1px 5px;font-size:11px}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="cross"></div>
+<div id="prompt"></div>
+<div id="hud"></div>
+
+<div id="start"><div class="panel">
+  <h1>ESTATE LIQUIDATORS</h1>
+  <p class="d">Empty the house before sunrise. The quota is in dollars, not items.<br>
+  Something in here is still curating the collection.</p>
+  <p><kbd>W A S D</kbd> move &nbsp; <kbd>MOUSE</kbd> look &nbsp; <kbd>SHIFT</kbd> run<br>
+  <kbd>E</kbd> grab / drop &nbsp; <kbd>F</kbd> hold to appraise &nbsp; <kbd>ESC</kbd> release cursor</p>
+  <p class="d">Carry loot to the van in the driveway. Appraising is loud.</p>
+  <p><b>CLICK TO BEGIN</b></p>
+</div></div>
+<div id="end"><div class="panel" id="endtext"></div></div>
+
+<script>
+"use strict";
+// ===========================================================================
+// Estate Liquidators - first-person prototype. Raw WebGL, zero dependencies.
+//
+// Same verified rules as the sims and the C# core (see tuning.json):
+//   attention   multiplicative - carry nothing, weigh nothing
+//   disturbance noise level + ratcheting floor, decay 50/min scaled by crew
+//   retrieval   first contact takes the item, second one kills you
+//   aggro tell  your flashlight dims to 60% when it is coming for you
+// ===========================================================================
+
+const cv = document.getElementById("gl");
+const gl = cv.getContext("webgl", {antialias:true});
+if(!gl) document.body.innerHTML = "<p style='padding:2rem'>WebGL unavailable.</p>";
+
+// ------------------------------------------------------------------ shaders
+const VS = `
+attribute vec3 aPos; attribute vec3 aNrm; attribute vec3 aCol;
+uniform mat4 uProj, uView, uModel; uniform vec3 uTint;
+varying vec3 vN, vW, vC;
+void main(){
+  vec4 w = uModel * vec4(aPos,1.0);
+  vW = w.xyz; vN = mat3(uModel) * aNrm; vC = aCol * uTint;
+  gl_Position = uProj * uView * w;
+}`;
+const FS = `
+precision mediump float;
+varying vec3 vN, vW, vC;
+uniform vec3 uEye, uDir;
+uniform float uRange, uCone, uAmbient;
+void main(){
+  vec3 n = normalize(vN);
+  vec3 toEye = uEye - vW;
+  float d = length(toEye);
+  vec3 l = toEye / max(d, .001);
+  // spotlight: the flashlight is the only real light in the house
+  float spot = smoothstep(uCone, uCone + .28, dot(normalize(-l), normalize(uDir)));
+  float atten = clamp(1.0 - d / uRange, 0.0, 1.0);
+  atten *= atten;
+  float lam = max(dot(n, l), 0.0);
+  float lit = spot * atten * (0.35 + 0.65 * lam);
+  vec3 c = vC * (uAmbient + lit * 1.5);
+  c = mix(c, vec3(0.015,0.017,0.02), clamp(d/46.0, 0.0, 0.92)); // fog
+  gl_FragColor = vec4(c, 1.0);
+}`;
+
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+  if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o;}
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER,VS));
+gl.attachShader(prog, sh(gl.FRAGMENT_SHADER,FS));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const A = {pos:gl.getAttribLocation(prog,"aPos"), nrm:gl.getAttribLocation(prog,"aNrm"),
+           col:gl.getAttribLocation(prog,"aCol")};
+const U = {}; for(const n of ["uProj","uView","uModel","uEye","uDir","uRange","uCone",
+  "uAmbient","uTint"]) U[n]=gl.getUniformLocation(prog,n);
+
+// ------------------------------------------------------------------ geometry
+function boxMesh(){
+  const f=[ // nx,ny,nz then 4 corners
+    [0,0,1,[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
+    [0,0,-1,[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]],
+    [1,0,0,[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]],
+    [-1,0,0,[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]],
+    [0,1,0,[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]],
+    [0,-1,0,[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]]];
+  const v=[],i=[]; let n=0;
+  for(const q of f){ const nr=[q[0],q[1],q[2]];
+    for(let k=3;k<7;k++){ const p=q[k]; v.push(p[0],p[1],p[2],nr[0],nr[1],nr[2],1,1,1); }
+    i.push(n,n+1,n+2,n,n+2,n+3); n+=4; }
+  return {v:new Float32Array(v), i:new Uint16Array(i)};
+}
+const BOX = boxMesh();
+const vbo=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+gl.bufferData(gl.ARRAY_BUFFER,BOX.v,gl.STATIC_DRAW);
+const ibo=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,BOX.i,gl.STATIC_DRAW);
+const STRIDE=9*4;
+gl.enableVertexAttribArray(A.pos); gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,STRIDE,0);
+gl.enableVertexAttribArray(A.nrm); gl.vertexAttribPointer(A.nrm,3,gl.FLOAT,false,STRIDE,12);
+gl.enableVertexAttribArray(A.col); gl.vertexAttribPointer(A.col,3,gl.FLOAT,false,STRIDE,24);
+gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+
+// ------------------------------------------------------------------ math
+const M4={
+  id:()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]),
+  persp:(f,a,n,fa)=>{const t=1/Math.tan(f/2);return new Float32Array(
+    [t/a,0,0,0, 0,t,0,0, 0,0,(fa+n)/(n-fa),-1, 0,0,2*fa*n/(n-fa),0]);},
+  trs:(x,y,z,sx,sy,sz)=>new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,sz,0, x,y,z,1]),
+  look:(e,c,u)=>{
+    const z=nrm(sub(e,c)), x=nrm(cross(u,z)), y=cross(z,x);
+    return new Float32Array([x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
+      -dot(x,e),-dot(y,e),-dot(z,e),1]);}
+};
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
+
+// ------------------------------------------------------------------ tuning
+// Mirrors tuning.json. sim/check_drift.py asserts these stay in agreement.
+const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
+const DECAY_PER_S=(50*(CREW/4))/60;
+const L={sprint:45, appraise:48, drop:90};
+const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
+const ATT_MULT={clean:1, tainted:1.5, malignant:3};
+const FEE={clean:0, tainted:.08, malignant:.20};
+const RUIN_K=0.015, RUIN_EXP=1.8;
+const VAN_SLOTS=14, QUOTA=2200, NIGHT=210, APPRAISE_S=3.0;
+const EYE=1.62, WALK=3.2, RUN=5.6, CARRY=2.6, CARRY_RUN=4.1;
+const STAM_MAX=6, STAM_REGEN=9;
+
+// ------------------------------------------------------------------ estate
+// x,z in metres. Rooms are floor slabs; walls are generated between them.
+const ROOMS=[
+  {id:"drive", x:0,  z:0,  w:9,  d:9,  tier:0, van:true},
+  {id:"foyer", x:12, z:0,  w:10, d:10, tier:0},
+  {id:"hall",  x:23, z:0,  w:7,  d:14, tier:1},
+  {id:"study", x:23, z:-13,w:9,  d:9,  tier:1},
+  {id:"land",  x:32, z:0,  w:9,  d:10, tier:2},
+  {id:"cons",  x:43, z:-5, w:12, d:12, tier:3},
+  {id:"pot",   x:43, z:9,  w:10, d:9,  tier:3},
+];
+const LINKS=[["drive","foyer"],["foyer","hall"],["hall","study"],["hall","land"],
+             ["land","cons"],["land","pot"],["cons","pot"]];
+const BAND={0:[40,150],1:[80,300],2:[250,700],3:[600,1400]};
+const R=id=>ROOMS.find(r=>r.id===id);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const inRoom=(r,x,z)=>x>r.x-r.w/2&&x<r.x+r.w/2&&z>r.z-r.d/2&&z<r.z+r.d/2;
+const roomAt=(x,z)=>ROOMS.find(r=>inRoom(r,x,z));
+
+// Doorway centres between linked rooms.
+const DOORS=LINKS.map(([a,b])=>{const A=R(a),B=R(b);
+  return {a,b,x:(A.x+B.x)/2,z:(A.z+B.z)/2,w:2.2};});
+function nearDoor(x,z){
+  for(const d of DOORS) if(Math.abs(x-d.x)<2.6&&Math.abs(z-d.z)<2.6) return true;
+  return false;
+}
+function solid(x,z){ return !roomAt(x,z) && !nearDoor(x,z); }
+
+// ------------------------------------------------------------------ state
+let items=[],player,curator,van,t,dist,over,started=false;
+
+function makeItems(){
+  items=[];
+  for(const r of ROOMS){ if(r.van) continue;
+    const n = r.tier===3?5:4;
+    for(let i=0;i<n;i++){
+      const g=Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
+      const [lo,hi]=BAND[r.tier];
+      const x=rnd(r.x-r.w/2+1.4,r.x+r.w/2-1.4), z=rnd(r.z-r.d/2+1.4,r.z+r.d/2-1.4);
+      items.push({x,y:0.45,z,hx:x,hz:z,grade:g,tier:r.tier,
+        value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
+        size:r.tier>=3?0.42:r.tier===2?0.34:0.26,
+        known:false,held:false,gone:false,scan:0});
+    }
+  }
+}
+function reset(){
+  makeItems();
+  const dv=R("drive");
+  player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0};
+  curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
+           fixate:0,lock:0,reseat:0,target:false};
+  van={slots:VAN_SLOTS,cargo:[]};
+  t=0;dist=0;over=false;
+  document.getElementById("end").style.display="none";
+}
+reset();
+
+// ------------------------------------------------------------------ input
+const keys={};
+addEventListener("keydown",e=>{
+  keys[e.code]=true;
+  if(e.code==="KeyE"&&started&&!over) grabDrop();
+  if(e.code==="KeyR"&&over){ reset(); document.getElementById("end").style.display="none"; }
+});
+addEventListener("keyup",e=>keys[e.code]=false);
+document.getElementById("start").addEventListener("click",()=>{
+  document.getElementById("start").style.display="none";
+  started=true; cv.requestPointerLock();
+});
+cv.addEventListener("click",()=>{ if(started&&!over) cv.requestPointerLock(); });
+addEventListener("mousemove",e=>{
+  if(document.pointerLockElement!==cv) return;
+  player.yaw   -= e.movementX*0.0022;
+  player.pitch -= e.movementY*0.0022;
+  player.pitch = Math.max(-1.35,Math.min(1.35,player.pitch));
+});
+
+function noise(l,impulse,dt){ dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt)); }
+function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*2; }
+const tierOf=d=>d>=85?"COLLECT":d>=60?"PURSUE":d>=30?"PATROL":"DORMANT";
+
+function lookDir(){
+  const cp=Math.cos(player.pitch);
+  return [Math.sin(player.yaw)*cp, Math.sin(player.pitch), Math.cos(player.yaw)*cp];
+}
+function aimedItem(){
+  const d=lookDir(); let best=null,bs=0.86;
+  for(const it of items){ if(it.gone||it.held) continue;
+    const v=[it.x-player.x, it.y-EYE, it.z-player.z];
+    const dist2=Math.hypot(...v); if(dist2>3.2) continue;
+    const s=dot(nrm(v),nrm(d));
+    if(s>bs){bs=s;best=it;} }
+  return best;
+}
+function grabDrop(){
+  if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
+    it.x=player.x+Math.sin(player.yaw)*0.8; it.z=player.z+Math.cos(player.yaw)*0.8;
+    it.y=0.45; noise(L.drop,true,0); return; }
+  const it=aimedItem(); if(it){ it.held=true; player.holding=it; }
+}
+
+// ------------------------------------------------------------------ update
+function step(dt){
+  t+=dt; if(t>=NIGHT) return finish("SUNRISE");
+  const fwd=[Math.sin(player.yaw),0,Math.cos(player.yaw)];
+  const right=[fwd[2],0,-fwd[0]];
+  let mx=(keys.KeyW?1:0)-(keys.KeyS?1:0), mz=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  const mag=Math.hypot(mx,mz); if(mag){mx/=mag;mz/=mag;}
+  const moving=!!mag;
+  const run=keys.ShiftLeft&&player.stam>0&&moving;
+  if(run){ player.stam=Math.max(0,player.stam-dt); noise(L.sprint,false,dt); }
+  else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
+
+  if(player.down>0) player.down-=dt;
+  else if(moving){
+    const sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
+    const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
+    const nz=player.z+(fwd[2]*mx+right[2]*mz)*sp*dt;
+    if(!solid(nx,player.z)) player.x=nx;
+    if(!solid(player.x,nz)) player.z=nz;
+  }
+
+  // appraise: hold F, stationary, 3s, loud
+  const tgt=player.holding||aimedItem();
+  if(keys.KeyF&&!moving&&tgt&&!tgt.known){
+    tgt.scan+=dt;
+    if(tgt.scan>=APPRAISE_S){ tgt.known=true; tgt.scan=0; noise(L.appraise,true,0); }
+  } else for(const it of items) if(!(keys.KeyF&&it===tgt)) it.scan=0;
+
+  if(player.holding){ const d=lookDir(), it=player.holding;
+    it.x=player.x+d[0]*1.15; it.z=player.z+d[2]*1.15; it.y=EYE+d[1]*1.15-0.30; }
+
+  // deposit
+  if(player.holding&&roomAt(player.x,player.z)?.van){
+    const it=player.holding; it.held=false; it.gone=true; player.holding=null;
+    van.cargo.push(it); van.slots--;
+    if(van.slots===0) return finish("VAN FULL");
+  }
+
+  dist=Math.max(floorNow(),Math.min(100,dist-DECAY_PER_S*dt));
+  updateCurator(dt);
+}
+
+function attentionWeight(){
+  if(!player.holding) return 0;   // pillar 2: carry nothing, weigh nothing
+  return player.holding.value*ATT_MULT[player.holding.grade];
+}
+
+function updateCurator(dt){
+  const c=curator, tier=tierOf(dist);
+  c.lock-=dt; c.fixate-=dt; c.reseat-=dt;
+  const speed = c.state==="RESEAT"?1.35 : tier==="COLLECT"?1.95:1.65;
+
+  if(c.state==="RESEAT"){
+    walkTo(c,c.carry.hx,c.carry.hz,speed,dt);
+    if(Math.hypot(c.x-c.carry.hx,c.z-c.carry.hz)<0.9){
+      c.carry.x=c.carry.hx; c.carry.z=c.carry.hz; c.carry.y=0.45;
+      c.carry.held=false; c.carry=null; c.state="PATROL"; c.reseat=8; c.target=false; }
+    return;
+  }
+  if(c.lock<=0&&c.reseat<=0){
+    const hunting=(tier==="PURSUE"||tier==="COLLECT");
+    if(attentionWeight()>0&&hunting&&!c.target){
+      c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; c.goal=player.holding;
+    } else if(attentionWeight()===0&&c.state!=="FIXATE") c.target=false;
+  }
+  if(c.state==="FIXATE"){ if(c.fixate<=0) c.state="PURSUE"; return; }
+
+  if(c.state==="PURSUE"&&c.target){
+    // A4: path to the plinth the item came from, so it cuts you off going home
+    const g=(c.goal&&!c.goal.gone)?{x:c.goal.hx,z:c.goal.hz}:{x:player.x,z:player.z};
+    walkTo(c,g.x,g.z,speed,dt);
+    if(Math.hypot(c.x-player.x,c.z-player.z)<1.5&&player.down<=0){
+      player.hits++;
+      if(player.hits>=2) return finish("COLLECTED");
+      if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
+        c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1; c.state="RESEAT"; }
+      else c.state="PATROL";
+      player.down=3.5; c.target=false; c.lock=0;
+    }
+    return;
+  }
+  if(!c.goal||Math.hypot(c.x-c.goal.hx,c.z-c.goal.hz)<1.2){
+    const live=items.filter(i=>!i.gone); c.goal=live[Math.floor(Math.random()*live.length)];
+  }
+  if(c.goal) walkTo(c,c.goal.hx,c.goal.hz,speed,dt);
+}
+
+function walkTo(e,gx,gz,sp,dt){
+  const here=roomAt(e.x,e.z), there=roomAt(gx,gz);
+  let tx=gx,tz=gz;
+  if(here&&there&&here!==there){
+    let bd=1e9;
+    for(const d of DOORS) if(d.a===here.id||d.b===here.id){
+      const dd=Math.hypot(d.x-gx,d.z-gz); if(dd<bd){bd=dd;tx=d.x;tz=d.z;} }
+  }
+  const a=Math.atan2(tx-e.x,tz-e.z);
+  const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
+  if(!solid(nx,e.z)) e.x=nx;
+  if(!solid(e.x,nz)) e.z=nz;
+  if(e.carry){ e.carry.x=e.x; e.carry.z=e.z; e.carry.y=1.1; }
+}
+
+function finish(why){
+  over=true; document.exitPointerLock?.();
+  const gross=van.cargo.reduce((s,i)=>s+i.value,0);
+  const fees=van.cargo.reduce((s,i)=>s+i.value*FEE[i.grade],0);
+  const cursed=van.cargo.filter(c=>c.grade!=="clean").length;
+  const ruin=cursed>0&&Math.random()<Math.min(.95,RUIN_K*Math.pow(cursed,RUIN_EXP));
+  const net=ruin?0:Math.round(gross-fees);
+  document.getElementById("endtext").innerHTML=
+    `<h1>${why}</h1><table>
+     <tr><td>Items recovered</td><td>${van.cargo.length} / ${VAN_SLOTS}</td></tr>
+     <tr><td>Gross</td><td>$${Math.round(gross).toLocaleString()}</td></tr>
+     <tr><td class="d">Curse fees</td><td class="d">-$${Math.round(fees).toLocaleString()}</td></tr>
+     ${ruin?`<tr><td class="r">THE COLLECTION RECLAIMED THE VAN</td><td class="r">everything</td></tr>`:``}
+     <tr><td><b>Net</b></td><td><b>$${net.toLocaleString()}</b></td></tr>
+     <tr><td>Quota</td><td>$${QUOTA.toLocaleString()}</td></tr></table>
+     <p class="${net>=QUOTA?'g':'r'}">${net>=QUOTA?"QUOTA MET":"QUOTA MISSED"}${
+       cursed?` &nbsp;·&nbsp; ${cursed} cursed piece${cursed>1?"s":""} aboard`:""}</p>
+     <p class="d">press R to run again</p>`;
+  document.getElementById("end").style.display="flex";
+}
+
+// ------------------------------------------------------------------ render
+function drawBox(x,y,z,sx,sy,sz,col){
+  gl.uniformMatrix4fv(U.uModel,false,M4.trs(x,y,z,sx,sy,sz));
+  gl.uniform3fv(U.uTint,col);
+  gl.drawElements(gl.TRIANGLES,BOX.i.length,gl.UNSIGNED_SHORT,0);
+}
+const WALL_H=3.2, TH=0.16;
+
+function render(){
+  const w=cv.width=innerWidth, h=cv.height=innerHeight;
+  gl.viewport(0,0,w,h);
+  gl.clearColor(.012,.014,.017,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+  const marked = curator.target && (curator.state==="PURSUE"||curator.state==="FIXATE");
+  const eye=[player.x,EYE,player.z], d=lookDir();
+  gl.uniformMatrix4fv(U.uProj,false,M4.persp(1.15,w/h,0.05,120));
+  gl.uniformMatrix4fv(U.uView,false,M4.look(eye,[eye[0]+d[0],eye[1]+d[1],eye[2]+d[2]],[0,1,0]));
+  gl.uniform3fv(U.uEye,eye); gl.uniform3fv(U.uDir,d);
+  // A7: the aggro tell. Your light dims to 60% and goes cold.
+  gl.uniform1f(U.uRange, marked?11.5:19.0);
+  gl.uniform1f(U.uCone, marked?0.88:0.80);
+  gl.uniform1f(U.uAmbient, 0.045);
+
+  for(const r of ROOMS){
+    drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
+    drawBox(r.x,WALL_H,r.z,r.w/2,0.04,r.d/2,[.16,.16,.17]);
+    const seg=[[r.x-r.w/2,r.z,TH,r.d/2],[r.x+r.w/2,r.z,TH,r.d/2],
+               [r.x,r.z-r.d/2,r.w/2,TH],[r.x,r.z+r.d/2,r.w/2,TH]];
+    for(const s of seg){
+      if(nearDoor(s[0],s[1])) continue;
+      drawBox(s[0],WALL_H/2,s[1],s[2],WALL_H/2,s[3],[.20,.195,.185]);
+    }
+  }
+  // van
+  const dv=R("drive");
+  drawBox(dv.x-1.6,1.05,dv.z,1.5,1.05,1.9,[.34,.28,.13]);
+
+  for(const it of items){
+    if(it.gone) continue;
+    let col=[.42,.44,.43];
+    if(it.known) col = it.grade==="malignant"?[.72,.36,.26]
+                     : it.grade==="tainted"?[.72,.60,.26]:[.56,.60,.57];
+    if(it.held&&marked) col=[.62,.78,.88];             // frost
+    drawBox(it.x,it.y,it.z,it.size,it.size,it.size,col);
+  }
+
+  const c=curator;
+  drawBox(c.x,1.0,c.z,0.34,1.0,0.34, c.state==="FIXATE"?[.55,.53,.50]:[.14,.145,.15]);
+  drawBox(c.x,2.12,c.z,0.20,0.22,0.20,[.20,.19,.18]);
+}
+
+// ------------------------------------------------------------------ HUD
+function hud(){
+  const held=player.holding, aim=held?null:aimedItem();
+  const marked = curator.target&&(curator.state==="PURSUE"||curator.state==="FIXATE");
+  const scanning = items.find(i=>i.scan>0);
+  document.getElementById("prompt").textContent =
+    over?"" : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
+    : held ? "[E] drop    [F] appraise"
+    : aim ? (aim.known?`$${aim.value}  ${aim.grade.toUpperCase()}   [E] take`:"UNAPPRAISED   [E] take   [F] appraise")
+    : "";
+  document.getElementById("hud").innerHTML =
+    `<b>${Math.max(0,NIGHT-t).toFixed(0)}s</b> until sunrise<br>`+
+    `VAN <b>${VAN_SLOTS-van.slots}/${VAN_SLOTS}</b>&nbsp;&nbsp;`+
+    `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${QUOTA.toLocaleString()}<br>`+
+    (held?`CARRYING ${held.known?"$"+held.value+" "+held.grade.toUpperCase():"UNAPPRAISED"}<br>`:"")+
+    (marked?`<span style="color:#9fc4d6">IT IS COMING FOR YOU</span><br>`:"")+
+    `<span style="color:#8b8880">${tierOf(dist)} ${dist.toFixed(0)}</span>`+
+    `<div class="bar"><i style="width:${dist}%"></i></div>`+
+    `<span style="color:#8b8880">stamina</span>`+
+    `<div class="bar"><i style="width:${player.stam/STAM_MAX*100}%;background:#3d6b5e"></i></div>`;
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  if(started&&!over) step(dt);
+  render(); hud();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// QA hook
+window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist),
+    slots:van.slots,banked:van.cargo.reduce((s,i)=>s+i.value,0),
+    cur:curator.state,marked:!!curator.target,hits:player.hits,
+    holding:player.holding?player.holding.value:null,over}),
+  pos:()=>({x:+player.x.toFixed(1),z:+player.z.toFixed(1),
+    room:roomAt(player.x,player.z)?.id??"VOID",yaw:+player.yaw.toFixed(2)}),
+  step:(n=1,dt=1/60)=>{started=true;for(let i=0;i<n;i++) if(!over) step(dt);return window.__g.state();},
+  press:(k,v=true)=>keys[k]=v, look:(y,p=0)=>{player.yaw=y;player.pitch=p;},
+  grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length };
+</script>
+</body>
+</html>

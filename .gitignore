@@ -1,0 +1,27 @@
+# Build artifacts - never transfer these, they regenerate
+bin/
+obj/
+__pycache__/
+*.pyc
+
+# Unity - regenerated on first open, and enormous
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+*.csproj
+*.sln
+*.unityproj
+
+# ...but the hand-written test project must travel, or the C# core suite
+# can't run on a fresh clone.
+!unity/tests/CoreTests/CoreTests.csproj
+
+# macOS
+.DS_Store
+
+# Local
+*.log

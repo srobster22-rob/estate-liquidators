@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Estate Liquidators — prototype</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0c0e;overflow:hidden;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#d8d5cd}
+  #c{display:block;width:100%;height:100%}
+  #hud{position:fixed;left:14px;top:12px;font-size:12px;line-height:1.7;
+    letter-spacing:.04em;pointer-events:none;text-shadow:0 1px 3px #000}
+  #hud b{font-weight:600;color:#e8e4da}
+  .bar{width:150px;height:5px;background:#26282c;margin-top:3px}
+  .bar i{display:block;height:100%;background:#8a6e24}
+  #tip{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+    font-size:12px;color:#8d8a82;letter-spacing:.06em;text-align:center}
+  #ledger{position:fixed;inset:0;background:rgba(8,9,11,.95);display:none;
+    align-items:center;justify-content:center}
+  #ledger div{max-width:460px;font-size:13px;line-height:1.85}
+  #ledger h1{font-size:20px;letter-spacing:.08em;font-weight:600;margin:0 0 14px}
+  #ledger table{width:100%;border-collapse:collapse;font-size:12px}
+  #ledger td{padding:2px 0;border-bottom:1px solid #23252a}
+  #ledger td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .g{color:#61a08d}.r{color:#c97155}.d{color:#8d8a82}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<div id="tip">WASD move · SHIFT sprint · E appraise (hold) · SPACE grab / drop · walk into van to load</div>
+<div id="ledger"><div id="ltext"></div></div>
+<script>
+"use strict";
+// ============================================================================
+// Estate Liquidators - playable prototype of the Milestone 2 loop.
+// Wires in the models the sims verified, so this is a test of the DESIGN,
+// not a fresh guess:
+//   attention  multiplicative (TECH-SPEC A3, corrected R2)
+//   disturbance noise level + ratcheting floor, decay 50/min (DESIGN 6.5, R4)
+//   retrieval  first contact takes the item, second kills (TECH-SPEC A3)
+//   aggro tell your light dims (TECH-SPEC A7)
+// ============================================================================
+
+const C = document.getElementById("c"), X = C.getContext("2d");
+let W = 0, H = 0;
+addEventListener("resize", fit); function fit(){ W=C.width=innerWidth; H=C.height=innerHeight; }
+fit();
+
+// ---------------------------------------------------------------- constants
+const NIGHT = 180;            // 3 min for testing; ship value is 12
+const VAN_SLOTS = 14;
+const QUOTA = 2200;
+const SPEED = { walk:118, sprint:205, carry:96, carrySprint:150 };
+const STAM_MAX = 6, STAM_REGEN = 9;
+const APPRAISE_S = 3.0;
+// Disturbance decay was tuned in the sims at 50/min against a FOUR-person crew's
+// noise output. This prototype is solo, generating roughly a quarter of that, so
+// 50/min swamps everything the player does and the meter never leaves DORMANT.
+// Scale with crew size - which means the shipping value is crew-dependent, a
+// dependency the sims never surfaced because they only ever ran four players.
+const CREW = 1;
+const DECAY_PER_S = (50 * (CREW/4)) / 60;
+const RATCHET_END = 55;
+const L = { walk:0, sprint:45, appraise:48, door:60, drop:90 };
+const IMPULSE = 0.09, SUSTAINED = 0.02;
+const CURATOR = { patrol:52, pursue:63, collect:74 };
+
+// ---------------------------------------------------------------- the estate
+// Rooms are axis-aligned boxes; doorways are gaps punched in shared walls.
+const ROOMS = [
+  { id:"drive",  x:  40, y: 330, w:200, h:150, tier:0, name:"DRIVEWAY" },
+  { id:"foyer",  x: 260, y: 300, w:220, h:210, tier:0, name:"FOYER" },
+  { id:"stair",  x: 500, y: 300, w:180, h:210, tier:1, name:"GRAND STAIR" },
+  { id:"study",  x: 500, y:  80, w:200, h:190, tier:1, name:"STUDY" },
+  { id:"serv",   x: 260, y: 540, w:420, h:130, tier:1, name:"SERVICE HALL" },
+  { id:"land",   x: 700, y: 300, w:190, h:210, tier:2, name:"LANDING" },
+  { id:"cons",   x: 910, y: 210, w:250, h:230, tier:3, name:"CONSERVATORY" },
+  { id:"pot",    x: 910, y: 470, w:250, h:200, tier:3, name:"POTTING ROOM" },
+];
+const DOORS = [
+  ["drive","foyer"],["foyer","stair"],["foyer","serv"],["stair","study"],
+  ["stair","land"],["serv","land"],["land","cons"],["land","pot"],["cons","pot"],
+];
+const BAND = { 0:[40,150], 1:[80,300], 2:[250,700], 3:[600,1400] };
+const GRADE_MULT = { clean:1, tainted:2.5, malignant:6 };
+const ATT_MULT   = { clean:1, tainted:1.5, malignant:3 };
+
+const R = id => ROOMS.find(r=>r.id===id);
+const rnd = (a,b)=>a+Math.random()*(b-a);
+const cx = r => r.x + r.w/2, cy = r => r.y + r.h/2;
+
+// Doorway geometry: midpoint of the shared edge, with a gap width.
+const GAP = 54;
+const doorways = DOORS.map(([a,b])=>{
+  const A=R(a), B=R(b);
+  const ox = Math.max(A.x, B.x), oX = Math.min(A.x+A.w, B.x+B.w);
+  const oy = Math.max(A.y, B.y), oY = Math.min(A.y+A.h, B.y+B.h);
+  if (oX-ox > oY-oy) return { a,b, vert:false, x:(ox+oX)/2, y:(oy+oY)/2 };
+  return { a,b, vert:true, x:(ox+oX)/2, y:(oy+oY)/2 };
+});
+
+// ---------------------------------------------------------------- state
+let items=[], player, curator, van, t=0, dist=0, over=false, ledger=null;
+
+function makeItems(){
+  items=[];
+  for (const r of ROOMS){
+    if (r.id==="drive") continue;
+    const n = r.tier===0 ? 3 : r.tier===3 ? 5 : 4;
+    for (let i=0;i<n;i++){
+      const g = Math.random()<0.70 ? "clean" : Math.random()<0.75 ? "tainted":"malignant";
+      const [lo,hi] = BAND[r.tier];
+      items.push({
+        x: rnd(r.x+34, r.x+r.w-34), y: rnd(r.y+34, r.y+r.h-34),
+        home:{x:0,y:0}, room:r.id, tier:r.tier, grade:g,
+        value: Math.round(rnd(lo,hi)*GRADE_MULT[g]),
+        known:false, held:false, gone:false, scan:0,
+      });
+    }
+  }
+  items.forEach(i=>{ i.home.x=i.x; i.home.y=i.y; });
+}
+
+function reset(){
+  makeItems();
+  player = { x:cx(R("drive")), y:cy(R("drive")), vx:0,vy:0, stam:STAM_MAX,
+             holding:null, appraising:null, marked:false, down:0, hits:0 };
+  curator = { x:cx(R("cons")), y:cy(R("cons")), state:"PATROL",
+              target:null, goal:null, carry:null, fixate:0, lock:0, reseat:0 };
+  van = { slots:VAN_SLOTS, cargo:[] };
+  t=0; dist=0; over=false; ledger=null;
+  document.getElementById("ledger").style.display="none";
+}
+
+// ---------------------------------------------------------------- input
+const keys={};
+addEventListener("keydown",e=>{
+  if(e.code==="KeyR"&&over){ reset(); return; }
+  keys[e.code]=true;
+  if(e.code==="Space") grabOrDrop();
+});
+addEventListener("keyup",e=>keys[e.code]=false);
+
+function roomAt(x,y){ return ROOMS.find(r=>x>r.x&&x<r.x+r.w&&y>r.y&&y<r.y+r.h); }
+
+function grabOrDrop(){
+  if(over) return;
+  if(player.holding){
+    const it=player.holding; it.held=false; player.holding=null;
+    it.x=player.x; it.y=player.y;
+    noise(L.drop, true, 0);                        // dropping is LOUD
+    return;
+  }
+  let best=null,bd=42;
+  for(const it of items){
+    if(it.held||it.gone) continue;
+    const d=Math.hypot(it.x-player.x,it.y-player.y);
+    if(d<bd){bd=d;best=it;}
+  }
+  if(best){ best.held=true; player.holding=best; }
+}
+
+// ---------------------------------------------------------------- noise
+// Sustained sources are per SECOND, impulses are per event. Getting this wrong
+// meant sprinting added 0.9 every frame (54/s) instead of 0.9 per second, which
+// pinned the meter at COLLECT within a few strides.
+function noise(l, impulse, dt){
+  dist += impulse ? l*IMPULSE : l*SUSTAINED*dt;
+  dist = Math.min(100, dist);
+}
+function floorNow(){ return RATCHET_END * (t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*2; }
+
+// ---------------------------------------------------------------- movement
+function blocked(x,y){
+  const r = roomAt(x,y);
+  if(r) return false;
+  // allow passage through doorway gaps
+  for(const d of doorways){
+    if(Math.abs(x-d.x)<GAP/2 && Math.abs(y-d.y)<GAP/2) return false;
+  }
+  return true;
+}
+function move(e,dx,dy,sp,dt){
+  const nx=e.x+dx*sp*dt, ny=e.y+dy*sp*dt;
+  if(!blocked(nx,e.y)) e.x=nx;
+  if(!blocked(e.x,ny)) e.y=ny;
+}
+
+// ---------------------------------------------------------------- attention
+// TECH-SPEC A3, corrected in R2: noise and light MULTIPLY carried value, never
+// add to it. Carry nothing and you weigh nothing - that is pillar 2.
+function attention(){
+  if(!player.holding) return 0;
+  const it=player.holding;
+  let w = it.value * ATT_MULT[it.grade];
+  const sprinting = keys.ShiftLeft && player.stam>0;
+  return w * (sprinting?1.2:1.0) * 1.3;   // light is always on in the proto
+}
+
+function tierOf(d){ return d>=85?"COLLECT": d>=60?"PURSUE": d>=30?"PATROL":"DORMANT"; }
+
+// ---------------------------------------------------------------- update
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  if(!over) step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function step(dt){
+  t+=dt;
+  if(t>=NIGHT){ finish("SUNRISE"); return; }
+
+  // ---- player
+  let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0), dy=(keys.KeyS?1:0)-(keys.KeyW?1:0);
+  const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len;
+  const moving = (dx||dy);
+  const wantSprint = keys.ShiftLeft && player.stam>0 && moving;
+  if(wantSprint){ player.stam=Math.max(0,player.stam-dt); noise(L.sprint,false,dt); }
+  else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
+
+  if(player.down>0){ player.down-=dt; }
+  else {
+    const sp = player.holding ? (wantSprint?SPEED.carrySprint:SPEED.carry)
+                              : (wantSprint?SPEED.sprint:SPEED.walk);
+    if(moving) move(player,dx,dy,sp,dt);
+  }
+  if(player.holding){ player.holding.x=player.x; player.holding.y=player.y-14; }
+
+  // ---- appraise (hold E, 3s, stationary, loud)
+  if(keys.KeyE && !moving){
+    let tgt = player.holding;
+    if(!tgt){
+      let bd=42;
+      for(const it of items){ if(it.held||it.gone||it.known) continue;
+        const d=Math.hypot(it.x-player.x,it.y-player.y); if(d<bd){bd=d;tgt=it;} }
+    }
+    if(tgt && !tgt.known){
+      player.appraising=tgt; tgt.scan+=dt;
+      if(tgt.scan>=APPRAISE_S){ tgt.known=true; tgt.scan=0; player.appraising=null;
+        noise(L.appraise,true,0); }
+    }
+  } else { if(player.appraising){ player.appraising.scan=0; player.appraising=null; } }
+
+  // ---- deposit
+  const inDrive = roomAt(player.x,player.y)?.id==="drive";
+  if(inDrive && player.holding && van.slots>0){
+    const it=player.holding; it.held=false; it.gone=true; player.holding=null;
+    van.cargo.push(it); van.slots--;
+    if(van.slots===0) finish("VAN FULL");
+  }
+
+  // ---- disturbance
+  dist = Math.max(floorNow(), Math.min(100, dist - DECAY_PER_S*dt));
+
+  // ---- curator
+  updateCurator(dt);
+}
+
+function updateCurator(dt){
+  const c=curator, tier=tierOf(dist);
+  c.lock-=dt; c.fixate-=dt; c.reseat-=dt;
+
+  if(c.state==="RESEAT"){
+    const g=c.carry.home;
+    stepTo(c,g.x,g.y,CURATOR.patrol,dt);
+    if(Math.hypot(c.x-g.x,c.y-g.y)<12){
+      c.carry.x=g.x; c.carry.y=g.y; c.carry.held=false; c.carry=null;
+      c.state="PATROL"; c.reseat=10; c.target=null;
+    }
+    return;
+  }
+
+  // acquire
+  if(c.lock<=0 && c.reseat<=0){
+    const w=attention();
+    const hunting = tier==="PURSUE"||tier==="COLLECT";
+    if(w>0 && hunting && c.target!==player){
+      c.target=player; c.goal=player.holding; c.fixate=2.0; c.lock=8; c.state="FIXATE";
+    } else if(w===0 && c.state!=="FIXATE"){ c.target=null; }
+  }
+
+  if(c.state==="FIXATE"){ if(c.fixate<=0) c.state="PURSUE"; return; }
+
+  if(c.state==="PURSUE" && c.target){
+    // A4: path to the PLINTH the item came from, not to the player - it goes to
+    // put the vase back, which is what makes it cut you off on the way home.
+    const g = c.goal && !c.goal.gone ? c.goal.home : {x:player.x,y:player.y};
+    stepTo(c,g.x,g.y, tier==="COLLECT"?CURATOR.collect:CURATOR.pursue, dt);
+    if(Math.hypot(c.x-player.x,c.y-player.y)<24 && player.down<=0){
+      player.hits++;
+      if(player.hits>=2){ finish("COLLECTED"); return; }
+      // first contact: it takes the item back
+      if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
+        c.carry=it; it.x=c.x; it.y=c.y; c.state="RESEAT"; }
+      else c.state="PATROL";
+      player.down=4; c.target=null; c.lock=0;
+    }
+    return;
+  }
+  // patrol between plinths
+  if(!c.goal || Math.hypot(c.x-c.goal.home.x,c.y-c.goal.home.y)<16){
+    const live=items.filter(i=>!i.gone); c.goal=live[Math.floor(Math.random()*live.length)];
+  }
+  if(c.goal) stepTo(c,c.goal.home.x,c.goal.home.y,CURATOR.patrol,dt);
+}
+
+function stepTo(e,gx,gy,sp,dt){
+  // crude routing: head for the doorway of the room you're in if the goal is elsewhere
+  const here=roomAt(e.x,e.y), there=roomAt(gx,gy);
+  let tx=gx,ty=gy;
+  if(here&&there&&here!==there){
+    const d=doorways.find(d=>(d.a===here.id||d.b===here.id));
+    const opts=doorways.filter(d=>d.a===here.id||d.b===here.id);
+    let bd=1e9;
+    for(const o of opts){ const dd=Math.hypot(o.x-gx,o.y-gy); if(dd<bd){bd=dd;tx=o.x;ty=o.y;} }
+  }
+  const a=Math.atan2(ty-e.y,tx-e.x);
+  const nx=e.x+Math.cos(a)*sp*dt, ny=e.y+Math.sin(a)*sp*dt;
+  if(!blocked(nx,e.y)) e.x=nx;
+  if(!blocked(e.x,ny)) e.y=ny;
+  if(e.carry){ e.carry.x=e.x; e.carry.y=e.y-12; }
+}
+
+function finish(why){
+  over=true;
+  const gross=van.cargo.reduce((s,i)=>s+i.value,0);
+  const fees=van.cargo.reduce((s,i)=>s+i.value*(i.grade==="malignant"?.20:i.grade==="tainted"?.08:0),0);
+  const net=Math.round(gross-fees);
+  const cursed=van.cargo.filter(c=>c.grade!=="clean").length;
+  const ruin = cursed>0 && Math.random() < Math.min(.95, 0.015*Math.pow(cursed,1.8));
+  ledger={why,gross:Math.round(gross),fees:Math.round(fees),net:ruin?0:net,
+          cursed,ruin,count:van.cargo.length,met:!ruin&&net>=QUOTA};
+  const L2=document.getElementById("ltext");
+  L2.innerHTML=`<h1>${why}</h1><table>
+    <tr><td>Items recovered</td><td>${ledger.count} / ${VAN_SLOTS}</td></tr>
+    <tr><td>Gross</td><td>$${ledger.gross.toLocaleString()}</td></tr>
+    <tr><td class="d">Curse fees</td><td class="d">-$${ledger.fees.toLocaleString()}</td></tr>
+    ${ruin?`<tr><td class="r">THE COLLECTION RECLAIMED THE VAN</td><td class="r">-$${net.toLocaleString()}</td></tr>`:``}
+    <tr><td><b>Net</b></td><td><b>$${ledger.net.toLocaleString()}</b></td></tr>
+    <tr><td>Quota</td><td>$${QUOTA.toLocaleString()}</td></tr>
+    </table><p class="${ledger.met?'g':'r'}">${ledger.met?"QUOTA MET":"QUOTA MISSED"}${
+      cursed?`  ·  ${cursed} cursed piece${cursed>1?"s":""} aboard`:""}</p>
+    <p class="d">R to run again</p>`;
+  document.getElementById("ledger").style.display="flex";
+}
+
+// ---------------------------------------------------------------- draw
+function draw(){
+  X.fillStyle="#0b0c0e"; X.fillRect(0,0,W,H);
+  const s=Math.min(W/1220,H/740), ox=(W-1220*s)/2, oy=(H-740*s)/2;
+  X.save(); X.translate(ox,oy); X.scale(s,s);
+
+  const marked = curator.target===player && (curator.state==="PURSUE"||curator.state==="FIXATE");
+
+  for(const r of ROOMS){
+    X.fillStyle = r.id==="drive" ? "#171a1c" : "#131518";
+    X.fillRect(r.x,r.y,r.w,r.h);
+    X.strokeStyle="#24272b"; X.lineWidth=2; X.strokeRect(r.x,r.y,r.w,r.h);
+    X.fillStyle="#3b4045"; X.font="10px ui-monospace,monospace";
+    X.fillText(r.name, r.x+8, r.y+16);
+  }
+  for(const d of doorways){
+    X.fillStyle="#0b0c0e";
+    X.fillRect(d.x-GAP/2, d.y-GAP/2, GAP, GAP);
+  }
+  // van
+  const dv=R("drive");
+  X.strokeStyle="#8a6e24"; X.lineWidth=2;
+  X.strokeRect(dv.x+30,dv.y+40,110,70);
+  X.fillStyle="#8a6e24"; X.font="10px ui-monospace,monospace";
+  X.fillText("VAN "+(VAN_SLOTS-van.slots)+"/"+VAN_SLOTS, dv.x+38, dv.y+62);
+
+  // items
+  for(const it of items){
+    if(it.gone) continue;
+    const held = it.held;
+    X.fillStyle = it.known ? (it.grade==="malignant"?"#c97155":it.grade==="tainted"?"#c6a44b":"#9aa3a0")
+                           : "#565c60";
+    const sz = it.tier>=3?11:it.tier===2?9:7;
+    X.fillRect(it.x-sz/2,it.y-sz/2,sz,sz);
+    if(it.known){
+      X.fillStyle="#7f867f"; X.font="9px ui-monospace,monospace";
+      X.fillText("$"+it.value, it.x+8, it.y+3);
+    }
+    if(it.scan>0){
+      X.strokeStyle="#c6a44b"; X.lineWidth=2; X.beginPath();
+      X.arc(it.x,it.y,15,-Math.PI/2,-Math.PI/2+(it.scan/APPRAISE_S)*Math.PI*2); X.stroke();
+    }
+    if(held && marked){   // A7: frost creeps over the carried item
+      X.strokeStyle="rgba(160,205,225,.85)"; X.lineWidth=2;
+      X.strokeRect(it.x-sz/2-3,it.y-sz/2-3,sz+6,sz+6);
+    }
+  }
+
+  // player light - dims to 60% when marked. This IS the aggro tell.
+  const rad = marked ? 96 : 160;
+  const gr=X.createRadialGradient(player.x,player.y,8,player.x,player.y,rad);
+  gr.addColorStop(0, marked?"rgba(150,175,190,.20)":"rgba(230,215,175,.20)");
+  gr.addColorStop(1,"rgba(0,0,0,0)");
+  X.fillStyle=gr; X.beginPath(); X.arc(player.x,player.y,rad,0,7); X.fill();
+
+  X.fillStyle=player.down>0?"#c97155":"#e6e4de";
+  X.beginPath(); X.arc(player.x,player.y,9,0,7); X.fill();
+
+  // curator
+  const cc=curator;
+  X.fillStyle = cc.state==="FIXATE" ? "#e6e4de" : "#5a6166";
+  X.beginPath(); X.arc(cc.x,cc.y,11,0,7); X.fill();
+  if(cc.state==="FIXATE"){ X.strokeStyle="#e6e4de"; X.lineWidth=1.5;
+    X.beginPath(); X.arc(cc.x,cc.y,11+ (2-cc.fixate)*14,0,7); X.stroke(); }
+
+  X.restore();
+
+  const held=player.holding;
+  document.getElementById("hud").innerHTML =
+    `<b>${Math.max(0,NIGHT-t).toFixed(0)}s</b> until sunrise<br>`+
+    `VAN <b>${VAN_SLOTS-van.slots}/${VAN_SLOTS}</b> &nbsp; $${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${QUOTA.toLocaleString()}<br>`+
+    `HOLDING ${held? (held.known? "$"+held.value+" "+held.grade.toUpperCase() : "UNAPPRAISED") : "—"}<br>`+
+    `<span class="d">disturbance ${tierOf(dist)} ${dist.toFixed(0)}</span>`+
+    `<div class="bar"><i style="width:${dist}%"></i></div>`+
+    `<span class="d">stamina</span><div class="bar"><i style="width:${player.stam/STAM_MAX*100}%;background:#3d6b5e"></i></div>`;
+}
+
+// QA hook: drive the sim headlessly from the console / automation.
+window.__game = {
+  pos:()=>({px:Math.round(player.x),py:Math.round(player.y),
+    room:roomAt(player.x,player.y)?.id ?? "VOID",
+    cur:{x:Math.round(curator.x),y:Math.round(curator.y),
+         room:roomAt(curator.x,curator.y)?.id ?? "VOID"},
+    near:items.filter(i=>!i.gone&&!i.held)
+      .map(i=>({d:Math.round(Math.hypot(i.x-player.x,i.y-player.y)),v:i.value}))
+      .sort((a,b)=>a.d-b.d).slice(0,3)}),
+  state:()=>({t,dist,tier:tierOf(dist),slots:van.slots,
+    banked:van.cargo.reduce((s,i)=>s+i.value,0),
+    curator:curator.state, marked:curator.target===player,
+    holding:player.holding?player.holding.value:null, hits:player.hits, over}),
+  step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) if(!over) step(dt); return window.__game.state(); },
+  press:(k,v=true)=>{keys[k]=v;}, reset,
+  items:()=>items.filter(i=>!i.gone).length,
+};
+
+reset(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
