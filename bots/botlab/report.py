@@ -90,6 +90,13 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      "everywhere would be evidence against itself.")
         else:
             L.append(f"Markets represented: {', '.join('`' + m + '`' for m in markets)}.")
+    elif st.trials == 0:
+        L.append("**No run on record.** The ledger is empty — this is a fresh checkout, or "
+                 "the state file was cleared. Nothing here is a result yet.")
+        L.append("")
+        L.append("```bash\npython bots/run.py selftest    # 34 falsification tests\n"
+                 "python bots/run.py fpr         # must certify nothing on a random walk\n"
+                 "python bots/run.py loop --target 3 --jobs 4\n```")
     else:
         L.append(f"**No bot passed.** {st.trials} candidates were screened across "
                  f"{st.generation} generations and {st.gauntlet_runs} reached the gauntlet. "
