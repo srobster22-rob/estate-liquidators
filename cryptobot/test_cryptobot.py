@@ -460,6 +460,37 @@ class TestBot(unittest.TestCase):
         live = self.make().run(m)
         self.assertLess(botmod.fitness(live, min_trades=10_000), -5.0)
 
+    def test_alpha_sharpe_strips_market_exposure(self):
+        """A bot that is simply long the market must score near zero on alpha, and a
+        bot with genuine timing must keep most of its Sharpe. This is the in-sample
+        proxy that keeps the search pointed where the gauntlet is looking."""
+        m = a_market(seed=94, bars=4000, phi=0.0)
+        mkt = ind.simple_returns(m)
+        risk = dict(bt.DEFAULT_RISK, vol_target=0.35, max_leverage=1.0)
+
+        always_long = bt.run(m, [1.0] * len(m), risk=risk)
+        self.assertLess(abs(botmod.alpha_sharpe(always_long, mkt)), 0.4)
+
+        # A cheating bot that knows tomorrow: all timing, and its market beta is
+        # incidental. Used ONLY here, to prove alpha_sharpe can see timing at all.
+        # position[i] earns the return from bar i to i+1, so the oracle at bar i
+        # is the sign of mkt[i+1]. Off-by-one here and the "cheat" becomes plain
+        # momentum, which on a random walk just pays fees.
+        oracle = [1.0 if mkt[i + 1] > 0 else -1.0
+                  for i in range(len(m) - 1)] + [0.0]
+        cheat = bt.run(m, oracle, risk=risk)
+        self.assertGreater(botmod.alpha_sharpe(cheat, mkt), 3.0)
+
+    def test_fitness_takes_the_worse_of_raw_and_alpha(self):
+        m = a_market(seed=95, bars=4000, phi=0.0)
+        mkt = ind.simple_returns(m)
+        res = bt.run(m, [1.0] * len(m),
+                     risk=dict(bt.DEFAULT_RISK, vol_target=0.35,
+                               max_leverage=1.0))
+        raw = botmod.fitness(res, min_trades=0)
+        with_alpha = botmod.fitness(res, min_trades=0, market_returns=mkt)
+        self.assertLessEqual(with_alpha, raw + 1e-9)
+
     def test_ensemble_averages_children(self):
         m = a_market(seed=93, bars=1200)
         kids = [{"strategy": "ema_cross",

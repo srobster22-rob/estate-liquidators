@@ -49,6 +49,7 @@ import random
 import time
 
 from . import bot as botmod
+from . import indicators as ind
 from . import stats
 from . import strategies as st
 from . import validate as val
@@ -257,7 +258,8 @@ class Factory:
         except (ValueError, ZeroDivisionError, OverflowError):
             self.fitness_cache[fp] = -1e9
             return -1e9
-        score = botmod.fitness(result, self.cfg["min_trades"])
+        score = botmod.fitness(result, self.cfg["min_trades"],
+                               market_returns=ind.simple_returns(seg.train))
         self.fitness_cache[fp] = score
         self.state["trials"] += 1
         if math.isfinite(result["sharpe"]) and result["trades"] >= 5:

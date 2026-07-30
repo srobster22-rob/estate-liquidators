@@ -93,7 +93,11 @@ class Bot:
     # -------------------------------------------------------------- signals
 
     def signal(self, market, partner=None):
-        cached = self._sig_cache.get(id(market))
+        # Keyed by identity AND shape, not id() alone: CPython reuses addresses
+        # after a garbage collection, and a bot that got handed a recycled id would
+        # silently trade one market's signal on another's prices.
+        ck = (id(market), market.key, len(market), market.ts[0])
+        cached = self._sig_cache.get(ck)
         if cached is not None:
             return cached
         if self.children:
@@ -101,7 +105,7 @@ class Bot:
         else:
             strat = st.REGISTRY[self.strategy_name]
             sig = strat.signal(market, self.params, partner)
-        self._sig_cache[id(market)] = sig
+        self._sig_cache[ck] = sig
         return sig
 
     def run(self, market, partner=None, lag=0, cost_mult=1.0):
@@ -135,7 +139,7 @@ MIN_TRADES_PER_YEAR = 4.0
 
 
 def fitness(result, min_trades=20, turnover_penalty=0.0015, dd_limit=0.40,
-            folds=4, consistency_weight=0.6):
+            folds=4, consistency_weight=0.6, market_returns=None):
     """The in-sample objective the genetic search maximises.
 
     Deliberately NOT raw Sharpe. Selecting on raw in-sample Sharpe is how the first
@@ -150,12 +154,21 @@ def fitness(result, min_trades=20, turnover_penalty=0.0015, dd_limit=0.40,
                                                    stress test in the gauntlet
       * bots that ride one enormous drawdown     → penalty above `dd_limit`
       * bots that made it all in one burst       → CONSISTENCY penalty
+      * bots that are just long a market that rose → ALPHA floor
 
-    The consistency term is the important one and it is nearly free: split the
-    realised return series into `folds` contiguous blocks, measure the Sharpe of
-    each, and charge for their dispersion and for the worst one. A bot with a real
-    edge earns steadily; a bot fitted to noise earns everything in one window. This
-    selects for the shape that survives out of sample rather than for the peak.
+    The consistency term is nearly free: split the realised return series into
+    `folds` contiguous blocks, measure the Sharpe of each, and charge for their
+    dispersion and for the worst one. A bot with a real edge earns steadily; a bot
+    fitted to noise earns everything in one window.
+
+    The alpha floor exists because the search and the gauntlet were pulling in
+    opposite directions. Raw Sharpe rewards riding a trend with size; gates 4 and 11
+    then kill exactly that bot for failing to beat buy-and-hold, or for losing to
+    random signals with its own exposure profile. So `market_returns` (when supplied)
+    buys a second number: the Sharpe of the bot's returns after regressing out its
+    market exposure. The score is the WORSE of the two, because the gates are a
+    conjunction — a bot has to be good on both counts, so the search may as well
+    optimise for that from the start.
 
     Ruin is -100, not -1: a wiped-out bot must never breed just because its
     pre-death Sharpe looked interesting."""
@@ -166,6 +179,8 @@ def fitness(result, min_trades=20, turnover_penalty=0.0015, dd_limit=0.40,
         return -10.0 + m["trades"] * 0.01
 
     score = m["sharpe"]
+    if market_returns is not None:
+        score = min(score, alpha_sharpe(result, market_returns))
     score -= turnover_penalty * m["turnover_per_year"]
     score -= 2.0 * max(0.0, m["max_dd"] - dd_limit)
     if m["exposure"] < 0.02:
@@ -179,6 +194,38 @@ def fitness(result, min_trades=20, turnover_penalty=0.0015, dd_limit=0.40,
         score -= consistency_weight * sd
         score -= 1.0 * max(0.0, -min(fold_sharpes))
     return score
+
+
+def alpha_sharpe(result, market_returns):
+    """Annualised Sharpe of the bot's returns after removing its market exposure.
+
+        beta     = cov(bot, market) / var(market)
+        residual = bot - beta * market
+
+    A bot that is simply long a rising market has a large raw Sharpe and an alpha
+    Sharpe near zero. A market-timing bot keeps most of its Sharpe here. This is
+    the cheap in-sample proxy for what gate 11 tests properly with matched random
+    signals — cheap enough to run on every bot in every generation."""
+    net = result.net
+    n = min(len(net), len(market_returns) - 1)
+    if n < 30:
+        return 0.0
+    mkt = [market_returns[i + 1] or 0.0 for i in range(n)]
+    bot_r = net[:n]
+    mb = sum(mkt) / n
+    bb = sum(bot_r) / n
+    var = sum((x - mb) ** 2 for x in mkt) / n
+    if var <= 1e-18:
+        return result.metrics["sharpe"]
+    cov = sum((bot_r[i] - bb) * (mkt[i] - mb) for i in range(n)) / n
+    beta = cov / var
+    resid = [bot_r[i] - beta * mkt[i] for i in range(n)]
+    mean = sum(resid) / n
+    rvar = sum((x - mean) ** 2 for x in resid) / (n - 1)
+    sd = rvar ** 0.5
+    if sd <= 1e-12:
+        return 0.0
+    return (mean / sd) * (result.bars_per_year ** 0.5)
 
 
 def fold_sharpe(result, folds=4):

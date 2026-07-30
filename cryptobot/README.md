@@ -8,7 +8,7 @@ beat the null*.
 Standard library only. No numpy, no pandas, no network required.
 
 ```bash
-python3 -m unittest cryptobot.test_cryptobot     # 44 tests, ~10s
+python3 -m unittest cryptobot.test_cryptobot     # 46 tests, ~10s
 python3 -m cryptobot.run null-test               # calibration: run this FIRST
 python3 -m cryptobot.run evolve --markets synthetic
 python3 -m cryptobot.run report
@@ -80,6 +80,27 @@ guaranteed to succeed and guaranteed to mean nothing.
 | 10 | `deflated_sharpe` | bots that are just the maximum of N draws from noise |
 | 11 | `mc_timing` | bots whose "edge" is exposure, not timing |
 
+### Why the search optimises alpha, not Sharpe
+
+The first working version had the search and the gauntlet pulling in opposite
+directions: fitness rewarded raw Sharpe, so the population filled with bots riding
+a trend with size — and gates 4 and 11 then killed them for failing to beat
+buy-and-hold, or for losing to random signals with their own exposure profile. A
+quarter of everything promoted died there.
+
+So fitness scores each bot twice: raw Sharpe, and the Sharpe of its returns after
+regressing out its market exposure. **The score is the worse of the two.** The gates
+are a conjunction, so the search may as well optimise for that from the start.
+
+Fitness also charges for *inconsistency* — the realised return series is split into
+four blocks and the dispersion of their Sharpes is penalised. Selecting on raw
+in-sample Sharpe is how the first version produced a population with in-sample
+Sharpe 5.6 and out-of-sample Sharpe −1.4: the maximum of thousands of noisy
+estimates is a measure of luck, and a genetic search compounds it every generation.
+With the consistency term, in-sample best on null data fell from 4.26 to 1.79.
+
+### Gate 11's null
+
 Gate 11 is worth a note: the null it tests against isn't a coin flip, it's **random
 signals matched to the candidate's own trading profile** — same fraction of bars
 long, short and flat, same switching frequency, same fees paid. If the candidate
@@ -124,9 +145,10 @@ at all** — GARCH volatility clustering, fat tails, regime-switching vol, and z
 drift in every regime. Anything that passes is a false positive by construction, and
 the count is the factory's false-positive rate.
 
-Latest run: **0 false positives across 2 null runs, ~1,000 in-sample trials.** The
-in-sample search still reached fitness 1.8 on that data, and every candidate it
-promoted died out of sample. That gap is the entire point.
+Latest run: **0 false positives across 2 null runs.** The in-sample search still
+reached fitness ~1.0 on that data, and every candidate it promoted died out of
+sample — most at gate 2, having posted an out-of-sample Sharpe near 0.2. That gap
+between what the search finds and what survives is the entire point.
 
 Run this after any change to `validate.py`. A validator that passes bots on
 structureless data invalidates every result the factory has ever produced.
@@ -232,9 +254,33 @@ obvious edge. A validator nothing can ever pass is as useless as one everything 
 | `validate.py` | The eleven gates |
 | `evolve.py` | The loop: breed, promote, expand, persist |
 | `run.py` | CLI |
-| `test_cryptobot.py` | 44 tests |
+| `test_cryptobot.py` | 46 tests |
 
 ---
+
+## Why a run can come back empty, and what to do about it
+
+Gate 10 needs the observed Sharpe to clear its hurdle by about 1.645 standard
+errors, and the standard error of a Sharpe estimate is `sqrt((1 + S²/2) / years)`.
+Over a three-month validation window that error is ~2.0 — larger than any edge worth
+trading. **A short history makes the gate unpassable no matter how good the bot is**,
+which is why every synthetic market here spans 5+ years and why a daily-bar market
+needs ~12 years to be splittable at all (run.py skips it with a message if it
+isn't).
+
+When a candidate fails gate 10 the output prints what it *would* have needed:
+
+```
+[FAIL] deflated_sharpe  dsr=0.729 oos_looks=7 hurdle_sharpe=1.387
+                        observed=2.045 needed=3.184 oos_years=0.86
+```
+
+Read that as: over ten months, with seven looks spent, a 2.0 Sharpe is not
+distinguishable from luck — you need a 3.2, or more data. The two honest responses
+are **more history** and **fewer looks** (each look raises the hurdle for everyone
+after it, which is why promotion is capped at two per five generations and
+deduplicated by market and strategy). Lowering `min_dsr` is a third option and it is
+not an honest one.
 
 ## Honest limitations
 

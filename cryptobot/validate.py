@@ -62,7 +62,6 @@ WHICH COUNT DEFLATES THE SHARPE, AND WHY IT ISN'T ALL OF THEM
   so often that it needs replacing.
 """
 
-import math
 import random
 
 from . import backtest as bt

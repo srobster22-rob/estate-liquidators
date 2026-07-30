@@ -27,7 +27,6 @@ Everything is standard library. Prices are floats, timestamps are integer second
 import csv
 import json
 import math
-import os
 import pathlib
 import random
 import time
