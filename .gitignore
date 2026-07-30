@@ -25,3 +25,8 @@ __pycache__/
 
 # Local
 *.log
+
+# cryptobot runtime: the trial/vault counters are machine-local, and committing
+# them would merge one machine's search history into another's.
+cryptobot/state/
+cryptobot/data_cache/
