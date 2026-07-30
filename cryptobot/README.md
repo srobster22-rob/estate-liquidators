@@ -161,6 +161,45 @@ sceptical.
 
 ---
 
+## A recorded run
+
+80 generations, population 70, on the synthetic universe. 2,418 in-sample trials,
+**11 out-of-sample looks**, 1 vault burn. The loop expanded through all six stages
+before it found anything.
+
+```
+donchian on largecap_alt_1h | entry=104 exit=16 long_only=False
+                            | vol_target=0.10 max_leverage=2.61 vol_win=81
+
+                          validation          vault (never touched before)
+  sharpe                       4.05                  4.21
+  cagr                         0.39                  0.40
+  max drawdown                 0.055                 0.066
+  buy-and-hold sharpe         -0.23                  1.07
+  sharpe at 2x costs           3.48                  3.42
+  sharpe at 1-bar lag          3.80                  4.35
+  worst param neighbour        3.94                  3.96
+  regime blocks positive        5/6                   5/6
+  p(random signal beats it)   0.012                 0.012
+  DSR hurdle / needed / got   0.89 / 2.35 / 4.05    0.42 / 1.94 / 4.21
+```
+
+**It landed on one of the five structured markets, not on a decoy.** That is the
+audit the synthetic universe exists for: nine of the fourteen markets have nothing
+to find, and the factory did not claim to find anything in them.
+
+`python3 -m cryptobot.run verify --winner 0` re-derives the vault result from the
+stored JSON genome alone and reproduces it to the fourth decimal.
+
+**And it means nothing about real markets.** `largecap_alt_1h` is a series this repo
+generated, with a trend component this repo inserted, at a strength this repo chose.
+A Sharpe of 4.2 is a statement about that generator. What the run establishes is
+that the machinery works end to end: the search finds real structure where it
+exists, the gauntlet passes it, the vault confirms it, and — per the calibration
+above — the same machinery finds nothing when there is nothing there.
+
+---
+
 ## Markets
 
 `--markets synthetic` builds fourteen markets spanning the behaviours that matter —
