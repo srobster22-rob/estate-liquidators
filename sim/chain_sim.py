@@ -39,7 +39,9 @@ import statistics
 VAN_BASE = 14
 HAUL_WINDOW_S = 540.0
 
-# (unlock_time, tier) — LEVEL-SPEC.md 3: chains gate depth by wall-clock
+# (unlock_time, tier) — the crew-of-4 BASELINE, not a wall-clock rule. current_tier()
+# scales these by 4/crew because depth gates on work, never on a timer (DECISIONS D-20).
+# The unscaled path (labour_gated=False) exists only to reproduce the failure D-20 records.
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3), (360.0, 4)]
 
 # tier -> (round-trip seconds, {class: (value_lo, value_hi)})

@@ -41,9 +41,13 @@ Land it somewhere with real headroom — `~/dev/estate-liquidators` is fine.
 Run these before anything else; the answers change the plan.
 
 ```bash
-python3 sim/check_drift.py          # expect: 55/55 constants agree
+python3 sim/check_drift.py          # expect: 106 checks over 59/59 constants
 dotnet run --project unity/tests/CoreTests   # expect: 31/31 assertions pass
 ```
+
+The drift figure was `55/55` until `LOOP_LOG.md` R16, which found the checker was silently
+skipping unmatched patterns and left 23 of the 59 canonical constants unguarded. It is now
+fail-closed: a renamed constant, an unregistered one, or a deleted check each fail the run.
 
 If `dotnet` is missing, install the .NET 9 SDK — the C# core suite is the thing that stops
 anyone quietly reverting the three rules that were each wrong once.
@@ -64,9 +68,29 @@ Windows target needs MSVC.** That means a Mac probably cannot produce a Windows 
 build — you can cross-compile a Windows *Mono* build for development, but the shipping Steam
 build likely has to come off a Windows machine.
 
-**Verify this before committing to a pipeline.** It's my understanding of Unity's toolchain
-rather than something I confirmed, and it moves between versions. It decides whether the PC is
-retired or kept as the release builder.
+**Confirmed — the suspicion was right. The PC is the release builder.** Unity's own manual
+states cross-compilation is not supported for IL2CPP: to build an IL2CPP player for a target
+platform you must build from an Editor running on that platform. Concretely, a macOS Unity
+install offers **Windows Build Support (Mono)** only — there is no Windows-IL2CPP module to
+tick in Unity Hub, because the Windows IL2CPP toolchain needs MSVC, which exists only on
+Windows. macOS gets IL2CPP for the *Mac* target, not for Windows.
+
+So the pipeline is: **develop and iterate on the Mac (Mono is fine for that), and produce the
+shipping Steam x64 build on the PC.** Practical consequences worth knowing before Phase 6
+rather than during it:
+
+- IL2CPP and Mono differ in ways that bite late — stripping, `[Preserve]`, reflection, and
+  generic virtual methods. A build that works in the Editor and under Mono can still fail
+  under IL2CPP. Do a Windows IL2CPP build on the PC **early**, at Phase 2, not at Phase 6.
+- `steamcmd` depot upload therefore runs on the PC too. Check the depot scripts into this repo
+  so the machine doing the upload isn't also the only place the recipe exists.
+- The PC's drive was the reason this project moved. A Unity project plus an IL2CPP build needs
+  real headroom — clear that space before Phase 6 depends on it.
+
+*Verified 2026-07-30 against Unity's manual and Unity Discussions. This was checked by web
+search; the primary docs host was unreachable from the machine that ran the check, so treat
+the module list as high-confidence-but-secondhand and confirm it in Unity Hub's install
+dialog, which takes ten seconds and settles it outright.*
 
 Either way the PC stays useful: `BUILD-PROMPT.md` Phase 0 needs **two clients over Steam P2P
 with spatial voice**, and Phase 1's exit criterion is explicitly *test at real latency, not

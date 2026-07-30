@@ -171,6 +171,31 @@ choice becomes stash-then-hide, hand-off-then-hide, or buy four seconds. Hiding 
 the *primary* verb at COLLECT, where the Curator switches to hunting crew — so the genre's
 signature panic is earned late rather than constant.
 
+R16 · Audited the drift checker itself — the guard against this project's stated primary defect
+class — and rebuilt it to be fail-closed. · **Found the guard had the failure mode it exists to
+prevent, twice.** (1) The C# loudness loop ended in `if got is not None: check(...)`, so a
+pattern matching nothing was *skipped rather than failed*: `appraise` and `door` were never
+checked against the C# core at all, because the enum spells them `AppraisePing`/`DoorSlam` and
+the generated regex looked for `Appraise`/`Door`. Real C# loudness coverage was 12 of 14 while
+the headline read 55. (2) Nothing asserted that every canonical constant is checked *somewhere*
+— **23 of the 59 values in `tuning.json` had no guard at all**: the entire slot-cost table, the
+entire retrieval table, all three ledger fees, all three Disturbance levers (inline literals in
+one-line methods, which is why they were missed), `localisation_fuzz_m`, `tier_patrol_at`,
+`recompute_seconds`, and the night's crew/clock shape — several of them duplicated across two or
+three implementations. Nothing had actually drifted yet; the values were all correct. The defect
+was that nothing would have noticed if they had. · Rewrote `check_drift.py`: unmatched patterns
+now FAIL instead of skipping, every `tuning.json` leaf must be checked or explicitly exempted
+with a reason, stale exemptions fail too, and `EXPECTED_CHECKS` pins the headline number so it
+is asserted rather than eyeballed. **55 checks → 106, covering 59/59 canonical constants.**
+· Verified with 19 single-constant perturbations (each caught, each naming the right constant)
+plus 5 coverage-audit probes. **The first negative-control harness was itself buggy** — it
+grepped for `DRIFT`, which matches the `DRIFT CHECK` header, so all 14 rows reported CAUGHT
+regardless; 14/14 clean was the tell. Re-ran against exit code. That is the fourth instrumentation
+bug in seven rounds, and the second found only because a clean result looked too clean.
+· Also fixed a stale comment in `chain_sim.py` that read as if wall-clock depth gating were the
+live rule, contradicting D-20 — the clock path is the un-scaled baseline that reproduces D-20's
+failure, not the default.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
