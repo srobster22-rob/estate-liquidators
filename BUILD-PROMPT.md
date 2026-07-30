@@ -10,8 +10,10 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 ## PROMPT
 
 > You are building **Estate Liquidators**, a 4-player co-op horror extraction game, to ship
-> on Steam. This repository contains a complete, simulation-verified design foundation and a
-> playable single-player prototype. **Your job is the game, not the design.**
+> on Steam. This repository contains a complete, simulation-verified design foundation, two
+> playable single-player browser prototypes, and a C# core of the verified rules pinned by 31
+> passing assertions, with `tuning.json` as the canonical source of the tuning constants and a
+> fail-closed drift check over it. **Your job is the game, not the design.**
 >
 > ### Read first, in this order
 >
@@ -22,11 +24,23 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > 3. `DESIGN.md` — the game itself.
 > 4. `TECH-SPEC.md` and `AUDIO-SPEC.md` — implementation detail for the two systems that
 >    carry the product.
-> 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `STACK.md` — content contract, tuning, dependencies.
-> 6. `LOOP_LOG.md` — twelve rounds of findings, including several corrections to the specs.
+> 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `ART-DIRECTION.md`, `STACK.md` — content contract, tuning,
+>    the look, dependencies. `tuning.json` at the repo root is the canonical copy of the 59
+>    constants the sims, the prototype, and the C# core all share; `sim/check_drift.py` runs
+>    106 fail-closed checks asserting all three agree with it. Change a shared number there
+>    and re-run the checker. If a spec and `tuning.json` disagree, nothing guards that — it is
+>    a bug, and you fix both.
+> 6. `LOOP_LOG.md` — sixteen rounds of findings, including several corrections to the specs.
 >    Where the log contradicts a doc, **the log is newer**.
-> 7. `proto/index.html` — a running single-player prototype of the core loop. Play it before
->    writing anything.
+> 7. `proto/index.html` and `proto3d/index.html` — two running single-player prototypes of the
+>    core loop. `proto/` is the top-down one, and is the JS implementation that
+>    `sim/check_drift.py` checks against `tuning.json`; `proto3d/` is first-person, matching the
+>    direction correction in `LOOP_LOG.md` R15, and is not covered by the drift checker. Play
+>    both before writing anything. Then read the C# core in `unity/Assets/Scripts/Core/` and run
+>    `dotnet run --project unity/tests/CoreTests` — 31 assertions, all passing.
+> 8. `TRANSFER.md` — which machine does what. Unity cannot cross-compile a Windows IL2CPP
+>    player from macOS, so iterate on the Mac and produce the shipping Steam build on the PC.
+>    Read before planning Phase 2 or Phase 6.
 >
 > ### The stack is decided
 >
@@ -97,12 +111,25 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 >
 > ### Reuse the simulations
 >
-> `sim/` contains eight Python models totalling ~1,700 lines that already answer most tuning
-> questions, and they run in seconds with no dependencies. **Before changing any balance
-> number, re-run the relevant one.** They are the reason the current values are trustworthy,
-> and two of them exist specifically because earlier numbers were wrong.
+> `sim/` contains eight Python models totalling ~1,740 lines that already answer most tuning
+> questions, and they run in seconds with no dependencies. `tuning.json` at the repo root is the
+> canonical value for every constant, and `sim/check_drift.py` asserts that the Python, both JS
+> prototypes and the C# core all agree with it — 132 checks over 59/59 constants across all four
+> implementations, fail-closed since R16 (unmatched patterns fail rather than skip) and
+> per-implementation since R17 (a constant an implementation carries must be checked *there*). **Before changing any balance number, change it in
+> `tuning.json`, re-run the relevant model, then re-run `python3 sim/check_drift.py`.** The models
+> are the reason the current values are trustworthy, and two of them exist specifically because
+> earlier numbers were wrong.
 >
-> Port `validate_estate.py` to C# for Phase 5. Leave the rest in Python as design tools.
+> The verified rules are **already ported to C#** in `unity/Assets/Scripts/Core/` — Loudness,
+> multiplicative Attention plus the hysteresis selector, Disturbance, and the van/curse economy —
+> written free of `UnityEngine` so they compile and test outside the editor. `unity/tests/CoreTests`
+> pins them against the Python simulations' numbers: **31 assertions, all passing**, via
+> `dotnet run --project unity/tests/CoreTests`. Build Phases 3–4 on that core rather than
+> re-deriving it. After changing any constant, re-run `python3 sim/check_drift.py`, which holds
+> `tuning.json` (canonical), the C# core, and both JS prototypes in agreement — 132 checks over 59
+> canonical constants across four implementations, fail-closed. Still to port: `sim/validate_estate.py` to a C# editor tool for
+> Phase 5. Leave the remaining models in Python as design tools.
 >
 > ### Steam — the part no design document covers
 >
@@ -147,8 +174,11 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > - Log non-obvious decisions into `DECISIONS.md` with what would disprove them.
 > - Append findings to `LOOP_LOG.md`, one line per unit of work.
 > - Where a spec and reality disagree, fix the spec too. Stale docs are worse than none.
-> - **Never commit to the repository at `C:\Users\srobs`** — it is shared across sessions.
->   This project directory is fine to version separately.
+> - **This project is now its own git repo with its own remote — commit here freely.** The old
+>   warning about never committing to `C:\Users\srobs` described the Windows PC, where this
+>   folder sat inside a shared parent repo. Day-to-day work now happens on the Mac
+>   (`TRANSFER.md`); the PC is kept for the shipping Windows IL2CPP build, which cannot be
+>   cross-compiled from macOS, and as a second client for real-latency netcode tests.
 >
 > ### The honest scope
 >

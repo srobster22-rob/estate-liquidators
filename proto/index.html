@@ -61,6 +61,7 @@ const APPRAISE_S = 3.0;
 const CREW = 1;
 const DECAY_PER_S = (50 * (CREW/4)) / 60;
 const RATCHET_END = 55;
+const CURSED_FLOOR = 7;       // per cursed item aboard. Was 2 — swamped by ordinary noise (R9).
 const L = { walk:0, sprint:45, appraise:48, door:60, drop:90 };
 const IMPULSE = 0.09, SUSTAINED = 0.02;
 const CURATOR = { patrol:52, pursue:63, collect:74 };
@@ -168,7 +169,7 @@ function noise(l, impulse, dt){
   dist += impulse ? l*IMPULSE : l*SUSTAINED*dt;
   dist = Math.min(100, dist);
 }
-function floorNow(){ return RATCHET_END * (t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*2; }
+function floorNow(){ return RATCHET_END * (t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*CURSED_FLOOR; }
 
 // ---------------------------------------------------------------- movement
 function blocked(x,y){

@@ -25,7 +25,8 @@ Every number below is reverse-engineered from that sentence.
 | Two-man | 3 | |
 | Cart | 5 | a third of the van for one object |
 
-**Base van: 14 slots.** Shelving upgrades: +2 per tier, hard ceiling **20**. The ceiling is
+**Base van: 14 slots.** Shelving upgrades run **14 → 15 → 17 → 19** across a four-night chain
+(§4; `sim/chain_sim.py` `VAN_BY_NIGHT`), hard ceiling **20**. The ceiling is
 not a balance knob, it's a design guarantee — capacity may never grow to the point where
 choosing stops hurting.
 
@@ -122,14 +123,37 @@ and read aloud well:
 |---|---|
 | **Breakage** | full appraised value, listed by item and by *who was holding it* |
 | **Curse fee** | 8% of a tainted item's value, 20% of a malignant one — the estate's cut for handling it |
+| **Reclamation** | the whole van, at `P = 0.015 × cursed^1.8` rolled at extraction — all or nothing, never a per-item charge |
 | **Unstrapped cargo** | reclaimed at sunrise; shows as a loss, not an absence |
 | **Medical** | none. Death costs a hauler, never money (`DECISIONS.md` D-11). |
 
-Curse fees are the mechanism that stops malignant items being a pure no-brainer at ×6 value.
-After a 20% fee a malignant item is still ×4.8 — worth taking, but the number on the ledger
-now reflects that you paid something for the privilege, out loud, in front of everyone.
+The ledger fee is real, but it is **not** what makes cursed cargo a decision. A linear fee
+cannot balance a multiplicative bonus: swept with the fee and the Disturbance floor both
+active, TAKE-ALL still wins at ×6, ×4, ×3, ×2.5 and ×2.0, and refusing only becomes correct at
+×1.5 where the "bonus" is already a penalty (`LOOP_LOG.md` R9/R10). What actually makes it a
+decision is a **tail risk on the van**: at extraction, the collection reclaims the *entire* van
+with
+
+    P(ruin) = 0.015 × (cursed pieces aboard) ^ 1.8
+
+counting tainted and malignant alike (`DESIGN.md` §4.2; `tuning.json` van.ruin_k /
+van.ruin_exp; modelled in `sim/curse_test.py`). That super-linear shape produces an interior
+optimum: two or three cursed pieces is the right play, worth **+7% over refusing cursed cargo
+entirely**, while taking every one loses ~40% (`LOOP_LOG.md` R11). Malignant stays at ×6 — no
+value retuning was needed once the cost shape was right. The 20% fee survives because the
+ledger should say out loud that you paid something for the privilege, not because it balances
+anything.
 
 ## 6. Simulation results
+
+> ### ⚠️ Superseded by LOOP_LOG R8 — read §9.1 before using any number in this section
+>
+> The **+84%** appraiser edge below came from `sim/haul_sim.py`, which used a *placeholder*
+> for the noise cost of scanning. R5 re-measured it against the real Disturbance model at
+> **+31%**, and R8 — after fixing a slot-accounting bug that let lost cargo act as a free
+> reroll — measured it at **+6%**. The capacity sweep's *shape* still stands and is still the
+> basis for D-19: the edge decays monotonically as the van grows and reaches zero between 24
+> and 32 slots. The *levels* in this table do not. Kept as the record of how the number moved.
 
 `sim/haul_sim.py` is a Monte Carlo of the haul loop, built to kill D-10 early if it deserved
 killing. Three strategies compete over a night: **BLIND** (grab, never scan), **SCAN_ALL**
@@ -198,7 +222,8 @@ players land in it.
 > That whole sweep used a free parameter standing in for a Disturbance system that didn't
 > exist yet. It exists now (§6.5 of `DESIGN.md`, tuned in LOOP_LOG R4), so the punishment can
 > be derived instead of guessed. `sim/integrated.py` couples the haul loop to real
-> Disturbance. Results in §9 below — **the appraiser's edge is +31%, not +84%.**
+> Disturbance. Results in §9 below, and corrected again in §9.1 — **the appraiser's edge is
+> +6%, not +84% and not the +31% first written here.**
 
 ### What the model does not include
 
@@ -292,8 +317,9 @@ drives how often your cargo gets taken.
 > strategy. Harsher punishment made scanning *richer*, which is nonsense. Corrected figures
 > in §9.1.
 
-**D-10 survives, at less than half its previous margin.** The +84% from §6 was inflated ~2.7×
-by using a placeholder for noise cost. Scanning still pays — by +31%.
+**D-10 survives, at less than half its previous margin** *(R5's conclusion, superseded — see
+§9.1)*. The +84% from §6 was inflated ~2.7× by using a placeholder for noise cost. Scanning
+still pays — by +31% as measured here, by **+6%** once R8 fixed the slot-accounting reroll.
 
 ## 9.1 Corrected — and it reverses two earlier conclusions
 
@@ -330,18 +356,28 @@ most of the night. Appraising doesn't cost you *a bit* of noise — it moves you
 into COLLECT. "Information costs safety" turns out to be a much sharper trade than the design
 claimed, which is good, and means it needs watching rather than strengthening.
 
-### Two problems this exposed
+### What this exposed
 
-**1. There is currently no decision to make.** At the designed retrieval rates, SCAN
-dominates outright — always-scan is simply correct. The band where *selective* scanning wins
-only appears when retrieval is ~3× harsher than specced (PURSUE 0.10 → 0.30 per trip). Either
-raise retrieval toward that, or reduce candidates-per-shelf so max-of-N is a smaller prize.
-Until one of those happens the appraiser is a mandatory chore rather than a judgement call.
+**1. The decision exists after all — this was R5's bug talking.** At the designed retrieval
+rates (PURSUE 0.10 / COLLECT 0.25, as shipped in `tuning.json`) ADAPTIVE beats both extremes:
+$6,889 against BLIND's $6,497 and SCAN's $6,481. See the table above and LOOP_LOG R8. The
+earlier claim here — that SCAN dominates outright and the band only opens at ~3× harsher
+retrieval — was an artifact of the slot-accounting reroll, and it is withdrawn. **Do not retune
+RETRIEVAL**; the designed values already produce the right ordering. What remains open is not
+whether there is a decision but whether a **+6%** edge is a big enough one to carry the
+signature mechanic — a design judgement, not a simulation result.
 
-**2. Cursed cargo is inert.** Sweeping 0 → 8 cursed items in the van moves earnings by under
-$50 across every strategy. The +2 Disturbance floor per cursed item is swamped by ordinary
-noise, so the entire van-cost half of the curse mechanic (`DESIGN.md` §4.2) currently does
-nothing. It needs to be roughly 3–4× larger to be felt.
+**2. Cursed cargo was inert, and the floor alone could not fix it.** At the originally specced
+**+2/item** Disturbance floor, sweeping 0 → 8 cursed items in the van moved earnings by under
+$50 across every strategy — the floor was swamped by ordinary noise. It is now **+7/item**
+(`tuning.json` `disturbance.per_cursed_item_floor`; LOOP_LOG R9), which costs a crew carrying
+six cursed pieces ~8.9% of earnings. But R9 and R10 also showed the van cost could never be
+fixed from the floor at all: every curse cost was *linear* (flat fee, flat floor) while a
+malignant item's benefit is *multiplicative* at ×6 (×4.8 after the 20% fee in §5), and taking
+every cursed item stayed correct down to ×2.0. R11 therefore replaced the van cost with a
+super-linear tail risk — `P(ruin) = 0.015 × cursed^1.8`, evaluated at extraction
+(`DESIGN.md` §4.2, `sim/curse_test.py`) — which finally produces an interior optimum: take two
+or three cursed pieces, then refuse.
 
 ## 7. What would falsify this model
 

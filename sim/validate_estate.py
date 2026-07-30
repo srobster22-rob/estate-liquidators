@@ -1,8 +1,16 @@
 """
 Estate Liquidators — estate validator.
 
-Implements the ten checks LEVEL-SPEC.md 6 specifies. A wing that fails any of them
-does not enter the pool.
+Implements a SUBSET of the ten checks LEVEL-SPEC.md 6 specifies. A wing that fails any
+implemented check does not enter the pool.
+
+Three are weaker here than the contract, and saying so is the point (LOOP_LOG R17):
+  V2  no traversal simulation - TASK_SECONDS is defined and never used. LEVEL-SPEC's
+      V2 is now a prerequisite-depth rule anyway (D-20: work, never wall-clock).
+  V5  counts doors on the shortest path only, computes no metres, and has never failed
+      anything - the weakest of the ten, flagged since R14.
+  V7  BFS reachability with no carry width applied, so it cannot catch a Curator that
+      can reach a plinth but not carry the item back.
 
 The point of this file is that every promise the other documents make about SPACE is
 a promise a level designer under deadline will break by accident:

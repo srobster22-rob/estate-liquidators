@@ -196,6 +196,37 @@ bug in seven rounds, and the second found only because a clean result looked too
 live rule, contradicting D-20 — the clock path is the un-scaled baseline that reproduces D-20's
 failure, not the default.
 
+R17 · Audited every document against verified ground truth — counts, canonical numbers, paths,
+and each spec against what the code actually does — then reconciled the repo to one source of
+truth per fact. 68 candidate findings, each independently re-checked by a skeptic prompted to
+refute; **58 confirmed, 10 refuted.** · **The headline is not a document at all.** The audit
+found `proto3d/index.html` is a **fourth implementation** that `check_drift.py` had never
+opened — while the prototype carried the comment *"Mirrors tuning.json. sim/check_drift.py
+asserts these stay in agreement."* It did not. Behind that gap, **both** browser prototypes
+were still multiplying the cursed-item Disturbance floor by the retracted **+2** instead of the
+canonical **7.0** — the value R9 retired as inert. R16's coverage audit passed anyway, because
+it asserted keys were checked *somewhere* and the C# and Python copies satisfied it. **That was
+the wrong invariant, and it took one round to bite.** Coverage is now asserted *per
+implementation* (`IMPL_KEYS`), with deliberate prototype divergences recorded and reasoned
+(`DIVERGENT`) rather than silently tolerated. Fixed both prototypes; **106 checks → 132, across
+4 implementations.** Verified with 13 perturbations of the newly-guarded constants plus 3
+coverage-machinery probes, each failing with the right message. · **Documents:** 57 edits across
+11 files. The ones that would have cost real time: `DESIGN.md` called the night *fourteen
+minutes* against a canonical 720s, contradicted three times by its own text; `README.md` said
+**"No code yet"** over 2,108 lines of Python, a 31-assertion C# suite and two prototypes, and
+its index omitted 4 of 14 docs including `LOOP_LOG.md` — the file two other entry points declare
+outranks every spec; `LEVEL-SPEC.md`'s **V2** specified wall-clock depth gating, which D-20
+(FIRM) calls a bug outright, and **V3/V8/V9** described checks that would reject the validator's
+own passing sample; `ECONOMY.md` §6 asserted the twice-retracted **+84%** appraiser edge with no
+supersession banner, and §9.1 still told the next session to retune RETRIEVAL, which R8 forbids;
+`STACK.md` cited a `TECH-SPEC.md` §10.1 that does not exist; `DECISIONS.md` printed FMOD-on-Unity-6
+as **verified** when `STACK.md` records it as inferred. Three prompt docs still pointed at
+`C:\Users\srobs` and warned against committing — advice that inverts on the Mac, where the
+project is its own repo. · **What the refutations were worth:** they killed a proposed rewrite of
+LEVEL-SPEC V5/V7 on the grounds that §6 is a *contract* deliberately ahead of the Python tool —
+the right target was `validate_estate.py`'s own docstring claiming it "implements the ten
+checks", which it does not. That is now honest about V2, V5 and V7.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -229,10 +260,13 @@ wasted on a shelf of identical books, with the room's look telegraphing which); 
 scarcity, since §6 showed capacity is the master lever on this edge. **Do not tune RETRIEVAL** —
 R8 showed the designed values already produce the right ordering.
 
-Also still open, both live balance holes: **cursed cargo is inert** (+2 Disturbance floor per
-item is swamped; needs ~+7) and `DESIGN.md` §4.2 / §6.5 want updating with whatever lands. And
-**V5 in `validate_estate.py`** remains the weakest of the ten checks — it only counts doors on
-the shortest path and has never failed anything.
+~~Also still open, both live balance holes: **cursed cargo is inert** (+2 Disturbance floor per
+item is swamped; needs ~+7) and `DESIGN.md` §4.2 / §6.5 want updating with whatever lands.~~
+**Closed.** The floor shipped at +7 and the van cost became R11's super-linear tail risk; R17
+reconciled `DESIGN.md` §4.2 and `ECONOMY.md` §5/§9.1 to match, and fixed the `+2` still live in
+both browser prototypes. Still open: **V5 in `validate_estate.py`** remains the weakest of the
+ten checks — it only counts doors on the shortest path and has never failed anything. R17 adds
+**V2 and V7** to that list (see the file's own docstring).
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.

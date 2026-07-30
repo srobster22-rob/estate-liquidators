@@ -3,12 +3,17 @@
 The project moved from a Windows PC to an M2 Mac because the PC's drive was 100% full
 (~10 GB free of 1.9 TB), which is not enough to create a Unity project, let alone build one.
 
-The whole repository is **930 KB across 30 files** — plain text, Python, C# and HTML. Nothing
+The whole repository is **~330 KB across 33 files** — plain text, Python, C# and HTML. Nothing
 platform-specific, no binaries, no build artifacts worth carrying.
 
 ---
 
-## Moving it
+## How it moved (done)
+
+Kept as the record of how it got here — nothing in this section needs running again. The
+commands below ran on the old Windows PC at `C:\Users\srobs`. The project now lives at
+`~/dev/estate-liquidators` on the Mac as its own git repo with its own remote; the initial
+commit is *"Estate Liquidators: design foundation, simulations, tested C# core"*.
 
 Any of these is fine. `.gitignore` already excludes the regenerable parts (`bin/`, `obj/`,
 `__pycache__/`, and Unity's `Library/`).
@@ -28,11 +33,13 @@ cd /c/Users/srobs/estate-liquidators
 git init && git add -A && git commit -m "Estate Liquidators: design foundation, sims, tested C# core"
 ```
 
-Then push to a private remote and clone on the Mac. **Note:** this initialises a repo *inside
-the project folder only*. The parent `C:\Users\srobs` is a separate shared repo that must
-never be committed to.
-
-Land it somewhere with real headroom — `~/dev/estate-liquidators` is fine.
+Then push to a private remote and clone on the Mac. That `git init` deliberately initialised a
+repo *inside the project folder only*, because on the Windows PC the parent `C:\Users\srobs`
+was a separate shared repo that must never be committed to. **That hazard is gone.** On the
+Mac the project is its own repo at `~/dev/estate-liquidators` with its own remote, and there
+is no shared parent above it — committing here is not just safe, it's expected. The same stale
+warning appeared in `BUILD-PROMPT.md`, `IMPROVE-PROMPT.md` and `ITERATION-PROMPT.md`; R17
+retires it there too.
 
 ---
 
@@ -41,13 +48,16 @@ Land it somewhere with real headroom — `~/dev/estate-liquidators` is fine.
 Run these before anything else; the answers change the plan.
 
 ```bash
-python3 sim/check_drift.py          # expect: 106 checks over 59/59 constants
+python3 sim/check_drift.py          # expect: 132 checks, 59/59 constants, 4 implementations
 dotnet run --project unity/tests/CoreTests   # expect: 31/31 assertions pass
 ```
 
 The drift figure was `55/55` until `LOOP_LOG.md` R16, which found the checker was silently
-skipping unmatched patterns and left 23 of the 59 canonical constants unguarded. It is now
-fail-closed: a renamed constant, an unregistered one, or a deleted check each fail the run.
+skipping unmatched patterns and left 23 of the 59 canonical constants unguarded, and 132 since
+R17, which found it had never opened `proto3d/index.html` at all — a fourth implementation that
+had drifted behind the gap. It is now fail-closed both ways: a renamed constant, an unregistered
+one or a deleted check each fail the run, and coverage is asserted *per implementation*, so a
+constant one copy carries but nobody checks there is a failure rather than a silence.
 
 If `dotnet` is missing, install the .NET 9 SDK — the C# core suite is the thing that stops
 anyone quietly reverting the three rules that were each wrong once.
@@ -64,11 +74,9 @@ Then the engine:
 ## The one Mac-specific catch
 
 **Unity's IL2CPP backend compiles through the host platform's native toolchain, and the
-Windows target needs MSVC.** That means a Mac probably cannot produce a Windows IL2CPP
-build — you can cross-compile a Windows *Mono* build for development, but the shipping Steam
-build likely has to come off a Windows machine.
-
-**Confirmed — the suspicion was right. The PC is the release builder.** Unity's own manual
+Windows target needs MSVC.** The original note here guessed that a Mac therefore *probably*
+could not produce a Windows IL2CPP build. **Confirmed — the guess was right. The PC is the
+release builder.** Unity's own manual
 states cross-compilation is not supported for IL2CPP: to build an IL2CPP player for a target
 platform you must build from an Editor running on that platform. Concretely, a macOS Unity
 install offers **Windows Build Support (Mono)** only — there is no Windows-IL2CPP module to
@@ -105,5 +113,5 @@ Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the 
 settled (21 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has fifteen rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has sixteen rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

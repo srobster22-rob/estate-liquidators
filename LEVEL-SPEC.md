@@ -39,7 +39,7 @@ hanging off it. Players learn a *language*, not a map.
 
 ## 2. The module contract
 
-Every wing ships a declaration alongside its geometry. This is the file the validator reads:
+Every wing ships a declaration alongside its geometry. The sketch below is authoring shorthand — there is no YAML loader in the repo and the validator does not read it. What `sim/validate_estate.py` actually consumes is a whole-estate Python dict, of which `sim/estates.py` MANOR_A is the reference instance: `rooms` as name → {pos, tier, van}, `portals` as a flat list of {a, b, width, door|archway, pinch, entrance} (pinch is a per-portal flag, not a separate `pinch_nodes` list), `plinths` as {room, cls, tier, value}, `prereqs` as room → [{room, type}], and `curator_spawn` as a room name.
 
 ```yaml
 id: east_conservatory
@@ -135,6 +135,14 @@ A valid pinch node is a doorway, stair landing, or corridor junction where:
 - there is no line of sight through it from more than 8m
 - it lies on a plausible route between a plinth and the van
 
+**Narrow is not the same as pinched, and silence is not an answer.** Every portal ≤ 2.0m wide —
+the width in the first bullet — must carry an explicit `pinch: true` or `pinch: false`.
+Omitting the flag does not default to false; it is a **V4 failure** and the wing is rejected.
+This guard exists because V3 and V4 pull against each other: every second route added to
+satisfy V3 (§5) tended to be another narrow corridor that nobody remembered to classify, and an
+unclassified corridor is precisely the unpinched bypass that defeats this section
+(`LOOP_LOG.md` R1). The wing entrance is exempt.
+
 **Every route from a tier-3 or tier-4 plinth back to the van must cross at least two pinch
 nodes** (V4). This is the level's half of `TECH-SPEC.md` §A4 — the Curator's plinth-intercept
 pathing is only frightening if the geometry gives it somewhere to intercept you.
@@ -162,14 +170,14 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | # | Check | Enforces |
 |---|---|---|
 | **V1** | Every room reachable from the foyer given a complete prerequisite chain | basic sanity |
-| **V2** | Deepest room unreachable before T+4min, apex before T+6min, via simulated traversal at 2.6 m/s carry speed | `DESIGN.md` §7 pacing |
-| **V3** | ≥2 topologically distinct routes from every wing to the van | fairness contract #5 |
-| **V4** | Every tier-3/4 plinth→van route crosses ≥2 pinch nodes | `TECH-SPEC.md` §A4 |
+| **V2** | Every tier-2/3/4 room opens only after ≥1 / ≥2 / ≥3 completed prerequisite steps, and every prerequisite sits at a strictly shallower tier | `DECISIONS.md` D-20 — work, never wall-clock |
+| **V3** | ≥2 edge-disjoint routes from every wing room back to the **Core** — no single non-`entrance` portal may seal a wing off. Not to the van: the front door is a designed singularity, so portals flagged `entrance` are exempt | fairness contract #5 |
+| **V4** | Every tier-3/4 plinth→van route crosses ≥2 pinch nodes, **and every non-entrance portal ≤2.0m wide declares `pinch` explicitly** | `TECH-SPEC.md` §A4 |
 | **V5** | Curator audibility ≥8m through every wall configuration in the wing | `AUDIO-SPEC.md` §3.1 — **the contract test** |
 | **V6** | Portal graph closed: no unreachable room, no orphan portal, every doorway has a door | audio occlusion |
 | **V7** | NavMesh connectivity: Curator can reach every plinth *and* carry an item back to it | RESEAT can't dead-end |
-| **V8** | Total wing value within ±15% of its depth band | economy sanity |
-| **V9** | No plinth within 15m of the van | no free money |
+| **V8** | Every plinth's value sits inside its own depth tier's band | `ECONOMY.md` §3 economy sanity |
+| **V9** | No **tier-1-or-deeper** plinth within 15m of the van (tier 0 exempt — cheap loot by the door is deliberate, and per-slot pricing already makes foyer-farming a losing play: `ECONOMY.md` §3) | no free money |
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
@@ -185,7 +193,8 @@ bug report.
 2. **Declare depth tier**, and derive the prerequisite chain length from §3.
 3. **Place prerequisites in shallower wings** — never within your own tier or deeper.
 4. **Mark pinch nodes by hand.** Walk the plinth→van routes and ask where you'd stand to
-   ruin someone's night.
+   ruin someone's night. Then flag every *other* portal ≤2.0m wide `pinch: false` — the
+   validator will not let you leave it unsaid.
 5. **Place plinths** to the value band, mixing weight classes. Every wing wants at least one
    two-man object — that's where the arguments come from.
 6. **Author the second route**, and make it worse.

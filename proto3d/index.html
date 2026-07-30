@@ -154,6 +154,7 @@ const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
 // ------------------------------------------------------------------ tuning
 // Mirrors tuning.json. sim/check_drift.py asserts these stay in agreement.
 const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
+const CURSED_FLOOR=7;   // per cursed item aboard. Was 2 — swamped by ordinary noise (R9).
 const DECAY_PER_S=(50*(CREW/4))/60;
 const L={sprint:45, appraise:48, drop:90};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
@@ -243,7 +244,7 @@ addEventListener("mousemove",e=>{
 });
 
 function noise(l,impulse,dt){ dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt)); }
-function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*2; }
+function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*CURSED_FLOOR; }
 const tierOf=d=>d>=85?"COLLECT":d>=60?"PURSUE":d>=30?"PATROL":"DORMANT";
 
 function lookDir(){

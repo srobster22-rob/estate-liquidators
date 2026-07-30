@@ -7,17 +7,26 @@ making it. Paste it to run an improvement loop.
 
 ## PROMPT
 
-> Improve **Estate Liquidators** in `C:\Users\srobs\estate-liquidators`. Read `README.md`,
+> Improve **Estate Liquidators** in `~/dev/estate-liquidators`. Read `README.md`,
 > `DECISIONS.md`, and `LOOP_LOG.md` first; where the log contradicts a doc, the log is newer.
 >
 > ### The specific risk this loop exists to fight
 >
-> The same rules are now implemented **three times** — Python simulations (`sim/`), a
-> JavaScript prototype (`proto/`), and the C# core (`unity/Assets/Scripts/Core/`). Every
-> tuning constant appears in all three. That is a drift machine: a value gets corrected in one
-> place, the other two quietly disagree, and the project starts trusting numbers that no
-> longer describe the game. This project has already retracted three "verified" figures that
-> turned out to be instrumentation artifacts, so treat divergence as the primary defect class.
+> The same rules are now implemented **four times** — Python simulations (`sim/`), two
+> JavaScript prototypes (`proto/index.html` and `proto3d/index.html`), and the C# core
+> (`unity/Assets/Scripts/Core/`). Every disturbance, curse and van constant is duplicated
+> across all four. Until R17 the guard covered only three: `sim/check_drift.py` read
+> `proto/index.html` alone, so `proto3d/` re-declared the canonical constants outside the
+> checker entirely — and behind that gap **both** prototypes had drifted to `+2` per cursed
+> item where `tuning.json` says `7.0`, the value R9 retired as inert. R17 fixed both copies
+> and now checks all four implementations, asserting coverage *per implementation* rather
+> than merely somewhere. Assume the next such gap exists and has not been found yet.
+> This is a drift machine: a value gets corrected in one place, the other three quietly
+> disagree, and the project starts trusting numbers that no longer describe the game. This
+> project has already retracted four "verified" figures that turned out to be instrumentation
+> artifacts — most recently the drift checker's own "55/55 constants agree" headline (R16:
+> real C# loudness coverage was 12 of 14, and 23 of the 59 canonical constants had no guard
+> at all) — so treat divergence as the primary defect class.
 >
 > ### Each round
 >
@@ -34,15 +43,16 @@ making it. Paste it to run an improvement loop.
 >
 > - **Optimise for four friends laughing in a hallway.** Where good engineering and funny
 >   conflict, pick funny and say what it costs.
-> - **Distrust clean results.** Three of the last six rounds found bugs in the *instrumentation*
+> - **Distrust clean results.** The last seven rounds turned up four bugs in the *instrumentation*
 >   rather than the design. A test that passes first time and a sweep that comes back 100% both
 >   deserve a second look before they're believed.
 > - **Never loosen a failing assertion to make it pass.** Find out whether the code or the test
 >   is wrong, and fix that.
 > - **Prefer deleting duplication to adding features.** One rule in one place beats the same
->   rule in three.
+>   rule in four — `sim/`, `proto/`, `proto3d/`, and `unity/Assets/Scripts/Core/`. `proto3d/` is
+>   not read by `sim/check_drift.py` at all, so its copy drifts unobserved.
 > - Flag inference vs verification explicitly — package status, licensing, API behaviour.
-> - **Never commit to the repo at `C:\Users\srobs`**; it's shared across sessions.
+> - **Commit as you go, but only within this project folder.** The project is now its own git repo with its own remote — it moved off the Windows PC to the Mac (see `TRANSFER.md`). The old rule about never committing to the shared parent repo at `C:\Users\srobs` described that machine and no longer applies.
 >
 > ### What "done" looks like for a round
 >
@@ -54,7 +64,8 @@ making it. Paste it to run an improvement loop.
 ## Why these clauses
 
 **"Divergence is the primary defect class"** — the project's biggest asset is that its numbers
-are trustworthy. Three implementations is exactly how that stops being true.
+are trustworthy. Four implementations, one of them unguarded, is exactly how that stops being
+true.
 
 **"Distrust clean results"** — empirically earned. The ADAPTIVE-equals-BLIND row, the 100%
 scenarios, and the monotonicity violation were all too-clean outputs that turned out to be

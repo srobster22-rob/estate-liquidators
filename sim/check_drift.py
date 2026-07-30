@@ -1,10 +1,10 @@
 """
-Drift check across the three implementations.
+Drift check across the four implementations.
 
-The same rules live in sim/*.py, proto/index.html and unity/Assets/Scripts/Core/*.cs.
-tuning.json is canonical; this asserts the other three agree with it. Without this,
-a value gets corrected in one place and the project starts trusting numbers that no
-longer describe the game.
+The same rules live in sim/*.py, proto/index.html, proto3d/index.html and
+unity/Assets/Scripts/Core/*.cs. tuning.json is canonical; this asserts the other
+four agree with it. Without this, a value gets corrected in one place and the
+project starts trusting numbers that no longer describe the game.
 
 Reads the C# and JS as TEXT rather than executing them, so it needs no toolchain and
 catches the exact failure that matters: a literal edited in one file and not the others.
@@ -41,6 +41,25 @@ So this file now checks itself:
     exemption list cannot rot into a lie.
   * EXPECTED_CHECKS pins the headline number, so "55/55" is asserted by the program
     rather than eyeballed by whoever runs it.
+
+--------------------------------------------------------------------------------
+COVERAGE IS PER-IMPLEMENTATION (added LOOP_LOG R17)
+
+R16's key-level audit was the wrong invariant, and the gap bit within one round.
+`disturbance.per_cursed_item_floor` was checked in C# and in Python, which satisfied
+"checked somewhere" and kept the run green - while BOTH browser prototypes were still
+multiplying by the retracted value 2 instead of the canonical 7. proto3d/index.html
+was a fourth implementation this file had never opened, while itself carrying the
+comment "sim/check_drift.py asserts these stay in agreement". It did not.
+
+So coverage is now asserted per implementation, via IMPL_KEYS: if an implementation
+carries a constant, that implementation must be checked against it. DIVERGENT records
+the handful of places a prototype departs from canon on purpose, with the reason.
+
+Known limitation, stated rather than papered over: IMPL_KEYS is a hand-maintained
+manifest. It fails closed when a check is deleted or a constant is renamed, which is
+the regression that actually happens. It cannot detect a brand-new constant added to
+an implementation and to nothing else - only reading the implementation would.
 """
 
 import json
@@ -53,14 +72,127 @@ TUNING = json.loads((ROOT / "tuning.json").read_text(encoding="utf-8"))
 
 # Pinned so the headline count is machine-checked. Raise it deliberately when you
 # add a check; a drop means checks silently stopped running.
-EXPECTED_CHECKS = 106
+EXPECTED_CHECKS = 132
 
 # Canonical constants with no implementation to check against, and why. Anything
 # here that turns out to BE covered is reported as a stale exemption.
 UNGUARDED = {}
 
+# --------------------------------------------------------------------------
+# PER-IMPLEMENTATION COVERAGE (added R17)
+#
+# R16 made this file fail-closed on *keys*: every constant in tuning.json had to be
+# checked somewhere. That was not the real invariant, and the gap bit within one
+# round. `disturbance.per_cursed_item_floor` was checked in C# and in Python, so the
+# key-level audit was satisfied and the run was green - while BOTH browser prototypes
+# were still multiplying by the retracted value 2 instead of the canonical 7. One of
+# them, proto3d/index.html, this file had never even opened, despite the prototype
+# carrying a comment claiming "sim/check_drift.py asserts these stay in agreement".
+#
+# The invariant is per-implementation: if an implementation carries a constant, that
+# implementation must be checked against it. IMPL_KEYS states, for each of the four
+# implementations, which canonical constants it is expected to carry. A key listed
+# here but not actually checked against that implementation fails the run.
+IMPL_KEYS = {
+    "C#": {
+        *(f"loudness.{n}" for n in ("crouch_walk", "voice_whisper", "walk",
+                                    "voice_normal", "dolly", "radio", "sprint",
+                                    "voice_raised", "appraise", "door", "voice_shout",
+                                    "crowbar", "break_small", "break_large")),
+        "loudness_constants.hearing_radius_per_l",
+        "loudness_constants.impulse_disturbance_per_l",
+        "loudness_constants.sustained_disturbance_per_l",
+        "loudness_constants.occlusion_player", "loudness_constants.occlusion_curator",
+        "loudness_constants.localisation_fuzz_m",
+        "disturbance.decay_per_min_at_crew4", "disturbance.ratchet_end",
+        "disturbance.per_cursed_item_floor", "disturbance.light_wing_gain",
+        "disturbance.lever_kill_lights", "disturbance.lever_go_quiet",
+        "disturbance.tier_patrol_at", "disturbance.tier_pursue_at",
+        "disturbance.tier_collect_at",
+        "attention.steal_threshold", "attention.commit_seconds",
+        "attention.noise_multiplier_per_event", "attention.light_multiplier",
+        "van.base_slots", "van.max_slots", "van.ruin_k", "van.ruin_exp",
+        *(f"van.slot_cost.{n}" for n in ("pocket", "armful", "two_man", "cart")),
+        *(f"retrieval.{n}" for n in ("dormant", "patrol", "pursue", "collect")),
+        *(f"curse.{t}.{g}" for t in ("value_multiplier", "attention_multiplier",
+                                     "ledger_fee")
+          for g in ("clean", "tainted", "malignant")),
+    },
+    "JS": {   # proto/index.html
+        "loudness.sprint", "loudness.appraise", "loudness.door", "loudness.break_small",
+        "loudness_constants.impulse_disturbance_per_l",
+        "loudness_constants.sustained_disturbance_per_l",
+        "disturbance.ratchet_end", "disturbance.decay_per_min_at_crew4",
+        "disturbance.per_cursed_item_floor",
+        "van.base_slots", "van.ruin_k", "van.ruin_exp",
+        "night.appraise_seconds",
+        *(f"curse.{t}.{g}" for t in ("value_multiplier", "attention_multiplier")
+          for g in ("clean", "tainted", "malignant")),
+    },
+    "JS3D": {  # proto3d/index.html
+        "loudness.sprint", "loudness.appraise", "loudness.break_small",
+        "loudness_constants.impulse_disturbance_per_l",
+        "loudness_constants.sustained_disturbance_per_l",
+        "disturbance.ratchet_end", "disturbance.decay_per_min_at_crew4",
+        "disturbance.per_cursed_item_floor",
+        "van.base_slots", "van.ruin_k", "van.ruin_exp",
+        "night.appraise_seconds",
+        *(f"curse.{t}.{g}" for t in ("value_multiplier", "attention_multiplier",
+                                     "ledger_fee")
+          for g in ("clean", "tainted", "malignant")),
+    },
+    "py": {
+        "loudness.sprint", "loudness.appraise", "loudness.door",
+        "loudness_constants.impulse_disturbance_per_l",
+        "loudness_constants.sustained_disturbance_per_l",
+        "disturbance.decay_per_min_at_crew4", "disturbance.ratchet_end",
+        "disturbance.per_cursed_item_floor", "disturbance.tier_patrol_at",
+        "disturbance.tier_pursue_at", "disturbance.tier_collect_at",
+        "attention.recompute_seconds",
+        "van.base_slots", "van.ruin_exp",
+        "van.slot_cost.pocket", "van.slot_cost.armful", "van.slot_cost.two_man",
+        "van.slot_cost.cart",
+        *(f"retrieval.{n}" for n in ("dormant", "patrol", "pursue", "collect")),
+        "night.crew", "night.seconds", "night.haul_window_seconds",
+    },
+}
+
+# Places an implementation deliberately departs from canon, and why. These are NOT
+# drift; recording them stops someone "fixing" a prototype into being wrong, and stops
+# the coverage audit pretending the constant is guarded there.
+DIVERGENT = {
+    ("JS", "loudness.walk"):
+        "proto sets L.walk=0, conflating loudness with Disturbance cost. Walking is free "
+        "of Disturbance but is canonically L=20 to the Curator's ear. A loop-test "
+        "simplification: proto has no Curator hearing model.",
+    ("JS", "night.seconds"):
+        "proto NIGHT=180 and proto3d NIGHT=210 are deliberately short loop tests; the "
+        "ship value is 720. Stated in proto/index.html:50.",
+    ("JS3D", "night.seconds"):
+        "as above - proto3d NIGHT=210, a single-player loop test, not the 720s night.",
+    ("JS", "night.crew"):
+        "both prototypes are single-player (CREW=1); crew 4 is the ship value. The decay "
+        "expression still reads 50/min at crew 4 and IS checked.",
+    ("JS3D", "night.crew"):
+        "as above - proto3d is single-player.",
+}
+
 fails, checks = [], 0
 covered = set()
+covered_by = {}
+
+
+def _impl_of(label):
+    """Which implementation a check belongs to, from its label prefix."""
+    if label.startswith("C# "):
+        return "C#"
+    if label.startswith("JS3D "):
+        return "JS3D"
+    if label.startswith("JS "):
+        return "JS"
+    if label.startswith("py "):
+        return "py"
+    return "?"
 
 
 def check(key, label, got, want, tol=1e-9):
@@ -68,6 +200,7 @@ def check(key, label, got, want, tol=1e-9):
     global checks
     checks += 1
     covered.add(key)
+    covered_by.setdefault(_impl_of(label), set()).add(key)
     if got is None:
         fails.append(f"{label}: NOT FOUND in source (pattern matched nothing)")
         return
@@ -229,22 +362,73 @@ check("van.ruin_k", "JS ruin_k", grab(js, r"([\d.]+)\s*\*\s*Math\.pow\(cursed"),
 check("van.ruin_exp", "JS ruin_exp", grab(js, r"Math\.pow\(cursed,\s*([\d.]+)\)"),
       v["ruin_exp"])
 
+# The cursed-item floor. BOTH prototypes shipped the retracted value 2 here until R17,
+# behind a key-level coverage audit that was satisfied by the C# and Python copies.
+check("disturbance.per_cursed_item_floor", "JS cursed_floor",
+      grab(js, r"CURSED_FLOOR\s*=\s*([\d.]+)"), d["per_cursed_item_floor"])
+
 cm = TUNING["curse"]["value_multiplier"]
-check("curse.value_multiplier.tainted", "JS curse_value_tainted",
-      grab(js, r"GRADE_MULT\s*=\s*\{\s*clean:1,\s*tainted:([\d.]+)"), cm["tainted"])
-check("curse.value_multiplier.malignant", "JS curse_value_malignant",
-      grab(js, r"GRADE_MULT\s*=\s*\{[^}]*malignant:([\d.]+)"), cm["malignant"])
 am = TUNING["curse"]["attention_multiplier"]
-check("curse.attention_multiplier.malignant", "JS curse_attention_malignant",
-      grab(js, r"ATT_MULT\s*=\s*\{[^}]*malignant:([\d.]+)"), am["malignant"])
+js_grade = grab(js, r"GRADE_MULT\s*=\s*\{([^}]*)\}", cast=str) or ""
+js_att = grab(js, r"ATT_MULT\s*=\s*\{([^}]*)\}", cast=str) or ""
+for g in ("clean", "tainted", "malignant"):
+    check(f"curse.value_multiplier.{g}", f"JS curse_value[{g}]",
+          grab(js_grade, rf"\b{g}\s*:\s*([\d.]+)"), cm[g])
+    check(f"curse.attention_multiplier.{g}", f"JS curse_attention[{g}]",
+          grab(js_att, rf"\b{g}\s*:\s*([\d.]+)"), am[g])
 
 # Scope to the loudness table specifically: `sprint` also appears in the movement
 # SPEED table, and an unanchored match happily reports 205 px/s as a loudness.
+# `drop` is the prototypes' name for a break_small event.
+JS_NOISE_NAME = {"break_small": "drop"}
 js_l = re.search(r"const L\s*=\s*\{(.*?)\}", js, re.S)
 js_l = js_l.group(1) if js_l else ""
-for name in ("sprint", "appraise", "door"):
+for name in ("sprint", "appraise", "door", "break_small"):
     check(f"loudness.{name}", f"JS L[{name}]",
-          grab(js_l, rf"\b{name}\s*:\s*(\d+)"), TUNING["loudness"][name])
+          grab(js_l, rf"\b{JS_NOISE_NAME.get(name, name)}\s*:\s*(\d+)"),
+          TUNING["loudness"][name])
+
+# --------------------------------------------------------- JS 3D prototype
+# The fourth implementation. Never read by this file until R17, while carrying a
+# comment asserting that it was.
+js3 = (ROOT / "proto3d/index.html").read_text(encoding="utf-8")
+check("loudness_constants.impulse_disturbance_per_l", "JS3D impulse_per_l",
+      grab(js3, r"IMPULSE\s*=\s*([\d.]+)"), lc["impulse_disturbance_per_l"])
+check("loudness_constants.sustained_disturbance_per_l", "JS3D sustained_per_l",
+      grab(js3, r"SUSTAINED\s*=\s*([\d.]+)"), lc["sustained_disturbance_per_l"])
+check("disturbance.ratchet_end", "JS3D ratchet_end",
+      grab(js3, r"RATCHET_END\s*=\s*([\d.]+)"), d["ratchet_end"])
+check("disturbance.decay_per_min_at_crew4", "JS3D decay_per_min",
+      grab(js3, r"DECAY_PER_S\s*=\s*\(([\d.]+)"), d["decay_per_min_at_crew4"])
+check("disturbance.per_cursed_item_floor", "JS3D cursed_floor",
+      grab(js3, r"CURSED_FLOOR\s*=\s*([\d.]+)"), d["per_cursed_item_floor"])
+check("van.base_slots", "JS3D van_slots", grab(js3, r"VAN_SLOTS\s*=\s*(\d+)"),
+      v["base_slots"])
+check("van.ruin_k", "JS3D ruin_k", grab(js3, r"RUIN_K\s*=\s*([\d.]+)"), v["ruin_k"])
+check("van.ruin_exp", "JS3D ruin_exp", grab(js3, r"RUIN_EXP\s*=\s*([\d.]+)"),
+      v["ruin_exp"])
+check("night.appraise_seconds", "JS3D appraise_seconds",
+      grab(js3, r"APPRAISE_S\s*=\s*([\d.]+)"), TUNING["night"]["appraise_seconds"])
+
+fee = TUNING["curse"]["ledger_fee"]
+js3_grade = grab(js3, r"GRADE_MULT\s*=\s*\{([^}]*)\}", cast=str) or ""
+js3_att = grab(js3, r"ATT_MULT\s*=\s*\{([^}]*)\}", cast=str) or ""
+js3_fee = grab(js3, r"FEE\s*=\s*\{([^}]*)\}", cast=str) or ""
+for g in ("clean", "tainted", "malignant"):
+    check(f"curse.value_multiplier.{g}", f"JS3D curse_value[{g}]",
+          grab(js3_grade, rf"\b{g}\s*:\s*([\d.]+)"), cm[g])
+    check(f"curse.attention_multiplier.{g}", f"JS3D curse_attention[{g}]",
+          grab(js3_att, rf"\b{g}\s*:\s*([\d.]+)"), am[g])
+    # FEE writes bare-dot floats (.08), which float() parses but \d+ would miss.
+    check(f"curse.ledger_fee.{g}", f"JS3D curse_fee[{g}]",
+          grab(js3_fee, rf"\b{g}\s*:\s*([\d.]*\d)"), fee[g])
+
+js3_l = re.search(r"const L\s*=\s*\{(.*?)\}", js3, re.S)
+js3_l = js3_l.group(1) if js3_l else ""
+for name in ("sprint", "appraise", "break_small"):
+    check(f"loudness.{name}", f"JS3D L[{name}]",
+          grab(js3_l, rf"\b{JS_NOISE_NAME.get(name, name)}\s*:\s*(\d+)"),
+          TUNING["loudness"][name])
 
 # --------------------------------------------------------------- Python sims
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
@@ -344,6 +528,28 @@ for k in stale:
                  f"Remove the exemption.")
 for k in unknown:
     fails.append(f"COVERAGE {k}: in UNGUARDED but not in tuning.json.")
+
+# Per-implementation coverage. This is the audit that would have caught the R17 bug:
+# a constant an implementation carries but nobody checks against that implementation.
+for impl, keys in sorted(IMPL_KEYS.items()):
+    got = covered_by.get(impl, set())
+    for k in sorted(keys):
+        if (impl, k) in DIVERGENT:
+            fails.append(f"COVERAGE {impl}/{k}: listed in both IMPL_KEYS and "
+                         f"DIVERGENT. Pick one.")
+        elif k not in got:
+            fails.append(f"COVERAGE {impl}/{k}: {impl} is expected to carry this "
+                         f"constant but nothing checks it there.")
+    for k in sorted(got - keys):
+        if k in canonical:
+            fails.append(f"COVERAGE {impl}/{k}: checked against {impl} but missing "
+                         f"from IMPL_KEYS. Add it, so a deleted check fails the run.")
+for (impl, k) in sorted(DIVERGENT):
+    if k not in canonical:
+        fails.append(f"COVERAGE {impl}/{k}: in DIVERGENT but not in tuning.json.")
+    if k in covered_by.get(impl, set()):
+        fails.append(f"COVERAGE {impl}/{k}: marked DIVERGENT but IS checked against "
+                     f"{impl}. Remove the exemption.")
 if checks != EXPECTED_CHECKS:
     fails.append(f"COUNT: ran {checks} checks, expected {EXPECTED_CHECKS}. "
                  f"If you added or removed one, update EXPECTED_CHECKS deliberately.")
@@ -351,7 +557,7 @@ if checks != EXPECTED_CHECKS:
 # --------------------------------------------------------------- report
 guarded = len(canonical & covered)
 print(f"DRIFT CHECK  -  {checks} checks over {guarded}/{len(canonical)} "
-      f"canonical constants, across 3 implementations")
+      f"canonical constants, across {len(IMPL_KEYS)} implementations")
 print("-" * 74)
 if not fails:
     print("  OK   every implementation agrees with tuning.json")

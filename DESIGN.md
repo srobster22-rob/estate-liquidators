@@ -41,7 +41,7 @@ If a feature doesn't serve one of these, cut it.
 ```
 LOBBY (van interior)
   ↓  pick tonight's estate, see quota, buy/repair gear
-NIGHT  (12–14 min real time, sunrise = hard end)
+NIGHT  (12 min real time, sunrise = hard end)
   ↓  ENTER → APPRAISE → HAUL → SECURE → repeat, deeper each time
 EXTRACT
   ↓  van doors close at sunrise; anything unsecured is reclaimed
@@ -50,10 +50,10 @@ LEDGER
   ↓  quota met? next estate. missed? crew is fired, run over.
 ```
 
-**Run length:** 12–14 minutes. Long enough for a real arc, short enough that a wipe at
+**Run length:** 12 minutes (720s, of which ~540s is the effective haul window). Long enough for a real arc, short enough that a wipe at
 minute 11 makes people immediately start another.
 
-**Session length:** target ~50 minutes for a full contract chain (4–5 nights, escalating
+**Session length:** target ~50 minutes for a full contract chain (4 nights, escalating
 quota). This is the "one more" unit.
 
 ---
@@ -169,7 +169,7 @@ appraised first*, per playtester, per hour of experience. If that number is stil
 hour five and lands under ~30%, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §6). Scanning beats blind hauling by +84% at 14
+**Simulated ahead of the gate** (`ECONOMY.md` §9.1). Scanning beats blind hauling by only +6% at 14
 van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
 confirmed as the load-bearing one. But the sim also overturned part of §4.1's framing:
 
@@ -214,8 +214,8 @@ crew's radios — so the dead can help, and the dead can get you killed.
 
 ## 5.1 Death is a role change, not a spectator seat
 
-**The problem this solves.** Die at minute three of a fourteen-minute night and the genre
-standard is that you watch for eleven. Lethal Company ships this way; so does everything
+**The problem this solves.** Die at minute three of a twelve-minute night and the genre
+standard is that you watch for nine. Lethal Company ships this way; so does everything
 else here. It's survivable, and "the genre tolerates it" has never been a design.
 
 **The fiction does the work.** The Curator collects you. You're part of the collection now —
@@ -293,8 +293,8 @@ The Curator maintains an **Attention target**, recalculated every 2s:
 attention_weight(player) =
       value_of_carried_items
     × curse_multiplier          (malignant ×3, tainted ×1.5)
-    + noise_events_last_10s × 200
-    + 400 if flashlight on and in line of sight
+    × (1 + 0.20 × noise_events_last_10s)
+    × 1.30 if flashlight on and in line of sight
 ```
 
 Highest weight is the target. **It walks toward that player.** Not sprinting — walking, and
@@ -396,7 +396,7 @@ The structure has to be:
 ```
 Disturbance = fast-decaying NOISE LEVEL  +  slowly ratcheting FLOOR
               decay 50/min                    0 -> 55 across the night,
-              (drains in ~2 min of quiet)     plus 2 per cursed item in the van
+              (drains in ~2 min of quiet)     plus 7 per cursed item in the van
 
 impulse gain  L x 0.09     unchanged from AUDIO-SPEC 1.1
 sustained     L x 0.02/s   designated continuous sources only (never walking)
@@ -413,7 +413,10 @@ it, regardless of how careful you are.
 
 With that structure, behaviour finally matters:
 
-Tuned and locked at decay 50/min. Percentages are share of a 12-minute night spent in each
+Tuned at decay 50/min against a four-person crew and locked there — the shipping rule scales it
+as `50 × crew/4` (`tuning.json` `disturbance.decay_per_min_at_crew4`, LOOP_LOG R12, which also
+notes a scale factor alone does not fix solo pacing). Rows below are play archetypes, not crew
+sizes. Percentages are share of a 12-minute night spent in each
 tier, over 400 simulated nights per archetype:
 
 | Crew | DORMANT | PATROL | PURSUE | COLLECT | First PURSUE |
@@ -523,7 +526,9 @@ retrieval, not an instant death, on first contact (§6.3).
 Keep it thin. Meta-progression in this genre exists to give a session a shape, not to be an
 RPG.
 
-- **Contract chain:** 4–5 nights, quota escalating $2,000 → $4,500 → $8,000 → $15,000. Miss
+- **Contract chain:** 4 nights, quota escalating $7,500 → $9,000 → $10,750 → $12,500
+  (calibrated in `ECONOMY.md` §4, which closes O-06; the earlier $2,000 → $15,000 curve
+  simulated as three formalities followed by a 1%-pass wall). Miss
   one, the chain ends, you start a new chain. This is the run structure.
 - **Between nights:** spend net profit on gear (better battery, second dolly, van shelving
   for +cargo slots, salt) and repairs. Money does not carry across chains.
@@ -546,10 +551,10 @@ fastest path from prototype to a Steam build friends can actually join.
 | Layer | Choice | Why |
 |---|---|---|
 | Engine | **Unity 6, URP** | genre precedent, iteration speed, the look is achievable |
-| Netcode | **FishNet** (free) or Netcode for GameObjects | FishNet's prediction/ownership model suits physics handoff better |
+| Netcode | **FishNet** (free) — **Mirror** is the pre-agreed fallback if the voice bridge fails the two-day test at Milestone 0 | FishNet's prediction/ownership model suits physics handoff better; NGO is ruled out (`STACK.md`, D-16) — its physics story is the weakest of the three and physics is the whole game |
 | Transport | **Steam P2P relay** (Steamworks.NET / Facepunch) | zero server cost, friends join from the Steam overlay, no port forwarding |
 | Voice | **Dissonance Voice Chat** (paid asset) | positional voice done right; do not build this yourself |
-| Audio | Unity spatializer + occlusion volumes | the entire horror budget is audio |
+| Audio | **FMOD Studio** + occlusion volumes | the entire horror budget is audio; Unity's built-in audio won't do the §5.2 dynamic mix without a lot of custom work (`AUDIO-SPEC.md` §7.1, verified in `STACK.md`) |
 
 > ✅ **Verified 2026-07-29 — see `STACK.md`.** FishNet is actively developed (4.7.2R, April
 > 2026) with explicit Unity 6 support and recent Unity 6-specific fixes. Dissonance is
@@ -657,7 +662,7 @@ cost being knowingly paid, and it may turn out to be worse in play than it looks
 
 ## 13. Open questions
 
-- **Crew size:** 4 max, or up to 6? 4 keeps voice legible and the map tight. Leaning 4.
+- ~~**Crew size:** 4 max, or up to 6?~~ **Closed → D-18: four.** On voice legibility alone — past four simultaneous speakers proximity chat stops being intelligible. The chain sim (`ECONOMY.md` §8) mildly prefers six (+12%, $12,131 → $13,586), so four is a conversation decision, not an economic one, and that +12% is not a reason to revisit it.
 - **Friendly fire on carried items:** can you *take* an item out of a teammate's hands, or
   only receive a voluntary hand-off? Forced-take is funnier and meaner. Probably gate it
   behind a slow 1.5s pry so it's a visible act of aggression.

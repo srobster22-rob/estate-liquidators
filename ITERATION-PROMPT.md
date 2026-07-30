@@ -3,11 +3,17 @@
 Paste this to continue the work. It's written to be reusable across sessions, and to survive
 the fact that a fresh session won't remember any of this conversation.
 
+**Superseded for build rounds.** This was the loop prompt for the design phase, when a round's
+deliverable was a spec. The deliverable is now running code — eight simulation models, a tested
+C# core, and two browser prototypes. For anything touching `sim/`, `proto/`, `proto3d/` or
+`unity/`, use `BUILD-PROMPT.md` to build and `IMPROVE-PROMPT.md` to harden. This prompt still
+stands for pure-design rounds.
+
 ---
 
 ## The prompt
 
-> Continue the Estate Liquidators design work in `C:\Users\srobs\estate-liquidators`.
+> Continue the Estate Liquidators work in `~/dev/estate-liquidators`.
 > Read `README.md` and `DECISIONS.md` first — they're the map and the settled arguments.
 >
 > **Each time I run this, do a full self-directed pass:**
@@ -40,7 +46,7 @@ the fact that a fresh session won't remember any of this conversation.
 >   me to catch.
 > - **Don't ask permission to proceed.** Do the work, then tell me what you did.
 >
-> Work only in that folder. Never commit — this repo is shared across sessions.
+> Work only in that folder. It is now its own git repo with its own remote — commit as you go. (The old "never commit — this repo is shared across sessions" rule applied to the Windows PC's shared parent folder `C:\Users\srobs`, which the project no longer lives in; see `TRANSFER.md`.)
 
 ---
 

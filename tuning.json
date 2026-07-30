@@ -1,6 +1,6 @@
 {
   "_": "CANONICAL TUNING. Every implementation reads or is checked against this file.",
-  "_why": "The same rules exist in sim/*.py, proto/index.html and unity/Assets/Scripts/Core/*.cs. Without one source of truth they drift, and this project's main asset is that its numbers are trustworthy. Run sim/check_drift.py to verify agreement.",
+  "_why": "The same rules exist in sim/*.py, proto/index.html, proto3d/index.html and unity/Assets/Scripts/Core/*.cs. Without one source of truth they drift, and this project's main asset is that its numbers are trustworthy. Run sim/check_drift.py to verify agreement — note it does NOT yet read proto3d/index.html, so that copy is unguarded.",
 
   "loudness": {
     "_source": "AUDIO-SPEC.md 1.2",

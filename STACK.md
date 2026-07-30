@@ -66,7 +66,7 @@ game.
 - `DECISIONS.md` **D-01** updated: stack verified, with the bridge risk and contingency
   recorded.
 - New **D-16**: vendor the voice bridge.
-- `TECH-SPEC.md` §10.1 and `AUDIO-SPEC.md` §7.1 "verify before committing" warnings replaced
+- `DESIGN.md` §10.1 and `AUDIO-SPEC.md` §7.1 "verify before committing" warnings replaced
   with these findings.
 - `AUDIO-SPEC.md` §7.1's "prove this combination works in a throwaway scene" concern is
   **downgraded but not removed** — precedent existing is not the same as it working on your

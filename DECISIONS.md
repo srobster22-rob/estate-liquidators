@@ -20,7 +20,9 @@ off-the-shelf assets there. Godot costs an estimated 4–6 extra weeks hand-roll
 voice and Steamworks. Unreal is heavier iteration for a look it doesn't help with.
 
 **Verified 2026-07-29** (`STACK.md`): FishNet, Dissonance, and FMOD are all actively
-maintained with current Unity 6 support and workable licensing. The falsification condition
+maintained with workable licensing, and FishNet and Dissonance have explicit Unity 6 support.
+**FMOD-on-Unity-6 specifically was inferred, not confirmed** — see `STACK.md` and
+`AUDIO-SPEC.md` §7.1; it is the one open item in the stack verification. The falsification condition
 below was *checked* rather than left hanging — which is the entire point of writing these
 down.
 
@@ -142,8 +144,12 @@ appraiser is the game's signature verb.
 
 **Knowingly accepted cost:** the world feels slightly arbitrary.
 
-**Simulated 2026-07-29** (`ECONOMY.md` §6, `sim/haul_sim.py`): scanning beats blind hauling
-by **+84%** at 14 van slots, and the edge decays monotonically with capacity until blind
+**Simulated 2026-07-29, re-measured in LOOP_LOG R8** (`ECONOMY.md` §9.1, `sim/integrated.py`):
+*selective* scanning beats blind hauling by **+6%** at 14 van slots — always-scan actually lands
+just behind BLIND at the designed retrieval rates. The **+84%** first reported (§6,
+`sim/haul_sim.py`) used a placeholder for noise cost; the **+31%** that replaced it still had a
+slot-accounting bug that let lost cargo act as a free reroll. The §6 capacity sweep has not been
+re-run against real Disturbance, but its shape stands: the edge decays monotonically with capacity until blind
 hauling wins outright somewhere between 24 and 32 slots. The mechanism §4.4 predicted is
 confirmed — the appraiser lives entirely on van space binding.
 
@@ -351,7 +357,7 @@ that would mean the unlock timing, not the visibility, is wrong.
 | ~~O-03~~ | ~~Van capacity numbers~~ | — | **Closed → `ECONOMY.md` §1.** 14 slots, ceiling 20. |
 | ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 10-check validation suite. |
 | **O-05** | Does the Curator have a face? | art | recommend never fully seen — silhouette and hands only. Not blocking anything yet. |
-| ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, 48%→79% of theoretical max. |
+| ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, $7,500→$12,500 against sim means $9,373→$12,152; pass rate ~95%→~40%. |
 
 Only O-05 remains open, and it blocks nothing. Every decision that gated build work has been
 made — which means the next real information comes from a playtest, not another design pass.
