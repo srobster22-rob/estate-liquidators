@@ -1,14 +1,14 @@
 # Bot factory: run report
 
-_Generated 2026-07-30 11:47:51 from `run_state.json`._
+_Generated 2026-07-31 06:05:01 from `run_state.json`._
 
 ## Result
 
-**2 distinct strategies passed all seven gates** (6 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes).
+**3 distinct strategies passed all seven gates** (7 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes).
 
-12,260 candidates were screened across 25 generations and 5 search-space expansions; 450 reached the gauntlet; 35,165 backtests were run.
+40,740 candidates were screened across 45 generations and 14 search-space expansions; 1285 reached the gauntlet; 100,045 backtests were run.
 
-**All of them trade one market family: `commodity_meanrev_daily`.** Ten other tradeable families were searched every generation and yielded nothing that survived the ladder. That is the most informative result in this report, and it is the expected one: the catalogue deliberately contains families where the correct answer is *do not trade this* (the strongest planted edges sit behind a 28bp spread, or behind 0.30bp/bar funding). A search that returned winners everywhere would be evidence against itself.
+Markets represented: `commodity_meanrev_daily`, `futures_trend_daily`.
 
 ## Rejection funnel
 
@@ -16,12 +16,12 @@ Where candidates died. A healthy funnel kills most bots early; a funnel that kil
 
 | gate | rejected | share | what that gate proves |
 |---|---|---|---|
-| G1-oos | 193 | 43% | worked only on the bars the search scored (in-sample fit) |
-| G2-replication | 192 | 43% | worked only on the instances it was bred on (instance luck) |
+| G1-oos | 567 | 44% | worked only on the bars the search scored (in-sample fit) |
+| G2-replication | 509 | 40% | worked only on the instances it was bred on (instance luck) |
 | G3-controls | 1 | 0% | showed profit on a random walk (artifact or harness bug) |
-| G4-stress | 27 | 6% | edge smaller than 2x costs or one bar of delay |
-| G5-permutation | 21 | 5% | no better than its own block-bootstrapped null |
-| G6-multiplicity | 9 | 2% | not surprising given how many candidates were tried |
+| G4-stress | 103 | 8% | edge smaller than 2x costs or one bar of delay |
+| G5-permutation | 61 | 5% | no better than its own block-bootstrapped null |
+| G6-multiplicity | 36 | 3% | not surprising given how many candidates were tried |
 | G7-stress-pool | 1 | 0% | failed to replicate a second time on a third pool |
 
 ## Proven bots
@@ -450,40 +450,126 @@ Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.52, `
 
 </details>
 
+### `0dc98ea16ea7` — futures_trend_daily
+
+```
+momentum(lb=126)x1.00 + stoch(n=49)x0.43 | trend_regime(n=67) -> thr 0.15/0.05 both voltarget@5%v lev<=1.7  [stop 2.1atr]
+```
+
+- market: **futures_trend_daily** (futures, vol 14%, spread 1.5bp, perfect-foresight ceiling SR 1.34)
+- found in generation 45 via crossover from a2b40991b175, 416835ed32f3
+
+|  | gate | evidence |
+|---|---|---|
+| PASS | G1-oos | alphaSR +0.27 (need +0.25), 881 trades, 50% instances positive |
+| PASS | G2-replication | median alphaSR +0.40 (need +0.35), 95% of 20 instances positive (need 70%), median DD -12.2% / worst -21.5% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G3-controls | worst \|alphaSR\| 0.15 (allowed 0.30) [control_efficient_daily=+0.08, control_martingale_daily=-0.15] |
+| PASS | G4-stress | 2x costs +0.52 (need +0.15), 3x +0.49 (need +0.00), +1 bar delay +0.48 (need +0.10) |
+| PASS | G5-permutation | real +0.66 vs null +0.10+-0.14 (p99 +0.40) -> z=4.1, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | DSR 0.965 (need 0.95) vs luck bar SR 0.48 after 1255 confirmation tests; Bonferroni p 2.67e-02 (need <=0.05) \| stricter all-trials view (40740 screened): DSR 0.467 vs SR 0.61, p 8.67e-01 |
+| PASS | G7-stress-pool | median alphaSR +0.42 (need +0.28), 80% positive (need 65%), CAGR +2.5%, median DD -13.0% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.42 | +0.51 | +2.5% | 5.1% | -13.0% | 0.07 | 25 | 0.12% | 0.34 |
+
+Travels to (alphaSR on other families, not a gate): `fx_major_daily` +0.44, `fx_em_daily` +0.32, `eq_index_daily` +0.32, `rates_daily` +0.22, `eq_largecap_daily` -0.17, `eq_smallcap_daily` -0.42
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "futures_trend_daily",
+  "genes": [
+    {
+      "name": "momentum",
+      "params": {
+        "lb": 126
+      },
+      "weight": 1.0,
+      "mode": 1
+    },
+    {
+      "name": "stoch",
+      "params": {
+        "n": 49
+      },
+      "weight": 0.4317,
+      "mode": 1
+    }
+  ],
+  "filters": [
+    {
+      "name": "trend_regime",
+      "params": {
+        "n": 67
+      }
+    }
+  ],
+  "combine": "weighted",
+  "entry_threshold": 0.15,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "voltarget",
+  "base_size": 1.0,
+  "target_vol": 0.0532,
+  "max_leverage": 1.6743,
+  "rebalance_band": 0.2742,
+  "atr_n": 20,
+  "stop_atr": 2.1,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "0dc98ea16ea7",
+  "generation": 45,
+  "origin": "crossover",
+  "parents": [
+    "a2b40991b175",
+    "416835ed32f3"
+  ]
+}
+```
+
+</details>
+
 ## Portfolio
 
 ```
-2 distinct strategies across 1 market(s) / 1 asset class(es)   [from 6 proven genomes]
+3 distinct strategies across 2 market(s) / 2 asset class(es)   [from 7 proven genomes]
   best single bot        alphaSR +0.44
-  portfolio             alphaSR +0.58
-  NOTE: every leg trades the SAME market family, so the two correlation scenarios
-        coincide and the blend buys no diversification at all — it is one bet,
-        sized twice. Correlation between the legs is measured, not assumed.
-    55.7%  a60935fe32e2  commodity_meanrev_daily  alphaSR +0.38
-    44.3%  7267d7623bad  commodity_meanrev_daily  alphaSR +0.44
+  portfolio (lab, rho=0) alphaSR +0.71   <- upper bound, independent synthetic markets
+  portfolio (rho=0.3)    alphaSR +0.60   <- plan with this one
+    24.4%  a60935fe32e2  commodity_meanrev_daily  alphaSR +0.38
+    19.4%  7267d7623bad  commodity_meanrev_daily  alphaSR +0.44
+    56.2%  0dc98ea16ea7  futures_trend_daily      alphaSR +0.40
 ```
 
-There is only one number because there is only one market family, so the correlation assumption never bites. Correlation *between* these legs is measured directly (they share instances), and the blend's small improvement over the best single bot is what two imperfectly correlated expressions of the same effect buy you — not diversification.
+The two portfolio numbers differ because this lab generates each market family independently, so cross-family correlation is structurally zero — an assumption real asset classes violate exactly when it matters. Plan with the rho=0.3 number.
 
 ## Hall of fame (screen scores — evidence of nothing, kept for breeding)
 
 | bot | market | screen fit | screen alphaSR | trades | rule |
 |---|---|---|---|---|---|
-| `0cb21479740b` | eq_intraday_15m | +0.89 | +1.22 | 2305 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
-| `f99800f63aa8` | eq_intraday_15m | +0.78 | +1.31 | 4882 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `5ae5c68623b9` | eq_intraday_15m | +0.78 | +1.22 | 1285 | `bollinger(k=2.24,n=30)x0.58 + -carry()x1.37 + long_bias()x1.56 -> ` |
-| `6e9785e1678e` | eq_intraday_15m | +0.78 | +1.22 | 1285 | `bollinger(k=2.24,n=30)x0.58 + -carry()x1.37 + long_bias()x1.56 -> ` |
-| `f684d2787d17` | eq_intraday_15m | +0.75 | +1.62 | 1206 | `bollinger(k=2.98,n=30)x0.58 + carry()x1.37 + long_bias()x1.56 -> t` |
-| `520cd8e2bc1d` | eq_intraday_15m | +0.75 | +1.28 | 2214 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
-| `2e65961fe577` | eq_intraday_15m | +0.75 | +1.28 | 2214 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `c0eab38042ac` | eq_intraday_15m | +0.75 | +1.28 | 2214 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `8f616e09e0d9` | eq_intraday_15m | +0.74 | +1.44 | 1252 | `bollinger(k=2.98,n=30)x0.59 + carry()x1.37 + long_bias()x1.56 -> t` |
-| `9dac326fb5b7` | eq_intraday_15m | +0.66 | +1.32 | 3102 | `bollinger(k=2.46,n=28)x0.58 + -carry()x1.48 + long_bias()x1.56 + -` |
-| `7d649b6325ef` | commodity_meanrev_daily | +0.62 | +0.79 | 6082 | `-momentum(lb=5)x0.76 unanimous rsi_rev(n=27)x1.09 -> thr 0.54/0.10` |
-| `4de60c04d6aa` | eq_largecap_daily | +0.62 | +0.71 | 30384 | `-breakout(n=26)x1.04 -> thr 0.40/0.10 both proportional lev<=0.9  ` |
-| `27b51838b5e7` | eq_largecap_daily | +0.62 | +0.71 | 30384 | `-breakout(n=26)x1.65 -> thr 0.40/0.10 both proportional lev<=0.9  ` |
-| `89dfbf4f3a2f` | commodity_meanrev_daily | +0.61 | +0.79 | 5892 | `-momentum(lb=5)x0.76 unanimous rsi_rev(n=27)x1.09 -> thr 0.54/0.10` |
-| `ef57417aa7fa` | commodity_meanrev_daily | +0.61 | +0.77 | 10325 | `-breakout(n=22)x1.50 unanimous -momentum(lb=5)x0.76 unanimous rsi_` |
+| `b7b101b57f8b` | eq_intraday_15m | +1.10 | +1.35 | 3833 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
+| `edb5284741dd` | eq_intraday_15m | +1.05 | +1.34 | 4008 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
+| `4a0b50a54b35` | eq_intraday_15m | +1.05 | +1.34 | 4008 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
+| `1e0dc2fa6d88` | eq_intraday_15m | +1.03 | +1.41 | 3181 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
+| `11c1e7154dd1` | eq_intraday_15m | +1.02 | +1.41 | 3212 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
+| `95b485f14f30` | eq_intraday_15m | +1.02 | +1.41 | 3212 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
+| `9dd6be7e89c2` | eq_intraday_15m | +1.02 | +1.41 | 3212 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
+| `84f49134ec86` | eq_intraday_15m | +1.02 | +1.42 | 3044 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
+| `3305d2061162` | crypto_major_hourly | +0.95 | +1.09 | 9041 | `bollinger(k=1.62,n=101)x0.58 + long_bias()x1.56 -> thr 0.43/0.10 l` |
+| `7a3b5ad4ab18` | crypto_major_hourly | +0.95 | +1.09 | 9041 | `bollinger(k=1.62,n=101)x0.58 + long_bias()x1.56 -> thr 0.42/0.10 l` |
+| `1521faed6a52` | crypto_major_hourly | +0.94 | +1.11 | 8975 | `bollinger(k=1.51,n=101)x0.58 + long_bias()x1.56 -> thr 0.40/0.10 b` |
+| `d6946ccec51c` | crypto_major_hourly | +0.94 | +1.11 | 8975 | `bollinger(k=1.51,n=101)x0.58 + long_bias()x1.56 -> thr 0.40/0.10 b` |
+| `fae4296029ad` | crypto_major_hourly | +0.93 | +1.12 | 6063 | `bollinger(k=2.48,n=54)x0.58 + -long_bias()x1.56 -> thr 0.27/0.10 s` |
+| `86165d5b9fbb` | crypto_major_hourly | +0.93 | +1.12 | 6053 | `bollinger(k=2.49,n=54)x0.58 + -long_bias()x1.56 -> thr 0.27/0.10 s` |
+| `3d07bb0dfc8b` | crypto_major_hourly | +0.92 | +1.12 | 9338 | `bollinger(k=2.17,n=54)x0.66 + -long_bias()x1.54 -> thr 0.33/0.10 b` |
 
 ## Expansions
 
@@ -494,16 +580,20 @@ There is only one number because there is only one market family, so the correla
 | 14 | 4 | 3 generations without a pass | L4: tier=3 genes<=4 filters<=2 pop=640 markets=11 |
 | 20 | 5 | 3 generations without a pass | L5: tier=3 genes<=4 filters<=2 pop=640 markets=11 |
 | 23 | 6 | 3 generations without a pass | L6: tier=3 genes<=5 filters<=3 pop=640 markets=11 |
+| 27 | 7 | 2 generations without a pass | L7: tier=3 genes<=5 filters<=3 pop=960 finalists=36 per_mkt=4 markets=11 |
+| 29 | 8 | 2 generations without a pass | L8: tier=3 genes<=5 filters<=3 pop=1440 finalists=40 per_mkt=5 markets=11 |
+| 31 | 9 | 2 generations without a pass | L9: tier=3 genes<=5 filters<=3 pop=1600 finalists=44 per_mkt=6 markets=11 |
+| 33 | 10 | 2 generations without a pass | L10: tier=3 genes<=5 filters<=3 pop=1600 finalists=48 per_mkt=6 markets=11 |
+| 35 | 11 | 2 generations without a pass | L11: tier=3 genes<=5 filters<=3 pop=1600 finalists=52 per_mkt=6 markets=11 |
+| 37 | 12 | 2 generations without a pass | L12: tier=3 genes<=5 filters<=3 pop=1600 finalists=56 per_mkt=6 markets=11 |
+| 39 | 13 | 2 generations without a pass | L13: tier=3 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 41 | 14 | 2 generations without a pass | L14: tier=3 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 43 | 15 | 2 generations without a pass | L15: tier=3 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
 
 ## Generations
 
 | gen | level | candidates | markets | gauntlets | of which priors | proven | best screen fit | screen time |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 1 | 240 | 5 | 17 | 10 | 0 | +0.34 | 9s |
-| 2 | 1 | 240 | 5 | 12 | 0 | 0 | +0.38 | 8s |
-| 3 | 1 | 240 | 5 | 12 | 0 | 0 | +0.47 | 9s |
-| 4 | 2 | 360 | 10 | 15 | 2 | 2 | +0.55 | 14s |
-| 5 | 2 | 360 | 10 | 15 | 0 | 2 | +0.55 | 13s |
 | 6 | 2 | 360 | 10 | 14 | 0 | 0 | +0.55 | 17s |
 | 7 | 2 | 360 | 10 | 16 | 0 | 0 | +0.55 | 17s |
 | 8 | 2 | 360 | 10 | 16 | 0 | 1 | +0.52 | 17s |
@@ -524,6 +614,26 @@ There is only one number because there is only one market family, so the correla
 | 23 | 5 | 640 | 11 | 20 | 0 | 0 | +0.78 | 27s |
 | 24 | 6 | 640 | 11 | 19 | 0 | 0 | +0.78 | 29s |
 | 25 | 6 | 640 | 11 | 22 | 0 | 0 | +0.89 | 28s |
+| 26 | 6 | 640 | 11 | 20 | 0 | 0 | +0.89 | 47s |
+| 27 | 6 | 640 | 11 | 23 | 0 | 0 | +0.90 | 45s |
+| 28 | 7 | 960 | 11 | 25 | 0 | 0 | +0.93 | 67s |
+| 29 | 7 | 960 | 11 | 30 | 0 | 0 | +0.93 | 91s |
+| 30 | 8 | 1440 | 11 | 37 | 0 | 0 | +0.93 | 93s |
+| 31 | 8 | 1440 | 11 | 38 | 0 | 0 | +1.00 | 102s |
+| 32 | 9 | 1600 | 11 | 44 | 0 | 0 | +1.00 | 111s |
+| 33 | 9 | 1600 | 11 | 44 | 0 | 0 | +1.02 | 119s |
+| 34 | 10 | 1600 | 11 | 45 | 0 | 0 | +1.02 | 130s |
+| 35 | 10 | 1600 | 11 | 44 | 0 | 0 | +1.02 | 116s |
+| 36 | 11 | 1600 | 11 | 47 | 0 | 0 | +1.02 | 124s |
+| 37 | 11 | 1600 | 11 | 48 | 0 | 0 | +1.02 | 123s |
+| 38 | 12 | 1600 | 11 | 48 | 0 | 0 | +1.02 | 133s |
+| 39 | 12 | 1600 | 11 | 43 | 0 | 0 | +1.02 | 126s |
+| 40 | 13 | 1600 | 11 | 45 | 0 | 0 | +1.02 | 130s |
+| 41 | 13 | 1600 | 11 | 50 | 0 | 0 | +1.02 | 127s |
+| 42 | 14 | 1600 | 11 | 49 | 0 | 0 | +1.02 | 135s |
+| 43 | 14 | 1600 | 11 | 52 | 0 | 0 | +1.02 | 129s |
+| 44 | 15 | 1600 | 11 | 53 | 0 | 0 | +1.05 | 130s |
+| 45 | 15 | 1600 | 11 | 50 | 0 | 1 | +1.10 | 121s |
 
 ## Market calibration
 

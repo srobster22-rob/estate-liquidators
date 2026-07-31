@@ -316,6 +316,89 @@ informative — it says how much of the search's output is genuinely different.
 
 ---
 
+## F11 · Expansion silently became a no-op, and the third strategy was on the other side of it
+
+The first run stopped at 2 distinct strategies after 25 generations, both
+mean-reversion on `commodity_meanrev_daily`. Continuing it exposed a design flaw:
+by level 6 every *structural* dial in `SearchSpace.expanded()` was already at its
+ceiling — tier 3, five genes, three filters, all eleven markets — so each
+subsequent "expansion" changed nothing but a finalist counter. The loop announced
+`EXPAND -> L7` and resampled the identical space.
+
+Past the ceiling, expansion now buys search *effort* instead: population
+640 → 1,600, gauntlet slots 32 → 60, and the per-market finalist cap 3 → 6 so a
+family with a promising near-miss can have several variants tested in one
+generation. Effort is the weaker lever and is deliberately self-limiting — G6's
+luck bar rises with every candidate screened — but it is honest, whereas an
+expansion that does nothing while reporting that it did is not.
+
+**The third strategy arrived at generation 45, level 15**, via crossover on
+`futures_trend_daily`:
+
+```
+momentum(lb=126) + stoch(n=49)x0.43 | trend_regime(n=67)
+  -> thr 0.15/0.05, voltarget @5% vol, lev<=1.7, stop 2.1 ATR
+```
+
+It is the strongest evidence in the run and the hardest-won. It survives **3×
+costs at +0.49 alpha Sharpe** and one extra bar of delay at +0.48 — that is a
+trend rule whose edge is much larger than its frictions. And it cleared a G6 luck
+bar of **0.48**, against 0.23 for the bot proven at generation 4, because by then
+the search had 40,740 trials and 1,255 confirmation tests behind it. Its
+Bonferroni p was 2.67e-02 against a 0.05 threshold and its DSR 0.965 against
+0.95: it only just made it, which is the correct price of a long search rather
+than a flaw in it.
+
+Two things this run demonstrated that the short one could not:
+
+* **The multiple-testing machinery bites in the intended direction.** A bot found
+  late has to be better than one found early. Nothing was relaxed to admit it.
+* **The portfolio's two correlation scenarios finally diverge** (+0.71 at ρ=0
+  versus +0.60 at ρ=0.3), because for the first time the legs span two market
+  families. With all three on one family the numbers were identical, which the
+  report said plainly rather than presenting one bet sized twice as
+  diversification.
+
+---
+
+## F12 · A real edge blocked by the permutation null's block length
+
+The most promising non-commodity candidate was an inverted breakout on
+`eq_largecap_daily`: G1 alpha Sharpe +0.62, and 100% of 20 replication instances
+positive. It failed G2 on drawdown alone — worst instance −63.1% against a −56%
+cap — while its *median* alpha Sharpe of +0.38 cleared the +0.35 bar.
+
+Alpha Sharpe is close to scale-invariant, so de-risking should have fixed it, and
+it does:
+
+| max leverage | median alphaSR | instances positive | median DD | worst DD |
+|---|---|---|---|---|
+| 0.90 | +0.38 | 100% | −33.8% | **−63.3%** |
+| 0.60 | +0.37 | 95% | −27.4% | −55.5% |
+| 0.45 | +0.36 | 95% | −23.6% | **−44.8%** |
+| 0.30 | +0.35 | 95% | −17.3% | −31.8% |
+
+The de-risked variant passes G1, G2, G3 and G4 — and then fails **G5** at
+z = 2.4, p = 0.0165 against a required 0.01.
+
+That failure is diagnosable and it is a limitation of the test, not of the bot.
+`eq_largecap_daily` has a reversion halflife of **6 bars** and the permutation
+null resamples in blocks of **5**, so the null retains most of the very structure
+this bot trades: its null mean is +0.08 with an sd of 0.14, far above the +0.03
+null seen on markets whose structure lives at longer horizons. The bot is being
+asked to beat a null that contains its own edge.
+
+**This was deliberately not fixed.** Shortening the block after seeing which
+candidate it blocks is p-hacking the gate, which is precisely what the gate
+exists to prevent. The correct procedure is to decide the rule first and then
+re-run everything: pre-register a block length tied to the bot's holding horizon
+(or gate on the conjunction of block=1 and block=5), re-run the full search, and
+**re-measure the end-to-end false-positive rate** before believing anything the
+new rule admits. That is a next-session task, recorded here so that whoever does
+it knows the change was contemplated *before* it was made and why it was deferred.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

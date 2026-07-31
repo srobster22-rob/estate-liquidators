@@ -9,12 +9,19 @@ Per generation:
   4. gauntlet  — the seven gates; every candidate screened counts in the ledger
   5. expand    — on stagnation, unlock a wider search space and re-seed
 
-The expansion policy is the answer to "expand until the goal is reached". It is
-deliberately not "search harder": raising the population alone would just buy
-more lottery tickets, and G6 makes lottery tickets *more* expensive by raising
-the luck bar with every trial. So expansion adds new *kinds* of bot — more
-signal primitives, more genes per bot, more market families — which is the only
-way to move the frontier rather than resample it.
+The expansion policy is the answer to "expand until the goal is reached", and it
+has two phases. While structural room remains (levels 1-6) it adds new *kinds* of
+bot — more signal primitives, more genes, more market families — because that is
+what moves the frontier rather than resampling it. Once those dials are at their
+ceiling it switches to buying search effort: bigger populations, more gauntlet
+slots, and a higher per-market cap so a family with a promising near-miss gets
+several variants tested at once.
+
+Effort is the weaker lever, deliberately, and it is self-limiting: G6's luck bar
+rises with every candidate screened, so a bot found by a longer search must be
+correspondingly better to survive it. The alternative — an expansion that
+silently becomes a no-op at the ceiling — is worse, because the loop then reports
+"expanding" while doing nothing of the kind.
 
 There is no guarantee of success, by design. If the loop hits its generation
 budget with nothing proven, that is a finding about the markets in the
@@ -131,7 +138,7 @@ def run_loop(target_proven: int = 3, max_generations: int = 40,
         # Every verdict records `origin`, so a reader can always tell a seeded
         # prior from a search discovery.
         priors = [g for g, p in scored if g.origin == "archetype" and p.fitness > 0.0]
-        searched = factory.finalists(scored, space.finalists, per_market=3)
+        searched = factory.finalists(scored, space.finalists, per_market=space.per_market)
         prior_ids = {g.bot_id for g in priors}
         picks = priors + [g for g in searched if g.bot_id not in prior_ids]
         best_screen = max((p.fitness for p in perfs), default=0.0)
@@ -190,10 +197,13 @@ def run_loop(target_proven: int = 3, max_generations: int = 40,
             say(f"  EXPAND -> {space.describe()}")
 
     st.save()
+    # This invocation's time, not st.elapsed(): the ledger's `started` timestamp
+    # survives --resume, so elapsed() reports wall-clock since the run was first
+    # created, which after a resume reads as an absurd runtime.
     say(f"loop end: {st.n_distinct_proven()} distinct strategies proven "
         f"({len(st.proven)} genomes), {st.trials} trials, "
         f"{st.gauntlet_runs} gauntlets, {st.backtests} backtests, "
-        f"{st.elapsed():.0f}s elapsed")
+        f"{time.time() - t0:.0f}s this run")
 
     if report_path:
         report.write_report(report_path, st, cfg)

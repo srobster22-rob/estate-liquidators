@@ -6,6 +6,14 @@ through a seven-gate validation ladder, and keeps expanding the search space
 until the target number of bots survives — or until it runs out of budget and
 reports that nothing did.
 
+The committed run took 45 generations and 14 expansions to certify **3 distinct
+strategies** out of 40,740 candidates and 100,045 backtests: two mean-reversion
+rules on `commodity_meanrev_daily` and one trend rule on `futures_trend_daily`.
+The third arrived at generation 45 and had to clear a G6 luck bar of 0.48 — more
+than double the 0.23 faced by the bot proven at generation 4, because the bar
+rises with the size of the search. See `REPORT.md` for the evidence and
+`FINDINGS.md` for what broke along the way.
+
 The interesting part is not the search. Searches are easy, and a big enough one
 will hand you a beautiful equity curve on data with no edge in it at all. The
 interesting part is the gauntlet, and the two negative-control markets whose job

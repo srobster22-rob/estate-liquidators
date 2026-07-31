@@ -45,6 +45,7 @@ class SearchSpace:
     markets: tuple[str, ...] = ()
     population: int = 160
     finalists: int = 12
+    per_market: int = 3                 # finalist slots any one family may take
 
     def __post_init__(self) -> None:
         if not self.markets:
@@ -57,7 +58,20 @@ class SearchSpace:
         return signals.filter_names(self.tier)
 
     def expanded(self) -> "SearchSpace":
-        """Next level. Order matters: cheap widenings first, exotica last."""
+        """Next level. Order matters: cheap widenings first, exotica last.
+
+        Past level 6 the *structural* dials are all at their ceiling — tier 3,
+        five genes, three filters, every market unlocked — and an earlier version
+        of this method then became a silent no-op, so "expand until the goal is
+        reached" degenerated into resampling the same space forever. Beyond that
+        point expansion buys search *effort* instead: a bigger population, more
+        gauntlet slots, and a higher per-market cap so a family with a promising
+        near-miss can have several variants tested in one generation.
+
+        Spending more effort is self-penalising rather than a loosening of the
+        standard: every extra candidate raises G6's luck bar, so a bot found by a
+        longer search has to be correspondingly better to survive it.
+        """
         lvl = self.level + 1
         tier = min(3, 1 + lvl // 2)
         return SearchSpace(
@@ -68,13 +82,15 @@ class SearchSpace:
             allow_stops=True,
             allow_shorts=True,
             markets=tuple(m.name for m in universe.tradeable(tier)),
-            population=min(640, int(self.population * 1.5)),
-            finalists=min(40, self.finalists + 4),
+            population=min(1600, int(self.population * 1.5)),
+            finalists=min(60, self.finalists + 4),
+            per_market=min(6, self.per_market + (1 if lvl > 5 else 0)),
         )
 
     def describe(self) -> str:
         return (f"L{self.level}: tier={self.tier} genes<={self.max_genes} "
                 f"filters<={self.max_filters} pop={self.population} "
+                f"finalists={self.finalists} per_mkt={self.per_market} "
                 f"markets={len(self.markets)}")
 
 
