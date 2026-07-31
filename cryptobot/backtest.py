@@ -31,6 +31,7 @@ reports the wipeout rather than the strategy's average behaviour.
 """
 
 import math
+from collections import deque
 
 from . import indicators as ind
 
@@ -63,7 +64,57 @@ DEFAULT_RISK = {
 }
 
 
-def size_positions(market, signal, risk):
+def hedged_returns(market, hedge, beta=1.0):
+    """Per-bar return of a long-market / short-hedge pair.
+
+        r(t) = r_market(t) - beta * r_hedge(t)
+
+    Without this, a "pairs" bot is not a pairs bot. The engine computes the P&L of
+    the market it is handed, so a spread strategy run single-leg is really a
+    directional bet on one leg that happens to be timed by the spread — and, because
+    the cost model already bills both legs, it pays for a hedge it never held. That
+    was the bug that made every cointegrated market in the universe look untradeable
+    while the spread sitting in it was worth 200bps a round trip."""
+    rm = ind.simple_returns(market)
+    rh = ind.simple_returns(hedge)
+    n = min(len(rm), len(rh))
+    out = [None] * n
+    for i in range(1, n):
+        if rm[i] is None or rh[i] is None:
+            continue
+        out[i] = rm[i] - beta * rh[i]
+    return out
+
+
+def _trailing_vol(returns, window, bars_per_year):
+    """Annualised trailing stdev of an arbitrary return series, causal, O(n).
+
+    Pairs need their own sizing input: the spread's volatility is a fraction of
+    either leg's, so sizing a spread trade off one leg's vol produces a position
+    small enough that the edge disappears under fees."""
+    n = len(returns)
+    out = [None] * n
+    scale = math.sqrt(bars_per_year)
+    buf = deque()
+    s = s2 = 0.0
+    for i in range(n):
+        v = returns[i]
+        if v is not None:
+            buf.append(v)
+            s += v
+            s2 += v * v
+            if len(buf) > window:
+                old = buf.popleft()
+                s -= old
+                s2 -= old * old
+        if len(buf) >= window:
+            m = s / len(buf)
+            var = max(0.0, s2 / len(buf) - m * m) * len(buf) / (len(buf) - 1.0)
+            out[i] = math.sqrt(var) * scale
+    return out
+
+
+def size_positions(market, signal, risk, vol_series=None):
     """Turn target exposures into leverage, scaled so that a quiet market and a wild
     one carry the same risk budget.
 
@@ -71,8 +122,12 @@ def size_positions(market, signal, risk):
 
     Trailing vol at bar i uses returns up to bar i, so the sizing of the position
     that earns bar i+1 knows nothing about bar i+1. Without vol targeting the
-    optimiser reliably 'discovers' that leverage is alpha."""
-    rv = ind.realized_vol(market, risk["vol_win"])
+    optimiser reliably 'discovers' that leverage is alpha.
+
+    `vol_series` overrides the market's own volatility, which pairs trades need:
+    their risk is the spread's, not either leg's."""
+    rv = vol_series if vol_series is not None else ind.realized_vol(
+        market, risk["vol_win"])
     cap = risk["max_leverage"]
     out = [0.0] * len(signal)
     for i, s in enumerate(signal):
@@ -86,22 +141,37 @@ def size_positions(market, signal, risk):
     return out
 
 
-def run(market, signal, risk=None, lag=0, cost_mult=1.0, partner_turnover=0.0):
+def run(market, signal, risk=None, lag=0, cost_mult=1.0, partner_turnover=0.0,
+        hedge=None, hedge_beta=1.0):
     """Backtest one signal on one market. Returns a Result.
 
     `cost_mult` scales every cost — the validator reruns survivors at 2x and 3x to
     see whether the edge is real or is living inside the fee assumption.
-    `partner_turnover` bills the second leg of a pairs trade."""
+    `partner_turnover` bills the second leg of a pairs trade.
+
+    `hedge` makes it an actual pairs trade: the position earns the market's return
+    MINUS `hedge_beta` times the hedge's, is sized off the spread's volatility
+    rather than either leg's, and pays fees on both legs. Stops are disabled in this
+    mode — a stop is a price level, and a spread does not have one."""
     risk = dict(DEFAULT_RISK, **(risk or {}))
     n = len(market.close)
     if n < 10:
         raise ValueError("need at least 10 bars")
 
-    sized = size_positions(market, signal, risk)
+    if hedge is not None:
+        n = min(n, len(hedge.close))
+        spread_ret = hedged_returns(market, hedge, hedge_beta)
+        vol_series = _trailing_vol(spread_ret, risk["vol_win"],
+                                   market.bars_per_year)
+        sret = spread_ret
+        risk = dict(risk, stop_atr=0.0)
+    else:
+        vol_series = None
+        sret = ind.simple_returns(market)
+
+    sized = size_positions(market, signal, risk, vol_series)[:n]
     if lag:
         sized = [0.0] * lag + sized[:-lag] if lag < n else [0.0] * n
-
-    sret = ind.simple_returns(market)
     a = ind.atr(market, risk["stop_atr_win"]) if risk["stop_atr"] else None
     fee = market.fee_bps + market.spread_bps
     impact = market.impact_bps
@@ -149,6 +219,9 @@ def run(market, signal, risk=None, lag=0, cost_mult=1.0, partner_turnover=0.0):
                     stopped = True
 
         funding_cost = tgt * market.funding[i + 1] if market.kind == "perp" else 0.0
+        if hedge is not None and hedge.kind == "perp":
+            # Short the hedge, so its funding flows the other way.
+            funding_cost -= tgt * hedge_beta * hedge.funding[i + 1]
         bar = tgt * r - cost - funding_cost
 
         if stopped:

@@ -35,8 +35,10 @@ import urllib.request
 
 CACHE_DIR = pathlib.Path(__file__).parent / "data_cache"
 
-# Max cached indicator series per market. See Market.memo.
-MEMO_LIMIT = 400
+# Max cached indicator series per market. See Market.memo. Sized against the whole
+# universe, not one market: 30 markets x 3 segments x this many series of ~20k
+# floats each is the number that has to fit in RAM.
+MEMO_LIMIT = 160
 
 SECONDS = {
     "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
@@ -468,6 +470,65 @@ def synth_market(key, seed, bars=8000, interval="1h", kind="spot", phi=0.0,
                          "trend_halflife": trend_halflife,
                          "revert_kappa": revert_kappa,
                          "regime_drift": regime_drift, "regimes": labels})
+
+
+def cointegrated_pair(key_a, key_b, seed, spread_sd=0.020, spread_halflife=300,
+                      beta=1.0, **kw):
+    """Two markets that share a price and differ by a stationary spread.
+
+        log P_b(t) = beta * log P_a(t) + s_t
+        s_t        = rho * s_{t-1} + noise,   rho from `spread_halflife`
+
+    Neither leg is predictable on its own — market A is whatever synth_market was
+    asked for, and B inherits A's drift, regimes and vol. What IS predictable is the
+    gap between them, which is exactly the structure a pairs trade needs and the one
+    kind this generator could not previously produce. `spread_reversion` shipped in
+    the strategy zoo from the start with nothing in the universe it could trade;
+    this is that market.
+
+    `spread_sd` is the standard deviation of the log spread. It has to clear costs
+    by a wide margin to be tradeable: a two-sigma round trip earns about
+    2 * spread_sd, and pays fees on FOUR legs (in and out, both sides), so at 8bps a
+    leg the cost is ~32bps and a 2% spread sd leaves plenty. Set it near the cost and
+    the correct answer becomes "don't trade it", which is a fine thing to test but
+    not what this market is for.
+
+    Returns (market_a, market_b), sharing timestamps exactly so the pair is legal
+    under evolve.Factory._build_pairs.
+    """
+    a = synth_market(key_a, seed=seed, **kw)
+    rng = random.Random(seed + 7717)
+    rho = 0.5 ** (1.0 / max(1, spread_halflife))
+    innov = spread_sd * math.sqrt(1.0 - rho * rho)
+
+    n = len(a)
+    s = 0.0
+    log_b, spreads = [], []
+    for i in range(n):
+        s = rho * s + rng.gauss(0.0, innov)
+        spreads.append(s)
+        log_b.append(beta * math.log(a.close[i]) + s)
+
+    close = [math.exp(x) for x in log_b]
+    o, h, l = [], [], []
+    for i, c in enumerate(close):
+        prev = close[i - 1] if i else c
+        # Intrabar range scaled to this bar's own move, same shape as synth_market.
+        move = abs(math.log(c / prev)) if prev > 0 else 0.0
+        up = abs(rng.gauss(0, 1)) * (move + 1e-4) * 0.7
+        dn = abs(rng.gauss(0, 1)) * (move + 1e-4) * 0.7
+        o.append(prev)
+        h.append(max(prev, c) * math.exp(up))
+        l.append(min(prev, c) * math.exp(-dn))
+
+    b = Market(key_b, key_b, "synthetic", a.kind, a.interval, list(a.ts), o, h, l,
+               close, list(a.volume), list(a.funding), a.fee_bps, a.spread_bps,
+               a.impact_bps,
+               truth=dict(a.truth, cointegrated_with=key_a, spread_sd=spread_sd,
+                          spread_halflife=spread_halflife, beta=beta))
+    a.truth = dict(a.truth, cointegrated_with=key_b, spread_sd=spread_sd,
+                   spread_halflife=spread_halflife, beta=beta)
+    return a, b
 
 
 def _student_t(rng, df):

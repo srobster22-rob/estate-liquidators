@@ -300,6 +300,87 @@ class TestBacktest(unittest.TestCase):
         self.assertLess(abs(a["ann_vol"] - b["ann_vol"]), 0.25)
 
 
+class TestPairs(unittest.TestCase):
+    """The two-leg path. Before this existed, a 'pairs' bot bet directionally on one
+    leg while paying fees for a hedge it never held, which made every cointegrated
+    market in the universe look untradeable."""
+
+    def setUp(self):
+        self.a, self.b = dta.cointegrated_pair(
+            "pa", "pb", seed=301, bars=20000, spread_sd=0.030,
+            spread_halflife=100, fee_bps=5.0, spread_bps=2.0, impact_bps=1.0)
+        # The window must be several times the half-life, or the rolling mean
+        # chases the deviation instead of measuring it.
+        self.params = {"window": 700, "entry_z": 2.0, "exit_z": 0.0}
+
+    def test_legs_share_a_timeline(self):
+        self.assertEqual(self.a.ts, self.b.ts)
+        self.assertEqual(len(self.a), len(self.b))
+
+    def test_spread_is_stationary_and_the_legs_are_not(self):
+        """The whole premise: neither leg is mean-reverting, the gap is."""
+        import math as _m
+        spread = [_m.log(self.b.close[i] / self.a.close[i])
+                  for i in range(len(self.a))]
+        mean = sum(spread) / len(spread)
+        sd = math.sqrt(sum((x - mean) ** 2 for x in spread) / len(spread))
+        self.assertLess(sd, 0.08, "spread should be tight")
+        # A random walk wanders; this must not.
+        self.assertLess(abs(spread[-1] - spread[0]), 10 * sd)
+
+    def test_hedged_returns_are_the_difference(self):
+        h = bt.hedged_returns(self.b, self.a, 1.0)
+        ra = ind.simple_returns(self.a)
+        rb = ind.simple_returns(self.b)
+        for i in (100, 2000, 19999):
+            self.assertAlmostEqual(h[i], rb[i] - ra[i], places=12)
+
+    def test_pairs_pnl_is_the_spread_not_the_leg(self):
+        """A hedged run and an unhedged run of the same signal must differ, and the
+        hedged one must match a hand-computed spread P&L before costs."""
+        sig = st.REGISTRY["spread_reversion"].signal(self.b, self.params, self.a)
+        risk = dict(bt.DEFAULT_RISK, vol_target=0.2, max_leverage=1.0)
+        hedged = bt.run(self.b, sig, risk=risk, hedge=self.a, cost_mult=0.0)
+        h = bt.hedged_returns(self.b, self.a, 1.0)
+        want = sum(hedged.position[i] * h[i + 1]
+                   for i in range(len(hedged.net))
+                   if h[i + 1] is not None)
+        self.assertAlmostEqual(sum(hedged.net), want, places=9)
+
+        naked = bt.run(self.b, sig, risk=risk, cost_mult=0.0)
+        self.assertNotAlmostEqual(sum(hedged.net), sum(naked.net), places=4)
+
+    def test_a_real_pair_beats_an_unrelated_one(self):
+        """Cointegration is the edge. The same strategy on two unrelated series has
+        to come back with nothing, or the 'edge' is an artifact of the machinery."""
+        risk = dict(bt.DEFAULT_RISK, vol_target=0.35, max_leverage=2.0)
+        real = bt.run(self.b, st.REGISTRY["spread_reversion"].signal(
+            self.b, self.params, self.a), risk=risk, hedge=self.a,
+            partner_turnover=1.0)
+        other = dta.synth_market("unrelated", seed=999, bars=20000)
+        fake = bt.run(self.b, st.REGISTRY["spread_reversion"].signal(
+            self.b, self.params, other), risk=risk, hedge=other,
+            partner_turnover=1.0)
+        self.assertGreater(real["sharpe"], 1.0)
+        self.assertLess(fake["sharpe"], real["sharpe"] - 1.0)
+
+    def test_stops_are_disabled_for_pairs(self):
+        """A stop is a price level and a spread has not got one. Two runs differing
+        only in stop_atr must be identical when hedged."""
+        sig = st.REGISTRY["spread_reversion"].signal(self.b, self.params, self.a)
+        no_stop = bt.run(self.b, sig, risk=dict(bt.DEFAULT_RISK, stop_atr=0.0),
+                         hedge=self.a)
+        stopped = bt.run(self.b, sig, risk=dict(bt.DEFAULT_RISK, stop_atr=1.5),
+                         hedge=self.a)
+        self.assertEqual(no_stop.net, stopped.net)
+
+    def test_pairs_pay_both_legs(self):
+        sig = st.REGISTRY["spread_reversion"].signal(self.b, self.params, self.a)
+        one = bt.run(self.b, sig, hedge=self.a, partner_turnover=0.0)
+        two = bt.run(self.b, sig, hedge=self.a, partner_turnover=1.0)
+        self.assertLess(sum(two.net), sum(one.net))
+
+
 class TestStats(unittest.TestCase):
     def test_norm_ppf_roundtrip(self):
         for p in (0.01, 0.1, 0.5, 0.9, 0.975, 0.999):
@@ -361,11 +442,18 @@ class TestUniverse(unittest.TestCase):
         with self.assertRaises(ValueError):
             uni.split(a_market(seed=82, bars=800))
 
-    def test_synthetic_universe_is_mostly_edgeless(self):
-        specs = uni.SYNTH_SPEC
-        edgeless = len(specs) - len(uni.STRUCTURED)
-        self.assertGreaterEqual(edgeless / len(specs), 0.5,
-                                "the universe should be mostly efficient markets")
+    def test_the_universe_keeps_a_substantial_block_of_decoys(self):
+        """The universe was deliberately made edge-rich to test whether the factory
+        can find several INDEPENDENT edges, so it is no longer mostly efficient — but
+        a large block of markets with nothing in them has to remain, or the factory
+        is being trained on a world where every instrument pays. That is the habit
+        that loses money, and it would also make the audit meaningless: if almost
+        everything is structured, landing on a structured market proves nothing."""
+        total = len(uni.SYNTH_SPEC) + 2 * len(uni.PAIR_SPEC)
+        edgeless = total - len(uni.STRUCTURED)
+        self.assertGreaterEqual(edgeless / total, 0.33,
+                                "at least a third of the universe must be decoys")
+        self.assertGreaterEqual(edgeless, 10)
 
     def test_null_universe_has_no_directional_structure(self):
         """The strict null must have zero drift in every regime, or the
@@ -395,6 +483,12 @@ class TestUniverse(unittest.TestCase):
                                 "long_only": False}),
             ("carry_funding", {"avg_win": 24, "enter": 0.2, "long_only": False}),
         )
+        # Which leg pairs with which, so the spread probe has a hedge to use.
+        partners = {}
+        for spec in uni.PAIR_SPEC:
+            partners[spec["key_a"]] = spec["key_b"]
+            partners[spec["key_b"]] = spec["key_a"]
+
         reachable = 0
         for key in uni.REACHABLE:
             m = mkts[key]
@@ -407,11 +501,48 @@ class TestUniverse(unittest.TestCase):
                              risk=dict(bt.DEFAULT_RISK, vol_target=0.35,
                                        max_leverage=2.0))
                 best = max(best, res["sharpe"])
+            if key in partners:
+                # A cointegrated leg is only reachable through its spread, and only
+                # with a window several times the spread's half-life.
+                hedge = mkts[partners[key]]
+                for w in (400, 700, 1000):
+                    sig = st.REGISTRY["spread_reversion"].signal(
+                        m, {"window": w, "entry_z": 2.0, "exit_z": 0.0}, hedge)
+                    res = bt.run(m, sig, hedge=hedge, partner_turnover=1.0,
+                                 risk=dict(bt.DEFAULT_RISK, vol_target=0.35,
+                                           max_leverage=2.0))
+                    best = max(best, res["sharpe"])
             if best > 0.8:
                 reachable += 1
-        self.assertGreaterEqual(reachable, 3,
-                                "fewer than 3 of the reachable markets are "
-                                "reachable by an unfitted probe")
+        self.assertGreaterEqual(reachable, 10,
+                                f"only {reachable} of {len(uni.REACHABLE)} "
+                                f"reachable markets clear costs with an unfitted "
+                                f"probe")
+
+    def test_each_cointegrated_pair_is_tradeable_through_its_spread(self):
+        """Both pairs must pay through the spread and neither leg through its own
+        direction. A pair that only works one way round, or that works without the
+        hedge, means the generator is leaking directional structure into a leg."""
+        mkts = uni.synthetic_universe(bars=45000)
+        risk = dict(bt.DEFAULT_RISK, vol_target=0.35, max_leverage=2.0)
+        for spec in uni.PAIR_SPEC:
+            a, b = mkts[spec["key_a"]], mkts[spec["key_b"]]
+            best_spread = -9.0
+            for w in (400, 700, 1000):
+                sig = st.REGISTRY["spread_reversion"].signal(
+                    b, {"window": w, "entry_z": 2.0, "exit_z": 0.0}, a)
+                best_spread = max(best_spread, bt.run(
+                    b, sig, hedge=a, partner_turnover=1.0, risk=risk)["sharpe"])
+            self.assertGreater(best_spread, 1.0,
+                               f"{spec['key_a']}/{spec['key_b']} spread is not "
+                               f"tradeable")
+            best_dir = -9.0
+            for lb in (96, 200, 400):
+                sig = st.REGISTRY["ts_momentum"].signal(
+                    b, {"lookback": lb, "threshold": 0.0, "long_only": False})
+                best_dir = max(best_dir, bt.run(b, sig, risk=risk)["sharpe"])
+            self.assertLess(best_dir, best_spread,
+                            "a pair leg should not be directionally predictable")
 
     def test_the_high_cost_market_is_correctly_unreachable(self):
         """smallcap_alt_1h has a real reversion edge behind 30bps of round-trip

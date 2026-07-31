@@ -264,8 +264,12 @@ def gauntlet(bot, segments, partner_segments=None, oos_looks=1, dispersion=0.6,
     nulls = stats.matched_random_signals(raw, th["mc_runs"], rng)
     null_sharpes = []
     for path in nulls:
+        # The null must trade the same instrument the candidate does — for a pairs
+        # bot that is the spread, not one leg. Comparing a spread strategy against
+        # random single-leg bets would be scoring it against a different game.
         r = bt.run(oos, path, risk=bot.risk,
-                   partner_turnover=1.0 if bot.partner_key else 0.0)
+                   partner_turnover=1.0 if p_oos is not None else 0.0,
+                   hedge=p_oos)
         null_sharpes.append(r["sharpe"])
     p_mc = stats.mc_pvalue(m["sharpe"], null_sharpes)
     ok = p_boot <= th["max_bootstrap_p"] and p_mc <= th["max_mc_p"]

@@ -109,9 +109,13 @@ class Bot:
         return sig
 
     def run(self, market, partner=None, lag=0, cost_mult=1.0):
-        extra = 1.0 if self.partner_key else 0.0     # pairs pay both legs
+        """A bot with a partner is a two-leg trade: it earns the spread, not the
+        market, and it pays fees on both sides."""
+        paired = self.partner_key is not None and partner is not None
         return bt.run(market, self.signal(market, partner), risk=self.risk,
-                      lag=lag, cost_mult=cost_mult, partner_turnover=extra)
+                      lag=lag, cost_mult=cost_mult,
+                      partner_turnover=1.0 if paired else 0.0,
+                      hedge=partner if paired else None)
 
 
 def _ensemble_signal(children, market, partner):

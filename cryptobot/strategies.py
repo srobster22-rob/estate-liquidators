@@ -429,7 +429,11 @@ def _spread_reversion(market, p, partner):
 
 
 register(Strategy("spread_reversion", "cross_sectional", {
-    "window": IntP(20, 400, log=True),
+    # The window has to be several times the spread's own half-life or the rolling
+    # mean chases the deviation instead of measuring it: at a 150-bar window against
+    # a 120-bar half-life a 2-sigma excursion reads as noise, and the edge vanishes
+    # before costs. Hence a range that reaches 1000.
+    "window": IntP(60, 1000, log=True),
     "entry_z": FloatP(1.0, 4.0),
     "exit_z": FloatP(-0.5, 1.0),
 }, _spread_reversion, needs_partner=True, tier=1))
