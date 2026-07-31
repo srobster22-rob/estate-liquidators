@@ -163,82 +163,62 @@ sceptical.
 
 ## A recorded run
 
-400 generations, population 70, on the 30-market universe. **36,865 in-sample
-trials, 150 out-of-sample looks, 8 vault burns — three confirmed bots.**
+400 generations, population 70, on the 30-market universe. **37,020 in-sample
+trials, 140 out-of-sample looks, 2 vault burns — one confirmed bot.**
 
 ```
-                                 validation   vault      CAGR    maxDD   trades
-ema_cross  @ largecap_alt_1h          4.85     4.91      0.66    0.105      164
-donchian   @ trend_fast_1h            4.42     3.81      2.09    0.176       67
-ema_cross  @ trend_slow_1h            3.06     4.34      0.60    0.097      166
-
-pairwise correlation of daily vault returns
-                                 0      1      2
-0 ema_cross@largecap_alt_1h   1.00  -0.04   0.05
-1 donchian@trend_fast_1h     -0.04   1.00  -0.02
-2 ema_cross@trend_slow_1h     0.05  -0.02   1.00
+donchian @ largecap_alt_1h        train 4.24 | validation 5.46 | vault 5.31
+                                  CAGR 2.25 | max DD 0.129 | 136 trades
+                                  DSR 1.000, confirmed at look 5 / burn 2
 ```
 
-Three markets, three strategies, essentially zero correlation between them. All
-three landed on markets with real structure; none claimed an edge in one of the
-twelve that hasn't got any. Eleven more candidates cleared all eleven gates and were
-turned away as re-parameterisations of a bot already held.
+It landed on a market with real structure and claimed nothing in the twelve that
+have none.
 
-The whole vault log, eight entries:
+### Where the 138 rejected candidates died
 
 ```
-burn 1  ema_cross   @ alt_perp_4h      rejected: regime_consist
-burn 2  ema_cross   @ largecap_alt_1h  CONFIRMED
-burn 3  ema_cross   @ trend_fast_1h    rejected: beats_benchmark
-burn 4  ts_momentum @ trend_fast_1h    rejected: beats_benchmark
-burn 5  ts_momentum @ trend_fast_1h    rejected: beats_benchmark
-burn 6  donchian    @ trend_fast_1h    CONFIRMED
-burn 7  donchian    @ largecap_alt_1h  rejected: deflated_sharpe
-burn 8  ema_cross   @ trend_slow_1h    CONFIRMED
+  79  deflated_sharpe      <- gate 10 does most of the killing, as designed
+  17  oos_profit
+  15  cost_stress
+  11  sanity
+   6  regime_consist
+   6  drawdown
+   1  each: wf_efficiency, mc_timing, lag_robust, beats_benchmark
 ```
 
-### The run before this one destroyed the vault, and that is the real lesson
+### This run replaced a three-bot result, and that is the point
 
-The same configuration, before the protections below, returned **one** bot and
-**107 vault burns**. 105 of those went to a single market and 99 came back with the
-identical rejection. The holdout was consulted so many times it stopped being a
-holdout, and no gate noticed, because no gate was watching.
+The identical configuration previously returned **three** bots with near-zero
+pairwise correlation — a much better-looking answer. It was substantially an
+artifact. An adversarial audit found that gate 10's hurdle *fell* as the search
+looked harder: the dispersion estimate switched from the in-sample pool to the
+out-of-sample one the moment the 5th sample arrived, and a standard deviation from
+five observations is noisy enough that the bar dropped 55% in a single step, from
+2.80 to 1.25. A candidate posting 3.0 failed as the 5th look and its twin passed as
+the 6th.
 
-Three defects, each sufficient alone:
+With the bar repaired — shrinkage instead of a switch, plus a persisted high-water
+mark so it can never fall — gate 10's kill count went from 26 to 79 and two of the
+three bots went with it. **Two thirds of that result was the broken hurdle.**
 
-- **Redundancy was measured against confirmed winners only.** On a market where
-  nothing ever confirmed, every near-duplicate went straight through to the vault.
-  It now compares against every candidate that has *reached* the vault, pass or
-  fail, and rebuilds those return streams from the persisted log so restarting does
-  not hand back a clean sheet.
-- **The vault had a warning and no limit.** A warning nobody can act on mid-run is
-  not a control. There is now a hard budget; past it the factory refuses to confirm
-  anything, records the candidate as unverified, and says to get more history.
-- **Promotion skipped a market+strategy pair only once it had won.** A pair that
-  kept failing could be promoted forever — one market took 132 of 155 looks. Now
-  capped per pair, which is also what made the search explore fourteen markets
-  instead of one.
+The same audit found the strict null was not null in the space where P&L is
+measured: returns are generated in log space with zero drift, but P&L is earned in
+simple returns, and E[exp(r)-1] = exp(sigma^2/2)-1 is a 21%/year premium to anything
+permanently long at 65% vol. Every false-positive number quoted before that fix was
+measured against a market that quietly paid for exposure. With the Ito correction
+the residual drift across 24 null markets is t = +0.19 +/- 0.18, and the calibration
+re-run still returns 0 false positives — now earned rather than inherited.
 
-Vault burns went 107 → 8, and winners 1 → 3, from those three changes alone. The
-search was never the bottleneck.
+Eleven defects survived refutation out of thirty reported; all are fixed and listed
+in the commit log. The two above are the ones that changed a published number.
 
-### More structured markets did not, by itself, produce more bots
+### About that Sharpe
 
-Going from 5 structured markets to 16 changed the winner count not at all until the
-promotion cap forced the search to look somewhere other than its favourite market.
-The genetic search converges hard: left alone it pours the entire out-of-sample
-budget into the single strongest instrument. Extra edges in the world are worth
-nothing if nothing makes the search go and find them.
-
-### About those Sharpe numbers
-
-3.8 to 4.9 are not plausible numbers for a real market and are not claims about one.
-These are series this repo generated, with trend and reversion components this repo
-inserted, at strengths this repo chose. What the run establishes is that the
-machinery works end to end: the search locates real structure across several
-independent markets, the gauntlet passes it, the vault confirms it on 8 burns rather
-than 107, duplicates are turned away, and — per the calibration above — the same
-machinery finds nothing at all when there is nothing there.
+5.3 is not a plausible number for a real market and is not a claim about one.
+`largecap_alt_1h` is a series this repo generated with a trend component this repo
+inserted at a strength this repo chose. What the run establishes is that the
+machinery works end to end and that its own reported numbers survive being attacked.
 
 ---
 
