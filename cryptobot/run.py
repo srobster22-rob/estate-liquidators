@@ -290,6 +290,15 @@ def cmd_report(args):
     print(f"gauntlet runs    : {len(state['gauntleted'])}")
     print(f"vault burns      : {state['vault_burns']}")
     print(f"confirmed bots   : {len(state['winners'])}")
+    print(f"rejected as redundant: {len(state.get('redundant', []))}   "
+          f"(passed every gate, but too correlated with a bot already confirmed)")
+    fails = [v for v in state.get("vault_log", []) if not v.get("passed")]
+    if fails:
+        print(f"vault rejections : {len(fails)}   (passed validation, failed the "
+              f"final slice)")
+        for v in fails:
+            print(f"    {v['bot']['strategy']} on {v['bot']['market']}"
+                  f" -> {v['first_failure']}")
     if state["vault_burns"] > 10:
         print("\n!! the vault has been used more than ten times. It is no longer "
               "clean\n   out-of-sample data. Get more history before trusting the "
