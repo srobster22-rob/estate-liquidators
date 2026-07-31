@@ -85,8 +85,31 @@ class Factory:
         self.reports = []
         self.keys = sorted(segments)
         self._pairs = self._build_pairs()
-        self._winner_returns = []       # daily return streams of confirmed bots
+        # Daily return streams of every candidate that has reached the vault, so a
+        # near-duplicate can be turned away before it spends a burn. Rebuilt from
+        # the persisted vault log so the protection survives a restart.
+        self._tested_returns = []
         self._pending_returns = None
+        self._rebuild_tested_returns()
+
+    def _rebuild_tested_returns(self):
+        """Recompute the validation return stream of every previously vault-tested
+        bot. Costs one backtest per logged burn at startup — which is itself a
+        useful signal: if this is slow, the vault has been used far too much."""
+        for entry in self.state.get("vault_log", []):
+            try:
+                candidate = botmod.Bot.from_dict(entry["bot"])
+                seg = self.segments.get(candidate.market_key)
+                if seg is None:
+                    continue
+                pseg = self.segments.get(candidate.partner_key) \
+                    if candidate.partner_key else None
+                res = candidate.run(seg.validation,
+                                    pseg.validation if pseg else None)
+                self._tested_returns.append((_daily(res, seg.validation),
+                                             entry.get("passed", False)))
+            except (KeyError, ValueError, ZeroDivisionError, OverflowError):
+                continue
 
     # ------------------------------------------------------------ universe
 
@@ -324,6 +347,12 @@ class Factory:
                     self.log(f"      gauntlet: {candidate.strategy_name}"
                              f" on {candidate.market_key} -> {mark}")
                     if report.passed:
+                        if self.vault_exhausted():
+                            self.log(f"      passed, but the vault budget "
+                                     f"({self.cfg['vault_budget']} burns) is "
+                                     f"spent — NOT confirming. Get more history.")
+                            self.state["unconfirmed"].append(candidate.to_dict())
+                            continue
                         dupe = self.is_redundant(candidate, report)
                         if dupe is not None:
                             self.log(f"      passed, but r={dupe:+.2f} with a bot "
@@ -381,6 +410,8 @@ class Factory:
         chosen, seen = [], set()
         won = {(w["bot"]["market"], w["bot"]["strategy"])
                for w in self.state["winners"]}
+        spent = self.state["pair_looks"]
+        cap = self.cfg["max_looks_per_pair"]
         for score, candidate in scored:
             if len(chosen) >= self.cfg["promote"]:
                 break
@@ -390,7 +421,13 @@ class Factory:
             # A market+strategy pair that already produced a confirmed winner is
             # not worth another look: the look raises the hurdle for every future
             # candidate, and what comes back is almost always the same bot again.
+            # ...and a pair that has already had `cap` looks without producing a
+            # winner has had its chance. Without this the population's favourite
+            # market monopolises the out-of-sample budget: one run promoted 132
+            # near-clones from a single market and learned nothing after the first
+            # few.
             if (fam in seen or fam in won
+                    or spent.get(f"{fam[0]}|{fam[1]}", 0) >= cap
                     or candidate.fingerprint() in self.state["gauntleted"]):
                 continue
             seen.add(fam)
@@ -419,6 +456,8 @@ class Factory:
     def run_gauntlet(self, candidate):
         self.state["gauntleted"].append(candidate.fingerprint())
         self.state["oos_looks"] += 1
+        pk = f"{candidate.market_key}|{candidate.strategy_name}"
+        self.state["pair_looks"][pk] = self.state["pair_looks"].get(pk, 0) + 1
         seg = self.segments[candidate.market_key]
         pseg = self.segments[candidate.partner_key] if candidate.partner_key else None
         report = val.gauntlet(candidate, seg, pseg,
@@ -435,28 +474,41 @@ class Factory:
         return report
 
     def is_redundant(self, candidate, report):
-        """Is this candidate just a confirmed winner wearing different parameters?
+        """Has the vault already been asked this question?
 
-        Checked BEFORE the vault, because the vault is a consumable and spending a
-        burn on a bot that is 0.9 correlated with one already confirmed buys nothing
-        and costs the one thing that can't be replaced.
+        Compared against every candidate that has REACHED the vault — confirmed or
+        rejected — not just the winners. The first version of this check only knew
+        about winners, and the consequence was brutal: on a market where nothing
+        ever got confirmed, every near-duplicate sailed straight through and burned
+        the vault again. One run spent 105 of its 107 burns on a single market,
+        getting the same rejection 99 times. The vault is a consumable and that run
+        destroyed it.
 
         This is not a twelfth gate — it does not judge whether the bot is any good.
-        It answers a different question: does adding it to the set tell us anything
-        we didn't already know? Six bots correlated at 0.9 are one bot with five
-        spare parameter sets. They draw down together, and the diversification is
-        imaginary."""
+        It answers a different question: does testing this tell us anything we do
+        not already know? Bots correlated at 0.9 are one bot with spare parameter
+        sets. They draw down together, they fail together, and asking twice costs
+        the one resource that cannot be replaced."""
         seg = self.segments[candidate.market_key]
         pseg = self.segments[candidate.partner_key] if candidate.partner_key else None
         mine = _daily(candidate.run(seg.validation,
                                     pseg.validation if pseg else None),
                       seg.validation)
-        for prior in self._winner_returns:
+        for prior, _passed in self._tested_returns:
             c = _corr(mine, prior)
             if c is not None and abs(c) > self.cfg["max_winner_correlation"]:
                 return c
         self._pending_returns = mine
         return None
+
+    def vault_exhausted(self):
+        """The vault has a hard budget, not just a warning.
+
+        A warning that nobody can act on mid-run is not a control. Past this many
+        burns the slice has been consulted so often that it is a second validation
+        set, and confirming anything against it would be dressing up an in-sample
+        result. The factory stops burning and says so."""
+        return self.state["vault_burns"] >= self.cfg["vault_budget"]
 
     def vault_confirm(self, candidate):
         """One-shot confirmation on the untouched final slice.
@@ -482,8 +534,8 @@ class Factory:
             "oos_sharpe": report.oos["sharpe"],
             "trials_at_burn": self.state["trials"],
         })
-        if report.passed and self._pending_returns is not None:
-            self._winner_returns.append(self._pending_returns)
+        if self._pending_returns is not None:
+            self._tested_returns.append((self._pending_returns, report.passed))
         if report.passed:
             self.state["winners"].append({
                 "bot": candidate.to_dict(),
@@ -497,8 +549,9 @@ class Factory:
             })
         save_state(self.state_file, self.state)
         if self.state["vault_burns"] > self.cfg["vault_burn_warning"]:
-            self.log(f"      !! vault used {self.state['vault_burns']} times; "
-                     f"its out-of-sample status is degrading")
+            self.log(f"      !! vault used {self.state['vault_burns']} of "
+                     f"{self.cfg['vault_budget']} times; its out-of-sample status "
+                     f"is degrading")
         return report
 
 
@@ -513,6 +566,10 @@ DEFAULTS = {
     "patience": 4,
     "vault_burn_warning": 10,
     "max_winner_correlation": 0.70,
+    # The vault is a consumable with a hard budget, and no (market, strategy) pair
+    # may monopolise the out-of-sample budget.
+    "vault_budget": 25,
+    "max_looks_per_pair": 8,
     "thresholds": None,
 }
 
@@ -522,15 +579,28 @@ DEFAULTS = {
 def blank_state():
     return {"trials": 0, "oos_looks": 0, "sharpe_samples": [],
             "oos_sharpe_samples": [], "gauntleted": [], "winners": [],
-            "redundant": [], "vault_burns": 0, "vault_log": []}
+            "redundant": [], "vault_burns": 0, "vault_log": [],
+            "pair_looks": {}, "unconfirmed": []}
 
 
 def load_state(path):
+    """Load the persisted counters, tolerating an empty or truncated file.
+
+    A run killed mid-write leaves a zero-byte state file behind, and crashing on it
+    would be the worst possible response: the obvious fix is to delete the file,
+    which silently resets the trial and vault counters and hands back a clean sheet
+    nobody earned. Starting from blank is the same outcome, but it is at least
+    visible in the run header, which prints the counters it is carrying."""
     path = pathlib.Path(path)
-    if not path.exists():
+    if not path.exists() or path.stat().st_size == 0:
         return blank_state()
-    with open(path) as fh:
-        state = json.load(fh)
+    try:
+        with open(path) as fh:
+            state = json.load(fh)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return blank_state()
+    if not isinstance(state, dict):
+        return blank_state()
     for k, v in blank_state().items():
         state.setdefault(k, v)
     return state

@@ -707,3 +707,85 @@ class TestGauntlet(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVaultIsProtected(unittest.TestCase):
+    """The vault is a consumable and the factory must not be able to destroy it.
+
+    It could. A 400-generation run spent 105 of its 107 burns on one market,
+    re-asking a question the vault had already answered 99 times, because the
+    redundancy check only knew about CONFIRMED winners and there were none on that
+    market. These tests pin the three controls that stopped it."""
+
+    def setUp(self):
+        import tempfile
+        markets = uni.synthetic_universe(
+            bars=45000, subset={"largecap_alt_1h", "decoy_a_1h", "trend_fast_1h"})
+        self.segments = {k: uni.split(m) for k, m in markets.items()}
+        self.tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        self.state_file = self.tmp.name
+
+    def factory(self, **cfg):
+        from . import evolve
+        return evolve.Factory(self.segments, cfg, seed=1,
+                              state_file=self.state_file, log=lambda *a: None)
+
+    def test_vault_budget_is_a_hard_stop_not_a_warning(self):
+        f = self.factory(vault_budget=3)
+        self.assertFalse(f.vault_exhausted())
+        f.state["vault_burns"] = 3
+        self.assertTrue(f.vault_exhausted())
+        f.state["vault_burns"] = 99
+        self.assertTrue(f.vault_exhausted())
+
+    def test_a_pair_cannot_monopolise_the_look_budget(self):
+        f = self.factory(max_looks_per_pair=2, promote=5)
+        b = botmod.Bot("largecap_alt_1h", "ema_cross",
+                       {"fast": 16, "slow": 99, "deadband": 0.01,
+                        "long_only": False}, dict(bt.DEFAULT_RISK))
+        scored = [(5.0, b)]
+        f.state["pair_looks"]["largecap_alt_1h|ema_cross"] = 2
+        self.assertEqual(f.promote(scored), [],
+                         "a pair at its look cap must not be promoted again")
+        f.state["pair_looks"]["largecap_alt_1h|ema_cross"] = 1
+        self.assertEqual(len(f.promote(scored)), 1)
+
+    def test_redundancy_counts_rejected_candidates_not_just_winners(self):
+        """The exact bug: a bot correlated with something the vault already REJECTED
+        must not get its own burn."""
+        f = self.factory()
+        b = botmod.Bot("largecap_alt_1h", "ema_cross",
+                       {"fast": 16, "slow": 99, "deadband": 0.01,
+                        "long_only": False}, dict(bt.DEFAULT_RISK))
+        self.assertIsNone(f.is_redundant(b, None), "first look should be allowed")
+        # Simulate that bot having been vault-tested AND REJECTED.
+        f._tested_returns.append((f._pending_returns, False))
+        twin = botmod.Bot("largecap_alt_1h", "ema_cross",
+                          {"fast": 17, "slow": 101, "deadband": 0.01,
+                           "long_only": False}, dict(bt.DEFAULT_RISK))
+        self.assertIsNotNone(f.is_redundant(twin, None),
+                             "a near-clone of a vault-rejected bot must be turned "
+                             "away before it burns the vault")
+
+    def test_protection_survives_a_restart(self):
+        """The vault log persists, so the return streams must be rebuilt on load —
+        otherwise restarting the factory hands back a fresh set of burns."""
+        from . import evolve
+        f = self.factory()
+        b = botmod.Bot("largecap_alt_1h", "ema_cross",
+                       {"fast": 16, "slow": 99, "deadband": 0.01,
+                        "long_only": False}, dict(bt.DEFAULT_RISK))
+        f.is_redundant(b, None)
+        f.state["vault_log"].append(
+            {"burn": 1, "bot": b.to_dict(), "passed": False,
+             "first_failure": "oos_profit", "oos_sharpe": 0.1,
+             "trials_at_burn": 10})
+        evolve.save_state(self.state_file, f.state)
+
+        reloaded = self.factory()
+        self.assertEqual(len(reloaded._tested_returns), 1,
+                         "return streams must be rebuilt from the vault log")
+        twin = botmod.Bot("largecap_alt_1h", "ema_cross",
+                          {"fast": 17, "slow": 101, "deadband": 0.01,
+                           "long_only": False}, dict(bt.DEFAULT_RISK))
+        self.assertIsNotNone(reloaded.is_redundant(twin, None))

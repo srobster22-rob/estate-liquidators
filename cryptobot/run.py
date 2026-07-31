@@ -299,6 +299,10 @@ def cmd_report(args):
         for v in fails:
             print(f"    {v['bot']['strategy']} on {v['bot']['market']}"
                   f" -> {v['first_failure']}")
+    unconf = len(state.get("unconfirmed", []))
+    if unconf:
+        print(f"passed but NOT confirmed: {unconf}   (vault budget was already "
+              f"spent — these are unverified)")
     if state["vault_burns"] > 10:
         print("\n!! the vault has been used more than ten times. It is no longer "
               "clean\n   out-of-sample data. Get more history before trusting the "
