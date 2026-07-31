@@ -399,6 +399,130 @@ it knows the change was contemplated *before* it was made and why it was deferre
 
 ---
 
+## F13 · The search ate its own headroom, and that is the honest answer to "find a fourth"
+
+Continuing past three strategies produced no fourth, and the reason is measurable
+rather than a matter of not trying hard enough. Across 32 further generations —
+**51,200 additional candidates, 1,626 additional gauntlets, ~100,000 additional
+backtests** — nothing new was certified.
+
+What happened instead is visible in the funnel. Deaths at **G6 rose from 36 to
+120**: candidates that had already replicated on 20 unseen instances, stayed flat
+on the random walk, survived 2x and 3x costs, and beaten their own permutation
+null at p ≤ 0.01 — rejected solely because the search had grown.
+
+The luck bar over the life of the run:
+
+| moment | confirmation tests | luck bar (annual SR) |
+|---|---|---|
+| bot #1 proven (gen 4) | 42 | **0.23** |
+| bot #3 proven (gen 45) | 1,255 | **0.48** |
+| end of the hunt for #4 | 2,911 | **0.51** |
+
+And the best remaining candidates, all of which reach G6:
+
+| market | replication alphaSR | DSR | needed |
+|---|---|---|---|
+| `commodity_meanrev_daily` | +0.52 | 0.161 | 0.95 |
+| `futures_trend_daily` | +0.38 | 0.637 | 0.95 |
+
+These are **real edges**. The first has a higher replication alpha Sharpe than
+the bot certified at generation 4. It cannot be certified now because the
+evidence required has risen with the number of hypotheses tested, and 92,000
+candidates is a lot of hypotheses.
+
+That is the deflated-Sharpe correction working exactly as intended, and it is the
+whole point of having it: *a search cannot buy certainty by searching harder.*
+The mechanism that made bot #3 impressive — it cleared a bar twice as high as
+bot #1 — is the same mechanism that now blocks bot #4.
+
+**Three things would legitimately produce a fourth, and one thing would not.**
+
+1. **More data per instance.** The luck bar does not depend on sample length, but
+   the probabilistic Sharpe does, through its `sqrt(T-1)` term. Doubling
+   `n_bars` from 3,000 to 6,000 raises DSR for a genuine edge and does nothing
+   for a spurious one, because the null tightens too. This is the cleanest lever
+   available: more evidence, not a weaker test. It requires regenerating the
+   catalogue, refreshing `vol_fix`, and re-measuring the false-positive rate.
+2. **Fixing F12's block-length problem properly** — pre-registered, whole search
+   re-run, FPR re-measured. That admits the `eq_largecap_daily` edge, which is
+   currently blocked by a null that retains the structure the bot trades.
+3. **Richer market structure**, e.g. correlated baskets enabling cross-sectional
+   strategies, which no primitive can currently express.
+
+What would **not** be legitimate, and was not done: starting a fresh ledger. A
+new run's luck bar resets to ~0.23, and every one of the G6 near-misses above
+would certify immediately. Splitting one search into several to escape its own
+multiple-testing correction is precisely the manipulation the correction exists
+to prevent, and it would be undetectable in the final report. It is written down
+here so that the temptation is on the record along with the reason it was
+refused.
+
+---
+
+## F14 · Inert genes were forging diversity
+
+While hunting the fourth, the hall of fame filled with eight bots that were
+byte-for-byte different and behaviourally identical:
+
+```
+bollinger(k=2.57,n=32) + carry()  + long_bias()      on eq_intraday_15m
+bollinger(k=2.57,n=32) + -carry() + long_bias()      on eq_intraday_15m
+```
+
+`eq_intraday_15m` has `carry_ann == 0`, so the `carry` primitive emits a constant
+zero and its sign cannot affect anything. But the sign *is* part of the genome
+hash, so `+carry` and `-carry` were different `bot_id`s and different structural
+signatures. They occupied eight of sixty hall slots and a share of the per-market
+cap, and the factory bred from all of them.
+
+Worse, the same flaw could have inflated the headline: two "distinct" proven
+strategies differing only by the sign of an inert gene would have counted as two.
+It did not happen — none of the three proven bots use `carry` — but it was
+reachable.
+
+Fixed in `_repair`: a gene that is provably a no-op for its market is dropped
+from the genome entirely, rather than being special-cased at comparison time. An
+inert gene should not exist. Guarded by `test_inert_genes_are_dropped`, which
+also checks the converse — `carry` on `fx_major_daily`, which really does pay
+1.2%, must be kept.
+
+---
+
+## F15 · A primitive aimed at an effect below the noise floor
+
+Three tier-4 primitives were added to widen the hypothesis space after the level
+1-3 ladder was exhausted. Measured against the structure they target:
+
+| primitive | best gross alphaSR | verdict |
+|---|---|---|
+| `efficiency_ratio(n=20)` | +0.43 on `futures_trend_daily` | works |
+| `adaptive_horizon` | +0.39 on `eq_index_daily` | works |
+| `seasonal_profile` | +0.01 at the *planted* period | cannot work here |
+
+`seasonal_profile` estimates the mean return of each calendar phase from its last
+`k` occurrences — the right tool for the sine calendar effect planted in
+`commodity_meanrev_daily` and the session shape in `eq_intraday_15m`. It finds
+nothing, and the arithmetic says it never could:
+
+| market | effect size | phase-mean std error | SNR |
+|---|---|---|---|
+| `commodity_meanrev_daily` | 0.030 sigma | 0.084 sigma (142 cycles) | **0.36** |
+| `eq_intraday_15m` | 0.015 sigma | 0.058 sigma (300 cycles) | **0.26** |
+
+Using *every cycle in the series*, the standard error of the estimate is three to
+four times the effect. The calendar effect is real, it is in the data, and it is
+undetectable at this sample size by any estimator.
+
+This has a consequence for `oracle_sharpe_ceiling()`. The ceiling is correctly
+labelled perfect-foresight, and it adds a seasonal term of `amp/sqrt(2)` — but
+for the calendar component the gap between that bound and anything achievable is
+essentially total. The trend and reversion terms are reachable; the seasonal term
+is a number no strategy can approach. Worth knowing before reading a ceiling as
+"how much is on the table".
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

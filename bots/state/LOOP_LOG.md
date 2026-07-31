@@ -96,3 +96,67 @@ G44 L15 · 1600 candidates over 11 markets, 53 gauntlets, best screen fit +1.05 
 
 G45 L15 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +1.10 (40740 trials on the ledger) · **0dc98ea16ea7** on futures_trend_daily (replSR +0.40)
 
+G46 L15 · 1600 candidates over 11 markets, 47 gauntlets, best screen fit +1.10 (42340 trials on the ledger) · nothing passed
+
+G47 L16 · 1600 candidates over 11 markets, 52 gauntlets, best screen fit +1.10 (43940 trials on the ledger) · nothing passed
+
+G48 L17 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +1.10 (45540 trials on the ledger) · nothing passed
+
+G49 L18 · 1600 candidates over 11 markets, 49 gauntlets, best screen fit +1.10 (47140 trials on the ledger) · nothing passed
+
+G50 L19 · 1600 candidates over 11 markets, 51 gauntlets, best screen fit +1.10 (48740 trials on the ledger) · nothing passed
+
+G51 L20 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +1.10 (50340 trials on the ledger) · nothing passed
+
+G52 L21 · 1600 candidates over 11 markets, 52 gauntlets, best screen fit +1.10 (51940 trials on the ledger) · nothing passed
+
+G53 L22 · 1600 candidates over 11 markets, 46 gauntlets, best screen fit +1.10 (53540 trials on the ledger) · nothing passed
+
+G54 L23 · 1600 candidates over 11 markets, 48 gauntlets, best screen fit +1.10 (55140 trials on the ledger) · nothing passed
+
+G55 L24 · 1600 candidates over 11 markets, 46 gauntlets, best screen fit +1.10 (56740 trials on the ledger) · nothing passed
+
+G56 L25 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +1.10 (58340 trials on the ledger) · nothing passed
+
+G57 L25 · 1600 candidates over 11 markets, 51 gauntlets, best screen fit +0.98 (59940 trials on the ledger) · nothing passed
+
+G58 L26 · 1600 candidates over 11 markets, 55 gauntlets, best screen fit +0.98 (61540 trials on the ledger) · nothing passed
+
+G59 L27 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +0.98 (63140 trials on the ledger) · nothing passed
+
+G60 L28 · 1600 candidates over 11 markets, 54 gauntlets, best screen fit +0.98 (64740 trials on the ledger) · nothing passed
+
+G61 L29 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +0.98 (66340 trials on the ledger) · nothing passed
+
+G62 L30 · 1600 candidates over 11 markets, 54 gauntlets, best screen fit +0.98 (67940 trials on the ledger) · nothing passed
+
+G63 L31 · 1600 candidates over 11 markets, 49 gauntlets, best screen fit +0.98 (69540 trials on the ledger) · nothing passed
+
+G64 L32 · 1600 candidates over 11 markets, 51 gauntlets, best screen fit +0.98 (71140 trials on the ledger) · nothing passed
+
+G65 L33 · 1600 candidates over 11 markets, 51 gauntlets, best screen fit +0.98 (72740 trials on the ledger) · nothing passed
+
+G66 L34 · 1600 candidates over 11 markets, 54 gauntlets, best screen fit +0.98 (74340 trials on the ledger) · nothing passed
+
+G67 L35 · 1600 candidates over 11 markets, 45 gauntlets, best screen fit +0.98 (75940 trials on the ledger) · nothing passed
+
+G68 L36 · 1600 candidates over 11 markets, 51 gauntlets, best screen fit +0.98 (77540 trials on the ledger) · nothing passed
+
+G69 L37 · 1600 candidates over 11 markets, 57 gauntlets, best screen fit +0.98 (79140 trials on the ledger) · nothing passed
+
+G70 L38 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +0.98 (80740 trials on the ledger) · nothing passed
+
+G71 L39 · 1600 candidates over 11 markets, 49 gauntlets, best screen fit +0.98 (82340 trials on the ledger) · nothing passed
+
+G72 L40 · 1600 candidates over 11 markets, 52 gauntlets, best screen fit +0.98 (83940 trials on the ledger) · nothing passed
+
+G73 L41 · 1600 candidates over 11 markets, 50 gauntlets, best screen fit +0.98 (85540 trials on the ledger) · nothing passed
+
+G74 L42 · 1600 candidates over 11 markets, 54 gauntlets, best screen fit +0.98 (87140 trials on the ledger) · nothing passed
+
+G75 L43 · 1600 candidates over 11 markets, 54 gauntlets, best screen fit +0.98 (88740 trials on the ledger) · nothing passed
+
+G76 L44 · 1600 candidates over 11 markets, 56 gauntlets, best screen fit +0.98 (90340 trials on the ledger) · nothing passed
+
+G77 L45 · 1600 candidates over 11 markets, 48 gauntlets, best screen fit +0.98 (91940 trials on the ledger) · nothing passed
+

@@ -19,6 +19,7 @@ here is all it takes to widen the search space:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Callable
 
@@ -456,3 +457,80 @@ def signal_names(tier: int = 3) -> list[str]:
 
 def filter_names(tier: int = 3) -> list[str]:
     return [n for n, d in FILTERS.items() if d.tier <= tier]
+
+
+# ---- tier 4: added when the level 1-3 ladder was exhausted ------------------
+#
+# The catalogue contains structure the original 21 primitives could not reach
+# efficiently. These three target it directly. They are a widening of the
+# hypothesis space, not a weakening of any gate: every one still has to survive
+# the same seven-gate ladder, and each extra candidate they generate raises G6's
+# luck bar for everything that follows.
+
+@_register("seasonal_profile", 4, {"period": ("choice", [5, 7, 21, 24, 26]),
+                                   "cycles": ("log", 4, 40)},
+           lambda p: int(p["period"]) * (int(p["cycles"]) + 1) + 5, "calendar")
+def _seasonal_profile(s: Series, p: dict) -> np.ndarray:
+    """Trailing mean return of the current calendar phase.
+
+    The existing `seasonal` primitive encodes the active phases as a bitmask, so
+    finding a 21-bar commodity calendar effect means drawing the right pattern
+    out of 2^21. This one *estimates* the profile instead: for each phase, the
+    mean return of its last `cycles` occurrences, all strictly earlier bars. The
+    planted effects in `commodity_meanrev_daily` (21-bar sine) and
+    `eq_intraday_15m` (26-bar session shape) are reachable this way.
+    """
+    period = max(int(p["period"]), 2)
+    k = max(int(p["cycles"]), 2)
+    lr = log_returns(s)
+    n = lr.size
+    out = np.full(n, np.nan)
+    for ph in range(period):
+        idx = np.arange(ph, n, period)
+        if idx.size <= k:
+            continue
+        vals = lr[idx]
+        cs = np.concatenate(([0.0], np.cumsum(vals)))
+        m = np.full(idx.size, np.nan)
+        # m[j] averages vals[j-k : j] — occurrences strictly before bar idx[j].
+        m[k:] = (cs[k:idx.size] - cs[0:idx.size - k]) / k
+        out[idx] = m
+    scale = _bar_vol(s, 60) / math.sqrt(max(k, 1))
+    return _tanh(out / (scale + EPS))
+
+
+@_register("efficiency_ratio", 4, {"n": ("log", 8, 150)}, lambda p: int(p["n"]) + 5, "trend")
+def _efficiency_ratio(s: Series, p: dict) -> np.ndarray:
+    """Kaufman efficiency ratio, signed: |net move| / |path travelled|, times the
+    direction of the net move. Trades trend only when the trend is *clean*, which
+    is a different question from whether a moving average has crossed."""
+    n = max(int(p["n"]), 3)
+    c = s.close
+    net = c - shift(c, n)
+    step = np.zeros(c.size)
+    step[1:] = np.abs(np.diff(c))
+    path = sma(step, n) * n
+    er = np.abs(net) / (path + EPS)
+    return np.clip(er, 0.0, 1.0) * np.sign(np.nan_to_num(net))
+
+
+@_register("adaptive_horizon", 4, {"ns": ("log", 3, 30), "nl": ("log", 40, 250),
+                                   "lb": ("log", 40, 250)},
+           lambda p: int(p["nl"]) + int(p["lb"]) + 25, "adaptive")
+def _adaptive_horizon(s: Series, p: dict) -> np.ndarray:
+    """Momentum at whichever of two horizons has actually been paying recently.
+
+    Scores each horizon by the trailing sum of (signal at t-1) x (return at t) —
+    realised, strictly past predictive value — and emits the winner. Chooses its
+    own timescale rather than having one picked for it by the search.
+    """
+    ns, nl = max(int(p["ns"]), 2), max(int(p["nl"]), 10)
+    lb = max(int(p["lb"]), 20)
+    lr = log_returns(s)
+    vol = _bar_vol(s, max(nl, 25))
+    mom_s = _tanh(np.log(s.close / shift(s.close, ns)) / (vol * np.sqrt(ns) + EPS))
+    mom_l = _tanh(np.log(s.close / shift(s.close, nl)) / (vol * np.sqrt(nl) + EPS))
+    pay_s = sma(np.nan_to_num(shift(mom_s, 1) * lr), lb)
+    pay_l = sma(np.nan_to_num(shift(mom_l, 1) * lr), lb)
+    pick_short = pay_s > pay_l
+    return np.where(pick_short, np.nan_to_num(mom_s), np.nan_to_num(mom_l))

@@ -73,7 +73,8 @@ class SearchSpace:
         longer search has to be correspondingly better to survive it.
         """
         lvl = self.level + 1
-        tier = min(3, 1 + lvl // 2)
+        tier = min(4, 1 + lvl // 2)     # tier 4 = the primitives added after the
+                                        # level 1-3 ladder was first exhausted
         return SearchSpace(
             level=lvl,
             tier=tier,
@@ -546,6 +547,24 @@ def crossover(a: Genome, b: Genome, space: SearchSpace, rng: np.random.Generator
     return child
 
 
+def _inert(gene: Gene, market: str) -> bool:
+    """Is this gene provably a no-op on this market?
+
+    `carry` emits the sign of the market's roll yield, so on a market with
+    `carry_ann == 0` it is a constant zero. It then contributes nothing to
+    behaviour while still contributing to the genome's identity — and because
+    `+carry` and `-carry` hash differently, the hall of fame filled with eight
+    behaviourally identical `bollinger + (+/-)carry + long_bias` bots on
+    `eq_intraday_15m`, each occupying a slot and a share of the per-market cap.
+    Dropping the gene outright is cleaner than special-casing the signature: an
+    inert gene should not exist, not merely be ignored when comparing.
+    """
+    if gene.name != "carry":
+        return False
+    spec = universe.BY_NAME.get(market)
+    return spec is not None and abs(spec.carry_ann) < 1e-9
+
+
 def _repair(g: Genome, space: SearchSpace) -> None:
     """Keep a genome inside the market's own constraints and the search space."""
     if g.market not in space.markets and space.markets:
@@ -558,6 +577,8 @@ def _repair(g: Genome, space: SearchSpace) -> None:
     if not space.allow_shorts and g.direction != "long":
         g.direction = "long"
     g.genes = [ge for ge in g.genes if ge.name in signals.SIGNALS][: max(1, space.max_genes)]
+    live = [ge for ge in g.genes if not _inert(ge, g.market)]
+    g.genes = live if live else [Gene("momentum", {"lb": 20})]
     if not g.genes:
         g.genes = [Gene("momentum", {"lb": 20})]
     g.filters = [f for f in g.filters if f.name in signals.FILTERS][: space.max_filters]

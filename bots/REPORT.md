@@ -1,12 +1,12 @@
 # Bot factory: run report
 
-_Generated 2026-07-31 06:05:01 from `run_state.json`._
+_Generated 2026-07-31 11:22:58 from `run_state.json`._
 
 ## Result
 
 **3 distinct strategies passed all seven gates** (7 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes).
 
-40,740 candidates were screened across 45 generations and 14 search-space expansions; 1285 reached the gauntlet; 100,045 backtests were run.
+91,940 candidates were screened across 77 generations and 45 search-space expansions; 2911 reached the gauntlet; 202,348 backtests were run.
 
 Markets represented: `commodity_meanrev_daily`, `futures_trend_daily`.
 
@@ -16,12 +16,12 @@ Where candidates died. A healthy funnel kills most bots early; a funnel that kil
 
 | gate | rejected | share | what that gate proves |
 |---|---|---|---|
-| G1-oos | 567 | 44% | worked only on the bars the search scored (in-sample fit) |
-| G2-replication | 509 | 40% | worked only on the instances it was bred on (instance luck) |
+| G1-oos | 1487 | 51% | worked only on the bars the search scored (in-sample fit) |
+| G2-replication | 1064 | 37% | worked only on the instances it was bred on (instance luck) |
 | G3-controls | 1 | 0% | showed profit on a random walk (artifact or harness bug) |
-| G4-stress | 103 | 8% | edge smaller than 2x costs or one bar of delay |
-| G5-permutation | 61 | 5% | no better than its own block-bootstrapped null |
-| G6-multiplicity | 36 | 3% | not surprising given how many candidates were tried |
+| G4-stress | 145 | 5% | edge smaller than 2x costs or one bar of delay |
+| G5-permutation | 86 | 3% | no better than its own block-bootstrapped null |
+| G6-multiplicity | 120 | 4% | not surprising given how many candidates were tried |
 | G7-stress-pool | 1 | 0% | failed to replicate a second time on a third pool |
 
 ## Proven bots
@@ -555,21 +555,21 @@ The two portfolio numbers differ because this lab generates each market family i
 
 | bot | market | screen fit | screen alphaSR | trades | rule |
 |---|---|---|---|---|---|
-| `b7b101b57f8b` | eq_intraday_15m | +1.10 | +1.35 | 3833 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `edb5284741dd` | eq_intraday_15m | +1.05 | +1.34 | 4008 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `4a0b50a54b35` | eq_intraday_15m | +1.05 | +1.34 | 4008 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
-| `1e0dc2fa6d88` | eq_intraday_15m | +1.03 | +1.41 | 3181 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
-| `11c1e7154dd1` | eq_intraday_15m | +1.02 | +1.41 | 3212 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
-| `95b485f14f30` | eq_intraday_15m | +1.02 | +1.41 | 3212 | `bollinger(k=2.57,n=32)x0.58 + carry()x1.48 + long_bias()x1.56 -> t` |
-| `9dd6be7e89c2` | eq_intraday_15m | +1.02 | +1.41 | 3212 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `84f49134ec86` | eq_intraday_15m | +1.02 | +1.42 | 3044 | `bollinger(k=2.57,n=32)x0.58 + -carry()x1.48 + long_bias()x1.56 -> ` |
-| `3305d2061162` | crypto_major_hourly | +0.95 | +1.09 | 9041 | `bollinger(k=1.62,n=101)x0.58 + long_bias()x1.56 -> thr 0.43/0.10 l` |
-| `7a3b5ad4ab18` | crypto_major_hourly | +0.95 | +1.09 | 9041 | `bollinger(k=1.62,n=101)x0.58 + long_bias()x1.56 -> thr 0.42/0.10 l` |
-| `1521faed6a52` | crypto_major_hourly | +0.94 | +1.11 | 8975 | `bollinger(k=1.51,n=101)x0.58 + long_bias()x1.56 -> thr 0.40/0.10 b` |
-| `d6946ccec51c` | crypto_major_hourly | +0.94 | +1.11 | 8975 | `bollinger(k=1.51,n=101)x0.58 + long_bias()x1.56 -> thr 0.40/0.10 b` |
-| `fae4296029ad` | crypto_major_hourly | +0.93 | +1.12 | 6063 | `bollinger(k=2.48,n=54)x0.58 + -long_bias()x1.56 -> thr 0.27/0.10 s` |
-| `86165d5b9fbb` | crypto_major_hourly | +0.93 | +1.12 | 6053 | `bollinger(k=2.49,n=54)x0.58 + -long_bias()x1.56 -> thr 0.27/0.10 s` |
-| `3d07bb0dfc8b` | crypto_major_hourly | +0.92 | +1.12 | 9338 | `bollinger(k=2.17,n=54)x0.66 + -long_bias()x1.54 -> thr 0.33/0.10 b` |
+| `78e412266cf4` | eq_intraday_15m | +1.10 | +1.35 | 3833 | `bollinger(k=2.57,n=32)x0.58 + long_bias()x1.56 -> thr 0.59/0.31 lo` |
+| `f2d2e5bfe287` | eq_intraday_15m | +1.10 | +1.35 | 3833 | `bollinger(k=2.57,n=32)x0.58 + long_bias()x1.56 -> thr 0.59/0.31 lo` |
+| `29f5cf5d0f3b` | eq_intraday_15m | +1.10 | +1.35 | 3833 | `bollinger(k=2.57,n=32)x0.58 + long_bias()x1.56 -> thr 0.59/0.31 bo` |
+| `52162bdf9836` | eq_intraday_15m | +1.10 | +1.35 | 3833 | `bollinger(k=2.57,n=32)x0.58 + long_bias()x1.56 -> thr 0.59/0.31 bo` |
+| `f6624b405b00` | eq_intraday_15m | +0.98 | +1.29 | 3739 | `bollinger(k=2.57,n=32)x0.58 + long_bias()x1.56 \| trend_strength(nf` |
+| `06049d2bcae2` | crypto_major_hourly | +0.98 | +1.14 | 9642 | `bollinger(k=1.63,n=101)x0.58 + long_bias()x1.29 -> thr 0.37/0.10 b` |
+| `2d64a44eb6e5` | crypto_major_hourly | +0.98 | +1.14 | 9642 | `bollinger(k=1.63,n=101)x0.58 + long_bias()x1.29 -> thr 0.37/0.10 b` |
+| `369a98f2d9fb` | crypto_major_hourly | +0.98 | +1.14 | 9642 | `bollinger(k=1.63,n=101)x0.58 + long_bias()x1.29 -> thr 0.37/0.10 l` |
+| `7a749c0ac276` | crypto_major_hourly | +0.97 | +1.09 | 9366 | `bollinger(k=1.79,n=101)x0.58 + long_bias()x1.43 -> thr 0.43/0.10 l` |
+| `8f8221e832c5` | crypto_major_hourly | +0.95 | +1.12 | 6246 | `bollinger(k=2.34,n=54)x0.59 + -long_bias()x1.56 -> thr 0.18/0.10 s` |
+| `9f2714a68bf6` | crypto_major_hourly | +0.95 | +1.12 | 6246 | `bollinger(k=2.34,n=54)x0.59 + -long_bias()x1.56 -> thr 0.10/0.10 s` |
+| `cc3f6857b244` | crypto_major_hourly | +0.95 | +1.12 | 6246 | `bollinger(k=2.34,n=54)x0.59 + -long_bias()x1.56 -> thr 0.10/0.10 b` |
+| `0b224e7f68a4` | crypto_major_hourly | +0.94 | +1.11 | 6141 | `bollinger(k=2.35,n=54)x0.56 + -long_bias()x1.56 -> thr 0.18/0.10 b` |
+| `1938b790243b` | crypto_major_hourly | +0.89 | +1.19 | 7449 | `bollinger(k=2.12,n=120)x0.67 + efficiency_ratio(n=121)x0.56 + long` |
+| `c17de2c55127` | crypto_major_hourly | +0.89 | +1.19 | 7449 | `bollinger(k=2.12,n=120)x0.67 + efficiency_ratio(n=121)x0.56 + long` |
 
 ## Expansions
 
@@ -589,43 +589,42 @@ The two portfolio numbers differ because this lab generates each market family i
 | 39 | 13 | 2 generations without a pass | L13: tier=3 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
 | 41 | 14 | 2 generations without a pass | L14: tier=3 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
 | 43 | 15 | 2 generations without a pass | L15: tier=3 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 46 | 16 | 1 generations without a pass | L16: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 47 | 17 | 1 generations without a pass | L17: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 48 | 18 | 1 generations without a pass | L18: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 49 | 19 | 1 generations without a pass | L19: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 50 | 20 | 1 generations without a pass | L20: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 51 | 21 | 1 generations without a pass | L21: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 52 | 22 | 1 generations without a pass | L22: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 53 | 23 | 1 generations without a pass | L23: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 54 | 24 | 1 generations without a pass | L24: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 55 | 25 | 1 generations without a pass | L25: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 57 | 26 | 1 generations without a pass | L26: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 58 | 27 | 1 generations without a pass | L27: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 59 | 28 | 1 generations without a pass | L28: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 60 | 29 | 1 generations without a pass | L29: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 61 | 30 | 1 generations without a pass | L30: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 62 | 31 | 1 generations without a pass | L31: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 63 | 32 | 1 generations without a pass | L32: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 64 | 33 | 1 generations without a pass | L33: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 65 | 34 | 1 generations without a pass | L34: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 66 | 35 | 1 generations without a pass | L35: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 67 | 36 | 1 generations without a pass | L36: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 68 | 37 | 1 generations without a pass | L37: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 69 | 38 | 1 generations without a pass | L38: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 70 | 39 | 1 generations without a pass | L39: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 71 | 40 | 1 generations without a pass | L40: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 72 | 41 | 1 generations without a pass | L41: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 73 | 42 | 1 generations without a pass | L42: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 74 | 43 | 1 generations without a pass | L43: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 75 | 44 | 1 generations without a pass | L44: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 76 | 45 | 1 generations without a pass | L45: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
+| 77 | 46 | 1 generations without a pass | L46: tier=4 genes<=5 filters<=3 pop=1600 finalists=60 per_mkt=6 markets=11 |
 
 ## Generations
 
 | gen | level | candidates | markets | gauntlets | of which priors | proven | best screen fit | screen time |
 |---|---|---|---|---|---|---|---|---|
-| 6 | 2 | 360 | 10 | 14 | 0 | 0 | +0.55 | 17s |
-| 7 | 2 | 360 | 10 | 16 | 0 | 0 | +0.55 | 17s |
-| 8 | 2 | 360 | 10 | 16 | 0 | 1 | +0.52 | 17s |
-| 9 | 2 | 360 | 10 | 16 | 0 | 0 | +0.52 | 14s |
-| 10 | 2 | 360 | 10 | 16 | 0 | 0 | +0.56 | 14s |
-| 11 | 2 | 360 | 10 | 16 | 0 | 0 | +0.57 | 13s |
-| 12 | 3 | 540 | 10 | 19 | 0 | 0 | +0.56 | 19s |
-| 13 | 3 | 540 | 10 | 20 | 0 | 0 | +0.56 | 19s |
-| 14 | 3 | 540 | 10 | 19 | 0 | 0 | +0.56 | 19s |
-| 15 | 4 | 640 | 11 | 21 | 0 | 0 | +0.61 | 26s |
-| 16 | 4 | 640 | 11 | 20 | 0 | 0 | +0.62 | 25s |
-| 17 | 4 | 640 | 11 | 18 | 0 | 1 | +0.75 | 27s |
-| 18 | 4 | 640 | 11 | 20 | 0 | 0 | +0.75 | 27s |
-| 19 | 4 | 640 | 11 | 22 | 0 | 0 | +0.75 | 27s |
-| 20 | 4 | 640 | 11 | 21 | 0 | 0 | +0.75 | 27s |
-| 21 | 5 | 640 | 11 | 22 | 0 | 0 | +0.75 | 26s |
-| 22 | 5 | 640 | 11 | 22 | 0 | 0 | +0.75 | 27s |
-| 23 | 5 | 640 | 11 | 20 | 0 | 0 | +0.78 | 27s |
-| 24 | 6 | 640 | 11 | 19 | 0 | 0 | +0.78 | 29s |
-| 25 | 6 | 640 | 11 | 22 | 0 | 0 | +0.89 | 28s |
-| 26 | 6 | 640 | 11 | 20 | 0 | 0 | +0.89 | 47s |
-| 27 | 6 | 640 | 11 | 23 | 0 | 0 | +0.90 | 45s |
-| 28 | 7 | 960 | 11 | 25 | 0 | 0 | +0.93 | 67s |
-| 29 | 7 | 960 | 11 | 30 | 0 | 0 | +0.93 | 91s |
-| 30 | 8 | 1440 | 11 | 37 | 0 | 0 | +0.93 | 93s |
-| 31 | 8 | 1440 | 11 | 38 | 0 | 0 | +1.00 | 102s |
-| 32 | 9 | 1600 | 11 | 44 | 0 | 0 | +1.00 | 111s |
-| 33 | 9 | 1600 | 11 | 44 | 0 | 0 | +1.02 | 119s |
-| 34 | 10 | 1600 | 11 | 45 | 0 | 0 | +1.02 | 130s |
-| 35 | 10 | 1600 | 11 | 44 | 0 | 0 | +1.02 | 116s |
-| 36 | 11 | 1600 | 11 | 47 | 0 | 0 | +1.02 | 124s |
-| 37 | 11 | 1600 | 11 | 48 | 0 | 0 | +1.02 | 123s |
 | 38 | 12 | 1600 | 11 | 48 | 0 | 0 | +1.02 | 133s |
 | 39 | 12 | 1600 | 11 | 43 | 0 | 0 | +1.02 | 126s |
 | 40 | 13 | 1600 | 11 | 45 | 0 | 0 | +1.02 | 130s |
@@ -634,6 +633,38 @@ The two portfolio numbers differ because this lab generates each market family i
 | 43 | 14 | 1600 | 11 | 52 | 0 | 0 | +1.02 | 129s |
 | 44 | 15 | 1600 | 11 | 53 | 0 | 0 | +1.05 | 130s |
 | 45 | 15 | 1600 | 11 | 50 | 0 | 1 | +1.10 | 121s |
+| 46 | 15 | 1600 | 11 | 47 | 0 | 0 | +1.10 | 117s |
+| 47 | 16 | 1600 | 11 | 52 | 0 | 0 | +1.10 | 117s |
+| 48 | 17 | 1600 | 11 | 50 | 0 | 0 | +1.10 | 116s |
+| 49 | 18 | 1600 | 11 | 49 | 0 | 0 | +1.10 | 118s |
+| 50 | 19 | 1600 | 11 | 51 | 0 | 0 | +1.10 | 120s |
+| 51 | 20 | 1600 | 11 | 50 | 0 | 0 | +1.10 | 120s |
+| 52 | 21 | 1600 | 11 | 52 | 0 | 0 | +1.10 | 135s |
+| 53 | 22 | 1600 | 11 | 46 | 0 | 0 | +1.10 | 125s |
+| 54 | 23 | 1600 | 11 | 48 | 0 | 0 | +1.10 | 118s |
+| 55 | 24 | 1600 | 11 | 46 | 0 | 0 | +1.10 | 122s |
+| 56 | 25 | 1600 | 11 | 50 | 0 | 0 | +1.10 | 128s |
+| 57 | 25 | 1600 | 11 | 51 | 0 | 0 | +0.98 | 125s |
+| 58 | 26 | 1600 | 11 | 55 | 0 | 0 | +0.98 | 112s |
+| 59 | 27 | 1600 | 11 | 50 | 0 | 0 | +0.98 | 116s |
+| 60 | 28 | 1600 | 11 | 54 | 0 | 0 | +0.98 | 118s |
+| 61 | 29 | 1600 | 11 | 50 | 0 | 0 | +0.98 | 124s |
+| 62 | 30 | 1600 | 11 | 54 | 0 | 0 | +0.98 | 120s |
+| 63 | 31 | 1600 | 11 | 49 | 0 | 0 | +0.98 | 119s |
+| 64 | 32 | 1600 | 11 | 51 | 0 | 0 | +0.98 | 119s |
+| 65 | 33 | 1600 | 11 | 51 | 0 | 0 | +0.98 | 120s |
+| 66 | 34 | 1600 | 11 | 54 | 0 | 0 | +0.98 | 124s |
+| 67 | 35 | 1600 | 11 | 45 | 0 | 0 | +0.98 | 129s |
+| 68 | 36 | 1600 | 11 | 51 | 0 | 0 | +0.98 | 123s |
+| 69 | 37 | 1600 | 11 | 57 | 0 | 0 | +0.98 | 123s |
+| 70 | 38 | 1600 | 11 | 50 | 0 | 0 | +0.98 | 124s |
+| 71 | 39 | 1600 | 11 | 49 | 0 | 0 | +0.98 | 125s |
+| 72 | 40 | 1600 | 11 | 52 | 0 | 0 | +0.98 | 123s |
+| 73 | 41 | 1600 | 11 | 50 | 0 | 0 | +0.98 | 130s |
+| 74 | 42 | 1600 | 11 | 54 | 0 | 0 | +0.98 | 125s |
+| 75 | 43 | 1600 | 11 | 54 | 0 | 0 | +0.98 | 132s |
+| 76 | 44 | 1600 | 11 | 56 | 0 | 0 | +0.98 | 138s |
+| 77 | 45 | 1600 | 11 | 48 | 0 | 0 | +0.98 | 127s |
 
 ## Market calibration
 

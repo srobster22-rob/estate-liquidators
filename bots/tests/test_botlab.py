@@ -297,6 +297,38 @@ def test_genome_roundtrip_is_exact():
                 "backtest changed across serialisation"
 
 
+def test_inert_genes_are_dropped():
+    """A `carry` gene on a market with no carry emits a constant zero: it cannot
+    affect behaviour, but it does change the genome's hash. Left in, `+carry` and
+    `-carry` variants of the same rule count as different strategies — the hall of
+    fame once held eight behaviourally identical bots that differed only in the
+    sign of an inert gene."""
+    space = SearchSpace(tier=4, max_genes=4, max_filters=2)
+    assert universe.get("eq_intraday_15m").carry_ann == 0.0
+    assert universe.get("fx_major_daily").carry_ann != 0.0
+
+    a = Genome(market="eq_intraday_15m",
+               genes=[Gene("bollinger", {"n": 32, "k": 2.57}), Gene("carry", {}, 1.0, +1)])
+    b = Genome(market="eq_intraday_15m",
+               genes=[Gene("bollinger", {"n": 32, "k": 2.57}), Gene("carry", {}, 1.0, -1)])
+    genome._repair(a, space)
+    genome._repair(b, space)
+    assert len(a.genes) == 1 and a.genes[0].name == "bollinger", "inert carry survived"
+    assert a.bot_id == b.bot_id, "sign of an inert gene still changes identity"
+    assert a.signature() == b.signature()
+
+    # ... but carry is real where the market pays it, and must be kept.
+    c = Genome(market="fx_major_daily",
+               genes=[Gene("ma_cross", {"fast": 20, "slow": 100}), Gene("carry", {})])
+    genome._repair(c, space)
+    assert any(x.name == "carry" for x in c.genes), "dropped a live carry gene"
+
+    # A genome that is nothing but an inert gene must still be a valid genome.
+    d = Genome(market="eq_intraday_15m", genes=[Gene("carry", {})])
+    genome._repair(d, space)
+    assert len(d.genes) == 1 and d.genes[0].name != "carry"
+
+
 def test_bot_id_is_stable_and_ignores_lineage():
     import dataclasses
     rng = np.random.default_rng(22)
