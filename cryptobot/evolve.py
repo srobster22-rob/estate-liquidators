@@ -107,7 +107,8 @@ class Factory:
                 res = candidate.run(seg.validation,
                                     pseg.validation if pseg else None)
                 self._tested_returns.append((_daily(res, seg.validation),
-                                             entry.get("passed", False)))
+                                             entry.get("passed", False),
+                                             candidate.market_key))
             except (KeyError, ValueError, ZeroDivisionError, OverflowError):
                 continue
 
@@ -297,15 +298,29 @@ class Factory:
         return score
 
     def dispersion(self):
-        """Dispersion of the OUT-OF-SAMPLE Sharpes seen so far — the right scale for
-        gate 10's hurdle, since that gate asks how good the best of `oos_looks`
-        candidates would look by luck alone on this segment. Falls back to the
-        in-sample spread until enough candidates have been through, which is
-        conservative: in-sample Sharpes are always more spread out."""
+        """Dispersion of the out-of-sample Sharpes — the scale for gate 10's hurdle,
+        since that gate asks how good the best of `oos_looks` candidates would look
+        by luck alone on this segment.
+
+        SHRUNK, not switched. The first version flipped from the in-sample estimate
+        to the out-of-sample one the moment the 5th sample landed, and a standard
+        deviation computed from 5 observations is so noisy that the hurdle fell 55%
+        in a single step — from 2.80 to 1.25 in a measured run. A candidate posting
+        3.0 failed as the 5th look and an identical twin passed as the 6th. That is
+        precisely the false-positive machine gate 10 exists to prevent, and it
+        contradicted this file's own claim that the bar only ever rises.
+
+        The two estimators converge as samples accumulate, so the fix is to blend
+        rather than switch: weight the out-of-sample estimate by n/(n+K) and the
+        (wider, more conservative) in-sample estimate by the remainder."""
         oos = self.state["oos_sharpe_samples"]
-        if len(oos) >= 5:
-            return stats.sharpe_dispersion(oos)
-        return stats.sharpe_dispersion(self.state["sharpe_samples"])
+        prior = stats.sharpe_dispersion(self.state["sharpe_samples"])
+        n = len(oos)
+        if n < 3:
+            return prior
+        k = self.cfg["dispersion_shrinkage"]
+        w = n / (n + k)
+        return w * stats.sharpe_dispersion(oos) + (1.0 - w) * prior
 
     # -------------------------------------------------------------- the run
 
@@ -355,12 +370,14 @@ class Factory:
                             continue
                         dupe = self.is_redundant(candidate, report)
                         if dupe is not None:
-                            self.log(f"      passed, but r={dupe:+.2f} with a bot "
-                                     f"already confirmed — not a new edge, "
-                                     f"vault not burned")
+                            how = ("overlap too short to measure, same market"
+                                   if dupe != dupe else f"r={dupe:+.2f}")
+                            self.log(f"      passed, but {how} vs a bot already "
+                                     f"vault-tested — not a new edge, vault not "
+                                     f"burned")
                             self.state["redundant"].append(candidate.to_dict())
                             continue
-                        confirmed = self.vault_confirm(candidate)
+                        confirmed = self.vault_confirm(candidate, report)
                         if confirmed.passed:
                             winners.append((candidate, report, confirmed))
                             self.log("      *** VAULT CONFIRMED ***")
@@ -462,7 +479,7 @@ class Factory:
         pseg = self.segments[candidate.partner_key] if candidate.partner_key else None
         report = val.gauntlet(candidate, seg, pseg,
                               oos_looks=self.state["oos_looks"],
-                              dispersion=self.dispersion(),
+                              dispersion=self.hurdle_dispersion(),
                               thresholds=self.cfg.get("thresholds"),
                               seed=self.rng.randrange(1 << 30),
                               segment="validation",
@@ -471,6 +488,12 @@ class Factory:
         # winners' would understate the dispersion and quietly lower the hurdle.
         if math.isfinite(report.oos.get("sharpe", 0.0)):
             self.state["oos_sharpe_samples"].append(round(report.oos["sharpe"], 4))
+        # Persist immediately. The counters were previously written only on the
+        # three normal exit paths, so a Ctrl-C or any exception discarded every
+        # look taken in that run — and the next run would start over with a lower
+        # hurdle, having genuinely consulted the holdout. A crash must never be a
+        # way to launder a search history.
+        save_state(self.state_file, self.state)
         return report
 
     def is_redundant(self, candidate, report):
@@ -494,12 +517,37 @@ class Factory:
         mine = _daily(candidate.run(seg.validation,
                                     pseg.validation if pseg else None),
                       seg.validation)
-        for prior, _passed in self._tested_returns:
+        for prior, _passed, prior_market in self._tested_returns:
             c = _corr(mine, prior)
-            if c is not None and abs(c) > self.cfg["max_winner_correlation"]:
+            if c is None:
+                # Too few overlapping days to measure — which happens between
+                # markets on different timeframes, whose segments can cover
+                # disjoint calendar spans. Silence is not evidence of difference:
+                # on the SAME market, assume duplicate; across markets, allow it
+                # but do not pretend a correlation was checked.
+                if prior_market == candidate.market_key:
+                    return float("nan")
+                continue
+            if abs(c) > self.cfg["max_winner_correlation"]:
                 return c
         self._pending_returns = mine
         return None
+
+    def hurdle_dispersion(self):
+        """The dispersion actually handed to gate 10, ratcheted so it can never
+        fall.
+
+        Shrinkage smooths the estimate but does not guarantee monotonicity, and the
+        contract this factory advertises — look harder and passing gets harder — has
+        to hold exactly, not on average. Anything else lets a candidate wait for a
+        cheap round. The high-water mark persists with the rest of the state, so it
+        survives a restart too."""
+        d = self.dispersion()
+        floor = self.state.get("dispersion_floor", 0.0)
+        if d > floor:
+            self.state["dispersion_floor"] = d
+            return d
+        return floor
 
     def vault_exhausted(self):
         """The vault has a hard budget, not just a warning.
@@ -510,7 +558,7 @@ class Factory:
         result. The factory stops burning and says so."""
         return self.state["vault_burns"] >= self.cfg["vault_budget"]
 
-    def vault_confirm(self, candidate):
+    def vault_confirm(self, candidate, validation_report=None):
         """One-shot confirmation on the untouched final slice.
 
         Every call is logged permanently. The vault is a consumable: burn it on
@@ -535,11 +583,21 @@ class Factory:
             "trials_at_burn": self.state["trials"],
         })
         if self._pending_returns is not None:
-            self._tested_returns.append((self._pending_returns, report.passed))
+            self._tested_returns.append((self._pending_returns, report.passed,
+                                         candidate.market_key))
         if report.passed:
+            # `report.is_` is the TRAIN slice — the gauntlet always measures the
+            # in-sample leg for its walk-forward ratio, whichever segment it is
+            # testing. Recording it under "validation" published the number the
+            # search had optimised as though it were out-of-sample. The validation
+            # figures come from the validation report; the train figures are kept
+            # but labelled as what they are.
+            vr = validation_report
             self.state["winners"].append({
                 "bot": candidate.to_dict(),
-                "validation": {k: report.is_[k] for k in ("sharpe", "max_dd")},
+                "train": {k: report.is_[k] for k in ("sharpe", "max_dd")},
+                "validation": ({k: vr.oos[k] for k in ("sharpe", "max_dd")}
+                               if vr is not None else None),
                 "vault": {k: report.oos[k] for k in
                           ("sharpe", "cagr", "max_dd", "total_return", "trades")},
                 "dsr": report.dsr,
@@ -570,6 +628,9 @@ DEFAULTS = {
     # may monopolise the out-of-sample budget.
     "vault_budget": 25,
     "max_looks_per_pair": 8,
+    # Pseudo-observations of the in-sample prior mixed into the out-of-sample
+    # dispersion estimate. Higher = slower to trust a small out-of-sample pool.
+    "dispersion_shrinkage": 25.0,
     "thresholds": None,
 }
 
@@ -580,7 +641,7 @@ def blank_state():
     return {"trials": 0, "oos_looks": 0, "sharpe_samples": [],
             "oos_sharpe_samples": [], "gauntleted": [], "winners": [],
             "redundant": [], "vault_burns": 0, "vault_log": [],
-            "pair_looks": {}, "unconfirmed": []}
+            "pair_looks": {}, "unconfirmed": [], "dispersion_floor": 0.0}
 
 
 def load_state(path):

@@ -133,10 +133,15 @@ class Market:
 
 # ---------------------------------------------------------------- csv cache i/o
 
-def cache_path(venue, symbol, interval):
+def cache_path(venue, symbol, interval, kind="spot"):
+    """Cache filename. `kind` is part of it because BTCUSDT spot and BTCUSDT perp
+    are different instruments with the same symbol: without it the perp fetch found
+    the spot file already on disk, loaded it, and produced a "perp" with no funding
+    at all — silently turning every carry strategy into a no-op."""
     CACHE_DIR.mkdir(exist_ok=True)
     safe = symbol.replace("/", "-")
-    return CACHE_DIR / f"{venue}_{safe}_{interval}.csv"
+    suffix = "" if kind == "spot" else f"_{kind}"
+    return CACHE_DIR / f"{venue}_{safe}_{interval}{suffix}.csv"
 
 
 def write_csv(path, rows):
@@ -229,6 +234,20 @@ def fetch_binance(symbol="BTCUSDT", interval="1h", bars=5000, kind="spot"):
 
 
 def _apply_binance_funding(symbol, bars_out, bar_sec):
+    """Attach realised funding to the bar in which each payment SETTLES.
+
+    Not spread backwards over the preceding eight hours, which is what this did
+    first and which is a lookahead: Binance's rate for the period ending at t is the
+    clamped TWAP of the premium index over (t-8h, t], so it is not known until t.
+    Writing it onto the eight bars before t handed `carry_funding` — which reads
+    this very column as its signal — seven bars of advance knowledge of a payment it
+    was about to collect. It would have cleared every gate, because the edge really
+    is in the data as constructed, and earned nothing live.
+
+    Charging the whole payment on its settlement bar is also simply more accurate:
+    funding is a discrete cash flow paid by whoever holds the position at t, not a
+    continuous accrual. A daily bar therefore collects all three of its payments,
+    where the old prorated version gave it one."""
     start_ms = bars_out[0][0] * 1000
     end_ms = bars_out[-1][0] * 1000
     payments = []
@@ -248,15 +267,14 @@ def _apply_binance_funding(symbol, bars_out, bar_sec):
         time.sleep(0.25)
     if not payments:
         return
-    # Prorate each 8h payment across the bars in its window.
+    # Bucket each payment onto the bar whose interval contains its settlement time,
+    # summing when several settle inside one bar (a daily bar holds three).
     per_bar = {}
     for t, rate in payments:
-        window = 8 * 3600
-        n = max(1, window // bar_sec)
-        for k in range(n):
-            per_bar[t - k * bar_sec] = rate / n
+        bucket = t - (t % bar_sec)
+        per_bar[bucket] = per_bar.get(bucket, 0.0) + rate
     for row in bars_out:
-        row[6] = per_bar.get(row[0] - row[0] % bar_sec, 0.0)
+        row[6] = per_bar.get(row[0] - (row[0] % bar_sec), 0.0)
 
 
 def fetch_coinbase(symbol="BTC-USD", interval="1h", bars=5000, kind="spot"):
@@ -306,9 +324,9 @@ def fetch_market(venue, symbol, interval="1h", bars=5000, kind="spot",
     there is no cache and the venue is unreachable. It will never quietly hand back
     synthetic data in place of real data — that substitution is how people end up
     trading a backtest of a random number generator."""
-    path = cache_path(venue, symbol, interval)
+    path = cache_path(venue, symbol, interval, kind)
     if path.exists() and not refresh:
-        return read_csv_market(path, key=f"{venue}:{symbol}:{interval}",
+        return read_csv_market(path, key=f"{venue}:{symbol}:{interval}:{kind}",
                                kind=kind, interval=interval, **market_kw)
     try:
         rows = FETCHERS[venue](symbol=symbol, interval=interval, bars=bars, kind=kind)
@@ -321,7 +339,7 @@ def fetch_market(venue, symbol, interval="1h", bars=5000, kind="spot",
     if not rows:
         raise RuntimeError(f"{venue} returned no candles for {symbol} {interval}")
     write_csv(path, rows)
-    return read_csv_market(path, key=f"{venue}:{symbol}:{interval}",
+    return read_csv_market(path, key=f"{venue}:{symbol}:{interval}:{kind}",
                            kind=kind, interval=interval, **market_kw)
 
 
@@ -429,8 +447,15 @@ def synth_market(key, seed, bars=8000, interval="1h", kind="spot", phi=0.0,
             innov = trend_strength * sigma * math.sqrt(1.0 - rho * rho)
             mu = rho * mu + rng.gauss(0.0, innov)
         pull = -revert_kappa * (math.log(price) - anchor_log) if revert_kappa else 0.0
-        r = (REGIMES[regime][0] * regime_drift * dt + mu + pull
-             + phi * prev_r + sigma * eps)
+        # Ito correction. These are LOG returns, but P&L is earned in simple
+        # returns, and E[exp(r) - 1] = exp(sigma^2/2) - 1 > 0 even when E[r] = 0.
+        # Without the -sigma^2/2 term a "zero drift" market pays a permanently long
+        # bot a premium of sigma^2/2 a year — at 65% vol that is 21% — so the strict
+        # null used to calibrate the false-positive rate was not null in the space
+        # where the measurement happens. Subtracting it makes the intended drift the
+        # ARITHMETIC drift, so regime_drift=0 means exactly zero expected P&L.
+        r = (REGIMES[regime][0] * regime_drift * dt - 0.5 * sigma * sigma
+             + mu + pull + phi * prev_r + sigma * eps)
         r = max(-0.35, min(0.35, r))          # no single-bar -100%
         prev_r = r
 

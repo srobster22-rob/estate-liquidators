@@ -258,7 +258,14 @@ def gauntlet(bot, segments, partner_segments=None, oos_looks=1, dispersion=0.6,
         return _finish(bot, gates, m, mi, dsr, bh["sharpe"])
 
     # 11 ------------------------------------------- bootstrap + timing null
-    p_boot = stats.bootstrap_pvalue(base.net, th["bootstrap_iters"], seed=seed)
+    # Block length has to cover the bot's own holding period. A fixed 20-bar block
+    # against a strategy that holds for hundreds of bars breaks exactly the
+    # dependence the stationary bootstrap exists to preserve, and hands out
+    # significance for free.
+    hold = _avg_holding_bars(base.position)
+    block = max(20, int(round(2.0 * hold)))
+    p_boot = stats.bootstrap_pvalue(base.net, th["bootstrap_iters"],
+                                    mean_block=block, seed=seed)
     rng = random.Random(seed + 1)
     raw = [0.0 if v is None else v for v in bot.signal(oos, p_oos)]
     nulls = stats.matched_random_signals(raw, th["mc_runs"], rng)
@@ -274,6 +281,7 @@ def gauntlet(bot, segments, partner_segments=None, oos_looks=1, dispersion=0.6,
     p_mc = stats.mc_pvalue(m["sharpe"], null_sharpes)
     ok = p_boot <= th["max_bootstrap_p"] and p_mc <= th["max_mc_p"]
     add(GateResult("mc_timing", ok, p_bootstrap=p_boot, p_random_signal=p_mc,
+                   block=block,
                    null_best=max(null_sharpes) if null_sharpes else 0.0))
 
     return _finish(bot, gates, m, mi, dsr, bh["sharpe"])
@@ -345,6 +353,22 @@ def _segment_return(result, start, end):
     for i in range(lo, hi):
         acc *= (1.0 + result.net[i])
     return acc - 1.0
+
+
+def _avg_holding_bars(position):
+    """Mean length of a run of constant sign in the position path."""
+    runs, cur, sign = [], 0, None
+    for p in position:
+        sgn = 0 if p == 0 else (1 if p > 0 else -1)
+        if sgn == sign:
+            cur += 1
+        else:
+            if sign is not None and sign != 0 and cur:
+                runs.append(cur)
+            sign, cur = sgn, 1
+    if sign not in (None, 0) and cur:
+        runs.append(cur)
+    return sum(runs) / len(runs) if runs else 1.0
 
 
 def _median(xs):

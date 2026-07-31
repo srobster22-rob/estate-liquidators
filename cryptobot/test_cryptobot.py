@@ -759,13 +759,36 @@ class TestVaultIsProtected(unittest.TestCase):
                         "long_only": False}, dict(bt.DEFAULT_RISK))
         self.assertIsNone(f.is_redundant(b, None), "first look should be allowed")
         # Simulate that bot having been vault-tested AND REJECTED.
-        f._tested_returns.append((f._pending_returns, False))
+        f._tested_returns.append((f._pending_returns, False,
+                                  "largecap_alt_1h"))
         twin = botmod.Bot("largecap_alt_1h", "ema_cross",
                           {"fast": 17, "slow": 101, "deadband": 0.01,
                            "long_only": False}, dict(bt.DEFAULT_RISK))
         self.assertIsNotNone(f.is_redundant(twin, None),
                              "a near-clone of a vault-rejected bot must be turned "
                              "away before it burns the vault")
+
+    def test_unmeasurable_overlap_on_the_same_market_reads_as_duplicate(self):
+        """Silence is not evidence of difference. If two bots on the same market
+        share too few days to correlate, the safe assumption is duplicate — the
+        alternative spends a vault burn on a question nobody checked."""
+        import math as _m
+        f = self.factory()
+        b = botmod.Bot("largecap_alt_1h", "ema_cross",
+                       {"fast": 16, "slow": 99, "deadband": 0.01,
+                        "long_only": False}, dict(bt.DEFAULT_RISK))
+        f._tested_returns.append(({1: 0.0, 2: 0.0}, False, "largecap_alt_1h"))
+        verdict = f.is_redundant(b, None)
+        self.assertIsNotNone(verdict)
+        self.assertTrue(_m.isnan(verdict), "should signal 'unmeasured', not a value")
+
+    def test_unmeasurable_overlap_across_markets_is_allowed(self):
+        f = self.factory()
+        b = botmod.Bot("largecap_alt_1h", "ema_cross",
+                       {"fast": 16, "slow": 99, "deadband": 0.01,
+                        "long_only": False}, dict(bt.DEFAULT_RISK))
+        f._tested_returns.append(({1: 0.0, 2: 0.0}, False, "decoy_a_1h"))
+        self.assertIsNone(f.is_redundant(b, None))
 
     def test_protection_survives_a_restart(self):
         """The vault log persists, so the return streams must be rebuilt on load —

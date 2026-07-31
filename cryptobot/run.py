@@ -246,16 +246,19 @@ def cmd_diversity(args):
         labels.append(f"{candidate.strategy_name[:12]}@{candidate.market_key[:16]}")
 
     width = max(len(x) for x in labels) + 2
-    print("\npairwise correlation of daily out-of-sample returns\n")
+    print("\npairwise correlation of daily vault returns\n")
     print(" " * width + "".join(f"{i:>7}" for i in range(len(labels))))
-    high = []
+    high, unmeasured = [], []
     for i, lab in enumerate(labels):
         row = f"{i} {lab:<{width-2}}"
         for j in range(len(labels)):
             c = 1.0 if i == j else _correlation(series[i], series[j])
-            row += "      -" if c is None else f"{c:>7.2f}"
-            if i < j and c is not None and abs(c) > 0.7:
-                high.append((labels[i], labels[j], c))
+            row += "      ?" if c is None else f"{c:>7.2f}"
+            if i < j:
+                if c is None:
+                    unmeasured.append((labels[i], labels[j]))
+                elif abs(c) > 0.7:
+                    high.append((labels[i], labels[j], c))
         print(row)
 
     print()
@@ -264,7 +267,15 @@ def cmd_diversity(args):
         for a, b, c in high:
             print(f"  {a} <-> {b}   r={c:.2f}")
         print("Running them side by side buys no diversification. Size them as one.")
-    else:
+    if unmeasured:
+        # A '?' is not a zero. Bots on different timeframes can have vault segments
+        # covering disjoint calendar spans, and reporting that as "distinct" would
+        # be claiming a measurement that was never made.
+        print(f"{len(unmeasured)} pair(s) marked '?' share too few days to "
+              f"correlate at all:")
+        for a, b in unmeasured:
+            print(f"  {a} <-> {b}   NOT MEASURED — do not read as uncorrelated")
+    if not high and not unmeasured:
         print("No pair above 0.7 — these are genuinely distinct return streams.")
     return 0
 
@@ -273,7 +284,7 @@ def cmd_fetch(args):
     m = dta.fetch_market(args.venue, args.symbol, interval=args.interval,
                          bars=args.bars, kind=args.kind, refresh=True)
     print(m.describe())
-    print(f"cached: {dta.cache_path(args.venue, args.symbol, args.interval)}")
+    print(f"cached: {dta.cache_path(args.venue, args.symbol, args.interval, args.kind)}")
     return 0
 
 
@@ -316,7 +327,13 @@ def cmd_report(args):
 def cmd_verify(args):
     """Re-run a saved winner from scratch on a freshly built universe. If a bot's
     numbers don't reproduce from its JSON genome alone, it isn't a bot, it's an
-    anecdote."""
+    anecdote.
+
+    This deliberately does NOT re-run the eleven gates. Running the gauntlet against
+    the vault is a consultation of the holdout, and doing it here would have been an
+    unlogged one — outside the burn counter, and (because it passed its own
+    hardcoded dispersion) against an easier gate 10 than the original. Reproducing
+    the recorded numbers needs only the backtest, so that is all it does."""
     state_file = pathlib.Path(args.state) if args.state else \
         STATE_DIR / "factory_state.json"
     state = evolve.load_state(state_file)
@@ -331,14 +348,14 @@ def cmd_verify(args):
         print(f"market {candidate.market_key} is not in this universe")
         return 1
     pseg = segments.get(candidate.partner_key) if candidate.partner_key else None
-    report = val.gauntlet(candidate, seg, pseg,
-                          oos_looks=entry.get("vault_burn", state["vault_burns"]),
-                          dispersion=0.6, segment="vault", stop_early=False,
-                          trials=state["trials"])
+    res = candidate.run(seg.vault, pseg.vault if pseg else None)
     print(candidate.describe())
-    print(report.render())
+    print(f"\n  vault sharpe   {res['sharpe']:.4f}")
+    print(f"  vault CAGR     {res['cagr']:.4f}")
+    print(f"  vault max DD   {res['max_dd']:.4f}")
+    print(f"  vault trades   {res['trades']}")
     recorded = entry["vault"]["sharpe"]
-    now = report.oos["sharpe"]
+    now = res["sharpe"]
     match = abs(recorded - now) < 1e-6
     print(f"\nrecorded vault sharpe {recorded:.4f} | recomputed {now:.4f} | "
           f"{'reproduces exactly' if match else 'MISMATCH'}")
