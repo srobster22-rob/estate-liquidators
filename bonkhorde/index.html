@@ -520,6 +520,12 @@ const PHASES = [
 { t:960,  rate:11.6, mix:{runner:9,    skitter:11,spitter:6, brute:8} },
 { t:1100, rate:14.0, mix:{runner:10,   skitter:12,spitter:6, brute:10} },
 ];
+// Elite variants. Rare at first sight, ~1 in 5 by the end.
+const NORMAL     = { hp:1,   dmg:1,   spd:1,    sz:1,    xp:1 };
+const ELITE      = { hp:3.2, dmg:1.3, spd:1.10, sz:1.38, xp:5 };
+const ELITE_FROM = 360;                  // none before minute 6
+const eliteChance = t => Math.min(.20, (t - ELITE_FROM) / 3600);
+
 const RUN_LEN = 1200;                    // 20:00
 // Player power grows MULTIPLICATIVELY - evolutions roughly double a weapon, then
 // spinach and crit multiply on top of that. A linear HP ramp cannot stay with it,
@@ -582,6 +588,7 @@ let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=f
 let shake=0, flash=0, camYaw=0, camPitch=.62;
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
+let noLevels=false;                     // test-only: hold back the level-up screen
 let runWon=false, runWhy="";
 
 function baseStats(ch){
@@ -614,7 +621,7 @@ function startRun(id){
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0;
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
-  runWon=false; runWhy="";
+  runWon=false; runWhy=""; noLevels=false;
   running=true; over=false; paused=false; picking=false;
   hide("menu"); hide("end"); hide("paused"); hide("pick");
   audioInit(); if(AC && AC.state==="suspended") AC.resume();
@@ -724,18 +731,18 @@ function hurt(e, amount, kx, kz, crit){
 function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++;
-  const n = e.boss ? 26 : e.def.r>1 ? 9 : 5;
+  const n = e.boss ? 26 : e.elite ? 14 : e.rad>1 ? 9 : 5;
   for(let i=0;i<n;i++) if(pops.length<340)
     pops.push({ x:e.x, y:e.y+e.def.h*.5, z:e.z, vx:rnd(-6,6), vy:rnd(2,9), vz:rnd(-6,6),
                 life:rnd(.35,.8), c:e.def.c, s:e.boss?.42:.20 });
   // XP: bosses shatter into a payday, everything else drops one gem
   if(e.boss){
-    for(let i=0;i<16;i++) pushGem(e.x+rnd(-3,3), e.z+rnd(-3,3), Math.ceil(e.def.xp/16));
+    for(let i=0;i<16;i++) pushGem(e.x+rnd(-3,3), e.z+rnd(-3,3), Math.ceil(e.xp/16));
     coinsRun += 90; shake = Math.max(shake, 1.4); SFX.boom();
     alert2(e.def.nm+" DOWN", "#6ddba0");
     if(e.final){ finish("VICTORY", true); return; }
   } else {
-    pushGem(e.x, e.z, e.def.xp);
+    pushGem(e.x, e.z, e.xp);
     if(Math.random() < .012) coinsRun += 5;
     SFX.pop();
   }
@@ -911,8 +918,17 @@ function spawnEnemy(type, atX, atZ){
     x = clamp(P.x + Math.cos(a)*r, -ARENA+2, ARENA-2);
     z = clamp(P.z + Math.sin(a)*r, -ARENA+2, ARENA-2);
   }
-  enemies.push({ x, z, y:groundY(x,z), def, type,
-    hp: def.hp*hpScale(T), maxhp: def.hp*hpScale(T), dmg: def.dmg*dmgScale(T),
+  // ELITES. The late game is x14.5 HP by minute 20 with no visual change at
+  // all, so minute 18 looks exactly like minute 8 while nothing dies - which
+  // reads as "my weapons got worse", not "these are tougher". Elites give the
+  // curve a face: a readable, prioritisable target that is visibly the reason.
+  const elite = T > ELITE_FROM && Math.random() < eliteChance(T);
+  const em = elite ? ELITE : NORMAL;
+  enemies.push({ x, z, y:groundY(x,z), def, type, elite,
+    rad: def.r*em.sz, sz: em.sz, xp: def.xp*em.xp, spdMul: em.spd,
+    hp:    def.hp*hpScale(T)*em.hp,
+    maxhp: def.hp*hpScale(T)*em.hp,
+    dmg:   def.dmg*dmgScale(T)*em.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, dead:false, boss:false });
 }
 function spawnBoss(b){
@@ -921,7 +937,7 @@ function spawnBoss(b){
   const x = clamp(P.x+Math.cos(a)*26, -ARENA+5, ARENA-5);
   const z = clamp(P.z+Math.sin(a)*26, -ARENA+5, ARENA-5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
-    dmg:def.dmg,
+    dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, dead:false, boss:true,
     final: b.t===1140 });
   shake = 1.2; SFX.boss(); alert2(b.nm, "#ff5c4d");
@@ -940,7 +956,7 @@ function updateEnemies(dt){
     e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
 
     const dx = P.x-e.x, dz = P.z-e.z, d = Math.hypot(dx,dz)||1;
-    const spd = e.def.spd * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
+    const spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
 
     if(e.def.ranged){
       // spitters hold at range and lob
@@ -964,9 +980,9 @@ function updateEnemies(dt){
     // standing still became SAFER the bigger the horde got. Clamp it well under
     // the slowest enemy's speed so the front rank always arrives.
     let sx=0, sz=0;
-    near(e.x, e.z, e.def.r*1.9, (o,od)=>{
+    near(e.x, e.z, e.rad*1.9, (o,od)=>{
       if(o===e || od<.0001) return;
-      const f = (e.def.r+o.def.r - od);
+      const f = (e.rad+o.rad - od);
       if(f>0){ sx += (e.x-o.x)/od*f; sz += (e.z-o.z)/od*f; }
     });
     const sl = Math.hypot(sx,sz);
@@ -984,7 +1000,7 @@ function updateEnemies(dt){
     e.bob += dt * (4 + e.def.spd);
 
     // contact damage
-    if(!e.def.ranged && d < e.def.r + .75 && P.iframe<=0){
+    if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0){
       playerHurt(e.dmg);
     }
   }
@@ -1313,7 +1329,7 @@ function step(dt){
 
   if(shake>0) shake = Math.max(0, shake - dt*2.2);
   if(flash>0) flash = Math.max(0, flash - dt*2.6);
-  if(pendingLevels>0 && !picking) showPick();
+  if(pendingLevels>0 && !picking && !noLevels) showPick();
 }
 
 // ================================================================== FINISH
@@ -1492,20 +1508,37 @@ function render(){
 
   // enemies
   for(const e of enemies){
-    const D = e.def, hop = Math.abs(Math.sin(e.bob))*(e.boss?.10:.20);
+    const D = e.def, S = e.sz, W = D.w*S, H = D.h*S;
+    const hop = Math.abs(Math.sin(e.bob))*(e.boss?.10:.20);
     const sq = e.flash>0 ? 1.25 : 1;
-    const c = e.flash>0 ? [lerp(D.c[0],1,.72), lerp(D.c[1],1,.72), lerp(D.c[2],1,.72)] : D.c;
+    // elites keep their species colour but run hot, so you can still tell a
+    // CHONK from a SKITTER while knowing which one is the problem
+    const base = e.elite ? [lerp(D.c[0],1,.34), lerp(D.c[1],.42,.34), lerp(D.c[2],.10,.34)]
+                         : D.c;
+    const glow = e.flash>0 ? .45 : e.elite ? .20 : 0;
+    const c = e.flash>0 ? [lerp(base[0],1,.72), lerp(base[1],1,.72), lerp(base[2],1,.72)]
+                        : base;
     const face = Math.atan2(P.x-e.x, P.z-e.z);
-    const bh = D.h*.62;
-    box(e.x, e.y+bh*.5+hop, e.z, D.w*.5*sq, bh*.5, D.w*.5*sq, c, e.flash>0?.45:0, face);
+    const bh = H*.62;
+    box(e.x, e.y+bh*.5+hop, e.z, W*.5*sq, bh*.5, W*.5*sq, c, glow, face);
     // head + googly eyes. This is 3 boxes and it is most of the personality.
-    const hy = e.y + bh + D.h*.19 + hop;
-    box(e.x, hy, e.z, D.w*.40, D.h*.19, D.w*.40, c, e.flash>0?.45:0, face);
-    const ex = D.w*.17, ez = D.w*.40;
+    const hy = e.y + bh + H*.19 + hop;
+    box(e.x, hy, e.z, W*.40, H*.19, W*.40, c, glow, face);
+    const ex = W*.17, ez = W*.40;
     for(const sgn of [-1,1]){
       const ox = Math.cos(face)*ex*sgn + Math.sin(face)*ez;
       const oz = -Math.sin(face)*ex*sgn + Math.cos(face)*ez;
-      box(e.x+ox, hy+D.h*.04, e.z+oz, D.w*.10,D.w*.10,.04, [1,1,1], .9, face);
+      box(e.x+ox, hy+H*.04, e.z+oz, W*.10,W*.10,.04, [1,1,1], .9, face);
+    }
+    // and a crown. A tint alone vanishes in a crowd of 300 - this needs to be
+    // a silhouette you can pick out at a glance and decide to deal with.
+    if(e.elite){
+      const cy = hy + H*.28, spin = T*1.7 + e.bob;
+      for(let i=0;i<4;i++){
+        const a = spin + i*(TAU/4);
+        box(e.x + Math.sin(a)*W*.36, cy + Math.sin(T*3+i)*.05, e.z + Math.cos(a)*W*.36,
+            W*.10, H*.11, W*.10, [1,.74,.16], .95, a);
+      }
     }
     if(e.boss){
       const f = e.hp/e.maxhp;
@@ -1720,11 +1753,30 @@ window.__g = {
     } return enemies.length; },
   boss:  i=>spawnBoss(BOSSES[i||0]),
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },
-  drainPicks: ()=>{ pendingLevels=0; picking=false; hide("pick"); },
+  // split frame cost into simulation vs rendering. Software GL exaggerates the
+  // render half enormously, so only the sim number transfers to real hardware.
+  perf:  (n=90)=>{
+    let sim=0, ren=0;
+    for(let i=0;i<n;i++){
+      let t0=performance.now(); step(1/60);      sim += performance.now()-t0;
+      t0=performance.now();     render();        ren += performance.now()-t0;
+    }
+    return { simMs:+(sim/n).toFixed(2), renderMs:+(ren/n).toFixed(2),
+             enemies:enemies.length, boxes:drawnBoxes,
+             simFpsCeiling:Math.round(1000/(sim/n)) };
+  },
+  drainPicks: (suppress)=>{ pendingLevels=0; picking=false; hide("pick");
+                            if(suppress!==undefined) noLevels=!!suppress; },
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
   hpx:   ()=>hpScale(T),
+  elites:()=>{ const med = a => { const v=a.slice().sort((x,y)=>x-y);
+                                   return v.length ? v[v.length>>1] : 0; };
+    const E = enemies.filter(e=>e.elite), N = enemies.filter(e=>!e.elite&&!e.boss);
+    return { n:E.length, total:enemies.length,
+             chance:+Math.max(0,eliteChance(T)).toFixed(3),
+             hp: med(E.map(e=>e.maxhp)), normHp: med(N.map(e=>e.maxhp)) }; },
   dbg:   ()=>{ const ds=enemies.map(e=>Math.hypot(e.x-P.x,e.z-P.z)).sort((a,b)=>a-b);
                const hs=enemies.map(e=>e.hp).sort((a,b)=>a-b);
                return { nearest: ds[0]??-1, inRange: ds.filter(d=>d<8).length,

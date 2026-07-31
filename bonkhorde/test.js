@@ -164,6 +164,25 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("coins awarded on finish", full.final.coins > 0, "coins=" + full.final.coins);
   ok("no errors across full run", errors.length === 0, errors.slice(0, 3).join(" | "));
 
+  console.log("\n=== 7b. ELITES ===");
+  const early = await page.evaluate(() => {
+    window.__g.start("intern"); window.__g.god(); window.__g.bot(true);
+    window.__g.step(60 * 300);                          // to 5:00, before ELITE_FROM
+    return window.__g.elites();
+  });
+  ok("no elites before minute 6", early.n === 0 && early.chance <= 0,
+     `n=${early.n} chance=${early.chance}`);
+  const late = await page.evaluate(() => {
+    window.__g.start("intern"); window.__g.god(); window.__g.bot(true);
+    window.__g.skipTo(1000); window.__g.step(60 * 60);
+    return window.__g.elites();
+  });
+  ok("elites appear late", late.n > 0, `${late.n}/${late.total} alive, roll=${late.chance}`);
+  ok("elites are the tougher thing", late.hp > late.normHp * 2.5,
+     `elite ${Math.round(late.hp)} vs normal ${Math.round(late.normHp)}`);
+  ok("elite share stays a minority", late.n / Math.max(1,late.total) < 0.45,
+     Math.round(late.n / Math.max(1,late.total) * 100) + "%");
+
   console.log("\n=== 8b. SUDDEN DEATH GATE ===");
   const gate = await page.evaluate(() => {
     window.__g.start("intern"); window.__g.god(); window.__g.skipTo(1135);

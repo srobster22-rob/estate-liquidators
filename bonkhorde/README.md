@@ -39,6 +39,7 @@ long as you stall, and victory means killing it. You have four minutes.
 | **8 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | damage, speed, cooldown, pickup radius, armour, HP, +projectiles, crit |
 | **5 enemy types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
+| **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **5 characters** | different starting weapon and stat profile; one unlocks by surviving 10:00 |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
@@ -59,6 +60,11 @@ super-enemy that is both invisible and unkillable.
 
 **Audio.** A ~40-line Web Audio synth. No files.
 
+**Cost.** The simulation is **0.4 ms/frame at 300 enemies** — a ~2,400 fps ceiling — so the
+frame budget is entirely rendering. (The harness reports ~10 fps under load, but that is
+SwiftShader rasterising in software; the sim number is the one that transfers to real
+hardware.) Measured, not assumed: `window.__g.perf()` splits the two.
+
 ---
 
 ## Verification
@@ -69,15 +75,15 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 63 checks: boot, every weapon, every evolution, every
-                         # enemy, every character, a full run, the sudden-death
-                         # gate, death, saves, render
+node test.js              # 67 checks: boot, every weapon, every evolution, every
+                         # enemy, elites, every character, a full run, the
+                         # sudden-death gate, death, saves, render
 node balance.js 6 both   # difficulty measurement: [trials] [first|vet|both]
 ```
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **63 passing.**
+die, and checks that `localStorage` survives a reload. **67 passing.**
 
 ### Balance is measured, not guessed
 
@@ -87,29 +93,30 @@ difficulty curve here is a measurement. Current state, 6 trials per cell:
 
 ```
                      median    worst     best   lvl  kills  evos  clears
-FIRST RUN   intern    04:55    04:03    10:07    13    859   0.2     0/6
-  (no perm  scrap     05:16    04:03    06:42    13    727   0.0     0/6
-  upgrades) spark     04:13    03:54    21:17    18   2028   0.5     0/6
-            ox        04:36    04:07    07:04    12    672   0.2     0/6
-            ghoul     05:40    04:01    21:31    21   2624   0.8     0/6
+FIRST RUN   intern    05:19    04:04    08:58    13    859   0.0     0/6
+  (no perm  scrap     05:10    04:04    10:25    14    923   0.2     0/6
+  upgrades) spark     04:02    03:45    05:10    10    537   0.0     0/6
+            ox        04:49    03:48    05:37    10    610   0.0     0/6
+            ghoul     04:28    04:13    06:19    12    608   0.0     0/6
 
-VETERAN     intern    20:52    07:01    23:59    45   8721   2.3     1/6
-  (all      scrap     14:36    07:36    22:35    37   5913   1.7     2/6
-  upgrades  spark     22:21    10:14    23:25    50  10132   2.8     3/6
-  bought)   ox        21:41    06:40    23:03    46   8889   2.7     3/6
-            ghoul     21:08    05:57    21:44    35   5672   1.2     1/6
+VETERAN     intern    21:38    06:06    23:56    52   8584   3.0     4/6
+  (all      scrap     21:25    07:39    22:59    50   7764   2.8     2/6
+  upgrades  spark     11:58    05:39    21:01    33   3828   1.5     1/6
+  bought)   ox        14:43    06:05    21:45    38   4920   2.0     1/6
+            ghoul     11:10    06:52    21:43    36   4442   1.7     1/6
 ```
 
 Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** (11 of 12
 in the histogram) and never once clear, though a lucky run occasionally reaches the final boss
 at 21:17 — so the ceiling is visible without being available. A maxed shop makes twenty minutes
-*reachable* and clears **10 of 30**; the medians above are mostly runs that got to sudden death
-and lost there, which is the fight being the fight.
+*reachable* and clears **9 of 30**; the medians above are mostly runs that got to sudden death
+and lost there, which is the fight being the fight. Per-character veteran spread is noise at
+n=6 against a bimodal outcome — read the total, not the rows.
 
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning — see the last finding below.
 
-That harness has overturned eleven things this build believed:
+That harness has overturned twelve things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -145,13 +152,19 @@ That harness has overturned eleven things this build believed:
 - **Cooldown reduction compounded past everything else.** Character × shop × METRONOME took
   THE SPARK to 0.446, a 2.24× fire rate multiplying an already multiplicative damage stack.
   Floored at 0.58.
+- **The difficulty curve was invisible.** Making the endgame ×14.5 HP left minute 18 looking
+  identical to minute 8 while nothing died — which reads as *your weapons got worse*, not
+  *these are tougher*, and a player who cannot see the difficulty cannot adapt to it. Elites
+  give the curve a face. They are deliberately close to difficulty-neutral (clears went 10/30
+  → 9/30); the change was legibility, and the measurement confirms it did not smuggle in a
+  balance shift.
 - **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
   victory right up until sudden death let losing runs reach 22:00 — and then reported them as
   wins. The instrument has to be re-checked every time the thing it measures changes shape.
 
-Seven of the eleven were found by measurement rather than by playing, which is the argument
-for having the harness. Two came from actually looking at a screenshot, which is the argument
-against trusting the harness alone. And one was the harness lying about itself.
+Eight of the twelve were found by measurement rather than by playing, which is the argument
+for having the harness. Three came from actually looking at a screenshot, which is the
+argument against trusting the harness alone. And one was the harness lying about itself.
 
 **The autopilot itself was wrong twice before it was useful**, and both times it looked fine:
 v1 maximised distance and scored a plausible 2:50 while killing almost nothing; v2 summed
