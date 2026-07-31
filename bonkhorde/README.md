@@ -23,6 +23,12 @@ xdg-open bonkhorde/index.html      # Linux
 Survive twenty minutes. Four bosses arrive at 5:00, 10:00, 15:00 and 19:00. Coins persist
 between runs and buy permanent upgrades.
 
+**The clock does not win the run.** THE FINAL BONK arrives at 19:00, and if it is still alive
+at 20:00 the timer stops mattering — you go to **sudden death**, the horde thickens for as
+long as you stall, and victory means killing it. You have four minutes.
+
+![Sudden death](screenshot-final.png)
+
 ---
 
 ## What's in it
@@ -63,41 +69,47 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js        # 61 checks: boot, every weapon, every evolution, every enemy,
-                    # every character, a full 20-minute run, death, saves, render
-node balance.js     # difficulty measurement (see below)
+node test.js              # 63 checks: boot, every weapon, every evolution, every
+                         # enemy, every character, a full run, the sudden-death
+                         # gate, death, saves, render
+node balance.js 6 both   # difficulty measurement: [trials] [first|vet|both]
 ```
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **61 passing.**
+die, and checks that `localStorage` survives a reload. **63 passing.**
 
 ### Balance is measured, not guessed
 
 `balance.js` runs an autopilot to death, many times over, and reports where runs actually end.
 Tuning a survivors-like by feel is how you ship something unwinnable in week one, so the
-difficulty curve here is a measurement. Current state, 4 trials per cell:
+difficulty curve here is a measurement. Current state, 6 trials per cell:
 
 ```
                      median    worst     best   lvl  kills  evos  clears
-FIRST RUN   intern    05:08    04:12    05:22    12    624   0.0     0/4
-  (no perm  scrap     04:27    03:56    04:57    12    543   0.0     0/4
-  upgrades) spark     04:46    03:42    05:38    11    613   0.0     0/4
-            ox        05:24    04:03    05:34    12    665   0.0     0/4
-            ghoul     05:44    04:23    08:13    14    930   0.3     0/4
+FIRST RUN   intern    04:55    04:03    10:07    13    859   0.2     0/6
+  (no perm  scrap     05:16    04:03    06:42    13    727   0.0     0/6
+  upgrades) spark     04:13    03:54    21:17    18   2028   0.5     0/6
+            ox        04:36    04:07    07:04    12    672   0.2     0/6
+            ghoul     05:40    04:01    21:31    21   2624   0.8     0/6
 
-VETERAN     intern    19:54    19:32    20:00    44   7155   2.0     1/4
-  (all      scrap     19:56    07:21    20:00    34   4612   1.8     1/4
-  upgrades  spark     20:00    05:53    20:00    37   5648   1.5     3/4
-  bought)   ox        19:19    07:15    20:00    36   5238   1.3     1/4
-            ghoul     20:00    19:41    20:00    44   7200   2.3     3/4
+VETERAN     intern    20:52    07:01    23:59    45   8721   2.3     1/6
+  (all      scrap     14:36    07:36    22:35    37   5913   1.7     2/6
+  upgrades  spark     22:21    10:14    23:25    50  10132   2.8     3/6
+  bought)   ox        21:41    06:40    23:03    46   8889   2.7     3/6
+            ghoul     21:08    05:57    21:44    35   5672   1.2     1/6
 ```
 
-Which is the shape the genre wants: your first runs end in the four-to-six minute range, the
-permanent upgrades are what make twenty minutes reachable, and the veteran spread stays wide
-(one scrap run ended at 07:21) because build luck still decides.
+Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** (11 of 12
+in the histogram) and never once clear, though a lucky run occasionally reaches the final boss
+at 21:17 — so the ceiling is visible without being available. A maxed shop makes twenty minutes
+*reachable* and clears **10 of 30**; the medians above are mostly runs that got to sudden death
+and lost there, which is the fight being the fight.
 
-That harness has overturned six things this build believed:
+Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
+is no longer the same thing as winning — see the last finding below.
+
+That harness has overturned eleven things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -120,16 +132,33 @@ That harness has overturned six things this build believed:
 - **Nothing ever despawned.** Enemies you had comfortably outrun kept following forever, so
   the alive-count tracked *cumulative spawns* rather than spawn rate, and minute six was a
   wall no build could pass.
+- **The horde could not reach you.** Separation force summed over every neighbour with no
+  cap, so past ~400 enemies it beat pursuit outright and the crowd settled into an
+  equilibrium ring at **9–11m** — nothing within 8m of the player, ever, for the entire back
+  half of a run. Standing still got *safer* the bigger the horde grew, which is precisely
+  backwards. Clamping separation below the slowest enemy's speed brought contact back to
+  3–8m.
+- **The clock handed you the win.** THE FINAL BONK spawned at 19:00 and 20:00 ended the run
+  regardless, so the game's climax could be skipped by running away for sixty seconds.
+- **Enemy damage never scaled.** HP scaled all game and contact damage did not, so late
+  enemies were tanky and harmless — a maxed veteran could stand in the horde at minute 18.
+- **Cooldown reduction compounded past everything else.** Character × shop × METRONOME took
+  THE SPARK to 0.446, a 2.24× fire rate multiplying an already multiplicative damage stack.
+  Floored at 0.58.
+- **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
+  victory right up until sudden death let losing runs reach 22:00 — and then reported them as
+  wins. The instrument has to be re-checked every time the thing it measures changes shape.
 
-Four of those six were found by measurement rather than by playing — which is the argument for
-having the harness at all. The two rendering ones came from actually looking at a screenshot,
-which is the argument against trusting the harness alone.
+Seven of the eleven were found by measurement rather than by playing, which is the argument
+for having the harness. Two came from actually looking at a screenshot, which is the argument
+against trusting the harness alone. And one was the harness lying about itself.
 
 **The autopilot itself was wrong twice before it was useful**, and both times it looked fine:
 v1 maximised distance and scored a plausible 2:50 while killing almost nothing; v2 summed
 repulsion vectors, which cancel to zero when you are ringed, so it stood perfectly still in
 the middle of the horde and died. v3 samples 20 headings and commits to the best one. A
-measuring instrument that produces confident numbers is not the same as a correct one.
+measuring instrument that produces confident numbers is not the same as a correct one — and
+the same trap caught the clears metric later, for the same reason.
 
 ---
 

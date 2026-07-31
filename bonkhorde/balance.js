@@ -23,8 +23,12 @@ for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
   if(fs.existsSync(p)) LAUNCH.executablePath = p;
 
 
-const TRIALS = 4;
-const CHARS = ["intern", "scrap", "spark", "ox", "ghoul"];
+// node balance.js [trials] [first|vet|both]
+// A bimodal outcome (die at minute 8, or clear) makes a median over 4 trials
+// close to meaningless - raise trials when you are tuning against it.
+const TRIALS = +(process.argv[2] || 4);
+const TIER   = process.argv[3] || "both";
+const CHARS  = ["intern", "scrap", "spark", "ox", "ghoul"];
 
 (async () => {
   const b = await chromium.launch(LAUNCH);
@@ -42,12 +46,13 @@ const CHARS = ["intern", "scrap", "spark", "ox", "ghoul"];
     window.__g.start(ch);
     window.__g.bot(true);
     const st = window.__g.runOut();
-    return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over,
+    return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
              evos: window.__g.kit().filter(k => k.includes("EVO")).length };
   }, [ch, shopped]);
 
-  for (const shopped of [false, true]) {
+  const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
+  for (const shopped of tiers) {
     console.log(`\n${"=".repeat(66)}`);
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
@@ -58,7 +63,7 @@ const CHARS = ["intern", "scrap", "spark", "ox", "ghoul"];
       for (let i = 0; i < TRIALS; i++) rs.push(await runOne(ch, shopped));
       const ts = rs.map(r => r.t).sort((a, b) => a - b);
       const med = ts[Math.floor(ts.length / 2)];
-      const clears = rs.filter(r => r.t >= 1199).length;
+      const clears = rs.filter(r => r.won).length;   // NOT t>=1199 - sudden death runs past 20:00
       const avg = k => (rs.reduce((s, r) => s + r[k], 0) / rs.length);
       console.log(
         `${ch.padEnd(8)} ${String(TRIALS).padStart(2)}  ` +
@@ -67,6 +72,8 @@ const CHARS = ["intern", "scrap", "spark", "ox", "ghoul"];
         `${avg("evos").toFixed(1).padStart(5)}  ${clears}/${TRIALS}`);
     }
   }
+
+  if (TIER === "vet") { await b.close(); return; }
 
   // where does the run actually end?
   console.log(`\n${"=".repeat(66)}\nDEATH TIMING (intern, first run, ${TRIALS*2} trials)\n${"=".repeat(66)}`);

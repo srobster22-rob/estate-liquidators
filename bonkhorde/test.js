@@ -138,7 +138,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   const full = await page.evaluate(() => {
     window.__g.start("intern"); window.__g.god();
     const marks = [];
-    for (let m = 1; m <= 21; m++) {
+    for (let m = 1; m <= 26; m++) {
       window.__g.step(60 * 60);                       // one minute
       const st = window.__g.state();
       marks.push({ min: m, lvl: st.lvl, kills: st.kills, en: st.enemies,
@@ -152,14 +152,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     console.log(`  ${String(m.min).padStart(3)}  ${String(m.lvl).padStart(3)}  ` +
                 `${String(m.kills).padStart(6)}  ${String(m.en).padStart(5)}  ${m.boxes}`);
   console.log("  final build:", full.kit.join(" "));
-  ok("run terminates by 20:00", full.final.over === true);
+  ok("run reaches a definite outcome", full.final.over === true,
+     "why=" + full.final.why + " won=" + full.final.won);
   ok("survived to the end", full.marks.length >= 20, "reached min " + full.marks.length);
-  ok("enemy count stays capped", full.marks.every(m => m.en <= 420));
+  // bosses bypass the spawn cap by design, so the ceiling is MAXE + live bosses
+  ok("enemy count stays capped", full.marks.every(m => m.en <= 425),
+     "max " + Math.max(...full.marks.map(m => m.en)));
   ok("box budget never exceeded", full.marks.every(m => m.boxes <= 3600),
      "max " + Math.max(...full.marks.map(m => m.boxes)));
   ok("build filled out", full.kit.length >= 5, full.kit.length + " items");
-  ok("coins awarded", full.final.coins > 0, "coins=" + full.final.coins);
+  ok("coins awarded on finish", full.final.coins > 0, "coins=" + full.final.coins);
   ok("no errors across full run", errors.length === 0, errors.slice(0, 3).join(" | "));
+
+  console.log("\n=== 8b. SUDDEN DEATH GATE ===");
+  const gate = await page.evaluate(() => {
+    window.__g.start("intern"); window.__g.god(); window.__g.skipTo(1135);
+    window.__g.step(60 * 70);                            // past 20:00
+    const a = window.__g.state();
+    return { sudden: a.sudden, over: a.over, t: a.t };
+  });
+  ok("clock does not hand you the win at 20:00", gate.sudden === true && gate.over === false,
+     `t=${gate.t} sudden=${gate.sudden}`);
+  const gate2 = await page.evaluate(() => {
+    const b = window.__g.state();
+    window.__g.killBoss();
+    return { before: b.over, after: window.__g.state() };
+  });
+  ok("killing THE FINAL BONK wins the run",
+     gate2.after.over === true && gate2.after.won === true, "why=" + gate2.after.why);
 
   console.log("\n=== 9. DEATH PATH (no godmode) ===");
   const death = await page.evaluate(() => {
@@ -189,8 +209,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       !!JSON.parse(localStorage.getItem("bonkhorde.save.v1")).unlocked.ghoul));
 
   console.log("\n=== 11. LEVEL-UP UI ===");
-  await page.evaluate(() => { window.__g.start("intern"); window.__g.xp(500); });
-  await page.waitForTimeout(250);
+  await page.evaluate(() => { window.__g.start("intern"); window.__g.resume(); window.__g.xp(500); });
+  await page.waitForTimeout(400);
   const cards = await page.evaluate(() =>
     [...document.querySelectorAll("#pkCards .card")].map(c =>
       c.querySelector(".nm").textContent + " / " + c.querySelector(".lv").textContent));

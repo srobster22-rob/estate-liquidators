@@ -501,9 +501,9 @@ skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.12,.12,.18]
 
 const BOSSES = [
 { t:300,  nm:"THE GRAVELORD", hp:3200,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1 },
-{ t:600,  nm:"THE LANDLORD",  hp:9000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4 },
-{ t:900,  nm:"MR. TEETH",     hp:24000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6 },
-{ t:1140, nm:"THE FINAL BONK",hp:70000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2 },
+{ t:600,  nm:"THE LANDLORD",  hp:12000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4 },
+{ t:900,  nm:"MR. TEETH",     hp:42000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6 },
+{ t:1140, nm:"THE FINAL BONK",hp:160000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2 },
 ];
 
 // spawn director: rate is enemies/sec, mix is a weight table
@@ -515,13 +515,20 @@ const PHASES = [
 { t:270,  rate:4.0,  mix:{shambler:7,  runner:6, skitter:5, spitter:3, brute:1} },
 { t:360,  rate:4.9,  mix:{shambler:6,  runner:7, skitter:6, spitter:4, brute:2} },
 { t:480,  rate:5.9,  mix:{shambler:5,  runner:7, skitter:8, spitter:4, brute:3} },
-{ t:620,  rate:7.1,  mix:{runner:8,    skitter:9, spitter:5, brute:4} },
-{ t:780,  rate:8.4, mix:{runner:8,    skitter:10,spitter:5, brute:6} },
-{ t:960,  rate:9.8, mix:{runner:9,    skitter:11,spitter:6, brute:8} },
-{ t:1100, rate:11.5, mix:{runner:10,   skitter:12,spitter:6, brute:10} },
+{ t:620,  rate:7.8,  mix:{runner:8,    skitter:9, spitter:5, brute:4} },
+{ t:780,  rate:9.6, mix:{runner:8,    skitter:10,spitter:5, brute:6} },
+{ t:960,  rate:11.6, mix:{runner:9,    skitter:11,spitter:6, brute:8} },
+{ t:1100, rate:14.0, mix:{runner:10,   skitter:12,spitter:6, brute:10} },
 ];
 const RUN_LEN = 1200;                    // 20:00
-const hpScale = t => 1 + t/340;          // ~x5 by the end
+// Player power grows MULTIPLICATIVELY - evolutions roughly double a weapon, then
+// spinach and crit multiply on top of that. A linear HP ramp cannot stay with it,
+// which is why a maxed shop cleared 9 of 20 veteran runs with the medians pinned
+// at 20:00. The second term is ~0 before minute 6, so first runs (which end near
+// 5:00) never feel it, and it dominates by the endgame: x2 at 5min, x8 at 15min,
+// x14.5 at 20min.
+const hpScale  = t => 1 + t/340 + Math.pow(Math.max(0, t-360)/420, 2) * 2.5;
+const dmgScale = t => 1 + Math.max(0, t-300)/560;        // x1 to 5:00, x2.6 by 20:00
 const MAXE = 420;
 
 const CHARS = [
@@ -574,6 +581,8 @@ let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62;
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
+let sudden=false;                       // past 20:00 with THE FINAL BONK still up
+let runWon=false, runWhy="";
 
 function baseStats(ch){
   const m = ch.mods||{};
@@ -604,7 +613,8 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0;
-  camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0;
+  camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
+  runWon=false; runWhy="";
   running=true; over=false; paused=false; picking=false;
   hide("menu"); hide("end"); hide("paused"); hide("pick");
   audioInit(); if(AC && AC.state==="suspended") AC.resume();
@@ -646,6 +656,7 @@ document.getElementById("quitBtn").addEventListener("click", e=>{
   e.stopPropagation(); finish("ABANDONED", false);
 });
 function togglePause(v){
+  if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
   document.getElementById("paused").classList.toggle("on", v);
   if(v) document.exitPointerLock?.(); else lockPointer();
@@ -901,7 +912,7 @@ function spawnEnemy(type, atX, atZ){
     z = clamp(P.z + Math.sin(a)*r, -ARENA+2, ARENA-2);
   }
   enemies.push({ x, z, y:groundY(x,z), def, type,
-    hp: def.hp*hpScale(T), maxhp: def.hp*hpScale(T),
+    hp: def.hp*hpScale(T), maxhp: def.hp*hpScale(T), dmg: def.dmg*dmgScale(T),
     kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, dead:false, boss:false });
 }
 function spawnBoss(b){
@@ -910,6 +921,7 @@ function spawnBoss(b){
   const x = clamp(P.x+Math.cos(a)*26, -ARENA+5, ARENA-5);
   const z = clamp(P.z+Math.sin(a)*26, -ARENA+5, ARENA-5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
+    dmg:def.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, dead:false, boss:true,
     final: b.t===1140 });
   shake = 1.2; SFX.boss(); alert2(b.nm, "#ff5c4d");
@@ -939,20 +951,29 @@ function updateEnemies(dt){
       if(e.atk<=0 && d < e.def.ranged.r){
         e.atk = e.def.ranged.cd;
         spits.push({ x:e.x, y:e.y+e.def.h*.7, z:e.z, a:Math.atan2(dx,dz),
-                     spd:e.def.ranged.spd, d:e.def.dmg, life:2.4 });
+                     spd:e.def.ranged.spd, d:e.dmg, life:2.4 });
       }
     } else {
       e.x += dx/d*spd*dt; e.z += dz/d*spd*dt;
     }
 
-    // separation, so the horde stays a crowd instead of a single stacked blob
+    // Separation keeps the horde a crowd instead of one stacked blob - but it
+    // must never beat pursuit. Uncapped, the force sums over every neighbour,
+    // so at 400+ enemies the crowd reached an equilibrium radius of 9-11m and
+    // simply could not close: nothing within 8m of the player, ever, and
+    // standing still became SAFER the bigger the horde got. Clamp it well under
+    // the slowest enemy's speed so the front rank always arrives.
     let sx=0, sz=0;
     near(e.x, e.z, e.def.r*1.9, (o,od)=>{
       if(o===e || od<.0001) return;
       const f = (e.def.r+o.def.r - od);
       if(f>0){ sx += (e.x-o.x)/od*f; sz += (e.z-o.z)/od*f; }
     });
-    e.x += sx*dt*5.5; e.z += sz*dt*5.5;
+    const sl = Math.hypot(sx,sz);
+    if(sl > .0001){
+      const cap = Math.min(sl, 1.5) / sl;
+      e.x += sx*cap*dt*2.4; e.z += sz*cap*dt*2.4;
+    }
 
     // outrun it far enough and it gives up. Without this the alive-count is
     // cumulative spawns rather than spawn RATE, and minute 6 is a wall.
@@ -964,7 +985,7 @@ function updateEnemies(dt){
 
     // contact damage
     if(!e.def.ranged && d < e.def.r + .75 && P.iframe<=0){
-      playerHurt(e.def.dmg);
+      playerHurt(e.dmg);
     }
   }
 }
@@ -1122,6 +1143,7 @@ function offers(){
 }
 function showPick(){
   picking = true;
+  if(paused){ paused = false; document.getElementById("paused").classList.remove("on"); }
   document.exitPointerLock?.();
   document.getElementById("pkLv").textContent = P.lvl;
   document.getElementById("pkSub").textContent =
@@ -1169,7 +1191,8 @@ function recalcDmg(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0];
 function recalcSpd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
   return 6.6*(m.spd||1)*(1+rank("spd")*.04) * (1 + (P.kit.boots ? (P.kit.boots.l+1)*.09 : 0)); }
 function recalcCd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return 1*(m.cd||1)*(1-rank("cd")*.035) * Math.pow(.92, P.kit.tempo ? P.kit.tempo.l+1 : 0); }
+  return Math.max(.58, 1*(m.cd||1)*(1-rank("cd")*.035)
+                     * Math.pow(.92, P.kit.tempo ? P.kit.tempo.l+1 : 0)); }
 function recalcMag(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
   return 4.2*(m.mag||1)*(1+rank("mag")*.18) * (1 + (P.kit.magnet ? (P.kit.magnet.l+1)*.35 : 0)); }
 
@@ -1221,7 +1244,16 @@ function botVector(){
 // ==================================================================== STEP
 function step(dt){
   T += dt;
-  if(T >= RUN_LEN){ finish("SURVIVED", true); return; }
+  // THE FINAL BONK arrives at 19:00 and the clock used to hand you the win at
+  // 20:00 whether it was alive or not - so the climax was skippable by running
+  // away for sixty seconds. Now the timer only ends the run if the thing is
+  // dead. Otherwise the clock stops mattering and it is you or it.
+  if(T >= RUN_LEN){
+    const boss = enemies.find(e => e.final && !e.dead);
+    if(!boss){ finish("SURVIVED", true); return; }
+    if(!sudden){ sudden = true; alert2("SUDDEN DEATH", "#ff5c4d"); shake = 1.3; SFX.boss(); }
+    if(T >= RUN_LEN + 240){ finish("OVERRUN", false); return; }
+  }
 
   // ---- player
   let dx=0, dz=0;
@@ -1259,7 +1291,8 @@ function step(dt){
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   nextSpawn -= dt;
   if(nextSpawn <= 0){
-    nextSpawn = 1/ph.rate;
+    // in sudden death the horde keeps thickening for as long as you stall
+    nextSpawn = 1/(ph.rate * (sudden ? 1 + Math.min(2.5,(T-RUN_LEN)/40) : 1));
     if(enemies.length < MAXE){
       const keysM = Object.keys(ph.mix);
       let tot=0; for(const k of keysM) tot += ph.mix[k];
@@ -1286,7 +1319,7 @@ function step(dt){
 // ================================================================== FINISH
 function finish(why, won){
   if(over) return;
-  over = true; running = false; picking = false;
+  over = true; running = false; picking = false; runWon = !!won; runWhy = why;
   document.exitPointerLock?.();
   hide("pick"); hide("paused");
   const earned = Math.floor(coinsRun + kills/9 + T/6 + (won?250:0));
@@ -1306,6 +1339,7 @@ function finish(why, won){
 
   const flavor = won ? "The estate is clear. Nobody is going to thank you."
     : why==="ABANDONED" ? "You simply left. That is allowed."
+    : why==="OVERRUN" ? "The clock ran out and THE FINAL BONK did not."
     : pick(["You were, briefly, the centre of attention.",
             "Cause of death: geometry.",
             "You stopped moving. That was the mistake.",
@@ -1315,7 +1349,7 @@ function finish(why, won){
     <h1 class="${won?'g':'r'}" style="font-size:44px">${why}</h1>
     <div class="sub">${flavor}</div>
     <table>
-      <tr><td>Survived</td><td>${fmt(T)} / ${fmt(RUN_LEN)}</td></tr>
+      <tr><td>Survived</td><td>${fmt(T)}${T > RUN_LEN ? " (sudden death)" : " / "+fmt(RUN_LEN)}</td></tr>
       <tr><td>Level reached</td><td>${P.lvl}</td></tr>
       <tr><td>Kills</td><td>${kills.toLocaleString()}</td></tr>
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
@@ -1603,10 +1637,13 @@ function hud(){
   const on = running && !over;
   $("hud").style.display = on ? "block" : "none";
   if(!on || !P) return;
-  $("clock").textContent = fmt(Math.max(0, RUN_LEN - T));
+  $("clock").textContent = sudden ? "SUDDEN DEATH" : fmt(Math.max(0, RUN_LEN - T));
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   const nb = BOSSES[bossIdx];
-  $("phase").textContent = nb ? `${nb.nm} IN ${fmt(Math.max(0,nb.t-T))}` : "FINAL STAND";
+  const fb = sudden ? enemies.find(e => e.final && !e.dead) : null;
+  $("phase").textContent = fb
+    ? `THE FINAL BONK  ${Math.max(0,Math.ceil(fb.hp)).toLocaleString()} HP  -  KILL IT`
+    : nb ? `${nb.nm} IN ${fmt(Math.max(0,nb.t-T))}` : "FINAL STAND";
   $("xpbar").style.width = (P.xp/P.need*100).toFixed(1)+"%";
   $("lvl").innerHTML = `LV <b>${P.lvl}</b>`;
   const hp = clamp(P.hp/P.maxhp,0,1);
@@ -1652,7 +1689,7 @@ window.__g = {
   state: ()=>({ t:+T?.toFixed(1), lvl:P?.lvl, hp:+P?.hp.toFixed(1), maxhp:P?.maxhp,
                 kills, enemies:enemies?.length, gems:gems?.length, boxes:drawnBoxes,
                 dps:+(P?.dmg).toFixed(2), spd:+(P?.spd).toFixed(2), cd:+(P?.cd).toFixed(3),
-                over, picking, coins:save.coins }),
+                over, won:runWon, why:runWhy, sudden, picking, coins:save.coins }),
   kit:   ()=>Object.keys(P.kit).map(k=>`${k}:${P.kit[k].evo?"EVO":P.kit[k].l+1}`),
   start: (id)=>startRun(id||"intern"),
   // scripted driving ignores the pause that losing pointer lock would cause
@@ -1662,7 +1699,7 @@ window.__g = {
   resume:()=>{ paused=false; document.getElementById("paused").classList.remove("on"); },
   // Run a whole run to its end inside the page. Driving this tick-by-tick from
   // outside costs more than the simulation does.
-  runOut:(maxT=RUN_LEN+2, d=1/60)=>{
+  runOut:(maxT=RUN_LEN+400, d=1/60)=>{
     if(paused) togglePause(false);
     let guard=0;
     while(!over && T<maxT && guard++<200000){ if(picking) autoPick(); step(d); }
@@ -1683,7 +1720,15 @@ window.__g = {
     } return enemies.length; },
   boss:  i=>spawnBoss(BOSSES[i||0]),
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },
+  drainPicks: ()=>{ pendingLevels=0; picking=false; hide("pick"); },
+  killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
+                  return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
+  hpx:   ()=>hpScale(T),
+  dbg:   ()=>{ const ds=enemies.map(e=>Math.hypot(e.x-P.x,e.z-P.z)).sort((a,b)=>a-b);
+               const hs=enemies.map(e=>e.hp).sort((a,b)=>a-b);
+               return { nearest: ds[0]??-1, inRange: ds.filter(d=>d<8).length,
+                        medHP: hs[hs.length>>1]??0, dmg: P.dmg*100 }; },
   comp:  ()=>enemies.reduce((a,e)=>{ a[e.type]=(a[e.type]||0)+1; return a; }, {}),
   skipTo:s=>{ T=s; },
   wipeSave: ()=>{ localStorage.removeItem(SAVEKEY);
