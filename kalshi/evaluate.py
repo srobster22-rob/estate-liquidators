@@ -41,15 +41,26 @@ WHAT "PROVEN PROFIT" IS DEFINED TO MEAN HERE (all of it, not some of it):
   8. An annualised return on locked capital above the floor. Kalshi collateral is locked
      until settlement, so a 3c edge on a 90-day contract is a worse business than a 0.3c
      edge on an hourly one, and ranking by PnL per trade hides that completely.
-  9. Profitability under a pessimistic RARE-LOSS RATE. Criteria 1-8 were the whole gate
+  9. Profitability in a HALF-EDGE WORLD. Criterion 7 makes execution worse — higher fees,
+     wider spreads, fewer maker fills — which tests whether a bot was fitting the cost
+     assumptions. It does not test the assumption that matters most: that the inefficiency
+     is as big as `markets.py` claims. Those magnitudes are estimates. So the bot is re-run
+     against markets whose planted edges are halved and whose spreads, depth and fees are
+     untouched, and it has to still make money against the fainter signal. This is the
+     closest available proxy for "the real world is less exploitable than I guessed", which
+     is the most likely way any of this fails outside the simulator.
+ 10. Profitability under a pessimistic RARE-LOSS RATE. Criteria 1-8 were the whole gate
      until the first three bots passed it, and all three turned out to win 99.3% of the
      time and hand back most of the position on the other 0.7% — seven observed losses in
      1200 markets. Nothing above notices that the entire risk of the strategy rests on
-     seven data points. Criterion 9 applies the Wilson upper bound on the loss rate to the
-     losses actually seen and asks whether the edge survives; the fewer losses observed,
-     the wider that bound and the harsher the test. No arbitrary minimum-loss threshold
-     needed, and no "picking up pennies in front of a steamroller" strategy gets certified
-     on the strength of a quiet sample.
+     seven data points. This criterion applies the Wilson upper bound on the loss rate to
+     the losses actually seen and asks whether the edge survives; the fewer losses
+     observed, the wider that bound and the harsher the test. No arbitrary minimum-loss
+     threshold needed, and no "picking up pennies in front of a steamroller" strategy gets
+     certified on the strength of a quiet sample.
+
+Criteria 9 and 10 both exist because the gate was PASSED. Every time this thing clears its
+own bar, the first question is what the bar failed to ask.
 
 The bootstrap is used for the p-value as well as the interval, deliberately. Per-group
 PnL is violently skewed — most groups lose a little and a few win 100c — and a t-test on
@@ -77,7 +88,7 @@ GATE = _CFG["gate"]
 GATE_CRITERIA = (
     "trades_oos", "oos_mean_positive", "bootstrap_lo95_positive", "fwer_adjusted_p",
     "holdout_trades", "holdout_mean_positive", "stress_mean_positive",
-    "annualized_return", "tail_risk",
+    "annualized_return", "tail_risk", "half_edge",
 )
 
 
@@ -274,7 +285,7 @@ class Verdict:
 
 def gate(oos: Stats, holdout: Stats | None, stress: Stats | None,
          fwer_adjusted_p: float | None, n_hypotheses: int,
-         bh_adjusted_p: float | None = None) -> Verdict:
+         bh_adjusted_p: float | None = None, half_edge: Stats | None = None) -> Verdict:
     """Every line must pass. Loosening any of them is how a bot factory lies to itself."""
     v = Verdict()
     v.check("trades_oos", oos.n_trades >= GATE["min_trades_oos"],
@@ -306,6 +317,12 @@ def gate(oos: Stats, holdout: Stats | None, stress: Stats | None,
     v.check("annualized_return", oos.annualized >= GATE["min_annualized_return_on_locked_capital"],
             f"{oos.annualized * 100:.2f}%/yr on locked capital, floor "
             f"{GATE['min_annualized_return_on_locked_capital'] * 100:.0f}%")
+    if half_edge is None:
+        v.check("half_edge", False, "not run")
+    else:
+        v.check("half_edge", half_edge.mean > 0,
+                f"mean {half_edge.mean:+.2f}c/market in a world where the planted "
+                f"inefficiency is {GATE['half_edge_factor']:g}x what markets.py assumes")
     v.check("tail_risk", oos.tail_mean > 0,
             f"{oos.n_losses} losses in {oos.n_trades} trades (rate {oos.loss_rate * 100:.2f}%, "
             f"Wilson upper {oos.wilson_loss_hi * 100:.2f}%, worst {oos.worst_loss:+d}c) "

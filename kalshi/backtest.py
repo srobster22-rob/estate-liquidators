@@ -189,7 +189,7 @@ class Result:
 
     __slots__ = ("group_pnl", "n_trades", "n_contracts", "capital_cent_hours",
                  "gross_pnl", "fees_paid", "life_hours", "n_groups", "trade_pnl",
-                 "max_position_cost")
+                 "max_position_cost", "cost_sum", "hold_hours_sum", "n_closed")
 
     def __init__(self):
         self.group_pnl: list[int] = []
@@ -205,6 +205,12 @@ class Result:
         # settlement trade can lose, and it is what the tail check in evaluate.py falls back
         # to when a strategy's losses are so rare that none were observed.
         self.max_position_cost = 0
+        # Accumulated so capacity.py can report mean position cost and mean holding time
+        # directly instead of inferring them from capital-hours, which needed an assumption
+        # about the cost/duration split and got both slightly wrong in opposite directions.
+        self.cost_sum = 0
+        self.hold_hours_sum = 0.0
+        self.n_closed = 0
 
     @property
     def total_pnl(self):
@@ -245,7 +251,8 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
     """Backtest one market (or bracket set).
 
     Returns (group_pnl, n_trades, n_contracts, capital_cent_hours, gross, fees_paid,
-    per_trade_pnl, max_position_cost). The caller aggregates.
+    per_trade_pnl, max_position_cost, cost_sum, hold_hours_sum, n_closed). The caller
+    aggregates.
     """
     rng = rng or random.Random(group.gid * 1000003)
     gv = GroupView(group)
@@ -262,6 +269,9 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
     n_contracts = 0
     cap_hours = 0.0
     max_cost = 0
+    cost_sum = 0
+    hold_sum = 0.0
+    n_closed = 0
     trade_log = []
 
     for t in range(n_steps):
@@ -331,6 +341,9 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
                 fee_total += f
                 held_h = (t - p.opened_t) * step_h
                 cap_hours += basis * held_h
+                cost_sum += basis
+                hold_sum += held_h
+                n_closed += 1
                 n_trades += 1
                 n_contracts += fillable
                 trade_log.append(realized)
@@ -375,18 +388,22 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
         pnl += realized
         gross += payout - p.cost
         fee_total += settle_f
-        held_h = (last_t - p.opened_t) * step_h
-        cap_hours += p.cost * max(held_h, step_h)
+        held_h = max((last_t - p.opened_t) * step_h, step_h)
+        cap_hours += p.cost * held_h
+        cost_sum += p.cost
+        hold_sum += held_h
+        n_closed += 1
         trade_log.append(realized)
 
-    return pnl, n_trades, n_contracts, cap_hours, gross, fee_total, trade_log, max_cost
+    return (pnl, n_trades, n_contracts, cap_hours, gross, fee_total, trade_log, max_cost,
+            cost_sum, hold_sum, n_closed)
 
 
 def run(groups: list[Group], strat, costs: Costs = BASE_COSTS) -> Result:
     res = Result()
     res.n_groups = len(groups)
     for g in groups:
-        pnl, nt, nc, ch, gr, ft, tl, mc = run_group(g, strat, costs)
+        pnl, nt, nc, ch, gr, ft, tl, mc, cs, hs, ncl = run_group(g, strat, costs)
         res.group_pnl.append(pnl)
         res.trade_pnl.extend(tl)
         res.n_trades += nt
@@ -396,4 +413,7 @@ def run(groups: list[Group], strat, costs: Costs = BASE_COSTS) -> Result:
         res.fees_paid += ft
         res.life_hours += g.family.life_hours
         res.max_position_cost = max(res.max_position_cost, mc)
+        res.cost_sum += cs
+        res.hold_hours_sum += hs
+        res.n_closed += ncl
     return res

@@ -332,6 +332,47 @@ ok("a thinner-tailed version of the same expectancy scores worse",
    f"2 losses of -26634c -> {ts.tail_mean:+.1f}c/market vs 7 losses of -8878c -> "
    f"{ps.tail_mean:+.1f}c/market (same raw mean)")
 
+print("\n8c. THE HALF-EDGE WORLD IS PAIRED — same markets, fainter signal")
+# The gate's half-edge criterion is only meaningful if the attenuated copy differs from the
+# original in exactly one respect. At factor 1.0 it must be byte-identical: same latent path,
+# same spreads, same depth. The first version failed this — the copy had its own name, so its
+# own crc32 salt, so entirely unrelated markets — and the comparison was measuring sampling
+# noise while appearing to measure edge sensitivity. It disqualified a real bot that way.
+same = markets.attenuated("econ_print", 1.0)
+ident = True
+for gid in range(60):
+    a = markets.generate_group(markets.FAMILIES["econ_print"], 4_000_000 + gid).legs[0]
+    b = markets.generate_group(markets._lookup(same), 4_000_000 + gid).legs[0]
+    if a.bid != b.bid or a.ask != b.ask or a.depth != b.depth or a.outcome != b.outcome:
+        ident = False
+        break
+ok("factor 1.0 reproduces the base family exactly", ident,
+   "identical bids, asks, depths and outcomes over 60 groups")
+
+half = markets.attenuated("econ_print", 0.5)
+fa, fb = markets.FAMILIES["econ_print"], markets._lookup(half)
+ok("factor 0.5 halves the planted edges and nothing else",
+   abs((1 - fb.logit_gamma) - (1 - fa.logit_gamma) * 0.5) < 1e-12
+   and abs(fb.underreact_cap - fa.underreact_cap * 0.5) < 1e-12
+   and (fb.spread_lo, fb.spread_hi, fb.depth_lo, fb.depth_hi, fb.quote_noise)
+   == (fa.spread_lo, fa.spread_hi, fa.depth_lo, fa.depth_hi, fa.quote_noise),
+   f"gamma {fa.logit_gamma}->{fb.logit_gamma}, cap {fa.underreact_cap}->{fb.underreact_cap}, "
+   f"spread/depth/noise unchanged")
+
+# Paired means the difference is signal, so the response has to be monotone in the factor.
+_st = strategies.hold_favorite(enter_frac=0.25, qty=250, thresh=95)
+means = []
+for f in (1.0, 0.75, 0.5):
+    r = backtest.run(markets.dataset(markets.attenuated("econ_print", f), 4_000_000, 600), _st)
+    means.append(r.total_pnl / 600)
+ok("net edge falls monotonically as the planted edge is attenuated",
+   means[0] > means[1] > means[2],
+   " > ".join(f"{m:+.1f}c" for m in means) + " at 100%/75%/50%")
+
+ok("attenuated copies stay out of the tradeable family list",
+   same not in markets.FAMILIES and half not in markets.FAMILIES and len(markets.FAMILIES) == 9,
+   f"{len(markets.FAMILIES)} families in the sweep")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

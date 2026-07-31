@@ -76,13 +76,17 @@ class Family:
     __slots__ = ("name", "label", "steps", "step_hours", "schedule_kind", "schedule_kw",
                  "p0_mu", "p0_sd", "logit_gamma", "underreact_alpha", "underreact_decay",
                  "underreact_cap", "quote_noise", "spread_lo", "spread_hi", "depth_lo",
-                 "depth_hi", "n_brackets", "notes")
+                 "depth_hi", "n_brackets", "notes", "salt_name")
 
     def __init__(self, name, label, steps, step_hours, schedule_kind, p0_mu, p0_sd,
                  logit_gamma, underreact_alpha, underreact_decay, underreact_cap,
                  quote_noise, spread_lo, spread_hi, depth_lo, depth_hi,
-                 n_brackets=1, schedule_kw=None, notes=""):
+                 n_brackets=1, schedule_kw=None, notes="", salt_name=None):
         self.name, self.label = name, label
+        # Which name seeds the RNG. Normally the family's own, but an attenuated copy
+        # borrows its base family's salt so that the same group id draws the SAME latent
+        # path, spreads and depths — see `attenuated`.
+        self.salt_name = salt_name or name
         self.steps, self.step_hours = steps, step_hours
         self.schedule_kind, self.schedule_kw = schedule_kind, schedule_kw or {}
         self.p0_mu, self.p0_sd = p0_mu, p0_sd
@@ -344,7 +348,7 @@ def generate_group(fam: Family, gid: int) -> Group:
     Determinism by group id is what lets in-sample / OOS / holdout be disjoint by seed
     range instead of by a shuffle someone has to remember to do correctly.
     """
-    rng = random.Random(_family_salt(fam.name) ^ (gid * 2654435761 & 0x7FFFFFFF))
+    rng = random.Random(_family_salt(fam.salt_name) ^ (gid * 2654435761 & 0x7FFFFFFF))
     sched = paths.variance_schedule(fam.schedule_kind, fam.steps, rng, **fam.schedule_kw)
 
     if fam.n_brackets > 1:
@@ -375,6 +379,59 @@ def generate_group(fam: Family, gid: int) -> Group:
     return Group(fam, gid, [ep])
 
 
+# Attenuated copies of families, kept OUT of FAMILIES so they never enter the factory's
+# sweep as tradeable families in their own right.
+_ATTENUATED: dict[str, Family] = {}
+
+
+def attenuated(family_name: str, factor: float) -> str:
+    """A copy of `family_name` with every planted edge scaled by `factor`. Returns its name.
+
+    The gate's stress test makes execution worse — higher fees, wider spread, fewer maker
+    fills — and that tests whether a bot was fitting the cost assumptions. It does not test
+    the assumption that actually matters most: that the inefficiency is as large as
+    `markets.py` says it is. Those magnitudes are my estimates. Halving them is the closest
+    thing available to asking "what if the world is only half as exploitable as I guessed",
+    which is the most likely way any of this fails outside the simulator.
+
+    Attenuates the two planted edges and leaves microstructure alone, so the bot faces the
+    same spreads, the same depth and the same fees against a fainter signal. gamma moves
+    toward 1.0 (no compression) and the underreaction cap scales directly.
+
+    PAIRED, and it has to be. The copy inherits its base family's `salt_name`, so group 7 of
+    the attenuated family runs the same latent path, the same spread draws and the same depth
+    draws as group 7 of the original — the ONLY difference is the size of the planted edge.
+    The first version of this did not do that: the copy had its own name, therefore its own
+    crc32 salt, therefore entirely unrelated markets. The comparison still ran, and it still
+    disqualified a bot, but the difference it measured was mostly sampling noise. The giveaway
+    was the sensitivity curve coming out non-monotone — a 25%-strength world scored better
+    than a 50%-strength one, which cannot happen if the only thing changing is the edge.
+    """
+    key = f"{family_name}@{factor:g}"
+    got = _ATTENUATED.get(key)
+    if got is not None:
+        return key
+    base = FAMILIES[family_name]
+    f = Family(
+        key, f"{base.label} (edges x{factor:g})", base.steps, base.step_hours,
+        base.schedule_kind, base.p0_mu, base.p0_sd,
+        logit_gamma=1.0 - (1.0 - base.logit_gamma) * factor,
+        underreact_alpha=base.underreact_alpha,
+        underreact_decay=base.underreact_decay,
+        underreact_cap=base.underreact_cap * factor,
+        quote_noise=base.quote_noise, spread_lo=base.spread_lo, spread_hi=base.spread_hi,
+        depth_lo=base.depth_lo, depth_hi=base.depth_hi, n_brackets=base.n_brackets,
+        schedule_kw=base.schedule_kw, salt_name=base.name,
+        notes=f"attenuated copy of {family_name} for the gate's half-edge criterion")
+    _ATTENUATED[key] = f
+    return key
+
+
+def _lookup(name: str) -> Family:
+    f = FAMILIES.get(name)
+    return f if f is not None else _ATTENUATED[name]
+
+
 _CACHE: dict[tuple[str, int, int], list[Group]] = {}
 
 
@@ -388,7 +445,7 @@ def dataset(family_name: str, seed_base: int, count: int) -> list[Group]:
     key = (family_name, seed_base, count)
     got = _CACHE.get(key)
     if got is None:
-        fam = FAMILIES[family_name]
+        fam = _lookup(family_name)
         got = [generate_group(fam, seed_base + i) for i in range(count)]
         _CACHE[key] = got
     return got

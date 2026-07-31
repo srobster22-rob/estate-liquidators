@@ -2,7 +2,7 @@
   "n_built": 190,
   "n_oos_tests": 12,
   "holdout_touches": 3,
-  "elapsed_s": 10.2,
+  "elapsed_s": 14.7,
   "winners": [
     {
       "family": "econ_print",
@@ -115,6 +115,30 @@
           "wilson_loss_hi": 0.014043149724076059,
           "tail_mean": -12.889407602933947,
           "worst_loss": -11569
+        },
+        "half_edge": {
+          "n_groups": 1200,
+          "n_trades": 1040,
+          "n_contracts": 48319,
+          "total": 22337,
+          "mean": 18.614166666666666,
+          "sd": 908.0793726134143,
+          "t": 0.7100851176573771,
+          "p_one_sided": 0.22677322677322678,
+          "lo95": -37.024166666666666,
+          "hi95": 63.458333333333336,
+          "annualized": 11.366797249034828,
+          "win_rate": 0.9903846153846154,
+          "max_dd": -31712,
+          "fees_paid": 9365,
+          "gross": 22337,
+          "mean_per_trade": 21.477884615384614,
+          "fee_share": 0.41925952455566995,
+          "n_losses": 10,
+          "loss_rate": 0.009615384615384616,
+          "wilson_loss_hi": 0.017609134720236563,
+          "tail_mean": -48.19242741795143,
+          "worst_loss": -12966
         }
       }
     },
@@ -229,6 +253,30 @@
           "wilson_loss_hi": 0.014043149724076059,
           "tail_mean": -9.840304366041359,
           "worst_loss": -9641
+        },
+        "half_edge": {
+          "n_groups": 1200,
+          "n_trades": 1040,
+          "n_contracts": 47118,
+          "total": 27890,
+          "mean": 23.241666666666667,
+          "sd": 812.5147834125166,
+          "t": 0.9908926789042478,
+          "p_one_sided": 0.14085914085914086,
+          "lo95": -27.265833333333333,
+          "hi95": 64.56333333333333,
+          "annualized": 14.036416367712647,
+          "win_rate": 0.9903846153846154,
+          "max_dd": -27373,
+          "fees_paid": 9103,
+          "gross": 27890,
+          "mean_per_trade": 26.817307692307693,
+          "fee_share": 0.32638938687701685,
+          "n_losses": 10,
+          "loss_rate": 0.009615384615384616,
+          "wilson_loss_hi": 0.017609134720236563,
+          "tail_mean": -37.27304050168453,
+          "worst_loss": -9627
         }
       }
     },
@@ -344,6 +392,30 @@
           "wilson_loss_hi": 0.024060132080061573,
           "tail_mean": 3.2761475064114705,
           "worst_loss": -2433
+        },
+        "half_edge": {
+          "n_groups": 1200,
+          "n_trades": 415,
+          "n_contracts": 10368,
+          "total": 11654,
+          "mean": 9.711666666666666,
+          "sd": 244.91374031936678,
+          "t": 1.3736346577292955,
+          "p_one_sided": 0.07492507492507493,
+          "lo95": -4.925833333333333,
+          "hi95": 22.113333333333333,
+          "annualized": 29.85716812377344,
+          "win_rate": 0.9710843373493976,
+          "max_dd": -7115,
+          "fees_paid": 3203,
+          "gross": 11654,
+          "mean_per_trade": 28.081927710843374,
+          "fee_share": 0.27484125622104,
+          "n_losses": 12,
+          "loss_rate": 0.02891566265060241,
+          "wilson_loss_hi": 0.04985610714952288,
+          "tail_mean": -8.187670260256725,
+          "worst_loss": -2407
         }
       }
     }
@@ -414,7 +486,8 @@
           "worst_loss": -20280
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -528,6 +601,30 @@
           "wilson_loss_hi": 0.014043149724076059,
           "tail_mean": -12.889407602933947,
           "worst_loss": -11569
+        },
+        "half_edge": {
+          "n_groups": 1200,
+          "n_trades": 1040,
+          "n_contracts": 48319,
+          "total": 22337,
+          "mean": 18.614166666666666,
+          "sd": 908.0793726134143,
+          "t": 0.7100851176573771,
+          "p_one_sided": 0.22677322677322678,
+          "lo95": -37.024166666666666,
+          "hi95": 63.458333333333336,
+          "annualized": 11.366797249034828,
+          "win_rate": 0.9903846153846154,
+          "max_dd": -31712,
+          "fees_paid": 9365,
+          "gross": 22337,
+          "mean_per_trade": 21.477884615384614,
+          "fee_share": 0.41925952455566995,
+          "n_losses": 10,
+          "loss_rate": 0.009615384615384616,
+          "wilson_loss_hi": 0.017609134720236563,
+          "tail_mean": -48.19242741795143,
+          "worst_loss": -12966
         }
       }
     },
@@ -642,6 +739,30 @@
           "wilson_loss_hi": 0.014043149724076059,
           "tail_mean": -9.840304366041359,
           "worst_loss": -9641
+        },
+        "half_edge": {
+          "n_groups": 1200,
+          "n_trades": 1040,
+          "n_contracts": 47118,
+          "total": 27890,
+          "mean": 23.241666666666667,
+          "sd": 812.5147834125166,
+          "t": 0.9908926789042478,
+          "p_one_sided": 0.14085914085914086,
+          "lo95": -27.265833333333333,
+          "hi95": 64.56333333333333,
+          "annualized": 14.036416367712647,
+          "win_rate": 0.9903846153846154,
+          "max_dd": -27373,
+          "fees_paid": 9103,
+          "gross": 27890,
+          "mean_per_trade": 26.817307692307693,
+          "fee_share": 0.32638938687701685,
+          "n_losses": 10,
+          "loss_rate": 0.009615384615384616,
+          "wilson_loss_hi": 0.017609134720236563,
+          "tail_mean": -37.27304050168453,
+          "worst_loss": -9627
         }
       }
     },
@@ -757,6 +878,30 @@
           "wilson_loss_hi": 0.024060132080061573,
           "tail_mean": 3.2761475064114705,
           "worst_loss": -2433
+        },
+        "half_edge": {
+          "n_groups": 1200,
+          "n_trades": 415,
+          "n_contracts": 10368,
+          "total": 11654,
+          "mean": 9.711666666666666,
+          "sd": 244.91374031936678,
+          "t": 1.3736346577292955,
+          "p_one_sided": 0.07492507492507493,
+          "lo95": -4.925833333333333,
+          "hi95": 22.113333333333333,
+          "annualized": 29.85716812377344,
+          "win_rate": 0.9710843373493976,
+          "max_dd": -7115,
+          "fees_paid": 3203,
+          "gross": 11654,
+          "mean_per_trade": 28.081927710843374,
+          "fee_share": 0.27484125622104,
+          "n_losses": 12,
+          "loss_rate": 0.02891566265060241,
+          "wilson_loss_hi": 0.04985610714952288,
+          "tail_mean": -8.187670260256725,
+          "worst_loss": -2407
         }
       }
     },
@@ -826,7 +971,8 @@
           "worst_loss": -2384
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -894,7 +1040,8 @@
           "worst_loss": -12025
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -962,7 +1109,8 @@
           "worst_loss": -5068
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -1030,7 +1178,8 @@
           "worst_loss": -9063
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -1099,7 +1248,8 @@
           "worst_loss": -2360
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -1167,7 +1317,8 @@
           "worst_loss": -7824
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -1235,7 +1386,8 @@
           "worst_loss": -8017
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     },
     {
@@ -1304,7 +1456,8 @@
           "worst_loss": -7535
         },
         "holdout": null,
-        "stress": null
+        "stress": null,
+        "half_edge": null
       }
     }
   ],
@@ -1342,10 +1495,29 @@
       "max_bh_adjusted_p": 0.05,
       "require_holdout_mean_positive": true,
       "require_stress_mean_positive": true,
+      "require_half_edge_mean_positive": true,
+      "half_edge_factor": 0.5,
       "stress_fee_multiplier": 1.5,
       "stress_extra_spread_ticks": 1,
       "stress_maker_fill_multiplier": 0.5,
       "min_annualized_return_on_locked_capital": 0.05
+    },
+    "capacity": {
+      "_doc": "How many markets of each family the exchange plausibly lists per year. ESTIMATES, from general knowledge of what Kalshi runs \u2014 not scraped, not verified. They convert a percentage return into dollars per year, which is the only number that says whether a bot is a business. Wrong by 2x here means wrong by 2x there, so correct them against the real market list before planning around any of it.",
+      "markets_per_year": {
+        "crypto_hourly": 17520,
+        "index_bracket_daily": 750,
+        "econ_print": 250,
+        "weather_temp": 3650,
+        "sports_game": 6000,
+        "politics_long": 200,
+        "awards_thin": 150,
+        "mentions_short": 500,
+        "efficient_control": 0
+      },
+      "_markets_per_year_basis": "crypto_hourly: ~2 series x 24h x 365. index_bracket_daily: ~3 indices x 252 sessions. econ_print: CPI/payrolls/Fed/PCE/GDP/retail ~70 releases x a few strikes. weather_temp: ~10 cities x 365. sports_game: NFL+NBA+MLB+NHL regular seasons. politics/awards/mentions: rough counts of what tends to be listed.",
+      "peak_sigma": 3.0,
+      "_peak_note": "Concurrent positions modelled as Poisson; capital required is mean + peak_sigma*sqrt(mean) positions. Determines return on capital you must COMMIT rather than capital you happen to be using."
     },
     "loop": {
       "max_generations": 12,

@@ -63,14 +63,15 @@ ROOT = pathlib.Path(__file__).parent
 
 class Candidate:
     __slots__ = ("family", "cls", "params", "gen", "origin", "ins", "oos", "holdout",
-                 "stress", "verdict", "raw_p", "fwer_p", "bh_p")
+                 "stress", "half_edge", "verdict", "raw_p", "fwer_p", "bh_p", "sens")
 
     def __init__(self, family, cls, params, gen, origin):
         self.family, self.cls, self.params = family, cls, params
         self.gen, self.origin = gen, origin
-        self.ins = self.oos = self.holdout = self.stress = None
+        self.ins = self.oos = self.holdout = self.stress = self.half_edge = None
         self.verdict = None
         self.raw_p = self.fwer_p = self.bh_p = None
+        self.sens = None
 
     def build(self):
         return self.cls(**self.params)
@@ -220,8 +221,9 @@ def _expand(survivors: list[Candidate], rng, log):
     return added
 
 
-def score(c: Candidate, seed_base, n_groups, costs=backtest.BASE_COSTS, resamples=0):
-    data = markets.dataset(c.family, seed_base, n_groups)
+def score(c: Candidate, seed_base, n_groups, costs=backtest.BASE_COSTS, resamples=0,
+          family=None):
+    data = markets.dataset(family or c.family, seed_base, n_groups)
     res = backtest.run(data, c.build(), costs)
     return evaluate.summarize(res, resamples=resamples)
 
@@ -312,18 +314,27 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
         for c in sorted(survivors, key=lambda x: x.fwer_p):
             pre = evaluate.gate(c.oos, None, None, c.fwer_p, len(reg), c.bh_p)
             blocking = [r for r in pre.reasons
-                        if not r.startswith(("holdout", "stress"))]
+                        if not r.startswith(("holdout", "stress", "half_edge"))]
             if blocking:
                 continue
             reg.holdout_touches += 1
             c.holdout = score(c, SEEDS["holdout"], holdout_n, resamples=2000)
             c.stress = score(c, SEEDS["oos"], oos_n, costs=evaluate.stress_costs(), resamples=1000)
-            c.verdict = evaluate.gate(c.oos, c.holdout, c.stress, c.fwer_p, len(reg), c.bh_p)
+            # Same seeds, fainter world: a paired comparison against markets whose planted
+            # inefficiency is halved and whose spreads, depth and fees are untouched.
+            faint = markets.attenuated(c.family, GATE["half_edge_factor"])
+            c.half_edge = score(c, SEEDS["oos"], oos_n, resamples=1000, family=faint)
+            c.verdict = evaluate.gate(c.oos, c.holdout, c.stress, c.fwer_p, len(reg),
+                                      c.bh_p, half_edge=c.half_edge)
             status = "PASSED" if c.verdict.passed else "failed on " + "; ".join(c.verdict.reasons)
             log(f"    CONFIRM  {c.label()}")
             log(f"             holdout mean={c.holdout.mean:+.2f}c  "
-                f"stress mean={c.stress.mean:+.2f}c  ->  {status}")
+                f"stress mean={c.stress.mean:+.2f}c  "
+                f"half-edge mean={c.half_edge.mean:+.2f}c  ->  {status}")
             if c.verdict.passed:
+                c.sens = sensitivity(c, oos_n)
+                log("             sensitivity to assumed edge size: "
+                    + "  ".join(f"{f * 100:.0f}%->{s_.mean:+.1f}c" for f, s_ in c.sens))
                 winners.append(c)
 
         # 6. EXPAND.
@@ -486,6 +497,25 @@ def write_coverage(rows, path: pathlib.Path, insample_n, draws_per_cell):
 # Reporting
 # ---------------------------------------------------------------------------
 
+SENSITIVITY_FACTORS = (1.0, 0.75, 0.5, 0.25)
+
+
+def sensitivity(c: Candidate, oos_n: int) -> list[tuple[float, object]]:
+    """How the net edge responds to the ASSUMED size of the inefficiency.
+
+    Paired: every factor runs the same markets, with only the planted edge scaled. The shape
+    is the point. Costs — spread and fee — are FIXED, so net edge is gross minus a constant
+    and therefore a LEVERED function of the assumption. Halving the assumed inefficiency does
+    not halve the profit; it comes close to erasing it. That is the honest sensitivity of
+    every result in RESULTS.md to the magnitudes chosen by hand in markets.py.
+    """
+    rows = []
+    for f in SENSITIVITY_FACTORS:
+        fam = markets.attenuated(c.family, f)
+        rows.append((f, score(c, SEEDS["oos"], oos_n, resamples=1000, family=fam)))
+    return rows
+
+
 def write_report(out: dict, path: pathlib.Path, args):
     reg = out["registry"]
     winners = out["winners"]
@@ -527,7 +557,8 @@ def write_report(out: dict, path: pathlib.Path, args):
             L.append("| dataset | markets | trades | mean/market | 95% CI | ann. return |")
             L.append("|---|---|---|---|---|---|")
             for nm, s in (("in-sample", c.ins), ("out-of-sample", c.oos),
-                          ("holdout", c.holdout), ("stress", c.stress)):
+                          ("holdout", c.holdout), ("stress", c.stress),
+                          ("half-edge world", c.half_edge)):
                 if s is None:
                     continue
                 # In-sample is scored without a bootstrap on purpose — it selects, it does
@@ -539,6 +570,20 @@ def write_report(out: dict, path: pathlib.Path, args):
             L.append("")
             L.append(f"Raw one-sided p = {c.raw_p:.5f}; Holm-adjusted over {len(reg)} tests "
                      f"= **{c.fwer_p:.5f}** (BH would say {c.bh_p:.5f}).\n")
+            if c.sens:
+                L.append("Sensitivity to the assumed size of the inefficiency "
+                         "(paired — identical markets, only the planted edge scaled):\n")
+                L.append("| planted edge | mean/market | 95% CI | share of full |")
+                L.append("|---|---|---|---|")
+                base = c.sens[0][1].mean or 1.0
+                for f, s_ in c.sens:
+                    L.append(f"| {f * 100:.0f}% | {s_.mean:+.2f}c | "
+                             f"[{s_.lo95:+.1f}, {s_.hi95:+.1f}] | {s_.mean / base * 100:.0f}% |")
+                L.append("")
+                L.append("Costs are fixed, so net edge is gross minus a constant — a levered "
+                         "function of the assumption. This table, not the p-value, is the "
+                         "honest measure of how much this result depends on magnitudes that "
+                         "were chosen by hand.\n")
             L.append("Gate detail:\n")
             for lbl, okk, det in c.verdict.checks:
                 L.append(f"- {'PASS' if okk else 'FAIL'} `{lbl}` — {det}")
@@ -555,9 +600,11 @@ def write_report(out: dict, path: pathlib.Path, args):
     L.append("| bot | targets | ins t | oos mean | oos CI | raw p | Holm p | ann. return | stopped by |")
     L.append("|---|---|---|---|---|---|---|---|---|")
     for c in ranked[:40]:
-        v = evaluate.gate(c.oos, c.holdout, c.stress, c.fwer_p, len(reg), c.bh_p)
-        stop = "—" if v.passed else ", ".join(r.split(":")[0] for r in v.reasons
-                                              if not r.startswith(("holdout", "stress")))[:46] or "holdout/stress"
+        v = evaluate.gate(c.oos, c.holdout, c.stress, c.fwer_p, len(reg), c.bh_p,
+                          half_edge=c.half_edge)
+        stop = "—" if v.passed else ", ".join(
+            r.split(":")[0] for r in v.reasons
+            if not r.startswith(("holdout", "stress", "half_edge")))[:46] or "holdout/stress/half-edge"
         L.append(f"| {c.label()} | {c.cls.targets[:34]} | {c.ins.t:+.2f} | "
                  f"{c.oos.mean:+.2f}c | [{c.oos.lo95:+.1f},{c.oos.hi95:+.1f}] | "
                  f"{c.raw_p:.4f} | {c.fwer_p:.3f} | {c.oos.annualized * 100:+.1f}%/yr | {stop} |")
@@ -601,7 +648,8 @@ def write_json(out: dict, path: pathlib.Path):
                 "passed": bool(c.verdict.passed) if c.verdict else False,
                 "stats": {k: (v.to_dict() if v else None) for k, v in
                           (("insample", c.ins), ("oos", c.oos),
-                           ("holdout", c.holdout), ("stress", c.stress))}}
+                           ("holdout", c.holdout), ("stress", c.stress),
+                           ("half_edge", c.half_edge))}}
     payload = {
         "n_built": out["n_built"], "n_oos_tests": len(out["registry"]),
         "holdout_touches": out["registry"].holdout_touches,

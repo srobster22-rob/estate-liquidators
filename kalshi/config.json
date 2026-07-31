@@ -37,10 +37,30 @@
     "max_bh_adjusted_p": 0.05,
     "require_holdout_mean_positive": true,
     "require_stress_mean_positive": true,
+    "require_half_edge_mean_positive": true,
+    "half_edge_factor": 0.5,
     "stress_fee_multiplier": 1.5,
     "stress_extra_spread_ticks": 1,
     "stress_maker_fill_multiplier": 0.5,
     "min_annualized_return_on_locked_capital": 0.05
+  },
+
+  "capacity": {
+    "_doc": "How many markets of each family the exchange plausibly lists per year. ESTIMATES, from general knowledge of what Kalshi runs — not scraped, not verified. They convert a percentage return into dollars per year, which is the only number that says whether a bot is a business. Wrong by 2x here means wrong by 2x there, so correct them against the real market list before planning around any of it.",
+    "markets_per_year": {
+      "crypto_hourly": 17520,
+      "index_bracket_daily": 750,
+      "econ_print": 250,
+      "weather_temp": 3650,
+      "sports_game": 6000,
+      "politics_long": 200,
+      "awards_thin": 150,
+      "mentions_short": 500,
+      "efficient_control": 0
+    },
+    "_markets_per_year_basis": "crypto_hourly: ~2 series x 24h x 365. index_bracket_daily: ~3 indices x 252 sessions. econ_print: CPI/payrolls/Fed/PCE/GDP/retail ~70 releases x a few strikes. weather_temp: ~10 cities x 365. sports_game: NFL+NBA+MLB+NHL regular seasons. politics/awards/mentions: rough counts of what tends to be listed.",
+    "peak_sigma": 3.0,
+    "_peak_note": "Concurrent positions modelled as Poisson; capital required is mean + peak_sigma*sqrt(mean) positions. Determines return on capital you must COMMIT rather than capital you happen to be using."
   },
 
   "loop": {

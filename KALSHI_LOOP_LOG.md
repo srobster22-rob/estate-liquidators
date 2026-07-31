@@ -114,6 +114,34 @@ them through the *unmodified* backtester so a bot cannot behave one way in the s
 another on real data. The replay path is tested offline; every network path is unverified,
 because this machine has no route to kalshi.com.
 
+K10 · Asked what the winning bot is worth in dollars rather than percent — built
+`kalshi/capacity.py`. · **The +4552%/yr bot is a $214-a-year business.** The percentage is
+arithmetically correct and describes capital that is deployed 9% of the year; the rest of the
+time it earns nothing. Actual figures: `econ_print` lists roughly **250 markets a year**, the
+book holds about **55 contracts** at the price where the edge lives, so the bot commits **$52**
+of capital and returns **$214/yr** — 409% on committed capital, and unscalable. Neither of the
+two ways to improve that is a tuning problem: find the same inefficiency in a family that
+lists more markets, or at a price where the book is deeper. Also replaced an inference with a
+measurement — capacity was splitting capital-cent-hours into cost x duration using the largest
+position ever opened as the scale, which got both halves wrong in opposite directions; the
+engine now reports mean position cost and mean holding time directly.
+
+K11 · Added gate criterion 10, the half-edge world: re-run every winner against markets whose
+planted inefficiency is halved and whose spreads, depth and fees are untouched. · **The result
+is a levered bet on magnitudes I chose by hand, and the leverage is about 3x.** Paired
+sensitivity for `hold_favorite(95)`: **100% -> +84.3c, 75% -> +61.2c, 50% -> +23.2c,
+25% -> -11.0c**. Costs are fixed, so net edge is gross minus a constant — halving the assumed
+inefficiency removes roughly three quarters of the profit, and every winner turns negative
+between 25% and 50%. The real claim is therefore narrow: *if* Kalshi's mispricing is at least
+~40% of what `markets.py` guesses, these bots work. **The first version of this criterion was
+wrong and it disqualified a real bot.** The attenuated copy had its own name, therefore its own
+crc32 salt, therefore entirely unrelated markets — so the comparison measured sampling noise
+while appearing to measure edge sensitivity. The giveaway was the sensitivity curve coming out
+non-monotone: a 25%-strength world scored *better* than a 50% one, which is impossible if the
+only thing changing is the edge. Attenuated families now inherit their base family's salt, and
+four new self-tests pin the pairing down — factor 1.0 must reproduce the base family byte for
+byte. 57 checks pass.
+
 ---
 
 ## Standing notes
@@ -131,6 +159,13 @@ because this machine has no route to kalshi.com.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **Report dollars, not percentages.** Every return figure in this project is a return on
+  capital measured over the fraction of the year that capital is deployed, and that fraction
+  is often under 10%. `capacity.py` exists because the percentage flatters by roughly an
+  order of magnitude and the dollar figure is the one that decides anything.
+- **Every time the gate is passed, ask what it failed to ask.** Criteria 9 and 10 both exist
+  because a bot cleared the bar and the bar turned out to be missing something — rare-loss
+  tail risk, then sensitivity to the simulator's own magnitudes. That is the intended rhythm.
 - **In-sample selects, out-of-sample validates, holdout confirms once.** Breeding is never
   given OOS results. If a future round wants to mutate on out-of-sample scores, the honest
   move is to add a fourth dataset, not to relax the rule.

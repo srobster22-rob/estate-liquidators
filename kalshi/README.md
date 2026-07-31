@@ -3,7 +3,7 @@
 A loop that builds trading bots for Kalshi event contracts — every market family against
 every strategy family — backtests them against a market simulator, and then tries as hard
 as it can to disqualify them. It keeps breeding and widening the search until something
-clears a nine-criterion gate, or until the generation budget runs out.
+clears a ten-criterion gate, or until the generation budget runs out.
 
 **Status: the loop works and it produces bots that clear the gate. The gate is a statement
 about a simulator, not about Kalshi.** That distinction is the most important thing on this
@@ -17,9 +17,10 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 53 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 57 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
+python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -33,7 +34,7 @@ python -m kalshi.live --record TICKER --samples 500 --interval 60
 python -m kalshi.live --replay rec.jsonl --bot 'hold_favorite(thresh=95,qty=25)'
 ```
 
-`selftest.py` failing means nothing else here is trustworthy. It is not a formality — three
+`selftest.py` failing means nothing else here is trustworthy. It is not a formality — four
 of its checks caught real bugs while this was being built, and two of those bugs were in the
 checks themselves.
 
@@ -49,12 +50,14 @@ checks themselves.
 | `markets.py` | Nine market families, the quoting layer, and every planted edge. |
 | `strategies.py` | Twelve strategies, five of them controls designed to lose. |
 | `backtest.py` | Execution: spread, depth, fees, maker fills, no lookahead. |
-| `evaluate.py` | The gate. Bootstrap, Holm correction, stress, tail risk. |
+| `evaluate.py` | The gate. Bootstrap, Holm correction, stress, tail risk, half-edge. |
 | `factory.py` | The loop: build → screen → validate → correct → confirm → expand. |
 | `live.py` | Kalshi REST adapter: check, record, replay, paper, live. |
-| `selftest.py` | 53 checks that have to pass before any of the above means anything. |
+| `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
+| `selftest.py` | 57 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
+| `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
 
 ---
 
@@ -131,7 +134,7 @@ Real feature of the exchange; also the most fragile result here, since it lives 
 prices where a real book has almost no size.
 
 **6. The goal was reached in generation 0 — and that is a warning, not a win.**
-Three bots cleared all nine criteria: `hold_favorite(thresh=95)` and `band_fade(lo=5,hi=8)`
+Three bots cleared all ten criteria: `hold_favorite(thresh=95)` and `band_fade(lo=5,hi=8)`
 on `econ_print`, at **+85.6¢** and **+33.1¢** per market offered out-of-sample, Holm-adjusted
 p = 0.006 over 12 tests, holding up on the holdout (+53.3¢) and under stress (+43.0¢). But
 three bots is **two mechanisms**. Run with `--keep-going` for the full 12 generations, the
@@ -142,7 +145,37 @@ report says so. A bot factory's headline count measures how many parameter varia
 not how many things it found; the default run stops at the goal precisely to keep the third
 dataset clean.
 
-**7. The best-looking bot in the entire coverage sweep is on the market that cannot be
+**7. The whole result is a levered bet on a number I chose by hand.** The gate now re-runs
+every winner against a *paired* world — identical markets, identical spreads, depth and fees,
+with only the planted inefficiency scaled down. All three winners collapse the same way:
+
+| planted edge | `hold_favorite(95)` | `band_fade(5,8)` |
+|---|---|---|
+| 100% | +84.3¢ | +33.1¢ |
+| 75% | +61.2¢ | +20.9¢ |
+| 50% | +23.2¢ | +9.7¢ |
+| 25% | −11.0¢ | −0.4¢ |
+
+Costs are **fixed** — spread and fee do not shrink when the edge does — so net edge is gross
+minus a constant, which makes it a *levered* function of the assumption. Halving the assumed
+inefficiency does not halve the profit; it removes about three quarters of it, and every bot
+goes negative somewhere between 25% and 50%. So the real claim these bots make is narrow:
+*if* Kalshi's actual mispricing is at least ~40% of what `markets.py` guesses, they work.
+That table, not the p-value, is the honest measure of how much any of this depends on
+magnitudes nobody has measured.
+
+**8. It is a $214-a-year business.** `RESULTS.md` reports the winner at +4552%/yr, which is
+arithmetically correct and nearly useless. `python -m kalshi.capacity` asks the two questions
+that decide whether a strategy is worth building — how many such markets exist, and how much
+size the book holds where the edge lives — and the answer is **$214/year on $52 of committed
+capital**, because `econ_print` lists ~250 markets a year and the book holds ~55 contracts at
+the price the edge lives at. The percentage is a return measured over the 9% of the year the
+capital is deployed; the rest of the time it earns nothing. Both numbers describe the same
+bot and only one of them tells you whether to build it. The two ways it improves are the same
+inefficiency in a family that lists more markets, or at a price where the book is deeper —
+neither is a tuning problem.
+
+**9. The best-looking bot in the entire coverage sweep is on the market that cannot be
 beaten.** In the 9 × 12 matrix, the highest in-sample cell of all 100 is
 `efficient_control / hold_favorite` at **+422¢ per market** — on a market with γ = 1.0, no
 quote lag and a penny spread, where profit is impossible by construction. `buy_longshot`,
@@ -154,7 +187,7 @@ wide search looks like when there is nothing there, and it is the reason every n
 
 ## The gate
 
-Nine criteria. All of them, or it is not a pass.
+Ten criteria. All of them, or it is not a pass.
 
 | # | criterion | what it stops |
 |---|---|---|
@@ -167,13 +200,17 @@ Nine criteria. All of them, or it is not a pass.
 | 7 | annualised return on locked capital ≥ 5% | a real edge that cannot pay for the collateral it ties up |
 | 8 | ≥100 holdout trades | a confirmation too small to confirm |
 | 9 | profitable at the **Wilson upper bound on the loss rate** | 99.3% win rates whose entire risk rests on 7 observed losses |
+| 10 | profitable in a **half-edge world** (paired: same markets, planted edge halved) | a result that is really a bet on the magnitudes in `markets.py` |
 
-Two of these were added *because the gate was passed*. Criterion 4 was originally
+Three of these were added *because the gate was passed* — every time this thing clears its
+own bar, the first question is what the bar failed to ask. Criterion 4 was originally
 Benjamini-Hochberg, which controls the false discovery *rate* — correct for a portfolio of
 findings, wrong here, because the factory funds one bot and a single false discovery is the
 entire failure. Criterion 9 did not exist until the first three winners turned out to win
 99.3% of the time and hand back most of the position on the other 0.7%: seven observed
-losses in 1200 markets, and nothing else in the gate noticed.
+losses in 1200 markets, and nothing else in the gate noticed. Criterion 10 came last: the
+other nine all test whether the bot is real *given* the simulator, and none of them tests
+whether the simulator's magnitudes are.
 
 **Selection is in-sample only, including breeding.** `_breed` is not given access to
 out-of-sample results. The moment a survivor is bred from its OOS score, OOS has been fitted
