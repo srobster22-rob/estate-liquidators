@@ -5,6 +5,7 @@ Command line for the factory.
     python3 -m cryptobot.run null-test   --trials 3
     python3 -m cryptobot.run fetch       --venue binance --symbol BTCUSDT
     python3 -m cryptobot.run report
+    python3 -m cryptobot.run diversity
     python3 -m cryptobot.run verify      --winner 0
 
 `evolve` is the loop the brief asked for: it keeps producing bots and expanding the
@@ -103,10 +104,40 @@ def cmd_evolve(args):
             print(report.render())
             print("\nvault slice (never touched before this test):")
             print(confirmed.render())
+        _print_audit(winners, args.markets)
         print("\n" + "=" * 78)
         print(WINNER_CAVEAT)
     print(f"\nstate: {state_file}")
     return 0
+
+
+def _print_audit(winners, market_spec):
+    """On the synthetic universe we know which markets actually have structure, so
+    a set of winners can be checked against the truth. This is the one audit real
+    data can never give you: nine of the fourteen markets have nothing to find, and
+    a winner sitting on one of those nine is a false positive no matter how good its
+    gate report looked."""
+    if market_spec != "synthetic":
+        return
+    print("\n" + "-" * 78)
+    print("AUDIT — where the winners landed (synthetic universe only)\n")
+    hits = misses = 0
+    for candidate, _, _ in winners:
+        real = candidate.market_key in uni.STRUCTURED
+        reachable = candidate.market_key in uni.REACHABLE
+        note = ("structured" if real else "NO STRUCTURE — false positive")
+        if real and not reachable:
+            note = "structured but cost-eaten — should not have been tradeable"
+        print(f"  {candidate.market_key:<20} {candidate.strategy_name:<18} {note}")
+        hits += real
+        misses += not real
+    print(f"\n  {hits} on markets with real structure, {misses} on markets with "
+          f"none.")
+    if misses:
+        print("  A winner on a structureless market is a gauntlet leak. Re-run "
+              "null-test\n  before trusting anything this factory has produced.")
+    else:
+        print("  No winner claimed an edge in a market that hasn't got one.")
 
 
 def _print_near_misses(factory):
@@ -158,6 +189,84 @@ def cmd_null_test(args):
         print("The gauntlet let something through on data with NO edge. Treat every "
               "other\nresult from this factory as unproven until the leak is found.")
     return 0 if total_winners == 0 else 1
+
+
+def _daily_returns(result, market):
+    """Collapse a bot's per-bar returns onto a calendar-day grid, so bots trading
+    different timeframes can be compared to each other at all."""
+    by_day = {}
+    for i, r in enumerate(result.net):
+        day = market.ts[i] // 86400
+        by_day[day] = by_day.get(day, 1.0) * (1.0 + r)
+    return {d: v - 1.0 for d, v in by_day.items()}
+
+
+def _correlation(a, b):
+    days = sorted(set(a) & set(b))
+    n = len(days)
+    if n < 30:
+        return None
+    xs = [a[d] for d in days]
+    ys = [b[d] for d in days]
+    mx, my = sum(xs) / n, sum(ys) / n
+    cov = sum((xs[i] - mx) * (ys[i] - my) for i in range(n))
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    if vx <= 0 or vy <= 0:
+        return None
+    return cov / (vx * vy) ** 0.5
+
+
+def cmd_diversity(args):
+    """Pairwise correlation of the confirmed winners' out-of-sample returns.
+
+    Worth its own command because "the factory found six bots" is a very different
+    statement depending on the answer. Six bots correlated at 0.95 are one bot with
+    five spare parameter sets: they will draw down together, and running all six
+    buys diversification that isn't there. Anything above ~0.7 should be treated as
+    a single position for risk purposes."""
+    state_file = pathlib.Path(args.state) if args.state else \
+        STATE_DIR / "factory_state.json"
+    state = evolve.load_state(state_file)
+    winners = state.get("winners", [])
+    if len(winners) < 2:
+        print(f"{len(winners)} confirmed bot(s) — need at least 2 to compare")
+        return 1
+    segments = build_universe(args.markets, args.bars)
+
+    series, labels = [], []
+    for w in winners:
+        candidate = botmod.Bot.from_dict(w["bot"])
+        seg = segments.get(candidate.market_key)
+        if seg is None:
+            continue
+        pseg = segments.get(candidate.partner_key) if candidate.partner_key else None
+        res = candidate.run(seg.vault, pseg.vault if pseg else None)
+        series.append(_daily_returns(res, seg.vault))
+        labels.append(f"{candidate.strategy_name[:12]}@{candidate.market_key[:16]}")
+
+    width = max(len(x) for x in labels) + 2
+    print("\npairwise correlation of daily out-of-sample returns\n")
+    print(" " * width + "".join(f"{i:>7}" for i in range(len(labels))))
+    high = []
+    for i, lab in enumerate(labels):
+        row = f"{i} {lab:<{width-2}}"
+        for j in range(len(labels)):
+            c = 1.0 if i == j else _correlation(series[i], series[j])
+            row += "      -" if c is None else f"{c:>7.2f}"
+            if i < j and c is not None and abs(c) > 0.7:
+                high.append((labels[i], labels[j], c))
+        print(row)
+
+    print()
+    if high:
+        print("These pairs are effectively the same position:")
+        for a, b, c in high:
+            print(f"  {a} <-> {b}   r={c:.2f}")
+        print("Running them side by side buys no diversification. Size them as one.")
+    else:
+        print("No pair above 0.7 — these are genuinely distinct return streams.")
+    return 0
 
 
 def cmd_fetch(args):
@@ -281,6 +390,13 @@ def main(argv=None):
     rp = sub.add_parser("report", help="summarise the factory state")
     rp.add_argument("--state", default=None)
     rp.set_defaults(func=cmd_report)
+
+    dv = sub.add_parser("diversity",
+                        help="are the confirmed winners actually different bots?")
+    dv.add_argument("--markets", default="synthetic")
+    dv.add_argument("--bars", type=int, default=45000)
+    dv.add_argument("--state", default=None)
+    dv.set_defaults(func=cmd_diversity)
 
     vf = sub.add_parser("verify", help="reproduce a saved winner from its genome")
     vf.add_argument("--winner", type=int, default=0)

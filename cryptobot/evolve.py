@@ -85,6 +85,8 @@ class Factory:
         self.reports = []
         self.keys = sorted(segments)
         self._pairs = self._build_pairs()
+        self._winner_returns = []       # daily return streams of confirmed bots
+        self._pending_returns = None
 
     # ------------------------------------------------------------ universe
 
@@ -322,6 +324,13 @@ class Factory:
                     self.log(f"      gauntlet: {candidate.strategy_name}"
                              f" on {candidate.market_key} -> {mark}")
                     if report.passed:
+                        dupe = self.is_redundant(candidate, report)
+                        if dupe is not None:
+                            self.log(f"      passed, but r={dupe:+.2f} with a bot "
+                                     f"already confirmed — not a new edge, "
+                                     f"vault not burned")
+                            self.state["redundant"].append(candidate.to_dict())
+                            continue
                         confirmed = self.vault_confirm(candidate)
                         if confirmed.passed:
                             winners.append((candidate, report, confirmed))
@@ -370,13 +379,19 @@ class Factory:
         the same bot several times over and inflate gate 10's hurdle for no
         information in return."""
         chosen, seen = [], set()
+        won = {(w["bot"]["market"], w["bot"]["strategy"])
+               for w in self.state["winners"]}
         for score, candidate in scored:
             if len(chosen) >= self.cfg["promote"]:
                 break
             if score <= 0:
                 break
             fam = (candidate.market_key, candidate.strategy_name)
-            if fam in seen or candidate.fingerprint() in self.state["gauntleted"]:
+            # A market+strategy pair that already produced a confirmed winner is
+            # not worth another look: the look raises the hurdle for every future
+            # candidate, and what comes back is almost always the same bot again.
+            if (fam in seen or fam in won
+                    or candidate.fingerprint() in self.state["gauntleted"]):
                 continue
             seen.add(fam)
             chosen.append(candidate)
@@ -419,6 +434,30 @@ class Factory:
             self.state["oos_sharpe_samples"].append(round(report.oos["sharpe"], 4))
         return report
 
+    def is_redundant(self, candidate, report):
+        """Is this candidate just a confirmed winner wearing different parameters?
+
+        Checked BEFORE the vault, because the vault is a consumable and spending a
+        burn on a bot that is 0.9 correlated with one already confirmed buys nothing
+        and costs the one thing that can't be replaced.
+
+        This is not a twelfth gate — it does not judge whether the bot is any good.
+        It answers a different question: does adding it to the set tell us anything
+        we didn't already know? Six bots correlated at 0.9 are one bot with five
+        spare parameter sets. They draw down together, and the diversification is
+        imaginary."""
+        seg = self.segments[candidate.market_key]
+        pseg = self.segments[candidate.partner_key] if candidate.partner_key else None
+        mine = _daily(candidate.run(seg.validation,
+                                    pseg.validation if pseg else None),
+                      seg.validation)
+        for prior in self._winner_returns:
+            c = _corr(mine, prior)
+            if c is not None and abs(c) > self.cfg["max_winner_correlation"]:
+                return c
+        self._pending_returns = mine
+        return None
+
     def vault_confirm(self, candidate):
         """One-shot confirmation on the untouched final slice.
 
@@ -443,6 +482,8 @@ class Factory:
             "oos_sharpe": report.oos["sharpe"],
             "trials_at_burn": self.state["trials"],
         })
+        if report.passed and self._pending_returns is not None:
+            self._winner_returns.append(self._pending_returns)
         if report.passed:
             self.state["winners"].append({
                 "bot": candidate.to_dict(),
@@ -471,6 +512,7 @@ DEFAULTS = {
     "promote": 2,
     "patience": 4,
     "vault_burn_warning": 10,
+    "max_winner_correlation": 0.70,
     "thresholds": None,
 }
 
@@ -480,7 +522,7 @@ DEFAULTS = {
 def blank_state():
     return {"trials": 0, "oos_looks": 0, "sharpe_samples": [],
             "oos_sharpe_samples": [], "gauntleted": [], "winners": [],
-            "vault_burns": 0, "vault_log": []}
+            "redundant": [], "vault_burns": 0, "vault_log": []}
 
 
 def load_state(path):
@@ -501,3 +543,31 @@ def save_state(path, state):
     with open(tmp, "w") as fh:
         json.dump(state, fh, indent=1)
     tmp.replace(path)
+
+
+# ------------------------------------------------- winner-overlap helpers
+
+def _daily(result, market):
+    """Per-bar returns collapsed onto a calendar-day grid, so bots on different
+    timeframes can be compared to each other at all."""
+    by_day = {}
+    for i, r in enumerate(result.net):
+        day = market.ts[i] // 86400
+        by_day[day] = by_day.get(day, 1.0) * (1.0 + r)
+    return {d: v - 1.0 for d, v in by_day.items()}
+
+
+def _corr(a, b):
+    days = sorted(set(a) & set(b))
+    n = len(days)
+    if n < 30:
+        return None
+    xs = [a[d] for d in days]
+    ys = [b[d] for d in days]
+    mx, my = sum(xs) / n, sum(ys) / n
+    cov = sum((xs[i] - mx) * (ys[i] - my) for i in range(n))
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    if vx <= 0 or vy <= 0:
+        return None
+    return cov / (vx * vy) ** 0.5
