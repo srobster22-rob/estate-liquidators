@@ -18,8 +18,11 @@ static class T
         Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  {name}{(detail.Length > 0 ? "   " + detail : "")}");
         if (!ok) _fail++;
     }
-    public static void Near(string name, float got, float want, float tol)
-        => Check(name, MathF.Abs(got - want) <= tol, $"got {got:0.###}, want {want:0.###}");
+    public static void Near(string name, float got, float want, float tol,
+                            string detail = "")
+        => Check(name, MathF.Abs(got - want) <= tol,
+                 $"got {got:0.###}, want {want:0.###}"
+                 + (detail.Length > 0 ? " - " + detail : ""));
     public static int Exit => _fail;
     public static void Head(string s) => Console.WriteLine($"\n{s}\n{new string('-', 74)}");
 }
@@ -64,6 +67,21 @@ class Program
         T.Check("appraising is louder than sprinting",
             Loudness.Of(NoiseKind.AppraisePing) > Loudness.Of(NoiseKind.Sprint));
 
+        // R19: EffectiveAt had no assertion at all, so swapping the two occlusion
+        // coefficients or deleting the range clamp was invisible to every guard.
+        T.Check("the Curator hears through walls better than a player does",
+            Loudness.EffectiveAt(NoiseKind.BreakSmall, 10f, 2, curator: true)
+              > Loudness.EffectiveAt(NoiseKind.BreakSmall, 10f, 2, curator: false),
+            "occlusion 0.85 vs 0.60 per wall");
+        T.Near("...and each wall costs the Curator 15%",
+            Loudness.EffectiveAt(NoiseKind.BreakSmall, 10f, 1, curator: true)
+              / Loudness.EffectiveAt(NoiseKind.BreakSmall, 10f, 0, curator: true),
+            0.85f, 0.001f);
+        T.Check("sound does not carry past its radius, or go negative",
+            Loudness.EffectiveAt(NoiseKind.BreakSmall, 40f, 0, curator: true) == 0f
+              && Loudness.EffectiveAt(NoiseKind.Walk, 100f, 0, curator: false) == 0f,
+            "radius is 29.7m at L90");
+
         T.Head("ATTENTION  (TECH-SPEC A3, corrected in LOOP_LOG R2)");
         var empty = new Player { Name = "empty", NoiseEventsLast10s = 3, LightVisible = true };
         T.Near("empty-handed player weighs nothing", Attention.Weight(empty), 0f, 0.0001f);
@@ -81,6 +99,21 @@ class Program
         var lit = new Player { Name = "lit", LightVisible = true };
         lit.Items.Add(new Item { AppraisedValue = 100 });
         T.Near("light multiplies by 1.30", Attention.Weight(lit), 130f, 0.01f);
+
+        // R19: every attention assertion above used a player with ZERO noise events,
+        // so noise could be made additive again - the exact R2 bug, BUILD-PROMPT's
+        // first non-negotiable - without a single test noticing, as long as the
+        // empty-handed guard survived. These pin the multiplicative shape itself.
+        var noisy = new Player { Name = "noisy", NoiseEventsLast10s = 3 };
+        noisy.Items.Add(new Item { AppraisedValue = 100 });
+        T.Near("noise multiplies a carrier by 1 + 0.20/event",
+            Attention.Weight(noisy), 160f, 0.01f);
+
+        var noisyRich = new Player { Name = "noisyRich", NoiseEventsLast10s = 3 };
+        noisyRich.Items.Add(new Item { AppraisedValue = 200 });
+        T.Near("doubling the loot doubles the weight at identical noise",
+            Attention.Weight(noisyRich) / Attention.Weight(noisy), 2f, 0.0001f,
+            "the signature of multiplicative: an additive term would not scale");
 
         T.Head("HAND-OFF  (0.0s with the override, 6.0s without)");
         var a = new Player { Name = "A" }; a.Items.Add(new Item { AppraisedValue = 1000 });
@@ -113,6 +146,22 @@ class Program
         }
         T.Near("without the override it waits out the lock",
             retargetAt - handoffAt, 6f, 0.5f);
+
+        // R19: the override fired on any hand-off, not just one FROM the target, and
+        // nothing caught it. A pass between two bystanders must not steal the Curator
+        // off the person actually holding the prize.
+        var sel4 = new AttentionSelector();
+        var rich = new Player { Name = "rich" };
+        rich.Items.Add(new Item { AppraisedValue = 1000 });
+        var by1 = new Player { Name = "by1" }; by1.Items.Add(new Item { AppraisedValue = 100 });
+        var by2 = new Player { Name = "by2" };
+        var crew3 = new List<IAttentionSubject> { rich, by1, by2 };
+        sel4.Update(0f, crew3);
+        var trinket = by1.Items[0]; by1.Items.Clear(); by2.Items.Add(trinket);
+        sel4.Update(2f, crew3, handoffFrom: by1, handoffTo: by2);
+        T.Check("a hand-off between bystanders does not steal the Curator",
+            ReferenceEquals(sel4.Target, rich),
+            "only a pass FROM the current target overrides hysteresis");
 
         T.Head("NO FLICKER  (comparable loot, 300s)");
         var rng = new Random(7);
@@ -164,6 +213,22 @@ class Program
         T.Near("cursed cargo lifts the floor 7/item", new Disturbance(4, 720).Floor(3),
             21f, 0.01f);
 
+        // R19: three Disturbance invariants nothing was checking.
+        var d4 = new Disturbance(4, 720);
+        for (int i = 0; i < 900; i++) d4.Tick(1f, 0);   // 3 minutes past sunrise
+        T.Near("the ratchet stops at sunrise, it does not keep climbing",
+            d4.Value, 55f, 0.5f, "Elapsed/night is clamped to 1");
+
+        var d5 = new Disturbance(4, 720);
+        for (int i = 0; i < 40; i++) d5.AddNoise(NoiseKind.BreakLarge, 0f);
+        T.Check("Disturbance is capped at 100", d5.Value <= 100f,
+            $"40 large breakages = {40 * 9}pts raw -> {d5.Value:0}");
+
+        var d6 = new Disturbance(4, 720);
+        d6.AddStatic(5);
+        T.Near("ghost Static costs 1 Disturbance per point", d6.Value, 5f, 0.001f,
+            "DESIGN 5.1 - the dead player's budget was untested until R19");
+
         T.Head("ECONOMY  (ECONOMY.md, curse tail risk from R11)");
         T.Near("armful costs one slot", Van.Slots(WeightClass.Armful), 1f, 0.001f);
         T.Near("cart costs five", Van.Slots(WeightClass.Cart), 5f, 0.001f);
@@ -173,6 +238,9 @@ class Program
         T.Near("5 is a quarter of your nights", Van.RuinChance(5) * 100f, 27.2f, 0.5f);
         T.Check("8 and you will not get away with it",
             Van.RuinChance(8) > 0.60f, $"{Van.RuinChance(8):P0}");
+        // R19: uncapped, the curve passes 1.0 at 22 items and becomes a certainty.
+        T.Near("ruin is capped at 95%, never a certainty", Van.RuinChance(30), 0.95f,
+            0.0001f, "a van you cannot possibly extract is not a gamble");
         T.Near("malignant pays x6", Curse.Value(CurseGrade.Malignant), 6f, 0.001f);
         T.Near("...and costs 20% at the ledger", Curse.Fee(CurseGrade.Malignant), 0.20f, 0.001f);
 

@@ -49,7 +49,9 @@ Run these before anything else; the answers change the plan.
 
 ```bash
 python3 sim/check_drift.py          # expect: 132 checks, 59/59 constants, 4 implementations
-dotnet run --project unity/tests/CoreTests   # expect: 31/31 assertions pass
+dotnet run --project unity/tests/CoreTests   # expect: 41/41 assertions pass
+python3 sim/check_estates.py         # expect: 10/10 estate checks can fail
+python3 sim/check_core.py            # expect: every core reversion caught (needs dotnet)
 ```
 
 The drift figure was `55/55` until `LOOP_LOG.md` R16, which found the checker was silently
@@ -59,8 +61,10 @@ had drifted behind the gap. It is now fail-closed both ways: a renamed constant,
 one or a deleted check each fail the run, and coverage is asserted *per implementation*, so a
 constant one copy carries but nobody checks there is a failure rather than a silence.
 
-If `dotnet` is missing, install the .NET 9 SDK — the C# core suite is the thing that stops
-anyone quietly reverting the three rules that were each wrong once.
+If `dotnet` is missing, install the .NET 9 SDK. The C# core suite is what stops anyone quietly
+reverting a rule that was already wrong once — and `sim/check_core.py` is what stops the suite
+itself from going soft: it reverts each rule on purpose and fails if nothing notices. Without
+dotnet, `check_core.py` exits **2** rather than 0, so a skip can never read as a pass.
 
 Then the engine:
 
@@ -113,5 +117,6 @@ Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the 
 settled (21 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has sixteen rounds of findings, including several corrections to the specs.
-Where the log and a document disagree, the log is newer.
+`LOOP_LOG.md` carries every round of findings, newest at the bottom, including several
+corrections to the specs. Where the log and a document disagree, the log is newer. (The round
+count used to be quoted here and went stale three times; it isn't any more.)

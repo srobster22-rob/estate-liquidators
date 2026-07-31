@@ -257,6 +257,35 @@ measured table and says plainly that the contract needs the *runtime* test §3.1
 · Result: **10/10 checks proven able to fail**, up from 7 planted and 0 asserted. V1, V5 and V7
 had never been shown to fail at all.
 
+R19 · Built `sim/check_core.py` — a mutation test that reverts each rule in the C# core one at a
+time and asks whether anything notices. Every mutation runs past **both** guards, CoreTests and
+`check_drift`, because a constant reversion should be caught by the drift checker while a
+*logic* reversion can only be caught by behaviour. Picked because the core is what Phases 3–4
+build on, and 31 passing assertions say the core agrees with the sims on the cases they cover —
+not that they would notice a rule being reverted, which is the exact failure BUILD-PROMPT's
+non-negotiables list exists to prevent. · **8 of 29 reversions survived both guards.** The worst
+was **A2: attention noise made additive on a carrying player** — BUILD-PROMPT's *first*
+non-negotiable, the R2 bug that let an empty-handed player be hunted 100% of the time. It
+survived because every attention assertion used a player with **zero noise events**, so the
+multiplicative shape was never exercised; only the empty-handed guard was, and that still held.
+The other seven: `EffectiveAt` had no assertion at all (swapping the player/Curator occlusion
+coefficients, or deleting the range clamp so distant sources go *negative*, were both
+invisible); a hand-off from a non-target could steal the Curator off the person holding the
+prize; the ratchet could climb past sunrise; Disturbance could exceed 100; `AddStatic` — the
+dead player's whole Static budget, DESIGN 5.1 — was never called by any test; and ruin
+probability could exceed certainty. Added 10 assertions, **31 → 41**, and all 29 reversions are
+now caught. · **One filed gap was my own error, not the code's.** E4 (`cursedAboard <= 0` →
+`< 0`) looked unguarded; checking it showed `MathF.Pow(0, 1.8) == 0`, so the early return is
+redundant and the mutant is *equivalent* — identical output at 0,1,2,3,5,8,20. Reclassified
+rather than "fixed" with a test that would have asserted nothing. Two equivalent mutants are now
+asserted to survive, so if either is ever caught the analysis gets revisited. · **The finding
+worth carrying forward is what the harness cannot reach.** Mapping the eight non-negotiables to
+guards: four are pinned here, one lives in the estate validator, and **three cannot be guarded
+by anything in this repository** — aggro persisting to the object, carried items staying
+non-kinematic, and zero friendly-fire damage. All three are Unity behaviour, there is no Unity
+project yet, and they are the likeliest to be quietly lost during Phases 1 and 3. That map is
+now asserted in `check_core.py`, so a rule cannot lose its guard silently.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

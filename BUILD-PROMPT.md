@@ -37,7 +37,8 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 >    `sim/check_drift.py` checks against `tuning.json`; `proto3d/` is first-person, matching the
 >    direction correction in `LOOP_LOG.md` R15, and is not covered by the drift checker. Play
 >    both before writing anything. Then read the C# core in `unity/Assets/Scripts/Core/` and run
->    `dotnet run --project unity/tests/CoreTests` — 31 assertions, all passing.
+>    `dotnet run --project unity/tests/CoreTests` — 41 assertions, all passing, and every
+>    one of them proven able to FAIL by `sim/check_core.py` (R19).
 > 8. `TRANSFER.md` — which machine does what. Unity cannot cross-compile a Windows IL2CPP
 >    player from macOS, so iterate on the Mac and produce the shipping Steam build on the PC.
 >    Read before planning Phase 2 or Phase 6.
@@ -127,8 +128,15 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > The verified rules are **already ported to C#** in `unity/Assets/Scripts/Core/` — Loudness,
 > multiplicative Attention plus the hysteresis selector, Disturbance, and the van/curse economy —
 > written free of `UnityEngine` so they compile and test outside the editor. `unity/tests/CoreTests`
-> pins them against the Python simulations' numbers: **31 assertions, all passing**, via
-> `dotnet run --project unity/tests/CoreTests`. Build Phases 3–4 on that core rather than
+> pins them against the Python simulations' numbers: **41 assertions, all passing**, via
+> `dotnet run --project unity/tests/CoreTests`. `sim/check_core.py` then breaks the core one
+> rule at a time and requires something to notice — it found eight rules that nothing was
+> guarding, including the multiplicative-attention non-negotiable below (R19).
+>
+> **Three of the eight non-negotiables cannot be guarded by anything in this repo yet**, because
+> they are Unity behaviour: aggro persisting to the object, carried items staying non-kinematic,
+> and zero friendly-fire damage. They are the likeliest to be lost during Phases 1 and 3. Write
+> a test for each as you build it, and add it to `sim/check_core.py`'s NON_NEGOTIABLES map. Build Phases 3–4 on that core rather than
 > re-deriving it. After changing any constant, re-run `python3 sim/check_drift.py`, which holds
 > `tuning.json` (canonical), the C# core, and both JS prototypes in agreement — 132 checks over 59
 > canonical constants across four implementations, fail-closed. Still to port: `sim/validate_estate.py` to a C# editor tool for

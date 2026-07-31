@@ -48,7 +48,8 @@ falsification conditions.
 | **[TRANSFER.md](TRANSFER.md)** | The move to the Mac, what to run first, and why the shipping build comes off the PC. | Setting up a machine. |
 | **[tuning.json](tuning.json)** | Canonical constants. Every implementation is checked against it by `sim/check_drift.py`. | Before changing any number anywhere. |
 | **[proto/index.html](proto/index.html)** · **[proto3d/index.html](proto3d/index.html)** | Two browser prototypes: the original loop test, and the first-person one built after the direction correction in `LOOP_LOG.md` R15. Loop tests, not the product. | Before writing anything. |
-| **[unity/Assets/Scripts/Core/](unity/Assets/Scripts/Core/)** | The verified rules in C#, `UnityEngine`-free. 31 assertions in `unity/tests/CoreTests`. | Porting or changing a rule. |
+| **[unity/Assets/Scripts/Core/](unity/Assets/Scripts/Core/)** | The verified rules in C#, `UnityEngine`-free. 41 assertions in `unity/tests/CoreTests`. | Porting or changing a rule. |
+| **[sim/check_core.py](sim/check_core.py)** | Mutation test for the C# core: reverts each rule and requires a guard to notice. Added R19, when eight rules — including multiplicative attention — turned out to be unguarded. Needs the .NET SDK. | After changing any rule. |
 | **[IMPROVE-PROMPT.md](IMPROVE-PROMPT.md)** | The prompt for a hardening pass over existing work. | Between build phases. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The older design-iteration prompt. Superseded for build work by BUILD-PROMPT.md. | Design passes only. |
 
