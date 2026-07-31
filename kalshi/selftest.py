@@ -373,6 +373,55 @@ ok("attenuated copies stay out of the tradeable family list",
    same not in markets.FAMILIES and half not in markets.FAMILIES and len(markets.FAMILIES) == 9,
    f"{len(markets.FAMILIES)} families in the sweep")
 
+print("\n8d. CAPACITY AND PORTFOLIO — dollars, and where they are measured")
+from . import capacity, portfolio  # noqa: E402  (imported here so 1-8 run without them)
+
+# REGRESSION GUARD. capacity.py used to default to the OOS seeds, and OOS is where winners
+# are chosen — so it reported the selection-inflated mean and a $214/yr headline for a bot
+# whose honest value is about $133/yr. Capacity is the number people quote; it has to come
+# from data that had no hand in picking the bot.
+import inspect  # noqa: E402
+_src = inspect.getsource(capacity.analyse)
+ok("capacity measures on the holdout seeds, never out-of-sample",
+   'SEEDS["holdout"]' in _src and 'SEEDS["oos"]' not in _src,
+   "default seed_base is the holdout range")
+
+_st = strategies.hold_favorite(enter_frac=0.25, qty=250, thresh=95)
+_c = capacity.analyse("econ_print", _st, n_groups=600)
+near("annual dollars = markets/yr x cents per market",
+     _c.annual_pnl_cents / 100.0,
+     _c.markets_per_year * _c.mean_per_market / 100.0, 1e-6)
+near("break-even market count inverts that exactly",
+     _c.breakeven_markets_per_year * _c.mean_per_market / 100.0,
+     float(capacity.GATE_MIN_DOLLARS), 1e-6)
+ok("capital required exceeds mean capital deployed",
+   _c.peak_concurrent >= _c.mean_concurrent and _c.utilization <= 1.0,
+   f"peak {_c.peak_concurrent:.2f} >= mean {_c.mean_concurrent:.2f} positions")
+
+# The portfolio's whole claim is that independent members diversify. Two members must sum
+# their dollars while adding their variances only in quadrature.
+_m1 = portfolio.build_member("econ_print", _st, 400, 7_000_000)
+_m2 = portfolio.build_member("weather_temp",
+                             strategies.hold_favorite(enter_frac=0.0, qty=100, thresh=90),
+                             400, 7_000_000)
+_p = portfolio.combine([_m1, _m2], resamples=800)
+near("portfolio income is the sum of its members",
+     _p.annual_dollars, _m1.annual_dollars + _m2.annual_dollars, 1e-6)
+near("portfolio capital is the sum of its members",
+     _p.capital, _m1.capital + _m2.capital, 1e-6)
+ok("independent members diversify — interval tighter than if they moved together",
+   _p.diversification > 1.0,
+   f"{_p.diversification:.2f}x tighter than the correlated case")
+ok("one member cannot diversify",
+   abs(portfolio.combine([_m1], resamples=400).diversification - 1.0) < 1e-9)
+ok("select_members never takes two bots from one family",
+   len({m.family for m in portfolio.select_members(
+       [{"family": "econ_print", "strategy": "hold_favorite",
+         "params": {"enter_frac": 0.25, "qty": 250, "thresh": 95}},
+        {"family": "econ_print", "strategy": "hold_favorite",
+         "params": {"enter_frac": 0.0, "qty": 100, "thresh": 95}}], 300, 7_000_000)}) <= 1,
+   "two econ_print bots collapse to one member")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

@@ -59,8 +59,17 @@ WHAT "PROVEN PROFIT" IS DEFINED TO MEAN HERE (all of it, not some of it):
      threshold needed, and no "picking up pennies in front of a steamroller" strategy gets
      certified on the strength of a quiet sample.
 
-Criteria 9 and 10 both exist because the gate was PASSED. Every time this thing clears its
-own bar, the first question is what the bar failed to ask.
+ 11. At least `min_annual_dollars` PER YEAR. Criteria 1-10 all measure edge per market, and
+     a bot can ace every one of them and still be a $214/yr business — which is exactly what
+     the first winner turned out to be, because `econ_print` lists ~250 markets a year and
+     the book holds ~55 contracts where the edge lives. Annual dollars is markets/yr x edge
+     per market, so this criterion is the only one that can see the difference between a big
+     edge somewhere rare and a small edge somewhere constant. It is also the only criterion
+     that depends on an estimate nobody has verified (`capacity.markets_per_year`), and it
+     scales linearly with it.
+Criteria 9, 10 and 11 all exist because the gate was PASSED. Every time this thing clears its
+own bar, the first question is what the bar failed to ask — and criterion 11 came from the
+bluntest version of that question: fine, it works, so how much money is it?
 
 The bootstrap is used for the p-value as well as the interval, deliberately. Per-group
 PnL is violently skewed — most groups lose a little and a few win 100c — and a t-test on
@@ -88,7 +97,7 @@ GATE = _CFG["gate"]
 GATE_CRITERIA = (
     "trades_oos", "oos_mean_positive", "bootstrap_lo95_positive", "fwer_adjusted_p",
     "holdout_trades", "holdout_mean_positive", "stress_mean_positive",
-    "annualized_return", "tail_risk", "half_edge",
+    "annualized_return", "tail_risk", "half_edge", "annual_dollars",
 )
 
 
@@ -96,7 +105,8 @@ class Stats:
     __slots__ = ("n_groups", "n_trades", "n_contracts", "total", "mean", "sd", "t",
                  "p_one_sided", "lo95", "hi95", "annualized", "win_rate", "max_dd",
                  "fees_paid", "gross", "mean_per_trade", "fee_share",
-                 "n_losses", "loss_rate", "wilson_loss_hi", "tail_mean", "worst_loss")
+                 "n_losses", "loss_rate", "wilson_loss_hi", "tail_mean", "worst_loss",
+                 "annual_dollars", "markets_per_year")
 
     def to_dict(self):
         return {k: getattr(self, k) for k in self.__slots__}
@@ -123,8 +133,15 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else 0.0
 
 
-def summarize(res: backtest.Result, resamples: int | None = None, seed: int = 12345) -> Stats:
+def summarize(res: backtest.Result, resamples: int | None = None, seed: int = 12345,
+              markets_per_year: int = 0) -> Stats:
     s = Stats()
+    # Edge per market is a fact about the strategy; dollars per year is a fact about the
+    # BUSINESS, and they rank candidates completely differently. econ_print pays 85c a market
+    # and lists ~250 of them; crypto_hourly lists 17,520. A tenth of the edge in the second is
+    # seven times the money. Ranking by t-statistic — which is scale-free — cannot see that
+    # difference at all, which is why the first winner this loop produced was a $214/yr bot.
+    s.markets_per_year = markets_per_year
     g = res.group_pnl
     s.n_groups = len(g)
     s.n_trades = res.n_trades
@@ -138,6 +155,7 @@ def summarize(res: backtest.Result, resamples: int | None = None, seed: int = 12
     s.mean_per_trade = _mean(res.trade_pnl)
     s.win_rate = (sum(1 for x in res.trade_pnl if x > 0) / len(res.trade_pnl)) if res.trade_pnl else 0.0
     s.annualized = res.annualized_return
+    s.annual_dollars = markets_per_year * s.mean / 100.0
 
     # --- RARE-EVENT TAIL --------------------------------------------------------------
     # Added because the first three bots to pass this gate all won ~99.3% of the time and
@@ -323,6 +341,9 @@ def gate(oos: Stats, holdout: Stats | None, stress: Stats | None,
         v.check("half_edge", half_edge.mean > 0,
                 f"mean {half_edge.mean:+.2f}c/market in a world where the planted "
                 f"inefficiency is {GATE['half_edge_factor']:g}x what markets.py assumes")
+    v.check("annual_dollars", oos.annual_dollars >= GATE["min_annual_dollars"],
+            f"${oos.annual_dollars:,.0f}/yr on ~{oos.markets_per_year:,} markets/yr, "
+            f"bar is ${GATE['min_annual_dollars']:,}")
     v.check("tail_risk", oos.tail_mean > 0,
             f"{oos.n_losses} losses in {oos.n_trades} trades (rate {oos.loss_rate * 100:.2f}%, "
             f"Wilson upper {oos.wilson_loss_hi * 100:.2f}%, worst {oos.worst_loss:+d}c) "

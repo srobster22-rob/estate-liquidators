@@ -42,7 +42,9 @@
     "stress_fee_multiplier": 1.5,
     "stress_extra_spread_ticks": 1,
     "stress_maker_fill_multiplier": 0.5,
-    "min_annualized_return_on_locked_capital": 0.05
+    "min_annualized_return_on_locked_capital": 0.05,
+    "min_annual_dollars": 250,
+    "_min_annual_dollars_note": "Criterion 11. The incumbent best bot earns $214/yr, so the bar is set above it: a new winner has to be a better BUSINESS, not just a better edge. Uses capacity.markets_per_year, which is an estimate — see capacity.py."
   },
 
   "capacity": {

@@ -3,7 +3,7 @@
 A loop that builds trading bots for Kalshi event contracts — every market family against
 every strategy family — backtests them against a market simulator, and then tries as hard
 as it can to disqualify them. It keeps breeding and widening the search until something
-clears a ten-criterion gate, or until the generation budget runs out.
+clears an eleven-criterion gate, or until the generation budget runs out.
 
 **Status: the loop works and it produces bots that clear the gate. The gate is a statement
 about a simulator, not about Kalshi.** That distinction is the most important thing on this
@@ -17,10 +17,11 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 57 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 66 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
+python -m kalshi.portfolio         # combine bots across families; writes PORTFOLIO.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -54,10 +55,12 @@ checks themselves.
 | `factory.py` | The loop: build → screen → validate → correct → confirm → expand. |
 | `live.py` | Kalshi REST adapter: check, record, replay, paper, live. |
 | `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
-| `selftest.py` | 57 checks that have to pass before any of the above means anything. |
+| `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
+| `selftest.py` | 66 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
+| `PORTFOLIO.md` | The combined book and whether it clears the money bar. Generated. |
 
 ---
 
@@ -164,18 +167,47 @@ goes negative somewhere between 25% and 50%. So the real claim these bots make i
 That table, not the p-value, is the honest measure of how much any of this depends on
 magnitudes nobody has measured.
 
-**8. It is a $214-a-year business.** `RESULTS.md` reports the winner at +4552%/yr, which is
+**8. It is a $133-a-year business, and the $214 I first reported was my own bug.** `RESULTS.md` reports the winner at +4552%/yr, which is
 arithmetically correct and nearly useless. `python -m kalshi.capacity` asks the two questions
 that decide whether a strategy is worth building — how many such markets exist, and how much
-size the book holds where the edge lives — and the answer is **$214/year on $52 of committed
-capital**, because `econ_print` lists ~250 markets a year and the book holds ~55 contracts at
-the price the edge lives at. The percentage is a return measured over the 9% of the year the
-capital is deployed; the rest of the time it earns nothing. Both numbers describe the same
-bot and only one of them tells you whether to build it. The two ways it improves are the same
-inefficiency in a family that lists more markets, or at a price where the book is deeper —
-neither is a tuning problem.
+size the book holds where the edge lives.
 
-**9. The best-looking bot in the entire coverage sweep is on the market that cannot be
+The first answer was **$214/year**, and it was wrong. `capacity.py` measured on the
+out-of-sample set, which is where winners are *chosen*: a bot only becomes a winner if its OOS
+numbers clear the gate, so the OOS mean of a winner is the maximum of a selected set. Measured
+on the holdout it is 53.3¢ per market; on a fourth, never-touched seed range, 48.8¢. The
+honest figure is **$133/year on $52 of committed capital**, and the headline was 60% too high.
+It is fixed, and `selftest.py` now fails if capacity ever reads the OOS seeds again.
+
+`econ_print` lists ~250 markets a year and the book holds ~55 contracts where the edge lives.
+The percentage is a return measured over the 9% of the year the capital is deployed; the rest
+of the time it earns nothing.
+
+**9. Nothing beats it, and the reason is structural.** Asked to find something better than
+$214/yr, the loop ran 14 generations, 814 bots and 164 out-of-sample tests and found nothing —
+then a direct measurement of every family explained why. Kalshi's fee plus one spread crossing
+costs roughly 1.5–3¢ a contract. Only `econ_print`'s planted edge (a 3¢ quote lag) clears that
+bar, and `econ_print` is the *rarest* thing on the exchange at ~250 markets a year. The
+families that list constantly have edges too small to pay for their own spread — measured, not
+assumed: `crypto_hourly` is **negative at every threshold tested** on 8,000 markets. The
+ceiling is the product of those two facts and no parameter search moves it.
+
+The near-miss is the interesting part. `sports_game` — strong bias, deep book, 6,000 markets a
+year — had received **zero out-of-sample slots in 164 tests**, because a global top-N ranking
+let `econ_print` take 92 of them. Fixing that (slots are now stratified by family) and testing
+it directly gave **+379.7¢/market, t=+2.40, $22,785/yr**. On an independent confirmation set it
+was **+7.5¢, t=+0.05**. It was the maximum of 18 configs on a high-variance family, and the
+confirmation step is the only reason it is in this paragraph instead of at the top of the page.
+
+**10. The one number that would change the answer is one nobody has counted.** Annual income is
+strictly linear in markets-per-year, which is the single input here that is a pure estimate.
+So the result is stated as something falsifiable rather than as a dollar figure: the winning
+bot clears $250/yr **if and only if `econ_print`-style markets number ≥ 469 a year**. My
+estimate is 250. Someone with API access can settle it in an afternoon — and should also check
+whether strike *ladders* inflate that count, since eight strikes on one CPI print are eight
+markets but one bet.
+
+**11. The best-looking bot in the entire coverage sweep is on the market that cannot be
 beaten.** In the 9 × 12 matrix, the highest in-sample cell of all 100 is
 `efficient_control / hold_favorite` at **+422¢ per market** — on a market with γ = 1.0, no
 quote lag and a penny spread, where profit is impossible by construction. `buy_longshot`,
@@ -187,7 +219,7 @@ wide search looks like when there is nothing there, and it is the reason every n
 
 ## The gate
 
-Ten criteria. All of them, or it is not a pass.
+Eleven criteria. Criteria 1-10 gate each **bot**; criterion 11 gates the **portfolio**.
 
 | # | criterion | what it stops |
 |---|---|---|
@@ -201,8 +233,16 @@ Ten criteria. All of them, or it is not a pass.
 | 8 | ≥100 holdout trades | a confirmation too small to confirm |
 | 9 | profitable at the **Wilson upper bound on the loss rate** | 99.3% win rates whose entire risk rests on 7 observed losses |
 | 10 | profitable in a **half-edge world** (paired: same markets, planted edge halved) | a result that is really a bet on the magnitudes in `markets.py` |
+| 11 | the **portfolio** clears `min_annual_dollars` | a bot that aces every statistical test and is still a $133/yr business |
 
-Three of these were added *because the gate was passed* — every time this thing clears its
+Criterion 11 sits on the portfolio rather than on each bot deliberately. Criteria 1-10 ask
+*is this edge real*, which is a question about a bot. Criterion 11 asks *is this enough
+money*, which is a question about a book. Applying the money bar per-bot rejects a component
+that is real but small even when adding it strictly increases total income — a $60/yr bot that
+genuinely works is a good thing to own next to a $133/yr one. Members still clear every
+statistical and robustness criterion individually; no free passes for being in a basket.
+
+Four of these were added *because the gate was passed* — every time this thing clears its
 own bar, the first question is what the bar failed to ask. Criterion 4 was originally
 Benjamini-Hochberg, which controls the false discovery *rate* — correct for a portfolio of
 findings, wrong here, because the factory funds one bot and a single false discovery is the

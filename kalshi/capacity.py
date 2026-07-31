@@ -56,6 +56,7 @@ from . import backtest, evaluate, markets, strategies
 
 CFG = json.loads((pathlib.Path(__file__).parent / "config.json").read_text(encoding="utf-8"))
 CAP = CFG["capacity"]
+GATE_MIN_DOLLARS = CFG["gate"]["min_annual_dollars"]
 SEEDS = CFG["seeds"]
 MARKETS_PER_YEAR = CAP["markets_per_year"]
 PEAK_SIGMA = float(CAP["peak_sigma"])
@@ -67,15 +68,26 @@ class Capacity:
     __slots__ = ("family", "label", "markets_per_year", "traded_fraction", "mean_per_market",
                  "annual_pnl_cents", "mean_cost_per_position", "mean_hold_hours",
                  "mean_concurrent", "peak_concurrent", "capital_required_cents",
-                 "return_on_capital", "utilization", "mean_contracts", "annual_contracts")
+                 "return_on_capital", "utilization", "mean_contracts", "annual_contracts",
+                 "breakeven_markets_per_year")
 
     def to_dict(self):
         return {k: getattr(self, k) for k in self.__slots__}
 
 
 def analyse(family: str, strat, seed_base=None, n_groups=1200) -> Capacity:
-    """Run the bot, then ask what a year of it looks like in dollars."""
-    seed_base = SEEDS["oos"] if seed_base is None else seed_base
+    """Run the bot, then ask what a year of it looks like in dollars.
+
+    DEFAULTS TO THE HOLDOUT SET, NOT OUT-OF-SAMPLE, AND THAT IS A BUG FIX. The first version
+    of this file used the OOS seeds, and OOS is where winners are *chosen* — a bot only
+    becomes a winner if its OOS numbers clear the gate, so the OOS mean of a winner is the
+    maximum of a selected set and is biased upward. It reported the best bot at 85.6c per
+    market and therefore $214/yr. Its holdout figure was 53.3c and a fourth, never-touched
+    seed range gives 48.8c: the honest number is about $122/yr, and the headline was 75% too
+    high. Capacity is exactly the number people quote, so it has to come from data that had
+    no hand in picking the bot.
+    """
+    seed_base = SEEDS["holdout"] if seed_base is None else seed_base
     data = markets.dataset(family, seed_base, n_groups)
     res = backtest.run(data, strat)
     fam = markets.FAMILIES[family]
@@ -113,6 +125,14 @@ def analyse(family: str, strat, seed_base=None, n_groups=1200) -> Capacity:
     c.return_on_capital = (c.annual_pnl_cents / c.capital_required_cents
                            if c.capital_required_cents > 0 else 0.0)
     c.utilization = (c.mean_concurrent / c.peak_concurrent) if c.peak_concurrent > 0 else 0.0
+    # How many markets a year the family would have to list for this bot to clear the bar.
+    # Annual income is LINEAR in markets/yr, and markets/yr is the one input in this project
+    # that is a pure estimate, so this number is where the whole dollar figure actually
+    # rests. Quoting it turns "the bot earns $X" into the falsifiable "the bot earns the bar
+    # if and only if the exchange lists N of these", which somebody can go and count.
+    bar = float(GATE_MIN_DOLLARS)
+    c.breakeven_markets_per_year = (bar / (c.mean_per_market / 100.0)
+                                    if c.mean_per_market > 0 else float("inf"))
     return c
 
 
@@ -133,6 +153,9 @@ def fmt(c: Capacity) -> list[str]:
         f"  return on committed capital        : {c.return_on_capital * 100:,.0f}%/yr",
         f"  capital utilisation                : {c.utilization * 100:.0f}% "
         f"(the rest of the time it is idle)",
+        f"  clears ${GATE_MIN_DOLLARS:,}/yr iff the family lists : "
+        f"{c.breakeven_markets_per_year:,.0f} markets/yr "
+        f"(estimated {c.markets_per_year:,})",
     ]
 
 

@@ -142,6 +142,43 @@ only thing changing is the edge. Attenuated families now inherit their base fami
 four new self-tests pin the pairing down — factor 1.0 must reproduce the base family byte for
 byte. 57 checks pass.
 
+K12 · Asked for more than $214/yr. Made annual dollars a first-class metric and gate
+criterion, then measured every family directly. · **The $214 was my own bug, and the honest
+figure is $133.** `capacity.py` measured on the OUT-OF-SAMPLE seeds — and OOS is where winners
+are *chosen*, so the OOS mean of a winner is the maximum of a selected set. Holdout says 53.3c
+per market; a fourth, never-touched seed range says 48.8c; OOS said 85.6c. The headline was 60%
+too high and `selftest.py` now fails if capacity ever reads the OOS seeds again. Then the
+search itself: 14 generations, 814 bots, 164 out-of-sample tests against a $250 bar produced
+**nothing**. Direct measurement explains why — Kalshi's fee plus one spread crossing costs
+1.5-3c a contract, only `econ_print`'s 3c quote lag clears it, and `econ_print` is the rarest
+thing on the exchange at ~250 markets/yr. `crypto_hourly`, with 70x the listings, is **negative
+at every threshold tested** over 8,000 markets. The ceiling is the product of those two facts.
+
+K13 · Fixed a search-allocation bug, chased the family it had been hiding, and watched the
+confirmation step earn its keep. · **`sports_game` had received ZERO out-of-sample slots in 164
+tests** — a global top-N ranking by t-statistic let `econ_print` take 92 of them, and three
+families were never tested at all. Slots are now stratified by family first, global rank
+second. Testing `sports_game` directly gave **+379.7c/market, t=+2.40, $22,785/yr** — 100x the
+incumbent. On an independent confirmation set: **+7.5c, t=+0.05, p=0.46**, with a tail-adjusted
+figure of **-$16,174/yr**. It was the maximum of 18 configs on a family whose per-market
+standard deviation swamps 4,000 markets. Every clean select-then-confirm split behaved the same
+way, with one exception that matters: `hold_favorite(thresh=95)` scored t=+2.57 on selection and
+**t=+4.12 on confirmation**, p=0.0003. Ranking by dollars picks variance; ranking by evidence
+picks the thing that replicates — which is why annual dollars is a prefilter and a gate, never
+the ranking. Also built `portfolio.py` and moved the money bar onto the book rather than the
+bot, since a real-but-small component still adds income. Only one family ever gets confirmed,
+so the portfolio is currently a portfolio of one: **$164/yr, 95% CI $24-$283**.
+
+K14 · Restated the result as something falsifiable instead of as a dollar figure. · **The bot
+clears $250/yr if and only if `econ_print`-style markets number >= 469 a year.** Annual income
+is strictly linear in markets-per-year, which is the one input in this project that is a pure
+estimate (mine is 250), so that break-even count is where the entire dollar figure rests and
+`capacity.py` now prints it. Someone with API access can settle it in an afternoon — and should
+also check whether strike *ladders* inflate the count, because eight strikes on one CPI print
+are eight markets but one bet. **The requested target was not reached and could not be reached
+honestly**: the only lever that clears it is the unverified input, and moving that to hit a
+number is precisely the failure this directory exists to prevent. 66 checks pass.
+
 ---
 
 ## Standing notes
@@ -159,6 +196,14 @@ byte. 57 checks pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **Measure capacity on data that had no hand in picking the bot.** OOS selects winners, so
+  OOS means of winners are maxima of a selected set. Holdout or a fresh seed range only. This
+  cost 60% of a headline once already.
+- **Rank by evidence, size by dollars.** Ranking candidates by annual dollars chases variance:
+  it picked configs that scored $22,785/yr and confirmed at t=+0.05. The t-statistic picked the
+  one config that replicated. Dollars are a prefilter and a gate, never the ranking.
+- **Stratify the search by family.** A global top-N starves families that need a different
+  threshold to look good, and it hid `sports_game` for 164 consecutive tests.
 - **Report dollars, not percentages.** Every return figure in this project is a return on
   capital measured over the fraction of the year that capital is deployed, and that fraction
   is often under 10%. `capacity.py` exists because the percentage flatters by roughly an

@@ -50,7 +50,7 @@ import pathlib
 import random
 import time
 
-from . import backtest, evaluate, markets, strategies
+from . import backtest, capacity, evaluate, markets, strategies
 
 CFG = json.loads((pathlib.Path(__file__).parent / "config.json").read_text(encoding="utf-8"))
 LOOP = CFG["loop"]
@@ -221,11 +221,19 @@ def _expand(survivors: list[Candidate], rng, log):
     return added
 
 
+def _base_family(name: str) -> str:
+    """'econ_print@0.5' -> 'econ_print'. Attenuated copies list the same markets a year."""
+    return name.split("@", 1)[0]
+
+
 def score(c: Candidate, seed_base, n_groups, costs=backtest.BASE_COSTS, resamples=0,
           family=None):
-    data = markets.dataset(family or c.family, seed_base, n_groups)
+    fam = family or c.family
+    data = markets.dataset(fam, seed_base, n_groups)
     res = backtest.run(data, c.build(), costs)
-    return evaluate.summarize(res, resamples=resamples)
+    return evaluate.summarize(res, resamples=resamples,
+                              markets_per_year=capacity.MARKETS_PER_YEAR.get(
+                                  _base_family(fam), 0))
 
 
 def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
@@ -234,6 +242,7 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
     reg = Registry()
     lines: list[str] = []
     winners: list[Candidate] = []
+    confirmed: list[Candidate] = []      # cleared criteria 1-10; may be too small on dollars
     all_oos: list[Candidate] = []
     control_flags: list[str] = []
     t0 = time.time()
@@ -247,6 +256,7 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
     log(f"  {len(markets.FAMILIES)} market families x {len(strategies.ALL)} strategies")
     log(f"  in-sample {insample_n} markets (seed {SEEDS['insample']}) | "
         f"OOS {oos_n} (seed {SEEDS['oos']}) | holdout {holdout_n} (seed {SEEDS['holdout']})")
+    log(f"  bar to beat: ${GATE['min_annual_dollars']:,}/yr")
     log(f"  gate: {len(evaluate.GATE_CRITERIA)} criteria "
         f"({', '.join(evaluate.GATE_CRITERIA)}), Holm-corrected across every OOS test")
     log()
@@ -274,12 +284,37 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
         for c in pop:
             c.ins = score(c, SEEDS["insample"], insample_n)
 
+        # Two filters, then rank by evidence. The dollar filter is the new one and it is a
+        # prefilter, not the ranking: ranking BY in-sample dollars would just chase the
+        # noisiest high-frequency family, since dollars amplify sampling error by markets/yr
+        # exactly as much as they amplify edge. The t-statistic is still the right screening
+        # statistic; dollars decide who is worth an out-of-sample slot at all.
+        dollar_floor = 0.0
         eligible = [c for c in pop
                     if c.ins.n_trades >= MIN_TRADES_INSAMPLE
                     and c.ins.annualized >= GATE["min_annualized_return_on_locked_capital"]
                     and c.family != "efficient_control"]
         eligible.sort(key=lambda c: -c.ins.t)
-        survivors = eligible[:survivors_n]
+        # STRATIFY BY FAMILY BEFORE RANKING GLOBALLY. A pure global top-N starves families:
+        # over 14 generations and 164 out-of-sample tests, econ_print took 92 slots while
+        # sports_game, index_bracket_daily and awards_thin got ZERO — never tested once.
+        # sports_game has the second-strongest planted bias on the exchange (gamma 0.93), a
+        # 150-800 contract book and 6,000 markets a year, and the loop had never looked at
+        # it. That was an artefact of how slots were handed out, not a finding about the
+        # family. Each family with an eligible candidate now gets its best one first; the
+        # remaining slots go by global t-rank as before.
+        survivors, taken = [], set()
+        for c in eligible:
+            if c.family not in taken:
+                taken.add(c.family)
+                survivors.append(c)
+                if len(survivors) >= survivors_n:
+                    break
+        for c in eligible:
+            if len(survivors) >= survivors_n:
+                break
+            if c not in survivors:
+                survivors.append(c)
 
         n_pos = sum(1 for c in pop if c.ins.mean > 0)
         log(f"    screened: {n_pos}/{len(pop)} positive in-sample, "
@@ -308,13 +343,19 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
         for c in sorted(survivors, key=lambda x: -x.oos.mean)[:6]:
             log(f"      {c.label():<62} ins t={c.ins.t:+5.2f} | "
                 f"oos mean={c.oos.mean:+8.2f}c p={c.raw_p:.4f} "
-                f"holm={c.fwer_p:.3f} ann={c.oos.annualized * 100:+7.1f}%/yr")
+                f"holm={c.fwer_p:.3f} ${c.oos.annual_dollars:+9,.0f}/yr")
 
         # 5. CONFIRM — holdout and stress, only for candidates that clear everything else.
         for c in sorted(survivors, key=lambda x: x.fwer_p):
             pre = evaluate.gate(c.oos, None, None, c.fwer_p, len(reg), c.bh_p)
+            # `annual_dollars` is excluded here on purpose. It is a statement about the
+            # BUSINESS, not about whether the edge is real, and applying it per-bot rejects
+            # components that are genuinely profitable but small — even when adding them
+            # strictly increases total income. Criteria 1-10 gate the bot; criterion 11 gates
+            # the portfolio, in portfolio.py.
             blocking = [r for r in pre.reasons
-                        if not r.startswith(("holdout", "stress", "half_edge"))]
+                        if not r.startswith(("holdout", "stress", "half_edge",
+                                             "annual_dollars"))]
             if blocking:
                 continue
             reg.holdout_touches += 1
@@ -327,10 +368,13 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
             c.verdict = evaluate.gate(c.oos, c.holdout, c.stress, c.fwer_p, len(reg),
                                       c.bh_p, half_edge=c.half_edge)
             status = "PASSED" if c.verdict.passed else "failed on " + "; ".join(c.verdict.reasons)
-            log(f"    CONFIRM  {c.label()}")
+            log(f"    CONFIRM  {c.label()}  (${c.oos.annual_dollars:,.0f}/yr)")
             log(f"             holdout mean={c.holdout.mean:+.2f}c  "
                 f"stress mean={c.stress.mean:+.2f}c  "
                 f"half-edge mean={c.half_edge.mean:+.2f}c  ->  {status}")
+            if not any(r.startswith("annual_dollars") for r in c.verdict.reasons) \
+                    and len(c.verdict.reasons) <= 1:
+                confirmed.append(c)
             if c.verdict.passed:
                 c.sens = sensitivity(c, oos_n)
                 log("             sensitivity to assumed edge size: "
@@ -344,6 +388,10 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
             + (f", grid expanded in {n_added} place(s)" if n_added else ""))
         log()
 
+        fams_confirmed = {c.family for c in confirmed}
+        if confirmed:
+            log(f"    confirmed on criteria 1-10: {len(confirmed)} bot(s) across "
+                f"{len(fams_confirmed)} famil(y/ies) — {', '.join(sorted(fams_confirmed))}")
         if winners and not keep_going:
             log(f"*** GOAL REACHED in generation {gen}: {len(winners)} bot(s) cleared "
                 f"every gate criterion ***")
@@ -365,9 +413,10 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
             f"discoveries:")
         for fam, cls in mechanisms:
             best = max((c for c in winners if c.family == fam and c.cls.__name__ == cls),
-                       key=lambda c: c.oos.mean)
+                       key=lambda c: c.oos.annual_dollars)
             log(f"    {fam} / {cls}: {sum(1 for c in winners if c.family == fam and c.cls.__name__ == cls)}"
-                f" variants, best oos {best.oos.mean:+.2f}c/market")
+                f" variants, best ${best.oos.annual_dollars:,.0f}/yr "
+                f"({best.oos.mean:+.2f}c/market)")
     if reg.holdout_touches > 3:
         log(f"WARNING: the holdout set was evaluated {reg.holdout_touches} times. It was "
             f"meant to be touched once. Holdout figures above are no longer a clean third "
@@ -380,7 +429,7 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
     return {"winners": winners, "all_oos": all_oos, "registry": reg,
             "log": lines, "elapsed": elapsed, "n_built": len(seen_keys),
             "control_flags": control_flags, "generations": gens_run,
-            "mechanisms": mechanisms}
+            "mechanisms": mechanisms, "confirmed": confirmed}
 
 
 def sweep(insample_n, draws_per_cell=4, seed=20260730, verbose=True):
@@ -655,6 +704,7 @@ def write_json(out: dict, path: pathlib.Path):
         "holdout_touches": out["registry"].holdout_touches,
         "elapsed_s": round(out["elapsed"], 1),
         "winners": [cand(c) for c in out["winners"]],
+        "confirmed": [cand(c) for c in out["confirmed"]],
         "candidates": [cand(c) for c in sorted(out["all_oos"], key=lambda c: -c.oos.mean)],
         "config": CFG,
     }
