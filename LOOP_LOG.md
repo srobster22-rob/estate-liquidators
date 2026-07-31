@@ -227,6 +227,36 @@ LEVEL-SPEC V5/V7 on the grounds that §6 is a *contract* deliberately ahead of t
 the right target was `validate_estate.py`'s own docstring claiming it "implements the ten
 checks", which it does not. That is now honest about V2, V5 and V7.
 
+R18 · Built `sim/check_estates.py` — a mutation test that breaks a known-good wing one fault at
+a time and requires every check in `validate_estate.py` to actually fire. Picked because R17
+reconciled LEVEL-SPEC's V2/V3/V8/V9 rows *to match the implementation*, which makes the
+implementation the contract; if a check is vacuous, R17 canonised a bug. · **The validator had
+no entry point.** Its docstring said `Run: python validate_estate.py`; the file defines
+`validate()` and never calls it, so running it printed nothing and exited 0. Nothing in the repo
+imported `estates.py` or called `validate()`. So `EXPECTED_FAILURES` — the seven planted faults
+R1 records as verified — **was asserted by nothing**, and that verification has not run since R1.
+· **And R17's own regression line was partly vacuous.** "All nine sims exit 0" counted this
+file's silence as a pass. Exit codes are not evidence when a script has no entry point; the
+sweep now also reports output-line counts. Fourth instrumentation bug in eight rounds, and the
+first one I shipped myself. · **V7 could not fail.** It BFS'd from `curator_spawn` at zero width
+over the same graph V1 walks, so in a connected estate it was strictly implied by V1 — no mutant
+could trip it. Implemented the half LEVEL-SPEC actually specifies ("*and* carry an item back to
+it"): the Curator must path to each plinth at the item's class width. It now detects on its own,
+and it immediately caught something real — `BROKEN_B`'s V10 fault also breaks V7, because a
+doorway too narrow for four players to carry a piano out is too narrow for the Curator to carry
+it back. Verified that coupling by restoring the two office widths: V7 and V10 clear together.
+`EXPECTED_FAILURES` updated 7 → 8, which tightens the fixture rather than loosening it.
+· **V5 does not check what its name says.** It compounds occlusion 0.85 per door with no lower
+bound, failing a plinth at 6+ doors (60 × 0.85⁶ = 22.6 < 25). But `AUDIO-SPEC.md` §3.1 specifies
+the Curator_Approach bus with an **occlusion floor of 0.45 — "never fully blocked, by any
+geometry, ever"**. Apply it and the bus bottoms out at 27, above the 25 floor at every wall
+count: **geometry can never breach the audibility contract.** V5's failures model attenuation
+the spec forbids. Left the threshold alone — "plinth buried six doors deep" is a real wing smell
+and deleting it would trade a mislabelled check for no check — but the docstring now carries the
+measured table and says plainly that the contract needs the *runtime* test §3.1 asks for.
+· Result: **10/10 checks proven able to fail**, up from 7 planted and 0 asserted. V1, V5 and V7
+had never been shown to fail at all.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

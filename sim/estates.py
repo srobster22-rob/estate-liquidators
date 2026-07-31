@@ -2,8 +2,13 @@
 Sample estates for the validator.
 
 MANOR_A is the worked example from LEVEL-SPEC.md 8 (East Conservatory), built to pass.
-BROKEN_B is the same estate with seven deliberate faults, one per check, used to prove
-the validator actually detects things rather than just printing PASS ten times.
+BROKEN_B is the same estate with seven deliberate faults, used to prove the validator
+detects things rather than just printing PASS ten times. It trips EIGHT checks: V7
+fires as a consequence of the V10 fault, not as a planted one (see EXPECTED_FAILURES).
+
+Seven faults for ten checks was never full coverage, and nothing asserted even that
+until R18 — see sim/check_estates.py, which mutates this estate one fault at a time
+and requires every check to be provably able to fail.
 """
 
 import copy
@@ -75,7 +80,7 @@ MANOR_A = {
 
 def _broken():
     d = copy.deepcopy(MANOR_A)
-    d["id"] = "broken_b  (seven deliberate faults)"
+    d["id"] = "broken_b  (seven planted faults; trips eight checks)"
 
     # V10 — the piano check. Narrow the ONLY cart-wide route out of the office.
     for p in d["portals"]:
@@ -112,5 +117,13 @@ def _broken():
 
 BROKEN_B = _broken()
 
-# What BROKEN_B is built to trip. The test asserts exactly this set.
-EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10"}
+# What BROKEN_B is built to trip. sim/check_estates.py asserts exactly this set —
+# and until R18 nothing did, because validate_estate.py had no entry point and nobody
+# imported this module.
+#
+# V7 is here as a CONSEQUENCE, not a planted fault. The V10 narrowing above takes the
+# office down to 1.1m, and a route too narrow for four players to carry a piano out is
+# also too narrow for the Curator to carry it back — so R18's strengthened V7 fires on
+# the same geometry. Verified by restoring the two office portal widths: V7 and V10
+# both clear together. The coupling is real and worth keeping visible.
+EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V7", "V8", "V9", "V10"}

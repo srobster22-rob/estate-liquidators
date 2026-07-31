@@ -4,13 +4,19 @@ Estate Liquidators — estate validator.
 Implements a SUBSET of the ten checks LEVEL-SPEC.md 6 specifies. A wing that fails any
 implemented check does not enter the pool.
 
-Three are weaker here than the contract, and saying so is the point (LOOP_LOG R17):
+Weaker here than the contract, and saying so is the point (LOOP_LOG R17, R18):
   V2  no traversal simulation - TASK_SECONDS is defined and never used. LEVEL-SPEC's
       V2 is now a prerequisite-depth rule anyway (D-20: work, never wall-clock).
-  V5  counts doors on the shortest path only, computes no metres, and has never failed
-      anything - the weakest of the ten, flagged since R14.
-  V7  BFS reachability with no carry width applied, so it cannot catch a Curator that
-      can reach a plinth but not carry the item back.
+  V5  a depth heuristic wearing the contract's name. It compounds occlusion with no
+      lower bound, which AUDIO-SPEC 3.1 forbids; apply that spec's 0.45 bus floor and
+      geometry can never breach audibility at all. Kept because 'plinth buried six
+      doors deep' is a real smell. See V5_audibility for the measured table. The
+      contract needs the RUNTIME test AUDIO-SPEC 3.1 asks for. R18.
+  V7  was BFS reachability at zero width, which in a connected estate is implied by V1
+      - so it could only fail when V1 already had, and no mutant could trip it. R18
+      added the carry-width half the contract specifies. It now detects on its own.
+
+Every check is proven able to fail by sim/check_estates.py. Run that, not just this.
 
 The point of this file is that every promise the other documents make about SPACE is
 a promise a level designer under deadline will break by accident:
@@ -207,7 +213,31 @@ def V4_pinch_points(e):
 
 
 def V5_audibility(e):
-    """AUDIO-SPEC 3.1: the Curator must stay audible through the wing's geometry."""
+    """A depth heuristic. NOT the audibility contract, despite the name.
+
+    Measured R18. This compounds OCCLUSION 0.85 per door with no lower bound, so it
+    reports a plinth as inaudible once it sits 6+ doors from the van (60 x 0.85^6 =
+    22.6 < 25). But AUDIO-SPEC 3.1 specifies the Curator_Approach bus with an
+    **occlusion floor of 0.45 - "never fully blocked, by any geometry, ever"**. Apply
+    that floor and the bus bottoms out at 60 x 0.45 = 27, above the 25 audibility
+    floor at every wall count:
+
+        walls        0      1      2      3      4      5      6      7      8
+        unbounded  60.0   51.0   43.4   36.9   31.3   26.6   22.6   19.2   16.4
+        with floor 60.0   51.0   43.4   36.9   31.3   27.0   27.0   27.0   27.0
+
+    So geometry cannot breach the contract, and this check's failures are an artifact
+    of modelling attenuation the spec forbids. What it actually detects - a plinth
+    buried 6+ doors deep - is a real wing smell worth keeping, which is why the
+    threshold is left alone rather than "corrected" into a check that can never fire.
+
+    The contract itself is a RUNTIME test, and AUDIO-SPEC 3.1 says so: spawn the
+    Curator at 8m through every wall configuration and assert bus output exceeds the
+    floor, in CI on every level change. Geometry validation cannot stand in for it.
+    LEVEL-SPEC 6's V5 row states the contract; this is the weaker proxy. Reconciling
+    the two - and deciding whether the honest fix is a renamed depth check plus a real
+    runtime test - is the open question this leaves.
+    """
     bad = []
     for pl in e.plinths:
         path = e.path(pl["room"], e.van)
@@ -235,15 +265,26 @@ def V6_portal_graph(e):
 
 
 def V7_curator_navmesh(e):
-    g = e.adj()
-    seen, q = {e.curator_spawn}, deque([e.curator_spawn])
-    while q:
-        for n in g[q.popleft()]:
-            if n not in seen:
-                seen.add(n)
-                q.append(n)
-    bad = [pl["room"] for pl in e.plinths if pl["room"] not in seen]
-    return not bad, f"Curator cannot reach plinths in {sorted(set(bad))}" if bad else ""
+    """LEVEL-SPEC 6 V7: the Curator reaches every plinth *and* can carry an item
+    back to it. RESEAT must not dead-end.
+
+    The reachability half is kept but is not the load-bearing part: in a connected
+    estate it is implied by V1, so before R18 this check could only fail when V1 had
+    already failed, and the mutation test in check_estates.py could not trip it at
+    all. The carry half is what detects anything: the Curator has to move a
+    cart-class item back through the same doorways a player does, and a spawn point
+    behind a 1.0m gap cannot reseat a piano no matter how well it paths at zero
+    width.
+    """
+    bad = []
+    for pl in e.plinths:
+        w = CLASS_WIDTH[pl["cls"]]
+        if e.path(e.curator_spawn, pl["room"]) is None:
+            bad.append(f"Curator cannot reach {pl['room']}")
+        elif e.path(e.curator_spawn, pl["room"], min_width=w) is None:
+            bad.append(f"Curator cannot carry {pl['cls']} back to {pl['room']} "
+                       f"(needs {w}m clear)")
+    return not bad, "; ".join(sorted(set(bad)))
 
 
 def V8_value_bands(e):
@@ -308,3 +349,25 @@ def validate(d, verbose=True):
         verdict = "ENTERS POOL" if not failed else f"REJECTED ({', '.join(failed)})"
         print(f"  -> {verdict}")
     return failed
+
+
+if __name__ == "__main__":
+    # This block did not exist until R18. The docstring said "Run: python
+    # validate_estate.py" while the file defined validate() and never called it, so
+    # running it printed nothing and exited 0 — which R17's regression sweep counted
+    # as a pass. For the assertion that each check can actually FAIL, and not merely
+    # run, see sim/check_estates.py.
+    import sys
+
+    from estates import MANOR_A, BROKEN_B, EXPECTED_FAILURES
+
+    validate(MANOR_A)
+    broken = set(validate(BROKEN_B))
+
+    print()
+    if broken == EXPECTED_FAILURES:
+        print(f"  OK   BROKEN_B tripped exactly its {len(EXPECTED_FAILURES)} "
+              f"expected checks")
+        sys.exit(0)
+    print(f"  MISMATCH  expected {sorted(EXPECTED_FAILURES)}, got {sorted(broken)}")
+    sys.exit(1)

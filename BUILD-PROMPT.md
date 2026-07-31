@@ -104,7 +104,10 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 >
 > **Phase 5 — Content.** 5+ wing modules against the `LEVEL-SPEC.md` contract, with the
 > ten-check validator wired into CI. Port `sim/validate_estate.py` to a Unity editor tool; a
-> wing that fails any check does not enter the pool. **Automate V10 (does the piano physically
+> wing that fails any check does not enter the pool. **Port `sim/check_estates.py` with it** —
+> it mutates a known-good wing one fault at a time and asserts every check can actually fail.
+> R18 added it and immediately found V7 could not fail at all, so the C# port needs the same
+> guard or it will inherit a check that only prints PASS. **Automate V10 (does the piano physically
 > fit through every route) before the first wing ships**, not after the first bug report.
 >
 > **Phase 6 — Ship.** See the Steam section below.
