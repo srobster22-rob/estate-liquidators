@@ -1,0 +1,328 @@
+# 10 — Sidewalk + Entrance Accessibility Survey
+
+**What it is:** A structured field survey app for mapping whether a route is actually passable
+in a wheelchair — curb ramps, sidewalk width, slope, entrance steps, door width — recorded as
+measurements rather than opinions, and contributed back to OpenStreetMap.
+
+**Fill in before pasting:** `[CITY]`, `[AREA]` (the specific district you'll survey — a few
+blocks, not the city), `[LANGUAGES]`.
+
+**Read first:** Project Sidewalk (crowdsourced sidewalk accessibility via Street View) and
+AccessMap (routing on accessibility data) already exist and are good. If either covers [CITY],
+contribute there instead. Build this when you need on-the-ground measurements Street View
+can't give — door widths, interior thresholds, current construction — or when your area isn't
+covered.
+
+---
+
+```text
+You are building a field accessibility survey tool for [AREA] in [CITY]. Build it now; do not
+ask me clarifying questions. Where you need a decision I did not make, choose the option that
+records an observation rather than a judgment, state your choice, and keep going.
+
+Read the DATA RIGOR DOCTRINE before writing code. Bad accessibility data is worse than none,
+and that fact drives the whole design.
+
+=== THE PERSON ===
+
+Sam uses a manual wheelchair and is meeting someone at a restaurant in [AREA] on Thursday. The
+questions that decide whether that works: is there a curb ramp at every corner on the route,
+is the sidewalk wide enough and not blocked, is the slope survivable, is there a step at the
+door, and if there's a ramp, is it a real ramp or a piece of plywood at an angle nobody can
+climb.
+
+The restaurant's website says "wheelchair accessible." Sam has learned that this sentence
+means nothing. Last time it meant one 6-inch step and a staff member offering to lift him.
+
+The second person is Rosa, who pushes a stroller and cares about most of the same things, and
+Elena, 82, with a walker, who needs to know about the slope more than the step.
+
+The third is the surveyor — possibly you — walking [AREA] with a phone, a tape measure, and a
+digital level, who needs to record a corner in under 90 seconds or will not finish the block.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+The 2010 ADA Standards for Accessible Design set specific dimensional requirements — ramp slope
+no steeper than 1:12, minimum clear door width, minimum accessible route width, maximum
+vertical change at a level change. Look these up in the current standards and cite the exact
+section for every threshold you encode. Do not write a number from memory; these are the
+numbers the entire app depends on.
+
+The gap: these requirements exist, and almost nowhere is there a record of which specific
+corners and doors meet them. "Accessible" as a yes/no on a business listing is unverifiable
+and usually self-reported.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Sam looks at [AREA] before Thursday and sees: the route from the accessible parking on 5th to
+the restaurant has curb ramps at all four crossings, one sidewalk segment narrows to 34 inches
+at a utility pole, and the restaurant has a 1.5-inch lip at the door with no ramp. He decides
+with real information instead of a phone call to a host who doesn't know.
+
+=== DATA RIGOR DOCTRINE ===
+
+Four rules. They constrain the UI more than anything else in this brief.
+
+1. RECORD MEASUREMENTS, NOT VERDICTS. The survey captures "door clear width: 31 inches" and
+   "threshold height: 1.25 inches," never "not accessible." Compliance is computed from
+   measurements against cited standards, displayed separately, and always shown alongside the
+   raw numbers. A surveyor's opinion is not data; a tape measure reading is.
+2. EVERY OBSERVATION IS DATED AND ATTRIBUTED. Construction happens, ramps get built, a planter
+   appears. Data older than 12 months displays its age prominently. Nothing is presented as
+   current when it is not.
+3. UNKNOWN IS A FIRST-CLASS ANSWER, and it must be as fast to record as any other. A surveyor
+   who cannot measure a door width because the business is closed records "unknown — closed,"
+   not a guess. Guesses are how this dataset becomes dangerous.
+4. PHOTO EVIDENCE FOR EVERY BARRIER. Any feature recorded as a barrier requires a photo. It
+   makes verification possible, it makes disputes resolvable, and it makes the data credible
+   to the city department that could actually fix it.
+
+=== BUILD THIS ===
+
+1. SURVEY MODE — The field app. Offline-first, GPS-aware, one-handed, glove-friendly, readable
+   in sunlight. It opens to a map of [AREA] showing what's already surveyed and what isn't,
+   with your location. Tapping a location, or a big "Record here" button, starts an
+   observation.
+
+2. THE FOUR FORMS — Each must be completable in under 90 seconds. Large touch targets, numeric
+   keypads for measurements, sensible defaults, everything skippable to "unknown."
+
+   a. CURB RAMP / CROSSING (at an intersection corner)
+      - Ramp present? yes / no / under construction / unknown
+      - If yes: running slope (%), cross slope (%), width (in), flush with street? (gap in
+        inches), detectable warning surface (truncated domes) present? condition
+        (good / cracked / broken / obstructed)
+      - Obstructions: parked car, snow, debris, utility pole, none
+      - Crossing: marked? signal? audible signal? pedestrian island?
+      - Photo (required if any barrier recorded)
+
+   b. SIDEWALK SEGMENT (between two intersections)
+      - Present on this side? yes / no / partial
+      - Narrowest clear width (in) and what causes the narrowest point
+      - Surface: concrete / asphalt / brick / gravel / grass / broken
+      - Worst vertical displacement (in) — the tripping/tipping hazard
+      - Running slope (%) if notable, cross slope (%)
+      - Permanent obstructions: pole, hydrant, sign, tree, bench, bus shelter, planter, none
+      - Photo of the narrowest point
+
+   c. ENTRANCE (a business or public building)
+      - Which entrance is this (main / side / rear) and is it the one the public uses?
+      - Steps: count, and height of the tallest
+      - Threshold lip height (in)
+      - Ramp: present? slope (%), width (in), handrails both sides? landing at top?
+      - Door: clear width when fully open (in) — measure the actual clear opening, not the
+        frame; hardware type (lever / knob / push bar / automatic); opening force if you can
+        measure it; automatic? push-button? where's the button and how high?
+      - Vestibule with a second door? depth between doors?
+      - Photo (required)
+
+   d. INSIDE (optional second pass, and the one nobody else has)
+      - Path to a table or counter: narrowest width
+      - Accessible restroom: present? door width? does the stall door swing in?
+      - Counter or service height (in)
+      - Steps or level changes inside
+      This is what "wheelchair accessible" listings never tell you and it is why an inside
+      pass is worth doing for a small number of high-traffic destinations.
+
+3. MEASUREMENT HELP — Slope is where survey data goes wrong. Either integrate the device
+   accelerometer as an inclinometer with an explicit calibration step (place the phone on a
+   known-level surface, zero it) and a clear warning that phone inclinometers are approximate,
+   or require a physical digital level and record which was used per observation. Store the
+   method in the record. Do not silently mix instrument-grade and phone-grade slope numbers.
+   Include a short in-app guide with photos showing exactly where to measure: clear door width
+   with the door at 90°, ramp running slope along the direction of travel, cross slope
+   perpendicular, sidewalk width at the narrowest clear point.
+
+4. VIEWER — A public map for Sam. Not a routing engine in v1: color-coded segments and points
+   with a detail panel showing every measured value, the standard it's compared against with
+   its citation, the date surveyed, and the photo. A legend that explains what the colors mean
+   in terms of measurements, not adjectives. A prominent, honest coverage indicator: what
+   fraction of [AREA] has been surveyed and when.
+
+5. OSM CONTRIBUTION — Export observations to OpenStreetMap tags. Map your fields to the
+   established tags — kerb, tactile_paving, wheelchair, width, incline, surface, smoothness,
+   entrance, automatic_door, step_count, ramp, handrail, door width — and verify each tag's
+   current documented usage on the OSM wiki before emitting it; do not invent tags.
+   CRITICAL: do not bulk-upload. OpenStreetMap has an import and automated-edit policy
+   requiring community discussion before mass imports, and violating it gets edits reverted
+   and your account blocked. Read the current policy, post to the local OSM community first,
+   and default to producing a reviewed changeset a human uploads through a standard editor.
+   Note that OSM data is licensed ODbL and that contributing means accepting those terms —
+   state this in the app where surveyors consent.
+
+6. REPORT GENERATOR — Export a barrier report for a specific route or block: every barrier,
+   its measurement, the standard it falls short of with citation, its photo, and its
+   coordinates. This is the artifact you hand to a city public works department or an ADA
+   coordinator, and it is the path from data to a fixed curb.
+
+=== DATA MODEL ===
+
+surveys: id, area, surveyor_id, started_at, completed_at, instrument_notes
+observations: id, survey_id, kind, lat, lng, accuracy_m, recorded_at, surveyor_id,
+  device_orientation_method, notes, osm_element_ref|null, uploaded_to_osm_at|null
+curb_ramps: observation_id, present, running_slope_pct, cross_slope_pct, width_in,
+  lip_height_in, detectable_warning, condition, obstructions text[]
+sidewalk_segments: observation_id, from_lat, from_lng, to_lat, to_lng, present,
+  min_clear_width_in, min_width_cause, surface, max_vertical_displacement_in,
+  running_slope_pct, cross_slope_pct, obstructions text[]
+entrances: observation_id, place_name, entrance_type, is_primary_public, step_count,
+  max_step_height_in, threshold_height_in, ramp jsonb, door jsonb, vestibule jsonb
+interiors: observation_id, place_name, min_path_width_in, restroom jsonb, counter_height_in,
+  level_changes jsonb
+photos: id, observation_id, blob_ref, sha256, taken_at, lat, lng, bearing
+verifications: id, observation_id, verifier_id, verified_at, agrees bool, notes
+
+Every measurement field is nullable, and null means "not measured" — never zero, never a
+default. Write this in the schema comments; it is the most likely bug in the project.
+
+=== STACK ===
+
+- PWA: React + TypeScript + Vite, service worker, fully offline-capable. Field work happens in
+  places with no signal, and a survey lost to a dead connection is a block you have to walk
+  again.
+- Local storage in IndexedDB, sync to the server when connectivity returns, with conflict-free
+  append-only observation records.
+- Map: MapLibre GL with pre-cached OSM tiles for [AREA] downloaded before going out. Do not
+  depend on live tiles in the field.
+- Photos: captured in-app, downscaled to ~1600px, GPS from the device stored in the record
+  (not in EXIF — strip EXIF and store coordinates as data so you control them).
+- Server: a small Node/Postgres API with PostGIS for the viewer and exports.
+- Viewer: server-rendered, light, works on a phone.
+
+=== HARD CONSTRAINTS ===
+
+- Complete offline operation for survey mode, including map, forms, and photos. Test it in
+  airplane mode for a full block.
+- Every form completable in under 90 seconds — time yourself and report the median.
+- Sunlight-readable: high contrast, large type, no thin gray text. Test outdoors, in the sun,
+  for real.
+- One-handed operation: primary controls in the bottom third.
+- WCAG 2.2 AA on both survey and viewer. This is non-negotiable in an accessibility project,
+  and it includes the viewer being fully usable with a screen reader and keyboard — the people
+  who most need this data include people who don't use a mouse or a screen.
+- Every threshold in the compliance logic cites the standard and section, stored as data, not
+  hardcoded numbers.
+- [LANGUAGES] on the viewer.
+- Battery: a two-hour survey session must not drain a phone. Keep GPS polling coarse between
+  observations.
+
+=== DO NOT BUILD ===
+
+- No routing engine in v1. Routing on incomplete accessibility data produces confidently wrong
+  routes, which is worse than a map with visible gaps. Build coverage first; route later, if
+  ever, with an explicit confidence model.
+- No accessibility "score" or grade per business. A single number hides the specific fact that
+  decides whether someone can enter, and it invites disputes with businesses that will end the
+  project. Show measurements.
+- No compliance-complaint automation or ADA-lawsuit tooling. It will define the project
+  adversarially and shut off cooperation from every business you need to survey.
+- No user reviews or ratings. Measurements and photos only.
+- No crowdsourced open signup in v1. Survey quality depends on trained surveyors; open it up
+  after you have a verification workflow and a measured agreement rate.
+- No machine vision on Street View imagery in v1 — that's Project Sidewalk's problem and
+  they've solved it better.
+- No bulk OSM upload. Ever, without community process.
+- No AI-generated descriptions of accessibility.
+
+=== ACCEPTANCE TESTS ===
+
+1. A complete survey of 10 observations with photos works with the network disabled and syncs
+   correctly on reconnect, with no duplicates.
+2. Unmeasured fields persist as null, never zero, through save, sync, and export.
+3. Compliance evaluation cites a standard section for every threshold applied.
+4. An observation with a barrier cannot be saved without a photo.
+5. Two surveyors recording the same corner produce records that can be compared, and the
+   verification workflow flags disagreements above a defined tolerance.
+6. Photos have EXIF stripped, with coordinates preserved in the database record.
+7. The OSM export produces tags that validate against the documented tag list; an unknown tag
+   fails the export.
+8. The export path requires an explicit human review step before any upload.
+9. The viewer displays survey date and shows an age warning for anything older than 12 months.
+10. Coverage percentage displayed on the viewer matches the actual surveyed fraction of
+    [AREA]'s segments.
+11. The viewer is fully operable with keyboard only and with a screen reader; axe-core clean.
+12. Map tiles for [AREA] are available offline after a pre-download.
+13. A two-hour session with 40 observations uses under 20% battery on a mid-range phone —
+    measure and report the real number.
+14. Median form completion time under 90 seconds across all four forms, measured with real
+    use.
+
+=== MILESTONES ===
+
+M0 — Curb ramp form + offline storage + photos.
+  EXIT: survey one real intersection, all four corners, in under 6 minutes, offline.
+
+M1 — All four forms + sync + the measurement guide.
+  EXIT: survey one full block face and report your median per-form time honestly.
+
+M2 — Viewer with measurements, citations, and coverage.
+  EXIT: a wheelchair user looks at [AREA] and tells you whether the display answers their
+  actual question. Their answer changes the design. Do not skip this gate; if you are not a
+  wheelchair user, this review is the difference between useful and patronizing.
+
+M3 — Verification workflow + inter-surveyor agreement.
+  EXIT: two surveyors independently record 20 of the same features; report the agreement rate
+  per field. Fields with poor agreement need clearer instructions, not more surveyors.
+
+M4 — OSM export + one barrier report delivered.
+  EXIT: a reviewed changeset accepted by the local OSM community, and a barrier report in the
+  hands of [CITY]'s ADA coordinator or public works department.
+
+=== SAFETY + LEGAL ===
+
+- Surveyor safety: measuring a curb ramp puts a person at the edge of a street. Include a
+  short safety note in onboarding, require a high-visibility vest for street-adjacent work,
+  and instruct surveyors never to measure in a travel lane.
+- Do not enter private property without permission. Entrance surveys are done from the public
+  right-of-way; interior surveys require asking the business first, and the app should include
+  a short script for that ask.
+- Business relations: approach this as documentation, not enforcement. Businesses that
+  cooperate produce better data, including interior measurements you cannot otherwise get. A
+  project perceived as building a lawsuit list gets doors closed to it in a week.
+- Publish measurements with dates and photos, never conclusions about legal compliance. "Door
+  clear width 31 inches; the 2010 ADA Standards specify a minimum of [X] inches at [section]"
+  is a fact and a citation. "This business violates the ADA" is a legal conclusion you are not
+  making.
+- OSM: follow the import/automated-edit policy, use the ODbL-compatible attribution, and
+  coordinate with the local community before any batch contribution.
+- Photos of storefronts are fine; avoid photographing identifiable people, and blur or discard
+  any that include them.
+- Accessibility data that is wrong can strand someone in the rain outside a restaurant. Say
+  this to your surveyors during training, and design every ambiguity toward "unknown."
+
+=== HOW TO REPORT BACK ===
+
+Tell me: the exact ADA standard sections you cited and where you read them; the real median
+form time; the inter-surveyor agreement rate per field; the battery measurement; what the
+wheelchair user in M2 told you; and everything you could not verify.
+```
+
+---
+
+## Why it's shaped this way
+
+**Measurements, not verdicts,** is the load-bearing decision. "Wheelchair accessible: yes" is
+the status quo and it's useless, because it compresses a dozen independent facts into one bit
+decided by someone who doesn't use a wheelchair. "Door clear width 31 inches, threshold lip
+1.25 inches, photo attached" lets Sam decide for himself — and different people need different
+things from the same door.
+
+**Unknown must be as fast to record as any real answer.** If it isn't, surveyors guess, and a
+guessed curb-ramp slope is the exact datum that gets someone stuck. Speed of the null path is a
+data-integrity feature.
+
+**Inter-surveyor agreement measured in M3** is what separates a survey from a pile of
+impressions. If two people measuring the same door disagree by four inches, the instruction is
+wrong, not the surveyors — and you can only learn that by testing it.
+
+**No routing in v1** is the hardest cut to accept and the most important. Routing over sparse
+accessibility data produces confident directions down a route with an unmapped barrier. A map
+with visible holes tells the truth; a router with hidden holes doesn't.
+
+**No compliance complaints, no scores.** Both feel righteous and both end the project's access.
+The version of this that lasts is the one businesses cooperate with, because interior
+measurements — the ones nobody else has — require walking in and asking.
+
+**Before you build:** check whether Project Sidewalk covers [CITY], and find one wheelchair
+user willing to review the viewer at M2. That one conversation will reorder your entire field
+list.

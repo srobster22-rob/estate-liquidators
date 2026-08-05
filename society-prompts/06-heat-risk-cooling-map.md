@@ -1,0 +1,263 @@
+# 06 — Heat Risk + Cooling Center Finder
+
+**What it is:** On a 104°F afternoon, a page that says "it is dangerous outside today, the
+library on Fourth Street is open until 8 and has air conditioning, here's the bus that goes
+there, here's the number for a ride." Plus an SMS list for people who won't check a website.
+
+**Fill in before pasting:** `[CITY]`, `[COUNTY]`, `[STATE]`, `[TIMEZONE]`, `[LANGUAGES]`,
+`[ORG]` (the agency or group that maintains cooling center info, or "no partner yet").
+
+---
+
+```text
+You are building a heat-risk and cooling-center tool for [CITY], [COUNTY], [STATE]. Build it
+now; do not ask me clarifying questions. Where you need a decision I did not make, choose the
+option that works on the worst phone with the worst connection, state your choice, and keep
+going.
+
+=== THE PERSON ===
+
+Dolores is 78, third floor, no air conditioning, [CITY]. Her window unit died two summers ago
+and she never replaced it. She does not think of herself as at risk; she thinks of herself as
+someone who has lived here fifty years. Her apartment reaches 96°F by 4pm and stays there
+until midnight.
+
+The second person is Kevin, who does outdoor maintenance work and has a phone with a cracked
+screen and 2GB of data a month. He wants to know whether today is a "drink water" day or a
+"this can actually kill you" day, in one glance, in under three seconds.
+
+The third person is a case manager at [ORG] who calls forty clients on hot days and needs an
+accurate, current list of what's open right now, because sending someone to a closed cooling
+center on a 104-degree day is the specific failure this project exists to prevent.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+Heat kills more people in an average US year than any other weather hazard, and the deaths
+concentrate in people who are old, alone, low-income, and indoors without cooling. Look up the
+current NWS and CDC figures with their years before displaying any number.
+
+The operational gap is smaller and more fixable: cooling center lists are typically PDFs
+updated once a season, with no hours, no accessibility info, and no indication of whether a
+site is actually open today. The information exists and is stale by the time it matters.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Kevin opens the page and knows in three seconds. Dolores gets a phone call from [ORG]'s case
+manager who is reading from a list that is correct. And on the worst afternoon of the year,
+somebody goes to a library instead of staying in a 96-degree apartment.
+
+=== BUILD THIS ===
+
+1. TODAY (/) — The whole point of the project. Above the fold on a 360x640 screen, with no
+   scrolling and no interaction:
+   - A single risk word in very large type: SAFE / CAUTION / DANGEROUS / EXTREME. One word.
+   - One sentence of what to do about it, specific: "Stay inside where it's cool. If you don't
+     have air conditioning, go somewhere that does."
+   - The current temperature and heat index, smaller.
+   - Then, immediately: the three nearest OPEN cooling places with their closing time and
+     distance.
+   - Then: a phone number to call for a ride, and a phone number for a wellness check on a
+     neighbor.
+   Color must never be the only signal — the word and the sentence carry the meaning. Design
+   it so a screenshot of the top of this page is itself a useful thing to text to someone.
+
+2. RISK CALCULATION — Get this right; it's the one piece of real engineering.
+   - Pull the forecast and current conditions from the National Weather Service API at
+     api.weather.gov. It is free, requires no key, and requires a User-Agent identifying your
+     application — set one. Verify the endpoints and the current terms before building.
+   - Use heat index (apparent temperature accounting for humidity), not dry-bulb temperature.
+     95°F at 70% humidity is a materially different hazard from 95°F at 20% humidity, and
+     using the raw temperature will under-warn on exactly the dangerous days.
+   - Check for active NWS heat products for the zone (Heat Advisory, Excessive Heat Warning,
+     or whatever the current product names are — NWS has revised these; verify rather than
+     assuming). An active official alert always overrides your computed category upward, never
+     downward.
+   - Investigate the NWS/CDC HeatRisk product and use it if it covers [CITY] and is
+     accessible programmatically. If it is not available or you cannot verify it, use heat
+     index thresholds and say in the methodology page exactly which thresholds you used and
+     where they came from. Cite the source for every threshold.
+   - Nighttime matters and is usually ignored: consecutive days without overnight relief is
+     the pattern that kills. If the forecast low stays above roughly 75°F for two or more
+     consecutive nights, escalate the category and say why in plain words: "It's not cooling
+     off at night, which makes this more dangerous than a single hot day."
+   - Publish a /how-this-works page with every threshold, its source, and the exact formula.
+
+3. COOLING PLACES — A list and a map. Each place: name, address, what it is (library,
+   community center, senior center, mall, splash pad, cooling shelter), today's hours,
+   OPEN NOW or CLOSED with the time it opens, distance, whether it has air conditioning
+   (some listed "cooling sites" are shaded outdoor spots — label them honestly), whether
+   it's wheelchair accessible, whether restrooms and water are available, whether pets are
+   allowed, whether it's free, and the bus routes that stop nearby.
+   Pets and accessibility are not nice-to-haves: "no pets" is the single most common reason
+   an unhoused person refuses a shelter, and unusable restrooms end a visit in twenty minutes.
+   Data comes from a YAML file in the repo, one entry per site, each with a `verified_on`
+   date and a `source` field. Sites not re-verified in 60 days render with a visible "hours
+   not recently checked — call first" flag and the phone number. Build a /verify page that
+   makes re-checking a site take fifteen seconds: name, phone, three buttons (confirmed /
+   changed / closed).
+
+4. TEXT ALERTS — The channel that reaches Dolores. Sign up with a phone number and a ZIP code,
+   nothing else. On mornings where the day's category is DANGEROUS or EXTREME, one text, once,
+   before 9am [TIMEZONE]: the category, the one-sentence action, the two nearest open sites,
+   and STOP to unsubscribe. Never more than one text per day. Never a text on a SAFE or
+   CAUTION day — an alert list that cries wolf is unsubscribed from before the heat wave.
+   Also support a "check on a neighbor" opt-in: a second text on EXTREME days that says
+   "Please call someone who lives alone today."
+
+5. PRINT + POST — A one-page printable flyer generator: big type, the risk categories, the
+   cooling site list with a map, the ride number, and a QR code to the site. This gets taped
+   in laundromats, clinic waiting rooms, and apartment lobbies, and it reaches people no
+   website will. Generate it in [LANGUAGES] and at a large-print size.
+
+6. CASE MANAGER VIEW — /list, a dense printable table of every site with hours, phone, and
+   verification date, sorted by neighborhood. No map, no styling, prints on two pages.
+   This is what [ORG] actually needs and it takes an hour to build.
+
+=== DATA MODEL ===
+
+sites: id, name, kind, address, lat, lng, phone, hours jsonb (per weekday + exceptions),
+  has_ac bool, is_indoor bool, wheelchair_accessible bool, restrooms bool, water bool,
+  pets_allowed bool, free bool, notes, bus_routes text[], verified_on, verified_by, source_url
+alerts_subscribers: phone (E.164), zip, language, created_at, last_sent_at, active
+daily_risk: date, zone, category, heat_index_max, temp_max, temp_min_overnight,
+  nws_alert_active, computed_at, inputs jsonb
+Store `inputs` — the raw values you computed from — so a wrong categorization can be debugged
+after the fact. This will happen and you will want the receipts.
+
+=== STACK ===
+
+- Astro or Next.js with static generation plus a scheduled rebuild every 30 minutes. The
+  TODAY page should be a static HTML file served from cache: no client-side data fetching for
+  the primary content, because the primary content must render on a phone with one bar.
+- A small scheduled job (cron on a VPS, or a GitHub Action) fetches NWS data, computes the
+  category, writes it, and triggers the rebuild. If the NWS fetch fails, the previous
+  category stays up with a visible timestamp — never render a blank or a zero.
+- Map: MapLibre GL with OpenStreetMap raster tiles, lazy-loaded, and never on the critical
+  path. The list must be complete and useful with the map disabled entirely.
+- SMS: Twilio, behind a `SmsProvider` interface with a console implementation so the app runs
+  with no credentials.
+- Total JS on the TODAY page under 30KB gzipped. Target: full render under 1 second on Slow
+  4G. Measure it, report the number.
+
+=== HARD CONSTRAINTS ===
+
+- The TODAY page must be readable and useful with JavaScript entirely disabled and with CSS
+  partially failing. Write the HTML so the source order alone communicates the message.
+- Every displayed value carries an "as of" time in [TIMEZONE]. Stale data on a heat page is
+  dangerous; if the data is more than 2 hours old, say so prominently at the top.
+- WCAG 2.2 AA, and beyond it: minimum 20px body text on TODAY, risk word at 48px+, contrast
+  at least 7:1 for the risk word. The intended reader may have cataracts and be squinting at a
+  screen in the sun. Test the page outdoors in actual sunlight — this is a real test, do it.
+- Reading level 5th grade on TODAY, 6th elsewhere.
+- [LANGUAGES] on every surface including SMS.
+- No analytics, no third-party fonts, no CDN scripts. The alert list is a list of vulnerable
+  people's phone numbers; treat it like one. Purge inactive subscribers after 18 months.
+- Never show a site as OPEN without an hours record. Unknown hours renders as "call first"
+  with the phone number.
+
+=== DO NOT BUILD ===
+
+- No account system. Phone number and ZIP, that's the whole signup.
+- No native app. No install prompt.
+- No user-submitted cooling sites in v1 without a verification step — a wrong address on a
+  104-degree day sends someone on a walk that hurts them.
+- No personal risk scoring, no health questionnaire, no "are you at risk" quiz. Do not ask
+  Dolores about her medications or her heart condition. The category is about the weather.
+- No wearable integration, no temperature sensors, no IoT.
+- No push notifications, no chat, no AI assistant.
+- No historical charts, heat island analysis, or climate trend visualizations in v1. They are
+  interesting, they are not what Kevin needs at 2pm, and they will eat the whole schedule.
+
+=== ACCEPTANCE TESTS ===
+
+1. The TODAY page renders correctly with JavaScript disabled.
+2. TODAY's total transferred bytes are under 100KB including CSS and fonts; JS under 30KB.
+3. When the NWS API is unreachable, the last known category renders with a visible staleness
+   notice and the app does not display a blank, zero, or default-safe value.
+4. An active NWS heat alert for the zone forces the category to at least DANGEROUS even when
+   the computed heat index is lower.
+5. Two consecutive forecast nights with lows above the configured threshold escalate the
+   category, and the page states the overnight reason in plain words.
+6. Heat index is computed, not substituted with dry-bulb temperature — verify against three
+   known temperature/humidity pairs with hand-checked expected values.
+7. A site with no hours record never renders as OPEN NOW.
+8. A site not verified in 60 days renders the "call first" flag.
+9. SMS is sent at most once per subscriber per day, and never on SAFE or CAUTION days.
+10. "STOP" unsubscribes and is confirmed; no further messages are sent.
+11. All SMS content is generated in the subscriber's chosen language.
+12. The printable flyer fits one page at large-print size and includes a working QR code.
+13. axe-core reports zero violations; risk word contrast measured at 7:1 or better.
+14. /list prints legibly on two pages in a browser's default print settings.
+15. All timestamps display in [TIMEZONE] regardless of server TZ.
+
+=== MILESTONES ===
+
+M0 — TODAY page with real NWS data and a hardcoded site list.
+  EXIT: it's correct for today, and you have checked the heat index against the NWS forecast
+  page by eye. Load it outdoors on a phone in sunlight and read it at arm's length.
+
+M1 — Site data file, hours logic, verification workflow.
+  EXIT: every site in [CITY] is entered with hours confirmed by a phone call you made.
+  Not from a PDF. A phone call.
+
+M2 — SMS alerts.
+  EXIT: you receive a real alert text on a real hot morning, in both languages.
+
+M3 — Flyer, case manager list, map.
+  EXIT: [ORG] prints /list and uses it on a hot day, or tells you what's missing from it.
+
+M4 — One heat wave.
+  EXIT: the tool runs through three consecutive days above the alert threshold without a
+  stale-data incident, and you can tell me how many texts went out.
+
+=== SAFETY + LEGAL ===
+
+- This is not medical advice. Add, on every risk category above CAUTION, the actual emergency
+  guidance: the signs of heat stroke, and "call 911" — verified against a current CDC or NWS
+  source, quoted accurately, with a link.
+- Never under-warn. When your computed category and an official NWS alert disagree, the
+  higher one wins, always. Write that as a test.
+- Never present a cooling site as open when you do not know. "Call first" is always an
+  acceptable answer; a wrong "OPEN NOW" is not.
+- The subscriber list is sensitive: it identifies people who are likely elderly, isolated, or
+  unhoused, by phone and ZIP. No third-party analytics, no data sharing, no export feature,
+  and a documented retention limit.
+- If [ORG] is a partner, their name and phone go on every page and the site list is
+  authoritative from them. If there is no partner, state plainly: "This is a volunteer-run
+  page. Call 211 to confirm." Do not let the page look official when it isn't.
+- Do not display any mortality or morbidity statistic you have not sourced with a year.
+
+=== HOW TO REPORT BACK ===
+
+Tell me: which NWS endpoints and alert product names you verified and when; the exact heat
+index thresholds you used and their source; whether NWS/CDC HeatRisk was usable; the measured
+byte weight and render time of TODAY; how many sites you verified by phone; and what you could
+not verify.
+```
+
+---
+
+## Why it's shaped this way
+
+**Heat index rather than temperature is the one technically load-bearing decision.** Humidity
+is what makes heat lethal — it's the mechanism by which sweating stops working. A tool that
+reads the thermometer under-warns on exactly the days that kill people, and it under-warns
+confidently.
+
+**The overnight-low escalation** encodes something most heat tools miss: single hot days are
+survivable, and it's the third night without relief that fills emergency rooms. The rule is
+cheap to implement and it is where the real signal lives.
+
+**Sixty-day verification expiry with a fifteen-second re-check flow** is the difference between
+this and the county's PDF. The PDF isn't wrong because nobody cares; it's wrong because
+updating it is annoying. Make updating it not annoying and the data stays true.
+
+**Pets, restrooms, and wheelchair access are first-class fields** because they're the actual
+determinants of whether someone stays. "No pets" turns an unhoused person around at the door.
+
+**The case-manager print view is an hour of work and possibly the most-used feature.** The
+person making forty phone calls on a 104-degree day is doing the highest-leverage work in this
+entire system, and they need paper, not a map.
+
+**Before you build:** call five cooling centers and ask their hours. You'll find at least one
+discrepancy with the published list, and that discovery is the project's whole thesis.
