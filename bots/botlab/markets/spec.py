@@ -70,6 +70,27 @@ class MarketSpec:
     jump_mean: float = 0.0           # jump mean, in per-bar sigmas
     jump_scale: float = 0.0          # jump std, in per-bar sigmas
     tail_df: float = 6.0             # Student-t df of innovations (inf-ish above 30)
+    # A GARCH(1,1) has finite unconditional kurtosis only when
+    # alpha^2*E[eps^4] + 2*alpha*beta + beta^2 < 1, and E[eps^4] is INFINITE for a
+    # Student-t with df <= 4. Six families here sit below that line, so their
+    # variance process is ill-defined in its fourth moment and can transiently
+    # explode: one 12,000-bar small-cap instance produced a single-bar log return
+    # of 3.9 (a 4,900% day) and sample kurtosis of 1,263. The returns are meant to
+    # be fat-tailed; the *variance feedback* is not meant to be explosive. So the
+    # shock entering the variance update is winsorized and the conditional
+    # volatility is capped, while the return itself still gets the full untruncated
+    # innovation and any jump. Fat tails in prices, finite moments in the recursion.
+    garch_clip: float = 4.0          # winsorise the standardised shock feeding sigma^2
+    vol_cap_mult: float = 8.0        # conditional vol ceiling, multiples of long-run
+    # Even with a tamed variance process, a Student-t innovation at df 3.6 will
+    # occasionally draw 40+ sigma, which on a 45%-vol name is an 1,100% day. Real
+    # venues do not permit that: equities have limit-up/limit-down bands and
+    # market-wide circuit breakers, futures have daily limits, and even crypto
+    # exchanges halt or auto-deleverage. So the single-bar move is capped. At 12
+    # sigma the tail stays far fatter than Gaussian (which never reaches 12 sigma)
+    # while the worst daily move on a 45%-vol instrument becomes ~34% rather than
+    # ~1,100%.
+    max_bar_move_sigma: float = 12.0
     seasonal_amp: float = 0.0        # amplitude of the calendar effect, fraction of per-bar vol
     seasonal_period: int = 5         # bars per cycle (5 = weekday, 26 = 15-min US session)
     seasonal_shape: str = "sin"      # "sin" | "u"  (u = intraday U-shaped vol + open reversal)

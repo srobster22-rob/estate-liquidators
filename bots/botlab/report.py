@@ -104,7 +104,8 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      f"the largest search each bot's evidence could have come out of and "
                      f"still clear G6: **{robust} of {len(hrs)} genomes clear a bar ten times "
                      f"harder than the one they actually faced** (headroom "
-                     f"{hrs[0]:,} down to {hrs[-1]:,}). Read it before the Sharpe — a bot "
+                     f"{'>=' if hrs[0] >= gauntlet.HEADROOM_CAP else ''}{hrs[0]:,} down to "
+                     f"{hrs[-1]:,}). Read it before the Sharpe — a bot "
                      f"whose headroom is close to the tests already run would vanish in a "
                      f"more serious hunt.")
     elif st.trials == 0:
@@ -160,7 +161,8 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      f"via {g.origin}" + (f" from {', '.join(g.parents)}" if g.parents else ""))
             hr = perf.get("burden_headroom")
             if hr is not None:
-                L.append(f"- **search-burden headroom: {hr:,}** — the largest number of "
+                sat = ">=" if hr >= gauntlet.HEADROOM_CAP else ""
+                L.append(f"- **search-burden headroom: {sat}{hr:,}** — the largest number of "
                          f"confirmation tests this bot's evidence could have come out of "
                          f"and still clear G6. Certified here after "
                          f"{perf.get('n_confirm_tests', 0):,}. A headroom close to that "

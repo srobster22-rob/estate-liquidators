@@ -152,6 +152,9 @@ def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
 
     p_enter = spec.regime_switch_prob
     p_exit = min(1.0, spec.regime_switch_prob * STRESS_EXIT_RATIO)
+    clip_eps = float(spec.garch_clip)
+    sigma2_cap = (float(spec.vol_cap_mult) * sigma_noise) ** 2
+    move_cap = float(spec.max_bar_move_sigma) * sigma_bar
 
     for t in range(n):
         if p_enter > 0.0 and u_switch[t] < (p_exit if state else p_enter):
@@ -169,11 +172,25 @@ def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
 
         shock = sigma_t * eps[t]
         lr = mu_bar * drift_mult + trend + rev + seas_drift[t] * sigma_bar + shock + jump
+        if lr > move_cap:                       # limit-up / circuit breaker
+            lr = move_cap
+        elif lr < -move_cap:
+            lr = -move_cap
 
-        # GARCH update uses the *unscaled* shock so the regime multiplier does
-        # not compound into the long-run variance.
-        base_shock = shock / max(vol_mult, 1e-9)
+        # GARCH update uses the *unscaled* shock so the regime multiplier does not
+        # compound into the long-run variance, and a *winsorised* one so the
+        # recursion has a finite fourth moment even where tail_df <= 4 (see
+        # MarketSpec.garch_clip). The return above already used the full innovation,
+        # so prices keep their fat tails; only the variance feedback is tamed.
+        eps_var = eps[t]
+        if eps_var > clip_eps:
+            eps_var = clip_eps
+        elif eps_var < -clip_eps:
+            eps_var = -clip_eps
+        base_shock = math.sqrt(sigma2) * eps_var
         sigma2 = omega + a * base_shock * base_shock + b * sigma2
+        if sigma2 > sigma2_cap:
+            sigma2 = sigma2_cap
 
         logp += lr
         anchor += lam * (logp - anchor)

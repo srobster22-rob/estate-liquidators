@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 34 falsification tests, ~40s
+python bots/run.py selftest      # 35 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -49,7 +49,16 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **The permutation null's block length vs the bot's holding horizon.** F12 is
+1. **Stationarity — now the only limit that matters.** Three doublings of
+   `n_bars` took the run from 3 certified strategies to 10, and the daily families
+   are now at **47.6 years per instance with identical parameters throughout**.
+   More data will keep working and will keep meaning less: the next doubling is 95
+   stationary years. Sample size has stopped being the binding constraint and the
+   stationarity assumption has become it. Add a family whose `trend_frac` or
+   `rev_kappa` halves partway through, and a gate requiring the edge to survive in
+   the *second* half of the holdout instances. Until that exists, every headline
+   number in this lab is conditional on an assumption real markets violate.
+2. **The permutation null's block length vs the bot's holding horizon.** F12 is
    the sharpest open problem: a genuine edge on `eq_largecap_daily` (passes
    G1-G4, worst-instance drawdown fixed by de-risking) fails G5 because that
    market's 6-bar reversion halflife sits inside the null's 5-bar block, so the
@@ -58,27 +67,27 @@ Roughly in order of how much they would change what the lab can claim:
    block=1 AND block=5 — then re-run the whole search and re-measure `fpr`. If
    the new rule raises the false-positive rate above zero, it is wrong regardless
    of how attractive the bots it admits look.
-2. **Non-stationary markets.** Every family has the same structure at bar 3000 as
+3. **Non-stationary markets (superseded by item 1 — fold this in).** Every family has the same structure at bar 3000 as
    at bar 1. Real edges decay, and nothing in the gauntlet tests for decay
    because there is none to test. Add a family whose `trend_frac` or `rev_kappa`
    halves partway through, and add a gate that requires the edge to survive in
    the *second* half of the holdout instances. This is the single largest gap
    between "passed G1-G7" and "would have made money".
-3. **Real data.** `verify --data` already runs the identical engine, costs and
+4. **Real data.** `verify --data` already runs the identical engine, costs and
    permutation null on real CSVs. Point it at real bars for the instrument type a
    proven bot claims to trade. Expect the permutation p-value to be
    unimpressive — a single 1,200-bar out-of-sample window cannot establish
    significance for a Sharpe-0.4 edge, which is exactly why the synthetic
    replication gates exist and exactly why they are not sufficient.
-4. **Cross-sectional strategies.** The generator makes independent single
+5. **Cross-sectional strategies.** The generator makes independent single
    instruments, so pairs, lead-lag, relative value and factor crowding are all
    out of reach. This is also what makes the portfolio's `rho=0` number a
    fiction. Generating correlated *baskets* would unlock a whole strategy class
    and make the portfolio numbers mean something.
-5. **Repeat the FPR measurement at several seeds.** One probe returning 0/28
+6. **Repeat the FPR measurement at several seeds.** One probe returning 0/28
    bounds the false-positive rate loosely. Ten probes would bound it tightly, and
    it is the number every threshold rests on.
-6. **Dependent intrabar extremes.** Max and min are currently sampled
+7. **Dependent intrabar extremes.** Max and min are currently sampled
    independently from the Brownian bridge; they are negatively dependent. The
    residual +0.07 gross alpha that take-profit-only bots still show on a random
    walk is the visible size of that approximation.

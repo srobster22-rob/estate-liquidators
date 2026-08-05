@@ -6,21 +6,28 @@ through a seven-gate validation ladder, and keeps expanding the search space
 until the target number of bots survives — or until it runs out of budget and
 reports that nothing did.
 
-The committed run certified **6 distinct strategies** from 960 candidates and
-6,968 backtests, across `futures_trend_daily` and `fx_major_daily`.
-
-That is after doubling the bars per instance. The previous run, on half the data,
-needed **91,940 candidates and 202,348 backtests to certify 3** — because G6's
-luck bar rises with the number of hypotheses tested, and a search big enough to
-find a marginal edge is big enough to disqualify it. More data per instance
-raises the evidence each test carries without moving that bar, so far fewer tests
-are needed and the correction stays small. Both effects compound; the result was
-96x fewer candidates for twice the strategies (`FINDINGS.md` F16).
+The committed run certified **10 distinct strategies** from 960 candidates across
+`futures_trend_daily`, `fx_major_daily` and `eq_largecap_daily`, with replication
+alpha Sharpes to +0.64 that barely move under 3x costs.
 
 Read the **search-burden headroom** before any Sharpe. It is the largest search a
-bot's evidence could have come out of and still clear G6, and it separates the
-six into three that would survive a 240,000-test hunt and three that would not
-(`FINDINGS.md` F17).
+bot's evidence could have come out of and still clear G6, and it spans six orders
+of magnitude here (>=1.07e9 down to 1,129). A bot whose headroom is close to the
+tests already run would vanish in a more serious hunt.
+
+**Sample size, not search size, is what binds.** Across three runs at 3,000,
+6,000 and 12,000 bars per instance, the count went 3 -> 6 -> 10 distinct
+strategies while the candidates needed fell from 91,940 to 960. G6's luck bar
+rises with the number of hypotheses tested, so a search big enough to find a
+marginal edge is big enough to disqualify it; more evidence per test escapes that
+trap from the other side (`FINDINGS.md` F16, F19).
+
+**And that is where the honesty has to sit.** 12,000 daily bars is 47.6 *stationary*
+years — more history than most instruments have, with identical parameters at the
+last bar and the first. So the finding is a statement about search design, not
+about markets: under stationarity, certification is limited by evidence per
+hypothesis far more than by how many hypotheses you try. Every doubling makes the
+experiment statistically stronger and externally weaker at once.
 
 The interesting part is not the search. Searches are easy, and a big enough one
 will hand you a beautiful equity curve on data with no edge in it at all. The

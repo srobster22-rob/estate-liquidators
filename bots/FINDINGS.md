@@ -609,6 +609,101 @@ raised, and its headroom was simply below where the search had already got to.
 
 ---
 
+## F18 · Doubling again found a generator defect that had been latent from the start
+
+The second doubling (6,000 → 12,000 daily, 18,000 → 36,000 crypto hourly) broke
+`test_every_family_hits_its_vol_target`: one `eq_smallcap_daily` instance realised
+113.8% volatility against a 45% target. Inspecting it:
+
+```
+idx 6   vol 113.8%   max|log return| 3.915   sample kurtosis 1263
+```
+
+A single-bar log return of 3.915 is a **4,900% move in one day**. Not a fat tail —
+a broken process.
+
+My first explanation was wrong, and measuring killed it. I assumed the sample
+variance could not concentrate because a Student-t with df ≤ 4 has infinite
+kurtosis. The data disagreed: dispersion shrinks normally with more bars
+(IQR/median 0.101 → 0.088 → 0.057 across the three sizes). Two real causes,
+found only by looking at the instance:
+
+**1. The GARCH variance feedback can transiently explode.** A GARCH(1,1) has
+finite unconditional kurtosis only when `a²·E[eps⁴] + 2ab + b² < 1`, and `E[eps⁴]`
+is infinite for `tail_df ≤ 4`. **Six of thirteen families sit below that line** —
+`eq_smallcap` 3.6, `fx_em` 3.5, `crypto_alt` 3.2, `commodity_meanrev` 3.8,
+`crypto_major` 4.0, `eq_intraday` 4.0. A large innovation inflates σ², which
+scales the next shock, which inflates σ² further. Fixed by winsorising the
+standardised shock **that enters the variance update** at 4σ; the return itself
+still receives the full untruncated innovation, so prices keep their fat tails
+while the recursion keeps finite moments. Plus a conditional-vol ceiling at 8×
+the long-run level.
+
+**2. There were no limit moves.** Even with a tamed variance process, a df-3.6
+innovation draws 40σ often enough in 12,000 bars to produce an 1,100% day. Real
+venues do not allow that: equities have limit-up/limit-down bands and market-wide
+circuit breakers, futures have daily limits, crypto exchanges halt or
+auto-deleverage. The single-bar move is now capped at 12σ — still far fatter than
+Gaussian, which never reaches 12σ at all.
+
+| family | worst bar before | worst bar after | kurtosis after |
+|---|---|---|---|
+| `eq_smallcap_daily` | 138σ (4,900%) | 12σ (**41%**) | 23.7 |
+| `commodity_meanrev_daily` | 43σ | 12σ (**30%**) | 19.0 |
+| `crypto_alt_hourly` | 36σ | 12σ (**15%**) | 35.7 |
+| `eq_index_daily` | — | 12σ (**13%**) | 12.8 |
+
+This had been in every result from the beginning. It took 4× the bars to give it
+enough chances to fire in an evaluation instance, and the vol-target test to catch
+it. The lesson is the one this file keeps repeating: the bug was in an
+*interaction* — heavy-tailed innovations feeding a variance recursion — and no
+amount of reading either piece in isolation would have found it.
+
+All thirteen `vol_fix` constants moved after the fix (capping moves lowers
+realised vol) and were re-measured, and the false-positive rate was re-confirmed
+at zero.
+
+---
+
+## F19 · What four doublings bought, and what they cost
+
+| bars per instance | 3,000 | 6,000 | **12,000** |
+|---|---|---|---|
+| distinct strategies | 3 | 6 | **10** |
+| candidates screened | 91,940 | 960 | **960** |
+| gauntlets | 2,911 | 41 | **42** |
+| generations | 77 | 3 | **3** |
+| markets represented | 1 | 2 | **3** |
+| best replication alphaSR | +0.50 | +0.50 | **+0.64** |
+| best headroom | 2.8e6 | 2.8e6 | **≥1.07e9** |
+
+`eq_largecap_daily` certified for the first time — the family whose genuine edge
+was blocked in F12 — and eight of the ten survive a bar 70× harder than the one
+they faced. The top six all trade `futures_trend_daily` with replication alpha
+Sharpes of +0.55 to +0.64 that barely move under 3× costs (+0.49 to +0.62).
+
+**The cost is external validity, and it is not small.** 12,000 daily bars is
+**47.6 years**. That is more history than most instruments have — most single
+names have under 30 years, and the whole point of a synthetic lab is that these
+are *stationary* 47.6 years, with the same trend and reversion parameters at bar
+12,000 as at bar 1. Real markets do not offer that, and the anomalies that
+survive publication usually shrink.
+
+So the honest reading of this sequence is narrower than "more data finds more
+strategies". It is: **under stationarity, certification is limited by evidence
+per hypothesis far more than by the number of hypotheses tried.** That is a real
+and useful statement about search design. It is not a statement about markets,
+and the gap between the two widens with every doubling — the experiment gets
+statistically stronger and externally weaker at the same time.
+
+The next doubling would be 95 years of stationary daily data. At that point the
+result would say almost nothing about anything tradeable, and the binding
+constraint on this lab stops being sample size and becomes the stationarity
+assumption itself. That is the item at the top of `ITERATION-PROMPT.md` for a
+reason, and it is now the only one that matters.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

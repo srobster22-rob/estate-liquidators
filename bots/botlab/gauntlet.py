@@ -373,7 +373,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     stages.append(Stage("G6-multiplicity", ok,
                         f"DSR {dsr:.3f} (need {cfg.min_dsr:.2f}) vs luck bar SR {sr0:.2f} "
                         f"after {n_confirm} confirmation tests (would still pass up to "
-                        f"{headroom:,}); Bonferroni p {p_fw:.2e} "
+                        f"{'>=' if headroom >= HEADROOM_CAP else ''}{headroom:,}); "
+                        f"Bonferroni p {p_fw:.2e} "
                         f"(need <={cfg.family_wise_p_max}) | stricter all-trials view "
                         f"({n_trials} screened): DSR {dsr_all:.3f} vs SR {sr0_all:.2f}, "
                         f"p {p_fw_all:.2e}"))
@@ -416,6 +417,9 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
                    n_backtests=n_bt, describe=g.describe())
 
 
+HEADROOM_CAP = 1 << 30      # search sizes beyond this are not a meaningful distinction
+
+
 def _burden_headroom(r_pooled: np.ndarray, bpy: float, z_null: float,
                      var_median: float, cfg: GauntletConfig) -> int:
     """The largest search this bot's evidence could have come out of and still
@@ -442,9 +446,9 @@ def _burden_headroom(r_pooled: np.ndarray, bpy: float, z_null: float,
 
     if not passes(1):
         return 0
-    lo, hi = 1, 1 << 30
+    lo, hi = 1, HEADROOM_CAP
     if passes(hi):
-        return hi
+        return hi                            # saturated; report as ">= cap"
     while lo < hi - 1:                       # invariant: passes(lo), not passes(hi)
         mid = (lo + hi) // 2
         if passes(mid):
