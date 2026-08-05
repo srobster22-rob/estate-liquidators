@@ -46,6 +46,7 @@ that visible instead of letting it happen quietly.
 """
 
 import math
+import zlib
 
 from . import data as dta
 
@@ -166,6 +167,63 @@ SYNTH_SPEC = [
          fee=6.0, spread=2.0),
     dict(key="decoy_f_1h", interval="1h", kind="perp", price=310.0,
          fee=5.0, spread=2.0),
+
+    # --- third wave --------------------------------------------------------
+    # Calibrated against the MEDIAN over 30 universe seeds, not a single draw.
+    # The first attempt tuned each market on one seed and reported that number:
+    # trend2_c's "1.66" turned out to be the weakest of 30 draws from a market
+    # whose median is 2.80 (8 seeds above 3.0), and trend2_b's "1.66" was the
+    # maximum of 30 from one whose median is 1.08. Tuning on a single draw is the
+    # same selection bias the whole gauntlet exists to defend against, applied one
+    # level down to the data itself.
+    dict(key="trend2_a", interval="1h", kind="spot", price=45.0,
+         fee=8.0, spread=3.0, trend_strength=0.085, trend_halflife=60),
+    dict(key="trend2_b", interval="1h", kind="spot", price=210.0,
+         fee=6.0, spread=2.0, trend_strength=0.055, trend_halflife=150),
+    dict(key="trend2_c", interval="1h", kind="spot", price=3.7,
+         fee=7.0, spread=2.0, trend_strength=0.040, trend_halflife=300),
+    dict(key="trend2_d", interval="1h", kind="spot", price=1250.0,
+         fee=5.0, spread=1.0, trend_strength=0.040, trend_halflife=500),
+    dict(key="trend2_e", interval="4h", kind="spot", price=19.0,
+         fee=9.0, spread=4.0, trend_strength=0.105, trend_halflife=70),
+    dict(key="trend2_f", interval="4h", kind="spot", price=0.85,
+         fee=10.0, spread=3.0, trend_strength=0.080, trend_halflife=250),
+    dict(key="revert2_a", interval="1h", kind="spot", price=18.0,
+         fee=8.0, spread=3.0, revert_kappa=0.017, revert_span=50),
+    dict(key="revert2_b", interval="1h", kind="spot", price=140.0,
+         fee=6.0, spread=2.0, revert_kappa=0.008, revert_span=150),
+    dict(key="revert2_c", interval="1h", kind="spot", price=0.85,
+         fee=7.0, spread=2.0, revert_kappa=0.0055, revert_span=350),
+    # Real reversion, eaten by a 30bps round trip. Correct verdict: do not trade.
+    dict(key="revert2_d", interval="1h", kind="spot", price=2.4,
+         fee=15.0, spread=15.0, revert_kappa=0.010, revert_span=120),
+    dict(key="revert2_e", interval="4h", kind="spot", price=420.0,
+         fee=9.0, spread=4.0, revert_kappa=0.022, revert_span=60),
+    dict(key="revert2_f", interval="4h", kind="spot", price=31.0,
+         fee=12.0, spread=5.0, revert_kappa=0.012, revert_span=350),
+    # funding_beta held to the documented 0.05-0.20 range; the calibration run
+    # drifted to 0.28, which is outside anything the generator claims to model.
+    dict(key="carry2_a", interval="1h", kind="perp", price=3.4,
+         fee=6.0, spread=2.0, funding_beta=0.20),
+    dict(key="carry2_b", interval="1h", kind="perp", price=85.0,
+         fee=5.0, spread=1.5, funding_beta=0.19),
+    dict(key="carry2_c", interval="1h", kind="perp", price=0.9,
+         fee=8.0, spread=3.0, funding_beta=0.20),
+    # More decoys, keeping a third of the universe empty.
+    dict(key="decoy_g_1h", interval="1h", kind="spot", price=17.0,
+         fee=6.0, spread=2.0),
+    dict(key="decoy_h_1h", interval="1h", kind="spot", price=240.0,
+         fee=7.0, spread=3.0),
+    dict(key="decoy_i_4h", interval="4h", kind="spot", price=55.0,
+         fee=6.0, spread=2.0),
+    dict(key="decoy_j_1h", interval="1h", kind="perp", price=6.0,
+         fee=5.0, spread=2.0),
+    dict(key="decoy_k_1h", interval="1h", kind="spot", price=1.8,
+         fee=7.0, spread=3.0),
+    dict(key="decoy_l_4h", interval="4h", kind="spot", price=95.0,
+         fee=8.0, spread=3.0),
+    dict(key="decoy_m_1h", interval="1h", kind="spot", price=430.0,
+         fee=6.0, spread=2.0),
 ]
 
 # Factor baskets: several names sharing a common factor plus idiosyncratic returns.
@@ -174,7 +232,20 @@ SYNTH_SPEC = [
 # momentum premise and the only structure `xs_momentum` can trade across a real
 # cross-section. A basket with idio_trend=0 is a decoy: correlated, plausible, and
 # offering a ranking strategy nothing at all.
-BASKET_SPEC = []
+BASKET_SPEC = [
+    # Real: idiosyncratic drift, so names that are strong relative to the pack stay
+    # strong. This is the only structure in the universe that xs_momentum can trade
+    # across a genuine cross-section.
+    dict(keys=["basket_a1", "basket_a2", "basket_a3", "basket_a4", "basket_a5"],
+         interval="1h", kind="spot", price=100.0, fee=6.0, spread=2.0,
+         factor_vol_share=0.60, idio_trend=0.05, idio_halflife=200),
+    # Decoy: same construction, no idiosyncratic drift. Highly correlated,
+    # thoroughly plausible, and worth nothing to a ranking strategy — a probe
+    # sweep measured -0.49.
+    dict(keys=["basket_b1", "basket_b2", "basket_b3", "basket_b4"],
+         interval="1h", kind="spot", price=80.0, fee=6.0, spread=2.0,
+         factor_vol_share=0.65, idio_trend=0.0, idio_halflife=200),
+]
 
 
 # Cointegrated pairs: two legs sharing a price plus a stationary spread. Neither
@@ -187,6 +258,10 @@ PAIR_SPEC = [
          price=52.0, fee=6.0, spread=2.0, spread_sd=0.028, spread_halflife=100),
     dict(key_a="coint_a2", key_b="coint_b2", interval="1h", kind="spot",
          price=410.0, fee=6.0, spread=2.0, spread_sd=0.024, spread_halflife=110),
+    dict(key_a="coint_a3", key_b="coint_b3", interval="1h", kind="spot",
+         price=64.0, fee=6.0, spread=2.0, spread_sd=0.020, spread_halflife=150),
+    dict(key_a="coint_a4", key_b="coint_b4", interval="1h", kind="spot",
+         price=780.0, fee=7.0, spread=3.0, spread_sd=0.026, spread_halflife=160),
 ]
 
 STRUCTURED = {s["key"] for s in SYNTH_SPEC
@@ -219,6 +294,22 @@ REACHABLE = STRUCTURED - {"smallcap_alt_1h"}
 BARS_BY_INTERVAL = {"15m": 30000, "1h": 45000, "4h": 16000, "1d": 4600}
 
 
+def market_seed(universe_seed, key):
+    """Stable per-market seed derived from the market's NAME, not its position.
+
+    Position-derived seeds (universe_seed*1000 + list index) meant that inserting a
+    market shifted the seed of every market after it — silently regenerating their
+    data and invalidating any recorded result. Worse, an appended market could land
+    on a seed already in use: an audit of the second wave measured
+    corr(trend2_b, mixed_alt_1h) = 0.977 from exactly that, a duplicate market
+    wearing a new name and offering the factory a free "independent" edge.
+
+    Hashing the key fixes the identity to the thing that actually identifies the
+    market. zlib.crc32 rather than hash() because Python's string hash is salted per
+    process and would make runs irreproducible across sessions."""
+    return universe_seed * 1000003 + (zlib.crc32(key.encode()) % 1000003)
+
+
 def synthetic_universe(seed=7, bars=45000, subset=None):
     """Twenty-eight markets across six behaviours and four timeframes.
 
@@ -236,12 +327,12 @@ def synthetic_universe(seed=7, bars=45000, subset=None):
     BARS_BY_INTERVAL so every market spans a comparable number of years."""
     out = {}
     scale = bars / BARS_BY_INTERVAL["1h"]
-    for i, spec in enumerate(SYNTH_SPEC):
+    for spec in SYNTH_SPEC:
         if subset and spec["key"] not in subset:
             continue
         n = max(2000, int(BARS_BY_INTERVAL[spec["interval"]] * scale))
         out[spec["key"]] = dta.synth_market(
-            spec["key"], seed=seed * 1000 + i, bars=n,
+            spec["key"], seed=market_seed(seed, spec["key"]), bars=n,
             interval=spec["interval"], kind=spec["kind"],
             start_price=spec["price"], fee_bps=spec["fee"],
             spread_bps=spec["spread"], impact_bps=max(1.0, spec["spread"]),
@@ -251,12 +342,13 @@ def synthetic_universe(seed=7, bars=45000, subset=None):
             revert_kappa=spec.get("revert_kappa", 0.0),
             revert_span=spec.get("revert_span", 200))
 
-    for j, spec in enumerate(PAIR_SPEC):
+    for spec in PAIR_SPEC:
         if subset and spec["key_a"] not in subset and spec["key_b"] not in subset:
             continue
         n = max(2000, int(BARS_BY_INTERVAL[spec["interval"]] * scale))
         a, b = dta.cointegrated_pair(
-            spec["key_a"], spec["key_b"], seed=seed * 1000 + 500 + j,
+            spec["key_a"], spec["key_b"],
+            seed=market_seed(seed, spec["key_a"] + "|" + spec["key_b"]),
             spread_sd=spec["spread_sd"], spread_halflife=spec["spread_halflife"],
             bars=n, interval=spec["interval"], kind=spec["kind"],
             start_price=spec["price"], fee_bps=spec["fee"],
@@ -264,12 +356,12 @@ def synthetic_universe(seed=7, bars=45000, subset=None):
         out[spec["key_a"]] = a
         out[spec["key_b"]] = b
 
-    for j, spec in enumerate(BASKET_SPEC):
+    for spec in BASKET_SPEC:
         if subset and not any(k in subset for k in spec["keys"]):
             continue
         n = max(2000, int(BARS_BY_INTERVAL[spec["interval"]] * scale))
         legs = dta.factor_basket(
-            spec["keys"], seed=seed * 1000 + 700 + j,
+            spec["keys"], seed=market_seed(seed, "|".join(spec["keys"])),
             factor_vol_share=spec.get("factor_vol_share", 0.6),
             idio_trend=spec.get("idio_trend", 0.0),
             idio_halflife=spec.get("idio_halflife", 200),

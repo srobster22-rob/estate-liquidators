@@ -449,7 +449,13 @@ class TestUniverse(unittest.TestCase):
         is being trained on a world where every instrument pays. That is the habit
         that loses money, and it would also make the audit meaningless: if almost
         everything is structured, landing on a structured market proves nothing."""
-        total = len(uni.SYNTH_SPEC) + 2 * len(uni.PAIR_SPEC)
+        # Count every market the universe actually builds — singles, both legs of
+        # each cointegrated pair, and every basket leg. Counting only SYNTH_SPEC
+        # understates the total and flatters the ratio.
+        total = (len(uni.SYNTH_SPEC) + 2 * len(uni.PAIR_SPEC)
+                 + sum(len(b["keys"]) for b in uni.BASKET_SPEC))
+        self.assertEqual(total, len(uni.synthetic_universe(bars=45000)),
+                         "the spec count must match what gets built")
         edgeless = total - len(uni.STRUCTURED)
         self.assertGreaterEqual(edgeless / total, 0.33,
                                 "at least a third of the universe must be decoys")
