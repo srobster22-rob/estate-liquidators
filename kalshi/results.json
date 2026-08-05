@@ -2,7 +2,7 @@
   "n_built": 190,
   "n_oos_tests": 12,
   "holdout_touches": 3,
-  "elapsed_s": 24.4,
+  "elapsed_s": 23.4,
   "winners": [
     {
       "family": "econ_print",

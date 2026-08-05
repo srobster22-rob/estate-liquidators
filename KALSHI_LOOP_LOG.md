@@ -281,6 +281,33 @@ while the backtester measures per EVENT, so income is events/yr x PnL/event; mul
 contracts/yr by PnL/ladder overstates by exactly n_rungs. Capacity now divides, prints both
 numbers, and reports trade rate per contract instead of clamping to 100%. 113 checks pass.
 
+K19 · Swept every remaining assumption and built `kalshi/sensitivity.py`. · **The p-value was
+never the uncertainty that mattered, and the input I worried about most turns out to be the one
+the result barely notices.** "$359/yr, p=0.0003" describes SAMPLING error — how much the number
+moves if you redraw markets from the same simulator. It says nothing about whether the
+simulator's inputs are right, and those were chosen by hand. Sweeping each one against the $250
+bar:
+
+    markets/yr        COUNTED    holds if >= 325 contracts/yr (census counted 534) — comfortable
+    depth at 95-99c   MODELLED   holds if >= 0.60x my model, ~33 contracts at the touch — LINEAR
+    planted edge      ASSUMED    holds if >= 72% of what markets.py plants — LEVERED
+    spread            MODELLED   holds if no more than +1.8 ticks wider
+    fee rate          VERIFIED   holds even at 3x fees — barely matters
+    maker fill rate   GUESS      irrelevant, see below
+
+The two fragile inputs are the **edge magnitude** and the **spread**. The **fee rate** — the
+thing flagged as "the single largest determinant" for most of this project's life — is the one
+the answer is least sensitive to, because the winning strategy trades at 95-99c where the fee
+is nearly zero. The worry was correct in general and wrong for this particular bot.
+
+**A guess got retired rather than caveated.** `maker_benign_fill_rate = 0.35` was flagged from
+round one as a pure invention that would become load-bearing the moment market-making worked.
+Swept 0.15 -> 1.00 across all four thin families, `maker_spread` is negative **everywhere** —
+and gets *worse* as fills get easier, which is adverse selection with the sign showing: the
+fills you are certain to get are the ones you did not want. An assumption whose sign is
+invariant across its entire range is not one the result depends on. It no longer needs a caveat
+anywhere in the directory. 119 checks pass.
+
 ---
 
 ## Standing notes
@@ -298,6 +325,13 @@ numbers, and reports trade rate per contract instead of clamping to 100%. 113 ch
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **A confidence interval measures sampling error, not model error.** Every headline here
+  carries a p-value describing how the number moves under redrawn markets, and that is the
+  smaller of the two uncertainties. `SENSITIVITY.md` is the other one, and it is where the
+  result is actually fragile.
+- **A guess whose sign is invariant across its whole range can be retired, not caveated.**
+  Sweeping beats flagging: it either shows the assumption matters, in which case measure it
+  properly, or that it never did.
 - **When a modelling change moves the headline UP, distrust it until a controlled test says
   otherwise.** The ladder looked like it added 23% of edge; an A/B with only `n_rungs`
   differing showed the gap was seed noise. Change one thing, hold the rest fixed.

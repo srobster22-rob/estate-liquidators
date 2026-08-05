@@ -664,6 +664,53 @@ near("capacity divides contracts/yr by rungs to get events/yr",
 ok("annual income is events/yr x PnL/event",
    abs(_cap.annual_pnl_cents - _cap.markets_per_year * _cap.mean_per_market) < 1e-6)
 
+print("\n8h. SENSITIVITY — the assumptions, and which of them matter")
+from . import sensitivity  # noqa: E402
+
+# variant() must be paired the same way attenuated() is: a no-op variant has to reproduce the
+# base family exactly, or every sweep below is comparing unrelated samples.
+_v0 = markets.variant("econ_print", depth_scale=1.0, spread_extra=0, edge_factor=1.0)
+_same = True
+for _gid in range(40):
+    _a = markets.generate_group(markets.FAMILIES["econ_print"], 5_000 + _gid).legs[0]
+    _b = markets.generate_group(markets._lookup(_v0), 5_000 + _gid).legs[0]
+    if _a.bid != _b.bid or _a.ask != _b.ask or _a.depth != _b.depth or _a.outcome != _b.outcome:
+        _same = False
+        break
+ok("a no-op variant reproduces the base family exactly", _same,
+   "so each sweep moves one input and nothing else")
+
+# Income is linear in depth because the bot is depth-limited at every size it wants. If this
+# ever stops holding, either the position cap or the order cap has started binding instead,
+# and the depth column no longer means what it says.
+_d = sensitivity.sweep_depth(scales=(1.0, 0.5, 0.25))
+_r1 = _d[1][2] / _d[0][2] if _d[0][2] else 0
+_r2 = _d[2][2] / _d[0][2] if _d[0][2] else 0
+ok("income is linear in depth (halving depth halves income)",
+   0.42 < _r1 < 0.58 and 0.18 < _r2 < 0.32,
+   f"0.5x -> {_r1:.2f} of base, 0.25x -> {_r2:.2f}")
+
+# THE RETIREMENT. maker_benign_fill_rate was a flagged guess. Its sign is invariant across the
+# whole plausible range, so nothing depends on it.
+_mk, _fams = sensitivity.sweep_maker(rates=(0.15, 1.0))
+_allneg = all(v is None or v < 0 for _rate, row in _mk for v in row)
+ok("market-making is negative at EVERY fill rate from 0.15 to 1.0", _allneg,
+   "adverse selection: the fills you are certain to get are the ones you did not want")
+_lo = [v for v in _mk[0][1] if v is not None]
+_hi = [v for v in _mk[-1][1] if v is not None]
+ok("...and easier fills make it worse, not better",
+   sum(_hi) <= sum(_lo),
+   f"total across families: {sum(_lo):+,.0f}c at 0.15 -> {sum(_hi):+,.0f}c at 1.00")
+
+# breakeven() is a linear interpolation between bracketing points; check it against a case
+# with a known answer.
+_synth = [(2.0, 0, 2 * sensitivity.BAR), (1.0, 0, sensitivity.BAR),
+          (0.5, 0, sensitivity.BAR / 2)]
+near("breakeven interpolates to the exact crossing", sensitivity.breakeven(_synth), 1.0, 1e-9)
+ok("breakeven returns None when the bar is never crossed",
+   sensitivity.breakeven([(1.0, 0, 1.0), (2.0, 0, 2.0)]) is None,
+   "no false precision when the sweep does not bracket the bar")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

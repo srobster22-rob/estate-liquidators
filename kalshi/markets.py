@@ -466,6 +466,36 @@ def attenuated(family_name: str, factor: float) -> str:
     return key
 
 
+def variant(family_name: str, depth_scale: float = 1.0, spread_extra: int = 0,
+            edge_factor: float = 1.0) -> str:
+    """A copy of a family with one assumption dialled, for sensitivity work.
+
+    Same paired-seed trick as `attenuated`: the copy inherits its base family's `salt_name`,
+    so group 7 of the variant runs the same latent path and the same random draws as group 7
+    of the original. Only the dialled assumption differs, which is what makes the comparison
+    a measurement rather than two unrelated samples.
+    """
+    key = f"{family_name}|d{depth_scale:g}|s{spread_extra:g}|e{edge_factor:g}"
+    got = _ATTENUATED.get(key)
+    if got is not None:
+        return key
+    b = FAMILIES[family_name]
+    f = Family(
+        key, f"{b.label} (depth x{depth_scale:g}, spread +{spread_extra}, edge x{edge_factor:g})",
+        b.steps, b.step_hours, b.schedule_kind, b.p0_mu, b.p0_sd,
+        logit_gamma=1.0 - (1.0 - b.logit_gamma) * edge_factor,
+        underreact_alpha=b.underreact_alpha, underreact_decay=b.underreact_decay,
+        underreact_cap=b.underreact_cap * edge_factor,
+        quote_noise=b.quote_noise,
+        spread_lo=b.spread_lo + spread_extra, spread_hi=b.spread_hi + spread_extra,
+        depth_lo=max(1, int(b.depth_lo * depth_scale)),
+        depth_hi=max(1, int(b.depth_hi * depth_scale)),
+        n_brackets=b.n_brackets, n_rungs=b.n_rungs, schedule_kw=b.schedule_kw,
+        salt_name=b.name, notes=f"sensitivity variant of {family_name}")
+    _ATTENUATED[key] = f
+    return key
+
+
 def _lookup(name: str) -> Family:
     f = FAMILIES.get(name)
     return f if f is not None else _ATTENUATED[name]

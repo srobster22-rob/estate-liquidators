@@ -17,12 +17,13 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 113 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 119 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
 python -m kalshi.portfolio         # combine bots across families; writes PORTFOLIO.md
 python -m kalshi.census            # the counted market list; writes CENSUS.md
+python -m kalshi.sensitivity       # what every assumption is worth; writes SENSITIVITY.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -59,12 +60,14 @@ checks themselves.
 | `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
-| `selftest.py` | 113 checks that have to pass before any of the above means anything. |
+| `sensitivity.py` | Every assumption swept, and where each crosses the bar. |
+| `selftest.py` | 119 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
 | `PORTFOLIO.md` | The combined book and whether it clears the money bar. Generated. |
 | `CENSUS.md` | How many markets Kalshi actually lists, and the sources. Generated. |
+| `SENSITIVITY.md` | What has to be true for the headline to hold. Generated. |
 
 ---
 
@@ -266,6 +269,31 @@ wide search looks like when there is nothing there, and it is the reason every n
 `COVERAGE.md` is labelled as a direction rather than a result.
 
 ---
+
+**13. The p-value is not the uncertainty that matters.** "$359/yr, p=0.0003" describes
+*sampling* error — how much the number wobbles if you redraw markets from the same simulator.
+It says nothing about whether the simulator's inputs are right, and those were chosen by hand.
+`python -m kalshi.sensitivity` sweeps each one and reports where it crosses the $250 bar:
+
+| input | status | headline holds if | fragility |
+|---|---|---|---|
+| markets/yr | **counted** (534) | ≥ 325 contracts/yr | comfortable margin |
+| depth at 95–99¢ | modelled | ≥ **0.60×** my model (~33 contracts at the touch) | linear, and the model is a guess |
+| planted edge | assumed | ≥ **72%** of what `markets.py` plants | **levered** — costs are fixed |
+| spread | modelled | no more than **+1.8 ticks** wider | steps, quantised to cents |
+| fee rate | **verified** | holds even at **3× fees** | robust; not an open question |
+| maker fill rate | guess | *irrelevant* — see below | **retired** |
+
+The two fragile ones are the edge magnitude and the spread. The fee — the input I worried
+about most for weeks — turns out to be the one the result barely notices.
+
+**14. One guess got retired instead of caveated.** `maker_benign_fill_rate = 0.35` was flagged
+from the start as a pure invention that would become load-bearing the moment market-making
+worked. Swept from 0.15 to 1.00 across all four thin families, `maker_spread` is negative
+*everywhere* — and gets **worse** as fills get easier, which is adverse selection with the sign
+showing: the fills you are certain to get are the ones you did not want. **An assumption whose
+sign is invariant across its entire range is not one the result depends on.** It no longer
+needs a caveat anywhere.
 
 ## The gate
 
