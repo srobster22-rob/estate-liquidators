@@ -589,6 +589,76 @@ def cointegrated_pair(key_a, key_b, seed, spread_sd=0.020, spread_halflife=300,
     return a, b
 
 
+def factor_basket(keys, seed, factor_vol_share=0.6, idio_trend=0.0,
+                  idio_halflife=200, **kw):
+    """A basket of markets sharing one common factor plus idiosyncratic moves.
+
+        r_i(t) = beta_i * f(t) + e_i(t)
+
+    where f is a market-wide factor and e_i is that instrument's own return, which
+    may carry its own hidden drift. This is the structure real crypto actually has —
+    everything moves with BTC, and the interesting question is which names are
+    strong *relative to the pack* — and it is the only structure in this generator
+    that `xs_momentum` can trade properly. Cointegrated pairs give it two names to
+    rank; a basket gives it a cross-section.
+
+    Note what is and is not exploitable here. The factor itself is a random walk
+    with regime drift like any other market, so betting on it is just betting on
+    direction. What IS forecastable is the idiosyncratic component when
+    `idio_trend` is nonzero: names whose own drift is persistent stay strong
+    relative to the basket, which is exactly the cross-sectional momentum premise.
+    With idio_trend=0 the basket is a decoy — correlated, plausible-looking, and
+    offering nothing to a ranking strategy.
+
+    Returns markets in the order of `keys`, sharing timestamps exactly.
+    """
+    n_names = len(keys)
+    factor = synth_market(f"{keys[0]}__factor", seed=seed, **kw)
+    f_ret = [0.0] + [math.log(factor.close[i] / factor.close[i - 1])
+                     for i in range(1, len(factor))]
+    n = len(factor)
+    dt_years = SECONDS[factor.interval] / (365.0 * 24.0 * 3600.0)
+    sqdt = math.sqrt(dt_years)
+    rho = 0.5 ** (1.0 / max(1, idio_halflife))
+
+    out = []
+    for j, key in enumerate(keys):
+        rng = random.Random(seed * 131 + j * 977)
+        beta = 0.7 + 0.6 * (j / max(1, n_names - 1))     # 0.7 .. 1.3
+        # Idiosyncratic vol scaled so the factor explains `factor_vol_share` of
+        # variance on average.
+        f_var = sum(x * x for x in f_ret) / max(1, n - 1)
+        idio_sd = math.sqrt(max(1e-18, f_var * (1.0 - factor_vol_share)
+                                / max(1e-9, factor_vol_share)))
+        mu = 0.0
+        price = kw.get("start_price", 100.0) * (0.5 + j)
+        ts, o, h, l, c, v = [], [], [], [], [], []
+        for i in range(n):
+            if idio_trend:
+                innov = idio_trend * idio_sd * math.sqrt(1.0 - rho * rho)
+                mu = rho * mu + rng.gauss(0.0, innov)
+            e = mu + rng.gauss(0.0, idio_sd)
+            r = beta * f_ret[i] + e - 0.5 * (beta * beta * f_var + idio_sd ** 2)
+            r = max(-0.35, min(0.35, r))
+            op = price
+            price = price * math.exp(r)
+            up = abs(rng.gauss(0, 1)) * (abs(r) + 1e-4) * 0.7
+            dn = abs(rng.gauss(0, 1)) * (abs(r) + 1e-4) * 0.7
+            ts.append(factor.ts[i])
+            o.append(op)
+            h.append(max(op, price) * math.exp(up))
+            l.append(min(op, price) * math.exp(-dn))
+            c.append(price)
+            v.append(factor.volume[i] * (0.5 + rng.random()))
+        out.append(Market(key, key, "synthetic", factor.kind, factor.interval,
+                          list(ts), o, h, l, c, v, list(factor.funding),
+                          factor.fee_bps, factor.spread_bps, factor.impact_bps,
+                          truth=dict(factor.truth, basket=keys, beta=beta,
+                                     idio_trend=idio_trend,
+                                     factor_vol_share=factor_vol_share)))
+    return out
+
+
 def _student_t(rng, df):
     """Student-t via the normal/chi-square ratio. Variance is df/(df-2); callers
     normalise. Fat tails matter here: a Gaussian synthetic market makes every
