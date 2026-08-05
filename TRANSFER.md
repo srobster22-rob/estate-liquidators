@@ -48,7 +48,7 @@ retires it there too.
 Run these before anything else; the answers change the plan.
 
 ```bash
-python3 sim/check_drift.py          # expect: 132 checks, 59/59 constants, 4 implementations
+python3 sim/check_drift.py          # expect: 133 checks, 59/59 constants, 4 implementations
 dotnet run --project unity/tests/CoreTests   # expect: 41/41 assertions pass
 python3 sim/check_estates.py         # expect: 10/10 estate checks can fail
 python3 sim/check_core.py            # expect: every core reversion caught (needs dotnet)
@@ -114,7 +114,7 @@ cross-platform netcode bugs early instead of at release.
 ## Where to pick up
 
 Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the design is
-settled (21 decisions logged, 1 open and it's an art question), the rules are tested, and the
+settled (23 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
 `LOOP_LOG.md` carries every round of findings, newest at the bottom, including several

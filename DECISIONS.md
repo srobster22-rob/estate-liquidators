@@ -145,7 +145,8 @@ appraiser is the game's signature verb.
 **Knowingly accepted cost:** the world feels slightly arbitrary.
 
 **Simulated 2026-07-29, re-measured in LOOP_LOG R8** (`ECONOMY.md` §9.1, `sim/integrated.py`):
-*selective* scanning beats blind hauling by **+6%** at 14 van slots — always-scan actually lands
+*selective* scanning beats blind hauling by **+4.4%** at 14 van slots (R20; **+6%** before
+`integrated.py`'s retracted cursed floor was fixed) — always-scan actually lands
 just behind BLIND at the designed retrieval rates. The **+84%** first reported (§6,
 `sim/haul_sim.py`) used a placeholder for noise cost; the **+31%** that replaced it still had a
 slot-accounting bug that let lost cargo act as a free reroll. The §6 capacity sweep has not been
@@ -345,6 +346,53 @@ Drama requirement and economic requirement turn out to be the same requirement.
 
 **Falsified if:** crews reserve slots for it and then routinely fail to reach it anyway —
 that would mean the unlock timing, not the visibility, is wrong.
+
+---
+
+## D-22 · The appraiser keeps its linear cost — no super-linear scan risk
+**Status:** FIRM · `ECONOMY.md` §9.1, `sim/scan_risk.py`
+
+R12 proposed rescuing the appraiser's thin edge the way R11 rescued the curse: give scanning a
+**super-linear** cost, so appraising repeatedly while the Curator hunts compounds the chance of
+being caught mid-scan. The structural argument was good — same problem shape, same fix. It sat
+open for eight rounds. R20 ran it at n=20,000 and it is **falsified three ways**:
+
+1. **The interior optimum already exists.** Sweeping scan *rate* 0→1 with no added cost peaks at
+   **0.2–0.3, worth +3.5%** over never scanning (z=33). The project had only ever compared three
+   fixed strategies — BLIND, ADAPTIVE, SCAN — and concluded from three points that there was no
+   interesting middle. Sweeping the continuum shows the middle was always there.
+2. **The cost makes it worse.** Peak edge falls +3.5% → +2.9% (linear) → +2.4% (compound), and
+   the optimum does not move. Robust across 9 (k, exp) combinations.
+3. **It makes the mechanic unplayable.** Under the compound cost every *player-implementable*
+   policy lands at or below break-even. The only rule that still pays — "scan only below PURSUE
+   *and* never twice running" — requires reading the Disturbance meter, which `DESIGN.md` §6.5
+   keeps **hidden** and D-14 forbids leaning on. Neither half works alone: streak-only is −0.4%,
+   tier-only is −0.3%, both together +3.8%. It also collapses ADAPTIVE from +4.4% to −16.9%.
+
+The appraiser is worth about +4.4%, and whether that is enough is a **design judgement, not a
+simulation result**. Three separate attempts to make it a simulation result have now failed.
+
+**Falsified if:** a playtest shows players scanning at rates far from the 0.2–0.3 optimum for
+reasons the model does not capture — most likely because scanning is fun or tense in ways
+earnings cannot express. That is a reason to keep the mechanic, not to add cost to it.
+
+---
+
+## D-23 · The Phase 2 scan-rate gate is ~15%, not ~30%
+**Status:** FIRM · `DESIGN.md` §4.4 and §11, `BUILD-PROMPT.md` Phase 2
+
+The Milestone 2 kill criterion was "scan rate under ~30% at hour five means the appraiser is
+dead". R20 measured the *earnings-optimal* rate at **0.2–0.3**. A gate set at 30% therefore
+fails a crew playing correctly — it cannot distinguish "players ignore the appraiser" from
+"players use it well". Lowered to **~15%**, comfortably below the optimal band.
+
+This matters more than a tuning tweak because the criterion is a **stop-and-rework** gate:
+everything after Phase 2 is expensive, and the old threshold would have thrown away a working
+mechanic on evidence that it was working.
+
+**Falsified if:** Milestone 2 telemetry puts the observed optimum somewhere else. The sim scans
+per *trip* while the gate counts per *extracted item*; re-derive the number from real data
+rather than inheriting this one.
 
 ---
 

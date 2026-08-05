@@ -286,6 +286,38 @@ non-kinematic, and zero friendly-fire damage. All three are Unity behaviour, the
 project yet, and they are the likeliest to be quietly lost during Phases 1 and 3. That map is
 now asserted in `check_core.py`, so a rule cannot lose its guard silently.
 
+R20 · **Stopped hardening instrumentation and answered the open design question.** Built
+`sim/scan_risk.py` to run R12's pre-registered hypothesis — that the appraiser's thin edge could
+be rescued the way R11 rescued the curse, by making scanning's cost *super-linear* so appraising
+repeatedly while hunted compounds the risk of being caught mid-scan. It had sat in the
+next-step block for **eight rounds** while R13–R19 did the port, the drift checker, the doc
+reconciliation and three mutation harnesses. · **Found a live drift bug first.**
+`integrated.py` computed the cursed floor as an inline `cursed * 2.0` — the value R9 retired as
+inert — and `check_drift` could not see it: mutating it to 99.0 left the run green, because the
+family-level manifest was satisfied by `curse_test.py`'s copy. That is the residual hole R19
+documented, and it was already there. It matters because **integrated.py is the model that
+produced the appraiser's headline number**: the edge is **+4.4%, not +6%.** Third live bug from
+this one constant (R17 caught it in both prototypes). Fixed, guarded per-file, negative-controlled.
+· **The hypothesis is falsified, three ways, at n=20,000.** (1) **The interior optimum already
+exists without any added cost** — sweeping scan *rate* 0→1 peaks at **0.2–0.3, worth +3.5%**
+(z=33). Nobody had ever swept the rate; the project compared three fixed strategies and
+concluded from three points that there was no interesting middle. (2) Adding the cost *lowers*
+the peak (+3.5% → +2.9% linear → +2.4% compound) and does not move it — robust across nine
+(k, exp) combinations. (3) The one that kills it: under the compound cost every
+**player-implementable** policy lands at or below break-even. The only rule that still pays is
+"scan below PURSUE *and* never twice running", and neither half works alone (streak-only −0.4%,
+tier-only −0.3%, both +3.8%) — so it needs the Disturbance meter, which `DESIGN.md` §6.5 keeps
+**hidden** and D-14 forbids leaning on. It also collapses the current design's ADAPTIVE
+heuristic from +4.4% to **−16.9%**. Logged as **D-22: no super-linear scan cost.** · **And the
+sweep found a worse problem than the one it was sent to solve.** Milestone 2's kill criterion
+was "scan rate under **~30%** at hour five means the appraiser is dead". The measured *optimal*
+rate is **0.2–0.3**. The gate was set at the optimum, so a crew playing correctly fails it — it
+cannot distinguish *ignoring* the appraiser from *using it well*, and it is a **stop-and-rework**
+gate with everything expensive behind it. Lowered to **~15%** across `DESIGN.md` §4.4/§11 and
+`BUILD-PROMPT.md` Phase 2, with the per-trip-vs-per-item caveat recorded. Logged as **D-23.**
+· Three attempts have now failed to turn "is +4.4% enough?" into a simulation result. It is a
+design judgement, and the next real information comes from a playtest.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

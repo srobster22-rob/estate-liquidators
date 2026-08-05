@@ -166,10 +166,19 @@ slightly arbitrary — that's a real, accepted cost, not an oversight.
 
 **The gate:** at Milestone 2, instrument it. Track *what percentage of extracted items were
 appraised first*, per playtester, per hour of experience. If that number is still falling at
-hour five and lands under ~30%, the appraiser is dead as a core mechanic and needs to be
+hour five and lands under **~15%**, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §9.1). Scanning beats blind hauling by only +6% at 14
+> **The threshold was ~30% until R20, and that was set at the optimum.** `sim/scan_risk.py`
+> sweeps scan rate and finds earnings peak at a rate of **0.2–0.3**. A crew playing *well*
+> therefore scans about a quarter of the time, so a 30% gate fails optimal play — it cannot
+> distinguish "players ignore the appraiser" from "players use it correctly". 15% sits clearly
+> below the optimal band, so falling under it means the mechanic is genuinely being abandoned.
+> Caveat worth carrying to the playtest: the sim models scan-or-not *per trip*, while the gate
+> measures *per extracted item*. The two are close but not identical, and the real number should
+> be re-derived once Milestone 2 produces actual telemetry.
+
+**Simulated ahead of the gate** (`ECONOMY.md` §9.1). Scanning beats blind hauling by only +4.4% at 14
 van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
 confirmed as the load-bearing one. But the sim also overturned part of §4.1's framing:
 
@@ -620,8 +629,9 @@ content ahead of systems.
 
 1. If hauling objects to a van with your friends isn't already funny with no monster in the
    building, the monster will not save it. Test with real friends and real voice chat.
-2. If the scan rate from §4.4 collapses under ~30% by hour five, the appraiser is not a core
-   mechanic and no amount of tuning will make it one.
+2. If the scan rate from §4.4 collapses under **~15%** by hour five, the appraiser is not a core
+   mechanic and no amount of tuning will make it one. (Was ~30%, which R20 showed is the
+   *optimal* rate — a gate set where good play lives cannot detect bad play.)
 
 Either failure means stopping and reworking, not proceeding to Milestone 3. Write both
 numbers down before the playtest, not after.

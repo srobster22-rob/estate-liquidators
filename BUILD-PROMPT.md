@@ -18,7 +18,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > ### Read first, in this order
 >
 > 1. `README.md` — the map.
-> 2. `DECISIONS.md` — 21 settled calls, each with the condition that would disprove it.
+> 2. `DECISIONS.md` — 23 settled calls, each with the condition that would disprove it.
 >    **Do not relitigate these.** If you believe one is wrong, check whether its stated
 >    falsification condition has actually been met; if it hasn't, implement it as written.
 > 3. `DESIGN.md` — the game itself.
@@ -91,7 +91,9 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > **Phase 2 — The loop, instrumented.** One estate wing, ~20 items, appraiser, van, quota,
 > sunrise timer, ledger. No monster.
 > *Exit, and there are two:* (a) four real friends on voice find hauling junk to a van funny
-> *without* a monster; (b) scan rate stays above ~30% at hour five (`DESIGN.md` §4.4). **If
+> *without* a monster; (b) scan rate stays above **~15%** at hour five (`DESIGN.md` §4.4 — the
+> threshold was 30% until R20 measured the *optimal* rate at 0.2–0.3, which made the old gate
+> fail correct play). **If
 > either fails, stop and rework — do not proceed to Phase 3.** This is the honest checkpoint;
 > everything after it is expensive.
 >
@@ -118,7 +120,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > `sim/` contains eight Python models totalling ~1,740 lines that already answer most tuning
 > questions, and they run in seconds with no dependencies. `tuning.json` at the repo root is the
 > canonical value for every constant, and `sim/check_drift.py` asserts that the Python, both JS
-> prototypes and the C# core all agree with it — 132 checks over 59/59 constants across all four
+> prototypes and the C# core all agree with it — 133 checks over 59/59 constants across all four
 > implementations, fail-closed since R16 (unmatched patterns fail rather than skip) and
 > per-implementation since R17 (a constant an implementation carries must be checked *there*). **Before changing any balance number, change it in
 > `tuning.json`, re-run the relevant model, then re-run `python3 sim/check_drift.py`.** The models
@@ -138,7 +140,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > and zero friendly-fire damage. They are the likeliest to be lost during Phases 1 and 3. Write
 > a test for each as you build it, and add it to `sim/check_core.py`'s NON_NEGOTIABLES map. Build Phases 3–4 on that core rather than
 > re-deriving it. After changing any constant, re-run `python3 sim/check_drift.py`, which holds
-> `tuning.json` (canonical), the C# core, and both JS prototypes in agreement — 132 checks over 59
+> `tuning.json` (canonical), the C# core, and both JS prototypes in agreement — 133 checks over 59
 > canonical constants across four implementations, fail-closed. Still to port: `sim/validate_estate.py` to a C# editor tool for
 > Phase 5. Leave the remaining models in Python as design tools.
 >

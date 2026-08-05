@@ -72,7 +72,7 @@ TUNING = json.loads((ROOT / "tuning.json").read_text(encoding="utf-8"))
 
 # Pinned so the headline count is machine-checked. Raise it deliberately when you
 # add a check; a drop means checks silently stopped running.
-EXPECTED_CHECKS = 132
+EXPECTED_CHECKS = 133
 
 # Canonical constants with no implementation to check against, and why. Anything
 # here that turns out to BE covered is reported as a stale exemption.
@@ -451,9 +451,14 @@ check("van.base_slots", "py integrated VAN_SLOTS",
 check("loudness_constants.impulse_disturbance_per_l", "py disturbance IMPULSE",
       grab(sims["disturbance.py"], r"IMPULSE_PER_L\s*=\s*([\d.]+)"),
       lc["impulse_disturbance_per_l"])
-check("disturbance.per_cursed_item_floor", "py curse floor",
-      grab(sims["curse_test.py"], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
-      d["per_cursed_item_floor"])
+# The cursed floor is declared in BOTH sims. integrated.py carried an inline `cursed *
+# 2.0` - the value R9 retired - from before R9 until R20, unseen because the family-level
+# manifest was satisfied by curse_test.py's copy. It is the model that produced the
+# appraiser's headline edge, so the number was wrong too. Check every file that has one.
+for f, label in (("curse_test.py", "py curse"), ("integrated.py", "py integrated")):
+    check("disturbance.per_cursed_item_floor", f"{label} floor",
+          grab(sims[f], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
+          d["per_cursed_item_floor"])
 check("van.ruin_exp", "py curse ruin_exp",
       grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"), v["ruin_exp"])
 

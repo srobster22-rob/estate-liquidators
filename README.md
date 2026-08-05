@@ -38,9 +38,10 @@ falsification conditions.
 | **[sim/curator_attention.py](sim/curator_attention.py)** | Attention weighting, flicker, hand-off override, sacrifice plays. | Before touching aggro selection. |
 | **[sim/disturbance.py](sim/disturbance.py)** | Disturbance escalation across six scenarios — baseline, levers off, greedy, careful, and two poltergeist Static budgets. | Before changing decay, gain, or tier thresholds. |
 | **[sim/curse_test.py](sim/curse_test.py)** | The curse value side and the tail-risk ruin curve. | Before changing curse multipliers or ruin_k. |
+| **[sim/scan_risk.py](sim/scan_risk.py)** | Sweeps scan *rate* and tests whether a super-linear scan cost helps. It does not — see D-22. Also where the optimal ~0.2–0.3 rate that recalibrated the Phase 2 gate comes from. | Before touching the appraiser. |
 | **[sim/validate_estate.py](sim/validate_estate.py)** + **[sim/estates.py](sim/estates.py)** | The ten-check estate validator, plus a clean sample wing and a deliberately-broken one. | Before a wing enters the pool. |
 | **[sim/check_estates.py](sim/check_estates.py)** | Mutation test: one targeted fault per check, asserting all ten can actually *fail*. Added R18, when V7 turned out to be undetectable and the validator had no entry point at all. | After touching any check. |
-| **[sim/check_drift.py](sim/check_drift.py)** | Fail-closed drift checker: 132 checks over 59/59 constants in `tuning.json`, across all four implementations (Python, both JS prototypes, C#). | After changing any constant, anywhere. |
+| **[sim/check_drift.py](sim/check_drift.py)** | Fail-closed drift checker: 133 checks over 59/59 constants in `tuning.json`, across all four implementations (Python, both JS prototypes, C#). | After changing any constant, anywhere. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[LOOP_LOG.md](LOOP_LOG.md)** | Sixteen rounds of build-and-find, newest at the bottom. **Where the log and a spec disagree, the log is newer.** | Before trusting any number in any spec. |
@@ -81,7 +82,7 @@ a 31-assertion C# cross-check of the ported core, and a fail-closed drift checke
 canonical constants — which between them overturned most of what this project first believed.
 The four that mattered earliest:
 
-- The appraiser beats blind hauling by **+6%** at 14 van slots (`LOOP_LOG.md` R8 / `ECONOMY.md`
+- The appraiser beats blind hauling by **+4.4%** at 14 van slots (`LOOP_LOG.md` R8/R20 / `ECONOMY.md`
   §9.1 — the +84% first reported was placeholder-noise, and the +31% that replaced it a
   slot-accounting reroll bug) — and dies entirely between
   24 and 32 slots. Van capacity is the master constant.

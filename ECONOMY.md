@@ -343,8 +343,12 @@ own sanity check: harsher retrieval now monotonically lowers **every** strategy'
   linear interpolation between two extremes. That pessimism was itself an artifact. The band
   exists, and the design already sits in it.
 
-**But the margin is small: +6% over blind hauling**, down from the +84% first reported and the
-+31% second. That is the number to argue about now. A ~6% edge means the appraiser is close to
+**But the margin is small: +4.4% over blind hauling**, down from the +84% first reported, the
++31% second, and the +6% third. (R20 corrected +6% to +4.4%: `integrated.py` had been computing
+the cursed-item Disturbance floor as an inline `cursed * 2.0` — the value R9 retired as inert —
+since before R9, unseen by `check_drift`. The model that produced the headline number was
+running on a retracted constant.) That is the number to argue about now. A ~4% edge means the
+appraiser is close to
 break-even — defensible for a risk/reward mechanic where the *interesting* state is a genuine
 toss-up, but thin enough that players may rationally skip it. Whether 6% is enough to carry a
 signature mechanic is a design judgement, not a simulation result, and it should be settled
@@ -364,8 +368,19 @@ $6,889 against BLIND's $6,497 and SCAN's $6,481. See the table above and LOOP_LO
 earlier claim here — that SCAN dominates outright and the band only opens at ~3× harsher
 retrieval — was an artifact of the slot-accounting reroll, and it is withdrawn. **Do not retune
 RETRIEVAL**; the designed values already produce the right ordering. What remains open is not
-whether there is a decision but whether a **+6%** edge is a big enough one to carry the
+whether there is a decision but whether a **+4.4%** edge is a big enough one to carry the
 signature mechanic — a design judgement, not a simulation result.
+
+**R20 closed the last simulation avenue.** R12 proposed rescuing the appraiser the way R11
+rescued the curse: make its cost *super-linear*, so appraising repeatedly while the Curator is
+hunting compounds the risk of being caught mid-scan. `sim/scan_risk.py` tested it at n=20,000
+and it is **falsified, three ways.** (1) Sweeping scan *rate* 0→1 already produces an interior
+optimum at **0.2–0.3, worth +3.5%** — with no added cost at all. Nobody had ever swept the rate;
+the project compared three fixed strategies and concluded from three points that there was no
+interesting middle. (2) Adding the cost *lowers* the peak (+3.5% → +2.4%) without moving it.
+(3) Worst, under the compound cost every **player-implementable** policy lands at or below
+break-even; the only rule that still pays needs the Disturbance meter, which §6.5 keeps hidden
+and D-14 forbids leaning on. It also collapses ADAPTIVE from +4.4% to −16.9%. See D-22.
 
 **2. Cursed cargo was inert, and the floor alone could not fix it.** At the originally specced
 **+2/item** Disturbance floor, sweeping 0 → 8 cursed items in the van moved earnings by under

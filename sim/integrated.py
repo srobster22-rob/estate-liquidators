@@ -28,6 +28,7 @@ IMPULSE = 0.09
 SUSTAINED = 0.02
 DECAY_PER_MIN = 50.0        # R4
 RATCHET_END = 55.0          # floor climbs 0 -> 55 across the night
+FLOOR_PER_CURSED = 7.0      # R9. Was an inline 2.0 here until R20 - see below.
 
 L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
      "radio": 38, "break_small": 90}
@@ -105,7 +106,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
 
         # --- Disturbance over the span of this trip -------------------------
         span = cost
-        floor = RATCHET_END * (t / NIGHT_S) + cursed * 2.0
+        floor = RATCHET_END * (t / NIGHT_S) + cursed * FLOOR_PER_CURSED
         for _ in range(int(span)):
             for _ in range(CREW):
                 if rng.random() < 0.04:
