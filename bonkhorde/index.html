@@ -414,7 +414,7 @@ skulls:{ name:"SKULLS", ic:"\u{1F480}", kind:"w",
       {d:30,n:4,rad:3.7,spin:2.6,cd:.36},
       {d:40,n:5,rad:4.0,spin:2.8,cd:.33},
       {d:53,n:6,rad:4.3,spin:3.1,cd:.30},
-      {d:88,n:10,rad:5.2,spin:3.6,cd:.22}] },
+      {d:112,n:10,rad:6.3,spin:3.6,cd:.20}] },
 
 bolt:{ name:"BOLT", ic:"\u{1F3F9}", kind:"w",
   ds:"Homing shot at the nearest target. Reliable, unspectacular.",
@@ -442,11 +442,11 @@ mortar:{ name:"MORTAR", ic:"\u{1F4A3}", kind:"w",
   ds:"Lobs a shell at the thickest part of the crowd.",
   evo:{ name:"BOMBARDIER", need:"plating", ic:"\u{1F6E1}",
         ds:"Every shell splits into four. Stand still. Enjoy." },
-  lv:[{d:52,cd:2.3,rad:3.4,n:1},
-      {d:70,cd:2.1,rad:3.7,n:1},
-      {d:94,cd:1.9,rad:4.0,n:2},
-      {d:124,cd:1.75,rad:4.4,n:2},
-      {d:162,cd:1.6,rad:4.8,n:3},
+  lv:[{d:46,cd:2.3,rad:3.4,n:1},
+      {d:62,cd:2.1,rad:3.7,n:1},
+      {d:83,cd:1.9,rad:4.0,n:2},
+      {d:110,cd:1.75,rad:4.4,n:2},
+      {d:143,cd:1.6,rad:4.8,n:3},
       {d:230,cd:1.3,rad:5.6,n:4}] },
 
 zap:{ name:"ZAP", ic:"⚡", kind:"w",
@@ -464,8 +464,8 @@ aura:{ name:"STINK", ic:"☢", kind:"w",
   ds:"A permanent cloud of you. Damages anything standing in it.",
   evo:{ name:"PLAGUE", need:"heart", ic:"\u{1F9A0}",
         ds:"Bigger, meaner, and it slows whatever it touches." },
-  lv:[{dps:15,rad:3.6},{dps:21,rad:4.0},{dps:29,rad:4.4},
-      {dps:39,rad:4.9},{dps:52,rad:5.4},{dps:95,rad:7.4,slow:.55}] },
+  lv:[{dps:19,rad:4.2},{dps:27,rad:4.7},{dps:37,rad:5.2},
+      {dps:50,rad:5.8},{dps:66,rad:6.5},{dps:120,rad:8.4,slow:.55}] },
 
 caltrops:{ name:"CALTROPS", ic:"\u{1F53A}", kind:"w",
   ds:"Drops a hazard behind you. Rewards running away, which you will.",
@@ -607,7 +607,7 @@ let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, 
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
 let noSpawn=false;                      // test-only: isolate a boss fight
-let bossCasts={};
+let bossCasts={}, dmgDealt=0, dmgBoss=0;
 let runWon=false, runWhy="";
 
 function baseStats(ch){
@@ -737,6 +737,9 @@ function dmgOut(base){
   return { d: d, crit };
 }
 function hurt(e, amount, kx, kz, crit){
+  const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
+  dmgDealt += eff;
+  if(e.boss) dmgBoss += eff;
   e.hp -= amount;
   if(e.flash <= -.06) e.flash = .09;   // refractory, or it never turns off
   if(kx||kz){ e.kx += kx; e.kz += kz; }
@@ -884,8 +887,23 @@ function fireMortar(w,s){
                    t:0, dur:.62, d:s.d, rad:s.rad });
   }
 }
+// Chain lightning that arcs to the nearest body spends its entire output on
+// trash and never once touches a boss - measured at 1 boss DPS against a median
+// of 55, which is not a weak weapon, it is a weapon that does not participate.
+// Its fantasy is arcing to the dangerous thing, so make the FIRST link seek
+// threat and let the chain spread from there.
+function threatTarget(x, z, r, skip){
+  let best = null, bs = -1e9;
+  near(x, z, r, (e,d)=>{
+    if(skip && skip.has(e)) return;
+    const w = (e.boss ? 400 : e.elite ? 40 : 0) - d;
+    if(w > bs){ bs = w; best = e; }
+  });
+  return best;
+}
+
 function fireZap(w,s){
-  let cur = nearest(P.x, P.z, s.rng);
+  let cur = threatTarget(P.x, P.z, s.rng);
   if(!cur) return;
   const seen = new Set(); const pts = [[P.x, P.y+1.2, P.z]];
   let d = s.d;
@@ -895,7 +913,7 @@ function fireZap(w,s){
     const roll = dmgOut(d);
     hurt(cur, roll.d, 0, 0, roll.crit);
     d *= s.fall;
-    cur = nearest(cur.x, cur.z, s.rng*.7, seen);
+    cur = threatTarget(cur.x, cur.z, s.rng*.7, seen);
   }
   arcs.push({ pts, life:.16, evo:w.evo });
   SFX.zap();
@@ -1925,10 +1943,17 @@ window.__g = {
   // eliteness, and it read "elite 283 vs normal 331" while elites were in fact
   // 3.2x tougher. Third time an instrument in this project has been confidently
   // wrong; normalise the thing you are not asking about.
+  dmg:   ()=>{ const d=dmgDealt, b=dmgBoss; dmgDealt=0; dmgBoss=0;
+               return { all:d, boss:b }; },
   haz:   ()=>({ n:hazards.length, tel:hazards.filter(h=>h.tel>0).length,
                 live:hazards.filter(h=>h.tel<=0).length }),
   casts: ()=>Object.assign({}, bossCasts),
   freezeSpawns: (v=true)=>{ noSpawn=v; },
+  // isolate one character stat at a time - reasoning about which of two
+  // plausible causes is the real one has a poor track record here
+  patchChar: (id, mods)=>{ const c = CHARS.find(x=>x.id===id);
+                           if(c) c.mods = Object.assign({}, c.mods, mods);
+                           return c && c.mods; },
   hp:    ()=>P.hp,
   elites:()=>{ const med = a => { const v=a.slice().sort((x,y)=>x-y);
                                   return v.length ? v[v.length>>1] : 0; };
