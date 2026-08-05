@@ -28,9 +28,24 @@ until you put numbers in it:
 edge it needs — and decline. Several strategies in this project do exactly that, and
 that check is why they survive contact with the fee model.
 
-UNVERIFIED: the 0.07 rate and the maker schedule come from general knowledge, not from a
-live read of Kalshi's published fee schedule (no network access here). Confirm before
-trusting any number this directory produces. All rates are in config.json.
+VERIFIED against Kalshi's published schedule and independent worked examples. `selftest.py`
+section 1b reproduces them: 10 contracts @ 50c = $0.18, 20 @ 50c = $0.35, per-contract
+0.0175 / 0.0112 / 0.0063 at 50c / 20c / 10c, no settlement fee. The 0.07 rate, the P(1-P)
+shape and the per-ORDER round-up are all confirmed.
+
+TWO THINGS WERE WRONG BEFORE THAT CHECK, and both are fixed:
+  * The MAKER formula was a guess — `0.0025 * C * P`, linear in price. The real schedule is
+    `0.0175 * C * P * (1-P)`: a quarter of the taker rate with the same curve, charged only
+    on designated series (default multiplier 0, so most markets pay makers nothing).
+  * The S&P 500 (INX*) and Nasdaq-100 (NASDAQ100*) series are charged 0.035, HALF the
+    standard rate — and that is exactly what `index_bracket_daily` models. It had been
+    paying double, which understated the only riskless trade in the project by 3.3x.
+
+ONE THING REMAINS AMBIGUOUS: sources disagree on whether the round-up is to the whole cent
+or to a "centicent". Whole cent matches every published example that has a number attached,
+so it is what runs; `rounding_granularity_cents` in config.json switches the other reading on
+and selftest 1b prices the difference. Whole-cent is also the conservative choice — it never
+charges less — so no result here is flattered by the ambiguity.
 """
 
 from __future__ import annotations
@@ -45,43 +60,70 @@ _F = _CFG["fees"]
 TAKER_RATE = float(_F["taker_rate"])
 MAKER_RATE = float(_F["maker_rate"])
 SETTLEMENT_FEE = int(_F["settlement_fee_cents_per_contract"])
+GRANULARITY = float(_F.get("rounding_granularity_cents", 1.0))
+SERIES_MULTIPLIER = {k: v for k, v in _F.get("series_fee_multiplier", {}).items()
+                     if not k.startswith("_")}
 
 
-def _ceil_cent(cents: float) -> int:
-    """Round a cent-denominated amount up to the next whole cent.
+def _ceil_cent(cents: float) -> float:
+    """Round an order's fee up to the next `GRANULARITY` cents.
 
-    The 1e-9 guard keeps 1.75 * 4 = 7.000000000000001 from becoming 8c. Money is
-    integer cents everywhere in this project precisely so this is the only place
-    float error can enter.
+    Kalshi's published worked examples all match a round-up to the WHOLE CENT, charged per
+    ORDER rather than per contract: 10 contracts at 50c is a raw $0.175 and a charged $0.18;
+    20 contracts at 50c is exactly $0.35. Some wording in the 2026 schedule instead says the
+    round-up is to a "centicent". The whole-cent reading is used because it matches every
+    example that has a number attached to it, and `rounding_granularity_cents` exists so the
+    other reading can be measured rather than argued about — see selftest 1b, which prices
+    the difference at a fraction of a cent per order.
+
+    The 1e-9 guard keeps 1.75 * 4 = 7.000000000000001 from becoming 8c. Money is integer
+    cents everywhere else in this project precisely so this is the only place float error
+    can enter.
     """
-    return int(math.ceil(cents - 1e-9))
+    if GRANULARITY <= 0:
+        return cents
+    if GRANULARITY == 1.0:
+        # The default. Return a genuine int so the "money is integer cents everywhere"
+        # invariant survives — sub-cent granularity is a sensitivity experiment, not the
+        # normal path, and only it is allowed to produce fractional cents.
+        return int(math.ceil(cents - 1e-9))
+    return math.ceil(cents / GRANULARITY - 1e-9) * GRANULARITY
 
 
-def taker_fee_cents(contracts: int, price_cents: int, rate_multiplier: float = 1.0) -> int:
-    """Fee for one taker order of `contracts` at `price_cents`.
+def taker_fee_cents(contracts: int, price_cents: int, rate_multiplier: float = 1.0,
+                    series_multiplier: float = 1.0) -> float:
+    """Fee for one taker order: round_up(M * 0.07 * C * P * (1-P)).
 
-    `rate_multiplier` is for the gate's stress test (config gate.stress_fee_multiplier):
-    a bot whose edge evaporates when fees are 1.5x was never trading an edge, it was
-    trading a fee assumption.
+    `series_multiplier` is Kalshi's own M. It defaults to 1, and it is 0.5 for the S&P 500
+    (INX*) and Nasdaq-100 (NASDAQ100*) series, which are charged 0.035 rather than 0.07.
+    That halving is real, published, and it applies to exactly the markets
+    `index_bracket_daily` models — which had been paying double the true rate.
+
+    `rate_multiplier` is separate: it is the gate's stress test (gate.stress_fee_multiplier),
+    because a bot whose edge evaporates at 1.5x fees was trading a fee assumption.
     """
     if contracts <= 0:
         return 0
     p = price_cents / 100.0
-    raw_dollars = TAKER_RATE * rate_multiplier * contracts * p * (1.0 - p)
+    raw_dollars = TAKER_RATE * series_multiplier * rate_multiplier * contracts * p * (1.0 - p)
     return _ceil_cent(raw_dollars * 100.0)
 
 
-def maker_fee_cents(contracts: int, price_cents: int, rate_multiplier: float = 1.0) -> int:
-    """Fee for one resting order that gets filled.
+def maker_fee_cents(contracts: int, price_cents: int, rate_multiplier: float = 1.0,
+                    series_multiplier: float = 1.0) -> float:
+    """Fee for one resting order that gets filled: round_up(M * 0.0175 * C * P * (1-P)).
 
-    Defaults to zero because Kalshi has historically not charged makers on most series.
-    config.json carries `maker_rate_if_charged` (0.0025) so the assumption can be flipped
-    and the market-making results re-read — see KALSHI_LOOP_LOG.md R4, where flipping it
-    is what decided whether the maker family is a real business or an artifact.
+    SAME SHAPE AS THE TAKER FEE, A QUARTER OF THE RATE. An earlier version of this had it as
+    `0.0025 * C * P` — linear in price and seven times too small at the extremes — which was
+    a guess, and wrong on both counts. The real schedule is 0.0175 with the same P(1-P) curve,
+    charged only on designated series (default multiplier 0, so most markets pay makers
+    nothing). `maker_rate` stays 0.0 by default for that reason; set it to
+    `maker_rate_if_charged` to re-read the market-making results under the charged regime.
     """
     if contracts <= 0 or MAKER_RATE <= 0.0:
         return 0
-    raw_dollars = MAKER_RATE * rate_multiplier * contracts * (price_cents / 100.0)
+    p = price_cents / 100.0
+    raw_dollars = MAKER_RATE * series_multiplier * rate_multiplier * contracts * p * (1.0 - p)
     return _ceil_cent(raw_dollars * 100.0)
 
 

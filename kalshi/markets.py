@@ -76,7 +76,7 @@ class Family:
     __slots__ = ("name", "label", "steps", "step_hours", "schedule_kind", "schedule_kw",
                  "p0_mu", "p0_sd", "logit_gamma", "underreact_alpha", "underreact_decay",
                  "underreact_cap", "quote_noise", "spread_lo", "spread_hi", "depth_lo",
-                 "depth_hi", "n_brackets", "notes", "salt_name")
+                 "depth_hi", "n_brackets", "notes", "salt_name", "fee_multiplier")
 
     def __init__(self, name, label, steps, step_hours, schedule_kind, p0_mu, p0_sd,
                  logit_gamma, underreact_alpha, underreact_decay, underreact_cap,
@@ -87,6 +87,10 @@ class Family:
         # borrows its base family's salt so that the same group id draws the SAME latent
         # path, spreads and depths — see `attenuated`.
         self.salt_name = salt_name or name
+        # Kalshi's published per-series fee multiplier M. 1.0 everywhere except the S&P 500
+        # and Nasdaq-100 series, which are charged 0.035 instead of 0.07.
+        self.fee_multiplier = float(
+            _CFG["fees"].get("series_fee_multiplier", {}).get(self.salt_name, 1.0))
         self.steps, self.step_hours = steps, step_hours
         self.schedule_kind, self.schedule_kw = schedule_kind, schedule_kw or {}
         self.p0_mu, self.p0_sd = p0_mu, p0_sd

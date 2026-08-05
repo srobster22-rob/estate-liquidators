@@ -204,6 +204,30 @@ between two independently sourced numbers is the only internal check the census 
 business resting on 124 independent resolutions a year is a much narrower thing than the
 contract count makes it look. 73 checks pass.
 
+K16 · Verified the fee schedule — the last load-bearing guess, and the one that decides every
+result in the directory. · **The 0.07 rate is right; two things around it were wrong.**
+Confirmed against Kalshi's published schedule and independent worked examples, now reproduced
+in `selftest.py` §1b: 10 contracts @ 50c = **$0.18** (raw $0.175), 20 @ 50c = **$0.35**,
+per-contract **0.0175 / 0.0112 / 0.0063** at 50c / 20c / 10c, and no settlement fee. The rate,
+the P(1-P) shape, and the round-up being charged **per ORDER** rather than per contract all
+hold exactly as modelled — which also means the "order size is free alpha" finding survives.
+
+What was wrong: (a) the **maker formula** was a guess, `0.0025 * C * P`, linear in price. The
+real schedule is `0.0175 * C * P * (1-P)` — a quarter of the taker rate with the *same* curve,
+charged only on designated series. (b) **S&P 500 (INX\*) and Nasdaq-100 (NASDAQ100\*) series
+are charged 0.035, half the standard rate** — and that is precisely what `index_bracket_daily`
+models. It had been paying double the real fee for the entire project. Correcting it more than
+triples the only riskless trade here: **bracket arb goes +2.22c -> +7.37c per market**, $17 ->
+$55/yr. Still small, because index brackets are ~750 markets a year, but it is riskless money
+that the wrong fee was hiding.
+
+One ambiguity survives and is now measured instead of argued: sources disagree on whether the
+round-up is to the whole cent or to a **centicent**. Whole cent matches every published example
+that has a number attached to it, so it is what runs, and it is the *conservative* reading — it
+never charges less, so no result here is flattered by the choice. `rounding_granularity_cents`
+switches the other reading on and §1b prices the gap at under a cent per order. The headline is
+unchanged at **$292/yr** because econ_print's multiplier is 1.0. 87 checks pass.
+
 ---
 
 ## Standing notes
@@ -221,6 +245,9 @@ contract count makes it look. 73 checks pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **The fee schedule is verified; `live.py` is not.** Endpoint paths, field names and the
+  signature construction have never touched a live server. That is now the largest unchecked
+  assumption in the directory.
 - **A sourced count is not a measurement.** The census comes from published figures because
   the API is unreachable from here; it is far better than the guess it replaced and it is still
   not `GET /markets`. Re-run it against the live API from a machine with egress before anyone

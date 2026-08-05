@@ -76,6 +76,59 @@ near("breakeven edge at 50c", fees.breakeven_edge_cents(50, 100), 1.75, 0.001, "
 near("breakeven edge at 5c", fees.breakeven_edge_cents(5, 100), 0.34, 0.001, "c")
 
 # ---------------------------------------------------------------------------
+print("\n1b. FEE SCHEDULE — against Kalshi's published worked examples")
+# These are not my arithmetic checked against itself; they are the numbers Kalshi and
+# independent write-ups publish, and the formula has to reproduce them exactly. The rate
+# (0.07), the P(1-P) shape, the per-ORDER round-up and the absence of a settlement fee are
+# all confirmed this way.
+ok("10 contracts @ 50c costs 18c (raw 17.5c, published $0.18)",
+   fees.taker_fee_cents(10, 50) == 18, f"got {fees.taker_fee_cents(10, 50)}c")
+ok("20 contracts @ 50c costs exactly 35c (published $0.35)",
+   fees.taker_fee_cents(20, 50) == 35, f"got {fees.taker_fee_cents(20, 50)}c")
+ok("100 contracts @ 50c hits the published $1.75/100 ceiling",
+   fees.taker_fee_cents(100, 50) == 175, f"got {fees.taker_fee_cents(100, 50)}c")
+for price, want in ((50, 0.0175), (20, 0.0112), (10, 0.0063)):
+    got = fees.TAKER_RATE * (price / 100.0) * (1 - price / 100.0)
+    near(f"per-contract rate at {price}c matches published", got, want, 5e-5)
+ok("no settlement fee", fees.settlement_fee_cents(1000) == 0)
+
+# The S&P 500 (INX*) and Nasdaq-100 (NASDAQ100*) series are charged 0.035, not 0.07. That is
+# exactly what index_bracket_daily models, and it had been paying double.
+ok("index series pay half the taker rate",
+   fees.taker_fee_cents(100, 50, series_multiplier=0.5) == 88,
+   f"100 @ 50c on a halved series = {fees.taker_fee_cents(100, 50, series_multiplier=0.5)}c "
+   f"vs {fees.taker_fee_cents(100, 50)}c standard")
+ok("index_bracket_daily carries the halved multiplier, econ_print does not",
+   markets.FAMILIES["index_bracket_daily"].fee_multiplier == 0.5
+   and markets.FAMILIES["econ_print"].fee_multiplier == 1.0)
+
+# The maker schedule was WRONG before verification: modelled as 0.0025*C*P, linear in price.
+# The real one is a quarter of the taker rate with the same P(1-P) curve.
+ok("maker formula is a quarter of the taker rate, same shape",
+   abs(float(fees._F["maker_rate_if_charged"]) - fees.TAKER_RATE / 4.0) < 1e-12,
+   f"{fees._F['maker_rate_if_charged']} vs 0.07/4 = {fees.TAKER_RATE / 4.0}")
+ok("makers are charged nothing by default", fees.maker_fee_cents(100, 50) == 0)
+
+# THE ONE THING SOURCES DISAGREE ON: whole cent vs centicent. Measure it instead of arguing.
+# Rebuilt with a patched granularity so the comparison is like-for-like.
+_whole = [fees.taker_fee_cents(c, p) for c in (1, 10, 100, 250) for p in (5, 50, 95)]
+_saved = fees.GRANULARITY
+try:
+    fees.GRANULARITY = 0.01
+    _centi = [fees.taker_fee_cents(c, p) for c in (1, 10, 100, 250) for p in (5, 50, 95)]
+finally:
+    fees.GRANULARITY = _saved
+_gap = max(w - c for w, c in zip(_whole, _centi))
+ok("the rounding ambiguity is worth well under a cent per order",
+   0 <= _gap < 1.0,
+   f"largest whole-cent overcharge vs centicent across 12 order sizes: {_gap:.4f}c")
+ok("whole-cent rounding is the conservative reading",
+   all(w >= c for w, c in zip(_whole, _centi)),
+   "it never charges less than the centicent reading, so results are not flattered by it")
+ok("default granularity keeps money in integer cents",
+   isinstance(fees.taker_fee_cents(10, 50), int))
+
+# ---------------------------------------------------------------------------
 print("\n2. PRICES ARE A MARTINGALE — no drift exists to be harvested")
 for fam_name in ("crypto_hourly", "sports_game", "econ_print"):
     fam = markets.FAMILIES[fam_name]

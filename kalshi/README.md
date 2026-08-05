@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 73 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 87 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -58,7 +58,7 @@ checks themselves.
 | `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
-| `selftest.py` | 73 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 87 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -118,10 +118,16 @@ Kalshi runs one book per market: a YES bid at 40 *is* a NO ask at 60. So
 found **0 opportunities across 5,200 market-lives**, in all nine families. Bracket
 arbitrage across a mutually exclusive *set* is a different matter and it is real: buying all
 five closing-range brackets when their asks sum below 100 is riskless, fully collateralised,
-and worth **+2.22¢ per market offered** out-of-sample. But it fires in only **40 of 1,200
+and worth **+7.37¢ per market offered** out-of-sample. But it fires in only **40 of 1,200
 bracket sets (3.3%)**, which is why it never even reached the out-of-sample stage in the
 factory run — at 300 in-sample markets it does not trade often enough to clear the minimum
 trade count. Real, riskless, and rate-limited by how rarely the exchange is incoherent.
+
+That +7.37¢ was **+2.22¢ until the fee schedule was verified.** S&P 500 and Nasdaq-100 series
+pay half the standard rate, `index_bracket_daily` models exactly those, and it had been
+charged double for the entire project — understating the only riskless trade here by 3.3×.
+Even so it is ~$55/yr on ~750 bracket sets: riskless money that the wrong fee was hiding, and
+still not a business.
 
 **4. The biggest gross edge on the exchange is the worst business on it.** `awards_thin`
 carries the largest planted mispricing of any family (~3.4¢ on a 10¢ contract) and produced
@@ -289,15 +295,30 @@ is **not evidence that those inefficiencies exist on Kalshi**, at those magnitud
 all. A bot passing the gate has proven it can harvest a specified inefficiency, not that the
 inefficiency is out there.
 
-**Two things are unverified because this machine has no network access:**
+**The fee schedule is now VERIFIED** — it was the largest single determinant of every result
+here, so it was checked against Kalshi's published schedule and independent worked examples,
+and `selftest.py` §1b reproduces them (10 contracts @ 50¢ = $0.18; 20 @ 50¢ = $0.35;
+per-contract 0.0175 / 0.0112 / 0.0063 at 50¢ / 20¢ / 10¢; no settlement fee). The 0.07 rate,
+the P(1−P) shape and the per-**order** round-up are all confirmed. Two things were wrong and
+are corrected:
 
-1. **The fee schedule.** `fees.taker_rate = 0.07` and the maker schedule come from general
-   knowledge, not a live read of Kalshi's published rates. Fees are the largest single
-   determinant of every result on this page. Re-read the fee schedule and correct
-   `config.json` before trusting anything.
-2. **The whole of `live.py`.** Endpoint paths, field names and the RSA-PSS signature
-   construction are unverified against a live server. `--check` prints what it actually got
-   back and warns on missing fields. The offline `--replay` path *is* tested.
+- the **maker formula** was a guess (`0.0025 × C × P`, linear in price); the real one is
+  `0.0175 × C × P × (1−P)` — a quarter of the taker rate, same curve, charged only on
+  designated series;
+- **S&P 500 (INX\*) and Nasdaq-100 (NASDAQ100\*) pay 0.035, half the standard rate**, and
+  that is exactly what `index_bracket_daily` models. It had been paying double, which
+  understated the only riskless trade in the project by **3.3×** (+2.22¢ → +7.37¢ per market).
+
+One detail stays ambiguous: sources disagree on whether the round-up is to the whole cent or
+to a *centicent*. Whole cent matches every published example with a number attached, so it is
+what runs, and it is the **conservative** reading — it never charges less, so nothing here is
+flattered by it. `rounding_granularity_cents` switches the other reading on and §1b prices the
+difference at under a cent per order.
+
+**Still unverified: the whole of `live.py`.** Endpoint paths, field names and the RSA-PSS
+signature construction are unchecked against a live server — Kalshi returns 403 to everything
+from this environment. `--check` prints what it actually got back and warns on missing fields.
+The offline `--replay` path *is* tested.
 
 **Also not modelled:** market impact beyond depth-at-touch, a shared bankroll across
 simultaneous markets (so no compounding and no path to ruin — sizing is a separate problem

@@ -346,7 +346,7 @@ def gate(oos: Stats, holdout: Stats | None, stress: Stats | None,
             f"bar is ${GATE['min_annual_dollars']:,}")
     v.check("tail_risk", oos.tail_mean > 0,
             f"{oos.n_losses} losses in {oos.n_trades} trades (rate {oos.loss_rate * 100:.2f}%, "
-            f"Wilson upper {oos.wilson_loss_hi * 100:.2f}%, worst {oos.worst_loss:+d}c) "
+            f"Wilson upper {oos.wilson_loss_hi * 100:.2f}%, worst {oos.worst_loss:+,.0f}c) "
             f"-> tail-adjusted mean {oos.tail_mean:+.2f}c/market")
     return v.finish()
 

@@ -260,6 +260,7 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
     step_h = group.family.step_hours
     legs = group.legs
 
+    fee_mult_series = group.family.fee_multiplier
     pos: list[Position | None] = [None] * len(legs)
     resting: list[Intent] = []
     pnl = 0
@@ -300,7 +301,7 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
             qty = _cap_qty(order.qty, ep.depth[t], price, 0)
             if qty <= 0:
                 continue
-            f = fees.maker_fee_cents(qty, price, costs.fee_mult)
+            f = fees.maker_fee_cents(qty, price, costs.fee_mult, fee_mult_series)
             cost = qty * price + f
             pos[i] = Position(order.side, qty, cost, t)
             max_cost = max(max_cost, cost)
@@ -332,7 +333,7 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
                 fillable = min(qty, ep.depth[t])
                 if fillable <= 0:
                     continue
-                f = fees.taker_fee_cents(fillable, px, costs.fee_mult)
+                f = fees.taker_fee_cents(fillable, px, costs.fee_mult, fee_mult_series)
                 proceeds = fillable * px - f
                 basis = p.cost * fillable // p.qty
                 realized = proceeds - basis
@@ -368,7 +369,7 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
             qty = _cap_qty(it.qty, ep.depth[t], px, 0)
             if qty <= 0:
                 continue
-            f = fees.taker_fee_cents(qty, px, costs.fee_mult)
+            f = fees.taker_fee_cents(qty, px, costs.fee_mult, fee_mult_series)
             pos[i] = Position(it.side, qty, qty * px + f, t)
             max_cost = max(max_cost, qty * px + f)
             fee_total += f

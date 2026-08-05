@@ -9,7 +9,7 @@ Mean cents per market offered:
 | family | hold_favorite | buy_longshot | band_fade | late_favorite | jump_follow | jump_fade | momentum | mean_revert | bracket_arb | pair_arb | maker_spread | random_contro |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `crypto_hourly` | -84 | +89 | -309 | +6 | -737 | -2930 | -440 | -162 | n/a | +0 | +0 | -210 |
-| `index_bracket_daily` | -293 | -94 | -97 | -146 | -2142 | -3218 | -2528 | -2154 | +0 | +0 | +0 | -1084 |
+| `index_bracket_daily` | -237 | -82 | -81 | -124 | -1575 | -2276 | -1948 | -1606 | +2 | +0 | +0 | -817 |
 | `econ_print` | +102 | -125 | +14 | +136 | -8 | -132 | -253 | -251 | n/a | +0 | +0 | -145 |
 | `weather_temp` | +82 | -50 | +178 | +201 | -380 | -756 | -398 | -249 | n/a | +0 | -378 | -142 |
 | `sports_game` | -59 | -41 | -18 | -31 | -1322 | -594 | -322 | -371 | n/a | +0 | +0 | -196 |
@@ -33,7 +33,7 @@ Top cell overall: `efficient_control / hold_favorite(enter_frac=0.25,qty=250,thr
 | family | best strategy in-sample | mean/market | ann. return | targets |
 |---|---|---|---|---|
 | `crypto_hourly` | buy_longshot(enter_frac=0.25,max_price=20,qty=100) | +89.3c | +98991%/yr | EDGE 1 sign control — expected to LOSE |
-| `index_bracket_daily` | bracket_arb(min_edge=0,qty=100) | +0.3c | +873%/yr | EDGE 3 (bracket incoherence) — riskless |
+| `index_bracket_daily` | bracket_arb(min_edge=0,qty=100) | +1.7c | +5706%/yr | EDGE 3 (bracket incoherence) — riskless |
 | `econ_print` | late_favorite(enter_frac=0.6,qty=100,thresh=85) | +136.5c | +7657%/yr | EDGE 1, capital-efficient variant |
 | `weather_temp` | late_favorite(enter_frac=0.8,qty=100,thresh=75) | +200.8c | +4981%/yr | EDGE 1, capital-efficient variant |
 | `sports_game` | pair_arb(min_edge=0,qty=100) | +0.0c | +0%/yr | nothing — structurally impossible, reported as zero |
@@ -54,7 +54,7 @@ Top cell overall: `efficient_control / hold_favorite(enter_frac=0.25,qty=250,thr
 | `jump_fade` | econ_print | -131.7c |
 | `momentum` | efficient_control | -224.0c |
 | `mean_revert` | crypto_hourly | -161.5c |
-| `bracket_arb` | index_bracket_daily | +0.3c |
+| `bracket_arb` | index_bracket_daily | +1.7c |
 | `pair_arb` | crypto_hourly | +0.0c |
 | `maker_spread` | crypto_hourly | +0.0c |
 | `random_control` | efficient_control | -3.0c |

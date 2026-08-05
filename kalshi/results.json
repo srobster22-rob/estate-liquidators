@@ -2,7 +2,7 @@
   "n_built": 190,
   "n_oos_tests": 12,
   "holdout_touches": 3,
-  "elapsed_s": 17.2,
+  "elapsed_s": 15.8,
   "winners": [
     {
       "family": "econ_print",
@@ -1708,15 +1708,21 @@
   ],
   "config": {
     "_doc": "Canonical constants for the Kalshi bot factory. Everything numeric that the backtester or the gate depends on lives here, so a value is never corrected in one module and left stale in another. Same role tuning.json plays for the game.",
-    "_UNVERIFIED": "fees.taker_rate and the maker schedule are from general knowledge, NOT from a live read of Kalshi's fee schedule (this environment has no network access to kalshi.com). The fee formula is the single largest determinant of whether ANY strategy here is profitable. Re-read https://kalshi.com/docs/kalshi-fee-schedule.pdf and correct this file before trusting a single result. See kalshi/README.md 'What is unverified'.",
+    "_fees_VERIFIED": "Taker rate 0.07, the P*(1-P) shape, per-ORDER round-up to the whole cent, and no settlement fee are all confirmed against Kalshi's published schedule and independent worked examples (10 contracts @ 50c = $0.18; 20 @ 50c = $0.35; per-contract 0.0175 / 0.0112 / 0.0063 at 50c / 20c / 10c). Two things were WRONG and are corrected here: the maker formula (was 0.0025*C*P linear, is 0.0175*C*P*(1-P) \u2014 a quarter of the taker rate, same shape, charged only on designated series), and the S&P500/Nasdaq-100 series multiplier (0.5, i.e. 0.035 not 0.07). One thing stays AMBIGUOUS: sources disagree on whether the round-up is to the whole cent or to a centicent; the whole-cent reading matches every published worked example and is used, with rounding_granularity_cents available to test the other. See kalshi/CENSUS.md and README 'What is unverified'.",
     "fees": {
       "taker_rate": 0.07,
       "taker_formula": "ceil_to_cent(rate * contracts * price * (1 - price)), price in dollars",
       "maker_rate": 0.0,
-      "maker_rate_if_charged": 0.0025,
-      "maker_formula": "ceil_to_cent(rate * contracts * price)",
+      "maker_rate_if_charged": 0.0175,
+      "maker_formula": "ceil_to_cent(rate * contracts * price * (1 - price)) \u2014 same shape as taker, a quarter of the rate, and charged only on designated series (default multiplier 0)",
       "settlement_fee_cents_per_contract": 0,
-      "fee_per_order_not_per_contract": true
+      "fee_per_order_not_per_contract": true,
+      "rounding_granularity_cents": 1.0,
+      "_rounding_note": "1.0 = round the ORDER's fee up to the next whole cent, which matches every published worked example. Some wording in the 2026 schedule says 'centicent' (0.01); set this to 0.01 to test that reading. selftest measures what the choice is worth.",
+      "series_fee_multiplier": {
+        "_doc": "Per-series multiplier M in round_up(M * 0.07 * C * P * (1-P)). Default 1. S&P 500 (INX*) and Nasdaq-100 (NASDAQ100*) markets are HALVED \u2014 0.035 not 0.07 \u2014 which is exactly what index_bracket_daily models.",
+        "index_bracket_daily": 0.5
+      }
     },
     "microstructure": {
       "tick_cents": 1,
