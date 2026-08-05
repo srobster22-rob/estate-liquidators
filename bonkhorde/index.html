@@ -500,11 +500,28 @@ skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.12,.12,.18]
 };
 
 const BOSSES = [
-{ t:300,  nm:"THE GRAVELORD", hp:3200,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1 },
-{ t:600,  nm:"THE LANDLORD",  hp:12000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4 },
-{ t:900,  nm:"MR. TEETH",     hp:42000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6 },
-{ t:1140, nm:"THE FINAL BONK",hp:160000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2 },
+{ t:300,  nm:"THE GRAVELORD", hp:3200,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
+{ t:600,  nm:"THE LANDLORD",  hp:12000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
+{ t:900,  nm:"MR. TEETH",     hp:42000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
+{ t:1140, nm:"THE FINAL BONK",hp:160000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
 ];
+
+// Bosses used to walk at you and nothing else, which left the sudden-death
+// climax a pure DPS check with no positional demand at all. Every ability now
+// keeps the same contract: a wind-up you can see, a danger zone drawn on the
+// ground, then the hit. If you are watching the floor you can be elsewhere.
+const ABILITIES = {
+  slam:   { tell:1.15, act:0.30, rest:2.5 },   // ring under your feet, then a stomp
+  evict:  { tell:0.85, act:0.20, rest:3.1 },   // scatters lingering zones, eats the arena
+  charge: { tell:0.95, act:0.85, rest:2.3 },   // marks a lane, then runs it
+  spokes: { tell:0.70, act:0.20, rest:2.1 },   // radial burst, dodge between the arms
+};
+const BOSS_KIT = {
+  slam:   ["slam"],                            // the teaching boss: one lesson
+  evict:  ["evict", "slam"],
+  charge: ["charge", "slam", "charge"],
+  all:    ["slam", "spokes", "charge", "evict"],   // the finale uses everything
+};
 
 // spawn director: rate is enemies/sec, mix is a weight table
 const PHASES = [
@@ -583,12 +600,14 @@ loadSave();
 // screen too, before any run exists.
 let P = null;
 let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
-    arcs=[], pops=[], nums=[], spits=[], alerts=[];
+    arcs=[], pops=[], nums=[], spits=[], alerts=[], hazards=[];
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62;
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
+let noSpawn=false;                      // test-only: isolate a boss fight
+let bossCasts={};
 let runWon=false, runWhy="";
 
 function baseStats(ch){
@@ -618,10 +637,10 @@ function startRun(id){
   for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
 
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
-  arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[];
+  arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0;
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
-  runWon=false; runWhy=""; noLevels=false;
+  runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   running=true; over=false; paused=false; picking=false;
   hide("menu"); hide("end"); hide("paused"); hide("pick");
   audioInit(); if(AC && AC.state==="suspended") AC.resume();
@@ -932,7 +951,8 @@ function spawnEnemy(type, atX, atZ){
     kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, dead:false, boss:false });
 }
 function spawnBoss(b){
-  const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp, c:b.c, h:b.h, w:b.w };
+  const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
+                c:b.c, h:b.h, w:b.w, ai:b.ai };
   const a = Math.random()*TAU;
   const x = clamp(P.x+Math.cos(a)*26, -ARENA+5, ARENA-5);
   const z = clamp(P.z+Math.sin(a)*26, -ARENA+5, ARENA-5);
@@ -943,6 +963,88 @@ function spawnBoss(b){
   shake = 1.2; SFX.boss(); alert2(b.nm, "#ff5c4d");
 }
 function alert2(text, col){ alerts.push({ text, col, life:2.6 }); }
+
+// hazards are the enemy mirror of `zones`: they hurt the PLAYER. `tel` counts
+// down as a harmless warning, then `live` counts down doing damage.
+const mkHaz = (x,z,r,tel,live,dmg)=>
+  ({ x, z, r, tel, telMax:tel, live, liveMax:live, dmg });
+
+// returns whether the boss should also do its normal walk-at-you this frame
+function bossAI(e, dt){
+  if(!e.ab) e.ab = { phase:"move", t:2.6, kind:null, dir:0, n:0 };
+  const A = e.ab;
+  A.t -= dt;
+  if(A.phase === "move"){
+    if(A.t > 0) return true;
+    const kit = BOSS_KIT[e.def.ai] || ["slam"];
+    A.kind = kit[(A.n++) % kit.length];
+    A.phase = "tell"; A.t = ABILITIES[A.kind].tell;
+    bossTelegraph(e, A);
+    return false;                              // rooted while winding up
+  }
+  if(A.phase === "tell"){
+    if(A.t > 0) return false;
+    A.phase = "act"; A.t = ABILITIES[A.kind].act;
+    bossExecute(e, A);
+    return false;
+  }
+  // act
+  if(A.kind === "charge"){
+    const sp = e.def.spd * 4.4;
+    e.x = clamp(e.x + Math.sin(A.dir)*sp*dt, -ARENA+2, ARENA-2);
+    e.z = clamp(e.z + Math.cos(A.dir)*sp*dt, -ARENA+2, ARENA-2);
+  }
+  if(A.t <= 0){ A.phase = "move"; A.t = ABILITIES[A.kind].rest; }
+  return false;
+}
+
+function bossTelegraph(e, A){
+  const s = dmgScale(T);
+  if(A.kind === "slam"){
+    // 7.0m radius against a 1.05s tell was escapable by -0.07m at full speed:
+    // literally impossible to dodge, which makes it a damage tax wearing a
+    // telegraph. 5.6m / 1.15s leaves ~2m of margin, and ~0.9m for THE OX.
+    hazards.push(mkHaz(P.x, P.z, 5.6, ABILITIES.slam.tell, .34, 37*s));
+  } else if(A.kind === "evict"){
+    for(let i=0;i<5;i++){
+      const a = Math.random()*TAU, r = rnd(4.5, 15);
+      hazards.push(mkHaz(clamp(P.x+Math.cos(a)*r, -ARENA+2, ARENA-2),
+                         clamp(P.z+Math.sin(a)*r, -ARENA+2, ARENA-2),
+                         4.2, ABILITIES.evict.tell, 7.0, 8*s));
+    }
+  } else if(A.kind === "charge"){
+    A.dir = Math.atan2(P.x-e.x, P.z-e.z);
+    for(let i=1;i<=9;i++){
+      const dd = i*3.1;
+      hazards.push(mkHaz(e.x+Math.sin(A.dir)*dd, e.z+Math.cos(A.dir)*dd,
+                         2.9, ABILITIES.charge.tell, .55, 27*s));
+    }
+  } else if(A.kind === "spokes"){
+    A.dir = Math.random()*TAU;
+  }
+  SFX.zap();
+}
+
+function bossExecute(e, A){
+  bossCasts[A.kind] = (bossCasts[A.kind]||0) + 1;
+  if(A.kind === "spokes"){
+    for(let i=0;i<14;i++)
+      spits.push({ x:e.x, y:e.y+e.def.h*.55, z:e.z, a:A.dir + i*(TAU/14),
+                   spd:17, d:17*dmgScale(T), life:3.2, big:true });
+    SFX.boom();
+  } else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
+  else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
+}
+
+function updateHazards(dt){
+  for(let i=hazards.length-1;i>=0;i--){
+    const h = hazards[i];
+    if(h.tel > 0){ h.tel -= dt; continue; }
+    h.live -= dt;
+    if(P.iframe <= 0 && Math.hypot(P.x-h.x, P.z-h.z) < h.r) playerHurt(h.dmg);
+    if(h.live <= 0) hazards.splice(i,1);
+  }
+}
 
 function updateEnemies(dt){
   for(let i=enemies.length-1;i>=0;i--){
@@ -958,6 +1060,8 @@ function updateEnemies(dt){
     const dx = P.x-e.x, dz = P.z-e.z, d = Math.hypot(dx,dz)||1;
     const spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
 
+    const pursue = e.boss ? bossAI(e, dt) : true;
+
     if(e.def.ranged){
       // spitters hold at range and lob
       e.atk -= dt;
@@ -969,7 +1073,7 @@ function updateEnemies(dt){
         spits.push({ x:e.x, y:e.y+e.def.h*.7, z:e.z, a:Math.atan2(dx,dz),
                      spd:e.def.ranged.spd, d:e.dmg, life:2.4 });
       }
-    } else {
+    } else if(pursue){
       e.x += dx/d*spd*dt; e.z += dz/d*spd*dt;
     }
 
@@ -1250,6 +1354,13 @@ function botVector(){
       if(d > 26 || d < .6) continue;
       s += ((gx*dx + gz*dz)/d) * (1.1 - d/26) * 0.9;
     }
+    for(const h of hazards){                              // read the telegraphs
+      const hx = h.x-P.x, hz = h.z-P.z, hd = Math.hypot(hx,hz);
+      if(hd > h.r + 18) continue;
+      const after = Math.hypot(dx*P.spd - hx, dz*P.spd - hz);  // one second of running
+      if(after < h.r + 1.6) s -= 55;                      // straight into it
+      else if(hd < h.r + 1.0) s += 30;                    // and we are standing in one
+    }
     const nx = P.x+dx*12, nz = P.z+dz*12;                 // and off the walls
     if(Math.abs(nx) > ARENA-7 || Math.abs(nz) > ARENA-7) s -= 9;
     if(s > best){ best = s; bestA = a; }
@@ -1301,12 +1412,13 @@ function step(dt){
   updateOrbiters(dt);
   updateEnemies(dt);
   updateProjectiles(dt);
+  updateHazards(dt);
   updateGems(dt);
 
   // ---- director
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   nextSpawn -= dt;
-  if(nextSpawn <= 0){
+  if(nextSpawn <= 0 && !noSpawn){
     // in sudden death the horde keeps thickening for as long as you stall
     nextSpawn = 1/(ph.rate * (sudden ? 1 + Math.min(2.5,(T-RUN_LEN)/40) : 1));
     if(enemies.length < MAXE){
@@ -1325,7 +1437,8 @@ function step(dt){
       }
     }
   }
-  if(bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t) spawnBoss(BOSSES[bossIdx++]);
+  if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
+    spawnBoss(BOSSES[bossIdx++]);
 
   if(shake>0) shake = Math.max(0, shake - dt*2.2);
   if(flash>0) flash = Math.max(0, flash - dt*2.6);
@@ -1488,6 +1601,37 @@ function render(){
     }
     box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, z.c, .75*a);
   }
+  // Boss telegraphs. The outer ring says WHERE, the ring closing inward says
+  // WHEN - so the read is "that circle, that soon" without reading a number.
+  for(const h of hazards){
+    const seg = Math.max(16, Math.round(h.r*4.2));
+    if(h.tel > 0){
+      const p = 1 - h.tel/h.telMax;
+      for(let i=0;i<seg;i++){
+        const th = i/seg*TAU;
+        const x = h.x+Math.sin(th)*h.r, z = h.z+Math.cos(th)*h.r;
+        box(x, groundY(x,z)+.26, z, .30,.26,.30, [.95,.14,.08], .70);
+      }
+      const ir = h.r*p;                        // the closing window
+      for(let i=0;i<seg;i++){
+        const th = i/seg*TAU + p*1.5;
+        const x = h.x+Math.sin(th)*ir, z = h.z+Math.cos(th)*ir;
+        box(x, groundY(x,z)+.22, z, .26,.22,.26, [1,.70,.12], .98);
+      }
+    } else {
+      const a = clamp(h.live/h.liveMax, 0, 1);
+      for(let i=0;i<seg;i++){
+        const th = i/seg*TAU;
+        const x = h.x+Math.sin(th)*h.r, z = h.z+Math.cos(th)*h.r;
+        box(x, groundY(x,z)+.30, z, .34,.30,.34, [1,.46,.10], .98*a);
+      }
+      for(let i=0;i<seg;i++){                  // inner fill so live reads as solid
+        const th = i/seg*TAU + T*1.4;
+        const x = h.x+Math.sin(th)*h.r*.55, z = h.z+Math.cos(th)*h.r*.55;
+        box(x, groundY(x,z)+.16, z, .26,.12,.26, [1,.28,.08], .85*a);
+      }
+    }
+  }
   for(const r of rings){
     const seg = 26, a = clamp(r.life/r.mx,0,1);
     for(let i=0;i<seg;i++){
@@ -1508,7 +1652,9 @@ function render(){
 
   // enemies
   for(const e of enemies){
-    const D = e.def, S = e.sz, W = D.w*S, H = D.h*S;
+    const wind = (e.ab && e.ab.phase === "tell")
+      ? 1 + .22*(1 - e.ab.t/ABILITIES[e.ab.kind].tell) : 1;
+    const D = e.def, S = e.sz*wind, W = D.w*S, H = D.h*S;
     const hop = Math.abs(Math.sin(e.bob))*(e.boss?.10:.20);
     const sq = e.flash>0 ? 1.25 : 1;
     // elites keep their species colour but run hot, so you can still tell a
@@ -1589,7 +1735,9 @@ function render(){
   }
 
   for(const b of bolts) box(b.x,b.y,b.z, .16,.16,.55, b.evo?[1,.6,.25]:[.7,.95,1], .95, b.a);
-  for(const s of spits) box(s.x,s.y,s.z, .22,.22,.22, [.9,.85,.3], .8, s.a);
+  for(const s of spits)
+    box(s.x,s.y,s.z, s.big?.38:.22, s.big?.38:.22, s.big?.38:.22,
+        s.big?[1,.42,.14]:[.9,.85,.3], .9, s.a);
   for(const m of mortars){
     const t = m.t/m.dur;
     const x = lerp(m.x0,m.tx,t), z = lerp(m.z0,m.tz,t);
@@ -1771,12 +1919,24 @@ window.__g = {
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
   hpx:   ()=>hpScale(T),
+  // Report the HP MULTIPLIER (maxhp / species base), not raw HP. Raw medians
+  // compare a population whose elite half is mostly skitters (8 base HP) with a
+  // normal half that is mostly spitters (34) - that measures species mix, not
+  // eliteness, and it read "elite 283 vs normal 331" while elites were in fact
+  // 3.2x tougher. Third time an instrument in this project has been confidently
+  // wrong; normalise the thing you are not asking about.
+  haz:   ()=>({ n:hazards.length, tel:hazards.filter(h=>h.tel>0).length,
+                live:hazards.filter(h=>h.tel<=0).length }),
+  casts: ()=>Object.assign({}, bossCasts),
+  freezeSpawns: (v=true)=>{ noSpawn=v; },
+  hp:    ()=>P.hp,
   elites:()=>{ const med = a => { const v=a.slice().sort((x,y)=>x-y);
-                                   return v.length ? v[v.length>>1] : 0; };
+                                  return v.length ? v[v.length>>1] : 0; };
     const E = enemies.filter(e=>e.elite), N = enemies.filter(e=>!e.elite&&!e.boss);
     return { n:E.length, total:enemies.length,
              chance:+Math.max(0,eliteChance(T)).toFixed(3),
-             hp: med(E.map(e=>e.maxhp)), normHp: med(N.map(e=>e.maxhp)) }; },
+             mult:     +med(E.map(e=>e.maxhp/e.def.hp)).toFixed(2),
+             normMult: +med(N.map(e=>e.maxhp/e.def.hp)).toFixed(2) }; },
   dbg:   ()=>{ const ds=enemies.map(e=>Math.hypot(e.x-P.x,e.z-P.z)).sort((a,b)=>a-b);
                const hs=enemies.map(e=>e.hp).sort((a,b)=>a-b);
                return { nearest: ds[0]??-1, inRange: ds.filter(d=>d<8).length,

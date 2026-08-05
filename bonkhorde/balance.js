@@ -26,9 +26,11 @@ for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
 // node balance.js [trials] [first|vet|both]
 // A bimodal outcome (die at minute 8, or clear) makes a median over 4 trials
 // close to meaningless - raise trials when you are tuning against it.
+// node balance.js [trials] [first|vet|both] [char,char]
 const TRIALS = +(process.argv[2] || 4);
 const TIER   = process.argv[3] || "both";
-const CHARS  = ["intern", "scrap", "spark", "ox", "ghoul"];
+const ALL    = ["intern", "scrap", "spark", "ox", "ghoul"];
+const CHARS  = process.argv[4] ? process.argv[4].split(",") : ALL;
 
 (async () => {
   const b = await chromium.launch(LAUNCH);

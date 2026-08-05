@@ -27,6 +27,17 @@ between runs and buy permanent upgrades.
 at 20:00 the timer stops mattering — you go to **sudden death**, the horde thickens for as
 long as you stall, and victory means killing it. You have four minutes.
 
+**Bosses have moves.** Every ability keeps the same contract: a wind-up you can see, a danger
+zone drawn on the ground, then the hit. A red ring says *where*, a second ring closing inward
+says *when*. Dodging halves the damage a boss deals — measured, not asserted.
+
+| | |
+|---|---|
+| **THE GRAVELORD** 5:00 | `slam` — a ring under your feet, then a stomp. One lesson, taught once. |
+| **THE LANDLORD** 10:00 | `evict` — scatters lingering zones that eat the arena, plus slams. |
+| **MR. TEETH** 15:00 | `charge` — marks a lane, pauses, then runs it at 4.4× speed. |
+| **THE FINAL BONK** 19:00 | all of the above plus `spokes`, a radial burst you dodge between. |
+
 ![Sudden death](screenshot-final.png)
 
 ---
@@ -40,6 +51,7 @@ long as you stall, and victory means killing it. You have four minutes.
 | **8 passives** | damage, speed, cooldown, pickup radius, armour, HP, +projectiles, crit |
 | **5 enemy types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
+| **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
 | **5 characters** | different starting weapon and stat profile; one unlocks by surviving 10:00 |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
@@ -75,15 +87,16 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 67 checks: boot, every weapon, every evolution, every
-                         # enemy, elites, every character, a full run, the
-                         # sudden-death gate, death, saves, render
-node balance.js 6 both   # difficulty measurement: [trials] [first|vet|both]
+node test.js              # 73 checks: boot, every weapon, every evolution, every
+                         # enemy, elites, boss abilities, every character, a full
+                         # run, the sudden-death gate, death, saves, render
+node balance.js 6 both            # [trials] [first|vet|both] [char,char]
+node balance.js 12 vet intern,scrap   # higher n on two characters
 ```
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **67 passing.**
+die, and checks that `localStorage` survives a reload. **73 passing.**
 
 ### Balance is measured, not guessed
 
@@ -93,30 +106,32 @@ difficulty curve here is a measurement. Current state, 6 trials per cell:
 
 ```
                      median    worst     best   lvl  kills  evos  clears
-FIRST RUN   intern    05:19    04:04    08:58    13    859   0.0     0/6
-  (no perm  scrap     05:10    04:04    10:25    14    923   0.2     0/6
-  upgrades) spark     04:02    03:45    05:10    10    537   0.0     0/6
-            ox        04:49    03:48    05:37    10    610   0.0     0/6
-            ghoul     04:28    04:13    06:19    12    608   0.0     0/6
+FIRST RUN   intern    05:15    04:01    06:11    13    720   0.0     0/6
+  (no perm  scrap     05:03    04:15    05:15    12    645   0.0     0/6
+  upgrades) spark     04:47    03:52    05:03    11    590   0.0     0/6
+            ox        05:19    04:09    05:21    12    694   0.0     0/6
+            ghoul     05:49    04:10    10:40    17   1242   0.2     0/6
 
-VETERAN     intern    21:38    06:06    23:56    52   8584   3.0     4/6
-  (all      scrap     21:25    07:39    22:59    50   7764   2.8     2/6
-  upgrades  spark     11:58    05:39    21:01    33   3828   1.5     1/6
-  bought)   ox        14:43    06:05    21:45    38   4920   2.0     1/6
-            ghoul     11:10    06:52    21:43    36   4442   1.7     1/6
+VETERAN     intern    15:07    05:27    21:15    35   4564   1.7     2/6
+  (all      scrap     06:07    05:15    10:08    17   1116   0.5     0/6
+  upgrades  spark     20:56    06:28    22:08    42   5979   2.0     2/6
+  bought)   ox        21:11    05:54    24:00    46   7145   2.5     2/6
+            ghoul     07:47    06:23    16:18    23   2111   0.3     0/6
 ```
 
 Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** (11 of 12
 in the histogram) and never once clear, though a lucky run occasionally reaches the final boss
 at 21:17 — so the ceiling is visible without being available. A maxed shop makes twenty minutes
-*reachable* and clears **9 of 30**; the medians above are mostly runs that got to sudden death
-and lost there, which is the fight being the fight. Per-character veteran spread is noise at
-n=6 against a bimodal outcome — read the total, not the rows.
+*reachable* and clears **6 of 30**; the medians above are mostly runs that got to sudden death
+and lost there, which is the fight being the fight.
+
+**Read the total, not the rows.** At n=6 against a bimodal outcome the per-character cells are
+mostly noise, and this project has now proved that the hard way — see the last finding below.
 
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
-is no longer the same thing as winning — see the last finding below.
+is no longer the same thing as winning.
 
-That harness has overturned twelve things this build believed:
+That harness has overturned sixteen things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -158,13 +173,39 @@ That harness has overturned twelve things this build believed:
   give the curve a face. They are deliberately close to difficulty-neutral (clears went 10/30
   → 9/30); the change was legibility, and the measurement confirms it did not smuggle in a
   balance shift.
+- **The slam was impossible to dodge, by seven centimetres.** A 7.0m radius against a 1.05s
+  wind-up: a player at full speed running straight out covers **6.93m**. Not a mechanic — a
+  damage tax wearing a telegraph, and one you would only ever experience as *unfair* rather
+  than diagnose. Arithmetic caught it in one line. Now 5.6m / 1.15s, leaving ~2m of margin
+  (and ~0.9m for THE OX, who is slower and tankier in exchange).
+- **Every boss cast the same ability.** `spawnBoss` assembled its `def` field by field and
+  never copied `ai`, so `BOSS_KIT[undefined]` fell through to slam-only — for all four bosses,
+  silently, while the feature looked like it worked.
+- **`freezeSpawns` did not freeze bosses.** It stopped the horde but not the director, so a
+  test that skipped to 15:00 quietly had three bosses on the field and attributed a blend of
+  their kits to one of them.
+- **The elite HP check measured species mix.** Comparing median HP of elites against normals
+  compares a population whose elite half is mostly skitters (8 base HP) with a normal half
+  that is mostly spitters (34). It reported "elite 283 vs normal 331" while elites were in
+  fact 3.24× tougher. Normalise the variable you are *not* asking about.
 - **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
   victory right up until sudden death let losing runs reach 22:00 — and then reported them as
   wins. The instrument has to be re-checked every time the thing it measures changes shape.
 
-Eight of the twelve were found by measurement rather than by playing, which is the argument
+Eleven of the sixteen were found by measurement rather than by playing, which is the argument
 for having the harness. Three came from actually looking at a screenshot, which is the
-argument against trusting the harness alone. And one was the harness lying about itself.
+argument against trusting the harness alone. And **four were the harness lying about itself** —
+the two broken autopilots, the clears metric, the elite probe, plus `freezeSpawns` not
+freezing what it claimed. Every time the shape of the thing being measured changed, the
+instrument needed re-checking, and every single time it did not get re-checked until it
+produced a number too strange to ignore.
+
+**And then I tuned against noise anyway.** One n=6 row showed THE SCRAPPER collapsing to 0/6
+clears, so I softened boss damage in response — and the re-measure had THE GHOUL fall from 5/6
+to 0/6, which a damage *cut* cannot cause. It was variance, in a table whose own caption says
+"read the total, not the rows". A higher-n run settled it: at n=12 THE SCRAPPER is genuinely
+weak (0 clears in 24 veteran runs, p≈0.001) but THE GHOUL's swing was nothing. Writing down
+the caveat does not protect you from it.
 
 **The autopilot itself was wrong twice before it was useful**, and both times it looked fine:
 v1 maximised distance and scored a plausible 2:50 while killing almost nothing; v2 summed
@@ -181,6 +222,12 @@ the same trap caught the clears metric later, for the same reason.
   is a plausible player rather than a good one — a human reads incoming waves and plans routes
   across the whole arena, which it cannot. Expect the real curve to sit longer than the table
   says, and expect the veteran tier to look too easy once someone competent tries it.
+- **THE SCRAPPER cannot close a run.** Zero clears in 24 veteran runs, against 3/12 for THE
+  INTERN — but with near-identical medians (10:08 vs 10:16) and a best of 20:54. So it reaches
+  the finale and cannot kill it: a damage problem, not a survival one. It starts with CALTROPS,
+  whose single-target output against a boss is poor, and it levels slower for it (1.1 evolutions
+  vs 1.8). Measured and left alone deliberately — fixing it means reworking CALTROPS' single-
+  target profile, which is its own round.
 - No mobile/touch input. Pointer lock and WASD only.
 - Weapon variety is broad but shallow — 8 weapons with one evolution each. The genre expects
   more, and the data tables are the easy part to extend.

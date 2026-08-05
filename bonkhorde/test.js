@@ -178,10 +178,56 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     return window.__g.elites();
   });
   ok("elites appear late", late.n > 0, `${late.n}/${late.total} alive, roll=${late.chance}`);
-  ok("elites are the tougher thing", late.hp > late.normHp * 2.5,
-     `elite ${Math.round(late.hp)} vs normal ${Math.round(late.normHp)}`);
+  // compare HP MULTIPLIERS, not raw HP - raw medians compare species mix
+  ok("elites are the tougher thing", late.mult > late.normMult * 2.5,
+     `x${late.mult} vs x${late.normMult} = ${(late.mult/late.normMult).toFixed(2)}x`);
   ok("elite share stays a minority", late.n / Math.max(1,late.total) < 0.45,
      Math.round(late.n / Math.max(1,late.total) * 100) + "%");
+
+  console.log("\n=== 7c. BOSS MECHANICS ===");
+  const BOSSNAMES = ["GRAVELORD/slam", "LANDLORD/evict", "MR.TEETH/charge", "FINAL/all"];
+  for (let i = 0; i < 4; i++) {
+    const before = errors.length;
+    const r = await page.evaluate(i => {
+      window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+      window.__g.freezeSpawns(true); window.__g.skipTo(300 + i * 280);
+      window.__g.boss(i);
+      let maxHaz = 0;
+      for (let k = 0; k < 60 * 22; k++) {
+        window.__g.step(1);
+        maxHaz = Math.max(maxHaz, window.__g.haz().n);
+      }
+      return { maxHaz, casts: window.__g.casts() };
+    }, i);
+    ok(`${BOSSNAMES[i].padEnd(16)} telegraphs`,
+       r.maxHaz > 0 && errors.length === before,
+       `${r.maxHaz} hazards peak, cast ` + JSON.stringify(r.casts));
+  }
+  const allKinds = await page.evaluate(() => {
+    window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+    window.__g.freezeSpawns(true); window.__g.skipTo(1140); window.__g.boss(3);
+    window.__g.step(60 * 60);
+    return window.__g.casts();
+  });
+  ok("THE FINAL BONK uses its whole kit",
+     ["slam","spokes","charge","evict"].every(k => allKinds[k] > 0),
+     JSON.stringify(allKinds));
+
+  // The point of a telegraph is that it can be read. If a dodging player eats
+  // the same damage as a stationary one, these are not mechanics - they are a tax.
+  const dodge = await page.evaluate(() => {
+    const trial = (useBot) => {
+      window.__g.start("ox"); window.__g.god(); window.__g.drainPicks(true);
+      window.__g.freezeSpawns(true); window.__g.skipTo(900);
+      window.__g.bot(useBot); window.__g.boss(2);          // MR. TEETH, charge+slam
+      const hp0 = window.__g.hp();                         // godmode: nobody dies,
+      for (let k = 0; k < 60 * 30; k++) window.__g.step(1);// so this compares damage
+      return hp0 - window.__g.hp();
+    };
+    return { still: trial(false), moving: trial(true) };
+  });
+  ok("boss telegraphs are dodgeable", dodge.moving < dodge.still * 0.6,
+     `stationary lost ${Math.round(dodge.still)} HP, dodging lost ${Math.round(dodge.moving)}`);
 
   console.log("\n=== 8b. SUDDEN DEATH GATE ===");
   const gate = await page.evaluate(() => {
