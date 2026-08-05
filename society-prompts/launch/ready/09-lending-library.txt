@@ -1,0 +1,328 @@
+You are starting a new project from scratch: Community Tool Lending Library.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [LANGUAGES] [NEIGHBORHOOD] [ORG] [TIMEZONE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `lending-library` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a community lending library system for [NEIGHBORHOOD] in [CITY]. Build it
+now; do not ask me clarifying questions. Where you need a decision I did not make, choose the
+option that preserves trust between neighbors, state your choice, and keep going.
+
+=== THE PERSON ===
+
+Deb is 44, [NEIGHBORHOOD]. She needs a tile saw for one Saturday. Buying it is $180 for a job
+she will do once. Renting is $65 plus a trip across town. Three people within four blocks own
+one, and she does not know which three.
+
+The second person is Hector, who owns the tile saw and is happy to lend it, and who has twice
+lent tools that came back a month late and once did not come back at all. He is now a little
+reluctant, which is the exact thing that kills these projects.
+
+The third is whoever ends up running it — probably one volunteer with a garage — who will quit
+in four months if the software makes them the collections department.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+Household power tools sit idle nearly all of their lives; a drill's lifetime use is famously
+measured in minutes. That's the opportunity. The obstacle is not matching, it's the social
+cost of asking for something back. Every failed tool library failed on returns, not on
+inventory.
+
+So the system's real job: make returns automatic and impersonal, so no neighbor ever has to
+text another neighbor "hey, still got my saw?"
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Deb borrows the saw Saturday and returns it Sunday because she got a friendly text Saturday
+night, and Hector never had to ask. Six months later he is still lending.
+
+=== BUILD THIS ===
+
+1. CATALOG (/) — Browse and search. Each item: photo, name, category, condition, who holds it
+   now (available / out until [date] / needs repair), a plain description of what it's for,
+   any deposit, and its safety class. Filter by category and availability. Search must be
+   forgiving: "sawzall" finds a reciprocating saw, "weed whacker" finds a string trimmer.
+   Build a synonym list; people do not know manufacturer nomenclature.
+
+2. ITEM DETAIL — Photos, what it's for, what it does not do, what's included (bits, blades,
+   charger, case, manual), condition notes and history, loan period, deposit if any, safety
+   class, and any required orientation. A "Request it" button showing the next available date.
+
+3. REQUEST + APPROVAL — A borrower requests dates. The steward approves. Approval is one tap
+   from a text or email; the steward should never need to open a dashboard to say yes. On
+   approval both parties get pickup details. No calendar negotiation UI — the steward's
+   judgment is faster than a scheduling algorithm at this scale.
+
+4. CHECKOUT + RETURN — Both are one action:
+   - Checkout: steward scans a QR code on the item or taps it in a list, picks the borrower,
+     confirms condition, done. Optionally a photo of the item at handoff.
+   - Return: same, plus condition confirm and an optional damage note. Damage creates a
+     maintenance record, never an accusation. The item goes to "needs repair" and off the
+     catalog until fixed.
+   Every item has a printed QR label linking to its page. Cheap, and it removes all typing.
+
+5. THE REMINDER LADDER — The heart of the project. Warm, automatic, never accusatory:
+   - Due date minus 1 day: "The tile saw is due back tomorrow. Need another day? Reply MORE."
+   - Due date: "Tile saw due today. Reply MORE for 2 more days if nobody's waiting."
+   - +2 days: "Just a nudge about the tile saw — reply MORE or DONE."
+   - +7 days: the steward is notified. Only now does a human enter the loop.
+   - "MORE" auto-extends by 2 days, up to twice, only if nobody has reserved it. This single
+     feature removes most late returns, because most lateness is "I forgot" or "I'm not done,"
+     not bad faith.
+   Every message is short, friendly, and includes the item name so it means something out of
+   context.
+
+6. WAITLIST — When an item is out, a borrower joins a waitlist and is notified the moment it
+   returns and is checked in, with 24 hours to claim before it passes to the next person.
+
+7. STEWARD VIEW — What's out and to whom, what's overdue, what needs repair, pending requests,
+   and this month's activity. One screen, works on a phone.
+
+8. DONATE AN ITEM — A neighbor offers a tool: photos, what it is, condition, whether it's a
+   donation or a long-term loan (track the difference — people want their table saw back
+   eventually and forgetting that is how you lose a friend). Steward approves and it enters
+   the catalog.
+
+=== DATA MODEL ===
+
+items: id, name, aliases text[], category, description, whats_included, condition enum,
+  safety_class enum(basic|caution|training_required), loan_days, deposit_cents,
+  owner_type enum(library_owned|on_loan_from_member), owner_member_id|null, status enum,
+  acquired_on, retired_on, qr_slug, photos[]
+members: id, name, phone, email, address_line, language, joined_on, waiver_signed_on,
+  trainings text[], active, notes
+loans: id, item_id, member_id, checked_out_at, due_at, returned_at, extended_count,
+  condition_out, condition_in, damage_note, steward_id
+requests: id, item_id, member_id, requested_start, requested_end, status, decided_at,
+  decided_by
+waitlist: id, item_id, member_id, joined_at, notified_at, expires_at
+maintenance: id, item_id, reported_at, reported_by, description, resolved_at, cost_cents
+reminders: id, loan_id, kind, sent_at, response, responded_at
+
+=== STACK ===
+
+- Next.js 15 + TypeScript + PostgreSQL (Drizzle) or SQLite — this is a small dataset; SQLite on
+  one VPS with a nightly backup is a legitimate, boring, correct choice. Pick one and say why.
+- SMS via Twilio behind an `SmsProvider` interface with a console implementation. Email via
+  SMTP. The reminder ladder must work on whichever channel the member chose at signup.
+- Image handling: resize on upload, strip EXIF GPS from photos (a photo of a tool in someone's
+  garage carries their home coordinates — strip it, and note that you did).
+- QR labels: generate a printable sheet of Avery-compatible labels, client-side.
+- Auth: magic link email for stewards. Members do not log in; requests and responses happen
+  over text and signed links.
+- Job scheduling: a durable queue for the reminder ladder, persisted, idempotent, surviving
+  restarts.
+- Under 150KB JS. Works on any phone.
+
+=== HARD CONSTRAINTS ===
+
+- Members never need an account or a password. A phone number is the identity.
+- Every borrower action completable by replying to a text with one word.
+- The catalog is readable without any login — this is how the project recruits.
+- Timezone [TIMEZONE]; due dates are dates, not timestamps, and a due date must not shift
+  across DST. Test it.
+- WCAG 2.2 AA. Photos need real alt text, entered at upload and required.
+- Reading level 6th grade. [LANGUAGES] for all member-facing text.
+- Member addresses are stored as a single line for the steward's use only, never displayed
+  publicly, never in reminder texts.
+- Strip GPS metadata from every uploaded photo. Test it with a photo that has it.
+
+=== DO NOT BUILD ===
+
+- No payments, no membership fees, no deposits collected in-app, no Stripe. Cash or nothing;
+  money in the app turns neighbors into customers and creates a tax and bookkeeping problem
+  the volunteer will not survive.
+- No ratings, reputation scores, or trust levels for members. A neighbor's public borrowing
+  score is a way to make the block worse.
+- No late fees. The reminder ladder replaces them, and fees are exactly what makes people avoid
+  a library rather than return an item.
+- No peer-to-peer marketplace where members lend directly to each other in v1. Central
+  stewardship is what makes accountability tractable; drop it and you have a Facebook group.
+- No inventory forecasting, no utilization dashboards, no analytics beyond simple counts.
+- No native app. No barcode scanning hardware — a phone camera on a QR code is enough.
+- No blockchain, no tokens, no time-banking currency.
+- No AI anything.
+
+=== ACCEPTANCE TESTS ===
+
+1. Searching "sawzall" returns the reciprocating saw via its alias list.
+2. Checking out an item makes it unavailable and shows the return date on the catalog.
+3. The reminder ladder fires at -1d, 0d, +2d, and notifies the steward at +7d, exactly once
+   each, and survives a process restart between steps.
+4. Replying "MORE" extends by 2 days when no waitlist exists, and does not extend when someone
+   is waiting — instead it replies explaining that someone is next in line.
+5. "MORE" is honored at most twice per loan.
+6. Returning an item notifies the first person on the waitlist and gives them a 24-hour claim
+   window; expiry passes it to the next person.
+7. Marking damage moves the item to needs_repair and removes it from the catalog until
+   resolved.
+8. An uploaded photo containing GPS EXIF is stored without it — verify by reading the stored
+   file.
+9. Member addresses never appear in any public page or any SMS.
+10. Due dates do not shift when a loan spans a DST transition.
+11. With TWILIO_* unset, the full loan lifecycle completes against the console provider.
+12. Every item photo has non-empty alt text; upload without it is rejected.
+13. An item marked on_loan_from_member displays its owner to the steward and can be returned
+    to that owner, closing the record.
+14. axe-core reports zero violations across catalog, item detail, and steward views.
+
+=== MILESTONES ===
+
+M0 — Catalog, items, checkout, return. No reminders.
+  EXIT: 20 real items entered with photos, and one real loan completed end to end.
+
+M1 — Reminder ladder with console SMS.
+  EXIT: tests 3-5 pass including the restart test.
+
+M2 — Requests, approvals, waitlist, real SMS.
+  EXIT: a neighbor who is not you requests an item by text and gets it.
+
+M3 — QR labels, donations, steward view, maintenance.
+  EXIT: the steward runs a month without touching the database directly.
+
+M4 — Three months, real neighbors.
+  EXIT: report items, members, loans, and the return rate. If anything is over 30 days late,
+  find out what the reminder ladder did and fix it.
+
+=== SAFETY + LEGAL ===
+
+- Power tools injure people. Every item carries a safety_class:
+  - basic: hand tools, garden tools
+  - caution: drills, sanders, pressure washers — the item page shows key safety points and
+    links the manufacturer manual
+  - training_required: table saws, chainsaws, tile saws, ladders over a certain height. These
+    cannot be checked out to a member without the corresponding entry in members.trainings.
+    Enforce it in the database, not the UI.
+- A liability waiver signed at membership, tracked in members.waiver_signed_on, blocking
+  checkout without it. The waiver text comes from whoever hosts the library ([ORG] or the
+  group), reviewed by someone competent — not generated by you. If there is no host
+  organization, note in the README that the group should look into whether a fiscal sponsor or
+  an existing nonprofit will house the library, because an unincorporated group of neighbors
+  lending chainsaws has real exposure.
+- Never let the app instruct anyone in tool use. Link the manufacturer's manual, full stop.
+- Retire unsafe items rather than lending them with a warning. Provide a one-tap "retire this
+  item" and require a reason.
+- Insurance: whoever hosts the collection should check whether their policy covers it. Put
+  this in the README as a pre-launch item, not as advice.
+- Privacy: who borrowed what is visible to the steward only. Do not build a public activity
+  feed; borrowing patterns reveal home projects, finances, and absences.
+
+=== HOW TO REPORT BACK ===
+
+Tell me: what runs, the restart-safety test result, the EXIF-stripping verification, and the
+real return rate once it's been used. If the reminder wording feels off to real members, that's
+the thing worth iterating on — report what they said.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.

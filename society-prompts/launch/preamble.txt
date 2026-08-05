@@ -1,0 +1,48 @@
+You are starting a new project from scratch: {{TITLE}}.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+{{PLACEHOLDER_NOTE}}
+=== SETUP ===
+
+Create a new git repository named `{{SLUG}}` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+

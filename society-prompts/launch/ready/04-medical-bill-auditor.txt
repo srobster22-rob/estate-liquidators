@@ -1,0 +1,405 @@
+You are starting a new project from scratch: Medical Bill Error Checker + Appeal Builder.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [LANGUAGES] [STATE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `medical-bill-auditor` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a medical bill review tool for patients in [STATE]. Build it now; do not ask
+me clarifying questions. Where you need a decision I did not make, choose the option least
+likely to give someone false confidence, state your choice, and keep going.
+
+Read LICENSING and SAFETY + LEGAL before writing code. Both constrain the architecture, and
+LICENSING will change which data you can ship.
+
+=== THE PERSON ===
+
+Gwen, 52, [CITY]. Four days in the hospital in March. In June a bill arrived for $4,812.40
+after insurance. It is one page. It says things like "PHARMACY $1,204.00" and "MED SUPPLIES
+$611.55" and "ROOM & BOARD 4 DA $1,890.00." There is no way to tell what any of it was.
+
+She has called twice. The first time she was on hold 40 minutes and was told to call
+billing on Tuesday. The second time she was told the amount was correct. She has no idea
+whether it is, and neither does the person who told her.
+
+She is not going to become a medical billing expert. She has about two hours of energy for
+this, total, spread over a month.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+The summary bill Gwen received is not the bill. It's a rollup. The itemized statement — the
+one with dates, codes, quantities, and unit prices — is what makes errors visible, and
+patients generally have to ask for it specifically. Step one of this app is not analysis; it
+is getting her the actual document.
+
+Do not quote an error-rate statistic in the UI unless you can source it to a named study with
+a year. Advocacy groups cite figures ranging widely and most trace back to unpublished vendor
+claims. If you cannot verify one, display none.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Gwen ends up with three things: an itemized bill she can read, a list of specific line items
+worth questioning phrased as questions rather than accusations, and a signed financial
+assistance application in an envelope. Any one of the three is a win.
+
+=== BUILD THIS ===
+
+Six parts, in this order. Parts 1 and 6 matter more than the analysis engine — build them
+first and last respectively, and do not let the parser eat the schedule.
+
+1. GET THE REAL BILL — First screen asks one question: "Do you have the itemized bill, or
+   just the summary?" If summary (the common case), generate a request letter and phone
+   script immediately, before any upload:
+   - A letter requesting a fully itemized statement with dates of service, CPT/HCPCS codes,
+     revenue codes, quantities, and unit charges
+   - A phone script with the exact words to say and what to write down (name, date, time,
+     reference number)
+   - A one-line note that requesting it does not waive anything and does not restart any clock
+   Also, always: tell her to request the medical records for the same dates, because
+   comparing charges to the chart is how you find services that never happened.
+
+2. UPLOAD + PARSE — Accept PDF (text or scanned), photos of paper bills, and CSV. Extract a
+   table of line items: date of service, code, code type, description, quantity, unit charge,
+   total charge, insurance paid, adjustment, patient responsibility.
+   Parsing hospital bills is genuinely hard and hospital formats are all different. Design for
+   that honestly:
+   - Show the parsed table beside the source page image, side by side, always.
+   - Every extracted field is editable. Assume you got some wrong.
+   - Show a per-row confidence and highlight low-confidence rows for review.
+   - If parsing fails entirely, fall back to a manual entry grid. This is not a failure
+     state; for many bills it will be the primary path. Make it fast: tab between cells,
+     paste from a spreadsheet, autocomplete on repeated codes.
+   - OCR for scans: run locally in the browser (tesseract.js) rather than uploading to a
+     service. See SAFETY.
+
+3. THE CHECKS — Run these, and only these. Each finding must name the specific rows involved,
+   explain in one plain sentence what it might mean, and state clearly that it might be
+   legitimate. Never assert fraud. Never assert overcharge.
+   a. DUPLICATE LINES — same code, same date, same quantity, appearing more than once.
+   b. DATE-RANGE VIOLATIONS — charges dated before admission or after discharge.
+   c. QUANTITY OUTLIERS — a quantity implausible for the code and stay length (e.g. 6 chest
+      X-rays in one day, 30 units of a once-daily drug). Define the thresholds in a data file
+      with reasoning, not in code.
+   d. UNBUNDLING — code pairs that CMS's National Correct Coding Initiative (NCCI)
+      Procedure-to-Procedure edit tables say should not be billed together. These edit files
+      are published quarterly by CMS and are free to download. Load them as data; cite the
+      quarter and version in every finding.
+   e. ROOM-DAY ARITHMETIC — room and board days billed versus stated admission and discharge
+      dates. Note the standard convention that the discharge day is typically not charged, and
+      flag mismatches as a question, not an error.
+   f. UNSPECIFIED LINES — "MISC," "SUPPLIES," "OTHER" with no code. These are legitimate to
+      question and easy for a patient to ask about.
+   g. GENDER/AGE-INCOMPATIBLE CODES — where the code set marks a code as sex- or age-specific
+      and it conflicts with what the patient entered. Only if you can source the flags.
+   h. PRICE COMPARISON — see part 4.
+   Every check produces a finding object with: severity, affected rows, plain-language
+   explanation, the exact question to ask billing, and the source of the rule.
+
+4. PRICE CONTEXT — Compare charged amounts against published references:
+   - The hospital's own machine-readable standard charges file. Federal hospital price
+     transparency rules require hospitals to publish these; they are commonly at
+     /cms-hpt.txt-referenced locations or a "price transparency" page on the hospital site.
+     Formats vary in practice despite the standardized schema. Build an importer that accepts
+     the file, and if you cannot locate or parse it, say so on the screen rather than
+     substituting an estimate.
+   - Medicare rates as a floor-of-reference: the Medicare Physician Fee Schedule and hospital
+     outpatient/inpatient rates are published by CMS.
+   Present comparisons carefully: "This hospital's own posted cash price for this code is $X;
+   you were charged $Y." Never say "you were overcharged." A charge above Medicare is normal
+   and expected; the useful signal is a charge above the hospital's own published price.
+   If you cannot verify a reference price, show nothing. An invented benchmark here does real
+   damage.
+
+5. THE LETTERS — Generate, editable, printable, with the patient's data filled in:
+   a. Itemized bill request (part 1)
+   b. Billing inquiry — lists each finding as a numbered question, requests a written
+      response within 30 days, states that the patient is disputing pending clarification
+   c. Financial assistance / charity care application cover letter. Nonprofit hospitals are
+      required under section 501(r) of the Internal Revenue Code to have a written financial
+      assistance policy and to limit amounts charged to eligible patients. Look up the
+      specific hospital's policy, link it, and tell the patient what income threshold applies
+      and what to attach. This is frequently the single highest-value action in the entire
+      app — a bill can go to zero — so surface it early and prominently, not buried at the end.
+   d. Insurance appeal — internal appeal letter citing the denial reason from the EOB, with a
+      note about the external review right and the deadline. Verify deadlines for [STATE].
+   e. No Surprises Act inquiry — if the visit was emergency care, or care at an in-network
+      facility from an out-of-network provider, generate a letter raising the federal balance
+      billing protections and the patient-provider dispute resolution process for uninsured
+      and self-pay patients. Verify the current process and deadlines before citing them.
+
+6. WHAT TO DO NEXT — A short ordered plan, personalized by what was found, with realistic
+   time estimates and what to expect. Include: [STATE]'s consumer assistance program or
+   insurance department complaint line, the CFPB complaint process, and the current state of
+   medical debt credit reporting. That last one has changed repeatedly and has been subject
+   to litigation — VERIFY the current status before writing a sentence about it, and if you
+   cannot, write only "Rules about medical debt and credit reports have changed recently;
+   check with [State consumer assistance program]."
+
+=== LICENSING — READ THIS BEFORE SHIPPING ANY CODE SET ===
+
+This will constrain your design and an agent that skips it will build something
+undistributable.
+
+- CPT codes and their descriptions are copyrighted by the American Medical Association and
+  require a license to redistribute. You may let a user type a CPT code they received on
+  their own bill and reason about it. You MUST NOT ship a bundled CPT code-to-description
+  lookup table without a license. Do not scrape one.
+- HCPCS Level II codes are published by CMS and are in the public domain — you may ship those.
+- ICD-10-CM is published by CDC/CMS and may be redistributed.
+- NCCI edit files are published by CMS and may be used.
+- NUBC revenue codes are licensed by the American Hospital Association; check before bundling.
+Verify each of these statements against the current primary source before relying on it, and
+record what you verified in a LICENSING.md file in the repo. If a data source turns out to be
+unlicensable, degrade gracefully: show the code the user entered without a description rather
+than shipping data you cannot distribute.
+
+=== DATA MODEL (local only) ===
+
+cases: id, patient_name, dob_year_only, facility_name, admit_date, discharge_date,
+  insurance_name, created_at
+line_items: id, case_id, service_date, code, code_type, description, quantity, unit_charge,
+  total_charge, insurance_paid, adjustment, patient_responsibility, source_page,
+  source_bbox, confidence, edited_by_user bool
+findings: id, case_id, check_type, severity, affected_line_ids[], explanation, question,
+  rule_source, rule_version
+documents: id, case_id, kind, original_blob_ref, sha256, uploaded_at
+letters: id, case_id, kind, body_md, generated_at, sent_at, method, tracking_number
+reference_prices: code, source, amount, effective_date, source_url
+
+Store dob as year only. You never need the full date and storing it increases harm from a
+breach that architecturally should not be possible anyway.
+
+=== STACK ===
+
+- Local-first: React + TypeScript + Vite, PWA, IndexedDB. NO SERVER for patient data.
+- PDF text extraction: pdf.js. OCR: tesseract.js, in a web worker, in the browser.
+- Table extraction: write a heuristic layout parser over pdf.js text items using x-coordinate
+  clustering. Do not reach for a cloud document AI service — see SAFETY.
+- Reference data (NCCI edits, HCPCS, Medicare rates) ships as static compressed JSON built by
+  a script in /scripts/fetch-reference-data.ts that records source URL, version, and fetch
+  date for each. That script is the thing a maintainer runs quarterly.
+- PDF letter output: pdf-lib, client-side.
+- Under 250KB JS gzipped excluding the OCR worker and reference data, both lazy-loaded only
+  when needed.
+
+=== HARD CONSTRAINTS ===
+
+- No medical data leaves the device. Ever. This is the central architectural constraint:
+  every parse, every check, every letter, generated client-side. Show this claim on the home
+  screen and make it verifiable — a test must assert zero third-party network requests during
+  a complete case, including OCR.
+- The tool must work with the network off after first load.
+- Every finding must be phrased as a question to ask, never as a conclusion. Write a test that
+  greps generated output for "overcharge," "fraud," "illegal," "they owe you," "error" used
+  as an assertion, and fails the build.
+- Every finding cites its rule source and version. A finding without a source is a bug.
+- WCAG 2.2 AA. This user base skews older; default body text 18px minimum, and the parsed
+  table must remain usable at 200% zoom (horizontal scroll within the table region only,
+  never the page).
+- Reading level 6th grade for all app copy. The letters are formal — flag that difference to
+  the user in one line.
+- [LANGUAGES] from the first commit.
+
+=== DO NOT BUILD ===
+
+- No account, no cloud storage, no "upload your bill and we'll review it" backend.
+- No LLM in the checking path. Every finding must be traceable to a deterministic rule and a
+  cited source. An LLM may be used at build time to draft plain-language copy for a human to
+  review; it must not run at request time on a patient's bill.
+- No negotiation-on-your-behalf, no contingency fee, no "we'll handle it" service layer, no
+  referral to a paid bill-negotiation company. Those exist, they take a cut, and building a
+  funnel to them betrays the user.
+- No price estimator for future procedures. Different problem, different data quality.
+- No provider ratings, no hospital scorecards, no public database of charges.
+- No claim submission, no clearinghouse integration, no EDI.
+- Do not attempt to detect upcoding or medical necessity. Both require clinical judgment and
+  the chart. Out of scope; say so in the app.
+
+=== ACCEPTANCE TESTS ===
+
+1. A complete case — upload, parse, check, generate all letters — produces zero network
+   requests to any third-party origin, including during OCR.
+2. Duplicate detection flags two identical code+date+quantity rows and does not flag two rows
+   with the same code on different dates.
+3. A charge dated one day after the recorded discharge date is flagged; a charge on the
+   discharge date is not.
+4. An NCCI-listed PTP code pair on the same date produces an unbundling finding citing the
+   NCCI file version.
+5. Every finding object has a non-empty rule_source and rule_version.
+6. No generated letter or UI string contains an accusatory assertion (grep test).
+7. Editing a parsed row updates the findings without re-running OCR.
+8. A bill that fails to parse falls back to the manual grid with no data loss and no error
+   dialog dead-end.
+9. Pasting a 40-row block from a spreadsheet into the manual grid populates correctly.
+10. The financial assistance letter appears in the recommended actions for any case where the
+    user indicated income below the threshold they entered, regardless of what the checks found.
+11. Reference price comparison renders "no published price available" when the hospital file
+    is absent, and never substitutes an estimate.
+12. The app functions fully offline.
+13. Stored data contains no full date of birth, no SSN, no member ID beyond what the user
+    typed, and no address.
+14. Clearing the case deletes all blobs, verified by inspecting IndexedDB.
+
+=== MILESTONES ===
+
+M0 — Manual entry grid + the checks + findings UI. No parsing at all.
+  EXIT: type in a real bill by hand in under 10 minutes and get findings with citations.
+  Building this first means the project is useful even if the parser never works well.
+
+M1 — Letters, especially financial assistance.
+  EXIT: a person who works in patient financial advocacy reads all five letters and says they
+  would send them. Do not skip this gate.
+
+M2 — PDF/text parsing with side-by-side review.
+  EXIT: five real bills from at least three different hospital systems parse with under 10%
+  of fields needing correction — or you report the true number honestly and keep the manual
+  grid as the primary path.
+
+M3 — OCR for scans and photos.
+  EXIT: a phone photo of a paper bill, taken at an angle in bad light, yields something the
+  user can correct faster than typing from scratch. If it doesn't, cut this feature and say so.
+
+M4 — Reference prices.
+  EXIT: one real hospital's published standard charges file imports and produces at least one
+  meaningful comparison.
+
+=== SAFETY + LEGAL ===
+
+- Not medical, legal, or financial advice. Persistent footer, and a line in every letter:
+  "I am asking these questions as a patient reviewing my own bill."
+- Never assert an error. Every finding is a question. This is both an ethical line and a
+  practical one: a patient who walks into billing accusing them of fraud gets less help than
+  one who asks nine specific questions.
+- The no-server design is a health-privacy decision. Bills reveal diagnoses. A server holding
+  them is a breach target and potentially a HIPAA-adjacent obligation you do not want and
+  cannot meet. Do not add a backend "just for support tickets."
+- OCR must be local for the same reason. Do not call a cloud vision API on a document that
+  names someone's medical procedures.
+- Deadlines matter and vary: insurance internal appeals, external review, and No Surprises Act
+  dispute processes each have their own clock. Where you display a deadline, cite the source
+  and the date you verified it. Where you cannot verify one, say "check your plan documents
+  for the deadline" rather than guessing. A missed appeal deadline caused by a wrong number in
+  your app is the worst outcome this project can produce.
+- Add a visible "When to stop and get help" section: if the bill exceeds a few thousand
+  dollars, if collections has started, or if a lawsuit has been filed, link to legal aid in
+  [CITY] and the [STATE] consumer assistance program. Some situations need a human, and the
+  app should know its own limits and say so.
+
+=== HOW TO REPORT BACK ===
+
+Lead with LICENSING: exactly which code sets you verified you may redistribute, with source
+URLs and dates. Then: the NCCI file version you loaded, the real bills you tested against and
+the true field-level accuracy, every deadline you could not verify, and what you'd cut.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.

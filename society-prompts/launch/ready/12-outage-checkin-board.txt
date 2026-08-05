@@ -1,0 +1,393 @@
+You are starting a new project from scratch: Outage / Disaster Check-In Board.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [COUNTY] [LANGUAGES] [NEIGHBORHOOD] [ORG] [STATE] [TIMEZONE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `outage-checkin-board` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a neighborhood check-in and mutual aid board for [NEIGHBORHOOD] in [CITY],
+for use during power outages, storms, heat events, and similar disruptions. Build it now; do
+not ask me clarifying questions. Where you need a decision I did not make, choose the option
+that works on the worst phone with the worst connection and the least battery, state your
+choice, and keep going.
+
+Read SAFETY + LEGAL before writing code. This project has one boundary it must never cross and
+one privacy tension that shapes the entire data model.
+
+=== THE PEOPLE ===
+
+Day four of an ice storm. Power is out across [NEIGHBORHOOD].
+
+Ruth is 79, alone, has a landline that is dead and a cell phone at 12%. She is cold. She has
+not spoken to anyone in two days. She is not going to install anything.
+
+Marcus has a generator, a working truck, and no idea who needs either.
+
+Priya coordinates for [ORG] and is trying to figure out who has not been heard from — which is
+the single question that matters in an outage, because the person who has not checked in is
+the person to go knock on.
+
+The cell network is congested. Data is slow and intermittent. SMS still gets through, because
+it usually does when data doesn't. Everyone's battery is the binding constraint.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+In sustained outages and extreme weather, the deaths are overwhelmingly among people who are
+old, alone, medically dependent on power, or without transportation — and they are usually
+found late. The operational failure is not a lack of willing neighbors. It is that nobody has
+a list of who to check on and no way to know who has already been checked.
+
+Look up [STATE]'s or [COUNTY]'s after-action reports from the last major outage or storm and
+cite what they found; the specifics will sharpen this project more than any general statistic.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+By hour 30, Priya has a list of eleven households not heard from, three of them flagged at
+signup as medically vulnerable. Volunteers knock on all eleven. Ruth's is the fourth door.
+
+=== THE PRIVACY TENSION — DECIDE THIS BEFORE YOU DESIGN ===
+
+A public board saying "79-year-old woman alone at 412 Elm, no power, needs help" is a map for
+burglary and worse, published at the moment a neighborhood is least able to respond. This is
+not hypothetical; it is a documented pattern after disasters.
+
+The resolution, and it is not negotiable in this design:
+
+- PUBLIC, with no login: which locations are open (warming/cooling/charging/water), general
+  status of the neighborhood, how to check in, how to volunteer, and offers of help that
+  people explicitly chose to publish (see below).
+- VOLUNTEER-VISIBLE ONLY, behind a coordinator-issued link: individual check-in statuses,
+  needs, addresses, and the not-heard-from list.
+- NEVER PUBLIC: any combination of address and vulnerability. Not on a map, not in an API
+  response, not in a page the search engines can reach.
+- Offers ("I have a generator," "I can drive") are public only if the offerer opts in, and
+  even then default to block-level location, not an address, with contact through the
+  coordinator.
+
+Build this as an authorization boundary in the data layer, not as a UI decision. Write a test
+that hits every public endpoint and asserts no address, phone number, or vulnerability flag
+appears in any response.
+
+=== BUILD THIS ===
+
+1. THE PAGE (/) — Static HTML. Total transfer under 20KB including CSS. No JavaScript required
+   for anything essential. Structure, in source order:
+   - One line of current status for [NEIGHBORHOOD], with a timestamp in [TIMEZONE]
+   - "Text OK to [number] to check in" — in large type, at the top, because that is the action
+   - Open locations right now: name, address, what they have (heat / cooling / power to charge
+     / water / restrooms / wifi), hours, whether pets are allowed
+   - Emergency numbers: 911 first, then the utility's outage line, then [ORG], then 211
+   - "I need help" and "I can help" links
+   - Last updated, prominently
+   It must render usefully with CSS entirely disabled. Write the HTML so the source order is
+   the priority order.
+
+2. SMS — The primary interface, because data may be unusable and SMS is cheap in battery and
+   bandwidth. Support single-word commands, case-insensitive, forgiving of punctuation:
+   - OK — check in as safe. Reply: "Got it. You're marked safe as of 3:42pm."
+   - HELP — start a needs conversation: one question at a time, at most three questions, then
+     "A volunteer will contact you. If this is an emergency, call 911."
+   - OPEN — text back the two nearest open locations with addresses
+   - HAVE — register an offer (generator, truck, chainsaw, spare room, water)
+   - STATUS — the one-line neighborhood status
+   - STOP — unsubscribe
+   Every reply is under 300 characters. Every reply that could involve a life-safety situation
+   ends with "If this is an emergency, call 911." Design for a person with 8% battery: fewest
+   possible round trips.
+
+3. SIGN UP BEFORE THE STORM — /signup, the feature that makes everything else work, and the
+   one that must be promoted when nothing is happening. Fields: name, address, phone,
+   languages, how many people in the household, whether anyone is medically dependent on
+   electricity (oxygen concentrator, CPAP, refrigerated medication, powered mobility device),
+   whether anyone has limited mobility, pets and livestock, a secondary contact, and whether
+   they're willing to be checked on in person.
+   The medical-dependency flag is the highest-value field in the entire system and it is also
+   the most sensitive. It is visible to coordinators only, encrypted at rest, and it is why
+   there is no public map.
+   Also: many utilities maintain a medical baseline or critical-care customer registry. Tell
+   people about it and link it — it may get their power restored sooner and it is not a
+   substitute for this list, nor is this a substitute for it.
+
+4. COORDINATOR VIEW — Priya's screen, behind a magic link. Three sections, in this order:
+   - NOT HEARD FROM — everyone registered who has not checked in during the current event,
+     sorted by vulnerability flags first, then by time since last contact. This is the whole
+     product. Each row: name, address, phone, flags, secondary contact, and one tap to mark
+     "assigned to <volunteer>" or "checked — OK" or "checked — needs follow-up."
+   - OPEN NEEDS — requests, with status and assignment.
+   - OFFERS — who has what.
+   Works on a phone, offline-tolerant, and printable — because the coordinator's own power may
+   be out and paper works at 0%.
+
+5. EVENT MODE — A coordinator declares an event, which starts a check-in cycle: everyone
+   registered gets one text asking them to reply OK, resent once after 6 hours to
+   non-responders. Cycles have a defined window and clear open/close, so "not heard from" means
+   something precise. Outside an event, the board shows a calm page with the signup link and
+   the preparedness info.
+
+6. PRINTED FALLBACK — Generate two printables:
+   - A door hanger: "Checking on neighbors. Are you OK? Text OK to [number], or call [number].
+     If you need help and can't reach anyone, put this card in your front window." Two-sided,
+     [LANGUAGES], with a large ARE YOU OK / I NEED HELP card the resident can display.
+   - A coordinator roster: every registered household with address, phone, and flags, sorted
+     by street, printed on paper, in a binder, updated monthly.
+   Paper is the only thing with 100% uptime. Say so in the README and make the printables good.
+
+=== DATA MODEL ===
+
+households: id, name, address, lat, lng, phone, alt_phone, languages text[], household_size,
+  power_dependent_medical bool, medical_notes_encrypted, mobility_limited bool, pets text,
+  secondary_contact_name, secondary_contact_phone, willing_in_person_check bool,
+  registered_at, verified_at, active
+events: id, name, kind, declared_at, closed_at, declared_by
+checkins: id, event_id, household_id, status enum(ok|needs_help|no_response|checked_in_person),
+  reported_at, channel, reported_by
+needs: id, event_id, household_id, category, description, urgency, status, assigned_to,
+  created_at, resolved_at
+offers: id, household_id, category, description, public_ok bool, available_from,
+  available_until, active
+locations: id, name, address, lat, lng, capabilities text[], hours_text, pets_ok bool,
+  phone, verified_on, verified_by, open_now bool
+volunteers: id, name, phone, has_vehicle, capabilities text[], active, background_note
+assignments: id, need_id|household_id, volunteer_id, assigned_at, completed_at, outcome
+messages: id, household_id, direction, body, channel, sent_at, delivered
+
+Encrypt medical_notes and treat power_dependent_medical as the most protected field in the
+schema. Document the key management in the README, honestly, including its weaknesses.
+
+=== STACK ===
+
+- Static HTML for the public page, generated by a small build step, served from a host with
+  very high availability plus a mirror on a second provider. The public page must survive your
+  server being down — if the coordinator app is offline, the static page with locations and
+  phone numbers still serves. Set a short cache TTL and long stale-while-revalidate so a cached
+  copy remains useful during an outage.
+- Backend: Node/TypeScript + PostgreSQL, one small VPS, hosted OUTSIDE the affected region.
+  Do not host the disaster tool for [CITY] in a datacenter in [CITY].
+- SMS: Twilio, behind an `SmsProvider` interface with a console implementation. Test what
+  happens under carrier congestion and queue with retries and idempotency keys.
+- Service worker on the public page caching locations and numbers, so a phone that loaded it
+  once has it during the outage. This is a genuine offline requirement, not a nicety.
+- Coordinator app: server-rendered, minimal JS, works on a phone, prints cleanly.
+- No dependency on any service inside the affected area. No dependence on data connectivity for
+  the critical path.
+
+=== HARD CONSTRAINTS ===
+
+- Public page under 20KB total transfer, no JS required, renders with CSS disabled. Measure
+  and report the real byte count.
+- Every SMS reply under 300 characters, no more than one round trip per user action where
+  possible. Battery is the scarcest resource in the neighborhood.
+- The system must be usable by a coordinator with no power, from a printed roster, and the
+  printed roster must be current — build the print export as a first-class feature, not an
+  afterthought.
+- No public endpoint returns an address, phone number, medical flag, or precise coordinate.
+  Tested.
+- [LANGUAGES] on the page, in every SMS, and on the printables.
+- WCAG 2.2 AA. 20px minimum body text on the public page; assume cold hands and poor light.
+- All times in [TIMEZONE] with explicit "as of" stamps everywhere.
+- Data retention: check-in and needs data purged 90 days after an event closes; the household
+  registry persists until someone asks to be removed, with an annual re-consent prompt.
+
+=== DO NOT BUILD ===
+
+- No 911 replacement, no emergency dispatch, no medical triage, no "how urgent is this"
+  scoring. See SAFETY.
+- No public map of individuals. No public list of who needs help. No API that exposes either.
+- No real-time chat, forums, or comment threads. They fill with rumor in an emergency, they
+  need moderation nobody has capacity for during an actual disaster, and they consume battery.
+- No damage reports, insurance documentation, or photo uploads in v1.
+- No integration with utility outage APIs in v1 — they fail or rate-limit precisely during
+  large outages, which is when you need them. Link the utility's page instead.
+- No native app, no push notifications. SMS.
+- No account passwords for residents. Phone number identity, coordinator magic links.
+- No AI anything. Under congestion, every dependency is a failure mode.
+- No donation collection, no fundraising, no payments.
+
+=== ACCEPTANCE TESTS ===
+
+1. Public page total transfer under 20KB; renders correctly with JavaScript disabled and with
+   CSS disabled.
+2. No public endpoint or page returns an address, phone number, medical flag, or precise
+   coordinate — assert against every public route, including any JSON.
+3. Texting "ok", "OK.", " Ok " all check in successfully and return a confirmation under 300
+   characters.
+4. Texting "HELP" collects at most three answers and every reply includes the 911 line.
+5. Declaring an event texts every active household exactly once, and re-texts only
+   non-responders after 6 hours.
+6. The not-heard-from list sorts households with medical dependency flags first.
+7. The coordinator roster prints legibly, sorted by street, on standard paper.
+8. With the backend fully down, the cached public page still displays open locations and phone
+   numbers.
+9. SMS sends are idempotent under retry — a duplicate delivery attempt does not send twice.
+10. All resident-facing messages render in the household's chosen language.
+11. Medical notes are encrypted at rest — verify by inspecting the raw database.
+12. Purging an event removes check-ins and needs while preserving the household registry.
+13. axe-core clean on public and coordinator views.
+14. With TWILIO_* unset, a full event cycle runs against the console provider.
+
+=== MILESTONES ===
+
+M0 — Public static page + open locations, hand-maintained.
+  EXIT: it loads on a phone at one bar in under 2 seconds, and is legible outdoors in winter
+  light with gloves on. Test that literally.
+
+M1 — Signup + SMS check-in + coordinator not-heard-from list.
+  EXIT: 10 real households registered and a test event run end to end with real texts.
+
+M2 — Needs, offers, assignment, printables.
+  EXIT: [ORG] runs a tabletop drill using only the printed roster, with the laptop closed.
+
+M3 — Event mode, second-language support, mirrored hosting.
+  EXIT: the public page still serves with the primary backend deliberately switched off.
+
+M4 — A real event, or a full drill.
+  EXIT: report registered households, check-in rate, not-heard-from count, and how long it
+  took to physically reach everyone on that list. That last number is the project's real
+  scoreboard.
+
+=== SAFETY + LEGAL ===
+
+- THE BOUNDARY: this is not an emergency service. It never dispatches, never triages, never
+  advises on medical urgency, and never delays a 911 call. Every needs interaction — SMS and
+  web — leads with "If this is an emergency, call 911." Put it in code as a required element of
+  those message templates, and write a test asserting it is present.
+- Do not create the impression that checking in summons help. Copy must be exact: "This tells
+  your neighbors you're OK. It does not call anyone for you."
+- Volunteer safety: two-person door knocks, daylight where possible, no entering homes, and a
+  documented procedure for what to do when there's no answer or something looks wrong — which
+  is to call [ORG]'s coordinator and, if there is reason to think someone is in danger, call
+  for a welfare check. Put that procedure in the volunteer materials and in the app.
+- The registry is a list of vulnerable people with addresses. Treat it accordingly: encryption
+  at rest, access limited and logged, no public exposure, no export feature for
+  non-coordinators, no analytics, no third-party services touching it. Document who has access
+  and how that's revoked.
+- Get explicit consent at signup for what's stored, who sees it, and how it's used, in plain
+  language, in [LANGUAGES]. Offer removal at any time, honored immediately.
+- Coordinate with [CITY]'s emergency management office and with [COUNTY]'s CERT program before
+  an actual event. An unaffiliated volunteer system operating during a declared emergency can
+  create real friction with official response; being known in advance prevents that and often
+  gets you their location list.
+- Check whether [STATE] has volunteer liability protections and whether [ORG] carries
+  appropriate coverage. Note it in the README as a launch item, not as advice.
+- Rumor control: because there is no chat, the page carries only verified information. State
+  on the page who verifies it and when it was last checked.
+
+=== HOW TO REPORT BACK ===
+
+Tell me: the measured byte weight of the public page; the results of the public-endpoint
+privacy test; what happened in the tabletop drill; the SMS round-trip count per action; and
+everything you could not verify. If [CITY] emergency management said something that changes the
+design, lead with that.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.

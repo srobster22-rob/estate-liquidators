@@ -1,0 +1,389 @@
+You are starting a new project from scratch: Court Date Reminders + Logistics.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [COUNTY] [LANGUAGES] [ORG] [STATE] [TIMEZONE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `court-date-reminders` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a court date reminder and logistics tool for people with cases in [COUNTY],
+[STATE]. Build it now; do not ask me clarifying questions. Where you need a decision I did not
+make, choose the option that reduces the chance of a missed appearance, state your choice, and
+keep going.
+
+Read SAFETY + LEGAL before writing code. There is one boundary here that must not be crossed
+and one data decision that determines whether this tool is safe to exist.
+
+=== THE PERSON ===
+
+Andre has a court date. He knows it is "sometime in early March" and the paper is in a bag
+somewhere. It is a misdemeanor. He works construction, starts at 6am, and does not know that
+missing this date can turn a citation into a warrant.
+
+He is not avoiding court. Nobody is served well by pretending most missed appearances are
+defiance — they are transportation, childcare, work, wrong address, a date that changed, and
+paperwork written in a way that does not tell you where to go.
+
+The second person is Nicole, who has the date on her calendar and cannot make it because her
+shift changed, and does not know that asking for a different date is a normal thing that
+happens hundreds of times a week.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+Text message reminders before court dates have been studied and found to meaningfully reduce
+failure to appear; several jurisdictions and research groups have published results, and the
+redesign of the paperwork itself mattered as much as the reminder. Look up the actual studies,
+name them with their years, and cite them in the README — this project's premise rests on that
+evidence and you should be able to show it.
+
+The consequence of a missed appearance is not a scolding. Depending on the case it can be a
+bench warrant, an arrest, a license suspension, or a bail forfeiture — a single missed morning
+turning into a much larger problem. That asymmetry is why a reminder is worth building.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Andre gets a text a week out, one the night before with the address and the room, and one at
+6am. He knows which building, which door, that he needs an ID, that the bus stops two blocks
+away, and that his phone will be taken at security. He shows up.
+
+Nicole gets the same reminders and, when her shift changes, learns that a continuance is a
+thing she can request, and how.
+
+=== BUILD THIS ===
+
+1. ADD YOUR DATE (/) — Manual entry, and this is a deliberate design choice, not a limitation.
+   The user types what is on their paperwork:
+   - Date and time
+   - Court name and address (autocomplete from a [COUNTY] courthouse directory you build)
+   - Courtroom or department, if the paper says
+   - Case number, optional and clearly marked optional
+   - What kind of hearing, chosen from plain-language options ("first appearance",
+     "arraignment", "traffic", "review", "trial", "I'm not sure") — never require it
+   - Their phone number and preferred language
+   Then, immediately, a photo of the paperwork, optional, stored locally on their device only,
+   so they can find it later. This is the most requested feature and the cheapest.
+   Under 60 seconds to complete. No account, no password, no login.
+
+2. THE REMINDER LADDER — Text messages, in [TIMEZONE]:
+   - 7 days before: date, time, court name, and "reply INFO for what to bring and how to get
+     there"
+   - 2 days before: same, plus the specific address and room, plus "reply MOVE if you can't
+     make it — you may be able to get a new date"
+   - Night before, around 6pm: address, room, what to bring, how early to arrive, security
+     rules
+   - Morning of, 2.5 hours before the hearing time: short. Address, room, time.
+   Every message under 300 characters. Every message includes the court's public phone number.
+   Never more than these four. The evidence supports reminders; it does not support pestering,
+   and an over-texting system gets STOP-ed before the date that matters.
+
+3. WHAT TO EXPECT — Reachable from every message and as a page. Research it for [COUNTY]
+   specifically, verify each item by calling the clerk or visiting, and write it plainly:
+   - Which building and which entrance, with a photo of the door
+   - Parking, the cost, and the transit stops with route numbers
+   - Security: what you cannot bring in, whether phones are allowed, how long the line takes
+     at 8:30am
+   - What to wear, in one non-condescending sentence
+   - What ID you need
+   - How long to expect to be there — usually far longer than people plan for, and this is a
+     leading cause of people leaving before their case is called
+   - Whether children are allowed in the courtroom, and whether there is childcare in the
+     building
+   - Where the self-help center or clerk's window is, and its hours
+   - What happens if you are late — verify this; in many courts arriving late is far better
+     than not arriving, and people who think they have already blown it stay home
+
+4. I CAN'T MAKE IT — The highest-value screen in the app, because the alternative most people
+   choose is not showing up. Plainly, with verified [COUNTY]-specific procedure:
+   - That courts routinely reschedule, and what the process is called here
+   - Exactly who to call or what to file, with the number and the hours, and how far in advance
+   - That a lawyer or public defender can often do this for them, and how to reach one
+   - What to do if the date is tomorrow and they just found out
+   - What to do if they already missed it — this section matters enormously and is missing
+     from every court website. Verify [COUNTY]'s actual process for addressing a missed
+     appearance and quashing or recalling a warrant, name the self-help resources, and be
+     clear that acting quickly generally helps.
+   Never advise on whether to appear or what to say. This is logistics: how to reschedule,
+   who to call.
+
+5. GET A RIDE / GET CHILDCARE — Two short researched pages: transit routes to each courthouse,
+   any court-adjacent transportation assistance, and childcare options including whether the
+   courthouse has a children's room. Verify each by phone. If neither exists in [COUNTY], say
+   so plainly rather than showing an empty page — that absence is itself information, and it
+   is the kind of finding [ORG] can use.
+
+6. LAWYER — One page: how to request a public defender in [COUNTY], what the process and the
+   income threshold are, the phone number, and the legal aid and self-help options for civil
+   matters. Verify all of it.
+
+7. COORDINATOR MODE (only if [ORG] is a partner) — Bulk entry of clients' dates with consent,
+   a view of upcoming appearances, and delivery status per message. Behind authentication,
+   audit-logged, and covered by whatever confidentiality rules [ORG] operates under — which,
+   for a public defender office, are strict. Build this last and only with [ORG]'s explicit
+   direction.
+
+=== THE DATA DECISION ===
+
+Do NOT scrape or bulk-ingest court records to find people's dates and text them. Court records
+are often public, and that does not make it right or safe: an unsolicited text about someone's
+criminal case can out them to whoever is holding the phone, is trivially impersonated by
+scammers, and builds a database of who has a pending case that you then have to protect.
+
+The user enters their own date. That is the design. It costs sign-up conversion and it buys the
+entire project's ethical footing.
+
+Two acceptable extensions, later:
+- A partner ([ORG]) enrolls their own clients with informed consent, under their own
+  confidentiality obligations.
+- A court itself adopts the tool and enrolls people at the counter, with consent.
+
+If [COUNTY] publishes a case-lookup portal, you may add an optional feature where the user
+enters their own case number to check for a changed date — user-initiated, on their own case,
+after verifying the portal's terms of use permit it. Never automatic, never bulk.
+
+=== DATA MODEL ===
+
+subscribers: id, phone (E.164), language, created_at, active, source enum(self|partner)
+hearings: id, subscriber_id, hearing_at, court_id, courtroom, case_number_encrypted|null,
+  hearing_type, created_at, canceled_at, outcome_note
+courts: id, name, address, lat, lng, phone, hours, entrance_notes, security_notes,
+  phones_allowed bool, childcare_available bool, self_help_location, transit jsonb,
+  parking jsonb, photo_ref, verified_on, verified_by
+messages: id, hearing_id, kind, scheduled_for, sent_at, delivered, body_hash, channel
+optouts: phone, opted_out_at
+
+Store as little as possible. Case numbers are optional, encrypted, and never appear in any text
+message. Purge a hearing's record 30 days after the date passes; keep only an aggregate count.
+Never store a name. The app does not need one and not having one is protection for the user.
+
+=== STACK ===
+
+- Next.js or a small Node app + PostgreSQL, one VPS.
+- SMS via Twilio behind an `SmsProvider` interface with a console implementation; the entire
+  flow runs with no credentials.
+- A durable job queue (pg-boss or equivalent) for the ladder: persisted, idempotent,
+  surviving restarts. A reminder that silently fails to send is the one failure this project
+  cannot have. Alert on any scheduled message that did not send.
+- Timezone [TIMEZONE] everywhere. Test with a UTC server and across DST in both directions —
+  a 9:00am hearing the morning clocks change must produce a 6:30am reminder, not 5:30 or 7:30.
+- Public pages static and tiny; under 50KB, no JS required.
+
+=== HARD CONSTRAINTS ===
+
+- Sign-up in under 60 seconds, no account, no password, no email.
+- Every message under 300 characters and includes the court's phone number.
+- Never more than four messages per hearing, plus replies the user asked for.
+- STOP works immediately and permanently, on any message.
+- Reminders must not reveal case details. "You have court Thursday at 8:30am, Room 4B" is
+  fine. Never the charge, never the case type, never the word "criminal." Someone else may be
+  reading that screen.
+- [LANGUAGES] on every message and page.
+- WCAG 2.2 AA; 18px minimum; works on any phone.
+- Reading level 6th grade throughout, and no condescension — read every string aloud and cut
+  anything that sounds like a lecture. The tone of court paperwork is part of why people
+  disengage; do not reproduce it.
+- Every courthouse fact carries a verified_on date, re-verified at least twice a year.
+
+=== DO NOT BUILD ===
+
+- No scraping of court records. No bulk enrollment without consent. No dockets.
+- No legal advice of any kind: not what to say, not whether to plead, not whether to appear,
+  not what will happen. Logistics and procedure only.
+- No outcome prediction, no risk scoring, no analytics about individuals. Anything resembling
+  a risk assessment is a different and much more fraught product, and building it here would
+  poison this one.
+- No payments, no bail, no fine payment processing, no referral to bail bond services.
+- No public data of any kind about users. No map, no counts by neighborhood, no dashboard
+  that could identify anyone.
+- No account, no login for end users, no app store presence.
+- No LLM generating any statement about the law or a person's case.
+- No integration with law enforcement systems, ever.
+
+=== ACCEPTANCE TESTS ===
+
+1. Sign-up completes in under 60 seconds with only phone, date, time, and court.
+2. All four reminders schedule at the correct local times, verified across a DST transition in
+   both directions with a UTC server.
+3. Killing the worker mid-ladder and restarting delivers every remaining message exactly once.
+4. A scheduled message that fails to send raises an alert rather than failing silently.
+5. No message body contains a case number, charge, hearing type, or the word "criminal" —
+   enforced by a grep test over the templates that fails the build.
+6. STOP halts all messages for that number immediately and permanently, including already
+   queued ones.
+7. Replying INFO returns the what-to-expect link in the subscriber's language, under 300
+   characters.
+8. Replying MOVE returns the [COUNTY] reschedule instructions and the phone number.
+9. Every court record has a verified_on date; one older than 180 days renders a staleness flag
+   in the admin view.
+10. Hearing records purge 30 days after the date; aggregate counts remain.
+11. Case numbers are encrypted at rest — verified by reading raw storage.
+12. All messages and pages render in every language in [LANGUAGES].
+13. With TWILIO_* unset the entire ladder runs against the console provider.
+14. Public pages are under 50KB and render with JavaScript disabled.
+
+=== MILESTONES ===
+
+M0 — The courthouse directory for [COUNTY], verified in person.
+  EXIT: you have physically gone to at least one courthouse, walked in the public entrance,
+  timed the security line, noted whether phones are allowed, found the self-help center, and
+  photographed the correct door. Every fact in this app should be one you checked. This is the
+  milestone that makes the tool better than the court's own website.
+
+M1 — Sign-up + the four-message ladder, console SMS.
+  EXIT: tests 1-8 pass including the restart and DST tests.
+
+M2 — What to expect, I can't make it, ride and childcare pages.
+  EXIT: a public defender, self-help center staffer, or court clerk reads every page and
+  confirms the procedure is right for [COUNTY]. Do not skip this gate — reschedule procedure
+  varies by court and getting it wrong sends someone to the wrong window.
+
+M3 — Real SMS + second language.
+  EXIT: you receive the full ladder for a test date on a real phone, in both languages.
+
+M4 — Twenty real users.
+  EXIT: report sign-ups, messages delivered, and — if [ORG] can tell you — appearance outcomes.
+  Also report opt-out rate; if it is high, the messages are wrong.
+
+=== SAFETY + LEGAL ===
+
+- THE BOUNDARY: this is not legal advice and not a lawyer. Stated on every page and in the
+  first message. It tells people when and where, not what to do. Link [COUNTY]'s public
+  defender and self-help center on every page.
+- Message content is a privacy issue with real consequences. Phones are shared, screens are
+  visible, and a text saying "your criminal case" can cost someone a job or a relationship.
+  Minimum viable content: date, time, place, room. That is why the charge and case type are
+  banned from message bodies by a build-failing test.
+- Never imply a legal consequence you have not verified for [COUNTY]. "Missing court can lead
+  to a warrant" is generally true and jurisdiction-specific in its details — verify, cite, and
+  phrase carefully. Do not use fear as a motivator; it suppresses engagement in exactly the
+  population this serves.
+- Impersonation is a live risk: scam calls and texts claiming to be courts, demanding payment
+  for missed appearances, are common. Your messages must never ask for money, never ask for
+  personal information, and should say so. Add a line to the what-to-expect page: "The court
+  will not call you demanding payment over the phone. That is a scam."
+- The subscriber list is sensitive — it is a list of people with pending cases. Encrypt case
+  numbers, store no names, purge aggressively, log administrative access, never export, no
+  third-party analytics, and host it somewhere you control.
+- If [ORG] is a public defender office, their confidentiality obligations likely reach this
+  data. Build to their direction, not to this brief, wherever the two differ.
+- Talk to the court before launching. Clerks and self-help centers are often glad this exists,
+  will correct your procedure pages, and sometimes will hand out the sign-up card. A court that
+  hears about it secondhand may react differently.
+
+=== HOW TO REPORT BACK ===
+
+Tell me: the studies you found supporting reminder efficacy with their years; every courthouse
+fact you verified in person versus from a website; what [COUNTY]'s actual reschedule and
+missed-appearance procedures are and who confirmed them; the DST and restart test results; and
+everything you could not verify.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.

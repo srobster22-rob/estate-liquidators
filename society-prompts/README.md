@@ -12,6 +12,18 @@ agent) and it can start writing files in the first minute without asking you twe
 
 ---
 
+## Building them
+
+**[`launch/`](launch/README.md) turns any of these into one paste.** Fill in `launch/LOCALE.md`
+once (your city, county, state, timezone, languages), run `launch/build-pack.sh`, and you get 24
+self-contained files in `launch/ready/` — each one the brief plus repo setup, a working
+agreement, deliverables, and stop conditions. Open a new chat, paste one file, done. One project
+per chat.
+
+The pack is pre-generated with placeholders intact, so it works before you fill anything in.
+
+---
+
 ## How to use this
 
 1. **Pick a project below.** Prefer the one where you personally know someone affected — a

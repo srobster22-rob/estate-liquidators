@@ -1,0 +1,377 @@
+You are starting a new project from scratch: Neighborhood Air Quality Sensor Network.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [COUNTY] [LANGUAGES] [NEIGHBORHOOD] [ORG] [SOURCE] [STATE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `air-quality-network` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a community air quality monitoring network for [NEIGHBORHOOD] in [CITY],
+[STATE], focused on [SOURCE]. Build it now; do not ask me clarifying questions. Where you need
+a decision I did not make, choose the option that makes the data more defensible, state your
+choice, and keep going.
+
+Read the MEASUREMENT HONESTY DOCTRINE before writing code or ordering parts. It determines
+whether this project produces evidence or produces noise.
+
+=== THE PEOPLE ===
+
+Ana lives four blocks from [SOURCE] in [NEIGHBORHOOD]. Two kids, one with asthma. On some days
+the air smells and she keeps them inside, and on other days she doesn't and isn't sure whether
+she should have. The nearest regulatory monitor is eleven miles away, in a different part of
+the city, and its readings do not describe her block.
+
+The second person is her neighbor Charles, who wants to know whether it is safe to run in the
+morning and would look at a number on his phone before deciding.
+
+The third is a public health official or a regulator who might eventually see this data — and
+who will discard the entire dataset the moment they find an uncalibrated sensor, an unlogged
+firmware change, or an AQI computed with the wrong breakpoints. Build for that reader from the
+first commit, because it costs nothing then and is impossible to retrofit.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+Regulatory monitoring networks are sparse by design — they measure regional compliance, not
+neighborhood exposure. Pollution near a highway or a rail yard varies sharply over hundreds of
+meters, which is exactly the scale a regional network cannot resolve. Look up the actual number
+of regulatory PM2.5 monitors in [COUNTY] and cite the source; it is usually a startlingly small
+number and it is the whole argument for this project.
+
+=== MEASUREMENT HONESTY DOCTRINE ===
+
+Low-cost optical particle sensors are useful and they are not reference instruments. Four rules:
+
+1. RAW AND CORRECTED, ALWAYS BOTH. Store the raw sensor output forever, unmodified. Corrections
+   are computed on top and stored separately with the name and version of the correction
+   applied. Never overwrite raw data. When a better correction is published, you reprocess;
+   if you overwrote, you can't.
+2. HUMIDITY IS THE BIG ERROR AND IT IS SYSTEMATIC. Optical sensors read high in humid
+   conditions because water uptake makes particles look bigger. EPA researchers have published
+   a US-wide correction for PurpleAir PA-II sensors (the Barkjohn et al. work) using the
+   sensor's PM2.5 and relative humidity; look up the current published form of that equation,
+   cite it, and implement it exactly as published. Do not derive your own. If your hardware is
+   not a PurpleAir, say so and state which correction you applied and why it is appropriate —
+   or state honestly that no validated correction exists for your sensor.
+3. CO-LOCATE BEFORE YOU DEPLOY. Every sensor runs beside the others for at least a week before
+   going in the field, and ideally beside a regulatory monitor if one is reachable. Record the
+   inter-sensor agreement. A sensor that disagrees with its siblings by more than a defined
+   tolerance does not get deployed. Publish those numbers.
+4. NEVER CLAIM REGULATORY EQUIVALENCE. The dashboard says, in plain words, what this data is
+   and is not: useful for patterns, trends, and relative comparisons between locations and
+   times; not a regulatory measurement and not a legal determination of compliance. Say it on
+   every page, not in a footer.
+
+=== BUILD THIS ===
+
+PART A — HARDWARE (one node)
+
+- MCU: ESP32 (any common dev board with WiFi).
+- PM sensor: a Plantower PMS5003 or a Sensirion SEN5x. Pick one, document why, and note that
+  the correction you apply must match the sensor you chose.
+- Temperature/humidity/pressure: BME280 or the equivalent integrated into an SEN5x. Humidity
+  is not optional — it is required input to the correction.
+- Enclosure: weatherproof, with a rain-shielded intake and passive airflow, and NOT in direct
+  sun (solar heating changes the internal RH and corrupts the correction). Document the
+  enclosure design, mounting height, and distance from walls, and photograph each installation.
+- Power: USB. Assume mains, not solar, for v1.
+- Cost target: under $120 per node. State the real bill of materials with part numbers.
+
+Firmware requirements:
+- Sample on a fixed interval (60s), average to 2-minute records, timestamp with NTP.
+- Report raw PM1.0/PM2.5/PM10 in both the sensor's CF=1 and atmospheric variants if it
+  provides both, plus temperature, humidity, pressure, uptime, WiFi RSSI, and a firmware
+  version string in every payload. The version string is what makes a later anomaly
+  explainable.
+- Buffer to flash when the network is down and backfill on reconnect, with original
+  timestamps preserved and a flag marking backfilled records.
+- OTA update capability, and every firmware change logged in a deployment record with a date.
+- Publish over MQTT or HTTPS POST to your collector. Do not depend on a vendor cloud.
+- Consider ESPHome to avoid writing firmware from scratch; if you do, pin the version and
+  commit the YAML.
+
+PART B — COLLECTOR + STORAGE
+
+- An HTTP/MQTT endpoint that accepts readings, validates them, and stores them.
+- Schema keeps raw and derived strictly separate (see DATA MODEL).
+- Reject impossible values (negative PM, RH > 100, timestamps in the future) into a quarantine
+  table rather than discarding them — a sensor going bad is itself a finding.
+- Flag but never delete: a sensor reading 4x its neighbors is flagged for review, not dropped.
+  Suppressing outliers is how you miss the event you built the network for.
+
+PART C — DASHBOARD
+
+1. NOW (/) — For Ana and Charles. Top of the page, in large type: the current condition in
+   words ("Good" / "Moderate" / "Unhealthy for sensitive groups" / …), the corrected PM2.5
+   value with its units, and one sentence of what to do. Then a simple map of nodes with their
+   current values, then a 24-hour chart.
+   Compute AQI using the current EPA breakpoints — verify them from the primary source, since
+   the PM2.5 breakpoints were revised following the 2024 NAAQS update, and an app using stale
+   breakpoints reports the wrong category. Cite the version and effective date on the page.
+   Never show only a number. "18 µg/m³" means nothing to Ana; the category and the sentence do.
+
+2. PATTERNS — Time-of-day and day-of-week averages per node, and node-versus-node comparison.
+   This is where [SOURCE] shows up: if the rail yard is the cause, the 4am peak on weekdays is
+   the evidence. Include wind direction if you can get it from the nearest NWS station, and
+   build a simple pollution rose. This view is the project's real output.
+
+3. COMPARE — Your nodes against the nearest regulatory monitor, pulled from EPA's AirNow API
+   (free, requires a key — verify current terms) or the state agency's feed. Plot both. Being
+   able to show "we track the official monitor closely on regional smoke days and diverge
+   sharply on weekday mornings" is the single most persuasive chart this project can produce.
+
+4. NODE DETAIL — Per sensor: location, install date, photo, mounting description, firmware
+   version history, co-location test results, current health (last seen, uptime, data
+   completeness percentage over the last 30 days), and a link to download its complete raw
+   history as CSV.
+
+5. DATA — Public download of everything: raw and corrected, CSV and JSON, with a data
+   dictionary, the correction equations used with citations, the calibration records, and an
+   explicit open license. Reproducibility is the point. A researcher or an agency should be
+   able to redo your analysis from scratch.
+
+6. ALERTS — Optional email or SMS when a rolling 1-hour average crosses a threshold. Cap at
+   one alert per 6 hours. Include the plain-language action.
+
+=== DATA MODEL ===
+
+nodes: id, label, lat, lng, install_date, removal_date, height_m, mounting_description,
+  enclosure_type, sensor_model, mcu, photo_ref, owner_contact, active
+readings_raw: node_id, ts, pm1_0_cf1, pm2_5_cf1, pm10_cf1, pm2_5_atm, temp_c, humidity_pct,
+  pressure_hpa, firmware_version, rssi, backfilled bool
+  PRIMARY KEY (node_id, ts) — idempotent ingest, no duplicates on backfill retry
+readings_corrected: node_id, ts, pm2_5_corrected, correction_name, correction_version,
+  computed_at
+quarantine: node_id, ts, payload jsonb, reason, received_at
+colocation_tests: id, node_ids[], started_at, ended_at, reference_source, results jsonb,
+  passed bool, notes
+firmware_deployments: id, node_id, version, deployed_at, notes
+flags: id, node_id, ts_start, ts_end, kind, description, created_by
+
+=== STACK ===
+
+- Collector + API: Node/TypeScript or Python, whichever you'll maintain. PostgreSQL with
+  TimescaleDB if convenient; plain Postgres with a good index is fine at this scale — eight
+  nodes at 2-minute resolution is under 2M rows a year.
+- Dashboard: server-rendered, light. Charts with a small library (uPlot or Observable Plot),
+  not a heavy framework. NOW must render in under 1.5s on Slow 4G — measure it.
+- Map: MapLibre with OSM tiles, lazy-loaded, not on the critical path.
+- Firmware: ESPHome (pinned) or Arduino/PlatformIO. Commit the config or source.
+- Everything self-hosted on one small VPS. No vendor cloud dependency for the data path — the
+  point is that this dataset belongs to [NEIGHBORHOOD].
+- Nightly database backup, off-box, tested by actually restoring it once.
+
+=== HARD CONSTRAINTS ===
+
+- Raw data is immutable and never deleted. Corrections are additive.
+- Every displayed value states whether it is raw or corrected and which correction was used.
+- Every threshold and breakpoint cites its source and effective date, stored as data.
+- Data completeness per node shown honestly on the dashboard. A node offline for three days
+  shows a gap in the chart, never an interpolated line.
+- NOW page under 1.5s on Slow 4G, readable at 200% zoom, WCAG 2.2 AA, and never using color
+  alone to convey the category.
+- Reading level 6th grade for all public-facing copy. Technical detail lives on its own page.
+- [LANGUAGES] on NOW and the alert messages.
+- Node locations are approximate on the public map (nearest intersection, not the exact
+  address), because a node is on somebody's porch and the map should not publish where they
+  live. Store exact coordinates privately for analysis.
+- Full data export always available, always free, openly licensed.
+
+=== DO NOT BUILD ===
+
+- No health advice beyond the standard AQI category guidance, quoted with a citation. Do not
+  generate personalized recommendations, and never tell anyone whether their symptoms are
+  related to air quality.
+- No claims about [SOURCE] causing anything. Publish measurements and patterns. Causation
+  requires source apportionment work you are not doing, and an unsupported accusation
+  discredits the data that could have supported it later.
+- No AQI forecasting or prediction in v1.
+- No proprietary vendor cloud in the data path.
+- No smoothing, interpolation, or gap-filling in stored data. Charts may visually indicate
+  gaps; the database never invents a reading.
+- No sensor calibration by adjusting numbers until they look right. Corrections come from
+  published, cited equations or from a documented co-location regression whose method and data
+  you publish.
+- No login to view anything. All public.
+- No LLM anywhere in the data path.
+
+=== ACCEPTANCE TESTS ===
+
+1. A node powered off for 6 hours backfills on reconnect with original timestamps, marked as
+   backfilled, and creates zero duplicate rows.
+2. Re-sending an identical payload is idempotent (primary key enforced).
+3. A payload with RH = 130 lands in quarantine with a reason and is not in readings_raw.
+4. The correction function reproduces published example values from its source paper — test
+   against at least three worked examples and cite them.
+5. AQI category boundaries match the current EPA breakpoints exactly; test each boundary value
+   on both sides.
+6. Reprocessing corrections for a date range does not modify readings_raw — assert by hash of
+   the raw table before and after.
+7. A node offline for 3 days renders a visible gap, never an interpolated segment.
+8. The public map shows approximate locations only; exact coordinates never appear in any
+   public response — test the API output directly.
+9. CSV export of one node's full history round-trips: re-importing reproduces identical values.
+10. Every chart and value on NOW labels raw vs corrected and names the correction version.
+11. NOW renders under 1.5s on Slow 4G throttling — report the measured number.
+12. axe-core clean; category conveyed by text as well as color.
+13. Co-location results are displayed on each node's page, and a node without a passed
+    co-location test is visibly marked as uncalibrated on the public map.
+
+=== MILESTONES ===
+
+M0 — One node on your own desk, reporting to a local collector.
+  EXIT: 24 hours of continuous readings, raw stored, no gaps, firmware version in every row.
+
+M1 — Correction implemented and verified against published examples; AQI with verified
+  breakpoints.
+  EXIT: tests 4 and 5 pass, and you can show the citation for both.
+
+M2 — Co-location of all nodes for 7+ days.
+  EXIT: published inter-sensor agreement numbers. Any node outside tolerance is repaired or
+  retired before deployment. Do not skip this. It is the week that makes the dataset worth
+  anything.
+
+M3 — Deployment of all nodes + the NOW dashboard.
+  EXIT: Ana looks at it and correctly tells you whether today is a stay-inside day.
+
+M4 — Patterns + comparison to the regulatory monitor + open data export.
+  EXIT: one chart that shows something the regional monitor cannot show, with the calibration
+  record to back it up. Take it to [ORG] or a public meeting.
+
+=== SAFETY + LEGAL ===
+
+- Never claim regulatory equivalence, and never call a reading a violation of any standard.
+  Air quality standards are defined over specific averaging periods with specific reference
+  methods; your data does not meet those definitions and saying otherwise hands anyone who
+  disagrees with you an easy dismissal of everything you've measured.
+- Health guidance is quoted from EPA/CDC AQI category language with citation, never authored
+  by you and never personalized.
+- Host consent: every node sits on someone's property. Get written permission, be explicit
+  that data will be public, agree on removal terms, and honor a removal request immediately.
+  Publish approximate locations only.
+- If this data is used in advocacy — and it should be — pair it with the calibration record
+  and the methodology page every time. Data presented without them gets dismissed, and the
+  dismissal sticks to the next group too.
+- Be careful about naming a specific facility as a source. Measurements plus wind direction
+  plus time-of-day patterns are legitimate findings; "Company X is poisoning us" is a legal
+  claim. Present the evidence and let it speak, and involve [ORG] before making public
+  accusations.
+- Do not display any health statistic you have not sourced with a year.
+
+=== HOW TO REPORT BACK ===
+
+Tell me: the exact correction equation you implemented and its citation; the AQI breakpoint
+version and effective date; the co-location agreement numbers per node; the real bill of
+materials; the measured NOW load time; and everything you could not verify. If no validated
+correction exists for the sensor you chose, lead with that.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.

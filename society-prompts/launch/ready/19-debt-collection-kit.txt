@@ -1,0 +1,384 @@
+You are starting a new project from scratch: Debt Collection Response Kit.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [COUNTY] [LANGUAGES] [STATE] [STATE_ABBR]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `debt-collection-kit` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a debt collection response tool for consumers in [STATE]. Build it now; do not
+ask me clarifying questions. Where you need a decision I did not make, choose the option that
+protects the user's rights and deadlines, state your choice, and keep going.
+
+Read SAFETY + LEGAL before writing code. There is a specific trap this app exists to prevent
+and it constrains the copy on every screen.
+
+=== THE PEOPLE ===
+
+Curtis, 47, [CITY]. Calls started six weeks ago about a credit card he thinks he had around
+2016. He is not sure. The caller knew his address and the last four of his Social. Last week
+the caller offered to "settle it today" for $400 if he paid over the phone right then.
+
+The second person is Theresa, who opened an envelope containing a summons and complaint with a
+court date. She read it, felt sick, put it in a drawer, and is planning to explain herself at
+the hearing. Nobody has told her that not filing a written answer is how most of these end — in
+a default judgment, entered without anyone hearing her side, followed by wage garnishment.
+
+The third is Curtis's mother, who is receiving calls about a debt that belonged to her late
+husband and has been told she is responsible for it.
+
+=== THE PROBLEM, WITH A NUMBER ===
+
+Two facts drive this entire project. Verify both from current sources and cite them:
+- The large majority of consumer debt collection lawsuits end in default judgment because the
+  defendant never files a written response. Look up the current research — the Pew Charitable
+  Trusts and state court administrative offices have published on this — and cite it with a
+  year.
+- A substantial share of collection accounts are inaccurate, misidentified, already paid, or
+  time-barred. Look up the CFPB's consumer complaint data on debt collection for the current
+  breakdown and cite it.
+
+Together: the person most likely to lose is the person who did nothing, and a meaningful
+fraction of what they lose was never validly owed.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Theresa files a written answer before her deadline, which is a form, not a speech, and which
+converts an automatic loss into a case. Curtis sends a validation letter instead of paying $400
+over the phone on a debt that may be past [STATE]'s limitations period. Curtis's mother learns
+she is generally not personally responsible for her husband's debts and stops taking the calls.
+
+=== BUILD THIS ===
+
+1. TRIAGE (/) — The first screen decides everything, because the deadlines are wildly different.
+   One question with three big answers:
+   - "A collector is calling or writing me" → validation track
+   - "I got court papers" → lawsuit track, and immediately, above everything else, the deadline
+     calculator
+   - "Money is already being taken from my pay or my bank" → judgment track
+   Never bury the lawsuit track. Someone holding a summons has days, and every screen they scroll
+   past is a risk.
+
+2. LAWSUIT TRACK — the highest-stakes path in the app.
+   - DEADLINE FIRST. Ask the date they were served and how (in person, left with someone, mail
+     — the method can change the clock). Compute the response deadline from [STATE]'s civil
+     procedure rules for the court named on the papers, which may differ between small claims,
+     district, and superior court. Show it as a date and a countdown, with the rule cited.
+     VERIFY [STATE]'s actual deadlines from the rules of civil procedure or the court's own
+     self-help materials. If you cannot verify with confidence, do NOT compute a date — show
+     "your deadline is usually X to Y days; confirm it today with the court clerk at <phone>"
+     and make finding the clerk trivial. A wrong deadline in this app is the single worst
+     failure it can produce.
+   - WHAT THE PAPERS SAY — help them read it: who is suing (the original creditor or a debt
+     buyer, which matters), the amount, the court, the case number, the date served.
+   - THE ANSWER — generate a written answer to the complaint: caption, case number, a numbered
+     response to each allegation (admit / deny / lack sufficient information to admit or deny),
+     and a section for affirmative defenses. Research and list [STATE]'s common affirmative
+     defenses in collection cases — statute of limitations, lack of standing or failure to prove
+     ownership of the debt, mistaken identity, improper service, payment — with a plain
+     explanation of each and a clear statement that they should raise only what is true.
+     Include filing mechanics: how many copies, where to file, the filing fee, how to request a
+     fee waiver in [STATE], and how to serve a copy on the plaintiff's attorney. Verify all of
+     it with the [COUNTY] clerk.
+   - GET A LAWYER — prominently, at the top and bottom of this track: legal aid for [COUNTY],
+     the [STATE] bar's lawyer referral line, and any court self-help center, all verified by
+     phone. Many jurisdictions have volunteer lawyer programs specifically for collection
+     dockets. Find out whether [COUNTY] does.
+
+3. VALIDATION TRACK — for Curtis.
+   - Explain the validation right plainly: under federal law a collector must send certain
+     information about the debt, and a written dispute sent within a defined window triggers
+     obligations before collection continues. VERIFY the current requirements and timelines
+     under the FDCPA and the CFPB's Regulation F, including what the validation notice must
+     contain and what happens on a timely dispute, and quote them accurately with citations.
+     The rules were substantially updated by Regulation F; do not describe pre-2021 practice
+     as current.
+   - Generate a validation and dispute letter: identify the account, dispute it, request
+     verification, request the name of the original creditor, and — separately — a written
+     instruction about how and whether the collector may contact them. Explain what each
+     paragraph does.
+   - Send it certified mail with return receipt, keep the receipt, and log it. Provide the
+     tracking-number field and the reminder.
+   - LOG EVERY CONTACT: date, time, number, who they said they were, what they said, whether
+     they were told to stop. This log is what turns harassment into an FDCPA claim, and it is
+     the same immutable, hash-chained pattern as project 03.
+
+4. THE TWO TRAPS — a screen every user sees before generating any letter, because these are the
+   mistakes that cost the most and are the easiest to make:
+   - MAKING A PAYMENT OR ACKNOWLEDGING THE DEBT CAN RESTART THE LIMITATIONS CLOCK in many
+     states. A $20 "good faith" payment on a debt that was almost time-barred can revive years
+     of exposure. VERIFY exactly how [STATE] treats partial payment, written acknowledgment,
+     and new promises to pay, cite the authority, and warn accordingly. If [STATE]'s rule is
+     unsettled, say so and tell them to talk to a lawyer before paying anything.
+   - NEVER GIVE A COLLECTOR BANK ACCOUNT OR DEBIT CARD NUMBERS OVER THE PHONE, and never agree
+     to anything on a first call. If a payment is right, it can be made in writing, later,
+     with terms confirmed in writing first.
+   Also cover: time-barred debt is generally still collectable by asking, just not by suing —
+   verify how [STATE] and federal rules treat suits and threats to sue on time-barred debt.
+
+5. IS THIS EVEN MINE? — Short paths for the common misdirections:
+   - Identity theft or mistaken identity: how to dispute, the FTC identity theft process, a
+     police report, and the credit bureau dispute route.
+   - Debt of a deceased relative: verify and state accurately that surviving family members are
+     generally not personally responsible for a decedent's debts from their own funds, with the
+     usual exceptions (joint accounts, co-signers, community property rules in some states,
+     being the estate's representative). Cite the FTC's guidance and check [STATE]'s community
+     property status. Cross-reference project 24.
+   - Debt already paid or discharged in bankruptcy.
+
+6. WHAT THEY CAN AND CAN'T TAKE — for the judgment track and for anyone frightened by threats.
+   Research and verify for [STATE]: wage garnishment limits, which income sources are exempt,
+   the federal rule protecting directly deposited federal benefits in bank accounts, homestead
+   and personal property exemptions, and how to claim an exemption in [STATE] — including the
+   form and the deadline, which is often short. Social Security, SSI, and VA benefits have
+   specific protections; verify the current rules and state them precisely, because people
+   living on exempt income are routinely frightened into paying from funds that could not have
+   been taken.
+
+7. COMPLAIN — the CFPB complaint process, the [STATE] attorney general's consumer division, and
+   the [STATE] agency that licenses collection agencies, each with its current link and what it
+   is good for. Generate a draft complaint from the contact log.
+
+=== DATA MODEL (local only) ===
+
+matters: id, kind enum(collection|lawsuit|judgment), creditor_original, collector_name,
+  collector_address, collector_phone, amount_claimed_cents, account_last4, first_contact_on,
+  last_activity_on, believed_last_payment_on, disputed_on, notes
+lawsuits: id, matter_id, court_name, case_number, plaintiff, served_on, service_method,
+  response_deadline, deadline_source, filed_answer_on, hearing_at
+contacts: id, matter_id, occurred_at, direction, channel, party, summary, seq, content_hash,
+  prev_hash
+letters: id, matter_id, kind, body_md, generated_at, sent_on, method, tracking_number,
+  green_card_returned_on
+evidence: id, matter_id, kind, blob_ref, sha256, exif_datetime_original|null, note
+
+Everything in IndexedDB. No server, no account. A record of someone's debts is a record of their
+worst year.
+
+=== STACK ===
+
+- Local-first PWA: React + TypeScript + Vite, IndexedDB, offline, installable.
+- Rules as dated, sourced JSON in /rules/[STATE_ABBR]/: limitations periods by debt type,
+  response deadlines by court type, exemption amounts, restart-on-payment treatment, filing
+  fees and waiver process. Zod-validated at build time; a rule without a source URL and
+  retrieval date fails the build. Embedded test cases per rule.
+- PDF via pdf-lib, client-side, formatted to look like a court filing where it is one.
+- Web Crypto for the contact-log hash chain.
+- No backend, no analytics, no third-party requests. Assert it.
+
+=== HARD CONSTRAINTS ===
+
+- The lawsuit deadline is the most prominent element on any screen where a lawsuit exists.
+  Countdown in days, the date, and the rule citation.
+- Never compute a deadline you cannot source. Fall back to the clerk's phone number.
+- Every legal statement carries a citation and a verification date, displayed.
+- Reading level 6th grade for app copy; generated letters and court filings are formal, and the
+  app says why in one line.
+- [LANGUAGES] from the first commit. Note prominently that court filings in [STATE] generally
+  must be in English and explain how to request an interpreter for the hearing —
+  cross-reference project 17.
+- WCAG 2.2 AA; 18px minimum; works on an old phone.
+- Zero network requests to third parties, ever.
+- Nothing leaves the device. Say it on the first screen and make it architecturally true.
+
+=== DO NOT BUILD ===
+
+- No debt settlement, no negotiation service, no referral to debt relief companies, no
+  affiliate links, no lead generation. That industry preys on exactly this user and a funnel
+  into it would be the worst thing this app could do.
+- No credit repair claims or credit score features.
+- No payment processing of any kind.
+- No LLM generating legal argument, defenses, or advice about a specific case. Templates,
+  verified rules, and cited explanations only. The answer form is filled from the user's own
+  admissions and denials — the app never decides for them what to deny.
+- No prediction of case outcome, no "your defense is strong."
+- No public database of collectors, no reviews, no complaint board.
+- No account, no cloud sync, no sharing feature.
+- No advice on bankruptcy beyond "this may be worth asking a bankruptcy attorney about, here is
+  how to find a free consultation in [COUNTY]."
+
+=== ACCEPTANCE TESTS ===
+
+1. Selecting "I got court papers" surfaces the deadline calculator before any other content.
+2. With an unverifiable deadline rule, the app renders the clerk fallback and never a computed
+   date — test by removing the rule file.
+3. Deadline computation is correct for each service method in the [STATE] rules, including
+   weekend and holiday roll-forward if [STATE]'s rules require it. Test each boundary.
+4. Every rule file has a source URL, retrieval date, and passing embedded tests; a missing
+   source fails the build.
+5. A rule past its effectiveTo renders the stale banner.
+6. The two-traps screen appears before any letter is generated, and cannot be skipped by deep
+   link.
+7. The generated answer includes a numbered response to every numbered allegation the user
+   entered.
+8. Contact log entries are immutable; edits create corrections and the hash chain detects
+   tampering.
+9. Zero third-party network requests during a complete journey.
+10. Every legal statement in the UI has a citation with a verification date.
+11. All strings present in every language in [LANGUAGES].
+12. The exempt-income section renders [STATE]'s verified exemptions, and shows "verify with
+    legal aid" for any exemption whose rule you could not source.
+13. axe-core clean; deadline countdown is announced by a screen reader.
+14. The printed answer matches the [COUNTY] court's formatting requirements you verified.
+
+=== MILESTONES ===
+
+M0 — Triage + the lawsuit deadline calculator with verified [STATE] rules.
+  EXIT: hand-verify the deadline for three court types and three service methods against the
+  rules of civil procedure, and confirm one of them with a [COUNTY] clerk by phone.
+
+M1 — The answer generator + filing mechanics.
+  EXIT: a legal aid attorney or a court self-help center staffer reviews a generated answer and
+  says it would be accepted. Do not skip this gate. Formatting requirements are local and a
+  rejected filing on a deadline is a catastrophe.
+
+M2 — Validation track, letters, contact log.
+  EXIT: acceptance tests 6-8 pass and an attorney reviews the validation letter.
+
+M3 — Exemptions, judgment track, complaints, second language.
+  EXIT: every exemption figure traces to a verified source.
+
+M4 — Five real users.
+  EXIT: report how many filed an answer before their deadline. That is the only number that
+  matters.
+
+=== SAFETY + LEGAL ===
+
+- Not legal advice, not a lawyer, stated on every screen and in every generated document, with
+  legal aid for [COUNTY] and the [STATE] bar referral line named and verified.
+- The deadline is a hard cliff and the app's most dangerous output. Never guess it. When
+  uncertain, route to the clerk. Put a comment in the code at that branch explaining why the
+  conservative path is mandatory.
+- Never advise anyone to make a payment, offer a settlement, or acknowledge a debt without
+  warning about the limitations-restart risk in [STATE] first.
+- Never tell a user a debt is time-barred. Show them [STATE]'s limitations period, the debt
+  type, and the date they said the last activity was, and tell them that whether it applies is
+  a question for a lawyer — the accrual date is frequently disputed and getting it wrong in
+  either direction is costly.
+- Do not encourage ignoring a collector, and do not encourage confrontation. The app's position
+  is: respond in writing, keep records, meet deadlines, get a lawyer.
+- The contact log may contain harassment, threats, and abusive language. Store it locally,
+  never transmit it, and offer a PIN lock — a household member may also be a creditor's contact
+  point.
+- Debts of the deceased: be precise and cautious. Collectors do contact grieving relatives who
+  owe nothing. State the general rule, name the exceptions, and route to legal aid.
+- Do not display any statistic you have not sourced with a year.
+
+=== HOW TO REPORT BACK ===
+
+Lead with the deadline rules: what you verified from [STATE]'s rules of civil procedure, which
+court types, which service methods, and what the [COUNTY] clerk confirmed. Then: the limitations
+periods by debt type with sources; how [STATE] treats partial payment; the exemption figures;
+what the M1 reviewer said; and everything you could not verify.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.
