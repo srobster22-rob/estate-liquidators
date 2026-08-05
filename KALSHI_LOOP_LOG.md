@@ -228,6 +228,36 @@ never charges less, so no result here is flattered by the choice. `rounding_gran
 switches the other reading on and §1b prices the gap at under a cent per order. The headline is
 unchanged at **$292/yr** because econ_print's multiplier is 1.0. 87 checks pass.
 
+K17 · Verified `live.py` — not against the API, which is unreachable, but against Kalshi's own
+published SDK. · **Four things were wrong and the first would have broken every authenticated
+call.** Kalshi 403s this container and every fetch path, but **PyPI is not blocked**, so the
+official `kalshi-python` 2.1.4 came down and its source settled the contract. Confirmed right:
+the production base URL (`api.elections.kalshi.com/trade-api/v2` — a search snippet claiming
+`external-api.kalshi.com` was simply wrong, and SDK source beat snippet), the market field
+names, the `/portfolio/orders` path, and the order schema with prices bounded 1..99.
+
+Wrong: **(1) the signature included the query string.** Kalshi signs `urlparse(url).path`;
+this file signed `/markets?limit=1`, so every authenticated GET with a parameter would have
+been rejected as a bad signature — and it would have looked like a credentials problem rather
+than a bug here. **(2) The orderbook parser assumed one encoding** — Kalshi's generated SDK
+exposes the sides as `"true"`/`"false"`, the YAML 1.1 trap where unquoted `yes:`/`no:` keys
+parse as booleans, and levels appear as arrays, as `{price,count}` objects, and as
+dollar-denominated strings. All four are accepted now, with a magnitude-independent dollar
+test so a 1c level does not become 100c. **(3) No idempotency key** — orders now carry
+`client_order_id`, without which a retry after a timeout can double-fill. **(4) A broken
+`cryptography` crashed the process**: a build missing `_cffi_backend` raises pyo3's
+`PanicException`, which is not an `ImportError` and sailed through the obvious guard. This
+container ships exactly that build, and it took down the entire self-test suite with a Rust
+stack trace before the guard was widened.
+
+Added: `buy_max_cost` so the EXCHANGE enforces the notional ceiling too, set to the strict
+notional so a fee-inclusive reading rejects rather than oversizes; and `--demo`, pointing at
+`demo-api.elections.kalshi.com`, which is where order placement should be tested. The signing
+path is now genuinely tested offline — generate a key, sign a request, verify the signature
+against the message Kalshi's SDK builds, plus a **negative control** proving it does not verify
+over the query-inclusive message. That negative control is the check that would have caught the
+original bug. 106 checks pass.
+
 ---
 
 ## Standing notes
@@ -245,9 +275,12 @@ unchanged at **$292/yr** because econ_print's multiplier is 1.0. 87 checks pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
-- **The fee schedule is verified; `live.py` is not.** Endpoint paths, field names and the
-  signature construction have never touched a live server. That is now the largest unchecked
-  assumption in the directory.
+- **A vendor's own SDK is a better source than any write-up about it.** PyPI was reachable
+  when every Kalshi host was not, and the SDK source corrected a base URL that a search
+  snippet had wrong. When the API cannot be called, read the client the vendor ships.
+- **`live.py` conforms to the SDK contract; it has still never made a request.** Whether the
+  server emits `yes`/`no` or `true`/`false`, and whether `buy_max_cost` counts fees, can only
+  be settled by a live call. Run `--demo --check` first, from a machine with egress.
 - **A sourced count is not a measurement.** The census comes from published figures because
   the API is unreachable from here; it is far better than the guess it replaced and it is still
   not `GET /markets`. Re-run it against the live API from a machine with egress before anyone

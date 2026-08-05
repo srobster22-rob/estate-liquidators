@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 87 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 106 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -32,6 +32,7 @@ python -m kalshi.factory --generations 20      # longer search
 python -m kalshi.factory --quick               # seconds, for checking wiring
 
 python -m kalshi.live --check                  # can this machine reach Kalshi?
+python -m kalshi.live --demo --check           # same, against the demo exchange
 python -m kalshi.live --record TICKER --samples 500 --interval 60
 python -m kalshi.live --replay rec.jsonl --bot 'hold_favorite(thresh=95,qty=25)'
 ```
@@ -58,7 +59,7 @@ checks themselves.
 | `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
-| `selftest.py` | 87 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 106 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -315,10 +316,32 @@ what runs, and it is the **conservative** reading — it never charges less, so 
 flattered by it. `rounding_granularity_cents` switches the other reading on and §1b prices the
 difference at under a cent per order.
 
-**Still unverified: the whole of `live.py`.** Endpoint paths, field names and the RSA-PSS
-signature construction are unchecked against a live server — Kalshi returns 403 to everything
-from this environment. `--check` prints what it actually got back and warns on missing fields.
-The offline `--replay` path *is* tested.
+**`live.py` is now verified against Kalshi's own SDK, not against the API.** No request here
+has ever reached Kalshi — the container has no route and Kalshi's bot protection blocks every
+other fetch path. But the official `kalshi-python` 2.1.4 package *is* reachable (PyPI is not
+blocked), so endpoint paths, host names, field names, the order schema and the signing
+algorithm were checked against its source. `selftest.py` §8f pins each one, and the signature
+is verified for real — a key is generated, a request signed, and the signature checked against
+the message Kalshi's SDK would build, plus a negative control proving it does *not* verify over
+the query-inclusive message.
+
+Four things were wrong, and the first would have broken every authenticated call:
+
+1. **The signature included the query string.** Kalshi signs `urlparse(url).path`. This signed
+   `/markets?limit=1`, so any authenticated GET with a parameter would have been rejected as a
+   bad signature — and it would have looked like a credentials problem, not a bug here.
+2. **The orderbook parser assumed one encoding.** Kalshi's generated SDK exposes the sides as
+   `"true"`/`"false"` (unquoted `yes:`/`no:` keys read as YAML 1.1 booleans), and levels appear
+   as arrays, as objects, and as dollar strings. All four parse now.
+3. **No idempotency key.** Orders now carry `client_order_id`; without one a retry after a
+   timeout can double-fill.
+4. **A broken `cryptography` crashed the process** with a Rust `PanicException`, which is not
+   an `ImportError` and sailed through the obvious guard. This container ships exactly that
+   build, and it took the whole self-test suite down with it.
+
+Still settleable only by a live call: whether the server emits `yes`/`no` or `true`/`false`,
+whether `buy_max_cost` counts fees toward its ceiling, and whether any field has been renamed
+since 2.1.4. Run `--demo --check` first.
 
 **Also not modelled:** market impact beyond depth-at-touch, a shared bankroll across
 simultaneous markets (so no compounding and no path to ruin — sizing is a separate problem

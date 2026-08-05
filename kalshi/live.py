@@ -7,12 +7,36 @@ The Kalshi adapter — the bridge from the simulator to the actual exchange.
     python -m kalshi.live --replay recorded.jsonl     backtest recorded books, no simulator
     python -m kalshi.live --paper BTCD-25JUL30 --bot 'hold_favorite(thresh=95,qty=25)'
 
-THIS FILE CANNOT BE TESTED IN THE ENVIRONMENT IT WAS WRITTEN IN. The container has no
-route to `api.elections.kalshi.com` — the proxy answers 403 to CONNECT — so every code path
-below that touches the network is UNVERIFIED against a live server. The request shapes,
-the auth signature construction and the field names come from general knowledge of Kalshi's
-v2 REST API and they are exactly the sort of thing that drifts. `--check` exists to be the
-first thing anyone runs, and it prints what it actually got rather than asserting success.
+NO REQUEST HERE HAS EVER REACHED KALSHI. The container has no route to the API and Kalshi's
+bot protection blocks every other fetch path, so nothing below has been exercised against a
+live server. What HAS been done is verify the contract against Kalshi's own published Python
+SDK (`kalshi-python` 2.1.4, read from PyPI, which the proxy does allow) — endpoint paths,
+host names, field names, the order schema and the signing algorithm all come from that source
+rather than from memory. `selftest.py` section 8f pins each one, and the signature is verified
+for real: a key is generated, a request is signed, and the signature is checked against the
+message Kalshi's SDK would construct.
+
+FOUR THINGS WERE WRONG BEFORE THAT CHECK:
+
+  1. THE SIGNATURE INCLUDED THE QUERY STRING. Kalshi signs `timestamp + METHOD + path` with
+     the path taken as `urlparse(url).path` — no query. This file signed `/markets?limit=1`,
+     so every authenticated GET carrying a parameter would have been rejected as a bad
+     signature, and it would have looked like a credentials problem rather than a bug here.
+  2. THE ORDERBOOK PARSER ASSUMED ONE ENCODING. Kalshi's generated SDK exposes the two sides
+     under `"true"`/`"false"` (unquoted `yes:`/`no:` keys in the spec, parsed as YAML 1.1
+     booleans), and levels appear variously as `[price, count]`, as `{"price", "count"}`, and
+     as dollar-denominated strings. All four are accepted now; an unparseable book still
+     yields one contract rather than invented liquidity.
+  3. NO IDEMPOTENCY KEY. Orders now carry a `client_order_id`. Without one, a retry after a
+     timeout can double-fill — the worst failure mode a trading adapter has.
+  4. A BROKEN `cryptography` CRASHED THE PROCESS. A build with a missing `_cffi_backend`
+     raises pyo3's `PanicException`, which is not an `ImportError` and sailed straight
+     through the obvious guard. This container ships exactly that build.
+
+STILL UNVERIFIED, and only a live call can settle it: whether the server actually emits
+`yes`/`no` or `true`/`false`, whether `buy_max_cost` counts fees toward the ceiling, and
+whether any response field has been renamed since 2.1.4. `--check` prints what it actually
+got back and warns on missing fields; run it first, on `--demo`.
 
 WHY THIS MATTERS MORE THAN THE REST OF THE DIRECTORY
 
@@ -39,13 +63,18 @@ import json
 import os
 import pathlib
 import sys
+import uuid
 import time
 import urllib.error
 import urllib.request
 
 from . import backtest, fees, markets, strategies
 
-API_BASE = os.environ.get("KALSHI_API_BASE", "https://api.elections.kalshi.com/trade-api/v2")
+# Confirmed against Kalshi's official Python SDK (kalshi-python 2.1.4, configuration.py):
+# production and demo hosts, both under /trade-api/v2.
+PROD_BASE = "https://api.elections.kalshi.com/trade-api/v2"
+DEMO_BASE = "https://demo-api.elections.kalshi.com/trade-api/v2"
+API_BASE = os.environ.get("KALSHI_API_BASE", PROD_BASE)
 UA = "estate-liquidators-kalshi-research/1.0"
 DEFAULT_MAX_NOTIONAL_CENTS = 500
 
@@ -64,13 +93,25 @@ def _sign(method: str, path: str, key_id: str, private_key_pem: str) -> dict:
     try:
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import padding
-    except ImportError:
+    except BaseException as e:                      # noqa: BLE001 — see below
+        # Deliberately BaseException, not ImportError. A cryptography install with a missing
+        # `_cffi_backend` raises pyo3's PanicException, which does NOT inherit from
+        # ImportError and so sails straight through the obvious `except ImportError`. This
+        # environment has exactly that build, and it took down the whole self-test suite with
+        # a Rust stack trace before this was widened.
         raise SystemExit(
-            "signing needs the `cryptography` package: pip install cryptography\n"
-            "(only required for authenticated endpoints; --check and --markets are public)")
+            f"signing needs a working `cryptography`: pip install --upgrade cryptography\n"
+            f"(import failed with {type(e).__name__}: {e})\n"
+            "Only authenticated endpoints need it; --check, --markets and --replay do not.")
     import base64
 
     ts = str(int(time.time() * 1000))
+    # The query string is NOT signed. Kalshi's own SDK does `path = urlparse(url).path`,
+    # i.e. it signs `/trade-api/v2/markets`, never `/trade-api/v2/markets?limit=1`. This file
+    # used to sign the full path INCLUDING the query, which meant every authenticated GET
+    # that carried a parameter would have been rejected for a bad signature — and it would
+    # have looked like a credentials problem, not a bug here.
+    path = path.split("?", 1)[0]
     msg = (ts + method.upper() + path).encode("utf-8")
     key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
     sig = key.sign(
@@ -205,20 +246,61 @@ def record(tickers: list[str], out_path: pathlib.Path, interval_s: float, sample
 # Replay — recorded real books through the unmodified backtester
 # ---------------------------------------------------------------------------
 
+def _orderbook_levels(ob, side: str) -> list:
+    """The resting levels on one side, whatever the server chose to call them.
+
+    Kalshi's own generated SDK exposes the two sides under the keys `"true"` and `"false"`
+    rather than `"yes"` and `"no"` — the classic YAML 1.1 trap, where unquoted `yes:`/`no:`
+    keys in the spec were parsed as booleans and stringified. Which pair actually comes over
+    the wire cannot be settled from here (Kalshi 403s every request from this environment),
+    so both are accepted. Guessing wrong in one direction silently reports an empty book;
+    accepting both costs nothing.
+    """
+    if not isinstance(ob, dict):
+        return []
+    for key in (side, {"yes": "true", "no": "false"}[side]):
+        v = ob.get(key)
+        if isinstance(v, list):
+            return v
+    return []
+
+
+def _level_price_count(lvl) -> tuple[int, int] | None:
+    """One level -> (price in whole cents, contracts), across all documented encodings.
+
+    Seen in the wild and in Kalshi's own models: `[42, 13]`, `{"price": 42, "count": 13}`,
+    and dollar-denominated strings like `["0.4200", "13.00"]`. The string case is detected by
+    the decimal point rather than by magnitude, because a bare `1` is one CENT and `"0.01"`
+    is the same price written the other way — a magnitude test would turn 1c into 100c.
+    """
+    if isinstance(lvl, dict):
+        p, c = lvl.get("price"), lvl.get("count")
+    elif isinstance(lvl, (list, tuple)) and len(lvl) >= 2:
+        p, c = lvl[0], lvl[1]
+    else:
+        return None
+    if p is None or c is None:
+        return None
+    try:
+        price = (round(float(p) * 100) if isinstance(p, str) and "." in p
+                 else int(round(float(p))))
+        return price, int(round(float(c)))
+    except (TypeError, ValueError):
+        return None
+
+
 def _depth_at_touch(ob, side, price):
     """Contracts resting at `price` on `side` of a Kalshi orderbook payload.
 
-    Kalshi returns {"yes": [[price, size], ...], "no": [[price, size], ...]}. Falls back to
-    a nominal 1 contract when the shape is not what is expected, rather than inventing
-    liquidity — an unparseable book should make a strategy look worse, never better.
+    Falls back to a nominal 1 contract when the shape is not what is expected, rather than
+    inventing liquidity — an unparseable book should make a strategy look worse, never
+    better. That fallback is the reason this function is written to be permissive about
+    encodings but never optimistic about size.
     """
-    try:
-        levels = (ob or {}).get(side) or []
-        for lvl in levels:
-            if int(lvl[0]) == int(price):
-                return max(1, int(lvl[1]))
-    except (TypeError, ValueError, IndexError, KeyError):
-        pass
+    for lvl in _orderbook_levels(ob, side):
+        got = _level_price_count(lvl)
+        if got and got[0] == int(price):
+            return max(1, got[1])
     return 1
 
 
@@ -345,8 +427,15 @@ def trade_once(ticker: str, bot_spec: str, live: bool, max_notional: int):
             print(f"  SKIP {it.side} x{qty} @ {px}c = {notional}c > --max-notional "
                   f"{max_notional}c")
             continue
+        # client_order_id is the exchange's idempotency key. Without it a retry after a
+        # timeout can double-fill, which is the single worst failure mode a trading adapter
+        # has. buy_max_cost is a SERVER-side ceiling on what the order may cost in cents —
+        # --max-notional is enforced here in the client, and this makes the exchange enforce
+        # it too, so a bug on this side cannot spend more than intended.
         orders.append({"ticker": ticker, "action": "buy", "side": it.side,
                        "count": qty, "type": "limit",
+                       "client_order_id": str(uuid.uuid4()),
+                       "buy_max_cost": int(notional),
                        ("yes_price" if it.side == "yes" else "no_price"): px})
         print(f"  ORDER buy {it.side} x{qty} @ {px}c  (notional {notional}c, "
               f"est. fee {fees.taker_fee_cents(qty, px)}c)")
@@ -366,6 +455,9 @@ def trade_once(ticker: str, bot_spec: str, live: bool, max_notional: int):
 
 def main():
     ap = argparse.ArgumentParser(description="Kalshi adapter: check, list, record, replay, trade.")
+    ap.add_argument("--demo", action="store_true",
+                    help="use the demo exchange (demo-api.elections.kalshi.com) — separate "
+                         "credentials, fake money, the right place to test order placement")
     ap.add_argument("--check", action="store_true", help="probe the API and print what came back")
     ap.add_argument("--markets", action="store_true", help="list open markets")
     ap.add_argument("--series", help="filter --markets by series ticker")
@@ -382,6 +474,11 @@ def main():
     ap.add_argument("--max-notional", type=int, default=DEFAULT_MAX_NOTIONAL_CENTS,
                     help="cents at risk per cycle (default 500 = $5)")
     args = ap.parse_args()
+
+    if args.demo:
+        global API_BASE
+        API_BASE = os.environ.get("KALSHI_DEMO_API_BASE", DEMO_BASE)
+        print(f"demo exchange: {API_BASE}\n")
 
     if args.check:
         check()

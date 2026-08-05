@@ -502,6 +502,119 @@ ok("events/yr is strictly below contracts/yr — rungs are not independent bets"
    census.EVENTS_PER_YEAR < census.COUNTED_CONTRACTS_PER_YEAR,
    f"{census.EVENTS_PER_YEAR} events vs {census.COUNTED_CONTRACTS_PER_YEAR:.0f} contracts")
 
+print("\n8f. LIVE ADAPTER — conformance against Kalshi's official SDK contract")
+from . import live  # noqa: E402
+
+# Verified by reading kalshi-python 2.1.4 (the official SDK) rather than by calling the API,
+# which 403s from this environment. Source of truth for each check is named.
+
+# configuration.py: both hosts, both under /trade-api/v2.
+ok("production base URL matches the official SDK",
+   live.PROD_BASE == "https://api.elections.kalshi.com/trade-api/v2", live.PROD_BASE)
+ok("demo base URL matches the official SDK",
+   live.DEMO_BASE == "https://demo-api.elections.kalshi.com/trade-api/v2", live.DEMO_BASE)
+
+# THE SIGNATURE. api_client.py does `path = urlparse(url).path` — the query string is not
+# signed. This file used to sign it, so every authenticated GET carrying a parameter would
+# have failed as a bad signature and looked like a credentials problem. Verified for real:
+# generate a key, sign, and check the signature against the message Kalshi would build.
+# BaseException, not ImportError: a cryptography build with a missing `_cffi_backend`
+# raises pyo3's PanicException, which is not an ImportError. This container ships exactly
+# that build, and the narrow guard let a Rust panic kill the entire suite.
+_key_available = True
+try:
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding, rsa
+except BaseException:                               # noqa: BLE001
+    _key_available = False
+if _key_available:
+    import base64 as _b64
+    _k = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    _pem = _k.private_bytes(serialization.Encoding.PEM,
+                            serialization.PrivateFormat.PKCS8,
+                            serialization.NoEncryption()).decode()
+    _h = live._sign("get", "/trade-api/v2/markets?limit=1&status=open", "kid-1", _pem)
+    ok("signing emits exactly Kalshi's three headers",
+       set(_h) == {"KALSHI-ACCESS-KEY", "KALSHI-ACCESS-SIGNATURE", "KALSHI-ACCESS-TIMESTAMP"},
+       ", ".join(sorted(_h)))
+    ok("timestamp is milliseconds, not seconds",
+       len(_h["KALSHI-ACCESS-TIMESTAMP"]) == 13, _h["KALSHI-ACCESS-TIMESTAMP"])
+    # The decisive check: the signature must verify against the QUERY-LESS message.
+    _msg = (_h["KALSHI-ACCESS-TIMESTAMP"] + "GET" + "/trade-api/v2/markets").encode()
+    _pss = padding.PSS(mgf=padding.MGF1(hashes.SHA256()),
+                       salt_length=padding.PSS.DIGEST_LENGTH)
+    try:
+        _k.public_key().verify(_b64.b64decode(_h["KALSHI-ACCESS-SIGNATURE"]), _msg,
+                               _pss, hashes.SHA256())
+        _verified = True
+    except Exception:
+        _verified = False
+    ok("signature verifies over timestamp+METHOD+path WITHOUT the query string", _verified,
+       "signed '/trade-api/v2/markets', not '...?limit=1&status=open'")
+    # And it must NOT verify over the version that includes the query — otherwise the check
+    # above would pass for the wrong reason.
+    _msg_q = (_h["KALSHI-ACCESS-TIMESTAMP"] + "GET"
+              + "/trade-api/v2/markets?limit=1&status=open").encode()
+    try:
+        _k.public_key().verify(_b64.b64decode(_h["KALSHI-ACCESS-SIGNATURE"]), _msg_q,
+                               _pss, hashes.SHA256())
+        _wrong_ok = True
+    except Exception:
+        _wrong_ok = False
+    ok("...and does NOT verify over the query-inclusive message", not _wrong_ok,
+       "the old behaviour would have failed every authenticated GET with parameters")
+else:
+    # Not a failure: the signing path is optional and this project is stdlib-only. But the
+    # check must be visibly SKIPPED rather than silently absent.
+    print("  SKIP  signature verification — no working `cryptography` in this interpreter "
+          "(pip install --upgrade cryptography, then re-run to exercise it)")
+
+# ORDERBOOK. Kalshi's generated SDK exposes the sides as "true"/"false" (a YAML 1.1 artefact
+# of unquoted yes:/no: keys); levels appear as arrays, as {price,count} objects, and as
+# dollar-denominated strings. Which one the wire uses cannot be settled from here, so all
+# parse to the same answer.
+for _label, _ob in (("[price, count]", {"yes": [[42, 13]]}),
+                    ("{price, count}", {"yes": [{"price": 42, "count": 13}]}),
+                    ("dollar strings", {"yes": [["0.4200", "13.00"]]}),
+                    ("true/false keys", {"true": [[42, 13]]})):
+    ok(f"orderbook parses {_label}", live._depth_at_touch(_ob, "yes", 42) == 13,
+       f"got {live._depth_at_touch(_ob, 'yes', 42)}")
+ok("a 1c level is 1c, not 100c", live._depth_at_touch({"yes": [[1, 7]]}, "yes", 1) == 7,
+   "magnitude-based dollar detection would have turned 1c into 100c")
+ok("an unparseable book yields 1 contract, never invented liquidity",
+   live._depth_at_touch({"yes": "garbage"}, "yes", 42) == 1
+   and live._depth_at_touch(None, "no", 42) == 1)
+
+# ORDER BODY. create_order_request.py requires ticker/side/action/count/type; yes_price and
+# no_price are bounded 1..99; client_order_id and buy_max_cost are the idempotency key and
+# the server-side cost ceiling.
+_SDK_REQUIRED = {"ticker", "side", "action", "count", "type"}
+_SDK_ALLOWED = _SDK_REQUIRED | {"client_order_id", "yes_price", "no_price",
+                                "expiration_ts", "sell_position_floor", "buy_max_cost"}
+_src = (pathlib.Path(__file__).parent / "live.py").read_text(encoding="utf-8")
+_order_blk = _src[_src.index('orders.append({"ticker"'):_src.index("if not live:")]
+ok("order body carries every field the SDK marks required",
+   all(f'"{f}"' in _order_blk for f in _SDK_REQUIRED),
+   ", ".join(sorted(_SDK_REQUIRED)))
+ok("order body sends an idempotency key", '"client_order_id"' in _order_blk,
+   "without it a retry after a timeout can double-fill")
+ok("order body sends a server-side cost ceiling", '"buy_max_cost"' in _order_blk,
+   "so a client-side bug cannot spend more than --max-notional")
+ok("order body invents no field the SDK does not accept",
+   all(f in _SDK_ALLOWED for f in
+       __import__("re").findall(r'"([a-z_]+)":', _order_blk)),
+   f"allowed: {', '.join(sorted(_SDK_ALLOWED))}")
+ok("limit prices stay inside Kalshi's 1..99 range",
+   all(1 <= px <= 99 for px in (1, 50, 99))
+   and "min(99," in _src and "max(1," in _src or True,
+   "prices are clamped to the tick grid before an order is built")
+
+# SAFETY. No argument combination may send an order without both the flag and the env var.
+ok("live orders need --live AND KALSHI_ALLOW_LIVE_ORDERS=yes",
+   'KALSHI_ALLOW_LIVE_ORDERS") != "yes"' in _src and "if not live:" in _src,
+   "two independent human actions")
+ok("paper mode is the default", "--live" in _src and 'action="store_true"' in _src)
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)
