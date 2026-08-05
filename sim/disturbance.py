@@ -27,8 +27,17 @@ DT = 1.0
 
 IMPULSE_PER_L = 0.09
 SUSTAINED_PER_L = 0.02
-DECAY_PER_MIN = 1.0
+DECAY_PER_MIN = 50.0        # canonical, locked R4
 LIGHT_GAIN = 25.0
+FLOOR_PER_CURSED = 7.0      # canonical, raised from an inert 2.0 in R9
+
+# The value DESIGN 6.5 originally specified, kept so R3's finding stays reproducible.
+# This file is what proved 1/min is unsurvivable; running it at 1/min is a HISTORICAL
+# scenario, not the current model. Until R21 it was the DEFAULT, so this file printed
+# "COLLECT in 99% of nights, even for a crew that never scans" — the exact broken
+# behaviour R4 fixed — to anyone who ran it. Four rounds of drift bugs in a row came
+# from a retracted constant sitting quietly in one implementation.
+DECAY_BROKEN_R3 = 1.0
 
 # AUDIO-SPEC 1.2
 L = {"walk": 20, "sprint": 45, "appraise": 48, "door": 60, "crowbar": 75,
@@ -51,7 +60,7 @@ def run_night(seed=0, scan_rate=0.7, use_levers=True, ghost_static=0,
     quiet_until = -1.0
     lever_uses = 0
     lights_on = 0
-    floor = cursed_items * 3.0          # cursed cargo sets the decay floor
+    floor = cursed_items * FLOOR_PER_CURSED   # cursed cargo sets the decay floor
 
     # Ghost Static: DESIGN.md 5.1 — every point spent adds +1 Disturbance.
     static_times = sorted(rng.uniform(180, NIGHT_S) for _ in range(ghost_static))
@@ -151,3 +160,13 @@ if __name__ == "__main__":
               light_wings=1)
     summarise("ghost spending 6 Static", ghost_static=6)
     summarise("ghost spending 18 Static", ghost_static=18)
+
+    print("\n\nR3'S ORIGINAL FINDING, kept reproducible: decay as first specced")
+    print("-" * 78)
+    print(f"{'scenario':<34}{'PURSUE':>7}{'%':>8}{'COLLECT':>9}{'%':>8}"
+          f"{'end D':>9}{'levers':>8}")
+    summarise("at 1/min (as DESIGN 6.5 specced)", decay=DECAY_BROKEN_R3)
+    summarise("...even a crew that never scans", decay=DECAY_BROKEN_R3,
+              scan_rate=0.0, cursed_items=0, light_wings=1)
+    print("  Both pin at COLLECT. Gross gain is ~54/min against a 100-point scale,\n"
+          "  so no crew behaviour can outrun a 1/min decay. That is why it is 50.")

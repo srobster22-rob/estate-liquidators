@@ -318,6 +318,36 @@ gate with everything expensive behind it. Lowered to **~15%** across `DESIGN.md`
 · Three attempts have now failed to turn "is +4.4% enough?" into a simulation result. It is a
 design judgement, and the next real information comes from a playtest.
 
+R21 · Closed the drift class structurally — a **declared-constant audit** that scans every
+Python sim for module-level constants whose name maps to a canonical concept and requires the
+value to match `tuning.json`, with no manifest entry needed. This is the "read the
+implementation" check R17's docstring said only reading could do, and R19 documented as the
+residual hole. · **The same defect has now been found four times, and the fourth is the worst.**
+R17 caught it in both browser prototypes; R20 caught it in `integrated.py`, in the model that
+produced the appraiser's headline number. R21 caught **`sim/disturbance.py` shipping
+`DECAY_PER_MIN = 1.0`** — the value R3 *proved unsurvivable* and R4 replaced with 50 — as the
+default its printed run actually used, plus a cursed floor of 3.0 against canon's 7.0. So from
+R4 until now, anyone running the file that defines the pacing spine saw **"PURSUE at 1.0 min in
+100% of nights, COLLECT in 99%, even for a crew that never scans"**: the exact broken behaviour
+R4 fixed, presented as current output. Fixed both, kept the 1/min case as an explicitly-named
+historical scenario so R3's finding stays reproducible, and negative-controlled all six. **133 →
+157 checks.** · **Fixing it invalidated the pacing spine's headline evidence.** `DESIGN.md` §6.5's
+archetype table — the table under the line "that's the curve the design has been claiming all
+along, now actually produced" — does not reproduce. Under canonical constants every archetype
+including greedy sits at **0% COLLECT**; with levers disabled, 35% baseline and 66% greedy. The
+table says 15% and 57% and matches neither. Three causes, separated by measurement: (1) it
+predates R9's floor change 3.0 → 7.0 and was never re-run; (2) the file that produced it has not
+been runnable-as-recorded since R4, per the bug above; (3) **the levers are a ceiling, not a
+lever** — they fire at 78 and 82, just under COLLECT's 85, and the modelled crew pulls them the
+instant it can, which makes COLLECT arithmetically unreachable rather than avoidable. · **The
+honest limit:** `disturbance.py` prices the levers' benefit but not their cost — it has no
+earnings model, so going dark and going quiet are free — while `integrated.py`, which does model
+earnings, has no levers at all. **Neither model can currently say whether the greed dial has
+teeth**, which is Milestone 4's whole exit criterion. Marked the table superseded with the
+measured alternatives rather than quietly rewriting the design's central claim on the strength of
+a model I had just shown to be incomplete. What survives: the *ordering* (careful never hunted,
+greedy at PURSUE inside 90s vs baseline's 3.5 min). The COLLECT shares do not.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

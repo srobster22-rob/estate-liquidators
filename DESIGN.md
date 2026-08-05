@@ -435,6 +435,31 @@ tier, over 400 simulated nights per archetype:
 | **Baseline** | 24% | 36% | 25% | **15%** | **5.8 min** (100%) |
 | Greedy — 5 cursed, loud | 11% | 16% | 16% | **57%** | 2.7 min (100%) |
 
+> ### ⚠️ This table does not reproduce under the current constants — R21
+>
+> Re-run against canonical `tuning.json` (decay 50, cursed floor **7**), the same
+> archetypes give **0% COLLECT for every crew, greedy included** — and with the levers
+> disabled, 35% baseline / 66% greedy. The table matches neither. Three causes, and they
+> need untangling before any of these numbers is quoted again:
+>
+> 1. **It predates R9.** The table was measured with the cursed floor at 3.0; R9 raised it
+>    to 7.0 and nobody re-ran the tuning.
+> 2. **The file that produced it stopped being runnable as recorded.** `sim/disturbance.py`
+>    shipped `DECAY_PER_MIN = 1.0` — the value R3 proved unsurvivable and R4 replaced — as
+>    the default its printed run used, from R4 until R21. Anyone who ran it saw the *broken*
+>    curve, not this one.
+> 3. **The levers are a ceiling, not a lever.** They fire at 78 (kill lights) and 82 (go
+>    quiet), just under COLLECT's 85, and the sim's crew pulls them the instant it can. That
+>    makes COLLECT arithmetically unreachable rather than merely avoidable. The model prices
+>    the levers' *benefit* and not their *cost* — it has no earnings, so going dark and going
+>    quiet are free — so it cannot say whether that ceiling is real or an artifact of a
+>    perfect-play policy. `integrated.py`, which does model earnings, has no levers at all.
+>    **Neither model can currently answer whether the greed dial has teeth.**
+>
+> What survives unchanged: a careful crew is never hunted (0% COLLECT, first PURSUE in 1–4%
+> of nights), and a greedy crew reaches PURSUE inside 90 seconds versus 3.5 for baseline. The
+> *ordering* holds. The COLLECT shares do not.
+
 That's the curve the design has been claiming all along, now actually produced: a careful
 crew can play an entire night without ever being hunted, a baseline crew gets its first
 serious pursuit around the halfway mark and spends the last stretch genuinely in danger, and

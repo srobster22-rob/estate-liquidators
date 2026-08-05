@@ -72,7 +72,7 @@ TUNING = json.loads((ROOT / "tuning.json").read_text(encoding="utf-8"))
 
 # Pinned so the headline count is machine-checked. Raise it deliberately when you
 # add a check; a drop means checks silently stopped running.
-EXPECTED_CHECKS = 133
+EXPECTED_CHECKS = 157
 
 # Canonical constants with no implementation to check against, and why. Anything
 # here that turns out to BE covered is reported as a stale exemption.
@@ -148,7 +148,8 @@ IMPL_KEYS = {
         "disturbance.decay_per_min_at_crew4", "disturbance.ratchet_end",
         "disturbance.per_cursed_item_floor", "disturbance.tier_patrol_at",
         "disturbance.tier_pursue_at", "disturbance.tier_collect_at",
-        "attention.recompute_seconds",
+        "attention.recompute_seconds", "disturbance.light_wing_gain",
+        "night.appraise_seconds",
         "van.base_slots", "van.ruin_exp",
         "van.slot_cost.pocket", "van.slot_cost.armful", "van.slot_cost.two_man",
         "van.slot_cost.cart",
@@ -518,6 +519,93 @@ for name, sim_name in (("pocket", "pocket"), ("armful", "armful"),
     check(f"van.slot_cost.{name}", f"py chain slot_cost[{name}]",
           grab(chain_classes, rf"[\"']{sim_name}[\"']:\s*\(([\d.]+)"),
           v["slot_cost"][name])
+
+# ------------------------------------------------- declared-constant audit (R21)
+#
+# The hole R17 documented and R20 fell into. IMPL_KEYS is per *implementation family*,
+# so one Python file satisfying a key covers for every other Python file. That hid the
+# same defect four times:
+#
+#   R17  proto/index.html and proto3d/index.html both multiplying the cursed floor by
+#        the retracted 2 instead of 7, while C# and Python satisfied the key.
+#   R20  integrated.py doing the same with an inline `cursed * 2.0` - in the model that
+#        produced the appraiser's headline number, so the number was wrong too.
+#   R21  disturbance.py shipping DECAY_PER_MIN = 1.0, the value R3 PROVED unsurvivable
+#        and R4 replaced with 50, as the default its printed run actually used. Anyone
+#        running it saw "COLLECT in 99% of nights, even for a crew that never scans"
+#        and would have concluded the pacing spine was broken. It also carried a
+#        cursed floor of 3.0.
+#
+# So: scan every Python sim for module-level constants whose NAME maps to a canonical
+# concept, and require the value to match tuning.json - no manifest entry needed. This
+# is the "read the implementation" check the R17 docstring said only reading could do.
+# It catches a stale constant in a file nobody remembered to register, which is exactly
+# how all four of the above survived.
+CONST_NAMES = {
+    "IMPULSE": "loudness_constants.impulse_disturbance_per_l",
+    "IMPULSE_PER_L": "loudness_constants.impulse_disturbance_per_l",
+    "SUSTAINED": "loudness_constants.sustained_disturbance_per_l",
+    "SUSTAINED_PER_L": "loudness_constants.sustained_disturbance_per_l",
+    "DECAY_PER_MIN": "disturbance.decay_per_min_at_crew4",
+    "RATCHET_END": "disturbance.ratchet_end",
+    "FLOOR_PER_CURSED": "disturbance.per_cursed_item_floor",
+    "LIGHT_GAIN": "disturbance.light_wing_gain",
+    "VAN_SLOTS": "van.base_slots",
+    "RUIN_K": "van.ruin_k",
+    "RUIN_EXP": "van.ruin_exp",
+    "NIGHT_S": "night.seconds",
+    "HAUL_S": "night.haul_window_seconds",
+    "HAUL_WINDOW_S": "night.haul_window_seconds",
+    "CREW": "night.crew",
+    "APPRAISE_S": "night.appraise_seconds",
+}
+
+# Declarations that deliberately hold something other than the canonical value.
+# Each needs a reason, and an entry that turns out to MATCH canon is reported as stale,
+# so this cannot quietly become a place to silence real drift.
+CONST_EXEMPT = {
+    ("curse_test.py", "RUIN_K"):
+        "sentinel, not a value. Defaults to 0.0 meaning 'ruin disabled'; the sweep "
+        "assigns the real 0.015 at runtime via `global RUIN_K` (curse_test.py:143).",
+    ("disturbance.py", "DECAY_BROKEN_R3"):
+        "deliberately the retracted 1/min, kept so R3's finding stays reproducible. "
+        "Not the default - DECAY_PER_MIN is.",
+}
+
+
+def _canon(path):
+    node = TUNING
+    for part in path.split("."):
+        node = node[part]
+    return float(node)
+
+
+DECL = re.compile(r"^([A-Z][A-Z0-9_]*)\s*=\s*(-?[0-9]+\.?[0-9]*)\s*(?:#.*)?$", re.M)
+
+for path in sorted((ROOT / "sim").glob("*.py")):
+    if path.name == "check_drift.py":
+        continue
+    for m in DECL.finditer(path.read_text(encoding="utf-8")):
+        name, raw = m.group(1), float(m.group(2))
+        key = (path.name, name)
+        if key in CONST_EXEMPT:
+            if name in CONST_NAMES and abs(raw - _canon(CONST_NAMES[name])) < 1e-9:
+                fails.append(f"DECLARED {path.name}:{name} is exempted but MATCHES "
+                             f"canon - drop the exemption.")
+            continue
+        if name not in CONST_NAMES:
+            continue
+        want = _canon(CONST_NAMES[name])
+        checks += 1
+        covered.add(CONST_NAMES[name])
+        covered_by.setdefault("py", set()).add(CONST_NAMES[name])
+        if abs(raw - want) > 1e-9:
+            fails.append(f"DECLARED {path.name}:{name} = {raw}, canonical "
+                         f"{CONST_NAMES[name]} is {want}")
+
+for (fname, name) in sorted(CONST_EXEMPT):
+    if not (ROOT / "sim" / fname).exists():
+        fails.append(f"DECLARED {fname}:{name} exempted but the file is gone.")
 
 # --------------------------------------------------------------- coverage audit
 canonical = set(leaves(TUNING))
