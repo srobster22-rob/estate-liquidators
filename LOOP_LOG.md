@@ -348,6 +348,36 @@ measured alternatives rather than quietly rewriting the design's central claim o
 a model I had just shown to be incomplete. What survives: the *ordering* (careful never hunted,
 greedy at PURSUE inside 90s vs baseline's 3.5 min). The COLLECT shares do not.
 
+R22 · Built `sim/greed_dial.py` — the first model with **both the levers and the money**, so
+going dark and going quiet cost throughput. R21 ended by showing no model in the repo could
+answer Milestone 4's exit criterion: `disturbance.py` has the levers and no earnings (so pulling
+one is free), `integrated.py` has earnings and no levers. Costs taken from DESIGN 6.5/9 rather
+than invented — a lit wing is "a huge visibility gain, safe hauling" for +25, killing lights
+takes that speed-up back, going quiet is 45s of no running and no scanning. · **First verdict was
+wrong, and cross-checking against R11 caught it.** The model said greed has *no* teeth — earnings
+rising monotonically to maximum greed at every parameter. That is the shape that has been an
+artifact three times here, so I checked it against R11's independently-derived curse curve and
+they disagreed. Cause: I had invented a 35% opportunistic take-rate for cursed cargo, which
+capped cursed-aboard at **4.3 no matter how greedy the profile claimed to be** — and 4.3 sits
+*inside* the profitable region, so the dial could never reach its own teeth. **The model reported
+no teeth because it could not be greedy.** At a realistic take rate it reproduces R11 almost
+exactly: peak at two pieces **+8.5%** (R11: +7%), take-eight **−32%**, take-ten **−86%** (R11:
+take-all loses ~40%). Two independent code paths, same answer — which is the strongest evidence
+either has had. · **Corrected verdict: the dial has teeth.** With levers priced, COLLECT is
+reachable again — **80% of the night at maximum greed**, against R21's 0% when levers were free —
+and earnings peak at an interior greed level. · **The decomposition is worth more than the
+verdict.** Holding two axes at baseline and moving the third: **cursed cargo spans 85% of
+earnings with an interior peak at two pieces; scan rate spans 7% and peaks at maximum; wings lit
+spans 8% and peaks at zero.** So **the curse's tail risk is carrying the entire greed pillar by
+itself** — lights and scanning are close to free at every setting reachable here. DESIGN §4 claims
+the game prices danger; on two of its three axes it currently does not. · **One divergence found
+and left open rather than guessed at.** This model and R20's `scan_risk.py` disagree on the
+*shape* of the scan-rate axis — interior peak at 0.2–0.3 (z=33) there, flat with a shallow peak
+at 1.0 here. Same order of magnitude, and both agree scanning is not where greed gets priced, but
+one shape is wrong. Tested and **rejected** the obvious explanation (that this model applies the
+curse value multiplier after max-selection): disabling it leaves the peak at 1.0. Recorded in the
+file with the remaining candidates. Do not quote either shape as settled.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

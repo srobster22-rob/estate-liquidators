@@ -459,6 +459,23 @@ tier, over 400 simulated nights per archetype:
 > What survives unchanged: a careful crew is never hunted (0% COLLECT, first PURSUE in 1–4%
 > of nights), and a greedy crew reaches PURSUE inside 90 seconds versus 3.5 for baseline. The
 > *ordering* holds. The COLLECT shares do not.
+>
+> **R22 answered the question this banner opened.** `sim/greed_dial.py` is the first model with
+> both the levers and the money, so going dark and going quiet cost throughput. With the levers
+> priced, **COLLECT is reachable again — 80% of the night at maximum greed** — and earnings peak
+> at an *interior* greed level. **The dial has teeth.** But the decomposition matters more than
+> the verdict: holding two axes fixed and moving one,
+>
+> | axis | earnings span | peak |
+> |---|---:|---|
+> | **cursed cargo aboard** | **85%** | interior, at two pieces |
+> | scan rate | 7% | at maximum — no teeth |
+> | wings lit | 8% | at zero — no teeth |
+>
+> **The curse's tail risk is carrying the entire greed pillar on its own.** Scanning and lighting
+> are close to free at every setting the model can reach. If §4's claim that "the game prices
+> danger" is to hold across all three, lights and scanning need a cost with the shape R11 gave
+> the curse — or the pillar rests on one mechanic.
 
 That's the curve the design has been claiming all along, now actually produced: a careful
 crew can play an entire night without ever being hunted, a baseline crew gets its first
