@@ -308,6 +308,32 @@ fills you are certain to get are the ones you did not want. An assumption whose 
 invariant across its entire range is not one the result depends on. It no longer needs a caveat
 anywhere in the directory. 119 checks pass.
 
+K20 · Built `kalshi/audit.py`, the instrument that would settle the three open conditions from
+real books — then discovered it needs 18 years of data. · **The edge cannot be validated before
+it is traded.** The audit measures depth, spread and edge directly from recorded books plus
+settlement outcomes, with no simulator, no strategy and no backtest in between; the edge is
+literally `100 * outcome - ask` for every settled contract quoted in the band, which is what
+buying and holding actually paid. **The instrument was validated against a known answer** —
+pointed at synthesised markets carrying a planted edge it recovers +1.55c, 95% CI
+[+0.53, +2.58] — and it refuses data that cannot support a number: a 4-snapshot-per-market,
+100%-stale recording fails two named checks instead of producing a confident figure.
+
+Then the arithmetic. Buying at 97c pays +3c or -97c, so per-contract **sigma is ~17c**. Pinning
+a ~1c edge to +-0.5c needs **~4,500 settled in-band contracts**; only ~44% of markets ever quote
+in the band, giving ~233 usable a year against the census's 534. That is **~18 YEARS of
+recording.** So "proven profit" was never reachable for this edge on this family — not because
+the edge is absent but because a 1c edge against a 17c standard deviation is unmeasurable at
+534 contracts a year. You would have to trade it to find out. That is a fact about the
+arithmetic of rare-event contracts, not about this simulator.
+
+**It reframes the whole directory.** The gate's eleven criteria are a good instrument aimed at a
+question the available data cannot answer at this sample size. The honest use of this project is
+as a *filter* — it ruled out round-trip strategies, thin families, market-making and the
+pair-arb folklore cheaply and those exclusions stand — not as a way to certify one bot into
+production. Also caught an understatement in my own first version of the wait estimate: it
+divided by all 534 contracts a year rather than the ~233 that reach the band, calling it 8 years
+when it is 18. 129 checks pass.
+
 ---
 
 ## Standing notes
@@ -325,6 +351,10 @@ anywhere in the directory. 119 checks pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **Check whether the question is answerable before building the answer.** Eleven gate
+  criteria, a census, a fee verification and a sensitivity sweep all preceded anyone asking how
+  much data it would take to measure a 1c edge against a 17c standard deviation. The answer is
+  18 years, and it was two lines of arithmetic available on day one.
 - **A confidence interval measures sampling error, not model error.** Every headline here
   carries a p-value describing how the number moves under redrawn markets, and that is the
   smaller of the two uncertainties. `SENSITIVITY.md` is the other one, and it is where the

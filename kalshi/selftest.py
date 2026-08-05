@@ -711,6 +711,60 @@ ok("breakeven returns None when the bar is never crossed",
    sensitivity.breakeven([(1.0, 0, 1.0), (2.0, 0, 2.0)]) is None,
    "no false precision when the sweep does not bracket the bar")
 
+print("\n8i. THE AUDIT — validating the instrument that would settle this")
+from . import audit as _audit  # noqa: E402
+import tempfile as _tf  # noqa: E402
+
+_tmp = pathlib.Path(_tf.mkdtemp()) / "sim.jsonl"
+_audit.synthesize("econ_print", 250, _tmp)
+_snaps = _audit.load_snapshots(_tmp)
+_q = _audit.quality(_snaps)
+ok("a well-formed recording passes the quality gate", _q.ok(),
+   f"{_q.n_settled} settled, {_q.median_snaps_per_market:.0f} snapshots/market")
+
+# THE INSTRUMENT HAS TO RECOVER A KNOWN ANSWER. markets.py plants a positive edge at the grid
+# boundary; if the audit cannot find it in data where it is known to exist, it will not
+# measure a real one either.
+_e = _audit.measure_edge(_snaps)
+ok("the audit recovers the planted edge from simulator data",
+   _e["n"] > 50 and _e["lo95"] > 0,
+   f"{_e['mean']:+.2f}c, 95% CI [{_e['lo95']:+.2f}, {_e['hi95']:+.2f}], n={_e['n']}")
+_d = _audit.measure_depth(_snaps)
+_sp = _audit.measure_spread(_snaps)
+ok("measured depth matches the family's modelled book",
+   10 <= _d["median"] <= 120, f"median {_d['median']:.0f} contracts")
+ok("measured spread matches the family's modelled 1-3 ticks",
+   1 <= _sp["median"] <= 3, f"median {_sp['median']:.1f} ticks")
+
+# ONE OBSERVATION PER MARKET, NOT PER SNAPSHOT. Snapshots of one contract share an outcome;
+# counting each would inflate n by ~40x and shrink the interval to nothing. This is the same
+# error the calibration check made in K2, and it is worth a standing guard.
+ok("edge counts markets, not snapshots",
+   _e["n"] <= _q.n_settled and _e["n"] * 5 < _q.n_snapshots,
+   f"n={_e['n']} observations from {_q.n_snapshots:,} snapshots across "
+   f"{_q.n_settled} settled markets")
+
+# The gate must REFUSE data that cannot support a number, not warn about it.
+_thin = {f"T{i}": [{"ts": i * 1e6 + j * 60, "ticker": f"T{i}", "yes_bid": 96, "yes_ask": 97,
+                    "result": "yes" if j == 3 else ""} for j in range(4)] for i in range(60)}
+_qt = _audit.quality(_thin)
+ok("a thin, stale recording FAILS the gate", not _qt.ok(),
+   "; ".join(_qt.failures)[:96])
+ok("...and says which check failed rather than just refusing", len(_qt.failures) >= 2,
+   f"{len(_qt.failures)} named failures")
+_unsettled = {f"U{i}": [{"ts": j * 60, "ticker": f"U{i}", "yes_bid": 50, "yes_ask": 52}
+                        for j in range(40)] for i in range(40)}
+ok("a recording with nothing settled cannot report an edge",
+   not _audit.quality(_unsettled).ok(),
+   "outcomes that have not happened cannot measure anything")
+
+# required_samples is a closed form; check it against the arithmetic it claims.
+_n = _audit.required_samples(97.0, 0.5)
+_sd = 100.0 * (0.97 * 0.03) ** 0.5
+near("required_samples matches (1.96*sd/half)^2", _n, (1.96 * _sd / 0.5) ** 2, 2.0)
+ok("pinning the edge needs years, not weeks, of recording", _n > 3000,
+   f"{_n:,} settled in-band contracts at ~97c")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

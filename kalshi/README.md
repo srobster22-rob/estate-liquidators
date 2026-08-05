@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 119 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 129 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -36,6 +36,7 @@ python -m kalshi.live --check                  # can this machine reach Kalshi?
 python -m kalshi.live --demo --check           # same, against the demo exchange
 python -m kalshi.live --record TICKER --samples 500 --interval 60
 python -m kalshi.live --replay rec.jsonl --bot 'hold_favorite(thresh=95,qty=25)'
+python -m kalshi.audit rec.jsonl               # measure the three conditions from real books
 ```
 
 `selftest.py` failing means nothing else here is trustworthy. It is not a formality — four
@@ -61,7 +62,8 @@ checks themselves.
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
 | `sensitivity.py` | Every assumption swept, and where each crosses the bar. |
-| `selftest.py` | 119 checks that have to pass before any of the above means anything. |
+| `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
+| `selftest.py` | 129 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -294,6 +296,33 @@ worked. Swept from 0.15 to 1.00 across all four thin families, `maker_spread` is
 showing: the fills you are certain to get are the ones you did not want. **An assumption whose
 sign is invariant across its entire range is not one the result depends on.** It no longer
 needs a caveat anywhere.
+
+**15. The edge cannot be validated before it is traded — it would take ~18 years.**
+`audit.py` measures the three conditions directly from recorded books plus settlement
+outcomes, with no simulator, no strategy and no backtest in between. The edge measurement is
+just `100 × outcome − ask` for every settled contract quoted in the band: what buying and
+holding actually paid.
+
+The instrument works — pointed at simulator data with a known planted edge it recovers
+**+1.55¢, 95% CI [+0.53, +2.58]** — and it refuses recordings that cannot support a number
+(a 4-snapshot-per-market, 100%-stale recording fails two named checks rather than producing a
+confident figure). But running it exposes the practical wall:
+
+- buying at 97¢ pays +3¢ or −97¢, so per-contract **σ ≈ 17¢**
+- pinning an edge of ~1¢ to ±0.5¢ needs **~4,500 settled in-band contracts**
+- only ~44% of markets ever quote in the band, so that is **~233 usable contracts a year**
+- **≈ 18 years of recording**
+
+So "proven profit" was never reachable for this edge on this family — not because the edge is
+absent, but because a ~1¢ edge against a 17¢ standard deviation is unmeasurable on 534
+contracts a year. **You would have to trade it to find out whether it works.** That is a fact
+about the arithmetic of rare-event contracts, not about this simulator, and it is the single
+most decision-relevant number the project produced.
+
+It also reframes everything above it. The gate's eleven criteria are a good instrument aimed
+at a question the available data cannot answer at this sample size. The honest use of this
+directory is as a *filter* — it rules families and strategy shapes out cheaply, and every such
+exclusion in findings 1–9 is solid — not as a way to certify one bot into production.
 
 ## The gate
 
