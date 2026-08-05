@@ -358,6 +358,33 @@ biggest mispricing on the exchange was never the place to look, and the whole pr
 twenty rounds optimising a numerator while the denominator was the free variable. 136 checks
 pass.
 
+K22 · Analysed bracket arbitrage properly — the zero-variance corner K21's logic pointed at —
+and **both things I had asserted about it were wrong.** Built `kalshi/arb.py`.
+
+**"Sigma is zero, so the SNR is infinite."** True of the TRADE, false of the STRATEGY. The arb
+fires in only 2.9% of sets, so the per-set-offered series is mostly zeros with occasional large
+wins: sigma **36.4c**, SNR **0.1405** — *worse* than the directional `snr_band` at 0.2256. The
+uncertainty did not vanish, it moved from "will this trade win" to "will there be a trade", and
+it still takes **1.3 years** to sign. Riskless describes the trade, not the strategy.
+
+**"Riskless."** Only with simultaneous fills on all 5 legs. One tick of slippage per leg takes
+it from **0/118 losing fires to 105/118**, and from +$8/yr to -$3/yr. The mechanism generalises
+past Kalshi: **an N-leg arb pays N x slippage to capture ONE margin.** Break-even per-leg
+slippage is `margin/N`; the median margin here is **1c across 5 legs = 0.2 ticks, and the tick
+is 1c.** The smallest possible adverse move is five times what the trade can afford. By leg
+count, share of opportunities surviving one tick each: 2 legs 22%, 3 legs 10%, 5 legs 1%, 8
+legs 0%. **Leg count is leverage on execution risk and it points the wrong way.**
+
+The only version that survives slippage is resting orders on every leg, since a maker fill is
+at your price by definition — which swaps slippage risk for fill risk, and K19 already showed
+resting orders are negative at every fill rate from 0.15 to 1.00. Both doors shut, each by the
+other's risk.
+
+**Also corrected a live number in the README:** the arb was quoted at "$55/yr on ~750 bracket
+sets". 750 is a count of CONTRACTS; the backtester measures per SET, and a set is 5 contracts.
+It is 150 sets a year and about $8 — the same contracts-vs-sets units bug K18 caught on the econ
+ladders, still lurking in prose after being fixed in code. 145 checks pass.
+
 ---
 
 ## Standing notes
@@ -375,6 +402,12 @@ pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **"Riskless" is a property of a trade, never of a strategy.** A trade that cannot lose but
+  only appears 3% of the time still has all its variance in whether it appears. Ask what the
+  per-opportunity series looks like, not what the winning case looks like.
+- **Count the legs before believing an arbitrage.** Profit is `margin - N*slippage`, so
+  break-even slippage is `margin/N` and it shrinks as the structure gets prettier. On a 1c grid
+  any arb whose margin is under N cents is untradeable by construction.
 - **Name the precision target before quoting a sample size.** "How much data do I need" has
   no answer until you say what decision it serves. Sign and magnitude differ by 25x here, and
   conflating them cost a round.

@@ -810,6 +810,55 @@ ok("knowing the SIGN is far cheaper than knowing the SIZE", _ns < _nm / 10,
    f"sign {_ns:,.0f} obs vs magnitude {_nm:,.0f} obs — different decisions, different data")
 ok("a non-positive edge can never be signed", _audit.required_for_sign(-1.0, 17.0) == float("inf"))
 
+print("\n8k. BRACKET ARBITRAGE — riskless describes the trade, not the strategy")
+from . import arb as _arb  # noqa: E402
+
+_prof = _arb.profile(n=1200)
+_marg = _arb.margins(n=1200)
+
+# The riskless property: at zero slippage, no fire may lose. If this ever breaks, either the
+# payout accounting is wrong or the strategy is buying an incomplete set.
+ok("at zero slippage the arb never loses", _prof["losing_fires"] == 0,
+   f"{_prof['n_fired']} fires, {_prof['losing_fires']} losses")
+
+# THE CORRECTION. "Zero variance" is true of the TRADE and false of the STRATEGY. Most sets
+# never fire, so the per-set-offered series is mostly zeros with occasional large wins — and
+# its SNR is WORSE than the directional snr_band, not infinite. The uncertainty simply moved
+# from "will this trade win" to "will there be a trade".
+ok("per-set-offered variance is NOT zero", _prof["sd_per_set"] > 1.0,
+   f"sigma {_prof['sd_per_set']:.1f}c per set offered, SNR {_prof['snr']:.4f} — "
+   f"the risk is whether it FIRES, not whether it wins")
+ok("...so it still takes real time to sign, like any other edge",
+   _prof["n_to_sign"] > 20,
+   f"{_prof['n_to_sign']:,.0f} sets = {_prof['n_to_sign'] / _prof['sets_per_year']:.1f} years")
+
+# The margin is captured once; slippage is paid per leg. This is the whole result.
+_n_legs = markets.FAMILIES[_arb.FAMILY].n_brackets
+_median = _marg[len(_marg) // 2]
+ok("the median margin is smaller than one tick per leg", _median < _n_legs,
+   f"median margin {_median}c across {_n_legs} legs — break-even slippage "
+   f"{_median / _n_legs:.1f} ticks, and the tick is 1c")
+_sweep = _arb.slippage_sweep(n=1200, ticks=(0, 1))
+_zero, _one = _sweep[0], _sweep[1]
+ok("one tick per leg flips the majority of fires into losses",
+   _one[3] > 0.5 * _one[4] and _zero[3] == 0,
+   f"0 ticks: {_zero[3]}/{_zero[4]} lose -> 1 tick: {_one[3]}/{_one[4]} lose")
+ok("...and turns the strategy negative", _one[1] < 0 < _zero[1],
+   f"{_zero[1]:+.2f}c/set -> {_one[1]:+.2f}c/set")
+
+# Leg count is leverage on execution risk, and it points the wrong way.
+_lev = _arb.leg_leverage(_marg, leg_counts=(2, 3, 5, 8))
+ok("survival falls monotonically as leg count rises",
+   all(_lev[i][2] >= _lev[i + 1][2] for i in range(len(_lev) - 1)),
+   " -> ".join(f"{n}legs {sv * 100:.0f}%" for n, _c, sv in _lev))
+ok("an 8-leg arb survives no slippage at all", _lev[-1][2] < 0.05,
+   f"{_lev[-1][2] * 100:.0f}% of opportunities survive 1 tick on each of 8 legs")
+
+# Units: sets, not contracts. Same class of bug K18 caught on the econ ladders.
+near("sets per year divides contracts by leg count",
+     _arb.sets_per_year(),
+     capacity.MARKETS_PER_YEAR[_arb.FAMILY] / _n_legs, 1e-9)
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

@@ -17,13 +17,14 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 136 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 145 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
 python -m kalshi.portfolio         # combine bots across families; writes PORTFOLIO.md
 python -m kalshi.census            # the counted market list; writes CENSUS.md
 python -m kalshi.sensitivity       # what every assumption is worth; writes SENSITIVITY.md
+python -m kalshi.arb               # why the riskless trade loses; writes ARB.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -62,14 +63,16 @@ checks themselves.
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
 | `sensitivity.py` | Every assumption swept, and where each crosses the bar. |
+| `arb.py` | The zero-variance trade, and the leg-count arithmetic that kills it. |
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
-| `selftest.py` | 136 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 145 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
 | `PORTFOLIO.md` | The combined book and whether it clears the money bar. Generated. |
 | `CENSUS.md` | How many markets Kalshi actually lists, and the sources. Generated. |
 | `SENSITIVITY.md` | What has to be true for the headline to hold. Generated. |
+| `ARB.md` | Bracket arbitrage: margins, slippage, leg leverage. Generated. |
 
 ---
 
@@ -132,8 +135,11 @@ trade count. Real, riskless, and rate-limited by how rarely the exchange is inco
 That +7.37¢ was **+2.22¢ until the fee schedule was verified.** S&P 500 and Nasdaq-100 series
 pay half the standard rate, `index_bracket_daily` models exactly those, and it had been
 charged double for the entire project — understating the only riskless trade here by 3.3×.
-Even so it is ~$55/yr on ~750 bracket sets: riskless money that the wrong fee was hiding, and
-still not a business.
+
+**The "$55/yr" this used to claim was also wrong**, and by the same units bug K18 caught on the
+econ ladders: 750 is a count of *contracts*, but the backtester measures per *set*, and a set
+is 5 contracts. It is **150 sets a year, ~$8**. See finding 17 — the arb loses for a much more
+interesting reason than its size.
 
 **4. The biggest gross edge on the exchange is the worst business on it.** `awards_thin`
 carries the largest planted mispricing of any family (~3.4¢ on a 10¢ contract) and produced
@@ -359,6 +365,47 @@ That is a real improvement and a modest one. Worth stating plainly: a mid-book b
 **5¢** edge has *worse* SNR (0.101) than a 0.9¢ edge at the ceiling (0.285). **Variance
 dominates edge**, which is why the biggest mispricing on the exchange was never the place to
 look.
+
+**17. The zero-variance trade loses to arithmetic, and "riskless" describes the trade rather
+than the strategy.** K21 showed variance dominates edge, so the logical end of that argument is
+a structure with no variance at all. Bracket arbitrage is exactly that: buy all 5 mutually
+exclusive brackets for under 100¢, exactly one pays 100¢, profit locked at trade time. It also
+needs **no settled outcomes to verify** — one snapshot of the book proves the opportunity
+exists, sidestepping the wall every directional strategy hit. `python -m kalshi.arb`.
+
+Two things turned out to be false, and I had asserted both.
+
+*"σ ≈ 0, so infinite SNR."* True of the **trade**, false of the **strategy**. It fires in only
+2.9% of sets, so the per-set-offered series is mostly zeros with occasional large wins — σ is
+**36.4¢** and SNR **0.1405**, *worse* than the directional `snr_band` at 0.2256. The uncertainty
+did not vanish; it moved from *will this trade win* to *will there be a trade*. It still takes
+**1.3 years** to sign.
+
+*"Riskless."* Only if all 5 legs fill at the quoted ask simultaneously:
+
+| slippage per leg | ¢/set | annual | fires that now LOSE |
+|---|---|---|---|
+| +0 tick | +5.12¢ | $+8 | **0/118** |
+| +1 tick | −1.92¢ | $−3 | **105/118** |
+| +2 tick | −8.96¢ | $−13 | 118/118 |
+
+The mechanism generalises well beyond Kalshi: **an N-leg arb pays N × slippage to capture ONE
+margin.** The margin is the gap below 100 and it is captured once; slippage is paid on every
+leg. Break-even per-leg slippage is `margin / N`, and the median margin here is **1¢ across 5
+legs — 0.2 ticks. The tick is 1¢.** The smallest possible adverse move is five times what the
+trade can afford.
+
+| legs | cost of 1 tick each | opportunities surviving |
+|---|---|---|
+| 2 | 2¢ | 22% |
+| 3 | 3¢ | 10% |
+| 5 | 5¢ | **1%** |
+| 8 | 8¢ | 0% |
+
+The only version that survives slippage is **resting** orders on every leg — a maker fill is at
+your price by definition. That swaps slippage risk for fill risk, and finding 14 already showed
+resting orders are negative here at every fill rate from 0.15 to 1.00. Both doors are shut, and
+each is shut by the other's risk.
 
 ## The gate
 
