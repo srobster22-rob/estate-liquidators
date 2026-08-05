@@ -100,7 +100,7 @@ def depth_at(t):
 
 
 def run_night(seed, scan_rate, mode="compound", k=0.35, exp=1.8, cursed=2,
-              policy=None):
+              policy=None, depth_cap=None):
     """One night. `scan_rate` is the probability of appraising on a given trip.
 
     mode: 'none'     no interception risk while scanning (the current model)
@@ -112,19 +112,22 @@ def run_night(seed, scan_rate, mode="compound", k=0.35, exp=1.8, cursed=2,
     matters: a fixed rate is a frequency, a policy is a judgement about WHEN.
     """
     rng = random.Random(seed)
+    cap = TIER_CAP if depth_cap is None else depth_cap
     d = t = banked = 0.0
     slots = float(VAN_SLOTS)
     filled = 0.0
     streak = 0
     scans = intercepted = lost = 0
+    waits = 0
 
     while t < HAUL_S and slots > 0:
         tier = depth_at(t)
         trip_s, band = TIER_DATA[tier]
         per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY)
 
-        if filled >= TIER_CAP[tier] * VAN_SLOTS and tier < 3:
+        if filled >= cap[tier] * VAN_SLOTS and tier < 3:
             t += per_trip
+            waits += 1
             continue
 
         candidates = [rng.uniform(*band) for _ in range(CANDIDATES)]
@@ -187,7 +190,7 @@ def run_night(seed, scan_rate, mode="compound", k=0.35, exp=1.8, cursed=2,
         slots -= 1.0
         banked += value
 
-    return banked, scans, intercepted, lost
+    return banked, scans, intercepted, lost, waits
 
 
 def mean_se(vals):
@@ -338,6 +341,37 @@ if __name__ == "__main__":
         mc, sc = mean_se([run_night(s, 0.0, policy=fn, mode="compound")[0]
                           for s in range(N)])
         print(f"{name:<36}{mn:>11,.0f}{mc:>11,.0f}{1.96 * sc:>7.0f}{needs:>13}")
+
+    print("\n\nG. IS THE OPTIMUM REAL, OR DEAD TIME? (R23)")
+    print("   The depth gate makes a capped crew WAIT for the next tier. Scanning burns")
+    print("   time, so it converts dead time into value. Ablate the gate and see.")
+    print("-" * 78)
+    NO_GATE = {1: 1.00, 2: 1.00, 3: 1.00}
+    print(f"{'scan rate':<11}{'gated $':>11}{'waits':>8}{'  |':>4}"
+          f"{'ungated $':>12}{'waits':>8}")
+    gated, ungated = {}, {}
+    for r in [i / 10 for i in range(11)]:
+        # NB: not `a`/`b` - those hold panels A/B and the verdict below reads them.
+        run_gated = [run_night(s, r, mode="none") for s in range(N)]
+        run_open = [run_night(s, r, mode="none", depth_cap=NO_GATE) for s in range(N)]
+        gated[r] = statistics.mean(x[0] for x in run_gated)
+        ungated[r] = statistics.mean(x[0] for x in run_open)
+        print(f"{r:<11.1f}{gated[r]:>11,.0f}"
+              f"{statistics.mean(x[4] for x in run_gated):>8.2f}{'  |':>4}"
+              f"{ungated[r]:>12,.0f}{statistics.mean(x[4] for x in run_open):>8.2f}")
+    pg = max(gated, key=lambda r: gated[r])
+    pu = max(ungated, key=lambda r: ungated[r])
+    print(f"  gated   peak {pg:.1f}  {gated[pg] / gated[0.0] - 1:+.1%} over never scanning")
+    print(f"  ungated peak {pu:.1f}  {ungated[pu] / ungated[0.0] - 1:+.1%}")
+    print("""
+  The interior optimum does not survive. It is a property of how much dead time the
+  depth gate creates, not of the appraiser. Worse, that dead time comes from gating
+  depth on a CLOCK (PHASES at fixed t) - which DECISIONS D-20 calls a bug outright:
+  depth unlocks on WORK, never on a timer. In the real game the crew is finding keys
+  and flipping breakers during that window, which is productive time, not waiting.
+
+  So neither shape is the appraiser's. The honest answer needs a model where the
+  prerequisite work costs crew time productively, and no sim in this repo has one.""")
 
     print("\n" + "=" * 78)
     print("VERDICT - R12's hypothesis is FALSIFIED, and the cost would make it worse")

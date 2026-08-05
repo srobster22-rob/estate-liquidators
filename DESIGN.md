@@ -166,17 +166,22 @@ slightly arbitrary — that's a real, accepted cost, not an oversight.
 
 **The gate:** at Milestone 2, instrument it. Track *what percentage of extracted items were
 appraised first*, per playtester, per hour of experience. If that number is still falling at
-hour five and lands under **~15%**, the appraiser is dead as a core mechanic and needs to be
+hour five and lands under **~30%**, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-> **The threshold was ~30% until R20, and that was set at the optimum.** `sim/scan_risk.py`
-> sweeps scan rate and finds earnings peak at a rate of **0.2–0.3**. A crew playing *well*
-> therefore scans about a quarter of the time, so a 30% gate fails optimal play — it cannot
-> distinguish "players ignore the appraiser" from "players use it correctly". 15% sits clearly
-> below the optimal band, so falling under it means the mechanic is genuinely being abandoned.
-> Caveat worth carrying to the playtest: the sim models scan-or-not *per trip*, while the gate
-> measures *per extracted item*. The two are close but not identical, and the real number should
-> be re-derived once Milestone 2 produces actual telemetry.
+> **This number is the designer's, not a simulation's — and R23 established that nothing here
+> can derive it.** R20 briefly lowered it to ~15%, because `sim/scan_risk.py` put the
+> earnings-optimal rate at 0.2–0.3 and a gate set at the optimum cannot tell "players ignore the
+> appraiser" from "players use it well". R23 then found that optimum is an **artifact of
+> clock-gated depth**: a crew that fills its tier quota early has to *wait*, and scanning burns
+> time, so scanning was being credited for converting dead time into value. Ablate the gate and
+> the peak vanishes — scanning becomes monotonically valuable, best at 1.0, worth +25.4%
+> (`scan_risk.py` panel G). The change is reversed and the threshold is back to ~30%.
+>
+> The deeper problem is that the dead time should not exist: **D-20 (FIRM) forbids timer-based
+> depth gates**, and every sim here still uses one. Two further caveats for the playtest: the
+> sims model scan-or-not *per trip* while the gate counts *per extracted item*, and no model
+> prices the prerequisite work that ought to fill that window. Re-derive from telemetry.
 
 **Simulated ahead of the gate** (`ECONOMY.md` §9.1). Scanning beats blind hauling by only +4.4% at 14
 van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
@@ -671,9 +676,10 @@ content ahead of systems.
 
 1. If hauling objects to a van with your friends isn't already funny with no monster in the
    building, the monster will not save it. Test with real friends and real voice chat.
-2. If the scan rate from §4.4 collapses under **~15%** by hour five, the appraiser is not a core
-   mechanic and no amount of tuning will make it one. (Was ~30%, which R20 showed is the
-   *optimal* rate — a gate set where good play lives cannot detect bad play.)
+2. If the scan rate from §4.4 collapses under **~30%** by hour five, the appraiser is not a core
+   mechanic and no amount of tuning will make it one. (R20 lowered this to ~15% on a measured
+   optimum; R23 found that optimum was an artifact of clock-gated depth and reversed it. See
+   D-23 — no scan-rate threshold in this repo is simulation-backed.)
 
 Either failure means stopping and reworking, not proceeding to Milestone 3. Write both
 numbers down before the playtest, not after.

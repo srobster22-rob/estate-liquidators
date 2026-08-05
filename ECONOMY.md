@@ -375,7 +375,10 @@ signature mechanic — a design judgement, not a simulation result.
 rescued the curse: make its cost *super-linear*, so appraising repeatedly while the Curator is
 hunting compounds the risk of being caught mid-scan. `sim/scan_risk.py` tested it at n=20,000
 and it is **falsified, three ways.** (1) Sweeping scan *rate* 0→1 already produces an interior
-optimum at **0.2–0.3, worth +3.5%** — with no added cost at all. Nobody had ever swept the rate;
+optimum at **0.2–0.3, worth +3.5%** — with no added cost at all *(R23: that interior peak is an
+artifact of clock-gated depth creating dead time; ablate the gate and scanning is monotonically
+valuable at +25.4%. The conclusion below is unaffected and strengthened — see D-22/D-23.)*.
+Nobody had ever swept the rate;
 the project compared three fixed strategies and concluded from three points that there was no
 interesting middle. (2) Adding the cost *lowers* the peak (+3.5% → +2.4%) without moving it.
 (3) Worst, under the compound cost every **player-implementable** policy lands at or below

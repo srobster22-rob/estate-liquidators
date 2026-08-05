@@ -91,9 +91,10 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > **Phase 2 — The loop, instrumented.** One estate wing, ~20 items, appraiser, van, quota,
 > sunrise timer, ledger. No monster.
 > *Exit, and there are two:* (a) four real friends on voice find hauling junk to a van funny
-> *without* a monster; (b) scan rate stays above **~15%** at hour five (`DESIGN.md` §4.4 — the
-> threshold was 30% until R20 measured the *optimal* rate at 0.2–0.3, which made the old gate
-> fail correct play). **If
+> *without* a monster; (b) scan rate stays above **~30%** at hour five (`DESIGN.md` §4.4). That
+> number is the designer's, not a simulation's: R20 lowered it to 15% on a measured optimum,
+> R23 found the optimum was an artifact of clock-gated depth and reversed it. **No scan-rate
+> threshold here is simulation-backed** — the Milestone 2 telemetry is what settles it. **If
 > either fails, stop and rework — do not proceed to Phase 3.** This is the honest checkpoint;
 > everything after it is expensive.
 >

@@ -357,10 +357,13 @@ R12 proposed rescuing the appraiser's thin edge the way R11 rescued the curse: g
 being caught mid-scan. The structural argument was good — same problem shape, same fix. It sat
 open for eight rounds. R20 ran it at n=20,000 and it is **falsified three ways**:
 
-1. **The interior optimum already exists.** Sweeping scan *rate* 0→1 with no added cost peaks at
-   **0.2–0.3, worth +3.5%** over never scanning (z=33). The project had only ever compared three
-   fixed strategies — BLIND, ADAPTIVE, SCAN — and concluded from three points that there was no
-   interesting middle. Sweeping the continuum shows the middle was always there.
+1. **Scanning already pays without any added cost.** Sweeping scan *rate* 0→1 shows a peak the
+   project had never looked for — it had only ever compared three fixed strategies (BLIND,
+   ADAPTIVE, SCAN) and concluded from three points that there was no interesting middle.
+   *(R23 correction: the apparent interior optimum at 0.2–0.3 was an artifact of clock-gated
+   depth creating dead time — see D-23. With the gate ablated scanning is monotonically
+   valuable, best at rate 1.0, worth +25.4%. This makes the case against adding a cost
+   STRONGER, not weaker: the mechanic already pays well when the measurement is clean.)*
 2. **The cost makes it worse.** Peak edge falls +3.5% → +2.9% (linear) → +2.4% (compound), and
    the optimum does not move. Robust across 9 (k, exp) combinations.
 3. **It makes the mechanic unplayable.** Under the compound cost every *player-implementable*
@@ -372,27 +375,39 @@ open for eight rounds. R20 ran it at n=20,000 and it is **falsified three ways**
 The appraiser is worth about +4.4%, and whether that is enough is a **design judgement, not a
 simulation result**. Three separate attempts to make it a simulation result have now failed.
 
-**Falsified if:** a playtest shows players scanning at rates far from the 0.2–0.3 optimum for
-reasons the model does not capture — most likely because scanning is fun or tense in ways
+**Falsified if:** a playtest shows players scanning at rates the model cannot account for — most likely because scanning is fun or tense in ways
 earnings cannot express. That is a reason to keep the mechanic, not to add cost to it.
 
 ---
 
-## D-23 · The Phase 2 scan-rate gate is ~15%, not ~30%
+## D-23 · The Phase 2 scan-rate gate stays at ~30% — R20's change is REVERSED
 **Status:** FIRM · `DESIGN.md` §4.4 and §11, `BUILD-PROMPT.md` Phase 2
 
-The Milestone 2 kill criterion was "scan rate under ~30% at hour five means the appraiser is
-dead". R20 measured the *earnings-optimal* rate at **0.2–0.3**. A gate set at 30% therefore
-fails a crew playing correctly — it cannot distinguish "players ignore the appraiser" from
-"players use it well". Lowered to **~15%**, comfortably below the optimal band.
+R20 lowered the Milestone 2 kill criterion from "scan rate under ~30% at hour five" to ~15%,
+on the grounds that `scan_risk.py` measured the earnings-optimal rate at 0.2–0.3, so a 30% gate
+would fail a crew playing correctly.
 
-This matters more than a tuning tweak because the criterion is a **stop-and-rework** gate:
-everything after Phase 2 is expensive, and the old threshold would have thrown away a working
-mechanic on evidence that it was working.
+**R23 found that optimum is an artifact and reversed the change.** The interior peak exists only
+because the sims gate depth on a **clock** (`PHASES` at fixed t = 0/120/240s). A crew that fills
+its tier quota early must *wait*, and scanning burns time, so scanning converts dead time into
+value. Ablate the gate and the peak vanishes: scanning becomes monotonically valuable, best at
+rate 1.0, worth **+25.4%** instead of +3.5%. Reproducible in `sim/scan_risk.py` panel G.
 
-**Falsified if:** Milestone 2 telemetry puts the observed optimum somewhere else. The sim scans
-per *trip* while the gate counts per *extracted item*; re-derive the number from real data
-rather than inheriting this one.
+Two things follow, and the second is worse than the first:
+
+1. **The 0.2–0.3 figure measured the depth gate, not the appraiser.** It is the rate at which
+   the available dead time is used up. Change `PHASES` or `TIER_CAP` and it moves.
+2. **The dead time should not exist at all.** Clock-gated depth is exactly what **D-20 (FIRM)**
+   forbids — "any future timer-based gate is a bug". In the real game the crew spends that
+   window finding the key and flipping the breaker, which is *productive* work, not waiting.
+   Every sim in this repo still gates depth on a timer, so all of them carry this artifact.
+
+So the gate returns to **~30%**, which was the designer's original number. It is not derived from
+a simulation, and after R23 nothing in this repo can derive it — that is the honest status.
+
+**Falsified if:** a model that gates depth on *work* (crew-time-consuming prerequisites) rather
+than the clock produces a defensible optimum. Building one is the outstanding job; until then no
+scan-rate threshold here is simulation-backed, and Milestone 2 telemetry outranks all of it.
 
 ---
 

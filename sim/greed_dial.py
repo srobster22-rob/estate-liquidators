@@ -43,22 +43,30 @@ hands-on tuning value nobody has measured — DESIGN says the joint tuning value
 threshold at which the answer flips. That threshold is the number to take into
 Milestone 4.
 
-AN UNRESOLVED DIVERGENCE, RECORDED RATHER THAN PAPERED OVER (R22).
-This model and `scan_risk.py` (R20) disagree about the SHAPE of the scan-rate axis.
-scan_risk finds a clear interior optimum at 0.2-0.3 worth +3.5% (z=33 at n=20,000);
-this model finds the axis nearly flat with a shallow peak at 1.0, span 7%. The
-magnitudes are the same order — scanning is worth a few per cent either way, and both
-agree it is not where greed gets priced — but the shape is not the same, and one of
-them is wrong.
+THE R22 DIVERGENCE, RESOLVED (R23).
+This model and `scan_risk.py` disagreed about the SHAPE of the scan-rate axis: an
+interior optimum at 0.2-0.3 there, monotone to 1.0 here. **Both were measuring the
+depth gate, not the appraiser.**
 
-Tested and REJECTED as the cause: that this model applies the curse value multiplier
-after max-selection, amplifying scanning's payoff. Disabling the multiplier leaves the
-peak at 1.0 and flattens the axis to a 1.6% span, so it is not the explanation.
+The sims gate depth on a CLOCK (PHASES at t = 0/120/240s). A crew that fills its tier
+quota early has to wait for the next tier to open, and scanning burns time, so
+scanning gets credited for converting dead time into value. scan_risk has more
+absorbable dead time (waits fall 2.00 -> 0.00 across the sweep) and its curve peaks
+exactly where that dead time runs out. This model's trips are faster - lit wings
+shorten them - so its dead time never runs out inside the range, and the curve just
+rises.
 
-Remaining candidates, untested: lit wings shorten trips here and not in scan_risk, so
-the relative time cost of a 3s ping differs; this model runs cursed cargo and levers
-concurrently, adding variance; the depth-cap interaction differs. Do not quote either
-shape as settled until this is resolved.
+Ablate the gate in `scan_risk.py` panel G and the interior peak vanishes: scanning
+becomes monotonically valuable, best at 1.0, worth +25.4% instead of +3.5%. Rejected
+along the way: that the curse value multiplier was amplifying scanning here
+(disabling it left the peak at 1.0), and that the ruin roll was coupling to scan rate
+(ruin is flat at ~11% and cursed-aboard is exactly 3.00 at every rate).
+
+The consequence reaches past this file. Clock-gated depth is what **D-20 (FIRM)**
+calls a bug - "any future timer-based gate is a bug" - and EVERY sim here still does
+it, including this one. Any result whose mechanism runs through crew *time* inherits
+the artifact. Building a model that gates depth on WORK, where the prerequisite
+consumes crew time productively, is the outstanding job. It reversed D-23.
 """
 
 import json

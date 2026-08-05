@@ -378,6 +378,34 @@ one shape is wrong. Tested and **rejected** the obvious explanation (that this m
 curse value multiplier after max-selection): disabling it leaves the peak at 1.0. Recorded in the
 file with the remaining candidates. Do not quote either shape as settled.
 
+R23 · Resolved R22's divergence — `scan_risk.py` finding an interior scan-rate optimum at 0.2–0.3
+while `greed_dial.py` found the axis monotone to 1.0. Method was ablation rather than argument:
+enumerate what differs, test each, keep going until something flips the shape. · **Both models
+were measuring the depth gate, not the appraiser.** The tell was `waits` — the sims gate depth on
+a **clock** (`PHASES` at t = 0/120/240s), so a crew that fills its tier quota early has to stand
+around until the next tier opens. Scanning burns time, so it converts dead time into value and
+gets credited for it. `scan_risk` has more absorbable dead time (waits fall 2.00 → 0.00 across the
+sweep) and **its curve peaks exactly where that dead time runs out**; `greed_dial`'s trips are
+faster because lit wings shorten them, so its dead time never runs out inside the range and the
+curve just rises. **Ablate the gate and the interior peak vanishes: scanning is monotonically
+valuable, best at rate 1.0, worth +25.4% instead of +3.5%.** Reproducible as panel G. · Two
+hypotheses tested and rejected before that one landed: the curse value multiplier amplifying
+scanning here (disabling it left the peak at 1.0), and the ruin roll coupling to scan rate (ruin
+flat at ~11%, cursed-aboard exactly 3.00 at every rate). Both were plausible and both were wrong,
+which is why the round took ablation rather than a good story. · **This reverses my own D-23.**
+R20 lowered Milestone 2's kill criterion from ~30% to ~15% precisely because 0.2–0.3 looked like
+the optimum, and a gate set at the optimum cannot tell "players ignore the appraiser" from
+"players use it well". That optimum measured `PHASES` and `TIER_CAP`. Gate restored to **~30%**,
+the designer's original number — and recorded as *not* simulation-backed, because after R23
+nothing here can derive it. D-22's conclusion is unaffected and in fact strengthened: scanning
+already pays well when the measurement is clean, so adding a super-linear cost is less justified,
+not more. · **The finding reaches past both files.** Clock-gated depth is what **D-20 (FIRM)**
+calls a bug outright — "any future timer-based gate is a bug" — and **every simulation in this
+repo still does it**, including `chain_sim.py`, which has a `labour_gated` flag precisely because
+R21 knew this mattered. Any result whose mechanism runs through crew *time* inherits the artifact.
+The outstanding job is a model where the prerequisite work consumes crew time productively; that
+is what would let the appraiser's real shape be measured, and it is the thing I would build next.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
