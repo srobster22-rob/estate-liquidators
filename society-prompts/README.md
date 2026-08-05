@@ -1,6 +1,6 @@
 # Everyday Projects That Help Society — A Prompt Kit
 
-Eighteen copy-and-paste prompts for building small, real software that helps actual people in
+Twenty-four copy-and-paste prompts for building small, real software that helps actual people in
 an actual place. Each one is a complete brief: a named user with a named problem, an exact
 stack, named data sources, hard constraints, a scope fence, numbered acceptance tests, and
 milestones with exit criteria.
@@ -31,7 +31,7 @@ agent) and it can start writing files in the first minute without asking you twe
 
 ---
 
-## The eighteen
+## The twenty-four
 
 **New here? Start with [16](16-disposal-guide.md).** Lowest stakes, real users on day one, and
 it drills the two habits every other project depends on: verify local facts by phone, and design
@@ -57,6 +57,12 @@ for the data going stale.
 | [16](16-disposal-guide.md) | **"What do I do with this?" disposal guide** | Anyone cleaning a garage with two swollen laptop batteries in it | The rules are municipal; only phone calls make them true |
 | [17](17-language-access-kit.md) | **Language access kit** | Woman being asked to consent to a procedure through her 19-year-old son | Refusing to build the translation feature everyone asks for |
 | [18](18-directory-that-doesnt-rot.md) | **The directory that doesn't rot** | Every other project here, nine months after launch | Per-field decay, and 15 seconds per verification |
+| [19](19-debt-collection-kit.md) | **Debt collection response kit** | Woman who put the court summons in a drawer, planning to explain at the hearing | The answer deadline — most of these are lost by default |
+| [20](20-utility-shutoff-help.md) | **Utility shutoff prevention** | Mother with a $842 notice, $180, and a son on a nebulizer | Knowing the sentence that gets a payment plan instead of a no |
+| [21](21-iep-meeting-prep.md) | **Special education meeting prep** | Parent who asked about testing at pickup in October; it's February | Timelines nobody told her were running |
+| [22](22-scam-check-and-report.md) | **Scam check + report** | 78-year-old on the phone with "the bank's fraud department" right now | One sentence, in type she can read, in one tap |
+| [23](23-caregiver-binder.md) | **The caregiver's binder** | Daughter reciting nine of eleven medications to a paramedic at 2am | Fits on one page or it doesn't get read |
+| [24](24-after-a-death.md) | **After a death: the first weeks** | Widow asked for a death certificate four times in two days, holding two | Tone, and the debt sentence collectors count on |
 
 Also in this directory:
 
@@ -108,7 +114,7 @@ a demo and something a person can actually use.
 
 ## Choosing well
 
-A short honest filter, since eighteen options invites drift:
+A short honest filter, since twenty-four options invites drift:
 
 - **Is there a specific person you can show it to this month?** If not, pick a different one.
   These are not products; they're tools for a place you know.
@@ -117,17 +123,27 @@ A short honest filter, since eighteen options invites drift:
   tool" than as "a food rescue platform."
 - **What happens when it's wrong?** #09 wrong means someone waits a week for a drill; #16
   wrong means a wasted Saturday trip. #02, #04, and #14 wrong means someone doesn't apply for
-  food assistance they qualify for, pays a bill they didn't owe, or misses a court date. Build
-  a low-stakes one first if this is your first project of this kind.
+  food assistance they qualify for, pays a bill they didn't owe, or misses a court date. **#19
+  and #20 have the sharpest edges in the kit** — a wrong court answer deadline or a wrong
+  shutoff protection is a judgment entered or a power cut. Build a low-stakes one first if this
+  is your first project of this kind.
 - **Will you maintain it for a year?** Data sources move. Rules change every January. A dead
   benefits screener showing 2026 numbers in 2029 is actively harmful. If the answer is no,
   pick #01, #09, #12, or #16 — the ones that fail safe.
 
-**Two of these are different in kind.** #18 is infrastructure rather than a product: build it
-when a directory you already run has started rotting, or when three organizations in your city
-each maintain their own half-wrong list. And #08 genuinely wants a partner organization before
-the first ride, because the screening, insurance, and waiver structure needs an entity with
-liability coverage — the brief says so and means it.
+**A few are different in kind.** #18 is infrastructure rather than a product: build it when a
+directory you already run has started rotting, or when three organizations in your city each
+maintain their own half-wrong list. #08 genuinely wants a partner organization before the first
+ride, because the screening, insurance, and waiver structure needs an entity with liability
+coverage — the brief says so and means it. And #21 exists partly to route people to their
+state's federally-funded Parent Training and Information Center, which is free, expert, and
+almost unknown; if the app does nothing but hand a parent that phone number, it has worked.
+
+**Several have a hard external gate you can't skip.** #19, #21, #22, and #24 each require
+someone who does the work — a legal aid attorney, a PTI advocate, a bank fraud specialist, a
+probate clerk — to read the output before a real person sees it. Those milestones are written
+as blockers because in each case a confidently wrong sentence costs someone a judgment, a
+year of services, or money they didn't owe.
 
 The best version of any of these is boring, narrow, and used by eleven people in one
 neighborhood. Aim there.

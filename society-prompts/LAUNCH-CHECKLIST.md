@@ -113,8 +113,11 @@ This is the part software people skip and it is usually why these projects die.
       legal aid attorney for the tenant letters, a patient advocate for the bill letters, a
       pharmacist for the prescription scripts, a wheelchair user for the accessibility viewer,
       a worker center organizer for the wage claim packet, a court clerk or public defender for
-      the court procedure pages, a civil rights advocate for the language access claims. This
-      gate appears in every prompt in this kit and it is the one most worth honoring.
+      the court procedure pages, a civil rights advocate for the language access claims, a legal
+      aid attorney for the debt answer, a Parent Training and Information Center advocate for
+      the IEP rights, a bank fraud specialist for the scam content, a paramedic for the
+      emergency page, a probate clerk for the after-a-death checklist. This gate appears in
+      every prompt in this kit and it is the one most worth honoring.
 - [ ] **You know who maintains this in a year.** If it's you, look at `MAINTENANCE.md` and
       decide honestly whether you'll do it. If the answer is no, either find a home for it or
       build the version that fails safe when abandoned.
@@ -145,6 +148,12 @@ Applies to everything in this kit.
 - [ ] No feature that makes it easier for someone to be targeted: no public map of vulnerable
       people, no addresses attached to health or income, no searchable index of names pulled
       from public records.
+- [ ] No tool that generates a sendable deceptive artifact — no scam or phishing message
+      composer, not even labeled as a training simulator. A convincing fake is a convincing
+      fake regardless of the label on the button.
+- [ ] No funnel into the industry that preys on your user at this exact moment: debt settlement
+      for #19, third-party energy suppliers for #20, recovery services for #22, funeral and
+      estate upsells for #24. If you're building a referral, check who pays for it.
 
 ---
 

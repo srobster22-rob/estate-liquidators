@@ -1,0 +1,318 @@
+# 21 — Special Education Meeting Prep + Rights
+
+**What it is:** A parent walks into an IEP meeting with eight people who do this every week and
+a stack of documents they've never seen. This produces the written evaluation request, tracks
+the legal timelines the district is running against, and turns "I think he's struggling" into
+three specific asks with dates attached.
+
+**Fill in before pasting:** `[STATE]`, `[STATE_ABBR]`, `[DISTRICT]`, `[CITY]`, `[LANGUAGES]`.
+
+---
+
+```text
+You are building a special education advocacy support tool for parents in [DISTRICT], [STATE].
+Build it now; do not ask me clarifying questions. Where you need a decision I did not make,
+choose the option that preserves the parent's procedural rights and deadlines, state your
+choice, and keep going.
+
+Read SAFETY + LEGAL before writing code. This is a heavily-regulated area where a confidently
+wrong statement damages a child's education, and there is a free expert resource in every state
+that this app must route people to rather than replace.
+
+=== THE PEOPLE ===
+
+Denise's son Malik is in third grade and reading at a first grade level. Two teachers have said
+he's "just a late bloomer." She asked about testing in October, verbally, at pickup. It is now
+February and nothing has happened, and she does not know that a verbal request may not have
+started any clock at all, or that a written one probably would have.
+
+The second person is Anthony, whose daughter has an IEP already. He goes to the annual meeting,
+is handed a completed draft document, is asked to sign, and does. He does not know that the
+draft is a proposal, that he is a member of the team with equal standing, or that he can say
+"I'd like to take this home and read it."
+
+The third is a school psychologist who is not the villain here. She has 90 kids on her caseload
+and no time, and a parent who arrives with a written request and specific questions gets a
+better outcome from her than one who arrives with a worry.
+
+=== THE PROBLEM ===
+
+Federal special education law under the Individuals with Disabilities Education Act, and
+Section 504 of the Rehabilitation Act, give parents specific procedural rights and impose
+specific timelines on districts. Nearly all of them are triggered by written requests and
+measured in days.
+
+Research and verify from primary sources before writing anything: the evaluation timeline that
+applies in [STATE] (federal law sets an outer bound and many states set a shorter one — find
+[STATE]'s), what a written parental request for evaluation triggers, what prior written notice
+is and when a district must provide it, the right to an independent educational evaluation at
+public expense when a parent disagrees with the district's, the requirement to provide the
+procedural safeguards notice, the parent's status as a required member of the IEP team, the
+right to request a meeting, the right to review records before a meeting, and the dispute
+resolution options (state complaint, mediation, due process) with their filing deadlines.
+
+Cite the statute or regulation for each and record the date you checked. Where [STATE] rules
+add to the federal floor, use [STATE]'s. Do not write any of this from memory.
+
+CRITICAL ROUTING REQUIREMENT: every state has at least one federally-funded Parent Training and
+Information Center that provides free, expert, individualized help to parents on exactly this.
+Find [STATE]'s, verify its contact information by calling, and put it on every screen of this
+app. This tool prepares and organizes; the PTI advises. Building this without that referral
+front and center would be substituting a document generator for an expert who is already free.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Denise sends a written evaluation request by email with a read receipt on Monday. The app tells
+her the date by which [STATE] requires the evaluation to be completed, and reminds her a week
+before it. She walks into the eligibility meeting with the district's own evaluation report,
+read in advance, and three written questions.
+
+=== BUILD THIS ===
+
+1. WHERE AM I? (/) — Route by situation, because the rights and deadlines differ completely:
+   - "I think my child needs help but nothing is happening" → evaluation request track
+   - "The school is evaluating / just evaluated" → eligibility and results track
+   - "My child has an IEP or 504 plan" → meeting prep and monitoring track
+   - "I disagree with something the school did" → dispute track
+   Each track opens with the two or three rights that matter most in that situation, plainly
+   stated, each with a citation.
+
+2. EVALUATION REQUEST TRACK — the highest-value path.
+   - Explain plainly why written matters: verbal requests are easy to lose and may not start
+     the clock. Do not make this a lecture; make it one sentence and a button.
+   - Generate the request letter: child's name, DOB, school, grade, teacher; the specific
+     concerns in the parent's own words with a prompt structure to make them concrete ("what
+     you see, how often, since when, what's been tried"); a request for a full evaluation in
+     all areas of suspected disability; a request for the procedural safeguards notice; a
+     request for written acknowledgment of the date received.
+   - Delivery guidance: email to a named person with a read receipt, plus a paper copy to the
+     principal and the district special education office, dated. Log the send.
+   - START THE CLOCK: from the date of receipt, compute and display the [STATE] deadline for
+     consent, evaluation, and eligibility determination, each with its citation, as a countdown
+     with a reminder before each. This timeline is invisible to almost every parent and it is
+     the app's most useful output.
+
+3. DOCUMENTS — A local, private place for everything: evaluation reports, IEPs, 504 plans,
+   progress reports, report cards, work samples, discipline notices, emails from teachers,
+   independent evaluations, medical records. Each with a date and a type. Photos or PDFs.
+   Nothing leaves the device.
+   Plus a request-for-records letter generator, and a reminder that records should be requested
+   and read before a meeting, not at it.
+
+4. MEETING PREP — What Anthony needed.
+   - A pre-meeting checklist with lead times: request the draft documents in advance, request
+     the evaluation report in advance, ask who will attend, invite anyone you want there
+     (you may bring anyone with knowledge of your child), and arrange an interpreter if needed
+     — cross-reference project 17, because language access at IEP meetings is a specific and
+     frequently-violated obligation.
+   - A concerns worksheet that turns worries into askable items: what you see at home, what
+     changed, what you want the school to do, what you'd accept, what evidence you have. Prints
+     to one page.
+   - Goal review: for an existing IEP, list each goal with its baseline, target, and the last
+     reported progress, and flag goals with no progress data or the same progress note repeated.
+     A goal that has been "making progress" for three reporting periods with the same wording is
+     the most common thing to ask about, and nobody notices it because the reports arrive
+     separately.
+   - Questions to ask, generated from what's missing: no baseline data, no measurable criteria,
+     services described without frequency or duration, placement decided before goals were
+     written.
+   - THE SENTENCE: prominently, "You do not have to sign at the meeting. You can say: 'I'd like
+     to take this home and read it.'" Verify how consent and signature work in [STATE] — the
+     rules differ between initial consent, consent for services, and subsequent IEPs, and the
+     app must be precise about which is which.
+
+5. AFTER THE MEETING — Generate a follow-up letter summarizing what the parent understood was
+   agreed, asking for correction if wrong. This creates a record and frequently surfaces a
+   misunderstanding while it is still fixable.
+   Also: what prior written notice is, when the district owes it, and what to do if a decision
+   was made and no notice arrived.
+
+6. DISPUTE TRACK — Verified for [STATE]: the independent educational evaluation request and
+   what the district must do in response, the state complaint process with its filing deadline
+   and the form, mediation, and due process with its deadline and its consequences. Explain the
+   escalation order plainly, note that these are formal legal processes, and route hard to the
+   PTI and to [STATE]'s special education legal aid or disability rights organization — every
+   state has a federally-mandated protection and advocacy agency; find [STATE]'s and verify it.
+   Generate a state complaint draft from the documented timeline if the parent chooses that
+   route, but lead every screen with "talk to the PTI first — it's free."
+
+7. THE TIMELINE VIEW — Everything in one chronological view: requests sent, deadlines running,
+   meetings held, documents received, progress reports. Printable. This is what a parent hands
+   to an advocate or an attorney, and it is what makes an hour with either of them productive
+   instead of spent reconstructing history.
+
+=== DATA MODEL (local only) ===
+
+children: id, first_name, dob, school, grade, district, current_plan enum(none|iep|504|
+  evaluating), disability_categories text[]
+requests: id, child_id, kind, sent_on, sent_to, method, acknowledged_on, body_md,
+  deadline_rule_id, computed_deadline
+deadlines: id, child_id, kind, starts_on, due_on, rule_citation, source_url, satisfied_on,
+  reminder_sent_on
+documents: id, child_id, kind, title, dated_on, blob_ref, sha256, note
+meetings: id, child_id, kind, scheduled_at, attendees text[], prep_notes, outcome_summary,
+  follow_up_sent_on
+goals: id, child_id, iep_document_id, area, statement, baseline, target, measure,
+  progress_reports jsonb
+concerns: id, child_id, observed, frequency, since, tried, requested_action, created_at
+
+IndexedDB only. This is a child's disability record and it stays on the parent's device.
+
+=== STACK ===
+
+- Local-first PWA: React + TypeScript + Vite, IndexedDB, offline, installable.
+- Rules and deadlines as dated, sourced JSON in /rules/[STATE_ABBR]/, Zod-validated at build
+  time, each with embedded test cases. No source URL and retrieval date, no build.
+- Deadline computation must handle calendar days vs school days vs business days — [STATE]'s
+  rules will specify one, and getting it wrong is the most likely bug. Encode the day type in
+  the rule, implement a school-calendar-aware counter if [STATE] uses school days, and let the
+  user enter [DISTRICT]'s calendar breaks.
+- PDF via pdf-lib. Reminders via local notifications where supported, plus an exportable
+  calendar file (.ics) since a PWA cannot be relied on to notify.
+- No backend. No account. No sync.
+- [LANGUAGES] from the first commit.
+
+=== HARD CONSTRAINTS ===
+
+- Every statement of a right or a timeline carries its citation and a verification date,
+  displayed inline, not in a footnote.
+- The [STATE] Parent Training and Information Center appears on every screen with its phone
+  number.
+- Deadline arithmetic uses the day type the rule specifies, and the app shows which type it
+  used. Test school-day counting across a winter break.
+- Reading level 6th grade for app copy; letters are formal, and the app says why. Ban the
+  acronym soup from the UI — write "the meeting where the school decides if your child
+  qualifies," not "the eligibility determination meeting," at least on first use.
+- [LANGUAGES] for every screen and every generated letter. Note that the district must provide
+  translation and interpretation for meetings and key documents — verify this obligation for
+  [STATE] and cite it — and that this app's letters being available in a language does not
+  discharge the district's duty.
+- WCAG 2.2 AA; works on an old phone; everything printable.
+- Zero third-party network requests. Assert it.
+
+=== DO NOT BUILD ===
+
+- No advice about whether a child has a disability, which category applies, or what services
+  are appropriate. Those are clinical and team determinations. The app helps a parent ask; it
+  never diagnoses or prescribes.
+- No LLM generating legal argument, evaluating whether the district complied, or drafting
+  substantive positions. Templates from verified rules, and the parent's own words.
+- No goal-writing assistant. Proposed IEP goals authored by software would be the app
+  overstepping into the team's work and into clinical judgment.
+- No prediction of dispute outcomes, no "your case is strong."
+- No public database of districts, no ratings, no comparison of schools.
+- No account, no cloud, no sharing, no advocate marketplace, no paid advocate referrals.
+- No sale of assessments, tutoring, or therapy services, and no affiliate anything. This parent
+  is a marketing target and the app must not be a funnel.
+- No storing of a child's full name in any exported filename or PDF metadata by default.
+
+=== ACCEPTANCE TESTS ===
+
+1. Every rights statement in the UI has a citation with a source URL and retrieval date.
+2. Deadline computation matches hand-calculated dates for [STATE]'s rule, including a case that
+   spans a school break when the rule uses school days.
+3. The day type used is displayed alongside every computed deadline.
+4. A rule file missing a source URL or retrieval date fails the build; embedded rule tests run
+   in CI.
+5. A rule past its effective window renders the stale banner.
+6. The evaluation request letter includes the child's identifying information, the concerns in
+   the parent's words, the request for evaluation in all areas of suspected disability, and the
+   request for the procedural safeguards notice.
+7. Sending a request creates its deadline records with correct due dates and reminders.
+8. Exported .ics events land on the correct dates in a calendar app.
+9. The goal review flags a goal with three consecutive identical progress notes.
+10. The PTI contact renders on every screen — test every route.
+11. Zero third-party network requests during a complete journey.
+12. All strings and all letter templates render in every language in [LANGUAGES].
+13. Exported PDFs contain no child name in metadata unless the user opted in.
+14. axe-core clean; the full flow completes with keyboard only.
+
+=== MILESTONES ===
+
+M0 — [STATE] rules research, written up before any code.
+  EXIT: a document listing every timeline and procedural right with its citation, its day type,
+  and its retrieval date, plus [STATE]'s PTI and protection-and-advocacy agency contacts
+  confirmed by phone.
+
+M1 — Evaluation request track with the deadline engine.
+  EXIT: hand-verify five deadline scenarios including one spanning a school break.
+
+M2 — Documents, meeting prep, goal review, follow-up letter.
+  EXIT: a PTI advocate or a special education attorney reviews the rights statements, the
+  letters, and the meeting checklist. Do not skip this gate — this is the area in the entire kit
+  where a confidently wrong statement is most likely and most damaging, and the PTI reviews this
+  kind of thing as part of their job.
+
+M3 — Dispute track, timeline view, second language.
+  EXIT: every filing deadline verified against [STATE]'s education agency.
+
+M4 — Three real parents through one meeting each.
+  EXIT: report what they used, what they skipped, and whether anything the app said turned out
+  to be wrong in the room. That last one is the finding that matters.
+
+=== SAFETY + LEGAL ===
+
+- Not legal advice, not educational advice, not a substitute for an advocate. Stated on every
+  screen alongside the PTI's number.
+- The PTI referral is not a disclaimer, it is the design. Free expert help exists in every
+  state, most parents have never heard of it, and connecting Denise to it may be worth more
+  than everything else the app does. Treat that referral as a primary feature and measure it.
+- Never overstate a right. Rights in this area are specific, conditional, and vary between
+  IDEA and Section 504 — conflating the two is the most common error in parent-facing material,
+  and it sends people to ask for things the wrong law provides. Label every statement with which
+  law it comes from.
+- Never advise a parent to refuse consent, withdraw consent, disenroll, or file due process.
+  Those decisions carry consequences the app cannot evaluate. Explain what each is and route to
+  the PTI.
+- The child's disability record is among the most sensitive data in this kit. Local only, PIN
+  lock available, no name in exported metadata by default, no analytics, no sync.
+- Language access at IEP meetings is a specific obligation and a common failure. State it,
+  cite it, and cross-reference project 17.
+- Discipline situations — suspension, expulsion, restraint, seclusion, police involvement at
+  school — have their own protections and short deadlines for students with disabilities.
+  Either research and implement that track properly with citations, or explicitly tell the user
+  it is out of scope and route them to the PTI and the protection and advocacy agency
+  immediately. Do not half-build it.
+- Do not position the school as the adversary. The tone throughout is preparation, not conflict.
+  Most outcomes improve with a prepared parent and a cooperative team, and a tool that primes
+  for battle produces worse results for the child.
+
+=== HOW TO REPORT BACK ===
+
+Lead with the M0 document: every timeline, its citation, its day type, its retrieval date, and
+where [STATE] exceeds the federal floor. Then: the PTI and P&A contacts you confirmed by phone;
+what the M2 reviewer corrected; the school-day counting test results; and everything you could
+not verify. Flag any place where you were unsure whether a right came from IDEA or Section 504.
+```
+
+---
+
+## Why it's shaped this way
+
+**The deadline engine is the invisible product.** Parents don't know a clock is running, so they
+wait politely through the months in which the district is supposed to be acting. Displaying the
+statutory date with its citation and a reminder converts a vague wait into a specific
+expectation, and that alone changes how the October conversation goes.
+
+**The PTI referral on every screen is a design decision, not a legal hedge.** Every state has a
+federally-funded center staffed by people who do this all day, for free, and most parents have
+never heard of it. Any version of this tool that doesn't hand Denise that phone number has
+substituted a document generator for an expert she could have had.
+
+**No goal-writing assistant, no eligibility opinions.** Those are the features people will ask
+for and they cross from preparation into clinical and team judgment. The app's job is to make
+sure the parent arrives having read the documents, knowing the timeline, and holding three
+specific questions.
+
+**The goal review flagging repeated progress notes** is small and quietly powerful. Progress
+reports arrive one at a time, months apart, so nobody notices that "making progress toward
+goal" has been the same sentence for a year. Lining them up is trivial to build and it's the
+single most useful question a parent can bring to a meeting.
+
+**Tone matters more here than anywhere else in the kit.** The school psychologist with 90 kids
+is not the enemy, and a parent primed for a fight gets worse outcomes than one who arrives
+prepared. The app is a briefing, not a weapon.
+
+**Before you build:** call [STATE]'s Parent Training and Information Center. Tell them what
+you're making. They will tell you the three things parents always get wrong, and they may
+review your letters.
