@@ -163,62 +163,68 @@ sceptical.
 
 ## A recorded run
 
-400 generations, population 70, on the 30-market universe. **37,020 in-sample
-trials, 140 out-of-sample looks, 2 vault burns — one confirmed bot.**
+300 generations, population 70, on the 30-market universe with **twelve years** of
+hourly history — a 3.14-year validation slice. **27,401 in-sample trials, 105
+out-of-sample looks, 5 vault burns — three confirmed bots.**
 
 ```
-donchian @ largecap_alt_1h        train 4.24 | validation 5.46 | vault 5.31
-                                  CAGR 2.25 | max DD 0.129 | 136 trades
-                                  DSR 1.000, confirmed at look 5 / burn 2
+                                train   val  vault   CAGR   maxDD  confirmed at
+donchian  @ largecap_alt_1h      4.82   5.33   6.08   0.61    6.4%    look 5
+donchian  @ trend_fast_1h        4.13   4.41   3.24   0.36   11.1%    look 6
+ema_cross @ largecap_alt_1h      5.67   5.00   5.39   5.71   27.3%    look 7
+
+pairwise correlation of daily vault returns
+                                 0      1      2
+0 donchian@largecap_alt_1h    1.00   0.01   0.63
+1 donchian@trend_fast_1h      0.01   1.00  -0.01
+2 ema_cross@largecap_alt_1h   0.63  -0.01   1.00
 ```
 
-It landed on a market with real structure and claimed nothing in the twelve that
-have none.
+Five further candidates cleared all eleven gates and were turned away as
+re-parameterisations of a bot already held. Two reached the vault and were rejected
+there, both at gate 10. All three winners landed on markets with real structure.
 
-### Where the 138 rejected candidates died
+**The 0.63 deserves naming rather than hiding behind the 0.70 threshold.** The two
+bots on `largecap_alt_1h` share 40% of their variance. They pass the duplicate
+check, but they are not two independent positions and should not be sized as
+though they were. The honest description is two edges and a partial third.
 
-```
-  79  deflated_sharpe      <- gate 10 does most of the killing, as designed
-  17  oos_profit
-  15  cost_stress
-  11  sanity
-   6  regime_consist
-   6  drawdown
-   1  each: wf_efficiency, mc_timing, lag_robust, beats_benchmark
-```
+### What actually moved the number
 
-### This run replaced a three-bot result, and that is the point
+Three expansions were tried, in this order:
 
-The identical configuration previously returned **three** bots with near-zero
-pairwise correlation — a much better-looking answer. It was substantially an
-artifact. An adversarial audit found that gate 10's hurdle *fell* as the search
-looked harder: the dispersion estimate switched from the in-sample pool to the
-out-of-sample one the moment the 5th sample arrived, and a standard deviation from
-five observations is noisy enough that the bar dropped 55% in a single step, from
-2.80 to 1.25. A candidate posting 3.0 failed as the 5th look and its twin passed as
-the 6th.
+| Change | Bots found |
+|---|---|
+| 5 → 16 structured markets | 1 |
+| 14 → 22 strategies, 7 → 10 families | 1 |
+| 1.28 → 3.14 year validation slice | **3** |
 
-With the bar repaired — shrinkage instead of a switch, plus a persisted high-water
-mark so it can never fall — gate 10's kill count went from 26 to 79 and two of the
-three bots went with it. **Two thirds of that result was the broken hurdle.**
+The first two were built properly and changed nothing. The new families were used —
+`vol_squeeze` took 11 promotions, `xs_momentum` 5, `kalman_trend` 4 — and died in
+the gauntlet. **The binding constraint was never the search space.** Gate 10 needs
+the observed Sharpe to clear its hurdle by ~1.645 standard errors, and that error
+scales as 1/sqrt(years): over 1.28 years the margin a bot must clear is ~1.45, over
+3.14 years it is ~0.93. Widening the search adds candidates *and* raises the bar,
+and the two cancel. Lengthening the history shrinks the error bar without touching
+the bar at all.
 
-The same audit found the strict null was not null in the space where P&L is
-measured: returns are generated in log space with zero drift, but P&L is earned in
-simple returns, and E[exp(r)-1] = exp(sigma^2/2)-1 is a 21%/year premium to anything
-permanently long at 65% vol. Every false-positive number quoted before that fix was
-measured against a market that quietly paid for exposure. With the Ito correction
-the residual drift across 24 null markets is t = +0.19 +/- 0.18, and the calibration
-re-run still returns 0 false positives — now earned rather than inherited.
+That distinction matters for reading any of these numbers: the third run did not
+make passing easier, it made the evidence stronger. Gate 10 still rejected both
+`alt_perp_4h` candidates at the vault.
 
-Eleven defects survived refutation out of thirty reported; all are fixed and listed
-in the commit log. The two above are the ones that changed a published number.
+### The calibration was re-earned at this data length
 
-### About that Sharpe
+`null-test` at the same 110k bars returns **0 false positives**. A clean null at
+45k bars would not have licensed a claim at 110k — the gates' power changes with
+the sample, so the calibration has to be run at the length the result is quoted on.
 
-5.3 is not a plausible number for a real market and is not a claim about one.
-`largecap_alt_1h` is a series this repo generated with a trend component this repo
-inserted at a strength this repo chose. What the run establishes is that the
-machinery works end to end and that its own reported numbers survive being attacked.
+### About those Sharpe numbers
+
+3.2 to 6.1 are not plausible for a real market and are not claims about one. These
+are series this repo generated, with trend components this repo inserted at
+strengths this repo chose. What the run establishes is that the machinery works end
+to end, that its numbers survive being attacked, and that it reports one bot when
+one bot is what the data supports.
 
 ---
 
