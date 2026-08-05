@@ -111,8 +111,10 @@ This is the part software people skip and it is usually why these projects die.
       Count where they hesitated. That's your bug list.
 - [ ] **A domain expert has reviewed the output.** A caseworker for the benefits screener, a
       legal aid attorney for the tenant letters, a patient advocate for the bill letters, a
-      pharmacist for the prescription scripts, a wheelchair user for the accessibility viewer.
-      This gate appears in every prompt in this kit and it is the one most worth honoring.
+      pharmacist for the prescription scripts, a wheelchair user for the accessibility viewer,
+      a worker center organizer for the wage claim packet, a court clerk or public defender for
+      the court procedure pages, a civil rights advocate for the language access claims. This
+      gate appears in every prompt in this kit and it is the one most worth honoring.
 - [ ] **You know who maintains this in a year.** If it's you, look at `MAINTENANCE.md` and
       decide honestly whether you'll do it. If the answer is no, either find a home for it or
       build the version that fails safe when abandoned.

@@ -1,6 +1,6 @@
 # Everyday Projects That Help Society — A Prompt Kit
 
-Twelve copy-and-paste prompts for building small, real software that helps actual people in
+Eighteen copy-and-paste prompts for building small, real software that helps actual people in
 an actual place. Each one is a complete brief: a named user with a named problem, an exact
 stack, named data sources, hard constraints, a scope fence, numbered acceptance tests, and
 milestones with exit criteria.
@@ -31,7 +31,11 @@ agent) and it can start writing files in the first minute without asking you twe
 
 ---
 
-## The twelve
+## The eighteen
+
+**New here? Start with [16](16-disposal-guide.md).** Lowest stakes, real users on day one, and
+it drills the two habits every other project depends on: verify local facts by phone, and design
+for the data going stale.
 
 | # | Project | Who it's for | Hard part |
 |---|---|---|---|
@@ -47,6 +51,12 @@ agent) and it can start writing files in the first minute without asking you twe
 | [10](10-accessibility-mapping.md) | **Sidewalk + entrance accessibility survey** | Wheelchair user planning a route through an unmapped downtown | Survey rigor — bad data is worse than none when a curb ramp is the question |
 | [11](11-air-quality-network.md) | **Neighborhood air quality sensor network** | Block downwind of a highway with no regulatory monitor | Calibration; a cheap sensor reads 2× high in humidity |
 | [12](12-outage-checkin-board.md) | **Outage / disaster check-in board** | Ice storm, no power, 5% battery, one bar of signal | Works offline, over SMS, on a 2014 Android |
+| [13](13-wage-theft-record.md) | **Wage theft record + claim builder** | Cook told to set up 15 minutes before clock-in, every night, for 8 months | Twenty seconds a day, or she stops logging |
+| [14](14-court-date-reminders.md) | **Court date reminders + logistics** | Man whose court paper is in a bag somewhere, date "sometime in March" | Reminding without scraping dockets or outing anyone |
+| [15](15-lead-water-lookup.md) | **Lead service line + water lookup** | Parent of a two-year-old in a 1948 house | "Unknown" is the most common answer — how it reads decides everything |
+| [16](16-disposal-guide.md) | **"What do I do with this?" disposal guide** | Anyone cleaning a garage with two swollen laptop batteries in it | The rules are municipal; only phone calls make them true |
+| [17](17-language-access-kit.md) | **Language access kit** | Woman being asked to consent to a procedure through her 19-year-old son | Refusing to build the translation feature everyone asks for |
+| [18](18-directory-that-doesnt-rot.md) | **The directory that doesn't rot** | Every other project here, nine months after launch | Per-field decay, and 15 seconds per verification |
 
 Also in this directory:
 
@@ -98,19 +108,26 @@ a demo and something a person can actually use.
 
 ## Choosing well
 
-A short honest filter, since twelve options invites drift:
+A short honest filter, since eighteen options invites drift:
 
 - **Is there a specific person you can show it to this month?** If not, pick a different one.
   These are not products; they're tools for a place you know.
 - **Does an org already do this locally?** Then build the thing they're doing in a spreadsheet
   at 11pm. Call them first. Most of these projects are better as "the food bank's dispatch
   tool" than as "a food rescue platform."
-- **What happens when it's wrong?** #09 wrong means someone waits a week for a drill. #02 and
-  #04 wrong means someone doesn't apply for food assistance they qualify for, or pays a bill
-  they didn't owe. Build the low-stakes one first if this is your first project of this kind.
+- **What happens when it's wrong?** #09 wrong means someone waits a week for a drill; #16
+  wrong means a wasted Saturday trip. #02, #04, and #14 wrong means someone doesn't apply for
+  food assistance they qualify for, pays a bill they didn't owe, or misses a court date. Build
+  a low-stakes one first if this is your first project of this kind.
 - **Will you maintain it for a year?** Data sources move. Rules change every January. A dead
   benefits screener showing 2026 numbers in 2029 is actively harmful. If the answer is no,
-  pick #09, #12, or #01 — the ones that fail safe.
+  pick #01, #09, #12, or #16 — the ones that fail safe.
+
+**Two of these are different in kind.** #18 is infrastructure rather than a product: build it
+when a directory you already run has started rotting, or when three organizations in your city
+each maintain their own half-wrong list. And #08 genuinely wants a partner organization before
+the first ride, because the screening, insurance, and waiver structure needs an entity with
+liability coverage — the brief says so and means it.
 
 The best version of any of these is boring, narrow, and used by eleven people in one
 neighborhood. Aim there.
