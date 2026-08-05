@@ -364,13 +364,16 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     p_fw_all = min(1.0, (1.0 - stats.norm_cdf(z_null)) * max(n_trials, 1))
     dsr_all, sr0_all = stats.deflated_sharpe(r_pooled, bpy, max(n_trials, 1), var_median)
     ok = dsr >= cfg.min_dsr and p_fw <= cfg.family_wise_p_max
-    perf.update(dsr=dsr, dsr_threshold_sr=sr0, n_trials=n_trials,
+    headroom = _burden_headroom(r_pooled, bpy, z_null, var_median, cfg)
+    perf.update(burden_headroom=headroom,
+                dsr=dsr, dsr_threshold_sr=sr0, n_trials=n_trials,
                 n_confirm_tests=n_confirm, var_trial_sharpe=var_trial_sharpe,
                 family_wise_p=p_fw, family_wise_p_all_trials=p_fw_all,
                 dsr_all_trials=dsr_all, dsr_threshold_sr_all_trials=sr0_all)
     stages.append(Stage("G6-multiplicity", ok,
                         f"DSR {dsr:.3f} (need {cfg.min_dsr:.2f}) vs luck bar SR {sr0:.2f} "
-                        f"after {n_confirm} confirmation tests; Bonferroni p {p_fw:.2e} "
+                        f"after {n_confirm} confirmation tests (would still pass up to "
+                        f"{headroom:,}); Bonferroni p {p_fw:.2e} "
                         f"(need <={cfg.family_wise_p_max}) | stricter all-trials view "
                         f"({n_trials} screened): DSR {dsr_all:.3f} vs SR {sr0_all:.2f}, "
                         f"p {p_fw_all:.2e}"))
@@ -411,6 +414,44 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
 
     return Verdict(g.bot_id, g.market, True, None, stages, perf=perf, cross_market=xm,
                    n_backtests=n_bt, describe=g.describe())
+
+
+def _burden_headroom(r_pooled: np.ndarray, bpy: float, z_null: float,
+                     var_median: float, cfg: GauntletConfig) -> int:
+    """The largest search this bot's evidence could have come out of and still
+    certify: the maximum number of confirmation tests at which it clears both
+    legs of G6.
+
+    This is the number that says how much of a certification is the bot and how
+    much is the search having been small. Both criteria fall monotonically as the
+    test count rises, so a binary search finds the crossing exactly, and it costs
+    nothing — the replication returns and the permutation z are already in hand.
+
+    Measured because it mattered: doubling the bars per instance let a run certify
+    six strategies from 960 candidates, but re-testing them against the burden of
+    the previous 92,000-candidate run showed only three would have survived it.
+    Both facts are true and only reporting the first would be misleading.
+    """
+    if r_pooled.size < 8:
+        return 0
+
+    def passes(n: int) -> bool:
+        dsr, _ = stats.deflated_sharpe(r_pooled, bpy, max(n, 1), var_median)
+        p_fw = min(1.0, (1.0 - stats.norm_cdf(z_null)) * max(n, 1))
+        return dsr >= cfg.min_dsr and p_fw <= cfg.family_wise_p_max
+
+    if not passes(1):
+        return 0
+    lo, hi = 1, 1 << 30
+    if passes(hi):
+        return hi
+    while lo < hi - 1:                       # invariant: passes(lo), not passes(hi)
+        mid = (lo + hi) // 2
+        if passes(mid):
+            lo = mid
+        else:
+            hi = mid
+    return lo
 
 
 def quick_report(v: Verdict) -> str:

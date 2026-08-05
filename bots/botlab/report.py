@@ -90,6 +90,23 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      "everywhere would be evidence against itself.")
         else:
             L.append(f"Markets represented: {', '.join('`' + m + '`' for m in markets)}.")
+        # Headroom belongs in the headline. "6 strategies certified after 41
+        # gauntlets" and "6 strategies certified after 3,000" are different
+        # claims, and the difference is invisible without this.
+        hrs = sorted((p["verdict"].get("perf", {}).get("burden_headroom", 0)
+                      for p in st.proven), reverse=True)
+        if any(hrs):
+            robust = sum(1 for h in hrs if h >= 10 * max(st.gauntlet_runs, 1))
+            L.append("")
+            L.append(f"**Search-burden headroom.** These were certified after "
+                     f"{st.gauntlet_runs} confirmation tests, and G6's luck bar rises with "
+                     f"that count — so the count matters as much as the Sharpe. Headroom is "
+                     f"the largest search each bot's evidence could have come out of and "
+                     f"still clear G6: **{robust} of {len(hrs)} genomes clear a bar ten times "
+                     f"harder than the one they actually faced** (headroom "
+                     f"{hrs[0]:,} down to {hrs[-1]:,}). Read it before the Sharpe — a bot "
+                     f"whose headroom is close to the tests already run would vanish in a "
+                     f"more serious hunt.")
     elif st.trials == 0:
         L.append("**No run on record.** The ledger is empty — this is a fresh checkout, or "
                  "the state file was cleared. Nothing here is a result yet.")
@@ -141,6 +158,15 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      f"perfect-foresight ceiling SR {spec.oracle_sharpe_ceiling():.2f})")
             L.append(f"- found in generation {meta.get('found_generation', '?')} "
                      f"via {g.origin}" + (f" from {', '.join(g.parents)}" if g.parents else ""))
+            hr = perf.get("burden_headroom")
+            if hr is not None:
+                L.append(f"- **search-burden headroom: {hr:,}** — the largest number of "
+                         f"confirmation tests this bot's evidence could have come out of "
+                         f"and still clear G6. Certified here after "
+                         f"{perf.get('n_confirm_tests', 0):,}. A headroom close to that "
+                         f"number means the certification leans on the search having been "
+                         f"small; a headroom far above it means the edge would survive a "
+                         f"much larger hunt.")
             L.append("")
             grows = []
             for s in v.get("stages", []):

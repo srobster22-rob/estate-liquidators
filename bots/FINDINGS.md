@@ -523,6 +523,92 @@ is a number no strategy can approach. Worth knowing before reading a ceiling as
 
 ---
 
+## F16 · Doubling the bars per instance: 6 strategies from 960 candidates instead of 3 from 92,000
+
+F13 named more data as the cleanest way past the deadlock, on the theory that the
+luck bar does not depend on sample length while the probabilistic Sharpe does,
+through its `sqrt(T-1)` term. More evidence for a real edge; nothing for a
+spurious one, because the null tightens too. Doubling `n_bars` on every family
+(3,000 → 6,000 daily, 9,000 → 18,000 crypto hourly, 7,800 → 15,600 intraday)
+tested that theory. It held, by a wider margin than expected.
+
+| | 3,000 bars | 6,000 bars |
+|---|---|---|
+| distinct strategies | 3 | **6** |
+| candidates screened | 91,940 | **960** |
+| gauntlets | 2,911 | **41** |
+| backtests | 202,348 | **6,968** |
+| generations | 77 | **3** |
+| markets represented | commodity, futures | **futures, FX** |
+
+Roughly **96x fewer candidates for twice the strategies**, and on two market
+families rather than one — `fx_major_daily` had never produced a certified bot in
+any previous run.
+
+The mechanism is visible in the second row. It is not that the gates got easier;
+it is that a real edge needs far fewer *hypotheses* to establish when each test
+carries twice the evidence, and fewer hypotheses means a lower multiple-testing
+correction. The two effects compound.
+
+Three independent checks that this is more evidence and not a weaker test:
+
+* **The false-positive rate stayed at zero, and got stricter.** 1,500 candidates
+  on a structureless market certified nothing, and where the 3,000-bar harness
+  let a few finalists reach G2 and G3, **all 20 now die at G1**. Doubling the data
+  makes spurious edges easier to reject, exactly as the theory says.
+* **The negative controls' apparent edge collapsed.** The best archetype on
+  `control_efficient_daily` fell from +0.29 to +0.01 net alpha Sharpe — that
+  number was always selection noise across 13 archetypes, and it shrinks with
+  sample size like noise should.
+* **`vol_fix` moved on six of thirteen families** and had to be re-measured. The
+  constant absorbs the skewed sampling distribution of realised volatility in the
+  near-integrated GARCH families, and that distribution depends on sample length.
+  A change to `n_bars` is a change to the generator; the standing rule to refresh
+  the constants earned its place.
+
+The honest qualifier is in F17.
+
+---
+
+## F17 · Search-burden headroom: how much of a certification is the bot and how much is the search being small
+
+Six strategies certified after 41 gauntlets is a very different claim from three
+certified after 2,911, because G6's luck bar is a function of how many hypotheses
+have been tested. So the obvious question is whether the six would survive the
+burden the three had to.
+
+Re-testing each against the previous run's 2,911 confirmation tests: **three
+survive, three do not.** All three survivors trade `futures_trend_daily`; all
+three casualties trade `fx_major_daily`. The FX bots are genuine edges — G2
+replication +0.38 to +0.40 with 95-100% of instances positive, cost-robust to 3x —
+but their *certification* leans on the search having been short.
+
+Reporting only "6 distinct strategies" would have been misleading, so the
+gauntlet now computes this directly. `burden_headroom` binary-searches the largest
+number of confirmation tests at which a bot still clears both legs of G6. Both
+criteria fall monotonically with the test count, and the replication returns and
+permutation z-score are already in hand, so it costs nothing.
+
+| bot | market | replication alphaSR | certified after | headroom |
+|---|---|---|---|---|
+| `cc979a601706` | futures_trend | +0.50 | 19 | **2,779,442** |
+| `715224a93087` | futures_trend | +0.50 | 31 | **241,768** |
+| `bc49c51e4be8` | futures_trend | +0.46 | 12 | **4,731** |
+| `d8d97a6d4d8c` | fx_major | +0.40 | 38 | 2,028 |
+| `471990f1c3e1` | fx_major | +0.39 | 26 | 1,017 |
+| `824eaa23a9ab` | fx_major | +0.38 | 37 | 263 |
+
+The spread is four orders of magnitude across bots whose replication Sharpes
+differ by 0.12. That is the number to read before the Sharpe: a bot with headroom
+of 263 is a bot that would vanish in a serious search, and one with headroom in
+the millions is an edge that does not care how hard you looked.
+
+It also retro-explains F13. The commodity near-miss that could not be certified at
+2,911 tests was not weak — it was competing against a bar that its own search had
+raised, and its headroom was simply below where the search had already got to.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

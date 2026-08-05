@@ -301,7 +301,11 @@ def calibration_row(spec: MarketSpec, n_instances: int = 8) -> dict:
         dd.append(float((eq / np.maximum.accumulate(eq) - 1.0).min()))
     return {
         "market": spec.name,
-        "vol_ann": float(np.mean(vols)),
+        # Median, not mean: crypto_alt_hourly has tail_df 3.2 and jump_scale 6, so
+        # one outlier instance dragged the reported volatility to 148% against a
+        # 110% target while the median sat at 107%. A mean is the wrong summary
+        # for a deliberately fat-tailed family.
+        "vol_ann": float(np.median(vols)),
         "target_vol": spec.vol_ann,
         "autocorr1": float(np.mean(ac1)) if ac1 else 0.0,
         "vol_ratio_20bar": float(np.mean(hurst_ish)) if hurst_ish else 1.0,

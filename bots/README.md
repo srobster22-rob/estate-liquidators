@@ -6,20 +6,21 @@ through a seven-gate validation ladder, and keeps expanding the search space
 until the target number of bots survives — or until it runs out of budget and
 reports that nothing did.
 
-The committed run certified **3 distinct strategies** out of 91,940 candidates
-and 202,348 backtests: two mean-reversion rules on `commodity_meanrev_daily` and
-one trend rule on `futures_trend_daily`.
+The committed run certified **6 distinct strategies** from 960 candidates and
+6,968 backtests, across `futures_trend_daily` and `fx_major_daily`.
 
-It also found the ceiling. The third strategy arrived at generation 45 and had to
-clear a G6 luck bar of 0.48 — twice the 0.23 faced by the bot proven at
-generation 4, because that bar rises with the number of hypotheses tested. A
-further 32 generations produced no fourth: 120 candidates reached G6 with genuine
-replicated edges (up to +0.52 alpha Sharpe on 20 unseen instances) and were
-rejected by a luck bar that had climbed to 0.51. **A search cannot buy certainty
-by searching harder** — that is the correction working, not failing, and
-`FINDINGS.md` F13 works through what would legitimately break the deadlock and
-why starting a fresh ledger (which would certify all of them instantly) would
-not. See `REPORT.md` for the evidence.
+That is after doubling the bars per instance. The previous run, on half the data,
+needed **91,940 candidates and 202,348 backtests to certify 3** — because G6's
+luck bar rises with the number of hypotheses tested, and a search big enough to
+find a marginal edge is big enough to disqualify it. More data per instance
+raises the evidence each test carries without moving that bar, so far fewer tests
+are needed and the correction stays small. Both effects compound; the result was
+96x fewer candidates for twice the strategies (`FINDINGS.md` F16).
+
+Read the **search-burden headroom** before any Sharpe. It is the largest search a
+bot's evidence could have come out of and still clear G6, and it separates the
+six into three that would survive a 240,000-test hunt and three that would not
+(`FINDINGS.md` F17).
 
 The interesting part is not the search. Searches are easy, and a big enough one
 will hand you a beautiful equity curve on data with no edge in it at all. The
