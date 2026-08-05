@@ -168,6 +168,15 @@ SYNTH_SPEC = [
          fee=5.0, spread=2.0),
 ]
 
+# Factor baskets: several names sharing a common factor plus idiosyncratic returns.
+# The factor is just another random walk, so betting on it is betting on direction;
+# what is forecastable is the idiosyncratic drift, which is the cross-sectional
+# momentum premise and the only structure `xs_momentum` can trade across a real
+# cross-section. A basket with idio_trend=0 is a decoy: correlated, plausible, and
+# offering a ranking strategy nothing at all.
+BASKET_SPEC = []
+
+
 # Cointegrated pairs: two legs sharing a price plus a stationary spread. Neither
 # leg is predictable alone; the gap between them is. This is the only structure in
 # the universe that a single-market strategy cannot touch, so a pairs bot found here
@@ -186,6 +195,10 @@ STRUCTURED = {s["key"] for s in SYNTH_SPEC
 # Both legs of a cointegrated pair carry structure — in the spread, not in either
 # leg's own direction.
 STRUCTURED |= {p["key_a"] for p in PAIR_SPEC} | {p["key_b"] for p in PAIR_SPEC}
+# A basket leg carries structure only when the basket has idiosyncratic drift; a
+# flat basket is correlated noise and belongs with the decoys.
+STRUCTURED |= {k for b in BASKET_SPEC if b.get("idio_trend")
+               for k in b["keys"]}
 
 # Structured AND worth trading after costs. The difference between the two sets is
 # smallcap_alt_1h, whose 30bps round trip eats a genuine reversion edge.
@@ -250,6 +263,21 @@ def synthetic_universe(seed=7, bars=45000, subset=None):
             spread_bps=spec["spread"], impact_bps=max(1.0, spec["spread"]))
         out[spec["key_a"]] = a
         out[spec["key_b"]] = b
+
+    for j, spec in enumerate(BASKET_SPEC):
+        if subset and not any(k in subset for k in spec["keys"]):
+            continue
+        n = max(2000, int(BARS_BY_INTERVAL[spec["interval"]] * scale))
+        legs = dta.factor_basket(
+            spec["keys"], seed=seed * 1000 + 700 + j,
+            factor_vol_share=spec.get("factor_vol_share", 0.6),
+            idio_trend=spec.get("idio_trend", 0.0),
+            idio_halflife=spec.get("idio_halflife", 200),
+            bars=n, interval=spec["interval"], kind=spec["kind"],
+            start_price=spec["price"], fee_bps=spec["fee"],
+            spread_bps=spec["spread"], impact_bps=max(1.0, spec["spread"]))
+        for leg in legs:
+            out[leg.key] = leg
     return out
 
 
