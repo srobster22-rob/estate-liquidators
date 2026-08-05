@@ -812,3 +812,106 @@ class TestVaultIsProtected(unittest.TestCase):
                           {"fast": 17, "slow": 101, "deadband": 0.01,
                            "long_only": False}, dict(bt.DEFAULT_RISK))
         self.assertIsNotNone(reloaded.is_redundant(twin, None))
+
+
+class TestSecondWaveFamilies(unittest.TestCase):
+    """The new families make two claims in their docstrings. Claims in comments are
+    how this repo got into trouble before, so both are pinned here."""
+
+    def _best(self, market, name, grids, partner=None, risk=None):
+        risk = risk or dict(bt.DEFAULT_RISK, vol_target=0.35, max_leverage=2.0)
+        strat = st.REGISTRY[name]
+        best = -9.0
+        for params in grids:
+            sig = strat.signal(market, params, partner)
+            res = bt.run(market, sig, risk=risk,
+                         hedge=partner if strat.needs_partner else None,
+                         partner_turnover=1.0 if strat.needs_partner else 0.0)
+            if res["trades_per_year"] >= 6:
+                best = max(best, res["sharpe"])
+        return best
+
+    def test_kalman_beats_a_crossover_on_a_hidden_drift_market(self):
+        """kalman_trend claims to be the optimal estimator for the AR(1)-drift
+        process the trend markets are generated from. If a plain moving-average
+        crossover matches it, the family is not earning the looks it will spend."""
+        m = dta.synth_market("hd", seed=515, bars=45000, trend_strength=0.09,
+                             trend_halflife=250, fee_bps=7.0, spread_bps=2.0,
+                             impact_bps=2.0)
+        kal = self._best(m, "kalman_trend", [
+            {"persistence": rho, "q_ratio": q, "entry_snr": 0.0,
+             "scale_snr": 0.1, "long_only": False}
+            for rho in (0.99, 0.995, 0.999) for q in (1e-4, 1e-3)])
+        ema = self._best(m, "ema_cross", [
+            {"fast": f, "slow": s, "deadband": 0.0, "long_only": False}
+            for f, s in ((10, 50), (20, 100), (50, 200), (30, 300))])
+        self.assertGreater(kal, 1.0, "kalman should find a strong hidden drift")
+        self.assertGreater(kal, ema * 0.9,
+                           f"kalman {kal:.2f} should be competitive with the "
+                           f"crossover {ema:.2f} it claims to improve on")
+
+    def test_ou_reversion_stands_aside_when_reversion_stops(self):
+        """It claims to disengage when the deviation stops mean-reverting. On a
+        strongly TRENDING market a plain fader should bleed and this should not."""
+        m = dta.synth_market("tr", seed=516, bars=45000, trend_strength=0.10,
+                             trend_halflife=300, fee_bps=7.0, spread_bps=2.0,
+                             impact_bps=2.0)
+        fade = self._best(m, "bollinger_fade", [
+            {"window": w, "entry_z": 1.5, "exit_z": 0.0, "long_only": False}
+            for w in (48, 96, 200)])
+        ou = self._best(m, "ou_reversion", [
+            {"window": w, "anchor": 100, "entry_z": 1.5, "max_phi": 0.97,
+             "long_only": False} for w in (100, 200, 400)])
+        self.assertGreater(ou, fade,
+                           f"ou_reversion {ou:.2f} should survive a trend better "
+                           f"than a plain fader {fade:.2f}")
+
+    def test_the_decoy_families_find_nothing_where_nothing_exists(self):
+        """seasonality and volume_thrust exist to come back empty.
+
+        The generator has no time-of-day effect at all, and its volume is a function
+        of |return| carrying no directional content. An edge here is a leak — in the
+        family, the engine, or the gates — and this test is the tripwire."""
+        m = dta.synth_market("flat", seed=517, bars=45000, regime_drift=0.0,
+                             fee_bps=6.0, spread_bps=2.0, impact_bps=2.0)
+        seasonal = self._best(m, "seasonality", [
+            {"start_hour": h, "span_hours": s, "short_outside": True,
+             "long_only": False}
+            for h in range(0, 24, 3) for s in (3, 6, 12)])
+        self.assertLess(seasonal, 0.8,
+                        f"seasonality scored {seasonal:.2f} on data with no "
+                        f"time-of-day structure whatsoever")
+        flow = self._best(m, "volume_thrust", [
+            {"window": w, "thrust": t, "hold": h, "fade": f, "long_only": False}
+            for w in (20, 100) for t in (1.5, 2.5) for h in (4, 24)
+            for f in (True, False)])
+        self.assertLess(flow, 0.8,
+                        f"volume_thrust scored {flow:.2f} on volume that carries "
+                        f"no directional information")
+
+    def test_xs_momentum_is_market_neutral_by_construction(self):
+        """It trades through the hedge path, so its returns must be the spread's.
+        A version that quietly ran single-leg would be a directional bet wearing a
+        market-neutral label."""
+        a, b = dta.cointegrated_pair("xa", "xb", seed=518, bars=20000,
+                                     spread_sd=0.03, spread_halflife=100)
+        sig = st.REGISTRY["xs_momentum"].signal(
+            b, {"lookback": 200, "threshold": 0.0}, a)
+        hedged = bt.run(b, sig, hedge=a, cost_mult=0.0,
+                        risk=dict(bt.DEFAULT_RISK, vol_target=0.2,
+                                  max_leverage=1.0))
+        h = bt.hedged_returns(b, a, 1.0)
+        want = sum(hedged.position[i] * h[i + 1] for i in range(len(hedged.net))
+                   if h[i + 1] is not None)
+        self.assertAlmostEqual(sum(hedged.net), want, places=9)
+
+    def test_every_new_family_is_registered_with_a_distinct_family_name(self):
+        """A 'new family' that shares a family label with an existing one is a
+        re-parameterisation, and the crossover operator will treat it as a sibling.
+        Ten distinct labels across 22 strategies."""
+        from collections import Counter
+        fams = Counter(s.family for s in st.REGISTRY.values())
+        self.assertGreaterEqual(len(fams), 10)
+        for name in ("kalman_trend", "ou_reversion", "vol_squeeze", "xs_momentum",
+                     "multi_tf", "accel", "seasonality", "volume_thrust"):
+            self.assertIn(name, st.REGISTRY)

@@ -17,9 +17,23 @@ verifies causality by truncating each market at a random index and checking that
 every prefix signal is bit-identical to the full-history one.
 
 Families are deliberately spread across market behaviours — trend, reversion,
-breakout, carry, cross-sectional — because the factory's whole premise is that
-different market types need different strategies, and a zoo of eight trend followers
-would just be one strategy with eight parameterisations.
+breakout, carry, cross-sectional, adaptive, seasonal, flow — because the factory's
+whole premise is that different market types need different strategies, and a zoo of
+eight trend followers would just be one strategy with eight parameterisations.
+
+ADDING A FAMILY IS NOT FREE. Every one multiplies the trials, and each candidate it
+gets promoted spends an out-of-sample look that raises gate 10's hurdle for
+everything tested after it. A family pays for itself only if it can express
+structure that exists in the data and the rest of the zoo cannot capture. Before
+adding one, ask what it can say that `ema_cross` cannot; if the answer is "the same
+thing, differently parameterised", it will cost more than it returns.
+
+Two of the families here — `seasonality` and `volume_thrust` — are expected to come
+back EMPTY on this generator, which has no time-of-day effect and whose volume
+carries no directional content. They are cheap insurance: a family that provably
+cannot work is a standing tripwire, because anything it "finds" is a leak in the
+engine or the gates, visible immediately and without needing a null universe to
+detect it.
 """
 
 import math
@@ -529,3 +543,306 @@ def available(tier, kind):
     """Strategies unlocked at or below `tier` that can trade this instrument kind."""
     return [s for s in REGISTRY.values()
             if s.tier <= tier and kind in s.kinds and s.family != "benchmark"]
+
+
+# ======================================================================
+# SECOND WAVE
+#
+# Adding families is not free. Each one multiplies the trials, and every
+# candidate promoted out of it spends an out-of-sample look that raises gate 10's
+# hurdle for everything after it. A family earns its place only if it can express
+# structure that exists in the data and the existing zoo CANNOT capture. A fourth
+# way of saying "the fast average crossed the slow one" just makes the bar higher
+# for everybody.
+#
+# So these were picked against what is actually in the universe — plus two that
+# should find nothing at all, because a family that correctly comes back empty is
+# evidence the validator works, and it is cheap insurance against the opposite
+# error.
+# ======================================================================
+
+def _kalman_trend(market, p):
+    """Estimate the hidden drift with a Kalman filter and trade its sign.
+
+    The synthetic trend markets are generated from an AR(1) drift observed through
+    noise (data.py, `trend_strength`), and this filter is the *optimal* estimator
+    for exactly that process. A moving-average crossover approximates the same
+    quantity crudely, so this family is the direct test of whether the zoo's trend
+    strategies were leaving anything on the table.
+
+    Exposure is continuous in the estimate's signal-to-noise ratio rather than
+    binary: when the filter is unsure, the position is small. That alone tends to
+    beat a sign-flip on turnover, which gate 6 cares about a great deal."""
+    mu, sig = ind.kalman_drift(market, p["persistence"], p["q_ratio"])
+    out = [None] * len(market.close)
+    for i in range(len(out)):
+        if mu[i] is None or sig[i] is None or sig[i] <= 0:
+            continue
+        snr = mu[i] / sig[i]
+        if abs(snr) < p["entry_snr"]:
+            out[i] = 0.0
+        else:
+            out[i] = _dir(p["long_only"], max(-1.0, min(1.0, snr / p["scale_snr"])))
+    return out
+
+
+register(Strategy("kalman_trend", "adaptive", {
+    "persistence": FloatP(0.90, 0.9995),
+    "q_ratio": FloatP(1e-5, 1e-2, log=True),
+    "entry_snr": FloatP(0.0, 0.15),
+    "scale_snr": FloatP(0.02, 0.5, log=True),
+    "long_only": ChoiceP([True, False]),
+}, _kalman_trend))
+
+
+def _ou_reversion(market, p):
+    """Fade the deviation from a slow anchor, but only while it is measurably
+    mean-reverting.
+
+    `bollinger_fade` assumes reversion always. This one estimates the lag-1
+    autoregression coefficient of the deviation over a rolling window and stands
+    aside when it drifts toward 1 — i.e. when the "deviation" has become a trend.
+    That distinction is the difference between a fader that survives a trending
+    regime and one that gives back a year in a month, which is precisely what gate
+    9 tests for."""
+    win = p["window"]
+    c = market.close
+    anchor = ind.ema(market, p["anchor"])
+    dev = [None] * len(c)
+    for i in range(len(c)):
+        if anchor[i] is not None and anchor[i] > 0:
+            dev[i] = math.log(c[i] / anchor[i])
+    phi = ind.ar1_coefficient(dev, win)
+    sd = ind.rolling_std_of(dev, win)
+    out = [None] * len(c)
+    pos = 0.0
+    for i in range(len(c)):
+        if dev[i] is None or phi[i] is None or sd[i] is None or sd[i] <= 0:
+            continue
+        if phi[i] > p["max_phi"]:
+            pos = 0.0                  # not reverting any more: stand aside
+        else:
+            z = dev[i] / sd[i]
+            if pos == 0.0:
+                if z <= -p["entry_z"]:
+                    pos = 1.0
+                elif z >= p["entry_z"]:
+                    pos = -1.0
+            elif (pos > 0 and z >= 0.0) or (pos < 0 and z <= 0.0):
+                pos = 0.0
+        out[i] = _dir(p["long_only"], pos)
+    return out
+
+
+register(Strategy("ou_reversion", "adaptive", {
+    "window": IntP(40, 600, log=True),
+    "anchor": IntP(20, 400, log=True),
+    "entry_z": FloatP(0.8, 3.5),
+    "max_phi": FloatP(0.90, 1.02),
+    "long_only": ChoiceP([True, False]),
+}, _ou_reversion))
+
+
+def _vol_squeeze(market, p):
+    """Volatility contraction, then trade the expansion.
+
+    Bollinger band width is compared to its own recent range; when it sits near the
+    bottom the market is coiled, and the first move out of the band is taken as the
+    direction. Genuinely different from `vol_breakout`, which triggers on the size
+    of a single bar regardless of what preceded it. The synthetic markets are
+    GARCH, so volatility genuinely clusters and contraction genuinely precedes
+    expansion — but the DIRECTION of the expansion is not forecastable unless the
+    market also has drift, which is the honest test this family faces."""
+    width = [None] * len(market.close)
+    m = ind.sma(market, p["window"])
+    sd = ind.rolling_std(market, p["window"])
+    for i in range(len(width)):
+        if m[i] is not None and sd[i] is not None and m[i] > 0:
+            width[i] = sd[i] / m[i]
+    lo = ind.rolling_extreme_of(width, p["ref"], False)
+    hi = ind.rolling_extreme_of(width, p["ref"], True)
+    z = ind.zscore(market, p["window"])
+    out = [None] * len(market.close)
+    pos, left = 0.0, 0
+    for i in range(len(out)):
+        if width[i] is None or lo[i] is None or hi[i] is None or z[i] is None:
+            continue
+        span = hi[i] - lo[i]
+        coiled = span > 0 and (width[i] - lo[i]) / span < p["squeeze_pct"]
+        if left > 0:
+            left -= 1
+            if left == 0:
+                pos = 0.0
+        elif coiled and abs(z[i]) > p["trigger_z"]:
+            pos = 1.0 if z[i] > 0 else -1.0
+            left = p["hold"]
+        out[i] = _dir(p["long_only"], pos)
+    return out
+
+
+register(Strategy("vol_squeeze", "breakout", {
+    "window": IntP(10, 120, log=True),
+    "ref": IntP(50, 600, log=True),
+    "squeeze_pct": FloatP(0.05, 0.6),
+    "trigger_z": FloatP(0.5, 3.0),
+    "hold": IntP(2, 96, log=True),
+    "long_only": ChoiceP([True, False]),
+}, _vol_squeeze, tier=1))
+
+
+def _xs_momentum(market, p, partner):
+    """Cross-sectional momentum: long the stronger of two markets, short the weaker.
+
+    Traded as a spread through the hedge path, so it is market-neutral by
+    construction and cannot be rescued by a rising tide — which makes it one of the
+    few families that starts out already immune to the failure gate 11 hunts for.
+    Distinct from `spread_reversion`, which bets the gap CLOSES; this one bets the
+    gap keeps widening."""
+    n = min(len(market.close), len(partner.close))
+    lb = p["lookback"]
+    out = [None] * n
+    for i in range(lb, n):
+        a = market.close[i] / market.close[i - lb] - 1.0
+        b = partner.close[i] / partner.close[i - lb] - 1.0
+        gap = a - b
+        if abs(gap) < p["threshold"]:
+            out[i] = 0.0
+        else:
+            out[i] = 1.0 if gap > 0 else -1.0
+    return out
+
+
+register(Strategy("xs_momentum", "cross_sectional", {
+    "lookback": IntP(12, 800, log=True),
+    "threshold": FloatP(0.0, 0.10),
+}, _xs_momentum, needs_partner=True, tier=1))
+
+
+def _multi_tf(market, p):
+    """Trade the fast signal only when a slower one agrees.
+
+    The cheapest known way to cut a trend follower's turnover without touching its
+    entries, which matters because gate 6 kills bots that live inside the fee
+    assumption. Half exposure on partial agreement rather than a binary veto."""
+    fast = ind.roc(market, p["fast"])
+    slow = ind.roc(market, p["slow"])
+    out = [None] * len(market.close)
+    for i in range(len(out)):
+        if fast[i] is None or slow[i] is None:
+            continue
+        f = 1.0 if fast[i] > 0 else -1.0
+        sl = 1.0 if slow[i] > 0 else -1.0
+        if f == sl:
+            out[i] = _dir(p["long_only"], f)
+        elif p["half_on_disagree"]:
+            out[i] = _dir(p["long_only"], 0.5 * sl)
+        else:
+            out[i] = 0.0
+    return out
+
+
+register(Strategy("multi_tf", "trend", {
+    "fast": IntP(4, 120, log=True),
+    "slow": IntP(50, 900, log=True),
+    "half_on_disagree": ChoiceP([True, False]),
+    "long_only": ChoiceP([True, False]),
+}, _multi_tf, tier=1))
+
+
+def _accel(market, p):
+    """Momentum of momentum: position on whether the trend is strengthening.
+
+    A second-derivative signal genuinely differs from a first-derivative one — it
+    turns before price does, and it whipsaws where price does not. On a market
+    whose drift is a smooth AR(1) it should be worse than the Kalman filter, which
+    is a useful thing to be able to demonstrate rather than assume."""
+    fast = ind.roc(market, p["window"])
+    out = [None] * len(market.close)
+    lag = p["lag"]
+    for i in range(len(out)):
+        if fast[i] is None or i < lag or fast[i - lag] is None:
+            continue
+        accel = fast[i] - fast[i - lag]
+        if abs(accel) < p["threshold"]:
+            out[i] = 0.0
+        else:
+            out[i] = _dir(p["long_only"], 1.0 if accel > 0 else -1.0)
+    return out
+
+
+register(Strategy("accel", "trend", {
+    "window": IntP(6, 300, log=True),
+    "lag": IntP(2, 200, log=True),
+    "threshold": FloatP(0.0, 0.08),
+    "long_only": ChoiceP([True, False]),
+}, _accel, tier=2))
+
+
+# --------------------------------------------------- families expected to fail
+#
+# The two below are here to come back empty. The synthetic generator has no
+# time-of-day effect and its volume is a function of |return| with no directional
+# content, so anything either of them "finds" is noise that got through. They cost
+# a little search budget and buy a standing check on the validator that no null
+# universe can provide: a false positive here is visible immediately, because the
+# structure they claim to trade provably does not exist.
+
+def _seasonality(market, p):
+    """Long during one block of UTC hours, flat or short outside it.
+
+    Real intraday markets do have session effects. This generator has none, so on
+    synthetic data this family finding anything is a bug — in it, or in the gates."""
+    hod = ind.hour_of_day(market)
+    start = p["start_hour"]
+    span = p["span_hours"]
+    out = [None] * len(market.close)
+    for i in range(len(out)):
+        inside = ((hod[i] - start) % 24) < span
+        if inside:
+            out[i] = _dir(p["long_only"], 1.0)
+        else:
+            out[i] = _dir(p["long_only"], -1.0 if p["short_outside"] else 0.0)
+    return out
+
+
+register(Strategy("seasonality", "seasonal", {
+    "start_hour": IntP(0, 23),
+    "span_hours": IntP(1, 12),
+    "short_outside": ChoiceP([True, False]),
+    "long_only": ChoiceP([True, False]),
+}, _seasonality, tier=2))
+
+
+def _volume_thrust(market, p):
+    """Follow price on unusually heavy volume.
+
+    Volume in the generator is |gauss| scaled by |return| — correlated with the SIZE
+    of a move and carrying nothing about its direction. A real edge here would be a
+    leak."""
+    vmean = ind.sma(market, p["window"], source="volume")
+    r = ind.simple_returns(market)
+    out = [None] * len(market.close)
+    pos, left = 0.0, 0
+    for i in range(len(out)):
+        if vmean[i] is None or vmean[i] <= 0 or r[i] is None:
+            continue
+        if left > 0:
+            left -= 1
+            if left == 0:
+                pos = 0.0
+        elif market.volume[i] > vmean[i] * p["thrust"]:
+            pos = 1.0 if r[i] > 0 else -1.0
+            if p["fade"]:
+                pos = -pos
+            left = p["hold"]
+        out[i] = _dir(p["long_only"], pos)
+    return out
+
+
+register(Strategy("volume_thrust", "flow", {
+    "window": IntP(10, 300, log=True),
+    "thrust": FloatP(1.2, 5.0),
+    "hold": IntP(1, 72, log=True),
+    "fade": ChoiceP([True, False]),
+    "long_only": ChoiceP([True, False]),
+}, _volume_thrust, tier=2))

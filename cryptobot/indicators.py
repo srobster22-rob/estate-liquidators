@@ -272,6 +272,146 @@ def percent_rank(market, window):
     return market.memo(("prank", window), build)
 
 
+def rolling_extreme_of(series, window, want_max):
+    """Rolling max/min over an arbitrary list-with-Nones, monotonic deque, O(n).
+
+    The market-column versions above take an attribute name; these take a derived
+    series (band width, estimated half-life) that only exists inside a strategy."""
+    out = [None] * len(series)
+    dq = deque()                       # indices into `series`, values monotonic
+    seen = deque()                     # indices carrying a non-None value
+    for i, v in enumerate(series):
+        if v is not None:
+            while dq and ((series[dq[-1]] <= v) if want_max else (series[dq[-1]] >= v)):
+                dq.pop()
+            dq.append(i)
+            seen.append(i)
+        while dq and dq[0] <= i - window:
+            dq.popleft()
+        while seen and seen[0] <= i - window:
+            seen.popleft()
+        if len(seen) >= max(2, window // 4) and dq:
+            out[i] = series[dq[0]]
+    return out
+
+
+def kalman_drift(market, persistence, q_ratio):
+    """Scalar Kalman filter estimating a hidden, persistent drift from returns.
+
+        state:        mu_t = rho * mu_{t-1} + w,     w ~ N(0, Q)
+        observation:  r_t  = mu_t + v,               v ~ N(0, R)
+
+    Returns (mu_hat, sigma_hat) where sigma_hat is the trailing observation scale,
+    so a strategy can express the estimate in units of noise.
+
+    This exists because it is the *optimal* estimator for the process the synthetic
+    trend markets are actually generated from (data.py's `trend_strength` term is
+    exactly an AR(1) drift observed through noise). A moving-average crossover is a
+    crude approximation of the same thing; if the zoo's trend family were already
+    extracting everything available, this would find nothing more — which is itself
+    a result worth being able to measure.
+
+    Strictly causal: every quantity at bar i uses returns up to bar i.
+    """
+    def build():
+        r = returns(market)
+        n = len(r)
+        mu_hat = [None] * n
+        sig_hat = [None] * n
+        rho = persistence
+        # R is estimated online from the running variance of returns; Q follows from
+        # the caller's signal-to-noise ratio.
+        mu, pvar = 0.0, 0.0
+        s = s2 = 0.0
+        count = 0
+        for i in range(n):
+            v = r[i]
+            if v is None:
+                continue
+            count += 1
+            s += v
+            s2 += v * v
+            mean = s / count
+            var = max(1e-18, s2 / count - mean * mean)
+            R = var
+            Q = q_ratio * var
+            # predict
+            mu = rho * mu
+            pvar = rho * rho * pvar + Q
+            # update
+            k = pvar / (pvar + R)
+            mu = mu + k * (v - mu)
+            pvar = (1.0 - k) * pvar
+            if count >= 30:
+                mu_hat[i] = mu
+                sig_hat[i] = math.sqrt(var)
+        return mu_hat, sig_hat
+    return market.memo(("kalman", persistence, q_ratio), build)
+
+
+def ar1_coefficient(series, window):
+    """Rolling lag-1 autoregression coefficient of a series, O(n) via prefix sums.
+
+    Used to ask whether a deviation is actually mean-reverting right now (coef well
+    below 1) rather than assuming it always is. Returns None until the window fills.
+    """
+    n = len(series)
+    out = [None] * n
+    sx = sy = sxy = sxx = 0.0
+    buf = deque()
+    for i in range(1, n):
+        a, b = series[i - 1], series[i]
+        if a is None or b is None:
+            continue
+        buf.append((a, b))
+        sx += a
+        sy += b
+        sxy += a * b
+        sxx += a * a
+        if len(buf) > window:
+            oa, ob = buf.popleft()
+            sx -= oa
+            sy -= ob
+            sxy -= oa * ob
+            sxx -= oa * oa
+        m = len(buf)
+        if m >= window:
+            denom = m * sxx - sx * sx
+            if abs(denom) > 1e-18:
+                out[i] = (m * sxy - sx * sy) / denom
+    return out
+
+
+def hour_of_day(market):
+    """UTC hour for each bar. Only meaningful on intraday data."""
+    def build():
+        return [(t // 3600) % 24 for t in market.ts]
+    return market.memo(("hod",), build)
+
+
+def rolling_std_of(series, window):
+    """Rolling stdev of an arbitrary list-with-Nones."""
+    out = [None] * len(series)
+    buf = deque()
+    s = s2 = 0.0
+    for i, v in enumerate(series):
+        if v is None:
+            continue
+        buf.append(v)
+        s += v
+        s2 += v * v
+        if len(buf) > window:
+            old = buf.popleft()
+            s -= old
+            s2 -= old * old
+        m = len(buf)
+        if m >= window:
+            mean = s / m
+            var = max(0.0, s2 / m - mean * mean) * m / (m - 1.0)
+            out[i] = math.sqrt(var)
+    return out
+
+
 def rolling_mean_of(series, window):
     """Rolling mean of an arbitrary list-with-Nones (funding rates, mostly)."""
     out = [None] * len(series)
