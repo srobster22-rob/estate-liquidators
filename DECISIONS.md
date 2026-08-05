@@ -147,6 +147,13 @@ by **+84%** at 14 van slots, and the edge decays monotonically with capacity unt
 hauling wins outright somewhere between 24 and 32 slots. The mechanism §4.4 predicted is
 confirmed — the appraiser lives entirely on van space binding.
 
+**Revised twice since, and the current number is +6%.** The +84% used a placeholder for how
+badly noise punishes you; deriving it from the tuned Disturbance model gave +31%
+(`ECONOMY.md` §9), and coupling retrieval as well gave **+6%** (`sim/integrated.py`). The
+*mechanism* is unchanged and D-10 still stands — capacity is still the master lever, and the
+ordering is still right. What changed is the margin, and +6% is thin enough that whether this
+verb carries the game is genuinely unsettled. See D-22.
+
 Two things the sim changed:
 - **Scan *duration* is not the cost.** 1s and 9s per item produce the same outcome; there's
   too much slack time at 14 slots. Noise has to carry the whole cost — do not try to make
@@ -339,6 +346,54 @@ Drama requirement and economic requirement turn out to be the same requirement.
 
 **Falsified if:** crews reserve slots for it and then routinely fail to reach it anyway —
 that would mean the unlock timing, not the visibility, is wrong.
+
+---
+
+## D-22 · The appraiser is gated on the Curator's state, not on van fill
+**Status:** FIRM (the negative half) · BET (the positive half) · `sim/appraiser_risk.py`
+
+Two findings, one round.
+
+**The negative half — stop trying to fix the appraiser with cost.** R11 rescued the curse by
+making its cost catastrophic instead of marginal, and the obvious next move was to do the
+same to scanning: hold the crew stationary for three seconds, and let the Curator arrive.
+It does not work, and it cannot. Sweeping that risk moves the best available edge over blind
+hauling *monotonically down* — 6.0% → 5.4 → 5.0 → 4.3 → 2.4 → 0.0, at which point not
+scanning wins outright. Compounding the risk per consecutive scan makes it worse again
+(3.1% → 1.2% as the exponent goes 0 → 2).
+
+The reason the two mechanics behave oppositely is worth stating as a general rule, because
+this project has now spent four rounds circling it:
+
+> The curse was **always** correct to take, so adding cost created a decision.
+> The appraiser is **barely** correct to use. **You cannot raise a payoff by adding a cost.**
+> A thin edge can only be widened from the benefit side.
+
+There is a second, sharper reason the risk lever failed. Retrieval is exactly **0.00** at
+DORMANT, so the cost landscape has a flat zero region — and an optimum can't sit *inside* a
+flat region, it sits flush against its edge. Every risk level tested picks the same policy:
+scan only below Disturbance 30. That is a boundary rule, not a decision. **Any cost curve
+with a free zone will produce a rule rather than a choice**, which is a thing to check
+before designing the next one.
+
+**The positive half — the heuristic is the Curator's state.** Gating scanning on Disturbance
+beats gating it on van fill even with the risk switched off ($6,883 vs $6,852), and buries it
+once any risk exists ($6,822 vs $5,174). The van-fill heuristic was only ever a proxy: both
+it and quiet correlate with time. So `DESIGN.md` §4.4's advice to players is **"appraise
+while you can't hear it"** — and that needs no HUD, because DORMANT is precisely the state
+where `AUDIO-SPEC.md` §3.2 gives the house *no sound at all*. The tell already exists and is
+already diegetic, which keeps D-14 intact.
+
+**Knowingly accepted cost:** this makes the early night the scanning window and the late
+night the hauling window, which is a slightly tidier rhythm than "four friends arguing in a
+hallway" wants. It's tolerable because the floor ratchets — the window closes on you whether
+or not you deserve it, so the argument becomes *when to spend the quiet*, not whether.
+
+**Falsified if:** Milestone 2 instrumentation shows crews scanning at a roughly constant rate
+across the night rather than front-loading it — that would mean players cannot actually read
+the DORMANT/PATROL boundary in play, and the heuristic is only available to someone watching
+a debug meter. Also falsified if the R17 variance lever widens the edge past ~+15%, since a
+payoff that large would make scanning correct everywhere and dissolve the gate entirely.
 
 ---
 

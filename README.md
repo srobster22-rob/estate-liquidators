@@ -60,8 +60,10 @@ model; the physics ownership protocol; the loudness model; the decision log.
 **Specified and partly tested:** the economy, by two simulations that between them overturned
 four things this project believed.
 
-- The appraiser beats blind hauling by **+84%** at 14 van slots — and dies entirely between
-  24 and 32 slots. Van capacity is the master constant.
+- The appraiser beats blind hauling by **+6%** at 14 van slots — and dies entirely between
+  24 and 32 slots. Van capacity is the master constant. (That number has been revised down
+  twice as the model got honest: +84% with a placeholder noise cost, +31% once Disturbance
+  was derived, +6% once retrieval was too. `ECONOMY.md` §9 carries the chain.)
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4

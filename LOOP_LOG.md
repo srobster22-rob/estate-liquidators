@@ -171,43 +171,63 @@ choice becomes stash-then-hide, hand-off-then-hide, or buy four seconds. Hiding 
 the *primary* verb at COLLECT, where the Curator switches to hunting crew — so the genre's
 signature panic is earned late rather than constant.
 
+R16 · Finally executed the appraiser brief that has been sitting in the "Next step" block
+unclaimed since R11 (R12–R15 went off building instead, and never came back to it). Built
+`sim/appraiser_risk.py` — scanning holds you stationary 3s, so being at PURSUE/COLLECT while
+you scan risks the Curator arriving, compounding with each consecutive scanning trip — plus a
+family of GATE_k policies (appraise only while Disturbance < k) to test against BLIND, SCAN
+and R8's van-fill ADAPTIVE. · **The hypothesis is falsified, and the reason is worth more than
+the hypothesis was.** Best-edge-over-BLIND falls monotonically as the risk rises — 6.0% at
+k=0, then 5.4, 5.0, 4.3, 2.4, and by k=8 plain BLIND wins outright. There is no coefficient at
+which the appraiser gets more interesting. **R11 worked because the curse's problem was the
+opposite one:** cursed cargo was *always* correct to take, so a catastrophic cost created a
+decision. The appraiser is *barely* correct to use, and **you cannot raise a payoff by adding
+a cost.** Applying R11's lesson here was a category error — the remaining levers must widen
+the benefit, not the cost. · Second finding: the interior optimum is **degenerate**. GATE_30
+wins at every k>0, and 30 is exactly the DORMANT/PATROL boundary — the edge of the region
+where retrieval is 0.00. A cost function with a flat zero region can't produce an interior
+optimum, only a boundary rule; the answer collapses to "scan only where scanning is free."
+Only at k=0 does a truly interior gate win (GATE_45). · Third: **the compounding streak is
+pure loss** — sweeping the exponent 0→2 at k=4.0 moves the best edge 3.1%→1.2%, monotonically
+down. It adds punishment without adding shape, so don't build it. · **One keeper.** Even at
+k=0, gating on *Disturbance* (GATE_45, $6,883) beats gating on *van fill* (ADAPTIVE, $6,852),
+and buries it once any risk exists ($6,822 vs $5,174 at k=1). ADAPTIVE was only ever
+approximating "scan while it's quiet" — both correlate with time. The real heuristic is the
+Curator's state, and it needs no HUD: DORMANT is the tier where AUDIO-SPEC §3.2 gives the
+house *no sound at all*. **"Appraise while you can't hear it."**
+
 ---
 
 ## Next step (paste the loop prompt to resume)
 
-**R12: apply R11's lesson to the appraiser — it is the same shape of problem.** The +6% edge
-from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure that
-gave flat, uninteresting curves for the curse. Try giving scanning a super-linear or tail-risk
-cost — e.g. appraising while already at PURSUE/COLLECT risks the Curator arriving mid-scan
-(you are stationary for 3s), with the risk compounding per consecutive scan. If that produces
-an interior optimum the way it did for curses, the appraiser question answers itself and the
-+6% concern dissolves.
+*This block went stale once before — it sat on an R11-era plan while R12–R15 built something
+else entirely. Rewrite it every round, even when the round changes nothing.*
 
-~~R11: make the curse a TAIL RISK instead of a marginal cost.~~ **Done.** That's the only shape that
-can work, and it follows directly from R10 — a linear cost can never balance a multiplicative
-benefit, so the cost has to be super-linear or catastrophic. Candidate: cursed cargo carries a
-chance of losing the **entire van**, scaling super-linearly with how many you're carrying (one
-malignant item is a shrug, four is a real chance the night ends with nothing). That converts
-"linear cost vs multiplicative benefit" into a gamble with a ruin probability, which is a
-genuine decision and also much better fiction — the collection reclaiming everything at once.
-Model it in `curse_test.py` as a per-night ruin roll and find the curve where 1–2 cursed items
-is clearly worth it and 5+ clearly isn't. Then rewrite `DESIGN.md` §4.2 around it, because the
-current "burden you chose" framing describes a burden that arithmetically isn't one.
+**R17: widen the appraiser's PAYOFF, since R16 proved the cost side is a dead end.** The
+option `DESIGN.md` §4.4 always wanted: make scanning **situational** via per-room value
+variance. Scanning's benefit is `max(N) − mean(N)`, which scales with the *spread* of the
+room's value band, so a curio cabinet of wildly unlike objects should reward it and a shelf
+of forty identical books should not. That is a different axis from everything tried so far —
+it varies the benefit rather than the cost, and R16 showed cost levers can only ever shave
+the edge down from +6%. Crucially it is also **telegraphable**: if the room's *look* tells you
+which kind it is, the decision is "is this room worth three seconds?", asked fresh in every
+room, instead of one global policy chosen at the start of the night. Model it in
+`sim/appraiser_variance.py`: give each room a spread parameter, sweep it, and check whether a
+crew that scans only high-variance rooms beats both extremes by materially more than +6%.
 
-**And the one that genuinely needs your call, deferred from R9.** Is a **+6%** edge
-edge enough to carry the game's signature mechanic? Break-even-ish is arguably correct for a
-risk/reward system (the interesting state is a real toss-up), but it's thin enough that players
-may rationally skip the appraiser entirely, which is the exact failure `DESIGN.md` §4.4 was
-written to prevent. Three options worth weighing: accept it and lean into the toss-up; widen
-the payoff by making scanning *situational* (value-variance per room — pays at a curio cabinet,
-wasted on a shelf of identical books, with the room's look telegraphing which); or widen van
-scarcity, since §6 showed capacity is the master lever on this edge. **Do not tune RETRIEVAL** —
-R8 showed the designed values already produce the right ordering.
+**Then R18: the two live balance holes, both known and both cheap.** (a) **Cursed cargo is
+inert** — the +2 Disturbance floor per item is swamped and R9 put the needed value near +7;
+`curse_test.py` already runs at 7.0 but `integrated.py` still hardcodes 2.0, so the two
+disagree and neither is in `tuning.json`. Pick one, propagate it, add it to the drift check.
+(b) **V5 in `validate_estate.py`** is still the weakest of the ten checks — it only counts
+doors on the shortest path and has never failed anything, including on the deliberately
+broken estate where it is the one planted-fault category that slips through.
 
-Also still open, both live balance holes: **cursed cargo is inert** (+2 Disturbance floor per
-item is swamped; needs ~+7) and `DESIGN.md` §4.2 / §6.5 want updating with whatever lands. And
-**V5 in `validate_estate.py`** remains the weakest of the ten checks — it only counts doors on
-the shortest path and has never failed anything.
+**Standing note on the whole appraiser thread.** Four rounds (R6, R8, R16, and R17 next) have
+now circled the same +6%. If R17's variance lever also fails to widen it, stop tuning and take
+the third option from R9 instead — **accept the toss-up and widen van scarcity**, which §6
+already identified as the master lever, or accept that break-even is the correct resting place
+for a risk/reward system and rewrite §4.4 to say so honestly.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.
