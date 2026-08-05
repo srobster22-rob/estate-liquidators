@@ -24,7 +24,9 @@ Two sources, one interface:
 Everything is standard library. Prices are floats, timestamps are integer seconds.
 """
 
+import collections
 import csv
+import itertools
 import json
 import math
 import pathlib
@@ -35,10 +37,33 @@ import urllib.request
 
 CACHE_DIR = pathlib.Path(__file__).parent / "data_cache"
 
-# Max cached indicator series per market. See Market.memo. Sized against the whole
-# universe, not one market: 30 markets x 3 segments x this many series of ~20k
-# floats each is the number that has to fit in RAM.
-MEMO_LIMIT = 160
+# Indicator cache budget, in floats, shared across EVERY market. See Market.memo.
+#
+# A per-market limit does not bound anything: 30 markets x 4 Market objects each
+# (full plus three segments) x 160 series x 55,000 floats is hundreds of gigabytes,
+# and the only reason it never blew up is that the search concentrates on a handful
+# of markets. Budgeting globally, in elements rather than series, makes the ceiling
+# independent of both the universe size and the history length — so a run on twelve
+# years of hourly bars costs the same memory as one on five.
+MEMO_MAX_ELEMENTS = 40_000_000          # ~1.3 GB of Python floats
+
+_MEMO_ORDER = collections.OrderedDict()  # (market_id, key) -> (market, n_elements)
+_MEMO_ELEMENTS = 0
+_MARKET_IDS = itertools.count()
+
+
+def memo_stats():
+    return {"entries": len(_MEMO_ORDER), "elements": _MEMO_ELEMENTS,
+            "budget": MEMO_MAX_ELEMENTS}
+
+
+def _series_elements(value):
+    """Length of a cached indicator, counting each list in a tuple (macd returns
+    three series, the Kalman filter two)."""
+    if isinstance(value, tuple):
+        return sum(len(v) for v in value)
+    return len(value)
+
 
 SECONDS = {
     "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
@@ -63,7 +88,7 @@ class Market:
 
     __slots__ = ("key", "symbol", "venue", "kind", "interval", "ts", "open",
                  "high", "low", "close", "volume", "funding", "fee_bps",
-                 "spread_bps", "impact_bps", "truth", "_memo")
+                 "spread_bps", "impact_bps", "truth", "_memo", "_mid")
 
     def __init__(self, key, symbol, venue, kind, interval, ts, open_, high, low,
                  close, volume, funding=None, fee_bps=5.0, spread_bps=2.0,
@@ -85,6 +110,7 @@ class Market:
         self.impact_bps = impact_bps      # extra bps per unit of notional turnover
         self.truth = truth or {}          # synthetic only: the generating params
         self._memo = {}                   # indicator cache, keyed (name, *args)
+        self._mid = next(_MARKET_IDS)     # identity in the global cache
 
     def __len__(self):
         return len(self.ts)
@@ -106,23 +132,30 @@ class Market:
         return m
 
     def memo(self, key, build):
-        """Cache an indicator series on the market. The factory evaluates thousands
-        of bots against the same handful of markets; without this, 90% of a run is
-        recomputing the same 50-bar SMA.
+        """Cache an indicator series. The factory evaluates thousands of bots
+        against the same markets; without this, most of a run is recomputing the
+        same 50-bar SMA.
 
-        The cap is not decoration. Lookback windows are sampled from continuous
-        ranges, so an unbounded cache grows to (distinct windows x indicator types)
-        entries — a few thousand series of tens of thousands of floats each, which
-        is gigabytes on a long run. When it fills, the oldest half goes; insertion
-        order makes that the least recently *created*, which for this access pattern
-        is close enough to least recently used."""
+        Eviction is global and measured in floats, not per-market and measured in
+        series. Lookback windows are drawn from continuous ranges, so the number of
+        distinct entries is unbounded, and their SIZE scales with the history — the
+        two multiply. Budgeting globally in elements makes peak memory independent
+        of how many markets the universe holds and how long their histories are,
+        which is what makes a twelve-year run possible at all."""
+        global _MEMO_ELEMENTS
         hit = self._memo.get(key)
-        if hit is None:
-            if len(self._memo) >= MEMO_LIMIT:
-                for stale in list(self._memo)[:MEMO_LIMIT // 2]:
-                    del self._memo[stale]
-            hit = build()
-            self._memo[key] = hit
+        if hit is not None:
+            _MEMO_ORDER.move_to_end((self._mid, key))
+            return hit
+        hit = build()
+        n = _series_elements(hit)
+        self._memo[key] = hit
+        _MEMO_ORDER[(self._mid, key)] = (self, n)
+        _MEMO_ELEMENTS += n
+        while _MEMO_ELEMENTS > MEMO_MAX_ELEMENTS and len(_MEMO_ORDER) > 1:
+            (_, stale_key), (owner, size) = _MEMO_ORDER.popitem(last=False)
+            owner._memo.pop(stale_key, None)
+            _MEMO_ELEMENTS -= size
         return hit
 
     def describe(self):
