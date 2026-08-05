@@ -136,10 +136,14 @@ def analyse(family: str, strat, seed_base=None, n_groups=1200) -> Capacity:
     return c
 
 
+COUNTED_FAMILIES = {"econ_print"}   # see census.py; everything else is still a guess
+
+
 def fmt(c: Capacity) -> list[str]:
     d = 100.0
+    prov = "COUNTED" if c.family in COUNTED_FAMILIES else "ESTIMATE"
     return [
-        f"  markets listed per year (ESTIMATE) : {c.markets_per_year:,}",
+        f"  markets listed per year ({prov}) : {c.markets_per_year:,}",
         f"  bot trades in                      : {c.traded_fraction * 100:.0f}% of them",
         f"  mean fill size                     : {c.mean_contracts:.0f} contracts "
         f"(depth-limited)",
@@ -200,11 +204,12 @@ def write_report(results: list[Capacity], path: pathlib.Path):
     L = ["# Kalshi Bot Factory — Capacity\n"]
     L.append("What the winning bots are worth **in dollars per year**, which is a different "
              "question from what `RESULTS.md` reports and a more useful one.\n")
-    L.append("> `markets_per_year` in `config.json` is an **estimate** from general knowledge "
-             "of what Kalshi lists. It was not scraped and not verified, and it scales every "
-             "dollar figure on this page linearly. Fill sizes come from the simulator's depth "
-             "model. No competition is modelled — a thin structural edge is exactly the kind "
-             "somebody else's bot is already resting on.\n")
+    L.append("> `markets_per_year` scales every dollar figure on this page linearly. For "
+             "`econ_print` it is now **counted** — 534/yr, from 2,668 settled contracts over "
+             "5 years; see `CENSUS.md`. For every other family it is still an unverified "
+             "estimate. Fill sizes come from the simulator's depth model. No competition is "
+             "modelled — a thin structural edge is exactly the kind somebody else's bot is "
+             "already resting on.\n")
     L.append("| bot | markets/yr | fill | edge/market | **annual P&L** | capital to commit | return on it | utilisation |")
     L.append("|---|---|---|---|---|---|---|---|")
     for c in sorted(results, key=lambda x: -x.annual_pnl_cents):

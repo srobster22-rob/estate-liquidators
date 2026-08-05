@@ -44,7 +44,7 @@
     "stress_maker_fill_multiplier": 0.5,
     "min_annualized_return_on_locked_capital": 0.05,
     "min_annual_dollars": 250,
-    "_min_annual_dollars_note": "Criterion 11. The incumbent best bot earns $214/yr, so the bar is set above it: a new winner has to be a better BUSINESS, not just a better edge. Uses capacity.markets_per_year, which is an estimate — see capacity.py."
+    "_min_annual_dollars_note": "Criterion 11. Set above the incumbent so a new winner has to be a better BUSINESS, not just a better edge. Scales linearly with capacity.markets_per_year — COUNTED for econ_print (see census.py), still an estimate for every other family."
   },
 
   "capacity": {
@@ -52,7 +52,7 @@
     "markets_per_year": {
       "crypto_hourly": 17520,
       "index_bracket_daily": 750,
-      "econ_print": 250,
+      "econ_print": 534,
       "weather_temp": 3650,
       "sports_game": 6000,
       "politics_long": 200,
@@ -60,6 +60,7 @@
       "mentions_short": 500,
       "efficient_control": 0
     },
+    "_econ_print_is_COUNTED_not_estimated": "534 = 2,668 settled contracts / 5.0 years (Jul 2021-Jun 2026, 8 series), from 'Information Efficiency Across Macroeconomic Prediction Markets: Evidence from Kalshi'. A LOWER bound: 8 series only, and the window includes Kalshi's small years. See kalshi/census.py and CENSUS.md. Every OTHER family below is still an unverified estimate.",
     "_markets_per_year_basis": "crypto_hourly: ~2 series x 24h x 365. index_bracket_daily: ~3 indices x 252 sessions. econ_print: CPI/payrolls/Fed/PCE/GDP/retail ~70 releases x a few strikes. weather_temp: ~10 cities x 365. sports_game: NFL+NBA+MLB+NHL regular seasons. politics/awards/mentions: rough counts of what tends to be listed.",
     "peak_sigma": 3.0,
     "_peak_note": "Concurrent positions modelled as Poisson; capital required is mean + peak_sigma*sqrt(mean) positions. Determines return on capital you must COMMIT rather than capital you happen to be using."

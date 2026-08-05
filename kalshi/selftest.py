@@ -422,6 +422,33 @@ ok("select_members never takes two bots from one family",
          "params": {"enter_frac": 0.0, "qty": 100, "thresh": 95}}], 300, 7_000_000)}) <= 1,
    "two econ_print bots collapse to one member")
 
+print("\n8e. THE MARKET CENSUS — the count the dollar figure rests on")
+from . import census  # noqa: E402
+
+near("2,668 settled contracts over 5.0 years = 534/yr",
+     census.COUNTED_CONTRACTS_PER_YEAR, 533.6, 0.05)
+ok("the window is stated in whole months and converted exactly",
+   census.WINDOW_MONTHS == 60 and abs(census.WINDOW_YEARS - 5.0) < 1e-12,
+   "Jul 2021 through Jun 2026 inclusive")
+ok("the release calendar sums to the events count",
+   sum(e for _, _, e, _ in census.SERIES) == census.EVENTS_PER_YEAR == 124,
+   f"{census.EVENTS_PER_YEAR} independent resolutions a year")
+ok("one series per counted series — no padding to reach the total",
+   len(census.SERIES) == census.SERIES_COUNTED == 8,
+   f"{len(census.SERIES)} series listed, paper counted {census.SERIES_COUNTED}")
+# The census's own consistency check: contracts/events must land on a plausible ladder size.
+# If this ever falls outside 2-8 the two sources have stopped agreeing and one is wrong.
+ok("contracts per event is a plausible ladder size",
+   2.0 <= census.RUNGS_PER_EVENT <= 8.0,
+   f"{census.RUNGS_PER_EVENT:.1f} rungs/event vs ~6 in published Core CPI ladders")
+ok("config carries the counted figure, not the old guess",
+   capacity.MARKETS_PER_YEAR["econ_print"] == round(census.COUNTED_CONTRACTS_PER_YEAR),
+   f"config says {capacity.MARKETS_PER_YEAR['econ_print']}, census says "
+   f"{census.COUNTED_CONTRACTS_PER_YEAR:.0f}")
+ok("events/yr is strictly below contracts/yr — rungs are not independent bets",
+   census.EVENTS_PER_YEAR < census.COUNTED_CONTRACTS_PER_YEAR,
+   f"{census.EVENTS_PER_YEAR} events vs {census.COUNTED_CONTRACTS_PER_YEAR:.0f} contracts")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

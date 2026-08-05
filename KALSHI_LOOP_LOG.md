@@ -179,6 +179,31 @@ are eight markets but one bet. **The requested target was not reached and could 
 honestly**: the only lever that clears it is the unverified input, and moving that to hit a
 number is precisely the failure this directory exists to prevent. 66 checks pass.
 
+K15 · Counted the real market list instead of guessing at it. · **534 economics contracts a
+year, not 250 — and that flips the answer.** The whole result had been reduced to a counting
+question: the bot clears $250/yr iff `econ_print`-style markets number >= 469 a year. Kalshi's
+API returns 403 to everything here — the container proxy blocks the host AND Kalshi's own bot
+protection blocks the fetch tooling, including on kalshi.com — so the count came from published
+sources instead. Headline figure from an academic dataset: **2,668 settled contracts across 8
+economic series, July 2021-June 2026**. Sixty months is exactly 5.0 years, so **534 a year**,
+2.1x the guess, and a *lower* bound (8 series only; the window includes Kalshi's small years).
+Confirmed series tickers seen in search results: KXCPI, KXPAYROLLS, KXFED, KXJOBLESSCLAIMS,
+KXU3MAX — and **jobless claims is WEEKLY**, 52 events a year on its own, which is most of what
+the old estimate was missing. At the replicated edge that is **$292/yr (95% CI $151-$421,
+p=0.0003, tail-adjusted $147)**, clearing both the $250 bar and the $214 that started this.
+**The bot did not get better; the count got right** — the edge per market is unchanged and so
+is every gate verdict about it.
+
+The census also produced a second number that matters more for risk than for income. A Kalshi
+CPI market is a **ladder**: nested rungs ("above 0.2%", "above 0.3%", ...) that all settle from
+one printed number. So 534 contracts is only ~**124 independent events** a year. The two
+numbers do different jobs — income scales with contracts, because each rung has its own book
+and its own depth; risk and evidence scale with events. 534/124 = 4.3 rungs per event, which is
+consistent with the ~6-threshold ladders in published Core CPI examples, and that agreement
+between two independently sourced numbers is the only internal check the census has. A $292/yr
+business resting on 124 independent resolutions a year is a much narrower thing than the
+contract count makes it look. 73 checks pass.
+
 ---
 
 ## Standing notes
@@ -196,6 +221,10 @@ number is precisely the failure this directory exists to prevent. 66 checks pass
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **A sourced count is not a measurement.** The census comes from published figures because
+  the API is unreachable from here; it is far better than the guess it replaced and it is still
+  not `GET /markets`. Re-run it against the live API from a machine with egress before anyone
+  plans around $292.
 - **Measure capacity on data that had no hand in picking the bot.** OOS selects winners, so
   OOS means of winners are maxima of a selected set. Holdout or a fresh seed range only. This
   cost 60% of a headline once already.

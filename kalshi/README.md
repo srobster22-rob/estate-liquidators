@@ -17,11 +17,12 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 66 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 73 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
 python -m kalshi.portfolio         # combine bots across families; writes PORTFOLIO.md
+python -m kalshi.census            # the counted market list; writes CENSUS.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -56,11 +57,13 @@ checks themselves.
 | `live.py` | Kalshi REST adapter: check, record, replay, paper, live. |
 | `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
-| `selftest.py` | 66 checks that have to pass before any of the above means anything. |
+| `census.py` | The counted market list. The one input the dollar figure rests on. |
+| `selftest.py` | 73 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
 | `PORTFOLIO.md` | The combined book and whether it clears the money bar. Generated. |
+| `CENSUS.md` | How many markets Kalshi actually lists, and the sources. Generated. |
 
 ---
 
@@ -199,13 +202,29 @@ it directly gave **+379.7¢/market, t=+2.40, $22,785/yr**. On an independent con
 was **+7.5¢, t=+0.05**. It was the maximum of 18 configs on a high-variance family, and the
 confirmation step is the only reason it is in this paragraph instead of at the top of the page.
 
-**10. The one number that would change the answer is one nobody has counted.** Annual income is
-strictly linear in markets-per-year, which is the single input here that is a pure estimate.
-So the result is stated as something falsifiable rather than as a dollar figure: the winning
-bot clears $250/yr **if and only if `econ_print`-style markets number ≥ 469 a year**. My
-estimate is 250. Someone with API access can settle it in an afternoon — and should also check
-whether strike *ladders* inflate that count, since eight strikes on one CPI print are eight
-markets but one bet.
+**10. The one number that decided it has now been counted: 534, not 250.** Annual income is
+strictly linear in markets-per-year, which was the single input here that was a pure estimate,
+so the whole result reduced to a counting question: the bot clears $250/yr **iff
+`econ_print`-style markets number ≥ 469 a year**.
+
+Kalshi's API returns 403 to everything in this environment, and so does `kalshi.com`, so the
+count comes from published sources instead — headline figure from an academic dataset of
+**2,668 settled contracts across 8 economic series, July 2021 – June 2026**. Sixty months is
+exactly 5.0 years, so **534 contracts a year**, 2.1× the guess it replaces, and a *lower*
+bound: eight series only, and the window includes Kalshi's small years.
+
+At the replicated edge that gives **$292/yr** (95% CI $151–$421, p=0.0003, tail-adjusted
+$147) — clearing both the $250 bar and the $214 that started this. **The bot did not get
+better; the count got right.** The edge per market is unchanged and so is everything the gate
+said about it.
+
+The census also produces a second number that matters more for risk than for income. A Kalshi
+CPI market is a **ladder** — nested rungs that all settle from one printed number — so 534
+contracts is only ~**124 independent events** a year (534 ÷ 124 = 4.3 rungs/event, consistent
+with the ~6-threshold ladders in published Core CPI examples). Income scales with contracts,
+because each rung has its own book and depth. Risk and evidence scale with events. A $292/yr
+business resting on 124 independent resolutions is a much narrower thing than the contract
+count suggests.
 
 **11. The best-looking bot in the entire coverage sweep is on the market that cannot be
 beaten.** In the 9 × 12 matrix, the highest in-sample cell of all 100 is
