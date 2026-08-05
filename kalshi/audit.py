@@ -214,15 +214,42 @@ def measure_spread(by_ticker: dict, lo=95, hi=99) -> dict:
 
 
 def required_samples(price_cents: float, half_width_cents: float = 0.5) -> int:
-    """Settled in-band contracts needed to pin the edge to +-`half_width_cents`.
+    """Settled in-band contracts needed to pin the per-contract edge to +-`half_width`.
 
-    Buying at p and holding pays 100-p or -p, so the per-contract variance is
-    10000*q*(1-q) — about 17c of standard deviation at 97c. The number this returns is
-    large, and that is the honest answer to "how long do I record".
+    Buying at p and holding pays 100-p or -p, so the per-contract variance is 10000*q*(1-q)
+    — about 17c of standard deviation at 97c.
     """
     q = min(max(price_cents / 100.0, 1e-6), 1 - 1e-6)
     sd = 100.0 * math.sqrt(q * (1.0 - q))
     return int(math.ceil((1.96 * sd / max(half_width_cents, 1e-9)) ** 2))
+
+
+def required_for_sign(mean_cents: float, sd_cents: float) -> float:
+    """Observations for a 2-sigma read on the SIGN of the edge.
+
+    THE PRECISION TARGET IS A CHOICE, AND THE FIRST VERSION OF THIS FILE CHOSE BADLY. It
+    reported only the samples needed to pin the edge to +-0.5c and called the answer "18
+    years", which made the situation look far worse than it is. Two different decisions need
+    two different precisions:
+
+        SIGN      is the edge positive at all? This decides whether to trade, and it is
+                  reached in about a YEAR on econ_print.
+        MAGNITUDE how big is it? This decides sizing and whether it pays for your time, and
+                  at +-20% it needs well over a decade.
+
+    Both are true and only the first is a gate. Quoting the stricter one alone was an
+    overstatement of the problem.
+    """
+    if mean_cents <= 0 or sd_cents <= 0:
+        return float("inf")
+    return (1.96 * sd_cents / mean_cents) ** 2
+
+
+def required_for_magnitude(mean_cents: float, sd_cents: float, rel=0.20) -> float:
+    """Observations to know the edge to +-`rel` of itself."""
+    if mean_cents <= 0 or sd_cents <= 0:
+        return float("inf")
+    return (1.96 * sd_cents / (rel * mean_cents)) ** 2
 
 
 def audit(path: pathlib.Path, lo=95, hi=99) -> int:
@@ -275,14 +302,17 @@ def audit(path: pathlib.Path, lo=95, hi=99) -> int:
         # How long to record. Only contracts that actually pass through the band count, and
         # the recording itself measures that rate — dividing by ALL contracts a year
         # understates the wait by however often a market never reaches 95c.
-        r = required_samples(e["mean_price"] or 97.0, 0.5)
         contracts_per_yr = CFG["capacity"]["markets_per_year"].get("econ_print", 534)
         in_band_rate = e["n"] / max(q.n_settled, 1)
         per_yr = contracts_per_yr * in_band_rate
+        n_sign = required_for_sign(e["mean"], e["sd"])
+        n_mag = required_for_magnitude(e["mean"], e["sd"])
         print(f"          {in_band_rate * 100:.0f}% of settled markets ever quote in the band, "
-              f"so ~{per_yr:.0f} usable contracts a year")
-        print(f"          pinning this to +-0.5c needs ~{r:,} of them: "
-              f"**~{r / max(per_yr, 1e-9):.0f} YEARS of recording**")
+              f"so ~{per_yr:.0f} usable observations a year")
+        print(f"          to know the SIGN (trade or not): ~{n_sign:,.0f} obs = "
+              f"~{n_sign / max(per_yr, 1e-9):.1f} years")
+        print(f"          to know the SIZE to +-20% (sizing): ~{n_mag:,.0f} obs = "
+              f"~{n_mag / max(per_yr, 1e-9):.0f} years")
     print()
     verdicts = [dv, sv, ev]
     if all(v == "PASS" for v in verdicts):

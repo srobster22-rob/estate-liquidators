@@ -334,6 +334,30 @@ production. Also caught an understatement in my own first version of the wait es
 divided by all 534 contracts a year rather than the ~233 that reach the band, calling it 8 years
 when it is 18. 129 checks pass.
 
+K21 · Asked for an edge with better signal-to-noise, and got two corrections instead of one
+discovery. · **First, my own K20 headline was overstated.** "~18 years to validate" was the data
+needed to pin the edge to +-0.5c — a precision target I picked arbitrarily and never justified.
+Nobody faces that decision. Deciding whether to trade needs the **sign** (~580 events, **~1
+year**); deciding how much to size needs the **magnitude** to +-20% (~14,600 events, ~29 years).
+They differ by 25x. Both are true and quoting only the stricter one made the situation look far
+worse than it is. `audit.py` now reports both.
+
+**Second, the edge was in the wrong place, and the analysis says where.** Per-contract sigma is
+`100*sqrt(q(1-q))` — 30c at 90c, 11c at 97c, 6c at 99c — so variance collapses much faster than
+the grid-capped edge does. Measured by exact ask price on econ_print: 90-95c earns ~nothing
+against 20-30c of sigma, 97c earns +1.68c against 11.4c, 98c earns +1.31c against 8.3c (best
+SNR), and 99c drops back to 0.092 because the grid caps the winnings at 1c while sigma is still
+6c. `hold_favorite(thresh=95)` had been taking the whole range and paying for the 90-95c trades.
+New `snr_band` strategy takes only the window: per-event SNR **0.176 -> 0.226**, time-to-sign
+**0.9 -> 0.6 years**, for 73% of the income. It clears the full gate at **$1,081/yr** OOS and is
+the third distinct mechanism the loop has ever confirmed.
+
+**The general lesson is worth more than the strategy.** A mid-book bet with a *5c* edge has
+worse SNR (0.101) than a 0.9c edge at the 99c ceiling (0.285). **Variance dominates edge.** The
+biggest mispricing on the exchange was never the place to look, and the whole project spent
+twenty rounds optimising a numerator while the denominator was the free variable. 136 checks
+pass.
+
 ---
 
 ## Standing notes
@@ -351,6 +375,12 @@ when it is 18. 129 checks pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **Name the precision target before quoting a sample size.** "How much data do I need" has
+  no answer until you say what decision it serves. Sign and magnitude differ by 25x here, and
+  conflating them cost a round.
+- **Variance dominates edge.** Signal-to-noise is `edge / (100*sqrt(q(1-q)))`, and the sigma
+  term moves far more across the price grid than any mispricing does. Look for the smallest
+  denominator, not the biggest numerator.
 - **Check whether the question is answerable before building the answer.** Eleven gate
   criteria, a census, a fee verification and a sensitivity sweep all preceded anyone asking how
   much data it would take to measure a 1c edge against a 17c standard deviation. The answer is

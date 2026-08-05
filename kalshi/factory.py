@@ -115,7 +115,7 @@ def compatible(family: str, cls) -> bool:
 
 
 def _params_ok(cls, params) -> bool:
-    if cls is strategies.band_fade and params["lo"] > params["hi"]:
+    if cls in (strategies.band_fade, strategies.snr_band) and params["lo"] > params["hi"]:
         return False
     return True
 

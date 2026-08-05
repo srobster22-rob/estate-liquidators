@@ -6,13 +6,13 @@ All figures measured on the **holdout** seed range, not out-of-sample: OOS is wh
 
 | member | markets/yr | ¢/market | annual $ | capital |
 |---|---|---|---|---|
-| `econ_print` / hold_favorite(enter_frac=0.25,qty=250,thresh=95) | 534 | +292.8¢ | $1,563 | $78 |
-| **portfolio** | | | **$1,563** | **$78** |
+| `econ_print` / snr_band(enter_frac=0.0,hi=99,lo=96,qty=250) | 534 | +235.7¢ | $1,259 | $71 |
+| **portfolio** | | | **$1,259** | **$71** |
 
-- 95% CI on annual income: **$1,140 to $1,978**
+- 95% CI on annual income: **$901 to $1,596**
 - bootstrap p: 0.0002
-- return on committed capital: 2,015%/yr
-- best single member: $1,563/yr — the portfolio is 1.00x it
+- return on committed capital: 1,763%/yr
+- best single member: $1,259/yr — the portfolio is 1.00x it
 - diversification: interval is **1.00x tighter** than if the members moved together
 
 **Verdict: the portfolio CLEARS the $250/yr bar.**

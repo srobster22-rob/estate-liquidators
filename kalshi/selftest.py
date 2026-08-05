@@ -765,6 +765,51 @@ near("required_samples matches (1.96*sd/half)^2", _n, (1.96 * _sd / 0.5) ** 2, 2
 ok("pinning the edge needs years, not weeks, of recording", _n > 3000,
    f"{_n:,} settled in-band contracts at ~97c")
 
+print("\n8j. SIGNAL-TO-NOISE — where the edge is measurable, not where it is biggest")
+import statistics as _st  # noqa: E402
+
+# snr_band must only ever trade inside its window. If it leaks outside, the SNR claim is void.
+_sb = strategies.snr_band(lo=97, hi=98, enter_frac=0.0, qty=250)
+_prices = []
+for _gid in range(300):
+    _g = markets.generate_group(markets.FAMILIES["econ_print"], 60_000 + _gid)
+    _gv = backtest.GroupView(_g)
+    for _t in range(_g.steps):
+        _gv._advance(_t)
+        for _it in _sb.decide(_gv, [None] * _g.legs.__len__()):
+            _v = _gv.legs[_it.leg]
+            _prices.append(_v.ask() if _it.side == "yes" else _v.no_ask())
+ok("snr_band only trades inside its price window",
+   _prices and all(97 <= p <= 98 for p in _prices),
+   f"{len(_prices)} entries, all in [97, 98]")
+
+# The whole claim: a narrower window near the top of the book has better signal-to-noise than
+# the wide favourite range, because sigma falls faster than the grid-capped edge does.
+_data = markets.dataset("econ_print", 13_000_000, 1200)
+def _snr(strat):
+    _g = backtest.run(_data, strat).group_pnl
+    _m, _s = _st.fmean(_g), _st.pstdev(_g)
+    return (_m / _s if _s else 0.0), _m
+_snr_narrow, _m_narrow = _snr(_sb)
+_snr_wide, _m_wide = _snr(strategies.hold_favorite(enter_frac=0.25, qty=250, thresh=95))
+ok("the narrow band has strictly better SNR than the wide favourite range",
+   _snr_narrow > _snr_wide,
+   f"narrow {_snr_narrow:.4f} vs wide {_snr_wide:.4f} per event")
+ok("...and it costs income to get it — this is a trade, not a free lunch",
+   _m_narrow < _m_wide,
+   f"narrow {_m_narrow:+.0f}c/event vs wide {_m_wide:+.0f}c/event")
+
+# The two precision targets, and the correction they encode. K20 quoted only the stricter one
+# and called the answer "18 years", which overstated the problem: deciding whether to trade
+# needs the SIGN, not the magnitude.
+_ns = _audit.required_for_sign(1.38, 17.0)
+_nm = _audit.required_for_magnitude(1.38, 17.0)
+near("required_for_sign matches (1.96*sd/mean)^2", _ns, (1.96 * 17.0 / 1.38) ** 2, 1e-6)
+near("required_for_magnitude is 25x the sign requirement at +-20%", _nm / _ns, 25.0, 1e-6)
+ok("knowing the SIGN is far cheaper than knowing the SIZE", _ns < _nm / 10,
+   f"sign {_ns:,.0f} obs vs magnitude {_nm:,.0f} obs — different decisions, different data")
+ok("a non-positive edge can never be signed", _audit.required_for_sign(-1.0, 17.0) == float("inf"))
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 129 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 136 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -53,7 +53,7 @@ checks themselves.
 | `fees.py` | Kalshi's fee formula, with worked examples. The most important file. |
 | `paths.py` | The latent price engine. Prices are a martingale *by construction*. |
 | `markets.py` | Nine market families, the quoting layer, and every planted edge. |
-| `strategies.py` | Twelve strategies, five of them controls designed to lose. |
+| `strategies.py` | Thirteen strategies, five of them controls designed to lose. |
 | `backtest.py` | Execution: spread, depth, fees, maker fills, no lookahead. |
 | `evaluate.py` | The gate. Bootstrap, Holm correction, stress, tail risk, half-edge. |
 | `factory.py` | The loop: build → screen → validate → correct → confirm → expand. |
@@ -63,7 +63,7 @@ checks themselves.
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
 | `sensitivity.py` | Every assumption swept, and where each crosses the bar. |
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
-| `selftest.py` | 129 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 136 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -323,6 +323,42 @@ It also reframes everything above it. The gate's eleven criteria are a good inst
 at a question the available data cannot answer at this sample size. The honest use of this
 directory is as a *filter* — it rules families and strategy shapes out cheaply, and every such
 exclusion in findings 1–9 is solid — not as a way to certify one bot into production.
+
+**16. A better edge is a smaller denominator, not a bigger numerator — and my 18-year
+headline was overstated.** Two corrections came out of asking for better signal-to-noise.
+
+*The precision target was wrong.* K20 reported "~18 years to validate", which was the data
+needed to pin the edge to **±0.5¢**. That is not the decision anyone faces. Deciding whether
+to trade needs the **sign**; deciding how much to size needs the **magnitude**. They differ by
+25×:
+
+| question | decides | data | time |
+|---|---|---|---|
+| is the edge positive? | trade or don't | ~580 events | **~1 year** |
+| how big is it, ±20%? | sizing, is it worth the effort | ~14,600 events | ~29 years |
+
+Both are true; quoting only the second overstated the problem. The sign is reachable.
+
+*And the edge was in the wrong place.* Per-contract σ is `100·√(q(1−q))` — **30¢ at 90¢, 11¢ at
+97¢, 6¢ at 99¢** — so variance collapses far faster than the grid-capped edge does. Measured
+by exact ask price on `econ_print`:
+
+| ask | edge | σ | SNR | obs. to detect |
+|---|---|---|---|---|
+| 90–95 | ≈0 | 20–30¢ | ~0 | never |
+| 97 | +1.68¢ | 11.4¢ | 0.147 | 178 |
+| **98** | +1.31¢ | 8.3¢ | **0.158** | **154** |
+| 99 | +0.59¢ | 6.4¢ | 0.092 | 450 |
+
+`hold_favorite(thresh=95)` was taking the whole range, paying for 90–95¢ trades that earn
+nothing and carry triple the variance. 99¢ is worse than 98¢ for the opposite reason: the grid
+caps the winnings at 1¢ while σ is still 6¢. New `snr_band` strategy trades only the window —
+per-event SNR **0.176 → 0.226**, time-to-sign **0.9 → 0.6 years**, at 73% of the income.
+
+That is a real improvement and a modest one. Worth stating plainly: a mid-book bet with a
+**5¢** edge has *worse* SNR (0.101) than a 0.9¢ edge at the ceiling (0.285). **Variance
+dominates edge**, which is why the biggest mispricing on the exchange was never the place to
+look.
 
 ## The gate
 

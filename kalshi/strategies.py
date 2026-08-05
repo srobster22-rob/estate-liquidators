@@ -136,6 +136,44 @@ class band_fade(Strategy):
         return out
 
 
+class snr_band(Strategy):
+    """Buy the favourite ONLY while its ask sits in [lo, hi]. Hold to settlement.
+
+    The point is not a bigger edge, it is a smaller denominator. A hold-to-settlement bet at
+    price p pays 100-p or -p, so its per-contract standard deviation is 100*sqrt(q(1-q)) — 30c
+    at 90c, 11c at 97c, 6c at 99c. Variance falls far faster than the grid-capped edge does,
+    so signal-to-noise is maximised in a narrow band near the top of the book, NOT across the
+    whole favourite range.
+
+    Measured on `econ_print`, buying at the ask and holding:
+
+        ask   edge     sigma   SNR     settled obs. needed to detect
+        90-95 ~0       20-30c  ~0      never
+        96    +1.14c   16.7c   0.068   827
+        97    +1.68c   11.4c   0.147   178
+        98    +1.31c    8.3c   0.158   154
+        99    +0.59c    6.4c   0.092   450
+
+    `hold_favorite(thresh=95)` takes the whole 95-99 range and so pays for the 90-95 trades
+    that earn nothing and carry triple the variance. 99 is worse than 98 for the opposite
+    reason: the grid caps the winnings at 1c while sigma is still 6c. The optimum is a two-tick
+    window, and finding it is worth roughly 25x in how much data validation needs.
+    """
+
+    targets = "EDGE 1+5, narrowed to the best signal-to-noise window"
+
+    def decide(self, gv, pos):
+        out = []
+        for v in gv.legs:
+            if pos[v.leg] is not None or v.frac() < self.enter_frac:
+                continue
+            if self.lo <= v.ask() <= self.hi:
+                out.append(taker(v.leg, "yes", self.qty))
+            elif self.lo <= v.no_ask() <= self.hi:
+                out.append(taker(v.leg, "no", self.qty))
+        return out
+
+
 class late_favorite(Strategy):
     """`hold_favorite`, entered late — same edge, a fraction of the capital-hours.
 
@@ -403,6 +441,7 @@ PARAM_GRID: dict[type, dict[str, list]] = {
     buy_longshot:    {"max_price": [5, 10, 20, 35], "enter_frac": [0.0, 0.25], "qty": QTY},
     band_fade:       {"lo": [2, 5, 10, 20, 30], "hi": [8, 15, 25, 40], "enter_frac": [0.0, 0.3], "qty": QTY},
     late_favorite:   {"thresh": [75, 85, 92], "enter_frac": [0.6, 0.8, 0.9], "qty": QTY},
+    snr_band:        {"lo": [96, 97, 98], "hi": [97, 98, 99], "enter_frac": [0.0, 0.25], "qty": QTY},
     jump_follow:     {"jump_ticks": [2, 3, 5, 8], "hold_steps": [1, 3, 6, 12], "qty": QTY},
     jump_fade:       {"jump_ticks": [2, 3, 5, 8], "hold_steps": [1, 3, 6], "qty": QTY},
     momentum:        {"look_k": [3, 6, 12], "move_ticks": [3, 5, 8], "hold_steps": [3, 6, 12], "qty": QTY},
