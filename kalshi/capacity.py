@@ -69,7 +69,7 @@ class Capacity:
                  "annual_pnl_cents", "mean_cost_per_position", "mean_hold_hours",
                  "mean_concurrent", "peak_concurrent", "capital_required_cents",
                  "return_on_capital", "utilization", "mean_contracts", "annual_contracts",
-                 "breakeven_markets_per_year")
+                 "breakeven_markets_per_year", "contracts_per_year")
 
     def to_dict(self):
         return {k: getattr(self, k) for k in self.__slots__}
@@ -95,7 +95,13 @@ def analyse(family: str, strat, seed_base=None, n_groups=1200) -> Capacity:
     c = Capacity()
     c.family = family
     c.label = strat.label()
-    c.markets_per_year = MARKETS_PER_YEAR.get(family, 0)
+    # UNITS. `markets_per_year` counts CONTRACTS (534 for econ_print, from the census), but
+    # the backtester measures PnL per GROUP — and a group is one whole ladder, ~4 nested
+    # rungs settling from one printed number. Multiplying contracts/yr by PnL/group would
+    # overstate income by exactly n_rungs. Income is events/yr x PnL/event.
+    fam_legs = max(fam.n_rungs, fam.n_brackets, 1)
+    c.contracts_per_year = MARKETS_PER_YEAR.get(family, 0)
+    c.markets_per_year = c.contracts_per_year / fam_legs
     c.mean_per_market = res.total_pnl / max(res.n_groups, 1)
     c.annual_pnl_cents = c.markets_per_year * c.mean_per_market
 
@@ -103,7 +109,9 @@ def analyse(family: str, strat, seed_base=None, n_groups=1200) -> Capacity:
     # engine's capital accounting rather than being assumed.
     c.mean_contracts = res.n_contracts / max(res.n_trades, 1)
     c.annual_contracts = c.mean_contracts * (res.n_trades / max(res.n_groups, 1)) * c.markets_per_year
-    c.traded_fraction = min(1.0, res.n_trades / max(res.n_groups, 1))
+    # Per CONTRACT, not per group: with a 4-rung ladder the bot opens ~3.4 positions per
+    # event, and a per-group ratio just clamps to 100% and tells you nothing.
+    c.traded_fraction = min(1.0, res.n_trades / max(res.n_groups * fam_legs, 1))
 
     # Measured by the engine, not inferred. An earlier version split capital-cent-hours into
     # cost x duration using the largest position ever opened as the scale, which overstated
@@ -143,8 +151,10 @@ def fmt(c: Capacity) -> list[str]:
     d = 100.0
     prov = "COUNTED" if c.family in COUNTED_FAMILIES else "ESTIMATE"
     return [
-        f"  markets listed per year ({prov}) : {c.markets_per_year:,}",
-        f"  bot trades in                      : {c.traded_fraction * 100:.0f}% of them",
+        f"  contracts listed per year ({prov}) : {c.contracts_per_year:,}",
+        f"  ...which is                        : {c.markets_per_year:,.0f} events/yr "
+        f"({c.contracts_per_year / max(c.markets_per_year, 1):.0f} rungs each, settling together)",
+        f"  bot trades in                      : {c.traded_fraction * 100:.0f}% of contracts",
         f"  mean fill size                     : {c.mean_contracts:.0f} contracts "
         f"(depth-limited)",
         f"  edge per market offered            : {c.mean_per_market:+.2f}c",

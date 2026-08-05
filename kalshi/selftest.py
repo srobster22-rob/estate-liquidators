@@ -615,6 +615,55 @@ ok("live orders need --live AND KALSHI_ALLOW_LIVE_ORDERS=yes",
    "two independent human actions")
 ok("paper mode is the default", "--live" in _src and 'action="store_true"' in _src)
 
+print("\n8g. LADDERS — nested rungs settling from one number")
+# The census found econ markets are LADDERS: ~4 nested thresholds on one printed number, not
+# 4 independent contracts. This section pins the structure down and records what it did to
+# the headline, which was the opposite of what was expected.
+_lfam = markets.FAMILIES["econ_print"]
+ok("econ_print is modelled as a ladder", _lfam.n_rungs > 1, f"{_lfam.n_rungs} rungs/event")
+_viol = 0
+for _gid in range(400):
+    _o = [l.outcome for l in markets.generate_group(_lfam, 30_000 + _gid).legs]
+    if any(_o[i] < _o[i + 1] for i in range(len(_o) - 1)):
+        _viol += 1
+ok("rung outcomes are MONOTONE — nested thresholds, not a bracket set", _viol == 0,
+   "if the high rung pays, every lower rung paid too; 400 events checked")
+_probs = []
+for _gid in range(200):
+    _g = markets.generate_group(_lfam, 31_000 + _gid)
+    _probs.append([l.true_p[0] for l in _g.legs])
+ok("rung probabilities are ordered within every event",
+   all(all(pr[i] >= pr[i + 1] - 1e-12 for i in range(len(pr) - 1)) for pr in _probs),
+   "a lower threshold is always at least as likely as a higher one")
+
+# THE FINDING. The worry was that 534 contracts is really ~124 pieces of evidence, so the
+# interval on the headline was too narrow. For a THRESHOLD strategy it is the other way
+# round: it takes the near-certain side of every rung, the printed number lands between two
+# thresholds, and only the straddling rung can be wrong. Losses cannot stack.
+_dist = {}
+for _gid in range(1200):
+    _g = markets.generate_group(_lfam, 32_000 + _gid)
+    _tl = backtest.run_group(_g, strategies.hold_favorite(enter_frac=0.25, qty=250, thresh=95))[6]
+    if _tl:
+        _dist[sum(1 for x in _tl if x < 0)] = _dist.get(sum(1 for x in _tl if x < 0), 0) + 1
+_tot = sum(_dist.values())
+_max_losing = max(_dist)
+ok("losses do not stack across a ladder", _max_losing <= 2,
+   f"worst event lost {_max_losing} of ~{_lfam.n_rungs} rungs; "
+   f"{100 * _dist.get(0, 0) / _tot:.0f}% of events lose nothing")
+ok("...which is why the ladder did NOT widen the interval",
+   _dist.get(0, 0) / _tot > 0.9,
+   "a strategy with one directional view across rungs WOULD correlate; this one does not")
+
+# UNITS. markets_per_year counts contracts; the backtester measures per event. Confusing the
+# two overstates income by exactly n_rungs.
+_cap = capacity.analyse("econ_print", strategies.hold_favorite(enter_frac=0.25, qty=250,
+                                                               thresh=95), n_groups=400)
+near("capacity divides contracts/yr by rungs to get events/yr",
+     _cap.markets_per_year, _cap.contracts_per_year / _lfam.n_rungs, 1e-9)
+ok("annual income is events/yr x PnL/event",
+   abs(_cap.annual_pnl_cents - _cap.markets_per_year * _cap.mean_per_market) < 1e-6)
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

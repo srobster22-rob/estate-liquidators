@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 106 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 113 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -59,7 +59,7 @@ checks themselves.
 | `capacity.py` | Turns a percentage return into dollars per year. Read it before believing one. |
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
-| `selftest.py` | 106 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 113 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -76,7 +76,7 @@ Nine, spanning what Kalshi lists — plus one that exists only to catch bugs.
 |---|---|---|---|---|
 | `crypto_hourly` | 1 h | 8760 | tiny | most efficient thing on the exchange; recycles capital constantly |
 | `index_bracket_daily` | 6.5 h | 1348 | tiny + incoherent brackets | the only family where riskless arbitrage is structurally possible |
-| `econ_print` | 10 h | 876 | small, big quote lag | 90% of the uncertainty lands in one step |
+| `econ_print` | 10 h | 876 | small, big quote lag | 90% of the uncertainty lands in one step; listed as a **ladder** of 4 nested thresholds |
 | `weather_temp` | 2 d | 182 | moderate | uncertainty resolves late as forecasts sharpen |
 | `sports_game` | 3 h | 2920 | strong | scores are jumps; retail pricing most plausible |
 | `politics_long` | 90 d | 4 | strong | biggest gross edges, worst capital efficiency |
@@ -225,13 +225,37 @@ $147) — clearing both the $250 bar and the $214 that started this. **The bot d
 better; the count got right.** The edge per market is unchanged and so is everything the gate
 said about it.
 
-The census also produces a second number that matters more for risk than for income. A Kalshi
-CPI market is a **ladder** — nested rungs that all settle from one printed number — so 534
-contracts is only ~**124 independent events** a year (534 ÷ 124 = 4.3 rungs/event, consistent
-with the ~6-threshold ladders in published Core CPI examples). Income scales with contracts,
-because each rung has its own book and depth. Risk and evidence scale with events. A $292/yr
-business resting on 124 independent resolutions is a much narrower thing than the contract
-count suggests.
+The census also produced a second number: a Kalshi CPI market is a **ladder** — nested rungs
+that all settle from one printed number — so 534 contracts is only ~**124 independent events**
+a year (534 ÷ 124 = 4.3 rungs/event, consistent with the ~6-threshold ladders in published
+Core CPI examples). See finding 12: the obvious conclusion from that turned out to be wrong.
+
+**12. Modelling the ladder was supposed to shrink the result. It did the opposite, and the
+reason is worth more than the number.** `econ_print` now generates 4 *nested* thresholds on
+one latent path — monotone by construction, so if the high rung pays, every lower rung paid
+too. The expectation was that correlated resolution would widen the confidence interval by
+roughly √4.3, because 534 contracts would be only ~124 pieces of evidence. It didn't:
+
+| losing rungs in a 4-rung event | share of events |
+|---|---|
+| 0 | 96.3% |
+| 1 | 3.7% |
+| 2 | 0.04% |
+| 3–4 | never observed |
+
+**Losses cannot stack, because the strategy takes the near-certain side of *every* rung.** The
+printed number lands between two thresholds, so the bot is right on every rung except the one
+straddling it. Nested ladders *diversify* a threshold strategy rather than correlating it. The
+"124 pieces of evidence" worry is real — but for a strategy holding one directional view across
+all rungs, which this is not.
+
+Verified by a controlled test rather than assumed: same family, only `n_rungs` differing, equal
+contract counts on both sides gave **+60.2¢ vs +63.7¢ per contract** and identical
+trades-per-contract. The ladder doesn't manufacture edge.
+
+It did fix a units bug worth catching, though: `markets_per_year` counts **contracts** while
+the backtester measures per **event**, so income is events/yr × PnL/event. Multiplying
+contracts/yr by PnL/ladder overstates by exactly `n_rungs`.
 
 **11. The best-looking bot in the entire coverage sweep is on the market that cannot be
 beaten.** In the 9 × 12 matrix, the highest in-sample cell of all 100 is

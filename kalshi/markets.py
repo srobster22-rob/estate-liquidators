@@ -76,12 +76,12 @@ class Family:
     __slots__ = ("name", "label", "steps", "step_hours", "schedule_kind", "schedule_kw",
                  "p0_mu", "p0_sd", "logit_gamma", "underreact_alpha", "underreact_decay",
                  "underreact_cap", "quote_noise", "spread_lo", "spread_hi", "depth_lo",
-                 "depth_hi", "n_brackets", "notes", "salt_name", "fee_multiplier")
+                 "depth_hi", "n_brackets", "n_rungs", "notes", "salt_name", "fee_multiplier")
 
     def __init__(self, name, label, steps, step_hours, schedule_kind, p0_mu, p0_sd,
                  logit_gamma, underreact_alpha, underreact_decay, underreact_cap,
                  quote_noise, spread_lo, spread_hi, depth_lo, depth_hi,
-                 n_brackets=1, schedule_kw=None, notes="", salt_name=None):
+                 n_brackets=1, n_rungs=1, schedule_kw=None, notes="", salt_name=None):
         self.name, self.label = name, label
         # Which name seeds the RNG. Normally the family's own, but an attenuated copy
         # borrows its base family's salt so that the same group id draws the SAME latent
@@ -102,6 +102,7 @@ class Family:
         self.spread_lo, self.spread_hi = spread_lo, spread_hi
         self.depth_lo, self.depth_hi = depth_lo, depth_hi
         self.n_brackets = n_brackets
+        self.n_rungs = n_rungs
         self.notes = notes
 
     @property
@@ -152,9 +153,11 @@ _add(Family(
     p0_mu=0.0, p0_sd=1.1,
     logit_gamma=0.99, underreact_alpha=0.55, underreact_decay=0.60, underreact_cap=3.0,
     quote_noise=1.0, spread_lo=1, spread_hi=3, depth_lo=150, depth_hi=600,
-    schedule_kw={"shock_share": 0.90},
+    schedule_kw={"shock_share": 0.90}, n_rungs=4,
     notes="Dead flat, then one step carries 90% of the uncertainty. The bot is not told "
-          "when the print lands; it has to infer it from the move, like everyone else."))
+          "when the print lands; it has to infer it from the move, like everyone else. "
+          "Listed as a LADDER of 4 nested thresholds on one number — the census measured "
+          "534 contracts a year against ~124 independent releases, i.e. ~4.3 rungs each."))
 
 _add(Family(
     "weather_temp", "High temperature in city above threshold",
@@ -355,6 +358,37 @@ def generate_group(fam: Family, gid: int) -> Group:
     rng = random.Random(_family_salt(fam.salt_name) ^ (gid * 2654435761 & 0x7FFFFFFF))
     sched = paths.variance_schedule(fam.schedule_kind, fam.steps, rng, **fam.schedule_kw)
 
+    if fam.n_rungs > 1:
+        # LADDER: one latent path, N NESTED thresholds over it. "CPI above 0.2%", "above
+        # 0.3%", "above 0.4%" ... are separate tradeable contracts with separate books, but
+        # they all settle from ONE printed number, so their outcomes are monotone and
+        # perfectly rank-correlated: if the 0.4% rung pays, the 0.3% rung paid too.
+        #
+        # This is the structure the census turned up and it is NOT the same as a bracket set.
+        # Brackets are mutually exclusive — exactly one wins. Ladder rungs are nested — a run
+        # of them wins together. Modelling econ markets as independent single contracts, which
+        # is what this file did until now, treats 534 contracts a year as 534 pieces of
+        # evidence when they are about 124. The mean per contract is unaffected; the CONFIDENCE
+        # INTERVAL around it is not, and that is the number the gate leans on.
+        path = paths.LatentPath(fam.steps, sched, 0.0, rng)
+        n = fam.n_rungs
+        # Thresholds spread across the price range, so a ladder contains deep-in-the-money
+        # rungs, coin-flips and longshots at once — which is what makes a threshold strategy
+        # trade several rungs of the same event.
+        centre = rng.gauss(fam.p0_mu, fam.p0_sd * 0.5)
+        ks = sorted(-paths.norm_ppf(min(max(paths.expit(centre + (i - (n - 1) / 2) * 0.85),
+                                            0.02), 0.98)) for i in range(n))
+        x_final = path.x[-1] + rng.gauss(0.0, path.v_rem[-1] ** 0.5)
+        legs = []
+        for i, k in enumerate(ks):
+            ep = Episode(fam, gid, i, fam.steps)
+            ep.true_p = [paths.norm_cdf((path.x[t] - k) / (path.v_rem[t] ** 0.5))
+                         for t in range(fam.steps)]
+            ep.bid, ep.ask, ep.depth = _price_series(fam, ep.true_p, rng)
+            ep.outcome = 1 if x_final > k else 0
+            legs.append(ep)
+        return Group(fam, gid, legs)
+
     if fam.n_brackets > 1:
         # Bracket set: one latent path, N intervals over it. True probs sum to 1 exactly,
         # each leg is quoted independently, so the quoted set is incoherent.
@@ -425,6 +459,7 @@ def attenuated(family_name: str, factor: float) -> str:
         underreact_cap=base.underreact_cap * factor,
         quote_noise=base.quote_noise, spread_lo=base.spread_lo, spread_hi=base.spread_hi,
         depth_lo=base.depth_lo, depth_hi=base.depth_hi, n_brackets=base.n_brackets,
+        n_rungs=base.n_rungs,
         schedule_kw=base.schedule_kw, salt_name=base.name,
         notes=f"attenuated copy of {family_name} for the gate's half-edge criterion")
     _ATTENUATED[key] = f

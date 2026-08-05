@@ -258,6 +258,29 @@ against the message Kalshi's SDK builds, plus a **negative control** proving it 
 over the query-inclusive message. That negative control is the check that would have caught the
 original bug. 106 checks pass.
 
+K18 · Modelled the ladder structure the census turned up, expecting it to shrink the headline.
+· **It did the opposite, and the reason is the real finding.** `econ_print` now generates 4
+NESTED thresholds on one latent path — monotone by construction, so if the high rung pays every
+lower rung paid too. That is what Kalshi actually lists: "CPI above 0.2%", "above 0.3%", each a
+separate book, all settling from one printed number. The expectation was that correlated
+resolution would widen the confidence interval by about sqrt(4.3), since 534 contracts would be
+only ~124 pieces of evidence. **It barely moved.** Measured loss clustering over 2,500 events:
+**96.3% of events lose nothing, 3.7% lose exactly one rung, 0.04% lose two, and three or four
+never happened.** Losses cannot stack, because the strategy takes the near-certain side of
+*every* rung — the printed number lands between two thresholds, so the bot is wrong only on the
+one straddling it. **Nested ladders diversify a threshold strategy rather than correlating it.**
+The "124 pieces of evidence" worry is real, but for a strategy with one directional view across
+all rungs, which this is not.
+
+Checked rather than assumed: a controlled test with the same family and only `n_rungs`
+differing, equal contract counts on both sides, gave **+60.2c vs +63.7c per contract** and
+identical trades-per-contract — so the ladder does not manufacture edge, and the first
+comparison that looked like it did (54.8c vs 67.2c) was seed noise between two different
+ranges. **Also caught a units bug the change exposed:** `markets_per_year` counts CONTRACTS
+while the backtester measures per EVENT, so income is events/yr x PnL/event; multiplying
+contracts/yr by PnL/ladder overstates by exactly n_rungs. Capacity now divides, prints both
+numbers, and reports trade rate per contract instead of clamping to 100%. 113 checks pass.
+
 ---
 
 ## Standing notes
@@ -275,6 +298,9 @@ original bug. 106 checks pass.
 - **Check the control row before reading any table.** Three separate times, the most
   profitable-looking thing in a search was a control. That is what maxima of noise look like,
   and it is the reason the gate corrects across every test the loop has ever run.
+- **When a modelling change moves the headline UP, distrust it until a controlled test says
+  otherwise.** The ladder looked like it added 23% of edge; an A/B with only `n_rungs`
+  differing showed the gap was seed noise. Change one thing, hold the rest fixed.
 - **A vendor's own SDK is a better source than any write-up about it.** PyPI was reachable
   when every Kalshi host was not, and the SDK source corrected a base URL that a search
   snippet had wrong. When the API cannot be called, read the client the vendor ships.
