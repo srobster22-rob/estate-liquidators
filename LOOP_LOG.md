@@ -406,6 +406,35 @@ R21 knew this mattered. Any result whose mechanism runs through crew *time* inhe
 The outstanding job is a model where the prerequisite work consumes crew time productively; that
 is what would let the appraiser's real shape be measured, and it is the thing I would build next.
 
+R24 · Built `sim/work_gate.py` — the outstanding job from R23, and the first model in this repo
+that gates depth on **work** rather than a clock, as **D-20 (FIRM)** has required since R8. The
+night is a budget of *crew-seconds*; hauling, appraising and prerequisite steps all spend from it,
+and wall-clock time is derived back out. A prerequisite step costs `validate_estate.py`'s
+`TASK_SECONDS = 75.0` × 4 = 300 crew-seconds — **a constant that had sat in the repo since R1,
+defined and never used**, which R18 flagged. Depth follows LEVEL-SPEC V2 as reconciled in R17: 1
+step for tier 2, 2 for tier 3, 3 for tier 4. There is no waiting; a crew not hauling is prying
+boards. · **The model validates itself on D-20's own reported failure.** D-20 exists because clock
+gating made bigger crews earn *less* — "a crew of two outearned a crew of six by 2×". Run both
+gates over the same code: the **clock gate reproduces the inversion** (crew 2 out-earns crew 6)
+and the **work gate removes it** (earnings rise monotonically 2→6). If it had failed that, nothing
+else in the file would have been worth reading. · **It confirms R23 far more cleanly than R23
+could.** R23 had to ablate across two files; this runs one model and changes only the gate:
+**work-gated, the scan-rate optimum is a CORNER at 1.0, +14.4%, z=34.5. Clock-gated, the same code
+gives an INTERIOR optimum at 0.4, +5.2%.** The interior optimum is manufactured by the gate. That
+is now demonstrated within a single model, which closes the question D-23 was reversed on.
+· **Three bugs of my own, all caught by reading the intermediate columns rather than the
+headline.** (1) Tier 4 was an unlimited value band, so reaching the apex early printed money and a
+crew of three out-earned everyone by 3× — D-21 says the apex is a single centrepiece, so it is now
+capped at one. (2) Every haul cost one slot regardless of weight class, making the apex nearly
+free; `van.slot_cost` is canonical and a cart is **five of fourteen** slots. (3) Panel A forced one
+depth policy on every crew size, which measured the policy rather than the gate — it now takes the
+best target per crew. Each showed up as an absurd intermediate (`hauls = 1.0`, crew 3 earning 3×
+its neighbours), not as a wrong-looking conclusion. · Panel C carries an explicit caveat rather
+than a finding: it assigns one weight class per tier while `estates.py` gives tier 3 a mix, so the
+tier-3 dip is most likely that simplification. Not quoted as an economy result. · **Eleven sims
+still gate on a timer.** This one does not, and D-20 now records that any result of theirs running
+through crew *time* carries the artifact.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
