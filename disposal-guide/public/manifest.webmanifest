@@ -1,0 +1,11 @@
+{
+  "name": "What do I do with this?",
+  "short_name": "Disposal",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfaf7",
+  "theme_color": "#1b4332",
+  "description": "Look up how to get rid of something where you live.",
+  "icons": []
+}

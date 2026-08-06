@@ -1,0 +1,17 @@
+# Your town. Nothing local works until this is filled in and `configured` is true.
+#
+# `configured: false` is not a placeholder to delete — it is a safety interlock. While it is
+# false, every local verdict is suppressed and the app tells the user plainly that nobody has
+# confirmed the rules for their area yet. Flip it to true only after you have made the calls in
+# VERIFY.md, because flipping it is what makes the app start giving people bin answers.
+
+id: example
+city: '[CITY]'
+county: '[COUNTY]'
+state: '[STATE]'
+hauler: '[HAULER]'
+timezone: America/New_York
+languages:
+  - en
+  - es
+configured: false

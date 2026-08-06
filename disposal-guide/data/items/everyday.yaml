@@ -1,0 +1,159 @@
+# The everyday items where the answer is almost entirely local.
+#
+# These deliberately carry no local rule. Whether your program takes glass, or plastic film, or
+# shredded paper depends on what your material recovery facility can actually sort, and it
+# genuinely differs between neighboring towns. Guessing here is how a whole load gets rejected.
+#
+# The universal layer still earns its keep: the *why* travels even when the verdict doesn't.
+
+- slug: plastic-bags-film
+  category: everyday
+  names:
+    en: [plastic bag, plastic bags, grocery bags, bread bag, bubble wrap, plastic film, shrink
+      wrap, ziploc bag, produce bag, air pillows]
+    es: [bolsa de plastico, bolsas plasticas, bolsa de mandado, plastico de burbujas]
+  universal:
+    hazard: caution
+    neverCurbside: false
+    why:
+      en: Plastic bags wrap around the spinning parts of sorting machines. Facilities have to stop
+        the line and cut them out by hand, so most curbside programs do not want them even where
+        the plastic itself is recyclable.
+      es: Las bolsas de plástico se enredan en las máquinas de la planta de reciclaje.
+    prep:
+      - en: Many grocery stores have a collection bin for clean, dry bags and film near the
+          entrance. That is a different system from your curbside cart.
+      - en: Never put recyclables inside a bag in your cart unless your program specifically tells
+          you to. Bagged recyclables are often pulled off the line as trash.
+    sourceRefs: []
+
+- slug: pizza-box
+  category: everyday
+  names:
+    en: [pizza box, greasy cardboard, food stained cardboard]
+    es: [caja de pizza, carton con grasa]
+
+- slug: shredded-paper
+  category: everyday
+  names:
+    en: [shredded paper, paper shreds, confetti paper]
+    es: [papel triturado]
+  universal:
+    hazard: none
+    neverCurbside: false
+    why:
+      en: Shredding makes paper fibers too short for some mills and too small for some sorting
+        equipment, so programs handle it very differently.
+    prep: []
+    sourceRefs: []
+
+- slug: glass-containers
+  category: everyday
+  names:
+    en: [glass, glass bottle, glass jar, wine bottle, broken glass, drinking glass, window glass,
+      mirror, pyrex, ceramic dish]
+    es: [vidrio, botella de vidrio, frasco, vidrio roto, espejo, ceramica]
+  universal:
+    hazard: caution
+    neverCurbside: false
+    why:
+      en: Container glass, window glass, drinking glasses, Pyrex, and ceramics all melt at
+        different temperatures. Even where bottles and jars are accepted, the others usually are
+        not.
+    prep:
+      - en: Wrap broken glass so it cannot cut whoever handles the bag.
+    sourceRefs: []
+
+- slug: styrofoam
+  category: everyday
+  names:
+    en: [styrofoam, foam, packing peanuts, foam cooler, takeout container, egg carton foam,
+      polystyrene, expanded polystyrene]
+    es: [unicel, poliestireno, espuma, hielera de unicel]
+
+- slug: textiles
+  category: everyday
+  names:
+    en: [clothes, clothing, textiles, shoes, worn out clothes, ripped clothes, towels, bedding,
+      fabric scraps]
+    es: [ropa, textiles, zapatos, ropa vieja, sabanas]
+  universal:
+    hazard: none
+    neverCurbside: false
+    why:
+      en: Worn-out clothing that nobody would wear still has value as fiber, and textile
+        collection is a separate system from both donation and curbside recycling.
+    prep:
+      - en: Wearable items go to donation. Stained and torn items are not trash automatically —
+          ask whether there is a textile recovery bin nearby.
+    sourceRefs: []
+
+- slug: cooking-oil
+  category: everyday
+  names:
+    en: [cooking oil, used cooking oil, fryer oil, grease, bacon grease, fat]
+    es: [aceite de cocina, aceite de cocina usado, grasa, manteca]
+  universal:
+    hazard: caution
+    neverCurbside: false
+    why:
+      en: Cooking oil poured down a drain congeals in the sewer and blocks it. This causes real
+        backups into houses.
+    prep:
+      - en: Never pour it down any drain, including with hot water.
+      - en: Let it cool and solidify in a container. Some places collect it for biodiesel,
+          especially after holidays.
+    sourceRefs: []
+
+- slug: tires
+  category: bulky
+  names:
+    en: [tires, tire, old tires, car tires, bike tire]
+    es: [llantas, neumaticos, llanta vieja]
+
+- slug: mattress
+  category: bulky
+  names:
+    en: [mattress, box spring, bed, futon]
+    es: [colchon, cama, base de cama]
+
+- slug: furniture
+  category: bulky
+  names:
+    en: [furniture, couch, sofa, chair, table, desk, dresser, bulky item]
+    es: [muebles, sofa, silla, mesa, escritorio]
+
+- slug: yard-waste
+  category: everyday
+  names:
+    en: [yard waste, grass clippings, leaves, branches, brush, tree limbs, garden waste, weeds]
+    es: [desechos de jardin, hojas, ramas, pasto cortado]
+
+- slug: food-scraps
+  category: everyday
+  names:
+    en: [food scraps, food waste, compost, leftovers, vegetable peels, coffee grounds, eggshells]
+    es: [restos de comida, composta, desechos de comida, cascaras]
+
+- slug: construction-debris
+  category: bulky
+  names:
+    en: [construction debris, drywall, lumber, concrete, bricks, tile, renovation waste, sheetrock]
+    es: [escombros, madera, concreto, ladrillos, escombro de construccion]
+
+- slug: propane-grill-vs-camping
+  category: hazardous
+  names:
+    en: [gas canister, fuel canister, camp fuel, white gas, kerosene, gasoline, old gas, lighter
+      fluid, charcoal lighter]
+    es: [gasolina, combustible, queroseno, gasolina vieja, liquido para encender]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Fuels are flammable and old gasoline is still flammable. None of this goes in a bin, and
+        none of it goes down a drain or onto the ground.
+    prep:
+      - en: Keep fuel in an approved fuel container, sealed, away from heat.
+      - en: Do not mix fuels together, and do not mix fuel with used motor oil.
+    sourceRefs: [epa-hhw]

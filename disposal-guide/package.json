@@ -1,0 +1,28 @@
+{
+  "name": "disposal-guide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local disposal and recycling lookup. Hyper-local, phone-verified, offline.",
+  "scripts": {
+    "data": "tsx scripts/build-index.ts",
+    "dev": "npm run data && vite",
+    "build": "npm run data && tsc --noEmit && vite build && tsx scripts/gen-sw.ts",
+    "preview": "vite preview",
+    "test": "npm run data && vitest run",
+    "test:watch": "vitest",
+    "check": "npm run build && vitest run && tsx scripts/check-budget.ts && playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.1.2",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  }
+}

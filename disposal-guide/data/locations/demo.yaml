@@ -1,0 +1,94 @@
+# DEMO DATA — EVERY ROW HERE IS FICTIONAL.
+#
+# These exist so `npm run dev` shows a working app on a clean clone, per the brief's rule that
+# the project must run with no credentials and no setup. They are marked `isDemo: true`, which
+# makes the app refuse to present them as real destinations, and the build fails if a demo row
+# is missing that flag.
+#
+# Replace this file with data/locations/local.yaml containing places you have phoned. Do not
+# edit these rows into real ones — delete the file, so a half-edited demo row can never survive.
+#
+# The address format is deliberately absurd so nobody mistakes one for a real place.
+
+- id: demo-hhw
+  name: EXAMPLE COUNTY HAZARDOUS WASTE FACILITY (NOT A REAL PLACE)
+  address: 000 Example Road, Exampleville
+  phone: '555-0100'
+  isDemo: true
+  hours:
+    2: [{ open: '08:00', close: '15:00' }]
+    4: [{ open: '08:00', close: '15:00' }]
+    6: [{ open: '08:00', close: '12:00' }]
+  residencyRequired: true
+  proofRequired:
+    en: Photo ID showing an address in the county.
+  feesNote:
+    en: Free for households. Businesses are charged.
+  acceptsSlugs:
+    - battery-alkaline
+    - battery-lithium-ion
+    - battery-button-cell
+    - battery-lead-acid
+    - paint-latex
+    - paint-oil
+    - motor-oil
+    - antifreeze
+    - pesticides
+    - cleaners-corrosive
+    - aerosol-cans
+    - propane-cylinder
+    - fluorescent-tube
+    - propane-grill-vs-camping
+    - smoke-detector
+
+- id: demo-hardware
+  name: EXAMPLE HARDWARE STORE (NOT A REAL PLACE)
+  address: 000 Example Main Street, Exampleville
+  phone: '555-0101'
+  isDemo: true
+  hours:
+    0: [{ open: '09:00', close: '17:00' }]
+    1: [{ open: '07:00', close: '20:00' }]
+    2: [{ open: '07:00', close: '20:00' }]
+    3: [{ open: '07:00', close: '20:00' }]
+    4: [{ open: '07:00', close: '20:00' }]
+    5: [{ open: '07:00', close: '20:00' }]
+    6: [{ open: '08:00', close: '18:00' }]
+  acceptsSlugs:
+    - battery-alkaline
+    - battery-lithium-ion
+    - battery-button-cell
+    - fluorescent-tube
+
+- id: demo-pharmacy
+  name: EXAMPLE PHARMACY DROP BOX (NOT A REAL PLACE)
+  address: 000 Example Avenue, Exampleville
+  phone: '555-0102'
+  isDemo: true
+  hoursNote:
+    en: Drop box available during pharmacy counter hours.
+  acceptsSlugs:
+    - medications
+
+- id: demo-transfer-station
+  name: EXAMPLE TRANSFER STATION (NOT A REAL PLACE)
+  address: 000 Example Landfill Lane, Exampleville
+  phone: '555-0103'
+  isDemo: true
+  hours:
+    1: [{ open: '07:00', close: '16:00' }]
+    2: [{ open: '07:00', close: '16:00' }]
+    3: [{ open: '07:00', close: '16:00' }]
+    4: [{ open: '07:00', close: '16:00' }]
+    5: [{ open: '07:00', close: '16:00' }]
+    6: [{ open: '07:00', close: '14:00' }]
+  feesNote:
+    en: Per-load fee for bulky items.
+  acceptsSlugs:
+    - electronics
+    - tv-crt
+    - appliance-refrigerant
+    - mattress
+    - furniture
+    - tires
+    - construction-debris

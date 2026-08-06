@@ -1,0 +1,239 @@
+# Household hazardous waste and the pressurized/mercury-bearing things people ask about most.
+#
+# Everything in this file is neverCurbside. When in doubt the answer is the hazardous waste
+# facility, which is never wrong — only inconvenient.
+
+- slug: paint-latex
+  category: hazardous
+  names:
+    en: [latex paint, water based paint, wall paint, acrylic paint, house paint, half can of paint]
+    es: [pintura de latex, pintura a base de agua, pintura]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Leftover paint is one of the most common household hazardous wastes, and rules for it
+        differ more between towns than almost anything else on this list.
+    prep:
+      - en: Keep it in the original container with the label on. Never pour it down a drain or
+          onto the ground.
+      - en: Some places accept fully dried-out latex paint in the trash and some do not. Ask
+          before you dry it out — the answer changes what you should do with it.
+    sourceRefs: [epa-hhw]
+
+- slug: paint-oil
+  category: hazardous
+  names:
+    en: [oil based paint, oil paint, enamel paint, deck stain, wood stain, varnish, polyurethane,
+      paint thinner, mineral spirits, turpentine, paint stripper]
+    es: [pintura de aceite, barniz, tinte para madera, diluyente de pintura]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Oil-based paints, stains, and thinners can catch fire and are toxic. These are hazardous
+        waste everywhere.
+    prep:
+      - en: Original container, label on, lid tight.
+      - en: Rags soaked in oil-based finishes can catch fire on their own. Spread them flat
+          outdoors to dry before disposal, or keep them in a sealed metal container with water.
+    sourceRefs: [epa-hhw]
+
+- slug: motor-oil
+  category: hazardous
+  names:
+    en: [motor oil, used oil, engine oil, oil filter, transmission fluid, brake fluid, power
+      steering fluid]
+    # "aceite usado" alone is ambiguous in Spanish — it means both used motor oil and used
+    # cooking oil, which have opposite answers. Both items carry the qualified form so a search
+    # for the bare phrase surfaces both rather than silently picking one.
+    es: [aceite de motor, aceite de motor usado, filtro de aceite, liquido de frenos]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Used motor oil is toxic and a small amount contaminates a large amount of water. It is
+        also readily recyclable, and many auto parts stores take it free.
+    prep:
+      - en: Use a clean, sealed container. Do not mix it with anything else — antifreeze, brake
+          fluid, or water in the oil can make it unrecyclable.
+      - en: Oil filters hold oil too. Drain them and take them with the oil.
+    sourceRefs: [epa-hhw]
+
+- slug: antifreeze
+  category: hazardous
+  names:
+    en: [antifreeze, coolant, radiator fluid, ethylene glycol]
+    es: [anticongelante, refrigerante]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Antifreeze is sweet-tasting and highly poisonous to pets, wildlife, and children. Never
+        leave it in an open container and never pour it out.
+    prep:
+      - en: Sealed container, labeled, kept where animals cannot reach it.
+      - en: Do not mix it with used motor oil — mixing makes both harder to recycle.
+    sourceRefs: [epa-hhw]
+
+- slug: pesticides
+  category: hazardous
+  names:
+    en: [pesticide, weed killer, roundup, herbicide, bug spray, insecticide, rat poison, ant
+      killer, fertilizer, pool chemicals, chlorine tablets]
+    es: [pesticida, herbicida, matamalezas, insecticida, veneno para ratas, quimicos de piscina]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: These are designed to kill things and they keep working in a landfill or a storm drain.
+    prep:
+      - en: Original container, original label, never combined with another product. Mixing
+          incompatible chemicals can react, ignite, or explode.
+      - en: Never store them in a food or drink container.
+    sourceRefs: [epa-hhw]
+
+- slug: cleaners-corrosive
+  category: hazardous
+  names:
+    en: [drain cleaner, oven cleaner, bleach, ammonia, toilet bowl cleaner, rust remover, muriatic
+      acid, pool acid, household cleaner]
+    es: [limpiador de desagues, cloro, amoniaco, limpiador de horno, acido muriatico]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Corrosive cleaners can burn a sanitation worker and can react with whatever else is in
+        the truck.
+    prep:
+      - en: Keep products in their original containers and never mix them together.
+    sourceRefs: [epa-hhw]
+
+- slug: aerosol-cans
+  category: hazardous
+  names:
+    en: [aerosol can, spray can, spray paint, wd40, hairspray can, air freshener can, propane
+      torch cylinder, butane canister]
+    es: [lata de aerosol, pintura en aerosol, lata de spray]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: A can with pressure still in it can burst or ignite when it is crushed in a truck. What
+        was inside matters too.
+    prep:
+      - en: Do not puncture, crush, or burn the can.
+      - en: Completely empty cans are treated differently in different places — ask before you
+          assume yours qualifies.
+    sourceRefs: [epa-hhw]
+
+- slug: propane-cylinder
+  category: hazardous
+  names:
+    en: [propane tank, propane cylinder, grill tank, bbq tank, camping propane, one pound propane,
+      1 lb propane bottle, coleman propane, gas cylinder, helium tank]
+    es: [tanque de propano, cilindro de propano, tanque de gas, tanque de parrilla]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: An "empty" cylinder still holds flammable gas. In a garbage truck it can explode.
+    prep:
+      - en: Never put a propane cylinder in the trash or the recycling, no matter how empty it
+          feels.
+      - en: Large refillable tanks (the 20 lb grill size) can usually be exchanged at the same
+          places that sell them.
+      - en: Small camping canisters are the harder problem. Ask your hazardous waste facility
+          specifically about 1 lb cylinders — some accept them and some run special events.
+    sourceRefs: [epa-hhw]
+
+- slug: fluorescent-tube
+  category: hazardous
+  names:
+    en: [fluorescent tube, fluorescent bulb, flourescent bulb, CFL, compact fluorescent, curly
+      bulb, swirly light bulb, tube light, shop light bulb, energy saver bulb]
+    es: [foco fluorescente, tubo fluorescente, bombilla ahorradora]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Fluorescent bulbs contain a small amount of mercury sealed in the glass — about 3 to 4
+        milligrams in a CFL. Breaking them in a truck releases it.
+    prep:
+      - en: Keep bulbs in their original box or wrap them so they cannot break. Recyclers
+          generally require them unbroken.
+      - en: Many hardware and home improvement retailers take these back in store.
+      - en: If one breaks indoors, air out the room for 5-10 minutes first, and do not vacuum
+          unless broken glass is left after every other cleanup step.
+    sourceRefs: [epa-cfl-recycling, epa-cfl-cleanup]
+
+- slug: led-incandescent-bulb
+  category: hazardous
+  names:
+    en: [led bulb, incandescent bulb, light bulb, halogen bulb, regular light bulb]
+    es: [foco, bombilla, foco led, foco incandescente]
+  universal:
+    hazard: caution
+    neverCurbside: false
+    why:
+      en: LED and incandescent bulbs do not contain mercury, but they are not glass your recycling
+        program can process either — the glass type is wrong.
+    prep:
+      - en: Wrap a broken bulb so it cannot cut anyone handling the bag.
+    sourceRefs: [epa-cfl-recycling]
+
+- slug: thermometer-mercury
+  category: hazardous
+  names:
+    en: [mercury thermometer, old thermometer, thermostat with mercury, mercury switch, mercury
+      spill]
+    es: [termometro de mercurio, termostato de mercurio, mercurio]
+  universal:
+    hazard: professional
+    neverCurbside: true
+    why:
+      en: Elemental mercury is toxic and evaporates at room temperature. A broken mercury
+        thermometer is a cleanup you should not improvise.
+    prep:
+      - en: Do not vacuum it. Do not sweep it. Do not pour it down a drain.
+      - en: Keep people and pets out of the room, and call your local health department or
+          hazardous waste facility for cleanup instructions.
+    sourceRefs: [epa-hhw]
+
+- slug: asbestos-suspect
+  category: hazardous
+  names:
+    en: [asbestos, popcorn ceiling, old floor tile, pipe insulation, vermiculite insulation,
+      transite siding]
+    es: [asbesto, amianto, aislamiento de tuberia]
+  universal:
+    hazard: professional
+    neverCurbside: true
+    why:
+      en: Asbestos is dangerous when it is disturbed and released into the air. Identifying and
+        removing it is licensed work in most states.
+    prep:
+      - en: Do not sand, scrape, cut, drill, or break material you suspect contains asbestos.
+      - en: Leave it alone and call your state or county environmental office for the list of
+          licensed inspectors and abatement contractors.
+    sourceRefs: [epa-hhw]
+
+- slug: ammunition-flares
+  category: hazardous
+  names:
+    en: [ammunition, ammo, bullets, shotgun shells, road flares, fireworks, gunpowder, explosives,
+      old dynamite]
+    es: [municiones, balas, bengalas, fuegos artificiales, polvora]
+  universal:
+    hazard: professional
+    neverCurbside: true
+    why:
+      en: These are not waste-facility items. They go to law enforcement or a bomb squad, not to a
+        recycling center and not to a landfill.
+    prep:
+      - en: Do not put these in any bin and do not take them to a hazardous waste facility without
+          calling first.
+      - en: Call your local police department's non-emergency line and ask about their disposal
+          procedure. If you find something you think may be explosive, do not move it — call and
+          describe it.
+    sourceRefs: [epa-hhw]

@@ -1,0 +1,125 @@
+# Citation registry. Items reference these by key; the build fails on an unknown key, and
+# SOURCES.md is generated from this file.
+#
+# `method` is how the claim was actually checked, and it is displayed to the user:
+#   fetched      - the page was retrieved and read in full
+#   search_index - the content was confirmed through a web search index, but the page itself
+#                  could not be retrieved (this environment's egress policy blocks direct
+#                  fetches of these hosts). Weaker. Re-verify by opening the URL.
+#   phone        - a person called and was told this
+#   in_person    - a person went and saw it
+#
+# Every source here is currently `search_index`. That is a real limitation, it is recorded
+# honestly, and re-fetching all of them is the first item in VERIFY.md.
+
+epa-household-batteries:
+  org: US EPA
+  title: Used Household Batteries
+  url: https://www.epa.gov/recycle/used-household-batteries
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-lithium-batteries:
+  org: US EPA
+  title: Used Lithium-Ion Batteries
+  url: https://www.epa.gov/recycle/used-lithium-ion-batteries
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-lithium-fires:
+  org: US EPA
+  title: An Analysis of Lithium-ion Battery Fires in Waste Management and Recycling (2021)
+  url: https://www.epa.gov/system/files/documents/2021-08/lithium-ion-battery-report-update-7.01_508.pdf
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-hhw:
+  org: US EPA
+  title: Household Hazardous Waste (HHW)
+  url: https://www.epa.gov/hw/household-hazardous-waste-hhw
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-cfl-recycling:
+  org: US EPA
+  title: Recycling and Disposal of CFLs and Other Bulbs that Contain Mercury
+  url: https://www.epa.gov/mercury/recycling-and-disposal-cfls-and-other-bulbs-contain-mercury
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-cfl-cleanup:
+  org: US EPA
+  title: Cleaning Up a Broken CFL
+  url: https://www.epa.gov/mercury/cleaning-broken-cfl
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-electronics:
+  org: US EPA
+  title: Electronics Donation and Recycling
+  url: https://www.epa.gov/recycle/electronics-donation-and-recycling
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-certified-recyclers:
+  org: US EPA
+  title: Certified Electronics Recyclers (R2 and e-Stewards)
+  url: https://www.epa.gov/electronics-batteries-management/certified-electronics-recyclers
+  retrieved: '2026-08-05'
+  method: search_index
+
+fda-drug-disposal:
+  org: US FDA
+  title: 'Disposal of Unused Medicines: What You Should Know'
+  url: https://www.fda.gov/drugs/safe-disposal-medicines/disposal-unused-medicines-what-you-should-know
+  retrieved: '2026-08-05'
+  method: search_index
+
+fda-flush-list:
+  org: US FDA
+  title: "Drug Disposal: FDA's Flush List for Certain Medicines"
+  url: https://www.fda.gov/drugs/disposal-unused-medicines-what-you-should-know/drug-disposal-fdas-flush-list-certain-medicines
+  retrieved: '2026-08-05'
+  method: search_index
+
+fda-nonflush-trash:
+  org: US FDA
+  title: 'Drug Disposal: Dispose "Non-Flush List" Medicine in Trash'
+  url: https://www.fda.gov/drugs/disposal-unused-medicines-what-you-should-know/drug-disposal-dispose-non-flush-list-medicine-trash
+  retrieved: '2026-08-05'
+  method: search_index
+
+dea-collection-sites:
+  org: US DEA Diversion Control Division
+  title: Year-Round Drop-Off Locations search utility
+  url: https://apps.deadiversion.usdoj.gov/pubdispsearch/
+  retrieved: '2026-08-05'
+  method: search_index
+
+fda-sharps-dos-donts:
+  org: US FDA
+  title: DOs and DON'Ts of Proper Sharps Disposal
+  url: https://www.fda.gov/medical-devices/safely-using-sharps-needles-and-syringes-home-work-and-travel/dos-and-donts-proper-sharps-disposal
+  retrieved: '2026-08-05'
+  method: search_index
+
+fda-sharps-best-way:
+  org: US FDA
+  title: Best Way to Get Rid of Used Needles and Other Sharps
+  url: https://www.fda.gov/medical-devices/safely-using-sharps-needles-and-syringes-home-work-and-travel/best-way-get-rid-used-needles-and-other-sharps
+  retrieved: '2026-08-05'
+  method: search_index
+
+nrc-smoke-detectors:
+  org: US Nuclear Regulatory Commission
+  title: Backgrounder on Smoke Detectors
+  url: https://www.nrc.gov/reading-rm/doc-collections/fact-sheets/smoke-detectors
+  retrieved: '2026-08-05'
+  method: search_index
+
+epa-americium-smoke:
+  org: US EPA
+  title: Americium in Ionization Smoke Detectors
+  url: https://www.epa.gov/radtown/americium-ionization-smoke-detectors
+  retrieved: '2026-08-05'
+  method: search_index

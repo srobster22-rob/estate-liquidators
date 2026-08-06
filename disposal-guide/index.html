@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>What do I do with this?</title>
+    <meta
+      name="description"
+      content="Look up how to get rid of something where you live. Batteries, paint, medicine, electronics."
+    />
+    <meta name="theme-color" content="#1b4332" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to search</a>
+
+    <header class="topbar">
+      <a class="wordmark" href="#/">What do I do with this?</a>
+      <nav aria-label="Site">
+        <a href="#/list">All items</a>
+        <a href="#/about">About</a>
+      </nav>
+    </header>
+
+    <!-- Rendered before JS runs so the page says something useful even if the bundle fails. -->
+    <main id="main" tabindex="-1">
+      <noscript>
+        <p class="callout callout-warn">
+          This page needs JavaScript to search. If you can't use it, call your county's solid
+          waste office and ask — that is the same answer this page would give you.
+        </p>
+      </noscript>
+      <div id="app">
+        <p class="loading">Loading…</p>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Independent volunteer project. Not an official service. Rules change — call to confirm
+        before you drive anywhere.
+      </p>
+      <p id="build-line"></p>
+    </footer>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

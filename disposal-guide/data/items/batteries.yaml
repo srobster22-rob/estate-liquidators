@@ -1,0 +1,151 @@
+# Batteries.
+#
+# "battery" is a disambiguation, never an answer. Alkaline, lithium-ion, button cells, and
+# lead-acid have four different answers and one of them starts fires in a truck. Merging them
+# into one friendly result is the most likely way this app hurts someone.
+
+- slug: battery-generic
+  category: batteries
+  names:
+    en: [battery, batteries, batterys, batterie, dead battery, old batteries]
+    es: [bateria, baterias, pila, pilas]
+  disambiguates:
+    - battery-alkaline
+    - battery-lithium-ion
+    - battery-button-cell
+    - battery-lead-acid
+
+- slug: battery-alkaline
+  category: batteries
+  names:
+    en:
+      - alkaline battery
+      - single use battery
+      - AA battery
+      - double A batteries
+      - AAA battery
+      - triple A batteries
+      - C battery
+      - D battery
+      - 9 volt battery
+      - nine volt battery
+      - disposable battery
+    es: [pila alcalina, pilas alcalinas, bateria AA]
+  universal:
+    hazard: caution
+    neverCurbside: true
+    why:
+      en: Loose batteries can touch each other or other metal and start a fire on the truck or at
+        the sorting facility.
+      es: Las pilas sueltas pueden tocarse entre sí o con otros metales y provocar un incendio en
+        el camión o en la planta de reciclaje.
+    prep:
+      - en: Put non-conductive tape over the ends. Electrical tape is best; any non-metallic
+          adhesive tape works.
+        es: Cubra los extremos con cinta no conductora. La cinta aislante es la mejor opción.
+      - en: Or put each battery in its own plastic bag so the ends cannot touch anything.
+        es: O ponga cada pila en su propia bolsa de plástico.
+    nationalOptions:
+      - en: Many electronics and hardware retailers run battery collection boxes near the entrance.
+    sourceRefs: [epa-household-batteries]
+  # NOTE: some jurisdictions do accept alkaline batteries in household trash and others prohibit
+  # it. That is exactly why there is no default local rule here. Ask your county.
+
+- slug: battery-lithium-ion
+  category: batteries
+  names:
+    en:
+      - lithium ion battery
+      - lithium battery
+      - li-ion battery
+      - laptop battery
+      - phone battery
+      - cell phone battery
+      - power tool battery
+      - drill battery
+      - rechargeable battery
+      - vape
+      - vape pen
+      - e-cigarette
+      - disposable vape
+      - power bank
+      - portable charger
+      - e-bike battery
+      - scooter battery
+      - swollen battery
+      - puffy battery
+    es: [bateria de litio, bateria recargable, bateria de laptop, vape]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Lithium batteries catch fire when they are crushed. An EPA analysis found 245 fires at
+        64 waste facilities caused by or likely caused by lithium batteries.
+      es: Las baterías de litio se incendian cuando se aplastan. Provocan incendios en los
+        camiones y en las plantas de reciclaje.
+    prep:
+      - en: Tape over the terminals with non-conductive tape, or bag each battery separately.
+        es: Cubra los terminales con cinta no conductora, o ponga cada batería en su propia bolsa.
+      - en: If the battery is swollen, hot, leaking, or damaged, do not put it in a bag with
+          others. Keep it away from anything that can burn and call your hazardous waste facility
+          for instructions before you move it far.
+        es: Si la batería está hinchada, caliente o dañada, manténgala lejos de cosas que puedan
+          arder y llame a la instalación de residuos peligrosos antes de moverla.
+      - en: Devices with a battery sealed inside — phones, vapes, wireless earbuds, toys that
+          light up — count as batteries. Do not put them in a bin either.
+        es: Los aparatos con batería sellada adentro cuentan como baterías. Tampoco los ponga en
+          un contenedor.
+    nationalOptions:
+      - en: Battery collection sites are often at electronics and hardware retailers, and at
+          household hazardous waste facilities.
+    sourceRefs: [epa-lithium-batteries, epa-household-batteries, epa-lithium-fires]
+
+- slug: battery-button-cell
+  category: batteries
+  names:
+    en:
+      - button cell battery
+      - button battery
+      - coin cell
+      - coin battery
+      - watch battery
+      - hearing aid battery
+      - CR2032
+      - key fob battery
+    es: [pila de boton, bateria de reloj, pila de audifono]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Button cells can contain metals that should not go to landfill, and a swallowed button
+        cell is a medical emergency for a child or a pet — keep them out of reach until you can
+        drop them off.
+    prep:
+      - en: Tape over both faces of each cell.
+      - en: Keep them where a small child or a pet cannot reach them. If one is swallowed, call
+          emergency services or poison control immediately.
+    sourceRefs: [epa-household-batteries]
+
+- slug: battery-lead-acid
+  category: batteries
+  names:
+    en:
+      - car battery
+      - vehicle battery
+      - lead acid battery
+      - truck battery
+      - motorcycle battery
+      - boat battery
+      - marine battery
+      - lawn mower battery
+    es: [bateria de carro, bateria de auto, bateria de plomo]
+  universal:
+    hazard: hazardous
+    neverCurbside: true
+    why:
+      en: Car batteries contain lead and acid. They are also the most widely recycled battery
+        there is — nearly every place that sells them takes the old one back.
+    prep:
+      - en: Keep it upright. Do not tip it. Carry it in a tray or a tub in case it leaks.
+      - en: Most auto parts stores take these back, and many pay a small core deposit refund.
+    sourceRefs: [epa-household-batteries]

@@ -25,3 +25,9 @@ __pycache__/
 
 # Local
 *.log
+disposal-guide/node_modules/
+disposal-guide/dist/
+disposal-guide/src/generated/
+disposal-guide/test-results/
+disposal-guide/screenshots/
+disposal-guide/playwright-report/
