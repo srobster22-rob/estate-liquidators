@@ -5,17 +5,18 @@ This is the only module that shells out to ffmpeg. It is split so the command is
 graph — the part that actually goes wrong — is testable without encoding
 anything.
 
-Three reframing layouts, and the default is the conservative one:
+Three reframing layouts:
 
 * ``blur``  — the whole frame, letterboxed onto a blurred copy of itself. Never
   removes anything from the picture.
-* ``fill``  — centre crop to 9:16. Looks better on a centred talking head and
-  destroys the sides of everything else.
+* ``fill``  — crop to 9:16, aimed at `aim` rather than assumed centred. Looks
+  best on a talking head; it is also the only layout that discards picture.
 * ``pad``   — black bars.
 
-``fill`` is what most short-form content uses and it is not the default here,
-because a tool that silently crops the subject out of frame is worse than one
-that produces a slightly less fashionable clip.
+`fill` used to be dangerous because the crop was always centred and nothing
+could tell whether the subject was. `framing.aim()` answers that, so the CLI's
+default is now `auto`: crop when the subject was located confidently, letterbox
+when it was not.
 """
 
 from __future__ import annotations
@@ -105,6 +106,22 @@ def is_filter_safe(path: str | Path) -> bool:
     return "'" not in str(path)
 
 
+def crop_expression(center: float, width: int, height: int) -> str:
+    """A crop filter aimed at `center`, a fraction of the frame's width.
+
+    The offset is an expression over ``in_w``/``out_w`` rather than a pixel
+    count, so it stays correct whatever width the scaler rounds the intermediate
+    frame to. `clip()` keeps the window inside the picture when the subject sits
+    near an edge.
+    """
+    center = min(1.0, max(0.0, center))
+    return (
+        f"crop={width}:{height}:"
+        f"x='clip(in_w*{center:.4f}-out_w/2,0,in_w-out_w)':"
+        f"y='(in_h-out_h)/2'"
+    )
+
+
 def build_filter(
     layout: str,
     *,
@@ -112,8 +129,13 @@ def build_filter(
     width: int = CANVAS_W,
     height: int = CANVAS_H,
     blur_sigma: float = 26.0,
+    aim: float = 0.5,
 ) -> str:
-    """Build the filter graph that reframes the source and burns captions."""
+    """Build the filter graph that reframes the source and burns captions.
+
+    `aim` is where the subject is, as a fraction of frame width. It only affects
+    `fill`, which is the only layout that discards picture.
+    """
     if layout not in LAYOUTS:
         raise ValueError(f"unknown layout {layout!r}; expected one of {LAYOUTS}")
 
@@ -122,7 +144,7 @@ def build_filter(
     crop = f"crop={width}:{height}"
 
     if layout == "fill":
-        graph = [f"[0:v]{cover},{crop},setsar=1[v]"]
+        graph = [f"[0:v]{cover},{crop_expression(aim, width, height)},setsar=1[v]"]
     elif layout == "pad":
         graph = [
             f"[0:v]{contain},pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1[v]"
@@ -158,6 +180,7 @@ def build_command(
     audio_bitrate: str = "160k",
     fps: float | None = None,
     overwrite: bool = True,
+    aim: float = 0.5,
 ) -> list[str]:
     """Assemble the ffmpeg argv for one clip. Pure — runs nothing."""
     if end <= start:
@@ -169,7 +192,10 @@ def build_command(
     # re-encoding, so this is accurate as well as quick.
     cmd += ["-ss", f"{start:.3f}", "-t", f"{end - start:.3f}", "-i", str(source)]
 
-    cmd += ["-filter_complex", build_filter(layout, ass_path=ass_path, width=width, height=height)]
+    cmd += [
+        "-filter_complex",
+        build_filter(layout, ass_path=ass_path, width=width, height=height, aim=aim),
+    ]
     cmd += ["-map", "[vout]"]
     if has_audio:
         cmd += ["-map", "0:a:0", "-c:a", "aac", "-b:a", audio_bitrate, "-ac", "2"]

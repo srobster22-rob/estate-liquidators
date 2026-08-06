@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 1. Works end to end, on local files.** 149 tests pass, including real ffmpeg encodes
+**Round 2. Works end to end, on local files.** 181 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -21,6 +21,9 @@ has watched work.
 
     transcript.load()  →  segment.segment()  →  score.rank()  →  render.render_clip()
        parse subs          find boundaries       pick moments        cut + reframe + caption
+                                                                            ↑
+                                                                     framing.aim()
+                                                                   where's the subject?
 
 Only the two ends touch the outside world. `sources` shells out to yt-dlp and `render` shells
 out to ffmpeg; everything between them is pure Python over dataclasses, which is why the hard
@@ -31,6 +34,7 @@ parts are testable without a network.
 | `transcript.py` | WebVTT + SRT → flat word-timed stream. Handles YouTube's rolling auto-captions. |
 | `segment.py` | Words → utterances → candidate windows. Every clip starts and ends on a boundary. |
 | `score.py` | Ranks candidates by six named features. Every score carries its own breakdown. |
+| `framing.py` | Finds *where* the subject is, so the crop can be aimed instead of assumed. |
 | `captions.py` | Word-timed ASS subtitles, styled for vertical, with per-word highlighting. |
 | `render.py` | ffmpeg filter graphs and encoding. Pure command construction, thin execution. |
 | `sources.py` | yt-dlp / local-file ingest. **Unverified against a live URL.** |
@@ -55,13 +59,31 @@ Six features, each 0–1, combined as a weighted sum:
 
 Tune with `--weights weights.json`; `score.Weights` writes the file for you.
 
+## Where it crops
+
+Cropping 16:9 to 9:16 keeps about 32% of the frame's width, so taking that from the middle is
+a coin flip. `framing.py` decodes a few 64×36 greyscale frames and scores each column by
+**motion** (the only thing moving is usually the speaker) and **detail** (faces carry it,
+walls don't) — no model, no dependencies, ~0.1s per clip.
+
+It also reports how sure it is, which is the useful part. `--layout auto` (the default) crops
+when the subject was located and letterboxes when it wasn't:
+
+```
+[1]    29.0 →    52.4  (23.4s)  12.54  [hook=1.00, …]
+    subject at 83% across (confidence 0.74) -> fill
+```
+
+A speaker who walks across the frame scores near zero, falls back to `blur`, and keeps their
+head. Confidence thresholds are measured, not guessed — see `DECISIONS.md` D-12.
+
 ## Running it
 
 Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 149 tests, ~8s
+python3 -m unittest discover -s tests -t .      # 181 tests, ~12s
 python3 -m clipper.cli --help
 ```
 
@@ -75,10 +97,12 @@ Ranked by how much they'd hurt:
    documented flags; one real invocation would confirm or kill it.
 2. **Three of six features barely discriminate** on the one fixture available. `pacing` has
    zero variance there — it needs content with real dead air to prove itself.
-3. **No visual quality signal at all.** The scorer reads text and cannot tell that the speaker
-   walked out of frame, so `fill` (centre crop) can behead someone silently. `blur` is the
-   default for exactly this reason.
+3. **The aim is static, one per clip.** A speaker who moves *within* the frame mid-clip is
+   framed for the average of where they were. Panning is the obvious next round; today the
+   fallback catches the severe cases rather than following them.
 4. **`ideal_duration` is a guess**, not a measurement. 32s came from nowhere defensible.
+5. **Aiming is horizontal only.** Vertical position is always the frame's centre, which is
+   fine for 16:9 → 9:16 but wrong for a source that is already tall.
 
 See `LOOP_LOG.md` for what each round found, and `DECISIONS.md` for the calls that are
 deliberate — each with the condition that would prove it wrong.

@@ -149,7 +149,7 @@ class MainTests(unittest.TestCase):
 class ParserTests(unittest.TestCase):
     def test_defaults(self):
         args = cli.build_parser().parse_args(["v.mp4"])
-        self.assertEqual((args.count, args.layout, args.out), (5, "blur", "clips"))
+        self.assertEqual((args.count, args.layout, args.out), (5, "auto", "clips"))
         self.assertEqual((args.min_duration, args.max_duration), (15.0, 60.0))
 
     def test_layout_is_constrained(self):

@@ -17,6 +17,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from . import captions as C
+from . import framing as F
 from . import render as R
 from . import score as SC
 from . import segment as S
@@ -41,7 +42,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--transcript", help="subtitle file (.vtt/.srt); found automatically if omitted")
     p.add_argument("-o", "--out", default="clips", help="output directory (default: clips)")
     p.add_argument("-n", "--count", type=int, default=5, help="how many clips (default: 5)")
-    p.add_argument("--layout", choices=R.LAYOUTS, default="blur", help="reframing (default: blur)")
+    p.add_argument(
+        "--layout",
+        choices=("auto",) + R.LAYOUTS,
+        default="auto",
+        help="reframing. 'auto' crops when the subject can be located, else letterboxes",
+    )
     p.add_argument("--min-duration", type=float, default=15.0)
     p.add_argument("--max-duration", type=float, default=60.0)
     p.add_argument("--no-captions", action="store_true", help="do not burn in captions")
@@ -136,6 +142,32 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"\n[{i}] {s.start:7.1f} → {s.end:7.1f}  ({s.duration:4.1f}s)  {s.explain()}")
                 print(f"    {s.text[:160]}{'…' if len(s.text) > 160 else ''}")
 
+            layout, aimed = args.layout, None
+            if layout in ("auto", "fill") and not args.dry_run:
+                aimed = F.aim(
+                    ingest.video,
+                    start=s.start, duration=s.duration,
+                    source_width=info.width, source_height=info.height,
+                    target_width=R.CANVAS_W, target_height=R.CANVAS_H,
+                )
+                if layout == "auto":
+                    layout = F.choose_layout(aimed)
+                entry["aim"] = round(aimed.center, 3)
+                entry["aim_confidence"] = round(aimed.confidence, 3)
+            entry["layout"] = layout
+
+            if not args.json and aimed is not None:
+                if aimed.fell_back:
+                    print(
+                        f"    subject not locatable (confidence {aimed.confidence:.2f})"
+                        f" -> {layout}"
+                    )
+                else:
+                    print(
+                        f"    subject at {aimed.center * 100:.0f}% across"
+                        f" (confidence {aimed.confidence:.2f}) -> {layout}"
+                    )
+
             if not args.dry_run:
                 ass = None
                 if not args.no_captions:
@@ -147,7 +179,8 @@ def main(argv: list[str] | None = None) -> int:
                     R.render_clip(
                         ingest.video, dest,
                         start=s.start, end=s.end,
-                        ass=ass, layout=args.layout, info=info, crf=args.crf,
+                        ass=ass, layout=layout, info=info, crf=args.crf,
+                        aim=aimed.center if aimed else 0.5,
                     )
                 except R.RenderError as exc:
                     print(f"error: clip {i} failed to render: {exc}", file=sys.stderr)

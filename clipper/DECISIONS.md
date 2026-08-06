@@ -55,19 +55,12 @@ i.e. real auto-caption files that are shorter than 6 cue pairs turn out to be co
 
 ---
 
-### D-4 · `blur` is the default layout, not `fill` · SOFT
+### D-4 · `blur` is the default layout, not `fill` · **RETIRED at R2**
 
-Centre-cropping to 9:16 (`fill`) is what most short-form content uses and generally looks
-better on a centred talking head. It is not the default.
-
-**Why:** the scorer reads text and has no idea where the subject is in frame. `fill` discards
-69% of a 16:9 frame's width, so on any shot where the speaker is not centred it silently
-beheads them — and nothing in the pipeline can detect that. `blur` never removes picture.
-This trades fashion for not-producing-garbage, which is the right trade while the tool is
-blind.
-
-**Falsified by:** adding any face or saliency detection. The moment the crop can be aimed,
-`fill` should become the default.
+Superseded by D-10. The stated falsification condition — "adding any face or saliency
+detection; the moment the crop can be aimed, `fill` should become the default" — was met by
+`framing.py`. Kept here because a retired decision with its trigger recorded is the evidence
+that the falsification conditions are doing work rather than decorating the file.
 
 ---
 
@@ -136,3 +129,71 @@ inspectable.
 
 **Falsified by:** one real invocation. That is all it takes, and it should happen before
 anything else is built on top of it.
+
+---
+
+### D-10 · The layout is chosen per clip from aim confidence, not set globally · FIRM
+
+`--layout auto` is the default. It crops (`fill`) when `framing.aim()` located the subject,
+and letterboxes (`blur`) when it did not.
+
+**Why:** the old argument was "cropping looks better but might behead someone, so never
+crop". That was correct only while the tool was blind. Once confidence exists, the question
+stops being a global preference and becomes a per-clip fact — and the failure it was
+protecting against is exactly the case confidence reports. Demonstrated at R2: with a subject
+82% across the frame, a centred crop produced a frame containing none of them; the aimed crop
+kept them whole.
+
+**Falsified by:** confident aims that are nonetheless wrong on real footage — a busy
+background that out-scores the speaker, or a two-shot where the energy centroid lands between
+two people and crops both in half.
+
+---
+
+### D-11 · Each signal is weighted by its own concentration, not just normalised · FIRM
+
+Motion and detail are normalised to unit mass so their shapes are comparable, then multiplied
+by `concentration()` — the share of mass in the heaviest quartile of columns, rebased so
+uniform maps to zero.
+
+**Why:** unit-mass normalisation alone discards the one thing that decides whether a signal
+means anything, which is how much of it there is. Measured: on a static shot the motion field
+is pure x264 compression noise, and under plain normalisation it carried its full 0.65 weight
+and outvoted a clean detail peak sitting exactly on the subject. With reliability weighting,
+motion scores 0.00 there and the aim error fell from +0.064 to +0.008 of frame width.
+
+**Falsified by:** footage where the true subject occupies more than a quarter of the frame's
+columns and is therefore scored as "unconcentrated" — a very wide shot, or a close-up filling
+the frame. The quartile is a parameter, not a law.
+
+---
+
+### D-12 · `MIN_CONFIDENCE = 0.35`, and it is measured · FIRM
+
+**Why:** the two populations separate cleanly on synthesised fixtures — subjects that stay
+inside a crop window score 0.556–0.689, a subject walking across the frame scores 0.128. The
+previous value of 0.12 was picked by eye and sat *below* the walking case, so the worst input
+was being treated as aimable and pointed somewhere meaningless. 0.35 sits in the middle of
+the gap.
+
+Noted explicitly because it is the only tuned constant in the project with a measurement
+behind it. D-8 (`ideal_duration`) still has none, and the contrast is the point.
+
+**Falsified by:** changing the analysis grid, the sample rate, or the motion/detail weights —
+all three move the confidence scale, and the threshold has to be re-measured rather than
+carried over.
+
+---
+
+### D-13 · One aim per clip, held for its whole duration · SOFT
+
+No panning, no tracking, and horizontal only.
+
+**Why:** a static aim fixes the severe failure (a subject who is simply not in the middle) at
+trivial cost, and a wrong *moving* crop is more disorienting than a slightly wrong static one.
+Subjects who move too much to frame statically are detected by confidence and letterboxed
+instead, so the bad case degrades to the old safe behaviour rather than to garbage.
+
+**Falsified by:** real footage where confident aims are common but the subject drifts enough
+within a clip that the average framing is visibly wrong. That is the signal to build the
+smoothed pan.
