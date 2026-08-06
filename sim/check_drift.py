@@ -1,8 +1,9 @@
 """
-Drift check across the three implementations.
+Drift check across the four implementations.
 
-The same rules live in sim/*.py, proto/index.html and unity/Assets/Scripts/Core/*.cs.
-tuning.json is canonical; this asserts the other three agree with it. Without this,
+The same rules live in sim/*.py, proto/index.html, proto3d/index.html and
+unity/Assets/Scripts/Core/*.cs. tuning.json is canonical; this asserts the other
+three agree with it. Without this,
 a value gets corrected in one place and the project starts trusting numbers that no
 longer describe the game.
 
@@ -90,36 +91,50 @@ for name, want in TUNING["loudness"].items():
         check(f"C# L[{name}]", got, want)
 
 # --------------------------------------------------------------- JS prototype
-js = (ROOT / "proto/index.html").read_text(encoding="utf-8")
-check("JS impulse_per_l", grab(js, r"IMPULSE\s*=\s*([\d.]+)"),
-      lc["impulse_disturbance_per_l"])
-check("JS sustained_per_l", grab(js, r"SUSTAINED\s*=\s*([\d.]+)"),
-      lc["sustained_disturbance_per_l"])
-check("JS ratchet_end", grab(js, r"RATCHET_END\s*=\s*([\d.]+)"), d["ratchet_end"])
-check("JS decay_per_min", grab(js, r"DECAY_PER_S\s*=\s*\(([\d.]+)"),
-      d["decay_per_min_at_crew4"])
-check("JS appraise_seconds", grab(js, r"APPRAISE_S\s*=\s*([\d.]+)"),
-      TUNING["night"]["appraise_seconds"])
-check("JS van_slots", grab(js, r"VAN_SLOTS\s*=\s*(\d+)"), v["base_slots"])
-check("JS ruin_k", grab(js, r"([\d.]+)\s*\*\s*Math\.pow\(cursed"), v["ruin_k"])
-check("JS ruin_exp", grab(js, r"Math\.pow\(cursed,\s*([\d.]+)\)"), v["ruin_exp"])
 
 cm = TUNING["curse"]["value_multiplier"]
-check("JS curse_value_tainted",
-      grab(js, r"GRADE_MULT\s*=\s*\{\s*clean:1,\s*tainted:([\d.]+)"), cm["tainted"])
-check("JS curse_value_malignant",
-      grab(js, r"GRADE_MULT\s*=\s*\{[^}]*malignant:([\d.]+)"), cm["malignant"])
 am = TUNING["curse"]["attention_multiplier"]
-check("JS curse_attention_malignant",
-      grab(js, r"ATT_MULT\s*=\s*\{[^}]*malignant:([\d.]+)"), am["malignant"])
 
-# Scope to the loudness table specifically: `sprint` also appears in the movement
-# SPEED table, and an unanchored match happily reports 205 px/s as a loudness.
-js_l = re.search(r"const L\s*=\s*\{(.*?)\}", js, re.S)
-js_l = js_l.group(1) if js_l else ""
-for name in ("sprint", "appraise", "door"):
-    check(f"JS L[{name}]", grab(js_l, rf"\b{name}\s*:\s*(\d+)"),
-          TUNING["loudness"][name])
+# Both prototypes are checked. proto3d was unchecked until R16 and had already
+# drifted - it still carried the pre-R9 cursed floor of 2 while tuning.json,
+# curse_test.py and the C# core had all moved to 7.
+for tag, rel, l_names in (("JS2d", "proto/index.html", ("sprint", "appraise", "door")),
+                          ("JS3d", "proto3d/index.html", ("sprint", "appraise"))):
+    js = (ROOT / rel).read_text(encoding="utf-8")
+    check(f"{tag} impulse_per_l", grab(js, r"IMPULSE\s*=\s*([\d.]+)"),
+          lc["impulse_disturbance_per_l"])
+    check(f"{tag} sustained_per_l", grab(js, r"SUSTAINED\s*=\s*([\d.]+)"),
+          lc["sustained_disturbance_per_l"])
+    check(f"{tag} ratchet_end", grab(js, r"RATCHET_END\s*=\s*([\d.]+)"), d["ratchet_end"])
+    check(f"{tag} decay_per_min", grab(js, r"DECAY_PER_S\s*=\s*\(([\d.]+)"),
+          d["decay_per_min_at_crew4"])
+    check(f"{tag} cursed_floor", grab(js, r"PER_CURSED_FLOOR\s*=\s*([\d.]+)"),
+          d["per_cursed_item_floor"])
+    check(f"{tag} appraise_seconds", grab(js, r"APPRAISE_S\s*=\s*([\d.]+)"),
+          TUNING["night"]["appraise_seconds"])
+    check(f"{tag} van_slots", grab(js, r"VAN_SLOTS\s*=\s*(\d+)"), v["base_slots"])
+    # Written inline in proto, as named constants in proto3d - accept either.
+    check(f"{tag} ruin_k", grab(js, r"RUIN_K\s*=\s*([\d.]+)")
+          or grab(js, r"([\d.]+)\s*\*\s*Math\.pow\(cursed"), v["ruin_k"])
+    check(f"{tag} ruin_exp", grab(js, r"RUIN_EXP\s*=\s*([\d.]+)")
+          or grab(js, r"Math\.pow\(cursed,\s*([\d.]+)\)"), v["ruin_exp"])
+    check(f"{tag} curse_value_tainted",
+          grab(js, r"GRADE_MULT\s*=\s*\{\s*clean:\s*1,\s*tainted:\s*([\d.]+)"), cm["tainted"])
+    check(f"{tag} curse_value_malignant",
+          grab(js, r"GRADE_MULT\s*=\s*\{[^}]*malignant:\s*([\d.]+)"), cm["malignant"])
+    check(f"{tag} curse_attention_malignant",
+          grab(js, r"ATT_MULT\s*=\s*\{[^}]*malignant:\s*([\d.]+)"), am["malignant"])
+
+    # Scope to the loudness table specifically: `sprint` also appears in the movement
+    # SPEED table, and an unanchored match happily reports 205 px/s as a loudness.
+    js_l = re.search(r"const L\s*=\s*\{(.*?)\}", js, re.S)
+    js_l = js_l.group(1) if js_l else ""
+    for name in l_names:
+        check(f"{tag} L[{name}]", grab(js_l, rf"\b{name}\s*:\s*(\d+)"),
+              TUNING["loudness"][name])
+    # The prototypes call it `drop`; the spec's table calls it break_small.
+    check(f"{tag} L[drop=break_small]", grab(js_l, r"\bdrop\s*:\s*(\d+)"),
+          TUNING["loudness"]["break_small"])
 
 # --------------------------------------------------------------- Python sims
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
@@ -151,7 +166,7 @@ for name in ("sprint", "appraise", "door"):
           TUNING["loudness"][name])
 
 # --------------------------------------------------------------- report
-print(f"DRIFT CHECK  -  {checks} constants across 3 implementations")
+print(f"DRIFT CHECK  -  {checks} constants across 4 implementations")
 print("-" * 74)
 if not fails:
     print("  OK   every implementation agrees with tuning.json")

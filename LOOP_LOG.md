@@ -171,6 +171,31 @@ choice becomes stash-then-hide, hand-off-then-hide, or buy four seconds. Hiding 
 the *primary* verb at COLLECT, where the Curator switches to hunting crew — so the genre's
 signature panic is earned late rather than constant.
 
+R16 · Built `proto3d/qa.mjs` — headless QA that loads the real first-person build in
+Chromium and drives it through `window.__g` (28 checks: pillar-2 targeting, retrieval-then-
+death, the appraise ping, van accounting, both night endings, the ratcheting floor, estate
+containment). Extended `check_drift.py` to cover **proto3d, which was never checked** —
+72 constants across four implementations now. · **Found four real defects, three of them
+in the shipping artifact:** (1) both prototypes still carried the **pre-R9 cursed floor of
+2** while tuning.json, `curse_test.py` and the C# core had moved to 7 — the exact drift the
+checker exists to catch, sitting in the one file the checker didn't read; (2) **doorways
+were a 5.2m box centred on the midpoint of two room centres**, and the rooms never touch,
+so the "doorway" was floating in the void — you could walk out of the conservatory into
+nothing. Replaced with corridor rectangles derived from the facing walls and the rooms'
+overlap interval, plus a boot-time fault list for any doorway narrower than its door;
+(3) `land`↔`pot` overlapped by **0.5m against a 2.2m door** — a link that could never
+hold a real doorway. Moved `pot` to z=7; (4) the game's `requestAnimationFrame` loop kept
+advancing time between scripted checks, so results depended on how long an `evaluate` took
+— added a QA pause. · **And the checker itself was wrong twice.** Its first containment test
+asked the game's own `solid()` whether the player was somewhere legal, which cannot fail —
+a too-permissive doorway test simply declares its own leak to be floor. Rebuilt with an
+oracle recomputed from room boxes and the link list; the original doorway model now trips it
+immediately. Its first appraise assertion read 3.60 against an expected 4.32 and the code was
+right — 0.72 of decay had accrued across the 3.5s window. Fixed the measurement, not the
+tolerance. · Injection-tested per R14's rule: additive attention, per-frame sustained noise,
+fatal-first-contact, the old doorway box and a cursed-floor divergence are each caught, and
+all five revert clean. Full regression: QA 28/28, drift 72/72, estate validator PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

@@ -154,6 +154,7 @@ const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
 // ------------------------------------------------------------------ tuning
 // Mirrors tuning.json. sim/check_drift.py asserts these stay in agreement.
 const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
+const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
 const L={sprint:45, appraise:48, drop:90};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
@@ -173,7 +174,7 @@ const ROOMS=[
   {id:"study", x:23, z:-13,w:9,  d:9,  tier:1},
   {id:"land",  x:32, z:0,  w:9,  d:10, tier:2},
   {id:"cons",  x:43, z:-5, w:12, d:12, tier:3},
-  {id:"pot",   x:43, z:9,  w:10, d:9,  tier:3},
+  {id:"pot",   x:43, z:7,  w:10, d:9,  tier:3},
 ];
 const LINKS=[["drive","foyer"],["foyer","hall"],["hall","study"],["hall","land"],
              ["land","cons"],["land","pot"],["cons","pot"]];
@@ -183,17 +184,41 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const inRoom=(r,x,z)=>x>r.x-r.w/2&&x<r.x+r.w/2&&z>r.z-r.d/2&&z<r.z+r.d/2;
 const roomAt=(x,z)=>ROOMS.find(r=>inRoom(r,x,z));
 
-// Doorway centres between linked rooms.
-const DOORS=LINKS.map(([a,b])=>{const A=R(a),B=R(b);
-  return {a,b,x:(A.x+B.x)/2,z:(A.z+B.z)/2,w:2.2};});
-function nearDoor(x,z){
-  for(const d of DOORS) if(Math.abs(x-d.x)<2.6&&Math.abs(z-d.z)<2.6) return true;
-  return false;
-}
-function solid(x,z){ return !roomAt(x,z) && !nearDoor(x,z); }
+// Doorways are real geometry - a corridor rectangle spanning the gap between two
+// rooms, as wide as the door and no wider. The first version tested "within 2.6m
+// of the midpoint of two room centres", which is a 5.2m box floating in the void
+// between rooms that never touch; qa.mjs walked straight out of the conservatory
+// through one. Derive the corridor from the facing walls and the overlap instead.
+const DOOR_W=2.2, LIP=0.06;
+const DOORS=LINKS.map(([a,b])=>{
+  const A=R(a), B=R(b);
+  const ax=[A.x-A.w/2,A.x+A.w/2], bx=[B.x-B.w/2,B.x+B.w/2];
+  const az=[A.z-A.d/2,A.z+A.d/2], bz=[B.z-B.d/2,B.z+B.d/2];
+  const ox=[Math.max(ax[0],bx[0]), Math.min(ax[1],bx[1])];
+  const oz=[Math.max(az[0],bz[0]), Math.min(az[1],bz[1])];
+  const axis = ox[1]<=ox[0] ? "x" : "z";     // the axis the corridor runs along
+  const span = axis==="x" ? oz : ox;          // the interval the doorway sits in
+  const c = (span[0]+span[1])/2, h = DOOR_W/2;
+  const gapA = axis==="x" ? ax : az, gapB = axis==="x" ? bx : bz;
+  const lo = Math.min(gapA[1],gapB[1]), hi = Math.max(gapA[0],gapB[0]);
+  const rect = axis==="x"
+    ? {x0:lo-LIP, x1:hi+LIP, z0:c-h, z1:c+h}
+    : {x0:c-h,   x1:c+h,    z0:lo-LIP, z1:hi+LIP};
+  return {a,b,axis,rect,span,w:DOOR_W,
+          x:(rect.x0+rect.x1)/2, z:(rect.z0+rect.z1)/2};
+});
+// A doorway whose rooms overlap by less than the door width opens into a wall.
+// Cheap boot-time version of LEVEL-SPEC's authoring checks; qa.mjs asserts it.
+const DOOR_FAULTS=DOORS.filter(d=>(d.span[1]-d.span[0])<DOOR_W)
+  .map(d=>`${d.a}-${d.b} overlap ${(d.span[1]-d.span[0]).toFixed(2)}m < door ${DOOR_W}m`);
+if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
+
+const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
+function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; return false; }
+function solid(x,z){ return !roomAt(x,z) && !inDoor(x,z); }
 
 // ------------------------------------------------------------------ state
-let items=[],player,curator,van,t,dist,over,started=false;
+let items=[],player,curator,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 function makeItems(){
   items=[];
@@ -217,7 +242,7 @@ function reset(){
   curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
            fixate:0,lock:0,reseat:0,target:false};
   van={slots:VAN_SLOTS,cargo:[]};
-  t=0;dist=0;over=false;
+  t=0;dist=0;over=false;overWhy="";
   document.getElementById("end").style.display="none";
 }
 reset();
@@ -243,7 +268,7 @@ addEventListener("mousemove",e=>{
 });
 
 function noise(l,impulse,dt){ dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt)); }
-function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*2; }
+function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*PER_CURSED_FLOOR; }
 const tierOf=d=>d>=85?"COLLECT":d>=60?"PURSUE":d>=30?"PATROL":"DORMANT";
 
 function lookDir(){
@@ -369,7 +394,7 @@ function walkTo(e,gx,gz,sp,dt){
 }
 
 function finish(why){
-  over=true; document.exitPointerLock?.();
+  over=true; overWhy=why; document.exitPointerLock?.();
   const gross=van.cargo.reduce((s,i)=>s+i.value,0);
   const fees=van.cargo.reduce((s,i)=>s+i.value*FEE[i.grade],0);
   const cursed=van.cargo.filter(c=>c.grade!=="clean").length;
@@ -395,7 +420,38 @@ function drawBox(x,y,z,sx,sy,sz,col){
   gl.uniform3fv(U.uTint,col);
   gl.drawElements(gl.TRIANGLES,BOX.i.length,gl.UNSIGNED_SHORT,0);
 }
-const WALL_H=3.2, TH=0.16;
+const WALL_H=3.2, TH=0.16, WALL_C=[.20,.195,.185];
+
+// A wall is a run along one axis with the doorways punched out of it, so the
+// hole you can walk through and the hole you can see through are the same hole.
+function wallRun(axis, at, from, to, gaps){
+  let spans=[[from,to]];
+  for(const g of gaps){
+    const out=[];
+    for(const [a,b] of spans){
+      if(g[1]<=a||g[0]>=b){ out.push([a,b]); continue; }
+      if(g[0]>a) out.push([a,g[0]]);
+      if(g[1]<b) out.push([g[1],b]);
+    }
+    spans=out;
+  }
+  for(const [a,b] of spans){
+    const half=(b-a)/2, mid=(a+b)/2;
+    if(half<=0.02) continue;
+    if(axis==="x") drawBox(at,WALL_H/2,mid,TH,WALL_H/2,half,WALL_C);
+    else           drawBox(mid,WALL_H/2,at,half,WALL_H/2,TH,WALL_C);
+  }
+}
+function gapsOn(axis, at){
+  const out=[];
+  for(const d of DOORS){
+    if(axis==="x" && d.axis==="x" && at>=d.rect.x0-0.01 && at<=d.rect.x1+0.01)
+      out.push([d.rect.z0,d.rect.z1]);
+    if(axis==="z" && d.axis==="z" && at>=d.rect.z0-0.01 && at<=d.rect.z1+0.01)
+      out.push([d.rect.x0,d.rect.x1]);
+  }
+  return out;
+}
 
 function render(){
   const w=cv.width=innerWidth, h=cv.height=innerHeight;
@@ -415,11 +471,23 @@ function render(){
   for(const r of ROOMS){
     drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
     drawBox(r.x,WALL_H,r.z,r.w/2,0.04,r.d/2,[.16,.16,.17]);
-    const seg=[[r.x-r.w/2,r.z,TH,r.d/2],[r.x+r.w/2,r.z,TH,r.d/2],
-               [r.x,r.z-r.d/2,r.w/2,TH],[r.x,r.z+r.d/2,r.w/2,TH]];
-    for(const s of seg){
-      if(nearDoor(s[0],s[1])) continue;
-      drawBox(s[0],WALL_H/2,s[1],s[2],WALL_H/2,s[3],[.20,.195,.185]);
+    wallRun("x", r.x-r.w/2, r.z-r.d/2, r.z+r.d/2, gapsOn("x", r.x-r.w/2));
+    wallRun("x", r.x+r.w/2, r.z-r.d/2, r.z+r.d/2, gapsOn("x", r.x+r.w/2));
+    wallRun("z", r.z-r.d/2, r.x-r.w/2, r.x+r.w/2, gapsOn("z", r.z-r.d/2));
+    wallRun("z", r.z+r.d/2, r.x-r.w/2, r.x+r.w/2, gapsOn("z", r.z+r.d/2));
+  }
+  // Corridors: floor, ceiling, and the two walls that make them a pinch point.
+  for(const dr of DOORS){
+    const q=dr.rect, cx=(q.x0+q.x1)/2, cz=(q.z0+q.z1)/2;
+    const hx=(q.x1-q.x0)/2, hz=(q.z1-q.z0)/2;
+    drawBox(cx,-0.05,cz,hx,0.05,hz,[.215,.21,.20]);
+    drawBox(cx,WALL_H,cz,hx,0.04,hz,[.155,.155,.165]);
+    if(dr.axis==="x"){
+      drawBox(cx,WALL_H/2,q.z0,hx,WALL_H/2,TH,WALL_C);
+      drawBox(cx,WALL_H/2,q.z1,hx,WALL_H/2,TH,WALL_C);
+    } else {
+      drawBox(q.x0,WALL_H/2,cz,TH,WALL_H/2,hz,WALL_C);
+      drawBox(q.x1,WALL_H/2,cz,TH,WALL_H/2,hz,WALL_C);
     }
   }
   // van
@@ -465,22 +533,42 @@ function hud(){
 let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000); last=now;
-  if(started&&!over) step(dt);
+  if(started&&!over&&!qaPaused) step(dt);
   render(); hud();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-// QA hook
+// QA hook. proto3d/qa.mjs drives the real build through this in headless Chromium;
+// anything reachable only by hand is a rule nothing is guarding.
 window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist),
     slots:van.slots,banked:van.cargo.reduce((s,i)=>s+i.value,0),
     cur:curator.state,marked:!!curator.target,hits:player.hits,
-    holding:player.holding?player.holding.value:null,over}),
-  pos:()=>({x:+player.x.toFixed(1),z:+player.z.toFixed(1),
+    holding:player.holding?player.holding.value:null,over,why:overWhy}),
+  pos:()=>({x:+player.x.toFixed(2),z:+player.z.toFixed(2),
     room:roomAt(player.x,player.z)?.id??"VOID",yaw:+player.yaw.toFixed(2)}),
   step:(n=1,dt=1/60)=>{started=true;for(let i=0;i<n;i++) if(!over) step(dt);return window.__g.state();},
   press:(k,v=true)=>keys[k]=v, look:(y,p=0)=>{player.yaw=y;player.pitch=p;},
-  grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length };
+  grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length,
+  // --- fixtures: put the world in a specific state without playing to it
+  pause:(v=true)=>{qaPaused=v;},   // stop the render loop advancing time
+  tp:(x,z)=>{player.x=x;player.z=z;},
+  setDist:v=>{dist=v;}, setT:v=>{t=v;},
+  clearKeys:()=>{for(const k in keys) keys[k]=false;},
+  list:()=>items.filter(i=>!i.gone).map((it,i)=>({i,x:+it.x.toFixed(2),z:+it.z.toFixed(2),
+    grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:it.held})),
+  hold:i=>{const it=items.filter(x=>!x.gone)[i]; if(!it) return null;
+    if(player.holding) player.holding.held=false;
+    it.held=true; player.holding=it; return it.value;},
+  curator:()=>({x:+curator.x.toFixed(2),z:+curator.z.toFixed(2),state:curator.state,
+    target:!!curator.target,carrying:!!curator.carry}),
+  setCur:(x,z,st)=>{curator.x=x;curator.z=z;if(st)curator.state=st;},
+  raw:()=>({x:player.x,z:player.z}),   // unrounded; pos() is display precision
+  cargo:()=>van.cargo.map(c=>({grade:c.grade,value:c.value})),
+  faults:()=>DOOR_FAULTS.slice(),
+  rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
+  doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z})),
+  solid };
 </script>
 </body>
 </html>
