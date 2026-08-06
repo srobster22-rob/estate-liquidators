@@ -2,7 +2,7 @@
 Sample estates for the validator.
 
 MANOR_A is the worked example from LEVEL-SPEC.md 8 (East Conservatory), built to pass.
-BROKEN_B is the same estate with eight deliberate faults, one per check, used to prove
+BROKEN_B is the same estate with nine deliberate faults, one per check, used to prove
 the validator actually detects things rather than just printing PASS ten times.
 """
 
@@ -60,6 +60,12 @@ MANOR_A = {
                          {"room": "landing", "type": "clear"}],
         "office":       [{"room": "conservatory", "type": "key"}],
     },
+    "hiding_places": [
+        {"id": "h1", "room": "foyer"},
+        {"id": "h2", "room": "landing"},
+        {"id": "h3", "room": "conservatory"},
+        {"id": "h4", "room": "orangery"},
+    ],
     "plinths": [
         {"room": "foyer", "cls": "armful", "tier": 0, "value": 120},
         {"room": "study", "cls": "armful", "tier": 1, "value": 260},
@@ -75,7 +81,7 @@ MANOR_A = {
 
 def _broken():
     d = copy.deepcopy(MANOR_A)
-    d["id"] = "broken_b  (eight deliberate faults)"
+    d["id"] = "broken_b  (nine deliberate faults)"
 
     # V10 — the piano check. Narrow the ONLY cart-wide route out of the office.
     for p in d["portals"]:
@@ -108,6 +114,12 @@ def _broken():
     for room in ("study", "orangery"):
         d["rooms"][room]["value_class"] = "shelf"
 
+    # V12 — pull the orangery's wardrobe. Three hiding places is still above the
+    # minimum, so the count check passes and the COVERAGE check is what catches it:
+    # the orangery's two-man piece is now 16m from the nearest concealment, which
+    # means the deepest room in the wing has no answer to being hunted.
+    d["hiding_places"] = [h for h in d["hiding_places"] if h["id"] != "h4"]
+
     # V9 — free money parked next to the van.
     d["rooms"]["cloakroom"] = {"pos": (14, 2), "tier": 1, "value_class": "mixed"}
     d["portals"].append({"a": "foyer", "b": "cloakroom", "width": 2.0, "door": True})
@@ -119,4 +131,4 @@ def _broken():
 BROKEN_B = _broken()
 
 # What BROKEN_B is built to trip. The test asserts exactly this set.
-EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10", "V11"}
+EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10", "V11", "V12"}

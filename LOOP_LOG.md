@@ -213,28 +213,59 @@ class, and both ends of the share band. Suite is now 11 checks, 8 planted faults
 two corrections: `README.md`, `DESIGN.md` §4.4 and `DECISIONS.md` D-10 now carry the full
 revision chain instead of a stale headline.
 
+R17 · Built `sim/hiding.py` and specified `DESIGN.md` §8.1 to implementation depth — it was
+the newest core verb and the only one written purely in prose, with no durations, no search
+behaviour and no cost. · **Found the free-reset exploit before it was ever built.** §8.1's own
+numbers make stash-then-hide a *certainty*: the item goes quiet for 20s, the Curator gives up
+in 12-18s, so stashing saves the loot **100% of the time you can reach a wardrobe**. That is
+D-03's free-aggro-reset exploit re-entered through a different door — D-03 makes aggro persist
+to the object precisely so dropping isn't a free reset, and stashing is dropping plus hiding
+the object. **The fix is not a shorter timer** (at 8s stashing is never correct and the verb
+dies); it is making the *search* ragged, `Random.Range(8f, 24f)` re-rolled each time, so the
+two durations overlap instead of one always winning. Save rate 75%. `check_drift.py` now
+asserts the invariant — search window must straddle the stash timer at both ends — so this
+can't be reopened by a tidy-up. Logged as D-24.
+· **Stash safety is positional, and that was the missing half.** The Curator paths to the
+item's home plinth, not to you (A4), so it walks past everywhere you carried that item: a
+stash within 40m of the plinth is on its route and gets found. Which means stashing somewhere
+genuinely safe requires having already carried the thing most of the way home — the verb costs
+exactly what you were trying to buy. Derived from an existing rule rather than invented.
+· **All four verbs survived the dominance test on the first try**, which nothing else in this
+project has. Run wins under ~15m (you sprint 4.1 vs 2.9 for 3.8s of stamina ≈ 15m of lead);
+hand-off wins whenever anyone is within 2.5m; stash wins the long middle; hide wins at COLLECT.
+· Two of those regions were **my modelling errors first, and fixing them is the finding**: I
+had hide-while-holding dominated everywhere until I modelled the COLLECT targeting switch, and
+stash winning everywhere until I modelled its positional cost. The first is the better one —
+at Disturbance ≥85 the Curator drops item logic and targets the nearest player (A3), so the
+worst verb everywhere else becomes the best one, and the genre's signature panic falls out of
+a rule that was already written rather than being bolted on. Logged as D-25.
+· Wrote `TECH-SPEC.md` §A9 (the SEARCH state, the attention-exclusion, stash suppression,
+reacquire), `LEVEL-SPEC.md` §2.2 (hiding places as a balance parameter dressed as furniture)
+and **V12** — ≥2 per wing, every plinth within 12m, none in a sole-exit room. Planted a V12
+fault in `BROKEN_B` that passes the count check and fails on *coverage*, since the obvious
+fault (no hiding places at all) tests nothing a level designer would actually ship. Suite is
+12 checks, 9 planted faults, green.
+· **Consistency sweep caught a live contradiction:** `DESIGN.md` §9 still carried the original
+quota curve ($2,000 → $4,500 → $8,000 → $15,000) that `ECONOMY.md` §4 had already replaced and
+measured at a **1% pass rate on night 4**. Two documents, one canonical, and the wrong one was
+the one people read first. §9 now points at ECONOMY §4 and keeps the dead curve visible as a
+correction rather than silently deleting it.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
 
-**1. The hiding mechanic has no numbers.** `DESIGN.md` §8.1 (added R15) is the newest core
-verb and the only one specified purely in prose — no concealment durations, no detection
-radius while hidden, no cost, nothing a build session could implement without inventing
-values. It also interacts directly with the attention model, which is the one system this
-project has already been wrong about twice. It is now the largest gap between "specified" and
-"buildable", and R16's result raises its priority: the appraiser makes you stand still for
-three seconds, and hiding is the counterplay to being caught doing it. Spec it to the same
-depth as the attention model and simulate the stash-then-hide / hand-off-then-hide / buy-four-
-seconds choice from §8.1 to check it isn't another step function.
+~~**1. The hiding mechanic has no numbers.**~~ **Done, R17.** Specified, simulated, and it
+found a free-reset exploit in §8.1's own numbers on the way.
 
-**2. Per-crew-size pacing, still open from R12.** Solo Disturbance tops out ~57 at sunrise, so
+**1. Per-crew-size pacing, still open from R12.** Solo Disturbance tops out ~57 at sunrise, so
 a lone player is essentially never hunted in a 3-minute run. The `x crew/4` decay scale fixed
 the *direction* of the crew-size dependency, not the *curve* — each crew size needs its own
 pacing target, and nothing has swept 1/2/3/4/6 players against time-in-tier. Every sim in this
 project except the prototype has only ever run four players, which is exactly how the original
 bug stayed invisible.
 
-**3. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
+**2. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
 *shortest* path from plinth to van and counts doors, so a wing whose alternate route is
 acoustically dead passes. It has never failed anything, which for a check is a symptom rather
 than a reassurance — R16 found two other pieces of apparatus that were quietly not running, so

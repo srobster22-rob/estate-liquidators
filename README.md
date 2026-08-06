@@ -31,12 +31,13 @@ log, and even those state their own falsification conditions.
 | **[TECH-SPEC.md](TECH-SPEC.md)** | Curator AI and the networked physics handoff, to implementation detail. | Building either. |
 | **[AUDIO-SPEC.md](AUDIO-SPEC.md)** | The loudness model, proximity voice, the Curator's sound, mix, accessibility. | Before Milestone 0 — audio gates the earliest test. |
 | **[ART-DIRECTION.md](ART-DIRECTION.md)** | The look: straight-faced house, ridiculous crew. Flat-shaded low-poly, light as the whole budget. | Before any asset work. |
-| **[LEVEL-SPEC.md](LEVEL-SPEC.md)** | Estate module contract, prerequisite chains, pinch points, and the 11-check validation suite. | Authoring any wing. |
+| **[LEVEL-SPEC.md](LEVEL-SPEC.md)** | Estate module contract, prerequisite chains, pinch points, and the 12-check validation suite. | Authoring any wing. |
 | **[ECONOMY.md](ECONOMY.md)** | Van capacity, slot costs, value bands, quota curve, and the simulation results behind them. | Tuning anything with a number in it. |
 | **[sim/haul_sim.py](sim/haul_sim.py)** | Monte Carlo of the haul loop. Runs in seconds, no dependencies. | Before changing van capacity or appraiser cost. |
 | **[sim/chain_sim.py](sim/chain_sim.py)** | Full-night sim with weight classes, crew labour, and depth gating. | Before changing the quota curve, crew size, or the apex. |
 | **[sim/scan_risk.py](sim/scan_risk.py)** | The appraiser: why a tail risk kills it and room variance saves it. | Before touching anything about scanning. |
-| **[sim/validate_estate.py](sim/validate_estate.py)** | The 11-check estate validator, with a self-test. `python sim/validate_estate.py` | Authoring or reviewing any wing. |
+| **[sim/hiding.py](sim/hiding.py)** | Concealment: whether run / hide / stash / hand off are four decisions or one. | Before touching §8.1 or the search state. |
+| **[sim/validate_estate.py](sim/validate_estate.py)** | The 12-check estate validator, with a self-test. `python sim/validate_estate.py` | Authoring or reviewing any wing. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |
@@ -63,8 +64,8 @@ log, and even those state their own falsification conditions.
 **Solid enough to build on:** the loop and economy; the Curator's state machine and attention
 model; the physics ownership protocol; the loudness model; the decision log.
 
-**Specified and partly tested:** the economy, by nine simulations that between them overturned
-six things this project believed.
+**Specified and partly tested:** the economy and the encounter, by ten simulations that between
+them overturned seven things this project believed.
 
 - The appraiser's edge dies entirely between 24 and 32 van slots. **Van capacity is the master
   constant.** The edge itself has been revised four times as the model got honest (+84% →
@@ -79,6 +80,10 @@ six things this project believed.
   passed 1%. Recalibrated against simulated earnings.
 - Depth must unlock on **work, not wall-clock**, or bigger crews earn *less* — a bug that
   would have been near-impossible to diagnose from playtest reports.
+- **Stashing loot to break a chase was a free reset of the entire threat system** — a
+  guaranteed save, because the 20s quiet timer always outlasted the Curator's search. Fixed by
+  making the *search* ragged (8–24s, re-rolled) rather than the timer shorter; 75% save rate,
+  and all four responses to being hunted now have a region where they're correct.
 
 **Deliberately rough:** joint tuning values (guesses — a week of hands-on iteration decides
 the game's feel); material and prop dressing; lighting standards; anything about art.

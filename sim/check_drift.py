@@ -152,6 +152,21 @@ check("py curse floor", grab(sims["curse_test.py"], r"FLOOR_PER_CURSED\s*=\s*([\
 check("py curse ruin_exp", grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"),
       v["ruin_exp"])
 
+# Concealment (R17). hiding.py reads tuning.json at runtime so it cannot drift; these
+# pin the two values that also appear as literals in the specs' pseudo-code, and the
+# ordering invariant that the whole mechanic rests on.
+c = TUNING["concealment"]
+check("py hiding uses tuning", 1.0 if "TUNING[\"concealment\"]" in
+      (ROOT / "sim/hiding.py").read_text(encoding="utf-8") else 0.0, 1.0)
+_search_max = c["search_giveup_seconds"] + c["search_spread_seconds"]
+# THE invariant: the search window must straddle the stash timer. If its maximum is
+# below stash_quiet, stashing saves the item 100% of the time and D-03's free-reset
+# exploit is back. If its minimum is above, stashing never works and the verb is dead.
+check("concealment search straddles stash (low)",
+      1.0 if c["search_giveup_seconds"] < c["stash_quiet_seconds"] else 0.0, 1.0)
+check("concealment search straddles stash (high)",
+      1.0 if _search_max > c["stash_quiet_seconds"] else 0.0, 1.0)
+
 for name in ("sprint", "appraise", "door"):
     check(f"py L[{name}]",
           grab(sims["disturbance.py"], rf"[\"']{name}[\"']\s*:\s*(\d+)"),

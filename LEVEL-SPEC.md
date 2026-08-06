@@ -63,6 +63,10 @@ pinch_nodes:                     # authored, not inferred
   - stair_landing
   - conservatory_door
 
+hiding_places:                   # wardrobes, crates, under-stairs — see 2.2, V12
+  - { id: h1, room: r1 }
+  - { id: h2, room: r3 }
+
 plinths:
   - { id: p1, class: armful,  band: high,   fragility: 3 }
   - { id: p2, class: armful,  band: mid,    fragility: 1 }
@@ -126,6 +130,30 @@ that reads as contradictory in play — if testers say the room already tells th
 Enforced by **V11**. Below ~10% curio the mechanic stops paying (+6.2% and falling); above
 ~40% everything is worth scanning and the reading stops mattering. Both ends collapse back
 into a habit, which is the failure §4.4 exists to prevent.
+
+### 2.2 Hiding places — a balance parameter dressed as furniture
+
+`DESIGN.md` §8.1 gives the crew four responses to being hunted, and three of them require a
+wardrobe, a crate, a dust sheet or the space under a stair to be *within reach at the moment
+of panic*. So concealment density is not set dressing that a level artist adds at the end —
+it decides how often the mechanic exists at all.
+
+`sim/hiding.py` models availability at **55%**, meaning nearly half of all encounters offer
+no concealment option whatsoever (45%). That is deliberate: a house where you can always hide has no
+chase in it, and a house where you can never hide has no §8.1. But it only holds if wings are
+authored to it.
+
+| Rule | Value |
+|---|---|
+| Minimum per wing | **2** hiding places |
+| Coverage | every plinth within **12m** of one, along a walkable route |
+| Never | in the same room as the wing's only exit portal — that turns a pinch point into a safe room |
+| Placement intent | *on* the plinth→van route, not tucked in dead ends. A hiding place you have to detour to is one nobody uses under pressure. |
+
+Enforced by **V12**. Note the tension with `TECH-SPEC.md` §A9: a stash is safe only if it is
+more than 40m from the item's home plinth, so a wing whose hiding places all sit next to its
+plinths satisfies V12 and still makes stashing useless. That is a judgement the validator
+cannot make for you — V12 checks that the option exists, not that it's worth taking.
 
 ## 3. Prerequisite chains — the pacing mechanism
 
@@ -206,6 +234,7 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V9** | No plinth within 15m of the van | no free money |
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
 | **V11** | Every room declares a `value_class`, and 15–35% of the wing's rooms are `curio` | §2.1 — the appraiser has a payoff worth reading the room for |
+| **V12** | ≥2 hiding places per wing, every plinth within 12m of one, none in a sole-exit room | §2.2 — three of §8.1's four verbs need furniture in reach |
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
 in is a rage-quit bug — four people spending three real minutes discovering that a doorway is

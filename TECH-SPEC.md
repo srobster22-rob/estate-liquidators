@@ -269,6 +269,62 @@ stop trusting it, and if they stop trusting it they stop doing it.
 Rule 6 of the fairness contract is suspended at T4 — at that point the crew has chosen this,
 repeatedly, out loud, and everyone at the table knows it.
 
+## A9. Concealment — the SEARCH state and the stash
+
+`DESIGN.md` §8.1 is the design; this is the build. Tuning values are canonical in
+`tuning.json` under `concealment`; the model behind them is `sim/hiding.py`.
+
+**Concealment is an attention-target exclusion, not a visibility change.** A concealed player
+is skipped by the A3 weight loop entirely. Their *carried* items are not.
+
+```csharp
+float AttentionWeight(Player p) {
+    if (p.Concealed && CuratorState == COLLECT) return 0f;   // T4: it wants people
+    if (p.Concealed && p.CarriedItems.Count == 0) return 0f;  // empty and hidden = gone
+    // Otherwise fall through to the A3 calculation unchanged: the vase in the
+    // wardrobe is still broadcasting, and the wardrobe is where it goes.
+    ...
+}
+```
+
+That is the entire asymmetry, and every consequence in §8.1 follows from those three lines.
+
+**Stashed items.** An item placed inside concealment furniture sets `Radiating = false` for
+`stash_quiet_seconds` (20s). While it is dark, it contributes nothing to any attention
+calculation and cannot be the fall-through target of "last dropped high-value item" (A3).
+
+```csharp
+// Stash safety is POSITIONAL. It is walking to the home plinth regardless (A4), so
+// it passes everything you carried the item past on the way out.
+bool StashFound(Item it) =>
+    Vector3.Distance(it.StashPoint, it.HomePlinth.Position) < SearchSpanM   // 40m
+    || Time.time - it.StashedAt > StashQuietSeconds;                        // 20s
+```
+
+**The SEARCH state.** New, and it exists because losing a target must not be instantaneous —
+without it, concealment is a toggle that deletes the Curator.
+
+| | |
+|---|---|
+| **Enter from** | PURSUE, when the current target's weight drops to zero (concealed, stashed, or handed off and out of range) |
+| **Behaviour** | Move to the last known position, fuzzed ±3m per A5, then sweep adjacent rooms |
+| **Duration** | `Random.Range(8f, 24f)` — **re-rolled per entry, never a fixed value** |
+| **Exit to** | PATROL (timeout), or PURSUE (any target's weight goes non-zero) |
+| **Reacquire** | Leaving concealment within `reacquire_radius_m` (6m) of it re-fixates instantly — exiting is loud (L=60), so this is a rule players can hear |
+
+> **The randomised duration is load-bearing and must not be "cleaned up" to a constant.**
+> A fixed give-up time is learnable in an evening, and once learned the 20s stash timer always
+> outlasts it — which makes stashing save the item 100% of the time and hands players a free
+> reset of the whole threat system. That is D-03's exploit re-entered through a different door.
+> The 8–24s spread puts the save rate at 75%. If a future refactor wants a deterministic
+> search for testability, seed it — do not fix it.
+
+**Fairness rules extend, all six.** It never opens a hiding place it had no reason to approach
+(rule 1's spirit); the ≥8m audio warning applies to a wardrobe being opened exactly as it does
+to a corridor (rule 2); and being found while concealed is a **retrieval, not a death**, on
+first contact (rule 3). A player found in a wardrobe on the first contact of a night loses the
+item and 3 seconds, not the run.
+
 ---
 
 # PART B — THE PHYSICS HANDOFF

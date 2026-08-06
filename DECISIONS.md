@@ -415,6 +415,71 @@ approaches the curse's — at ×3 or better, a tail risk becomes worth re-testin
 
 ---
 
+## D-24 · A stash is safe by position, and the search window is deliberately ragged
+
+**Status:** HELD · `DESIGN.md` §8.1, `TECH-SPEC.md` §A9
+
+**Decision:** stashing an item suppresses its attention radiation for 20s, but whether that
+saves it depends on **where** you stashed it — within ~40m of the item's home plinth it is on
+the Curator's route (§A4) and gets found. And the Curator's search-before-giving-up is
+`Random.Range(8f, 24f)`, **re-rolled every time**, never a constant.
+
+**Why the randomness is load-bearing.** With any fixed give-up time, the 20s stash timer
+either always outlasts the search or never does — and at every plausible fixed value it always
+does. Modelled (`sim/hiding.py`), that makes stashing save the item **100% of the time you can
+reach a wardrobe**: a free, certain reset of the entire threat system, available on demand.
+
+That is D-03's exploit wearing a different hat. D-03 exists so that dropping an item isn't a
+free two-second aggro reset; stashing is dropping plus hiding the object, and it walked
+straight back through the door D-03 was built to close. **The fix is not a shorter timer** —
+short timers kill the verb outright (at 8s it saves 0% and stashing is never correct). The fix
+is making the *search* ragged, so the two durations overlap instead of one always dominating.
+At 8–24s the save rate is 75%.
+
+**Consequence for the build:** a future refactor will want to make that search deterministic
+for testability. Seed it; do not fix it. `check_drift.py` asserts the invariant directly — the
+search window must straddle the stash timer at both ends — so the exploit cannot be reopened
+by an innocent-looking tuning change.
+
+**Falsified if:** playtesters stash reflexively rather than as a decision, which would mean 75%
+still reads as "usually works". The fix would be widening the span, not shortening the timer.
+
+---
+
+## D-25 · Concealment is an attention exclusion, and COLLECT inverts which verb is right
+
+**Status:** HELD · `DESIGN.md` §8.1, `TECH-SPEC.md` §A9
+
+**Decision:** a concealed player is skipped by the attention loop; their carried items are
+not. Three lines of §A9, and every consequence in §8.1 follows from them.
+
+**Measured** (`sim/hiding.py`, across distance-to-van, item value, Disturbance tier, and
+whether a teammate is in reach): **all four responses have a region where they are the best
+play** — run under ~15m, hand off whenever someone is within 2.5m, stash in the long middle,
+hide at COLLECT. That matters because this project's characteristic failure is a menu that
+collapses to one dominant answer; it happened to the appraiser (three attempts), the curse
+multiplier (two), and the scan tail risk (dead on arrival). Concealment is the first
+multi-option system here that survived the test on the first try, and only because each verb
+is answering a different question.
+
+**The part worth keeping.** Hiding-while-holding is the worst verb everywhere except COLLECT,
+where it becomes the best — and that inversion is not a difficulty ramp or a special case. At
+Disturbance ≥ 85 the Curator drops item logic and targets the nearest player (§A3), so the
+thing in your arms stops being what it's following. **The genre's signature panic falls out of
+a targeting rule that was already written**, rather than being bolted on for the last act.
+
+**Cost, stated plainly.** The whole system is gated on furniture. At the modelled 55%
+availability, 45% of encounters offer no concealment at all and collapse back to "run for it".
+That makes hiding-place placement a balance parameter dressed as set dressing, and it is now a
+level-authoring constraint with a validator check (V12) rather than an art decision.
+
+**Falsified if:** playtesters describe concealment as "the thing you do when you're about to
+die" rather than as a choice between four options — that would mean the regions are real in the
+model and invisible in play, and the fix is signposting (can you tell how far the van is? can
+you tell where your teammates are?) rather than retuning.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
@@ -422,9 +487,9 @@ approaches the curse's — at ×3 or better, a tail risk becomes worth re-testin
 | ~~O-01~~ | ~~Crew size 4 or 6?~~ | — | **Closed → D-18.** Four. |
 | ~~O-02~~ | ~~Dead-player downtime~~ | — | **Closed → D-17.** The dead join the collection. |
 | ~~O-03~~ | ~~Van capacity numbers~~ | — | **Closed → `ECONOMY.md` §1.** 14 slots, ceiling 20. |
-| ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 11-check validation suite. |
+| ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 12-check validation suite. |
 | **O-05** | Does the Curator have a face? | art | recommend never fully seen — silhouette and hands only. Not blocking anything yet. |
 | ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, 48%→79% of theoretical max. |
 
-Only O-05 remains open, and it blocks nothing (23 decisions logged as of R16). Every decision that gated build work has been
+Only O-05 remains open, and it blocks nothing (25 decisions logged as of R17). Every decision that gated build work has been
 made — which means the next real information comes from a playtest, not another design pass.

@@ -588,6 +588,64 @@ delay and not a solution. A crew learns to seed the route home with stashed loot
 relays — which is a genuinely good strategy that nobody designed, and exactly the kind of play
 this structure should produce.
 
+### The numbers, and the one that nearly broke it
+
+Modelled in `sim/hiding.py`. Canonical values in `tuning.json` under `concealment`.
+
+| | Value | Note |
+|---|---:|---|
+| Enter concealment | **1.0s**, silent | |
+| Leave concealment | instant, **L=60** | door-equivalent. Getting out is the loud part. |
+| Hiding while holding buys | **4.0s** | it walks over and opens the wardrobe |
+| Stash stays quiet for | **20s** | |
+| It searches a lost target for | **8–24s** | then reverts to PATROL |
+| Stash search span | **40m** back along its route to the plinth | |
+| Hand-off range | **2.5m** | |
+| Retrieval | **3.0s**, then you keep your life | first contact never kills (§6.3) |
+
+**The 8–24s search window is a range on purpose, and that width is the mechanic.** With a
+fixed give-up time the stash timer either always outlasts the search or never does, and at any
+plausible fixed value it always does — which makes stashing save the item **100% of the time
+you can reach a wardrobe**. That is a free reset of the entire threat system, and it is
+precisely the exploit `DECISIONS.md` D-03 exists to prevent, re-entered through a different
+door. (D-03 makes aggro persist to the *object* so that dropping isn't a free reset. Stashing
+is dropping, plus hiding the object.) Widened to 8–24s, stashing saves the item **75%** of the
+time — a gamble you take deliberately rather than a button that solves the game.
+
+**And stash safety is positional, not temporal.** The Curator doesn't path to you; it paths to
+the plinth the item came from (`TECH-SPEC.md` §A4). So it walks past everywhere you've carried
+that item, and a stash within ~40m of the plinth is on its route and gets found. Which means
+stashing somewhere genuinely safe requires having already carried the thing most of the way
+home — the verb costs you exactly what you were trying to buy. That's the tension, and it
+falls out of an existing rule rather than being bolted on.
+
+### All four responses, and when each is right
+
+The point of a menu is that it isn't a menu. Simulated across distance-to-van, item value,
+Disturbance tier, and whether anyone is in reach, **each of the four has a region where it is
+the best play** — which is more than this project managed for the appraiser (three attempts),
+the curse multiplier (two), or the scan tail risk (dead on arrival).
+
+| Verb | When it's right | Why |
+|---|---|---|
+| **Run for it** | Under ~15m from the van, or empty-handed | You sprint at 4.1 against its 2.9 — for 3.8s of stamina. That's about 15m of lead, and then it's gaining. |
+| **Hand off, then hide** | Any distance, *if* someone is within 2.5m | Retarget is instant (0.0s, `TECH-SPEC.md` §A3) and it has to re-converge on their route. Best play whenever it's available — which is rarely, and that's the point. |
+| **Stash, then hide** | The long middle: 20m+ from the van, 40m+ from the plinth | The only verb that saves a valuable item when nobody's near. Costs ~15s and fails a quarter of the time. |
+| **Hide holding it** | At COLLECT | See below — this is the one that inverts. |
+
+**At COLLECT (Disturbance ≥ 85) hiding becomes the primary verb.** Not because it's scarier,
+but because the *targeting rule changes*: the Curator drops item logic entirely and comes for
+the nearest player (§6.5, `TECH-SPEC.md` §A3). So the thing in your arms is suddenly not what
+it's following, concealment works exactly as the genre trades on, and stashing solves a problem
+you no longer have. The verb that is worst everywhere else becomes the best one, from a rule
+that was already written. That escalation is earned rather than constant, which is what keeps
+it frightening.
+
+> **The whole thing is gated on furniture.** Every number above assumes a hiding place is
+> actually in reach when you need one; at the modelled 55% availability, **45% of encounters
+> offer no concealment option at all** and collapse back to "run for it". That makes hiding-place placement a balance
+> parameter wearing set-dressing's clothes — enforced by `LEVEL-SPEC.md` V12.
+
 **At COLLECT (Disturbance ≥ 85) hiding becomes the primary verb.** The Curator has stopped
 caring about items and is collecting crew (§6.5), so concealment now works properly — and the
 game turns, for the last minutes of a bad night, into the hiding game the genre trades on.
@@ -604,8 +662,11 @@ retrieval, not an instant death, on first contact (§6.3).
 Keep it thin. Meta-progression in this genre exists to give a session a shape, not to be an
 RPG.
 
-- **Contract chain:** 4–5 nights, quota escalating $2,000 → $4,500 → $8,000 → $15,000. Miss
-  one, the chain ends, you start a new chain. This is the run structure.
+- **Contract chain:** 4 nights, quota escalating **$7,500 → $9,000 → $10,750 → $12,500**
+  against van capacity 14 → 19. Miss one, the chain ends, you start a new chain. This is the
+  run structure. *(The original curve here was $2,000 → $4,500 → $8,000 → $15,000 and it had
+  no shape — simulated, nights 1–3 passed 100% of the time and night 4 passed 1%. Recalibrated
+  against simulated earnings in `ECONOMY.md` §4, which is canonical for these numbers.)*
 - **Between nights:** spend net profit on gear (better battery, second dolly, van shelving
   for +cargo slots, salt) and repairs. Money does not carry across chains.
 - **Persistent unlocks:** cosmetics and *estates* only. New estate types (the hospital

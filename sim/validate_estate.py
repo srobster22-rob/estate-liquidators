@@ -1,7 +1,7 @@
 """
 Estate Liquidators — estate validator.
 
-Implements the ten checks LEVEL-SPEC.md 6 specifies. A wing that fails any of them
+Implements the twelve checks LEVEL-SPEC.md 6 specifies. A wing that fails any of them
 does not enter the pool.
 
 The point of this file is that every promise the other documents make about SPACE is
@@ -44,6 +44,7 @@ class Estate:
         self.plinths = d["plinths"]
         self.prereqs = d.get("prereqs", {})
         self.curator_spawn = d["curator_spawn"]
+        self.hiding_places = d.get("hiding_places", [])
         self.van = next(r for r, v in self.rooms.items() if v.get("van"))
 
     def adj(self, min_width=0.0):
@@ -316,6 +317,40 @@ def V11_room_classes(e):
     return True, ""
 
 
+HIDE_MIN_PER_WING = 2
+HIDE_COVERAGE_M = 12.0
+
+
+def V12_hiding_places(e):
+    """Three of DESIGN 8.1's four verbs need furniture in reach at the moment of
+    panic, so concealment density decides how often the mechanic exists at all
+    (LEVEL-SPEC 2.2). sim/hiding.py models 55% availability; this is what holds a
+    wing to it.
+    """
+    spots = e.hiding_places
+    if len(spots) < HIDE_MIN_PER_WING:
+        return False, (f"{len(spots)} hiding place(s); wings need "
+                       f">={HIDE_MIN_PER_WING}")
+
+    bad = []
+    for pl in e.plinths:
+        near = [h for h in spots
+                if e.path(pl["room"], h["room"]) is not None
+                and e.dist(pl["room"], h["room"]) <= HIDE_COVERAGE_M]
+        if not near:
+            bad.append(f"{pl['cls']} in {pl['room']} has no hiding place within "
+                       f"{HIDE_COVERAGE_M:.0f}m")
+
+    # A hiding place in a room with only one portal turns a pinch point into a safe
+    # room -- you cannot be cut off from an exit you are already sitting next to.
+    g = e.adj()
+    for h in spots:
+        if len(g.get(h["room"], [])) < 2:
+            bad.append(f"hiding place {h['id']} is in {h['room']}, which has one "
+                       f"portal -- a safe room, not a gamble")
+    return not bad, "; ".join(sorted(set(bad)))
+
+
 CHECKS = [
     ("V1  reachability", V1_reachable),
     ("V2  depth pacing", V2_depth_pacing),
@@ -328,6 +363,7 @@ CHECKS = [
     ("V9  no free money", V9_no_free_money),
     ("V10 it fits", V10_it_fits),
     ("V11 room classes", V11_room_classes),
+    ("V12 hiding places", V12_hiding_places),
 ]
 
 

@@ -86,6 +86,23 @@
     "_telegraph": "Room class must be readable from the doorway without scanning. Unreadable dressing turns a decision into a coin flip."
   },
 
+  "concealment": {
+    "_source": "DESIGN.md 8.1, TECH-SPEC.md A9, LOOP_LOG R17",
+    "_why": "8.1 specified concealment in prose only. These are the values that make all four responses to being hunted -- run, hide, stash, hand off -- each correct somewhere. Modelled in sim/hiding.py.",
+    "enter_seconds": 1.0,
+    "exit_loudness": 60,
+    "hide_bought_seconds": 4.0,
+    "stash_quiet_seconds": 20.0,
+    "search_giveup_seconds": 8.0,
+    "search_spread_seconds": 16.0,
+    "_search_note": "8-24s, and the WIDTH is the mechanic. A fixed give-up time is learnable, and a learnable one turns stashing into a formality: at a fixed 12-18s the stash timer always outlasts the search and saves the item 100% of the time, which is D-03's free-aggro-reset exploit re-entered through a different door. At 8-24s it saves 75%.",
+    "search_span_m": 40.0,
+    "_span_note": "A stash within this distance of the item's home plinth is on the Curator's route (A4) and gets found. Stash safety is positional, not temporal.",
+    "handoff_range_m": 2.5,
+    "reacquire_radius_m": 6.0,
+    "retrieve_seconds": 3.0
+  },
+
   "retrieval": {
     "_source": "sim/integrated.py, LOOP_LOG R8",
     "dormant": 0.0,
