@@ -362,39 +362,43 @@ that would mean the unlock timing, not the visibility, is wrong.
 
 ---
 
-## D-22 · The appraiser keeps its linear cost — no super-linear scan risk
-**Status:** FIRM · `ECONOMY.md` §9.1, `sim/scan_risk.py`
+## D-22 · REVERSED — a super-linear scan cost is what gives the appraiser its decision
+**Status:** FIRM (reversed R26) · `ECONOMY.md` §9.1, `sim/work_gate.py` panels G–I
 
-R12 proposed rescuing the appraiser's thin edge the way R11 rescued the curse: give scanning a
-**super-linear** cost, so appraising repeatedly while the Curator hunts compounds the chance of
-being caught mid-scan. The structural argument was good — same problem shape, same fix. It sat
-open for eight rounds. R20 ran it at n=20,000 and it is **falsified three ways**:
+**R20 rejected this mechanism. R26 reverses that, because every measurement behind the
+rejection was clock-gated.**
 
-1. **Scanning already pays without any added cost.** Sweeping scan *rate* 0→1 shows a peak the
-   project had never looked for — it had only ever compared three fixed strategies (BLIND,
-   ADAPTIVE, SCAN) and concluded from three points that there was no interesting middle.
-   *(R23 correction: the apparent interior optimum at 0.2–0.3 was an artifact of clock-gated
-   depth creating dead time — see D-23. With the gate ablated scanning is monotonically
-   valuable, best at rate 1.0, worth +25.4%. This makes the case against adding a cost
-   STRONGER, not weaker: the mechanic already pays well when the measurement is clean.)*
-2. **The cost makes it worse.** Peak edge falls +3.5% → +2.9% (linear) → +2.4% (compound), and
-   the optimum does not move. Robust across 9 (k, exp) combinations.
-3. **It makes the mechanic unplayable.** Under the compound cost every *player-implementable*
-   policy lands at or below break-even. The only rule that still pays — "scan only below PURSUE
-   *and* never twice running" — requires reading the Disturbance meter, which `DESIGN.md` §6.5
-   keeps **hidden** and D-14 forbids leaning on. Neither half works alone: streak-only is −0.4%,
-   tier-only is −0.3%, both together +3.8%. It also collapses ADAPTIVE from +4.4% to −16.9%.
+R12 proposed giving scanning a **super-linear** cost — appraising while the Curator hunts risks
+it arriving mid-scan, compounding with each consecutive scan:
+`P(intercept) = RETRIEVAL[tier] × k × streak^exp`. R20 ran it on `scan_risk.py` and rejected it on
+three grounds. R23 then found that file's depth gate manufactures dead time, and R25 found the
+same gate inverts which scanning strategy wins. Re-run on `work_gate.py`, **all three grounds
+fail:**
 
-The appraiser is worth about +4.4%, and whether that is enough is a **design judgement, not a
-simulation result**. Three separate attempts to make it a simulation result have now failed.
+| R20's ground (clock-gated) | R26 (work-gated) |
+|---|---|
+| "the interior optimum already exists without any cost" | It does not. Without a cost the peak is a **corner at 1.0** — that optimum was the gate. |
+| "adding the cost lowers the peak and does not move it" | It **moves** it: 1.0 → 0.8 → 0.6 → 0.4 as the cost strengthens, creating a genuine interior optimum. |
+| "every player-implementable policy lands at or below break-even; the only rule that still pays needs the hidden meter" | The **best** policy is player-followable and needs no meter: **"never scan twice in a row", +10.1% over never scanning**, beating always-scan (+5.7%) *and* the meter-based rule (+8.9%). |
 
-**R25 re-measured this on the work-gated model.** ADAPTIVE's edge falls from +8.0% to **+1.8%**,
-and **SCAN becomes the best strategy at +13.9% over BLIND** — so R8's "selective scanning beats
-both extremes" is itself a clock-gate result. The appraiser is worth *more* than thought and the
-*selectivity* is worth almost nothing, which is the opposite of what DESIGN §4.4 wants from it.
+**Robust, not a lucky parameter.** Swept k ∈ {0.15, 0.35, 0.75} × exp ∈ {1.4, 1.8, 2.2}: the
+streak rule beats always-scan in **9 of 9** combinations, and the interior optimum appears
+wherever the cost is strong enough to bite (k ≥ 0.35). At k = 0.15 the peak stays at the corner,
+which is the mechanism behaving as it should rather than noise.
 
-**Falsified if:** a playtest shows players scanning at rates the model cannot account for — most likely because scanning is fun or tense in ways
-earnings cannot express. That is a reason to keep the mechanic, not to add cost to it.
+**Why this matters beyond the appraiser.** R25 found the mechanic pays well (+13.9%) but contains
+**no judgement** — always-scan simply wins, which is the opposite of what `DESIGN.md` §4.4 asks of
+it. This is the cost that supplies the judgement, and the rule it produces is one a crew can say
+out loud without reading anything hidden: *don't scan twice in a row.* That is the same shape R11
+gave the curse, and it is the second time a super-linear cost has converted a corner solution into
+a decision in this design.
+
+**What is still the designer's call:** whether to ship a mechanic at all. The simulation no longer
+argues against it; it argues for it. Values of k and exp are unmeasured — they are hands-on tuning.
+
+**Falsified if:** the interception reads as unfair in play rather than as a consequence. A cost
+that punishes a thing the player did not know they were doing is a different mechanic from one
+that prices a streak they chose.
 
 ---
 

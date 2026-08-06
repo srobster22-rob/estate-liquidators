@@ -461,6 +461,28 @@ binding". **D-19's 20-slot ceiling survives** — it sits below where anything c
 gate — **but the 24–32 number should not be quoted as its justification.** Recorded in D-19, D-22,
 `ECONOMY.md` §9.1, `DESIGN.md` §4.4 and the README.
 
+R26 · Re-tested **D-22** on `work_gate.py`. R25 left the appraiser paying well (+13.9%) but
+containing **no judgement** — always-scan simply wins — which is the opposite of what `DESIGN.md`
+§4.4 asks of it. D-22 (FIRM) had rejected the one mechanism that might supply that judgement, a
+super-linear scan cost, and **every measurement behind that rejection was clock-gated.**
+· **All three of D-22's grounds fail under work gating, and it is reversed.** (1) "The interior
+optimum already exists without any cost" — it does not; without a cost the peak is a **corner at
+1.0**. That optimum was the gate, exactly as R23 found. (2) "Adding the cost lowers the peak and
+does not move it" — it **moves** it: 1.0 → 0.8 → 0.6 → 0.4 as the cost strengthens, producing a
+real interior optimum. (3) The one that mattered most: "every player-implementable policy lands at
+or below break-even; the only rule that still pays needs the hidden Disturbance meter". Work-gated
+the **best** policy is meter-free — **"never scan twice in a row", +10.1%** over never scanning,
+beating always-scan (+5.7%) *and* the meter-based rule (+8.9%). · **Checked for robustness before
+reversing a FIRM decision**, since deciding on one parameter point is the mistake D-22 itself made:
+swept k ∈ {0.15, 0.35, 0.75} × exp ∈ {1.4, 1.8, 2.2}, and the streak rule beats always-scan in
+**9 of 9**. The interior optimum appears wherever the cost is strong enough to bite (k ≥ 0.35); at
+k = 0.15 the peak stays at the corner, which is the mechanism behaving correctly rather than noise.
+· The rule this produces is one a crew can say out loud without reading anything hidden — *don't
+scan twice in a row* — which is the same shape R11 gave the curse, and the second time a
+super-linear cost has turned a corner solution into a decision in this design. What remains the
+designer's call is whether to ship a mechanic at all; the simulation no longer argues against it.
+· Housekeeping: a worker restart mid-round left panels G and H duplicated in the file. Removed.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

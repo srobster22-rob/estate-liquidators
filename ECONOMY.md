@@ -392,7 +392,13 @@ signature mechanic — a design judgement, not a simulation result.
 **R20 closed the last simulation avenue.** R12 proposed rescuing the appraiser the way R11
 rescued the curse: make its cost *super-linear*, so appraising repeatedly while the Curator is
 hunting compounds the risk of being caught mid-scan. `sim/scan_risk.py` tested it at n=20,000
-and it is **falsified, three ways.** (1) Sweeping scan *rate* 0→1 already produces an interior
+and it is **falsified, three ways** — *but R26 REVERSED this. Every ground below was measured
+clock-gated, and R23/R25 showed that gate manufactures the optimum and inverts which strategy
+wins. Re-run on `sim/work_gate.py` all three fail: without a cost the peak is a corner at 1.0,
+adding the cost moves it to an interior 0.8, and the best policy is **meter-free** — "never scan
+twice in a row", +10.1% over never scanning, beating always-scan and the hidden-meter rule alike,
+in 9 of 9 (k, exp) combinations. This is the cost that gives the appraiser the judgement R25
+found missing. See D-22.* (1) Sweeping scan *rate* 0→1 already produces an interior
 optimum at **0.2–0.3, worth +3.5%** — with no added cost at all *(R23: that interior peak is an
 artifact of clock-gated depth creating dead time; ablate the gate and scanning is monotonically
 valuable at +25.4%. The conclusion below is unaffected and strengthened — see D-22/D-23.)*.

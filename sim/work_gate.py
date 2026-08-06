@@ -106,7 +106,8 @@ def tier_of(d):
 
 
 def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
-              gate="work", labour_scaled=True, strategy=None, van_slots=None):
+              gate="work", labour_scaled=True, strategy=None, van_slots=None,
+              scan_cost="none", k=0.35, exp=1.8, policy=None):
     """One night.
 
     gate='work'  : depth opens when the crew completes prerequisite steps.
@@ -123,6 +124,9 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
     steps = 0
     hauls = 0
     apex_taken = 0
+    streak = 0
+    intercepted = 0
+    scanned = 0
     prereq_spend = 0.0
 
     def wall():
@@ -191,7 +195,9 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
         # The three strategies the appraiser's edge has always been quoted against.
         # ADAPTIVE is integrated.py's rule: haul blind until the van is half full,
         # then scan, because from there the only gains are swaps.
-        if strategy == "BLIND":
+        if policy is not None:
+            appraise = policy(slots, cap, tier_of(d), streak)
+        elif strategy == "BLIND":
             appraise = False
         elif strategy == "SCAN":
             appraise = True
@@ -199,6 +205,9 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
             appraise = slots <= 0.5 * cap
         else:
             appraise = rng.random() < scan_rate
+        streak = streak + 1 if appraise else 0
+        if appraise:
+            scanned += 1
         cost_crew = trip_s * CARRY_MULT[cls]     # crew-seconds for this trip
         value = max(cand) if appraise else rng.choice(cand)
         if appraise:
@@ -215,13 +224,23 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
         if tier == 4:
             apex_taken += 1
 
+        # Standing still to appraise, priced by how hard the Curator is looking and by
+        # how many times in a row you have done it. D-22 rejected this shape on
+        # CLOCK-GATED evidence; R26 re-tests it here.
+        if appraise and scan_cost == "compound":
+            if rng.random() < min(0.95, RETRIEVAL[tier_of(d)] * k * streak ** exp):
+                slots -= slot_cost
+                intercepted += 1
+                streak = 0
+                continue
+
         # The attempt consumes the slots whether or not it lands (R8's reroll fix).
         slots -= slot_cost
         if rng.random() < RETRIEVAL[tier_of(d)]:
             continue
         banked += value
 
-    return banked, steps, hauls, wall(), prereq_spend
+    return banked, steps, hauls, wall(), intercepted, scanned
 
 
 def trial(n=3000, **kw):
@@ -230,7 +249,9 @@ def trial(n=3000, **kw):
     return {"mean": statistics.mean(v),
             "se": statistics.stdev(v) / math.sqrt(n),
             "steps": statistics.mean(r[1] for r in res),
-            "hauls": statistics.mean(r[2] for r in res)}
+            "hauls": statistics.mean(r[2] for r in res),
+            "icept": statistics.mean(r[4] for r in res),
+            "scanned": statistics.mean(r[5] for r in res)}
 
 
 if __name__ == "__main__":
@@ -332,6 +353,90 @@ if __name__ == "__main__":
     print("   play TIME binds before the van does, so extra capacity buys nothing. That")
     print("   is a different mechanism from D-19's 'the appraiser lives on van space")
     print("   binding', and it means the 24-32 crossover is not reproduced here.")
+
+    print("\n\nG. RE-TEST OF D-22: does a SUPER-LINEAR scan cost work once the gate")
+    print("   is honest? D-22 rejected it on clock-gated evidence, and R25 showed the")
+    print("   clock gate inverts which strategy wins. Cost = RETRIEVAL x k x streak^1.8.")
+    print("-" * 78)
+    print(f"{'scan rate':<11}{'no cost $':>11}{'+/-':>7}{'compound $':>13}{'+/-':>7}"
+          f"{'mid-scan losses':>17}")
+    free, cost = {}, {}
+    for r in [i / 10 for i in range(11)]:
+        a = trial(n=N, scan_rate=r, gate="work", depth_target=4)
+        b = trial(n=N, scan_rate=r, gate="work", depth_target=4,
+                  scan_cost="compound")
+        free[r], cost[r] = a, b
+        print(f"{r:<11.1f}{a['mean']:>11,.0f}{1.96 * a['se']:>7.0f}"
+              f"{b['mean']:>13,.0f}{1.96 * b['se']:>7.0f}{b['icept']:>17.2f}")
+    pf = max(free, key=lambda r: free[r]["mean"])
+    pc = max(cost, key=lambda r: cost[r]["mean"])
+    print(f"  no cost   peak {pf:.1f}  "
+          f"{free[pf]['mean'] / free[0.0]['mean'] - 1:+.1%}  "
+          f"({'INTERIOR' if 0 < pf < 1 else 'CORNER'})")
+    print(f"  compound  peak {pc:.1f}  "
+          f"{cost[pc]['mean'] / cost[0.0]['mean'] - 1:+.1%}  "
+          f"({'INTERIOR' if 0 < pc < 1 else 'CORNER'})")
+
+    print("\n\nH. IS THE RESULTING RULE ONE A PLAYER CAN ACTUALLY FOLLOW?")
+    print("   D-14 forbids leaning on signals the player cannot perceive, and DESIGN")
+    print("   6.5 keeps Disturbance hidden. So: streak-based rules only - a crew always")
+    print("   knows how many times in a row it just scanned.")
+    print("-" * 78)
+    POLICIES = [
+        ("never scan", lambda sl, cp, t, k: False, "-"),
+        ("always scan", lambda sl, cp, t, k: True, "no"),
+        ("never twice running", lambda sl, cp, t, k: k == 0, "no"),
+        ("at most twice running", lambda sl, cp, t, k: k < 2, "no"),
+        ("at most three running", lambda sl, cp, t, k: k < 3, "no"),
+        ("ADAPTIVE (van half full)", lambda sl, cp, t, k: sl <= 0.5 * cp, "no"),
+        ("only below PURSUE", lambda sl, cp, t, k: t in ("DORMANT", "PATROL"), "YES"),
+    ]
+    print(f"{'rule':<27}{'no cost $':>11}{'compound $':>13}{'+/-':>7}"
+          f"{'scans':>7}{'needs meter':>13}")
+    base_c = None
+    rows = {}
+    for name, fn, meter in POLICIES:
+        a = trial(n=N, gate="work", depth_target=4, policy=fn)
+        b = trial(n=N, gate="work", depth_target=4, policy=fn, scan_cost="compound")
+        if base_c is None:
+            base_c = b["mean"]
+        rows[name] = b
+        print(f"{name:<27}{a['mean']:>11,.0f}{b['mean']:>13,.0f}"
+              f"{1.96 * b['se']:>7.0f}{b['scanned']:>7.1f}{meter:>13}")
+    best = max(rows, key=lambda k: rows[k]["mean"])
+    playable = max((k for k in rows if k != "only below PURSUE"),
+                   key=lambda k: rows[k]["mean"])
+    print(f"  best overall: '{best}'   "
+          f"{rows[best]['mean'] / base_c - 1:+.1%} over never scanning")
+    print(f"  best PLAYER-FOLLOWABLE: '{playable}'   "
+          f"{rows[playable]['mean'] / base_c - 1:+.1%}")
+
+    print("\n\nI. IS THE REVERSAL ROBUST, OR ONE LUCKY (k, exp)?")
+    print("   Reversing a FIRM decision on a single parameter point would be exactly")
+    print("   the mistake D-22 itself made. Sweep both.")
+    print("-" * 78)
+    print(f"{'k':<7}{'exp':<6}{'rate peak':>11}{'shape':>10}"
+          f"{'always':>9}{'streak':>9}{'winner':>18}")
+    streak_wins = total = 0
+    for kk in (0.15, 0.35, 0.75):
+        for ee in (1.4, 1.8, 2.2):
+            rows = {r / 10: trial(n=max(1500, N // 3), scan_rate=r / 10, gate="work",
+                                  depth_target=4, scan_cost="compound",
+                                  k=kk, exp=ee)["mean"] for r in range(11)}
+            pk = max(rows, key=lambda r: rows[r])
+            al = trial(n=max(1500, N // 3), gate="work", depth_target=4,
+                       scan_cost="compound", k=kk, exp=ee,
+                       policy=lambda sl, cap, ti, st: True)["mean"]
+            sk = trial(n=max(1500, N // 3), gate="work", depth_target=4,
+                       scan_cost="compound", k=kk, exp=ee,
+                       policy=lambda sl, cap, ti, st: st == 0)["mean"]
+            win = "streak" if sk > al else "always"
+            streak_wins += win == "streak"
+            total += 1
+            print(f"{kk:<7.2f}{ee:<6.1f}{pk:>11.1f}"
+                  f"{'interior' if 0 < pk < 1 else 'corner':>10}"
+                  f"{al:>9,.0f}{sk:>9,.0f}{win:>18}")
+    print(f"  the streak rule beats always-scan in {streak_wins}/{total} combinations")
 
     print("\n\nC. HOW MUCH DEPTH IS WORTH BUYING? Each step costs "
           f"{PREREQ_CREW_S:.0f} crew-seconds")
