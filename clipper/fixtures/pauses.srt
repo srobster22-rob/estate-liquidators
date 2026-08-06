@@ -1,0 +1,71 @@
+1
+00:00:00,000 --> 00:00:05,400
+Right, let me show you the three knots that actually hold under load.
+
+2
+00:00:05,800 --> 00:00:11,200
+The first one is the bowline, and it is the one most people tie wrong.
+
+3
+00:00:11,600 --> 00:00:17,000
+You want the working end coming out of the loop on the inside, not the outside.
+
+4
+00:00:17,400 --> 00:00:22,800
+Tied inside out it still looks correct, and it fails at about half the load.
+
+5
+00:00:23,200 --> 00:00:28,600
+So check that every single time. Inside. Always inside.
+
+6
+00:00:29,000 --> 00:00:33,800
+Now let me get the rope out and I will show you the second one.
+
+7
+00:00:41,500 --> 00:00:46,900
+Okay. This is a clove hitch, and it is the fastest knot on this list.
+
+8
+00:00:47,300 --> 00:00:52,700
+Two turns, tuck the end under the second turn, and pull it tight.
+
+9
+00:00:53,100 --> 00:00:58,500
+It holds beautifully under steady tension and it slips under a shock load.
+
+10
+00:00:58,900 --> 00:01:04,300
+So use it to hang something, never to catch something. That distinction matters.
+
+11
+00:01:04,700 --> 00:01:09,500
+Let me just find the thicker rope for the last one, hang on.
+
+12
+00:01:20,000 --> 00:01:25,400
+Here we go. The third knot is the alpine butterfly and it is the useful one.
+
+13
+00:01:25,800 --> 00:01:31,200
+It puts a fixed loop in the middle of a rope without touching either end.
+
+14
+00:01:31,600 --> 00:01:37,000
+Which means you can isolate a damaged section without cutting the rope.
+
+15
+00:01:37,400 --> 00:01:42,800
+It also takes load from all three directions, and almost nothing else does.
+
+16
+00:01:43,200 --> 00:01:48,600
+Wrap twice around your hand, pull the back strand over the front, and through.
+
+17
+00:01:49,000 --> 00:01:54,400
+That is the whole trick. Bowline to end, clove hitch to hang, butterfly to fix.
+
+18
+00:01:54,800 --> 00:01:59,600
+Practice those three and you can stop learning knots entirely.

@@ -22,6 +22,12 @@ mediocre.
 **Falsified by:** a set of hand-picked good clips scoring no better than random windows of
 the same length. That would mean self-containment is not the binding constraint.
 
+**Partially tested at R3.** Hand-picked labels still do not exist, but a label-free version of
+the same question does: deliberately truncated windows are objectively less self-contained,
+and the scorer must prefer the clean version. It now does so 76% / 95% of decided comparisons
+on the two fixtures, and 100% for endings. At R1 the opening figure was 28% — i.e. the premise
+of this decision was not merely untested, it was being violated.
+
 ---
 
 ### D-2 · Rolling-caption de-duplication is a per-file mode, not a per-cue judgement · FIRM
@@ -127,8 +133,12 @@ stated in the module docstring, the README, and the log.
 third option — write it, mark it — keeps the pipeline complete while making the risk
 inspectable.
 
-**Falsified by:** one real invocation. That is all it takes, and it should happen before
-anything else is built on top of it.
+**Narrowed at R3.** yt-dlp *accepts* every flag the builder produces: invoked against a real
+URL it parsed the whole command and failed only at the proxy. So argument construction is
+verified and the remaining unknown is just the network round-trip and the shape of what comes
+back — chiefly whether subtitle files land where `find_transcript` looks for them.
+
+**Falsified by:** one real invocation from a machine with a route to YouTube.
 
 ---
 
@@ -197,3 +207,67 @@ instead, so the bad case degrades to the old safe behaviour rather than to garba
 **Falsified by:** real footage where confident aims are common but the subject drifts enough
 within a clip that the average framing is visibly wrong. That is the signal to build the
 smoothed pan.
+
+---
+
+### D-14 · Discourse markers carry no penalty · FIRM
+
+A leading "so", "okay", "and", "well" costs nothing. They are still skipped over when looking
+for a dangling referent, so "And that is why it works" is caught on "that".
+
+**Why:** they used to cost 0.15 each, on the theory that they are weak openers. Measured at
+R3, that penalty was the direct cause of the scorer preferring a *deliberately broken* clip
+to a clean one 72% of the time — the fragment "the single most common reason…" was scored
+higher than the sentence "Okay, so today I want to talk about…". The sign was backwards: in
+spoken English a discourse marker is evidence that a sentence is *starting*, which is
+precisely the property a clip opening needs.
+
+**Falsified by:** viewers reporting that clips opening on "So…" read as mid-conversation. If
+so the answer is a small penalty *plus* a larger mid-sentence penalty, never one without the
+other.
+
+---
+
+### D-15 · A mid-sentence opening zeroes self-containment outright · FIRM
+
+`MID_SENTENCE_PENALTY = 1.0`, applied when the first word is lower-case in a transcript that
+capitalises at least 80% of its sentence starts.
+
+**Why:** this feature asks whether the opening stands on its own. A clip that begins halfway
+through a sentence does not stand at all, so the honest answer is zero rather than "somewhat".
+At the first attempt, 0.6, it was *less* than the 0.7 charged for a dangling pronoun, so a
+fragment still outscored a whole sentence. It zeroes one feature of six, so a genuinely strong
+clip can still be selected.
+
+**Falsified by:** a transcript with unreliable capitalisation slipping past the 80% floor —
+heavy proper-noun or brand-name usage ("iPhone", "eBay") at sentence starts would produce
+false positives.
+
+---
+
+### D-16 · `pacing` weight is 3.0, and the number is measured · FIRM
+
+**Why:** at 1.0 the feature had variance but no effect. On a fixture containing real dead air,
+a clip with a **10.5-second silence** in the middle ranked second and would have been
+published; at 3.0 it leaves the top five. R1 had concluded pacing was dead from `talk.srt`
+alone — that fixture contains *zero* candidates with a silence over 1.2s, so the feature could
+not vary on it. Absence of variance in one fixture is not evidence about the feature.
+
+**Falsified by:** content where deliberate pauses are the style — comedy, dramatic reads,
+meditation — in which case a long silence is the point and this weight suppresses the best
+moments.
+
+---
+
+### D-17 · The scorer is validated without labels, and the harness ships with the code · FIRM
+
+`validate.py` measures discrimination, redundancy, ablation and boundary sensitivity.
+
+**Why:** every scoring bug found in this project so far was found by measurement rather than
+by reading the code — a dead feature in R1, an inverted penalty and an under-weighted feature
+in R3. Ablation in particular catches the failure that variance cannot: a feature that moves
+but never changes a decision. Shipping the harness alongside the scorer means the next person
+to change a weight can check whether it did anything.
+
+**Falsified by:** the harness passing cleanly while output quality is visibly bad, which would
+mean the measurable properties are not the binding ones.

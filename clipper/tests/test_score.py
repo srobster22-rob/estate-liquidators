@@ -40,13 +40,35 @@ class SelfContainmentTests(unittest.TestCase):
     def test_dangling_referent_is_punished_hard(self):
         self.assertLess(SC.self_containment("It is almost never the starter."), 0.4)
 
-    def test_discourse_marker_is_only_a_nick(self):
-        score = SC.self_containment("So the biggest mistake is rushing.")
-        self.assertGreater(score, 0.8)
-        self.assertLess(score, 1.0)
+    def test_discourse_marker_is_not_penalised(self):
+        """Reversed at R3. A leading "so" is evidence of a sentence *start*.
 
-    def test_marker_then_referent_stacks(self):
-        self.assertLess(SC.self_containment("And that is why it works."), 0.3)
+        Penalising it was the reason the scorer preferred a deliberately broken
+        clip to a clean one 72% of the time.
+        """
+        self.assertEqual(SC.self_containment("So the biggest mistake is rushing."), 1.0)
+        self.assertEqual(SC.self_containment("Okay, so today I want to talk about it."), 1.0)
+
+    def test_marker_is_skipped_so_the_referent_behind_it_is_still_caught(self):
+        self.assertAlmostEqual(SC.self_containment("And that is why it works."), 0.3)
+
+    def test_mid_sentence_start_scores_zero_when_capitals_are_meaningful(self):
+        self.assertEqual(
+            SC.self_containment("not your starter, it is your schedule.", expect_capital=True),
+            0.0,
+        )
+
+    def test_mid_sentence_penalty_beats_the_dangling_referent_penalty(self):
+        """A fragment must never outscore a whole sentence, however weak."""
+        fragment = SC.self_containment("not your starter.", expect_capital=True)
+        whole_but_dangling = SC.self_containment("And it is not your starter.", expect_capital=True)
+        self.assertLess(fragment, whole_but_dangling)
+
+    def test_lower_case_start_is_ignored_when_captions_have_no_capitals(self):
+        # Auto-captions are entirely lower-case; the signal means nothing there.
+        self.assertEqual(
+            SC.self_containment("dough measures temperature", expect_capital=False), 1.0
+        )
 
     def test_short_opening_fragment_is_punished(self):
         whole = SC.self_containment("All fine.", opening_words=2, utterance_count=1)

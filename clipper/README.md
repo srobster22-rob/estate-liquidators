@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 2. Works end to end, on local files.** 181 tests pass, including real ffmpeg encodes
+**Round 3. Works end to end, on local files.** 210 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -38,6 +38,7 @@ parts are testable without a network.
 | `captions.py` | Word-timed ASS subtitles, styled for vertical, with per-word highlighting. |
 | `render.py` | ffmpeg filter graphs and encoding. Pure command construction, thin execution. |
 | `sources.py` | yt-dlp / local-file ingest. **Unverified against a live URL.** |
+| `validate.py` | Measures whether the scorer's features earn their weights. Finds bugs. |
 | `cli.py` | Argument parsing, orchestration, JSON manifest. |
 
 ## What it is actually measuring
@@ -77,13 +78,32 @@ when the subject was located and letterboxes when it wasn't:
 A speaker who walks across the frame scores near zero, falls back to `blur`, and keeps their
 head. Confidence thresholds are measured, not guessed — see `DECISIONS.md` D-12.
 
+## Arguing with the scorer
+
+There is no labelled data, so "is the ranking good?" can't be answered directly. Four things
+*can* be measured without labels, and each has caught something real:
+
+```bash
+python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt
+```
+
+* **Discrimination** — does the feature vary at all? A feature pinned at its ceiling is a
+  constant, and a constant cannot rank anything.
+* **Redundancy** — Pearson r between features. |r| > 0.9 is one feature with two weights.
+* **Ablation** — zero each weight and see whether the *published selection* changes. Stronger
+  than variance: a feature can vary healthily and still never flip a decision.
+* **Boundary sensitivity** — does the scorer prefer a clean clip to a deliberately broken
+  one? Windows truncated mid-sentence are objectively worse and need no human labelling.
+
+That last one found the worst bug in the project so far — see `LOOP_LOG.md` R3.
+
 ## Running it
 
 Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 181 tests, ~12s
+python3 -m unittest discover -s tests -t .      # 210 tests, ~15s
 python3 -m clipper.cli --help
 ```
 
@@ -95,8 +115,11 @@ Ranked by how much they'd hurt:
 
 1. **The download path has never run.** `sources.build_download_command` matches yt-dlp's
    documented flags; one real invocation would confirm or kill it.
-2. **Three of six features barely discriminate** on the one fixture available. `pacing` has
-   zero variance there — it needs content with real dead air to prove itself.
+2. **Boundary sensitivity is 76%, not 100%.** The scorer still prefers a mid-sentence
+   opening to a clean one in about a quarter of decided comparisons, usually because
+   truncation drags a hook phrase into the scored opening window. Today nothing can generate
+   such a window — the segmenter only emits whole utterances — so this is latent rather than
+   live. It becomes real the moment boundaries are loosened.
 3. **The aim is static, one per clip.** A speaker who moves *within* the frame mid-clip is
    framed for the average of where they were. Panning is the obvious next round; today the
    fallback catches the severe cases rather than following them.

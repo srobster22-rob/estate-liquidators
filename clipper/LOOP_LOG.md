@@ -98,3 +98,51 @@ with a subject at 82% across, the old centre crop produced a frame containing *n
 **Left rough on purpose:** the aim is static per clip, so a speaker who moves mid-clip is
 framed for their average position; and aiming is horizontal only, which is right for
 16:9 → 9:16 and wrong for a tall source.
+
+---
+
+R3 · Built `clipper/validate.py`, a label-free validation harness for the scorer:
+discrimination, redundancy, ablation, and boundary sensitivity. Added a second fixture
+containing real dead air. 29 new tests, 210 total.
+· **Found the worst bug in the project so far, and it had been shipping since R1:**
+
+**(a) The scorer preferred a deliberately broken clip to a clean one 72% of the time.**
+Boundary sensitivity truncates a candidate's first utterance halfway through — objectively
+worse, no judgement needed to label it — and asks whether the scorer notices. It did not
+merely fail to notice; it *actively preferred the fragment*. Cause: `self_containment` docked
+0.15 per leading discourse marker, so "Okay, so today I want to talk about…" lost 0.30 while
+"the single most common reason…" — which opens mid-sentence — lost nothing. **The sign was
+backwards.** A leading "so" or "okay" is evidence that this *is* a sentence start, which is
+exactly what a clip opening needs. Removed the penalty (markers are still skipped when
+hunting for a dangling referent) and added the signal that was actually missing: a lower-case
+opening word in a transcript that otherwise capitalises sentences. 28% → 64%.
+
+**(b) The new penalty was calibrated below the one it had to beat.** At 0.6 the mid-sentence
+penalty was *smaller* than the 0.7 charged for a dangling pronoun, so "not your starter"
+still beat "And it is not your starter" — a fragment outscoring a whole sentence. Raised to
+the full 1.0: this feature asks whether an opening stands on its own, and a clip starting
+mid-sentence does not stand at all. 64% → **76% on `talk.srt`, 95% on `pauses.srt`**.
+Endings were never affected — clean beats truncated 100% of the time, both fixtures.
+
+**(c) `pacing` was not weak, it was under-weighted — and R1's fixture had nothing for it to
+find.** R1 left this open: sd = 0.000, apparently dead. Measured properly this round,
+`talk.srt` contains **zero** candidates with a silence over 1.2s, so the feature could not
+possibly vary on it. On `pauses.srt` it has sd = 0.471. Then ablation showed it still changed
+nothing — because at weight 1.0 it was too weak to act: **a clip containing a 10.5-second
+silence ranked second and would have been published.** At 3.0 it drops out of the top five.
+A feature with high variance and zero effect on the decision is the failure mode that
+variance alone cannot detect, which is the whole argument for ablation.
+
+**(d) My own metric counted ties as losses.** Four features read "0% clean preferred" when
+they were simply neutral to the break. Ties are now excluded from the denominator and
+reported separately. A validation harness that overstates the problem is as misleading as
+one that hides it.
+
+**Also verified**, cheaply and worth doing: yt-dlp *accepts* every flag
+`build_download_command` produces — it reached the network stage and failed only on the
+proxy. D-9's unknown narrows from "the whole command" to "the network round-trip".
+
+**Left rough on purpose:** boundary sensitivity is 76%, not 100%. The residual cases are
+truncations that drag a hook phrase into the scored opening window. Nothing can currently
+generate such a window, so it is latent — but it is exactly the kind of latent fault that
+becomes live the moment someone loosens the segmenter.

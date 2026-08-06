@@ -84,7 +84,12 @@ class Weights:
     self_contained: float = 3.5
     closure: float = 2.5
     duration_fit: float = 1.5
-    pacing: float = 1.0
+    #: Raised from 1.0 at R3. Measured: on a fixture containing real dead air, a
+    #: clip with a **10.5-second silence** in the middle of it ranked second and
+    #: was published. At 3.0 it drops out of the top five. The feature was not
+    #: weak, it was under-weighted — and the fixture that suggested otherwise
+    #: simply contained no silences for it to find.
+    pacing: float = 3.0
     payoff: float = 1.5
 
     #: Target clip length in seconds, and the half-width over which the fit
@@ -133,18 +138,51 @@ def hook_strength(text: str, *, window: int = 12) -> float:
 FRAGMENT_WORDS = 3
 
 
+#: A lower-case opening word, in a transcript that otherwise capitalises
+#: sentences, means the clip begins partway through one.
+#:
+#: Set to the full 1.0 rather than a partial penalty, on purpose. This feature
+#: asks whether the opening stands on its own; a clip that starts halfway
+#: through a sentence does not stand at all, so the answer is zero rather than
+#: "somewhat". At 0.6 it was *less* than the 0.7 charged for a dangling pronoun,
+#: which meant "not your starter" scored higher than "And it is not your
+#: starter" — a fragment beating a whole sentence. It still only zeroes one
+#: feature of six, so a strong clip can survive it.
+MID_SENTENCE_PENALTY = 1.0
+
+
 def self_containment(
-    text: str, *, opening_words: int | None = None, utterance_count: int = 1
+    text: str,
+    *,
+    opening_words: int | None = None,
+    utterance_count: int = 1,
+    expect_capital: bool = False,
 ) -> float:
-    """Whether the opening stands without prior context. 0..1."""
+    """Whether the opening stands without prior context. 0..1.
+
+    Discourse markers ("so", "okay", "and") carry **no penalty**, which is a
+    reversal. They used to cost 0.15 each on the theory that they are weak
+    openers. Measured at R3, that penalty was the single reason the scorer
+    preferred a *deliberately broken* clip to a clean one 72% of the time:
+    "Okay, so today I want to talk about…" was docked 0.30 while the fragment
+    "the single most common reason…" — which opens mid-sentence — was docked
+    nothing. The sign was backwards. A leading discourse marker is evidence that
+    this *is* a sentence start, which is exactly what a clip opening needs.
+
+    They are still skipped over when hunting for a dangling referent, so
+    "And that is why it works" is caught on "that".
+    """
     tokens = _tokens(text)
     if not tokens:
         return 0.0
     score = 1.0
+
+    first_raw = next((t for t in text.split() if t), "")
+    if expect_capital and first_raw[:1].islower():
+        score -= MID_SENTENCE_PENALTY
+
     idx = 0
-    # Step past leading throat-clearing; it is weak, not broken.
     while idx < len(tokens) and tokens[idx] in DISCOURSE_MARKERS:
-        score -= 0.15
         idx += 1
     if idx < len(tokens) and tokens[idx] in DANGLING_REFERENTS:
         score -= 0.7
@@ -236,6 +274,7 @@ def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = Non
             text,
             opening_words=len(candidate.utterances[0].words) if candidate.utterances else None,
             utterance_count=len(candidate.utterances),
+            expect_capital=seg.capitalised,
         ),
         "closure": closure(candidate, closing_gap=w.closing_gap, punctuated=seg.punctuated),
         "duration_fit": duration_fit(

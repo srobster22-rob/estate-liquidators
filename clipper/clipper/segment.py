@@ -34,6 +34,12 @@ DEFAULT_MAX_WORDS = 45
 #: as unpunctuated and gaps carry the whole load.
 PUNCTUATION_FLOOR = 0.02
 
+#: Fraction of utterances that must begin with a capital before capitalisation
+#: is treated as a meaningful signal. Set high: the value of a lower-case
+#: opening word is that it proves a mid-sentence cut, and that inference is only
+#: sound if capitals are otherwise reliable.
+CAPITAL_FLOOR = 0.80
+
 _SENTENCE_END = re.compile(r"[.!?…]+[\"')\]]*$")
 
 #: Trailing dots that are not sentence ends. Deliberately short — a false
@@ -82,6 +88,12 @@ class Utterance:
 class Segmentation:
     utterances: list[Utterance]
     punctuated: bool
+    capitalised: bool = False
+    """True when utterances reliably start with a capital letter.
+
+    Auto-captions are entirely lower-case, so this is the signal that tells the
+    scorer whether a lower-case opening word means anything.
+    """
 
     def __len__(self) -> int:
         return len(self.utterances)
@@ -158,7 +170,11 @@ def segment(
                 Utterance(current, gap_after=gap_after, ends_on_punctuation=by_punctuation)
             )
             current = []
-    return Segmentation(utterances, punctuated)
+
+    starts = [u.words[0].text[:1] for u in utterances if u.words and u.words[0].text]
+    alpha = [c for c in starts if c.isalpha()]
+    capitalised = bool(alpha) and sum(1 for c in alpha if c.isupper()) / len(alpha) >= CAPITAL_FLOOR
+    return Segmentation(utterances, punctuated, capitalised)
 
 
 def candidates(
