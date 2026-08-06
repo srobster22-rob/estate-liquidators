@@ -360,6 +360,39 @@ scanning policy monotonically — the sanity check R6–R8 kept failing. What it
 scanning is genuinely dangerous. So the tail risk is worth having, but it is not what creates
 the decision; the refusal verb is.
 
+## 10.2 R22 — the two decisions were never independent
+
+R11 measured the curse decision with the appraiser absent. R18 measured the appraiser with the
+cursed count held constant. In one model:
+
+| Policy | cap | mean $ | cursed aboard | van lost | slots used |
+|---|---:|---:|---:|---:|---:|
+| BLIND | none | $7,701 | 4.1 | 21% | 14.0 |
+| BLIND | 5 | $7,810 | 3.8 | 18% | 14.0 |
+| SKIP_50 — refuse below median | 5 | $7,687 | 4.8 | 24% | 13.8 |
+| SKIP_70 — refuse below 70th | none | $5,423 | **7.4** | **57%** | 14.0 |
+| SCAN — always take the best | 5 | $4,960 | 5.0 | 27% | 12.1 |
+| MARGIN_20 | none | $8,510 | 4.4 | 22% | 13.9 |
+| **MARGIN_30** | **none** | **$8,563** | 4.8 | 25% | 13.7 |
+| MARGIN_40 | none | $8,364 | 5.0 | 29% | 13.2 |
+| MARGIN_30 | 3 | $7,983 | 2.9 | 11% | 13.6 |
+
+**Sticker-price greed is curse greed.** A curse is worth ×6, so the curses *are* the valuable
+items; a crew that raises its value bar raises its cursed intake without deciding to. SKIP_70
+ends the night with 7.4 cursed pieces and loses the whole van 57% of the time — an outcome it
+never chose.
+
+**Judging on the margin replaces the cap.** MARGIN_p asks what an item *adds* — value net of
+fee, discounted by the ruin it raises, minus the ruin it adds to everything already aboard —
+and beats every capped policy without a cap. Capping it at three costs 7%. One rule instead of
+two, and the rule is a judgement rather than a count.
+
+**The appraiser's edge is +10% here**, down from R18's +25%, because that was measured in a
+curse-free world. The bar also moves: about the **20–30th percentile** of the band on marginal
+value, not the 50–70th on sticker value. Every widening of this model has lowered the
+appraiser's headline number and strengthened the reason to have one — it is the only way to
+run the marginal rule at all.
+
 **Cursed cargo is no longer inert, and it changes the ordering.** With the +7 floor, sweeping
 0 → 8 cursed items costs a blind crew 12% of earnings ($6,503 → $5,744) against the 2.9% R9
 measured at +2 — and at 8 aboard, always-scanning overtakes selective scanning, because a van

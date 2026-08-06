@@ -110,11 +110,24 @@ Refusing only became right at ×1.5, where the "bonus" is already a penalty. It 
 function from always-take to never-take with no interesting middle at all.
 
 Ruin probability fixes it because it's the one cost that can grow faster than the benefit.
-With it, there is finally an **interior optimum** — the best play is to take *two or three*
-cursed pieces and then start refusing, worth about +7% over never touching them, while
-taking every cursed item you see is catastrophic (it loses roughly 40% against playing it
-safe). That's a real decision with a real greed curve, and it's better fiction than a
+With it there is finally an **interior optimum**, and taking every cursed item you see is
+catastrophic. That's a real decision with a real greed curve, and it's better fiction than a
 handling fee: the collection doesn't fine you, it takes everything back at once.
+
+**R22 refined what the decision actually is, and it is not a counting rule.** The original
+finding — *take two or three, then start refusing* — was measured by a model whose only lever
+was a count. Put curses and the appraiser in the same simulation and a crew that judges each
+piece **on the margin** does better with no cap at all: is this item's value, net of its fee,
+worth the ruin it adds to everything already in the van? Capping such a crew at three costs
+it 7%. There is no magic number; the fourth cursed piece is fine if it is rich enough and the
+van is still cheap, and the second is a mistake if the van is already a fortune.
+
+**And the two greeds are the same greed.** A curse is worth ×6, so *the curses are the
+valuable items*, and any policy that reaches for value is reaching for curses without meaning
+to. A crew that refuses everything below the 70th percentile of the value band ends the night
+with **7.4 cursed pieces and loses the van 57% of the time** — it never chose that; its
+sticker-price greed chose it. This is why value and grade are revealed by the same action:
+they are not two facts, they are one decision.
 
 **Every curse cost must be felt within ~30 seconds of pickup and be obviously caused by the
 thing in your hands.** This is a hard rule, added after the first design review killed the
@@ -201,8 +214,10 @@ it *slower* — only by sharpening what the noise does to you. Tune toward the b
 scanning *selectively* beats both scanning everything and scanning nothing; that's the only
 setting with a skill ceiling in it.
 
-**Built and playable** in `proto3d/index.html` (R19): appraising an item offers **[Q] leave
-it**, refused items are chalked and dimmed so a room can be swept once, the readout gives the
+**Built and playable** in `proto3d/index.html` (R19, extended R22): appraising a cursed item
+also shows what it does to the ride home — *"van risk 5% → 11%"* — because the marginal
+judgement above is unplayable if the player can only see half of it. Appraising offers **[Q]
+leave it**, refused items are chalked and dimmed so a room can be swept once, the readout gives the
 tier's value band and where this item sits in it — *"$136 CLEAN (tier 0: $40-150, this is
 87%)"* — and the ledger closes with **appraised / left behind** and a refusal percentage. The
 band readout is load-bearing: without it the player has a number and nothing to judge it

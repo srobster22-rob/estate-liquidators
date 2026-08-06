@@ -494,15 +494,25 @@ function band(it){
   return `  (tier ${it.tier}: $${lo}-${hi}, this is ${Math.max(0,Math.min(99,pct))}%)`;
 }
 
+// R22: what this piece does to the ride home. The right way to judge a cursed
+// item is by what it ADDS - value net of fees, against the ruin it raises - and
+// nobody can do that arithmetic without seeing the second half of it.
+function ruinAt(n){ return n<=0?0:Math.min(.95, RUIN_K*Math.pow(n,RUIN_EXP)); }
+function ruinDelta(it){
+  if(it.grade==="clean") return "";
+  const n=van.cargo.filter(c=>c.grade!=="clean").length;
+  return `   van risk ${(ruinAt(n)*100).toFixed(0)}% → ${(ruinAt(n+1)*100).toFixed(0)}%`;
+}
+
 function hud(){
   const held=player.holding, aim=held?null:aimedItem();
   const marked = curator.target&&(curator.state==="PURSUE"||curator.state==="FIXATE");
   const scanning = items.find(i=>i.scan>0);
   document.getElementById("prompt").textContent =
     over?"" : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
-    : held ? (held.known?`$${held.value}  ${held.grade.toUpperCase()}${band(held)}   [E] drop   [Q] leave it`
+    : held ? (held.known?`$${held.value}  ${held.grade.toUpperCase()}${band(held)}${ruinDelta(held)}   [E] drop   [Q] leave it`
                         :"[E] drop    [F] appraise")
-    : aim ? (aim.known?`${aim.refused?"LEFT  ":""}$${aim.value}  ${aim.grade.toUpperCase()}${band(aim)}   [E] take${aim.refused?"":"   [Q] leave it"}`
+    : aim ? (aim.known?`${aim.refused?"LEFT  ":""}$${aim.value}  ${aim.grade.toUpperCase()}${band(aim)}${ruinDelta(aim)}   [E] take${aim.refused?"":"   [Q] leave it"}`
                       :"UNAPPRAISED   [E] take   [F] appraise")
     : "";
   document.getElementById("hud").innerHTML =

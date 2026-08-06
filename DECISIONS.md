@@ -142,10 +142,25 @@ appraiser is the game's signature verb.
 
 **Knowingly accepted cost:** the world feels slightly arbitrary.
 
-**Simulated 2026-07-29** (`ECONOMY.md` §6, `sim/haul_sim.py`): scanning beats blind hauling
-by **+84%** at 14 van slots, and the edge decays monotonically with capacity until blind
-hauling wins outright somewhere between 24 and 32 slots. The mechanism §4.4 predicted is
-confirmed — the appraiser lives entirely on van space binding.
+**Simulated, five times, each time in a wider model** (`ECONOMY.md` §9–10.2). The edge decays
+monotonically with van capacity until blind hauling wins outright somewhere between 24 and 32
+slots, every single time — the mechanism §4.4 predicted is confirmed, and the appraiser lives
+entirely on van space binding.
+
+The *size* of the edge has been retracted four times, and the direction is worth noticing:
+
+| | Edge | What was wrong with the previous figure |
+|---|---:|---|
+| R5 `haul_sim` | +84% | noise cost was a placeholder |
+| R6 | +31% | losing cargo acted as a free reroll |
+| R8 | +6% | — (selection-only policy space) |
+| R17 | +4.4% | Disturbance floor was stale at +2 |
+| R18 | +25% | the crew had never been allowed to *refuse* an item |
+| **R22** | **+10%** | curses were absent, and the curses are the valuable items |
+
+Every retraction came from finding an instrumentation or modelling error, never from a design
+change. **Treat any future single figure here as provisional.** What has not moved in six
+measurements is the ordering and the mechanism, and those are what the decision rests on.
 
 Two things the sim changed:
 - **Scan *duration* is not the cost.** 1s and 9s per item produce the same outcome; there's
@@ -425,6 +440,33 @@ rounds of retuning were spent on a policy space that was missing a move.
 **Falsified if:** playtests show refusal rates near zero. That would mean players read the
 appraiser as a comparison tool — a UI failure rather than a balance one, fixed by making
 "leave it" an explicit action, not by touching the numbers.
+
+---
+
+## D-25 · Curses are judged on the margin, not counted
+**Status:** FIRM (simulated, unplayed) · `DESIGN.md` §4.2, `ECONOMY.md` §10.2
+
+There is no correct number of cursed pieces. The question is always *what does this one add* —
+its value net of fee, against the ruin it raises on everything already in the van — and the
+answer moves with how rich the van already is. The readout must therefore show the ruin delta
+(`proto3d` does: *"van risk 5% → 11%"*), because half the arithmetic is invisible otherwise.
+
+R11's "take two or three, then refuse" came from a model whose only lever was a count; it was
+the best available answer to a question posed in counts. Given the appraiser's actual readout,
+a crew that judges each piece on the margin beats every capped policy **without a cap at all**,
+and capping it at three costs 7%.
+
+This also closes something that looked like two decisions and is one. A curse is worth ×6, so
+the curses *are* the valuable items: any policy reaching for value reaches for curses. A crew
+refusing everything below the 70th percentile of the value band ends the night carrying 7.4
+cursed pieces and losing the van 57% of the time, having never decided to take a single risk.
+That is why value and grade come out of the same three seconds — separating them would let a
+crew think it was making one decision while making another.
+
+**Falsified if:** playtests show crews ignoring the ruin readout and reverting to a rule of
+thumb ("never more than three"). That would mean the arithmetic is too slow for a hallway
+argument, and the honest response is to make the van's interior lighting the gauge instead —
+a glanceable risk state rather than a number.
 
 ---
 

@@ -175,6 +175,28 @@ for (const [name, file, hook] of [
     ok("the HUD shows what a slot is worth in this tier",
        /tier \d: \$\d+-\d+, this is \d+%/.test(shown.text), shown.text);
 
+    // R22: a cursed item's readout must show what it does to the ride home, or
+    // the marginal judgement the whole curse economy rests on is unplayable.
+    const risk = await page.evaluate(() => {
+      const probe = { grade: "malignant", value: 900, tier: 2 };
+      const zero = ruinDelta(probe);
+      van.cargo.push({ grade: "malignant", value: 0 },
+                     { grade: "tainted", value: 0 });
+      const two = ruinDelta(probe);
+      const clean = ruinDelta({ grade: "clean", value: 100, tier: 1 });
+      van.cargo.length = 0;
+      return { zero, two, clean, curve: [1, 2, 3, 5].map((n) => ruinAt(n)) };
+    });
+    ok("cursed items show the ruin they add", /van risk 0% → 2%/.test(risk.zero),
+       risk.zero);
+    ok("...and it rises with what is already aboard",
+       /van risk 5% → 11%/.test(risk.two), risk.two);
+    ok("clean items say nothing about ruin", risk.clean === "");
+    ok("the readout uses the canonical ruin curve",
+       risk.curve.every((r, i) => Math.abs(
+         r - Math.min(0.95, T.van.ruin_k * Math.pow([1, 2, 3, 5][i], T.van.ruin_exp))
+       ) < 1e-9), JSON.stringify(risk.curve));
+
     // And the ledger reports refusal rate - the Milestone 2 metric D-24 adds.
     const ledger = await page.evaluate(() => {
       finish("TEST");

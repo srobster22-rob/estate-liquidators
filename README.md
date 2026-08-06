@@ -69,6 +69,11 @@ four things this project believed.
   moves with danger — too picky is a **−16%** disaster, because the van stops binding and the
   clock takes over. The edge still dies between 24 and 32 van slots: capacity is the master
   constant.
+- **The two greeds are the same greed.** A curse pays ×6, so the curses *are* the valuable
+  items, and a crew that raises its value bar raises its cursed intake without deciding to —
+  refusing everything below the 70th percentile ends the night carrying 7.4 cursed pieces and
+  losing the whole van 57% of the time. Judge each piece on the margin instead and no cap is
+  needed at all.
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4

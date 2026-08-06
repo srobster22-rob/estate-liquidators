@@ -300,6 +300,27 @@ C# additions — the cooldown gate, `Quiet`, `Hush`, and eight new assertions in
 first thing to run on a machine that has it is `python3 check.py`; the C# line must read PASS,
 not SKIP.
 
+R22 · Merged the curse economy into `integrated.py`, so for the first time one model holds
+both the appraiser and the curses. R11 measured the curse decision with the appraiser absent;
+R18 measured the appraiser with the cursed count nailed to a constant. · **They were never
+independent, and the coupling runs the wrong way.** A curse pays ×6, so *the curses are the
+valuable items* — any policy reaching for value reaches for curses without meaning to. R18's
+champion, refuse-below-the-70th-percentile, ends the night carrying **7.4 cursed pieces and
+losing the entire van 57% of the time**, an outcome it never chose. Its +25% was measured in a
+curse-free world; in this model it earns less than hauling blind. · **The fix is a better
+rule, not a lower number: judge each piece on the margin** — value net of fee, discounted by
+the ruin it raises, minus the ruin it adds to everything already aboard. MARGIN_30 beats every
+capped policy **with no cap at all**, and capping it at three costs 7%. So R11's "take two or
+three then refuse" is superseded: it was the best answer to a question posed in counts, and
+the appraiser lets you stop counting. **Appraiser edge: +10%**, the fifth value this number
+has had and the fourth time widening the model has lowered it. · Verified the merge by
+reproducing every pre-R22 figure exactly with curses switched off, and reconciled the two
+models rather than picking a winner — R11's TAKE_ALL collapse was real, and this shows why: a
+max-of-N policy is a curse magnet, so its "take everything" arm was already a greedy selector.
+· Built the missing half of the readout into `proto3d`: a cursed item now shows *"van risk 5%
+→ 11%"*, because the marginal judgement is unplayable when only one side of it is visible.
+Four new smoke-test assertions pin it to the canonical ruin curve.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
