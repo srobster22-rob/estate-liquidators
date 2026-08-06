@@ -17,7 +17,8 @@ from .genome import Genome, SearchSpace
 from .markets import universe
 from .state import RunState
 
-FUNNEL_ORDER = ["G0-market", "G1-oos", "G2-replication", "G3-controls", "G4-stress",
+FUNNEL_ORDER = ["G0-market", "G1-oos", "G2-replication", "G2b-durability",
+                "G3-controls", "G4-stress",
                 "G5-permutation", "G6-multiplicity", "G7-stress-pool", "unknown"]
 
 
@@ -69,7 +70,7 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
     if proven:
         sigs = st.proven_signatures()
         markets = sorted({p["genome"]["market"] for p in st.proven})
-        L.append(f"**{len(sigs)} distinct strategies passed all seven gates** "
+        L.append(f"**{len(sigs)} distinct strategies passed all eight gates** "
                  f"({len(proven)} genomes — several are the same rule at a different "
                  f"threshold or gene weight, which is why the headline counts "
                  f"structures rather than genomes).")
@@ -90,6 +91,23 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      "everywhere would be evidence against itself.")
         else:
             L.append(f"Markets represented: {', '.join('`' + m + '`' for m in markets)}.")
+        decaying = [m.name for m in universe.all_markets(include_controls=False)
+                    if not m.is_stationary]
+        if decaying:
+            hit = [m for m in decaying if m in markets]
+            L.append("")
+            L.append(f"**Non-stationary families: {len(hit)} of {len(decaying)} produced a "
+                     f"certified bot.** `{'`, `'.join(decaying)}` are near-clones of the "
+                     "families that certify most readily, differing only in that their edge "
+                     "fades — one halves every 3,000 bars, the other loses 85% of itself on a "
+                     "date. They are searched every generation and their candidates reach the "
+                     "hall of fame on screen score. Nothing surviving there is the point of "
+                     "including them: a lab that certified strategies on a market whose edge "
+                     "has gone would be measuring its own optimism."
+                     if not hit else
+                     f"**Warning: {len(hit)} non-stationary families produced certified bots** "
+                     f"({', '.join(hit)}). Their edge fades by construction, so this needs "
+                     "explaining before anything else in this report is trusted.")
         # Headroom belongs in the headline. "6 strategies certified after 41
         # gauntlets" and "6 strategies certified after 3,000" are different
         # claims, and the difference is invisible without this.
@@ -320,6 +338,7 @@ def _gate_meaning(gate: str) -> str:
         "G0-market": "candidate was aimed at a control family",
         "G1-oos": "worked only on the bars the search scored (in-sample fit)",
         "G2-replication": "worked only on the instances it was bred on (instance luck)",
+        "G2b-durability": "edge faded across the series (a crowded or arbitraged anomaly)",
         "G3-controls": "showed profit on a random walk (artifact or harness bug)",
         "G4-stress": "edge smaller than 2x costs or one bar of delay",
         "G5-permutation": "no better than its own block-bootstrapped null",

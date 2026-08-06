@@ -15,6 +15,10 @@ bot's evidence could have come out of and still clear G6, and it spans six order
 of magnitude here (>=1.07e9 down to 1,129). A bot whose headroom is close to the
 tests already run would vanish in a more serious hunt.
 
+Nothing certified on either **non-stationary** family, which is the point of
+having them: a lab that certified strategies on a market whose edge had gone
+would be measuring its own optimism (`FINDINGS.md` F20).
+
 **Sample size, not search size, is what binds.** Across three runs at 3,000,
 6,000 and 12,000 bars per instance, the count went 3 -> 6 -> 10 distinct
 strategies while the candidates needed fell from 91,940 to 960. G6's luck bar
@@ -51,10 +55,13 @@ Three specific reasons, stated plainly:
    `run.py calibrate`. Structure that is *in* the generator is findable by
    construction. Whether the same structure is in your actual instrument, this
    repository cannot tell you.
-2. **Synthetic markets are stationary; real edges decay.** Every family here has
-   the same structure at bar 3000 as at bar 1. Real anomalies get arbitraged
-   away, and the ones that survive publication usually shrink. Nothing in the
-   gauntlet tests for decay, because the generator has none to test.
+2. **Most synthetic markets are stationary; real edges decay.** Two families now
+   fade by construction — `futures_trend_decay_daily` halves its trend every
+   3,000 bars, `eq_largecap_break_daily` loses 85% of its edge on a date — and
+   the lab certifies **nothing** on either, though both are searched every
+   generation and their candidates reach the hall of fame. But the eleven
+   families that produce every certified bot still hold their parameters fixed
+   across 47.6 simulated years, and real anomalies do not.
 3. **No order has ever touched a book.** Fills, spreads, impact and funding are
    all models. Intrabar extremes come from a Brownian bridge between the open and
    the close, not from observed ticks, so stop and limit fills are distributional
@@ -110,7 +117,7 @@ record of a run is `REPORT.md` and `state/LOOP_LOG.md`.
 
 ## The seven gates
 
-Each gate answers one specific way a backtest lies. A candidate stops at the
+Each of the eight gates answers one specific way a backtest lies. A candidate stops at the
 first failure, which is also what makes the run cheap: most bots never reach the
 expensive gates.
 
@@ -118,6 +125,7 @@ expensive gates.
 |---|---|---|
 | **G1** out-of-sample | Does it work on bars the search never scored? | in-sample fitting |
 | **G2** replication | Does it work on 20 fresh instances of its market? | instance-specific luck |
+| **G2b** durability | Is the edge still there in the second half of each instance? | crowded / arbitraged anomalies |
 | **G3** controls | Does it stay flat on a pure random walk? | artifacts, harness bugs |
 | **G4** stress | Survive 2× costs, 3× costs, +1 bar of delay? | frictionless fantasy |
 | **G5** permutation | Beat its own block-bootstrapped null at p ≤ 0.01? | return distribution posing as skill |

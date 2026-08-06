@@ -704,13 +704,79 @@ reason, and it is now the only one that matters.
 
 ---
 
+## F20 · The non-stationary families, and a gate that has yet to earn its keep
+
+Stationarity was the top open item after F19: every family had the same trend and
+reversion parameters at bar 12,000 as at bar 1, which is the assumption real
+markets most obviously violate. Two families now break it, built as **near-clones
+of the two that certify most readily** so the only difference is durability:
+
+* `futures_trend_decay_daily` — `futures_trend_daily` with a crowded edge: trend
+  strength halves every 3,000 bars (~12 years) toward a 10% floor.
+* `eq_largecap_break_daily` — `eq_largecap_daily` whose anomaly stops working on a
+  date: 85% of the edge vanishes 45% of the way in.
+
+Only the *predictable* components decay. Drift, volatility, GARCH and jumps are
+untouched, so the instrument still looks like the same instrument — it just stops
+being forecastable. Their ceilings fall accordingly (1.34 → 0.54, 1.17 → 0.62),
+because quoting a decaying family's opening edge as its ceiling would overstate
+what is available across the series by several times.
+
+**The result: 11 strategies certified, none of them on a decaying family.**
+
+| family | best archetype net alphaSR | certified in the run |
+|---|---|---|
+| `futures_trend_daily` | +0.52 | 6 |
+| `futures_trend_decay_daily` | **+0.00** | **0** |
+| `eq_largecap_daily` | +0.46 | 3 |
+| `eq_largecap_break_daily` | **+0.18** | **0** |
+
+This is not a vacuous zero. Both families are tier 1, so they are searched every
+generation, and their candidates **reach the hall of fame on screen score** — 10
+and 6 entries respectively. The search finds them attractive; the ladder rejects
+every one. In a controlled run pointing the whole search at each family, 8 of 8
+and 9 of 9 finalists were rejected, against 6 of 12 certified on the stationary
+twin.
+
+**The new gate did not do the work, and saying so matters.** G2b-durability
+compares alpha in the second half of each holdout instance to the first, with
+thresholds measured rather than assumed: across ten bots already certified on
+stationary families, late-half alpha ran +0.38 to +0.66 and retention 0.85 to
+1.40 (median 0.98), so floors of +0.25 and 50% sit clear of honest behaviour. On
+the decaying twins the same style of bot retains 0.31 and 0.02.
+
+It never fires. **G1 rejects everything first**, because G1's out-of-sample window
+*is* the last 40% of the series — precisely where a decayed edge is weakest. The
+two tests overlap almost completely for these decay shapes.
+
+G2b is kept anyway, for two reasons that are worth stating rather than assuming:
+it is free (it splits the return series G2 has already produced), and it is
+independent evidence — G1 scores 8 search-pool instances adjacent to the training
+window, G2b scores 20 holdout instances the search never touched. For a milder
+decay, where the last 40% still clears G1's threshold but the trend is plainly
+down, G2b is the binding test. Since nothing in the catalogue currently exercises
+it, `test_durability_gate_can_fire` constructs a 5,000-bar-halflife probe and
+requires the statistic to register the fade, so the gate is verified code rather
+than decoration.
+
+The honest summary is narrower than "the lab now handles non-stationarity". It
+is: *the lab now contains non-stationarity and demonstrably refuses to certify
+strategies on it* — and the gate built specifically for the job turned out to be
+redundant with one that already existed. That is worth more than a gate that
+looks necessary because nothing was measured.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.
 
-1. **Synthetic markets are stationary.** Every family has the same structure at
-   bar 3000 as at bar 1. Real edges decay; that is the single largest gap between
-   a pass here and a claim about a real instrument.
+1. **Most families are still stationary.** Two now decay (F20) and nothing
+   certifies on them, but the eleven that produce every certified bot hold their
+   parameters fixed across 47.6 simulated years. The right next step is not more
+   decaying families — it is making decay the *default* and asking which
+   strategies survive it, rather than keeping a stationary main catalogue with two
+   cautionary exhibits beside it.
 2. **The Bonferroni leg of G6 extrapolates.** It reads a Gaussian tail well past
    what 120 permutation draws can resolve. It is a sanity bound, not a measured
    p-value; the weight is carried by the conjunction of G2, G5 and G7.

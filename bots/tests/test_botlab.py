@@ -419,6 +419,64 @@ def test_alpha_sharpe_does_not_reward_pure_beta():
 # gauntlet
 # --------------------------------------------------------------------------- #
 
+def test_decaying_families_actually_decay():
+    """The non-stationary twins must fade, and their stationary originals must
+    not. Without this the families are just two more markets with a flag set."""
+    from bots.botlab.markets import generate as _gen
+    pairs = [("futures_trend_daily", "futures_trend_decay_daily",
+              Gene("ma_cross", {"fast": 20, "slow": 100})),
+             ("eq_largecap_daily", "eq_largecap_break_daily", Gene("zrev", {"lb": 5}))]
+    for stat_name, decay_name, gene in pairs:  # noqa: B007
+        assert universe.get(stat_name).is_stationary
+        assert not universe.get(decay_name).is_stationary
+        ret = {}
+        for name in (stat_name, decay_name):
+            spec = universe.get(name)
+            g = Genome(market=name, genes=[gene], entry_threshold=0.1,
+                       exit_threshold=0.02, sizing="voltarget", target_vol=0.15,
+                       max_leverage=2.0)
+            early, late = [], []
+            for i in range(1, 9):
+                s_ = _gen.cached(spec, i)
+                h = len(s_) // 2
+                early.append(metrics.evaluate(engine.run(s_.slice(0, h), g, cost_mult=0.0)).alpha_sharpe)
+                late.append(metrics.evaluate(engine.run(s_.slice(h, len(s_)), g, cost_mult=0.0)).alpha_sharpe)
+            e, l = float(np.median(early)), float(np.median(late))
+            ret[name] = l / e if abs(e) > 0.05 else 1.0
+        assert ret[decay_name] < ret[stat_name] - 0.15, \
+            f"{decay_name} retained {ret[decay_name]:.2f} vs {stat_name} {ret[stat_name]:.2f}"
+        # A decaying family's ceiling must reflect its average edge, not its first bar.
+        assert universe.get(decay_name).oracle_sharpe_ceiling() < \
+               universe.get(stat_name).oracle_sharpe_ceiling()
+
+
+def test_durability_gate_can_fire():
+    """G2b is currently unexercised — on the two decaying families G1 rejects
+    everything first, because G1's window is already the last 40% of the series.
+    That makes it worth proving the gate is live code rather than decoration: on a
+    family with a *mild* decay, which G1's threshold would wave through, the
+    durability statistic must still register the fade."""
+    import dataclasses
+    from bots.botlab.markets import generate as _gen
+    mild = dataclasses.replace(universe.get("futures_trend_daily"),
+                               name="mild_decay_probe", edge_decay_halflife=5000.0,
+                               edge_decay_floor=0.0, tier=1)
+    universe.register(mild)
+    try:
+        g = Genome(market="mild_decay_probe",
+                   genes=[Gene("ma_cross", {"fast": 20, "slow": 100})],
+                   entry_threshold=0.1, exit_threshold=0.02, sizing="voltarget",
+                   target_vol=0.15, max_leverage=2.0)
+        res = [engine.run(_gen.cached(mild, i), g) for i in range(1, 13)]
+        early, late = gauntlet._early_late_alpha(res)
+        retention = (late / early) if early > 0.10 else 1.0
+        assert retention < gauntlet.GauntletConfig().min_edge_retention, \
+            f"durability statistic did not register a 5,000-bar halflife: " \
+            f"early {early:+.2f} late {late:+.2f} retention {retention:.2f}"
+    finally:
+        universe.unregister("mild_decay_probe")
+
+
 def test_gauntlet_refuses_control_markets():
     g = Genome(market="control_martingale_daily", genes=[Gene("momentum", {"lb": 40})])
     v = gauntlet.run_gauntlet(g, gauntlet.GauntletConfig(), n_trials=10, cross_market=False)

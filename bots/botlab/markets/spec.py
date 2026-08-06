@@ -91,6 +91,25 @@ class MarketSpec:
     # while the worst daily move on a 45%-vol instrument becomes ~34% rather than
     # ~1,100%.
     max_bar_move_sigma: float = 12.0
+
+    # --- edge decay: the assumption everything else rested on -----------------
+    # Every family above is stationary — the same trend and reversion parameters
+    # at the last bar as at the first. Real anomalies do not behave that way: they
+    # get crowded, arbitraged and published, and the ones that survive usually
+    # shrink. With 47.6 simulated years per instance that assumption had become
+    # the binding limitation on anything this lab could claim.
+    #
+    # `edge_decay_halflife` (bars) decays the *predictable* components — trend,
+    # reversion, calendar — toward `edge_decay_floor` as a fraction of their
+    # original size. Drift, volatility, GARCH and jumps are untouched, so the
+    # instrument still looks like the same instrument; only the edge fades.
+    # `edge_break_at` instead applies an abrupt multiplier at a point in the
+    # series, for the case where an anomaly stops working on a date rather than
+    # fading — a rule change, a publication, a new venue.
+    edge_decay_halflife: float = 0.0   # 0 = stationary
+    edge_decay_floor: float = 0.0      # surviving fraction of the original edge
+    edge_break_at: float = 0.0         # fraction of the series, 0 = no break
+    edge_break_mult: float = 1.0       # edge multiplier after the break
     seasonal_amp: float = 0.0        # amplitude of the calendar effect, fraction of per-bar vol
     seasonal_period: int = 5         # bars per cycle (5 = weekday, 26 = 15-min US session)
     seasonal_shape: str = "sin"      # "sin" | "u"  (u = intraday U-shaped vol + open reversal)
@@ -121,6 +140,24 @@ class MarketSpec:
     def sigma_bar(self) -> float:
         return self.vol_ann / math.sqrt(self.bars_per_year)
 
+    def edge_profile(self, n: int):
+        """Per-bar multiplier on the predictable components, in [0, 1]."""
+        import numpy as _np
+        prof = _np.ones(int(n))
+        if self.edge_decay_halflife > 0.0:
+            t = _np.arange(int(n))
+            decayed = 0.5 ** (t / float(self.edge_decay_halflife))
+            prof = self.edge_decay_floor + (1.0 - self.edge_decay_floor) * decayed
+        if 0.0 < self.edge_break_at < 1.0:
+            cut = int(self.edge_break_at * int(n))
+            prof = prof.copy()
+            prof[cut:] *= float(self.edge_break_mult)
+        return prof
+
+    @property
+    def is_stationary(self) -> bool:
+        return self.edge_decay_halflife <= 0.0 and not (0.0 < self.edge_break_at < 1.0)
+
     def oracle_sharpe_ceiling(self) -> float:
         """Annual Sharpe of a forecaster with perfect knowledge of the
         predictable components. Nothing found in this market may exceed it, and
@@ -135,6 +172,12 @@ class MarketSpec:
         seas = self.seasonal_amp / math.sqrt(2.0)
         carry = abs(self.carry_ann) / max(self.vol_ann, 1e-9) / math.sqrt(self.bars_per_year)
         edge = math.sqrt(trend ** 2 + rev ** 2 + seas ** 2 + carry ** 2)
+        if not self.is_stationary:
+            # A decaying family's ceiling is its *average* edge, not its opening
+            # one — quoting the opening value would overstate what is on the table
+            # for the whole series by a factor of several.
+            import numpy as _np
+            edge *= float(_np.mean(self.edge_profile(self.n_bars)))
         return edge * math.sqrt(self.bars_per_year)
 
     def summary(self) -> str:
@@ -142,4 +185,5 @@ class MarketSpec:
                 f"trend={self.trend_frac:4.2f} rev={self.rev_kappa:4.2f} "
                 f"carry={self.carry_ann:+5.1%} spr={self.costs.spread_bps:5.1f}bp "
                 f"ceiling_SR={self.oracle_sharpe_ceiling():4.2f}"
-                + ("  [CONTROL]" if self.control else ""))
+                + ("  [CONTROL]" if self.control else "")
+                + ("" if self.is_stationary else "  [DECAYING]"))

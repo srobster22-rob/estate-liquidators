@@ -1,6 +1,7 @@
 """The market catalogue — "all different types of markets".
 
-Twelve families across seven asset classes, plus two negative controls. Every
+Thirteen tradeable families across seven asset classes — eleven stationary, two
+whose edge decays — plus two negative controls. Every
 number is a claim about the real world, so each family carries the claim it is
 making in `notes`. Where a claim is wrong, the fix is to change it here and
 re-run `python bots/run.py calibrate` — nothing downstream hard-codes a market.
@@ -163,6 +164,37 @@ _MARKETS: list[MarketSpec] = [
         vol_fix=1.1221,
         max_leverage=4.0, tier=2,
         notes="Intraday 15-minute bars: U-shaped session vol, open/close drift tilt, costs paid 26x more often.",
+    ),
+    # ---------------- non-stationary twins ---------------------------------
+    # Deliberate near-clones of the two families that certify most readily, so
+    # the *same* bot can be run on both and the only thing that differs is
+    # whether its edge survives. A stationary result and a decaying result are
+    # otherwise incomparable, and comparing them is the entire point.
+    MarketSpec(
+        name="futures_trend_decay_daily", asset_class="futures", bars_per_year=DAY, n_bars=12000,
+        drift_ann=0.01, vol_ann=0.14, carry_ann=0.020,
+        trend_frac=0.085, trend_rho=0.99, rev_kappa=0.0,
+        garch_alpha=0.07, garch_beta=0.90, tail_df=6.0, gap_frac=0.15,
+        edge_decay_halflife=3000.0, edge_decay_floor=0.10,
+        costs=CostModel(spread_bps=1.5, commission_bps=0.3, impact_coef_bps=7.0,
+                        adv_notional=3e9, borrow_ann=0.0, financing_ann=0.04),
+        vol_fix=1.0328,
+        max_leverage=5.0, tier=1,
+        notes="futures_trend_daily with a crowded edge: trend strength halves every 3,000 bars (~12y) toward a 10% floor. Same instrument, fading forecastability.",
+    ),
+    MarketSpec(
+        name="eq_largecap_break_daily", asset_class="equity", bars_per_year=DAY, n_bars=12000,
+        drift_ann=0.08, vol_ann=0.28, trend_frac=0.040, trend_rho=0.975,
+        rev_kappa=0.030, rev_halflife=6.0,
+        garch_alpha=0.08, garch_beta=0.88, regime_switch_prob=0.005,
+        jump_prob=0.003, jump_mean=-1.0, jump_scale=3.5, tail_df=4.5,
+        gap_frac=0.35,
+        edge_break_at=0.45, edge_break_mult=0.15,
+        costs=CostModel(spread_bps=3.0, commission_bps=0.5, impact_coef_bps=15.0,
+                        adv_notional=4e8, borrow_ann=0.006, financing_ann=0.055),
+        vol_fix=1.0699,
+        tier=1,
+        notes="eq_largecap_daily whose anomaly stops working on a date: 85% of the edge vanishes 45% of the way in. Publication, a rule change, a new venue.",
     ),
     # ---------------- negative controls -----------------------------------
     MarketSpec(

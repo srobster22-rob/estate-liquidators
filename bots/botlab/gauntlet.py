@@ -8,6 +8,8 @@ specific way a backtest lies:
   G1  OOS WINDOW    Did it work on bars the search never scored? (in-sample fit)
   G2  REPLICATION   Does it work on 20 *fresh instances* of its market, never
                     touched during the search? (instance-specific luck)
+  G2b DURABILITY    Is the edge still there in the second half of each instance,
+                    or did it fade? (crowded, published, arbitraged anomalies)
   G3  CONTROLS      Does it stay flat on a pure random walk, where profit is
                     impossible by construction? (harness bug / artifact mining)
   G4  COST STRESS   Does it survive 2x costs, 3x costs, and one extra bar of
@@ -19,7 +21,7 @@ specific way a backtest lies:
   G7  STRESS POOL   Does it replicate a second time, on a third disjoint pool?
                     (the gates above, re-run as a confirmation)
 
-A bot that passes all seven is marked PROVEN — which here means precisely
+A bot that passes all eight is marked PROVEN — which here means precisely
 "survived G1-G7 on this market model at these costs", and nothing more. See
 bots/README.md for what that does and does not license.
 """
@@ -51,6 +53,8 @@ class GauntletConfig:
     min_oos_alpha_sr: float = 0.25
     min_repl_alpha_sr: float = 0.35
     min_repl_pos_frac: float = 0.70
+    min_late_alpha_sr: float = 0.25      # G2b: edge must still be there at the end
+    min_edge_retention: float = 0.50     # G2b: ... and not be a fraction of its start
     min_stress_alpha_sr: float = 0.28
     min_stress_pos_frac: float = 0.65
     max_drawdown: float = 0.35
@@ -130,9 +134,37 @@ def instances(market: str, pool, n: int) -> list[Series]:
 def _panel(series: list[Series], g: Genome, cost_mult: float = 1.0,
            exec_delay: int = 1) -> tuple[metrics.Perf, list[metrics.Perf]]:
     """(pooled perf, per-instance perfs)."""
+    return _panel_raw(series, g, cost_mult, exec_delay)[:2]
+
+
+def _panel_raw(series: list[Series], g: Genome, cost_mult: float = 1.0,
+               exec_delay: int = 1):
+    """(pooled perf, per-instance perfs, raw results). The durability gate needs
+    the raw return series, and re-running to get them would double G2's cost."""
     results = [engine.run(s, g, cost_mult=cost_mult, exec_delay=exec_delay) for s in series]
     per = [metrics.evaluate(r) for r in results]
-    return metrics.pooled_perf(results), per
+    return metrics.pooled_perf(results), per, results
+
+
+def _early_late_alpha(results) -> tuple[float, float]:
+    """Median alpha Sharpe over the first and second half of each run.
+
+    Computed by splitting the *return series already produced by G2*, not by
+    re-running on sliced data: one continuous run with no warmup discontinuity at
+    the midpoint, and no extra backtests.
+    """
+    early, late = [], []
+    for res in results:
+        r = res.active_ret
+        m = res.active_market_ret[: r.size]
+        k = r.size // 2
+        if k < 32:
+            continue
+        early.append(metrics.alpha_sharpe(r[:k], m[:k], res.bars_per_year))
+        late.append(metrics.alpha_sharpe(r[k:], m[k:], res.bars_per_year))
+    if not early:
+        return 0.0, 0.0
+    return float(np.median(early)), float(np.median(late))
 
 
 SCREEN_QUANTILE = 0.40          # score on the bad instances, not the average one
@@ -226,7 +258,7 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
 
     # ---- G2: replication on untouched instances -----------------------------
     repl = instances(g.market, universe.HOLDOUT_POOL, cfg.n_repl_instances)
-    pooled, per = _panel(repl, g)
+    pooled, per, repl_raw = _panel_raw(repl, g)
     n_bt += len(repl)
     srs = np.array([p.alpha_sharpe for p in per])
     med = float(np.median(srs))
@@ -255,6 +287,32 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
                         pooled.to_dict()))
     if not ok:
         return fail("G2-replication")
+
+    # ---- G2b: durability — does the edge still exist late in the series? -----
+    # Every synthetic family was stationary until this gate existed, which made
+    # "passed the gauntlet" conditional on an assumption real markets violate:
+    # anomalies get crowded, published and arbitraged, and the survivors shrink.
+    # The catalogue now contains two families whose edge fades (a trend that
+    # halves every 3,000 bars, and a large-cap anomaly that loses 85% of itself on
+    # a date), and this gate is what notices.
+    #
+    # Thresholds measured, not assumed. Across ten bots that had already been
+    # certified on stationary families, second-half alpha Sharpe ran +0.38 to
+    # +0.66 and retention 0.85 to 1.40 (median 0.98). On the decaying twins the
+    # same style of bot retains 0.31 and 0.02. A floor of +0.25 late and 0.50
+    # retention sits comfortably between them.
+    #
+    # Costs nothing: it splits the return series G2 already produced.
+    early_a, late_a = _early_late_alpha(repl_raw)
+    retention = (late_a / early_a) if early_a > 0.10 else 1.0
+    ok = late_a >= cfg.min_late_alpha_sr and retention >= cfg.min_edge_retention
+    perf.update(early_alpha_sr=early_a, late_alpha_sr=late_a, edge_retention=retention)
+    stages.append(Stage("G2b-durability", ok,
+                        f"late-half alphaSR {late_a:+.2f} (need {cfg.min_late_alpha_sr:+.2f}), "
+                        f"retained {retention:.0%} of the early half {early_a:+.2f} "
+                        f"(need {cfg.min_edge_retention:.0%})"))
+    if not ok:
+        return fail("G2b-durability")
 
     # ---- G3: negative controls ----------------------------------------------
     worst_ctrl, ctrl_detail = 0.0, []

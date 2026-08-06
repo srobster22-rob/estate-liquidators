@@ -155,6 +155,7 @@ def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
     clip_eps = float(spec.garch_clip)
     sigma2_cap = (float(spec.vol_cap_mult) * sigma_noise) ** 2
     move_cap = float(spec.max_bar_move_sigma) * sigma_bar
+    edge = spec.edge_profile(n)
 
     for t in range(n):
         if p_enter > 0.0 and u_switch[t] < (p_exit if state else p_enter):
@@ -171,7 +172,12 @@ def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
             jump = sigma_bar * (spec.jump_mean + spec.jump_scale * z_jump[t])
 
         shock = sigma_t * eps[t]
-        lr = mu_bar * drift_mult + trend + rev + seas_drift[t] * sigma_bar + shock + jump
+        # `edge[t]` scales only the predictable part. Drift, volatility, GARCH and
+        # jumps are untouched, so a decaying family still looks like the same
+        # instrument — it just stops being forecastable.
+        lr = (mu_bar * drift_mult
+              + edge[t] * (trend + rev + seas_drift[t] * sigma_bar)
+              + shock + jump)
         if lr > move_cap:                       # limit-up / circuit breaker
             lr = move_cap
         elif lr < -move_cap:

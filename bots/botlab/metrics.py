@@ -63,6 +63,24 @@ class Perf:
                 f"cost {self.cost_drag_ann:6.2%}/y fit {self.fitness:6.2f}")
 
 
+def alpha_sharpe(r: np.ndarray, m: np.ndarray, bpy: float) -> float:
+    """Annualised Sharpe of the residual after regressing out the market.
+
+    Shared by `evaluate` and by the durability gate, which needs the same number
+    computed on half a return series. The residual-vol floor is the one from
+    `evaluate`: without it a near-beta bot's alpha Sharpe explodes on rounding
+    noise.
+    """
+    n = min(r.size, m.size)
+    if n < 16:
+        return 0.0
+    r, m = r[:n], m[:n]
+    _, beta, _ = stats.alpha_beta(r, m)
+    resid = r - beta * m
+    sd = max(float(resid.std(ddof=1)), 0.25 * float(r.std(ddof=1)), 1e-12)
+    return float((r.mean() - beta * m.mean()) / sd * math.sqrt(bpy))
+
+
 def _max_dd(equity: np.ndarray) -> float:
     if equity.size < 2:
         return 0.0
