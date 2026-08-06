@@ -99,6 +99,27 @@ there, are at the bottom.
 >
 > And name the **runner-up that just missed** and why. That's the one I'll actually argue with.
 >
+> ### Check your rejections, not just your keeps
+>
+> A concept cut for a wrong reason is gone as permanently as a concept kept for a wrong reason
+> is expensive — and it's the harder error to catch, because nothing downstream of a bad
+> rejection ever complains.
+>
+> You do **not** have to search every rejection. Do this instead:
+>
+> - **When the same reason kills more than one concept, that reason is load-bearing — check it
+>   once, properly.** A belief used three times and verified zero times is how a whole category
+>   gets thrown away on a hunch. This has already happened with this prompt: one unchecked
+>   assumption about LLM referees killed two concepts and set the kill condition on a third,
+>   and a shipped game contradicts it.
+> - **"Nobody has solved this" is a market claim and needs a search**, exactly like "nothing
+>   like this exists." It is the same sentence pointed the other way. One rejection in this
+>   prompt's output read "nobody has found the middle" about a design space where two games had
+>   found the middle.
+> - **Never invent supporting evidence.** If the reason is a hunch, write "hunch." A fabricated
+>   playtest result that reaches the right verdict is worse than no reason at all, because it's
+>   invisible and the habit survives.
+>
 > ### The graveyard — this is not optional filler
 >
 > A section of concepts you generated and cut, one line each: **the idea, and the specific
@@ -244,6 +265,21 @@ market obviousness are the same signal.
 Progression systems are the most pleasant thing to write and the least informative. They also
 disguise a weak loop — if the ninety seconds isn't good, no meta-layer saves it, and adding
 one hides the problem for a year.
+
+**"Check your rejections, not just your keeps."**
+Added last, and it's the clause I'd have expected least. Auditing the 25 rejections from this
+prompt's first run reversed **no verdicts** but found **six wrong reasons** — including one
+belief about LLM referees that had killed two concepts *and* was setting the kill condition on
+a live one, and one flat factual error ("nobody has found the middle" about a design space
+with two games in it). One rejection cited a playtest pattern that was simply invented.
+
+The asymmetry is what earns it a clause. A bad keep costs a month and announces itself. **A bad
+rejection costs the idea and never says a word** — no test fails, no reviewer objects, the
+concept is just gone. And the correction had teeth: the falsified referee prediction promoted
+a live concept from runner-up to third.
+
+The cheap version of the fix is the one to keep: audit a reason only when it has killed more
+than one concept. That caught the one that mattered here and cost six searches.
 
 ## Where to weaken it
 

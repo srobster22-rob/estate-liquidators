@@ -24,6 +24,13 @@ It also **breached the action quota** and I've left it breached rather than padd
 replacement concepts I generated were searched first and both died before a card was written.
 See the ledger.
 
+**Pass four — auditing the rejections.** The sweep checked what the document *kept*; it never
+checked the 25 things it threw away. Doing that reversed no verdicts but found six wrong
+reasons, one of which — an unchecked assumption that LLM referees can't be consistent — had
+killed two concepts and was setting the kill condition on a live card. *Arsenic* falsifies it,
+and #34 Understudy went from runner-up to **#3** as a result. Write-up in
+[Auditing the rejections](#auditing-the-rejections).
+
 **What this is for.** Finding the one thing to prototype on Saturday. Not a list to feel good
 about. Every card carries a written-down result that would make you drop it and a test small
 enough that you'd actually run it.
@@ -722,10 +729,18 @@ script and you have to stay in character.**
 - **Nearest:** *Façade* (2005 — the structural ancestor, and instructive: it was brilliant and
   nobody could tell what it wanted from them) · AI Dungeon and its descendants (unconstrained,
   and therefore with no failure state).
-- **Kills it:** the referee disagrees with itself on identical input. A rule that changes its
-  mind isn't a rule, and players detect this within twenty minutes.
+- **Kills it — substantially de-risked, 2026-08-06, and this card was promoted as a result.**
+  The stated kill was "the referee disagrees with itself on identical input." [*Arsenic*](https://playarsenic.com/) is
+  a shipped counter-example: a Game Master agent validates every character response for
+  consistency, and the reported behaviour is "consistent within their rules but creative in
+  their delivery." That doesn't prove *this* referee will hold — grading in-character-ness is
+  a harder judgement than flagging a factual contradiction — but it removes the assumption
+  that it can't be done, which was the whole objection.
+  **The remaining kill is now the *Façade* problem, alone:** players can't tell what the game
+  wants from them, freeze, and blame themselves. Watch for the tester who stops talking.
 - **Test:** no engine. A chat window, a scene, a character sheet, a grader prompt. Run the same
-  line past it ten times and measure agreement. **One hour, pass/fail.**
+  line past it ten times and measure agreement. **One hour, pass/fail** — and read *Arsenic*'s
+  [write-up of its own architecture](https://playarsenic.com/blog/how-ai-murder-mystery-games-work) first, which is free and will save most of the hour.
 - **Scope:** 2 people, 8 months. **Per-session inference cost is a unit economic, not a line
   item** — price it before designing anything, because it decides whether this is sold once or
   subscribed to. Unverified.
@@ -1023,12 +1038,12 @@ learn nothing for a quarter.
 |---|---|---|---|
 | 1 | **Provenance** (#16) | One day, text only, no engine | Nothing — the test *is* the generator you'd need anyway, so a fail leaves you a tool and a finding |
 | 2 | **Direct** (#46) | **One afternoon**, 2D, decisive in ten minutes | An afternoon. And a fail is genuinely informative: it tells you *why* indirect control keeps getting buried |
-| 3 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
-| 4 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
+| 3 | **Understudy** (#34) | **One hour**, a chat window, ten repeated inputs | An hour — and *Arsenic* has already published how it built the same referee, so a fail is informative rather than just discouraging |
+| 4 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
 | 5 | **Wake** (#24) | One evening, printed, zero engineering | An evening. And it ships as a paper game even if the digital version never happens |
-| 6 | **Foley** (#30) | One day, one clip, six sounds | A day — and the latency measurement across three machines is reusable for anything audio-timed |
-| 7 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
-| 8 | **Pack** (#29) | Three days, 2D, debug overlay | Three days, and the read-back finding transfers to Tell (#41) and to any companion-AI design you ever do |
+| 6 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
+| 7 | **Foley** (#30) | One day, one clip, six sounds | A day — and the latency measurement across three machines is reusable for anything audio-timed |
+| 8 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
 
 **How this table has moved, in order.** Worth keeping visible, because the movement is the
 only evidence that the ranking is doing anything.
@@ -1047,6 +1062,15 @@ only evidence that the ranking is doing anything.
   March 2026 — and demoted **Sworn** (#6), whose bet turns out to be running in *Arsenic*.
   **Wake** (#24) and **Foley** (#30) took the slots: both clean after a real search, one
   evening and one day respectively.
+- **The rejection audit** then promoted **Understudy** (#34) from runner-up to #3 — its kill
+  condition rested on a prediction about LLM referees that *Arsenic* has since falsified — and
+  pushed **Pack** (#29) back out. Pack has now entered and left this table twice.
+
+**Pack's yo-yo is worth reading as a signal.** The top two haven't moved through three passes;
+positions 6–8 have churned every time. That says the bottom of this ranking is carrying very
+little information — several concepts sit within noise of each other on cost-to-disprove, and
+the ordering between them is close to arbitrary. **Treat the top three as a recommendation and
+the rest as a set.**
 
 **What the sweep did to the table's credibility.** Two of the original eight were occupied
 games. That is a 25% error rate in the section of the document that was supposed to be its
@@ -1061,16 +1085,21 @@ gutting its novelty. Cheap test, and now a *known-achievable* mechanic, but the 
 claim is much smaller than the card originally made. It sits just outside the eight and would
 re-enter immediately if the human-liar framing survives an evening on paper.
 
-**Runner-up, and the one worth arguing about: Understudy (#34).** Its test is the cheapest in
-the whole document — one hour, a chat window, ten repeated inputs, measure agreement. By raw
-cost-to-disprove it should be top three. It isn't, because a *pass* barely derisks it:
-referee consistency is necessary and nowhere near sufficient, the *Façade* problem (players
-can't tell what the game wants) sits entirely downstream of it, and the per-session inference
-cost is unpriced. Cheap test, weak signal.
+**~~Runner-up, and the one worth arguing about: Understudy (#34).~~ Promoted to #3.** It was
+held out on the grounds that a *pass* barely derisks it — referee consistency being necessary
+and nowhere near sufficient. The rejection audit undercut that: *Arsenic* is a shipped
+existence proof for the referee, so the objection has become "this part is known to work"
+rather than "this part might be impossible." The remaining risk collapsed to one thing (the
+*Façade* problem) instead of two, and its test is still the cheapest in the document at one
+hour. Cheap test, and now a *meaningfully* narrowed question.
 
-That distinction — cost to disprove versus **information gained per pound** — is the real
-criterion, and Understudy is where the two come apart. If you think a cheap test that proves
-little still beats a moderate test that proves a lot, promote it and the ranking changes.
+The per-session inference cost is still unpriced, and still decides whether this is sold once
+or subscribed to. That's a business question, not a design one, and it doesn't belong in a
+cost-to-disprove ranking — but do price it before designing anything.
+
+**Runner-up now: Pack (#29)**, out for the second time. Three days, clean after search, and
+outbid on both occasions by something cheaper. Its read-back finding is shared with Tell
+(#41), so it stays useful even unbuilt.
 
 **The action equivalent of that argument is Tell (#41).** Three days for the read-back, and a
 pass proves only that adaptation is *legible* — not that being read is fun to play against.
@@ -1102,9 +1131,15 @@ That the last group exists at all is the document's most useful output. A gravey
 only by taste is a record of what one generator found unappealing; a graveyard filled by
 search is a record of the market.
 
-1. **Chorus** — co-op where sung pitch is the network protocol. The accessibility floor is a
+1. ~~**Chorus** — co-op where sung pitch is the network protocol. The accessibility floor is a
    wall, not a slope: a large minority genuinely cannot pitch-match, and there's no parallel
-   path that isn't a different game.
+   path that isn't a different game.~~
+   **Reason falsified 2026-08-06. Still dead, but not for that.** Pitch-as-control is a working
+   shipped genre: [*One Hand Clapping*](https://store.steampowered.com/app/893720/One_Hand_Clapping/) (a vocal platformer on Steam), [*Pitch Pong*](https://flappysound.com/pitch-pong/) (1v1
+   online, sung), *Pitch Bird*, *Vocaluxe* (six players). The accessibility objection I killed
+   it with is contradicted by a market that supports several of these. It stays dead because
+   it's **occupied**, which is a completely different finding — and the objection I used would
+   have wrongly killed all four of those games too.
 2. **Bequest** — a museum curated across 200 years by predecessors you don't control.
    Collapsed into The Inheritance (#12), which has the same bet with a live person on the far
    end.
@@ -1120,28 +1155,52 @@ search is a record of the market.
 8. **Procedural dungeon where the dungeon is a body** — setting as hook. Banned, and it still
    arrived on the second pass.
 9. **Co-op submarine** — *Barotrauma*, and it's excellent.
-10. **Deduction where the murderer is an LLM** — Understudy's referee-consistency problem
-    (#34) without the theatrical framing that makes inconsistency forgivable.
+10. ~~**Deduction where the murderer is an LLM** — Understudy's referee-consistency problem
+    (#34) without the theatrical framing that makes inconsistency forgivable.~~
+    **Prediction falsified 2026-08-06, and this is the most consequential error in the
+    document.** [*Arsenic*](https://playarsenic.com/) ships exactly this: AI suspects, a Game Master agent validating
+    every response for consistency, contradictions surfaced across interrogations. Reported as
+    working — "consistent within their rules but creative in their delivery." I killed this
+    concept on a *guess* about LLM referees, and that guess also grounds graveyard entry 17
+    **and the kill condition of live card #34**. It stays dead because Arsenic occupies it —
+    but the reasoning that killed it was wrong, and it was doing work in three places. See
+    the audit below.
 11. **Plants that grow between sessions in real time** — the good half of this is #13 and #14.
     On its own it's a push notification.
 12. **Racing where the track is drawn by the previous player** — *Trackmania* and the entire
     user-track genre.
-13. **Audio-only maze** — tried repeatedly (*A Blind Legend*, *The Nightjar*). The ceiling is
-    well documented and it is low.
-14. **A game where you play the building, not the people** — fails the picture-the-hands test
+13. **Audio-only maze** — tried repeatedly (*A Blind Legend*, *The Nightjar*). ~~The ceiling is
+    well documented and it is low.~~ **Corrected:** both games are real and *A Blind Legend* is
+    well regarded — reviewers say its binaural work "sets the bar very high." What's small is
+    the **market** ("a few creative teams, free mobile games and five-dollar PC games"), not
+    the design ceiling. I conflated the two. Dead on commercial grounds, not creative ones,
+    which is a materially different reason to walk away.
+14. **Multiplayer where you can't see your own character** — occupied by *Invisigun Heroes*,
+    where everyone turns invisible and you give yourself away by touching the world. ~~Every
+    playtest of this shape ends with players reading their position off a teammate.~~ **I made
+    that up.** The reported dynamic is players repeatedly self-revealing to locate themselves,
+    then having to move because they just announced where they were. Right verdict,
+    invented evidence — flagged because invented evidence is worse than no evidence.
+15. **A game where you play the building, not the people** — fails the picture-the-hands test
     on contact.
-15. **Multiplayer where you can't see your own character** — cute for an hour. Every playtest
-    of this shape ends with players reading their position off a teammate, which is a chore
-    with a novelty wrapper.
 16. **Cozy crafting with a dark secret** — banned, arrived anyway on the second pass. That it
     keeps arriving is precisely why the ban is in the prompt.
-17. **Negotiating against LLM merchants** — the merchant is either prompt-exploitable or
-    arbitrary, and those are the same failure. Same problem as #34, in a context where nobody
-    forgives it.
+17. **Negotiating against LLM merchants** — ~~the merchant is either prompt-exploitable or
+    arbitrary, and those are the same failure.~~ **Same falsified prediction as entry 10.**
+    *Arsenic* demonstrates a constrained LLM agent holding a consistent position under
+    adversarial questioning, which is the mechanism this needed. **This is the one entry in
+    the graveyard I would now reopen** — it was cut on a guess, the guess is contradicted, and
+    unlike entry 10 no shipped game occupies the *merchant* framing. It needs a fresh card and
+    a search of its own before it earns one.
 18. **Physics game where you play the furniture** — funny for one screenshot.
-19. **City builder where citizens write their own laws** — the rigorous version is
-    *Democracy*; the fun version is a chat log; nobody has found the middle, and I don't have
-    a mechanism for it either. Cut for honesty rather than for quality.
+19. **City builder where citizens write their own laws** — ~~the rigorous version is
+    *Democracy*; the fun version is a chat log; **nobody has found the middle**, and I don't
+    have a mechanism for it either.~~ **Flatly wrong, corrected 2026-08-06.** Two games found
+    the middle: [*Lawmaker*](https://lawmakergame.com/) — found a party, *write the laws*, campaign to thousands of
+    individually-modelled AI voters, with bills that must clear multiple legislatures — and
+    *Polity*, where players are citizens, lawmakers and journalists in player-driven
+    legislation. **I cut a concept for being unsolvable while two games were solving it.**
+    Dead now because it's occupied, which is the opposite reason.
 
 *From the action pass:*
 
@@ -1195,6 +1254,50 @@ up as cards:*
 
 Both were searched *before* a card was written, which is the order the whole document should
 have used. Total cost: two searches.
+
+---
+
+## Auditing the rejections
+
+The verification sweep checked the 46 things this document kept. It did not check the 25 it
+**threw away** — and a rejection resting on a wrong memory discards a concept just as
+permanently as a wrong keep wastes a month. Same defect class, mirror image, and the harder
+one to notice: nothing downstream of a bad rejection ever complains.
+
+Checked 2026-08-06. **No verdict reversed. Six reasons were wrong, and one of the wrong
+reasons was doing work elsewhere in the document.**
+
+| Entry | Verdict | The reason I gave | What's actually true |
+|---|---|---|---|
+| **1** Chorus | stands | "Accessibility floor is a wall — a large minority can't pitch-match" | *One Hand Clapping*, *Pitch Pong*, *Pitch Bird*, *Vocaluxe*. A working shipped genre. **Occupied, not inaccessible** — and my objection would have killed all four |
+| **10** LLM murderer | stands | "The referee-consistency problem" | *Arsenic* ships it and it works. **Occupied. The prediction was wrong** |
+| **13** Audio-only maze | stands | "The ceiling is documented and low" | *A Blind Legend* is well regarded; the **market** is small, not the ceiling. Two different reasons to walk away |
+| **14** Can't see yourself | stands | "Every playtest ends with players reading position off a teammate" | *Invisigun Heroes*. The real dynamic is self-revealing to locate yourself. **I invented the evidence** |
+| **17** LLM merchants | **reopen** | "Prompt-exploitable or arbitrary" | Same falsified prediction as 10 — and unlike 10, nothing occupies the merchant framing |
+| **19** Citizens write laws | stands | "**Nobody has found the middle**" | *Lawmaker* and *Polity* both found it. **Cut as unsolvable while two games were solving it** |
+
+Entries 5, 6, 9, 11, 12, 20, 21, 22, 23 checked out as stated — *Outer Wilds* and its cohort,
+a large asymmetric-VR subgenre (*Panoptic*, *Mass Exodus*, *Keep Talking*), *Barotrauma*,
+the whole offline-growth mobile category, *Trackmania*, *BPM* and *Metal: Hellsinger*,
+*Receiver 2*, *I am the Final Boss*, *Shadow Fight*. The rest were cut on form rather than on
+any claim about the world, so there was nothing to check.
+
+### The finding that matters
+
+**One unexamined prediction — "an LLM referee will be inconsistent or exploitable" — killed
+two concepts and set the kill condition on a third.** It was never marked as a guess, it never
+got a search, and *Arsenic* is shipped evidence against it. A belief that appears in three
+places and is checked in none is exactly what `DECISIONS.md` exists to prevent, and this
+document had no equivalent mechanism until now.
+
+**So: a rejection needs the same falsification discipline as a keep.** The prompt now says so.
+The practical rule is narrower and cheaper than auditing everything — **when the same reason
+kills more than one concept, that reason is load-bearing and has to be checked once, properly.**
+Reasons used once can stay cheap.
+
+**And "I made that up" deserves its own line.** Entry 14 cited a playtest pattern that does not
+exist. It reached the right verdict, which is worse than reaching the wrong one — a fabricated
+justification that happens to land correctly is invisible, and the habit that produced it isn't.
 
 ---
 
