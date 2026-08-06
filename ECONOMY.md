@@ -377,6 +377,12 @@ above it, scanning at PURSUE is so lethal that the tier rule becomes automatic.
 **Unverified in play.** These are model numbers with a model's crew in them. The falsification
 condition is in D-24.
 
+**Implemented R21.** `proto3d` now places loot on sideboards of four, appraises per candidate,
+and shows `SHELF n/4 scanned, best so far $X`. The interception tail risk is *not* modelled as
+a roll there — it is emergent, because appraising is L48 (heard at 15.8m) and holds you still
+for three seconds while something walks toward you. Whether the emergent version lands near
+the modelled K = 0.30 is a question for instrumented play, not for another sim.
+
 **The pillar works harder than designed.** Look at the Disturbance column, not the money: a
 blind crew ends the night at 30 and is never hunted. A scanning crew is pinned at 100 for
 most of the night. Appraising doesn't cost you *a bit* of noise — it moves you permanently

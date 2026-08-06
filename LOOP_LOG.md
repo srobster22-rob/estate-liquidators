@@ -300,6 +300,29 @@ now *while three crewmates carry loot and it is actively hunting*, which is a st
 does not reset aggro" split into **the mark leaves you** and **the hunt continues on the
 object**, which is the actual content of D-06. · Regression: QA 70/70, drift 89/89.
 
+R21 · Built the thing R18 priced. D-24 found the appraiser is a **breadth** decision — how
+many of a shelf's four do I scan before committing, worth +14% with an interior optimum at two
+— and said in as many words that the payoff dies if players read scanning as a mode they
+switch on for a room. The build had no shelves: items were scattered individually on floors,
+so there was no candidate set to be selective about and the decision the sim priced was
+literally unreachable. Loot now comes on **sideboards of four**, appraising is per candidate,
+and the prompt reads `SHELF 2/4 scanned, best so far $840` — the state D-24 says has to be
+legible. Six new checks. · **Two failures on the first run, and the interesting one was not a
+bug at all:** the per-second-noise regression check started failing across timesteps, and the
+cause was the crew depositing *cursed* items at slightly different rates under different `dt`
+— each one raising the Disturbance floor by 7 and swamping the 0.9/s the check is about.
+Which is the R18 cursed-floor fix working end to end in a live game, arriving as a test
+failure. Added a bounded noise trail (`__g.noiseLog`) to diagnose it, because "one number,
+three systems" means a wrong Disturbance number has three possible authors and nothing was
+recording which. · The other was mine again: two checks still compared items by **dollar
+value** when the selector weights by value × curse multiplier, so a $332 malignant outweighs a
+$612 clean. Fixed by comparing like with like rather than by loosening the assertion. · **And
+the harness could crash instead of failing.** Injecting a two-piece shelf threw at check 30
+and reported nothing about the other 46 — a silent hole in every injection test run so far,
+since a crash and a pass are both "no FAIL lines". `checks()` is now wrapped, a throw is
+recorded as a failing check, and the summary always prints. · Regression: QA 76/76, drift
+89/89, estate validator PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

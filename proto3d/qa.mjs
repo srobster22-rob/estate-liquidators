@@ -75,7 +75,14 @@ async function main() {
   const g = (fn, arg) => page.evaluate(fn, arg);   // run in page, return JSON
   const fresh = () => page.evaluate(() => { window.__g.clearKeys(); window.__g.reset(); });
 
-  await checks(g, fresh);
+  // A throw inside a check is a failure like any other - it must not take the
+  // remaining checks down with it. Injecting a two-item shelf crashed the run at
+  // check 30 and reported nothing about the other 46.
+  try {
+    await checks(g, fresh);
+  } catch (e) {
+    ok("the harness ran to completion", false, `threw: ${e.message}`);
+  }
 
   ok("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
   await browser.close();
@@ -108,6 +115,10 @@ async function checks(g, fresh) {
   const sprintAt = async dt => {
     await fresh();
     return g(([dt]) => {
+      // Park the crew: they haul at slightly different rates under different
+      // timesteps, and every cursed piece they land raises the floor by 7, which
+      // swamps the 0.9/s this check is actually about.
+      window.__g.parkCrew();
       window.__g.press("KeyW"); window.__g.press("ShiftLeft");
       const n = Math.round(10 / dt);
       const st = window.__g.step(n, dt);
@@ -244,6 +255,49 @@ async function checks(g, fresh) {
     return window.__g.list()[0]?.known ?? "item-gone";
   });
   ok("walking cancels the appraisal", moved === false, `known=${moved}`);
+
+  // --- scan breadth (D-24) --------------------------------------------------
+  // The appraiser is a breadth decision worth +14% with an interior optimum at
+  // two of four. That only exists if there IS a set of four, and if the player
+  // can see how much of it they have paid to look at.
+  await fresh();
+  const shelfLayout = await g(() => window.__g.shelves());
+  ok("loot comes in shelves of four",
+    shelfLayout.length >= 5 && shelfLayout.every(sh => sh.total === 4),
+    JSON.stringify(shelfLayout.map(s => s.total)));
+  ok("every room but the driveway has one",
+    new Set(shelfLayout.map(s => s.room)).size === shelfLayout.length,
+    JSON.stringify(shelfLayout.map(s => s.room)));
+
+  await fresh();
+  const breadth = await g(() => {
+    window.__g.parkCrew();
+    const sh = window.__g.shelves()[0];
+    const on = window.__g.list().filter(i => i.shelf === sh.i);
+    const seen = [];
+    for (let k = 0; k < Math.min(3, on.length); k++) {
+      const it = on[k];
+      window.__g.tp(it.x - 1.3, it.z);
+      window.__g.look(Math.PI / 2, -Math.atan2(1.62 - 0.95, 1.3));
+      window.__g.press("KeyF");
+      window.__g.step(230, 1 / 60);
+      window.__g.clearKeys();
+      const st = window.__g.shelves()[sh.i];
+      seen.push({ scanned: st.scanned, best: st.best });
+    }
+    const st = window.__g.shelves()[sh.i];
+    const values = on.map(i => i.value);
+    return { seen, st, values, prompt: window.__g.prompt() };
+  });
+  ok("scanning is per candidate, not per shelf",
+    breadth.seen.map(s => s.scanned).join(",") === "1,2,3", JSON.stringify(breadth.seen));
+  ok("the shelf tracks the best piece found so far",
+    breadth.st.best === Math.max(...breadth.values.slice(0, 3)),
+    JSON.stringify(breadth));
+  ok("and one unscanned piece is still unknown",
+    breadth.st.scanned === 3 && breadth.st.total === 4, JSON.stringify(breadth.st));
+  ok("the prompt says how much of the shelf you have paid for",
+    /SHELF 3\/4 scanned/.test(breadth.prompt), breadth.prompt);
 
   // --- the van --------------------------------------------------------------
   await fresh();
@@ -492,7 +546,7 @@ async function checks(g, fresh) {
     const f = window.__g.rooms().find(r => r.id === "foyer");
     window.__g.tp(f.x, f.z);
     window.__g.setDist(70);
-    window.__g.hold(0);
+    const value = window.__g.hold(0);
     const hi = window.__g.hides().findIndex(h => h.room === "foyer");
     const h = window.__g.hides()[hi];
     window.__g.tp(h.x, h.z - 1.0);
@@ -504,10 +558,14 @@ async function checks(g, fresh) {
     for (let i = 0; i < 90; i++) {
       window.__g.setDist(70); window.__g.step(30, 1 / 60);
       const st = window.__g.state();
-      if (st.t < 20 && (st.marked || window.__g.curator().carrying)) quietFor++;
-      if (st.marked || window.__g.curator().carrying || st.cur === "RESEAT") came = true;
+      // "It came" means it is hunting THIS piece - the mark is not on the player
+      // once the piece is out of their hands, which is D-06 working.
+      const c = window.__g.curator();
+      const after = c.goalValue === value || c.carrying || st.cur === "RESEAT";
+      if (st.t < 20 && after) quietFor++;
+      if (after) came = true;
     }
-    return { came, quietFor, st: window.__g.state(), cur: window.__g.curator() };
+    return { came, quietFor, value, st: window.__g.state(), cur: window.__g.curator() };
   });
   ok("a stash buys quiet while it lasts", expired.quietFor === 0, JSON.stringify(expired));
   ok("a stash is a delay, not a solution", expired.came === true, JSON.stringify(expired));
@@ -566,8 +624,12 @@ async function checks(g, fresh) {
   await fresh();
   const noisy = await g(() => {
     window.__g.freezeCrew(true); window.__g.clearCrew();
+    // Same grade, similar value: attention weight is value x curse multiplier,
+    // so a malignant piece can outweigh a clean one worth twice as much and the
+    // noise term would not be what decided it.
     const list = window.__g.list();
-    const pair = list.filter(i => i.tier === list[0].tier).slice(0, 2);
+    const clean = list.filter(i => i.grade === "clean").sort((x, y) => x.value - y.value);
+    const pair = clean.slice(Math.floor(clean.length / 2), Math.floor(clean.length / 2) + 2);
     const a = list.indexOf(pair[0]), b = list.indexOf(pair[1]);
     window.__g.giveCrew(0, a);
     window.__g.giveCrew(1, b);
@@ -576,7 +638,7 @@ async function checks(g, fresh) {
     return { goal: window.__g.curator().goalValue, quiet: pair[0].value, loud: pair[1].value };
   });
   ok("noise multiplies the loot you are carrying",
-    noisy.goal === noisy.loud || noisy.loud * 2.2 < noisy.quiet, JSON.stringify(noisy));
+    noisy.goal === noisy.loud, JSON.stringify(noisy));
 
   // Hysteresis: a marginally better piece must NOT steal the target.
   await fresh();

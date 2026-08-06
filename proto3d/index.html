@@ -260,27 +260,61 @@ function hops(ax,az,bx,bz){
 
 const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
 function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; return false; }
-function solid(x,z){ return (!roomAt(x,z) && !inDoor(x,z)) || inHide(x,z); }
+function solid(x,z){ return (!roomAt(x,z) && !inDoor(x,z)) || inHide(x,z) || inShelf(x,z); }
 
 // ------------------------------------------------------------------ state
+let noiseLog=[];
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
+// Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
+// as a breadth decision - how many of these four do I scan before I commit? -
+// worth +14% with an interior optimum at two. Scattering items individually on
+// the floor makes that decision unreachable: with nothing to choose between,
+// scanning is a yes/no question and the payoff shape the sim found never appears.
+const CANDIDATES=4, SHELF_Y=0.95;
+let shelves=[];
+function makeItem(r,x,z,y,shelf){
+  const g=Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
+  const [lo,hi]=BAND[r.tier];
+  return {x,y,z,hx:x,hz:z,hy:y,grade:g,tier:r.tier,shelf,
+    value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
+    size:r.tier>=3?0.30:r.tier===2?0.26:0.21,
+    known:false,heldBy:null,gone:false,scan:0,moved:false,stash:0,hideIn:null,
+    claim:null};
+}
 function makeItems(){
-  items=[];
+  items=[]; shelves=[];
+  let si=0;
   for(const r of ROOMS){ if(r.van) continue;
-    const n = r.tier===3?5:4;
-    for(let i=0;i<n;i++){
-      const g=Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
-      const [lo,hi]=BAND[r.tier];
-      const x=rnd(r.x-r.w/2+1.4,r.x+r.w/2-1.4), z=rnd(r.z-r.d/2+1.4,r.z+r.d/2-1.4);
-      items.push({x,y:0.45,z,hx:x,hz:z,grade:g,tier:r.tier,
-        value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
-        size:r.tier>=3?0.42:r.tier===2?0.34:0.26,
-        known:false,heldBy:null,gone:false,scan:0,moved:false,stash:0,hideIn:null,
-        claim:null});
+    // One sideboard per room, against the left or right wall, alternating.
+    const left = (si%2)===0;
+    const sx = left ? r.x-r.w/2+0.75 : r.x+r.w/2-0.75;
+    const sz = r.z + (si%3===0 ? -r.d/6 : r.d/6);
+    const shelf={i:si++, x:sx, z:sz, room:r.id, tier:r.tier, w:0.55, d:1.5};
+    shelves.push(shelf);
+    for(let k=0;k<CANDIDATES;k++){
+      const z = sz - shelf.d/2 + 0.28 + k*((shelf.d-0.56)/(CANDIDATES-1));
+      items.push(makeItem(r,sx,z,SHELF_Y,shelf.i));
+    }
+    // Tier 3 wings also have a piece standing on its own on the floor.
+    if(r.tier===3){
+      const x=rnd(r.x-r.w/2+1.6,r.x+r.w/2-1.6), z=rnd(r.z-r.d/2+1.6,r.z+r.d/2-1.6);
+      items.push(makeItem(r,x,z,0.45,null));
     }
   }
 }
+// What you know about a shelf: how much of it you have paid to look at, and the
+// best thing you have found so far. This is the state D-24 says must be legible,
+// or players read the appraiser as a mode they switch on for a room.
+function shelfState(i){
+  const set=items.filter(it=>it.shelf===i&&!it.gone);
+  const known=set.filter(it=>it.known);
+  return {total:set.length, scanned:known.length,
+          best:known.length?Math.max(...known.map(it=>it.value)):0,
+          bestItem:known.length?known.reduce((a,b)=>a.value>b.value?a:b):null};
+}
+const inShelf=(x,z)=>shelves.some(sh=>
+  Math.abs(x-sh.x)<sh.w/2+0.12&&Math.abs(z-sh.z)<sh.d/2+0.12);
 function reset(){
   makeItems();
   const dv=R("drive");
@@ -296,7 +330,7 @@ function reset(){
            face:0,fix:null,step:0,who:null,recompute:0};
   for(const h of HIDES) h.item=null;
   van={slots:VAN_SLOTS,cargo:[]};
-  t=0;dist=0;over=false;overWhy="";
+  t=0;dist=0;over=false;overWhy="";noiseLog=[];
   document.getElementById("end").style.display="none";
 }
 reset();
@@ -340,6 +374,11 @@ function noise(l,impulse,dt,x,z,who){
   const a=who??player;
   const px=x??a.x, pz=z??a.z;
   if(impulse) a.noise.push(t);
+  // Bounded trail of who made what noise and when. One number drives three
+  // systems, so when a Disturbance number looks wrong this is the only place
+  // that says which event produced it.
+  if(impulse){ noiseLog.push({t:+t.toFixed(2),l,who:a.name});
+    if(noiseLog.length>24) noiseLog.shift(); }
   heard(l,px,pz,a);
   if(impulse) sfx.event(l,px,pz);
 }
@@ -750,7 +789,7 @@ function updateCurator(dt){
   if(c.state==="RESEAT"){
     walkTo(c,c.carry.hx,c.carry.hz,speed,dt);
     if(Math.hypot(c.x-c.carry.hx,c.z-c.carry.hz)<0.9){
-      c.carry.x=c.carry.hx; c.carry.z=c.carry.hz; c.carry.y=0.45;
+      c.carry.x=c.carry.hx; c.carry.z=c.carry.hz; c.carry.y=c.carry.hy??0.45;
       c.carry.heldBy=null; c.carry.moved=false;     // back on its plinth, quiet again
       c.carry=null; c.state="PATROL"; c.reseat=8; c.target=false; c.mode=null; c.who=null; }
     return;
@@ -967,6 +1006,10 @@ function render(){
   const dv=R("drive");
   drawBox(dv.x-1.6,1.05,dv.z,1.5,1.05,1.9,[.34,.28,.13]);
 
+  for(const sh of shelves){
+    drawBox(sh.x,SHELF_Y/2,sh.z,sh.w/2,SHELF_Y/2,sh.d/2,[.25,.225,.19]);
+    drawBox(sh.x,SHELF_Y+0.03,sh.z,sh.w/2+0.04,0.03,sh.d/2+0.04,[.29,.26,.21]);
+  }
   for(const h of HIDES){
     const mine = h===player.hiding;
     drawBox(h.x,1.02,h.z,0.50,1.02,0.30, mine?[.30,.28,.24]:[.27,.245,.205]);
@@ -1031,6 +1074,17 @@ function hunted(){
     return c.goal.heldBy.name;
   return null;
 }
+// D-24's design consequence, made visible: "the UI must make 'I have scanned two
+// of these four' a legible state. If scanning is presented as a mode you switch
+// on for a room, the interesting axis is unreachable."
+function shelfPrompt(it){
+  const me = it.known ? `$${it.value}  ${it.grade.toUpperCase()}` : "UNAPPRAISED";
+  const act = it.known ? "[E] take" : "[E] take blind   [F] appraise";
+  if(it.shelf===null||it.shelf===undefined) return `${me}   ${act}`;
+  const sh = shelfState(it.shelf);
+  const best = sh.best ? `best so far $${sh.best}` : "nothing known yet";
+  return `${me}   ·   SHELF ${sh.scanned}/${sh.total} scanned, ${best}   ·   ${act}`;
+}
 function hud(){
   const held=player.holding, aim=held?null:aimedItem();
   const marked = markedPlayer();
@@ -1042,7 +1096,7 @@ function hud(){
     : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
     : (held&&aimedCrew()) ? `[E] hand it to ${aimedCrew().name}`
     : held ? "[E] drop    [F] appraise"
-    : aim ? (aim.known?`$${aim.value}  ${aim.grade.toUpperCase()}   [E] take`:"UNAPPRAISED   [E] take   [F] appraise")
+    : aim ? shelfPrompt(aim)
     : "";
   document.getElementById("hud").innerHTML =
     `<b>${Math.max(0,NIGHT-t).toFixed(0)}s</b> until sunrise<br>`+
@@ -1111,7 +1165,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   setDist:v=>{dist=v;}, setT:v=>{t=v;},
   clearKeys:()=>{for(const k in keys) keys[k]=false;},
   list:()=>items.filter(i=>!i.gone).map((it,i)=>({i,x:+it.x.toFixed(2),z:+it.z.toFixed(2),
-    grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:!!it.heldBy,by:it.heldBy?it.heldBy.name:null})),
+    grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:!!it.heldBy,
+    by:it.heldBy?it.heldBy.name:null,shelf:it.shelf,y:+it.y.toFixed(2)})),
   // Mirrors grabDrop's bookkeeping - an item picked up by a fixture is just as
   // displaced as one picked up by hand, and radiance() keys off exactly that.
   hold:i=>{const it=items.filter(x=>!x.gone)[i]; if(!it) return null;
@@ -1135,6 +1190,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   setMode:m=>{curator.mode=m;},
   raw:()=>({x:player.x,z:player.z}),   // unrounded; pos() is display precision
   cargo:()=>van.cargo.map(c=>({grade:c.grade,value:c.value})),
+  noiseLog:()=>noiseLog.slice(),
   audio:()=>sfx.probe(), startAudio:()=>sfx.start(), mute:v=>sfx.mute(v),
   dragAt:(d,w,o)=>sfx.dragAt(d,w,!!o),
   mix:()=>{sfx.frame(); return sfx.probe();},
@@ -1142,6 +1198,11 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   sees:(x,z)=>sees(x,z), heard:(l,x,z)=>heard(l,x,z),
   fix:()=>curator.fix?{x:curator.fix.x,z:curator.fix.z,age:curator.fix.age,
     sure:curator.fix.sure,who:curator.fix.who?curator.fix.who.name:null}:null,
+  shelves:()=>shelves.map(sh=>({...sh,...shelfState(sh.i)})),
+  shelfOf:i=>{const it=items.filter(x=>!x.gone)[i]; return it?it.shelf:null;},
+  // Recomputed on demand: the HUD is written by the render loop, which QA
+  // pauses, so reading the element without this returns a stale frame.
+  prompt:()=>{hud(); return document.getElementById("prompt").textContent;},
   faults:()=>DOOR_FAULTS.slice(),
   rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
   doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z})),
