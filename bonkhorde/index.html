@@ -481,11 +481,11 @@ caltrops:{ name:"CALTROPS", ic:"\u{1F53A}", kind:"w",
 
 const PASSIVES = {
 spinach: { name:"SPINACH",   ic:"\u{1F96C}", kind:"p", max:5, ds:"+13% damage." },
-boots:   { name:"BOOTS",     ic:"\u{1F45F}", kind:"p", max:5, ds:"+9% move speed." },
+boots:   { name:"BOOTS",     ic:"\u{1F45F}", kind:"p", max:5, ds:"+9% move speed, +6% damage. Momentum." },
 tempo:   { name:"METRONOME", ic:"\u{1F570}", kind:"p", max:5, ds:"-8% weapon cooldowns." },
-magnet:  { name:"MAGNET",    ic:"\u{1F9F2}", kind:"p", max:5, ds:"+35% pickup radius." },
-plating: { name:"PLATING",   ic:"\u{1F6E1}", kind:"p", max:5, ds:"-1.6 flat damage, -5% taken." },
-heart:   { name:"BIG HEART", ic:"❤",    kind:"p", max:5, ds:"+22 max HP, and heal that much." },
+magnet:  { name:"MAGNET",    ic:"\u{1F9F2}", kind:"p", max:5, ds:"+35% pickup radius, and it drags the horde into a pile." },
+plating: { name:"PLATING",   ic:"\u{1F6E1}", kind:"p", max:5, ds:"-1.6 flat damage taken, and being hit blasts them off you." },
+heart:   { name:"BIG HEART", ic:"❤",    kind:"p", max:5, ds:"+22 max HP, +5% damage. Pumps harder." },
 dupe:    { name:"DUPLICATOR",ic:"\u{1F500}", kind:"p", max:3, ds:"+1 projectile on everything that has one." },
 clover:  { name:"CLOVER",    ic:"\u{1F340}", kind:"p", max:5, ds:"+7% crit. Crits hit for 2.3x." },
 };
@@ -503,7 +503,7 @@ const BOSSES = [
 { t:300,  nm:"THE GRAVELORD", hp:3200,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
 { t:600,  nm:"THE LANDLORD",  hp:12000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
 { t:900,  nm:"MR. TEETH",     hp:42000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
-{ t:1140, nm:"THE FINAL BONK",hp:160000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
+{ t:1140, nm:"THE FINAL BONK",hp:205000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -1065,6 +1065,9 @@ function updateHazards(dt){
 }
 
 function updateEnemies(dt){
+  // precomputed once per frame rather than per enemy
+  const magPull = P.kit.magnet ? 0.50*(P.kit.magnet.l+1) : 0;
+  const magR    = P.mag * 1.6;
   for(let i=enemies.length-1;i>=0;i--){
     const e = enemies[i];
     if(e.dead){ enemies.splice(i,1); continue; }
@@ -1113,6 +1116,11 @@ function updateEnemies(dt){
       e.x += sx*cap*dt*2.4; e.z += sz*cap*dt*2.4;
     }
 
+    if(magPull > 0 && !e.boss && d < magR){          // MAGNET drags them in
+      const g = magPull * (1 - d/magR);
+      e.x += dx/d*g*dt; e.z += dz/d*g*dt;
+    }
+
     // outrun it far enough and it gives up. Without this the alive-count is
     // cumulative spawns rather than spawn RATE, and minute 6 is a wall.
     if(!e.boss && d > 70){ enemies.splice(i,1); continue; }
@@ -1136,6 +1144,11 @@ function playerHurt(raw){
   if(P.kit.plating) d *= (1 - (P.kit.plating.l+1)*.05);
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
   SFX.hurt();
+  if(P.kit.plating){                       // spiked armour: getting hit hurts them
+    const r = P.kit.plating.l + 1;
+    damageArea(P.x, P.z, 4.6 + r*0.5, 23*r*dmgScale(T), 13);
+    rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:4.6+r*0.5, life:.3, mx:.3 });
+  }
   if(P.hp <= 0){
     if(!usedRevive && rank("rev")>0){
       usedRevive = true; P.hp = P.maxhp*.5; P.iframe = 2.4;
@@ -1314,18 +1327,22 @@ function applyPassive(k){
   const l = P.kit[k].l;                                  // 0-indexed rank just gained
   switch(k){
     case "spinach": P.dmg   = recalcDmg(); break;
-    case "boots":   P.spd   = recalcSpd(); break;
+    case "boots":   P.spd   = recalcSpd(); P.dmg = recalcDmg(); break;
     case "tempo":   P.cd    = recalcCd();  break;
     case "magnet":  P.mag   = recalcMag(); break;
     case "clover":  P.crit  = rank("crit")*.04 + (l+1)*.07; break;
-    case "heart":   P.maxhp += 22; P.hp = Math.min(P.maxhp, P.hp+22); P.regen += .30; break;
+    case "heart":   P.maxhp += 22; P.hp = Math.min(P.maxhp, P.hp+22);
+                    P.regen += .30; P.dmg = recalcDmg(); break;
     case "plating": break;                                // read directly in playerHurt
     case "dupe":    break;                                // read directly by weapons
   }
 }
 // recompute from base each time so ranks never compound into nonsense
-function recalcDmg(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0];
-  return (1+rank("dmg")*.06) * (1 + (P.kit.spinach ? (P.kit.spinach.l+1)*.13 : 0)); }
+function recalcDmg(){
+  return (1 + rank("dmg")*.06)
+       * (1 + (P.kit.spinach ? (P.kit.spinach.l+1)*.13 : 0))
+       * (1 + (P.kit.boots   ? (P.kit.boots.l+1)*.08  : 0))   // momentum
+       * (1 + (P.kit.heart   ? (P.kit.heart.l+1)*.05  : 0)); }
 function recalcSpd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
   return 6.6*(m.spd||1)*(1+rank("spd")*.04) * (1 + (P.kit.boots ? (P.kit.boots.l+1)*.09 : 0)); }
 function recalcCd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
@@ -1905,7 +1922,9 @@ window.__g = {
     return window.__g.state();
   },
   give:  (k,n=1)=>{ if(!P.kit[k]) P.kit[k]={key:k,l:0,t:0,evo:false};
-                    P.kit[k].l = Math.min(4, P.kit[k].l+n); applyPassive(k);
+                    // step rank by rank: HEART and friends accumulate, so a
+                    // single applyPassive after a multi-rank jump under-applies
+                    for(let i=0;i<n && P.kit[k].l<4;i++){ P.kit[k].l++; applyPassive(k); }
                     return window.__g.kit(); },
   evolve:(k)=>{ if(P.kit[k]){ P.kit[k].evo=true; P.kit[k].l=5; } return window.__g.kit(); },
   xp:    v=>gainXP(v),
@@ -1965,6 +1984,7 @@ window.__g = {
   dbg:   ()=>{ const ds=enemies.map(e=>Math.hypot(e.x-P.x,e.z-P.z)).sort((a,b)=>a-b);
                const hs=enemies.map(e=>e.hp).sort((a,b)=>a-b);
                return { nearest: ds[0]??-1, inRange: ds.filter(d=>d<8).length,
+                        mean: ds.length ? ds.reduce((a,b)=>a+b,0)/ds.length : -1,
                         medHP: hs[hs.length>>1]??0, dmg: P.dmg*100 }; },
   comp:  ()=>enemies.reduce((a,e)=>{ a[e.type]=(a[e.type]||0)+1; return a; }, {}),
   skipTo:s=>{ T=s; },

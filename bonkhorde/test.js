@@ -184,6 +184,59 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("elite share stays a minority", late.n / Math.max(1,late.total) < 0.45,
      Math.round(late.n / Math.max(1,late.total) * 100) + "%");
 
+  console.log("\n=== 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===");
+  const riders = await page.evaluate(() => {
+    const dmgWith = mods => {
+      window.__g.start("intern"); window.__g.drainPicks(true);
+      for (const [k, n] of mods) window.__g.give(k, n);
+      return window.__g.state().dps;
+    };
+    return { none: dmgWith([]), boots: dmgWith([["boots", 2]]),
+             heart: dmgWith([["heart", 2]]), spinach: dmgWith([["spinach", 2]]) };
+  });
+  ok("BOOTS contributes damage",  riders.boots > riders.none * 1.15,
+     `x${riders.none} -> x${riders.boots}`);
+  ok("BIG HEART contributes damage", riders.heart > riders.none * 1.10,
+     `x${riders.none} -> x${riders.heart}`);
+
+  const retal = await page.evaluate(() => {
+    // 30 shamblers reads 660 damage either way - that is exactly their combined
+    // HP, so the measurement is capped by what there is to kill, not by output.
+    // Use a boss: 12,000 HP is more than anything here can chew through.
+    const trial = (plating) => {
+      window.__g.start("ox"); window.__g.god(); window.__g.drainPicks(true);
+      window.__g.freezeSpawns(true); window.__g.bot(false);   // stand and take it
+      if (plating) window.__g.give("plating", 2);
+      window.__g.boss(1);
+      window.__g.step(60 * 8);                                // let it reach us
+      window.__g.dmg();
+      window.__g.step(60 * 10);
+      return window.__g.dmg().all;
+    };
+    return { off: trial(false), on: trial(true) };
+  });
+  ok("PLATING retaliates when hit", retal.on > retal.off * 1.2,
+     `${Math.round(retal.off)} -> ${Math.round(retal.on)} damage`);
+
+  const pull = await page.evaluate(() => {
+    // Spawn distance is uniform-random, so the mean starting distance varies by
+    // ~1m between arms - comparable to the effect itself, which made this flaky
+    // (it once read 5.6m -> 6.1m). Average several trials per arm.
+    const trial = (magnet) => {
+      window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+      window.__g.freezeSpawns(true); window.__g.bot(false);   // stand still
+      if (magnet) window.__g.give("magnet", 4);
+      window.__g.spawn("shambler", 40, 22);
+      window.__g.step(60 * 5);
+      return window.__g.dbg().mean;
+    };
+    const avg = (magnet) => { let s = 0;
+      for (let i = 0; i < 4; i++) s += trial(magnet); return s / 4; };
+    return { off: avg(false), on: avg(true) };
+  });
+  ok("MAGNET drags the horde in", pull.on < pull.off * 0.95,
+     `mean distance ${pull.off.toFixed(1)}m -> ${pull.on.toFixed(1)}m`);
+
   console.log("\n=== 7c. BOSS MECHANICS ===");
   const BOSSNAMES = ["GRAVELORD/slam", "LANDLORD/evict", "MR.TEETH/charge", "FINAL/all"];
   for (let i = 0; i < 4; i++) {
@@ -274,8 +327,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       !!JSON.parse(localStorage.getItem("bonkhorde.save.v1")).unlocked.ghoul));
 
   console.log("\n=== 11. LEVEL-UP UI ===");
-  await page.evaluate(() => { window.__g.start("intern"); window.__g.resume(); window.__g.xp(500); });
-  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    window.__g.start("intern"); window.__g.xp(500);
+    window.__g.step(1);          // exactly one tick: queues the level and shows it.
+  });                            // two ticks would auto-pick it straight back off.
+  await page.waitForTimeout(120);
   const cards = await page.evaluate(() =>
     [...document.querySelectorAll("#pkCards .card")].map(c =>
       c.querySelector(".nm").textContent + " / " + c.querySelector(".lv").textContent));
