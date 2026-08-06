@@ -155,6 +155,16 @@ The edge decays monotonically as the van grows, and **somewhere between 24 and 3
 appraiser dies outright** — scanning becomes a waste of time you could have spent hauling.
 This is exactly the mechanism `DESIGN.md` §4.4 predicted, now with a number on it.
 
+> **Superseded in R24 — do not quote the 24–32 figure.** It comes from `haul_sim.py`, which
+> predates `PARALLEL_EFFICIENCY` (R7), the slot-accounting fix (R8), the derived Disturbance
+> model (R5) and the cursed-floor correction (R18) — all four of which changed how many trips
+> a crew gets, which is what the capacity argument turns on. Re-run against the corrected
+> model (`sim/appraiser_variance.py::sweep_capacity`), the cliff is at **21 trips**, and it is
+> arithmetic rather than a measurement: `6.93 + 5.20 + 8.67 = 20.8` hauls fit in a
+> 540-second night. Below that the van binds and the appraiser earns +8–13% on a V11 estate;
+> at 22 slots and above the crew stalls at 21 trips and earns identical money at 24 and 32.
+> **The lever above 21 slots is the clock, not the van.** See D-19.
+
 **This sharpens D-19.** The 20-slot ceiling was chosen by instinct; it turns out to sit just
 below where the mechanic starts collapsing. Shelving upgrades must never approach it. If
 anyone ever proposes a capacity buff, this table is the answer.

@@ -408,6 +408,40 @@ A check whose constant is missing from the source still reports NOT FOUND, so th
 half catches that — the two properties are only a guarantee together, and the file now says
 so rather than letting a reader assume more than it delivers.
 
+R24 · With the C# port blocked on a toolchain, went looking for a question this environment
+*can* answer and found a live one hiding behind a FIRM decision. **D-19 fixes van capacity at
+14 with a ceiling of 20 and calls that "just under the cliff", on the strength of a 24-32 slot
+figure from `haul_sim.py` — a simulation that predates `PARALLEL_EFFICIENCY` (R7), the
+slot-accounting fix (R8), the derived Disturbance model (R5) and the cursed-floor correction
+(R18).** All four changed how many trips a crew gets, which is the quantity the entire
+capacity argument turns on, and nobody re-ran it in eleven rounds. The van also *upgrades
+across a contract chain*, so this is capacity range players actually occupy, not a hypothetical.
+· **Caught my own method before reporting it, which is most of what this round was.** The
+first sweep produced a wildly non-monotonic edge (4.3% → 12.0% → −5.0%) against ECONOMY §6's
+claim that it decays monotonically. Rather than report a reversal, diagnosed it: `TIER_CAP` is
+expressed as a *fraction of the van*, so changing capacity also changes the depth-reservation
+policy and the two are confounded. Turning the reservation off entirely made SCAN beat BLIND
+at every capacity ≤18 — **the myopia bug for the fourth time in this project**, exactly as R5's
+standing note predicts. So the sweep cannot answer "how does the edge vary with capacity", and
+the file now says so instead of printing a trend nobody should read. · **What it can answer,
+robustly, is where capacity stops mattering — because that is arithmetic, not a measurement.**
+A crew of four fits `6.93 + 5.20 + 8.67 = 20.8` hauls into a 540-second night at the calibrated
+parallel efficiency. The sim lands on exactly **21 trips** and stays there: the van is fully
+used at every capacity up to 20, and at 22, 24 and 32 slots the crew stalls at 21 trips and
+earns **identical money**. · **So the cliff is at 21, not 24-32, and D-19's ceiling of 20 is
+right by one slot rather than by four to twelve.** The conclusion survives; the margin is a
+quarter of what was believed and the *reason* is different — the cliff is not the appraiser's
+edge decaying with capacity, it is the crew running out of trips. Above the ceiling capacity
+does nothing whatsoever. · **The corollary is the part that will bite someone.** The capacity
+ceiling is *derived*: it moves with `night.haul_window_seconds`, `night.crew` and
+`PARALLEL_EFFICIENCY`. Anyone lengthening the night or improving crew throughput is silently
+moving a FIRM decision they aren't editing. Added that to D-19's falsification conditions,
+which previously mentioned none of the three. · **One reassurance from the same run:** on a
+V11 estate the appraiser still earns **+10.1% at the full 20-slot ceiling**, so the van upgrade
+path does not kill the signature verb — D-23's authored spread is what keeps it alive right up
+to the trip ceiling. That is the strongest argument for D-23 yet, and it came from a round that
+was not about the appraiser at all.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -415,50 +449,49 @@ so rather than letting a reader assume more than it delivers.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R24 — needs a machine with `dotnet`, and is now a definite job. Port the economy into the
-C# core.** R23 enumerated it: **26 canonical values the sims rely on and the shipping core
-does not have**, listed in `CS_BACKLOG` in `check_drift.py`. The shape of the gap is the
-finding — the C# implements the *Curator* faithfully (loudness, attention, disturbance, the
-ruin curve) and almost none of the *economy*: the whole retrieval table, all three curse
-tables, every van slot cost, every `night` constant, and both R19 approach constants. Work in
-that order — retrieval first, since it drives every haul result; curse tables next, since
-D-23's decision runs through them. Strike each value off `CS_BACKLOG` as it lands; the check
-fails until you do. `unity/tests/CoreTests` will need the matching cases, and its 31 checks
-are currently pinned to a model two subsystems out of date.
+**R25: audit every other number that traces back to `haul_sim.py`.** R24 found D-19 — a FIRM
+decision, the master balance constant — resting on a figure from the one simulation that four
+subsequent rounds of bug-fixes invalidated. `haul_sim.py` is almost certainly not the only
+conclusion still standing on it: `ECONOMY.md` §6 is entirely haul_sim output, and the quota
+curve in §4 was calibrated against simulated earnings from that era. Grep every claim in
+`ECONOMY.md` and `DECISIONS.md` for its source, and mark anything derived from haul_sim,
+pre-R7 chain_sim, or the +84%/+31% eras as needing re-derivation. **Expect this to be the
+largest single cleanup left in the project**, and note that the fix is usually not re-running
+the old sim — it is deciding whether the claim still needs to exist.
 
-*This environment cannot do it.* No C# toolchain, `dot.net` refused by the network policy,
-nothing usable on the reachable registries. Don't attempt it here — an uncompiled C# change to
-the one implementation that actually ships is worse than no change.
+**R26 (needs `dotnet`): port the economy into the C# core.** 26 canonical values, enumerated in
+`CS_BACKLOG` in `check_drift.py`. Retrieval table first (it drives every haul result), curse
+tables next (D-23's decision runs through them). Strike each off as it lands; the check fails
+until you do. *This environment cannot do it* — no C# toolchain, `dot.net` refused by the
+network policy — and an uncompiled change to the only implementation that ships is worse than
+no change.
 
-**R25: `room_spread` is the one backlog item that is not merely a constant.** The other 25 are
-numbers with a home waiting for them. Spread needs a *concept* in the C# core — rooms do not
-exist there as value-bearing objects at all — and it carries the appraiser decision D-22/D-23
-leave open: two strategies of equal expected value and different variance, which a Unity build
-currently cannot express either of. Design that type before porting the three factors, or the
-factors will land somewhere that has to be rewritten.
-
-**Five standing rules, each earned by getting it wrong first.**
+**Six standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18). *A check earns its place by failing the
-default an unaware author produces* (R19) — V5 passed everything for eighteen rounds because
-it had no failing condition at all. *Ask a statistic at the right altitude* (R20) — the D-10
-leak test read r = 0.46 pooled and ~0.00 within rooms, and only the second answered the
-question. *Name the table you mean* (R14, R21) — a pattern matched `CLASS_WIDTH` instead of
-`CLASS_SLOTS`; third occurrence. *A model verified in one projection is not verified in the
-one you ship* (R22) — the prototype's spread telegraph measured cleanly top-down and is
-destroyed by perspective.
+default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20) — the
+D-10 leak test read r = 0.46 pooled and ~0.00 within rooms. *Name the table you mean* (R14,
+R21) — third occurrence of that regex bug. *A model verified in one projection is not verified
+in the one you ship* (R22) — the telegraph measured cleanly top-down and dies in perspective.
+*Every guarantee has been weaker than it sounded, three times running* (R23) — agreement,
+then coverage, then per-implementation coverage.
 
-And a sixth from R23, about this file specifically: **every guarantee here has been weaker
-than it sounded, three times running.** Agreement was weaker than coverage, coverage was
-weaker than per-implementation coverage, and "claimed" still only means a check exists rather
-than that the code is right. Assume the next one is weaker than it sounds too, and go looking
-for how.
+And the seventh, from R24, which is the one that keeps producing findings: **a conclusion is
+only as current as the model underneath it.** Four rounds of fixes to the haul model never
+propagated to the decisions the old model justified, because nothing links a claim to the code
+that produced it. Every number in this project should be traceable to the simulation and the
+round that produced it — R25 is the first pass at that, and the standing habit is to state the
+source whenever a figure is quoted.
 
-**The appraiser thread is closed. Keep it closed.** At **+8.8%** with a real skill ceiling, a
-graceful failure mode under misreading, and two equal-value strategies of different shape, the
-mechanic is defensible. **Do not reopen it with another tuning sweep.** The next real
-information comes from Milestone 2 instrumentation measuring what fraction of items players
-scan at hour five (D-10), and from D-24's one-second room-classification test, which costs
-nothing and can run on a still frame long before the game is playable.
+**The myopia bug has now appeared four times** (R5, R6, R20-adjacent, R24). Any haul model
+needs a depth-reservation policy before its baseline means anything — and R24 adds the
+converse: **that policy must not be coupled to the parameter you are sweeping.** Expressing
+`TIER_CAP` as a fraction of the van makes every capacity sweep meaningless.
+
+**The appraiser thread is closed.** At +8.8% on a V11 estate at 14 slots and **+10.1% at the
+20-slot ceiling** (R24), with a real skill ceiling and a graceful failure mode, the mechanic is
+defensible across the whole upgrade path. **Do not reopen it with another tuning sweep.** The
+next real information comes from Milestone 2 instrumentation (D-10) and D-24's one-second
+room-classification test, which costs nothing and can run on a still frame.
 
 **Not blocked on anything except the C# port, which is blocked on a toolchain rather than on a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks

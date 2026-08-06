@@ -138,7 +138,7 @@ def spread_threshold(q, H):
     return 1.0 + H * (1.0 - 2.0 * q)
 
 
-def wants_scan(policy, d, slots, f_hat, H):
+def wants_scan(policy, d, slots, f_hat, H, cap=VAN_SLOTS):
     if policy == "BLIND":
         return False
     if policy == "SCAN":
@@ -146,7 +146,7 @@ def wants_scan(policy, d, slots, f_hat, H):
     if policy == "GATE":                       # R16's winner, spread-blind
         return d < QUIET
     if policy == "ADAPTIVE":                   # R8's van-fill heuristic
-        return slots <= 0.5 * VAN_SLOTS
+        return slots <= 0.5 * cap
     if policy.startswith("VARGATE_"):
         return d < QUIET and f_hat >= spread_threshold(float(policy[8:]), H)
     if policy.startswith("VAR_"):
@@ -154,9 +154,10 @@ def wants_scan(policy, d, slots, f_hat, H):
     raise ValueError(policy)
 
 
-def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2):
+def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2, van=None):
+    cap = VAN_SLOTS if van is None else van
     rng = random.Random(seed)
-    d, t, slots, banked, filled = 0.0, 0.0, float(VAN_SLOTS), 0.0, 0.0
+    d, t, slots, banked, filled = 0.0, 0.0, float(cap), 0.0, 0.0
     trips, scan_trips, lost = 0, 0, 0
 
     while t < HAUL_S and slots > 0:
@@ -164,7 +165,7 @@ def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2):
         trip_s, band = TIER_DATA[tier]
         per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY)
 
-        if filled >= TIER_CAP[tier] * VAN_SLOTS and tier < 3:
+        if filled >= TIER_CAP[tier] * cap and tier < 3:
             t += per_trip
             continue
 
@@ -184,7 +185,7 @@ def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2):
         # What the crew THINKS the spread is, from the look of the room.
         f_hat = f if sigma <= 0.0 else f + rng.gauss(0.0, sigma * max(H, 1e-9))
 
-        appraise = wants_scan(policy, d, slots, f_hat, H)
+        appraise = wants_scan(policy, d, slots, f_hat, H, cap)
 
         cost = per_trip
         if appraise:
@@ -227,7 +228,8 @@ def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2):
         slots -= 1.0
         banked += value
 
-    return banked, (scan_trips / trips if trips else 0.0), lost, d
+    return (banked, (scan_trips / trips if trips else 0.0), lost, d,
+            trips, cap - slots)
 
 
 def trial(policy, n=2500, **kw):
@@ -237,6 +239,8 @@ def trial(policy, n=2500, **kw):
         "share": statistics.mean(r[1] for r in res),
         "lost": statistics.mean(r[2] for r in res),
         "endD": statistics.mean(r[3] for r in res),
+        "trips": statistics.mean(r[4] for r in res),
+        "used": statistics.mean(r[5] for r in res),
     }
 
 
@@ -285,6 +289,49 @@ def sweep_gate(H=1.0):
     QUIET = keep
 
 
+def sweep_capacity():
+    """R24: where does van capacity STOP being the binding constraint?
+
+    D-19 is FIRM, fixes the ceiling at 20 slots, and calls that "just under the cliff"
+    on the strength of ECONOMY 6's finding that the appraiser dies between 24 and 32
+    slots. That number comes from haul_sim.py, which predates PARALLEL_EFFICIENCY (R7),
+    the slot-accounting fix (R8), the derived Disturbance model (R5) and the cursed-floor
+    correction (R18). Every one of those changed how many trips a crew gets, which is the
+    quantity the whole capacity argument turns on. Nobody re-ran it.
+
+    WHAT THIS SWEEP CAN AND CANNOT ANSWER. It answers *where capacity stops mattering*,
+    robustly, because that is set by the trip ceiling and the trip ceiling is analytic:
+
+        0-120s  tier 1 @ 45/(4 x 0.65) = 17.31s  ->  6.93 trips
+        120-240 tier 2 @ 60/2.6        = 23.08s  ->  5.20
+        240-540 tier 3 @ 90/2.6        = 34.62s  ->  8.67
+                                                    -----
+                                                    20.8 trips in a 540s night
+
+    It does NOT answer how the edge *varies* with capacity below that point. TIER_CAP is
+    expressed as a fraction of the van, so changing capacity also changes the depth
+    reservation policy, and the two are confounded. The edge column below is bumpy for
+    that reason and should not be read as a trend -- only the VAN/CLOCK transition is
+    load-bearing here.
+    """
+    print("\n\nWHERE DOES CAPACITY STOP BINDING?   (D-19 ships 14, ceiling 20)")
+    print("(edge is on a V11 estate. Read the binding column, not the edge trend --")
+    print(" the depth-reservation policy scales with the van, so the two are confounded.)")
+    print("-" * 108)
+    print(f"{'slots':<7}{'BLIND $':>10}{'best $':>11}{'edge':>8}{'trips':>9}"
+          f"{'slots used':>12}   {'binding':<8}{'winner':<14}")
+    pols = ["ADAPTIVE", "GATE", "SCAN", "VAR_0.5", "VAR_0.25",
+            "VARGATE_0.5", "VARGATE_0.25"]
+    for cap in (10, 12, 14, 16, 18, 20, 22, 24, 32):
+        base = trial("BLIND", n=1500, H=1.0, van=cap)
+        rows = {p: trial(p, n=1500, H=1.0, van=cap) for p in pols}
+        name = max(rows, key=lambda k: rows[k]["mean"])
+        bind = "VAN" if base["used"] > cap - 0.75 else "CLOCK"
+        print(f"{cap:<7}{base['mean']:>10,.0f}{rows[name]['mean']:>11,.0f}"
+              f"{rows[name]['mean'] / base['mean'] - 1:>8.1%}{base['trips']:>9.1f}"
+              f"{base['used']:>12.1f}   {bind:<8}{name:<14}")
+
+
 def detail(H=1.0):
     print(f"\n\nWHAT THE POLICIES ACTUALLY DO   (H = {H}, perfect read)")
     print("-" * 108)
@@ -309,4 +356,5 @@ if __name__ == "__main__":
     sweep_H()
     sweep_sigma()
     sweep_gate()
+    sweep_capacity()
     detail()

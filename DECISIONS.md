@@ -308,8 +308,40 @@ somewhere between **24 and 32 slots**. The 20-slot ceiling was picked by instinc
 out to sit just under the cliff. It is now a measured boundary, not a guess — when someone
 proposes a capacity buff, that table is the answer.
 
+> **R24: the conclusion holds, the number was wrong, and the reason was wrong.** That 24–32
+> figure comes from `haul_sim.py`, which predates `PARALLEL_EFFICIENCY` (R7), the
+> slot-accounting fix (R8), the derived Disturbance model (R5) and the cursed-floor
+> correction (R18). Every one of those changed **how many trips a crew gets**, which is the
+> quantity the entire capacity argument turns on, and nobody re-ran it in eleven rounds.
+>
+> **The real ceiling is 21 trips, and it is arithmetic rather than a measurement.** A crew of
+> four cannot complete more than `6.93 + 5.20 + 8.67 = 20.8` hauls in a 540-second night at
+> the calibrated parallel efficiency. `sim/appraiser_variance.py::sweep_capacity` confirms it:
+> the van is fully used at every capacity up to 20, and from 22 upward the crew stalls at
+> exactly 21 trips and earns the same money at 22, 24 and 32 slots. **Capacity is not the
+> master lever above 21 — the clock is, and above the ceiling capacity does nothing at all.**
+>
+> **So D-19's ceiling of 20 is right, by one slot rather than by four to twelve.** The margin
+> is far thinner than "just under the cliff" implied, and the reason has changed: the cliff is
+> not the appraiser's edge decaying with capacity, it is the crew running out of trips.
+>
+> **The dangerous corollary, which D-19 did not say and now must.** The capacity ceiling is a
+> *derived* quantity — it moves with `night.haul_window_seconds`, `night.crew` and
+> `PARALLEL_EFFICIENCY`. Lengthening the night or improving crew throughput raises the trip
+> ceiling and silently makes 20 slots safe *and then irrelevant*; shortening it pushes the
+> ceiling below 20 and makes the shipped ceiling itself inert. **Anyone touching night length
+> or crew flow is moving this decision without knowing it.**
+>
+> One reassurance from the same run: on a V11 estate the appraiser is still earning **+10.1%
+> at the full 20-slot ceiling**, so the upgrade path does not kill the signature verb. D-23's
+> authored spread is what buys that — it keeps the appraiser alive right up to the trip
+> ceiling.
+
 **Falsified if:** crews clear night 1 without appraising anything. Cut capacity before
-touching any other number.
+touching any other number. **Also falsified — differently — if `night.haul_window_seconds`,
+`night.crew` or the parallel-efficiency calibration change without this decision being
+re-derived**, because the 20-slot ceiling is downstream of all three and stops meaning
+anything if the trip ceiling moves.
 
 ---
 
