@@ -57,7 +57,9 @@ const N = +(process.argv[2] || 4);
 
   const base = { off: await avg(null, "offence"), def: await avg(null, "defence") };
   console.log(`control (no passive)   dps ${Math.round(base.off)}   ` +
-              `survived ${(base.def/60).toFixed(1)}m     n=${N}\n`);
+              `survived ${(base.def/60).toFixed(1)}m     n=${N}`);
+  console.log(`kit: BONK BAT + BOLT at rank 5. Note DUPLICATOR is kit-dependent -`);
+  console.log(`see dupe measurements across kits; BOLT is one it can use.\n`);
   console.log("passive             dps   vs base   survived   vs base   type");
   const rows = [];
   for (const k of PASSIVES) {

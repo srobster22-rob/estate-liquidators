@@ -199,6 +199,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("BIG HEART contributes damage", riders.heart > riders.none * 1.10,
      `x${riders.none} -> x${riders.heart}`);
 
+  const offers = await page.evaluate(() => {
+    const peek = (kit) => {
+      window.__g.start("intern"); window.__g.drainPicks(true);
+      for (const w of kit) window.__g.give(w, 1);
+      return window.__g.peekOffers(80);
+    };
+    return { canUse: peek(["bolt"]), cannot: peek(["pulse", "aura"]) };
+  });
+  ok("DUPLICATOR offered when a weapon can use it",
+     (offers.canUse["DUPLICATOR"] || 0) > 0,
+     `${offers.canUse["DUPLICATOR"] || 0} times in 80 rolls`);
+  ok("DUPLICATOR never offered to a kit that cannot",
+     (offers.cannot["DUPLICATOR"] || 0) === 0,
+     `${offers.cannot["DUPLICATOR"] || 0} times in 80 rolls`);
+
   const retal = await page.evaluate(() => {
     // 30 shamblers reads 660 damage either way - that is exactly their combined
     // HP, so the measurement is capped by what there is to kill, not by output.

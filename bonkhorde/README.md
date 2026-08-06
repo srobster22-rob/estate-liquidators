@@ -87,10 +87,10 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 77 checks: boot, every weapon, every evolution, every
+node test.js              # 79 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
-                         # every character, a full run, the sudden-death gate,
-                         # death, saves, render
+                         # draft rules, every character, a full run, the
+                         # sudden-death gate, death, saves, render
 node balance.js 6 both            # [trials] [first|vet|both] [char,char]
 node balance.js 12 vet intern,scrap   # higher n on two characters
 node dps.js 4                     # per-weapon boss/crowd DPS bench, n=4
@@ -99,7 +99,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **77 passing.**
+die, and checks that `localStorage` survives a reload. **79 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -133,23 +133,23 @@ control with an identical weapon kit.
 
 ```
                     dps   vs base   survived   vs base
-control            1861        --      10.3m        --
-spinach            2412       30%      10.8m        5%   offence partner
-clover             2145       15%      10.8m        5%   offence partner
-dupe               2788       50%      10.9m        6%   offence partner
-tempo              2257       21%      11.5m       12%   offence partner
-plating            2646       42%      12.0m       16%   defence partner
-magnet             1976        6%      11.5m       12%   defence partner
-heart              2125       14%      11.2m        9%   defence partner
-boots              2013        8%      10.7m        4%   defence partner
+control            1950        --       9.4m        --
+spinach            2385       22%      11.5m       22%   offence partner
+clover             2290       17%      11.0m       18%   offence partner
+dupe               2502       28%      11.1m       19%   offence partner
+tempo              2265       16%      10.9m       17%   offence partner
+plating            2417       24%      11.2m       20%   defence partner
+magnet             2197       13%      11.1m       18%   defence partner
+heart              2174       11%      11.7m       25%   defence partner
+boots              2249       15%      10.6m       13%   defence partner
 
-  offence partners   avg +29% dps,  +7% survival
-  defence partners   avg +18% dps, +10% survival
+  offence partners   avg +21% dps, +19% survival
+  defence partners   avg +16% dps, +19% survival
 ```
 
 It used to read **+25% dps / 0% survival** against **−0% dps / +4% survival**: half
 the roster ramped its power while chasing an evolution and half simply did not,
-for the same reward. All four of the quiet ones now contribute, in their own
+for the same reward. The whole spread was 6%–50%; it is now 11%–28%. All four of the quiet ones now contribute, in their own
 idiom rather than by bolting "+damage" onto everything:
 
 | | |
@@ -167,23 +167,23 @@ difficulty curve here is a measurement. Current state, 6 trials per cell:
 
 ```
                      median    worst     best   lvl  kills  evos  clears
-FIRST RUN   intern    04:25    03:52    05:05    11    528   0.0     0/6
-  (no perm  scrap     05:11    04:12    05:19    12    670   0.0     0/6
-  upgrades) spark     05:11    03:51    10:40    14    975   0.0     0/6
-            ox        04:30    04:04    05:07    11    591   0.0     0/6
-            ghoul     05:23    04:18    05:27    13    711   0.0     0/6
+FIRST RUN   intern    04:16    03:53    05:27    11    554   0.0     0/6
+  (no perm  scrap     04:23    03:41    05:31    12    584   0.0     0/6
+  upgrades) spark     04:16    03:42    04:19    10    505   0.0     0/6
+            ox        05:25    04:21    11:07    14    999   0.0     0/6
+            ghoul     05:19    04:21    16:22    18   1481   0.2     0/6
 
-VETERAN     intern    10:00    05:32    22:26    32   3953   1.3     2/8
-  (all      scrap     20:02    05:29    21:15    44   5969   2.1     0/8
-  upgrades  spark     21:11    05:09    23:20    49   7833   2.8     5/8
-  bought)   ox        20:33    06:23    21:56    46   6761   2.5     3/8
-            ghoul     15:56    08:56    22:13    40   5447   1.9     3/8
+VETERAN     intern    12:22    06:19    16:01    27   2757   0.7     0/6
+  (all      scrap     09:17    06:03    11:26    22   1724   0.3     0/6
+  upgrades  spark     21:35    05:31    22:47    43   6532   2.5     2/6
+  bought)   ox        22:04    05:44    23:05    44   6915   2.2     3/6
+            ghoul     22:01    09:06    23:25    60  10104   3.3     4/6
 ```
 
 Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** (11 of 12
 in the histogram) and never once clear, though a lucky run occasionally reaches the final boss
 at 21:17 — so the ceiling is visible without being available. A maxed shop makes twenty minutes
-*reachable* and clears **13 of 40**; the medians above are mostly runs that got to sudden death
+*reachable* and clears **9 of 30**; the medians above are mostly runs that got to sudden death
 and lost there, which is the fight being the fight.
 
 **Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
@@ -195,7 +195,7 @@ only number here worth acting on.
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned twenty-three things this build believed:
+That harness has overturned twenty-four things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -278,6 +278,14 @@ That harness has overturned twenty-three things this build believed:
   the comparison killed everything on the field, so effective damage was pinned to how much
   there was to kill. Supply-capping again, in miniature, in the very test written to catch the
   fix for it.
+- **DUPLICATOR was a coin flip the draft would not tell you about.** Benched across kits it
+  read **+52% with BOLT, −9% without, −4% with mortar+aura** — the best passive in the game or
+  a completely wasted pick, decided by which weapons you happened to be offered, on a card that
+  reads identically either way. That is worse than an overpowered passive; it is a trap wearing
+  the same clothes as the correct answer. It now touches four weapons rather than two, its
+  copies are echoes at 55% damage so bolting one onto a 3-shell mortar is not +100%, and **the
+  roller will not offer it to a kit that provably cannot use it.** Reads +25%/+7%/+25% across
+  the same three kits.
 - **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
   victory right up until sudden death let losing runs reach 22:00 — and then reported them as
   wins. The instrument has to be re-checked every time the thing it measures changes shape.
@@ -331,11 +339,6 @@ the same trap caught the clears metric later, for the same reason.
   is a plausible player rather than a good one — a human reads incoming waves and plans routes
   across the whole arena, which it cannot. Expect the real curve to sit longer than the table
   says, and expect the veteran tier to look too easy once someone competent tries it.
-- **DUPLICATOR is an outlier at +50% dps**, roughly twice the next passive. It is also the most
-  conditional thing in the game — it adds projectiles, so it is enormous with BOLT or SKULLS in
-  the kit and worth nothing without them. The bench's fixed kit includes BOLT, which flatters
-  it. Left alone on purpose: a high-variance pick that pays off when your build wants it is
-  good design, not a bug. But it has not been measured against a kit that cannot use it.
 - **THE SCRAPPER is still the weakest character.** Its HP penalty was isolated and cleared
   (patching `hp` back to 1.0 changes nothing — identical clears, identical median), and the
   partner rework has lifted it further, but it remains the least reliable closer. What is
