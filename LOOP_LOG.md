@@ -196,6 +196,33 @@ environment (the package proxy refuses), so the three named lever constants I ad
 `Disturbance.cs` are checked by drift and by eye, not by a compiler. Run
 `dotnet run --project unity/tests/CoreTests` on the Mac before trusting them.
 
+R17 · Built `sim/audit_waivers.py`, which checks the *claims* R16's waivers make: if a file
+has a line that talks about a constant it claims not to implement, and there's a number on
+that line, the waiver is suspect. · **D-22 predicted its own failure mode — "a lazy round can
+wave a genuine divergence through by writing a waiver instead of a fix" — and the audit found
+three of them, all one round old, all mine.** (1) `integrated.py` hardcoded `cursed * 2.0`,
+so every appraiser number published since R8 used the floor R9 replaced. (2) `disturbance.py`
+used `cursed_items * 3.0` — **a third value for a constant that is 7 everywhere else.**
+(3) `disturbance.py` implements both levers at exactly the canonical −15/−20, which I had
+waived as "levers not modelled". · **Then the bigger one, which the audit only led to:
+`disturbance.py` never had the ratcheting floor at all**, and its `__main__` defaulted to the
+disproven 1/min decay — so DESIGN §6.5's headline pacing table, the thing the whole escalation
+design rests on, **could not be reproduced from anything in the repository**, and the module's
+own output contradicted it. Its claim that "the floor guarantees the night escalates anyway"
+was true of the spec and absent from the simulation. Fixed, re-measured, and the table is now
+regenerable by running one file. **With the ratchet in, 85% of *silent* nights are hunted at
+least once** (was 27%) — the design's stated intent, finally modelled. · **And the finding
+that matters for play: the levers, unrationed, delete COLLECT entirely.** Pull-on-sight is 5
+uses a night and **0%** of the night in the Curator's top tier; the emergency valve removes
+the pressure it exists to relieve. Swept the cooldown — 60s → 6%, **120s → 14%**, 300s → 26%,
+never → 30% — and locked 120s as D-23. · Appraiser edge falls **+6% → +4.4%** with the
+canonical floor (ordering unchanged, ADAPTIVE still wins at designed rates), the fourth value
+this number has had, every retraction an instrumentation bug rather than a design change.
+Cursed cargo is no longer inert in the integrated model either: 0→8 aboard now costs a blind
+crew **12%** of earnings, and at 8 aboard always-scanning overtakes selective scanning.
+· Suite: drift 184/184, mutation 184/184 killed, waiver audit clean, validator PASS, both
+prototypes PASS in Chromium. C# still unrun (no `dotnet` here).
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -204,7 +231,10 @@ environment (the package proxy refuses), so the three named lever constants I ad
 in R16 to say what is actually open. If you finish an item, delete it here — a stale plan is
 worse than no plan, because it gets read as current.)*
 
-**1 — Apply R11's lesson to the appraiser. Still the highest-value modelling gap.** The +6%
+**1 — Apply R11's lesson to the appraiser. Still the highest-value modelling gap**, and R17
+made it sharper: the edge is now **+4.4%**, and cursed cargo turns out to *raise* the value of
+scanning (at 8 cursed aboard, always-scan overtakes selective). That coupling is the seam to
+pull on. The +6%
 edge from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure
 that produced flat, uninteresting curves for the curse until R11 made the cost catastrophic
 instead of marginal. Try a tail-risk cost for scanning: appraising while already at
@@ -214,7 +244,7 @@ curses — "scan two or three times a trip, then stop" — the appraiser questio
 and the whole +6% worry dissolves. Model it in `integrated.py`; do **not** tune RETRIEVAL,
 which R8 showed is already sitting in the right band.
 
-**2 — The one that genuinely needs the owner's call, deferred since R9.** Is a **+6%** edge
+**2 — The one that genuinely needs the owner's call, deferred since R9.** Is a **+4.4%** edge
 enough to carry the game's signature mechanic? Break-even-ish is defensible for a risk/reward
 system — the interesting state is a real toss-up — but it is thin enough that players may
 rationally skip the appraiser, the exact failure `DESIGN.md` §4.4 exists to prevent. Three
@@ -229,7 +259,11 @@ checks. Either strengthen it to the worst-case path (as V4 already does) or dele
 check that cannot fail is worse than no check, because it reads as coverage. R16 makes this
 cheap to test: the validator now has a self-test that asserts the *exact* failure set.
 
-**4 — Unverified, and it needs a machine with `dotnet`.** The C# core suite has not been run
+**4 — Port the lever cooldown (D-23) into the implementations.** It exists in `tuning.json`
+and `sim/disturbance.py` only; the C# core exposes `KillLights()`/`GoQuiet()` with no gate,
+and both prototypes have no levers at all. Currently waived in the drift checker with reasons.
+
+**5 — Unverified, and it needs a machine with `dotnet`.** The C# core suite has not been run
 since R13. R16 added three named lever constants to `Disturbance.cs` that no compiler has
 seen. First thing on the Mac: `python3 check.py` and confirm the C# line says PASS, not SKIP.
 

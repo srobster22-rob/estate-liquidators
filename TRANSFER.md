@@ -83,8 +83,8 @@ cross-platform netcode bugs early instead of at release.
 ## Where to pick up
 
 Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the design is
-settled (22 decisions logged, 1 open and it's an art question), the rules are tested, and the
+settled (23 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has sixteen rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has seventeen rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

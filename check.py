@@ -49,6 +49,8 @@ if FAST:
 else:
     results.append(run("mutation test", [sys.executable, "sim/mutate_drift.py"]))
 
+results.append(run("waiver audit", [sys.executable, "sim/audit_waivers.py"]))
+
 results.append(run("estate validator", [sys.executable, "validate_estate.py"],
                    cwd=ROOT / "sim"))
 

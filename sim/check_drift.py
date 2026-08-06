@@ -207,6 +207,7 @@ assert_("py/integrated", LC + "impulse_disturbance_per_l", r"^IMPULSE = ([\d.]+)
 assert_("py/integrated", LC + "sustained_disturbance_per_l", r"^SUSTAINED = ([\d.]+)")
 assert_("py/integrated", D + "decay_per_min_at_crew4", r"^DECAY_PER_MIN = ([\d.]+)")
 assert_("py/integrated", D + "ratchet_end", r"^RATCHET_END = ([\d.]+)")
+assert_("py/integrated", D + "per_cursed_item_floor", r"^FLOOR_PER_CURSED = ([\d.]+)")
 for key in ("sprint", "appraise", "door", "dolly", "radio", "break_small"):
     assert_("py/integrated", f"loudness.{key}", rf"\"{key}\":\s*(\d+)", PY_L)
 
@@ -215,6 +216,12 @@ assert_("py/disturbance", "night.seconds", r"^NIGHT_S = ([\d.]+)")
 assert_("py/disturbance", LC + "impulse_disturbance_per_l", r"^IMPULSE_PER_L = ([\d.]+)")
 assert_("py/disturbance", LC + "sustained_disturbance_per_l", r"^SUSTAINED_PER_L = ([\d.]+)")
 assert_("py/disturbance", D + "light_wing_gain", r"^LIGHT_GAIN = ([\d.]+)")
+assert_("py/disturbance", D + "decay_per_min_at_crew4", r"^DECAY_PER_MIN = ([\d.]+)")
+assert_("py/disturbance", D + "ratchet_end", r"^RATCHET_END = ([\d.]+)")
+assert_("py/disturbance", D + "per_cursed_item_floor", r"^FLOOR_PER_CURSED = ([\d.]+)")
+assert_("py/disturbance", D + "lever_kill_lights", r"^KILL_LIGHTS = ([\d.]+)")
+assert_("py/disturbance", D + "lever_go_quiet", r"^GO_QUIET = ([\d.]+)")
+assert_("py/disturbance", D + "lever_cooldown_seconds", r"^LEVER_COOLDOWN_S = ([\d.]+)")
 for key in ("walk", "sprint", "appraise", "door", "crowbar", "break_small",
             "break_large", "radio", "dolly"):
     assert_("py/disturbance", f"loudness.{key}", rf"\"{key}\":\s*(\d+)", PY_L)
@@ -273,6 +280,10 @@ for key, name in (("pocket", "pocket"), ("armful", "armful"),
 # fine; being silent about it is not.
 
 WAIVERS = [
+    ("cs/Disturbance", "disturbance.lever_cooldown_seconds",
+     "rationing is the caller's job - the model exposes KillLights()/GoQuiet(), Phase 4 gates them"),
+    ("py/integrated", "disturbance.lever_cooldown_seconds", "levers not modelled"),
+    ("py/curse_test", "disturbance.lever_cooldown_seconds", "levers not modelled"),
     ("cs/Loudness", "attention.*", "audio module - no attention model"),
     ("cs/Loudness", "disturbance.*", "gain is computed here, thresholds live in Disturbance.cs"),
     ("cs/Loudness", "curse.*", "audio module"),
@@ -333,18 +344,11 @@ WAIVERS = [
     ("py/integrated", "van.max_slots", "single night; upgrades are chain_sim's job"),
     ("py/integrated", "van.slot_cost.*", "uniform items; weight classes are chain_sim's job"),
     ("py/integrated", "van.ruin_*", "tail risk is modelled in curse_test.py"),
-    ("py/integrated", "disturbance.per_cursed_item_floor",
-     "floor-per-cursed is swept in curse_test.py, which is where R9 measured it"),
     ("py/integrated", "disturbance.lever_*", "levers not modelled"),
     ("py/integrated", "disturbance.light_wing_gain", "lighting not modelled"),
     ("py/integrated", "night.appraise_seconds",
      "R5 found scan DURATION barely matters; this model prices the scan by its noise"),
 
-    ("py/disturbance", "disturbance.decay_per_min_at_crew4",
-     "DECAY_PER_MIN = 1.0 is the pre-R4 value this module exists to disprove; it sweeps 1->22"),
-    ("py/disturbance", "disturbance.ratchet_end", "sweeps its own floor shape"),
-    ("py/disturbance", "disturbance.per_cursed_item_floor", "cursed cargo not modelled here"),
-    ("py/disturbance", "disturbance.lever_*", "levers not modelled"),
     ("py/disturbance", "attention.*", "not an attention model"),
     ("py/disturbance", "curse.*", "not a curse model"),
     ("py/disturbance", "van.*", "no van in this model"),

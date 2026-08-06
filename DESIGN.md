@@ -414,19 +414,43 @@ it, regardless of how careful you are.
 With that structure, behaviour finally matters:
 
 Tuned and locked at decay 50/min. Percentages are share of a 12-minute night spent in each
-tier, over 400 simulated nights per archetype:
+tier, over 400 simulated nights per archetype. **Reproduce with `python3 sim/disturbance.py`**
+— the previous version of this table could not be reproduced from anything in the repository,
+because the module that produced it defaulted to the disproven 1/min decay and had no
+ratcheting floor at all (R17).
 
 | Crew | DORMANT | PATROL | PURSUE | COLLECT | First PURSUE |
 |---|---:|---:|---:|---:|---:|
-| Silent running | 53% | 46% | 0% | **0%** | 11.7 min (27% of nights) |
-| Careful, no scans | 52% | 48% | 1% | **0%** | 11.4 min (52%) |
-| **Baseline** | 24% | 36% | 25% | **15%** | **5.8 min** (100%) |
-| Greedy — 5 cursed, loud | 11% | 16% | 16% | **57%** | 2.7 min (100%) |
+| Silent running | 47% | 49% | 3% | **0%** | 10.9 min (85% of nights) |
+| Careful, no scans | 42% | 53% | 5% | **0%** | 10.2 min (88%) |
+| **Baseline** | 13% | 31% | 42% | **14%** | **3.1 min** (100%) |
+| Greedy — 4 cursed, 3 wings lit | 2% | 28% | 49% | **21%** | 2.1 min (100%) |
 
-That's the curve the design has been claiming all along, now actually produced: a careful
-crew can play an entire night without ever being hunted, a baseline crew gets its first
-serious pursuit around the halfway mark and spends the last stretch genuinely in danger, and
-a greedy crew is being collected before minute three.
+That's the curve the design has been claiming all along: a careful crew is rarely hunted and
+never collected, a baseline crew gets its first serious pursuit early and spends a seventh of
+the night genuinely in danger, and a greedy crew lives there.
+
+**The floor is what makes the escalation inevitable, and it was missing.** With the ratchet
+in, 85% of *silent* nights end up hunted at least once — the house does get angrier as you
+strip it, which is exactly what this section always claimed and never modelled. Without it,
+a silent crew simply never met the Curator.
+
+**And the levers have to be rationed or they delete the top tier.** A crew that pulls one
+every time the meter crosses 78 pulls five a night and spends **0%** of the night in COLLECT:
+the emergency valve removes the pressure it exists to relieve. Measured against cooldown, for
+the baseline crew:
+
+| Lever cooldown | PURSUE | COLLECT |
+|---|---:|---:|
+| none (pull on sight) | 48% | **0%** |
+| 60s | 47% | 6% |
+| **120s** ← chosen | 42% | **14%** |
+| 300s | 35% | 26% |
+| never pulled | 32% | 30% |
+
+**120 seconds is the value**, and it is the difference between the Curator having a fourth
+gear and not. Whether the fiction is a cooldown, a breaker that has to be walked to, or a
+per-night budget is an implementation choice; the rationing is not.
 
 Under the old model **every** crew was pinned at maximum inside sixty seconds — including one
 that never scanned a single item. There was no curve at all, and no amount of decay tuning

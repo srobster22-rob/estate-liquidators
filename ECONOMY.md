@@ -300,13 +300,16 @@ by using a placeholder for noise cost. Scanning still pays — by +31%.
 With attempts (not successes) counted against the depth budget, the model finally passes its
 own sanity check: harsher retrieval now monotonically lowers **every** strategy's earnings.
 
+Re-measured in R17 with the canonical +7 cursed floor — this table was previously computed
+with a hardcoded +2 that had been stale since R9. Reproduce with `python3 sim/integrated.py`.
+
 | PURSUE / COLLECT | BLIND | ADAPTIVE | SCAN | Best |
 |---|---:|---:|---:|---|
-| 0.00 / 0.00 | $6,520 | $7,777 | $8,308 | SCAN |
-| 0.05 / 0.12 | $6,511 | $7,369 | $7,442 | SCAN |
-| **0.10 / 0.25** ← as designed | **$6,497** | **$6,889** | $6,481 | **ADAPTIVE** |
-| 0.20 / 0.50 | $6,470 | $6,015 | $4,697 | BLIND |
-| 0.30 / 0.70 | $6,440 | $5,231 | $3,271 | BLIND |
+| 0.00 / 0.00 | $6,523 | $7,776 | $8,302 | SCAN |
+| 0.05 / 0.12 | $6,484 | $7,269 | $7,356 | SCAN |
+| **0.10 / 0.25** ← as designed | **$6,434** | **$6,717** | $6,409 | **ADAPTIVE** |
+| 0.20 / 0.50 | $6,342 | $5,684 | $4,556 | BLIND |
+| 0.30 / 0.70 | $6,264 | $4,601 | $2,714 | BLIND |
 
 **Two prior conclusions were wrong, both caused by the same bug:**
 
@@ -317,12 +320,21 @@ own sanity check: harsher retrieval now monotonically lowers **every** strategy'
   linear interpolation between two extremes. That pessimism was itself an artifact. The band
   exists, and the design already sits in it.
 
-**But the margin is small: +6% over blind hauling**, down from the +84% first reported and the
-+31% second. That is the number to argue about now. A ~6% edge means the appraiser is close to
-break-even — defensible for a risk/reward mechanic where the *interesting* state is a genuine
-toss-up, but thin enough that players may rationally skip it. Whether 6% is enough to carry a
-signature mechanic is a design judgement, not a simulation result, and it should be settled
-deliberately rather than by default.
+**But the margin is small: +4.4% over blind hauling** — the fourth value this number has had,
+after +84% (placeholder noise cost), +31% (slot-accounting bug) and +6% (stale cursed floor).
+Each retraction came from finding an instrumentation error, never from a design change, and
+each one moved in the same direction. That is the number to argue about now. A ~4% edge means
+the appraiser is close to break-even — defensible for a risk/reward mechanic where the
+*interesting* state is a genuine toss-up, but thin enough that players may rationally skip it.
+Whether it is enough to carry a signature mechanic is a design judgement, not a simulation
+result, and it should be settled deliberately rather than by default.
+
+**Cursed cargo is no longer inert, and it changes the ordering.** With the +7 floor, sweeping
+0 → 8 cursed items costs a blind crew 12% of earnings ($6,503 → $5,744) against the 2.9% R9
+measured at +2 — and at 8 aboard, always-scanning overtakes selective scanning, because a van
+full of curses keeps the Curator high enough that picking the best item on every shelf starts
+to pay for its own noise. Greed and information are coupled: the greedier the van, the more
+the appraiser is worth.
 
 **The pillar works harder than designed.** Look at the Disturbance column, not the money: a
 blind crew ends the night at 30 and is never hunted. A scanning crew is pinned at 100 for

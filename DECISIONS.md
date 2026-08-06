@@ -374,6 +374,29 @@ each implementation instead of checking them after the fact.
 
 ---
 
+## D-23 · Relief is rationed — the levers get a 120-second cooldown
+**Status:** FIRM (simulated, unplayed) · `DESIGN.md` §6.5, `tuning.json`
+
+Kill the lights and go quiet each drop Disturbance by a fixed amount. Neither may be used
+more than once every **120 seconds**.
+
+Without a cooldown, a crew that pulls a lever whenever the meter crosses 78 pulls five a
+night and spends **0% of the night in COLLECT** — the Curator's top tier stops existing. The
+valve removes exactly the pressure it was installed to relieve, and it does so under the most
+obvious possible player policy, so this is not an exotic failure. Measured across cooldowns
+for a baseline crew: none → 0% COLLECT, 60s → 6%, **120s → 14%**, 300s → 26%, never → 30%.
+120s is the setting that reproduces the 15% the design was aiming at.
+
+The fiction is open — a breaker somebody has to walk to, a recharge, a per-night budget of
+three. The rationing is not. Any relief that can be applied on sight flattens the escalation
+curve to its first three tiers.
+
+**Falsified if:** playtests show crews hoarding the lever instead of using it — if the
+cooldown makes it too precious to pull, it is doing the opposite job and wants to become a
+budget (spend when you like, run out) rather than a timer.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
