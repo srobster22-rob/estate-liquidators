@@ -165,12 +165,21 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V2** | Deepest room unreachable before T+4min, apex before T+6min, via simulated traversal at 2.6 m/s carry speed | `DESIGN.md` §7 pacing |
 | **V3** | ≥2 topologically distinct routes from every wing to the van | fairness contract #5 |
 | **V4** | Every tier-3/4 plinth→van route crosses ≥2 pinch nodes | `TECH-SPEC.md` §A4 |
-| **V5** | Curator audibility ≥8m through every wall configuration in the wing | `AUDIO-SPEC.md` §3.1 — **the contract test** |
+| **V5** | The Curator's approach is audible at every plinth — measured along its actual route, from its spawn, through the doors on the way | `AUDIO-SPEC.md` §3.1 — **the contract test** |
 | **V6** | Portal graph closed: no unreachable room, no orphan portal, every doorway has a door | audio occlusion |
 | **V7** | NavMesh connectivity: Curator can reach every plinth *and* carry an item back to it | RESEAT can't dead-end |
 | **V8** | Total wing value within ±15% of its depth band | economy sanity |
 | **V9** | No plinth within 15m of the van | no free money |
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
+
+**V5 was rewritten in R20, and how it was wrong is the useful part.** It measured doors
+between the plinth and the *van* — the wrong pair of rooms entirely, since the approach bus is
+the Curator coming at you, not you walking home. So it could not fail, and it never did: not
+on any authored wing, and not on the estate deliberately built to fail seven checks. It now
+walks the Curator's own route from its spawn and fails when the loot is buried far enough
+behind closed doors that the first warning a player gets is the thing itself. **A check that
+has never failed is not evidence of clean levels; it is an untested check.** Every one of the
+ten now has an estate built to break it, and the validator asserts each fires on demand.
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
 in is a rage-quit bug — four people spending three real minutes discovering that a doorway is

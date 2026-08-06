@@ -265,6 +265,25 @@ knee height and the camera is at 1.62m. Fixed the measurement, not the tolerance
 prototype is deliberately left alone: `proto3d` is the direction (R15), and duplicating the
 verb into a legacy toy is the kind of duplication R16 exists to fight.
 
+R20 · Went after the check that had never failed anything — V5, flagged as the weakest of
+the ten since R1 — and gave every check an estate built to break it. · **V5 was measuring the
+wrong pair of rooms.** It counted doors between the plinth and the *van*, but the approach bus
+is the Curator coming at you, not you walking home; the geometry that matters is
+spawn-to-plinth. It now walks the Curator's actual route and fails when loot is buried far
+enough behind closed doors that the first warning a player gets is the thing itself.
+· **The deeper problem was the evidence, not the check.** BROKEN_B plants seven faults at
+once, so it proves seven checks can fire and says nothing about the other three — and V1, V5
+and V7 had never failed anything in this repository. `estates.FAULTS` now carries **one estate
+per check, one fault each**, and the validator asserts all ten fire on demand, reporting which
+neighbouring checks each fault also trips (an unreachable room is unreachable for the Curator
+too — one fault, several consequences, worth seeing). · Verified by reinstating the old
+plinth-to-van path: the suite immediately reports *"V5 did not fire on an estate built to
+break it"*, which is what the last nineteen rounds could not have told anyone. · The V5 fault
+estate is itself instructive to build: the first version linked each scullery back to the
+foyer to keep V3 happy, which shortened the Curator's approach to four doors and made the
+fault evaporate. **A planted fault you cannot see fire is indistinguishable from no fault at
+all**, which is the same failure this round exists to fix, one level up.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -283,11 +302,9 @@ thin because the model was, and the fix cost nothing to implement. What replaces
 prototype**, and Milestone 2 has to instrument *refusal rate* alongside scan rate. If players
 appraise and then take everything anyway, the +25% is sitting on the table.
 
-**3 — V5 in `validate_estate.py` is the weakest of the ten checks.** It counts doors on the
-*shortest* path only and has never failed anything, including the estate built to fail seven
-checks. Either strengthen it to the worst-case path (as V4 already does) or delete it — a
-check that cannot fail is worse than no check, because it reads as coverage. R16 makes this
-cheap to test: the validator now has a self-test that asserts the *exact* failure set.
+~~**3 — V5 is the weakest of the ten checks.**~~ **Done, R20.** It was measuring
+plinth-to-van when the check is about the Curator's approach. All ten checks now have an
+estate built to break them and are asserted to fire on demand.
 
 **4 — Port the lever cooldown (D-23) into the implementations.** It exists in `tuning.json`
 and `sim/disturbance.py` only; the C# core exposes `KillLights()`/`GoQuiet()` with no gate,

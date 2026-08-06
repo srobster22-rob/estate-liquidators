@@ -199,16 +199,32 @@ def V4_pinch_points(e):
 
 
 def V5_audibility(e):
-    """AUDIO-SPEC 3.1: the Curator must stay audible through the wing's geometry."""
+    """
+    AUDIO-SPEC 3.1: the Curator's approach must be audible where the loot is.
+
+    R20 rewrote this. It measured doors between the plinth and the VAN, which is
+    the wrong pair of rooms entirely - the approach bus is the Curator coming at
+    you, so the geometry that matters is spawn-to-plinth. Measuring the wrong
+    path is why this check had never failed anything, including the estate built
+    to fail seven checks.
+
+    The Curator paths to the plinth (TECH-SPEC A4, the one AI cheat), so its
+    actual approach is the shortest route from where it is. If that route is
+    buried behind enough closed doors, the player at the plinth gets no warning,
+    which is an ambush the fairness contract does not allow.
+    """
     bad = []
     for pl in e.plinths:
-        path = e.path(pl["room"], e.van)
+        path = e.path(e.curator_spawn, pl["room"])
         if path is None:
-            continue
+            continue                      # V7's problem, not this one
         walls = sum(1 for a, b in zip(path, path[1:])
                     if (e.portal_between(a, b) or {}).get("door"))
-        if APPROACH_L * OCCLUSION ** walls < AUDIBILITY_FLOOR:
-            bad.append(f"{pl['room']}: {walls} doors to van, approach bus inaudible")
+        heard = APPROACH_L * OCCLUSION ** walls
+        if heard < AUDIBILITY_FLOOR:
+            bad.append(f"{pl['room']}: {walls} doors from the Curator's spawn, "
+                       f"approach heard at {heard:.0f} against a floor of "
+                       f"{AUDIBILITY_FLOOR:.0f}")
     return not bad, "; ".join(sorted(set(bad)))
 
 
@@ -308,13 +324,32 @@ def self_test(verbose=True):
         problems.append(f"BROKEN_B failed checks nothing was planted for: "
                         f"{sorted(spurious)}")
 
+    # R20: one estate per check, each with a single planted fault. Without this,
+    # "the validator passes" only ever meant seven of the ten checks had been
+    # shown to fire - and the three that hadn't included V5, which was measuring
+    # doors between the plinth and the VAN when the thing it is about is the
+    # Curator's approach. A check that has never failed is not a check.
+    if verbose:
+        print(f"\n{'=' * 78}\nCAN EVERY CHECK ACTUALLY FAIL?\n{'=' * 78}")
+    for check, estate in estates.FAULTS.items():
+        failed = set(validate(estate, verbose=False))
+        if check not in failed:
+            problems.append(f"{check} did not fire on an estate built to break it "
+                            f"(fired: {sorted(failed) or 'nothing'})")
+        elif verbose:
+            others = sorted(failed - {check}, key=lambda c: int(c[1:]))
+            print(f"  {check:<4} fires"
+                  + (f"   (also trips {', '.join(others)} - one fault, several "
+                     f"consequences)" if others else ""))
+
     if verbose:
         print()
         for p in problems:
             print(f"  FAIL  {p}")
         if not problems:
-            print(f"  OK   clean estate passes 10/10; broken estate trips exactly "
-                  f"{len(estates.EXPECTED_FAILURES)} planted faults")
+            print(f"  OK   clean estate passes 10/10, broken estate trips exactly "
+                  f"{len(estates.EXPECTED_FAILURES)} planted faults, and all "
+                  f"{len(estates.FAULTS)} checks fire on demand")
     return problems
 
 

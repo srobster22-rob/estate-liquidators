@@ -114,3 +114,111 @@ BROKEN_B = _broken()
 
 # What BROKEN_B is built to trip. The test asserts exactly this set.
 EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10"}
+
+
+# ---------------------------------------------------------------- single faults
+#
+# R20. BROKEN_B plants seven faults at once, which proves seven checks can fire
+# and says nothing at all about the other three. V1, V5 and V7 had never failed
+# anything in this repository - and V5 turned out to be measuring the wrong pair
+# of rooms entirely, which is exactly what "has never failed" is evidence of.
+#
+# One estate per check, each carrying a single deliberate fault. A fault often
+# trips neighbouring checks too (an unreachable room is unreachable for the
+# Curator as well), so the test asserts the TARGET check fires, not that it
+# fires alone.
+
+
+def _fault(name, mutate):
+    d = copy.deepcopy(MANOR_A)
+    d["id"] = f"fault_{name.lower()}  ({name} only)"
+    mutate(d)
+    return d
+
+
+def _v1(d):
+    """A room nothing connects to. The classic copy-paste-a-wing mistake."""
+    d["rooms"]["ice_house"] = {"pos": (90, 30), "tier": 1}
+
+
+def _v2(d):
+    """Tier 3 that opens immediately - depth without the work that gates it."""
+    d["prereqs"]["orangery"] = []
+
+
+def _v3(d):
+    """A wing on one corridor: lose that portal and the crew is sealed in."""
+    d["rooms"]["cold_store"] = {"pos": (26, -22), "tier": 1}
+    d["portals"].append({"a": "service_hall", "b": "cold_store", "width": 2.4,
+                         "door": True, "pinch": True})
+
+
+def _v4(d):
+    """A wide, unpinched bypass straight to the deep wing - V3's usual side-effect."""
+    d["portals"].append({"a": "foyer", "b": "conservatory", "width": 3.2,
+                         "door": True, "pinch": False})
+
+
+def _v5(d):
+    """
+    Loot buried six closed doors from where the Curator starts. The approach bus
+    arrives at 22 against a floor of 25, so the first warning you get is the
+    thing itself. Tier 0 throughout so this trips V5 and nothing else.
+    """
+    chain = [("scullery", (14, -26)), ("coal_store", (10, -36)),
+             ("boot_room", (6, -46))]
+    prev = "service_hall"
+    for room, pos in chain:
+        d["rooms"][room] = {"pos": pos, "tier": 0}
+        d["portals"].append({"a": prev, "b": room, "width": 3.0, "door": True})
+        prev = room
+    # No shortcut back to the foyer: a second route would shorten the Curator's
+    # approach to four doors, which is audible, and the fault would evaporate.
+    # Tier 0 keeps V3 out of it - the fairness contract is about wings, and a
+    # scullery chain is not one.
+    d["plinths"].append({"room": "boot_room", "cls": "armful", "tier": 0,
+                         "value": 200})
+
+
+def _v6(d):
+    """An opening that is neither door nor declared archway."""
+    d["portals"].append({"a": "service_hall", "b": "study", "width": 2.0,
+                         "pinch": False})
+
+
+def _v7(d):
+    """The Curator spawns somewhere it cannot leave."""
+    d["rooms"]["gate_lodge"] = {"pos": (-20, 0), "tier": 0}
+    d["curator_spawn"] = "gate_lodge"
+
+
+def _v8(d):
+    """A tier-1 plinth priced like tier 3."""
+    d["plinths"].append({"room": "study", "cls": "armful", "tier": 1,
+                         "value": 2400})
+
+
+def _v9(d):
+    """Free money parked next to the van."""
+    d["rooms"]["cloakroom"] = {"pos": (14, 2), "tier": 1}
+    d["portals"].append({"a": "foyer", "b": "cloakroom", "width": 2.0,
+                         "door": True, "pinch": False})
+    d["portals"].append({"a": "grand_stair", "b": "cloakroom", "width": 2.2,
+                         "door": True, "pinch": True})
+    d["plinths"].append({"room": "cloakroom", "cls": "armful", "tier": 1,
+                         "value": 280})
+
+
+def _v10(d):
+    """The piano check: an apex behind doorways it cannot physically pass."""
+    for p in d["portals"]:
+        if "office" in (p["a"], p["b"]):
+            p["width"] = 1.9
+
+
+FAULTS = {
+    "V1": _fault("V1", _v1), "V2": _fault("V2", _v2), "V3": _fault("V3", _v3),
+    "V4": _fault("V4", _v4), "V5": _fault("V5", _v5), "V6": _fault("V6", _v6),
+    "V7": _fault("V7", _v7), "V8": _fault("V8", _v8), "V9": _fault("V9", _v9),
+    "V10": _fault("V10", _v10),
+}

@@ -23,7 +23,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > 4. `TECH-SPEC.md` and `AUDIO-SPEC.md` — implementation detail for the two systems that
 >    carry the product.
 > 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `STACK.md` — content contract, tuning, dependencies.
-> 6. `LOOP_LOG.md` — nineteen rounds of findings, including several corrections to the specs.
+> 6. `LOOP_LOG.md` — twenty rounds of findings, including several corrections to the specs.
 >    Where the log contradicts a doc, **the log is newer**.
 > 7. `proto/index.html` and `proto3d/index.html` — running single-player prototypes of the
 >    core loop, top-down and first-person. Play them before writing anything.
