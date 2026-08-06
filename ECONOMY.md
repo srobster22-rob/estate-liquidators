@@ -379,3 +379,61 @@ nothing. It needs to be roughly 3–4× larger to be felt.
   supposed to be a genuine gamble, not a checklist item.
 - **Pocket items dominate.** Their per-slot value has crept up to parity; drop their band, not
   their slot cost.
+
+---
+
+## 10. Which model said what — provenance, and what each one cannot see
+
+**R24 found a FIRM decision (D-19, the master balance constant) resting on a figure from the
+one simulation that four subsequent rounds of bug-fixes had invalidated.** It took eleven
+rounds to notice, because nothing linked a claim to the code that produced it. This table
+exists so that never costs eleven rounds again.
+
+**The rule: quote a number with its model, or don't quote it.**
+
+| Model | Round | Produces | Cannot see |
+|---|---|---|---|
+| `haul_sim.py` | R0 | *(superseded)* the +84% edge, §6's capacity sweep, the "24–32 slot cliff" | parallel efficiency (R7), slot accounting (R8), derived Disturbance (R5), the corrected cursed floor (R18) |
+| `chain_sim.py` | R0 | §4 quota curve, §8, D-21 apex, **and the 20–24 extraction measurement that calibrated `PAR_EFF`** | Disturbance and the Curator entirely — it cannot price noise |
+| `curator_attention.py` | R2 | attention model, hand-off, D-03 | the economy |
+| `disturbance.py` | R3–R4 | the meter, decay 50/min, the ratcheting floor | the haul loop |
+| `integrated.py` | R5, R8 | the appraiser's edge against *derived* noise | the apex; tier 4 does not exist in it |
+| `curse_test.py` | R10–R11 | the curse value side, the ruin curve, D-23's predecessor | the apex |
+| `appraiser_risk.py` | R16 | D-22 — cost levers cannot widen a thin edge | the apex |
+| `appraiser_variance.py` | R17–R18, R24 | D-23 spread, the +8.8% edge, the 21-trip ceiling | the apex |
+| `validate_estate.py` | R1, R19, R17 | the eleven geometry checks | anything about value over time |
+| `check_drift.py` | R14, R18, R21, R23 | constant agreement, coverage, the C# backlog | whether the code is *correct* — only whether it agrees |
+
+### The one that will mislead you
+
+**The whole appraiser family — `integrated.py` and both `appraiser_*.py` — models tiers 1–3
+and has no apex object in it at all.** `chain_sim.py` does, and the apex is one cart-class
+prize worth $4,000–8,000 for five slots (D-21). That single omission has two consequences,
+and both are easy to trip over:
+
+1. **The absolute earnings are not comparable.** At 14 slots the appraiser family reports a
+   blind crew earning **~$6,400**; `chain_sim` reports **$9,373** for night 1. Both are right
+   about their own model. Only the second may be compared with a quota.
+2. **Growth from van upgrades is overstated by the appraiser family.** Across the chain's
+   14→19 slots it shows **+56%**, where `chain_sim` shows **+30%** — because the apex is a
+   large *fixed-size* prize that does not scale with capacity, so it damps the proportional
+   benefit of every extra slot. **The quota curve in §4 is calibrated on `chain_sim`, and
+   that is the correct choice**; do not "correct" it toward the appraiser family's numbers.
+
+### The chain against the trip ceiling (R24/R25)
+
+The van still binds on every night of the contract chain, but the margin closes steadily —
+and by night 4 it is thin enough that any change to night length, crew size or parallel
+efficiency would eliminate it:
+
+| Night | Van | Margin over the 20.8-trip ceiling | Appraiser edge (V11 estate) | Binding |
+|---:|---:|---:|---:|---|
+| 1 | 14 | 49% | +8.8% | van |
+| 2 | 15 | 39% | +16.3% | van |
+| 3 | 17 | 22% | +13.8% | van |
+| 4 | 19 | **9%** | +11.7% | van |
+
+**The upgrade path stays inside the cliff, but only just.** §4's own recommendation — that
+growth should come from richer estates rather than from squeezing the crew against a flat
+ceiling — is the fix, and this table is the number that makes the case: a fifth night, or a
++2 slot buff, or a longer night, and the constraint the appraiser lives on is gone.

@@ -107,6 +107,11 @@ PARALLEL_EFFICIENCY = 0.65
 
 RETRIEVAL = {"DORMANT": 0.00, "PATROL": 0.02, "PURSUE": 0.10, "COLLECT": 0.25}
 TIERS = [(85, "COLLECT"), (60, "PURSUE"), (30, "PATROL"), (0, "DORMANT")]
+# Tiers 1-3 ONLY: there is no apex object in this model. chain_sim.py has it, and it
+# is one cart-class prize worth $4,000-8,000 for five slots (D-21). Consequence, spelled
+# out in ECONOMY.md 10: earnings here are ~$3,000 below chain_sim's and NOT comparable
+# with a quota, and growth from van upgrades is overstated, because a fixed-size prize
+# damps the proportional value of every extra slot.
 TIER_DATA = {1: (45.0, (80, 300)), 2: (60.0, (250, 700)), 3: (90.0, (600, 1400))}
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3)]
 TIER_CAP = {1: 0.40, 2: 0.75, 3: 1.00}

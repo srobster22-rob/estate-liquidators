@@ -442,6 +442,34 @@ path does not kill the signature verb — D-23's authored spread is what keeps i
 to the trip ceiling. That is the strongest argument for D-23 yet, and it came from a round that
 was not about the appraiser at all.
 
+R25 · Ran the provenance audit R24 called for: trace every economic claim to the model that
+produced it, and mark what is stale. · **The good news first — §2's binding arithmetic checks
+out.** Its hand-waved "20-24 items actually extracted" and R24's analytic 20.8-trip ceiling
+are the same number, because `PAR_EFF = 0.65` was calibrated against it in R7. Two independent
+routes to the same figure is the strongest the project has on it. · **The live finding is in
+§4.** The quota curve upgrades the van **14 → 19** across the contract chain, and R24's ceiling
+is 20.8 trips — so the margin the appraiser lives on falls from **49% on night 1 to 9% on
+night 4**. Measured it properly rather than assuming the worst: the van still binds on all four
+nights and the edge stays healthy (8.8% / 16.3% / 13.8% / 11.7%), so **the upgrade path stays
+inside R24's cliff — but only just.** A fifth night, a +2 slot buff, or a longer night removes
+the constraint the signature verb depends on. §4's own standing recommendation (growth from
+richer estates, not from squeezing a flat ceiling) now has a number behind it. · **And a
+comparison nobody should have been making.** `chain_sim` reports a blind crew earning $9,373
+on night 1; the appraiser family reports ~$6,400 at the same capacity, and shows **+56%**
+growth across the chain where chain_sim shows **+30%**. Both are right about their own model:
+**the entire appraiser family — `integrated.py` and both `appraiser_*.py` — has no apex object
+in it at all.** The apex is one cart-class prize worth $4,000-8,000 for five slots, so it lifts
+the level *and*, being a large fixed-size prize, damps the proportional value of every extra
+slot. So the quota curve resting on chain_sim is correct and must not be "corrected" toward the
+appraiser numbers — a mistake that was one plausible reading away, since nothing said so. ·
+**Wrote `ECONOMY.md` §10 — a provenance table: which model produced which claim, which round,
+and what each one cannot see.** Marked `haul_sim.py` superseded, noted that `chain_sim` cannot
+price noise at all, and put the apex omission in the docstring of all three appraiser sims so
+it is visible where the numbers are generated rather than only where they are quoted. Added it
+to the README's document table under "**before quoting any number**". · The rule the table
+exists to enforce: **quote a number with its model, or don't quote it.** R24's discovery took
+eleven rounds purely because nothing linked a claim to the code behind it.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -449,50 +477,44 @@ was not about the appraiser at all.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R25: audit every other number that traces back to `haul_sim.py`.** R24 found D-19 — a FIRM
-decision, the master balance constant — resting on a figure from the one simulation that four
-subsequent rounds of bug-fixes invalidated. `haul_sim.py` is almost certainly not the only
-conclusion still standing on it: `ECONOMY.md` §6 is entirely haul_sim output, and the quota
-curve in §4 was calibrated against simulated earnings from that era. Grep every claim in
-`ECONOMY.md` and `DECISIONS.md` for its source, and mark anything derived from haul_sim,
-pre-R7 chain_sim, or the +84%/+31% eras as needing re-derivation. **Expect this to be the
-largest single cleanup left in the project**, and note that the fix is usually not re-running
-the old sim — it is deciding whether the claim still needs to exist.
+**R26: give `chain_sim.py` the one thing it cannot see.** `ECONOMY.md` §10 makes the split
+plain — chain_sim has the apex, the weight classes and the crew labour that the quota curve
+needs, and **no Disturbance or Curator at all**, so it cannot price noise. The appraiser family
+has the noise and no apex. **The quota curve is therefore calibrated on a model where
+appraising is free**, which is the one assumption `DESIGN.md` §4.4 is built to deny. Porting
+the tuned Disturbance model into chain_sim would let the quota curve and the appraiser edge be
+measured in the same run for the first time, and it is the last big modelling gap left. Expect
+the quota pass rates to move — a crew that pays for its scanning earns less than $9,373.
 
-**R26 (needs `dotnet`): port the economy into the C# core.** 26 canonical values, enumerated in
-`CS_BACKLOG` in `check_drift.py`. Retrieval table first (it drives every haul result), curse
-tables next (D-23's decision runs through them). Strike each off as it lands; the check fails
-until you do. *This environment cannot do it* — no C# toolchain, `dot.net` refused by the
-network policy — and an uncompiled change to the only implementation that ships is worse than
-no change.
+**R27: the night-4 margin, if R26 confirms it.** R25 measured the van's binding margin falling
+49% → 9% across the contract chain. It holds, but a fifth night or a +2 slot buff removes it.
+§4 already recommends the fix (growth from richer estates rather than from squeezing a flat
+ceiling); costing that properly needs R26's combined model, since richer estates change what
+noise buys you.
 
-**Six standing rules, each earned by getting it wrong first.**
+**R28 (needs `dotnet`): port the economy into the C# core.** 26 values, enumerated in
+`CS_BACKLOG`. Retrieval first, curse tables next. *This environment cannot do it* — no C#
+toolchain, `dot.net` refused by the network policy.
+
+**Seven standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18). *A check earns its place by failing the
-default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20) — the
-D-10 leak test read r = 0.46 pooled and ~0.00 within rooms. *Name the table you mean* (R14,
-R21) — third occurrence of that regex bug. *A model verified in one projection is not verified
-in the one you ship* (R22) — the telegraph measured cleanly top-down and dies in perspective.
-*Every guarantee has been weaker than it sounded, three times running* (R23) — agreement,
-then coverage, then per-implementation coverage.
+default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20).
+*Name the table you mean* (R14, R21) — third occurrence of that regex bug. *A model verified
+in one projection is not verified in the one you ship* (R22). *Every guarantee has been weaker
+than it sounded* (R23) — agreement, then coverage, then per-implementation coverage.
+**And the one that has produced the most: a conclusion is only as current as the model
+underneath it** (R24) — now enforced by `ECONOMY.md` §10, whose rule is *quote a number with
+its model, or don't quote it*.
 
-And the seventh, from R24, which is the one that keeps producing findings: **a conclusion is
-only as current as the model underneath it.** Four rounds of fixes to the haul model never
-propagated to the decisions the old model justified, because nothing links a claim to the code
-that produced it. Every number in this project should be traceable to the simulation and the
-round that produced it — R25 is the first pass at that, and the standing habit is to state the
-source whenever a figure is quoted.
+**The myopia bug has appeared four times** (R5, R6, R24, and once in R20's neighbourhood). Any
+haul model needs a depth-reservation policy before its baseline means anything — and R24 adds
+the converse: **that policy must not be coupled to the parameter you are sweeping.**
 
-**The myopia bug has now appeared four times** (R5, R6, R20-adjacent, R24). Any haul model
-needs a depth-reservation policy before its baseline means anything — and R24 adds the
-converse: **that policy must not be coupled to the parameter you are sweeping.** Expressing
-`TIER_CAP` as a fraction of the van makes every capacity sweep meaningless.
+**The appraiser thread is closed.** +8.8% at 14 slots, +11.7% at night 4's 19, alive across
+the whole upgrade path (R25). **Do not reopen it with another tuning sweep.** The next real
+information is Milestone 2 instrumentation (D-10) and D-24's one-second room-classification
+test.
 
-**The appraiser thread is closed.** At +8.8% on a V11 estate at 14 slots and **+10.1% at the
-20-slot ceiling** (R24), with a real skill ceiling and a graceful failure mode, the mechanic is
-defensible across the whole upgrade path. **Do not reopen it with another tuning sweep.** The
-next real information comes from Milestone 2 instrumentation (D-10) and D-24's one-second
-room-classification test, which costs nothing and can run on a still frame.
-
-**Not blocked on anything except the C# port, which is blocked on a toolchain rather than on a
+**Not blocked on anything except the C# port, which is blocked on a toolchain rather than a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks
 nothing) are closed.
