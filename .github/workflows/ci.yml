@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  estate-sims:
+    name: Estate Liquidators — sims
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      # 55 tuning constants must agree across the Python sims, the JS prototype
+      # and the C# core. Divergence is this project's primary defect class.
+      - name: Constant drift across all three implementations
+        run: python3 sim/check_drift.py
+      # the clean estate passes all ten checks; the broken one must trip exactly
+      # its seven planted faults - no more, no fewer
+      - name: Estate validator against its own fixtures
+        run: python3 sim/validate_estate.py
+
+  core-csharp:
+    name: Estate Liquidators — C# core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '9.0.x' }
+      # pins the C# core against the numbers the Python simulations produced
+      - name: Core rule suite
+        run: dotnet run --project unity/tests/CoreTests --configuration Release
+
+  bonkhorde:
+    name: BONKHORDE — browser suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Playwright + Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      # 79 checks: every weapon, every evolution, every enemy and boss, elites,
+      # boss abilities, draft rules, a full run, the sudden-death gate, saves,
+      # and a non-blank render assertion
+      - name: Headless game suite
+        working-directory: bonkhorde
+        run: node test.js

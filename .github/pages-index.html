@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>estate-liquidators — playables</title>
+<style>
+  :root{ --ink:#f2ece0; --dim:#8e8878; --gold:#f0b429; --line:#242a33; }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:#0a0c10;color:var(--ink);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:56px 22px 80px}
+  h1{font-size:34px;letter-spacing:.06em;margin:0 0 4px;font-weight:800}
+  .sub{color:var(--dim);font-size:12.5px;letter-spacing:.1em;margin-bottom:40px}
+  h2{font-size:11px;letter-spacing:.24em;color:var(--dim);font-weight:400;
+    margin:44px 0 14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  a.card{display:block;background:#12161d;border:2px solid #232a33;border-bottom-width:4px;
+    padding:18px 20px;margin-bottom:12px;text-decoration:none;color:inherit;transition:.09s}
+  a.card:hover{border-color:var(--gold);transform:translateY(-3px);background:#171c25}
+  .nm{font-size:15px;font-weight:700;letter-spacing:.04em}
+  .nm i{font-style:normal;color:var(--gold);font-size:11px;margin-left:10px;letter-spacing:.12em}
+  .ds{font-size:12.5px;color:#a8a396;margin-top:6px}
+  .meta{font-size:11px;color:var(--dim);margin-top:9px}
+  p{font-size:13px;color:#a8a396}
+  .foot{margin-top:44px;font-size:11.5px;color:var(--dim)}
+  .foot a{color:var(--gold)}
+  kbd{background:#1b2028;border:1px solid #2e3540;border-bottom-width:2px;
+    padding:1px 6px;font-size:10.5px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>estate-liquidators</h1>
+  <div class="sub">TWO GAMES, THREE PLAYABLES, NO INSTALL</div>
+
+  <p>Everything below is a single self-contained HTML file — hand-rolled WebGL, no engine,
+  no build step, no dependencies. Click and it runs.</p>
+
+  <h2>BONKHORDE</h2>
+  <a class="card" href="bonkhorde/">
+    <div class="nm">BONKHORDE <i>PLAY</i></div>
+    <div class="ds">A 3D survivors-like. You never attack — every weapon fires on its own
+      cooldown, and the only verb is positioning. Survive twenty minutes; four bosses and a
+      sudden-death finale disagree.</div>
+    <div class="meta"><kbd>WASD</kbd> move · <kbd>MOUSE</kbd> camera · <kbd>SPACE</kbd> jump
+      &nbsp;·&nbsp; ~1,500 lines, 79 automated checks</div>
+  </a>
+
+  <h2>ESTATE LIQUIDATORS — PROTOTYPES</h2>
+  <a class="card" href="proto3d/">
+    <div class="nm">First-person prototype <i>PLAY</i></div>
+    <div class="ds">Empty a dead collector's house before sunrise. The quota is in dollars,
+      not items, and something in there is still curating the collection.</div>
+    <div class="meta"><kbd>WASD</kbd> move · <kbd>E</kbd> grab · <kbd>F</kbd> appraise
+      &nbsp;·&nbsp; needs pointer lock, so use a desktop browser</div>
+  </a>
+  <a class="card" href="proto/">
+    <div class="nm">Top-down loop prototype <i>PLAY</i></div>
+    <div class="ds">The same haul loop from above, with the simulation-verified attention and
+      disturbance models wired in. Built to test the economy, not the feel.</div>
+  </a>
+
+  <div class="foot">
+    Source and write-ups on
+    <a href="https://github.com/srobster22-rob/estate-liquidators">GitHub</a>.
+    Both projects document what their own measurements disproved.
+  </div>
+</div>
+</body>
+</html>

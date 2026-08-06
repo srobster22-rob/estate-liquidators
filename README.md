@@ -1,5 +1,9 @@
 # ESTATE LIQUIDATORS
 
+[![CI](https://github.com/srobster22-rob/estate-liquidators/actions/workflows/ci.yml/badge.svg)](https://github.com/srobster22-rob/estate-liquidators/actions/workflows/ci.yml)
+
+**▶ [Play the prototypes in your browser](https://srobster22-rob.github.io/estate-liquidators/)** — no install, no build step.
+
 **Co-op horror extraction for 4 players.** You're a cleanout crew emptying a dead collector's
 estate before sunrise. Every object has a dollar value, the van has finite space, and the
 quota is in dollars, not items.
@@ -14,10 +18,20 @@ You can get rid of the monster by handing the vase to your friend.
 
 ## Status
 
-**Design foundation. No code yet.** These documents are deliberately unfinished — they're
-built to be extended, argued with, and revised as playtests come back. Nothing here is
-precious except the things marked FIRM in the decision log, and even those state their own
-falsification conditions.
+**Design foundation, plus the parts that could be proved without an engine.** Eight Python
+simulations, a C# core pinned against their numbers, and two playable browser prototypes —
+but no Unity project yet, and none of the netcode that the product actually rests on.
+
+These documents are deliberately unfinished — they're built to be extended, argued with, and
+revised as playtests come back. Nothing here is precious except the things marked FIRM in the
+decision log, and even those state their own falsification conditions.
+
+Two simulations between them overturned four things this project believed, and the headline
+number was retracted twice: the appraiser's edge over blind hauling went **+84% → +31% → +6%**
+as each measurement found a bug in the one before it. That history is in `LOOP_LOG.md`, and it
+is the most useful thing here.
+
+**There is also a second, unrelated game in this repository** — see `bonkhorde/`.
 
 ## The documents
 
@@ -34,6 +48,7 @@ falsification conditions.
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |
+| **[bonkhorde/](bonkhorde/)** | A different game entirely: a 3D survivors-like in one HTML file, with its own measurement harness. | It stands alone. |
 
 **Reading order for someone new:** `DESIGN.md` §1–6 → `DECISIONS.md` (skim the FIRM entries)
 → whichever spec covers what you're building.

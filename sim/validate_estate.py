@@ -300,3 +300,38 @@ def validate(d, verbose=True):
         verdict = "ENTERS POOL" if not failed else f"REJECTED ({', '.join(failed)})"
         print(f"  -> {verdict}")
     return failed
+
+
+# ---------------------------------------------------------------------------
+# Runnable entry point. R1 recorded that the clean estate passes all ten checks
+# and the broken one trips exactly the seven planted faults - but there was no
+# way to actually run that, so the claim had been unverifiable ever since.
+#   python3 sim/validate_estate.py
+if __name__ == "__main__":
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from estates import MANOR_A, BROKEN_B, EXPECTED_FAILURES
+
+    clean = validate(MANOR_A)
+    broken = set(validate(BROKEN_B))
+
+    print(f"\n{'=' * 78}\nRESULT\n{'=' * 78}")
+    problems = []
+    if clean:
+        problems.append(f"clean estate should pass all ten, failed: {sorted(clean)}")
+    else:
+        print("  OK   manor_a passes all ten checks")
+
+    if broken != EXPECTED_FAILURES:
+        missed = sorted(EXPECTED_FAILURES - broken)
+        extra = sorted(broken - EXPECTED_FAILURES)
+        if missed:
+            problems.append(f"planted faults NOT caught: {missed}")
+        if extra:
+            problems.append(f"unplanted faults reported: {extra}")
+    else:
+        print(f"  OK   broken_b trips exactly its {len(EXPECTED_FAILURES)} planted faults")
+
+    for p in problems:
+        print(f"  FAIL {p}")
+    sys.exit(1 if problems else 0)

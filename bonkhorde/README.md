@@ -1,5 +1,9 @@
 # BONKHORDE
 
+[![CI](https://github.com/srobster22-rob/estate-liquidators/actions/workflows/ci.yml/badge.svg)](https://github.com/srobster22-rob/estate-liquidators/actions/workflows/ci.yml)
+
+**▶ [Play it in your browser](https://srobster22-rob.github.io/estate-liquidators/bonkhorde/)**
+
 **A 3D survivors-like in one HTML file.** Vampire Survivors' auto-attacking horde loop, played
 from Megabonk's third-person camera. No engine, no build step, no dependencies — open
 `index.html` in a browser and it runs.
@@ -12,6 +16,8 @@ You never attack. Every weapon fires on its own cooldown at its own targets. The
 ---
 
 ## Play it
+
+[In your browser](https://srobster22-rob.github.io/estate-liquidators/bonkhorde/), or locally:
 
 ```
 open bonkhorde/index.html          # macOS

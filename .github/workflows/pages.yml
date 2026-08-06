@@ -1,0 +1,38 @@
+name: Deploy playables to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # Everything here is a self-contained HTML file with no build step, so
+      # "building" the site is copying three of them next to a landing page.
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r bonkhorde _site/bonkhorde
+          cp -r proto     _site/proto
+          cp -r proto3d   _site/proto3d
+          cp .github/pages-index.html _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: _site }
+      - id: deploy
+        uses: actions/deploy-pages@v4
