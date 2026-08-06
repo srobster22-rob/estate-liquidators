@@ -25,3 +25,8 @@ __pycache__/
 
 # Local
 *.log
+
+# clipper output
+clipper/clips/
+*.mp4
+*.ass
