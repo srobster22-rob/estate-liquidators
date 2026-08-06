@@ -491,12 +491,12 @@ clover:  { name:"CLOVER",    ic:"\u{1F340}", kind:"p", max:5, ds:"+7% crit. Crit
 };
 
 const ENEMIES = {
-shambler:{ nm:"SHAMBLER", hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.46,.74,.34], h:1.5, w:.55 },
-runner:  { nm:"SPRINTBOI",hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.95,.30,.26], h:1.7, w:.40 },
-brute:   { nm:"CHONK",    hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.66,.30,.86], h:2.6, w:1.15 },
-spitter: { nm:"SPITBOI",  hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[.98,.84,.18], h:1.5, w:.62,
+shambler:{ nm:"SHAMBLER", hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.44,.94,.74], h:1.5, w:.55 },
+runner:  { nm:"SPRINTBOI",hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.95,.07,.08], h:1.7, w:.40 },
+brute:   { nm:"CHONK",    hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.62,.05,.90], h:2.6, w:1.15 },
+spitter: { nm:"SPITBOI",  hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,1,.05], h:1.5, w:.62,
            ranged:{cd:2.6, spd:15, r:22} },
-skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.12,.12,.18], h:.72,w:.34 },
+skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.05,.17,.14], h:.72,w:.34 },
 };
 
 const BOSSES = [
@@ -1983,6 +1983,14 @@ window.__g = {
                 live:hazards.filter(h=>h.tel<=0).length }),
   casts: ()=>Object.assign({}, bossCasts),
   freezeSpawns: (v=true)=>{ noSpawn=v; },
+  // colours the player has to tell apart at a glance, for the contrast check
+  posOK: ()=>Math.abs(P.x) < 34 && Math.abs(P.z) < 34,   // clear of the cliffs
+  palette: ()=>{
+    const el = c => [lerp(c[0],1,.34), lerp(c[1],.42,.34), lerp(c[2],.10,.34)];
+    const out = { _terrainA:[.38,.52,.31], _terrainB:[.30,.43,.26] };
+    for(const k in ENEMIES){ out[k] = ENEMIES[k].c; out[k+"*elite"] = el(ENEMIES[k].c); }
+    return out;
+  },
   // sample the level-up roller without taking anything - offers() is pure
   peekOffers: (n=60)=>{ const seen={};
     for(let i=0;i<n;i++) for(const o of offers()) seen[o.nm] = (seen[o.nm]||0)+1;

@@ -184,6 +184,58 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("elite share stays a minority", late.n / Math.max(1,late.total) < 0.45,
      Math.round(late.n / Math.max(1,late.total) * 100) + "%");
 
+  console.log("\n=== 7e. COLOUR-VISION CONTRAST ===");
+  const cvd = await page.evaluate(() => {
+    const P = window.__g.palette();
+    const M = { normal:[1,0,0,0,1,0,0,0,1],
+                deuteranopia:[.625,.375,0,.70,.30,0,0,.30,.70],
+                protanopia:[.567,.433,0,.558,.442,0,0,.242,.758],
+                tritanopia:[.95,.05,0,0,.433,.567,0,.475,.525] };
+    const LIT = 1.35;
+    const ap = (c,m) => { const [r,g,b] = c.map(v => Math.min(1, v*LIT));
+      return [m[0]*r+m[1]*g+m[2]*b, m[3]*r+m[4]*g+m[5]*b, m[6]*r+m[7]*g+m[8]*b]; };
+    const lab = c => { const f = v => v<=.04045 ? v/12.92 : Math.pow((v+.055)/1.055,2.4);
+      const [R,G,B] = c.map(v => f(Math.max(0,Math.min(1,v))));
+      let X=(R*.4124+G*.3576+B*.1805)/.95047, Y=(R*.2126+G*.7152+B*.0722),
+          Z=(R*.0193+G*.1192+B*.9505)/1.08883;
+      const k = t => t>.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+      X=k(X);Y=k(Y);Z=k(Z); return [116*Y-16, 500*(X-Y), 200*(Y-Z)]; };
+    const dE = (a,b) => Math.hypot(...lab(a).map((v,i)=>v-lab(b)[i]));
+
+    const kinds = Object.keys(P).filter(k => !k.startsWith("_") && !k.includes("*"));
+    let worstPair = { d: 1e9 }, worstGround = { d: 1e9 }, worstCross = { d: 1e9 };
+    for (const vis in M) {
+      const m = M[vis];
+      for (let i = 0; i < kinds.length; i++) {
+        for (let j = i+1; j < kinds.length; j++) {
+          const d = dE(ap(P[kinds[i]],m), ap(P[kinds[j]],m));
+          if (d < worstPair.d) worstPair = { d, vis, a:kinds[i], b:kinds[j] };
+        }
+        for (const g of ["_terrainA","_terrainB"]) {
+          const d = dE(ap(P[kinds[i]],m), ap(P[g],m));
+          if (d < worstGround.d) worstGround = { d, vis, a:kinds[i] };
+        }
+        // an ELITE of one type must not read as a NORMAL of another - that would
+        // misinform about behaviour, which is worse than looking similar
+        for (const j2 of kinds) {
+          if (j2 === kinds[i]) continue;
+          const d = dE(ap(P[kinds[i]+"*elite"],m), ap(P[j2],m));
+          if (d < worstCross.d) worstCross = { d, vis, a:kinds[i]+" elite", b:j2 };
+        }
+      }
+    }
+    return { worstPair, worstGround, worstCross };
+  });
+  ok("enemy types stay distinct under every colour-vision type",
+     cvd.worstPair.d > 20,
+     `worst ${cvd.worstPair.a}/${cvd.worstPair.b} dE=${cvd.worstPair.d.toFixed(1)} (${cvd.worstPair.vis})`);
+  ok("enemies stay distinct from the ground",
+     cvd.worstGround.d > 20,
+     `worst ${cvd.worstGround.a} dE=${cvd.worstGround.d.toFixed(1)} (${cvd.worstGround.vis})`);
+  ok("an elite never reads as a different normal type",
+     cvd.worstCross.d > 15,
+     `worst ${cvd.worstCross.a} vs ${cvd.worstCross.b} dE=${cvd.worstCross.d.toFixed(1)} (${cvd.worstCross.vis})`);
+
   console.log("\n=== 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===");
   const riders = await page.evaluate(() => {
     const dmgWith = mods => {

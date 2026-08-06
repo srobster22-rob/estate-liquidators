@@ -93,10 +93,10 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 79 checks: boot, every weapon, every evolution, every
+node test.js              # 82 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
-                         # draft rules, every character, a full run, the
-                         # sudden-death gate, death, saves, render
+                         # draft rules, colour-vision contrast, every character,
+                         # a full run, the sudden-death gate, death, saves, render
 node balance.js 6 both            # [trials] [first|vet|both] [char,char]
 node balance.js 12 vet intern,scrap   # higher n on two characters
 node dps.js 4                     # per-weapon boss/crowd DPS bench, n=4
@@ -105,7 +105,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **79 passing.**
+die, and checks that `localStorage` survives a reload. **82 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -129,6 +129,27 @@ caltrops              93        1796        SCORCHED EARTH     1099        2996
 Specialists are intentional — ZAP is a boss weapon that barely dents a crowd,
 SKULLS the reverse. What the bench is for is catching the ones that are not
 specialists but simply broken.
+
+### Colour-vision contrast
+
+You have to tell a SPRINTBOI (charges you) from a SPITBOI (holds at range) at a
+glance, in a crowd, while running. The palette was picked by eye, and three pairs
+turned out to collapse for the ~8% of men with a colour-vision deficiency — the
+worst separation across the roster was **ΔE 14.4**, and the pairs that collided
+were the ones needing *opposite* responses.
+
+Re-picked by search: maximise the worst-case CIELAB distance across normal,
+deuteranopia, protanopia and tritanopia, between every pair of enemies *and*
+between every enemy and the grass, under a cap on how far the look may drift.
+Worst case is now **ΔE 26.5**, and `test.js` asserts it so a future palette tweak
+cannot quietly undo it.
+
+The instructive part is what did *not* work. The obvious fix for a washed-out
+mint SHAMBLER is a more saturated teal — and every saturated teal collapses,
+because under deuteranopia it lands on almost exactly the same blue as the purple
+CHONK. The pale version wins by separating on **luminance**, which is the one
+channel every deficiency type keeps. Saturation is the wrong lever here and the
+numbers say so.
 
 ### Every passive, against a no-passive control
 
@@ -201,7 +222,7 @@ only number here worth acting on.
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned twenty-four things this build believed:
+That harness has overturned twenty-five things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -292,6 +313,11 @@ That harness has overturned twenty-four things this build believed:
   copies are echoes at 55% damage so bolting one onto a 3-shell mortar is not +100%, and **the
   roller will not offer it to a kit that provably cannot use it.** Reads +25%/+7%/+25% across
   the same three kits.
+- **Three enemy pairs were indistinguishable to colour-blind players.** Worst separation
+  across the roster was ΔE 14.4, and the colliding pairs — SPRINTBOI/SPITBOI under
+  deuteranopia, SHAMBLER/SPRINTBOI under protanopia — are exactly the ones whose correct
+  response is opposite. I went looking for this in the boss telegraph, which turned out to be
+  fine (ΔE 46–64); the defect was in the thing I had not thought to check.
 - **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
   victory right up until sudden death let losing runs reach 22:00 — and then reported them as
   wins. The instrument has to be re-checked every time the thing it measures changes shape.
