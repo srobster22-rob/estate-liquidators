@@ -332,16 +332,23 @@ claimed, which is good, and means it needs watching rather than strengthening.
 
 ### Two problems this exposed
 
-**1. There is currently no decision to make.** At the designed retrieval rates, SCAN
-dominates outright — always-scan is simply correct. The band where *selective* scanning wins
-only appears when retrieval is ~3× harsher than specced (PURSUE 0.10 → 0.30 per trip). Either
-raise retrieval toward that, or reduce candidates-per-shelf so max-of-N is a smaller prize.
-Until one of those happens the appraiser is a mandatory chore rather than a judgement call.
+**1. There is currently no decision to make.** *(Overturned — R8. Left in place because the
+retraction is the useful part.)* At the designed retrieval rates SCAN appeared to dominate
+outright. That was the free-reroll bug in slot accounting, not the design: once a haul
+*attempt* consumed the opportunity whether or not it landed, ADAPTIVE won at the
+already-designed rates. See the table above. **Do not tune RETRIEVAL on the strength of this
+paragraph.**
 
-**2. Cursed cargo is inert.** Sweeping 0 → 8 cursed items in the van moves earnings by under
-$50 across every strategy. The +2 Disturbance floor per cursed item is swamped by ordinary
-noise, so the entire van-cost half of the curse mechanic (`DESIGN.md` §4.2) currently does
-nothing. It needs to be roughly 3–4× larger to be felt.
+**2. Cursed cargo is inert.** *(Fixed — R9/R11. Kept because the diagnosis was right and
+the prescribed cure was wrong.)* Sweeping 0 → 8 cursed items in the van moved earnings by
+under $50 across every strategy: the then-current **+2** Disturbance floor per cursed item
+was swamped by ordinary noise, so the van-cost half of the curse mechanic did nothing.
+
+R9 raised the floor to **+7** (6 cursed items now cost 8.9% of earnings) — but also showed
+that no floor can fix this, because a malignant item is worth ×6 and no linear cost balances
+a multiplicative benefit. The floor is a texture; the actual cost is the **tail risk** in
+§5. Canonical value lives in `tuning.json` (`disturbance.per_cursed_item_floor`), and both
+browser prototypes were still shipping +2 as late as R16 because nothing was checking it.
 
 ## 7. What would falsify this model
 

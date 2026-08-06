@@ -61,8 +61,16 @@ const APPRAISE_S = 3.0;
 const CREW = 1;
 const DECAY_PER_S = (50 * (CREW/4)) / 60;
 const RATCHET_END = 55;
-const L = { walk:0, sprint:45, appraise:48, door:60, drop:90 };
+// Cursed cargo ratchets the floor. R9 measured +2/item as INERT - six cursed
+// pieces cost 2.9% of earnings - and recommended +7, which both this prototype
+// and proto3d then quietly ignored for two rounds. LOOP_LOG R16.
+const FLOOR_PER_CURSED = 7;
+// Walking is loud (L=20) but is not a SUSTAINED source, so it never reaches
+// noise(): a dash in AUDIO-SPEC 1.2's dDisturbance column is a hard zero.
+const L = { walk:20, sprint:45, appraise:48, door:60, drop:90 };
 const IMPULSE = 0.09, SUSTAINED = 0.02;
+const RUIN_K = 0.015, RUIN_EXP = 1.8;
+const FEE = { clean:0, tainted:.08, malignant:.20 };
 const CURATOR = { patrol:52, pursue:63, collect:74 };
 
 // ---------------------------------------------------------------- the estate
@@ -168,7 +176,8 @@ function noise(l, impulse, dt){
   dist += impulse ? l*IMPULSE : l*SUSTAINED*dt;
   dist = Math.min(100, dist);
 }
-function floorNow(){ return RATCHET_END * (t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*2; }
+function floorNow(){ return RATCHET_END * (t/NIGHT)
+  + van.cargo.filter(c=>c.grade!=="clean").length*FLOOR_PER_CURSED; }
 
 // ---------------------------------------------------------------- movement
 function blocked(x,y){
@@ -326,10 +335,10 @@ function stepTo(e,gx,gy,sp,dt){
 function finish(why){
   over=true;
   const gross=van.cargo.reduce((s,i)=>s+i.value,0);
-  const fees=van.cargo.reduce((s,i)=>s+i.value*(i.grade==="malignant"?.20:i.grade==="tainted"?.08:0),0);
+  const fees=van.cargo.reduce((s,i)=>s+i.value*FEE[i.grade],0);
   const net=Math.round(gross-fees);
   const cursed=van.cargo.filter(c=>c.grade!=="clean").length;
-  const ruin = cursed>0 && Math.random() < Math.min(.95, 0.015*Math.pow(cursed,1.8));
+  const ruin = cursed>0 && Math.random() < Math.min(.95, RUIN_K*Math.pow(cursed,RUIN_EXP));
   ledger={why,gross:Math.round(gross),fees:Math.round(fees),net:ruin?0:net,
           cursed,ruin,count:van.cargo.length,met:!ruin&&net>=QUOTA};
   const L2=document.getElementById("ltext");

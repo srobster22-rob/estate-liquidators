@@ -31,6 +31,8 @@ falsification conditions.
 | **[ECONOMY.md](ECONOMY.md)** | Van capacity, slot costs, value bands, quota curve, and the simulation results behind them. | Tuning anything with a number in it. |
 | **[sim/haul_sim.py](sim/haul_sim.py)** | Monte Carlo of the haul loop. Runs in seconds, no dependencies. | Before changing van capacity or appraiser cost. |
 | **[sim/chain_sim.py](sim/chain_sim.py)** | Full-night sim with weight classes, crew labour, and depth gating. | Before changing the quota curve, crew size, or the apex. |
+| **[check.py](check.py)** | The whole regression suite in one command. Drift, mutation test, estate validator, C# core, headless prototype smoke test. | Every time. Before and after any change to a number. |
+| **[tuning.json](tuning.json)** | Canonical values. Ten source files are checked against it. | Changing any constant — change it here first. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |

@@ -25,3 +25,8 @@ __pycache__/
 
 # Local
 *.log
+
+# Node - only needed for tools/proto_smoke.mjs, never committed
+node_modules/
+package-lock.json
+package.json

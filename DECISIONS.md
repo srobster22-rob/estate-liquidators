@@ -342,6 +342,38 @@ that would mean the unlock timing, not the visibility, is wrong.
 
 ---
 
+## D-22 · A constant is either asserted or waived, never merely unwatched
+**Status:** FIRM · `sim/check_drift.py`, `sim/mutate_drift.py`, `check.py`
+
+The drift checker must account for every (source file × canonical constant) pair. Either a
+regex asserts it, or a waiver states in words why that file doesn't embody it. A pair that is
+neither fails the run as a **coverage hole**, so adding anything to `tuning.json` forces a
+decision about all ten files rather than defaulting to silence.
+
+R14 built the checker, reported "55 constants agree", and injected two fake divergences to
+prove it worked. Both true, and both beside the point. The constant that was actually wrong —
+the cursed-item Disturbance floor, raised from an inert +2 to +7 in R9 — had no pattern
+watching it, so it stayed at +2 in **both** browser prototypes for two rounds while the
+checker printed OK. The checker wasn't broken; its coverage was invisible. Silence read
+exactly like agreement.
+
+Two rules follow. **Coverage is a defect surface, not a nice-to-have** — an unwatched
+constant is indistinguishable from a correct one, so the accounting has to be total and the
+gaps have to be named out loud. And **every assertion must be shown to be able to fail**:
+`mutate_drift.py` corrupts each literal in turn and requires the checker to exit non-zero and
+name that constant. A hand-picked sample of two does not scale to 177.
+
+The cost is real: waivers are prose, prose rots, and a lazy future round can wave a genuine
+divergence through by writing a waiver instead of a fix. That trade is deliberate — a wrong
+waiver is at least *visible in a diff*, which is more than an absent pattern ever was.
+
+**Falsified if:** waivers start outnumbering assertions in a file that genuinely implements
+the rules, or a round is caught writing a waiver to silence a real divergence. Either means
+the mechanism has become paperwork and should be replaced by generating the constants into
+each implementation instead of checking them after the fact.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

@@ -285,6 +285,39 @@ CHECKS = [
 ]
 
 
+def self_test(verbose=True):
+    """
+    Both directions. A validator that only ever passes clean estates proves
+    nothing - BROKEN_B carries one planted fault per check, and the test
+    asserts the exact set, not merely "something failed".
+    """
+    import estates
+
+    problems = []
+    clean = validate(estates.MANOR_A, verbose)
+    if clean:
+        problems.append(f"MANOR_A should pass all ten checks, failed {sorted(clean)}")
+
+    broken = set(validate(estates.BROKEN_B, verbose))
+    missed = estates.EXPECTED_FAILURES - broken
+    spurious = broken - estates.EXPECTED_FAILURES
+    if missed:
+        problems.append(f"BROKEN_B has planted faults the checks did not catch: "
+                        f"{sorted(missed)}")
+    if spurious:
+        problems.append(f"BROKEN_B failed checks nothing was planted for: "
+                        f"{sorted(spurious)}")
+
+    if verbose:
+        print()
+        for p in problems:
+            print(f"  FAIL  {p}")
+        if not problems:
+            print(f"  OK   clean estate passes 10/10; broken estate trips exactly "
+                  f"{len(estates.EXPECTED_FAILURES)} planted faults")
+    return problems
+
+
 def validate(d, verbose=True):
     e = Estate(d)
     failed = []
@@ -300,3 +333,8 @@ def validate(d, verbose=True):
         verdict = "ENTERS POOL" if not failed else f"REJECTED ({', '.join(failed)})"
         print(f"  -> {verdict}")
     return failed
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(1 if self_test() else 0)

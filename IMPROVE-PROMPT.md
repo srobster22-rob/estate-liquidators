@@ -12,12 +12,21 @@ making it. Paste it to run an improvement loop.
 >
 > ### The specific risk this loop exists to fight
 >
-> The same rules are now implemented **three times** — Python simulations (`sim/`), a
-> JavaScript prototype (`proto/`), and the C# core (`unity/Assets/Scripts/Core/`). Every
-> tuning constant appears in all three. That is a drift machine: a value gets corrected in one
-> place, the other two quietly disagree, and the project starts trusting numbers that no
-> longer describe the game. This project has already retracted three "verified" figures that
-> turned out to be instrumentation artifacts, so treat divergence as the primary defect class.
+> The same rules are implemented **ten times over** — five Python simulations (`sim/`), two
+> browser prototypes (`proto/`, `proto3d/`), and three C# core files
+> (`unity/Assets/Scripts/Core/`). Every tuning constant appears in several of them. That is a
+> drift machine: a value gets corrected in one place, the rest quietly disagree, and the
+> project starts trusting numbers that no longer describe the game. This project has already
+> retracted three "verified" figures that turned out to be instrumentation artifacts, so treat
+> divergence as the primary defect class.
+>
+> `python3 check.py` is the guard. Note what R16 learned about it: a checker's **coverage** is
+> as much a defect surface as the code it checks. The first drift checker reported "55
+> constants agree" for two rounds while the cursed-item floor was wrong in both prototypes,
+> because no pattern was watching that constant and nothing reported the silence. Coverage is
+> now assert-or-waive: every (file × constant) pair must be one or the other, and
+> `sim/mutate_drift.py` corrupts each literal in turn to prove the assertion can fail. If you
+> add a constant to `tuning.json`, the checker will make you account for it in all ten files.
 >
 > ### Each round
 >

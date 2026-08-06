@@ -27,6 +27,13 @@ namespace EstateLiquidators.Core
 
         public const float PatrolAt = 30f, PursueAt = 60f, CollectAt = 85f;
 
+        // The three levers, named rather than inlined so the drift checker can
+        // see them. A magic number in a method body is a constant nothing is
+        // guarding - LOOP_LOG R16.
+        public const float LightWingGain = 25f;
+        public const float KillLightsRelief = 15f;
+        public const float GoQuietRelief = 20f;
+
         readonly int _crew;
         readonly float _nightSeconds;
 
@@ -61,12 +68,12 @@ namespace EstateLiquidators.Core
         }
 
         /// <summary>Lever: kill the lights. DESIGN 6.5.</summary>
-        public void KillLights() => Value = MathF.Max(0f, Value - 15f);
+        public void KillLights() => Value = MathF.Max(0f, Value - KillLightsRelief);
 
         /// <summary>Lever: 45 seconds of crew-wide quiet.</summary>
-        public void GoQuiet() => Value = MathF.Max(0f, Value - 20f);
+        public void GoQuiet() => Value = MathF.Max(0f, Value - GoQuietRelief);
 
-        public void LightWing() => Value = MathF.Min(100f, Value + 25f);
+        public void LightWing() => Value = MathF.Min(100f, Value + LightWingGain);
 
         public CuratorTier Tier =>
             Value >= CollectAt ? CuratorTier.Collect :

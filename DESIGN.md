@@ -395,8 +395,8 @@ The structure has to be:
 
 ```
 Disturbance = fast-decaying NOISE LEVEL  +  slowly ratcheting FLOOR
-              decay 50/min                    0 -> 55 across the night,
-              (drains in ~2 min of quiet)     plus 2 per cursed item in the van
+              decay 50/min at a crew of 4    0 -> 55 across the night,
+              (drains in ~2 min of quiet)     plus 7 per cursed item in the van
 
 impulse gain  L x 0.09     unchanged from AUDIO-SPEC 1.1
 sustained     L x 0.02/s   designated continuous sources only (never walking)

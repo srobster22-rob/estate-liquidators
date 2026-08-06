@@ -41,9 +41,14 @@ Land it somewhere with real headroom — `~/dev/estate-liquidators` is fine.
 Run these before anything else; the answers change the plan.
 
 ```bash
-python3 sim/check_drift.py          # expect: 55/55 constants agree
-dotnet run --project unity/tests/CoreTests   # expect: 31/31 assertions pass
+python3 check.py            # the whole suite; prints SKIP for anything this box can't run
 ```
+
+That runs the drift check (177 assertions across 10 source files), the mutation test that
+proves each of those assertions can actually fail, the estate validator's two-way self-test,
+the C# core suite, and a headless browser smoke test of both prototypes. The last two need
+`dotnet` and `npm i playwright` respectively; without them the runner says so out loud rather
+than passing quietly.
 
 If `dotnet` is missing, install the .NET 9 SDK — the C# core suite is the thing that stops
 anyone quietly reverting the three rules that were each wrong once.
@@ -78,8 +83,8 @@ cross-platform netcode bugs early instead of at release.
 ## Where to pick up
 
 Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the design is
-settled (21 decisions logged, 1 open and it's an art question), the rules are tested, and the
+settled (22 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has fifteen rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has sixteen rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

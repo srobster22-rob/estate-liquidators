@@ -171,43 +171,68 @@ choice becomes stash-then-hide, hand-off-then-hide, or buy four seconds. Hiding 
 the *primary* verb at COLLECT, where the Curator switches to hunting crew — so the genre's
 signature panic is earned late rather than constant.
 
+R16 · Audited the thing that audits everything else. Rebuilt `sim/check_drift.py` around
+assert-or-waive coverage (every source file × every canonical constant must be one or the
+other), added `sim/mutate_drift.py`, `tools/proto_smoke.mjs`, a `__main__` for the estate
+validator, and `check.py` as the single entry point. · **R14's "all 55 constants agree" was
+a coverage illusion, and it was hiding a live divergence.** The checker had three holes: a
+`if got is not None` skip that made a *missing* C# constant indistinguishable from a correct
+one; `proto3d/index.html` — an entire fourth implementation — never read at all; and no
+report of constants nobody had written a pattern for. **The cursed-item Disturbance floor was
+in that third category: R9 raised it from an inert +2 to +7, and both browser prototypes were
+still applying `*2` two rounds later while the checker printed OK.** Assertions went 55 → 177
+and the run now names every gap. · Then tested the tester: `mutate_drift.py` corrupts each of
+the 177 literals in turn and requires the checker to exit 1 *and name that constant* —
+**177/177 killed.** Distrusting that, I blinded one constant's comparison on purpose and
+confirmed the harness reports exactly the four expected survivors. · The prototypes are now
+driven headlessly in real Chromium, which catches what text-matching structurally cannot: a
+constant that is correct and **unused**. It found `proto`'s loudness table declaring
+`walk:0` against a canonical 20 — dead, contradictory, and invisible to every check in the
+project. · Also found `validate_estate.py` had no entry point at all, so R14's "estate
+validator PASS" was not produced by the command its own docstring documents. It has a two-way
+self-test now: clean estate 10/10, broken estate trips exactly its 7 planted faults.
+· **Unverified this round:** the C# core suite. `dotnet` cannot be installed in this
+environment (the package proxy refuses), so the three named lever constants I added to
+`Disturbance.cs` are checked by drift and by eye, not by a compiler. Run
+`dotnet run --project unity/tests/CoreTests` on the Mac before trusting them.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
 
-**R12: apply R11's lesson to the appraiser — it is the same shape of problem.** The +6% edge
-from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure that
-gave flat, uninteresting curves for the curse. Try giving scanning a super-linear or tail-risk
-cost — e.g. appraising while already at PURSUE/COLLECT risks the Curator arriving mid-scan
-(you are stationary for 3s), with the risk compounding per consecutive scan. If that produces
-an interior optimum the way it did for curses, the appraiser question answers itself and the
-+6% concern dissolves.
+*(This section described R11 and R12 as pending for four rounds after they shipped. Rewritten
+in R16 to say what is actually open. If you finish an item, delete it here — a stale plan is
+worse than no plan, because it gets read as current.)*
 
-~~R11: make the curse a TAIL RISK instead of a marginal cost.~~ **Done.** That's the only shape that
-can work, and it follows directly from R10 — a linear cost can never balance a multiplicative
-benefit, so the cost has to be super-linear or catastrophic. Candidate: cursed cargo carries a
-chance of losing the **entire van**, scaling super-linearly with how many you're carrying (one
-malignant item is a shrug, four is a real chance the night ends with nothing). That converts
-"linear cost vs multiplicative benefit" into a gamble with a ruin probability, which is a
-genuine decision and also much better fiction — the collection reclaiming everything at once.
-Model it in `curse_test.py` as a per-night ruin roll and find the curve where 1–2 cursed items
-is clearly worth it and 5+ clearly isn't. Then rewrite `DESIGN.md` §4.2 around it, because the
-current "burden you chose" framing describes a burden that arithmetically isn't one.
+**1 — Apply R11's lesson to the appraiser. Still the highest-value modelling gap.** The +6%
+edge from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure
+that produced flat, uninteresting curves for the curse until R11 made the cost catastrophic
+instead of marginal. Try a tail-risk cost for scanning: appraising while already at
+PURSUE/COLLECT risks the Curator arriving mid-scan (you are stationary for three seconds),
+compounding per consecutive scan. If that produces an interior optimum the way it did for
+curses — "scan two or three times a trip, then stop" — the appraiser question answers itself
+and the whole +6% worry dissolves. Model it in `integrated.py`; do **not** tune RETRIEVAL,
+which R8 showed is already sitting in the right band.
 
-**And the one that genuinely needs your call, deferred from R9.** Is a **+6%** edge
-edge enough to carry the game's signature mechanic? Break-even-ish is arguably correct for a
-risk/reward system (the interesting state is a real toss-up), but it's thin enough that players
-may rationally skip the appraiser entirely, which is the exact failure `DESIGN.md` §4.4 was
-written to prevent. Three options worth weighing: accept it and lean into the toss-up; widen
-the payoff by making scanning *situational* (value-variance per room — pays at a curio cabinet,
-wasted on a shelf of identical books, with the room's look telegraphing which); or widen van
-scarcity, since §6 showed capacity is the master lever on this edge. **Do not tune RETRIEVAL** —
-R8 showed the designed values already produce the right ordering.
+**2 — The one that genuinely needs the owner's call, deferred since R9.** Is a **+6%** edge
+enough to carry the game's signature mechanic? Break-even-ish is defensible for a risk/reward
+system — the interesting state is a real toss-up — but it is thin enough that players may
+rationally skip the appraiser, the exact failure `DESIGN.md` §4.4 exists to prevent. Three
+options: accept it and lean into the toss-up; make scanning *situational* (value-variance per
+room — pays at a curio cabinet, wasted on a shelf of identical books, with the room's dressing
+telegraphing which); or widen van scarcity, since capacity is the master lever on this edge.
+If item 1 lands, this may not need answering at all.
 
-Also still open, both live balance holes: **cursed cargo is inert** (+2 Disturbance floor per
-item is swamped; needs ~+7) and `DESIGN.md` §4.2 / §6.5 want updating with whatever lands. And
-**V5 in `validate_estate.py`** remains the weakest of the ten checks — it only counts doors on
-the shortest path and has never failed anything.
+**3 — V5 in `validate_estate.py` is the weakest of the ten checks.** It counts doors on the
+*shortest* path only and has never failed anything, including the estate built to fail seven
+checks. Either strengthen it to the worst-case path (as V4 already does) or delete it — a
+check that cannot fail is worse than no check, because it reads as coverage. R16 makes this
+cheap to test: the validator now has a self-test that asserts the *exact* failure set.
+
+**4 — Unverified, and it needs a machine with `dotnet`.** The C# core suite has not been run
+since R13. R16 added three named lever constants to `Disturbance.cs` that no compiler has
+seen. First thing on the Mac: `python3 check.py` and confirm the C# line says PASS, not SKIP.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
-art, blocks nothing) are closed.
+art, blocks nothing) are closed. The next real information comes from Phase 0, not from
+another modelling round.
