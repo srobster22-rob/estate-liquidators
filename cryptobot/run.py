@@ -297,24 +297,60 @@ def cmd_sweep(args):
     vault budget — they are genuinely independent replications, not one search
     resumed three times."""
     import statistics
-    counts, details = [], []
+    # Resumable. A sweep is hours of compute and the machine running it may not
+    # survive that long — two container restarts destroyed ~90 minutes of work and
+    # left nothing behind, because results only existed in memory until the last
+    # seed finished. Each seed's result is now appended to a JSON file the moment
+    # it completes, and a rerun skips what is already there. Partial progress is
+    # the normal case for a job this long, not an exception.
+    results_file = pathlib.Path(args.results) if args.results else \
+        STATE_DIR / "sweep_results.json"
+    done = {}
+    if results_file.exists() and not args.restart:
+        try:
+            done = {int(k): v for k, v in json.loads(
+                results_file.read_text()).items()}
+        except (json.JSONDecodeError, ValueError):
+            done = {}
+        if done:
+            print(f"resuming: {len(done)} seed(s) already done "
+                  f"({sorted(done)})")
+
+    segments = None
     for seed in args.seeds:
+        if seed in done:
+            print(f"  seed {seed:>4}: {done[seed]['bots']} bot(s)  [cached]")
+            continue
+        if segments is None:                     # build once, reuse across seeds
+            segments = build_universe(args.markets, args.bars)
         state_file = STATE_DIR / f"sweep_{seed}.json"
         if state_file.exists():
             state_file.unlink()
-        segments = build_universe(args.markets, args.bars)
         factory = evolve.Factory(segments, {"population": args.population},
                                  seed=seed, state_file=state_file,
                                  log=lambda *a: None)
         winners = factory.run(args.generations, target_winners=99)
-        counts.append(len(winners))
-        details.append((seed, [(w.market_key, w.strategy_name)
-                               for w, _, _ in winners],
-                        factory.state["oos_looks"],
-                        factory.state["vault_burns"]))
+        done[seed] = {
+            "bots": len(winners),
+            "found": [[w.market_key, w.strategy_name] for w, _, _ in winners],
+            "looks": factory.state["oos_looks"],
+            "burns": factory.state["vault_burns"],
+            "trials": factory.state["trials"],
+        }
+        results_file.parent.mkdir(exist_ok=True)
+        tmp = results_file.with_suffix(".tmp")
+        tmp.write_text(json.dumps({str(k): v for k, v in done.items()}, indent=1))
+        tmp.replace(results_file)
         print(f"  seed {seed:>4}: {len(winners)} bot(s), "
               f"{factory.state['oos_looks']} looks, "
-              f"{factory.state['vault_burns']} burns")
+              f"{factory.state['vault_burns']} burns  [saved]", flush=True)
+
+    counts = [done[s]["bots"] for s in args.seeds if s in done]
+    details = [(s, [tuple(x) for x in done[s]["found"]], done[s]["looks"],
+                done[s]["burns"]) for s in args.seeds if s in done]
+    if not counts:
+        print("no seeds completed")
+        return 1
 
     print("\n" + "=" * 78)
     print(f"BOT COUNT ACROSS {len(counts)} SEEDS: {counts}")
@@ -474,6 +510,11 @@ def main(argv=None):
     sw.add_argument("--bars", type=int, default=110000)
     sw.add_argument("--generations", type=int, default=200)
     sw.add_argument("--population", type=int, default=70)
+    sw.add_argument("--results", default=None,
+                    help="JSON file of per-seed results; completed seeds are "
+                         "skipped on a rerun")
+    sw.add_argument("--restart", action="store_true",
+                    help="ignore saved results and rerun every seed")
     sw.set_defaults(func=cmd_sweep)
 
     ft = sub.add_parser("fetch", help="download and cache real candles")
