@@ -481,6 +481,29 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   step:(n=1,dt=1/60)=>{started=true;for(let i=0;i<n;i++) if(!over) step(dt);return window.__g.state();},
   press:(k,v=true)=>keys[k]=v, look:(y,p=0)=>{player.yaw=y;player.pitch=p;},
   grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length };
+
+// Director hook. Staging only - it moves the camera, the props and the meter, and never
+// touches a rule or a constant. Used by clip/render.mjs to perform the scripted take in
+// CLIP-SPEC.md; harmless and unused when a human is playing.
+window.__d={
+  rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d,tier:r.tier,van:!!r.van})),
+  doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z})),
+  list:()=>items.map((it,ix)=>({ix,x:it.x,z:it.z,y:it.y,hx:it.hx,hz:it.hz,value:it.value,
+    grade:it.grade,tier:it.tier,known:it.known,held:it.held,gone:it.gone})),
+  stage:(ix,x,z)=>{const it=items[ix]; it.x=it.hx=x; it.z=it.hz=z; it.y=0.45;},
+  know:(ix,v=true)=>{items[ix].known=v;},
+  drop:(ix)=>{items[ix].gone=true;},                       // remove clutter from a shot
+  pose:(x,z,yaw,pitch)=>{player.x=x;player.z=z;
+    if(yaw!==undefined)player.yaw=yaw; if(pitch!==undefined)player.pitch=pitch;},
+  player:()=>({x:player.x,z:player.z,yaw:player.yaw,pitch:player.pitch,
+    holding:player.holding?player.holding.value:null,down:player.down}),
+  curator:()=>({x:curator.x,z:curator.z,state:curator.state,target:!!curator.target,
+    goal:curator.goal?{hx:curator.goal.hx,hz:curator.goal.hz}:null,
+    carrying:!!curator.carry}),
+  putCurator:(x,z)=>{curator.x=x;curator.z=z;},
+  meter:(v)=>{dist=Math.max(0,Math.min(100,v));},
+  begin:()=>{started=true;},
+  eyeHeight:()=>EYE, night:()=>NIGHT };
 </script>
 </body>
 </html>

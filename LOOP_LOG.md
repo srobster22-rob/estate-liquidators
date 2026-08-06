@@ -171,6 +171,22 @@ choice becomes stash-then-hide, hand-off-then-hide, or buy four seconds. Hiding 
 the *primary* verb at COLLECT, where the Curator switches to hunting crew — so the genre's
 signature panic is earned late rather than constant.
 
+R16 · Built the vertical clip track — `clip/`, which drives `proto3d` through a scripted take
+in headless Chromium and captures every frame, so the marketing footage is the real sim rather
+than an edit that rots. Six build rounds, logged separately in `clip/CLIP_LOG.md`; ten
+automated gates, one of which fails the build if the game stops behaving the way the clip's
+captions claim. · **Found a live problem in TECH-SPEC §A7.** The aggro tell dims a marked
+player's flashlight to 60 %, which in the prototype is range 19→11.5 m *and* cone 0.80→0.88 —
+and the cone is the one that bites, taking on-axis intensity from 0.60 to 0.32. A Curator 5 m
+in front of a marked player renders at ~2 % luma. **The tell blinds you to the thing it warns
+you about**, and the entire 6.9 s of its approach happens off-screen. It might be the right
+design — "you know it's coming and you can't see it" is a real horror beat, and it makes the
+hand-off your only information — but §A7 does not say it is doing this and nobody chose it.
+Two playtest questions in `clip/CLIP-SPEC.md` §7: do players ever *see* it arrive on a normal
+night, and should the 60 % be range-only so the tell dims your world without erasing the
+threat. · Also: the **8 s commitment lock is a hard floor on any "marked → drop → free" arc**,
+which is a third of a short-form clip and worth knowing before writing another one.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

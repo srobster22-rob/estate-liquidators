@@ -1,0 +1,204 @@
+// ===========================================================================
+// clip/shots.js - the performance. Loaded into the page after proto3d boots.
+//
+// This is the only file that decides what the clip *shows*. It stages the room,
+// then drives the camera, the dolly and the two scripted inputs (take, drop)
+// against a clock. Everything else - whether the Curator marks you, where it
+// walks, when your light dims - is the prototype's own logic reacting.
+//
+// Beat names and times match CLIP-SPEC.md 3. Change them in both places.
+// ===========================================================================
+(() => {
+"use strict";
+
+// ------------------------------------------------------------------ geography
+// All in metres, matching proto3d's ROOMS. The whole take happens in `land`
+// (tier 2) and the hall doorway that leads back toward the van.
+const PLINTH   = {x: 30.0, z: -1.2};   // where the hero item sits, 2.5m from the door
+const HALLDOOR = {x: 27.5, z:  0.0};   // land <-> hall
+const CONSDOOR = {x: 37.5, z: -2.5};   // land <-> conservatory (deeper)
+const START    = {x: 35.2, z:  1.4};
+// The prototype's grab radius is 3.2 m measured in 3D, and an item on the floor is
+// 1.17 m below the eye - so a spot 3.1 m away on the map is already out of reach.
+// APPROACH is set to ~2.0 m horizontal, which is 2.3 m to the item itself.
+const APPROACH = {x: 31.7, z: -0.15};
+const AFTER    = {x: 32.6, z:  0.30};  // where you stand when it marks you
+const RETREAT  = {x: 34.7, z:  1.7};   // pushed away from the door
+// Where it waits when the house wakes up. Two constraints fight here: far enough
+// that its 9.9 m walk to the plinth fills beat 5 (1.95 m/s in COLLECT), and not so
+// far that it never enters the 11.5 m a dimmed flashlight reaches. This lands it
+// visible from ~13.5 s - the reveal happens under the "cuts you off" line.
+const CURATOR_HOLD = {x: 20.5, z: 1.0};
+const CROSS    = {x: 37.9, z0: -3.4, z1: -0.4}; // the hook: it crosses the deep doorway
+
+let hero = -1;
+
+const S = {
+  fps: 30,
+  frames: 720,          // 24.0 s
+
+  // -------------------------------------------------------------- staging
+  setup(C){
+    const d = C.d();
+
+    // Hero item: the most valuable tainted piece the seed rolled, moved onto the
+    // plinth by the door. Tainted so the HUD shows a grade worth being nervous about.
+    // Tier is capped at 2 for size, not value - a tier-3 box is 0.42 m half-extent
+    // and, carried at 1.15 m from the eye, it eats the whole frame.
+    const items = d.list();
+    const pick = items.filter(i => i.grade === "tainted" && i.tier <= 2)
+                      .sort((a, b) => b.value - a.value)[0] || items[0];
+    hero = pick.ix;
+    d.stage(hero, PLINTH.x, PLINTH.z);
+
+    // Clear anything that would sit inside the aim cone and steal the prompt,
+    // and anything close enough to clutter the plinth read.
+    for (const it of d.list()){
+      if (it.ix === hero) continue;
+      const near = Math.hypot(it.x - PLINTH.x, it.z - PLINTH.z) < 5.0;
+      const inShot = it.x > 27.5 && it.x < 37.0 && Math.abs(it.z) < 5.0;
+      if (near || (inShot && Math.hypot(it.x - START.x, it.z - START.z) < 3.4)) d.drop(it.ix);
+    }
+
+    d.putCurator(CROSS.x, CROSS.z0);
+    C.snapTo(START.x, START.z, Math.atan2(CROSS.x - START.x, CROSS.z0 + 1.0 - START.z), 0.02);
+    C.cam.k = 0.045;
+    C.pos.k = 0.030;
+    C.fade(1);
+    C.vignette(0.20);
+    C.caption(null);
+    C.card(0);
+  },
+
+  // -------------------------------------------------------------- per frame
+  update(t, C){
+    const d = C.d(), g = C.g();
+
+    // open on black for 1/3 s so an auto-replay reads as a cut
+    C.fade(t < 0.34 ? 1 - C.ease(t / 0.34) : 0);
+
+    // Between the hook and the mark it stands in the deep doorway. Left to its own
+    // PATROL it wanders off and gets stuck against a wall, which reads as a bug on
+    // camera; it is pinned here purely so the shot is repeatable.
+    if (t >= 2.60 && t < 9.0) d.putCurator(CROSS.x, CROSS.z1);
+
+    // After the drop it is nobody's problem any more and PATROL sends it off to a
+    // random shelf, which empties the frame mid-payoff. Pinned at the plinth it
+    // stands over the piece it came for - same rule, better shot.
+    if (t >= 18.60) d.putCurator(PLINTH.x + 0.25, PLINTH.z + 0.15);
+
+    // ---- 1. hook  0.0 - 3.0 -------------------------------------------
+    if (t < 3.0){
+      // It crosses the deep doorway, unhurried, minding its own collection.
+      if (t < 2.60){
+        const k = C.clamp((t - 0.30) / 2.30, 0, 1);
+        d.putCurator(CROSS.x, C.lerp(CROSS.z0, CROSS.z1, k));
+      }
+      if (t < 1.9) C.lookAt(CROSS.x, C.lerp(CROSS.z0, CROSS.z1, C.clamp((t - 0.3) / 2.3, 0, 1)), 1.15);
+      else { C.cam.k = 0.030; C.lookAt(PLINTH.x + 0.6, PLINTH.z + 0.3, 0.55); }
+      // G7 wants a legible caption inside 0.4 s, so this one fades in fast.
+      cap(C, t, 0.17, 2.90, `the monster in this house<br>isn't hunting <span class="hi">you</span>`, 5);
+    }
+
+    // ---- 2. bait  3.0 - 6.0 -------------------------------------------
+    else if (t < 6.0){
+      C.cam.k = 0.045; C.pos.k = 0.035;
+      C.moveTo(APPROACH.x, APPROACH.z);
+      C.frameAt(PLINTH.x, PLINTH.z, 0.50, -0.18);   // low in frame, room above it
+      if (t >= 4.95) d.know(hero);              // the value resolves on screen
+      cap(C, t, 3.20, 5.90, `it's hunting whatever<br>you're <span class="hi">picking up</span>`);
+    }
+
+    // ---- 3. take  6.0 - 9.0 -------------------------------------------
+    else if (t < 9.0){
+      C.cam.k = 0.055; C.pos.k = 0.035;
+      if (!this._took && t >= 6.35){ g.grab(); this._took = true; }
+      C.moveTo(AFTER.x, AFTER.z);
+      // straighten up off the floor and turn toward the way home. From here on the
+      // cargo owns the bottom of the frame, so everything worth seeing is framed high.
+      const k = C.ease((t - 6.6) / 2.2);
+      C.frameAt(C.lerp(PLINTH.x, HALLDOOR.x - 1.0, k), C.lerp(PLINTH.z, HALLDOOR.z + 0.2, k),
+                C.lerp(0.55, 1.30, k), C.lerp(-0.18, 0.26, k));
+      C.caption(null);
+    }
+
+    // ---- 4. mark  9.0 - 13.0 ------------------------------------------
+    else if (t < 13.0){
+      C.cam.k = 0.050; C.pos.k = 0.028;
+      if (!this._marked){
+        d.putCurator(CURATOR_HOLD.x, CURATOR_HOLD.z);   // it was always down there
+        d.meter(92);                                    // COLLECT: the house is awake
+        this._marked = true;
+      }
+      // Keep the dolly moving even with nothing on screen - a still frame in a dark
+      // shot is indistinguishable from a dropped frame, and G6 is right to fail it.
+      C.moveTo(C.lerp(AFTER.x, AFTER.x + 0.9, C.ease((t - 9.0) / 4.0)),
+               C.lerp(AFTER.z, AFTER.z + 0.7, C.ease((t - 9.0) / 4.0)));
+      // Framed low, near the beam axis: while you are marked the light is both
+      // shorter and tighter, so anything framed high is simply not lit.
+      C.frameAt(HALLDOOR.x - 1.6, HALLDOOR.z + 0.4, 1.25, 0.12);
+      C.vignette(0.20 + 0.24 * C.ease((t - 9.0) / 1.6));
+      cap(C, t, 9.55, 12.85, `your light dims<br>when it's <span class="hi">you</span>`);
+    }
+
+    // ---- 5. blind  13.0 - 17.5 ----------------------------------------
+    // It is walking to the plinth right now and you cannot see it. A dimmed light
+    // is both shorter (19m -> 11.5m) and tighter, so at COLLECT range the Curator
+    // is effectively invisible - the tell that warns you also blinds you. The shot
+    // is a nervous sweep of the room, which is the only honest thing to film here.
+    else if (t < 17.5){
+      C.cam.k = 0.075; C.pos.k = 0.022;
+      C.moveTo(RETREAT.x, RETREAT.z);                   // pushed away from the door
+      const sweep = 0.5 + 0.5 * Math.sin((t - 13.0) * 1.05 - 1.4);
+      C.frameAt(C.lerp(HALLDOOR.x - 1.2, HALLDOOR.x + 7.0, sweep),
+                C.lerp(HALLDOOR.z + 1.6, HALLDOOR.z - 3.4, sweep), 1.15, 0.10);
+      // Two lines, because the picture cannot carry this beat: the first is what you
+      // see (nothing), the second is the rule the reveal is about to prove.
+      if (t < 15.5) cap(C, t, 13.25, 15.40, `and now you can't<br>see it <span class="hi">coming</span>`);
+      else cap(C, t, 15.60, 17.30, `it's walking to the shelf<br>you <span class="hi">took it from</span>`);
+    }
+
+    // ---- 6. drop  17.5 - 21.0 -----------------------------------------
+    // The payoff. You put it down, the aggro clears, the light goes back to full
+    // range - and it is standing on the plinth between you and the door, which is
+    // where it has been walking for the last six seconds.
+    else if (t < 21.0){
+      C.cam.k = t < 18.0 ? 0.060 : 0.130;   // whip round to it as the light returns
+      C.pos.k = 0.022;
+      if (!this._dropped && t >= 17.95){ g.grab(); this._dropped = true; }
+      C.moveTo(RETREAT.x + 0.5, RETREAT.z + 0.4);
+      const c = d.curator();
+      C.frameAt(c.x, c.z, 1.15, C.lerp(0.14, 0.05, C.ease((t - 18.1) / 1.6)));
+      C.vignette(C.lerp(0.44, 0.20, C.ease((t - 18.0) / 1.4)));
+      // clear the game's chrome before the card arrives, not underneath it
+      C.chrome(1 - C.ease((t - 20.30) / 0.55), 1 - C.ease((t - 20.05) / 0.45));
+      if (t < 19.35) cap(C, t, 18.25, 19.35, `so <span class="hi">put it down</span> —`);
+      else cap(C, t, 19.50, 20.90, `or hand it to<br><span class="hi">your friend</span>`);
+    }
+
+    // ---- 7. card  21.0 - 24.0 -----------------------------------------
+    else {
+      C.cam.k = 0.022; C.pos.k = 0.014;
+      C.caption(null);
+      C.moveTo(RETREAT.x + 1.1, RETREAT.z + 0.9);
+      const it = d.list()[hero];
+      C.frameAt(it.x, it.z, 0.45, -0.52);   // the piece back on the floor, card above
+      const k = C.ease((t - 21.15) / 0.9);
+      C.chrome(0, 0);                              // the card gets the frame to itself
+      C.card(k);
+      C.vignette(0.20 + 0.34 * k);
+      if (t > 23.55) C.fade(C.ease((t - 23.55) / 0.45) * 0.55);
+    }
+  }
+};
+
+// Caption with an 8-frame fade at each end (override with `fade`), so nothing pops.
+function cap(C, t, from, to, html, fade){
+  if (t < from || t > to){ if (t > to) C.caption(null); return; }
+  const F = (fade === undefined ? 8 : fade) / S.fps;
+  const a = Math.min(C.ease((t - from) / F), C.ease((to - t) / F));
+  C.caption(html, {alpha: +a.toFixed(3), top: 1150});
+}
+
+window.__shots = S;
+})();
