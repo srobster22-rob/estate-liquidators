@@ -24,6 +24,13 @@ Every number below is reverse-engineered from that sentence.
 | Armful | 1 | the unit of account |
 | Two-man | 3 | |
 | Cart | 5 | a third of the van for one object |
+| **Lever charge** | **1** | salt, a spare fuse. Bought between nights, spent in a panic. |
+
+> **The charge row is the price of safety, and it is deliberately paid in cargo** (`DESIGN.md`
+> §6.5.1, `DECISIONS.md` D-28). Priced in *time* instead, the Disturbance levers are dominated
+> — a crew that does the arithmetic never pulls one, because throughput and cargo are the same
+> currency and retrieval only takes a fraction of what you carry. In slots there's an interior
+> optimum: one charge is +2.6%, two break even, six is −22%.
 
 **Base van: 14 slots.** Shelving upgrades: +2 per tier, hard ceiling **20**. The ceiling is
 not a balance knob, it's a design guarantee — capacity may never grow to the point where

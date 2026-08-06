@@ -16,14 +16,14 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > ### Read first, in this order
 >
 > 1. `README.md` — the map.
-> 2. `DECISIONS.md` — 27 settled calls, each with the condition that would disprove it.
+> 2. `DECISIONS.md` — 28 settled calls, each with the condition that would disprove it.
 >    **Do not relitigate these.** If you believe one is wrong, check whether its stated
 >    falsification condition has actually been met; if it hasn't, implement it as written.
 > 3. `DESIGN.md` — the game itself.
 > 4. `TECH-SPEC.md` and `AUDIO-SPEC.md` — implementation detail for the two systems that
 >    carry the product.
 > 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `STACK.md` — content contract, tuning, dependencies.
-> 6. `LOOP_LOG.md` — eighteen rounds of findings, including several corrections to the specs.
+> 6. `LOOP_LOG.md` — nineteen rounds of findings, including several corrections to the specs.
 >    Where the log contradicts a doc, **the log is newer**.
 > 7. `proto/index.html` — a running single-player prototype of the core loop. Play it before
 >    writing anything.
@@ -97,7 +97,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 >
 > ### Reuse the simulations
 >
-> `sim/` contains ten Python models totalling ~2,500 lines that already answer most tuning
+> `sim/` contains eleven Python models totalling ~2,800 lines that already answer most tuning
 > questions, and they run in seconds with no dependencies. **Before changing any balance
 > number, re-run the relevant one.** They are the reason the current values are trustworthy,
 > and two of them exist specifically because earlier numbers were wrong.

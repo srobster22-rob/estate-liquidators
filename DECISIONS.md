@@ -481,10 +481,12 @@ you tell where your teammates are?) rather than retuning.
 ---
 
 ## D-26 · The Disturbance levers are rate-limited, because free ones delete the climax
+**Status:** ~~HELD~~ **SUPERSEDED by D-28 (R19)** — its own falsification test was run and it
+failed. Kept in full because the half that survives is load-bearing, and because the
+falsification worked exactly as the log is supposed to.
 
-**Status:** HELD · `DESIGN.md` §6.5.1
-
-**Decision:** at most one lever pull (kill lights −15, go quiet −20) per **150 seconds**.
+**Decision (retired):** at most one lever pull (kill lights −15, go quiet −20) per **150
+seconds**.
 
 **Why.** Simulated with no limit (`sim/disturbance.py`), a baseline crew spends **0%** of the
 night at COLLECT — against **40%** with the levers removed entirely. Five pulls a night, each
@@ -511,6 +513,13 @@ reproduces the right pacing for the wrong reason.
 15%-at-COLLECT target without any cooldown. Then the cooldown is an artificial limit on a
 choice that was already self-limiting, and it should be deleted rather than tuned. **That test
 is the next thing to run on this system.**
+
+> **Run in R19 (`sim/levers.py`), and the answer was worse than either branch anticipated.**
+> With time costs modelled, a crew that does the arithmetic pulls **zero** levers a night —
+> the target doesn't fall out because the levers are never used at all. The cooldown wasn't
+> limiting a self-limiting choice; it was rate-limiting a choice nobody would make. **What
+> survives from this entry is the first half — free levers do delete the climax, and that
+> finding stands.** What dies is the fix. See D-28.
 
 ---
 
@@ -541,6 +550,52 @@ reverted is the per-player scaling of the sources, which is where the real depen
 
 ---
 
+## D-28 · Levers are consumables priced in van slots, not in time
+
+**Status:** HELD · `DESIGN.md` §6.5.1 · supersedes D-26
+
+**Decision:** kill-lights and go-quiet become **carried consumables** — salt, spare fuses —
+bought between nights and occupying **1 van slot each**. Free to use at the moment of panic,
+finite because you chose how many to bring. No cooldown.
+
+**Why the obvious fix failed.** D-26 priced levers in *throughput*: creeping at 0.55× for 45s,
+or hauling the rest of the night blind at 0.85×. Modelled with a real haul loop
+(`sim/levers.py`), that makes them dominated — 0.0 pulls per night from a crew that does the
+arithmetic, and pulling them reflexively costs ~$975 a night, nearly 10% of earnings, to buy a
+26%→3% reduction in time at COLLECT.
+
+**The reason is structural and worth keeping.** Throughput is denominated in the same units as
+the thing being protected, and retrieval only ever takes a *fraction* of what you carry:
+
+```
+benefit  (0.25 − 0.10) × $1,000 × 1.3 trips  =  $193
+cost     $1,000 × (1 − 0.55) × 1.3 trips     =  $579
+```
+
+**Paying loot to protect loot cannot come out ahead.** This is the third time this project has
+found that the *shape* of a price decides whether a decision exists, independent of its size —
+after "a linear cost cannot balance a multiplicative benefit" (§4.2) and "a super-linear cost
+only produces an optimum if the benefit is large enough to survive the first draws" (D-23). The
+addition here: **a cost denominated in the same currency as the benefit is not a decision, it
+is arithmetic with a known answer.**
+
+Van slots are a different currency, and the master constant of the whole economy (D-19). In
+slots there is an interior optimum: **1 charge is +2.6%, 2 is break-even, 6 is −22%**, while
+COLLECT time falls from 26% of the night to 8%. Carry one, argue about the second, never carry
+three — the same shape as the curse cap, and it needs no rate limit because a thing you carry
+limits itself.
+
+**The other reason to prefer it:** a cooldown is an arbitrary limit players cannot see the
+reason for. A slot cost is a limit they chose in the van with the price list open, which turns
+a UI restriction into the greed-versus-safety trade the game already runs on.
+
+**Falsified if:** playtesters carry the maximum charges every night regardless — that would
+mean the slot price is too cheap relative to felt danger, and the fix is raising the slot cost,
+not reintroducing a cooldown. Also falsified if nobody ever buys one, which would mean COLLECT
+isn't frightening enough to pay for and the problem was never the lever.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
@@ -552,5 +607,5 @@ reverted is the per-player scaling of the sources, which is where the real depen
 | **O-05** | Does the Curator have a face? | art | recommend never fully seen — silhouette and hands only. Not blocking anything yet. |
 | ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, 48%→79% of theoretical max. |
 
-Only O-05 remains open, and it blocks nothing (27 decisions logged as of R18). Every decision that gated build work has been
+Only O-05 remains open, and it blocks nothing (28 logged as of R19, one superseded). Every decision that gated build work has been
 made — which means the next real information comes from a playtest, not another design pass.

@@ -41,7 +41,7 @@ Land it somewhere with real headroom — `~/dev/estate-liquidators` is fine.
 Run these before anything else; the answers change the plan.
 
 ```bash
-python3 sim/check_drift.py          # expect: 58/58 constants agree
+python3 sim/check_drift.py          # expect: 60/60 constants agree
 python3 sim/validate_estate.py      # expect: clean estate 12/12, broken estate trips 9
 dotnet run --project unity/tests/CoreTests   # expect: 31/31 assertions pass
 ```
@@ -79,8 +79,8 @@ cross-platform netcode bugs early instead of at release.
 ## Where to pick up
 
 Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the design is
-settled (27 decisions logged, 1 open and it is an art question), the rules are tested, and the
+settled (28 decisions logged, 1 open and it is an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has eighteen rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has nineteen rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

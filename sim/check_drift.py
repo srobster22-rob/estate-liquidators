@@ -170,6 +170,14 @@ check("concealment search straddles stash (low)",
 check("concealment search straddles stash (high)",
       1.0 if _search_max > c["stash_quiet_seconds"] else 0.0, 1.0)
 
+# R19: levers are consumables priced in slots, not a rate-limited free action. The
+# cooldown constant is retired but kept so disturbance.py still reproduces R18; assert
+# the charge model exists so nobody quietly reinstates the cooldown as the real answer.
+check("lever charges are priced in slots",
+      1.0 if d.get("lever_charge_slot_cost", 0) > 0 else 0.0, 1.0)
+check("recommended charges is an interior optimum, not a max",
+      1.0 if 0 < d.get("lever_charges_recommended", 0) <= 2 else 0.0, 1.0)
+
 # The crew exponent must match between the model and the prototype -- it is the one
 # tuned number that lives as an expression rather than a table entry.
 check("JS decay_crew_exp", grab(js, r"DECAY_CREW_EXP\s*=\s*([\d.]+)"),

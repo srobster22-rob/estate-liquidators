@@ -520,28 +520,62 @@ could produce one.
 > COLLECT shares are the figures to carry forward, and they survive: silent and careful stay
 > at 0%, baseline lands at 15–18%.
 
-### 6.5.1 The levers have to cost something
+### 6.5.1 The levers are bought, not free — and they are not priced in time
 
 Three levers let a crew push back: kill a wing's lights (−15), go quiet for 45s (−20), unload
-cursed cargo (drops the floor). **Simulated with no limit on how often they can be pulled,
-they delete the top tier of the game outright** — a baseline crew spends **0%** of the night
-at COLLECT with levers available and **40%** without, because it simply spends one every time
-the meter approaches 85. Five lever pulls a night and the climax never happens.
+cursed cargo (drops the floor). Getting their price right took two rounds and both of the
+obvious answers were wrong.
 
-That is the same failure shape as the drop-reset (`DECISIONS.md` D-03) and the stash exploit
-(D-24): a free, repeatable reset of the threat state. It matters more than the others because
-COLLECT is not just a harder tier — it is where the Curator switches from retrieving items to
-collecting people, and therefore where §8.1's hiding becomes the primary verb. **An
-unreachable COLLECT makes the whole concealment system unreachable content.**
+**Free levers delete the top tier.** With no limit on how often they can be pulled, a baseline
+crew spends **0%** of the night at COLLECT, against **40%** with the levers removed entirely —
+it simply spends one every time the meter approaches 85. That is the same failure shape as the
+drop-reset (`DECISIONS.md` D-03) and the stash exploit (D-24): a free, repeatable reset of the
+threat state. It matters more than the others because COLLECT is where the Curator switches
+from retrieving items to collecting people, and therefore where §8.1's hiding becomes the
+primary verb. **An unreachable COLLECT makes the whole concealment system unreachable
+content.**
 
-**Fix: a 150s cooldown between lever pulls**, which puts baseline back at 17% of the night in
-COLLECT. Three pulls a night, and choosing *when* is the decision.
+**But levers priced in *time* are dominated, and nobody would ever pull one.** Modelled with a
+real haul loop (`sim/levers.py`), where going quiet means creeping at 0.55× throughput for 45s
+and killing lights means hauling the rest of the night at 0.85× with double breakage, a crew
+that does the arithmetic pulls **zero** levers a night. Pulling them as a reflex costs about
+**$975 a night — nearly 10% of earnings** — to buy a reduction in COLLECT time from 26% to 3%.
 
-> **This is a placeholder for a cost the model can't see.** A lever's real price is *time* —
-> going quiet for 45 seconds means creeping, and killing the lights means hauling blind — and
-> `sim/disturbance.py` has no haul loop in it, so it cannot charge either. The cooldown
-> reproduces the right pacing for the wrong reason. Settle it properly in `sim/integrated.py`,
-> which does have a haul loop, before treating 150s as a real number.
+The arithmetic, for one go-quiet at tier 3:
+
+```
+benefit  (0.25 − 0.10 retrieval) × $1,000 × 1.3 trips  =  $193
+cost     $1,000 × (1 − 0.55 throughput) × 1.3 trips    =  $579
+```
+
+**It is not a tuning gap, it is the wrong currency.** Throughput is denominated in the same
+units as the thing you are protecting — loot — and retrieval only ever takes a *fraction* of
+what you carry. Paying loot to protect loot can never come out ahead. (Same family of argument
+as §4.2: a linear cost cannot balance a multiplicative benefit. The shape of a price matters
+more than its size.)
+
+**So the levers are consumables.** Salt, spare fuses, a dust sheet — bought between nights (§9
+already sells salt as gear) and **carried as cargo**. Each costs a van slot before the night
+starts and costs nothing at the moment you pull it. That changes the currency to the one thing
+in this game that is genuinely scarce, and the trade becomes a decision:
+
+| Charges carried | Earnings | Night at COLLECT | Used |
+|---:|---:|---:|---:|
+| 0 | — | 26% | 0.0 |
+| **1** | **+2.6%** | **8%** | 0.9 |
+| 2 | −0.2% | 4% | 1.2 |
+| 3 | −4.8% | 4% | 1.2 |
+| 6 | −22.0% | 3% | 1.2 |
+
+**Carry one, argue about the second, never carry three.** An interior optimum, the same shape
+as the curse cap in §4.2 — and it arrives without any artificial rate limit, because a thing
+you carry is self-limiting by count. The decision moves into the lobby, where greed against
+safety is the trade the whole game already runs on: that slot is either a charge or it's a
+$700 vase.
+
+> **What this retires.** An earlier pass fixed the free-lever problem with a 150s cooldown
+> between pulls. That was solving the symptom. A cooldown is an arbitrary limit players cannot
+> see the reason for; a slot cost is a limit they chose in the van with the price list open.
 
 ### 6.5.2 Crew size, and the fifth cursed item
 

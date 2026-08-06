@@ -37,6 +37,7 @@ log, and even those state their own falsification conditions.
 | **[sim/chain_sim.py](sim/chain_sim.py)** | Full-night sim with weight classes, crew labour, and depth gating. | Before changing the quota curve, crew size, or the apex. |
 | **[sim/scan_risk.py](sim/scan_risk.py)** | The appraiser: why a tail risk kills it and room variance saves it. | Before touching anything about scanning. |
 | **[sim/hiding.py](sim/hiding.py)** | Concealment: whether run / hide / stash / hand off are four decisions or one. | Before touching §8.1 or the search state. |
+| **[sim/levers.py](sim/levers.py)** | What the Disturbance levers cost, and why the currency matters more than the price. | Before changing any lever or the COLLECT tier. |
 | **[sim/validate_estate.py](sim/validate_estate.py)** | The 12-check estate validator, with a self-test. `python sim/validate_estate.py` | Authoring or reviewing any wing. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
@@ -64,8 +65,8 @@ log, and even those state their own falsification conditions.
 **Solid enough to build on:** the loop and economy; the Curator's state machine and attention
 model; the physics ownership protocol; the loudness model; the decision log.
 
-**Specified and partly tested:** the economy and the encounter, by ten simulations that between
-them overturned seven things this project believed.
+**Specified and partly tested:** the economy and the encounter, by eleven simulations that between
+them overturned nine things this project believed.
 
 - The appraiser's edge dies entirely between 24 and 32 van slots. **Van capacity is the master
   constant.** The edge itself has been revised four times as the model got honest (+84% →
@@ -73,17 +74,28 @@ them overturned seven things this project believed.
 - **Scanning's payoff is a property of the room, not a constant** — it's `0.6 × spread ×
   mean`, so a house of evenly-priced rooms makes the signature verb a habit. Scanning only
   high-variance rooms earns +12.2%; scanning a random 25% of rooms earns +4.6%; scanning the
-  *wrong* rooms earns −1.9%. The gap between those is the skill.
+  *wrong* rooms earns −1.9%. The gap between those is the skill. *(The ordering is solid; the
+  magnitudes are pending a re-measure — see the caveat below.)*
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4
   passed 1%. Recalibrated against simulated earnings.
 - Depth must unlock on **work, not wall-clock**, or bigger crews earn *less* — a bug that
   would have been near-impossible to diagnose from playtest reports.
+- **A price in the wrong currency is not a decision.** The Disturbance levers cost throughput
+  — the same units as the loot they protect — so a crew that does the arithmetic never pulls
+  one. Repriced as consumables costing van slots, there's an interior optimum at one charge.
 - **Stashing loot to break a chase was a free reset of the entire threat system** — a
   guaranteed save, because the 20s quiet timer always outlasted the Curator's search. Fixed by
   making the *search* ragged (8–24s, re-rolled) rather than the timer shorter; 75% save rate,
   and all four responses to being hunted now have a region where they're correct.
+
+**Known caveat, R19:** most haul models here end the night when the van fills. Real crews don't
+leave — the van binds by ~40%, so the back half of a night is spent *swapping* a better thing
+for a worse one, which keeps the crew in the house making noise. Adding that phase to
+`sim/levers.py` moved time-at-COLLECT from 0% to 26%. `integrated.py`, `scan_risk.py` and
+`haul_sim.py` still stop early, so **every appraiser magnitude published here was measured on
+nights that run cooler than a real one.** Re-measuring is the top item in `LOOP_LOG.md`.
 
 **Deliberately rough:** joint tuning values (guesses — a week of hands-on iteration decides
 the game's feel); material and prop dressing; lighting standards; anything about art.

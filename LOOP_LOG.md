@@ -295,6 +295,43 @@ formalised.
 · Corrected `DESIGN.md` §6.5's headline table: its first-PURSUE times were measured on a model
 with no ratcheting floor and are 5.8 min against a real 3.1. The COLLECT shares survive.
 
+R19 · Ran D-26's own falsification test — price the Disturbance levers properly in a model
+with a haul loop (`sim/levers.py`) and see whether the 15%-at-COLLECT target falls out without
+a cooldown. · **It failed, and worse than either branch of the test anticipated: a crew that
+pays for its levers pulls ZERO of them.** Not "fewer" — none. Pulling them reflexively costs
+about **$975 a night, nearly 10% of earnings**, to buy a 26%→3% reduction in time at COLLECT.
+So R18's cooldown wasn't rate-limiting a self-limiting choice; it was rate-limiting a choice
+nobody would ever make. D-26 superseded, with the half that survives (free levers do delete
+the climax) kept explicitly.
+· **The cause is structural, and it generalises.** A lever priced in *throughput* asks you to
+pay in the same currency as the thing you're protecting, and retrieval only ever takes a
+fraction of what you carry: benefit `(0.25-0.10) x $1000 x 1.3 trips = $193` against cost
+`$1000 x 0.45 x 1.3 = $579`. **Paying loot to protect loot cannot come out ahead at any
+tuning.** Third time this project has found that the *shape* of a price decides whether a
+decision exists independent of its size (after R10's linear-vs-multiplicative and R16's
+benefit-must-survive-the-first-draws). The new clause: **a cost denominated in the same
+currency as the benefit is not a decision, it's arithmetic with a known answer.**
+· **Fix: levers become consumables priced in van slots** — salt and spare fuses, bought
+between nights (DESIGN §9 already sells salt), free at the moment of panic, finite because you
+chose how many to bring. Different currency, and the master constant of the economy (D-19). It
+produces an interior optimum immediately: **1 charge +2.6%, 2 break-even, 3 -4.8%, 6 -22%**,
+with COLLECT time falling 26% → 8%. Carry one, argue about the second, never carry three —
+same shape as the curse cap. And it needs no rate limit, because a thing you carry limits
+itself. Logged as D-28; the 150s cooldown is retired rather than tuned.
+· Also worth saying plainly: **both previous positions on this were wrong in opposite
+directions.** The original design had free levers (climax deleted); R18 priced them in time
+(levers deleted). The design had never actually put a price on them, and both obvious prices
+break something.
+· **One modelling bug found, and it was distorting everything.** The first cut of this file
+ended the night when the van filled — so every crew was done by minute six with the meter
+still in PATROL, and every policy scored 0% at COLLECT. But a full van does *not* end the
+night: the van binds by ~40% (ECONOMY §2), so the back half is spent **swapping**, hauling a
+better thing out and leaving a worse thing behind. That's the appraiser's whole reason to
+exist, and it means the crew is still in the house making noise long after the van is
+nominally full. Adding the swap phase moved baseline from 0% to 26% at COLLECT. Any future
+haul model needs the swap phase before its Disturbance numbers mean anything — the same class
+of standing note as R5's depth-reservation warning.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -305,13 +342,16 @@ found a free-reset exploit in §8.1's own numbers on the way.
 ~~**Per-crew-size pacing, open from R12.**~~ **Done, R18.** Exponent 0.8, and the dependency
 was in the noise sources rather than the decay.
 
-**1. Price the Disturbance levers properly — D-26 names this as its own falsification test.**
-The 150s cooldown is a placeholder for a cost `sim/disturbance.py` structurally cannot see: a
-lever's real price is *time*, and that file has no haul loop. `sim/integrated.py` does. Model
-go-quiet as 45s at reduced throughput and kill-lights as a lasting throughput penalty, and see
-whether the 15%-at-COLLECT target falls out with no cooldown at all. If it does, delete the
-cooldown rather than tuning it — an artificial limit on a choice that was already
-self-limiting is worse than no limit, because it stops players discovering the real trade.
+~~**Price the Disturbance levers properly.**~~ **Done, R19.** The test failed, D-26 is
+superseded, and levers are now consumables priced in van slots.
+
+**1. Retro-fit the swap phase to the other haul models.** R19 found that ending a night when
+the van fills understates Disturbance enormously (0% vs 26% at COLLECT), because real crews
+spend the back half swapping rather than leaving. `sim/levers.py` has the swap phase;
+`integrated.py`, `scan_risk.py` and `haul_sim.py` do not, and all three stop at `slots > 0`.
+Every appraiser number this project has published — including R16's +12.2% — was measured on
+nights that end early and therefore run cooler than a real one. **This is the highest-value
+item on the list: it potentially moves a headline figure.**
 
 **2. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
 *shortest* path from plinth to van and counts doors, so a wing whose alternate route is
