@@ -114,10 +114,18 @@ there, are at the bottom.
 >   the tail is the standard failure and I will see it immediately. If quality genuinely runs
 >   out, **stop at the number where it broke and say so** — thirty-one real concepts and an
 >   honest note beats forty with nine of them furniture.
-> - **Separate what you verified from what you inferred.** You are working from memory of the
->   games market and that memory has a cutoff. Every "nothing like this exists" claim is a
->   guess unless you checked. Mark them. Then **verify the adjacents for the top eight before
->   anything else** — finding out idea #3 shipped in 2023 is a five-minute save.
+> - **Search before you rank, not after.** You are working from memory of the games market and
+>   that memory has a cutoff, so every "nothing like this exists" is a guess. Mark the guesses —
+>   and then **check all of them against a store before the ranking section, not after it.**
+>   Five minutes per card. This is not a nicety: a search is the only instrument here that can
+>   *kill* a concept outright, so it strictly dominates every prototype, and a ranking built on
+>   unchecked cards will confidently put a shipped game in its top five. That has already
+>   happened once with this prompt — the card was even labelled "probably occupied" and got
+>   ranked above the thing that would have settled it. **Resolve a named suspicion with the
+>   cheapest instrument that can resolve it, before ranking, not with the test the ranking
+>   prefers.**
+> - **Assume taken until shown otherwise.** Write the cards with a pessimistic prior. "I found
+>   nothing" after a real search is a finding; "I can't recall anything" is not.
 > - **Distrust a concept that has no problem.** If you can't name the thing that's hard about
 >   building it, you haven't thought about building it. Every card should have some friction
 >   visible.
@@ -213,9 +221,15 @@ Gives the model a way to be honest that isn't failure, which is the only way you
 out of a quantity target. Without it, the instruction "give me 40" is an instruction to
 produce 40 things regardless of whether 40 exist.
 
-**"Separate verified from inferred."**
-Same clause as `ITERATION-PROMPT.md`, same reason, higher stakes here: an unflagged "this
-doesn't exist" is how a month gets spent rebuilding something that's on Steam.
+**"Search before you rank, not after."**
+Started as `ITERATION-PROMPT.md`'s separate-verified-from-inferred clause, then earned a
+stronger form the hard way. Flagging a claim as unverified is *not enough* — the first run of
+this prompt flagged a card as "most likely to be occupied" and then ranked it fifth anyway,
+because the ranking criterion (cost to disprove) only sees the tests the document itself
+proposes, and a store search isn't one of them. It should be. A search can kill a concept
+outright in five minutes, which no prototype can; putting it after the ranking means ranking
+against known-unreliable data for no saving at all. One card in the first six checked was a
+game that had shipped thirteen months earlier.
 
 **"Don't design the sequel."**
 Progression systems are the most pleasant thing to write and the least informative. They also
@@ -242,11 +256,20 @@ which is the exact artefact it was written to avoid.
 
 ## The output
 
-`GAME-CONCEPTS.md` is this prompt, run once, plus one amendment. 46 concepts, nine families, a
-ranked top eight, and a graveyard of twenty-five. Read its header before the cards — it's
-explicit about which claims in it were verified and which are memory.
+`GAME-CONCEPTS.md` is this prompt, run once, plus two passes over it. 45 live concepts, nine
+families, a ranked top eight, and a graveyard of twenty-six. Read its header before the cards —
+it's explicit about which claims were verified and which are still memory (most of them).
 
-The amendment is the action quota above. Family 9 was added after the fact, two of its six
-entered the top eight on merit, and the displacement is written up in that section rather than
-quietly swapped. That's the loop this prompt is supposed to support: run it, find where the
-output is thin, fix the *prompt*, and re-run the affected part rather than the whole thing.
+Both passes are recorded there rather than tidied away, because the corrections are worth more
+than the list:
+
+1. **The action quota** above. Family 9 was added after the fact when the self-audit caught
+   that forty concepts had no twitch in any of them — and the interesting part was that the
+   cause was the scoring function, not taste.
+2. **The verification clause** above. Two cards were then checked against a store; one died
+   instantly to a game that had shipped thirteen months earlier, having been ranked fifth
+   despite its own card saying it was probably taken.
+
+That's the loop this prompt is for: run it, find where the output is thin or wrong, **fix the
+prompt**, and re-run only the affected part. Both clauses exist because the output embarrassed
+the previous version of this file.

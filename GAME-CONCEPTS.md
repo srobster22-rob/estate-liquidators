@@ -1,14 +1,21 @@
-# Forty-Six Game Concepts
+# Forty-Five Game Concepts
 
-`GAMES-PROJECT-PROMPT.md`, run once, plus one amendment. 46 concepts in nine families, a
-ranked top eight, and a graveyard of twenty-five.
+`GAMES-PROJECT-PROMPT.md`, run once, plus two passes over it. 45 live concepts in nine
+families, a ranked top eight, and a graveyard of twenty-six.
 
-**The amendment.** The first pass produced 40 concepts with no twitch, no aim and no combat
-depth anywhere in them, and the self-audit at the bottom called that a bias of the generator
-rather than a position worth defending. **Family 9 — Fast** is the correction: six action
-concepts, and a note on why action resists this format. Two of them entered the top eight on
-merit and displaced two entries, which is written up in that section rather than quietly
-swapped.
+**Pass two — the action amendment.** The first pass produced 40 concepts with no twitch, no aim
+and no combat depth anywhere in them, and the self-audit at the bottom called that a bias of
+the generator rather than a position worth defending. **Family 9 — Fast** is the correction:
+six action concepts, and a note on why action resists this format. Two entered the top eight on
+merit and displaced two entries, written up in that section rather than quietly swapped.
+
+**Pass three — verification, and it cost one of them.** #43 Recoil was checked against the
+store and is dead: *Kickback: Shoot to Move!* shipped in July 2025 with the same bet. #46
+Direct was checked and survives, with the bet narrowed. That's 5 of 6 in Family 9 still
+standing, the top eight reshuffled again, and **one concrete lesson about the order these
+passes should run in** — the search is five minutes and the prototype is two days, so the
+search goes first, above the ranking. It didn't, and the ranking was wrong for a day as a
+result.
 
 **What this is for.** Finding the one thing to prototype on Saturday. Not a list to feel good
 about. Every card carries a written-down result that would make you drop it and a test small
@@ -16,10 +23,19 @@ enough that you'd actually run it.
 
 **What is verified and what isn't.** Nothing here is verified. Every "nearest shipped game"
 is memory, and that memory has a cutoff — some of these shipped last year and I don't know it.
-**Before building anything: search the store for the top eight's comparables.** Five minutes
-each, and it is the highest-value hour in this document. Five concepts I already suspect are
-occupied and have said so on the card: `#9`, `#33`, `#38`, and — from the action pass, where
-the space is much more crowded — `#43` and `#46`.
+**Before building anything — before *ranking* anything — search the store for the comparables.**
+Five minutes each, and it is the highest-value hour in this document. Two of the five I flagged
+as probably-occupied have now been checked:
+
+- **`#43` Recoil is dead.** *Kickback: Shoot to Move!* (Steam, July 2025) ships the concept
+  and the bet. Moved to the graveyard; the number is left vacant so cross-references resolve.
+- **`#46` Direct survives**, with the bet narrowed and one piece of adverse evidence found.
+  Details on the card.
+
+**Still unchecked, and still suspect: `#9` (vs *Viscera Cleanup Detail*), `#33` (vs *Blackbar*
+and *Orwell*), `#38` (vs *Potion Craft*).** Everything else in here remains unverified memory.
+One card in six survived contact with a search engine at full strength; assume that rate
+applies to the rest.
 
 **Calibration.** Estate Liquidators — *aggro follows the most valuable object leaving the
 house, so you can get rid of the monster by handing the vase to your friend* — is roughly the
@@ -42,9 +58,13 @@ Tags: `SOLO` shippable by one person · `NO COMBAT` no combat, no health bar any
 `UNMARKETABLE` mechanically true, commercially unwise, included deliberately ·
 `POPULATION` needs a live player base to function — the heaviest structural dependency here.
 
-Quota check: 9 families — 5 each and 6 in Family 9, against a cap of 6 · 1 co-op horror and
-1 solo horror against a cap of 3 · 21 solo-shippable · 28 with no combat · 6 with combat as
-the point · 7 marked unmarketable · 8 needing a population.
+Quota check: 9 families — 5 each, Family 9 down to 5 after #43 was killed by verification ·
+1 co-op horror and 1 solo horror against a cap of 3 · 20 solo-shippable · 28 with no combat ·
+5 with combat as the point · 7 marked unmarketable · 8 needing a population.
+
+Family 9 now sits at the action quota's floor rather than above it. One more loss there and
+the prompt's "at least six are fast" is breached, which would mean generating a replacement
+rather than quietly dropping the quota.
 
 ---
 
@@ -728,8 +748,9 @@ evening. That's a real difference and it's priced into the ranking. It is also, 
 actual mechanism behind the bias: a generator asked for cheap-to-disprove ideas will quietly
 drift toward systems and away from feel, because systems are cheaper to argue about.
 
-Two of these are still among the cheapest tests in the document, which is why the top eight
-changed.
+Two of these were among the cheapest tests in the document, which is why the top eight changed
+— and then one of the two turned out to be a shipped game, which is why it changed again. Both
+movements are recorded rather than tidied away.
 
 ### 41 · Tell
 **A duel where the enemy builds a model of your habits inside a single fight, and starts
@@ -772,22 +793,31 @@ compression. You fight by displacing a substance.
 - **Scope:** 3 people, 10–12 months. The crowd solver is the whole engineering risk and it's a
   real one.
 
-### 43 · Recoil `SOLO`
+### ~~43 · Recoil~~ — **dead, verified 2026-08-06**
 **No walk button. Firing is how you move.**
 
-- **The bet:** collapsing aim and locomotion into one input makes every offensive decision
-  positional and every positional decision offensive. Weapon variety becomes movement variety
-  — a shotgun isn't a damage profile, it's a different way of getting across a room.
-- **Nearest:** *Downwell* (recoil-jump on one axis — the proof that the core is sound) ·
-  rocket-jumping in *Quake* / TF2 (a tech, never the whole scheme) · **and I strongly suspect a
-  2D indie has already done this properly. Check before you build.** This is the card in the
-  document most likely to be occupied.
-- **Kills it:** one weapon dominates and the others are decoration. Or, in 3D, it's simply
-  nauseating — but you don't need to find that out, because the test is 2D.
-- **Test:** 2D, one weekend, **three weapons**. The third one is the experiment: if it doesn't
-  feel like a different game from the first, the bet is dead and the concept is a gimmick with
-  one good level in it.
-- **Scope:** solo, 5 months in 2D.
+Checked on request, killed in about four minutes, moved to the graveyard (entry 26). The
+number is left vacant rather than reused so the cross-references above still resolve.
+
+**What killed it:** *Kickback: Shoot to Move!* (Dot Blood / Targem Games, Steam, 14 July 2025)
+is this concept, including the bet. Its store copy — *"no WASD, no mouse movement… your choice
+of weapons will shape how you move and survive"* — is a paraphrase of the sentence I wrote for
+"the bet," which is about as complete an occupation as a card in this document can suffer.
+*Recoil Rush* (Steam) is a second commercial entry, and itch.io carries an entire **`shoot-to-
+move` tag** with a page of them.
+
+**The useful part.** I marked this "most likely to be occupied" and put it fifth in the top
+eight anyway, on the argument that a weekend prototype would settle it. That was the wrong
+instrument: the store check costs five minutes and the prototype costs two days, and I had
+already written down the suspicion. **A named suspicion should be resolved by the cheapest
+instrument that can resolve it, before the ranking, not by the test the ranking prefers.**
+That's a defect in how this document was assembled, not in the idea — see the note at the top
+about verification order.
+
+**One salvage.** *Kickback* is a top-down roguelike; *Downwell* is a single-axis platformer. No
+one found has committed to recoil-only movement in **3D**, where the nausea risk I listed is
+real and unexplored. That's a different concept with a different kill condition, and it is not
+this card — if you want it, write it fresh rather than reviving this one.
 
 ### 44 · Ghosts `POPULATION`
 **A bullet-hell where the hazards are other players' recorded runs.**
@@ -829,13 +859,26 @@ compression. You fight by displacing a substance.
 
 - **The bet:** **framing is the verb.** The skill is composition under pressure, and the
   character's competence is downstream of your attention rather than your dexterity.
-- **Nearest:** genuinely thin, **which per this document's own rule is a warning and not an
-  opportunity.** Adjacent: rail shooters inverted · sports broadcast-camera games · *Kine*.
-  Indirect-control action has been tried and mostly buried; find out by whom before you commit
-  a month.
-- **Kills it:** indirect control reads as unresponsive. That is the failure mode of every game
-  that has attempted it, and it shows up fast — if the character does the wrong thing twice in
-  the first minute, players quit and never articulate why.
+- **Nearest — checked 2026-08-06, and it survives.** No shipped game was found in which
+  framing is the sole verb and the character's competence is downstream of it. What *was*
+  found, and all three matter:
+  - **Gaze-directed steering** is a standard VR locomotion technique, studied since the
+    earliest VR research. So the mechanic is not novel — it's a solved *interface* problem
+    that nobody has promoted to a skill.
+  - ***Cameraman*** (Polyfrog Studio, itch.io): you film enemies so an autonomous protagonist
+    can fight them. The closest thing found, and the difference is real — the player still
+    walks with WASD, so framing is a second verb rather than the only one.
+  - **A US patent** covering automatic character movement toward points of interest driven by
+    the player's camera view. Someone thought this was worth owning. Probably unenforced, as
+    mechanic patents usually are, but it's evidence the idea has been reached before.
+- **Kills it:** indirect control reads as unresponsive — and **there is now adverse evidence
+  for exactly this**, which is the real result of the check. Comparative VR studies find
+  gaze-directed steering *slower and less comfortable* than a gamepad. That is not fatal: those
+  studies measure task efficiency, and the bet here is that framing is a **skill** rather than
+  a convenience, which efficiency tests are the wrong instrument for. But it raises the bar.
+  The afternoon prototype now has a sharper question than "is it responsive" — it's **does
+  being slower than a gamepad stop mattering once it's the whole game?** If the character does
+  the wrong thing twice in the first minute, players quit and never articulate why.
 - **Test:** 2D. A dot that runs toward the centre of your view, and a reason to go somewhere.
   **One afternoon, and you'll know inside ten minutes.** The cheapest decisive test in the
   document and the reason this card enters the top eight.
@@ -855,20 +898,31 @@ learn nothing for a quarter.
 | 2 | **Direct** (#46) | **One afternoon**, 2D, decisive in ten minutes | An afternoon. And a fail is genuinely informative: it tells you *why* indirect control keeps getting buried |
 | 3 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
 | 4 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
-| 5 | **Recoil** (#43) | A weekend, 2D, three weapons | A weekend — but check the store first. This is the card most likely to already exist, and that check costs five minutes |
-| 6 | **Tow** (#7) | A weekend, 2D | A weekend. And the rope-constraint code survives into anything physical |
-| 7 | **Sworn** (#2) | One evening, on paper | An evening — but the *build* is 9–12 months, so a false positive here is the most expensive mistake in the table. Run it twice, with two different groups |
-| 8 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
+| 5 | **Tow** (#7) | A weekend, 2D | A weekend. And the rope-constraint code survives into anything physical |
+| 6 | **Sworn** (#2) | One evening, on paper | An evening — but the *build* is 9–12 months, so a false positive here is the most expensive mistake in the table. Run it twice, with two different groups |
+| 7 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
+| 8 | **Pack** (#29) | Three days, 2D, debug overlay | Three days, and the read-back finding transfers to Tell (#41) and to any companion-AI design you ever do |
 
-**What the action pass displaced, and why.** Direct (#46) and Recoil (#43) entered on merit —
-an afternoon and a weekend respectively, both decisive, both solo-shippable. They pushed out:
+**How this table has moved, in order.** Worth keeping visible, because the movement is the
+only evidence that the ranking is doing anything.
 
-- **Ledger** (#20), which shouldn't have been in the eight to begin with. It shares its kill
-  condition with Provenance, so it was never an independent option — counting it as one
-  overstated the portfolio. It stays worth building; it just isn't a separate *question*.
-- **Pack** (#29), at three days, straightforwardly outbid. It's the first thing back in if any
-  of the above dies on contact, and its read-back finding is now shared with Tell (#41), so
-  running either one part-answers the other.
+- **The action pass** put Direct (#46) and Recoil (#43) in on merit — an afternoon and a
+  weekend, both decisive, both solo-shippable — and pushed out **Ledger** (#20) and **Pack**
+  (#29). Ledger's removal was overdue on principle: it shares its kill condition with
+  Provenance, so it was never an independent option and counting it as one overstated the
+  portfolio. It's still worth building; it just isn't a separate *question*. Pack was
+  straightforwardly outbid, and noted at the time as "the first thing back in if any of the
+  above dies on contact."
+- **The verification pass** then killed **Recoil** (#43) outright — *Kickback: Shoot to Move!*
+  shipped in July 2025 with the same bet — and Pack came back in at #8, exactly as written.
+  Direct survived its check and holds #2.
+
+**One place this table was wrong about itself.** Recoil sat at #5 on the argument that a
+weekend prototype would settle it, while its own card said "most likely to be occupied." The
+suspicion was already written down and the instrument that could resolve it cost five minutes,
+not two days. **Resolve named suspicions with the cheapest instrument that can resolve them,
+before ranking — not with the test the ranking happens to prefer.** The store check belongs
+above the whole table, which is where the header now puts it.
 
 **Runner-up, and the one worth arguing about: Understudy (#34).** Its test is the cheapest in
 the whole document — one hour, a chat window, ten repeated inputs, measure agreement. By raw
@@ -895,10 +949,11 @@ answer is unambiguous in a way none of the systems concepts can be.
 
 ## The graveyard
 
-Twenty-five that were generated and cut, with the reason. This is the section that should make
-you trust the other forty-six. Entries 20–25 came from the action pass, and that family needed
+Twenty-six that were generated and cut, with the reason. This is the section that should make
+you trust the other forty-five. Entries 20–25 came from the action pass, and that family needed
 its own rejections more than most — action is the most crowded space in games, so a pass that
-produced six keepers and cut nothing would be a pass that wasn't looking.
+produced six keepers and cut nothing would be a pass that wasn't looking. Entry 26 is the first
+one killed by a search rather than by an argument, and it was a keeper until it wasn't.
 
 1. **Chorus** — co-op where sung pitch is the network protocol. The accessibility floor is a
    wall, not a slope: a large minority genuinely cannot pitch-match, and there's no parallel
@@ -957,6 +1012,16 @@ produced six keepers and cut nothing would be a pass that wasn't looking.
 25. **Extraction shooter with a twist** — banned by the brief, and it arrived twice. The
     attractor is strong enough that the ban is doing visible work.
 
+*Killed by verification rather than by judgement:*
+
+26. **Recoil** (was #43) — *Kickback: Shoot to Move!* (Dot Blood / Targem, Steam, July 2025)
+    ships the concept and the bet; *Recoil Rush* is a second commercial entry; itch.io has a
+    `shoot-to-move` tag with a page of them. The only unoccupied version is 3D, which is a
+    different concept with a different kill condition and should be written fresh rather than
+    revived. **This is the first entry here killed by evidence instead of by opinion, and it
+    took four minutes** — which is the argument for doing the search before the ranking rather
+    than after it.
+
 ---
 
 ## What this set is missing
@@ -994,6 +1059,19 @@ diversity by three.
 **No mobile, no console-first, no local-couch beyond two entries.** Platform diversity wasn't
 in the prompt's axis list and it shows. Worth adding.
 
-**Every market claim is memory.** No comparable in this document was checked against a store.
-That's the first hour of work, before any of it, and the three I'm most suspicious of are
-already flagged on their cards (#9, #33, #38).
+**Almost every market claim is still memory.** Two have now been checked — #43, which died,
+and #46, which survived. Forty-three have not. The three I'm most suspicious of are flagged on
+their cards (#9, #33, #38) and should go next.
+
+**And the hit rate is the finding.** One of the two cards checked was fully occupied by a game
+that shipped thirteen months ago, and it was a card I had already labelled "most likely to be
+occupied" — I just ranked it above the check instead of below it. Two data points is not a
+rate, but it is enough to say the prior should be *pessimistic*: assume a concept is taken
+until a search says otherwise, rather than the reverse. The whole document is currently written
+the other way round, and that's its largest remaining defect.
+
+**The cheapest fix is an ordering change, not more work.** The search is five minutes per card
+and it strictly dominates every other instrument here — it can kill a concept outright, which
+no prototype can do faster. It should run across all 45 before anything is ranked, let alone
+built. Four hours, once. `GAMES-PROJECT-PROMPT.md` now says so explicitly; this document was
+built before it did.
