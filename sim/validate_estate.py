@@ -40,6 +40,8 @@ TASK_SECONDS = 75.0     # rough cost of one prerequisite step for a crew of 4
 APPROACH_L = 60.0       # AUDIO-SPEC 3.1 approach bus at source
 AUDIBILITY_FLOOR = 25.0
 OCCLUSION = 0.85        # per wall, Curator
+OCCLUSION_FLOOR = 0.45  # AUDIO-SPEC 3.1: "never fully blocked, by any geometry, ever"
+MIN_APPROACH_M = 8.0    # TECH-SPEC A6 rule 2: audible for >=8m before contact
 
 
 class Estate:
@@ -205,16 +207,47 @@ def V4_pinch_points(e):
 
 
 def V5_audibility(e):
-    """AUDIO-SPEC 3.1: the Curator must stay audible through the wing's geometry."""
+    """TECH-SPEC A6 rule 2: the Curator is audible for >=8m before contact.
+
+    Rewritten in R19. The original counted doors between each plinth and the VAN and
+    asked whether the approach bus survived that many walls. Two things wrong with it,
+    which is why it had never failed anything in eighteen rounds:
+
+    1. IT MEASURED THE WRONG PAIR. The player stands at the PLINTH; the Curator comes
+       from wherever it is. Occlusion between the plinth and the van is not on the path
+       of the sound anyone needs to hear.
+    2. IT MODELLED AN OCCLUSION THE SPEC FORBIDS. `0.85 ** walls` decays without bound,
+       but AUDIO-SPEC 3.1 puts a hard floor of 0.45 on the approach bus -- "never fully
+       blocked, by any geometry, ever". With the floor applied the bus clamps at 27
+       against a floor of 25, so the AUDIO half of this contract cannot be broken by
+       level geometry at all. The old check was failing-condition-free by construction.
+
+    So the audio half is asserted (cheap, and it documents the contract), and the real
+    work moves to the half a level author CAN break:
+
+    **You cannot be audible for 8m before contact if there is no 8m to be audible in.**
+    A plinth in a room whose neighbour is 3m away gives the Curator a 1-second approach
+    at PURSUE speed, and no mix setting rescues that -- the promise is broken by the
+    floorplan before any sound plays. AUDIO-SPEC 3.1 asks for exactly this test:
+    "spawn the Curator at 8m through every wall configuration in the estate library".
+    """
     bad = []
-    for pl in e.plinths:
-        path = e.path(pl["room"], e.van)
-        if path is None:
-            continue
-        walls = sum(1 for a, b in zip(path, path[1:])
-                    if (e.portal_between(a, b) or {}).get("door"))
-        if APPROACH_L * OCCLUSION ** walls < AUDIBILITY_FLOOR:
-            bad.append(f"{pl['room']}: {walls} doors to van, approach bus inaudible")
+
+    # (a) the audio contract, asserted through the worst wall count in the estate.
+    worst_walls = max((len(e.rooms) - 1), 1)
+    bus = APPROACH_L * max(OCCLUSION_FLOOR, OCCLUSION ** worst_walls)
+    if bus < AUDIBILITY_FLOOR:
+        bad.append(f"approach bus {bus:.1f} below floor {AUDIBILITY_FLOOR} "
+                   f"at {worst_walls} walls -- occlusion floor is not being applied")
+
+    # (b) the geometry contract: every way in must give 8m of warning.
+    g = e.adj()
+    for room in sorted({pl["room"] for pl in e.plinths}):
+        for nb in g[room]:
+            d = e.dist(nb, room)
+            if d < MIN_APPROACH_M:
+                bad.append(f"{room}: approach from {nb} is only {d:.1f}m, "
+                           f"needs {MIN_APPROACH_M:.0f}m of audible warning")
     return not bad, "; ".join(sorted(set(bad)))
 
 

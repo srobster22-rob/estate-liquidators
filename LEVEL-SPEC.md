@@ -203,13 +203,31 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V2** | Deepest room unreachable before T+4min, apex before T+6min, via simulated traversal at 2.6 m/s carry speed | `DESIGN.md` §7 pacing |
 | **V3** | ≥2 topologically distinct routes from every wing to the van | fairness contract #5 |
 | **V4** | Every tier-3/4 plinth→van route crosses ≥2 pinch nodes | `TECH-SPEC.md` §A4 |
-| **V5** | Curator audibility ≥8m through every wall configuration in the wing | `AUDIO-SPEC.md` §3.1 — **the contract test** |
+| **V5** | Every approach into a plinth room is ≥8m, and the approach bus clears the audibility floor with the 0.45 occlusion floor applied | `TECH-SPEC.md` §A6 rule 2 — you cannot be audible for 8m before contact if there is no 8m |
 | **V6** | Portal graph closed: no unreachable room, no orphan portal, every doorway has a door | audio occlusion |
 | **V7** | NavMesh connectivity: Curator can reach every plinth *and* carry an item back to it | RESEAT can't dead-end |
 | **V8** | Total wing value within ±15% of its depth band | economy sanity |
 | **V9** | No plinth within 15m of the van | no free money |
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
 | **V11** | ≥25% of scannable rooms `uniform` and ≥25% `curio`, mean spread 1.00 ±0.15 | §2.1 — an estate with one spread has no appraiser decision in it |
+
+**V5 is the fairness contract's level-side half, and it constrains your floorplan.**
+`TECH-SPEC.md` §A6 rule 2 promises the Curator is audible for **≥8m before contact**. No mix
+setting can keep that promise across a 3m gap — at PURSUE speed the Curator crosses it in
+about a second, and the warning is over before it starts. So **every room containing a plinth
+must sit at least 8m from every room that connects to it.** In practice this bans the
+tucked-away closet with something valuable in it, which is otherwise a tempting thing to
+author. If you want a small hidden room, either leave it empty or connect it through a
+corridor long enough to hear someone coming down.
+
+> Rewritten in R19, and it is worth saying why the original was useless. It counted doors
+> between each plinth and the *van* — occlusion along a path no listener stands on — and it
+> modelled occlusion as `0.85 ** walls` decaying without bound, when `AUDIO-SPEC.md` §3.1
+> puts a hard floor of **0.45** on the approach bus that no geometry may breach. With the
+> floor applied the bus clamps at 27 against an audibility floor of 25, so the audio half of
+> this contract *cannot* be broken by a level at all, and the check had no failing condition
+> for eighteen rounds. The thing a level author can actually break is the geometry, so that
+> is what V5 now measures.
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
 in is a rage-quit bug — four people spending three real minutes discovering that a doorway is

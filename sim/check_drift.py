@@ -122,6 +122,17 @@ for name in ("sprint", "appraise", "door"):
           TUNING["loudness"][name])
 
 # --------------------------------------------------------------- Python sims
+validator = (ROOT / "sim" / "validate_estate.py").read_text(encoding="utf-8")
+check("py validator approach floor",
+      grab(validator, r"OCCLUSION_FLOOR\s*=\s*([\d.]+)"),
+      lc["approach_occlusion_floor"])
+check("py validator min approach",
+      grab(validator, r"MIN_APPROACH_M\s*=\s*([\d.]+)"),
+      lc["approach_min_warning_m"])
+check("py validator occlusion_curator",
+      grab(validator, r"^OCCLUSION\s*=\s*([\d.]+)", flags=re.M),
+      lc["occlusion_curator"])
+
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
         for n in ("integrated.py", "disturbance.py", "curse_test.py",
                   "appraiser_risk.py", "appraiser_variance.py")}

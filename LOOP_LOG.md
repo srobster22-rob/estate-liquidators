@@ -260,6 +260,35 @@ it's still tidying."** · Corrected the numbers in `D-10`, `D-22`, `D-23`, `READ
 §4.4, `ECONOMY` §9 and `LEVEL-SPEC` §2.1 rather than leaving two rounds of confident wrong
 figures in the docs.
 
+R19 · Rewrote **V5**, which had been the validator's weakest check since R1 and had never
+failed anything in eighteen rounds. · **Two reasons, and the second one is the interesting
+one.** (1) It measured the wrong pair — doors between each plinth and the *van*, occlusion
+along a path nobody is listening across. The player stands at the plinth; the Curator arrives
+from wherever it is. (2) **It modelled an occlusion the spec explicitly forbids.** V5 used
+`0.85 ** walls` decaying without bound, but AUDIO-SPEC §3.1 puts a hard floor of **0.45** on
+the approach bus — "never fully blocked, by any geometry, ever" — which the validator had
+simply never implemented. Apply the floor and the bus clamps at **27 against an audibility
+floor of 25 at any wall count**, so the audio half of the fairness contract *cannot be broken
+by a level at all*. The check wasn't merely weak, it **had no failing condition by
+construction**, which is why eighteen rounds of estates sailed through it. · **The half a
+level author can actually break is geometric**, and it follows from TECH-SPEC §A6 rule 2 in
+one line: **you cannot be audible for 8m before contact if the floorplan does not contain 8m
+of approach.** At PURSUE speed the Curator crosses a 3m gap in about a second and the warning
+is over before it begins. V5 now requires every room holding a plinth to sit ≥8m from every
+room connecting to it, which in practice bans the tucked-away closet with something valuable
+in it — a tempting thing to author and exactly the kind of default V11 taught us to check
+for. · MANOR_A passes, but only just: its tightest approach is study↔landing at **8.25m**, so
+8.0 is a live threshold rather than a formality. Planted a ninth fault in BROKEN_B (potting
+room pulled to 2.8m from the conservatory) and moved the V9 cloakroom out to 11.7m so the two
+faults stop overlapping — **9/9 planted faults now trip exactly one check each**, clean estate
+still 11/11. · Put both new constants under canonical control per R18's lesson —
+`approach_occlusion_floor` 0.45 and `approach_min_warning_m` 8.0 into `tuning.json`, wired
+into `check_drift.py` (now **68 constants**), and confirmed the new checks fail when the
+value is perturbed. · Fed the finding back into `AUDIO-SPEC.md` §3.1, which asked for this
+test in the first place: half of it now exists, and the half that remains is asserting the
+*engine* honours the 0.45 floor rather than trusting the constant — an FMOD-side test, not a
+validator one.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -267,39 +296,41 @@ figures in the docs.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R19: V5, the last weak check.** It is now the weakest of the eleven by a distance — it only
-counts doors on the shortest path and has still never failed anything, including on BROKEN_B,
-where it is the one planted-fault category that slips through. V11 is the model to copy: a
-check earns its place by failing the *default* an unaware author produces, not by being
-theoretically correct. Rewrite it to use the same all-simple-paths treatment V4 got in R1
-(players take the quiet route precisely to avoid the loud one, so the shortest path is the
-wrong thing to measure), then plant a fault in BROKEN_B that trips it and confirm 9/9.
+**R20: take `room_spread` into the prototype — the design work is now well ahead of the
+build.** `room_spread` exists in the spec (`LEVEL-SPEC.md` §2.1), the validator (V11), the
+economy (§9) and the decision log (D-23), but `proto/index.html` still draws every room from a
+single band, so the *game* does not contain the decision R17–R18 were spent establishing.
+Two rounds of standing evidence say porting a verified model into real-time code is where the
+real bugs are: R12 found per-frame-vs-per-second noise and crew-size-dependent decay, R18
+found a nine-round-old constant hiding in plain sight. Expect the telegraph to be the hard
+part — the sims say the mechanic survives a noisy read, but say nothing about whether a
+flat-shaded low-poly room can communicate "miscellaneous" at a glance, which is an
+`ART-DIRECTION.md` question no simulation will answer.
 
-**Then R20: take `room_spread` into the prototype.** It now exists in the spec, the validator,
-the economy and the decision log, but `proto/index.html` still draws every room from one band
-— so the *game* does not yet contain the decision R17 and R18 were spent building. R12 and R18
-are both standing evidence that moving a verified model into real code finds things no sweep
-can: R12 found per-frame vs per-second noise and crew-size-dependent decay, R18 found a
-nine-round-old constant hiding in plain sight. Expect the telegraph to be the hard part —
-R17/R18 say the mechanic survives a noisy read, but say nothing about whether a flat-shaded
-low-poly room can communicate "miscellaneous" at a glance. That is an `ART-DIRECTION.md`
-question no simulation will answer.
+**Then R21: the C# core has fallen behind.** `unity/tests/CoreTests` pins 31 checks against
+the Python sims, but nothing there knows about `room_spread`, and `Loudness.cs` has no
+approach-occlusion floor even though `tuning.json` now carries one. The drift checker only
+compares constants that *exist* in both places, so a constant the C# simply lacks is
+invisible to it — the same shape of gap R18 found, one level up. Worth an explicit audit of
+what `tuning.json` knows that each implementation does not.
 
-**A standing rule earned the hard way in R18.** *A checker only checks what somebody named.*
-`check_drift.py` reported "55 constants agree" for four rounds while two implementations
-disagreed about a number that changes the project's headline result — because the number was
-written inline in both. Before trusting any future green run, ask what the checker cannot see.
-Same reasoning as V4's declare-pinch-true-or-false guard and V11's declare-spread guard:
-silence is how bad values sneak in, in code exactly as in level data.
+**Two standing rules, both earned the hard way, both worth re-reading before any round.**
+*A checker only checks what somebody named* (R18): `check_drift.py` reported "55 constants
+agree" for four rounds while two implementations disagreed about a number that moved the
+project's headline result, because both wrote it inline. *A check earns its place by failing
+the default an unaware author produces* (R19): V5 passed everything for eighteen rounds
+because it had no failing condition at all, and V11 was written specifically to fail the
+all-`mixed` estate that is the natural thing to build. Before trusting any green run, ask
+what it cannot see.
 
-**And the appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
-circled the same number, and the resolution was structural, not numerical: cost levers can
-only shave the edge down (D-22), the benefit side had exactly one lever on it (D-23), and one
-of the four rounds was measuring a typo. At **+8.8%** with a real skill ceiling, a graceful
-failure mode, and two equal-value strategies of different shape, the mechanic is defensible.
-**Do not reopen it with another tuning sweep.** The next real information comes from Milestone
-2 instrumentation measuring what fraction of items players actually scan at hour five — the
-falsification condition D-10 has been carrying since the beginning.
+**The appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
+circled the same number, and the resolution was structural rather than numerical: cost levers
+can only shave the edge down (D-22), the benefit side had exactly one lever on it (D-23), and
+one of those rounds was measuring a typo. At **+8.8%** with a real skill ceiling, a graceful
+failure mode under misreading, and two equal-value strategies of different shape, the mechanic
+is defensible. **Do not reopen it with another tuning sweep.** The next real information comes
+from Milestone 2 instrumentation measuring what fraction of items players actually scan at
+hour five — the falsification condition D-10 has carried since the beginning.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.

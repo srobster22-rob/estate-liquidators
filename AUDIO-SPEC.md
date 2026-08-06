@@ -242,6 +242,19 @@ state, or a performance spike to break it. Write an automated test: spawn the Cu
 through every wall configuration in the estate library and assert the bus output exceeds the
 audibility floor. Run it in CI on every level change.
 
+> **Half of that test exists** as V5 in `sim/validate_estate.py` (R19), and building it
+> surfaced something this section implies but never says outright: **with the 0.45 floor
+> applied, no wall configuration can break the bus.** 60 × 0.45 = 27 against an audibility
+> floor of 25, and that is the *worst* case at any wall count. So the audio half of the
+> contract is satisfied by construction and the CI test above can only ever catch a
+> regression in the floor itself — which is worth having, but is not the risk.
+>
+> The risk is geometric. **You cannot be audible for 8m before contact if the floorplan
+> does not contain 8m of approach**, and that is a thing a level author breaks by accident
+> every time they tuck a valuable object into a small side room. V5 now enforces it. The
+> remaining half of the test — asserting the *engine* honours the 0.45 floor rather than
+> trusting the constant — still wants writing, in the FMOD project rather than here.
+
 ## 3.2 Its vocabulary
 
 The Curator never roars, never screams, never stings. It is a caretaker doing a job it finds

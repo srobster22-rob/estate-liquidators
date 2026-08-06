@@ -2,7 +2,7 @@
 Sample estates for the validator.
 
 MANOR_A is the worked example from LEVEL-SPEC.md 8 (East Conservatory), built to pass.
-BROKEN_B is the same estate with eight deliberate faults, one per check, used to prove
+BROKEN_B is the same estate with nine deliberate faults, one per check, used to prove
 the validator actually detects things rather than just printing PASS eleven times.
 """
 
@@ -75,7 +75,7 @@ MANOR_A = {
 
 def _broken():
     d = copy.deepcopy(MANOR_A)
-    d["id"] = "broken_b  (eight deliberate faults)"
+    d["id"] = "broken_b  (nine deliberate faults)"
 
     # V10 — the piano check. Narrow the ONLY cart-wide route out of the office.
     for p in d["portals"]:
@@ -108,8 +108,12 @@ def _broken():
     for r in ("study", "landing", "conservatory", "potting_room", "orangery"):
         d["rooms"][r]["spread"] = "mixed"
 
+    # V5 — pull the potting room up against the conservatory. No mix setting can give
+    # 8m of warning across a 2.8m gap; the promise dies in the floorplan.
+    d["rooms"]["potting_room"]["pos"] = (54, 6)
+
     # V9 — free money parked next to the van.
-    d["rooms"]["cloakroom"] = {"pos": (14, 2), "tier": 1}
+    d["rooms"]["cloakroom"] = {"pos": (6, 10), "tier": 1}
     d["portals"].append({"a": "foyer", "b": "cloakroom", "width": 2.0, "door": True})
     d["rooms"]["cloakroom"]["spread"] = "mixed"
     d["plinths"].append({"room": "cloakroom", "cls": "armful", "tier": 1,
@@ -120,4 +124,4 @@ def _broken():
 BROKEN_B = _broken()
 
 # What BROKEN_B is built to trip. The test asserts exactly this set.
-EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10", "V11"}
+EXPECTED_FAILURES = {"V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10", "V11"}
