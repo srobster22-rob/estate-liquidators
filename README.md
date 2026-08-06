@@ -38,6 +38,21 @@ falsification conditions.
 **Reading order for someone new:** `DESIGN.md` §1–6 → `DECISIONS.md` (skim the FIRM entries)
 → whichever spec covers what you're building.
 
+## Before this game — the portfolio
+
+Everything above assumes the concept is already chosen. These two are for the step before
+that, and they're independent of Estate Liquidators — take them anywhere.
+
+| Doc | What it is |
+|---|---|
+| **[GAMES-PROJECT-PROMPT.md](GAMES-PROJECT-PROMPT.md)** | Generate 40 game concepts, each with a falsifiable bet and a one-day test that could kill it. Coverage quotas, a banned list, ranking by cost-to-disprove, and a mandatory graveyard. |
+| **[GAME-CONCEPTS.md](GAME-CONCEPTS.md)** | That prompt, run once. 40 concepts in 8 families, a ranked top eight, 19 rejections with reasons, and a self-audit of what the set is missing. |
+
+Estate Liquidators is roughly the bar those concepts were written against — *aggro follows the
+most valuable object leaving the house* is what "one mechanical bet, stated so it could be
+wrong" looks like once it survives. Note that **Removals** (`GAME-CONCEPTS.md` #6) costs
+nothing to evaluate: Phase 1 of this project is already running its kill test.
+
 ## The five ideas everything else hangs off
 
 1. **The monster is an anti-thief.** Aggro follows loot, not people — so danger is a physical
