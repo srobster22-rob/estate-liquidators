@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–3 complete. The premise survived each round, at a price each time.**
+**Rounds 1–4 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -36,8 +36,18 @@ principled gate (empirical-Bayes shrinkage over a bootstrap) **lost to a plain w
 count**, because a bootstrap measures precision rather than accuracy and a
 confidently-wrong fit sails through it. `DESIGN.md` §4.2.
 
-Not built yet: the dose-derivative trigger, the volume budget, the autoregulation
-controller, the logger.
+**R4** built the dose-derivative controller D-07 had wanted since R1. The hypothesis held
+— knowing *which way is uphill* is reliable at week 12, while knowing *where the peak is*
+takes 18 — and it bought almost nothing: in closed loop the new controller **lost to R1's
+broken one** (15.20 points against 14.93). The reason unified three rounds of results:
+**the optimum is flat.** Being 25% off costs 1.8 points, being 100% off costs 22, so
+essentially all the value is in avoiding gross error and none is in precision. It also
+found that 86% of the remaining loss belongs to lifters far from the population prior,
+which makes a better *prior* the next lever rather than a better controller. `DESIGN.md`
+§4.3.
+
+Not built yet: a stratified prior, the volume budget, the autoregulation controller, the
+logger.
 
 ## The documents
 
@@ -54,12 +64,15 @@ controller, the logger.
 | **[sim/fit_experiment.py](sim/fit_experiment.py)** | Does the fit work, hold still, and beat a constant? Five experiments. | Before believing any claim about personalisation. |
 | **[sim/confidence.py](sim/confidence.py)** | The gate: four candidate signals, bootstrap, and empirical-Bayes shrinkage. | Before trusting any prescription. |
 | **[sim/confidence_experiment.py](sim/confidence_experiment.py)** | Which signal works, does the gate help, and where is the threshold? | Before changing when the app trusts a fit. |
-| **[tests/](tests/)** | 49 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[sim/trigger.py](sim/trigger.py)** | Marginal-return estimation and the closed-loop controllers, including R1's broken one. | Before changing how volume is steered. |
+| **[sim/trigger_experiment.py](sim/trigger_experiment.py)** | Is direction easier than location, and does it pay? | Before proposing a smarter controller. |
+| **[tests/](tests/)** | 65 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
 1. **Fit the lifter, don't apply the template.** The population spread in maximum
-   recoverable volume is **8.9x** from p10 to p90. No template survives that.
+   recoverable volume is **5.8x** from p10 to p90 (R1 said 8.9x; R4 found that figure
+   included lifters the model says should never train — D-16). No template survives that.
 2. **Volume is spent, not scheduled.** Weekly sets are a budget against diminishing
    returns, not a number copied off a spreadsheet.
 3. **Autoregulation is a control loop, not a vibe.** An explicit gain — a number that can
@@ -79,10 +92,12 @@ Prescribing the population-median volume to everyone costs the median lifter **7
 preparedness points, the p90 lifter **35.9**, and the worst-fit lifter **61.7**.
 
 The entire gap between the best and worst deload policy is **~14**. Between deload
-*cadences*, under **1**.
+*cadences*, under **1**. Between the best and worst *controller*, under **1.3**.
 
-Not knowing which lifter you are costs 2–4x more than every programming decision this
-project set out to optimise. That is why the fitter is R2 and everything else waits.
+Not knowing which lifter you are costs several times more than every programming decision
+this project set out to optimise — and R4 sharpened it further: **86% of the remaining
+loss belongs to the lifters furthest from the population average**, during the weeks
+before anything can tell they are unusual.
 
 ## Running it
 
@@ -97,8 +112,9 @@ python3 deload_sweep.py      # policy comparison across three model variants
 python3 fit_experiment.py    # recovery, stability, noise, null hypothesis, data volume
 
 python3 confidence_experiment.py  # signals, outcome in points, the tail, the threshold
+python3 trigger_experiment.py     # sign vs argmax, closed loop, convergence, robustness
 
-cd .. && python3 -m unittest discover tests   # 49 tests
+cd .. && python3 -m unittest discover tests   # 65 tests
 ```
 
 ## What is solid and what isn't

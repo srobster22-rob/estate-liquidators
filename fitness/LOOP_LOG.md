@@ -169,44 +169,106 @@ fits them. The *relative* results (fitter beats null, gate beats ungated, crude 
 sophisticated) survive misspecification; the specific week counts do not, and expect real
 data to push them later rather than earlier.
 
+R4 · Built the dose-derivative controller D-07 had been asking for since R1
+(`sim/trigger.py`, `sim/trigger_experiment.py`) plus 16 tests. Target taken from R3's
+ranking without deviation. The framing that made it worth a round: R3 established the fit
+cannot locate MRV for 18 weeks, but locating an argmax is a strictly harder problem than
+getting a slope's sign right — so if the sign is reliable early, a hill-climbing
+controller fills exactly the gap R3 opened.
+
+· **The hypothesis was right and it bought almost nothing.** Sign of the marginal return
+is correct **96%** of the time at week 12, when the MRV estimate is still 22% wrong —
+direction genuinely is the easier question. But in closed loop over 24 weeks the new
+controller scored **15.20** mean points lost against R1's **broken** level trigger's
+**14.93**, with a worst case more than twice as bad (117.6 vs 52.4). Gating it on R3's
+threshold takes the lead at **14.23**, the best number anything has scored — and the
+entire field, from the broken trigger to the gated controller, spans **14.2 to 15.5**
+against an oracle at 0. **Roughly 14 of the 20 available points are captured by no
+control policy at all.** D-07 resolved and the line of work retired.
+
+· **Found the explanation for three rounds of results at once.** The objective is flat
+near its peak: being 25% off a lifter's true MRV costs **1.78** points, being 100% off
+costs **22.36** — a ratio of about **12:1**. Essentially all the available value is in
+avoiding gross error and almost none is in precision. That is why deload cadence was
+worth under a point (D-06), why a plain week count beat empirical-Bayes shrinkage over a
+bootstrap (R3), and why a broken trigger beat a correct controller (R4). Three
+sophisticated methods beaten by crude ones, one cause. Promoted to D-17 as a prospective
+rule — *anything that only improves accuracy near the peak is not worth a round* — so the
+project stops rediscovering it.
+
+· **Located the missing points, and they are not a control problem.** Rank correlation
+between a lifter's distance from the population prior and the points they lose is
+**0.89**. The half of the population farthest from the prior carries **86% of all loss**
+(mean 25.3 against 4.0 for the near half). No controller can help them until something
+knows they are unusual, which makes a **better starting prior** the next lever rather than
+a better controller. That is R5.
+
+· **Corrected R1's headline number, which had been wrong for four rounds.** A test written
+for an unrelated reason asserted the marginal return is positive below MRV, and it failed:
+4.5% of the synthetic population has no interior optimum at all — lifters the model tells
+never to train — for whom `mrv()` was silently returning the lower bound of its own search
+interval. They were inside every population since R1, inflating the reported MRV spread
+from a true **5.76x** to the **8.86x** quoted in the README, in DESIGN idea 1, and in three
+commit messages. The argument survives (5.8x still defeats any template); the number was
+inflated by a third. `has_interior_optimum()` makes the case detectable, pinned by a test.
+D-16.
+
+· **The one clearly positive result:** a ±10% dither in prescribed volume is free and cuts
+the tail by 30% — p90 loss 33.62 against 48.37, mean slightly better, convergence
+marginally faster. This is D-10's excitation argument paying off in closed loop: a
+converged controller stops varying and slowly blinds the fit it depends on, and the wobble
+prevents that at a cost D-17 makes negligible. D-18.
+
+· Caught and fixed a self-inflicted measurement artefact: convergence was scored on the
+controller's dithered prescription rather than its centre, so any dither wider than the
+15% tolerance read as "never converges" by construction — the dithered controller was
+reported at 25% convergence and is actually at 92%, marginally *faster* than undithered.
+Both behaviours are now pinned by tests so the distinction cannot be quietly lost again.
+
 ---
 
 ## Next round (paste `ITERATION-PROMPT.md` to resume)
 
-**R4: fix the trigger properly (D-07).** Promoted after two rounds as runner-up, and now
-it is both the oldest open item and the cheapest it will ever be. R1 established that any
-trigger reading "am I getting worse" is a lagging indicator with lag on the order of
-`tau_fit` — it fired spuriously in week 3 and then missed a 46% overshoot of MRV entirely.
-A working trigger has to watch the **derivative of response with respect to dose**: the
-last volume increment bought less than the one before. R2 and R3 built exactly the
-machinery that needs — a fitted response curve is an estimate of its slope, and the gate
-already says when that estimate can be trusted. Score it the way R3 scored everything, in
-preparedness points against a policy that just sits at the fitted MRV, and be ready for
-the answer to be "sitting at the fitted MRV is fine and the trigger buys nothing", which
-would be consistent with D-06 and worth knowing.
+**R5: a stratified prior — the only lever R4 left standing.** 86% of all remaining loss
+belongs to lifters far from the population average (rank correlation 0.89), during the
+weeks before any amount of data can tell they are unusual. Every controller tested lands
+within 1.3 points of every other, so control is finished as a source of value. The
+question is whether anything **observable before the first session** predicts where in the
+MRV distribution someone sits — training age, bodyweight, sex, sessions per week they can
+commit to, self-reported recovery, prior training volume. Build the prior as a
+conditional distribution rather than a point, measure how much of the 8.9x-corrected-to-
+5.8x spread it explains, and score it the way everything since R3 has been scored: points
+lost, paired, 24+ lifters. **The honest risk, and it should be stated before running it:**
+this project's synthetic lifters have no covariates, so any stratification has to be
+*assumed* into the population first, which makes the result a measure of the assumption
+rather than of reality. Design the experiment so it reports the sensitivity — how good
+would a covariate have to be, in correlation terms, to be worth collecting? That question
+is answerable honestly and the direct one is not.
 
-**Runner-up: the volume-matched deload sweep (D-06).** Third on the last two rankings and
-still unstarted, which is itself a signal — it keeps losing to things that turned out to
-matter more. D-06 rests on a comparison where the winning policies did 45–70% of the work
-of the losing one. Re-run holding total sets constant, with D-12's methodology (24+
-lifters, common random numbers). Cheap, and it either hardens a FIRM decision or reveals
-it was wrong for an embarrassing reason.
+**Runner-up: the volume-matched deload sweep (D-06).** Fourth ranking in a row, still
+unstarted, and D-17 now explains why it keeps losing — it is a precision question on a
+flat objective. Worth doing once to close it out rather than carrying it forever: re-run
+holding total sets constant with D-12's methodology, and if cadence still does not matter,
+mark D-06 closed rather than FIRM-pending-evidence.
 
-**Third: profile likelihood instead of a bootstrap (D-13's falsification condition).**
-D-14 argues a resampling method *cannot* beat a week count because it never sees the
-truth, but a curvature-based interval might, because a flat loss surface is observable
-without knowing the answer. This is the named way to prove D-13 wrong, it is one
-experiment, and the machinery is already there.
+**Third: narrow `PRIOR_SPREAD`, or justify keeping it (D-16).** The population currently
+generates people the model says cannot train, and 9% with an MRV below 5 sets/week. That
+is either an honest representation of non-responders or an artefact of drawing k and tau
+independently. Nobody has checked. It is cheap, it touches every number in the project,
+and it interacts directly with R5 — a prior that is partly nonsense is a bad thing to
+stratify.
 
-**Fourth, cheap: the deep-deload excitation test (D-11).** Does deepening the deload in a
-normal mesocycle close the 0.94 → 0.98 identifiability gap, and — now more interesting —
-does it move R3's 18-week threshold earlier? Every week shaved off that threshold is a
-week of real users getting their own prescription instead of the prior.
+**Fourth, cheap and now more interesting: the deep-deload excitation test (D-11), and
+D-18's confound.** Does deepening the deload close the identifiability gap and move R3's
+18-week threshold earlier? And separately: is the dither's tail benefit really better
+identification, or is it accidentally slowing the controller near its boundary? One
+experiment separates them.
 
 **Also still open:** D-05 (frequency preference is an artefact of attaching saturation per
-session), and the D-04 ceiling-vs-published-MRV discrepancy, which may just be a
-set-counting convention. Both cheap, neither blocking.
+session), and the D-04 ceiling-vs-published-MRV discrepancy.
 
-**Blocked on nothing — but note D-15.** Every threshold this project has produced is
-calibrated on lifters the model invented. The relative comparisons hold; the numbers want
-real logs before anyone quotes them to a person.
+**Blocked on nothing — but the ceiling is now visible.** Four rounds of control and
+estimation work have taken the achievable loss from 19.97 (prescribe the average) to about
+14.2, against an oracle at 0. The remaining 14 points are not reachable by anything this
+project has been building, and D-15 still applies to every number above: they are
+calibrated on lifters the model invented.

@@ -14,18 +14,25 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Rounds 1–2 complete.** The core model exists and is tested (36 tests,
-`fitness/tests/`). It has overturned its own founding assumption twice: R1 found the
-model could not represent volume at all (§3), and R2 found the fitter needs three times
-more data than the project was designed around (§4.1).
+**Rounds 1–4 complete.** The core model exists and is tested (65 tests,
+`fitness/tests/`). Each round has overturned something the previous one established: R1
+found the model could not represent volume at all (§3), R2 found the fitter needs three
+times more data than the project was designed around (§4.1), R3 found the fitter is
+*harmful* if used before that threshold and that a crude gate beats a principled one
+(§4.2), and R4 found that the flatness of the objective explains why crude keeps winning
+— and corrected R1's headline number by a third (§4.3, D-16).
 
-The premise survived both. Per-lifter fitting works, correlates 0.98 with truth on an
-informative history, and — the thing D-08 named as the most likely way this project dies
-— **holds still**: 3–6% week-to-week swing in prescribed volume, well inside the 20%
-threshold set in advance.
+The premise survives. Per-lifter fitting works, correlates 0.98 with truth on an
+informative history, and holds still — 3–6% week-to-week swing, inside the 20% threshold
+D-08 set in advance.
 
-Not built yet: the volume budget across muscle groups, the autoregulation controller, the
-logger. Ranked in `LOOP_LOG.md`.
+What R4 established about where effort should go: **no control policy can capture more
+than ~6 of the ~20 available points**, because 86% of the loss sits with lifters far from
+the population prior during the weeks before anything can know they are unusual. The next
+lever is a better starting prior, not a better controller.
+
+Not built yet: a stratified prior, the volume budget across muscle groups, the
+autoregulation controller, the logger. Ranked in `LOOP_LOG.md`.
 
 ---
 
@@ -33,8 +40,8 @@ logger. Ranked in `LOOP_LOG.md`.
 
 1. **Fit the lifter, don't apply the template.** Two-trace impulse-response with four
    free parameters, fit per lifter from their own logs. The population spread in the
-   one number that matters most — maximum recoverable volume — is **8.9x from p10 to
-   p90** (§4). No template survives that. R2 confirmed the fit is findable (correlation
+   one number that matters most — maximum recoverable volume — is **5.8x from p10 to
+   p90** (§4; R1 reported 8.9x, corrected in R4 — see D-16). No template survives that. R2 confirmed the fit is findable (correlation
    0.98) and stable (3–6% week-to-week), at a cost: it needs ~24 weeks of *varied*
    training before it can be trusted (§4.1).
 
@@ -57,6 +64,12 @@ logger. Ranked in `LOOP_LOG.md`.
    made this a release requirement rather than a nicety: the median fit is good and the
    p90 fit is off by 34–148%, so a confident number is unsafe for a tenth of users
    (§4.1).
+
+**And one principle R4 added, which is really a rule about where not to spend effort:**
+**the optimum is flat, so precision is nearly worthless and avoiding gross error is
+nearly everything.** Being 25% off a lifter's MRV costs 1.8 preparedness points; being
+100% off costs 22. Any proposal that only sharpens an already-reasonable answer is
+declined by default (§4.3).
 
 ---
 
@@ -168,10 +181,16 @@ Under the corrected model, across 200 synthetic lifters:
 
 | | Weekly sets at optimum |
 |---|---|
-| p10 | 5.8 |
-| median | 25.4 |
+| p10 | 8.9 |
+| median | 26.4 |
 | p90 | 51.3 |
-| **p90/p10** | **8.86x** |
+| **p90/p10** | **5.76x** |
+
+**These numbers were corrected in R4.** R1 reported 5.8 / 25.4 / 51.3 and a spread of
+**8.86x**, which included 4.5% of the synthetic population who have no interior optimum
+at all — lifters the model tells never to train, for whom `mrv()` was silently returning
+the lower bound of its own search interval. Excluding them gives the figures above. The
+argument is unchanged and the number was inflated by a third. D-16.
 
 Prescribing the population median (25 sets/week) to everyone costs:
 
@@ -368,6 +387,97 @@ cheapest signal available, it is knowable in advance, and it beat a twelve-draw 
 **Residual caveat, unresolved:** this rule is calibrated on synthetic lifters generated
 by the same model that fits them. Real lifters are not drawn from `PRIOR_SPREAD`, and
 every threshold above inherits that. D-15.
+
+---
+
+## 4.3 The dose-derivative controller, and why the peak being flat explains everything (R4)
+
+D-07 has been open since R1: every trigger this project tried read "am I getting worse",
+which lags by ~`tau_fit`. R4 built the replacement — a controller that watches the
+**marginal return on the next set** and steps volume in whichever direction it points,
+never estimating MRV at all. `sim/trigger.py`.
+
+**The hypothesis was right.** Getting a slope's sign right is a strictly easier problem
+than locating an argmax, and the data says so:
+
+| Weeks | Sign correct below MRV | Sign correct above | Median MRV error |
+|---|---|---|---|
+| 8 | 71% | 58% | 66.6% |
+| 12 | **96%** | 88% | 21.9% |
+| 16 | 100% | 88% | 17.5% |
+| 18 | 100% | 96% | 6.3% |
+
+At week 12 the direction is known 96% of the time while the location is still 22% wrong.
+
+**And it bought almost nothing.** Mean preparedness points lost over a 24-week block, 24
+lifters, paired:
+
+| Policy | Mean | p90 | Worst |
+|---|---|---|---|
+| ORACLE (knows the truth) | 0.00 | 0.00 | 0.00 |
+| PRIOR-FIXED | 19.97 | 49.94 | 94.33 |
+| GATED (R3's rule) | 15.12 | 37.46 | 70.74 |
+| **LEVEL-TRIGGER (R1's broken one)** | **14.93** | 38.83 | 52.36 |
+| HILL-CLIMB | 15.20 | 48.37 | 117.64 |
+| HILL-CLIMB + gate@12 | **14.23** | 33.12 | 82.22 |
+| HILL-CLIMB + gate@8 + dither | 15.35 | **25.31** | 94.57 |
+
+The new mechanism **loses to the broken one it was built to replace** (15.20 vs 14.93),
+and its worst case is more than twice as bad. Gating it on R3's threshold recovers the
+lead — 14.23, the best mean anything has scored — but look at the spread: every policy
+that reads data at all lands between **14.2 and 15.5**, while the oracle is at 0. Roughly
+**14 of the 20 available points are not captured by any control policy**, and the
+difference between the best and worst controller is under 1.3.
+
+### Why: the peak is flat, and that explains three rounds at once
+
+Points lost by prescribing a given multiple of a lifter's true MRV:
+
+| Off by | ×0.75 | ×0.9 | ×1.0 | ×1.1 | ×1.25 | ×1.5 | ×2.0 |
+|---|---|---|---|---|---|---|---|
+| Points lost (pop. mean) | 2.11 | 0.32 | 0.00 | 0.30 | 1.78 | 6.52 | **22.36** |
+
+**Being 25% wrong costs 1.8 points. Being 100% wrong costs 22.** The ratio is roughly
+**12:1** — essentially all of the available value is in avoiding gross error, and almost
+none of it is in precision.
+
+This is the single explanation for every "crude beats principled" result in the project:
+
+- **D-06** — deload cadence worth under 1 point while overshooting MRV cost 13.
+- **R3** — a plain week count beat empirical-Bayes shrinkage over a bootstrap.
+- **R4** — a broken level trigger beat a correct dose-derivative controller.
+
+None of these were surprises about training. They are the same fact about the objective,
+observed three times: **a quadratically flat optimum pays nothing for precision.** The
+corollary is a rule for future rounds — *anything that only improves accuracy near the
+peak is not worth a round*, and the burden is on any proposal to show it prevents gross
+error rather than refining a good answer.
+
+### Where the missing 14 points actually are
+
+Rank correlation between a lifter's distance from the population prior and the points
+they lose under the best controller: **0.89**. Splitting the population in half by that
+distance:
+
+- 12 lifters closest to the prior: mean loss **3.99**
+- 12 lifters farthest: mean loss **25.26**
+- Share of all loss from the far half: **86%**
+
+The remaining loss is not a control problem and no controller will fix it. It is
+concentrated in the minority whose true MRV is far from where everyone starts, during the
+weeks before anything can know they are unusual. **The lever is a better starting point —
+a prior stratified on something observable before the first session — not a better
+controller.** That is R5.
+
+### The one clearly positive result
+
+A small deliberate wobble in prescribed volume is **free and cuts the tail by 30%**: p90
+loss drops from 48.4 to 33.6 at a dither of ±10%, with mean loss slightly *better* (16.21
+vs 16.76) and convergence marginally faster (median 16 weeks vs 17.5). This is D-10's
+excitation argument paying off in closed loop — a controller that has converged stops
+varying, which slowly blinds the fit it depends on, and the wobble prevents that at no
+cost. Step size is not knife-edge either (16.8–19.5 points across 0.05–0.30), so nothing
+here rests on a tuned constant.
 
 ---
 

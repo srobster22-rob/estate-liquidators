@@ -148,7 +148,7 @@ on a comparison that is suggestive rather than clean.
 
 ---
 
-## D-07 · A trigger built on "am I getting worse" will always be late — FIRM
+## D-07 · A trigger built on "am I getting worse" will always be late — **RESOLVED, and the fix was not worth it** (R4)
 
 R1's triggered policy fired spuriously in week 3 on a startup transient, then never fired
 again while volume ramped 46% past MRV.
@@ -166,6 +166,18 @@ the output. That is R2's target.
 weeks of it starting, across the synthetic population, without firing on the startup
 transient. If one exists, it is doing something the lag argument says is impossible and
 is worth understanding.
+
+**R4 built the replacement, and the mechanism argument held perfectly while being worth
+almost nothing.** Sign of the marginal return is correct 96% of the time at week 12,
+when the MRV estimate is still 22% wrong — direction genuinely is an easier question than
+location. But in closed loop over 24 weeks the dose-derivative controller scored **15.20**
+mean points lost against the broken level trigger's **14.93**, with a worst case more
+than twice as bad (117.6 vs 52.4). Gating it on R3's threshold recovers a narrow lead
+(14.23, best of anything tested), but the entire field spans 14.2–15.5 against an oracle
+at 0.
+
+**The reason is D-17, and it retires this line of work.** Effort on control mechanism is
+effort on the flat part of the objective.
 
 ---
 
@@ -342,3 +354,84 @@ variation the model has no term for, and every one of them pushes the threshold 
 
 **What this blocks:** shipping a specific week count to a user as though it were
 measured. It is calibrated, on simulated people.
+
+---
+
+## D-16 · Part of the population has no MRV, and it inflated R1's headline — WORKING
+
+`mrv()` searches for the volume maximising steady-state preparedness over [0.5, 200]
+sets/week. For lifters whose linear bracket is negative — the ones R1 found the model
+tells never to train — there is no interior optimum, and the search silently returned its
+own lower bound as though it were a prescription.
+
+**Scale of it:** 9 of 200 synthetic lifters (**4.5%**), plus a wider tail of 18 (**9%**)
+whose "MRV" lands below 5 sets/week, which is not a plausible number for anyone who
+trains.
+
+**What it corrupted:** R1's headline population spread, the number that reorganised the
+whole project. Reported as **8.86x** (p10 5.8, p90 51.3); excluding degenerate lifters it
+is **5.76x** (p10 8.9, p90 51.3). Inflated by a third. The conclusion is unaffected — a
+5.8x spread still defeats any template — but the figure was quoted in the README, in
+DESIGN idea 1, and in three commit messages, and it was wrong in all of them.
+
+**Caught by:** a test asserting the derivative is positive below MRV, written in R4 for
+an unrelated reason. It had been true and unnoticed since R1.
+
+**The fix applied:** `has_interior_optimum()` makes the case detectable instead of
+silent, and it is pinned by a test. The population is *not* narrowed, because doing so
+would invalidate every number in four rounds for a 4.5% effect — but every spread figure
+now gets reported both ways.
+
+**What would prove it wrong / what is still open:** whether `PRIOR_SPREAD` should be
+narrowed at the low end at all. It currently generates people the model says cannot
+train, which is either an honest representation of non-responders or a modelling artefact
+of drawing k and tau independently. Nobody has checked which, and D-01's real-lifter test
+would settle it.
+
+---
+
+## D-17 · The optimum is flat, so precision is worth ~1/12th of avoiding gross error — FIRM
+
+Points lost by prescribing a multiple of a lifter's true MRV: **0.32** at ×0.9, **1.78**
+at ×1.25, **6.52** at ×1.5, **22.36** at ×2.0.
+
+**Why this is a decision and not just a measurement:** it is the single explanation for
+every "crude beats principled" result the project has produced, and it should be used
+prospectively rather than rediscovered every round.
+
+- D-06 — deload cadence worth under 1 point, overshooting MRV worth 13.
+- R3 — a plain week count beat empirical-Bayes shrinkage over a residual bootstrap.
+- R4 — a broken level trigger beat a correct dose-derivative controller.
+
+Three rounds, three sophisticated methods beaten by crude ones, one cause.
+
+**The rule that follows:** *anything that only improves accuracy near the peak is not
+worth a round.* The burden is on any proposal to show it prevents gross error — being
+2x wrong, or being wrong for months — rather than refining an answer that is already
+within 25%.
+
+**What would prove it wrong:** a term in the objective that is *not* flat near its
+optimum. Injury hazard is the obvious candidate and is explicitly out of scope
+(DESIGN.md §8) — if it were ever brought in, its curve near MRV would need checking
+before D-17 could be applied to it.
+
+---
+
+## D-18 · A small dither in prescribed volume is free and cuts the tail — WORKING
+
+±10% alternating wobble around the controller's centre. Mean loss 16.21 against 16.76
+without it, p90 loss **33.62 against 48.37**, convergence marginally faster (median 16
+weeks vs 17.5).
+
+**Why it works:** a controller that has converged stops varying, and D-10 says an
+unvarying plan is an uninformative experiment — so a converged controller slowly blinds
+the fit it depends on. The dither keeps the excitation alive at a cost the flat objective
+(D-17) makes negligible.
+
+**Why ±10% and not more:** larger dithers keep the tail benefit but start costing the
+mean (17.94 at ±30%). The benefit is in *having* excitation, not in having a lot of it.
+
+**What would prove it wrong:** real lifters finding a weekly ±10% swing annoying enough
+to hurt adherence, which no simulation here can see. Also suspect if the tail improvement
+turns out to be driven by the dither accidentally slowing the controller near the
+boundary rather than by better identification — worth one experiment to separate.

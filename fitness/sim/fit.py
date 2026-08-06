@@ -225,12 +225,37 @@ def fit(log: Log, free_ceiling: bool = False, restarts: int = 4) -> tuple[FFPara
 # ---------------------------------------------------------------------------
 
 
+MRV_SEARCH_LO = 0.5
+MRV_SEARCH_HI = 200.0
+
+
+def has_interior_optimum(params: FFParams, sat: SaturationParams, sessions: int = 3) -> bool:
+    """
+    Does this lifter have a real MRV, or does `mrv()` return a search boundary?
+
+    R1 established that a lifter whose linear bracket `k_fit*C_fit - k_fat*C_fat` is
+    negative is told by the model never to train at all. Saturation does not rescue them:
+    it only bends the curve down further. For those lifters `mrv()` returns
+    MRV_SEARCH_LO, which is a property of the search interval and not a prescription.
+
+    Added in R4 after a test noticed the derivative had the wrong sign at half of one
+    lifter's "MRV". Those lifters had been silently inside every population since R1,
+    inflating the reported population spread — see DECISIONS.md D-16.
+    """
+    return mrv(params, sat, sessions) > MRV_SEARCH_LO * 2.0
+
+
 def mrv(params: FFParams, sat: SaturationParams, sessions: int = 3) -> float:
-    """Weekly sets maximising steady-state preparedness. The only output that matters."""
+    """
+    Weekly sets maximising steady-state preparedness. The only output that matters.
+
+    Returns MRV_SEARCH_LO for lifters with no interior optimum — check
+    `has_interior_optimum` before treating the result as a prescription.
+    """
     from ff_model import steady_state
 
     invphi = 0.6180339887498949
-    a, b = 0.5, 200.0
+    a, b = MRV_SEARCH_LO, MRV_SEARCH_HI
     c, d = b - invphi * (b - a), a + invphi * (b - a)
     fc = steady_state(c, params, sessions, sat)
     fd = steady_state(d, params, sessions, sat)
