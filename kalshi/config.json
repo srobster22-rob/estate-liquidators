@@ -57,6 +57,8 @@
     "_doc": "How many markets of each family the exchange plausibly lists per year. ESTIMATES, from general knowledge of what Kalshi runs — not scraped, not verified. They convert a percentage return into dollars per year, which is the only number that says whether a bot is a business. Wrong by 2x here means wrong by 2x there, so correct them against the real market list before planning around any of it.",
     "markets_per_year": {
       "crypto_hourly": 17520,
+      "crypto_bracket_hourly": 17520,
+      "crypto_bracket_stale": 17520,
       "index_bracket_daily": 750,
       "econ_print": 534,
       "weather_temp": 3650,
@@ -67,7 +69,7 @@
       "efficient_control": 0
     },
     "_econ_print_is_COUNTED_not_estimated": "534 = 2,668 settled contracts / 5.0 years (Jul 2021-Jun 2026, 8 series), from 'Information Efficiency Across Macroeconomic Prediction Markets: Evidence from Kalshi'. A LOWER bound: 8 series only, and the window includes Kalshi's small years. See kalshi/census.py and CENSUS.md. Every OTHER family below is still an unverified estimate.",
-    "_markets_per_year_basis": "crypto_hourly: ~2 series x 24h x 365. index_bracket_daily: ~3 indices x 252 sessions. econ_print: CPI/payrolls/Fed/PCE/GDP/retail ~70 releases x a few strikes. weather_temp: ~10 cities x 365. sports_game: NFL+NBA+MLB+NHL regular seasons. politics/awards/mentions: rough counts of what tends to be listed.",
+    "_markets_per_year_basis": "crypto_hourly: ~2 series x 24h x 365. crypto_bracket_hourly / crypto_bracket_stale: same listing rate, 5 brackets per set, so ~3,500 SETS a year. index_bracket_daily: ~3 indices x 252 sessions. econ_print: CPI/payrolls/Fed/PCE/GDP/retail ~70 releases x a few strikes. weather_temp: ~10 cities x 365. sports_game: NFL+NBA+MLB+NHL regular seasons. politics/awards/mentions: rough counts of what tends to be listed.",
     "peak_sigma": 3.0,
     "_peak_note": "Concurrent positions modelled as Poisson; capital required is mean + peak_sigma*sqrt(mean) positions. Determines return on capital you must COMMIT rather than capital you happen to be using."
   },

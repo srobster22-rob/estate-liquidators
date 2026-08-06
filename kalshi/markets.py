@@ -1,5 +1,5 @@
 """
-The market taxonomy — nine families spanning what Kalshi actually lists, plus a control.
+The market taxonomy — ten families spanning what Kalshi actually lists, plus a control.
 
 Each family is a variance schedule from `paths.py` (how information arrives) wrapped in a
 quoting layer (how the book prices it). The quoting layer is where every exploitable edge
@@ -27,6 +27,17 @@ here, because the loop's job is to find these and only these:
       100 is a real, riskless, fully-collateralised arbitrage. It should be rare, small,
       and fee-sensitive — which is exactly what makes it a good test of whether the
       backtester's fee accounting is honest.
+
+  EDGE 3b · ASYMMETRIC STALENESS  (`stale_leg_prob`, `stale_leg_frac`)
+      one leg of a bracket set has its quote FROZEN for a window while the others track.
+      Added in K24 because independent noise had been the only incoherence channel here,
+      and two rounds of conclusions about bracket arbitrage turned out to be conclusions
+      about that one channel. Bracket probabilities sum to 1, so their moves sum to zero,
+      and anything applied identically and LINEARLY to every leg cannot move the quoted
+      total — which is why symmetric lag produces no arb, and why the CLIP in EDGE 2 does
+      (a clip binds differentially and is not linear). Staleness needs no wide book: the
+      dislocation is set by how far the truth travels during the freeze, so it scales with
+      volatility and update latency rather than with spread. See `arb.py`.
 
   EDGE 4 · SPREAD CAPTURE  (`spread_ticks`)
       wide books can in principle be made rather than taken. Whether that is a business
@@ -76,12 +87,14 @@ class Family:
     __slots__ = ("name", "label", "steps", "step_hours", "schedule_kind", "schedule_kw",
                  "p0_mu", "p0_sd", "logit_gamma", "underreact_alpha", "underreact_decay",
                  "underreact_cap", "quote_noise", "spread_lo", "spread_hi", "depth_lo",
-                 "depth_hi", "n_brackets", "n_rungs", "notes", "salt_name", "fee_multiplier")
+                 "depth_hi", "n_brackets", "n_rungs", "notes", "salt_name", "fee_multiplier",
+                 "stale_leg_prob", "stale_leg_frac")
 
     def __init__(self, name, label, steps, step_hours, schedule_kind, p0_mu, p0_sd,
                  logit_gamma, underreact_alpha, underreact_decay, underreact_cap,
                  quote_noise, spread_lo, spread_hi, depth_lo, depth_hi,
-                 n_brackets=1, n_rungs=1, schedule_kw=None, notes="", salt_name=None):
+                 n_brackets=1, n_rungs=1, schedule_kw=None, notes="", salt_name=None,
+                 stale_leg_prob=0.0, stale_leg_frac=0.0):
         self.name, self.label = name, label
         # Which name seeds the RNG. Normally the family's own, but an attenuated copy
         # borrows its base family's salt so that the same group id draws the SAME latent
@@ -103,6 +116,15 @@ class Family:
         self.depth_lo, self.depth_hi = depth_lo, depth_hi
         self.n_brackets = n_brackets
         self.n_rungs = n_rungs
+        # EDGE 3b — ASYMMETRIC staleness. `quote_noise` is a symmetric per-leg wobble, and
+        # K23 found it is the ONLY thing in this simulator that can make a bracket set
+        # incoherent, which made "tight books are coherent books" true here by construction.
+        # A frozen leg is the other mechanism, and it is the one that plausibly exists on a
+        # real exchange: a wing bracket nobody is actively quoting while the at-the-money
+        # bracket tracks the underlying tick for tick. It does NOT need a wide book — a stale
+        # quote can be 1 tick wide and still be wrong. See K24 in the loop log.
+        self.stale_leg_prob = stale_leg_prob
+        self.stale_leg_frac = stale_leg_frac
         self.notes = notes
 
     @property
@@ -145,6 +167,35 @@ _add(Family(
     n_brackets=5,
     notes="Five mutually exclusive closing ranges. The only family where a riskless "
           "arbitrage is structurally possible, because five books quote one distribution."))
+
+_add(Family(
+    "crypto_bracket_hourly", "BTC hourly closing-range brackets",
+    steps=60, step_hours=1 / 60, schedule_kind="uniform",
+    p0_mu=0.0, p0_sd=1.0,
+    logit_gamma=0.995, underreact_alpha=0.25, underreact_decay=0.45, underreact_cap=1.0,
+    quote_noise=0.6, spread_lo=1, spread_hi=2, depth_lo=300, depth_hi=1200,
+    n_brackets=5,
+    notes="Added in K23 because the information-cost analysis pointed here. bracket_arb has "
+          "by far the lowest s^2/e in the project (84 vs 2,973 for the next best) and its "
+          "only problem is that index brackets list 150 sets a year. Crypto hourlies list "
+          "~3,500. Same structure, 23x the frequency — so if frequency is genuinely free, "
+          "this should be the best thing in the directory. It is not, and the reason is the "
+          "point: tight books are COHERENT books, and an arb needs incoherence."))
+
+_add(Family(
+    "crypto_bracket_stale", "BTC hourly brackets, one leg quoted stale",
+    steps=60, step_hours=1 / 60, schedule_kind="uniform",
+    p0_mu=0.0, p0_sd=1.0,
+    logit_gamma=0.995, underreact_alpha=0.25, underreact_decay=0.45, underreact_cap=1.0,
+    quote_noise=0.6, spread_lo=1, spread_hi=2, depth_lo=300, depth_hi=1200,
+    n_brackets=5, stale_leg_prob=0.35, stale_leg_frac=0.15,
+    salt_name="crypto_bracket_hourly",
+    notes="K24. PAIRED with crypto_bracket_hourly — same salt, so group 7 here is group 7 "
+          "there with one difference: 35% of sets have a single leg's quote frozen for 15% "
+          "of the horizon. Everything else is identical, including the 0.6c book that made "
+          "K23's version never fire. This is the test of whether 'tight books are coherent "
+          "books' is a fact about markets or an artifact of quote_noise being the only "
+          "incoherence channel in the simulator."))
 
 # --- event-driven ------------------------------------------------------------------
 _add(Family(
@@ -335,6 +386,47 @@ def _price_series(fam: Family, true_p: list[float], rng) -> tuple[list[int], lis
     return bids, asks, depths
 
 
+def _apply_stale_leg(fam: Family, legs: list, rng) -> None:
+    """EDGE 3b. Freeze ONE leg's quote for a window, leaving the others tracking.
+
+    Why this exists. `quote_noise` perturbs every leg independently and symmetrically, and
+    K23 showed that in this simulator it is the *only* channel by which a bracket set can go
+    incoherent — so shrinking it to a realistic 0.6c made the arb vanish and produced the
+    conclusion "tight books are coherent books". That conclusion was a property of having one
+    channel, not a property of markets.
+
+    Symmetric *underreaction* cannot supply the missing channel either, and the reason is
+    worth writing down: bracket probabilities sum to 1 at every step, so the moves sum to
+    zero, and the lag in `_price_series` is a linear operator applied with the same alpha and
+    decay to every leg. A linear operator applied uniformly to a zero-sum vector returns a
+    zero-sum vector. **Uniform lag is incoherence-neutral by construction.** Only something
+    that breaks the symmetry between legs can widen or narrow the quoted sum.
+
+    A frozen leg breaks it. The book stays exactly as tight as it was — a stale quote can be
+    one tick wide and still be wrong — while the leg's price stops tracking the underlying.
+    The size of the resulting dislocation is set by how far the truth travels during the
+    freeze, which is a property of VOLATILITY and UPDATE LATENCY, not of spread. That is the
+    whole point of the mechanism, and it is what makes K24 a real test of K23 rather than a
+    restatement of it.
+
+    Note the freeze is applied to the quoted book only. `true_p` and `outcome` are untouched,
+    so the leg is genuinely mispriced rather than secretly informative, and `View` still has
+    no way to see any of it.
+    """
+    if fam.stale_leg_prob <= 0.0 or fam.stale_leg_frac <= 0.0 or len(legs) < 2:
+        return
+    if rng.random() >= fam.stale_leg_prob:
+        return
+    window = max(1, int(round(fam.steps * fam.stale_leg_frac)))
+    if window >= fam.steps:
+        window = fam.steps - 1
+    start = rng.randint(0, fam.steps - window - 1)
+    ep = legs[rng.randrange(len(legs))]
+    b0, a0, d0 = ep.bid[start], ep.ask[start], ep.depth[start]
+    for t in range(start, start + window):
+        ep.bid[t], ep.ask[t], ep.depth[t] = b0, a0, d0
+
+
 def _family_salt(name: str) -> int:
     """A STABLE per-family seed offset.
 
@@ -404,6 +496,7 @@ def generate_group(fam: Family, gid: int) -> Group:
             ep.bid, ep.ask, ep.depth = _price_series(fam, tp, rng)
             ep.outcome = 1 if i == winner else 0
             legs.append(ep)
+        _apply_stale_leg(fam, legs, rng)
         return Group(fam, gid, legs)
 
     p0 = paths.expit(rng.gauss(fam.p0_mu, fam.p0_sd))
@@ -460,6 +553,7 @@ def attenuated(family_name: str, factor: float) -> str:
         quote_noise=base.quote_noise, spread_lo=base.spread_lo, spread_hi=base.spread_hi,
         depth_lo=base.depth_lo, depth_hi=base.depth_hi, n_brackets=base.n_brackets,
         n_rungs=base.n_rungs,
+        stale_leg_prob=base.stale_leg_prob, stale_leg_frac=base.stale_leg_frac,
         schedule_kw=base.schedule_kw, salt_name=base.name,
         notes=f"attenuated copy of {family_name} for the gate's half-edge criterion")
     _ATTENUATED[key] = f
@@ -490,7 +584,9 @@ def variant(family_name: str, depth_scale: float = 1.0, spread_extra: int = 0,
         spread_lo=b.spread_lo + spread_extra, spread_hi=b.spread_hi + spread_extra,
         depth_lo=max(1, int(b.depth_lo * depth_scale)),
         depth_hi=max(1, int(b.depth_hi * depth_scale)),
-        n_brackets=b.n_brackets, n_rungs=b.n_rungs, schedule_kw=b.schedule_kw,
+        n_brackets=b.n_brackets, n_rungs=b.n_rungs,
+        stale_leg_prob=b.stale_leg_prob, stale_leg_frac=b.stale_leg_frac,
+        schedule_kw=b.schedule_kw,
         salt_name=b.name, notes=f"sensitivity variant of {family_name}")
     _ATTENUATED[key] = f
     return key

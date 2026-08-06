@@ -422,9 +422,18 @@ ok("net edge falls monotonically as the planted edge is attenuated",
    means[0] > means[1] > means[2],
    " > ".join(f"{m:+.1f}c" for m in means) + " at 100%/75%/50%")
 
+# Structural, not a magic count — K23 added a tenth family and a hard-coded 9 failed here for
+# the wrong reason. What has to hold is that DERIVED families (which carry a '|' in their key)
+# never leak into the list the factory sweeps, and that every family the factory can sweep has
+# a capacity number, so no bot can be scored in dollars against a missing denominator.
 ok("attenuated copies stay out of the tradeable family list",
-   same not in markets.FAMILIES and half not in markets.FAMILIES and len(markets.FAMILIES) == 9,
-   f"{len(markets.FAMILIES)} families in the sweep")
+   same not in markets.FAMILIES and half not in markets.FAMILIES
+   and not any("|" in k for k in markets.FAMILIES),
+   f"{len(markets.FAMILIES)} families in the sweep, {len(markets._ATTENUATED)} derived copies")
+_cap_cfg = markets._CFG["capacity"]["markets_per_year"]
+ok("...and every sweepable family has a capacity number",
+   all(f in _cap_cfg for f in markets.FAMILIES),
+   f"missing: {[f for f in markets.FAMILIES if f not in _cap_cfg] or 'none'}")
 
 print("\n8d. CAPACITY AND PORTFOLIO — dollars, and where they are measured")
 from . import capacity, portfolio  # noqa: E402  (imported here so 1-8 run without them)
@@ -858,6 +867,209 @@ ok("an 8-leg arb survives no slippage at all", _lev[-1][2] < 0.05,
 near("sets per year divides contracts by leg count",
      _arb.sets_per_year(),
      capacity.MARKETS_PER_YEAR[_arb.FAMILY] / _n_legs, 1e-9)
+
+print("\n8l. INFORMATION COST — the identity, and the prediction it got wrong")
+from . import frontier as _fr  # noqa: E402
+
+# income x years = 0.0384 * s^2/e, with frequency cancelling exactly. If this ever stops
+# holding, one of the three derived quantities has drifted out of step with the others.
+_cases = [("econ_print", strategies.hold_favorite(enter_frac=0.25, qty=250, thresh=95)),
+          ("econ_print", strategies.snr_band(lo=97, hi=98, enter_frac=0.0, qty=250)),
+          ("index_bracket_daily", strategies.bracket_arb(min_edge=0, qty=250))]
+_profs = [_fr.profile(f, st, n=900) for f, st in _cases]
+_profs = [p_ for p_ in _profs if p_ and p_["info_cost"] != float("inf")]
+ok("income x years equals 0.0384 * s^2/e on every case",
+   all(_fr.identity_holds(p_) for p_ in _profs),
+   " | ".join(f"{p_['income'] * p_['years']:.1f} vs "
+              f"{1.96 ** 2 * p_['info_cost'] / 100:.1f}" for p_ in _profs))
+
+# FREQUENCY CANCELS. Doubling f must double income and halve years, leaving I untouched —
+# which is what makes I the frequency-invariant measure rather than just another ratio.
+_p = _profs[0]
+_f2 = {**_p, "f": _p["f"] * 2, "income": _p["income"] * 2, "years": _p["years"] / 2}
+near("doubling frequency leaves income x years unchanged",
+     _f2["income"] * _f2["years"], _p["income"] * _p["years"], 1e-6)
+ok("...so frequency is free: it improves BOTH income and validation time",
+   _f2["income"] > _p["income"] and _f2["years"] < _p["years"],
+   "which is why the 'three walls' summary in K22 was wrong")
+
+# The ranking that motivated the prediction: the arb is the best structure by a wide margin.
+_arb_p = [p_ for p_ in _profs if "bracket_arb" in p_["label"]][0]
+_dir_p = [p_ for p_ in _profs if "bracket_arb" not in p_["label"]]
+ok("bracket_arb has far the lowest information cost",
+   all(_arb_p["info_cost"] < d["info_cost"] / 5 for d in _dir_p),
+   f"I={_arb_p['info_cost']:,.0f} vs "
+   + ", ".join(f"{d['info_cost']:,.0f}" for d in _dir_p))
+
+# AND THE PREDICTION IT MADE, WHICH FAILED. A bracket family at 23x the frequency should have
+# dominated. It earns nothing, because incoherence IS quote noise and liquid books have none.
+_low, _high = _arb.noise_sweep(noises=(0.6, 1.4), n=500)
+ok("bracket incoherence is quote noise, and the response is violently non-linear",
+   _low[3] < 0.05 and _high[3] > 1.0,
+   f"at {_low[0]:.1f}c noise: {_low[1] * 100:.0f}% incoherent, edge {_low[3]:+.2f}c; "
+   f"at {_high[0]:.1f}c: {_high[1] * 100:.0f}%, edge {_high[3]:+.2f}c")
+
+# profile() returns None when the strategy never fires, and on this family that IS the answer:
+# 17,520 contracts a year, a 0.6c book, and not one arb. Treating None as a pass would hide a
+# crash, so assert the shape too.
+_cb = _fr.profile("crypto_bracket_hourly", strategies.bracket_arb(min_edge=0, qty=250), n=800)
+ok("...so the high-frequency bracket family earns nothing",
+   _cb is None or _cb["income"] < 1.0,
+   "no trades at all" if _cb is None else f"${_cb['income']:,.2f}/yr — "
+   "tight books are coherent books; frequency and opportunity are anticorrelated "
+   "ACROSS families even though frequency is free WITHIN one")
+ok("...and the 23x-frequency prediction from I-ranking is therefore refuted",
+   (_cb is None or _cb["income"] < _arb_p["income"] * 2)
+   and capacity.MARKETS_PER_YEAR["crypto_bracket_hourly"]
+   > 20 * capacity.MARKETS_PER_YEAR["index_bracket_daily"],
+   "low information cost predicts a good trade, not that one exists to take")
+
+print("\n8m. INCOHERENCE CHANNELS — what K22 and K23 were actually measuring")
+
+
+def _bracket_clone(name, **over):
+    """A copy of crypto_bracket_hourly with fields overridden, sharing its salt so every
+    comparison below is PAIRED — same latent path, same strikes, same spread/depth draws."""
+    b = markets.FAMILIES["crypto_bracket_hourly"]
+    kw = dict(steps=b.steps, step_hours=b.step_hours, schedule_kind=b.schedule_kind,
+              p0_mu=b.p0_mu, p0_sd=b.p0_sd, logit_gamma=b.logit_gamma,
+              underreact_alpha=b.underreact_alpha, underreact_decay=b.underreact_decay,
+              underreact_cap=b.underreact_cap, quote_noise=b.quote_noise,
+              spread_lo=b.spread_lo, spread_hi=b.spread_hi, depth_lo=b.depth_lo,
+              depth_hi=b.depth_hi, n_brackets=b.n_brackets, salt_name=b.salt_name)
+    kw.update(over)
+    f = markets.Family(name, name, **kw)
+    markets._ATTENUATED[name] = f
+    return name
+
+
+def _incoherent_share(fam_name, n=300):
+    data = markets.dataset(fam_name, 21_000_000, n)
+    hit = sum(1 for g in data
+              if any(sum(l.ask[t] for l in g.legs) < 100 for t in range(g.steps)))
+    return hit / len(data)
+
+
+# WHAT CAN AND CANNOT MAKE A BRACKET SET INCOHERENT. Bracket probabilities sum to 1 at every
+# step, so their moves sum to zero. Any operator applied identically to every leg that is also
+# LINEAR returns a zero-sum vector and cannot move the quoted total. Each check below isolates
+# one part of the quoting layer with everything else switched off.
+_FLAT = dict(quote_noise=0.0, spread_lo=1, spread_hi=1, logit_gamma=1.0)
+_no_lag = _bracket_clone("k24|nolag", underreact_alpha=0.0, underreact_cap=0.0, **_FLAT)
+_uncapped = _bracket_clone("k24|uncapped", underreact_alpha=0.9, underreact_decay=0.9,
+                           underreact_cap=1000.0, **_FLAT)
+near("UNCAPPED uniform lag is incoherence-neutral, exactly",
+     _incoherent_share(_uncapped), _incoherent_share(_no_lag), 1e-9)
+
+# THE HIDDEN THIRD CHANNEL. I set out to assert that uniform lag is neutral full stop, and the
+# check failed — because `underreact_cap` CLIPS the lag, and a clip is not linear. It binds on
+# the legs making big moves and not on the ones making small moves, so the truncated lags stop
+# summing to zero. That channel has been in the simulator since the first round and neither K22
+# nor K23 knew it was there.
+_capped = _bracket_clone("k24|capped", underreact_alpha=0.9, underreact_decay=0.9,
+                         underreact_cap=3.0, **_FLAT)
+ok("...but the CAP is a channel, because clipping is not linear",
+   _incoherent_share(_capped) > 0.5 and _incoherent_share(_uncapped) < 0.01,
+   f"same lag, cap 1000c -> {_incoherent_share(_uncapped) * 100:.0f}% incoherent, "
+   f"cap 3c -> {_incoherent_share(_capped) * 100:.0f}%")
+
+# And the mechanism is DIFFERENTIAL binding specifically, which the shape confirms: a cap so
+# tight that it clips every leg is nearly uniform again, so incoherence is non-monotone in it.
+_tight_cap = _bracket_clone("k24|tightcap", underreact_alpha=0.9, underreact_decay=0.9,
+                            underreact_cap=1.0, **_FLAT)
+ok("...specifically DIFFERENTIAL binding — so it is non-monotone in the cap",
+   _incoherent_share(_capped) > _incoherent_share(_tight_cap) > _incoherent_share(_uncapped),
+   f"cap 1000c {_incoherent_share(_uncapped) * 100:.0f}% < cap 1c "
+   f"{_incoherent_share(_tight_cap) * 100:.0f}% < cap 3c "
+   f"{_incoherent_share(_capped) * 100:.0f}% — a cap that clips EVERY leg is uniform again")
+
+# Longshot compression is nonlinear too, but monotone and gentle enough that it never overcomes
+# the spread cushion. Worth asserting: it means EDGE 1 is not quietly funding the arb either.
+_gam = _bracket_clone("k24|gamma", underreact_alpha=0.0, underreact_cap=0.0,
+                      quote_noise=0.0, spread_lo=1, spread_hi=1, logit_gamma=0.9)
+near("longshot compression contributes no incoherence at all",
+     _incoherent_share(_gam), _incoherent_share(_no_lag), 1e-9)
+
+# Symmetric noise: the channel K22 and K23 were both unknowingly measuring.
+_noise_on = _bracket_clone("k24|noiseon", underreact_alpha=0.0, underreact_cap=0.0,
+                           quote_noise=2.0, spread_lo=1, spread_hi=1, logit_gamma=1.0)
+ok("symmetric NOISE is a channel — the one K22 and K23 were measuring",
+   _incoherent_share(_noise_on) > _incoherent_share(_no_lag) + 0.5,
+   f"{_incoherent_share(_no_lag) * 100:.0f}% at zero noise -> "
+   f"{_incoherent_share(_noise_on) * 100:.0f}% at 2c")
+
+# THE PAIRED TEST K23 SKIPPED. Same salt, same 0.6c book, one difference: a frozen leg.
+_ch = _arb.channel_comparison(n=900)
+_tight = [r for r in _ch if r[0] == "crypto_bracket_hourly"][0]
+_stale = [r for r in _ch if r[0] == "crypto_bracket_stale"][0]
+ok("the two bracket families are PAIRED, not two unrelated samples",
+   markets.FAMILIES["crypto_bracket_stale"].salt_name
+   == markets.FAMILIES["crypto_bracket_hourly"].salt_name
+   and markets.FAMILIES["crypto_bracket_stale"].quote_noise
+   == markets.FAMILIES["crypto_bracket_hourly"].quote_noise,
+   "same salt and the same 0.6c book — only the freeze differs")
+ok("asymmetric staleness makes a TIGHT book incoherent",
+   _tight[1] == 0 and _stale[1] > 20,
+   f"{_tight[1]} fires with noise alone -> {_stale[1]} fires with one leg frozen, "
+   f"at identical quote_noise")
+
+# AND IT LANDS IN THE TAIL, which is the part that matters and the part K22 never varied.
+# Sum-of-N-independent-wobbles is concentrated; one leg's unbounded drift is not.
+_med_ratio = _stale[3] / max(_tight[3], 1)
+_max_ratio = _stale[4] / max(_tight[4], 1)
+ok("the TAIL grows far faster than the centre",
+   _max_ratio >= 2 * _med_ratio,
+   f"median x{_med_ratio:.1f} ({_tight[3]}c -> {_stale[3]}c) but "
+   f"max x{_max_ratio:.1f} ({_tight[4]}c -> {_stale[4]}c) — and only the tail clears N ticks")
+
+# THE FILTER. Useless on the noise channel, decisive on the staleness channel — same filter,
+# same arithmetic, opposite verdict. That is the evidence K22's conclusion was about the
+# distribution rather than about leg counts.
+_noise_filtered = backtest.run(
+    markets.dataset("index_bracket_daily", 13_000_000, 900),
+    strategies.bracket_arb(min_edge=5, qty=250), backtest.Costs(extra_spread=1))
+ok("a margin filter selects NOTHING on the noise channel",
+   sum(1 for x in _noise_filtered.group_pnl if x != 0) == 0,
+   "five sub-cent wobbles essentially never sum to 5c")
+_fs = _arb.filter_sweep(n=900, edges=(0, 8), ticks=(0, 1))
+_raw = [r for r in _fs if r[0] == 0 and r[1] == 1][0]
+_filt = [r for r in _fs if r[0] == 8 and r[1] == 1][0]
+ok("...and is decisive on the staleness channel",
+   _raw[4] < 0 < _filt[4] and _filt[3] == 0,
+   f"min_edge 0 at 1 tick: {_raw[2]} fires, {_raw[3]} lose, {_raw[4]:+.1f}c/set  ->  "
+   f"min_edge 8: {_filt[2]} fires, {_filt[3]} lose, {_filt[4]:+.1f}c/set")
+
+# STALENESS IS A QUOTING DEFECT, NOT INFORMATION. The freeze touches bid/ask/depth only, so
+# the leg stays genuinely mispriced rather than secretly informative, and no bot can see it.
+_sd = markets.dataset("crypto_bracket_stale", 5_000, 60)
+_td = markets.dataset("crypto_bracket_hourly", 5_000, 60)
+ok("the freeze touches the BOOK only — true_p and outcome are untouched",
+   all(a.legs[i].true_p == b.legs[i].true_p and a.legs[i].outcome == b.legs[i].outcome
+       for a, b in zip(_sd, _td) for i in range(len(a.legs))),
+   "so the stale leg is mispriced, not informed — and the arb stays riskless at 0 slippage")
+ok("...and it does change the quoted book",
+   any(a.legs[i].ask != b.legs[i].ask for a, b in zip(_sd, _td) for i in range(len(a.legs))),
+   "otherwise the check above would pass trivially")
+
+# THE DISCIPLINE CHECK. This is the best-looking thing the project has found and it still does
+# not pass. A round that discovers a $400/yr riskless trade is exactly when a gate gets quietly
+# loosened, so the failure is asserted rather than described.
+_g_cost = backtest.Costs(extra_spread=1)
+_g_st = strategies.bracket_arb(min_edge=8, qty=250)
+_spy = _arb.sets_per_year("crypto_bracket_stale")
+_g_oos = evaluate.summarize(backtest.run(
+    markets.dataset("crypto_bracket_stale", markets._CFG["seeds"]["oos"], 1200), _g_st, _g_cost),
+    resamples=800, markets_per_year=_spy)
+_g_str = evaluate.summarize(backtest.run(
+    markets.dataset("crypto_bracket_stale", markets._CFG["seeds"]["holdout"], 1200), _g_st,
+    backtest.Costs(fee_mult=1.5, extra_spread=2, fill_mult=0.5)), resamples=800)
+ok("the stale arb beats the incumbent on dollars",
+   _g_oos.annual_dollars > markets._CFG["gate"]["min_annual_dollars"],
+   f"${_g_oos.annual_dollars:,.0f}/yr OOS vs a ${markets._CFG['gate']['min_annual_dollars']} bar")
+ok("...and STILL fails the gate on stress",
+   _g_str.mean <= 0,
+   f"{_g_str.mean:+.2f}c/set at 2 ticks + 1.5x fees — the slippage wall moved out, "
+   "it did not disappear")
 
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))

@@ -17,14 +17,15 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 145 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 167 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
-python -m kalshi.factory --sweep   # 9x12 coverage matrix; writes COVERAGE.md
+python -m kalshi.factory --sweep   # family x strategy coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
 python -m kalshi.portfolio         # combine bots across families; writes PORTFOLIO.md
 python -m kalshi.census            # the counted market list; writes CENSUS.md
 python -m kalshi.sensitivity       # what every assumption is worth; writes SENSITIVITY.md
 python -m kalshi.arb               # why the riskless trade loses; writes ARB.md
+python -m kalshi.frontier          # information cost I = s^2/e; writes FRONTIER.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -53,7 +54,7 @@ checks themselves.
 | `config.json` | Every constant the backtester or gate depends on. Canonical, like `tuning.json`. |
 | `fees.py` | Kalshi's fee formula, with worked examples. The most important file. |
 | `paths.py` | The latent price engine. Prices are a martingale *by construction*. |
-| `markets.py` | Nine market families, the quoting layer, and every planted edge. |
+| `markets.py` | Ten market families, the quoting layer, and every planted edge. |
 | `strategies.py` | Thirteen strategies, five of them controls designed to lose. |
 | `backtest.py` | Execution: spread, depth, fees, maker fills, no lookahead. |
 | `evaluate.py` | The gate. Bootstrap, Holm correction, stress, tail risk, half-edge. |
@@ -63,27 +64,31 @@ checks themselves.
 | `portfolio.py` | Combines confirmed bots across families. The dollar bar lives here. |
 | `census.py` | The counted market list. The one input the dollar figure rests on. |
 | `sensitivity.py` | Every assumption swept, and where each crosses the bar. |
-| `arb.py` | The zero-variance trade, and the leg-count arithmetic that kills it. |
+| `arb.py` | The zero-variance trade, the leg-count arithmetic that kills it, and which incoherence channels can revive it. |
+| `frontier.py` | Information cost `I = s²/e`: what makes an opportunity good, independent of how often it appears. |
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
-| `selftest.py` | 145 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 167 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
 | `PORTFOLIO.md` | The combined book and whether it clears the money bar. Generated. |
 | `CENSUS.md` | How many markets Kalshi actually lists, and the sources. Generated. |
 | `SENSITIVITY.md` | What has to be true for the headline to hold. Generated. |
-| `ARB.md` | Bracket arbitrage: margins, slippage, leg leverage. Generated. |
+| `ARB.md` | Bracket arbitrage: margins, slippage, leg leverage, incoherence channels. Generated. |
+| `FRONTIER.md` | Every strategy ranked by information cost, and the identity behind it. Generated. |
 
 ---
 
 ## The market families
 
-Nine, spanning what Kalshi lists — plus one that exists only to catch bugs.
+Eleven, spanning what Kalshi lists — plus one that exists only to catch bugs.
 
 | family | horizon | turns/yr | planted bias | why it's here |
 |---|---|---|---|---|
 | `crypto_hourly` | 1 h | 8760 | tiny | most efficient thing on the exchange; recycles capital constantly |
-| `index_bracket_daily` | 6.5 h | 1348 | tiny + incoherent brackets | the only family where riskless arbitrage is structurally possible |
+| `index_bracket_daily` | 6.5 h | 1348 | tiny + incoherent brackets | brackets at low frequency; the family the arb was built on |
+| `crypto_bracket_hourly` | 1 h | 8760 | tiny + a **tight** book | K23's failed prediction: brackets at 23× the frequency. Never fires on quote noise alone |
+| `crypto_bracket_stale` | 1 h | 8760 | same book, **one leg frozen** | K24's paired control for it. Same salt, same 0.6¢ quotes, one difference — and the arb comes back |
 | `econ_print` | 10 h | 876 | small, big quote lag | 90% of the uncertainty lands in one step; listed as a **ladder** of 4 nested thresholds |
 | `weather_temp` | 2 d | 182 | moderate | uncertainty resolves late as forecasts sharpen |
 | `sports_game` | 3 h | 2920 | strong | scores are jumps; retail pricing most plausible |
@@ -106,11 +111,17 @@ factory infinite money.
 
 From the run in `RESULTS.md` (seed 20260730). Simulated markets throughout.
 
+`RESULTS.md`, `CAPACITY.md` and `PORTFOLIO.md` are that one seeded run and predate the two
+bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–19 were
+measured directly by `arb.py` and `frontier.py` on fresh seeds rather than by the factory
+loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
+in-sample sets it does not fire often enough to clear the minimum trade count.
+
 **1. Fees decide almost everything, and they decide it before any strategy is written.**
 The fee is `0.07 × contracts × P × (1−P)`, which peaks at mid-book: a round trip at 50¢
 costs 3.50¢ of a 100¢ notional, and at 5¢ it costs 0.68¢. Every round-trip strategy in the
 zoo — `momentum`, `mean_revert`, `jump_follow`, `jump_fade` — is negative on **every one of
-the nine families**, including the ones with a 3¢ mispricing planted in them. They are not
+the tradeable families**, including the ones with a 3¢ mispricing planted in them. They are not
 losing to the market; they are losing to the fee, twice per trade. Hold-to-settlement pays
 the fee once and never crosses the spread to exit, and every bot that passed the gate is a
 hold-to-settlement bot. That is the single most transferable result here, because it depends
@@ -124,7 +135,7 @@ constant, and the loop reliably prefers the larger sizes.
 **3. "Buy YES and NO for under 100" cannot exist on Kalshi, and `pair_arb` proves it.**
 Kalshi runs one book per market: a YES bid at 40 *is* a NO ask at 60. So
 `yes_ask + no_ask = 100 + spread ≥ 100` identically. `pair_arb` was implemented anyway and
-found **0 opportunities across 5,200 market-lives**, in all nine families. Bracket
+found **0 opportunities across 5,200 market-lives**, in every family. Bracket
 arbitrage across a mutually exclusive *set* is a different matter and it is real: buying all
 five closing-range brackets when their asks sum below 100 is riskless, fully collateralised,
 and worth **+7.37¢ per market offered** out-of-sample. But it fires in only **40 of 1,200
@@ -406,6 +417,137 @@ The only version that survives slippage is **resting** orders on every leg — a
 your price by definition. That swaps slippage risk for fill risk, and finding 14 already showed
 resting orders are negative here at every fill rate from 0.15 to 1.00. Both doors are shut, and
 each is shut by the other's risk.
+
+**18. Frequency is free; information cost is the whole problem. My own K22 summary was
+wrong, and the correction made a prediction that then failed too.** `python -m kalshi.frontier`.
+
+I closed K22 by calling this "three structural walls, each blocking the corner opposite." That
+was pattern-matching on three cases. Written out, the arithmetic is sharper. For edge `e` and
+standard deviation `s` per opportunity, at `f` opportunities a year:
+
+```
+income  = f · e / 100                        dollars a year
+years   = (1.96 · s / e)² / f                to establish the SIGN of the edge
+
+income × years = 3.8416 · s² / (100 · e)     ← f cancels, exactly
+```
+
+Verified to the decimal on 19/19 sweep rows. So **information cost `I = s²/e`** is the
+frequency-invariant measure of an opportunity, and every strategy satisfies
+`income × years = 0.0384 · I`. Frequency is not a wall — doubling `f` doubles income *and*
+halves validation time, so it is unambiguously good and free. `I` is the hard part, and it is a
+property of *structure*: where in the price grid you trade, whether the payoff is bounded, how
+many legs you need. **Independent axes, not one tradeoff.**
+
+Then the ranking made a falsifiable prediction, which is the point of having one:
+
+| strategy | I = s²/e | opp/yr | $/yr | yrs to sign |
+|---|---|---|---|---|
+| `index_bracket_daily` / `bracket_arb` | **84** | 150 | $+3 | 0.98 |
+| `econ_print` / `snr_band` | 1,307 | 134 | $+166 | 0.30 |
+| `politics_long` / `late_favorite` | 4,595 | 200 | $+40 | 4.39 |
+| `econ_print` / `hold_favorite` | 60,409 | 134 | $+386 | 6.01 |
+
+The arb's `I` is **15× better than the next structure and 700× better than the current
+winner.** Its only problem is frequency. If frequency is genuinely free, a bracket family at
+23× the frequency should dominate everything here. So I built one — `crypto_bracket_hourly`,
+5 brackets, 17,520 contracts a year, a realistically tight 0.6¢ book.
+
+**It earns exactly $0.00. It never fires once.** The reason is the finding:
+
+| quote noise | sets incoherent | edge/set |
+|---|---|---|
+| 0.4¢ | 1.8% | +0.00¢ |
+| 0.6¢ | 9.6% | +0.00¢ |
+| 1.0¢ | 61.4% | +0.28¢ |
+| 1.4¢ | 93.1% | +12.47¢ |
+| 2.0¢ | 99.1% | +145.84¢ |
+| 3.0¢ | 99.9% | +543.43¢ |
+
+**Bracket incoherence *is* quote noise, and the response is violently non-linear** — a 2.3×
+increase in noise moves the edge by 4 orders of magnitude. A liquid, high-frequency market is
+liquid *because* its quotes are tight, and tight quotes are coherent quotes. So while frequency
+is free *within* a family, frequency and opportunity are **anticorrelated across** families,
+and that is not visible anywhere in `I`.
+
+Which is the actual lesson: `I` measures how good a trade is *if it exists*. It says nothing
+about whether one does. A low information cost is a reason to go looking, never evidence that
+you will find anything.
+
+**19. Both of the last two rounds were reasoning about one mechanism while believing they were
+reasoning about brackets — and there was a third mechanism in the code the whole time.**
+
+K22 concluded the bracket arb cannot work; K23 concluded "tight books are coherent books". Both
+conclusions rest on the *margin distribution*, and that came entirely from the only channel the
+simulator had for making a bracket set incoherent: independent per-leg `quote_noise`. Neither
+round varied the channel. So I went looking for the others.
+
+Bracket probabilities sum to 1 at every step, so their moves sum to zero. Any operator applied
+identically to every leg that is also **linear** returns a zero-sum vector and cannot move the
+quoted total. That predicts which parts of the quoting layer can produce an arb, and isolating
+each one with the rest switched off confirms it — except in one place:
+
+| channel | incoherent sets | |
+|---|---|---|
+| no lag at all | 0.0% | baseline |
+| uniform lag, cap 1000¢ (never binds) | **0.0%** | linear ⇒ neutral, exactly as predicted |
+| uniform lag, cap 20¢ | 15.5% | |
+| uniform lag, cap 3¢ | **94.2%** | |
+| uniform lag, cap 1¢ | 57.8% | |
+| longshot compression, γ 1.0 → 0.9 | 0.0% | nonlinear but too gentle to clear the spread |
+| symmetric quote noise, 2¢ | 100% | the channel K22 and K23 measured |
+
+I set out to assert that uniform lag is incoherence-neutral, full stop. The check failed, and
+the failure is the finding: **`underreact_cap` clips the lag, and a clip is not linear.** It
+binds on legs making big moves and not on legs making small ones, so the truncated lags stop
+summing to zero. Note it is *non-monotone* — a cap tight enough to clip every leg is nearly
+uniform again — which confirms the mechanism is **differential** binding rather than clipping
+as such. That channel has been in `markets.py` since the first round and neither previous
+conclusion knew it existed.
+
+**The channel that matters in practice is asymmetric staleness**, and it needs no wide book.
+One leg's quote frozen while the others track — a wing bracket nobody is actively quoting —
+dislocates the set by however far the truth travels during the freeze. That is a function of
+*volatility and update latency*; spread does not appear in it. `crypto_bracket_stale` is
+`crypto_bracket_hourly` with the **same salt**, so the paired sets share latent path, strikes,
+spreads, depths and the same 0.6¢ book, and differ only in the freeze:
+
+| family | fires | ¢/set | median margin | **max margin** |
+|---|---|---|---|---|
+| `crypto_bracket_hourly` (noise only, 0.6¢) | **0** | +0.00¢ | 1¢ | 3¢ |
+| `crypto_bracket_stale` (one leg frozen) | 124 | +18.71¢ | 3¢ | **33¢** |
+| `index_bracket_daily` (noise, 1.4¢) | 53 | +4.38¢ | 2¢ | 8¢ |
+
+The centre moves 3×; **the tail moves 10×** — and the tail is the only part a filter can reach.
+Which is why the same margin filter gives opposite verdicts on the two channels:
+
+| | min margin | slippage/leg | fires | **losing** | $/yr |
+|---|---|---|---|---|---|
+| noise channel | 5¢ | +1 tick | **0** | — | $0 |
+| staleness channel | 0¢ | +1 tick | 182 | 133 | −$405 |
+| staleness channel | 8¢ | +1 tick | 76 | **0** | **+$432** |
+| staleness channel | 12¢ | +2 ticks | 52 | **0** | +$202 |
+
+So K22's mechanism was right and its conclusion was conditional. The corrected statement:
+**an N-leg arb needs a margin above N ticks, and whether any exist depends on the tail of the
+margin distribution — which depends on the incoherence channel, not on the spread.**
+
+**And it still does not pass.** At `min_edge=8` with a tick of slippage on every leg it clears
+**9 of 11** criteria — OOS +11.5¢/set (95% CI lo +8.0), holdout +11.9¢, Holm-corrected
+p=0.0017, half-edge positive, $403/yr against a $250 bar, and **0 losing sets in 54 OOS fires
+and 57 holdout fires**. It
+fails on **stress** (−1.95¢ at 2 ticks + 1.5× fees — the slippage wall moved out, it did not
+disappear) and on **tail risk**, which counts legs: a bracket arb books four guaranteed-losing
+legs per winning one, so a trade that *cannot lose* reads as an 80% loss rate. That is
+documented in `evaluate.py` as deliberately pessimistic, and for a riskless structure it is a
+categorical blind spot rather than conservatism — but a round that turns up the best-looking
+result in the project is exactly when a gate gets quietly loosened, so it is left alone and the
+failure is asserted in `selftest.py` instead.
+
+The honest caveat is larger than the finding: the whole thing scales linearly with
+`stale_leg_prob = 0.35`, a number with no evidence behind it whatsoever. What transfers is not
+the $432 — it is **where to look**: not at wide books, but at fast-moving underlyings with
+slow-updating wing brackets, and with a minimum-margin filter of at least one tick per leg.
 
 ## The gate
 

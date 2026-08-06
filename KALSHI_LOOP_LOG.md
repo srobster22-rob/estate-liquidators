@@ -385,6 +385,96 @@ sets". 750 is a count of CONTRACTS; the backtester measures per SET, and a set i
 It is 150 sets a year and about $8 — the same contracts-vs-sets units bug K18 caught on the econ
 ladders, still lurking in prose after being fixed in code. 145 checks pass.
 
+K23 · Tested my own closing sentence from K22 — "three structural walls, each blocking the
+corner opposite" — and it was pattern-matching on three cases. Built `kalshi/frontier.py`.
+Writing the arithmetic out gives an exact identity instead of a metaphor. With edge `e`, per-
+opportunity sigma `s`, and `f` opportunities a year:
+
+```
+income  = f * e / 100                        dollars a year
+years   = (1.96 * s / e)^2 / f               to establish the SIGN of the edge
+
+income x years = 3.8416 * s^2 / (100 * e)    <- f cancels, exactly
+```
+
+Verified to the decimal on 19/19 sweep rows. So **information cost `I = s^2/e`** is the
+frequency-invariant measure of an opportunity, and **frequency is not a wall at all** — doubling
+`f` doubles income AND halves validation time. It is free and unambiguously good, which is
+exactly why the K17 census mattered. `I` is the hard part, and it is a property of STRUCTURE.
+Independent axes, not one tradeoff.
+
+**Then the corrected model made a falsifiable prediction, and it failed.** Ranked by `I`,
+`bracket_arb` is **84** — 15x better than the next structure (`snr_band`, 1,307) and 700x better
+than the current winner (`hold_favorite`, 60,409). Its only stated problem was frequency. If
+frequency is free, a bracket family at 23x the frequency should dominate everything here. Built
+one: `crypto_bracket_hourly`, 5 brackets, 17,520 contracts a year, a realistically tight 0.6c
+book. **It never fires once. $0.00.**
+
+`arb.noise_sweep()` explains it. Incoherence share and edge per set, by quote noise: 0.4c ->
+1.8% / +0.00c; 0.6c -> 9.6% / +0.00c; 1.0c -> 61.4% / +0.28c; 1.4c -> 93.1% / +12.47c; 2.0c ->
+99.1% / +145.84c; 3.0c -> 99.9% / +543.43c. **Bracket incoherence IS quote noise, and the
+response is violently non-linear** — 2.3x the noise moves the edge four orders of magnitude. A
+high-frequency market is liquid *because* its quotes are tight, and tight quotes are coherent
+quotes. Frequency is free WITHIN a family and anticorrelated with opportunity ACROSS families,
+and none of that is visible in `I`.
+
+The lesson is the one that generalises: **`I` measures how good a trade is IF IT EXISTS, and
+says nothing about whether one does.** A low information cost is a reason to go looking, never
+evidence that anything is there.
+
+Also fixed a selftest that failed for the wrong reason — it asserted `len(FAMILIES) == 9`, so
+adding a tenth family broke it. Replaced the magic number with the invariant it was standing in
+for: derived families never leak into the sweep list, and every sweepable family has a capacity
+denominator. 153 checks pass.
+
+K24 · **Both of the last two rounds were reasoning about one mechanism while believing they
+were reasoning about brackets, and there was a third mechanism in the code the whole time.**
+K22 concluded the bracket arb cannot work; K23 concluded "tight books are coherent books". Both
+rest on the margin DISTRIBUTION, and that came entirely from the only incoherence channel the
+simulator had: independent per-leg `quote_noise`. Neither round varied the channel.
+
+There is a rule for which parts of the quoting layer can produce an arb at all. Bracket
+probabilities sum to 1 at every step, so their moves sum to zero, and any operator applied
+identically to every leg that is also LINEAR returns a zero-sum vector — it cannot move the
+quoted total. Isolating each part of `_price_series` with the rest switched off: no lag 0.0%
+incoherent; uniform lag with cap 1000c (never binds) **0.0%**; cap 20c 15.5%; cap 3c **94.2%**;
+cap 1c 57.8%; longshot compression gamma 1.0->0.9 **0.0%**; symmetric noise 2c 100%.
+
+I set out to assert that uniform lag is incoherence-neutral full stop. The check FAILED, and
+the failure is the finding: **`underreact_cap` clips the lag, and a clip is not linear.** It
+binds on legs making big moves and not on legs making small ones, so the truncated lags stop
+summing to zero. It is non-monotone in the cap — clip every leg and it is uniform again — which
+identifies the mechanism as DIFFERENTIAL binding rather than clipping as such. That channel has
+been in `markets.py` since round one and neither previous conclusion knew it was there.
+
+**The channel that matters is asymmetric staleness, and it needs no wide book.** One leg's
+quote frozen while the others track — a wing bracket nobody is actively quoting — dislocates
+the set by however far the truth travels during the freeze: a function of VOLATILITY and UPDATE
+LATENCY, with spread nowhere in it. Added `markets._apply_stale_leg` and `crypto_bracket_stale`,
+paired with `crypto_bracket_hourly` by salt so the two share latent paths, strikes, spreads,
+depths and the same 0.6c book and differ only in the freeze. Result: **0 fires -> 124 fires,
++18.71c/set.** The centre of the margin distribution moves 3x (1c -> 3c); **the tail moves 10x**
+(3c -> 33c) — and the tail is the only part a filter can reach. Same filter, opposite verdicts:
+`min_edge=5` selects ZERO on the noise channel, while `min_edge=8` on the staleness channel
+takes 76 fires with **0 losing** at a tick of slippage per leg, +$432/yr.
+
+So K22's mechanism was right and its conclusion was conditional. Corrected: **an N-leg arb
+needs a margin above N ticks, and whether any exist depends on the TAIL of the margin
+distribution — which depends on the incoherence channel, not on the spread.**
+
+**And it still does not pass.** At `min_edge=8` with a tick of slippage everywhere it clears
+9 of 11 criteria — OOS +11.5c/set (lo95 +8.02), holdout +11.9c, Holm p=0.0017, half-edge
++16.2c, $403/yr against a $250 bar, 0 losing sets in 54 OOS and 57 holdout fires — and fails
+two. **stress** (-1.95c at 2 ticks + 1.5x fees) is a real failure: the slippage wall moved out,
+it did not disappear. **tail_risk** counts legs, so a trade that cannot lose reads as an 80%
+loss rate; that is documented in `evaluate.py` as deliberately pessimistic, and for a riskless
+structure it is a categorical blind spot rather than conservatism — but a round that turns up
+the best-looking result in the project is exactly when a gate gets quietly loosened, so it is
+left alone and the failure is ASSERTED in selftest instead. The caveat is bigger than the
+finding: all of it scales linearly with `stale_leg_prob = 0.35`, a number with no evidence
+behind it. What transfers is where to look — fast underlyings with slow wing brackets, and a
+minimum-margin filter of at least one tick per leg. 167 checks pass.
+
 ---
 
 ## Standing notes
