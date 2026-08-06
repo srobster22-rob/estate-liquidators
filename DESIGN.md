@@ -169,13 +169,13 @@ appraised first*, per playtester, per hour of experience. If that number is stil
 hour five and lands under ~30%, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §6, §9). Scanning beats blind hauling by **+6%**
-at 14 van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
-confirmed as the load-bearing one. The margin started at +84% and came down twice as the
-model stopped using placeholders (see `ECONOMY.md` §9); +6% is thin enough that it is still
-an open question whether this mechanic carries the game, and R16 established that **no amount
-of extra cost can widen it** — only the payoff side is still worth pulling on. But the sim
-also overturned part of §4.1's framing:
+**Simulated ahead of the gate** (`ECONOMY.md` §6, §9). Scanning beats blind hauling by
+**+8.8%** at 14 van slots, and the edge decays to nothing between 24 and 32 slots —
+Requirement A is confirmed as the load-bearing one. That margin is not a property of the
+appraiser alone: on an estate where every room has the same value spread it is only +4.2%,
+and the rest comes from rooms *differing*, which is now an authoring requirement
+(`LEVEL-SPEC.md` §2.1, D-23). R16 established that **no amount of extra cost can widen it** —
+only the payoff side moves. But the sim also overturned part of §4.1's framing:
 
 > **The three seconds are decoration. The noise is the cost.**
 

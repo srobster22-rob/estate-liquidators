@@ -147,12 +147,14 @@ by **+84%** at 14 van slots, and the edge decays monotonically with capacity unt
 hauling wins outright somewhere between 24 and 32 slots. The mechanism §4.4 predicted is
 confirmed — the appraiser lives entirely on van space binding.
 
-**Revised twice since, and the current number is +6%.** The +84% used a placeholder for how
-badly noise punishes you; deriving it from the tuned Disturbance model gave +31%
-(`ECONOMY.md` §9), and coupling retrieval as well gave **+6%** (`sim/integrated.py`). The
-*mechanism* is unchanged and D-10 still stands — capacity is still the master lever, and the
-ordering is still right. What changed is the margin, and +6% is thin enough that whether this
-verb carries the game is genuinely unsettled. See D-22.
+**Revised three times since, and the current number is +4.2% flat / +8.8% on a V11 estate.**
+The +84% used a placeholder for how badly noise punishes you; deriving it from the tuned
+Disturbance model gave +31% (`ECONOMY.md` §9); coupling retrieval as well gave +6%; and R18
+found that last figure had been computed with an inert cursed-cargo floor of 2.0 against
+`tuning.json`'s canonical 7.0, which takes it to **+4.2%** on an estate where every room has
+the same value spread. D-23's authored spread takes it to **+8.8%**. The *mechanism* is
+unchanged throughout and D-10 still stands — capacity is still the master lever and the
+ordering is still right. See D-22 and D-23.
 
 Two things the sim changed:
 - **Scan *duration* is not the cost.** 1s and 9s per item produce the same outcome; there's
@@ -395,18 +397,29 @@ the DORMANT/PATROL boundary in play, and the heuristic is only available to some
 a debug meter. Also falsified if the R17 variance lever widens the edge past ~+15%, since a
 payoff that large would make scanning correct everywhere and dissolve the gate entirely.
 
-> **Amended by R17 — the positive half is demoted from rule to overlay.** Once rooms differ
-> (D-23), gating on the *room* beats gating on the *house*: scanning the widest-spread half
-> of rooms earns $7,133 against the quiet-gate's $6,891. Combining both is *worse* than the
-> room rule alone ($6,982), because the two constraints fight — the quiet window is early
-> night, and the good rooms arrive whenever they arrive.
+> **Amended twice. The negative half is untouched; the threshold moved.**
 >
-> It is not dominated, though, and that is the interesting part. The combined rule has a
-> **much better floor**: 10th-percentile $6,147 against $5,853, ending the night at
-> Disturbance 39 rather than 72. So "scan good rooms, but only while it's quiet" is the
-> cautious line and "scan good rooms whenever you find them" is the greedy one, separated by
-> ~$150 of expected value and a lot of variance. That is a real argument for four people to
-> have in a hallway, which is the bar. The negative half of D-22 is untouched.
+> **R17** demoted the positive half from rule to overlay: once rooms differ (D-23), gating on
+> the *room* looked strictly better than gating on the *house*.
+>
+> **R18 found that comparison was run with a wrong constant** — an inert cursed-cargo
+> Disturbance floor of 2.0 against `tuning.json`'s canonical 7.0 — *and* with the gate pinned
+> at 30. Corrected, the picture is better than either earlier round thought: at its proper
+> threshold the quiet gate and the room rule are worth **exactly the same**. Over 8,000
+> paired nights, "scan the top half of rooms while it's still tidying" minus "scan the top
+> quarter whenever" is **+$0 ± 12 (t = 0.0)**.
+>
+> **The threshold is 60, not 30.** With the floor corrected the night runs hotter, so a gate
+> at the DORMANT boundary closes almost immediately and the crew barely scans. 60 is the
+> PATROL/PURSUE boundary — where retrieval jumps 0.02 → 0.10, the only large discontinuity
+> in the cost of being seen. It is also still perceivable without a HUD, and better than the
+> old rule was: `AUDIO-SPEC.md` §3.2 gives PATROL domestic sounds (a case closing, cloth
+> folding) and PURSUE *footsteps only*. **"Appraise while it's still tidying. Stop when it
+> starts hunting."**
+>
+> Two strategies of identical value and completely different shape is a better outcome than
+> one dominant one — it is an argument four people can actually have in a hallway, which is
+> the bar this project sets.
 
 ---
 
@@ -419,13 +432,13 @@ and V11 rejects any estate that isn't at least a quarter of each with a mean of 
 **Why it's the right lever, when four others weren't.** Scanning's payoff is `0.6 ×` the
 room's spread and nothing else, so spread is not *a* lever on the appraiser — it is the only
 one on the benefit side. D-22 established that cost levers can only shave the edge down from
-+6%; this is the first thing in seventeen rounds to move it **up**, to +10%.
++4.2%; this is the first thing in seventeen rounds to move it **up**, to +8.8%.
 
 **Why it isn't just handing the appraiser money.** `E[value]` of a room is its band midpoint
 regardless of spread, and mean spread is pinned at 1.00, so a V11-compliant estate pays out
 exactly what a flat one does to a crew that never scans *and* to a crew that always scans.
-Both extremes were measured flat across the whole heterogeneity sweep ($6,485 and ~$6,470,
-unmoved). **The entire +4 points goes to crews that tell rooms apart.** That is a skill
+Both extremes were measured flat across the whole heterogeneity sweep (~$6,430 and ~$6,400,
+unmoved). **The entire +4.6 points goes to crews that tell rooms apart.** That is a skill
 ceiling rather than an economy buff, and the distinction is the reason this decision is worth
 its authoring cost.
 
@@ -435,16 +448,17 @@ the information isn't there to act on. Paying it because the alternative is the 
 being a formality, and because the requirement is one line per room and machine-checked.
 
 **The reassuring result** is that it degrades gracefully. Modelling players misreading rooms
-(σ = noise on their read, in units of the full heterogeneity range): σ=0 gives +10.0%, σ=0.5
-gives +8.9%, and even σ=1.0 — a read as noisy as the entire spread of rooms — still gives
-+7.8%, beating a crew that doesn't try. It only collapses to the +6% baseline at σ=2.0. So
-the mechanic rewards good reads without punishing bad ones, and a new player is never worse
-off for guessing.
+(σ = noise on their read, in units of the full heterogeneity range): σ=0 gives +8.8%, σ=0.5
+gives +7.8%, and even σ=2.0 — a read noisier than the entire spread of rooms — still gives
++5.6%, above what any spread-blind policy manages. So the mechanic rewards good reads without
+punishing bad ones, and a new player is never worse off for guessing.
 
 One emergent nuance worth keeping: **the noisier your read, the pickier you should be.**
 With a perfect read, scanning the top half of rooms is best; with any read noise at all, the
 top *quarter* wins. "When you're not sure, only stop for the obviously weird rooms" is
-correct play and also good advice, which is a pleasant thing to be able to say.
+correct play and also good advice, which is a pleasant thing to be able to say. The same
+shape shows up in the gate threshold: the pickier you are about rooms, the later into the
+night you can afford to keep scanning.
 
 **Falsified if:** Milestone 2 shows players scanning `uniform` and `curio` rooms at
 indistinguishable rates — that means the art isn't telegraphing spread and the whole

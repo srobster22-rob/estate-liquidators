@@ -324,16 +324,19 @@ toss-up, but thin enough that players may rationally skip it. Whether 6% is enou
 signature mechanic is a design judgement, not a simulation result, and it should be settled
 deliberately rather than by default.
 
-> **Settled in R16–R17, and the answer was to change the estate rather than the number.**
+> **Settled in R16–R18, and the answer was to change the estate rather than the number.**
 > R16 tried to widen the margin by making scanning riskier and proved it cannot be done —
 > the best available edge falls monotonically the harder you punish scanning, because you
 > cannot raise a payoff by adding a cost (`DECISIONS.md` D-22). R17 went at the benefit side
 > instead: scanning's payoff is `0.6 ×` the value *spread* of the room you're in, so making
 > spread differ room to room turns one global answer into a per-room question. That takes the
-> edge to **+10%**, and — because mean spread is pinned at 1.0 — without adding a dollar to
+> edge to **+8.8%**, and — because mean spread is pinned at 1.0 — without adding a dollar to
 > the estate. See `LEVEL-SPEC.md` §2.1, V11, and D-23.
 >
-> **The number to argue about now is +10%, and the lever is `room_spread`, not retrieval.**
+> R18 then corrected the baseline itself: the +6% above was computed with a cursed-cargo
+> Disturbance floor of 2.0, an inert value this file's own §5 had already replaced with 7.0.
+> **A flat estate is worth +4.2%, a V11 estate +8.8%**, and the lever is `room_spread`,
+> not retrieval.
 
 **The pillar works harder than designed.** Look at the Disturbance column, not the money: a
 blind crew ends the night at 30 and is never hunted. A scanning crew is pinned at 100 for

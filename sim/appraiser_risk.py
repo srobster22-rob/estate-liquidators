@@ -40,38 +40,53 @@ wins only in a sliver, the appraiser has the same structural problem R6 found an
 --------------------------------------------------------------------------------------
 WHAT IT FOUND — the hypothesis is falsified, and the reason generalises.
 
+(Figures below are R18's re-run. The original R16 pass used a cursed-cargo Disturbance
+floor of 2.0, which R18 found was an inert value contradicting tuning.json's canonical
+7.0. Correcting it lowered every absolute number by roughly a point and moved the best
+gate threshold, but changed none of the conclusions. Both are recorded because the
+difference between "the finding moved" and "the finding held" is the whole point.)
+
 1. THE TAIL RISK NEVER HELPS. Best-policy edge over BLIND falls monotonically as the
-   risk coefficient rises: 6.0% (k=0) -> 5.4 -> 5.0 -> 4.3 -> 2.4 -> 0.0 (k=8, BLIND
+   risk coefficient rises: 5.3% (k=0) -> 4.5 -> 3.3 -> 1.8 -> 1.1 -> 0.0 (k=8, BLIND
    wins outright). There is no k at which the appraiser gets MORE interesting.
 
-   The reason R11 worked and R12 does not is that the two mechanics had opposite
+   The reason R11 worked and this does not is that the two mechanics had opposite
    problems. The curse was ALWAYS CORRECT to take — benefit too large — so adding a
    catastrophic cost created a decision. The appraiser is BARELY correct to use —
    benefit too small — and no cost you add to a thin edge makes it thicker.
    You cannot raise a payoff by adding a cost. The brief was structurally confused; the
-   remaining levers must widen the BENEFIT (see appraiser_variance.py).
+   remaining levers must widen the BENEFIT (see appraiser_variance.py, which does).
 
-2. THE "INTERIOR" OPTIMUM IS DEGENERATE. GATE_30 wins at every k > 0, and 30 is exactly
-   the DORMANT/PATROL boundary — the edge of the region where RETRIEVAL is 0.00. The
-   optimum does not sit inside the risk landscape, it sits flush against the flat zero
-   part of it. A cost function with a zero region cannot produce an interior optimum;
-   it produces a boundary rule. Only at k=0 does a genuinely interior gate win
-   (GATE_45, 6,883) — i.e. the moment you switch the risk on, the answer collapses to
-   "scan only when it is free."
+2. THE OPTIMUM COLLAPSES ONTO A BOUNDARY AS RISK RISES. Retrieval is exactly 0.00 at
+   DORMANT, so the cost landscape has a flat zero region — and an optimum cannot sit
+   INSIDE a flat region, it sits flush against its edge. At low risk a genuinely
+   interior gate wins (GATE_45 through k=1.0); by k=2 the answer has collapsed to
+   GATE_30, the DORMANT/PATROL boundary, and stays there. Punish scanning hard enough
+   and the game stops asking a question and starts stating a rule: scan only where
+   scanning is free. Worth checking on any future cost curve — a free zone anywhere in
+   it produces a rule rather than a choice.
 
 3. THE COMPOUNDING STREAK IS PURE LOSS. Sweeping the exponent 0 -> 2 at fixed k=4.0
-   moves the best edge 3.1% -> 1.2%, monotonically down. Compounding adds punishment
-   without adding shape, so the "teaches it where to look" half of the brief buys
-   nothing and should not be built.
+   never improves anything: the best edge sits flat at 1.1% (the winning policy scans
+   so rarely that streaks never build), while the policies that DO scan decay
+   monotonically — GATE_45 goes $6,403 -> $6,270. Compounding adds punishment without
+   adding shape, so the "teaches it where to look" half of the brief buys nothing and
+   should not be built.
 
-4. THE ONE KEEPER — GATE BEATS ADAPTIVE ON ITS OWN TERMS. Even at k=0, gating on
-   Disturbance (GATE_45: 6,883) edges out the van-fill heuristic (ADAPTIVE: 6,852) and
-   beats it decisively once any risk exists (k=1: 6,822 vs 5,174). ADAPTIVE was
-   accidentally approximating "scan while it's quiet" via van fill, because both
-   correlate with time. The real heuristic is the Curator's state, and that is
-   legible without a HUD: DORMANT is the tier where AUDIO-SPEC 3.2 gives the house
-   NO SOUND AT ALL. "Appraise while you can't hear it" is a rule a crew can say out
-   loud in a hallway, which is the bar this project sets.
+4. THE KEEPER — GATE BEATS ADAPTIVE, BUT NOT AT A BOUNDARY PLAYERS CAN PERCEIVE.
+   With the risk off, gating on Disturbance ($6,789 at GATE_45) beats the van-fill
+   heuristic ($6,692), and buries it once any risk exists ($6,660 vs $4,992 at k=1).
+   ADAPTIVE was only ever approximating "scan while it's quiet" — both correlate with
+   time.
+
+   But the optimal threshold is 45, which is the MIDDLE of PATROL and therefore nothing
+   a player can hear. The legible rule — "appraise only while the house is silent",
+   i.e. gate 30 — is worth $6,609, about 2.6% worse than the invisible optimum. That is
+   the real cost of D-14's diegetic-only constraint, stated in dollars rather than
+   waved at. It is affordable. (appraiser_variance.py finds the honest resolution: once
+   rooms differ, the best gate moves out to 60 — the PATROL/PURSUE boundary — which IS
+   perceivable, because AUDIO-SPEC 3.2 has the Curator stop making domestic sounds when
+   it switches from tidying to hunting.)
 
 Run: python appraiser_risk.py
 """
@@ -88,6 +103,7 @@ IMPULSE = 0.09
 SUSTAINED = 0.02
 DECAY_PER_MIN = 50.0        # R4
 RATCHET_END = 55.0
+FLOOR_PER_CURSED = 7.0
 
 L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
      "radio": 38, "break_small": 90}
@@ -170,7 +186,7 @@ def run_night(seed, policy, cursed=2, retrieval_scale=1.0,
             streak = 0
 
         # --- Disturbance across the trip ------------------------------------
-        floor = RATCHET_END * (t / NIGHT_S) + cursed * 2.0
+        floor = RATCHET_END * (t / NIGHT_S) + cursed * FLOOR_PER_CURSED
         for _ in range(int(cost)):
             for _ in range(CREW):
                 if rng.random() < 0.04:

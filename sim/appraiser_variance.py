@@ -37,33 +37,50 @@ rather than assumed.
 --------------------------------------------------------------------------------------
 WHAT IT FOUND — it works, and it is the first thing in this project to move the edge UP.
 
-1. +6.2% -> +10.0% as H goes 0 -> 1.0. Every previous lever (R6, R8, R16) moved the best
-   available edge down or sideways. The control held exactly as designed: BLIND sat at
-   $6,485 and SCAN at ~$6,470 across the ENTIRE sweep, unmoved. So the gain is not extra
-   money in the estate — it is money that only a crew reading rooms can reach.
+(Figures are R18's re-run, after it found that this file and integrated.py were both
+using an inert cursed-cargo floor of 2.0 against tuning.json's canonical 7.0. The
+correction lowers every absolute number by about 1.7 points — the headline is +4.2% ->
++8.8%, not the +6% -> +10% first reported — and it changed one conclusion outright,
+flagged in 5 below.)
 
-2. IT NEEDS A LOT OF HETEROGENEITY, WHICH MEANS IT MUST BE AUTHORED. At H=0.25 nothing
-   happens at all (the flat quiet-gate still wins); the selective policy does not take
-   the lead until H=0.5, and the payoff climbs roughly linearly after that. An estate
-   authored without thinking about spread sits at H=0, so this cannot be left to
-   judgement -- hence LEVEL-SPEC 2.1's three room classes and V11's ratio check.
+1. +4.2% -> +8.8% as H goes 0 -> 1.0: the edge roughly DOUBLES. Every previous lever
+   (R6, R8, R16) moved the best available edge down or sideways. The control held
+   exactly as designed: BLIND sat at ~$6,430 and SCAN at ~$6,400 across the ENTIRE
+   sweep, unmoved. So the gain is not extra money in the estate — it is money only a
+   crew that reads rooms can reach.
+
+2. IT NEEDS A LOT OF HETEROGENEITY, WHICH MEANS IT MUST BE AUTHORED. At H=0.25 the
+   selective policies barely edge ahead; they do not take a clear lead until H=0.5, and
+   the payoff climbs roughly linearly after that. An estate authored without thinking
+   about spread sits at H=0, so this cannot be left to judgement -- hence LEVEL-SPEC
+   2.1's three room classes and V11's ratio check.
 
 3. THE TELEGRAPH DEGRADES GRACEFULLY, which was the real risk. Misreading rooms costs
-   surprisingly little: sigma 0 -> +10.0%, 0.5 -> +8.9%, 1.0 -> +7.8% (still well ahead
-   of the +6.2% baseline), collapsing to baseline only at sigma=2.0. A crew that reads
-   rooms BADLY still beats a crew that doesn't read them. Skill ceiling without a skill
-   floor.
+   surprisingly little: sigma 0 -> +8.8%, 0.5 -> +7.8%, 1.0 -> +6.5%, and even sigma=2.0
+   (a read noisier than the entire range of rooms) still returns +5.6% — above the
+   spread-blind baseline. A crew that reads rooms BADLY still beats a crew that doesn't
+   read them at all. Skill ceiling without a skill floor.
 
-4. NOISE MAKES YOU PICKIER. VAR_0.5 (scan the top half of rooms) is optimal with a
-   perfect read; the moment any read noise exists, VAR_0.25 takes over. "When you're not
+4. NOISE MAKES YOU PICKIER, AND SO DOES THE GATE. With a perfect read the top-half rules
+   win; with any read noise the top-QUARTER rules take over. Same in the gate sweep: the
+   pickier you are about rooms, the later into the night you can afford to keep scanning
+   (GATE alone peaks at 45, VARGATE_0.5 at 60, VARGATE_0.25 at 75). "When you're not
    sure, only stop for the obviously weird rooms."
 
-5. THE ROOM BEATS THE HOUSE, but the house is still the safe line. Pairing R16's
-   quiet-gate with the room rule LOSES mean ($6,982 vs $7,133) because the two fight --
-   the quiet window is early night and good rooms arrive whenever they arrive. But it
-   wins the FLOOR decisively: p10 $6,147 vs $5,853, ending at Disturbance 39 vs 72. Two
-   defensible strategies about $150 apart with very different variance is a better
-   outcome than one dominant one. See D-22's amendment.
+5. THE ROOM AND THE HOUSE ARE WORTH EXACTLY THE SAME — R18 OVERTURNED R17 HERE.
+   R17 reported that gating on the room beat gating on both, with the combined rule
+   surviving only as a safer, lower-variance line. That was an artifact of the wrong
+   cursed floor AND of pinning the gate at 30. With the floor corrected and the gate at
+   its proper threshold of 60 — the PATROL/PURSUE boundary, where retrieval jumps
+   0.02 -> 0.10, the only large discontinuity in the cost of being seen — the two are
+   statistically identical: over 8,000 paired nights, VARGATE_0.5 minus VAR_0.25 is
+   +$0 +/- 12 (t = 0.0).
+
+   That is a better outcome than either one winning. "Scan the top quarter of rooms
+   whenever you find them" and "scan the top half, but only while it's still tidying"
+   are worth the same money and feel completely different — and the second is
+   perceivable without a HUD, because AUDIO-SPEC 3.2 has the Curator stop making
+   domestic sounds the moment it switches from tidying to hunting.
 
 Run: python appraiser_variance.py
 """
@@ -80,6 +97,7 @@ IMPULSE = 0.09
 SUSTAINED = 0.02
 DECAY_PER_MIN = 50.0
 RATCHET_END = 55.0
+FLOOR_PER_CURSED = 7.0
 
 L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
      "radio": 38, "break_small": 90}
@@ -93,7 +111,14 @@ TIER_DATA = {1: (45.0, (80, 300)), 2: (60.0, (250, 700)), 3: (90.0, (600, 1400))
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3)]
 TIER_CAP = {1: 0.40, 2: 0.75, 3: 1.00}
 
-QUIET = 30.0        # R16: the DORMANT/PATROL boundary, and the only free place to scan
+# R18 moved this from 30 to 60. With the cursed floor corrected to its canonical 7.0 the
+# night simply runs hotter, so a gate at the DORMANT boundary closes almost immediately
+# and the crew barely scans at all. 60 is the PATROL/PURSUE boundary -- the point where
+# retrieval jumps 0.02 -> 0.10, a 5x step, and the only large discontinuity in the cost
+# of being seen. "Scan while it is merely tidying; stop when it starts hunting."
+# Threshold sensitivity is printed by sweep_gate() below; the spread-BLIND gate peaks
+# slightly lower, at 45.
+QUIET = 60.0
 
 
 def tier_of(d):
@@ -168,7 +193,7 @@ def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2):
         else:
             value = rng.choice(candidates)
 
-        floor = RATCHET_END * (t / NIGHT_S) + cursed * 2.0
+        floor = RATCHET_END * (t / NIGHT_S) + cursed * FLOOR_PER_CURSED
         for _ in range(int(cost)):
             for _ in range(CREW):
                 if rng.random() < 0.04:
@@ -245,6 +270,21 @@ def sweep_sigma():
               + f"{best:>13}{edge:>8.1%}")
 
 
+def sweep_gate(H=1.0):
+    print(f"\n\nWHERE SHOULD THE QUIET GATE SIT?   (H = {H})")
+    print("(30 = DORMANT/PATROL, 60 = PATROL/PURSUE, 85 = PURSUE/COLLECT)")
+    print("-" * 108)
+    cols = ["GATE", "VARGATE_0.5", "VARGATE_0.25"]
+    print(f"{'gate':<8}" + "".join(f"{c:>14}" for c in cols))
+    global QUIET
+    keep = QUIET
+    for g in (30.0, 45.0, 60.0, 75.0, 85.0):
+        QUIET = g
+        rows = {c: trial(c, n=2000, H=H)["mean"] for c in cols}
+        print(f"{g:<8.0f}" + "".join(f"{rows[c]:>14,.0f}" for c in cols))
+    QUIET = keep
+
+
 def detail(H=1.0):
     print(f"\n\nWHAT THE POLICIES ACTUALLY DO   (H = {H}, perfect read)")
     print("-" * 108)
@@ -268,4 +308,5 @@ if __name__ == "__main__":
     print("=" * 108)
     sweep_H()
     sweep_sigma()
+    sweep_gate()
     detail()

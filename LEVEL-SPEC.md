@@ -95,8 +95,8 @@ one — see `ART-DIRECTION.md`.
 > On an estate where every room has the same spread there is exactly one correct global
 > answer — scan everything or scan nothing — and the appraiser is a formality. Authored
 > heterogeneity is what converts it into a question asked fresh in every room. Measured:
-> a flat estate leaves the best strategy at **+6%** over blind hauling, an estate built to
-> the V11 mix reaches **+10%**, and the gain is *entirely* attributable to selectivity —
+> a flat estate leaves the best strategy at **+4.2%** over blind hauling, an estate built to
+> the V11 mix reaches **+8.8%**, and the gain is *entirely* attributable to selectivity —
 > the mean spread is 1.0 by construction, so a V11-compliant estate hands out no extra
 > money, only a decision.
 >

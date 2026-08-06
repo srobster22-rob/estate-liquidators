@@ -60,10 +60,13 @@ model; the physics ownership protocol; the loudness model; the decision log.
 **Specified and partly tested:** the economy, by two simulations that between them overturned
 four things this project believed.
 
-- The appraiser beats blind hauling by **+6%** at 14 van slots — and dies entirely between
-  24 and 32 slots. Van capacity is the master constant. (That number has been revised down
-  twice as the model got honest: +84% with a placeholder noise cost, +31% once Disturbance
-  was derived, +6% once retrieval was too. `ECONOMY.md` §9 carries the chain.)
+- The appraiser beats blind hauling by **+8.8%** at 14 van slots — and dies entirely between
+  24 and 32 slots. Van capacity is the master constant. Most of that margin is not the
+  appraiser's own: a flat estate is worth only +4.2%, and the rest comes from rooms differing
+  in how *varied* their contents are, which `LEVEL-SPEC.md` §2.1 now requires and V11
+  enforces. (The headline has been revised down three times as the model got honest — +84%,
+  +31%, +6%, +4.2% — each time by removing a placeholder or a wrong constant. `ECONOMY.md` §9
+  carries the chain, and that chain is the most useful thing in this repo.)
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4

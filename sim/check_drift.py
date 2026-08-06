@@ -123,7 +123,8 @@ for name in ("sprint", "appraise", "door"):
 
 # --------------------------------------------------------------- Python sims
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
-        for n in ("integrated.py", "disturbance.py", "curse_test.py")}
+        for n in ("integrated.py", "disturbance.py", "curse_test.py",
+                  "appraiser_risk.py", "appraiser_variance.py")}
 
 check("py integrated IMPULSE",
       grab(sims["integrated.py"], r"^IMPULSE\s*=\s*([\d.]+)", flags=re.M),
@@ -140,8 +141,25 @@ check("py integrated VAN_SLOTS", grab(sims["integrated.py"], r"VAN_SLOTS\s*=\s*(
 check("py disturbance IMPULSE",
       grab(sims["disturbance.py"], r"IMPULSE_PER_L\s*=\s*([\d.]+)"),
       lc["impulse_disturbance_per_l"])
-check("py curse floor", grab(sims["curse_test.py"], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
+# R18: the cursed floor sat at an inert 2.0 in integrated.py and proto/index.html for
+# nine rounds while tuning.json, the C# core and curse_test.py all said 7.0 -- and this
+# checker could not see it, because both offenders INLINED the number instead of naming
+# it. The checker's coverage is exactly the set of constants somebody bothered to name.
+# Every model that computes a Disturbance floor is now checked by name.
+for _f in ("integrated.py", "curse_test.py", "appraiser_risk.py",
+           "appraiser_variance.py"):
+    check(f"py {_f} cursed floor",
+          grab(sims[_f], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
+          d["per_cursed_item_floor"])
+check("JS cursed floor", grab(js, r"PER_CURSED_FLOOR\s*=\s*([\d.]+)"),
       d["per_cursed_item_floor"])
+for _f in ("appraiser_risk.py", "appraiser_variance.py"):
+    check(f"py {_f} RATCHET", grab(sims[_f], r"RATCHET_END\s*=\s*([\d.]+)"),
+          d["ratchet_end"])
+    check(f"py {_f} DECAY", grab(sims[_f], r"DECAY_PER_MIN\s*=\s*([\d.]+)"),
+          d["decay_per_min_at_crew4"])
+    check(f"py {_f} VAN_SLOTS", grab(sims[_f], r"VAN_SLOTS\s*=\s*(\d+)"),
+          v["base_slots"])
 check("py curse ruin_exp", grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"),
       v["ruin_exp"])
 

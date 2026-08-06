@@ -228,6 +228,38 @@ generate *negative* item values. Clamped the half-width at the mean, which fixes
 leaving a symmetric uniform's mean exactly where it was — so the invariance the whole
 experiment rests on survived the fix. Re-ran: 10.1% vs 10.2%, no material change.
 
+R18 · Went after the first of the two standing balance holes — cursed cargo being inert — and
+it turned out to be a **drift-checker blind spot, not a tuning question**. `tuning.json`, the
+C# core and `curse_test.py` have all said the Disturbance floor is **7.0 per cursed item**
+since R9. `sim/integrated.py` and `proto/index.html` were both still on the inert **2.0**, and
+`check_drift.py` — the tool built in R14 specifically to prevent this — could not see either,
+because **both offenders inlined the number instead of naming it.** The checker's coverage is
+exactly the set of constants somebody bothered to give a name to, which is a much weaker
+guarantee than "55 constants agree" sounds like. Fixed all four call sites, added named
+constants, and extended the checker to **65 constants** covering every model that computes a
+Disturbance floor. Re-verified it still fails when it should: injected `integrated.py` 7→2 and
+the JS 7→3, confirmed both are caught and the run exits 1, reverted, exit 0. · **Then re-ran
+the two rounds that had been standing on the wrong number, which is the real content of this
+entry.** Everything shifts down ~1.5 points and one conclusion inverts. **R16 survives
+cleanly:** the tail-risk edge still falls monotonically (5.3 → 4.5 → 3.3 → 1.8 → 1.1 → 0.0),
+compounding still only ever hurts, and "you cannot raise a payoff by adding a cost" is
+untouched. **R17's headline survives but shrinks:** +6%→+10% was really **+4.2%→+8.8%**. The
+edge still roughly doubles and the control still holds exactly (BLIND ~$6,430 and SCAN ~$6,400
+flat across the entire heterogeneity sweep), so the finding stands — it was just standing a
+point and a half too high. · **R17's one genuinely wrong conclusion, now overturned.** R17
+claimed the room rule beats the quiet gate and that combining them costs money. That was an
+artifact of the bad constant *and* of pinning the gate at Disturbance 30. With the floor
+corrected the night runs hotter, so a gate at the DORMANT boundary shuts almost immediately —
+the right threshold is **60, the PATROL/PURSUE boundary**, where retrieval jumps 0.02→0.10 and
+which is the only large discontinuity in the cost of being seen. There, over 8,000 paired
+nights, the two rules are **exactly tied: +$0 ± 12, t = 0.0**. Two strategies with identical
+expected value and completely different variance is a better result than either winning, and
+the gated one is *more* legible than the old rule, not less — AUDIO-SPEC §3.2 already has the
+Curator drop its domestic sounds when it stops tidying and starts hunting. **"Appraise while
+it's still tidying."** · Corrected the numbers in `D-10`, `D-22`, `D-23`, `README`, `DESIGN`
+§4.4, `ECONOMY` §9 and `LEVEL-SPEC` §2.1 rather than leaving two rounds of confident wrong
+figures in the docs.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -235,36 +267,39 @@ experiment rests on survived the fix. Re-ran: 10.1% vs 10.2%, no material change
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R18: the two live balance holes, both known, both cheap, both overdue.**
+**R19: V5, the last weak check.** It is now the weakest of the eleven by a distance — it only
+counts doors on the shortest path and has still never failed anything, including on BROKEN_B,
+where it is the one planted-fault category that slips through. V11 is the model to copy: a
+check earns its place by failing the *default* an unaware author produces, not by being
+theoretically correct. Rewrite it to use the same all-simple-paths treatment V4 got in R1
+(players take the quiet route precisely to avoid the loud one, so the shortest path is the
+wrong thing to measure), then plant a fault in BROKEN_B that trips it and confirm 9/9.
 
-(a) **Cursed cargo is still inert, and the two sims now openly disagree.** R9 put the needed
-Disturbance floor near **+7 per cursed item**; `curse_test.py` runs at 7.0 and `integrated.py`
-still hardcodes 2.0, and *neither* number is in `tuning.json`, so `check_drift.py` cannot see
-the conflict. Pick one, propagate it to all three implementations, and add it to the drift
-check — the checker's whole value is that disagreements like this can't sit quietly.
+**Then R20: take `room_spread` into the prototype.** It now exists in the spec, the validator,
+the economy and the decision log, but `proto/index.html` still draws every room from one band
+— so the *game* does not yet contain the decision R17 and R18 were spent building. R12 and R18
+are both standing evidence that moving a verified model into real code finds things no sweep
+can: R12 found per-frame vs per-second noise and crew-size-dependent decay, R18 found a
+nine-round-old constant hiding in plain sight. Expect the telegraph to be the hard part —
+R17/R18 say the mechanic survives a noisy read, but say nothing about whether a flat-shaded
+low-poly room can communicate "miscellaneous" at a glance. That is an `ART-DIRECTION.md`
+question no simulation will answer.
 
-(b) **V5 in `validate_estate.py` remains the weakest of the eleven checks.** It only counts
-doors on the shortest path and has still never failed anything, including on BROKEN_B where
-it is the one planted-fault category that slips through. V11 is the model to copy: it fails
-the *default* an unaware author produces, which is what makes a check worth running.
+**A standing rule earned the hard way in R18.** *A checker only checks what somebody named.*
+`check_drift.py` reported "55 constants agree" for four rounds while two implementations
+disagreed about a number that changes the project's headline result — because the number was
+written inline in both. Before trusting any future green run, ask what the checker cannot see.
+Same reasoning as V4's declare-pinch-true-or-false guard and V11's declare-spread guard:
+silence is how bad values sneak in, in code exactly as in level data.
 
-**Then R19: take R17 into the prototype.** `room_spread` now exists in the spec, the
-validator, and the economy, but `proto/index.html` still draws every room from one band —
-so the game does not yet contain the decision the last two rounds were spent building. R12
-is the standing evidence that porting a verified model into real-time code finds bugs no
-simulation can (per-frame vs per-second noise, crew-size-dependent decay). Expect the same
-here, and expect the *telegraph* to be the hard part: R17 says the mechanic survives a noisy
-read, but it says nothing about whether a flat-shaded low-poly room can communicate
-"miscellaneous" at a glance. That is an `ART-DIRECTION.md` question the sim cannot answer.
-
-**Standing note on the appraiser thread — it is now closed, and should stay closed.** Five
-rounds (R6, R8, R16, R17) circled the same +6%, and the answer turned out to be structural
-rather than numerical: cost levers can only shave the edge down (D-22), and the benefit side
-had exactly one lever on it (D-23). At **+10%** with a real skill ceiling and a graceful
-failure mode, the mechanic is defensible. **Do not reopen it with another tuning sweep** —
-the next real information about the appraiser comes from Milestone 2 instrumentation
-measuring what fraction of items players actually scan at hour five, which is the falsification
-condition D-10 has been carrying since the beginning.
+**And the appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
+circled the same number, and the resolution was structural, not numerical: cost levers can
+only shave the edge down (D-22), the benefit side had exactly one lever on it (D-23), and one
+of the four rounds was measuring a typo. At **+8.8%** with a real skill ceiling, a graceful
+failure mode, and two equal-value strategies of different shape, the mechanic is defensible.
+**Do not reopen it with another tuning sweep.** The next real information comes from Milestone
+2 instrumentation measuring what fraction of items players actually scan at hour five — the
+falsification condition D-10 has been carrying since the beginning.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.
