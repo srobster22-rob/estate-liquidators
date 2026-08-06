@@ -1,6 +1,6 @@
 # Everyday Projects That Help Society — A Prompt Kit
 
-Twenty-four copy-and-paste prompts for building small, real software that helps actual people in
+Thirty copy-and-paste prompts for building small, real software that helps actual people in
 an actual place. Each one is a complete brief: a named user with a named problem, an exact
 stack, named data sources, hard constraints, a scope fence, numbered acceptance tests, and
 milestones with exit criteria.
@@ -15,7 +15,7 @@ agent) and it can start writing files in the first minute without asking you twe
 ## Building them
 
 **[`launch/`](launch/README.md) turns any of these into one paste.** Fill in `launch/LOCALE.md`
-once (your city, county, state, timezone, languages), run `launch/build-pack.sh`, and you get 24
+once (your city, county, state, timezone, languages), run `launch/build-pack.sh`, and you get 30
 self-contained files in `launch/ready/` — each one the brief plus repo setup, a working
 agreement, deliverables, and stop conditions. Open a new chat, paste one file, done. One project
 per chat.
@@ -43,7 +43,7 @@ The pack is pre-generated with placeholders intact, so it works before you fill 
 
 ---
 
-## The twenty-four
+## The thirty
 
 **New here? Start with [16](16-disposal-guide.md).** Lowest stakes, real users on day one, and
 it drills the two habits every other project depends on: verify local facts by phone, and design
@@ -75,6 +75,12 @@ for the data going stale.
 | [22](22-scam-check-and-report.md) | **Scam check + report** | 78-year-old on the phone with "the bank's fraud department" right now | One sentence, in type she can read, in one tap |
 | [23](23-caregiver-binder.md) | **The caregiver's binder** | Daughter reciting nine of eleven medications to a paramedic at 2am | Fits on one page or it doesn't get read |
 | [24](24-after-a-death.md) | **After a death: the first weeks** | Widow asked for a death certificate four times in two days, holding two | Tone, and the debt sentence collectors count on |
+| [25](25-election-logistics.md) | **Election logistics + deadlines** | Voter who moved eleven blocks and assumed registration followed | Received-by vs postmarked-by, and staying strictly procedural |
+| [26](26-record-clearing-screener.md) | **Record clearing screener** | Man turned down for four apartments over a nine-year-old charge | Routing to the clinic without pretending to be the lawyer |
+| [27](27-flood-and-water.md) | **Flood risk + the insurance clock** | Homeowner who thinks her policy covers water. It doesn't. | A waiting period means the decision happens on a dry day |
+| [28](28-device-and-connectivity.md) | **Device lending + connectivity** | Teen doing homework in a parking lot; the laptop was never the constraint | The navigator matters more than the lending system |
+| [29](29-naloxone-access.md) | **Naloxone access + overdose response** | Mother who's meant to get naloxone for a year and hasn't | Good Samaritan law belongs on the emergency screen, stated exactly |
+| [30](30-small-claims-helper.md) | **Small claims + consumer complaints** | Roofer took $4,200 and left a tarp | A judgment is not money, and the tool has to say so first |
 
 Also in this directory:
 
@@ -126,7 +132,7 @@ a demo and something a person can actually use.
 
 ## Choosing well
 
-A short honest filter, since twenty-four options invites drift:
+A short honest filter, since thirty options invites drift:
 
 - **Is there a specific person you can show it to this month?** If not, pick a different one.
   These are not products; they're tools for a place you know.
@@ -143,6 +149,11 @@ A short honest filter, since twenty-four options invites drift:
   benefits screener showing 2026 numbers in 2029 is actively harmful. If the answer is no,
   pick #01, #09, #12, or #16 — the ones that fail safe.
 
+**One is already built.** [#16 is implemented](../disposal-guide/) as a reference: two-layer
+verdicts, build-time safety validation, 19.5KB gzipped, axe clean. Read its `STATUS.md` and
+`VERIFY.md` to see what an honest "done" looks like — including the milestones an agent cannot
+finish.
+
 **A few are different in kind.** #18 is infrastructure rather than a product: build it when a
 directory you already run has started rotting, or when three organizations in your city each
 maintain their own half-wrong list. #08 genuinely wants a partner organization before the first
@@ -151,9 +162,10 @@ coverage — the brief says so and means it. And #21 exists partly to route peop
 state's federally-funded Parent Training and Information Center, which is free, expert, and
 almost unknown; if the app does nothing but hand a parent that phone number, it has worked.
 
-**Several have a hard external gate you can't skip.** #19, #21, #22, and #24 each require
-someone who does the work — a legal aid attorney, a PTI advocate, a bank fraud specialist, a
-probate clerk — to read the output before a real person sees it. Those milestones are written
+**Several have a hard external gate you can't skip.** #19, #21, #22, #24, #26, #29, and #30
+each require someone who does the work — a legal aid attorney, a PTI advocate, a bank fraud
+specialist, a probate clerk, a harm reduction program — to read the output before a real person
+sees it. Those milestones are written
 as blockers because in each case a confidently wrong sentence costs someone a judgment, a
 year of services, or money they didn't owe.
 
