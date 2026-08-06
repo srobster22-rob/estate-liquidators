@@ -62,6 +62,13 @@ there, are at the bottom.
 > - **At least six** are shippable solo in under six months. Small and finishable is a design
 >   constraint, not a consolation prize.
 > - **At least six** have no combat and no health bar anywhere in them.
+> - **At least six are fast** — aim, dodge, timing, combat depth. This quota exists because
+>   without it the count comes back at zero, every time, and not for the reason you'd guess.
+>   A list ranked by cost-to-disprove drifts away from action *structurally*: an action game's
+>   bet is a claim about **feel**, and feel has no paper version, so it can never compete with
+>   a systems bet that a spreadsheet settles in an evening. For these six, the one-day test
+>   becomes a **playable** one — a 2D grey box, a debug overlay, a dummy — and may cost up to
+>   three days. Say so on the card rather than pretending it's an evening.
 > - **At least four** you think are commercially unwise but mechanically true — the ones you'd
 >   normally self-censor. Mark them. An idea list with no embarrassing entries has been
 >   filtered by a marketing instinct rather than a design one.
@@ -185,6 +192,17 @@ work. The "commercially unwise but mechanically true" quota is doing something s
 model's market instinct filters early and silently, and some of what it removes is the good
 part.
 
+**"At least six are fast."**
+Added after the first run of this prompt returned forty concepts with no twitch in any of
+them. Worth understanding *why*, because the same distortion applies elsewhere: it isn't
+taste, it's the scoring function. Ranking by cost-to-disprove rewards bets a spreadsheet can
+settle, and an action game's bet is "this feels good," which no spreadsheet settles. So the
+cheap-test clause — the best clause in this prompt — quietly suppresses an entire category.
+The quota patches the symptom. Assume it's also suppressing everything else whose quality
+lives in execution rather than structure: animation, comedy timing, horror pacing. Add quotas
+for those too if you care about them, and don't mistake the patch for the prompt having
+changed its mind.
+
 **"Rank by cost to disprove, not by excitement."**
 Excitement ranking is why people build the expensive idea first and learn nothing for three
 months. This inverts it: the best idea in a portfolio is the one that answers a question
@@ -224,6 +242,11 @@ which is the exact artefact it was written to avoid.
 
 ## The output
 
-`GAME-CONCEPTS.md` is this prompt, run once. Forty concepts, eight families, a ranked top
-eight, and a graveyard of nineteen. Read its header before the cards — it's explicit about
-which claims in it were verified and which are memory.
+`GAME-CONCEPTS.md` is this prompt, run once, plus one amendment. 46 concepts, nine families, a
+ranked top eight, and a graveyard of twenty-five. Read its header before the cards — it's
+explicit about which claims in it were verified and which are memory.
+
+The amendment is the action quota above. Family 9 was added after the fact, two of its six
+entered the top eight on merit, and the displacement is written up in that section rather than
+quietly swapped. That's the loop this prompt is supposed to support: run it, find where the
+output is thin, fix the *prompt*, and re-run the affected part rather than the whole thing.

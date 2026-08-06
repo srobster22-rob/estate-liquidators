@@ -1,7 +1,14 @@
-# Forty Game Concepts
+# Forty-Six Game Concepts
 
-`GAMES-PROJECT-PROMPT.md`, run once. Forty concepts in eight families, a ranked top eight,
-and a graveyard of nineteen.
+`GAMES-PROJECT-PROMPT.md`, run once, plus one amendment. 46 concepts in nine families, a
+ranked top eight, and a graveyard of twenty-five.
+
+**The amendment.** The first pass produced 40 concepts with no twitch, no aim and no combat
+depth anywhere in them, and the self-audit at the bottom called that a bias of the generator
+rather than a position worth defending. **Family 9 — Fast** is the correction: six action
+concepts, and a note on why action resists this format. Two of them entered the top eight on
+merit and displaced two entries, which is written up in that section rather than quietly
+swapped.
 
 **What this is for.** Finding the one thing to prototype on Saturday. Not a list to feel good
 about. Every card carries a written-down result that would make you drop it and a test small
@@ -10,8 +17,9 @@ enough that you'd actually run it.
 **What is verified and what isn't.** Nothing here is verified. Every "nearest shipped game"
 is memory, and that memory has a cutoff — some of these shipped last year and I don't know it.
 **Before building anything: search the store for the top eight's comparables.** Five minutes
-each, and it is the highest-value hour in this document. Three of the forty (`#9`, `#33`,
-`#38`) I already suspect are occupied, and I've said so on the card.
+each, and it is the highest-value hour in this document. Five concepts I already suspect are
+occupied and have said so on the card: `#9`, `#33`, `#38`, and — from the action pass, where
+the space is much more crowded — `#43` and `#46`.
 
 **Calibration.** Estate Liquidators — *aggro follows the most valuable object leaving the
 house, so you can get rid of the monster by handing the vase to your friend* — is roughly the
@@ -34,8 +42,9 @@ Tags: `SOLO` shippable by one person · `NO COMBAT` no combat, no health bar any
 `UNMARKETABLE` mechanically true, commercially unwise, included deliberately ·
 `POPULATION` needs a live player base to function — the heaviest structural dependency here.
 
-Quota check: 8 families, 5 each · 1 co-op horror and 1 solo horror against a cap of 3 ·
-19 solo-shippable · 28 with no combat · 7 marked unmarketable · 7 needing a population.
+Quota check: 9 families — 5 each and 6 in Family 9, against a cap of 6 · 1 co-op horror and
+1 solo horror against a cap of 3 · 21 solo-shippable · 28 with no combat · 6 with combat as
+the point · 7 marked unmarketable · 8 needing a population.
 
 ---
 
@@ -700,6 +709,140 @@ game with no monster in it at all.**
 
 ---
 
+## Family 9 — Fast
+
+**Verb: aim, dodge, time. Feeling: pressure.** Added on a second pass, because the first pass
+produced forty concepts with no twitch anywhere in them and the self-audit called it a bias
+rather than a position.
+
+**One honest note before the cards, because it changes how you read them.** Action concepts
+resist this document's format. In every other family the bet is a claim about a *system* —
+"generated forgeries can be fair," "reputation survives alts" — and a system can be
+interrogated on paper, in a spreadsheet, in an evening with friends. An action game's bet is
+usually a claim about **feel**, and feel is not falsifiable on paper. There is no dossier
+version of "does the recoil read."
+
+So every card in this family has a **playable** kill test — a 2D grey box, a debug overlay, a
+dummy — and the costs run from an afternoon to three days rather than from nothing to an
+evening. That's a real difference and it's priced into the ranking. It is also, I suspect, the
+actual mechanism behind the bias: a generator asked for cheap-to-disprove ideas will quietly
+drift toward systems and away from feel, because systems are cheaper to argue about.
+
+Two of these are still among the cheapest tests in the document, which is why the top eight
+changed.
+
+### 41 · Tell
+**A duel where the enemy builds a model of your habits inside a single fight, and starts
+punishing them at thirty seconds.**
+
+Not run-to-run learning and not a scripted phase change — an online model of the last half
+minute of your inputs, updating live.
+
+- **The bet:** within-fight adaptation is *legible*. The player can feel themselves being
+  read, name the habit that got punished, and change it — rather than experiencing it as
+  rubber-banding.
+- **Nearest:** *Sekiro* (the bar for readable duels, and entirely static) · the *Shadow of
+  Mordor* Nemesis system (adaptation, but between encounters, where you have time to notice) ·
+  Forza Drivatars (offline-trained, racing).
+- **Kills it:** players can't name what it punished. If a tester who just lost says "it got
+  harder" instead of "it started blocking my third light attack," the system is invisible, and
+  an invisible system is indistinguishable from difficulty scaling — which is cheaper.
+- **Test:** **build the read-back before the model.** One dummy enemy, one debug panel showing
+  the habit it currently thinks you have, and a stupid punish. Three days. Then hide the panel
+  and see whether testers still name the habit. *(Same lesson as Pack (#29) and as Estate
+  Liquidators' "build the aggro display before the aggro logic" — this is now the third
+  independent concept to land on it, which is worth noticing.)*
+- **Scope:** 2–3 people, 9 months.
+
+### 42 · Throng
+**One against five hundred, and the crowd is a fluid.**
+
+Not five hundred enemies with individual AI — a continuum with pressure, flow, and
+compression. You fight by displacing a substance.
+
+- **The bet:** a crowd simulated as flow makes positioning matter more than your weapon does.
+  The skill is reading currents and creating a gap, not clearing spawns.
+- **Nearest:** *Dynasty Warriors* (crowds as scenery that falls over) · *Total War* (real mass,
+  but strategic and from above) · *Hades* (density as a difficulty dial, no flow model).
+- **Kills it:** at 500 agents the readable information collapses into noise and the player just
+  mashes. Legibility, not performance, is what kills this — though performance will try.
+- **Test:** **strip the combat out entirely.** 2D top-down, 500 boids, one player dot, no
+  weapon. Can a tester deliberately steer the crowd — split it, herd it, open a lane? Three
+  days. If they can't do it with no enemies attacking them, they never will with.
+- **Scope:** 3 people, 10–12 months. The crowd solver is the whole engineering risk and it's a
+  real one.
+
+### 43 · Recoil `SOLO`
+**No walk button. Firing is how you move.**
+
+- **The bet:** collapsing aim and locomotion into one input makes every offensive decision
+  positional and every positional decision offensive. Weapon variety becomes movement variety
+  — a shotgun isn't a damage profile, it's a different way of getting across a room.
+- **Nearest:** *Downwell* (recoil-jump on one axis — the proof that the core is sound) ·
+  rocket-jumping in *Quake* / TF2 (a tech, never the whole scheme) · **and I strongly suspect a
+  2D indie has already done this properly. Check before you build.** This is the card in the
+  document most likely to be occupied.
+- **Kills it:** one weapon dominates and the others are decoration. Or, in 3D, it's simply
+  nauseating — but you don't need to find that out, because the test is 2D.
+- **Test:** 2D, one weekend, **three weapons**. The third one is the experiment: if it doesn't
+  feel like a different game from the first, the bet is dead and the concept is a gimmick with
+  one good level in it.
+- **Scope:** solo, 5 months in 2D.
+
+### 44 · Ghosts `POPULATION`
+**A bullet-hell where the hazards are other players' recorded runs.**
+
+- **The bet:** asynchronous PvP where the danger *is* the population. Nobody is online with
+  you and everybody is against you.
+- **Nearest:** *Trackmania* ghosts and *Super Meat Boy* replays (both purely cosmetic — the
+  step is making them lethal) · *Dark Souls* invasions (live, and the tonal ancestor) ·
+  *Crypt of the NecroDancer* leaderboards.
+- **Kills it:** the ghost pool converges. If everyone's run collapses onto one optimal path
+  within a week, the level is static again — and you've built a hand-authored level the
+  expensive way, via infrastructure.
+- **Test:** **no new game needed.** Take any existing score-attack level, record fifty runs
+  from ten people, replay them as hazards, and measure path variance on day 1 against day 7.
+  Two days of work and it answers the only question that matters.
+- **Scope:** 2 people, 6 months, plus a population.
+
+### 45 · Sever
+**Melee with limb-level damage and no health bar. You win by disabling.**
+
+- **The bet:** an injury model instead of an HP pool makes every exchange legible and
+  permanent. A cut arm stays cut, both fighters can see it, and the fight's state is written on
+  the bodies rather than in a bar.
+- **Nearest:** *Exanima* (physics melee with real injury — closest, and deliberately slow) ·
+  *Kingdom Come: Deliverance* (directional, still HP-driven) · *Mordhau*. Injury-as-state
+  exists in simulations; it does not exist at action speed, which is either the gap or the
+  reason.
+- **Kills it:** at speed, players can't read which limb they hit or what it cost. If the state
+  isn't legible inside half a second, you've built an HP bar with bookkeeping — worse than an
+  HP bar, because it's also confusing.
+- **Test:** no combat AI, no enemies. Two players, one training dummy, one weapon, and a
+  visible injury readout. **Can they call the hit before the readout updates?** If not, stop.
+  Three days.
+- **Scope:** 3 people, 12 months. The most expensive concept in the document, and the least
+  compressible — this one does not have a cheap 2D version.
+
+### 46 · Direct `SOLO`
+**You control the camera. The character runs toward whatever you frame.**
+
+- **The bet:** **framing is the verb.** The skill is composition under pressure, and the
+  character's competence is downstream of your attention rather than your dexterity.
+- **Nearest:** genuinely thin, **which per this document's own rule is a warning and not an
+  opportunity.** Adjacent: rail shooters inverted · sports broadcast-camera games · *Kine*.
+  Indirect-control action has been tried and mostly buried; find out by whom before you commit
+  a month.
+- **Kills it:** indirect control reads as unresponsive. That is the failure mode of every game
+  that has attempted it, and it shows up fast — if the character does the wrong thing twice in
+  the first minute, players quit and never articulate why.
+- **Test:** 2D. A dot that runs toward the centre of your view, and a reason to go somewhere.
+  **One afternoon, and you'll know inside ten minutes.** The cheapest decisive test in the
+  document and the reason this card enters the top eight.
+- **Scope:** solo, 5 months.
+
+---
+
 ## The top eight
 
 **Ordering criterion: how cheaply can I find out I'm wrong, weighted by how much survives a
@@ -709,13 +852,23 @@ learn nothing for a quarter.
 | # | Concept | Cost to run the kill test | What it costs to be wrong |
 |---|---|---|---|
 | 1 | **Provenance** (#16) | One day, text only, no engine | Nothing — the test *is* the generator you'd need anyway, so a fail leaves you a tool and a finding |
-| 2 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
-| 3 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
-| 4 | **Tow** (#7) | A weekend, 2D | A weekend. And the rope-constraint code survives into anything physical |
-| 5 | **Sworn** (#2) | One evening, on paper | An evening — but the *build* is 9–12 months, so a false positive here is the most expensive mistake in the table. Run it twice, with two different groups |
-| 6 | **Pack** (#29) | Three days, 2D, debug overlay | Three days, and the read-back finding transfers to any companion-AI design you ever do |
-| 7 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
-| 8 | **Ledger** (#20) | A day, one CSV, one accountant friend | A day — but it shares its kill condition with #16, so **run Provenance first** and this may be answered for free |
+| 2 | **Direct** (#46) | **One afternoon**, 2D, decisive in ten minutes | An afternoon. And a fail is genuinely informative: it tells you *why* indirect control keeps getting buried |
+| 3 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
+| 4 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
+| 5 | **Recoil** (#43) | A weekend, 2D, three weapons | A weekend — but check the store first. This is the card most likely to already exist, and that check costs five minutes |
+| 6 | **Tow** (#7) | A weekend, 2D | A weekend. And the rope-constraint code survives into anything physical |
+| 7 | **Sworn** (#2) | One evening, on paper | An evening — but the *build* is 9–12 months, so a false positive here is the most expensive mistake in the table. Run it twice, with two different groups |
+| 8 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
+
+**What the action pass displaced, and why.** Direct (#46) and Recoil (#43) entered on merit —
+an afternoon and a weekend respectively, both decisive, both solo-shippable. They pushed out:
+
+- **Ledger** (#20), which shouldn't have been in the eight to begin with. It shares its kill
+  condition with Provenance, so it was never an independent option — counting it as one
+  overstated the portfolio. It stays worth building; it just isn't a separate *question*.
+- **Pack** (#29), at three days, straightforwardly outbid. It's the first thing back in if any
+  of the above dies on contact, and its read-back finding is now shared with Tell (#41), so
+  running either one part-answers the other.
 
 **Runner-up, and the one worth arguing about: Understudy (#34).** Its test is the cheapest in
 the whole document — one hour, a chat window, ten repeated inputs, measure agreement. By raw
@@ -728,15 +881,24 @@ That distinction — cost to disprove versus **information gained per pound** �
 criterion, and Understudy is where the two come apart. If you think a cheap test that proves
 little still beats a moderate test that proves a lot, promote it and the ranking changes.
 
+**The action equivalent of that argument is Tell (#41).** Three days for the read-back, and a
+pass proves only that adaptation is *legible* — not that being read is fun to play against.
+Legibility is the necessary half and the cheap half. Highest ceiling in Family 9, weakest
+signal per day spent.
+
 **If you only do one thing this Saturday:** Provenance's fifty text dossiers. It's a day, it
-needs no engine, the artefact survives failure, and it also answers Ledger.
+needs no engine, the artefact survives failure, and it also answers Ledger. **If you want to
+do one thing this afternoon:** Direct's running dot. Ten minutes of play answers it, and the
+answer is unambiguous in a way none of the systems concepts can be.
 
 ---
 
 ## The graveyard
 
-Nineteen that were generated and cut, with the reason. This is the section that should make
-you trust the other forty.
+Twenty-five that were generated and cut, with the reason. This is the section that should make
+you trust the other forty-six. Entries 20–25 came from the action pass, and that family needed
+its own rejections more than most — action is the most crowded space in games, so a pass that
+produced six keepers and cut nothing would be a pass that wasn't looking.
 
 1. **Chorus** — co-op where sung pitch is the network protocol. The accessibility floor is a
    wall, not a slope: a large minority genuinely cannot pitch-match, and there's no parallel
@@ -779,6 +941,22 @@ you trust the other forty.
     *Democracy*; the fun version is a chat log; nobody has found the middle, and I don't have
     a mechanism for it either. Cut for honesty rather than for quality.
 
+*From the action pass:*
+
+20. **Rhythm FPS** — *BPM: Bullets Per Minute* and *Metal: Hellsinger*. Occupied twice, by two
+    good games, which is about as closed as a space gets.
+21. **A shooter where reloading is the whole skill** — *Receiver 2*, and it commits harder than
+    my version did.
+22. **Soulslike where you play the boss** — the bet is a framing, not a mechanic. It also
+    arrives on every list like this one, which is usually the tell.
+23. **Fighting game where you only see your opponent's shadow** — reading the opponent is
+    already the entire genre. Removing information doesn't change the read, it deletes it.
+24. **A racing game with no brake** — the bet ("removing an input deepens the line") is real,
+    and *Trials* and *Descenders* have both explored the neighbourhood. It's a mode, not a
+    game.
+25. **Extraction shooter with a twist** — banned by the brief, and it arrived twice. The
+    attractor is strong enough that the ban is doing visible work.
+
 ---
 
 ## What this set is missing
@@ -786,13 +964,23 @@ you trust the other forty.
 The prompt asks for coverage. Here's where the coverage is thin, which is a finding about the
 generator as much as about the ideas.
 
-**Nothing here is fast.** No aim, no twitch, no combat depth anywhere in forty entries.
-Twenty-eight cards are explicitly `NO COMBAT` and most of the remaining twelve have no combat
-either — the tag only marks the ones where it's a design commitment. That's a systematic bias
-of the generator, not a considered position. If action games are what you like, this is the
-wrong document, and the prompt needs an explicit quota to fix it.
+**~~Nothing here is fast.~~ Addressed, and the fix is more interesting than the gap was.**
+The first forty had no aim, no twitch and no combat depth in them at all — 28 cards explicitly
+`NO COMBAT` and most of the other twelve incidentally so. Family 9 adds six action concepts
+and the prompt now carries an explicit quota (`GAMES-PROJECT-PROMPT.md`, coverage section).
 
-**Seven concepts need a live population** (#5, #12, #13, #21, #23, #32, #35). That's the
+But the *diagnosis* was wrong, and that's the part worth keeping. I called it a taste bias.
+It's structural: this document ranks by cost-to-disprove, action bets are claims about
+**feel**, and feel has no paper version. Every cheap test in Families 1–8 is a spreadsheet, a
+solver, or an evening with friends — none of those instruments can measure whether a recoil
+reads. So a generator optimising for cheap falsifiability drifts away from action
+automatically, and no amount of taste correction fixes that. **The quota is a patch on a
+scoring function, not a change of mind**, and it's worth knowing which of those you're
+applying. The same distortion presumably suppresses anything else whose quality lives in
+execution rather than in structure — animation, comedy timing, horror pacing. Six of those are
+now in; the bias that removed them is still running.
+
+**Eight concepts need a live population** (#5, #12, #13, #21, #23, #32, #35, #44). That's the
 most-repeated structural risk in the set, and it only became visible when the tags were
 counted rather than while they were being written. A population dependency is worse than a
 technical risk: you can't test it small, and it converts a project into an operation with
