@@ -52,6 +52,13 @@ edge of what real logs support, three components are not a close call.
 optional, and its threshold is now a measured quantity rather than a guess. Any feature
 that assumes a trustworthy fit inside a first mesocycle is built on sand.
 
+**Amended by R3.** The ~24-week figure here comes from percent MRV error. Scored in
+preparedness points — the currency a lifter actually experiences — the collapse happens
+between weeks **16 and 18** (DESIGN.md §4.2). The two metrics disagree because percent
+error treats a 20% overshoot and a 20% undershoot as the same mistake and the
+preparedness curve does not. D-13's thresholds supersede this number; the qualitative
+claim (far more than 8 weeks) is unchanged and is what mattered.
+
 **What would still prove the conclusion wrong:** a three-component model that reaches
 0.94+ correlation on a WAVED history in under 24 weeks. Given four parameters need 24,
 this would require the extra structure to be *more* identifiable than what it adds, which
@@ -264,3 +271,74 @@ comparison is paired rather than two independent noisy estimates.
 **What would prove it wrong:** nothing; this is a methodology fix, not a claim. It is
 logged because R2 nearly quoted the 5.9% figure as a headline, and that number was
 sampling luck.
+
+---
+
+## D-13 · The confidence gate is keyed on history, not on the fit's opinion of itself — FIRM
+
+Below 14 weeks of logged varied training, prescribe the population prior and label it as
+such. From 14 to 18, shrink toward it. Past 18, use the fit.
+
+**Why:** R3 tested four signals and the cheapest one won. `weeks_logged` is free,
+knowable *before* the lifter trains, and outperforms a twelve-draw bootstrap. Ungated
+fitting at 8 weeks costs 100.4 preparedness points against the prior's 19.97 — five times
+worse than not personalising at all, with a p90 of 248. The threshold is where the loss
+curve collapses: 19.4 points at week 14, 10.3 at 16, **0.88 at 18**.
+
+**What it costs:** every new user gets a population prescription for three to four
+months, in a product whose entire pitch is personalisation. That is the honest price of
+the fitter not working yet, and hiding it would mean shipping harm to exactly the people
+most likely to install this.
+
+**What would prove it wrong:** a signal that beats `weeks_logged` at ordering lifters by
+realised loss — profile likelihood over MRV rather than a residual bootstrap is the
+obvious candidate, since it would measure curvature of the loss surface rather than
+reproducibility of a point estimate. Also wrong if real-lifter data puts the collapse
+anywhere but 14–18 weeks (see D-15).
+
+---
+
+## D-14 · A bootstrap measures precision, not accuracy — FIRM
+
+The empirical-Bayes shrinkage in `confidence.py` is principled, has no tunable
+thresholds, and **loses to a crude week-count rule**: 30.22 points against 19.97 at 8
+weeks, 22.03 against 19.97 at 12.
+
+**Why it fails:** resampling residuals around a badly-wrong fit measures how
+*reproducible* that wrong answer is, not how wrong it is. A confidently-wrong fit has a
+small bootstrap spread. R3's weights table shows the consequence directly — mean
+shrinkage weight at 8 weeks is 0.50 (WAVED) and 0.68 (PROBE), so the gate extends most of
+its trust to fits that are off by 100 points. Self-reported uncertainty under-shrinks
+exactly the lifters who most need shrinking.
+
+**What follows:** keep the shrinkage — it is strictly better than ungated fitting
+everywhere and free after the threshold, and it is what makes the 14–18 week band usable
+(13.2 points against the prior's 20.0 at week 14). But it is a refinement inside the
+gate, never the gate itself.
+
+**What would prove it wrong:** any self-reported uncertainty measure that beats
+`weeks_logged`. The mechanism argument says a resampling method cannot, because it never
+sees the truth; a curvature-based interval might, because a flat loss surface is
+observable without it.
+
+---
+
+## D-15 · Every threshold in R3 is calibrated on the model's own children — WORKING
+
+The 14/18-week thresholds, the shrinkage weight, and the population `tau` are all
+calibrated on synthetic lifters drawn from `PRIOR_SPREAD` and simulated by the same model
+that then fits them.
+
+**Why it is stated rather than fixed:** there is no honest way to fix it without real
+data, and pretending otherwise would launder a self-consistency check into a validation.
+The one genuine protection available — checking that the fitter beats its null, that the
+gate beats ungated fitting, and that the crude signal beats the sophisticated one — are
+all *relative* comparisons, which survive model misspecification better than any absolute
+threshold does.
+
+**What would prove it wrong:** real logged data where the loss curve collapses anywhere
+but 14–18 weeks. Expect it to be worse, not better: real lifters carry sources of
+variation the model has no term for, and every one of them pushes the threshold later.
+
+**What this blocks:** shipping a specific week count to a user as though it were
+measured. It is calibrated, on simulated people.

@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–2 complete. The premise survived, twice, at a price each time.**
+**Rounds 1–3 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -28,8 +28,16 @@ threshold written down in advance. But it needs **~24 weeks** of *varied* traini
 the 8 the project was designed around, and its error tail is dangerous: p90 off by 34%,
 worst case by a factor of four. `DESIGN.md` §4.1.
 
-Not built yet: the confidence gate, the volume budget, the autoregulation controller, the
-logger.
+**R3** built the confidence gate and found that R2's fitter, shipped ungated, would have
+been *actively harmful*: at 8 weeks of logs a personalised prescription costs **100
+preparedness points** against the population prior's 20 — five times worse than ignoring
+the lifter entirely. The usable threshold is **18 weeks** of varied training. And the
+principled gate (empirical-Bayes shrinkage over a bootstrap) **lost to a plain week
+count**, because a bootstrap measures precision rather than accuracy and a
+confidently-wrong fit sails through it. `DESIGN.md` §4.2.
+
+Not built yet: the dose-derivative trigger, the volume budget, the autoregulation
+controller, the logger.
 
 ## The documents
 
@@ -44,7 +52,9 @@ logger.
 | **[sim/deload_sweep.py](sim/deload_sweep.py)** | Five deload policies over a 20-week block, three model variants. | Before arguing about deload cadence. |
 | **[sim/fit.py](sim/fit.py)** | The per-lifter fitter: reparameterised least squares, multi-start Nelder-Mead, pure stdlib. | Before touching the fit or the MRV search. |
 | **[sim/fit_experiment.py](sim/fit_experiment.py)** | Does the fit work, hold still, and beat a constant? Five experiments. | Before believing any claim about personalisation. |
-| **[tests/](tests/)** | 36 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[sim/confidence.py](sim/confidence.py)** | The gate: four candidate signals, bootstrap, and empirical-Bayes shrinkage. | Before trusting any prescription. |
+| **[sim/confidence_experiment.py](sim/confidence_experiment.py)** | Which signal works, does the gate help, and where is the threshold? | Before changing when the app trusts a fit. |
+| **[tests/](tests/)** | 49 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -58,8 +68,10 @@ logger.
    its variation is also the excitation signal that makes you identifiable at all. Train
    the same amount every week and the fit barely knows who you are (0.45 correlation,
    against 0.94 for a normal waved block).
-5. **Every recommendation states its confidence.** Below the identifiability threshold
-   the app says "population prior, not your data" out loud, every time.
+5. **Every recommendation states its confidence.** Below 18 weeks of varied logged
+   training the app says "population prior, not your data" out loud, every time — because
+   R3 measured what happens otherwise, and it is five times worse than not personalising
+   at all.
 
 ## The one number that reorganised the project
 
@@ -84,23 +96,28 @@ python3 volume_response.py   # dose-response, and the MRV spread
 python3 deload_sweep.py      # policy comparison across three model variants
 python3 fit_experiment.py    # recovery, stability, noise, null hypothesis, data volume
 
-cd .. && python3 -m unittest discover tests   # 36 tests
+python3 confidence_experiment.py  # signals, outcome in points, the tail, the threshold
+
+cd .. && python3 -m unittest discover tests   # 49 tests
 ```
 
 ## What is solid and what isn't
 
 **Solid:** the model's structure and its two enforced constraints; the proof that the
 linear form has no interior optimum; the population-spread argument for fitting; that the
-fit is findable, stable, and beats its null; the test suite.
+fit is findable, stable, and beats its null; that the gate beats ungated fitting and a
+week count beats a bootstrap; the test suite.
 
 **Specified but unverified:** every parameter value. All five priors are literature-typical
 figures from *endurance* research, and the saturation ceiling is a guess whose value the
 entire volume prescription turns on. `DECISIONS.md` flags each one with what would replace
 it.
 
-**Known-dangerous:** the error tail. The median fit is good and the p90 fit is off by
-34–148%, so the same machinery that helps most lifters would badly mislead some. Nothing
-should present a confident number until the confidence gate exists. That is R3.
+**Calibrated, not validated:** every threshold — 18 weeks, the shrinkage weight, the
+population spread — comes from synthetic lifters drawn from the model's own prior and
+simulated by the model that then fits them. The *relative* results survive that; the
+specific numbers want real logs before anyone quotes them to a person. `DECISIONS.md`
+D-15.
 
-**Not started:** the confidence gate, the volume budget across muscle groups, the
+**Not started:** the dose-derivative trigger, the volume budget across muscle groups, the
 autoregulation controller, the logger.

@@ -119,42 +119,94 @@ re-drew measurement noise on every refit, so it was measuring "how much does the
 when the past changes" rather than "when a week is added". Successive refits now see a
 growing prefix of one history.
 
+R3 · Built the confidence gate (`sim/confidence.py`) and the experiment that decides
+whether it earns its place (`sim/confidence_experiment.py`), plus 13 tests. Target taken
+from R2's ranking without deviation. Everything scored in **preparedness points lost**
+rather than percent error — R1 named points as the currency, and the preparedness curve
+is asymmetric, so every percent-error table in this project had been quietly treating a
+20% overshoot and a 20% undershoot as the same mistake.
+
+· **R2's fitter, shipped ungated, would have been actively harmful.** At 8 weeks of logs
+an ungated personalised prescription costs **100.4 points** against the population
+prior's **19.97** — five times worse than ignoring the lifter entirely — with a p90 of
+**248**. That is the population most likely to install a training app, getting worse
+advice than a printed template, for their first two mesocycles.
+
+· **Found the threshold is not where R2 put it.** Sampling only 12 and 24 weeks made the
+transition look like a cliff between them; resolving it week by week puts the collapse
+between **16 and 18 weeks** — mean loss 19.4 at week 14, 10.3 at 16, **0.88 at 18**, a
+factor of twelve across two weeks. Break-even with the prior arrives at 14. This is
+earlier than the ~24 weeks R2 inferred from percent MRV error, and the disagreement is
+the point: the two metrics rank the same fits differently, and points is the one a lifter
+experiences. D-02 amended, D-13 supersedes its number.
+
+· **The principled gate lost to the crude one, and the reason generalises.** The
+empirical-Bayes shrinkage — no tunable thresholds, weight `tau^2/(tau^2 + s^2)` from a
+residual bootstrap — beats ungated fitting everywhere and costs nothing after the
+threshold, but it **loses to a plain week count**: 30.2 points against 19.97 at 8 weeks,
+22.0 against 19.97 at 12. **A bootstrap measures precision, not accuracy.** Resampling
+residuals around a badly-wrong fit tells you how reproducible that wrong answer is, not
+how wrong it is, so a confidently-wrong fit sails through. The weights table shows it
+happening: mean trust at 8 weeks is 0.50 for a normal mesocycle and 0.68 for a varied
+one, extended to fits off by 100 points. Self-reported uncertainty under-shrinks exactly
+the lifters who most need shrinking. D-14.
+
+· Of the four candidate signals, `residual_rmse` is **useless** — rank correlation with
+realised error runs −0.23 to +0.21 and the sign is not stable. The gate that ships is
+keyed on weeks of logged varied history: the cheapest signal available, knowable before
+the lifter trains, and it beat a twelve-draw bootstrap.
+
+· **Caught a fabricated result before it printed.** The Spearman implementation broke
+ties by index, which invents an ordering out of nothing — so `weeks_logged`, constant
+within a run, would have come back with a real-looking correlation instead of the
+undefined it actually is. Caught by the round's own test suite while the experiment that
+would have published the fabricated numbers was still running. Fixed with average ranks
+and re-run from scratch.
+
+· Logged D-15 against the round's own foundation: every threshold here is calibrated on
+synthetic lifters drawn from the model's own prior and simulated by the model that then
+fits them. The *relative* results (fitter beats null, gate beats ungated, crude beats
+sophisticated) survive misspecification; the specific week counts do not, and expect real
+data to push them later rather than earlier.
+
 ---
 
 ## Next round (paste `ITERATION-PROMPT.md` to resume)
 
-**R3: build the confidence gate, because the fit is now known to be unsafe for a tenth
-of users.** This is the only thing standing between R2's working fitter and something a
-person could act on. Every configuration measured has a median that reads fine and a p90
-that does not — 34% error at best, 148% at 16 weeks, 1328% at 8 — and the same lifters
-show up twice, once in the error tail and once in the stability tail (28% p90 swing). The
-gate has to identify *which* lifters those are, from data available at prescription time,
-without knowing the truth. Candidates, in order of how cheap they are to test: weeks
-logged (a blunt rule, and D-02 now gives it a number); volume variation actually present
-in the log (D-10 says this is the binding constraint, and it is measurable directly);
-residual scale from the fit; and a bootstrap or profile-likelihood interval over the
-fitted MRV, which is the principled answer and the expensive one. Measure each against
-the actual error, and prescribe conservatively — toward the population prior — in
-proportion to the uncertainty. Ship no confident number the data does not support.
+**R4: fix the trigger properly (D-07).** Promoted after two rounds as runner-up, and now
+it is both the oldest open item and the cheapest it will ever be. R1 established that any
+trigger reading "am I getting worse" is a lagging indicator with lag on the order of
+`tau_fit` — it fired spuriously in week 3 and then missed a 46% overshoot of MRV entirely.
+A working trigger has to watch the **derivative of response with respect to dose**: the
+last volume increment bought less than the one before. R2 and R3 built exactly the
+machinery that needs — a fitted response curve is an estimate of its slope, and the gate
+already says when that estimate can be trusted. Score it the way R3 scored everything, in
+preparedness points against a policy that just sits at the fitted MRV, and be ready for
+the answer to be "sitting at the fitted MRV is fine and the trigger buys nothing", which
+would be consistent with D-06 and worth knowing.
 
-**Runner-up: fix the trigger properly (D-07), still unbuilt.** A working trigger has to
-watch the derivative of response with respect to dose, not the level of the output. It
-was runner-up last round too and stays here because R2's fitter is exactly the machinery
-it needs — an estimate of the response curve is an estimate of its slope. Cheap now,
-expensive before. If R3's gate lands early, this is the natural second half of the round.
+**Runner-up: the volume-matched deload sweep (D-06).** Third on the last two rankings and
+still unstarted, which is itself a signal — it keeps losing to things that turned out to
+matter more. D-06 rests on a comparison where the winning policies did 45–70% of the work
+of the losing one. Re-run holding total sets constant, with D-12's methodology (24+
+lifters, common random numbers). Cheap, and it either hardens a FIRM decision or reveals
+it was wrong for an embarrassing reason.
 
-**Third: the volume-matched deload sweep (D-06).** Unchanged from R1's ranking and
-unstarted. D-06 rests on a comparison where the winning policies did 45-70% of the work
-of the losing one. Re-run holding total sets constant, now with D-12's methodology —
-24+ lifters, common random numbers across arms.
+**Third: profile likelihood instead of a bootstrap (D-13's falsification condition).**
+D-14 argues a resampling method *cannot* beat a week count because it never sees the
+truth, but a curvature-based interval might, because a flat loss surface is observable
+without knowing the answer. This is the named way to prove D-13 wrong, it is one
+experiment, and the machinery is already there.
 
-**Fourth, and newly cheap: the deep-deload excitation test (D-11).** Does deepening the
-deload in a normal WAVED mesocycle close most of the 0.94 -> 0.98 identifiability gap?
-One experiment, reuses everything R2 built, and it would settle D-11 in either direction.
+**Fourth, cheap: the deep-deload excitation test (D-11).** Does deepening the deload in a
+normal mesocycle close the 0.94 → 0.98 identifiability gap, and — now more interesting —
+does it move R3's 18-week threshold earlier? Every week shaved off that threshold is a
+week of real users getting their own prescription instead of the prior.
 
-**Also still open:** D-05 (the model's frequency preference is an artefact of attaching
-saturation per session — decide whether frequency is optimised or accepted as a
-constraint), and the D-04 ceiling-vs-published-MRV discrepancy, which may just be a
-set-counting convention. Both are cheap and neither blocks anything.
+**Also still open:** D-05 (frequency preference is an artefact of attaching saturation per
+session), and the D-04 ceiling-vs-published-MRV discrepancy, which may just be a
+set-counting convention. Both cheap, neither blocking.
 
-**Not blocked on anything.**
+**Blocked on nothing — but note D-15.** Every threshold this project has produced is
+calibrated on lifters the model invented. The relative comparisons hold; the numbers want
+real logs before anyone quotes them to a person.

@@ -277,6 +277,100 @@ number here is treated as measured. D-12.
 
 ---
 
+## 4.2 The confidence gate (R3)
+
+R2 left a fitter that is excellent for most lifters and dangerous for some. §4.1 said
+nothing should present a confident number until something can tell which case it is in.
+This is that something — and it did not work the way it was supposed to.
+
+Everything below is scored in **preparedness points lost** against prescribing the
+lifter's true optimum, not percent error. Points because R1 established them as the
+currency, and because the preparedness curve is **asymmetric** — overshooting MRV costs
+far more than undershooting it, which every percent-error table in this project had been
+hiding. `sim/confidence.py`, `sim/confidence_experiment.py`.
+
+### Ungated fitting is worse than not personalising at all, and it is not close
+
+Mean points lost, 24 lifters, paired (same lifters, same noise, every policy):
+
+| History | Weeks | PRIOR | FITTED | HARD | SHRUNK |
+|---|---|---|---|---|---|
+| WAVED | 8 | 19.97 | **100.37** | 19.97 | 30.22 |
+| WAVED | 12 | 19.97 | **44.40** | 19.97 | 22.03 |
+| WAVED | 24 | 19.97 | 0.53 | 0.53 | 0.51 |
+| WAVED | 52 | 19.97 | 0.14 | 0.14 | 0.14 |
+| PROBE | 8 | 19.97 | 42.25 | 19.97 | 25.86 |
+| PROBE | 24 | 19.97 | 0.17 | 0.17 | 0.17 |
+
+At 8 weeks, an ungated personalised prescription costs **five times more** than ignoring
+the lifter entirely and prescribing the population prior. The p90 lifter loses **248
+points**. R2's fitter, shipped as-is, would have been actively harmful to everyone in
+their first two mesocycles — which is exactly the population most likely to install
+something like this.
+
+### Where the threshold actually is
+
+Sampling only 12 and 24 weeks made this look like a cliff between them. It is a cliff,
+but not there:
+
+| Weeks (WAVED) | 8 | 10 | 12 | 14 | 16 | **18** | 20 | 22 | 24 | 28 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| FITTED mean loss | 100.4 | 45.2 | 44.4 | 19.4 | 10.3 | **0.88** | 1.18 | 1.48 | 0.53 | 0.27 |
+| FITTED p90 loss | 248.5 | 195.1 | 174.6 | 17.4 | 15.8 | **1.17** | 2.95 | 3.23 | 1.31 | 0.62 |
+
+**The transition is between weeks 16 and 18**, and it is abrupt — a factor of twelve in
+the mean and thirteen in the p90 across two weeks. Fitting reaches break-even with the
+prior at **14 weeks** and is essentially free from **18**.
+
+This is earlier than the ~24 weeks R2 inferred from percent MRV error, and the
+disagreement is instructive: percent error treats a 20% overshoot and a 20% undershoot
+as the same mistake, and they are not. **The two metrics disagree about when the fit
+becomes usable, and points is the one a lifter experiences.** The 20–22 week bump back up
+to 1.18 and 1.48 is sampling noise at n=24, per D-12; do not read a dip into it.
+
+### The principled gate loses to the crude one
+
+Four candidate signals were tested. Only two are real:
+
+| Signal | Verdict |
+|---|---|
+| `weeks_logged` | **Wins.** Free, knowable before the lifter trains, and the table above is its calibration curve. |
+| `volume_variation` | Real but coarse; sets how *fast* the threshold arrives (D-10), not whether. |
+| `residual_rmse` | **Useless.** Rank correlation with realised error runs −0.23 to +0.21 — the sign is not even stable. |
+| `bootstrap_rel_sd` | Weakly useful (0.25–0.67 on informative histories, −0.12 on a flat one) and not enough. |
+
+The empirical-Bayes shrinkage built on the bootstrap — no tunable thresholds, weight
+`w = tau²/(tau² + s²)` — beats ungated fitting everywhere before the cliff and costs
+nothing after. It still **loses to the crude rule.** At 8 weeks: HARD 19.97, SHRUNK
+30.22. At 12: HARD 19.97, SHRUNK 22.03.
+
+**Why, and this is the finding worth keeping: a bootstrap measures precision, not
+accuracy.** Resampling residuals around a badly-wrong fit tells you how *reproducible*
+that wrong answer is, not how wrong it is. A confidently-wrong fit has a small bootstrap
+spread and sails through the gate. The weights table shows it happening — mean `w` at 8
+weeks is **0.50** for WAVED and **0.68** for PROBE, meaning the gate extends half to
+two-thirds of its trust to fits that are off by 100 points. Self-reported uncertainty
+systematically under-shrinks exactly the lifters who most need shrinking.
+
+### The rule that ships
+
+```
+weeks of logged, varied training     prescription
+  < 14                               population prior, labelled as such
+  14 – 18                            shrunk toward the prior (SHRUNK beats PRIOR here:
+                                     13.2 vs 20.0 at week 14)
+  > 18                               the fit, with the residual caveat below
+```
+
+The gate is keyed on **history**, not on the model's opinion of itself. That is the
+cheapest signal available, it is knowable in advance, and it beat a twelve-draw bootstrap.
+
+**Residual caveat, unresolved:** this rule is calibrated on synthetic lifters generated
+by the same model that fits them. Real lifters are not drawn from `PRIOR_SPREAD`, and
+every threshold above inherits that. D-15.
+
+---
+
 ## 5. Deloads: what R1 actually established
 
 Under the corrected (saturating) model, over a 20-week block, 40 lifters:
