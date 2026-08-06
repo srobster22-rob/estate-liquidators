@@ -317,6 +317,37 @@ game: mean pre-curse value per tier is **96 / 191 / 476 / 995** against band mid
 `room_spread.factor`, checked in both the validator and the JS — **74 constants** now), and
 confirmed the new checks fail when perturbed.
 
+R21 · Built the **inverse** of the drift check. Drift only compares constants that exist on
+*both* sides, so a canonical value that **no implementation has** is invisible to it — R18's
+lesson one level up. Rather than edit seventy call sites to declare which key each one covers,
+wrapped the tuning dicts so every lookup records itself: `want` is always a dict access, so
+*reading a value is the claim*. Then assert every numeric leaf in `tuning.json` is claimed by
+somebody, with an explicit `UNIMPLEMENTED` allowlist so the existing backlog is visible and
+anything **new** and unclaimed fails the run. Verified by adding a fake `brand_new_knob` to
+`tuning.json` and confirming it fails immediately. · **The first honest number was 27 of 64
+claimed** — nearly two-thirds of the canonical tuning was being checked against nothing. ·
+**Then the tracker turned out to have the same blind spot it was built to find.** Several
+checks sweep a whole table with `.items()` rather than naming each key, and `.items()` bypasses
+`__getitem__` — so 15 values that *were* checked read as unclaimed. Recording on `items()` and
+`values()` too moved it to 41/64. A coverage tool that under-reports coverage is the one
+direction that matters, and it was wrong that way for its first hour of life. · Wrote the
+checks that were merely missing and took it to **58/64 claimed, 111 constants** (from 74). The
+big absences were the **whole retrieval table** — the four numbers that drive every haul result
+in the project, checked nowhere — plus night length, crew size, van slot costs, six of the
+nine loudness values, and the curse multiplier and fee tables. · **Caught R14's regex bug for
+the third time in this project.** The slot-cost pattern matched `CLASS_WIDTH` two lines above
+`CLASS_SLOTS` and reported a doorway clearance in metres as a van slot cost (0.7 against a
+canonical 0.5). Anchored the pattern on the table name. Standing rule for anything that
+scrapes source as text: **name the table you mean**, because the first plausible match is
+usually the wrong one. · Deliberately did **not** check `NIGHT` or `CREW` against
+`proto/index.html`: it ships 180s and crew 1 because it is a three-minute single-player
+harness, and R12 established the decay is crew-dependent. Those are intended divergences, and
+the checker now says so in a comment rather than being quietly weakened. · **Six real gaps
+remain**, each annotated with why: the three light levers (specced in DESIGN §6.5, built
+nowhere), the attention recompute interval, the PATROL threshold (every implementation keys
+its tier table by name rather than by value), and localisation fuzz (FMOD-side; nothing here
+models where a sound *seems* to come from).
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -324,33 +355,33 @@ confirmed the new checks fail when perturbed.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R21: audit what `tuning.json` knows that each implementation does not.** The drift checker
-only compares constants that exist on *both* sides, so a value an implementation simply lacks
-is invisible to it — the same shape of gap R18 found, one level up. Two are already known:
-`Loudness.cs` has no `approach_occlusion_floor` despite `tuning.json` carrying one since R19,
-and nothing in the C# core knows about `room_spread` at all, so `unity/tests/CoreTests`' 31
-checks are now pinned to a model the Python and JS have both moved past. Write the inverse
-check — for every key in `tuning.json`, assert *some* implementation claims it, and list the
-ones nobody does. That list is the real backlog.
+**R22: the telegraph is the one open question a simulation cannot close, and it now gates
+D-23.** R20 proved silhouette variety works as a spread signal in a 2D top-down prototype,
+where an item is a shape on a floor seen from above. `ART-DIRECTION.md` commits to flat-shaded
+low-poly in **first person**, where the player sees a room, not a plan view, and "this cabinet
+holds unlike things" has to read from a doorway, at a glance, in the dark, with a flashlight.
+That is an art problem with a real chance of not working. Write the `ART-DIRECTION.md` section
+on how a `uniform` room and a `curio` room differ visually — repetition and rhythm versus
+silhouette variety, and what the lighting has to do to support it — before any asset work
+starts. Cheap now, expensive once a kitbash exists.
 
-**Then R22: the telegraph is the one open question a simulation cannot close.** R20 proved
-silhouette variety works as a spread signal in a 2D top-down prototype, where an item is a
-shape on a floor. `ART-DIRECTION.md` commits to flat-shaded low-poly in first person, where
-the player sees a *room*, not a plan view — and "this cabinet holds unlike things" has to read
-from a doorway, at a glance, in the dark, with a flashlight. That is an art problem with a
-real chance of not working, and it now gates the value of D-23. Worth writing the
-`ART-DIRECTION.md` section on how a uniform room and a curio room differ visually — repetition
-and rhythm versus silhouette variety — before any asset work starts, because it is cheap now
-and expensive after a kitbash exists.
+**Then R23: close the C#-side gaps R21 made visible.** `unity/tests/CoreTests` still pins 31
+checks against a model the Python and JS have both moved past: nothing there knows about
+`room_spread`, and `Loudness.cs` has no `approach_occlusion_floor` despite `tuning.json`
+carrying one since R19. Those are claimed by *some* implementation so the coverage check is
+green, which is exactly the weaker guarantee it can give — per-implementation coverage would
+be the stronger property, and is probably the right next upgrade to `check_drift.py`.
 
-**Three standing rules, each earned by getting it wrong first.**
-*A checker only checks what somebody named* (R18) — `check_drift.py` reported "55 constants
-agree" for four rounds while two implementations disagreed about a number that moved the
-headline result, because both wrote it inline. *A check earns its place by failing the default
-an unaware author produces* (R19) — V5 passed everything for eighteen rounds because it had no
-failing condition at all. *Ask a statistic at the right altitude* (R20) — the D-10 leak test
-read r = 0.46 pooled across tiers and ~0.00 within rooms, and only the second one was
-answering the question. Before trusting any green run, ask what it cannot see.
+**Four standing rules, each earned by getting it wrong first.**
+*A checker only checks what somebody named* (R18) — it reported "55 constants agree" for four
+rounds while two implementations disagreed about a number that moved the headline result.
+*A check earns its place by failing the default an unaware author produces* (R19) — V5 passed
+everything for eighteen rounds because it had no failing condition at all.
+*Ask a statistic at the right altitude* (R20) — the D-10 leak test read r = 0.46 pooled across
+tiers and ~0.00 within rooms, and only the second was answering the question.
+*Name the table you mean* (R14, R21) — a text-scraping pattern matched `CLASS_WIDTH` instead
+of `CLASS_SLOTS` and reported a doorway width as a slot cost; third occurrence of that exact
+bug. Before trusting any green run, ask what it cannot see.
 
 **The appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
 circled the same number, and the resolution was structural rather than numerical: cost levers

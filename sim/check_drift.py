@@ -20,9 +20,77 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TUNING = json.loads((ROOT / "tuning.json").read_text(encoding="utf-8"))
+_RAW = json.loads((ROOT / "tuning.json").read_text(encoding="utf-8"))
 
 fails, checks = [], 0
+
+# --------------------------------------------------------------- coverage
+# R21: the inverse of a drift check. Drift only compares constants that exist on BOTH
+# sides, so a value NO implementation has is invisible to it -- R18's lesson one level
+# up. Rather than edit seventy call sites to declare their key, wrap the tuning dicts
+# and record every lookup: `want` is always a dict access, so reading it IS the claim.
+CLAIMED = set()
+
+
+class Tracked(dict):
+    def __init__(self, d, path=()):
+        super().__init__(d)
+        self._path = path
+
+    def __getitem__(self, k):
+        return self._wrap(k, dict.__getitem__(self, k))
+
+    def _wrap(self, k, v):
+        p = self._path + (k,)
+        if isinstance(v, dict):
+            return Tracked(v, p)
+        if not k.startswith("_"):        # prose keys are not tuning values
+            CLAIMED.add(".".join(p))
+        return v
+
+    # Iterating a table IS claiming its values -- several checks sweep a whole dict
+    # rather than naming each key. Without these, a swept table reads as unclaimed and
+    # the coverage report lies in the direction that matters.
+    def items(self):
+        return [(k, self._wrap(k, v)) for k, v in dict.items(self)]
+
+    def values(self):
+        return [self._wrap(k, v) for k, v in dict.items(self)]
+
+
+def _leaves(d, path=()):
+    """Every numeric leaf. Keys starting with _ are prose, not tuning."""
+    for k, v in d.items():
+        if k.startswith("_"):
+            continue
+        if isinstance(v, dict):
+            yield from _leaves(v, path + (k,))
+        elif isinstance(v, (int, float)) and not isinstance(v, bool):
+            yield ".".join(path + (k,))
+
+
+TUNING = Tracked(_RAW)
+ALL_LEAVES = set(_leaves(_RAW))
+
+# Canonical values that deliberately live nowhere yet. Every entry is a real gap and
+# should be shrinking; anything unclaimed and NOT listed here fails the run, so a
+# constant can never be added to tuning.json and quietly forgotten again.
+UNIMPLEMENTED = {
+    # Every entry is a real gap with a reason, and the list should only ever shrink.
+    # R21 took it from 23 to 6 by writing the checks that were merely missing; these
+    # six are values no implementation has yet, which is a backlog, not an oversight.
+    "attention.recompute_seconds",          # C# retargets every tick; the 2s interval
+                                            # is a perf budget nothing enforces yet
+    "disturbance.light_wing_gain",          # DESIGN 6.5 light levers: specced,
+    "disturbance.lever_kill_lights",        # not built in any of the three
+    "disturbance.lever_go_quiet",
+    "disturbance.tier_patrol_at",           # every impl hardcodes the 30 boundary in a
+                                            # TIERS table keyed by name, not by value
+    "loudness_constants.localisation_fuzz_m",   # audio-side; belongs in FMOD, and
+                                            # nothing here models where a sound SEEMS
+                                            # to come from
+}
+
 
 
 def check(label, got, want, tol=1e-9):
@@ -180,16 +248,73 @@ for _f in ("appraiser_risk.py", "appraiser_variance.py"):
 check("py curse ruin_exp", grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"),
       v["ruin_exp"])
 
-for name in ("sprint", "appraise", "door"):
+# R21 closed these off the coverage backlog. disturbance.py carries the fullest L
+# table of the three implementations, so it is the one worth pinning key by key.
+for name in ("walk", "sprint", "appraise", "door", "crowbar",
+             "break_small", "break_large", "radio", "dolly"):
     check(f"py L[{name}]",
           grab(sims["disturbance.py"], rf"[\"']{name}[\"']\s*:\s*(\d+)"),
           TUNING["loudness"][name])
 
+# The retrieval table drives every haul result in the project and was checked nowhere.
+r = TUNING["retrieval"]
+for _f in ("integrated.py", "appraiser_risk.py", "appraiser_variance.py"):
+    for tier in ("DORMANT", "PATROL", "PURSUE", "COLLECT"):
+        check(f"py {_f} retrieval[{tier}]",
+              grab(sims[_f], rf'"{tier}":\s*([\d.]+)'), r[tier.lower()])
+
+n = TUNING["night"]
+check("py night seconds", grab(sims["integrated.py"], r"NIGHT_S\s*=\s*([\d.]+)"),
+      n["seconds"])
+check("py haul window", grab(sims["integrated.py"], r"HAUL_S\s*=\s*([\d.]+)"),
+      n["haul_window_seconds"])
+check("py crew", grab(sims["integrated.py"], r"^CREW\s*=\s*(\d+)", flags=re.M),
+      n["crew"])
+# NOT checked against proto/index.html on purpose: it ships NIGHT=180 and CREW=1
+# because it is a three-minute single-player harness, and R12 found the Disturbance
+# decay is crew-dependent. Those two are deliberate divergences, not drift.
+
+# Anchored on CLASS_SLOTS by name. Unanchored, this matched CLASS_WIDTH two lines
+# above and cheerfully reported a doorway clearance in metres as a van slot cost --
+# the same failure R14 hit when `sprint` matched the movement-SPEED table. Third time
+# in this project: a text-scraping check must name the table it means.
+for cls, want in TUNING["van"]["slot_cost"].items():
+    check(f"py validator slot_cost[{cls}]",
+          grab(validator, rf'CLASS_SLOTS = \{{[^}}]*?"{cls}":\s*([\d.]+)'), want)
+
+# Curse tables: the JS prototype and curse_test.py each carry a copy.
+for cls, want in TUNING["curse"]["value_multiplier"].items():
+    check(f"JS GRADE_MULT[{cls}]",
+          grab(js, rf"GRADE_MULT = \{{[^}}]*?{cls}:([\d.]+)"), want)
+for cls, want in TUNING["curse"]["attention_multiplier"].items():
+    check(f"JS ATT_MULT[{cls}]",
+          grab(js, rf"ATT_MULT\s*= \{{[^}}]*?{cls}:([\d.]+)"), want)
+    check(f"py curse ATTENTION[{cls}]",
+          grab(sims["curse_test.py"], rf'ATTENTION = \{{[^}}]*?"{cls}":\s*([\d.]+)'),
+          want)
+for cls, want in TUNING["curse"]["ledger_fee"].items():
+    check(f"py curse FEE[{cls}]",
+          grab(sims["curse_test.py"], rf'FEE = \{{[^}}]*?"{cls}":\s*([\d.]+)'), want)
+
+# --------------------------------------------------------------- coverage report
+claimed = CLAIMED & ALL_LEAVES
+unclaimed = ALL_LEAVES - CLAIMED
+new_gaps = sorted(unclaimed - UNIMPLEMENTED)
+stale = sorted(UNIMPLEMENTED & CLAIMED)
+
 # --------------------------------------------------------------- report
 print(f"DRIFT CHECK  -  {checks} constants across 3 implementations")
+print(f"COVERAGE     -  {len(claimed)}/{len(ALL_LEAVES)} canonical values are claimed by "
+      f"at least one implementation, {len(unclaimed)} known gaps")
 print("-" * 74)
+for k in new_gaps:
+    fails.append(f"{k}: in tuning.json, checked against NO implementation")
+for k in stale:
+    fails.append(f"{k}: listed as unimplemented but IS now checked - "
+                 f"remove it from UNIMPLEMENTED")
 if not fails:
     print("  OK   every implementation agrees with tuning.json")
+    print(f"  OK   no unclaimed canonical values outside the known-gap list")
     sys.exit(0)
 for f in fails:
     print(f"  DRIFT  {f}")
