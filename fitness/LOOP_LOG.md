@@ -225,50 +225,88 @@ controller's dithered prescription rather than its centre, so any dither wider t
 reported at 25% convergence and is actually at 92%, marginally *faster* than undithered.
 Both behaviours are now pinned by tests so the distinction cannot be quietly lost again.
 
+R5 · Built the starting prior and the covariate sensitivity analysis (`sim/prior.py`,
+`sim/prior_experiment.py`) plus 12 tests. Target taken from R4's ranking without
+deviation, including its warning: MESO's synthetic lifters have no covariates, so an
+experiment that invents one and wires it to the truth measures its own wiring. The round
+asked the answerable question instead — **how good would a covariate have to be before it
+is worth collecting?**
+
+· **The answer: rho ~ 0.5.** A covariate correlated 0.5 with true log-MRV closes **24%**
+of the gap between a constant prescription and an oracle, which is roughly what R4's
+entire controller stack is worth. rho 0.3 buys 12%, rho 0.7 buys 38%, rho 0.9 buys 65%.
+Below ~0.2 it is not worth a question on the signup form. Whether any real measurement
+clears 0.5 is explicitly outside what this project can answer, and D-20 says so.
+
+· **Control and starting information substitute rather than compound.** The controller
+adds **4.34** points on top of a constant start, **2.67** on top of rho 0.5, and **1.48**
+on top of rho 0.9 — its marginal value falls by two-thirds as the start improves. They
+are two routes to the same fact: one asks at signup, the other learns it over 18 weeks.
+Buying both pays for one and a bit, which is worth knowing before anyone budgets for
+both. D-21.
+
+· **Retracted the round's own opening result.** The first finding was that the default
+prescription used since R1 (30.8 sets/wk, the average lifter's MRV) is not the
+loss-minimising constant — 26.9 was better by 0.65 points, a free win needing no data at
+all. On a clean population that evaporates: the optimum is 28.8 and the gain is **0.16**.
+The apparent win was entirely the degenerate lifters dragging the optimum down. Found and
+retracted inside the same round.
+
+· **D-16 turned out to be structural, not cosmetic.** R4 logged it as an inflated headline
+number. R5 found what it costs downstream: the ~5% of lifters with no interior optimum
+inflate the SD of log-MRV by **56%** and drag the geometric mean down **19%**, so every
+shrinkage estimator built on those moments spreads its prescriptions wider than the real
+population does. R5's first covariate sweep was consequently **non-monotone — a better
+covariate producing worse prescriptions** from rho 0.4 to 0.7. Not a property of anything
+real. `population_mrvs` now excludes them by default and the contaminated sweep is kept as
+a demonstration. D-19.
+
+· **And it reaches back two rounds.** R3 and R4's 24-lifter population contained 8%
+degenerate lifters, inflating PRIOR-FIXED's loss from a true 15.15 to the reported 19.97
+(1.3x) and the best controller's from 10.29 to 15.14 (1.5x). **Every ordering those rounds
+concluded from is preserved** — the concrete vindication of D-15's claim that relative
+results survive misspecification while absolute ones do not — but the magnitudes quoted in
+DESIGN §4.2 and §4.3 are 30–50% too high, and are now annotated as such rather than
+silently recomputed.
+
 ---
 
 ## Next round (paste `ITERATION-PROMPT.md` to resume)
 
-**R5: a stratified prior — the only lever R4 left standing.** 86% of all remaining loss
-belongs to lifters far from the population average (rank correlation 0.89), during the
-weeks before any amount of data can tell they are unusual. Every controller tested lands
-within 1.3 points of every other, so control is finished as a source of value. The
-question is whether anything **observable before the first session** predicts where in the
-MRV distribution someone sits — training age, bodyweight, sex, sessions per week they can
-commit to, self-reported recovery, prior training volume. Build the prior as a
-conditional distribution rather than a point, measure how much of the 8.9x-corrected-to-
-5.8x spread it explains, and score it the way everything since R3 has been scored: points
-lost, paired, 24+ lifters. **The honest risk, and it should be stated before running it:**
-this project's synthetic lifters have no covariates, so any stratification has to be
-*assumed* into the population first, which makes the result a measure of the assumption
-rather than of reality. Design the experiment so it reports the sensitivity — how good
-would a covariate have to be, in correlation terms, to be worth collecting? That question
-is answerable honestly and the direct one is not.
+**A note before the ranking, because it is more important than anything in it.** Five
+rounds have taken achievable loss from ~15 points to ~10 against an oracle at 0, and the
+last two rounds both concluded that the remaining gap is not reachable by the kind of work
+this project has been doing. Every number in every round is calibrated on lifters the
+model invented (D-15), and R5 just demonstrated concretely how badly that can bite — a 5%
+contamination in the synthetic population silently broke an estimator and inflated two
+rounds of absolute figures. **The highest-value next step is real logged training data,
+not another simulation round.** Twenty lifters with six months of honest logs would settle
+D-01, D-04, D-09, D-16 and D-20 simultaneously, and no amount of further simulation can
+settle any of them.
 
-**Runner-up: the volume-matched deload sweep (D-06).** Fourth ranking in a row, still
-unstarted, and D-17 now explains why it keeps losing — it is a precision question on a
-flat objective. Worth doing once to close it out rather than carrying it forever: re-run
-holding total sets constant with D-12's methodology, and if cadence still does not matter,
-mark D-06 closed rather than FIRM-pending-evidence.
+Ranked, for as long as simulation rounds continue:
 
-**Third: narrow `PRIOR_SPREAD`, or justify keeping it (D-16).** The population currently
-generates people the model says cannot train, and 9% with an MRV below 5 sets/week. That
-is either an honest representation of non-responders or an artefact of drawing k and tau
-independently. Nobody has checked. It is cheap, it touches every number in the project,
-and it interacts directly with R5 — a prior that is partly nonsense is a bad thing to
-stratify.
+**R6: narrow or justify `PRIOR_SPREAD` (D-16).** Promoted to first because it is now known
+to be load-bearing rather than cosmetic. The population generates people the model says
+cannot train and 9% with an MRV below 5 sets/week, which is not a plausible number for
+anyone who trains. That is either an honest representation of non-responders or an
+artefact of drawing k and tau independently — nobody has checked, and it touches every
+number in the project. The check itself is cheap: look at whether the degenerate lifters
+occupy a corner of parameter space that a joint distribution would never visit.
 
-**Fourth, cheap and now more interesting: the deep-deload excitation test (D-11), and
-D-18's confound.** Does deepening the deload close the identifiability gap and move R3's
-18-week threshold earlier? And separately: is the dither's tail benefit really better
+**Runner-up: the volume-matched deload sweep (D-06).** Fifth ranking in a row. D-17
+explains why it keeps losing — it is a precision question on a flat objective — so the
+right move is to run it once and close D-06 rather than carry it forever.
+
+**Third: D-18's confound.** Is the dither's 30% tail improvement really better
 identification, or is it accidentally slowing the controller near its boundary? One
-experiment separates them.
+experiment separates them, and D-18 is currently a WORKING decision resting on an
+unseparated cause.
 
-**Also still open:** D-05 (frequency preference is an artefact of attaching saturation per
-session), and the D-04 ceiling-vs-published-MRV discrepancy.
+**Fourth: D-05, frequency.** Still open since R1. The model's preference for more frequent
+sessions is an artefact of attaching saturation per session. Either attach a per-session
+cost or declare frequency a user constraint — the second is probably right and certainly
+cheaper.
 
-**Blocked on nothing — but the ceiling is now visible.** Four rounds of control and
-estimation work have taken the achievable loss from 19.97 (prescribe the average) to about
-14.2, against an oracle at 0. The remaining 14 points are not reachable by anything this
-project has been building, and D-15 still applies to every number above: they are
-calibrated on lifters the model invented.
+**Blocked on nothing. But the honest status is that the simulation has been mined out,**
+and the next real gain comes from data rather than from another round.

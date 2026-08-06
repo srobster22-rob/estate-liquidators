@@ -382,6 +382,12 @@ silent, and it is pinned by a test. The population is *not* narrowed, because do
 would invalidate every number in four rounds for a 4.5% effect — but every spread figure
 now gets reported both ways.
 
+**Escalated by R5.** This is not a cosmetic error in one headline. Degenerate lifters
+inflate the SD of log-MRV by **56%** and drag its geometric mean down **19%**, which
+breaks any estimator built on population moments — R5's covariate sweep was non-monotone
+until they were removed. They also inflate every absolute points-lost figure in R3 and
+R4 by 1.3–1.5x. `population_mrvs` now excludes them by default. See D-19.
+
 **What would prove it wrong / what is still open:** whether `PRIOR_SPREAD` should be
 narrowed at the low end at all. It currently generates people the model says cannot
 train, which is either an honest representation of non-responders or a modelling artefact
@@ -435,3 +441,73 @@ mean (17.94 at ±30%). The benefit is in *having* excitation, not in having a lo
 to hurt adherence, which no simulation here can see. Also suspect if the tail improvement
 turns out to be driven by the dither accidentally slowing the controller near the
 boundary rather than by better identification — worth one experiment to separate.
+
+---
+
+## D-19 · Population moments must exclude lifters with no interior optimum — FIRM
+
+`population_mrvs` drops degenerate lifters by default. Anything estimating a population
+mean or spread must use the clean version.
+
+**Why:** they sit at `mrv()`'s search boundary, not at a real value, so they are not
+observations of anything. Including ~5% of them inflates the SD of log-MRV by 56% and
+drags the geometric mean down 19%. A shrinkage estimator built on those moments spreads
+its prescriptions wider than the real population does, and R5's first covariate sweep
+duly showed **a better covariate producing worse prescriptions** from rho 0.4 to 0.7 —
+non-monotone, and not a property of anything real.
+
+**What it costs:** every absolute points-lost figure from R3 and R4 is 30–50% too high
+(PRIOR-FIXED 19.97 against a true 15.15; best controller 15.14 against 10.29). Those
+sections have been annotated rather than recomputed, because the *orderings* they
+concluded from are all preserved — which is the concrete vindication of D-15's argument
+that relative results survive misspecification and absolute ones do not.
+
+**What would prove it wrong:** a use for population moments where the degenerate lifters
+genuinely belong — a safety calculation over "what fraction of users should be told not to
+train this hard", for instance, where excluding them would understate the answer. The rule
+is about estimators of central tendency, not about pretending those lifters do not exist.
+
+---
+
+## D-20 · A covariate needs rho ~ 0.5 to be worth collecting — WORKING
+
+Value of starting information, as a fraction of the gap between a constant prescription
+and an oracle: **12%** at rho 0.3, **24%** at 0.5, **38%** at 0.7, **65%** at 0.9.
+
+**The calibration that makes it a decision:** rho 0.5 is worth roughly what R4's entire
+controller stack is worth. So the signup form and 18 weeks of logging are alternatives at
+that point, not complements — and D-21 says they substitute rather than compound.
+
+**What it costs:** nothing yet. This is a threshold, not a claim that any real
+measurement reaches it.
+
+**What is INFERRED and must not harden:** whether any real covariate clears 0.5 against
+true MRV. Single self-report items in exercise science rarely exceed 0.3–0.4 against
+objective outcomes, so a composite would probably be needed — that sentence is judgement,
+not measurement, and this project cannot settle it. Anyone quoting a rho for a real
+questionnaire needs data, not this document.
+
+**What would prove it wrong:** the threshold moves if `PRIOR_SPREAD` narrows (D-16), since
+a tighter population makes a covariate worth less. Re-derive it whenever the population
+changes.
+
+---
+
+## D-21 · Control and starting information substitute, they do not compound — FIRM
+
+R4's controller adds **4.34** points on top of a constant start, **2.67** on top of a
+rho-0.5 covariate, and **1.48** on top of rho 0.9. Its marginal value falls by two-thirds
+as the starting information improves.
+
+**Why:** they are two routes to the same fact. One asks at signup, the other learns it
+over 18 weeks of logs. Learning something you were already told is worth nothing.
+
+**What follows:** do not budget for both as though their standalone numbers add. Total
+loss with a rho-0.5 covariate *and* the controller is 6.08 points, against 10.11 for the
+controller alone and 8.74 for the covariate alone — better than either, and well short of
+their sum.
+
+**What would prove it wrong:** a covariate correlated with something the logs *cannot*
+reveal — a hard constraint on available training time, an injury history, a schedule.
+Those are not estimates of MRV and would genuinely add. The substitution result applies
+only to information that is redundant with the response data.

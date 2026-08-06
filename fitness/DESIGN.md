@@ -14,7 +14,7 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Rounds 1–4 complete.** The core model exists and is tested (65 tests,
+**Rounds 1–5 complete.** The core model exists and is tested (77 tests,
 `fitness/tests/`). Each round has overturned something the previous one established: R1
 found the model could not represent volume at all (§3), R2 found the fitter needs three
 times more data than the project was designed around (§4.1), R3 found the fitter is
@@ -26,13 +26,18 @@ The premise survives. Per-lifter fitting works, correlates 0.98 with truth on an
 informative history, and holds still — 3–6% week-to-week swing, inside the 20% threshold
 D-08 set in advance.
 
-What R4 established about where effort should go: **no control policy can capture more
-than ~6 of the ~20 available points**, because 86% of the loss sits with lifters far from
-the population prior during the weeks before anything can know they are unusual. The next
-lever is a better starting prior, not a better controller.
+What R4 and R5 together establish about where effort should go: control and starting
+information **substitute for each other** rather than compounding, and neither closes more
+than about 40% of the gap to an oracle. A covariate would need to correlate ~0.5 with true
+MRV to be worth what the whole controller stack is worth (§4.4).
 
-Not built yet: a stratified prior, the volume budget across muscle groups, the
-autoregulation controller, the logger. Ranked in `LOOP_LOG.md`.
+**The simulation-only phase is close to finished.** Five rounds have taken achievable loss
+from ~15 points (prescribe a constant) to ~10, against an oracle at 0, and every remaining
+number is calibrated on lifters the model invented (D-15). What the project needs next is
+real logged data, not another round of this.
+
+Not built yet: the volume budget across muscle groups, the autoregulation controller, the
+logger. Ranked in `LOOP_LOG.md`.
 
 ---
 
@@ -478,6 +483,88 @@ excitation argument paying off in closed loop — a controller that has converge
 varying, which slowly blinds the fit it depends on, and the wobble prevents that at no
 cost. Step size is not knife-edge either (16.8–19.5 points across 0.05–0.30), so nothing
 here rests on a tuned constant.
+
+---
+
+## 4.4 The starting prior, and what a covariate would have to be worth (R5)
+
+R4 left one lever: start closer to the lifter. R5 measured what that is worth — and had
+to avoid an obvious trap to do it. MESO's synthetic lifters **have no covariates**; sex,
+training age and bodyweight do not exist in `PRIOR_SPREAD`. Any experiment that invents
+one, wires it to the truth, and reports how much it helps is measuring its own wiring.
+
+So the question asked is the one that can be answered honestly: **how good would a
+covariate have to be, in correlation terms, before it is worth collecting?** That is a
+property of the loss surface and the population spread, both real properties of the
+model, and it yields a threshold a real questionnaire can later be measured against.
+`sim/prior.py`, `sim/prior_experiment.py`.
+
+### The answer
+
+Covariate correlated `rho` with true log-MRV; prescription is the conditional
+expectation. 284 lifters, degenerate cases excluded (see below):
+
+| rho | Mean points lost | p90 | % of the gap to an oracle closed |
+|---|---|---|---|
+| 0.0 (best constant) | 10.04 | 25.70 | — |
+| 0.3 | 8.89 | 22.50 | 12% |
+| **0.5** | **7.67** | 20.04 | **24%** |
+| 0.7 | 6.18 | 17.18 | 38% |
+| 0.9 | 3.56 | 9.47 | 65% |
+| 1.0 (oracle) | 0.99 | 1.94 | 90% |
+
+**A covariate needs rho ≈ 0.5 to be worth roughly what R4's entire controller stack is
+worth**, and rho ≈ 0.3 to be worth about half of it. Below rho ≈ 0.2 it is not worth the
+question on the signup form.
+
+Whether any real measurement clears 0.5 against a lifter's true MRV is **not something
+this project can answer and nothing here should be read as claiming it does**. As a
+rough calibration: single self-report items in exercise science rarely exceed 0.3–0.4
+against objective outcomes, so a composite would probably be needed — **inferred
+judgement, not measured, D-20.**
+
+### Covariates and control substitute for each other, they do not compound
+
+| rho | Start only | + R4's controller | What the controller adds |
+|---|---|---|---|
+| 0.0 | 14.45 | 10.11 | **+4.34** |
+| 0.3 | 11.20 | 7.75 | +3.45 |
+| 0.5 | 8.74 | 6.08 | +2.67 |
+| 0.7 | 6.70 | 4.81 | +1.89 |
+| 0.9 | 4.97 | 3.50 | **+1.48** |
+
+The controller's marginal value **falls by two-thirds** as the covariate improves. They
+are two routes to the same information — one asks at signup, the other learns over 18
+weeks — and buying both pays for one and a bit. That is worth knowing before anyone
+budgets for both.
+
+### The "free win" this round opened with was itself an artefact
+
+The first result was that the default prescription used since R1 (30.8 sets/week, the
+average lifter's MRV) was not the loss-minimising constant, which looked like 26.9 and a
+free 0.65 points. **On a clean population that evaporates**: the optimum is 28.8 and the
+gain is 0.16 points. The apparent win was the degenerate lifters below dragging the
+optimum down. Retracted in the same round that produced it.
+
+### Degenerate lifters do not just inflate a headline, they break the estimator
+
+D-16 found that ~5% of the synthetic population has no interior optimum, and `mrv()` was
+returning its search boundary for them. R5 found what that costs downstream: those
+lifters inflate the **SD of log-MRV by 56%** and drag its geometric mean down **19%**.
+
+Any shrinkage estimator built on those moments spreads its prescriptions wider than the
+real population does — so in R5's first run, **a better covariate produced worse
+prescriptions** across the whole middle of the range (loss rising from 12.55 at rho 0 to
+14.98 at rho 0.7, then falling again). Non-monotone, and not a property of anything real.
+`population_mrvs` now excludes them by default; the contaminated sweep is kept in the
+experiment as a demonstration. D-19.
+
+**This also inflates R3's and R4's absolute figures.** Their 24-lifter population
+contained 8% degenerate lifters, which inflates PRIOR-FIXED's loss from 15.15 to 19.97
+(1.3x) and the best controller's from 10.29 to 15.14 (1.5x). **Every ordering those
+rounds concluded from is preserved** — which is exactly the argument D-15 made for
+trusting relative results over absolute ones — but the magnitudes quoted in §4.2 and §4.3
+are 30–50% too high.
 
 ---
 

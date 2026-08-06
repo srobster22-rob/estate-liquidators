@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–4 complete. The premise survived each round, at a price each time.**
+**Rounds 1–5 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -46,8 +46,19 @@ found that 86% of the remaining loss belongs to lifters far from the population 
 which makes a better *prior* the next lever rather than a better controller. `DESIGN.md`
 §4.3.
 
-Not built yet: a stratified prior, the volume budget, the autoregulation controller, the
-logger.
+**R5** asked what a better starting point would be worth, without inventing a covariate
+and then congratulating itself for the invention. A covariate would need to correlate
+**~0.5** with a lifter's true MRV to be worth what R4's entire controller stack is worth —
+and the two **substitute rather than compound**, since both are routes to the same fact.
+It also found that the degenerate lifters D-16 turned up don't just inflate a headline:
+they inflate the population's log-MRV spread by 56% and broke this round's estimator
+outright, making a *better* covariate produce *worse* prescriptions. `DESIGN.md` §4.4.
+
+**The simulation-only phase is close to finished.** Five rounds have taken achievable loss
+from ~15 points to ~10 against an oracle at 0, and every number is calibrated on lifters
+the model invented. What comes next is real logged data, not another round of this.
+
+Not built yet: the volume budget, the autoregulation controller, the logger.
 
 ## The documents
 
@@ -66,7 +77,9 @@ logger.
 | **[sim/confidence_experiment.py](sim/confidence_experiment.py)** | Which signal works, does the gate help, and where is the threshold? | Before changing when the app trusts a fit. |
 | **[sim/trigger.py](sim/trigger.py)** | Marginal-return estimation and the closed-loop controllers, including R1's broken one. | Before changing how volume is steered. |
 | **[sim/trigger_experiment.py](sim/trigger_experiment.py)** | Is direction easier than location, and does it pay? | Before proposing a smarter controller. |
-| **[tests/](tests/)** | 65 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[sim/prior.py](sim/prior.py)** | The starting prior, the covariate sensitivity model, and clean population moments. | Before adding a signup question. |
+| **[sim/prior_experiment.py](sim/prior_experiment.py)** | What a covariate would have to be worth, and whether it compounds with control. | Before assuming personalisation data pays. |
+| **[tests/](tests/)** | 77 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -113,8 +126,9 @@ python3 fit_experiment.py    # recovery, stability, noise, null hypothesis, data
 
 python3 confidence_experiment.py  # signals, outcome in points, the tail, the threshold
 python3 trigger_experiment.py     # sign vs argmax, closed loop, convergence, robustness
+python3 prior_experiment.py       # the free win, the rho sweep, compounding
 
-cd .. && python3 -m unittest discover tests   # 65 tests
+cd .. && python3 -m unittest discover tests   # 77 tests
 ```
 
 ## What is solid and what isn't
