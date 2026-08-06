@@ -4,6 +4,7 @@ Command line for the factory.
     python3 -m cryptobot.run evolve      --markets synthetic --generations 40
     python3 -m cryptobot.run null-test   --trials 3
     python3 -m cryptobot.run fetch       --venue binance --symbol BTCUSDT
+    python3 -m cryptobot.run sweep       --seeds 1 2 3 4 5
     python3 -m cryptobot.run report
     python3 -m cryptobot.run diversity
     python3 -m cryptobot.run verify      --winner 0
@@ -280,6 +281,63 @@ def cmd_diversity(args):
     return 0
 
 
+def cmd_sweep(args):
+    """Run the factory across several seeds and report the DISTRIBUTION of bot
+    counts, not one number.
+
+    This exists because a single run's count is not reproducible. On one universe,
+    seed 5 returned three bots and seeds 11 and 21 returned one each — same data,
+    same gates, same everything, only the search RNG differing. Quoting the best of
+    those is selection over search trajectories, and nothing in the gauntlet
+    deflates for it: gate 10 charges for candidates tested, not for runs performed
+    and best-of reported. That is the multiple-testing error this whole project is
+    built to prevent, committed one level up from where the defences sit.
+
+    Each seed gets its own state file, so the runs do not share a look counter or a
+    vault budget — they are genuinely independent replications, not one search
+    resumed three times."""
+    import statistics
+    counts, details = [], []
+    for seed in args.seeds:
+        state_file = STATE_DIR / f"sweep_{seed}.json"
+        if state_file.exists():
+            state_file.unlink()
+        segments = build_universe(args.markets, args.bars)
+        factory = evolve.Factory(segments, {"population": args.population},
+                                 seed=seed, state_file=state_file,
+                                 log=lambda *a: None)
+        winners = factory.run(args.generations, target_winners=99)
+        counts.append(len(winners))
+        details.append((seed, [(w.market_key, w.strategy_name)
+                               for w, _, _ in winners],
+                        factory.state["oos_looks"],
+                        factory.state["vault_burns"]))
+        print(f"  seed {seed:>4}: {len(winners)} bot(s), "
+              f"{factory.state['oos_looks']} looks, "
+              f"{factory.state['vault_burns']} burns")
+
+    print("\n" + "=" * 78)
+    print(f"BOT COUNT ACROSS {len(counts)} SEEDS: {counts}")
+    print(f"  min {min(counts)} | median {statistics.median(counts)} | "
+          f"max {max(counts)}")
+    if len(set(counts)) > 1:
+        print("\nThe count is NOT reproducible across search trajectories. Quote the"
+              "\nrange, never the best run — the best of N runs is a selected"
+              "\nmaximum, and no gate in this project corrects for it.")
+    found = {}
+    for seed, bots, _, _ in details:
+        for key, strat in bots:
+            found.setdefault((key, strat), []).append(seed)
+    if found:
+        print("\nwhich bots each seed found:")
+        for (key, strat), seeds in sorted(found.items(),
+                                          key=lambda kv: -len(kv[1])):
+            mark = "reproduced" if len(seeds) > 1 else "one seed only"
+            print(f"  {strat:<18} @ {key:<20} seeds {seeds}  <- {mark}")
+        print("\nA bot only one seed ever found is a candidate, not a finding.")
+    return 0
+
+
 def cmd_fetch(args):
     m = dta.fetch_market(args.venue, args.symbol, interval=args.interval,
                          bars=args.bars, kind=args.kind, refresh=True)
@@ -408,6 +466,15 @@ def main(argv=None):
     nt.add_argument("--population", type=int, default=40)
     nt.add_argument("--bars", type=int, default=45000)
     nt.set_defaults(func=cmd_null_test)
+
+    sw = sub.add_parser("sweep",
+                        help="run several seeds and report the count distribution")
+    sw.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
+    sw.add_argument("--markets", default="synthetic")
+    sw.add_argument("--bars", type=int, default=110000)
+    sw.add_argument("--generations", type=int, default=200)
+    sw.add_argument("--population", type=int, default=70)
+    sw.set_defaults(func=cmd_sweep)
 
     ft = sub.add_parser("fetch", help="download and cache real candles")
     ft.add_argument("--venue", default="binance", choices=sorted(dta.FETCHERS))
