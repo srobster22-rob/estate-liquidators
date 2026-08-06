@@ -42,7 +42,8 @@
   <p class="d">Empty the house before sunrise. The quota is in dollars, not items.<br>
   Something in here is still curating the collection.</p>
   <p><kbd>W A S D</kbd> move &nbsp; <kbd>MOUSE</kbd> look &nbsp; <kbd>SHIFT</kbd> run<br>
-  <kbd>E</kbd> grab / drop &nbsp; <kbd>F</kbd> hold to appraise &nbsp; <kbd>ESC</kbd> release cursor</p>
+  <kbd>E</kbd> grab / drop &nbsp; <kbd>F</kbd> hold to appraise<br>
+  <kbd>C</kbd> hide &nbsp; <kbd>G</kbd> stash &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>ESC</kbd> release cursor</p>
   <p class="d">Carry loot to the van in the driveway. Appraising is loud.</p>
   <p><b>CLICK TO BEGIN</b></p>
 </div></div>
@@ -164,6 +165,10 @@ const RUIN_K=0.015, RUIN_EXP=1.8;
 const VAN_SLOTS=14, QUOTA=2200, NIGHT=210, APPRAISE_S=3.0;
 const EYE=1.62, WALK=3.2, RUN=5.6, CARRY=2.6, CARRY_RUN=4.1;
 const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
+// A5 senses. One Loudness number, three consumers - this is the hearing one.
+const HEAR_PER_L=0.33, OCCLUSION_CURATOR=0.85, FUZZ_M=3.0;
+const SIGHT_M=18.0, SIGHT_COS=Math.cos(50*Math.PI/180);   // 100 degree cone
+const FIX_STALE_S=6.0;      // how long a heard position stays worth walking to
 const STAM_MAX=6, STAM_REGEN=9;
 
 // ------------------------------------------------------------------ estate
@@ -223,6 +228,26 @@ for(const r of ROOMS){ if(r.van) continue;
 }
 const inHide=(x,z)=>HIDES.some(h=>Math.abs(x-h.x)<0.52&&Math.abs(z-h.z)<0.32);
 
+// Walls between two points, counted over the portal graph - A5 attenuates 0.85
+// per wall, so "it hears through walls" has to mean something specific.
+const ADJ={};
+for(const [a,b] of LINKS){ (ADJ[a]??=[]).push(b); (ADJ[b]??=[]).push(a); }
+function hops(ax,az,bx,bz){
+  const A=roomAt(ax,az), B=roomAt(bx,bz);
+  if(!A||!B) return 1;                    // in a doorway: call it one wall
+  if(A===B) return 0;
+  const seen={[A.id]:0}; let frontier=[A.id];
+  for(let d=1;d<=ROOMS.length&&frontier.length;d++){
+    const next=[];
+    for(const id of frontier) for(const n of (ADJ[id]||[])){
+      if(n in seen) continue;
+      seen[n]=d; if(n===B.id) return d; next.push(n);
+    }
+    frontier=next;
+  }
+  return ROOMS.length;
+}
+
 const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
 function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; return false; }
 function solid(x,z){ return (!roomAt(x,z) && !inDoor(x,z)) || inHide(x,z); }
@@ -251,7 +276,8 @@ function reset(){
   player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0,
           hiding:null,hideEnter:0};
   curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
-           fixate:0,lock:0,reseat:0,target:false,mode:null,open:0};
+           fixate:0,lock:0,reseat:0,target:false,mode:null,open:0,
+           face:0,fix:null,step:0};
   for(const h of HIDES) h.item=null;
   van={slots:VAN_SLOTS,cargo:[]};
   t=0;dist=0;over=false;overWhy="";
@@ -265,13 +291,14 @@ addEventListener("keydown",e=>{
   keys[e.code]=true;
   if(e.code==="KeyE"&&started&&!over) grabDrop();
   if(e.code==="KeyC"&&started&&!over) toggleHide();
+  if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ reset(); document.getElementById("end").style.display="none"; }
 });
 addEventListener("keyup",e=>keys[e.code]=false);
 document.getElementById("start").addEventListener("click",()=>{
   document.getElementById("start").style.display="none";
-  started=true; cv.requestPointerLock();
+  started=true; sfx.start(); cv.requestPointerLock();
 });
 cv.addEventListener("click",()=>{ if(started&&!over) cv.requestPointerLock(); });
 addEventListener("mousemove",e=>{
@@ -290,7 +317,33 @@ function clampHideView(){
   player.pitch=Math.max(-0.7,Math.min(0.5,player.pitch));
 }
 
-function noise(l,impulse,dt){ dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt)); }
+// One number, three consumers (AUDIO-SPEC 1.1): Disturbance gain, what the
+// Curator can hear, and - since R19 - something the player can actually hear.
+function noise(l,impulse,dt,x,z){
+  dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt));
+  const px=x??player.x, pz=z??player.z;
+  heard(l,px,pz);
+  if(impulse) sfx.event(l,px,pz);
+}
+// A5: omnidirectional, wall-penetrating, and the resulting point is fuzzed +/-3m.
+// It knows roughly where; it doesn't know exactly.
+function heard(l,x,z){
+  if(!curator) return;
+  const radius=l*HEAR_PER_L*Math.pow(OCCLUSION_CURATOR,hops(curator.x,curator.z,x,z));
+  if(Math.hypot(curator.x-x,curator.z-z)>radius) return;
+  const a=Math.random()*Math.PI*2, r=Math.random()*FUZZ_M;
+  curator.fix={x:x+Math.cos(a)*r, z:z+Math.sin(a)*r, age:0, sure:false};
+}
+// Sight is 18m, a 100 degree cone, and occluded - but darkness does not reduce
+// it, because it is not using eyes.
+function sees(x,z){
+  const c=curator;
+  if(hops(c.x,c.z,x,z)>0) return false;
+  const d=Math.hypot(x-c.x,z-c.z);
+  if(d>SIGHT_M) return false;
+  if(d<0.5) return true;
+  return ((x-c.x)/d)*Math.sin(c.face)+((z-c.z)/d)*Math.cos(c.face) >= SIGHT_COS;
+}
 function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*PER_CURSED_FLOOR; }
 const tierOf=d=>d>=85?"COLLECT":d>=60?"PURSUE":d>=30?"PATROL":"DORMANT";
 
@@ -349,6 +402,108 @@ function stash(){
   it.x=h.x; it.z=h.z; it.y=1.05;
 }
 
+
+// ------------------------------------------------------------------ audio
+// A6.2 is a hard fairness rule: "always audible for >= 8m before contact, a
+// dedicated layer that is never occluded to zero. You always get to hear it
+// coming." Until R19 the build was silent, so the rule had nothing to keep.
+//
+// Synthesised outright - no assets, no loading, and the mix is code you can read.
+const sfx = (()=>{
+  let ctx=null, master=null, drag=null, dragGain=null, hum=null, humGain=null;
+  let muted=false;
+  const now=()=>ctx?ctx.currentTime:0;
+
+  function start(){
+    if(ctx) return;
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    ctx=new AC();
+    master=ctx.createGain(); master.gain.value=0.85; master.connect(ctx.destination);
+
+    // The drag layer: filtered noise, always on, gain by distance. This is the
+    // one that is never allowed to reach zero within 8m.
+    const buf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    let last=0;
+    for(let i=0;i<d.length;i++){ const w=Math.random()*2-1;
+      last=(last*0.96)+w*0.04; d[i]=last*3.2; }        // brown-ish noise
+    drag=ctx.createBufferSource(); drag.buffer=buf; drag.loop=true;
+    const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=340;
+    dragGain=ctx.createGain(); dragGain.gain.value=0;
+    drag.connect(lp).connect(dragGain).connect(master); drag.start();
+
+    // The marked hum: emitted by the item, not the player (A7).
+    hum=ctx.createOscillator(); hum.type="sine"; hum.frequency.value=57;
+    humGain=ctx.createGain(); humGain.gain.value=0;
+    hum.connect(humGain).connect(master); hum.start();
+  }
+
+  function ping(freq,dur,type,vol){
+    if(!ctx||muted) return;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type||"triangle"; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,now());
+    g.gain.exponentialRampToValueAtTime(vol??0.25,now()+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,now()+dur);
+    o.connect(g).connect(master); o.start(); o.stop(now()+dur+0.05);
+  }
+
+  return {
+    start, mute(v){ muted=v??!muted; if(master) master.gain.value=muted?0:0.85;
+                    return muted; },
+    // An impulse the player hears: loud things carry further, same one number.
+    event(l,x,z){
+      if(!ctx||muted) return;
+      const d=Math.hypot(player.x-x,player.z-z);
+      const v=Math.max(0,1-d/(l*HEAR_PER_L))*0.35;
+      if(v<=0.001) return;
+      ping(l>=80?90:l>=55?150:230, l>=80?0.35:0.18, l>=80?"sawtooth":"triangle", v);
+    },
+    // The mix is a pure function of the world, kept separate from the nodes so
+    // it can be asserted without listening to anything. The drag layer floors at
+    // 0.06 inside 8m no matter what is between you: A6.2 says occlusion may not
+    // take it to zero, and that is the rule under test, not the loudspeaker.
+    // Pure in (distance, walls, opening) so the fairness rule can be checked at
+    // combinations the estate cannot currently produce. The 8m floor is defensive:
+    // with seven rooms nothing is four walls away and eight metres close at once,
+    // but content is the thing that changes, and A6.2 is not allowed to lapse
+    // quietly when it does.
+    dragAt(d,walls,opening){
+      let g=Math.max(0,1-d/16)*0.5*Math.pow(0.62,walls);
+      if(d<=8) g=Math.max(g,0.06+(1-d/8)*0.10);
+      if(opening) g=Math.max(g,0.28);
+      return g;
+    },
+    dragTarget(){
+      const c=curator;
+      return this.dragAt(Math.hypot(player.x-c.x,player.z-c.z),
+                         hops(c.x,c.z,player.x,player.z), c.open>0);
+    },
+    humTarget(){
+      const c=curator;
+      const marked=c.target&&(c.state==="PURSUE"||c.state==="FIXATE");
+      const item=player.holding;
+      const hd=item?Math.hypot(player.x-item.x,player.z-item.z):99;
+      return marked&&hd<8?0.045:0;
+    },
+    frame(){
+      if(!ctx||muted) return;
+      dragGain.gain.setTargetAtTime(this.dragTarget(),now(),0.08);
+      humGain.gain.setTargetAtTime(this.humTarget(),now(),0.25);
+    },
+    // What the QA harness reads instead of listening. `drag`/`hum` are the
+    // rule's output; `nodeDrag` is what the graph has actually reached, which
+    // headless Chromium leaves at zero because its audio clock never advances.
+    probe(){
+      if(!ctx) return {ready:false};
+      return {ready:true, muted, master:+master.gain.value.toFixed(3),
+              drag:+this.dragTarget().toFixed(4), hum:+this.humTarget().toFixed(4),
+              nodeDrag:+dragGain.gain.value.toFixed(4)};
+    },
+    ctx:()=>ctx,
+  };
+})();
+
 // ------------------------------------------------------------------ update
 function step(dt){
   t+=dt; if(t>=NIGHT) return finish("SUNRISE");
@@ -358,7 +513,13 @@ function step(dt){
   const mag=Math.hypot(mx,mz); if(mag){mx/=mag;mz/=mag;}
   const moving=!!mag;
   const run=keys.ShiftLeft&&player.stam>0&&moving&&!player.hiding;
-  if(run){ player.stam=Math.max(0,player.stam-dt); noise(L.sprint,false,dt); }
+  if(run){ player.stam=Math.max(0,player.stam-dt);
+    dist=Math.min(100,dist+L.sprint*SUSTAINED*dt);
+    // Footfalls are discrete events to a listener even though the Disturbance
+    // gain is continuous - emitting one per frame would make sprinting a strobe.
+    player.stride=(player.stride||0)+dt;
+    if(player.stride>0.45){ player.stride=0; heard(L.sprint,player.x,player.z);
+      sfx.event(L.sprint,player.x,player.z); } }
   else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
 
   if(player.hiding){
@@ -428,6 +589,11 @@ function contact(){
 function updateCurator(dt){
   const c=curator, tier=tierOf(dist);
   c.lock-=dt; c.fixate-=dt; c.reseat-=dt;
+  if(c.fix) c.fix.age+=dt;
+  // Sight is the one sense that gives it a position it can trust. Concealment
+  // beats sight outright; that is what being in the wardrobe is for.
+  if(!concealed()&&sees(player.x,player.z))
+    c.fix={x:player.x,z:player.z,age:0,sure:true};
   const speed = c.state==="RESEAT"?1.35 : tier==="COLLECT"?1.95:1.65;
 
   if(c.state==="RESEAT"){
@@ -466,11 +632,24 @@ function updateCurator(dt){
       c.target=false; c.mode=null; c.state="PATROL"; c.lock=0; c.open=0; return; }
 
     const it=c.goal, onPlayer=(c.mode==="CREW")||(!!it&&it.held);
-    // A4: intercept at the plinth the item came from, so it cuts you off going
-    // home - unless the carrier is in a wardrobe, in which case it comes there.
-    const g = c.mode==="CREW" ? {x:player.x,z:player.z}
-            : it.held ? (concealed()?{x:player.x,z:player.z}:{x:it.hx,z:it.hz})
-            : {x:it.x,z:it.z};
+    // Where it goes is now a question of what it knows (A5). A loose item is
+    // property and it knows exactly where that is. A carried one it has to
+    // find: walk to the last place it heard or saw you, and when that goes
+    // stale, fall back on A4 and cut you off at the plinth instead.
+    // What it knows depends on WHAT it is chasing, and the two are not the same
+    // problem. An item radiates - carried, dropped or sitting in a wardrobe, it
+    // broadcasts its own position, which is the point of "you can hide, but your
+    // loot can't" (8.1). Crew do not radiate: hunting people at COLLECT runs on
+    // the senses in A5, so it walks to where it last heard you (fuzzed +/-3m) and
+    // when that goes stale it casts about ahead of itself. Being quiet works on
+    // the second problem and does nothing for the first.
+    const fresh = c.fix && c.fix.age < FIX_STALE_S;
+    const g = c.mode==="CREW"
+            ? (fresh ? {x:c.fix.x,z:c.fix.z}
+                     : {x:c.x+Math.sin(c.face)*4, z:c.z+Math.cos(c.face)*4})
+            : !onPlayer ? {x:it.x,z:it.z}
+            : concealed() ? {x:player.x,z:player.z}     // it comes to the wardrobe
+            : {x:it.hx,z:it.hz};                        // A4 plinth intercept
     walkTo(c,g.x,g.z,speed,dt);
 
     if(onPlayer&&Math.hypot(c.x-player.x,c.z-player.z)<1.5&&player.down<=0){
@@ -492,6 +671,13 @@ function updateCurator(dt){
     return;
   }
   c.open=0;
+  // Idle, it walks its collection - unless it heard something, in which case it
+  // goes and stands roughly where the sound was. Roughly is the whole point.
+  if(c.fix&&c.fix.age<FIX_STALE_S){
+    walkTo(c,c.fix.x,c.fix.z,speed,dt);
+    if(Math.hypot(c.x-c.fix.x,c.z-c.fix.z)<1.0) c.fix=null;
+    return;
+  }
   if(!c.goal||Math.hypot(c.x-c.goal.hx,c.z-c.goal.hz)<1.2){
     const live=items.filter(i=>!i.gone); c.goal=live[Math.floor(Math.random()*live.length)];
   }
@@ -507,6 +693,7 @@ function walkTo(e,gx,gz,sp,dt){
       const dd=Math.hypot(d.x-gx,d.z-gz); if(dd<bd){bd=dd;tx=d.x;tz=d.z;} }
   }
   const a=Math.atan2(tx-e.x,tz-e.z);
+  if(e===curator) e.face=a;
   const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
   if(!solid(nx,e.z)) e.x=nx;
   if(!solid(e.x,nz)) e.z=nz;
@@ -669,6 +856,7 @@ let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000); last=now;
   if(started&&!over&&!qaPaused) step(dt);
+  sfx.frame();
   render(); hud();
   requestAnimationFrame(frame);
 }
@@ -708,10 +896,17 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   curator:()=>({x:+curator.x.toFixed(2),z:+curator.z.toFixed(2),state:curator.state,
     mode:curator.mode,open:+curator.open.toFixed(2),
     target:!!curator.target,carrying:!!curator.carry}),
-  setCur:(x,z,st)=>{curator.x=x;curator.z=z;if(st)curator.state=st;},
+  setCur:(x,z,st,face)=>{curator.x=x;curator.z=z;if(st)curator.state=st;
+    if(face!==undefined)curator.face=face;},
   setMode:m=>{curator.mode=m;},
   raw:()=>({x:player.x,z:player.z}),   // unrounded; pos() is display precision
   cargo:()=>van.cargo.map(c=>({grade:c.grade,value:c.value})),
+  audio:()=>sfx.probe(), startAudio:()=>sfx.start(), mute:v=>sfx.mute(v),
+  dragAt:(d,w,o)=>sfx.dragAt(d,w,!!o),
+  mix:()=>{sfx.frame(); return sfx.probe();},
+  hops:(ax,az,bx,bz)=>hops(ax,az,bx,bz),
+  sees:(x,z)=>sees(x,z), heard:(l,x,z)=>heard(l,x,z),
+  fix:()=>curator.fix?{...curator.fix}:null,
   faults:()=>DOOR_FAULTS.slice(),
   rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
   doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z})),

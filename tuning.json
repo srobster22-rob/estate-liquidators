@@ -61,6 +61,12 @@
     "open_seconds": 4.0,
     "stash_seconds": 20.0
   },
+  "senses": {
+    "_source": "TECH-SPEC.md A5; hearing radius derives from AUDIO-SPEC 1.1",
+    "sight_range_m": 18.0,
+    "sight_cone_deg": 100.0,
+    "fix_stale_seconds": 6.0
+  },
   "curse": {
     "_source": "ECONOMY.md 3 and 5, DESIGN.md 4.2",
     "value_multiplier": {

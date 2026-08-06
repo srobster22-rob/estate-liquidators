@@ -246,6 +246,31 @@ Added a real CLI that validates both sample estates and asserts the broken one t
 its seven planted faults; injection-tested by neutering V9, which it catches. · Wrote
 `ECONOMY.md` §11 and D-24, and marked §10's +6% superseded rather than deleting it.
 
+R19 · Gave the Curator senses and the game a soundtrack — `TECH-SPEC.md` §A5 and the
+fairness rule that depends on it. Hearing radius `L × 0.33` attenuated 0.85 per wall over the
+portal graph, the resulting investigation point fuzzed ±3m, sight at 18m through a 100° cone
+that walls block and darkness doesn't, and a last-known-position fix that goes stale after 6s.
+Audio is synthesised outright — no assets: a filtered-noise drag layer mixed by distance and
+occlusion, the marked item's 8m hum, and impulse pings whose carry is the same Loudness number
+that drives everything else. 14 new checks. · **The first cut applied the senses to everything
+and immediately broke §8.1.** A player hidden in a wardrobe holding the prize became
+unfindable, because the Curator had no fix on them — which deletes "you can hide, but your
+loot can't", the sentence the whole concealment design hangs off. The resolution is that the
+two problems are different: **an item radiates its own position** (carried, dropped or
+stashed in furniture), so retrieval never needed senses; **crew do not**, so hunting people at
+COLLECT is where hearing and sight decide everything. Being quiet now works on the second and
+does nothing for the first, which is exactly the split the design wanted and had never stated.
+· **Two of the four injection tests didn't fire, and both were the checker's fault.** The A6.2
+floor ("never occluded to zero within 8m") could be deleted without any test noticing, because
+with seven rooms nothing is ever both four walls away and eight metres close — the rule is
+defensive against content that doesn't exist yet. Refactored the mix into a pure
+`dragAt(distance, walls, opening)` and swept it over combinations the estate can't currently
+produce. And sight had no test for *walls* at all, only for wardrobes. Both now fail when
+neutered. · One honest limit, stated rather than papered over: headless Chromium has no audio
+device and its context clock never advances, so `gain.value` stays at zero however correct the
+mix is. The harness asserts the **mixing rule**, not audible output. Nobody has heard this yet.
+· Regression: QA 60/60, drift 84/84, estate validator 10×2 PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

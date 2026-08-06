@@ -507,6 +507,131 @@ async function checks(g, fresh) {
   });
   ok("walking out of a hiding place leaves it", stuck.concealed === false, JSON.stringify(stuck));
 
+  // --- senses (TECH-SPEC A5) ------------------------------------------------
+  // Hearing radius is L x 0.33, attenuated 0.85 per wall, and the point it walks
+  // to is fuzzed +/-3m. Drive it from known geometry rather than from the game's
+  // own numbers: sprint is L45, so 14.85m in the clear and ~12.6m through a wall.
+  await fresh();
+  const hearing = await g(() => {
+    const out = { near: 0, far: 0, fuzzMax: 0, throughWall: null, clear: null };
+    const c0 = window.__g.curator();
+    for (let i = 0; i < 200; i++) {
+      window.__g.setCur(0, 0);
+      window.__g.heard(45, 10, 0);              // 10m away, same room
+      if (window.__g.fix()) {
+        out.near++;
+        const f = window.__g.fix();
+        out.fuzzMax = Math.max(out.fuzzMax, Math.hypot(f.x - 10, f.z - 0));
+      }
+      window.__g.setCur(0, 0);
+      window.__g.heard(45, 20, 0);              // 20m away - past L45 x 0.33
+      const f2 = window.__g.fix();
+      if (f2 && Math.hypot(f2.x - 20, f2.z) < 5) out.far++;
+    }
+    return out;
+  });
+  ok("it hears a sprint at ten metres", hearing.near > 190, JSON.stringify(hearing));
+  ok("it does not hear a sprint at twenty", hearing.far === 0, JSON.stringify(hearing));
+  ok("the heard position is fuzzed, never exact",
+    hearing.fuzzMax > 1.0 && hearing.fuzzMax <= 3.05, `max error ${hearing.fuzzMax}`);
+
+  const occl = await g(() => {
+    const rooms = window.__g.rooms();
+    const a = rooms.find(r => r.id === "foyer"), b = rooms.find(r => r.id === "hall");
+    return { same: window.__g.hops(a.x, a.z, a.x + 1, a.z),
+             next: window.__g.hops(a.x, a.z, b.x, b.z),
+             far: window.__g.hops(a.x, a.z, rooms.find(r => r.id === "pot").x,
+                                  rooms.find(r => r.id === "pot").z) };
+  });
+  ok("walls are counted over the portal graph",
+    occl.same === 0 && occl.next === 1 && occl.far >= 3, JSON.stringify(occl));
+
+  // Concealment beats sight outright - that is what the wardrobe is for.
+  await fresh();
+  const sight = await g(() => {
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    window.__g.setCur(f.x - 3, f.z, null, Math.PI / 2);   // inside the room, facing the player
+    window.__g.step(1, 1 / 60);
+    const openGround = window.__g.fix();
+    const hi = window.__g.hides().findIndex(h => h.room === "foyer");
+    window.__g.hide(hi); window.__g.step(90, 1 / 60);
+    const before = window.__g.fix();
+    window.__g.setCur(window.__g.raw().x + 2.5, window.__g.raw().z, null, -Math.PI / 2);
+    for (let i = 0; i < 120; i++) window.__g.step(1, 1 / 60);
+    const after = window.__g.fix();
+    return { openGround: !!openGround, sure: openGround && openGround.sure,
+             hiddenFixAged: after ? after.age : null, before: !!before };
+  });
+  ok("it sees you in the open", sight.openGround === true && sight.sure === true,
+    JSON.stringify(sight));
+  ok("it cannot see you in a wardrobe",
+    sight.hiddenFixAged === null || sight.hiddenFixAged > 1.0, JSON.stringify(sight));
+
+  const throughWall = await g(() => {
+    const rooms = window.__g.rooms();
+    const foyer = rooms.find(r => r.id === "foyer"), hall = rooms.find(r => r.id === "hall");
+    window.__g.tp(hall.x, hall.z);
+    window.__g.setCur(foyer.x + 4, foyer.z, null, Math.PI / 2);   // in the cone, 7m off
+    return { d: Math.hypot(hall.x - (foyer.x + 4), hall.z - foyer.z),
+             seen: window.__g.sees(hall.x, hall.z) };
+  });
+  ok("sight does not pass through walls",
+    throughWall.seen === false && throughWall.d < 18, JSON.stringify(throughWall));
+
+  // --- audio, and the fairness rule it exists to keep -----------------------
+  // A6.2: always audible for >= 8m before contact, on a layer never occluded to
+  // zero. Read the mix rather than listening to it.
+  await fresh();
+  const audio = await g(() => {
+    window.__g.startAudio();
+    const probe = window.__g.audio();
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    const at = d => { window.__g.setCur(f.x + d, f.z); return window.__g.mix().drag; };
+    const far = at(30), eight = at(8), close = at(2);
+    // through a wall, at eight metres: the rule says still audible
+    const hall = window.__g.rooms().find(r => r.id === "hall");
+    window.__g.tp(hall.x, hall.z);
+    window.__g.setCur(f.x + 4, f.z);
+    const walled = window.__g.mix().drag;
+    return { probe, far, eight, close, walled };
+  });
+  ok("the audio engine comes up", audio.probe.ready === true, JSON.stringify(audio.probe));
+  // Note: this asserts the MIXING RULE, not audible output. Headless Chromium
+  // has no audio device and its context clock does not advance, so the graph's
+  // own gain values stay at zero however correct the mix is.
+  ok("it is audible at eight metres", audio.eight >= 0.05, `drag=${audio.eight}`);
+  ok("it gets louder as it closes", audio.close > audio.eight && audio.eight > audio.far,
+    JSON.stringify(audio));
+  ok("occlusion never silences the drag layer inside eight metres",
+    audio.walled > 0, `drag through a wall = ${audio.walled}`);
+
+  // The rule, at every combination including ones this estate cannot produce.
+  const floor = await g(() => {
+    const bad = [];
+    for (let walls = 0; walls <= 6; walls++)
+      for (let d = 0; d <= 8; d += 0.5)
+        if (window.__g.dragAt(d, walls, false) < 0.06)
+          bad.push({ d, walls, g: window.__g.dragAt(d, walls, false) });
+    return { bad, beyond: window.__g.dragAt(9, 6, false) };
+  });
+  ok("the eight-metre floor holds through any number of walls",
+    floor.bad.length === 0, JSON.stringify(floor.bad.slice(0, 3)));
+  ok("and does not apply past eight metres", floor.beyond < 0.06,
+    `drag at 9m through 6 walls = ${floor.beyond}`);
+
+  await fresh();
+  const muted = await g(() => {
+    window.__g.startAudio();
+    const on = window.__g.mute(true);
+    const m = window.__g.audio();
+    window.__g.mute(false);
+    return { on, master: m.master, after: window.__g.audio().master };
+  });
+  ok("mute works", muted.on === true && muted.master === 0 && muted.after > 0,
+    JSON.stringify(muted));
+
   // --- the estate is authored, not assumed ---------------------------------
   const faults = await g(() => window.__g.faults());
   ok("every doorway fits its door", faults.length === 0, JSON.stringify(faults));

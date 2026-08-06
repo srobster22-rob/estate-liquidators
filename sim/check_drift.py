@@ -143,6 +143,19 @@ check("JS3d hide_enter_s", grab(js3, r"HIDE_ENTER_S\s*=\s*([\d.]+)"), cn["enter_
 check("JS3d hide_open_s", grab(js3, r"HIDE_OPEN_S\s*=\s*([\d.]+)"), cn["open_seconds"])
 check("JS3d stash_s", grab(js3, r"STASH_S\s*=\s*([\d.]+)"), cn["stash_seconds"])
 
+sn = TUNING["senses"]
+check("JS3d hear_per_l", grab(js3, r"HEAR_PER_L\s*=\s*([\d.]+)"),
+      lc["hearing_radius_per_l"])
+check("JS3d occlusion_curator", grab(js3, r"OCCLUSION_CURATOR\s*=\s*([\d.]+)"),
+      lc["occlusion_curator"])
+check("JS3d localisation_fuzz", grab(js3, r"FUZZ_M\s*=\s*([\d.]+)"),
+      lc["localisation_fuzz_m"])
+check("JS3d sight_range", grab(js3, r"SIGHT_M\s*=\s*([\d.]+)"), sn["sight_range_m"])
+check("JS3d sight_cone", grab(js3, r"SIGHT_COS=Math\.cos\((\d+)"),
+      sn["sight_cone_deg"] / 2)
+check("JS3d fix_stale", grab(js3, r"FIX_STALE_S\s*=\s*([\d.]+)"),
+      sn["fix_stale_seconds"])
+
 # --------------------------------------------------------------- Python sims
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
         for n in ("integrated.py", "disturbance.py", "curse_test.py",
