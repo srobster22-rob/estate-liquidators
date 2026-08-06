@@ -27,6 +27,8 @@
     "sustained_disturbance_per_l": 0.02,
     "occlusion_player": 0.60,
     "occlusion_curator": 0.85,
+    "curator_approach_l": 60.0,
+    "audibility_floor": 25.0,
     "localisation_fuzz_m": 3.0,
     "_sustained_sources": ["sprint", "dolly", "radio"],
     "_note": "A dash in the spec's dDisturbance column is a hard zero. Walking is free."

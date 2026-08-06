@@ -321,6 +321,25 @@ max-of-N policy is a curse magnet, so its "take everything" arm was already a gr
 → 11%"*, because the marginal judgement is unplayable when only one side of it is visible.
 Four new smoke-test assertions pin it to the canonical ruin curve.
 
+R23 · Audited the checker's own **inventory**, then extended the same idea outward to the
+specifications. · **The drift checker read ten files perfectly and was blind to the eleventh.**
+`sim/curator_attention.py` carries the steal threshold, the commitment lock and the curse
+attention table; `sim/validate_estate.py` carries the slot costs and the Curator's occlusion —
+and neither had ever been read by the thing whose job is to read them. Both happened to agree,
+which is luck, not a system. Files are now enumerated by glob and every one must be checked or
+excluded **with a reason**, so the eleventh file cannot arrive silently. 206 assertions over
+twelve files, all mutation-killed; verified by dropping a scratch file into `sim/` and
+watching the run fail. · Then the layer nobody was guarding at all: **the specs**. Built
+`sim/check_docs.py`, which re-derives 51 numbers a human reads before typing them somewhere —
+including AUDIO-SPEC §1.2's *derived* columns, where the hearing radius and Disturbance delta
+for every event were computed by hand from L and the constants in §1.1. **A hand-computed
+column is a copy of a calculation, and it drifts exactly like a copy of a constant.** It also
+enforces the rule that bit this project in R3: a dash in the ΔDisturbance column is a hard
+zero, so a sustained source is not allowed to claim one. · All 51 agree — the docs are
+currently honest. Confirmed the checker can say otherwise by planting five different classes
+of error (a wrong L, a wrong derived radius, a dash on a sustained source, a wrong slot cost,
+a wrong ruin percentage) and watching it name all five.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

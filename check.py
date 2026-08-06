@@ -51,6 +51,8 @@ else:
 
 results.append(run("waiver audit", [sys.executable, "sim/audit_waivers.py"]))
 
+results.append(run("doc check", [sys.executable, "sim/check_docs.py"]))
+
 results.append(run("estate validator", [sys.executable, "validate_estate.py"],
                    cwd=ROOT / "sim"))
 

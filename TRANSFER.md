@@ -44,7 +44,7 @@ Run these before anything else; the answers change the plan.
 python3 check.py            # the whole suite; prints SKIP for anything this box can't run
 ```
 
-That runs the drift check (177 assertions across 10 source files), the mutation test that
+That runs the drift check (206 assertions across 12 source files), the mutation test that
 proves each of those assertions can actually fail, the estate validator's two-way self-test,
 the C# core suite, and a headless browser smoke test of both prototypes. The last two need
 `dotnet` and `npm i playwright` respectively; without them the runner says so out loud rather
@@ -86,5 +86,5 @@ Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the 
 settled (25 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has twenty-two rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has twenty-three rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

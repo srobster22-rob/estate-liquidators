@@ -73,7 +73,33 @@ FILES = {
     "py/curse_test":  "sim/curse_test.py",
     "py/haul_sim":    "sim/haul_sim.py",
     "py/chain_sim":   "sim/chain_sim.py",
+    "py/attention":   "sim/curator_attention.py",
+    "py/validate":    "sim/validate_estate.py",
 }
+
+# Every source file that could hold a canonical constant must be either checked
+# above or excluded here, with a reason. R23 added this because the checker's
+# own INVENTORY was unverified: `sim/curator_attention.py` carries the steal
+# threshold, the commitment lock and the curse attention table, and
+# `sim/validate_estate.py` carries the slot costs and the Curator occlusion -
+# and neither file had ever been read by the thing whose job is to read them.
+# Coverage of ten files says nothing if the repository has twelve.
+EXCLUDED = [
+    ("sim/check_drift.py", "this file"),
+    ("sim/mutate_drift.py", "tests this file; holds no game constants"),
+    ("sim/audit_waivers.py", "tests this file's waivers"),
+    ("sim/check_docs.py", "checks the SPECS against tuning.json, same job one layer out"),
+    ("sim/estates.py", "sample level data - room positions, not tuning"),
+    ("check.py", "test runner"),
+    ("tools/proto_smoke.mjs", "reads tuning.json directly, so it cannot drift from it"),
+    ("unity/tests/CoreTests/Program.cs",
+     "assertions ABOUT the constants - its literals are expected results, and "
+     "pinning them to tuning.json would make the test check itself"),
+]
+
+INVENTORY = ("sim/*.py", "proto/index.html", "proto3d/index.html",
+             "unity/Assets/Scripts/Core/*.cs", "unity/tests/CoreTests/*.cs",
+             "tools/*.mjs", "check.py")
 
 
 # ------------------------------------------------------------------ assertions
@@ -274,6 +300,21 @@ for f in ("py/integrated", "py/curse_test", "py/disturbance"):
     assert_(f, D + "tier_pursue_at", r"\((\d+), \"PURSUE\"\)", PY_TIERS)
     assert_(f, D + "tier_patrol_at", r"\((\d+), \"PATROL\"\)", PY_TIERS)
 
+assert_("py/attention", "attention.steal_threshold", r"^STEAL = ([\d.]+)")
+assert_("py/attention", "attention.commit_seconds", r"^COMMIT = ([\d.]+)")
+assert_("py/attention", "attention.recompute_seconds", r"^TICK = ([\d.]+)")
+for grade in ("clean", "tainted", "malignant"):
+    assert_("py/attention", f"curse.attention_multiplier.{grade}",
+            rf"\"{grade}\":\s*([\d.]+)", r"^CURSE = \{.*?\}")
+
+assert_("py/validate", LC + "occlusion_curator", r"^OCCLUSION = ([\d.]+)")
+assert_("py/validate", LC + "curator_approach_l", r"^APPROACH_L = ([\d.]+)")
+assert_("py/validate", LC + "audibility_floor", r"^AUDIBILITY_FLOOR = ([\d.]+)")
+PY_CLASS_SLOTS = r"CLASS_SLOTS = \{.*?\}"
+for key in ("pocket", "armful", "two_man", "cart"):
+    assert_("py/validate", f"van.slot_cost.{key}", rf"\"{key}\":\s*([\d.]+)",
+            PY_CLASS_SLOTS)
+
 assert_("py/haul_sim", "night.haul_window_seconds", r"^HAUL_WINDOW_S = ([\d.]+)")
 assert_("py/haul_sim", "night.appraise_seconds", r"^APPRAISE_S = ([\d.]+)")
 assert_("py/haul_sim", "night.crew", r"^CREW = (\d+)")
@@ -415,6 +456,42 @@ WAIVERS = [
     ("py/chain_sim", "night.seconds", "models the haul window only"),
     ("py/chain_sim", "night.crew", "crew size is the swept variable"),
     ("py/chain_sim", "night.appraise_seconds", "appraising is not modelled here"),
+
+    ("py/attention", "loudness.*", "attention counts noise EVENTS, not their loudness"),
+    ("py/attention", "loudness_constants.*", "as above"),
+    ("py/attention", "disturbance.*", "separate system"),
+    ("py/attention", "curse.value_multiplier.*", "only the attention weighting matters here"),
+    ("py/attention", "curse.ledger_fee.*", "no ledger in this model"),
+    ("py/attention", "van.*", "no van in this model"),
+    ("py/attention", "retrieval.*", "models targeting, not retrieval"),
+    ("py/attention", "night.*", "runs its own short scenarios, not a full night"),
+    ("py/attention", "attention.noise_multiplier_per_event",
+     "sweeps the multiplicative weighting itself - the sweep IS the R2 finding"),
+    ("py/attention", "attention.light_multiplier", "swept alongside the noise multiplier"),
+
+    ("py/validate", "loudness.*", "geometry check - one approach loudness, no event table"),
+    ("py/validate", "loudness_constants.hearing_radius_per_l", "no distances in metres of noise"),
+    ("py/validate", "loudness_constants.occlusion_player", "V5 is about the Curator"),
+    ("py/validate", "loudness_constants.impulse_disturbance_per_l", "no Disturbance model"),
+    ("py/validate", "loudness_constants.sustained_disturbance_per_l", "no Disturbance model"),
+    ("py/validate", "loudness_constants.localisation_fuzz_m", "no localisation"),
+    ("py/validate", "disturbance.*", "no Disturbance model"),
+    ("py/validate", "attention.*", "no attention model"),
+    ("py/validate", "curse.*", "curses are not placed by the level contract"),
+    ("py/validate", "retrieval.*", "no Curator behaviour, only its navmesh"),
+    ("py/validate", "van.base_slots", "V9 is about distance, not capacity"),
+    ("py/validate", "van.max_slots", "as above"),
+    ("py/validate", "van.ruin_*", "no curses"),
+    ("py/validate", "night.*", "V2 uses its own traversal timings"),
+
+    ("cs/Loudness", "loudness_constants.curator_approach_l",
+     "the approach bus is an FMOD event level, not a NoiseKind - AUDIO-SPEC 3.1"),
+    ("cs/Loudness", "loudness_constants.audibility_floor",
+     "a level-authoring threshold (V5), not a runtime constant"),
+    ("*", "loudness_constants.curator_approach_l",
+     "only the estate validator uses the approach bus"),
+    ("*", "loudness_constants.audibility_floor",
+     "only the estate validator uses the audibility floor"),
 ]
 
 
@@ -461,6 +538,16 @@ def main(verbose=True):
             fails.append(f"{file_key}:{path}  NOT FOUND in source ({why})")
         elif abs(got - CANON[path]) > 1e-9:
             fails.append(f"{file_key}:{path}  found {got:g}, canonical is {CANON[path]:g}")
+
+    # Inventory: is the list of files itself right? A checker that reads ten
+    # files perfectly is still blind to the eleventh.
+    known = {FILES[k] for k in FILES} | {f for f, _ in EXCLUDED}
+    for pattern in INVENTORY:
+        for path in sorted(ROOT.glob(pattern)):
+            rel = path.relative_to(ROOT).as_posix()
+            if rel not in known:
+                fails.append(f"{rel}  NOT IN THE INVENTORY - add it to FILES with "
+                             f"assertions, or to EXCLUDED with a reason")
 
     # Coverage: every (file, constant) pair is asserted or waived, never neither.
     for file_key in FILES:
