@@ -12,6 +12,23 @@ catches the exact failure that matters: a literal edited in one file and not the
     python sim/check_drift.py        ->  exit 0 if everything agrees
 
 Requires nothing outside the standard library.
+
+THREE PROPERTIES, EACH ADDED AFTER THE PREVIOUS ONE PROVED TOO WEAK:
+
+  1. AGREEMENT (R14). Every constant present in more than one place holds the same
+     value. Reported "55 constants agree" for four rounds while two implementations
+     disagreed about the cursed-cargo floor, because both wrote it inline and named
+     constants are all this can see (R18).
+  2. COVERAGE (R21). Every numeric leaf in tuning.json is claimed by somebody, with
+     UNIMPLEMENTED listing the deliberate gaps. Stays green while the SHIPPING C# core
+     lacks a whole subsystem, as long as a Python sim has it.
+  3. PER-IMPLEMENTATION COVERAGE (R23). What each of the three actually pins, and what
+     the C# core still has to catch up on (CS_BACKLOG).
+
+WHAT "CLAIMED" MEANS, precisely: a check exists pinning that value in that
+implementation. It does NOT mean the implementation behaves correctly -- but a check
+whose constant is missing from the source reports NOT FOUND, so property 1 catches the
+difference. The pair is the guarantee; neither half is one alone.
 """
 
 import json
@@ -31,6 +48,25 @@ fails, checks = [], 0
 # and record every lookup: `want` is always a dict access, so reading it IS the claim.
 CLAIMED = set()
 
+# R23: per-IMPLEMENTATION coverage. The global check above only asks whether SOMEBODY
+# claims a value, which is the weaker property -- it stays green while the shipping C#
+# core silently lacks a whole subsystem the sims have moved past.
+#
+# Attribution needs no call-site edits either. Python evaluates a call's arguments
+# before the call, so any tuning lookups since the last check() belong to the check
+# about to run. The buffer is marked consumed rather than cleared, so a loop that sweeps
+# a table with .items() and then checks two implementations in its body attributes the
+# whole table to both -- which is correct, because over the full loop both do check it.
+BY_IMPL = {"C#": set(), "JS": set(), "py": set()}
+_PENDING = {"paths": set(), "consumed": False}
+
+
+def _impl_of(label):
+    for name in BY_IMPL:
+        if label.startswith(name):
+            return name
+    return None
+
 
 class Tracked(dict):
     def __init__(self, d, path=()):
@@ -46,6 +82,10 @@ class Tracked(dict):
             return Tracked(v, p)
         if not k.startswith("_"):        # prose keys are not tuning values
             CLAIMED.add(".".join(p))
+            if _PENDING["consumed"]:
+                _PENDING["paths"] = set()
+                _PENDING["consumed"] = False
+            _PENDING["paths"].add(".".join(p))
         return v
 
     # Iterating a table IS claiming its values -- several checks sweep a whole dict
@@ -96,6 +136,10 @@ UNIMPLEMENTED = {
 def check(label, got, want, tol=1e-9):
     global checks
     checks += 1
+    impl = _impl_of(label)
+    if impl:
+        BY_IMPL[impl] |= _PENDING["paths"]
+    _PENDING["consumed"] = True
     if got is None:
         fails.append(f"{label}: NOT FOUND in source")
         return
@@ -297,8 +341,45 @@ for cls, want in TUNING["curse"]["ledger_fee"].items():
           grab(sims["curse_test.py"], rf'FEE = \{{[^}}]*?"{cls}":\s*([\d.]+)'), want)
 
 # --------------------------------------------------------------- coverage report
+# The C# core under unity/ is the SHIPPING implementation. Every canonical value the
+# sims or the prototype rely on has to reach it eventually, so anything claimed by
+# somebody but not by C# is a real port backlog rather than a stylistic gap. Listed
+# explicitly so it can only shrink: a value that leaves C#'s reach fails the run, and
+# one that arrives has to be struck off.
+CS_BACKLOG = {
+    "curse.attention_multiplier.clean",
+    "curse.attention_multiplier.malignant",
+    "curse.attention_multiplier.tainted",
+    "curse.ledger_fee.clean",
+    "curse.ledger_fee.malignant",
+    "curse.ledger_fee.tainted",
+    "curse.value_multiplier.clean",
+    "curse.value_multiplier.malignant",
+    "curse.value_multiplier.tainted",
+    "loudness_constants.approach_min_warning_m",
+    "loudness_constants.approach_occlusion_floor",
+    "night.appraise_seconds",
+    "night.crew",
+    "night.haul_window_seconds",
+    "night.seconds",
+    "retrieval.collect",
+    "retrieval.dormant",
+    "retrieval.patrol",
+    "retrieval.pursue",
+    "room_spread.factor.curio",
+    "room_spread.factor.mixed",
+    "room_spread.factor.uniform",
+    "van.slot_cost.armful",
+    "van.slot_cost.cart",
+    "van.slot_cost.pocket",
+    "van.slot_cost.two_man",
+}
+
 claimed = CLAIMED & ALL_LEAVES
 unclaimed = ALL_LEAVES - CLAIMED
+cs_missing = claimed - BY_IMPL["C#"]
+cs_new = sorted(cs_missing - CS_BACKLOG)
+cs_done = sorted(CS_BACKLOG - cs_missing)
 new_gaps = sorted(unclaimed - UNIMPLEMENTED)
 stale = sorted(UNIMPLEMENTED & CLAIMED)
 
@@ -306,9 +387,17 @@ stale = sorted(UNIMPLEMENTED & CLAIMED)
 print(f"DRIFT CHECK  -  {checks} constants across 3 implementations")
 print(f"COVERAGE     -  {len(claimed)}/{len(ALL_LEAVES)} canonical values are claimed by "
       f"at least one implementation, {len(unclaimed)} known gaps")
+print("             -  by implementation: "
+      + ",  ".join(f"{k} {len(v & ALL_LEAVES)}/{len(ALL_LEAVES)}"
+                   for k, v in BY_IMPL.items())
+      + f"  ({len(cs_missing)} awaiting the C# port)")
 print("-" * 74)
 for k in new_gaps:
     fails.append(f"{k}: in tuning.json, checked against NO implementation")
+for k in cs_new:
+    fails.append(f"{k}: claimed by the sims but NOT by the shipping C# core")
+for k in cs_done:
+    fails.append(f"{k}: listed in CS_BACKLOG but C# now claims it - remove it")
 for k in stale:
     fails.append(f"{k}: listed as unimplemented but IS now checked - "
                  f"remove it from UNIMPLEMENTED")

@@ -380,6 +380,34 @@ an estate with no spread at all. **A failed telegraph costs about two-thirds of 
 not all of it** — which is both the budget argument for spending art effort here and the
 reason not to panic if the first playtest reads badly. Logged as D-24.
 
+R23 · **Could not do the round as briefed, and the reason is worth recording:** there is no
+C# toolchain in this environment and no way to get one — `dot.net` is refused by the network
+policy and no compiler exists on the reachable package registries. Writing C# I cannot compile
+would mean shipping an untested change to the one implementation that actually has to run, so
+the port itself is deferred to a machine with `dotnet`. What R23 *did* deliver is the part
+that made the port a definite job rather than a vague one. · Upgraded `check_drift.py` from
+"somebody claims this value" to **per-implementation coverage**, which is the property R21's
+own next-step note identified as the stronger one. Attribution needed no call-site edits:
+Python evaluates a call's arguments before the call, so any tuning lookup since the last
+`check()` belongs to the check about to run. The buffer is marked *consumed* rather than
+cleared, so a loop that sweeps a table with `.items()` and then checks two implementations in
+its body attributes the whole table to both — correct, because over the full loop both do
+check it. · **The picture it produces is the useful output: C# 32/64, JS 21/64, py 39/64, and
+26 values claimed by the sims that the shipping core does not have.** Not the two I already
+knew about — twenty-six. The whole **retrieval table**, the entire **curse economy** (value
+multipliers, attention multipliers, ledger fees), all four **van slot costs**, every
+**`night`** constant, and both R19 approach constants, on top of the `room_spread` and
+occlusion-floor gaps R21 named. The C# core turns out to implement the *Curator* faithfully
+and almost none of the *economy*. That is a much bigger and more specific finding than "the
+C# has fallen behind", and it is now a list rather than an impression. · Recorded it as
+`CS_BACKLOG`, which ratchets in both directions — a value that arrives in C# fails the run
+until it is struck off, and one that leaves fails immediately. Verified both directions. ·
+Wrote down what "claimed" actually means, because it is narrower than it sounds: **a check
+exists pinning that value in that implementation**, not that the implementation is correct.
+A check whose constant is missing from the source still reports NOT FOUND, so the agreement
+half catches that — the two properties are only a guarantee together, and the file now says
+so rather than letting a reader assume more than it delivers.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -387,44 +415,51 @@ reason not to panic if the first playtest reads badly. Logged as D-24.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R23: close the C#-side gaps R21 made visible, and make the coverage check per-implementation
-while you are in there.** `unity/tests/CoreTests` still pins 31 checks against a model the
-Python and JS have both moved past: nothing there knows about `room_spread`, and `Loudness.cs`
-has no `approach_occlusion_floor` despite `tuning.json` carrying one since R19. Both are
-claimed by *some* implementation, so the R21 coverage check is green — which is the weaker
-guarantee it can give. Per-implementation coverage ("which of the three claims this value?")
-is the stronger property and would have surfaced these without anyone noticing by hand.
+**R24 — needs a machine with `dotnet`, and is now a definite job. Port the economy into the
+C# core.** R23 enumerated it: **26 canonical values the sims rely on and the shipping core
+does not have**, listed in `CS_BACKLOG` in `check_drift.py`. The shape of the gap is the
+finding — the C# implements the *Curator* faithfully (loudness, attention, disturbance, the
+ruin curve) and almost none of the *economy*: the whole retrieval table, all three curse
+tables, every van slot cost, every `night` constant, and both R19 approach constants. Work in
+that order — retrieval first, since it drives every haul result; curse tables next, since
+D-23's decision runs through them. Strike each value off `CS_BACKLOG` as it lands; the check
+fails until you do. `unity/tests/CoreTests` will need the matching cases, and its 31 checks
+are currently pinned to a model two subsystems out of date.
 
-**Then R24: the appraiser now has a decision the C# core cannot represent.** D-22/D-23 leave
-two strategies of equal expected value and different variance — "scan the top quarter of rooms
-whenever" and "scan the top half while it's still tidying" — and the C# core has no concept of
-room spread at all, so a Unity build could not express either. That is the real port, not just
-a constant.
+*This environment cannot do it.* No C# toolchain, `dot.net` refused by the network policy,
+nothing usable on the reachable registries. Don't attempt it here — an uncompiled C# change to
+the one implementation that actually ships is worse than no change.
 
-**Four standing rules, each earned by getting it wrong first.**
-*A checker only checks what somebody named* (R18) — it reported "55 constants agree" for four
-rounds while two implementations disagreed about a number that moved the headline result.
-*A check earns its place by failing the default an unaware author produces* (R19) — V5 passed
-everything for eighteen rounds because it had no failing condition at all.
-*Ask a statistic at the right altitude* (R20) — the D-10 leak test read r = 0.46 pooled across
-tiers and ~0.00 within rooms, and only the second was answering the question.
-*Name the table you mean* (R14, R21) — a text-scraping pattern matched `CLASS_WIDTH` instead
-of `CLASS_SLOTS` and reported a doorway width as a slot cost; third occurrence of that bug.
+**R25: `room_spread` is the one backlog item that is not merely a constant.** The other 25 are
+numbers with a home waiting for them. Spread needs a *concept* in the C# core — rooms do not
+exist there as value-bearing objects at all — and it carries the appraiser decision D-22/D-23
+leave open: two strategies of equal expected value and different variance, which a Unity build
+currently cannot express either of. Design that type before porting the three factors, or the
+factors will land somewhere that has to be rewritten.
 
-**And one from R22, which is a different kind of trap:** *a model verified in one projection
-is not verified in the one you ship.* The prototype's spread telegraph measured cleanly
-top-down and is destroyed by perspective. Nothing in the simulation was wrong; the viewing
-condition changed underneath it. Ask what the model is standing on before porting its
-conclusion.
+**Five standing rules, each earned by getting it wrong first.**
+*A checker only checks what somebody named* (R18). *A check earns its place by failing the
+default an unaware author produces* (R19) — V5 passed everything for eighteen rounds because
+it had no failing condition at all. *Ask a statistic at the right altitude* (R20) — the D-10
+leak test read r = 0.46 pooled and ~0.00 within rooms, and only the second answered the
+question. *Name the table you mean* (R14, R21) — a pattern matched `CLASS_WIDTH` instead of
+`CLASS_SLOTS`; third occurrence. *A model verified in one projection is not verified in the
+one you ship* (R22) — the prototype's spread telegraph measured cleanly top-down and is
+destroyed by perspective.
 
-**The appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
-circled the same number, and the resolution was structural rather than numerical. At **+8.8%**
-with a real skill ceiling, a graceful failure mode under misreading, and two equal-value
-strategies of different shape, the mechanic is defensible. **Do not reopen it with another
-tuning sweep.** The next real information comes from Milestone 2 instrumentation measuring
-what fraction of items players actually scan at hour five — the falsification condition D-10
-has carried since the beginning — and from D-24's one-second room-classification test, which
-costs nothing and can be run on a still frame long before the game is playable.
+And a sixth from R23, about this file specifically: **every guarantee here has been weaker
+than it sounded, three times running.** Agreement was weaker than coverage, coverage was
+weaker than per-implementation coverage, and "claimed" still only means a check exists rather
+than that the code is right. Assume the next one is weaker than it sounds too, and go looking
+for how.
 
-**Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
-art, blocks nothing) are closed.
+**The appraiser thread is closed. Keep it closed.** At **+8.8%** with a real skill ceiling, a
+graceful failure mode under misreading, and two equal-value strategies of different shape, the
+mechanic is defensible. **Do not reopen it with another tuning sweep.** The next real
+information comes from Milestone 2 instrumentation measuring what fraction of items players
+scan at hour five (D-10), and from D-24's one-second room-classification test, which costs
+nothing and can run on a still frame long before the game is playable.
+
+**Not blocked on anything except the C# port, which is blocked on a toolchain rather than on a
+decision.** All open decisions except O-05 (does the Curator have a face — art, blocks
+nothing) are closed.
