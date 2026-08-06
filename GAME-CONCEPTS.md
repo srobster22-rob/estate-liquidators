@@ -1,7 +1,11 @@
-# Forty-Five Game Concepts
+# Thirty-Nine Game Concepts
 
-`GAMES-PROJECT-PROMPT.md`, run once, plus two passes over it. 45 live concepts in nine
-families, a ranked top eight, and a graveyard of twenty-six.
+`GAMES-PROJECT-PROMPT.md`, run once, then corrected twice and verified once. **39 live
+concepts** in nine families, a ranked top eight, and a graveyard of thirty-two.
+
+All 45 cards have now been checked against the market. **Seven were games that already exist.**
+The [verification ledger](#verification-ledger) below is the current source of truth; where a
+card's `Nearest` field disagrees with it, the ledger is newer.
 
 **Pass two — the action amendment.** The first pass produced 40 concepts with no twitch, no aim
 and no combat depth anywhere in them, and the self-audit at the bottom called that a bias of
@@ -9,13 +13,16 @@ the generator rather than a position worth defending. **Family 9 — Fast** is t
 six action concepts, and a note on why action resists this format. Two entered the top eight on
 merit and displaced two entries, written up in that section rather than quietly swapped.
 
-**Pass three — verification, and it cost one of them.** #43 Recoil was checked against the
-store and is dead: *Kickback: Shoot to Move!* shipped in July 2025 with the same bet. #46
-Direct was checked and survives, with the bet narrowed. That's 5 of 6 in Family 9 still
-standing, the top eight reshuffled again, and **one concrete lesson about the order these
-passes should run in** — the search is five minutes and the prototype is two days, so the
-search goes first, above the ranking. It didn't, and the ranking was wrong for a day as a
-result.
+**Pass three — verification, and it cost seven concepts.** Every card was searched. Seven are
+occupied by shipped games (#3, #7, #9, #33, #36, #43, #45), four were wounded, twenty-eight
+survived. **Two of the seven were in the top eight**, and three were on cards I had already
+labelled probably-occupied and ranked highly anyway — which is the whole lesson: a suspicion
+written on a card does nothing, only the search does anything. Ninety minutes, and it
+outperformed every prototype in the document put together.
+
+It also **breached the action quota** and I've left it breached rather than padded — the two
+replacement concepts I generated were searched first and both died before a card was written.
+See the ledger.
 
 **What this is for.** Finding the one thing to prototype on Saturday. Not a list to feel good
 about. Every card carries a written-down result that would make you drop it and a test small
@@ -23,19 +30,17 @@ enough that you'd actually run it.
 
 **What is verified and what isn't.** Nothing here is verified. Every "nearest shipped game"
 is memory, and that memory has a cutoff — some of these shipped last year and I don't know it.
-**Before building anything — before *ranking* anything — search the store for the comparables.**
-Five minutes each, and it is the highest-value hour in this document. Two of the five I flagged
-as probably-occupied have now been checked:
+**Search before you rank — this document learned that the expensive way.** All 45 cards have
+been checked and the results are in the ledger below. The short version: seven concepts were
+games that already exist, three of those were on cards I had *already flagged* as probably
+occupied and ranked highly anyway, and two of them sat in the top eight. The whole sweep took
+about ninety minutes.
 
-- **`#43` Recoil is dead.** *Kickback: Shoot to Move!* (Steam, July 2025) ships the concept
-  and the bet. Moved to the graveyard; the number is left vacant so cross-references resolve.
-- **`#46` Direct survives**, with the bet narrowed and one piece of adverse evidence found.
-  Details on the card.
-
-**Still unchecked, and still suspect: `#9` (vs *Viscera Cleanup Detail*), `#33` (vs *Blackbar*
-and *Orwell*), `#38` (vs *Potion Craft*).** Everything else in here remains unverified memory.
-One card in six survived contact with a search engine at full strength; assume that rate
-applies to the rest.
+**What that means for reading the rest of this.** SURVIVED means "a real search found nothing
+occupying the bet" — not "nothing exists." Jam builds and unlisted prototypes are invisible to
+it, and several survivors are one design decision away from being occupied (see the caveats in
+the ledger). Every kill condition on every surviving card is still unrun. The portfolio is now
+honestly scoped and completely untested.
 
 **Calibration.** Estate Liquidators — *aggro follows the most valuable object leaving the
 house, so you can get rid of the monster by handing the vase to your friend* — is roughly the
@@ -58,13 +63,74 @@ Tags: `SOLO` shippable by one person · `NO COMBAT` no combat, no health bar any
 `UNMARKETABLE` mechanically true, commercially unwise, included deliberately ·
 `POPULATION` needs a live player base to function — the heaviest structural dependency here.
 
-Quota check: 9 families — 5 each, Family 9 down to 5 after #43 was killed by verification ·
-1 co-op horror and 1 solo horror against a cap of 3 · 20 solo-shippable · 28 with no combat ·
-5 with combat as the point · 7 marked unmarketable · 8 needing a population.
+Quota check, post-verification: 9 families, **39 live concepts**, 7 killed by search ·
+0 co-op horror (the one entry died) and 1 solo horror · 17 solo-shippable · 26 with no combat ·
+**4 with combat as the point — the action quota is breached, see below** · 7 unmarketable ·
+8 needing a population.
 
-Family 9 now sits at the action quota's floor rather than above it. One more loss there and
-the prompt's "at least six are fast" is breached, which would mean generating a replacement
-rather than quietly dropping the quota.
+---
+
+## Verification ledger
+
+All 45 cards checked against the market on **2026-08-06**. This table is the document's
+current source of truth; where a card's `Nearest` field disagrees with this ledger, the
+ledger is newer.
+
+**Of 46 cards written: 7 dead, 4 wounded, 35 survived.** 39 remain live.
+
+| Verdict | Count | Cards | Meaning |
+|---|---|---|---|
+| **DEAD** | 7 | #3, #7, #9, #33, #36, #43, #45 | A shipped game occupies the concept *and* the bet. Tombstoned in place; graveyard entries 26–32. |
+| **WOUNDED** | 4 | #2, #37, #40, #41 | The bet was partly taken, or a claim on the card was factually wrong. All four cards rewritten. #2 and #40 need real work before either is buildable. |
+| **SURVIVED** | 35 | everything else | A real search found nothing occupying the bet. Not the same as "nothing exists" — see the caveats. |
+
+**One verdict a search structurally cannot deliver:** #40 Shelf. *Shelf by Shelf: Bookstore
+Simulator* exists and is unquestionably in the same room, but whether it models **adjacency**
+— the actual bet — isn't in the store copy or any review. It needs two hours of play, not more
+searching. Counted above as wounded, listed separately because the instrument is different.
+
+**Six were checked-empty in a way worth naming**, because these are the ones where "nobody has
+done this" is now a finding rather than a failure of recall: **#18 Luthier** (no instrument-
+building game with DSP as the win condition — the field is a Stanford course and the NESS
+project), **#22 Escrow** (player-written enforced contracts exist only in academic
+market-simulation papers and one game patent), **#30 Foley** (no foley game at all), **#42
+Throng** (crowd-as-fluid exists as [SPH crowd-simulation research](https://www.sciencedirect.com/science/article/abs/pii/S0097849321001205), never as an action game),
+**#44 Ghosts** (ghost replays are universally cosmetic; nobody has made them lethal), and
+**#24 Wake** (no social deduction game where you win by *keeping* a secret).
+
+**Three caveats on the survivors, all of which cut the same way.**
+
+1. **A search proves absence of *indexed* work, not absence of work.** Half the kills came
+   from itch.io pages and one-line store blurbs; the next tier down is jam builds nobody
+   writes about. Treat SURVIVED as "not obviously taken."
+2. **Four survivors have a name collision, not a concept collision** — #32 Marginalia (a card
+   game, a Connor Sherlock game, and a Steam app already use it) and #1 Party Line (the 2025
+   narrative game *Dispatch* owns the dispatcher space by association). Rename before you get
+   attached.
+3. **Several survivors are surrounded.** #26 Steady survives only because *Silent Breath*,
+   *Hold Your Breath* and *Breathless* all use breath for **stealth**, not as a precision
+   axis. #35 Signal survives because number-station games (*Broadcast*, *Stories Untold*
+   ep. 3) don't use real scheduled scarcity. #28 Hold Music survives an existing
+   [IVR Adventure Game](https://rabbitboots.itch.io/ivr-adventure-game) because that one is a cave, not a bureaucracy. Those are one design
+   decision away from being occupied, and a competitor could make that decision tomorrow.
+
+### The action quota is breached, and I'd rather say so than pad it
+
+Family 9 lost #43 and #45, leaving **four** action concepts against the prompt's floor of six.
+The rule I wrote last pass said a breach means generating replacements rather than quietly
+dropping the quota. So I generated two — **Tempo** (a duel with no attack button: you block,
+parry and step until the opponent's stamina breaks) and **Standing Room** (your own attacks
+destroy the floor, so offence is the timer) — and **searched them before writing the cards.
+Both died.** Tempo: [*Sword Instructor Gerald*](https://bossblitz.itch.io/sword-instructor-gerald) already runs blocking-drains-stamina to
+exhaustion, and *Perfect Parry* is parry-only. Standing Room: [*Decay Protocol*](https://gabrielkaszewski.itch.io/decay-grid) has the grid
+disintegrate as you cross it, *Unstaball* breaks tiles under you, *The Finals* does it at
+scale.
+
+**Two search-first attempts, two deaths, no code written** — which is the process working, and
+also the answer to why the quota exists. Action is the densest space in games; the same filter
+that kills one card in eight elsewhere kills action ideas at roughly one in two here. **The
+honest conclusion is that this prompt may not be able to satisfy its own action quota**, and
+that's better information than three padded cards would have been. Left breached deliberately.
 
 ---
 
@@ -100,9 +166,16 @@ interrogate. The suspect wins if a false but consistent story survives.
 - **The bet:** consistency can be graded automatically. Every claim goes into a structured log
   — time, place, person, object — and the engine flags contradictions with no human referee.
   That's what turns lying to your friends into a game with rules instead of a vibe.
-- **Nearest:** *Return of the Obra Dinn* (deduction against a real solution, single-player) ·
-  *Deception: Murder in Hong Kong* (tabletop, closest) · *Among Us* (lying with no structure
-  under it).
+- **Nearest — checked 2026-08-06, and the bet has been taken.** [*Arsenic*](https://playarsenic.com/) is an AI murder
+  mystery in which "a Game Master agent validates every response for consistency" and surfaces
+  contradictions across suspects automatically. That is my bet — automated consistency grading
+  — already built and shipped. [*CrimeChat*](https://apps.apple.com/ly/app/crimechat/id6446483261) does it on-device. *Contradiction: Spot The Liar*
+  is the FMV ancestor. Also: *Obra Dinn*, *Deception: Murder in Hong Kong*.
+- **What's left, and it's narrower but not nothing.** Every one of those puts an **AI** in the
+  suspect's chair. The claim-log engine is the *hard* part and it now has working precedent —
+  which is good news for feasibility and bad news for novelty. The remaining bet is the one
+  thing none of them do: **a human friend lying, graded by that engine, in front of their
+  friends.** Rewrite the card around that before building, and read *Arsenic*'s design first.
 - **Kills it:** the median player freezes in the suspect seat. If only extroverts can carry
   the role, it's dead air three rotations out of four and the group stops picking it.
 - **Test:** paper. Print the claim log as a form, one friend lies, three interrogate, you
@@ -110,8 +183,14 @@ interrogate. The suspect wins if a false but consistent story survives.
 - **Scope:** 3–4 people, 9–12 months. The claim ontology is the hard part and it's a design
   problem, not an engineering one.
 
-### 3 · The Quiet Part `HORROR`
+### ~~3 · The Quiet Part~~ — **dead, verified 2026-08-06**
 **The monster hears words, not volume. Some words are forbidden this run. Talk around them.**
+
+> **Killed by [*Cursed Companions*](https://store.steampowered.com/app/3265230/Cursed_Companions/)** (Crimson Forge), a co-op horror game
+> whose central system assigns every player a forbidden word each run — and hurts you when a
+> *teammate* says yours. It also punishes swearing with a dedicated monster. That is the
+> concept, the bet, and one refinement I hadn't thought of. Graveyard entry 27. The card below
+> is kept as a record.
 
 On-device speech recognition, a forbidden-word list that rerolls per run, and four people who
 have to coordinate a heist without saying the nouns.
@@ -189,8 +268,14 @@ client standing in the driveway watching.
   another reason. Marginal cost of evaluating this concept: zero.
 - **Scope:** 2–3 people, 8–12 months. Content is levels and levels are floor plans.
 
-### 7 · Tow `SOLO`
+### ~~7 · Tow~~ — **dead, verified 2026-08-06**
 **Orbital salvage. One tool: a winch cable. Nothing has thrusters except you.**
+
+> **Killed by [*Orbital Salvager*](https://store.steampowered.com/app/4384760)** (Steam, 5 March 2026): a 2D space sim about
+> mastering orbital mechanics to recover salvage, built on *tethering and towing* under scarce
+> fuel. It is the concept **and the prototype I proposed** — my one-weekend test was "2D, a
+> point mass, a rope constraint." Someone shipped that five months ago. *Space Salvage* is a
+> second entry. Graveyard entry 28. Was ranked #5 in the top eight.
 
 - **The bet:** a cable is a better verb than a gun. Everything interesting comes from the fact
   that pulling something also moves *you*.
@@ -216,9 +301,15 @@ client standing in the driveway watching.
   amount of co-op fixes that.
 - **Scope:** 3 people, 10 months.
 
-### 9 · Deep Clean
+### ~~9 · Deep Clean~~ — **dead, verified 2026-08-06**
 **Crime-scene remediation, two-person crew, and a UV pass at the end that scores what you
 missed.**
+
+> **Killed by [*Crime Scene Cleaner*](https://store.steampowered.com/app/1040200/)**, with *Viscera Cleanup Detail*, *Body of
+> Evidence* and *Breach and Clean* behind it. The card already said "this is the one I'd cut
+> first" and named VCD as possibly-sufficient occupation; the search found a game with the
+> literal premise. Graveyard entry 29. **Predicted correctly, ranked accordingly, and still
+> only settled by a search** — the one card where the document's own judgement got there first.
 
 - **The bet:** thoroughness is measurable, and being graded on what you couldn't see is a
   feeling no other game gives you. The residue simulation is the game; the UV reveal is the
@@ -604,8 +695,14 @@ the multiplayer.**
   learn about moderation before you learn anything else — which is the correct order.
 - **Scope:** 2 people, 6 months, plus permanent moderation.
 
-### 33 · Redaction `SOLO` `NO COMBAT`
+### ~~33 · Redaction~~ — **dead, verified 2026-08-06**
 **You're a censor. Your only verb is blacking out text, and your deletions play out.**
+
+> **Killed by [*De-File*](https://ibrahimexe.itch.io/de-file)** more than by the two comparables the card already named.
+> *Blackbar* has you *guess* what's under the bars; De-File has you *place* them — "a rookie
+> redactor… place redaction bars to guide its path, making sure it reaches the end without
+> the truth getting exposed." That is "deletion as the input," which was the entire bet. Add
+> *[REDACTED]* and *Orwell*. Graveyard entry 30.
 
 - **The bet:** **deletion as the input.** No writing, no dialogue trees — the player's entire
   expression is what they remove.
@@ -652,9 +749,15 @@ script and you have to stay in character.**
 
 **The solo shelf.** Every one of these is one person, under six months, and shippable.
 
-### 36 · Timetable `SOLO` `NO COMBAT`
+### ~~36 · Timetable~~ — **dead, verified 2026-08-06**
 **A small rail network where the timetable is the program you write, and the trains execute
 it.**
+
+> **Killed by [*Rail Route*](https://railroute.eu/)'s Timetable Mode and [*Railroad Scheduler*](https://store.steampowered.com/app/2820250/Railroad_Scheduler/)**, the latter being
+> "orchestrating all schedules and testing them as you go" with a rewind for failed runs —
+> write-the-schedule-then-watch-it-execute, which was the bet. The card's own kill condition
+> was "it's *Shenzhen I/O* with a worse theme"; the real answer is that the train version
+> already exists twice. Graveyard entry 31.
 
 - **The bet:** scheduling is a better puzzle than track-laying, which every train game already
   does well.
@@ -672,8 +775,13 @@ it.**
 
 - **The bet:** real agronomy — nitrogen, compaction, rotation — with a two-season feedback
   delay. You're farming a system you can't see and won't be graded on until later.
-- **Nearest:** *Stardew Valley* (soil is a texture) · *Farming Simulator* (machinery, not
-  agronomy) · *Terra Nil* (restoration, abstracted).
+- **Nearest — checked 2026-08-06; wounded.** "*Farming Simulator* does machinery, not agronomy"
+  was wrong. The **FS25 mod scene** has [full N/P/K, pH and organic-matter tracking per field](https://github.com/Realistic-Farming/FS25_SoilFertilizer)
+  with crop-specific depletion, weather effects and seasonal cycles, plus a crop-rotation mod
+  where cover-crop choice changes next year's yield. The simulation exists and people play it
+  voluntarily. What's still unoccupied is making it **the game** rather than a realism mod on
+  a machinery sim — and the modders have already proven the audience is small but real.
+  Still standing: *Stardew Valley* (soil as texture), *Terra Nil* (abstracted).
 - **Kills it:** the delay is too long to teach. If a player can't connect season four's
   failure to season two's decision, it's a punishment generator with a nice palette.
 - **Test:** the soil model alone, on a spreadsheet, with a chart. Play ten seasons yourself and
@@ -717,9 +825,14 @@ game with no monster in it at all.**
 
 - **The bet:** arrangement as gameplay. Adjacency changes what sells — someone comes in for one
   thing and leaves with three because of what was sitting next to it.
-- **Nearest:** *Strange Horticulture* (organisation as play — closest) · *Unpacking*
-  (placement as narrative, no system underneath) · *TCG Card Shop Simulator* (commerce, no
-  adjacency model).
+- **Nearest — checked 2026-08-06; wounded, and the check isn't finished.**
+  [***Shelf by Shelf: Bookstore Simulator***](https://store.steampowered.com/app/3943720/Shelf_by_Shelf_Bookstore_Simulator/) (Steam, 2026) is a bookshop game whose whole
+  loop is arranging books — "aesthetic yet strategically effective book arrangements" — and
+  learning customer preferences. Whether *adjacency* drives sales, which is the actual bet, is
+  not answerable from store copy or reviews. **This is the one card a search cannot settle:
+  it needs the £-and-two-hours version of the test.** Buy it, play it, and see whether a
+  theory about placement forms. If it does, this card is dead. Still standing: *Strange
+  Horticulture*, *Unpacking*, *TCG Card Shop Simulator*.
 - **Kills it:** the adjacency model is invisible. If players can't form a theory about why a
   sale happened they'll arrange by aesthetics and ignore the system — which is fine, but then
   you've made *Unpacking* and should build that instead, deliberately.
@@ -748,9 +861,11 @@ evening. That's a real difference and it's priced into the ranking. It is also, 
 actual mechanism behind the bias: a generator asked for cheap-to-disprove ideas will quietly
 drift toward systems and away from feel, because systems are cheaper to argue about.
 
-Two of these were among the cheapest tests in the document, which is why the top eight changed
-— and then one of the two turned out to be a shipped game, which is why it changed again. Both
-movements are recorded rather than tidied away.
+**This family has since lost half its entries to verification** — #43 Recoil and #45 Sever are
+both shipped games, and the two replacements generated to restore the quota died on the search
+before they were written up. Four of six left, against a floor of six. Left breached
+deliberately; the reasoning is in the ledger, and it is the strongest evidence in the document
+that action is a genuinely harder space to find room in than the other eight families.
 
 ### 41 · Tell
 **A duel where the enemy builds a model of your habits inside a single fight, and starts
@@ -762,9 +877,14 @@ minute of your inputs, updating live.
 - **The bet:** within-fight adaptation is *legible*. The player can feel themselves being
   read, name the habit that got punished, and change it — rather than experiencing it as
   rubber-banding.
-- **Nearest:** *Sekiro* (the bar for readable duels, and entirely static) · the *Shadow of
-  Mordor* Nemesis system (adaptation, but between encounters, where you have time to notice) ·
-  Forza Drivatars (offline-trained, racing).
+- **Nearest — checked 2026-08-06; survives, with a better comparable than the card had.**
+  ***Echo*** is the real nearest: enemies learn directly from your actions and use your own
+  smart moves against you — it "punishes players for being good," which is this card's feeling
+  exactly. It adapts between cycles rather than *within* one fight, and that gap is what's
+  left of the bet. Also found: *Ghost Recon Wildlands*' adaptive AI, higher-tier fighting-game
+  bots that parry your repeated attack types mid-match (the bet in miniature, undesigned), and
+  a stack of NVIDIA AI-boss demos. Still standing: *Sekiro* (static), Nemesis (between
+  encounters), Drivatars (offline-trained).
 - **Kills it:** players can't name what it punished. If a tester who just lost says "it got
   harder" instead of "it started blocking my third light attack," the system is invisible, and
   an invisible system is indistinguishable from difficulty scaling — which is cheaper.
@@ -835,8 +955,15 @@ this card — if you want it, write it fresh rather than reviving this one.
   Two days of work and it answers the only question that matters.
 - **Scope:** 2 people, 6 months, plus a population.
 
-### 45 · Sever
+### ~~45 · Sever~~ — **dead, verified 2026-08-06**
 **Melee with limb-level damage and no health bar. You win by disabling.**
+
+> **Killed three times over.** *Bushido Blade 2* (1998) — no health bars, crippled limbs,
+> one fatal blow — did this before I was looking. [*Gladio Mori*](https://bonusstagepublishing.itch.io/gladio-mori) goes further than the card
+> did: no health bars, an *organ*-level model with muscles, arteries and vitals, muscle damage
+> costing strength in that limb and artery cuts causing bleeding. *GUTS* is a third. The card
+> called this "the most expensive concept in the document"; it was also the most occupied.
+> Graveyard entry 32.
 
 - **The bet:** an injury model instead of an HP pool makes every exchange legible and
   permanent. A cut arm stays cut, both fighters can see it, and the fight's state is written on
@@ -898,8 +1025,8 @@ learn nothing for a quarter.
 | 2 | **Direct** (#46) | **One afternoon**, 2D, decisive in ten minutes | An afternoon. And a fail is genuinely informative: it tells you *why* indirect control keeps getting buried |
 | 3 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
 | 4 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
-| 5 | **Tow** (#7) | A weekend, 2D | A weekend. And the rope-constraint code survives into anything physical |
-| 6 | **Sworn** (#2) | One evening, on paper | An evening — but the *build* is 9–12 months, so a false positive here is the most expensive mistake in the table. Run it twice, with two different groups |
+| 5 | **Wake** (#24) | One evening, printed, zero engineering | An evening. And it ships as a paper game even if the digital version never happens |
+| 6 | **Foley** (#30) | One day, one clip, six sounds | A day — and the latency measurement across three machines is reusable for anything audio-timed |
 | 7 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
 | 8 | **Pack** (#29) | Three days, 2D, debug overlay | Three days, and the read-back finding transfers to Tell (#41) and to any companion-AI design you ever do |
 
@@ -913,16 +1040,26 @@ only evidence that the ranking is doing anything.
   portfolio. It's still worth building; it just isn't a separate *question*. Pack was
   straightforwardly outbid, and noted at the time as "the first thing back in if any of the
   above dies on contact."
-- **The verification pass** then killed **Recoil** (#43) outright — *Kickback: Shoot to Move!*
+- **The first verification pass** killed **Recoil** (#43) outright — *Kickback: Shoot to Move!*
   shipped in July 2025 with the same bet — and Pack came back in at #8, exactly as written.
   Direct survived its check and holds #2.
+- **The full sweep** (all 45 cards) then killed **Tow** (#5) — *Orbital Salvager* shipped in
+  March 2026 — and demoted **Sworn** (#6), whose bet turns out to be running in *Arsenic*.
+  **Wake** (#24) and **Foley** (#30) took the slots: both clean after a real search, one
+  evening and one day respectively.
 
-**One place this table was wrong about itself.** Recoil sat at #5 on the argument that a
-weekend prototype would settle it, while its own card said "most likely to be occupied." The
-suspicion was already written down and the instrument that could resolve it cost five minutes,
-not two days. **Resolve named suspicions with the cheapest instrument that can resolve them,
-before ranking — not with the test the ranking happens to prefer.** The store check belongs
-above the whole table, which is where the header now puts it.
+**What the sweep did to the table's credibility.** Two of the original eight were occupied
+games. That is a 25% error rate in the section of the document that was supposed to be its
+most considered, and it was 25% for exactly one reason: the ranking was built before the
+search. **Resolve named suspicions with the cheapest instrument that can resolve them, before
+ranking — not with the test the ranking happens to prefer.** Every card in this table has now
+been searched, so the current eight is the first version of it that means anything.
+
+**Sworn (#2) is the interesting demotion.** It didn't die — *Arsenic* proves the hard part
+(automated consistency grading) is buildable, which raises the concept's feasibility while
+gutting its novelty. Cheap test, and now a *known-achievable* mechanic, but the remaining
+claim is much smaller than the card originally made. It sits just outside the eight and would
+re-enter immediately if the human-liar framing survives an evening on paper.
 
 **Runner-up, and the one worth arguing about: Understudy (#34).** Its test is the cheapest in
 the whole document — one hour, a chat window, ten repeated inputs, measure agreement. By raw
@@ -937,23 +1074,33 @@ little still beats a moderate test that proves a lot, promote it and the ranking
 
 **The action equivalent of that argument is Tell (#41).** Three days for the read-back, and a
 pass proves only that adaptation is *legible* — not that being read is fun to play against.
-Legibility is the necessary half and the cheap half. Highest ceiling in Family 9, weakest
-signal per day spent.
+Legibility is the necessary half and the cheap half. Highest ceiling in what's left of Family
+9, weakest signal per day spent. Play *Echo* first; it's the nearest thing and it's cheap.
 
 **If you only do one thing this Saturday:** Provenance's fifty text dossiers. It's a day, it
 needs no engine, the artefact survives failure, and it also answers Ledger. **If you want to
 do one thing this afternoon:** Direct's running dot. Ten minutes of play answers it, and the
 answer is unambiguous in a way none of the systems concepts can be.
 
+**And one thing that is neither:** buy *Shelf by Shelf* and play it for two hours. It's the
+only open question in the document that no amount of searching will close, it costs less than
+a prototype, and it decides whether #40 exists.
+
 ---
 
 ## The graveyard
 
-Twenty-six that were generated and cut, with the reason. This is the section that should make
-you trust the other forty-five. Entries 20–25 came from the action pass, and that family needed
-its own rejections more than most — action is the most crowded space in games, so a pass that
-produced six keepers and cut nothing would be a pass that wasn't looking. Entry 26 is the first
-one killed by a search rather than by an argument, and it was a keeper until it wasn't.
+Thirty-two that were generated and cut, with the reason. This is the section that should make
+you trust the other thirty-nine.
+
+Entries 1–19 were cut by judgement during the first pass. Entries 20–25 came from the action
+pass — action is the most crowded space in games, so a pass that produced six keepers and cut
+nothing would be a pass that wasn't looking. **Entries 26–32 were killed by evidence rather
+than opinion**, all of them published as keepers first, two of them ranked in the top eight.
+
+That the last group exists at all is the document's most useful output. A graveyard filled
+only by taste is a record of what one generator found unappealing; a graveyard filled by
+search is a record of the market.
 
 1. **Chorus** — co-op where sung pitch is the network protocol. The accessibility floor is a
    wall, not a slope: a large minority genuinely cannot pitch-match, and there's no parallel
@@ -1012,15 +1159,42 @@ one killed by a search rather than by an argument, and it was a keeper until it 
 25. **Extraction shooter with a twist** — banned by the brief, and it arrived twice. The
     attractor is strong enough that the ban is doing visible work.
 
-*Killed by verification rather than by judgement:*
+*Killed by verification rather than by judgement — the full sweep of 2026-08-06:*
 
 26. **Recoil** (was #43) — *Kickback: Shoot to Move!* (Dot Blood / Targem, Steam, July 2025)
     ships the concept and the bet; *Recoil Rush* is a second commercial entry; itch.io has a
     `shoot-to-move` tag with a page of them. The only unoccupied version is 3D, which is a
     different concept with a different kill condition and should be written fresh rather than
-    revived. **This is the first entry here killed by evidence instead of by opinion, and it
-    took four minutes** — which is the argument for doing the search before the ranking rather
-    than after it.
+    revived. **The first entry here killed by evidence instead of by opinion, and it took four
+    minutes** — which is the argument for searching before ranking rather than after.
+27. **The Quiet Part** (was #3) — *Cursed Companions* assigns each player a forbidden word per
+    run and punishes the whole crew when anyone says it. Also has a monster for swearing. The
+    concept, the bet, and a refinement I'd missed.
+28. **Tow** (was #7) — *Orbital Salvager* (Steam, March 2026): 2D, tether-and-tow, orbital
+    mechanics, scarce fuel. It is also the exact prototype the card proposed as its own kill
+    test.
+29. **Deep Clean** (was #9) — *Crime Scene Cleaner*, on top of *Viscera Cleanup Detail*, *Body
+    of Evidence* and *Breach and Clean*. The card had already nominated itself for cutting.
+30. **Redaction** (was #33) — *De-File* has you *place* the redaction bars to steer a reader
+    away from the truth. That's "deletion as the input" exactly. *Blackbar*, *[REDACTED]* and
+    *Orwell* fill in around it.
+31. **Timetable** (was #36) — *Rail Route*'s Timetable Mode and *Railroad Scheduler* both ship
+    write-the-schedule-then-watch-it-run, with a rewind for the crashes.
+32. **Sever** (was #45) — *Bushido Blade 2* did no-health-bars limb crippling in 1998;
+    *Gladio Mori* now models muscles, arteries and vitals; *GUTS* is a third. The most
+    expensive concept in the document was also the most thoroughly occupied.
+
+*Generated during the sweep to fill the breached action quota, and killed before being written
+up as cards:*
+
+- **Tempo** — a duel with no attack button; you block, parry and step until the opponent's
+  stamina breaks. *Sword Instructor Gerald* already has blocking drain stamina to exhaustion;
+  *Perfect Parry* is parry-only.
+- **Standing Room** — your own attacks destroy the floor, so offence is the timer. *Decay
+  Protocol*, *Unstaball*, and *The Finals* at scale.
+
+Both were searched *before* a card was written, which is the order the whole document should
+have used. Total cost: two searches.
 
 ---
 
@@ -1059,19 +1233,28 @@ diversity by three.
 **No mobile, no console-first, no local-couch beyond two entries.** Platform diversity wasn't
 in the prompt's axis list and it shows. Worth adding.
 
-**Almost every market claim is still memory.** Two have now been checked — #43, which died,
-and #46, which survived. Forty-three have not. The three I'm most suspicious of are flagged on
-their cards (#9, #33, #38) and should go next.
+**~~Almost every market claim is still memory.~~ Done — all 45 checked, and the rate is the
+finding.** Seven died, four were wounded, thirty-five survived. **That is a 15% kill rate on
+concepts I had written confidently enough to publish**, and 25% on the top eight specifically,
+which is the part of the document that had received the most thought. The correlation runs the
+wrong way from comfort: the more attention a concept got, the more likely it was to be a game
+someone had already shipped — because attention and market obviousness are the same signal.
 
-**And the hit rate is the finding.** One of the two cards checked was fully occupied by a game
-that shipped thirteen months ago, and it was a card I had already labelled "most likely to be
-occupied" — I just ranked it above the check instead of below it. Two data points is not a
-rate, but it is enough to say the prior should be *pessimistic*: assume a concept is taken
-until a search says otherwise, rather than the reverse. The whole document is currently written
-the other way round, and that's its largest remaining defect.
+Three of the seven kills were on cards I had explicitly labelled as probably-occupied (#9,
+#33, #43). **I had the information and ranked against it anyway.** Suspicion recorded on a
+card does nothing; only the search does anything.
 
-**The cheapest fix is an ordering change, not more work.** The search is five minutes per card
-and it strictly dominates every other instrument here — it can kill a concept outright, which
-no prototype can do faster. It should run across all 45 before anything is ranked, let alone
-built. Four hours, once. `GAMES-PROJECT-PROMPT.md` now says so explicitly; this document was
-built before it did.
+**So: assume taken until a search says otherwise.** The document was written on the opposite
+prior and it cost seven concepts. The prompt now carries the corrected version, and that
+correction is worth more than any card here.
+
+**What the sweep cost: about ninety minutes.** Against seven concepts removed, two of them
+from the top eight, and one — Tow — whose recommended weekend prototype was a game that had
+been on Steam for five months. There is no other instrument in this document with that ratio.
+
+**What a search still cannot do.** It can't settle #40 (does *Shelf by Shelf* model
+adjacency?) — that needs two hours of play. It can't see jam builds and unlisted prototypes,
+so SURVIVED means "not obviously taken," not "clear." And it can't tell you whether a
+surviving concept is *good*; every kill condition on every card is still unrun. **The
+portfolio is now honestly scoped and entirely untested**, which is a much better place to be
+than the reverse, and is exactly the boundary the one-day tests exist to cross.

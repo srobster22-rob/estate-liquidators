@@ -223,13 +223,22 @@ produce 40 things regardless of whether 40 exist.
 
 **"Search before you rank, not after."**
 Started as `ITERATION-PROMPT.md`'s separate-verified-from-inferred clause, then earned a
-stronger form the hard way. Flagging a claim as unverified is *not enough* — the first run of
-this prompt flagged a card as "most likely to be occupied" and then ranked it fifth anyway,
-because the ranking criterion (cost to disprove) only sees the tests the document itself
-proposes, and a store search isn't one of them. It should be. A search can kill a concept
-outright in five minutes, which no prototype can; putting it after the ranking means ranking
-against known-unreliable data for no saving at all. One card in the first six checked was a
-game that had shipped thirteen months earlier.
+stronger form the hard way. Flagging a claim as unverified is *not enough*: when all 46 cards
+from the first run were finally searched, **seven were games that already existed — and three
+of those seven were cards the document had itself labelled "probably occupied" and then ranked
+highly.** The suspicion was recorded and changed nothing, because the ranking criterion (cost
+to disprove) only sees tests the document proposes, and a store search isn't one of them. It
+should be.
+
+A search can kill a concept outright in five minutes, which no prototype can do at any price.
+Two of the seven kills sat in the top eight, and one of them — a salvage game — had its
+recommended *weekend prototype* already on Steam, shipped five months earlier. Putting the
+search after the ranking buys nothing and ranks against data you know is unreliable.
+
+The corollary is the pessimistic prior. A 15% kill rate across the whole set and 25% inside
+the most-considered section says the correlation runs the wrong way from comfort: **the more
+thought a concept received, the likelier it was to already exist**, because attention and
+market obviousness are the same signal.
 
 **"Don't design the sequel."**
 Progression systems are the most pleasant thing to write and the least informative. They also
@@ -256,20 +265,26 @@ which is the exact artefact it was written to avoid.
 
 ## The output
 
-`GAME-CONCEPTS.md` is this prompt, run once, plus two passes over it. 45 live concepts, nine
-families, a ranked top eight, and a graveyard of twenty-six. Read its header before the cards —
-it's explicit about which claims were verified and which are still memory (most of them).
+`GAME-CONCEPTS.md` is this prompt, run once, then corrected twice and fully verified. **39 live
+concepts** out of 46 written, nine families, a ranked top eight, and a graveyard of thirty-two.
 
-Both passes are recorded there rather than tidied away, because the corrections are worth more
-than the list:
+Every correction is recorded there rather than tidied away, because they're worth more than
+the list:
 
-1. **The action quota** above. Family 9 was added after the fact when the self-audit caught
-   that forty concepts had no twitch in any of them — and the interesting part was that the
-   cause was the scoring function, not taste.
-2. **The verification clause** above. Two cards were then checked against a store; one died
-   instantly to a game that had shipped thirteen months earlier, having been ranked fifth
-   despite its own card saying it was probably taken.
+1. **The action quota** above. Family 9 was added when the self-audit caught that forty
+   concepts had no twitch in any of them — and the interesting part was that the cause was the
+   scoring function, not taste.
+2. **The verification clause** above. All 46 cards were then searched. **Seven were games that
+   already exist**, three of them on cards already flagged as probably-occupied and ranked
+   highly anyway, two of them inside the top eight. Ninety minutes of searching outperformed
+   every prototype the document proposed.
+
+**And one thing the prompt got wrong that is still unfixed.** Family 9 now sits at four
+against a floor of six. Two replacement concepts were generated and searched *before* being
+written up; both died. Action is dense enough that this prompt may not be able to satisfy its
+own action quota — which is better information than three padded cards, and is why the breach
+is documented rather than papered over. If you hit the same wall, do the same thing.
 
 That's the loop this prompt is for: run it, find where the output is thin or wrong, **fix the
-prompt**, and re-run only the affected part. Both clauses exist because the output embarrassed
-the previous version of this file.
+prompt**, re-run only the affected part, and write down the breaches you can't fix. Every
+clause above exists because the output embarrassed the previous version of this file.

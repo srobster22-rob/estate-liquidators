@@ -46,7 +46,7 @@ that, and they're independent of Estate Liquidators — take them anywhere.
 | Doc | What it is |
 |---|---|
 | **[GAMES-PROJECT-PROMPT.md](GAMES-PROJECT-PROMPT.md)** | Generate 40 game concepts, each with a falsifiable bet and a one-day test that could kill it. Coverage quotas, a banned list, ranking by cost-to-disprove, and a mandatory graveyard. |
-| **[GAME-CONCEPTS.md](GAME-CONCEPTS.md)** | That prompt, run once, plus two correction passes. 45 live concepts in 9 families, a ranked top eight, 26 rejections with reasons, and a self-audit. One concept has been killed by store verification so far; 43 of the 45 remain unchecked. |
+| **[GAME-CONCEPTS.md](GAME-CONCEPTS.md)** | That prompt, run once, then corrected twice and fully verified. 39 live concepts in 9 families, a ranked top eight, 32 rejections with reasons, and a self-audit. **All 46 cards checked against the market: 7 were games that already exist**, 2 of them in the top eight. |
 
 Estate Liquidators is roughly the bar those concepts were written against — *aggro follows the
 most valuable object leaving the house* is what "one mechanical bet, stated so it could be
