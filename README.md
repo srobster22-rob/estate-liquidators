@@ -84,7 +84,9 @@ a 31-assertion C# cross-check of the ported core, and a fail-closed drift checke
 canonical constants — which between them overturned most of what this project first believed.
 The four that mattered earliest:
 
-- The appraiser beats blind hauling by **+4.4%** at 14 van slots (`LOOP_LOG.md` R8/R20 / `ECONOMY.md`
+- The appraiser beats blind hauling by **+4.4%** at 14 van slots — but that is the *clock-gated*
+  figure, and R25 re-measured it on `sim/work_gate.py`: **selective scanning is worth +1.8%,
+  always-scanning +13.9%**, and ADAPTIVE stops being the best strategy. (`LOOP_LOG.md` R8/R20/R25 / `ECONOMY.md`
   §9.1 — the +84% first reported was placeholder-noise, and the +31% that replaced it a
   slot-accounting reroll bug) — and dies entirely between
   24 and 32 slots. Van capacity is the master constant.

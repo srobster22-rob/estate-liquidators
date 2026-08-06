@@ -343,6 +343,24 @@ own sanity check: harsher retrieval now monotonically lowers **every** strategy'
   linear interpolation between two extremes. That pessimism was itself an artifact. The band
   exists, and the design already sits in it.
 
+> ### ⚠️ R25: re-measured on the work-gated model, this whole section's comparison changes
+>
+> Every figure below compares BLIND / ADAPTIVE / SCAN under **clock-gated depth**, which R23 and
+> R24 showed credits scanning for burning dead time. `sim/work_gate.py` runs the same three
+> strategies with depth gated on *work*:
+>
+> | gate | BLIND | ADAPTIVE | SCAN | best | ADAPTIVE edge |
+> |---|---:|---:|---:|---|---:|
+> | clock | 4,469 | 4,825 | 4,333 | ADAPTIVE | **+8.0%** |
+> | **work** | 7,802 | 7,944 | **8,886** | **SCAN** | **+1.8%** |
+>
+> Two things flip. **Selective scanning is worth almost nothing (+1.8%)**, and **always-scanning
+> becomes the best strategy at +13.9% over blind**. R8's headline — that ADAPTIVE beats both
+> extremes, so the design already sits in the good band — is a clock-gate result. The appraiser
+> is worth *more* than this section says; the *judgement* about when to use it is worth less.
+> That is the opposite of what `DESIGN.md` §4.4 asks the mechanic to do, and it is now the open
+> question rather than "is +4.4% enough".
+
 **But the margin is small: +4.4% over blind hauling**, down from the +84% first reported, the
 +31% second, and the +6% third. (R20 corrected +6% to +4.4%: `integrated.py` had been computing
 the cursed-item Disturbance floor as an inline `cursed * 2.0` — the value R9 retired as inert —

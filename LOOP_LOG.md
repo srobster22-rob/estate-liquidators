@@ -435,6 +435,32 @@ tier-3 dip is most likely that simplification. Not quoted as an economy result. 
 still gate on a timer.** This one does not, and D-20 now records that any result of theirs running
 through crew *time* carries the artifact.
 
+R25 · Re-measured the appraiser's edge on `work_gate.py`, using the comparison the number has
+always meant — ADAPTIVE vs BLIND, with the depth policy optimised per strategy so the panel
+measures the appraiser and not the policy. · **Two things flip, and the second is the finding.**
+Clock-gated: BLIND 4,469 / ADAPTIVE 4,825 / SCAN 4,333 — ADAPTIVE edge **+8.0%**, and ADAPTIVE is
+the best strategy, which is R8's headline. Work-gated: BLIND 7,802 / ADAPTIVE 7,944 / SCAN 8,886 —
+ADAPTIVE edge collapses to **+1.8%**, and **SCAN becomes the best strategy at +13.9% over blind**.
+So the appraiser is worth *more* than the project thought, and the **selectivity is worth almost
+nothing**. R8's "selective scanning beats both extremes, so the design already sits in the good
+band" is a clock-gate result. That inverts the open question: it was "is +4.4% enough to carry the
+mechanic"; it is now "the mechanic pays fine, but there is no judgement in it" — which is the
+opposite of what `DESIGN.md` §4.4 asks of it. · **Then checked the other half of the same claim,
+and found the artifact at its worst.** README and D-19 say the edge "dies entirely between 24 and
+32 slots", which is `haul_sim.py` — also clock-gated. The clock-gated capacity sweep is not
+monotone: at 24 slots ADAPTIVE out-earns BLIND by **+69.9%**, against +9.4% at 18 and +5.2% at 32.
+Investigated rather than reported: at 24 slots ADAPTIVE earns 70% more on **fewer hauls (16 vs
+18)** — because scanning burns time, and under a clock gate burning time **buys depth**. ADAPTIVE
+stalls long enough to unlock the tier-4 apex (4,000–8,000) that BLIND never reaches; at 32 slots
+BLIND reaches it too and the gap collapses. That is R23's artifact with the apex behind it, and it
+is a much larger distortion than the waiting one. · **Work-gated, the edge does not decay with
+capacity at all** — small and flat, ±3% from 6 to 32 slots. Above ~18 slots the work-gated figure
+stops moving entirely, because at deep play **time binds before the van does**, so extra capacity
+buys nothing. That is a different mechanism from D-19's "the appraiser lives on van space
+binding". **D-19's 20-slot ceiling survives** — it sits below where anything changes under either
+gate — **but the 24–32 number should not be quoted as its justification.** Recorded in D-19, D-22,
+`ECONOMY.md` §9.1, `DESIGN.md` §4.4 and the README.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

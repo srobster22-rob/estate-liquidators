@@ -183,7 +183,9 @@ replaced rather than tuned. Decide this with data before building the Curator on
 > sims model scan-or-not *per trip* while the gate counts *per extracted item*, and no model
 > prices the prerequisite work that ought to fill that window. Re-derive from telemetry.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §9.1). Scanning beats blind hauling by only +4.4% at 14
+**Simulated ahead of the gate** (`ECONOMY.md` §9.1; re-measured work-gated in R25, where
+*selective* scanning is worth only **+1.8%** but always-scanning is worth **+13.9%** — the
+mechanic pays, the judgement does not). Scanning beats blind hauling by only +4.4% at 14
 van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
 confirmed as the load-bearing one. But the sim also overturned part of §4.1's framing:
 

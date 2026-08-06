@@ -106,7 +106,7 @@ def tier_of(d):
 
 
 def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
-              gate="work", labour_scaled=True):
+              gate="work", labour_scaled=True, strategy=None, van_slots=None):
     """One night.
 
     gate='work'  : depth opens when the crew completes prerequisite steps.
@@ -115,9 +115,10 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
                    chain_sim.py applies. Both are here so panel A can compare.
     """
     rng = random.Random(seed)
+    cap = VAN_SLOTS if van_slots is None else van_slots
     budget = HAUL_S * crew * PARALLEL_EFFICIENCY
     spent = 0.0
-    slots = float(VAN_SLOTS)
+    slots = float(cap)
     d = banked = 0.0
     steps = 0
     hauls = 0
@@ -170,7 +171,7 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
 
         # Under the clock gate the crew has nothing to do but wait for the tier it
         # is holding slots for. That wait is the artifact R23 found.
-        if gate == "clock" and hauls >= CLOCK_CAP[tier] * VAN_SLOTS and tier < 4:
+        if gate == "clock" and hauls >= CLOCK_CAP[tier] * cap and tier < 4:
             step = TIER_DATA[tier][0] / (crew * PARALLEL_EFFICIENCY)
             noise_over(step, floor)
             spent += step * crew * PARALLEL_EFFICIENCY
@@ -187,7 +188,17 @@ def run_night(seed, crew=4, scan_rate=0.4, depth_target=3, cursed=2,
             trip_s, band, cls = TIER_DATA[1]
             slot_cost = SLOT_COST[cls]
         cand = [rng.uniform(*band) for _ in range(CANDIDATES)]
-        appraise = rng.random() < scan_rate
+        # The three strategies the appraiser's edge has always been quoted against.
+        # ADAPTIVE is integrated.py's rule: haul blind until the van is half full,
+        # then scan, because from there the only gains are swaps.
+        if strategy == "BLIND":
+            appraise = False
+        elif strategy == "SCAN":
+            appraise = True
+        elif strategy == "ADAPTIVE":
+            appraise = slots <= 0.5 * cap
+        else:
+            appraise = rng.random() < scan_rate
         cost_crew = trip_s * CARRY_MULT[cls]     # crew-seconds for this trip
         value = max(cand) if appraise else rng.choice(cand)
         if appraise:
@@ -276,6 +287,51 @@ if __name__ == "__main__":
     print(f"  clock-gated peak {pc:.1f}  "
           f"{c[pc]['mean'] / c[0.0]['mean'] - 1:+.1%}  "
           f"({'INTERIOR' if 0 < pc < 1 else 'CORNER'})")
+
+    print("\n\nE. THE APPRAISER'S EDGE, RE-MEASURED  (the +4.4% figure)")
+    print("   ADAPTIVE vs BLIND, the comparison that number has always meant.")
+    print("   Depth policy optimised per strategy so this measures the appraiser.")
+    print("-" * 78)
+    print(f"{'gate':<14}{'BLIND':>10}{'ADAPTIVE':>10}{'SCAN':>10}{'best':>10}"
+          f"{'ADAPTIVE edge':>15}")
+    for g in ("clock", "work"):
+        r = {}
+        for st in ("BLIND", "ADAPTIVE", "SCAN"):
+            r[st] = max((trial(n=N, strategy=st, gate=g, depth_target=dt)["mean"]
+                         for dt in (1, 2, 3, 4)), key=lambda m: m)
+        best = max(r, key=lambda k: r[k])
+        print(f"{g:<14}{r['BLIND']:>10,.0f}{r['ADAPTIVE']:>10,.0f}{r['SCAN']:>10,.0f}"
+              f"{best:>10}{r['ADAPTIVE'] / r['BLIND'] - 1:>15.1%}")
+    print("   clock-gated is the regime every earlier measurement of this number used.")
+
+    print("\n\nF. DOES THE EDGE STILL DIE BETWEEN 24 AND 32 SLOTS?  (D-19)")
+    print("   That claim - and the van ceiling of 20 - comes from haul_sim.py, which")
+    print("   gates depth on unlock TIME. Re-run it under both gates.")
+    print("   READ THE CLOCK COLUMN AS CONTAMINATED, NOT AS DATA. Scanning burns time,")
+    print("   and under a clock gate burning time BUYS DEPTH. At 24 slots ADAPTIVE")
+    print("   earns +70% on FEWER hauls (16 vs 18) because it stalls long enough to")
+    print("   unlock the tier-4 apex that BLIND never reaches; at 32 BLIND reaches it")
+    print("   too and the gap collapses to +5%. That is the R23 artifact with the apex")
+    print("   behind it, and it is why the clock row is not monotone. R25.")
+    print("-" * 78)
+    print(f"{'van slots':<11}{'clock: BLIND':>14}{'ADAPTIVE':>10}{'edge':>8}"
+          f"{'   |':>4}{'work: BLIND':>13}{'ADAPTIVE':>10}{'edge':>8}")
+    for vs in (6, 10, 14, 18, 24, 32):
+        out = []
+        for g in ("clock", "work"):
+            b = max(trial(n=max(1200, N // 2), strategy="BLIND", gate=g,
+                          van_slots=vs, depth_target=dt)["mean"] for dt in (1, 2, 3, 4))
+            a = max(trial(n=max(1200, N // 2), strategy="ADAPTIVE", gate=g,
+                          van_slots=vs, depth_target=dt)["mean"] for dt in (1, 2, 3, 4))
+            out.append((b, a))
+        (cb, ca), (wb, wa) = out
+        print(f"{vs:<11}{cb:>14,.0f}{ca:>10,.0f}{ca / cb - 1:>8.1%}{'   |':>4}"
+              f"{wb:>13,.0f}{wa:>10,.0f}{wa / wb - 1:>8.1%}")
+    print("   Work-gated, the edge does not decay with capacity - it is small and flat.")
+    print("   Above ~18 slots the work-gated BLIND figure stops moving entirely: at deep")
+    print("   play TIME binds before the van does, so extra capacity buys nothing. That")
+    print("   is a different mechanism from D-19's 'the appraiser lives on van space")
+    print("   binding', and it means the 24-32 crossover is not reproduced here.")
 
     print("\n\nC. HOW MUCH DEPTH IS WORTH BUYING? Each step costs "
           f"{PREREQ_CREW_S:.0f} crew-seconds")

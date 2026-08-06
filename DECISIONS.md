@@ -309,6 +309,17 @@ proposes a capacity buff, that table is the answer.
 **Falsified if:** crews clear night 1 without appraising anything. Cut capacity before
 touching any other number.
 
+**R25 — the ceiling survives, the evidence does not.** The 24–32 crossover comes from
+`haul_sim.py`, which gates depth on unlock *time*. Re-measured on `sim/work_gate.py`, the edge
+does **not** decay with capacity: it is small and flat (±3% from 6 to 32 slots). The clock-gated
+capacity sweep is contaminated in a way worth naming — scanning burns time, and under a clock
+gate burning time buys depth, so at 24 slots ADAPTIVE out-earns BLIND by **70% on fewer hauls**
+purely by stalling long enough to unlock the apex. Under work gating, above ~18 slots TIME binds
+before the van does, so extra capacity buys nothing at all. That is a different mechanism from
+"the appraiser lives on van space binding". **The 20-slot ceiling is still safe — it sits below
+where anything changes under either gate — but it should no longer be justified by the 24–32
+number.**
+
 ---
 
 ## D-20 · Depth unlocks on labour, never on wall-clock
@@ -376,6 +387,11 @@ open for eight rounds. R20 ran it at n=20,000 and it is **falsified three ways**
 
 The appraiser is worth about +4.4%, and whether that is enough is a **design judgement, not a
 simulation result**. Three separate attempts to make it a simulation result have now failed.
+
+**R25 re-measured this on the work-gated model.** ADAPTIVE's edge falls from +8.0% to **+1.8%**,
+and **SCAN becomes the best strategy at +13.9% over BLIND** — so R8's "selective scanning beats
+both extremes" is itself a clock-gate result. The appraiser is worth *more* than thought and the
+*selectivity* is worth almost nothing, which is the opposite of what DESIGN §4.4 wants from it.
 
 **Falsified if:** a playtest shows players scanning at rates the model cannot account for — most likely because scanning is fun or tense in ways
 earnings cannot express. That is a reason to keep the mechanic, not to add cost to it.
