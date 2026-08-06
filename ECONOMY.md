@@ -440,6 +440,43 @@ and both are easy to trip over:
    benefit of every extra slot. **The quota curve in §4 is calibrated on `chain_sim`, and
    that is the correct choice**; do not "correct" it toward the appraiser family's numbers.
 
+### R27 — the denominator, and why the two model families never actually disagreed
+
+**The appraiser's edge has been quoted against the wrong denominator for nine rounds.**
+
+`appraiser_variance.py` reports **+8.8%**, and that is correct — *for the loot a crew actually
+chooses between*. `chain_sim.py` contains the apex, and the apex is **62% of a night's take**
+($6,000 of $9,700), is taken on 100% of nights (D-21), and **cannot be improved by appraising
+anything**: it is one authored object whose price everybody already knows.
+
+So the same benefit, expressed against a night's total:
+
+```
+  +8.8% of the $3,700 selectable portion  =  +$326
+  +$326 against a $9,700 night            =  +3.4%
+  minus three stationary seconds per shelf =  roughly zero
+```
+
+Measured directly, with the decision rule held fixed and *only* the information varying, the
+appraiser's value-revealing function is worth **−0.4% / −1.2% / −3.2% / −3.0%** across the four
+nights of the chain. **The two models never disagreed. They were answering different questions,
+and the docs were quoting the one that flatters the mechanic against a quota measured in the
+other.**
+
+**This matters because the quota is a night total.** An appraiser worth +8.8% of selectable
+loot contributes ~3% toward clearing quota, not ~9%.
+
+**Three things this does *not* say.** (1) It is not a verdict on the appraiser, which reveals
+**curse grade as well as value** — and `chain_sim` has no curses in it at all, so the half R11
+valued at +7% is entirely outside this measurement. (2) It is not an argument to cut the apex;
+D-21 is settled and the apex earns its place on drama and on economics both. (3) It is
+sensitive to the apex band — shrink the apex and the denominator effect shrinks with it.
+
+**What it does say** is that `DESIGN.md` §4.4's load-bearing assumption deserves re-reading:
+most of the selection value in this economy is available from **category alone**, for free,
+and the appraiser's value half is buying a thin slice on top of that. The mechanic's real
+defence is the curse grade, not the price.
+
 ### What R26 did *not* establish
 
 `chain_sim` can now charge for scanning, so the obvious next question is what the appraiser
@@ -447,13 +484,14 @@ is worth **in a model that has the apex in it** — the appraiser family says +8
 only ever modelled the within-shelf half of the mechanic, not the across-the-night
 reservation price that `chain_sim`'s threshold policy runs on.
 
-**That number is not yet trustworthy and is deliberately not quoted anywhere.** A blind crew
-needs an estimate of value-per-slot to apply any reservation price at all, and the natural
-one — the class-and-tier average, which D-10 says is legitimately legible — is *noiseless*.
-That turns the threshold into a perfect class filter: mean earnings jump from $7,676 to
-$12,371 across a single step of the pickiness parameter. A knife-edge is not a strategy, and
-a blind crew that never misjudges is a strawman in the opposite direction from the one R5
-warned about. **Give the blind estimate a per-item error before comparing anything to it.**
+**R27 resolved this, and the knife-edge turned out not to be about estimate error at all.**
+The two crews were using *different decision rules* — the blind one filtering on class, the
+scanning one on value — and the gap between the rules was being read as the appraiser's worth.
+It was not. **"Refuse pockets" is worth +45%, and it is a class-level policy that no threshold
+on value-per-slot can express**, because pocket and armful per-slot distributions almost
+entirely overlap. (A pocket costs half a slot and a *whole trip*; when trips bind, per-slot
+ranking systematically overvalues small objects — hence `metric="per_trip"`.) Hold the rule
+fixed with `rule="class"` and the comparison becomes clean; see the denominator section above.
 
 ### The chain against the trip ceiling (R24/R25)
 

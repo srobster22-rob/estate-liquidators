@@ -135,6 +135,21 @@ def generate_candidates(rng, tier, n):
     return out
 
 
+# R27: a trip is a budget too, and per-slot ranking ignores it. A pocket item costs
+# half a slot but a WHOLE TRIP, and R24 established the crew runs out of trips at ~21
+# against 14 slots -- so small objects are systematically overvalued by value/slots.
+# Charging each candidate a fixed slot-equivalent for the trip it consumes fixes the
+# ranking and stays precomputable, which the obvious state-dependent version does not.
+#   14 slots / 21 trips = 0.667 slots per trip
+TRIP_SLOT_EQUIV = 14.0 / 21.0
+
+
+def cost_of(item, metric="per_slot"):
+    if metric == "per_trip":
+        return item["slots"] + TRIP_SLOT_EQUIV
+    return item["slots"]
+
+
 # Per-slot value quantiles per tier, sampled once. A crew that has run this estate
 # type before has an intuition for "is this one good for its size" — this is that
 # intuition, and it is the thing the appraiser actually feeds.
@@ -143,10 +158,11 @@ _Q = {}
 
 def _build_quantiles(samples=4000):
     r = random.Random(12345)
-    for tier in TIER_DATA:
-        vals = sorted(it["value"] / it["slots"]
-                      for it in generate_candidates(r, tier, samples))
-        _Q[tier] = vals
+    for metric in ("per_slot", "per_trip"):
+        for tier in TIER_DATA:
+            vals = sorted(it["value"] / cost_of(it, metric)
+                          for it in generate_candidates(r, tier, samples))
+            _Q[(metric, tier)] = vals
 
 
 # Built at import, not in __main__. R26 found the module could not be imported at all
@@ -155,8 +171,8 @@ def _build_quantiles(samples=4000):
 _build_quantiles()
 
 
-def quantile(tier, q):
-    vals = _Q[tier]
+def quantile(tier, q, metric="per_slot"):
+    vals = _Q[(metric, tier)]
     return vals[min(len(vals) - 1, int(q * len(vals)))]
 
 
@@ -182,7 +198,8 @@ def current_tier(t, crew=4, labour_gated=True):
 
 def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
               reserve_apex=True, labour_gated=True, noise=False, scan=True,
-              q_cap=0.90):
+              q_cap=0.90, depth_cap=False, metric="per_slot",
+              rule="value"):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -224,6 +241,23 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             continue
 
         eff_tier = min(tier, 3)
+
+        # R27: an EXPLICIT depth reservation, held separately from the value threshold.
+        # chain_sim's reservation price conflates two different decisions -- "is this a
+        # good one for its size" and "should I be spending slots at this depth at all"
+        # -- and the blind crew was accidentally getting the second one right, because
+        # its class average sits below the tier-1 threshold so it skips the shallow
+        # tiers wholesale. The scanning crew, seeing that some individual foyer objects
+        # clear the bar, took them and filled slots it should have saved. That is not
+        # information being harmful; it is a policy that never separated the two.
+        # Sixth occurrence of LOOP_LOG R5's standing note, and the first time it has
+        # appeared as a confound between two strategies rather than in one of them.
+        if depth_cap:
+            spent = van_slots - slots_left
+            if eff_tier < 3 and spent >= {1: 0.40, 2: 0.75}[eff_tier] * van_slots:
+                t += TIER_DATA[eff_tier][0] / labour_pool
+                continue
+
         pool = generate_candidates(rng, eff_tier, CANDIDATES)
         if noise and not scan:
             # D-10: category legible, magnitude illegible. A blind crew can see that a
@@ -237,7 +271,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 sum(TIER_DATA[eff_tier][1][c]) / 2.0 / it["slots"] for it in byclass[c]))
             best = rng.choice(byclass[cls])
         else:
-            best = max(pool, key=lambda it: it["value"] / it["slots"])
+            best = max(pool, key=lambda it: it["value"] / cost_of(it, metric))
 
         # Adaptive reservation price. How many more shelves will we see, per slot we
         # still have free? Lots of chances per slot -> hold out for a good one. Few
@@ -253,7 +287,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             remaining = max(0.0, (HAUL_WINDOW_S - t) / per_encounter)
             ratio = remaining / max(slots_left, 1.0)
             q = 0.0 if ratio <= 1.0 else min(q_cap, 1.0 - 1.0 / ratio)
-            thresh = quantile(eff_tier, q)
+            thresh = quantile(eff_tier, q, metric)
 
         # A trip happens whether or not anything is taken — walking there costs time.
         trip_cost = TIER_DATA[eff_tier][0] / labour_pool
@@ -282,19 +316,42 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
         # time in this project: without a depth-reservation policy it packs the van with
         # foyer junk by minute four and loses to anything, which is a strawman rather
         # than a finding. See LOOP_LOG R5's standing note.
-        if noise and not scan:
-            # NOT YET A FAIR BASELINE -- see R26. This estimate is NOISELESS, so the
-            # threshold becomes a perfect class filter and the blind crew behaves like
-            # an omniscient class-picker: mean earnings jump from $7,676 to $12,371
-            # across a single q_cap step, which is a knife-edge, not a strategy. A real
-            # blind crew misjudges. Give this a per-item estimate error before comparing
-            # it with anything.
-            lo, hi = TIER_DATA[eff_tier][1][best["cls"]]
-            judged = (lo + hi) / 2.0 / best["slots"]
+        # R27: `rule` selects WHICH DECISION RULE the crew uses, and it turned out to
+        # matter far more than the information does.
+        #
+        #   "value" -- the original: rank candidates by value per unit cost, accept if
+        #             above the reservation price. Reproduces ECONOMY 4 and 8 exactly.
+        #   "class" -- filter on the CLASS's expected value per unit cost first, then
+        #             choose within the survivors.
+        #
+        # The isolation experiment needs "class", because under "value" the two crews
+        # were not differing in information at all -- the blind crew was filtering on
+        # class and the scanning crew on value, i.e. two different rules, and the gap
+        # between them was being read as the appraiser's worth. It was not. "Refuse
+        # pockets" is worth +45% and is a class-level policy that NO threshold on
+        # value-per-slot can express, because pocket and armful per-slot distributions
+        # almost entirely overlap.
+        if rule == "class":
+            allowed = [it for it in pool
+                       if sum(TIER_DATA[eff_tier][1][it["cls"]]) / 2.0
+                       / cost_of(it, metric) >= thresh]
+            if not allowed:
+                span = trip_cost + (APPRAISE_S * CANDIDATES / labour_pool
+                                    if (noise and scan) else 0.0)
+                if noise:
+                    d = advance_disturbance(rng, d, span, t, crew)
+                t += span
+                continue
+            best = (rng.choice(allowed) if (noise and not scan)
+                    else max(allowed, key=lambda it: it["value"] / cost_of(it, metric)))
+            take = best["slots"] <= effective_slots
         else:
-            judged = best["value"] / best["slots"]
-
-        take = best["slots"] <= effective_slots and judged >= thresh
+            if noise and not scan:
+                lo, hi = TIER_DATA[eff_tier][1][best["cls"]]
+                judged = (lo + hi) / 2.0 / cost_of(best, metric)
+            else:
+                judged = best["value"] / cost_of(best, metric)
+            take = best["slots"] <= effective_slots and judged >= thresh
 
         span = (best["labour"] / labour_pool + scan_cost) if take else (
             trip_cost + scan_cost)
@@ -321,7 +378,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
 
 
 def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,
-                labour_gated=True, quotas=None, noise=False, scan=True):
+                labour_gated=True, quotas=None, noise=False, scan=True, **kw):
     rows = []
     qs = quotas or QUOTAS
     for night, quota in enumerate(qs):
@@ -330,7 +387,7 @@ def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,
         for s in range(n):
             rng = random.Random(s * 97 + night)
             v, took = run_night(rng, crew, van, allow_apex, picky,
-                                reserve_apex, labour_gated, noise, scan)
+                                reserve_apex, labour_gated, noise, scan, **kw)
             totals.append(v)
             apex_taken += took.get("apex", 0) > 0
         passed = sum(1 for t in totals if t >= quota) / n

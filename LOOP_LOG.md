@@ -502,6 +502,37 @@ blind estimate a per-item error — but it is a design decision about how wrong 
 not a parameter to guess, and R27 should do it deliberately. Two rounds (R6, R7) were once
 spent on exactly this class of artifact; that is the going rate for getting it wrong instead.
 
+R27 · Went after the question R26 left open — what the appraiser is worth in a model that
+contains the apex — and **the answer turned out to be that the question had been asked against
+the wrong denominator for nine rounds.** · Getting there took three wrong turns, all diagnosed
+rather than published. First: the blind crew's knife-edge (R26) is **not** an estimate-error
+problem at all. Second: it is not the trip/slot metric either, though that is a real bug —
+a pocket costs half a slot and a *whole trip*, so when trips bind (R24) per-slot ranking
+systematically overvalues small objects, and `metric="per_trip"` fixes it. Third and actual
+cause: **the two crews were using different decision rules.** The blind one filtered on class,
+the scanning one on value, and the gap between the *rules* was being read as the value of
+*information*. **"Refuse pockets" is worth +45%, and it is a class-level policy that no
+threshold on value-per-slot can express**, because pocket and armful per-slot distributions
+almost entirely overlap. · Held the rule fixed (`rule="class"`, both crews filter on class,
+only the within-class choice differs) and the comparison finally isolates information:
+**−0.4% / −1.2% / −3.2% / −3.0%** across the four nights. The appraiser's value-revealing
+function does not pay for its own three seconds. · **And then the two model families
+reconciled exactly, which is what makes this trustworthy rather than alarming.**
+`appraiser_variance` reports +8.8% and is right — *for the loot a crew chooses between*. The
+apex is **62% of a night's take** ($6,000 of $9,700), taken 100% of the time (D-21), and
+cannot be improved by appraising anything. So: 8.8% of the $3,700 selectable portion = $326;
+$326 against a $9,700 night = **+3.4%**; minus the scan cost ≈ zero. **The models never
+disagreed — the docs were quoting the flattering denominator against a quota measured in the
+other one.** · **What this does and does not mean.** It does not condemn the appraiser: it
+reveals **curse grade as well as value**, `chain_sim` has no curses at all, and R11 measured
+the curse decision at +7% — impossible without the grade. So **the mechanic's real defence is
+the curse, not the price**, and `DESIGN.md` §4.4 is written as though it were the other way
+round. That changes what Milestone 2 should instrument: not "do players scan" but "do players
+scan *when the grade matters*". · All three new switches (`metric`, `rule`, `depth_cap`) are
+opt-in, and I checked: an earlier version of the class rule silently moved the free-info
+baseline from $9,373 to $13,536, which would have invalidated ECONOMY §4 and §8 without saying
+so. Gated it and confirmed `noise=False` reproduces 9,376 / 9,921 / 10,994 / 12,141 exactly.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -509,48 +540,43 @@ spent on exactly this class of artifact; that is the going rate for getting it w
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R27: give the blind crew a believable error, then answer the question R26 couldn't.**
-`chain_sim` now charges for scanning, but its blind crew judges by a *noiseless* class average,
-which makes the reservation threshold a perfect class filter and produces a knife-edge rather
-than a strategy (`ECONOMY.md` §10, "What R26 did not establish"). Add a per-item estimate
-error — a log-normal or similar multiplicative noise on the crew's judged value-per-slot — and
-**sweep it**, because the error size *is* the design question: it is how wrong a player is
-allowed to be, and D-24's one-second room test is the real-world measurement of the same
-quantity. Then the standing question finally has an honest answer: **what is the appraiser
-worth in a model that contains the apex?** Expect it to exceed the +8.8% the appraiser family
-reports, because that family only ever modelled the within-shelf half of the mechanic and not
-the across-the-night reservation price — but do not assume it; R26 assumed a direction twice
-and was wrong both times.
+**R28 is a design question, not a modelling one, and it is the biggest open item in the
+project.** R27 established that the appraiser's *value-revealing* half is worth roughly zero
+against a night's total, and that its real defence is the **curse grade** (R11: +7%, and
+impossible without knowing it). `DESIGN.md` §4.4 is written as though the price were the
+point. **Rewrite §4.4 around the curse**, and with it `DESIGN.md` §11's kill criterion, which
+currently reads "do players use the appraiser" and should read **"do players appraise when the
+grade matters"** — a scan rate measured on cursed-heavy shelves, not on everything. That is a
+different instrument and a different Milestone 2.
 
-**R28: re-derive §8's three findings against the noise model.** They came from the same
-free-information `chain_sim` the quota curve did — crew size (D-18), the apex re-band (D-21),
-and the labour-gating result (D-20). The crew-size one is the most exposed, because R12
-established that Disturbance decay scales with crew, so noise makes bigger crews *louder* in a
-way the original comparison could not see. D-18 is a settled decision resting on a model that
-has just changed underneath it — exactly the R24 pattern, and now predictable enough to check
-before it bites.
+**R29: put curses into `chain_sim`.** It is now the only model with the apex, the classes and
+the noise, and it has no curses at all — so the half of the appraiser that actually earns its
+place is the one thing it cannot see. `curse_test.py` has the ruin curve and the grade tables;
+porting them in would let the whole mechanic be measured in one model for the first time.
+Expect it to be the round that finally settles D-10.
 
-**R29 (needs `dotnet`): port the economy into the C# core.** 26 values in `CS_BACKLOG`.
-Retrieval first, curse tables next. *This environment cannot do it* — no toolchain, `dot.net`
-refused by the network policy.
+**R30 (needs `dotnet`): port the economy into the C# core.** 26 values in `CS_BACKLOG`.
+*This environment cannot do it* — no toolchain, `dot.net` refused by the network policy.
 
 **Standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18). *A check earns its place by failing the
 default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20).
 *Name the table you mean* (R14, R21). *A model verified in one projection is not verified in
 the one you ship* (R22). *Every guarantee has been weaker than it sounded* (R23). *A
-conclusion is only as current as the model underneath it* (R24) — now enforced by
-`ECONOMY.md` §10: **quote a number with its model, or don't quote it.**
+conclusion is only as current as the model underneath it* (R24) — enforced by `ECONOMY.md`
+§10: **quote a number with its model, or don't quote it.**
 
-**And the big one, now at five occurrences and two directions.** *Every strategy in a haul
-model needs the knowledge that has nothing to do with the thing being tested* (R5, R6, R24,
-R26 twice). Deny the baseline its depth reservation and it packs the van with junk; hand it a
-noiseless estimate and it becomes an oracle. **Both are strawmen, and the second is harder to
-see because it makes your mechanic look bad rather than good.**
+**Two more, both from R26–R27, and both about comparisons rather than measurements.**
+*Every strategy needs the knowledge that has nothing to do with the thing being tested* — now
+at six occurrences and in both directions: deny the baseline its depth reservation and it packs
+the van with junk, hand it a noiseless estimate and it becomes an oracle. And the new one:
+**when two strategies differ in more than one way, you are not measuring the difference you
+named.** R26 and R27 spent two rounds reading a *decision rule* gap as an *information* gap.
+Hold everything fixed but the one variable, or don't report the number.
 
-**The appraiser thread stays closed on the tuning side** — +8.8% at 14 slots, +11.7% at night
-4's 19, alive across the whole upgrade path (R25). R27 is not a tuning sweep; it is measuring a
-half of the mechanic no model has ever contained.
+**And the sharpest of all, from R27: check the denominator.** +8.8% and +3.4% were the same
+measurement all along; one of them is against the loot you choose and the other against the
+night the quota is measured in. Nine rounds quoted the flattering one.
 
 **Not blocked on anything except the C# port, which is blocked on a toolchain rather than a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks

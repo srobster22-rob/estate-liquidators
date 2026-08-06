@@ -156,6 +156,22 @@ the same value spread. D-23's authored spread takes it to **+8.8%**. The *mechan
 unchanged throughout and D-10 still stands — capacity is still the master lever and the
 ordering is still right. See D-22 and D-23.
 
+> **R27 — the edge has been quoted against the wrong denominator, and the honest number for
+> the VALUE half is roughly zero.** Every figure above (+84%, +31%, +6%, +4.2%, +8.8%) measures
+> the loot a crew *chooses between*. `chain_sim` contains the apex, which is **62% of a night's
+> take**, is taken 100% of the time, and cannot be improved by appraising anything. Against a
+> night's total the +8.8% becomes **+3.4%**, and three stationary seconds per shelf eats it:
+> measured with the decision rule held fixed and only the information varying, the value half
+> is worth **−0.4% to −3.2%** across the contract chain (`ECONOMY.md` §10).
+>
+> **D-10 survives on its other half.** The appraiser reports value *and curse grade*, and R11
+> measured the curse decision at **+7%** — a decision that is impossible without knowing the
+> grade. `chain_sim` has no curses in it, so that half is entirely outside this measurement.
+> **The mechanic's real defence is the curse, not the price**, and `DESIGN.md` §4.4 is written
+> as though it were the other way round. That is the thing to re-read before Milestone 2,
+> because it changes what the instrumentation should be measuring: not "do players scan" but
+> "do players scan *when the grade matters*".
+
 Two things the sim changed:
 - **Scan *duration* is not the cost.** 1s and 9s per item produce the same outcome; there's
   too much slack time at 14 slots. Noise has to carry the whole cost — do not try to make
