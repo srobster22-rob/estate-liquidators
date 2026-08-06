@@ -103,6 +103,65 @@ for (const [name, file, hook] of [
   }, hook);
   ok("600 frames advance the clock", ran.t > 9 && ran.t < 11, `t=${ran.t}`);
   ok("sprinting raises Disturbance off zero", ran.dist > 0, `dist=${ran.dist}`);
+
+  // D-24: "leave it" has to be a verb the player can see and the ledger can
+  // count, or the +25% the rejection policy is worth never gets collected.
+  if (hook === "__g") {
+    const refuse = await page.evaluate(() => {
+      const g = window.__g;
+      g.reset();
+      // Release everything the previous block was holding. Appraising requires
+      // standing still, so a stale KeyW makes this silently measure nothing.
+      for (const k of ["ShiftLeft", "KeyW", "KeyA", "KeyS", "KeyD", "ArrowRight"])
+        g.press(k, false);
+
+      // Stand back and aim down at it: the item sits at knee height, so facing
+      // its position from one metre away misses the 0.86 aim cone entirely.
+      let it = null;
+      for (const cand of items.filter((i) => !i.gone && !i.held)) {
+        player.x = cand.x;
+        player.z = cand.z - 2.2;
+        g.look(0, Math.atan2(cand.y - 1.62, 2.2));
+        if (g.aimed()) { it = cand; break; }
+      }
+      if (!it) return { seen: null, before: g.stats(), left: false,
+                        after: g.stats(), aimed: null, noTarget: true };
+      g.press("KeyF", true);
+      g.step(240, 1 / 60);                 // 4s stationary: appraise takes 3
+      g.press("KeyF", false);
+      const seen = g.aimed();
+      const before = g.stats();
+      const left = g.leave();
+      return { seen, before, left, after: g.stats(), aimed: g.aimed() };
+    });
+    ok("appraising is counted", refuse.before.appraised === 1,
+       JSON.stringify(refuse.before));
+    ok("the appraised item reports a value", refuse.seen && refuse.seen.known,
+       JSON.stringify(refuse.seen));
+    ok("leave it works and is counted",
+       refuse.left === true && refuse.after.refused === 1 && refuse.aimed.refused,
+       JSON.stringify(refuse.after));
+    const twice = await page.evaluate(() => window.__g.leave());
+    ok("refusing the same item twice does not double-count", twice === false);
+
+    // The band readout is what makes "is this worth a slot" answerable at all.
+    const shown = await page.evaluate(() => {
+      const it = aimedItem();
+      return { text: band(it), tier: it.tier, value: it.value, grade: it.grade };
+    });
+    ok("the HUD shows what a slot is worth in this tier",
+       /tier \d: \$\d+-\d+, this is \d+%/.test(shown.text), shown.text);
+
+    // And the ledger reports refusal rate - the Milestone 2 metric D-24 adds.
+    const ledger = await page.evaluate(() => {
+      finish("TEST");
+      return document.getElementById("endtext").textContent;
+    });
+    ok("the ledger reports appraised / left behind",
+       /Appraised \/ left behind/.test(ledger) && /refused/.test(ledger),
+       ledger.slice(0, 120));
+  }
+
   ok("no page errors", errors.length === 0, errors.slice(0, 3).join(" | "));
 
   await page.close();

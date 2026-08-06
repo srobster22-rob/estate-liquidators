@@ -246,6 +246,25 @@ when a mechanic looks marginal, check whether the model gives the player every v
 mechanic implies before touching a single number.** D-24. `DESIGN.md` §4.4, `ECONOMY.md`
 §10.1 and the README's headline rewritten around it.
 
+R19 · Built R18's finding into the game rather than leaving it in a spreadsheet.
+`proto3d/index.html` gets **[Q] leave it** as a first-class verb: refused items are chalked
+and dimmed so a room can be swept once instead of re-argued, the appraisal readout now says
+where the item sits in its tier's value band (*"$136 CLEAN (tier 0: $40-150, this is 87%)"*),
+and the ledger closes with **appraised / left behind** and a refusal percentage — the
+Milestone 2 metric D-24 asks for. · **The band readout is the part that actually matters.**
+D-24's decision is "where do you set the bar", and a bare dollar value gives the player
+nothing to set it against; without the band the optimal policy is invisible from inside the
+game, which is how a +25% mechanic goes uncollected. · Extended `tools/proto_smoke.mjs` to
+drive the whole flow in real Chromium — aim, appraise, refuse, refuse again — and assert the
+counters, the chalk mark, the band string and the ledger line. **14 assertions, all passing.**
+· **Two bugs, both in the test, both worth the note:** the harness carried `KeyW` over from
+the previous block, and appraising requires standing still, so it silently measured nothing
+and reported zero — a failure that looks like an empty result rather than an error. And aiming
+at an item from one metre away misses the 0.86 aim cone entirely, because the item sits at
+knee height and the camera is at 1.62m. Fixed the measurement, not the tolerance. · The 2D
+prototype is deliberately left alone: `proto3d` is the direction (R15), and duplicating the
+verb into a legacy toy is the kind of duplication R16 exists to fight.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

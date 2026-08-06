@@ -201,6 +201,13 @@ it *slower* — only by sharpening what the noise does to you. Tune toward the b
 scanning *selectively* beats both scanning everything and scanning nothing; that's the only
 setting with a skill ceiling in it.
 
+**Built and playable** in `proto3d/index.html` (R19): appraising an item offers **[Q] leave
+it**, refused items are chalked and dimmed so a room can be swept once, the readout gives the
+tier's value band and where this item sits in it — *"$136 CLEAN (tier 0: $40-150, this is
+87%)"* — and the ledger closes with **appraised / left behind** and a refusal percentage. The
+band readout is load-bearing: without it the player has a number and nothing to judge it
+against, and "is this worth a slot" is unanswerable.
+
 **One consequence for Milestone 2's instrumentation.** The gate above measures *scan rate*.
 Also measure **refusal rate** — how often a crew appraises something and then leaves it. If
 refusals are near zero, players have understood the appraiser as a comparison tool and the
