@@ -328,6 +328,126 @@ async function checks(g, fresh) {
   ok("a cursed piece aboard raises the floor by 7",
     cursedFloor !== null && Math.abs(cursedFloor - 7) < 0.3, `floor=${cursedFloor}`);
 
+  // --- weight classes and the two-man carry (B4) ----------------------------
+  await fresh();
+  const alone = await g(() => {
+    window.__g.parkCrew();                       // nobody to shout at
+    const idx = window.__g.twoMan();
+    const it = window.__g.list()[idx];
+    window.__g.tp(it.x - 1.2, it.z);
+    window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.2));
+    window.__g.grab();
+    return { idx, klass: it.klass, carry: window.__g.carry(),
+             asked: window.__g.wantHelp() };
+  });
+  ok("an armoire cannot be lifted alone",
+    alone.carry === null && alone.asked === true, JSON.stringify(alone));
+
+  await fresh();
+  const pair = await g(() => {
+    window.__g.freezeCrew(true);
+    const idx = window.__g.twoMan();
+    const it = window.__g.list()[idx];
+    window.__g.setCrew(0, it.x + 1.0, it.z);     // a crewmate within shouting range
+    window.__g.tp(it.x - 1.2, it.z);
+    window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.2));
+    window.__g.grab();
+    const got = window.__g.carry();
+    // walk it a few metres and check the far end comes too
+    const start = window.__g.raw();
+    window.__g.press("KeyS");
+    window.__g.step(180, 1 / 60);
+    window.__g.clearKeys();
+    const moved = Math.hypot(window.__g.raw().x - start.x, window.__g.raw().z - start.z);
+    const mate = window.__g.crew()[0];
+    const carried = window.__g.list()[idx];
+    return { got, moved, mate, gap: Math.hypot(mate.x - carried.x, mate.z - carried.z) };
+  });
+  ok("with a crewmate you can carry it", pair.got !== null && pair.got.follower !== null,
+    JSON.stringify(pair.got));
+  ok("the far end comes with you", pair.gap < 2.0, JSON.stringify(pair));
+
+  const slow = await g(() => {
+    const trip = (klass) => {
+      window.__g.clearKeys(); window.__g.reset(); window.__g.freezeCrew(true);
+      const f = window.__g.rooms().find(r => r.id === "hall");
+      window.__g.tp(f.x, f.z - 4); window.__g.look(0, 0);
+      if (klass === "two_man") {
+        const idx = window.__g.twoMan();
+        const it = window.__g.list()[idx];
+        window.__g.setCrew(0, f.x, f.z - 4);
+        window.__g.tp(it.x - 1.2, it.z);
+        window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.2));
+        window.__g.grab();
+        window.__g.tp(f.x, f.z - 4); window.__g.look(0, 0);
+      } else if (klass === "armful") {
+        window.__g.hold(0);
+      }
+      const a = window.__g.raw();
+      window.__g.press("KeyW"); window.__g.step(120, 1 / 60); window.__g.clearKeys();
+      const b = window.__g.raw();
+      return Math.hypot(b.x - a.x, b.z - a.z);
+    };
+    return { empty: trip(null), armful: trip("armful"), two: trip("two_man") };
+  });
+  ok("two-man is slower than an armful, which is slower than empty-handed",
+    slow.two < slow.armful && slow.armful < slow.empty, JSON.stringify(slow));
+
+  // ECONOMY 1: the van is priced in slots, and a two-man piece costs three.
+  await fresh();
+  const slots = await g(() => {
+    window.__g.parkCrew();
+    const before = window.__g.vanSlots();
+    const v = window.__g.rooms().find(r => r.id === "drive");
+    window.__g.hold(0);                          // an armful
+    window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60);
+    const afterArmful = window.__g.vanSlots();
+    return { before, afterArmful, costs: window.__g.slots() };
+  });
+  ok("an armful costs one slot of fourteen",
+    slots.before === 14 && slots.afterArmful === 13, JSON.stringify(slots));
+  ok("and the slot table matches ECONOMY 1",
+    slots.costs.pocket === 0.5 && slots.costs.armful === 1 &&
+    slots.costs.two_man === 3 && slots.costs.cart === 5, JSON.stringify(slots.costs));
+
+  // LEVEL-SPEC V10, "it fits": walk the biggest thing in the house through every
+  // doorway in the estate. Automate this BEFORE the first wing ships, not after
+  // the first bug report - it is the check the build prompt calls out by name.
+  await fresh();
+  const fits = await g(() => {
+    const stuck = [];
+    for (const d of window.__g.doors()) {
+      window.__g.reset(); window.__g.freezeCrew(true);
+      const idx = window.__g.twoMan();
+      const it = window.__g.list()[idx];
+      window.__g.setCrew(0, it.x + 1.0, it.z);
+      window.__g.tp(it.x - 1.2, it.z);
+      window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.2));
+      window.__g.grab();
+      if (!window.__g.carry()) { stuck.push({ door: d.a + "-" + d.b, why: "no lift" }); continue; }
+      // Approach along the corridor axis, centred, the way a player lining up a
+      // wardrobe would. Walking at the door from an angle is a different (and
+      // much harder) question than whether the geometry admits the object.
+      const A = window.__g.rooms().find(r => r.id === d.a);
+      const B = window.__g.rooms().find(r => r.id === d.b);
+      const along = d.axis === "x" ? [1, 0] : [0, 1];
+      const towardB = d.axis === "x" ? Math.sign(B.x - A.x) : Math.sign(B.z - A.z);
+      window.__g.tp(d.x - along[0] * 2.6 * towardB, d.z - along[1] * 2.6 * towardB);
+      window.__g.look(Math.atan2(along[0] * towardB, along[1] * towardB), 0);
+      let through = false;
+      for (let i = 0; i < 600; i++) {
+        window.__g.press("KeyW"); window.__g.step(1, 1 / 60);
+        const p = window.__g.pos();
+        if (p.room === d.b) { through = true; break; }
+      }
+      window.__g.clearKeys();
+      if (!through) stuck.push({ door: d.a + "-" + d.b, at: window.__g.pos() });
+    }
+    return stuck;
+  });
+  ok("the biggest thing in the house fits through every doorway",
+    fits.length === 0, JSON.stringify(fits));
+
   // --- night endings --------------------------------------------------------
   await fresh();
   const sunrise = await g(() => {

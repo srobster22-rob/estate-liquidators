@@ -272,13 +272,23 @@ let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",
 // the floor makes that decision unreachable: with nothing to choose between,
 // scanning is a yes/no question and the payoff shape the sim found never appears.
 const CANDIDATES=4, SHELF_Y=0.95;
+// Weight classes (DESIGN 5, ECONOMY 1). Slots are the van's currency, not a
+// carrying-capacity abstraction: a two-man piece costs three of fourteen.
+const SLOTS={pocket:0.5, armful:1, two_man:3, cart:5};
+const TWO_MAN_SPEED=0.62;      // both of you, shuffling, apologising
+const FOLLOWER_DRIFT_M=0.4;    // B4: how far the far end may lag before easing in
 let shelves=[];
-function makeItem(r,x,z,y,shelf){
+function makeItem(r,x,z,y,shelf,klass){
   const g=Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
   const [lo,hi]=BAND[r.tier];
-  return {x,y,z,hx:x,hz:z,hy:y,grade:g,tier:r.tier,shelf,
-    value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
-    size:r.tier>=3?0.30:r.tier===2?0.26:0.21,
+  const k=klass??"armful";
+  // ECONOMY 3: a two-man piece is worth roughly its slot cost and no more -
+  // deliberately slightly worse per slot than armfuls, so hauling the armoire
+  // is a choice about the van rather than an obvious upgrade.
+  const mult=k==="two_man"?2.6:k==="pocket"?0.4:1;
+  return {x,y,z,hx:x,hz:z,hy:y,grade:g,tier:r.tier,shelf,klass:k,
+    value:Math.round(rnd(lo,hi)*GRADE_MULT[g]*mult),
+    size:k==="two_man"?0.55:(r.tier>=3?0.30:r.tier===2?0.26:0.21),
     known:false,heldBy:null,gone:false,scan:0,moved:false,stash:0,hideIn:null,
     claim:null};
 }
@@ -286,20 +296,33 @@ function makeItems(){
   items=[]; shelves=[];
   let si=0;
   for(const r of ROOMS){ if(r.van) continue;
-    // One sideboard per room, against the left or right wall, alternating.
-    const left = (si%2)===0;
-    const sx = left ? r.x-r.w/2+0.75 : r.x+r.w/2-0.75;
-    const sz = r.z + (si%3===0 ? -r.d/6 : r.d/6);
-    const shelf={i:si++, x:sx, z:sz, room:r.id, tier:r.tier, w:0.55, d:1.5};
+    // One sideboard per room, against a wall - but never in the mouth of a
+    // doorway. V10 caught the first version parking the land sideboard directly
+    // in the route to the conservatory, so the armoire could not get out of the
+    // room at all. Furniture in the route is a level fault, not a physics one.
+    const cands=[];
+    for(const side of [-1,1]) for(const off of [-r.d/6, r.d/6, -r.d/3, r.d/3])
+      cands.push({x:r.x+side*(r.w/2-0.75), z:r.z+off});
+    const clearOf=(c)=>{
+      for(const d of DOORS){
+        const q=d.rect;
+        const cx=Math.max(q.x0,Math.min(c.x,q.x1)), cz=Math.max(q.z0,Math.min(c.z,q.z1));
+        if(Math.hypot(c.x-cx,c.z-cz)<2.4) return false;   // clear of the doorway mouth
+      }
+      for(const h of HIDES) if(Math.hypot(c.x-h.x,c.z-h.z)<1.6) return false;
+      return true;
+    };
+    const spot = cands.find(clearOf) ?? cands[0];
+    const shelf={i:si++, x:spot.x, z:spot.z, room:r.id, tier:r.tier, w:0.55, d:1.5};
     shelves.push(shelf);
     for(let k=0;k<CANDIDATES;k++){
-      const z = sz - shelf.d/2 + 0.28 + k*((shelf.d-0.56)/(CANDIDATES-1));
-      items.push(makeItem(r,sx,z,SHELF_Y,shelf.i));
+      const z = shelf.z - shelf.d/2 + 0.28 + k*((shelf.d-0.56)/(CANDIDATES-1));
+      items.push(makeItem(r,shelf.x,z,SHELF_Y,shelf.i));
     }
-    // Tier 3 wings also have a piece standing on its own on the floor.
-    if(r.tier===3){
-      const x=rnd(r.x-r.w/2+1.6,r.x+r.w/2-1.6), z=rnd(r.z-r.d/2+1.6,r.z+r.d/2-1.6);
-      items.push(makeItem(r,x,z,0.45,null));
+    // Every wing past the foyer has one piece nobody can lift alone.
+    if(r.tier>=1){
+      const away = spot.x > r.x ? -1 : 1;
+      items.push(makeItem(r, r.x+away*1.9, r.z, 0.62, null, "two_man"));
     }
   }
 }
@@ -312,6 +335,15 @@ function shelfState(i){
   return {total:set.length, scanned:known.length,
           best:known.length?Math.max(...known.map(it=>it.value)):0,
           bestItem:known.length?known.reduce((a,b)=>a.value>b.value?a:b):null};
+}
+// A carried two-man piece is 1.1m across and has to physically go through the
+// hole. Without this the V10 check ("does the piano fit through every route")
+// passes trivially, because an item nothing collides with fits everywhere.
+function itemBlocked(it,x,z){
+  const h=it.size;
+  for(const dx of [-h,h]) for(const dz of [-h,h])
+    if(solid(x+dx,z+dz)) return true;
+  return false;
 }
 const inShelf=(x,z)=>shelves.some(sh=>
   Math.abs(x-sh.x)<sh.w/2+0.12&&Math.abs(z-sh.z)<sh.d/2+0.12);
@@ -430,12 +462,41 @@ function aimedItem(){
 }
 function grabDrop(){
   if(player.holding&&handOff()) return;
-  if(player.holding){ const it=player.holding; it.heldBy=null; player.holding=null;
-    it.x=player.x+Math.sin(player.yaw)*0.8; it.z=player.z+Math.cos(player.yaw)*0.8;
-    it.y=0.45; noise(L.drop,true,0); return; }
+  if(player.holding){ dropHeld(player); return; }
   const it=aimedItem();
-  if(it){ it.heldBy=player; player.holding=it; it.moved=true; it.stash=0;
-    if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; } }
+  if(!it) return;
+  // B4 anchor/follower. You take one end and shout at somebody to take the other;
+  // the anchor owns the object and the follower influences it. Alone, an armoire
+  // is a thing you stand next to and swear at.
+  if(it.klass==="two_man"){
+    const mate=nearestFreeCrew(it);
+    if(!mate){ player.wantHelp=2.5; return; }
+    it.heldBy=player; player.holding=it; it.follower=mate; mate.holding=it;
+    mate.mood="CARRY"; mate.follows=it;
+    it.moved=true; it.stash=0;
+    if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; }
+    return;
+  }
+  it.heldBy=player; player.holding=it; it.moved=true; it.stash=0;
+  if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; }
+}
+function dropHeld(a){
+  const it=a.holding; if(!it) return;
+  releaseItem(it);
+  it.x=a.x+Math.sin(a.yaw??a.face)*0.8; it.z=a.z+Math.cos(a.yaw??a.face)*0.8;
+  it.y=it.klass==="two_man"?0.62:0.45;
+  noise(L.drop,true,0,it.x,it.z,a);
+}
+function releaseItem(it){
+  if(it.follower){ it.follower.holding=null; it.follower.follows=null; it.follower=null; }
+  if(it.heldBy){ it.heldBy.holding=null; it.heldBy=null; }
+}
+function nearestFreeCrew(it){
+  let best=null,bd=6.0;
+  for(const a of crew){ if(!a.alive||a.holding||a.down>0) continue;
+    const d=Math.hypot(a.x-it.x,a.z-it.z);
+    if(d<bd){bd=d;best=a;} }
+  return best;
 }
 
 // -------------------------------------------------------- concealment (8.1)
@@ -583,6 +644,7 @@ function updateCrew(dt){
   for(const a of crew){
     if(!a.alive) continue;
     if(a.down>0){ a.down-=dt; continue; }
+    if(a.follows) continue;      // holding the far end: the anchor decides where you go
     a.panic-=dt;
 
     // Marked and it is close? Put the thing down and get away from it. Cowardice
@@ -611,6 +673,7 @@ function updateCrew(dt){
         let bd=1e9;
         for(const it of items){
           if(it.gone||it.heldBy||(it.claim&&it.claim!==a)) continue;
+          if(it.klass==="two_man") continue;     // nobody lifts an armoire alone
           const d=Math.hypot(it.x-a.x,it.z-a.z);
           if(d<bd){bd=d;a.goal=it;}
         }
@@ -626,11 +689,12 @@ function updateCrew(dt){
     if(a.stride>0.62){ a.stride=0; heard(sp>=RUN?L.sprint:20,a.x,a.z,a); }
 
     if(a.holding){
-      a.holding.x=a.x; a.holding.z=a.z; a.holding.y=1.05;
-      if(roomAt(a.x,a.z)?.van){
-        const it=a.holding; it.heldBy=null; it.gone=true; a.holding=null;
-        it.claim=null; van.cargo.push(it); van.slots--; a.mood="SEEK";
-        if(van.slots===0) finish("VAN FULL");
+      const it=a.holding;
+      it.x=a.x; it.z=a.z; it.y=it.klass==="two_man"?0.9:1.05;
+      if(roomAt(a.x,a.z)?.van&&it.heldBy===a&&van.slots>=SLOTS[it.klass]){
+        releaseItem(it); it.gone=true; it.claim=null;
+        van.cargo.push(it); van.slots-=SLOTS[it.klass]; a.mood="SEEK";
+        if(van.slots<=0) finish("VAN FULL");
       }
     } else if(a.goal&&!a.goal.gone&&!a.goal.heldBy&&
               Math.hypot(a.goal.x-a.x,a.goal.z-a.z)<0.9){
@@ -686,11 +750,15 @@ function step(dt){
   }
   else if(player.down>0) player.down-=dt;
   else if(moving){
-    const sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
+    let sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
+    if(player.holding&&player.holding.klass==="two_man") sp*=TWO_MAN_SPEED;
     const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
     const nz=player.z+(fwd[2]*mx+right[2]*mz)*sp*dt;
-    if(!solid(nx,player.z)) player.x=nx;
-    if(!solid(player.x,nz)) player.z=nz;
+    const big=player.holding&&player.holding.klass==="two_man"?player.holding:null;
+    const d=lookDir();
+    const carriedAt=(px,pz)=>[px+d[0]*1.15, pz+d[2]*1.15];
+    if(!solid(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
+    if(!solid(player.x,nz)&&!(big&&itemBlocked(big,...carriedAt(player.x,nz)))) player.z=nz;
   }
 
   // appraise: hold F, stationary, 3s, loud
@@ -703,12 +771,29 @@ function step(dt){
   if(player.holding){ const d=lookDir(), it=player.holding;
     it.x=player.x+d[0]*1.15; it.z=player.z+d[2]*1.15; it.y=eyeH()+d[1]*1.15-0.30; }
   for(const it of items) if(it.stash>0) it.stash=Math.max(0,it.stash-dt);
+  // The follower is dragged along behind the anchor - force, never position, and
+  // allowed to lag before a soft correction eases it in (B4).
+  for(const it of items){
+    if(!it.follower||it.gone) continue;
+    const f=it.follower, ax=it.x, az=it.z;
+    const d=Math.hypot(f.x-ax,f.z-az);
+    if(d>FOLLOWER_DRIFT_M){
+      const k=Math.min(1,(d-FOLLOWER_DRIFT_M)/d*(dt*6));
+      const nx=f.x+(ax-f.x)*k, nz=f.z+(az-f.z)*k;
+      if(!solid(nx,f.z)) f.x=nx;
+      if(!solid(f.x,nz)) f.z=nz;
+      f.face=Math.atan2(ax-f.x,az-f.z);
+    }
+  }
 
   // deposit
   if(player.holding&&!player.hiding&&roomAt(player.x,player.z)?.van){
-    const it=player.holding; it.heldBy=null; it.gone=true; player.holding=null;
-    van.cargo.push(it); van.slots--;
-    if(van.slots===0) return finish("VAN FULL");
+    const it=player.holding;
+    if(van.slots>=SLOTS[it.klass]){
+      releaseItem(it); it.gone=true;
+      van.cargo.push(it); van.slots-=SLOTS[it.klass];
+      if(van.slots<=0) return finish("VAN FULL");
+    }
   }
 
   updateCrew(dt);
@@ -1198,6 +1283,13 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   sees:(x,z)=>sees(x,z), heard:(l,x,z)=>heard(l,x,z),
   fix:()=>curator.fix?{x:curator.fix.x,z:curator.fix.z,age:curator.fix.age,
     sure:curator.fix.sure,who:curator.fix.who?curator.fix.who.name:null}:null,
+  slots:()=>({...SLOTS}),
+  vanSlots:()=>van.slots,
+  twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
+    return it?items.filter(x=>!x.gone).indexOf(it):-1;},
+  carry:()=>{const it=player.holding; return it?{value:it.value,klass:it.klass,
+    follower:it.follower?it.follower.name:null}:null;},
+  wantHelp:()=>player.wantHelp>0,
   shelves:()=>shelves.map(sh=>({...sh,...shelfState(sh.i)})),
   shelfOf:i=>{const it=items.filter(x=>!x.gone)[i]; return it?it.shelf:null;},
   // Recomputed on demand: the HUD is written by the render loop, which QA
@@ -1205,7 +1297,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   prompt:()=>{hud(); return document.getElementById("prompt").textContent;},
   faults:()=>DOOR_FAULTS.slice(),
   rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
-  doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z})),
+  doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z,axis:d.axis,
+    rect:{...d.rect},span:+(d.span[1]-d.span[0]).toFixed(2)})),
   solid };
 </script>
 </body>

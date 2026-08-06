@@ -68,6 +68,17 @@
     "sight_cone_deg": 100.0,
     "fix_stale_seconds": 6.0
   },
+  "weight": {
+    "_source": "ECONOMY.md 1 slot costs, DESIGN.md 5 carry rules",
+    "slots": {
+      "pocket": 0.5,
+      "armful": 1.0,
+      "two_man": 3.0,
+      "cart": 5.0
+    },
+    "two_man_speed_mult": 0.62,
+    "follower_drift_m": 0.4
+  },
   "curse": {
     "_source": "ECONOMY.md 3 and 5, DESIGN.md 4.2",
     "value_multiplier": {

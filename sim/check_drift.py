@@ -153,6 +153,13 @@ check("JS3d noise_multiplier", grab(js3, r"NOISE_MULT_PER_EVENT\s*=\s*([\d.]+)")
 check("JS3d light_multiplier", grab(js3, r"LIGHT_MULT\s*=\s*([\d.]+)"),
       a["light_multiplier"])
 
+w = TUNING["weight"]
+check("JS3d slot_two_man", grab(js3, r"SLOTS=\{[^}]*two_man:\s*([\d.]+)"),
+      w["slots"]["two_man"])
+check("JS3d slot_cart", grab(js3, r"SLOTS=\{[^}]*cart:\s*([\d.]+)"), w["slots"]["cart"])
+check("JS3d two_man_speed", grab(js3, r"TWO_MAN_SPEED=([\d.]+)"), w["two_man_speed_mult"])
+check("JS3d follower_drift", grab(js3, r"FOLLOWER_DRIFT_M=([\d.]+)"), w["follower_drift_m"])
+
 sn = TUNING["senses"]
 check("JS3d hear_per_l", grab(js3, r"HEAR_PER_L\s*=\s*([\d.]+)"),
       lc["hearing_radius_per_l"])

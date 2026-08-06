@@ -323,6 +323,28 @@ since a crash and a pass are both "no FAIL lines". `checks()` is now wrapped, a 
 recorded as a failing check, and the summary always prints. · Regression: QA 76/76, drift
 89/89, estate validator PASS.
 
+R22 · **Put something in the house that nobody can lift alone.** Weight classes (DESIGN §5,
+ECONOMY §1) with the van priced in *slots* rather than items — an armful costs 1 of 14, an
+armoire costs 3 — and the B4 anchor/follower carry: you take one end, shout at a crewmate, and
+they get dragged along behind you at 0.62 speed. Newly possible only because R20 put a crew in
+the build; before that "two-man" was a class with nobody to be the second man. Seven new
+checks, all injection-tested. · **The V10 check passed on its first run, which is how I knew it
+was worthless.** `LEVEL-SPEC`'s tenth check — does the piano physically fit through every
+route — cannot fail if the piano has no collision footprint, and carried items had none: an
+object nothing collides with fits everywhere. Gave a carried two-man piece its real 1.1m width
+and re-ran. · **It immediately failed on two doorways, and the cause was level authoring, not
+physics.** The procedural sideboard placement had parked the `land` shelf directly in the mouth
+of the conservatory corridor, so the armoire could not leave the room at all — furniture in the
+route, which is precisely the fault V10 exists to catch and precisely the sort nobody finds by
+eye. Placement now picks from candidate wall positions and rejects any within 2.4m of a doorway
+rect or 1.6m of a wardrobe. `BUILD-PROMPT.md` says to automate V10 *before the first wing
+ships, not after the first bug report*; this is the first wing, and it shipped with the bug in
+it. · One test-fairness call worth stating: the check walks the armoire in along the corridor
+**axis**, centred, the way a player lining up a wardrobe would. Whether you can shoulder it
+through at an angle is a different and much harder question than whether the geometry admits
+the object, and conflating them would make the check fail for reasons that are not the estate's
+fault. · Regression: QA 83/83, drift 89/89, estate validator PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
