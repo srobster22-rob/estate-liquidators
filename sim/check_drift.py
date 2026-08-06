@@ -89,6 +89,8 @@ EXCLUDED = [
     ("sim/mutate_drift.py", "tests this file; holds no game constants"),
     ("sim/audit_waivers.py", "tests this file's waivers"),
     ("sim/check_docs.py", "checks the SPECS against tuning.json, same job one layer out"),
+    ("sim/check_trajectory.py", "derives a reference run from tuning.json; holds no constants"),
+    ("tools/trace_dist.mjs", "records what the prototype does; asserts nothing itself"),
     ("sim/estates.py", "sample level data - room positions, not tuning"),
     ("check.py", "test runner"),
     ("tools/proto_smoke.mjs", "reads tuning.json directly, so it cannot drift from it"),

@@ -340,6 +340,21 @@ currently honest. Confirmed the checker can say otherwise by planting five diffe
 of error (a wrong L, a wrong derived radius, a dash on a sustained source, a wrong slot cost,
 a wrong ruin percentage) and watching it name all five.
 
+R24 · Every check in this repo compares **numbers** — constants in files, figures in tables.
+None compared **behaviour**, and behaviour is where this project's most expensive bug lived:
+R12's sustained noise applied per frame instead of per second, sixty times too loud, with
+every constant involved correct. A drift check would have passed it forever. · Built
+`tools/trace_dist.mjs`, which drives the real prototype through a scripted night — real input
+handler, real frame rate — and `sim/check_trajectory.py`, which re-derives the same run from
+`tuning.json` alone and compares the meter second by second. **The running game tracks the
+model within 0.02 points.** · Then put R12's bug back on purpose. The checker reports the
+prototype at **53.8 against a canonical 0.69 after one second, and pinned at 100 by the
+second** — which is precisely the description R12 wrote by hand after losing an evening to it.
+**That class of bug is now a one-second check.** · Worth stating plainly what this does not
+do: it drives the Disturbance integrator, not the game. A bot that plays a night — walks,
+appraises, refuses, hauls — and reproduces R22's policy ordering in the actual implementation
+is the obvious next step, and it needs navigation the QA hook does not yet provide.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -372,7 +387,14 @@ not run since R13. Since then R16 added three lever constants, R21 added the coo
 environment refuses the .NET installer. **This is now the largest unverified surface in the
 project.** First thing on the Mac: `python3 check.py`, and the C# line must read PASS.
 
-**6 — The next real information is a playtest, not another round.** Phases 0–2 are unchanged
+**6 — Teach the QA hook to navigate.** R24 proved the prototype's Disturbance integrator
+matches canon second by second; the natural next check is a bot that plays a whole night under
+a named policy and reproduces R22's ordering (MARGIN beats BLIND beats SCAN) in the real
+implementation rather than in Python. That needs room-to-room pathing through the door graph,
+which is maybe eighty lines and would make every future economy claim testable in the thing
+people will actually play.
+
+**7 — The next real information is a playtest, not another round.** Phases 0–2 are unchanged
 and unstarted: two people, a door, spatial voice. Everything the simulations can settle at
 this fidelity has been settled twice over; what is left is whether four friends in a hallway
 find it funny.

@@ -66,8 +66,11 @@ if (ROOT / "node_modules/playwright").exists():
     chrome = find_chrome()
     results.append(run("prototype smoke test", ["node", "tools/proto_smoke.mjs"],
                        env={"PW_CHROME": chrome} if chrome else None))
+    results.append(run("trajectory check", [sys.executable, "sim/check_trajectory.py"],
+                       env={"PW_CHROME": chrome} if chrome else None))
 else:
     skipped.append(("prototype smoke test", "playwright not installed - `npm i playwright`"))
+    skipped.append(("trajectory check", "playwright not installed - `npm i playwright`"))
 
 print("=" * 78)
 print("ESTATE LIQUIDATORS - regression suite")
