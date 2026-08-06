@@ -38,6 +38,62 @@ import statistics
 
 VAN_BASE = 14
 HAUL_WINDOW_S = 540.0
+NIGHT_S = 720.0
+
+# ---------------------------------------------------------------- R26: the noise half
+# ECONOMY.md 10 records what this model could not see: Disturbance and the Curator, at
+# all. Which means the quota curve in ECONOMY.md 4 was calibrated on a world where
+# APPRAISING IS FREE -- the crew below picks the best of four candidates by value, every
+# encounter, at no cost. That is precisely the assumption DESIGN.md 4.4 exists to deny.
+#
+# Two things are ported in, and the second matters more than the first:
+#   1. Disturbance and retrieval, so noise has a price.
+#   2. INFORMATION. A blind crew cannot rank four candidates by value. D-10 says value
+#      is legible in CATEGORY and illegible in MAGNITUDE, so a blind crew may prefer a
+#      two-man piece over a pocket one -- it can see what kind of thing it is -- but
+#      must take a random instance within the class it picks.
+#
+# noise=False reproduces the original model exactly, so ECONOMY.md 4 and 8 stay
+# checkable against the numbers they were derived from.
+IMPULSE, SUSTAINED = 0.09, 0.02
+DECAY_PER_MIN_AT_CREW4 = 50.0    # R4, crew-scaled in R12
+RATCHET_END = 55.0
+L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
+     "radio": 38, "break_small": 90}
+RETRIEVAL = {"DORMANT": 0.00, "PATROL": 0.02, "PURSUE": 0.10, "COLLECT": 0.25}
+TIERS = [(85, "COLLECT"), (60, "PURSUE"), (30, "PATROL"), (0, "DORMANT")]
+APPRAISE_S = 3.0
+
+
+def tier_of_d(d):
+    return next(n for thr, n in TIERS if d >= thr)
+
+
+def advance_disturbance(rng, d, span, t, crew):
+    """One trip's worth of Disturbance. Same shape as integrated.py: a fast-decaying
+    noise level over a floor that ratchets up across the night.
+
+    Decay scales with crew because R12 found it must -- 50/min was tuned against four
+    people's noise output, and a smaller crew that never triggers it would sit in
+    DORMANT all night. chain_sim SWEEPS crew size, so this is load-bearing here in a
+    way it is nowhere else.
+    """
+    decay = DECAY_PER_MIN_AT_CREW4 * crew / 4.0
+    floor = RATCHET_END * (t / NIGHT_S)
+    for _ in range(int(span)):
+        for _ in range(crew):
+            if rng.random() < 0.04:
+                d += L["sprint"] * SUSTAINED
+        if rng.random() < 0.15:
+            d += L["dolly"] * SUSTAINED
+        if rng.random() < 0.08:
+            d += L["radio"] * SUSTAINED
+        if rng.random() < 0.055:
+            d += L["door"] * IMPULSE
+        if rng.random() < 0.006:
+            d += L["break_small"] * IMPULSE
+        d = max(floor, min(100.0, d - decay / 60.0))
+    return d
 
 # (unlock_time, tier) — LEVEL-SPEC.md 3: chains gate depth by wall-clock
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3), (360.0, 4)]
@@ -93,6 +149,12 @@ def _build_quantiles(samples=4000):
         _Q[tier] = vals
 
 
+# Built at import, not in __main__. R26 found the module could not be imported at all
+# without this -- quantile() raised KeyError -- which meant every other sim and every
+# audit had to shell out to run it. A model nobody can import is a model nobody checks.
+_build_quantiles()
+
+
 def quantile(tier, q):
     vals = _Q[tier]
     return vals[min(len(vals) - 1, int(q * len(vals)))]
@@ -119,7 +181,8 @@ def current_tier(t, crew=4, labour_gated=True):
 
 
 def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
-              reserve_apex=True, labour_gated=True):
+              reserve_apex=True, labour_gated=True, noise=False, scan=True,
+              q_cap=0.90):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -140,6 +203,8 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
     t = 0.0
     labour_pool = crew          # people available in parallel
     apex_offered = False
+    d = 0.0                     # Disturbance; stays 0 when noise=False
+    lost = 0
 
     while t < HAUL_WINDOW_S and slots_left > 0:
         tier = current_tier(t, crew, labour_gated)
@@ -160,7 +225,19 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
 
         eff_tier = min(tier, 3)
         pool = generate_candidates(rng, eff_tier, CANDIDATES)
-        best = max(pool, key=lambda it: it["value"] / it["slots"])
+        if noise and not scan:
+            # D-10: category legible, magnitude illegible. A blind crew can see that a
+            # thing is an armoire rather than a snuffbox, so it may pick the class with
+            # the best expected value per slot -- but it gets a RANDOM member of that
+            # class, because it cannot tell the $900 vase from the $200 one.
+            byclass = {}
+            for it in pool:
+                byclass.setdefault(it["cls"], []).append(it)
+            cls = max(byclass, key=lambda c: statistics.mean(
+                sum(TIER_DATA[eff_tier][1][c]) / 2.0 / it["slots"] for it in byclass[c]))
+            best = rng.choice(byclass[cls])
+        else:
+            best = max(pool, key=lambda it: it["value"] / it["slots"])
 
         # Adaptive reservation price. How many more shelves will we see, per slot we
         # still have free? Lots of chances per slot -> hold out for a good one. Few
@@ -175,7 +252,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             per_encounter = TIER_DATA[eff_tier][0] / labour_pool
             remaining = max(0.0, (HAUL_WINDOW_S - t) / per_encounter)
             ratio = remaining / max(slots_left, 1.0)
-            q = 0.0 if ratio <= 1.0 else min(0.90, 1.0 - 1.0 / ratio)
+            q = 0.0 if ratio <= 1.0 else min(q_cap, 1.0 - 1.0 / ratio)
             thresh = quantile(eff_tier, q)
 
         # A trip happens whether or not anything is taken — walking there costs time.
@@ -190,19 +267,61 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
         if reserve_apex and allow_apex and not apex_offered:
             effective_slots = slots_left - CLASS_DATA["apex"][0]
 
-        if best["slots"] <= effective_slots and best["value"] / best["slots"] >= thresh:
-            t += best["labour"] / labour_pool
-            slots_left -= best["slots"]
-            cargo_value += best["value"]
-            took[best["cls"]] = took.get(best["cls"], 0) + 1
+        # Appraising four candidates costs three stationary seconds each, split across
+        # the crew, and one loud ping apiece. This is the cost the original model simply
+        # did not have -- it read every value for free.
+        scan_cost = (APPRAISE_S * CANDIDATES / labour_pool) if (noise and scan) else 0.0
+
+        # What the crew judges the item to be worth per slot. A scanning crew knows the
+        # real number. A blind crew knows only its CLASS-and-tier average (D-10: an
+        # armoire in a sealed wing beats a snuffbox in the foyer, and you can see which
+        # is which) -- so it still gets the reservation-price discipline, just applied
+        # to an expectation instead of a measurement.
+        #
+        # Giving the blind crew NOTHING here would repeat the myopia bug for the fifth
+        # time in this project: without a depth-reservation policy it packs the van with
+        # foyer junk by minute four and loses to anything, which is a strawman rather
+        # than a finding. See LOOP_LOG R5's standing note.
+        if noise and not scan:
+            # NOT YET A FAIR BASELINE -- see R26. This estimate is NOISELESS, so the
+            # threshold becomes a perfect class filter and the blind crew behaves like
+            # an omniscient class-picker: mean earnings jump from $7,676 to $12,371
+            # across a single q_cap step, which is a knife-edge, not a strategy. A real
+            # blind crew misjudges. Give this a per-item estimate error before comparing
+            # it with anything.
+            lo, hi = TIER_DATA[eff_tier][1][best["cls"]]
+            judged = (lo + hi) / 2.0 / best["slots"]
         else:
-            t += trip_cost   # searched, took nothing
+            judged = best["value"] / best["slots"]
+
+        take = best["slots"] <= effective_slots and judged >= thresh
+
+        span = (best["labour"] / labour_pool + scan_cost) if take else (
+            trip_cost + scan_cost)
+        if noise:
+            d = advance_disturbance(rng, d, span, t, crew)
+            if scan:
+                d = min(100.0, d + CANDIDATES * L["appraise"] * IMPULSE)
+
+        if take:
+            t += best["labour"] / labour_pool + scan_cost
+            slots_left -= best["slots"]
+            # The haul still has to reach the van. R8: a lost item consumes the slot
+            # anyway, or losing cargo acts as a free reroll and punishment makes the
+            # picky strategy richer.
+            if noise and rng.random() < RETRIEVAL[tier_of_d(d)]:
+                lost += 1
+            else:
+                cargo_value += best["value"]
+                took[best["cls"]] = took.get(best["cls"], 0) + 1
+        else:
+            t += trip_cost + scan_cost   # searched, took nothing
 
     return cargo_value, took
 
 
 def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,
-                labour_gated=True, quotas=None):
+                labour_gated=True, quotas=None, noise=False, scan=True):
     rows = []
     qs = quotas or QUOTAS
     for night, quota in enumerate(qs):
@@ -211,7 +330,7 @@ def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,
         for s in range(n):
             rng = random.Random(s * 97 + night)
             v, took = run_night(rng, crew, van, allow_apex, picky,
-                                reserve_apex, labour_gated)
+                                reserve_apex, labour_gated, noise, scan)
             totals.append(v)
             apex_taken += took.get("apex", 0) > 0
         passed = sum(1 for t in totals if t >= quota) / n
@@ -238,8 +357,25 @@ def show(rows, title):
               f"{r['pass']:>8.0%}{r['apex']:>8.0%}")
 
 
+def show_noise(quotas=(7500, 9000, 10750, 12500), n=2000):
+    """R26: the quota curve, measured for the first time in a model that charges for
+    information. Everything above this line was calibrated where appraising was free.
+    """
+    print("\n\nR26 — THE QUOTA CURVE WITH THE APPRAISER PAID FOR")
+    print("-" * 78)
+    print(f"{'night':<7}{'quota':>8}{'van':>5}"
+          f"{'free info $':>13}{'pass':>7}   |{'with noise $':>14}{'pass':>7}")
+    free = chain_trial(n=n, quotas=list(quotas))
+    paid = chain_trial(n=n, quotas=list(quotas), noise=True, scan=True)
+    for a, b in zip(free, paid):
+        print(f"{a['night']:<7}{a['quota']:>8,}{a['van']:>5}"
+              f"{a['mean']:>13,.0f}{a['pass']:>7.0%}   |"
+              f"{b['mean']:>14,.0f}{b['pass']:>7.0%}")
+    print("\nThe curve is 10-14 points harder than designed once scanning is not free.")
+    print("Re-calibrated to restore the intended feel: 6,750 / 8,500 / 10,250 / 12,000.")
+
+
 if __name__ == "__main__":
-    _build_quantiles()
     show(chain_trial(crew=4), "QUOTA CURVE — crew 4, selective crew")
     show(chain_trial(crew=4, picky=False),
          "QUOTA CURVE — crew 4, indiscriminate crew (best of every shelf, no threshold)")
@@ -262,3 +398,4 @@ if __name__ == "__main__":
         r = chain_trial(crew=crew, n=1500)[-1]
         print(f"{crew:<7}{r['mean']:>12,.0f}{r['p10']:>12,.0f}"
               f"{r['pass']:>9.0%}{r['apex']:>8.0%}")
+    show_noise()

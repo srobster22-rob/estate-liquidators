@@ -105,6 +105,26 @@ rich every night. The quota has to live inside that range or the chain has no sh
 | 3 | $10,750 | 17 | $10,997 | ~55% | someone has to go into a sealed wing |
 | 4 | $12,500 | 19 | $12,152 | ~40% | above the mean. The apex is not optional. |
 
+> **R26 — this curve was calibrated in a model where appraising is free, and it is
+> 10–14 points harder than intended once it isn't.** `chain_sim.py` had no Disturbance and
+> no Curator (§10), so its crew read every candidate's value at no cost — the one assumption
+> `DESIGN.md` §4.4 exists to deny. With the tuned Disturbance model and retrieval ported in,
+> and three stationary seconds plus a ping charged per item examined, the same crew earns less
+> and passes less often:
+>
+> | Night | Quota | Free information | With the appraiser paid for |
+> |---:|---:|---:|---:|
+> | 1 | $7,500 | $9,356 · 94% | $9,059 · **86%** |
+> | 2 | $9,000 | $9,930 · 73% | $9,493 · **62%** |
+> | 3 | $10,750 | $11,002 · 56% | $10,429 · **43%** |
+> | 4 | $12,500 | $12,141 · 41% | $11,556 · **30%** |
+>
+> **Re-calibrated curve, restoring the intended feel: $6,750 / $8,500 / $10,250 / $12,000.**
+> Roughly $500–750 off each night. The shape and the design intent behind each night are
+> unchanged — this is paying for a cost the model previously ignored, not a rebalance.
+>
+> Run `python sim/chain_sim.py` for the current numbers.
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The
@@ -394,7 +414,7 @@ exists so that never costs eleven rounds again.
 | Model | Round | Produces | Cannot see |
 |---|---|---|---|
 | `haul_sim.py` | R0 | *(superseded)* the +84% edge, §6's capacity sweep, the "24–32 slot cliff" | parallel efficiency (R7), slot accounting (R8), derived Disturbance (R5), the corrected cursed floor (R18) |
-| `chain_sim.py` | R0 | §4 quota curve, §8, D-21 apex, **and the 20–24 extraction measurement that calibrated `PAR_EFF`** | Disturbance and the Curator entirely — it cannot price noise |
+| `chain_sim.py` | R0, R26 | §4 quota curve, §8, D-21 apex, **the 20–24 extraction measurement that calibrated `PAR_EFF`**, and since R26 the quota curve with scanning paid for | *(R26 ported in Disturbance and retrieval; `noise=False` still reproduces the original exactly.)* A fair BLIND baseline — see the note below |
 | `curator_attention.py` | R2 | attention model, hand-off, D-03 | the economy |
 | `disturbance.py` | R3–R4 | the meter, decay 50/min, the ratcheting floor | the haul loop |
 | `integrated.py` | R5, R8 | the appraiser's edge against *derived* noise | the apex; tier 4 does not exist in it |
@@ -419,6 +439,21 @@ and both are easy to trip over:
    large *fixed-size* prize that does not scale with capacity, so it damps the proportional
    benefit of every extra slot. **The quota curve in §4 is calibrated on `chain_sim`, and
    that is the correct choice**; do not "correct" it toward the appraiser family's numbers.
+
+### What R26 did *not* establish
+
+`chain_sim` can now charge for scanning, so the obvious next question is what the appraiser
+is worth **in a model that has the apex in it** — the appraiser family says +8.8%, and it
+only ever modelled the within-shelf half of the mechanic, not the across-the-night
+reservation price that `chain_sim`'s threshold policy runs on.
+
+**That number is not yet trustworthy and is deliberately not quoted anywhere.** A blind crew
+needs an estimate of value-per-slot to apply any reservation price at all, and the natural
+one — the class-and-tier average, which D-10 says is legitimately legible — is *noiseless*.
+That turns the threshold into a perfect class filter: mean earnings jump from $7,676 to
+$12,371 across a single step of the pickiness parameter. A knife-edge is not a strategy, and
+a blind crew that never misjudges is a strawman in the opposite direction from the one R5
+warned about. **Give the blind estimate a per-item error before comparing anything to it.**
 
 ### The chain against the trip ceiling (R24/R25)
 

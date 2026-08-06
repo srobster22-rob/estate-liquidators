@@ -470,6 +470,38 @@ to the README's document table under "**before quoting any number**". · The rul
 exists to enforce: **quote a number with its model, or don't quote it.** R24's discovery took
 eleven rounds purely because nothing linked a claim to the code behind it.
 
+R26 · Closed the last big modelling gap `ECONOMY.md` §10 exposed: **`chain_sim.py` had no
+Disturbance and no Curator at all, which means the quota curve was calibrated in a world where
+appraising is free** — the one assumption `DESIGN.md` §4.4 exists to deny. Ported in the tuned
+Disturbance model (crew-scaled per R12, which matters here as nowhere else because this is the
+model that *sweeps crew size*), retrieval with R8's slot accounting, and a real cost for
+information: three stationary seconds and a ping per candidate examined. `noise=False`
+reproduces the original numbers exactly, so §4 and §8 stay checkable against what produced
+them. · Also fixed a latent bug found on the way in: **`chain_sim` could not be imported at
+all** — `_build_quantiles()` was only called under `__main__`, so `quantile()` raised
+`KeyError` for any other module. A model nobody can import is a model nobody checks, and this
+is the one the quota curve rests on. · **The result: the quota curve is 10-14 points harder
+than designed once scanning is not free.** Pass rates fall 94→86, 73→62, 56→43, 41→30 across
+the four nights. Re-calibrated to restore the intended feel: **$6,750 / $8,500 / $10,250 /
+$12,000**, roughly $500-750 off each night. The shape and the design intent per night are
+untouched — this is paying a cost the model previously ignored, not a rebalance. · **And then
+the round tried to answer the bigger question and failed honestly, which is the part worth
+reading.** With the apex finally in the same model as the noise, "what is the appraiser
+actually worth" looked answerable — and the appraiser family has only ever modelled the
+within-shelf half of the mechanic, not the across-the-night reservation price `chain_sim` runs
+on, so a much larger number seemed likely. **First attempt gave the blind crew no depth
+reservation at all and it packed the van with foyer junk — the myopia bug, fifth occurrence,
+caught before reporting.** Fixed by letting it judge on class-and-tier averages, which D-10
+says are legitimately legible. **That inverted the result: blind then beat scanning by 36%.**
+Diagnosed rather than published: the class average is *noiseless*, so the threshold becomes a
+perfect class filter and earnings jump $7,676 → $12,371 across a single step of the pickiness
+parameter. A knife-edge is not a strategy, and a crew that never misjudges is the same strawman
+pointing the other way. · **So the appraiser's value in an apex-bearing model is NOT
+established, and is deliberately quoted nowhere.** The fix is one line of modelling — give the
+blind estimate a per-item error — but it is a design decision about how wrong a crew can be,
+not a parameter to guess, and R27 should do it deliberately. Two rounds (R6, R7) were once
+spent on exactly this class of artifact; that is the going rate for getting it wrong instead.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -477,43 +509,48 @@ eleven rounds purely because nothing linked a claim to the code behind it.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R26: give `chain_sim.py` the one thing it cannot see.** `ECONOMY.md` §10 makes the split
-plain — chain_sim has the apex, the weight classes and the crew labour that the quota curve
-needs, and **no Disturbance or Curator at all**, so it cannot price noise. The appraiser family
-has the noise and no apex. **The quota curve is therefore calibrated on a model where
-appraising is free**, which is the one assumption `DESIGN.md` §4.4 is built to deny. Porting
-the tuned Disturbance model into chain_sim would let the quota curve and the appraiser edge be
-measured in the same run for the first time, and it is the last big modelling gap left. Expect
-the quota pass rates to move — a crew that pays for its scanning earns less than $9,373.
+**R27: give the blind crew a believable error, then answer the question R26 couldn't.**
+`chain_sim` now charges for scanning, but its blind crew judges by a *noiseless* class average,
+which makes the reservation threshold a perfect class filter and produces a knife-edge rather
+than a strategy (`ECONOMY.md` §10, "What R26 did not establish"). Add a per-item estimate
+error — a log-normal or similar multiplicative noise on the crew's judged value-per-slot — and
+**sweep it**, because the error size *is* the design question: it is how wrong a player is
+allowed to be, and D-24's one-second room test is the real-world measurement of the same
+quantity. Then the standing question finally has an honest answer: **what is the appraiser
+worth in a model that contains the apex?** Expect it to exceed the +8.8% the appraiser family
+reports, because that family only ever modelled the within-shelf half of the mechanic and not
+the across-the-night reservation price — but do not assume it; R26 assumed a direction twice
+and was wrong both times.
 
-**R27: the night-4 margin, if R26 confirms it.** R25 measured the van's binding margin falling
-49% → 9% across the contract chain. It holds, but a fifth night or a +2 slot buff removes it.
-§4 already recommends the fix (growth from richer estates rather than from squeezing a flat
-ceiling); costing that properly needs R26's combined model, since richer estates change what
-noise buys you.
+**R28: re-derive §8's three findings against the noise model.** They came from the same
+free-information `chain_sim` the quota curve did — crew size (D-18), the apex re-band (D-21),
+and the labour-gating result (D-20). The crew-size one is the most exposed, because R12
+established that Disturbance decay scales with crew, so noise makes bigger crews *louder* in a
+way the original comparison could not see. D-18 is a settled decision resting on a model that
+has just changed underneath it — exactly the R24 pattern, and now predictable enough to check
+before it bites.
 
-**R28 (needs `dotnet`): port the economy into the C# core.** 26 values, enumerated in
-`CS_BACKLOG`. Retrieval first, curse tables next. *This environment cannot do it* — no C#
-toolchain, `dot.net` refused by the network policy.
+**R29 (needs `dotnet`): port the economy into the C# core.** 26 values in `CS_BACKLOG`.
+Retrieval first, curse tables next. *This environment cannot do it* — no toolchain, `dot.net`
+refused by the network policy.
 
-**Seven standing rules, each earned by getting it wrong first.**
+**Standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18). *A check earns its place by failing the
 default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20).
-*Name the table you mean* (R14, R21) — third occurrence of that regex bug. *A model verified
-in one projection is not verified in the one you ship* (R22). *Every guarantee has been weaker
-than it sounded* (R23) — agreement, then coverage, then per-implementation coverage.
-**And the one that has produced the most: a conclusion is only as current as the model
-underneath it** (R24) — now enforced by `ECONOMY.md` §10, whose rule is *quote a number with
-its model, or don't quote it*.
+*Name the table you mean* (R14, R21). *A model verified in one projection is not verified in
+the one you ship* (R22). *Every guarantee has been weaker than it sounded* (R23). *A
+conclusion is only as current as the model underneath it* (R24) — now enforced by
+`ECONOMY.md` §10: **quote a number with its model, or don't quote it.**
 
-**The myopia bug has appeared four times** (R5, R6, R24, and once in R20's neighbourhood). Any
-haul model needs a depth-reservation policy before its baseline means anything — and R24 adds
-the converse: **that policy must not be coupled to the parameter you are sweeping.**
+**And the big one, now at five occurrences and two directions.** *Every strategy in a haul
+model needs the knowledge that has nothing to do with the thing being tested* (R5, R6, R24,
+R26 twice). Deny the baseline its depth reservation and it packs the van with junk; hand it a
+noiseless estimate and it becomes an oracle. **Both are strawmen, and the second is harder to
+see because it makes your mechanic look bad rather than good.**
 
-**The appraiser thread is closed.** +8.8% at 14 slots, +11.7% at night 4's 19, alive across
-the whole upgrade path (R25). **Do not reopen it with another tuning sweep.** The next real
-information is Milestone 2 instrumentation (D-10) and D-24's one-second room-classification
-test.
+**The appraiser thread stays closed on the tuning side** — +8.8% at 14 slots, +11.7% at night
+4's 19, alive across the whole upgrade path (R25). R27 is not a tuning sweep; it is measuring a
+half of the mechanic no model has ever contained.
 
 **Not blocked on anything except the C# port, which is blocked on a toolchain rather than a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks
