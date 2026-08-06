@@ -304,6 +304,41 @@ object**, which is the actual content of D-06. · Regression: QA 70/70, drift 89
 
 ## Next step (paste the loop prompt to resume)
 
+Everything the previous list held open has been answered or superseded — the appraiser
+question (R18), the curse tail risk (R11), the cursed-cargo inertness (R18, in the last two
+places it was still wrong). Ranked by what most endangers the build:
+
+**1. The prototype has never been played by a human.** Every claim in this log below R16 is
+either a simulation result or a headless assertion. 70 checks say the rules behave; nothing
+says the game is *fun*, and DESIGN §11's Phase 2 gate — four friends find hauling junk to a
+van funny, without a monster — is the only thing that can. Twenty minutes with the file open
+is worth more than another round of this.
+
+**2. The scan-breadth result needs a UI before it means anything.** D-24 found the appraiser
+is a *breadth* decision worth +14%, and that the payoff dies if players read scanning as an
+on/off mode. `proto3d` still appraises one aimed item at a time with no notion of "two of these
+four scanned", so the mechanic the sim priced does not exist in the build yet.
+
+**3. Weight classes and the two-man carry.** The whole physics-handoff risk (`TECH-SPEC` §B4,
+Phase 1) and the comedy that justifies non-kinematic carry live here, and nothing in any
+prototype has a piano in it. Single-player can't test the handoff, but it can test whether the
+dolly and the pinch points make the estate read as a logistics problem.
+
+**4. A second estate.** One hand-authored wing has been carrying the whole build since R12,
+`LEVEL-SPEC`'s module contract has never generated anything, and `validate_estate.py` has
+never been pointed at the estate the prototype actually ships. V5 remains the weakest of its
+ten checks — it counts doors on the shortest path and has never failed anything.
+
+**Standing:** the C# core suite (`unity/tests/CoreTests`, 31 assertions) has not run since R14
+— there is no .NET SDK in the container this loop is running in, so `check_drift.py` is
+currently the only thing holding the C# port to the canonical numbers. Run it on a machine
+that has `dotnet` before trusting the Unity side.
+
+---
+
+## Superseded next-steps, kept for the reasoning
+
+
 **R12: apply R11's lesson to the appraiser — it is the same shape of problem.** The +6% edge
 from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure that
 gave flat, uninteresting curves for the curse. Try giving scanning a super-linear or tail-risk

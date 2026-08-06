@@ -86,7 +86,9 @@ four things this project believed.
   would have been near-impossible to diagnose from playtest reports.
 
 **Deliberately rough:** joint tuning values (guesses — a week of hands-on iteration decides
-the game's feel); material and prop dressing; lighting standards; anything about art.
+the game's feel); material and prop dressing; lighting standards; anything about art. In the
+prototype specifically: the crew are haul bots rather than players, there is one hand-authored
+wing, and nothing has weight — no dolly, no two-man carry, no piano.
 
 **Recently answered:** dead-player downtime — the genre's standing unsolved problem. The dead
 join the collection: free movement, permanent sight of the Curator, curse-sight, and a small
@@ -95,12 +97,14 @@ budget of poltergeist verbs whose every use raises Disturbance. The dead player 
 
 ## The next three things
 
-1. **Two people, a door, spatial voice.** A fifteen-minute test that tells you whether the
+1. **Open `proto3d/index.html` and play it for twenty minutes.** Everything claimed below
+   R16 in the loop log is a simulation result or a headless assertion. Seventy checks say
+   the rules behave; nothing says the game is fun, and no amount of further iteration can
+   substitute for the first honest opinion.
+2. **Two people, a door, spatial voice.** A fifteen-minute test that tells you whether the
    foundation of this game feels right. Nothing else buildable this early is worth as much.
-   (`AUDIO-SPEC.md` §8) — and note the prototype is still **silent**, so the loudness model
-   drives Disturbance and nothing you can hear.
-2. **Vendor the Dissonance↔FishNet bridge**, then hold it to the two-day rule. If voice isn't
-   working end-to-end in two days, switch to Mirror and don't relitigate it. (`STACK.md`)
+   (`AUDIO-SPEC.md` §8). The prototype now has audio, but it is single-player and
+   synthesised — it proves the loudness model drives a mix, not that proximity voice works.
 3. **Milestone 2, with instrumentation.** Hauling junk to a van with friends, no monster.
    Two kill criteria, both written down in advance: is it already funny, and do players
    actually use the appraiser? (`DESIGN.md` §11)
