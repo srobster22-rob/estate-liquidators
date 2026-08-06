@@ -16,14 +16,14 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > ### Read first, in this order
 >
 > 1. `README.md` — the map.
-> 2. `DECISIONS.md` — 25 settled calls, each with the condition that would disprove it.
+> 2. `DECISIONS.md` — 27 settled calls, each with the condition that would disprove it.
 >    **Do not relitigate these.** If you believe one is wrong, check whether its stated
 >    falsification condition has actually been met; if it hasn't, implement it as written.
 > 3. `DESIGN.md` — the game itself.
 > 4. `TECH-SPEC.md` and `AUDIO-SPEC.md` — implementation detail for the two systems that
 >    carry the product.
 > 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `STACK.md` — content contract, tuning, dependencies.
-> 6. `LOOP_LOG.md` — seventeen rounds of findings, including several corrections to the specs.
+> 6. `LOOP_LOG.md` — eighteen rounds of findings, including several corrections to the specs.
 >    Where the log contradicts a doc, **the log is newer**.
 > 7. `proto/index.html` — a running single-player prototype of the core loop. Play it before
 >    writing anything.

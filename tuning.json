@@ -40,6 +40,10 @@
     "light_wing_gain": 25.0,
     "lever_kill_lights": 15.0,
     "lever_go_quiet": 20.0,
+    "lever_cooldown_seconds": 150.0,
+    "_lever_note": "R18. Unlimited levers are a free off-switch for the top tier: baseline nights spent 0% at COLLECT with them and 40% without. At a 150s cooldown baseline lands at 17%, matching R4's 15% target. The cooldown is the cost, because this model has no haul loop and so cannot charge a lever the thing it actually costs, which is time.",
+    "decay_crew_exponent": 0.8,
+    "_crew_note": "R18. Was 1.0 (strictly linear, R12). Swept: linear leaves a solo crew hunted far harder than a full one -- 28% of the night at COLLECT against 17% -- because the sources that do NOT scale with headcount (the ratcheting floor, the dolly, the radio) are a much larger share of one player's noise budget. At 0.8 the profile is flat: 18/16/15/17% across 1/2/3/4 players. Two effects, not one: sources must scale per-player AND decay must scale sub-linearly.",
     "tier_patrol_at": 30.0,
     "tier_pursue_at": 60.0,
     "tier_collect_at": 85.0

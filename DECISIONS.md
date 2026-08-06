@@ -480,6 +480,67 @@ you tell where your teammates are?) rather than retuning.
 
 ---
 
+## D-26 · The Disturbance levers are rate-limited, because free ones delete the climax
+
+**Status:** HELD · `DESIGN.md` §6.5.1
+
+**Decision:** at most one lever pull (kill lights −15, go quiet −20) per **150 seconds**.
+
+**Why.** Simulated with no limit (`sim/disturbance.py`), a baseline crew spends **0%** of the
+night at COLLECT — against **40%** with the levers removed entirely. Five pulls a night, each
+free, and the meter never stays above 85. The top tier of the game becomes unreachable by
+ordinary play.
+
+That is the third time this project has found the same shape: a free, repeatable reset of the
+threat state. D-03 closed it for dropping an item, D-24 closed it for stashing one, and this
+closes it for the escalation meter itself. **Worth naming as a pattern rather than fixing
+three times in isolation — any action that reduces threat and costs nothing will be spammed to
+the point where the threat stops existing.**
+
+It matters more than the other two because COLLECT is not merely a harder tier. It is where
+the Curator stops retrieving items and starts collecting people, and therefore where §8.1's
+concealment becomes the primary verb (D-25). An unreachable COLLECT makes the entire
+concealment system unreachable content — a week of implementation nobody would ever see.
+
+**Stated plainly: 150s is a placeholder for a cost this model cannot see.** A lever's real
+price is time — going quiet means creeping for 45 seconds, killing the lights means hauling
+blind — and `sim/disturbance.py` has no haul loop, so it can charge neither. The cooldown
+reproduces the right pacing for the wrong reason.
+
+**Falsified if:** modelling the levers' *time* cost in `sim/integrated.py` produces the
+15%-at-COLLECT target without any cooldown. Then the cooldown is an artificial limit on a
+choice that was already self-limiting, and it should be deleted rather than tuned. **That test
+is the next thing to run on this system.**
+
+---
+
+## D-27 · Disturbance decay scales sub-linearly with crew size
+
+**Status:** HELD · `DESIGN.md` §6.5.2 · supersedes the scaling in D-18's neighbourhood
+
+**Decision:** `decay = 50 × (crew/4)^0.8`. R12 set the exponent to 1.0; it is 0.8.
+
+**Why.** R12 established that decay must scale with crew at all — the 50/min figure was
+calibrated against four players, and applying it to a solo player swamps everything they do.
+That was the right diagnosis of the direction and the wrong one of the cause.
+
+The actual crew dependency is in the **noise sources**, not the decay. Four people open four
+times as many doors, and the early models charged crew-wide impulse rates that didn't scale at
+all. Once sources scale per-player, most of the problem is gone before decay is touched.
+
+What remains is that some sources genuinely *don't* scale — the ratcheting floor, the dolly,
+the radio: one house, one dolly, one radio channel regardless of headcount. Those are a far
+larger share of one player's noise budget than of four's, so strictly linear decay
+over-compensates and leaves a solo crew **hunted harder than a full one** — 28% of the night
+at COLLECT against 17%. At exponent 0.8 the profile is flat: 18 / 15 / 15 / 18% across one to
+four players.
+
+**Falsified if:** playtests at different crew sizes report meaningfully different tension, in
+either direction. The exponent is a single number and easy to move; what should not be
+reverted is the per-player scaling of the sources, which is where the real dependency lives.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
@@ -491,5 +552,5 @@ you tell where your teammates are?) rather than retuning.
 | **O-05** | Does the Curator have a face? | art | recommend never fully seen — silhouette and hands only. Not blocking anything yet. |
 | ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, 48%→79% of theoretical max. |
 
-Only O-05 remains open, and it blocks nothing (25 decisions logged as of R17). Every decision that gated build work has been
+Only O-05 remains open, and it blocks nothing (27 decisions logged as of R18). Every decision that gated build work has been
 made — which means the next real information comes from a playtest, not another design pass.

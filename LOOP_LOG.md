@@ -251,6 +251,50 @@ measured at a **1% pass rate on night 4**. Two documents, one canonical, and the
 the one people read first. §9 now points at ECONOMY §4 and keeps the dead curve visible as a
 correction rather than silently deleting it.
 
+R18 · Took R12's open question — does `x crew/4` actually give comparable pacing at 1-4
+players, or only fix the direction? — and rebuilt `sim/disturbance.py` around crew size to
+answer it. · **Found the file had been shipping the pre-R4 numbers for fifteen rounds.** Its
+default decay was still **1.0/min** and its cursed floor still 3.0, four rounds after both were
+corrected elsewhere, so running it printed the exact broken escalation R3 diagnosed and R4
+fixed — every crew in PURSUE at minute 1 and COLLECT at minute 3, including one that never
+scans — with nothing to indicate it was stale. It also had no ratcheting floor at all, which
+`integrated.py` has had since R5: two models of the same system, structurally different. Now
+reads `tuning.json` like everything else. **This is the third stale-apparatus find in three
+rounds** (R16: an inline literal invisible to the drift checker; R17: a validator with no entry
+point), which is starting to look like the project's real failure mode rather than three
+accidents.
+· **The answer to R12: two effects, not one, and R12 named the wrong one.** The crew dependency
+is mostly in the noise SOURCES — four people open four times as many doors, and the early models
+charged crew-wide impulse rates that didn't scale. Fix that and most of the problem is gone
+before decay is touched. What remains is that the floor, the dolly and the radio don't scale
+with headcount at all, so they're a much larger share of one player's budget than of four's —
+which means strictly linear decay **over**-corrects and leaves a solo crew hunted *harder* than
+a full one, 28% of the night at COLLECT against 17%. Exponent **0.8** flattens it to
+18/15/15/18% across 1-4 players. Logged as D-27; the prototype's `DECAY_PER_S` updated to match
+and the drift checker now pins the exponent and asserts it stays sub-linear.
+· **The bigger find, and it wasn't what I went looking for: the levers delete the top tier.**
+Unlimited kill-lights/go-quiet means a baseline crew spends **0%** of the night at COLLECT,
+against **40%** with the levers removed — five free pulls a night and the meter never stays
+above 85. A 150s cooldown puts it back to 17%, matching R4's 15% target. · That is the **third
+instance of one pattern**: a free, repeatable reset of the threat state. D-03 closed it for
+dropping an item, D-24 (last round) for stashing one, D-26 now for the meter itself. Named as a
+pattern in D-26 rather than fixed a fourth time in isolation. · It matters most here because
+COLLECT is where the Curator switches from retrieving items to collecting people, which is
+exactly where R17's concealment work becomes the primary verb — **an unreachable COLLECT makes
+the entire hiding system unreachable content.** Two rounds of work that only pay off above 85.
+· **Flagged rather than hidden: 150s is a placeholder for a cost the model can't see.** A
+lever's real price is time — creeping for 45s, or hauling blind — and `disturbance.py` has no
+haul loop, so it charges neither. D-26 states its own falsification: model the time cost in
+`integrated.py` and if the target falls out without a cooldown, delete the cooldown.
+· One coincidence worth recording. The floor tops out at `55 + 7 x cursed`, so 4 cursed items
+reach 83 — two points under COLLECT — and **5 reach 90 and pin you there for the rest of the
+night**. `ECONOMY.md` §5 independently puts the curse ruin optimum at 2-3 aboard with 5+ losing
+~40%. The greed that ruins your van is the same greed that pins the monster on you, from three
+constants tuned in three separate rounds with no knowledge of each other. Documented, not
+formalised.
+· Corrected `DESIGN.md` §6.5's headline table: its first-PURSUE times were measured on a model
+with no ratcheting floor and are 5.8 min against a real 3.1. The COLLECT shares survive.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -258,12 +302,16 @@ correction rather than silently deleting it.
 ~~**1. The hiding mechanic has no numbers.**~~ **Done, R17.** Specified, simulated, and it
 found a free-reset exploit in §8.1's own numbers on the way.
 
-**1. Per-crew-size pacing, still open from R12.** Solo Disturbance tops out ~57 at sunrise, so
-a lone player is essentially never hunted in a 3-minute run. The `x crew/4` decay scale fixed
-the *direction* of the crew-size dependency, not the *curve* — each crew size needs its own
-pacing target, and nothing has swept 1/2/3/4/6 players against time-in-tier. Every sim in this
-project except the prototype has only ever run four players, which is exactly how the original
-bug stayed invisible.
+~~**Per-crew-size pacing, open from R12.**~~ **Done, R18.** Exponent 0.8, and the dependency
+was in the noise sources rather than the decay.
+
+**1. Price the Disturbance levers properly — D-26 names this as its own falsification test.**
+The 150s cooldown is a placeholder for a cost `sim/disturbance.py` structurally cannot see: a
+lever's real price is *time*, and that file has no haul loop. `sim/integrated.py` does. Model
+go-quiet as 45s at reduced throughput and kill-lights as a lasting throughput penalty, and see
+whether the 15%-at-COLLECT target falls out with no cooldown at all. If it does, delete the
+cooldown rather than tuning it — an artificial limit on a choice that was already
+self-limiting is worse than no limit, because it stops players discovering the real trade.
 
 **2. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
 *shortest* path from plinth to van and counts doors, so a wing whose alternate route is

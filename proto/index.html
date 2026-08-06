@@ -58,8 +58,15 @@ const APPRAISE_S = 3.0;
 // 50/min swamps everything the player does and the meter never leaves DORMANT.
 // Scale with crew size - which means the shipping value is crew-dependent, a
 // dependency the sims never surfaced because they only ever ran four players.
+//
+// R18: the exponent is 0.8, not 1.0. Strictly linear scaling over-corrects, because
+// the noise sources that DON'T scale with headcount - the ratcheting floor, the
+// dolly, the radio - are a much larger share of one player's budget than of four's.
+// Linear leaves a solo crew at COLLECT for 28% of the night against a full crew's
+// 17%; at 0.8 it is 18% vs 17%. See sim/disturbance.py.
 const CREW = 1;
-const DECAY_PER_S = (50 * (CREW/4)) / 60;
+const DECAY_CREW_EXP = 0.8;
+const DECAY_PER_S = (50 * Math.pow(CREW/4, DECAY_CREW_EXP)) / 60;
 const RATCHET_END = 55;
 const L = { walk:0, sprint:45, appraise:48, door:60, drop:90 };
 const IMPULSE = 0.09, SUSTAINED = 0.02;

@@ -144,9 +144,12 @@ check("py integrated VAN_SLOTS", grab(sims["integrated.py"], r"VAN_SLOTS\s*=\s*(
 check("py integrated CURSED_FLOOR",
       grab(sims["integrated.py"], r"^CURSED_FLOOR\s*=\s*([\d.]+)", flags=re.M),
       d["per_cursed_item_floor"])
-check("py disturbance IMPULSE",
-      grab(sims["disturbance.py"], r"IMPULSE_PER_L\s*=\s*([\d.]+)"),
-      lc["impulse_disturbance_per_l"])
+# disturbance.py reads tuning.json at runtime as of R18, so it cannot carry a stale
+# literal -- which is how it shipped the pre-R4 decay of 1.0/min for four rounds while
+# this checker reported green, because nothing here looked at its DEFAULT value.
+check("py disturbance uses tuning",
+      1.0 if 'TUNING["disturbance"]' in sims["disturbance.py"]
+      or '_D = TUNING' in sims["disturbance.py"] else 0.0, 1.0)
 check("py curse floor", grab(sims["curse_test.py"], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
       d["per_cursed_item_floor"])
 check("py curse ruin_exp", grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"),
@@ -167,10 +170,13 @@ check("concealment search straddles stash (low)",
 check("concealment search straddles stash (high)",
       1.0 if _search_max > c["stash_quiet_seconds"] else 0.0, 1.0)
 
-for name in ("sprint", "appraise", "door"):
-    check(f"py L[{name}]",
-          grab(sims["disturbance.py"], rf"[\"']{name}[\"']\s*:\s*(\d+)"),
-          TUNING["loudness"][name])
+# The crew exponent must match between the model and the prototype -- it is the one
+# tuned number that lives as an expression rather than a table entry.
+check("JS decay_crew_exp", grab(js, r"DECAY_CREW_EXP\s*=\s*([\d.]+)"),
+      d["decay_crew_exponent"])
+# Sub-linear, or a solo crew is hunted far harder than a full one (R18).
+check("decay exponent is sub-linear",
+      1.0 if 0.0 < d["decay_crew_exponent"] < 1.0 else 0.0, 1.0)
 
 # --------------------------------------------------------------- report
 print(f"DRIFT CHECK  -  {checks} constants across 3 implementations")

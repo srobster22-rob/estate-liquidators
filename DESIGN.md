@@ -476,8 +476,8 @@ The structure has to be:
 Disturbance = fast-decaying NOISE LEVEL  +  slowly ratcheting FLOOR
               decay 50/min                    0 -> 55 across the night,
               (drains in ~2 min of quiet)     plus 7 per cursed item in the van
-              at crew 4; scales x crew/4      (2 was inert — R5 measured <$50
-              (R12)                            swing across 0-8 cursed items)
+              at crew 4; scales as            (2 was inert — R5 measured <$50
+              x (crew/4)^0.8 (R12, R18)        swing across 0-8 cursed items)
 
 impulse gain  L x 0.09     unchanged from AUDIO-SPEC 1.1
 sustained     L x 0.02/s   designated continuous sources only (never walking)
@@ -512,6 +512,67 @@ a greedy crew is being collected before minute three.
 Under the old model **every** crew was pinned at maximum inside sixty seconds — including one
 that never scanned a single item. There was no curve at all, and no amount of decay tuning
 could produce one.
+
+> **R18 re-measured this on the current model and the shape holds, but two numbers in the
+> table above are from a model without the ratcheting floor and should not be quoted.**
+> Baseline first-PURSUE is **3.1 min**, not 5.8 — the floor pushes the meter to PURSUE on its
+> own by the middle of the night regardless of behaviour, which is what it is for. The
+> COLLECT shares are the figures to carry forward, and they survive: silent and careful stay
+> at 0%, baseline lands at 15–18%.
+
+### 6.5.1 The levers have to cost something
+
+Three levers let a crew push back: kill a wing's lights (−15), go quiet for 45s (−20), unload
+cursed cargo (drops the floor). **Simulated with no limit on how often they can be pulled,
+they delete the top tier of the game outright** — a baseline crew spends **0%** of the night
+at COLLECT with levers available and **40%** without, because it simply spends one every time
+the meter approaches 85. Five lever pulls a night and the climax never happens.
+
+That is the same failure shape as the drop-reset (`DECISIONS.md` D-03) and the stash exploit
+(D-24): a free, repeatable reset of the threat state. It matters more than the others because
+COLLECT is not just a harder tier — it is where the Curator switches from retrieving items to
+collecting people, and therefore where §8.1's hiding becomes the primary verb. **An
+unreachable COLLECT makes the whole concealment system unreachable content.**
+
+**Fix: a 150s cooldown between lever pulls**, which puts baseline back at 17% of the night in
+COLLECT. Three pulls a night, and choosing *when* is the decision.
+
+> **This is a placeholder for a cost the model can't see.** A lever's real price is *time* —
+> going quiet for 45 seconds means creeping, and killing the lights means hauling blind — and
+> `sim/disturbance.py` has no haul loop in it, so it cannot charge either. The cooldown
+> reproduces the right pacing for the wrong reason. Settle it properly in `sim/integrated.py`,
+> which does have a haul loop, before treating 150s as a real number.
+
+### 6.5.2 Crew size, and the fifth cursed item
+
+**Pacing is now near-identical at 1, 2, 3 and 4 players** — 18% / 15% / 15% / 18% of the night
+at COLLECT. That took two corrections, not one:
+
+1. **Noise sources scale per-player.** Four people open four times as many doors. The original
+   models charged crew-wide impulse rates that didn't scale, which is why a solo player in the
+   prototype was never hunted.
+2. **Decay scales *sub*-linearly — `50 × (crew/4)^0.8`, not `× crew/4`.** R12's linear
+   scaling leaves a solo crew at COLLECT for 28% of the night against a full crew's 17%,
+   because the sources that *don't* scale with headcount — the ratcheting floor, the dolly,
+   the radio — are a far larger share of one player's noise budget than of four's.
+
+And a coincidence worth knowing about, since three constants tuned in three separate rounds
+produce it. The floor tops out at `55 + 7 × cursed`:
+
+| Cursed aboard | Floor tops at | |
+|---:|---:|---|
+| 3 | 76 | |
+| 4 | 83 | two points under COLLECT |
+| **5** | **90** | **pinned at COLLECT for the rest of the night** |
+
+**The fifth cursed item is what pins the Curator on you permanently.** Below that the floor
+can only walk you to the edge of COLLECT; transient noise gets you across, and the levers pull
+you back. At five it stops being transient.
+
+`ECONOMY.md` §5 independently puts the curse ruin optimum at two or three aboard, with five
+losing roughly 40%. **The greed that ruins your van is the same greed that pins the monster on
+you**, and neither number was chosen with the other in view. Left as-is rather than tuned —
+when two systems agree by accident, the useful move is to notice it, not to formalise it.
 
 ---
 
