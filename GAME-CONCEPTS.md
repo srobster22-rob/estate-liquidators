@@ -455,9 +455,39 @@ family either.
 - **Kills it:** generated flaws come out either trivially visible or invisible, with nothing in
   between. That's the standard failure of procedural puzzles and it shows itself inside the
   first fifty generated items.
-- **Test:** skip 3D entirely. Generate 50 objects as **text dossiers** with a seeded flaw and
-  give them to a friend. Measure accuracy at item 5 against item 50. If it doesn't climb,
-  there's nothing to learn and therefore no game. One day.
+- **Test — RUN, 2026-08-06. `concepts-sim/provenance.py`. The kill condition is not met.**
+  A seven-attribute model of period construction (woods, joinery, finish, hardware, saw
+  marks, wear), forgers who err toward *neighbouring* periods, and — the part that makes it
+  a real test — genuine objects carrying **honest anomalies**: repairs, replaced hardware,
+  transitional pieces. 8,000 objects.
+
+  | Measure | Result |
+  |---|---|
+  | Undetectable forgeries | **7.8%** — a real accuracy ceiling; you cannot always be right |
+  | Forgeries in the learnable 1–3 cue band | 74% |
+  | Distribution overlap, genuine vs forged | **29% of mass is ambiguous** |
+  | Best achievable accuracy, full knowledge | **85.5%** at "flag on ≥2 inconsistencies" |
+
+  **The finding worth having is emergent and I didn't design it in.** The optimal threshold
+  *moves as you learn*: a novice should flag on any single inconsistency, an expert should
+  demand two — because expertise means being able to see the honest repairs a novice reads as
+  fakes. Skill expresses as *raising your bar*, not sharpening your eye. That's a real
+  mechanic, it fell out of the model, and it's the strongest argument yet that this card is
+  the right one to build.
+
+  **What it does not show, and two things to distrust.** It shows a learnable signal exists to
+  be communicated — not that dossier prose communicates it, not that anyone finds it fun. The
+  fifty dossiers and the friend are still owed. And: M1's middle band is substantially a
+  reflection of the forger-skill distribution I chose, so it is weakly informative; M3 is the
+  load-bearing measure because it puts two independently-generated distributions against each
+  other. M2's "no step function" passed at 43% against a 45% bar **I picked myself** — that's
+  a marginal pass on an unjustified threshold, and I'd want a second opinion on it before
+  leaning on it.
+
+  *v1 of this test passed cleanly and was wrong: forgeries could not have zero errors by
+  construction, and genuines were drawn from the same rules the detector checked, so two of
+  three measurements could only ever return a pass. Both artifacts are documented in the
+  file.*
 - **Scope:** solo, 6–8 months. The strongest solo candidate in the document.
 
 ### 17 · Differential `NO COMBAT`
@@ -1095,7 +1125,7 @@ learn nothing for a quarter.
 
 | # | Concept | Cost to run the kill test | What it costs to be wrong |
 |---|---|---|---|
-| 1 | **Provenance** (#16) | One day, text only, no engine | Nothing — the test *is* the generator you'd need anyway, so a fail leaves you a tool and a finding |
+| 1 | **Provenance** (#16) | ~~One day~~ — **RUN. Kill condition not met** | Already spent. `concepts-sim/provenance.py`: 86% ceiling, 29% ambiguous, 7.8% of forgeries undetectable, and the optimal threshold *rises* with expertise. Still owes the fifty dossiers and a human |
 | 2 | **Direct** (#46) | **One afternoon**, 2D, decisive in ten minutes | An afternoon. And a fail is genuinely informative: it tells you *why* indirect control keeps getting buried |
 | 3 | **Understudy** (#34) | **One hour**, a chat window, ten repeated inputs | An hour — and *Arsenic* has already published how it built the same referee, so a fail is informative rather than just discouraging |
 | 4 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
@@ -1425,6 +1455,65 @@ been on Steam for five months. There is no other instrument in this document wit
 **What a search still cannot do.** It can't settle #40 (does *Shelf by Shelf* model
 adjacency?) — that needs two hours of play. It can't see jam builds and unlisted prototypes,
 so SURVIVED means "not obviously taken," not "clear." And it can't tell you whether a
-surviving concept is *good*; every kill condition on every card is still unrun. **The
-portfolio is now honestly scoped and entirely untested**, which is a much better place to be
-than the reverse, and is exactly the boundary the one-day tests exist to cross.
+surviving concept is *good*; every kill condition on every card is still unrun. ~~**The
+portfolio is now honestly scoped and entirely untested**~~ — **one test has now been run
+(#16), and it is the first thing in this document backed by something that was executed
+rather than argued.** Thirty-nine to go.
+
+---
+
+## Round log
+
+One line per round: what was built, what it found. Where this log contradicts anything above,
+**the log is newer** — same convention as `LOOP_LOG.md`.
+
+**R1 · The forty.** Ran `GAMES-PROJECT-PROMPT.md` once. 40 concepts, 8 families, ranked top
+eight, 19 rejections. Self-audit caught that nothing in it was fast.
+
+**R2 · Family 9.** Added six action concepts. *Found:* the absence wasn't taste, it was the
+scoring function — ranking by cost-to-disprove structurally suppresses bets about *feel*,
+because feel has no paper version. Two entered the top eight.
+
+**R3 · First verification.** Checked #43 and #46. *Found:* #43 was a shipped game
+(*Kickback*), ranked #5, on a card that already said "probably occupied." Produced the
+search-before-you-rank rule.
+
+**R4 · Full sweep.** Checked all 46. *Found:* **seven were games that already exist**, two of
+them in the top eight — a 15% kill rate overall and 25% inside the most-considered section.
+Breached the action quota and left it breached; two replacement concepts were searched first
+and both died before a card was written.
+
+**R5 · Auditing the rejections.** Checked the 25 judgement-based cuts. *Found:* no verdict
+reversed, **six reasons wrong**, and one unexamined belief about LLM referees that had killed
+two concepts *and* was setting the kill condition on a live card. Promoted #34 from runner-up
+to #3. One entry cited a playtest pattern I had invented.
+
+**R6 · Reopening #17.** Rewrote it as #47 Reservation, searched first. *Found:* the search
+**supplied the design** rather than just clearing it — the original rejection was accurate
+about the naive build and wrong about the concept, and the fix is architectural. Declined to
+add it to the top eight: it lands in the noise band with positions 6–8, and saying so beats
+implying a precision the criterion doesn't have.
+
+**R7 · Running a kill test.** Built and ran `concepts-sim/provenance.py` for #16. *Found:*
+the kill condition is not met — 86% ceiling, 29% ambiguous, 7.8% of forgeries undetectable,
+and the optimal threshold **rises with expertise**, which is an emergent mechanic I didn't
+design in. *Also found:* v1 of my own test was tautological — forgeries couldn't have zero
+errors, and genuines were drawn from the rules the detector checked — so two of three
+measurements could only ever pass. Caught by the repo's "distrust clean results" rule, which
+has now earned its place twice.
+
+### Next, ranked
+
+1. **Push the sweep's findings onto the individual cards.** Roughly thirty survivors still
+   show memory-based `Nearest` fields while the header claims the set is verified, papered
+   over by "the ledger is newer." That's the drift `IMPROVE-PROMPT.md` exists to fight, and
+   it's the one defect here that actively misleads at the point of use. *Do this next.*
+2. **Run a second kill test — #21 The Commons.** Its test is a solver sweep, it needs no
+   human, and unlike #16 a failure would be decisive rather than partial. It's also the only
+   card whose kill condition is a maths problem.
+3. **Dedupe the prompt.** Four separate clauses now say some version of "search first." One
+   should say it and the rest should point at it.
+
+Left rough deliberately: the per-card `Nearest` reconciliation (item 1) is mechanical and
+large, and doing it badly at the end of a long round is how errors get in. #40 still needs two
+hours of playing *Shelf by Shelf*, which no amount of looping substitutes for.

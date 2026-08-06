@@ -48,6 +48,11 @@ that, and they're independent of Estate Liquidators — take them anywhere.
 | **[GAMES-PROJECT-PROMPT.md](GAMES-PROJECT-PROMPT.md)** | Generate 40 game concepts, each with a falsifiable bet and a one-day test that could kill it. Coverage quotas, a banned list, ranking by cost-to-disprove, and a mandatory graveyard. |
 | **[GAME-CONCEPTS.md](GAME-CONCEPTS.md)** | That prompt, run once, then corrected and verified over five passes. 40 live concepts in 9 families, a ranked top eight, 31 rejections with reasons. **All 47 cards checked against the market — 7 were games that already exist**, 2 of them in the top eight. The judgement-based rejections were audited too: no verdict reversed, six reasons wrong, one load-bearing on a live card, and one concept recovered. |
 
+`concepts-sim/provenance.py` is the first kill test from that document actually **run** —
+deterministic, no dependencies, ~1s. It does not meet its kill condition, and it found an
+emergent mechanic nobody designed in: the optimal "is this a forgery?" threshold *rises* with
+expertise, because expertise means recognising the honest repairs a novice reads as fakes.
+
 Estate Liquidators is roughly the bar those concepts were written against — *aggro follows the
 most valuable object leaving the house* is what "one mechanical bet, stated so it could be
 wrong" looks like once it survives. Note that **Removals** (`GAME-CONCEPTS.md` #6) costs
