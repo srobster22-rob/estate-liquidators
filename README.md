@@ -96,3 +96,12 @@ check out; the bridge between the first two does not, hence item 2.
 Milestones 0–6 is 9–18 months for a small team. **Milestones 0–2 — the part that tells you
 whether the game is worth making — is 2–4 months, and that's the only thing worth committing
 to right now.**
+
+---
+
+## Also in this repo
+
+**[`fitness/`](fitness/) — MESO**, a separate project: a training planner that simulates
+before it prescribes. Unrelated to the game; it borrows this repo's working method (a
+loop log, a decision log with falsification conditions, and simulations that are allowed
+to overturn the design). See [`fitness/README.md`](fitness/README.md).
