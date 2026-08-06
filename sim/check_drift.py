@@ -143,6 +143,16 @@ check("JS3d hide_enter_s", grab(js3, r"HIDE_ENTER_S\s*=\s*([\d.]+)"), cn["enter_
 check("JS3d hide_open_s", grab(js3, r"HIDE_OPEN_S\s*=\s*([\d.]+)"), cn["open_seconds"])
 check("JS3d stash_s", grab(js3, r"STASH_S\s*=\s*([\d.]+)"), cn["stash_seconds"])
 
+check("JS3d steal_threshold", grab(js3, r"STEAL_THRESHOLD\s*=\s*([\d.]+)"),
+      a["steal_threshold"])
+check("JS3d commit_seconds", grab(js3, r"COMMIT_S\s*=\s*([\d.]+)"), a["commit_seconds"])
+check("JS3d recompute_seconds", grab(js3, r"RECOMPUTE_S\s*=\s*([\d.]+)"),
+      a["recompute_seconds"])
+check("JS3d noise_multiplier", grab(js3, r"NOISE_MULT_PER_EVENT\s*=\s*([\d.]+)"),
+      a["noise_multiplier_per_event"])
+check("JS3d light_multiplier", grab(js3, r"LIGHT_MULT\s*=\s*([\d.]+)"),
+      a["light_multiplier"])
+
 sn = TUNING["senses"]
 check("JS3d hear_per_l", grab(js3, r"HEAR_PER_L\s*=\s*([\d.]+)"),
       lc["hearing_radius_per_l"])

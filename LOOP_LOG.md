@@ -271,6 +271,35 @@ device and its context clock never advances, so `gain.value` stays at zero howev
 mix is. The harness asserts the **mixing rule**, not audible output. Nobody has heard this yet.
 · Regression: QA 60/60, drift 84/84, estate validator 10×2 PASS.
 
+R20 · Put a **crew** in the house — three AI haulers — and with them, for the first time, the
+pillar the entire game is built on: *you can get rid of the monster by handing the vase to
+your friend.* With one actor in the build, A3's selector had nothing to select between, so
+"the richest carrier is hunted", the 1.25× steal threshold, the 8s commitment and the noise
+multiplier were all unexercised code. Ten new checks cover them, and every one fails when its
+rule is neutered. · **The finding: with aggro bound to the object, A3's hand-off override is
+unnecessary.** The spec computes weight *per player*, so passing the vase changes the target
+and needs a special case to beat the commitment lock — R2 measured 0.0s with it and 6.0s
+without. Target the **item** instead (which D-06 requires anyway) and derive the chased body
+from `heldBy` each frame: handing it over doesn't change what it wants, only who has it. The
+mark moves the same frame, inside an active lock, with no exemption code. Same trick as the
+multiplicative weight — make the rule arithmetically impossible to violate rather than
+reliably special-cased. Logged as D-25; `TECH-SPEC.md` §A3 now says so, and says to keep the
+other two hysteresis rules, which do real work. · **Four defects the crew exposed, all in code
+written in the last two rounds:** (1) R19's `c.fix` was a single anonymous "last thing I
+heard" — with four actors, a crewmate's footsteps two rooms away handed the Curator a fresh
+fix on a player sitting silently in a wardrobe. Fixes are now about somebody. (2) The aggro
+tell **lied**: the HUD went on announcing IT IS COMING FOR YOU while it walked at RUSS,
+because "it has a target" and "it is coming for me" were the same statement with one actor.
+(3) `curator().goalValue` reported the idle *wander* destination as if it were a hunt target,
+which sent me chasing a phantom retarget for twenty minutes. (4) The torches were saturated
+white by the player's own flashlight, so the dimming that IS the tell was invisible — added an
+emissive path to the shader and checked it by screenshot. · Six existing checks had to be
+restated rather than fixed, and the distinction matters: "empty-handed is never targeted" is
+now *while three crewmates carry loot and it is actively hunting*, which is a stronger claim;
+"concealment works at COLLECT" is now *it hunts someone else*, not *nobody*; and "dropping
+does not reset aggro" split into **the mark leaves you** and **the hunt continues on the
+object**, which is the actual content of D-06. · Regression: QA 70/70, drift 89/89.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

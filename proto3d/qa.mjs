@@ -136,54 +136,66 @@ async function checks(g, fresh) {
     for (let i = 0; i < 60; i++) window.__g.step(30, 1 / 60);   // 30 seconds
     return { st: window.__g.state(), cur: window.__g.curator() };
   });
+  // Stronger than the R16 version: the house is busy, it IS hunting - three
+  // crewmates are carrying - and you are still worth nothing while empty-handed.
   ok("empty-handed player is never targeted at PURSUE",
-    empty.st.marked === false && empty.cur.target === false, JSON.stringify(empty));
+    empty.st.marked === false && empty.st.who !== "YOU", JSON.stringify(empty));
 
   await fresh();
   const crew = await g(() => {
     const f = window.__g.rooms().find(r => r.id === "foyer");
     window.__g.tp(f.x, f.z);
+    window.__g.parkCrew();          // alone in the house: it must come for YOU
     for (let i = 0; i < 40; i++) { window.__g.setDist(95); window.__g.step(15, 1 / 60); }
     return window.__g.state();
   });
   ok("at COLLECT it hunts crew, empty-handed or not",
-    crew.marked === true && crew.mode === "CREW", JSON.stringify(crew));
+    crew.marked === true && crew.mode === "CREW" && crew.who === "YOU",
+    JSON.stringify(crew));
 
   // --- aggro binds to the object, not the person ---------------------------
   // Dropping must not clear the hunt, or dropping is a free aggro reset.
   await fresh();
   const dropped = await g(() => {
     const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.parkCrew();
     window.__g.tp(f.x, f.z);
     window.__g.setDist(70);
     window.__g.hold(0);
-    for (let i = 0; i < 20; i++) window.__g.step(15, 1 / 60);
+    for (let i = 0; i < 20; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
     const chasing = window.__g.state().marked;
+    const value = window.__g.state().holding;
     window.__g.grab();                        // put it down and walk away
-    for (let i = 0; i < 30; i++) window.__g.step(15, 1 / 60);
-    return { chasing, after: window.__g.state() };
+    for (let i = 0; i < 30; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    return { chasing, value, after: window.__g.state(), cur: window.__g.curator() };
   });
-  ok("dropping the piece does not reset aggro",
-    dropped.chasing === true && dropped.after.marked === true, JSON.stringify(dropped));
-  ok("a dropped piece is still being retrieved",
-    dropped.after.mode === "ITEM" || dropped.after.cur === "RESEAT", JSON.stringify(dropped.after));
+  // The distinction D-06 exists for: dropping takes the target off YOU without
+  // calling off the hunt. If it cleared the hunt, dropping would be the free
+  // two-second aggro reset and the hot potato would cost nothing.
+  ok("dropping takes the mark off you",
+    dropped.chasing === true && dropped.after.marked === false, JSON.stringify(dropped));
+  ok("but the piece is still being retrieved",
+    (dropped.after.mode === "ITEM" && dropped.cur.goalValue === dropped.value) ||
+    dropped.after.cur === "RESEAT" || dropped.cur.carrying === true,
+    JSON.stringify(dropped));
 
   // --- aggro follows the loot ----------------------------------------------
   await fresh();
   const carrying = await g(() => {
     const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.parkCrew();
     window.__g.tp(f.x, f.z);
-    window.__g.setDist(95);
     window.__g.hold(0);
-    for (let i = 0; i < 20; i++) window.__g.step(30, 1 / 60);
+    for (let i = 0; i < 20; i++) { window.__g.setDist(70); window.__g.step(30, 1 / 60); }
     return window.__g.state();
   });
-  ok("carrying loot at COLLECT draws the Curator", carrying.marked === true,
+  ok("carrying loot while it is hunting draws it to you", carrying.marked === true,
     JSON.stringify(carrying));
 
   // --- dropping is loud -----------------------------------------------------
   await fresh();
   const drop = await g(() => {
+    window.__g.parkCrew();          // else E in a crowded driveway is a hand-off
     window.__g.setDist(50);
     window.__g.hold(0);
     const before = window.__g.state().dist;
@@ -414,12 +426,16 @@ async function checks(g, fresh) {
     for (let i = 0; i < 40; i++) { window.__g.setDist(95); window.__g.step(15, 1 / 60); }
     return window.__g.state();
   });
-  ok("concealment works at COLLECT", hidCollect.marked === false && hidCollect.hits === 0,
-    JSON.stringify(hidCollect));
+  // With a crew in the house it does not stop hunting - it hunts someone else,
+  // which is the rule working rather than failing. What concealment buys is that
+  // the someone else is not you.
+  ok("concealment works at COLLECT",
+    hidCollect.who !== "YOU" && hidCollect.hits === 0, JSON.stringify(hidCollect));
 
   // Concealed WITH the prize: it comes to the wardrobe and opens it.
   await fresh();
   const hidLoot = await g(() => {
+    window.__g.parkCrew();
     const h = window.__g.hides()[0];
     const idx = window.__g.list().findIndex(i => Math.hypot(i.x - h.x, i.z - h.z) < 90);
     window.__g.hold(idx);
@@ -446,6 +462,7 @@ async function checks(g, fresh) {
   await fresh();
   const stashed = await g(() => {
     const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.parkCrew();
     window.__g.tp(f.x, f.z);
     window.__g.setDist(70);
     window.__g.hold(0);
@@ -471,6 +488,7 @@ async function checks(g, fresh) {
   // ...and when it runs out, the collection comes and takes it back.
   await fresh();
   const expired = await g(() => {
+    window.__g.parkCrew();
     const f = window.__g.rooms().find(r => r.id === "foyer");
     window.__g.tp(f.x, f.z);
     window.__g.setDist(70);
@@ -506,6 +524,158 @@ async function checks(g, fresh) {
     return { moved: Math.hypot(after.x - at.x, after.z - at.z), concealed: window.__g.state().concealed };
   });
   ok("walking out of a hiding place leaves it", stuck.concealed === false, JSON.stringify(stuck));
+
+  // --- the selector, with more than one candidate in the house (A3) ---------
+  // None of this could be tested before R20: with a single actor there was
+  // never a second weight to compare against, so "the richest carrier is
+  // hunted", the 1.25x steal threshold and the 8s commitment were all
+  // unexercised code paths.
+  await fresh();
+  const richest = await g(() => {
+    window.__g.freezeCrew(true); window.__g.clearCrew();
+    const list = window.__g.list();
+    const sorted = [...list].sort((a, b) => b.value - a.value);
+    const rich = list.indexOf(list.find(i => i === sorted[0]));
+    const poor = list.indexOf(list.find(i => i === sorted[sorted.length - 1]));
+    window.__g.giveCrew(0, rich);
+    window.__g.giveCrew(1, poor);
+    for (let i = 0; i < 40; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    return { cur: window.__g.curator(), rich: sorted[0].value,
+             poor: sorted[sorted.length - 1].value };
+  });
+  ok("the richest carrier is the one hunted",
+    richest.cur.goalValue === richest.rich, JSON.stringify(richest));
+
+  // Pillar 2 at multi-actor scale: noise multiplies LOOT, it is never an addend.
+  // An empty-handed crewmate making a racket must never outweigh a quiet carrier.
+  await fresh();
+  const loudEmpty = await g(() => {
+    window.__g.freezeCrew(true); window.__g.clearCrew();
+    const list = window.__g.list();
+    const cheap = list.reduce((a, b) => (a.value < b.value ? a : b));
+    window.__g.giveCrew(0, list.indexOf(cheap));       // carrying the worst piece
+    window.__g.crewNoise(1, 40);                       // carrying nothing, deafening
+    for (let i = 0; i < 40; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    const c = window.__g.curator();
+    return { who: c.who, goal: c.goalValue, cheap: cheap.value };
+  });
+  ok("a loud empty-handed crewmate is still worth nothing",
+    loudEmpty.goal === loudEmpty.cheap, JSON.stringify(loudEmpty));
+
+  // Noise multiplies what you carry: same piece, one of them shouting.
+  await fresh();
+  const noisy = await g(() => {
+    window.__g.freezeCrew(true); window.__g.clearCrew();
+    const list = window.__g.list();
+    const pair = list.filter(i => i.tier === list[0].tier).slice(0, 2);
+    const a = list.indexOf(pair[0]), b = list.indexOf(pair[1]);
+    window.__g.giveCrew(0, a);
+    window.__g.giveCrew(1, b);
+    window.__g.crewNoise(1, 6);                        // 1 + 0.20*6 = 2.2x
+    for (let i = 0; i < 40; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    return { goal: window.__g.curator().goalValue, quiet: pair[0].value, loud: pair[1].value };
+  });
+  ok("noise multiplies the loot you are carrying",
+    noisy.goal === noisy.loud || noisy.loud * 2.2 < noisy.quiet, JSON.stringify(noisy));
+
+  // Hysteresis: a marginally better piece must NOT steal the target.
+  await fresh();
+  const hyst = await g(() => {
+    window.__g.freezeCrew(true); window.__g.clearCrew();
+    // Same grade throughout: attention weight is value x curse multiplier, so a
+    // $332 malignant outweighs a $612 clean and "decisively richer" in dollars
+    // can be lighter to the Curator. Comparing like with like isolates hysteresis.
+    // Same grade throughout: attention weight is value x curse multiplier, so a
+    // $332 malignant outweighs a $612 clean and "decisively richer" in dollars
+    // can be lighter to the Curator. Comparing like with like isolates hysteresis.
+    // Indices must come from ONE list() call - each returns fresh objects.
+    const all = window.__g.list();
+    const clean = all.filter(i => i.grade === "clean");
+    const base = clean.find(i => i.value > 200) || clean[0];
+    const marginal = clean.filter(i => i !== base)
+      .map(i => ({ i, r: i.value / base.value }))
+      .filter(x => x.r > 1.02 && x.r < 1.2).sort((a, b) => b.r - a.r)[0];
+    const big = clean.filter(i => i !== base)
+      .map(i => ({ i, r: i.value / base.value })).filter(x => x.r > 1.5)
+      .sort((a, b) => a.r - b.r)[0];
+    if (!marginal || !big) return { skipped: true };
+    window.__g.giveCrew(0, all.indexOf(base));
+    for (let i = 0; i < 60; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    const locked = window.__g.curator().goalValue;
+    window.__g.giveCrew(1, all.indexOf(marginal.i));
+    for (let i = 0; i < 60; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    const afterMarginal = window.__g.curator().goalValue;
+    window.__g.giveCrew(2, all.indexOf(big.i));
+    for (let i = 0; i < 60; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    return { locked, afterMarginal, afterBig: window.__g.curator().goalValue,
+             base: base.value, marginal: marginal.i.value, big: big.i.value,
+             ratio: +marginal.r.toFixed(3) };
+  });
+  ok("a marginally richer piece does not steal the target",
+    hyst.skipped || hyst.afterMarginal === hyst.locked, JSON.stringify(hyst));
+  ok("a decisively richer piece does",
+    hyst.skipped || hyst.afterBig === hyst.big, JSON.stringify(hyst));
+
+  // Commitment: even a decisively richer piece has to wait out the lock. This is
+  // what makes it look decisive rather than indecisive, and nothing tested it
+  // until the steal-threshold injection came back clean with COMMIT_S = 0.
+  await fresh();
+  const commit = await g(() => {
+    window.__g.freezeCrew(true); window.__g.clearCrew();
+    const all = window.__g.list();
+    const clean = all.filter(i => i.grade === "clean").sort((a, b) => a.value - b.value);
+    const base = clean[Math.floor(clean.length / 3)];
+    const big = clean.find(i => i.value > base.value * 2);
+    if (!big) return { skipped: true };
+    window.__g.giveCrew(0, all.indexOf(base));
+    for (let i = 0; i < 12; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    window.__g.giveCrew(1, all.indexOf(big));      // richer, arrives mid-lock
+    const seen = [];
+    for (let i = 0; i < 60; i++) {                 // 15 seconds, sampled each 0.25
+      window.__g.setDist(70); window.__g.step(15, 1 / 60);
+      seen.push([+(i * 0.25).toFixed(2), window.__g.curator().goalValue]);
+    }
+    const switchAt = seen.find(([, v]) => v === big.value);
+    return { base: base.value, big: big.value, switchAt: switchAt ? switchAt[0] : null };
+  });
+  ok("it does not drop a target the instant something better appears",
+    commit.skipped || (commit.switchAt !== null && commit.switchAt >= 4.0),
+    JSON.stringify(commit));
+  ok("but it does switch once the commitment expires",
+    commit.skipped || (commit.switchAt !== null && commit.switchAt <= 12.0),
+    JSON.stringify(commit));
+
+  // --- the hot potato ------------------------------------------------------
+  // The pillar the whole game is built on, playable for the first time.
+  await fresh();
+  const potato = await g(() => {
+    window.__g.freezeCrew(true); window.__g.clearCrew();
+    const list = window.__g.list();
+    const idx = list.reduce((best, it, i) => it.value > list[best].value ? i : best, 0);
+    window.__g.hold(idx);
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    for (let i = 0; i < 60; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    const before = window.__g.state().marked;
+    // Put a crewmate in front of you and pass it. This lands INSIDE the eight
+    // second commitment lock, which is the case R2 measured at 0.0s with the
+    // hand-off override and 6.0s without.
+    const raw = window.__g.raw();
+    window.__g.setCrew(0, raw.x + Math.sin(0) * 1.4, raw.z + 1.4);
+    window.__g.look(0, 0);
+    const aimed = window.__g.aimedCrew();
+    const took = window.__g.handOff();
+    const after = window.__g.state();
+    return { before, aimed, took, marked: after.marked, holding: after.holding,
+             goal: window.__g.curator().goalValue, val: list[idx].value };
+  });
+  ok("you can hand the piece to a crewmate", potato.took !== null, JSON.stringify(potato));
+  ok("handing it over takes the target off you immediately",
+    potato.before === true && potato.marked === false, JSON.stringify(potato));
+  ok("and the Curator still wants the same object",
+    potato.goal === potato.val, JSON.stringify(potato));
+
+  await g(() => window.__g.freezeCrew(false));
 
   // --- senses (TECH-SPEC A5) ------------------------------------------------
   // Hearing radius is L x 0.33, attenuated 0.85 per wall, and the point it walks
@@ -549,6 +719,7 @@ async function checks(g, fresh) {
   // Concealment beats sight outright - that is what the wardrobe is for.
   await fresh();
   const sight = await g(() => {
+    window.__g.parkCrew();
     const f = window.__g.rooms().find(r => r.id === "foyer");
     window.__g.tp(f.x, f.z);
     window.__g.setCur(f.x - 3, f.z, null, Math.PI / 2);   // inside the room, facing the player
@@ -561,12 +732,13 @@ async function checks(g, fresh) {
     for (let i = 0; i < 120; i++) window.__g.step(1, 1 / 60);
     const after = window.__g.fix();
     return { openGround: !!openGround, sure: openGround && openGround.sure,
-             hiddenFixAged: after ? after.age : null, before: !!before };
+             hiddenFixAged: after ? after.age : null,
+             hiddenFixWho: after ? after.who : null, before: !!before };
   });
   ok("it sees you in the open", sight.openGround === true && sight.sure === true,
     JSON.stringify(sight));
   ok("it cannot see you in a wardrobe",
-    sight.hiddenFixAged === null || sight.hiddenFixAged > 1.0, JSON.stringify(sight));
+    sight.hiddenFixWho !== "YOU" || sight.hiddenFixAged > 1.0, JSON.stringify(sight));
 
   const throughWall = await g(() => {
     const rooms = window.__g.rooms();

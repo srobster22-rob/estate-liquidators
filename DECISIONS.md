@@ -418,6 +418,35 @@ you stand there), not a change to the numbers.
 
 ---
 
+## D-25 · Target objects, not players — then the hot potato needs no special case
+**Status:** FIRM · `TECH-SPEC.md` §A3, `proto3d/index.html`, verified `proto3d/qa.mjs`
+
+A3's weight function is written per player, so its third hysteresis rule — "an explicit hand-
+off re-targets instantly, ignoring the other two" — exists to stop the game's best moment
+being swallowed by an eight-second commitment lock. R2 measured the cost of omitting it:
+0.0s with the override, 6.0s without.
+
+Implementing attention over **items** instead makes that rule unnecessary. D-06 already
+requires aggro to persist to the object rather than the person; if the Curator's target *is*
+the object and the chased body is derived from `item.heldBy` each frame, then handing the vase
+over does not change what it wants. The mark moves the same frame, inside an active lock,
+with no exemption code anywhere.
+
+This is the better structure for the same reason the multiplicative weight was: it makes the
+rule **arithmetically impossible to violate** rather than reliably special-cased. A special
+case can be forgotten during a refactor; a derivation cannot.
+
+Keep the other two hysteresis rules. A *different* item becoming more attractive is a real
+retarget, and both the 1.25× steal threshold and the 8s commitment still earn their place —
+the prototype's checks fail immediately when either is neutered.
+
+**Falsified if:** a case appears where the Curator must target a person independently of what
+they carry — the COLLECT-tier crew hunt is exactly that, and it is handled as a separate mode
+rather than by folding people into the item weighting. If a second such case appears, the
+two-mode structure is the thing to re-examine, not this decision.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

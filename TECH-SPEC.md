@@ -146,6 +146,18 @@ That last row is a gameplay rule wearing an AI rule's clothes. Passing the vase 
 game's best moment; it is never allowed to feel unreliable or delayed. Hand-off is a
 first-class event, not a side effect of the weight calculation.
 
+> **R20 note — the override is free if you target objects, not players.** The pseudo-code
+> above computes a weight *per player*, which is why a hand-off has to be special-cased: the
+> target player changes. `proto3d` instead targets the **item** (which D-06 requires anyway,
+> since aggro must persist to the object) and derives who to chase from whoever is currently
+> holding it. Under that structure a hand-off does not change what the Curator wants at all —
+> only who has it — so the hot potato is instant **by construction**, and the override row
+> becomes a no-op rather than a rule that has to be remembered. Measured in the prototype:
+> the mark moves the same frame, inside an active commitment lock, with no exemption code.
+>
+> The steal threshold and commitment lock still do real work, because a *different* item
+> becoming more attractive is a genuine retarget. Keep those two.
+
 **Measured, and it is load-bearing.** When a hand-off lands *inside* an active commitment
 lock — which is common, because hand-offs tend to follow the retarget that scared you into
 passing — the override delivers aggro in **0.0s**. Without it, **6.0s**. Six seconds of the

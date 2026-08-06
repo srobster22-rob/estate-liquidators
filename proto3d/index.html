@@ -79,7 +79,7 @@ const FS = `
 precision mediump float;
 varying vec3 vN, vW, vC;
 uniform vec3 uEye, uDir;
-uniform float uRange, uCone, uAmbient;
+uniform float uRange, uCone, uAmbient, uEmissive;
 void main(){
   vec3 n = normalize(vN);
   vec3 toEye = uEye - vW;
@@ -91,7 +91,10 @@ void main(){
   atten *= atten;
   float lam = max(dot(n, l), 0.0);
   float lit = spot * atten * (0.35 + 0.65 * lam);
-  vec3 c = vC * (uAmbient + lit * 1.5);
+  // uEmissive lifts an object out of the lighting model entirely. A crewmate's
+  // torch has to read as ITS brightness, not as how well your beam happens to
+  // light it - the whole aggro tell is that the light dims (A7).
+  vec3 c = vC * mix(uAmbient + lit * 1.5, 1.0, uEmissive);
   c = mix(c, vec3(0.015,0.017,0.02), clamp(d/46.0, 0.0, 0.92)); // fog
   gl_FragColor = vec4(c, 1.0);
 }`;
@@ -108,7 +111,7 @@ gl.useProgram(prog);
 const A = {pos:gl.getAttribLocation(prog,"aPos"), nrm:gl.getAttribLocation(prog,"aNrm"),
            col:gl.getAttribLocation(prog,"aCol")};
 const U = {}; for(const n of ["uProj","uView","uModel","uEye","uDir","uRange","uCone",
-  "uAmbient","uTint"]) U[n]=gl.getUniformLocation(prog,n);
+  "uAmbient","uTint","uEmissive"]) U[n]=gl.getUniformLocation(prog,n);
 
 // ------------------------------------------------------------------ geometry
 function boxMesh(){
@@ -169,6 +172,13 @@ const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
 const HEAR_PER_L=0.33, OCCLUSION_CURATOR=0.85, FUZZ_M=3.0;
 const SIGHT_M=18.0, SIGHT_COS=Math.cos(50*Math.PI/180);   // 100 degree cone
 const FIX_STALE_S=6.0;      // how long a heard position stays worth walking to
+// A3 hysteresis. Raw highest-weight targeting pirouettes between four carriers
+// every two seconds and reads as broken.
+const STEAL_THRESHOLD=1.25, COMMIT_S=8.0, RECOMPUTE_S=2.0;
+const NOISE_MULT_PER_EVENT=0.20, LIGHT_MULT=1.30, NOISE_WINDOW_S=10.0;
+// ART-DIRECTION: crew colour is a legibility system, not decoration.
+const CREW_COLOURS=[[.86,.42,.28],[.42,.66,.86],[.84,.78,.36]];
+const CREW_NAMES=["RUSS","MAY","DOC"];
 const STAM_MAX=6, STAM_REGEN=9;
 
 // ------------------------------------------------------------------ estate
@@ -253,7 +263,7 @@ function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; 
 function solid(x,z){ return (!roomAt(x,z) && !inDoor(x,z)) || inHide(x,z); }
 
 // ------------------------------------------------------------------ state
-let items=[],player,curator,van,t,dist,over,overWhy="",started=false,qaPaused=false;
+let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 function makeItems(){
   items=[];
@@ -266,18 +276,24 @@ function makeItems(){
       items.push({x,y:0.45,z,hx:x,hz:z,grade:g,tier:r.tier,
         value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
         size:r.tier>=3?0.42:r.tier===2?0.34:0.26,
-        known:false,held:false,gone:false,scan:0,moved:false,stash:0,hideIn:null});
+        known:false,heldBy:null,gone:false,scan:0,moved:false,stash:0,hideIn:null,
+        claim:null});
     }
   }
 }
 function reset(){
   makeItems();
   const dv=R("drive");
+  crew=CREW_NAMES.map((name,i)=>({
+    name, colour:CREW_COLOURS[i], x:dv.x+(i-1)*1.6, z:dv.z+1.5,
+    holding:null, down:0, hits:0, alive:true, face:0, noise:[], light:true,
+    goal:null, mood:"SEEK", panic:0}));
   player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0,
-          hiding:null,hideEnter:0};
+          hiding:null,hideEnter:0,name:"YOU",noise:[],light:true,alive:true,
+          colour:[.72,.72,.68]};
   curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
            fixate:0,lock:0,reseat:0,target:false,mode:null,open:0,
-           face:0,fix:null,step:0};
+           face:0,fix:null,step:0,who:null,recompute:0};
   for(const h of HIDES) h.item=null;
   van={slots:VAN_SLOTS,cargo:[]};
   t=0;dist=0;over=false;overWhy="";
@@ -319,20 +335,32 @@ function clampHideView(){
 
 // One number, three consumers (AUDIO-SPEC 1.1): Disturbance gain, what the
 // Curator can hear, and - since R19 - something the player can actually hear.
-function noise(l,impulse,dt,x,z){
+function noise(l,impulse,dt,x,z,who){
   dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt));
-  const px=x??player.x, pz=z??player.z;
-  heard(l,px,pz);
+  const a=who??player;
+  const px=x??a.x, pz=z??a.z;
+  if(impulse) a.noise.push(t);
+  heard(l,px,pz,a);
   if(impulse) sfx.event(l,px,pz);
 }
+const actors=()=>[player,...crew.filter(c=>c.alive)];
+const recentNoise=a=>{
+  while(a.noise.length&&a.noise[0]<t-NOISE_WINDOW_S) a.noise.shift();
+  return a.noise.length;
+};
 // A5: omnidirectional, wall-penetrating, and the resulting point is fuzzed +/-3m.
 // It knows roughly where; it doesn't know exactly.
-function heard(l,x,z){
+// A fix is about SOMEBODY. R19 stored a single anonymous "last thing I heard",
+// which was fine with one actor in the house and wrong the moment there were
+// four: a crewmate's footsteps two rooms away were handing the Curator a fresh
+// fix on a player sitting silently in a wardrobe.
+function heard(l,x,z,who){
   if(!curator) return;
   const radius=l*HEAR_PER_L*Math.pow(OCCLUSION_CURATOR,hops(curator.x,curator.z,x,z));
   if(Math.hypot(curator.x-x,curator.z-z)>radius) return;
   const a=Math.random()*Math.PI*2, r=Math.random()*FUZZ_M;
-  curator.fix={x:x+Math.cos(a)*r, z:z+Math.sin(a)*r, age:0, sure:false};
+  curator.fix={x:x+Math.cos(a)*r, z:z+Math.sin(a)*r, age:0, sure:false,
+               who:who??player};
 }
 // Sight is 18m, a 100 degree cone, and occluded - but darkness does not reduce
 // it, because it is not using eyes.
@@ -354,7 +382,7 @@ function lookDir(){
 const eyeH=()=>player.hiding?HIDE_EYE:EYE;
 function aimedItem(){
   const d=lookDir(); let best=null,bs=0.86;
-  for(const it of items){ if(it.gone||it.held) continue;
+  for(const it of items){ if(it.gone||it.heldBy) continue;
     const v=[it.x-player.x, it.y-eyeH(), it.z-player.z];
     const dist2=Math.hypot(...v); if(dist2>3.2) continue;
     const s=dot(nrm(v),nrm(d));
@@ -362,11 +390,12 @@ function aimedItem(){
   return best;
 }
 function grabDrop(){
-  if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
+  if(player.holding&&handOff()) return;
+  if(player.holding){ const it=player.holding; it.heldBy=null; player.holding=null;
     it.x=player.x+Math.sin(player.yaw)*0.8; it.z=player.z+Math.cos(player.yaw)*0.8;
     it.y=0.45; noise(L.drop,true,0); return; }
   const it=aimedItem();
-  if(it){ it.held=true; player.holding=it; it.moved=true; it.stash=0;
+  if(it){ it.heldBy=player; player.holding=it; it.moved=true; it.stash=0;
     if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; } }
 }
 
@@ -398,7 +427,7 @@ function stash(){
   if(!player.holding) return;
   const h=nearHide(); if(!h||h.item) return;
   const it=player.holding; player.holding=null;
-  it.held=false; it.hideIn=h; h.item=it; it.stash=STASH_S;
+  it.heldBy=null; it.hideIn=h; h.item=it; it.stash=STASH_S;
   it.x=h.x; it.z=h.z; it.y=1.05;
 }
 
@@ -481,7 +510,7 @@ const sfx = (()=>{
     },
     humTarget(){
       const c=curator;
-      const marked=c.target&&(c.state==="PURSUE"||c.state==="FIXATE");
+      const marked=markedPlayer();
       const item=player.holding;
       const hd=item?Math.hypot(player.x-item.x,player.z-item.z):99;
       return marked&&hd<8?0.045:0;
@@ -504,6 +533,95 @@ const sfx = (()=>{
   };
 })();
 
+
+// ------------------------------------------------------------------ the crew
+// Haul bots, not people. They exist so the attention model has more than one
+// candidate in it - the pillar this game is built on ("you can get rid of the
+// monster by handing the vase to your friend") cannot be tested with one actor
+// in the house, and until R20 that is all the build had.
+function updateCrew(dt){
+  if(crewFrozen) return;
+  for(const a of crew){
+    if(!a.alive) continue;
+    if(a.down>0){ a.down-=dt; continue; }
+    a.panic-=dt;
+
+    // Marked and it is close? Put the thing down and get away from it. Cowardice
+    // is correct play here - aggro stays with the object (6.1), so dropping is
+    // not an escape, but it does buy the distance the plinth-intercept costs it.
+    const hunted = curator.target &&
+      ((curator.mode==="CREW"&&curator.who===a) ||
+       (curator.mode==="ITEM"&&curator.goal&&curator.goal.heldBy===a));
+    const near = Math.hypot(curator.x-a.x,curator.z-a.z);
+    if(hunted&&near<6&&a.holding&&a.panic<=0){
+      const it=a.holding; it.heldBy=null; a.holding=null;
+      it.x=a.x; it.z=a.z; it.y=0.45;
+      noise(L.drop,true,0,a.x,a.z,a);
+      a.panic=6; a.mood="FLEE";
+      continue;
+    }
+
+    let gx,gz,sp=a.holding?CARRY:WALK;
+    if(a.mood==="FLEE"&&a.panic>0){
+      const dv=R("drive"); gx=dv.x; gz=dv.z; sp=RUN;
+    } else if(a.holding){
+      const dv=R("drive"); gx=dv.x; gz=dv.z; a.mood="CARRY";
+    } else {
+      if(!a.goal||a.goal.gone||a.goal.heldBy||a.goal.claim&&a.goal.claim!==a){
+        a.goal=null;
+        let bd=1e9;
+        for(const it of items){
+          if(it.gone||it.heldBy||(it.claim&&it.claim!==a)) continue;
+          const d=Math.hypot(it.x-a.x,it.z-a.z);
+          if(d<bd){bd=d;a.goal=it;}
+        }
+        if(a.goal) a.goal.claim=a;
+      }
+      a.mood="SEEK";
+      if(!a.goal) continue;
+      gx=a.goal.x; gz=a.goal.z;
+    }
+
+    walkTo(a,gx,gz,sp,dt);
+    a.stride=(a.stride||0)+dt;
+    if(a.stride>0.62){ a.stride=0; heard(sp>=RUN?L.sprint:20,a.x,a.z,a); }
+
+    if(a.holding){
+      a.holding.x=a.x; a.holding.z=a.z; a.holding.y=1.05;
+      if(roomAt(a.x,a.z)?.van){
+        const it=a.holding; it.heldBy=null; it.gone=true; a.holding=null;
+        it.claim=null; van.cargo.push(it); van.slots--; a.mood="SEEK";
+        if(van.slots===0) finish("VAN FULL");
+      }
+    } else if(a.goal&&!a.goal.gone&&!a.goal.heldBy&&
+              Math.hypot(a.goal.x-a.x,a.goal.z-a.z)<0.9){
+      a.goal.heldBy=a; a.goal.moved=true; a.goal.stash=0;
+      if(a.goal.hideIn){ a.goal.hideIn.item=null; a.goal.hideIn=null; }
+      a.holding=a.goal; a.goal=null; a.mood="CARRY";
+    }
+  }
+}
+
+// The hand-off. Aim at a crewmate and press E while carrying: they take it, and
+// because aggro binds to the object the Curator is now walking at THEM, this
+// frame, with no retarget delay to hide behind.
+function aimedCrew(){
+  const d=lookDir(); let best=null,bs=0.80;
+  for(const a of crew){ if(!a.alive||a.holding) continue;
+    const v=[a.x-player.x, 1.1-eyeH(), a.z-player.z];
+    if(Math.hypot(...v)>2.8) continue;
+    const s=dot(nrm(v),nrm(d));
+    if(s>bs){bs=s;best=a;} }
+  return best;
+}
+function handOff(){
+  if(!player.holding) return null;
+  const a=aimedCrew(); if(!a) return null;
+  const it=player.holding;
+  player.holding=null; it.heldBy=a; a.holding=it; a.mood="CARRY"; a.panic=0;
+  return a.name;
+}
+
 // ------------------------------------------------------------------ update
 function step(dt){
   t+=dt; if(t>=NIGHT) return finish("SUNRISE");
@@ -518,7 +636,7 @@ function step(dt){
     // Footfalls are discrete events to a listener even though the Disturbance
     // gain is continuous - emitting one per frame would make sprinting a strobe.
     player.stride=(player.stride||0)+dt;
-    if(player.stride>0.45){ player.stride=0; heard(L.sprint,player.x,player.z);
+    if(player.stride>0.45){ player.stride=0; heard(L.sprint,player.x,player.z,player);
       sfx.event(L.sprint,player.x,player.z); } }
   else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
 
@@ -549,11 +667,13 @@ function step(dt){
 
   // deposit
   if(player.holding&&!player.hiding&&roomAt(player.x,player.z)?.van){
-    const it=player.holding; it.held=false; it.gone=true; player.holding=null;
+    const it=player.holding; it.heldBy=null; it.gone=true; player.holding=null;
     van.cargo.push(it); van.slots--;
     if(van.slots===0) return finish("VAN FULL");
   }
 
+  updateCrew(dt);
+  if(over) return;
   dist=Math.max(floorNow(),Math.min(100,dist-DECAY_PER_S*dt));
   updateCurator(dt);
 }
@@ -568,104 +688,144 @@ function radiance(it){
   if(it.stash>0) return 0;           // inside furniture: muffled for 20s (8.1)
   return it.value*ATT_MULT[it.grade];
 }
-function attentionWeight(){ return radiance(player.holding); }
+// A3, and the reason it is multiplicative: noise and light modify how visible
+// your LOOT is. Carry nothing and your weight is zero however loud you are, which
+// is what makes pillar 2 arithmetically impossible to violate.
+function weightOf(it){
+  const loot=radiance(it);
+  if(loot===0) return 0;
+  const a=it.heldBy;
+  if(!a) return loot;                       // loose on the floor: no carrier to modify it
+  let mult=1+NOISE_MULT_PER_EVENT*recentNoise(a);
+  if(a.light&&sees(a.x,a.z)) mult*=LIGHT_MULT;
+  return loot*mult;
+}
+function attentionWeight(){ return weightOf(player.holding); }
 function loudestItem(){
   let best=null,bw=0;
-  for(const it of items){ const w=radiance(it); if(w>bw){bw=w;best=it;} }
+  for(const it of items){ const w=weightOf(it); if(w>bw){bw=w;best=it;} }
   return best;
 }
+const holderOf=it=>it&&it.heldBy?it.heldBy:null;
 const concealed=()=>!!player.hiding&&player.hideEnter<=0;
 
-function contact(){
+function contact(a){
   const c=curator;
-  player.hits++;
-  if(player.hits>=2) return finish("COLLECTED");
-  if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
+  a.hits++;
+  if(a.hits>=2){
+    if(a===player) return finish("COLLECTED");
+    a.alive=false;                              // the collection keeps them
+    if(a.holding){ a.holding.heldBy=null; a.holding=null; }
+    c.state="PATROL"; c.target=false; c.mode=null; c.lock=0; c.open=0; c.who=null;
+    return;
+  }
+  if(a.holding){ const it=a.holding; it.heldBy=null; a.holding=null;
     c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1; c.state="RESEAT"; }
   else c.state="PATROL";
-  player.down=3.5; c.target=false; c.mode=null; c.lock=0; c.open=0;
+  a.down=3.5; c.target=false; c.mode=null; c.lock=0; c.open=0; c.who=null;
+}
+
+// Nearest body it can actually perceive. A concealed player is not one.
+function crewTarget(){
+  let best=null,bd=1e9;
+  for(const a of actors()){
+    if(a===player&&concealed()) continue;
+    const d=Math.hypot(a.x-curator.x,a.z-curator.z);
+    if(d<bd){bd=d;best=a;}
+  }
+  return best;
 }
 
 function updateCurator(dt){
   const c=curator, tier=tierOf(dist);
-  c.lock-=dt; c.fixate-=dt; c.reseat-=dt;
+  c.lock-=dt; c.fixate-=dt; c.reseat-=dt; c.recompute-=dt;
   if(c.fix) c.fix.age+=dt;
-  // Sight is the one sense that gives it a position it can trust. Concealment
-  // beats sight outright; that is what being in the wardrobe is for.
-  if(!concealed()&&sees(player.x,player.z))
-    c.fix={x:player.x,z:player.z,age:0,sure:true};
+  for(const a of actors()){
+    if(a===player&&concealed()) continue;
+    if(sees(a.x,a.z)) c.fix={x:a.x,z:a.z,age:0,sure:true,who:a};
+  }
+
   const speed = c.state==="RESEAT"?1.35 : tier==="COLLECT"?1.95:1.65;
 
   if(c.state==="RESEAT"){
     walkTo(c,c.carry.hx,c.carry.hz,speed,dt);
     if(Math.hypot(c.x-c.carry.hx,c.z-c.carry.hz)<0.9){
       c.carry.x=c.carry.hx; c.carry.z=c.carry.hz; c.carry.y=0.45;
-      c.carry.held=false; c.carry.moved=false;     // back on its plinth, quiet again
-      c.carry=null; c.state="PATROL"; c.reseat=8; c.target=false; c.mode=null; }
+      c.carry.heldBy=null; c.carry.moved=false;     // back on its plinth, quiet again
+      c.carry=null; c.state="PATROL"; c.reseat=8; c.target=false; c.mode=null; c.who=null; }
     return;
   }
 
-  // Target selection. At COLLECT it stops curating and starts collecting crew
-  // (DESIGN 6.5) - the one tier where concealment is the primary verb (8.1).
-  if(c.lock<=0&&c.reseat<=0){
+  // --- target selection, A3 ------------------------------------------------
+  // Recalculated every 2s, not every frame. Three rules stop it pirouetting:
+  // a new target must beat the current one by 1.25x, a target is locked for 8s,
+  // and a hand-off is exempt from both - but the hand-off exemption costs nothing
+  // to implement here, because aggro is bound to the OBJECT. Passing the vase
+  // does not change what it wants, only who is holding it, so the hot potato is
+  // instant by construction rather than by special case.
+  if(c.recompute<=0){
+    c.recompute=RECOMPUTE_S;
     const hunting=(tier==="PURSUE"||tier==="COLLECT");
-    if(tier==="COLLECT"&&!concealed()){
-      if(c.mode!=="CREW"){
-        c.mode="CREW"; c.goal=null; c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; }
+    const body=(tier==="COLLECT")?crewTarget():null;
+    if(body){
+      if(c.mode!=="CREW"||c.who!==body){
+        c.mode="CREW"; c.who=body; c.goal=null; c.target=true;
+        c.fixate=2.0; c.lock=COMMIT_S; c.state="FIXATE"; }
     } else {
       const tgt=hunting?loudestItem():null;
+      const cur=(c.mode==="ITEM"&&c.goal&&!c.goal.gone&&weightOf(c.goal)>0)?c.goal:null;
       if(tgt){
-        if(c.mode!=="ITEM"||c.goal!==tgt||!c.target){
-          c.mode="ITEM"; c.goal=tgt; c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; }
+        const steal = !cur || weightOf(tgt) > weightOf(cur)*STEAL_THRESHOLD;
+        const free  = c.lock<=0 && c.reseat<=0;
+        if(!cur || (free&&steal&&tgt!==cur)){
+          c.mode="ITEM"; c.goal=tgt; c.who=null; c.target=true;
+          c.fixate=2.0; c.lock=COMMIT_S; c.state="FIXATE"; }
       } else if(c.state!=="FIXATE"){
-        c.target=false; c.mode=null; if(c.state==="PURSUE") c.state="PATROL"; }
+        c.target=false; c.mode=null; c.who=null;
+        if(c.state==="PURSUE") c.state="PATROL"; }
     }
   }
   if(c.state==="FIXATE"){ if(c.fixate<=0) c.state="PURSUE"; return; }
 
   if(c.state==="PURSUE"&&c.target){
-    // Losing the thread: a stashed item goes quiet, and a concealed player is
-    // not a valid target. Both break the commitment lock rather than waiting it out.
-    if(c.mode==="ITEM"&&radiance(c.goal)===0){
+    if(c.mode==="ITEM"&&weightOf(c.goal)===0){
       c.target=false; c.mode=null; c.state="PATROL"; c.lock=0; c.open=0; return; }
-    if(c.mode==="CREW"&&concealed()){
-      c.target=false; c.mode=null; c.state="PATROL"; c.lock=0; c.open=0; return; }
+    if(c.mode==="CREW"&&(!c.who||!c.who.alive||(c.who===player&&concealed()))){
+      c.target=false; c.mode=null; c.who=null; c.state="PATROL"; c.lock=0; c.open=0; return; }
 
-    const it=c.goal, onPlayer=(c.mode==="CREW")||(!!it&&it.held);
-    // Where it goes is now a question of what it knows (A5). A loose item is
-    // property and it knows exactly where that is. A carried one it has to
-    // find: walk to the last place it heard or saw you, and when that goes
-    // stale, fall back on A4 and cut you off at the plinth instead.
-    // What it knows depends on WHAT it is chasing, and the two are not the same
-    // problem. An item radiates - carried, dropped or sitting in a wardrobe, it
-    // broadcasts its own position, which is the point of "you can hide, but your
-    // loot can't" (8.1). Crew do not radiate: hunting people at COLLECT runs on
-    // the senses in A5, so it walks to where it last heard you (fuzzed +/-3m) and
-    // when that goes stale it casts about ahead of itself. Being quiet works on
-    // the second problem and does nothing for the first.
-    const fresh = c.fix && c.fix.age < FIX_STALE_S;
+    const it=c.goal;
+    const chased = c.mode==="CREW" ? c.who : holderOf(it);
+    const hidden = chased===player&&concealed();
+    // What it knows depends on WHAT it is chasing. An item radiates - carried,
+    // dropped or sitting in a wardrobe, it broadcasts its own position, which is
+    // "you can hide, but your loot can't" (8.1). Crew do not radiate: hunting
+    // people at COLLECT runs on A5's senses, so it walks to where it last heard
+    // you and casts about when that goes stale.
+    const fresh = c.fix && c.fix.age < FIX_STALE_S && c.fix.who === chased;
     const g = c.mode==="CREW"
-            ? (fresh ? {x:c.fix.x,z:c.fix.z}
-                     : {x:c.x+Math.sin(c.face)*4, z:c.z+Math.cos(c.face)*4})
-            : !onPlayer ? {x:it.x,z:it.z}
-            : concealed() ? {x:player.x,z:player.z}     // it comes to the wardrobe
-            : {x:it.hx,z:it.hz};                        // A4 plinth intercept
+            ? (c.who!==player ? {x:c.who.x,z:c.who.z}
+               : fresh ? {x:c.fix.x,z:c.fix.z}
+                       : {x:c.x+Math.sin(c.face)*4, z:c.z+Math.cos(c.face)*4})
+            : !chased ? {x:it.x,z:it.z}
+            : hidden ? {x:chased.x,z:chased.z}       // it comes to the wardrobe
+            : {x:it.hx,z:it.hz};                     // A4 plinth intercept
+
     walkTo(c,g.x,g.z,speed,dt);
 
-    if(onPlayer&&Math.hypot(c.x-player.x,c.z-player.z)<1.5&&player.down<=0){
+    if(chased&&Math.hypot(c.x-chased.x,c.z-chased.z)<1.5&&chased.down<=0){
       // Found in a hiding place is a retrieval, not an ambush: it has to open
       // the door, which takes four seconds you are free to spend running (8.1).
-      if(concealed()){
+      if(hidden){
         c.open+=dt;
         if(c.open<HIDE_OPEN_S) return;
         exitHide();
       }
-      c.open=0; contact(); return;
+      c.open=0; contact(chased); return;
     }
     c.open=0;
-    if(!onPlayer&&it&&Math.hypot(c.x-it.x,c.z-it.z)<1.0){
+    if(!chased&&it&&Math.hypot(c.x-it.x,c.z-it.z)<1.0){
       if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; }
-      it.held=false; c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1;
+      it.heldBy=null; c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1;
       c.state="RESEAT"; c.target=false; c.mode=null;
     }
     return;
@@ -710,6 +870,8 @@ function finish(why){
   document.getElementById("endtext").innerHTML=
     `<h1>${why}</h1><table>
      <tr><td>Items recovered</td><td>${van.cargo.length} / ${VAN_SLOTS}</td></tr>
+     ${crew.some(a=>!a.alive)?`<tr><td class="r">Crew collected</td><td class="r">${
+       crew.filter(a=>!a.alive).map(a=>a.name).join(", ")}</td></tr>`:``}
      <tr><td>Gross</td><td>$${Math.round(gross).toLocaleString()}</td></tr>
      <tr><td class="d">Curse fees</td><td class="d">-$${Math.round(fees).toLocaleString()}</td></tr>
      ${ruin?`<tr><td class="r">THE COLLECTION RECLAIMED THE VAN</td><td class="r">everything</td></tr>`:``}
@@ -722,9 +884,10 @@ function finish(why){
 }
 
 // ------------------------------------------------------------------ render
-function drawBox(x,y,z,sx,sy,sz,col){
+function drawBox(x,y,z,sx,sy,sz,col,emissive){
   gl.uniformMatrix4fv(U.uModel,false,M4.trs(x,y,z,sx,sy,sz));
   gl.uniform3fv(U.uTint,col);
+  gl.uniform1f(U.uEmissive,emissive?1:0);
   gl.drawElements(gl.TRIANGLES,BOX.i.length,gl.UNSIGNED_SHORT,0);
 }
 const WALL_H=3.2, TH=0.16, WALL_C=[.20,.195,.185];
@@ -765,7 +928,7 @@ function render(){
   gl.viewport(0,0,w,h);
   gl.clearColor(.012,.014,.017,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
-  const marked = curator.target && (curator.state==="PURSUE"||curator.state==="FIXATE");
+  const marked = markedPlayer();
   const eye=[player.x,eyeH(),player.z], d=lookDir();
   gl.uniformMatrix4fv(U.uProj,false,M4.persp(1.15,w/h,0.05,120));
   gl.uniformMatrix4fv(U.uView,false,M4.look(eye,[eye[0]+d[0],eye[1]+d[1],eye[2]+d[2]],[0,1,0]));
@@ -813,8 +976,32 @@ function render(){
     let col=[.42,.44,.43];
     if(it.known) col = it.grade==="malignant"?[.72,.36,.26]
                      : it.grade==="tainted"?[.72,.60,.26]:[.56,.60,.57];
-    if(it.held&&marked) col=[.62,.78,.88];             // frost
+    // Frost crawls up whatever it wants, in anyone's hands - that is how the
+    // rest of the crew reads the hand-off (A7).
+    if(it===curator.goal&&curator.target&&it.heldBy) col=[.62,.78,.88];
     drawBox(it.x,it.y,it.z,it.size,it.size,it.size,col);
+  }
+
+  // The crew. A7 says the dimming flashlight is the aggro tell and to build it
+  // before the AI - "if your light is dimming, it's coming for you". This
+  // renderer has exactly one real light (yours), so a crewmate's torch is a
+  // bright block in front of them, dimmed to 60% when they are the target. It is
+  // a stand-in for a light, not a light, and it is the readability contract that
+  // matters here rather than the photometry.
+  for(const a of crew){
+    if(!a.alive) continue;
+    const hunted = curator.target &&
+      ((curator.mode==="CREW"&&curator.who===a) ||
+       (curator.mode==="ITEM"&&curator.goal&&curator.goal.heldBy===a));
+    const dim = hunted?0.60:1.0;
+    const down = a.down>0;
+    drawBox(a.x,down?0.35:0.95,a.z,0.28,down?0.35:0.95,0.28,
+            a.colour.map(v=>v*(down?0.5:1)));
+    drawBox(a.x,down?0.72:2.02,a.z,0.19,0.20,0.19,[.62,.58,.52]);
+    if(!down){
+      const tx=a.x+Math.sin(a.face)*0.42, tz=a.z+Math.cos(a.face)*0.42;
+      drawBox(tx,1.35,tz,0.10,0.10,0.10,[0.97*dim,0.93*dim,0.84*dim],true);
+    }
   }
 
   const c=curator;
@@ -823,15 +1010,37 @@ function render(){
 }
 
 // ------------------------------------------------------------------ HUD
+// Whose problem is it, if it isn't yours? A7's readability contract is about
+// the group knowing, and in a solo prototype the HUD is the only stand-in for
+// three people shouting a name across a hallway.
+// The aggro tell has to be about YOU, or it is worse than no tell. With one
+// actor in the house "it has a target" and "it is coming for me" were the same
+// statement; with a crew they are not, and the HUD went on announcing IT IS
+// COMING FOR YOU while it walked at RUSS.
+function markedPlayer(){
+  const c=curator;
+  if(!c.target||(c.state!=="PURSUE"&&c.state!=="FIXATE")) return false;
+  if(c.mode==="CREW") return c.who===player;
+  return !!(c.goal&&c.goal.heldBy===player);
+}
+function hunted(){
+  const c=curator;
+  if(!c.target) return null;
+  if(c.mode==="CREW") return c.who&&c.who!==player?c.who.name:null;
+  if(c.mode==="ITEM"&&c.goal&&c.goal.heldBy&&c.goal.heldBy!==player)
+    return c.goal.heldBy.name;
+  return null;
+}
 function hud(){
   const held=player.holding, aim=held?null:aimedItem();
-  const marked = curator.target&&(curator.state==="PURSUE"||curator.state==="FIXATE");
+  const marked = markedPlayer();
   const scanning = items.find(i=>i.scan>0);
   const hidePlace = player.hiding?null:nearHide();
   document.getElementById("prompt").textContent =
     over?"" : player.hiding ? (player.hideEnter>0?"CLIMBING IN…":"CONCEALED    [C] climb out (loud)")
     : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
     : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
+    : (held&&aimedCrew()) ? `[E] hand it to ${aimedCrew().name}`
     : held ? "[E] drop    [F] appraise"
     : aim ? (aim.known?`$${aim.value}  ${aim.grade.toUpperCase()}   [E] take`:"UNAPPRAISED   [E] take   [F] appraise")
     : "";
@@ -841,6 +1050,8 @@ function hud(){
     `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${QUOTA.toLocaleString()}<br>`+
     (held?`CARRYING ${held.known?"$"+held.value+" "+held.grade.toUpperCase():"UNAPPRAISED"}<br>`:"")+
     (marked?`<span style="color:#9fc4d6">IT IS COMING FOR YOU</span><br>`:"")+
+    (!marked&&curator.target&&hunted()?
+      `<span style="color:#8b8880">it wants ${hunted()}</span><br>`:"")+
     (player.hiding&&player.hideEnter<=0?`<span style="color:#8fae9c">CONCEALED</span><br>`:"")+
     (curator.open>0?`<span style="color:#c97155">SOMETHING IS AT THE DOOR  ${
       (HIDE_OPEN_S-curator.open).toFixed(1)}s</span><br>`:"")+
@@ -866,7 +1077,9 @@ requestAnimationFrame(frame);
 // anything reachable only by hand is a rule nothing is guarding.
 window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist),
     slots:van.slots,banked:van.cargo.reduce((s,i)=>s+i.value,0),
-    cur:curator.state,mode:curator.mode,marked:!!curator.target,hits:player.hits,
+    cur:curator.state,mode:curator.mode,hits:player.hits,
+    who:curator.who?curator.who.name:null,
+    marked:markedPlayer(),
     concealed:concealed(),opening:+curator.open.toFixed(2),
     holding:player.holding?player.holding.value:null,over,why:overWhy}),
   pos:()=>({x:+player.x.toFixed(2),z:+player.z.toFixed(2),
@@ -876,16 +1089,34 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length,
   // --- fixtures: put the world in a specific state without playing to it
   pause:(v=true)=>{qaPaused=v;},   // stop the render loop advancing time
+  // Park the crew where they stand. For checks about the player and the Curator
+  // only - three bots hauling in the background otherwise fill the van, make
+  // noise, and end the night underneath whatever is being measured.
+  // Freeze halts their behaviour but leaves them alive and holding - the
+  // selector needs candidates that stay put while it is measured.
+  freezeCrew:(v=true)=>{crewFrozen=v;},
+  clearCrew:()=>{for(const a of crew) if(a.holding){a.holding.heldBy=null;a.holding=null;}},
+  parkCrew:()=>{for(const a of crew){ if(a.holding){a.holding.heldBy=null;a.holding=null;}
+    a.alive=false; }},
+  crew:()=>crew.map(a=>({name:a.name,x:+a.x.toFixed(2),z:+a.z.toFixed(2),
+    alive:a.alive,hits:a.hits,mood:a.mood,holding:a.holding?a.holding.value:null})),
+  giveCrew:(i,item)=>{const a=crew[i], it=items.filter(x=>!x.gone)[item];
+    if(!a||!it) return null; if(it.heldBy) it.heldBy.holding=null;
+    it.heldBy=a; it.moved=true; it.stash=0; a.holding=it; return it.value;},
+  setCrew:(i,x,z,face)=>{const a=crew[i]; if(a){a.x=x;a.z=z;
+    if(face!==undefined)a.face=face;} return !!a;},
+  crewNoise:(i,n)=>{const a=crew[i]; for(let k=0;k<n;k++) a.noise.push(t); return a.noise.length;},
+  handOff, aimedCrew:()=>{const a=aimedCrew(); return a?a.name:null;},
   tp:(x,z)=>{player.x=x;player.z=z;},
   setDist:v=>{dist=v;}, setT:v=>{t=v;},
   clearKeys:()=>{for(const k in keys) keys[k]=false;},
   list:()=>items.filter(i=>!i.gone).map((it,i)=>({i,x:+it.x.toFixed(2),z:+it.z.toFixed(2),
-    grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:it.held})),
+    grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:!!it.heldBy,by:it.heldBy?it.heldBy.name:null})),
   // Mirrors grabDrop's bookkeeping - an item picked up by a fixture is just as
   // displaced as one picked up by hand, and radiance() keys off exactly that.
   hold:i=>{const it=items.filter(x=>!x.gone)[i]; if(!it) return null;
-    if(player.holding) player.holding.held=false;
-    it.held=true; it.moved=true; it.stash=0;
+    if(player.holding){ player.holding.heldBy=null; }
+    it.heldBy=player; it.moved=true; it.stash=0;
     if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; }
     player.holding=it; return it.value;},
   hides:()=>HIDES.map((h,i)=>({i,x:h.x,z:h.z,room:h.room,face:h.face,item:!!h.item})),
@@ -894,7 +1125,10 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   stashOf:i=>{const it=items.filter(x=>!x.gone)[i]; return it?+it.stash.toFixed(2):null;},
   radiance:i=>{const it=items.filter(x=>!x.gone)[i]; return it?radiance(it):null;},
   curator:()=>({x:+curator.x.toFixed(2),z:+curator.z.toFixed(2),state:curator.state,
-    mode:curator.mode,open:+curator.open.toFixed(2),
+    mode:curator.mode,open:+curator.open.toFixed(2),who:curator.who?curator.who.name:null,
+    // Only when it is actually hunting: c.goal doubles as the idle wander
+    // destination, and reporting that as a target read as a phantom retarget.
+    goalValue:(curator.target&&curator.mode==="ITEM"&&curator.goal)?curator.goal.value:null,
     target:!!curator.target,carrying:!!curator.carry}),
   setCur:(x,z,st,face)=>{curator.x=x;curator.z=z;if(st)curator.state=st;
     if(face!==undefined)curator.face=face;},
@@ -906,7 +1140,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   mix:()=>{sfx.frame(); return sfx.probe();},
   hops:(ax,az,bx,bz)=>hops(ax,az,bx,bz),
   sees:(x,z)=>sees(x,z), heard:(l,x,z)=>heard(l,x,z),
-  fix:()=>curator.fix?{...curator.fix}:null,
+  fix:()=>curator.fix?{x:curator.fix.x,z:curator.fix.z,age:curator.fix.age,
+    sure:curator.fix.sure,who:curator.fix.who?curator.fix.who.name:null}:null,
   faults:()=>DOOR_FAULTS.slice(),
   rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
   doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z})),

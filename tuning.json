@@ -52,7 +52,8 @@
     "commit_seconds": 8.0,
     "noise_multiplier_per_event": 0.2,
     "light_multiplier": 1.3,
-    "recompute_seconds": 2.0
+    "recompute_seconds": 2.0,
+    "_note_r20": "Selector runs over ITEMS, not players (D-25). recompute_seconds, steal_threshold and commit_seconds are exercised by proto3d/qa.mjs."
   },
   "concealment": {
     "_source": "DESIGN.md 8.1",
