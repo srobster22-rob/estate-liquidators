@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–5 complete. The premise survived each round, at a price each time.**
+**Rounds 1–6 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -54,9 +54,18 @@ It also found that the degenerate lifters D-16 turned up don't just inflate a he
 they inflate the population's log-MRV spread by 56% and broke this round's estimator
 outright, making a *better* covariate produce *worse* prescriptions. `DESIGN.md` §4.4.
 
-**The simulation-only phase is close to finished.** Five rounds have taken achievable loss
-from ~15 points to ~10 against an oracle at 0, and every number is calibrated on lifters
-the model invented. What comes next is real logged data, not another round of this.
+**R6** asked which conclusions actually depend on the population definition, by
+re-deriving every headline against four defensible populations. The split is clean:
+**ratios are robust** (the covariate thresholds move by at most 2 points across all four),
+**magnitudes are not** (the cost of not personalising ranges 5.2 to 10.0). It also exposed
+a tension the project cannot resolve alone — the population that makes the estimator
+well-behaved is the one that makes the product worth half as much. `DESIGN.md` §4.5.
+
+**The simulation phase is complete (D-23).** Six rounds have established what can be
+established this way. The project's central quantity is a direct function of a
+population-shape assumption made in R1 for convenience and never defended. What comes
+next is a logger and twenty lifters with six months of honest data — that single dataset
+settles five open decisions at once, and no further simulation settles any of them.
 
 Not built yet: the volume budget, the autoregulation controller, the logger.
 
@@ -79,7 +88,9 @@ Not built yet: the volume budget, the autoregulation controller, the logger.
 | **[sim/trigger_experiment.py](sim/trigger_experiment.py)** | Is direction easier than location, and does it pay? | Before proposing a smarter controller. |
 | **[sim/prior.py](sim/prior.py)** | The starting prior, the covariate sensitivity model, and clean population moments. | Before adding a signup question. |
 | **[sim/prior_experiment.py](sim/prior_experiment.py)** | What a covariate would have to be worth, and whether it compounds with control. | Before assuming personalisation data pays. |
-| **[tests/](tests/)** | 77 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[sim/population.py](sim/population.py)** | Four defensible population variants, including a copula that isolates dependence. | Before trusting any absolute number. |
+| **[sim/population_experiment.py](sim/population_experiment.py)** | Which conclusions survive the population definition and which don't. | Before quoting a figure outside this repo. |
+| **[tests/](tests/)** | 88 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -127,8 +138,9 @@ python3 fit_experiment.py    # recovery, stability, noise, null hypothesis, data
 python3 confidence_experiment.py  # signals, outcome in points, the tail, the threshold
 python3 trigger_experiment.py     # sign vs argmax, closed loop, convergence, robustness
 python3 prior_experiment.py       # the free win, the rho sweep, compounding
+python3 population_experiment.py  # every headline, re-derived four ways
 
-cd .. && python3 -m unittest discover tests   # 77 tests
+cd .. && python3 -m unittest discover tests   # 88 tests
 ```
 
 ## What is solid and what isn't

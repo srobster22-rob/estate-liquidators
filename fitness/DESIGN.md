@@ -14,7 +14,7 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Rounds 1–5 complete.** The core model exists and is tested (77 tests,
+**Rounds 1–6 complete.** The core model exists and is tested (88 tests,
 `fitness/tests/`). Each round has overturned something the previous one established: R1
 found the model could not represent volume at all (§3), R2 found the fitter needs three
 times more data than the project was designed around (§4.1), R3 found the fitter is
@@ -31,10 +31,12 @@ information **substitute for each other** rather than compounding, and neither c
 than about 40% of the gap to an oracle. A covariate would need to correlate ~0.5 with true
 MRV to be worth what the whole controller stack is worth (§4.4).
 
-**The simulation-only phase is close to finished.** Five rounds have taken achievable loss
-from ~15 points (prescribe a constant) to ~10, against an oracle at 0, and every remaining
-number is calibrated on lifters the model invented (D-15). What the project needs next is
-real logged data, not another round of this.
+**The simulation-only phase is finished, and R6 says so with a number.** The project's
+central quantity — how much personalisation is worth — ranges from **5.2 to 10.0 points**
+depending purely on an assumption about population shape that R1 made for convenience and
+nobody has defended since (§4.5). Ratios are robust across every population tested;
+magnitudes are not. What the project needs next is real logged data, and no further
+simulation can substitute for it.
 
 Not built yet: the volume budget across muscle groups, the autoregulation controller, the
 logger. Ranked in `LOOP_LOG.md`.
@@ -565,6 +567,80 @@ contained 8% degenerate lifters, which inflates PRIOR-FIXED's loss from 15.15 to
 rounds concluded from is preserved** — which is exactly the argument D-15 made for
 trusting relative results over absolute ones — but the magnitudes quoted in §4.2 and §4.3
 are 30–50% too high.
+
+---
+
+## 4.5 Which conclusions depend on the population, and which don't (R6)
+
+Every number in five rounds rests on `PRIOR_SPREAD`: four scale factors drawn
+**independently** from uniform ranges, chosen in R1 because it was easy to write and
+never defended since. D-15 flagged the risk from the start; R5 showed it biting. R6's
+job was not to narrow the population until the awkward lifters vanish — that is
+curve-fitting the population to the answer — but to re-derive every headline under four
+defensible populations and report the spread. `sim/population.py`.
+
+| Variant | What it is | Degenerate | MRV spread | SD log-MRV |
+|---|---|---|---|---|
+| BASELINE | independent uniforms, as drawn since R1 | 5.3% | 8.60x | 0.708 |
+| CLEAN | BASELINE with degenerates rejected (R5's fix) | 0.0% | 5.68x | 0.712 |
+| NARROW | ranges tightened until degeneracy is rare, factor **derived** not chosen | 0.3% | 3.25x | 0.538 |
+| CORRELATED | same marginals, gains correlated instead of independent | 3.0% | 5.06x | 0.634 |
+
+CORRELATED is the physiologically motivated one: `k_fit` and `k_fat` are both gains on the
+*same* impulse, so a lifter who adapts strongly to a dose is one for whom that dose is
+large — and a large dose also fatigues. Independence permits "adapts barely, fatigues
+enormously", which is where the degenerate lifters live. It is implemented as a Gaussian
+copula so the marginals are **exactly** BASELINE's (verified: means and SDs within 3%,
+correlation 0.05 → 0.73), which means any difference between the two is attributable to
+dependence and nothing else.
+
+### The results split cleanly, and the split is the finding
+
+**Robust — holds across all four populations:**
+
+| | BASELINE | CLEAN | NARROW | CORRELATED |
+|---|---|---|---|---|
+| Covariate value at rho 0.5 | 24% | 22% | 24% | 22% |
+| at rho 0.7 | 38% | 36% | 38% | 38% |
+| at rho 0.9 | 65% | 63% | 66% | 67% |
+
+**R5's answer is the most robust conclusion this project has produced.** The rho
+thresholds barely move, because they are expressed as a *fraction* of the available gap —
+numerator and denominator both scale with the population's spread. D-21's substitution
+result is equally stable: the controller adds less when the start is better, in all four
+variants without exception, and so is the direction of every comparison in every round.
+
+**Population-dependent — moves by 2–3x:**
+
+| | BASELINE | CLEAN | NARROW | CORRELATED |
+|---|---|---|---|---|
+| Cost of not personalising (mean pts) | 10.04 | 9.93 | **5.23** | 7.70 |
+| Controller's added value | 3.08 | 3.14 | **1.10** | 1.99 |
+| Controller's added value at rho 0.7 | 1.83 | 1.63 | **0.16** | 0.88 |
+
+Every absolute points figure. **D-15 predicted exactly this — relative results survive
+misspecification, absolute ones do not — and R6 turns that from a standing worry into a
+measured statement.** The rule that follows: quote ratios, never magnitudes, until real
+data exists.
+
+### The tension this exposes, which the project cannot resolve by itself
+
+Look down the NARROW column. The population that makes the estimator well-behaved is also
+the one that makes the product least valuable: eliminating degenerate lifters by
+narrowing halves the cost of not personalising (10.04 → 5.23) and cuts the controller's
+value to almost nothing (3.08 → 1.10, and 0.16 once a decent covariate exists).
+
+**You cannot have both.** If lifters really vary as much as BASELINE says, then ~5% of
+them should never train at all, which is not a claim about people that anyone should
+believe. If they are as similar as NARROW says, personalisation is worth roughly half
+what this project has been assuming. CORRELATED sits between (3.0% degenerate, 7.70
+points) and is the most defensible of the four on physiological grounds, but "most
+defensible" here means "argued for", not "measured".
+
+**This is the sharpest possible statement of why the simulation phase is finished.** The
+project's central quantity — how much personalisation is worth — is a direct function of
+a population-shape assumption that no amount of further simulation can settle, and that
+twenty lifters with six months of logs would settle immediately.
 
 ---
 

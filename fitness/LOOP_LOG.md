@@ -269,44 +269,83 @@ results survive misspecification while absolute ones do not — but the magnitud
 DESIGN §4.2 and §4.3 are 30–50% too high, and are now annotated as such rather than
 silently recomputed.
 
+R6 · Built four defensible population variants and re-derived every headline against each
+(`sim/population.py`, `sim/population_experiment.py`) plus 11 tests. Target taken from
+R5's ranking, but deliberately widened: R5 asked for "narrow or justify `PRIOR_SPREAD`",
+and narrowing a population until the inconvenient lifters vanish is curve-fitting the
+population to the answer. The answerable version is **which conclusions depend on the
+population definition and which do not** — the concrete form of D-15, which has been a
+standing worry since R3 and never a measurement.
+
+· **The split is clean, and it is the finding.** Across BASELINE (independent uniforms,
+as drawn since R1), CLEAN (degenerates rejected), NARROW (ranges tightened by a *derived*
+factor of 0.70), and CORRELATED (same marginals, gains correlated via a Gaussian copula):
+**ratios barely move** — the covariate thresholds land at 22–24% for rho 0.5 and 63–67%
+for rho 0.9 across all four, and every comparison in every round keeps its direction.
+**Magnitudes move by 2–3x** — the cost of not personalising ranges **5.23 to 10.04**
+points, the controller's added value **1.10 to 3.08**. D-15 predicted exactly this; R6
+turns it into D-22: *quote ratios, never magnitudes.*
+
+· **R5's answer is the most robust thing this project has produced**, and now it is clear
+why: it is expressed as a fraction of an available gap, so numerator and denominator both
+scale with the population's spread. D-21's substitution result is equally stable — the
+controller adds less when the start is better, in all four variants without exception.
+
+· **Settled D-16 as far as simulation can, by declining to narrow.** Correlating the two
+gains is the physiologically motivated repair — both are gains on the *same* impulse, and
+independence permits "adapts barely, fatigues enormously", which is where the degenerate
+lifters live. It halves the rate (5.3% → 3.0%) and does not remove it; the remainder comes
+from the tau ratio. Narrowing does remove it — **and halves the project's central quantity
+while doing so.** So the population is left alone: choosing the version that makes the
+estimator well-behaved would also be choosing the version that makes the product look
+worth half as much, and there is no evidence to prefer either.
+
+· **The tension that ends the simulation phase.** You cannot have both. If lifters vary as
+much as BASELINE says, ~5% of them should never train at all, which is not a claim about
+people anyone should believe. If they are as similar as NARROW says, personalisation is
+worth roughly half what five rounds have assumed. CORRELATED sits between and is the most
+defensible on physiological grounds — where "defensible" means argued for, not measured.
+**The project's central quantity is a direct function of a population-shape assumption
+made in R1 for convenience and never defended since.** D-23.
+
+· Verified the round's own load-bearing claim rather than asserting it: the CORRELATED
+variant must change *only* the joint structure, or any BASELINE-vs-CORRELATED difference
+could be a marginal effect in disguise. Measured — means and SDs within 3%, correlation
+0.05 → 0.73. Pinned by tests.
+
 ---
 
-## Next round (paste `ITERATION-PROMPT.md` to resume)
+## Next round
 
-**A note before the ranking, because it is more important than anything in it.** Five
-rounds have taken achievable loss from ~15 points to ~10 against an oracle at 0, and the
-last two rounds both concluded that the remaining gap is not reachable by the kind of work
-this project has been doing. Every number in every round is calibrated on lifters the
-model invented (D-15), and R5 just demonstrated concretely how badly that can bite — a 5%
-contamination in the synthetic population silently broke an estimator and inflated two
-rounds of absolute figures. **The highest-value next step is real logged training data,
-not another simulation round.** Twenty lifters with six months of honest logs would settle
-D-01, D-04, D-09, D-16 and D-20 simultaneously, and no amount of further simulation can
-settle any of them.
+**There isn't one, and that is the finding rather than an absence of ideas.** D-23 closes
+the simulation phase. Six rounds have established what this method can establish, and R6
+measured the ceiling precisely: the project's central quantity ranges over a factor of two
+depending on an assumption no simulation can settle.
 
-Ranked, for as long as simulation rounds continue:
+The ranked backlog still has real items — D-05 (frequency), D-06 (the volume-matched
+deload sweep, unstarted through five rankings), D-11 (deep-deload excitation), D-18's
+confound — and every one is now known to be worth less than the uncertainty in the
+population definition. Running them produces more numbers with the same footnote.
 
-**R6: narrow or justify `PRIOR_SPREAD` (D-16).** Promoted to first because it is now known
-to be load-bearing rather than cosmetic. The population generates people the model says
-cannot train and 9% with an MRV below 5 sets/week, which is not a plausible number for
-anyone who trains. That is either an honest representation of non-responders or an
-artefact of drawing k and tau independently — nobody has checked, and it touches every
-number in the project. The check itself is cheap: look at whether the degenerate lifters
-occupy a corner of parameter space that a joint distribution would never visit.
+**What the project actually needs next, in order:**
 
-**Runner-up: the volume-matched deload sweep (D-06).** Fifth ranking in a row. D-17
-explains why it keeps losing — it is a precision question on a flat objective — so the
-right move is to run it once and close D-06 rather than carry it forever.
+1. **A logger good enough to produce fittable data.** Weekly sets per muscle group, RIR
+   per set, and one performance test per week. That is the whole requirement — the model
+   needs nothing else, and D-09's measurement-noise assumption is the only thing standing
+   between a logged top set and a fittable observation. This is the first thing in the
+   project that is *engineering* rather than analysis, and it is small.
 
-**Third: D-18's confound.** Is the dither's 30% tail improvement really better
-identification, or is it accidentally slowing the controller near its boundary? One
-experiment separates them, and D-18 is currently a WORKING decision resting on an
-unseparated cause.
+2. **Twenty lifters, six months.** One dataset settles **D-01** (do endurance priors
+   transfer), **D-04** (the saturation ceiling, and whether the MRV discrepancy is a
+   set-counting convention), **D-09** (real test-retest noise), **D-16** (does anyone
+   occupy the degenerate corner) and **D-20** (does any real covariate reach rho 0.5) —
+   simultaneously. Five open decisions, one dataset, and no simulation substitutes for it.
 
-**Fourth: D-05, frequency.** Still open since R1. The model's preference for more frequent
-sessions is an artefact of attaching saturation per session. Either attach a per-session
-cost or declare frequency a user constraint — the second is probably right and certainly
-cheaper.
+3. **Then re-run every experiment in `sim/` against the fitted population.** All of it is
+   written to take a population as input, so this is cheap by construction. The rounds
+   whose conclusions survive that swap are the real ones.
 
-**Blocked on nothing. But the honest status is that the simulation has been mined out,**
-and the next real gain comes from data rather than from another round.
+**If simulation rounds continue anyway**, D-23's falsification condition is the filter: run
+a question whose answer would change what gets built AND does not depend on the population
+definition. D-06 is the closest to qualifying, and it is close mostly because closing it
+would stop it appearing in a sixth ranking.

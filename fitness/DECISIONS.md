@@ -357,7 +357,7 @@ measured. It is calibrated, on simulated people.
 
 ---
 
-## D-16 · Part of the population has no MRV, and it inflated R1's headline — WORKING
+## D-16 · Part of the population has no MRV, and it inflated R1's headline — **RESOLVED as far as simulation can** (R6)
 
 `mrv()` searches for the volume maximising steady-state preparedness over [0.5, 200]
 sets/week. For lifters whose linear bracket is negative — the ones R1 found the model
@@ -388,11 +388,24 @@ breaks any estimator built on population moments — R5's covariate sweep was no
 until they were removed. They also inflate every absolute points-lost figure in R3 and
 R4 by 1.3–1.5x. `population_mrvs` now excludes them by default. See D-19.
 
-**What would prove it wrong / what is still open:** whether `PRIOR_SPREAD` should be
-narrowed at the low end at all. It currently generates people the model says cannot
-train, which is either an honest representation of non-responders or a modelling artefact
-of drawing k and tau independently. Nobody has checked which, and D-01's real-lifter test
-would settle it.
+**R6 checked, and the answer is that the choice cannot be made from inside the
+simulation.** Four defensible populations were built and every headline re-derived
+against each (DESIGN.md §4.5). Correlating the two gains — the physiologically motivated
+repair, since both are gains on the same impulse — roughly halves the degeneracy rate
+(5.3% → 3.0%) but does not remove it; the remainder comes from the tau ratio. Narrowing
+the ranges until degeneracy is rare does remove it, **and halves the project's central
+quantity while doing so** (cost of not personalising 10.04 → 5.23, controller value 3.08
+→ 1.10).
+
+**So: not narrowed.** Picking the population that makes the estimator well-behaved would
+also be picking the population that makes the product look worth half as much, and there
+is no evidence to prefer either. `population_mrvs` continues to exclude degenerate
+lifters from *moment estimation* (D-19), which is a statistical necessity, and the
+population itself is left alone.
+
+**What would settle it:** D-01's real-lifter test, and nothing else. Twenty lifters with
+six months of logs would show whether anyone occupies the corner of parameter space these
+lifters live in.
 
 ---
 
@@ -511,3 +524,49 @@ their sum.
 reveal — a hard constraint on available training time, an injury history, a schedule.
 Those are not estimates of MRV and would genuinely add. The substitution result applies
 only to information that is redundant with the response data.
+
+---
+
+## D-22 · Quote ratios, never magnitudes — FIRM
+
+Across four defensible populations (DESIGN.md §4.5), the covariate thresholds move by at
+most 2 percentage points (rho 0.5: 22–24%; rho 0.9: 63–67%) and every comparison keeps
+its direction. Over the same four, every absolute figure moves by **2–3x**: the cost of
+not personalising ranges 5.23–10.04 points, the controller's added value 1.10–3.08.
+
+**Why this is a decision and not an observation:** D-15 has argued since R3 that relative
+results survive misspecification while absolute ones do not. R6 measured it. The rule
+that follows binds every future round and every external communication: **express results
+as fractions of an available gap, and treat any absolute points figure as a property of
+`PRIOR_SPREAD` until real data exists.**
+
+**What it costs:** the project cannot honestly tell anyone how many kilos this is worth.
+It can say what fraction of the achievable benefit a given mechanism captures, which is
+enough to rank work and not enough to write marketing copy.
+
+**What would prove it wrong:** a population variant under which the ratios move as much
+as the magnitudes. That would mean even the relative conclusions are artefacts, and the
+correct response is to stop simulating entirely.
+
+---
+
+## D-23 · The simulation phase is complete — FIRM
+
+Six rounds. The project's central quantity — how much personalisation is worth — is a
+direct function of a population-shape assumption made in R1 for convenience, never
+defended, and shown in R6 to swing the answer by a factor of two.
+
+**Why this is a decision:** the ranked backlog still contains real items (D-05, D-06,
+D-11, D-18's confound), and every one of them is now known to be worth less than the
+uncertainty in the population definition. Continuing to run them would produce more
+numbers with the same footnote.
+
+**What replaces it:** a logger good enough to produce fittable data, and twenty lifters
+using it for six months. That single dataset settles D-01 (are the priors transferable
+from endurance research), D-04 (the saturation ceiling), D-09 (measurement noise), D-16
+(does anyone occupy the degenerate corner) and D-20 (does any real covariate reach rho
+0.5) simultaneously. No amount of further simulation settles any of them.
+
+**What would prove it wrong:** a simulation question whose answer would change what gets
+built, and which does not depend on the population definition. If one is found, run it —
+this decision is about diminishing returns, not about a ban.
