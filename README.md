@@ -62,11 +62,13 @@ model; the physics ownership protocol; the loudness model; the decision log.
 **Specified and partly tested:** the economy, by simulations that between them overturned
 four things this project believed.
 
-- **Selective** appraising beats both blind hauling and always-scanning, by **+4.4%** at 14
-  van slots — a number that has been retracted downward three times (+84% with a placeholder
-  noise cost, +31% with a slot-accounting bug, +6% with a stale Disturbance floor). The edge
-  dies entirely between 24 and 32 slots: van capacity is the master constant. Whether ~4% is
-  enough to carry a signature mechanic is the open design question (`LOOP_LOG.md`).
+- **The appraiser is a rejection tool, not a selection tool** — and that single reframing is
+  worth more than every tuning change tried here. Asked "which of these is best", it earns
+  **+4.4%** and is arguably not worth the button. Allowed to say "not worth a slot, walk
+  away", it earns **+25%**. The decision it creates is where you set the bar, and the optimum
+  moves with danger — too picky is a **−16%** disaster, because the van stops binding and the
+  clock takes over. The edge still dies between 24 and 32 van slots: capacity is the master
+  constant.
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4

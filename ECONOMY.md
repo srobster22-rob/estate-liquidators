@@ -329,6 +329,37 @@ the appraiser is close to break-even — defensible for a risk/reward mechanic w
 Whether it is enough to carry a signature mechanic is a design judgement, not a simulation
 result, and it should be settled deliberately rather than by default.
 
+## 10.1 R18 — the policy space was missing a verb
+
+Everything above asks "do you scan?" and lets the crew pick only between items it was already
+going to take. Give it the move the mechanic actually implies — **appraise, refuse, walk away
+with the slot unspent** — and the numbers change character. `SKIP_p` refuses anything below
+the p-th percentile of the tier band; the trip is spent either way, so this is a real cost and
+not the free reroll that corrupted R6–R7.
+
+| Policy | mean $ | scans | slots used | trips | out of time | vs BLIND |
+|---|---:|---:|---:|---:|---:|---:|
+| BLIND | $6,434 | 0 | 14.0 | 14.0 | 0% | — |
+| CAP_2 — scan two, take better | $6,742 | 28 | 14.0 | 14.0 | 0% | +4.8% |
+| ADAPTIVE | $6,717 | 28 | 14.0 | 14.0 | 0% | +4.4% |
+| SCAN everything | $6,409 | 56 | 14.0 | 14.0 | 0% | −0.4% |
+| THRESH_50 — stop at good enough | $7,159 | 26 | 14.0 | 14.0 | 0% | +11.3% |
+| SKIP_50 — refuse below median | $7,707 | 28 | 14.0 | 14.9 | 0% | **+19.8%** |
+| **SKIP_70** | **$8,025** | 45 | 13.1 | 17.3 | 45% | **+24.7%** |
+| SKIP_85 — too picky | $5,427 | 61 | 8.6 | 18.0 | 99% | **−15.6%** |
+
+**The binding constraint switches**, which is what makes the optimum interior. Up to the 50th
+percentile the van fills every night and refusing junk is nearly free. Past it the clock takes
+over: SKIP_85 ends 99% of nights out of time with 8.6 of 14 slots still empty. Being too
+choosy costs more than never choosing at all.
+
+**And a tail-risk scan cost regulates the bar rather than the verb.** Modelling "caught
+mid-scan", compounding as `k × n^1.8 × tier alertness`, leaves BLIND flat and lowers every
+scanning policy monotonically — the sanity check R6–R8 kept failing. What it changes is
+*where* the optimum sits: the 70th percentile is right in a quiet house, the 50th once
+scanning is genuinely dangerous. So the tail risk is worth having, but it is not what creates
+the decision; the refusal verb is.
+
 **Cursed cargo is no longer inert, and it changes the ordering.** With the +7 floor, sweeping
 0 → 8 cursed items costs a blind crew 12% of earnings ($6,503 → $5,744) against the 2.9% R9
 measured at +2 — and at 8 aboard, always-scanning overtakes selective scanning, because a van

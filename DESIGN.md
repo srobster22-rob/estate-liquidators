@@ -169,9 +169,29 @@ appraised first*, per playtester, per hour of experience. If that number is stil
 hour five and lands under ~30%, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §6). Scanning beats blind hauling by +84% at 14
-van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
-confirmed as the load-bearing one. But the sim also overturned part of §4.1's framing:
+**Simulated ahead of the gate** (`ECONOMY.md` §9–10). Requirement A is confirmed as the
+load-bearing one: the edge decays to nothing between 24 and 32 van slots. But the size of the
+edge depends entirely on **what you are allowed to do with the answer.**
+
+For thirteen rounds this was modelled as a *selection* tool — scan the shelf, take the best
+thing on it — and worth between +4% and +6%, thin enough to be a live worry that players
+would skip it. R18 gave the crew one more verb, the one the mechanic actually implies:
+**refuse the item and walk away with the slot unspent.** The edge is **+20% to +25%**.
+
+**The appraiser is a rejection tool, not a selection tool.** Its job is not "which of these
+four vases is best", it is "is this vase worth one of my fourteen slots". That reframing is
+worth more than every tuning change this project has tried, and it costs nothing to
+implement — it is already what the verb does.
+
+**The decision it creates is where you set the bar, and the answer moves.** Refusing anything
+below the 70th percentile is optimal in a quiet house; once scanning is genuinely dangerous
+the optimum drops to the 50th; and holding out for the 85th is a **−16%** disaster, because
+the van stops being the binding constraint and the clock takes over — 99% of those nights end
+with the van still a third empty. Too picky loses more than never choosing at all. That is
+the shape the design has been hunting since R5, and unlike the earlier candidates it needs no
+new system.
+
+The sim also overturned part of §4.1's framing:
 
 > **The three seconds are decoration. The noise is the cost.**
 
@@ -180,6 +200,12 @@ van space binds long before the clock does. So the appraiser must never be balan
 it *slower* — only by sharpening what the noise does to you. Tune toward the band where
 scanning *selectively* beats both scanning everything and scanning nothing; that's the only
 setting with a skill ceiling in it.
+
+**One consequence for Milestone 2's instrumentation.** The gate above measures *scan rate*.
+Also measure **refusal rate** — how often a crew appraises something and then leaves it. If
+refusals are near zero, players have understood the appraiser as a comparison tool and the
++25% is not being collected; that is a UI failure, not a balance one, and it is fixed by
+making "leave it" a visible verb rather than the absence of a verb.
 
 ---
 

@@ -397,6 +397,37 @@ budget (spend when you like, run out) rather than a timer.
 
 ---
 
+## D-24 · The appraiser is a rejection tool, and "leave it" is a first-class verb
+**Status:** FIRM (simulated, unplayed) · `DESIGN.md` §4.4, `ECONOMY.md` §10
+
+Appraising exists so a crew can *refuse* an item, not so it can rank four of them. The
+interface must make walking away from an appraised object as deliberate and visible as
+picking it up.
+
+Every model of this mechanic from R5 to R17 asked "do you scan?" and let the crew choose only
+between things it was already going to take. In that policy space the appraiser is worth
+**+4.4%**, which is thin enough that R9 through R17 all listed "is this enough to carry a
+signature mechanic?" as an open question, and the candidate fixes were value-variance per
+room, harsher retrieval, or tighter van capacity — three new systems.
+
+None were needed. Adding one verb the mechanic already implies — decline the item, keep the
+slot, spend the trip — takes the edge to **+20–25%**, and creates the interior optimum this
+project has been hunting for thirteen rounds: the decision is **where you set the bar**, and
+its answer moves with danger (70th percentile in a quiet house, 50th when scanning is risky,
+and the 85th is a −16% disaster because the clock replaces the van as the binding
+constraint). The trade is legible at the table — *too picky loses the night, too greedy
+fills the van with junk* — which is worth more than any tuning value in the file.
+
+The lesson generalises past this mechanic: **when a mechanic looks marginal, check whether
+the model has given the player every verb the mechanic implies before tuning anything.** Four
+rounds of retuning were spent on a policy space that was missing a move.
+
+**Falsified if:** playtests show refusal rates near zero. That would mean players read the
+appraiser as a comparison tool — a UI failure rather than a balance one, fixed by making
+"leave it" an explicit action, not by touching the numbers.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

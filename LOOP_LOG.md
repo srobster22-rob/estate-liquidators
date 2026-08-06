@@ -223,6 +223,29 @@ crew **12%** of earnings, and at 8 aboard always-scanning overtakes selective sc
 · Suite: drift 184/184, mutation 184/184 killed, waiver audit clean, validator PASS, both
 prototypes PASS in Chromium. C# still unrun (no `dotnet` here).
 
+R18 · Took R11's lesson to the appraiser as planned — modelled being caught mid-scan as a
+super-linear cost, `k x n^1.8 x tier alertness`, and added scan-depth and scan-threshold
+policies to `integrated.py`. · **The tail risk works but it was answering the wrong question.
+The appraiser's edge was never +4.4% — that was the ceiling of a policy space missing a
+verb.** Every model since R5 asked "do you scan?" and only ever let the crew choose between
+items it had already decided to take. Give it the move the mechanic actually implies —
+**appraise, refuse, walk away with the slot unspent** — and the edge is **+20 to +25%**.
+· **And it produces the interior optimum this project has been hunting since R5**, without
+any new system: the decision is *where you set the bar*. Refusing below the 70th percentile
+is best in a quiet house, the 50th once scanning is dangerous, and the 85th is **−16%** —
+because the binding constraint switches. Up to the median the van fills every night and
+refusing junk is nearly free; past it the clock takes over, and SKIP_85 ends **99% of nights
+out of time with 8.6 of 14 slots empty.** Too picky loses more than never choosing at all,
+which is a trade players can feel at the table. · Sanity checks that R6–R8 kept failing now
+pass: BLIND is flat across the whole risk sweep, every scanning policy declines monotonically,
+and the diagnostic that proves it — slots used, trips taken, share of nights that run out of
+time — is printed with every run so the next round cannot mistake a free reroll for a finding.
+· The tail-risk cost survives as a *regulator of the bar* rather than the thing that creates
+the decision. · **The generalisable lesson, and the reason four rounds were spent retuning:
+when a mechanic looks marginal, check whether the model gives the player every verb the
+mechanic implies before touching a single number.** D-24. `DESIGN.md` §4.4, `ECONOMY.md`
+§10.1 and the README's headline rewritten around it.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -231,27 +254,15 @@ prototypes PASS in Chromium. C# still unrun (no `dotnet` here).
 in R16 to say what is actually open. If you finish an item, delete it here — a stale plan is
 worse than no plan, because it gets read as current.)*
 
-**1 — Apply R11's lesson to the appraiser. Still the highest-value modelling gap**, and R17
-made it sharper: the edge is now **+4.4%**, and cursed cargo turns out to *raise* the value of
-scanning (at 8 cursed aboard, always-scan overtakes selective). That coupling is the seam to
-pull on. The +6%
-edge from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure
-that produced flat, uninteresting curves for the curse until R11 made the cost catastrophic
-instead of marginal. Try a tail-risk cost for scanning: appraising while already at
-PURSUE/COLLECT risks the Curator arriving mid-scan (you are stationary for three seconds),
-compounding per consecutive scan. If that produces an interior optimum the way it did for
-curses — "scan two or three times a trip, then stop" — the appraiser question answers itself
-and the whole +6% worry dissolves. Model it in `integrated.py`; do **not** tune RETRIEVAL,
-which R8 showed is already sitting in the right band.
+~~**1 — Apply R11's lesson to the appraiser.**~~ **Done, R18** — and the answer was not the
+tail risk, it was the missing verb. Edge is +20–25%, the optimum bar is interior, and D-24
+records both the call and the reason four earlier rounds missed it.
 
-**2 — The one that genuinely needs the owner's call, deferred since R9.** Is a **+4.4%** edge
-enough to carry the game's signature mechanic? Break-even-ish is defensible for a risk/reward
-system — the interesting state is a real toss-up — but it is thin enough that players may
-rationally skip the appraiser, the exact failure `DESIGN.md` §4.4 exists to prevent. Three
-options: accept it and lean into the toss-up; make scanning *situational* (value-variance per
-room — pays at a curio cabinet, wasted on a shelf of identical books, with the room's dressing
-telegraphing which); or widen van scarcity, since capacity is the master lever on this edge.
-If item 1 lands, this may not need answering at all.
+~~**2 — Is a thin edge enough to carry the signature mechanic?**~~ **Dissolved, R18.** It was
+thin because the model was, and the fix cost nothing to implement. What replaces it is a
+**build** requirement, not a modelling one: **"leave it" has to be a visible verb in the
+prototype**, and Milestone 2 has to instrument *refusal rate* alongside scan rate. If players
+appraise and then take everything anyway, the +25% is sitting on the table.
 
 **3 — V5 in `validate_estate.py` is the weakest of the ten checks.** It counts doors on the
 *shortest* path only and has never failed anything, including the estate built to fail seven
