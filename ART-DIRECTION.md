@@ -53,6 +53,67 @@ set that someone turned the lights off in:
 **Why this is the right cost/benefit:** flat colour and low poly is the one style where "made
 by a small team" and "deliberate aesthetic choice" are indistinguishable to the player.
 
+## 2.1 Reading a room: how value spread is telegraphed
+
+`LEVEL-SPEC.md` §2.1 and `DECISIONS.md` D-23 make every room declare a **spread** —
+`uniform`, `mixed` or `curio` — describing how much its objects differ from each other in
+value. That declaration is worth **about half the appraiser's entire value** (`ECONOMY.md`
+§9: a flat estate is worth +4.2% over blind hauling, a mixed one +8.8%), and it is worth
+exactly nothing unless the player can *see* which kind of room they walked into.
+
+**The requirement, stated as a test:** standing in the doorway, in the dark, with a
+flashlight, a player must be able to tell in about a second whether this room rewards
+stopping — **without learning what any single object is worth.** That second clause is D-10
+and it is not negotiable: you may read the room, never the item.
+
+### The prototype's telegraph does not port, and it is worth knowing why
+
+`proto/index.html` signals spread with **silhouette size variance** — in a curio room the
+shapes are wildly different sizes, in a uniform room they are identical. It works there and
+it measures cleanly (R20). **It will not work in first person.** Top-down, a bigger shape is
+unambiguously a bigger object. In perspective, a large object far away and a small object
+close up subtend the same angle, so size variance is destroyed by exactly the thing the game
+is made of: standing in a doorway looking across a room. **Any cue that survives here has to
+be perspective-invariant.**
+
+Three do, and all three are already paid for by decisions made for other reasons:
+
+| Cue | `uniform` | `curio` | Why it survives |
+|---|---|---|---|
+| **Repetition** | the *same* silhouette repeated — six identical clay pots, a shelf of matched book spines | every object a different silhouette class: tall-thin, squat-round, flat, irregular | "these are all the same thing" reads at any distance and through fog. It is the strongest of the three. |
+| **Material variety** | one material class, repeated | brass beside porcelain beside taxidermy | §2 already gives each material class one flat colour, for the audio spec's impact sounds. Colour survives distance and fog far better than size. One system, three payoffs now. |
+| **Arrangement** | grid, row, or stack — storage. Even spacing. | individually placed, each with its own space, its own pedestal or doily | Regular spacing reads as rhythm and is perspective-invariant in the same way repetition is. |
+
+**Lighting carries it too**, at no extra cost (§3). A `curio` room wants small pooled lights —
+a display lamp, a glass case — so objects read as individually considered. A `uniform` room
+wants a single flat wash, or nothing at all. The house is telling you what it thought of its
+own contents, which is better fiction than a signal and does the same job.
+
+### What this costs production
+
+**The ~40-object prop kit in §8 must be authored partly in matched sets.** A kit of forty
+*unique* objects cannot express `uniform` at all — the one thing a uniform room needs is six
+to eight instances of the same silhouette. Budget the kit as roughly **25 unique objects plus
+5 matched sets of 6**, rather than 40 unique. This is cheaper than 40 unique, which is a
+pleasant thing to be able to say about a requirement.
+
+**And it constrains the "ridiculous" half of §1 slightly.** A room of six identical clay pots
+is not funny. Uniform rooms are the straight-man rooms; put the jokes in the curio rooms,
+where they are also mechanically rewarded. That is a better distribution than scattering them
+evenly, and it means the funniest objects in the house are the ones players are being paid to
+stop and look at.
+
+### If the telegraph fails
+
+**It degrades rather than collapsing, and the size of the loss is known.** R17/R18 modelled
+players misreading rooms: a perfect read is worth +8.8% over blind hauling, and a read *noisier
+than the entire range of rooms* still returns +5.6% — above what any spread-blind strategy
+manages. So a bad telegraph costs roughly **two-thirds of D-23's value**, not all of it.
+
+That is the budget argument for spending real art effort here, and also the reason not to
+panic: if the first playtest shows players can't classify rooms, the mechanic is worse but
+alive, and the fix is art, not design.
+
 ## 3. Light is the whole art budget
 
 The house is 90% black. What you can see, you can see because someone chose to light it.
@@ -127,8 +188,10 @@ Cheapest thing that makes the game look intentional, first:
    tone.
 3. **A material-class kit** — one flat material per class, ~8 total. Every prop is built from
    these.
-4. **A prop kit of ~40 objects** recombined across estates. Silhouette variety matters far
-   more than count.
+4. **A prop kit of ~40 objects** recombined across estates — as **~25 unique plus 5 matched
+   sets of 6**, not 40 unique (§2.1). Silhouette variety matters far more than count, and it
+   is now load-bearing rather than advice: it is the signal a player reads a room's value
+   spread from.
 5. **The Curator.** Last, and least. It's a silhouette in the dark.
 
 ## 9. What "easy to look at" means concretely
@@ -136,8 +199,14 @@ Cheapest thing that makes the game look intentional, first:
 A test to apply to every scene:
 
 > Stand in a doorway with a flashlight. Can you tell, in under a second: where the exits are,
-> which shapes are takeable, which of those you've already appraised, and which of the four
-> figures in the room are your friends?
+> which shapes are takeable, which of those you've already appraised, which of the four
+> figures in the room are your friends, and **whether this room is worth stopping in**?
+
+The last one is §2.1's requirement and the newest, so it is the one most likely to be missing.
+Test it directly rather than by feel: **show a player a still frame of a room for one second
+and ask them to call it `uniform`, `mixed` or `curio`.** Target 80% correct. Anything at or
+below chance means the room is not telegraphing and half the appraiser's value is unreachable
+(`DECISIONS.md` D-24).
 
 If any of those takes longer than a second, the scene is too busy or too dark — regardless of
 how good it looks in a screenshot.

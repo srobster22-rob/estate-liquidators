@@ -89,7 +89,10 @@ else, so:
 **The look must telegraph the class**, because the whole mechanic is players reading a room
 from the doorway and arguing about it. A `curio` room should be visibly miscellaneous;
 a `uniform` room should be visibly repetitive. This is an art requirement as much as a level
-one — see `ART-DIRECTION.md`.
+one, and `ART-DIRECTION.md` §2.1 specifies it: the cue is **repetition, material variety and
+arrangement — never size**, because perspective destroys size as a signal. Practically, for
+an author: a `uniform` room is six of the same object on even spacing, a `curio` room is six
+different silhouette classes in six different materials, each individually placed.
 
 > **Why this is a hard requirement and not flavour** (R17, `sim/appraiser_variance.py`).
 > On an estate where every room has the same spread there is exactly one correct global

@@ -468,6 +468,45 @@ continuous per-room float and keep V11's distributional check unchanged.
 
 ---
 
+## D-24 · Spread is telegraphed by repetition, material and arrangement — never by size
+**Status:** HELD · `ART-DIRECTION.md` §2.1
+
+D-23 makes a room's value spread worth about half the appraiser's total value, and it is worth
+nothing unless a player can read it from a doorway. This is the decision about *how*.
+
+**The prototype's cue does not survive the move to first person, and that is the whole
+finding.** `proto/index.html` signals spread with silhouette **size** variance, which measures
+cleanly top-down (R20) and is destroyed by perspective: a large object far away and a small
+one close up subtend the same angle. The game is played standing in doorways looking across
+rooms, so the one viewing condition that matters is the one that breaks it.
+
+**So the cues are the three that are perspective-invariant:** *repetition* (a uniform room is
+the same silhouette six times; a curio room is six different silhouette classes), *material
+variety* (each material class already has one flat colour, for the impact sounds the audio
+spec needs — this is its third use), and *arrangement* (grid and even spacing versus
+individually placed objects with their own space). Lighting reinforces all three at no cost:
+pooled display lights for curio, flat wash for uniform.
+
+**Knowingly accepted cost — this reaches back into the prop budget and the comedy.** The ~40
+object kit has to be authored as roughly 25 unique plus 5 matched sets of 6, because a kit of
+40 unique objects cannot express a uniform room at all. And uniform rooms are the straight-man
+rooms: six identical clay pots is not a joke. That pushes the funny objects into curio rooms,
+which is where players are mechanically rewarded for stopping to look — so the constraint
+improves the distribution rather than fighting it. Stating it out loud per the standing rule
+about picking funny: here funny and correct happened to agree, which is not always going to be
+true.
+
+**Falsified if:** players shown a one-second still of a room classify it at or near chance
+(target is 80% correct; `ART-DIRECTION.md` §9). The fix would be art, not design — and the
+cost of failing is bounded and known, because R17/R18 measured the misreading case: a read
+noisier than the entire range of rooms still returns +5.6% against +8.8% for a perfect one,
+and against +4.2% for an estate with no spread at all. **A failed telegraph costs about
+two-thirds of D-23's value, not all of it.** Also falsified if the matched-set requirement
+turns out to make estates feel repetitive rather than legible, in which case the honest move
+is fewer, larger uniform rooms rather than abandoning the cue.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

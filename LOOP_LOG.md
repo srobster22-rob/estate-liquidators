@@ -348,6 +348,38 @@ nowhere), the attention recompute interval, the PATROL threshold (every implemen
 its tier table by name rather than by value), and localisation fuzz (FMOD-side; nothing here
 models where a sound *seems* to come from).
 
+R22 · Wrote `ART-DIRECTION.md` §2.1 — how a room's value spread is telegraphed — because R20
+left it as the one question no simulation can answer, and it gates about half the appraiser's
+value. · **The finding is that the prototype's telegraph does not port, and the reason is
+geometric.** `proto/index.html` signals spread with silhouette **size** variance: it measures
+cleanly (R20) and it is destroyed by perspective, because a large object far away and a small
+one close up subtend the same angle. The game is played standing in doorways looking across
+rooms — the single viewing condition that matters is the one that breaks the cue. Worth
+catching *before* the prop kit exists, which is exactly why this round was worth doing on
+paper. · **The three cues that survive are all already paid for.** Repetition (a uniform room
+is one silhouette six times; a curio room is six silhouette *classes*), material variety —
+which reuses the one-flat-colour-per-material-class system §2 already specifies for the audio
+spec's impact sounds, now earning its third payoff — and arrangement (grid and even spacing
+versus individually placed objects with their own space). Lighting reinforces all three for
+free: pooled display lights for curio, flat wash for uniform, which is the house telling you
+what it thought of its own contents. · **It reaches back into production, and cheaply.** The
+~40-object prop kit in §8 has to be **~25 unique plus 5 matched sets of 6**, because a kit of
+40 unique objects cannot express a uniform room at all — the one thing that room needs is six
+instances of the same thing. That is cheaper than 40 unique, which is a rare direction for a
+new requirement to push. · Also constrains the comedy, and in a good way: six identical clay
+pots is not a joke, so uniform rooms are the straight-man rooms and the funny objects belong
+in curio rooms — which is precisely where players are mechanically rewarded for stopping to
+look. Funny and correct agreed here rather than conflicting, and the standing rule says to say
+so out loud either way. · **Gave it a falsification that costs nothing to run**: show a player
+a one-second still of a room and ask them to call it uniform/mixed/curio, target 80%. Added it
+as the fifth question in §9's doorway test, where it is the newest and so the likeliest to be
+missing. · **And bounded the downside using numbers this project already owns.** R17/R18
+measured the misreading case, so the cost of a failed telegraph is known rather than feared:
++8.8% for a perfect read, +5.6% for a read noisier than the entire range of rooms, +4.2% for
+an estate with no spread at all. **A failed telegraph costs about two-thirds of D-23's value,
+not all of it** — which is both the budget argument for spending art effort here and the
+reason not to panic if the first playtest reads badly. Logged as D-24.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -355,22 +387,19 @@ models where a sound *seems* to come from).
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R22: the telegraph is the one open question a simulation cannot close, and it now gates
-D-23.** R20 proved silhouette variety works as a spread signal in a 2D top-down prototype,
-where an item is a shape on a floor seen from above. `ART-DIRECTION.md` commits to flat-shaded
-low-poly in **first person**, where the player sees a room, not a plan view, and "this cabinet
-holds unlike things" has to read from a doorway, at a glance, in the dark, with a flashlight.
-That is an art problem with a real chance of not working. Write the `ART-DIRECTION.md` section
-on how a `uniform` room and a `curio` room differ visually — repetition and rhythm versus
-silhouette variety, and what the lighting has to do to support it — before any asset work
-starts. Cheap now, expensive once a kitbash exists.
+**R23: close the C#-side gaps R21 made visible, and make the coverage check per-implementation
+while you are in there.** `unity/tests/CoreTests` still pins 31 checks against a model the
+Python and JS have both moved past: nothing there knows about `room_spread`, and `Loudness.cs`
+has no `approach_occlusion_floor` despite `tuning.json` carrying one since R19. Both are
+claimed by *some* implementation, so the R21 coverage check is green — which is the weaker
+guarantee it can give. Per-implementation coverage ("which of the three claims this value?")
+is the stronger property and would have surfaced these without anyone noticing by hand.
 
-**Then R23: close the C#-side gaps R21 made visible.** `unity/tests/CoreTests` still pins 31
-checks against a model the Python and JS have both moved past: nothing there knows about
-`room_spread`, and `Loudness.cs` has no `approach_occlusion_floor` despite `tuning.json`
-carrying one since R19. Those are claimed by *some* implementation so the coverage check is
-green, which is exactly the weaker guarantee it can give — per-implementation coverage would
-be the stronger property, and is probably the right next upgrade to `check_drift.py`.
+**Then R24: the appraiser now has a decision the C# core cannot represent.** D-22/D-23 leave
+two strategies of equal expected value and different variance — "scan the top quarter of rooms
+whenever" and "scan the top half while it's still tidying" — and the C# core has no concept of
+room spread at all, so a Unity build could not express either. That is the real port, not just
+a constant.
 
 **Four standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18) — it reported "55 constants agree" for four
@@ -380,17 +409,22 @@ everything for eighteen rounds because it had no failing condition at all.
 *Ask a statistic at the right altitude* (R20) — the D-10 leak test read r = 0.46 pooled across
 tiers and ~0.00 within rooms, and only the second was answering the question.
 *Name the table you mean* (R14, R21) — a text-scraping pattern matched `CLASS_WIDTH` instead
-of `CLASS_SLOTS` and reported a doorway width as a slot cost; third occurrence of that exact
-bug. Before trusting any green run, ask what it cannot see.
+of `CLASS_SLOTS` and reported a doorway width as a slot cost; third occurrence of that bug.
+
+**And one from R22, which is a different kind of trap:** *a model verified in one projection
+is not verified in the one you ship.* The prototype's spread telegraph measured cleanly
+top-down and is destroyed by perspective. Nothing in the simulation was wrong; the viewing
+condition changed underneath it. Ask what the model is standing on before porting its
+conclusion.
 
 **The appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
-circled the same number, and the resolution was structural rather than numerical: cost levers
-can only shave the edge down (D-22), the benefit side had exactly one lever on it (D-23), and
-one of those rounds was measuring a typo. At **+8.8%** with a real skill ceiling, a graceful
-failure mode under misreading, and two equal-value strategies of different shape, the mechanic
-is defensible. **Do not reopen it with another tuning sweep.** The next real information comes
-from Milestone 2 instrumentation measuring what fraction of items players actually scan at
-hour five — the falsification condition D-10 has carried since the beginning.
+circled the same number, and the resolution was structural rather than numerical. At **+8.8%**
+with a real skill ceiling, a graceful failure mode under misreading, and two equal-value
+strategies of different shape, the mechanic is defensible. **Do not reopen it with another
+tuning sweep.** The next real information comes from Milestone 2 instrumentation measuring
+what fraction of items players actually scan at hour five — the falsification condition D-10
+has carried since the beginning — and from D-24's one-second room-classification test, which
+costs nothing and can be run on a still frame long before the game is playable.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.
