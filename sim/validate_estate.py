@@ -1,7 +1,7 @@
 """
 Estate Liquidators — estate validator.
 
-Implements the ten checks LEVEL-SPEC.md 6 specifies. A wing that fails any of them
+Implements the eleven checks LEVEL-SPEC.md 6 specifies. A wing that fails any of them
 does not enter the pool.
 
 The point of this file is that every promise the other documents make about SPACE is
@@ -11,6 +11,7 @@ a promise a level designer under deadline will break by accident:
   - the fairness contract guarantees a 2nd route -> a single-corridor wing breaks it
   - depth gates pacing                          -> an early-opening deep wing inverts it
   - a piano must physically fit through a door  -> or four people waste three minutes
+  - the appraiser needs rooms to DIFFER          -> a uniform estate has no decision in it
 
 None of those survive contact with a deadline unless a machine checks them.
 
@@ -29,6 +30,11 @@ CLASS_SLOTS = {"pocket": 0.5, "armful": 1.0, "two_man": 3.0, "cart": 5.0}
 VALUE_BANDS = {
     0: (40, 300), 1: (80, 300), 2: (250, 1900), 3: (600, 4000), 4: (4000, 8000),
 }
+
+# LEVEL-SPEC 2. Per-room value spread, as a multiple of the depth band's half-width.
+# Mean is 1.0 by construction so an estate built to V11 is neither richer nor poorer to
+# scan than a flat one -- it just has a decision in it. (R17, sim/appraiser_variance.py)
+SPREAD_F = {"uniform": 0.3, "mixed": 1.0, "curio": 1.7}
 
 TASK_SECONDS = 75.0     # rough cost of one prerequisite step for a crew of 4
 APPROACH_L = 60.0       # AUDIO-SPEC 3.1 approach bus at source
@@ -247,6 +253,53 @@ def V8_value_bands(e):
     return not bad, "; ".join(bad)
 
 
+def V11_spread_heterogeneity(e):
+    """The appraiser only has a decision to make if rooms DIFFER (R17).
+
+    Scanning's payoff is 0.6 x the half-width of the room's value spread and nothing
+    else, so on an estate where every room has the same spread there is exactly one
+    correct global answer and the game's signature verb is a formality. R17 measured
+    the threshold: the selective policy does not beat a flat one until effective
+    heterogeneity passes ~0.5, and an all-`mixed` estate sits at 0.0.
+
+    That is the default an unaware author produces, which is precisely why it needs a
+    machine check -- same reasoning as V4's "declare pinch true/false" rule. Silence is
+    how uniform estates sneak in.
+
+    Tier 4 is exempt: it is one authored object everybody already knows the price of
+    (D-21), so there is nothing to appraise.
+    """
+    scannable = sorted({pl["room"] for pl in e.plinths if 1 <= pl["tier"] <= 3})
+    if not scannable:
+        return True, ""
+
+    bad = []
+    fs = []
+    counts = {"uniform": 0, "mixed": 0, "curio": 0}
+    for r in scannable:
+        s = e.rooms[r].get("spread")
+        if s not in SPREAD_F:
+            bad.append(f"{r} does not declare spread (uniform|mixed|curio)")
+            continue
+        counts[s] += 1
+        fs.append(SPREAD_F[s])
+
+    if bad:
+        return False, "; ".join(bad)
+
+    n = len(fs)
+    for cls in ("uniform", "curio"):
+        if counts[cls] / n < 0.25:
+            bad.append(f"only {counts[cls]}/{n} rooms are '{cls}', needs 25%")
+
+    mean_f = sum(fs) / n
+    if not 0.85 <= mean_f <= 1.15:
+        bad.append(f"mean spread {mean_f:.2f} outside 1.00 +/- 0.15 "
+                   f"(estate is globally {'rich' if mean_f > 1 else 'poor'} to scan)")
+
+    return not bad, "; ".join(bad)
+
+
 def V9_no_free_money(e):
     """No *valuable* plinth adjacent to the van.
 
@@ -282,6 +335,7 @@ CHECKS = [
     ("V8  value bands", V8_value_bands),
     ("V9  no free money", V9_no_free_money),
     ("V10 it fits", V10_it_fits),
+    ("V11 spread mix", V11_spread_heterogeneity),
 ]
 
 

@@ -58,6 +58,11 @@ pinch_nodes:                     # authored, not inferred
   - stair_landing
   - conservatory_door
 
+room_spread:                     # per room: uniform | mixed | curio. See 2.1.
+  conservatory: curio            # unlike objects — worth three loud seconds
+  potting_room: uniform          # forty identical clay pots — scanning is a waste
+  orangery:     mixed
+
 plinths:
   - { id: p1, class: armful,  band: high,   fragility: 3 }
   - { id: p2, class: armful,  band: mid,    fragility: 1 }
@@ -67,6 +72,39 @@ plinths:
 
 curator_spawn: false             # exactly one wing per estate may be true
 ```
+
+### 2.1 Room spread — the property that gives the appraiser a decision
+
+The depth tier sets *how much* a room's objects are worth. `room_spread` sets **how much
+they differ from each other**, and that is the only thing scanning is paid for. The payoff
+for appraising a room is `0.6 ×` the half-width of its value spread and literally nothing
+else, so:
+
+| `room_spread` | Half-width | What it looks like | Scan it? |
+|---|---:|---|---|
+| `uniform` | 0.3 × band | forty matched books, a stack of identical plates, a rack of clay pots | never — you already know what the best one is worth |
+| `mixed` | 1.0 × band | an ordinary furnished room | usually not worth the noise |
+| `curio` | 1.7 × band | a cabinet of unlike things: a snuffbox, a ship model, a bad portrait | yes — this is where the appraiser earns its place |
+
+**The look must telegraph the class**, because the whole mechanic is players reading a room
+from the doorway and arguing about it. A `curio` room should be visibly miscellaneous;
+a `uniform` room should be visibly repetitive. This is an art requirement as much as a level
+one — see `ART-DIRECTION.md`.
+
+> **Why this is a hard requirement and not flavour** (R17, `sim/appraiser_variance.py`).
+> On an estate where every room has the same spread there is exactly one correct global
+> answer — scan everything or scan nothing — and the appraiser is a formality. Authored
+> heterogeneity is what converts it into a question asked fresh in every room. Measured:
+> a flat estate leaves the best strategy at **+6%** over blind hauling, an estate built to
+> the V11 mix reaches **+10%**, and the gain is *entirely* attributable to selectivity —
+> the mean spread is 1.0 by construction, so a V11-compliant estate hands out no extra
+> money, only a decision.
+>
+> The mix matters more than any single room: the benefit does not appear at all until
+> roughly a quarter of rooms sit at each extreme, which is why **V11** enforces ratios
+> rather than trusting judgement. An all-`mixed` estate is the default an author produces
+> when nothing asks them for a mix, and it reads perfectly fine while quietly deleting the
+> game's signature verb.
 
 ### Value bands by depth tier
 
@@ -171,6 +209,7 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V8** | Total wing value within ±15% of its depth band | economy sanity |
 | **V9** | No plinth within 15m of the van | no free money |
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
+| **V11** | ≥25% of scannable rooms `uniform` and ≥25% `curio`, mean spread 1.00 ±0.15 | §2.1 — an estate with one spread has no appraiser decision in it |
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
 in is a rage-quit bug — four people spending three real minutes discovering that a doorway is

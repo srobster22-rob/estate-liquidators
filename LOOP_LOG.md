@@ -196,6 +196,38 @@ approximating "scan while it's quiet" — both correlate with time. The real heu
 Curator's state, and it needs no HUD: DORMANT is the tier where AUDIO-SPEC §3.2 gives the
 house *no sound at all*. **"Appraise while you can't hear it."**
 
+R17 · Took R16's conclusion at its word and went at the **benefit** side. Built
+`sim/appraiser_variance.py`: scanning's payoff is exactly `0.6 ×` the half-width of the room's
+value spread and nothing else, so give each room its own spread and the question "is this room
+worth three loud seconds?" gets asked fresh in every doorway instead of once per night. ·
+**It works — the first thing in seventeen rounds to move the edge UP, +6.2% → +10.0%.** And
+the experiment was built so it *couldn't* flatter itself: room spread `f` is drawn with
+`E[f]=1` for every heterogeneity level, which makes both extremes arithmetically immune —
+confirmed empirically, BLIND sat at $6,485 and SCAN at ~$6,470 across the entire sweep,
+unmoved. Every point of the gain goes to crews that can tell rooms apart, so this is a skill
+ceiling and not an economy buff. · **It has to be authored, though.** Nothing happens at
+H=0.25; the selective policy doesn't take the lead until H=0.5. An estate built without
+thinking about spread sits at H=0 — which is the default — so it needed a machine check, not
+a guideline. Added **V11** to `validate_estate.py` (≥25% `uniform`, ≥25% `curio`, mean spread
+1.00 ±0.15) plus `LEVEL-SPEC.md` §2.1 and the three room classes. Planted an eighth fault in
+BROKEN_B — every room set to `mixed`, exactly what an unaware author ships — and confirmed the
+suite now trips 8/8 with the clean estate still at 11/11. Also negative-tested V11's other two
+guards directly: an undeclared room and a globally scan-rich estate both fail as intended. ·
+**The telegraph risk turned out mild**, which was the thing most likely to kill this. Modelling
+players misreading rooms: σ=0.5 still gives +8.9%, σ=1.0 (read noise as wide as the entire
+range of rooms) still gives +7.8%, and it only decays to baseline at σ=2.0. A crew that reads
+rooms *badly* beats one that doesn't try. Nice emergent rule: **the noisier your read, the
+pickier you should be** — top-half is optimal with a perfect read, top-quarter the instant any
+noise exists. · **Partly walks back D-22.** Once rooms differ, gating on the room beats gating
+on the house ($7,133 vs $6,891), and doing both is worse than the room alone ($6,982) because
+the quiet window is early night while good rooms arrive whenever they arrive. But the combined
+rule wins the *floor* — p10 $6,147 vs $5,853, ending at Disturbance 39 vs 72 — so it survives
+as the cautious line rather than a dominated one. · **Caught one of my own bugs before
+trusting the number:** at max heterogeneity the tier-1 band ($80–300) stretched wide enough to
+generate *negative* item values. Clamped the half-width at the mean, which fixes it while
+leaving a symmetric uniform's mean exactly where it was — so the invariance the whole
+experiment rests on survived the fix. Re-ran: 10.1% vs 10.2%, no material change.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -203,31 +235,36 @@ house *no sound at all*. **"Appraise while you can't hear it."**
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R17: widen the appraiser's PAYOFF, since R16 proved the cost side is a dead end.** The
-option `DESIGN.md` §4.4 always wanted: make scanning **situational** via per-room value
-variance. Scanning's benefit is `max(N) − mean(N)`, which scales with the *spread* of the
-room's value band, so a curio cabinet of wildly unlike objects should reward it and a shelf
-of forty identical books should not. That is a different axis from everything tried so far —
-it varies the benefit rather than the cost, and R16 showed cost levers can only ever shave
-the edge down from +6%. Crucially it is also **telegraphable**: if the room's *look* tells you
-which kind it is, the decision is "is this room worth three seconds?", asked fresh in every
-room, instead of one global policy chosen at the start of the night. Model it in
-`sim/appraiser_variance.py`: give each room a spread parameter, sweep it, and check whether a
-crew that scans only high-variance rooms beats both extremes by materially more than +6%.
+**R18: the two live balance holes, both known, both cheap, both overdue.**
 
-**Then R18: the two live balance holes, both known and both cheap.** (a) **Cursed cargo is
-inert** — the +2 Disturbance floor per item is swamped and R9 put the needed value near +7;
-`curse_test.py` already runs at 7.0 but `integrated.py` still hardcodes 2.0, so the two
-disagree and neither is in `tuning.json`. Pick one, propagate it, add it to the drift check.
-(b) **V5 in `validate_estate.py`** is still the weakest of the ten checks — it only counts
-doors on the shortest path and has never failed anything, including on the deliberately
-broken estate where it is the one planted-fault category that slips through.
+(a) **Cursed cargo is still inert, and the two sims now openly disagree.** R9 put the needed
+Disturbance floor near **+7 per cursed item**; `curse_test.py` runs at 7.0 and `integrated.py`
+still hardcodes 2.0, and *neither* number is in `tuning.json`, so `check_drift.py` cannot see
+the conflict. Pick one, propagate it to all three implementations, and add it to the drift
+check — the checker's whole value is that disagreements like this can't sit quietly.
 
-**Standing note on the whole appraiser thread.** Four rounds (R6, R8, R16, and R17 next) have
-now circled the same +6%. If R17's variance lever also fails to widen it, stop tuning and take
-the third option from R9 instead — **accept the toss-up and widen van scarcity**, which §6
-already identified as the master lever, or accept that break-even is the correct resting place
-for a risk/reward system and rewrite §4.4 to say so honestly.
+(b) **V5 in `validate_estate.py` remains the weakest of the eleven checks.** It only counts
+doors on the shortest path and has still never failed anything, including on BROKEN_B where
+it is the one planted-fault category that slips through. V11 is the model to copy: it fails
+the *default* an unaware author produces, which is what makes a check worth running.
+
+**Then R19: take R17 into the prototype.** `room_spread` now exists in the spec, the
+validator, and the economy, but `proto/index.html` still draws every room from one band —
+so the game does not yet contain the decision the last two rounds were spent building. R12
+is the standing evidence that porting a verified model into real-time code finds bugs no
+simulation can (per-frame vs per-second noise, crew-size-dependent decay). Expect the same
+here, and expect the *telegraph* to be the hard part: R17 says the mechanic survives a noisy
+read, but it says nothing about whether a flat-shaded low-poly room can communicate
+"miscellaneous" at a glance. That is an `ART-DIRECTION.md` question the sim cannot answer.
+
+**Standing note on the appraiser thread — it is now closed, and should stay closed.** Five
+rounds (R6, R8, R16, R17) circled the same +6%, and the answer turned out to be structural
+rather than numerical: cost levers can only shave the edge down (D-22), and the benefit side
+had exactly one lever on it (D-23). At **+10%** with a real skill ceiling and a graceful
+failure mode, the mechanic is defensible. **Do not reopen it with another tuning sweep** —
+the next real information about the appraiser comes from Milestone 2 instrumentation
+measuring what fraction of items players actually scan at hour five, which is the falsification
+condition D-10 has been carrying since the beginning.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.

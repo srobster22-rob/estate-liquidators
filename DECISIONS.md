@@ -395,6 +395,63 @@ the DORMANT/PATROL boundary in play, and the heuristic is only available to some
 a debug meter. Also falsified if the R17 variance lever widens the edge past ~+15%, since a
 payoff that large would make scanning correct everywhere and dissolve the gate entirely.
 
+> **Amended by R17 — the positive half is demoted from rule to overlay.** Once rooms differ
+> (D-23), gating on the *room* beats gating on the *house*: scanning the widest-spread half
+> of rooms earns $7,133 against the quiet-gate's $6,891. Combining both is *worse* than the
+> room rule alone ($6,982), because the two constraints fight — the quiet window is early
+> night, and the good rooms arrive whenever they arrive.
+>
+> It is not dominated, though, and that is the interesting part. The combined rule has a
+> **much better floor**: 10th-percentile $6,147 against $5,853, ending the night at
+> Disturbance 39 rather than 72. So "scan good rooms, but only while it's quiet" is the
+> cautious line and "scan good rooms whenever you find them" is the greedy one, separated by
+> ~$150 of expected value and a lot of variance. That is a real argument for four people to
+> have in a hallway, which is the bar. The negative half of D-22 is untouched.
+
+---
+
+## D-23 · Rooms declare a value *spread*, and the estate must mix them
+**Status:** HELD · `LEVEL-SPEC.md` §2.1, V11 · `sim/appraiser_variance.py`
+
+Every room declares `uniform` (0.3× the band's half-width), `mixed` (1.0×) or `curio` (1.7×),
+and V11 rejects any estate that isn't at least a quarter of each with a mean of 1.00 ±0.15.
+
+**Why it's the right lever, when four others weren't.** Scanning's payoff is `0.6 ×` the
+room's spread and nothing else, so spread is not *a* lever on the appraiser — it is the only
+one on the benefit side. D-22 established that cost levers can only shave the edge down from
++6%; this is the first thing in seventeen rounds to move it **up**, to +10%.
+
+**Why it isn't just handing the appraiser money.** `E[value]` of a room is its band midpoint
+regardless of spread, and mean spread is pinned at 1.00, so a V11-compliant estate pays out
+exactly what a flat one does to a crew that never scans *and* to a crew that always scans.
+Both extremes were measured flat across the whole heterogeneity sweep ($6,485 and ~$6,470,
+unmoved). **The entire +4 points goes to crews that tell rooms apart.** That is a skill
+ceiling rather than an economy buff, and the distinction is the reason this decision is worth
+its authoring cost.
+
+**Knowingly accepted cost: this is real work for level authors**, and it constrains art —
+a `curio` room has to *look* miscellaneous and a `uniform` room has to *look* repetitive, or
+the information isn't there to act on. Paying it because the alternative is the appraiser
+being a formality, and because the requirement is one line per room and machine-checked.
+
+**The reassuring result** is that it degrades gracefully. Modelling players misreading rooms
+(σ = noise on their read, in units of the full heterogeneity range): σ=0 gives +10.0%, σ=0.5
+gives +8.9%, and even σ=1.0 — a read as noisy as the entire spread of rooms — still gives
++7.8%, beating a crew that doesn't try. It only collapses to the +6% baseline at σ=2.0. So
+the mechanic rewards good reads without punishing bad ones, and a new player is never worse
+off for guessing.
+
+One emergent nuance worth keeping: **the noisier your read, the pickier you should be.**
+With a perfect read, scanning the top half of rooms is best; with any read noise at all, the
+top *quarter* wins. "When you're not sure, only stop for the obviously weird rooms" is
+correct play and also good advice, which is a pleasant thing to be able to say.
+
+**Falsified if:** Milestone 2 shows players scanning `uniform` and `curio` rooms at
+indistinguishable rates — that means the art isn't telegraphing spread and the whole
+mechanism is invisible, which is an art fix, not a tuning one. Also falsified if authors
+find the three classes so coarse that estates feel samey, in which case make spread a
+continuous per-room float and keep V11's distributional check unchanged.
+
 ---
 
 # Open decisions
@@ -404,7 +461,7 @@ payoff that large would make scanning correct everywhere and dissolve the gate e
 | ~~O-01~~ | ~~Crew size 4 or 6?~~ | — | **Closed → D-18.** Four. |
 | ~~O-02~~ | ~~Dead-player downtime~~ | — | **Closed → D-17.** The dead join the collection. |
 | ~~O-03~~ | ~~Van capacity numbers~~ | — | **Closed → `ECONOMY.md` §1.** 14 slots, ceiling 20. |
-| ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 10-check validation suite. |
+| ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 11-check validation suite. |
 | **O-05** | Does the Curator have a face? | art | recommend never fully seen — silhouette and hands only. Not blocking anything yet. |
 | ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, 48%→79% of theoretical max. |
 
