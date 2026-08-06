@@ -1,0 +1,70 @@
+# Life-safety content. Every line here is quoted or closely derived from an authority and carries
+# a citation. Nothing in this file may be authored from scratch — see VERIFY.md.
+
+emergency:
+  headline: Never walk or drive into floodwater.
+  points:
+    - text: Six inches of fast-moving water can knock over an adult.
+      sourceRefs: [nws-turn-around]
+    - text: Twelve inches of rushing water can carry away most cars. Two feet can carry away an
+        SUV or a truck.
+      sourceRefs: [nws-turn-around]
+    - text: Over half of flood-related drownings happen when a vehicle is driven into floodwater.
+        Turn around. Do not drive through it.
+      sourceRefs: [nws-turn-around]
+    - text: Do not touch electrical equipment while you are standing in water. Do not enter a
+        flooded basement if outlets or the electrical panel are underwater.
+      sourceRefs: [nws-during-flood]
+    - text: Floodwater can contain sewage and chemicals you cannot see.
+      sourceRefs: [nws-during-flood]
+    - text: If the water is rising, leave. Your things are replaceable.
+      sourceRefs: [nws-during-flood]
+
+mold:
+  window_hours: 48
+  text: Drying wet materials within 24 to 48 hours will in most cases prevent mold from growing.
+    This is a guideline, not a guarantee — mold can grow inside that window, and may not grow
+    outside it.
+  sourceRefs: [epa-mold-guide]
+
+# The before-it-happens checklist. Ordered by what protects the most for the least effort.
+prepare:
+  - id: buy-coverage
+    title: Decide about flood coverage today, not during a forecast
+    detail: There is a waiting period. Buying while a storm is coming does not work.
+    cost: Varies; renters contents-only coverage is usually the cheapest thing on this list.
+    sourceRefs: [fema-waiting-period]
+  - id: backup-endorsement
+    title: Ask your agent to add water/sewer backup coverage
+    detail: Usually an endorsement on the policy you already have, often at modest cost. It is
+      the gap that causes the most uncovered basement losses.
+    cost: Typically a small addition to the annual premium.
+    sourceRefs: [iii-sewer-backup]
+  - id: inventory
+    title: Photograph every room while everything is dry
+    detail: Wide shot of each room, then close-ups of anything valuable, then serial numbers on
+      appliances and electronics. Twenty minutes now is what an adjuster will ask for later.
+    cost: Free.
+    sourceRefs: []
+  - id: lift-the-irreplaceable
+    title: Get the irreplaceable things off the basement floor
+    detail: Photos, documents, keepsakes. A shelf two feet up defeats most basement water.
+    cost: Free.
+    sourceRefs: []
+  - id: sump-backup
+    title: If you have a sump pump, get a backup for it
+    detail: A pump that stops when the power does fails at exactly the moment it is needed. A
+      battery or water-powered backup covers that.
+    cost: Moderate.
+    sourceRefs: []
+  - id: know-your-shutoffs
+    title: Find your water main and electrical panel now
+    detail: Know how to shut both off before you need to do it in the dark, in water.
+    cost: Free.
+    sourceRefs: []
+  - id: gutters-grading
+    title: Downspouts, gutters, and grading away from the house
+    detail: Most basement water is surface water that arrived at the foundation. Extending a
+      downspout is the cheapest fix in this whole list.
+    cost: Low.
+    sourceRefs: []

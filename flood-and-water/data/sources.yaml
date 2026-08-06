@@ -1,0 +1,74 @@
+# Citation registry. Facts reference these by key; the build fails on an unknown key, and
+# SOURCES.md is generated from this file.
+#
+# `method` is how the claim was actually checked and is displayed to the user:
+#   fetched      - the page was retrieved and read in full
+#   search_index - confirmed through a web search index, but the page itself could not be
+#                  retrieved (this environment's egress policy blocks fema.gov, weather.gov,
+#                  epa.gov and iii.org). Weaker. Re-verify by opening the URL.
+#   phone        - a person called and was told this
+#
+# All sources below are currently search_index. Re-fetching them is item 1.1 of VERIFY.md.
+
+fema-waiting-period:
+  org: FEMA
+  title: Waiting Period for Activating Flood Policy?
+  url: https://www.fema.gov/faq/waiting-period-activating-flood-policy
+  retrieved: '2026-08-06'
+  method: search_index
+
+nfip-buy-policy:
+  org: FEMA / National Flood Insurance Program
+  title: Buy a Flood Insurance Policy — policy terms
+  url: https://www.floodsmart.gov/policy-terms
+  retrieved: '2026-08-06'
+  method: search_index
+
+iii-disasters-covered:
+  org: Insurance Information Institute
+  title: Which disasters are covered by homeowners insurance?
+  url: https://www.iii.org/article/which-disasters-are-covered-by-homeowners-insurance
+  retrieved: '2026-08-06'
+  method: search_index
+
+iii-sewer-backup:
+  org: Insurance Information Institute
+  title: Insure Against the Risk of Sewer Backup
+  url: https://www.iii.org/press-release/insure-against-the-risk-of-sewer-backup-032612
+  retrieved: '2026-08-06'
+  method: search_index
+
+nfip-what-covered:
+  org: FEMA / National Flood Insurance Program
+  title: What Does Flood Insurance Cover for Home and Condo Owners?
+  url: https://agents.floodsmart.gov/articles/what-does-flood-insurance-cover-home-and-condo-owners
+  retrieved: '2026-08-06'
+  method: search_index
+
+nws-turn-around:
+  org: National Weather Service
+  title: Turn Around Don't Drown
+  url: https://www.weather.gov/safety/flood-turn-around-dont-drown
+  retrieved: '2026-08-06'
+  method: search_index
+
+nws-during-flood:
+  org: National Weather Service
+  title: During a Flood
+  url: https://www.weather.gov/safety/flood-during
+  retrieved: '2026-08-06'
+  method: search_index
+
+epa-mold-guide:
+  org: US EPA
+  title: A Brief Guide to Mold, Moisture and Your Home
+  url: https://www.epa.gov/mold/brief-guide-mold-moisture-and-your-home
+  retrieved: '2026-08-06'
+  method: search_index
+
+fema-flood-insurance:
+  org: FEMA
+  title: Flood Insurance
+  url: https://www.fema.gov/flood-insurance
+  retrieved: '2026-08-06'
+  method: search_index

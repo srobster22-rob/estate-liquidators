@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Flood, water, and what your insurance doesn't cover</title>
+    <meta name="description" content="Find out what you're covered for, when a new policy would start, and keep a damage record that holds up." />
+    <meta name="theme-color" content="#12405c" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="topbar">
+      <a class="wordmark" href="#/">Flood &amp; water</a>
+      <nav aria-label="Site">
+        <a href="#/now" class="urgent">Water now</a>
+        <a href="#/prepare">Prepare</a>
+        <a href="#/log">Damage log</a>
+        <a href="#/about">About</a>
+      </nav>
+    </header>
+    <main id="main" tabindex="-1">
+      <noscript>
+        <p class="callout callout-warn">
+          This page needs JavaScript. Two things it would have told you: standard homeowners and
+          renters insurance does not cover flood, and a new flood policy generally takes 30 days
+          to take effect. Call your insurance agent.
+        </p>
+      </noscript>
+      <div id="app"><p class="loading">Loading…</p></div>
+    </main>
+    <footer class="footer">
+      <p>Independent volunteer project. Not insurance advice. Confirm anything here with your
+        insurer or your state insurance department before you rely on it.</p>
+      <p id="build-line"></p>
+    </footer>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

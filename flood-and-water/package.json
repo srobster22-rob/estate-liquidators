@@ -1,0 +1,28 @@
+{
+  "name": "flood-and-water",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Flood coverage gaps, the insurance waiting period as a date, and a damage log that survives a claim dispute.",
+  "scripts": {
+    "data": "tsx scripts/build-index.ts",
+    "dev": "npm run data && vite",
+    "build": "npm run data && tsc --noEmit && vite build",
+    "test": "npm run data && vitest run",
+    "check": "npm run build && vitest run && tsx scripts/check-budget.ts"
+  },
+  "dependencies": {
+    "exifr": "^7.1.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  }
+}

@@ -31,3 +31,9 @@ disposal-guide/src/generated/
 disposal-guide/test-results/
 disposal-guide/screenshots/
 disposal-guide/playwright-report/
+flood-and-water/node_modules/
+flood-and-water/dist/
+flood-and-water/src/generated/
+flood-and-water/test-results/
+flood-and-water/screenshots/
+flood-and-water/playwright-report/

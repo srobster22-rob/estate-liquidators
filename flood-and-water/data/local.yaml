@@ -1,0 +1,15 @@
+# Your area. Nothing here is real yet.
+#
+# `configured: false` suppresses the local section entirely and shows a banner saying nobody has
+# checked. Same interlock as disposal-guide: flipping it is what makes the app start making
+# local claims, so flip it after the calls in VERIFY.md, not before.
+
+id: example
+city: '[CITY]'
+county: '[COUNTY]'
+state: '[STATE]'
+languages: [en]
+configured: false
+
+# Each entry needs verifiedOn and verifiedBy or the build fails.
+resources: []

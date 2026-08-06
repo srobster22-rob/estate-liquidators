@@ -1,0 +1,322 @@
+/* Owen is in a garage on a Saturday holding a swollen battery. Big type, high contrast,
+   no cleverness. Everything here is sized so the answer is readable at arm's length and the
+   page still works at 200% zoom on a 360px screen. */
+
+:root {
+  --bg: #fbfaf7;
+  --fg: #16181a;
+  --muted: #4a4f55;
+  --line: #d6d2c9;
+  --accent: #12405c;
+  --danger-bg: #fdf0ee;
+  --danger-line: #8c2f1f;
+  --warn-bg: #fdf7e6;
+  --warn-line: #7a5a12;
+  --ok-bg: #eef5ee;
+  --ok-line: #12405c;
+  --focus: #0b4fd8;
+  --radius: 10px;
+  --measure: 38rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #f2f1ee;
+    --muted: #b9bec5;
+    --line: #363b42;
+    --accent: #8ec7e8;
+    --danger-bg: #34211d;
+    --danger-line: #f0a595;
+    --warn-bg: #2f2a1a;
+    --warn-line: #e7cd85;
+    --ok-bg: #1c2a22;
+    --ok-line: #8ec7e8;
+    --focus: #8ab4ff;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 1.125rem/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+.skip:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+  z-index: 10;
+  background: var(--bg);
+  padding: 0.6rem 0.9rem;
+  border: 2px solid var(--focus);
+  border-radius: var(--radius);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+main:focus { outline: none; }
+
+.topbar {
+  border-bottom: 1px solid var(--line);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.wordmark {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: inherit;
+  text-decoration: none;
+}
+.topbar nav {
+  display: flex;
+  /* Four links do not fit on a 360px screen at 200% zoom. The parent wrapped; this did not,
+     which is what actually pushed the page sideways. */
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 1rem;
+}
+
+a { color: var(--accent); }
+a:hover { text-decoration-thickness: 2px; }
+
+h1 { font-size: min(1.6rem, 8vw); line-height: 1.25; margin: 0.4rem 0 0.75rem; }
+h1, h2, h3, .verdict-word { overflow-wrap: break-word; }
+h2 { font-size: 1.2rem; margin: 1.75rem 0 0.5rem; }
+h3 { font-size: 1.05rem; margin: 1.25rem 0 0.35rem; }
+p { margin: 0 0 0.85rem; }
+
+/* ---- search ---- */
+
+.search-label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+.search-hint { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.75rem; }
+
+input[type="search"] {
+  width: 100%;
+  font: inherit;
+  font-size: 1.25rem;
+  padding: 0.85rem 0.9rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  /* 16px+ keeps iOS from zooming the viewport on focus. */
+}
+input[type="search"]:focus { border-color: var(--focus); }
+
+.results { list-style: none; margin: 1rem 0 0; padding: 0; }
+.results li { border-bottom: 1px solid var(--line); }
+.results a {
+  display: block;
+  padding: 0.85rem 0.25rem;
+  text-decoration: none;
+  color: inherit;
+  min-height: 44px;
+}
+.results a:hover, .results a:focus-visible { background: var(--ok-bg); }
+.result-name { font-weight: 600; }
+.result-via { color: var(--muted); font-size: 0.95rem; }
+
+.no-results {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+/* ---- the answer ---- */
+
+.verdict {
+  border: 2px solid var(--ok-line);
+  background: var(--ok-bg);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin: 0 0 1.25rem;
+}
+.verdict-danger { border-color: var(--danger-line); background: var(--danger-bg); }
+.verdict-warn { border-color: var(--warn-line); background: var(--warn-bg); }
+
+.verdict-word {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 0.4rem;
+}
+.verdict-sub { margin: 0; font-size: 1.1rem; }
+
+/* Hazard is stated in words as well as shown by border colour — colour alone never carries
+   meaning here (WCAG 1.4.1, and also: this gets printed in black and white). */
+.hazard-tag {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  margin-bottom: 0.5rem;
+}
+
+.callout {
+  border-left: 5px solid var(--line);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 0 0 1.25rem;
+}
+.callout-warn { border-color: var(--warn-line); background: var(--warn-bg); }
+.callout-danger { border-color: var(--danger-line); background: var(--danger-bg); }
+.callout p:last-child { margin-bottom: 0; }
+
+ul.prep, ul.plain { padding-left: 1.25rem; margin: 0 0 1rem; }
+ul.prep li, ul.plain li { margin-bottom: 0.5rem; }
+
+.place {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+.place-name { font-weight: 700; margin: 0 0 0.25rem; }
+.place-meta { color: var(--muted); font-size: 0.95rem; margin: 0.15rem 0; }
+
+.meta-line {
+  color: var(--muted);
+  font-size: 0.95rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.sources { font-size: 0.95rem; color: var(--muted); }
+.sources li { margin-bottom: 0.35rem; }
+
+button.link {
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.6rem 0;
+  min-height: 44px;
+}
+
+.btn {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7rem 1.1rem;
+  min-height: 44px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--bg);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-secondary { background: transparent; color: var(--accent); }
+
+.footer {
+  border-top: 1px solid var(--line);
+  padding: 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.footer p { margin: 0 0 0.35rem; }
+
+.loading { color: var(--muted); }
+
+table.list { width: 100%; border-collapse: collapse; font-size: 1rem; }
+table.list th, table.list td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0.4rem;
+  vertical-align: top;
+}
+
+@media print {
+  .topbar, .footer, .skip, .no-print { display: none !important; }
+  body { font-size: 11pt; background: #fff; color: #000; }
+  main { max-width: none; padding: 0; }
+  .verdict, .place, .callout { border: 1pt solid #000 !important; background: #fff !important; }
+  a::after { content: " (" attr(href) ")"; font-size: 9pt; word-break: break-all; }
+  a[href^="#"]::after { content: ""; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* --- this project's additions --- */
+
+.urgent { font-weight: 700; }
+
+.bigdate {
+  /* min() against the viewport, not a fixed rem: at 200% zoom on a 360px screen a fixed 2rem
+     date rendered ~380px wide and pushed the page into horizontal scrolling (WCAG 1.4.10).
+     Caught by the browser test, not by looking at it. */
+  font-size: min(2rem, 9vw);
+  overflow-wrap: anywhere;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0.2rem 0 0.4rem;
+}
+
+.gap-row {
+  border: 1px solid var(--line);
+  border-left-width: 5px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+.gap-missing { border-left-color: var(--danger-line); background: var(--danger-bg); }
+.gap-unknown { border-left-color: var(--warn-line); background: var(--warn-bg); }
+.gap-have { border-left-color: var(--ok-line); }
+
+.q { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.85rem; margin-bottom: 0.85rem; }
+.q legend { font-weight: 600; padding: 0 0.3rem; }
+.q label { display: block; padding: 0.5rem 0; min-height: 44px; }
+.q input { margin-right: 0.6rem; transform: scale(1.3); }
+
+.emergency { background: var(--danger-bg); border: 3px solid var(--danger-line); border-radius: var(--radius); padding: 1rem; }
+.emergency h1 {
+  /* Same trap as .bigdate: a fixed rem heading overflows a 360px screen at 200% zoom. Every
+     oversized display string in this file is capped against the viewport for that reason. */
+  font-size: min(1.9rem, 8.5vw);
+  margin-top: 0;
+}
+.emergency li { font-size: 1.2rem; margin-bottom: 0.7rem; }
+
+.chain-ok { color: var(--ok-line); font-weight: 600; }
+.chain-broken { color: var(--danger-line); font-weight: 700; }
+
+.entry { border-bottom: 1px solid var(--line); padding: 0.7rem 0; }
+.entry-meta { color: var(--muted); font-size: 0.9rem; }
+.correction { border-left: 4px solid var(--warn-line); padding-left: 0.6rem; }

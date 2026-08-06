@@ -1,0 +1,82 @@
+# The coverage rules.
+#
+# `waitingPeriod` is modelled as structured data, never as prose, because the whole product is
+# turning "30 days" into a date on a calendar. Prose gets read as trivia; a date gets read as a
+# deadline.
+
+waitingPeriod:
+  days: 30
+  # Verified exceptions. Each one changes the answer for a real household, so they are data,
+  # not a footnote — the UI asks about them rather than burying them.
+  exceptions:
+    - id: mortgage
+      days: 0
+      question: Are you buying this policy as part of making, increasing, extending, or renewing
+        a mortgage?
+      detail: There is no waiting period when flood insurance is purchased in connection with a
+        mortgage transaction.
+    - id: renewal-change
+      days: 0
+      question: Are you changing coverage on a policy you already have, at renewal?
+      detail: Coverage changes made when renewing an existing policy take effect without the
+        30-day wait.
+    - id: newly-mapped
+      days: 1
+      question: Was your property recently moved into a high-risk flood zone by a map update in
+        the last 12 months?
+      detail: A one-day waiting period applies if the property is in a newly designated high-risk
+        zone and the policy is bought within 12 months of the map update.
+    - id: post-wildfire
+      days: 1
+      question: Is the flood risk caused or worsened by a wildfire on federal land in the last 60
+        days?
+      detail: A one-day waiting period applies when flooding is caused or worsened by wildfire on
+        federal land, if the policy is bought within 60 days of containment.
+  sourceRefs: [fema-waiting-period, nfip-buy-policy]
+
+# The gaps. Each is a distinct policy product; a household can have none, some, or all three.
+gaps:
+  - id: flood
+    name: Flood
+    what: Rising water from outside — a river, a storm surge, heavy rain overwhelming the ground
+      or the street.
+    coveredByHomeowners: false
+    why: Flood damage is excluded under standard homeowners and renters policies. Flood coverage
+      is a separate policy, through the National Flood Insurance Program or a private insurer.
+    rentersNote: Renters can buy contents-only flood coverage. A landlord's policy covers the
+      building, never your things.
+    sourceRefs: [iii-disasters-covered, nfip-buy-policy, fema-flood-insurance]
+
+  - id: sewer-backup
+    name: Sewer and drain backup
+    what: Water coming up through a floor drain, a toilet, or a basement fixture.
+    coveredByHomeowners: false
+    why: Most homeowners policies do not cover sewer backup unless the coverage is added. It is
+      usually an endorsement on the homeowners policy, often at modest cost — and flood insurance
+      generally does not cover it either unless the backup results directly from a flood. This is
+      the most common uncovered basement loss and the two policies both have a hole in the same
+      place.
+    sourceRefs: [iii-sewer-backup, nfip-what-covered]
+
+  - id: named-storm-deductible
+    name: A separate deductible for windstorm or named storms
+    what: Some policies apply a much larger, percentage-based deductible when the damage comes
+      from a named storm.
+    coveredByHomeowners: true
+    why: This is not a coverage gap so much as a cost surprise. Check your declarations page for a
+      separate windstorm or hurricane deductible; it is often a percentage of the dwelling
+      amount rather than a flat dollar figure.
+    sourceRefs: [iii-disasters-covered]
+
+# Where to look on the user's own paperwork. The barrier is not understanding insurance, it is
+# not knowing which words to search the PDF for.
+declarationsHints:
+  - gapId: flood
+    lookFor: A separate policy or a line saying "Flood" with its own premium. If your only policy
+      says "Homeowners" or "Renters" at the top, you almost certainly do not have flood coverage.
+  - gapId: sewer-backup
+    lookFor: 'Search the declarations page for: "water backup", "sewer", "sump", or "backup of
+      sewer or drain". If none of those words appear, you probably do not have it.'
+  - gapId: named-storm-deductible
+    lookFor: 'Search for: "windstorm deductible", "hurricane deductible", or a deductible written
+      as a percentage rather than a dollar amount.'
