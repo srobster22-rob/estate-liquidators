@@ -161,70 +161,70 @@ sceptical.
 
 ---
 
-## A recorded run
+## A recorded run — and why the number is a range
 
-300 generations, population 70, on the 30-market universe with **twelve years** of
-hourly history — a 3.14-year validation slice. **27,401 in-sample trials, 105
-out-of-sample looks, 5 vault burns — three confirmed bots.**
+Three independent seeds, 200 generations each, on the 65-market universe (42
+structured markets, every one verified reachable at 1.0-2.4 Sharpe by an unfitted
+probe; 23 decoys). ~18,000 trials per seed. Twelve years of hourly history, a
+3.1-year validation slice.
 
 ```
-                                train   val  vault   CAGR   maxDD  confirmed at
-donchian  @ largecap_alt_1h      4.82   5.33   6.08   0.61    6.4%    look 5
-donchian  @ trend_fast_1h        4.13   4.41   3.24   0.36   11.1%    look 6
-ema_cross @ largecap_alt_1h      5.67   5.00   5.39   5.71   27.3%    look 7
+seed  5:  0 bots   (17,928 trials)
+seed 11:  0 bots   (17,713 trials)
+seed 21:  2 bots   (18,612 trials, 70 looks, 2 vault burns)
 
-pairwise correlation of daily vault returns
-                                 0      1      2
-0 donchian@largecap_alt_1h    1.00   0.01   0.63
-1 donchian@trend_fast_1h      0.01   1.00  -0.01
-2 ema_cross@largecap_alt_1h   0.63  -0.01   1.00
+              min 0 | median 0 | max 2
 ```
 
-Five further candidates cleared all eleven gates and were turned away as
-re-parameterisations of a bot already held. Two reached the vault and were rejected
-there, both at gate 10. All three winners landed on markets with real structure.
+Seed 21's two:
 
-**The 0.63 deserves naming rather than hiding behind the 0.70 threshold.** The two
-bots on `largecap_alt_1h` share 40% of their variance. They pass the duplicate
-check, but they are not two independent positions and should not be sized as
-though they were. The honest description is two edges and a partial third.
+```
+donchian @ alt_perp_4h        validation 1.89 | vault 2.36 | maxDD 22.8%
+ensemble @ largecap_alt_1h    validation 5.30 | vault 6.87 | maxDD  4.8%
+```
 
-### What actually moved the number
+Neither was found by the other two seeds. **A bot only one seed ever located is a
+candidate, not a finding.**
 
-Three expansions were tried, in this order:
+### This invalidates the narrative the earlier sections told
 
-| Change | Bots found |
-|---|---|
-| 5 → 16 structured markets | 1 |
-| 14 → 22 strategies, 7 → 10 families | 1 |
-| 1.28 → 3.14 year validation slice | **3** |
+Three expansions were run, each with a mechanism that sounded right, each reported
+as a single number:
 
-The first two were built properly and changed nothing. The new families were used —
-`vol_squeeze` took 11 promotions, `xs_momentum` 5, `kalman_trend` 4 — and died in
-the gauntlet. **The binding constraint was never the search space.** Gate 10 needs
-the observed Sharpe to clear its hurdle by ~1.645 standard errors, and that error
-scales as 1/sqrt(years): over 1.28 years the margin a bot must clear is ~1.45, over
-3.14 years it is ~0.93. Widening the search adds candidates *and* raises the bar,
-and the two cancel. Lengthening the history shrinks the error bar without touching
-the bar at all.
+| Change | Reported | What it actually was |
+|---|---|---|
+| 5 -> 16 structured markets | 1 bot | one draw |
+| 14 -> 22 strategies, 7 -> 10 families | 1 bot | one draw |
+| 1.28 -> 3.14 year validation slice | 3 bots | one draw, and the high one |
+| 30 -> 65 markets | 0, 0, 2 | **a distribution** |
 
-That distinction matters for reading any of these numbers: the third run did not
-make passing easier, it made the evidence stronger. Gate 10 still rejected both
-`alt_perp_4h` candidates at the vault.
+The seed spread (0 to 2, and 1 to 3 on the previous universe) is wider than every
+difference those expansions were credited with. The effects were inside the noise.
+The explanations were plausible, the measurements were real, and the conclusions
+were unsupported — read from a sample of one, three times running.
 
-### The calibration was re-earned at this data length
+That is the same multiple-testing error this project is built to prevent, committed
+one level above where every defence sits. Gate 10 deflates for candidates tested
+against held-out data. **Nothing deflates for runs performed and best-of quoted.**
+The gauntlet cannot see the experimenter.
 
-`null-test` at the same 110k bars returns **0 false positives**. A clean null at
-45k bars would not have licensed a claim at 110k — the gates' power changes with
-the sample, so the calibration has to be run at the length the result is quoted on.
+`python3 -m cryptobot.run sweep --seeds 1 2 3 4 5` now makes the distribution the
+default way to ask "how many bots", and flags any bot a single seed found.
+
+### What the run does still establish
+
+The calibration holds: `null-test` on this 65-market universe returns **0 false
+positives**, so the gates are not leaking on a universe with twice as many markets
+to get lucky on. Both winners landed on structured markets; no seed ever confirmed a
+bot on one of the 23 decoys. The machinery works. What it does not do is produce a
+repeatable count, and a factory whose output changes by 2 bots on the RNG alone
+cannot support a claim finer than its own spread.
 
 ### About those Sharpe numbers
 
-3.2 to 6.1 are not plausible for a real market and are not claims about one. These
-are series this repo generated, with trend components this repo inserted at
-strengths this repo chose. What the run establishes is that the machinery works end
-to end, that its numbers survive being attacked, and that it reports one bot when
-one bot is what the data supports.
+2.4 and 6.9 are not plausible for a real market and are not claims about one. These
+are series this repo generated with structure this repo inserted at strengths this
+repo chose.
 
 ---
 
