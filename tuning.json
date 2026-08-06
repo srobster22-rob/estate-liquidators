@@ -41,6 +41,8 @@
     "lever_kill_lights": 15.0,
     "lever_go_quiet": 20.0,
     "lever_cooldown_seconds": 120.0,
+    "go_quiet_duration_seconds": 45.0,
+    "go_quiet_hush_multiplier": 0.35,
     "_lever_note": "R17: without a cooldown the levers are pulled 5x a night and COLLECT never happens at all. 120s puts the baseline crew at 14% COLLECT, which is what DESIGN 6.5 wanted.",
     "tier_patrol_at": 30.0,
     "tier_pursue_at": 60.0,

@@ -143,6 +143,12 @@ assert_("cs/Disturbance", D + "tier_collect_at", r"CollectAt\s*=\s*([\d.]+)f")
 assert_("cs/Disturbance", D + "light_wing_gain", r"LightWingGain\s*=\s*([\d.]+)f")
 assert_("cs/Disturbance", D + "lever_kill_lights", r"KillLightsRelief\s*=\s*([\d.]+)f")
 assert_("cs/Disturbance", D + "lever_go_quiet", r"GoQuietRelief\s*=\s*([\d.]+)f")
+assert_("cs/Disturbance", D + "lever_cooldown_seconds",
+        r"LeverCooldownSeconds\s*=\s*([\d.]+)f")
+assert_("cs/Disturbance", D + "go_quiet_duration_seconds",
+        r"GoQuietDurationSeconds\s*=\s*([\d.]+)f")
+assert_("cs/Disturbance", D + "go_quiet_hush_multiplier",
+        r"GoQuietHushMultiplier\s*=\s*([\d.]+)f")
 
 CS_RETRIEVAL = r"RetrievalChance\(CuratorTier t\).*?\};"
 assert_("cs/Disturbance", "retrieval.patrol", r"CuratorTier\.Patrol\s*=>\s*([\d.]+)f",
@@ -191,6 +197,11 @@ for js in ("js/proto", "js/proto3d"):
         assert_(js, f"curse.attention_multiplier.{grade}", rf"{grade}\s*:\s*([\d.]+)", JS_ATT)
         assert_(js, f"curse.ledger_fee.{grade}", rf"{grade}\s*:\s*([\d.]*\d)", JS_FEE)
 
+assert_("js/proto3d", D + "lever_go_quiet", r"GO_QUIET\s*=\s*(\d+)")
+assert_("js/proto3d", D + "lever_cooldown_seconds", r"LEVER_COOLDOWN_S\s*=\s*(\d+)")
+assert_("js/proto3d", D + "go_quiet_duration_seconds", r"GO_QUIET_S\s*=\s*(\d+)")
+assert_("js/proto3d", D + "go_quiet_hush_multiplier", r"GO_QUIET_HUSH\s*=\s*([\d.]+)")
+
 assert_("js/proto", "loudness.door", r"door\s*:\s*(\d+)", JS_L)
 assert_("js/proto", "loudness.walk", r"walk\s*:\s*(\d+)", JS_L)
 
@@ -222,6 +233,8 @@ assert_("py/disturbance", D + "per_cursed_item_floor", r"^FLOOR_PER_CURSED = ([\
 assert_("py/disturbance", D + "lever_kill_lights", r"^KILL_LIGHTS = ([\d.]+)")
 assert_("py/disturbance", D + "lever_go_quiet", r"^GO_QUIET = ([\d.]+)")
 assert_("py/disturbance", D + "lever_cooldown_seconds", r"^LEVER_COOLDOWN_S = ([\d.]+)")
+assert_("py/disturbance", D + "go_quiet_duration_seconds", r"^GO_QUIET_S = ([\d.]+)")
+assert_("py/disturbance", D + "go_quiet_hush_multiplier", r"^GO_QUIET_HUSH = ([\d.]+)")
 for key in ("walk", "sprint", "appraise", "door", "crowbar", "break_small",
             "break_large", "radio", "dolly"):
     assert_("py/disturbance", f"loudness.{key}", rf"\"{key}\":\s*(\d+)", PY_L)
@@ -280,8 +293,8 @@ for key, name in (("pocket", "pocket"), ("armful", "armful"),
 # fine; being silent about it is not.
 
 WAIVERS = [
-    ("cs/Disturbance", "disturbance.lever_cooldown_seconds",
-     "rationing is the caller's job - the model exposes KillLights()/GoQuiet(), Phase 4 gates them"),
+    ("py/integrated", "disturbance.go_quiet_*", "levers not modelled"),
+    ("py/curse_test", "disturbance.go_quiet_*", "levers not modelled"),
     ("py/integrated", "disturbance.lever_cooldown_seconds", "levers not modelled"),
     ("py/curse_test", "disturbance.lever_cooldown_seconds", "levers not modelled"),
     ("cs/Loudness", "attention.*", "audio module - no attention model"),
@@ -322,7 +335,10 @@ WAIVERS = [
      "contact-based retrieval: the Curator reaching you takes the item outright, no roll"),
     ("js/*", "van.slot_cost.*", "prototype counts items, not weight classes"),
     ("js/*", "van.max_slots", "no shelving upgrades - single night"),
-    ("js/*", "disturbance.lever_*", "levers are Phase 4; not in the prototype"),
+    ("js/proto", "disturbance.lever_*", "levers are Phase 4; not in the 2D prototype"),
+    ("js/proto", "disturbance.go_quiet_*", "no levers in the 2D prototype"),
+    ("js/proto3d", "disturbance.lever_kill_lights",
+     "no per-wing lighting in the prototype, so there are no lights to kill"),
     ("js/*", "disturbance.light_wing_gain", "no breaker/lighting system in the prototype"),
     ("js/*", "night.crew", "CREW = 1 deliberately: this is the solo prototype (R12)"),
     ("js/*", "night.seconds",

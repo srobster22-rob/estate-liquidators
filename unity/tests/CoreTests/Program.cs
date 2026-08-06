@@ -164,6 +164,25 @@ class Program
         T.Near("cursed cargo lifts the floor 7/item", new Disturbance(4, 720).Floor(3),
             21f, 0.01f);
 
+        // D-23. Unrationed, the levers delete COLLECT outright: pull-on-sight is
+        // five uses a night and 0% of the night in the top tier, against 14% on
+        // the cooldown. The gate belongs to the model, not to a call site.
+        var d4 = new Disturbance(4, 720);
+        for (int i = 0; i < 60; i++) d4.AddNoise(NoiseKind.DoorSlam, 1f);
+        float beforeLever = d4.Value;
+        T.Check("go quiet works when the lever is ready", d4.GoQuiet());
+        T.Near("...and relieves 20", beforeLever - d4.Value, 20f, 0.01f);
+        T.Check("the crew is hushed afterwards", d4.Quiet);
+        T.Near("hush scales noise to 0.35", d4.Hush, 0.35f, 0.001f);
+        T.Check("a second pull is refused on cooldown", !d4.GoQuiet());
+        T.Check("and so is the other lever - one valve, one cooldown",
+            !d4.KillLights());
+        for (int i = 0; i < 60; i++) d4.Tick(1f, 0);
+        T.Check("still on cooldown after a minute", !d4.LeverReady);
+        T.Check("the hush has expired after 45s", !d4.Quiet);
+        for (int i = 0; i < 61; i++) d4.Tick(1f, 0);
+        T.Check("ready again after 120s", d4.LeverReady);
+
         T.Head("ECONOMY  (ECONOMY.md, curse tail risk from R11)");
         T.Near("armful costs one slot", Van.Slots(WeightClass.Armful), 1f, 0.001f);
         T.Near("cart costs five", Van.Slots(WeightClass.Cart), 5f, 0.001f);

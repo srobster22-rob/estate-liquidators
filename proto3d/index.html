@@ -157,6 +157,11 @@ const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 // R9 measured +2/cursed item as inert and recommended +7; this file was still
 // on +2 until R16, and nothing was watching it. LOOP_LOG R16.
 const FLOOR_PER_CURSED=7;
+// D-23: relief has to be rationed. Unlimited, the crew pulls this whenever the
+// meter climbs and the Curator's top tier stops existing - measured at 0% of the
+// night in COLLECT against 14% on a 120s cooldown (LOOP_LOG R17).
+const GO_QUIET=20, LEVER_COOLDOWN_S=120, GO_QUIET_S=45, GO_QUIET_HUSH=0.35;
+let quietUntil=-1, leverReady=0;
 const DECAY_PER_S=(50*(CREW/4))/60;
 const L={sprint:45, appraise:48, drop:90};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
@@ -227,7 +232,7 @@ function reset(){
   van={slots:VAN_SLOTS,cargo:[]};
   t=0;dist=0;over=false;
   document.getElementById("end").style.display="none";
-  stats={appraised:0, refused:0};
+  stats={appraised:0, refused:0}; quietUntil=-1; leverReady=0;
 }
 reset();
 
@@ -237,6 +242,7 @@ addEventListener("keydown",e=>{
   keys[e.code]=true;
   if(e.code==="KeyE"&&started&&!over) grabDrop();
   if(e.code==="KeyQ"&&started&&!over) leaveIt();
+  if(e.code==="KeyG"&&started&&!over) goQuiet();
   if(e.code==="KeyR"&&over){ reset(); document.getElementById("end").style.display="none"; }
 });
 addEventListener("keyup",e=>keys[e.code]=false);
@@ -252,7 +258,18 @@ addEventListener("mousemove",e=>{
   player.pitch = Math.max(-1.35,Math.min(1.35,player.pitch));
 });
 
-function noise(l,impulse,dt){ dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt)); }
+function noise(l,impulse,dt){
+  const hush = t<quietUntil ? GO_QUIET_HUSH : 1;
+  dist=Math.min(100, dist + (impulse? l*IMPULSE*hush : l*SUSTAINED*dt*hush));
+}
+// GO QUIET. Costs you the ability to do it again for two minutes, which is the
+// whole point: the valve only relieves pressure if it is not always available.
+function goQuiet(){
+  if(t<leverReady||t<quietUntil) return false;
+  dist=Math.max(floorNow(), dist-GO_QUIET);
+  quietUntil=t+GO_QUIET_S; leverReady=t+LEVER_COOLDOWN_S;
+  return true;
+}
 function floorNow(){ return RATCHET_END*(t/NIGHT)
   + van.cargo.filter(c=>c.grade!=="clean").length*FLOOR_PER_CURSED; }
 const tierOf=d=>d>=85?"COLLECT":d>=60?"PURSUE":d>=30?"PATROL":"DORMANT";
@@ -494,6 +511,9 @@ function hud(){
     `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${QUOTA.toLocaleString()}<br>`+
     (held?`CARRYING ${held.known?"$"+held.value+" "+held.grade.toUpperCase():"UNAPPRAISED"}<br>`:"")+
     (marked?`<span style="color:#9fc4d6">IT IS COMING FOR YOU</span><br>`:"")+
+    (t<quietUntil?`<span style="color:#7f9f8f">HANDS OFF — CREW QUIET ${(quietUntil-t).toFixed(0)}s</span><br>`
+      :t<leverReady?`<span style="color:#6b6864">go quiet ready in ${(leverReady-t).toFixed(0)}s</span><br>`
+      :`<span style="color:#8b8880">[G] go quiet</span><br>`)+
     `<span style="color:#8b8880">${tierOf(dist)} ${dist.toFixed(0)}</span>`+
     `<div class="bar"><i style="width:${dist}%"></i></div>`+
     `<span style="color:#8b8880">stamina</span>`+
@@ -519,6 +539,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   step:(n=1,dt=1/60)=>{started=true;for(let i=0;i<n;i++) if(!over) step(dt);return window.__g.state();},
   press:(k,v=true)=>keys[k]=v, look:(y,p=0)=>{player.yaw=y;player.pitch=p;},
   grab:()=>grabDrop(), leave:()=>leaveIt(), stats:()=>({...stats}),
+  quiet:()=>goQuiet(), levers:()=>({quietFor:Math.max(0,quietUntil-t),
+    readyIn:Math.max(0,leverReady-t)}),
   aimed:()=>{ const it=player.holding||aimedItem();
     return it?{value:it.value,grade:it.grade,tier:it.tier,known:!!it.known,
                refused:!!it.refused}:null; },

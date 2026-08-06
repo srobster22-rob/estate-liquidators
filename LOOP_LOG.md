@@ -284,6 +284,22 @@ foyer to keep V3 happy, which shortened the Curator's approach to four doors and
 fault evaporate. **A planted fault you cannot see fire is indistinguishable from no fault at
 all**, which is the same failure this round exists to fix, one level up.
 
+R21 · Ported D-23's rationed relief out of the simulation and into the things that will
+become the game. `proto3d` gets **[G] go quiet** — 20 points off the meter, a 45-second
+crew-wide hush that scales noise to 0.35, and a 120-second lockout with the countdown on the
+HUD so the ration is *visible* rather than a mysterious refusal. The C# core enforces the
+cooldown itself: `KillLights()` and `GoQuiet()` return `bool` and refuse while locked, because
+a rule that lives in a call site is a rule that gets lost. · Promoted the hush duration and
+multiplier to `tuning.json` — they had been bare literals inside `sim/disturbance.py`, which
+is the same shape of gap R16 found in the prototypes, caught this time before it could drift.
+Drift coverage now runs to 192 assertions across ten files, all mutation-killed. · The smoke
+test drives the lever in Chromium: the drop is canonical, the second pull is refused, and the
+hush expires on schedule. · **Unverified, and it is the second round in a row saying so:** the
+C# additions — the cooldown gate, `Quiet`, `Hush`, and eight new assertions in the test suite
+— have not been near a compiler, because `dotnet` cannot be installed in this environment. The
+first thing to run on a machine that has it is `python3 check.py`; the C# line must read PASS,
+not SKIP.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -306,13 +322,20 @@ appraise and then take everything anyway, the +25% is sitting on the table.
 plinth-to-van when the check is about the Curator's approach. All ten checks now have an
 estate built to break them and are asserted to fire on demand.
 
-**4 — Port the lever cooldown (D-23) into the implementations.** It exists in `tuning.json`
-and `sim/disturbance.py` only; the C# core exposes `KillLights()`/`GoQuiet()` with no gate,
-and both prototypes have no levers at all. Currently waived in the drift checker with reasons.
+~~**4 — Port the lever cooldown (D-23) into the implementations.**~~ **Done, R21** — enforced
+inside the C# model, playable as [G] in proto3d, with the hush constants promoted to
+`tuning.json`. The 2D prototype still has no levers, deliberately.
 
-**5 — Unverified, and it needs a machine with `dotnet`.** The C# core suite has not been run
-since R13. R16 added three named lever constants to `Disturbance.cs` that no compiler has
-seen. First thing on the Mac: `python3 check.py` and confirm the C# line says PASS, not SKIP.
+**5 — Unverified, and growing. This needs a machine with `dotnet`.** The C# core suite has
+not run since R13. Since then R16 added three lever constants, R21 added the cooldown gate,
+`Quiet`/`Hush`, and eight assertions — none of it compiled, because the package proxy in this
+environment refuses the .NET installer. **This is now the largest unverified surface in the
+project.** First thing on the Mac: `python3 check.py`, and the C# line must read PASS.
+
+**6 — The next real information is a playtest, not another round.** Phases 0–2 are unchanged
+and unstarted: two people, a door, spatial voice. Everything the simulations can settle at
+this fidelity has been settled twice over; what is left is whether four friends in a hallway
+find it funny.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed. The next real information comes from Phase 0, not from

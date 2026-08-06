@@ -54,6 +54,8 @@ FLOOR_PER_CURSED = 7.0
 # the pressure it exists to relieve. At 120s the baseline crew spends 15% of the
 # night in COLLECT, which is what DESIGN 6.5 was aiming at all along.
 LEVER_COOLDOWN_S = 120.0
+GO_QUIET_S = 45.0            # how long the crew-wide hush lasts
+GO_QUIET_HUSH = 0.35         # noise rates while hushed
 
 # AUDIO-SPEC 1.2
 L = {"walk": 20, "sprint": 45, "appraise": 48, "door": 60, "crowbar": 75,
@@ -92,7 +94,7 @@ def run_night(seed=0, scan_rate=0.7, use_levers=True, ghost_static=0,
         # it means the meter only ever goes up: four players walking generate 1.6/s
         # against a decay of 0.017/s, which pins the meter at 100 inside a minute.
         # That inconsistency in the spec is now called out explicitly.
-        hush = 0.35 if quiet else 1.0
+        hush = GO_QUIET_HUSH if quiet else 1.0
 
         # Sustained sources, per player.
         for _ in range(CREW):
@@ -137,7 +139,7 @@ def run_night(seed=0, scan_rate=0.7, use_levers=True, ghost_static=0,
                 lever_uses += 1
                 next_lever = t + lever_cooldown
             elif d > 82:
-                quiet_until = t + 45.0
+                quiet_until = t + GO_QUIET_S
                 d -= GO_QUIET
                 lever_uses += 1
                 next_lever = t + lever_cooldown

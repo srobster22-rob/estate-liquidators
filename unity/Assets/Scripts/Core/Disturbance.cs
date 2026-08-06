@@ -34,6 +34,26 @@ namespace EstateLiquidators.Core
         public const float KillLightsRelief = 15f;
         public const float GoQuietRelief = 20f;
 
+        // D-23. Relief has to be RATIONED or it deletes the top tier of the
+        // escalation: a crew that pulls a lever whenever the meter crosses 78
+        // pulls five a night and spends 0% of the night in COLLECT, against 14%
+        // on this cooldown. Enforced here rather than left to the caller,
+        // because a rule that lives in a call site is a rule that gets lost.
+        public const float LeverCooldownSeconds = 120f;
+        public const float GoQuietDurationSeconds = 45f;
+        public const float GoQuietHushMultiplier = 0.35f;
+
+        float _leverReadyAt;
+        float _quietUntil;
+
+        /// <summary>True while the crew-wide hush is in effect.</summary>
+        public bool Quiet => Elapsed < _quietUntil;
+
+        /// <summary>Noise rates are scaled by this while hushed.</summary>
+        public float Hush => Quiet ? GoQuietHushMultiplier : 1f;
+
+        public bool LeverReady => Elapsed >= _leverReadyAt;
+
         readonly int _crew;
         readonly float _nightSeconds;
 
@@ -67,11 +87,24 @@ namespace EstateLiquidators.Core
                     MathF.Min(100f, Value - DecayPerSecond * dt));
         }
 
-        /// <summary>Lever: kill the lights. DESIGN 6.5.</summary>
-        public void KillLights() => Value = MathF.Max(0f, Value - KillLightsRelief);
+        /// <summary>Lever: kill the lights. DESIGN 6.5. False if on cooldown.</summary>
+        public bool KillLights()
+        {
+            if (!LeverReady) return false;
+            Value = MathF.Max(0f, Value - KillLightsRelief);
+            _leverReadyAt = Elapsed + LeverCooldownSeconds;
+            return true;
+        }
 
-        /// <summary>Lever: 45 seconds of crew-wide quiet.</summary>
-        public void GoQuiet() => Value = MathF.Max(0f, Value - GoQuietRelief);
+        /// <summary>Lever: 45 seconds of crew-wide quiet. False if on cooldown.</summary>
+        public bool GoQuiet()
+        {
+            if (!LeverReady) return false;
+            Value = MathF.Max(0f, Value - GoQuietRelief);
+            _quietUntil = Elapsed + GoQuietDurationSeconds;
+            _leverReadyAt = Elapsed + LeverCooldownSeconds;
+            return true;
+        }
 
         public void LightWing() => Value = MathF.Min(100f, Value + LightWingGain);
 

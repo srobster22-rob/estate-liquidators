@@ -144,6 +144,29 @@ for (const [name, file, hook] of [
     const twice = await page.evaluate(() => window.__g.leave());
     ok("refusing the same item twice does not double-count", twice === false);
 
+    // D-23: relief is rationed. Unlimited, the lever deletes the Curator's top
+    // tier entirely, so the cooldown is the mechanic, not a detail.
+    const lever = await page.evaluate(() => {
+      const g = window.__g;
+      dist = 70;                       // somewhere worth relieving
+      const before = dist;
+      const first = g.quiet();
+      const after = dist;
+      const again = g.quiet();         // must refuse: it is on cooldown
+      return { before, after, first, again, state: g.levers() };
+    });
+    ok("go quiet drops Disturbance by the canonical amount",
+       lever.first === true &&
+       Math.abs((lever.before - lever.after) - T.disturbance.lever_go_quiet) < 1e-9,
+       `${lever.before} -> ${lever.after}`);
+    ok("and cannot be pulled again until the cooldown expires",
+       lever.again === false &&
+       Math.abs(lever.state.readyIn - T.disturbance.lever_cooldown_seconds) < 1.0,
+       JSON.stringify(lever.state));
+    ok("the hush lasts the canonical duration",
+       Math.abs(lever.state.quietFor - T.disturbance.go_quiet_duration_seconds) < 1.0,
+       JSON.stringify(lever.state));
+
     // The band readout is what makes "is this worth a slot" answerable at all.
     const shown = await page.evaluate(() => {
       const it = aimedItem();
