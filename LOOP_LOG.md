@@ -355,6 +355,24 @@ do: it drives the Disturbance integrator, not the game. A bot that plays a night
 appraises, refuses, hauls — and reproduces R22's policy ordering in the actual implementation
 is the obvious next step, and it needs navigation the QA hook does not yet provide.
 
+R25 · Taught the QA harness to play. `tools/play_night.mjs` runs whole nights in `proto3d`
+under a named policy — walking the room graph through doorway centres at the game's own
+speeds, appraising through the real three-second scan, hauling to the real van, with the
+clock and the Curator running — so an economy claim can finally be tested against the thing
+people will play rather than against Python. 30 seeded nights per policy. · **R22's central
+prediction reproduces in the implementation.** VALUE_70, which judges by sticker price,
+accumulates the most cursed cargo of any policy and **loses the van on 53% of its nights**;
+judging on the margin carries no more curses than hauling blind and banks twice as much. The
+coupling is real in code, not just in a model. · The orderings transfer; the dollar figures do
+not, and the write-up says so — the prototype is one player, 210 seconds and seven rooms
+against the model's four players, 720 seconds and a depth-gated estate, so blind hauling has
+no scarcity to exploit here and does correspondingly worse. · **The bot's first run was the
+round's real lesson:** BLIND banked 1.6 items a night while visiting 26 shelves, because the
+harness walked *onto* each item and looked level, missing the aim cone — items sit at knee
+height and the camera is at 1.62m. The same mistake R19's test made, in a different file, two
+rounds later. A harness bug that produces a plausible-looking small number is the most
+dangerous kind, and this one would have "proved" the appraiser was worth +900%.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -387,7 +405,14 @@ not run since R13. Since then R16 added three lever constants, R21 added the coo
 environment refuses the .NET installer. **This is now the largest unverified surface in the
 project.** First thing on the Mac: `python3 check.py`, and the C# line must read PASS.
 
-**6 — Teach the QA hook to navigate.** R24 proved the prototype's Disturbance integrator
+~~**6 — Teach the QA hook to navigate.**~~ **Done, R25** — `tools/play_night.mjs` plays whole
+nights and reproduced R22's coupling in the implementation. What it still cannot exercise is
+movement and collision, since it steers around walls by construction rather than through them.
+
+**6b — The bot is a bot, not a player.** It walks to the nearest item every time, never
+sprints, never panics, never drops a vase to save a friend. Its value is as a regression on
+the economy, not as evidence about play. Do not let a green table here substitute for the
+Phase 2 gate. R24 proved the prototype's Disturbance integrator
 matches canon second by second; the natural next check is a bot that plays a whole night under
 a named policy and reproduces R22's ordering (MARGIN beats BLIND beats SCAN) in the real
 implementation rather than in Python. That needs room-to-room pathing through the door graph,

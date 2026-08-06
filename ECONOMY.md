@@ -393,6 +393,36 @@ value, not the 50–70th on sticker value. Every widening of this model has lowe
 appraiser's headline number and strengthened the reason to have one — it is the only way to
 run the marginal rule at all.
 
+## 10.3 R25 — the same claims, measured in the game instead of in Python
+
+`tools/play_night.mjs` drives `proto3d` itself — real loop, real clock, real Curator, real
+three-second scans — under each policy, 30 seeded nights each. The bot walks the room graph
+through doorway centres at the game's own speeds; it does not solve collision, so it cannot
+catch a movement bug, but everything downstream of movement is the real implementation.
+
+| Policy | net $ | items | cursed | nights ruined | appraised | refused |
+|---|---:|---:|---:|---:|---:|---:|
+| BLIND | $3,317 | 14.0 | 4.3 | 27% | 0 | 0 |
+| VALUE_70 — sticker price | $5,223 | 11.0 | **6.5** | **53%** | 23.1 | 11.7 |
+| MARGIN_30 | $5,622 | 12.6 | 4.8 | 37% | 21.7 | 8.8 |
+| **MARGIN_50** | **$6,638** | 10.2 | 4.9 | 27% | 25.0 | 14.6 |
+
+**R22's failure mode reproduces in the implementation.** VALUE_70 — the policy that judges by
+sticker price — accumulates the most cursed cargo of any policy and **loses the van on more
+than half its nights**, exactly as the Python model predicted and for the same reason: the
+curses are the valuable items. Judging on the margin carries the same amount of cursed cargo
+as hauling blind while banking twice as much.
+
+**What does not transfer, and why.** The prototype is one player, a 210-second night and seven
+rooms; `integrated.py` is four players, 720 seconds and a depth-gated estate. In the prototype
+the van is easy to fill, so blind hauling has no scarcity to exploit and does far worse than in
+the model. The *orderings* are what carry: margin beats sticker price, sticker price is a curse
+magnet, and appraising pays. Do not port a dollar figure from this table into a spec.
+
+**Sample size is 30 nights per policy** and ruin is a coin flip with p≈0.3, so the ruin column
+carries roughly ±8 points. It is enough to separate 53% from 27%; it is not enough to separate
+27% from 37%.
+
 **Cursed cargo is no longer inert, and it changes the ordering.** With the +7 floor, sweeping
 0 → 8 cursed items costs a blind crew 12% of earnings ($6,503 → $5,744) against the 2.9% R9
 measured at +2 — and at 8 aboard, always-scanning overtakes selective scanning, because a van
