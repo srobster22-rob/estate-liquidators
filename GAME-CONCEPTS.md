@@ -1,10 +1,11 @@
-# Thirty-Nine Game Concepts
+# Forty Game Concepts
 
-`GAMES-PROJECT-PROMPT.md`, run once, then corrected twice and verified once. **39 live
-concepts** in nine families, a ranked top eight, and a graveyard of thirty-two.
+`GAMES-PROJECT-PROMPT.md`, run once, then corrected and verified across five passes. **40 live
+concepts** in nine families, a ranked top eight, and a graveyard of thirty-one.
 
-All 45 cards have now been checked against the market. **Seven were games that already exist.**
-The [verification ledger](#verification-ledger) below is the current source of truth; where a
+All 47 cards have been checked against the market. **Seven were games that already exist; one
+was recovered from the graveyard once its rejection was audited.** The
+[verification ledger](#verification-ledger) below is the current source of truth; where a
 card's `Nearest` field disagrees with it, the ledger is newer.
 
 **Pass two — the action amendment.** The first pass produced 40 concepts with no twitch, no aim
@@ -30,6 +31,12 @@ reasons, one of which — an unchecked assumption that LLM referees can't be con
 killed two concepts and was setting the kill condition on a live card. *Arsenic* falsifies it,
 and #34 Understudy went from runner-up to **#3** as a result. Write-up in
 [Auditing the rejections](#auditing-the-rejections).
+
+**Pass five — one concept came back.** Graveyard entry 17 was reopened as **#47 Reservation**,
+searched first, and the search *supplied the design* rather than merely clearing it: the
+original rejection was an accurate description of the naive build, and the fix is
+architectural. One recovery against seven kills is the honest ratio — **the audit is worth
+running, and it is not a way to get your ideas back.**
 
 **What this is for.** Finding the one thing to prototype on Saturday. Not a list to feel good
 about. Every card carries a written-down result that would make you drop it and a test small
@@ -70,10 +77,10 @@ Tags: `SOLO` shippable by one person · `NO COMBAT` no combat, no health bar any
 `UNMARKETABLE` mechanically true, commercially unwise, included deliberately ·
 `POPULATION` needs a live player base to function — the heaviest structural dependency here.
 
-Quota check, post-verification: 9 families, **39 live concepts**, 7 killed by search ·
-0 co-op horror (the one entry died) and 1 solo horror · 17 solo-shippable · 26 with no combat ·
-**4 with combat as the point — the action quota is breached, see below** · 7 unmarketable ·
-8 needing a population.
+Quota check, current: 9 families, **40 live concepts**, 7 killed by search, 1 recovered from
+the graveyard · Family 5 is now at 6, the per-family cap · 0 co-op horror (the one entry died)
+and 1 solo horror · 17 solo-shippable · 27 with no combat · **4 with combat as the point —
+the action quota is breached, see below** · 7 unmarketable · 8 needing a population.
 
 ---
 
@@ -83,7 +90,13 @@ All 45 cards checked against the market on **2026-08-06**. This table is the doc
 current source of truth; where a card's `Nearest` field disagrees with this ledger, the
 ledger is newer.
 
-**Of 46 cards written: 7 dead, 4 wounded, 35 survived.** 39 remain live.
+**Of 47 cards written: 7 dead, 4 wounded, 36 survived.** 40 remain live.
+
+**#47 Reservation** was written *after* its search rather than before, which is the order this
+document spent four passes learning. The search didn't just clear it — it supplied the
+architecture the concept had been missing, and the original rejection turned out to be an
+accurate description of the version without that architecture. Recovering it cost four
+searches and about twenty minutes.
 
 | Verdict | Count | Cards | Meaning |
 |---|---|---|---|
@@ -589,6 +602,52 @@ the deceased actually loved.**
   short film, ship it as a ninety-minute game deliberately rather than padding it to eight.
 - **Scope:** 2–3 people, 8 months.
 
+### 47 · Reservation `NO COMBAT`
+**You haggle in free text with a merchant who isn't allowed to know their own walk-away
+price.**
+
+*Reopened from graveyard entry 17 and rewritten. Searched before the card was written, per
+the rule the rejection audit produced — and the search changed the design rather than just
+clearing it.*
+
+The merchant's reservation price is a number held by a solver. The language model never sees
+it and never decides anything; it only renders the position it's handed. You probe, you offer,
+you cite the competitor down the road, you threaten to walk. Ninety seconds: work out which of
+this merchant's levers is real today, and spend it.
+
+- **The bet: separate the *position* from the *voice*.** The model owns none of the outcome —
+  it is the merchant's mouth, not their mind. That converts "can I trick the AI" into "can I
+  find the lever," which is the entire difference between a jailbreak contest and a game.
+- **Why this is back.** The original rejection said an LLM merchant is "either
+  prompt-exploitable or arbitrary." A developer's write-up of exactly this — [*Game AI NPCs:
+  Architecture, Not Better Prompts*](https://medium.com/@ashutosh_veriprajna/i-watched-a-playtester-talk-an-ai-merchant-out-of-a-quest-key-with-one-sentence-3b58e39bd1ef) — opens with a playtester talking an AI merchant out of a
+  quest key **in one sentence**, and concludes: *"you cannot patch a jailbreak with a better
+  prompt… the root cause is that the model was allowed to decide a game outcome at all."*
+  So the rejection was right about every naive build and wrong about the concept. *Arsenic*
+  independently shows the fix — a validating agent above the model — working in a shipped
+  product. **The reopened bet is the architecture, which is precisely what the original card
+  didn't have.**
+- **Nearest:** *Suck Up!*, [*Whispers from the Star*](https://wfts.anuttacon.com/) (Steam, well reviewed), *1001 Nights*
+  and *Wanderfolk* are all free-text persuasion of AI characters — and in all of them the
+  model owns the outcome, which is the thing this card refuses to do. *Recettear* is the
+  mechanical ancestor with no language in it: a hidden accept/reject curve you learn by
+  probing. Research to read first: [NEGOTIATIONARENA](https://dl.acm.org/doi/10.5555/3692070.3692228) and [*Bounded Autonomy: Controlling LLM
+  Characters in Live Multiplayer Games*](https://arxiv.org/html/2604.04703v1), which is this architecture written up properly.
+- **Kills it — two ways, and they point in opposite directions.** (a) Players find a lever that
+  *is* model-mediated after all, and one sentence moves the solver. It will be posted online
+  within a day, because players are optimisers and this is the most efficient path if it
+  exists at all. (b) The levers turn out to be enumerable: four of them, found in one session,
+  after which the merchant is a vending machine with dialogue. **The band between exploitable
+  and menu is the whole design**, and nothing about it is answerable from a design document.
+- **Test:** no game. A chat window, one merchant, a reservation price in a spreadsheet, three
+  legible levers, twenty people. Measure two things: **how many attempt a jailbreak, and
+  whether that drops after the first failure** — if it doesn't, the architecture isn't reading
+  as a rule and (a) is already true. Then check whether probers actually beat non-probers on
+  price; if they don't, there's no skill in it. One day.
+- **Scope:** 2 people, 7 months. **Per-session inference cost is a unit economic, not a line
+  item** — same flag as Understudy (#34), and the two share enough architecture that building
+  either one part-answers the other.
+
 ---
 
 ## Family 6 — One Strange Input
@@ -1072,6 +1131,14 @@ little information — several concepts sit within noise of each other on cost-t
 the ordering between them is close to arbitrary. **Treat the top three as a recommendation and
 the rest as a set.**
 
+**Which is why #47 Reservation is not in the table.** Its test is one day, it's freshly
+searched, and on the stated criterion it lands somewhere around 6th — indistinguishable from
+Foley, The Commons, and the Pack/Removals cluster. Slotting it in would churn the same three
+positions a fourth time and communicate a precision the criterion doesn't have. **It belongs
+in the noise band with them, and saying so is more useful than picking an order.** If you want
+a tiebreak between that group, the honest one isn't cost-to-disprove — it's which subject you
+actually want to spend six months inside.
+
 **What the sweep did to the table's credibility.** Two of the original eight were occupied
 games. That is a 25% error rate in the section of the document that was supposed to be its
 most considered, and it was 25% for exactly one reason: the ranking was built before the
@@ -1119,8 +1186,9 @@ a prototype, and it decides whether #40 exists.
 
 ## The graveyard
 
-Thirty-two that were generated and cut, with the reason. This is the section that should make
-you trust the other thirty-nine.
+Thirty-two entries, **thirty-one still dead** — entry 17 was reopened as card #47 after its
+reason was audited, and the numbering is left intact so references resolve. This is the
+section that should make you trust the other forty.
 
 Entries 1–19 were cut by judgement during the first pass. Entries 20–25 came from the action
 pass — action is the most crowded space in games, so a pass that produced six keepers and cut
@@ -1185,13 +1253,12 @@ search is a record of the market.
     on contact.
 16. **Cozy crafting with a dark secret** — banned, arrived anyway on the second pass. That it
     keeps arriving is precisely why the ban is in the prompt.
-17. **Negotiating against LLM merchants** — ~~the merchant is either prompt-exploitable or
-    arbitrary, and those are the same failure.~~ **Same falsified prediction as entry 10.**
-    *Arsenic* demonstrates a constrained LLM agent holding a consistent position under
-    adversarial questioning, which is the mechanism this needed. **This is the one entry in
-    the graveyard I would now reopen** — it was cut on a guess, the guess is contradicted, and
-    unlike entry 10 no shipped game occupies the *merchant* framing. It needs a fresh card and
-    a search of its own before it earns one.
+17. ~~**Negotiating against LLM merchants**~~ — **reopened, searched, and rewritten as card
+    #47 "Reservation."** The original reason ("prompt-exploitable or arbitrary") turns out to
+    be *correct about every naive implementation* — a developer has published a playtest where
+    an AI merchant was talked out of a quest key in one sentence — and *wrong about the
+    concept*, because the fix is architectural: don't let the model own the outcome. Cut on a
+    guess that happened to describe the bad version. **The only entry to leave this graveyard.**
 18. **Physics game where you play the furniture** — funny for one screenshot.
 19. **City builder where citizens write their own laws** — ~~the rigorous version is
     *Democracy*; the fun version is a chat log; **nobody has found the middle**, and I don't
@@ -1273,7 +1340,7 @@ reasons was doing work elsewhere in the document.**
 | **10** LLM murderer | stands | "The referee-consistency problem" | *Arsenic* ships it and it works. **Occupied. The prediction was wrong** |
 | **13** Audio-only maze | stands | "The ceiling is documented and low" | *A Blind Legend* is well regarded; the **market** is small, not the ceiling. Two different reasons to walk away |
 | **14** Can't see yourself | stands | "Every playtest ends with players reading position off a teammate" | *Invisigun Heroes*. The real dynamic is self-revealing to locate yourself. **I invented the evidence** |
-| **17** LLM merchants | **reopen** | "Prompt-exploitable or arbitrary" | Same falsified prediction as 10 — and unlike 10, nothing occupies the merchant framing |
+| **17** LLM merchants | **reopened → #47** | "Prompt-exploitable or arbitrary" | True of every naive build, false of the concept. The fix is architectural. Now card #47 |
 | **19** Citizens write laws | stands | "**Nobody has found the middle**" | *Lawmaker* and *Polity* both found it. **Cut as unsolvable while two games were solving it** |
 
 Entries 5, 6, 9, 11, 12, 20, 21, 22, 23 checked out as stated — *Outer Wilds* and its cohort,

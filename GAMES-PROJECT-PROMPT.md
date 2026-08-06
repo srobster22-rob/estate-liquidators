@@ -147,6 +147,12 @@ there, are at the bottom.
 >   prefers.**
 > - **Assume taken until shown otherwise.** Write the cards with a pessimistic prior. "I found
 >   nothing" after a real search is a finding; "I can't recall anything" is not.
+> - **Search first because it designs, not only because it filters.** Searching before you
+>   write the card doesn't just tell you whether to bother — it routinely hands you the
+>   mechanism. One concept in this prompt's output came back from the graveyard because the
+>   search surfaced a developer post-mortem explaining *why* the naive version fails and what
+>   the fix is; the rejection had been correct about the naive version and wrong about the
+>   concept. A card written after its search is a better card, not just a safer one.
 > - **Distrust a concept that has no problem.** If you can't name the thing that's hard about
 >   building it, you haven't thought about building it. Every card should have some friction
 >   visible.
