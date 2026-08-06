@@ -1,0 +1,30 @@
+[
+  {
+    "source": "fsis", "sourceRef": "FSIS-RC-014-2026",
+    "title": "Copper Creek Ground Beef Chubs, 1 lb",
+    "brands": ["Copper Creek"],
+    "products": ["Ground Beef 1 pound chub"],
+    "upcs": ["221004488812"],
+    "codeInfo": "EST. 21247; Use By 03/29/2026",
+    "hazard": "Possible E. coli O157:H7 contamination.",
+    "severity": "high",
+    "remedy": "Do not eat it. Throw it away or return it.",
+    "announcedOn": "2026-03-06",
+    "url": "https://example.invalid/recalls/FSIS-RC-014-2026",
+    "raw": { "establishment": "EST. 21247", "class": "Class I", "company": "Copper Creek Meats" }
+  },
+  {
+    "source": "fsis", "sourceRef": "FSIS-RC-019-2026",
+    "title": "Villa Rosa Chicken Sausage, 12 oz",
+    "brands": ["Villa Rosa"],
+    "products": ["Chicken Sausage 12 ounces"],
+    "upcs": [],
+    "codeInfo": "EST. P-44120; packages dated 02/18/2026 through 03/02/2026",
+    "hazard": "Misbranding and undeclared allergen: soy.",
+    "severity": "high",
+    "remedy": "Do not eat it if you are allergic to soy. Return it for a refund.",
+    "announcedOn": "2026-03-12",
+    "url": "https://example.invalid/recalls/FSIS-RC-019-2026",
+    "raw": { "establishment": "EST. P-44120", "class": "Class I", "company": "Villa Rosa Foods USA" }
+  }
+]

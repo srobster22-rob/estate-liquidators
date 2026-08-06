@@ -1,0 +1,62 @@
+[
+  { "id": "p01", "recall": "F-0421-2026", "watch": { "kind": "upc", "upc": "072108455123" }, "expect": "exact", "note": "UPC with dashes on the notice, digits from the subscriber" },
+  { "id": "p02", "recall": "F-0421-2026", "watch": { "kind": "upc", "upc": "0-72108-45512-3" }, "expect": "exact", "note": "same UPC, dashed both sides" },
+  { "id": "p03", "recall": "F-0421-2026", "watch": { "kind": "upc", "upc": "72108455123" }, "expect": "exact", "note": "leading zero dropped by a spreadsheet" },
+  { "id": "p04", "recall": "F-0421-2026", "watch": { "kind": "upc", "upc": "072108455124" }, "expect": null, "note": "one digit off is a different product" },
+  { "id": "p05", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms", "product": "frozen cut green beans" }, "expect": "strong", "note": "brand and product both match" },
+  { "id": "p06", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "green valley farms", "product": "Frozen Cut Green Beans 12 ounces" }, "expect": "strong", "note": "unit spelled out vs abbreviated" },
+  { "id": "p07", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms, Inc.", "product": "cut green beans" }, "expect": "strong", "note": "corporate suffix on the watch side" },
+  { "id": "p08", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms", "product": "frozen corn" }, "expect": null, "note": "same brand, unrelated product" },
+  { "id": "p09", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms", "product": "frozen green peas" }, "expect": "candidate", "note": "same brand, adjacent product — a person should look" },
+  { "id": "p10", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms" }, "expect": "candidate", "note": "brand only, no product recorded" },
+  { "id": "p11", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley", "product": "frozen cut green beans" }, "expect": "strong", "note": "watched brand is a whole-token prefix of the recall brand" },
+  { "id": "p12", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green", "product": "frozen cut green beans" }, "expect": null, "note": "single-token prefix must not match a multi-word brand" },
+  { "id": "p13", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms", "product": "frozen cut green beans", "lot": "4272" }, "expect": "strong", "note": "recorded lot is among the recalled codes" },
+  { "id": "p14", "recall": "F-0421-2026", "watch": { "kind": "product", "brand": "Green Valley Farms", "product": "frozen cut green beans", "lot": "9981" }, "expect": "candidate", "note": "lot outside the recalled codes — different production run" },
+  { "id": "p15", "recall": "F-0421-2026", "watch": { "kind": "category", "category": "green beans" }, "expect": "candidate", "note": "category watches never alert directly" },
+  { "id": "p16", "recall": "F-0421-2026", "watch": { "kind": "category", "category": "infant formula" }, "expect": null, "note": "unrelated category" },
+
+  { "id": "p17", "recall": "F-0433-2026", "watch": { "kind": "upc", "upc": "811223004417" }, "expect": "exact", "note": "plain 12-digit UPC" },
+  { "id": "p18", "recall": "F-0433-2026", "watch": { "kind": "product", "brand": "Marisol Foods", "product": "salsa verde" }, "expect": "strong", "note": "straightforward" },
+  { "id": "p19", "recall": "F-0433-2026", "watch": { "kind": "product", "brand": "Marisol Foods LLC", "product": "Salsa Verde 16 fl oz" }, "expect": "strong", "note": "LLC suffix and fl oz abbreviation" },
+  { "id": "p20", "recall": "F-0433-2026", "watch": { "kind": "product", "brand": "Marisol", "product": "salsa roja" }, "expect": "candidate", "note": "same brand family, different salsa" },
+  { "id": "p21", "recall": "F-0433-2026", "watch": { "kind": "product", "brand": "Mariposa Foods", "product": "salsa verde" }, "expect": null, "note": "similar-looking but different brand" },
+  { "id": "p22", "recall": "F-0433-2026", "watch": { "kind": "product", "brand": "Marisol Foods", "product": "salsa verde", "lot": "AB12" }, "expect": "strong", "note": "notice specifies no codes, so a recorded lot cannot exclude it" },
+
+  { "id": "p23", "recall": "F-0440-2026", "watch": { "kind": "product", "brand": "Ben's Best", "product": "peanut butter cups" }, "expect": "strong", "note": "possessive in the brand" },
+  { "id": "p24", "recall": "F-0440-2026", "watch": { "kind": "product", "brand": "bens best", "product": "peanut butter cups 8 ct" }, "expect": "strong", "note": "apostrophe dropped, count abbreviated" },
+  { "id": "p25", "recall": "F-0440-2026", "watch": { "kind": "product", "brand": "Ben's Better", "product": "peanut butter cups" }, "expect": null, "note": "THE NEAR MISS: a real different brand in the same fixture set" },
+  { "id": "p26", "recall": "F-0440-2026", "watch": { "kind": "product", "brand": "Ben's Best Foods Inc.", "product": "peanut butter cups", "lot": "22A114" }, "expect": "strong", "note": "suffix plus a matching lot" },
+  { "id": "p27", "recall": "F-0440-2026", "watch": { "kind": "product", "brand": "Ben's Best", "product": "peanut butter cups", "lot": "22B990" }, "expect": "candidate", "note": "lot not among the recalled codes" },
+  { "id": "p28", "recall": "F-0440-2026", "watch": { "kind": "upc", "upc": "094112330019" }, "expect": "exact", "note": "UPC" },
+  { "id": "p29", "recall": "F-0440-2026", "watch": { "kind": "upc", "upc": "094112990044" }, "expect": null, "note": "that UPC belongs to the OTHER Ben's recall" },
+
+  { "id": "p30", "recall": "F-0470-2026", "watch": { "kind": "product", "brand": "Ben's Better", "product": "granola clusters" }, "expect": "strong", "note": "correct brand for this recall" },
+  { "id": "p31", "recall": "F-0470-2026", "watch": { "kind": "product", "brand": "Ben's Best", "product": "granola clusters" }, "expect": null, "note": "the near miss, the other way round" },
+  { "id": "p32", "recall": "F-0470-2026", "watch": { "kind": "product", "brand": "Ben's Better", "product": "granola clusters 14 ounces" }, "expect": "strong", "note": "unit spelled out" },
+
+  { "id": "p33", "recall": "F-0455-2026", "watch": { "kind": "product", "brand": "Harborline", "product": "bottled spring water" }, "expect": "strong", "note": "matches, but severity is medium so no SMS — tested separately" },
+  { "id": "p34", "recall": "F-0455-2026", "watch": { "kind": "product", "brand": "Harborline Beverages Co.", "product": "spring water 1 liter" }, "expect": "strong", "note": "suffix plus unit variation" },
+  { "id": "p35", "recall": "F-0455-2026", "watch": { "kind": "product", "brand": "Harbor", "product": "spring water" }, "expect": null, "note": "single-token prefix of a single-token brand must not match" },
+
+  { "id": "p36", "recall": "D-0102-2026", "watch": { "kind": "product", "brand": "Nortonly", "product": "infant acetaminophen" }, "expect": "strong", "note": "drug recall" },
+  { "id": "p37", "recall": "D-0102-2026", "watch": { "kind": "product", "brand": "Nortonly", "product": "infant acetaminophen oral suspension", "lot": "NX2291" }, "expect": "strong", "note": "lot listed" },
+  { "id": "p38", "recall": "D-0102-2026", "watch": { "kind": "product", "brand": "Nortonly", "product": "infant acetaminophen", "lot": "NX9999" }, "expect": "candidate", "note": "lot not listed" },
+  { "id": "p39", "recall": "D-0102-2026", "watch": { "kind": "product", "brand": "Nortonly", "product": "children's ibuprofen" }, "expect": null, "note": "same maker, different drug" },
+  { "id": "p40", "recall": "D-0102-2026", "watch": { "kind": "category", "category": "infant acetaminophen" }, "expect": "candidate", "note": "category watch" },
+
+  { "id": "p41", "recall": "FSIS-RC-014-2026", "watch": { "kind": "product", "brand": "Copper Creek", "product": "ground beef" }, "expect": "strong", "note": "FSIS, not FDA — same matcher" },
+  { "id": "p42", "recall": "FSIS-RC-014-2026", "watch": { "kind": "product", "brand": "Copper Creek Meats", "product": "ground beef 1 lb" }, "expect": "strong", "note": "lb abbreviation vs 'pound' on the notice" },
+  { "id": "p43", "recall": "FSIS-RC-014-2026", "watch": { "kind": "product", "brand": "Copper Creek", "product": "ground beef", "lot": "21247" }, "expect": "strong", "note": "establishment number appears in code_info" },
+  { "id": "p44", "recall": "FSIS-RC-014-2026", "watch": { "kind": "product", "brand": "Copper Creek", "product": "beef stew" }, "expect": "candidate", "note": "same brand, adjacent product" },
+  { "id": "p45", "recall": "FSIS-RC-014-2026", "watch": { "kind": "category", "category": "ground beef" }, "expect": "candidate", "note": "category" },
+
+  { "id": "p46", "recall": "FSIS-RC-019-2026", "watch": { "kind": "product", "brand": "Villa Rosa", "product": "chicken sausage" }, "expect": "strong", "note": "notice lists no UPCs at all" },
+  { "id": "p47", "recall": "FSIS-RC-019-2026", "watch": { "kind": "upc", "upc": "221004488812" }, "expect": null, "note": "a UPC watch against a notice with no UPCs and no brand recorded" },
+  { "id": "p48", "recall": "FSIS-RC-019-2026", "watch": { "kind": "product", "brand": "Villa Rosa Foods USA", "product": "chicken sausage 12 oz" }, "expect": "strong", "note": "two suffix tokens" },
+
+  { "id": "p49", "recall": "26V-118", "watch": { "kind": "vin", "vin": "1MER5A2XKL0091223" }, "expect": "exact", "note": "VIN in the campaign" },
+  { "id": "p50", "recall": "26V-118", "watch": { "kind": "vin", "vin": "1mer5a2xkl0091223" }, "expect": "exact", "note": "lowercase VIN" },
+  { "id": "p51", "recall": "26V-118", "watch": { "kind": "vin", "vin": "1MER5A2XKL0099999" }, "expect": null, "note": "VIN not in the campaign — no fuzz on VINs, ever" },
+  { "id": "p52", "recall": "26V-118", "watch": { "kind": "product", "brand": "Meridian Motors", "product": "Solace" }, "expect": "candidate", "note": "brand matches, product overlap is weak against '2019-2021 Meridian Solace'" }
+]

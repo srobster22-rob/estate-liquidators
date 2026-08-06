@@ -1,0 +1,16 @@
+[
+  {
+    "source": "nhtsa", "sourceRef": "26V-118",
+    "title": "Front passenger airbag inflator may rupture",
+    "brands": ["Meridian Motors"],
+    "products": ["2019-2021 Meridian Solace"],
+    "upcs": [],
+    "codeInfo": "",
+    "hazard": "The inflator may rupture and send metal fragments into the cabin.",
+    "severity": "high",
+    "remedy": "The repair is free. Call any dealer to schedule it.",
+    "announcedOn": "2026-03-02",
+    "url": "https://example.invalid/recalls/26V-118",
+    "raw": { "campaign": "26V-118", "vins": ["1MER5A2XKL0091223", "1MER5A2XKL0091224"] }
+  }
+]
