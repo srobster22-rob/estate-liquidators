@@ -475,6 +475,48 @@ finding: all of it scales linearly with `stale_leg_prob = 0.35`, a number with n
 behind it. What transfers is where to look — fast underlyings with slow wing brackets, and a
 minimum-margin filter of at least one tick per leg. 167 checks pass.
 
+K25 · K24 left the best result in the project resting on one invented number, which is the
+situation K19 was in with `maker_benign_fill_rate` — and the rule there is retire it or measure
+it, never caveat it. Built `kalshi/coherence.py` plus `live.py --record-event`. · **The bracket
+corner is the one place in this project where the book tells you the answer without waiting for
+anything to settle, and that is a bigger deal than K24's dollar figure.**
+
+`E[100*outcome - ask]` cannot be evaluated until a market settles, so every directional
+observation costs a full market life and K20 put the bill at ~580 settled events, about 0.6
+years. "Do these five asks sum below 100" is answered by LOOKING. Measuring the incoherence
+rate to +-5pp needs ~350 independent events = **15 days of recording** rather than seven months
+of waiting.
+
+Two traps had to be handled and both are the kind that produce a discovery rather than an
+error. **Counting:** snapshots of one event are not independent — a frozen leg stays frozen
+across consecutive polls, so polling faster buys resolution on WHEN a set is stale and almost
+nothing on HOW OFTEN. At one poll a minute the snapshot count overstates the evidence ~60x,
+the same correlated-samples error K2 caught in the calibration check, so everything counts
+EVENTS. **Completeness:** four legs of a five-leg event sum below 100 essentially always,
+because you left out a leg worth ~20c — so a partial recording does not lose data, it
+MANUFACTURES an arbitrage, in nearly every snapshot. On a family whose real margin never
+reaches 1c, dropping one leg turns a median margin of -5c into **+9c**. `quality()` refuses
+partial sets outright and `--record-event` enumerates an event's legs from the API so they are
+hard to create.
+
+**Then the parameter stopped mattering, which is the better result.** Backing out
+`stale_leg_prob` would need a model — the measured rate is biased down twice over, reading
+8% / 15% / 25% at 4 / 12 / 60 polls per event against a known truth of 35%. But INCOME needs
+no parameter, because every term is visible at the moment you would trade:
+`sets/yr x P(tradeable) x E[margin - N*slip - fees]`, with the 100c payout certain once the
+legs fill. The one thing a snapshot cannot pin down is the ENTRY RULE, so `first` and `best`
+are both reported and the truth must lie between. Against the backtester on four independent
+seeds it brackets every time: +4.00/+8.99/+9.90, +4.75/+9.64/+18.41, +3.63/+8.23/+9.63,
++2.14/+6.00/+13.73 — and the lower bound is positive every time.
+
+So a recording alone, with no simulator and no settled outcomes and no `stale_leg_prob`,
+settles the SIGN and the order of magnitude and leaves a 2-6x span on the size. That is K21's
+sign-versus-magnitude split reached from the opposite direction, and the difference is that
+here the cheap half costs a fortnight of polling instead of seven months of waiting. Nothing in
+`COHERENCE.md` has been run against Kalshi; doing so is now the highest-value thing anyone
+could do with this directory, and it is the first time that has been true of something
+achievable in under a year. 176 checks pass.
+
 ---
 
 ## Standing notes

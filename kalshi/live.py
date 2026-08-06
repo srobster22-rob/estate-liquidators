@@ -211,17 +211,38 @@ def list_markets(limit=20, series=None, status="open"):
     return rows
 
 
-def record(tickers: list[str], out_path: pathlib.Path, interval_s: float, samples: int):
+def event_legs(event_ticker: str) -> list[str]:
+    """Every market belonging to one event, in listed order.
+
+    Needed because a bracket-coherence measurement is about a SET, and a hand-typed ticker
+    list is exactly how you end up recording four legs of a five-leg event. Four asks sum
+    below 100 essentially always, so a partial set does not produce missing data — it
+    produces a large fictitious arbitrage. `coherence.py` refuses partial sets for that
+    reason, and this is how you avoid creating them in the first place.
+    """
+    out = request(f"/events/{event_ticker}?with_nested_markets=true")
+    ev = out.get("event") or {}
+    ms = ev.get("markets") or out.get("markets") or []
+    return [m["ticker"] for m in ms if m.get("ticker")]
+
+
+def record(tickers: list[str], out_path: pathlib.Path, interval_s: float, samples: int,
+           event: str | None = None):
     """Poll order books and append JSONL snapshots.
 
     This is the only way anything in this directory becomes a statement about the real
     exchange. One run of it is a few minutes of data and proves nothing; the useful version
     is a cron job appending for weeks, which is why the format is append-only JSONL and why
     each line carries its own timestamp rather than relying on line order.
+
+    Every line of one poll shares a `ts` and, when recording an event, carries `event` and
+    `n_legs`. Those three fields are what let `coherence.py` reassemble bracket SETS and
+    verify each one is complete before measuring anything from it.
     """
     with out_path.open("a", encoding="utf-8") as fh:
         for i in range(samples):
             ts = time.time()
+            got = 0
             for tk in tickers:
                 try:
                     ob = request(f"/markets/{tk}/orderbook")
@@ -229,14 +250,22 @@ def record(tickers: list[str], out_path: pathlib.Path, interval_s: float, sample
                 except SystemExit as e:
                     print(f"  {tk}: {e}", file=sys.stderr)
                     continue
-                fh.write(json.dumps({
+                rec = {
                     "ts": ts, "ticker": tk,
                     "yes_bid": m.get("yes_bid"), "yes_ask": m.get("yes_ask"),
                     "status": m.get("status"), "result": m.get("result"),
                     "close_time": m.get("close_time"), "orderbook": ob.get("orderbook"),
-                }) + "\n")
+                }
+                if event:
+                    rec["event"] = event
+                    rec["n_legs"] = len(tickers)
+                fh.write(json.dumps(rec) + "\n")
+                got += 1
             fh.flush()
-            print(f"  sample {i + 1}/{samples} written", flush=True)
+            miss = len(tickers) - got
+            print(f"  sample {i + 1}/{samples} written"
+                  + (f"  ({miss} LEG(S) MISSING — that poll is unusable for coherence)"
+                     if miss else ""), flush=True)
             if i + 1 < samples:
                 time.sleep(interval_s)
     print(f"appended to {out_path}")
@@ -463,6 +492,9 @@ def main():
     ap.add_argument("--series", help="filter --markets by series ticker")
     ap.add_argument("--limit", type=int, default=20)
     ap.add_argument("--record", nargs="+", metavar="TICKER", help="poll these books to JSONL")
+    ap.add_argument("--record-event", metavar="EVENT_TICKER",
+                    help="poll EVERY leg of one event — the only safe way to record a "
+                         "bracket set, because a partial set fakes an arbitrage")
     ap.add_argument("--out", default="kalshi_recording.jsonl")
     ap.add_argument("--interval", type=float, default=60.0)
     ap.add_argument("--samples", type=int, default=10)
@@ -484,6 +516,13 @@ def main():
         check()
     elif args.markets:
         list_markets(args.limit, args.series)
+    elif args.record_event:
+        legs = event_legs(args.record_event)
+        if not legs:
+            sys.exit(f"no markets found for event {args.record_event}")
+        print(f"{args.record_event}: {len(legs)} legs\n  " + "\n  ".join(legs) + "\n")
+        record(legs, pathlib.Path(args.out), args.interval, args.samples,
+               event=args.record_event)
     elif args.record:
         record(args.record, pathlib.Path(args.out), args.interval, args.samples)
     elif args.replay:

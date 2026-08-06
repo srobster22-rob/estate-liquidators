@@ -1071,6 +1071,85 @@ ok("...and STILL fails the gate on stress",
    f"{_g_str.mean:+.2f}c/set at 2 ticks + 1.5x fees — the slippage wall moved out, "
    "it did not disappear")
 
+print("\n8n. COHERENCE — the one measurement that needs no settled outcomes")
+from . import coherence as _coh  # noqa: E402
+import tempfile as _tf2  # noqa: E402
+
+_SPY = _arb.sets_per_year("crypto_bracket_stale")
+with _tf2.TemporaryDirectory() as _td2:
+    _d2 = pathlib.Path(_td2)
+
+    # THE TRAP. Four legs of a five-leg event sum below 100 essentially always, so a partial
+    # recording does not lose data — it manufactures an arbitrage in nearly every snapshot.
+    # That failure has to be REFUSED, not measured, or the best-looking number in the file
+    # would be an artefact of a dropped poll.
+    _p_bad = _d2 / "partial.jsonl"
+    _coh.synthesize(_p_bad, "crypto_bracket_hourly", n_events=30, drop_leg=True)
+    _q_bad = _coh.quality(_coh.load_sets(_p_bad))
+    _p_ok = _d2 / "complete.jsonl"
+    _coh.synthesize(_p_ok, "crypto_bracket_hourly", n_events=30)
+    _q_ok = _coh.quality(_coh.load_sets(_p_ok))
+    ok("a PARTIAL bracket set is refused, not measured",
+       not _q_bad.ok and _q_ok.ok,
+       _q_bad.reasons[0][:60] if _q_bad.reasons else "")
+    _fake = statistics.median([100 - sum(int(r["yes_ask"]) for r in recs)
+                               for pp in _coh.load_sets(_p_bad).values()
+                               for recs in pp.values()])
+    _real = statistics.median([100 - sum(int(r["yes_ask"]) for r in recs)
+                               for pp in _coh.load_sets(_p_ok).values()
+                               for recs in pp.values()])
+    ok("...because dropping one leg fabricates an arbitrage",
+       _real <= 0 < _fake,
+       f"median margin {_real:+.0f}c complete -> {_fake:+.0f}c with a leg dropped: a set "
+       f"that is never buyable reads as {_fake:.0f}c free")
+
+    # THE POINT. A recording alone must bracket the backtester, because the entry rule is the
+    # only thing a snapshot cannot pin down: `first` fires at the first qualifying poll and
+    # `best` at the peak, so the truth has to lie between them.
+    _p_v = _d2 / "v.jsonl"
+    _coh.synthesize(_p_v, "crypto_bracket_stale", n_events=400, polls=60, seed=45_000_000)
+    _mm = _coh.set_margins(_coh.load_sets(_p_v))
+    _lo = _coh.income_from_snapshots(_mm, _SPY, 8, 1, entry="first")["per_set"]
+    _hi = _coh.income_from_snapshots(_mm, _SPY, 8, 1, entry="best")["per_set"]
+    _truth = statistics.fmean(backtest.run(
+        [markets.generate_group(markets.FAMILIES["crypto_bracket_stale"], 45_000_000 + i)
+         for i in range(400)],
+        strategies.bracket_arb(min_edge=8, qty=250), backtest.Costs(extra_spread=1)).group_pnl)
+    ok("a snapshot-only estimate brackets the backtester",
+       _lo <= _truth <= _hi,
+       f"{_lo:+.1f}c <= {_truth:+.1f}c <= {_hi:+.1f}c — no simulator, no settled outcomes, "
+       f"and no stale_leg_prob")
+    ok("...so books alone settle the SIGN", _lo > 0,
+       "the lower bound is positive without the guess K24's whole result rests on")
+    ok("...but not the MAGNITUDE — the entry rule is worth a multiple",
+       _hi / _lo > 2.0,
+       f"{_hi / _lo:.1f}x between firing at the first qualifying poll and firing at the "
+       f"peak — the same sign/magnitude split K20 found for directional edges")
+
+# Sample size counts EVENTS. A frozen leg persists across consecutive polls, so polling faster
+# buys resolution on WHEN a set is stale and almost nothing on HOW OFTEN. Same correlated-
+# samples error check 2 caught in the calibration test, worth ~the polling rate.
+near("required_events is z^2 p(1-p)/e^2",
+     _coh.required_events(0.35, 0.05),
+     math.ceil(1.96 ** 2 * 0.35 * 0.65 / 0.05 ** 2), 1e-9)
+ok("measuring incoherence is far cheaper than signing a directional edge",
+   _coh.required_events(0.35, 0.05) < 580,
+   f"{_coh.required_events(0.35, 0.05)} hourly events = "
+   f"{_coh.required_events(0.35, 0.05) / 24:.0f} days of RECORDING, against ~580 SETTLED "
+   f"econ prints = ~0.6 years")
+ok("...but only when counting events rather than snapshots",
+   _coh.required_events(0.35, 0.05) * 60 > 580 * 10,
+   f"at 1 poll/min the same window yields "
+   f"{_coh.required_events(0.35, 0.05) * 60:,} snapshots — which would look like "
+   f"{_coh.required_events(0.35, 0.05) * 60 / 580:.0f}x the evidence it actually is")
+
+# Wilson needs BOTH ends here: a rate estimate that cannot report a zero honestly is useless
+# on exactly the recording that matters most — one where the arb never appeared.
+_wlo, _whi = _coh.wilson_interval(0, 50)
+ok("Wilson reports a sane interval at zero events",
+   _wlo == 0.0 and 0.0 < _whi < 0.15,
+   f"0/50 -> [{_wlo:.3f}, {_whi:.3f}], where a normal interval collapses to a point at 0")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

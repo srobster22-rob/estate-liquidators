@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 167 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 176 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # family x strategy coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -25,6 +25,8 @@ python -m kalshi.portfolio         # combine bots across families; writes PORTFO
 python -m kalshi.census            # the counted market list; writes CENSUS.md
 python -m kalshi.sensitivity       # what every assumption is worth; writes SENSITIVITY.md
 python -m kalshi.arb               # why the riskless trade loses; writes ARB.md
+python -m kalshi.coherence --cost  # the one measurement needing no settlement
+python -m kalshi.coherence --selftest        # validate that instrument
 python -m kalshi.frontier          # information cost I = s^2/e; writes FRONTIER.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
@@ -39,6 +41,8 @@ python -m kalshi.live --demo --check           # same, against the demo exchange
 python -m kalshi.live --record TICKER --samples 500 --interval 60
 python -m kalshi.live --replay rec.jsonl --bot 'hold_favorite(thresh=95,qty=25)'
 python -m kalshi.audit rec.jsonl               # measure the three conditions from real books
+python -m kalshi.live --record-event KXBTCD-26AUG06 --samples 600
+python -m kalshi.coherence rec.jsonl           # bracket coherence, no settlement needed
 ```
 
 `selftest.py` failing means nothing else here is trustworthy. It is not a formality — four
@@ -67,7 +71,8 @@ checks themselves.
 | `arb.py` | The zero-variance trade, the leg-count arithmetic that kills it, and which incoherence channels can revive it. |
 | `frontier.py` | Information cost `I = s²/e`: what makes an opportunity good, independent of how often it appears. |
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
-| `selftest.py` | 167 checks that have to pass before any of the above means anything. |
+| `coherence.py` | Bracket coherence from books alone — the one measurement needing no settled outcomes. Refuses partial sets. |
+| `selftest.py` | 176 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -76,6 +81,7 @@ checks themselves.
 | `SENSITIVITY.md` | What has to be true for the headline to hold. Generated. |
 | `ARB.md` | Bracket arbitrage: margins, slippage, leg leverage, incoherence channels. Generated. |
 | `FRONTIER.md` | Every strategy ranked by information cost, and the identity behind it. Generated. |
+| `COHERENCE.md` | What it would cost to measure the bracket edge for real. Generated. |
 
 ---
 
@@ -112,9 +118,9 @@ factory infinite money.
 From the run in `RESULTS.md` (seed 20260730). Simulated markets throughout.
 
 `RESULTS.md`, `CAPACITY.md` and `PORTFOLIO.md` are that one seeded run and predate the two
-bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–19 were
-measured directly by `arb.py` and `frontier.py` on fresh seeds rather than by the factory
-loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
+bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–20 were
+measured directly by `arb.py`, `frontier.py` and `coherence.py` on fresh seeds rather than by
+the factory loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
 in-sample sets it does not fire often enough to clear the minimum trade count.
 
 **1. Fees decide almost everything, and they decide it before any strategy is written.**
@@ -549,6 +555,71 @@ The honest caveat is larger than the finding: the whole thing scales linearly wi
 the $432 — it is **where to look**: not at wide books, but at fast-moving underlyings with
 slow-updating wing brackets, and with a minimum-margin filter of at least one tick per leg.
 
+**20. That guess never needs settling, because the bracket corner is the one place where the
+book tells you the answer without waiting.** `python -m kalshi.coherence`.
+
+Finding 19 left the best result in the project resting on one invented number — the situation
+finding 14 was in with `maker_benign_fill_rate`, where the rule is *retire it or measure it,
+don't caveat it*. Here it can be measured, for a reason nothing else in this directory has:
+
+| | needs | to establish the sign |
+|---|---|---|
+| a directional edge | **settled outcomes** | ~580 events ≈ **0.6 years** |
+| bracket incoherence | **a snapshot of the book** | ~350 events ≈ **15 days of recording** |
+
+`E[100·outcome − ask]` cannot be evaluated until the market settles, so every observation costs
+a full market life. *"Do these five asks sum below 100"* is answered by **looking**. That is a
+difference in kind, and it is the real reason this corner matters — more than the dollar
+figure, which is downstream of the guess.
+
+Two things had to be got right, and both are traps rather than details.
+
+**Counting.** Snapshots of one event are not independent draws. A frozen leg stays frozen
+across consecutive polls, so 60 polls of an hourly event carry roughly *one* event's worth of
+information about how often events go stale. Polling faster buys resolution on **when** a set
+is stale and almost nothing on **how often** — at one poll a minute the snapshot count
+overstates the evidence by ~60×. Same correlated-samples error as finding 2's calibration bug.
+
+**Completeness.** Sum four legs of a five-leg event and you get a number below 100, because you
+left out a leg worth ~20¢. **A partial recording does not lose data — it manufactures an
+arbitrage**, in nearly every snapshot, so it reads as the best discovery in the file. On a
+family whose real margin never reaches 1¢, dropping one leg turns a median margin of −5¢ into
+**+9¢**. So `quality()` refuses to report anything until every set is verifiably complete, and
+`live.py --record-event` enumerates an event's legs from the API rather than trusting a
+hand-typed list.
+
+**And then the parameter stops mattering.** Backing out `stale_leg_prob` would need a model —
+the measured rate is biased *down* by two things at once, reading 8% / 15% / 25% at 4 / 12 / 60
+polls per event against a known truth of 35%. But **income needs no parameter**, because every
+term is visible at the moment you would trade:
+
+```
+income = sets/yr × P(tradeable set) × E[margin − N·slippage − fees | tradeable]
+```
+
+The payout is 100¢ with certainty once all N legs fill. The one thing a snapshot cannot pin
+down is the **entry rule** — first qualifying poll, or the peak — so both are reported, and
+the truth must sit between them. Against the backtester on four independent seeds:
+
+| seed | `first` (lower) | backtester | `best` (upper) |
+|---|---|---|---|
+| 41M | +4.00¢ | **+8.99¢** | +9.90¢ |
+| 43M | +4.75¢ | **+9.64¢** | +18.41¢ |
+| 45M | +3.63¢ | **+8.23¢** | +9.63¢ |
+| 47M | +2.14¢ | **+6.00¢** | +13.73¢ |
+
+It brackets every time, and the lower bound is positive every time. So a recording alone — **no
+simulator, no settled outcomes, no `stale_leg_prob`** — settles the sign and the order of
+magnitude, and leaves a 2–6× span on the size. Which is finding 16 again, reached from the
+opposite direction: *the sign is cheap and the magnitude is not.* The difference is that here
+the cheap half costs two weeks of polling instead of seven months of waiting.
+
+Nothing in `COHERENCE.md` has been run against Kalshi. `CENSUS.md` counted the market list from
+published research; this is the other half — the book itself — and it stays unmeasured until
+someone runs `--record-event` for a fortnight. That is now the single highest-value thing
+anyone could do with this directory, and it is the first time that has been true of something
+achievable in under a year.
+
 ## The gate
 
 Eleven criteria. Criteria 1-10 gate each **bot**; criterion 11 gates the **portfolio**.
@@ -654,19 +725,35 @@ simultaneous markets (so no compounding and no path to ruin — sizing is a sepa
 this project does not solve), queue position, outages, rejected orders, exchange position
 limits, and adverse selection beyond what the maker fill rule encodes.
 `maker_benign_fill_rate = 0.35` is a **guess**, and every market-making number here is
-downstream of it.
+downstream of it. So is `stale_leg_prob = 0.35`, which finding 19's whole result scales
+linearly with — the difference is that finding 20 shows that one need never be settled at all,
+because income can be estimated from books directly.
 
 ### Turning this into a real result
 
 The path exists and it is not short:
 
 1. `python -m kalshi.live --check` — confirm the API shape on a machine with egress.
-2. Correct the fee schedule in `config.json` against Kalshi's published rates.
+2. Correct the fee schedule in `config.json` against Kalshi's published rates. *(done — see
+   above; it stays step 2 because it is the first thing anyone else should re-check.)*
 3. `--record` on a cron job for weeks, across several families. Books, not just prices.
 4. `--replay` the recording through the *same* strategy objects and the *same* fee model.
    The replay path reuses `backtest.run` unmodified so a bot cannot behave one way in the
    simulator and another on real data.
 5. Only then ask whether the gate passes. Expect it not to.
+
+**Start at the bracket branch instead, because it is a fortnight rather than a year.** Steps
+3–5 need settled outcomes and finding 16 prices that at ~0.6 years just to establish a sign.
+The bracket path does not:
+
+1. `python -m kalshi.live --record-event <EVENT> --samples 600 --interval 60` — every leg of
+   one event, from the API rather than a hand-typed list. A partial set fabricates an arb.
+2. Repeat across ~350 independent events. At an hour an event that is about **15 days**.
+3. `python -m kalshi.coherence rec.jsonl` — it refuses the recording outright if any set is
+   incomplete, then reports the tradeable rate with a Wilson interval and brackets the income
+   between the two entry rules.
+4. If the lower bound is not positive, the branch is dead and it cost two weeks. If it is,
+   *that* is the first real number this directory has ever produced.
 
 **On real money:** paper mode is the default; `--live` also requires
 `KALSHI_ALLOW_LIVE_ORDERS=yes` in the environment and caps notional at $5 unless raised.
