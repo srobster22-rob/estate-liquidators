@@ -14,10 +14,22 @@ You can get rid of the monster by handing the vase to your friend.
 
 ## Status
 
-**Design foundation. No code yet.** These documents are deliberately unfinished — they're
-built to be extended, argued with, and revised as playtests come back. Nothing here is
-precious except the things marked FIRM in the decision log, and even those state their own
-falsification conditions.
+**Design foundation plus a playable single-player prototype, under test.** The documents are
+deliberately unfinished — built to be extended, argued with, and revised as playtests come
+back. Nothing here is precious except the things marked FIRM in the decision log, and even
+those state their own falsification conditions.
+
+What runs, and how to check it:
+
+```bash
+python3 sim/check_drift.py        # 78 constants agree across four implementations
+python3 sim/validate_estate.py    # 10 checks x 2 sample estates
+node proto3d/qa.mjs               # 46 checks driving the real build in headless Chromium
+dotnet run --project unity/tests/CoreTests   # 31 assertions pinning C# to the sims
+```
+
+Open `proto3d/index.html` in a browser to play it. The Unity build does not exist yet; the
+prototypes are where the rules are being proved.
 
 ## The documents
 
@@ -33,6 +45,9 @@ falsification conditions.
 | **[sim/chain_sim.py](sim/chain_sim.py)** | Full-night sim with weight classes, crew labour, and depth gating. | Before changing the quota curve, crew size, or the apex. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
+| **[proto3d/index.html](proto3d/index.html)** | Playable first-person prototype: haul, appraise, hide, stash, get retrieved. Raw WebGL, no dependencies. | Before arguing about feel. |
+| **[proto3d/qa.mjs](proto3d/qa.mjs)** | Headless QA driving that build in Chromium. Every rule this project calls FIRM has a check here. | After changing any rule. |
+| **[BUILD-PROMPT.md](BUILD-PROMPT.md)** | Self-contained brief for shipping this on Steam: phases, exit criteria, non-negotiables. | Starting a build session. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |
 
 **Reading order for someone new:** `DESIGN.md` §1–6 → `DECISIONS.md` (skim the FIRM entries)
@@ -60,8 +75,9 @@ model; the physics ownership protocol; the loudness model; the decision log.
 **Specified and partly tested:** the economy, by two simulations that between them overturned
 four things this project believed.
 
-- The appraiser beats blind hauling by **+84%** at 14 van slots — and dies entirely between
-  24 and 32 slots. Van capacity is the master constant.
+- The appraiser beats blind hauling by **+14%**, and the right number of candidates to scan
+  is **two of four** — better than scanning none *and* better than scanning all. The earlier
+  +84%, +31% and +6% figures each priced a different, cruder axis (`ECONOMY.md` §11).
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4
@@ -81,7 +97,8 @@ budget of poltergeist verbs whose every use raises Disturbance. The dead player 
 
 1. **Two people, a door, spatial voice.** A fifteen-minute test that tells you whether the
    foundation of this game feels right. Nothing else buildable this early is worth as much.
-   (`AUDIO-SPEC.md` §8)
+   (`AUDIO-SPEC.md` §8) — and note the prototype is still **silent**, so the loudness model
+   drives Disturbance and nothing you can hear.
 2. **Vendor the Dissonance↔FishNet bridge**, then hold it to the two-day rule. If voice isn't
    working end-to-end in two days, switch to Mirror and don't relitigate it. (`STACK.md`)
 3. **Milestone 2, with instrumentation.** Hauling junk to a van with friends, no monster.

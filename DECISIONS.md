@@ -387,6 +387,37 @@ a small impulse on placement, since the 20s timer is already load-bearing.
 
 ---
 
+## D-24 · Appraising is a breadth decision priced by a tail risk
+**Status:** FIRM (model) / SOFT (values) · `ECONOMY.md` §11, `sim/appraise_test.py`
+
+The project spent four rounds asking whether the appraiser's +6% edge was enough to carry the
+game's signature verb. The question was wrong. Every sim that produced that number compared
+**blind** against **scan everything**, and R8's ADAPTIVE interpolated in *time*, not in
+*breadth*. Nobody had ever measured the actual decision a player makes at a shelf: **how many
+of these four do I scan before I commit?**
+
+Measured, the appraiser is worth **+14%** over blind hauling, and the optimum is **interior at
+two** — better than scanning nothing *and* better than scanning everything — with no new
+mechanic required. Time and noise alone are enough to make over-scanning wrong.
+
+The tail risk (R11's shape, applied again: `p_caught = RETRIEVAL[tier] × 0.30 × n^1.8`) does
+not rescue the mechanic, because the mechanic did not need rescuing. What it buys is that the
+right answer **changes with the situation** — scan while it is quiet, stop the moment it is
+hunting, scan wider in the wings worth scanning — which is worth a further +6% over playing
+the best constant, and is the difference between a decision and a number to memorise.
+
+**The design consequence:** the appraiser should be usable *per candidate*, not per shelf, and
+the UI must make "I have scanned two of these four" a legible state. If scanning is presented
+as a mode you switch on for a room, the interesting axis is unreachable and the +6% question
+comes back exactly as it was.
+
+**Falsified if:** Milestone 2 instrumentation shows scan *breadth* clustering at 0 or 4 —
+players treating it as on/off despite the payoff shape. That would mean the cost is not
+legible in the moment, and the fix is the frost/tell treatment (make the risk visible while
+you stand there), not a change to the numbers.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

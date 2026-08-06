@@ -43,6 +43,7 @@ SCAN_EXPOSURE = 0.0   # extra risk while stationary and scanning
 # real crew at 20-24 extractions against 14 slots (~1.5x), so calibrate to that.
 PARALLEL_EFFICIENCY = 0.65
 
+FLOOR_PER_CURSED = 7.0        # R9; was 2.0 here until R18, which is inert
 RETRIEVAL = {"DORMANT": 0.00, "PATROL": 0.02, "PURSUE": 0.10, "COLLECT": 0.25}
 
 TIERS = [(85, "COLLECT"), (60, "PURSUE"), (30, "PATROL"), (0, "DORMANT")]
@@ -105,7 +106,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
 
         # --- Disturbance over the span of this trip -------------------------
         span = cost
-        floor = RATCHET_END * (t / NIGHT_S) + cursed * 2.0
+        floor = RATCHET_END * (t / NIGHT_S) + cursed * FLOOR_PER_CURSED
         for _ in range(int(span)):
             for _ in range(CREW):
                 if rng.random() < 0.04:

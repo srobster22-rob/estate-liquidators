@@ -19,6 +19,7 @@ Run: python validate_estate.py
 
 from collections import deque
 from itertools import combinations
+import sys
 import math
 
 # Minimum clear width to move each class through a doorway.
@@ -300,3 +301,42 @@ def validate(d, verbose=True):
         verdict = "ENTERS POOL" if not failed else f"REJECTED ({', '.join(failed)})"
         print(f"  -> {verdict}")
     return failed
+
+
+# --------------------------------------------------------------------------- CLI
+# Until R18 this module had no entry point at all: `python sim/validate_estate.py`
+# ran zero checks and exited 0, and several rounds recorded "estate validator PASS"
+# on the strength of it. A regression command that cannot fail is worse than none,
+# because it is the one nobody re-reads.
+def main():
+    from estates import MANOR_A, BROKEN_B, EXPECTED_FAILURES
+
+    verbose = "-q" not in sys.argv
+    problems = []
+
+    clean = validate(MANOR_A, verbose)
+    if clean:
+        problems.append(f"MANOR_A should enter the pool, failed {sorted(clean)}")
+
+    broken = set(validate(BROKEN_B, verbose))
+    if broken != EXPECTED_FAILURES:
+        missed = sorted(EXPECTED_FAILURES - broken)
+        spurious = sorted(broken - EXPECTED_FAILURES)
+        if missed:
+            problems.append(f"planted faults NOT caught: {missed}")
+        if spurious:
+            problems.append(f"unplanted faults reported: {spurious}")
+
+    print(f"\nESTATE VALIDATOR  -  {len(CHECKS)} checks x 2 estates")
+    print("-" * 74)
+    if not problems:
+        print("  OK   clean estate enters the pool, broken estate trips exactly "
+              f"its {len(EXPECTED_FAILURES)} planted faults")
+        return 0
+    for p in problems:
+        print(f"  FAIL  {p}")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

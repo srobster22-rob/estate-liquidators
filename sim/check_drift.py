@@ -145,7 +145,8 @@ check("JS3d stash_s", grab(js3, r"STASH_S\s*=\s*([\d.]+)"), cn["stash_seconds"])
 
 # --------------------------------------------------------------- Python sims
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
-        for n in ("integrated.py", "disturbance.py", "curse_test.py")}
+        for n in ("integrated.py", "disturbance.py", "curse_test.py",
+                  "appraise_test.py")}
 
 check("py integrated IMPULSE",
       grab(sims["integrated.py"], r"^IMPULSE\s*=\s*([\d.]+)", flags=re.M),
@@ -164,6 +165,14 @@ check("py disturbance IMPULSE",
       lc["impulse_disturbance_per_l"])
 check("py curse floor", grab(sims["curse_test.py"], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
       d["per_cursed_item_floor"])
+# integrated.py had the cursed floor inline as 2.0 until R18 - the pre-R9 value,
+# unreadable to this checker because it was a bare literal rather than a constant.
+check("py integrated curse floor",
+      grab(sims["integrated.py"], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
+      d["per_cursed_item_floor"])
+check("py integrated appraise_s",
+      grab(sims["appraise_test.py"], r"APPRAISE_S\s*=\s*([\d.]+)"),
+      TUNING["night"]["appraise_seconds"])
 check("py curse ruin_exp", grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"),
       v["ruin_exp"])
 

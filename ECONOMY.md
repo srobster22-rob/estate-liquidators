@@ -320,9 +320,62 @@ own sanity check: harsher retrieval now monotonically lowers **every** strategy'
 **But the margin is small: +6% over blind hauling**, down from the +84% first reported and the
 +31% second. That is the number to argue about now. A ~6% edge means the appraiser is close to
 break-even — defensible for a risk/reward mechanic where the *interesting* state is a genuine
-toss-up, but thin enough that players may rationally skip it. Whether 6% is enough to carry a
-signature mechanic is a design judgement, not a simulation result, and it should be settled
-deliberately rather than by default.
+toss-up, but thin enough that players may rationally skip it.
+
+> **Superseded by §11 (R18).** The +6% is real but it prices the wrong axis. Every sim up to
+> here compared *blind* against *scan everything*, and R8's ADAPTIVE interpolated in **time**
+> (start scanning once the van is half full), never in **breadth**. On the breadth axis — how
+> many of a shelf's four candidates you scan before committing — the appraiser is worth
+> **+14%**, and the optimum is interior at two even with no new mechanic at all.
+
+## 11. The appraiser is a breadth decision, not an on/off switch
+
+`sim/appraise_test.py`, R18. Two changes from §10: scan count is swept 0–4 rather than 0 or 4,
+and appraising carries a **tail risk** — three seconds standing still is three seconds the
+Curator can arrive, with the risk convex in consecutive scans
+(`p = RETRIEVAL[tier] × K × n^1.8`). That is R11's lesson applied a second time: a linear cost
+against a multiplicative benefit gives step functions, and only a super-linear cost gives a
+decision.
+
+Earnings by scans per shelf (2,000 nights each, common random numbers):
+
+| K | n=0 | n=1 | n=2 | n=3 | n=4 | peak | vs blind | vs scan-all |
+|---|---|---|---|---|---|---|---|---|
+| 0.00 | 5,869 | 6,351 | **6,720** | 6,391 | 6,431 | 2 | +14.5% | +4.5% |
+| 0.15 | 5,869 | 6,330 | **6,434** | 5,197 | 4,012 | 2 | +9.6% | +60% |
+| **0.30** | 5,869 | **6,299** | 6,149 | 3,950 | 1,569 | 1 | +7.3% | +302% |
+| 0.60 | 5,869 | **6,260** | 5,545 | 2,004 | 1,144 | 1 | +6.7% | +447% |
+| 1.20 | 5,869 | **6,184** | 4,424 | 1,445 | 965 | 1 | +5.4% | +541% |
+
+Three things fall out:
+
+1. **The optimum is interior at K=0.** Scanning two beats scanning none by +14.5% *and* beats
+   scanning everything by +4.5%, with no interception risk in the model at all. The trade is
+   just time and noise against max-of-n. The middle of this axis had simply never been run.
+2. **The tail risk decides how badly greed is punished, not whether scanning pays.** Blind is
+   the worst policy at every K tested. What K moves is the penalty for over-scanning, from
+   −4% at K=0 to −84% at K=1.2.
+3. **It becomes situational.** The best answer moves with both Disturbance tier and estate
+   depth, in the direction the fiction wants: scan while it is quiet, stop once it is hunting,
+   and scan more in the wings worth scanning.
+
+The policy that falls out — *scan two when quiet and deep, one when quiet and shallow, none
+once it is hunting* — against the best single constant:
+
+| K | blind | scan-all | best constant | combined policy | vs constant | vs blind |
+|---|---|---|---|---|---|---|
+| 0.00 | 5,873 | 6,431 | 6,713 (n=2) | 6,760 | +0.7% | +15.1% |
+| 0.15 | 5,873 | 4,022 | 6,438 (n=2) | 6,707 | +4.2% | +14.2% |
+| **0.30** | 5,873 | 1,576 | 6,278 (n=1) | **6,669** | **+6.2%** | **+13.6%** |
+| 0.60 | 5,873 | 1,154 | 6,238 (n=1) | 6,585 | +5.6% | +12.1% |
+
+**Recommended: K = 0.30, exponent 1.8.** It is where the situational policy is worth the most
+over the best constant (+6.2%) — i.e. where the most of the mechanic's value sits in the
+*decision* rather than in a number a player can memorise once. Below it the choice flattens;
+above it, scanning at PURSUE is so lethal that the tier rule becomes automatic.
+
+**Unverified in play.** These are model numbers with a model's crew in them. The falsification
+condition is in D-24.
 
 **The pillar works harder than designed.** Look at the Disturbance column, not the money: a
 blind crew ends the night at 30 and is never hunted. A scanning crew is pinned at 100 for

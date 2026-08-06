@@ -218,6 +218,34 @@ as an executable rule. · Logged D-22 (concealment is a hard stop at COLLECT, wi
 economic counter written down in advance) and D-23 (the three Loudness values §8.1 never
 specified, all flagged as guesses). Regression: QA 46/46, drift 76/76, estate validator PASS.
 
+R18 · Built `sim/appraise_test.py` and closed the question the log has carried since R8: is a
++6% edge enough to carry the game's signature verb? · **The question was wrong.** Every sim
+that produced that number compared *blind* against *scan everything*, and R8's ADAPTIVE
+interpolated in **time** (scan once the van is half full), never in **breadth**. The actual
+decision a player makes at a shelf — how many of these four do I scan before I commit? — had
+never been measured. Measured: the appraiser is worth **+14% over blind**, and the optimum is
+**interior at two**, beating both scanning nothing and scanning everything, with no new
+mechanic in the model at all. · Then applied R11's shape anyway — appraising as a tail risk,
+`p_caught = RETRIEVAL[tier] × K × n^1.8`, since three seconds standing still is three seconds
+it can arrive. It doesn't rescue the mechanic (nothing needed rescuing) but it makes the right
+answer **situational**: scan while it is quiet, stop once it is hunting, scan wider in the deep
+wings. That policy is worth a further **+6.2% over the best single constant** at K=0.30, which
+is the recommended value — it is where the most of the mechanic's value sits in the decision
+rather than in a number a player memorises once. · **The first version of the sweep was
+garbage and said so out loud:** it reported that scanning more paid better at K=0.15 than at
+K=0.00, which is impossible. Cause: policies take different numbers of trips and spend
+different time in them, so a single per-night RNG stream desynchronises and the comparison
+drowns in Monte Carlo noise. Rebuilt with per-trip common random numbers — every policy now
+faces the same estate, and both risk rolls are drawn every trip whether used or not — after
+which the ordering is monotone in K everywhere. · Also: `integrated.py` still had the **pre-R9
+cursed floor of 2.0** inline as a bare literal, which is why the drift checker had never seen
+it. Promoted to a named constant, corrected to 7.0, and added to the checker (78 constants
+now). · And `sim/validate_estate.py` **had no entry point at all** — running it executed zero
+checks and exited 0, so "estate validator PASS" in R14, R16 and R17 was a claim about nothing.
+Added a real CLI that validates both sample estates and asserts the broken one trips exactly
+its seven planted faults; injection-tested by neutering V9, which it catches. · Wrote
+`ECONOMY.md` §11 and D-24, and marked §10's +6% superseded rather than deleting it.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
