@@ -57,21 +57,36 @@ proper "director track" rather than three ad-hoc pins in `update()`.
 
 **All ten gates green as of C6.** The clip is shippable.
 
+C7 · Attacked the blind stretch, the weakest 4.5 s in the clip (it beat the audio work because
+it is 19 % of the runtime and sits immediately before the payoff — a viewer who leaves, leaves
+here). Doubled the dolly rate for parallax, re-aimed the sweep from 6–8 m surfaces to the near
+corner, and staged a second piece for the beam to catch. · **Found the off-axis band is mostly
+theory.** Reasoning said: the cargo owns the middle ±16.5°, the dimmed cone reaches 28°, so
+put things in the 16.5–28° ring where they clear the cargo and are still lit. Tried it — aimed
+the sweep *past* the dressing piece — and it came back emptier than before, because that ring
+is open floor at grazing incidence. Reverted. **The only thing a marked player reliably sees is
+a wall inside ~3 m**, and that is what the near-corner aim brings back. The dressing piece
+never appears: centre it and the cargo hides it, offset it and the cone barely lights it.
+· Net: the beat is better (parallax, a wall sweeping through frame, the cargo rotating rather
+than sitting) and still the weakest thing in the clip. Two rounds of framing have now hit the
+same wall from opposite directions, which says the constraint is structural, not compositional.
+
 ---
 
-## Next step (what C7 should attack, ranked)
+## Next step (what C8 should attack, ranked)
 
-1. **The 4.5 s blind stretch is still the weakest thing in the clip.** It is honest and it is
-   dull: a glowing box on black with two captions. Options, cheapest first — cut it to ~3 s and
-   give the extra time to the reveal; add a second *near* surface for the sweep to catch (a
-   doorframe 2 m away lights up even at 11.5 m range); or stage the take deeper in the house so
-   the sweep has geometry in it. Do not solve it by lying about the light.
+1. **Shrink the cargo, the actual root cause.** Both C4 and C7 lost to the same fact: a carried
+   box is view-locked and owns ±16.5° of a 41°-wide frame. Tier caps size (0.26 / 0.34 / 0.42 m
+   half-extent), so staging a **tier-1** hero drops it to ~±13° and hands roughly a quarter of
+   the blocked frame back. Cost: the HUD reads a smaller number ($80–300 × 2.5 rather than
+   $678), which weakens the greed hook. Test it — render both and look, do not reason about it,
+   because reasoning is what lost C7.
 2. **Sound has never been heard on a phone speaker.** The bed is 46–55 Hz and phone speakers
-   roll off below ~400 Hz. It may be effectively silent where it will actually be watched.
-   Add an audible harmonic and re-listen before touching anything visual.
+   roll off below ~400 Hz, so it may be effectively silent where it will be watched. Add an
+   audible harmonic, and add a gate that measures energy above 400 Hz so this can never regress
+   silently.
 3. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
-   of the monster by handing the vase to your friend" — cannot be filmed at all until there are
-   two players. That is a Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that
-   matters most.
+   of the monster by handing the vase to your friend" — cannot be filmed until there are two
+   players. Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that matters most.
 4. **The Curator is two boxes.** Fine for a dev-facing clip, blocks anything user-facing.
    `ART-DIRECTION.md` wants a silhouette.

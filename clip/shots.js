@@ -30,8 +30,12 @@ const RETREAT  = {x: 34.7, z:  1.7};   // pushed away from the door
 // visible from ~13.5 s - the reveal happens under the "cuts you off" line.
 const CURATOR_HOLD = {x: 20.5, z: 1.0};
 const CROSS    = {x: 37.9, z0: -3.4, z1: -0.4}; // the hook: it crosses the deep doorway
+// A second piece, parked where the blind sweep will catch it. 4.6 m from the retreat
+// mark: far enough not to steal the interaction prompt (3.2 m, measured in 3D), close
+// enough that a dimmed flashlight still lights it. Beat 5 has nothing else to see.
+const DRESS    = {x: 36.2, z: -2.6};
 
-let hero = -1;
+let hero = -1, dressIx = -1;
 
 const S = {
   fps: 30,
@@ -51,10 +55,17 @@ const S = {
     hero = pick.ix;
     d.stage(hero, PLINTH.x, PLINTH.z);
 
+    // Set dressing for the blind beat - the best clean piece, kept unappraised so it
+    // reads as plain grey loot rather than a second story object.
+    const dress = d.list().filter(i => i.ix !== hero && i.grade === "clean")
+                          .sort((a, b) => b.value - a.value)[0];
+    dressIx = dress ? dress.ix : -1;
+    if (dress) d.stage(dressIx, DRESS.x, DRESS.z);
+
     // Clear anything that would sit inside the aim cone and steal the prompt,
     // and anything close enough to clutter the plinth read.
     for (const it of d.list()){
-      if (it.ix === hero) continue;
+      if (it.ix === hero || it.ix === dressIx) continue;
       const near = Math.hypot(it.x - PLINTH.x, it.z - PLINTH.z) < 5.0;
       const inShot = it.x > 27.5 && it.x < 37.0 && Math.abs(it.z) < 5.0;
       if (near || (inShot && Math.hypot(it.x - START.x, it.z - START.z) < 3.4)) d.drop(it.ix);
@@ -147,11 +158,19 @@ const S = {
     // is effectively invisible - the tell that warns you also blinds you. The shot
     // is a nervous sweep of the room, which is the only honest thing to film here.
     else if (t < 17.5){
-      C.cam.k = 0.075; C.pos.k = 0.022;
+      C.cam.k = 0.085; C.pos.k = 0.050;   // faster dolly: parallax is the only motion here
       C.moveTo(RETREAT.x, RETREAT.z);                   // pushed away from the door
-      const sweep = 0.5 + 0.5 * Math.sin((t - 13.0) * 1.05 - 1.4);
-      C.frameAt(C.lerp(HALLDOOR.x - 1.2, HALLDOOR.x + 7.0, sweep),
-                C.lerp(HALLDOOR.z + 1.6, HALLDOOR.z - 3.4, sweep), 1.15, 0.10);
+      // Sweep between the dark doorway you came from and the near corner. The far end
+      // of the arc is black - that is the point - but the near end catches a wall at
+      // ~2.5 m and the dressing piece at ~4.6 m, both of which a dimmed light still
+      // reaches. Aiming the sweep at 6-8 m surfaces (as C5 did) lights nothing.
+      // Aim the near end of the sweep into the corner. Tried aiming *past* the
+      // dressing piece so it would clear the cargo (which owns the middle +/-16.5
+      // deg): that points into open floor and lights nothing. A wall at 2.5 m is
+      // the only thing a dimmed flashlight reliably brings back.
+      const sweep = 0.5 + 0.5 * Math.sin((t - 13.0) * 1.15 - 1.5);
+      C.frameAt(C.lerp(28.5, DRESS.x, sweep), C.lerp(-1.5, DRESS.z, sweep),
+                C.lerp(1.35, 0.55, sweep), 0.10 + 0.09 * Math.sin((t - 13.0) * 0.8));
       // Two lines, because the picture cannot carry this beat: the first is what you
       // see (nothing), the second is the rule the reveal is about to prove.
       if (t < 15.5) cap(C, t, 13.25, 15.40, `and now you can't<br>see it <span class="hi">coming</span>`);

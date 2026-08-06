@@ -62,7 +62,7 @@ in exactly one place.
 | 2 | `bait` | 3.0–6.0 | Camera settles on the piece. Prompt reads `UNAPPRAISED`, then at 4.95 s the value resolves to `$678 TAINTED`. | **"it's hunting whatever you're picking up"** |
 | 3 | `take` | 6.0–9.0 | Grab at 6.35 s. HUD flips to `CARRYING $678 TAINTED`. Camera straightens toward the way home. | — (let the HUD talk) |
 | 4 | `mark` | 9.0–13.0 | Disturbance jumps to COLLECT. Flashlight range drops 19 m → 11.5 m and the cone narrows, the held piece goes frost-blue, `IT IS COMING FOR YOU`. | **"your light dims when it's you"** |
-| 5 | `blind` | 13.0–17.5 | It is walking to the plinth the whole time and **you cannot see it** — a dimmed light does not reach that far. A nervous sweep of an empty room, cargo glowing. | **"and now you can't see it coming"** → **"it's walking to the shelf you took it from"** |
+| 5 | `blind` | 13.0–17.5 | It is walking to the plinth the whole time and **you cannot see it** — a dimmed light does not reach that far. A nervous sweep between the dark doorway and the near corner; the only thing that comes back is a wall at ~2.5 m. | **"and now you can't see it coming"** → **"it's walking to the shelf you took it from"** |
 | 6 | `drop` | 17.5–21.0 | Drop at 17.95 s. Aggro clears in one frame, the light snaps back to full range — and it is standing on the plinth, between you and the door. | **"so put it down —"** → **"or hand it to your friend"** |
 | 7 | `card` | 21.0–24.0 | HUD fades out, title card over the piece on the floor. | **ESTATE LIQUIDATORS** / *co-op horror extraction* |
 
@@ -171,3 +171,11 @@ range-only, leaving the cone alone, so the tell dims your world without erasing 
 **The commitment lock is a five-second tax on any clip.** 8 s between mark and release means
 the shortest honest "marked → put it down → free" arc is 8 s, which is a third of a TikTok.
 Fine for the game, worth knowing for every future clip.
+
+**A carried item owns a third of a vertical frame.** `proto3d` hangs the held item 1.15 m down
+the look ray; at tier 2 (0.34 m half-extent) that is ±16.5° of a frame only 41° wide, and it is
+view-locked, so it cannot be framed around — it is in the middle of every shot you take while
+carrying. On a 16:9 monitor this is unremarkable; at 9:16 it is most of the picture. Nothing to
+fix in the game — first-person carry looks like this — but it means **any composition for a
+vertical clip has to treat the bottom-centre third as unavailable**, and it interacts badly
+with the dimmed cone above: the region you can light and the region you can see barely overlap.
