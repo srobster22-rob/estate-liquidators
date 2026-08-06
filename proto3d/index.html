@@ -156,13 +156,14 @@ const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
 const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
-const L={sprint:45, appraise:48, drop:90};
+const L={sprint:45, appraise:48, door:60, drop:90};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
 const ATT_MULT={clean:1, tainted:1.5, malignant:3};
 const FEE={clean:0, tainted:.08, malignant:.20};
 const RUIN_K=0.015, RUIN_EXP=1.8;
 const VAN_SLOTS=14, QUOTA=2200, NIGHT=210, APPRAISE_S=3.0;
 const EYE=1.62, WALK=3.2, RUN=5.6, CARRY=2.6, CARRY_RUN=4.1;
+const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
 const STAM_MAX=6, STAM_REGEN=9;
 
 // ------------------------------------------------------------------ estate
@@ -213,9 +214,18 @@ const DOOR_FAULTS=DOORS.filter(d=>(d.span[1]-d.span[0])<DOOR_W)
   .map(d=>`${d.a}-${d.b} overlap ${(d.span[1]-d.span[0]).toFixed(2)}m < door ${DOOR_W}m`);
 if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
 
+// Concealment furniture (DESIGN 8.1). Wardrobes against the near and far walls
+// of every room but the driveway, facing into the room. Furniture, not markers.
+const HIDES=[];
+for(const r of ROOMS){ if(r.van) continue;
+  HIDES.push({x:r.x-r.w/4, z:r.z-r.d/2+0.55, face:0,       room:r.id, item:null});
+  HIDES.push({x:r.x+r.w/4, z:r.z+r.d/2-0.55, face:Math.PI, room:r.id, item:null});
+}
+const inHide=(x,z)=>HIDES.some(h=>Math.abs(x-h.x)<0.52&&Math.abs(z-h.z)<0.32);
+
 const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
 function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; return false; }
-function solid(x,z){ return !roomAt(x,z) && !inDoor(x,z); }
+function solid(x,z){ return (!roomAt(x,z) && !inDoor(x,z)) || inHide(x,z); }
 
 // ------------------------------------------------------------------ state
 let items=[],player,curator,van,t,dist,over,overWhy="",started=false,qaPaused=false;
@@ -231,16 +241,18 @@ function makeItems(){
       items.push({x,y:0.45,z,hx:x,hz:z,grade:g,tier:r.tier,
         value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
         size:r.tier>=3?0.42:r.tier===2?0.34:0.26,
-        known:false,held:false,gone:false,scan:0});
+        known:false,held:false,gone:false,scan:0,moved:false,stash:0,hideIn:null});
     }
   }
 }
 function reset(){
   makeItems();
   const dv=R("drive");
-  player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0};
+  player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0,
+          hiding:null,hideEnter:0};
   curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
-           fixate:0,lock:0,reseat:0,target:false};
+           fixate:0,lock:0,reseat:0,target:false,mode:null,open:0};
+  for(const h of HIDES) h.item=null;
   van={slots:VAN_SLOTS,cargo:[]};
   t=0;dist=0;over=false;overWhy="";
   document.getElementById("end").style.display="none";
@@ -252,6 +264,8 @@ const keys={};
 addEventListener("keydown",e=>{
   keys[e.code]=true;
   if(e.code==="KeyE"&&started&&!over) grabDrop();
+  if(e.code==="KeyC"&&started&&!over) toggleHide();
+  if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ reset(); document.getElementById("end").style.display="none"; }
 });
 addEventListener("keyup",e=>keys[e.code]=false);
@@ -265,7 +279,16 @@ addEventListener("mousemove",e=>{
   player.yaw   -= e.movementX*0.0022;
   player.pitch -= e.movementY*0.0022;
   player.pitch = Math.max(-1.35,Math.min(1.35,player.pitch));
+  clampHideView();
 });
+// Inside a wardrobe you see what the gap in the door shows you, and no more.
+function clampHideView(){
+  if(!player.hiding) return;
+  let d=player.yaw-player.hiding.face;
+  while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI;
+  player.yaw=player.hiding.face+Math.max(-0.6,Math.min(0.6,d));
+  player.pitch=Math.max(-0.7,Math.min(0.5,player.pitch));
+}
 
 function noise(l,impulse,dt){ dist=Math.min(100, dist + (impulse? l*IMPULSE : l*SUSTAINED*dt)); }
 function floorNow(){ return RATCHET_END*(t/NIGHT) + van.cargo.filter(c=>c.grade!=="clean").length*PER_CURSED_FLOOR; }
@@ -275,10 +298,11 @@ function lookDir(){
   const cp=Math.cos(player.pitch);
   return [Math.sin(player.yaw)*cp, Math.sin(player.pitch), Math.cos(player.yaw)*cp];
 }
+const eyeH=()=>player.hiding?HIDE_EYE:EYE;
 function aimedItem(){
   const d=lookDir(); let best=null,bs=0.86;
   for(const it of items){ if(it.gone||it.held) continue;
-    const v=[it.x-player.x, it.y-EYE, it.z-player.z];
+    const v=[it.x-player.x, it.y-eyeH(), it.z-player.z];
     const dist2=Math.hypot(...v); if(dist2>3.2) continue;
     const s=dot(nrm(v),nrm(d));
     if(s>bs){bs=s;best=it;} }
@@ -288,7 +312,41 @@ function grabDrop(){
   if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
     it.x=player.x+Math.sin(player.yaw)*0.8; it.z=player.z+Math.cos(player.yaw)*0.8;
     it.y=0.45; noise(L.drop,true,0); return; }
-  const it=aimedItem(); if(it){ it.held=true; player.holding=it; }
+  const it=aimedItem();
+  if(it){ it.held=true; player.holding=it; it.moved=true; it.stash=0;
+    if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; } }
+}
+
+// -------------------------------------------------------- concealment (8.1)
+function nearHide(){
+  let best=null,bd=1.9;
+  for(const h of HIDES){ const d=Math.hypot(h.x-player.x,h.z-player.z);
+    if(d<bd){bd=d;best=h;} }
+  return best;
+}
+function toggleHide(){
+  if(player.hiding) return exitHide();
+  if(player.down>0) return;
+  const h=nearHide(); if(!h) return;
+  player.hiding=h; player.hideEnter=HIDE_ENTER_S;   // ~1s, and silent
+  player.yaw=h.face; player.pitch=0;
+}
+function exitHide(){
+  if(!player.hiding) return;
+  const h=player.hiding;
+  player.hiding=null; player.hideEnter=0;
+  const nx=h.x+Math.sin(h.face)*0.95, nz=h.z+Math.cos(h.face)*0.95;
+  if(!solid(nx,nz)){ player.x=nx; player.z=nz; }
+  noise(L.door,true,0);                             // leaving is instant and loud
+}
+// Stashing is the third verb: an item inside furniture stops radiating for 20s.
+// Long enough to break a chase, short enough to be a delay and not a solution.
+function stash(){
+  if(!player.holding) return;
+  const h=nearHide(); if(!h||h.item) return;
+  const it=player.holding; player.holding=null;
+  it.held=false; it.hideIn=h; h.item=it; it.stash=STASH_S;
+  it.x=h.x; it.z=h.z; it.y=1.05;
 }
 
 // ------------------------------------------------------------------ update
@@ -299,11 +357,16 @@ function step(dt){
   let mx=(keys.KeyW?1:0)-(keys.KeyS?1:0), mz=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const mag=Math.hypot(mx,mz); if(mag){mx/=mag;mz/=mag;}
   const moving=!!mag;
-  const run=keys.ShiftLeft&&player.stam>0&&moving;
+  const run=keys.ShiftLeft&&player.stam>0&&moving&&!player.hiding;
   if(run){ player.stam=Math.max(0,player.stam-dt); noise(L.sprint,false,dt); }
   else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
 
-  if(player.down>0) player.down-=dt;
+  if(player.hiding){
+    if(player.hideEnter>0) player.hideEnter-=dt;
+    player.x=player.hiding.x; player.z=player.hiding.z;
+    if(moving) exitHide();                          // any step out is a loud one
+  }
+  else if(player.down>0) player.down-=dt;
   else if(moving){
     const sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
     const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
@@ -320,10 +383,11 @@ function step(dt){
   } else for(const it of items) if(!(keys.KeyF&&it===tgt)) it.scan=0;
 
   if(player.holding){ const d=lookDir(), it=player.holding;
-    it.x=player.x+d[0]*1.15; it.z=player.z+d[2]*1.15; it.y=EYE+d[1]*1.15-0.30; }
+    it.x=player.x+d[0]*1.15; it.z=player.z+d[2]*1.15; it.y=eyeH()+d[1]*1.15-0.30; }
+  for(const it of items) if(it.stash>0) it.stash=Math.max(0,it.stash-dt);
 
   // deposit
-  if(player.holding&&roomAt(player.x,player.z)?.van){
+  if(player.holding&&!player.hiding&&roomAt(player.x,player.z)?.van){
     const it=player.holding; it.held=false; it.gone=true; player.holding=null;
     van.cargo.push(it); van.slots--;
     if(van.slots===0) return finish("VAN FULL");
@@ -333,9 +397,32 @@ function step(dt){
   updateCurator(dt);
 }
 
-function attentionWeight(){
-  if(!player.holding) return 0;   // pillar 2: carry nothing, weigh nothing
-  return player.holding.value*ATT_MULT[player.holding.grade];
+// ------------------------------------------------------- attention & aggro
+// Aggro binds to the OBJECT, not the person (DESIGN 6.1, FIRM). Until R17 the
+// target here was `player.holding`, so putting the vase down cleared it - the
+// free two-second aggro reset the decision log names as the reason for the rule.
+function radiance(it){
+  if(!it||it.gone) return 0;
+  if(!it.moved) return 0;            // still on its plinth: nothing is being stolen
+  if(it.stash>0) return 0;           // inside furniture: muffled for 20s (8.1)
+  return it.value*ATT_MULT[it.grade];
+}
+function attentionWeight(){ return radiance(player.holding); }
+function loudestItem(){
+  let best=null,bw=0;
+  for(const it of items){ const w=radiance(it); if(w>bw){bw=w;best=it;} }
+  return best;
+}
+const concealed=()=>!!player.hiding&&player.hideEnter<=0;
+
+function contact(){
+  const c=curator;
+  player.hits++;
+  if(player.hits>=2) return finish("COLLECTED");
+  if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
+    c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1; c.state="RESEAT"; }
+  else c.state="PATROL";
+  player.down=3.5; c.target=false; c.mode=null; c.lock=0; c.open=0;
 }
 
 function updateCurator(dt){
@@ -347,31 +434,64 @@ function updateCurator(dt){
     walkTo(c,c.carry.hx,c.carry.hz,speed,dt);
     if(Math.hypot(c.x-c.carry.hx,c.z-c.carry.hz)<0.9){
       c.carry.x=c.carry.hx; c.carry.z=c.carry.hz; c.carry.y=0.45;
-      c.carry.held=false; c.carry=null; c.state="PATROL"; c.reseat=8; c.target=false; }
+      c.carry.held=false; c.carry.moved=false;     // back on its plinth, quiet again
+      c.carry=null; c.state="PATROL"; c.reseat=8; c.target=false; c.mode=null; }
     return;
   }
+
+  // Target selection. At COLLECT it stops curating and starts collecting crew
+  // (DESIGN 6.5) - the one tier where concealment is the primary verb (8.1).
   if(c.lock<=0&&c.reseat<=0){
     const hunting=(tier==="PURSUE"||tier==="COLLECT");
-    if(attentionWeight()>0&&hunting&&!c.target){
-      c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; c.goal=player.holding;
-    } else if(attentionWeight()===0&&c.state!=="FIXATE") c.target=false;
+    if(tier==="COLLECT"&&!concealed()){
+      if(c.mode!=="CREW"){
+        c.mode="CREW"; c.goal=null; c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; }
+    } else {
+      const tgt=hunting?loudestItem():null;
+      if(tgt){
+        if(c.mode!=="ITEM"||c.goal!==tgt||!c.target){
+          c.mode="ITEM"; c.goal=tgt; c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; }
+      } else if(c.state!=="FIXATE"){
+        c.target=false; c.mode=null; if(c.state==="PURSUE") c.state="PATROL"; }
+    }
   }
   if(c.state==="FIXATE"){ if(c.fixate<=0) c.state="PURSUE"; return; }
 
   if(c.state==="PURSUE"&&c.target){
-    // A4: path to the plinth the item came from, so it cuts you off going home
-    const g=(c.goal&&!c.goal.gone)?{x:c.goal.hx,z:c.goal.hz}:{x:player.x,z:player.z};
+    // Losing the thread: a stashed item goes quiet, and a concealed player is
+    // not a valid target. Both break the commitment lock rather than waiting it out.
+    if(c.mode==="ITEM"&&radiance(c.goal)===0){
+      c.target=false; c.mode=null; c.state="PATROL"; c.lock=0; c.open=0; return; }
+    if(c.mode==="CREW"&&concealed()){
+      c.target=false; c.mode=null; c.state="PATROL"; c.lock=0; c.open=0; return; }
+
+    const it=c.goal, onPlayer=(c.mode==="CREW")||(!!it&&it.held);
+    // A4: intercept at the plinth the item came from, so it cuts you off going
+    // home - unless the carrier is in a wardrobe, in which case it comes there.
+    const g = c.mode==="CREW" ? {x:player.x,z:player.z}
+            : it.held ? (concealed()?{x:player.x,z:player.z}:{x:it.hx,z:it.hz})
+            : {x:it.x,z:it.z};
     walkTo(c,g.x,g.z,speed,dt);
-    if(Math.hypot(c.x-player.x,c.z-player.z)<1.5&&player.down<=0){
-      player.hits++;
-      if(player.hits>=2) return finish("COLLECTED");
-      if(player.holding){ const it=player.holding; it.held=false; player.holding=null;
-        c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1; c.state="RESEAT"; }
-      else c.state="PATROL";
-      player.down=3.5; c.target=false; c.lock=0;
+
+    if(onPlayer&&Math.hypot(c.x-player.x,c.z-player.z)<1.5&&player.down<=0){
+      // Found in a hiding place is a retrieval, not an ambush: it has to open
+      // the door, which takes four seconds you are free to spend running (8.1).
+      if(concealed()){
+        c.open+=dt;
+        if(c.open<HIDE_OPEN_S) return;
+        exitHide();
+      }
+      c.open=0; contact(); return;
+    }
+    c.open=0;
+    if(!onPlayer&&it&&Math.hypot(c.x-it.x,c.z-it.z)<1.0){
+      if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; }
+      it.held=false; c.carry=it; it.x=c.x; it.z=c.z; it.y=1.1;
+      c.state="RESEAT"; c.target=false; c.mode=null;
     }
     return;
   }
+  c.open=0;
   if(!c.goal||Math.hypot(c.x-c.goal.hx,c.z-c.goal.hz)<1.2){
     const live=items.filter(i=>!i.gone); c.goal=live[Math.floor(Math.random()*live.length)];
   }
@@ -459,14 +579,17 @@ function render(){
   gl.clearColor(.012,.014,.017,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
   const marked = curator.target && (curator.state==="PURSUE"||curator.state==="FIXATE");
-  const eye=[player.x,EYE,player.z], d=lookDir();
+  const eye=[player.x,eyeH(),player.z], d=lookDir();
   gl.uniformMatrix4fv(U.uProj,false,M4.persp(1.15,w/h,0.05,120));
   gl.uniformMatrix4fv(U.uView,false,M4.look(eye,[eye[0]+d[0],eye[1]+d[1],eye[2]+d[2]],[0,1,0]));
   gl.uniform3fv(U.uEye,eye); gl.uniform3fv(U.uDir,d);
   // A7: the aggro tell. Your light dims to 60% and goes cold.
-  gl.uniform1f(U.uRange, marked?11.5:19.0);
+  // In a wardrobe the flashlight is off and you are looking through a gap - but
+  // you can still see the room. Watching it come is the mechanic; at the first
+  // pass the light was cut so hard that hiding was blind, which is just waiting.
+  gl.uniform1f(U.uRange, player.hiding?12.0:(marked?11.5:19.0));
   gl.uniform1f(U.uCone, marked?0.88:0.80);
-  gl.uniform1f(U.uAmbient, 0.045);
+  gl.uniform1f(U.uAmbient, player.hiding?0.115:0.045);
 
   for(const r of ROOMS){
     drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
@@ -494,6 +617,10 @@ function render(){
   const dv=R("drive");
   drawBox(dv.x-1.6,1.05,dv.z,1.5,1.05,1.9,[.34,.28,.13]);
 
+  for(const h of HIDES){
+    const mine = h===player.hiding;
+    drawBox(h.x,1.02,h.z,0.50,1.02,0.30, mine?[.30,.28,.24]:[.27,.245,.205]);
+  }
   for(const it of items){
     if(it.gone) continue;
     let col=[.42,.44,.43];
@@ -513,8 +640,11 @@ function hud(){
   const held=player.holding, aim=held?null:aimedItem();
   const marked = curator.target&&(curator.state==="PURSUE"||curator.state==="FIXATE");
   const scanning = items.find(i=>i.scan>0);
+  const hidePlace = player.hiding?null:nearHide();
   document.getElementById("prompt").textContent =
-    over?"" : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
+    over?"" : player.hiding ? (player.hideEnter>0?"CLIMBING IN…":"CONCEALED    [C] climb out (loud)")
+    : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
+    : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
     : held ? "[E] drop    [F] appraise"
     : aim ? (aim.known?`$${aim.value}  ${aim.grade.toUpperCase()}   [E] take`:"UNAPPRAISED   [E] take   [F] appraise")
     : "";
@@ -524,6 +654,11 @@ function hud(){
     `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${QUOTA.toLocaleString()}<br>`+
     (held?`CARRYING ${held.known?"$"+held.value+" "+held.grade.toUpperCase():"UNAPPRAISED"}<br>`:"")+
     (marked?`<span style="color:#9fc4d6">IT IS COMING FOR YOU</span><br>`:"")+
+    (player.hiding&&player.hideEnter<=0?`<span style="color:#8fae9c">CONCEALED</span><br>`:"")+
+    (curator.open>0?`<span style="color:#c97155">SOMETHING IS AT THE DOOR  ${
+      (HIDE_OPEN_S-curator.open).toFixed(1)}s</span><br>`:"")+
+    (items.some(i=>i.stash>0)?`<span style="color:#8b8880">stashed ${
+      Math.ceil(Math.max(...items.map(i=>i.stash)))}s</span><br>`:"")+
     `<span style="color:#8b8880">${tierOf(dist)} ${dist.toFixed(0)}</span>`+
     `<div class="bar"><i style="width:${dist}%"></i></div>`+
     `<span style="color:#8b8880">stamina</span>`+
@@ -543,7 +678,8 @@ requestAnimationFrame(frame);
 // anything reachable only by hand is a rule nothing is guarding.
 window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist),
     slots:van.slots,banked:van.cargo.reduce((s,i)=>s+i.value,0),
-    cur:curator.state,marked:!!curator.target,hits:player.hits,
+    cur:curator.state,mode:curator.mode,marked:!!curator.target,hits:player.hits,
+    concealed:concealed(),opening:+curator.open.toFixed(2),
     holding:player.holding?player.holding.value:null,over,why:overWhy}),
   pos:()=>({x:+player.x.toFixed(2),z:+player.z.toFixed(2),
     room:roomAt(player.x,player.z)?.id??"VOID",yaw:+player.yaw.toFixed(2)}),
@@ -557,12 +693,23 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   clearKeys:()=>{for(const k in keys) keys[k]=false;},
   list:()=>items.filter(i=>!i.gone).map((it,i)=>({i,x:+it.x.toFixed(2),z:+it.z.toFixed(2),
     grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:it.held})),
+  // Mirrors grabDrop's bookkeeping - an item picked up by a fixture is just as
+  // displaced as one picked up by hand, and radiance() keys off exactly that.
   hold:i=>{const it=items.filter(x=>!x.gone)[i]; if(!it) return null;
     if(player.holding) player.holding.held=false;
-    it.held=true; player.holding=it; return it.value;},
+    it.held=true; it.moved=true; it.stash=0;
+    if(it.hideIn){ it.hideIn.item=null; it.hideIn=null; }
+    player.holding=it; return it.value;},
+  hides:()=>HIDES.map((h,i)=>({i,x:h.x,z:h.z,room:h.room,face:h.face,item:!!h.item})),
+  hide:i=>{const h=HIDES[i]; player.x=h.x; player.z=h.z; toggleHide(); return !!player.hiding;},
+  toggleHide, stash, nearHide:()=>{const h=nearHide(); return h?HIDES.indexOf(h):-1;},
+  stashOf:i=>{const it=items.filter(x=>!x.gone)[i]; return it?+it.stash.toFixed(2):null;},
+  radiance:i=>{const it=items.filter(x=>!x.gone)[i]; return it?radiance(it):null;},
   curator:()=>({x:+curator.x.toFixed(2),z:+curator.z.toFixed(2),state:curator.state,
+    mode:curator.mode,open:+curator.open.toFixed(2),
     target:!!curator.target,carrying:!!curator.carry}),
   setCur:(x,z,st)=>{curator.x=x;curator.z=z;if(st)curator.state=st;},
+  setMode:m=>{curator.mode=m;},
   raw:()=>({x:player.x,z:player.z}),   // unrounded; pos() is display precision
   cargo:()=>van.cargo.map(c=>({grade:c.grade,value:c.value})),
   faults:()=>DOOR_FAULTS.slice(),

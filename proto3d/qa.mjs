@@ -125,14 +125,48 @@ async function checks(g, fresh) {
   near("floor ratchets with the night", half.dist, RATCHET_END * (105 / NIGHT), 0.6);
 
   // --- pillar 2: carry nothing, weigh nothing -------------------------------
+  // At PURSUE the Curator is curating - it wants objects, and an empty-handed
+  // player is worth nothing to it. At COLLECT it has stopped curating and is
+  // collecting crew (DESIGN 6.5), which is a different rule, tested below.
   await fresh();
   const empty = await g(() => {
-    window.__g.setDist(95);                   // COLLECT, the hungriest tier
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    window.__g.setDist(70);                   // PURSUE
     for (let i = 0; i < 60; i++) window.__g.step(30, 1 / 60);   // 30 seconds
     return { st: window.__g.state(), cur: window.__g.curator() };
   });
-  ok("empty-handed player is never targeted",
+  ok("empty-handed player is never targeted at PURSUE",
     empty.st.marked === false && empty.cur.target === false, JSON.stringify(empty));
+
+  await fresh();
+  const crew = await g(() => {
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    for (let i = 0; i < 40; i++) { window.__g.setDist(95); window.__g.step(15, 1 / 60); }
+    return window.__g.state();
+  });
+  ok("at COLLECT it hunts crew, empty-handed or not",
+    crew.marked === true && crew.mode === "CREW", JSON.stringify(crew));
+
+  // --- aggro binds to the object, not the person ---------------------------
+  // Dropping must not clear the hunt, or dropping is a free aggro reset.
+  await fresh();
+  const dropped = await g(() => {
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    window.__g.setDist(70);
+    window.__g.hold(0);
+    for (let i = 0; i < 20; i++) window.__g.step(15, 1 / 60);
+    const chasing = window.__g.state().marked;
+    window.__g.grab();                        // put it down and walk away
+    for (let i = 0; i < 30; i++) window.__g.step(15, 1 / 60);
+    return { chasing, after: window.__g.state() };
+  });
+  ok("dropping the piece does not reset aggro",
+    dropped.chasing === true && dropped.after.marked === true, JSON.stringify(dropped));
+  ok("a dropped piece is still being retrieved",
+    dropped.after.mode === "ITEM" || dropped.after.cur === "RESEAT", JSON.stringify(dropped.after));
 
   // --- aggro follows the loot ----------------------------------------------
   await fresh();
@@ -338,6 +372,140 @@ async function checks(g, fresh) {
     return out;
   });
   ok("no room or corridor leaks to the outside", leaks.length === 0, JSON.stringify(leaks));
+
+  // --- concealment (DESIGN 8.1) --------------------------------------------
+  await fresh();
+  const hides = await g(() => window.__g.hides());
+  const roomsWithHides = new Set(hides.map(h => h.room));
+  const lootRooms = await g(() => window.__g.rooms().filter(r => r.id !== "drive").map(r => r.id));
+  ok("every room but the driveway has concealment",
+    lootRooms.every(r => roomsWithHides.has(r)), JSON.stringify([...roomsWithHides]));
+
+  await fresh();
+  const enter = await g(() => {
+    window.__g.setDist(40);
+    const before = window.__g.state().dist;
+    const got = window.__g.hide(0);
+    const half = { in: got, concealed: window.__g.state().concealed };
+    window.__g.step(30, 1 / 60);              // 0.5s - still climbing in
+    const mid = window.__g.state().concealed;
+    window.__g.step(45, 1 / 60);              // past 1.0s
+    const done = window.__g.state().concealed;
+    return { before, after: window.__g.state().dist, half, mid, done };
+  });
+  ok("entering a hiding place takes a second", enter.mid === false && enter.done === true,
+    JSON.stringify(enter));
+  ok("entering is silent", enter.after <= enter.before + 0.01,
+    `${enter.before} -> ${enter.after}`);
+
+  const leave = await g(() => {
+    const before = window.__g.state().dist;
+    window.__g.toggleHide();
+    return { before, after: window.__g.state().dist, concealed: window.__g.state().concealed };
+  });
+  near("leaving costs a door - L60 x 0.09", leave.after - leave.before, 60 * 0.09, 0.05);
+  ok("leaving is instant", leave.concealed === false, JSON.stringify(leave));
+
+  // Concealed and empty-handed at COLLECT: the hiding game the genre trades on.
+  await fresh();
+  const hidCollect = await g(() => {
+    window.__g.hide(0);
+    window.__g.step(90, 1 / 60);
+    for (let i = 0; i < 40; i++) { window.__g.setDist(95); window.__g.step(15, 1 / 60); }
+    return window.__g.state();
+  });
+  ok("concealment works at COLLECT", hidCollect.marked === false && hidCollect.hits === 0,
+    JSON.stringify(hidCollect));
+
+  // Concealed WITH the prize: it comes to the wardrobe and opens it.
+  await fresh();
+  const hidLoot = await g(() => {
+    const h = window.__g.hides()[0];
+    const idx = window.__g.list().findIndex(i => Math.hypot(i.x - h.x, i.z - h.z) < 90);
+    window.__g.hold(idx);
+    window.__g.hide(0);
+    window.__g.step(90, 1 / 60);
+    let sawOpening = false, opened = 0;
+    for (let i = 0; i < 6000 && !window.__g.state().over; i++) {
+      window.__g.setDist(70);
+      window.__g.step(1, 1 / 60);
+      const st = window.__g.state();
+      if (st.opening > 0) { sawOpening = true; opened = Math.max(opened, st.opening); }
+      if (st.hits >= 1) break;
+    }
+    return { sawOpening, opened, st: window.__g.state() };
+  });
+  ok("hiding with the prize does not hide the prize",
+    hidLoot.sawOpening === true, JSON.stringify(hidLoot.st));
+  ok("being found while concealed is a retrieval, not a death",
+    hidLoot.st.hits === 1 && hidLoot.st.over === false, JSON.stringify(hidLoot.st));
+  ok("opening the door takes about four seconds", hidLoot.opened >= 3.9,
+    `opened=${hidLoot.opened}`);
+
+  // Stash: the item goes quiet for 20s and the chase breaks.
+  await fresh();
+  const stashed = await g(() => {
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    window.__g.setDist(70);
+    window.__g.hold(0);
+    for (let i = 0; i < 20; i++) window.__g.step(15, 1 / 60);
+    const chasing = window.__g.state().marked;
+    const before = window.__g.state().dist;
+    const hi = window.__g.hides().findIndex(h => h.room === "foyer");
+    const h = window.__g.hides()[hi];
+    window.__g.tp(h.x, h.z - 1.0);
+    window.__g.stash();
+    const quiet = window.__g.radiance(0);
+    window.__g.step(60, 1 / 60);
+    const dropped = window.__g.state().marked;
+    const t20 = window.__g.stashOf(0);
+    return { chasing, quiet, dropped, t20, noise: window.__g.state().dist - before };
+  });
+  ok("stashing silences the piece", stashed.chasing === true && stashed.quiet === 0,
+    JSON.stringify(stashed));
+  ok("stashing breaks the chase", stashed.dropped === false, JSON.stringify(stashed));
+  ok("the stash lasts twenty seconds", stashed.t20 > 18 && stashed.t20 <= 20,
+    `remaining=${stashed.t20}`);
+
+  // ...and when it runs out, the collection comes and takes it back.
+  await fresh();
+  const expired = await g(() => {
+    const f = window.__g.rooms().find(r => r.id === "foyer");
+    window.__g.tp(f.x, f.z);
+    window.__g.setDist(70);
+    window.__g.hold(0);
+    const hi = window.__g.hides().findIndex(h => h.room === "foyer");
+    const h = window.__g.hides()[hi];
+    window.__g.tp(h.x, h.z - 1.0);
+    window.__g.stash();
+    window.__g.tp(f.x, f.z);
+    // Sample throughout: by 45s the whole retrieval can already be over, and an
+    // end-state assertion would read that as the Curator never having come.
+    let came = false, quietFor = 0;
+    for (let i = 0; i < 90; i++) {
+      window.__g.setDist(70); window.__g.step(30, 1 / 60);
+      const st = window.__g.state();
+      if (st.t < 20 && (st.marked || window.__g.curator().carrying)) quietFor++;
+      if (st.marked || window.__g.curator().carrying || st.cur === "RESEAT") came = true;
+    }
+    return { came, quietFor, st: window.__g.state(), cur: window.__g.curator() };
+  });
+  ok("a stash buys quiet while it lasts", expired.quietFor === 0, JSON.stringify(expired));
+  ok("a stash is a delay, not a solution", expired.came === true, JSON.stringify(expired));
+
+  await fresh();
+  const stuck = await g(() => {
+    window.__g.hide(0);
+    window.__g.step(90, 1 / 60);
+    const at = window.__g.raw();
+    window.__g.press("KeyW");
+    window.__g.step(60, 1 / 60);
+    const after = window.__g.raw();
+    window.__g.clearKeys();
+    return { moved: Math.hypot(after.x - at.x, after.z - at.z), concealed: window.__g.state().concealed };
+  });
+  ok("walking out of a hiding place leaves it", stuck.concealed === false, JSON.stringify(stuck));
 
   // --- the estate is authored, not assumed ---------------------------------
   const faults = await g(() => window.__g.faults());

@@ -99,7 +99,7 @@ am = TUNING["curse"]["attention_multiplier"]
 # drifted - it still carried the pre-R9 cursed floor of 2 while tuning.json,
 # curse_test.py and the C# core had all moved to 7.
 for tag, rel, l_names in (("JS2d", "proto/index.html", ("sprint", "appraise", "door")),
-                          ("JS3d", "proto3d/index.html", ("sprint", "appraise"))):
+                          ("JS3d", "proto3d/index.html", ("sprint", "appraise", "door"))):
     js = (ROOT / rel).read_text(encoding="utf-8")
     check(f"{tag} impulse_per_l", grab(js, r"IMPULSE\s*=\s*([\d.]+)"),
           lc["impulse_disturbance_per_l"])
@@ -135,6 +135,13 @@ for tag, rel, l_names in (("JS2d", "proto/index.html", ("sprint", "appraise", "d
     # The prototypes call it `drop`; the spec's table calls it break_small.
     check(f"{tag} L[drop=break_small]", grab(js_l, r"\bdrop\s*:\s*(\d+)"),
           TUNING["loudness"]["break_small"])
+
+# Concealment exists only in the first-person build so far (DESIGN 8.1).
+cn = TUNING["concealment"]
+js3 = (ROOT / "proto3d/index.html").read_text(encoding="utf-8")
+check("JS3d hide_enter_s", grab(js3, r"HIDE_ENTER_S\s*=\s*([\d.]+)"), cn["enter_seconds"])
+check("JS3d hide_open_s", grab(js3, r"HIDE_OPEN_S\s*=\s*([\d.]+)"), cn["open_seconds"])
+check("JS3d stash_s", grab(js3, r"STASH_S\s*=\s*([\d.]+)"), cn["stash_seconds"])
 
 # --------------------------------------------------------------- Python sims
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")

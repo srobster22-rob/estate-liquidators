@@ -196,6 +196,28 @@ tolerance. · Injection-tested per R14's rule: additive attention, per-frame sus
 fatal-first-contact, the old doorway box and a cursed-floor divergence are each caught, and
 all five revert clean. Full regression: QA 28/28, drift 72/72, estate validator PASS.
 
+R17 · Built **concealment** — the verb the owner asked for in R15 and the one genre-defining
+mechanic the design had specced (§8.1) and never played. Hiding furniture in every room, a 1s
+silent entry, a loud exit, a clamped view from inside, stashing an item into furniture for 20s
+of quiet, and the Curator opening a wardrobe over four seconds when the prize is still
+radiating from inside it. 18 new QA checks, all injection-tested. · **Found the prototype was
+violating a FIRM rule.** The Curator's target was `player.holding` — aggro bound to the
+*person*, so putting the piece down cleared the hunt outright. That is the free aggro reset
+D-06 and `BUILD-PROMPT.md`'s non-negotiables name by name, sitting in the build since R12.
+Rewrote targeting around `radiance(item)`: an item radiates once it has left its plinth, goes
+quiet while stashed, and goes quiet again when reseated — so dropping now buys you nothing,
+which is the whole point of the rule. · Two more: **at COLLECT the Curator never switched to
+hunting crew** (§6.5 was unimplemented, so the tier did nothing but move faster), and the
+first pass at concealment **cut the light so hard that hiding was blind** — you couldn't watch
+it approach, which turns the genre's best mechanic into a wait. Raised ambient while
+concealed; verified by screenshot, not by reading the code. · The COLLECT change also broke an
+R16 check that asserted an empty-handed player is *never* targeted. It was right at PURSUE and
+wrong at COLLECT — the check was over-broad, not the code. Split into two checks that state
+the tier difference explicitly, which is now the only place that distinction is written down
+as an executable rule. · Logged D-22 (concealment is a hard stop at COLLECT, with the
+economic counter written down in advance) and D-23 (the three Loudness values §8.1 never
+specified, all flagged as guesses). Regression: QA 46/46, drift 76/76, estate validator PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

@@ -342,6 +342,51 @@ that would mean the unlock timing, not the visibility, is wrong.
 
 ---
 
+## D-22 · At COLLECT, concealment is a full stop, not a delay
+**Status:** SOFT · `DESIGN.md` §6.5 and §8.1, implemented `proto3d/index.html`
+
+Two rules meet at COLLECT and the interaction had never been written down. §6.5 says the
+Curator stops curating objects and starts collecting crew; §8.1 says a concealed player is
+not a valid attention target. Composed literally, that means a player who is hidden and
+empty-handed at COLLECT is *completely* safe — the Curator has no target at all and returns
+to patrol. It does not search, listen at the door, or wait you out.
+
+Implemented literally, on purpose. The alternative — a search behaviour — is the standard
+genre answer and it is where hiding games go to die: once the monster can find you in the
+box, the box is a countdown and the player is a spectator. Making concealment a hard stop
+keeps the cost on the *approach*: getting to the wardrobe is the dangerous part, and your
+loot is still lying out there radiating while you sit in it.
+
+The price is that the last minutes of a bad night have a safety switch in them.
+
+**Falsified if:** playtests show crews reaching COLLECT and simply parking in furniture
+until sunrise. The fix then is not a search behaviour but an economic one — time spent
+concealed earns nothing, so the counter is a quota the crew cannot meet from inside a
+wardrobe. If that doesn't bite either, give the Curator a slow sweep of hiding places *it
+has already seen a player near*, which keeps the fairness rule intact.
+
+---
+
+## D-23 · Stashing is silent; leaving concealment costs a door
+**Status:** SOFT · `DESIGN.md` §8.1, `tuning.json` concealment block
+
+§8.1 fixes the durations (≈1s to enter, 20s of stash quiet, ~4s to be opened) but says
+nothing about what any of it costs in Loudness. Three calls, all guesses, all flagged:
+
+- **Entering is silent.** It already costs the scarcest resource in the game — a second of
+  standing still while something walks toward you.
+- **Leaving costs L60**, the door value from the loudness table. "Leaving is instant and
+  loud" is the spec's own wording, and a wardrobe door is the obvious referent.
+- **Stashing is silent.** Placing a vase inside furniture is a careful act; the noisy verb
+  is *dropping*, which is already L90. If stashing were loud it would collapse into
+  dropping, and the two want to stay distinct decisions.
+
+**Falsified if:** stash-relay play (seed the route home, run it in relays) turns out to be
+strictly better than carrying, with no counterplay. Then stashing needs a cost — most likely
+a small impulse on placement, since the 20s timer is already load-bearing.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
