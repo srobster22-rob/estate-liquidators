@@ -69,20 +69,27 @@ const CURATOR = { patrol:52, pursue:63, collect:74 };
 // ---------------------------------------------------------------- the estate
 // Rooms are axis-aligned boxes; doorways are gaps punched in shared walls.
 const ROOMS = [
-  { id:"drive",  x:  40, y: 330, w:200, h:150, tier:0, name:"DRIVEWAY" },
-  { id:"foyer",  x: 260, y: 300, w:220, h:210, tier:0, name:"FOYER" },
-  { id:"stair",  x: 500, y: 300, w:180, h:210, tier:1, name:"GRAND STAIR" },
-  { id:"study",  x: 500, y:  80, w:200, h:190, tier:1, name:"STUDY" },
-  { id:"serv",   x: 260, y: 540, w:420, h:130, tier:1, name:"SERVICE HALL" },
-  { id:"land",   x: 700, y: 300, w:190, h:210, tier:2, name:"LANDING" },
-  { id:"cons",   x: 910, y: 210, w:250, h:230, tier:3, name:"CONSERVATORY" },
-  { id:"pot",    x: 910, y: 470, w:250, h:200, tier:3, name:"POTTING ROOM" },
+  // spread: LEVEL-SPEC 2.1 / D-23. The six tier-1..3 rooms are 2 uniform, 2 curio,
+  // 2 mixed -> V11's ratios with a mean of exactly 1.00.
+  { id:"drive",  x:  40, y: 330, w:200, h:150, tier:0, name:"DRIVEWAY", spread:"mixed" },
+  { id:"foyer",  x: 260, y: 300, w:220, h:210, tier:0, name:"FOYER", spread:"mixed" },
+  { id:"stair",  x: 500, y: 300, w:180, h:210, tier:1, name:"GRAND STAIR", spread:"mixed" },
+  { id:"study",  x: 500, y:  80, w:200, h:190, tier:1, name:"STUDY", spread:"curio" },
+  { id:"serv",   x: 260, y: 540, w:420, h:130, tier:1, name:"SERVICE HALL", spread:"uniform" },
+  { id:"land",   x: 700, y: 300, w:190, h:210, tier:2, name:"LANDING", spread:"mixed" },
+  { id:"cons",   x: 910, y: 210, w:250, h:230, tier:3, name:"CONSERVATORY", spread:"curio" },
+  { id:"pot",    x: 910, y: 470, w:250, h:200, tier:3, name:"POTTING ROOM", spread:"uniform" },
 ];
 const DOORS = [
   ["drive","foyer"],["foyer","stair"],["foyer","serv"],["stair","study"],
   ["stair","land"],["serv","land"],["land","cons"],["land","pot"],["cons","pot"],
 ];
 const BAND = { 0:[40,150], 1:[80,300], 2:[250,700], 3:[600,1400] };
+// R20 / D-23. A room's spread is how much its objects differ from EACH OTHER, which is
+// the only thing appraising is paid for: the payoff is 0.6x the half-width. Mean is 1.0
+// across the three classes, so a compliant estate holds no extra money - only a choice.
+const SPREAD_F = { uniform:0.3, mixed:1.0, curio:1.7 };
+const SHAPES_FOR = { uniform:1, mixed:2, curio:3 };
 const GRADE_MULT = { clean:1, tainted:2.5, malignant:6 };
 const ATT_MULT   = { clean:1, tainted:1.5, malignant:3 };
 
@@ -108,13 +115,22 @@ function makeItems(){
   for (const r of ROOMS){
     if (r.id==="drive") continue;
     const n = r.tier===0 ? 3 : r.tier===3 ? 5 : 4;
+    const f = SPREAD_F[r.spread];
+    const [lo,hi] = BAND[r.tier];
+    const m = (lo+hi)/2, halfw = Math.min(f*(hi-lo)/2, m);   // clamp: never below $0
     for (let i=0;i<n;i++){
       const g = Math.random()<0.70 ? "clean" : Math.random()<0.75 ? "tainted":"malignant";
-      const [lo,hi] = BAND[r.tier];
+      // The telegraph. Silhouette variety scales with the ROOM's spread and is drawn
+      // INDEPENDENTLY of this item's value, so a miscellaneous room looks miscellaneous
+      // without any single object advertising its price. That distinction is D-10: you
+      // may read the room, never the item.
+      const base = r.tier>=3?11:r.tier===2?9:7;
       items.push({
         x: rnd(r.x+34, r.x+r.w-34), y: rnd(r.y+34, r.y+r.h-34),
         home:{x:0,y:0}, room:r.id, tier:r.tier, grade:g,
-        value: Math.round(rnd(lo,hi)*GRADE_MULT[g]),
+        value: Math.round(rnd(m-halfw, m+halfw)*GRADE_MULT[g]),
+        sil: Math.max(4, base*(1 + (Math.random()-0.5)*1.1*f)),
+        shape: Math.floor(Math.random()*SHAPES_FOR[r.spread]),
         known:false, held:false, gone:false, scan:0,
       });
     }
@@ -379,8 +395,11 @@ function draw(){
     const held = it.held;
     X.fillStyle = it.known ? (it.grade==="malignant"?"#c97155":it.grade==="tainted"?"#c6a44b":"#9aa3a0")
                            : "#565c60";
-    const sz = it.tier>=3?11:it.tier===2?9:7;
-    X.fillRect(it.x-sz/2,it.y-sz/2,sz,sz);
+    const sz = it.sil;
+    if(it.shape===0){ X.fillRect(it.x-sz/2,it.y-sz/2,sz,sz); }
+    else if(it.shape===1){ X.beginPath(); X.arc(it.x,it.y,sz/2,0,6.2832); X.fill(); }
+    else { X.beginPath(); X.moveTo(it.x,it.y-sz/2); X.lineTo(it.x+sz/2,it.y+sz/2);
+           X.lineTo(it.x-sz/2,it.y+sz/2); X.closePath(); X.fill(); }
     if(it.known){
       X.fillStyle="#7f867f"; X.font="9px ui-monospace,monospace";
       X.fillText("$"+it.value, it.x+8, it.y+3);
@@ -440,6 +459,19 @@ window.__game = {
   step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) if(!over) step(dt); return window.__game.state(); },
   press:(k,v=true)=>{keys[k]=v;}, reset,
   items:()=>items.filter(i=>!i.gone).length,
+  raw:()=>items.map(i=>({sil:i.sil,value:i.value,grade:i.grade,tier:i.tier,room:i.room})),
+  // R20: per-room spread readout, so the telegraph and the economics can both be
+  // asserted from automation instead of eyeballed.
+  spreads:()=>ROOMS.filter(r=>r.id!=="drive").map(r=>{
+    const inRoom = items.filter(i=>i.room===r.id);
+    const vs = inRoom.map(i=>i.value/GRADE_MULT[i.grade]);   // strip the curse multiplier
+    const sils = inRoom.map(i=>i.sil);
+    const sd = a => { const mu=a.reduce((s,x)=>s+x,0)/a.length;
+      return Math.sqrt(a.reduce((s,x)=>s+(x-mu)**2,0)/a.length); };
+    return { room:r.id, tier:r.tier, spread:r.spread, n:inRoom.length,
+             valueSd:Math.round(sd(vs)), silSd:+sd(sils).toFixed(2),
+             shapes:new Set(inRoom.map(i=>i.shape)).size };
+  }),
 };
 
 reset(); requestAnimationFrame(loop);

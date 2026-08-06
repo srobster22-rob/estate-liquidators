@@ -289,6 +289,34 @@ test in the first place: half of it now exists, and the half that remains is ass
 *engine* honours the 0.45 floor rather than trusting the constant — an FMOD-side test, not a
 validator one.
 
+R20 · Took `room_spread` out of the documents and into the **prototype**, where the design
+work had got two rounds ahead of the build. `proto/index.html` now draws each room's items
+from `min(f x half-width, mean)` per LEVEL-SPEC §2.1, with the estate authored to V11's mix
+(2 uniform, 2 curio, 2 mixed across its six tier-1..3 rooms, mean exactly 1.00). · **Built
+the telegraph, which is the part no simulation could answer.** R17 measured that the mechanic
+survives players misreading rooms; it said nothing about whether a room can *communicate*
+"miscellaneous" at a glance. In the prototype it does it with **silhouette variety** — item
+size variance and the number of distinct shapes both scale with the room's spread class
+(uniform → 1 shape, mixed → 2, curio → 3). Crucially the silhouette is drawn from a
+distribution **independent of the item's own value**, which is what keeps D-10 intact: you may
+read the room, never the item. · **Verified by driving the real page in headless Chromium**
+(`qa.mjs`, playwright) rather than by reading the diff. Same tier, different class:
+SERVICE HALL (uniform) has a value SD of **16** against STUDY's (curio) **89** — a 5.6× ratio
+against the 5.67× that 0.3:1.7 predicts. Deep rooms the same: POTTING ROOM 59 vs
+CONSERVATORY 336. Shape counts land exactly on 1.00 for both uniform rooms and ~2.5 of 3 for
+the curio ones. A full night runs to sunrise with no console or page errors. · **Caught a
+confounded statistic in my own test before believing it.** The first D-10 pass computed
+correlation between silhouette and true value across *all* items and got **r = 0.46**, which
+looks like a serious leak. It isn't — silhouette base and value both scale with depth tier,
+so pooling across tiers measures the tier, not the leak. Recomputed **within** each room, the
+correlations are `+0.019, +0.007, −0.009, −0.030, −0.067, −0.023, +0.013`; one re-run moved
+the −0.067 to +0.006, so even the largest is noise. D-10 holds, but only because the question
+was asked at the right altitude. · D-23's "no extra money" claim also verified in the running
+game: mean pre-curse value per tier is **96 / 191 / 476 / 995** against band midpoints of
+95 / 190 / 475 / 1000. · Put `SPREAD_F` under canonical control per R18 (`tuning.json`
+`room_spread.factor`, checked in both the validator and the JS — **74 constants** now), and
+confirmed the new checks fail when perturbed.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -296,32 +324,33 @@ validator one.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R20: take `room_spread` into the prototype — the design work is now well ahead of the
-build.** `room_spread` exists in the spec (`LEVEL-SPEC.md` §2.1), the validator (V11), the
-economy (§9) and the decision log (D-23), but `proto/index.html` still draws every room from a
-single band, so the *game* does not contain the decision R17–R18 were spent establishing.
-Two rounds of standing evidence say porting a verified model into real-time code is where the
-real bugs are: R12 found per-frame-vs-per-second noise and crew-size-dependent decay, R18
-found a nine-round-old constant hiding in plain sight. Expect the telegraph to be the hard
-part — the sims say the mechanic survives a noisy read, but say nothing about whether a
-flat-shaded low-poly room can communicate "miscellaneous" at a glance, which is an
-`ART-DIRECTION.md` question no simulation will answer.
+**R21: audit what `tuning.json` knows that each implementation does not.** The drift checker
+only compares constants that exist on *both* sides, so a value an implementation simply lacks
+is invisible to it — the same shape of gap R18 found, one level up. Two are already known:
+`Loudness.cs` has no `approach_occlusion_floor` despite `tuning.json` carrying one since R19,
+and nothing in the C# core knows about `room_spread` at all, so `unity/tests/CoreTests`' 31
+checks are now pinned to a model the Python and JS have both moved past. Write the inverse
+check — for every key in `tuning.json`, assert *some* implementation claims it, and list the
+ones nobody does. That list is the real backlog.
 
-**Then R21: the C# core has fallen behind.** `unity/tests/CoreTests` pins 31 checks against
-the Python sims, but nothing there knows about `room_spread`, and `Loudness.cs` has no
-approach-occlusion floor even though `tuning.json` now carries one. The drift checker only
-compares constants that *exist* in both places, so a constant the C# simply lacks is
-invisible to it — the same shape of gap R18 found, one level up. Worth an explicit audit of
-what `tuning.json` knows that each implementation does not.
+**Then R22: the telegraph is the one open question a simulation cannot close.** R20 proved
+silhouette variety works as a spread signal in a 2D top-down prototype, where an item is a
+shape on a floor. `ART-DIRECTION.md` commits to flat-shaded low-poly in first person, where
+the player sees a *room*, not a plan view — and "this cabinet holds unlike things" has to read
+from a doorway, at a glance, in the dark, with a flashlight. That is an art problem with a
+real chance of not working, and it now gates the value of D-23. Worth writing the
+`ART-DIRECTION.md` section on how a uniform room and a curio room differ visually — repetition
+and rhythm versus silhouette variety — before any asset work starts, because it is cheap now
+and expensive after a kitbash exists.
 
-**Two standing rules, both earned the hard way, both worth re-reading before any round.**
-*A checker only checks what somebody named* (R18): `check_drift.py` reported "55 constants
+**Three standing rules, each earned by getting it wrong first.**
+*A checker only checks what somebody named* (R18) — `check_drift.py` reported "55 constants
 agree" for four rounds while two implementations disagreed about a number that moved the
-project's headline result, because both wrote it inline. *A check earns its place by failing
-the default an unaware author produces* (R19): V5 passed everything for eighteen rounds
-because it had no failing condition at all, and V11 was written specifically to fail the
-all-`mixed` estate that is the natural thing to build. Before trusting any green run, ask
-what it cannot see.
+headline result, because both wrote it inline. *A check earns its place by failing the default
+an unaware author produces* (R19) — V5 passed everything for eighteen rounds because it had no
+failing condition at all. *Ask a statistic at the right altitude* (R20) — the D-10 leak test
+read r = 0.46 pooled across tiers and ~0.00 within rooms, and only the second one was
+answering the question. Before trusting any green run, ask what it cannot see.
 
 **The appraiser thread is closed. Keep it closed.** Five rounds (R6, R8, R16, R17, R18)
 circled the same number, and the resolution was structural rather than numerical: cost levers

@@ -75,6 +75,12 @@
     "_ruin_note": "Tail risk, not a fee. A linear cost cannot balance a multiplicative benefit."
   },
 
+  "room_spread": {
+    "_source": "LEVEL-SPEC.md 2.1, D-23, measured in LOOP_LOG R17/R18",
+    "_note": "Half-width of a room's value band as a multiple of the tier default. Mean is 1.0 across the three classes by construction, so a V11-compliant estate holds no extra money - only a decision. V11 enforces >=25% uniform and >=25% curio.",
+    "factor": { "uniform": 0.3, "mixed": 1.0, "curio": 1.7 }
+  },
+
   "retrieval": {
     "_source": "sim/integrated.py, LOOP_LOG R8",
     "dormant": 0.0,

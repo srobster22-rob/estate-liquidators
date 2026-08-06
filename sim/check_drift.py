@@ -133,6 +133,12 @@ check("py validator occlusion_curator",
       grab(validator, r"^OCCLUSION\s*=\s*([\d.]+)", flags=re.M),
       lc["occlusion_curator"])
 
+rs = TUNING["room_spread"]["factor"]
+for _cls, _v in rs.items():
+    check(f"py validator spread[{_cls}]",
+          grab(validator, rf'"{_cls}":\s*([\d.]+)'), _v)
+    check(f"JS spread[{_cls}]", grab(js, rf"{_cls}:([\d.]+)"), _v)
+
 sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
         for n in ("integrated.py", "disturbance.py", "curse_test.py",
                   "appraiser_risk.py", "appraiser_variance.py")}

@@ -25,3 +25,7 @@ __pycache__/
 
 # Local
 *.log
+
+# Node - installed on demand for proto/ browser QA (see qa.mjs)
+node_modules/
+package-lock.json
