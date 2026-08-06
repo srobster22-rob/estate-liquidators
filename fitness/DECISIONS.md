@@ -30,17 +30,32 @@ This is cheap to check and should be checked the moment real logs exist.
 
 ---
 
-## D-02 · Two traces, not three — FIRM
+## D-02 · Two traces, not three — FIRM (conclusion), **PREMISE FALSIFIED** (R2)
 
 Busso's variable-gain and three-component variants fit historical data better.
 
-**Why two anyway:** the binding constraint is a lifter with eight weeks of logs, not a
-lab with two years of data. Four free parameters are recoverable from ~20 sessions;
-seven are not. A better model you cannot identify is worse than a cruder one you can.
+**Why two anyway:** a better model you cannot identify is worse than a cruder one you
+can.
 
-**What would prove it wrong:** if R2's fitting shows four parameters are *already*
-unidentifiable from realistic logs, the answer is fewer parameters and stronger priors,
-not more. Either way, three components stay out.
+**The original premise was wrong and R2 proved it.** D-02 was written on "four free
+parameters are recoverable from ~20 sessions". They are not. At 8 weeks of logs (~24
+sessions) the median MRV error is **26.4%** and the p90 is **1328%**. Usable accuracy
+arrives at roughly **24 weeks** of *varied* training (8.6% median), and keeps improving
+to 52 (4.5%). DESIGN.md §4.1.
+
+**The conclusion survives and hardens.** R2 also tested the fifth parameter D-04 would
+most like to free — the saturation ceiling — and it triples median error (5.9% → 18.7%
+on the informative history) with a p90 of 759%. If four parameters are already at the
+edge of what real logs support, three components are not a close call.
+
+**What this changes downstream:** the confidence gate in DESIGN.md §4.1 is no longer
+optional, and its threshold is now a measured quantity rather than a guess. Any feature
+that assumes a trustworthy fit inside a first mesocycle is built on sand.
+
+**What would still prove the conclusion wrong:** a three-component model that reaches
+0.94+ correlation on a WAVED history in under 24 weeks. Given four parameters need 24,
+this would require the extra structure to be *more* identifiable than what it adds, which
+is not how identifiability works. Treat any such result as a bug first.
 
 ---
 
@@ -147,12 +162,105 @@ is worth understanding.
 
 ---
 
-## D-08 · The project's own falsification test — WORKING
+## D-08 · The project's own falsification test — **PASSED** (R2)
 
 MESO's claim is that a fitted plan beats a good template. The whole thing rests on it.
 
-**What would prove it wrong:** fitted parameters that are unstable week to week — if
-re-fitting after each new week swings prescribed volume by more than ~20%, the "fit"
-is tracking noise, and a stable template beats a jittery personalisation regardless of
-which one is theoretically better. **This is the single most likely way this project
-fails**, and R2 should measure it before building anything on top of the fitter.
+**The condition, written down in advance:** if re-fitting after each new week swings
+prescribed volume by more than ~20%, the fit is tracking noise and a stable template
+beats a jittery personalisation regardless of which is theoretically better.
+
+**Measured, R2:** refitting weekly from week 8 to week 24 moves the prescribed volume by
+a median of **3.4%** (PROBE), **5.7%** (WAVED), **4.3%** (FLAT). Comfortably inside the
+threshold.
+
+**And the test that makes that number mean something.** A fit that never leaves its
+starting point would also score ~0% swing, so stability alone proves nothing. Against
+two constant baselines — always prescribe the population prior, always prescribe the
+population median — the fitter scores **0.98 correlation with truth** and 16% median
+error where the constants score **0.00** and ~59%. It is genuinely learning the lifter,
+and it is holding still while it does. Both halves were required.
+
+**Residual worry, unresolved:** the p90 and worst-case swings are 28% and 96% (PROBE),
+so a minority of lifters do see prescriptions jump. Combined with the fat error tail in
+D-10, this is the same population — poorly-identified lifters — showing up twice. The
+confidence gate has to catch them, and that is R3.
+
+---
+
+## D-09 · One weekly performance test, sigma 2.5 points — WORKING
+
+The fitter is fed one measurement per week: a top set to a known RIR, converted to an
+estimated 1RM, expressed as a percentage of a baseline test, plus Gaussian noise with
+sigma = 2.5 (i.e. a 2.5% coefficient of variation).
+
+**Why:** it is roughly the test-retest variability of an estimated 1RM, and one test per
+week is the most a real lifter will reliably produce without the measurement becoming
+training in its own right.
+
+**What it costs:** noise dominates the result. Median MRV error runs 0.0% at sigma 0,
+6.1% at sigma 1, 14.1% at 2.5 and 23.8% at 5. **Fit quality is roughly linear in
+measurement noise**, which means better estimation is worth as much as any modelling
+improvement this project could make.
+
+**What would prove it wrong:** real logged e1RM series with a test-retest CV outside
+1–4%. Above 4% the fit needs multiple measurements per week or a smoothed estimate, and
+the 24-week data threshold gets worse. INFERRED — no measurement, literature-typical.
+
+---
+
+## D-10 · An unvarying plan is an uninformative experiment — FIRM
+
+A lifter who trains the same volume every week produces a log that barely identifies
+them: correlation **0.45** and 38.5% median MRV error, against **0.94** for a normal
+waved mesocycle and **0.98** for a deliberately varied one.
+
+**Why it happens:** a constant input drives both exponential traces in lockstep. Nothing
+in the response separates a fast-fatiguing lifter from a slow-adapting one, so the loss
+surface is nearly flat along the direction that matters.
+
+**What follows:** variation in the plan is not only a search for MRV (idea 4) — it is the
+excitation signal. A planner that prescribes a comfortable, unvarying block is degrading
+its own next prescription, and should be prevented from doing so by a variation floor
+rather than trusted not to.
+
+**What would prove it wrong:** a fit reaching 0.9+ correlation on a genuinely flat
+history. That would mean the identifiability is coming from somewhere other than the
+input variation, and the whole excitation argument is wrong.
+
+---
+
+## D-11 · Don't optimise the plan for identifiability — WORKING
+
+PROBE (alternating 8 and 36 sets) scores 0.98. WAVED — a normal ramp-and-deload
+mesocycle people would actually run — scores 0.94, for free.
+
+**The call:** take the 0.94. The remaining gap is small, and buying it costs a training
+plan nobody wants to follow. Prescribe a normal mesocycle with a *variation floor*, not a
+plan designed to excite the model.
+
+**What it costs:** a slightly worse fit for everyone, forever.
+
+**What would prove it wrong:** a variation schedule that closes most of the 0.94→0.98 gap
+while staying inside what a normal mesocycle already does — e.g. deeper deloads, which
+cost little and add excitation. Worth one experiment. It would move this from WORKING to
+FIRM in either direction.
+
+---
+
+## D-12 · Small-population medians in this project are not measurements — WORKING
+
+The same fitter configuration produced median MRV errors of 5.9%, 14.1%, 16.0% and 20.0%
+across four R2 experiments that differed only in which synthetic lifters they drew.
+
+**Why it matters:** those are the numbers every decision in this project is made from,
+and a 3x swing from sampling alone is larger than most of the effects being compared.
+
+**The rule from here:** headline numbers come from populations of 24+, and any figure
+from a run of 6–12 lifters is labelled directional. Where two arms are being compared,
+use common random numbers — the same lifters and the same noise draws in both — so the
+comparison is paired rather than two independent noisy estimates.
+
+**What would prove it wrong:** nothing; this is a methodology fix, not a claim. It is
+logged because R2 nearly quoted the 5.9% figure as a headline, and that number was
+sampling luck.

@@ -11,18 +11,25 @@ almost nobody.
 
 ## Status
 
-**Round 1 complete. Model built, tested, and already overturned once.**
+**Rounds 1–2 complete. The premise survived, twice, at a price each time.**
 
-R1 set out to design a triggered-deload rule and instead found that the standard
+**R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
 is strictly increasing in weekly sets, so it prescribes infinite training and has no
 maximum recoverable volume, no minimum effective volume, and no reason to ever deload.
-Every deload result that came out of it before the correction was an artefact.
+Every deload result that came out of it before the correction was an artefact. The fix —
+saturating stimulus with linear fatigue — is one parameter, and it makes MRV a model
+*output* instead of an assumption. `DESIGN.md` §3.
 
-The correction — saturating stimulus with linear fatigue — is one parameter, and it makes
-MRV a model *output* instead of an assumption. Details in `DESIGN.md` §3.
+**R2** built the fitter and put it on trial. It works: **0.98 correlation** with truth on
+an informative history, against **0.00** for the constant baselines it has to beat, and
+it holds still — 3–6% week-to-week swing in prescribed volume, against a 20% failure
+threshold written down in advance. But it needs **~24 weeks** of *varied* training, not
+the 8 the project was designed around, and its error tail is dangerous: p90 off by 34%,
+worst case by a factor of four. `DESIGN.md` §4.1.
 
-Not built yet: the fitter, the volume budget, the autoregulation controller, the logger.
+Not built yet: the confidence gate, the volume budget, the autoregulation controller, the
+logger.
 
 ## The documents
 
@@ -35,7 +42,9 @@ Not built yet: the fitter, the volume budget, the autoregulation controller, the
 | **[sim/ff_model.py](sim/ff_model.py)** | The two-trace impulse-response core. No policy lives here. | Before touching any number. |
 | **[sim/volume_response.py](sim/volume_response.py)** | Does the model have an interior optimum in volume? (R1: no. Then: yes.) | Before changing the saturation ceiling. |
 | **[sim/deload_sweep.py](sim/deload_sweep.py)** | Five deload policies over a 20-week block, three model variants. | Before arguing about deload cadence. |
-| **[tests/](tests/)** | 24 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[sim/fit.py](sim/fit.py)** | The per-lifter fitter: reparameterised least squares, multi-start Nelder-Mead, pure stdlib. | Before touching the fit or the MRV search. |
+| **[sim/fit_experiment.py](sim/fit_experiment.py)** | Does the fit work, hold still, and beat a constant? Five experiments. | Before believing any claim about personalisation. |
+| **[tests/](tests/)** | 36 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -45,8 +54,10 @@ Not built yet: the fitter, the volume budget, the autoregulation controller, the
    returns, not a number copied off a spreadsheet.
 3. **Autoregulation is a control loop, not a vibe.** An explicit gain — a number that can
    be wrong, and therefore improved.
-4. **The mesocycle is a search, not a ritual.** The ramp exists to find your MRV; the
-   deload is what overshooting costs.
+4. **The mesocycle is a search, not a ritual.** The ramp exists to find your MRV — and
+   its variation is also the excitation signal that makes you identifiable at all. Train
+   the same amount every week and the fit barely knows who you are (0.45 correlation,
+   against 0.94 for a normal waved block).
 5. **Every recommendation states its confidence.** Below the identifiability threshold
    the app says "population prior, not your data" out loud, every time.
 
@@ -71,19 +82,25 @@ cd fitness/sim
 python3 ff_model.py          # smoke test
 python3 volume_response.py   # dose-response, and the MRV spread
 python3 deload_sweep.py      # policy comparison across three model variants
+python3 fit_experiment.py    # recovery, stability, noise, null hypothesis, data volume
 
-cd .. && python3 -m unittest discover tests   # 24 tests
+cd .. && python3 -m unittest discover tests   # 36 tests
 ```
 
 ## What is solid and what isn't
 
 **Solid:** the model's structure and its two enforced constraints; the proof that the
-linear form has no interior optimum; the population-spread argument for fitting; the test
-suite.
+linear form has no interior optimum; the population-spread argument for fitting; that the
+fit is findable, stable, and beats its null; the test suite.
 
 **Specified but unverified:** every parameter value. All five priors are literature-typical
 figures from *endurance* research, and the saturation ceiling is a guess whose value the
 entire volume prescription turns on. `DECISIONS.md` flags each one with what would replace
 it.
 
-**Not started:** fitting, and therefore the whole premise.
+**Known-dangerous:** the error tail. The median fit is good and the p90 fit is off by
+34–148%, so the same machinery that helps most lifters would badly mislead some. Nothing
+should present a confident number until the confidence gate exists. That is R3.
+
+**Not started:** the confidence gate, the volume budget across muscle groups, the
+autoregulation controller, the logger.

@@ -14,12 +14,18 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Round 1 complete.** The core model exists, is tested (24 tests, `fitness/tests/`), and
-has already overturned its own founding assumption once — see §3, which is the most
-important section in this document.
+**Rounds 1–2 complete.** The core model exists and is tested (36 tests,
+`fitness/tests/`). It has overturned its own founding assumption twice: R1 found the
+model could not represent volume at all (§3), and R2 found the fitter needs three times
+more data than the project was designed around (§4.1).
 
-Not built yet: parameter fitting, the volume budget across muscle groups, the
-autoregulation controller, the logger. Ranked in `LOOP_LOG.md`.
+The premise survived both. Per-lifter fitting works, correlates 0.98 with truth on an
+informative history, and — the thing D-08 named as the most likely way this project dies
+— **holds still**: 3–6% week-to-week swing in prescribed volume, well inside the 20%
+threshold set in advance.
+
+Not built yet: the volume budget across muscle groups, the autoregulation controller, the
+logger. Ranked in `LOOP_LOG.md`.
 
 ---
 
@@ -28,7 +34,9 @@ autoregulation controller, the logger. Ranked in `LOOP_LOG.md`.
 1. **Fit the lifter, don't apply the template.** Two-trace impulse-response with four
    free parameters, fit per lifter from their own logs. The population spread in the
    one number that matters most — maximum recoverable volume — is **8.9x from p10 to
-   p90** (§4). No template survives that.
+   p90** (§4). No template survives that. R2 confirmed the fit is findable (correlation
+   0.98) and stable (3–6% week-to-week), at a cost: it needs ~24 weeks of *varied*
+   training before it can be trusted (§4.1).
 
 2. **Volume is spent, not scheduled.** Weekly sets are a budget allocated across muscle
    groups against diminishing returns, not a number copied off a spreadsheet.
@@ -38,11 +46,17 @@ autoregulation controller, the logger. Ranked in `LOOP_LOG.md`.
    therefore a number that can be improved.
 
 4. **The mesocycle is a search, not a ritual.** The ramp exists to *find* your MRV; the
-   deload is what it costs to overshoot it. This replaces R1's original framing (see §3
-   and §5) and is the single most consequential change of the round.
+   deload is what it costs to overshoot it. R2 gave this a second job: the variation is
+   also the **excitation signal** that makes you identifiable at all. A lifter who trains
+   the same amount every week produces a log that barely identifies them — correlation
+   0.45 against 0.94 for a normal waved mesocycle (§4.1). An unvarying plan is an
+   uninformative experiment.
 
 5. **Every recommendation states its confidence.** Below the identifiability threshold
-   the app says "population prior, not your data" out loud, in the UI, every time.
+   the app says "population prior, not your data" out loud, in the UI, every time. R2
+   made this a release requirement rather than a nicety: the median fit is good and the
+   p90 fit is off by 34–148%, so a confident number is unsafe for a tenth of users
+   (§4.1).
 
 ---
 
@@ -172,6 +186,94 @@ sitting alongside good programming; it is the dominant term, and everything else
 project is rounding error next to it.
 
 That is the finding the whole product should be organised around.
+
+---
+
+## 4.1 Can the fit actually be found? (R2)
+
+Four parameters (`k_fit`, `k_fat`, `tau_fit`, `tau_fat`), fitted by least squares against
+one weekly performance test, corrupted by 2.5 points of measurement noise. `p0` is fixed
+at 100 by construction: measurements are a percentage of a baseline test, so the baseline
+is a definition, not an unknown. Constraints are enforced by reparameterisation, so the
+optimiser never walks into an invalid region. `sim/fit.py`.
+
+**Yes, and it beats its null decisively.** Across 24 lifters on a 16-week history:
+
+| History | Median MRV error | p90 | Correlation with truth |
+|---|---|---|---|
+| FLAT — 18 sets/wk, every week | 38.5% | 317.9% | **0.45** |
+| WAVED — normal ramp-and-deload mesocycle | 17.7% | 77.8% | **0.94** |
+| PROBE — deliberately varied volume | 16.0% | 34.3% | **0.98** |
+| *always prescribe the population prior* | 58.9% | 779.0% | 0.00 |
+| *always prescribe the population median* | 59.9% | 508.1% | 0.00 |
+
+The two constant baselines are the honest null: a fitter that quietly returns its
+starting point would be perfectly stable and perfectly useless, and would score exactly
+like them. It doesn't.
+
+**Stability — D-08, the named failure mode — did not occur.** Refitting after each new
+week from week 8 to week 24 moves the prescribed volume by a median of **3.4% (PROBE)**
+to **5.7% (WAVED)**, against the 20% threshold written down in advance. Combined with
+the 0.98 correlation, that is real stability rather than a stuck optimiser.
+
+### The plan you run decides what you can learn from it
+
+Look at the FLAT row. A lifter who trains the same amount every week produces a log that
+**barely identifies them at all** — correlation 0.45, median error 38.5%. Not because
+they trained badly, but because a constant input excites two exponential traces in
+lockstep, and nothing in the response separates them.
+
+This gives idea 4 a second job. The mesocycle's variation was justified in §5 as a search
+for MRV. It is *also* the excitation signal that makes the lifter identifiable. **A
+comfortable, unvarying plan is an uninformative experiment**, and a planner that
+prescribes one is sabotaging its own next prescription.
+
+Unresolved and important: PROBE is a good excitation signal and an unpleasant training
+plan (alternating 8 and 36 sets). WAVED gets 0.94 for free out of a plan people would
+actually run. **The remaining gap between 0.94 and 0.98 is probably not worth any
+training-quality cost at all** — which suggests the right design is a normal mesocycle
+with a deliberate variation floor, not a plan optimised for identifiability. Not settled.
+D-11.
+
+### It needs far more data than this project assumed
+
+| Weeks logged | Median MRV error | p90 |
+|---|---|---|
+| 8 | 26.4% | **1328.6%** |
+| 16 | 20.0% | 148.4% |
+| 24 | 8.6% | 94.5% |
+| 52 | 4.5% | 36.4% |
+
+D-02 chose two traces over three specifically because "four parameters are recoverable
+from ~20 sessions". **That premise is false.** At 8 weeks the median lifter gets a 26%
+error and the p90 lifter gets a prescription off by more than a factor of thirteen. The
+fit is not trustworthy until roughly **24 weeks** of varied training.
+
+D-02's *conclusion* survives, and is strengthened: freeing the saturation ceiling as a
+fifth parameter triples the median error (5.9% → 18.7% on PROBE) and blows the p90 out to
+759%. Four is already more than the data comfortably supports. Five is fantasy.
+
+### The tail is the safety problem, not the median
+
+Every row above has a median that reads fine and a p90 that does not. Even the best
+configuration at 16 weeks leaves a tenth of lifters with a 34% error, and the worst-case
+lifter in an earlier run was off by ~400%.
+
+**A planner that is excellent for most people and four times wrong for some must not
+present a confident number to anyone.** This turns idea 5 from a nice-to-have into a
+release requirement: below the data threshold, the app says "population prior, not your
+data" and prescribes conservatively. What the confidence gate is actually keyed on —
+weeks logged, volume variation in those weeks, residual scale, or a bootstrap over the
+fit — is R3's job.
+
+### Methodological caveat, stated plainly
+
+Median MRV error for the same configuration came out as 5.9%, 14.1%, 16.0% and 20.0%
+across four experiments that differed only in which synthetic lifters they drew.
+**Small-population medians in this project swing by a factor of three.** The 24-lifter
+numbers are quoted as canonical above; anything from a run of 6–12 lifters is
+directional at best. Larger populations, or common random numbers across arms, before any
+number here is treated as measured. D-12.
 
 ---
 
