@@ -1,0 +1,381 @@
+You are starting a new project from scratch: Family Preparedness Plan.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [COUNTY] [LANGUAGES] [STATE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `family-preparedness-plan` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a family preparedness planning tool for [CITY], [COUNTY], [STATE]. Build it now;
+do not ask me clarifying questions. Where you need a decision I did not make, choose the option
+that leaves less data in existence, state your choice, and keep going.
+
+Read THE ARCHITECTURE OF NOT KNOWING and SAFETY + LEGAL before writing any code. They constrain
+this project more than any other in the kit.
+
+=== THE PEOPLE ===
+
+Elena has two children, 6 and 11, both US citizens. She works a shift that ends at 4. She has
+thought about what would happen if she were detained during that shift, and she has not written
+anything down, because writing it down makes it real and because she does not know where such a
+list would be safe.
+
+What she needs is mundane and specific: someone who can legally pick her kids up from school
+tomorrow, someone who knows where the birth certificates are, a phone number for a lawyer that
+is not a notario, and a sentence to say if someone knocks.
+
+The second person is her sister Rosa, a citizen, who has agreed to be that person and has no idea
+what agreeing entails.
+
+The third is the school secretary, who can only release a child to someone on a form.
+
+=== THE ARCHITECTURE OF NOT KNOWING ===
+
+This app must be built so that it cannot betray anyone, because the threat model is a government
+with subpoena power and a phone that may be searched.
+
+1. **No server. None.** Not for accounts, not for backups, not for analytics, not for error
+   reporting. Everything is local and the app says so on the first screen in plain words in every
+   supported language.
+2. **Never ask about immigration status.** Not the user's, not anyone's. The plan is the same
+   regardless and asking creates a record that should not exist. Put a visible line on the first
+   screen: "This app never asks about anyone's immigration status."
+3. **No identifiers you do not need.** A-numbers, passport numbers, and case numbers are exactly
+   what a plan needs to be useful and exactly what is most dangerous. Store them only where the
+   user opts in per field, encrypted, behind a lock, and say plainly what the trade-off is.
+4. **A lock by default**, an unremarkable app name and icon, and a fast exit. The phone may be
+   handed to someone.
+5. **The most important output is paper.** A printed card in a wallet and a printed plan in a
+   trusted person's house work when a phone is confiscated, dead, or locked. Design for paper
+   first and the screen second.
+
+Write these five into the README as standing constraints and test what can be tested.
+
+=== THE PROBLEM ===
+
+Family preparedness planning is standard, recommended practice from immigrant legal services
+organizations. The gap is not that the idea is unknown; it is that doing it requires a dozen
+specific steps — a caregiver authorization the school will accept, documents gathered in one
+place, someone briefed — and there is no checklist that fits a phone and a Tuesday.
+
+Research and verify from [STATE] sources and from accredited legal organizations:
+- What [STATE] provides for delegating caregiving authority to another adult without going to
+  court. Many states have a short affidavit or caregiver authorization form for school and
+  medical decisions; verify what [STATE] has, what it does and does not cover, whether it needs
+  notarization, and how long it lasts.
+- What [CITY]'s school district requires to release a child to someone other than a parent, and
+  how to add an emergency contact. Call and ask.
+- Whether [STATE] has any standby guardianship provision.
+- The know-your-rights content: what a warrant signed by a judge is and how it differs from an
+  administrative form, the right to remain silent, the right not to open the door, and the right
+  to speak to a lawyer. Take this from a national immigrant rights organization or a public
+  defender office and quote it with attribution — do not compose it.
+- How to find accredited help: the Department of Justice recognized-organization and accredited-
+  representative list, and the [STATE] bar's immigration referral. Verify both.
+- The detainee locator, and how a family member finds someone.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Elena spends forty minutes on a Sunday. Rosa is on the school's pickup list and has a signed
+caregiver form. The documents are in one envelope and Rosa knows which shelf. Both of them have a
+card in their wallet with two phone numbers on it. Nothing about any of this exists on anybody's
+server.
+
+=== BUILD THIS ===
+
+1. START (/) — Three sentences, then the checklist. First sentence: nothing you enter leaves this
+   phone. Second: this app never asks about anyone's immigration status. Third: the most useful
+   thing you can do today takes ten minutes.
+   No onboarding, no explanation of why this matters. The person opening this app knows why.
+
+2. THE CHECKLIST — Ordered by protection-per-minute, each with a real time estimate:
+   - **Name the person** who can care for your children, and confirm they agree. (5 min)
+   - **Put them on the school's pickup and emergency contact list.** The specific form, where to
+     get it, and that a phone call is usually not enough. (15 min, requires going to the office)
+   - **Complete [STATE]'s caregiver authorization form**, if it has one, and give a copy to that
+     person and to the school. Note whether notarization is needed. (30 min)
+   - **Gather the documents** into one place and tell the person where. (30 min — see part 4)
+   - **Memorize or carry two phone numbers**: the caregiver, and a legal organization. (5 min)
+   - **Write down the children's basics**: full legal names, dates of birth, school, grade,
+     teacher, allergies, medications, doctor. Rosa will be asked all of this.
+   - **Decide about money**: whether anyone else can access an account, and how rent gets paid.
+     Note plainly that this has legal consequences and to ask a lawyer about anything beyond a
+     joint account.
+   - **Practice the door conversation** (part 3).
+   Each item is markable done, and the checklist prints.
+
+3. AT THE DOOR — Quoted from a national immigrant rights organization or public defender office,
+   with attribution, in [LANGUAGES]:
+   - You do not have to open the door.
+   - Ask them to show identification and any warrant through a window or under the door.
+   - A search warrant signed by a judge has specific features; an administrative form is not the
+     same thing. Explain how to tell, quoting the source.
+   - You have the right to remain silent, and to say you want to speak to a lawyer.
+   - Do not sign anything without talking to a lawyer.
+   - Do not lie and do not carry false documents.
+   Printable as a wallet card in every supported language, one side per language, large type. The
+   card is the deliverable; the screen is the draft.
+   VERIFY this content against a current primary source and attribute it. If you cannot, ship
+   only the two phone numbers and the sentence "I want to speak to a lawyer. I am going to remain
+   silent." — which is short, correct, and enough.
+
+4. THE DOCUMENT LIST — What to gather, not the documents themselves. For each: what it is, why it
+   matters, where to get a replacement, and a place to note where the original is kept.
+   Birth certificates for everyone, passports, any immigration documents and their numbers, social
+   security cards, marriage certificate, lease or deed, insurance, medical records and vaccination
+   records for the children, school records, bank information, and the caregiver form.
+   Scanning is offered, off by default, with an honest explanation: a scan on the phone is
+   convenient and is also a copy of everything on a device that could be searched. Default to
+   recording locations rather than storing images, and let the user choose otherwise knowingly.
+
+5. THE PLAN CARD — One printed page for the caregiver, generated from what the user entered:
+   children's details, school and pickup instructions, medical basics, where the documents are,
+   the legal organization's number, and the detainee locator with instructions. Plus a second
+   wallet card for the user: two phone numbers and the door script.
+   Print both. Tell them to give one to the caregiver on paper and to keep one somewhere that is
+   not the phone.
+
+6. IF IT HAPPENS — A calm, short page: how to find someone through the detainee locator, how to
+   reach the legal organization, what the caregiver should do in the first 24 hours, what the
+   school needs, and a plain statement that the family has the right to a lawyer but not to a
+   free one in immigration proceedings — verify this and state it accurately, because the
+   expectation gap here is cruel.
+
+7. FINDING REAL HELP — A verified directory: DOJ-recognized organizations and accredited
+   representatives serving [COUNTY], immigration legal aid clinics, and the [STATE] bar referral.
+   With a prominent, plainly-written warning about notario fraud: in many countries a "notario"
+   is a licensed attorney and in the US a notary public is not, and people lose money and cases
+   to this constantly. Explain how to check whether someone is authorized to practice, with the
+   official lookup. Verify every organization by phone.
+
+=== DATA MODEL (local only, encrypted at rest) ===
+
+plan: id, created_at, updated_at
+people: id, role enum(child|caregiver|contact|other), name, dob, notes, phone, relationship
+children_details: person_id, school, grade, teacher, allergies, medications, doctor,
+  pickup_authorized_people[]
+documents: id, label, kind, location_note, has_scan bool, scan_ref|null, number_encrypted|null
+checklist: item_slug, status, completed_on
+orgs: id, name, kind, phone, address, accredited_check_url, verified_on, verified_by
+
+No server. No sync. No account. No analytics. No crash reporting. Encrypted at rest with a
+user-set passphrase, locked by default, with an honest warning that a forgotten passphrase means
+a lost plan — which is why the printed copy is the primary artifact.
+
+=== STACK ===
+
+- Local-first PWA: React + TypeScript + Vite, IndexedDB, offline, installable.
+- Encryption: Web Crypto, AES-GCM with a key derived from a user passphrase via PBKDF2 or Argon2
+  if available. Document the parameters and their weaknesses honestly in the README — this is
+  device encryption against casual access, not against a determined forensic examination, and
+  saying otherwise would be a dangerous overclaim.
+- Content and legal references as dated, sourced JSON validated at build time.
+- PDF via pdf-lib for the cards and the plan.
+- Zero network requests. Assert it in a test.
+- [LANGUAGES] from the first commit — for this project that likely means Spanish plus whatever
+  [COUNTY]'s ACS data shows. Get every string reviewed by a native speaker.
+
+=== HARD CONSTRAINTS ===
+
+- No network request to any origin, ever, after the app is cached. Test it.
+- No field anywhere asks about immigration status — grep test over the source.
+- Lock on by default; app name and icon unremarkable; a quick-exit control on every screen.
+- Everything printable, and the print output is the primary design target.
+- Reading level 5th grade. [LANGUAGES] on every screen and every printable, human-reviewed.
+- WCAG 2.2 AA; large type; works on an old phone offline.
+- Every legal statement quoted and attributed, with a retrieval date.
+
+=== DO NOT BUILD ===
+
+- No account, no cloud, no sync, no sharing feature, no email.
+- No analytics, no telemetry, no error reporting, no crash logs, no zero-result logging. Nothing.
+  This is the one project in the kit where even anonymous aggregate counts are not worth it.
+- No legal advice about any individual's case, options, or eligibility for any relief.
+- No document generation for any immigration filing.
+- No reporting features, no incident maps, no crowdsourced enforcement-activity tracking. Those
+  exist elsewhere, they carry their own risks, and mixing them into a personal planning tool
+  turns a private document into a signal.
+- No LLM anywhere in the content path.
+- No referral to any paid service, and no listing of anyone who is not verifiably authorized to
+  practice.
+- No collection of location, contacts, or photos beyond what the user explicitly attaches.
+
+=== ACCEPTANCE TESTS ===
+
+1. Zero network requests to any origin during a complete journey, including PDF generation.
+2. No source file contains a field, label, or key referencing immigration status — grep test.
+3. Encrypted records are unreadable in raw storage without the passphrase — verified by
+   inspection.
+4. A wrong passphrase fails cleanly with a clear message and no partial decryption.
+5. The wallet card prints at credit-card size, legibly, in every language in [LANGUAGES].
+6. The caregiver plan page prints on one page.
+7. Every legal statement has an attributed source with a retrieval date.
+8. Every listed organization has `verified_on`, `verified_by`, and an accreditation-check link.
+9. The notario warning appears on the directory screen and cannot be dismissed permanently.
+10. Scanning is off by default and the trade-off text appears before it can be turned on.
+11. The app functions entirely offline from a cold start.
+12. Lock is enabled by default on first run.
+13. All strings render in every language; a missing key fails the build.
+14. axe-core clean; fully operable by screen reader; readable at 200% zoom.
+
+=== MILESTONES ===
+
+M0 — Find the legal organizations and verify them. Before any code.
+  EXIT: you have spoken to a DOJ-recognized organization or an immigration legal aid clinic
+  serving [COUNTY], confirmed how a family reaches them, and asked the question that shapes this
+  project: what do families most often not have ready?
+
+M1 — The checklist and the printed cards.
+  EXIT: an immigration legal services organization reviews every line of the know-your-rights
+  content and the caregiver guidance. **Do not ship without this.** Wrong information here is
+  worse than none, and these organizations review exactly this kind of material as part of their
+  work.
+
+M2 — Documents, plan card, encryption, lock.
+  EXIT: a security-literate reviewer confirms the encryption claims in the README are accurate
+  and not overstated.
+
+M3 — [LANGUAGES], reviewed by native speakers who are paid for the work.
+  EXIT: the legal services organization confirms the translations are usable.
+
+M4 — Ten families, through the organization, not directly.
+  EXIT: report how many completed the school pickup step, which is the one that requires leaving
+  the house and is the one that actually matters.
+
+=== SAFETY + LEGAL ===
+
+- Not legal advice, and immigration law is an area where general information is frequently wrong
+  for a specific person. Every screen names the accredited organization and its phone number.
+- The unauthorized practice of immigration law is a real harm with a specific name — notario
+  fraud — and this app must be structurally incapable of contributing to it: no filings, no
+  eligibility screening, no case-specific guidance, and no listing of anyone unaccredited.
+- Never state or imply that any particular preparation protects anyone from any outcome.
+- Be accurate about the right to counsel in immigration proceedings; overstating it sets families
+  up for a devastating surprise.
+- The data-minimization rules are not privacy preferences, they are the safety design. Do not add
+  a server "just for backups," do not add analytics "just to see usage," and do not add crash
+  reporting. Write that reasoning into the README so the next maintainer does not undo it.
+- Distribute through trusted organizations rather than open channels where possible. A tool like
+  this reaches people through someone they already trust, and it is also the kind of tool that
+  gets impersonated — a fake version is a real risk, so the real one should be pointed to by the
+  organizations themselves.
+- Do not display any statistic about enforcement or detention. It is not needed and it dates fast.
+
+=== HOW TO REPORT BACK ===
+
+Lead with M0: which organization you spoke to and what they said families most often lack. Then:
+what [STATE]'s caregiver authorization actually is and whether it needs notarization; what the
+school district requires; what the legal services organization corrected in your content; your
+encryption parameters and their honest limits; and everything you could not verify.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.

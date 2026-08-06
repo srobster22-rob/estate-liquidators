@@ -1,6 +1,6 @@
 # Everyday Projects That Help Society — A Prompt Kit
 
-Thirty copy-and-paste prompts for building small, real software that helps actual people in
+Thirty-six copy-and-paste prompts for building small, real software that helps actual people in
 an actual place. Each one is a complete brief: a named user with a named problem, an exact
 stack, named data sources, hard constraints, a scope fence, numbered acceptance tests, and
 milestones with exit criteria.
@@ -15,7 +15,7 @@ agent) and it can start writing files in the first minute without asking you twe
 ## Building them
 
 **[`launch/`](launch/README.md) turns any of these into one paste.** Fill in `launch/LOCALE.md`
-once (your city, county, state, timezone, languages), run `launch/build-pack.sh`, and you get 30
+once (your city, county, state, timezone, languages), run `launch/build-pack.sh`, and you get 36
 self-contained files in `launch/ready/` — each one the brief plus repo setup, a working
 agreement, deliverables, and stop conditions. Open a new chat, paste one file, done. One project
 per chat.
@@ -43,7 +43,7 @@ The pack is pre-generated with placeholders intact, so it works before you fill 
 
 ---
 
-## The thirty
+## The thirty-six
 
 **New here? Start with [16](16-disposal-guide.md).** Lowest stakes, real users on day one, and
 it drills the two habits every other project depends on: verify local facts by phone, and design
@@ -81,6 +81,12 @@ for the data going stale.
 | [28](28-device-and-connectivity.md) | **Device lending + connectivity** | Teen doing homework in a parking lot; the laptop was never the constraint | The navigator matters more than the lending system |
 | [29](29-naloxone-access.md) | **Naloxone access + overdose response** | Mother who's meant to get naloxone for a year and hasn't | Good Samaritan law belongs on the emergency screen, stated exactly |
 | [30](30-small-claims-helper.md) | **Small claims + consumer complaints** | Roofer took $4,200 and left a tarp | A judgment is not money, and the tool has to say so first |
+| [31](31-free-tax-prep.md) | **Free tax prep + refund protection** | Cleaner who paid $280 for a W-2 return, then $40 to get her own refund early | The fee page, not the free-prep directory |
+| [32](32-security-deposit-record.md) | **Security deposit + move-in record** | Tenant billed $1,450 for carpet that was already worn | Twenty minutes on the day you get the keys |
+| [33](33-family-preparedness-plan.md) | **Family preparedness plan** | Parent working a shift that ends at 4, with two citizen kids | Built so it cannot betray anyone; paper is the real output |
+| [34](34-funeral-price-shopping.md) | **Funeral price shopping** | Daughter shown the casket book starting at page three | Four sentences and a phone call, before anyone goes anywhere |
+| [35](35-recall-watch.md) | **Recall watch** | 74-year-old who learned about the listeria recall in May | Over-alerting, not under-alerting, is the failure mode |
+| [36](36-pet-retention.md) | **Pet retention + vet access** | Man with a surrender appointment Thursday and an $1,100 dental quote | Assistance animals: the most misstated rule in housing |
 
 Also in this directory:
 
@@ -132,7 +138,7 @@ a demo and something a person can actually use.
 
 ## Choosing well
 
-A short honest filter, since thirty options invites drift:
+A short honest filter, since thirty-six options invites drift:
 
 - **Is there a specific person you can show it to this month?** If not, pick a different one.
   These are not products; they're tools for a place you know.
@@ -149,10 +155,10 @@ A short honest filter, since thirty options invites drift:
   benefits screener showing 2026 numbers in 2029 is actively harmful. If the answer is no,
   pick #01, #09, #12, or #16 — the ones that fail safe.
 
-**One is already built.** [#16 is implemented](../disposal-guide/) as a reference: two-layer
-verdicts, build-time safety validation, 19.5KB gzipped, axe clean. Read its `STATUS.md` and
-`VERIFY.md` to see what an honest "done" looks like — including the milestones an agent cannot
-finish.
+**Two are already built.** [#16 is implemented](../disposal-guide/) (search-and-lookup, two-layer
+verdicts, build-time safety validation) and [#27](../flood-and-water/) (a rules-and-dates engine
+plus a reusable hash-chained evidence log). Read their `STATUS.md` and `VERIFY.md` to see what an
+honest "done" looks like — including the milestones an agent cannot finish.
 
 **A few are different in kind.** #18 is infrastructure rather than a product: build it when a
 directory you already run has started rotting, or when three organizations in your city each
@@ -162,7 +168,7 @@ coverage — the brief says so and means it. And #21 exists partly to route peop
 state's federally-funded Parent Training and Information Center, which is free, expert, and
 almost unknown; if the app does nothing but hand a parent that phone number, it has worked.
 
-**Several have a hard external gate you can't skip.** #19, #21, #22, #24, #26, #29, and #30
+**Several have a hard external gate you can't skip.** #19, #21, #22, #24, #26, #29, #30, #33, and #36
 each require someone who does the work — a legal aid attorney, a PTI advocate, a bank fraud
 specialist, a probate clerk, a harm reduction program — to read the output before a real person
 sees it. Those milestones are written

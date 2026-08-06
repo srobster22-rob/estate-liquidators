@@ -1,0 +1,377 @@
+You are starting a new project from scratch: Recall Watch.
+
+Everything you need is in this message. Begin work immediately — do not ask me clarifying
+questions before you start. Where the brief leaves a decision to you, make it, state it in one
+line, and keep going.
+
+Before you begin, note that this brief still contains unfilled placeholders:
+
+    [CITY] [LANGUAGES] [ORG] [STATE] [TIMEZONE]
+
+I have not given you those values. Do not stop to ask. Where one blocks a concrete decision,
+choose the most reasonable interpretation, write it down under an ASSUMPTIONS heading in
+STATUS.md, and keep building. Flag every place a missing value materially changed what you
+built.
+
+=== SETUP ===
+
+Create a new git repository named `recall-watch` in a fresh directory. First commit: a README.md
+containing the brief below verbatim, so the spec travels with the code. Work on `main` until
+there is something running, then branch normally.
+
+=== HOW THIS SESSION WORKS ===
+
+1. BUILD IN MILESTONE ORDER. The brief has milestones M0 through M4, each with an exit
+   criterion. Do not start M1 until M0's exit criterion is met, and do not quietly redefine an
+   exit criterion to make it met. If you cannot meet one, stop and say so — that is a useful
+   outcome, not a failure.
+
+2. VERIFY BEFORE YOU BUILD ON ANYTHING. Every API, dataset, statute, rule, threshold, and
+   dollar figure in the brief must be checked against a primary source before you write code
+   that depends on it. Fetch the endpoint. Read the actual regulation. Record the URL and the
+   date you checked it. If a source is dead, moved, or different from what the brief expects,
+   say so plainly and adapt — do not build against what you assume is there.
+
+3. NEVER INVENT A DATA SOURCE, AN ENDPOINT, A STATISTIC, OR A CITATION. This is the single
+   most damaging thing you could do here, because plausible fake data is indistinguishable from
+   real data until someone relies on it. If you do not have a verified source for a number, the
+   number does not appear in the software. "We don't have this" is always an acceptable output.
+
+4. IT RUNS WITH NO CREDENTIALS. `npm install && npm run dev` (or the equivalent) must produce a
+   working app with realistic seed data and no API keys. Anything requiring a key goes behind
+   an interface with a console or fixture implementation selected automatically when the key is
+   absent.
+
+5. TESTS ARE PART OF THE WORK, NOT A LATER PHASE. The brief's numbered acceptance tests are the
+   definition of done. Write them as real automated tests. Never loosen a failing assertion to
+   make it pass — find out whether the code or the test is wrong, and fix that.
+
+6. DISTRUST CLEAN RESULTS. A test that passes on the first try, a parser that handles every
+   sample, a data source that returns exactly what you expected — look again. In work like this
+   the bug is usually in the instrumentation.
+
+7. COMMIT AT EVERY MILESTONE, and update STATUS.md with what runs, what is tested, what is
+   stubbed, and what you could not verify.
+
+=== THE BRIEF ===
+
+You are building a product recall matching and notification service for households in [CITY],
+[STATE]. Build it now; do not ask me clarifying questions. Where you need a decision I did not
+make, choose the option that produces fewer, more accurate alerts, state your choice, and keep
+going.
+
+Read THE ALERT DISCIPLINE and SAFETY + LEGAL before writing code.
+
+=== THE PEOPLE ===
+
+Bernice is 74 and buys the same eleven things every week. A brand of frozen vegetables she eats
+twice a week was recalled for listeria in March. She learned about it in May, from a neighbour.
+She does not watch the news and does not use social media, and the recall notice at the store
+entrance was on a sheet of paper at knee height.
+
+The second person is Dana, who runs a food pantry at [ORG] and has 400 cases of donated product
+on pallets. A recall for her is an operational emergency and she currently finds out the same way
+Bernice does.
+
+The third is Marcus, who has a car with an open safety recall he has never heard about, which is
+free to fix.
+
+=== THE PROBLEM ===
+
+Recalls are announced through federal feeds and press releases, and the people most exposed are
+the least likely to see them. Look up current figures on recall awareness and consumer response
+rates — FDA, USDA FSIS, NHTSA, and CPSC all publish relevant material — and cite anything you
+display with a year.
+
+The operational gap: the information is public, structured, and free, and there is no mechanism
+that connects it to the specific person who has the product on a shelf.
+
+=== THE ALERT DISCIPLINE ===
+
+The failure mode of this project is not missing a recall. It is sending Bernice fourteen texts,
+after which she ignores the fifteenth, which is the one about the vegetables.
+
+Four rules:
+
+1. **Never alert on a guess.** A match is a match on the specific product, brand, and where
+   possible the lot, UPC, or date range in the recall notice. A brand-level fuzzy match is a
+   candidate for review, not an alert.
+2. **One message per recall per subscriber.** Ever. Deduplicate by (subscriber, recall_id) at the
+   database layer, not in application logic.
+3. **Severity gates the channel.** The highest-severity food recalls — the class where reasonable
+   probability of serious harm is indicated — get a text. Everything else gets a weekly digest,
+   or nothing. Verify the current classification schemes from FDA and USDA and encode them as
+   data.
+4. **Silence is a feature.** A week with no message is the correct outcome most weeks and the app
+   should say so at signup, so silence does not read as breakage.
+
+=== WHAT SUCCESS LOOKS LIKE ===
+
+Bernice gets four texts a year. One of them is about the vegetables, on the day it is announced,
+and it says what to do with the bag in her freezer.
+
+=== BUILD THIS ===
+
+1. INGEST — Poll the public federal recall sources. Research and verify each before building:
+   - **FDA** food and drug enforcement/recall data, including the openFDA enforcement endpoints
+     and the FDA recall press release feed.
+   - **USDA FSIS** recalls for meat, poultry, and egg products, which are a separate system from
+     FDA and cover different foods — a household does not know or care about the distinction, so
+     the app must cover both.
+   - **CPSC** for consumer products, including children's products.
+   - **NHTSA** for vehicles and child car seats, which supports lookup by VIN.
+   VERIFY each endpoint exists, what it returns, its rate limits, and its terms before building
+   on it. Record what you verified.
+   Build a `RecallSource` interface with one implementation per feed plus a `FixtureSource` that
+   replays recorded responses from disk, so the entire pipeline runs and is testable with no
+   network and no credentials. That fixture path is not a testing convenience — it is what lets
+   somebody develop this on a laptop and what makes the matching logic verifiable.
+   Ingest must be **idempotent**: a recall seen twice creates one row. Key on the source's own
+   identifier plus the source name. Re-running yesterday's poll must change nothing.
+
+2. THE WATCH LIST — What a subscriber tells you they have. Entry must be easy or nobody does it:
+   - Type a brand and product in plain words. Autocomplete over what has appeared in past recalls
+     helps, but free text must always work.
+   - Scan or type a UPC. A UPC is the strongest match key you can get from a household.
+   - For vehicles: a VIN, checked against NHTSA on entry and then on a schedule. A VIN lookup
+     that finds an existing open recall on day one is the single most likely immediate win in the
+     whole app.
+   - Categories as a coarse fallback: "infant formula," "ground beef," "romaine," "children's
+     toys." Coarse watches produce more candidates and are opt-in with that explained.
+   Nothing else. No shopping history import, no receipt scanning, no loyalty card integration —
+   see DO NOT BUILD.
+
+3. THE MATCHER — The heart of it, and the part to test hardest.
+   - Exact match: UPC in the recall notice matches a watched UPC. Alert.
+   - Strong match: brand plus product name both match, and the recall's lot codes or date range
+     either match what the subscriber recorded or the recall specifies none. Alert.
+   - Candidate: brand matches, product is fuzzy, or the subscriber has only a category watch.
+     Goes to a review queue for a human at [ORG], never straight to a text.
+   - No match: nothing happens, and that is the common case.
+   Normalize aggressively before comparing: case, punctuation, "oz"/"ounce", brand suffixes like
+   "Inc" and "LLC". Write the normalizer as its own module with its own tests, because every
+   false positive and every miss traces back to it.
+   Every match records why it matched, which fields, and at what confidence. A match you cannot
+   explain is a bug.
+
+4. NOTIFY — SMS as the primary channel, email as an option, behind an `SmsProvider` interface
+   with a console implementation so the whole system runs with no credentials.
+   The message: what the product is, what the problem is in six words, what to do (throw away /
+   return for refund / stop using / see a doctor if symptoms), and a short link. Under 300
+   characters. In the subscriber's language.
+   Delivery is a **durable, idempotent job**: persisted, retried with backoff, surviving a
+   restart, and keyed so a redelivery attempt cannot double-send. A notification pipeline that
+   loses messages on deploy is the failure this project cannot have, and one that double-sends
+   trains people to ignore it.
+   STOP unsubscribes immediately and permanently.
+
+5. THE REVIEW QUEUE — For candidates. [ORG]'s coordinator sees the recall, the watch item, why it
+   was flagged, and three buttons: alert / not a match / need more info. Fifteen seconds each.
+   This is the human check that keeps precision high without discarding coarse watches, and it is
+   also how the matcher's thresholds get tuned — record every decision and report the false
+   positive rate.
+
+6. THE PANTRY VIEW — For Dana. A bulk watch list by brand and category, a dashboard of open
+   recalls affecting her inventory, and a printable pull sheet: product, lot codes, what to do
+   with it, and the recall notice to post. Food banks handle recalls constantly and mostly on
+   paper; this view is an afternoon of work and may be the most-used thing you build.
+
+7. PUBLIC PAGE — A no-signup page listing current high-severity recalls for food, drugs, and
+   children's products, plainly written, with the source and date on each. Someone who heard
+   something on the news should be able to check in ten seconds without giving you a phone number.
+
+=== DATA MODEL ===
+
+recalls: id, source enum(fda|fsis|cpsc|nhtsa), source_ref, title, brands text[],
+  products text[], upcs text[], lot_codes text[], date_range, hazard, severity, remedy,
+  announced_on, url, raw jsonb, first_seen_at
+  UNIQUE (source, source_ref)   -- idempotent ingest, enforced by the database
+subscribers: id, phone, email, language, active, created_at, last_notified_at
+watch_items: id, subscriber_id, kind enum(product|upc|vin|category), brand, product, upc, vin,
+  category, created_at
+matches: id, recall_id, watch_item_id, confidence enum(exact|strong|candidate), reason jsonb,
+  created_at, decided_at, decision enum(alert|not_a_match|unclear), decided_by
+notifications: id, subscriber_id, recall_id, channel, scheduled_for, sent_at, delivered,
+  idempotency_key
+  UNIQUE (subscriber_id, recall_id)   -- one message per recall per person, at the database layer
+ingest_runs: id, source, started_at, finished_at, fetched, created, updated, error
+
+=== STACK ===
+
+- Node/TypeScript + PostgreSQL. One small VPS.
+- A durable job queue (pg-boss or equivalent) for ingest and delivery. Every job idempotent and
+  persisted.
+- `RecallSource` and `SmsProvider` interfaces with fixture and console implementations, selected
+  automatically when credentials are absent. The full pipeline — ingest, match, notify — must run
+  end to end with no network and no keys.
+- Public page server-rendered, tiny, no JS required.
+- Timezone [TIMEZONE]; digests send in the morning local time; tested against a UTC server and
+  across DST.
+- [LANGUAGES] for every subscriber-facing message.
+
+=== HARD CONSTRAINTS ===
+
+- Ingest is idempotent, enforced by a unique constraint. Re-running a poll changes nothing.
+- One notification per subscriber per recall, enforced by a unique constraint.
+- No alert on a candidate match without a human decision.
+- Every match stores its reason. Unexplainable matches fail review.
+- Delivery jobs survive a process restart, exactly once.
+- Messages under 300 characters, in the subscriber's language, with a STOP instruction.
+- Subscribers give a phone number and their watch list. Nothing else — no name, no address, no
+  date of birth.
+- Public page under 60KB, no JS required.
+- WCAG 2.2 AA; 18px minimum; the public page printable.
+
+=== DO NOT BUILD ===
+
+- No loyalty card, grocery account, or purchase history integration. It is the obvious way to
+  populate a watch list and it means holding a household's complete shopping record — which
+  reveals pregnancy, illness, addiction, and religion. Not worth it, and the value is marginal
+  over a typed list of eleven things.
+- No receipt scanning or photo-of-your-pantry recognition in v1.
+- No health advice. The message says what the recall notice says to do and, where the notice does,
+  "see a doctor if you have symptoms." Nothing more.
+- No LLM deciding whether something matches. Deterministic rules with recorded reasons, plus a
+  human for the ambiguous ones. A hallucinated match sends a false alarm; a hallucinated non-match
+  costs the entire point of the project.
+- No LLM rewriting recall text. Hazard descriptions are precise and legally drafted.
+- No advertising, no affiliate links to replacement products, no partnerships with brands or
+  retailers.
+- No public database of which households own what.
+- No scraping of retailer sites; federal feeds only.
+- No account passwords for subscribers. Phone number identity, signed links from texts.
+
+=== ACCEPTANCE TESTS ===
+
+1. Re-running a full ingest over the same fixture data creates zero new rows and zero new matches.
+2. A recall appearing in two feeds under different identifiers creates two rows and does not
+   double-notify a subscriber matched by both — the unique constraint on (subscriber, recall) is
+   per recall, so this test must assert the dedup behaviour you chose and document it.
+3. A UPC match produces `exact` and is alerted without human review.
+4. A brand-only match produces `candidate` and is never sent without a decision.
+5. A recall specifying lot codes does not strongly match a watch item whose recorded lot is
+   outside them.
+6. The normalizer collapses case, punctuation, unit spellings, and corporate suffixes — tested
+   against at least 20 real pairs.
+7. Two concurrent notification attempts for the same (subscriber, recall) result in exactly one
+   send.
+8. Killing the worker mid-delivery and restarting sends every remaining message exactly once.
+9. The whole pipeline runs against `FixtureSource` and `ConsoleSmsProvider` with no network and
+   no credentials.
+10. Messages are under 300 characters and render in the subscriber's language.
+11. STOP halts everything immediately, including already-queued messages.
+12. A subscriber record contains no name, address, or date of birth — schema assertion.
+13. Digests send at the correct local morning time across a DST transition with a UTC server.
+14. The public page renders under 60KB with JavaScript disabled.
+
+=== MILESTONES ===
+
+M0 — One source, ingested idempotently, into fixtures.
+  EXIT: pull a week of real records from one feed, save them as fixtures, and re-run ingest three
+  times with zero drift. Report exactly what each feed provides — UPCs? lot codes? — because that
+  determines how good the matcher can ever be.
+
+M1 — The matcher and its normalizer.
+  EXIT: hand-label 50 (recall, watch item) pairs and report precision and recall against them.
+  This number is the project. If precision is below about 95% on `exact` and `strong`, tighten
+  until it is, because every false alarm costs you the next real one.
+
+M2 — Notification with the console provider, plus the review queue.
+  EXIT: tests 1-9 pass, including the restart and concurrency tests.
+
+M3 — Real SMS, all four sources, the public page, second language.
+  EXIT: you receive a real alert for a real recall on a real phone.
+
+M4 — Twenty subscribers and [ORG]'s pantry, one quarter.
+  EXIT: report alerts sent, false positives reported back, and the unsubscribe rate. A rising
+  unsubscribe rate means you are over-alerting; that is the number to watch, not the number of
+  recalls covered.
+
+=== SAFETY + LEGAL ===
+
+- Not health or safety advice. Messages relay what the official notice says to do and link it.
+  Never add an instruction the notice does not contain.
+- Never suppress or soften a hazard description. If a notice says a product may cause serious
+  illness or death, the message says so.
+- Under-alerting and over-alerting are both harms and they trade against each other. The design
+  resolves toward precision — because an ignored channel protects nobody — and that choice must
+  be written in a code comment where the thresholds live, so the next maintainer knows it was
+  deliberate.
+- Federal recall data is public. Republish it faithfully, always link the original, and never
+  alter a hazard statement.
+- Do not name a retailer as selling a recalled product unless the official notice does.
+- The subscriber list is a list of what people have in their homes. Minimum data, no analytics, no
+  export, no sharing, and a documented retention limit.
+- Delivery failures are safety-relevant. Alert an operator when a send fails permanently rather
+  than dropping it silently.
+- Do not display any recall-awareness statistic you have not sourced with a year.
+
+=== HOW TO REPORT BACK ===
+
+Lead with M0 and M1: exactly what each feed provides (UPCs, lot codes, date ranges), and your
+measured precision and recall on 50 hand-labelled pairs. Then: the idempotency, concurrency, and
+restart test results; what the review queue's false positive rate looked like; and everything you
+could not verify. If a feed you expected does not exist or is not usable, lead with that instead.
+
+=== END OF BRIEF ===
+
+=== WHAT YOU CANNOT DO, AND MUST NOT PRETEND TO DO ===
+
+Several of this brief's milestones depend on a human doing something you cannot: calling a
+county office to confirm hours, walking into a courthouse, getting a legal aid attorney to read
+a letter template, showing a printout to a paramedic, watching a real person use the thing.
+
+Those gates are real and they are usually the difference between working software and software
+that helps someone. You cannot complete them. So:
+
+- NEVER report a milestone as met when its exit criterion required a phone call, a site visit,
+  or a human review that did not happen. Say "M2 code complete; the attorney review it exits on
+  has not happened."
+- Write `VERIFY.md` in the repo and keep it current. One row per item, with: what needs
+  checking, why it matters, exactly who to call or visit, the specific question to ask, and what
+  to do with the answer. Group it by how badly a wrong value hurts. This file is a deliverable
+  equal in importance to the code — it is the handoff from what you can do to what only a person
+  can.
+- Where the brief names a specific reviewer (a caseworker, a pharmacist, a clerk, a PTI
+  advocate), put finding that person at the top of VERIFY.md with a draft of the ask.
+
+=== DELIVERABLES ===
+
+By the end of the session, the repository contains:
+
+- Working code that runs from a clean clone with no credentials
+- The brief, verbatim, in README.md, plus a short human-readable README section on what this is,
+  who it serves, and how to run it
+- Automated tests covering the brief's numbered acceptance criteria, with the ones you could not
+  automate listed and explained
+- `VERIFY.md` — everything a human must confirm, as described above
+- `MAINTENANCE.md` — every piece of data that goes stale, how fast, where it comes from, and
+  which month it needs refreshing. Rules change in January; hours change seasonally; APIs move.
+- `STATUS.md` — what runs, what is stubbed, what failed, what you would do next
+- `SOURCES.md` — every external source you used, with its URL, what you took from it, and the
+  date you checked it
+
+=== HOW TO REPORT BACK ===
+
+When you stop, tell me, in this order:
+
+1. What actually runs. Be specific and unglamorous.
+2. The measured numbers the brief asked for — load times, byte weights, accuracy rates, timings.
+   Real measurements, not estimates. If you did not measure something, say you did not.
+3. Which acceptance tests pass, which fail, and which you could not write.
+4. **Everything you could not verify.** Lead with this if the list is long. It is the most
+   important part of the report and the easiest to soften.
+5. What you would cut if you had half the time, and what worries you about the design.
+
+=== STOP CONDITIONS ===
+
+Stop and tell me, rather than continuing, if any of these turn out to be true:
+
+- A tool or organization already does this locally and does it well. Say so and say who. Helping
+  them beats rebuilding them, and finding this out in the first hour is a success.
+- A data source the brief depends on does not exist, is not public, or is not usable. Describe
+  what you found and what the project looks like without it.
+- The brief asks for something that would be unsafe, misleading, or illegal in the specific
+  jurisdiction you're building for. Explain the conflict; do not silently work around it.
+- You cannot verify a rule, deadline, or threshold that the software's correctness depends on.
+  Build everything that does not depend on it, and flag the gap loudly.
