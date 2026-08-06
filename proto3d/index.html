@@ -187,14 +187,29 @@ const ROOMS=[
   {id:"drive", x:0,  z:0,  w:9,  d:9,  tier:0, van:true},
   {id:"foyer", x:12, z:0,  w:10, d:10, tier:0},
   {id:"hall",  x:23, z:0,  w:7,  d:14, tier:1},
-  {id:"study", x:23, z:-13,w:9,  d:9,  tier:1},
+  {id:"study", x:24.25, z:-13,w:11.5, d:9, tier:1},
+  // Service hall: the second route. V3 requires every wing to survive losing any
+  // one portal, and until R23 the whole house hung off foyer<->hall - the Curator
+  // standing in one doorway sealed five rooms, which A6 rule 5 forbids outright.
+  {id:"servi", x:12, z:-11,w:10, d:8,  tier:1},
   {id:"land",  x:32, z:0,  w:9,  d:10, tier:2},
   {id:"cons",  x:43, z:-5, w:12, d:12, tier:3},
   {id:"pot",   x:43, z:7,  w:10, d:9,  tier:3},
 ];
-const LINKS=[["drive","foyer"],["foyer","hall"],["hall","study"],["hall","land"],
+const LINKS=[["drive","foyer"],["foyer","hall"],["foyer","servi"],["servi","study"],
+             ["hall","study"],["hall","land"],["study","land"],
              ["land","cons"],["land","pot"],["cons","pot"]];
-const BAND={0:[40,150],1:[80,300],2:[250,700],3:[600,1400]};
+// Depth unlocks on WORK, never on a clock (D-20). Clearing a wing's sideboard is
+// the work; a timer would silently punish bigger crews, which is a bug nobody
+// could diagnose from playtest reports.
+const PREREQ={ land:["hall"], cons:["land"], pot:["land"] };
+// ECONOMY 3, per tier and class, base value before any curse multiplier. The
+// first version banded tier 0 at the POCKET numbers and invented a x2.6 two-man
+// multiplier; the level contract rejected both the moment it was pointed at this
+// estate. Two-man is deliberately slightly worse per slot than an armful.
+const BAND={0:{armful:[80,300]}, 1:{armful:[80,300]},
+            2:{armful:[250,700], two_man:[700,1900]},
+            3:{armful:[600,1400], two_man:[1800,4000]}};
 const R=id=>ROOMS.find(r=>r.id===id);
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const inRoom=(r,x,z)=>x>r.x-r.w/2&&x<r.x+r.w/2&&z>r.z-r.d/2&&z<r.z+r.d/2;
@@ -231,10 +246,40 @@ if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
 
 // Concealment furniture (DESIGN 8.1). Wardrobes against the near and far walls
 // of every room but the driveway, facing into the room. Furniture, not markers.
-const HIDES=[];
+// Furniture may not stand in a route. Both the wardrobes and the sideboards got
+// this wrong in turn - V10 caught a sideboard parked in the conservatory corridor
+// and then a wardrobe in the mouth of the study-land one, each of which made the
+// armoire unmovable out of a room. One rule, used by both.
+function clearOfDoors(x,z,margin){
+  for(const d of DOORS){
+    const q=d.rect;
+    const cx=Math.max(q.x0,Math.min(x,q.x1)), cz=Math.max(q.z0,Math.min(z,q.z1));
+    if(Math.hypot(x-cx,z-cz)<margin) return false;
+  }
+  return true;
+}
+const HIDES=[], HIDE_FAULTS=[];
 for(const r of ROOMS){ if(r.van) continue;
-  HIDES.push({x:r.x-r.w/4, z:r.z-r.d/2+0.55, face:0,       room:r.id, item:null});
-  HIDES.push({x:r.x+r.w/4, z:r.z+r.d/2-0.55, face:Math.PI, room:r.id, item:null});
+  // Candidates along all four walls. The first version only tried the two z-walls
+  // and fell back to the room centre-line when none of them cleared - which in a
+  // 7m-wide hall put a wardrobe exactly in the study doorway, and a fallback that
+  // picks the worst available spot is worse than placing nothing.
+  const cand=[];
+  for(const [sx,face] of [[-1,0],[1,Math.PI]])
+    for(const f of [-0.25,0.25,-0.35,0.35,0])
+      cand.push({x:r.x+f*r.w, z:r.z+sx*(r.d/2-0.55), face});
+  for(const [sz,face] of [[-1,Math.PI/2],[1,-Math.PI/2]])
+    for(const f of [-0.25,0.25,-0.35,0.35,0])
+      cand.push({x:r.x+sz*(r.w/2-0.55), z:r.z+f*r.d, face});
+  const placed=[];
+  for(const c of cand){
+    if(placed.length>=2) break;
+    if(!clearOfDoors(c.x,c.z,1.9)) continue;
+    if(placed.some(q=>Math.hypot(q.x-c.x,q.z-c.z)<2.5)) continue;
+    placed.push(c);
+  }
+  for(const c of placed) HIDES.push({x:c.x,z:c.z,face:c.face,room:r.id,item:null});
+  if(placed.length<1) HIDE_FAULTS.push(`${r.id} has nowhere to hide`);
 }
 const inHide=(x,z)=>HIDES.some(h=>Math.abs(x-h.x)<0.52&&Math.abs(z-h.z)<0.32);
 
@@ -258,12 +303,33 @@ function hops(ax,az,bx,bz){
   return ROOMS.length;
 }
 
+// A wing is open once the sideboard in its prerequisite room has been emptied.
+function roomCleared(id){
+  const sh=shelves.find(s=>s.room===id);
+  return !!sh && items.filter(it=>it.shelf===sh.i&&!it.gone).length===0;
+}
+function roomOpen(id){
+  const need=PREREQ[id];
+  return !need || need.every(roomCleared);
+}
+function doorOpen(d){ return roomOpen(d.a)&&roomOpen(d.b); }
+
 const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
 function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; return false; }
+// Geometry only. The Curator is bound by walls and by nothing else - V7 requires
+// it to reach every room, and a prerequisite chain that locked it out would make
+// half the estate a safe room.
 function solid(x,z){ return (!roomAt(x,z) && !inDoor(x,z)) || inHide(x,z) || inShelf(x,z); }
+// Geometry plus the prerequisite chain. Crew are crew; this is what they walk into.
+function blocked(x,z){
+  if(solid(x,z)) return true;
+  if(gatesOff) return false;
+  for(const d of DOORS) if(inRect(d.rect,x,z)&&!doorOpen(d)) return true;
+  return false;
+}
 
 // ------------------------------------------------------------------ state
-let noiseLog=[];
+let noiseLog=[], gatesOff=false;
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 // Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
@@ -280,14 +346,10 @@ const FOLLOWER_DRIFT_M=0.4;    // B4: how far the far end may lag before easing 
 let shelves=[];
 function makeItem(r,x,z,y,shelf,klass){
   const g=Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
-  const [lo,hi]=BAND[r.tier];
   const k=klass??"armful";
-  // ECONOMY 3: a two-man piece is worth roughly its slot cost and no more -
-  // deliberately slightly worse per slot than armfuls, so hauling the armoire
-  // is a choice about the van rather than an obvious upgrade.
-  const mult=k==="two_man"?2.6:k==="pocket"?0.4:1;
+  const [lo,hi]=BAND[r.tier][k]??BAND[r.tier].armful;
   return {x,y,z,hx:x,hz:z,hy:y,grade:g,tier:r.tier,shelf,klass:k,
-    value:Math.round(rnd(lo,hi)*GRADE_MULT[g]*mult),
+    value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
     size:k==="two_man"?0.55:(r.tier>=3?0.30:r.tier===2?0.26:0.21),
     known:false,heldBy:null,gone:false,scan:0,moved:false,stash:0,hideIn:null,
     claim:null};
@@ -303,15 +365,8 @@ function makeItems(){
     const cands=[];
     for(const side of [-1,1]) for(const off of [-r.d/6, r.d/6, -r.d/3, r.d/3])
       cands.push({x:r.x+side*(r.w/2-0.75), z:r.z+off});
-    const clearOf=(c)=>{
-      for(const d of DOORS){
-        const q=d.rect;
-        const cx=Math.max(q.x0,Math.min(c.x,q.x1)), cz=Math.max(q.z0,Math.min(c.z,q.z1));
-        if(Math.hypot(c.x-cx,c.z-cz)<2.4) return false;   // clear of the doorway mouth
-      }
-      for(const h of HIDES) if(Math.hypot(c.x-h.x,c.z-h.z)<1.6) return false;
-      return true;
-    };
+    const clearOf=(c)=>clearOfDoors(c.x,c.z,2.4) &&
+      !HIDES.some(h=>Math.hypot(c.x-h.x,c.z-h.z)<1.6);
     const spot = cands.find(clearOf) ?? cands[0];
     const shelf={i:si++, x:spot.x, z:spot.z, room:r.id, tier:r.tier, w:0.55, d:1.5};
     shelves.push(shelf);
@@ -319,8 +374,9 @@ function makeItems(){
       const z = shelf.z - shelf.d/2 + 0.28 + k*((shelf.d-0.56)/(CANDIDATES-1));
       items.push(makeItem(r,shelf.x,z,SHELF_Y,shelf.i));
     }
-    // Every wing past the foyer has one piece nobody can lift alone.
-    if(r.tier>=1){
+    // Two-man pieces live in the deep wings only: ECONOMY 3 bands them from
+    // tier 2 up, and a tier-1 armoire is a piece with no price.
+    if(r.tier>=2){
       const away = spot.x > r.x ? -1 : 1;
       items.push(makeItem(r, r.x+away*1.9, r.z, 0.62, null, "two_man"));
     }
@@ -674,6 +730,7 @@ function updateCrew(dt){
         for(const it of items){
           if(it.gone||it.heldBy||(it.claim&&it.claim!==a)) continue;
           if(it.klass==="two_man") continue;     // nobody lifts an armoire alone
+          const rm=roomAt(it.x,it.z); if(rm&&!roomOpen(rm.id)) continue;
           const d=Math.hypot(it.x-a.x,it.z-a.z);
           if(d<bd){bd=d;a.goal=it;}
         }
@@ -684,7 +741,7 @@ function updateCrew(dt){
       gx=a.goal.x; gz=a.goal.z;
     }
 
-    walkTo(a,gx,gz,sp,dt);
+    walkTo(a,gx,gz,sp,dt,true);
     a.stride=(a.stride||0)+dt;
     if(a.stride>0.62){ a.stride=0; heard(sp>=RUN?L.sprint:20,a.x,a.z,a); }
 
@@ -757,8 +814,8 @@ function step(dt){
     const big=player.holding&&player.holding.klass==="two_man"?player.holding:null;
     const d=lookDir();
     const carriedAt=(px,pz)=>[px+d[0]*1.15, pz+d[2]*1.15];
-    if(!solid(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
-    if(!solid(player.x,nz)&&!(big&&itemBlocked(big,...carriedAt(player.x,nz)))) player.z=nz;
+    if(!blocked(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
+    if(!blocked(player.x,nz)&&!(big&&itemBlocked(big,...carriedAt(player.x,nz)))) player.z=nz;
   }
 
   // appraise: hold F, stationary, 3s, loud
@@ -968,7 +1025,8 @@ function updateCurator(dt){
   if(c.goal) walkTo(c,c.goal.hx,c.goal.hz,speed,dt);
 }
 
-function walkTo(e,gx,gz,sp,dt){
+function walkTo(e,gx,gz,sp,dt,gated){
+  const wall=gated?blocked:solid;
   const here=roomAt(e.x,e.z), there=roomAt(gx,gz);
   let tx=gx,tz=gz;
   if(here&&there&&here!==there){
@@ -979,8 +1037,8 @@ function walkTo(e,gx,gz,sp,dt){
   const a=Math.atan2(tx-e.x,tz-e.z);
   if(e===curator) e.face=a;
   const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
-  if(!solid(nx,e.z)) e.x=nx;
-  if(!solid(e.x,nz)) e.z=nz;
+  if(!wall(nx,e.z)) e.x=nx;
+  if(!wall(e.x,nz)) e.z=nz;
   if(e.carry){ e.carry.x=e.x; e.carry.z=e.z; e.carry.y=1.1; }
 }
 
@@ -1175,8 +1233,13 @@ function hud(){
   const marked = markedPlayer();
   const scanning = items.find(i=>i.scan>0);
   const hidePlace = player.hiding?null:nearHide();
+  const shut = DOORS.find(d=>!doorOpen(d)&&
+    Math.hypot(player.x-d.x,player.z-d.z)<3.0);
   document.getElementById("prompt").textContent =
-    over?"" : player.hiding ? (player.hideEnter>0?"CLIMBING IN…":"CONCEALED    [C] climb out (loud)")
+    over?"" : shut&&!player.hiding ? `${(PREREQ[shut.a]&&!roomOpen(shut.a)?shut.a:shut.b)
+      .toUpperCase()} IS STILL SEALED  ·  clear the ${
+      (PREREQ[shut.a]&&!roomOpen(shut.a)?PREREQ[shut.a]:PREREQ[shut.b])[0].toUpperCase()} first`
+    : player.hiding ? (player.hideEnter>0?"CLIMBING IN…":"CONCEALED    [C] climb out (loud)")
     : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
     : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
     : (held&&aimedCrew()) ? `[E] hand it to ${aimedCrew().name}`
@@ -1283,6 +1346,24 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   sees:(x,z)=>sees(x,z), heard:(l,x,z)=>heard(l,x,z),
   fix:()=>curator.fix?{x:curator.fix.x,z:curator.fix.z,age:curator.fix.age,
     sure:curator.fix.sure,who:curator.fix.who?curator.fix.who.name:null}:null,
+  // The estate in the shape sim/validate_estate.py expects, so the level
+  // contract can be run against the wing people actually play rather than
+  // against a worked example in a document.
+  estate:()=>({
+    id:"proto3d  (the wing in the prototype)",
+    curator_spawn:"cons",
+    rooms:Object.fromEntries(ROOMS.map(r=>[r.id,
+      {pos:[r.x,r.z], tier:r.tier, ...(r.van?{van:true}:{})}])),
+    portals:DOORS.map(d=>({a:d.a,b:d.b,width:+DOOR_W.toFixed(2),door:true,
+      pinch:DOOR_W<=2.4, ...(d.a==="drive"||d.b==="drive"?{entrance:true}:{})})),
+    plinths:items.filter(i=>!i.gone).map(i=>({room:roomAt(i.hx,i.hz)?.id??"VOID",
+      cls:i.klass, tier:i.tier, value:i.value, grade:i.grade})),
+    prereqs:Object.fromEntries(Object.entries(PREREQ).map(([room,need])=>
+      [room, need.map(r=>({room:r, type:"clear"}))])),
+  }),
+  gates:v=>{gatesOff=!!v;},   // QA: geometry checks are not gating checks
+  locked:()=>DOORS.filter(d=>!doorOpen(d)).map(d=>d.a+"-"+d.b),
+  cleared:id=>roomCleared(id),
   slots:()=>({...SLOTS}),
   vanSlots:()=>van.slots,
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
@@ -1295,7 +1376,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   // Recomputed on demand: the HUD is written by the render loop, which QA
   // pauses, so reading the element without this returns a stale frame.
   prompt:()=>{hud(); return document.getElementById("prompt").textContent;},
-  faults:()=>DOOR_FAULTS.slice(),
+  faults:()=>[...DOOR_FAULTS,...HIDE_FAULTS],
   rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
   doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z,axis:d.axis,
     rect:{...d.rect},span:+(d.span[1]-d.span[0]).toFixed(2)})),

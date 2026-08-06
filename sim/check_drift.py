@@ -153,7 +153,31 @@ check("JS3d noise_multiplier", grab(js3, r"NOISE_MULT_PER_EVENT\s*=\s*([\d.]+)")
 check("JS3d light_multiplier", grab(js3, r"LIGHT_MULT\s*=\s*([\d.]+)"),
       a["light_multiplier"])
 
+# --------------------------------------------------------------- Python sims
+sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
+        for n in ("integrated.py", "disturbance.py", "curse_test.py",
+                  "appraise_test.py", "validate_estate.py")}
+
 w = TUNING["weight"]
+vb = w["value_bands"]
+
+# The per-class value bands live in three places now: ECONOMY 3 (prose), the
+# validator's CLASS_BANDS, and the prototype's BAND table. R23 found the
+# prototype had invented its own - tier 0 banded at the POCKET numbers and a
+# made-up x2.6 two-man multiplier - which the level contract rejected on sight.
+for key, tier, cls in (("t2_armful", 2, "armful"), ("t2_two_man", 2, "two_man"),
+                       ("t3_armful", 3, "armful"), ("t3_two_man", 3, "two_man"),
+                       ("t4_cart", 4, "cart")):
+    m = re.search(rf'\({tier}, "{cls}"\): \((\d+), (\d+)\)', sims["validate_estate.py"])
+    check(f"py CLASS_BANDS[{tier},{cls}] lo", m.group(1) if m else None, vb[key][0])
+    check(f"py CLASS_BANDS[{tier},{cls}] hi", m.group(2) if m else None, vb[key][1])
+
+for key, tier, cls in (("t2_armful", 2, "armful"), ("t2_two_man", 2, "two_man"),
+                       ("t3_armful", 3, "armful"), ("t3_two_man", 3, "two_man")):
+    m = re.search(rf"{tier}:\{{[^}}]*{cls}:\[(\d+),(\d+)\]", js3)
+    check(f"JS3d BAND[{tier}].{cls} lo", m.group(1) if m else None, vb[key][0])
+    check(f"JS3d BAND[{tier}].{cls} hi", m.group(2) if m else None, vb[key][1])
+
 check("JS3d slot_two_man", grab(js3, r"SLOTS=\{[^}]*two_man:\s*([\d.]+)"),
       w["slots"]["two_man"])
 check("JS3d slot_cart", grab(js3, r"SLOTS=\{[^}]*cart:\s*([\d.]+)"), w["slots"]["cart"])
@@ -172,11 +196,6 @@ check("JS3d sight_cone", grab(js3, r"SIGHT_COS=Math\.cos\((\d+)"),
       sn["sight_cone_deg"] / 2)
 check("JS3d fix_stale", grab(js3, r"FIX_STALE_S\s*=\s*([\d.]+)"),
       sn["fix_stale_seconds"])
-
-# --------------------------------------------------------------- Python sims
-sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
-        for n in ("integrated.py", "disturbance.py", "curse_test.py",
-                  "appraise_test.py")}
 
 check("py integrated IMPULSE",
       grab(sims["integrated.py"], r"^IMPULSE\s*=\s*([\d.]+)", flags=re.M),

@@ -345,6 +345,34 @@ through at an angle is a different and much harder question than whether the geo
 the object, and conflating them would make the check fail for reasons that are not the estate's
 fault. · Regression: QA 83/83, drift 89/89, estate validator PASS.
 
+R23 · **Pointed the level contract at the level.** `validate_estate.py` has verified a worked
+example in a document since R1 and had never once been run against the wing anyone actually
+plays. Added an estate exporter (`node proto3d/dump-estate.mjs`) and a `--estate` mode to the
+validator. · **The wing failed three of the ten checks**, and every failure was real: **V2** —
+no depth pacing whatsoever, every room open from the first second, so a player could walk
+straight to the tier-3 conservatory and take the best thing in the house before the Curator
+had moved; **V3** — the entire estate hung off `foyer↔hall`, so one Curator standing in one
+doorway sealed five rooms, which A6 rule 5 forbids by name; **V8** — the prototype had
+invented its own value bands, tier 0 priced at the *pocket* numbers and a made-up ×2.6
+two-man multiplier. · Fixes, in the estate rather than in the checks: a **service hall**
+giving a second route to the interior, a **study↔land** link so the deep wings survive losing
+`hall↔land`, prerequisite gating where **clearing a wing's sideboard opens the next wing**
+(D-20: work, never a clock — and gates bind the crew, never the Curator, or V7's navmesh
+requirement becomes a safe room), and ECONOMY §3's per-class bands replacing the invented
+ones. Estate now **enters the pool**, 10/10. · **One failure was the checker's fault and I
+fixed the checker:** V8 rejected nine correctly-banded pieces for being *cursed*. A malignant
+tier-3 vase is six times its band by design (D-11) — a check that calls that a fault rejects
+every estate with cursed loot in it. V8 now divides the grade multiplier out and additionally
+checks the per-class band, which the coarse per-tier band could never do. · **And the same
+level fault appeared twice more, which is the finding worth keeping:** R22's V10 check caught
+a sideboard parked in the conservatory doorway; this round it caught a wardrobe in the mouth
+of the study↔land corridor, placed there by a *fallback* that picked the room centre-line when
+no candidate cleared — a fallback that chooses the worst available spot is worse than placing
+nothing. Furniture placement is now one shared rule (clear of every doorway rect by 1.9–2.4m),
+candidates span all four walls, and a room that ends up with nowhere to hide reports a fault
+rather than shrugging. · Regression: QA 86/86, drift 111/111, both sample estates and the
+prototype's own estate PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

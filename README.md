@@ -22,9 +22,10 @@ those state their own falsification conditions.
 What runs, and how to check it:
 
 ```bash
-python3 sim/check_drift.py        # 78 constants agree across four implementations
+python3 sim/check_drift.py        # 111 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
-node proto3d/qa.mjs               # 46 checks driving the real build in headless Chromium
+node proto3d/dump-estate.mjs > /tmp/e.json && python3 sim/validate_estate.py --estate /tmp/e.json
+node proto3d/qa.mjs               # 86 checks driving the real build in headless Chromium
 dotnet run --project unity/tests/CoreTests   # 31 assertions pinning C# to the sims
 ```
 

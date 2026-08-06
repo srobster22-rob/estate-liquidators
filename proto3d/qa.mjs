@@ -375,7 +375,7 @@ async function checks(g, fresh) {
       if (klass === "two_man") {
         const idx = window.__g.twoMan();
         const it = window.__g.list()[idx];
-        window.__g.setCrew(0, f.x, f.z - 4);
+        window.__g.setCrew(0, it.x + 1.0, it.z);   // within shouting range of the piece
         window.__g.tp(it.x - 1.2, it.z);
         window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.2));
         window.__g.grab();
@@ -415,6 +415,9 @@ async function checks(g, fresh) {
   // the first bug report - it is the check the build prompt calls out by name.
   await fresh();
   const fits = await g(() => {
+    // Gates off: this asks whether the geometry admits the object, which is a
+    // different question from whether the crew has earned the room yet.
+    window.__g.gates(true);
     const stuck = [];
     for (const d of window.__g.doors()) {
       window.__g.reset(); window.__g.freezeCrew(true);
@@ -443,6 +446,7 @@ async function checks(g, fresh) {
       window.__g.clearKeys();
       if (!through) stuck.push({ door: d.a + "-" + d.b, at: window.__g.pos() });
     }
+    window.__g.gates(false);
     return stuck;
   });
   ok("the biggest thing in the house fits through every doorway",
@@ -610,6 +614,7 @@ async function checks(g, fresh) {
   await fresh();
   const hidLoot = await g(() => {
     window.__g.parkCrew();
+    window.__g.gates(true);
     const h = window.__g.hides()[0];
     const idx = window.__g.list().findIndex(i => Math.hypot(i.x - h.x, i.z - h.z) < 90);
     window.__g.hold(idx);
@@ -663,6 +668,7 @@ async function checks(g, fresh) {
   await fresh();
   const expired = await g(() => {
     window.__g.parkCrew();
+    window.__g.gates(true);
     const f = window.__g.rooms().find(r => r.id === "foyer");
     window.__g.tp(f.x, f.z);
     window.__g.setDist(70);
@@ -988,7 +994,33 @@ async function checks(g, fresh) {
 
   // --- the estate is authored, not assumed ---------------------------------
   const faults = await g(() => window.__g.faults());
-  ok("every doorway fits its door", faults.length === 0, JSON.stringify(faults));
+  ok("no estate faults at boot", faults.length === 0, JSON.stringify(faults));
+
+  // Depth unlocks on work, never on a clock (D-20). At the start of the night the
+  // deep wings are shut, and what opens them is an emptied sideboard.
+  await fresh();
+  const gating = await g(() => {
+    const shutAtStart = window.__g.locked();
+    const hall = window.__g.shelves().find(s => s.room === "hall");
+    const on = window.__g.list().filter(i => i.shelf === hall.i);
+    const v = window.__g.rooms().find(r => r.id === "drive");
+    window.__g.parkCrew();
+    for (const it of on) {
+      const idx = window.__g.list().findIndex(x => x.x === it.x && x.z === it.z);
+      window.__g.hold(idx);
+      window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60);
+    }
+    return { shutAtStart, cleared: window.__g.cleared("hall"),
+             shutAfter: window.__g.locked() };
+  });
+  ok("the deep wings start sealed",
+    gating.shutAtStart.includes("hall-land"), JSON.stringify(gating.shutAtStart));
+  ok("emptying a wing's sideboard is what opens the next one",
+    gating.cleared === true && !gating.shutAfter.includes("hall-land"),
+    JSON.stringify(gating));
+  ok("and the tier-3 wings stay shut behind the tier-2 one",
+    gating.shutAfter.includes("land-cons") && gating.shutAfter.includes("land-pot"),
+    JSON.stringify(gating.shutAfter));
 
   // --- reset ----------------------------------------------------------------
   await fresh();

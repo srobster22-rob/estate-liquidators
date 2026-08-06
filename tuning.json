@@ -77,7 +77,38 @@
       "cart": 5.0
     },
     "two_man_speed_mult": 0.62,
-    "follower_drift_m": 0.4
+    "follower_drift_m": 0.4,
+    "value_bands": {
+      "_source": "ECONOMY.md 3. Base value before any curse multiplier.",
+      "t0_armful": [
+        80,
+        300
+      ],
+      "t1_armful": [
+        80,
+        300
+      ],
+      "t2_armful": [
+        250,
+        700
+      ],
+      "t2_two_man": [
+        700,
+        1900
+      ],
+      "t3_armful": [
+        600,
+        1400
+      ],
+      "t3_two_man": [
+        1800,
+        4000
+      ],
+      "t4_cart": [
+        4000,
+        8000
+      ]
+    }
   },
   "curse": {
     "_source": "ECONOMY.md 3 and 5, DESIGN.md 4.2",

@@ -19,6 +19,7 @@ Run: python validate_estate.py
 
 from collections import deque
 from itertools import combinations
+import pathlib
 import sys
 import math
 
@@ -30,6 +31,22 @@ CLASS_SLOTS = {"pocket": 0.5, "armful": 1.0, "two_man": 3.0, "cart": 5.0}
 VALUE_BANDS = {
     0: (40, 300), 1: (80, 300), 2: (250, 1900), 3: (600, 4000), 4: (4000, 8000),
 }
+
+# ECONOMY.md 3, per class. The coarse per-tier band above spans both classes and
+# therefore cannot catch a two-man piece priced like an armful, which is the exact
+# error the apex re-band was about: two-man must be slightly WORSE per slot, never
+# better, or the logistics object is also the efficient one.
+CLASS_BANDS = {
+    (0, "pocket"): (40, 150), (1, "pocket"): (40, 150),
+    (0, "armful"): (80, 300), (1, "armful"): (80, 300),
+    (2, "armful"): (250, 700), (2, "two_man"): (700, 1900),
+    (3, "armful"): (600, 1400), (3, "two_man"): (1800, 4000),
+    (4, "cart"): (4000, 8000),
+}
+
+# DESIGN.md 4.2 / D-11. A curse grade multiplies the piece's value; a malignant
+# tier-1 vase is legitimately worth six times its band and is not a banding fault.
+GRADE_MULT = {"clean": 1.0, "tainted": 2.5, "malignant": 6.0}
 
 TASK_SECONDS = 75.0     # rough cost of one prerequisite step for a crew of 4
 APPROACH_L = 60.0       # AUDIO-SPEC 3.1 approach bus at source
@@ -240,11 +257,26 @@ def V7_curator_navmesh(e):
 
 
 def V8_value_bands(e):
+    """Banding is checked on the piece BEFORE its curse multiplier.
+
+    The first run of this check against the prototype rejected it on nine plinths,
+    all of which were correctly banded pieces that happened to be cursed - a
+    malignant tier-3 vase is six times its band by design (D-11), and a check that
+    calls that a fault would reject every estate with cursed loot in it. The
+    multiplier is divided out, and the per-class band is checked as well, which the
+    coarse per-tier band cannot do.
+    """
     bad = []
     for pl in e.plinths:
+        base = pl["value"] / GRADE_MULT.get(pl.get("grade", "clean"), 1.0)
         lo, hi = VALUE_BANDS[pl["tier"]]
-        if not lo <= pl["value"] <= hi:
-            bad.append(f"{pl['room']} ${pl['value']:,} outside tier-{pl['tier']} band")
+        if not lo <= base <= hi:
+            bad.append(f"{pl['room']} ${base:,.0f} outside tier-{pl['tier']} band")
+            continue
+        cb = CLASS_BANDS.get((pl["tier"], pl["cls"]))
+        if cb and not cb[0] <= base <= cb[1]:
+            bad.append(f"{pl['room']} ${base:,.0f} outside tier-{pl['tier']} "
+                       f"{pl['cls']} band {cb[0]}-{cb[1]}")
     return not bad, "; ".join(bad)
 
 
@@ -313,6 +345,21 @@ def main():
 
     verbose = "-q" not in sys.argv
     problems = []
+
+    # A single estate from a file - the prototype dumps itself in this schema via
+    # `node proto3d/dump-estate.mjs`. An estate that fails here does not enter the
+    # pool, whether it came from a document or from the thing people are playing.
+    if "--estate" in sys.argv:
+        import json
+        path = sys.argv[sys.argv.index("--estate") + 1]
+        d = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+        failed = validate(d, True)
+        print(f"\n{'-' * 74}")
+        if failed:
+            print(f"  REJECTED  {d['id']}  failed {', '.join(sorted(failed))}")
+            return 1
+        print(f"  OK   {d['id']} enters the pool")
+        return 0
 
     clean = validate(MANOR_A, verbose)
     if clean:
