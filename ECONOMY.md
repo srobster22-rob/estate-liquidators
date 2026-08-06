@@ -324,6 +324,11 @@ toss-up, but thin enough that players may rationally skip it. Whether 6% is enou
 signature mechanic is a design judgement, not a simulation result, and it should be settled
 deliberately rather than by default.
 
+> **Settled in R16, and the answer was that the question was wrong — see §10.** The +6% was
+> also slightly overstated: this model carried a stale cursed-Disturbance floor of 2.0 after
+> R11 raised the canonical value to 7.0, which puts the corrected figure at **+4.4%**. With
+> room value classes in place the appraiser earns **+12.2%**.
+
 **The pillar works harder than designed.** Look at the Disturbance column, not the money: a
 blind crew ends the night at 30 and is never hunted. A scanning crew is pinned at 100 for
 most of the night. Appraising doesn't cost you *a bit* of noise — it moves you permanently
@@ -355,3 +360,65 @@ nothing. It needs to be roughly 3–4× larger to be felt.
   supposed to be a genuine gamble, not a checklist item.
 - **Pocket items dominate.** Their per-slot value has crept up to parity; drop their band, not
   their slot cost.
+
+---
+
+## 10. The appraiser, settled — the payoff is a room property (R16)
+
+`sim/scan_risk.py`. §9 left the project with a genuine open question: is a **+6%** edge
+enough to carry the game's signature verb, or will good players rationally skip it? Two
+hypotheses were tested. The first is dead and the second answers the question.
+
+### Hypothesis 1 — make scanning a tail risk. Dead.
+
+§5 fixed cursed cargo by replacing a linear cost with a super-linear one. The appraiser looked
+like the same problem, so it got the same treatment: `p(the Curator arrives mid-scan) = k ×
+consecutive_scans^1.8 × tier_weight`, with death — and a permanently smaller crew, which slows
+Disturbance decay because decay is crew-scaled — if it arrives while hunting.
+
+| k | BLIND | burst 1 | burst 2 | burst 3 | scan all | best |
+|---:|---:|---:|---:|---:|---:|---|
+| 0.00 | 6,454 | 6,533 | 6,331 | 6,296 | 6,433 | (within noise) |
+| 0.02 | 6,454 | 6,442 | 6,044 | 5,782 | 4,882 | BLIND |
+| 0.05 | 6,454 | 6,296 | 5,535 | 4,693 | 4,144 | BLIND |
+| 0.12 | 6,454 | 5,962 | 3,927 | 3,243 | 3,057 | BLIND |
+| 0.20 | 6,454 | 5,473 | 2,825 | 2,556 | 2,448 | BLIND |
+
+No burst length wins at any coefficient. **The lesson this project has leaned on twice needs a
+qualifier:** cost *shape* decides whether an interior optimum can exist; the *size of the
+benefit* decides whether it does. Cursed cargo pays ×6 and so survives a few ruin rolls;
+scanning pays ×1.35 and survives none. Logged as D-23.
+
+### Hypothesis 2 — the payoff varies by room. This is the answer.
+
+Scanning four candidates and keeping the best is worth `E[max of 4] − E[random]` =
+**0.6 × spread × room mean**. Every model in this project drew all four from one flat band,
+which prices the appraiser as a single global constant — a fixed rate of return, which is not
+a decision at any price. Give rooms a declared value class instead (`LEVEL-SPEC.md` §2.1):
+
+| Policy | Mean $ | Scans | End Disturbance | vs blind |
+|---|---:|---:|---:|---:|
+| Blind haul | 6,451 | 0 | 44 | — |
+| Scan a **random** 25% of rooms | 6,745 | 14 | 57 | +4.6% |
+| Scan **shelf** rooms only | 6,329 | 17 | 60 | **−1.9%** |
+| Scan **curio** rooms only | **7,235** | 14 | 57 | **+12.2%** |
+| Scan curio + mixed | 6,833 | 39 | 91 | +5.9% |
+| Scan everything | 6,608 | 56 | 100 | +2.4% |
+
+Three things in that table matter more than the headline:
+
+1. **Random-25% vs curio-only is the skill component.** Same scan count, same noise, same
+   losses — +4.6% against +12.2%. About 60% of the edge is *reading the room*, and the rest is
+   simply scanning less. Both are new; only the first is interesting.
+2. **Shelf-only is negative.** Reading the room wrong is worse than never scanning. The
+   decision now has a wrong answer, which is what makes it a decision.
+3. **Scan-everything nearly gives it all back** (+2.4%), because it pins Disturbance at 100.
+   "Information costs safety" is doing exactly the work §9 said it was.
+
+**Sensitivity.** The result is not perched on the tuning. Curio spread 0.7 → 1.9 moves the
+edge 7.0% → 20.3% and curio-only wins throughout; curio share 10% → 40% moves it 6.2% → 16.7%
+and curio-only wins throughout. The mechanic degrades gracefully in both directions and never
+inverts. What it cannot survive is a house with *no* variance — which is why V11 exists.
+
+**Van capacity remains the master constant.** Nothing here changes §6: this widens the
+appraiser's payoff, it does not replace the scarcity that makes selection matter at all.

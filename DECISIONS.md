@@ -142,10 +142,15 @@ appraiser is the game's signature verb.
 
 **Knowingly accepted cost:** the world feels slightly arbitrary.
 
-**Simulated 2026-07-29** (`ECONOMY.md` §6, `sim/haul_sim.py`): scanning beats blind hauling
-by **+84%** at 14 van slots, and the edge decays monotonically with capacity until blind
-hauling wins outright somewhere between 24 and 32 slots. The mechanism §4.4 predicted is
-confirmed — the appraiser lives entirely on van space binding.
+**Simulated 2026-07-29** (`ECONOMY.md` §6, `sim/haul_sim.py`): the edge decays monotonically
+with capacity until blind hauling wins outright somewhere between 24 and 32 slots. The
+mechanism §4.4 predicted is confirmed — the appraiser lives entirely on van space binding.
+
+> **The size of the edge has been revised four times and the early figures are dead.** +84%
+> (placeholder noise cost) → +31% (noise derived, R5) → +6% (slot-accounting reroll fixed,
+> R8) → **+4.4%** (cursed floor corrected to canonical 7.0, R16) → **+12.2%** with room value
+> classes in place (D-22). Quote the last one; the +84% in older prose is superseded
+> everywhere it appears.
 
 Two things the sim changed:
 - **Scan *duration* is not the cost.** 1s and 9s per item produce the same outcome; there's
@@ -342,6 +347,74 @@ that would mean the unlock timing, not the visibility, is wrong.
 
 ---
 
+## D-22 · The appraiser's payoff is a property of the room, not a constant
+
+**Decision:** every room declares a `value_class` — `shelf` (±10% spread), `mixed` (±40%),
+`curio` (±110%) — dressed so the class is readable from the doorway. Wings ship 15–35% curio
+rooms, enforced by validator check **V11**. Scanning's payoff is `0.6 × spread × room mean`,
+so this makes it vary by a factor of eleven across the house instead of being one number.
+
+**Why.** For eight rounds the appraiser's edge sat at a thin, arguably-skippable few percent,
+and every attempt to widen it worked on the *cost* side — harsher retrieval, fewer candidates,
+tier-scaled exposure, and finally (R16) a super-linear tail risk. All of them failed, and R6
+concluded from that that no middle strategy could ever have a wide optimum. That was the wrong
+diagnosis. Every one of those models drew all four candidates from a single flat band, which
+hard-codes the benefit as a global constant — and a constant rate of return is not a decision
+no matter what you charge for it. The fix was on the benefit side, and it is content, not
+tuning.
+
+**Measured** (`sim/scan_risk.py`, 2500 nights per policy): scanning only curio rooms earns
+**+12.2%** over blind hauling, against +2.4% for scanning everything. The controls are what
+make it a mechanic rather than a discount — scanning a *random* 25% of rooms earns +4.6% at
+identical scan count and noise, so **roughly 60% of the edge is the read, not the frugality**;
+and scanning only shelf rooms earns **−1.9%**, so reading the room wrong is worse than never
+scanning at all. A decision with no wrong answer is a formality.
+
+**Cost, stated plainly.** This pulls against D-10, which insists value is illegible in
+magnitude. The reconciliation is that **the room's variance is public and the item's value is
+private** — you can see the cabinet is a lottery, you cannot see which drawer won. That is a
+real tension, not a resolved one, and it is now a standing dressing constraint on every wing
+the project ever authors. It also makes level authoring harder in a way no level designer will
+thank us for: a wing can now be *economically* wrong while being spatially perfect.
+
+**Falsified if:** Milestone 2 instrumentation shows scan rate is roughly the same in curio and
+shelf rooms — that means the telegraph isn't reading and the decision is a coin flip, which is
+worse than not having it. Also falsified if testers report the room dressing tells them what to
+take *without* scanning, which would mean D-10 has been broken to buy this; in that conflict
+D-10 wins, because it is what keeps the appraiser alive at all.
+
+---
+
+## D-23 · Scanning is not a tail risk, and shape is not the whole lesson
+
+**Decision:** do not attach ruin-style risk to appraising. The super-linear cost that fixed
+cursed cargo (D-19's sibling, `DESIGN.md` §4.2) does not transfer to the appraiser, and this is
+logged as a decision precisely because it is the obvious next idea.
+
+**Why.** Modelled in `sim/scan_risk.py`: `p(interrupted) = k × consecutive_scans^1.8 ×
+tier_weight`, with death and a permanently smaller crew — which slows Disturbance decay,
+because decay is crew-scaled (R12) — if the Curator arrives while hunting. Every scanning
+policy loses to hauling blind at every k from 0.02 up, monotonically in how much you scan.
+There is no burst length that wins. Scan-everything falls to −29%.
+
+**The refinement worth keeping.** This project has twice concluded "a multiplicative benefit
+needs a super-linear cost." That is necessary and not sufficient:
+
+> Cost **shape** decides whether an interior optimum *can* exist. The **size of the benefit**
+> decides whether it *does*. Cursed cargo pays ×6, so the first two pieces are clearly worth a
+> ruin roll and the fifth clearly isn't — that gap is the decision. Scanning pays ×1.35, and
+> there is no number of draws at which ×1.35 survives a tail risk. The curve has no interior
+> peak; it declines from the first scan.
+
+So the appraiser needed its *benefit widened* (D-22), not its cost sharpened — the opposite
+prescription to the curse, derived from the same principle.
+
+**Falsified if:** the candidate count per shelf rises far enough that scanning's multiplier
+approaches the curse's — at ×3 or better, a tail risk becomes worth re-testing. It is ×1.35 at
+4 candidates and this is not close.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
@@ -349,9 +422,9 @@ that would mean the unlock timing, not the visibility, is wrong.
 | ~~O-01~~ | ~~Crew size 4 or 6?~~ | — | **Closed → D-18.** Four. |
 | ~~O-02~~ | ~~Dead-player downtime~~ | — | **Closed → D-17.** The dead join the collection. |
 | ~~O-03~~ | ~~Van capacity numbers~~ | — | **Closed → `ECONOMY.md` §1.** 14 slots, ceiling 20. |
-| ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 10-check validation suite. |
+| ~~O-04~~ | ~~Estate module authoring template~~ | — | **Closed → `LEVEL-SPEC.md`.** Module contract + 11-check validation suite. |
 | **O-05** | Does the Curator have a face? | art | recommend never fully seen — silhouette and hands only. Not blocking anything yet. |
 | ~~O-06~~ | ~~Contract chain and quota curve~~ | — | **Closed → `ECONOMY.md` §4.** 4 nights, 48%→79% of theoretical max. |
 
-Only O-05 remains open, and it blocks nothing. Every decision that gated build work has been
+Only O-05 remains open, and it blocks nothing (23 decisions logged as of R16). Every decision that gated build work has been
 made — which means the next real information comes from a playtest, not another design pass.

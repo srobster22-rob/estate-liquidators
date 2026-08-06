@@ -2,7 +2,7 @@
 Sample estates for the validator.
 
 MANOR_A is the worked example from LEVEL-SPEC.md 8 (East Conservatory), built to pass.
-BROKEN_B is the same estate with seven deliberate faults, one per check, used to prove
+BROKEN_B is the same estate with eight deliberate faults, one per check, used to prove
 the validator actually detects things rather than just printing PASS ten times.
 """
 
@@ -13,15 +13,15 @@ MANOR_A = {
     "curator_spawn": "orangery",
     "rooms": {
         "driveway":     {"pos": (0, 0),    "tier": 0, "van": True},
-        "foyer":        {"pos": (12, 0),   "tier": 0},
-        "grand_stair":  {"pos": (24, 0),   "tier": 1},
-        "service_hall": {"pos": (20, -14), "tier": 1},
-        "study":        {"pos": (34, 8),   "tier": 1},
-        "landing":      {"pos": (36, 0),   "tier": 2},
-        "conservatory": {"pos": (52, 4),   "tier": 3},
-        "potting_room": {"pos": (60, 10),  "tier": 3},
-        "orangery":     {"pos": (68, 6),   "tier": 3},
-        "office":       {"pos": (58, -4),  "tier": 4},
+        "foyer":        {"pos": (12, 0),   "tier": 0, "value_class": "shelf"},
+        "grand_stair":  {"pos": (24, 0),   "tier": 1, "value_class": "shelf"},
+        "service_hall": {"pos": (20, -14), "tier": 1, "value_class": "shelf"},
+        "study":        {"pos": (34, 8),   "tier": 1, "value_class": "curio"},
+        "landing":      {"pos": (36, 0),   "tier": 2, "value_class": "mixed"},
+        "conservatory": {"pos": (52, 4),   "tier": 3, "value_class": "mixed"},
+        "potting_room": {"pos": (60, 10),  "tier": 3, "value_class": "shelf"},
+        "orangery":     {"pos": (68, 6),   "tier": 3, "value_class": "curio"},
+        "office":       {"pos": (58, -4),  "tier": 4, "value_class": "mixed"},
     },
     "portals": [
         {"a": "driveway", "b": "foyer", "width": 3.0, "door": True,
@@ -75,7 +75,7 @@ MANOR_A = {
 
 def _broken():
     d = copy.deepcopy(MANOR_A)
-    d["id"] = "broken_b  (seven deliberate faults)"
+    d["id"] = "broken_b  (eight deliberate faults)"
 
     # V10 — the piano check. Narrow the ONLY cart-wide route out of the office.
     for p in d["portals"]:
@@ -102,8 +102,14 @@ def _broken():
     # V8 — a tier-1 plinth priced like tier 3.
     d["plinths"].append({"room": "study", "cls": "armful", "tier": 1, "value": 2400})
 
+    # V11 — a flat house. Every room evenly priced, so scanning has a fixed rate of
+    # return everywhere and the appraiser is a habit rather than a decision. This is
+    # the fault that looks like nothing wrong: every room individually is fine.
+    for room in ("study", "orangery"):
+        d["rooms"][room]["value_class"] = "shelf"
+
     # V9 — free money parked next to the van.
-    d["rooms"]["cloakroom"] = {"pos": (14, 2), "tier": 1}
+    d["rooms"]["cloakroom"] = {"pos": (14, 2), "tier": 1, "value_class": "mixed"}
     d["portals"].append({"a": "foyer", "b": "cloakroom", "width": 2.0, "door": True})
     d["plinths"].append({"room": "cloakroom", "cls": "armful", "tier": 1,
                          "value": 280})
@@ -113,4 +119,4 @@ def _broken():
 BROKEN_B = _broken()
 
 # What BROKEN_B is built to trip. The test asserts exactly this set.
-EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10"}
+EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10", "V11"}

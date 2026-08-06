@@ -137,6 +137,13 @@ check("py integrated RATCHET", grab(sims["integrated.py"], r"RATCHET_END\s*=\s*(
       d["ratchet_end"])
 check("py integrated VAN_SLOTS", grab(sims["integrated.py"], r"VAN_SLOTS\s*=\s*(\d+)"),
       v["base_slots"])
+# This one drifted for four rounds while the checker reported 55/55 green, because it
+# lived as `cursed * 2.0` INSIDE the floor expression and this file can only see named
+# constants. The lesson generalises: an inline literal is invisible to drift checking,
+# so any tuned number in any implementation must be hoisted to a named constant. (R16)
+check("py integrated CURSED_FLOOR",
+      grab(sims["integrated.py"], r"^CURSED_FLOOR\s*=\s*([\d.]+)", flags=re.M),
+      d["per_cursed_item_floor"])
 check("py disturbance IMPULSE",
       grab(sims["disturbance.py"], r"IMPULSE_PER_L\s*=\s*([\d.]+)"),
       lc["impulse_disturbance_per_l"])

@@ -14,10 +14,14 @@ You can get rid of the monster by handing the vase to your friend.
 
 ## Status
 
-**Design foundation. No code yet.** These documents are deliberately unfinished — they're
-built to be extended, argued with, and revised as playtests come back. Nothing here is
-precious except the things marked FIRM in the decision log, and even those state their own
-falsification conditions.
+**Design foundation, plus a playable prototype and a tested rules core.** No Unity project
+yet. There is a single-player browser prototype of the loop (`proto/index.html`), the verified
+rules ported to engine-free C# (`unity/Assets/Scripts/Core/`) with a 31-assertion cross-check
+against the Python models, and three green test gates — see `TRANSFER.md`.
+
+These documents are deliberately unfinished — built to be extended, argued with, and revised
+as playtests come back. Nothing here is precious except the things marked FIRM in the decision
+log, and even those state their own falsification conditions.
 
 ## The documents
 
@@ -27,10 +31,12 @@ falsification conditions.
 | **[TECH-SPEC.md](TECH-SPEC.md)** | Curator AI and the networked physics handoff, to implementation detail. | Building either. |
 | **[AUDIO-SPEC.md](AUDIO-SPEC.md)** | The loudness model, proximity voice, the Curator's sound, mix, accessibility. | Before Milestone 0 — audio gates the earliest test. |
 | **[ART-DIRECTION.md](ART-DIRECTION.md)** | The look: straight-faced house, ridiculous crew. Flat-shaded low-poly, light as the whole budget. | Before any asset work. |
-| **[LEVEL-SPEC.md](LEVEL-SPEC.md)** | Estate module contract, prerequisite chains, pinch points, and the 10-check validation suite. | Authoring any wing. |
+| **[LEVEL-SPEC.md](LEVEL-SPEC.md)** | Estate module contract, prerequisite chains, pinch points, and the 11-check validation suite. | Authoring any wing. |
 | **[ECONOMY.md](ECONOMY.md)** | Van capacity, slot costs, value bands, quota curve, and the simulation results behind them. | Tuning anything with a number in it. |
 | **[sim/haul_sim.py](sim/haul_sim.py)** | Monte Carlo of the haul loop. Runs in seconds, no dependencies. | Before changing van capacity or appraiser cost. |
 | **[sim/chain_sim.py](sim/chain_sim.py)** | Full-night sim with weight classes, crew labour, and depth gating. | Before changing the quota curve, crew size, or the apex. |
+| **[sim/scan_risk.py](sim/scan_risk.py)** | The appraiser: why a tail risk kills it and room variance saves it. | Before touching anything about scanning. |
+| **[sim/validate_estate.py](sim/validate_estate.py)** | The 11-check estate validator, with a self-test. `python sim/validate_estate.py` | Authoring or reviewing any wing. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |
@@ -57,11 +63,16 @@ falsification conditions.
 **Solid enough to build on:** the loop and economy; the Curator's state machine and attention
 model; the physics ownership protocol; the loudness model; the decision log.
 
-**Specified and partly tested:** the economy, by two simulations that between them overturned
-four things this project believed.
+**Specified and partly tested:** the economy, by nine simulations that between them overturned
+six things this project believed.
 
-- The appraiser beats blind hauling by **+84%** at 14 van slots — and dies entirely between
-  24 and 32 slots. Van capacity is the master constant.
+- The appraiser's edge dies entirely between 24 and 32 van slots. **Van capacity is the master
+  constant.** The edge itself has been revised four times as the model got honest (+84% →
+  +31% → +6% → +4.4%); it reaches **+12.2%** once rooms vary in how varied they are.
+- **Scanning's payoff is a property of the room, not a constant** — it's `0.6 × spread ×
+  mean`, so a house of evenly-priced rooms makes the signature verb a habit. Scanning only
+  high-variance rooms earns +12.2%; scanning a random 25% of rooms earns +4.6%; scanning the
+  *wrong* rooms earns −1.9%. The gap between those is the skill.
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4

@@ -44,7 +44,12 @@ Every wing ships a declaration alongside its geometry. This is the file the vali
 ```yaml
 id: east_conservatory
 depth_tier: 3                    # 1–4; drives value band and prereq depth
-rooms: 4
+
+rooms:                           # value_class drives the appraiser's payoff — see §2.1
+  - { id: r1, value_class: curio }
+  - { id: r2, value_class: mixed }
+  - { id: r3, value_class: mixed }
+  - { id: r4, value_class: shelf }
 
 portals:                         # doorways into the wing
   - { to: core.grand_stair, type: door,           locked: true  }
@@ -92,6 +97,35 @@ arguing about it. That single authored moment does more for a run's shape than a
 > Simulated without that foreknowledge, the van is full by the time it unlocks and the apex
 > is taken **0–7% of the time**. With it, 100%. An unseen centrepiece is a centrepiece nobody
 > ever takes.
+
+### 2.1 Room value classes — the appraiser's content lever
+
+`DESIGN.md` §4.4 Requirement C: **the appraiser's payoff is a property of the room, not a
+global constant.** Scanning is worth `0.6 × spread × room mean`, so a wing built entirely
+from evenly-priced rooms makes the game's signature verb a habit with a fixed rate of return.
+This is the lever that fixes it, and it lives here in level authoring — not in tuning.
+
+| `value_class` | Spread about the room mean | Target share | Dress it as |
+|---|---:|---:|---|
+| `shelf` | ±10% | 30% | matched sets. Encyclopaedias, tinned goods, a run of identical chairs, a filing room. |
+| `mixed` | ±40% | 45% | an ordinary furnished room — the default. |
+| `curio` | ±110% | 25% | junk and treasure on the same shelf. Cabinets of oddments, a hoarder's sideboard, the estate sale table. |
+
+**The class must be readable from the doorway, before anyone spends three seconds and a noise
+spike.** A curio room that doesn't *look* like a lottery converts a decision into a coin flip,
+which is worse than not having the mechanic — it costs the noise and returns the average.
+This is a dressing contract, and it is the one art requirement in this document that is
+load-bearing rather than aesthetic (`ART-DIRECTION.md` owes it a treatment).
+
+Note this pulls in the opposite direction to §4.4 Requirement B, which insists an *individual*
+item's value is illegible. Both hold: **the room's variance is public, the item's value is
+private.** You can see that the cabinet is a lottery; you cannot see which drawer won. If
+that reads as contradictory in play — if testers say the room already tells them what to take
+— Requirement C is the one to weaken, because B is what keeps the appraiser alive at all.
+
+Enforced by **V11**. Below ~10% curio the mechanic stops paying (+6.2% and falling); above
+~40% everything is worth scanning and the reading stops mattering. Both ends collapse back
+into a habit, which is the failure §4.4 exists to prevent.
 
 ## 3. Prerequisite chains — the pacing mechanism
 
@@ -171,6 +205,7 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V8** | Total wing value within ±15% of its depth band | economy sanity |
 | **V9** | No plinth within 15m of the van | no free money |
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
+| **V11** | Every room declares a `value_class`, and 15–35% of the wing's rooms are `curio` | §2.1 — the appraiser has a payoff worth reading the room for |
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
 in is a rage-quit bug — four people spending three real minutes discovering that a doorway is

@@ -271,6 +271,51 @@ def V10_it_fits(e):
     return not bad, "; ".join(bad)
 
 
+VALUE_CLASSES = ("shelf", "mixed", "curio")
+CURIO_BAND = (0.15, 0.35)          # tuning.json appraiser.room_classes, LEVEL-SPEC 2.1
+
+
+def V11_room_classes(e):
+    """The appraiser check.
+
+    DESIGN.md 4.4 Requirement C: scanning is worth 0.6 x spread x mean, so its payoff
+    is a property of the ROOM. A wing of uniformly-priced rooms turns the game's
+    signature verb into a habit with a fixed rate of return -- which is the exact
+    failure 4.4 exists to prevent, and it is invisible in the editor because every
+    individual room looks fine.
+
+    Applies to rooms that hold loot; the driveway does not need a value class.
+    """
+    loot_rooms = sorted({pl["room"] for pl in e.plinths})
+    if not loot_rooms:
+        return True, ""
+
+    classes = {r: e.rooms[r].get("value_class") for r in loot_rooms}
+    missing = [r for r, c in classes.items() if c is None]
+    if missing:
+        return False, f"rooms with loot and no value_class: {missing}"
+    unknown = [f"{r}={c}" for r, c in classes.items() if c not in VALUE_CLASSES]
+    if unknown:
+        return False, f"unknown value_class: {unknown} (expected {VALUE_CLASSES})"
+
+    curio = [r for r, c in classes.items() if c == "curio"]
+    share = len(curio) / len(loot_rooms)
+    lo, hi = CURIO_BAND
+    # A 3-5 room wing cannot express 15% granularity, so one lottery room always
+    # satisfies the lower bound. The upper bound has no such excuse.
+    if len(curio) == 1 and len(loot_rooms) < 7 and share < lo:
+        return True, ""
+    if share < lo:
+        return False, (f"only {len(curio)}/{len(loot_rooms)} curio rooms ({share:.0%}); "
+                       f"below {lo:.0%} the appraiser stops paying and scanning "
+                       f"collapses into a habit")
+    if share > hi:
+        return False, (f"{len(curio)}/{len(loot_rooms)} curio rooms ({share:.0%}); "
+                       f"above {hi:.0%} everything is worth scanning and reading the "
+                       f"room stops mattering")
+    return True, ""
+
+
 CHECKS = [
     ("V1  reachability", V1_reachable),
     ("V2  depth pacing", V2_depth_pacing),
@@ -282,6 +327,7 @@ CHECKS = [
     ("V8  value bands", V8_value_bands),
     ("V9  no free money", V9_no_free_money),
     ("V10 it fits", V10_it_fits),
+    ("V11 room classes", V11_room_classes),
 ]
 
 
@@ -300,3 +346,38 @@ def validate(d, verbose=True):
         verdict = "ENTERS POOL" if not failed else f"REJECTED ({', '.join(failed)})"
         print(f"  -> {verdict}")
     return failed
+
+
+if __name__ == "__main__":
+    # This block did not exist until R16. `validate()` was defined, EXPECTED_FAILURES
+    # was declared, and nothing ever called either -- so `python sim/validate_estate.py`
+    # printed nothing and exited 0, which is indistinguishable from passing. The suite
+    # that exists to stop levels lying was itself unrun.
+    import sys
+
+    from estates import BROKEN_B, EXPECTED_FAILURES, MANOR_A
+
+    clean = validate(MANOR_A)
+    broken = set(validate(BROKEN_B))
+
+    print(f"\n{'=' * 78}\nSELF-TEST\n{'=' * 78}")
+    errors = []
+    if clean:
+        errors.append(f"MANOR_A is built to pass and failed {sorted(clean)}")
+    missed = EXPECTED_FAILURES - broken
+    if missed:
+        errors.append(f"BROKEN_B has planted faults the suite did not catch: "
+                      f"{sorted(missed)}")
+    spurious = broken - EXPECTED_FAILURES
+    if spurious:
+        errors.append(f"BROKEN_B tripped checks with no planted fault: "
+                      f"{sorted(spurious)} (either a false positive, or a fault that "
+                      f"breaks more than it was meant to)")
+
+    if errors:
+        for e_ in errors:
+            print(f"  FAIL  {e_}")
+        sys.exit(1)
+    print(f"  OK    clean estate passes all {len(CHECKS)} checks; broken estate trips "
+          f"exactly its {len(EXPECTED_FAILURES)} planted faults")
+    sys.exit(0)

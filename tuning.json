@@ -73,6 +73,19 @@
     "_ruin_note": "Tail risk, not a fee. A linear cost cannot balance a multiplicative benefit."
   },
 
+  "appraiser": {
+    "_source": "DESIGN.md 4.4, LEVEL-SPEC.md 2.1, LOOP_LOG R16",
+    "_why": "The appraiser's payoff is E[max of 4] - E[random] = 0.6 x spread x room mean. It is a property of the ROOM, not a global constant. A flat estate prices it at one number everywhere, which is why it read as a thin +6% edge for eight rounds.",
+    "candidates_per_shelf": 4,
+    "room_classes": {
+      "shelf": { "spread": 0.10, "share": 0.30 },
+      "mixed": { "spread": 0.40, "share": 0.45 },
+      "curio": { "spread": 1.10, "share": 0.25 }
+    },
+    "_share_note": "Per wing, not per estate. Below ~10% curio the mechanic stops paying (+6.2%); the validator's V11 enforces 15-35%.",
+    "_telegraph": "Room class must be readable from the doorway without scanning. Unreadable dressing turns a decision into a coin flip."
+  },
+
   "retrieval": {
     "_source": "sim/integrated.py, LOOP_LOG R8",
     "dormant": 0.0,

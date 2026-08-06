@@ -16,14 +16,14 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > ### Read first, in this order
 >
 > 1. `README.md` — the map.
-> 2. `DECISIONS.md` — 21 settled calls, each with the condition that would disprove it.
+> 2. `DECISIONS.md` — 23 settled calls, each with the condition that would disprove it.
 >    **Do not relitigate these.** If you believe one is wrong, check whether its stated
 >    falsification condition has actually been met; if it hasn't, implement it as written.
 > 3. `DESIGN.md` — the game itself.
 > 4. `TECH-SPEC.md` and `AUDIO-SPEC.md` — implementation detail for the two systems that
 >    carry the product.
 > 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `STACK.md` — content contract, tuning, dependencies.
-> 6. `LOOP_LOG.md` — twelve rounds of findings, including several corrections to the specs.
+> 6. `LOOP_LOG.md` — sixteen rounds of findings, including several corrections to the specs.
 >    Where the log contradicts a doc, **the log is newer**.
 > 7. `proto/index.html` — a running single-player prototype of the core loop. Play it before
 >    writing anything.
@@ -89,7 +89,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > tail-risk van cost, lights and breakers, corpse recovery and the ghost's Static budget.
 >
 > **Phase 5 — Content.** 5+ wing modules against the `LEVEL-SPEC.md` contract, with the
-> ten-check validator wired into CI. Port `sim/validate_estate.py` to a Unity editor tool; a
+> eleven-check validator wired into CI. Port `sim/validate_estate.py` to a Unity editor tool; a
 > wing that fails any check does not enter the pool. **Automate V10 (does the piano physically
 > fit through every route) before the first wing ships**, not after the first bug report.
 >
@@ -97,7 +97,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 >
 > ### Reuse the simulations
 >
-> `sim/` contains eight Python models totalling ~1,700 lines that already answer most tuning
+> `sim/` contains nine Python models totalling ~2,200 lines that already answer most tuning
 > questions, and they run in seconds with no dependencies. **Before changing any balance
 > number, re-run the relevant one.** They are the reason the current values are trustworthy,
 > and two of them exist specifically because earlier numbers were wrong.

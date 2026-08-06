@@ -28,6 +28,11 @@ IMPULSE = 0.09
 SUSTAINED = 0.02
 DECAY_PER_MIN = 50.0        # R4
 RATCHET_END = 55.0          # floor climbs 0 -> 55 across the night
+# R11 raised this 2.0 -> 7.0 (cursed cargo was inert at 2.0) and this file kept the old
+# value for four rounds, because it was an inline literal in the floor expression rather
+# than a named constant, and check_drift.py can only see named constants. Hoisted so it
+# is checkable. Correcting it moved this file's headline from +6.1% to +4.4%. (R16)
+CURSED_FLOOR = 7.0
 
 L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
      "radio": 38, "break_small": 90}
@@ -105,7 +110,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
 
         # --- Disturbance over the span of this trip -------------------------
         span = cost
-        floor = RATCHET_END * (t / NIGHT_S) + cursed * 2.0
+        floor = RATCHET_END * (t / NIGHT_S) + cursed * CURSED_FLOOR
         for _ in range(int(span)):
             for _ in range(CREW):
                 if rng.random() < 0.04:

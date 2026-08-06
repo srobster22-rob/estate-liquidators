@@ -164,14 +164,62 @@ vase. If appearance correlates with price, players learn value by silhouette wit
 five hours of play and never scan again. This fights readability and makes the world feel
 slightly arbitrary — that's a real, accepted cost, not an oversight.
 
+**Requirement C — the payoff must vary by room, and the room must say so.** This is the one
+that turns scanning from a habit into a skill, and it was missing for eight rounds.
+
+Scanning four candidates and keeping the best is worth `E[max of 4] − E[random]`, which for
+a spread of ±s around a room's mean is exactly **0.6 × s × mean**. The payoff is therefore a
+property of *how varied the room is*, not a global constant — and every model in this project
+drew all four candidates from one flat band, which priced it at one number everywhere. That
+is why the appraiser read as a thin, arguably-skippable edge for so long: a flat estate makes
+scanning a habit with a fixed rate of return, and a fixed rate of return is not a decision.
+
+Three room classes, declared per room and **readable from the doorway**:
+
+| Class | Spread | Share of rooms | Scanning is worth | Reads as |
+|---|---:|---:|---:|---|
+| **Shelf** | ±10% | 30% | +6% | a wall of matched encyclopaedias, tinned goods, a run of identical chairs |
+| **Mixed** | ±40% | 45% | +24% | an ordinary furnished room |
+| **Curio** | ±110% | 25% | +66% | a cabinet of oddments — junk and treasure on the same shelf |
+
+Simulated in `sim/scan_risk.py`. Scanning **only curio rooms** earns **+12.2%** over blind
+hauling — roughly triple the +4.4% that flat rooms produce, at a *quarter* of the noise. And
+the controls are what make it a real mechanic rather than a discount:
+
+| Policy | vs blind | What it means |
+|---|---:|---|
+| Scan every room | +2.4% | the habit. Pins Disturbance at 100 and gives most of it back. |
+| Scan a random 25% of rooms | +4.6% | the value of simply scanning **less** |
+| Scan curio rooms only | **+12.2%** | the value of scanning **less, and correctly** |
+| Scan shelf rooms only | **−1.9%** | reading the room wrong is worse than never scanning |
+
+The gap between the random-25% control and curio-only — **+4.6% vs +12.2% at identical scan
+count, noise, and losses** — is the part that is skill rather than frugality. It's about 60%
+of the total edge. And `SHELF_ONLY` going *negative* is the half that matters most: a
+decision with no wrong answer is a formality. Now there is a wrong answer, and it is legible
+before you commit the three seconds.
+
+**What the estate owes this** (`LEVEL-SPEC.md` §2.1, enforced by validator check V11): every
+wing needs 15–35% curio rooms. Below ~10% the mechanic stops paying (+6.2%) and scanning
+collapses back into a habit. Above ~40% the house is all lottery and the reading stops
+mattering because everything is worth scanning.
+
+> **The tail-risk version of this was tried first, and it is dead.** Making scanning risky —
+> a chance the Curator arrives mid-scan, rising super-linearly with consecutive scans, exactly
+> the shape that fixed the curse in §4.2 — makes *every* scanning policy lose to hauling
+> blind, at every coefficient tested. See §4.4.1.
+
 **The gate:** at Milestone 2, instrument it. Track *what percentage of extracted items were
 appraised first*, per playtester, per hour of experience. If that number is still falling at
 hour five and lands under ~30%, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §6). Scanning beats blind hauling by +84% at 14
-van slots, and the edge decays to nothing between 24 and 32 slots — Requirement A is
-confirmed as the load-bearing one. But the sim also overturned part of §4.1's framing:
+**Simulated ahead of the gate** (`ECONOMY.md` §6, §9). Scanning's edge over blind hauling
+decays to nothing between 24 and 32 van slots — Requirement A is confirmed as the load-bearing
+one. *(The edge itself has been revised three times as the model got honest: +84% with a
+placeholder noise cost, +31% once noise was derived, +4.4% once a slot-accounting reroll was
+fixed. The current figure with Requirement C in place is +12.2%. Do not quote +84%.)* The sim
+also overturned part of §4.1's framing:
 
 > **The three seconds are decoration. The noise is the cost.**
 
@@ -179,7 +227,38 @@ Scan duration between 1s and 9s per item makes almost no difference to the outco
 van space binds long before the clock does. So the appraiser must never be balanced by making
 it *slower* — only by sharpening what the noise does to you. Tune toward the band where
 scanning *selectively* beats both scanning everything and scanning nothing; that's the only
-setting with a skill ceiling in it.
+setting with a skill ceiling in it. **Requirement C is how that band was finally found, and
+it is a content lever, not a tuning constant** — the selective band comes from varying the
+rooms, not from adjusting the scan.
+
+### 4.4.1 The rejected version: scanning as a tail risk
+
+Recorded because it is the obvious idea and the next person will have it too.
+
+§4.2 fixed cursed cargo by replacing a linear cost with a super-linear one — a per-night
+chance the collection reclaims the whole van, rising as `cursed^1.8`. That produced the
+project's first interior optimum: take two or three cursed pieces, then stop. The appraiser
+looked like the same problem in the same clothes, so the same medicine was tried: a chance the
+Curator arrives mid-scan, `p = k × consecutive_scans^1.8 × tier_weight`, with death (and a
+permanently smaller crew, and therefore slower Disturbance decay) if it arrives while hunting.
+
+**It fails, and not narrowly.** Every scan policy loses to hauling blind at every coefficient
+from k=0.02 upward, and the loss is monotone in how much you scan — there is no burst length
+that wins. Scan-everything falls to −29%.
+
+The reason is a genuine refinement of the §4.2 lesson, and it's worth stating carefully
+because this project has now leaned on that lesson twice:
+
+> A super-linear cost produces an interior optimum only when the benefit multiplier is **large
+> enough to survive the first few draws.** Cursed cargo pays **×6**, so the first two are
+> clearly worth a ruin roll and the fifth clearly isn't — that gap *is* the decision. Scanning
+> pays **×1.35**. There is no number of draws at which a ×1.35 benefit is worth a tail risk,
+> so the curve has no interior peak; it just declines from the first scan onward.
+
+Cost *shape* was never the whole story. **Shape decides whether an interior optimum can
+exist; the size of the benefit decides whether it does.** The appraiser needed its benefit
+widened (Requirement C), not its cost sharpened — the opposite prescription to the curse, from
+the same principle.
 
 ---
 
@@ -396,7 +475,9 @@ The structure has to be:
 ```
 Disturbance = fast-decaying NOISE LEVEL  +  slowly ratcheting FLOOR
               decay 50/min                    0 -> 55 across the night,
-              (drains in ~2 min of quiet)     plus 2 per cursed item in the van
+              (drains in ~2 min of quiet)     plus 7 per cursed item in the van
+              at crew 4; scales x crew/4      (2 was inert — R5 measured <$50
+              (R12)                            swing across 0-8 cursed items)
 
 impulse gain  L x 0.09     unchanged from AUDIO-SPEC 1.1
 sustained     L x 0.02/s   designated continuous sources only (never walking)

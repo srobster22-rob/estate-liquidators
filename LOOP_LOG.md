@@ -171,43 +171,86 @@ choice becomes stash-then-hide, hand-off-then-hide, or buy four seconds. Hiding 
 the *primary* verb at COLLECT, where the Curator switches to hunting crew — so the genre's
 signature panic is earned late rather than constant.
 
+R16 · Took the open item the log itself named — apply R11's tail-risk lesson to the
+appraiser — and built `sim/scan_risk.py` to test it. · **The hypothesis is dead, and killing it
+found the real answer.** A super-linear scan cost (`p = k x consecutive^1.8 x tier_weight`,
+with death and a permanently smaller crew, which slows crew-scaled decay and spirals) makes
+*every* scanning policy lose to hauling blind at every k from 0.02 up, monotonically in how
+much you scan. No burst length wins. **The refinement:** cost *shape* decides whether an
+interior optimum can exist, but the *size of the benefit* decides whether it does. Cursed
+cargo pays x6 and survives a few ruin rolls; scanning pays x1.35 and survives none. Logged as
+D-23 so the next person doesn't have the same obvious idea.
+· **Then found the actual gap, which was on the benefit side.** Scanning is worth
+`E[max of 4] - E[random]` = **0.6 x spread x room mean** — so its payoff is a property of the
+ROOM, and every model in this project has drawn all four candidates from one flat band. Eight
+rounds of trying to fix the appraiser by adjusting its *cost* were all working on the wrong
+half of the equation: a constant rate of return is not a decision at any price. Gave rooms a
+declared `value_class` (shelf +/-10%, mixed +/-40%, curio +/-110%) and the appraiser goes from
++4.4% to **+12.2%**. · **The controls are the finding, not the headline.** Scanning a *random*
+25% of rooms earns +4.6% at identical scan count and noise, so ~60% of the edge is reading the
+room rather than scanning less; and scanning only *shelf* rooms earns **-1.9%**, so there is
+now a wrong answer. Robust across both sweeps: curio spread 0.7->1.9 moves the edge 7%->20%,
+curio share 10%->40% moves it 6%->17%, and curio-only wins in every cell. Logged as D-22, with
+its cost stated — it pulls against D-10, and the reconciliation is that *the room's variance is
+public and the item's value is private*.
+· **Two live bugs found on the way, both in the checking apparatus rather than the game.**
+(1) `integrated.py` still had the cursed Disturbance floor at **2.0** four rounds after R11
+raised the canonical value to 7.0 — because it lived as `cursed * 2.0` inside an expression,
+and `check_drift.py` can only see *named* constants. The drift checker had been reporting
+55/55 green over a live divergence. Hoisted it, added the check (56 now), and verified the new
+check actually fires by injecting 7.0->4.0 and confirming exit 1. Correcting it moved that
+file's headline from +6.1% to +4.4%. **Standing rule: a tuned number that isn't a named
+constant is invisible to drift checking.** (2) `sim/validate_estate.py` had **no entry point at
+all** — `validate()` was defined, `EXPECTED_FAILURES` was declared, and nothing called either,
+so `python sim/validate_estate.py` printed nothing and exited 0, which reads exactly like
+passing. R14's "estate validator PASS" was that. Added a self-test that asserts the clean
+estate passes everything and the broken estate trips *exactly* its planted faults — no more, no
+fewer, so a check that over-fires is caught too.
+· Added **V11** (every loot room declares a `value_class`; 15-35% curio per wing) with a
+planted fault in `BROKEN_B`, and verified its three failure modes fire: missing class, unknown
+class, and both ends of the share band. Suite is now 11 checks, 8 planted faults, all green.
+· Swept the docs for the appraiser number, which appeared as +84% in three places long after
+two corrections: `README.md`, `DESIGN.md` §4.4 and `DECISIONS.md` D-10 now carry the full
+revision chain instead of a stale headline.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
 
-**R12: apply R11's lesson to the appraiser — it is the same shape of problem.** The +6% edge
-from R8 is a *linear* trade (scan cost vs scan benefit), which is exactly the structure that
-gave flat, uninteresting curves for the curse. Try giving scanning a super-linear or tail-risk
-cost — e.g. appraising while already at PURSUE/COLLECT risks the Curator arriving mid-scan
-(you are stationary for 3s), with the risk compounding per consecutive scan. If that produces
-an interior optimum the way it did for curses, the appraiser question answers itself and the
-+6% concern dissolves.
+**1. The hiding mechanic has no numbers.** `DESIGN.md` §8.1 (added R15) is the newest core
+verb and the only one specified purely in prose — no concealment durations, no detection
+radius while hidden, no cost, nothing a build session could implement without inventing
+values. It also interacts directly with the attention model, which is the one system this
+project has already been wrong about twice. It is now the largest gap between "specified" and
+"buildable", and R16's result raises its priority: the appraiser makes you stand still for
+three seconds, and hiding is the counterplay to being caught doing it. Spec it to the same
+depth as the attention model and simulate the stash-then-hide / hand-off-then-hide / buy-four-
+seconds choice from §8.1 to check it isn't another step function.
 
-~~R11: make the curse a TAIL RISK instead of a marginal cost.~~ **Done.** That's the only shape that
-can work, and it follows directly from R10 — a linear cost can never balance a multiplicative
-benefit, so the cost has to be super-linear or catastrophic. Candidate: cursed cargo carries a
-chance of losing the **entire van**, scaling super-linearly with how many you're carrying (one
-malignant item is a shrug, four is a real chance the night ends with nothing). That converts
-"linear cost vs multiplicative benefit" into a gamble with a ruin probability, which is a
-genuine decision and also much better fiction — the collection reclaiming everything at once.
-Model it in `curse_test.py` as a per-night ruin roll and find the curve where 1–2 cursed items
-is clearly worth it and 5+ clearly isn't. Then rewrite `DESIGN.md` §4.2 around it, because the
-current "burden you chose" framing describes a burden that arithmetically isn't one.
+**2. Per-crew-size pacing, still open from R12.** Solo Disturbance tops out ~57 at sunrise, so
+a lone player is essentially never hunted in a 3-minute run. The `x crew/4` decay scale fixed
+the *direction* of the crew-size dependency, not the *curve* — each crew size needs its own
+pacing target, and nothing has swept 1/2/3/4/6 players against time-in-tier. Every sim in this
+project except the prototype has only ever run four players, which is exactly how the original
+bug stayed invisible.
 
-**And the one that genuinely needs your call, deferred from R9.** Is a **+6%** edge
-edge enough to carry the game's signature mechanic? Break-even-ish is arguably correct for a
-risk/reward system (the interesting state is a real toss-up), but it's thin enough that players
-may rationally skip the appraiser entirely, which is the exact failure `DESIGN.md` §4.4 was
-written to prevent. Three options worth weighing: accept it and lean into the toss-up; widen
-the payoff by making scanning *situational* (value-variance per room — pays at a curio cabinet,
-wasted on a shelf of identical books, with the room's look telegraphing which); or widen van
-scarcity, since §6 showed capacity is the master lever on this edge. **Do not tune RETRIEVAL** —
-R8 showed the designed values already produce the right ordering.
+**3. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
+*shortest* path from plinth to van and counts doors, so a wing whose alternate route is
+acoustically dead passes. It has never failed anything, which for a check is a symptom rather
+than a reassurance — R16 found two other pieces of apparatus that were quietly not running, so
+treat "never fires" as suspect by default. Make it walk every route V3 guarantees.
 
-Also still open, both live balance holes: **cursed cargo is inert** (+2 Disturbance floor per
-item is swamped; needs ~+7) and `DESIGN.md` §4.2 / §6.5 want updating with whatever lands. And
-**V5 in `validate_estate.py`** remains the weakest of the ten checks — it only counts doors on
-the shortest path and has never failed anything.
+**Also worth doing at some point, none of it blocking:**
 
-**Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
-art, blocks nothing) are closed.
+- **`ART-DIRECTION.md` owes V11 a treatment.** Room value class is now a *dressing contract* —
+  curio rooms must read as lotteries from the doorway — and the art doc predates the idea. If
+  the telegraph doesn't land visually the mechanic degrades to a coin flip (D-22's stated
+  falsification condition).
+- **Port the drift checker's lesson.** A tuned number that isn't a named constant is invisible
+  to `check_drift.py`. Nothing has swept the three implementations for other inline literals;
+  R16 found the one it was looking for, not all of them.
+- **O-05** (does the Curator have a face) remains the only open decision, and still blocks
+  nothing.
+
+**Not blocked on anything.** The next genuinely new information comes from Phase 0 — two
+people, a door, and spatial voice over Steam — not from another design pass.
