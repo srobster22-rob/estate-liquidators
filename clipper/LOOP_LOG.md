@@ -146,3 +146,41 @@ proxy. D-9's unknown narrows from "the whole command" to "the network round-trip
 truncations that drag a hook phrase into the scored opening window. Nothing can currently
 generate such a window, so it is latent — but it is exactly the kind of latent fault that
 becomes live the moment someone loosens the segmenter.
+
+---
+
+R4 · Closed the boundary-sensitivity gap R3 left open, verified the caption-highlight path
+by eye for the first time, and measured the pipeline against a 3-hour transcript.
+7 new tests, 217 total. · **Found three things:**
+
+**(a) A promise you joined halfway through was never made to you.** R3's residual 24% was one
+pattern repeated 29 times: truncating a clip's opening drags a hook phrase into the scored
+window, and `hook` (+0.5 × weight 3.0) outweighed the `self_contained` penalty for the broken
+opening it created (−0.3 × 3.5). Both features were behaving as specified; the specification
+was incoherent. `hook` is now gated on a clean sentence opening — if the clip starts
+mid-sentence the viewer never received the promise, so the hook is worth zero. **76% → 100%
+on `talk.srt`.**
+
+**(b) Subtracting penalties destroys ordering at the floor.** The last 5 losses on
+`pauses.srt` were decided by an *irrelevant 0.011 difference in `duration_fit`* — because
+both clips scored exactly 0.0 on `self_contained` and the tiebreak fell through to noise.
+"That distinction matters." loses 0.7 for the pronoun and 0.35 for being a fragment: −0.05
+before the clamp. The broken version loses more, and also clamps to 0. Once two clips read as
+an identical zero, the feature has stopped ranking them. Switched to **multiplicative**
+composition — 1.0 × 0.3 × 0.65 = 0.195 versus a disqualified 0.0 — which never crosses zero
+and keeps heavily-penalised openings distinguishable from disqualified ones. **95% → 100%.**
+Boundary sensitivity is now 100% across both fixtures and both break types.
+
+**(c) D-5's own arithmetic was 4× low.** It predicted "roughly 10⁴ candidates" for a 3-hour
+podcast. Measured: 29,648 words, 3,207 utterances, **42,487 candidates**. The decision
+survives — everything short of encoding runs in 5.5s, ranking being 5.3s of it, and growth is
+linear because windows per start are bounded by `max_duration` — but the number in the log
+was wrong and is now the measured one. Added a structural test so an accidental quadratic
+never passes silently.
+
+**Also verified:** the word-highlight caption path, rendered and inspected frame by frame for
+the first time. The gold marker advances correctly word by word. R1 had only ever looked at
+the *non*-highlighted path, because every fixture available then had interpolated timings —
+which the code deliberately refuses to highlight.
+
+**Left rough on purpose:** aiming is still horizontal only, and still one static aim per clip.

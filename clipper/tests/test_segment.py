@@ -104,6 +104,23 @@ class CandidateTests(unittest.TestCase):
         for c in S.candidates(self.seg)[:20]:
             self.assertEqual(c.text.split(), [w.text for w in c.words])
 
+    def test_candidate_count_stays_linear_in_utterances(self):
+        """Guard on D-5: uncapped generation is only safe if it does not blow up.
+
+        The window count per starting utterance is bounded by max_duration, so
+        the total is linear in utterance count, not quadratic. Measured on a
+        3-hour transcript: 3,207 utterances -> 42,487 candidates, ranked in 5.3s.
+        """
+        count = len(S.candidates(self.seg))
+        self.assertLess(count, len(self.seg) * 25)
+
+    def test_a_long_transcript_does_not_explode(self):
+        words = [Word(f"w{i}", i * 0.35, i * 0.35 + 0.35) for i in range(12_000)]
+        seg = S.segment(Transcript(words, []))
+        cands = S.candidates(seg)
+        self.assertGreater(len(cands), 100)
+        self.assertLess(len(cands), len(seg) * 25)
+
 
 if __name__ == "__main__":
     unittest.main()

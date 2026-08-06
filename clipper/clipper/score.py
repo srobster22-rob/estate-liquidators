@@ -136,6 +136,10 @@ def hook_strength(text: str, *, window: int = 12) -> float:
 #: An opening utterance this short, followed by more, is a sentence fragment
 #: left over from a list the viewer never saw — "All fine.", "Not before."
 FRAGMENT_WORDS = 3
+FRAGMENT_PENALTY = 0.35
+
+#: A pronoun with no antecedent on screen. The viewer cannot resolve it.
+DANGLING_PENALTY = 0.7
 
 
 #: A lower-case opening word, in a transcript that otherwise capitalises
@@ -149,6 +153,18 @@ FRAGMENT_WORDS = 3
 #: starter" — a fragment beating a whole sentence. It still only zeroes one
 #: feature of six, so a strong clip can survive it.
 MID_SENTENCE_PENALTY = 1.0
+
+
+def opens_mid_sentence(text: str, *, expect_capital: bool) -> bool:
+    """Whether the clip starts partway through a sentence.
+
+    Only answerable when the transcript capitalises sentence starts; auto-captions
+    are entirely lower-case and carry no such signal.
+    """
+    if not expect_capital:
+        return False
+    first = next((t for t in text.split() if t), "")
+    return first[:1].islower()
 
 
 def self_containment(
@@ -171,23 +187,30 @@ def self_containment(
 
     They are still skipped over when hunting for a dangling referent, so
     "And that is why it works" is caught on "that".
+
+    Penalties **multiply** rather than subtract. Subtracting let two differently
+    broken openings both clamp to exactly 0.0 — "That distinction matters." loses
+    0.7 for the pronoun and 0.35 for being a fragment, which is -0.05 before the
+    floor — and once two clips read as an identical zero, an irrelevant 0.011
+    difference in `duration_fit` decides between them. Multiplying keeps the
+    ordering: heavily penalised openings stay distinguishable from disqualified
+    ones, and nothing has to cross zero to get there.
     """
     tokens = _tokens(text)
     if not tokens:
         return 0.0
     score = 1.0
 
-    first_raw = next((t for t in text.split() if t), "")
-    if expect_capital and first_raw[:1].islower():
-        score -= MID_SENTENCE_PENALTY
+    if opens_mid_sentence(text, expect_capital=expect_capital):
+        score *= 1.0 - MID_SENTENCE_PENALTY
 
     idx = 0
     while idx < len(tokens) and tokens[idx] in DISCOURSE_MARKERS:
         idx += 1
     if idx < len(tokens) and tokens[idx] in DANGLING_REFERENTS:
-        score -= 0.7
+        score *= 1.0 - DANGLING_PENALTY
     if opening_words is not None and utterance_count > 1 and opening_words <= FRAGMENT_WORDS:
-        score -= 0.35
+        score *= 1.0 - FRAGMENT_PENALTY
     return max(0.0, score)
 
 
@@ -268,8 +291,14 @@ class Scored:
 def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = None) -> Scored:
     w = weights or Weights()
     text = candidate.text
+    # A promise you joined halfway through was never made to you. Gating the
+    # hook on a clean opening removed the last systematic way a truncated clip
+    # could outscore the whole one it was cut from: truncation drags a hook
+    # phrase into the scored window, which was worth more than the penalty for
+    # the broken opening it created.
+    mid_sentence = opens_mid_sentence(text, expect_capital=seg.capitalised)
     features = {
-        "hook": hook_strength(text),
+        "hook": 0.0 if mid_sentence else hook_strength(text),
         "self_contained": self_containment(
             text,
             opening_words=len(candidate.utterances[0].words) if candidate.utterances else None,

@@ -132,12 +132,16 @@ class SensitivityTests(unittest.TestCase):
     def test_all_tied_reports_full_rate(self):
         self.assertEqual(V.Sensitivity("x", tested=4, preferred_clean=0, tied=4).rate, 1.0)
 
-    def test_the_scorer_prefers_a_clean_opening(self):
-        """Regression for R3's worst finding: this was 28%, i.e. backwards."""
-        for fixture, floor in (("talk.srt", 0.70), ("pauses.srt", 0.85)):
+    def test_the_scorer_always_prefers_a_clean_opening(self):
+        """Regression for R3's worst finding: this was 28%, i.e. backwards.
+
+        R4 took it to 100% by gating the hook on a clean opening and composing
+        the self-containment penalties multiplicatively.
+        """
+        for fixture in ("talk.srt", "pauses.srt"):
             _, seg, cands = load(fixture)
             opening = V.boundary_sensitivity(cands, seg)[0]
-            self.assertGreater(opening.rate, floor, f"{fixture}: {opening}")
+            self.assertEqual(opening.rate, 1.0, f"{fixture}: {opening}")
 
     def test_the_scorer_always_prefers_a_clean_ending(self):
         for fixture in ("talk.srt", "pauses.srt"):

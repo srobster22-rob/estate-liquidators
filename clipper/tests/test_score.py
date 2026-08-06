@@ -4,6 +4,7 @@ from pathlib import Path
 from clipper import score as SC
 from clipper import segment as S
 from clipper import transcript as T
+from clipper import validate as V
 from clipper.transcript import Transcript, Word
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
@@ -77,6 +78,54 @@ class SelfContainmentTests(unittest.TestCase):
 
     def test_never_goes_negative(self):
         self.assertGreaterEqual(SC.self_containment("and but so it that"), 0.0)
+
+    def test_stacked_penalties_stay_distinguishable_from_disqualification(self):
+        """Regression: subtracting made both of these clamp to exactly 0.0.
+
+        Once two clips read as an identical zero, an irrelevant 0.011 difference
+        in duration_fit decided between them — and picked the broken one.
+        """
+        bad = SC.self_containment(
+            "That distinction matters.", opening_words=3, utterance_count=4, expect_capital=True
+        )
+        disqualified = SC.self_containment(
+            "distinction matters.", opening_words=2, utterance_count=4, expect_capital=True
+        )
+        self.assertGreater(bad, 0.0)
+        self.assertEqual(disqualified, 0.0)
+        self.assertGreater(bad, disqualified)
+
+    def test_penalties_compose_multiplicatively(self):
+        self.assertAlmostEqual(
+            SC.self_containment("That thing.", opening_words=2, utterance_count=3),
+            (1 - SC.DANGLING_PENALTY) * (1 - SC.FRAGMENT_PENALTY),
+        )
+
+
+class HookGatingTests(unittest.TestCase):
+    """A promise you joined halfway through was never made to you."""
+
+    def test_mid_sentence_opening_earns_no_hook_credit(self):
+        tr = T.load(FIXTURES / "talk.srt")
+        seg = S.segment(tr)
+        cands = S.candidates(seg)
+        candidate = next(c for c in cands if SC.hook_strength(c.text) > 0)
+        broken = V.break_opening(candidate)
+        self.assertIsNotNone(broken)
+        self.assertTrue(SC.opens_mid_sentence(broken.text, expect_capital=seg.capitalised))
+        self.assertEqual(SC.score(broken, seg).features["hook"], 0.0)
+
+    def test_clean_opening_keeps_its_hook(self):
+        tr = T.load(FIXTURES / "talk.srt")
+        seg = S.segment(tr)
+        cands = S.candidates(seg)
+        best = SC.rank(cands, seg)[0]
+        self.assertFalse(SC.opens_mid_sentence(best.text, expect_capital=seg.capitalised))
+
+    def test_detection_needs_capitals_to_mean_something(self):
+        self.assertTrue(SC.opens_mid_sentence("not your starter", expect_capital=True))
+        self.assertFalse(SC.opens_mid_sentence("not your starter", expect_capital=False))
+        self.assertFalse(SC.opens_mid_sentence("Not your starter", expect_capital=True))
 
 
 class PacingTests(unittest.TestCase):

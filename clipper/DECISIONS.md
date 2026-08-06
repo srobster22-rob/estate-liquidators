@@ -80,8 +80,13 @@ dropped the pool mean from 36.8s to 22.0s against a 32s target. The scorer canno
 what the generator never emitted. Cost is trivial — 680 candidates for a 3.5-minute talk,
 scored in milliseconds.
 
-**Falsified by:** an input where the candidate count becomes a real cost. A 3-hour podcast
-would produce roughly 10⁴ candidates, which is still fine; 10⁶ would not be.
+**Falsified by:** an input where the candidate count becomes a real cost. 10⁶ would be.
+
+**Measured at R4, and the estimate here was 4x low.** A synthetic 3-hour transcript (29,648
+words, 3,207 utterances) produces **42,487** candidates, not the ~10⁴ guessed above. The
+decision survives anyway: the whole pipeline short of encoding runs in 5.5s, of which ranking
+is 5.3s. Growth is linear in utterance count — the windows per starting utterance are bounded
+by `max_duration` — so a 10-hour input costs proportionally, not quadratically.
 
 ---
 
@@ -271,3 +276,39 @@ to change a weight can check whether it did anything.
 
 **Falsified by:** the harness passing cleanly while output quality is visibly bad, which would
 mean the measurable properties are not the binding ones.
+
+---
+
+### D-18 · `hook` is gated on a clean sentence opening · FIRM
+
+A clip that starts mid-sentence scores zero for `hook`, regardless of what its opening words
+contain.
+
+**Why:** the two features were individually reasonable and jointly incoherent. Truncating a
+clip's opening pulls a hook phrase into the scored window, and the hook credit gained
+(+0.5 × 3.0) exceeded the self-containment penalty for the broken opening it created
+(−0.3 × 3.5) — so the scorer systematically preferred the damaged clip, 29 times out of 29 in
+the residual failures. The fix is conceptual rather than numeric: a promise the viewer joined
+halfway through was never made to them.
+
+**Falsified by:** a transcript whose capitalisation is unreliable enough that
+`opens_mid_sentence` misfires, which would silently zero the hook on good clips. The 80%
+capitalisation floor is the guard, and it has not been tested against real auto-generated
+punctuation.
+
+---
+
+### D-19 · Self-containment penalties compose multiplicatively · FIRM
+
+`score *= (1 - penalty)` rather than `score -= penalty`.
+
+**Why:** subtracting let two differently-broken openings both clamp to exactly 0.0, at which
+point the feature has stopped ranking them and an irrelevant 0.011 difference in
+`duration_fit` decides — which is precisely how the last five boundary-sensitivity failures
+were lost. Multiplying never crosses zero, so "badly penalised" stays distinguishable from
+"disqualified", and `MID_SENTENCE_PENALTY = 1.0` becomes genuinely absorbing rather than
+merely large.
+
+**Falsified by:** wanting a penalty that can be *fully* offset by another feature's strength.
+Multiplication makes a 1.0 penalty unrecoverable within the feature, which is intended here
+but would be wrong for a softer signal.

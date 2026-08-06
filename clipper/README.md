@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 3. Works end to end, on local files.** 210 tests pass, including real ffmpeg encodes
+**Round 4. Works end to end, on local files.** 217 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -95,7 +95,8 @@ python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt
 * **Boundary sensitivity** — does the scorer prefer a clean clip to a deliberately broken
   one? Windows truncated mid-sentence are objectively worse and need no human labelling.
 
-That last one found the worst bug in the project so far — see `LOOP_LOG.md` R3.
+That last one found the worst bug in the project so far — the scorer *preferring* broken
+clips, at R3 — and drove it from 28% to **100% on both fixtures** by R4.
 
 ## Running it
 
@@ -103,7 +104,7 @@ Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 210 tests, ~15s
+python3 -m unittest discover -s tests -t .      # 217 tests, ~16s
 python3 -m clipper.cli --help
 ```
 
@@ -115,11 +116,9 @@ Ranked by how much they'd hurt:
 
 1. **The download path has never run.** `sources.build_download_command` matches yt-dlp's
    documented flags; one real invocation would confirm or kill it.
-2. **Boundary sensitivity is 76%, not 100%.** The scorer still prefers a mid-sentence
-   opening to a clean one in about a quarter of decided comparisons, usually because
-   truncation drags a hook phrase into the scored opening window. Today nothing can generate
-   such a window — the segmenter only emits whole utterances — so this is latent rather than
-   live. It becomes real the moment boundaries are loosened.
+2. **No vertical aiming.** `framing.aim()` is horizontal only. Correct for 16:9 → 9:16,
+   wrong for a square or already-tall source, where the interesting part of the frame may be
+   above or below centre.
 3. **The aim is static, one per clip.** A speaker who moves *within* the frame mid-clip is
    framed for the average of where they were. Panning is the obvious next round; today the
    fallback catches the severe cases rather than following them.
