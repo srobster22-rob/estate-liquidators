@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 4. Works end to end, on local files.** 217 tests pass, including real ffmpeg encodes
+**Round 5. Works end to end, on local files.** 234 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -84,7 +84,7 @@ There is no labelled data, so "is the ranking good?" can't be answered directly.
 *can* be measured without labels, and each has caught something real:
 
 ```bash
-python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt
+python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt fixtures/talk_auto.vtt
 ```
 
 * **Discrimination** — does the feature vary at all? A feature pinned at its ceiling is a
@@ -98,13 +98,31 @@ python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt
 That last one found the worst bug in the project so far — the scorer *preferring* broken
 clips, at R3 — and drove it from 28% to **100% on both fixtures** by R4.
 
+## Two caption regimes, and they are not equal
+
+`talk.srt` and `talk_auto.vtt` are a **paired** fixture — identical words and timings, one
+written as clean subtitles and one as YouTube-style ASR output (lower-case, unpunctuated,
+rolling carry-over). Any difference between them is caused by the caption regime alone.
+
+| Boundary sensitivity | punctuated | auto-captions |
+|---|---|---|
+| clean opening preferred | **100%** | 79% |
+| clean ending preferred | **100%** | 83% |
+
+The gap is structural. Punctuation and capitals are what let the scorer tell a sentence start
+from a mid-sentence cut; ASR provides neither, so it falls back to silence, which is weaker.
+The CLI says so on every unpunctuated transcript rather than leaving you to find out.
+
+Regenerate the paired fixture with `python3 fixtures/make_auto.py fixtures/talk.srt
+fixtures/talk_auto.vtt`.
+
 ## Running it
 
 Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 217 tests, ~16s
+python3 -m unittest discover -s tests -t .      # 234 tests, ~22s
 python3 -m clipper.cli --help
 ```
 
@@ -114,8 +132,13 @@ The render tests skip themselves if ffmpeg is missing rather than failing.
 
 Ranked by how much they'd hurt:
 
-1. **The download path has never run.** `sources.build_download_command` matches yt-dlp's
-   documented flags; one real invocation would confirm or kill it.
+1. **The download path has never completed.** yt-dlp accepts every flag, but nothing here has
+   a route to YouTube, so the round-trip is unverified — chiefly whether subtitle files land
+   where `find_transcript` looks.
+2. **The auto-caption fixture inherits SRT cue timings**, so gaps within a cue are exactly
+   zero and the gap structure is subtitle-shaped rather than speech-shaped. The 79%/83%
+   figures should be re-measured against a real auto-caption file before being trusted as
+   absolutes; the *direction* is solid, the magnitude is not.
 2. **No vertical aiming.** `framing.aim()` is horizontal only. Correct for 16:9 → 9:16,
    wrong for a square or already-tall source, where the interesting part of the frame may be
    above or below centre.

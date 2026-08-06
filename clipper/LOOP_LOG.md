@@ -184,3 +184,51 @@ the *non*-highlighted path, because every fixture available then had interpolate
 which the code deliberately refuses to highlight.
 
 **Left rough on purpose:** aiming is still horizontal only, and still one static aim per clip.
+
+---
+
+R5 · Built a **paired** fixture — `fixtures/make_auto.py` turns `talk.srt` into
+`talk_auto.vtt`, the same words and timings rendered as YouTube-style ASR: lower-case,
+unpunctuated, rolling carry-over, inline word timings. Ran the validator against the caption
+regime this tool actually exists for. 15 new tests, 234 total.
+· **Found a shipping data-corruption bug and two more positional-window flaws:**
+
+**(a) Rolling de-duplication duplicated a line at every pause.** The paired fixture must
+contain exactly the same words as its source; it came out with **622 instead of 573**, a
+whole line leaking through 7 times. Cause: de-duplication was gated on cue *contiguity*
+(within 0.5s of the previous cue), a guard added at R1 to protect genuine repetition. But
+carry-over is a property of the caption format, not of the timing — YouTube carries text
+forward across pauses too. Every gap longer than the threshold duplicated a line: **8.5%
+corruption on a normal talk, on the primary input path, shipping since R1.** Replaced the
+temporal guard with a structural one: never drop a prefix if it would consume the *whole*
+cue. Real rolling captions always add words, so a cue that is entirely a repeat is not
+carry-over. This protects the same case the contiguity test was written for, without being
+wrong about pauses. Paired fixture now round-trips exactly.
+
+**(b) The R3/R4 fixes did not exist on auto-captions.** Both hang on capitalisation, which
+ASR does not emit. Measured on the auto fixture, boundary sensitivity was **61% / 78%**
+against 100% / 100% on punctuated text — i.e. roughly R1 quality on the input that matters
+most. Added the auto-caption analogue of a capital letter: the silence *before* the opening,
+carried on `Utterance.gap_before`. It is deliberately a fallback rather than an override —
+on a punctuated transcript two sentences inside one cue are contiguous, so `gap_before` is
+legitimately 0.0 at a perfectly clean boundary, and using gaps there would reject good
+openings wholesale. 61% → 79%, punctuated unchanged at 100%.
+
+**(c) `payoff` had the identical flaw `hook` had at R4, and I did not check for it then.**
+All 16 remaining ending failures were `payoff +1.0`: truncating a clip's ending pulls a
+conclusion phrase into the scored tail window, so cutting the end *raised* the score. R4 fixed
+exactly this for `hook` and I never asked whether the mirror feature had the mirror bug.
+Gated `payoff` on a clean ending, symmetrically — a conclusion you were cut away from never
+landed. 78% → 83%. **Standing note: when a positional-window feature is found broken, check
+every other positional-window feature the same day.**
+
+**Stopped tuning deliberately.** The residual auto failures concentrate on candidates that
+begin at a *length-forced* boundary — a 45-word run with no pause, where the segmenter cut
+because it ran out of patience rather than because the speaker stopped. There the transcript
+genuinely carries no boundary information and the scorer cannot tell a good cut from a bad
+one. Faking a signal there would be tuning against the fixture, which is the R2 lesson.
+
+**Fixture caveat, stated rather than buried:** `talk_auto.vtt` inherits its timings from SRT
+cues, so intra-cue gaps are exactly zero and the gap structure is subtitle-shaped, not
+speech-shaped. The direction of the 79%/83% result is solid; the magnitude needs a real
+auto-caption file.

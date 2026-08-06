@@ -205,19 +205,27 @@ def _overlap(tail: list[str], head: list[str]) -> int:
 def _drop_repeat_prefix(emitted: list[Word], incoming: list[Word]) -> list[Word]:
     """Drop the leading words of `incoming` that merely restate the tail of `emitted`.
 
-    Only called once the file has been identified as a rolling dialect (see
-    `looks_rolling`) and only for cues that are *contiguous* with the previous
-    one. Both conditions matter: a phrase the speaker genuinely repeats after a
-    pause keeps its own timing gap, so it fails the contiguity test and survives.
+    Called for every cue of a rolling-dialect file (see `looks_rolling`).
+
+    The guard against eating genuine repetition is **structural, not temporal**:
+    a prefix is never dropped if doing so would consume the whole cue. Real
+    rolling captions always add new words — the carry-over exists to scroll the
+    previous line under the new one — so a cue that is *entirely* a repeat of
+    what came before is not carry-over, and is kept.
+
+    This replaced a contiguity test that required the cue to start within 0.5s of
+    the previous one. That was wrong: carry-over is a property of the format, not
+    of the timing, so every pause longer than the threshold duplicated a whole
+    line into the transcript. Measured on an auto-caption fixture, it inflated a
+    573-word talk to 622 words.
     """
     if not emitted or not incoming:
         return incoming
     k = _overlap([_key(w) for w in emitted], [_key(w) for w in incoming])
-    return incoming[k:] if k else incoming
+    if not k or k >= len(incoming):
+        return incoming
+    return incoming[k:]
 
-
-#: Cues closer together than this are treated as one continuous scroll.
-CONTIGUITY = 0.5
 
 #: Fraction of adjacent cue pairs that must overlap before a file without inline
 #: timings is called a rolling dialect. Auto-captions carry text forward on
@@ -279,14 +287,11 @@ def parse_vtt(body: str, *, source: str = "", rolling: bool | None = None) -> Tr
     is_rolling = looks_rolling(body, cues) if rolling is None else rolling
 
     words: list[Word] = []
-    prev_end: float | None = None
     for start, end, payload in raw:
         fresh = _cue_words(payload, start, end)
-        contiguous = prev_end is not None and start - prev_end <= CONTIGUITY
-        if is_rolling and contiguous:
+        if is_rolling:
             fresh = _drop_repeat_prefix(words, fresh)
         words.extend(fresh)
-        prev_end = end
     return Transcript(_monotonic(words), cues, source, is_rolling)
 
 

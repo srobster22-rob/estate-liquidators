@@ -121,6 +121,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             if not tr.has_real_word_timings:
                 print("  note: word timings are interpolated — caption highlighting is off")
+            if not seg.punctuated:
+                print(
+                    "  note: no punctuation or capitals in this transcript, so clip "
+                    "boundaries rest on silence alone — selection is measurably less "
+                    "reliable here (see DECISIONS.md D-20)"
+                )
 
         manifest = []
         info = None if args.dry_run else R.probe(ingest.video)

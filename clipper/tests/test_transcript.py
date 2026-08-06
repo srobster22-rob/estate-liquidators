@@ -135,10 +135,41 @@ class DialectDetectionTests(unittest.TestCase):
         body = (
             "WEBVTT\n\n"
             "00:00:00.000 --> 00:00:02.000\nno no no\n\n"
+            "00:00:02.000 --> 00:00:04.000\nno no no\nreally\n"
+        )
+        self.assertEqual(T.parse_vtt(body, rolling=False).text, "no no no no no no really")
+        self.assertEqual(T.parse_vtt(body, rolling=True).text, "no no no really")
+
+    def test_de_duplication_never_consumes_a_whole_cue(self):
+        """The structural guard that replaced the contiguity test at R5.
+
+        Real rolling captions always add words — carry-over exists to scroll the
+        previous line under a new one. A cue that is *entirely* a repeat is
+        therefore not carry-over, whatever the timing, so it is kept.
+        """
+        body = (
+            "WEBVTT\n\n"
+            "00:00:00.000 --> 00:00:02.000\nno no no\n\n"
             "00:00:02.000 --> 00:00:04.000\nno no no\n"
         )
-        self.assertEqual(T.parse_vtt(body, rolling=False).text, "no no no no no no")
-        self.assertEqual(T.parse_vtt(body, rolling=True).text, "no no no")
+        self.assertEqual(T.parse_vtt(body, rolling=True).text, "no no no no no no")
+
+    def test_carry_over_survives_a_pause(self):
+        """Regression for R5: carry-over is a property of the format, not timing.
+
+        Gating de-duplication on cue contiguity duplicated a whole line at every
+        pause longer than the threshold — 8.5% of a normal talk.
+        """
+        body = (
+            "WEBVTT\n\n"
+            "00:00:00.000 --> 00:00:02.000\nthe first line\n\n"
+            "00:00:02.000 --> 00:00:04.000\nthe first line\nthe second line\n\n"
+            "00:00:12.000 --> 00:00:14.000\nthe second line\nthe third line\n"
+        )
+        self.assertEqual(
+            T.parse_vtt(body, rolling=True).text,
+            "the first line the second line the third line",
+        )
 
     def test_rolling_flag_is_set_on_the_fixture(self):
         self.assertTrue(T.load(FIXTURES / "rolling_auto.vtt").rolling)

@@ -45,6 +45,13 @@ damage is invisible. See LOOP_LOG R1(c).
 inline timings, or a hand-authored file that overlaps on more than 70%. Either would mean the
 threshold separates the wrong things.
 
+**Amended at R5.** De-duplication used to additionally require the cue to start within 0.5s of
+the previous one. That was wrong and it was corrupting output: carry-over is a property of the
+format, not the timing, so every pause longer than the threshold duplicated a whole line
+(573 words became 622 on the paired fixture). The temporal guard is replaced by a structural
+one — a prefix is never dropped if it would consume the entire cue, because real rolling
+captions always add new words.
+
 ---
 
 ### D-3 · Conservative defaults when evidence is thin · FIRM
@@ -312,3 +319,42 @@ merely large.
 **Falsified by:** wanting a penalty that can be *fully* offset by another feature's strength.
 Multiplication makes a 1.0 penalty unrecoverable within the feature, which is intended here
 but would be wrong for a softer signal.
+
+---
+
+### D-20 · Silence is the auto-caption fallback for sentence starts, and only a fallback · FIRM
+
+`opens_mid_sentence` uses capitalisation where the transcript has it, and the gap *before* the
+opening where it does not. Never both.
+
+**Why:** the mid-sentence defence built at R3/R4 depends entirely on capitals, which ASR does
+not emit — so on YouTube auto-captions, the input this tool exists for, none of it was
+running. Measured: 61%/78% boundary sensitivity against 100%/100% on punctuated text. Silence
+is the only sentence-start signal ASR carries. It cannot be promoted to an override, because
+on a punctuated transcript two sentences inside a single cue are contiguous and `gap_before`
+is legitimately 0.0 at a perfectly clean boundary.
+
+**Falsified by:** a real auto-caption file whose word gaps are distributed differently from
+the synthetic fixture — which is likely, since the fixture inherits SRT cue timings. The
+threshold (0.35s) is the first thing to re-measure against real ASR output.
+
+---
+
+### D-21 · Every positional-window feature is gated on the boundary it depends on · FIRM
+
+`hook` scores zero when the clip opens mid-sentence; `payoff` scores zero when it ends
+mid-sentence.
+
+**Why:** both features scan a window anchored to a clip edge, so truncating that edge slides
+new text into range and *raises* the score. R4 found this in `hook` — truncation made broken
+clips outscore whole ones 29 times out of 29. R5 found the identical bug in `payoff`,
+accounting for all 16 remaining ending failures. The generalisation is the point: a promise
+you joined halfway through was never made to you, and a conclusion you were cut away from
+never landed.
+
+**The process failure is worth recording separately:** at R4 the hook bug was fixed without
+asking whether the mirror feature had the mirror problem. It did, and it survived another
+round. Any new edge-anchored feature must be gated at the time it is written.
+
+**Falsified by:** a feature where the window genuinely should float free of the boundary —
+for instance a topic-coherence measure over the whole clip, which has no edge to anchor to.

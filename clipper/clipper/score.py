@@ -155,16 +155,51 @@ DANGLING_PENALTY = 0.7
 MID_SENTENCE_PENALTY = 1.0
 
 
-def opens_mid_sentence(text: str, *, expect_capital: bool) -> bool:
+#: Silence that must precede an opening before it reads as a sentence start,
+#: used only when capitalisation is unavailable. Real utterance boundaries in an
+#: unpunctuated transcript are gap-defined and so sit at or above
+#: `segment.DEFAULT_GAP` (0.65s); a cut made mid-utterance has no gap at all.
+#: 0.35 separates those two populations with room on both sides.
+OPENING_GAP = 0.35
+
+
+def opens_mid_sentence(
+    text: str, *, expect_capital: bool, gap_before: float | None = None
+) -> bool:
     """Whether the clip starts partway through a sentence.
 
-    Only answerable when the transcript capitalises sentence starts; auto-captions
-    are entirely lower-case and carry no such signal.
+    Two signals, and the order matters:
+
+    1. **Capitalisation**, when the transcript has it. Precise and unambiguous.
+    2. **Silence before the opening**, otherwise. This is the auto-caption
+       fallback, and it is *only* a fallback — on a punctuated transcript two
+       sentences inside one cue are contiguous, so `gap_before` is legitimately
+       0.0 at a perfectly clean boundary. Using gaps there would reject good
+       openings wholesale.
+
+    Without the fallback the whole mid-sentence defence was unavailable on
+    YouTube auto-captions, which is the input this tool actually exists for.
     """
-    if not expect_capital:
+    if expect_capital:
+        first = next((t for t in text.split() if t), "")
+        return first[:1].islower()
+    if gap_before is not None:
+        return gap_before < OPENING_GAP
+    return False
+
+
+def ends_mid_sentence(
+    candidate: Candidate, *, punctuated: bool, closing_gap: float = OPENING_GAP
+) -> bool:
+    """Whether the clip stops partway through a sentence.
+
+    The mirror of `opens_mid_sentence`, and it exists for the mirror reason: a
+    conclusion the clip cut away from never landed, so it should earn no credit
+    for containing one.
+    """
+    if punctuated and candidate.ends_on_punctuation:
         return False
-    first = next((t for t in text.split() if t), "")
-    return first[:1].islower()
+    return candidate.gap_after < closing_gap
 
 
 def self_containment(
@@ -173,6 +208,7 @@ def self_containment(
     opening_words: int | None = None,
     utterance_count: int = 1,
     expect_capital: bool = False,
+    gap_before: float | None = None,
 ) -> float:
     """Whether the opening stands without prior context. 0..1.
 
@@ -201,7 +237,7 @@ def self_containment(
         return 0.0
     score = 1.0
 
-    if opens_mid_sentence(text, expect_capital=expect_capital):
+    if opens_mid_sentence(text, expect_capital=expect_capital, gap_before=gap_before):
         score *= 1.0 - MID_SENTENCE_PENALTY
 
     idx = 0
@@ -296,7 +332,14 @@ def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = Non
     # could outscore the whole one it was cut from: truncation drags a hook
     # phrase into the scored window, which was worth more than the penalty for
     # the broken opening it created.
-    mid_sentence = opens_mid_sentence(text, expect_capital=seg.capitalised)
+    mid_sentence = opens_mid_sentence(
+        text, expect_capital=seg.capitalised, gap_before=candidate.gap_before
+    )
+    # Symmetrically: a payoff you were cut away from never landed. Without this,
+    # truncating a clip's ending *raised* its payoff score, because the shorter
+    # tail window pulled a conclusion phrase into range — the same positional
+    # flaw the hook had before R4 gated it.
+    cut_off = ends_mid_sentence(candidate, punctuated=seg.punctuated)
     features = {
         "hook": 0.0 if mid_sentence else hook_strength(text),
         "self_contained": self_containment(
@@ -304,13 +347,14 @@ def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = Non
             opening_words=len(candidate.utterances[0].words) if candidate.utterances else None,
             utterance_count=len(candidate.utterances),
             expect_capital=seg.capitalised,
+            gap_before=candidate.gap_before,
         ),
         "closure": closure(candidate, closing_gap=w.closing_gap, punctuated=seg.punctuated),
         "duration_fit": duration_fit(
             candidate.duration, ideal=w.ideal_duration, tolerance=w.duration_tolerance
         ),
         "pacing": pacing(candidate, max_silence=w.max_silence),
-        "payoff": payoff_strength(text),
+        "payoff": 0.0 if cut_off else payoff_strength(text),
     }
     total = sum(features[name] * getattr(w, name) for name in features)
     return Scored(candidate, total, features)

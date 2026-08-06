@@ -66,6 +66,13 @@ class Utterance:
     words: list[Word]
     gap_after: float = 0.0
     ends_on_punctuation: bool = False
+    gap_before: float = 0.0
+    """Silence preceding this utterance.
+
+    The only sentence-start signal an auto-caption transcript carries. Where a
+    transcript has capitals, they are the better evidence; where it does not,
+    this is all there is.
+    """
 
     @property
     def start(self) -> float:
@@ -132,6 +139,10 @@ class Candidate:
         return self.utterances[-1].gap_after
 
     @property
+    def gap_before(self) -> float:
+        return self.utterances[0].gap_before
+
+    @property
     def ends_on_punctuation(self) -> bool:
         return self.utterances[-1].ends_on_punctuation
 
@@ -157,6 +168,7 @@ def segment(
 
     utterances: list[Utterance] = []
     current: list[Word] = []
+    pending_gap = 0.0
     for i, word in enumerate(words):
         current.append(word)
         next_word = words[i + 1] if i + 1 < len(words) else None
@@ -167,9 +179,15 @@ def segment(
         by_length = len(current) >= max_words
         if next_word is None or by_punctuation or by_silence or by_length:
             utterances.append(
-                Utterance(current, gap_after=gap_after, ends_on_punctuation=by_punctuation)
+                Utterance(
+                    current,
+                    gap_after=gap_after,
+                    ends_on_punctuation=by_punctuation,
+                    gap_before=pending_gap,
+                )
             )
             current = []
+            pending_gap = gap_after
 
     starts = [u.words[0].text[:1] for u in utterances if u.words and u.words[0].text]
     alpha = [c for c in starts if c.isalpha()]
