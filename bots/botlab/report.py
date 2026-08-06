@@ -91,23 +91,39 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                      "everywhere would be evidence against itself.")
         else:
             L.append(f"Markets represented: {', '.join('`' + m + '`' for m in markets)}.")
-        decaying = [m.name for m in universe.all_markets(include_controls=False)
-                    if not m.is_stationary]
-        if decaying:
-            hit = [m for m in decaying if m in markets]
+        # Every tradeable family decays now, so "did it certify on a decaying
+        # market?" is no longer the question — everything is. The two meaningful
+        # ones are: how harsh was the decay it survived, and did its edge actually
+        # last?
+        import numpy as _np
+        harsh = [m.name for m in universe.all_markets(include_controls=False)
+                 if float(_np.mean(m.edge_profile(m.n_bars))) < 0.60]
+        hit = [m for m in harsh if m in markets]
+        rets = [p["verdict"].get("perf", {}).get("edge_retention")
+                for p in st.proven]
+        rets = [r for r in rets if r is not None]
+        L.append("")
+        L.append("**Every tradeable family's edge decays** — halflife half the series with a "
+                 "35% floor by default, so the average edge across an instance is 70% of its "
+                 "opening value. A catalogue identical at the last bar and the first flatters "
+                 "everything tested on it.")
+        if rets:
             L.append("")
-            L.append(f"**Non-stationary families: {len(hit)} of {len(decaying)} produced a "
-                     f"certified bot.** `{'`, `'.join(decaying)}` are near-clones of the "
-                     "families that certify most readily, differing only in that their edge "
-                     "fades — one halves every 3,000 bars, the other loses 85% of itself on a "
-                     "date. They are searched every generation and their candidates reach the "
-                     "hall of fame on screen score. Nothing surviving there is the point of "
-                     "including them: a lab that certified strategies on a market whose edge "
-                     "has gone would be measuring its own optimism."
-                     if not hit else
-                     f"**Warning: {len(hit)} non-stationary families produced certified bots** "
-                     f"({', '.join(hit)}). Their edge fades by construction, so this needs "
-                     "explaining before anything else in this report is trusted.")
+            L.append(f"The certified bots retain **{min(rets):.0%}-{max(rets):.0%}** of their "
+                     f"first-half alpha in the second half. For scale, a textbook trend bot on "
+                     f"a decaying trend market retains 11% — costs are fixed, so a 30% cut in "
+                     f"gross edge takes ~90% of net alpha, and strategies running close to "
+                     f"their cost floor die first. What survives decay is what had margin "
+                     f"over costs to begin with.")
+        if hit:
+            L.append("")
+            L.append(f"**{len(hit)} of {len(harsh)} harsher-than-default families certified a "
+                     f"bot** ({', '.join('`' + m + '`' for m in hit)}). Those decay faster than "
+                     "the catalogue baseline, so this is worth reading closely.")
+        elif harsh:
+            L.append("")
+            L.append(f"None of the {len(harsh)} families that decay *faster* than the default "
+                     f"({', '.join('`' + m + '`' for m in harsh)}) certified anything.")
         # Headroom belongs in the headline. "6 strategies certified after 41
         # gauntlets" and "6 strategies certified after 3,000" are different
         # claims, and the difference is invisible without this.

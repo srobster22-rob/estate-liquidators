@@ -6,32 +6,32 @@ through a seven-gate validation ladder, and keeps expanding the search space
 until the target number of bots survives — or until it runs out of budget and
 reports that nothing did.
 
-The committed run certified **10 distinct strategies** from 960 candidates across
-`futures_trend_daily`, `fx_major_daily` and `eq_largecap_daily`, with replication
-alpha Sharpes to +0.64 that barely move under 3x costs.
+**Every tradeable family's edge decays** — halflife half the series with a 35%
+floor, so the average edge across an instance is 70% of its opening value. Only
+the predictable components fade; drift and carry do not, because a risk premium is
+compensation for risk rather than a mispricing waiting to be arbitraged.
 
-Read the **search-burden headroom** before any Sharpe. It is the largest search a
-bot's evidence could have come out of and still clear G6, and it spans six orders
-of magnitude here (>=1.07e9 down to 1,129). A bot whose headroom is close to the
-tests already run would vanish in a more serious hunt.
+The committed run certified **4 distinct strategies** from 12,400 candidates on
+`commodity_meanrev_daily` and `eq_largecap_daily`. Nothing certified on either
+family that decays *faster* than the default.
 
-Nothing certified on either **non-stationary** family, which is the point of
-having them: a lab that certified strategies on a market whose edge had gone
-would be measuring its own optimism (`FINDINGS.md` F20).
+**Decay changed the answer, not just the count.** The same catalogue with
+stationary edges certified 11 strategies from 960 candidates — thirteen times less
+search for nearly three times the strategies. And the winners are different
+strategies, not fewer of the same ones: 6 of the 11 stationary winners were trend
+rules on `futures_trend_daily`, a family that under decay produces nothing at all.
 
-**Sample size, not search size, is what binds.** Across three runs at 3,000,
-6,000 and 12,000 bars per instance, the count went 3 -> 6 -> 10 distinct
-strategies while the candidates needed fell from 91,940 to 960. G6's luck bar
-rises with the number of hypotheses tested, so a search big enough to find a
-marginal edge is big enough to disqualify it; more evidence per test escapes that
-trap from the other side (`FINDINGS.md` F16, F19).
+The mechanism is cost leverage. Net alpha is `gross x decay - costs`, and costs do
+not decay, so a trend bot whose *gross* edge retains the ~71% the profile implies
+sees its **net alpha retain 11%**. The four survivors retain 60-84%, because they
+had margin over costs to begin with. Decay does not shave a little off everything;
+it selects hard for that margin — which is why crowded anomalies die abruptly in
+practice rather than fading (`FINDINGS.md` F21).
 
-**And that is where the honesty has to sit.** 12,000 daily bars is 47.6 *stationary*
-years — more history than most instruments have, with identical parameters at the
-last bar and the first. So the finding is a statement about search design, not
-about markets: under stationarity, certification is limited by evidence per
-hypothesis far more than by how many hypotheses you try. Every doubling makes the
-experiment statistically stronger and externally weaker at once.
+Read the **search-burden headroom** before any Sharpe: the largest search a bot's
+evidence could have come out of and still clear G6. It spans 229 to 12 million
+here, and a bot whose headroom is near the tests already run would vanish in a
+more serious hunt.
 
 The interesting part is not the search. Searches are easy, and a big enough one
 will hand you a beautiful equity curve on data with no edge in it at all. The
@@ -42,7 +42,7 @@ is to catch the harness cheating.
 
 ## Read this before you read a single result
 
-**"Proven" here means exactly one thing:** *this bot survived gates G1–G7 on
+**"Proven" here means exactly one thing:** *this bot survived gates G1–G7 plus the durability gate on
 this market model, at these costs.* It does **not** mean the bot makes money.
 
 Three specific reasons, stated plainly:
@@ -55,13 +55,11 @@ Three specific reasons, stated plainly:
    `run.py calibrate`. Structure that is *in* the generator is findable by
    construction. Whether the same structure is in your actual instrument, this
    repository cannot tell you.
-2. **Most synthetic markets are stationary; real edges decay.** Two families now
-   fade by construction — `futures_trend_decay_daily` halves its trend every
-   3,000 bars, `eq_largecap_break_daily` loses 85% of its edge on a date — and
-   the lab certifies **nothing** on either, though both are searched every
-   generation and their candidates reach the hall of fame. But the eleven
-   families that produce every certified bot still hold their parameters fixed
-   across 47.6 simulated years, and real anomalies do not.
+2. **The decay rate is a modelling choice, not a measurement.** Every family
+   fades, but the halflife was picked as the mildest setting that still certifies
+   anything — a quarter-series halflife certifies almost nothing. Nothing here
+   tells you which rate is right, and the answer moves every number in this
+   README.
 3. **No order has ever touched a book.** Fills, spreads, impact and funding are
    all models. Intrabar extremes come from a Brownian bridge between the open and
    the close, not from observed ticks, so stop and limit fills are distributional
@@ -94,7 +92,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 34 falsification tests
+python bots/run.py selftest              # 39 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -115,7 +113,7 @@ record of a run is `REPORT.md` and `state/LOOP_LOG.md`.
 
 ---
 
-## The seven gates
+## The eight gates
 
 Each of the eight gates answers one specific way a backtest lies. A candidate stops at the
 first failure, which is also what makes the run cheap: most bots never reach the

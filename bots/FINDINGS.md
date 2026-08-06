@@ -767,16 +767,103 @@ looks necessary because nothing was measured.
 
 ---
 
+## F21 · Decay as the default: two thirds of the strategies disappear, and the survivors are a different kind
+
+Every tradeable family now decays — halflife half the series, 35% floor, so the
+average edge across an instance is 70% of its opening value. Only the predictable
+components fade; `drift_ann` and `carry_ann` do not, because a risk premium is
+compensation for bearing risk rather than a mispricing waiting to be arbitraged.
+
+The rate was chosen by measurement and is a modelling choice, stated as one.
+Against the archetype panel, this halflife costs about a third of the achievable
+alpha Sharpe (catalogue mean +0.36 → +0.24); a quarter-series halflife costs about
+half (+0.19), which puts nearly every family under the certification bar and leaves
+the lab measuring nothing. So this is the mildest setting that still tests
+something, not an estimate of how fast real anomalies die. The published
+post-publication literature is far more abrupt, and that case is
+`eq_largecap_break_daily`.
+
+**The result:**
+
+| | stationary catalogue | decaying catalogue |
+|---|---|---|
+| distinct strategies | 11 | **4** |
+| candidates screened | 960 | **12,400** |
+| gauntlets | 41 | **353** |
+| generations | 3 | **19** |
+| markets producing a bot | 3 | **2** |
+
+Thirteen times the search for a third of the strategies. Nothing certified on
+either family that decays *faster* than the default.
+
+**The composition changed completely, and that is the real finding.** On the
+stationary catalogue, 6 of the 11 winners were trend rules on
+`futures_trend_daily`. With decay, that family produces **nothing at all**, and
+three of the four survivors are commodity mean-reversion.
+
+The mechanism is cost leverage. Net alpha is `gross × decay − costs`, and costs do
+not decay. Measured on `futures_trend_daily`, a textbook trend bot's gross edge
+retains the ~71% the edge profile implies, but its **net alpha retains 11%** — the
+fixed cost base amplifies a 30% haircut into a 90% collapse. The four survivors
+retain 60–84%, because they were running far enough above their cost floor that
+the haircut did not reach it.
+
+So decay does not shave a bit off every strategy. **It selects, hard, for margin
+over costs** — which is also why crowded anomalies in the real world tend to die
+abruptly rather than fade gracefully. A strategy operating near its cost floor has
+no gradual decline available to it.
+
+---
+
+## F22 · The durability gate had to be recalibrated when the catalogue changed, and that is not the same as relaxing it
+
+G2b was built (F20) against a stationary catalogue, where retention of first-half
+alpha into the second half is ~1.0 by construction. Measured on a stationary
+probe it is **1.04**; on a decaying family it is **0.11**. As a
+stationary-versus-decaying test it is sharp.
+
+But with decay universal, every bot on every tradeable family fails a 50%
+retention bar — the gate would reject everything and discriminate nothing among
+the candidates that matter. Worse, the ratio is dominated by an effect that has
+nothing to do with strategy quality: as F21 shows, it measures the cost base as
+much as the fade.
+
+So the ratio is now applied only where it means something — markets that are
+supposed to be stationary, which is the controls — and the economically
+meaningful question is asked everywhere: **is there still a usable edge at the
+end?** That is the absolute late-half floor of +0.25 alpha Sharpe, and it is the
+stricter test in the way that counts, because a bot can clear G2 on a full-series
+average while having nothing left in its second half.
+
+**This is recalibration, not relaxation, and the distinction is worth being
+explicit about** because this file has refused the other thing twice (F12, F13).
+The test for which one you are doing: a threshold moved because the *underlying
+distribution changed* and re-derived by the same measurement as the original is
+recalibration; a threshold moved because it *blocked a specific candidate you
+liked* is p-hacking. Here the catalogue changed under the gate, the new
+thresholds were measured the same way the old ones were, and the false-positive
+rate was re-confirmed at zero before any result was believed.
+
+The gate still never fires in a full run — G1 rejects decayed edges first, since
+its out-of-sample window *is* the last 40% of the series. Its value remains what
+F20 said: independent evidence on 20 holdout instances the search never touched,
+for the milder decay where the last 40% still clears G1. All four certified bots
+have late-half alpha between +0.26 and +0.41, which is the gate confirming rather
+than rejecting — the useful thing it currently does is put that number in the
+record for every proven bot.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.
 
-1. **Most families are still stationary.** Two now decay (F20) and nothing
-   certifies on them, but the eleven that produce every certified bot hold their
-   parameters fixed across 47.6 simulated years. The right next step is not more
-   decaying families — it is making decay the *default* and asking which
-   strategies survive it, rather than keeping a stationary main catalogue with two
-   cautionary exhibits beside it.
+1. **The decay *rate* is a free parameter chosen to keep the lab useful.** Every
+   family decays now (F21), but the halflife was picked as the mildest setting
+   that still certifies anything, not estimated from data. A quarter-series
+   halflife certifies almost nothing. Nothing in the lab tells you which is right,
+   and the answer decides every headline number — so the honest reading of any
+   result here is conditional on a decay rate nobody has measured.
 2. **The Bonferroni leg of G6 extrapolates.** It reads a Gaussian tail well past
    what 120 permutation draws can resolve. It is a sanity bound, not a measured
    p-value; the weight is carried by the conjunction of G2, G5 and G7.

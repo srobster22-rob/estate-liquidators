@@ -260,7 +260,13 @@ def test_nothing_beats_perfect_foresight():
 
 
 def test_bootstrap_null_keeps_the_distribution_and_kills_the_structure():
-    s = generate.cached(universe.get("futures_trend_daily"), 2)
+    """The null must preserve the return distribution and destroy the serial
+    structure. Measured on the **first third** of the series: every tradeable
+    family now decays, so the full-series variance ratio is diluted by a late
+    stretch with little structure left in it, and the test loses its power to
+    detect what it is asserting."""
+    full = generate.cached(universe.get("futures_trend_daily"), 2)
+    s = full.slice(0, len(full) // 3)
     rng = np.random.default_rng(3)
     lr = s.log_returns()[1:]
     acs_real, acs_null, sds = [], [], []
@@ -275,6 +281,8 @@ def test_bootstrap_null_keeps_the_distribution_and_kills_the_structure():
         acs_null.append(float(agg_n.std(ddof=1) / (nlr.std(ddof=1) * math.sqrt(k))))
     assert abs(float(np.mean(sds)) / float(lr.std(ddof=1)) - 1.0) < 0.08, \
         "null changed the return distribution"
+    assert float(np.mean(acs_real)) > 1.02, \
+        f"the probe window has no trend to destroy (variance ratio {np.mean(acs_real):.2f})"
     assert float(np.mean(acs_null)) < float(np.mean(acs_real)), \
         f"null kept the trend: variance ratio {np.mean(acs_null):.2f} vs real {np.mean(acs_real):.2f}"
 
@@ -419,35 +427,65 @@ def test_alpha_sharpe_does_not_reward_pure_beta():
 # gauntlet
 # --------------------------------------------------------------------------- #
 
-def test_decaying_families_actually_decay():
-    """The non-stationary twins must fade, and their stationary originals must
-    not. Without this the families are just two more markets with a flag set."""
+def test_every_tradeable_family_decays():
+    """Decay is the default now, not an exhibit. A catalogue whose structure is
+    identical at the last bar and the first flatters every strategy tested on it,
+    so any tradeable family that forgot to decay is a bug."""
+    stationary = [m.name for m in universe.tradeable(4) if m.is_stationary]
+    assert not stationary, f"tradeable families with no edge decay: {stationary}"
+    for m in universe.tradeable(4):
+        prof = m.edge_profile(m.n_bars)
+        assert prof[-1] < prof[0], f"{m.name}: edge profile does not fall"
+        assert 0.2 <= float(np.mean(prof)) <= 0.95, \
+            f"{m.name}: mean edge {np.mean(prof):.2f} is degenerate"
+    # The controls have no edge to decay and must stay the simplest possible object.
+    for m in universe.controls():
+        assert m.is_stationary, f"{m.name}: a control should not decay"
+
+
+def test_aggressive_decay_families_are_harsher_than_the_default():
+    """The two named twins must be meaningfully worse than the catalogue default,
+    or they are just two more markets."""
+    for default, harsh in [("futures_trend_daily", "futures_trend_decay_daily"),
+                           ("eq_largecap_daily", "eq_largecap_break_daily")]:
+        d, h = universe.get(default), universe.get(harsh)
+        md, mh = float(np.mean(d.edge_profile(d.n_bars))), float(np.mean(h.edge_profile(h.n_bars)))
+        assert mh < md - 0.10, f"{harsh} mean edge {mh:.2f} not below {default} {md:.2f}"
+        assert h.oracle_sharpe_ceiling() < d.oracle_sharpe_ceiling(), \
+            f"{harsh} ceiling not below {default}"
+
+
+def test_decay_actually_reaches_the_backtest():
+    """A parameter that never changes a return is decoration. The same bot on a
+    constructed stationary twin must retain materially more of its alpha."""
+    import dataclasses
     from bots.botlab.markets import generate as _gen
-    pairs = [("futures_trend_daily", "futures_trend_decay_daily",
-              Gene("ma_cross", {"fast": 20, "slow": 100})),
-             ("eq_largecap_daily", "eq_largecap_break_daily", Gene("zrev", {"lb": 5}))]
-    for stat_name, decay_name, gene in pairs:  # noqa: B007
-        assert universe.get(stat_name).is_stationary
-        assert not universe.get(decay_name).is_stationary
+    base = universe.get("futures_trend_daily")
+    probe = dataclasses.replace(base, name="stationary_probe", edge_decay_halflife=0.0,
+                                edge_decay_floor=0.0)
+    universe.register(probe)
+    try:
         ret = {}
-        for name in (stat_name, decay_name):
+        for name in ("stationary_probe", "futures_trend_daily"):
             spec = universe.get(name)
-            g = Genome(market=name, genes=[gene], entry_threshold=0.1,
-                       exit_threshold=0.02, sizing="voltarget", target_vol=0.15,
-                       max_leverage=2.0)
-            early, late = [], []
+            g = Genome(market=name, genes=[Gene("ma_cross", {"fast": 20, "slow": 100})],
+                       entry_threshold=0.1, exit_threshold=0.02, sizing="voltarget",
+                       target_vol=0.15, max_leverage=2.0)
+            e, l = [], []
             for i in range(1, 9):
-                s_ = _gen.cached(spec, i)
+                s_ = _gen.synth(spec, i)
                 h = len(s_) // 2
-                early.append(metrics.evaluate(engine.run(s_.slice(0, h), g, cost_mult=0.0)).alpha_sharpe)
-                late.append(metrics.evaluate(engine.run(s_.slice(h, len(s_)), g, cost_mult=0.0)).alpha_sharpe)
-            e, l = float(np.median(early)), float(np.median(late))
-            ret[name] = l / e if abs(e) > 0.05 else 1.0
-        assert ret[decay_name] < ret[stat_name] - 0.15, \
-            f"{decay_name} retained {ret[decay_name]:.2f} vs {stat_name} {ret[stat_name]:.2f}"
-        # A decaying family's ceiling must reflect its average edge, not its first bar.
-        assert universe.get(decay_name).oracle_sharpe_ceiling() < \
-               universe.get(stat_name).oracle_sharpe_ceiling()
+                e.append(metrics.evaluate(engine.run(s_.slice(0, h), g, cost_mult=0.0)).alpha_sharpe)
+                l.append(metrics.evaluate(engine.run(s_.slice(h, len(s_)), g, cost_mult=0.0)).alpha_sharpe)
+            me, ml = float(np.median(e)), float(np.median(l))
+            ret[name] = ml / me if abs(me) > 0.05 else 1.0
+        assert ret["stationary_probe"] > 0.7, \
+            f"stationary probe should hold its edge, retained {ret['stationary_probe']:.2f}"
+        assert ret["futures_trend_daily"] < ret["stationary_probe"] - 0.3, \
+            f"default decay retained {ret['futures_trend_daily']:.2f} vs stationary " \
+            f"{ret['stationary_probe']:.2f} — decay is not reaching the backtest"
+    finally:
+        universe.unregister("stationary_probe")
 
 
 def test_durability_gate_can_fire():

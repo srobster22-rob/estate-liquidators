@@ -1,7 +1,27 @@
 """The market catalogue — "all different types of markets".
 
-Thirteen tradeable families across seven asset classes — eleven stationary, two
-whose edge decays — plus two negative controls. Every
+Thirteen tradeable families across seven asset classes, plus two negative
+controls. **Every tradeable family's edge decays.** Real anomalies get crowded,
+published and arbitraged, and the ones that survive shrink; a catalogue whose
+structure is identical at bar 12,000 and bar 1 flatters every strategy tested on
+it.
+
+The default is a halflife of half the series with a 35% floor — the edge halves
+once across ~24 simulated years and keeps about a third of itself. That split is
+deliberate: only the *predictable* components fade (trend, reversion, calendar),
+while `drift_ann` and `carry_ann` do not, because a risk premium is compensation
+for bearing risk rather than a mispricing waiting to be arbitraged away.
+
+The rate is the mildest setting that still tests anything. Measured against the
+archetype panel, decay costs about a third of the achievable alpha Sharpe
+(catalogue mean +0.36 -> +0.24); at a quarter-series halflife it costs about half
+(+0.19), which puts nearly every family under the certification bar and leaves the
+lab measuring nothing. So this is a modelling choice made to keep the catalogue
+discriminating, not an estimate of how fast real anomalies die — published
+post-publication decay is far more abrupt, and that case is `eq_largecap_break_daily`.
+
+Two families remain deliberately harsher than the default, as the fast-crowding
+and structural-break cases. Every
 number is a claim about the real world, so each family carries the claim it is
 making in `notes`. Where a claim is wrong, the fix is to change it here and
 re-run `python bots/run.py calibrate` — nothing downstream hard-codes a market.
@@ -35,7 +55,8 @@ _MARKETS: list[MarketSpec] = [
         gap_frac=0.30, range_mult=1.0,
         costs=CostModel(spread_bps=1.5, commission_bps=0.3, impact_coef_bps=8.0,
                         adv_notional=5e9, borrow_ann=0.004, financing_ann=0.05),
-        vol_fix=1.0542,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.056,
         allow_short=True, max_leverage=2.0, tier=1,
         notes="Index futures/ETF. Equity risk premium, modest 12m momentum, vol clustering, crash-skewed jumps.",
     ),
@@ -48,7 +69,8 @@ _MARKETS: list[MarketSpec] = [
         gap_frac=0.35,
         costs=CostModel(spread_bps=3.0, commission_bps=0.5, impact_coef_bps=15.0,
                         adv_notional=4e8, borrow_ann=0.006, financing_ann=0.055),
-        vol_fix=1.0726,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.0736,
         tier=1,
         notes="Single large-cap. Both effects live here: 12m momentum plus 1-week reversal.",
     ),
@@ -61,7 +83,8 @@ _MARKETS: list[MarketSpec] = [
         gap_frac=0.40, range_mult=1.0,
         costs=CostModel(spread_bps=28.0, commission_bps=1.0, impact_coef_bps=70.0,
                         adv_notional=6e6, borrow_ann=0.045, financing_ann=0.07),
-        vol_fix=1.1427,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.1457,
         max_leverage=1.5, tier=2,
         notes="Illiquid small-cap: the strongest planted edges in the catalogue, behind the widest costs. The trap market.",
     ),
@@ -72,7 +95,8 @@ _MARKETS: list[MarketSpec] = [
         garch_alpha=0.06, garch_beta=0.91, tail_df=6.0, gap_frac=0.05,
         costs=CostModel(spread_bps=0.8, commission_bps=0.15, impact_coef_bps=5.0,
                         adv_notional=2e10, borrow_ann=0.0, financing_ann=0.03),
-        vol_fix=1.0278,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.0296,
         max_leverage=6.0, tier=1,
         notes="G10 pair. No risk premium at all — every dollar has to come from trend or carry.",
     ),
@@ -85,7 +109,8 @@ _MARKETS: list[MarketSpec] = [
         jump_prob=0.002, jump_mean=-4.0, jump_scale=4.0, tail_df=3.5, gap_frac=0.10,
         costs=CostModel(spread_bps=6.0, commission_bps=0.5, impact_coef_bps=25.0,
                         adv_notional=8e8, borrow_ann=0.0, financing_ann=0.06),
-        vol_fix=1.2127,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.2149,
         max_leverage=3.0, tier=2,
         notes="EM carry: paid to hold, occasionally devalued. Tests whether the gauntlet respects tail risk.",
     ),
@@ -100,7 +125,8 @@ _MARKETS: list[MarketSpec] = [
         costs=CostModel(spread_bps=4.0, commission_bps=3.0, impact_coef_bps=30.0,
                         adv_notional=3e8, borrow_ann=0.02, financing_ann=0.09,
                         funding_bps_per_bar=0.12),
-        vol_fix=1.2678,
+        edge_decay_halflife=18000.0, edge_decay_floor=0.35,
+        vol_fix=1.268,
         max_leverage=3.0, tier=1,
         notes="BTC/ETH perp, hourly. Strong slow trend, funding charged to longs every bar.",
     ),
@@ -114,7 +140,8 @@ _MARKETS: list[MarketSpec] = [
         costs=CostModel(spread_bps=25.0, commission_bps=5.0, impact_coef_bps=140.0,
                         adv_notional=1.5e7, borrow_ann=0.05, financing_ann=0.14,
                         funding_bps_per_bar=0.30),
-        vol_fix=1.3902,
+        edge_decay_halflife=18000.0, edge_decay_floor=0.35,
+        vol_fix=1.3903,
         max_leverage=2.0, tier=3,
         notes="Alt perp. Violent reversal edge, funding and spread built to eat it.",
     ),
@@ -125,7 +152,8 @@ _MARKETS: list[MarketSpec] = [
         garch_alpha=0.07, garch_beta=0.90, tail_df=6.0, gap_frac=0.15,
         costs=CostModel(spread_bps=1.5, commission_bps=0.3, impact_coef_bps=7.0,
                         adv_notional=3e9, borrow_ann=0.0, financing_ann=0.04),
-        vol_fix=1.0303,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.0322,
         max_leverage=5.0, tier=1,
         notes="Classic managed-futures substrate: long persistent trends, positive roll, cheap access.",
     ),
@@ -138,7 +166,8 @@ _MARKETS: list[MarketSpec] = [
         jump_prob=0.004, jump_mean=1.2, jump_scale=4.5, tail_df=3.8, gap_frac=0.20,
         costs=CostModel(spread_bps=5.0, commission_bps=0.6, impact_coef_bps=30.0,
                         adv_notional=4e8, borrow_ann=0.0, financing_ann=0.05),
-        vol_fix=1.1232,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.1244,
         max_leverage=3.0, tier=2,
         notes="Storage-economy commodity: hard reversion, calendar effect, upside spikes, negative roll.",
     ),
@@ -149,7 +178,8 @@ _MARKETS: list[MarketSpec] = [
         garch_alpha=0.06, garch_beta=0.92, tail_df=6.0, gap_frac=0.10,
         costs=CostModel(spread_bps=0.5, commission_bps=0.1, impact_coef_bps=4.0,
                         adv_notional=1e10, borrow_ann=0.0, financing_ann=0.012),
-        vol_fix=1.0446,
+        edge_decay_halflife=6000.0, edge_decay_floor=0.35,
+        vol_fix=1.0459,
         max_leverage=8.0, tier=2,
         notes="Bond future. Tiny vol, so the whole game is leverage discipline and financing cost.",
     ),
@@ -161,7 +191,8 @@ _MARKETS: list[MarketSpec] = [
         garch_alpha=0.10, garch_beta=0.86, tail_df=4.0, gap_frac=0.10, range_mult=1.0,
         costs=CostModel(spread_bps=3.0, commission_bps=0.5, impact_coef_bps=20.0,
                         adv_notional=2e9, borrow_ann=0.005, financing_ann=0.055),
-        vol_fix=1.1221,
+        edge_decay_halflife=15600.0, edge_decay_floor=0.35,
+        vol_fix=1.1224,
         max_leverage=4.0, tier=2,
         notes="Intraday 15-minute bars: U-shaped session vol, open/close drift tilt, costs paid 26x more often.",
     ),
@@ -180,7 +211,7 @@ _MARKETS: list[MarketSpec] = [
                         adv_notional=3e9, borrow_ann=0.0, financing_ann=0.04),
         vol_fix=1.0328,
         max_leverage=5.0, tier=1,
-        notes="futures_trend_daily with a crowded edge: trend strength halves every 3,000 bars (~12y) toward a 10% floor. Same instrument, fading forecastability.",
+        notes="The fast-crowding case: trend halves every 3,000 bars (~12y) toward a 10% floor, against the catalogue default of 6,000 bars and a 35% floor. Same instrument, forecastability mostly gone.",
     ),
     MarketSpec(
         name="eq_largecap_break_daily", asset_class="equity", bars_per_year=DAY, n_bars=12000,
@@ -194,7 +225,7 @@ _MARKETS: list[MarketSpec] = [
                         adv_notional=4e8, borrow_ann=0.006, financing_ann=0.055),
         vol_fix=1.0699,
         tier=1,
-        notes="eq_largecap_daily whose anomaly stops working on a date: 85% of the edge vanishes 45% of the way in. Publication, a rule change, a new venue.",
+        notes="The structural-break case: 85% of the edge vanishes on a date 45% of the way in, rather than fading. Publication, a rule change, a new venue. Closest family to the published post-publication decay literature.",
     ),
     # ---------------- negative controls -----------------------------------
     MarketSpec(

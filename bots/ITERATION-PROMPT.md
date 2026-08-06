@@ -49,23 +49,22 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **Make decay the default, not an exhibit.** Two non-stationary families exist
-   (F20) and nothing certifies on them, but the eleven families that produce every
-   certified bot are still stationary across 47.6 simulated years. A catalogue
-   with a stationary mainline and two cautionary twins beside it answers "does the
-   ladder notice decay?" — it does — but not the question that matters: *which
-   strategies survive decay?* Give every family a decay halflife, recalibrate so
-   the achievable band is still 0.4-1.0, and re-run. Expect far fewer
-   certifications; that is the point.
-2. **Stationarity — was the only limit that mattered, now partly addressed.** Three doublings of
-   `n_bars` took the run from 3 certified strategies to 10, and the daily families
-   are now at **47.6 years per instance with identical parameters throughout**.
-   More data will keep working and will keep meaning less: the next doubling is 95
-   stationary years. Sample size has stopped being the binding constraint and the
-   stationarity assumption has become it. Add a family whose `trend_frac` or
-   `rev_kappa` halves partway through, and a gate requiring the edge to survive in
-   the *second* half of the holdout instances. Until that exists, every headline
-   number in this lab is conditional on an assumption real markets violate.
+1. **The decay rate is a free parameter nobody has measured.** Every family fades
+   now (F21), but the halflife was chosen as the mildest setting that still
+   certifies anything — a quarter-series halflife certifies almost nothing, and
+   the published post-publication literature is more abrupt still. Every headline
+   number is conditional on that choice. Either estimate it from real anomaly
+   decay, or report results as a *curve* over decay rates rather than a count at
+   one rate. The second is cheap and probably more honest: "4 strategies survive a
+   24-year halflife, 1 survives 12 years, 0 survive a break" says far more than
+   any single number.
+2. **The cost-leverage result deserves its own experiment.** F21 found that a 30%
+   cut in gross edge takes ~90% of net alpha for a strategy near its cost floor,
+   and that this — not the decay itself — is what selects the survivors. That
+   predicts something testable: certification should depend on the *ratio* of
+   gross edge to cost, not on either alone. Sweep spread and edge independently
+   and check whether survival is a function of the ratio. If it is, the lab has a
+   real design principle rather than an anecdote.
 3. **The permutation null's block length vs the bot's holding horizon.** F12 is
    the sharpest open problem: a genuine edge on `eq_largecap_daily` (passes
    G1-G4, worst-instance drawdown fixed by de-risking) fails G5 because that
