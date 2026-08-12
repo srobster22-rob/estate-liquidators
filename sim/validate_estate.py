@@ -46,6 +46,17 @@ class Estate:
         self.curator_spawn = d["curator_spawn"]
         self.van = next(r for r, v in self.rooms.items() if v.get("van"))
 
+        # The CORE is the room the fairness contract measures redundancy to -
+        # the hub every wing must reach by two routes. It was resolved as
+        # `core_link` with a default of "foyer", which is fine for MANOR_A and
+        # silently wrong for every estate that does not happen to contain a room
+        # of that name: V3 then reports every wing "sealed off by losing" an
+        # arbitrary portal, which sends the author rebuilding topology that was
+        # never the problem. R29 found this by authoring a second estate.
+        self.core = self.rooms[self.van].get("core_link")
+        if self.core is None:
+            self.core = "foyer" if "foyer" in self.rooms else None
+
     def adj(self, min_width=0.0):
         g = {r: [] for r in self.rooms}
         for p in self.portals:
@@ -138,7 +149,11 @@ def V3_two_routes(e):
     The fairness contract (TECH-SPEC A6 rule 5) is about the Curator not sealing you
     inside a wing, so portals flagged `entrance` are exempt.
     """
-    core = e.rooms[e.van].get("core_link", "foyer")
+    if e.core is None:
+        return False, ("the van room declares no `core_link` and there is no room "
+                       "named `foyer` - name the hub every wing must reach twice "
+                       "(LEVEL-SPEC 5)")
+    core = e.core
     bad = []
     for room in e.rooms:
         if room in (e.van, core) or not e.rooms[room].get("tier"):
@@ -310,9 +325,10 @@ def self_test(verbose=True):
     import estates
 
     problems = []
-    clean = validate(estates.MANOR_A, verbose)
-    if clean:
-        problems.append(f"MANOR_A should pass all ten checks, failed {sorted(clean)}")
+    for name in ("MANOR_A", "COACH_HOUSE_C"):
+        clean = validate(getattr(estates, name), verbose)
+        if clean:
+            problems.append(f"{name} should pass all ten checks, failed {sorted(clean)}")
 
     broken = set(validate(estates.BROKEN_B, verbose))
     missed = estates.EXPECTED_FAILURES - broken
@@ -333,11 +349,12 @@ def self_test(verbose=True):
         print(f"\n{'=' * 78}\nCAN EVERY CHECK ACTUALLY FAIL?\n{'=' * 78}")
     for check, estate in estates.FAULTS.items():
         failed = set(validate(estate, verbose=False))
-        if check not in failed:
+        if check.split("-")[0] not in failed:
             problems.append(f"{check} did not fire on an estate built to break it "
                             f"(fired: {sorted(failed) or 'nothing'})")
         elif verbose:
-            others = sorted(failed - {check}, key=lambda c: int(c[1:]))
+            others = sorted(failed - {check.split("-")[0]},
+                            key=lambda c: int(c[1:]))
             print(f"  {check:<4} fires"
                   + (f"   (also trips {', '.join(others)} - one fault, several "
                      f"consequences)" if others else ""))
@@ -347,9 +364,10 @@ def self_test(verbose=True):
         for p in problems:
             print(f"  FAIL  {p}")
         if not problems:
-            print(f"  OK   clean estate passes 10/10, broken estate trips exactly "
-                  f"{len(estates.EXPECTED_FAILURES)} planted faults, and all "
-                  f"{len(estates.FAULTS)} checks fire on demand")
+            print(f"  OK   both clean estates pass 10/10, the broken estate trips "
+                  f"exactly {len(estates.EXPECTED_FAILURES)} planted faults, and "
+                  f"all {len(estates.FAULTS)} fault estates fire the check they "
+                  f"were built for")
     return problems
 
 

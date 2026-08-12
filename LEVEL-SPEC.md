@@ -141,6 +141,13 @@ pathing is only frightening if the geometry gives it somewhere to intercept you.
 
 ## 5. Routes, doors, and sound
 
+**Name the Core, in the van room, always.** The van room must carry `core_link: <room id>`
+naming the hub that every wing has to reach by two routes. This is a **required field** and it
+was undocumented until R29 — the validator defaulted it to a room called `foyer`, which only
+the worked example happens to have, so any estate that named its hub anything else failed V3
+with the message *"every wing sealed off by losing <an arbitrary portal>"* and sent its author
+rebuilding topology that was fine. The check now says what is actually wrong.
+
 **Two routes minimum, always** (V3). The fairness contract promises the Curator can never
 block the only way out for more than 20 seconds. That promise is kept in geometry or not at
 all. The Core's service corridor exists purely so that wings with a single grand entrance can

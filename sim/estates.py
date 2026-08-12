@@ -216,9 +216,79 @@ def _v10(d):
             p["width"] = 1.9
 
 
+def _v3_no_core(d):
+    """
+    The contract's hidden required field. Without `core_link` the fairness check
+    silently measured redundancy to a room called "foyer" - which only MANOR_A
+    has - and reported every wing sealed off by an arbitrary portal.
+    """
+    _v3(d)
+    d["rooms"]["driveway"].pop("core_link", None)
+
+
 FAULTS = {
     "V1": _fault("V1", _v1), "V2": _fault("V2", _v2), "V3": _fault("V3", _v3),
     "V4": _fault("V4", _v4), "V5": _fault("V5", _v5), "V6": _fault("V6", _v6),
     "V7": _fault("V7", _v7), "V8": _fault("V8", _v8), "V9": _fault("V9", _v9),
     "V10": _fault("V10", _v10),
+    # Same check, a second way to break it - and the one an author actually hits.
+    "V3-no-core": _fault("V3-no-core", _v3_no_core),
+}
+
+
+# ---------------------------------------------------------------- a second estate
+#
+# R29. MANOR_A is the contract's own worked example, and R1 found even that one
+# invalid on its first pass. One estate that passes is not evidence the contract
+# is AUTHORABLE - it is evidence one estate was fixed until it passed. So this is
+# a second wing, drawn to a different shape (a service spine with a courtyard
+# loop rather than a stair-and-landing hub), authored from LEVEL-SPEC's rules
+# rather than by copying MANOR_A's topology, and run against the ten checks to
+# see what the contract does to somebody following it.
+
+COACH_HOUSE_C = {
+    "id": "coach_house_c  (R29, authored from the contract)",
+    "curator_spawn": "clock_tower",
+    "rooms": {
+        "yard":        {"pos": (0, 0),    "tier": 0, "van": True,
+                        "core_link": "boot_room"},
+        "boot_room":   {"pos": (12, 0),   "tier": 0},
+        "kitchen":     {"pos": (24, 6),   "tier": 1},
+        "scullery":    {"pos": (24, -8),  "tier": 1},
+        "back_stair":  {"pos": (34, -1),  "tier": 1},
+        "gallery":     {"pos": (46, 2),   "tier": 2},
+        "nursery":     {"pos": (58, 9),   "tier": 3},
+        "workshop":    {"pos": (58, -7),  "tier": 3},
+        "clock_tower": {"pos": (70, 1),   "tier": 4},
+    },
+    "portals": [
+        {"a": "yard", "b": "boot_room", "width": 3.2, "door": True, "entrance": True},
+        {"a": "boot_room", "b": "kitchen", "width": 2.4, "door": True, "pinch": True},
+        {"a": "boot_room", "b": "scullery", "width": 2.2, "door": True, "pinch": True},
+        {"a": "kitchen", "b": "back_stair", "width": 2.6, "door": True},
+        {"a": "scullery", "b": "back_stair", "width": 2.3, "door": True, "pinch": True},
+        {"a": "back_stair", "b": "gallery", "width": 2.4, "door": True, "pinch": True},
+        {"a": "scullery", "b": "gallery", "width": 2.3, "door": True, "pinch": True},
+        {"a": "gallery", "b": "nursery", "width": 2.3, "door": True, "pinch": True},
+        {"a": "gallery", "b": "workshop", "width": 2.3, "door": True, "pinch": True},
+        {"a": "nursery", "b": "workshop", "width": 2.3, "door": True, "pinch": True},
+        {"a": "nursery", "b": "clock_tower", "width": 2.4, "door": True, "pinch": True},
+        {"a": "workshop", "b": "clock_tower", "width": 2.4, "door": True, "pinch": True},
+    ],
+    "prereqs": {
+        "gallery":     [{"room": "kitchen", "type": "key"}],
+        "nursery":     [{"room": "gallery", "type": "clear"}],
+        "workshop":    [{"room": "gallery", "type": "clear"}],
+        "clock_tower": [{"room": "nursery", "type": "key"}],
+    },
+    "plinths": [
+        {"room": "boot_room", "cls": "armful", "tier": 0, "value": 130},
+        {"room": "kitchen", "cls": "armful", "tier": 1, "value": 220},
+        {"room": "scullery", "cls": "pocket", "tier": 1, "value": 95},
+        {"room": "gallery", "cls": "armful", "tier": 2, "value": 520},
+        {"room": "gallery", "cls": "two_man", "tier": 2, "value": 1500},
+        {"room": "nursery", "cls": "armful", "tier": 3, "value": 1100},
+        {"room": "workshop", "cls": "two_man", "tier": 3, "value": 3000},
+        {"room": "clock_tower", "cls": "cart", "tier": 4, "value": 6000},
+    ],
 }

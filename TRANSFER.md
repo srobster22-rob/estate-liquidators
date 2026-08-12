@@ -86,5 +86,5 @@ Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the 
 settled (28 decisions logged, 1 open and it's an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has twenty-eight rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has twenty-nine rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

@@ -448,6 +448,27 @@ by hand for twelve rounds, which is about how long that lasts. It immediately ca
 counts, and its own first pattern was wrong: it counted 28 rounds against 27, because a
 wrapped line inside R22 begins "R18 measured the appraiser".
 
+R29 · Authored a **second estate** against `LEVEL-SPEC` — a service spine with a courtyard
+loop rather than MANOR_A's stair-and-landing hub — because one estate passing is not evidence
+the contract is authorable, only evidence that one estate was fixed until it passed. R1 found
+even the contract's own worked example invalid on its first pass. · It cleared all ten checks
+on the first run, which I distrust for the honest reason: I checked V3 and V4 by hand *while
+drawing it*, which is exactly what an author with the spec open would do, so this is evidence
+the contract is followable rather than evidence it is forgiving. What it forced was real —
+the gallery originally hung off a single corridor and V3's redundancy rule made me add the
+scullery link. · **And it found a hidden required field with a silent, actively misleading
+failure.** The fairness check measures redundancy to "the Core", resolved as the van room's
+`core_link` with a **default of `foyer`** — a room only MANOR_A happens to contain. Any estate
+that names its hub anything else fails V3 with *"kitchen sealed off by losing
+boot_room<->kitchen; scullery sealed off by losing boot_room<->kitchen; ..."* for every room
+in the house, which sends the author rebuilding topology that was never wrong. The field is
+now documented in `LEVEL-SPEC` §5, resolved explicitly, and the check says what is actually
+missing. · Added as a fault estate too, so the new message is proven to fire: eleven fault
+estates now, one per way of breaking a check, and both clean estates are asserted to pass
+10/10 in the suite. · The general lesson is one this project keeps re-learning in new places:
+**a default that happens to be right for the only existing case is indistinguishable from a
+correct implementation until there are two cases.**
+
 ---
 
 ## Next step (paste the loop prompt to resume)
