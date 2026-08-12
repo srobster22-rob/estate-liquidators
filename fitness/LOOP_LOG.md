@@ -313,39 +313,79 @@ variant must change *only* the joint structure, or any BASELINE-vs-CORRELATED di
 could be a marginal effect in disguise. Measured — means and SDs within 3%, correlation
 0.05 → 0.73. Pinned by tests.
 
+R7 · Built the logger (`logger/log.py`, `logger/readiness.py`, `logger/cli.py`) plus 31
+tests. First engineering rather than analysis in the project, and taken straight from
+D-23's ranking. Append-only JSONL, four CLI verbs, no dependencies; per week it needs hard
+sets per muscle group with an RIR for each, and one performance test. Six rounds of
+simulation narrowed the requirement to exactly that.
+
+· **The gate now lives in code rather than in a document.** `readiness.assess` enforces
+D-13's thresholds, D-10's variation floor and D-15's disclosure — the readiness report
+states in its own output that every threshold it applies is calibrated on synthetic
+lifters. One consequence worth stating plainly: **a lifter who trains the same volume
+every week never unlocks a personalised number, however long they log.** That is D-10
+enforced rather than described, and it will read as a bug to anyone who has not read
+DESIGN §4.1.
+
+· **Building the measurement chain broke the assumption six rounds rested on.** Every
+week-threshold in this project sits on D-09: one weekly test at sigma 2.5. But an e1RM is
+not a measurement, it is a *formula applied to* one — and the published formulas disagree
+by **5.8%** across the 3–12 rep range (2.8% at 8 reps, 11.3% at 12, **46.1% at 20**). RIR
+misestimation adds **4.8%**, and that one is a *bias* rather than noise, so it does not
+average out over weeks. Implied sigma: **5.6 against the assumed 2.5.** At that level
+median MRV error at 18 weeks is 20.2% rather than 11.1%, and **36 weeks at the implied
+noise is still worse than 18 at the assumed noise** — measurement quality, not data
+volume, is the binding constraint. That is R2's noise-sensitivity finding arriving from a
+completely different direction.
+
+· **The constructive half, and the distinction the project had been missing.** Both noise
+sources shrink in the same direction: few reps, close to failure. Capping the test at 8
+reps and RIR 0–1 brings implied sigma to **2.4** — D-09's assumption is achievable, but
+only under a protocol nobody had specified, and the naive thing to do is test the way you
+train, which is exactly wrong. **A test is a measurement, not a stimulus.** Training wants
+RIR 1–3 for the stimulus-to-fatigue ratio; a test wants precision. Using one protocol for
+both optimises neither. Caps are enforced in `PerformanceTest.validate()`. D-26 — and it
+costs nothing but how one set per week is taken.
+
+· Caught a real storage bug with its own test, and fixed the semantics rather than the
+symptom: the CLI's read-modify-append wrote whole session records, and the reader summed
+every record it saw, so logging three sets one at a time produced a week with five.
+Sessions are now keyed on (week, day) with last-write-wins, which is what makes
+append-only storage compatible with editing a day at all. Pinned.
+
 ---
 
 ## Next round
 
-**There isn't one, and that is the finding rather than an absence of ideas.** D-23 closes
-the simulation phase. Six rounds have established what this method can establish, and R6
-measured the ceiling precisely: the project's central quantity ranges over a factor of two
-depending on an assumption no simulation can settle.
+**The project has changed phase, and the ranking changes with it.** R7 was the last item
+D-23 named. What follows is no longer "which simulation next" but "what does the first
+real dataset need", and the honest ordering is:
 
-The ranked backlog still has real items — D-05 (frequency), D-06 (the volume-matched
-deload sweep, unstarted through five rankings), D-11 (deep-deload excitation), D-18's
-confound — and every one is now known to be worth less than the uncertainty in the
-population definition. Running them produces more numbers with the same footnote.
+**R8: a seeded end-to-end rehearsal.** Generate a synthetic lifter, drive the LOGGER
+(not `make_log`) for 26 simulated weeks under the D-26 protocol, then fit through
+`to_fittable` and check the recovered MRV. Every round so far has tested the fitter
+against arrays built by `fit.make_log`; nothing has yet tested it against arrays built by
+the code a real person will use. Those are different code paths and only one of them will
+be in production. The rehearsal is cheap, it is the last thing that can be validated
+without volunteers, and it is exactly the kind of seam where R7's session-summing bug
+lived.
 
-**What the project actually needs next, in order:**
+**Runner-up: the RIR bias correction (D-24).** R7 measured that a systematic RIR
+misestimate shifts the observation 4.8% and does not average out. A per-lifter offset term
+is estimable from the first dataset — the relationship between logged RIR-2 sets and
+tested maxes pins it. Worth specifying now so the logger records what the estimate needs,
+because data not collected in month one cannot be recovered in month six.
 
-1. **A logger good enough to produce fittable data.** Weekly sets per muscle group, RIR
-   per set, and one performance test per week. That is the whole requirement — the model
-   needs nothing else, and D-09's measurement-noise assumption is the only thing standing
-   between a logged top set and a fittable observation. This is the first thing in the
-   project that is *engineering* rather than analysis, and it is small.
+**Third: re-derive D-25's variation floor.** 0.18 is the weakest number in the logger —
+calibrated against a synthetic history, never against a real one. It gates whether real
+users get a personalised number at all, so it is the threshold most likely to be wrong in
+a way that a user actually feels.
 
-2. **Twenty lifters, six months.** One dataset settles **D-01** (do endurance priors
-   transfer), **D-04** (the saturation ceiling, and whether the MRV discrepancy is a
-   set-counting convention), **D-09** (real test-retest noise), **D-16** (does anyone
-   occupy the degenerate corner) and **D-20** (does any real covariate reach rho 0.5) —
-   simultaneously. Five open decisions, one dataset, and no simulation substitutes for it.
+**Then, and this is the real one: twenty lifters, six months.** Unchanged from R6's
+ranking and now unblocked, because the thing that collects the data exists. That dataset
+settles D-01, D-04, D-09, D-16, D-20, D-24 and D-25 simultaneously.
 
-3. **Then re-run every experiment in `sim/` against the fitted population.** All of it is
-   written to take a population as input, so this is cheap by construction. The rounds
-   whose conclusions survive that swap are the real ones.
-
-**If simulation rounds continue anyway**, D-23's falsification condition is the filter: run
-a question whose answer would change what gets built AND does not depend on the population
-definition. D-06 is the closest to qualifying, and it is close mostly because closing it
-would stop it appearing in a sixth ranking.
+**Everything still open in simulation** — D-05 (frequency), D-06 (the volume-matched
+deload sweep, now unstarted through six rankings), D-11, D-18's confound — remains worth
+less than the uncertainty in the population definition (D-22, D-23). If a round is spent
+on one, spend it on D-06 purely to close it out.

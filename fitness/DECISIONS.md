@@ -207,7 +207,7 @@ confidence gate has to catch them, and that is R3.
 
 ---
 
-## D-09 · One weekly performance test, sigma 2.5 points — WORKING
+## D-09 · One weekly performance test, sigma 2.5 points — **ACHIEVABLE, but only under a protocol** (R7)
 
 The fitter is fed one measurement per week: a top set to a known RIR, converted to an
 estimated 1RM, expressed as a percentage of a baseline test, plus Gaussian noise with
@@ -225,6 +225,20 @@ improvement this project could make.
 **What would prove it wrong:** real logged e1RM series with a test-retest CV outside
 1–4%. Above 4% the fit needs multiple measurements per week or a smoothed estimate, and
 the 24-week data threshold gets worse. INFERRED — no measurement, literature-typical.
+
+**R7 examined it while building the logger, and 2.5 is not what naive logging delivers.**
+An e1RM is a formula applied to a measurement, and the published formulas disagree by
+5.8% across the 3–12 rep range (2.8% at 8 reps, 11.3% at 12, 46.1% at 20). RIR
+misestimation adds 4.8% and is a *bias* rather than noise, so it does not average out.
+Implied sigma: **5.6**, against the assumed 2.5. At that level, median MRV error at 18
+weeks is 20.2% rather than 11.1%, and 36 weeks at the implied noise is still worse than
+18 at the assumed noise — measurement quality, not data volume, is the binding
+constraint.
+
+**The assumption survives because D-26 makes it survive.** Capping the test at 8 reps and
+RIR 0–1 brings implied sigma to **2.4**. Every threshold in this project is therefore
+conditional on the test protocol being followed, which is now enforced in
+`PerformanceTest.validate()` rather than assumed.
 
 ---
 
@@ -570,3 +584,73 @@ from endurance research), D-04 (the saturation ceiling), D-09 (measurement noise
 **What would prove it wrong:** a simulation question whose answer would change what gets
 built, and which does not depend on the population definition. If one is found, run it —
 this decision is about diminishing returns, not about a ban.
+
+---
+
+## D-24 · RIR is treated as extra reps, and that presumes an unbiased lifter — WORKING
+
+A set of n reps at RIR r is scored as a set of (n + r) reps at failure, everywhere in the
+project.
+
+**Why:** it is the standard convention, it is the only thing the e1RM formulas can
+consume, and no alternative is available without velocity data.
+
+**What it costs:** the convention assumes a lifter's RIR estimate is unbiased. It is well
+established that inexperienced lifters underestimate how many reps they have left, which
+makes the error systematic. R7 measured the size: reporting RIR 2 while actually having 4
+shifts the observation by **4.8%**. A bias of that size does not average out over weeks
+the way sigma does — it tilts the whole fitted trajectory.
+
+**What would prove it wrong:** real logs where a lifter's RIR-2 sets and their tested
+maxes imply a consistent offset. That is measurable from the first dataset and would turn
+this from an assumption into a per-lifter correction term.
+
+**Partly mitigated by D-26**, which moves the *test* to RIR 0–1 where there is almost no
+room to misestimate. The training sets still carry it.
+
+---
+
+## D-25 · A variation floor of 0.18 gates the fit — WORKING
+
+`readiness.assess` refuses a personalised prescription when the SD of log weekly sets is
+below 0.18, regardless of how many weeks are logged.
+
+**Why:** D-10 established that an unvarying plan is an uninformative experiment —
+correlation 0.45 against 0.94 for a normal waved mesocycle. Weeks alone are therefore not
+a sufficient gate, and a lifter who repeats the same volume for two years is still
+unidentifiable.
+
+**What it costs:** a real user who trains very consistently will never unlock a
+personalised number, and will experience that as the product failing. It will read as a
+bug to anyone who has not read DESIGN.md §4.1.
+
+**What would prove it wrong:** the floor is calibrated against R2's WAVED history, which
+scored 0.94. No real log has ever been measured against it, so the specific value 0.18 is
+the weakest number in the logger. First real dataset should re-derive it.
+
+---
+
+## D-26 · A test is a measurement, not a stimulus — FIRM
+
+Performance tests are capped at **8 reps and RIR 0–1**, enforced in code. Training stays
+at RIR 1–3.
+
+**Why:** both sources of measurement noise shrink in the same direction. Formula
+disagreement explodes with reps because the formulas only agree near a true single; RIR
+error enters through (reps + RIR), so a test near failure has almost no room to be
+misestimated. Naive logging — testing the way you train — implies sigma 5.6. Capping gives
+**2.4**, a factor of 2.3, bought entirely by how one set per week is taken.
+
+**The distinction the project had been missing:** training and testing have different
+objectives. Training wants the best stimulus-to-fatigue ratio, which is RIR 1–3
+(DESIGN.md §6). A test wants precision, which is low reps near failure. Using one protocol
+for both optimises neither.
+
+**What it costs:** one heavy near-maximal set per week, which carries its own fatigue and
+its own small injury risk — neither of which the model represents. That cost is real and
+is not measured here.
+
+**What would prove it wrong:** real test-retest data showing the capped protocol does not
+achieve ~2.5% CV in practice — e.g. if near-limit singles turn out to be more variable in
+the field than the formula analysis suggests, which is entirely possible and would invert
+the recommendation toward moderate reps.

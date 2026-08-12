@@ -14,7 +14,7 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Rounds 1–6 complete.** The core model exists and is tested (88 tests,
+**Rounds 1–7 complete.** The core model exists and is tested (119 tests,
 `fitness/tests/`). Each round has overturned something the previous one established: R1
 found the model could not represent volume at all (§3), R2 found the fitter needs three
 times more data than the project was designed around (§4.1), R3 found the fitter is
@@ -38,8 +38,12 @@ nobody has defended since (§4.5). Ratios are robust across every population tes
 magnitudes are not. What the project needs next is real logged data, and no further
 simulation can substitute for it.
 
-Not built yet: the volume budget across muscle groups, the autoregulation controller, the
-logger. Ranked in `LOOP_LOG.md`.
+**R7 built the logger** and found that the measurement chain feeding six rounds of
+thresholds is 2.2x noisier than assumed — recoverable, but only under a test protocol
+nobody had specified (§4.6).
+
+Not built yet: the volume budget across muscle groups, the autoregulation controller.
+Ranked in `LOOP_LOG.md`.
 
 ---
 
@@ -641,6 +645,77 @@ defensible" here means "argued for", not "measured".
 project's central quantity — how much personalisation is worth — is a direct function of
 a population-shape assumption that no amount of further simulation can settle, and that
 twenty lifters with six months of logs would settle immediately.
+
+---
+
+## 4.6 The logger, and what building it revealed (R7)
+
+D-23 closed the simulation phase and named the logger as the next thing. Building it did
+what every round in this project has done — it broke an assumption the previous six rested
+on. `logger/`.
+
+### What the logger is
+
+Append-only JSONL, four CLI verbs, no dependencies. Per week it needs **hard sets per
+muscle group with an RIR for each**, and **one performance test**. That is the entire
+requirement; six rounds of simulation narrowed it to that. No exercise database, no
+muscle taxonomy beyond a free string, no prescription — each would be a design decision
+the project has not earned.
+
+The gate lives in `logger/readiness.py` rather than in this document, because a gate in a
+document is a gate nobody passes through. `assess()` enforces D-13's thresholds, D-10's
+variation floor, and D-15's disclosure — the readiness report states in its own output
+that every threshold it applies is calibrated on synthetic lifters.
+
+**One consequence worth stating plainly:** a lifter who trains the same volume every week
+never unlocks a personalised number, however long they log. That is D-10 enforced rather
+than described, and it will read as a bug to anyone who has not read §4.1.
+
+### The measurement chain is 2.2x noisier than D-09 assumed
+
+Every week-threshold in this project rests on D-09: one weekly test with sigma = 2.5
+points. That figure was taken as e1RM test-retest variability and never examined. But an
+e1RM is not a measurement — it is a *formula applied to* a measurement, and the formulas
+disagree:
+
+| Reps | Epley | Brzycki | Lombardi | Spread |
+|---|---|---|---|---|
+| 3 | 100.0 | 96.3 | 101.5 | 5.2% |
+| 8 | 100.0 | 98.0 | 97.2 | 2.8% |
+| 12 | 100.0 | 102.9 | 91.6 | **11.3%** |
+| 20 | 100.0 | 127.1 | 81.0 | **46.1%** |
+
+Add RIR misestimation — a lifter reporting RIR 2 who actually had 4 injects **4.8%**, and
+that is a *bias*, not noise, so it does not average out over weeks — and the implied sigma
+is **5.6 points against D-09's assumed 2.5**.
+
+At that noise level the thresholds are badly optimistic. Median MRV error at 18 weeks goes
+from 11.1% to **20.2%**; at 24 weeks from 12.5% to 28.9%. Thirty-six weeks at the implied
+noise is still worse than eighteen at the assumed noise — **measurement quality, not data
+volume, is the binding constraint**, which is R2's noise-sensitivity finding arriving from
+a completely different direction.
+
+### The protocol that recovers it, and the distinction the project had been missing
+
+Both noise sources shrink in the same direction — few reps, close to failure:
+
+| Protocol | Formula spread | RIR error | Implied sigma |
+|---|---|---|---|
+| as naively logged (3–12 reps, RIR 2) | 5.8% | 4.8% | **5.6** |
+| cap at 8 reps, RIR 2 | 4.1% | 3.9% | 4.4 |
+| **cap at 8 reps, RIR 0–1** | 4.1% | 1.3% | **2.4** |
+| cap at 5 reps, RIR 0–1 | 4.7% | 1.4% | 2.7 |
+
+**D-09's assumption is achievable — but only under a protocol nobody had specified.** The
+naive thing to do is test the way you train, and that is exactly wrong.
+
+**A test is a measurement, not a stimulus.** Training wants RIR 1–3 because that is where
+the stimulus-to-fatigue ratio is best (§6). A test wants low reps and RIR 0–1 because its
+only job is to be precise. The project had been quietly conflating them, and the caps are
+now enforced in `PerformanceTest.validate()`. D-26.
+
+Note what this cost: nothing. The protocol is worth a factor of 2.3 in measurement noise
+and it is bought entirely by how one set per week is taken.
 
 ---
 

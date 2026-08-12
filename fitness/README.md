@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–6 complete. The premise survived each round, at a price each time.**
+**Rounds 1–7 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -61,11 +61,22 @@ re-deriving every headline against four defensible populations. The split is cle
 a tension the project cannot resolve alone — the population that makes the estimator
 well-behaved is the one that makes the product worth half as much. `DESIGN.md` §4.5.
 
-**The simulation phase is complete (D-23).** Six rounds have established what can be
-established this way. The project's central quantity is a direct function of a
-population-shape assumption made in R1 for convenience and never defended. What comes
-next is a logger and twenty lifters with six months of honest data — that single dataset
-settles five open decisions at once, and no further simulation settles any of them.
+**The simulation phase is complete (D-23).** Six rounds established what can be
+established that way; the project's central quantity is a direct function of a
+population-shape assumption made in R1 for convenience and never defended.
+
+**R7 built the logger** — the thing that collects what would replace it. Building it broke
+the assumption six rounds rested on: the measurement chain is **2.2x noisier** than D-09
+assumed, because an e1RM is a formula applied to a measurement and the formulas disagree
+by 5.8% across the working rep range. At the real noise level, 36 weeks of data is worse
+than 18 at the assumed level — measurement quality, not data volume, is the binding
+constraint. It is recoverable, but only under a protocol nobody had specified: **a test is
+a measurement, not a stimulus**, so it is capped at 8 reps and RIR 0–1 while training
+stays at RIR 1–3. That single change is worth a factor of 2.3 and costs nothing.
+`DESIGN.md` §4.6.
+
+**What comes next is twenty lifters and six months.** The collector exists now. That
+dataset settles seven open decisions at once.
 
 Not built yet: the volume budget, the autoregulation controller, the logger.
 
@@ -90,7 +101,9 @@ Not built yet: the volume budget, the autoregulation controller, the logger.
 | **[sim/prior_experiment.py](sim/prior_experiment.py)** | What a covariate would have to be worth, and whether it compounds with control. | Before assuming personalisation data pays. |
 | **[sim/population.py](sim/population.py)** | Four defensible population variants, including a copula that isolates dependence. | Before trusting any absolute number. |
 | **[sim/population_experiment.py](sim/population_experiment.py)** | Which conclusions survive the population definition and which don't. | Before quoting a figure outside this repo. |
-| **[tests/](tests/)** | 88 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[logger/](logger/)** | The thing that collects real data: append-only log, readiness gate, CLI. | Before logging a single set. |
+| **[logger/formula_check.py](logger/formula_check.py)** | Is the measurement chain as clean as D-09 assumes? (No — and here is the protocol that fixes it.) | Before designing a test protocol. |
+| **[tests/](tests/)** | 119 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -140,7 +153,11 @@ python3 trigger_experiment.py     # sign vs argmax, closed loop, convergence, ro
 python3 prior_experiment.py       # the free win, the rho sweep, compounding
 python3 population_experiment.py  # every headline, re-derived four ways
 
-cd .. && python3 -m unittest discover tests   # 88 tests
+cd ../logger
+python3 formula_check.py          # what the measurement chain actually injects
+python3 -m logger.cli status LOG --muscle quads   # (from fitness/) what a log has earned
+
+cd .. && python3 -m unittest discover tests   # 119 tests
 ```
 
 ## What is solid and what isn't
