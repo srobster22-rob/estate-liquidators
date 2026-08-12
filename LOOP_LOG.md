@@ -504,6 +504,29 @@ Nothing was found broken, which after five rounds of changes is worth one line r
 five. Full regression green: QA 121/121, drift 129/129, both sample estates and twelve
 generated ones PASS.
 
+R30 · **The dead join the collection** (DESIGN §5.1) — the design's answer to the genre's
+standing problem, and until now the prototype shipped the failure it names: die and the night
+ended. Now a second contact starts a ten-second **collection beat**, and what comes out the
+other side is a role. Free movement through walls, permanent sight of the Curator (drawn
+lit, and coloured by whether it is hunting), **curse-sight at 5m — grade, never value**, and
+**Static**: six points, one back every twenty seconds, and *every point spent adds +1
+Disturbance*, which is the entire balance in one line. Knock (1) makes an L25 noise that pulls
+it toward you and away from them; Nudge (3) shoves a piece off a shelf, and yes it breaks.
+Flicker, Slam and Hold need a lights system and door entities that do not exist and are
+listed as missing rather than faked. 16 new checks. · **Three bugs, and one number that was
+lying about a different system entirely.** The drift checker's `SIGHT_M` pattern matched the
+new `CURSE_SIGHT_M`, so it cheerfully reported the dead's 5m curse-sight as the Curator's 18m
+eyesight — the same substring class of bug R14 caught with `sprint`, in the same file, four
+regexes later. Nudge charged three Static and did nothing when its one random direction
+pointed at a wall. And a knock from forty metres appeared to be heard, because the check
+compared the *age* of a fix that never expires rather than whether it had moved. · **One check
+had to be rewritten to say something true rather than something flattering.** "The apex turns
+around the nights that fell short" is false as stated: it rescues about a third of them,
+because the player is doing nothing at all in these runs and a failed night is short by about
+one apex. What is defensible — and what is now asserted — is that the apex is the right *size*
+to be the thing that decides the night. · Regression: QA 137/137, drift 138/138, three
+consecutive clean runs.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

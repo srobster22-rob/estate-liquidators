@@ -213,6 +213,15 @@ for i, quota in enumerate(ct["quota_measured_210s"]):
     check(f"JS3d measured_quota[{i}]",
           mh.group(1).split(",")[i] if mh else None, quota)
 
+dd = TUNING["dead"]
+check("JS3d collection_seconds", grab(js3, r"COLLECT_S=([\d.]+)"), dd["collection_seconds"])
+check("JS3d static_cap", grab(js3, r"STATIC_CAP=(\d+)"), dd["static_cap"])
+check("JS3d static_regen", grab(js3, r"STATIC_REGEN_S=([\d.]+)"), dd["static_regen_seconds"])
+check("JS3d curse_sight_m", grab(js3, r"CURSE_SIGHT_M=([\d.]+)"), dd["curse_sight_m"])
+check("JS3d knock_loudness", grab(js3, r"KNOCK_L=(\d+)"), dd["knock_loudness"])
+check("JS3d cost_knock", grab(js3, r"COST_KNOCK=(\d+)"), dd["cost_knock"])
+check("JS3d cost_nudge", grab(js3, r"COST_NUDGE=(\d+)"), dd["cost_nudge"])
+
 sn = TUNING["senses"]
 check("JS3d hear_per_l", grab(js3, r"HEAR_PER_L\s*=\s*([\d.]+)"),
       lc["hearing_radius_per_l"])
@@ -220,7 +229,11 @@ check("JS3d occlusion_curator", grab(js3, r"OCCLUSION_CURATOR\s*=\s*([\d.]+)"),
       lc["occlusion_curator"])
 check("JS3d localisation_fuzz", grab(js3, r"FUZZ_M\s*=\s*([\d.]+)"),
       lc["localisation_fuzz_m"])
-check("JS3d sight_range", grab(js3, r"SIGHT_M\s*=\s*([\d.]+)"), sn["sight_range_m"])
+# Anchored: CURSE_SIGHT_M contains SIGHT_M, and an unanchored match reported the
+# dead's 5m curse-sight as the Curator's 18m eyesight. Same class of bug as R14's
+# `sprint` matching the movement table.
+check("JS3d sight_range", grab(js3, r"(?<![A-Z_])SIGHT_M\s*=\s*([\d.]+)"),
+      sn["sight_range_m"])
 check("JS3d sight_cone", grab(js3, r"SIGHT_COS=Math\.cos\((\d+)"),
       sn["sight_cone_deg"] / 2)
 check("JS3d fix_stale", grab(js3, r"FIX_STALE_S\s*=\s*([\d.]+)"),

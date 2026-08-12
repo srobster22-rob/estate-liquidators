@@ -62,6 +62,17 @@
     "open_seconds": 4.0,
     "stash_seconds": 20.0
   },
+  "dead": {
+    "_source": "DESIGN.md 5.1",
+    "_note": "Every point of Static spent adds +1 Disturbance. That single line is the whole balance.",
+    "collection_seconds": 10.0,
+    "static_cap": 6,
+    "static_regen_seconds": 20.0,
+    "curse_sight_m": 5.0,
+    "knock_loudness": 25,
+    "cost_knock": 1,
+    "cost_nudge": 3
+  },
   "senses": {
     "_source": "TECH-SPEC.md A5; hearing radius derives from AUDIO-SPEC 1.1",
     "sight_range_m": 18.0,

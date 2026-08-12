@@ -198,6 +198,14 @@ let lostCrew=new Set(), recoveredTonight=new Set();
 const VAN_SLOTS=CONTRACT_VAN[0], QUOTA=quotaFor(0);
 const EYE=1.62, WALK=3.2, RUN=5.6, CARRY=2.6, CARRY_RUN=4.1;
 const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
+// DESIGN 5.1: death is a role change, not a spectator seat. After a deliberately
+// slow collection beat you are part of the collection - free of walls and of
+// light, with permanent sight of the Curator, curse-sight at 5m, and a small
+// budget of interventions. Every point of Static spent adds +1 Disturbance:
+// the dead can genuinely save the living, but the dead ARE the haunting.
+const COLLECT_S=10.0, STATIC_CAP=6, STATIC_REGEN_S=20.0, CURSE_SIGHT_M=5.0;
+const KNOCK_L=25, COST_KNOCK=1, COST_NUDGE=3;
+const GHOST_SPEED=7.2, GHOST_EYE=1.95;
 // A5 senses. One Loudness number, three consumers - this is the hearing one.
 const HEAR_PER_L=0.33, OCCLUSION_CURATOR=0.85, FUZZ_M=3.0;
 const SIGHT_M=18.0, SIGHT_COS=Math.cos(50*Math.PI/180);   // 100 degree cone
@@ -715,7 +723,7 @@ function reset(){
     goal:null, mood:"SEEK", panic:0}));
   player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0,
           hiding:null,hideEnter:0,name:"YOU",noise:[],light:true,alive:true,
-          colour:[.72,.72,.68]};
+          colour:[.72,.72,.68],dead:false,collecting:0,static:STATIC_CAP,staticT:0};
   // It starts in the deepest wing, which is a rule rather than a room name: the
   // hand-authored estate always had a "cons" and generated ones do not.
   const den=deepestRoom();
@@ -738,7 +746,8 @@ const keys={};
 addEventListener("keydown",e=>{
   keys[e.code]=true;
   if(e.code==="KeyE"&&started&&!over) grabDrop();
-  if(e.code==="KeyC"&&started&&!over) toggleHide();
+  if(e.code==="KeyC"&&started&&!over&&!player.dead) toggleHide();
+  if(e.code==="KeyQ"&&started&&!over) knock();
   if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
@@ -781,7 +790,8 @@ function noise(l,impulse,dt,x,z,who){
   heard(l,px,pz,a);
   if(impulse) sfx.event(l,px,pz);
 }
-const actors=()=>[player,...crew.filter(c=>c.alive)];
+const actors=()=>[...(player.dead||player.collecting>0?[]:[player]),
+  ...crew.filter(c=>c.alive)];
 // In the van OR on its way there. Counting only the van let two crew each carry
 // a cursed piece under a cap of one and both deposit, which is how a cap of 1
 // produced 1.25 aboard.
@@ -837,6 +847,7 @@ function aimedItem(){
   return best;
 }
 function grabDrop(){
+  if(player.dead) return nudge();   // a ghost cannot carry anything
   if(player.holding&&handOff()) return;
   if(player.holding){ dropHeld(player, player.speed||0); return; }
   const it=aimedItem();
@@ -1151,7 +1162,24 @@ function step(dt){
       sfx.event(L.sprint,player.x,player.z); } }
   else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
 
-  if(player.hiding){
+  // The dead move freely - no collision, no light needed, fast. You are the
+  // crew's overwatch and the only way to deliver what you can see is out loud.
+  if(player.dead){
+    player.staticT+=dt;
+    if(player.staticT>=STATIC_REGEN_S){ player.staticT-=STATIC_REGEN_S;
+      player.static=Math.min(STATIC_CAP,player.static+1); }
+    if(moving){
+      const sp=GHOST_SPEED;
+      player.x+=(fwd[0]*mx+right[0]*mz)*sp*dt;
+      player.z+=(fwd[2]*mx+right[2]*mz)*sp*dt;
+    }
+    player.speed=0;
+  }
+  else if(player.collecting>0){
+    player.collecting-=dt;
+    if(player.collecting<=0) becomeGhost();
+  }
+  else if(player.hiding){
     if(player.hideEnter>0) player.hideEnter-=dt;
     player.x=player.hiding.x; player.z=player.hiding.z;
     if(moving) exitHide();                          // any step out is a loud one
@@ -1179,7 +1207,7 @@ function step(dt){
 
   // appraise: hold F, stationary, 3s, loud
   const tgt=player.holding||aimedItem();
-  if(keys.KeyF&&!moving&&tgt&&!tgt.known){
+  if(keys.KeyF&&!moving&&!player.dead&&tgt&&!tgt.known){
     tgt.scan+=dt;
     if(tgt.scan>=APPRAISE_S){ tgt.known=true; tgt.scan=0; noise(L.appraise,true,0); }
   } else for(const it of items) if(!(keys.KeyF&&it===tgt)) it.scan=0;
@@ -1254,7 +1282,7 @@ function contact(a){
   const c=curator;
   a.hits++;
   if(a.hits>=2){
-    if(a===player) return finish("COLLECTED");
+    if(a===player){ collectPlayer(); return; }
     a.alive=false;                              // the collection keeps them
     if(a.holding){ a.holding.heldBy=null; a.holding=null; }
     dropCorpse(a);
@@ -1280,10 +1308,67 @@ function dropCorpse(a){
     claim:null});
 }
 
+// The collection beat. Ten seconds, deliberately slow, so death keeps its weight.
+function collectPlayer(){
+  if(player.dead||player.collecting>0) return;
+  player.collecting=COLLECT_S;
+  if(player.holding) dropHeld(player,0);
+  if(player.hiding) exitHide();
+  player.down=COLLECT_S;
+  dropCorpse(player);
+  curator.target=false; curator.mode=null; curator.who=null; curator.lock=0;
+}
+function becomeGhost(){
+  player.dead=true; player.collecting=0; player.down=0;
+  player.static=STATIC_CAP; player.staticT=0;
+}
+// Spending Static is what makes the house angrier. One point, one Disturbance.
+function spend(n){
+  if(player.static<n) return false;
+  player.static-=n;
+  dist=Math.min(100,dist+n);
+  return true;
+}
+function knock(){
+  if(!player.dead||!spend(COST_KNOCK)) return false;
+  // A noise at your location that pulls it toward you and away from them.
+  dist=Math.min(100,dist+KNOCK_L*IMPULSE);
+  heard(KNOCK_L,player.x,player.z,player);
+  sfx.event(KNOCK_L,player.x,player.z);
+  noiseLog.push({t:+t.toFixed(2),l:KNOCK_L,who:"GHOST"});
+  if(noiseLog.length>24) noiseLog.shift();
+  return true;
+}
+function nudge(){
+  if(!player.dead) return false;
+  let best=null,bd=2.2;
+  for(const it of items){ if(it.gone||it.heldBy) continue;
+    const d=Math.hypot(it.x-player.x,it.z-player.z);
+    if(d<bd){bd=d;best=it;} }
+  if(!best||!spend(COST_NUDGE)) return false;
+  // Yes, you can knock a vase off a shelf. Yes, it breaks.
+  best.moved=true;
+  if(best.y>0.7&&breaks(best,CARRY_RUN)) shatter(best,player);
+  else {
+    // Try a few directions. The first version picked one at random and, if it
+    // happened to point into a wall, charged three Static for nothing.
+    const a0=Math.random()*Math.PI*2;
+    for(let k=0;k<8;k++){
+      const a=a0+k*Math.PI/4;
+      const nx=best.x+Math.cos(a)*0.9, nz=best.z+Math.sin(a)*0.9;
+      if(!solid(nx,nz)){ best.x=nx; best.z=nz; break; }
+    }
+    best.y=0.45; noise(L.drop,true,0,best.x,best.z,player); }
+  return true;
+}
+// Curse-sight: the grade, never the dollar value. The dead help you not die,
+// they do not help you get rich - 4.4's economic loop is untouched.
+const curseSight=it=>player.dead&&Math.hypot(it.x-player.x,it.z-player.z)<=CURSE_SIGHT_M;
+
 function crewTarget(){
   let best=null,bd=1e9;
   for(const a of actors()){
-    if(a===player&&concealed()) continue;
+    if(a===player&&(concealed()||player.dead||player.collecting>0)) continue;
     const d=Math.hypot(a.x-curator.x,a.z-curator.z);
     if(d<bd){bd=d;best=a;}
   }
@@ -1295,7 +1380,7 @@ function updateCurator(dt){
   c.lock-=dt; c.fixate-=dt; c.reseat-=dt; c.recompute-=dt;
   if(c.fix) c.fix.age+=dt;
   for(const a of actors()){
-    if(a===player&&concealed()) continue;
+    if(a===player&&(concealed()||player.dead||player.collecting>0)) continue;
     if(sees(a.x,a.z)) c.fix={x:a.x,z:a.z,age:0,sure:true,who:a};
   }
 
@@ -1470,6 +1555,7 @@ function finish(why){
      <tr><td>Night</td><td>${night+1} of ${NIGHTS}</td></tr>
      <tr><td>Items recovered</td><td>${van.cargo.length} pieces, ${
        (van.cap-van.slots).toFixed(1).replace(/\.0$/,"")} / ${van.cap} slots</td></tr>
+     ${player.dead?`<tr><td class="r">You were collected</td><td class="r">the house kept you</td></tr>`:``}
      ${broken.length?`<tr><td class="r">Broken</td><td class="r">${broken.length} piece${
        broken.length>1?"s":""}</td></tr>`:``}
      ${crew.some(a=>!a.alive)?`<tr><td class="r">Crew collected</td><td class="r">${
@@ -1559,7 +1645,7 @@ function render(){
   gl.clearColor(.012,.014,.017,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
   const marked = markedPlayer();
-  const eye=[player.x,eyeH(),player.z], d=lookDir();
+  const eye=[player.x,player.dead?GHOST_EYE:eyeH(),player.z], d=lookDir();
   gl.uniformMatrix4fv(U.uProj,false,M4.persp(1.15,w/h,0.05,120));
   gl.uniformMatrix4fv(U.uView,false,M4.look(eye,[eye[0]+d[0],eye[1]+d[1],eye[2]+d[2]],[0,1,0]));
   gl.uniform3fv(U.uEye,eye); gl.uniform3fv(U.uDir,d);
@@ -1567,9 +1653,9 @@ function render(){
   // In a wardrobe the flashlight is off and you are looking through a gap - but
   // you can still see the room. Watching it come is the mechanic; at the first
   // pass the light was cut so hard that hiding was blind, which is just waiting.
-  gl.uniform1f(U.uRange, player.hiding?12.0:(marked?11.5:19.0));
+  gl.uniform1f(U.uRange, player.dead?26.0:player.hiding?12.0:(marked?11.5:19.0));
   gl.uniform1f(U.uCone, marked?0.88:0.80);
-  gl.uniform1f(U.uAmbient, player.hiding?0.115:0.045);
+  gl.uniform1f(U.uAmbient, player.dead?0.10:player.hiding?0.115:0.045);
 
   for(const r of ROOMS){
     drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
@@ -1608,6 +1694,9 @@ function render(){
   for(const it of items){
     if(it.gone) continue;
     let col=[.42,.44,.43];
+    // Curse-sight: grade only, never the number.
+    if(curseSight(it)) col = it.grade==="malignant"?[.62,.30,.42]
+                           : it.grade==="tainted"?[.58,.50,.28]:[.40,.48,.44];
     if(it.known) col = it.grade==="malignant"?[.72,.36,.26]
                      : it.grade==="tainted"?[.72,.60,.26]:[.56,.60,.57];
     // Frost crawls up whatever it wants, in anyone's hands - that is how the
@@ -1639,8 +1728,16 @@ function render(){
   }
 
   const c=curator;
-  drawBox(c.x,1.0,c.z,0.34,1.0,0.34, c.state==="FIXATE"?[.55,.53,.50]:[.14,.145,.15]);
-  drawBox(c.x,2.12,c.z,0.20,0.22,0.20,[.20,.19,.18]);
+  if(player.dead){
+    // Permanent sight of it, and of what it is doing. This is the single most
+    // valuable information in the game and the only way out is your voice.
+    const hot = c.state==="PURSUE"||c.state==="FIXATE";
+    drawBox(c.x,1.0,c.z,0.36,1.0,0.36, hot?[.85,.45,.38]:[.55,.60,.66], true);
+    drawBox(c.x,2.12,c.z,0.22,0.24,0.22, hot?[.95,.62,.52]:[.68,.72,.76], true);
+  } else {
+    drawBox(c.x,1.0,c.z,0.34,1.0,0.34, c.state==="FIXATE"?[.55,.53,.50]:[.14,.145,.15]);
+    drawBox(c.x,2.12,c.z,0.20,0.22,0.20,[.20,.19,.18]);
+  }
 }
 
 // ------------------------------------------------------------------ HUD
@@ -1691,6 +1788,7 @@ function hud(){
     : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
     : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
     : (held&&aimedCrew()) ? `[E] hand it to ${aimedCrew().name}`
+    : player.dead ? "the crew cannot hear you think  ·  [Q] knock (1)   [E] nudge (3)"
     : held ? "[E] drop    [F] appraise"
     : aim ? shelfPrompt(aim)
     : "";
@@ -1703,6 +1801,11 @@ function hud(){
     (!marked&&curator.target&&hunted()?
       `<span style="color:#8b8880">it wants ${hunted()}</span><br>`:"")+
     (player.hiding&&player.hideEnter<=0?`<span style="color:#8fae9c">CONCEALED</span><br>`:"")+
+    (player.collecting>0?`<span style="color:#c97155">BEING COLLECTED  ${
+      player.collecting.toFixed(1)}s</span><br>`:"")+
+    (player.dead?`<span style="color:#9aa7b8">YOU ARE PART OF THE COLLECTION</span><br>`+
+      `<span style="color:#8b8880">static ${"◆".repeat(player.static)}${
+        "◇".repeat(STATIC_CAP-player.static)}  ·  [Q] knock  [E] nudge</span><br>`:"")+
     (curator.open>0?`<span style="color:#c97155">SOMETHING IS AT THE DOOR  ${
       (HIDE_OPEN_S-curator.open).toFixed(1)}s</span><br>`:"")+
     (items.some(i=>i.stash>0)?`<span style="color:#8b8880">stashed ${
@@ -1731,6 +1834,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     who:curator.who?curator.who.name:null,
     marked:markedPlayer(),
     concealed:concealed(),opening:+curator.open.toFixed(2),
+    dead:player.dead,collecting:+player.collecting.toFixed(2),static:player.static,
     holding:player.holding?player.holding.value:null,over,why:overWhy}),
   pos:()=>({x:+player.x.toFixed(2),z:+player.z.toFixed(2),
     room:roomAt(player.x,player.z)?.id??"VOID",yaw:+player.yaw.toFixed(2)}),
@@ -1827,6 +1931,11 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
   broken:()=>broken.slice(),
+  knock, nudge, curseSight:i=>{const it=items.filter(x=>!x.gone)[i];
+    return it?curseSight(it):null;},
+  ghost:()=>({dead:player.dead,collecting:+player.collecting.toFixed(2),
+    static:player.static,x:+player.x.toFixed(2),z:+player.z.toFixed(2)}),
+  setStatic:n=>{player.static=n;},
   frag:i=>{const it=items.filter(x=>!x.gone)[i]; return it?it.frag:null;},
   setSpeed:v=>{player.speed=v;},
   corpses:()=>items.filter(i=>!i.gone&&i.corpse).map(i=>({who:i.who,value:i.value,
