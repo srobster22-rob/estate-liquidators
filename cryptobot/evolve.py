@@ -25,10 +25,17 @@ THE EXPANSION LADDER, in order:
 Expansion only ever adds search breadth. It NEVER touches the gates. That line is
 the difference between a factory and a slot machine: if the loop can eventually
 lower the bar, then "keep going until we get a profitable bot" is guaranteed to
-succeed and guaranteed to mean nothing. So the bar only ever goes up — every
-candidate promoted to the gauntlet increments `oos_looks`, and the deflated-Sharpe
-hurdle in gate 10 rises with it. Looking harder makes passing harder. That is what
-makes it legitimate to run this loop until it finds something.
+succeed and guaranteed to mean nothing.
+
+The bar is FLAT, not rising. Gate 10 deflates by the run's whole look budget from
+the very first look, so every candidate faces the same hurdle. An earlier version
+charged the running count instead, on the reasoning that looking harder should make
+passing harder — which sounds right and was wrong in practice. It meant a
+candidate's verdict depended on its position in the queue: across ten seeds, every
+confirmed bot was found in the first half of its run, two of them at looks 1 and 2
+posting validation Sharpes of 1.8, while candidates posting 4.7 were rejected later
+in the same runs. The correction is still paid in full. It is just paid by everyone
+equally rather than by whoever happens to arrive late.
 
 BOTH COUNTERS PERSIST ACROSS RUNS, in state/factory_state.json:
 
@@ -313,14 +320,15 @@ class Factory:
         The two estimators converge as samples accumulate, so the fix is to blend
         rather than switch: weight the out-of-sample estimate by n/(n+K) and the
         (wider, more conservative) in-sample estimate by the remainder."""
-        oos = self.state["oos_sharpe_samples"]
-        prior = stats.sharpe_dispersion(self.state["sharpe_samples"])
-        n = len(oos)
-        if n < 3:
-            return prior
-        k = self.cfg["dispersion_shrinkage"]
-        w = n / (n + k)
-        return w * stats.sharpe_dispersion(oos) + (1.0 - w) * prior
+        # The theoretical null dispersion, not the observed spread of candidates.
+        # See stats.null_sharpe_dispersion for why the observed spread is the wrong
+        # quantity: it is dominated by real quality differences among survivors of
+        # the in-sample search, not by the sampling noise gate 10 is correcting for.
+        # Using it drove the hurdle to 6.5 Sharpe and made the gate unpassable after
+        # the first handful of looks.
+        seg = next(iter(self.segments.values())).validation
+        years = len(seg) / seg.bars_per_year
+        return stats.null_sharpe_dispersion(years)
 
     # -------------------------------------------------------------- the run
 
@@ -478,7 +486,7 @@ class Factory:
         seg = self.segments[candidate.market_key]
         pseg = self.segments[candidate.partner_key] if candidate.partner_key else None
         report = val.gauntlet(candidate, seg, pseg,
-                              oos_looks=self.state["oos_looks"],
+                              oos_looks=self.hurdle_looks(),
                               dispersion=self.hurdle_dispersion(),
                               thresholds=self.cfg.get("thresholds"),
                               seed=self.rng.randrange(1 << 30),
@@ -534,20 +542,26 @@ class Factory:
         return None
 
     def hurdle_dispersion(self):
-        """The dispersion actually handed to gate 10, ratcheted so it can never
-        fall.
+        """The dispersion handed to gate 10. Now a fixed property of the validation
+        window's length, so it neither drifts nor needs a ratchet."""
+        return self.dispersion()
 
-        Shrinkage smooths the estimate but does not guarantee monotonicity, and the
-        contract this factory advertises — look harder and passing gets harder — has
-        to hold exactly, not on average. Anything else lets a candidate wait for a
-        cheap round. The high-water mark persists with the rest of the state, so it
-        survives a restart too."""
-        d = self.dispersion()
-        floor = self.state.get("dispersion_floor", 0.0)
-        if d > floor:
-            self.state["dispersion_floor"] = d
-            return d
-        return floor
+    def hurdle_looks(self):
+        """The N that gate 10 deflates by: the run's whole look BUDGET, not the
+        number spent so far.
+
+        Charging the running count made a candidate's fate depend on when it
+        happened to be promoted. Across ten seeds every single confirmed bot was
+        found in the first half of its run — two of them at look 1 and 2 with
+        validation Sharpes of 1.8, while candidates posting 4.7 were rejected later
+        in the same runs. That is not a multiple-testing correction, it is a
+        first-come-first-served queue with a statistical veneer, and it is the
+        direct cause of the seed-to-seed variance.
+
+        Every candidate now faces the bar for the full budget, from look one. The
+        correction is still paid in full — it is just paid by everyone equally
+        rather than by whoever arrives late."""
+        return max(self.state["oos_looks"], self.cfg["look_budget"])
 
     def vault_exhausted(self):
         """The vault has a hard budget, not just a warning.
@@ -630,7 +644,9 @@ DEFAULTS = {
     "max_looks_per_pair": 8,
     # Pseudo-observations of the in-sample prior mixed into the out-of-sample
     # dispersion estimate. Higher = slower to trust a small out-of-sample pool.
-    "dispersion_shrinkage": 25.0,
+    # Gate 10 deflates by this many looks regardless of how many have been spent,
+    # so a candidate's verdict does not depend on its position in the queue.
+    "look_budget": 50,
     "thresholds": None,
 }
 

@@ -133,6 +133,32 @@ def sharpe_needed(metrics, bench_annual, bars_per_year, confidence=0.95):
     return needed_bar * ann
 
 
+def null_sharpe_dispersion(years, sharpe=0.0):
+    """Standard error of an annualised Sharpe estimate under the null of no edge.
+
+        SE(S_hat) ~= sqrt((1 + S^2/2) / T)      T in years
+
+    THIS is the sigma the expected-max correction needs, and getting it from the
+    observed spread of the candidates instead was a real bug. Gate 10 asks: if these
+    N strategies all had zero edge, how good would the luckiest look? That question
+    is about SAMPLING NOISE in a Sharpe estimate, which depends only on the length
+    of the window.
+
+    The observed spread of promoted candidates is a different quantity entirely. Those
+    are the survivors of an in-sample search, a mixed population of genuinely good and
+    genuinely awful bots, and their spread is dominated by real quality differences
+    rather than noise. On a 3.1-year validation slice the true null dispersion is
+    0.56; the observed spread was 2.9, which pushed the hurdle to 6.5 and demanded an
+    observed Sharpe of 7.4 before gate 10 would call anything real. Nothing in the
+    universe could clear that, and the only bots that ever passed were the ones lucky
+    enough to arrive in the first few looks, while the correction was still small.
+
+    So the gate was not strict. It was miscalibrated in a way that made it strict
+    later and lax early, which is worse than either.
+    """
+    return math.sqrt((1.0 + 0.5 * sharpe * sharpe) / max(1e-9, years))
+
+
 def sharpe_dispersion(sharpes):
     """Cross-sectional stdev of the trial Sharpes. This is the σ the deflation needs,
     and it must come from the search's *own* population — borrowing a textbook 0.5
