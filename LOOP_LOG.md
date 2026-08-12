@@ -404,6 +404,35 @@ estates do not have; and room names were assigned in lattice order, producing a 
 and a tier-0 "attic". · Regression: QA 90/90, drift 111/111, 12 generated estates + both
 samples PASS.
 
+R25 · Built the **contract chain** — four nights, an escalating quota, a van that grows
+14→19, a different generated house each night, and a chain that ends the moment you miss.
+ECONOMY §4's curve has been tuned since an early round and never played. 12 new checks. ·
+**And I reproduced ECONOMY §4's own recorded mistake before catching it.** Its original quota
+curve was "napkin arithmetic that assumed earnings scale with the quota"; my first pass scaled
+the ship quotas by night length, which assumes earnings scale with the *clock*. They don't — a
+210s night does not fill a 14-slot van — and the scaled night-two quota landed **above the
+mean take**, passing 40% where the sim wanted 73%. Replaced with quotas **measured** in this
+build: 36 headless nights per rung, quota set at the take that produces the intended pass
+rate. The ship curve stays canonical in `tuning.json`; the measured one describes this build
+and is labelled as such. · **The zero tail, and a correction to my own finding.** 14–19% of
+nights were banking **nothing**, which caps night one's achievable pass rate at ~81% however
+low the quota goes. Every one of them was the **ruin roll** — the crew were hauling cursed
+cargo with no policy at all. I gave them R11's cap and D-24's scanning rule (appraise while
+it is quiet, take blind once it is hunting), measured 18% → 5%, and wrote it up as R11's
+optimum reproduced in play. **Then a paired sweep on identical houses said otherwise:**
+uncapped they average 2.73 cursed pieces and capped 2.70, because a 210s night simply does not
+contain enough cursed cargo for a cap of three to bind. The 18%→5% was two different seed
+sets, which is exactly the mistake the common-random-numbers work in R18 existed to prevent,
+made again three rounds later in a different file. What the paired sweep *does* show, cleanly:
+**refusing cursed cargo outright costs ~43%** ($1,623 against $2,848), which is R10's
+structural point arriving as a live measurement. · The cap did surface one real bug: it counted
+cursed pieces **in the van** only, so two crew could each carry one under a cap of one and both
+deposit. Counting pieces in transit as well brought a cap of 1 from 1.25 aboard to 1.0 — and
+moved earnings enough to invalidate the quota curve I had just measured, which had to be
+measured again. · Also: a leaked QA `freezeCrew` flag from the selector checks silently zeroed
+every night's take and read as "the quota is too hard" for twenty minutes. · Regression: QA
+102/102, drift 120/120.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

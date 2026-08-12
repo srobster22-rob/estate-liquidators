@@ -112,7 +112,9 @@ for tag, rel, l_names in (("JS2d", "proto/index.html", ("sprint", "appraise", "d
           d["per_cursed_item_floor"])
     check(f"{tag} appraise_seconds", grab(js, r"APPRAISE_S\s*=\s*([\d.]+)"),
           TUNING["night"]["appraise_seconds"])
-    check(f"{tag} van_slots", grab(js, r"VAN_SLOTS\s*=\s*(\d+)"), v["base_slots"])
+    # proto3d derives its van from the contract curve; proto has a literal.
+    check(f"{tag} van_slots", grab(js, r"VAN_SLOTS\s*=\s*(\d+)")
+          or grab(js, r"CONTRACT_VAN=\[(\d+)"), v["base_slots"])
     # Written inline in proto, as named constants in proto3d - accept either.
     check(f"{tag} ruin_k", grab(js, r"RUIN_K\s*=\s*([\d.]+)")
           or grab(js, r"([\d.]+)\s*\*\s*Math\.pow\(cursed"), v["ruin_k"])
@@ -183,6 +185,23 @@ check("JS3d slot_two_man", grab(js3, r"SLOTS=\{[^}]*two_man:\s*([\d.]+)"),
 check("JS3d slot_cart", grab(js3, r"SLOTS=\{[^}]*cart:\s*([\d.]+)"), w["slots"]["cart"])
 check("JS3d two_man_speed", grab(js3, r"TWO_MAN_SPEED=([\d.]+)"), w["two_man_speed_mult"])
 check("JS3d follower_drift", grab(js3, r"FOLLOWER_DRIFT_M=([\d.]+)"), w["follower_drift_m"])
+
+# NOTE: do not name a loop variable `v` here - it is the van tuning dict below,
+# and shadowing it made this file crash rather than report a divergence.
+ct = TUNING["contract"]
+mq = re.search(r"CONTRACT_QUOTA=\[([\d,]+)\]", js3)
+mv = re.search(r"CONTRACT_VAN=\[([\d,]+)\]", js3)
+for i, quota in enumerate(ct["quota"]):
+    check(f"JS3d contract_quota[{i}]",
+          mq.group(1).split(",")[i] if mq else None, quota)
+for i, slots in enumerate(ct["van_slots"]):
+    check(f"JS3d contract_van[{i}]",
+          mv.group(1).split(",")[i] if mv else None, slots)
+check("JS3d ship_night", grab(js3, r"SHIP_NIGHT=(\d+)"), ct["ship_night_seconds"])
+mh = re.search(r"CONTRACT_QUOTA_HERE=\[([\d,]+)\]", js3)
+for i, quota in enumerate(ct["quota_measured_210s"]):
+    check(f"JS3d measured_quota[{i}]",
+          mh.group(1).split(",")[i] if mh else None, quota)
 
 sn = TUNING["senses"]
 check("JS3d hear_per_l", grab(js3, r"HEAR_PER_L\s*=\s*([\d.]+)"),

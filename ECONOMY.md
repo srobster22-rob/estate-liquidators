@@ -113,6 +113,22 @@ would let it breathe.
 
 Miss a quota and the chain ends. Money doesn't carry across chains (`DESIGN.md` §9).
 
+**Played, R25.** `proto3d` runs the chain end to end. Its night is 210s rather than 720s, and
+the quotas there are **measured, not scaled** — scaling this table by night length reproduces
+the same error the box above records, because earnings do not scale with the clock any more
+than they scale with the quota. Measured curve for a 210s night, calibrated to these pass
+rates: **$1,550 / $2,100 / $2,450 / $2,900** against a van of 14/15/17/19.
+
+Two things the live build showed that the sim could not:
+
+- **Earnings barely grow across the chain** (~$2,500–2,800 every night) because the estates
+  are equally rich and crew throughput, not van space, is the binding constraint. That is this
+  section's own diagnosis, confirmed: growth has to come from **richer estates**, not from
+  squeezing a flat ceiling. Now that estates are generated (R24), later contracts *can* be
+  richer houses — the first version of this that is actually buildable.
+- **Refusing cursed cargo outright costs ~43%** ($1,623 against $2,848 over the same 40
+  houses), which is §9's structural point measured rather than modelled.
+
 ## 5. Deductions
 
 The ledger is the punchline (`DESIGN.md` pillar 4), so deductions must be legible, itemised,

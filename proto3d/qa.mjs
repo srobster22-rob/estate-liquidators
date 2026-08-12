@@ -524,6 +524,134 @@ async function checks(g, fresh) {
   ok("the biggest thing in the house fits through every doorway",
     fits.length === 0, JSON.stringify(fits));
 
+  // --- the contract chain (ECONOMY 4) ---------------------------------------
+  // Four nights, an escalating quota and a van that grows 14->19. The quotas in
+  // ECONOMY are for the twelve-minute ship night; this build runs 210s, so they
+  // are scaled by night length rather than copied.
+  await fresh();
+  const chain = await g(() => window.__g.contract());
+  ok("the contract is four nights", chain.nights === 4 && chain.curve.length === 4,
+    JSON.stringify(chain.curve));
+  ok("the van follows ECONOMY's curve",
+    chain.curve.map(c => c.van).join(",") === "14,15,17,19",
+    JSON.stringify(chain.curve.map(c => c.van)));
+  ok("the quota rises every night",
+    chain.curve.every((c, i) => i === 0 || c.here > chain.curve[i - 1].here),
+    JSON.stringify(chain.curve.map(c => c.here)));
+  // Deliberately NOT the scaled ship quota: earnings do not scale with the clock,
+  // and scaling put night two above the mean take. These are measured (R25).
+  ok("the quota is measured for this build, not scaled from the ship night",
+    chain.curve.every(c => Math.abs(c.here - c.ship * chain.scale) > 100),
+    JSON.stringify(chain.curve));
+
+  // The first rung has to be winnable and the last one has to bite.
+  const rates = await g(() => {
+    // The selector checks freeze the crew; a leaked freeze silently zeroes every
+    // night's take and reads as "the quota is too hard".
+    window.__g.freezeCrew(false);
+    const out = [];
+    for (const n of [0, 3]) {
+      let met = 0, runs = 12;
+      for (let trial = 0; trial < runs; trial++) {
+        window.__g.newContract(); window.__g.regen((trial + 1) * 104729 + n);
+        window.__g.setNight(n);
+        for (let i = 0; i < 210 * 60 && !window.__g.state().over; i++) window.__g.step(1, 1 / 60);
+        if (window.__g.contract().last.met) met++;
+      }
+      out.push({ night: n + 1, pass: met / runs });
+    }
+    window.__g.newContract();      // this sweep walks the chain; put it back
+    window.__g.regen(20260806);
+    return out;
+  });
+  // R11's curse policy, exercised in the live build. Two claims, both paired on
+  // identical houses so the answer does not come from which seeds got drawn:
+  //   1. the cap is honoured, and
+  //   2. refusing cursed cargo outright costs real money.
+  // Note what is NOT claimed: in a 210s night the crew only find ~2.7 cursed
+  // pieces anyway, so CAP_3 barely binds. An earlier reading of this as
+  // "the cap cut ruin nights from 18% to 5%" compared different seeds and was
+  // sampling noise; the paired sweep puts both around 2-5%.
+  const curse = await g(() => {
+    window.__g.freezeCrew(false);
+    const run = cap => {
+      window.__g.curseCap(cap);
+      let cursed = 0, net = 0, n = 12;
+      for (let t = 0; t < n; t++) {
+        window.__g.newContract(); window.__g.regen((t + 1) * 104729);
+        for (let i = 0; i < 210 * 60 && !window.__g.state().over; i++) window.__g.step(1, 1 / 60);
+        const l = window.__g.contract().last;
+        cursed += l.cursed; net += l.net;
+      }
+      return { cap, cursed: +(cursed / n).toFixed(2), net: Math.round(net / n) };
+    };
+    const strict = run(1), normal = run(3), none = run(0);
+    window.__g.curseCap(3);
+    window.__g.newContract(); window.__g.regen(20260806);
+    return { strict, normal, none };
+  });
+  ok("the crew honour the cursed-cargo cap",
+    curse.strict.cursed <= 1.05, JSON.stringify(curse));
+  ok("and refusing cursed cargo outright costs real money",
+    curse.none.net < curse.normal.net * 0.85, JSON.stringify(curse));
+
+  ok("night one is winnable and the last night is harder than the first",
+    rates[0].pass >= 0.6 && rates[1].pass < rates[0].pass, JSON.stringify(rates));
+
+  // Meeting the quota advances; missing it ends the contract. Nothing else does.
+  await fresh();
+  const advance = await g(() => {
+    window.__g.parkCrew();
+    window.__g.bank(window.__g.contract().quota + 500);   // comfortably over
+    window.__g.setT(209.5); window.__g.step(60, 1 / 60);
+    const after = window.__g.contract();
+    const moved = window.__g.nextNight();
+    const now = window.__g.contract();
+    return { met: after.last.met, moved, night: now.night, van: now.van,
+             quota: now.quota, seedChanged: true };
+  });
+  ok("meeting the quota moves you to the next night",
+    advance.met === true && advance.moved === true && advance.night === 1,
+    JSON.stringify(advance));
+  ok("and the next night is a bigger van and a higher quota",
+    advance.van === 15 && advance.quota > chain.curve[0].here, JSON.stringify(advance));
+
+  await fresh();
+  const missed = await g(() => {
+    window.__g.parkCrew();
+    window.__g.setT(209.5); window.__g.step(60, 1 / 60);   // sunrise with nothing
+    const after = window.__g.contract();
+    const moved = window.__g.nextNight();
+    return { met: after.last.met, over: after.chainOver, moved };
+  });
+  ok("missing it ends the chain",
+    missed.met === false && missed.over === true && missed.moved === false,
+    JSON.stringify(missed));
+
+  // A full contract, played out headlessly: four nights, each a different house.
+  const played = await g(() => {
+    window.__g.freezeCrew(false);
+    window.__g.newContract();
+    const seeds = [], nights = [];
+    for (let n = 0; n < 4; n++) {
+      seeds.push(window.__g.seed().seed);
+      window.__g.parkCrew();
+      window.__g.bank(window.__g.contract().quota + 100);
+      window.__g.setT(209.5); window.__g.step(60, 1 / 60);
+      nights.push(window.__g.contract().last.met);
+      if (n < 3 && !window.__g.nextNight()) break;
+    }
+    const c = window.__g.contract();
+    return { seeds, nights, over: c.chainOver, earned: c.chainEarnings };
+  });
+  ok("a contract can be played to the end",
+    played.nights.length === 4 && played.nights.every(Boolean) && played.over === true,
+    JSON.stringify(played));
+  ok("every night is a different house",
+    new Set(played.seeds).size === 4, JSON.stringify(played.seeds));
+
+  await g(() => { window.__g.newContract(); window.__g.regen(20260806); });
+
   // --- night endings --------------------------------------------------------
   await fresh();
   const sunrise = await g(() => {

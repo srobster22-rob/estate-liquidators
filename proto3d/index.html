@@ -165,7 +165,28 @@ const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
 const ATT_MULT={clean:1, tainted:1.5, malignant:3};
 const FEE={clean:0, tainted:.08, malignant:.20};
 const RUIN_K=0.015, RUIN_EXP=1.8;
-const VAN_SLOTS=14, QUOTA=2200, NIGHT=210, APPRAISE_S=3.0;
+const NIGHT=210, APPRAISE_S=3.0;
+// The contract chain (ECONOMY 4). Those quotas are for the twelve-minute ship
+// night. Scaling them by night length was tried first and is WRONG for exactly
+// the reason ECONOMY 4 already records about its own original curve: earnings do
+// not scale with the clock. A 210s night does not fill a 14-slot van, so the
+// scaled night-two quota landed ABOVE the mean take and passed 40% of the time
+// where the sim wanted 73%.
+//
+// So the quotas here are MEASURED, not derived: 36 headless nights per rung with
+// the crew working, quota set at the take that produces the sim's intended pass
+// rate. The ship curve stays canonical in tuning.json; this one describes this
+// build. The van curve is not scaled either way - slots are slots.
+const SHIP_NIGHT=720;
+const CONTRACT_QUOTA=[7500,9000,10750,12500];        // ECONOMY 4, the ship night
+const CONTRACT_QUOTA_HERE=[1550,2100,2450,2900];     // measured, LOOP_LOG R25
+const CONTRACT_VAN=[14,15,17,19];
+const NIGHTS=CONTRACT_QUOTA.length;
+const QUOTA_SCALE=NIGHT/SHIP_NIGHT;
+const quotaFor=n=>CONTRACT_QUOTA_HERE[Math.min(n,NIGHTS-1)];
+const vanFor=n=>CONTRACT_VAN[Math.min(n,NIGHTS-1)];
+let night=0, chainOver=false, chainEarnings=0, lastNight=null;
+const VAN_SLOTS=CONTRACT_VAN[0], QUOTA=quotaFor(0);
 const EYE=1.62, WALK=3.2, RUN=5.6, CARRY=2.6, CARRY_RUN=4.1;
 const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
 // A5 senses. One Loudness number, three consumers - this is the hearing one.
@@ -570,6 +591,11 @@ const CANDIDATES=4, SHELF_Y=0.95;
 // carrying-capacity abstraction: a two-man piece costs three of fourteen.
 const SLOTS={pocket:0.5, armful:1, two_man:3, cart:5};
 const TWO_MAN_SPEED=0.62;      // both of you, shuffling, apologising
+// R11 found the interior optimum: take two or three cursed pieces, then stop.
+// CAP_3 peaked at $6,799 against $3,930 for taking everything - unrestrained
+// greed loses ~40%. The crew had no policy at all and were averaging 3.37 aboard,
+// which is 18% of nights ending with the collection reclaiming the van.
+let CURSE_CAP=3;
 const FOLLOWER_DRIFT_M=0.4;    // B4: how far the far end may lag before easing in
 let shelves=[];
 function makeItem(r,x,z,y,shelf,klass){
@@ -648,7 +674,7 @@ function reset(){
            fixate:0,lock:0,reseat:0,target:false,mode:null,open:0,
            face:0,fix:null,step:0,who:null,recompute:0};
   for(const h of HIDES) h.item=null;
-  van={slots:VAN_SLOTS,cargo:[]};
+  van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
   t=0;dist=0;over=false;overWhy="";noiseLog=[];
   document.getElementById("end").style.display="none";
 }
@@ -665,7 +691,8 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyC"&&started&&!over) toggleHide();
   if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
-  if(e.code==="KeyR"&&over){ reset(); document.getElementById("end").style.display="none"; }
+  if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
+  if(e.code==="KeyN"&&over&&nextNight()) document.getElementById("end").style.display="none";
 });
 addEventListener("keyup",e=>keys[e.code]=false);
 document.getElementById("start").addEventListener("click",()=>{
@@ -705,6 +732,12 @@ function noise(l,impulse,dt,x,z,who){
   if(impulse) sfx.event(l,px,pz);
 }
 const actors=()=>[player,...crew.filter(c=>c.alive)];
+// In the van OR on its way there. Counting only the van let two crew each carry
+// a cursed piece under a cap of one and both deposit, which is how a cap of 1
+// produced 1.25 aboard.
+const cursedAboard=()=>van.cargo.filter(c=>c.grade!=="clean").length
+  + actors().filter(a=>a.holding&&a.holding.known&&a.holding.grade!=="clean").length;
+function noiseIfScanned(){}   // scan noise lands once, on completion
 const recentNoise=a=>{
   while(a.noise.length&&a.noise[0]<t-NOISE_WINDOW_S) a.noise.shift();
   return a.noise.length;
@@ -958,6 +991,15 @@ function updateCrew(dt){
     } else if(a.holding){
       const dv=R("drive"); gx=dv.x; gz=dv.z; a.mood="CARRY";
     } else {
+      // What they know, and what they do about it. D-24's policy, played rather
+      // than simulated: look while it is quiet, take blind once it is hunting.
+      if(a.scanning&&!a.scanning.gone&&!a.scanning.heldBy){
+        a.scan=(a.scan||0)+dt;
+        noiseIfScanned(a,dt);
+        if(a.scan>=APPRAISE_S){ a.scanning.known=true; a.scan=0;
+          noise(L.appraise,true,0,a.x,a.z,a); a.scanning=null; }
+        continue;                                   // three seconds, standing still
+      }
       if(!a.goal||a.goal.gone||a.goal.heldBy||a.goal.claim&&a.goal.claim!==a){
         a.goal=null;
         let bd=1e9;
@@ -965,6 +1007,8 @@ function updateCrew(dt){
           if(it.gone||it.heldBy||(it.claim&&it.claim!==a)) continue;
           if(it.klass==="two_man") continue;     // nobody lifts an armoire alone
           const rm=roomAt(it.x,it.z); if(rm&&!roomOpen(rm.id)) continue;
+          // Refuse a known cursed piece once the van is at the cap.
+          if(it.known&&it.grade!=="clean"&&cursedAboard()>=CURSE_CAP) continue;
           const d=Math.hypot(it.x-a.x,it.z-a.z);
           if(d<bd){bd=d;a.goal=it;}
         }
@@ -989,6 +1033,12 @@ function updateCrew(dt){
       }
     } else if(a.goal&&!a.goal.gone&&!a.goal.heldBy&&
               Math.hypot(a.goal.x-a.x,a.goal.z-a.z)<0.9){
+      // At the shelf: appraise first if it is quiet enough to be worth the ping.
+      const quiet=tierOf(dist)==="DORMANT"||tierOf(dist)==="PATROL";
+      if(quiet&&!a.goal.known){ a.scanning=a.goal; a.scan=0; continue; }
+      if(a.goal.known&&a.goal.grade!=="clean"&&cursedAboard()>=CURSE_CAP){
+        a.goal.claim=null; a.goal=null; continue;   // knows better, walks away
+      }
       a.goal.heldBy=a; a.goal.moved=true; a.goal.stash=0;
       if(a.goal.hideIn){ a.goal.hideIn.item=null; a.goal.hideIn=null; }
       a.holding=a.goal; a.goal=null; a.mood="CARRY";
@@ -1314,21 +1364,49 @@ function finish(why){
   const cursed=van.cargo.filter(c=>c.grade!=="clean").length;
   const ruin=cursed>0&&Math.random()<Math.min(.95,RUIN_K*Math.pow(cursed,RUIN_EXP));
   const net=ruin?0:Math.round(gross-fees);
+  const quota=quotaFor(night), met=net>=quota;
+  lastNight={night, net, quota, met, ruin, cursed, why, gross:Math.round(gross),
+    pieces:van.cargo.length};
+  if(met){ chainEarnings+=net; } else { chainOver=true; }
+  const last=met&&night>=NIGHTS-1;
+  if(last) chainOver=true;
+
   document.getElementById("endtext").innerHTML=
     `<h1>${why}</h1><table>
-     <tr><td>Items recovered</td><td>${van.cargo.length} / ${VAN_SLOTS}</td></tr>
+     <tr><td>Night</td><td>${night+1} of ${NIGHTS}</td></tr>
+     <tr><td>Items recovered</td><td>${van.cargo.length} pieces, ${
+       (van.cap-van.slots).toFixed(1).replace(/\.0$/,"")} / ${van.cap} slots</td></tr>
      ${crew.some(a=>!a.alive)?`<tr><td class="r">Crew collected</td><td class="r">${
        crew.filter(a=>!a.alive).map(a=>a.name).join(", ")}</td></tr>`:``}
      <tr><td>Gross</td><td>$${Math.round(gross).toLocaleString()}</td></tr>
      <tr><td class="d">Curse fees</td><td class="d">-$${Math.round(fees).toLocaleString()}</td></tr>
      ${ruin?`<tr><td class="r">THE COLLECTION RECLAIMED THE VAN</td><td class="r">everything</td></tr>`:``}
      <tr><td><b>Net</b></td><td><b>$${net.toLocaleString()}</b></td></tr>
-     <tr><td>Quota</td><td>$${QUOTA.toLocaleString()}</td></tr>
+     <tr><td>Quota</td><td>$${quota.toLocaleString()}</td></tr>
+     <tr><td class="d">Contract to date</td><td class="d">$${chainEarnings.toLocaleString()}</td></tr>
      <tr><td class="d">Estate seed</td><td class="d">${estateSeed}</td></tr></table>
-     <p class="${net>=QUOTA?'g':'r'}">${net>=QUOTA?"QUOTA MET":"QUOTA MISSED"}${
+     <p class="${met?'g':'r'}">${met?"QUOTA MET":"QUOTA MISSED"}${
        cursed?` &nbsp;·&nbsp; ${cursed} cursed piece${cursed>1?"s":""} aboard`:""}</p>
-     <p class="d">press R to run again</p>`;
+     ${last?`<p class="g">CONTRACT COMPLETE &nbsp;·&nbsp; $${chainEarnings.toLocaleString()} over ${NIGHTS} nights</p>`
+      :met?`<p>Night ${night+2}: quota $${quotaFor(night+1).toLocaleString()}, van ${
+        vanFor(night+1)} slots &nbsp;·&nbsp; <b>press N</b></p>`
+      :`<p class="r">THE CHAIN ENDS HERE. Miss a quota and the contract is over.</p>`}
+     <p class="d">press R to start a new contract</p>`;
   document.getElementById("end").style.display="flex";
+}
+
+// Next night of the same contract: a new house, a bigger van, a higher quota.
+function nextNight(){
+  if(chainOver||!lastNight||!lastNight.met) return false;
+  night=Math.min(night+1,NIGHTS-1);
+  buildEstate((estateSeed*1103515245+12345)>>>0);
+  reset();
+  return true;
+}
+function newContract(){
+  night=0; chainOver=false; chainEarnings=0; lastNight=null;
+  buildEstate((Date.now()&0x7fffffff)>>>0);
+  reset();
 }
 
 // ------------------------------------------------------------------ render
@@ -1514,8 +1592,8 @@ function hud(){
     : "";
   document.getElementById("hud").innerHTML =
     `<b>${Math.max(0,NIGHT-t).toFixed(0)}s</b> until sunrise<br>`+
-    `VAN <b>${VAN_SLOTS-van.slots}/${VAN_SLOTS}</b>&nbsp;&nbsp;`+
-    `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${QUOTA.toLocaleString()}<br>`+
+    `NIGHT <b>${night+1}/${NIGHTS}</b>&nbsp;&nbsp;VAN <b>${(van.cap-van.slots).toFixed(1).replace(/\.0$/,"")}/${van.cap}</b>&nbsp;&nbsp;`+
+    `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${quotaFor(night).toLocaleString()}<br>`+
     (held?`CARRYING ${held.known?"$"+held.value+" "+held.grade.toUpperCase():"UNAPPRAISED"}<br>`:"")+
     (marked?`<span style="color:#9fc4d6">IT IS COMING FOR YOU</span><br>`:"")+
     (!marked&&curator.target&&hunted()?
@@ -1628,6 +1706,13 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     prereqs:Object.fromEntries(Object.entries(PREREQ).map(([room,need])=>
       [room, need.map(r=>({room:r, type:"clear"}))])),
   }),
+  contract:()=>({night, nights:NIGHTS, quota:quotaFor(night), van:vanFor(night),
+    scale:+QUOTA_SCALE.toFixed(4), chainOver, chainEarnings, last:lastNight,
+    curve:CONTRACT_QUOTA.map((q,i)=>({night:i+1, ship:q, here:quotaFor(i), van:vanFor(i)}))}),
+  nextNight, newContract,
+  setNight:n=>{night=Math.max(0,Math.min(NIGHTS-1,n|0)); reset(); return night;},
+  bank:v=>{van.cargo.push({value:v, grade:"clean"}); return van.cargo.length;},
+  curseCap:n=>{if(n!==undefined) CURSE_CAP=n; return CURSE_CAP;},
   gates:v=>{gatesOff=!!v;},   // QA: geometry checks are not gating checks
   locked:()=>DOORS.filter(d=>!doorOpen(d)).map(d=>d.a+"-"+d.b),
   prereq:()=>JSON.parse(JSON.stringify(PREREQ)),

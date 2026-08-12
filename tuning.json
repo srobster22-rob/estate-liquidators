@@ -156,5 +156,35 @@
     "haul_window_seconds": 540,
     "crew": 4,
     "appraise_seconds": 3.0
+  },
+  "contract": {
+    "_source": "ECONOMY.md 4, the calibrated curve",
+    "_note": "Quotas are for the 12-minute ship night. A shorter build cannot scale them by night length - earnings do not scale with the clock, which is the same napkin error ECONOMY 4 already records. quota_measured_210s was calibrated by running the prototype (see LOOP_LOG R25).",
+    "nights": 4,
+    "quota": [
+      7500,
+      9000,
+      10750,
+      12500
+    ],
+    "van_slots": [
+      14,
+      15,
+      17,
+      19
+    ],
+    "ship_night_seconds": 720,
+    "quota_measured_210s": [
+      1550,
+      2100,
+      2450,
+      2900
+    ],
+    "measured_pass_rates": [
+      95,
+      73,
+      55,
+      40
+    ]
   }
 }
