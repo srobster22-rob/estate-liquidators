@@ -80,6 +80,8 @@ precision mediump float;
 varying vec3 vN, vW, vC;
 uniform vec3 uEye, uDir;
 uniform float uRange, uCone, uAmbient, uEmissive;
+uniform vec4 uLit[8];      // lit rooms as (x0,z0,x1,z1)
+uniform int uLitN;
 void main(){
   vec3 n = normalize(vN);
   vec3 toEye = uEye - vW;
@@ -94,7 +96,15 @@ void main(){
   // uEmissive lifts an object out of the lighting model entirely. A crewmate's
   // torch has to read as ITS brightness, not as how well your beam happens to
   // light it - the whole aggro tell is that the light dims (A7).
-  vec3 c = vC * mix(uAmbient + lit * 1.5, 1.0, uEmissive);
+  // A lit wing is flat house light - no falloff, no shadows. The art direction
+  // says light is the whole budget; this is the switch that spends it.
+  float room = 0.0;
+  for(int i=0;i<8;i++){
+    if(i>=uLitN) break;
+    vec4 b = uLit[i];
+    if(vW.x>b.x && vW.z>b.y && vW.x<b.z && vW.z<b.w) room = 0.42;
+  }
+  vec3 c = vC * mix(uAmbient + room + lit * 1.5, 1.0, uEmissive);
   c = mix(c, vec3(0.015,0.017,0.02), clamp(d/46.0, 0.0, 0.92)); // fog
   gl_FragColor = vec4(c, 1.0);
 }`;
@@ -111,7 +121,8 @@ gl.useProgram(prog);
 const A = {pos:gl.getAttribLocation(prog,"aPos"), nrm:gl.getAttribLocation(prog,"aNrm"),
            col:gl.getAttribLocation(prog,"aCol")};
 const U = {}; for(const n of ["uProj","uView","uModel","uEye","uDir","uRange","uCone",
-  "uAmbient","uTint","uEmissive"]) U[n]=gl.getUniformLocation(prog,n);
+  "uAmbient","uTint","uEmissive","uLitN"]) U[n]=gl.getUniformLocation(prog,n);
+U.uLit=gl.getUniformLocation(prog,"uLit[0]");
 
 // ------------------------------------------------------------------ geometry
 function boxMesh(){
@@ -205,6 +216,10 @@ const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
 // the dead can genuinely save the living, but the dead ARE the haunting.
 const COLLECT_S=10.0, STATIC_CAP=6, STATIC_REGEN_S=20.0, CURSE_SIGHT_M=5.0;
 const KNOCK_L=25, COST_KNOCK=1, COST_NUDGE=3;
+// DESIGN 6.5. Lights are the exception to "every gain comes from a Loudness
+// value": switching on a wing is silent and a flat +25. Killing the breaker is
+// -15 instantly, and the cost is that you hauled that wing lit for a reason.
+const LIGHT_WING_GAIN=25, LEVER_KILL_LIGHTS=15;
 const GHOST_SPEED=7.2, GHOST_EYE=1.95;
 // A5 senses. One Loudness number, three consumers - this is the hearing one.
 const HEAR_PER_L=0.33, OCCLUSION_CURATOR=0.85, FUZZ_M=3.0;
@@ -614,7 +629,7 @@ function blocked(x,z){
 }
 
 // ------------------------------------------------------------------ state
-let noiseLog=[], gatesOff=false, broken=[];
+let noiseLog=[], gatesOff=false, broken=[], lit=new Set(), breakerUsed=0;
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 // Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
@@ -733,7 +748,7 @@ function reset(){
   recoveredTonight=new Set();
   for(const h of HIDES) h.item=null;
   van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
-  t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];
+  t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];lit=new Set();breakerUsed=0;
   document.getElementById("end").style.display="none";
 }
 // Seed from the URL so a playtest can be handed back exactly: ?seed=12345.
@@ -748,6 +763,8 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyE"&&started&&!over) grabDrop();
   if(e.code==="KeyC"&&started&&!over&&!player.dead) toggleHide();
   if(e.code==="KeyQ"&&started&&!over) knock();
+  if(e.code==="KeyL"&&started&&!over) toggleLights();
+  if(e.code==="KeyB"&&started&&!over) killLights();
   if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
@@ -1365,6 +1382,27 @@ function nudge(){
 // they do not help you get rich - 4.4's economic loop is untouched.
 const curseSight=it=>player.dead&&Math.hypot(it.x-player.x,it.z-player.z)<=CURSE_SIGHT_M;
 
+// The two levers the crew actually has over the pacing spine.
+function toggleLights(){
+  const r=roomAt(player.x,player.z);
+  if(!r||r.van||player.dead) return null;
+  if(lit.has(r.id)){ lit.delete(r.id); return {room:r.id,on:false,cost:0}; }
+  lit.add(r.id);
+  dist=Math.min(100,dist+LIGHT_WING_GAIN);      // silent, and expensive
+  return {room:r.id,on:true,cost:LIGHT_WING_GAIN};
+}
+// The breaker is in the driveway - it is the van's supply, and reaching it means
+// leaving whatever you were doing.
+function killLights(){
+  if(!roomAt(player.x,player.z)?.van) return null;
+  if(!lit.size) return null;                    // nothing to kill
+  const n=lit.size; lit=new Set();
+  dist=Math.max(floorNow(),dist-LEVER_KILL_LIGHTS);
+  breakerUsed++;
+  return {wings:n, drop:LEVER_KILL_LIGHTS};
+}
+const roomLit=id=>lit.has(id);
+
 function crewTarget(){
   let best=null,bd=1e9;
   for(const a of actors()){
@@ -1656,6 +1694,12 @@ function render(){
   gl.uniform1f(U.uRange, player.dead?26.0:player.hiding?12.0:(marked?11.5:19.0));
   gl.uniform1f(U.uCone, marked?0.88:0.80);
   gl.uniform1f(U.uAmbient, player.dead?0.10:player.hiding?0.115:0.045);
+  const litRooms=ROOMS.filter(r=>lit.has(r.id)).slice(0,8);
+  const buf=new Float32Array(32);
+  litRooms.forEach((r,i)=>{ buf[i*4]=r.x-r.w/2; buf[i*4+1]=r.z-r.d/2;
+    buf[i*4+2]=r.x+r.w/2; buf[i*4+3]=r.z+r.d/2; });
+  gl.uniform4fv(U.uLit,buf);
+  gl.uniform1i(U.uLitN,litRooms.length);
 
   for(const r of ROOMS){
     drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
@@ -1789,6 +1833,7 @@ function hud(){
     : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
     : (held&&aimedCrew()) ? `[E] hand it to ${aimedCrew().name}`
     : player.dead ? "the crew cannot hear you think  ·  [Q] knock (1)   [E] nudge (3)"
+    : (roomAt(player.x,player.z)?.van&&lit.size) ? `[B] kill the lights  (-${LEVER_KILL_LIGHTS} disturbance)`
     : held ? "[E] drop    [F] appraise"
     : aim ? shelfPrompt(aim)
     : "";
@@ -1808,6 +1853,7 @@ function hud(){
         "◇".repeat(STATIC_CAP-player.static)}  ·  [Q] knock  [E] nudge</span><br>`:"")+
     (curator.open>0?`<span style="color:#c97155">SOMETHING IS AT THE DOOR  ${
       (HIDE_OPEN_S-curator.open).toFixed(1)}s</span><br>`:"")+
+    (lit.size?`<span style="color:#b09a54">${lit.size} wing${lit.size>1?"s":""} lit</span><br>`:"")+
     (items.some(i=>i.stash>0)?`<span style="color:#8b8880">stashed ${
       Math.ceil(Math.max(...items.map(i=>i.stash)))}s</span><br>`:"")+
     `<span style="color:#8b8880">${tierOf(dist)} ${dist.toFixed(0)}</span>`+
@@ -1930,6 +1976,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   vanSlots:()=>van.slots,
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
+  lights:()=>({lit:[...lit], breakerUsed}),
+  toggleLights, killLights,
   broken:()=>broken.slice(),
   knock, nudge, curseSight:i=>{const it=items.filter(x=>!x.gone)[i];
     return it?curseSight(it):null;},

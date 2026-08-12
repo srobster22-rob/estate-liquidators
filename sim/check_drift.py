@@ -213,6 +213,10 @@ for i, quota in enumerate(ct["quota_measured_210s"]):
     check(f"JS3d measured_quota[{i}]",
           mh.group(1).split(",")[i] if mh else None, quota)
 
+check("JS3d light_wing_gain", grab(js3, r"LIGHT_WING_GAIN=(\d+)"), d["light_wing_gain"])
+check("JS3d lever_kill_lights", grab(js3, r"LEVER_KILL_LIGHTS=(\d+)"),
+      d["lever_kill_lights"])
+
 dd = TUNING["dead"]
 check("JS3d collection_seconds", grab(js3, r"COLLECT_S=([\d.]+)"), dd["collection_seconds"])
 check("JS3d static_cap", grab(js3, r"STATIC_CAP=(\d+)"), dd["static_cap"])

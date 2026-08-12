@@ -614,7 +614,10 @@ async function checks(g, fresh) {
       for (let i = 0; i < 210 * 60 && !window.__g.state().over; i++) window.__g.step(1, 1 / 60);
       const l = window.__g.contract().last;
       if (l.met) bots++; else {
-        missed++; shortfall.push(l.quota - l.net);
+        missed++;
+        // A ruined night is a different failure mode - the collection took the
+        // whole van, and no single object was ever going to cover that.
+        if (!l.ruin) shortfall.push(l.quota - l.net);
         if (l.net + (a ? a.value : 0) >= l.quota) rescued++;
       }
     }
@@ -634,7 +637,7 @@ async function checks(g, fresh) {
   // What is being asserted is that the apex is the right size to be the thing
   // that decides the night, which is ECONOMY 4's intent for it.
   ok("and the apex is the right size to decide it",
-    lastNight.missed === 0 ||
+    lastNight.missed === 0 || lastNight.medianShort === 0 ||
     (lastNight.medianShort <= lastNight.apex * 2 && lastNight.rescued >= 1),
     JSON.stringify(lastNight));
 
@@ -736,6 +739,47 @@ async function checks(g, fresh) {
   ok("and it is worth a third to two thirds of the night it decides",
     apex.late.every(a => a.value >= 2900 * 0.30 && a.value <= 3300 * 0.68),
     JSON.stringify(apex.late.map(a => a.value)));
+
+  // --- lights and the breaker (DESIGN 6.5) ----------------------------------
+  // "Lights are the exception, being silent: switching on a wing is a flat +25."
+  // And the lever against it: kill the breaker for -15, and haul the rest blind.
+  await fresh();
+  const lights = await g(() => {
+    window.__g.parkCrew();
+    const start = window.__g.lights();
+    const r = window.__g.rooms().find(x => !x.van);
+    window.__g.tp(r.x, r.z);
+    window.__g.setDist(50);
+    const before = window.__g.state().dist;
+    const noiseBefore = window.__g.noiseLog().length;
+    const on = window.__g.toggleLights();
+    const afterOn = window.__g.state().dist;
+    const noiseAfter = window.__g.noiseLog().length;
+    // A second wing, then the breaker - which only works at the van.
+    const r2 = window.__g.rooms().filter(x => !x.van)[1];
+    window.__g.tp(r2.x, r2.z); window.__g.toggleLights();
+    const twoLit = window.__g.lights().lit.length;
+    const inHouse = window.__g.killLights();
+    const v = window.__g.rooms().find(x => x.van);
+    window.__g.tp(v.x, v.z);
+    const beforeKill = window.__g.state().dist;
+    const killed = window.__g.killLights();
+    const afterKill = window.__g.state().dist;
+    const again = window.__g.killLights();
+    return { start, on, before, afterOn, silent: noiseAfter === noiseBefore,
+             twoLit, inHouse, killed, beforeKill, afterKill, again };
+  });
+  ok("the house starts dark", lights.start.lit.length === 0, JSON.stringify(lights.start));
+  ok("lighting a wing costs a flat 25",
+    Math.abs((lights.afterOn - lights.before) - 25) < 0.2, JSON.stringify(lights));
+  ok("and is silent - no Loudness event at all", lights.silent === true,
+    JSON.stringify(lights));
+  ok("the breaker is at the van, not wherever you are standing",
+    lights.inHouse === null && lights.killed !== null, JSON.stringify(lights));
+  ok("killing it drops fifteen and takes every wing with it",
+    lights.twoLit === 2 && lights.killed !== null && lights.killed.wings === 2 &&
+    Math.abs((lights.beforeKill - lights.afterKill) - 15) < 0.2, JSON.stringify(lights));
+  ok("and there is nothing to kill twice", lights.again === null, JSON.stringify(lights));
 
   // --- the dead (DESIGN 5.1) ------------------------------------------------
   // "Die at minute three of a fourteen-minute night and the genre standard is

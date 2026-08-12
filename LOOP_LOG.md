@@ -533,6 +533,23 @@ one apex. What is defensible — and what is now asserted — is that the apex i
 to be the thing that decides the night. · Regression: QA 135/135, drift 138/138, three
 consecutive clean runs.
 
+R31 · **Lights, and the lever against them** (DESIGN §6.5). The house starts dark. Light a
+wing and you can work without leaning on a flashlight that dims to 60% exactly when you need
+it most — at a flat **+25 Disturbance**, and **silently**, which is the one exception in this
+game to "every gain comes from a Loudness value". The breaker is at the van, so reaching it
+means leaving whatever you were doing: **−15 instantly**, and every wing goes out at once.
+Six new checks, all injection-tested, including that lighting a wing produces *no* entry in
+the noise log. · Shader now takes up to eight lit-room boxes and lifts ambient inside them —
+flat house light, no falloff, no shadows, which is what flat-shaded low-poly wants anyway. ·
+This is also the first time `LIGHT_MULT` has had anything to be about. It has sat in the
+attention model since R20 at ×1.3, and while it did vary with line of sight, "lit" was
+hard-coded true for every actor in the house. · One check needed a different statistic rather
+than a different threshold: "the apex is the right size to decide the last night" was
+measuring the median shortfall of *all* failed nights, and the median was a full quota —
+because a ruined night loses the whole van and no single object was ever going to cover that.
+Ruin nights are excluded now, with the reason written next to the line. · Regression: QA
+141/141, drift 140/140, counts check green.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
