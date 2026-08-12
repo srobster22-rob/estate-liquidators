@@ -60,7 +60,13 @@ CLASS_DATA = {
     "apex":    (5.0, 1, 1.18, 20.0),   # dolly 2.2 m/s, plus loading a piano onto it
 }
 
-QUOTAS = [2000, 4500, 8000, 15000]
+# The CALIBRATED curve (ECONOMY.md 4). This file still ran the retracted
+# [2000, 4500, 8000, 15000] until R27 - the curve its own recalibration replaced, the
+# one ECONOMY.md carries a warning box about ("nights 1-3 passed 100% of the time and
+# night 4 passed 1%: three formalities followed by a wall"). So the model that produced
+# the fix went on printing the broken result as current output. Fifth instance of a
+# retracted constant surviving in one implementation; see LOOP_LOG R27.
+QUOTAS = [7500, 9000, 10750, 12500]
 VAN_BY_NIGHT = [14, 15, 17, 19]        # shelving upgrades, ceiling 20
 
 
@@ -257,7 +263,7 @@ if __name__ == "__main__":
         print(f"{a['night']:<7}{a['mean']:>13,.0f}{b['mean']:>13,.0f}"
               f"{d:>10.1%}{a['apex']:>9.0%}")
 
-    print("\n\nCREW SIZE — night 4 ($15,000, van 19)")
+    print(f"\n\nCREW SIZE — night 4 (${QUOTAS[3]:,}, van {VAN_BY_NIGHT[3]})")
     print("-" * 78)
     print(f"{'crew':<7}{'mean $':>12}{'p10 $':>12}{'pass':>9}{'apex':>8}")
     for crew in (2, 3, 4, 5, 6):

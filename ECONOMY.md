@@ -285,6 +285,14 @@ says the economy mildly *prefers more people* (+12% from 4 to 6, with diminishin
 The honest position is that **the case for four is voice legibility, not money** — and D-18
 has been corrected to say so.
 
+**R27 note.** That 40% margin is now measurable rather than asserted. `chain_sim.py` had been
+running the *retracted* quota curve — the $2,000/$4,500/$8,000/$15,000 one this document carries
+a warning box about — from the recalibration until R27, so every pass rate it printed described
+the curve that was thrown away (night-4 pass 1% at crew 4). Pointed at the calibrated curve it
+reproduces this section's numbers closely — **94% / 73% / 56% / 42%** against the recorded
+~95% / ~73% / ~55% / ~40% — and night 4 at crew 4 lands on **41%**, which is the 40% margin the
+decision was written around. The document was right the whole time; the model was stale.
+
 ### The three models it took to get here
 
 Recorded because the wrong ones were each convincingly wrong:

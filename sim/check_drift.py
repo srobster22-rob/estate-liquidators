@@ -72,7 +72,7 @@ TUNING = json.loads((ROOT / "tuning.json").read_text(encoding="utf-8"))
 
 # Pinned so the headline count is machine-checked. Raise it deliberately when you
 # add a check; a drop means checks silently stopped running.
-EXPECTED_CHECKS = 157
+EXPECTED_CHECKS = 166
 
 # Canonical constants with no implementation to check against, and why. Anything
 # here that turns out to BE covered is reported as a stale exemption.
@@ -155,6 +155,9 @@ IMPL_KEYS = {
         "van.slot_cost.cart",
         *(f"retrieval.{n}" for n in ("dormant", "patrol", "pursue", "collect")),
         "night.crew", "night.seconds", "night.haul_window_seconds",
+        "contract.nights",
+        *(f"contract.quota_night{i}" for i in range(1, 5)),
+        *(f"contract.van_night{i}" for i in range(1, 5)),
     },
 }
 
@@ -509,6 +512,22 @@ check("van.base_slots", "py curse VAN",
 check("night.haul_window_seconds", "py chain HAUL_WINDOW_S",
       grab(sims["chain_sim.py"], r"^HAUL_WINDOW_S\s*=\s*([\d.]+)", flags=re.M),
       n["haul_window_seconds"])
+# The contract chain. QUOTAS is a LIST, so R21's declared-constant name-scan cannot see
+# it - and that gap is exactly how the retracted quota curve survived in chain_sim.py
+# from the recalibration until R27, with the file printing the broken pass rates as
+# current output. Checked element by element.
+c = TUNING["contract"]
+_q = [x.strip() for x in (grab(sims["chain_sim.py"], r"^QUOTAS\s*=\s*\[([^\]]*)\]",
+      cast=str, flags=re.M) or "").split(",") if x.strip()]
+_v = [x.strip() for x in (grab(sims["chain_sim.py"], r"^VAN_BY_NIGHT\s*=\s*\[([^\]]*)\]",
+      cast=str, flags=re.M) or "").split(",") if x.strip()]
+check("contract.nights", "py chain nights", float(len(_q)) if _q else None, c["nights"])
+for i in range(1, 5):
+    check(f"contract.quota_night{i}", f"py chain quota[night {i}]",
+          float(_q[i - 1]) if len(_q) >= i else None, c[f"quota_night{i}"])
+    check(f"contract.van_night{i}", f"py chain van[night {i}]",
+          float(_v[i - 1]) if len(_v) >= i else None, c[f"van_night{i}"])
+
 # Scope to CLASS_DATA: TIER_DATA above it is keyed by the same class names and an
 # unanchored match reports a value band ($80) as a slot cost. chain_sim also calls
 # the cart class `apex`, so map the name rather than generating it.

@@ -483,6 +483,31 @@ super-linear cost has turned a corner solution into a decision in this design. W
 designer's call is whether to ship a mechanic at all; the simulation no longer argues against it.
 · Housekeeping: a worker restart mid-round left panels G and H duplicated in the file. Removed.
 
+R27 · Went looking for other published numbers sourced from clock-gated models, and found a
+larger problem first: **`chain_sim.py` was running the retracted quota curve.** `ECONOMY.md` §4
+carries a warning box about the original curve — "nights 1–3 passed 100% of the time and night 4
+passed **1%**: three formalities followed by a wall" — and lists it as
+**$2,000 / $4,500 / $8,000 / $15,000**. That is exactly what `chain_sim.py:63` still held, from
+the recalibration until now. The model that produced the fix never adopted it, and had been
+printing the broken pass rates (0% / 0% / 1% / 7% / 20% across crew sizes) as current output.
+**Fifth instance of a retracted constant surviving in one implementation** — after R17's two
+prototypes, R20's `integrated.py`, and R21's `disturbance.py`. · **R21's declared-constant audit
+could not see it, and that gap is the real lesson.** `QUOTAS` is a *list*, and the audit only
+scans `NAME = <scalar>`. So the guard built specifically to end this class had a shape it could
+not inspect. Made the contract chain canonical — `tuning.json` now carries `contract.*` with the
+quota curve and van ladder — and added element-wise checks. **157 → 166 checks, 59 → 68
+constants.** Negative-controlled by reverting the curve: caught, per night, by name. · **The fix
+validates itself against the document.** Pointed at the calibrated curve, `chain_sim` reproduces
+ECONOMY §4's recorded pass rates almost exactly — **94% / 73% / 56% / 42%** against the recorded
+~95% / ~73% / ~55% / ~40% — and night 4 at crew 4 lands on **41%**, which is the "40% overflow
+margin" D-18 was written around. The document had been right the whole time; the model was stale.
+That is the reverse of the usual finding here, and worth saying plainly. · Also fixed a hardcoded
+`$15,000` in the crew-size panel header, which had gone on printing the retracted quota even
+after the curve was corrected — the label is now derived from `QUOTAS`. · Crew-size *means* are
+unchanged ($5,108 / $10,131 / $12,131 / $12,820 / $13,586 for crews 2–6), so D-18's reasoning and
+ECONOMY §8 stand; only the pass rates were wrong, and they were wrong in the direction that made
+the chain look unwinnable.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

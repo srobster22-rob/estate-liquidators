@@ -92,6 +92,8 @@ The four that mattered earliest:
   24 and 32 slots. Van capacity is the master constant.
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
+- The quota curve is calibrated and now *verified* — 94% / 73% / 56% / 42% pass across the four
+  nights (R27; `chain_sim.py` had been running the retracted curve until then).
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4
   passed 1%. Recalibrated against simulated earnings.
 - Depth must unlock on **work, not wall-clock**, or bigger crews earn *less* — a bug that
