@@ -373,6 +373,32 @@ height and the camera is at 1.62m. The same mistake R19's test made, in a differ
 rounds later. A harness bug that produces a plausible-looking small number is the most
 dangerous kind, and this one would have "proved" the appraiser was worth +900%.
 
+R26 · Re-ran the contract chain — the progression spine — against the economy as it now
+stands, since ECONOMY §4's curve was fitted before curses were in the earnings model and three
+rounds have moved it since. · **The curve was badly miscalibrated and, worse, it forced the
+greed it claims to price.** Against it the best policy passed night 1 **69%** of the time
+(target 95%) and completed the chain 14%; a crew that refused every cursed item passed night 3
+**5%** of the time and night 4 **never**, so "greed is the difficulty slider" was false —
+cursed cargo was mandatory from night 2. Recalibrated to **5,750 / 7,250 / 8,750 / 10,250**,
+which restores the intended arc: careful crews pass 87/61/34/10, greedy crews 73/70/67/64.
+· **Found a hard ceiling nobody had noticed: the ruin lottery caps a greedy crew at ~74% no
+matter what the quota is.** Set night 1 to a single dollar and it still fails a quarter of the
+time, because that is how often the van does not come home. The 95% night-1 target was
+unreachable by a gambling crew *by construction*, and is reachable by a careful one — which is
+what makes the arc work, and is now written down as D-26. · **And the arc inverts, which is
+better than a difficulty ramp.** Caution is the *correct* play on night 1 (87% against 73%)
+and loses two nights in three by night 3. Playing safe once and then committing completes the
+chain 26%, beating both pure strategies. · **Third finding, and it is a progression bug:
+shelving upgrades are worthless to a careful crew** — +5% across vans 14→19, because refusing
+a third of what they find makes them time-bound rather than slot-bound, so the extra shelves
+stay empty. The reward for progressing only pays the crew already gambling. Flagged before
+Phase 4 builds a shop around it. · The quota curve had also been living in three places with
+three different values — ECONOMY's prose, `chain_sim`'s `QUOTAS` (two revisions stale), and
+the calibration nobody had re-run. Now canonical in `tuning.json`, asserted in `chain_sim`,
+and re-derived from the ECONOMY table by `check_docs.py`. · One bug this round, and it was
+mine: the doc checker read "$5,750" as 5, because its number parser stopped at the thousands
+comma. Fixed the pattern, not the document — the same rule R14 wrote after the same mistake.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

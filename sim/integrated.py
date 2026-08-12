@@ -105,14 +105,14 @@ def depth_at(t):
     return tier
 
 
-def scan_cap_of(strategy, slots):
+def scan_cap_of(strategy, slots, slots_total=VAN_SLOTS):
     """How many of the CANDIDATES items this policy examines at one shelf."""
     if strategy == "BLIND":
         return 0
     if strategy == "SCAN":
         return CANDIDATES
     if strategy == "ADAPTIVE":
-        return CANDIDATES if slots <= 0.5 * VAN_SLOTS else 0
+        return CANDIDATES if slots <= 0.5 * slots_total else 0
     if strategy.startswith("CAP_"):     # scan at most N, then commit
         return int(strategy[4:])
     if strategy.startswith(("THRESH_", "SKIP_", "MARGIN_")):
@@ -121,7 +121,7 @@ def scan_cap_of(strategy, slots):
 
 
 def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RISK_K,
-              curse_cap=None, carry_tell=CARRY_TELL):
+              curse_cap=None, carry_tell=CARRY_TELL, van_slots=VAN_SLOTS):
     """
     One night with Disturbance and the haul loop fully coupled.
 
@@ -133,7 +133,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
     rng = random.Random(seed)
     d = 0.0
     t = 0.0
-    slots = float(VAN_SLOTS)
+    slots = float(van_slots)
     banked = 0.0
     scans = 0
     lost = 0
@@ -157,7 +157,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
         per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY)
 
         # Hold slots back for depth we know is coming.
-        if filled >= TIER_CAP[tier] * VAN_SLOTS and tier < 3:
+        if filled >= TIER_CAP[tier] * van_slots and tier < 3:
             t += per_trip          # scout / stage instead of hauling junk
             continue
 
@@ -168,7 +168,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
         # marked-up one, so a cursed piece clears any bar a clean one would.
         if modelling_curses:
             candidates = [v * GRADE_MULT[g] for v, g in zip(candidates, grades)]
-        cap = scan_cap_of(strategy, slots)
+        cap = scan_cap_of(strategy, slots, van_slots)
         appraise = cap > 0
 
         cost = per_trip
@@ -327,7 +327,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
             0.95, RUIN_K * cursed_aboard ** RUIN_EXP)
         banked = 0.0 if ruined else gross - fees
 
-    return (banked, scans, lost, d, VAN_SLOTS - slots, filled, t,
+    return (banked, scans, lost, d, van_slots - slots, filled, t,
             cursed_aboard, 1.0 if (modelling_curses and banked == 0.0) else 0.0)
 
 
@@ -426,6 +426,31 @@ if __name__ == "__main__":
     print("cursed pieces and loses the van 57% of the time. MARGIN_p judges each item by")
     print("what it ADDS - value net of fees and of the ruin it raises - and needs no cap at")
     print("all. Capping it makes it worse. One rule instead of two.")
+
+    print("\n\nR26 — THE CONTRACT CHAIN, AGAINST THE CURRENT ECONOMY")
+    print("ECONOMY 4's curve was calibrated before curses were in the earnings model.")
+    print("Pass rate per night for a crew that REFUSES every curse, and one that takes")
+    print("what pays. Quotas and van sizes from tuning.json.")
+    print("-" * 78)
+    import json as _json
+    _prog = _json.loads((__import__("pathlib").Path(__file__).resolve().parent.parent
+                         / "tuning.json").read_text())["progression"]
+    QUOTAS, VANS = _prog["quotas"], _prog["van_by_night"]
+    print(f"{'crew':<24}" + "".join(f"  night {i + 1}" for i in range(4)) + "    chain")
+    for label, cap in (("careful (no curses)", 0), ("greedy (takes what pays)", 99)):
+        rates = []
+        for q, v in zip(QUOTAS, VANS):
+            res = [run_night(s, "MARGIN_30", curse_cap=cap, van_slots=v)[0]
+                   for s in range(1200)]
+            rates.append(sum(1 for r in res if r >= q) / len(res))
+        chain = 1.0
+        for r in rates:
+            chain *= r
+        print(f"{label:<24}" + "".join(f"{r:>9.0%}" for r in rates) + f"{chain:>9.0%}")
+    print("\nThe ruin lottery is a CEILING: a crew taking curses cannot pass more than")
+    print("~74% of nights at any quota, because that is how often the van survives. The")
+    print("intended 95% night-1 pass rate is reachable only by a crew that gambles with")
+    print("nothing - which is the arc, and it is now the arc on purpose.")
 
     print("\n\nGREED: does hauling cursed cargo change the calculus?")
     print("-" * 78)

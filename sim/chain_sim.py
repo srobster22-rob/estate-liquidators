@@ -58,7 +58,10 @@ CLASS_DATA = {
     "apex":    (5.0, 1, 1.18, 20.0),   # dolly 2.2 m/s, plus loading a piano onto it
 }
 
-QUOTAS = [2000, 4500, 8000, 15000]
+# R26: these were the ORIGINAL quotas, two revisions stale - ECONOMY 4 had
+# recalibrated them once and nobody changed them here, and the curve moved again
+# when curses entered the earnings model. Canonical in tuning.json now.
+QUOTAS = [5750, 7250, 8750, 10250]
 VAN_BY_NIGHT = [14, 15, 17, 19]        # shelving upgrades, ceiling 20
 
 

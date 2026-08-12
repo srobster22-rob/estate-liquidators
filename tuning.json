@@ -87,6 +87,13 @@
     "collect": 0.25
   },
 
+  "progression": {
+    "_source": "ECONOMY.md 4, recalibrated LOOP_LOG R26 against the curse economy",
+    "_why": "The quota curve existed in three places with three different values: ECONOMY's prose, chain_sim's QUOTAS, and the calibration nobody had re-run since curses entered the model.",
+    "quotas": [5750, 7250, 8750, 10250],
+    "van_by_night": [14, 15, 17, 19]
+  },
+
   "night": {
     "_source": "DESIGN.md 3",
     "seconds": 720,

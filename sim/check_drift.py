@@ -55,6 +55,9 @@ def flatten(node, prefix=""):
         path = f"{prefix}{k}"
         if isinstance(v, dict):
             out.update(flatten(v, path + "."))
+        elif isinstance(v, list) and all(isinstance(x, (int, float)) for x in v):
+            for i, x in enumerate(v):
+                out[f"{path}.{i}"] = float(x)
         elif isinstance(v, (int, float)):
             out[path] = float(v)
     return out
@@ -326,6 +329,11 @@ assert_("py/haul_sim", "van.base_slots", r"^VAN_SLOTS = (\d+)")
 
 assert_("py/chain_sim", "van.base_slots", r"^VAN_BASE = (\d+)")
 assert_("py/chain_sim", "night.haul_window_seconds", r"^HAUL_WINDOW_S = ([\d.]+)")
+for i in range(4):
+    assert_("py/chain_sim", f"progression.quotas.{i}",
+            r"^QUOTAS = \[" + r"\s*\d+,\s*" * i + r"\s*(\d+)", group=1)
+    assert_("py/chain_sim", f"progression.van_by_night.{i}",
+            r"^VAN_BY_NIGHT = \[" + r"\s*\d+,\s*" * i + r"\s*(\d+)", group=1)
 PY_CLASS = r"CLASS_DATA = \{.*?\n\}"
 for key, name in (("pocket", "pocket"), ("armful", "armful"),
                   ("two_man", "two_man"), ("cart", "apex")):
@@ -460,6 +468,8 @@ WAIVERS = [
     ("py/chain_sim", "night.seconds", "models the haul window only"),
     ("py/chain_sim", "night.crew", "crew size is the swept variable"),
     ("py/chain_sim", "night.appraise_seconds", "appraising is not modelled here"),
+    ("*", "progression.*",
+     "the contract chain is chain_sim's subject; every other model runs one night"),
 
     ("py/attention", "loudness.*", "attention counts noise EVENTS, not their loudness"),
     ("py/attention", "loudness_constants.*", "as above"),

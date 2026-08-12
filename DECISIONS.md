@@ -470,6 +470,30 @@ a glanceable risk state rather than a number.
 
 ---
 
+## D-26 · Quotas are calibrated against the crew that gambles with nothing
+**Status:** HELD · `ECONOMY.md` §4, `tuning.json` → `progression`
+
+The quota curve is fitted so a **careful** crew — one that refuses every cursed item — passes
+night 1 about 87% of the time and night 4 about 10%. It is not fitted to the crew that takes
+what pays.
+
+It cannot be. Cursed cargo carries a per-night chance the collection reclaims the whole van,
+so a greedy crew's pass rate has a hard ceiling around **74%** — at *any* quota, including
+zero. Fitting the curve to that crew would mean a night-1 quota so low the game has no floor,
+and it would still fail a quarter of the time for reasons no player could act on.
+
+Calibrating against the careful crew produces the arc the design always claimed: caution is
+the *correct* play on night 1 (87% against 73%), and by night 3 it is losing two nights in
+three. Switching posture once, mid-chain, beats both pure strategies. Greed is the difficulty
+slider, and now the slider has a measured position on it for every night.
+
+**Falsified if:** playtest pass rates come in far above these — most likely because real crews
+are better at routing than the model's every-trip-is-average assumption, in which case the
+whole curve shifts up together and keeps its shape. Refit; don't redesign. Also falsified if
+crews report night 1 as a formality: the target is *survivable*, not free.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

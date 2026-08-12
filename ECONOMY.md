@@ -94,16 +94,41 @@ crew skill.
 > | 3 | $8,000 | 100% |
 > | 4 | $15,000 | **1%** |
 
-**Calibrated curve.** A crew earns $9,373 / $9,919 / $10,997 / $12,152 across the four nights
-— only **+30% growth**, because van capacity rises just 14→19 and the estates are equally
-rich every night. The quota has to live inside that range or the chain has no shape.
+**Calibrated curve — recalibrated in R26**, because the previous one was fitted before curses
+entered the earnings model and the economy has moved three times since. Against it, the best
+policy passed night 1 only **69%** of the time and completed the chain 14%; the "you can be a
+coward and survive" night was failing a third of the time. Canonical in `tuning.json`
+(`progression`); reproduce with `python3 sim/integrated.py`.
 
-| Night | Quota | Van | Sim mean | Pass rate | Feel |
+| Night | Quota | Van | Careful crew passes | Greedy crew passes | Feel |
 |---:|---:|---:|---:|---:|---|
-| 1 | $7,500 | 14 | $9,373 | ~95% | you can be a coward and survive |
-| 2 | $9,000 | 15 | $9,919 | ~73% | tier 2 is now mandatory |
-| 3 | $10,750 | 17 | $10,997 | ~55% | someone has to go into a sealed wing |
-| 4 | $12,500 | 19 | $12,152 | ~40% | above the mean. The apex is not optional. |
+| 1 | $5,750 | 14 | **87%** | 73% | you can be a coward and survive — and it is the *better* play |
+| 2 | $7,250 | 15 | 61% | 70% | caution starts costing more than it saves |
+| 3 | $8,750 | 17 | 34% | 67% | the sealed wing, and the first cursed piece you actually want |
+| 4 | $10,250 | 19 | 10% | 64% | greed is no longer optional |
+| | | | chain **2%** | chain **22%** | switch postures once and it is **26%** |
+
+**Three things this measurement found.**
+
+**1. The ruin lottery is a ceiling, and nobody had noticed.** A crew that takes cursed cargo
+loses the entire van about a quarter of the time, so **it cannot pass more than ~74% of nights
+at any quota at all** — set night 1 to a dollar and it still fails 26% of the time. The 95%
+pass rate the old curve aimed at was never reachable by a greedy crew. It is reachable by a
+careful one, which is what makes the arc work.
+
+**2. The optimal risk posture inverts across the chain**, and that is the shape the design
+wanted without ever having stated it. On night 1 caution beats greed (87% against 73%),
+because the quota is low enough that gambling only adds a way to lose. By night 3 caution is
+losing two nights in three. A crew that plays safe once and then commits completes the chain
+**26%** of the time, beating both pure strategies — the arc is a decision, not a difficulty
+ramp.
+
+**3. Shelving upgrades are worthless to a careful crew.** Their earnings move $7,594 → $7,969
+across vans 14→19 — **+5%** — because refusing roughly a third of what they find makes them
+time-bound rather than slot-bound, so the extra shelves stay empty. The upgrade that is
+supposed to be the progression reward only pays the crew already gambling. Worth fixing before
+Phase 4 ships a shop: the careful path needs a reward denominated in *time* or *routes*, not
+in slots.
 
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses

@@ -54,7 +54,14 @@ def rows(text, heading):
 
 
 def number(cell):
-    m = re.search(r"(\d+(?:\.\d+)?)", cell.replace("**", ""))
+    """
+    First number in a cell. Strips the thousands comma and the dollar sign -
+    without that, "$5,750" parses as 5 and the checker reports a disagreement
+    that is entirely its own. R14 lost time to three regexes like this one; the
+    rule is the same as it was then: fix the pattern, never the document.
+    """
+    m = re.search(r"(\d+(?:\.\d+)?)", cell.replace("**", "").replace(",", "")
+                                            .replace("$", ""))
     return float(m.group(1)) if m else None
 
 
@@ -114,6 +121,21 @@ for row in rows(econ, "## 1. Van capacity"):
 
 check("ECONOMY 1 base van", number(econ.split("**Base van:")[1][:12]),
       T["van"]["base_slots"], 1e-9)
+
+# ------------------------------------------------------- ECONOMY 4
+# The quota curve lived in ECONOMY's prose, in chain_sim, and in a calibration
+# nobody had re-run - three places, three values (R26).
+prog = T["progression"]
+night_rows = [r for r in rows(econ, "## 4. Quota curve")
+              if r[0].strip().isdigit()]
+for r in night_rows:
+    n = int(r[0]) - 1
+    if n < len(prog["quotas"]):
+        check(f"ECONOMY 4 night {n + 1} quota", number(r[1]), prog["quotas"][n], 1e-9)
+        check(f"ECONOMY 4 night {n + 1} van", number(r[2]), prog["van_by_night"][n], 1e-9)
+if len(night_rows) != len(prog["quotas"]):
+    fails.append(f"ECONOMY 4: table has {len(night_rows)} nights, "
+                 f"tuning.json has {len(prog['quotas'])}")
 
 # ------------------------------------------------------- DESIGN 4.2
 design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
