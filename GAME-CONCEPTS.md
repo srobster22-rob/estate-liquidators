@@ -5,8 +5,9 @@ concepts** in nine families, a ranked top eight, and a graveyard of thirty-one.
 
 All 47 cards have been checked against the market. **Seven were games that already exist; one
 was recovered from the graveyard once its rejection was audited.** The
-[verification ledger](#verification-ledger) below is the current source of truth; where a
-card's `Nearest` field disagrees with it, the ledger is newer.
+[verification ledger](#verification-ledger) records what the search found for **every card**,
+and the six cards it contradicted have been rewritten — so the cards and the ledger no longer
+disagree, and there's no "trust the newer one" clause to remember.
 
 **Pass two — the action amendment.** The first pass produced 40 concepts with no twitch, no aim
 and no combat depth anywhere in them, and the self-audit at the bottom called that a bias of
@@ -109,14 +110,62 @@ Simulator* exists and is unquestionably in the same room, but whether it models 
 — the actual bet — isn't in the store copy or any review. It needs two hours of play, not more
 searching. Counted above as wounded, listed separately because the instrument is different.
 
-**Six were checked-empty in a way worth naming**, because these are the ones where "nobody has
-done this" is now a finding rather than a failure of recall: **#18 Luthier** (no instrument-
-building game with DSP as the win condition — the field is a Stanford course and the NESS
-project), **#22 Escrow** (player-written enforced contracts exist only in academic
-market-simulation papers and one game patent), **#30 Foley** (no foley game at all), **#42
-Throng** (crowd-as-fluid exists as [SPH crowd-simulation research](https://www.sciencedirect.com/science/article/abs/pii/S0097849321001205), never as an action game),
-**#44 Ghosts** (ghost replays are universally cosmetic; nobody has made them lethal), and
-**#24 Wake** (no social deduction game where you win by *keeping* a secret).
+### What the search actually found, per card
+
+The cards' `Nearest` fields are a design argument — *why* a comparable matters. **This table is
+the verification record.** Keeping them apart is deliberate: copying findings onto forty cards
+would recreate exactly the drift this repo's `IMPROVE-PROMPT.md` exists to fight. Where a
+card's `Nearest` is factually *contradicted* by this table, the card was rewritten (#2, #34,
+#37, #40, #41, #46); everywhere else the card's argument stands and this is the evidence.
+
+`EMPTY` = a real search found nothing at all. That is a finding, not a failure of recall.
+
+| # | Concept | What the search surfaced |
+|---|---|---|
+| 1 | Party Line | *911 Operator* (has a map — the map does the work), *Emergency Call 112*, *SIM Dispatcher*. Nothing built on conflicting testimony. **Name risk:** the 2025 narrative game *Dispatch* owns the word |
+| 2 | Sworn | **[*Arsenic*](https://playarsenic.com/)** — GM agent validating every claim for consistency. *CrimeChat*, *Contradiction: Spot The Liar*. Card rewritten |
+| 4 | Nightshift | *Killer Frequency*, *Night Call*, *Dead Air Radio*. All content-driven; silence-as-mechanic unoccupied |
+| 5 | Cartographer's Error | Nothing. Closest remains *Death Stranding*'s async structures |
+| 6 | Removals | *Moving Out* / *Moving Out 2* only. The simulation-depth gap is real |
+| 8 | Scaffold | *Construction Crew* (co-op, no structural sim), *Construction Simulator*, *Besiege*, *Poly Bridge*. Structural integrity exists in *Valheim* and *Dwarf Fortress*, never as the game |
+| 10 | Weight | *Carry The Glass* (co-op fragile carry — not accelerometer), Wii-era motion, *Jackbox* phone-as-controller |
+| 11 | Thirty Years of Tuesdays | *100 Years — Life Simulator*, *BitLife*, *King of Dragon Pass*. No weekday elision anywhere |
+| 12 | The Inheritance | *Next, please* (async, builds on predecessors' paths). Save-inheritance between strangers not found |
+| 13 | Slow Mail | **[*Leaving Cambridge*](https://parenthesispress.itch.io/leaving-cambridge)** — letters written across a real calendar year. The bet exists, in tabletop. *Kind Words* |
+| 14 | Erosion | **[*Terra Firma*](https://store.steampowered.com/app/2143140/Terra_Firma/)** — tectonics and erosion over geological time. *From Dust*, *Terra Nil*, *Mountain*. The offline-while-away half is unclaimed |
+| 15 | Ten Year Lease | *[Nova Alea](https://molleindustria.org/nova-alea/)* (gentrification — but you play the investor, not the tenant) |
+| 16 | Provenance | *FakeMuse* (academic serious game). *Strange Horticulture*, *Contraband Police*. Generation unoccupied — **and the kill test has since been run** |
+| 17 | Differential | *Veterinary Clinic Simulator*, *Vetdle*, *VetVR*, *Vety*. **None price the tests**, which is the entire bet |
+| 18 | Luthier | `EMPTY` — no instrument-building game with DSP as the win condition. The field is a Stanford CCRMA course and the NESS project |
+| 19 | The Restorer | *Modelist: Restorer*, *Extremely OK Painting Restoration Studio*, *PowerWash Simulator*. Irreversibility unoccupied |
+| 20 | Ledger | *The Investigation Game* (forensic accounting training, real cases). *Obra Dinn*, *Golden Idol*. Generated fraud unoccupied |
+| 21 | The Commons | *Eco*, and a thick layer of teaching sims — *Fishbanks* (MIT), MobLab's Fishery. Unrigged-as-a-game unoccupied |
+| 22 | Escrow | `EMPTY` — player-written enforced contracts exist only in academic market-simulation papers and one game patent |
+| 23 | Split the Difference | Only the academic ultimatum-game literature (partner vs stranger matching), which corroborates the bet |
+| 24 | Wake | `EMPTY` — no social deduction game where you win by *keeping* a secret |
+| 25 | Bailiff | Nothing. *Papers, Please* and *Beholder* remain the ancestors |
+| 26 | Steady | *SILENT BREATH*, *Hold Your Breath*, *Breathless* — **all breath-as-stealth**. Breath as a precision axis unoccupied. Plus VR archery breath-hold research |
+| 27 | Both Hands | *Two Friends One Keyboard* (itch), LEGO-game split keyboards. Exists as a concession, never as a design |
+| 28 | Hold Music | **[*IVR Adventure Game*](https://rabbitboots.itch.io/ivr-adventure-game)** — audio-only, navigated by touch-tone. It's a cave, not a bureaucracy. Form prototyped |
+| 29 | Pack | *The Wild Wolf* — AI packs where you **assign roles**, i.e. the opposite of the bet. *WolfQuest* |
+| 30 | Foley | `EMPTY` — no foley game at all |
+| 31 | Dead Languages | *Chants of Sennaar*, *Heaven's Vault*, *Tunic*. All hand-authored; generation unoccupied |
+| 32 | Marginalia | Concept not found. **Name taken three times** — a card game, a Connor Sherlock game, and a Steam app. Plus a collaborative e-reading patent. Rename |
+| 34 | Understudy | *Improbotics*, *ImprovMate*, academic co-creative-improv work, *Façade*. Card rewritten and promoted |
+| 35 | Signal | *Broadcast* (itch), *Stories Untold* ep. 3, *Number Spies*. The setting is occupied; **real scheduled scarcity is not** |
+| 37 | Loam | **FS25 soil mods** do full N/P/K, pH, rotation. Card rewritten — my claim was wrong |
+| 38 | Blend | *Potion Craft*, *Potion Shop Simulator*, *VA-11 HALL-A*, *Coffee Talk*. Was flagged suspect; **the flavour-space-with-palates bet is not confirmed occupied**, but the neighbourhood is busy |
+| 39 | Ten Thousand Doors | *P.T.*, *Anatomy*, *Visage*. No door-only game found |
+| 40 | Shelf | **[*Shelf by Shelf: Bookstore Simulator*](https://store.steampowered.com/app/3943720/Shelf_by_Shelf_Bookstore_Simulator/)**. Unresolvable by search — see above |
+| 41 | Tell | **[*Echo*](https://store.steampowered.com/app/551770/ECHO/)** — enemies learn your moves and use them against you. Better comparable than the card had; adapts between cycles, not within a fight. Card rewritten |
+| 42 | Throng | `EMPTY` — crowd-as-fluid exists as [SPH crowd-simulation research](https://www.sciencedirect.com/science/article/abs/pii/S0097849321001205), never as an action game |
+| 44 | Ghosts | `EMPTY` — ghost replays are universally cosmetic (*Trackmania*, *Mario Kart*). Nobody has made them lethal |
+| 46 | Direct | Gaze-directed steering as a **standard VR locomotion technique**; *Cameraman* (itch, but you still walk); US patent 10974149. Card rewritten |
+| 47 | Reservation | *Suck Up!*, *Whispers from the Star*, *1001 Nights*, *Wanderfolk* — **all let the model own the outcome**. *Recettear* is the ancestor without language |
+
+**Seven `EMPTY` results**, and they are the most valuable rows here: #18, #22, #24, #30, #42,
+#44, plus #5. "Nobody has done this" now means a search came back empty rather than that I
+couldn't recall one.
 
 **Three caveats on the survivors, all of which cut the same way.**
 
@@ -566,9 +615,36 @@ family either.
   *Diplomacy* · the *Fishbanks* teaching simulation, which is what this is.
 - **Kills it:** the model has a stable dominant strategy, a solver finds it in an hour, and
   the conversation becomes theatre.
-- **Test:** **solve the model before building anything around it.** The ODE in Python plus a
-  strategy sweep. One day. A dominant strategy found on day one saves a year. This is the only
-  concept here whose kill test is a maths problem rather than a playtest.
+- **Test — RUN, 2026-08-06. `concepts-sim/commons.py`. Passes, but only in a narrow band, and
+  the band is the finding.** Logistic fishery, six players, 24 periods, best-response solver.
+  Four checks: no dominant strategy · mutual restraint beats mutual greed · unilateral
+  restraint stings without being fatal · and a 72-point sweep asking whether *any* parameter
+  region satisfies all three.
+
+  **My guessed numbers failed.** At the parameters I'd have picked by instinct — efficient
+  boats, cheap effort — fishing hard is the right answer against almost anything, keeping your
+  word earns 15% of defecting, and the conversation is exactly the theatre the kill condition
+  describes.
+
+  **Only 4 of 72 parameter points work, and every one has low catchability.** The fishery is
+  a game only when boats are *inefficient and expensive*. A fleet that can strip the stock in
+  three periods has nothing to negotiate about — which is a design constraint with fiction
+  already attached, and it is not a thing a playtest would have told you cheaply.
+
+  At a viable setting: four distinct best responses across opponent profiles (no dominant
+  strategy), restraint pays 1.24×, betrayal leaves you on 41% of the defector's take, and
+  **the social optimum is moderate effort, not maximal restraint** — the right answer is "fish
+  carefully," not "don't fish," which is a far better argument to have at a table.
+
+  *Three of this file's own measurements were wrong before they were right: effort cost was
+  specified three orders of magnitude too small to affect anything (making a sweep over it
+  meaningless, and producing a confident "0/72, structural failure"), a sentinel counted
+  "greed loses money" as a cooperative surplus, and the headline compared two negative
+  payoffs and reported the best outcome on the board as a catastrophe. All three are
+  documented in the file.*
+- **Original test spec, retained:** solve the model before building anything around it. A
+  dominant strategy found on day one saves a year. This is the only concept here whose kill
+  test is a maths problem rather than a playtest.
 - **Scope:** 2 people, 6 months, plus the population problem.
 
 ### 22 · Escrow `NO COMBAT` `UNMARKETABLE`
@@ -1130,7 +1206,7 @@ learn nothing for a quarter.
 | 3 | **Understudy** (#34) | **One hour**, a chat window, ten repeated inputs | An hour — and *Arsenic* has already published how it built the same referee, so a fail is informative rather than just discouraging |
 | 4 | **Party Line** (#1) | One evening, four friends, zero code | Nothing. Literally an evening |
 | 5 | **Wake** (#24) | One evening, printed, zero engineering | An evening. And it ships as a paper game even if the digital version never happens |
-| 6 | **The Commons** (#21) | One day of Python and a solver sweep | Nothing, and a fail saves a year of building a conversation that turns out to be theatre |
+| 6 | **The Commons** (#21) | ~~One day~~ — **RUN. Passes in a narrow band** | Already spent. `concepts-sim/commons.py`: my guessed parameters *failed*; only 4 of 72 work, all with low catchability. The fishery is a game only when boats are inefficient and expensive |
 | 7 | **Foley** (#30) | One day, one clip, six sounds | A day — and the latency measurement across three machines is reusable for anything audio-timed |
 | 8 | **Removals** (#6) | **Zero.** Estate Liquidators Phase 1 already runs it | Nothing. Free information from work you're doing anyway |
 
@@ -1502,18 +1578,56 @@ errors, and genuines were drawn from the rules the detector checked — so two o
 measurements could only ever pass. Caught by the repo's "distrust clean results" rule, which
 has now earned its place twice.
 
+**R8 · Closing the verification drift.** Completed the ledger with a **per-card row for all
+40 live cards** — what the search actually surfaced, not just a verdict — and deleted the
+"where a card disagrees, the ledger is newer" clause, which was a fudge standing in for work.
+Deliberately did *not* copy findings onto forty cards: that rebuilds the drift machine.
+Cards carry the design argument, the ledger carries the evidence, six contradicted cards were
+rewritten. *Found:* seven cards are `EMPTY` — a search returned nothing at all — which is a
+much stronger claim than the "nobody's done this" they carried before.
+
+**R9 · Running The Commons.** Built and ran `concepts-sim/commons.py`. *Found:* **the numbers
+I'd have picked by instinct fail the concept's own kill condition.** Only 4 of 72 parameter
+points work, all with low catchability — the fishery is a game only when boats are inefficient
+and expensive. Also found that the social optimum is *moderate* effort, not maximal restraint,
+which is a better argument to have at a table than the one the card imagined.
+
+### The pattern across R7 and R9, which is now the thing to watch
+
+**Four times in two rounds, my own instrumentation produced a confident wrong answer.**
+Provenance v1 had two tautological measurements. Commons had a cost parameter three orders of
+magnitude too small to matter (producing a decisive "0/72, structural failure"), a sentinel
+that scored "greed loses money" as a cooperative surplus, and a headline that compared two
+negative payoffs and reported the best outcome on the board as a catastrophe.
+
+Every one was caught by the same reflex — `IMPROVE-PROMPT.md`'s **"distrust clean results"** —
+and every one would have shipped a confident, wrong, *quotable* number. The failure rate of my
+own tests is currently higher than the failure rate of the concepts they test. **Two sims in,
+the instrumentation is the least reliable thing in this repo**, which is exactly what the
+Estate Liquidators log said after its first three rounds. Assume the next sim is wrong until it
+has survived an attempt to break it.
+
+**R10 · Guarding the numbers.** Built `concepts-sim/check_numbers.py`, the equivalent of
+`sim/check_drift.py`: it asserts **13 published figures** — every number cards #16 and #21
+quote — plus the two *claims* underneath them, that the optimal threshold rises with expertise
+and that all viable Commons points are low-catchability. **Deliberately taken out of ranked
+order**, ahead of a third kill test, because the round above concluded the instrumentation is
+the least reliable thing here and adding a fourth unguarded sim would compound that.
+
+*Verified it can fail:* perturbing catchability 0.15 → 0.22 drops it to 11/13 and exits 1.
+A guard that cannot fail is the same tautology this round kept catching, so it was checked
+rather than assumed.
+
 ### Next, ranked
 
-1. **Push the sweep's findings onto the individual cards.** Roughly thirty survivors still
-   show memory-based `Nearest` fields while the header claims the set is verified, papered
-   over by "the ledger is newer." That's the drift `IMPROVE-PROMPT.md` exists to fight, and
-   it's the one defect here that actively misleads at the point of use. *Do this next.*
-2. **Run a second kill test — #21 The Commons.** Its test is a solver sweep, it needs no
-   human, and unlike #16 a failure would be decisive rather than partial. It's also the only
-   card whose kill condition is a maths problem.
-3. **Dedupe the prompt.** Four separate clauses now say some version of "search first." One
-   should say it and the rest should point at it.
+1. **A third kill test — #44 Ghosts.** Needs no new game (replay 50 recorded runs as hazards,
+   measure path variance at day 1 vs day 7), it's `EMPTY` on search, and convergence is
+   measurable rather than a matter of taste. Best evidence-per-hour left.
+2. **Dedupe the prompt.** Five separate clauses now say some version of "search first." One
+   should say it and the rest should point at it — `IMPROVE-PROMPT.md`'s "prefer deleting
+   duplication to adding features," applied to the prompt itself.
+3. **#47 Reservation's test needs a human**, and is the highest-value thing in the document
+   that no amount of simulation reaches. Worth saying plainly rather than looping past it.
 
-Left rough deliberately: the per-card `Nearest` reconciliation (item 1) is mechanical and
-large, and doing it badly at the end of a long round is how errors get in. #40 still needs two
-hours of playing *Shelf by Shelf*, which no amount of looping substitutes for.
+Left rough deliberately: #40 still needs two hours of playing *Shelf by Shelf*, which no
+amount of looping substitutes for.
