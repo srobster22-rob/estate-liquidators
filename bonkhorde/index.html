@@ -13,7 +13,21 @@
   html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     -webkit-user-select:none;user-select:none}
-  canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
+  /* phones: the HUD is sized for a 1280px window and has to come down a lot */
+  @media (max-width:720px), (pointer:coarse){
+    #clock{font-size:22px} #phase{font-size:9px;top:34px}
+    #hpwrap{width:min(62vw,300px);bottom:12px}
+    .slot{width:30px;height:30px;font-size:15px}
+    #kit{bottom:34px;gap:4px;max-width:92vw}
+    #stats{font-size:10px}
+    h1{font-size:32px} .sub{font-size:10px;margin-bottom:14px}
+    .card{width:min(44vw,196px);padding:11px 9px}
+    .card .ic{font-size:24px} .card .ds{font-size:10px}
+    .ch{width:min(44vw,158px)}
+    .shop{grid-template-columns:1fr 1fr}
+    .wrap{padding:6px}
+  }
   #ui{pointer-events:none}
 
   /* ---------------------------------------------------------------- HUD */
@@ -150,7 +164,7 @@
 <div class="ov" id="paused"><div class="wrap">
   <h1 style="font-size:34px">PAUSED</h1>
   <div class="sub">click to resume</div>
-  <div class="hint">
+  <div class="hint" id="pauseHint">
     <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> camera &nbsp; <kbd>SPACE</kbd> jump<br>
     weapons fire themselves. your only job is to not be there.
   </div>
@@ -672,6 +686,71 @@ const xpFor = l => Math.round(5 + l*4 + Math.pow(l,1.45)*1.5);
 
 // ==================================================================== INPUT
 const keys={};
+// Touch. The game asks for pointer lock and WASD, which makes it unopenable on
+// the device most people will follow a link with. Left thumb drives a virtual
+// stick, right thumb turns the camera, and a tap on the right jumps.
+const TOUCH = matchMedia("(pointer:coarse)").matches || navigator.maxTouchPoints > 0;
+if(TOUCH) addEventListener("DOMContentLoaded", ()=>{
+  const h = document.getElementById("pauseHint");
+  if(h) h.innerHTML = "<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> camera " +
+                      "&nbsp; <kbd>TAP RIGHT</kbd> jump<br>" +
+                      "weapons fire themselves. your only job is to not be there.";
+});
+let stick = null;                 // {id, ox, oy, x, y}
+let look  = null;                 // {id, x, y, moved, t0}
+const STICK_MAX = 52;             // px from origin for full deflection
+function touchVec(){
+  if(!stick) return null;
+  const dx = stick.x - stick.ox, dy = stick.y - stick.oy;
+  const len = Math.hypot(dx, dy);
+  if(len < 7) return null;                              // dead zone
+  const k = Math.min(1, len / STICK_MAX) / len;
+  return [dx * k, dy * k];
+}
+if(TOUCH){
+  const at = e => [...e.changedTouches];
+  cv.addEventListener("touchstart", e => {
+    e.preventDefault();
+    for(const t of at(e)){
+      if(t.clientX < innerWidth * 0.5){
+        if(!stick) stick = { id:t.identifier, ox:t.clientX, oy:t.clientY,
+                             x:t.clientX, y:t.clientY };
+      } else if(!look){
+        look = { id:t.identifier, x:t.clientX, y:t.clientY, moved:0,
+                 t0:performance.now() };
+      }
+    }
+    if(running && !over && paused && !picking) togglePause(false);
+  }, { passive:false });
+  cv.addEventListener("touchmove", e => {
+    e.preventDefault();
+    for(const t of at(e)){
+      if(stick && t.identifier === stick.id){ stick.x = t.clientX; stick.y = t.clientY; }
+      else if(look && t.identifier === look.id){
+        const dx = t.clientX - look.x, dy = t.clientY - look.y;
+        look.moved += Math.hypot(dx, dy);
+        camYaw   -= dx * 0.0060;
+        camPitch  = clamp(camPitch - dy * 0.0045, .18, 1.32);
+        look.x = t.clientX; look.y = t.clientY;
+      }
+    }
+  }, { passive:false });
+  const end = e => {
+    e.preventDefault();
+    for(const t of at(e)){
+      if(stick && t.identifier === stick.id) stick = null;
+      else if(look && t.identifier === look.id){
+        // a quick tap that did not drag is a jump
+        if(look.moved < 16 && performance.now() - look.t0 < 260 && P && !P.air){
+          P.vy = 11; P.air = true;
+        }
+        look = null;
+      }
+    }
+  };
+  cv.addEventListener("touchend", end, { passive:false });
+  cv.addEventListener("touchcancel", end, { passive:false });
+}
 addEventListener("keydown", e=>{
   keys[e.code]=true;
   if(picking && /^Digit[1-4]$/.test(e.code)){
@@ -689,6 +768,8 @@ addEventListener("mousemove", e=>{
   camPitch  = clamp(camPitch - e.movementY*0.0020, .18, 1.32);
 });
 document.addEventListener("pointerlockchange", ()=>{
+  if(TOUCH) return;                       // touch never holds the lock, so this
+                                          // would pause the game permanently
   if(document.pointerLockElement!==cv && running && !over && !picking) togglePause(true);
 });
 cv.addEventListener("click", ()=>{
@@ -711,6 +792,7 @@ function togglePause(v){
 // locked, or if the browser rate-limits repeated calls. Both are harmless and
 // both surface as an uncaught error if you do not swallow them.
 function lockPointer(){
+  if(TOUCH) return;                       // there is no pointer to lock
   try{ const p = cv.requestPointerLock?.(); if(p && p.catch) p.catch(()=>{}); }
   catch(e){}
 }
@@ -1449,6 +1531,8 @@ function step(dt){
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
     let mx = (keys.KeyD?1:0)-(keys.KeyA?1:0);
     let mz = (keys.KeyW?1:0)-(keys.KeyS?1:0);
+    const tv = touchVec();
+    if(tv){ mx = tv[0]; mz = -tv[1]; }     // screen-down is away from the camera
     const mag = Math.hypot(mx,mz);
     if(mag){ mx/=mag; mz/=mag; dx = fx*mz + fz*mx; dz = fz*mz - fx*mx; }
   }
@@ -1567,8 +1651,11 @@ function openMenu(){
     <h2>PERMANENT UPGRADES &nbsp;—&nbsp; these carry across every run</h2>
     <div class="shop" id="shop"></div>
     <div class="hint">
-      <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> orbit camera &nbsp; <kbd>SPACE</kbd> jump &nbsp;
-      <kbd>ESC</kbd> pause<br>
+      ${TOUCH
+        ? `<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> turn the camera<br>
+           <kbd>TAP RIGHT</kbd> jump`
+        : `<kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> orbit camera &nbsp;
+           <kbd>SPACE</kbd> jump &nbsp; <kbd>ESC</kbd> pause`}<br>
       Weapons fire on their own. Positioning is the entire game.
     </div>`;
   const cr = document.getElementById("chars");
@@ -1880,6 +1967,18 @@ function render(){
     g2.fillStyle = al.col; g2.fillText(al.text, w/2, ay);
     ay += 38;
   }
+  // virtual stick: an invisible control is not a control
+  if(TOUCH && stick && running && !over){
+    const dx = stick.x-stick.ox, dy = stick.y-stick.oy;
+    const len = Math.hypot(dx,dy) || 1;
+    const k = Math.min(1, len/STICK_MAX);
+    g2.globalAlpha = .30; g2.lineWidth = 3; g2.strokeStyle = "#f2ece0";
+    g2.beginPath(); g2.arc(stick.ox, stick.oy, STICK_MAX, 0, Math.PI*2); g2.stroke();
+    g2.globalAlpha = .55; g2.fillStyle = "#f0b429";
+    g2.beginPath();
+    g2.arc(stick.ox + dx/len*STICK_MAX*k, stick.oy + dy/len*STICK_MAX*k, 19, 0, Math.PI*2);
+    g2.fill();
+  }
   g2.globalAlpha = 1;
   if(P && P.hp/P.maxhp < .35 && running){
     const p = 1 - P.hp/P.maxhp;
@@ -2006,6 +2105,9 @@ window.__g = {
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
+  isTouch: ()=>TOUCH,
+  isPaused: ()=>paused,
+  camYaw: ()=>camYaw,
   place: (x,z)=>{ P.x=clamp(x,-ARENA+1.5,ARENA-1.5);
                   P.z=clamp(z,-ARENA+1.5,ARENA-1.5); P.y=groundY(P.x,P.z); },
   hpx:   ()=>hpScale(T),

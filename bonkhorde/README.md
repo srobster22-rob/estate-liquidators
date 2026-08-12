@@ -26,6 +26,10 @@ xdg-open bonkhorde/index.html      # Linux
 
 `WASD` move · `MOUSE` orbit camera · `SPACE` jump · `ESC` pause.
 
+**On a phone:** left thumb is a virtual stick, right thumb turns the camera, a tap on the
+right jumps. Pointer lock is skipped on touch devices — asking for it there is what made the
+game unopenable on the device most people follow a link with.
+
 Survive twenty minutes. Four bosses arrive at 5:00, 10:00, 15:00 and 19:00. Coins persist
 between runs and buy permanent upgrades.
 
@@ -61,7 +65,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **5 characters** | different starting weapon and stat profile; one unlocks by surviving 10:00 |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
-Roughly 1,500 lines of JavaScript, no libraries.
+Roughly 1,600 lines of JavaScript, no libraries.
 
 ## How it's built
 
@@ -93,11 +97,12 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 84 checks: boot, every weapon, every evolution, every
+node test.js              # 90 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
-                         # death, saves, draw budget, render
+                         # death, saves, draw budget, render, and touch controls
+                         # in a real phone-sized touch context
 node balance.js 6 both            # [trials] [first|vet|both] [char,char]
 node balance.js 12 vet intern,scrap   # higher n on two characters
 node dps.js 4                     # per-weapon boss/crowd DPS bench, n=4
@@ -106,7 +111,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **84 passing.**
+die, and checks that `localStorage` survives a reload. **90 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -254,7 +259,7 @@ only number here worth acting on.
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned twenty-eight things this build believed:
+That harness has overturned twenty-nine things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -361,6 +366,11 @@ That harness has overturned twenty-eight things this build believed:
 - **The camera went blind at the arena edge**, ending up inside the boundary spires with the
   frame rendering as fog. Any player walking into a corner would have hit it; no automated
   check was looking at composition.
+- **The game was unopenable on a phone**, which is the device most people follow a link with.
+  It asked for pointer lock and read WASD, and neither exists there. Now: left thumb drives a
+  virtual stick, right thumb turns the camera, a tap on the right jumps, and pointer lock is
+  skipped entirely on touch — the `pointerlockchange` auto-pause would otherwise have frozen
+  the game permanently on the first tap.
 - **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
   victory right up until sudden death let losing runs reach 22:00 — and then reported them as
   wins. The instrument has to be re-checked every time the thing it measures changes shape.
@@ -420,7 +430,6 @@ the same trap caught the clears metric later, for the same reason.
   actually left is a per-character question rather than a systemic one.
 - **The bench numbers move ±10 points between runs at n=5.** PLATING has read 35% and 42% dps
   on identical builds. Directionally reliable, not precise — do not tune to one decimal.
-- No mobile/touch input. Pointer lock and WASD only.
 - Weapon variety is broad but shallow — 8 weapons with one evolution each. The genre expects
   more, and the data tables are the easy part to extend.
 - No run modifiers, no stage variety, no unlock tree beyond one character.

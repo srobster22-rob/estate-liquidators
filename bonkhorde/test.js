@@ -508,6 +508,70 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   await page.waitForTimeout(200);
   ok("keyboard input does not throw", errors.length === 0, errors.slice(0,2).join(" | "));
 
+  console.log("\n=== 15. TOUCH CONTROLS (phone-sized, touch-enabled context) ===");
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+      // deviceScaleFactor 1, not 3: at 3 the canvas is 1170x2532, SwiftShader
+      // crawls, and the dt clamp turns the run into slow motion - so the test
+      // ends up measuring the software rasteriser instead of the controls.
+      deviceScaleFactor: 1,
+    });
+    const mp = await ctx.newPage();
+    const merr = [];
+    mp.on("pageerror", e => merr.push(e.message));
+    await mp.goto(FILE, { waitUntil: "load" });
+    await mp.waitForTimeout(600);
+
+    ok("detects a touch device", await mp.evaluate(() => window.__g.isTouch()));
+    ok("mobile boot is clean", merr.length === 0, merr.slice(0, 2).join(" | "));
+
+    // synthetic touches, so the real handlers are what gets exercised
+    const swipe = (x0, y0, x1, y1, id) => mp.evaluate(([x0, y0, x1, y1, id]) => {
+      const cv = document.getElementById("gl");
+      const mk = (x, y) => new Touch({ identifier: id, target: cv, clientX: x, clientY: y });
+      const fire = (type, x, y) => cv.dispatchEvent(new TouchEvent(type, {
+        bubbles: true, cancelable: true,
+        touches: type === "touchend" ? [] : [mk(x, y)],
+        changedTouches: [mk(x, y)] }));
+      fire("touchstart", x0, y0);
+      for (let i = 1; i <= 8; i++)
+        fire("touchmove", x0 + (x1-x0)*i/8, y0 + (y1-y0)*i/8);
+      return { end: () => fire("touchend", x1, y1) };
+    }, [x0, y0, x1, y1, id]);
+
+    await mp.evaluate(() => { window.__g.wipeSave(); window.__g.start("intern"); });
+    await mp.waitForTimeout(150);
+    ok("touch start does not leave the game paused",
+       await mp.evaluate(() => !window.__g.isPaused()));
+
+    // left half = movement stick
+    const before = await mp.evaluate(() => window.__g.state());
+    // hold the stick, then advance the sim a fixed number of ticks. Waiting on
+    // wall-clock made this flaky (3.0 / 2.8 / 3.3 against a 3.0 bar) because the
+    // mobile context is render-bound and the dt clamp slows simulated time.
+    await swipe(90, 600, 90, 480, 1);                 // push "forward", keep held
+    const moved = await mp.evaluate(([bx, bz]) => {
+      window.__g.step(120);                            // exactly 2 simulated seconds
+      const a = window.__g.state();
+      return Math.hypot(a.x - bx, a.z - bz);
+    }, [before.x, before.z]);
+    ok("left-thumb stick moves the player", moved > 8,
+       `moved ${moved.toFixed(1)}m in 2 simulated seconds`);
+
+    // right half = camera
+    const yaw0 = await mp.evaluate(() => window.__g.camYaw());
+    await swipe(300, 400, 180, 400, 2);
+    await mp.waitForTimeout(200);
+    const yaw1 = await mp.evaluate(() => window.__g.camYaw());
+    ok("right-thumb drag turns the camera", Math.abs(yaw1 - yaw0) > 0.15,
+       `yaw ${yaw0.toFixed(2)} -> ${yaw1.toFixed(2)}`);
+
+    await mp.screenshot({ path: "shot-mobile.png" });
+    ok("no errors from touch handling", merr.length === 0, merr.slice(0, 2).join(" | "));
+    await ctx.close();
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
