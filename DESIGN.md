@@ -169,13 +169,44 @@ appraised first*, per playtester, per hour of experience. If that number is stil
 hour five and lands under ~30%, the appraiser is dead as a core mechanic and needs to be
 replaced rather than tuned. Decide this with data before building the Curator on top of it.
 
-**Simulated ahead of the gate** (`ECONOMY.md` §6, §9). Scanning beats blind hauling by
-**+8.8%** at 14 van slots, and the edge decays to nothing between 24 and 32 slots —
-Requirement A is confirmed as the load-bearing one. That margin is not a property of the
-appraiser alone: on an estate where every room has the same value spread it is only +4.2%,
-and the rest comes from rooms *differing*, which is now an authoring requirement
-(`LEVEL-SPEC.md` §2.1, D-23). R16 established that **no amount of extra cost can widen it** —
-only the payoff side moves. But the sim also overturned part of §4.1's framing:
+> **Instrument it by ROOM CLASS, not as one number** (R29). A falling overall scan rate is the
+> *correct* behaviour here — the simulated optimum drops from two room classes to one across a
+> contract chain, so a crew learning the game should scan less over time and earn more. The
+> number that would actually condemn the mechanic is a scan rate that does not
+> **discriminate**: if players appraise `uniform` and `curio` rooms at the same rate at hour
+> five, they are not reading the telegraph (D-24) and the choice does not exist for them.
+> **Measure the gap between those two rates, and expect the overall rate to fall.**
+
+**Simulated ahead of the gate, over twenty rounds and four models** (`ECONOMY.md` §6, §9,
+§10). The short version, because the long one is a chain of corrections:
+
+> **Scanning beats blind hauling by +8.4% on night 1 and +3.0% on night 4 — but only for a
+> crew that chooses *which rooms* to stop in. A crew that appraises everything is +7.5% on
+> night 1 and −6.8% by night 4.**
+
+Three things that changes about this section, all of them things it previously got wrong:
+
+**Requirement C — the estate must contain rooms worth skipping.** Scanning's payoff is `0.6 ×`
+the *value spread* of the room you are standing in and nothing else, so on an estate where
+every room is equally varied there is one correct global answer and no decision at all. Rooms
+now declare `uniform` / `mixed` / `curio` and estates must mix them (`LEVEL-SPEC.md` §2.1,
+V11, D-23). **This is as load-bearing as Requirement A**, and it is the one that makes the
+verb a choice rather than a habit.
+
+**The optimum tightens as the crew upgrades.** Curio *and* mixed rooms are worth stopping for
+on nights 1–2; by night 3 only the curio ones are, because a bigger van means more shelves and
+scanning pins Disturbance at COLLECT. **The right play changes by night** — the first thing in
+this design that gets harder to play *well* rather than merely harder.
+
+**Most of the selection value is free, and the appraiser sells the rest.** Category is legible
+(Requirement B), and knowing an armoire in a sealed wing beats a snuffbox in the foyer is worth
+more than knowing which armoire. Against a night's *total* — the denominator the quota is
+measured in — the value half of the appraiser is worth about **+3%**, not the +8.8% this
+document used to quote against the loot a crew chooses between (`ECONOMY.md` §10). The verb is
+defensible, but it is not the giant it was written up as.
+
+R16 also established that **no amount of extra cost can widen the edge** — only the payoff side
+moves. And the sim overturned part of §4.1's framing:
 
 > **The three seconds are decoration. The noise is the cost.**
 

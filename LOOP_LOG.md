@@ -567,6 +567,35 @@ van's, or not growing the van — and flagged in D-10 that this must not be reop
 question. · Baseline discipline held: `curses=False` still reproduces 9,376 / 9,921 / 10,994 /
 12,141.
 
+R29 · Merged rooms into `chain_sim` — the round the previous four had been converging on, and
+**the one that closes the thread R9 opened twenty rounds ago.** Every model was partial in a
+way that mattered: `appraiser_variance` had rooms and spread but no apex, classes or curses;
+`chain_sim` had all of those and no rooms, so it could only ever ask *"appraise every shelf or
+none"* — the exact binary framing R6, R16 and R28 each independently found hides the answer.
+R17 said the good policy is selective; R28 said the appraiser inverts across the chain. Both
+pointed at the same fix and neither model could test it. · **Selective scanning rescues it,
+and cleanly: +8.4% / +7.8% / +2.8% / +3.0% across the four nights, positive throughout.**
+Scanning *everything* still decays and still goes negative — **+7.5% / +5.2% / −1.1% / −6.8%**
+— reproducing R28 in a model that now has rooms in it. **The inversion was a property of the
+only policy the model could express, not of the appraiser.** · **And the better half of the
+result: the optimum tightens as the crew upgrades.** Curio *and* mixed rooms are worth stopping
+for on nights 1–2; from night 3 only the curio ones are. That falls straight out of R28's
+mechanism — a bigger van means more shelves, scanning pins Disturbance at COLLECT, so the noise
+budget must be spent more carefully as capacity grows. **The right play changes by night**,
+which is the first thing in this economy that gets harder to play *well* rather than merely
+harder. · Kept the experiment honest the same way R17 did: the spread mix and factors are
+V11's, mean exactly 1.0, so a room-bearing estate holds no more money than a flat one — only a
+decision. And `rooms=False` / `curses=False` still reproduce ECONOMY §4 and §8 exactly. ·
+**Rewrote `DESIGN.md` §4.4**, which had been describing a mechanic three rounds out of date.
+It gains **Requirement C** (the estate must contain rooms worth *skipping* — as load-bearing as
+van scarcity), states the honest number against a night's total rather than against selectable
+loot, and — the change that matters most for Milestone 2 — **the kill criterion is now measured
+by room class.** A falling overall scan rate is the *correct* behaviour here, since the optimum
+drops from two room classes to one across a chain. What would condemn the mechanic is a scan
+rate that does not **discriminate**: appraising uniform and curio rooms at the same rate at
+hour five means players cannot read the telegraph (D-24) and the choice does not exist for
+them. **Measure the gap, and expect the total to fall.**
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -574,42 +603,49 @@ question. · Baseline discipline held: `curses=False` still reproduces 9,376 / 9
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R29 is the round the last four have been converging on: merge rooms into `chain_sim`.**
-Every model in this project is now partial in a way that matters, and the partials disagree
-for understood reasons (`ECONOMY.md` §10). `appraiser_variance` has **rooms and spread** and no
-apex, no classes, no curses. `chain_sim` has **the apex, classes, curses and noise** and no
-rooms — so it can only ask "appraise everything or nothing", which R6, R16 and now R28 have all
-shown is the framing that hides the answer. **R17 already established the good policy is
-selective, and no model containing the apex can express it.** Port `room_spread` into
-`chain_sim`: give each encounter a room class, let the crew scan only high-spread rooms, and
-re-run R28's chain. That is the round that either rescues the appraiser or kills it honestly,
-and it is the last big modelling gap.
+**The appraiser thread is closed, and this time it is closed with an answer rather than a
+shrug.** R29 settled it: selective scanning is positive on every night of the contract chain,
+the optimum tightens as the van grows, and every model that reported otherwise was one that
+could not express choosing. **Do not reopen it in simulation.** The next real information is
+Milestone 2, and `DESIGN.md` §4.4 now says what to instrument — scan rate **by room class**,
+because the total is *supposed* to fall.
 
-**R30, and only after R29 says which: rewrite `DESIGN.md` §4.4.** It is written as though the
-*price* were the point, R27 showed the value half is worth ~0 against a night's total, and R28
-showed the grade half inverts across the chain. Whatever §4.4 becomes, `DESIGN.md` §11's kill
-criterion has to move with it — "do players use the appraiser" is the wrong instrument if the
-correct answer changes by night. Measure **scan rate by night**, and expect it to fall.
+**R30: take `room_spread` into `proto/index.html`'s decision layer.** The prototype renders the
+telegraph (R20) but the game does not yet *price* it — there is no reason in the prototype to
+skip a uniform room, because nothing there models the noise cost of scanning against a van that
+grows. It is the only place a human can feel whether "which rooms are worth three seconds" is
+an interesting question or a chore, and that is the one thing no amount of simulation will
+settle. R22's warning applies: the cue that works top-down may not survive perspective.
 
-**R31 (needs `dotnet`): port the economy into the C# core.** 26 values in `CS_BACKLOG`.
-*This environment cannot do it* — no toolchain, `dot.net` refused by the network policy.
+**R31: the C# port — 26 values in `CS_BACKLOG`, and now a concept as well.** Retrieval table
+first, curse tables next, `room_spread` last because it needs a *type* and not just a constant.
+*This environment cannot do it* — no toolchain, `dot.net` refused by the network policy. Do it
+on a machine with `dotnet` and strike each value off as it lands; the check fails until you do.
+
+**R32: re-derive `ECONOMY.md` §8's three findings against the current model.** Crew size
+(D-18), the apex re-band (D-21) and labour gating (D-20) all came from the free-information
+`chain_sim`, which has now changed underneath them four times — noise, curses, rooms, and the
+per-trip metric. D-18 is the exposed one: R12 established Disturbance decay scales with crew,
+so noise makes bigger crews louder in a way the original comparison could not see. This is the
+R24 pattern, and it is now predictable enough to check before it bites.
 
 **Standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18). *A check earns its place by failing the
 default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20).
 *Name the table you mean* (R14, R21). *A model verified in one projection is not verified in
-the one you ship* (R22). *Every guarantee has been weaker than it sounded* (R23). *A
-conclusion is only as current as the model underneath it* (R24) — enforced by §10's rule,
-**quote a number with its model, or don't quote it**. *Every strategy needs the knowledge that
-has nothing to do with the thing being tested* (R5, R6, R24, R26 twice — six occurrences, both
-directions). *When two strategies differ in more than one way, you are not measuring the
-difference you named* (R26, R27). *Check the denominator* (R27) — +8.8% and +3.4% were one
-measurement all along.
+the one you ship* (R22). *Every guarantee has been weaker than it sounded* (R23). *A conclusion
+is only as current as the model underneath it* (R24) — enforced by §10, **quote a number with
+its model, or don't quote it**. *Every strategy needs the knowledge that has nothing to do with
+the thing being tested* (six occurrences, both directions). *When two strategies differ in more
+than one way, you are not measuring the difference you named* (R26, R27). *Check the
+denominator* (R27). *Test your explanation, not just your result* (R28).
 
-**And the newest, from R28: test your explanation, not just your result.** The decay was real;
-the first mechanism I wrote for it — scan time scaling with van size — was wrong, and one
-sweep of `APPRAISE_S` falsified it. A correct finding with a wrong cause attached is worse
-than no finding, because the cause is what people design against.
+**And the one R29 earned, which is the summary of the last six rounds:** *when a model says a
+mechanic is bad, check whether the model can express the mechanic being good.* Four rounds
+across two years of simulated nights said the appraiser was marginal or actively harmful.
+Every one of them was a model in which the only available policies were "always" and "never".
+**The interesting middle is not something the numbers reveal — it is something the model has
+to be built to contain.**
 
 **Not blocked on anything except the C# port, which is blocked on a toolchain rather than a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks

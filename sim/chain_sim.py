@@ -145,8 +145,36 @@ def _grade(rng):
     return "clean"
 
 
-def generate_candidates(rng, tier, n, curses=False):
+# ------------------------------------------------------------------ R29: rooms
+# The gap every model in this project has been partial around. `appraiser_variance`
+# has rooms and spread but no apex, no classes and no curses; `chain_sim` has all of
+# those and no rooms -- so it could only ever ask "appraise every shelf or none",
+# which is exactly the binary framing R6, R16 and R28 each found hides the answer.
+#
+# R17 established that scanning's payoff is 0.6 x the room's value spread and nothing
+# else, and that the good policy is therefore SELECTIVE. R28 then found the appraiser
+# inverts across the contract chain because scanning pins Disturbance at COLLECT. Those
+# two findings point at the same fix and neither model could test it: scan only the
+# rooms worth scanning, and pay the noise only there.
+#
+# Mix and factors are LEVEL-SPEC 2.1 / V11, mean exactly 1.0 by construction, so a
+# room-bearing estate holds no more money than a flat one -- only a decision.
+SPREAD_F = {"uniform": 0.3, "mixed": 1.0, "curio": 1.7}
+SPREAD_MIX = [("uniform", 0.25), ("mixed", 0.50), ("curio", 0.25)]
+
+
+def draw_room(rng):
+    r, acc = rng.random(), 0.0
+    for name, prob in SPREAD_MIX:
+        acc += prob
+        if r < acc:
+            return name
+    return "mixed"
+
+
+def generate_candidates(rng, tier, n, curses=False, spread=None):
     trip_s, classes = TIER_DATA[tier]
+    f = SPREAD_F[spread] if spread else None
     out = []
     for _ in range(n):
         cls = rng.choice(list(classes))
@@ -154,9 +182,15 @@ def generate_candidates(rng, tier, n, curses=False):
         slots, people, mult, setup = CLASS_DATA[cls]
         labour = (trip_s * mult + setup) * people
         g = _grade(rng) if curses else "clean"
+        if f is None:
+            base = rng.uniform(lo, hi)
+        else:
+            m, w = (lo + hi) / 2.0, (hi - lo) / 2.0
+            h = min(f * w, m)          # clamp: no object is ever worth less than zero
+            base = rng.uniform(m - h, m + h)
         out.append({
             "cls": cls,
-            "value": rng.uniform(lo, hi) * VALUE_MULT[g],
+            "value": base * VALUE_MULT[g],
             "slots": slots,
             "labour": labour,
             "grade": g,
@@ -228,7 +262,8 @@ def current_tier(t, crew=4, labour_gated=True):
 def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
               reserve_apex=True, labour_gated=True, noise=False, scan=True,
               q_cap=0.90, depth_cap=False, metric="per_slot",
-              rule="value", curses=False, cursed_cap=3):
+              rule="value", curses=False, cursed_cap=3, rooms=False,
+              scan_rooms=("uniform", "mixed", "curio")):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -289,8 +324,13 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 t += TIER_DATA[eff_tier][0] / labour_pool
                 continue
 
-        pool = generate_candidates(rng, eff_tier, CANDIDATES, curses)
-        if noise and not scan:
+        room = draw_room(rng) if rooms else None
+        pool = generate_candidates(rng, eff_tier, CANDIDATES, curses, room)
+
+        # R29: the appraiser becomes a per-room decision. `scan` is now "can this crew
+        # appraise at all"; `scan_rooms` is which rooms it judges worth the noise.
+        here = scan and (room is None or room in scan_rooms)
+        if noise and not here:
             # D-10: category legible, magnitude illegible. A blind crew can see that a
             # thing is an armoire rather than a snuffbox, so it may pick the class with
             # the best expected value per slot -- but it gets a RANDOM member of that
@@ -335,7 +375,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
         # Appraising four candidates costs three stationary seconds each, split across
         # the crew, and one loud ping apiece. This is the cost the original model simply
         # did not have -- it read every value for free.
-        scan_cost = (APPRAISE_S * CANDIDATES / labour_pool) if (noise and scan) else 0.0
+        scan_cost = (APPRAISE_S * CANDIDATES / labour_pool) if (noise and here) else 0.0
 
         # What the crew judges the item to be worth per slot. A scanning crew knows the
         # real number. A blind crew knows only its CLASS-and-tier average (D-10: an
@@ -368,12 +408,12 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                        / cost_of(it, metric) >= thresh]
             if not allowed:
                 span = trip_cost + (APPRAISE_S * CANDIDATES / labour_pool
-                                    if (noise and scan) else 0.0)
+                                    if (noise and here) else 0.0)
                 if noise:
                     d = advance_disturbance(rng, d, span, t, crew, cursed_aboard)
                 t += span
                 continue
-            if noise and not scan:
+            if noise and not here:
                 best = rng.choice(allowed)
             else:
                 # R11's optimum is "take two or three cursed pieces, then refuse", and
@@ -385,7 +425,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 best = max(pick, key=lambda it: it["value"] / cost_of(it, metric))
             take = best["slots"] <= effective_slots
         else:
-            if noise and not scan:
+            if noise and not here:
                 lo, hi = TIER_DATA[eff_tier][1][best["cls"]]
                 judged = (lo + hi) / 2.0 / cost_of(best, metric)
             else:
@@ -396,7 +436,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             trip_cost + scan_cost)
         if noise:
             d = advance_disturbance(rng, d, span, t, crew, cursed_aboard)
-            if scan:
+            if here:
                 d = min(100.0, d + CANDIDATES * L["appraise"] * IMPULSE)
 
         if take:
@@ -465,6 +505,49 @@ def show(rows, title):
         print(f"{r['night']:<7}{r['quota']:>9,}{r['van']:>6}{r['mean']:>11,.0f}"
               f"{r['p10']:>11,.0f}{r['quota'] / r['mean']:>12.0%}"
               f"{r['pass']:>8.0%}{r['apex']:>8.0%}")
+
+
+def show_rooms(n=1200):
+    """R29: the round every partial model had been converging on.
+
+    R17 found scanning's payoff is 0.6 x the room's value spread and that the good
+    policy is therefore SELECTIVE -- but its model had no apex, no classes and no
+    curses. R28 found the appraiser INVERTS across the contract chain (+9.6% on night 1,
+    -8.6% by night 4) because scanning pins Disturbance at COLLECT -- but its model had
+    no rooms, so it could only ask "appraise every shelf or none".
+
+    Both findings point at the same fix, and neither model could test it. This one can.
+    """
+    print("\n\nR29 — SELECTIVE SCANNING, WITH THE APEX AND THE CURSE IN THE MODEL")
+    print("-" * 78)
+    print(f"{'night':<7}{'van':>5}{'BLIND $':>11}{'scan ALL':>11}{'vs':>8}"
+          f"{'SELECTIVE':>12}{'vs':>8}   which rooms")
+
+    def best(rooms_, night, van):
+        out = 0.0
+        for q in (0.45, 0.75, 0.90):
+            for cap in (3, 99):
+                m = statistics.mean(
+                    run_night(random.Random(s * 97 + night), 4, van, noise=True,
+                              scan=bool(rooms_), q_cap=q, depth_cap=True,
+                              metric="per_trip", rule="class", curses=True,
+                              cursed_cap=cap, rooms=True, scan_rooms=rooms_)[0]
+                    for s in range(n))
+                out = max(out, m)
+        return out
+
+    for night, van in ((1, 14), (2, 15), (3, 17), (4, 19)):
+        bl = best((), night, van)
+        al = best(("uniform", "mixed", "curio"), night, van)
+        sel = {"curio": best(("curio",), night, van),
+               "curio+mixed": best(("curio", "mixed"), night, van)}
+        k = max(sel, key=lambda x: sel[x])
+        print(f"{night:<7}{van:>5}{bl:>11,.0f}{al:>11,.0f}{al / bl - 1:>8.1%}"
+              f"{sel[k]:>12,.0f}{sel[k] / bl - 1:>8.1%}   {k}")
+    print("\nScanning EVERYTHING decays across the chain and goes negative -- that is R28.")
+    print("Scanning SELECTIVELY stays positive on every night. The all-or-nothing framing")
+    print("was the problem, not the appraiser. And the optimum TIGHTENS as the van grows:")
+    print("two room classes are worth stopping for early, one by night 4.")
 
 
 def show_curse(n=2500):
@@ -554,3 +637,4 @@ if __name__ == "__main__":
               f"{r['pass']:>9.0%}{r['apex']:>8.0%}")
     show_noise()
     show_curse(n=1200)
+    show_rooms(n=900)

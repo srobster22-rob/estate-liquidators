@@ -189,10 +189,17 @@ imperfection, and it was rigged generously toward the appraiser. It survived any
 > Players abandoning the appraiser at hour five would then be *correct*, not bored — which is
 > a harder problem than the one §4.4 was written to prevent, and a different fix.
 >
-> **Do not reopen this as a tuning question.** `chain_sim` can only express "appraise every
-> shelf" or "appraise none", and R17 already established that the good policy is *selective* —
-> the same binary framing R6 and R16 both found hides the interesting middle. The next real
-> step is a model with rooms and curses together, not another sweep.
+> **R29 resolved it, and D-10 survives.** Rooms went into `chain_sim`, so the selective policy
+> R17 found could finally be tested in a model containing the apex and the curse. **Scanning
+> selectively is positive on every night of the chain: +8.4% / +7.8% / +2.8% / +3.0%**, while
+> scanning *everything* still decays and goes negative by night 4. The inversion was a property
+> of the only policy the model could express, not of the appraiser.
+>
+> **And the optimum tightens as the crew upgrades** — curio *and* mixed rooms are worth
+> stopping for on nights 1–2, curio only from night 3. That is a skill curve falling out of
+> R28's mechanism: more capacity means more shelves, scanning pins Disturbance at COLLECT, so
+> the noise budget has to be spent more carefully as you progress. **The right play changes by
+> night**, which is the strongest form this mechanic has ever taken.
 
 **Falsified if:** the Milestone 2 instrumentation shows scan rate under ~30% at hour five
 anyway (the mechanic is dead regardless), *or* if playtesters report the world feeling

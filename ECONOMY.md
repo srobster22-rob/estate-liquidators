@@ -526,6 +526,49 @@ upgrade path** — the crew upgrades the van across a chain; if the tool does no
 the mechanic decays by construction. (3) **Don't grow the van**, which D-19 already half-argues
 on other grounds (R24).
 
+### R29 — selective scanning rescues the appraiser, and the optimum tightens as you upgrade
+
+Every model in this project had been partial in a way that mattered, and §10 above records
+which. `appraiser_variance` had **rooms and spread** but no apex, no classes, no curses.
+`chain_sim` had **the apex, classes, curses and noise** but no rooms — so it could only ever
+ask *"appraise every shelf, or none"*, which is the exact binary framing R6, R16 and R28 each
+independently found hides the answer. R29 merged them.
+
+| Night | Van | BLIND | Scan **all** rooms | vs | Scan **selectively** | vs | Which rooms |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | 14 | $11,381 | $12,232 | +7.5% | **$12,334** | **+8.4%** | curio + mixed |
+| 2 | 15 | $11,444 | $12,040 | +5.2% | **$12,333** | **+7.8%** | curio + mixed |
+| 3 | 17 | $11,578 | $11,454 | **−1.1%** | **$11,904** | **+2.8%** | curio only |
+| 4 | 19 | $11,534 | $10,744 | **−6.8%** | **$11,882** | **+3.0%** | curio only |
+
+**Two results, and the second one is the better game.**
+
+**1. The R28 inversion was an artifact of the all-or-nothing policy, not a property of the
+appraiser.** Scanning everything still decays and still goes negative by night 4 — that column
+reproduces R28 in a model that now has rooms in it. Scanning *selectively* stays positive on
+every night of the chain. The mechanic was never broken; the only policy the model could
+express was.
+
+**2. The optimal selectivity tightens as the crew upgrades — and that is a skill curve, not a
+balance problem.** Two room classes are worth stopping for on nights 1–2; by night 3 only the
+curio rooms are. It falls straight out of R28's mechanism: a bigger van means more shelves,
+scanning pins Disturbance at COLLECT, so as capacity grows the crew must spend its noise
+budget more carefully. **The right play changes as you progress**, which is what a mechanic
+with a ceiling is supposed to do, and it is the first thing in this economy that gets
+*harder to play well* rather than merely harder.
+
+> Figures at n = 2,500–3,000 per cell, each policy at its own best pickiness and cursed cap.
+> `python sim/chain_sim.py` runs the same comparison at n=900, which reproduces the ordering
+> and the sign of every cell. The spread mix and factors are V11's (`LEVEL-SPEC.md` §2.1),
+> mean exactly 1.0, so a room-bearing estate holds no more money than a flat one — only a
+> decision.
+
+**This closes the thread R9 opened.** The question "is the appraiser's edge enough to carry the
+game's signature mechanic" has been asked for twenty rounds against four different models and
+three different denominators. The answer: **yes, at +3% to +8% depending on the night, but
+only for a crew that chooses which rooms to stop in** — and every model that reported otherwise
+was one that could not express choosing.
+
 ### What R26 did *not* establish
 
 `chain_sim` can now charge for scanning, so the obvious next question is what the appraiser
