@@ -11,8 +11,8 @@ are subtle, invisible in a demo, and fully verifiable offline.
 | --- | --- |
 | **M0** — one source ingested idempotently into fixtures | **Half met.** Idempotency proven under repetition. The fixtures are synthetic, not captured, because egress to every feed host is blocked. |
 | **M1** — the matcher and its normalizer, with a measured precision number | **Met on synthetic data.** 100% precision, 100% recall on 52 hand-labelled pairs. See VERIFY.md §1.2 for why that number is weaker than it sounds. |
-| **M2** — notification with console provider, plus the review queue | **Mostly met.** Delivery is exactly-once, restart-safe, and retried; `decide()` works and is tested. The review *screen* is not built. |
-| **M3** — real SMS, all four sources, public page, second language | **Not built.** |
+| **M2** — notification with console provider, plus the review queue | **Met.** Delivery is exactly-once, restart-safe, retried, and dead-lettered with an operator alert. The review queue is built and served: one candidate at a time, three buttons, redirect-after-post. |
+| **M3** — real SMS, all four sources, public page, second language | **Partly.** The public page is built and served. Real SMS, the CPSC/FSIS/NHTSA adapters, and a second language are not. |
 | **M4** — twenty subscribers and a pantry, one quarter | Not started. |
 
 ## What runs
@@ -23,7 +23,7 @@ again with nothing left.
 
 ## Measured
 
-- **26 tests passing.** Idempotent ingest, exactly-once delivery, restart safety, retry after
+- **35 tests passing.** Idempotent ingest, exactly-once delivery, restart safety, retry after
   transient failure, STOP cancellation, severity gating, and the normalizer.
 - **`npm run eval`: 100% precision, 100% recall** on 52 labelled pairs, with a hard 95% floor
   that fails the command. One deliberate open disagreement (`p08`).
@@ -59,7 +59,7 @@ collected. A resolve plugin does not help — normalization happens first. Loade
   here. Every property that matters — the two unique constraints, `BEGIN IMMEDIATE` for atomic
   claiming — translates directly. Say so when you port it.
 - **CPSC adapter not written**, and FSIS/NHTSA exist only as fixtures.
-- **No public page, no digest, no review UI, no second language.**
+- **No digest and no second language.** The public page and review UI now exist.
 
 ## What worries me
 

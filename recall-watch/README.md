@@ -6,8 +6,14 @@ Built from [`society-prompts/35-recall-watch.md`](../society-prompts/35-recall-w
 npm install
 npm run demo    # full pipeline, no network, no credentials
 npm run eval    # matcher precision against the labelled pairs
-npm test        # 26 tests
+npm test        # 35 tests
+npm run serve   # the two screens, over the fixtures, no network
 ```
+
+`npm run serve` gives you `/` (the public page — current high-severity recalls, no signup) and
+`/review` (the queue a coordinator works: one candidate, three buttons, no navigation). The
+review screen is what makes the precision-over-recall policy possible — the matcher sends
+anything ambiguous to a human, and without a screen "to a human" means "nowhere".
 
 **Read [`VERIFY.md`](VERIFY.md) first.** The machinery is tested; the feed data is synthetic and
 no adapter has ever run against a real API.

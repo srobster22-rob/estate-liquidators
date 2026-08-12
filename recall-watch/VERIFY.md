@@ -62,13 +62,16 @@ A message that fails repeatedly currently sits in the table with `last_error` se
 told. `notify.ts` says so in a comment. For a safety notification service that is not acceptable:
 add a threshold on `attempts` that raises an alert to a human.
 
-### 2.3 Digest, severity classification, and the public page
-Not built. Only high-severity recalls are handled; medium and low currently produce nothing at
+### 2.3 Digest and severity classification
+The public page is built. The digest is not. Only high-severity recalls are handled; medium and low currently produce nothing at
 all rather than a weekly digest. Verify FDA and FSIS classification schemes and encode them as
 data rather than the string comparison in the openFDA adapter.
 
-### 2.4 The review queue has no interface
-`decide()` exists and is tested. The fifteen-second screen the brief describes does not.
+### 2.4 The review queue works; nobody has timed it
+Built and served at `/review`: one candidate at a time, three buttons, redirect-after-post so a
+refresh cannot re-decide. What has *not* happened is a real coordinator working a real queue —
+the brief's target is fifteen seconds per record and that number is unmeasured. Time it with a
+person and cut whatever makes them hesitate.
 
 ---
 

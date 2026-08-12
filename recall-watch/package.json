@@ -9,6 +9,7 @@
     "match": "tsx src/cli.ts match",
     "deliver": "tsx src/cli.ts deliver",
     "demo": "tsx src/cli.ts demo",
+    "serve": "tsx src/cli.ts serve",
     "eval": "tsx src/cli.ts eval",
     "test": "vitest run",
     "check": "tsc --noEmit && vitest run && tsx src/cli.ts eval"

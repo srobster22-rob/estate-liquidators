@@ -393,3 +393,127 @@ describe('a permanently failing message is dead-lettered and an operator is told
     expect(flaky.sent).toHaveLength(queued);
   });
 });
+
+// --- the review queue --------------------------------------------------------
+
+describe('the review queue', () => {
+  it('offers one candidate at a time, highest severity first', async () => {
+    const { nextForReview, pendingCount, renderReview, renderPublic } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+
+    expect(pendingCount(db)).toBeGreaterThan(0);
+    const first = nextForReview(db)!;
+    expect(first.confidence).toBe('candidate');
+
+    const html = renderReview(db);
+    expect(html).toContain('Why it was flagged');
+    expect(html).toContain('Send the alert');
+    expect(html).toContain('Not a match');
+    // The reason the matcher recorded is shown, not just the recall. Compare against the
+    // HTML-escaped form — the detail contains quotes, and escaping them is correct.
+    const detail = (JSON.parse(first.reason).detail as string).replace(/"/g, '&quot;');
+    expect(html).toContain(detail.slice(0, 40));
+    // And what the subscriber actually said they had.
+    expect(html).toContain('What they said they have');
+    expect(renderPublic(db)).toContain('Current recalls');
+  });
+
+  it('a decision removes it from the queue and does not come back', async () => {
+    const { nextForReview, pendingCount } = await import('../src/server.js');
+    const { decide } = await import('../src/matchrun.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+
+    const before = pendingCount(db);
+    const row = nextForReview(db)!;
+    decide(db, row.match_id, 'not_a_match', 'dana', NOW);
+
+    expect(pendingCount(db)).toBe(before - 1);
+    expect(nextForReview(db)?.match_id).not.toBe(row.match_id);
+  });
+
+  it('approving a candidate is what lets it become a message', async () => {
+    const { nextForReview } = await import('../src/server.js');
+    const { decide } = await import('../src/matchrun.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+    enqueue(db, NOW);
+    const before = db.prepare('SELECT COUNT(*) c FROM notifications').get() as { c: number };
+
+    // Find a high-severity candidate whose recall has not already produced a notification.
+    const row = db.prepare(`
+      SELECT m.id FROM matches m JOIN recalls r ON r.id = m.recall_id
+      WHERE m.confidence = 'candidate' AND m.decision IS NULL AND r.severity = 'high'
+        AND r.id NOT IN (SELECT recall_id FROM notifications) LIMIT 1
+    `).get() as { id: number } | undefined;
+    if (!row) return;
+
+    decide(db, row.id, 'alert', 'dana', NOW);
+    enqueue(db, NOW);
+    const after = db.prepare('SELECT COUNT(*) c FROM notifications').get() as { c: number };
+    expect(after.c).toBe(before.c + 1);
+    expect(nextForReview(db)?.match_id).not.toBe(row.id);
+  });
+
+  it('an empty queue says so rather than looking broken', async () => {
+    const { renderReview } = await import('../src/server.js');
+    expect(renderReview(db)).toContain('Nothing to review');
+  });
+
+  it('serves over HTTP and redirects after a decision so a refresh cannot re-decide', async () => {
+    const { createServer, pendingCount } = await import('../src/server.js');
+    const { nextForReview } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+
+    const server = createServer(db, 'dana');
+    await new Promise<void>((r) => server.listen(0, r));
+    const port = (server.address() as { port: number }).port;
+    const base = `http://127.0.0.1:${port}`;
+
+    try {
+      const pub = await fetch(`${base}/`);
+      expect(pub.status).toBe(200);
+      expect(await pub.text()).toContain('Current recalls');
+
+      const review = await fetch(`${base}/review`);
+      expect(await review.text()).toContain('Review queue');
+
+      const id = nextForReview(db)!.match_id;
+      const before = pendingCount(db);
+
+      // A bogus decision value changes nothing. Checked before the real decision, because the
+      // fixture set yields only one candidate and the queue is empty afterwards.
+      await fetch(`${base}/review/${id}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'decision=nonsense',
+        redirect: 'manual',
+      });
+      expect(pendingCount(db)).toBe(before);
+      expect(nextForReview(db)?.match_id).toBe(id);
+
+      const post = await fetch(`${base}/review/${id}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'decision=not_a_match',
+        redirect: 'manual',
+      });
+      expect(post.status).toBe(303);
+      expect(post.headers.get('location')).toBe('/review');
+      expect(pendingCount(db)).toBe(before - 1);
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+
+  it('the public page never exposes a subscriber', async () => {
+    const { renderPublic } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+    const html = renderPublic(db);
+    expect(html).not.toContain('+15550100');
+    expect(html).not.toContain('watch_items');
+  });
+});

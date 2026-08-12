@@ -91,22 +91,41 @@ wrong.
 **Verified:** both projects pass; 17 browser tests still pass with the export dynamically
 imported; R4's drift checker forced the fix into both copies, which is exactly what it is for.
 
+## R6 — recall-watch: the review queue, and the public page
+
+Queue item #1. `decide()` existed and was tested; the screen did not, which meant the matcher's
+central policy — send anything ambiguous to a human rather than to a phone — resolved to
+"nowhere". Every candidate sat forever and the coarse category watches people rely on quietly
+did nothing.
+
+Built both server-rendered screens with no client JavaScript: `/review` shows one candidate at a
+time with the recall, what the subscriber said they had, and *why the matcher flagged it*, then
+three buttons and a 303 redirect so a refresh cannot re-decide. `/` is the public page — current
+high-severity recalls, no signup, nothing recorded.
+
+**Found:** two bugs, both in my own tests rather than the code. One compared a raw reason string
+against escaped HTML (the escaping is correct). The other assumed the fixture set yields two
+candidates when it yields one, so the "bogus decision changes nothing" check ran against an empty
+queue — restructured to check before the real decision instead.
+**Verified:** 35 tests, including that a decision leaves the queue and does not return, that an
+invalid decision value changes nothing, that an empty queue says so rather than looking broken,
+and that the public page exposes no subscriber. Plus a live smoke test over `npm run serve`.
+
 ---
 
 ## The queue — what the next rounds should take
 
 Ordered by value, from the projects' own VERIFY files:
 
-1. **recall-watch: the review queue has no interface.** `decide()` exists and is tested; the
-   fifteen-second screen a coordinator would actually use does not. Without it, every candidate
-   match is stuck forever and the precision-over-recall design has no outlet.
-2. **flood-and-water: the ZIP export of original photo bytes.** The PDF exists; a lawyer or
+1. **flood-and-water: the ZIP export of original photo bytes.** The PDF exists; a lawyer or
    adjuster wants the originals with a manifest, and the hashes are already stored.
-3. **disposal-guide: the `/verify` re-verification screen.** The schema enforces
+2. **disposal-guide: the `/verify` re-verification screen.** The schema enforces
    `verifiedOn`/`verifiedBy`; the fifteen-second re-check loop that keeps them true is not built.
-4. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
+3. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
    `flood-and-water`. This one needs a paid human translator, not another round.
-5. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures.
+4. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures.
+5. **recall-watch: time the review queue with a real coordinator.** The fifteen-second target is
+   unmeasured.
 
-Everything above #4 is code. #4 is money, and #5 needs network access this environment does not
+Everything above #3 is code. #3 is money, and #4 needs network access this environment does not
 have — worth naming so a future round does not burn an hour rediscovering it.

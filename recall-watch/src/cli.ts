@@ -7,12 +7,31 @@ import { runMatching } from './matchrun.js';
 import { enqueue, deliverBatch } from './notify.js';
 import { pickProvider } from './sms.js';
 import { evaluate, formatReport } from './eval.js';
+import { createServer } from './server.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURES = join(root, 'fixtures');
 const cmd = process.argv[2] ?? 'demo';
 
-if (cmd === 'eval') {
+if (cmd === 'serve') {
+  // A running instance over the fixtures, so the review queue can be worked with no network.
+  const db = open(':memory:');
+  const now = new Date().toISOString();
+  db.prepare('INSERT INTO subscribers (phone, language, created_at) VALUES (?,?,?)')
+    .run('+15550100', 'en', now);
+  db.prepare(
+    'INSERT INTO watch_items (subscriber_id, kind, brand, product, upc, vin, category, lot, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+  ).run(1, 'category', null, null, null, null, 'infant acetaminophen', null, now);
+  for (const name of ['fda', 'fsis', 'nhtsa']) {
+    await ingest(db, new FixtureSource(name, FIXTURES), '2026-01-01', now);
+  }
+  runMatching(db, now);
+  const port = Number(process.env.PORT ?? 4180);
+  createServer(db).listen(port, () => {
+    console.log(`\n  public page   http://127.0.0.1:${port}/`);
+    console.log(`  review queue  http://127.0.0.1:${port}/review\n`);
+  });
+} else if (cmd === 'eval') {
   const report = evaluate(FIXTURES, join(root, 'data', 'labelled-pairs.json'));
   console.log(formatReport(report));
   if (report.precision < 0.95) {
