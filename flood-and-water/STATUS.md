@@ -10,7 +10,7 @@ rather than search-and-lookup.
 | --- | --- |
 | **M0** — the three facts verified | **Partially met.** All three verified against FEMA, NFIP, and III, with the four waiting-period exceptions and their day counts. But via search index, not by reading the pages, and not confirmed by phone. See VERIFY.md §1.1–1.3. |
 | **M1** — "Am I covered?" + prepare checklist | **Code complete, gate not met.** The exit criterion is an insurance agent or state consumer specialist reading every coverage statement. That has not happened. |
-| **M2** — emergency screen + damage log | **Built.** Emergency screen, evidence chain, PDF claim packet, and the originals ZIP with a re-hashable manifest. Photo EXIF path still exercised only against synthetic records and one generated PNG, not ten real phone photos. |
+| **M2** — emergency screen + damage log | **Built.** Damage items, calls, and receipts are typed entries on the same chain. Emergency screen, evidence chain, PDF claim packet, and the originals ZIP with a re-hashable manifest. Photo EXIF path still exercised only against synthetic records and one generated PNG, not ten real phone photos. |
 | **M3** — zone lookup, local page, second language | **Not built.** FEMA egress is blocked here; an approximated flood zone is worse than none. No Spanish. |
 | **M4** — one household, one season | Not started. |
 

@@ -145,3 +145,104 @@ export const METHODOLOGY = [
   'Many photos sent through messaging apps have that metadata removed. Where it is missing this',
   'record says so and shows only when the file was added, which is not the same thing.',
 ].join('\n');
+
+// --------------------------------------------------------------------------- typed entries
+
+/**
+ * What an entry can be.
+ *
+ * All four ride the same append-only hash chain — a receipt is evidence in exactly the way a
+ * photo is, and splitting them into separate stores would mean two things to keep honest instead
+ * of one. The discriminator lets the PDF and the manifest group them without the chain caring.
+ */
+export type EntryKind = 'note' | 'damage' | 'call' | 'receipt';
+
+export interface DamageItemBody {
+  kind: 'damage';
+  room: string;
+  description: string;
+  /** What it cost when it was bought, in integer cents. NOT an estimate of what it is owed. */
+  purchaseCostCents: number | null;
+  purchaseYear: number | null;
+  condition: 'ruined' | 'damaged' | 'maybe-dryable' | 'unknown';
+  note?: string;
+}
+
+export interface CallBody {
+  kind: 'call';
+  party: string;
+  person: string;
+  claimNumber?: string;
+  summary: string;
+  promised?: string;
+}
+
+export interface ReceiptBody {
+  kind: 'receipt';
+  vendor: string;
+  amountCents: number;
+  category: 'drying' | 'repair' | 'lodging' | 'meals' | 'other';
+  datedOn: string;
+  note?: string;
+}
+
+export interface NoteBody {
+  kind?: 'note';
+  note: string;
+  photo?: PhotoRecord;
+}
+
+export type EntryBody = NoteBody | DamageItemBody | CallBody | ReceiptBody;
+
+export function entryKind(body: unknown): EntryKind {
+  const k = (body as { kind?: string })?.kind;
+  return k === 'damage' || k === 'call' || k === 'receipt' ? k : 'note';
+}
+
+/**
+ * "$1,234.56" -> 123456. Returns null on anything it cannot read confidently.
+ *
+ * Parsed to integer cents rather than a float, because this number ends up in a document an
+ * adjuster reads and a cent of drift is an argument nobody needs. Rounds the cents rather than
+ * truncating, and refuses more than two decimal places rather than silently discarding digits.
+ */
+export function parseMoneyToCents(input: string): number | null {
+  const cleaned = input.trim().replace(/[$\s,]/g, '');
+  if (!cleaned) return null;
+  if (!/^-?\d*(\.\d{1,2})?$/.test(cleaned)) return null;
+  const negative = cleaned.startsWith('-');
+  const [whole = '0', frac = ''] = cleaned.replace('-', '').split('.');
+  if (whole === '' && frac === '') return null;
+  const cents = Number(whole || '0') * 100 + Number(frac.padEnd(2, '0') || '0');
+  if (!Number.isSafeInteger(cents)) return null;
+  return negative ? -cents : cents;
+}
+
+/** Integer cents in, formatted dollars out. Money never touches a float here. */
+export function formatCents(cents: number): string {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(cents);
+  return `${sign}$${Math.floor(abs / 100).toLocaleString('en-US')}.${String(abs % 100).padStart(2, '0')}`;
+}
+
+/**
+ * Sums receipts only.
+ *
+ * Deliberately NOT a sum of damage items. The brief bans claim estimates and damage valuation,
+ * and for good reason: a number on the screen becomes an expectation, and this app has no
+ * business appraising anything. Receipts are different — they are money the household actually
+ * spent, with paper to show for it, and additional living expenses go unclaimed constantly for
+ * exactly the lack of that total.
+ */
+export function receiptsTotalCents(chain: ChainEntry[]): number {
+  return chain.reduce((sum, e) => {
+    const b = e.body as ReceiptBody;
+    return entryKind(b) === 'receipt' ? sum + (b.amountCents || 0) : sum;
+  }, 0);
+}
+
+export function countByKind(chain: ChainEntry[]): Record<EntryKind, number> {
+  const out: Record<EntryKind, number> = { note: 0, damage: 0, call: 0, receipt: 0 };
+  for (const e of chain) out[entryKind(e.body)]++;
+  return out;
+}

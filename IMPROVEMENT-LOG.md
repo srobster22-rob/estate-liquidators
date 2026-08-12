@@ -171,6 +171,31 @@ text that wraps.
 `yaml` package, and 17 browser tests including the no-answer path and the refusal to record
 without a name.
 
+## R9 — flood-and-water: damaged items, calls, and receipts
+
+Queue item #1 and the last substantial code the brief specified. Only the generic note-and-photo
+entry existed; the brief also models room-by-room damaged property, a contact log, and receipts.
+
+All three became typed entries on the *same* hash chain rather than separate stores — a receipt
+is evidence in exactly the way a photo is, and splitting them would mean two things to keep
+honest instead of one. A discriminator lets the PDF, the log screen, and the manifest group them
+without the chain caring.
+
+**The decision that mattered: receipts total, damaged property never does.** The brief bans claim
+estimates and damage valuation, so `receiptsTotalCents()` sums receipts only, the damage form asks
+what an item *cost when bought* rather than what it is worth, and every place the total appears
+says it is money spent with paper kept, not money owed. Additional living expenses go unclaimed
+constantly for want of exactly that total, and an appraisal is not this app's business. There is a
+test asserting a $900 sofa never appears in the figure, and a note in `VERIFY.md` so a future
+round does not add a "total loss" line and quietly turn a record into an appraisal.
+
+Money is parsed to integer cents and refuses input it cannot read confidently rather than
+guessing — `12.345` and `about ninety quid` are both rejected with a message, not rounded.
+
+**Verified:** 46 unit tests including a float-drift case that would sum to 1470.0000000000002,
+and 20 browser tests including that the three kinds share one verifiable chain and that an
+unreadable amount is refused rather than recorded.
+
 ---
 
 ## The queue — what the next rounds should take

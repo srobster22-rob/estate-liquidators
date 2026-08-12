@@ -219,3 +219,48 @@ test('the originals ZIP round-trips photo bytes and lists them in a manifest', a
   expect(parsed.manifest.photos[0].cameraTimestamp).toBeNull();
   expect(parsed.manifest.photos[0].addedToRecord).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 });
+
+test('damage, calls and receipts all ride the same chain, and only receipts total', async ({ page }) => {
+  await page.goto('/#/log');
+
+  await page.locator('summary', { hasText: 'Something that was damaged' }).click();
+  await page.locator('#d-room').fill('Basement');
+  await page.locator('#d-desc').fill('Sofa');
+  await page.locator('#d-cost').fill('900');
+  await page.locator('#d-year').fill('2019');
+  await page.locator('[data-add="damage"]').click();
+  await expect(page.locator('.entry')).toHaveCount(1);
+
+  await page.locator('summary', { hasText: 'A call you made' }).click();
+  await page.locator('#c-party').fill('Insurance company');
+  await page.locator('#c-person').fill('Rita');
+  await page.locator('#c-summary').fill('Adjuster booked for Thursday');
+  await page.locator('[data-add="call"]').click();
+  await expect(page.locator('.entry')).toHaveCount(2);
+
+  await page.locator('summary', { hasText: 'Something you paid for' }).click();
+  await page.locator('#r-vendor').fill('Hardware store');
+  await page.locator('#r-amount').fill('$89.99');
+  await page.locator('[data-add="receipt"]').click();
+  await expect(page.locator('.entry')).toHaveCount(3);
+
+  const body = await page.locator('#app').innerText();
+  expect(body).toContain('$89.99 in receipts recorded');
+  // The $900 sofa must never be folded into a total — this app does not appraise anything.
+  expect(body).not.toContain('$989.99');
+  expect(body).toContain('not an estimate of what you are owed');
+  await expect(page.locator('.chain-ok')).toContainText('intact');
+});
+
+test('an unreadable amount is refused rather than guessed at', async ({ page }) => {
+  await page.goto('/#/log');
+  const alerts: string[] = [];
+  page.on('dialog', (d) => { alerts.push(d.message()); void d.accept(); });
+  await page.locator('summary', { hasText: 'Something you paid for' }).click();
+  await page.locator('#r-vendor').fill('Hardware store');
+  await page.locator('#r-amount').fill('about ninety quid');
+  await page.locator('[data-add="receipt"]').click();
+  await expect.poll(() => alerts.length).toBe(1);
+  expect(alerts[0]).toMatch(/couldn't read that amount/i);
+  await expect(page.locator('.entry')).toHaveCount(0);
+});

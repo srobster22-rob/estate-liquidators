@@ -75,12 +75,16 @@ acceptable for the emergency screen.
 
 ### 3.1 Not built, and stated so nobody assumes otherwise
 - **Flood zone lookup** (2.2).
-- **Receipts, room-by-room damage items, and the contact log** are modelled in the brief but only
-  the generic note/photo entry is implemented.
 - **A second language.**
 
 Built since this file was first written: the service worker and offline emergency screen, the PDF
-claim packet, and the originals ZIP with a manifest an adjuster can re-hash against.
+claim packet, the originals ZIP with a manifest an adjuster can re-hash against, and typed entries
+for damaged items, calls, and receipts — all on the same hash chain.
+
+**One thing to watch when extending this.** Receipts total; damaged property never does. The brief
+bans claim estimates and damage valuation, so `receiptsTotalCents()` sums receipts only and every
+place the total appears says it is money spent, not money owed. A future round adding a "total
+loss" figure would quietly turn a record into an appraisal.
 
 ### 3.2 Real device
 Measured here: **37.7KB total gzipped**, 9.1KB initial JS (exifr's 25.9KB loads only when a photo

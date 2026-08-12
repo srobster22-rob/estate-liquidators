@@ -108,8 +108,10 @@ puncture" have to be unambiguous. Pay someone.
 
 ### 3.1 Real-device load time
 
-The byte budget is verified: **19.5KB total gzipped, 16.8KB of it JS** (`npm run check`),
-against budgets of 200KB and 100KB. That is the part a machine can check.
+The byte budget is verified: **20.5KB initial total gzipped, 18.0KB of it JS** (`npm run check`),
+against budgets of 200KB and 100KB. The budget covers what the browser fetches before the first
+screen is usable; lazily-loaded chunks are reported separately. That is the part a machine can
+check.
 
 Not checked: the brief's "answer visible within 2 seconds on Slow 4G with 4x CPU throttle" on an
 actual old phone. Do it with a real cheap Android, not a simulator on a fast laptop.

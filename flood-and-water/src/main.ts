@@ -3,6 +3,7 @@ import type { DataIndex, GapAnswer, GapState, SourceRef } from './types.js';
 import { assessGaps, rentersNote, waitingPeriod } from './coverage.js';
 import {
   appendEntry, verifyChain, describeTimestamp, makePhotoRecord, hashBytes, METHODOLOGY,
+  entryKind, formatCents, parseMoneyToCents, receiptsTotalCents, countByKind,
   type ChainEntry, type PhotoRecord,
 } from './evidence.js';
 import { loadChain, saveChain, putBlob, storageReport, StorageUnavailableError } from './store.js';
@@ -145,6 +146,41 @@ let chain: ChainEntry[] = [];
 /** Entries held only in memory because the device refused to save them. */
 let unsavedCount = 0;
 
+/** One human line per entry, whatever kind it is. */
+function describeEntry(b: Record<string, unknown>): string {
+  switch (entryKind(b)) {
+    case 'damage':
+      return `Damaged — ${b.room}: ${b.description}` +
+        (b.purchaseCostCents ? ` (cost ${formatCents(Number(b.purchaseCostCents))}` +
+          `${b.purchaseYear ? ` in ${b.purchaseYear}` : ''}, ${b.condition})` : ` (${b.condition})`);
+    case 'call':
+      return `Call — ${b.party}${b.person ? `, spoke to ${b.person}` : ''}` +
+        `${b.claimNumber ? ` (claim ${b.claimNumber})` : ''}: ${b.summary}` +
+        `${b.promised ? ` — promised: ${b.promised}` : ''}`;
+    case 'receipt':
+      return `Paid ${formatCents(Number(b.amountCents))} to ${b.vendor} on ${b.datedOn} (${b.category})`;
+    default:
+      return String(b.note ?? '');
+  }
+}
+
+/** Counts, and the receipts total — never a damage total. See receiptsTotalCents(). */
+function summaryLine(entries: ChainEntry[]): string {
+  const n = countByKind(entries);
+  const total = receiptsTotalCents(entries);
+  if (!entries.length) return '';
+  const bits = [
+    `${n.note} note${n.note === 1 ? '' : 's'}`,
+    `${n.damage} damaged item${n.damage === 1 ? '' : 's'}`,
+    `${n.call} call${n.call === 1 ? '' : 's'}`,
+    `${n.receipt} receipt${n.receipt === 1 ? '' : 's'}`,
+  ].join(' · ');
+  return `<p class="place-meta">${bits}${
+    n.receipt ? ` · <strong>${esc(formatCents(total))}</strong> in receipts recorded` : ''
+  }</p>
+  ${n.receipt ? '<p class="place-meta">That is what you have spent and kept paper for. It is not an estimate of what you are owed.</p>' : ''}`;
+}
+
 async function renderLog(): Promise<string> {
   // Only re-read from storage when nothing is being held in memory, or a failed save would be
   // undone by the next render and the entry really would disappear.
@@ -159,7 +195,7 @@ async function renderLog(): Promise<string> {
         return `
         <div class="entry ${e.correctsSeq ? 'correction' : ''}">
           ${e.correctsSeq ? `<p class="entry-meta">Correction to entry #${e.correctsSeq}</p>` : ''}
-          <p>${esc(String(b.note ?? ''))}</p>
+          <p>${esc(describeEntry(b))}</p>
           ${photo ? `<p class="entry-meta">${esc(describeTimestamp(photo))}</p>
             <p class="entry-meta">SHA-256 ${esc(photo.sha256.slice(0, 16))}… · ${photo.byteSize} bytes</p>` : ''}
           <p class="entry-meta">#${e.seq} · recorded ${esc(e.createdAt)} · hash ${esc(e.contentHash.slice(0, 12))}…</p>
@@ -187,10 +223,56 @@ async function renderLog(): Promise<string> {
       <p><button class="btn" id="add">Add to record</button></p>
     </div>
 
+    <details class="q"><summary><strong>Something that was damaged</strong></summary>
+      <p><label for="d-room">Room</label><input type="text" id="d-room" placeholder="Basement" /></p>
+      <p><label for="d-desc">What it is</label><input type="text" id="d-desc" placeholder="Sofa" /></p>
+      <p><label for="d-cost">What it cost when you bought it</label>
+        <input type="text" id="d-cost" placeholder="900" inputmode="decimal" /></p>
+      <p><label for="d-year">Year bought</label><input type="text" id="d-year" placeholder="2019" inputmode="numeric" /></p>
+      <p><label for="d-cond">Condition</label>
+        <select id="d-cond">
+          <option value="ruined">Ruined</option>
+          <option value="damaged">Damaged</option>
+          <option value="maybe-dryable">Might dry out</option>
+          <option value="unknown">Not sure</option>
+        </select></p>
+      <p><button class="btn" data-add="damage">Add this item</button></p>
+      <p class="place-meta">What it cost when you bought it — not what it is worth now. This app
+        does not put a value on anything; the adjuster does that.</p>
+    </details>
+
+    <details class="q"><summary><strong>A call you made</strong></summary>
+      <p><label for="c-party">Who you called</label><input type="text" id="c-party" placeholder="Insurance company" /></p>
+      <p><label for="c-person">Who you spoke to</label><input type="text" id="c-person" placeholder="Rita" /></p>
+      <p><label for="c-claim">Claim number, if they gave one</label><input type="text" id="c-claim" /></p>
+      <p><label for="c-summary">What was said</label><input type="text" id="c-summary" placeholder="Adjuster booked for Thursday" /></p>
+      <p><label for="c-promised">What they promised</label><input type="text" id="c-promised" /></p>
+      <p><button class="btn" data-add="call">Add this call</button></p>
+    </details>
+
+    <details class="q"><summary><strong>Something you paid for</strong></summary>
+      <p><label for="r-vendor">Who you paid</label><input type="text" id="r-vendor" placeholder="Hardware store" /></p>
+      <p><label for="r-amount">How much</label><input type="text" id="r-amount" placeholder="89.99" inputmode="decimal" /></p>
+      <p><label for="r-date">Date</label><input type="date" id="r-date" /></p>
+      <p><label for="r-cat">What for</label>
+        <select id="r-cat">
+          <option value="drying">Drying out / pumps / fans</option>
+          <option value="repair">Repair</option>
+          <option value="lodging">Somewhere to stay</option>
+          <option value="meals">Meals</option>
+          <option value="other">Something else</option>
+        </select></p>
+      <p><button class="btn" data-add="receipt">Add this receipt</button></p>
+      <p class="place-meta">Keep the paper too. Extra living costs are often reimbursable and
+        often unclaimed because nobody kept the receipts.</p>
+    </details>
+
     <p><button class="btn btn-secondary" id="export">Save as a PDF for your insurer</button>
       <button class="btn btn-secondary" id="export-zip">Save the original photo files</button></p>
     <p class="place-meta">The PDF is for reading. The photo files are for checking: they come out
       exactly as they went in, with a manifest an adjuster can re-hash them against.</p>
+
+    ${summaryLine(chain)}
 
     <p>Chain: <span class="${check.intact ? 'chain-ok' : 'chain-broken'}">
       ${chain.length} ${chain.length === 1 ? 'entry' : 'entries'},
@@ -324,8 +406,60 @@ function wireCoverage(): void {
   });
 }
 
+async function addTypedEntry(kind: 'damage' | 'call' | 'receipt'): Promise<void> {
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLSelectElement)?.value.trim() ?? '';
+  let body: Record<string, unknown>;
+
+  if (kind === 'damage') {
+    if (!val('d-desc')) return alert('Say what the item is first.');
+    const cost = val('d-cost') ? parseMoneyToCents(val('d-cost')) : null;
+    if (val('d-cost') && cost === null) return alert("Couldn't read that amount. Try something like 900 or 899.99.");
+    const year = val('d-year') ? Number(val('d-year')) : null;
+    body = {
+      kind: 'damage', room: val('d-room') || 'Not said', description: val('d-desc'),
+      purchaseCostCents: cost, purchaseYear: Number.isFinite(year) && year ? year : null,
+      condition: val('d-cond') || 'unknown',
+    };
+  } else if (kind === 'call') {
+    if (!val('c-party') && !val('c-summary')) return alert('Say who you called, or what was said.');
+    body = {
+      kind: 'call', party: val('c-party') || 'Not said', person: val('c-person'),
+      summary: val('c-summary'),
+      ...(val('c-claim') ? { claimNumber: val('c-claim') } : {}),
+      ...(val('c-promised') ? { promised: val('c-promised') } : {}),
+    };
+  } else {
+    const amount = parseMoneyToCents(val('r-amount'));
+    if (amount === null) return alert("Couldn't read that amount. Try something like 89.99.");
+    if (!val('r-vendor')) return alert('Say who you paid.');
+    body = {
+      kind: 'receipt', vendor: val('r-vendor'), amountCents: amount,
+      category: val('r-cat') || 'other',
+      datedOn: val('r-date') || new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  chain = [...chain, await appendEntry(chain, body, new Date().toISOString())];
+  try {
+    await saveChain(chain);
+  } catch (err) {
+    if (!(err instanceof StorageUnavailableError)) throw err;
+    unsavedCount++;
+    alert(
+      'This device would not save the record — it may be out of space, or this may be a private ' +
+        'window. The entry is still here for now. Save the PDF before you close this tab.',
+    );
+  }
+  await route();
+}
+
 function wireLog(): void {
   document.getElementById('add')?.addEventListener('click', () => { void addLogEntry(); });
+  document.querySelectorAll('[data-add]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      void addTypedEntry((btn as HTMLElement).dataset.add as 'damage' | 'call' | 'receipt');
+    });
+  });
   document.getElementById('export-zip')?.addEventListener('click', () => {
     void (async () => {
       const [{ buildOriginalsZip, downloadZip }, { verifyChain }, { getBlob }] = await Promise.all([

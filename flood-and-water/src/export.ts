@@ -1,7 +1,8 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { makeZip } from './zip.js';
 import {
-  METHODOLOGY, verifyChain, describeTimestamp,
+  METHODOLOGY, verifyChain, describeTimestamp, entryKind, formatCents, receiptsTotalCents,
+  countByKind,
   type ChainEntry, type ChainCheck, type PhotoRecord,
 } from './evidence.js';
 
@@ -57,6 +58,26 @@ function write(ctx: Ctx, text: string, opts: { bold?: boolean; size?: number; ga
   ctx.y -= opts.gap ?? 4;
 }
 
+function describeForPdf(b: Record<string, unknown>): string {
+  switch (entryKind(b)) {
+    case 'damage':
+      return `Damaged property — ${b.room}: ${b.description}. Condition: ${b.condition}.` +
+        (b.purchaseCostCents
+          ? ` Original purchase price ${formatCents(Number(b.purchaseCostCents))}` +
+            `${b.purchaseYear ? ` (${b.purchaseYear})` : ''}.`
+          : '');
+    case 'call':
+      return `Call with ${b.party}${b.person ? ` (${b.person})` : ''}` +
+        `${b.claimNumber ? `, claim ${b.claimNumber}` : ''}: ${b.summary}` +
+        `${b.promised ? ` Promised: ${b.promised}.` : ''}`;
+    case 'receipt':
+      return `Paid ${formatCents(Number(b.amountCents))} to ${b.vendor} on ${b.datedOn}` +
+        ` (${b.category}).`;
+    default:
+      return String(b.note ?? '');
+  }
+}
+
 export async function buildPacket(chain: ChainEntry[], now: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -85,6 +106,25 @@ export async function buildPacket(chain: ChainEntry[], now: string): Promise<Uin
     { size: 9, gap: 16 },
   );
 
+  const counts = countByKind(chain);
+  const receipts = receiptsTotalCents(chain);
+  write(
+    ctx,
+    `${counts.note} note(s) · ${counts.damage} damaged item(s) · ${counts.call} call(s) · ` +
+      `${counts.receipt} receipt(s)`,
+    { size: 10, gap: 4 },
+  );
+  if (counts.receipt) {
+    write(ctx, `Receipts recorded: ${formatCents(receipts)}`, { bold: true, size: 10, gap: 2 });
+    // Stated every time, because a number in a document like this gets read as a claim.
+    write(
+      ctx,
+      'That is money spent with receipts kept. It is not an estimate of the loss and not a ' +
+        'claim amount — no valuation of damaged property appears anywhere in this record.',
+      { size: 9, gap: 14 },
+    );
+  }
+
   write(ctx, 'Entries', { bold: true, size: 13, gap: 8 });
   if (!chain.length) write(ctx, 'No entries.', { size: 10 });
 
@@ -96,7 +136,7 @@ export async function buildPacket(chain: ChainEntry[], now: string): Promise<Uin
       `#${e.seq}${e.correctsSeq ? ` (correction to #${e.correctsSeq})` : ''} — recorded ${e.createdAt}`,
       { bold: true, size: 10, gap: 2 },
     );
-    if (b.note) write(ctx, String(b.note), { size: 10, gap: 2 });
+    write(ctx, describeForPdf(b), { size: 10, gap: 2 });
     if (photo) {
       write(ctx, describeTimestamp(photo), { size: 9, gap: 2 });
       write(ctx, `Photo SHA-256: ${photo.sha256}`, { size: 8, gap: 2 });
@@ -187,6 +227,11 @@ export async function buildOriginalsZip(
   const manifest = {
     exportedOn,
     entryCount: chain.length,
+    entryCounts: countByKind(chain),
+    receiptsRecordedCents: receiptsTotalCents(chain),
+    receiptsNote:
+      'receiptsRecordedCents is money spent with receipts kept. It is not a loss estimate and ' +
+      'not a claim amount. No valuation of damaged property appears in this record.',
     photoCount: entries.length,
     chainIntact: chainCheck.intact,
     chainBrokenAt: chainCheck.brokenAt ?? null,

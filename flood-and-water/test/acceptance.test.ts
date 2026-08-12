@@ -286,3 +286,84 @@ describe('nothing leaves the device', () => {
     expect(readFileSync(join(root, 'index.html'), 'utf8')).not.toMatch(/(src|href)=["']https?:\/\//);
   });
 });
+
+// --- typed entries -----------------------------------------------------------
+
+describe('money is integer cents, never a float', () => {
+  it('parses the shapes people actually type', async () => {
+    const { parseMoneyToCents } = await import('../src/evidence.js');
+    expect(parseMoneyToCents('1234.56')).toBe(123456);
+    expect(parseMoneyToCents('$1,234.56')).toBe(123456);
+    expect(parseMoneyToCents(' 89 ')).toBe(8900);
+    expect(parseMoneyToCents('0.05')).toBe(5);
+    expect(parseMoneyToCents('.5')).toBe(50);
+    expect(parseMoneyToCents('-12.34')).toBe(-1234);
+  });
+
+  it('refuses what it cannot read rather than guessing', async () => {
+    const { parseMoneyToCents } = await import('../src/evidence.js');
+    for (const bad of ['', 'abc', '12.345', '1.2.3', '$', '12,3.456']) {
+      expect(parseMoneyToCents(bad), bad).toBeNull();
+    }
+  });
+
+  it('survives amounts that would drift as floats', async () => {
+    const { parseMoneyToCents, formatCents } = await import('../src/evidence.js');
+    // 0.1 + 0.2 territory: summing these as floats gives 1470.0000000000002.
+    const parts = ['0.10', '0.20', '1469.70'].map((s) => parseMoneyToCents(s)!);
+    expect(parts.reduce((a, b) => a + b, 0)).toBe(147000);
+    expect(formatCents(147000)).toBe('$1,470.00');
+  });
+
+  it('formats cents back without rounding error', async () => {
+    const { formatCents } = await import('../src/evidence.js');
+    expect(formatCents(5)).toBe('$0.05');
+    expect(formatCents(100)).toBe('$1.00');
+    expect(formatCents(123456789)).toBe('$1,234,567.89');
+    expect(formatCents(-1234)).toBe('-$12.34');
+  });
+});
+
+describe('receipts total, damage does not', () => {
+  it('sums receipts only', async () => {
+    const { appendEntry, receiptsTotalCents, countByKind } = await import('../src/evidence.js');
+    let chain: Awaited<ReturnType<typeof appendEntry>>[] = [];
+    const at = (n: number) => `2026-04-0${n}T12:00:00Z`;
+    chain = [...chain, await appendEntry(chain, { note: 'water in the basement' }, at(1))];
+    chain = [...chain, await appendEntry(chain, {
+      kind: 'receipt', vendor: 'Hardware store', amountCents: 8999, category: 'drying',
+      datedOn: '2026-04-01',
+    }, at(2))];
+    chain = [...chain, await appendEntry(chain, {
+      kind: 'receipt', vendor: 'Motel', amountCents: 21000, category: 'lodging',
+      datedOn: '2026-04-02',
+    }, at(3))];
+    chain = [...chain, await appendEntry(chain, {
+      kind: 'damage', room: 'Basement', description: 'Sofa', purchaseCostCents: 90000,
+      purchaseYear: 2019, condition: 'ruined',
+    }, at(4))];
+
+    // The damage item's $900 must NOT appear in the total — this app does not appraise.
+    expect(receiptsTotalCents(chain)).toBe(29999);
+    expect(countByKind(chain)).toEqual({ note: 1, damage: 1, call: 0, receipt: 2 });
+  });
+
+  it('typed entries ride the same chain and verify like any other', async () => {
+    const { appendEntry, verifyChain } = await import('../src/evidence.js');
+    let chain: Awaited<ReturnType<typeof appendEntry>>[] = [];
+    chain = [...chain, await appendEntry(chain, {
+      kind: 'call', party: 'Insurer', person: 'Rita', claimNumber: 'CL-99',
+      summary: 'Adjuster booked for Thursday', promised: 'Callback with a time',
+    }, '2026-04-05T09:00:00Z')];
+    chain = [...chain, await appendEntry(chain, {
+      kind: 'receipt', vendor: 'Fan rental', amountCents: 4500, category: 'drying',
+      datedOn: '2026-04-05',
+    }, '2026-04-05T10:00:00Z')];
+    expect(await verifyChain(chain)).toEqual({ intact: true });
+
+    (chain[0].body as { summary: string }).summary = 'never said that';
+    const check = await verifyChain(chain);
+    expect(check.intact).toBe(false);
+    expect(check.brokenAt).toBe(1);
+  });
+});
