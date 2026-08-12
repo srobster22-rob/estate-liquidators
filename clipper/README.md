@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 6. Works end to end, on local files.** 243 tests pass, including real ffmpeg encodes
+**Round 7. Works end to end, on local files.** 259 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -58,6 +58,22 @@ Six features, each 0–1, combined as a weighted sum:
 | `payoff` | No conclusion marker near the end. |
 
 Tune with `--weights weights.json`; `score.Weights` writes the file for you.
+
+## Silence is recovered, not assumed away
+
+WebVTT inline timings (`<00:00:01.234><c> word</c>`) record where each word *starts* and say
+nothing about where it ends. Reading them the obvious way — each word lasts until the next one
+begins — quietly asserts the speaker never pauses, which zeroes every inter-word gap. On
+YouTube auto-captions that erases the only sentence signal an unpunctuated transcript has.
+
+`transcript.estimate_word_ends` infers how fast the speaker talks when *not* pausing (a low
+quantile of seconds-per-character), gives each word the duration that implies, and lets the
+remainder stand as silence. `segment.adaptive_gap` then finds that speaker's own
+sentence-pause threshold by Otsu's method, instead of applying one constant to everyone.
+
+Measured on the paired fixture, the auto side went from **20 utterances to 100** against a
+punctuated twin of 62, and from 77 candidate clips to 1,760. Punctuated transcripts are
+unchanged — punctuation dominates wherever it exists.
 
 ## Clip length is not scored
 
@@ -139,7 +155,7 @@ Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 243 tests, ~25s
+python3 -m unittest discover -s tests -t .      # 259 tests, ~30s
 python3 -m clipper.cli --help
 ```
 
@@ -152,10 +168,10 @@ Ranked by how much they'd hurt:
 1. **The download path has never completed.** yt-dlp accepts every flag, but nothing here has
    a route to YouTube, so the round-trip is unverified — chiefly whether subtitle files land
    where `find_transcript` looks.
-2. **The auto-caption fixture inherits SRT cue timings**, so gaps within a cue are exactly
-   zero and the gap structure is subtitle-shaped rather than speech-shaped. The 79%/83%
-   figures should be re-measured against a real auto-caption file before being trusted as
-   absolutes; the *direction* is solid, the magnitude is not.
+2. **The auto-caption fixture is synthetic.** Word timings are generated with plausible
+   intra-phrase and sentence-boundary silence rather than captured from a real ASR run, so
+   the absolute thresholds it produces should be re-checked against a genuine auto-caption
+   file. The mechanisms it exercises are real; the exact numbers are not evidence.
 2. **No vertical aiming.** `framing.aim()` is horizontal only. Correct for 16:9 → 9:16,
    wrong for a square or already-tall source, where the interesting part of the frame may be
    above or below centre.

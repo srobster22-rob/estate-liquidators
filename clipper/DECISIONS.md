@@ -393,3 +393,43 @@ round. Any new edge-anchored feature must be gated at the time it is written.
 
 **Falsified by:** a feature where the window genuinely should float free of the boundary —
 for instance a topic-coherence measure over the whole clip, which has no edge to anchor to.
+
+---
+
+### D-23 · Word ends are inferred from the speaker's pace, not from the next word's start · FIRM
+
+WebVTT gives word starts only. `estimate_word_ends` infers seconds-per-character from a low
+quantile of the observed pace and gives each word that duration, capped by the next word's
+start.
+
+**Why:** the alternative — stretch each word until the next begins — is not a neutral reading.
+It asserts that silence never occurs, which zeroes every inter-word gap in the format YouTube
+actually ships. That single modelling choice disabled `pacing`, flattened `gap_before` and
+`gap_after`, restricted segmentation to cue boundaries, and made `payoff` unreachable on the
+entire auto-caption path. None of those symptoms pointed at the parser.
+
+**Falsified by:** a transcript source that supplies real word end times — YouTube's `json3`
+caption format does, and if clipper ever consumes it directly the estimate should be dropped
+in favour of the measurement.
+
+---
+
+### D-24 · The sentence-pause threshold is derived per transcript, not fixed · FIRM
+
+`segment.adaptive_gap` splits each transcript's own gap distribution by Otsu's method.
+`DEFAULT_GAP = 0.65` remains only as a fallback when the distribution cannot be split.
+
+**Why:** no single number fits every speaker. Measured, 0.65 caught **14 of 572** gaps on an
+auto-caption transcript whose sentence pauses sit near 0.44, starving the segmenter of
+boundaries. Deriving the threshold removes the constant rather than retuning it — the same
+move as D-8, where an unjustifiable number was deleted instead of guessed better.
+
+Two guards, both of which cost a bug to learn: the maximising bin is a *plateau* when the
+populations separate cleanly, so its midpoint is taken rather than its first element; and gaps
+under 1ms are numerical dust rather than silence, without which contiguous timings split into
+nine times too many utterances.
+
+**Falsified by:** a transcript whose gap distribution is genuinely unimodal — an unbroken
+read with no sentence pauses — where Otsu will still return a split and there is nothing there
+to find. The `MIN_GAP_THRESHOLD` floor is the current guard, and it is a threshold on a
+threshold, which is not elegant.

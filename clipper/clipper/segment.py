@@ -10,7 +10,8 @@ Two boundary signals, in priority order:
 
 1. **Punctuation**, when the transcript has it.
 2. **Silence**, always. A gap between words is the speaker breathing, and it is
-   the only sentence signal an auto-caption transcript carries.
+   the only sentence signal an auto-caption transcript carries. How long a gap
+   has to be is *derived per transcript* rather than fixed — see `adaptive_gap`.
 
 `Segmentation.punctuated` records which regime was used, because it changes how
 much the downstream scorer should trust a "clean ending".
@@ -23,8 +24,30 @@ from dataclasses import dataclass, field
 
 from .transcript import Transcript, Word
 
-#: A gap at least this long is treated as a sentence boundary.
+#: Fallback sentence-boundary gap, used only when a transcript's own gap
+#: distribution is too degenerate to split (see `adaptive_gap`).
+#:
+#: It is a fallback rather than the rule because no single number fits every
+#: speaker. Measured at R7 on auto-captions, 0.65 caught **14 of 572** gaps —
+#: that transcript's sentence pauses sit around 0.44 — which starved the
+#: segmenter of boundaries and produced utterances three times coarser than the
+#: same content with punctuation.
 DEFAULT_GAP = 0.65
+
+#: Histogram resolution for the adaptive split. 256 is plenty for a value range
+#: measured in seconds.
+GAP_BINS = 256
+
+#: Gaps below this are numerical dust, not silence. Contiguous word timings
+#: differ by ~1e-16 through floating-point accumulation alone, and without this
+#: filter Otsu happily splits on that noise — a gapless synthetic transcript
+#: produced 2,412 utterances instead of 267.
+GAP_EPSILON = 1e-3
+
+#: The shortest threshold worth believing. Below this the transcript has no real
+#: pauses to find, so the adaptive split is meaningless and the fallback is
+#: honest.
+MIN_GAP_THRESHOLD = 0.08
 
 #: Hard cap on utterance length, so an unpunctuated monologue with no pauses
 #: still produces boundaries to cut on.
@@ -102,6 +125,9 @@ class Segmentation:
     scorer whether a lower-case opening word means anything.
     """
 
+    gap_threshold: float = DEFAULT_GAP
+    """The silence threshold actually used — adaptive unless explicitly overridden."""
+
     def __len__(self) -> int:
         return len(self.utterances)
 
@@ -150,6 +176,63 @@ class Candidate:
         return self.start - pad < other.end and other.start - pad < self.end
 
 
+def adaptive_gap(words: list[Word], *, bins: int = GAP_BINS) -> float | None:
+    """Find this speaker's own sentence-pause threshold, by Otsu's method.
+
+    Inter-word silence is bimodal: the short gaps between words inside a phrase,
+    and the longer breath at the end of a thought. Otsu picks the split that
+    maximises the separation between those two populations, which means the
+    threshold comes from the transcript rather than from a constant nobody can
+    justify for every speaker.
+
+    Returns None when the distribution cannot be split — too few gaps, or no
+    variation in them — in which case the caller falls back to `DEFAULT_GAP`.
+    """
+    values = [
+        g for g in (b.start - a.end for a, b in zip(words, words[1:])) if g > GAP_EPSILON
+    ]
+    if len(values) < 8:
+        return None
+    low, high = min(values), max(values)
+    if high <= low:
+        return None
+
+    histogram = [0] * bins
+    for value in values:
+        histogram[min(bins - 1, int((value - low) / (high - low) * bins))] += 1
+
+    total = len(values)
+    weighted_total = sum(i * histogram[i] for i in range(bins))
+    variances: list[float] = [-1.0] * bins
+    below = 0
+    weighted_below = 0.0
+    for i in range(bins):
+        below += histogram[i]
+        if below == 0:
+            continue
+        above = total - below
+        if above == 0:
+            break
+        weighted_below += i * histogram[i]
+        mean_below = weighted_below / below
+        mean_above = (weighted_total - weighted_below) / above
+        variances[i] = below * above * (mean_below - mean_above) ** 2
+
+    best_variance = max(variances)
+    if best_variance <= 0:
+        return None
+    # Two well-separated populations make every bin between them equally good,
+    # so the maximum is a plateau rather than a point. Taking the first bin puts
+    # the threshold hard against the *lower* cluster — for gaps of 0.03 and 0.50
+    # it returned 0.031. The midpoint of the plateau is the split that actually
+    # sits between the two groups.
+    top = [i for i, v in enumerate(variances) if v >= best_variance - 1e-12]
+    best_bin = (top[0] + top[-1]) / 2.0
+
+    threshold = low + (best_bin + 0.5) * (high - low) / bins
+    return threshold if threshold >= MIN_GAP_THRESHOLD else None
+
+
 def punctuation_ratio(words: list[Word]) -> float:
     if not words:
         return 0.0
@@ -159,12 +242,20 @@ def punctuation_ratio(words: list[Word]) -> float:
 def segment(
     transcript: Transcript,
     *,
-    gap: float = DEFAULT_GAP,
+    gap: float | None = None,
     max_words: int = DEFAULT_MAX_WORDS,
 ) -> Segmentation:
-    """Group a transcript's words into utterances."""
+    """Group a transcript's words into utterances.
+
+    `gap` defaults to a threshold derived from this transcript's own silence
+    distribution rather than a fixed constant.
+    """
     words = transcript.words
     punctuated = punctuation_ratio(words) >= PUNCTUATION_FLOOR
+    if gap is None:
+        gap = adaptive_gap(words)
+        if gap is None:
+            gap = DEFAULT_GAP
 
     utterances: list[Utterance] = []
     current: list[Word] = []
@@ -192,7 +283,7 @@ def segment(
     starts = [u.words[0].text[:1] for u in utterances if u.words and u.words[0].text]
     alpha = [c for c in starts if c.isalpha()]
     capitalised = bool(alpha) and sum(1 for c in alpha if c.isupper()) / len(alpha) >= CAPITAL_FLOOR
-    return Segmentation(utterances, punctuated, capitalised)
+    return Segmentation(utterances, punctuated, capitalised, gap)
 
 
 def candidates(

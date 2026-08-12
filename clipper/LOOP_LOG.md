@@ -281,3 +281,52 @@ place; parameter influence asks the sharper question about the *numbers*. A cons
 evidence behind it and a large influence is the most dangerous thing in a scoring model,
 because it looks like a decision and behaves like a coin toss. Both of R6's findings were
 invisible to every check that existed before it.
+
+---
+
+R7 · Chased `payoff` being dead on auto-captions down to its root, which turned out to be two
+levels below where it showed up. Rebuilt the paired fixture with realistic ASR timings, taught
+the parser to recover silence, and made the segmentation threshold adaptive.
+16 new tests, 259 total. · **Found four things:**
+
+**(a) The parser asserted that speakers never pause.** WebVTT inline timings mark word
+*starts* only. `_cue_words` stretched each word until the next one began — the obvious
+reading, and it makes **every inter-word gap exactly zero**. On YouTube auto-captions, which
+use precisely this format, that erased the only sentence signal an unpunctuated transcript
+has. Everything downstream inherited it: segmentation could cut only at cue boundaries,
+`pacing` could never fire, `gap_before`/`gap_after` were meaningless, and `payoff` was
+unreachable on all 77 candidates because the conclusion phrase was always buried mid-clip
+rather than near the end. `estimate_word_ends` now infers the speaker's non-pausing pace (a
+low quantile of seconds-per-character), gives each word that duration, and lets the remainder
+stand as the silence it is.
+
+**(b) `DEFAULT_GAP = 0.65` caught 14 gaps out of 572 on the auto path.** That transcript's
+sentence pauses sit near 0.44, so a global constant simply missed them, producing utterances
+three times coarser than the same content with punctuation. Replaced with `adaptive_gap`:
+Otsu's method over the transcript's own silence distribution, which finds the split between
+"gaps inside a phrase" and "the breath at the end of a thought" without any constant at all.
+`DEFAULT_GAP` survives only as a fallback for distributions that cannot be split.
+**Auto: 20 utterances → 100, 77 candidates → 1,760.** Punctuated fixtures unchanged, because
+punctuation dominates wherever it exists.
+
+**(c) Otsu's maximum is a plateau, and taking the first bin picks the worst point on it.**
+With two well-separated populations every bin between them scores identically, so the first
+maximum sits hard against the *lower* cluster — for gaps of 0.03 and 0.50 it returned 0.031.
+Taking the plateau's midpoint puts the threshold between the groups where it belongs. This is
+the same mistake, and the same fix, as the tied-maxima centroid in R2's framing code; I did
+not recognise it until a synthetic bimodal test failed.
+
+**(d) Floating-point dust reads as silence.** Contiguous word timings differ by ~1e-16 through
+accumulation alone, and Otsu will cheerfully split on that: a gapless synthetic transcript
+produced **2,412 utterances instead of 267**. Gaps under 1ms are now ignored, and a threshold
+below 0.08s is treated as "this transcript has no real pauses" and falls back.
+
+**Also rebuilt the paired fixture.** The R5 version inherited its word timings from SRT cue
+interpolation, so intra-cue gaps were exactly zero — it could not contain the thing it was
+built to measure. `make_auto.py` now synthesises plausible intra-phrase and sentence-boundary
+silence. That is the R2 lesson for the third time: **a fixture that cannot express the
+phenomenon will confidently report that the phenomenon is absent.**
+
+**Left rough on purpose:** the fixture's timings are plausible rather than captured, so the
+thresholds it produces are mechanism checks, not calibration. And `payoff` remains a lexicon
+of six English phrases, which is the shallowest feature in the scorer.

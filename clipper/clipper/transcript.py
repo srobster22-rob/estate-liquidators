@@ -183,6 +183,56 @@ def _spread(tokens: list[str], start: float, end: float, interpolated: bool) -> 
     return out
 
 
+#: Quantile of the observed per-character pace used as the speaking rate.
+#: Low, because the fast end of the distribution is the speaker *not pausing*,
+#: which is exactly the rate wanted for estimating how long a word itself takes.
+SPEECH_RATE_QUANTILE = 0.25
+
+#: Bounds on the inferred rate, in seconds per character. Roughly 4-40
+#: characters per second — wide enough for any real delivery, tight enough that
+#: a pathological file cannot produce nonsense.
+MIN_RATE = 0.025
+MAX_RATE = 0.25
+
+
+def estimate_word_ends(words: list[Word]) -> list[Word]:
+    """Recover silence from a transcript that only records word *starts*.
+
+    WebVTT's inline timings (``<00:00:01.234><c> word</c>``) mark where each word
+    begins and say nothing about where it ends. The obvious reading — stretch
+    each word until the next one starts — quietly asserts that the speaker never
+    pauses, so **every inter-word gap becomes exactly zero**. On YouTube
+    auto-captions, which use precisely this format, that erases the only sentence
+    signal an unpunctuated transcript has: segmentation could then cut only at
+    cue boundaries, producing utterances three times coarser than the same
+    content with punctuation, `pacing` could never fire, and `payoff` was
+    unreachable on every candidate.
+
+    Instead, infer how fast the speaker talks *when not pausing* — a low quantile
+    of seconds-per-character across the file — give each word the duration that
+    rate implies, and let the remainder stand as the silence it is.
+    """
+    if len(words) < 2:
+        return words
+    ratios = sorted(
+        (b.start - a.start) / max(1, len(a.text))
+        for a, b in zip(words, words[1:])
+        if b.start > a.start
+    )
+    if not ratios:
+        return words
+    rate = ratios[min(len(ratios) - 1, int(len(ratios) * SPEECH_RATE_QUANTILE))]
+    rate = min(MAX_RATE, max(MIN_RATE, rate))
+
+    out: list[Word] = []
+    for i, word in enumerate(words):
+        ceiling = words[i + 1].start if i + 1 < len(words) else word.end
+        spoken = word.start + max(1, len(word.text)) * rate
+        end = min(spoken, max(ceiling, word.start + 0.01))
+        out.append(Word(word.text, word.start, max(end, word.start + 0.01), word.interpolated))
+    return out
+
+
 # --------------------------------------------------------------------------
 # Rolling-caption de-duplication
 # --------------------------------------------------------------------------
@@ -292,6 +342,9 @@ def parse_vtt(body: str, *, source: str = "", rolling: bool | None = None) -> Tr
         if is_rolling:
             fresh = _drop_repeat_prefix(words, fresh)
         words.extend(fresh)
+
+    if _INLINE_TS.search(body):
+        words = estimate_word_ends(words)
     return Transcript(_monotonic(words), cues, source, is_rolling)
 
 

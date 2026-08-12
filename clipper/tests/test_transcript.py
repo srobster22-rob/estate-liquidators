@@ -52,8 +52,15 @@ class RollingAutoCaptionTests(unittest.TestCase):
             self.assertLessEqual(a.start, b.start)
             self.assertGreater(a.end, a.start)
 
-    def test_duration_matches_last_cue(self):
-        self.assertAlmostEqual(self.tr.duration, 16.400, places=2)
+    def test_duration_ends_with_the_last_word_not_the_last_cue(self):
+        """A cue often outlasts the word in it; the transcript should not.
+
+        Word ends are estimated from the speaker's inferred pace (see
+        `estimate_word_ends`), so the final word ends when it stops being
+        spoken rather than when its caption is retired.
+        """
+        self.assertLess(self.tr.duration, 16.400)
+        self.assertGreater(self.tr.duration, 15.0)
 
     def test_reports_real_word_timings(self):
         self.assertTrue(self.tr.has_real_word_timings)

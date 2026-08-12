@@ -25,12 +25,62 @@ from clipper.transcript import Word, format_timestamp, load  # noqa: E402
 #: Words per rolling caption line, roughly what YouTube emits.
 LINE_WORDS = 7
 
+#: Silence inserted *between* words inside a sentence, and *after* a sentence
+#: ends. Real ASR emits word-level timings with exactly this two-population
+#: structure, and it is the only sentence signal that survives into an
+#: unpunctuated transcript.
+#:
+#: The first version of this generator inherited the source SRT's cue-level
+#: interpolation instead, which put a gap of *exactly zero* between every word
+#: inside a cue. That fixture could not contain the thing it was built to
+#: measure: segmentation had nothing but cue boundaries to cut on, produced
+#: utterances three times coarser than the punctuated original, and made
+#: `payoff` unreachable on every candidate.
+WORD_GAP = 0.04
+SENTENCE_GAP = 0.42
+
 _STRIP = re.compile(r"[^\w' ]+")
 
 
 def flatten(word: Word) -> str:
     """ASR output: lower-case, no punctuation, no capitals — not even on names."""
     return _STRIP.sub("", word.text).lower()
+
+
+def respace(words: list[Word], source_text: list[str]) -> list[Word]:
+    """Re-time words with realistic inter-word and sentence-boundary silence.
+
+    Anchored to the original span so the transcript stays aligned with the video:
+    speech time is shared out by word length, and the gaps are carved from the
+    same budget rather than added on top.
+    """
+    if not words:
+        return []
+    start, end = words[0].start, words[-1].end
+    span = max(0.01, end - start)
+
+    ends_sentence = [bool(t) and t[-1] in ".!?" for t in source_text]
+    gaps = [
+        (SENTENCE_GAP if ends_sentence[i] else WORD_GAP)
+        for i in range(len(words) - 1)
+    ]
+    speech_weights = [max(1, len(w.text)) for w in words]
+
+    gap_total = sum(gaps)
+    speech_total = max(0.01, span - gap_total)
+    if speech_total < span * 0.35:  # pathologically tight; shrink the gaps
+        scale = (span * 0.65) / max(gap_total, 1e-6)
+        gaps = [g * scale for g in gaps]
+        speech_total = span - sum(gaps)
+
+    unit = speech_total / sum(speech_weights)
+    out: list[Word] = []
+    cursor = start
+    for i, word in enumerate(words):
+        duration = speech_weights[i] * unit
+        out.append(Word(word.text, cursor, cursor + duration, False))
+        cursor += duration + (gaps[i] if i < len(gaps) else 0.0)
+    return out
 
 
 def build(words: list[Word]) -> str:
@@ -71,8 +121,14 @@ def main(argv: list[str]) -> int:
         return 2
     source, destination = Path(argv[0]), Path(argv[1])
     transcript = load(source)
-    destination.write_text(build(transcript.words), encoding="utf-8")
-    print(f"{source} -> {destination}: {len(transcript.words)} words")
+    timed = respace(transcript.words, [w.text for w in transcript.words])
+    destination.write_text(build(timed), encoding="utf-8")
+    gaps = [b.start - a.end for a, b in zip(timed, timed[1:])]
+    big = sum(1 for g in gaps if g > (WORD_GAP + SENTENCE_GAP) / 2)
+    print(
+        f"{source} -> {destination}: {len(timed)} words, "
+        f"{big} sentence-sized gaps of {len(gaps)}"
+    )
     return 0
 
 
