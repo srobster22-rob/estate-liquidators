@@ -52,15 +52,23 @@ first number to re-measure the moment real playtest data arrives.
 
 Depth must pay *per slot*, or the optimal play is to farm the foyer forever.
 
-| Tier | Class | Value | **Per slot** |
-|---:|---|---|---:|
-| 0–1 | pocket | $40 – 150 | $80 – 300 |
-| 0–1 | armful | $80 – 300 | $80 – 300 |
-| 2 | armful | $250 – 700 | $250 – 700 |
-| 2 | two-man | $700 – 1,900 | $233 – 633 |
-| 3 | armful | $600 – 1,400 | $600 – 1,400 |
-| 3 | two-man | $1,800 – 4,000 | $600 – 1,333 |
-| **4** | **apex (cart)** | **$4,000 – 8,000** | **$800 – 1,600** |
+| Tier | Class | Value | **Per slot** | Expected per slot |
+|---:|---|---|---:|---:|
+| 0–1 | pocket | $40 – 150 | $80 – 300 | ×1.73 |
+| 0–1 | armful | $80 – 300 | $80 – 300 | ×1.73 |
+| 2 | armful | $250 – 700 | $250 – 700 | ×1.73 |
+| 2 | two-man | **$1,500 – 4,000** | $500 – 1,333 | same (no lottery) |
+| 3 | armful | $600 – 1,400 | $600 – 1,400 | ×1.73 |
+| 3 | two-man | **$3,800 – 8,400** | $1,267 – 2,800 | same |
+| **4** | **apex (cart)** | **$6,900 – 13,800** | **$1,380 – 2,760** | same |
+
+**The two-man and apex bands carry a premium, and it is derived, not chosen** (R31, D-30).
+Pocket and armful items can be cursed, so their printed band is worth **×1.73** in expectation
+(0.70×1 + 0.22×2.5 + 0.08×6). Two-man pieces and the apex cannot be cursed (D-29), so their
+print has to carry that difference or nobody sensible touches them: at the old bands, a crew
+that **refused every two-man piece earned +26%**. Two-man pieces need a little more than the
+lottery multiplier — ×2.1 rather than ×1.73 — because they also cost two people and a slower
+carry; the apex needs only ×1.73, since one person walks it out on a dolly.
 
 ### The apex bug this arithmetic caught
 
@@ -88,6 +96,28 @@ at every bar we tested, up to refusing 90% of what the crew finds. Slots used fa
 of 14** — the van stops binding, which is the single constraint this entire economy is built
 on (see the box at the top of this document).
 
+> ⚠️ **Half of this section was retracted one round later.** The table below was measured on
+> a model with a slot-accounting bug — a three-slot piece could be loaded with one slot free,
+> so the van finished the night holding 15.1 slots of 14. R31 fixed it and re-measured:
+>
+> | Bar | Curses anywhere | Curses on light items only |
+> |---|---:|---:|
+> | BLIND | $10,632 | $8,716 |
+> | MARGIN_30 | $11,657 | $9,284 |
+> | MARGIN_80 | $13,777 | $10,828 |
+> | MARGIN_200 | **$24,910** | **$16,525** |
+>
+> **Restricting curses does not restore the interior optimum.** Both columns still reward
+> pickiness without limit. The reason is a modelling flaw older than either round: the crew
+> draws four *fresh* candidates at every shelf, so an estate has an infinite supply of items
+> and refusing one costs only a trip. Waiting for a jackpot is correct in a world where
+> jackpots keep arriving. Finite item supply is the fix, and it is the next round's job.
+>
+> **D-29 itself is unaffected** — it rests on arithmetic (a malignant tier-3 two-man piece is
+> $24,000 against a $10,250 quota) and on the fiction, not on this table.
+
+The original, from the buggy model, kept for the record:
+
 | Bar | Curses anywhere | Curses on light items only |
 |---|---:|---:|
 | BLIND | $8,047 | $6,424 |
@@ -96,9 +126,6 @@ on (see the box at the top of this document).
 | MARGIN_80 | $11,714 | $5,280 |
 | MARGIN_120 | $12,053 | $5,015 |
 | MARGIN_200 | **$12,424** | $5,025 |
-
-Restrict curses to what a single player can carry and the shape comes back: the bar peaks
-around the 30th–50th percentile and over-selectivity costs **36%**.
 
 It is also the better fiction. Every curse effect in `DESIGN.md` §4.2 is intimate — it pulses
 *your* flashlight, gains mass in *your* hands, speaks in *your teammate's* voice. Those belong
@@ -133,10 +160,12 @@ one lottery ticket.
 Making it *visibly* malignant does not save it either: at four times the quota it is an
 auto-take, so it is not a decision, just a bigger number.
 
-Note that two-man items are deliberately *slightly* worse per slot than armfuls of the same
-tier. They're big single grabs that solve a logistics problem — one trip instead of three —
-and they cost two people and a pinch-point crossing to move. They should never also be the
-efficient choice.
+Two-man items are still meant to be *slightly* worse than armfuls — big single grabs that
+solve a logistics problem, one trip instead of three, at the cost of two people and a
+pinch-point crossing. But **that comparison has to be made in expectation, not in print**
+(D-30): an armful can be cursed and a two-man piece cannot, so equal printed bands are not
+equal value. The ×2.1 premium in §3 is what makes "slightly worse" true again instead of
+"catastrophically worse and quietly ignored".
 
 ## 4. Quota curve
 

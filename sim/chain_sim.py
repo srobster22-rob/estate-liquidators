@@ -43,11 +43,12 @@ HAUL_WINDOW_S = 540.0
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3), (360.0, 4)]
 
 # tier -> (round-trip seconds, {class: (value_lo, value_hi)})
+# Two-man and apex bands carry the curse-ineligibility premium (R31, D-30).
 TIER_DATA = {
     1: (45.0, {"pocket": (40, 150), "armful": (80, 300)}),
-    2: (60.0, {"armful": (250, 700), "two_man": (700, 1900)}),
-    3: (90.0, {"armful": (600, 1400), "two_man": (1800, 4000)}),
-    4: (110.0, {"apex": (4000, 8000)}),
+    2: (60.0, {"armful": (250, 700), "two_man": (1500, 4000)}),
+    3: (90.0, {"armful": (600, 1400), "two_man": (3800, 8400)}),
+    4: (110.0, {"apex": (6900, 13800)}),
 }
 
 # class -> (slots, people needed, carry-time multiplier, extra setup seconds)

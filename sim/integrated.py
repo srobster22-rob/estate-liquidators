@@ -96,14 +96,20 @@ CARRY_TELL = True
 CLASS_SLOTS = {"pocket": 0.5, "armful": 1.0, "two_man": 3.0}
 CLASS_TIME = {"pocket": 0.90, "armful": 1.00, "two_man": 1.44}
 CLASS_CREW = {"pocket": 1, "armful": 1, "two_man": 2}
+# R31: the two-man bands carry a x2.1 premium and the apex a x1.73 one, because
+# D-29 made both curse-ineligible. A curse-eligible item is worth 1.73x its
+# printed band in expectation (0.70x1 + 0.22x2.5 + 0.08x6); a class shut out of
+# that lottery has to carry the difference in print, plus - for two-man pieces -
+# the labour of needing two people and a slower carry. Without it, refusing
+# every two-man piece was worth +26%.
 TIER_CLASSES = {
     1: [("pocket", (40, 150)), ("armful", (80, 300))],
-    2: [("armful", (250, 700)), ("two_man", (700, 1900))],
-    3: [("armful", (600, 1400)), ("two_man", (1800, 4000))],
+    2: [("armful", (250, 700)), ("two_man", (1500, 4000))],
+    3: [("armful", (600, 1400)), ("two_man", (3800, 8400))],
 }
 
 APEX_SLOTS = 5.0                  # ECONOMY 1: a third of the van for one object
-APEX_BAND = (4000.0, 8000.0)      # ECONOMY 3, re-banded after the trap it used to be
+APEX_BAND = (6900.0, 13800.0)     # ECONOMY 3; x1.73 over its old band, R31
 APEX_TRIP_S = 90.0 * 1.18         # tier-3 trip on the dolly (chain_sim CLASS_DATA)
 APEX_LOAD_S = 20.0                # getting a piano onto a dolly
 APEX_UNLOCK_S = 240.0             # tier 3 opens; D-21 says you SEE it long before
@@ -154,7 +160,8 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
               curse_cap=None, carry_tell=CARRY_TELL, van_slots=VAN_SLOTS,
               trip_scale=1.0, wards=0, appraise_seconds=APPRAISE_S,
               appraise_l=None, ruin_exp=RUIN_EXP, apex=None, classes=False,
-              curse_classes=None):
+              curse_classes=None, ban_classes=(), two_man_scale=1.0,
+              apex_scale=1.0):
     """
     One night with Disturbance and the haul loop fully coupled.
 
@@ -196,6 +203,11 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
 
         # The apex. D-21: the crew has seen it since minute one, so a crew that
         # means to take it holds five slots back from the moment the night starts.
+        # R31: "reserve" holds five slots back from the start, which is what
+        # D-21 describes - and costs a real amount of hauling, 64% of nights
+        # running out of time. "clean"/"rolled" are OPPORTUNISTIC: haul normally
+        # and take the apex if the van still has room when it opens. Modelling
+        # only the reserving crew made the apex look like a trap it is not.
         if apex and apex != "skip" and not apex_taken:
             if t >= APEX_UNLOCK_S and slots >= APEX_SLOTS:
                 t += APEX_TRIP_S / (CREW * PARALLEL_EFFICIENCY) * trip_scale + APEX_LOAD_S
@@ -203,7 +215,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
                 if t <= HAUL_S:
                     grade = draw_grade(rng) if (apex == "rolled" and modelling_curses) \
                             else "clean"
-                    v = rng.uniform(*APEX_BAND) * (GRADE_MULT[grade]
+                    v = rng.uniform(*APEX_BAND) * apex_scale * (GRADE_MULT[grade]
                                                    if modelling_curses else 1.0)
                     slots -= APEX_SLOTS
                     apex_value = v
@@ -216,7 +228,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
                         banked += v
                 continue
             # Reserving the slots is what makes it reachable at all.
-            if slots <= APEX_SLOTS:
+            if apex == "reserve" and slots <= APEX_SLOTS:
                 t += per_trip
                 continue
 
@@ -226,7 +238,23 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
             continue
 
         if classes:
-            picks = [rng.choice(TIER_CLASSES[tier]) for _ in range(CANDIDATES)]
+            # R31: a crew that refuses a whole weight class on sight. If banning
+            # a class EARNS money, that class is a trap - the shape of the apex
+            # bug ECONOMY 3 caught by arithmetic once already.
+            # Only what will actually fit in what is left of the van. A crew
+            # with one slot free does not walk to the piano and then discover it;
+            # charging them the trip for that was a modelling penalty, not a
+            # game rule, and it pushed 44% of nights into running out of time.
+            pool = [p for p in TIER_CLASSES[tier]
+                    if p[0] not in ban_classes and CLASS_SLOTS[p[0]] <= slots] \
+                   or [p for p in TIER_CLASSES[tier] if CLASS_SLOTS[p[0]] <= slots] \
+                   or TIER_CLASSES[tier]
+            picks = [rng.choice(pool) for _ in range(CANDIDATES)]
+            # R31: two-man pieces cannot be cursed (D-29), so they have no access
+            # to the x6 lottery that an armful does. Their band has to carry that
+            # difference or they are dominated - which is what this scales.
+            picks = [(c, (b[0] * two_man_scale, b[1] * two_man_scale))
+                     if c == "two_man" else (c, b) for c, b in picks]
             classes_of = [c for c, _ in picks]
             candidates = [rng.uniform(*b) for _, b in picks]
         else:
@@ -376,6 +404,11 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
 
         picked_i = candidates.index(value)
         cls = classes_of[picked_i]
+        # R31: a three-slot piece used to be loadable with one slot left, so the
+        # van finished the night holding more than it can hold - 15.1 slots used
+        # of 14. Every weight-class number from R30 was inflated by it.
+        if classes and CLASS_SLOTS[cls] > slots:
+            break                       # nothing left fits; the van is done
         if classes:
             # A two-man piece takes two people, so the crew's parallelism halves
             # for that trip on top of the slower carry.

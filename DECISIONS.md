@@ -569,6 +569,32 @@ and the fix is the band, not the grade.
 
 ---
 
+## D-30 · A class shut out of the curse lottery carries a printed premium
+**Status:** HELD · `ECONOMY.md` §3
+
+A curse-eligible item is worth **×1.73** its printed band in expectation — 0.70×1 + 0.22×2.5
++ 0.08×6, straight off the grade table. D-28 and D-29 shut two-man pieces, the cart and the
+apex out of that lottery, which silently repriced all three. Their bands now carry the
+difference: **×2.1 for two-man** (the lottery, plus the labour of two people and a slower
+carry) and **×1.73 for the apex** (one person, a dolly).
+
+Without it they are dominated, and not marginally: on the corrected model a crew that
+**refused every two-man piece earned +26%**, and the apex — once its competitors kept the
+lottery — cost 27% to take. Every heavy item in the house was a trap, created by two decisions
+that had nothing to say about value.
+
+**The rule generalises past these classes:** any time an item is excluded from a multiplier
+everything else can roll, its printed value has to absorb the expectation, or the exclusion is
+a stealth nerf. Per-slot parity has to be measured *in expectation*, after the lottery and the
+labour — the pre-curse "two-man is deliberately slightly worse per slot" line was comparing
+printed numbers against expected ones without noticing.
+
+**Falsified if:** a future change to the grade distribution or the multipliers moves ×1.73.
+The premium is a function of the grade table, not a constant — recompute it whenever
+`curse.value_multiplier` or the grade probabilities change.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

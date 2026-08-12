@@ -490,6 +490,30 @@ running, the finding has been a rule the specs never stated rather than a number
 wrongly. Both were found by *implementing* something the documents describe and discovering
 there was nothing to implement.
 
+R31 · Took D-29's own falsification condition seriously the round after writing it —
+*"crews ignore two-man pieces once they cannot be cursed"* — instead of waiting for a
+playtest. · **It had tripped.** A crew that refused every two-man piece earned **+26%**, and
+once two-man pieces were fixed the apex cost 27% to take. Making a class curse-ineligible is a
+stealth nerf: a curse-eligible item is worth **×1.73** its printed band in expectation
+(0.70×1 + 0.22×2.5 + 0.08×6), and a class shut out of that lottery has to carry the difference
+in print or nobody sensible touches it. Two-man pieces need **×2.1** — the lottery plus the
+labour of two people and a slower carry — and the apex **×1.73**. Rebanded, and the acceptance
+test now says refusing *any* class costs money: two-man −1.6%, pockets −6.5%, apex −2.3%.
+D-30. · **Two instrumentation bugs, both introduced by R30, both mine.** A three-slot piece
+could be loaded with one slot free, so the van finished the night holding **15.1 slots of
+14** — every weight-class number R30 published was inflated by it. And the apex reservation
+idled the crew from the first minute, running **64% of nights out of time**, which made the
+apex look like a trap it is not; reserving is now a policy you can compare against hauling
+opportunistically, and opportunism wins at a 19-slot van. · **And R30's headline does not
+survive the fix.** Re-measured, restricting curses to light items does *not* restore the
+interior optimum — both columns still reward pickiness without limit, out to a bar that
+refuses almost everything. ECONOMY §3 now carries the retraction and the corrected table.
+D-29 itself stands: it rests on arithmetic and fiction, not on that measurement. · **The real
+cause is older than either round, and it is the next thing to fix:** the crew draws four
+*fresh* candidates at every shelf, so the estate has an infinite supply and refusing an item
+costs only a trip. Waiting for a jackpot is correct in a world where jackpots keep arriving.
+Finite item supply is R32.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -525,6 +549,12 @@ project.** First thing on the Mac: `python3 check.py`, and the C# line must read
 ~~**6 — Teach the QA hook to navigate.**~~ **Done, R25** — `tools/play_night.mjs` plays whole
 nights and reproduced R22's coupling in the implementation. What it still cannot exercise is
 movement and collision, since it steers around walls by construction rather than through them.
+
+**6a — Finite item supply, and it is now the biggest modelling flaw.** `integrated.py` draws
+four fresh candidates at every shelf, so an estate never runs out and refusing something costs
+only a trip. That is why every "how picky should you be" answer since R30 says *pickier*, and
+why R30's interior optimum evaporated when its slot bug was fixed. An estate is a fixed set of
+items in fixed rooms — model that, and re-check R18's and R22's bar findings against it.
 
 **6b — The bot is a bot, not a player.** It walks to the nearest item every time, never
 sprints, never panics, never drops a vase to save a friend. Its value is as a regression on
