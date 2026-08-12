@@ -35,6 +35,10 @@ const CROSS    = {x: 37.9, z0: -3.4, z1: -0.4}; // the hook: it crosses the deep
 // enough that a dimmed flashlight still lights it. Beat 5 has nothing else to see.
 const DRESS    = {x: 36.2, z: -2.6};
 
+// Highest tier the hero piece may come from. Drives its on-screen size far more than
+// its value; ?heroTier= on the render URL is only for A/B looks, not for shipping.
+const HERO_TIER = Number(new URLSearchParams(location.search).get("heroTier") || 1);
+
 let hero = -1, dressIx = -1;
 
 const S = {
@@ -47,10 +51,13 @@ const S = {
 
     // Hero item: the most valuable tainted piece the seed rolled, moved onto the
     // plinth by the door. Tainted so the HUD shows a grade worth being nervous about.
-    // Tier is capped at 2 for size, not value - a tier-3 box is 0.42 m half-extent
-    // and, carried at 1.15 m from the eye, it eats the whole frame.
+    // Tier is capped for SIZE, not value. proto3d sizes items by tier (0.26 / 0.34 /
+    // 0.42 m half-extent) and hangs the carried one 1.15 m from the eye, so tier is
+    // really "how much of a 41 deg-wide frame does the cargo eat": 13 deg at tier 1,
+    // 16.5 at tier 2, 20 at tier 3. See CLIP_LOG C8 for what that trade actually
+    // looked like on screen.
     const items = d.list();
-    const pick = items.filter(i => i.grade === "tainted" && i.tier <= 2)
+    const pick = items.filter(i => i.grade === "tainted" && i.tier <= HERO_TIER)
                       .sort((a, b) => b.value - a.value)[0] || items[0];
     hero = pick.ix;
     d.stage(hero, PLINTH.x, PLINTH.z);
@@ -145,9 +152,11 @@ const S = {
       // shot is indistinguishable from a dropped frame, and G6 is right to fail it.
       C.moveTo(C.lerp(AFTER.x, AFTER.x + 0.9, C.ease((t - 9.0) / 4.0)),
                C.lerp(AFTER.z, AFTER.z + 0.7, C.ease((t - 9.0) / 4.0)));
-      // Framed low, near the beam axis: while you are marked the light is both
-      // shorter and tighter, so anything framed high is simply not lit.
-      C.frameAt(HALLDOOR.x - 1.6, HALLDOOR.z + 0.4, 1.25, 0.12);
+      // Framed clear of the cargo (top edge ~y1009) but still well inside the beam.
+      // The dimmed cone's falloff is not linear: up 0.22 sits 8.1 deg off-axis and
+      // keeps 87% of on-axis intensity, where C4's 0.32 kept only 73% and lost the
+      // shot. C5 over-corrected to 0.12 and gave the frame away for 8% of light.
+      C.frameAt(HALLDOOR.x - 1.6, HALLDOOR.z + 0.4, 1.25, 0.22);
       C.vignette(0.20 + 0.24 * C.ease((t - 9.0) / 1.6));
       cap(C, t, 9.55, 12.85, `your light dims<br>when it's <span class="hi">you</span>`);
     }
@@ -170,7 +179,7 @@ const S = {
       // the only thing a dimmed flashlight reliably brings back.
       const sweep = 0.5 + 0.5 * Math.sin((t - 13.0) * 1.15 - 1.5);
       C.frameAt(C.lerp(28.5, DRESS.x, sweep), C.lerp(-1.5, DRESS.z, sweep),
-                C.lerp(1.35, 0.55, sweep), 0.10 + 0.09 * Math.sin((t - 13.0) * 0.8));
+                C.lerp(1.35, 0.55, sweep), 0.22 + 0.08 * Math.sin((t - 13.0) * 0.8));
       // Two lines, because the picture cannot carry this beat: the first is what you
       // see (nothing), the second is the rule the reveal is about to prove.
       if (t < 15.5) cap(C, t, 13.25, 15.40, `and now you can't<br>see it <span class="hi">coming</span>`);

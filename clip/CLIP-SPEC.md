@@ -172,10 +172,14 @@ range-only, leaving the cone alone, so the tell dims your world without erasing 
 the shortest honest "marked → put it down → free" arc is 8 s, which is a third of a TikTok.
 Fine for the game, worth knowing for every future clip.
 
-**A carried item owns a third of a vertical frame.** `proto3d` hangs the held item 1.15 m down
-the look ray; at tier 2 (0.34 m half-extent) that is ±16.5° of a frame only 41° wide, and it is
-view-locked, so it cannot be framed around — it is in the middle of every shot you take while
-carrying. On a 16:9 monitor this is unremarkable; at 9:16 it is most of the picture. Nothing to
-fix in the game — first-person carry looks like this — but it means **any composition for a
-vertical clip has to treat the bottom-centre third as unavailable**, and it interacts badly
-with the dimmed cone above: the region you can light and the region you can see barely overlap.
+**A carried item owns the bottom half of a vertical frame.** `proto3d` hangs the held item
+1.15 m down the look ray and 0.30 m below it. The clip's hero piece is tier 1 — 0.26 m
+half-extent, the *smallest* size the game has — and it still subtends ±12.7° of a frame only
+40° wide, filling everything below y ≈ 1009 of 1920. It is view-locked, so it cannot be framed
+around: it is in the same place in every shot you take while carrying.
+
+On a 16:9 monitor this is unremarkable; at 9:16 it is half the picture. Nothing to fix in the
+game — first-person carry looks like this — but **any vertical composition has to treat the
+bottom half as spoken for**, and it interacts badly with the dimmed cone above: the band that
+is both lit and unblocked is roughly y ∈ [700, 1000], and that is where every carrying shot
+in this clip puts the thing you are meant to look at.

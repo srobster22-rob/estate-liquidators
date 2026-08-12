@@ -71,22 +71,38 @@ never appears: centre it and the cargo hides it, offset it and the cone barely l
 than sitting) and still the weakest thing in the clip. Two rounds of framing have now hit the
 same wall from opposite directions, which says the constraint is structural, not compositional.
 
+C8 · Went after C7's root cause — shrink the view-locked cargo by staging a tier-1 hero — and
+**the hypothesis was already false when it was written.** Probed the actual staged item across
+all three tier caps: `heroTier<=1` and `heroTier<=2` both select the same piece, `$678 tainted,
+tier 1`. The clip has been carrying the smallest item in the game since C3. **Correction to
+C4 and C7: the cargo is ±12.7°, not ±16.5°** — that figure was inferred from a tier-2 size the
+clip never used, and it has been propagated through two rounds of reasoning. Fixed in
+CLIP-SPEC §7. There is no smaller size class, so this lever does not exist.
+
+· **What did work was recovering the framing height C5 gave away.** The dimmed cone's falloff
+is not linear, and nobody had measured it: on-axis intensity is 0.394, and off-axis it holds
+97 % at `up` 0.10, **87 % at 0.22**, and only 73 % at C4's 0.32. C4 lost the shot at 0.32 and
+C5 over-corrected all the way to 0.10–0.12 — paying away 260 px of usable frame to buy 8 % of
+light. Moved beats 4 and 5 to 0.22, which clears the cargo's top edge (y 1009) and puts the
+near wall visibly in the upper frame for the first time. The blind beat now has architecture
+sweeping through it rather than a box on black. · Standing lesson, twice earned now: **measure
+the falloff before framing to it.** Both bad framing decisions in this project came from
+treating a smoothstep as if it were a cliff.
+
 ---
 
-## Next step (what C8 should attack, ranked)
+## Next step (what C9 should attack, ranked)
 
-1. **Shrink the cargo, the actual root cause.** Both C4 and C7 lost to the same fact: a carried
-   box is view-locked and owns ±16.5° of a 41°-wide frame. Tier caps size (0.26 / 0.34 / 0.42 m
-   half-extent), so staging a **tier-1** hero drops it to ~±13° and hands roughly a quarter of
-   the blocked frame back. Cost: the HUD reads a smaller number ($80–300 × 2.5 rather than
-   $678), which weakens the greed hook. Test it — render both and look, do not reason about it,
-   because reasoning is what lost C7.
-2. **Sound has never been heard on a phone speaker.** The bed is 46–55 Hz and phone speakers
+1. **Sound has never been heard on a phone speaker.** The bed is 46–55 Hz and phone speakers
    roll off below ~400 Hz, so it may be effectively silent where it will be watched. Add an
    audible harmonic, and add a gate that measures energy above 400 Hz so this can never regress
-   silently.
-3. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
+   silently. **The only remaining item verifiable without a person watching**, which is why
+   it is first.
+2. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
    of the monster by handing the vase to your friend" — cannot be filmed until there are two
    players. Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that matters most.
-4. **The Curator is two boxes.** Fine for a dev-facing clip, blocks anything user-facing.
+3. **The Curator is two boxes.** Fine for a dev-facing clip, blocks anything user-facing.
    `ART-DIRECTION.md` wants a silhouette.
+4. **The blind beat is done being optimised.** C7 and C8 both improved it and both hit the same
+   structural wall. Anything further needs a shot where the player is *not* carrying, which
+   contradicts the beat. Leave it until item 2 makes a second clip possible.
