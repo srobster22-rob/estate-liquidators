@@ -1332,6 +1332,66 @@ failure, and
 
 ---
 
+## F31 · Cross-sectional strategies were built, and their negative control fails
+
+F30 left one constructive question: every widening of the *search* produces more
+bots at the same margin, so would a structurally different source of return
+behave differently? Cross-sectional was the only candidate identified, and the
+argument for it is arithmetic rather than hopeful. A dollar-neutral basket trade
+cancels the common factor — so its raw Sharpe *is* its alpha Sharpe, with no beta
+to residualise — and aggregates K roughly independent idiosyncratic bets, so
+per-bet edge holds while portfolio volatility falls by about sqrt(K). The same
+planted per-instrument edge should support a much larger Sharpe.
+
+**It does, and that is not the finding.** On a 12-leg basket with short-horizon
+cross-sectional reversal planted at a per-leg strength comparable to the
+catalogue (+0.34 per-leg alpha), the basket trade makes **+2.30 gross alpha
+Sharpe**, against a largest-in-the-lab single-instrument margin of 0.064. The
+sqrt(K) arithmetic checks out almost exactly: 0.34 x sqrt(12) = 1.18 net of costs,
+measured 1.47.
+
+**The finding is that the control does not come back zero.** The same bot on a
+basket with the cross-sectional effect switched off — identical factor structure,
+identical vol, identical costs — earns **+0.264 +- 0.036 gross alpha Sharpe over
+20 instances, 95% of them positive.** Seven standard errors from zero. And it
+would pass G3, whose tolerance is 0.30.
+
+Four candidate causes were tested and all four rejected:
+
+| hypothesis | test | result |
+|---|---|---|
+| beta dispersion lets the bot eat the *factor's* time-series reversion | set `beta_disp` to 0 | artefact persists: +0.134 +- 0.033 |
+| `alpha_sharpe`'s beta correction manufactures it from a small negative beta against a drifting market | compare raw vs alpha Sharpe | identical: +0.108 vs +0.110, net exposure -0.0009 |
+| the generator plants cross-sectional reversion by accident | measure it directly in the closes | -0.0010, within one standard error of zero |
+| a fill or timing effect at the open | re-run with `exec_delay=2` | invariant: +0.205 -> +0.195 |
+
+It is also invariant to the lookback (+0.205 at lb=5, +0.225 at lb=20), which
+rules out anything proportional to turnover.
+
+**So the class does not get to make a claim, and is quarantined rather than
+merged.** The `xs_reversal` and `xs_momentum` primitives are tier 5, and
+`SearchSpace.expanded()` caps the tier at 4, so no expansion can reach them — the
+quarantine is structural rather than a flag someone can forget, and
+`test_cross_sectional_primitives_are_quarantined_from_the_search` holds the cap
+in place because raising it would look like an innocuous widening.
+
+This is F6 again and the response is the same one. An artefact of +0.35 on a
+control killed a whole class of take-profit bots there until the generator was
+fixed; +0.26 on a control kills this one until it is understood. The infrastructure
+is worth keeping and is tested: baskets share the *one* bar model
+(`generate.bars_from_log_returns`, factored out of `synth` so the Brownian-bridge
+extremes exist in exactly one place), the peers carried on each leg slice with the
+series, and the tier-5 primitives pass a lookahead scramble that scrambles every
+leg's future including the peers. What is not yet earned is the result.
+
+**The honest reading of the sqrt(K) argument, given the control.** Aggregation
+does amplify a real edge — but it amplifies everything else at the same rate, and
+a strategy class with 12x the leverage on its own errors needs a *better* control
+than a single-instrument one, not the same one. G3's +0.30 tolerance was
+calibrated for single instruments and is simply the wrong number here.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

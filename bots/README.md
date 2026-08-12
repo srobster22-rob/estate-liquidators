@@ -155,7 +155,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 46 falsification tests
+python bots/run.py selftest              # 50 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -206,6 +206,16 @@ the residual after regressing the bot's returns on the underlying's. On a market
 with a 7% risk premium, levered buy-and-hold has a perfectly respectable Sharpe
 and zero skill. `fitness` takes the *worse* of raw and alpha Sharpe, so beta
 cannot buy a pass.
+
+**Cross-sectional strategies exist here but are quarantined** (`FINDINGS.md` F31).
+A dollar-neutral 12-leg basket makes +2.30 gross alpha Sharpe on a planted
+cross-sectional effect — the sqrt(K) arithmetic works, and it is 30x the best
+margin anywhere else in the lab. But the *control* basket, with the effect
+switched off, makes **+0.26 +- 0.036** gross alpha over 20 instances, which G3's
++0.30 tolerance would wave through. Four causes were tested and rejected without
+finding it, so the class makes no claim: the `xs_*` primitives are tier 5 and the
+search caps at tier 4, so no expansion can reach them. That is F6's lesson applied
+before the result, not after it.
 
 **The false-positive rate is measured, not argued.** `run.py fpr --repeats 10`
 points ten independent searches at a structureless market: 20,000 candidates, 137
@@ -290,7 +300,7 @@ bots/
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      46 falsification tests
+  tests/test_botlab.py      50 falsification tests
 ```
 
 ---

@@ -580,6 +580,106 @@ def test_durability_gate_can_fire():
         universe.unregister("mild_decay_probe")
 
 
+def test_basket_peers_slice_with_their_series():
+    """A basket leg carries its peers' closes in `meta`, indexed by bar. If
+    `Series.slice` sliced the leg but not the peers, bar 0 of a test window would
+    read peer prices from bar 0 of the *full* series — lookahead of exactly the
+    train-window length, on every gate that slices. G1's window is the last 40%,
+    so the gauntlet slices constantly.
+    """
+    from bots.botlab.markets import basket
+    b = basket.BasketSpec(name="slice_probe", leg=universe.get("eq_largecap_daily"),
+                          n_legs=6, n_bars=600)
+    legs = basket.synth_basket(b, 1)
+    lo, hi = 200, 500
+    cut = legs[0].slice(lo, hi)
+    peers = cut.meta[basket.PEERS_KEY]
+    assert peers.shape[0] == len(cut), \
+        f"peers not sliced: {peers.shape[0]} rows for a {len(cut)}-bar slice"
+    assert np.array_equal(peers, legs[0].meta[basket.PEERS_KEY][lo:hi]), \
+        "peers sliced to the wrong window"
+    # ... and this leg's own column must still be its own closes.
+    assert np.array_equal(peers[:, cut.meta["peer_col"]], cut.close), \
+        "the leg's peer column no longer matches its own price"
+
+
+def test_no_lookahead_in_cross_sectional_signals():
+    """The scramble test, run on a basket leg with its peers attached.
+
+    The tier-5 primitives are the only ones that read data outside their own
+    series, so the standard lookahead test — which builds a bare `Series` with no
+    peers — cannot see them at all: they return zeros and pass trivially. This
+    scrambles the future of *every leg*, peers included, and requires the past not
+    to move.
+    """
+    from bots.botlab.markets import basket
+    b = basket.BasketSpec(name="scramble_probe", leg=universe.get("eq_largecap_daily"),
+                          n_legs=8, n_bars=1200)
+    legs = basket.synth_basket(b, 3)
+    k = 700
+    rng = np.random.default_rng(17)
+    scrambled = []
+    for leg in legs:
+        tail = np.exp(rng.normal(0, 0.05, len(leg) - k)).cumprod()
+        scrambled.append(generate.Series(
+            name=leg.name + "|scr", spec=leg.spec, seed=None,
+            open=np.concatenate([leg.open[:k], leg.open[k:] * tail]),
+            high=np.concatenate([leg.high[:k], leg.high[k:] * tail]),
+            low=np.concatenate([leg.low[:k], leg.low[k:] * tail]),
+            close=np.concatenate([leg.close[:k], leg.close[k:] * tail]),
+            volume=np.concatenate([leg.volume[:k], leg.volume[k:]]),
+            meta=dict(leg.meta)))
+    basket.attach_peers(scrambled)
+    bad = []
+    for name, d in signals.SIGNALS.items():
+        if d.tier != 5:
+            continue
+        p = genome._sample_params(d.params, np.random.default_rng(21))
+        a = np.nan_to_num(d.fn(legs[0], p))[:k]
+        c = np.nan_to_num(d.fn(scrambled[0], p))[:k]
+        assert np.any(a != 0.0), f"{name} returned all zeros — the test proves nothing"
+        if not np.allclose(a, c, atol=1e-9):
+            bad.append(f"{name} (first diff at {int(np.argmax(np.abs(a - c) > 1e-9))})")
+    assert not bad, "lookahead in cross-sectional signals: " + ", ".join(bad)
+
+
+def test_cross_sectional_signals_are_inert_without_peers():
+    """On an ordinary single-instrument series they must return zeros rather than
+    raise — the same convention `carry` uses on a market with no carry, so a
+    cross-sectional genome that wanders onto a normal family is harmless."""
+    s = _series("eq_largecap_daily", 2)
+    for name, d in signals.SIGNALS.items():
+        if d.tier != 5:
+            continue
+        out = d.fn(s, genome._sample_params(d.params, np.random.default_rng(5)))
+        assert out.shape == s.close.shape, f"{name} returned the wrong shape"
+        assert np.all(out == 0.0), f"{name} produced a signal with no peers present"
+
+
+def test_cross_sectional_primitives_are_quarantined_from_the_search():
+    """The basket control does not pass (F31): a cross-sectional reversal bot
+    earns +0.11 to +0.26 gross alpha Sharpe on a basket with *no* cross-sectional
+    effect planted, and four candidate causes have been ruled out without finding
+    it. Until that is resolved the class must not be searchable — a strategy type
+    whose negative control fails will certify artefacts, which is the F6 story
+    exactly.
+
+    The quarantine is structural rather than a flag: the primitives are tier 5
+    and `SearchSpace.expanded()` caps the tier at 4, so no expansion can reach
+    them. This test holds that cap in place, because raising it looks like an
+    innocuous widening and would silently unquarantine them.
+    """
+    space = SearchSpace()
+    for _ in range(15):
+        space = space.expanded()
+    assert space.tier <= 4, f"expansion reached tier {space.tier}; tier 5 is quarantined"
+    reachable = [n for n in space.signal_pool() if signals.SIGNALS[n].tier >= 5]
+    assert not reachable, f"cross-sectional primitives reachable by the search: {reachable}"
+    # ... and they must still exist, or the quarantine is just deletion.
+    assert any(d.tier == 5 for d in signals.SIGNALS.values()), \
+        "the cross-sectional primitives have gone missing"
+
+
 def test_a_rejected_argument_does_not_destroy_the_ledger():
     """`loop` rotates the ledger to `.prev` before starting a fresh run. It used
     to do that *before* validating its arguments, so `--bar-scale 0.9` — an

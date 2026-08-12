@@ -46,6 +46,16 @@ class Series:
     def slice(self, lo: int, hi: int, tag: str = "") -> "Series":
         lo = max(0, int(lo))
         hi = min(len(self), int(hi))
+        meta = {**self.meta, "slice": (lo, hi)}
+        # A basket leg carries its peers' closes in `meta`, and those are indexed
+        # by bar. Slicing the leg without slicing the peers would leave bar 0 of
+        # the test window reading peer prices from bar 0 of the *full* series —
+        # lookahead of exactly the train-window length, on every gate that slices.
+        # The gauntlet slices constantly (G1's window is the last 40%), so this is
+        # not a corner case.
+        peers = meta.get("peer_close")
+        if peers is not None:
+            meta["peer_close"] = peers[lo:hi].copy()
         return replace(
             self,
             name=f"{self.name}{tag}",
@@ -54,7 +64,7 @@ class Series:
             low=self.low[lo:hi].copy(),
             close=self.close[lo:hi].copy(),
             volume=self.volume[lo:hi].copy(),
-            meta={**self.meta, "slice": (lo, hi)},
+            meta=meta,
         )
 
     def returns(self) -> np.ndarray:

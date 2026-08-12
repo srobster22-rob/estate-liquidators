@@ -110,6 +110,59 @@ def measure_vol_fix(spec: MarketSpec, n_probe: int = 24, iterations: int = 3) ->
     return round(float(np.clip(fix, 0.4, 2.5)), 4)
 
 
+def bars_from_log_returns(spec: MarketSpec, lr_arr: np.ndarray, sig_arr: np.ndarray,
+                          rng: np.random.Generator) -> tuple:
+    """(open, high, low, close, volume) from a log-return path and its vol path.
+
+    Factored out of `synth` so that anything else generating a price path — the
+    correlated baskets in `markets/basket.py` — uses the *same* bar model rather
+    than a second one that could quietly disagree. The Brownian-bridge intrabar
+    extremes below are the single most safety-critical piece of the generator
+    (F6), and there must be exactly one copy of them.
+    """
+    n = lr_arr.size
+    close = 100.0 * np.exp(np.cumsum(lr_arr))
+    prev_close = np.empty(n)
+    prev_close[0] = 100.0
+    prev_close[1:] = close[:-1]
+
+    gap = spec.gap_frac * lr_arr
+    open_ = prev_close * np.exp(gap)
+
+    # Intrabar extremes as the running max/min of a BROWNIAN BRIDGE from the open
+    # to the close. This is not cosmetic. The first version drew the high and low
+    # as independent excursions above max(o,c) and below min(o,c), unconditional on
+    # the bar's own return — which destroys the martingale property of the path and
+    # therefore breaks optional stopping. The engine reads "high >= take level" as
+    # "the limit filled at the take level", so a take-profit with no stop harvested
+    # favourable excursions the price never actually traversed. Bots exploiting it
+    # earned +0.31 to +0.35 alpha Sharpe on a pure iid random walk, and were caught
+    # only by the G3 negative-control market.
+    #
+    # For a bridge 0 -> delta over one bar with log-vol s, P(max >= m) =
+    # exp(-2m(m-delta)/s^2) for m >= max(0, delta), which inverts in closed form.
+    # Sampling the max and min independently is an approximation (they are
+    # negatively dependent), but every draw satisfies max >= max(0, delta) and
+    # min <= min(0, delta) by construction, so the OHLC stays consistent — and the
+    # conditioning on delta, which is the part that matters, is now correct.
+    delta = np.log(close / open_)
+    s_intra = np.maximum(sig_arr * spec.range_mult, 1e-12)
+    var_intra = s_intra * s_intra
+    u_hi = np.clip(rng.random(n), 1e-12, 1.0 - 1e-12)
+    u_lo = np.clip(rng.random(n), 1e-12, 1.0 - 1e-12)
+    m_up = 0.5 * (delta + np.sqrt(delta * delta - 2.0 * var_intra * np.log(u_hi)))
+    m_dn = 0.5 * (delta - np.sqrt(delta * delta - 2.0 * var_intra * np.log(u_lo)))
+    high = np.maximum(open_ * np.exp(m_up), np.maximum(open_, close))
+    low = np.minimum(open_ * np.exp(m_dn), np.minimum(open_, close))
+
+    base_units = spec.costs.adv_notional / close
+    vol_noise = np.exp(0.45 * rng.standard_normal(n)
+                       + 0.8 * np.abs(lr_arr) / max(spec.sigma_bar, 1e-12) * 0.25)
+    volume = base_units * vol_noise
+
+    return open_, high, low, close, volume
+
+
 def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
           _noise_mult: float = 1.0, _apply_fix: bool = True) -> Series:
     """Generate instance `index` of market family `spec`."""
@@ -204,43 +257,8 @@ def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
         lr_arr[t] = lr
         sig_arr[t] = sigma_t
 
-    close = 100.0 * np.exp(log_close)
-    prev_close = np.empty(n)
-    prev_close[0] = 100.0
-    prev_close[1:] = close[:-1]
-
-    gap = spec.gap_frac * lr_arr
-    open_ = prev_close * np.exp(gap)
-
-    # Intrabar extremes as the running max/min of a BROWNIAN BRIDGE from the open
-    # to the close. This is not cosmetic. The first version drew the high and low
-    # as independent excursions above max(o,c) and below min(o,c), unconditional on
-    # the bar's own return — which destroys the martingale property of the path and
-    # therefore breaks optional stopping. The engine reads "high >= take level" as
-    # "the limit filled at the take level", so a take-profit with no stop harvested
-    # favourable excursions the price never actually traversed. Bots exploiting it
-    # earned +0.31 to +0.35 alpha Sharpe on a pure iid random walk, and were caught
-    # only by the G3 negative-control market.
-    #
-    # For a bridge 0 -> delta over one bar with log-vol s, P(max >= m) =
-    # exp(-2m(m-delta)/s^2) for m >= max(0, delta), which inverts in closed form.
-    # Sampling the max and min independently is an approximation (they are
-    # negatively dependent), but every draw satisfies max >= max(0, delta) and
-    # min <= min(0, delta) by construction, so the OHLC stays consistent — and the
-    # conditioning on delta, which is the part that matters, is now correct.
-    delta = np.log(close / open_)
-    s_intra = np.maximum(sig_arr * spec.range_mult, 1e-12)
-    var_intra = s_intra * s_intra
-    u_hi = np.clip(rng.random(n), 1e-12, 1.0 - 1e-12)
-    u_lo = np.clip(rng.random(n), 1e-12, 1.0 - 1e-12)
-    m_up = 0.5 * (delta + np.sqrt(delta * delta - 2.0 * var_intra * np.log(u_hi)))
-    m_dn = 0.5 * (delta - np.sqrt(delta * delta - 2.0 * var_intra * np.log(u_lo)))
-    high = np.maximum(open_ * np.exp(m_up), np.maximum(open_, close))
-    low = np.minimum(open_ * np.exp(m_dn), np.minimum(open_, close))
-
-    base_units = spec.costs.adv_notional / close
-    vol_noise = np.exp(0.45 * rng.standard_normal(n) + 0.8 * np.abs(lr_arr) / max(sigma_bar, 1e-12) * 0.25)
-    volume = base_units * vol_noise
+    open_, high, low, close, volume = bars_from_log_returns(
+        spec, lr_arr, sig_arr, rng)
 
     return Series(
         name=f"{spec.name}#{index}",

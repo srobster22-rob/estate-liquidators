@@ -534,3 +534,74 @@ def _adaptive_horizon(s: Series, p: dict) -> np.ndarray:
     pay_l = sma(np.nan_to_num(shift(mom_l, 1) * lr), lb)
     pick_short = pay_s > pay_l
     return np.where(pick_short, np.nan_to_num(mom_s), np.nan_to_num(mom_l))
+
+
+# ---- tier 5: cross-sectional ------------------------------------------------
+#
+# These are the only primitives that read anything other than their own series.
+# A basket leg carries the whole basket's closes in `meta["peer_close"]` (see
+# `markets/basket.py`), so a cross-sectional score is an ordinary signal and a
+# basket strategy is K ordinary single-leg backtests. That is deliberate: it
+# means the audited engine, fill model and cost model are reused unchanged
+# rather than a second cross-sectional backtester existing to disagree with them.
+#
+# On a series with no peers they return zeros, so a cross-sectional genome on a
+# single-instrument family is inert rather than an error — the same convention
+# `carry` uses on a market with no carry.
+
+def _peer_log_returns(s: Series):
+    """(peer log-return matrix, this leg's column) or (None, -1)."""
+    mat = s.meta.get("peer_close")
+    if mat is None or getattr(mat, "ndim", 0) != 2 or mat.shape[0] != s.close.size:
+        return None, -1
+    lp = np.log(mat)
+    out = np.zeros_like(lp)
+    out[1:] = lp[1:] - lp[:-1]
+    return out, int(s.meta.get("peer_col", 0))
+
+
+@_register("xs_reversal", 5, {"lb": ("log", 2, 40)},
+           lambda p: int(p["lb"]) + 5, "cross_sectional")
+def _xs_reversal(s: Series, p: dict) -> np.ndarray:
+    """Minus this leg's trailing return *relative to its peers*, standardised.
+
+    The most robustly documented cross-sectional effect there is: the leg that
+    has lagged the basket over the last `lb` bars tends to catch up. Because the
+    score is cross-sectionally demeaned, the same rule applied to every leg sums
+    to roughly zero net exposure — the basket trade is dollar-neutral without any
+    machinery imposing it, which is also why its raw Sharpe *is* its alpha
+    Sharpe: there is no common factor left to residualise away.
+
+    Strictly trailing: the window ends at t, and the engine acts on t+1.
+    """
+    r, col = _peer_log_returns(s)
+    if r is None:
+        return np.zeros(s.close.size)
+    lb = max(int(p["lb"]), 2)
+    cum = np.cumsum(r, axis=0)
+    trail = np.full_like(cum, np.nan)
+    trail[lb:] = cum[lb:] - cum[:-lb]
+    rel = trail - np.nanmean(trail, axis=1, keepdims=True)
+    sd = np.nanstd(rel, axis=1, keepdims=True)
+    z = np.divide(rel, sd, out=np.zeros_like(rel), where=sd > EPS)
+    return _tanh(-z[:, col])
+
+
+@_register("xs_momentum", 5, {"lb": ("log", 20, 250), "skip": ("log", 1, 25)},
+           lambda p: int(p["lb"]) + int(p["skip"]) + 5, "cross_sectional")
+def _xs_momentum(s: Series, p: dict) -> np.ndarray:
+    """This leg's trailing return relative to its peers, skipping the last
+    `skip` bars — the standard construction, because the most recent window
+    carries the reversal `xs_reversal` trades and including it fights itself."""
+    r, col = _peer_log_returns(s)
+    if r is None:
+        return np.zeros(s.close.size)
+    lb, sk = max(int(p["lb"]), 2), max(int(p["skip"]), 1)
+    cum = np.cumsum(r, axis=0)
+    trail = np.full_like(cum, np.nan)
+    if lb + sk < cum.shape[0]:
+        trail[lb + sk:] = cum[sk:-lb] - cum[: -(lb + sk)]
+    rel = trail - np.nanmean(trail, axis=1, keepdims=True)
+    sd = np.nanstd(rel, axis=1, keepdims=True)
+    z = np.divide(rel, sd, out=np.zeros_like(rel), where=sd > EPS)
+    return _tanh(z[:, col])

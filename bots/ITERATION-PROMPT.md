@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 46 falsification tests
+python bots/run.py selftest      # 50 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -59,16 +59,34 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **(answered — F30. Left here because the answer is the most important thing
-   the lab currently knows about itself.)** Every widening tried so far produced
-   more bots at the same margin, so: is there a strategy space reachable from here
-   whose survivors have room? No. Under a gauntlet 20% harder the four distinct
-   strategies become **one** — a single structure on a single market. What is now
-   worth asking is the constructive version: **what would have to change for a
-   survivor to have real room?** Not a bigger planted edge (that is circular), but
-   a structurally different source of return — cross-sectional (below) is the only
-   candidate currently identified, and nobody has built it.
-2. **The permutation null's block length vs the bot's holding horizon.** F12 is
+1. **Find the cross-sectional control artefact.** This is now the top item, and
+   it blocks the only identified route to a strategy with real room. A
+   cross-sectional reversal bot earns **+0.26 gross alpha Sharpe on a basket with
+   no cross-sectional effect planted** (F31) — seven standard errors from zero,
+   and inside G3's +0.30 tolerance, so the current controls would wave it
+   through. Four causes are ruled out: beta dispersion, `alpha_sharpe`'s beta
+   correction, accidentally planted autocorrelation (measured at -0.001), and
+   execution timing (invariant to `exec_delay`). It is also invariant to the
+   lookback, which rules out anything proportional to turnover.
+
+   Places not yet looked: the nonlinear per-leg transform between score and
+   position (entry/exit thresholds, the rebalance band and the leverage clamp are
+   applied per leg to a *demeaned* score, and a nonlinear function of a demeaned
+   vector does not stay demeaned); the interaction between GARCH conditional vol
+   and which legs the score selects; and the possibility that it is real
+   small-sample bias in the cross-sectional demeaning at K=12, which would predict
+   the artefact shrinking as K grows — cheap to test and not yet done.
+
+   Until it is found, `xs_reversal`/`xs_momentum` stay tier 5, unreachable by any
+   expansion. Do not raise the tier cap to "widen the search"; that is what the
+   quarantine test exists to stop.
+2. **The constructive question F30 asked is still open.** Every widening tried so
+   far produces more bots at the same margin, and under a gauntlet 20% harder the
+   four distinct strategies become **one**. Cross-sectional was the only candidate
+   for a structurally different source of return, and it is currently blocked by
+   item 1. If it stays blocked, the honest position is that this lab has one
+   result and no route to a second.
+3. **The permutation null's block length vs the bot's holding horizon.** F12 is
    now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar
    block, so the null keeps the structure the bot trades. Decide the rule **before**
@@ -76,7 +94,7 @@ Roughly in order of how much they would change what the lab can claim:
    gate on block=1 AND block=5 — then re-run the whole search and re-measure `fpr`.
    If the new rule raises the false-positive rate above zero, it is wrong regardless
    of how attractive the bots it admits look.
-3. **Real data, and a decay rate that is not a modelling choice.** `verify --data`
+4. **Real data, and a decay rate that is not a modelling choice.** `verify --data`
    already runs the identical engine, costs and permutation null on real CSVs.
    Point it at real bars for the instrument type a proven bot claims to trade.
    Expect an unimpressive permutation p-value — a single 1,200-bar out-of-sample
@@ -84,28 +102,23 @@ Roughly in order of how much they would change what the lab can claim:
    synthetic replication gates exist and why they are not sufficient. It is also
    the only route to putting the real world somewhere on F23's curve, which is the
    single largest thing this lab cannot currently do.
-4. **Resolving a death confined to the last 10% of a series.** F25 tightened G2b
+5. **Resolving a death confined to the last 10% of a series.** F25 tightened G2b
    to a final-quarter window and that removed three of four late-break
    certifications, but not the fourth: the quarter still contains 10 percentage
    points of pre-break data against 15 post-break. A shorter window is too noisy
    to gate on directly. The interesting version is a *changepoint* statistic
    rather than a shorter window — test whether the late alpha series has a break
    in it, not whether its average is high.
-5. **Search the other rungs.** F27 ran the loop against `hl=0.25x` and found
+6. **Search the other rungs.** F27 ran the loop against `hl=0.25x` and found
    nothing in 16,375 candidates. `hl=1.00x` and `break@85%` have never been
    searched, only paneled. `break@85%` is the interesting one: the panel certifies
    one strategy there, and a search might find that a *late* break is the easiest
    non-stationarity to survive — which would be a real design principle, since it
    is also the one a live trader has the least warning of.
-6. **What would a search find that the panel cannot represent?** F27 answers this
+7. **What would a search find that the panel cannot represent?** F27 answers this
    for one rung. The general version — is the strategy space searched here wide
    enough that "nothing certified" means "nothing is there" — is answered only by
    widening it. Cross-sectional strategies (below) are the biggest missing class.
-7. **Cross-sectional strategies.** The generator makes independent single
-   instruments, so pairs, lead-lag, relative value and factor crowding are all
-   out of reach. This is also what makes the portfolio's `rho=0` number a
-   fiction. Generating correlated *baskets* would unlock a whole strategy class
-   and make the portfolio numbers mean something.
 8. **Dependent intrabar extremes.** Max and min are currently sampled
    independently from the Brownian bridge; they are negatively dependent. The
    residual +0.07 gross alpha that take-profit-only bots still show on a random
