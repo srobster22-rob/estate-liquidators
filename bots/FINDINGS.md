@@ -1244,6 +1244,94 @@ be lowering the bar rather than re-applying it.
 
 ---
 
+## F30 · The margin distribution predicts the decay cliff one rung before the count does
+
+F29 found every certified strategy within 0.07 alpha Sharpe of failing a gate and
+offered one explanation: selection at a threshold always returns the population
+that just barely cleared. That explanation is complete, self-consistent, and only
+half right. Recording margins at every rung of the decay sweep — same panel, same
+gates, paired instances — separates it from the alternative:
+
+| rung | certified | min margin | median | max | binding gate |
+|---|---|---|---|---|---|
+| `stationary` | 14 | 0.018 | **0.253** | 0.331 | G2-replication (6), G2b (4), G1 (3) |
+| `hl=1.00x` | 9 | 0.097 | **0.127** | 0.156 | G1-oos (6), G2 (2), G2b (1) |
+| `hl=0.50x` *(shipped)* | 9 | 0.000 | **0.026** | 0.054 | G2b (5), G1-oos (4) |
+| `hl=0.25x` | 0 | — | — | — | — |
+
+Both mechanisms are real and they act on different parts of the distribution.
+
+**Selection sets the floor.** The marginal entrant is near zero at every rung —
++0.018 at `stationary`, +0.000 at the shipped rate — because the last bot admitted
+is by definition the one that just cleared. That part is tautological and carries
+no information about the strategies.
+
+**Decay sets the ceiling, and that part is the finding.** The *whole* distribution
+collapses: median 0.253 → 0.127 → 0.026. At `hl=1.00x` every certified bot has at
+least 0.097 of room; at `hl=0.50x` not one has more than 0.054. The two
+distributions **do not overlap**. The binding gate moves too, and moves exactly
+where the mechanism says it should: from G2-replication (the highest bar, 0.35) at
+`stationary` to the late-window gates G1 and G2b once decay has eaten the end of
+the series.
+
+**So margin is a leading indicator and count is a lagging one.** Reading only
+counts, this catalogue goes 8 → 4 → 4 → 0 and the last step looks like a cliff
+that arrived without warning. Reading margins, it goes 0.253 → 0.127 → 0.026 and
+the collapse is visible a full rung early: a population whose median room is 0.026
+is one small perturbation from empty, whatever its count says.
+
+**The statistic predicts, by name, which bots survive a harder gauntlet.** Raising
+every Sharpe-denominated gate by 20% adds +0.050 to the two that bind. Laid
+against the ledger's thirteen margins, exactly four clear that:
+
+| margin | bots | predicted under a +0.050 raise |
+|---|---|---|
+| +0.000 to +0.031 | 9 genomes | fall |
+| +0.055, +0.061, +0.064, +0.064 | `0a3b10605a98`, `e968878d9bc2`, `0e4671daeb34`, `f8cf35845ef9` | survive |
+
+That is not "the population shrinks". It is a named list, made before the run.
+Searching under the raised bars (`loop --bar-scale 1.2`, an independent search
+from a fresh ledger with its own luck bar and its own priors pass) certified
+**all four predicted survivors and none of the nine predicted to fall** — thirteen
+for thirteen, on a statistic that costs nothing to compute because every gate
+already knows the number.
+
+One honest note. The first draft of this paragraph said the raise "exceeds every
+margin, so none should survive". It does not — 0.055 > 0.050 — and that sloppy
+summary would have turned a correctly predicted result into an apparent
+falsification of it. The margins were right; the sentence about them was not.
+Which is the whole argument for the statistic in miniature: the number was already
+in the gauntlet's hands and nobody was reading it.
+
+`--bar-scale` refuses any value below 1.0, because raising the standard of proof
+is allowed here and lowering it is not.
+
+**And it answers the question that prompted the experiment.** The open item at the
+top of `ITERATION-PROMPT.md` was: every widening tried so far — more genes, more
+filters, more primitives, more effort — produces more bots at the same margin, so
+is there a strategy space reachable from here whose survivors have *room*? The
+raised-bar run is that question asked directly, and the answer is no. Under a
+gauntlet 20% harder, 10,380 candidates and 390 gauntlets yield **one distinct
+strategy** where the shipped bars yield four — and all four surviving genomes are
+the same rule, `rsi_rev + rsi_rev` on `commodity_meanrev_daily`, at four parameter
+settings.
+
+So the lab's real result is narrower than any count suggests. It is not "four
+strategies survive a 24-year halflife". It is **one structure, on one market,
+with any room at all** — three others clear the bar as it currently stands and
+would not clear it set 20% higher, and the curve in F23 says all of them are gone
+one decay rung faster.
+
+**A bug found while building that guard, worth recording separately.** `cmd_loop`
+rotated the ledger to `.prev` *before* validating its arguments, so
+`--bar-scale 0.9` — an argument the lab refuses on principle — still destroyed the
+previous run's backup on its way out the door. The ledger carries the trial counts
+G6's luck bar is built from. Losing one to a rejected argument is not a cosmetic
+failure, and
+`test_a_rejected_argument_does_not_destroy_the_ledger` now holds the ordering.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

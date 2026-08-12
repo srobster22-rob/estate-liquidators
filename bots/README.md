@@ -20,10 +20,24 @@ is still going and a bot certified early was measured against a smaller search.
 
 **Read the margins before the Sharpes.** Every one of those 13 clears its narrowest
 gate by between **+0.000 and +0.064 alpha Sharpe** (F29). One clears G1 by zero to
-three decimals. That is what a bar does to a search that expands until it succeeds
-— everything with real room to spare was found long before the search had to
-expand — but it means "passed all eight gates" here means "passed all eight gates,
+three decimals. So "passed all eight gates" here means "passed all eight gates,
 several of them by a rounding error", and pass/fail cannot say so.
+
+That margin turns out to be the most predictive number in the lab (F30). Raising
+every Sharpe gate by 20% adds +0.050 to the two that bind, which exactly four of
+the thirteen have room to spare. Re-running the whole search under the harder
+gauntlet — fresh ledger, own luck bar — certified **those four and no others**:
+thirteen for thirteen on a named, before-the-fact prediction.
+
+**Which makes the real result narrower than the count.** Under bars 20% higher, the
+four distinct strategies become **one** — a single structure, `rsi_rev + rsi_rev`
+on `commodity_meanrev_daily`, at four parameter settings. Three of the four
+strategies clear the bar as it stands and would not clear it set slightly higher.
+
+Margins also predict the decay cliff a rung before the count does. Across the
+curve the median margin runs **0.253 → 0.127 → 0.026 → (nothing)**, and the
+distributions at 48 and 24 years do not overlap. A population whose median room is
+0.026 is one perturbation from empty, whatever its count says.
 
 **That "4" is a number at one fade rate, so the headline is the curve, not the
 count** (`python bots/run.py decay`, `FINDINGS.md` F23). A fixed pre-registered
@@ -141,7 +155,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 45 falsification tests
+python bots/run.py selftest              # 46 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -152,6 +166,8 @@ python bots/run.py verify <bot_id>       # re-run the full gauntlet
 python bots/run.py decay                 # the survival curve over fade rates (F23)
 python bots/run.py costgrid              # sweep edge and cost independently (F24)
 python bots/run.py loop --catalogue hl=0.25x --state bots/state/fast.json
+python bots/run.py loop --bar-scale 1.2         # a harder gauntlet (>=1.0 only)
+python bots/run.py revalidate                   # re-judge the ledger at the closing bar
 ```
 
 `--target N` counts **distinct strategies**, not genomes: a run that certifies the
@@ -274,7 +290,7 @@ bots/
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      45 falsification tests
+  tests/test_botlab.py      46 falsification tests
 ```
 
 ---

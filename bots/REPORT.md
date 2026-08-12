@@ -1,6 +1,6 @@
 # Bot factory: run report
 
-_Generated 2026-08-12 14:20:39 from `run_state.json`._
+_Generated 2026-08-12 22:34:08 from `run_state.json`._
 
 ## Result
 
@@ -30,14 +30,27 @@ The catalogue's fade — halflife half the series, 35% floor — was chosen as t
 
 | rung | halflife | mean edge | edge at end | distinct strategies | genomes | markets |
 |---|---|---|---|---|---|---|
-| `stationary` | never | 1.00 | 1.00 | 8 | 16 | `commodity_meanrev_daily`, `eq_largecap_daily`, `futures_trend_daily`, `fx_major_daily` |
-| `hl=1.00x` | 48 yr | 0.82 | 0.68 | 4 | 11 | `commodity_meanrev_daily`, `eq_largecap_daily` |
-| `hl=0.50x` | 24 yr | 0.70 | 0.51 | 3 | 8 | `commodity_meanrev_daily` |
+| `stationary` | never | 1.00 | 1.00 | 8 | 14 | `commodity_meanrev_daily`, `eq_largecap_daily`, `futures_trend_daily`, `fx_major_daily` |
+| `hl=1.00x` | 48 yr | 0.82 | 0.68 | 4 | 9 | `commodity_meanrev_daily` |
+| `hl=0.50x` | 24 yr | 0.70 | 0.51 | 4 | 9 | `commodity_meanrev_daily` |
 | `hl=0.25x` | 12 yr | 0.57 | 0.39 | 0 | 0 | — |
 | `hl=0.125x` | 6 yr | 0.47 | 0.35 | 0 | 0 | — |
 | `hl=0.125x/f10` | 6 yr | 0.26 | 0.10 | 0 | 0 | — |
 | `break@45%` | abrupt | 0.53 | 0.15 | 0 | 0 | — |
-| `break@85%` | abrupt | 0.87 | 0.15 | 1 | 1 | `commodity_meanrev_daily` |
+| `break@85%` | abrupt | 0.87 | 0.15 | 0 | 0 | — |
+
+**How much room did the survivors have?** Each certified bot's *margin* is how far its narrowest Sharpe-denominated gate cleared its threshold. The count above is a lagging indicator and this is a leading one — the whole distribution collapses a full rung before the count does.
+
+| rung | certified | min margin | median | max | binding gate |
+|---|---|---|---|---|---|
+| `stationary` | 14 | +0.018 | +0.253 | +0.331 | G2-replication (6), G2b-durability (4), G1-oos (3), G7-stress-pool (1) |
+| `hl=1.00x` | 9 | +0.097 | +0.127 | +0.156 | G1-oos (6), G2-replication (2), G2b-durability (1) |
+| `hl=0.50x` | 9 | +0.000 | +0.026 | +0.054 | G2b-durability (5), G1-oos (4) |
+| `hl=0.25x` | 0 | — | — | — | — |
+| `hl=0.125x` | 0 | — | — | — | — |
+| `hl=0.125x/f10` | 0 | — | — | — | — |
+| `break@45%` | 0 | — | — | — | — |
+| `break@85%` | 0 | — | — | — | — |
 
 Read it as a sentence: **the strategies this lab has found survive a halflife of about 24 simulated years and are gone by 12.** Four to none across one rung that only takes the mean edge from 0.70 to 0.57 — because the whole population of viable strategies sits in a narrow band just above the replication bar, so a 20% edge cut does not thin the field, it empties it. Nothing survives an abrupt break in the first half of its life. Everything above is conditional on where in that range the real world sits, and this repository cannot tell you.
 

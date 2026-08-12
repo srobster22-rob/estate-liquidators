@@ -102,6 +102,13 @@ def cmd_markets(a) -> int:
 
 def cmd_loop(a) -> int:
     os.makedirs(STATE_DIR, exist_ok=True)
+    # Validate BEFORE touching the ledger. Rotating first meant a rejected
+    # argument still destroyed the previous run's `.prev` backup — the ledger
+    # carries the trial counts the standard of proof depends on, so losing one to
+    # a typo is not a cosmetic failure.
+    cfg = _build_config(a)
+    if cfg is None:
+        return 4
     if not a.resume and os.path.exists(a.state):
         os.replace(a.state, a.state + ".prev")
         if os.path.exists(a.log):
@@ -117,10 +124,41 @@ def cmd_loop(a) -> int:
     return _loop_body(a)
 
 
-def _loop_body(a) -> int:
+#: The Sharpe-denominated thresholds, i.e. the ones `--bar-scale` may raise.
+#: G5's p-value and G6's DSR are not on this scale and are deliberately excluded.
+SCALABLE_BARS = ("min_oos_alpha_sr", "min_repl_alpha_sr", "min_late_alpha_sr",
+                 "min_stress_alpha_sr", "cost_stress_2x_min", "delay_stress_min")
+
+
+def _build_config(a) -> gauntlet.GauntletConfig | None:
+    """The run's standard of proof. `None` means the arguments were rejected."""
     cfg = gauntlet.GauntletConfig()
     if a.min_repl_sharpe is not None:
+        if a.min_repl_sharpe < gauntlet.GauntletConfig().min_repl_alpha_sr:
+            print(f"refusing --min-repl-sharpe {a.min_repl_sharpe}: below the shipped "
+                  f"{gauntlet.GauntletConfig().min_repl_alpha_sr}. Raising the standard of "
+                  "proof is fine; lowering it is cheating.")
+            return None
         cfg.min_repl_alpha_sr = a.min_repl_sharpe
+    if a.bar_scale is not None:
+        # Raising the standard of proof is always allowed; lowering it is the one
+        # thing this repository refuses to do to itself, so the guard is hard
+        # rather than advisory.
+        if a.bar_scale < 1.0:
+            print(f"refusing --bar-scale {a.bar_scale}: that lowers the standard of proof. "
+                  "Raising it is fine; lowering it is cheating.")
+            return None
+        for name in SCALABLE_BARS:
+            setattr(cfg, name, round(getattr(cfg, name) * a.bar_scale, 4))
+        print("bars raised x{:.2f}: ".format(a.bar_scale)
+              + ", ".join(f"{n}={getattr(cfg, n)}" for n in SCALABLE_BARS))
+    return cfg
+
+
+def _loop_body(a) -> int:
+    cfg = _build_config(a)
+    if cfg is None:
+        return 4
     space = SearchSpace(level=a.level, population=a.population)
     st = loop.run_loop(
         target_proven=a.target, max_generations=a.max_generations, state_path=a.state,
@@ -300,6 +338,8 @@ def cmd_decay(a) -> int:
     print()
     print(decaysweep.format_curve(sw))
     print()
+    print(decaysweep.margin_table(sw))
+    print()
     print(decaysweep.survival_table(sw))
     print()
     print(decaysweep.format_achievable(sw))
@@ -367,6 +407,10 @@ def main(argv=None) -> int:
     p.add_argument("--catalogue", default=None,
                    help="search a decay rung instead of the shipped catalogue; "
                         "see `decay --help` for the rung labels")
+    p.add_argument("--bar-scale", type=float, default=None,
+                   help="multiply every Sharpe-denominated gate threshold. Must be "
+                        ">= 1.0 — raising the standard of proof is allowed, lowering it "
+                        "is not")
     p.set_defaults(fn=cmd_loop)
 
     p = sub.add_parser("show", help="print a bot and its evidence")

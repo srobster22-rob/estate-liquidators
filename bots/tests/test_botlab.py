@@ -580,6 +580,45 @@ def test_durability_gate_can_fire():
         universe.unregister("mild_decay_probe")
 
 
+def test_a_rejected_argument_does_not_destroy_the_ledger():
+    """`loop` rotates the ledger to `.prev` before starting a fresh run. It used
+    to do that *before* validating its arguments, so `--bar-scale 0.9` — an
+    argument the lab refuses on principle — still destroyed the previous run's
+    backup on its way out. The ledger carries the trial counts G6's luck bar is
+    built from, so losing one to a typo is not a cosmetic failure.
+    """
+    import tempfile
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from bots import run as runner
+    with tempfile.TemporaryDirectory() as d:
+        # Both files rotate together, and the *log* is the one that was actually
+        # lost when this fired for real — the first version of this test only
+        # covered the ledger and would have passed while the log was destroyed.
+        led, log = os.path.join(d, "ledger.json"), os.path.join(d, "loop_log.md")
+        for path, body in ((led, '{"sentinel": true}'), (log, "sentinel log\n")):
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+        rc = runner.main(["--state", led, "loop", "--bar-scale", "0.9",
+                          "--target", "1", "--log", log])
+        assert rc != 0, "a bar-lowering argument should be refused"
+        for path, what in ((led, "ledger"), (log, "loop log")):
+            assert os.path.exists(path), f"the {what} was destroyed by a rejected argument"
+            with open(path, encoding="utf-8") as fh:
+                assert "sentinel" in fh.read(), f"the {what} was overwritten"
+            assert not os.path.exists(path + ".prev"), f"the {what} was rotated anyway"
+
+    # ... and the guard itself must actually be a guard in both directions.
+    class A:
+        min_repl_sharpe = None
+        bar_scale = 1.5
+    assert runner._build_config(A()) is not None, "raising the bars was refused"
+    A.bar_scale = 0.999
+    assert runner._build_config(A()) is None, "a bar-lowering scale was accepted"
+    A.bar_scale = None
+    A.min_repl_sharpe = 0.10
+    assert runner._build_config(A()) is None, "a bar-lowering replication floor was accepted"
+
+
 def test_default_rung_reproduces_the_shipped_catalogue():
     """The `hl=0.50x` rung is meant to *be* the shipped catalogue, restated. If it
     is not, every comparison the curve makes is against a straw catalogue and the

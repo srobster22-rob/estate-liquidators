@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 45 falsification tests
+python bots/run.py selftest      # 46 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -59,16 +59,15 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **Every certified strategy has a margin under 0.07 (F29), and one is at
-   exactly zero.** That is what a bar does to a search that expands until it
-   succeeds, but it means the whole population is one modelling assumption away
-   from empty — which is also why F23's decay cliff is a cliff. The question this
-   raises and nobody has answered: is there a strategy space reachable from here
-   whose survivors have *room*? Every widening so far (more genes, more filters,
-   more primitives, more effort) has produced more bots at the same margin. A
-   different *kind* of widening — cross-sectional (below), or a market family with
-   a genuinely larger planted edge behind honest costs — is the only thing that
-   would change it.
+1. **(answered — F30. Left here because the answer is the most important thing
+   the lab currently knows about itself.)** Every widening tried so far produced
+   more bots at the same margin, so: is there a strategy space reachable from here
+   whose survivors have room? No. Under a gauntlet 20% harder the four distinct
+   strategies become **one** — a single structure on a single market. What is now
+   worth asking is the constructive version: **what would have to change for a
+   survivor to have real room?** Not a bigger planted edge (that is circular), but
+   a structurally different source of return — cross-sectional (below) is the only
+   candidate currently identified, and nobody has built it.
 2. **The permutation null's block length vs the bot's holding horizon.** F12 is
    now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar

@@ -457,6 +457,35 @@ def _decay_curve_section() -> list[str]:
     L.append(_table(rows, ["rung", "halflife", "mean edge", "edge at end",
                            "distinct strategies", "genomes", "markets"]))
     L.append("")
+    # The margin distribution is the leading indicator; the count is the lagging
+    # one. Reporting only counts makes the cliff look like it arrived without
+    # warning (F30).
+    mrows = []
+    for label, hl_frac, *_ in decaysweep.RUNGS:
+        r = sw["rungs"].get(label)
+        if r is None:
+            continue
+        cert = [x for x in r["rows"] if x["passed"] and x.get("margin") is not None]
+        if not cert:
+            mrows.append([f"`{label}`", r["n_certified"], "—", "—", "—", "—"])
+            continue
+        ms = sorted(x["margin"] for x in cert)
+        gates: dict = {}
+        for x in cert:
+            gates[x["margin_gate"]] = gates.get(x["margin_gate"], 0) + 1
+        mrows.append([f"`{label}`", len(cert), f"{ms[0]:+.3f}",
+                      f"{ms[len(ms) // 2]:+.3f}", f"{ms[-1]:+.3f}",
+                      ", ".join(f"{k} ({n})" for k, n in
+                                sorted(gates.items(), key=lambda kv: -kv[1]))])
+    if any(r[2] != "—" for r in mrows):
+        L.append("**How much room did the survivors have?** Each certified bot's *margin* is "
+                 "how far its narrowest Sharpe-denominated gate cleared its threshold. The "
+                 "count above is a lagging indicator and this is a leading one — the whole "
+                 "distribution collapses a full rung before the count does.")
+        L.append("")
+        L.append(_table(mrows, ["rung", "certified", "min margin", "median", "max",
+                                "binding gate"]))
+        L.append("")
     L.append("Read it as a sentence: **the strategies this lab has found survive a halflife "
              "of about 24 simulated years and are gone by 12.** Four to none across one rung "
              "that only takes the mean edge from 0.70 to 0.57 — because the whole population "

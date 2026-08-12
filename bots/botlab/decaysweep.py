@@ -290,6 +290,26 @@ def build_panel(variants: list, proven: list[dict] | None = None,
 # the sweep
 # --------------------------------------------------------------------------- #
 
+#: Gates whose margin is in alpha-Sharpe units and therefore comparable to each
+#: other. G5's is a p-value and G6's a probability; both are reported separately.
+SHARPE_GATES = ("G1-oos", "G2-replication", "G2b-durability",
+                "G4-stress", "G7-stress-pool")
+
+
+def _tight(v):
+    return min(((st.margin, st.name) for st in v.stages
+                if st.margin is not None and st.name in SHARPE_GATES), default=(None, ""))
+
+
+def _tightest_margin(v):
+    m = _tight(v)[0]
+    return None if m is None else round(float(m), 4)
+
+
+def _tightest_gate(v) -> str:
+    return _tight(v)[1]
+
+
 def run_rung(rung: str, proven: list[dict] | None = None,
              cfg: gauntlet.GauntletConfig | None = None,
              seed: int = 7717, verbose: bool = True,
@@ -320,6 +340,15 @@ def run_rung(rung: str, proven: list[dict] | None = None,
                 "stress_alpha_sr": round(v.perf.get("stress_alpha_sr", 0.0), 3),
                 "headroom": int(v.perf.get("burden_headroom", 0)),
                 "perm_p": v.perf.get("perm_p"),
+                # How much room the *binding* Sharpe-denominated gate had. F29
+                # found this to be 0.00-0.06 for every certified bot on the
+                # shipped catalogue, and offered two explanations: selection at a
+                # threshold always returns the population that just cleared, or
+                # decay has eaten the late windows the tightest gates measure.
+                # The two are distinguishable only by comparing rungs, so the
+                # sweep has to record it.
+                "margin": _tightest_margin(v),
+                "margin_gate": _tightest_gate(v),
             }
             rows.append(row)
             if v.passed:
@@ -502,6 +531,32 @@ def format_achievable(sweep: dict) -> str:
                      ("mean_edge", "mean edge profile")):
         cells = [f"{np.mean([r[key] for r in ach[lab]]):>7.2f}       " for lab in order]
         lines.append(f"{lbl:<26}" + "".join(f"{c:>15}" for c in cells))
+    return "\n".join(lines)
+
+
+def margin_table(sweep: dict) -> str:
+    """Margins by rung. If thin margins are a *selection* artefact they should be
+    thin at every rung, since every rung selects at the same thresholds. If they
+    are a *decay* artefact — the tightest gates measure late windows, and decay
+    has eaten those — they should widen as the fade slows and be widest at
+    `stationary`."""
+    order = [r[0] for r in RUNGS if r[0] in sweep.get("rungs", {})]
+    head = (f"{'rung':<16}{'certified':>10}{'minMargin':>11}{'medMargin':>11}"
+            f"{'maxMargin':>11}   binding gate (count)")
+    lines = [head, "-" * len(head)]
+    for label in order:
+        cert = [r for r in sweep["rungs"][label]["rows"]
+                if r["passed"] and r.get("margin") is not None]
+        if not cert:
+            lines.append(f"{label:<16}{0:>10}{'-':>11}{'-':>11}{'-':>11}   -")
+            continue
+        ms = sorted(r["margin"] for r in cert)
+        gates: dict[str, int] = {}
+        for r in cert:
+            gates[r["margin_gate"]] = gates.get(r["margin_gate"], 0) + 1
+        gs = ", ".join(f"{k} ({n})" for k, n in sorted(gates.items(), key=lambda kv: -kv[1]))
+        lines.append(f"{label:<16}{len(cert):>10}{ms[0]:>11.3f}"
+                     f"{ms[len(ms) // 2]:>11.3f}{ms[-1]:>11.3f}   {gs}")
     return "\n".join(lines)
 
 

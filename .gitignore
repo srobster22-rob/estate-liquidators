@@ -34,5 +34,6 @@ __pycache__/
 bots/state/run_state.json
 # ... and any alternate ledger, e.g. a search run against a decay rung
 bots/state/fast_*.json
+bots/state/hibar.json
 bots/state/*.prev
 bots/state/*.tmp
