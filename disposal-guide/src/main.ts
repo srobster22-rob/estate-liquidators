@@ -3,6 +3,10 @@ import type { DataIndex, I18nText, Item, Location, ResolvedAnswer } from './type
 import { SearchIndex } from './search.js';
 import { isDisambiguation, resolve, VERDICT_LABEL, VERDICT_SUBTEXT } from './resolve.js';
 import { logZeroResult } from './telemetry.js';
+import {
+  queue, questions, isStale, daysSince, readVerifications, recordVerification, toYaml,
+  type Outcome,
+} from './verify.js';
 
 const data = indexData as unknown as DataIndex;
 const lang = pickLang();
@@ -290,6 +294,73 @@ function renderList(): string {
     ${configBanner()}`;
 }
 
+function renderVerify(): string {
+  const today = new Date();
+  const done = new Set(readVerifications().map((r) => r.locationId));
+  const pending = queue(data, today, done);
+  const loc = pending[0];
+  const records = readVerifications();
+
+  const exportBlock = records.length
+    ? `<h2>What you've checked</h2>
+       <p>${records.length} location${records.length === 1 ? '' : 's'} this session.</p>
+       <pre class="sources" style="white-space:pre-wrap;border:1px solid var(--line);padding:.75rem;border-radius:var(--radius)">${esc(toYaml(records, data))}</pre>
+       <p><button class="btn btn-secondary" id="clear-verifications">Start over</button></p>`
+    : '';
+
+  if (!loc) {
+    return `
+      <p class="no-print"><a href="#/">&larr; Search</a></p>
+      <h1>Re-check the list</h1>
+      <div class="callout callout-warn"><p><strong>Nothing left in the queue.</strong>
+        ${data.locations.length === 0 ? 'There are no locations at all yet — see VERIFY.md.' : ''}</p></div>
+      ${exportBlock}`;
+  }
+
+  const days = daysSince(loc.verifiedOn, today);
+  const age = days === null
+    ? 'never confirmed'
+    : `last confirmed ${days} day${days === 1 ? '' : 's'} ago`;
+
+  return `
+    <p class="no-print"><a href="#/">&larr; Search</a></p>
+    <h1>Re-check the list <span class="result-via">(${pending.length} to go)</span></h1>
+    <p>One call, about a minute of their time. The questions are below — you only have to type
+      something if an answer changed.</p>
+
+    ${loc.isDemo ? `<div class="callout callout-danger"><p><strong>This is a demo row, not a real
+      place.</strong> Delete <code>data/locations/demo.yaml</code> and add places you have
+      actually called. See <code>VERIFY.md</code>.</p></div>` : ''}
+
+    <div class="place">
+      <p class="place-name">${esc(loc.name)}</p>
+      <p class="place-meta">${esc(loc.address)}</p>
+      ${loc.phone ? `<p><a class="btn" href="tel:${esc(loc.phone)}">Call ${esc(loc.phone)}</a></p>`
+        : '<p class="place-meta">No phone number recorded — find one first.</p>'}
+      <p class="place-meta">${esc(age)}${isStale(loc, today) ? ' — due' : ''}
+        ${loc.verifiedBy ? `· last by ${esc(loc.verifiedBy)}` : ''}</p>
+    </div>
+
+    <h2>Ask</h2>
+    <ol class="plain">${questions(loc, data).map((q) => `<li>${esc(q)}</li>`).join('')}</ol>
+
+    <h2>What happened</h2>
+    <p><label for="who"><strong>Your name</strong> (goes in the record as who confirmed it)</label>
+      <input type="text" id="who" value="${esc(localStorage.getItem('dg.verifier') ?? '')}" /></p>
+    <p><label for="vnote"><strong>Anything that changed</strong> (only if it did)</label>
+      <input type="text" id="vnote" placeholder="Now closed Saturdays; $5 per load" /></p>
+    <p>
+      <button class="btn" data-outcome="confirmed">Still correct</button>
+      <button class="btn btn-secondary" data-outcome="changed">Something changed</button>
+      <button class="btn btn-secondary" data-outcome="closed">They've closed</button>
+      <button class="btn btn-secondary" data-outcome="no_answer">No answer</button>
+    </p>
+    <p class="place-meta">"No answer" is recorded as an attempt and does not update the date —
+      a location nobody can reach is a finding, not a confirmation.</p>
+
+    ${exportBlock}`;
+}
+
 function renderAbout(): string {
   return `
     <p class="no-print"><a href="#/">&larr; Search</a></p>
@@ -346,6 +417,13 @@ function route(): void {
     focusMain();
     return;
   }
+  if (section === 'verify') {
+    app.innerHTML = renderVerify();
+    document.title = 'Re-check the list';
+    wireVerify();
+    focusMain();
+    return;
+  }
   if (section === 'about') {
     app.innerHTML = renderAbout();
     document.title = 'About — What do I do with this?';
@@ -379,6 +457,44 @@ function wireSearch(): void {
     timer = setTimeout(run, 140);
   });
   input.focus();
+}
+
+function wireVerify(): void {
+  const app = document.getElementById('app')!;
+  app.querySelectorAll('[data-outcome]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const outcome = (btn as HTMLElement).dataset.outcome as Outcome;
+      const who = (document.getElementById('who') as HTMLInputElement)?.value.trim();
+      const note = (document.getElementById('vnote') as HTMLInputElement)?.value.trim();
+      if (!who) {
+        alert('Put your name in first — the record has to say who confirmed it.');
+        return;
+      }
+      try { localStorage.setItem('dg.verifier', who); } catch { /* not important enough to fail */ }
+
+      const today = new Date();
+      const loc = queue(data, today, new Set(readVerifications().map((r) => r.locationId)))[0];
+      if (!loc) return;
+
+      const saved = recordVerification({
+        locationId: loc.id, outcome, on: today.toISOString().slice(0, 10), by: who,
+        ...(note ? { note } : {}),
+      });
+      if (!saved) {
+        alert("This device wouldn't save that. Copy the YAML below before you go any further.");
+        return;
+      }
+      app.innerHTML = renderVerify();
+      wireVerify();
+    });
+  });
+
+  document.getElementById('clear-verifications')?.addEventListener('click', () => {
+    if (!confirm('Clear everything you checked this session? Copy the YAML first.')) return;
+    try { localStorage.removeItem('dg.verifications'); } catch { /* ignore */ }
+    app.innerHTML = renderVerify();
+    wireVerify();
+  });
 }
 
 function wireAnswer(): void {

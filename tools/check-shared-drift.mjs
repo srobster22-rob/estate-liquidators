@@ -17,6 +17,11 @@
  * So instead of extracting, this makes the drift loud. Lines that are *supposed* to differ are
  * declared per file; everything else must match byte for byte.
  *
+ * NOT COVERED: `src/styles.css`. The two stylesheets diverged by design — different palettes,
+ * and each project has its own component section — so byte comparison would only produce noise.
+ * The control there is per-project: both suites run the same 200%-zoom-on-360px reflow test in a
+ * real browser. That is what caught the nav-wrap fix living in one project and not the other.
+ *
  *   node tools/check-shared-drift.mjs
  */
 import { readFileSync, existsSync } from 'node:fs';

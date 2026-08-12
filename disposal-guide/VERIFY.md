@@ -73,23 +73,27 @@ take-back bins, pharmacy drop boxes, auto parts stores taking oil and batteries 
 6. Anything people commonly bring that you *don't* take?
 
 Then write them into `data/locations/local.yaml` with `verifiedOn` and `verifiedBy` (a person or
-a desk, not "the website"). **Delete `data/locations/demo.yaml`** — do not edit demo rows into
+a desk, not "the website"). The `/verify` screen walks you through this and emits the YAML. **Delete `data/locations/demo.yaml`** — do not edit demo rows into
 real ones, so a half-finished row can never survive.
 
 **Record how many websites were wrong.** That number is the project's whole justification and
 you will want it when you ask anyone for support.
 
-### 2.2 Ask your hauler for their contamination rate and top problem items
+### 2.2 Time the re-check loop with somebody who is not you
+`/verify` is built and the target is fifteen seconds per confirmation. Nobody has timed it. Watch
+one person do ten and cut whatever makes them hesitate.
+
+### 2.3 Ask your hauler for their contamination rate and top problem items
 
 Cheap call, high value. It gives you the front-page number and usually your first ten additions
 to the item list.
 
-### 2.3 Fill in `data/jurisdiction.yaml`
+### 2.4 Fill in `data/jurisdiction.yaml`
 
 City, county, state, hauler, timezone, languages. Set `configured: true` **only after** 2.1 is
 done. The build refuses to let you set it while every location is still demo data.
 
-### 2.4 Get the Spanish reviewed by a human
+### 2.5 Get the Spanish reviewed by a human
 
 Current coverage, measured by the test suite: **names 38/38, explanatory text 3/29.** The item
 names are translated; almost none of the "why" and "before you go" text is. What exists was not
@@ -151,6 +155,9 @@ Named here so nobody assumes they exist:
 - **No image recognition.** The brief cuts it from v1 and the reasoning holds: it would eat the
   schedule and a model that misreads a swollen lithium pouch as a AA is worse than a text box.
 - **No collection-day calendar.** Needs your hauler's schedule; add it when you have the data.
+- **The `/verify` screen does not write to the data files.** It cannot — there is no server. It
+  emits a YAML fragment you paste and commit, which keeps the directory in git where it can be
+  reviewed.
 - **No server.** The report button writes to `localStorage` and tells the user to send it on.
   `UPLOAD_ENDPOINT` in `src/telemetry.ts` is `null`, which is why the app makes zero network
   requests. If you set it, point it at your own host.

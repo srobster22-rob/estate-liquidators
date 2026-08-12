@@ -93,7 +93,16 @@ main:focus { outline: none; }
   color: inherit;
   text-decoration: none;
 }
-.topbar nav { display: flex; gap: 1rem; font-size: 1rem; }
+.topbar nav {
+  display: flex;
+  /* Must wrap: at 200% zoom on a 360px screen the links do not fit on one line and push the
+     page sideways (WCAG 1.4.10). The same fix landed in flood-and-water first and did not
+     make it here until a fourth nav link exposed it — CSS is not covered by the shared-file
+     drift checker, so the per-project zoom test is the control. */
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 1rem;
+}
 
 a { color: var(--accent); }
 a:hover { text-decoration-thickness: 2px; }

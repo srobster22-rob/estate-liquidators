@@ -9,6 +9,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 const SCREENS = [
   { name: 'home', path: '/' },
+  { name: 'verify', path: '/#/verify' },
   { name: 'answer-lithium', path: '/#/item/battery-lithium-ion' },
   { name: 'disambiguation', path: '/#/item/battery-generic' },
   { name: 'list', path: '/#/list' },
@@ -71,7 +72,9 @@ test('an unconfigured build refuses to name a bin', async ({ page }) => {
 });
 
 test('demo locations never render as destinations', async ({ page }) => {
-  for (const s of SCREENS) {
+  // /#/verify is excluded on purpose: it is the maintainer's re-check screen and it must show
+  // demo rows, flagged, so an unconfigured directory does not read as "nothing to do".
+  for (const s of SCREENS.filter((s) => s.name !== 'verify')) {
     await page.goto(s.path);
     await page.waitForSelector('#app');
     expect(await page.locator('#app').innerText()).not.toContain('NOT A REAL PLACE');
@@ -117,4 +120,43 @@ test('screenshots for the record', async ({ page }) => {
     await page.waitForSelector('#app h1');
     await page.screenshot({ path: `screenshots/${s.name}.png`, fullPage: true });
   }
+});
+
+
+test('the re-check loop records a call and emits pasteable YAML', async ({ page }) => {
+  await page.goto('/#/verify');
+  await page.waitForSelector('#who');
+
+  // It refuses to record without a name — the point of the record is who confirmed it.
+  const alerts: string[] = [];
+  page.on('dialog', (d) => { alerts.push(d.message()); void d.accept(); });
+  await page.locator('[data-outcome="confirmed"]').click();
+  await expect.poll(() => alerts.length).toBe(1);
+  expect(alerts[0]).toMatch(/name/i);
+
+  const firstName = await page.locator('.place-name').innerText();
+  await page.locator('#who').fill('Dana');
+  await page.locator('[data-outcome="confirmed"]').click();
+
+  // Moves to the next location and shows the fragment.
+  await expect(page.locator('.place-name')).not.toHaveText(firstName);
+  await expect(page.locator('pre')).toContainText("verifiedBy: 'Dana'");
+  await expect(page.locator('pre')).toContainText("verifiedOn:");
+});
+
+test('a no-answer is recorded as an attempt and never updates the date', async ({ page }) => {
+  await page.goto('/#/verify');
+  await page.waitForSelector('#who');
+  await page.locator('#who').fill('Dana');
+  await page.locator('[data-outcome="no_answer"]').click();
+  const yaml = await page.locator('pre').innerText();
+  expect(yaml).toContain('NOT verified');
+  expect(yaml).not.toMatch(/^\s*verifiedOn:/m);
+});
+
+test('the re-check screen says the rows are still demo data', async ({ page }) => {
+  await page.goto('/#/verify');
+  // Rendered text wraps, so match on collapsed whitespace rather than the source string.
+  const text = (await page.locator('.callout-danger').innerText()).replace(/\s+/g, ' ');
+  expect(text).toMatch(/demo row, not a real place/i);
 });

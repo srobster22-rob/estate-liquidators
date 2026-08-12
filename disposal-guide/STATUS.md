@@ -8,7 +8,7 @@ Built in one session against `society-prompts/16-disposal-guide.md`.
 | --- | --- |
 | **M0** — 30 items, 10 locations, all phone-verified | **Not met.** 38 items built; **0 locations phone-verified**, because an agent cannot make phone calls. Exit criterion is a human task — see `VERIFY.md` §2.1. |
 | **M1** — search that actually finds things | **Code complete, exit criterion not met.** Search handles synonyms, colloquialisms, brand names, misspellings, and both languages; the zero-result log is built. The exit criterion is watching ten people search, which has not happened. |
-| **M2** — 120 items, full locations, re-verification workflow | **Partial.** 38 of ~120 items. Re-verification is enforced by schema (`verifiedOn`/`verifiedBy` required, build fails without them) but the `/verify` UI is not built. |
+| **M2** — 120 items, full locations, re-verification workflow | **Partial.** 38 of ~120 items. The re-verification loop is now built: `/verify` walks locations oldest-first with the number as a tap-to-call link, the questions pre-written, and four outcome buttons, then emits a YAML fragment to paste into the data file. Still 0 real locations. |
 | **M3** — second language, printables, collection schedule | **Partial.** Spanish scaffolding throughout; item names 38/38, explanatory text 3/29, none reviewed by a speaker. Print stylesheet done, not tested on paper. No collection calendar. |
 | **M4** — real use | Not started. |
 
@@ -21,9 +21,9 @@ first load.
 
 - **19.5KB total gzipped** (16.8KB JS, 1.7KB CSS, 0.8KB HTML), against budgets of 200KB and
   100KB. Includes the entire item database.
-- **45 tests, 42 passing, 3 skipped.** The three skips are genuinely human: the 180-day
+- **60 tests, 57 passing, 3 skipped.** The three skips are genuinely human: the 180-day
   staleness flag (needs real locations), real-device load time, and printing on paper.
-- **13 browser tests passing** in real Chromium: axe-core clean against wcag2a/2aa/21a/21aa/22aa
+- **17 browser tests passing** in real Chromium: axe-core clean against wcag2a/2aa/21a/21aa/22aa
   on all five screens, keyboard-only search-to-answer, no horizontal overflow at 200% zoom on a
   360px viewport, no cross-origin requests, and search working with the network cut.
 - Search: ~0.02ms per query over the full index.

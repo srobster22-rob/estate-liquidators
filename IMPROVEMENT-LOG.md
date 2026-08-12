@@ -139,15 +139,45 @@ against the actual bytes, which is the claim the record makes.
 **Verified:** 40 unit tests, 18 browser tests, initial JS up only 0.5KB because the writer rides
 the lazily-loaded export chunk.
 
+## R8 — disposal-guide: the re-check loop
+
+Queue item #1. The schema had refused to ship a location without `verifiedOn` and `verifiedBy`
+since the first commit, and nothing kept them true. Hours change seasonally, facilities close,
+and a rotting directory is worse than none — somebody drives to a locked gate on a Saturday.
+
+Built `/verify`: one location at a time, oldest-first with never-verified ahead of everything,
+the number as a tap-to-call link, the six questions already written, and four buttons. There is
+no server, so it emits a YAML fragment to paste into `data/locations/local.yaml` and commit —
+which keeps the directory in git where it can be reviewed.
+
+Two decisions worth naming. **A no-answer never updates the date** — a location nobody can reach
+is a finding, not a confirmation, and the fragment says "NOT verified" instead. And **a closure
+is emitted commented out**, because removing a row is a decision a person should make with their
+eyes open.
+
+**Found a real regression, in a different project.** Adding a fourth nav link pushed
+`disposal-guide` into horizontal scrolling at 200% zoom on a 360px screen. The nav-wrap fix for
+exactly this had landed in `flood-and-water` during R5 and never made it here — CSS is not
+covered by R4's drift checker, because the two stylesheets diverged by design. The per-project
+reflow test caught it, which is the right control; the drift checker now documents that
+explicitly so nobody assumes CSS is covered.
+
+Also two of my own test bugs: adding `/verify` to the shared screen list broke the "demo
+locations never render as destinations" test, whose intent is about answer pages (the maintainer
+screen must show demo rows, flagged) — and an assertion matched a source string against rendered
+text that wraps.
+
+**Verified:** 57 unit tests including that the emitted fragment parses as real YAML with the
+`yaml` package, and 17 browser tests including the no-answer path and the refusal to record
+without a name.
+
 ---
 
 ## The queue — what the next rounds should take
 
 Ordered by value, from the projects' own VERIFY files:
 
-1. **disposal-guide: the `/verify` re-verification screen.** The schema enforces
-   `verifiedOn`/`verifiedBy`; the fifteen-second re-check loop that keeps them true is not built.
-2. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
+1. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
    `flood-and-water`. This one needs a paid human translator, not another round.
 3. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures.
 4. **recall-watch: time the review queue with a real coordinator.** The fifteen-second target is
