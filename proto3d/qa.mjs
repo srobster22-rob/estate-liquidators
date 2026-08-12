@@ -136,7 +136,8 @@ async function checks(g, fresh) {
   ok("every seed produces an estate that passes the gate",
     sweep.bad.length === 0, JSON.stringify(sweep.bad.slice(0, 3)));
   ok("and it does not take many attempts to find one",
-    sweep.median <= 12 && sweep.worst < 60, JSON.stringify(sweep));
+    sweep.median <= 12 && sweep.worst < 60,
+    `median ${sweep.median}, worst ${sweep.worst}, ${sweep.bad.length} seeds unbuildable`);
 
   // The generated estate must also satisfy the properties the rest of the game
   // assumes: a van, a deep wing, shelves and hiding places everywhere, and a
@@ -595,6 +596,30 @@ async function checks(g, fresh) {
   ok("and refusing cursed cargo outright costs real money",
     curse.none.net < curse.normal.net * 0.85, JSON.stringify(curse));
 
+  // ECONOMY 4's description of the last night: "above the mean. The apex is not
+  // optional." Bots alone should mostly miss it; the apex should turn it around.
+  const lastNight = await g(() => {
+    window.__g.freezeCrew(false);
+    let bots = 0, withApex = 0, runs = 12;
+    const apexValue = [];
+    for (let t = 0; t < runs; t++) {
+      window.__g.newContract(); window.__g.regen((t + 1) * 104729 + 3, 3);
+      window.__g.setNight(3);
+      const a = window.__g.apex(); if (a) apexValue.push(a.value);
+      for (let i = 0; i < 210 * 60 && !window.__g.state().over; i++) window.__g.step(1, 1 / 60);
+      const l = window.__g.contract().last;
+      if (l.met) bots++;
+      if (l.net + (a ? a.value : 0) >= l.quota) withApex++;
+    }
+    window.__g.newContract(); window.__g.regen(20260806);
+    return { bots: bots / runs, withApex: withApex / runs,
+             apex: Math.round(apexValue.reduce((s, v) => s + v, 0) / apexValue.length) };
+  });
+  ok("the last night is not passable on crew throughput alone",
+    lastNight.bots <= 0.6, JSON.stringify(lastNight));
+  ok("but the apex turns it around",
+    lastNight.withApex >= lastNight.bots + 0.15, JSON.stringify(lastNight));
+
   ok("night one is winnable and the last night is harder than the first",
     rates[0].pass >= 0.6 && rates[1].pass < rates[0].pass, JSON.stringify(rates));
 
@@ -651,6 +676,48 @@ async function checks(g, fresh) {
     new Set(played.seeds).size === 4, JSON.stringify(played.seeds));
 
   await g(() => { window.__g.newContract(); window.__g.regen(20260806); });
+
+  // --- the apex (ECONOMY 3, D-21) -------------------------------------------
+  // The thing the last night is built around: one per estate, only in late
+  // contracts, five of the van's slots, and it takes two people to move.
+  const apex = await g(() => {
+    const out = { early: [], late: [], haul: null };
+    for (const n of [0, 1]) {
+      window.__g.newContract(); window.__g.regen(4242 + n, n); window.__g.setNight(n);
+      out.early.push(window.__g.apex());
+    }
+    for (const n of [2, 3]) {
+      window.__g.newContract(); window.__g.regen(4242 + n, n); window.__g.setNight(n);
+      out.late.push(window.__g.apex());
+    }
+    // Haul it: crewmate alongside, lift, walk it to the van.
+    window.__g.newContract(); window.__g.regen(4242, 3); window.__g.setNight(3);
+    window.__g.gates(true); window.__g.freezeCrew(true);
+    const a = window.__g.apex(), it = window.__g.list()[a.i];
+    window.__g.setCrew(0, it.x + 1.0, it.z);
+    window.__g.tp(it.x - 1.3, it.z);
+    window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.3));
+    window.__g.grab();
+    const alone = window.__g.carry();
+    const v = window.__g.rooms().find(r => r.van);
+    const before = window.__g.vanSlots();
+    window.__g.tp(v.x, v.z); window.__g.step(4, 1 / 60);
+    out.haul = { carry: alone, slots: before - window.__g.vanSlots(),
+                 banked: window.__g.state().banked, value: a.value };
+    window.__g.gates(false); window.__g.freezeCrew(false);
+    window.__g.newContract(); window.__g.regen(20260806);
+    return out;
+  });
+  ok("early contract nights have no apex",
+    apex.early.every(a => a === null), JSON.stringify(apex.early));
+  ok("late ones always do", apex.late.every(a => a && a.tier === 4),
+    JSON.stringify(apex.late));
+  ok("it takes two people and five slots",
+    apex.haul.carry !== null && apex.haul.carry.follower !== null && apex.haul.slots === 5,
+    JSON.stringify(apex.haul));
+  ok("and it is worth a third to two thirds of the night it decides",
+    apex.late.every(a => a.value >= 2900 * 0.30 && a.value <= 3300 * 0.68),
+    JSON.stringify(apex.late.map(a => a.value)));
 
   // --- night endings --------------------------------------------------------
   await fresh();

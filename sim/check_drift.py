@@ -198,6 +198,9 @@ for i, slots in enumerate(ct["van_slots"]):
     check(f"JS3d contract_van[{i}]",
           mv.group(1).split(",")[i] if mv else None, slots)
 check("JS3d ship_night", grab(js3, r"SHIP_NIGHT=(\d+)"), ct["ship_night_seconds"])
+ma = re.search(r"APEX_SHARE=\[([\d.,]+)\]", js3)
+for i, share in enumerate(ct["apex_share_of_final_quota"]):
+    check(f"JS3d apex_share[{i}]", ma.group(1).split(",")[i] if ma else None, share)
 mh = re.search(r"CONTRACT_QUOTA_HERE=\[([\d,]+)\]", js3)
 for i, quota in enumerate(ct["quota_measured_210s"]):
     check(f"JS3d measured_quota[{i}]",

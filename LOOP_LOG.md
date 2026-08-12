@@ -433,6 +433,28 @@ measured again. · Also: a leaked QA `freezeCrew` flag from the selector checks 
 every night's take and read as "the quota is too hard" for twenty minutes. · Regression: QA
 102/102, drift 120/120.
 
+R26 · Made the fix `ECONOMY.md` §4 names but could never build: **later contracts are richer
+houses, not the same house against a higher bar.** Estates now scale with the contract night —
+5–7 rooms on night one, 8–10 by night four, tier 4 unlocked from night three — and the gate
+*requires* a tier-4 wing on late nights, so "richer" is a mechanism rather than a comment.
+With it comes the **apex**: one per late estate, five of the van's nineteen slots, two people
+to move, and the thing D-21 says the whole night should build toward. · **It doesn't lift the
+crew's baseline, and that is the interesting part.** Earnings across the chain stayed flat
+($2.4k–2.8k) even with houses half again as large, because every piece of the added richness
+is in objects **bots cannot move** — the apex and the two-man pieces both need a second pair
+of hands. Richer estates raise the ceiling available to a crew that *coordinates*, not the
+floor available to one that doesn't, which is exactly what ECONOMY §4 wants those nights to
+be ("someone has to go into a sealed wing", "the apex is not optional") and not at all what I
+expected to measure. The last two quotas are set **above** bot throughput on purpose: night
+four passes 33% on crew work alone and 92% if the apex comes home. · **The apex needed the
+same correction the quota did.** At ECONOMY's literal $4,000–8,000 it was worth $6,221 against
+a $2,900 quota — one object paying for two nights. What transfers across a change of night
+length is the **ratio**, not the dollars: the ship band is 32–64% of the final quota, so that
+is what `tuning.json` now carries and what the prototype derives from. Same class of error as
+R25's scaled quotas, caught one round earlier this time. · Also made the apex **never cursed**:
+a ×6 multiplier on the centrepiece would dwarf every other decision in the night, and D-21
+wants a goal rather than a lottery ticket. · Regression: QA 108/108, drift 124/124.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

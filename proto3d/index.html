@@ -179,7 +179,11 @@ const NIGHT=210, APPRAISE_S=3.0;
 // build. The van curve is not scaled either way - slots are slots.
 const SHIP_NIGHT=720;
 const CONTRACT_QUOTA=[7500,9000,10750,12500];        // ECONOMY 4, the ship night
-const CONTRACT_QUOTA_HERE=[1550,2100,2450,2900];     // measured, LOOP_LOG R25
+// Measured against a working crew (LOOP_LOG R25), then the last two rungs raised
+// so they are NOT passable on bot throughput alone: night three wants a two-man
+// piece out of a sealed wing and night four wants the apex, which is ECONOMY 4's
+// own description of those nights rather than a difficulty knob.
+const CONTRACT_QUOTA_HERE=[1550,2100,2450,3300];
 const CONTRACT_VAN=[14,15,17,19];
 const NIGHTS=CONTRACT_QUOTA.length;
 const QUOTA_SCALE=NIGHT/SHIP_NIGHT;
@@ -230,7 +234,13 @@ function lcg(seed){ let s=(seed>>>0)||1; return ()=>{ s=(s*1664525+1013904223)>>
 // estate. Two-man is deliberately slightly worse per slot than an armful.
 const BAND={0:{armful:[80,300]}, 1:{armful:[80,300]},
             2:{armful:[250,700], two_man:[700,1900]},
-            3:{armful:[600,1400], two_man:[1800,4000]}};
+            3:{armful:[600,1400], two_man:[1800,4000]},
+            4:{armful:[600,1400], two_man:[1800,4000], cart:[4000,8000]}};
+// ECONOMY 3 bands the apex at $4,000-8,000 against a $12,500 final quota: 32% to
+// 64% of the night it exists to decide. Keep the RATIO when the night is shorter,
+// not the dollar band - at ship values a $6,221 centrepiece was twice this
+// build's whole night-four quota, so taking it alone won the contract.
+const APEX_SHARE=[0.32,0.64];
 const R=id=>ROOMS.find(r=>r.id===id);
 const deepestRoom=()=>ROOMS.filter(r=>!r.van)
   .sort((a,b)=>(b.tier-a.tier)||(Math.hypot(b.x,b.z)-Math.hypot(a.x,a.z)))[0] ?? ROOMS[0];
@@ -275,14 +285,21 @@ const NAMES=["foyer","hall","study","servi","land","cons","pot","attic","cellar"
 // different branches were rarely square-on to each other even when adjacent.
 const CELL=13, MARGIN=[1.6,2.6];
 
-function generate(seed){
+// Later contracts are RICHER HOUSES, not the same house against a higher bar.
+// ECONOMY 4 diagnosed its own curve: earnings grow +30% across the chain only
+// because the van does, so the quota can only climb by squeezing the crew
+// against a flat ceiling. Generated estates make the fix it names buildable -
+// deeper wings, more of them, and on the last nights an apex worth a third of
+// the van on its own.
+const MAX_TIER=[3,3,4,4];
+function generate(seed, forNight=0){
   const rand=lcg(seed);
   const pick=a=>a[Math.floor(rand()*a.length)];
   const key=(i,j)=>i+","+j;
 
   // Grow a connected blob of cells, biased east so the house has depth rather
   // than fanning out around the van.
-  const want=5+Math.floor(rand()*3);
+  const want=5+forNight+Math.floor(rand()*3);   // 5-7 rooms on night one, 8-10 by night four
   const cells=new Map([[key(0,0),{i:0,j:0}]]);
   const has=(i,j)=>cells.has(key(i,j));
   const add=(i,j)=>{ if(i>=0&&!has(i,j)) cells.set(key(i,j),{i,j}); };
@@ -356,7 +373,8 @@ function generate(seed){
     }
     front=next;
   }
-  for(const r of rooms) r.tier=Math.min(3,Math.max(0,(depth[r.id]??1)-1));
+  const cap=MAX_TIER[Math.min(forNight,MAX_TIER.length-1)];
+  for(const r of rooms) r.tier=Math.min(cap,Math.max(0,(depth[r.id]??1)-1));
 
   // Prerequisite chain: a wing opens when the shallower room feeding it is empty.
   const prereq={};
@@ -374,7 +392,7 @@ const R2=(e,id)=>e.rooms.find(r=>r.id===id);
 
 // The gate. These are the LEVEL-SPEC checks a generator can actually violate; the
 // full ten still live in sim/validate_estate.py, which the exporter feeds.
-function gateEstate(e){
+function gateEstate(e, forNight=0){
   const faults=[];
   const adj={}; for(const [a,b] of e.links){ (adj[a]??=[]).push(b); (adj[b]??=[]).push(a); }
   const reach=(banned)=>{
@@ -442,6 +460,11 @@ function gateEstate(e){
   for(const a of e.rooms) for(const b of e.rooms)
     if(a!==b&&a.id<b.id&&overlaps(a,b)) faults.push(`V6 ${a.id} overlaps ${b.id}`);
   if(!e.rooms.some(r=>r.tier===3)) faults.push("V2 no tier-3 wing");
+  // Later contracts must actually BE richer, or "richer estates" is a comment
+  // rather than a mechanism: from night three the house has to reach tier 4,
+  // which is where the apex lives.
+  if(MAX_TIER[Math.min(forNight,MAX_TIER.length-1)]>=4&&!e.rooms.some(r=>r.tier===4))
+    faults.push("V2 no apex wing for a late contract night");
   if(!core) faults.push("V1 nothing attaches to the driveway");
   return faults;
 }
@@ -449,21 +472,21 @@ function gateEstate(e){
 // Build until one passes. A rejected estate is never seen by a player - which is
 // the whole point of having a contract, and is easier to enforce here than in a
 // pipeline that has already shipped five wings.
-function buildEstate(seed){
+function buildEstate(seed, forNight=night){
   let s=seed>>>0, tries=0, chosen=null, why=[];
   for(; tries<60; tries++){
-    const e=generate(s+tries*7919);
-    const faults=gateEstate(e);
+    const e=generate(s+tries*7919, forNight);
+    const faults=gateEstate(e, forNight);
     if(!faults.length){ chosen=e; break; }
     why=faults;
   }
   estateTries=tries;
   estateSeed=s+Math.min(tries,59)*7919;
-  if(!chosen){ chosen=generate(estateSeed); }     // pathological: play it, faults visible
+  if(!chosen){ chosen=generate(estateSeed, forNight); }   // pathological: play it, faults visible
   ROOMS=chosen.rooms; LINKS=chosen.links; PREREQ=chosen.prereq;
   buildDoors(); buildHides();
   ADJ={}; for(const [a,b] of LINKS){ (ADJ[a]??=[]).push(b); (ADJ[b]??=[]).push(a); }
-  DOOR_FAULTS=gateEstate(chosen);
+  DOOR_FAULTS=gateEstate(chosen, forNight);
   if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
 }
 
@@ -599,12 +622,18 @@ let CURSE_CAP=3;
 const FOLLOWER_DRIFT_M=0.4;    // B4: how far the far end may lag before easing in
 let shelves=[];
 function makeItem(r,x,z,y,shelf,klass){
-  const g=Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
+  // The apex is never cursed. A x6 multiplier on a $4,000-8,000 centrepiece would
+  // dwarf every other decision in the night, and D-21 wants the thing the whole
+  // night builds toward to be a GOAL rather than a lottery ticket.
+  const g=klass==="cart" ? "clean"
+        : Math.random()<.70?"clean":Math.random()<.75?"tainted":"malignant";
   const k=klass??"armful";
-  const [lo,hi]=BAND[r.tier][k]??BAND[r.tier].armful;
+  let [lo,hi]=BAND[r.tier][k]??BAND[r.tier].armful;
+  if(k==="cart"){ const q=quotaFor(NIGHTS-1);
+    lo=Math.round(q*APEX_SHARE[0]); hi=Math.round(q*APEX_SHARE[1]); }
   return {x,y,z,hx:x,hz:z,hy:y,grade:g,tier:r.tier,shelf,klass:k,
     value:Math.round(rnd(lo,hi)*GRADE_MULT[g]),
-    size:k==="two_man"?0.55:(r.tier>=3?0.30:r.tier===2?0.26:0.21),
+    size:k==="cart"?0.70:k==="two_man"?0.55:(r.tier>=3?0.30:r.tier===2?0.26:0.21),
     known:false,heldBy:null,gone:false,scan:0,moved:false,stash:0,hideIn:null,
     claim:null};
 }
@@ -633,6 +662,13 @@ function makeItems(){
     if(r.tier>=2){
       const away = spot.x > r.x ? -1 : 1;
       items.push(makeItem(r, r.x+away*1.9, r.z, 0.62, null, "two_man"));
+    }
+    // The apex. One per estate, in the deepest wing, five of the van's slots and
+    // worth it - ECONOMY 3 caught the original banding making the centrepiece a
+    // mathematical trap, and D-21 requires it to be reachable only late.
+    if(r.tier===4&&!items.some(i=>i.klass==="cart")){
+      const away = spot.x > r.x ? -1 : 1;
+      items.push(makeItem(r, r.x+away*1.9, r.z+2.4, 0.75, null, "cart"));
     }
   }
 }
@@ -791,7 +827,7 @@ function grabDrop(){
   // B4 anchor/follower. You take one end and shout at somebody to take the other;
   // the anchor owns the object and the follower influences it. Alone, an armoire
   // is a thing you stand next to and swear at.
-  if(it.klass==="two_man"){
+  if(it.klass==="two_man"||it.klass==="cart"){
     const mate=nearestFreeCrew(it);
     if(!mate){ player.wantHelp=2.5; return; }
     it.heldBy=player; player.holding=it; it.follower=mate; mate.holding=it;
@@ -1005,7 +1041,7 @@ function updateCrew(dt){
         let bd=1e9;
         for(const it of items){
           if(it.gone||it.heldBy||(it.claim&&it.claim!==a)) continue;
-          if(it.klass==="two_man") continue;     // nobody lifts an armoire alone
+          if(it.klass==="two_man"||it.klass==="cart") continue;   // needs two, at least
           const rm=roomAt(it.x,it.z); if(rm&&!roomOpen(rm.id)) continue;
           // Refuse a known cursed piece once the van is at the cap.
           if(it.known&&it.grade!=="clean"&&cursedAboard()>=CURSE_CAP) continue;
@@ -1093,9 +1129,14 @@ function step(dt){
   else if(moving){
     let sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
     if(player.holding&&player.holding.klass==="two_man") sp*=TWO_MAN_SPEED;
+    // Cart class should be on the dolly (DESIGN 8); there is no dolly yet, so it
+    // is carried by two at a crawl and the tool is noted as missing rather than
+    // faked. Flagged in the loop log.
+    if(player.holding&&player.holding.klass==="cart") sp*=TWO_MAN_SPEED*0.72;
     const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
     const nz=player.z+(fwd[2]*mx+right[2]*mz)*sp*dt;
-    const big=player.holding&&player.holding.klass==="two_man"?player.holding:null;
+    const big=player.holding&&(player.holding.klass==="two_man"||player.holding.klass==="cart")
+      ?player.holding:null;
     const d=lookDir();
     const carriedAt=(px,pz)=>[px+d[0]*1.15, pz+d[2]*1.15];
     if(!blocked(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
@@ -1710,7 +1751,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     scale:+QUOTA_SCALE.toFixed(4), chainOver, chainEarnings, last:lastNight,
     curve:CONTRACT_QUOTA.map((q,i)=>({night:i+1, ship:q, here:quotaFor(i), van:vanFor(i)}))}),
   nextNight, newContract,
-  setNight:n=>{night=Math.max(0,Math.min(NIGHTS-1,n|0)); reset(); return night;},
+  setNight:n=>{night=Math.max(0,Math.min(NIGHTS-1,n|0));
+    buildEstate(estateSeed, night); reset(); return night;},
   bank:v=>{van.cargo.push({value:v, grade:"clean"}); return van.cargo.length;},
   curseCap:n=>{if(n!==undefined) CURSE_CAP=n; return CURSE_CAP;},
   gates:v=>{gatesOff=!!v;},   // QA: geometry checks are not gating checks
@@ -1721,6 +1763,9 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   vanSlots:()=>van.slots,
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
+  apex:()=>{const list=items.filter(x=>!x.gone); const it=list.find(i=>i.klass==="cart");
+    return it?{i:list.indexOf(it), value:it.value, room:roomAt(it.hx,it.hz)?.id,
+      tier:it.tier}:null;},
   carry:()=>{const it=player.holding; return it?{value:it.value,klass:it.klass,
     follower:it.follower?it.follower.name:null}:null;},
   wantHelp:()=>player.wantHelp>0,
@@ -1732,7 +1777,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   faults:()=>[...DOOR_FAULTS,...HIDE_FAULTS],
   seed:()=>({seed:estateSeed, tries:estateTries, rooms:ROOMS.length,
     links:LINKS.length, tiers:ROOMS.map(r=>r.tier)}),
-  regen:seed=>{buildEstate(seed>>>0); reset();
+  regen:(seed,forNight)=>{buildEstate(seed>>>0, forNight??night); reset();
     return {seed:estateSeed, faults:[...DOOR_FAULTS,...HIDE_FAULTS]};},
   rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d,tier:r.tier,van:!!r.van})),
   doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z,axis:d.axis,

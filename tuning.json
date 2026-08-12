@@ -178,13 +178,18 @@
       1550,
       2100,
       2450,
-      2900
+      3300
     ],
     "measured_pass_rates": [
       95,
       73,
       55,
       40
-    ]
+    ],
+    "apex_share_of_final_quota": [
+      0.32,
+      0.64
+    ],
+    "_apex_note": "ECONOMY 3 bands the apex at $4,000-8,000 against a final quota of $12,500 - 32% to 64% of the night it exists to decide. A build with a different night length keeps the RATIO, not the dollar band, or the centrepiece pays for the contract on its own."
   }
 }
