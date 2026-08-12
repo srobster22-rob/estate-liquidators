@@ -245,6 +245,12 @@ check("py validator occlusion_curator",
       grab(validator, r"^OCCLUSION\s*=\s*([\d.]+)", flags=re.M),
       lc["occlusion_curator"])
 
+ca = TUNING["curator_audio"]
+check("JS patrol tell @30", grab(js, r"PATROL_TELL_AT_30\s*=\s*([\d.]+)"),
+      ca["patrol_tell_interval_at_30_s"])
+check("JS patrol tell @60", grab(js, r"PATROL_TELL_AT_60\s*=\s*([\d.]+)"),
+      ca["patrol_tell_interval_at_60_s"])
+
 rs = TUNING["room_spread"]["factor"]
 for _cls, _v in rs.items():
     check(f"py validator spread[{_cls}]",

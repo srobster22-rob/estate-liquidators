@@ -61,7 +61,17 @@ const APPRAISE_S = 3.0;
 const CREW = 1;
 const DECAY_PER_S = (50 * (CREW/4)) / 60;
 const RATCHET_END = 55;
-const PER_CURSED_FLOOR = 7;   // LOOP_LOG R9/R18, up from an inert 2
+const PER_CURSED_FLOOR = 7;
+// R31 — the within-PATROL gradient. R30 measured the ratcheting floor MASKING accumulated
+// noise: while noise sits under the floor, scanning moves the meter not at all, so it reads
+// PATROL right up until it doesn't. The tells are tier-shaped, so nothing warned a crew it
+// was one room from being hunted. The house now audibly runs out of patience: the domestic
+// sounds close up from 12s apart at D=30 to 3s apart at D=60.
+const PATROL_TELL_AT_30 = 12.0, PATROL_TELL_AT_60 = 3.0;
+function tellInterval(d){
+  if (d < 30 || d >= 60) return null;          // DORMANT silent, PURSUE continuous
+  return PATROL_TELL_AT_30 + (PATROL_TELL_AT_60 - PATROL_TELL_AT_30) * ((d - 30) / 30);
+}   // LOOP_LOG R9/R18, up from an inert 2
 const L = { walk:0, sprint:45, appraise:48, door:60, drop:90 };
 const IMPULSE = 0.09, SUSTAINED = 0.02;
 const CURATOR = { patrol:52, pursue:63, collect:74 };
@@ -109,6 +119,7 @@ const doorways = DOORS.map(([a,b])=>{
 
 // ---------------------------------------------------------------- state
 let items=[], player, curator, van, t=0, dist=0, over=false, ledger=null;
+let tellClock=0, tells=0, lastTell=0;
 
 function makeItems(){
   items=[];
@@ -145,6 +156,7 @@ function reset(){
   curator = { x:cx(R("cons")), y:cy(R("cons")), state:"PATROL",
               target:null, goal:null, carry:null, fixate:0, lock:0, reseat:0 };
   van = { slots:VAN_SLOTS, cargo:[] };
+  tellClock=0; tells=0; lastTell=0;
   t=0; dist=0; over=false; ledger=null;
   document.getElementById("ledger").style.display="none";
 }
@@ -270,6 +282,13 @@ function step(dt){
 
   // ---- disturbance
   dist = Math.max(floorNow(), Math.min(100, dist - DECAY_PER_S*dt));
+
+  // R31: fire the domestic tell on the gradient. In the shipping build this is the case
+  // closing and the cloth folding (AUDIO-SPEC 3.2); here it is a visible pulse, because a
+  // silent prototype still has to let automation measure the rate.
+  const iv = tellInterval(dist);
+  if (iv === null) { tellClock = 0; }
+  else { tellClock += dt; if (tellClock >= iv) { tellClock = 0; tells++; lastTell = t; } }
 
   // ---- curator
   updateCurator(dt);
@@ -452,6 +471,7 @@ window.__game = {
     near:items.filter(i=>!i.gone&&!i.held)
       .map(i=>({d:Math.round(Math.hypot(i.x-player.x,i.y-player.y)),v:i.value}))
       .sort((a,b)=>a.d-b.d).slice(0,3)}),
+  tell:()=>({interval:tellInterval(dist), tells, sinceLast:+(t-lastTell).toFixed(1)}),
   state:()=>({t,dist,tier:tierOf(dist),slots:van.slots,
     banked:van.cargo.reduce((s,i)=>s+i.value,0),
     curator:curator.state, marked:curator.target===player,

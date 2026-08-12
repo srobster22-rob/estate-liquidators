@@ -75,6 +75,13 @@
     "_ruin_note": "Tail risk, not a fee. A linear cost cannot balance a multiplicative benefit."
   },
 
+  "curator_audio": {
+    "_source": "AUDIO-SPEC.md 3.2, added R31",
+    "_note": "Within-PATROL gradient. The domestic sounds close up as Disturbance climbs toward PURSUE, so a crew can hear itself approaching the cliff. Interval interpolates linearly between the two anchors and is only used while 30 <= D < 60; DORMANT is silent and PURSUE is continuous footsteps.",
+    "patrol_tell_interval_at_30_s": 12.0,
+    "patrol_tell_interval_at_60_s": 3.0
+  },
+
   "room_spread": {
     "_source": "LEVEL-SPEC.md 2.1, D-23, measured in LOOP_LOG R17/R18",
     "_note": "Half-width of a room's value band as a multiple of the tier default. Mean is 1.0 across the three classes by construction, so a V11-compliant estate holds no extra money - only a decision. V11 enforces >=25% uniform and >=25% curio.",

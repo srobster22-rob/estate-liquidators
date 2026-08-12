@@ -270,19 +270,48 @@ tedious, and it is *annoyed with you*. All of its audio is domestic:
 | RESEAT | footsteps, and the small satisfied sound of an object placed correctly on felt |
 | COLLECT (T4) | the footsteps are faster and the domestic sounds stop entirely |
 
-> **R30 — a gap this vocabulary does not cover: approaching a tier boundary.** Measured in the
-> prototype, the ratcheting floor *masks* accumulated noise — while a crew's noise sits under
-> the floor, scanning moves the meter not at all, and then it moves fast. A crew that appraises
-> 20 objects reads Disturbance 57; one that appraises 29 reads 92. The table above gives each
-> **state** a sound, but nothing distinguishes "comfortably inside PATROL" from "one more room
-> and it hunts you", so players get no warning before the cliff.
->
-> **This wants a within-state gradient**, and PATROL is the state that needs it: the domestic
-> sounds (the case closing, the cloth folding) getting *closer together* as Disturbance climbs
-> toward 60, so the house audibly runs out of patience before anything changes. It stays
-> diegetic, costs no UI, and reuses sounds that already exist — but it is a real addition to
-> the model, not a mix note, and it should be specced before Milestone 2 rather than
-> discovered in a playtest.
+### 3.2.1 The PATROL gradient — hearing the house run out of patience
+
+**The problem this solves** (measured in the prototype, R30). The ratcheting floor *masks*
+accumulated noise: while a crew's noise sits under the floor, appraising moves the meter not at
+all, and then it moves fast — 20 objects appraised reads Disturbance 57, 29 reads 92. The
+table above gives each **state** a sound, so nothing distinguishes "comfortably inside PATROL"
+from "one more room and it hunts you". Players walked off a cliff with no warning.
+
+**The fix: the domestic sounds close up as Disturbance climbs toward PURSUE.** Same sounds, no
+UI, no new assets — the house simply runs out of patience audibly.
+
+| Disturbance | State | Interval between domestic sounds |
+|---:|---|---:|
+| 0–30 | DORMANT | — *(nothing at all)* |
+| 30 | PATROL, just woken | **12.0s** |
+| 45 | PATROL | 7.5s |
+| 55 | PATROL, close | 4.5s |
+| 60 | → PURSUE | **3.0s**, then continuous footsteps |
+| 60+ | PURSUE / COLLECT | continuous |
+
+```
+interval(D) = 12.0 + (3.0 - 12.0) * (D - 30) / 30      for 30 <= D < 60
+```
+
+Canonical in `tuning.json` under `curator_audio`; the drift checker owns both anchors.
+
+**Verified in the running prototype** (`qa_pacing.mjs`), which is the only place a *rate over
+time* can be checked. Two crews on the same estate, sampled every 30 seconds:
+
+| | t=60 | t=90 | t=120 | t=150 |
+|---|---|---|---|---|
+| **appraises selectively** (9 objects) | nothing | nothing | a sound every 8.7s | every 7.2s |
+| **appraises everything** (29 objects) | every 11.8s | every 7.2s | **PURSUE** | PURSUE |
+
+**The exhaustive crew hears the house a full minute before it comes for them**, and hears it
+closing up — 11.8s at t=60, 7.2s at t=90, hunting at t=120. The selective crew hears it only
+in the last third, at a relaxed interval, and never crosses. That is the warning the tier-shaped
+tells could not give, delivered without a HUD and without a new sound (D-14 intact).
+
+**Falsified if:** playtesters cannot tell 8s from 5s under stress. If so, widen the range
+rather than adding a visual — the *ratio* is what carries the information, so 16s→2s costs
+nothing but authoring.
 
 **Silence is its scariest sound.** FIXATE cutting to nothing does more work than any
 designed roar, because the player's own audio system has just told them something is about

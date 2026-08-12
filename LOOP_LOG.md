@@ -628,6 +628,32 @@ the meter second by second can. **This wants a within-tier gradient in the Curat
 the domestic sounds getting closer or more frequent as the floor is approached — and that is
 an `AUDIO-SPEC.md` question, logged rather than guessed at here.
 
+R31 · Specced and built the fix for R30's masking cliff: **`AUDIO-SPEC.md` §3.2.1, the PATROL
+gradient.** The domestic sounds — the case closing, the cloth folding, all of which already
+exist — close up as Disturbance climbs toward PURSUE: `interval(D) = 12.0 → 3.0s` linearly
+across 30→60. No UI, no new assets, D-14 intact; the house simply runs out of patience audibly.
+Canonical in `tuning.json` under `curator_audio`, both anchors owned by the drift checker
+(**113 constants**), and implemented in the prototype behind a `__game.tell()` hook so a *rate
+over time* can be measured rather than asserted. · **Verified in the running game, which is the
+only place this could be checked** — a Monte Carlo over whole nights has no notion of what a
+player hears at t=90. Two crews on the same estate, sampled every 30s:
+
+    appraises selectively (9)   t=60 nothing    t=90 nothing    t=120 every 8.7s   t=150 7.2s
+    appraises everything (29)   t=60 every 11.8s t=90 every 7.2s t=120 PURSUE       t=150 PURSUE
+
+**The exhaustive crew hears the house a full minute before it comes for them, and hears it
+closing up.** The selective crew hears it only in the last third, at a relaxed interval, and
+never crosses. That is precisely the warning the tier-shaped tells could not give. · **Caught
+two flaws in my own test before trusting it.** The first trace injected a scan every 12 frames
+— five per second — which is not a heavy scanner but an absurdity, and it pinned the meter to
+100 within twenty seconds and showed nothing. The second compared plans only at *sunrise*,
+where the ratchet has everyone at the floor and every plan reads identically; the gradient's
+whole value is mid-night. Both fixed, and both were the same error in different clothes:
+**measuring at the wrong point in time**, which is R20's altitude rule with the axis changed.
+· Left the falsification honest: if playtesters cannot distinguish 8s from 5s under stress,
+widen the range rather than adding a visual — the *ratio* carries the information, so 16→2s
+costs nothing but authoring.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -635,23 +661,20 @@ an `AUDIO-SPEC.md` question, logged rather than guessed at here.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R31: spec the within-PATROL audio gradient R30 found the need for.** The ratcheting floor
-masks accumulated noise, so the meter reads PATROL right up until it doesn't — 20 scans reads
-57, 29 scans reads 92 — and the diegetic tells are tier-shaped, so nothing warns a crew they
-are one room from being hunted. `AUDIO-SPEC.md` §3.2 now carries the gap. The fix is probably
-the domestic sounds getting closer together as Disturbance climbs toward 60, which stays
-diegetic (D-14), costs no UI, and reuses sounds that exist. **Spec it with numbers** — what
-interval at 30, what at 55 — and add it to `tuning.json` so the drift checker owns it. Then
-re-run `qa_pacing.mjs` and confirm a player can tell the difference.
-
-**R32: re-derive `ECONOMY.md` §8's three findings.** Crew size (D-18), the apex re-band (D-21)
+**R32: re-derive `ECONOMY.md` §8's three findings — the last known-stale block in the docs.** Crew size (D-18), the apex re-band (D-21)
 and labour gating (D-20) all came from the free-information `chain_sim`, which has changed
 underneath them four times — noise, curses, rooms, the per-trip metric. **D-18 is the exposed
 one**: R12 established Disturbance decay scales with crew, so noise makes bigger crews louder
 in a way the original comparison could not see. This is the R24 pattern and it is now
 predictable enough to check before it bites.
 
-**R33 (needs `dotnet`): the C# port.** 26 values in `CS_BACKLOG` — retrieval table first, curse
+**R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
+the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their
+*ratio* is defended. `qa_pacing.mjs` can sweep them; the question worth asking is whether a
+crew can be given enough warning to *act* — a minute of escalation is useless if the walk home
+takes ninety seconds. Measure warning time against extraction time, not against the clock.
+
+**R34 (needs `dotnet`): the C# port.** 28 values in `CS_BACKLOG` — retrieval table first, curse
 tables next, `room_spread` last because it needs a *type* and not just a constant. *This
 environment cannot do it*; `dot.net` is refused by the network policy.
 
