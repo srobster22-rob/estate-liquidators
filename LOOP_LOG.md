@@ -652,7 +652,11 @@ whole value is mid-night. Both fixed, and both were the same error in different 
 **measuring at the wrong point in time**, which is R20's altitude rule with the axis changed.
 · Left the falsification honest: if playtesters cannot distinguish 8s from 5s under stress,
 widen the range rather than adding a visual — the *ratio* carries the information, so 16→2s
-costs nothing but authoring.
+costs nothing but authoring. · **Postscript, and a satisfying one:** committing R31 turned the
+drift check red — the R23 ratchet caught both new constants as values that had entered
+`tuning.json` without reaching the shipping C# core, within a minute of them being added. That
+is exactly the failure R18 spent a round diagnosing after it had gone unnoticed for four.
+Added to `CS_BACKLOG` (now 28) rather than papered over.
 
 ---
 

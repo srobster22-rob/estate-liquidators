@@ -353,6 +353,11 @@ for cls, want in TUNING["curse"]["ledger_fee"].items():
 # explicitly so it can only shrink: a value that leaves C#'s reach fails the run, and
 # one that arrives has to be struck off.
 CS_BACKLOG = {
+    # R31 added these two and the ratchet below caught them the same minute, which is
+    # the check working exactly as designed: a value cannot enter tuning.json and quietly
+    # skip the shipping implementation.
+    "curator_audio.patrol_tell_interval_at_30_s",
+    "curator_audio.patrol_tell_interval_at_60_s",
     "curse.attention_multiplier.clean",
     "curse.attention_multiplier.malignant",
     "curse.attention_multiplier.tainted",
