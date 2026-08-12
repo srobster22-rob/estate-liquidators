@@ -29,6 +29,7 @@ SUSTAINED = 0.02
 DECAY_PER_MIN = 50.0        # R4
 RATCHET_END = 55.0          # floor climbs 0 -> 55 across the night
 FLOOR_PER_CURSED = 7.0      # R9. Was hardcoded at 2.0 here until R17 - see LOOP_LOG
+APPRAISE_S = 3.0            # DESIGN 4.1
 
 L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
      "radio": 38, "break_small": 90}
@@ -121,7 +122,9 @@ def scan_cap_of(strategy, slots, slots_total=VAN_SLOTS):
 
 
 def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RISK_K,
-              curse_cap=None, carry_tell=CARRY_TELL, van_slots=VAN_SLOTS):
+              curse_cap=None, carry_tell=CARRY_TELL, van_slots=VAN_SLOTS,
+              trip_scale=1.0, wards=0, appraise_seconds=APPRAISE_S,
+              appraise_l=None, ruin_exp=RUIN_EXP):
     """
     One night with Disturbance and the haul loop fully coupled.
 
@@ -154,7 +157,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
     while t < HAUL_S and slots > 0:
         tier = depth_at(t)
         trip_s, band = TIER_DATA[tier]
-        per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY)
+        per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY) * trip_scale
 
         # Hold slots back for depth we know is coming.
         if filled >= TIER_CAP[tier] * van_slots and tier < 3:
@@ -186,8 +189,13 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
             for c, g in zip(candidates, grades):
                 looked += 1
                 n = cursed_aboard + (0 if g == "clean" else 1)
-                r_now = min(0.95, RUIN_K * cursed_aboard ** RUIN_EXP) if cursed_aboard else 0.0
-                r_next = min(0.95, RUIN_K * n ** RUIN_EXP) if n else 0.0
+                # The crew judges against the curve IT FACES, wards and all. Using
+                # the base curve here made every ward design carry exactly 4.8
+                # cursed pieces - identical to no ward at all, which is the tell
+                # that the policy could not see its own upgrade.
+                e_now, e_next = max(0, cursed_aboard - wards), max(0, n - wards)
+                r_now = min(0.95, RUIN_K * e_now ** ruin_exp) if e_now else 0.0
+                r_next = min(0.95, RUIN_K * e_next ** ruin_exp) if e_next else 0.0
                 margin = c * (1 - FEE[g]) * (1 - r_next) - gross * (r_next - r_now)
                 if margin >= bar:
                     value = c
@@ -196,7 +204,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
                 declined = True
                 value = max(candidates)
             cap = looked
-            cost += 3.0 * looked / CREW
+            cost += appraise_seconds * looked / CREW
             scans += looked
         elif strategy.startswith(("THRESH_", "SKIP_")):
             # The appraiser as a REJECTION tool, which is what it is in the game:
@@ -220,12 +228,12 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
                     declined = True
                 value = max(candidates)     # THRESH_p commits to the best seen
             cap = looked
-            cost += 3.0 * looked / CREW
+            cost += appraise_seconds * looked / CREW
             scans += looked
         elif appraise:
             # You examine `cap` of them and take the best one you looked at.
             value = max(candidates[:cap])
-            cost += 3.0 * cap / CREW
+            cost += appraise_seconds * cap / CREW
             scans += cap
         else:
             value = rng.choice(candidates)
@@ -250,7 +258,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
 
         # The appraiser's real cost: one loud ping per item examined.
         if appraise:
-            d = min(100.0, d + cap * L["appraise"] * IMPULSE)
+            d = min(100.0, d + cap * (appraise_l or L["appraise"]) * IMPULSE)
 
         # Caught mid-scan. Compounds with each consecutive scan at the shelf, and
         # only bites in proportion to how alert the house already is - scanning in
@@ -323,8 +331,10 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
         banked += value
 
     if modelling_curses:
-        ruined = cursed_aboard > 0 and rng.random() < min(
-            0.95, RUIN_K * cursed_aboard ** RUIN_EXP)
+        # A warded crate takes the first `wards` cursed pieces out of the roll.
+        exposed = max(0, cursed_aboard - wards)
+        ruined = exposed > 0 and rng.random() < min(
+            0.95, RUIN_K * exposed ** ruin_exp)
         banked = 0.0 if ruined else gross - fees
 
     return (banked, scans, lost, d, van_slots - slots, filled, t,
@@ -451,6 +461,31 @@ if __name__ == "__main__":
     print("~74% of nights at any quota, because that is how often the van survives. The")
     print("intended 95% night-1 pass rate is reachable only by a crew that gambles with")
     print("nothing - which is the arc, and it is now the arc on purpose.")
+
+    print("\n\nR27 — THE UPGRADE PATH, PER POSTURE")
+    print("R26 found shelving is worthless to a crew that refuses curses: it is time-bound,")
+    print("not slot-bound, so the extra shelves stay empty. What DOES each crew want?")
+    print("-" * 78)
+    print(f"{'upgrade':<36}{'careful':>10}{'greedy':>10}{'cursed':>8}{'ruined':>8}")
+    for label, kw in (
+            ("none (van 14)", {}),
+            ("shelves: van 16", dict(van_slots=16)),
+            ("shelves: van 19", dict(van_slots=19)),
+            ("van parked closer: trips -12%", dict(trip_scale=0.88)),
+            ("appraiser mk2: 1.5s scans", dict(appraise_seconds=1.5)),
+            ("muffled appraiser: L48 -> 30", dict(appraise_l=30)),
+            ("warded crate: 1 piece exempt", dict(wards=1)),
+            ("warded crate: 2 pieces exempt", dict(wards=2)),
+            ("gentler curve: ruin exp 1.6", dict(ruin_exp=1.6)),
+            ("gentler curve: ruin exp 1.5", dict(ruin_exp=1.5))):
+        careful = trial("MARGIN_30", n=1200, curse_cap=0, **kw)
+        greedy = trial("MARGIN_30", n=1200, curse_cap=99, **kw)
+        print(f"{label:<36}{careful['mean']:>10,.0f}{greedy['mean']:>10,.0f}"
+              f"{greedy['cursed']:>8.1f}{greedy['ruined']:>8.0%}")
+    print("\nTime is the careful crew's only upgrade and shelves are the greedy crew's.")
+    print("Wards that EXEMPT pieces make the crew safer; wards that gentle the EXPONENT")
+    print("make it braver for the same money - 5.3 cursed pieces against 5.0, still")
+    print("losing 18% of its vans. An upgrade should move the greed slider, not remove it.")
 
     print("\n\nGREED: does hauling cursed cargo change the calculus?")
     print("-" * 78)

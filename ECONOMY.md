@@ -130,6 +130,37 @@ supposed to be the progression reward only pays the crew already gambling. Worth
 Phase 4 ships a shop: the careful path needs a reward denominated in *time* or *routes*, not
 in slots.
 
+## 4.1 The upgrade path — what each posture is allowed to buy
+
+R26 found shelving is worthless to a careful crew (+5% across vans 14→19). R27 asked what
+would not be. Each row is 1,200 nights per posture, `python3 sim/integrated.py`:
+
+| Upgrade | Careful | Greedy | Cursed aboard | Vans lost |
+|---|---:|---:|---:|---:|
+| none (van 14) | $7,597 | $8,354 | 4.8 | 27% |
+| shelves → van 16 | +4% | +8% | | |
+| shelves → van 19 | +5% | **+22%** | | |
+| **van parked closer** (−12% trip time) | **+7.5%** | +0.7% | | |
+| appraiser mk2 (1.5s scans) | +0.6% | +3% | | |
+| muffled appraiser (L48 → 30) | +1.5% | +0.5% | | |
+| warded crate — 1 piece exempt | +0% | +10% | 4.9 | 19% |
+| warded crate — 2 pieces exempt | +0% | +16% | 5.0 | 14% |
+| gentler curve — ruin exp 1.8 → 1.5 | +0% | +14% | **5.3** | 18% |
+
+**Time is the careful crew's only upgrade, and shelves are the greedy crew's.** They are near
+perfect complements: −12% trip time is worth +7.5% to a crew that refuses curses and nothing
+at all (+0.7%) to one that doesn't; the van-19 shelving is the exact reverse. That gives the
+shop two axes that *mean* something — buying one tells the crew what kind of crew to be, which
+is a better shop than "+2 slots, again".
+
+**And a rule for anything that touches the curse curve.** A ward that *exempts pieces* makes
+the crew safer: two free pieces cut vans lost from 27% to 14% and the crew still carries five.
+A ward that *gentles the exponent* makes the crew **braver** for the same money — 5.3 cursed
+pieces aboard, still losing 18% of its vans, for +14%. Same price, opposite feeling. Buy the
+exponent down, never buy pieces out: an upgrade should move the greed slider, not remove it.
+Exemption also re-flattens the cost curve R10/R11 spent two rounds proving has to be
+super-linear.
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The

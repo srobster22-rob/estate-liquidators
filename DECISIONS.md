@@ -494,7 +494,28 @@ crews report night 1 as a formality: the target is *survivable*, not free.
 
 ---
 
-# Open decisions
+## D-27 · Upgrades are posture-specific, and wards buy the exponent, never the count
+**Status:** HELD · `ECONOMY.md` §4.1
+
+The shop sells along two axes that do different jobs. **Time** — the van parked closer, a
+second dolly, anything that shortens a trip — is worth +7.5% to a crew that refuses cursed
+cargo and +0.7% to one that doesn't. **Slots** — shelving — is the exact reverse: +22% to the
+greedy crew and +5% to the careful one. They are complements, so buying one is a statement
+about what kind of crew you intend to be, and the shop becomes a character sheet rather than a
+list of small numbers.
+
+The second half is a rule about anything that softens the curse. A ward that **exempts
+pieces** from the ruin roll makes a crew *safer* — two free pieces halve the vans lost, from
+27% to 14%. A ward that **gentles the exponent** (1.8 → 1.5) is worth the same money and makes
+the crew *braver*: it carries more cursed cargo, 5.3 pieces against 5.0, and still loses 18% of
+its vans. Same price, opposite feeling, and only one of them is the game this project is
+trying to make. Exemption also flattens the cost curve that R10 and R11 spent two rounds
+proving has to be super-linear or the decision collapses into a step function.
+
+**Falsified if:** the two axes turn out not to be complements in play — most likely because
+real crews route better than the model's every-trip-is-average assumption, which would make
+time cheaper than measured and shelving relatively more valuable to everyone. Re-measure trip
+variance from Milestone 2 telemetry before pricing the shop.
 
 | # | Question | Blocks | Notes |
 |---|---|---|---|

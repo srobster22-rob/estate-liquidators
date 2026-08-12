@@ -399,6 +399,29 @@ and re-derived from the ECONOMY table by `check_docs.py`. · One bug this round,
 mine: the doc checker read "$5,750" as 5, because its number parser stopped at the thousands
 comma. Fixed the pattern, not the document — the same rule R14 wrote after the same mistake.
 
+R27 · Picked up the progression bug R26 flagged — shelving is worthless to a crew that
+refuses cursed cargo — and asked what an upgrade shop should actually sell. Modelled six
+candidates at 1,200 nights per posture. · **Time and slots are near-perfect complements.**
+Parking the van closer (−12% trip time) is worth **+7.5%** to a careful crew and **+0.7%** to
+a greedy one; van-19 shelving is the exact reverse, **+22%** greedy against **+5%** careful.
+So the shop has two axes that mean something, and buying one is a statement about what kind
+of crew you intend to be — a better shop than "+2 slots, again". Appraiser upgrades are weak
+in both directions, which is R5's standing finding holding up: scan *duration* is not the
+cost. · **And a rule for anything that touches the curse curve, which is the round's real
+finding.** A ward that *exempts pieces* makes a crew safer — two free pieces halve the vans
+lost, 27% → 14%. A ward that *gentles the exponent* (1.8 → 1.5) costs the same and makes the
+crew **braver**: 5.3 cursed pieces aboard against 5.0, still losing 18% of its vans, for +14%.
+Same price, opposite feeling. **Buy the exponent down, never buy pieces out** — exemption also
+re-flattens the cost curve R10 and R11 spent two rounds proving must be super-linear. D-27.
+· **One instrumentation bug, caught by a number that was too tidy:** every ward design
+reported exactly 4.8 cursed pieces aboard, identical to no ward at all. The marginal policy
+was judging against the *base* ruin curve rather than the one its own upgrade had bought — a
+crew that cannot see its own equipment. Fixed, and the intake now moves with the upgrade,
+which is what made the exempt-vs-exponent distinction visible in the first place. · Also
+closed three drift waivers that had gone stale in the same round that created them:
+`integrated.py` now genuinely models appraise duration, the ruin constants and all three curse
+tables, so they are asserted rather than waived.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
