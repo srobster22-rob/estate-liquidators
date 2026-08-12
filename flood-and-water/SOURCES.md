@@ -16,6 +16,7 @@ than reading the page. Re-fetching all of them is item 1.1 in `VERIFY.md`.
 | Insurance Information Institute | Which disasters are covered by homeowners insurance? | 2026-08-06 | search_index | <https://www.iii.org/article/which-disasters-are-covered-by-homeowners-insurance> |
 | Insurance Information Institute | Insure Against the Risk of Sewer Backup | 2026-08-06 | search_index | <https://www.iii.org/press-release/insure-against-the-risk-of-sewer-backup-032612> |
 | FEMA / National Flood Insurance Program | Buy a Flood Insurance Policy — policy terms | 2026-08-06 | search_index | <https://www.floodsmart.gov/policy-terms> |
+| FEMA / National Flood Insurance Program | Post-Wildfire Exception | 2026-08-12 | search_index | <https://agents.floodsmart.gov/topics/handling-claims/wildfire-exception> |
 | FEMA / National Flood Insurance Program | What Does Flood Insurance Cover for Home and Condo Owners? | 2026-08-06 | search_index | <https://agents.floodsmart.gov/articles/what-does-flood-insurance-cover-home-and-condo-owners> |
 | National Weather Service | During a Flood | 2026-08-06 | search_index | <https://www.weather.gov/safety/flood-during> |
 | National Weather Service | Turn Around Don't Drown | 2026-08-06 | search_index | <https://www.weather.gov/safety/flood-turn-around-dont-drown> |

@@ -1,6 +1,7 @@
 import type { Db } from './db.js';
 import type { RecallSource } from './sources/index.js';
 import type { Recall } from './types.js';
+import { consoleOperatorSink, type OperatorSink } from './operator.js';
 
 /**
  * Idempotent ingest.
@@ -20,6 +21,14 @@ export interface IngestResult {
   fetched: number;
   created: number;
   unchanged: number;
+  /**
+   * Set when this run returned nothing from a source that has produced records before.
+   *
+   * A run like that used to be indistinguishable from a quiet week: `error` null, counts zero,
+   * dashboard green. It is the failure mode most likely to hurt somebody in production, because
+   * every watch list then matches nothing and the system reports perfect health while doing it.
+   */
+  emptyFeedAlert?: boolean;
 }
 
 export async function ingest(
@@ -27,6 +36,7 @@ export async function ingest(
   source: RecallSource,
   since: string,
   now = new Date().toISOString(),
+  onOperatorAlert: OperatorSink = consoleOperatorSink,
 ): Promise<IngestResult> {
   const runIns = db.prepare(
     'INSERT INTO ingest_runs (source, started_at) VALUES (?, ?)',
@@ -67,9 +77,25 @@ export async function ingest(
     unchanged: recalls.length - created,
   };
 
+  // Checked before this run's own counts are written, so the comparison is against history and
+  // not against itself.
+  const best = db.prepare(
+    'SELECT COALESCE(MAX(fetched), 0) b FROM ingest_runs WHERE source = ? AND id != ? AND error IS NULL',
+  ).get(source.name, runId) as { b: number };
+  const previousBest = Number(best.b);
+
   db.prepare(
     'UPDATE ingest_runs SET finished_at = ?, fetched = ?, created = ?, unchanged = ? WHERE id = ?',
   ).run(now, result.fetched, result.created, result.unchanged, runId);
+
+  if (result.fetched === 0 && previousBest > 0) {
+    result.emptyFeedAlert = true;
+    db.prepare('UPDATE ingest_runs SET error = ? WHERE id = ?').run(
+      `empty feed: returned 0 records; this source has returned as many as ${previousBest}`,
+      runId,
+    );
+    await onOperatorAlert({ kind: 'empty_feed', source: source.name, previousBest, runId });
+  }
 
   return result;
 }

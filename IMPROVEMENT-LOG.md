@@ -286,15 +286,72 @@ where this round's two worst findings came from.
 
 ---
 
+## R11 — Pass 6, the honest inventory
+
+The pass the hardening prompt calls "the most valuable and the most likely to be skipped", skipped
+for ten rounds. Its lists E and F ask an agent to enumerate its own quiet substitutions and its own
+green-but-empty tests. Output: [`PASS6-INVENTORY.md`](PASS6-INVENTORY.md), all seven lists,
+unsoftened. Four real bugs came out of it.
+
+**The worst one came from the closing question, not from the lists.** "If a real person relies on
+this tomorrow, how does it hurt them?" For recall-watch the honest answer was never the matcher —
+it is that no adapter has ever run against a live feed, and an upstream schema change turns the
+parser's output into an empty array. `ingest` recorded that as `fetched: 0, created: 0,
+error: null`. A successful run. Indistinguishable from a quiet week, forever, while every watch
+list matched nothing and every dashboard read healthy. Pass 1 states the rule this broke: *a zero
+displayed as data is the worst outcome — worse than an error.* A source that has produced records
+and then returns none now fails the run and alerts an operator; a brand-new source returning
+nothing does not, because crying wolf on a first run is how an alert channel gets muted.
+
+**Brief acceptance test 2 was never written, and the thing it warned about was live.** The brief
+says the unique constraint on (subscriber, recall) is per *recall*, so "this test must assert the
+dedup behaviour you chose and document it." FDA and FSIS both announce anything containing meat;
+ingest correctly kept both notices; the subscriber received **two identical texts** — the outcome
+`notify.ts`'s own header calls worse than losing messages. Now a partial unique index on
+(subscriber, product) suppresses the second when the notices share a UPC, a
+`suppressed_notifications` row records which notice was held and which went out instead, and
+where there is no shared UPC both still go out, because a wrong merge means silence and silence is
+the failure this project will not trade away. My own test caught the first version of this fix
+re-reporting the same suppression on every run.
+
+**Four tests that could pass without testing what they claim.** Two `if (!row) return` guards in
+recall-watch — not vacuous today, verified by making the early return throw, but one fixture change
+away from turning "a human approving a candidate does queue it" into a green no-op under that
+name. A disposal-guide loop with `continue` and no count, which a renamed hazard value would have
+turned into "every item explains itself". A flood-and-water test whose own name admitted it
+("every local resource, *if any existed*"). All now assert their preconditions.
+
+**Every insurance statement is supposed to carry a citation; the waiting-period exceptions did
+not.** Two tests enforce that rule, on the coverage gaps and the safety points. The four
+exceptions — the rules that turn "not covered for a month" into "covered tomorrow", the most
+consequential sentence the app says — were covered by neither, inheriting two general FEMA
+citations from their parent block. They now cite individually and the build refuses to emit an
+uncited one. The post-wildfire exception was re-verified against FEMA's dedicated page: its
+conditions were right, and the "privately owned property" condition was missing and has been
+added.
+
+**And one wrong number in the inventory itself.** The first draft said flood-and-water's Spanish
+coverage was 3/29 — that is disposal-guide's figure. Measured from the built index,
+flood-and-water has no localisation structure at all: plain strings, not `{en, es}` objects, so
+"add Spanish" there is a refactor rather than a translation job. Corrected in the document, with
+the mistake left visible in it, because a list about unchecked numbers that contains an unchecked
+number is worth exactly nothing.
+
+**Verified:** the dedup index, the empty-feed alert and the per-exception citation requirement
+were each mutation-tested — restoring the old behaviour turns its own test red and nothing else.
+recall-watch 61 tests with matcher precision and recall still 100%; flood-and-water 53 unit and 21
+browser; disposal-guide 57 unit and 17 browser; 0 shared-file drift.
+
+---
+
 ## The queue — what the next rounds should take
 
 Ordered by value, from the projects' own VERIFY files and what R10 left open:
 
-1. **Pass 6 — the honest inventory.** The only remaining item that needs nothing this environment
-   lacks. Its lists E and F ask for every piece of a spec quietly not built and every test that
-   passes without testing what its name says. R10's two worst findings — an open write endpoint
-   and a photo test that only ever tested the absence of a timestamp — are both exactly that
-   shape, found incidentally. Enumerating them deliberately is the next round.
+1. **Everything below needs money, network, or a person.** Pass 6 is done and its findings are
+   fixed; what it surfaced that remains open is listed in `PASS6-INVENTORY.md` and every item
+   traces back to one of those three. That is the honest state of the loop, and the inventory is
+   the artifact to hand the next maintainer rather than a to-do list I can work through here.
 2. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
    `flood-and-water`. Needs a paid human translator, not another round.
 3. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures. Needs network.

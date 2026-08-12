@@ -37,6 +37,11 @@ const coverageSchema = z.object({
         days: z.number().int().min(0),
         question: z.string().min(1),
         detail: z.string().min(1),
+        // Required, not inherited. Each exception is the rule that turns "you are not covered
+        // for a month" into "you are covered tomorrow", which is the single most consequential
+        // sentence this app says. Until R11 they relied on the parent block's two general
+        // citations, so nothing named which page backed which rule.
+        sourceRefs: refs,
       }),
     ),
     sourceRefs: refs,
@@ -130,7 +135,10 @@ const resolved = {
   coverage: {
     waitingPeriod: {
       days: coverage.waitingPeriod.days,
-      exceptions: coverage.waitingPeriod.exceptions,
+      exceptions: coverage.waitingPeriod.exceptions.map((e) => ({
+        ...e,
+        sources: resolve(e.sourceRefs, `waiting period exception ${e.id}`, true),
+      })),
       sources: resolve(coverage.waitingPeriod.sourceRefs, 'coverage.waitingPeriod', true),
     },
     gaps: coverage.gaps.map((g) => ({

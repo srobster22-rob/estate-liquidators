@@ -161,9 +161,9 @@ describe('one message per person per recall', () => {
     await ingestAll(db);
     runMatching(db, NOW);
     const first = enqueue(db, NOW);
-    expect(first).toBeGreaterThan(0);
-    expect(enqueue(db, NOW)).toBe(0);
-    expect(enqueue(db, NOW)).toBe(0);
+    expect(first.queued).toBeGreaterThan(0);
+    expect(enqueue(db, NOW).queued).toBe(0);
+    expect(enqueue(db, NOW).queued).toBe(0);
   });
 
   it('only high-severity recalls earn a text', async () => {
@@ -207,8 +207,11 @@ describe('one message per person per recall', () => {
       WHERE m.confidence = 'candidate' AND r.severity = 'high'
         AND r.id NOT IN (SELECT recall_id FROM notifications) LIMIT 1
     `).get() as { id: number } | undefined;
-    if (!cand) return; // nothing to approve in this fixture set
-    db.prepare("UPDATE matches SET decision = 'alert' WHERE id = ?").run(cand.id);
+    // Asserted, not skipped. A bare `return` here would mean that a fixture change which
+    // stopped producing an approvable candidate turned this test into a green no-op, still
+    // named as though it proved something.
+    expect(cand, 'fixtures must contain an unnotified high-severity candidate').toBeDefined();
+    db.prepare("UPDATE matches SET decision = 'alert' WHERE id = ?").run(cand!.id);
     enqueue(db, NOW);
     const after = db.prepare('SELECT COUNT(*) c FROM notifications').get() as { c: number };
     expect(after.c).toBe(before.c + 1);
@@ -255,7 +258,7 @@ describe('delivery is exactly once, and survives a restart', () => {
   it('a transient provider failure is retried and still sends exactly once', async () => {
     await ingestAll(db);
     runMatching(db, NOW);
-    const queued = enqueue(db, NOW);
+    const queued = enqueue(db, NOW).queued;
     const flaky = new FlakySmsProvider(queued); // fail every message once
 
     const attempt1 = await deliverBatch(db, flaky, 20, Date.parse(NOW));
@@ -296,7 +299,7 @@ describe('STOP', () => {
     expect(provider.sent).toHaveLength(0);
 
     // And a later enqueue does not resurrect them.
-    expect(enqueue(db, NOW)).toBe(0);
+    expect(enqueue(db, NOW).queued).toBe(0);
   });
 });
 
@@ -372,7 +375,7 @@ describe('a permanently failing message is dead-lettered and an operator is told
   it('gives up after the attempt limit and raises exactly one alert', async () => {
     await ingestAll(db);
     runMatching(db, NOW);
-    const queued = enqueue(db, NOW);
+    const queued = enqueue(db, NOW).queued;
     expect(queued).toBeGreaterThan(0);
 
     const alerts: unknown[] = [];
@@ -416,7 +419,7 @@ describe('a permanently failing message is dead-lettered and an operator is told
   it('a message that succeeds before the limit is never dead-lettered', async () => {
     await ingestAll(db);
     runMatching(db, NOW);
-    const queued = enqueue(db, NOW);
+    const queued = enqueue(db, NOW).queued;
     const flaky = new FlakySmsProvider(queued * 2); // fail each message twice
     const alerts: unknown[] = [];
     for (let i = 1; i <= 4; i++) {
@@ -480,13 +483,13 @@ describe('the review queue', () => {
       WHERE m.confidence = 'candidate' AND m.decision IS NULL AND r.severity = 'high'
         AND r.id NOT IN (SELECT recall_id FROM notifications) LIMIT 1
     `).get() as { id: number } | undefined;
-    if (!row) return;
+    expect(row, 'fixtures must contain an undecided high-severity candidate').toBeDefined();
 
-    decide(db, row.id, 'alert', 'dana', NOW);
+    decide(db, row!.id, 'alert', 'dana', NOW);
     enqueue(db, NOW);
     const after = db.prepare('SELECT COUNT(*) c FROM notifications').get() as { c: number };
     expect(after.c).toBe(before.c + 1);
-    expect(nextForReview(db)?.match_id).not.toBe(row.id);
+    expect(nextForReview(db)?.match_id).not.toBe(row!.id);
   });
 
   it('an empty queue says so rather than looking broken', async () => {
@@ -825,5 +828,229 @@ describe('what the review screen is allowed to know', () => {
     expect(html).not.toContain('javascript:');
     // And it does not render a broken empty link either — the notice line just has no link.
     expect(html).not.toContain('href=""');
+  });
+});
+
+// --- one product, two agencies (brief acceptance test 2) ---------------------
+
+/**
+ * The brief's acceptance test 2, which was never written until R11 found it missing while
+ * enumerating the spec against the build. It says, in as many words, that the unique constraint
+ * on (subscriber, recall) is per RECALL, so the chosen behaviour has to be asserted and
+ * documented. It was neither, and the behaviour it was warning about was live: FDA and FSIS both
+ * announce anything containing meat, ingest correctly keeps both notices, and the subscriber got
+ * two identical texts.
+ */
+describe('the same product recalled through two feeds', () => {
+  function addRecall(source: string, ref: string, upcs: string[]): void {
+    db.prepare(`INSERT INTO recalls
+      (source, source_ref, title, brands, products, upcs, code_info, hazard, severity, remedy,
+       announced_on, url, raw, first_seen_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      source, ref, 'Harborline Chicken Salad Wrap', JSON.stringify(['Harborline']),
+      JSON.stringify(['chicken salad wrap']), JSON.stringify(upcs), '',
+      'Listeria monocytogenes', 'high', 'Do not eat it.', '2026-03-20',
+      'https://example.invalid/x', '{}', NOW,
+    );
+  }
+
+  beforeEach(() => {
+    db.prepare('DELETE FROM watch_items').run();
+    db.prepare(
+      'INSERT INTO watch_items (subscriber_id, kind, brand, product, upc, vin, category, lot, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+    ).run(1, 'upc', null, null, '811223004417', null, null, null, NOW);
+  });
+
+  it('keeps both notices but sends one text', () => {
+    addRecall('fda', 'F-9001-2026', ['811223004417']);
+    addRecall('fsis', 'FSIS-RC-900-2026', ['8 11223 00441 7']); // same UPC, agency's formatting
+    runMatching(db, NOW);
+
+    // Both notices are real and both are kept — they have different reference numbers and a
+    // person may need to cite either one.
+    expect((db.prepare('SELECT COUNT(*) c FROM recalls').get() as { c: number }).c).toBe(2);
+    expect((db.prepare('SELECT COUNT(*) c FROM matches').get() as { c: number }).c).toBe(2);
+
+    const result = enqueue(db, NOW);
+    expect(result.queued).toBe(1);
+    // Counted, not swallowed: an operator can see that a second notice arrived and was held.
+    expect(result.suppressedAsDuplicate).toBe(1);
+    expect((db.prepare('SELECT COUNT(*) c FROM notifications').get() as { c: number }).c).toBe(1);
+  });
+
+  it('re-running enqueue is still a no-op in both counts', () => {
+    addRecall('fda', 'F-9001-2026', ['811223004417']);
+    addRecall('fsis', 'FSIS-RC-900-2026', ['811223004417']);
+    runMatching(db, NOW);
+    enqueue(db, NOW);
+
+    // A second pass must not report the same suppression again, or the number becomes noise and
+    // stops being read — which is how the original double-send survived six rounds.
+    expect(enqueue(db, NOW)).toEqual({ queued: 0, suppressedAsDuplicate: 0 });
+
+    // And the held notice is on the record, naming the one that went out instead, so the
+    // omission can be explained to the person who asks about it.
+    const held = db.prepare('SELECT * FROM suppressed_notifications').all() as Record<string, unknown>[];
+    expect(held).toHaveLength(1);
+    expect(held[0]!.dedup_key).toBe('upc:811223004417');
+    const sent = db.prepare('SELECT recall_id FROM notifications').get() as { recall_id: number };
+    expect(held[0]!.superseded_by_recall_id).toBe(sent.recall_id);
+    expect(held[0]!.recall_id).not.toBe(sent.recall_id);
+  });
+
+  it('two notices with no shared UPC both send, and that is the documented limit', () => {
+    // Deliberate. Suppression is only ever based on a shared UPC, because a wrong merge means
+    // the person is never told about the second recall. A duplicate text is an annoyance; a
+    // missing one is the failure this project exists to prevent. Where the feeds give nothing
+    // to match on, both go out.
+    db.prepare('DELETE FROM watch_items').run();
+    db.prepare(
+      'INSERT INTO watch_items (subscriber_id, kind, brand, product, upc, vin, category, lot, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+    ).run(1, 'product', 'Harborline', 'chicken salad wrap', null, null, null, null, NOW);
+
+    addRecall('fda', 'F-9002-2026', []);
+    addRecall('fsis', 'FSIS-RC-901-2026', []);
+    runMatching(db, NOW);
+
+    const result = enqueue(db, NOW);
+    expect(result.queued).toBe(2);
+    expect(result.suppressedAsDuplicate).toBe(0);
+  });
+
+  it('the dedup key is a fact about the product, never a judgement about the text', async () => {
+    const { dedupKey } = await import('../src/notify.js');
+    const base = {
+      id: 1, source: 'fda' as const, sourceRef: 'x', title: 't', brands: [], products: [],
+      codeInfo: '', hazard: '', severity: 'high' as const, remedy: '', announcedOn: '2026-03-20',
+      url: '', raw: {},
+    };
+    // Formatting differences between agencies must not defeat it.
+    expect(dedupKey({ ...base, upcs: ['8 11223 00441 7'] })).toBe('upc:811223004417');
+    expect(dedupKey({ ...base, upcs: ['811223004417'] })).toBe('upc:811223004417');
+    // Order must not change it, or the same pair keys differently depending on the feed.
+    expect(dedupKey({ ...base, upcs: ['999', '111'] })).toBe(dedupKey({ ...base, upcs: ['111', '999'] }));
+    // No UPC means no opinion — never a key derived from the title.
+    expect(dedupKey({ ...base, upcs: [] })).toBeNull();
+  });
+});
+
+// --- the public page (brief acceptance test 14) -------------------------------
+
+/**
+ * "The public page renders under 60KB with JavaScript disabled."
+ *
+ * Untested until R11. The page is the whole offer to somebody who will never subscribe — no
+ * signup, nothing recorded — and those are disproportionately the people on a metered connection
+ * and an old phone. A budget nobody measures is a budget that quietly stops holding.
+ */
+describe('the public page stays small and needs no JavaScript', () => {
+  it('renders under 60KB with a full page of recalls', async () => {
+    const { renderPublic } = await import('../src/server.js');
+    await ingestAll(db);
+    // The page caps at 25 recalls; measure it at the cap, not at the fixture count, or the
+    // number means nothing on a bad week.
+    const row = db.prepare('SELECT * FROM recalls LIMIT 1').get() as Record<string, unknown>;
+    const cols = Object.keys(row).filter((c) => c !== 'id');
+    const insert = db.prepare(
+      `INSERT INTO recalls (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`,
+    );
+    for (let i = 0; i < 30; i++) {
+      insert.run(...cols.map((c) => (c === 'source_ref' ? `PAD-${i}` : (row[c] as string))));
+    }
+    db.prepare("UPDATE recalls SET severity = 'high'").run();
+
+    const html = renderPublic(db);
+    const bytes = Buffer.byteLength(html, 'utf8');
+    expect(bytes).toBeLessThan(60 * 1024);
+    // Guard the guard: a page that rendered nothing would also be under 60KB.
+    expect(html.match(/class="card high"/g) ?? []).toHaveLength(25);
+  });
+
+  it('contains no script at all, so "JavaScript disabled" is not a scenario', async () => {
+    const { renderPublic } = await import('../src/server.js');
+    await ingestAll(db);
+    const html = renderPublic(db);
+    expect(html).not.toMatch(/<script/i);
+    expect(html).not.toMatch(/\son[a-z]+=/i);   // no inline handlers
+    expect(html).not.toMatch(/javascript:/i);
+  });
+});
+
+// --- a feed that stops producing (hardening pass 1) ---------------------------
+
+/**
+ * The answer to the hardening prompt's closing question for this project.
+ *
+ * Every other failure here is recoverable: a duplicate text is an annoyance, a false alarm costs
+ * a jar of food. The one that hurts is a real recall that never arrives, and the likeliest cause
+ * in production is not a bug in the matcher — it is an upstream schema change that turns the
+ * parser's output into an empty array. Before R11 that was recorded as `fetched: 0, error: null`:
+ * a successful run, indistinguishable from a quiet week, forever.
+ */
+class EmptySource {
+  readonly name: string;
+  constructor(name: string) { this.name = name; }
+  async fetchSince(): Promise<never[]> { return []; }
+}
+
+describe('a feed that goes quiet is not the same as a quiet week', () => {
+  it('a source that has produced records and then returns none raises an alert', async () => {
+    const alerts: unknown[] = [];
+    const sink = (a: unknown) => { alerts.push(a); };
+
+    const first = await ingest(db, new FixtureSource('fda', FIXTURES), '2026-01-01', NOW, sink);
+    expect(first.fetched).toBeGreaterThan(0);
+    expect(first.emptyFeedAlert).toBeUndefined();
+    expect(alerts).toHaveLength(0);
+
+    // The same source, now parsing to nothing.
+    const second = await ingest(db, new EmptySource('fda') as never, '2026-01-01', NOW, sink);
+    expect(second.fetched).toBe(0);
+    expect(second.emptyFeedAlert).toBe(true);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({ kind: 'empty_feed', source: 'fda' });
+    expect((alerts[0] as { previousBest: number }).previousBest).toBe(first.fetched);
+  });
+
+  it('the run is recorded as a problem, not as a success', async () => {
+    await ingest(db, new FixtureSource('fda', FIXTURES), '2026-01-01', NOW, () => {});
+    await ingest(db, new EmptySource('fda') as never, '2026-01-01', NOW, () => {});
+    const run = db.prepare(
+      'SELECT * FROM ingest_runs WHERE source = ? ORDER BY id DESC LIMIT 1',
+    ).get('fda') as Record<string, unknown>;
+    // The specific thing that made this invisible: error was null and the row looked fine.
+    expect(run.error).toBeTruthy();
+    expect(String(run.error)).toContain('empty feed');
+    expect(run.finished_at).toBeTruthy();
+  });
+
+  it('a brand-new source returning nothing does NOT alert', async () => {
+    // Deliberate. A source with no history has no baseline, and crying wolf on first run is how
+    // an alert channel gets muted — which would cost more than the alert is worth.
+    const alerts: unknown[] = [];
+    const r = await ingest(db, new EmptySource('cpsc') as never, '2026-01-01', NOW, (a) => { alerts.push(a); });
+    expect(r.fetched).toBe(0);
+    expect(r.emptyFeedAlert).toBeUndefined();
+    expect(alerts).toHaveLength(0);
+  });
+
+  it('a failed fetch still records the error rather than a clean zero', async () => {
+    const broken = { name: 'fda', async fetchSince(): Promise<never[]> { throw new Error('502 from upstream'); } };
+    await expect(ingest(db, broken as never, '2026-01-01', NOW, () => {})).rejects.toThrow('502');
+    const run = db.prepare(
+      'SELECT * FROM ingest_runs WHERE source = ? ORDER BY id DESC LIMIT 1',
+    ).get('fda') as Record<string, unknown>;
+    expect(String(run.error)).toContain('502');
+  });
+
+  it('both alert kinds travel the same channel, so wiring one cannot miss the other', async () => {
+    const { describeAlert } = await import('../src/operator.js');
+    expect(describeAlert({
+      kind: 'empty_feed', source: 'fsis', previousBest: 12, runId: 3,
+    })).toContain('nobody is being matched');
+    expect(describeAlert({
+      kind: 'delivery_dead_letter', notificationId: 1, subscriberId: 2, recallId: 3,
+      attempts: 5, lastError: 'carrier block',
+    })).toContain('not receiving recall alerts');
   });
 });

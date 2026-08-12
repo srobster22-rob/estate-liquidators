@@ -1,5 +1,6 @@
 import type { Db } from './db.js';
 import type { SmsProvider } from './sms.js';
+import { consoleOperatorSink, type OperatorSink } from './operator.js';
 import { rowToRecall } from './ingest.js';
 import type { Recall } from './types.js';
 
@@ -30,24 +31,9 @@ const CLAIM_TTL_MS = 5 * 60 * 1000;
  */
 const MAX_ATTEMPTS = 5;
 
-export interface OperatorAlert {
-  kind: 'delivery_dead_letter';
-  notificationId: number;
-  subscriberId: number;
-  recallId: number;
-  attempts: number;
-  lastError: string;
-}
-
-/** Where dead letters go. Wire this to whatever a human actually reads. */
-export type OperatorSink = (alert: OperatorAlert) => void | Promise<void>;
-
-export const consoleOperatorSink: OperatorSink = (a) => {
-  console.error(
-    `[OPERATOR] notification ${a.notificationId} for subscriber ${a.subscriberId} gave up after ` +
-      `${a.attempts} attempts: ${a.lastError}. Somebody is not receiving recall alerts.`,
-  );
-};
+// Moved to ./operator.js in R11, when ingest grew an alert of its own and two parallel sink
+// types would have meant a deployment wiring up one and silently missing the other.
+export { consoleOperatorSink, type OperatorAlert, type OperatorSink } from './operator.js';
 
 /** Only high-severity recalls earn a text. Everything else belongs in a digest, or nowhere. */
 export function earnsSms(severity: Recall['severity']): boolean {
@@ -62,8 +48,35 @@ export function composeMessage(r: Recall): string {
   return body.length <= 300 ? body : `${body.slice(0, 296)}...`;
 }
 
+/**
+ * What identifies the PRODUCT, as opposed to the notice about it.
+ *
+ * The same recalled item routinely appears in two feeds under two reference numbers — FDA and
+ * FSIS both cover anything with meat in it. Each is a legitimate, separate notice with its own
+ * identifier, so ingest keeps both rows; that part is right. What was wrong is that the person
+ * then received two identical texts, which is precisely the outcome this module's header calls
+ * worse than losing messages.
+ *
+ * A shared UPC is the only signal used, and that is deliberate. It is the same evidence the
+ * matcher treats as `exact`, it is a fact rather than a judgement, and the cost of being wrong
+ * runs the right way: if two notices share a UPC they are about the same jar, and if they do not,
+ * this returns null and both texts go out. A fuzzy title comparison would occasionally decide
+ * that two different recalls were one, and the person would never hear about the second — silence
+ * is the one failure this project will not trade away for a tidier inbox.
+ */
+export function dedupKey(recall: Recall): string | null {
+  const upcs = recall.upcs.map((u) => u.replace(/\D/g, '')).filter(Boolean).sort();
+  return upcs.length ? `upc:${upcs[0]}` : null;
+}
+
+export interface EnqueueResult {
+  queued: number;
+  /** Held back because this person was already told about this product under another notice. */
+  suppressedAsDuplicate: number;
+}
+
 /** Turn decided matches into queued notifications. Safe to run repeatedly. */
-export function enqueue(db: Db, now = new Date().toISOString()): number {
+export function enqueue(db: Db, now = new Date().toISOString()): EnqueueResult {
   const rows = db.prepare(`
     SELECT m.id AS match_id, m.confidence, m.decision, w.subscriber_id, r.*
     FROM matches m
@@ -74,22 +87,55 @@ export function enqueue(db: Db, now = new Date().toISOString()): number {
       AND (m.decision = 'alert' OR (m.decision IS NULL AND m.confidence IN ('exact','strong')))
   `).all() as Record<string, unknown>[];
 
+  // No conflict target: this must catch BOTH uniqueness rules — one per (person, notice) and
+  // one per (person, product) — and a targeted clause only ever catches the one it names.
   const insert = db.prepare(`
-    INSERT INTO notifications (subscriber_id, recall_id, body, idempotency_key, created_at)
+    INSERT INTO notifications (subscriber_id, recall_id, body, idempotency_key, created_at, dedup_key)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT DO NOTHING
+  `);
+  const existingNotice = db.prepare(
+    'SELECT 1 FROM notifications WHERE subscriber_id = ? AND recall_id = ?',
+  );
+  const noticeSent = db.prepare(
+    'SELECT recall_id FROM notifications WHERE subscriber_id = ? AND dedup_key = ?',
+  );
+  const recordSuppression = db.prepare(`
+    INSERT INTO suppressed_notifications
+      (subscriber_id, recall_id, dedup_key, superseded_by_recall_id, created_at)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (subscriber_id, recall_id) DO NOTHING
   `);
 
   let queued = 0;
+  let suppressedAsDuplicate = 0;
   for (const row of rows) {
     const recall = rowToRecall(row);
     if (!earnsSms(recall.severity)) continue;
     const subscriberId = Number(row.subscriber_id);
     const key = `sms:${subscriberId}:${recall.id}`;
-    const res = insert.run(subscriberId, recall.id, composeMessage(recall), key, now);
-    if (res.changes > 0) queued++;
+    const dedup = dedupKey(recall);
+
+    // Whether this exact notice was already queued, checked before the insert so that a re-run
+    // is not mistaken for a product duplicate.
+    const alreadyQueued = Boolean(existingNotice.get(subscriberId, recall.id));
+    const res = insert.run(subscriberId, recall.id, composeMessage(recall), key, now, dedup);
+
+    if (res.changes > 0) {
+      queued++;
+      continue;
+    }
+    if (alreadyQueued || !dedup) continue;
+
+    // Rejected by the product index: this person already heard about this UPC under a different
+    // notice. Write down which one, so the omission can be explained rather than discovered.
+    const superseded = noticeSent.get(subscriberId, dedup) as { recall_id: number } | undefined;
+    const wrote = recordSuppression.run(
+      subscriberId, recall.id, dedup, superseded?.recall_id ?? null, now,
+    );
+    if (wrote.changes > 0) suppressedAsDuplicate++;
   }
-  return queued;
+  return { queued, suppressedAsDuplicate };
 }
 
 interface Claim { id: number; phone: string; body: string; idempotency_key: string }

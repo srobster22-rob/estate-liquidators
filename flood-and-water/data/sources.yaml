@@ -72,3 +72,13 @@ fema-flood-insurance:
   url: https://www.fema.gov/flood-insurance
   retrieved: '2026-08-06'
   method: search_index
+
+# Added in R11. The four waiting-period exceptions previously inherited the two general FEMA
+# citations on the parent block, so a reader could not tell which page backed which rule and a
+# maintainer re-verifying had nothing specific to open. Each exception now cites its own.
+nfip-post-wildfire:
+  org: FEMA / National Flood Insurance Program
+  title: Post-Wildfire Exception
+  url: https://agents.floodsmart.gov/topics/handling-claims/wildfire-exception
+  retrieved: '2026-08-12'
+  method: search_index

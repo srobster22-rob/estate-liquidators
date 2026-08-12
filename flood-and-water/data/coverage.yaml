@@ -11,27 +11,32 @@ waitingPeriod:
   exceptions:
     - id: mortgage
       days: 0
+      sourceRefs: [fema-waiting-period, nfip-buy-policy]
       question: Are you buying this policy as part of making, increasing, extending, or renewing
         a mortgage?
       detail: There is no waiting period when flood insurance is purchased in connection with a
         mortgage transaction.
     - id: renewal-change
       days: 0
+      sourceRefs: [fema-waiting-period, nfip-buy-policy]
       question: Are you changing coverage on a policy you already have, at renewal?
       detail: Coverage changes made when renewing an existing policy take effect without the
         30-day wait.
     - id: newly-mapped
       days: 1
+      sourceRefs: [fema-waiting-period, nfip-buy-policy]
       question: Was your property recently moved into a high-risk flood zone by a map update in
         the last 12 months?
       detail: A one-day waiting period applies if the property is in a newly designated high-risk
         zone and the policy is bought within 12 months of the map update.
     - id: post-wildfire
       days: 1
+      sourceRefs: [nfip-post-wildfire, fema-waiting-period]
       question: Is the flood risk caused or worsened by a wildfire on federal land in the last 60
         days?
       detail: A one-day waiting period applies when flooding is caused or worsened by wildfire on
-        federal land, if the policy is bought within 60 days of containment.
+        federal land, for privately owned property, if the policy is bought on or before the fire
+        is contained or within 60 days of containment.
   sourceRefs: [fema-waiting-period, nfip-buy-policy]
 
 # The gaps. Each is a distinct policy product; a household can have none, some, or all three.

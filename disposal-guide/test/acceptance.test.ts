@@ -156,14 +156,19 @@ describe('5. staleness is visible', () => {
 // 6 -------------------------------------------------------------------------
 describe('6. hazardous items carry prep steps', () => {
   it('every hazardous or never-curbside item explains what to do before you go', () => {
+    let checked = 0;
     for (const item of data.items) {
       const u = item.universal;
       if (!u) continue;
       if (u.hazard === 'hazardous' || u.hazard === 'professional' || u.neverCurbside) {
+        checked++;
         expect(u.prep.length, `${item.slug} has no prep steps`).toBeGreaterThan(0);
         expect(u.why.en.length, `${item.slug} has no why`).toBeGreaterThan(10);
       }
     }
+    // Without this the test is green when the loop matches nothing — a data file that lost its
+    // hazardous items, or a renamed hazard value, would read as "all items explain themselves".
+    expect(checked, 'no hazardous items were checked, so this test proved nothing').toBeGreaterThan(10);
   });
 
   it('batteries specifically tell you to tape the terminals', () => {

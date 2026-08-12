@@ -114,7 +114,33 @@ describe('every claim is cited', () => {
   });
 
   it('every coverage gap has at least one source', () => {
+    expect(data.coverage.gaps.length).toBeGreaterThan(0);
     for (const g of data.coverage.gaps) expect(g.sources.length, g.id).toBeGreaterThan(0);
+  });
+
+  it('every waiting-period exception is cited individually', () => {
+    // Added in R11. The brief requires every insurance statement to carry a citation with a
+    // retrieval date, and the tests claiming to enforce that covered the gaps and the safety
+    // points but never these — the rules that turn "not covered for a month" into "covered
+    // tomorrow", which is the most consequential thing this app says to anybody.
+    const exceptions = data.coverage.waitingPeriod.exceptions;
+    expect(exceptions.length).toBeGreaterThan(0);
+    for (const e of exceptions) {
+      expect(e.sources.length, `exception ${e.id} has no source of its own`).toBeGreaterThan(0);
+      for (const s of e.sources) expect(s.retrieved, e.id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  it('the post-wildfire exception states every condition that limits it', () => {
+    // The narrowest and most misread of the four. Someone who buys a policy believing they are
+    // covered tomorrow, and is not because the fire was not on federal land or they were past
+    // the window, finds out at claim time — after the flood.
+    const e = data.coverage.waitingPeriod.exceptions.find((x) => x.id === 'post-wildfire')!;
+    const text = `${e.question} ${e.detail}`.toLowerCase();
+    expect(text).toContain('federal land');
+    expect(text).toContain('60 days');
+    expect(text).toContain('contain');
+    expect(text).toContain('privately owned');
   });
 
   it('the mold guidance is cited and states its own limits', () => {
@@ -262,7 +288,11 @@ describe('local claims are gated', () => {
     expect(data.local.resources).toHaveLength(0);
   });
 
-  it('every local resource, if any existed, would carry who verified it and when', () => {
+  it('local resources carry who verified them and when — and there are none yet, on purpose', () => {
+    // Named for what it actually does. While `resources` is empty this loop asserts nothing, so
+    // the count is asserted too: if a future round adds a resource, the loop starts biting, and
+    // if it adds one without a verifier the build of this test fails rather than staying green.
+    expect(data.local.configured).toBe(false);
     for (const r of data.local.resources) {
       expect(r.verifiedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(r.verifiedBy.length).toBeGreaterThan(0);

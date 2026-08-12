@@ -112,6 +112,39 @@ export function migrate(db: Db): void {
       dead_lettered_at TEXT,
       last_error TEXT,
       created_at TEXT NOT NULL,
+      -- Identifies the physical product rather than the notice. Null when nothing identifies it
+      -- confidently; see notify.ts. The partial index below is what makes it load-bearing.
+      dedup_key TEXT,
+      UNIQUE (subscriber_id, recall_id)
+    );
+
+    -- THE SECOND MESSAGE THAT MUST NOT ARRIVE.
+    --
+    -- UNIQUE (subscriber_id, recall_id) stops one notice texting twice. It cannot stop TWO
+    -- notices about the same jar texting once each, which is what happens whenever FDA and FSIS
+    -- both announce a product -- routine for anything with meat in it. Two rows, two ids, two
+    -- identical texts, and a person who learns that this service repeats itself.
+    --
+    -- Partial, because dedup_key is null whenever nothing identifies the product confidently.
+    -- Suppressing on a guess would mean silence about a real recall, and silence is the one
+    -- failure this project will not trade for tidiness.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_product
+      ON notifications (subscriber_id, dedup_key) WHERE dedup_key IS NOT NULL;
+
+    -- A notice that was NOT texted, and why.
+    --
+    -- Suppression without a record is just a drop with better manners. This table is what lets
+    -- somebody answer "why didn't I hear about the FSIS notice" with the actual reason — you
+    -- were told about the same UPC under the FDA one — instead of a shrug. It also makes the
+    -- suppression count stable across re-runs, which a bare counter is not.
+    CREATE TABLE IF NOT EXISTS suppressed_notifications (
+      id INTEGER PRIMARY KEY,
+      subscriber_id INTEGER NOT NULL REFERENCES subscribers(id),
+      recall_id INTEGER NOT NULL REFERENCES recalls(id),
+      dedup_key TEXT NOT NULL,
+      /* The notice the person actually received instead. */
+      superseded_by_recall_id INTEGER REFERENCES recalls(id),
+      created_at TEXT NOT NULL,
       UNIQUE (subscriber_id, recall_id)
     );
 

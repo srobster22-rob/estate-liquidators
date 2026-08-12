@@ -8,6 +8,12 @@ The machinery is real and tested. The data is not. Ordered by how badly a wrong 
 
 ### 1.1 Every feed is unverified. All of them.
 
+Since R11 a feed that has produced records and then returns none fails the run and raises an
+operator alert instead of recording a clean zero — which is what it used to do, indefinitely,
+while every watch list matched nothing. That closes the *silent* half of this risk. It does not
+close this item: an adapter that has never run against the live API can also return rows that are
+subtly wrong, and no alert catches that. Run them.
+
 This environment blocks `api.fda.gov`, `www.fda.gov`, `www.fsis.usda.gov`, and every other
 non-package host, so **not one line of feed code has run against a real API.**
 

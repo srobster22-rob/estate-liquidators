@@ -87,7 +87,7 @@ if (cmd === 'serve') {
   }
 
   console.log('\n4. Queue (high severity only; candidates need a human)');
-  console.log(`   queued ${enqueue(db, now)}`);
+  console.log(`   ${JSON.stringify(enqueue(db, now))}`);
 
   console.log('\n5. Deliver');
   const provider = pickProvider(process.env);

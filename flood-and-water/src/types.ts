@@ -11,6 +11,8 @@ export interface WaitingPeriodException {
   days: number;
   question: string;
   detail: string;
+  /** Required per exception, not inherited from the rule. See the build schema for why. */
+  sources: SourceRef[];
 }
 
 export interface WaitingPeriodRule {
