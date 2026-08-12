@@ -225,6 +225,9 @@ const LIGHT_WING_GAIN=25, LEVER_KILL_LIGHTS=15;
 // fifth of the night, so the DURATION scales with night length and the -20 does
 // not - same rule as the quota and the apex band.
 const QUIET_SHIP_S=45.0, LEVER_GO_QUIET=20;
+// DESIGN 8: the one tool that says no to the Curator. Twenty seconds, one charge,
+// consumed. It is not a weapon - it buys a route, once.
+const SALT_S=20.0, SALT_CHARGES=1;
 const QUIET_S=Math.round(QUIET_SHIP_S*(NIGHT/SHIP_NIGHT));
 const GHOST_SPEED=7.2, GHOST_EYE=1.95;
 // A5 senses. One Loudness number, three consumers - this is the hearing one.
@@ -636,6 +639,7 @@ function blocked(x,z){
 
 // ------------------------------------------------------------------ state
 let noiseLog=[], gatesOff=false, broken=[], lit=new Set(), breakerUsed=0, quiet=0;
+let salt=null, saltLeft=SALT_CHARGES;
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 // Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
@@ -754,7 +758,7 @@ function reset(){
   recoveredTonight=new Set();
   for(const h of HIDES) h.item=null;
   van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
-  t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];lit=new Set();breakerUsed=0;quiet=0;
+  t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];lit=new Set();breakerUsed=0;quiet=0;salt=null;saltLeft=SALT_CHARGES;
   document.getElementById("end").style.display="none";
 }
 // Seed from the URL so a playtest can be handed back exactly: ?seed=12345.
@@ -773,6 +777,7 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyB"&&started&&!over) killLights();
   if(e.code==="KeyZ"&&started&&!over) goQuiet();
   if(e.code==="KeyU"&&started&&!over) unloadCursed();
+  if(e.code==="KeyX"&&started&&!over) layStop();
   if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
@@ -1416,6 +1421,24 @@ function killLights(){
 }
 const roomLit=id=>lit.has(id);
 
+// Salt goes down in a doorway, because a doorway is the only thing worth
+// denying: it is the one place a route has no alternative.
+function layStop(){
+  if(saltLeft<=0||player.dead) return null;
+  const d=DOORS.find(x=>inRect(x.rect,player.x,player.z));
+  if(!d) return null;
+  salt={a:d.a,b:d.b,until:t+SALT_S};
+  saltLeft--;
+  return {door:d.a+"-"+d.b, seconds:SALT_S, left:saltLeft};
+}
+const salted=d=>!!salt&&t<salt.until&&
+  ((salt.a===d.a&&salt.b===d.b)||(salt.a===d.b&&salt.b===d.a));
+const saltedAt=(x,z)=>{
+  if(!salt||t>=salt.until) return false;
+  const d=DOORS.find(q=>salted(q));
+  return !!d&&inRect(d.rect,x,z);
+};
+
 // The second lever. Everyone stops: no running, no scanning, and the crew put
 // their hands down. Its cost is the only thing this game has less of than money.
 function goQuiet(){
@@ -1562,7 +1585,7 @@ function updateCurator(dt){
 // seven-room chain and jammed the crew against locked doors the moment estates
 // were generated: they stood in a corridor for three minutes, in SEEK, with a
 // reachable goal on the other side of the house.
-function nextDoorTowards(here, there, gated){
+function nextDoorTowards(here, there, gated, forCurator){
   if(!here||!there||here===there) return null;
   const seen={[here.id]:1}, prev={};
   let front=[here.id];
@@ -1572,6 +1595,7 @@ function nextDoorTowards(here, there, gated){
       if(seen[n]) continue;
       const d=DOORS.find(x=>(x.a===id&&x.b===n)||(x.a===n&&x.b===id));
       if(!d||(gated&&!doorOpen(d))) continue;
+      if(forCurator&&salted(d)) continue;      // it will not cross salt
       seen[n]=1; prev[n]=id; nx.push(n);
     }
     front=nx;
@@ -1588,7 +1612,7 @@ function walkTo(e,gx,gz,sp,dt,gated){
   const here=roomAt(e.x,e.z), there=roomAt(gx,gz);
   let tx=gx,tz=gz;
   if(here&&there&&here!==there){
-    const d=nextDoorTowards(here,there,gated);
+    const d=nextDoorTowards(here,there,gated,e===curator);
     if(d){ tx=d.x; tz=d.z; }
     else {
       let bd=1e9;
@@ -1600,8 +1624,9 @@ function walkTo(e,gx,gz,sp,dt,gated){
   const a=Math.atan2(tx-e.x,tz-e.z);
   if(e===curator) e.face=a;
   const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
-  if(!wall(nx,e.z)) e.x=nx;
-  if(!wall(e.x,nz)) e.z=nz;
+  const stop=(x,z)=>wall(x,z)||(e===curator&&saltedAt(x,z));
+  if(!stop(nx,e.z)) e.x=nx;
+  if(!stop(e.x,nz)) e.z=nz;
   if(e.carry){ e.carry.x=e.x; e.carry.z=e.z; e.carry.y=1.1; }
 }
 
@@ -1891,6 +1916,9 @@ function hud(){
       (HIDE_OPEN_S-curator.open).toFixed(1)}s</span><br>`:"")+
     (lit.size?`<span style="color:#b09a54">${lit.size} wing${lit.size>1?"s":""} lit</span><br>`:"")+
     (quiet>0?`<span style="color:#8fae9c">GOING QUIET  ${quiet.toFixed(1)}s</span><br>`:"")+
+    (salt&&t<salt.until?`<span style="color:#cfc9b8">SALT HOLDS  ${
+      (salt.until-t).toFixed(1)}s</span><br>`:"")+
+    (saltLeft>0?`<span style="color:#8b8880">salt x${saltLeft}  ·  [X] in a doorway</span><br>`:"")+
     (items.some(i=>i.stash>0)?`<span style="color:#8b8880">stashed ${
       Math.ceil(Math.max(...items.map(i=>i.stash)))}s</span><br>`:"")+
     `<span style="color:#8b8880">${tierOf(dist)} ${dist.toFixed(0)}</span>`+
@@ -2014,7 +2042,14 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
   lights:()=>({lit:[...lit], breakerUsed}),
-  levers:()=>({quiet:+quiet.toFixed(2), quietWindow:QUIET_S}),
+  levers:()=>({quiet:+quiet.toFixed(2), quietWindow:QUIET_S,
+    salt:salt&&t<salt.until?{door:salt.a+"-"+salt.b,left:+(salt.until-t).toFixed(1)}:null,
+    saltCharges:saltLeft}),
+  layStop, goQuiet, unloadCursed,
+  // What the Curator's router would do next, which is a deterministic question -
+  // unlike "how long did it take to get here", which is mostly hearing fuzz.
+  route:(a,b)=>{const d=nextDoorTowards(R(a),R(b),false,true);
+    return d?d.a+"-"+d.b:null;},
   floor:()=>+floorNow().toFixed(2),
   goQuiet, unloadCursed,
   toggleLights, killLights,

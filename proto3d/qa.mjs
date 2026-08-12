@@ -9,6 +9,11 @@
  *
  *     node proto3d/qa.mjs          -> exit 0 if every check passes
  *     node proto3d/qa.mjs -v       -> print every check, not just failures
+ *     node proto3d/qa.mjs -r 5     -> run five times and report anything flaky
+ *
+ * Several checks here are statistical, and three of them have been caught
+ * failing one run in six on their own variance. A check that passes sometimes is
+ * not a passing check, so -r is how you believe this suite rather than hope.
  *
  * Needs Playwright and a Chromium build. Both are present in the project's
  * container; PW_PATH overrides the module location if yours differs.
@@ -58,6 +63,9 @@ const SEED_SCRIPT = `(() => {
 const pageErrors = [];
 
 async function main() {
+  const ri = process.argv.indexOf("-r");
+  const repeats = ri >= 0 ? Math.max(1, Number(process.argv[ri + 1]) || 3) : 1;
+  if (repeats > 1) return repeat(repeats);
   const { chromium } = loadPlaywright();
   const browser = await chromium.launch({
     args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"],
@@ -101,6 +109,43 @@ async function main() {
   if (!failures.length) { console.log("  OK   the prototype behaves as specified"); process.exit(0); }
   for (const f of failures) console.log(`  FAIL  ${f}`);
   console.log(`\n${failures.length} failing check(s).`);
+  process.exit(1);
+}
+
+// A check that passes four times and fails once is a failing check with a
+// publicity problem. This runs the whole suite N times in one browser and
+// reports any label whose result was not the same every time.
+async function repeat(n) {
+  const { chromium } = loadPlaywright();
+  const browser = await chromium.launch({
+    args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"],
+  });
+  const seen = new Map();
+  for (let i = 0; i < n; i++) {
+    passed = 0; failures.length = 0; pageErrors.length = 0;
+    const page = await browser.newPage();
+    page.on("pageerror", e => pageErrors.push("pageerror: " + e.message));
+    await page.addInitScript(SEED_SCRIPT);
+    await page.goto(PAGE);
+    await page.waitForFunction("typeof window.__g === 'object'", null, { timeout: 10000 });
+    await page.evaluate(() => window.__g.pause(true));
+    await page.evaluate(() => window.__g.regen(20260806));
+    const g = (fn, arg) => page.evaluate(fn, arg);
+    const fresh = () => page.evaluate(() => { window.__g.clearKeys(); window.__g.reset(); });
+    try { await checks(g, fresh); }
+    catch (e) { ok("the harness ran to completion", false, `threw: ${e.message}`); }
+    for (const f of failures) {
+      const label = f.split("  ->  ")[0];
+      seen.set(label, (seen.get(label) || 0) + 1);
+    }
+    process.stdout.write(`run ${i + 1}/${n}: ${failures.length} failing\n`);
+    await page.close();
+  }
+  await browser.close();
+  console.log("-".repeat(74));
+  if (!seen.size) { console.log(`  OK   ${n} runs, no failures and nothing flaky`); process.exit(0); }
+  for (const [label, count] of seen)
+    console.log(`  ${count === n ? "FAIL " : "FLAKY"}  ${label}  (${count}/${n} runs)`);
   process.exit(1);
 }
 
@@ -853,6 +898,76 @@ async function checks(g, fresh) {
     JSON.stringify(unload));
   ok("and it is lying in the yard where it can be reclaimed",
     unload.radiating === true, JSON.stringify(unload));
+
+  // --- the salt line (DESIGN 8) ---------------------------------------------
+  // "Curator won't cross for 20s, single use, consumed."
+  //
+  // What it actually buys, measured: a DETOUR, not denial. V3 requires every
+  // wing to survive losing any one portal, so a house that passes the level
+  // contract has a second way round by construction and salting one doorway can
+  // never seal anything. The first version of this check asserted the Curator
+  // never entered the salted corridor and passed with the rule DELETED, because
+  // it was going the other way regardless. Same V3/V4 tension R1 found: every
+  // second route that satisfies V3 is a bypass that defeats a pinch.
+  await fresh();
+  const saltLine = await g(() => {
+    const rooms = window.__g.rooms();
+    const d = window.__g.doors()[1];
+    const A = rooms.find(r => r.id === d.a), B = rooms.find(r => r.id === d.b);
+
+    // Deterministic: what the router picks, and whether the body can pass.
+    window.__g.reset(); window.__g.parkCrew(); window.__g.gates(true);
+    const routeClear = window.__g.route(d.a, d.b);
+    window.__g.tp(d.x, d.z);
+    window.__g.layStop();
+    const routeSalted = window.__g.route(d.a, d.b);
+
+    // Physical block: stand it in the corridor mouth and drive it through.
+    const along = d.axis === "x" ? [1, 0] : [0, 1];
+    const sign = d.axis === "x" ? Math.sign(B.x - A.x) : Math.sign(B.z - A.z);
+    window.__g.setCur(d.x - along[0] * 1.6 * sign, d.z - along[1] * 1.6 * sign, "PURSUE");
+    window.__g.tp(B.x, B.z);
+    const start = window.__g.curator();
+    for (let i = 0; i < 60 * 8; i++) {
+      window.__g.setDist(95);
+      window.__g.heard(65, B.x, B.z);
+      window.__g.step(1, 1 / 60);
+    }
+    const after = window.__g.curator();
+    const q = d.rect;
+    const inCorridor = after.x > q.x0 && after.x < q.x1 && after.z > q.z0 && after.z < q.z1;
+    const pastIt = d.axis === "x" ? (after.x - d.x) * sign > 0 : (after.z - d.z) * sign > 0;
+
+    window.__g.reset();
+    const outside = window.__g.layStop();          // not standing in a doorway
+    window.__g.tp(d.x, d.z);
+    const first = window.__g.layStop();
+    const second = window.__g.layStop();
+    const state = window.__g.levers();
+    const moved = Math.hypot(after.x - start.x, after.z - start.z);
+    return { routeClear, routeSalted, inCorridor, pastIt, moved: +moved.toFixed(2),
+             outside, first, second, state, d: `${d.a}-${d.b}` };
+  });
+  ok("salt only goes down in a doorway",
+    saltLine.outside === null && saltLine.first !== null, JSON.stringify(saltLine));
+  ok("and there is one charge of it",
+    saltLine.second === null && saltLine.state.saltCharges === 0,
+    JSON.stringify(saltLine.state));
+  ok("it holds for twenty seconds",
+    saltLine.state.salt !== null && saltLine.state.salt.left > 19,
+    JSON.stringify(saltLine.state));
+  ok("the router sends it the other way once salt is down",
+    saltLine.routeClear === saltLine.d && saltLine.routeSalted !== saltLine.routeClear &&
+    saltLine.routeSalted !== null,
+    JSON.stringify({ door: saltLine.d, clear: saltLine.routeClear,
+                     salted: saltLine.routeSalted }));
+  // The physical block behind the router. It is only reachable when there is no
+  // way round at all, so this asserts the weaker thing it can honestly assert:
+  // the Curator moved, and it did not end up on your side of the line.
+  ok("and it does not walk over the line while going round",
+    saltLine.moved > 1.0 && saltLine.pastIt === false && saltLine.inCorridor === false,
+    JSON.stringify({ moved: saltLine.moved, past: saltLine.pastIt,
+                     inCorridor: saltLine.inCorridor }));
 
   // --- the dead (DESIGN 5.1) ------------------------------------------------
   // "Die at minute three of a fourteen-minute night and the genre standard is

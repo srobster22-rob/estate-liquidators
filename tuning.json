@@ -74,6 +74,11 @@
     "cost_knock": 1,
     "cost_nudge": 3
   },
+  "tools": {
+    "_source": "DESIGN.md 8 toolkit",
+    "salt_line_seconds": 20.0,
+    "salt_line_charges": 1
+  },
   "senses": {
     "_source": "TECH-SPEC.md A5; hearing radius derives from AUDIO-SPEC 1.1",
     "sight_range_m": 18.0,

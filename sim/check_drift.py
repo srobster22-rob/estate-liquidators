@@ -220,6 +220,10 @@ check("JS3d lever_go_quiet", grab(js3, r"LEVER_GO_QUIET=(\d+)"), d["lever_go_qui
 check("JS3d quiet_ship_seconds", grab(js3, r"QUIET_SHIP_S=([\d.]+)"),
       d["lever_go_quiet_seconds_at_ship_night"])
 
+tl = TUNING["tools"]
+check("JS3d salt_seconds", grab(js3, r"SALT_S=([\d.]+)"), tl["salt_line_seconds"])
+check("JS3d salt_charges", grab(js3, r"SALT_CHARGES=(\d+)"), tl["salt_line_charges"])
+
 dd = TUNING["dead"]
 check("JS3d collection_seconds", grab(js3, r"COLLECT_S=([\d.]+)"), dd["collection_seconds"])
 check("JS3d static_cap", grab(js3, r"STATIC_CAP=(\d+)"), dd["static_cap"])

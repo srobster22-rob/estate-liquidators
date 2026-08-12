@@ -573,6 +573,26 @@ across 24 seeds and across pairs of grades. Worth a standing note: every statist
 this suite wants running several times before it is believed, and I have now been caught by
 that three times. · Regression: QA 149/149, drift 142/142, counts green, four consecutive clean runs.
 
+R33 · Two things: **flake detection in the harness**, and the **salt line**. · `qa.mjs -r N`
+runs the whole suite N times in one browser and reports any label that failed *sometimes* as
+FLAKY rather than letting a good run bury it. Three statistical checks have been caught failing
+one run in six on their own variance, in three consecutive rounds; a check that passes four
+times and fails once is a failing check with a publicity problem. Proved by injecting a probe
+that fails 40% of the time and watching it come back FLAKY 2/3. · The salt line is DESIGN §8's
+one defensive tool: one charge, twenty seconds, laid in a doorway, consumed. · **And it does
+not do what the spec says it does.** "The Curator won't cross for 20s" implies denial; V3
+requires every wing to survive losing any one portal, so a house that passes the level
+contract *always* has a way round, and salting a doorway costs it a detour instead. The same
+V3/V4 tension R1 found in the very first round, arriving from the other direction. Written into
+`STATUS.md` as a known limit rather than papered over. · **The checks for it were wrong three
+times and each was a different flavour of wrong.** First they asserted the Curator never
+reached me — passed with the rule deleted, because it went round. Then they measured how long
+it took with and without salt — that difference was hearing fuzz, not salt. Then they asserted
+"never entered the salted corridor" with a disjunction that short-circuited and a movement test
+that a *stationary* Curator would pass. What finally works is deterministic and small: the
+router returns a different door once salt is down, and the body moves without ending up on your
+side of the line. · Regression: QA 154/154, drift 144/144, and `-r 3` clean.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
