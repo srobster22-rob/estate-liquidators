@@ -215,6 +215,20 @@ visible, and it is the first thing that must be fixed before any animation work 
 because the model has no facing. Cheap to fix (a yaw term in `drawBox`), and worth doing before
 the character work rather than during it.
 
+R19 · **Gave the renderer rotation.** `M4.trsY` (yaw + scale), an optional yaw argument on
+`drawBox`, a `yaw` field on the Curator that turns toward its heading at 6/s in `walkTo`, and
+it now **turns to face the player during FIXATE** — the two seconds it does nothing but notice
+you. That is the first thing in the prototype that communicates intent through movement rather
+than through the HUD, which is what `ART-DIRECTION.md` §5 asks for. Visual only, drift 55/55.
+· **Found: held items had been world-axis-aligned since the prototype was written**, so a
+carried box appeared to rotate in your hands every time you turned. It is invisible in a
+screenshot and obvious in 24 seconds of continuous motion, and it reads as a physics glitch
+rather than a stylisation — another thing that only the clip's continuous take surfaces.
+Held items now inherit the carrier's yaw. · Note for whoever adds the first non-box mesh:
+normals survived rotation here without an inverse-transpose only because every box normal is a
+coordinate axis, so a non-uniform scale changes its length but not its direction. That stops
+being true the moment the geometry stops being boxes.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

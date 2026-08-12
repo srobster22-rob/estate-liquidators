@@ -141,9 +141,23 @@ with two symmetric boxes; the moment it has arms it is a real constraint, and it
 thing that will need fixing if it ever gets an animation. A figure that walks at you without
 ever turning is uncanny in a way that is currently free and later will not be.
 
+C12 · Added the rotation the renderer never had. `M4.trsY` (yaw + scale), an optional yaw on
+`drawBox`, a `yaw` on the Curator that turns toward its heading at 6/s in `walkTo`, and — the
+part worth having — **it turns to face you during FIXATE**, the two seconds it is doing nothing
+but noticing you. Held items now inherit the carrier's yaw too. Visual only, drift 55/55.
+· **Found:** held items had been world-axis-aligned all along, so the box appeared to *rotate
+in your hands* every time you turned. Invisible in a 16:9 screenshot, obvious in 24 seconds of
+continuous motion, and it reads as a physics glitch rather than a stylisation. Fixed by the
+same yaw. · **Also worth recording: normals came through rotation for free.** No inverse-
+transpose was needed, because every box normal is a coordinate axis, so a non-uniform scale
+changes its length but not its direction and the shader already normalises. That is only true
+while the geometry is boxes — the first non-box mesh will need a real normal matrix.
+· FIXATE facing is the first thing in the prototype that communicates intent through movement
+rather than through the HUD, which is what `ART-DIRECTION.md` §5 asked for all along.
+
 ---
 
-## Next step (what C12 should attack, ranked)
+## Next step (what C13 should attack, ranked)
 
 1. **Someone has to listen to it.** G11 proves the bed is audible; it cannot prove it is good,
    and the mix has never been heard by a human. The knock and hiss levels in particular were
@@ -152,9 +166,11 @@ ever turning is uncanny in a way that is currently free and later will not be.
 2. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
    of the monster by handing the vase to your friend" — cannot be filmed until there are two
    players. Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that matters most.
-3. **The Curator cannot turn.** C11 gave it a silhouette; the renderer has no rotation, so it
-   walks at you facing north regardless. Needs a rotation path in `M4`/`drawBox` before any
-   animation work, and it is a prototype job rather than a clip job.
+3. **Give the walk a gait.** C12 made the Curator turn; it still glides. §5 says "movement, not
+   geometry, carries the character" and "it moves like a person doing a job it finds tedious" —
+   a slow vertical bob and a small counter-sway on the arms, driven by distance travelled rather
+   than by time, would cost about six lines now that `drawBox` takes a yaw. Do it in `proto3d`,
+   not in the clip.
 4. **The blind beat is done being optimised.** C7 and C8 both improved it and both hit the same
    structural wall. Anything further needs a shot where the player is *not* carrying, which
    contradicts the beat. Leave it until item 2 makes a second clip possible.

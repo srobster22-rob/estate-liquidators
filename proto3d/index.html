@@ -141,6 +141,12 @@ const M4={
   persp:(f,a,n,fa)=>{const t=1/Math.tan(f/2);return new Float32Array(
     [t/a,0,0,0, 0,t,0,0, 0,0,(fa+n)/(n-fa),-1, 0,0,2*fa*n/(n-fa),0]);},
   trs:(x,y,z,sx,sy,sz)=>new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,sz,0, x,y,z,1]),
+  // Same, with a yaw. Everything in the prototype was axis-aligned until R19, which
+  // meant nothing could face anything - see LOOP_LOG R18. Normals survive this without
+  // an inverse-transpose: every box normal is a coordinate axis, so a non-uniform
+  // scale changes its length but not its direction, and the shader normalises.
+  trsY:(x,y,z,sx,sy,sz,yaw)=>{const c=Math.cos(yaw), s=Math.sin(yaw);
+    return new Float32Array([c*sx,0,-s*sx,0, 0,sy,0,0, s*sz,0,c*sz,0, x,y,z,1]);},
   look:(e,c,u)=>{
     const z=nrm(sub(e,c)), x=nrm(cross(u,z)), y=cross(z,x);
     return new Float32Array([x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
@@ -150,6 +156,9 @@ const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
+const TAU=Math.PI*2;
+const angLerp=(a,b,k)=>{let d=(b-a)%TAU;
+  if(d>Math.PI)d-=TAU; else if(d<-Math.PI)d+=TAU; return a+d*k;};
 
 // ------------------------------------------------------------------ tuning
 // Mirrors tuning.json. sim/check_drift.py asserts these stay in agreement.
@@ -214,7 +223,7 @@ function reset(){
   makeItems();
   const dv=R("drive");
   player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0};
-  curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
+  curator={x:R("cons").x,z:R("cons").z,yaw:0,state:"PATROL",goal:null,carry:null,
            fixate:0,lock:0,reseat:0,target:false};
   van={slots:VAN_SLOTS,cargo:[]};
   t=0;dist=0;over=false;
@@ -340,7 +349,12 @@ function updateCurator(dt){
       c.target=true; c.fixate=2.0; c.lock=8; c.state="FIXATE"; c.goal=player.holding;
     } else if(attentionWeight()===0&&c.state!=="FIXATE") c.target=false;
   }
-  if(c.state==="FIXATE"){ if(c.fixate<=0) c.state="PURSUE"; return; }
+  // FIXATE is the only two seconds it is doing nothing but noticing you. Now that it
+  // can turn, it turns - and A7's dimmed flashlight means facing is often the only
+  // thing you can read about it.
+  if(c.state==="FIXATE"){
+    c.yaw=angLerp(c.yaw,Math.atan2(player.x-c.x,player.z-c.z),Math.min(1,dt*5));
+    if(c.fixate<=0) c.state="PURSUE"; return; }
 
   if(c.state==="PURSUE"&&c.target){
     // A4: path to the plinth the item came from, so it cuts you off going home
@@ -371,6 +385,7 @@ function walkTo(e,gx,gz,sp,dt){
       const dd=Math.hypot(d.x-gx,d.z-gz); if(dd<bd){bd=dd;tx=d.x;tz=d.z;} }
   }
   const a=Math.atan2(tx-e.x,tz-e.z);
+  e.yaw=angLerp(e.yaw||0,a,Math.min(1,dt*6));   // it turns, then walks - never strafes
   const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
   if(!solid(nx,e.z)) e.x=nx;
   if(!solid(e.x,nz)) e.z=nz;
@@ -399,8 +414,9 @@ function finish(why){
 }
 
 // ------------------------------------------------------------------ render
-function drawBox(x,y,z,sx,sy,sz,col){
-  gl.uniformMatrix4fv(U.uModel,false,M4.trs(x,y,z,sx,sy,sz));
+function drawBox(x,y,z,sx,sy,sz,col,yaw){
+  gl.uniformMatrix4fv(U.uModel,false,
+    yaw ? M4.trsY(x,y,z,sx,sy,sz,yaw) : M4.trs(x,y,z,sx,sy,sz));
   gl.uniform3fv(U.uTint,col);
   gl.drawElements(gl.TRIANGLES,BOX.i.length,gl.UNSIGNED_SHORT,0);
 }
@@ -441,7 +457,10 @@ function render(){
     if(it.known) col = it.grade==="malignant"?[.72,.36,.26]
                      : it.grade==="tainted"?[.72,.60,.26]:[.56,.60,.57];
     if(it.held&&marked) col=[.62,.78,.88];             // frost
-    drawBox(it.x,it.y,it.z,it.size,it.size,it.size,col);
+    // Held items inherit your yaw. Without it the box stays world-aligned and appears
+    // to rotate in your hands every time you turn, which reads as a physics glitch.
+    drawBox(it.x,it.y,it.z,it.size,it.size,it.size,col,
+            it.held?player.yaw:(curator.carry===it?curator.yaw:0));
   }
 
   // ART-DIRECTION 5: tall, narrow, domestic - staff, not monster, never a face.
@@ -452,13 +471,16 @@ function render(){
   const c=curator, lit=c.state==="FIXATE";
   const COAT = lit?[.55,.53,.50]:[.13,.135,.14];
   const PALE = lit?[.62,.60,.57]:[.17,.165,.16];
-  drawBox(c.x,       0.56, c.z, 0.30,  0.56, 0.28,  COAT);   // coat, hem to hip
-  drawBox(c.x,       1.50, c.z, 0.24,  0.38, 0.22,  COAT);   // torso
-  drawBox(c.x,       1.88, c.z, 0.36,  0.06, 0.19,  COAT);   // shoulders
-  drawBox(c.x-0.30,  1.44, c.z, 0.055, 0.40, 0.06,  COAT);   // arms, hanging, long
-  drawBox(c.x+0.30,  1.44, c.z, 0.055, 0.40, 0.06,  COAT);
-  drawBox(c.x,       1.99, c.z, 0.06,  0.06, 0.06,  PALE);   // neck
-  drawBox(c.x,       2.16, c.z, 0.115, 0.13, 0.115, PALE);   // head
+  // Offsets are in its own frame now, so the shoulders and arms swing round as it
+  // turns. cs/sn place the two arms either side of whichever way it is facing.
+  const cs=Math.cos(c.yaw), sn=Math.sin(c.yaw), AX=0.30;
+  drawBox(c.x,           0.56, c.z,           0.30,  0.56, 0.28,  COAT, c.yaw); // coat
+  drawBox(c.x,           1.50, c.z,           0.24,  0.38, 0.22,  COAT, c.yaw); // torso
+  drawBox(c.x,           1.88, c.z,           0.36,  0.06, 0.19,  COAT, c.yaw); // shoulders
+  drawBox(c.x-cs*AX,     1.44, c.z+sn*AX,     0.055, 0.40, 0.06,  COAT, c.yaw); // arms
+  drawBox(c.x+cs*AX,     1.44, c.z-sn*AX,     0.055, 0.40, 0.06,  COAT, c.yaw);
+  drawBox(c.x,           1.99, c.z,           0.06,  0.06, 0.06,  PALE, c.yaw); // neck
+  drawBox(c.x,           2.16, c.z,           0.115, 0.13, 0.115, PALE, c.yaw); // head
 }
 
 // ------------------------------------------------------------------ HUD
