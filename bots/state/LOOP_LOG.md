@@ -30,3 +30,17 @@ G11 L4 · 540 candidates over 13 markets, 24 gauntlets, best screen fit +0.51 (3
 
 G12 L4 · 540 candidates over 13 markets, 23 gauntlets, best screen fit +0.50 (3900 trials on the ledger) · nothing passed
 
+G13 L5 · 810 candidates over 13 markets, 24 gauntlets, best screen fit +0.51 (4710 trials on the ledger) · **aae521bbfb56** on commodity_meanrev_daily (replSR +0.42)
+
+G14 L5 · 810 candidates over 13 markets, 23 gauntlets, best screen fit +0.54 (5520 trials on the ledger) · **696e318c1767** on commodity_meanrev_daily (replSR +0.44); **9dbfe2fa405b** on commodity_meanrev_daily (replSR +0.42)
+
+G15 L5 · 810 candidates over 13 markets, 22 gauntlets, best screen fit +0.55 (6330 trials on the ledger) · **2f6e9a69b3d1** on commodity_meanrev_daily (replSR +0.49); **0a3b10605a98** on commodity_meanrev_daily (replSR +0.49)
+
+G16 L5 · 810 candidates over 13 markets, 21 gauntlets, best screen fit +0.54 (7140 trials on the ledger) · **edc7823d5f41** on commodity_meanrev_daily (replSR +0.44); **8624582a1e57** on commodity_meanrev_daily (replSR +0.49); **14967114bcfe** on commodity_meanrev_daily (replSR +0.49)
+
+G17 L5 · 810 candidates over 13 markets, 20 gauntlets, best screen fit +0.54 (7950 trials on the ledger) · **80a991776d9d** on commodity_meanrev_daily (replSR +0.44); **e968878d9bc2** on commodity_meanrev_daily (replSR +0.49)
+
+G18 L5 · 810 candidates over 13 markets, 19 gauntlets, best screen fit +0.55 (8760 trials on the ledger) · **0e4671daeb34** on commodity_meanrev_daily (replSR +0.48)
+
+G19 L5 · 810 candidates over 13 markets, 23 gauntlets, best screen fit +0.55 (9570 trials on the ledger) · **f8cf35845ef9** on commodity_meanrev_daily (replSR +0.48); **a956465c671a** on commodity_meanrev_daily (replSR +0.49)
+

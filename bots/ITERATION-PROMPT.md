@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 43 falsification tests
+python bots/run.py selftest      # 45 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -59,7 +59,17 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **The permutation null's block length vs the bot's holding horizon.** F12 is
+1. **Every certified strategy has a margin under 0.07 (F29), and one is at
+   exactly zero.** That is what a bar does to a search that expands until it
+   succeeds, but it means the whole population is one modelling assumption away
+   from empty — which is also why F23's decay cliff is a cliff. The question this
+   raises and nobody has answered: is there a strategy space reachable from here
+   whose survivors have *room*? Every widening so far (more genes, more filters,
+   more primitives, more effort) has produced more bots at the same margin. A
+   different *kind* of widening — cross-sectional (below), or a market family with
+   a genuinely larger planted edge behind honest costs — is the only thing that
+   would change it.
+2. **The permutation null's block length vs the bot's holding horizon.** F12 is
    now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar
    block, so the null keeps the structure the bot trades. Decide the rule **before**
@@ -67,7 +77,7 @@ Roughly in order of how much they would change what the lab can claim:
    gate on block=1 AND block=5 — then re-run the whole search and re-measure `fpr`.
    If the new rule raises the false-positive rate above zero, it is wrong regardless
    of how attractive the bots it admits look.
-2. **Real data, and a decay rate that is not a modelling choice.** `verify --data`
+3. **Real data, and a decay rate that is not a modelling choice.** `verify --data`
    already runs the identical engine, costs and permutation null on real CSVs.
    Point it at real bars for the instrument type a proven bot claims to trade.
    Expect an unimpressive permutation p-value — a single 1,200-bar out-of-sample
@@ -75,33 +85,33 @@ Roughly in order of how much they would change what the lab can claim:
    synthetic replication gates exist and why they are not sufficient. It is also
    the only route to putting the real world somewhere on F23's curve, which is the
    single largest thing this lab cannot currently do.
-3. **Resolving a death confined to the last 10% of a series.** F25 tightened G2b
+4. **Resolving a death confined to the last 10% of a series.** F25 tightened G2b
    to a final-quarter window and that removed three of four late-break
    certifications, but not the fourth: the quarter still contains 10 percentage
    points of pre-break data against 15 post-break. A shorter window is too noisy
    to gate on directly. The interesting version is a *changepoint* statistic
    rather than a shorter window — test whether the late alpha series has a break
    in it, not whether its average is high.
-4. **Search the other rungs.** F27 ran the loop against `hl=0.25x` and found
+5. **Search the other rungs.** F27 ran the loop against `hl=0.25x` and found
    nothing in 16,375 candidates. `hl=1.00x` and `break@85%` have never been
    searched, only paneled. `break@85%` is the interesting one: the panel certifies
    one strategy there, and a search might find that a *late* break is the easiest
    non-stationarity to survive — which would be a real design principle, since it
    is also the one a live trader has the least warning of.
-5. **What would a search find that the panel cannot represent?** F27 answers this
+6. **What would a search find that the panel cannot represent?** F27 answers this
    for one rung. The general version — is the strategy space searched here wide
    enough that "nothing certified" means "nothing is there" — is answered only by
    widening it. Cross-sectional strategies (below) are the biggest missing class.
-6. **Cross-sectional strategies.** The generator makes independent single
+7. **Cross-sectional strategies.** The generator makes independent single
    instruments, so pairs, lead-lag, relative value and factor crowding are all
    out of reach. This is also what makes the portfolio's `rho=0` number a
    fiction. Generating correlated *baskets* would unlock a whole strategy class
    and make the portfolio numbers mean something.
-7. **Dependent intrabar extremes.** Max and min are currently sampled
+8. **Dependent intrabar extremes.** Max and min are currently sampled
    independently from the Brownian bridge; they are negatively dependent. The
    residual +0.07 gross alpha that take-profit-only bots still show on a random
    walk is the visible size of that approximation.
-8. **The archetype panel is better but still not neutral.** F23 found and closed
+9. **The archetype panel is better but still not neutral.** F23 found and closed
    two blank columns in it — no archetype used `proportional` sizing, and none
    carried a filter, though every certified strategy uses the first. Assume there
    are more holes of that kind. The test for one: take any axis of `SearchSpace`
@@ -110,7 +120,18 @@ Roughly in order of how much they would change what the lab can claim:
 **Done, for reference:** the decay curve (F23), the cost-leverage experiment
 (F24 — it *falsified* F21's ratio claim), the late-break blind spot in G2b (F25),
 the closing-standard recheck (F26), the searched 12-year catalogue and the
-ten-probe FPR bound (F27), and the non-stationary families (F20).
+ten-probe FPR bound (F27), the searched late-break catalogue and per-gate margins
+(F28, F29), and the non-stationary families (F20).
+
+Useful commands added along the way:
+
+```bash
+python bots/run.py decay                            # the survival curve over fade rates
+python bots/run.py costgrid                         # sweep edge and cost independently
+python bots/run.py fpr --repeats 10                 # a tight bound, not a single probe
+python bots/run.py loop --catalogue hl=0.25x        # search a decay rung
+python bots/run.py revalidate                       # re-judge the ledger at the closing bar
+```
 
 ## What a good session looks like
 

@@ -1198,6 +1198,52 @@ not been built.
 
 ---
 
+## F29 · Every certified strategy in this lab is within 0.07 alpha Sharpe of failing a gate
+
+Instrumenting the gates with margins (F28) and re-running the whole ledger through
+them produced a number nobody had asked for and everybody should have:
+
+| bot | tightest gate | margin |
+|---|---|---|
+| `a956465c671a` | G1-oos | **+0.000** |
+| `80a991776d9d` | G1-oos | +0.004 |
+| `edc7823d5f41` | G1-oos | +0.004 |
+| `696e318c1767` | G1-oos | +0.005 |
+| `14967114bcfe` | G2b-durability | +0.005 |
+| ... 8 more | G2b-durability | +0.026 to +0.064 |
+
+**Thirteen certified genomes, and the largest margin any of them has on its
+narrowest gate is +0.064 alpha Sharpe.** One clears G1 by zero to three decimal
+places. Not one of them has a tenth of a Sharpe of room anywhere.
+
+This is not a defect in the bots — it is what a *bar* does. A search that expands
+until it succeeds will hand you the population that just barely cleared, every
+time, because everything with real room to spare would have been found long
+before the search had to expand. The selection is doing exactly what it was told
+to. But it means the honest reading of "passed all eight gates" is **"passed all
+eight gates, several of them by a rounding error"**, and pass/fail cannot express
+that.
+
+**It also independently confirms F23's explanation of the decay cliff.** That
+finding argued the four-to-zero collapse between a 24-year and a 12-year halflife
+happens because the whole population of viable strategies is packed into a narrow
+band just above the replication bar, so a 20% edge cut empties the field rather
+than thinning it. The margins measure that band directly and it is 0.00-0.06 wide.
+A 20% edge cut on a 0.5-Sharpe strategy is worth about 0.10 — larger than every
+margin in the table. The cliff was predicted from one measurement and is now
+confirmed by an unrelated one.
+
+The practical consequence is a reporting change, not a threshold change: the
+report prints each proven bot's tightest margin next to its search-burden
+headroom, and those two numbers together say more about the strength of a
+certification than any Sharpe in the document. `run.py revalidate` re-runs every
+stored verdict at the run's closing burden so the ledger cannot drift out of step
+with the code that judged it — strictly conservative, and it refuses to run when
+the closing burden is *lower* than the burden a bot was certified at, which would
+be lowering the bar rather than re-applying it.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

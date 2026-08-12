@@ -11,16 +11,19 @@ floor, so the average edge across an instance is 70% of its opening value. Only
 the predictable components fade; drift and carry do not, because a risk premium is
 compensation for risk rather than a mispricing waiting to be arbitraged.
 
-The committed run certified **4 distinct strategies** from 12,400 candidates on
-`commodity_meanrev_daily` and `eq_largecap_daily`. Nothing certified on either
-family that decays *faster* than the default.
+The committed run certified **4 distinct strategies** (13 genomes) from 9,570
+candidates, all on `commodity_meanrev_daily`. Nothing certified on any of the other
+twelve families, including both that decay faster than the default. All 13 still
+clear the standard the run *finished* with, which is not automatic — the previous
+run lost a whole strategy to it (F26), because G6's luck bar rises while the search
+is still going and a bot certified early was measured against a smaller search.
 
-**Re-judged at the standard the run finished with, that is 3, not 4** (F26). G6's
-luck bar rises while the search is still going, so a bot certified in generation 5
-was measured against a smaller search than the run became. All three
-`eq_largecap_daily` genomes had headroom of 229-262 against a run that ended at
-353 confirmation tests, and they no longer clear it. The report prints both counts
-and leads with the conservative one.
+**Read the margins before the Sharpes.** Every one of those 13 clears its narrowest
+gate by between **+0.000 and +0.064 alpha Sharpe** (F29). One clears G1 by zero to
+three decimals. That is what a bar does to a search that expands until it succeeds
+— everything with real room to spare was found long before the search had to
+expand — but it means "passed all eight gates" here means "passed all eight gates,
+several of them by a rounding error", and pass/fail cannot say so.
 
 **That "4" is a number at one fade rate, so the headline is the curve, not the
 count** (`python bots/run.py decay`, `FINDINGS.md` F23). A fixed pre-registered
@@ -41,7 +44,9 @@ fade differs:
 none across a rung that only takes the mean edge from 0.70 to 0.57 — because the
 catalogue's entire population of viable strategies is packed into a 0.2-Sharpe
 band just above the +0.35 replication bar. A 20% edge cut does not thin that field,
-it empties it. And **market breadth collapses faster than the strategy count**:
+it empties it — a claim the margins above confirm independently, since a 20% cut
+on a 0.5-Sharpe strategy is worth ~0.10 and every margin in the lab is under 0.07.
+And **market breadth collapses faster than the strategy count**:
 four families produce something with no decay, two at 48 years, one at 24. Decay
 takes the diversification well before it takes the last strategy.
 
@@ -136,7 +141,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 43 falsification tests
+python bots/run.py selftest              # 45 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -269,7 +274,7 @@ bots/
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      43 falsification tests
+  tests/test_botlab.py      45 falsification tests
 ```
 
 ---

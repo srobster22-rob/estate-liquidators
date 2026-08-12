@@ -216,6 +216,62 @@ def cmd_verify(a) -> int:
     return 0 if v.passed else 2
 
 
+def cmd_revalidate(a) -> int:
+    """Re-run the full gauntlet for every proven bot at the standard the run
+    finished with, and rewrite the ledger from the result.
+
+    Two things drift out of a ledger during a long run. The luck bar rises while
+    the search continues, so early certifications were judged against a smaller
+    search (F26). And the gauntlet itself changes between sessions, so stored
+    verdicts can be the output of code that no longer exists — the margins added
+    after F28 were missing from every bot certified before them.
+
+    This makes the ledger self-consistent: every stored verdict is the current
+    code's verdict at the closing burden. It is strictly conservative — the
+    burden only ever goes up, so a bot can be removed but never added — and it
+    refuses to run in the other direction.
+    """
+    st = state.RunState.load_or_new(a.state, SearchSpace())
+    if not st.proven:
+        print(f"no proven bots in {a.state}")
+        return 1
+    cfg = gauntlet.GauntletConfig()
+    n_conf, var = max(st.gauntlet_runs, 1), st.var_trial_sharpe()
+    print(f"re-running {len(st.proven)} verdicts at the closing standard "
+          f"({n_conf} confirmation tests, trial variance {var:.4f})")
+    kept = []
+    for p_ in st.proven:
+        g = Genome.from_dict(p_["genome"])
+        old_burden = int(p_["verdict"].get("perf", {}).get("n_confirm_tests", 0))
+        if old_burden > n_conf:
+            print(f"  {g.bot_id} REFUSED: certified at burden {old_burden} > closing "
+                  f"{n_conf}; re-running would lower the bar")
+            kept.append(p_)
+            continue
+        v = gauntlet.run_gauntlet(g, cfg, n_trials=max(st.trials, 1),
+                                  var_trial_sharpe=var,
+                                  rng=np.random.default_rng(a.seed), cross_market=True,
+                                  n_confirm_tests=n_conf)
+        tight = min(((sg.margin, sg.name) for sg in v.stages
+                     if sg.margin is not None and sg.name in report.SHARPE_GATES),
+                    default=(None, ""))
+        if v.passed:
+            p_["verdict"] = v.to_dict()
+            kept.append(p_)
+            print(f"  {g.bot_id} PASS   tightest {tight[0]:+.3f} at {tight[1]}")
+        else:
+            print(f"  {g.bot_id} DROPPED at {v.failed_at}")
+    dropped = len(st.proven) - len(kept)
+    st.proven = kept
+    st.save()
+    print()
+    print(f"{len(kept)} genomes kept, {dropped} dropped; "
+          f"{st.n_distinct_proven()} distinct strategies")
+    report.write_report(a.report, st, cfg)
+    print(f"report rewritten to {a.report}")
+    return 0
+
+
 def cmd_report(a) -> int:
     # A ledger from `loop --catalogue <rung>` names markets that only exist while
     # that rung is registered, so regenerating its report needs the same swap.
@@ -323,6 +379,12 @@ def main(argv=None) -> int:
     p.add_argument("--template", default=None, help="catalogue family to inherit costs from")
     p.add_argument("--seed", type=int, default=99)
     p.set_defaults(fn=cmd_verify)
+
+    p = sub.add_parser("revalidate",
+                       help="re-run every proven verdict at the run's closing standard")
+    p.add_argument("--report", default=DEFAULT_REPORT)
+    p.add_argument("--seed", type=int, default=31337)
+    p.set_defaults(fn=cmd_revalidate)
 
     p = sub.add_parser("report", help="rewrite REPORT.md from saved state")
     p.add_argument("--report", default=DEFAULT_REPORT)

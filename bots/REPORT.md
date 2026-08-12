@@ -1,34 +1,28 @@
 # Bot factory: run report
 
-_Generated 2026-08-12 13:09:42 from `run_state.json`._
+_Generated 2026-08-12 14:20:39 from `run_state.json`._
 
 ## Result
 
-**4 distinct strategies passed all eight gates** (30 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes). Read that number together with the two sections below it: what survives this run's *closing* standard of proof rather than the standard in force when each bot was found, and what survives a faster decay rate. Both are more conservative.
+**4 distinct strategies passed all eight gates** (13 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes). Read that number together with the two sections below it: what survives this run's *closing* standard of proof rather than the standard in force when each bot was found, and what survives a faster decay rate. Both are more conservative.
 
-12,400 candidates were screened across 19 generations and 2 search-space expansions; 353 reached the gauntlet; 29,049 backtests were run.
+9,570 candidates were screened across 19 generations and 4 search-space expansions; 371 reached the gauntlet; 14,589 backtests were run.
 
-Markets represented: `commodity_meanrev_daily`, `eq_largecap_daily`.
+**All of them trade one market family: `commodity_meanrev_daily`.** Ten other tradeable families were searched every generation and yielded nothing that survived the ladder. That is the most informative result in this report, and it is the expected one: the catalogue deliberately contains families where the correct answer is *do not trade this* (the strongest planted edges sit behind a 28bp spread, or behind 0.30bp/bar funding). A search that returned winners everywhere would be evidence against itself.
 
 **Every tradeable family's edge decays** — halflife half the series with a 35% floor by default, so the average edge across an instance is 70% of its opening value. A catalogue identical at the last bar and the first flatters everything tested on it.
 
-The certified bots retain **60%-84%** of their first-half alpha in the second half. For scale, a textbook trend bot on a decaying trend market retains 11% — costs are fixed, so a 30% cut in gross edge takes ~90% of net alpha, and strategies running close to their cost floor die first. What survives decay is what had margin over costs to begin with.
+The certified bots retain **60%-83%** of their first-half alpha in the second half. For scale, a textbook trend bot on a decaying trend market retains 11% — costs are fixed, so a 30% cut in gross edge takes ~90% of net alpha, and strategies running close to their cost floor die first. What survives decay is what had margin over costs to begin with.
 
 None of the 2 families that decay *faster* than the default (`futures_trend_decay_daily`, `eq_largecap_break_daily`) certified anything.
 
-**Search-burden headroom.** These were certified after 353 confirmation tests, and G6's luck bar rises with that count — so the count matters as much as the Sharpe. Headroom is the largest search each bot's evidence could have come out of and still clear G6: **27 of 30 genomes clear a bar ten times harder than the one they actually faced** (headroom 12,019,039 down to 229). Read it before the Sharpe — a bot whose headroom is close to the tests already run would vanish in a more serious hunt.
+**Search-burden headroom.** These were certified after 371 confirmation tests, and G6's luck bar rises with that count — so the count matters as much as the Sharpe. Headroom is the largest search each bot's evidence could have come out of and still clear G6: **13 of 13 genomes clear a bar ten times harder than the one they actually faced** (headroom 70,529 down to 7,353). Read it before the Sharpe — a bot whose headroom is close to the tests already run would vanish in a more serious hunt.
 
 ## Re-judged at the standard this run finished with
 
-G6's luck bar rises with the size of the search — that is what it is for — so a bot certified in an early generation was measured against a smaller search than this run eventually became. Two inputs drift as a run continues: the confirmation-test count, and the variance of the trial-Sharpe distribution the bar is built from. Below, every proven bot is re-judged at the closing values (**353 confirmation tests, trial variance 0.123**). Nothing here can certify a bot that was not already certified; it can only take one away.
+G6's luck bar rises with the size of the search — that is what it is for — so a bot certified in an early generation was measured against a smaller search than this run eventually became. Two inputs drift as a run continues: the confirmation-test count, and the variance of the trial-Sharpe distribution the bar is built from. Below, every proven bot is re-judged at the closing values (**371 confirmation tests, trial variance 0.128**). Nothing here can certify a bot that was not already certified; it can only take one away.
 
-**27 of 30 genomes still clear it — 3 distinct strategies, down from 4.** The headline count above is the one each bot earned when it was found; this is the one the run's own closing standard supports, and it is the more conservative of the two.
-
-| bot | market | burden when certified | variance then | DSR now | headroom now |
-|---|---|---|---|---|---|
-| `5ea21d4fc2f9` | `eq_largecap_daily` | 222 | 0.110 | 0.778 | 143 |
-| `2129e0f45017` | `eq_largecap_daily` | 242 | 0.111 | 0.834 | 175 |
-| `e8840ff23941` | `eq_largecap_daily` | 262 | 0.114 | 0.851 | 188 |
+**All 13 genomes (4 distinct strategies) still clear the closing bar.** The headline is not an artefact of when in the run each bot happened to be found.
 
 ## How much of this depends on the decay rate
 
@@ -53,940 +47,42 @@ Where candidates died. A healthy funnel kills most bots early; a funnel that kil
 
 | gate | rejected | share | what that gate proves |
 |---|---|---|---|
-| G1-oos | 296 | 92% | worked only on the bars the search scored (in-sample fit) |
-| G2-replication | 21 | 7% | worked only on the instances it was bred on (instance luck) |
-| G2b-durability | 2 | 1% | edge faded across the series (a crowded or arbitraged anomaly) |
+| G1-oos | 291 | 81% | worked only on the bars the search scored (in-sample fit) |
+| G2-replication | 58 | 16% | worked only on the instances it was bred on (instance luck) |
+| G2b-durability | 8 | 2% | edge faded across the series (a crowded or arbitraged anomaly) |
 | G4-stress | 1 | 0% | edge smaller than 2x costs or one bar of delay |
-| G6-multiplicity | 3 | 1% | not surprising given how many candidates were tried |
 
 ## Proven bots
 
-### `44504d663841` — commodity_meanrev_daily
+### `aae521bbfb56` — commodity_meanrev_daily
 
 ```
-rsi_rev(n=13)x1.24 + rsi_rev(n=8)x1.35 -> thr 0.30/0.03 both proportional lev<=2.0  [stop 5.1atr]
+rsi_rev(n=11)x1.00 + rsi_rev(n=19)x1.53 -> thr 0.40/0.05 both proportional lev<=2.0
 ```
 
 - market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 6 via transplant from a9c6b78feffc
-- **search-burden headroom: 147,460** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 82. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- found in generation 13 via mutant from 289b0b31a93c
+- **search-burden headroom: 9,110** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.026 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
 
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.47 (need +0.25), 10591 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.42 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.7% / worst -44.9% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.36 (need +0.25) vs early half +0.48, retained 74% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.05] |
-| PASS | G4-stress | 2x costs +0.34 (need +0.15), 3x +0.25 (need +0.00), +1 bar delay +0.37 (need +0.10) |
-| PASS | G5-permutation | real +0.42 vs null +0.04+-0.06 (p99 +0.16) -> z=6.2, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.21 after 82 confirmation tests (would still pass up to 147,460); Bonferroni p 2.90e-08 (need <=0.05) \| stricter all-trials view (3040 screened): DSR 1.000 vs SR 0.30, p 1.08e-06 |
-| PASS | G7-stress-pool | median alphaSR +0.40 (need +0.28), 100% positive (need 65%), CAGR +2.5%, median DD -21.1% |
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.072 | alphaSR +0.32 (need +0.25), 7985 trades, 88% instances positive |
+| PASS | G2-replication | +0.073 | median alphaSR +0.42 (need +0.35), 100% of 20 instances positive (need 70%), median DD -33.3% / worst -48.6% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.026 | late-half alphaSR +0.42, final-quarter +0.28 (both need +0.25) vs early half +0.51, retained 83% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.294 | worst \|alphaSR\| 0.01 (allowed 0.30) [control_efficient_daily=-0.01, control_martingale_daily=+0.01] |
+| PASS | G4-stress | +0.195 | 2x costs +0.35 (need +0.15), 3x +0.29 (need +0.00), +1 bar delay +0.36 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.41 vs null +0.02+-0.07 (p99 +0.17) -> z=5.9, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 9,110); Bonferroni p 6.58e-07 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.946 vs SR 0.39, p 1.70e-05 |
+| PASS | G7-stress-pool | +0.136 | median alphaSR +0.42 (need +0.28), 100% positive (need 65%), CAGR +3.3%, median DD -32.2% |
 
 Confirmation-pool performance (third disjoint instance pool, 20 instances):
 
 | alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
 |---|---|---|---|---|---|---|---|---|
-| +0.40 | +0.40 | +2.5% | 6.7% | -21.1% | 0.07 | 70 | 0.60% | 0.14 |
+| +0.42 | +0.39 | +3.3% | 9.4% | -32.2% | 0.06 | 51 | 0.54% | 0.15 |
 
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.29, `eq_largecap_break_daily` +0.20, `eq_index_daily` +0.00, `rates_daily` -0.02, `fx_major_daily` -0.05, `eq_smallcap_daily` -0.10
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 13
-      },
-      "weight": 1.2373,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 8
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.3,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.138,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": 5.12,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "44504d663841",
-  "generation": 6,
-  "origin": "transplant",
-  "parents": [
-    "a9c6b78feffc"
-  ]
-}
-```
-
-</details>
-
-### `8eb8425dceaf` — commodity_meanrev_daily
-
-```
-bollinger(k=1.99,n=84)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.21/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 7 via mutant from e4c4f52e3585
-- **search-burden headroom: 12,019,039** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 98. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.26 (need +0.25), 13001 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.51 (need +0.35), 100% of 20 instances positive (need 70%), median DD -25.2% / worst -39.3% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.41 (need +0.25) vs early half +0.64, retained 63% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.47 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.03+-0.06 (p99 +0.13) -> z=7.7, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.22 after 98 confirmation tests (would still pass up to 12,019,039); Bonferroni p 6.31e-13 (need <=0.05) \| stricter all-trials view (3760 screened): DSR 1.000 vs SR 0.31, p 2.42e-11 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +3.6%, median DD -27.1% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.44 | +3.6% | 8.8% | -27.1% | 0.07 | 89 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.09, `eq_index_daily` -0.01, `rates_daily` -0.01, `fx_em_daily` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9888,
-        "n": 84
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.214,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.12,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.2627,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "8eb8425dceaf",
-  "generation": 7,
-  "origin": "mutant",
-  "parents": [
-    "e4c4f52e3585"
-  ]
-}
-```
-
-</details>
-
-### `48b28580e889` — commodity_meanrev_daily
-
-```
-rsi_rev(n=28)x1.35 + rsi_rev(n=9)x1.00 -> thr 0.30/0.05 both proportional lev<=2.0
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 8 via mutant from a8ca308ca0cb
-- **search-burden headroom: 683,212** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 118. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.29 (need +0.25), 7073 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.48 (need +0.35), 100% of 20 instances positive (need 70%), median DD -17.8% / worst -29.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.55, retained 70% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.41 (need +0.15), 3x +0.36 (need +0.00), +1 bar delay +0.42 (need +0.10) |
-| PASS | G5-permutation | real +0.45 vs null +0.02+-0.06 (p99 +0.18) -> z=6.7, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.22 after 118 confirmation tests (would still pass up to 683,212); Bonferroni p 1.32e-09 (need <=0.05) \| stricter all-trials view (4480 screened): DSR 1.000 vs SR 0.32, p 4.99e-08 |
-| PASS | G7-stress-pool | median alphaSR +0.45 (need +0.28), 100% positive (need 65%), CAGR +2.1%, median DD -18.9% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.45 | +0.42 | +2.1% | 5.4% | -18.9% | 0.05 | 47 | 0.31% | 0.10 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.33, `eq_largecap_break_daily` +0.17, `eq_smallcap_daily` +0.09, `rates_daily` -0.01, `eq_index_daily` -0.02, `fx_major_daily` -0.08
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 9
-      },
-      "weight": 1.0,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.3,
-  "exit_threshold": 0.05,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.15,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "48b28580e889",
-  "generation": 8,
-  "origin": "mutant",
-  "parents": [
-    "a8ca308ca0cb"
-  ]
-}
-```
-
-</details>
-
-### `deee71301b5f` — commodity_meanrev_daily
-
-```
-bollinger(k=1.99,n=84)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.21/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 8 via mutant from 8eb8425dceaf
-- **search-burden headroom: 8,287,751** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 119. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.26 (need +0.25), 13570 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.51 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.5% / worst -40.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.40 (need +0.25) vs early half +0.63, retained 63% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.47 (need +0.10) |
-| PASS | G5-permutation | real +0.52 vs null +0.05+-0.06 (p99 +0.18) -> z=8.3, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.22 after 119 confirmation tests (would still pass up to 8,287,751); Bonferroni p 0.00e+00 (need <=0.05) \| stricter all-trials view (4480 screened): DSR 1.000 vs SR 0.32, p 0.00e+00 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +3.6%, median DD -27.6% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.44 | +3.6% | 8.8% | -27.6% | 0.06 | 93 | 0.53% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.09, `eq_index_daily` -0.01, `rates_daily` -0.02, `fx_em_daily` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9888,
-        "n": 84
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.214,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.12,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "deee71301b5f",
-  "generation": 8,
-  "origin": "mutant",
-  "parents": [
-    "8eb8425dceaf"
-  ]
-}
-```
-
-</details>
-
-### `7474113c038d` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.21/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 9 via mutant from deee71301b5f
-- **search-burden headroom: 5,813,962** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 138. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.26 (need +0.25), 13655 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.51 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.7% / worst -43.7% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.40 (need +0.25) vs early half +0.64, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.43 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.04+-0.06 (p99 +0.17) -> z=8.1, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.23 after 138 confirmation tests (would still pass up to 5,813,962); Bonferroni p 3.06e-14 (need <=0.05) \| stricter all-trials view (5200 screened): DSR 1.000 vs SR 0.32, p 1.15e-12 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +3.7%, median DD -27.7% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.45 | +3.7% | 9.0% | -27.7% | 0.07 | 94 | 0.55% | 0.19 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.08, `eq_index_daily` -0.00, `rates_daily` -0.01, `fx_em_daily` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.214,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.12,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "7474113c038d",
-  "generation": 9,
-  "origin": "mutant",
-  "parents": [
-    "deee71301b5f"
-  ]
-}
-```
-
-</details>
-
-### `a07e6aa7fed5` — commodity_meanrev_daily
-
-```
-rsi_rev(n=12)x0.91 + rsi_rev(n=16)x1.35 -> thr 0.30/0.03 both proportional lev<=1.5
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 9 via mutant from b6beb7fb85f0
-- **search-burden headroom: 1,665,995** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 139. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.35 (need +0.25), 7812 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -18.8% / worst -31.7% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.60, retained 65% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.00] |
-| PASS | G4-stress | 2x costs +0.40 (need +0.15), 3x +0.35 (need +0.00), +1 bar delay +0.41 (need +0.10) |
-| PASS | G5-permutation | real +0.45 vs null +0.03+-0.06 (p99 +0.16) -> z=6.7, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.23 after 139 confirmation tests (would still pass up to 1,665,995); Bonferroni p 1.60e-09 (need <=0.05) \| stricter all-trials view (5200 screened): DSR 1.000 vs SR 0.32, p 5.99e-08 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +2.6%, median DD -22.1% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.43 | +2.6% | 6.5% | -22.1% | 0.07 | 52 | 0.35% | 0.13 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.35, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.09, `rates_daily` +0.00, `eq_index_daily` -0.02, `fx_em_daily` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 12
-      },
-      "weight": 0.913,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.3,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.5,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "a07e6aa7fed5",
-  "generation": 9,
-  "origin": "mutant",
-  "parents": [
-    "b6beb7fb85f0"
-  ]
-}
-```
-
-</details>
-
-### `c862cbf498ea` — commodity_meanrev_daily
-
-```
-rsi_rev(n=13)x1.00 + rsi_rev(n=28)x1.35 -> thr 0.30/0.05 both proportional lev<=2.0
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 10 via mutant from 48b28580e889
-- **search-burden headroom: 257,195** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 158. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.31 (need +0.25), 5266 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.46 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.0% / worst -29.6% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.54, retained 73% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=+0.01] |
-| PASS | G4-stress | 2x costs +0.42 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.41 (need +0.10) |
-| PASS | G5-permutation | real +0.48 vs null +0.03+-0.06 (p99 +0.14) -> z=7.4, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.24 after 158 confirmation tests (would still pass up to 257,195); Bonferroni p 1.00e-11 (need <=0.05) \| stricter all-trials view (5920 screened): DSR 1.000 vs SR 0.33, p 3.75e-10 |
-| PASS | G7-stress-pool | median alphaSR +0.42 (need +0.28), 100% positive (need 65%), CAGR +2.0%, median DD -18.1% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.42 | +0.42 | +2.0% | 5.1% | -18.1% | 0.05 | 34 | 0.20% | 0.09 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_intraday_15m` +0.22, `eq_smallcap_daily` +0.17, `eq_largecap_break_daily` +0.14, `eq_index_daily` -0.02, `rates_daily` -0.02
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 13
-      },
-      "weight": 1.0,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.3,
-  "exit_threshold": 0.05,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.15,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "c862cbf498ea",
-  "generation": 10,
-  "origin": "mutant",
-  "parents": [
-    "48b28580e889"
-  ]
-}
-```
-
-</details>
-
-### `a63d754afd3f` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.21/0.03 both proportional lev<=1.7  [tp 4.9atr]
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 10 via mutant from 7474113c038d
-- **search-burden headroom: 3,109,253** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 159. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.26 (need +0.25), 13676 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.51 (need +0.35), 100% of 20 instances positive (need 70%), median DD -25.2% / worst -43.4% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.64, retained 61% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.43 (need +0.15), 3x +0.37 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.50 vs null +0.02+-0.07 (p99 +0.15) -> z=7.3, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.24 after 159 confirmation tests (would still pass up to 3,109,253); Bonferroni p 2.67e-11 (need <=0.05) \| stricter all-trials view (5920 screened): DSR 1.000 vs SR 0.33, p 9.92e-10 |
-| PASS | G7-stress-pool | median alphaSR +0.45 (need +0.28), 100% positive (need 65%), CAGR +3.6%, median DD -27.7% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.45 | +0.45 | +3.6% | 8.9% | -27.7% | 0.07 | 94 | 0.55% | 0.19 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.08, `eq_index_daily` +0.00, `rates_daily` -0.01, `fx_em_daily` -0.07
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.214,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.12,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": 4.88,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "a63d754afd3f",
-  "generation": 10,
-  "origin": "mutant",
-  "parents": [
-    "7474113c038d"
-  ]
-}
-```
-
-</details>
-
-### `869724b2bed1` — commodity_meanrev_daily
-
-```
-rsi_rev(n=10)x1.00 + rsi_rev(n=28)x1.35 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 11 via mutant from 05659aa4ac6a
-- **search-burden headroom: 250,743** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 178. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.33 (need +0.25), 7302 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.46 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.3% / worst -33.4% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.41 (need +0.25) vs early half +0.49, retained 84% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.41 (need +0.15), 3x +0.35 (need +0.00), +1 bar delay +0.42 (need +0.10) |
-| PASS | G5-permutation | real +0.47 vs null +0.02+-0.07 (p99 +0.17) -> z=6.0, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.25 after 178 confirmation tests (would still pass up to 250,743); Bonferroni p 1.30e-07 (need <=0.05) \| stricter all-trials view (6640 screened): DSR 1.000 vs SR 0.34, p 4.86e-06 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +2.2%, median DD -18.5% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.42 | +2.2% | 5.4% | -18.5% | 0.06 | 48 | 0.28% | 0.10 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.35, `eq_largecap_break_daily` +0.17, `eq_smallcap_daily` +0.09, `eq_index_daily` +0.00, `rates_daily` -0.01, `eq_intraday_15m` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 10
-      },
-      "weight": 1.0,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "869724b2bed1",
-  "generation": 11,
-  "origin": "mutant",
-  "parents": [
-    "05659aa4ac6a"
-  ]
-}
-```
-
-</details>
-
-### `c860219fc8e1` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.28/0.03 both proportional lev<=2.0
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 11 via crossover from 7474113c038d, 43f4ebad86e7
-- **search-burden headroom: 2,068,378** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 179. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 11987 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.5% / worst -41.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.63, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.47 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.04+-0.05 (p99 +0.15) -> z=9.1, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.25 after 179 confirmation tests (would still pass up to 2,068,378); Bonferroni p 0.00e+00 (need <=0.05) \| stricter all-trials view (6640 screened): DSR 1.000 vs SR 0.34, p 0.00e+00 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +3.7%, median DD -29.0% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.45 | +3.7% | 8.9% | -29.0% | 0.06 | 82 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.10, `rates_daily` +0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.03
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "c860219fc8e1",
-  "generation": 11,
-  "origin": "crossover",
-  "parents": [
-    "7474113c038d",
-    "43f4ebad86e7"
-  ]
-}
-```
-
-</details>
-
-### `03f9c3730fce` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.28/0.03 both proportional lev<=2.0  [tp 6.1atr]
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 12 via mutant from c860219fc8e1
-- **search-burden headroom: 1,440,041** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 198. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.26 (need +0.25), 11992 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.51 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.5% / worst -41.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.63, retained 61% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.03+-0.06 (p99 +0.17) -> z=7.7, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.25 after 198 confirmation tests (would still pass up to 1,440,041); Bonferroni p 9.45e-13 (need <=0.05) \| stricter all-trials view (7360 screened): DSR 1.000 vs SR 0.35, p 3.51e-11 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +3.6%, median DD -29.0% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.44 | +3.6% | 8.9% | -29.0% | 0.06 | 82 | 0.51% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.09, `rates_daily` +0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.04
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.1856,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": 6.1,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "03f9c3730fce",
-  "generation": 12,
-  "origin": "mutant",
-  "parents": [
-    "c860219fc8e1"
-  ]
-}
-```
-
-</details>
-
-### `b83cba13320a` — commodity_meanrev_daily
-
-```
-rsi_rev(n=11)x1.00 + rsi_rev(n=28)x1.35 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 12 via mutant from 869724b2bed1
-- **search-burden headroom: 263,476** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 199. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.30 (need +0.25), 6803 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.48 (need +0.35), 100% of 20 instances positive (need 70%), median DD -15.7% / worst -27.4% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.53, retained 73% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.00] |
-| PASS | G4-stress | 2x costs +0.41 (need +0.15), 3x +0.37 (need +0.00), +1 bar delay +0.42 (need +0.10) |
-| PASS | G5-permutation | real +0.47 vs null +0.03+-0.07 (p99 +0.15) -> z=6.8, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.25 after 199 confirmation tests (would still pass up to 263,476); Bonferroni p 1.21e-09 (need <=0.05) \| stricter all-trials view (7360 screened): DSR 1.000 vs SR 0.35, p 4.48e-08 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +2.1%, median DD -17.3% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.42 | +2.1% | 5.3% | -17.3% | 0.05 | 44 | 0.25% | 0.10 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.34, `eq_largecap_break_daily` +0.15, `eq_smallcap_daily` +0.11, `eq_intraday_15m` +0.02, `rates_daily` -0.00, `eq_index_daily` -0.01
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.06, `rates_daily` +0.02, `eq_index_daily` +0.01, `eq_intraday_15m` -0.05
 
 <details><summary>genome JSON</summary>
 
@@ -1005,1336 +101,226 @@ Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.34, `
     {
       "name": "rsi_rev",
       "params": {
-        "n": 28
+        "n": 19
       },
-      "weight": 1.3532,
+      "weight": 1.5291,
       "mode": 1
     }
   ],
   "filters": [],
   "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "b83cba13320a",
-  "generation": 12,
-  "origin": "mutant",
-  "parents": [
-    "869724b2bed1"
-  ]
-}
-```
-
-</details>
-
-### `31945cb3bd26` — commodity_meanrev_daily
-
-```
-rsi_rev(n=16)x1.35 + rsi_rev(n=28)x1.35 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 13 via crossover from 3425c77257d8, d4899bf20b6e
-- **search-burden headroom: 76,591** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 217. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 5462 trades, 75% instances positive |
-| PASS | G2-replication | median alphaSR +0.45 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.7% / worst -27.9% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.55, retained 68% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.02] |
-| PASS | G4-stress | 2x costs +0.40 (need +0.15), 3x +0.37 (need +0.00), +1 bar delay +0.41 (need +0.10) |
-| PASS | G5-permutation | real +0.48 vs null +0.03+-0.06 (p99 +0.17) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.26 after 217 confirmation tests (would still pass up to 76,591); Bonferroni p 5.31e-11 (need <=0.05) \| stricter all-trials view (8080 screened): DSR 0.999 vs SR 0.35, p 1.98e-09 |
-| PASS | G7-stress-pool | median alphaSR +0.43 (need +0.28), 100% positive (need 65%), CAGR +2.0%, median DD -18.0% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.43 | +0.41 | +2.0% | 5.1% | -18.0% | 0.06 | 36 | 0.19% | 0.09 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_intraday_15m` +0.20, `eq_largecap_break_daily` +0.16, `eq_smallcap_daily` +0.16, `rates_daily` +0.02, `eq_index_daily` -0.03
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "31945cb3bd26",
-  "generation": 13,
-  "origin": "crossover",
-  "parents": [
-    "3425c77257d8",
-    "d4899bf20b6e"
-  ]
-}
-```
-
-</details>
-
-### `c8879b484663` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.35 -> thr 0.28/0.03 both proportional lev<=2.0
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 13 via crossover from c860219fc8e1, 03f9c3730fce
-- **search-burden headroom: 1,077,347** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 218. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 11987 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.5% / worst -41.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.63, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.47 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.04+-0.07 (p99 +0.20) -> z=6.5, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.26 after 218 confirmation tests (would still pass up to 1,077,347); Bonferroni p 7.03e-09 (need <=0.05) \| stricter all-trials view (8080 screened): DSR 1.000 vs SR 0.35, p 2.61e-07 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +3.7%, median DD -29.0% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.45 | +3.7% | 8.9% | -29.0% | 0.06 | 82 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.10, `rates_daily` +0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.03
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.1856,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "c8879b484663",
-  "generation": 13,
-  "origin": "crossover",
-  "parents": [
-    "c860219fc8e1",
-    "03f9c3730fce"
-  ]
-}
-```
-
-</details>
-
-### `0642136ed2e1` — commodity_meanrev_daily
-
-```
-rsi_rev(n=13)x0.50 -> thr 0.30/0.03 both proportional lev<=1.4
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 13 via mutant from cc8cacb4d3e9
-- **search-burden headroom: 59,777** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 219. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.32 (need +0.25), 15211 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.46 (need +0.35), 100% of 20 instances positive (need 70%), median DD -23.1% / worst -38.0% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.39 (need +0.25) vs early half +0.54, retained 73% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.02] |
-| PASS | G4-stress | 2x costs +0.35 (need +0.15), 3x +0.28 (need +0.00), +1 bar delay +0.38 (need +0.10) |
-| PASS | G5-permutation | real +0.41 vs null -0.00+-0.06 (p99 +0.14) -> z=6.5, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.26 after 219 confirmation tests (would still pass up to 59,777); Bonferroni p 1.05e-08 (need <=0.05) \| stricter all-trials view (8080 screened): DSR 0.999 vs SR 0.35, p 3.87e-07 |
-| PASS | G7-stress-pool | median alphaSR +0.41 (need +0.28), 100% positive (need 65%), CAGR +2.7%, median DD -24.3% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.41 | +0.40 | +2.7% | 7.3% | -24.3% | 0.07 | 101 | 0.59% | 0.15 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.15, `rates_daily` +0.01, `eq_smallcap_daily` -0.00, `eq_index_daily` -0.02, `fx_major_daily` -0.12
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 13
-      },
-      "weight": 0.4973,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.3,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.3935,
-  "rebalance_band": 0.1959,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "0642136ed2e1",
-  "generation": 13,
-  "origin": "mutant",
-  "parents": [
-    "cc8cacb4d3e9"
-  ]
-}
-```
-
-</details>
-
-### `5ea21d4fc2f9` — eq_largecap_daily
-
-```
-bollinger(k=2.91,n=24)x1.00 -> thr 0.21/0.03 both proportional lev<=1.7
-```
-
-- market: **eq_largecap_daily** (equity, vol 28%, spread 3.0bp, perfect-foresight ceiling SR 0.82)
-- found in generation 13 via mutant from 1e2676bd17a3
-- **search-burden headroom: 229** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 222. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.28 (need +0.25), 12688 trades, 88% instances positive |
-| PASS | G2-replication | median alphaSR +0.38 (need +0.35), 100% of 20 instances positive (need 70%), median DD -32.5% / worst -51.9% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.26 (need +0.25) vs early half +0.43, retained 60% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=-0.04] |
-| PASS | G4-stress | 2x costs +0.24 (need +0.15), 3x +0.18 (need +0.00), +1 bar delay +0.29 (need +0.10) |
-| PASS | G5-permutation | real +0.34 vs null +0.04+-0.06 (p99 +0.16) -> z=4.8, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 0.953 (need 0.95) vs luck bar SR 0.26 after 222 confirmation tests (would still pass up to 229); Bonferroni p 2.20e-04 (need <=0.05) \| stricter all-trials view (8080 screened): DSR 0.114 vs SR 0.35, p 8.02e-03 |
-| PASS | G7-stress-pool | median alphaSR +0.36 (need +0.28), 100% positive (need 65%), CAGR +2.5%, median DD -29.2% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.36 | +0.34 | +2.5% | 8.3% | -29.2% | 0.06 | 85 | 0.59% | 0.23 |
-
-Travels to (alphaSR on other families, not a gate): `commodity_meanrev_daily` +0.45, `eq_largecap_break_daily` +0.18, `eq_index_daily` +0.01, `eq_smallcap_daily` +0.01, `rates_daily` -0.01, `fx_em_daily` -0.04
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "eq_largecap_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 2.9079,
-        "n": 24
-      },
-      "weight": 1.0,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2087,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "5ea21d4fc2f9",
-  "generation": 13,
-  "origin": "mutant",
-  "parents": [
-    "1e2676bd17a3"
-  ]
-}
-```
-
-</details>
-
-### `8af95dc1b665` — commodity_meanrev_daily
-
-```
-rsi_rev(n=10)x1.00 + rsi_rev(n=28)x1.35 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 14 via mutant from 869724b2bed1
-- **search-burden headroom: 124,272** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 238. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.33 (need +0.25), 7302 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.46 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.3% / worst -33.4% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.41 (need +0.25) vs early half +0.49, retained 84% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.41 (need +0.15), 3x +0.35 (need +0.00), +1 bar delay +0.42 (need +0.10) |
-| PASS | G5-permutation | real +0.47 vs null +0.02+-0.06 (p99 +0.14) -> z=7.8, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.26 after 238 confirmation tests (would still pass up to 124,272); Bonferroni p 6.61e-13 (need <=0.05) \| stricter all-trials view (8800 screened): DSR 1.000 vs SR 0.36, p 2.44e-11 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +2.2%, median DD -18.5% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.42 | +2.2% | 5.4% | -18.5% | 0.06 | 48 | 0.28% | 0.10 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.35, `eq_largecap_break_daily` +0.17, `eq_smallcap_daily` +0.09, `eq_index_daily` +0.00, `rates_daily` -0.01, `eq_intraday_15m` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 10
-      },
-      "weight": 1.0,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2934,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "8af95dc1b665",
-  "generation": 14,
-  "origin": "mutant",
-  "parents": [
-    "869724b2bed1"
-  ]
-}
-```
-
-</details>
-
-### `480dc348d395` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.27 -> thr 0.28/0.03 both proportional lev<=2.0
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 14 via mutant from c860219fc8e1
-- **search-burden headroom: 831,003** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 239. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 12035 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.8% / worst -41.7% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.62, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.43 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.04+-0.06 (p99 +0.16) -> z=7.8, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.26 after 239 confirmation tests (would still pass up to 831,003); Bonferroni p 6.37e-13 (need <=0.05) \| stricter all-trials view (8800 screened): DSR 1.000 vs SR 0.36, p 2.34e-11 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +3.7%, median DD -29.6% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.45 | +3.7% | 9.0% | -29.6% | 0.06 | 83 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.10, `rates_daily` -0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.02
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.2732,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "480dc348d395",
-  "generation": 14,
-  "origin": "mutant",
-  "parents": [
-    "c860219fc8e1"
-  ]
-}
-```
-
-</details>
-
-### `2129e0f45017` — eq_largecap_daily
-
-```
-bollinger(k=3.00,n=25)x1.00 -> thr 0.21/0.03 both proportional lev<=1.7
-```
-
-- market: **eq_largecap_daily** (equity, vol 28%, spread 3.0bp, perfect-foresight ceiling SR 0.82)
-- found in generation 14 via mutant from 5ea21d4fc2f9
-- **search-burden headroom: 268** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 242. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 12433 trades, 88% instances positive |
-| PASS | G2-replication | median alphaSR +0.37 (need +0.35), 100% of 20 instances positive (need 70%), median DD -31.4% / worst -51.4% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.28 (need +0.25) vs early half +0.41, retained 69% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.06 (allowed 0.30) [control_efficient_daily=-0.06, control_martingale_daily=-0.03] |
-| PASS | G4-stress | 2x costs +0.25 (need +0.15), 3x +0.19 (need +0.00), +1 bar delay +0.29 (need +0.10) |
-| PASS | G5-permutation | real +0.34 vs null +0.04+-0.06 (p99 +0.17) -> z=5.0, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 0.959 (need 0.95) vs luck bar SR 0.26 after 242 confirmation tests (would still pass up to 268); Bonferroni p 6.43e-05 (need <=0.05) \| stricter all-trials view (8800 screened): DSR 0.126 vs SR 0.36, p 2.34e-03 |
-| PASS | G7-stress-pool | median alphaSR +0.36 (need +0.28), 100% positive (need 65%), CAGR +2.5%, median DD -28.0% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.36 | +0.35 | +2.5% | 8.1% | -28.0% | 0.07 | 83 | 0.55% | 0.22 |
-
-Travels to (alphaSR on other families, not a gate): `commodity_meanrev_daily` +0.46, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.02, `rates_daily` +0.00, `eq_index_daily` +0.00, `fx_em_daily` -0.04
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "eq_largecap_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 3.0,
-        "n": 25
-      },
-      "weight": 1.0,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2087,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "2129e0f45017",
-  "generation": 14,
-  "origin": "mutant",
-  "parents": [
-    "5ea21d4fc2f9"
-  ]
-}
-```
-
-</details>
-
-### `53de0df77ddb` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.27 -> thr 0.28/0.03 both proportional lev<=2.0  [hold<=80]
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 15 via mutant from 480dc348d395
-- **search-burden headroom: 560,981** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 257. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 11939 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -25.4% / worst -41.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.61, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.43 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.50 vs null +0.02+-0.06 (p99 +0.17) -> z=7.5, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.27 after 257 confirmation tests (would still pass up to 560,981); Bonferroni p 5.59e-12 (need <=0.05) \| stricter all-trials view (9520 screened): DSR 1.000 vs SR 0.36, p 2.07e-10 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +3.7%, median DD -29.9% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.44 | +3.7% | 9.0% | -29.9% | 0.06 | 82 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.10, `rates_daily` -0.00, `eq_index_daily` -0.02, `fx_em_daily` -0.02
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.2732,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": 80,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "53de0df77ddb",
-  "generation": 15,
-  "origin": "mutant",
-  "parents": [
-    "480dc348d395"
-  ]
-}
-```
-
-</details>
-
-### `c7e87eea3e42` — commodity_meanrev_daily
-
-```
-rsi_rev(n=37)x1.35 + rsi_rev(n=8)x1.00 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 15 via mutant from 8af95dc1b665
-- **search-burden headroom: 443,571** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 258. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.34 (need +0.25), 8167 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -17.5% / worst -30.3% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.43 (need +0.25) vs early half +0.59, retained 72% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.04 (allowed 0.30) [control_efficient_daily=-0.04, control_martingale_daily=-0.03] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.37 (need +0.00), +1 bar delay +0.44 (need +0.10) |
-| PASS | G5-permutation | real +0.49 vs null +0.01+-0.06 (p99 +0.16) -> z=7.6, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.27 after 258 confirmation tests (would still pass up to 443,571); Bonferroni p 5.41e-12 (need <=0.05) \| stricter all-trials view (9520 screened): DSR 1.000 vs SR 0.36, p 2.00e-10 |
-| PASS | G7-stress-pool | median alphaSR +0.43 (need +0.28), 100% positive (need 65%), CAGR +1.9%, median DD -17.4% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.43 | +0.39 | +1.9% | 5.2% | -17.4% | 0.05 | 54 | 0.33% | 0.10 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.30, `eq_largecap_break_daily` +0.16, `eq_smallcap_daily` +0.02, `rates_daily` -0.01, `eq_index_daily` -0.07, `fx_em_daily` -0.09
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 37
-      },
-      "weight": 1.3532,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 8
-      },
-      "weight": 1.0,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2934,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "c7e87eea3e42",
-  "generation": 15,
-  "origin": "mutant",
-  "parents": [
-    "8af95dc1b665"
-  ]
-}
-```
-
-</details>
-
-### `b8dca1603e1e` — commodity_meanrev_daily
-
-```
-rsi_rev(n=12)x1.00 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 15 via mutant from 8af95dc1b665
-- **search-burden headroom: 19,288** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 260. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.39 (need +0.25), 10817 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.43 (need +0.35), 100% of 20 instances positive (need 70%), median DD -22.3% / worst -40.7% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.35 (need +0.25) vs early half +0.48, retained 74% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.35 (need +0.15), 3x +0.28 (need +0.00), +1 bar delay +0.39 (need +0.10) |
-| PASS | G5-permutation | real +0.42 vs null +0.01+-0.07 (p99 +0.16) -> z=6.1, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.27 after 260 confirmation tests (would still pass up to 19,288); Bonferroni p 1.43e-07 (need <=0.05) \| stricter all-trials view (9520 screened): DSR 0.984 vs SR 0.36, p 5.22e-06 |
-| PASS | G7-stress-pool | median alphaSR +0.40 (need +0.28), 100% positive (need 65%), CAGR +2.7%, median DD -26.4% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.40 | +0.39 | +2.7% | 7.5% | -26.4% | 0.06 | 71 | 0.58% | 0.16 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.32, `eq_largecap_break_daily` +0.14, `rates_daily` -0.00, `eq_smallcap_daily` -0.02, `eq_index_daily` -0.02, `fx_major_daily` -0.09
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 12
-      },
-      "weight": 1.0,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2934,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "b8dca1603e1e",
-  "generation": 15,
-  "origin": "mutant",
-  "parents": [
-    "8af95dc1b665"
-  ]
-}
-```
-
-</details>
-
-### `e8840ff23941` — eq_largecap_daily
-
-```
-bollinger(k=3.00,n=25)x1.00 -> thr 0.20/0.03 both proportional lev<=1.7
-```
-
-- market: **eq_largecap_daily** (equity, vol 28%, spread 3.0bp, perfect-foresight ceiling SR 0.82)
-- found in generation 15 via mutant from 2129e0f45017
-- **search-burden headroom: 263** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 262. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.28 (need +0.25), 12489 trades, 88% instances positive |
-| PASS | G2-replication | median alphaSR +0.38 (need +0.35), 100% of 20 instances positive (need 70%), median DD -30.2% / worst -51.5% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.28 (need +0.25) vs early half +0.40, retained 70% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.06 (allowed 0.30) [control_efficient_daily=-0.06, control_martingale_daily=-0.03] |
-| PASS | G4-stress | 2x costs +0.26 (need +0.15), 3x +0.19 (need +0.00), +1 bar delay +0.30 (need +0.10) |
-| PASS | G5-permutation | real +0.34 vs null +0.04+-0.06 (p99 +0.18) -> z=4.8, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 0.951 (need 0.95) vs luck bar SR 0.27 after 262 confirmation tests (would still pass up to 263); Bonferroni p 2.07e-04 (need <=0.05) \| stricter all-trials view (9520 screened): DSR 0.106 vs SR 0.36, p 7.51e-03 |
-| PASS | G7-stress-pool | median alphaSR +0.36 (need +0.28), 100% positive (need 65%), CAGR +2.5%, median DD -28.2% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.36 | +0.35 | +2.5% | 8.1% | -28.2% | 0.07 | 84 | 0.56% | 0.22 |
-
-Travels to (alphaSR on other families, not a gate): `commodity_meanrev_daily` +0.45, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.01, `rates_daily` +0.01, `eq_index_daily` +0.00, `fx_em_daily` -0.04
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "eq_largecap_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 3.0,
-        "n": 25
-      },
-      "weight": 1.0,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2029,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "e8840ff23941",
-  "generation": 15,
-  "origin": "mutant",
-  "parents": [
-    "2129e0f45017"
-  ]
-}
-```
-
-</details>
-
-### `8af53c0789f6` — commodity_meanrev_daily
-
-```
-rsi_rev(n=16)x1.35 + rsi_rev(n=28)x1.35 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 16 via mutant from abf6c0225ffd
-- **search-burden headroom: 43,371** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 276. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 5462 trades, 75% instances positive |
-| PASS | G2-replication | median alphaSR +0.45 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.7% / worst -27.9% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.55, retained 68% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.02] |
-| PASS | G4-stress | 2x costs +0.40 (need +0.15), 3x +0.37 (need +0.00), +1 bar delay +0.41 (need +0.10) |
-| PASS | G5-permutation | real +0.48 vs null +0.02+-0.06 (p99 +0.18) -> z=7.4, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.27 after 276 confirmation tests (would still pass up to 43,371); Bonferroni p 1.37e-11 (need <=0.05) \| stricter all-trials view (10240 screened): DSR 0.996 vs SR 0.37, p 5.09e-10 |
-| PASS | G7-stress-pool | median alphaSR +0.43 (need +0.28), 100% positive (need 65%), CAGR +2.0%, median DD -18.0% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.43 | +0.41 | +2.0% | 5.1% | -18.0% | 0.06 | 36 | 0.19% | 0.09 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_intraday_15m` +0.20, `eq_largecap_break_daily` +0.16, `eq_smallcap_daily` +0.16, `rates_daily` +0.02, `eq_index_daily` -0.03
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.3532,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.173,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "8af53c0789f6",
-  "generation": 16,
-  "origin": "mutant",
-  "parents": [
-    "abf6c0225ffd"
-  ]
-}
-```
-
-</details>
-
-### `a48393e6deb4` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.27 -> thr 0.29/0.03 both proportional lev<=2.0
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 16 via mutant from 480dc348d395
-- **search-burden headroom: 506,445** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 277. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 11827 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.8% / worst -41.9% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.62, retained 61% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.39 (need +0.00), +1 bar delay +0.47 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.03+-0.06 (p99 +0.19) -> z=7.5, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.27 after 277 confirmation tests (would still pass up to 506,445); Bonferroni p 6.09e-12 (need <=0.05) \| stricter all-trials view (10240 screened): DSR 1.000 vs SR 0.37, p 2.25e-10 |
-| PASS | G7-stress-pool | median alphaSR +0.48 (need +0.28), 100% positive (need 65%), CAGR +3.6%, median DD -29.4% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.48 | +0.44 | +3.6% | 9.0% | -29.4% | 0.06 | 81 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.11, `rates_daily` +0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.02
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.2732,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2903,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 2.0,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "a48393e6deb4",
-  "generation": 16,
-  "origin": "mutant",
-  "parents": [
-    "480dc348d395"
-  ]
-}
-```
-
-</details>
-
-### `867146acee0d` — commodity_meanrev_daily
-
-```
-rsi_rev(n=10)x1.00 + rsi_rev(n=28)x1.35 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 17 via mutant from 869724b2bed1
-- **search-burden headroom: 69,669** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 295. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.33 (need +0.25), 7302 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.46 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.3% / worst -33.4% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.41 (need +0.25) vs early half +0.49, retained 84% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.03 (allowed 0.30) [control_efficient_daily=-0.03, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.41 (need +0.15), 3x +0.35 (need +0.00), +1 bar delay +0.42 (need +0.10) |
-| PASS | G5-permutation | real +0.47 vs null +0.02+-0.07 (p99 +0.15) -> z=6.7, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.28 after 295 confirmation tests (would still pass up to 69,669); Bonferroni p 3.94e-09 (need <=0.05) \| stricter all-trials view (10960 screened): DSR 0.998 vs SR 0.37, p 1.46e-07 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +2.2%, median DD -18.5% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.42 | +2.2% | 5.4% | -18.5% | 0.06 | 48 | 0.28% | 0.10 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.35, `eq_largecap_break_daily` +0.17, `eq_smallcap_daily` +0.09, `eq_index_daily` +0.00, `rates_daily` -0.01, `eq_intraday_15m` -0.05
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 10
-      },
-      "weight": 1.0,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 28
-      },
-      "weight": 1.3532,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.6686,
-  "rebalance_band": 0.394,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "867146acee0d",
-  "generation": 17,
-  "origin": "mutant",
-  "parents": [
-    "869724b2bed1"
-  ]
-}
-```
-
-</details>
-
-### `42dac13e16ac` — commodity_meanrev_daily
-
-```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.27 -> thr 0.28/0.03 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 17 via crossover from 480dc348d395, 3425c77257d8
-- **search-burden headroom: 419,851** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 296. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 12035 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.8% / worst -41.7% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.62, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.43 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.04+-0.06 (p99 +0.15) -> z=8.1, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.28 after 296 confirmation tests (would still pass up to 419,851); Bonferroni p 9.86e-14 (need <=0.05) \| stricter all-trials view (10960 screened): DSR 1.000 vs SR 0.37, p 3.65e-12 |
-| PASS | G7-stress-pool | median alphaSR +0.47 (need +0.28), 100% positive (need 65%), CAGR +3.7%, median DD -29.6% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.47 | +0.45 | +3.7% | 9.0% | -29.6% | 0.06 | 83 | 0.52% | 0.18 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.10, `rates_daily` -0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.02
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "bollinger",
-      "params": {
-        "k": 1.9265,
-        "n": 78
-      },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.2732,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
-  "direction": "both",
-  "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
-  "stop_atr": null,
-  "take_atr": null,
-  "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
-  "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "42dac13e16ac",
-  "generation": 17,
-  "origin": "crossover",
-  "parents": [
-    "480dc348d395",
-    "3425c77257d8"
-  ]
-}
-```
-
-</details>
-
-### `745cc2b1f2a0` — commodity_meanrev_daily
-
-```
-rsi_rev(n=13)x1.00 + rsi_rev(n=30)x1.08 -> thr 0.21/0.05 both proportional lev<=1.7
-```
-
-- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 18 via mutant from 87a6fb75501d
-- **search-burden headroom: 264,442** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 315. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
-
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.28 (need +0.25), 13414 trades, 88% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -16.0% / worst -32.8% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.37 (need +0.25) vs early half +0.58, retained 63% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.01] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.44 (need +0.10) |
-| PASS | G5-permutation | real +0.50 vs null +0.03+-0.07 (p99 +0.18) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.28 after 315 confirmation tests (would still pass up to 264,442); Bonferroni p 1.36e-10 (need <=0.05) \| stricter all-trials view (11680 screened): DSR 1.000 vs SR 0.38, p 5.04e-09 |
-| PASS | G7-stress-pool | median alphaSR +0.49 (need +0.28), 100% positive (need 65%), CAGR +2.3%, median DD -18.4% |
-
-Confirmation-pool performance (third disjoint instance pool, 20 instances):
-
-| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
-|---|---|---|---|---|---|---|---|---|
-| +0.49 | +0.44 | +2.3% | 5.5% | -18.4% | 0.07 | 88 | 0.32% | 0.11 |
-
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.10, `rates_daily` +0.01, `eq_index_daily` +0.01, `fx_major_daily` -0.09
-
-<details><summary>genome JSON</summary>
-
-```json
-{
-  "market": "commodity_meanrev_daily",
-  "genes": [
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 13
-      },
-      "weight": 1.0,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 30
-      },
-      "weight": 1.0798,
-      "mode": 1
-    }
-  ],
-  "filters": [],
-  "combine": "weighted",
-  "entry_threshold": 0.207,
+  "entry_threshold": 0.4,
   "exit_threshold": 0.05,
   "direction": "both",
   "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.1959,
-  "atr_n": 32,
+  "base_size": 1.0,
+  "target_vol": 0.15,
+  "max_leverage": 2.0,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
   "stop_atr": null,
   "take_atr": null,
   "trail_atr": null,
   "max_hold": null,
-  "min_hold": 4,
+  "min_hold": 1,
   "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "745cc2b1f2a0",
-  "generation": 18,
+  "dd_resume": 20,
+  "bot_id": "aae521bbfb56",
+  "generation": 13,
   "origin": "mutant",
   "parents": [
-    "87a6fb75501d"
+    "289b0b31a93c"
   ]
 }
 ```
 
 </details>
 
-### `1db3a9db76fd` — commodity_meanrev_daily
+### `696e318c1767` — commodity_meanrev_daily
 
 ```
-bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.68 -> thr 0.28/0.03 both proportional lev<=1.7
+rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both proportional lev<=2.9
 ```
 
 - market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 18 via mutant from 480dc348d395
-- **search-burden headroom: 374,174** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 317. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- found in generation 14 via mutant from 037fff769b79
+- **search-burden headroom: 7,640** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.005 alpha Sharpe at G1-oos** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
 
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.27 (need +0.25), 11990 trades, 100% instances positive |
-| PASS | G2-replication | median alphaSR +0.50 (need +0.35), 100% of 20 instances positive (need 70%), median DD -23.6% / worst -39.2% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.40 (need +0.25) vs early half +0.62, retained 64% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.02 (allowed 0.30) [control_efficient_daily=-0.02, control_martingale_daily=-0.02] |
-| PASS | G4-stress | 2x costs +0.44 (need +0.15), 3x +0.38 (need +0.00), +1 bar delay +0.46 (need +0.10) |
-| PASS | G5-permutation | real +0.51 vs null +0.03+-0.06 (p99 +0.16) -> z=8.5, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.28 after 317 confirmation tests (would still pass up to 374,174); Bonferroni p 0.00e+00 (need <=0.05) \| stricter all-trials view (11680 screened): DSR 1.000 vs SR 0.38, p 0.00e+00 |
-| PASS | G7-stress-pool | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +3.5%, median DD -28.2% |
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.005 | alphaSR +0.26 (need +0.25), 17372 trades, 88% instances positive |
+| PASS | G2-replication | +0.092 | median alphaSR +0.44 (need +0.35), 100% of 20 instances positive (need 70%), median DD -27.3% / worst -53.4% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.025 | late-half alphaSR +0.35, final-quarter +0.28 (both need +0.25) vs early half +0.48, retained 73% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.245 | worst \|alphaSR\| 0.06 (allowed 0.30) [control_efficient_daily=-0.06, control_martingale_daily=+0.00] |
+| PASS | G4-stress | +0.225 | 2x costs +0.38 (need +0.15), 3x +0.31 (need +0.00), +1 bar delay +0.41 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.46 vs null +0.01+-0.06 (p99 +0.17) -> z=7.0, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 7,640); Bonferroni p 4.82e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.930 vs SR 0.39, p 1.24e-08 |
+| PASS | G7-stress-pool | +0.123 | median alphaSR +0.40 (need +0.28), 100% positive (need 65%), CAGR +3.2%, median DD -27.7% |
 
 Confirmation-pool performance (third disjoint instance pool, 20 instances):
 
 | alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
 |---|---|---|---|---|---|---|---|---|
-| +0.46 | +0.45 | +3.5% | 8.5% | -28.2% | 0.07 | 82 | 0.50% | 0.17 |
+| +0.40 | +0.40 | +3.2% | 9.0% | -27.7% | 0.05 | 117 | 0.63% | 0.20 |
 
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.20, `eq_smallcap_daily` +0.10, `rates_daily` +0.00, `eq_index_daily` -0.01, `fx_em_daily` -0.05
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.31, `eq_largecap_break_daily` +0.16, `rates_daily` +0.04, `eq_index_daily` +0.02, `eq_smallcap_daily` -0.01, `fx_em_daily` -0.09
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 24
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.147,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "696e318c1767",
+  "generation": 14,
+  "origin": "mutant",
+  "parents": [
+    "037fff769b79"
+  ]
+}
+```
+
+</details>
+
+### `9dbfe2fa405b` — commodity_meanrev_daily
+
+```
+rsi_rev(n=11)x1.00 + rsi_rev(n=19)x1.53 -> thr 0.40/0.05 both proportional lev<=2.0
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 14 via mutant from aae521bbfb56
+- **search-burden headroom: 9,110** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.026 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.072 | alphaSR +0.32 (need +0.25), 7985 trades, 88% instances positive |
+| PASS | G2-replication | +0.073 | median alphaSR +0.42 (need +0.35), 100% of 20 instances positive (need 70%), median DD -33.3% / worst -48.6% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.026 | late-half alphaSR +0.42, final-quarter +0.28 (both need +0.25) vs early half +0.51, retained 83% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.294 | worst \|alphaSR\| 0.01 (allowed 0.30) [control_efficient_daily=-0.01, control_martingale_daily=+0.01] |
+| PASS | G4-stress | +0.195 | 2x costs +0.35 (need +0.15), 3x +0.29 (need +0.00), +1 bar delay +0.36 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.41 vs null +0.02+-0.07 (p99 +0.17) -> z=5.9, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 9,110); Bonferroni p 6.58e-07 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.946 vs SR 0.39, p 1.70e-05 |
+| PASS | G7-stress-pool | +0.136 | median alphaSR +0.42 (need +0.28), 100% positive (need 65%), CAGR +3.3%, median DD -32.2% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.42 | +0.39 | +3.3% | 9.4% | -32.2% | 0.06 | 51 | 0.54% | 0.15 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.06, `rates_daily` +0.02, `eq_index_daily` +0.01, `eq_intraday_15m` -0.05
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 11
+      },
+      "weight": 1.0,
+      "mode": 1
+    },
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 19
+      },
+      "weight": 1.5291,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.4,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.1877,
+  "max_leverage": 2.0,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "9dbfe2fa405b",
+  "generation": 14,
+  "origin": "mutant",
+  "parents": [
+    "aae521bbfb56"
+  ]
+}
+```
+
+</details>
+
+### `2f6e9a69b3d1` — commodity_meanrev_daily
+
+```
+bollinger(k=2.81,n=49)x0.32 -> thr 0.08/0.02 both proportional lev<=2.9  [hold<=106]
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 15 via mutant from 6b176fbaa56a
+- **search-burden headroom: 46,962** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.031 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.037 | alphaSR +0.29 (need +0.25), 14057 trades, 100% instances positive |
+| PASS | G2-replication | +0.139 | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -27.8% / worst -49.4% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.031 | late-half alphaSR +0.35, final-quarter +0.28 (both need +0.25) vs early half +0.58, retained 60% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.246 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=-0.02] |
+| PASS | G4-stress | +0.276 | 2x costs +0.43 (need +0.15), 3x +0.37 (need +0.00), +1 bar delay +0.45 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.48 vs null +0.04+-0.06 (p99 +0.19) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 46,962); Bonferroni p 1.08e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.997 vs SR 0.39, p 2.78e-09 |
+| PASS | G7-stress-pool | +0.174 | median alphaSR +0.45 (need +0.28), 100% positive (need 65%), CAGR +4.0%, median DD -31.4% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.45 | +0.43 | +4.0% | 10.5% | -31.4% | 0.05 | 96 | 0.70% | 0.23 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `eq_largecap_break_daily` +0.20, `eq_smallcap_daily` +0.06, `rates_daily` +0.01, `eq_index_daily` -0.02, `fx_em_daily` -0.03
 
 <details><summary>genome JSON</summary>
 
@@ -2345,78 +331,71 @@ Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `
     {
       "name": "bollinger",
       "params": {
-        "k": 1.9265,
-        "n": 78
+        "k": 2.8065,
+        "n": 49
       },
-      "weight": 0.596,
-      "mode": 1
-    },
-    {
-      "name": "rsi_rev",
-      "params": {
-        "n": 16
-      },
-      "weight": 1.6755,
+      "weight": 0.3212,
       "mode": 1
     }
   ],
   "filters": [],
   "combine": "weighted",
-  "entry_threshold": 0.2814,
-  "exit_threshold": 0.034,
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.023,
   "direction": "both",
   "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.157,
-  "max_leverage": 1.7265,
-  "rebalance_band": 0.2469,
-  "atr_n": 32,
+  "base_size": 0.585,
+  "target_vol": 0.147,
+  "max_leverage": 2.869,
+  "rebalance_band": 0.273,
+  "atr_n": 31,
   "stop_atr": null,
   "take_atr": null,
   "trail_atr": null,
-  "max_hold": null,
-  "min_hold": 4,
+  "max_hold": 106,
+  "min_hold": 5,
   "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "1db3a9db76fd",
-  "generation": 18,
+  "dd_resume": 42,
+  "bot_id": "2f6e9a69b3d1",
+  "generation": 15,
   "origin": "mutant",
   "parents": [
-    "480dc348d395"
+    "6b176fbaa56a"
   ]
 }
 ```
 
 </details>
 
-### `4fda11304f30` — commodity_meanrev_daily
+### `0a3b10605a98` — commodity_meanrev_daily
 
 ```
-rsi_rev(n=13)x1.00 + rsi_rev(n=24)x1.08 -> thr 0.21/0.05 both proportional lev<=1.7
+rsi_rev(n=14)x1.50 + rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both proportional lev<=2.0
 ```
 
 - market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
-- found in generation 19 via mutant from 745cc2b1f2a0
-- **search-burden headroom: 104,950** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 334. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- found in generation 15 via crossover from b47fea13e0c4, 696e318c1767
+- **search-burden headroom: 51,170** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.055 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
 
-|  | gate | evidence |
-|---|---|---|
-| PASS | G1-oos | alphaSR +0.29 (need +0.25), 13900 trades, 88% instances positive |
-| PASS | G2-replication | median alphaSR +0.48 (need +0.35), 100% of 20 instances positive (need 70%), median DD -17.8% / worst -36.9% (allowed -35%/-56%), 0 wipeouts |
-| PASS | G2b-durability | late-half alphaSR +0.38 (need +0.25) vs early half +0.61, retained 62% (ratio not gated: this market decays by design) |
-| PASS | G3-controls | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=+0.00] |
-| PASS | G4-stress | 2x costs +0.42 (need +0.15), 3x +0.36 (need +0.00), +1 bar delay +0.43 (need +0.10) |
-| PASS | G5-permutation | real +0.47 vs null +0.03+-0.06 (p99 +0.17) -> z=7.7, p=0.0083 of 120 draws (need <=0.01) |
-| PASS | G6-multiplicity | DSR 1.000 (need 0.95) vs luck bar SR 0.29 after 334 confirmation tests (would still pass up to 104,950); Bonferroni p 1.56e-12 (need <=0.05) \| stricter all-trials view (12400 screened): DSR 0.999 vs SR 0.38, p 5.78e-11 |
-| PASS | G7-stress-pool | median alphaSR +0.45 (need +0.28), 100% positive (need 65%), CAGR +2.5%, median DD -19.3% |
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.064 | alphaSR +0.31 (need +0.25), 32454 trades, 100% instances positive |
+| PASS | G2-replication | +0.141 | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -31.0% / worst -51.7% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.055 | late-half alphaSR +0.38, final-quarter +0.30 (both need +0.25) vs early half +0.56, retained 67% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.260 | worst \|alphaSR\| 0.04 (allowed 0.30) [control_efficient_daily=-0.04, control_martingale_daily=-0.01] |
+| PASS | G4-stress | +0.232 | 2x costs +0.38 (need +0.15), 3x +0.30 (need +0.00), +1 bar delay +0.43 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.48 vs null +0.02+-0.06 (p99 +0.17) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 51,170); Bonferroni p 1.14e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.998 vs SR 0.39, p 2.95e-09 |
+| PASS | G7-stress-pool | +0.171 | median alphaSR +0.45 (need +0.28), 100% positive (need 65%), CAGR +3.9%, median DD -30.2% |
 
 Confirmation-pool performance (third disjoint instance pool, 20 instances):
 
 | alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
 |---|---|---|---|---|---|---|---|---|
-| +0.45 | +0.44 | +2.5% | 5.9% | -19.3% | 0.07 | 93 | 0.36% | 0.12 |
+| +0.45 | +0.44 | +3.9% | 9.8% | -30.2% | 0.08 | 213 | 0.90% | 0.21 |
 
-Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.09, `rates_daily` +0.02, `eq_index_daily` +0.01, `fx_em_daily` -0.10
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `eq_largecap_break_daily` +0.19, `eq_index_daily` +0.01, `eq_smallcap_daily` +0.01, `rates_daily` +0.00, `fx_major_daily` -0.10
 
 <details><summary>genome JSON</summary>
 
@@ -2427,9 +406,9 @@ Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `
     {
       "name": "rsi_rev",
       "params": {
-        "n": 13
+        "n": 14
       },
-      "weight": 1.0,
+      "weight": 1.5047,
       "mode": 1
     },
     {
@@ -2437,33 +416,668 @@ Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `
       "params": {
         "n": 24
       },
-      "weight": 1.0798,
+      "weight": 1.5278,
       "mode": 1
     }
   ],
   "filters": [],
   "combine": "weighted",
-  "entry_threshold": 0.207,
+  "entry_threshold": 0.08,
   "exit_threshold": 0.05,
   "direction": "both",
   "sizing": "proportional",
-  "base_size": 0.611,
-  "target_vol": 0.2314,
-  "max_leverage": 1.704,
-  "rebalance_band": 0.1959,
-  "atr_n": 32,
+  "base_size": 1.0,
+  "target_vol": 0.15,
+  "max_leverage": 2.0,
+  "rebalance_band": 0.02,
+  "atr_n": 20,
   "stop_atr": null,
   "take_atr": null,
   "trail_atr": null,
   "max_hold": null,
-  "min_hold": 4,
+  "min_hold": 1,
   "dd_halt": null,
-  "dd_resume": 13,
-  "bot_id": "4fda11304f30",
+  "dd_resume": 20,
+  "bot_id": "0a3b10605a98",
+  "generation": 15,
+  "origin": "crossover",
+  "parents": [
+    "b47fea13e0c4",
+    "696e318c1767"
+  ]
+}
+```
+
+</details>
+
+### `edc7823d5f41` — commodity_meanrev_daily
+
+```
+rsi_rev(n=24)x1.53 -> thr 0.09/0.05 both proportional lev<=2.9
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 16 via mutant from 696e318c1767
+- **search-burden headroom: 7,353** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.004 alpha Sharpe at G1-oos** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.004 | alphaSR +0.25 (need +0.25), 16495 trades, 88% instances positive |
+| PASS | G2-replication | +0.091 | median alphaSR +0.44 (need +0.35), 100% of 20 instances positive (need 70%), median DD -27.7% / worst -53.5% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.028 | late-half alphaSR +0.35, final-quarter +0.28 (both need +0.25) vs early half +0.49, retained 71% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.245 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=+0.00] |
+| PASS | G4-stress | +0.227 | 2x costs +0.38 (need +0.15), 3x +0.31 (need +0.00), +1 bar delay +0.41 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.46 vs null +0.01+-0.06 (p99 +0.17) -> z=6.9, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 7,353); Bonferroni p 7.08e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.926 vs SR 0.39, p 1.83e-08 |
+| PASS | G7-stress-pool | +0.122 | median alphaSR +0.40 (need +0.28), 100% positive (need 65%), CAGR +3.3%, median DD -27.8% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.40 | +0.40 | +3.3% | 9.0% | -27.8% | 0.05 | 111 | 0.61% | 0.19 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.31, `eq_largecap_break_daily` +0.16, `rates_daily` +0.04, `eq_index_daily` +0.03, `eq_smallcap_daily` +0.00, `fx_em_daily` -0.09
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 24
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.0949,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.147,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "edc7823d5f41",
+  "generation": 16,
+  "origin": "mutant",
+  "parents": [
+    "696e318c1767"
+  ]
+}
+```
+
+</details>
+
+### `8624582a1e57` — commodity_meanrev_daily
+
+```
+bollinger(k=3.00,n=49)x0.32 -> thr 0.08/0.02 both proportional lev<=2.9  [hold<=106]
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 16 via mutant from 05c94449cf0b
+- **search-burden headroom: 44,481** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.031 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.040 | alphaSR +0.29 (need +0.25), 14063 trades, 100% instances positive |
+| PASS | G2-replication | +0.138 | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -27.2% / worst -47.4% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.031 | late-half alphaSR +0.37, final-quarter +0.28 (both need +0.25) vs early half +0.58, retained 64% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.246 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=-0.01] |
+| PASS | G4-stress | +0.274 | 2x costs +0.42 (need +0.15), 3x +0.36 (need +0.00), +1 bar delay +0.45 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.48 vs null +0.04+-0.06 (p99 +0.19) -> z=7.1, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 44,481); Bonferroni p 2.47e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.997 vs SR 0.39, p 6.38e-09 |
+| PASS | G7-stress-pool | +0.176 | median alphaSR +0.46 (need +0.28), 100% positive (need 65%), CAGR +3.8%, median DD -29.6% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.46 | +0.43 | +3.8% | 9.9% | -29.6% | 0.05 | 96 | 0.64% | 0.22 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `eq_largecap_break_daily` +0.19, `eq_smallcap_daily` +0.07, `rates_daily` +0.01, `eq_index_daily` -0.02, `fx_em_daily` -0.03
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "bollinger",
+      "params": {
+        "k": 3.0,
+        "n": 49
+      },
+      "weight": 0.3212,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.023,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 0.585,
+  "target_vol": 0.147,
+  "max_leverage": 2.869,
+  "rebalance_band": 0.273,
+  "atr_n": 31,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": 106,
+  "min_hold": 5,
+  "dd_halt": null,
+  "dd_resume": 42,
+  "bot_id": "8624582a1e57",
+  "generation": 16,
+  "origin": "mutant",
+  "parents": [
+    "05c94449cf0b"
+  ]
+}
+```
+
+</details>
+
+### `14967114bcfe` — commodity_meanrev_daily
+
+```
+rsi_rev(n=11)x1.35 + rsi_rev(n=40)x1.53 -> thr 0.08/0.05 both proportional lev<=2.9
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 16 via mutant from 9e7da7221f1c
+- **search-burden headroom: 61,314** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.005 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.115 | alphaSR +0.37 (need +0.25), 20008 trades, 100% instances positive |
+| PASS | G2-replication | +0.144 | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -24.4% / worst -44.6% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.005 | late-half alphaSR +0.37, final-quarter +0.26 (both need +0.25) vs early half +0.59, retained 63% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.260 | worst \|alphaSR\| 0.04 (allowed 0.30) [control_efficient_daily=-0.04, control_martingale_daily=-0.02] |
+| PASS | G4-stress | +0.231 | 2x costs +0.38 (need +0.15), 3x +0.30 (need +0.00), +1 bar delay +0.44 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.47 vs null +0.01+-0.06 (p99 +0.16) -> z=7.3, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 61,314); Bonferroni p 3.82e-11 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.999 vs SR 0.39, p 9.86e-10 |
+| PASS | G7-stress-pool | +0.209 | median alphaSR +0.49 (need +0.28), 100% positive (need 65%), CAGR +3.5%, median DD -29.4% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.49 | +0.44 | +3.5% | 8.7% | -29.4% | 0.07 | 133 | 0.81% | 0.19 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.33, `eq_largecap_break_daily` +0.16, `rates_daily` -0.02, `eq_smallcap_daily` -0.03, `eq_index_daily` -0.06, `fx_em_daily` -0.14
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 11
+      },
+      "weight": 1.3533,
+      "mode": 1
+    },
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 40
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.15,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "14967114bcfe",
+  "generation": 16,
+  "origin": "mutant",
+  "parents": [
+    "9e7da7221f1c"
+  ]
+}
+```
+
+</details>
+
+### `80a991776d9d` — commodity_meanrev_daily
+
+```
+rsi_rev(n=24)x1.66 -> thr 0.09/0.05 both proportional lev<=2.9
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 17 via mutant from edc7823d5f41
+- **search-burden headroom: 7,353** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.004 alpha Sharpe at G1-oos** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.004 | alphaSR +0.25 (need +0.25), 16495 trades, 88% instances positive |
+| PASS | G2-replication | +0.091 | median alphaSR +0.44 (need +0.35), 100% of 20 instances positive (need 70%), median DD -27.7% / worst -53.5% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.028 | late-half alphaSR +0.35, final-quarter +0.28 (both need +0.25) vs early half +0.49, retained 71% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.245 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=+0.00] |
+| PASS | G4-stress | +0.227 | 2x costs +0.38 (need +0.15), 3x +0.31 (need +0.00), +1 bar delay +0.41 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.46 vs null +0.01+-0.06 (p99 +0.17) -> z=6.9, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 7,353); Bonferroni p 7.08e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.926 vs SR 0.39, p 1.83e-08 |
+| PASS | G7-stress-pool | +0.122 | median alphaSR +0.40 (need +0.28), 100% positive (need 65%), CAGR +3.3%, median DD -27.8% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.40 | +0.40 | +3.3% | 9.0% | -27.8% | 0.05 | 111 | 0.61% | 0.19 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.31, `eq_largecap_break_daily` +0.16, `rates_daily` +0.04, `eq_index_daily` +0.03, `eq_smallcap_daily` +0.00, `fx_em_daily` -0.09
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 24
+      },
+      "weight": 1.6599,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.0949,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.147,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "80a991776d9d",
+  "generation": 17,
+  "origin": "mutant",
+  "parents": [
+    "edc7823d5f41"
+  ]
+}
+```
+
+</details>
+
+### `e968878d9bc2` — commodity_meanrev_daily
+
+```
+rsi_rev(n=13)x1.53 + rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both proportional lev<=2.9
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 17 via mutant from 1f8c21af8a82
+- **search-burden headroom: 70,529** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.061 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.071 | alphaSR +0.32 (need +0.25), 19719 trades, 88% instances positive |
+| PASS | G2-replication | +0.135 | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -28.2% / worst -54.6% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.061 | late-half alphaSR +0.38, final-quarter +0.31 (both need +0.25) vs early half +0.57, retained 66% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.255 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=-0.01] |
+| PASS | G4-stress | +0.245 | 2x costs +0.40 (need +0.15), 3x +0.32 (need +0.00), +1 bar delay +0.43 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.48 vs null +0.02+-0.06 (p99 +0.18) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 70,529); Bonferroni p 1.28e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.999 vs SR 0.39, p 3.30e-09 |
+| PASS | G7-stress-pool | +0.159 | median alphaSR +0.44 (need +0.28), 100% positive (need 65%), CAGR +3.8%, median DD -29.7% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.44 | +0.43 | +3.8% | 9.8% | -29.7% | 0.08 | 132 | 0.86% | 0.21 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `eq_largecap_break_daily` +0.17, `eq_smallcap_daily` +0.01, `eq_index_daily` +0.01, `rates_daily` +0.00, `fx_em_daily` -0.10
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 13
+      },
+      "weight": 1.5278,
+      "mode": 1
+    },
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 24
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.147,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": null,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "e968878d9bc2",
+  "generation": 17,
+  "origin": "mutant",
+  "parents": [
+    "1f8c21af8a82"
+  ]
+}
+```
+
+</details>
+
+### `0e4671daeb34` — commodity_meanrev_daily
+
+```
+rsi_rev(n=13)x1.53 + rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both proportional lev<=2.9  [hold<=63]
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 18 via mutant from e968878d9bc2
+- **search-burden headroom: 68,519** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.064 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.068 | alphaSR +0.32 (need +0.25), 19700 trades, 88% instances positive |
+| PASS | G2-replication | +0.135 | median alphaSR +0.48 (need +0.35), 100% of 20 instances positive (need 70%), median DD -28.4% / worst -53.2% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.064 | late-half alphaSR +0.37, final-quarter +0.31 (both need +0.25) vs early half +0.57, retained 65% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.251 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=-0.01] |
+| PASS | G4-stress | +0.243 | 2x costs +0.39 (need +0.15), 3x +0.32 (need +0.00), +1 bar delay +0.43 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.48 vs null +0.02+-0.06 (p99 +0.18) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 68,519); Bonferroni p 1.27e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.999 vs SR 0.39, p 3.27e-09 |
+| PASS | G7-stress-pool | +0.154 | median alphaSR +0.43 (need +0.28), 100% positive (need 65%), CAGR +3.8%, median DD -30.4% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.43 | +0.43 | +3.8% | 9.8% | -30.4% | 0.08 | 131 | 0.86% | 0.21 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.38, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.01, `rates_daily` +0.00, `eq_index_daily` -0.00, `fx_major_daily` -0.09
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 13
+      },
+      "weight": 1.5278,
+      "mode": 1
+    },
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 24
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.147,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": 63,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "0e4671daeb34",
+  "generation": 18,
+  "origin": "mutant",
+  "parents": [
+    "e968878d9bc2"
+  ]
+}
+```
+
+</details>
+
+### `f8cf35845ef9` — commodity_meanrev_daily
+
+```
+rsi_rev(n=13)x1.53 + rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both proportional lev<=2.9  [hold<=63]
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 19 via mutant from 0e4671daeb34
+- **search-burden headroom: 68,519** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.064 alpha Sharpe at G2b-durability** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.068 | alphaSR +0.32 (need +0.25), 19700 trades, 88% instances positive |
+| PASS | G2-replication | +0.135 | median alphaSR +0.48 (need +0.35), 100% of 20 instances positive (need 70%), median DD -28.4% / worst -53.2% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.064 | late-half alphaSR +0.37, final-quarter +0.31 (both need +0.25) vs early half +0.57, retained 65% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.251 | worst \|alphaSR\| 0.05 (allowed 0.30) [control_efficient_daily=-0.05, control_martingale_daily=-0.01] |
+| PASS | G4-stress | +0.243 | 2x costs +0.39 (need +0.15), 3x +0.32 (need +0.00), +1 bar delay +0.43 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.48 vs null +0.02+-0.06 (p99 +0.18) -> z=7.2, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 68,519); Bonferroni p 1.27e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.999 vs SR 0.39, p 3.27e-09 |
+| PASS | G7-stress-pool | +0.154 | median alphaSR +0.43 (need +0.28), 100% positive (need 65%), CAGR +3.8%, median DD -30.4% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.43 | +0.43 | +3.8% | 9.8% | -30.4% | 0.08 | 131 | 0.86% | 0.21 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.38, `eq_largecap_break_daily` +0.18, `eq_smallcap_daily` +0.01, `rates_daily` +0.00, `eq_index_daily` -0.00, `fx_major_daily` -0.09
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 13
+      },
+      "weight": 1.5278,
+      "mode": 1
+    },
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 24
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.1637,
+  "max_leverage": 2.9259,
+  "rebalance_band": 0.2118,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": 63,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "f8cf35845ef9",
   "generation": 19,
   "origin": "mutant",
   "parents": [
-    "745cc2b1f2a0"
+    "0e4671daeb34"
+  ]
+}
+```
+
+</details>
+
+### `a956465c671a` — commodity_meanrev_daily
+
+```
+bollinger(k=3.00,n=49)x0.32 + rsi_rev(n=23)x1.53 -> thr 0.08/0.05 both proportional lev<=2.9  [hold<=41]
+```
+
+- market: **commodity_meanrev_daily** (commodity, vol 35%, spread 5.0bp, perfect-foresight ceiling SR 0.87)
+- found in generation 19 via mutant from 4263f8e4524b
+- **search-burden headroom: 20,407** — the largest number of confirmation tests this bot's evidence could have come out of and still clear G6. Certified here after 371. A headroom close to that number means the certification leans on the search having been small; a headroom far above it means the edge would survive a much larger hunt.
+- **tightest gate margin: +0.000 alpha Sharpe at G1-oos** — how much room the binding statistic had. A certification that clears its narrowest gate by a hundredth is a different piece of evidence from one that clears it by two tenths, and the verdict alone does not say which this is.
+
+|  | gate | margin | evidence |
+|---|---|---|---|
+| PASS | G1-oos | +0.000 | alphaSR +0.25 (need +0.25), 10386 trades, 100% instances positive |
+| PASS | G2-replication | +0.137 | median alphaSR +0.49 (need +0.35), 100% of 20 instances positive (need 70%), median DD -29.0% / worst -50.5% (allowed -35%/-56%), 0 wipeouts |
+| PASS | G2b-durability | +0.021 | late-half alphaSR +0.39, final-quarter +0.27 (both need +0.25) vs early half +0.49, retained 79% (ratio not gated: this market decays by design) |
+| PASS | G3-controls | +0.264 | worst \|alphaSR\| 0.04 (allowed 0.30) [control_efficient_daily=-0.04, control_martingale_daily=-0.01] |
+| PASS | G4-stress | +0.253 | 2x costs +0.40 (need +0.15), 3x +0.35 (need +0.00), +1 bar delay +0.43 (need +0.10) |
+| PASS | G5-permutation | +0.002 | real +0.47 vs null +0.02+-0.06 (p99 +0.18) -> z=6.9, p=0.0083 of 120 draws (need <=0.01) |
+| PASS | G6-multiplicity | +0.050 | DSR 1.000 (need 0.95) vs luck bar SR 0.30 after 371 confirmation tests (would still pass up to 20,407); Bonferroni p 8.11e-10 (need <=0.05) \| stricter all-trials view (9570 screened): DSR 0.986 vs SR 0.39, p 2.09e-08 |
+| PASS | G7-stress-pool | +0.147 | median alphaSR +0.43 (need +0.28), 100% positive (need 65%), CAGR +3.6%, median DD -33.3% |
+
+Confirmation-pool performance (third disjoint instance pool, 20 instances):
+
+| alphaSR | SR | CAGR | vol | medDD | Calmar | trades/yr | cost/yr | avg lev |
+|---|---|---|---|---|---|---|---|---|
+| +0.43 | +0.41 | +3.6% | 9.9% | -33.3% | 0.06 | 71 | 0.61% | 0.21 |
+
+Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.36, `eq_largecap_break_daily` +0.16, `eq_index_daily` +0.04, `eq_smallcap_daily` +0.04, `rates_daily` +0.04, `fx_em_daily` -0.02
+
+<details><summary>genome JSON</summary>
+
+```json
+{
+  "market": "commodity_meanrev_daily",
+  "genes": [
+    {
+      "name": "bollinger",
+      "params": {
+        "k": 3.0,
+        "n": 49
+      },
+      "weight": 0.3212,
+      "mode": 1
+    },
+    {
+      "name": "rsi_rev",
+      "params": {
+        "n": 23
+      },
+      "weight": 1.5278,
+      "mode": 1
+    }
+  ],
+  "filters": [],
+  "combine": "weighted",
+  "entry_threshold": 0.08,
+  "exit_threshold": 0.05,
+  "direction": "both",
+  "sizing": "proportional",
+  "base_size": 1.0,
+  "target_vol": 0.147,
+  "max_leverage": 2.869,
+  "rebalance_band": 0.4108,
+  "atr_n": 20,
+  "stop_atr": null,
+  "take_atr": null,
+  "trail_atr": null,
+  "max_hold": 41,
+  "min_hold": 1,
+  "dd_halt": null,
+  "dd_resume": 20,
+  "bot_id": "a956465c671a",
+  "generation": 19,
+  "origin": "mutant",
+  "parents": [
+    "4263f8e4524b"
   ]
 }
 ```
@@ -2473,68 +1087,72 @@ Travels to (alphaSR on other families, not a gate): `eq_largecap_daily` +0.37, `
 ## Portfolio
 
 ```
-4 distinct strategies across 2 market(s) / 2 asset class(es)   [from 30 proven genomes]
-  best single bot        alphaSR +0.45
-  portfolio (lab, rho=0) alphaSR +0.68   <- upper bound, independent synthetic markets
-  portfolio (rho=0.3)    alphaSR +0.59   <- plan with this one
-    28.7%  44504d663841  commodity_meanrev_daily  alphaSR +0.39
-    21.8%  8eb8425dceaf  commodity_meanrev_daily  alphaSR +0.45
-    26.4%  0642136ed2e1  commodity_meanrev_daily  alphaSR +0.40
-    23.2%  5ea21d4fc2f9  eq_largecap_daily        alphaSR +0.36
+4 distinct strategies across 1 market(s) / 1 asset class(es)   [from 13 proven genomes]
+  best single bot        alphaSR +0.43
+  portfolio             alphaSR +0.68
+  NOTE: every leg trades the SAME market family, so the two correlation scenarios
+        coincide and the blend buys no diversification at all — it is one bet,
+        sized twice. Correlation between the legs is measured, not assumed.
+    25.8%  aae521bbfb56  commodity_meanrev_daily  alphaSR +0.39
+    26.8%  696e318c1767  commodity_meanrev_daily  alphaSR +0.40
+    23.0%  2f6e9a69b3d1  commodity_meanrev_daily  alphaSR +0.43
+    24.4%  a956465c671a  commodity_meanrev_daily  alphaSR +0.41
 ```
 
-The two portfolio numbers differ because this lab generates each market family independently, so cross-family correlation is structurally zero — an assumption real asset classes violate exactly when it matters. Plan with the rho=0.3 number.
+There is only one number because there is only one market family, so the correlation assumption never bites. Correlation *between* these legs is measured directly (they share instances), and the blend's small improvement over the best single bot is what two imperfectly correlated expressions of the same effect buy you — not diversification.
 
 ## Hall of fame (screen scores — evidence of nothing, kept for breeding)
 
 | bot | market | screen fit | screen alphaSR | trades | rule |
 |---|---|---|---|---|---|
-| `745cc2b1f2a0` | commodity_meanrev_daily | +0.55 | +0.61 | 61031 | `rsi_rev(n=13)x1.00 + rsi_rev(n=30)x1.08 -> thr 0.21/0.05 both prop` |
-| `4fda11304f30` | commodity_meanrev_daily | +0.55 | +0.61 | 64220 | `rsi_rev(n=13)x1.00 + rsi_rev(n=24)x1.08 -> thr 0.21/0.05 both prop` |
-| `cc8cacb4d3e9` | commodity_meanrev_daily | +0.54 | +0.60 | 41956 | `rsi_rev(n=23)x0.50 -> thr 0.30/0.03 both proportional lev<=1.4` |
-| `3bdf55742c6c` | commodity_meanrev_daily | +0.54 | +0.60 | 41956 | `rsi_rev(n=23)x0.44 -> thr 0.30/0.03 both proportional lev<=1.4` |
-| `480dc348d395` | commodity_meanrev_daily | +0.52 | +0.60 | 56603 | `bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.27 -> thr 0.28/0.03 ` |
-| `42dac13e16ac` | commodity_meanrev_daily | +0.52 | +0.60 | 56603 | `bollinger(k=1.93,n=78)x0.60 + rsi_rev(n=16)x1.27 -> thr 0.28/0.03 ` |
-| `1e9f0b018cc4` | eq_intraday_15m | +0.52 | +0.75 | 39172 | `rsi_rev(n=23)x0.33 + rsi_rev(n=28)x1.35 + rsi_rev(n=30)x1.08 -> th` |
-| `3ee219106b0f` | commodity_meanrev_daily | +0.52 | +0.63 | 39312 | `rsi_rev(n=13)x1.00 + rsi_rev(n=23)x0.44 + rsi_rev(n=30)x1.08 -> th` |
-| `abf6c0225ffd` | commodity_meanrev_daily | +0.51 | +0.62 | 28061 | `bollinger(k=2.53,n=73)x0.60 + rsi_rev(n=16)x1.35 + rsi_rev(n=28)x1` |
-| `21c5799fa669` | commodity_meanrev_daily | +0.51 | +0.62 | 28061 | `bollinger(k=2.53,n=73)x0.60 + rsi_rev(n=16)x1.35 + rsi_rev(n=28)x1` |
-| `68fae7387518` | eq_intraday_15m | +0.51 | +0.69 | 46990 | `rsi_rev(n=13)x0.72 + rsi_rev(n=28)x1.35 + rsi_rev(n=30)x1.08 -> th` |
-| `395aafbd8b21` | eq_intraday_15m | +0.51 | +0.63 | 53747 | `rsi_rev(n=26)x1.58 -> thr 0.29/0.03 both proportional lev<=1.5  [t` |
-| `87a6fb75501d` | commodity_meanrev_daily | +0.51 | +0.63 | 39012 | `rsi_rev(n=13)x1.00 + rsi_rev(n=23)x0.50 + rsi_rev(n=30)x1.08 -> th` |
-| `00a713fdc0f5` | eq_intraday_15m | +0.51 | +0.70 | 74439 | `bollinger(k=1.70,n=78)x0.60 + -macd(fast=6,sig=19,slow=118)x0.82 +` |
-| `d33f78a8c1d3` | eq_intraday_15m | +0.50 | +0.65 | 53869 | `rsi_rev(n=26)x1.58 -> thr 0.29/0.03 both proportional lev<=1.5` |
+| `b0ea14be4154` | commodity_meanrev_daily | +0.55 | +0.57 | 78206 | `rsi_rev(n=23)x1.66 -> thr 0.09/0.05 both proportional lev<=2.9` |
+| `789b17775bb2` | commodity_meanrev_daily | +0.55 | +0.57 | 78206 | `rsi_rev(n=23)x1.66 -> thr 0.09/0.05 both proportional lev<=2.6` |
+| `eb05ba6ccb66` | commodity_meanrev_daily | +0.54 | +0.63 | 78549 | `rsi_rev(n=14)x1.50 + rsi_rev(n=24)x1.66 + rsi_rev(n=40)x1.53 -> th` |
+| `947a3162fd43` | commodity_meanrev_daily | +0.54 | +0.65 | 138044 | `rsi_rev(n=14)x1.50 + rsi_rev(n=24)x1.53 + rsi_rev(n=40)x1.53 -> th` |
+| `0e4671daeb34` | commodity_meanrev_daily | +0.53 | +0.60 | 90150 | `rsi_rev(n=13)x1.53 + rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both prop` |
+| `f8cf35845ef9` | commodity_meanrev_daily | +0.53 | +0.60 | 90150 | `rsi_rev(n=13)x1.53 + rsi_rev(n=24)x1.53 -> thr 0.08/0.05 both prop` |
+| `a956465c671a` | commodity_meanrev_daily | +0.53 | +0.59 | 48613 | `bollinger(k=3.00,n=49)x0.32 + rsi_rev(n=23)x1.53 -> thr 0.08/0.05 ` |
+| `2cc84e6923bf` | commodity_meanrev_daily | +0.53 | +0.61 | 52338 | `rsi_rev(n=24)x1.53 unanimous rsi_rev(n=27)x1.53 -> thr 0.00/0.00 b` |
+| `f746193a66b1` | commodity_meanrev_daily | +0.53 | +0.58 | 68894 | `bollinger(k=3.00,n=44)x0.32 -> thr 0.08/0.02 both proportional lev` |
+| `e8954e8a6169` | commodity_meanrev_daily | +0.53 | +0.57 | 68778 | `bollinger(k=3.00,n=44)x0.32 -> thr 0.08/0.02 both proportional lev` |
+| `fd84578d6f62` | eq_intraday_15m | +0.50 | +0.57 | 113828 | `bollinger(k=3.00,n=120)x0.49 -> thr 0.08/0.02 both proportional le` |
+| `a471df162e92` | eq_intraday_15m | +0.50 | +0.57 | 113860 | `bollinger(k=3.00,n=120)x0.49 -> thr 0.08/0.02 both proportional le` |
+| `57f64d0c763a` | eq_largecap_daily | +0.48 | +0.50 | 132341 | `bollinger(k=3.00,n=27)x0.40 -> thr 0.25/0.08 both proportional lev` |
+| `dbf0eb74a8f2` | eq_largecap_daily | +0.48 | +0.49 | 121806 | `bollinger(k=3.00,n=27)x0.40 -> thr 0.25/0.08 both proportional lev` |
+| `609e048c7d1f` | eq_largecap_daily | +0.44 | +0.55 | 58860 | `bollinger(k=2.66,n=40)x0.84 + rsi_rev(n=11)x2.47 -> thr 0.40/0.05 ` |
 
 ## Expansions
 
 | generation | new level | trigger | new space |
 |---|---|---|---|
-| 2 | 2 | 2 generations without a pass | L2: tier=2 genes<=3 filters<=1 pop=480 finalists=16 per_mkt=3 markets=12 |
-| 4 | 3 | 2 generations without a pass | L3: tier=2 genes<=3 filters<=2 pop=720 finalists=20 per_mkt=3 markets=12 |
+| 3 | 2 | 3 generations without a pass | L2: tier=2 genes<=3 filters<=1 pop=240 finalists=16 per_mkt=3 markets=12 |
+| 6 | 3 | 3 generations without a pass | L3: tier=2 genes<=3 filters<=2 pop=360 finalists=20 per_mkt=3 markets=12 |
+| 9 | 4 | 3 generations without a pass | L4: tier=3 genes<=4 filters<=2 pop=540 finalists=24 per_mkt=3 markets=13 |
+| 12 | 5 | 3 generations without a pass | L5: tier=3 genes<=4 filters<=2 pop=810 finalists=28 per_mkt=3 markets=13 |
 
 ## Generations
 
 | gen | level | candidates | markets | gauntlets | of which priors | proven | best screen fit | screen time |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 1 | 320 | 7 | 12 | 4 | 0 | +0.23 | 50s |
-| 2 | 1 | 320 | 7 | 12 | 0 | 0 | +0.40 | 44s |
-| 3 | 2 | 480 | 12 | 16 | 2 | 0 | +0.40 | 71s |
-| 4 | 2 | 480 | 12 | 16 | 0 | 0 | +0.42 | 69s |
-| 5 | 3 | 720 | 12 | 20 | 0 | 0 | +0.42 | 93s |
-| 6 | 3 | 720 | 12 | 20 | 0 | 1 | +0.52 | 96s |
-| 7 | 3 | 720 | 12 | 20 | 0 | 1 | +0.53 | 97s |
-| 8 | 3 | 720 | 12 | 20 | 0 | 2 | +0.53 | 102s |
-| 9 | 3 | 720 | 12 | 20 | 0 | 2 | +0.54 | 98s |
-| 10 | 3 | 720 | 12 | 20 | 0 | 2 | +0.54 | 105s |
-| 11 | 3 | 720 | 12 | 20 | 0 | 2 | +0.54 | 111s |
-| 12 | 3 | 720 | 12 | 20 | 0 | 2 | +0.54 | 113s |
-| 13 | 3 | 720 | 12 | 20 | 0 | 4 | +0.52 | 108s |
-| 14 | 3 | 720 | 12 | 20 | 0 | 3 | +0.54 | 108s |
-| 15 | 3 | 720 | 12 | 18 | 0 | 4 | +0.52 | 116s |
-| 16 | 3 | 720 | 12 | 20 | 0 | 2 | +0.53 | 112s |
-| 17 | 3 | 720 | 12 | 20 | 0 | 2 | +0.53 | 112s |
-| 18 | 3 | 720 | 12 | 19 | 0 | 2 | +0.55 | 122s |
-| 19 | 3 | 720 | 12 | 20 | 0 | 1 | +0.55 | 118s |
+| 1 | 1 | 160 | 7 | 17 | 16 | 0 | +0.34 | 67s |
+| 2 | 1 | 160 | 7 | 12 | 0 | 0 | +0.38 | 50s |
+| 3 | 1 | 160 | 7 | 12 | 0 | 0 | +0.43 | 46s |
+| 4 | 2 | 240 | 12 | 19 | 6 | 0 | +0.43 | 77s |
+| 5 | 2 | 240 | 12 | 16 | 0 | 0 | +0.36 | 72s |
+| 6 | 2 | 240 | 12 | 16 | 0 | 0 | +0.39 | 73s |
+| 7 | 3 | 360 | 12 | 20 | 0 | 0 | +0.39 | 104s |
+| 8 | 3 | 360 | 12 | 19 | 0 | 0 | +0.43 | 104s |
+| 9 | 3 | 360 | 12 | 20 | 0 | 0 | +0.49 | 110s |
+| 10 | 4 | 540 | 13 | 21 | 0 | 0 | +0.49 | 172s |
+| 11 | 4 | 540 | 13 | 24 | 0 | 0 | +0.51 | 174s |
+| 12 | 4 | 540 | 13 | 23 | 0 | 0 | +0.50 | 172s |
+| 13 | 5 | 810 | 13 | 24 | 0 | 1 | +0.51 | 278s |
+| 14 | 5 | 810 | 13 | 23 | 0 | 2 | +0.54 | 253s |
+| 15 | 5 | 810 | 13 | 22 | 0 | 2 | +0.55 | 275s |
+| 16 | 5 | 810 | 13 | 21 | 0 | 3 | +0.54 | 274s |
+| 17 | 5 | 810 | 13 | 20 | 0 | 2 | +0.54 | 303s |
+| 18 | 5 | 810 | 13 | 19 | 0 | 1 | +0.55 | 291s |
+| 19 | 5 | 810 | 13 | 23 | 0 | 2 | +0.55 | 311s |
 
 ## Standard of proof used
 
