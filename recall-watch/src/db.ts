@@ -89,6 +89,12 @@ export function migrate(db: Db): void {
       decision TEXT,
       decided_at TEXT,
       decided_by TEXT,
+      -- "Can't tell" is a DEFERRAL, not a decision. It leaves the decision column NULL so the
+      -- record stays in the queue; these two only push it to the back and count how often it has
+      -- been passed over. Before this existed, the button said "skip" and the code dismissed the
+      -- record permanently -- a coordinator who could not tell silently buried a real recall.
+      deferred_at TEXT,
+      defer_count INTEGER NOT NULL DEFAULT 0,
       UNIQUE (recall_id, watch_item_id)
     );
 

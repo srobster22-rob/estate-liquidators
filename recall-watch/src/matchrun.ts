@@ -45,10 +45,53 @@ export function runMatching(db: Db, now = new Date().toISOString()): { evaluated
   return { evaluated, created };
 }
 
+export type Choice = 'alert' | 'not_a_match' | 'unclear';
+
+export type DecideResult =
+  | 'recorded'
+  | 'deferred'
+  /** Already decided. The earlier decision stands; this call changed nothing. */
+  | 'already_decided'
+  | 'no_such_match';
+
+/**
+ * Record a human's decision about one candidate.
+ *
+ * Two behaviours here are deliberate and were both bugs before R10.
+ *
+ * 1. A DECIDED RECORD IS FINAL unless `overwrite` is passed. The previous version issued a bare
+ *    UPDATE, so any repeat POST -- a double-click, a retried request, or someone walking
+ *    /review/1, /review/2, ... -- silently replaced a coordinator's "alert" with whatever
+ *    arrived last. A decision that can be overwritten without a trace is not a decision.
+ *
+ * 2. "unclear" DEFERS, IT DOES NOT DISMISS. The button says "Can't tell -- skip", and skip has
+ *    to mean skip. Writing decision='unclear' dropped the record out of `nextForReview` (which
+ *    filters on `decision IS NULL`) permanently, so the honest answer -- I don't know, let
+ *    someone else look -- was the one answer that buried a recall with nobody informed. It now
+ *    stays in the queue, moves to the back, and counts how many people have passed on it.
+ *
+ * There is deliberately no UI for `overwrite` yet; see VERIFY.md. Correcting a mistaken decision
+ * should be a considered act with a record of who changed what, not a fourth button.
+ */
 export function decide(
-  db: Db, matchId: number, decision: 'alert' | 'not_a_match' | 'unclear', by: string,
+  db: Db, matchId: number, decision: Choice, by: string,
   now = new Date().toISOString(),
-): void {
+  opts: { overwrite?: boolean } = {},
+): DecideResult {
+  const row = db.prepare('SELECT decision FROM matches WHERE id = ?').get(matchId) as
+    | { decision: string | null }
+    | undefined;
+  if (!row) return 'no_such_match';
+  if (row.decision !== null && !opts.overwrite) return 'already_decided';
+
+  if (decision === 'unclear') {
+    db.prepare(
+      'UPDATE matches SET deferred_at = ?, defer_count = defer_count + 1 WHERE id = ?',
+    ).run(now, matchId);
+    return 'deferred';
+  }
+
   db.prepare('UPDATE matches SET decision = ?, decided_at = ?, decided_by = ? WHERE id = ?')
     .run(decision, now, by, matchId);
+  return 'recorded';
 }

@@ -8,6 +8,7 @@ import { enqueue, deliverBatch } from './notify.js';
 import { pickProvider } from './sms.js';
 import { evaluate, formatReport } from './eval.js';
 import { createServer } from './server.js';
+import { TOKEN_ENV, suggestToken } from './auth.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURES = join(root, 'fixtures');
@@ -27,9 +28,18 @@ if (cmd === 'serve') {
   }
   runMatching(db, now);
   const port = Number(process.env.PORT ?? 4180);
-  createServer(db).listen(port, () => {
+  createServer(db, { env: process.env }).listen(port, () => {
     console.log(`\n  public page   http://127.0.0.1:${port}/`);
-    console.log(`  review queue  http://127.0.0.1:${port}/review\n`);
+    console.log(`  review queue  http://127.0.0.1:${port}/review`);
+    if (!process.env[TOKEN_ENV]) {
+      console.log(
+        `\n  ${TOKEN_ENV} is not set, so the review queue will not open. It decides whether\n` +
+          '  real people get texted, so it refuses to serve rather than serving open. Restart with:\n' +
+          `\n    ${TOKEN_ENV}=${suggestToken()} npm run serve\n`,
+      );
+    } else {
+      console.log('');
+    }
   });
 } else if (cmd === 'eval') {
   const report = evaluate(FIXTURES, join(root, 'data', 'labelled-pairs.json'));

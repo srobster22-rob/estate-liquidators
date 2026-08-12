@@ -23,8 +23,11 @@ again with nothing left.
 
 ## Measured
 
-- **35 tests passing.** Idempotent ingest, exactly-once delivery, restart safety, retry after
-  transient failure, STOP cancellation, severity gating, and the normalizer.
+- **50 tests passing.** Idempotent ingest, exactly-once delivery, restart safety, retry after
+  transient failure, STOP cancellation, severity gating, the normalizer, and — since R10 — the
+  access controls on the review queue: an unconfigured deployment refusing to serve it, the
+  anonymous ID walk that used to empty the queue, cross-origin rejection, session expiry, a
+  hundred-request flood, and a decided record refusing to be silently re-decided.
 - **`npm run eval`: 100% precision, 100% recall** on 52 labelled pairs, with a hard 95% floor
   that fails the command. One deliberate open disagreement (`p08`).
 

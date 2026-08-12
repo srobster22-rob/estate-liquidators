@@ -91,8 +91,23 @@ Measured here: **37.7KB total gzipped**, 9.1KB initial JS (exifr's 25.9KB loads 
 is attached). Not measured: load time on an actual cheap Android.
 
 ### 3.3 EXIF against real files
-The EXIF path uses `exifr` and is exercised only by unit tests over synthetic records. Import ten
-real phone photos — some straight from the camera, some forwarded through a messaging app, some
+The EXIF path uses `exifr`. Since R10 a browser test drives it end to end against a hand-built
+JPEG carrying a real EXIF and GPS block (`test/fixtures/exif-jpeg.ts`), which is more than the
+synthetic records it had before — but one synthetic camera is not ten real ones.
+
+**While you are doing this, check the metadata warning fires on real files.** The archive ships
+camera originals untouched, deliberately: stripping them would invalidate every SHA-256 in the
+record. That means a photo can carry the coordinates of the house and the phone's serial number,
+and the app now says so before the archive is saved. It looks for `GPSLatitude`/`GPSLongitude`,
+`BodySerialNumber`/`SerialNumber`, and `OwnerName`/`Artist`. Confirm real photos from at least
+three different phones trip it, and that a messaging-app photo — which usually has everything
+stripped — does not produce a warning about metadata that is not there.
+
+**Do not "fix" this by stripping metadata on export.** It has been considered and rejected: the
+unmodified bytes are the evidence. If a future round adds a strip option, it must write a second
+copy and never touch the originals the manifest hashes.
+
+Import ten real phone photos — some straight from the camera, some forwarded through a messaging app, some
 HEIC — and confirm each timestamp is correct or correctly marked missing.
 
 ### 3.4 Print

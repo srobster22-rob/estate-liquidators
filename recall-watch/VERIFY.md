@@ -67,7 +67,27 @@ The public page is built. The digest is not. Only high-severity recalls are hand
 all rather than a weekly digest. Verify FDA and FSIS classification schemes and encode them as
 data rather than the string comparison in the openFDA adapter.
 
-### 2.4 The review queue works; nobody has timed it
+### 2.4 Set a reviewer token, and decide who gets it
+
+`/review` refuses to open unless `RECALL_WATCH_REVIEW_TOKEN` is set to at least 16 characters.
+That is not a formality: the endpoint sends text messages and dismisses recall alerts, and with
+no token set it used to accept both from anyone who could reach the port.
+
+**Do this:** generate a token, put it in the process environment (not in the repository), and hand
+it to the coordinators individually. Serve over HTTPS and set `secureCookies: true` so the session
+cookie carries `Secure`.
+
+**Know its limits before you rely on it.** One shared secret means you cannot tell two
+coordinators apart in `decided_by`, and rotating it signs everyone out. That is proportionate for
+a handful of volunteers and stops being proportionate somewhere around a dozen — when you get
+there, the fix is real accounts, not a longer secret.
+
+**Also decide who may correct a decision.** A decided record is final; `decide()` takes an explicit
+`overwrite` flag and there is deliberately no button for it. If coordinators need to fix mistakes,
+add the button *and* show who changed what — an overwrite with no audit trail is how the original
+bug behaved.
+
+### 2.5 The review queue works; nobody has timed it
 Built and served at `/review`: one candidate at a time, three buttons, redirect-after-post so a
 refresh cannot re-decide. What has *not* happened is a real coordinator working a real queue —
 the brief's target is fifteen seconds per record and that number is unmeasured. Time it with a

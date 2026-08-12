@@ -80,6 +80,31 @@ export async function verifyChain(chain: ChainEntry[]): Promise<ChainCheck> {
 
 export type TimestampKind = 'camera' | 'import-only';
 
+/**
+ * What ELSE the original file is carrying.
+ *
+ * Found by running the hardening prompt's Pass 2.6 — "check what an exported file contains that
+ * the screen didn't". This app reads exactly one EXIF tag, DateTimeOriginal, and shows a date.
+ * The originals archive then hands over the whole unmodified file, and a phone photo routinely
+ * carries the GPS coordinates it was taken at, the device's serial number, and sometimes an
+ * owner name — none of which appears anywhere on screen.
+ *
+ * Stripping it is the wrong fix and was rejected: the unmodified bytes ARE the evidence, editing
+ * them changes the SHA-256 that the whole chain is built on, and a stripped photo is worth less
+ * to the person than an intact one. What was actually missing is that nobody was told. So the
+ * app now looks for these tags at import, records only whether each is PRESENT, and warns before
+ * the archive leaves the device.
+ *
+ * Note what is deliberately NOT stored: no coordinates, no serial, no name. A flag saying a file
+ * knows where it was taken is not itself a location, and this record is the last place that
+ * should acquire one.
+ */
+export interface EmbeddedMetadata {
+  location: boolean;
+  deviceSerial: boolean;
+  owner: boolean;
+}
+
 export interface PhotoRecord {
   /** SHA-256 of the ORIGINAL bytes, unmodified. Never of a re-encoded or resized copy. */
   sha256: string;
@@ -91,6 +116,35 @@ export interface PhotoRecord {
   /** When this device read the file. Always known, never a substitute for the above. */
   importedAt: string;
   kind: TimestampKind;
+  /** Absent on entries recorded before this was checked — which is not the same as "none". */
+  embedded?: EmbeddedMetadata;
+}
+
+export function embeddedLabels(m: EmbeddedMetadata | undefined): string[] {
+  if (!m) return [];
+  return [
+    m.location && 'the place it was taken',
+    m.deviceSerial && 'the camera or phone serial number',
+    m.owner && 'the owner name set on the camera',
+  ].filter((s): s is string => Boolean(s));
+}
+
+/** How many photos in the chain carry each kind of hidden detail. */
+export function embeddedSummary(chain: ChainEntry[]): { photos: number; withAny: number; labels: string[] } {
+  const labels = new Set<string>();
+  let photos = 0;
+  let withAny = 0;
+  for (const e of chain) {
+    const photo = (e.body as { photo?: PhotoRecord }).photo;
+    if (!photo) continue;
+    photos++;
+    const found = embeddedLabels(photo.embedded);
+    if (found.length) {
+      withAny++;
+      for (const l of found) labels.add(l);
+    }
+  }
+  return { photos, withAny, labels: [...labels] };
 }
 
 /**
@@ -115,6 +169,7 @@ export function makePhotoRecord(args: {
   mime: string;
   exifDateTimeOriginal: string | null;
   importedAt: string;
+  embedded?: EmbeddedMetadata;
 }): PhotoRecord {
   const exifPresent = Boolean(args.exifDateTimeOriginal);
   return {
@@ -144,6 +199,11 @@ export const METHODOLOGY = [
   'Photograph times come from the camera metadata (EXIF DateTimeOriginal) when the file has it.',
   'Many photos sent through messaging apps have that metadata removed. Where it is missing this',
   'record says so and shows only when the file was added, which is not the same thing.',
+  '',
+  'Photographs are included exactly as the camera wrote them, with nothing removed. That is what',
+  'makes them worth anything as evidence, and it also means a file may carry details that do not',
+  'appear anywhere in this document — commonly the place it was taken and the device serial',
+  'number. Anyone sending this record on should know that.',
 ].join('\n');
 
 // --------------------------------------------------------------------------- typed entries

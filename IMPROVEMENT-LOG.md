@@ -198,18 +198,111 @@ unreadable amount is refused rather than recorded.
 
 ---
 
+## R10 — the hardening prompt's Pass 2 and Pass 4, finally run
+
+Every earlier round improved something the projects already did. This one ran the checklist the
+kit ships to other people and had never run against its own work. `society-prompts/HARDENING-PROMPT.md`
+has seven passes; R2 ran Pass 3 and nothing else. Pass 2 is privacy leaks, Pass 4 is abuse, and
+both start with the same instruction: enumerate every route, call each one unauthenticated, and
+read the raw response bytes rather than the rendered page.
+
+**The finding that mattered, and it was worse than expected.** `recall-watch` grew an HTTP server
+in R6. Against a running instance, with no credential of any kind:
+
+```
+POST /review/1  decision=alert        -> 303
+POST /review/N  decision=not_a_match  -> 303, for N = 1..8
+GET  /review                          -> "Nothing to review"
+```
+
+The obvious harm is toll fraud — a stranger queues text messages to real phone numbers, which is
+the exact scenario Pass 4.2 names. The harm that actually matters is the second line. A passer-by
+marked a superpotent-infant-acetaminophen recall "not a match", and the coordinator's screen then
+said *Nothing to review*, which the empty-state text truthfully calls the normal state. The alert
+was gone and nothing anywhere said so.
+
+That is the failure this entire project is written to prevent. `notify.ts` dead-letters rather
+than marking undelivered messages delivered, because "for a safety notification service, failing
+quietly is the worst available behaviour." The one write endpoint failed quietly to anyone who
+could reach the port. Reading the code did not surface it in six rounds; running one `curl` did.
+
+**Fixed, and verified against a live server both before and after:**
+
+- `/review` is behind a shared reviewer token (`src/auth.ts`). Unset means the screen refuses to
+  open — 503 with instructions — rather than serving open, the same rule as `jurisdiction.configured`
+  in the disposal guide: an unconfigured deployment is useless rather than dangerous. The public
+  page is unaffected.
+- The token is never in a URL (Pass 2.3: URLs reach access logs, `Referer` headers, and shared
+  browser history). It is posted once to a sign-in form; the cookie holds an expiring HMAC rather
+  than the secret, and is `HttpOnly; SameSite=Strict`.
+- Cross-origin POSTs with a valid cookie are rejected on `Origin` as well.
+- Per-client rate limiting: a hundred rapid decisions produced 29 accepted and 71 `429`s with a
+  `Retry-After`. A human at the fifteen-second target never approaches it.
+- A decided record is final. `decide()` used to issue a bare UPDATE, so any repeat POST silently
+  replaced a coordinator's judgement with whatever arrived last. Correcting a mistake now takes a
+  deliberate `overwrite`.
+
+**A second bug, found while reading the queue rather than attacking it.** The third button says
+"Can't tell — skip", and the code wrote `decision='unclear'`, which drops the record out of
+`nextForReview` permanently. So the honest answer — *I don't know, let someone else look* — was
+the one answer that buried a recall with nobody informed. It now defers: the record stays in the
+queue, sorts behind anything nobody has seen, and tells the next person it has been passed over.
+
+**Pass 2 on the two browser projects.** No third-party requests in any of the three (the single
+external URL is the openFDA adapter, already gated behind an env var), no personal data in any
+log line, and the phone number that `nextForReview` selected but never rendered is no longer
+selected — Pass 2.2 is right that over-fetching is the leak whether or not the view happens to
+print it, and that row was typed `[k: string]: unknown`.
+
+**Pass 2.6 — what the export contains that the screen didn't — found the subtlest one.**
+`flood-and-water` reads exactly one EXIF tag and shows a date. The originals archive then ships
+the camera file untouched, and a phone photo routinely carries the coordinates it was taken at and
+the device serial number. Stripping it would be the wrong fix and was rejected: the unmodified
+bytes *are* the evidence, and editing them invalidates every SHA-256 in the record. What was
+missing is that nobody was told. The app now checks which of those tags are present, records only
+that they are present — no coordinates, no serials, ever — and asks before the archive leaves the
+device: *1 of your 1 photo also contains the place it was taken.* The manifest and the methodology
+page say it too, so the disclosure outlives the dialog box.
+
+**The coverage gap underneath it.** Every photo test in the project used a file with no EXIF and
+asserted the null path. The distinction the evidence layer calls load-bearing — a camera timestamp
+is not an import timestamp — had never once been tested in the case where a camera timestamp
+exists, and the read sits in a `try/catch` that treats any throw as "no EXIF". A break there would
+have read as a confident "No camera timestamp in this file" on every photo. `test/fixtures/exif-jpeg.ts`
+now builds a real JPEG with a real EXIF and GPS block, and a browser test drives it end to end.
+The path turned out to work; it was untested, not broken, and it is worth saying which.
+
+**Verified:** every new assertion was mutation-tested. Removing the auth gate, restoring the phone
+to the query, restoring the dismiss-on-unclear behaviour, and dropping the `javascript:` scheme
+check each turn their own test red and nothing else. Final state: recall-watch 50 tests with
+matcher precision and recall both still 100%; flood-and-water 51 unit and 21 browser tests, 12.5KB
+initial JS; disposal-guide 57 unit and 17 browser tests, 18.0KB; 0 shared-file drift; axe-core
+clean across every screen in both browser projects.
+
+**Still not run:** Pass 1 (data rot) needs the network. Passes 5, 6 and 7 are partly covered by
+work already done — axe, zoom, contrast, the byte budget, MAINTENANCE.md — but Pass 6's honest
+inventory has not been produced as the enumerated lists it asks for, and lists E and F are exactly
+where this round's two worst findings came from.
+
+---
+
 ## The queue — what the next rounds should take
 
-Ordered by value, from the projects' own VERIFY files:
+Ordered by value, from the projects' own VERIFY files and what R10 left open:
 
-1. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
-   `flood-and-water`. This one needs a paid human translator, not another round.
-3. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures.
-4. **recall-watch: time the review queue with a real coordinator.** The fifteen-second target is
-   unmeasured.
-5. **flood-and-water: receipts, room-by-room items, and the contact log**, all modelled in the
-   brief but only the generic note/photo entry is built.
+1. **Pass 6 — the honest inventory.** The only remaining item that needs nothing this environment
+   lacks. Its lists E and F ask for every piece of a spec quietly not built and every test that
+   passes without testing what its name says. R10's two worst findings — an open write endpoint
+   and a photo test that only ever tested the absence of a timestamp — are both exactly that
+   shape, found incidentally. Enumerating them deliberately is the next round.
+2. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
+   `flood-and-water`. Needs a paid human translator, not another round.
+3. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures. Needs network.
+4. **recall-watch: time the review queue with a real coordinator**, and time disposal-guide's
+   re-check loop. Both fifteen-second targets are unmeasured. Needs a person.
+5. **Pass 1 — re-fetch every source.** Every citation in all three projects is recorded
+   `method: search_index`, not `fetched`. Needs network.
 
-Only #1 and #5 are code I can finish here. #2 is money, #3 needs network access this environment
-does not have, and #4 needs a person — worth naming so a future round does not burn an hour
+Only #1 can be finished here. #2 is money, #3 and #5 need network access this environment does
+not have, and #4 needs a person — worth naming so a future round does not burn an hour
 rediscovering it.

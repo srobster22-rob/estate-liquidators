@@ -6,7 +6,7 @@ Built from [`society-prompts/35-recall-watch.md`](../society-prompts/35-recall-w
 npm install
 npm run demo    # full pipeline, no network, no credentials
 npm run eval    # matcher precision against the labelled pairs
-npm test        # 35 tests
+npm test        # 50 tests
 npm run serve   # the two screens, over the fixtures, no network
 ```
 
@@ -14,6 +14,17 @@ npm run serve   # the two screens, over the fixtures, no network
 `/review` (the queue a coordinator works: one candidate, three buttons, no navigation). The
 review screen is what makes the precision-over-recall policy possible — the matcher sends
 anything ambiguous to a human, and without a screen "to a human" means "nowhere".
+
+**`/review` needs a token and will not open without one:**
+
+```sh
+RECALL_WATCH_REVIEW_TOKEN=$(node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))") npm run serve
+```
+
+Deciding a candidate sends a text message to a real person, or dismisses a recall alert so that
+nobody sees it again. Before R10 both were available to anyone who could reach the port, so an
+unset token now means the screen refuses to open rather than opening to everyone. The public page
+needs no token and is unaffected. `npm run serve` prints a usable token if you have not set one.
 
 **Read [`VERIFY.md`](VERIFY.md) first.** The machinery is tested; the feed data is synthetic and
 no adapter has ever run against a real API.

@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { makeZip } from './zip.js';
 import {
   METHODOLOGY, verifyChain, describeTimestamp, entryKind, formatCents, receiptsTotalCents,
-  countByKind,
+  countByKind, embeddedSummary,
   type ChainEntry, type ChainCheck, type PhotoRecord,
 } from './evidence.js';
 
@@ -224,6 +224,7 @@ export async function buildOriginalsZip(
     });
   }
 
+  const embedded = embeddedSummary(chain);
   const manifest = {
     exportedOn,
     entryCount: chain.length,
@@ -243,6 +244,15 @@ export async function buildOriginalsZip(
       'cameraTimestamp is null when the file carried no EXIF DateTimeOriginal — common for ' +
       'photos sent through a messaging app. It is NOT the same as addedToRecord, and a null ' +
       'here does not mean the photo was taken on the date it was added.',
+    embeddedMetadata: {
+      photosCarryingHiddenDetail: embedded.withAny,
+      kinds: embedded.labels,
+      note:
+        'The photo files here are the camera originals with nothing removed, which is what makes ' +
+        'them worth anything as evidence and also means they can carry details that appear ' +
+        'nowhere else in this archive. Only the presence of each kind was recorded; no ' +
+        'coordinates, serial numbers or names were read into this record.',
+    },
     photos: entries,
   };
 

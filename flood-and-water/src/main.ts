@@ -3,8 +3,8 @@ import type { DataIndex, GapAnswer, GapState, SourceRef } from './types.js';
 import { assessGaps, rentersNote, waitingPeriod } from './coverage.js';
 import {
   appendEntry, verifyChain, describeTimestamp, makePhotoRecord, hashBytes, METHODOLOGY,
-  entryKind, formatCents, parseMoneyToCents, receiptsTotalCents, countByKind,
-  type ChainEntry, type PhotoRecord,
+  entryKind, formatCents, parseMoneyToCents, receiptsTotalCents, countByKind, embeddedSummary,
+  type ChainEntry, type PhotoRecord, type EmbeddedMetadata,
 } from './evidence.js';
 import { loadChain, saveChain, putBlob, storageReport, StorageUnavailableError } from './store.js';
 
@@ -301,16 +301,29 @@ async function addLogEntry(): Promise<void> {
     // Hash the ORIGINAL bytes before anything touches them, and store them unmodified.
     const sha256 = await hashBytes(bytes);
     let exifDateTimeOriginal: string | null = null;
+    let embedded: EmbeddedMetadata | undefined;
     try {
       const exifr = await import('exifr');
-      const parsed = await exifr.parse(file, ['DateTimeOriginal']);
+      // Two separate reads with two separate purposes. DateTimeOriginal is kept, because it is
+      // the evidence. The rest is only ever tested for presence and immediately discarded — the
+      // app needs to warn that a location is in the file, not to learn the location.
+      const parsed = await exifr.parse(file, [
+        'DateTimeOriginal', 'GPSLatitude', 'GPSLongitude', 'BodySerialNumber',
+        'SerialNumber', 'OwnerName', 'Artist',
+      ]);
       const d = parsed?.DateTimeOriginal;
       if (d instanceof Date && !Number.isNaN(d.getTime())) {
         exifDateTimeOriginal = d.toISOString().replace('T', ' ').slice(0, 19);
       }
+      embedded = {
+        location: parsed?.GPSLatitude != null || parsed?.GPSLongitude != null,
+        deviceSerial: Boolean(parsed?.BodySerialNumber || parsed?.SerialNumber),
+        owner: Boolean(parsed?.OwnerName || parsed?.Artist),
+      };
     } catch {
       // No EXIF, or an unreadable container. That is a real answer, not an error: the record
       // will say "no camera timestamp" rather than pretending the import time is a capture time.
+      // `embedded` stays undefined, which reads as "not checked" rather than "nothing there".
     }
     try {
       await putBlob(sha256, bytes);
@@ -323,7 +336,7 @@ async function addLogEntry(): Promise<void> {
     }
     photo = makePhotoRecord({
       sha256, byteSize: bytes.byteLength, mime: file.type || 'application/octet-stream',
-      exifDateTimeOriginal, importedAt: createdAt.slice(0, 10),
+      exifDateTimeOriginal, importedAt: createdAt.slice(0, 10), embedded,
     });
   }
 
@@ -466,6 +479,24 @@ function wireLog(): void {
         import('./export.js'), import('./evidence.js'), import('./store.js'),
       ]);
       const on = new Date().toISOString().slice(0, 10);
+
+      // Said BEFORE the file is written, not after, and it asks rather than tells. The archive
+      // contains the photos exactly as the camera wrote them, which is the point — and which
+      // means it can carry details the screen never showed. The person sending it to an adjuster
+      // is entitled to know that before it leaves the device, not to discover it afterwards.
+      const embedded = embeddedSummary(chain);
+      if (embedded.withAny > 0) {
+        const ok = confirm(
+          `${embedded.withAny} of your ${embedded.photos} photo${embedded.photos === 1 ? '' : 's'} ` +
+            `also contain${embedded.withAny === 1 ? 's' : ''} ${embedded.labels.join(' and ')}.\n\n` +
+            'That is stored inside the picture files by the camera. This archive keeps the ' +
+            'photos exactly as they are, because changing them would weaken them as evidence — ' +
+            'so anyone you send it to can read that too.\n\n' +
+            'Continue and save the archive?',
+        );
+        if (!ok) return;
+      }
+
       const { zip, missing } = await buildOriginalsZip(chain, getBlob, await verifyChain(chain), on);
       if (missing.length) {
         alert(

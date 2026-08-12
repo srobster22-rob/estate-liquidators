@@ -6,7 +6,9 @@ import type { DataIndex } from '../src/types.js';
 import { waitingPeriod, assessGaps, addDays, toISODate } from '../src/coverage.js';
 import {
   appendEntry, verifyChain, canonical, makePhotoRecord, describeTimestamp, GENESIS, hashBytes,
+  embeddedLabels, embeddedSummary, METHODOLOGY, type ChainEntry,
 } from '../src/evidence.js';
+import { buildOriginalsZip } from '../src/export.js';
 
 const data = indexData as unknown as DataIndex;
 const root = join(import.meta.dirname, '..');
@@ -365,5 +367,78 @@ describe('receipts total, damage does not', () => {
     const check = await verifyChain(chain);
     expect(check.intact).toBe(false);
     expect(check.brokenAt).toBe(1);
+  });
+});
+
+// --- what the export carries that the screen never showed ---------------------
+
+/**
+ * Hardening prompt, Pass 2.6: "check what an exported file contains that the screen didn't."
+ *
+ * The screen shows a photo's date. The originals archive ships the camera file untouched, and a
+ * phone photo routinely carries the coordinates it was taken at. Stripping it was rejected —
+ * the unmodified bytes are the evidence and editing them breaks every SHA-256 in the record — so
+ * the fix is disclosure, and these tests are what hold the disclosure in place.
+ */
+describe('photos carry more than the screen shows, and the record says so', () => {
+  const withGps = makePhotoRecord({
+    sha256: 'a'.repeat(64), byteSize: 100, mime: 'image/jpeg',
+    exifDateTimeOriginal: '2026-03-02 10:15:00', importedAt: '2026-03-02',
+    embedded: { location: true, deviceSerial: true, owner: false },
+  });
+  const clean = makePhotoRecord({
+    sha256: 'b'.repeat(64), byteSize: 100, mime: 'image/jpeg',
+    exifDateTimeOriginal: '2026-03-02 10:16:00', importedAt: '2026-03-02',
+    embedded: { location: false, deviceSerial: false, owner: false },
+  });
+
+  it('names each kind of hidden detail in words a person can act on', () => {
+    expect(embeddedLabels(withGps.embedded)).toEqual([
+      'the place it was taken',
+      'the camera or phone serial number',
+    ]);
+    expect(embeddedLabels(clean.embedded)).toEqual([]);
+    // A photo imported before this check existed is "not checked", never "nothing found".
+    expect(embeddedLabels(undefined)).toEqual([]);
+  });
+
+  it('the summary counts photos, not tags, so the warning matches what the person sees', async () => {
+    let chain: ChainEntry[] = [];
+    chain = [...chain, await appendEntry(chain, { note: 'kitchen', photo: withGps }, '2026-03-02T10:15:00.000Z')];
+    chain = [...chain, await appendEntry(chain, { note: 'hall', photo: clean }, '2026-03-02T10:16:00.000Z')];
+    chain = [...chain, await appendEntry(chain, { note: 'no photo here' }, '2026-03-02T10:17:00.000Z')];
+
+    const s = embeddedSummary(chain);
+    expect(s.photos).toBe(2);
+    expect(s.withAny).toBe(1);
+    expect(s.labels).toEqual(['the place it was taken', 'the camera or phone serial number']);
+  });
+
+  it('the record never stores the coordinates it is warning about', () => {
+    // The point of the flag is to warn, not to learn. If this record ever grew a latitude it
+    // would have become the very thing it exists to warn about.
+    const serialised = JSON.stringify(withGps);
+    expect(serialised).not.toMatch(/latitude|longitude|GPSLat|coordinate/i);
+    expect(Object.keys(withGps.embedded!).sort()).toEqual(['deviceSerial', 'location', 'owner']);
+    for (const v of Object.values(withGps.embedded!)) expect(typeof v).toBe('boolean');
+  });
+
+  it('the manifest discloses it, so the warning outlives the dialog box', async () => {
+    let chain: ChainEntry[] = [];
+    chain = [...chain, await appendEntry(chain, { note: 'kitchen', photo: withGps }, '2026-03-02T10:15:00.000Z')];
+    const { zip } = await buildOriginalsZip(
+      chain, async () => new Uint8Array([1, 2, 3]), { intact: true }, '2026-03-05',
+    );
+    const text = new TextDecoder().decode(zip);
+    expect(text).toContain('photosCarryingHiddenDetail');
+    expect(text).toContain('the place it was taken');
+    expect(text).toContain('nothing removed');
+    // And it must not have quietly acquired a location while explaining locations.
+    expect(text).not.toMatch(/"(latitude|longitude)"/i);
+  });
+
+  it('the methodology tells the reader too, since that page goes with every export', () => {
+    expect(METHODOLOGY).toContain('exactly as the camera wrote them');
+    expect(METHODOLOGY).toMatch(/place it was taken/);
   });
 });

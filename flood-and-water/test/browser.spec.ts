@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { makeExifJpeg } from './fixtures/exif-jpeg.js';
 
 const SCREENS = [
   { name: 'coverage', path: '/' },
@@ -263,4 +264,58 @@ test('an unreadable amount is refused rather than guessed at', async ({ page }) 
   await expect.poll(() => alerts.length).toBe(1);
   expect(alerts[0]).toMatch(/couldn't read that amount/i);
   await expect(page.locator('.entry')).toHaveCount(0);
+});
+
+test('a photo that DOES have a camera timestamp reports it, and says what else it carries', async ({ page }) => {
+  // The counterpart to the test above, and the one that was missing. Every photo test in this
+  // project used a file with no EXIF and asserted the null path, so the branch that reads a real
+  // camera timestamp — the distinction the evidence layer is built around — had never once run.
+  // The read sits in a try/catch that treats any throw as "no EXIF", so a break here would have
+  // shown up as a confidently wrong "No camera timestamp in this file" on every photo.
+  const jpeg = Buffer.from(makeExifJpeg({ takenAt: '2026:03:02 10:15:00', withGps: true }));
+
+  await page.goto('/#/log');
+  await page.locator('#note').fill('Standing water, kitchen');
+  await page.locator('#photo').setInputFiles({ name: 'kitchen.jpg', mimeType: 'image/jpeg', buffer: jpeg });
+  await page.locator('#add').click();
+  await expect(page.locator('.entry')).toHaveCount(1);
+
+  // On screen: the camera time, attributed to the camera, alongside the import date.
+  const entry = await page.locator('.entry').innerText();
+  expect(entry).toMatch(/Taken 2026-03-02 10:15:00 \(from the camera\)/);
+  expect(entry).not.toMatch(/No camera timestamp/);
+
+  // The archive warns before it is written, because the file carries a location the screen never
+  // showed. Declining must produce no download at all.
+  const messages: string[] = [];
+  page.on('dialog', (d) => { messages.push(d.message()); void d.dismiss(); });
+  await page.locator('#export-zip').click();
+  await expect.poll(() => messages.length).toBe(1);
+  expect(messages[0]).toContain('the place it was taken');
+  expect(messages[0]).toMatch(/1 of your 1 photo/);
+
+  page.removeAllListeners('dialog');
+  page.on('dialog', (d) => { void d.accept(); });
+  const download = page.waitForEvent('download');
+  await page.locator('#export-zip').click();
+  const file = await download;
+
+  const stream = await file.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const c of stream) chunks.push(c as Buffer);
+  const dir = mkdtempSync(join(tmpdir(), 'zip-exif-'));
+  const zipPath = join(dir, 'originals.zip');
+  writeFileSync(zipPath, Buffer.concat(chunks));
+
+  const parsed = JSON.parse(execFileSync('python3', ['-c', [
+    'import json, zipfile',
+    `z = zipfile.ZipFile(${JSON.stringify(zipPath)})`,
+    'print(json.dumps(json.loads(z.read("manifest.json"))))',
+  ].join('\n')], { encoding: 'utf8' }));
+
+  expect(parsed.photos[0].cameraTimestamp).toBe('2026-03-02 10:15:00');
+  expect(parsed.embeddedMetadata.photosCarryingHiddenDetail).toBe(1);
+  expect(parsed.embeddedMetadata.kinds).toContain('the place it was taken');
+  // Disclosed, never recorded: the manifest must not have learned where the house is.
+  expect(JSON.stringify(parsed)).not.toMatch(/"(latitude|longitude|GPSLatitude)"/i);
 });
