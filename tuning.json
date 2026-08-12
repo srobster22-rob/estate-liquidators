@@ -77,7 +77,9 @@
   "tools": {
     "_source": "DESIGN.md 8 toolkit",
     "salt_line_seconds": 20.0,
-    "salt_line_charges": 1
+    "salt_line_charges": 1,
+    "dolly_speed_mult": 0.55,
+    "dolly_tip_speed": 2.2
   },
   "senses": {
     "_source": "TECH-SPEC.md A5; hearing radius derives from AUDIO-SPEC 1.1",

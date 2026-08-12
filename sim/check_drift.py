@@ -223,6 +223,9 @@ check("JS3d quiet_ship_seconds", grab(js3, r"QUIET_SHIP_S=([\d.]+)"),
 tl = TUNING["tools"]
 check("JS3d salt_seconds", grab(js3, r"SALT_S=([\d.]+)"), tl["salt_line_seconds"])
 check("JS3d salt_charges", grab(js3, r"SALT_CHARGES=(\d+)"), tl["salt_line_charges"])
+check("JS3d dolly_speed", grab(js3, r"DOLLY_SPEED=([\d.]+)"), tl["dolly_speed_mult"])
+check("JS3d dolly_tip_speed", grab(js3, r"DOLLY_TIP_SPEED=([\d.]+)"), tl["dolly_tip_speed"])
+check("JS3d L[dolly]", grab(js3, r"const L=\{[^}]*dolly:(\d+)"), TUNING["loudness"]["dolly"])
 
 dd = TUNING["dead"]
 check("JS3d collection_seconds", grab(js3, r"COLLECT_S=([\d.]+)"), dd["collection_seconds"])

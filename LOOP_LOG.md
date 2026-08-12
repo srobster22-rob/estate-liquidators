@@ -593,6 +593,23 @@ that a *stationary* Curator would pass. What finally works is deterministic and 
 router returns a different door once salt is down, and the body moves without ending up on your
 side of the line. · Regression: QA 154/154, drift 144/144, and `-r 3` clean.
 
+R34 · **The dolly**, which removes the last stand-in from the weight system. Cart-class
+pieces — which since R26 means the apex — can no longer be picked up *at all*: they go on the
+dolly or they stay where they are. It is slow (×0.55), it is **L35 while it rolls** at 0.7/s,
+which makes it the loudest thing you can do on purpose, and it **tips** if you sprint with it,
+dropping the load and breaking it if it is fragile. That last one is the design's own promise
+("slow, loud on hardwood, tips over") and it is where the apex stops being a heavy pickup and
+becomes a logistics problem with a comedy failure mode attached. 6 new checks. · This also
+retires the note R26 left behind: cart class was being carried by two people at a crawl,
+flagged in the code as a stand-in for a tool that did not exist. · Three fixture faults, all
+mine, all instructive: I sampled the Curator's fix *after* the run and read null, because it
+had already walked to the noise and cleared it — the fix has to be sampled during. I set
+`player.speed` directly to test tipping, and the movement code overwrites it from actual
+displacement on the same frame, so the shove never happened; sprinting with the dolly is what
+does it, which is the real mechanic anyway. And an apex check from R26 asserted two people and
+five slots — correct then, wrong now, and it failed the moment the rule changed, which is what
+it is for. · Regression: QA 159/159, drift 147/147.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

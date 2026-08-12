@@ -756,19 +756,23 @@ async function checks(g, fresh) {
       window.__g.newContract(4242 + n); window.__g.regen(4242 + n, n); window.__g.setNight(n);
       out.late.push(window.__g.apex());
     }
-    // Haul it: crewmate alongside, lift, walk it to the van.
+    // Wheel it: an apex is cart class, so it cannot be picked up at all - it goes
+    // on the dolly or it stays where it is.
     window.__g.newContract(4242); window.__g.regen(4242, 3); window.__g.setNight(3);
     window.__g.gates(true); window.__g.freezeCrew(true);
     const a = window.__g.apex(), it = window.__g.list()[a.i];
-    window.__g.setCrew(0, it.x + 1.0, it.z);
     window.__g.tp(it.x - 1.3, it.z);
     window.__g.look(Math.PI / 2, -Math.atan2(1.62 - it.y, 1.3));
     window.__g.grab();
-    const alone = window.__g.carry();
+    const byHand = window.__g.carry();
+    window.__g.moveDolly(it.x + 1.0, it.z);
+    window.__g.tp(it.x + 1.6, it.z);
+    const took = window.__g.takeDolly();
+    const loaded = window.__g.loadDolly();
     const v = window.__g.rooms().find(r => r.van);
     const before = window.__g.vanSlots();
-    window.__g.tp(v.x, v.z); window.__g.step(4, 1 / 60);
-    out.haul = { carry: alone, slots: before - window.__g.vanSlots(),
+    window.__g.moveDolly(v.x, v.z); window.__g.tp(v.x, v.z); window.__g.step(4, 1 / 60);
+    out.haul = { byHand, took, loaded, slots: before - window.__g.vanSlots(),
                  banked: window.__g.state().banked, value: a.value };
     window.__g.gates(false); window.__g.freezeCrew(false);
     window.__g.newContract(20260806); window.__g.regen(20260806);
@@ -778,8 +782,10 @@ async function checks(g, fresh) {
     apex.early.every(a => a === null), JSON.stringify(apex.early));
   ok("late ones always do", apex.late.every(a => a && a.tier === 4),
     JSON.stringify(apex.late));
-  ok("it takes two people and five slots",
-    apex.haul.carry !== null && apex.haul.carry.follower !== null && apex.haul.slots === 5,
+  ok("it cannot be picked up at all - it goes on the dolly",
+    apex.haul.byHand === null && apex.haul.loaded !== null, JSON.stringify(apex.haul));
+  ok("and it costs five slots when it gets there",
+    apex.haul.slots === 5 && apex.haul.banked >= apex.haul.value,
     JSON.stringify(apex.haul));
   ok("and it is worth a third to two thirds of the night it decides",
     apex.late.every(a => a.value >= 2900 * 0.30 && a.value <= 3300 * 0.68),
@@ -898,6 +904,77 @@ async function checks(g, fresh) {
     JSON.stringify(unload));
   ok("and it is lying in the yard where it can be reclaimed",
     unload.radiating === true, JSON.stringify(unload));
+
+  // --- the dolly (DESIGN 8) -------------------------------------------------
+  // "Moves cart-class items - slow, loud on hardwood, tips over."
+  await fresh();
+  const dollyChecks = await g(() => {
+    window.__g.parkCrew(); window.__g.gates(true);
+    window.__g.newContract(4242); window.__g.regen(4242, 3); window.__g.setNight(3);
+    window.__g.parkCrew(); window.__g.gates(true);
+    const start = window.__g.dolly();
+
+    // Slow: same ten strides with and without it.
+    const walk = (withDolly) => {
+      const r = window.__g.rooms().find(x => !x.van);
+      window.__g.tp(r.x - 3, r.z); window.__g.look(Math.PI / 2, 0);
+      if (withDolly) { window.__g.moveDolly(r.x - 3, r.z); window.__g.takeDolly(); }
+      const a = window.__g.raw();
+      window.__g.press("KeyW"); window.__g.step(90, 1 / 60); window.__g.clearKeys();
+      const b = window.__g.raw();
+      if (withDolly) window.__g.takeDolly();
+      return Math.hypot(b.x - a.x, b.z - a.z);
+    };
+    const free = walk(false), pushing = walk(true);
+
+    // Loud: it is a rolling alarm, and the Curator hears it.
+    const r = window.__g.rooms().find(x => !x.van);
+    window.__g.tp(r.x - 3, r.z); window.__g.moveDolly(r.x - 3, r.z);
+    window.__g.takeDolly(); window.__g.setDist(40); window.__g.setCur(r.x, r.z);
+    const dBefore = window.__g.state().dist;
+    // Sample as it goes: the Curator is standing right there, so it walks to the
+    // fix and clears it inside a second - reading the fix at the end reads null
+    // and looks like it never heard anything.
+    let heardIt = false;
+    window.__g.press("KeyW");
+    for (let i = 0; i < 120; i++) {
+      window.__g.step(1, 1 / 60);
+      if (window.__g.fix()) heardIt = true;
+    }
+    window.__g.clearKeys();
+    const dAfter = window.__g.state().dist;
+    window.__g.takeDolly();
+
+    // Tips: shove it faster than it wants to go.
+    const a = window.__g.apex();
+    if (a) {
+      const it = window.__g.list()[a.i];
+      window.__g.moveDolly(it.x + 1.0, it.z);
+      window.__g.tp(it.x + 1.6, it.z);
+      window.__g.takeDolly(); window.__g.loadDolly();
+    }
+    const loadedBefore = window.__g.dolly().load;
+    // Shoved, not pushed: sprinting with it is above the tipping speed. Setting
+    // player.speed directly does nothing - the movement code overwrites it from
+    // actual displacement on the same frame.
+    window.__g.press("KeyW"); window.__g.press("ShiftLeft");
+    window.__g.step(30, 1 / 60); window.__g.clearKeys();
+    const after = window.__g.dolly();
+    return { start, free, pushing, dBefore, dAfter, heardIt,
+             loadedBefore, after, broken: window.__g.broken().length };
+  });
+  ok("there is a dolly, parked at the van",
+    dollyChecks.start !== null && dollyChecks.start.load === null,
+    JSON.stringify(dollyChecks.start));
+  ok("pushing it is slower than walking",
+    dollyChecks.pushing < dollyChecks.free * 0.75,
+    JSON.stringify({ free: dollyChecks.free, pushing: dollyChecks.pushing }));
+  ok("it is a rolling alarm",
+    dollyChecks.dAfter > dollyChecks.dBefore && dollyChecks.heardIt === true,
+    JSON.stringify(dollyChecks));
+  ok("and it tips if you shove it",
+    dollyChecks.loadedBefore !== null && dollyChecks.after.load === null &&
+    dollyChecks.after.held === false, JSON.stringify(dollyChecks));
 
   // --- the salt line (DESIGN 8) ---------------------------------------------
   // "Curator won't cross for 20s, single use, consumed."

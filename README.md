@@ -22,10 +22,10 @@ those state their own falsification conditions.
 What runs, and how to check it:
 
 ```bash
-node proto3d/qa.mjs               # 154 checks driving the real build in headless Chromium
+node proto3d/qa.mjs               # 159 checks driving the real build in headless Chromium
 node proto3d/qa.mjs -r 5           # run it five times; anything flaky is reported as flaky
-python3 sim/check_drift.py        # 144 constants agree across four implementations
-python3 sim/check_counts.py --qa 154   # the numbers in these docs are the real ones
+python3 sim/check_drift.py        # 147 constants agree across four implementations
+python3 sim/check_counts.py --qa 159   # the numbers in these docs are the real ones
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
 node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
   python3 sim/validate_estate.py --estate /tmp/e/*.json   # generated estates vs the contract

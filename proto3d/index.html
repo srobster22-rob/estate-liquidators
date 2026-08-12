@@ -171,7 +171,7 @@ const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
 const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
-const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100};
+const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
 const ATT_MULT={clean:1, tainted:1.5, malignant:3};
 const FEE={clean:0, tainted:.08, malignant:.20};
@@ -228,6 +228,11 @@ const QUIET_SHIP_S=45.0, LEVER_GO_QUIET=20;
 // DESIGN 8: the one tool that says no to the Curator. Twenty seconds, one charge,
 // consumed. It is not a weapon - it buys a route, once.
 const SALT_S=20.0, SALT_CHARGES=1;
+// DESIGN 8: "moves cart-class items - slow, loud on hardwood, tips over". One
+// per estate, parked at the van, and the reason the apex is a logistics problem
+// rather than a heavy pickup. The cart is a rolling alarm: L35 at 0.7/s while
+// it moves, which is the loudest thing you can do that isn't an accident.
+const DOLLY_SPEED=0.55, DOLLY_TIP_SPEED=2.2;
 const QUIET_S=Math.round(QUIET_SHIP_S*(NIGHT/SHIP_NIGHT));
 const GHOST_SPEED=7.2, GHOST_EYE=1.95;
 // A5 senses. One Loudness number, three consumers - this is the hearing one.
@@ -639,7 +644,7 @@ function blocked(x,z){
 
 // ------------------------------------------------------------------ state
 let noiseLog=[], gatesOff=false, broken=[], lit=new Set(), breakerUsed=0, quiet=0;
-let salt=null, saltLeft=SALT_CHARGES;
+let salt=null, saltLeft=SALT_CHARGES, dolly=null;
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 // Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
@@ -755,6 +760,8 @@ function reset(){
   curator={x:den.x,z:den.z,state:"PATROL",goal:null,carry:null,
            fixate:0,lock:0,reseat:0,target:false,mode:null,open:0,
            face:0,fix:null,step:0,who:null,recompute:0};
+  const dv0=R("drive");
+  dolly={x:dv0.x+2.2, z:dv0.z-2.2, held:false, load:null, tipped:0};
   recoveredTonight=new Set();
   for(const h of HIDES) h.item=null;
   van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
@@ -778,6 +785,8 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyZ"&&started&&!over) goQuiet();
   if(e.code==="KeyU"&&started&&!over) unloadCursed();
   if(e.code==="KeyX"&&started&&!over) layStop();
+  if(e.code==="KeyT"&&started&&!over) takeDolly();
+  if(e.code==="KeyR"&&started&&!over&&!player.dead){ if(!loadDolly()) unloadDolly(); }
   if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
@@ -885,7 +894,8 @@ function grabDrop(){
   // B4 anchor/follower. You take one end and shout at somebody to take the other;
   // the anchor owns the object and the follower influences it. Alone, an armoire
   // is a thing you stand next to and swear at.
-  if(it.klass==="two_man"||it.klass==="cart"){
+  if(it.klass==="cart") return;      // must be loaded on the dolly (DESIGN 5)
+  if(it.klass==="two_man"){
     const mate=nearestFreeCrew(it);
     if(!mate){ player.wantHelp=2.5; return; }
     it.heldBy=player; player.holding=it; it.follower=mate; mate.holding=it;
@@ -1222,7 +1232,7 @@ function step(dt){
     // Cart class should be on the dolly (DESIGN 8); there is no dolly yet, so it
     // is carried by two at a crawl and the tool is noted as missing rather than
     // faked. Flagged in the loop log.
-    if(player.holding&&player.holding.klass==="cart") sp*=TWO_MAN_SPEED*0.72;
+    if(dolly&&dolly.held) sp*=DOLLY_SPEED;
     const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
     const nz=player.z+(fwd[2]*mx+right[2]*mz)*sp*dt;
     const big=player.holding&&(player.holding.klass==="two_man"||player.holding.klass==="cart")
@@ -1233,6 +1243,15 @@ function step(dt){
     if(!blocked(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
     if(!blocked(player.x,nz)&&!(big&&itemBlocked(big,...carriedAt(player.x,nz)))) player.z=nz;
     player.speed=Math.hypot(player.x-px,player.z-pz)/Math.max(dt,1e-4);
+    if(dolly&&dolly.held){
+      // It follows you, noisily, and it goes over if you shove it too hard.
+      const d=lookDir();
+      dolly.x=player.x+d[0]*1.15; dolly.z=player.z+d[2]*1.15;
+      dolly.stride=(dolly.stride||0)+dt;
+      dist=Math.min(100,dist+L.dolly*SUSTAINED*dt);
+      if(dolly.stride>0.5){ dolly.stride=0; heard(L.dolly,dolly.x,dolly.z,player); }
+      if(player.speed>DOLLY_TIP_SPEED&&dolly.load) tipDolly();
+    }
   }
   else player.speed=0;
 
@@ -1262,6 +1281,14 @@ function step(dt){
   }
 
   // deposit
+  if(dolly&&dolly.load&&roomAt(dolly.x,dolly.z)?.van){
+    const it=dolly.load;
+    if(van.slots>=SLOTS[it.klass]){
+      dolly.load=null; it.gone=true;
+      van.cargo.push(it); van.slots-=SLOTS[it.klass];
+      if(van.slots<=0) return finish("VAN FULL");
+    }
+  }
   if(player.holding&&!player.hiding&&roomAt(player.x,player.z)?.van){
     const it=player.holding;
     if(van.slots>=SLOTS[it.klass]){
@@ -1420,6 +1447,46 @@ function killLights(){
   return {wings:n, drop:LEVER_KILL_LIGHTS};
 }
 const roomLit=id=>lit.has(id);
+
+// --------------------------------------------------------------------- dolly
+function nearDolly(){ return dolly&&Math.hypot(dolly.x-player.x,dolly.z-player.z)<1.9; }
+function takeDolly(){
+  if(!dolly||player.dead||player.holding) return null;
+  if(dolly.held){ dolly.held=false; return {held:false}; }
+  if(!nearDolly()) return null;
+  dolly.held=true; return {held:true};
+}
+// Loading is the point: a cart piece cannot be carried, only wheeled.
+function loadDolly(){
+  if(!dolly||dolly.load) return null;
+  let best=null,bd=2.2;
+  for(const it of items){
+    if(it.gone||it.heldBy||it.klass!=="cart") continue;
+    const d=Math.hypot(it.x-dolly.x,it.z-dolly.z);
+    if(d<bd){bd=d;best=it;}
+  }
+  if(!best) return null;
+  dolly.load=best; best.moved=true;
+  return {loaded:best.value};
+}
+function unloadDolly(){
+  if(!dolly||!dolly.load) return null;
+  const it=dolly.load; dolly.load=null;
+  it.x=dolly.x; it.z=dolly.z; it.y=0.62;
+  return {unloaded:it.value};
+}
+// It tips. Turn hard or shove it too fast and the load goes over - which for a
+// fragile centrepiece is the most expensive noise in the game.
+function tipDolly(){
+  if(!dolly) return;
+  dolly.held=false; dolly.tipped=3.0;
+  const it=dolly.load;
+  if(it){
+    dolly.load=null; it.x=dolly.x+rnd(-0.8,0.8); it.z=dolly.z+rnd(-0.8,0.8); it.y=0.45;
+    if(breaks(it,CARRY_RUN)) shatter(it,player);
+    else noise(L.drop,true,0,it.x,it.z,player);
+  }
+}
 
 // Salt goes down in a doorway, because a doorway is the only thing worth
 // denying: it is the one place a route has no alternative.
@@ -1788,6 +1855,11 @@ function render(){
   const dv=R("drive");
   drawBox(dv.x-1.6,1.05,dv.z,1.5,1.05,1.9,[.34,.28,.13]);
 
+  if(dolly){
+    drawBox(dolly.x,0.28,dolly.z,0.55,0.10,0.42,[.30,.27,.22]);
+    drawBox(dolly.x,0.12,dolly.z-0.34,0.5,0.12,0.06,[.16,.155,.15]);
+    if(dolly.load) drawBox(dolly.x,0.75,dolly.z,0.62,0.38,0.48,[.46,.47,.44]);
+  }
   for(const sh of shelves){
     drawBox(sh.x,SHELF_Y/2,sh.z,sh.w/2,SHELF_Y/2,sh.d/2,[.25,.225,.19]);
     drawBox(sh.x,SHELF_Y+0.03,sh.z,sh.w/2+0.04,0.03,sh.d/2+0.04,[.29,.26,.21]);
@@ -1918,6 +1990,8 @@ function hud(){
     (quiet>0?`<span style="color:#8fae9c">GOING QUIET  ${quiet.toFixed(1)}s</span><br>`:"")+
     (salt&&t<salt.until?`<span style="color:#cfc9b8">SALT HOLDS  ${
       (salt.until-t).toFixed(1)}s</span><br>`:"")+
+    (dolly&&dolly.held?`<span style="color:#b09a54">PUSHING THE DOLLY${
+      dolly.load?" (loaded)":""}  ·  [R] ${dolly.load?"unload":"load"}</span><br>`:"")+
     (saltLeft>0?`<span style="color:#8b8880">salt x${saltLeft}  ·  [X] in a doorway</span><br>`:"")+
     (items.some(i=>i.stash>0)?`<span style="color:#8b8880">stashed ${
       Math.ceil(Math.max(...items.map(i=>i.stash)))}s</span><br>`:"")+
@@ -2045,6 +2119,10 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   levers:()=>({quiet:+quiet.toFixed(2), quietWindow:QUIET_S,
     salt:salt&&t<salt.until?{door:salt.a+"-"+salt.b,left:+(salt.until-t).toFixed(1)}:null,
     saltCharges:saltLeft}),
+  dolly:()=>dolly?{x:+dolly.x.toFixed(2),z:+dolly.z.toFixed(2),held:dolly.held,
+    load:dolly.load?dolly.load.value:null,tipped:+dolly.tipped.toFixed(2)}:null,
+  takeDolly, loadDolly, unloadDolly,
+  moveDolly:(x,z)=>{if(dolly){dolly.x=x;dolly.z=z;} return !!dolly;},
   layStop, goQuiet, unloadCursed,
   // What the Curator's router would do next, which is a deterministic question -
   // unlike "how long did it take to get here", which is mostly hearing fuzz.
