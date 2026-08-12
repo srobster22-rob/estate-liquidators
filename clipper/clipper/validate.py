@@ -29,14 +29,14 @@ from __future__ import annotations
 
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .score import Scored, Weights, rank, score, select
 from .segment import Candidate, Segmentation, Utterance, candidates, segment
 from .transcript import load
 
-FEATURES = ("hook", "self_contained", "closure", "pacing", "payoff")
+FEATURES = ("hook", "self_contained", "closure", "pacing")
 
 
 # --------------------------------------------------------------------------
@@ -221,7 +221,6 @@ SWEEPS: dict[str, list[float]] = {
     "self_contained": [1.5, 2.5, 3.5, 5.0, 7.0],
     "closure": [1.0, 1.75, 2.5, 3.5, 5.0],
     "pacing": [1.0, 2.0, 3.0, 4.5, 6.0],
-    "payoff": [0.5, 1.0, 1.5, 2.5, 4.0],
     "max_silence": [0.6, 0.9, 1.2, 1.8, 2.5],
     "closing_gap": [0.4, 0.6, 0.8, 1.2, 1.6],
 }
@@ -275,6 +274,125 @@ def parameter_sensitivity(
         out.append(Influence(name, _mean(churns), max(churns)))
     out.sort(key=lambda i: -i.mean_churn)
     return out
+
+
+# --------------------------------------------------------------------------
+# Weight rescue
+# --------------------------------------------------------------------------
+
+#: Multipliers applied to a feature's default weight when asking whether *any*
+#: weighting would let it matter.
+RESCUE_FACTORS = (0.0, 0.25, 2.0, 4.0, 8.0)
+
+
+@dataclass
+class Rescue:
+    feature: str
+    changed_at: list[float]
+
+    @property
+    def irredeemable(self) -> bool:
+        """No weighting whatsoever changes what gets published."""
+        return not self.changed_at
+
+
+def weight_rescue(
+    cands: list[Candidate],
+    seg: Segmentation,
+    weights: Weights | None = None,
+    *,
+    count: int = 5,
+    factors: tuple[float, ...] = RESCUE_FACTORS,
+) -> list[Rescue]:
+    """Ask whether a feature could matter *at any weight*, not just its current one.
+
+    Ablation at the default weight conflates two very different diagnoses, and
+    telling them apart decides whether a feature is fixable or finished:
+
+    * **Under-weighted.** `pacing` was inert at R3 and turned out to be worth
+      keeping — at 3.0 it removed a clip containing a 10.5-second silence that
+      had been ranking second. Turning the knob rescued it.
+    * **Irredeemable.** `payoff` fired on up to 105 candidates per text and still
+      changed nothing at *eight times* its default weight, on every text tried.
+      The clips it favoured were already winning or already losing on other
+      features. No knob could rescue it, so R8 deleted it.
+
+    A feature can also be legitimately inert because its hazard is absent — the
+    long silence `pacing` guards against exists in only one fixture. That is a
+    safety feature working, not a weak one, which is why this is reported per
+    text rather than pooled.
+    """
+    weights = weights or Weights()
+    current = _weight_dict(weights)
+    baseline = {(s.start, s.end) for s in select(rank(cands, seg, weights), count=count)}
+    out: list[Rescue] = []
+    for name in FEATURES:
+        changed = []
+        for factor in factors:
+            trial = Weights(**{**current, name: current[name] * factor})
+            chosen = {(s.start, s.end) for s in select(rank(cands, seg, trial), count=count)}
+            if chosen != baseline:
+                changed.append(current[name] * factor)
+        out.append(Rescue(name, changed))
+    return out
+
+
+# --------------------------------------------------------------------------
+# Generalisation across texts
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class Verdict:
+    """Whether a feature earns its place across *independent* content."""
+
+    feature: str
+    inert_on: list[str]
+    tested_on: int
+    irredeemable_on: list[str] = field(default_factory=list)
+
+    @property
+    def carries_its_weight(self) -> bool:
+        return len(self.inert_on) * 2 <= self.tested_on
+
+    @property
+    def beyond_rescue(self) -> bool:
+        """No weight helps it on any text tried. This is the deletion standard."""
+        return bool(self.tested_on) and len(self.irredeemable_on) == self.tested_on
+
+
+def earns_its_place(
+    datasets: list[tuple[str, list[Candidate], Segmentation]],
+    weights: Weights | None = None,
+    *,
+    count: int = 5,
+) -> list[Verdict]:
+    """Ask of each feature: on how many different texts does deleting it matter?
+
+    Single-fixture ablation answers a narrower question than it appears to. A
+    feature can look essential because one document happens to suit it — and
+    every conclusion in this project rests on a handful of fixtures, most of them
+    written by the same hand. Measured at R8, `payoff` changed the published
+    selection on exactly one underlying text and was inert on the other three.
+
+    The reverse error is just as real and cost a round to notice: a lexicon
+    pattern that fires on no fixture is *untested*, not useless. Two of them
+    revived the moment genuinely different prose was added. So this measures
+    effect on the output, never coverage of a word list.
+    """
+    seen: dict[str, list[str]] = {name: [] for name in FEATURES}
+    stuck: dict[str, list[str]] = {name: [] for name in FEATURES}
+    for label, cands, seg in datasets:
+        for result in ablation(cands, seg, weights, count=count):
+            if result.inert:
+                seen[result.feature].append(label)
+        for result in weight_rescue(cands, seg, weights, count=count):
+            if result.irredeemable:
+                stuck[result.feature].append(label)
+    return [
+        Verdict(name, sorted(seen[name]), len(datasets), sorted(stuck[name]))
+        for name in FEATURES
+    ]
 
 
 # --------------------------------------------------------------------------
@@ -363,9 +481,30 @@ def main(argv: list[str] | None = None) -> int:
         print("usage: python3 -m clipper.validate TRANSCRIPT [TRANSCRIPT ...]", file=sys.stderr)
         return 2
     worst = 0
+    datasets = []
     for path in args:
         worst = max(worst, report(path))
         print()
+        transcript = load(path)
+        seg = segment(transcript)
+        cands = candidates(seg)
+        if cands:
+            datasets.append((Path(path).name, cands, seg))
+
+    if len(datasets) > 1:
+        print(f"EARNS ITS PLACE  (deleting the feature changes nothing, per text)")
+        for verdict in earns_its_place(datasets):
+            where = ", ".join(verdict.inert_on) or "-"
+            if verdict.beyond_rescue:
+                flag = "  <-- NO WEIGHT HELPS, ON ANY TEXT: DELETE IT"
+            elif not verdict.carries_its_weight:
+                flag = "  <-- inert on most texts (check whether its hazard is absent)"
+            else:
+                flag = ""
+            print(
+                f"  {verdict.feature:15s} inert on {len(verdict.inert_on)}/"
+                f"{verdict.tested_on}: {where}{flag}"
+            )
     return worst
 
 

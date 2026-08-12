@@ -109,29 +109,6 @@ class MidSentenceDetectionTests(unittest.TestCase):
         self.assertTrue(clean, "capitalised transcripts must ignore gap_before")
 
 
-class PayoffGatingTests(unittest.TestCase):
-    """A conclusion you were cut away from never landed."""
-
-    def test_truncating_an_ending_cannot_raise_the_payoff_score(self):
-        for fixture in ("talk.srt", "talk_auto.vtt", "pauses.srt"):
-            _, seg, cands = load(fixture)
-            for c in cands[:60]:
-                broken = V.break_ending(c)
-                if broken is None:
-                    continue
-                self.assertLessEqual(
-                    SC.score(broken, seg).features["payoff"],
-                    SC.score(c, seg).features["payoff"],
-                    f"{fixture}: truncation raised payoff",
-                )
-
-    def test_a_clip_cut_mid_sentence_is_detected(self):
-        _, seg, cands = load("talk.srt")
-        candidate = cands[0]
-        broken = V.break_ending(candidate)
-        self.assertTrue(SC.ends_mid_sentence(broken, punctuated=seg.punctuated))
-
-
 class RegimeComparisonTests(unittest.TestCase):
     """What the auto-caption regime costs, stated as a number rather than a worry."""
 

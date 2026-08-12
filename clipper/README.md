@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 7. Works end to end, on local files.** 259 tests pass, including real ffmpeg encodes
+**Round 8. Works end to end, on local files.** 269 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -47,7 +47,8 @@ The scorer does **not** try to detect interesting content — it can't, from tex
 otherwise would just produce confident nonsense. What it measures is **self-containment**: a
 clip fails when the viewer needs context they don't have. That is visible in the transcript.
 
-Six features, each 0–1, combined as a weighted sum:
+Four features, each 0–1, combined as a weighted sum. There were six; two were deleted
+after measurement showed they could not change the output — see `LOOP_LOG.md` R1, R6, R8.
 
 | Feature | Fails when |
 |---|---|
@@ -55,9 +56,19 @@ Six features, each 0–1, combined as a weighted sum:
 | `self_contained` | It opens on "and that's why *it* works" — a pronoun with no antecedent. |
 | `closure` | It stops mid-thought instead of landing. |
 | `pacing` | There's a long silence to sit through in the middle. |
-| `payoff` | No conclusion marker near the end. |
 
 Tune with `--weights weights.json`; `score.Weights` writes the file for you.
+
+## The fixtures deliberately disagree with each other
+
+Five fixtures, four independent texts: an instructional monologue, a talk with real dead air,
+a two-speaker interview, and a digressive ramble that says outright it has no conclusion. Plus
+one paired ASR rendering.
+
+Through R7 everything was measured on two texts in one voice, and it showed. Adding the
+interview and the ramble immediately revived two lexicon patterns that had "never fired" —
+they were untested, not useless — and demonstrated that `payoff` could not change the output
+on any of them at any weight, which is what got it deleted.
 
 ## Silence is recovered, not assumed away
 
@@ -110,8 +121,12 @@ There is no labelled data, so "is the ranking good?" can't be answered directly.
 *can* be measured without labels, and each has caught something real:
 
 ```bash
-python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt fixtures/talk_auto.vtt
+python3 -m clipper.validate fixtures/*.srt fixtures/*.vtt
 ```
+
+Give it more than one file and it adds a cross-text verdict: which features are inert on which
+content, and which are inert **at every weight on every text** — the standard that has now
+deleted three features.
 
 * **Discrimination** — does the feature vary at all? A feature pinned at its ceiling is a
   constant, and a constant cannot rank anything.
@@ -155,7 +170,7 @@ Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 259 tests, ~30s
+python3 -m unittest discover -s tests -t .      # 269 tests, ~42s
 python3 -m clipper.cli --help
 ```
 

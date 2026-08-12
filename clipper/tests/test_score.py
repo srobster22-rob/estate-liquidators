@@ -244,7 +244,7 @@ class RankingTests(unittest.TestCase):
         s = SC.rank(self.cands, self.seg)[0]
         self.assertEqual(
             set(s.features),
-            {"hook", "self_contained", "closure", "pacing", "payoff"},
+            {"hook", "self_contained", "closure", "pacing"},
         )
 
     def test_explain_is_readable(self):
@@ -275,8 +275,8 @@ class WeightsTests(unittest.TestCase):
         seg = S.segment(tr)
         cands = S.candidates(seg)
         only = lambda name: SC.Weights(
-            **{f: (50.0 if f == name else 0.0) for f in ("hook", "self_contained",
-                                                         "closure", "pacing", "payoff")}
+            **{f: (50.0 if f == name else 0.0)
+               for f in ("hook", "self_contained", "closure", "pacing")}
         )
         a = [(s.start, s.end) for s in SC.rank(cands, seg, only("hook"))[:10]]
         b = [(s.start, s.end) for s in SC.rank(cands, seg, only("closure"))[:10]]

@@ -58,8 +58,7 @@ class PickTests(unittest.TestCase):
         )
         hook_only, _ = cli.pick(
             self.tr, count=1, min_duration=15, max_duration=60,
-            weights=SC.Weights(hook=50.0, self_contained=0.0, closure=0.0,
-                               pacing=0.0, payoff=0.0),
+            weights=SC.Weights(hook=50.0, self_contained=0.0, closure=0.0, pacing=0.0),
         )
         self.assertNotEqual(
             (default[0].start, default[0].end), (hook_only[0].start, hook_only[0].end)

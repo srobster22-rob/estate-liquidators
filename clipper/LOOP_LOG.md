@@ -330,3 +330,44 @@ phenomenon will confidently report that the phenomenon is absent.**
 **Left rough on purpose:** the fixture's timings are plausible rather than captured, so the
 thresholds it produces are mechanism checks, not calibration. And `payoff` remains a lexicon
 of six English phrases, which is the shallowest feature in the scorer.
+
+---
+
+R8 · Broke the fixture monoculture. Added `interview.srt` (two speakers, question-and-answer)
+and `rambling.srt` (digressive, no conclusion), then re-judged the two lexicon features
+against content the author's habits did not shape. 12 new tests, 269 total.
+· **Found three things, and two of them contradict each other in a useful way:**
+
+**(a) "Never fires" is not evidence of uselessness.** On the three original fixtures, 5 of 11
+`hook` patterns and 4 of 6 `payoff` patterns never matched anything. The obvious move is to
+prune them. That would have been wrong: adding two independent texts revived
+`(the|a) (secret|trick|mistake…)` and — pointedly — `\b\d+\b`, which had matched nothing only
+because every earlier fixture spelled its numbers out in words. **A lexicon pattern with no
+hits is untested, not dead**, and the distinction is invisible without content diversity.
+
+**(b) `payoff` is beyond rescue, and that is a different finding from (a).** It fired plenty —
+up to 105 candidates per text — but raising its weight to **eight times** the default changed
+the published selection on **none** of the four texts. Not under-weighted, as `pacing` turned
+out to be at R3; simply incapable of affecting a decision, because the clips it favoured were
+already winning or already losing on other features. Deleted, on stronger evidence than either
+`density` (R1) or `duration_fit` (R6), both of which at least moved things.
+
+Coverage and effect are separate questions, and R8 is the round where they pointed opposite
+ways: the pattern list was *under*-tested while the feature itself was *over*-credited.
+
+**(c) The scorer generalises, which was not obvious.** Boundary sensitivity stays at 100% on
+both new texts. More convincingly, on the interview it picks *"What finally made you walk?
+Honestly? A spreadsheet."* — the strongest moment in the piece — and on the ramble it finds
+*"Everybody's rollback plan is fiction. If you've never tested it, it's a story."*, which is
+the one quotable line in 328 words of digression. Both are now regression tests.
+
+**Added the check that would have caught (b) immediately:** `weight_rescue` sweeps a feature's
+weight across a wide range and asks whether *any* setting changes the output; `earns_its_place`
+runs it across texts. The pairing matters, because ablation at the default weight conflates
+three situations that need different responses — under-weighted (turn the knob), hazard absent
+(leave it alone, `pacing` is inert on 3 of 4 texts and correct to be), and beyond rescue
+(delete it). The report now distinguishes them by name.
+
+**Left rough on purpose:** four independent texts is better than two and still not many, and
+all four were written by the same person for this purpose. Real transcripts would be better
+evidence than any of them.

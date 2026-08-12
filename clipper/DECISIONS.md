@@ -433,3 +433,40 @@ nine times too many utterances.
 read with no sentence pauses — where Otsu will still return a split and there is nothing there
 to find. The `MIN_GAP_THRESHOLD` floor is the current guard, and it is a threshold on a
 threshold, which is not elegant.
+
+---
+
+### D-25 · A feature is deleted when no weight rescues it on any text · FIRM
+
+`payoff` is gone. The scorer is four features: `hook`, `self_contained`, `closure`, `pacing`.
+
+**Why:** single-fixture ablation at the default weight conflates three situations that call
+for opposite responses. **Under-weighted** — `pacing` was inert at R3 and worth keeping;
+turning the knob to 3.0 rescued it. **Hazard absent** — `pacing` is inert on 3 of 4 texts
+today, because only one of them contains dead air, and a safety feature is *supposed* to do
+nothing when the danger is missing. **Beyond rescue** — `payoff` fired on up to 105 candidates
+per text and changed the published selection on none of them at eight times its default
+weight. Only the third is grounds for deletion, and `weight_rescue` is what tells them apart.
+
+**Falsified by:** content where a conclusion marker genuinely decides between two otherwise
+equal clips. If that appears, the feature returns — but it returns with a measurement, not
+with a lexicon and a hope.
+
+---
+
+### D-26 · Lexicon patterns are never pruned for lack of hits · FIRM
+
+A `HOOK_PATTERNS` entry that matches nothing stays.
+
+**Why:** measured at R8, 5 of 11 hook patterns fired on no candidate across three fixtures.
+Two of them started firing the moment two independent texts were added — including `\b\d+\b`,
+which had matched nothing purely because every earlier fixture wrote its numbers as words.
+Pruning on that evidence would have deleted working patterns and quietly narrowed the tool to
+the prose habits of whoever wrote the fixtures.
+
+This sits deliberately alongside D-25, which deleted a whole feature for lack of *effect*.
+Coverage and effect are different questions: absence of hits is a fact about the corpus,
+absence of effect is a fact about the model.
+
+**Falsified by:** a large, genuinely diverse corpus of real transcripts on which a pattern
+still never fires. That would be evidence about the pattern rather than about the fixtures.

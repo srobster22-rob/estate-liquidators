@@ -59,21 +59,9 @@ DISCOURSE_MARKERS = {
     "well", "now", "okay", "ok", "right", "anyway", "yeah", "um", "uh", "like",
 }
 
-#: Phrases that mark a conclusion landing. A clip ending shortly after one of
-#: these has resolved rather than merely stopped.
-PAYOFF_PATTERNS = [
-    r"\b(?:that'?s|this is) (?:why|how|what|the)\b",
-    r"\bthe (?:point|whole point|result|upshot|takeaway) is\b",
-    r"\bwhich means\b",
-    r"\bso (?:that'?s|now you)\b",
-    r"\bevery (?:single )?time\b",
-    r"\bproblem solved\b",
-]
-
 _WORD = re.compile(r"[^\w']+")
 
 _HOOK_RE = [re.compile(p, re.IGNORECASE) for p in HOOK_PATTERNS]
-_PAYOFF_RE = [re.compile(p, re.IGNORECASE) for p in PAYOFF_PATTERNS]
 
 
 # --------------------------------------------------------------------------
@@ -94,7 +82,6 @@ class Weights:
     #: weak, it was under-weighted — and the fixture that suggested otherwise
     #: simply contained no silences for it to find.
     pacing: float = 3.0
-    payoff: float = 1.5
 
     #: The longest internal silence a clip may contain before it starts to lose
     #: points. A pause this long reads as a beat; much longer reads as a stall.
@@ -185,20 +172,6 @@ def opens_mid_sentence(
     if gap_before is not None:
         return gap_before < OPENING_GAP
     return False
-
-
-def ends_mid_sentence(
-    candidate: Candidate, *, punctuated: bool, closing_gap: float = OPENING_GAP
-) -> bool:
-    """Whether the clip stops partway through a sentence.
-
-    The mirror of `opens_mid_sentence`, and it exists for the mirror reason: a
-    conclusion the clip cut away from never landed, so it should earn no credit
-    for containing one.
-    """
-    if punctuated and candidate.ends_on_punctuation:
-        return False
-    return candidate.gap_after < closing_gap
 
 
 def self_containment(
@@ -300,12 +273,6 @@ def pacing(candidate: Candidate, *, max_silence: float, falloff: float = 2.0) ->
     return max(0.0, 1.0 - (worst - max_silence) / falloff)
 
 
-def payoff_strength(text: str, *, tail_window: int = 25) -> float:
-    tail = " ".join(_tokens(text)[-tail_window:])
-    hits = sum(1 for rx in _PAYOFF_RE if rx.search(tail))
-    return min(1.0, hits / 1.0)
-
-
 # --------------------------------------------------------------------------
 # Scoring
 # --------------------------------------------------------------------------
@@ -349,11 +316,6 @@ def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = Non
     mid_sentence = opens_mid_sentence(
         text, expect_capital=seg.capitalised, gap_before=candidate.gap_before
     )
-    # Symmetrically: a payoff you were cut away from never landed. Without this,
-    # truncating a clip's ending *raised* its payoff score, because the shorter
-    # tail window pulled a conclusion phrase into range — the same positional
-    # flaw the hook had before R4 gated it.
-    cut_off = ends_mid_sentence(candidate, punctuated=seg.punctuated)
     features = {
         "hook": 0.0 if mid_sentence else hook_strength(text),
         "self_contained": self_containment(
@@ -365,7 +327,6 @@ def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = Non
         ),
         "closure": closure(candidate, closing_gap=w.closing_gap, punctuated=seg.punctuated),
         "pacing": pacing(candidate, max_silence=w.max_silence),
-        "payoff": 0.0 if cut_off else payoff_strength(text),
     }
     total = sum(features[name] * getattr(w, name) for name in features)
     return Scored(candidate, total, features)

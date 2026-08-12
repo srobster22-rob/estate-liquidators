@@ -1,0 +1,95 @@
+1
+00:00:00,000 --> 00:00:05,200
+Anyway so I was going to talk about the migration but I should probably back up.
+
+2
+00:00:05,800 --> 00:00:11,000
+Because there's context, and the context is sort of the whole thing really.
+
+3
+00:00:11,600 --> 00:00:16,800
+We had 47 services. Or 51, depending on whether you count the cron boxes.
+
+4
+00:00:17,400 --> 00:00:22,600
+And nobody, and I do mean nobody, had a complete picture of it in their head.
+
+5
+00:00:23,200 --> 00:00:28,400
+Which, you know, that's normal, that's just what happens after four years.
+
+6
+00:00:29,000 --> 00:00:34,200
+Um. So the plan, originally, was to do it in three phases over two quarters.
+
+7
+00:00:34,800 --> 00:00:40,000
+That did not happen. Obviously. I don't think it's ever happened anywhere.
+
+8
+00:00:40,600 --> 00:00:45,800
+And it wasn't even the technical stuff that got us, which is the annoying part.
+
+9
+00:00:46,400 --> 00:00:51,600
+It was that two teams had different definitions of the word "customer".
+
+10
+00:00:52,200 --> 00:00:57,400
+Not slightly different. Structurally different. One included trial accounts.
+
+11
+00:00:58,000 --> 00:01:03,200
+Anyway that came out in week six, which was, you can imagine, a fun week.
+
+12
+00:01:03,800 --> 00:01:09,000
+Where was I. Right, the phases. So phase one was supposed to be read-only.
+
+13
+00:01:09,600 --> 00:01:14,800
+Except read-only isn't really a thing when you have write-through caching.
+
+14
+00:01:15,400 --> 00:01:20,600
+I keep meaning to write this up properly and I keep not doing it.
+
+15
+00:01:21,200 --> 00:01:26,400
+Someone asked me at a conference and I gave a much better answer than this.
+
+16
+00:01:27,000 --> 00:01:32,200
+The honest summary is we spent nine months on something we scoped at four.
+
+17
+00:01:32,800 --> 00:01:38,000
+And I still think it was worth doing, which people find annoying when I say it.
+
+18
+00:01:38,600 --> 00:01:43,800
+Because the alternative was another four years of nobody understanding it.
+
+19
+00:01:44,400 --> 00:01:49,600
+Um, what else. Oh, the rollback. We had a rollback plan and it was fiction.
+
+20
+00:01:50,200 --> 00:01:55,400
+Everybody's rollback plan is fiction. If you've never tested it, it's a story.
+
+21
+00:01:56,000 --> 00:02:01,200
+We found that out at 2am on a Thursday, which is when you always find that out.
+
+22
+00:02:01,800 --> 00:02:07,000
+Anyway. I don't really have a conclusion. It went fine in the end, mostly.
+
+23
+00:02:07,600 --> 00:02:12,800
+Three people left, which I don't think was the migration, but who knows.
+
+24
+00:02:13,400 --> 00:02:18,600
+So yeah. Test your rollback. That's probably the one actionable thing here.
