@@ -10,7 +10,7 @@ rather than search-and-lookup.
 | --- | --- |
 | **M0** — the three facts verified | **Partially met.** All three verified against FEMA, NFIP, and III, with the four waiting-period exceptions and their day counts. But via search index, not by reading the pages, and not confirmed by phone. See VERIFY.md §1.1–1.3. |
 | **M1** — "Am I covered?" + prepare checklist | **Code complete, gate not met.** The exit criterion is an insurance agent or state consumer specialist reading every coverage statement. That has not happened. |
-| **M2** — emergency screen + damage log | **Mostly built.** Emergency screen and evidence chain done and tested. Photo EXIF path built but exercised only against synthetic records, not ten real phone photos. |
+| **M2** — emergency screen + damage log | **Built.** Emergency screen, evidence chain, PDF claim packet, and the originals ZIP with a re-hashable manifest. Photo EXIF path still exercised only against synthetic records and one generated PNG, not ten real phone photos. |
 | **M3** — zone lookup, local page, second language | **Not built.** FEMA egress is blocked here; an approximated flood zone is worse than none. No Spanish. |
 | **M4** — one household, one season | Not started. |
 
@@ -42,12 +42,8 @@ waiting-period date, emergency, prepare checklist, damage log, about.
 
 ## Deviations
 
-- **No service worker yet**, so no offline. The brief requires the emergency screen to work
-  offline and it is right to. Porting `../disposal-guide/public/sw.js` (including its
-  `ignoreVary` fix) is the first thing to do next.
-- **No PDF/ZIP export.** The chain, the photo records, and the methodology text all exist; the
-  packet that turns them into something you hand an adjuster does not.
-- **English only.**
+- **English only.** That is now the only unbuilt deliverable from the brief, and it needs a paid
+  translator rather than another round.
 
 ## What worries me
 

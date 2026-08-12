@@ -111,21 +111,50 @@ queue — restructured to check before the real decision instead.
 invalid decision value changes nothing, that an empty queue says so rather than looking broken,
 and that the public page exposes no subscriber. Plus a live smoke test over `npm run serve`.
 
+## R7 — flood-and-water: the originals archive
+
+Queue item #1. The PDF is for reading; an adjuster or a lawyer wants the photo files themselves,
+byte-identical, with something to re-hash them against. If the bytes were resized or re-encoded
+on the way out, the SHA-256 in the record would prove nothing about the file in their hands.
+
+Wrote a ~120-line STORE-only ZIP writer rather than adding a dependency — photos are already
+compressed so deflate buys nothing, and STORE means the file in the archive *is* the file. The
+manifest carries every hash, the chain-check result, any photos recorded but no longer on the
+device (listed, not silently dropped), and a note that `cameraTimestamp: null` does not mean the
+photo was taken on the day it was added.
+
+**Verified against `unzip` and Python's `zipfile`** — implementations that know nothing about
+this writer. Self-checking an archive writer with its own reader proves only self-consistency,
+which is the limitation recall-watch's eval harness had to document about itself; here an
+independent tool was available, so it got used. CRC-32 checked against the standard `123456789`
+value, all 256 byte values round-tripped, a 300KB file across buffer boundaries, and a unicode
+filename.
+
+**Found:** two test bugs of my own. `unzip -l` exits non-zero on an empty archive with "zipfile
+is empty" — a warning about content, not corruption, and Python reads the same bytes fine; the
+test had read the exit code as a structural failure. And the warning goes to stderr, not stdout,
+which the first fix missed. Also strengthened the end-to-end test, which originally asserted only
+the `PK` signature: it now extracts the archive with Python and checks every manifest hash
+against the actual bytes, which is the claim the record makes.
+**Verified:** 40 unit tests, 18 browser tests, initial JS up only 0.5KB because the writer rides
+the lazily-loaded export chunk.
+
 ---
 
 ## The queue — what the next rounds should take
 
 Ordered by value, from the projects' own VERIFY files:
 
-1. **flood-and-water: the ZIP export of original photo bytes.** The PDF exists; a lawyer or
-   adjuster wants the originals with a manifest, and the hashes are already stored.
-2. **disposal-guide: the `/verify` re-verification screen.** The schema enforces
+1. **disposal-guide: the `/verify` re-verification screen.** The schema enforces
    `verifiedOn`/`verifiedBy`; the fifteen-second re-check loop that keeps them true is not built.
-3. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
+2. **All three: second language.** Spanish scaffolding exists in two and is 3/29 complete in
    `flood-and-water`. This one needs a paid human translator, not another round.
-4. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures.
-5. **recall-watch: time the review queue with a real coordinator.** The fifteen-second target is
+3. **recall-watch: FSIS and NHTSA adapters**, which exist only as fixtures.
+4. **recall-watch: time the review queue with a real coordinator.** The fifteen-second target is
    unmeasured.
+5. **flood-and-water: receipts, room-by-room items, and the contact log**, all modelled in the
+   brief but only the generic note/photo entry is built.
 
-Everything above #3 is code. #3 is money, and #4 needs network access this environment does not
-have — worth naming so a future round does not burn an hour rediscovering it.
+Only #1 and #5 are code I can finish here. #2 is money, #3 needs network access this environment
+does not have, and #4 needs a person — worth naming so a future round does not burn an hour
+rediscovering it.

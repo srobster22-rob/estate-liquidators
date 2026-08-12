@@ -1,5 +1,9 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { METHODOLOGY, verifyChain, describeTimestamp, type ChainEntry, type PhotoRecord } from './evidence.js';
+import { makeZip } from './zip.js';
+import {
+  METHODOLOGY, verifyChain, describeTimestamp,
+  type ChainEntry, type ChainCheck, type PhotoRecord,
+} from './evidence.js';
 
 /**
  * The claim packet.
@@ -109,6 +113,105 @@ export async function buildPacket(chain: ChainEntry[], now: string): Promise<Uin
 
 export function downloadBlob(bytes: Uint8Array, filename: string): void {
   const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --------------------------------------------------------------------------- originals
+
+/**
+ * The originals archive.
+ *
+ * The PDF is for reading; this is for verifying. An adjuster or a lawyer gets the photo files
+ * exactly as they came off the camera, plus a manifest they can re-hash them against. If the
+ * bytes had been resized, re-encoded, or stripped of metadata on the way out, the SHA-256 in the
+ * record would prove nothing about the file in their hands.
+ */
+export interface ManifestEntry {
+  seq: number;
+  file: string;
+  sha256: string;
+  byteSize: number;
+  mime: string;
+  cameraTimestamp: string | null;
+  addedToRecord: string;
+  note: string;
+}
+
+const EXT: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic',
+  'image/heif': 'heif', 'image/webp': 'webp',
+};
+
+export async function buildOriginalsZip(
+  chain: ChainEntry[],
+  getBytes: (sha256: string) => Promise<Uint8Array | undefined>,
+  chainCheck: ChainCheck,
+  exportedOn: string,
+): Promise<{ zip: Uint8Array; missing: string[] }> {
+  const files: { name: string; bytes: Uint8Array }[] = [];
+  const entries: ManifestEntry[] = [];
+  const missing: string[] = [];
+
+  for (const e of chain) {
+    const body = e.body as Record<string, unknown>;
+    const photo = body.photo as PhotoRecord | undefined;
+    if (!photo) continue;
+
+    const bytes = await getBytes(photo.sha256);
+    if (!bytes) {
+      // Recorded but no longer on the device. Say so in the manifest rather than omitting it —
+      // a gap the reader can see beats a gap they cannot.
+      missing.push(photo.sha256);
+      continue;
+    }
+
+    const name = `photos/${String(e.seq).padStart(3, '0')}-${photo.sha256.slice(0, 12)}.${EXT[photo.mime] ?? 'bin'}`;
+    files.push({ name, bytes });
+    entries.push({
+      seq: e.seq,
+      file: name,
+      sha256: photo.sha256,
+      byteSize: photo.byteSize,
+      mime: photo.mime,
+      cameraTimestamp: photo.exifPresent ? photo.exifDateTimeOriginal : null,
+      addedToRecord: photo.importedAt,
+      note: String(body.note ?? ''),
+    });
+  }
+
+  const manifest = {
+    exportedOn,
+    entryCount: chain.length,
+    photoCount: entries.length,
+    chainIntact: chainCheck.intact,
+    chainBrokenAt: chainCheck.brokenAt ?? null,
+    missingFromDevice: missing,
+    howToVerify:
+      'Each file below is the original, unmodified. Re-compute its SHA-256 and compare it to ' +
+      'the value here. On macOS or Linux: shasum -a 256 <file>',
+    cameraTimestampNote:
+      'cameraTimestamp is null when the file carried no EXIF DateTimeOriginal — common for ' +
+      'photos sent through a messaging app. It is NOT the same as addedToRecord, and a null ' +
+      'here does not mean the photo was taken on the date it was added.',
+    photos: entries,
+  };
+
+  files.unshift({
+    name: 'manifest.json',
+    bytes: new TextEncoder().encode(JSON.stringify(manifest, null, 2)),
+  });
+  files.push({ name: 'METHODOLOGY.txt', bytes: new TextEncoder().encode(METHODOLOGY) });
+
+  return { zip: makeZip(files), missing };
+}
+
+export function downloadZip(bytes: Uint8Array, filename: string): void {
+  const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

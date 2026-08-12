@@ -187,7 +187,10 @@ async function renderLog(): Promise<string> {
       <p><button class="btn" id="add">Add to record</button></p>
     </div>
 
-    <p><button class="btn btn-secondary" id="export">Save as a PDF for your insurer</button></p>
+    <p><button class="btn btn-secondary" id="export">Save as a PDF for your insurer</button>
+      <button class="btn btn-secondary" id="export-zip">Save the original photo files</button></p>
+    <p class="place-meta">The PDF is for reading. The photo files are for checking: they come out
+      exactly as they went in, with a manifest an adjuster can re-hash them against.</p>
 
     <p>Chain: <span class="${check.intact ? 'chain-ok' : 'chain-broken'}">
       ${chain.length} ${chain.length === 1 ? 'entry' : 'entries'},
@@ -323,6 +326,23 @@ function wireCoverage(): void {
 
 function wireLog(): void {
   document.getElementById('add')?.addEventListener('click', () => { void addLogEntry(); });
+  document.getElementById('export-zip')?.addEventListener('click', () => {
+    void (async () => {
+      const [{ buildOriginalsZip, downloadZip }, { verifyChain }, { getBlob }] = await Promise.all([
+        import('./export.js'), import('./evidence.js'), import('./store.js'),
+      ]);
+      const on = new Date().toISOString().slice(0, 10);
+      const { zip, missing } = await buildOriginalsZip(chain, getBlob, await verifyChain(chain), on);
+      if (missing.length) {
+        alert(
+          `${missing.length} photo file(s) are recorded but no longer on this device. The ` +
+            'manifest lists them so the gap is visible rather than silent.',
+        );
+      }
+      downloadZip(zip, `water-damage-originals-${on}.zip`);
+    })();
+  });
+
   document.getElementById('export')?.addEventListener('click', () => {
     void (async () => {
       // Loaded on demand. pdf-lib is ~175KB gzipped and the emergency screen must not carry it:

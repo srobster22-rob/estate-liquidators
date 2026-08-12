@@ -74,15 +74,13 @@ acceptable for the emergency screen.
 ## Tier 3 — measurements and gaps
 
 ### 3.1 Not built, and stated so nobody assumes otherwise
-- **PDF claim packet and ZIP export.** The evidence chain, the photo records, and `METHODOLOGY`
-  all exist; the export that turns them into something you hand an adjuster does not. This is the
-  most valuable missing feature.
 - **Flood zone lookup** (2.2).
-- **Service worker / offline.** The app is a static site but does not yet install or cache. The
-  brief requires the emergency screen to work offline, and during a flood the power is out. Port
-  the worker from `../disposal-guide/public/sw.js`, including its `ignoreVary` fix.
 - **Receipts, room-by-room damage items, and the contact log** are modelled in the brief but only
   the generic note/photo entry is implemented.
+- **A second language.**
+
+Built since this file was first written: the service worker and offline emergency screen, the PDF
+claim packet, and the originals ZIP with a manifest an adjuster can re-hash against.
 
 ### 3.2 Real device
 Measured here: **37.7KB total gzipped**, 9.1KB initial JS (exifr's 25.9KB loads only when a photo

@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const SCREENS = [
   { name: 'coverage', path: '/' },
@@ -159,4 +163,59 @@ test('a refused write is reported, not swallowed, and the entry survives', async
   const download = page.waitForEvent('download');
   await page.locator('#export').click();
   expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+});
+
+test('the originals ZIP round-trips photo bytes and lists them in a manifest', async ({ page }) => {
+  await page.goto('/#/log');
+  await page.locator('#note').fill('Water line on the north wall');
+  // A tiny PNG with no EXIF: the manifest must report cameraTimestamp null rather than passing
+  // the import date off as a capture time.
+  await page.locator('#photo').setInputFiles({
+    name: 'wall.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  });
+  await page.locator('#add').click();
+  await expect(page.locator('.entry')).toHaveCount(1);
+
+  const download = page.waitForEvent('download');
+  await page.locator('#export-zip').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^water-damage-originals-\d{4}-\d{2}-\d{2}\.zip$/);
+
+  const stream = await file.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const c of stream) chunks.push(c as Buffer);
+  const zipBytes = Buffer.concat(chunks);
+  expect(zipBytes.subarray(0, 2).toString()).toBe('PK');
+
+  // The signature proves nothing. What matters is that every hash in the manifest matches the
+  // bytes actually in the archive — that is the claim the record makes to an adjuster. Checked
+  // with Python, which knows nothing about the writer.
+  const dir = mkdtempSync(join(tmpdir(), 'zip-e2e-'));
+  const zipPath = join(dir, 'originals.zip');
+  writeFileSync(zipPath, zipBytes);
+
+  const script = [
+    'import json, zipfile, hashlib',
+    `z = zipfile.ZipFile(${JSON.stringify(zipPath)})`,
+    'assert z.testzip() is None',
+    'm = json.loads(z.read("manifest.json"))',
+    'ok = all(hashlib.sha256(z.read(p["file"])).hexdigest() == p["sha256"] for p in m["photos"])',
+    'print(json.dumps({"names": z.namelist(), "hashesMatch": ok, "manifest": m}))',
+  ].join('\n');
+  const parsed = JSON.parse(execFileSync('python3', ['-c', script], { encoding: 'utf8' }));
+
+  expect(parsed.names).toContain('manifest.json');
+  expect(parsed.names).toContain('METHODOLOGY.txt');
+  expect(parsed.hashesMatch).toBe(true);
+  expect(parsed.manifest.photoCount).toBe(1);
+  expect(parsed.manifest.chainIntact).toBe(true);
+  expect(parsed.manifest.missingFromDevice).toEqual([]);
+  // A PNG with no EXIF must report null, not the import date dressed up as a capture time.
+  expect(parsed.manifest.photos[0].cameraTimestamp).toBeNull();
+  expect(parsed.manifest.photos[0].addedToRecord).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 });
