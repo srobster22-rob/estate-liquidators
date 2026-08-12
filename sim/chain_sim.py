@@ -6,7 +6,7 @@ questions ECONOMY.md answers with napkin arithmetic:
 
   1. Is the quota curve (ECONOMY.md 4) actually achievable? 48% -> 79% of theoretical
      max was derived by hand and never checked.
-  2. Is the apex object worth its five slots after the re-band to $4,000-8,000?
+  2. Is the apex object worth its five slots after the re-band to $6,000-11,000?
      The original $1,500-3,000 band made it a trap. Did the fix overshoot?
   3. Does crew size 4 (D-18) hold up, or does 6 break the overflow margin?
 
@@ -47,7 +47,7 @@ TIER_DATA = {
     1: (45.0, {"pocket": (40, 150), "armful": (80, 300)}),
     2: (60.0, {"armful": (250, 700), "two_man": (700, 1900)}),
     3: (90.0, {"armful": (600, 1400), "two_man": (1800, 4000)}),
-    4: (110.0, {"apex": (4000, 8000)}),
+    4: (110.0, {"apex": (6000, 11000)}),   # re-banded R20, see below
 }
 
 # class -> (slots, people needed, carry-time multiplier, extra setup seconds)
@@ -58,7 +58,11 @@ CLASS_DATA = {
     "apex":    (5.0, 1, 1.18, 20.0),   # dolly 2.2 m/s, plus loading a piano onto it
 }
 
-QUOTAS = [2000, 4500, 8000, 15000]
+# R20. This list was still the ORIGINAL curve that ECONOMY 4 replaced and marked as
+# broken -- so this file printed pass rates against a quota curve the project had
+# already thrown away. Recalibrated against the corrected model (swap phase in) to
+# reproduce the intended 95/73/55/40% shape.
+QUOTAS = [13250, 15250, 17250, 19000]
 VAN_BY_NIGHT = [14, 15, 17, 19]        # shelving upgrades, ceiling 20
 
 
@@ -136,12 +140,13 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
     CANDIDATES = 4
     slots_left = float(van_slots)
     cargo_value = 0.0
+    held = []                   # what is aboard, so a full van can still upgrade
     took = {}
     t = 0.0
     labour_pool = crew          # people available in parallel
     apex_offered = False
 
-    while t < HAUL_WINDOW_S and slots_left > 0:
+    while t < HAUL_WINDOW_S:
         tier = current_tier(t, crew, labour_gated)
 
         # The apex is ONE object per estate (LEVEL-SPEC.md 2), offered once.
@@ -154,6 +159,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             if slots <= slots_left and labour / labour_pool <= HAUL_WINDOW_S - t:
                 slots_left -= slots
                 cargo_value += value
+                held.append({"cls": "apex", "value": value, "slots": slots})
                 took["apex"] = 1
                 t += labour / labour_pool
             continue
@@ -194,11 +200,50 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             t += best["labour"] / labour_pool
             slots_left -= best["slots"]
             cargo_value += best["value"]
+            held.append({"cls": best["cls"], "value": best["value"],
+                         "slots": best["slots"]})
             took[best["cls"]] = took.get(best["cls"], 0) + 1
+        elif slots_left < best["slots"]:
+            # R20: a full van does not end the night. The crew keeps working and
+            # UPGRADES -- carry a better thing out, leave a worse thing behind.
+            # ECONOMY 2 sizes a crew at 20-24 extractions against 14 slots, so most of
+            # what a good night does after the halfway mark is swapping, and stopping
+            # at slots_left == 0 simply deletes it.
+            t += best["labour"] / labour_pool
+            gain = _try_upgrade(held, best, slots_left)
+            if gain > 0:
+                cargo_value += gain
+                slots_left = van_slots - sum(h["slots"] for h in held)
+                took[best["cls"]] = took.get(best["cls"], 0) + 1
         else:
             t += trip_cost   # searched, took nothing
 
     return cargo_value, took
+
+
+def _try_upgrade(held, cand, slots_left):
+    """Drop the worst-per-slot cargo until `cand` fits. Returns the value gained.
+
+    Only swaps if it is actually an upgrade -- a crew does not throw a $900 vase out
+    of the van to make room for a $200 clock, however much they like the clock.
+    """
+    if not held:
+        return 0.0
+    worst_first = sorted(held, key=lambda h: h["value"] / h["slots"])
+    freed, dropped, value_lost = slots_left, [], 0.0
+    for h in worst_first:
+        if freed >= cand["slots"]:
+            break
+        freed += h["slots"]
+        dropped.append(h)
+        value_lost += h["value"]
+    if freed < cand["slots"] or value_lost >= cand["value"]:
+        return 0.0
+    for h in dropped:
+        held.remove(h)
+    held.append({"cls": cand["cls"], "value": cand["value"],
+                 "slots": cand["slots"]})
+    return cand["value"] - value_lost
 
 
 def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,

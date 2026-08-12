@@ -178,6 +178,18 @@ check("lever charges are priced in slots",
 check("recommended charges is an interior optimum, not a max",
       1.0 if 0 < d.get("lever_charges_recommended", 0) <= 2 else 0.0, 1.0)
 
+# R20: the quota curve and apex band are canonical now, because both had drifted --
+# chain_sim.py was still printing pass rates against the ORIGINAL quota list that
+# ECONOMY 4 replaced and marked broken.
+pg = TUNING["progression"]
+cs_py = (ROOT / "sim/chain_sim.py").read_text(encoding="utf-8")
+q = re.search(r"QUOTAS = \[([\d,\s]+)\]", cs_py)
+check("py chain QUOTAS", 1.0 if q and [int(x) for x in q.group(1).split(",")]
+      == pg["quota_by_night"] else 0.0, 1.0)
+a = re.search(r'"apex": \((\d+), (\d+)\)', cs_py)
+check("py chain apex band", 1.0 if a and [int(a.group(1)), int(a.group(2))]
+      == pg["apex_band"] else 0.0, 1.0)
+
 # The crew exponent must match between the model and the prototype -- it is the one
 # tuned number that lives as an expression rather than a table entry.
 check("JS decay_crew_exp", grab(js, r"DECAY_CREW_EXP\s*=\s*([\d.]+)"),

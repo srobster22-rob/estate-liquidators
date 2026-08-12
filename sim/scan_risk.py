@@ -148,12 +148,13 @@ def run_night(seed, policy, cursed=2, interrupt_k=INTERRUPT_K, rooms=False):
     rng = random.Random(seed)
     d, t, filled = 0.0, 0.0, 0.0
     slots = float(VAN_SLOTS)
+    held = []
     banked = 0.0
     crew = CREW
     streak = 0
     scans = interrupts = deaths = lost = 0
 
-    while t < HAUL_S and slots > 0 and crew > 0:
+    while t < HAUL_S and crew > 0:
         depth = depth_at(t)
         trip_s, band = TIER_DATA[depth]
         per_trip = trip_s / (crew * PARALLEL_EFFICIENCY)
@@ -162,6 +163,12 @@ def run_night(seed, policy, cursed=2, interrupt_k=INTERRUPT_K, rooms=False):
             t += per_trip
             continue
 
+        # R20: a full van does NOT end the night. ECONOMY 2 sizes a crew at 20-24
+        # extractions against 14 slots, so the back half of a night is spent SWAPPING
+        # -- hauling a better thing out and leaving a worse thing behind. Ending the
+        # loop at slots==0 stops the clock early, which understates both earnings and
+        # Disturbance (measured at 0% vs 26% of the night at COLLECT in sim/levers.py).
+        swapping = slots <= 0
         tname = tier_of(d)
         if rooms:
             room, spread = draw_room(rng)
@@ -209,6 +216,9 @@ def run_night(seed, policy, cursed=2, interrupt_k=INTERRUPT_K, rooms=False):
         t += cost
         if t > HAUL_S:
             break
+        if swapping and (not held or value <= min(held)):
+            continue                            # walked the wing, took nothing
+
         filled += 1.0                           # an ATTEMPT spends the opportunity (R8)
 
         # --- the tail risk -------------------------------------------------
@@ -218,7 +228,8 @@ def run_night(seed, policy, cursed=2, interrupt_k=INTERRUPT_K, rooms=False):
             if rng.random() < min(1.0, p):
                 interrupts += 1
                 lost += 1
-                slots -= 1.0
+                if not swapping:
+                    slots -= 1.0
                 d = min(100.0, d + INTERRUPT_FLOOR_BUMP)
                 streak = 0
                 if rng.random() < DEATH_ON_INTERRUPT[tn]:
@@ -228,11 +239,19 @@ def run_night(seed, policy, cursed=2, interrupt_k=INTERRUPT_K, rooms=False):
 
         if rng.random() < RETRIEVAL[tier_of(d)]:
             lost += 1
-            slots -= 1.0
+            if not swapping:
+                slots -= 1.0
             continue
 
-        slots -= 1.0
-        banked += value
+        if swapping:
+            worst = min(held)
+            held.remove(worst)
+            held.append(value)
+            banked += value - worst
+        else:
+            slots -= 1.0
+            held.append(value)
+            banked += value
 
     return banked, scans, lost, interrupts, deaths, d
 

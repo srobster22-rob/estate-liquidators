@@ -85,9 +85,9 @@ curator_spawn: false             # exactly one wing per estate may be true
 | 1 | Ground floor | $80 – 300 | safe money, never enough |
 | 2 | Upper floor / cellar | $250 – 700 | the working middle |
 | 3 | Sealed wings | $600 – 1400 | where crews start dying |
-| 4 | The apex room, one per estate | $4,000 – 8,000 | one object. Cart class. Everybody knows about it. |
+| 4 | The apex room, one per estate | $6,000 – 11,000 | one object. Cart class. Everybody knows about it. |
 
-> **Re-banded from $1,500–3,000 by `ECONOMY.md` §3.** At 5 slots the original band priced the
+> **Re-banded twice — from $1,500–3,000, then from $4,000–8,000 (`ECONOMY.md` §3).** At 5 slots the original band priced the
 > apex at $300–600 per slot — worse than a tier-2 armful. The most dangerous object in the
 > house was mathematically a trap, and any player who did the arithmetic once would have
 > correctly ignored it forever. Full slot-value table in `ECONOMY.md` §3.

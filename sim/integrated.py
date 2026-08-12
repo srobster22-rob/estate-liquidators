@@ -73,6 +73,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
     d = 0.0
     t = 0.0
     slots = float(VAN_SLOTS)
+    held = []
     banked = 0.0
     scans = 0
     lost = 0
@@ -86,7 +87,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
     TIER_CAP = {1: 0.40, 2: 0.75, 3: 1.00}
     filled = 0.0
 
-    while t < HAUL_S and slots > 0:
+    while t < HAUL_S:
         tier = depth_at(t)
         trip_s, band = TIER_DATA[tier]
         per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY)
@@ -96,6 +97,12 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
             t += per_trip          # scout / stage instead of hauling junk
             continue
 
+        # R20: a full van does NOT end the night. ECONOMY 2 sizes a crew at 20-24
+        # extractions against 14 slots, so the back half of a night is spent SWAPPING
+        # -- hauling a better thing out and leaving a worse thing behind. Ending the
+        # loop at slots==0 stops the clock early, which understates both earnings and
+        # Disturbance (measured at 0% vs 26% of the night at COLLECT in sim/levers.py).
+        swapping = slots <= 0
         candidates = [rng.uniform(*band) for _ in range(CANDIDATES)]
         appraise = strategy == "SCAN" or (
             strategy == "ADAPTIVE" and slots <= 0.5 * VAN_SLOTS)
@@ -136,22 +143,34 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0):
         # A haul ATTEMPT consumes the opportunity whether or not it lands. Counting
         # only successes let a retrieval act as a free reroll against the depth budget,
         # which is why harsher punishment used to make the picky strategy richer.
+        if swapping and (not held or value <= min(held)):
+            continue
+
         filled += 1.0
 
         # Standing still to appraise is its own exposure, priced by current tier.
         if appraise and rng.random() < RETRIEVAL[tier_of(d)] * SCAN_EXPOSURE:
             lost += 1
-            slots -= 1.0
+            if not swapping:
+                slots -= 1.0
             continue
 
         # --- did it take the cargo? -----------------------------------------
         if rng.random() < RETRIEVAL[tier_of(d)] * retrieval_scale:
             lost += 1
-            slots -= 1.0
+            if not swapping:
+                slots -= 1.0
             continue
 
-        slots -= 1.0
-        banked += value
+        if swapping:
+            worst = min(held)
+            held.remove(worst)
+            held.append(value)
+            banked += value - worst
+        else:
+            slots -= 1.0
+            held.append(value)
+            banked += value
 
     return banked, scans, lost, d
 

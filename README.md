@@ -69,13 +69,18 @@ model; the physics ownership protocol; the loudness model; the decision log.
 them overturned nine things this project believed.
 
 - The appraiser's edge dies entirely between 24 and 32 van slots. **Van capacity is the master
-  constant.** The edge itself has been revised four times as the model got honest (+84% →
-  +31% → +6% → +4.4%); it reaches **+12.2%** once rooms vary in how varied they are.
+  constant.** The edge itself has been revised five times as the model got honest (+84% → +31%
+  → +6% → +4.4% → +12.2% → **+8.8%**), always in the direction of less generosity, and the
+  mechanism has survived every revision.
+- **A full van doesn't end the night.** Three haul models assumed it did; real crews stay and
+  *upgrade*, which is worth +42% and reshaped the quota curve, the apex band, and the
+  appraiser's magnitude in one round.
 - **Scanning's payoff is a property of the room, not a constant** — it's `0.6 × spread ×
   mean`, so a house of evenly-priced rooms makes the signature verb a habit. Scanning only
-  high-variance rooms earns +12.2%; scanning a random 25% of rooms earns +4.6%; scanning the
-  *wrong* rooms earns −1.9%. The gap between those is the skill. *(The ordering is solid; the
-  magnitudes are pending a re-measure — see the caveat below.)*
+  high-variance rooms earns **+8.8%**; scanning a random 25% of rooms earns +2.3%; scanning the
+  *wrong* rooms earns −4.6%. The gap between those is the skill — about 72% of the edge. And
+  scanning *broadly* is a losing play (−6.8%), so selectivity isn't the best option, it's the
+  only profitable one.
 - Scan *duration* barely matters. **Noise has to carry the whole cost of appraising**;
   making the scan slower will not create tension.
 - The original quota curve had **no shape**: nights 1–3 passed 100% of the time and night 4
@@ -89,13 +94,6 @@ them overturned nine things this project believed.
   guaranteed save, because the 20s quiet timer always outlasted the Curator's search. Fixed by
   making the *search* ragged (8–24s, re-rolled) rather than the timer shorter; 75% save rate,
   and all four responses to being hunted now have a region where they're correct.
-
-**Known caveat, R19:** most haul models here end the night when the van fills. Real crews don't
-leave — the van binds by ~40%, so the back half of a night is spent *swapping* a better thing
-for a worse one, which keeps the crew in the house making noise. Adding that phase to
-`sim/levers.py` moved time-at-COLLECT from 0% to 26%. `integrated.py`, `scan_risk.py` and
-`haul_sim.py` still stop early, so **every appraiser magnitude published here was measured on
-nights that run cooler than a real one.** Re-measuring is the top item in `LOOP_LOG.md`.
 
 **Deliberately rough:** joint tuning values (guesses — a week of hands-on iteration decides
 the game's feel); material and prop dressing; lighting standards; anything about art.

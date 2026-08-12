@@ -148,9 +148,11 @@ mechanism §4.4 predicted is confirmed — the appraiser lives entirely on van s
 
 > **The size of the edge has been revised four times and the early figures are dead.** +84%
 > (placeholder noise cost) → +31% (noise derived, R5) → +6% (slot-accounting reroll fixed,
-> R8) → **+4.4%** (cursed floor corrected to canonical 7.0, R16) → **+12.2%** with room value
-> classes in place (D-22). Quote the last one; the +84% in older prose is superseded
-> everywhere it appears.
+> R8) → **+4.4%** (cursed floor corrected to canonical 7.0, R16) → +12.2% with room value
+> classes (D-22) → **+8.8%** once the model stopped ending nights when the van filled (R20).
+> Quote the last one. The revisions have all been in the same direction — the model getting
+> less generous to the appraiser as it got more honest — and the mechanism has survived every
+> one of them.
 
 Two things the sim changed:
 - **Scan *duration* is not the cost.** 1s and 9s per item produce the same outcome; there's
@@ -345,6 +347,14 @@ Drama requirement and economic requirement turn out to be the same requirement.
 **Falsified if:** crews reserve slots for it and then routinely fail to reach it anyway —
 that would mean the unlock timing, not the visibility, is wrong.
 
+> **R20 note — the drama argument survives, the economic one needed a third re-band.** With
+> nights running to sunrise instead of ending at a full van, the apex's five slots compete
+> against *everything those slots would have been upgraded into*, and at $4,000–8,000 it went
+> **−3.8%**: a trap for the second time. Re-banded to **$6,000–11,000** (+9.1%). The rule
+> underneath has never moved — an indivisible object must clear five slots' marginal value
+> (~$684 each by sunrise) plus its labour block, or players correctly ignore it. This decision
+> is about *visibility*, and that half was never in question.
+
 ---
 
 ## D-22 · The appraiser's payoff is a property of the room, not a constant
@@ -364,11 +374,18 @@ no matter what you charge for it. The fix was on the benefit side, and it is con
 tuning.
 
 **Measured** (`sim/scan_risk.py`, 2500 nights per policy): scanning only curio rooms earns
-**+12.2%** over blind hauling, against +2.4% for scanning everything. The controls are what
-make it a mechanic rather than a discount — scanning a *random* 25% of rooms earns +4.6% at
-identical scan count and noise, so **roughly 60% of the edge is the read, not the frugality**;
-and scanning only shelf rooms earns **−1.9%**, so reading the room wrong is worse than never
-scanning at all. A decision with no wrong answer is a formality.
+**+8.8%** over blind hauling. The controls are what make it a mechanic rather than a discount —
+scanning a *random* 25% of rooms earns +2.3% at identical scan count and noise, so **roughly
+72% of the edge is the read, not the frugality**; and scanning only shelf rooms earns
+**−4.6%**, so reading the room wrong is worse than never scanning at all. A decision with no
+wrong answer is a formality.
+
+> **Strengthened by R20, not weakened.** These figures were first measured at +12.2% / +4.6% /
+> −1.9% on nights that ended when the van filled. With the swap phase in, the headline falls
+> to +8.8% but **scanning broadly goes from mildly positive to clearly negative** — curio+mixed
+> −3.3%, scan-everything −6.8%. Selectivity used to be the best option among several
+> profitable ones; it is now the only profitable one, and the skill share of the edge rose from
+> 60% to 72%.
 
 **Cost, stated plainly.** This pulls against D-10, which insists value is illegible in
 magnitude. The reconciliation is that **the room's variance is public and the item's value is

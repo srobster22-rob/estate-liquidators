@@ -332,6 +332,45 @@ nominally full. Adding the swap phase moved baseline from 0% to 26% at COLLECT. 
 haul model needs the swap phase before its Disturbance numbers mean anything — the same class
 of standing note as R5's depth-reservation warning.
 
+R20 · Retro-fitted R19's swap phase to `integrated.py`, `scan_risk.py` and `chain_sim.py` —
+all three still ended the night at `slots > 0` — and re-measured everything downstream. · **One
+modelling assumption was wrong in three files and it moved three published numbers.** A full
+van does not end the night: the van binds by ~40% (ECONOMY §2), so the back half is spent
+upgrading, and stopping there deletes it. Worth **+42%** in `chain_sim`.
+· **The appraiser headline falls +12.2% → +8.8%, and the finding gets stronger rather than
+weaker.** Scanning broadly used to be mildly positive (curio+mixed +5.9%, scan-everything
++2.4%); it is now clearly negative (−3.3%, −6.8%). And the skill share — curio-only against a
+random-25% control at identical scan count and noise — rises from 60% to **72%** of the edge.
+Selectivity used to be the best of several profitable options; it is now the only profitable
+one. That is the sharpest version of "information costs safety" this design has produced.
+· **The quota curve is dead and recalibrated.** Every night passed 100% under
+$7,500/$9,000/$10,750/$12,500 — the exact shapelessness ECONOMY §4 was written to fix,
+reintroduced by a modelling assumption nobody had questioned. New curve
+**$13,250/$15,250/$17,250/$19,000**, verified to reproduce the intended 95/73/54/42%.
+· **The apex is a trap again, for the second time, and needed a third band.** Five indivisible
+slots now compete against everything those slots would have been *upgraded into* by sunrise —
+five marginal slots are worth ~$3,418 (~$684 each) and the apex also costs a large labour
+block. At $4,000–8,000 it measured **−3.8%**. Re-banded to **$6,000–11,000** (+9.1%): worth
+taking, cheap enough to skip on a bad night. D-21's *drama* half was never in question.
+· **Two more stale constants found on the way, both in `chain_sim.py`.** Its `QUOTAS` list was
+still the ORIGINAL curve that ECONOMY §4 replaced and explicitly marked broken — so the file
+had been printing pass rates against a quota curve the project threw away rounds ago. And its
+pre-swap earnings ($11,024) don't reproduce ECONOMY §4's recorded $9,373 either, so that
+figure was already stale before this round touched anything. Both quota curve and apex band
+are now canonical in `tuning.json` with drift checks.
+· **Checked the swap phase against ECONOMY §2 before believing any of it**, because a +42%
+earnings revision is exactly the kind of result that should be distrusted. It produces 14.9
+take-or-upgrade events against 14 slots (1.07×), *below* §2's stated 20–24 extractions
+(1.43–1.71×) — so the model is if anything conservative, not generous. The +60% figure I first
+saw was two effects stacked: the swap phase (+42%) and a pre-existing 18% discrepancy in the
+recorded baseline.
+· **Fourth stale-apparatus find in five rounds.** R16 an inline literal invisible to the drift
+checker, R17 a validator with no entry point, R18 a sim shipping pre-R4 defaults, R20 a sim
+carrying a superseded quota list. The pattern is now unmistakable and it is always the same
+shape: **the checked surface is narrower than the file.** Every fix so far has been to widen
+what `check_drift.py` can see — inline literals hoisted, whole-file "does it read tuning.json"
+assertions, and now list-valued constants.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -345,13 +384,19 @@ was in the noise sources rather than the decay.
 ~~**Price the Disturbance levers properly.**~~ **Done, R19.** The test failed, D-26 is
 superseded, and levers are now consumables priced in van slots.
 
-**1. Retro-fit the swap phase to the other haul models.** R19 found that ending a night when
-the van fills understates Disturbance enormously (0% vs 26% at COLLECT), because real crews
-spend the back half swapping rather than leaving. `sim/levers.py` has the swap phase;
-`integrated.py`, `scan_risk.py` and `haul_sim.py` do not, and all three stop at `slots > 0`.
-Every appraiser number this project has published — including R16's +12.2% — was measured on
-nights that end early and therefore run cooler than a real one. **This is the highest-value
-item on the list: it potentially moves a headline figure.**
+~~**Retro-fit the swap phase to the other haul models.**~~ **Done, R20.** It moved three
+published numbers. `haul_sim.py` is the one file left untouched — it is the oldest model and
+its results are already superseded by `integrated.py` and `scan_risk.py`, so it was left alone
+deliberately rather than overlooked.
+
+**1. Audit every remaining sim for the same class of staleness, mechanically.** Four of the
+last five rounds found apparatus that was quietly not describing the current design, and each
+was found by accident while doing something else. That is luck, not process. The specific
+lesson from all four: **the checked surface is narrower than the file.** `check_drift.py` now
+covers scalars, list constants, and "does this file read tuning.json at all" — the next step is
+to invert it and enumerate what it *cannot* see, then decide deliberately which of those gaps
+matter. A structural check ("does every sim import tuning.json?") would have caught three of
+the four immediately.
 
 **2. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
 *shortest* path from plinth to van and counts doors, so a wing whose alternate route is

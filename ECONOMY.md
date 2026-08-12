@@ -67,7 +67,7 @@ Depth must pay *per slot*, or the optimal play is to farm the foyer forever.
 | 2 | two-man | $700 – 1,900 | $233 – 633 |
 | 3 | armful | $600 – 1,400 | $600 – 1,400 |
 | 3 | two-man | $1,800 – 4,000 | $600 – 1,333 |
-| **4** | **apex (cart)** | **$4,000 – 8,000** | **$800 – 1,600** |
+| **4** | **apex (cart)** | **$6,000 – 11,000** | **$1,200 – 2,200** |
 
 ### The apex bug this arithmetic caught
 
@@ -77,7 +77,19 @@ house, the one the whole night is supposed to build toward, was mathematically a
 player who did this arithmetic once would have correctly ignored it forever, and the estate's
 authored centrepiece would have become a joke.
 
-Re-banded to **$4,000–8,000**. `LEVEL-SPEC.md` §2 is updated to match.
+Re-banded to **$4,000–8,000**… and then again to **$6,000–11,000** in R20, because the first
+re-band was measured on a model that ended the night when the van filled. Once the crew keeps
+working and *upgrades* — which is what really happens — the apex has to beat not the five items
+it displaces but **everything those five slots would have become by sunrise**. Measured: five
+marginal slots are worth ~$3,418 (~$684/slot), and the apex also costs a large labour block, so
+at $4,000–8,000 it came out at **−3.8%** — a trap again, for the second time. At $6,000–11,000
+it is **+9.1%**: worth taking, and cheap enough to skip on a bad night. `LEVEL-SPEC.md` §2
+matches.
+
+> **Three settings of one band, each overturned by a model correction rather than by taste.**
+> That is the cost of tuning against simulations, and it is still cheaper than finding out in
+> a playtest. What has never moved is the *rule*: the apex must clear five slots' marginal
+> value plus its labour, or it is a decoration players correctly ignore.
 
 Note that two-man items are deliberately *slightly* worse per slot than armfuls of the same
 tier. They're big single grabs that solve a logistics problem — one trip instead of three —
@@ -101,16 +113,24 @@ crew skill.
 > | 3 | $8,000 | 100% |
 > | 4 | $15,000 | **1%** |
 
-**Calibrated curve.** A crew earns $9,373 / $9,919 / $10,997 / $12,152 across the four nights
-— only **+30% growth**, because van capacity rises just 14→19 and the estates are equally
-rich every night. The quota has to live inside that range or the chain has no shape.
+**Calibrated curve.** A crew earns **$15,601 / $16,215 / $17,393 / $18,640** across the four
+nights — only **+19% growth**, because van capacity rises just 14→19 and the estates are
+equally rich every night. The quota has to live inside that range or the chain has no shape,
+and the narrowness of the range is exactly why the quota steps are small.
 
 | Night | Quota | Van | Sim mean | Pass rate | Feel |
 |---:|---:|---:|---:|---:|---|
-| 1 | $7,500 | 14 | $9,373 | ~95% | you can be a coward and survive |
-| 2 | $9,000 | 15 | $9,919 | ~73% | tier 2 is now mandatory |
-| 3 | $10,750 | 17 | $10,997 | ~55% | someone has to go into a sealed wing |
-| 4 | $12,500 | 19 | $12,152 | ~40% | above the mean. The apex is not optional. |
+| 1 | **$13,250** | 14 | $15,601 | 95% | you can be a coward and survive |
+| 2 | **$15,250** | 15 | $16,215 | 73% | tier 2 is now mandatory |
+| 3 | **$17,250** | 17 | $17,393 | 54% | someone has to go into a sealed wing |
+| 4 | **$19,000** | 19 | $18,640 | 42% | above the mean. The apex is not optional. |
+
+> **Recalibrated in R20, and the previous curve ($7,500 / $9,000 / $10,750 / $12,500) is dead.**
+> It was measured on a model that **ended the night when the van filled**. Real crews don't
+> leave — the van binds by ~40%, so the back half of a night is spent swapping a better thing
+> for a worse one, which is worth about **+42%**. Under the old quotas every night passed 100%:
+> the exact shapelessness this section was written to fix, reintroduced by a modelling
+> assumption nobody had questioned. Verified to reproduce the intended 95/73/54/42%.
 
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
@@ -405,12 +425,20 @@ a decision at any price. Give rooms a declared value class instead (`LEVEL-SPEC.
 
 | Policy | Mean $ | Scans | End Disturbance | vs blind |
 |---|---:|---:|---:|---:|
-| Blind haul | 6,451 | 0 | 44 | — |
-| Scan a **random** 25% of rooms | 6,745 | 14 | 57 | +4.6% |
-| Scan **shelf** rooms only | 6,329 | 17 | 60 | **−1.9%** |
-| Scan **curio** rooms only | **7,235** | 14 | 57 | **+12.2%** |
-| Scan curio + mixed | 6,833 | 39 | 91 | +5.9% |
-| Scan everything | 6,608 | 56 | 100 | +2.4% |
+| Blind haul | 10,625 | 0 | 59 | — |
+| Scan a **random** 25% of rooms | 10,865 | 20 | 70 | +2.3% |
+| Scan **shelf** rooms only | 10,136 | 24 | 73 | **−4.6%** |
+| Scan **curio** rooms only | **11,557** | 20 | 69 | **+8.8%** |
+| Scan curio + mixed | 10,275 | 53 | 93 | **−3.3%** |
+| Scan everything | 9,899 | 76 | 100 | **−6.8%** |
+
+> **Re-measured in R20 with the swap phase in** (the figures above). The first cut of this
+> table read +12.2% / +5.9% / +2.4% for the last three rows, measured on nights that ended
+> when the van filled. **The ordering survives and the conclusion gets sharper:** scanning
+> curio rooms is still clearly best, the skill gap over random-25% is now ~72% of the total
+> edge rather than 60%, and — the real change — **scanning more broadly is now actively
+> harmful.** Curio+mixed and scan-everything have gone from mildly positive to −3.3% and
+> −6.8%. Selectivity is no longer just the best play, it is the only profitable one.
 
 Three things in that table matter more than the headline:
 

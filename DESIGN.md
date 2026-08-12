@@ -182,22 +182,27 @@ Three room classes, declared per room and **readable from the doorway**:
 | **Mixed** | ±40% | 45% | +24% | an ordinary furnished room |
 | **Curio** | ±110% | 25% | +66% | a cabinet of oddments — junk and treasure on the same shelf |
 
-Simulated in `sim/scan_risk.py`. Scanning **only curio rooms** earns **+12.2%** over blind
-hauling — roughly triple the +4.4% that flat rooms produce, at a *quarter* of the noise. And
-the controls are what make it a real mechanic rather than a discount:
+Simulated in `sim/scan_risk.py`. Scanning **only curio rooms** earns **+8.8%** over blind
+hauling, at a *quarter* of the noise of scanning everything. And the controls are what make it
+a real mechanic rather than a discount:
 
 | Policy | vs blind | What it means |
 |---|---:|---|
-| Scan every room | +2.4% | the habit. Pins Disturbance at 100 and gives most of it back. |
-| Scan a random 25% of rooms | +4.6% | the value of simply scanning **less** |
-| Scan curio rooms only | **+12.2%** | the value of scanning **less, and correctly** |
-| Scan shelf rooms only | **−1.9%** | reading the room wrong is worse than never scanning |
+| Scan every room | **−6.8%** | the habit. Pins Disturbance at 100 and then some. |
+| Scan curio + mixed | **−3.3%** | nearly the right idea, still too broad |
+| Scan a random 25% of rooms | +2.3% | the value of simply scanning **less** |
+| Scan curio rooms only | **+8.8%** | the value of scanning **less, and correctly** |
+| Scan shelf rooms only | **−4.6%** | reading the room wrong is worse than never scanning |
 
-The gap between the random-25% control and curio-only — **+4.6% vs +12.2% at identical scan
-count, noise, and losses** — is the part that is skill rather than frugality. It's about 60%
-of the total edge. And `SHELF_ONLY` going *negative* is the half that matters most: a
-decision with no wrong answer is a formality. Now there is a wrong answer, and it is legible
-before you commit the three seconds.
+The gap between the random-25% control and curio-only — **+2.3% vs +8.8% at identical scan
+count, noise, and losses** — is the part that is skill rather than frugality, and it is about
+**72%** of the total edge. `SHELF_ONLY` going negative is the half that matters most: a
+decision with no wrong answer is a formality. Now there is a wrong answer, it costs 4.6%, and
+it is legible before you commit the three seconds.
+
+**And scanning broadly is now a losing strategy outright**, not merely a weaker one. That is
+the sharpest version of "information costs safety" this design has produced: the appraiser is
+worth using on one room in four and worth *not* using on the other three.
 
 **What the estate owes this** (`LEVEL-SPEC.md` §2.1, enforced by validator check V11): every
 wing needs 15–35% curio rooms. Below ~10% the mechanic stops paying (+6.2%) and scanning
@@ -757,11 +762,12 @@ retrieval, not an instant death, on first contact (§6.3).
 Keep it thin. Meta-progression in this genre exists to give a session a shape, not to be an
 RPG.
 
-- **Contract chain:** 4 nights, quota escalating **$7,500 → $9,000 → $10,750 → $12,500**
+- **Contract chain:** 4 nights, quota escalating **$13,250 → $15,250 → $17,250 → $19,000**
   against van capacity 14 → 19. Miss one, the chain ends, you start a new chain. This is the
   run structure. *(The original curve here was $2,000 → $4,500 → $8,000 → $15,000 and it had
   no shape — simulated, nights 1–3 passed 100% of the time and night 4 passed 1%. Recalibrated
-  against simulated earnings in `ECONOMY.md` §4, which is canonical for these numbers.)*
+  against simulated earnings in `ECONOMY.md` §4, which is canonical for these numbers — and
+  recalibrated again in R20, after the earnings model was found to be ending nights early.)*
 - **Between nights:** spend net profit on gear (better battery, second dolly, van shelving
   for +cargo slots, salt) and repairs. Money does not carry across chains.
 - **Persistent unlocks:** cosmetics and *estates* only. New estate types (the hospital
