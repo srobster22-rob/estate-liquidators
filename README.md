@@ -24,12 +24,14 @@ What runs, and how to check it:
 ```bash
 python3 sim/check_drift.py        # 111 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
-node proto3d/dump-estate.mjs > /tmp/e.json && python3 sim/validate_estate.py --estate /tmp/e.json
-node proto3d/qa.mjs               # 86 checks driving the real build in headless Chromium
+node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
+  python3 sim/validate_estate.py --estate /tmp/e/*.json   # generated estates vs the contract
+node proto3d/qa.mjs               # 90 checks driving the real build in headless Chromium
 dotnet run --project unity/tests/CoreTests   # 31 assertions pinning C# to the sims
 ```
 
-Open `proto3d/index.html` in a browser to play it. The Unity build does not exist yet; the
+Open `proto3d/index.html` in a browser to play it; the estate is generated per
+run and `?seed=12345` reproduces a specific house. The Unity build does not exist yet; the
 prototypes are where the rules are being proved.
 
 ## The documents

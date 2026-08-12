@@ -351,14 +351,21 @@ def main():
     # pool, whether it came from a document or from the thing people are playing.
     if "--estate" in sys.argv:
         import json
-        path = sys.argv[sys.argv.index("--estate") + 1]
-        d = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-        failed = validate(d, True)
+        paths = [a for a in sys.argv[sys.argv.index("--estate") + 1:]
+                 if not a.startswith("-")]
+        rejected = []
+        for path in paths:
+            d = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+            failed = validate(d, len(paths) == 1)
+            if failed:
+                rejected.append(f"{path}: {', '.join(sorted(failed))}")
         print(f"\n{'-' * 74}")
-        if failed:
-            print(f"  REJECTED  {d['id']}  failed {', '.join(sorted(failed))}")
+        if rejected:
+            for r in rejected:
+                print(f"  REJECTED  {r}")
+            print(f"\n{len(rejected)} of {len(paths)} estate(s) do not enter the pool.")
             return 1
-        print(f"  OK   {d['id']} enters the pool")
+        print(f"  OK   {len(paths)} generated estate(s) enter the pool")
         return 0
 
     clean = validate(MANOR_A, verbose)

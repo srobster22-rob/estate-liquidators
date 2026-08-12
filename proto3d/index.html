@@ -182,27 +182,27 @@ const CREW_NAMES=["RUSS","MAY","DOC"];
 const STAM_MAX=6, STAM_REGEN=9;
 
 // ------------------------------------------------------------------ estate
-// x,z in metres. Rooms are floor slabs; walls are generated between them.
-const ROOMS=[
-  {id:"drive", x:0,  z:0,  w:9,  d:9,  tier:0, van:true},
-  {id:"foyer", x:12, z:0,  w:10, d:10, tier:0},
-  {id:"hall",  x:23, z:0,  w:7,  d:14, tier:1},
-  {id:"study", x:24.25, z:-13,w:11.5, d:9, tier:1},
-  // Service hall: the second route. V3 requires every wing to survive losing any
-  // one portal, and until R23 the whole house hung off foyer<->hall - the Curator
-  // standing in one doorway sealed five rooms, which A6 rule 5 forbids outright.
-  {id:"servi", x:12, z:-11,w:10, d:8,  tier:1},
-  {id:"land",  x:32, z:0,  w:9,  d:10, tier:2},
-  {id:"cons",  x:43, z:-5, w:12, d:12, tier:3},
-  {id:"pot",   x:43, z:7,  w:10, d:9,  tier:3},
-];
-const LINKS=[["drive","foyer"],["foyer","hall"],["foyer","servi"],["servi","study"],
-             ["hall","study"],["hall","land"],["study","land"],
-             ["land","cons"],["land","pot"],["cons","pot"]];
-// Depth unlocks on WORK, never on a clock (D-20). Clearing a wing's sideboard is
-// the work; a timer would silently punish bigger crews, which is a bug nobody
-// could diagnose from playtest reports.
-const PREREQ={ land:["hall"], cons:["land"], pot:["land"] };
+// x,z in metres. Rooms are floor slabs; the walls between them are generated.
+//
+// Estates are GENERATED from a seed and then gated by the level contract before
+// anyone plays them. LEVEL-SPEC has described a module contract since R1 and the
+// project has had exactly one hand-authored wing the whole time, which means
+// every playtest is the same house and the contract has never had to hold
+// anything up. A wing that fails a check does not enter the pool - that is
+// BUILD-PROMPT's Phase 5 rule, applied now rather than after five more wings.
+const DOOR_W=2.2, LIP=0.06;
+const MIN_OVERLAP=DOOR_W+0.6;      // a doorway needs the rooms to face each other
+const GAP=[1.4,2.6];               // corridor length between two rooms
+
+let ROOMS=[], LINKS=[], PREREQ={}, DOORS=[], HIDES=[];
+let DOOR_FAULTS=[], HIDE_FAULTS=[], ADJ={}, estateSeed=0, estateTries=0;
+
+// A small LCG so an estate is reproducible from its seed alone. Deliberately not
+// Math.random: qa.mjs replaces that to make item values deterministic, and the
+// layout must not silently change when it does.
+function lcg(seed){ let s=(seed>>>0)||1; return ()=>{ s=(s*1664525+1013904223)>>>0;
+  return s/4294967296; }; }
+
 // ECONOMY 3, per tier and class, base value before any curse multiplier. The
 // first version banded tier 0 at the POCKET numbers and invented a x2.6 two-man
 // multiplier; the level contract rejected both the moment it was pointed at this
@@ -211,41 +211,266 @@ const BAND={0:{armful:[80,300]}, 1:{armful:[80,300]},
             2:{armful:[250,700], two_man:[700,1900]},
             3:{armful:[600,1400], two_man:[1800,4000]}};
 const R=id=>ROOMS.find(r=>r.id===id);
+const deepestRoom=()=>ROOMS.filter(r=>!r.van)
+  .sort((a,b)=>(b.tier-a.tier)||(Math.hypot(b.x,b.z)-Math.hypot(a.x,a.z)))[0] ?? ROOMS[0];
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const inRoom=(r,x,z)=>x>r.x-r.w/2&&x<r.x+r.w/2&&z>r.z-r.d/2&&z<r.z+r.d/2;
 const roomAt=(x,z)=>ROOMS.find(r=>inRoom(r,x,z));
+
+const box=r=>({x0:r.x-r.w/2,x1:r.x+r.w/2,z0:r.z-r.d/2,z1:r.z+r.d/2});
+const overlaps=(a,b,pad=0)=>{
+  const A=box(a),B=box(b);
+  return A.x0-pad<B.x1&&B.x0-pad<A.x1&&A.z0-pad<B.z1&&B.z0-pad<A.z1;
+};
+// How far two rooms face each other across the gap, and along which axis. A
+// doorway can only exist where the two walls actually see each other.
+function facing(A,B){
+  const a=box(A), b=box(B);
+  const ox=[Math.max(a.x0,b.x0), Math.min(a.x1,b.x1)];
+  const oz=[Math.max(a.z0,b.z0), Math.min(a.z1,b.z1)];
+  if(ox[1]<=ox[0]&&oz[1]>oz[0]) return {axis:"x", span:oz,
+    gap:Math.max(b.x0-a.x1, a.x0-b.x1)};
+  if(oz[1]<=oz[0]&&ox[1]>ox[0]) return {axis:"z", span:ox,
+    gap:Math.max(b.z0-a.z1, a.z0-b.z1)};
+  return null;                                    // diagonal, or overlapping
+}
+const canLink=(A,B)=>{
+  const f=facing(A,B);
+  return !!f && f.gap>=GAP[0]-0.35 && f.gap<=GAP[1]+0.9
+      && (f.span[1]-f.span[0])>=MIN_OVERLAP;
+};
+
+const NAMES=["foyer","hall","study","servi","land","cons","pot","attic","cellar",
+             "parlour","orangery","office"];
+
+// Rooms sit on a lattice of CELL-sized cells, each room inset from its cell by a
+// per-axis margin. Two consequences, both load-bearing: neighbouring rooms always
+// FACE each other across a gap of (margin_a + margin_b) / 2, which is a corridor
+// by construction rather than by luck; and any two adjacent cells can be linked,
+// so loops are something the generator can build instead of hope for.
+//
+// The first version grew a free-form tree and was rejected 64% of the time,
+// almost always on V3 - a tree has no second route anywhere, and rooms in
+// different branches were rarely square-on to each other even when adjacent.
+const CELL=13, MARGIN=[1.6,2.6];
+
+function generate(seed){
+  const rand=lcg(seed);
+  const pick=a=>a[Math.floor(rand()*a.length)];
+  const key=(i,j)=>i+","+j;
+
+  // Grow a connected blob of cells, biased east so the house has depth rather
+  // than fanning out around the van.
+  const want=5+Math.floor(rand()*3);
+  const cells=new Map([[key(0,0),{i:0,j:0}]]);
+  const has=(i,j)=>cells.has(key(i,j));
+  const add=(i,j)=>{ if(i>=0&&!has(i,j)) cells.set(key(i,j),{i,j}); };
+  const nbrs=(i,j)=>[[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>has(i+a,j+b)).length;
+
+  const frontier=[{i:0,j:0}];
+  for(let guard=0; cells.size<want+1 && guard<300; guard++){
+    const from=frontier[Math.floor(rand()*rand()*frontier.length)] ?? frontier[0];
+    const [di,dj]=pick([[1,0],[1,0],[1,0],[0,-1],[0,1]]);
+    const c={i:from.i+di, j:from.j+dj};
+    if(c.i<0||has(c.i,c.j)) continue;
+    cells.set(key(c.i,c.j),c); frontier.push(c);
+  }
+
+  // Repair leaves. A room with one door can never satisfy the second-route rule -
+  // losing that door seals it, which is the failure A6 rule 5 is about - and a
+  // lattice cycle needs a 2x2 block, so a leaf costs two extra cells to fix.
+  // Cheaper than rejecting the estate and rolling again, which is what the first
+  // version did 64% of the time.
+  for(let pass=0; pass<8; pass++){
+    const leaves=[...cells.values()].filter(c=>!(c.i===0&&c.j===0)&&nbrs(c.i,c.j)<2);
+    if(!leaves.length) break;
+    for(const L of leaves){
+      const P=[[1,0],[-1,0],[0,1],[0,-1]].map(([a,b])=>({i:L.i+a,j:L.j+b}))
+        .find(c=>has(c.i,c.j));
+      if(!P) continue;
+      const perp = P.i===L.i ? [[1,0],[-1,0]] : [[0,1],[0,-1]];
+      for(const [a,b] of perp){
+        if(L.i+a<0||P.i+a<0) continue;
+        if(has(L.i+a,L.j+b)||has(P.i+a,P.j+b)) continue;
+        add(L.i+a,L.j+b); add(P.i+a,P.j+b);
+        break;
+      }
+    }
+  }
+
+  // Name by distance from the driveway, not by lattice order: the first version
+  // produced a tier-2 "foyer" and a tier-0 "attic", which is nobody's house.
+  const dist=c=>Math.abs(c.i)+Math.abs(c.j);
+  const list=[...cells.values()].sort((a,b)=>
+    ((a.i===0&&a.j===0)?-1:0)-((b.i===0&&b.j===0)?-1:0) ||
+    (dist(a)-dist(b)) || (a.i-b.i) || (a.j-b.j));
+  const rooms=list.map((c,n)=>{
+    const mw=MARGIN[0]+rand()*(MARGIN[1]-MARGIN[0]);
+    const md=MARGIN[0]+rand()*(MARGIN[1]-MARGIN[0]);
+    const van=(c.i===0&&c.j===0);
+    return {id:van?"drive":(NAMES[n-1]??("wing"+n)), cell:c,
+            x:c.i*CELL, z:c.j*CELL, w:+(CELL-mw).toFixed(2), d:+(CELL-md).toFixed(2),
+            tier:0, ...(van?{van:true}:{})};
+  });
+  const at=(i,j)=>rooms.find(r=>r.cell.i===i&&r.cell.j===j);
+
+  // Every adjacent pair is a doorway. Thinning them was tried and reverted: the
+  // check it has to satisfy is not "still connected" but "still connected after
+  // losing any one door", and a thinner that only tests the first happily leaves
+  // bridges behind.
+  const links=[];
+  for(const r of rooms){
+    for(const [di,dj] of [[1,0],[0,1]]){
+      const n=at(r.cell.i+di, r.cell.j+dj);
+      if(n) links.push([r.id,n.id]);
+    }
+  }
+
+  const adj={}; for(const [a,b] of links){ (adj[a]??=[]).push(b); (adj[b]??=[]).push(a); }
+  const depth={drive:0}; let front=["drive"];
+  while(front.length){
+    const next=[];
+    for(const id of front) for(const n of (adj[id]||[])){
+      if(n in depth) continue; depth[n]=depth[id]+1; next.push(n);
+    }
+    front=next;
+  }
+  for(const r of rooms) r.tier=Math.min(3,Math.max(0,(depth[r.id]??1)-1));
+
+  // Prerequisite chain: a wing opens when the shallower room feeding it is empty.
+  const prereq={};
+  for(const r of rooms){
+    if(r.tier<2) continue;
+    const feed=(adj[r.id]||[]).map(id=>rooms.find(q=>q.id===id))
+      .filter(q=>q&&q.tier<r.tier).sort((a,b)=>b.tier-a.tier)[0];
+    if(feed) prereq[r.id]=[feed.id];
+  }
+  for(const r of rooms) delete r.cell;
+  return {rooms, links, prereq};
+}
+
+const R2=(e,id)=>e.rooms.find(r=>r.id===id);
+
+// The gate. These are the LEVEL-SPEC checks a generator can actually violate; the
+// full ten still live in sim/validate_estate.py, which the exporter feeds.
+function gateEstate(e){
+  const faults=[];
+  const adj={}; for(const [a,b] of e.links){ (adj[a]??=[]).push(b); (adj[b]??=[]).push(a); }
+  const reach=(banned)=>{
+    const seen={drive:1}; let front=["drive"];
+    while(front.length){ const next=[];
+      for(const id of front) for(const n of (adj[id]||[])){
+        if(seen[n]) continue;
+        if(banned&&((banned[0]===id&&banned[1]===n)||(banned[0]===n&&banned[1]===id))) continue;
+        seen[n]=1; next.push(n); }
+      front=next; }
+    return seen;
+  };
+  const all=reach(null);
+  for(const r of e.rooms) if(!all[r.id]) faults.push(`V1 ${r.id} unreachable`);
+
+  // V3: losing any one portal that is not the front door may not seal a wing.
+  const core=e.rooms.find(r=>!r.van&&(adj[r.id]||[]).includes("drive"));
+  for(const l of e.links){
+    if(l.includes("drive")) continue;             // the entrance is a designed singularity
+    const seen=reach(l);
+    for(const r of e.rooms) if(!seen[r.id])
+      faults.push(`V3 ${r.id} sealed by ${l[0]}-${l[1]}`);
+  }
+  // V2: depth must be earned. Tier 2 needs one prerequisite step, tier 3 two.
+  const chain=(id,guard=0)=>{
+    const need=e.prereq[id];
+    return (!need||guard>6)?0:1+chain(need[0],guard+1);
+  };
+  for(const r of e.rooms){
+    if(r.tier<2) continue;
+    const need=r.tier===2?1:2, got=chain(r.id);
+    if(got<need) faults.push(`V2 ${r.id} (tier ${r.tier}) opens after ${got}, needs ${need}`);
+  }
+  // V2, the half nobody had written down: a prerequisite chain has to be
+  // SATISFIABLE. Depth pacing checks how many steps deep a wing sits; it does
+  // not check that you can reach the room whose sideboard opens it. A generated
+  // house locked itself shut on the first night it was played - clear the hall
+  // to open the foyer, with the hall only reachable through the foyer - and the
+  // crew stood in the driveway for three minutes with $500 and nowhere to go.
+  {
+    const cleared=new Set(), seen=new Set(["drive"]);
+    const isOpen=id=>!e.prereq[id]||e.prereq[id].every(r=>cleared.has(r));
+    for(let pass=0; pass<e.rooms.length+2; pass++){
+      // Re-expand from everywhere reached so far, not just the driveway: the
+      // first version only ever pushed "drive" and so never looked past the
+      // rooms next to it, which made every estate look permanently sealed.
+      const front=[...seen];
+      while(front.length){
+        const id=front.pop();
+        for(const n of (adj[id]||[])) if(!seen.has(n)&&isOpen(n)){ seen.add(n); front.push(n); }
+      }
+      for(const id of seen) cleared.add(id);       // reachable means clearable
+    }
+    for(const r of e.rooms) if(!seen.has(r.id))
+      faults.push(`V2 ${r.id} can never be opened`);
+  }
+
+  // V6, structural: every doorway must be able to hold a door.
+  for(const [a,b] of e.links){
+    const f=facing(R2(e,a),R2(e,b));
+    if(!f) faults.push(`V6 ${a}-${b} do not face each other`);
+    else if((f.span[1]-f.span[0])<MIN_OVERLAP)
+      faults.push(`V6 ${a}-${b} overlap ${(f.span[1]-f.span[0]).toFixed(2)}m`);
+  }
+  for(const a of e.rooms) for(const b of e.rooms)
+    if(a!==b&&a.id<b.id&&overlaps(a,b)) faults.push(`V6 ${a.id} overlaps ${b.id}`);
+  if(!e.rooms.some(r=>r.tier===3)) faults.push("V2 no tier-3 wing");
+  if(!core) faults.push("V1 nothing attaches to the driveway");
+  return faults;
+}
+
+// Build until one passes. A rejected estate is never seen by a player - which is
+// the whole point of having a contract, and is easier to enforce here than in a
+// pipeline that has already shipped five wings.
+function buildEstate(seed){
+  let s=seed>>>0, tries=0, chosen=null, why=[];
+  for(; tries<60; tries++){
+    const e=generate(s+tries*7919);
+    const faults=gateEstate(e);
+    if(!faults.length){ chosen=e; break; }
+    why=faults;
+  }
+  estateTries=tries;
+  estateSeed=s+Math.min(tries,59)*7919;
+  if(!chosen){ chosen=generate(estateSeed); }     // pathological: play it, faults visible
+  ROOMS=chosen.rooms; LINKS=chosen.links; PREREQ=chosen.prereq;
+  buildDoors(); buildHides();
+  ADJ={}; for(const [a,b] of LINKS){ (ADJ[a]??=[]).push(b); (ADJ[b]??=[]).push(a); }
+  DOOR_FAULTS=gateEstate(chosen);
+  if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
+}
 
 // Doorways are real geometry - a corridor rectangle spanning the gap between two
 // rooms, as wide as the door and no wider. The first version tested "within 2.6m
 // of the midpoint of two room centres", which is a 5.2m box floating in the void
 // between rooms that never touch; qa.mjs walked straight out of the conservatory
 // through one. Derive the corridor from the facing walls and the overlap instead.
-const DOOR_W=2.2, LIP=0.06;
-const DOORS=LINKS.map(([a,b])=>{
-  const A=R(a), B=R(b);
-  const ax=[A.x-A.w/2,A.x+A.w/2], bx=[B.x-B.w/2,B.x+B.w/2];
-  const az=[A.z-A.d/2,A.z+A.d/2], bz=[B.z-B.d/2,B.z+B.d/2];
-  const ox=[Math.max(ax[0],bx[0]), Math.min(ax[1],bx[1])];
-  const oz=[Math.max(az[0],bz[0]), Math.min(az[1],bz[1])];
-  const axis = ox[1]<=ox[0] ? "x" : "z";     // the axis the corridor runs along
-  const span = axis==="x" ? oz : ox;          // the interval the doorway sits in
-  const c = (span[0]+span[1])/2, h = DOOR_W/2;
-  const gapA = axis==="x" ? ax : az, gapB = axis==="x" ? bx : bz;
-  const lo = Math.min(gapA[1],gapB[1]), hi = Math.max(gapA[0],gapB[0]);
-  const rect = axis==="x"
-    ? {x0:lo-LIP, x1:hi+LIP, z0:c-h, z1:c+h}
-    : {x0:c-h,   x1:c+h,    z0:lo-LIP, z1:hi+LIP};
-  return {a,b,axis,rect,span,w:DOOR_W,
-          x:(rect.x0+rect.x1)/2, z:(rect.z0+rect.z1)/2};
-});
-// A doorway whose rooms overlap by less than the door width opens into a wall.
-// Cheap boot-time version of LEVEL-SPEC's authoring checks; qa.mjs asserts it.
-const DOOR_FAULTS=DOORS.filter(d=>(d.span[1]-d.span[0])<DOOR_W)
-  .map(d=>`${d.a}-${d.b} overlap ${(d.span[1]-d.span[0]).toFixed(2)}m < door ${DOOR_W}m`);
-if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
+function buildDoors(){
+  DOORS=LINKS.map(([a,b])=>{
+    const A=R(a), B=R(b);
+    const ax=[A.x-A.w/2,A.x+A.w/2], bx=[B.x-B.w/2,B.x+B.w/2];
+    const az=[A.z-A.d/2,A.z+A.d/2], bz=[B.z-B.d/2,B.z+B.d/2];
+    const ox=[Math.max(ax[0],bx[0]), Math.min(ax[1],bx[1])];
+    const oz=[Math.max(az[0],bz[0]), Math.min(az[1],bz[1])];
+    const axis = ox[1]<=ox[0] ? "x" : "z";     // the axis the corridor runs along
+    const span = axis==="x" ? oz : ox;          // the interval the doorway sits in
+    const c = (span[0]+span[1])/2, h = DOOR_W/2;
+    const gapA = axis==="x" ? ax : az, gapB = axis==="x" ? bx : bz;
+    const lo = Math.min(gapA[1],gapB[1]), hi = Math.max(gapA[0],gapB[0]);
+    const rect = axis==="x"
+      ? {x0:lo-LIP, x1:hi+LIP, z0:c-h, z1:c+h}
+      : {x0:c-h,   x1:c+h,    z0:lo-LIP, z1:hi+LIP};
+    return {a,b,axis,rect,span,w:DOOR_W,
+            x:(rect.x0+rect.x1)/2, z:(rect.z0+rect.z1)/2};
+  });
+}
 
-// Concealment furniture (DESIGN 8.1). Wardrobes against the near and far walls
-// of every room but the driveway, facing into the room. Furniture, not markers.
 // Furniture may not stand in a route. Both the wardrobes and the sideboards got
 // this wrong in turn - V10 caught a sideboard parked in the conservatory corridor
 // and then a wardrobe in the mouth of the study-land one, each of which made the
@@ -258,35 +483,38 @@ function clearOfDoors(x,z,margin){
   }
   return true;
 }
-const HIDES=[], HIDE_FAULTS=[];
-for(const r of ROOMS){ if(r.van) continue;
-  // Candidates along all four walls. The first version only tried the two z-walls
-  // and fell back to the room centre-line when none of them cleared - which in a
-  // 7m-wide hall put a wardrobe exactly in the study doorway, and a fallback that
-  // picks the worst available spot is worse than placing nothing.
-  const cand=[];
-  for(const [sx,face] of [[-1,0],[1,Math.PI]])
-    for(const f of [-0.25,0.25,-0.35,0.35,0])
-      cand.push({x:r.x+f*r.w, z:r.z+sx*(r.d/2-0.55), face});
-  for(const [sz,face] of [[-1,Math.PI/2],[1,-Math.PI/2]])
-    for(const f of [-0.25,0.25,-0.35,0.35,0])
-      cand.push({x:r.x+sz*(r.w/2-0.55), z:r.z+f*r.d, face});
-  const placed=[];
-  for(const c of cand){
-    if(placed.length>=2) break;
-    if(!clearOfDoors(c.x,c.z,1.9)) continue;
-    if(placed.some(q=>Math.hypot(q.x-c.x,q.z-c.z)<2.5)) continue;
-    placed.push(c);
+
+// Concealment furniture (DESIGN 8.1): wardrobes against a wall, facing into the
+// room. Candidates span all four walls, because the first version tried only two
+// and fell back to the room centre-line when neither cleared - which in a narrow
+// hall put a wardrobe exactly in a doorway. A fallback that picks the worst
+// available spot is worse than placing nothing.
+function buildHides(){
+  HIDES=[]; HIDE_FAULTS=[];
+  for(const r of ROOMS){ if(r.van) continue;
+    const cand=[];
+    for(const [sx,face] of [[-1,0],[1,Math.PI]])
+      for(const f of [-0.25,0.25,-0.35,0.35,0])
+        cand.push({x:r.x+f*r.w, z:r.z+sx*(r.d/2-0.55), face});
+    for(const [sz,face] of [[-1,Math.PI/2],[1,-Math.PI/2]])
+      for(const f of [-0.25,0.25,-0.35,0.35,0])
+        cand.push({x:r.x+sz*(r.w/2-0.55), z:r.z+f*r.d, face});
+    const placed=[];
+    for(const c of cand){
+      if(placed.length>=2) break;
+      if(!clearOfDoors(c.x,c.z,1.9)) continue;
+      if(placed.some(q=>Math.hypot(q.x-c.x,q.z-c.z)<2.5)) continue;
+      placed.push(c);
+    }
+    for(const c of placed) HIDES.push({x:c.x,z:c.z,face:c.face,room:r.id,item:null});
+    if(placed.length<1) HIDE_FAULTS.push(`${r.id} has nowhere to hide`);
   }
-  for(const c of placed) HIDES.push({x:c.x,z:c.z,face:c.face,room:r.id,item:null});
-  if(placed.length<1) HIDE_FAULTS.push(`${r.id} has nowhere to hide`);
 }
+
 const inHide=(x,z)=>HIDES.some(h=>Math.abs(x-h.x)<0.52&&Math.abs(z-h.z)<0.32);
 
 // Walls between two points, counted over the portal graph - A5 attenuates 0.85
 // per wall, so "it hears through walls" has to mean something specific.
-const ADJ={};
-for(const [a,b] of LINKS){ (ADJ[a]??=[]).push(b); (ADJ[b]??=[]).push(a); }
 function hops(ax,az,bx,bz){
   const A=roomAt(ax,az), B=roomAt(bx,bz);
   if(!A||!B) return 1;                    // in a doorway: call it one wall
@@ -413,7 +641,10 @@ function reset(){
   player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0,
           hiding:null,hideEnter:0,name:"YOU",noise:[],light:true,alive:true,
           colour:[.72,.72,.68]};
-  curator={x:R("cons").x,z:R("cons").z,state:"PATROL",goal:null,carry:null,
+  // It starts in the deepest wing, which is a rule rather than a room name: the
+  // hand-authored estate always had a "cons" and generated ones do not.
+  const den=deepestRoom();
+  curator={x:den.x,z:den.z,state:"PATROL",goal:null,carry:null,
            fixate:0,lock:0,reseat:0,target:false,mode:null,open:0,
            face:0,fix:null,step:0,who:null,recompute:0};
   for(const h of HIDES) h.item=null;
@@ -421,6 +652,9 @@ function reset(){
   t=0;dist=0;over=false;overWhy="";noiseLog=[];
   document.getElementById("end").style.display="none";
 }
+// Seed from the URL so a playtest can be handed back exactly: ?seed=12345.
+const urlSeed=Number(new URLSearchParams(location.search).get("seed"));
+buildEstate(Number.isFinite(urlSeed)&&urlSeed?urlSeed:(Date.now()&0x7fffffff));
 reset();
 
 // ------------------------------------------------------------------ input
@@ -1025,14 +1259,45 @@ function updateCurator(dt){
   if(c.goal) walkTo(c,c.goal.hx,c.goal.hz,speed,dt);
 }
 
+// The next doorway on an actual route, rather than whichever door of this room
+// happens to be nearest the destination. The greedy version worked in a
+// seven-room chain and jammed the crew against locked doors the moment estates
+// were generated: they stood in a corridor for three minutes, in SEEK, with a
+// reachable goal on the other side of the house.
+function nextDoorTowards(here, there, gated){
+  if(!here||!there||here===there) return null;
+  const seen={[here.id]:1}, prev={};
+  let front=[here.id];
+  while(front.length){
+    const nx=[];
+    for(const id of front) for(const n of (ADJ[id]||[])){
+      if(seen[n]) continue;
+      const d=DOORS.find(x=>(x.a===id&&x.b===n)||(x.a===n&&x.b===id));
+      if(!d||(gated&&!doorOpen(d))) continue;
+      seen[n]=1; prev[n]=id; nx.push(n);
+    }
+    front=nx;
+  }
+  if(!seen[there.id]) return null;
+  let cur=there.id;
+  while(prev[cur]&&prev[cur]!==here.id) cur=prev[cur];
+  if(prev[cur]!==here.id) return null;
+  return DOORS.find(x=>(x.a===here.id&&x.b===cur)||(x.a===cur&&x.b===here.id));
+}
+
 function walkTo(e,gx,gz,sp,dt,gated){
   const wall=gated?blocked:solid;
   const here=roomAt(e.x,e.z), there=roomAt(gx,gz);
   let tx=gx,tz=gz;
   if(here&&there&&here!==there){
-    let bd=1e9;
-    for(const d of DOORS) if(d.a===here.id||d.b===here.id){
-      const dd=Math.hypot(d.x-gx,d.z-gz); if(dd<bd){bd=dd;tx=d.x;tz=d.z;} }
+    const d=nextDoorTowards(here,there,gated);
+    if(d){ tx=d.x; tz=d.z; }
+    else {
+      let bd=1e9;
+      for(const dd of DOORS) if(dd.a===here.id||dd.b===here.id){
+        if(gated&&!doorOpen(dd)) continue;
+        const q=Math.hypot(dd.x-gx,dd.z-gz); if(q<bd){bd=q;tx=dd.x;tz=dd.z;} }
+    }
   }
   const a=Math.atan2(tx-e.x,tz-e.z);
   if(e===curator) e.face=a;
@@ -1058,7 +1323,8 @@ function finish(why){
      <tr><td class="d">Curse fees</td><td class="d">-$${Math.round(fees).toLocaleString()}</td></tr>
      ${ruin?`<tr><td class="r">THE COLLECTION RECLAIMED THE VAN</td><td class="r">everything</td></tr>`:``}
      <tr><td><b>Net</b></td><td><b>$${net.toLocaleString()}</b></td></tr>
-     <tr><td>Quota</td><td>$${QUOTA.toLocaleString()}</td></tr></table>
+     <tr><td>Quota</td><td>$${QUOTA.toLocaleString()}</td></tr>
+     <tr><td class="d">Estate seed</td><td class="d">${estateSeed}</td></tr></table>
      <p class="${net>=QUOTA?'g':'r'}">${net>=QUOTA?"QUOTA MET":"QUOTA MISSED"}${
        cursed?` &nbsp;·&nbsp; ${cursed} cursed piece${cursed>1?"s":""} aboard`:""}</p>
      <p class="d">press R to run again</p>`;
@@ -1314,7 +1580,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   clearKeys:()=>{for(const k in keys) keys[k]=false;},
   list:()=>items.filter(i=>!i.gone).map((it,i)=>({i,x:+it.x.toFixed(2),z:+it.z.toFixed(2),
     grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:!!it.heldBy,
-    by:it.heldBy?it.heldBy.name:null,shelf:it.shelf,y:+it.y.toFixed(2)})),
+    by:it.heldBy?it.heldBy.name:null,shelf:it.shelf,y:+it.y.toFixed(2),
+    klass:it.klass})),
   // Mirrors grabDrop's bookkeeping - an item picked up by a fixture is just as
   // displaced as one picked up by hand, and radiance() keys off exactly that.
   hold:i=>{const it=items.filter(x=>!x.gone)[i]; if(!it) return null;
@@ -1351,7 +1618,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   // against a worked example in a document.
   estate:()=>({
     id:"proto3d  (the wing in the prototype)",
-    curator_spawn:"cons",
+    curator_spawn:deepestRoom().id,
     rooms:Object.fromEntries(ROOMS.map(r=>[r.id,
       {pos:[r.x,r.z], tier:r.tier, ...(r.van?{van:true}:{})}])),
     portals:DOORS.map(d=>({a:d.a,b:d.b,width:+DOOR_W.toFixed(2),door:true,
@@ -1363,6 +1630,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   }),
   gates:v=>{gatesOff=!!v;},   // QA: geometry checks are not gating checks
   locked:()=>DOORS.filter(d=>!doorOpen(d)).map(d=>d.a+"-"+d.b),
+  prereq:()=>JSON.parse(JSON.stringify(PREREQ)),
   cleared:id=>roomCleared(id),
   slots:()=>({...SLOTS}),
   vanSlots:()=>van.slots,
@@ -1377,7 +1645,11 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   // pauses, so reading the element without this returns a stale frame.
   prompt:()=>{hud(); return document.getElementById("prompt").textContent;},
   faults:()=>[...DOOR_FAULTS,...HIDE_FAULTS],
-  rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d})),
+  seed:()=>({seed:estateSeed, tries:estateTries, rooms:ROOMS.length,
+    links:LINKS.length, tiers:ROOMS.map(r=>r.tier)}),
+  regen:seed=>{buildEstate(seed>>>0); reset();
+    return {seed:estateSeed, faults:[...DOOR_FAULTS,...HIDE_FAULTS]};},
+  rooms:()=>ROOMS.map(r=>({id:r.id,x:r.x,z:r.z,w:r.w,d:r.d,tier:r.tier,van:!!r.van})),
   doors:()=>DOORS.map(d=>({a:d.a,b:d.b,x:d.x,z:d.z,axis:d.axis,
     rect:{...d.rect},span:+(d.span[1]-d.span[0]).toFixed(2)})),
   solid };

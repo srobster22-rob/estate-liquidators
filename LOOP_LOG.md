@@ -373,6 +373,37 @@ candidates span all four walls, and a room that ends up with nowhere to hide rep
 rather than shrugging. · Regression: QA 86/86, drift 111/111, both sample estates and the
 prototype's own estate PASS.
 
+R24 · **Estates are generated now, and gated before anyone sees one.** LEVEL-SPEC has
+described a module contract since R1 and the project has had exactly one hand-authored wing
+the entire time, which means the contract has never had to hold anything up and every
+playtest is the same house. Rooms now sit on a lattice — each inset from its cell by a
+per-axis margin, so neighbours always *face* each other across a corridor by construction —
+and the build loop rejects estates until one passes, with `?seed=` for handing a specific
+house back to whoever found something in it. 120 seeds, all pass; the Python validator agrees
+on a 12-estate batch, which is how the JS gate (a subset) is held honest against the ten-check
+authority. · **Four defects, three of them mine and one a rule nobody had written down.** The
+first generator grew a free-form tree and was rejected 64% of the time, almost always on V3 —
+a tree has no second route anywhere, and a leaf room can never satisfy "survives losing any
+one door". Leaves are now repaired by adding the 2×2 block that closes a cycle. · **The rule
+nobody had written down: a prerequisite chain has to be SATISFIABLE.** V2 checks how many
+steps deep a wing sits; nothing checked that you can *reach* the room whose sideboard opens
+it. A generated house locked itself shut — clear the hall to open the foyer, with the hall
+only reachable through the foyer — and the crew stood in the driveway for three minutes with
+$500 and nowhere to go. Added a progressive-reachability pass to the gate; then found my own
+implementation of it re-expanded only from the driveway each round and declared every estate
+sealed, which took the pass rate to zero and was the loudest possible way to be told. ·
+**And the finding worth the round on its own:** the crew's navigation was "walk at whichever
+door of this room is nearest the destination", which survived a seven-room chain and jammed
+three haulers against locked doors in generated houses. They banked $381 across a whole night,
+in SEEK, with reachable loot on the other side of the estate, and **every rule-level check
+still passed** — 89 of them. Replaced with a real route over the room graph that only counts
+doors the walker may use: nights now bank $2.0k–3.9k instead of $0.4k–4.2k with a stall in the
+middle. The new check runs five seeds to completion and asserts the crew actually work. ·
+Two more: the Curator's spawn was the room literally named "cons", which most generated
+estates do not have; and room names were assigned in lattice order, producing a tier-2 "foyer"
+and a tier-0 "attic". · Regression: QA 90/90, drift 111/111, 12 generated estates + both
+samples PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

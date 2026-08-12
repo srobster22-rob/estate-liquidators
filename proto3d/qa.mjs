@@ -71,9 +71,18 @@ async function main() {
   // The game's own requestAnimationFrame loop would otherwise advance time
   // between checks, which made results depend on how long an evaluate took.
   await page.evaluate(() => window.__g.pause(true));
+  // Estates are generated from a seed; pin one so a failure is reproducible.
+  // A separate check sweeps many seeds through the gate.
+  await page.evaluate(() => window.__g.regen(20260806));
 
   const g = (fn, arg) => page.evaluate(fn, arg);   // run in page, return JSON
   const fresh = () => page.evaluate(() => { window.__g.clearKeys(); window.__g.reset(); });
+  const named = await page.evaluate(() => {
+    const rs = window.__g.rooms();
+    const byTier = t => rs.filter(r => r.tier === t && !r.van).map(r => r.id);
+    return { start: rs.find(r => r.van).id, shallow: byTier(0).concat(byTier(1)),
+             mid: byTier(2), deep: byTier(3), all: rs.map(r => r.id) };
+  });
 
   // A throw inside a check is a failure like any other - it must not take the
   // remaining checks down with it. Injecting a two-item shelf crashed the run at
@@ -109,6 +118,69 @@ async function checks(g, fresh) {
   ok("estate is populated", n0 >= 20, `items=${n0}`);
   const start = await g(() => window.__g.pos());
   ok("player starts on the driveway", start.room === "drive", JSON.stringify(start));
+
+  // --- the generator, gated (LEVEL-SPEC / BUILD-PROMPT Phase 5) -------------
+  // "A wing that fails any check does not enter the pool." The point of a
+  // generator is that this stops being a review step and becomes an invariant,
+  // so the assertion is over MANY seeds rather than the one being played.
+  const sweep = await g(() => {
+    const bad = [], tries = [];
+    for (let i = 1; i <= 120; i++) {
+      const r = window.__g.regen(i * 104729);
+      tries.push(window.__g.seed().tries);
+      if (r.faults.length) bad.push({ seed: r.seed, faults: r.faults.slice(0, 2) });
+    }
+    tries.sort((a, b) => a - b);
+    return { bad, median: tries[60], worst: tries[tries.length - 1] };
+  });
+  ok("every seed produces an estate that passes the gate",
+    sweep.bad.length === 0, JSON.stringify(sweep.bad.slice(0, 3)));
+  ok("and it does not take many attempts to find one",
+    sweep.median <= 12 && sweep.worst < 60, JSON.stringify(sweep));
+
+  // The generated estate must also satisfy the properties the rest of the game
+  // assumes: a van, a deep wing, shelves and hiding places everywhere, and a
+  // prerequisite chain that actually gates something.
+  const shapes = await g(() => {
+    const out = [];
+    for (let i = 1; i <= 40; i++) {
+      window.__g.regen(i * 7907);
+      const rooms = window.__g.rooms(), shelves = window.__g.shelves();
+      const hides = window.__g.hides(), prereq = window.__g.prereq();
+      const loot = rooms.filter(r => !r.van);
+      const problems = [];
+      if (rooms.filter(r => r.van).length !== 1) problems.push("van count");
+      if (!rooms.some(r => r.tier === 3)) problems.push("no tier-3 wing");
+      if (loot.some(r => !shelves.find(s => s.room === r.id))) problems.push("room without a shelf");
+      if (loot.some(r => !hides.find(h => h.room === r.id))) problems.push("room with nowhere to hide");
+      if (!Object.keys(prereq).length) problems.push("nothing gated");
+      if (window.__g.items() < 12) problems.push("too little loot");
+      if (problems.length) out.push({ seed: window.__g.seed().seed, problems });
+    }
+    return out;
+  });
+  ok("every generated estate is playable",
+    shapes.length === 0, JSON.stringify(shapes.slice(0, 3)));
+
+  // The crew have to be able to get around the house they are given. A greedy
+  // "walk at the nearest door" rule survived the hand-authored chain and jammed
+  // three haulers against locked doors in generated estates - they stood in a
+  // corridor in SEEK for a whole night and banked $381. Nothing caught it,
+  // because every rule-level check still passed.
+  const hauling = await g(() => {
+    const out = [];
+    for (const s of [11, 22, 33, 44, 55]) {
+      window.__g.regen(s * 104729);
+      for (let i = 0; i < 120 * 60 && !window.__g.state().over; i++) window.__g.step(1, 1 / 60);
+      const st = window.__g.state();
+      out.push({ seed: s, banked: st.banked, taken: 14 - st.slots });
+    }
+    return out;
+  });
+  ok("the crew can work the house they are given",
+    hauling.every(h => h.taken >= 4 && h.banked > 400), JSON.stringify(hauling));
+
+  await g(() => window.__g.regen(20260806));     // back to the pinned estate
 
   // --- the R12 bug: sustained noise must be per second, not per frame --------
   // Same ten seconds of sprinting at two timestep sizes must cost the same.
@@ -464,10 +536,13 @@ async function checks(g, fresh) {
 
   await fresh();
   const full = await g(() => {
-    const v = window.__g.rooms().find(r => r.id === "drive");
-    for (let i = 0; i < 14; i++) {
-      if (window.__g.state().over) break;
-      window.__g.hold(0); window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60);
+    const v = window.__g.rooms().find(r => r.van);
+    // Take armfuls only: a two-man piece costs three slots and will be refused
+    // once fewer than three are left, which stalls the fill rather than ending it.
+    for (let i = 0; i < 40 && !window.__g.state().over; i++) {
+      const idx = window.__g.list().findIndex(it => it.klass === "armful" && !it.held);
+      if (idx < 0) break;
+      window.__g.hold(idx); window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60);
     }
     return window.__g.state();
   });
@@ -894,15 +969,19 @@ async function checks(g, fresh) {
     hearing.fuzzMax > 1.0 && hearing.fuzzMax <= 3.05, `max error ${hearing.fuzzMax}`);
 
   const occl = await g(() => {
+    // Seed-agnostic: a door's two rooms are one wall apart by definition, and the
+    // room furthest from the van is several.
     const rooms = window.__g.rooms();
-    const a = rooms.find(r => r.id === "foyer"), b = rooms.find(r => r.id === "hall");
+    const d = window.__g.doors()[0];
+    const a = rooms.find(r => r.id === d.a), b = rooms.find(r => r.id === d.b);
+    const far = rooms.reduce((m, r) => Math.hypot(r.x, r.z) > Math.hypot(m.x, m.z) ? r : m);
     return { same: window.__g.hops(a.x, a.z, a.x + 1, a.z),
              next: window.__g.hops(a.x, a.z, b.x, b.z),
-             far: window.__g.hops(a.x, a.z, rooms.find(r => r.id === "pot").x,
-                                  rooms.find(r => r.id === "pot").z) };
+             far: window.__g.hops(rooms.find(r => r.van).x, rooms.find(r => r.van).z,
+                                  far.x, far.z) };
   });
   ok("walls are counted over the portal graph",
-    occl.same === 0 && occl.next === 1 && occl.far >= 3, JSON.stringify(occl));
+    occl.same === 0 && occl.next === 1 && occl.far >= 2, JSON.stringify(occl));
 
   // Concealment beats sight outright - that is what the wardrobe is for.
   await fresh();
@@ -1000,27 +1079,37 @@ async function checks(g, fresh) {
   // deep wings are shut, and what opens them is an emptied sideboard.
   await fresh();
   const gating = await g(() => {
+    // Seed-agnostic: pick a tier-2 wing and the room that gates it, whatever the
+    // generator called them this time.
+    const prereq = window.__g.prereq();
+    const rooms = window.__g.rooms();
+    const gated = Object.keys(prereq).find(id => rooms.find(r => r.id === id).tier === 2);
+    const feeder = prereq[gated][0];
     const shutAtStart = window.__g.locked();
-    const hall = window.__g.shelves().find(s => s.room === "hall");
-    const on = window.__g.list().filter(i => i.shelf === hall.i);
-    const v = window.__g.rooms().find(r => r.id === "drive");
+    const shelf = window.__g.shelves().find(s => s.room === feeder);
+    const v = window.__g.rooms().find(r => r.van);
     window.__g.parkCrew();
-    for (const it of on) {
+    for (const it of window.__g.list().filter(i => i.shelf === shelf.i)) {
       const idx = window.__g.list().findIndex(x => x.x === it.x && x.z === it.z);
       window.__g.hold(idx);
       window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60);
     }
-    return { shutAtStart, cleared: window.__g.cleared("hall"),
+    const deep = Object.keys(prereq).filter(id => rooms.find(r => r.id === id).tier === 3);
+    return { gated, feeder, deep, shutAtStart, cleared: window.__g.cleared(feeder),
              shutAfter: window.__g.locked() };
   });
+  const pairOf = (a, b) => [`${a}-${b}`, `${b}-${a}`];
   ok("the deep wings start sealed",
-    gating.shutAtStart.includes("hall-land"), JSON.stringify(gating.shutAtStart));
+    pairOf(gating.feeder, gating.gated).some(p => gating.shutAtStart.includes(p)),
+    JSON.stringify(gating));
   ok("emptying a wing's sideboard is what opens the next one",
-    gating.cleared === true && !gating.shutAfter.includes("hall-land"),
+    gating.cleared === true &&
+    !pairOf(gating.feeder, gating.gated).some(p => gating.shutAfter.includes(p)),
     JSON.stringify(gating));
   ok("and the tier-3 wings stay shut behind the tier-2 one",
-    gating.shutAfter.includes("land-cons") && gating.shutAfter.includes("land-pot"),
-    JSON.stringify(gating.shutAfter));
+    gating.deep.length === 0 ||
+    gating.deep.every(d => gating.shutAfter.some(p => p.split("-").includes(d))),
+    JSON.stringify(gating));
 
   // --- reset ----------------------------------------------------------------
   await fresh();
