@@ -187,6 +187,21 @@ night, and should the 60 % be range-only so the tell dims your world without era
 threat. · Also: the **8 s commitment lock is a hard floor on any "marked → drop → free" arc**,
 which is a third of a short-form clip and worth knowing before writing another one.
 
+R17 · **Implemented `ART-DIRECTION.md` §6's carried-object pose in `proto3d`**, which had been
+specced and never built: held items hung dead centre, 1.15 m down the look ray, instead of
+"slightly low and offset so they occlude as little as possible". Now 1.05 m forward, 0.24 m to
+screen-right, 0.55 m below the eye. Pose only — no rule, no constant, drift still 55/55.
+· **Found because of the vertical clip, and invisible without it.** At 16:9 a centred carried
+box is unremarkable; at 9:16 the smallest item in the game subtends ±12.7° of a 40°-wide frame
+and fills everything below the midline, and it is view-locked so no camera work can avoid it.
+Three clip rounds were spent fighting that before anyone re-read the art direction. **Standing
+recommendation: render something vertical early on anything that will be marketed on a phone.
+It finds framing problems a desktop build structurally cannot show you.** · Second, smaller
+find: the prototype's strafe basis is the negation of its view basis' right vector
+(`right=[fwd.z,0,-fwd.x]` vs the view matrix's `[-d.z,0,d.x]`), so "carry it to the right"
+using the movement convention puts it on screen-left. Harmless today because strafe is
+symmetric, but it will bite the first time anything else is positioned relative to the player.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

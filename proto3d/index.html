@@ -294,8 +294,17 @@ function step(dt){
     if(tgt.scan>=APPRAISE_S){ tgt.known=true; tgt.scan=0; noise(L.appraise,true,0); }
   } else for(const it of items) if(!(keys.KeyF&&it===tgt)) it.scan=0;
 
+  // ART-DIRECTION 6: "held items render slightly low and offset so they occlude as
+  // little as possible". They were centred 1.15m down the look ray, which puts a
+  // tier-2 box across the middle of the screen - fine on a 16:9 monitor, half the
+  // picture at 9:16. Carried low and to the right it clears the centre entirely.
+  // Pose only: nothing downstream reads these coordinates until the item is dropped.
+  const CARRY_FWD=1.05, CARRY_SIDE=0.24, CARRY_DOWN=0.55;
   if(player.holding){ const d=lookDir(), it=player.holding;
-    it.x=player.x+d[0]*1.15; it.z=player.z+d[2]*1.15; it.y=EYE+d[1]*1.15-0.30; }
+    const rl=Math.hypot(d[0],d[2])||1, rx=-d[2]/rl, rz=d[0]/rl;   // screen-right, in xz
+    it.x=player.x+d[0]*CARRY_FWD+rx*CARRY_SIDE;
+    it.z=player.z+d[2]*CARRY_FWD+rz*CARRY_SIDE;
+    it.y=EYE+d[1]*CARRY_FWD-CARRY_DOWN; }
 
   // deposit
   if(player.holding&&roomAt(player.x,player.z)?.van){

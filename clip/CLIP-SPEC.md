@@ -125,15 +125,18 @@ remaining changes are taste.
 | G3 duration | 24.0 s ± 0.2 s, video and audio within 0.15 s of each other |
 | G4 size | ≤ 12 MB |
 | G5 not black | no frame of the *graded* video is > 97 % dark pixels, outside the opening fade (frames 0–11) and the last 6 |
-| G6 not frozen | no two consecutive frames are identical between the opening fade and the title card (21.0 s) |
+| G6 not frozen | no two consecutive frames are identical between the opening fade and the title card (21.0 s), measured at 96 × 170 |
 | G7 hook | a caption is ≥ 50 % opaque by frame 12 (0.4 s) and the first caption holds ≥ 45 frames |
 | G8 safe area | every caption and card bounding box is inside x ∈ [64, 900], y ∈ [200, 1480] |
 | G9 rules-true | the sim state trace shows: `marked` is true only while holding; the Curator's pursuit goal is one fixed point, the item's home, and it reaches it (< 1.6 m); `marked` goes false within 1.5 s of the drop |
 | G10 no drift | `python3 sim/check_drift.py` still passes — the clip harness never edits a tuning constant |
 | G11 audible | through the phone-speaker model, the audio is ≥ −40 dBFS RMS, and full-band true peak ≤ −0.5 dBFS |
 
-G5 and G6 read the encoded video back at 24 × 42 greyscale, so they judge what a viewer sees
-after the grade, not what the capture pass intended. G11 does the same for sound: it measures
+G5 and G6 read the encoded video back as greyscale, so they judge what a viewer sees after the
+grade, not what the capture pass intended. They read it at *different resolutions on purpose*:
+G5's darkness question is answered fine at 24 × 42, but at that size a dark shot's real camera
+motion falls below quantisation and G6 reported freezes on footage that was moving, so the
+freeze test runs at 96 × 170. A genuinely dropped frame is identical at any resolution. G11 does the same for sound: it measures
 the encoded audio through a phone speaker, not the WAV through a spec sheet.
 
 **A gate that only asserts existence is not a gate.** G11 exists because the original audio
@@ -184,14 +187,20 @@ range-only, leaving the cone alone, so the tell dims your world without erasing 
 the shortest honest "marked → put it down → free" arc is 8 s, which is a third of a TikTok.
 Fine for the game, worth knowing for every future clip.
 
-**A carried item owns the bottom half of a vertical frame.** `proto3d` hangs the held item
-1.15 m down the look ray and 0.30 m below it. The clip's hero piece is tier 1 — 0.26 m
-half-extent, the *smallest* size the game has — and it still subtends ±12.7° of a frame only
-40° wide, filling everything below y ≈ 1009 of 1920. It is view-locked, so it cannot be framed
-around: it is in the same place in every shot you take while carrying.
+**A carried item owned the bottom half of a vertical frame — and `ART-DIRECTION.md` §6 had
+already said it shouldn't.** `proto3d` hung the held item 1.15 m dead down the look ray, 0.30 m
+below it. The hero piece is tier 1 — 0.26 m half-extent, the *smallest* size the game has — and
+it still subtended ±12.7° of a 40°-wide frame, filling everything below y ≈ 1009 of 1920.
+Being view-locked, it could not be framed around: same place, every shot, while carrying. It
+interacted brutally with the dimmed cone above — the band that was both lit *and* unblocked was
+about y ∈ [700, 1000], and three rounds (C4, C7, C8) were spent fighting over it.
 
-On a 16:9 monitor this is unremarkable; at 9:16 it is half the picture. Nothing to fix in the
-game — first-person carry looks like this — but **any vertical composition has to treat the
-bottom half as spoken for**, and it interacts badly with the dimmed cone above: the band that
-is both lit and unblocked is roughly y ∈ [700, 1000], and that is where every carrying shot
-in this clip puts the thing you are meant to look at.
+§6 of the art direction already specified the fix — *"held items render slightly low and offset
+so they occlude as little as possible"* — and the prototype had never implemented it. C10 did:
+the carry pose is now 1.05 m forward, 0.24 m to screen-right, 0.55 m below the eye, which puts
+the cargo in the bottom-right corner and hands the centre of the frame back. Pose only; nothing
+reads those coordinates until the item is dropped, and `check_drift.py` is still 55/55.
+
+**Worth knowing on a 16:9 monitor none of this is visible.** The constraint only appears at
+9:16, which is an argument for rendering a vertical clip early on anything that will ever be
+marketed on a phone — it finds framing bugs a desktop build cannot.

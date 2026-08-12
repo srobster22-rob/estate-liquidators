@@ -136,7 +136,7 @@ const S = {
       // cargo owns the bottom of the frame, so everything worth seeing is framed high.
       const k = C.ease((t - 6.6) / 2.2);
       C.frameAt(C.lerp(PLINTH.x, HALLDOOR.x - 1.0, k), C.lerp(PLINTH.z, HALLDOOR.z + 0.2, k),
-                C.lerp(0.55, 1.30, k), C.lerp(-0.18, 0.26, k));
+                C.lerp(0.55, 1.30, k), C.lerp(-0.18, 0.10, k));
       C.caption(null);
     }
 
@@ -150,13 +150,19 @@ const S = {
       }
       // Keep the dolly moving even with nothing on screen - a still frame in a dark
       // shot is indistinguishable from a dropped frame, and G6 is right to fail it.
-      C.moveTo(C.lerp(AFTER.x, AFTER.x + 0.9, C.ease((t - 9.0) / 4.0)),
-               C.lerp(AFTER.z, AFTER.z + 0.7, C.ease((t - 9.0) / 4.0)));
+      // Once the cargo moved out of centre frame (C10) this beat had nothing left in
+      // it at all, so the move is bigger now and the aim drifts across the doorway.
+      C.moveTo(C.lerp(AFTER.x, AFTER.x + 1.5, C.ease((t - 9.0) / 4.0)),
+               C.lerp(AFTER.z, AFTER.z + 1.1, C.ease((t - 9.0) / 4.0)));
       // Framed clear of the cargo (top edge ~y1009) but still well inside the beam.
       // The dimmed cone's falloff is not linear: up 0.22 sits 8.1 deg off-axis and
       // keeps 87% of on-axis intensity, where C4's 0.32 kept only 73% and lost the
       // shot. C5 over-corrected to 0.12 and gave the frame away for 8% of light.
-      C.frameAt(HALLDOOR.x - 1.6, HALLDOOR.z + 0.4, 1.25, 0.22);
+      // One slow pass off the doorway and across the near east wall (~4 m), which is
+      // close enough to light up properly, then back toward the door for beat 5.
+      const k4 = 0.5 - 0.5 * Math.cos((t - 9.0) * 1.05);
+      C.frameAt(C.lerp(HALLDOOR.x - 1.2, 36.5, k4), C.lerp(HALLDOOR.z + 0.5, -1.6, k4),
+                C.lerp(1.25, 1.05, k4), 0.08);
       C.vignette(0.20 + 0.24 * C.ease((t - 9.0) / 1.6));
       cap(C, t, 9.55, 12.85, `your light dims<br>when it's <span class="hi">you</span>`);
     }
@@ -179,7 +185,7 @@ const S = {
       // the only thing a dimmed flashlight reliably brings back.
       const sweep = 0.5 + 0.5 * Math.sin((t - 13.0) * 1.15 - 1.5);
       C.frameAt(C.lerp(28.5, DRESS.x, sweep), C.lerp(-1.5, DRESS.z, sweep),
-                C.lerp(1.35, 0.55, sweep), 0.22 + 0.08 * Math.sin((t - 13.0) * 0.8));
+                C.lerp(1.35, 0.55, sweep), 0.08 + 0.07 * Math.sin((t - 13.0) * 0.8));
       // Two lines, because the picture cannot carry this beat: the first is what you
       // see (nothing), the second is the rule the reveal is about to prove.
       if (t < 15.5) cap(C, t, 13.25, 15.40, `and now you can't<br>see it <span class="hi">coming</span>`);

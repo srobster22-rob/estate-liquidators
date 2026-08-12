@@ -110,9 +110,28 @@ lesson: **a gate that only asserts existence is not a gate.** "A non-silent ster
 the right length" passed happily on a bed 31 dB below audible. Every gate should be able to
 fail on plausible work.
 
+C10 · Read `ART-DIRECTION.md` properly before starting, which is what C4, C7 and C8 should have
+done. §6: *"Carried objects sit in view and must not block it. Held items render slightly low
+and offset so they occlude as little as possible."* **The fix for the constraint that ate three
+rounds was already specified, and the prototype had simply never implemented it** — items hung
+dead centre, 1.15 m down the look ray. · Implemented the specced pose in `proto3d`: 1.05 m
+forward, 0.24 m screen-right, 0.55 m below the eye. Pose only — nothing reads those coordinates
+until the item is dropped, and drift is still 55/55. The centre of the frame came back, and
+beats 3–6 were re-centred onto the beam axis (`up` 0.22 → 0.08) where the light is 97 % rather
+than 87 %. First build where the room is visible while you are carrying.
+· **Two findings.** First, the sign convention: the natural-looking `right` vector puts the
+cargo on screen-*left*, where the captions live — the view basis is `[-dz, 0, dx]`, and the
+prototype's strafe vector is the opposite of it, which is worth a look on its own. Second, and
+bigger: **G6 was wrong, not the footage.** With the cargo out of centre the mark beat went
+nearly black, and at 24 × 42 greyscale a dark shot's genuine camera motion falls below
+quantisation — the gate reported freezes on moving footage. Raised the freeze test to 96 × 170
+(a truly dropped frame is identical at any resolution) and gave the beat a real subject: one
+slow pass across the near east wall at ~4 m, close enough to actually light. · Same lesson as
+C9, third time: **validate the instrument before believing what it says about the work.**
+
 ---
 
-## Next step (what C10 should attack, ranked)
+## Next step (what C11 should attack, ranked)
 
 1. **Someone has to listen to it.** G11 proves the bed is audible; it cannot prove it is good,
    and the mix has never been heard by a human. The knock and hiss levels in particular were

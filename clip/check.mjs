@@ -65,7 +65,10 @@ function probe(ffmpeg, file){
 
 // Decode the finished video to a tiny greyscale so darkness and freezes can be
 // measured on what a viewer actually sees - after the grade, not before it.
-function lumaFrames(ffmpeg, file, w = 24, h = 42){
+// 96x170 for the freeze test, not the 24x42 the darkness test uses: at 24x42 a dark
+// shot's real camera motion falls below quantisation, so G6 reported freezes on
+// footage that was moving. A true dropped frame is identical at any resolution.
+function lumaFrames(ffmpeg, file, w = 96, h = 170){
   const buf = execFileSync(ffmpeg,
     ["-hide_banner", "-loglevel", "error", "-i", file, "-map", "0:v",
      "-vf", `scale=${w}:${h}`, "-pix_fmt", "gray", "-f", "rawvideo", "-"],
