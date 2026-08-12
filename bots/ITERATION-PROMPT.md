@@ -59,62 +59,58 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **What would a *search* find at a fast decay rate?** F23's curve is built from
-   a fixed panel, so it can only say whether *known* strategies survive a faster
-   fade. It is blind by construction to a search discovering a different kind of
-   bot suited to a 12-year halflife — shorter-horizon, lower-turnover, something
-   that never wins at the shipped rate and so never entered the panel.
-   `run.py loop --catalogue hl=0.25x --state bots/state/fast.json` swaps the whole
-   catalogue to a rung and runs the ordinary loop against it, with its own ledger
-   and its own multiplicity burden. If it certifies anything, the curve's zero at
-   12 years is a statement about this panel rather than about the rate, and F23
-   needs amending. If it does not, the zero is much stronger than a panel can make
-   it. **This is the single most load-bearing open question in the lab.**
-2. **The archetype panel is nearly silent, and that weakens F23.** Across eight
-   rungs the untuned panel certifies exactly one strategy, all of it at
-   `stationary`. So the curve is carried by bots discovered against `hl=0.50x`.
-   They peak at `stationary` and decline monotonically, which is what argues they
-   are tracking decay rather than their own fit — but a curve wants a neutral
-   instrument. Either widen the archetype set until it certifies several per rung,
-   or accept the limitation and say so in every headline.
-3. **The permutation null's block length vs the bot's holding horizon.** F12 is
-   still the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
+1. **The permutation null's block length vs the bot's holding horizon.** F12 is
+   now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar
    block, so the null keeps the structure the bot trades. Decide the rule **before**
    looking at which candidates it admits — tie the block to the holding horizon, or
    gate on block=1 AND block=5 — then re-run the whole search and re-measure `fpr`.
    If the new rule raises the false-positive rate above zero, it is wrong regardless
    of how attractive the bots it admits look.
-4. **Resolving a death confined to the last 10% of a series.** F25 tightened G2b
+2. **Real data, and a decay rate that is not a modelling choice.** `verify --data`
+   already runs the identical engine, costs and permutation null on real CSVs.
+   Point it at real bars for the instrument type a proven bot claims to trade.
+   Expect an unimpressive permutation p-value — a single 1,200-bar out-of-sample
+   window cannot establish significance for a Sharpe-0.4 edge, which is why the
+   synthetic replication gates exist and why they are not sufficient. It is also
+   the only route to putting the real world somewhere on F23's curve, which is the
+   single largest thing this lab cannot currently do.
+3. **Resolving a death confined to the last 10% of a series.** F25 tightened G2b
    to a final-quarter window and that removed three of four late-break
    certifications, but not the fourth: the quarter still contains 10 percentage
    points of pre-break data against 15 post-break. A shorter window is too noisy
    to gate on directly. The interesting version is a *changepoint* statistic
    rather than a shorter window — test whether the late alpha series has a break
    in it, not whether its average is high.
-5. **Real data.** `verify --data` already runs the identical engine, costs and
-   permutation null on real CSVs. Point it at real bars for the instrument type a
-   proven bot claims to trade. Expect the permutation p-value to be
-   unimpressive — a single 1,200-bar out-of-sample window cannot establish
-   significance for a Sharpe-0.4 edge, which is exactly why the synthetic
-   replication gates exist and exactly why they are not sufficient. It is also the
-   only route to a decay-rate estimate that is not a modelling choice (F23).
+4. **Search the other rungs.** F27 ran the loop against `hl=0.25x` and found
+   nothing in 16,375 candidates. `hl=1.00x` and `break@85%` have never been
+   searched, only paneled. `break@85%` is the interesting one: the panel certifies
+   one strategy there, and a search might find that a *late* break is the easiest
+   non-stationarity to survive — which would be a real design principle, since it
+   is also the one a live trader has the least warning of.
+5. **What would a search find that the panel cannot represent?** F27 answers this
+   for one rung. The general version — is the strategy space searched here wide
+   enough that "nothing certified" means "nothing is there" — is answered only by
+   widening it. Cross-sectional strategies (below) are the biggest missing class.
 6. **Cross-sectional strategies.** The generator makes independent single
    instruments, so pairs, lead-lag, relative value and factor crowding are all
    out of reach. This is also what makes the portfolio's `rho=0` number a
    fiction. Generating correlated *baskets* would unlock a whole strategy class
    and make the portfolio numbers mean something.
-7. **Repeat the FPR measurement at several seeds.** One probe returning 0/18
-   bounds the false-positive rate loosely. Ten probes would bound it tightly, and
-   it is the number every threshold rests on.
-8. **Dependent intrabar extremes.** Max and min are currently sampled
+7. **Dependent intrabar extremes.** Max and min are currently sampled
    independently from the Brownian bridge; they are negatively dependent. The
    residual +0.07 gross alpha that take-profit-only bots still show on a random
    walk is the visible size of that approximation.
+8. **The archetype panel is better but still not neutral.** F23 found and closed
+   two blank columns in it — no archetype used `proportional` sizing, and none
+   carried a filter, though every certified strategy uses the first. Assume there
+   are more holes of that kind. The test for one: take any axis of `SearchSpace`
+   and ask which of its values the panel never exercises.
 
-**Done, for reference:** the decay curve (F23, item 1 of the previous list), the
-cost-leverage experiment (F24, item 2 — it *falsified* F21's ratio claim), and the
-non-stationary families (F20).
+**Done, for reference:** the decay curve (F23), the cost-leverage experiment
+(F24 — it *falsified* F21's ratio claim), the late-break blind spot in G2b (F25),
+the closing-standard recheck (F26), the searched 12-year catalogue and the
+ten-probe FPR bound (F27), and the non-stationary families (F20).
 
 ## What a good session looks like
 

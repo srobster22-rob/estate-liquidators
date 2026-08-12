@@ -28,20 +28,29 @@ panel — every untuned archetype plus every distinct certified strategy — run
 through the same gates at each rate, on seed-paired instances so nothing but the
 fade differs:
 
-| edge fades... | mean edge | distinct strategies |
-|---|---|---|
-| never | 1.00 | 5 |
-| halflife 48 yr | 0.82 | 4 |
-| **halflife 24 yr** *(shipped)* | **0.70** | **4** |
-| halflife 12 yr | 0.57 | **0** |
-| halflife 6 yr | 0.47 | 0 |
-| abrupt break, midway | 0.53 | 0 |
+| edge fades... | mean edge | distinct strategies | markets |
+|---|---|---|---|
+| never | 1.00 | 8 | 4 |
+| halflife 48 yr | 0.82 | 4 | 2 |
+| **halflife 24 yr** *(shipped)* | **0.70** | **3** | **1** |
+| halflife 12 yr | 0.57 | **0** | 0 |
+| halflife 6 yr | 0.47 | 0 | 0 |
+| abrupt break, midway | 0.53 | 0 | 0 |
 
-**The cliff is between 24 years and 12, and it is a cliff.** Four strategies to
+**The cliff is between 24 years and 12, and it is a cliff.** Three strategies to
 none across a rung that only takes the mean edge from 0.70 to 0.57 — because the
 catalogue's entire population of viable strategies is packed into a 0.2-Sharpe
 band just above the +0.35 replication bar. A 20% edge cut does not thin that field,
-it empties it.
+it empties it. And **market breadth collapses faster than the strategy count**:
+four families produce something with no decay, two at 48 years, one at 24. Decay
+takes the diversification well before it takes the last strategy.
+
+**That zero at 12 years is about the rate, not about the panel** (F27). Pointing
+the ordinary search loop at a 12-year-halflife catalogue — its own ledger, its own
+luck bar, eight expansion levels — screened **16,375 candidates and certified
+nothing**, against 12,400 candidates and four strategies at 24 years. 411 of 459
+gauntleted bots died at G1 and the rest at G2; not one reached the permutation
+null.
 
 **Halving your costs does not buy back a halved edge.** Sweeping edge and cost
 independently (`run.py costgrid`, F24) fits `net = a·edge − b·cost` at R² 0.87-0.98,
@@ -176,6 +185,12 @@ the residual after regressing the bot's returns on the underlying's. On a market
 with a 7% risk premium, levered buy-and-hold has a perfectly respectable Sharpe
 and zero skill. `fitness` takes the *worse* of raw and alpha Sharpe, so beta
 cannot buy a pass.
+
+**The false-positive rate is measured, not argued.** `run.py fpr --repeats 10`
+points ten independent searches at a structureless market: 20,000 candidates, 137
+reached the gauntlet, **0 certified**, 95% upper bound ~2.2%. Every one died at
+G1 — on a random walk, a rule fitted to the first 60% of a series has nothing left
+in the last 40%, so the expensive machinery downstream never has to fire.
 
 **Negative controls are markets, not assertions.** `control_martingale_daily` is
 an iid Gaussian random walk with no drift. Any strategy showing profit there

@@ -36,3 +36,17 @@ G14 L5 · 810 candidates over 11 markets, 25 gauntlets, best screen fit +0.52 (5
 
 G15 L5 · 810 candidates over 11 markets, 23 gauntlets, best screen fit +0.48 (6330 trials on the ledger) · nothing passed
 
+G16 L6 · 1215 candidates over 11 markets, 32 gauntlets, best screen fit +0.52 (7545 trials on the ledger) · nothing passed
+
+G17 L6 · 1215 candidates over 11 markets, 32 gauntlets, best screen fit +0.52 (8760 trials on the ledger) · nothing passed
+
+G18 L6 · 1215 candidates over 11 markets, 31 gauntlets, best screen fit +0.52 (9975 trials on the ledger) · nothing passed
+
+G19 L7 · 1600 candidates over 11 markets, 36 gauntlets, best screen fit +0.51 (11575 trials on the ledger) · nothing passed
+
+G20 L7 · 1600 candidates over 11 markets, 36 gauntlets, best screen fit +0.52 (13175 trials on the ledger) · nothing passed
+
+G21 L7 · 1600 candidates over 11 markets, 36 gauntlets, best screen fit +0.52 (14775 trials on the ledger) · nothing passed
+
+G22 L8 · 1600 candidates over 11 markets, 40 gauntlets, best screen fit +0.52 (16375 trials on the ledger) · nothing passed
+

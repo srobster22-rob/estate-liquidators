@@ -1,6 +1,6 @@
 # Bot factory: run report
 
-_Generated 2026-08-12 11:54:07 from `run_state.json`._
+_Generated 2026-08-12 13:09:42 from `run_state.json`._
 
 ## Result
 
@@ -36,9 +36,9 @@ The catalogue's fade — halflife half the series, 35% floor — was chosen as t
 
 | rung | halflife | mean edge | edge at end | distinct strategies | genomes | markets |
 |---|---|---|---|---|---|---|
-| `stationary` | never | 1.00 | 1.00 | 5 | 12 | `commodity_meanrev_daily`, `eq_largecap_daily` |
+| `stationary` | never | 1.00 | 1.00 | 8 | 16 | `commodity_meanrev_daily`, `eq_largecap_daily`, `futures_trend_daily`, `fx_major_daily` |
 | `hl=1.00x` | 48 yr | 0.82 | 0.68 | 4 | 11 | `commodity_meanrev_daily`, `eq_largecap_daily` |
-| `hl=0.50x` | 24 yr | 0.70 | 0.51 | 4 | 10 | `commodity_meanrev_daily`, `eq_largecap_daily` |
+| `hl=0.50x` | 24 yr | 0.70 | 0.51 | 3 | 8 | `commodity_meanrev_daily` |
 | `hl=0.25x` | 12 yr | 0.57 | 0.39 | 0 | 0 | — |
 | `hl=0.125x` | 6 yr | 0.47 | 0.35 | 0 | 0 | — |
 | `hl=0.125x/f10` | 6 yr | 0.26 | 0.10 | 0 | 0 | — |

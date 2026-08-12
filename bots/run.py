@@ -58,16 +58,38 @@ def cmd_calibrate(a) -> int:
 
 def cmd_fpr(a) -> int:
     """The ladder's end-to-end false-positive rate. The number that justifies
-    every threshold in GauntletConfig."""
-    r = calibrate.control_search_fpr(n_candidates=a.candidates, n_finalists=a.finalists,
-                                     seed=a.seed)
+    every threshold in GauntletConfig.
+
+    One probe returning 0 bounds the rate loosely — the 95% upper bound on a rate
+    with 0 successes in n trials is roughly 3/n, so 0 of 18 only says "below
+    ~17%". Repeating over independent seeds is the only thing that tightens it,
+    and it is cheap.
+    """
+    reached: dict[str, int] = {}
+    tot_pass = tot_fin = 0
+    for k in range(max(a.repeats, 1)):
+        seed = a.seed + k * 100_003
+        r = calibrate.control_search_fpr(n_candidates=a.candidates,
+                                         n_finalists=a.finalists, seed=seed,
+                                         verbose=a.repeats == 1)
+        tot_pass += r["n_passed"]
+        tot_fin += r["n_finalists"]
+        for kk, vv in r["stopped_at"].items():
+            reached[kk] = reached.get(kk, 0) + vv
+        print(f"  seed {seed:>10}: {r['n_finalists']:>3} gauntleted, "
+              f"{r['n_passed']} certified, best screen fit {r['best_screen_fitness']:+.2f}",
+              flush=True)
     print()
-    print(f"searched {r['n_candidates']} bots on a market with no exploitable structure")
-    print(f"  best screen fitness   {r['best_screen_fitness']:+.2f}")
-    print(f"  finalists gauntleted  {r['n_finalists']}")
-    print(f"  certified as PROVEN   {r['n_passed']}   (correct answer: 0)")
-    print(f"  stopped at            {r['stopped_at']}")
-    return 0 if r["n_passed"] == 0 else 3
+    print(f"searched {a.candidates * max(a.repeats, 1):,} bots over {max(a.repeats, 1)} "
+          f"independent probe(s) on a market with no exploitable structure")
+    print(f"  finalists gauntleted  {tot_fin}")
+    print(f"  certified as PROVEN   {tot_pass}   (correct answer: 0)")
+    # Rule of three: with 0 successes in n trials the one-sided 95% upper bound
+    # on the rate is ~3/n. Stating it keeps a zero from reading as a proof.
+    if tot_pass == 0 and tot_fin:
+        print(f"  => false-positive rate 0/{tot_fin}, 95% upper bound ~{3.0 / tot_fin:.1%}")
+    print(f"  stopped at            {reached}")
+    return 0 if tot_pass == 0 else 3
 
 
 def cmd_markets(a) -> int:
@@ -254,6 +276,8 @@ def main(argv=None) -> int:
     p.add_argument("--candidates", type=int, default=2000)
     p.add_argument("--finalists", type=int, default=30)
     p.add_argument("--seed", type=int, default=424242)
+    p.add_argument("--repeats", type=int, default=1,
+                   help="independent probes; one probe bounds the rate only loosely")
     p.set_defaults(fn=cmd_fpr)
 
     p = sub.add_parser("markets", help="list the catalogue")

@@ -623,6 +623,45 @@ def archetypes(market: str) -> list[Genome]:
         Genome(genes=[Gene("momentum", {"lb": 120}), Gene("zrev", {"lb": 5}, 0.6)],
                entry_threshold=0.2, exit_threshold=0.05, **base),
     ]
+    # POSITION SIZING WAS A HOLE IN THE PANEL, NOT A PREFERENCE. Every archetype
+    # above sizes by `voltarget` or `fixed`, and every strategy the search has
+    # ever certified sizes `proportional` — scale the position with the strength
+    # of the signal rather than to a constant risk budget. That is a whole
+    # convention the priors did not cover, and it showed: across the eight rungs
+    # of the decay sweep the untuned panel certified exactly one strategy, so the
+    # curve had to be carried by fitted bots.
+    #
+    # These are coverage, not tuning. The rule set is unchanged — the same three
+    # reversion signals at the same parameters — and only the sizing convention
+    # differs, which is exactly the axis that was missing. Chosen by reading what
+    # the panel contained against what the search space allows, before measuring
+    # what any of them would do.
+    prop = {**base, "sizing": "proportional"}
+    out.extend([
+        Genome(genes=[Gene("zrev", {"lb": 5})], entry_threshold=0.3, exit_threshold=0.05,
+               **{**prop, "max_hold": 10}),
+        Genome(genes=[Gene("rsi_rev", {"n": 14})], entry_threshold=0.4, exit_threshold=0.05,
+               **{**prop, "max_hold": 15}),
+        Genome(genes=[Gene("bollinger", {"n": 20, "k": 2.0})], entry_threshold=0.5,
+               exit_threshold=0.1, **{**prop, "max_hold": 20}),
+        Genome(genes=[Gene("bollinger", {"n": 20, "k": 2.0}), Gene("rsi_rev", {"n": 14}, 0.8)],
+               entry_threshold=0.4, exit_threshold=0.08, **{**prop, "max_hold": 20}),
+        Genome(genes=[Gene("ma_cross", {"fast": 20, "slow": 100})],
+               entry_threshold=0.1, exit_threshold=0.02, **prop),
+    ])
+    # Filters were the other blank column: not one archetype above carries a
+    # regime or volatility filter, though the search space has five of them and
+    # "trade the rule only when conditions suit it" is as textbook as the rules.
+    out.extend([
+        Genome(genes=[Gene("ma_cross", {"fast": 50, "slow": 200})],
+               filters=[FilterGene("vol_band", {"n": 20, "lo": 0.0, "hi": 0.85})],
+               entry_threshold=0.05, exit_threshold=0.01,
+               **{k: v for k, v in base.items() if k != "filters"}),
+        Genome(genes=[Gene("rsi_rev", {"n": 14})],
+               filters=[FilterGene("trend_regime", {"n": 100})],
+               entry_threshold=0.4, exit_threshold=0.05,
+               **{k: v for k, v in dict(prop, max_hold=15).items() if k != "filters"}),
+    ])
     if spec is not None and abs(spec.carry_ann) > 1e-6:
         out.append(Genome(genes=[Gene("carry", {})], entry_threshold=0.0, exit_threshold=0.0,
                           **{**base, "sizing": "fixed", "base_size": 1.0}))

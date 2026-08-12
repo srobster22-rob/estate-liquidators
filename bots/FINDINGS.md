@@ -870,19 +870,25 @@ multiplicity denominator (131, the panel size), and **seed-paired instances**: t
 stream as its `~stationary` twin, so the only difference between two rows is how
 fast the edge goes away.
 
-| rung | halflife | mean edge | edge at end | distinct | genomes |
-|---|---|---|---|---|---|
-| `stationary` | never | 1.00 | 1.00 | **5** | 12 |
-| `hl=1.00x` | 48 yr | 0.82 | 0.68 | **4** | 11 |
-| `hl=0.50x` *(shipped)* | 24 yr | 0.70 | 0.51 | **4** | 10 |
-| `hl=0.25x` | 12 yr | 0.57 | 0.39 | **0** | 0 |
-| `hl=0.125x` | 6 yr | 0.47 | 0.35 | **0** | 0 |
-| `hl=0.125x/f10` | 6 yr, 10% floor | 0.26 | 0.10 | **0** | 0 |
-| `break@45%` | abrupt, midway | 0.53 | 0.15 | **0** | 0 |
-| `break@85%` | abrupt, late | 0.87 | 0.15 | **1** | 1 |
+| rung | halflife | mean edge | edge at end | distinct | genomes | markets |
+|---|---|---|---|---|---|---|
+| `stationary` | never | 1.00 | 1.00 | **8** | 16 | 4 |
+| `hl=1.00x` | 48 yr | 0.82 | 0.68 | **4** | 11 | 2 |
+| `hl=0.50x` *(shipped)* | 24 yr | 0.70 | 0.51 | **3** | 8 | 1 |
+| `hl=0.25x` | 12 yr | 0.57 | 0.39 | **0** | 0 | 0 |
+| `hl=0.125x` | 6 yr | 0.47 | 0.35 | **0** | 0 | 0 |
+| `hl=0.125x/f10` | 6 yr, 10% floor | 0.26 | 0.10 | **0** | 0 | 0 |
+| `break@45%` | abrupt, midway | 0.53 | 0.15 | **0** | 0 | 0 |
+| `break@85%` | abrupt, late | 0.87 | 0.15 | **1** | 1 | 1 |
+
+**Market breadth collapses faster than the strategy count.** Stationary, the panel
+certifies on four families — `commodity_meanrev_daily`, `eq_largecap_daily`,
+`futures_trend_daily`, `fx_major_daily`. At a 48-year halflife it is two. At the
+shipped 24 years it is one. Long before decay takes the last strategy it has
+already taken the diversification.
 
 **The cliff is between a 24-year halflife and a 12-year one, and it is a cliff,
-not a slope.** Four strategies to none, across a rung that only takes the mean
+not a slope.** Three strategies to none, across a rung that only takes the mean
 edge from 0.70 to 0.57.
 
 Why it is a cliff is visible in the achievable-alpha table the same command
@@ -892,19 +898,24 @@ bar is +0.35. The catalogue's whole population of strategies is packed into a
 0.2-Sharpe band just above the bar, so a 20% edge cut does not thin the field —
 it empties it.
 
-**What the curve does not show.** The `arch` column — distinct strategies from the
-*untuned* panel — is 1 at the stationary rung and 0 at every other. The entire
-curve is carried by strategies the search discovered against the `hl=0.50x`
-catalogue, which are fitted to that rung. The reassuring detail is that they do
-not peak there: every one of them scores highest at `stationary` and declines
-monotonically, which is what decay should look like and not what a fit to
-`hl=0.50x` would look like. But an honest reading is that this is a curve for
-*these* strategies, not for the strategy space.
+**The panel had a hole in it, and finding it was the more useful half of this.**
+The first version of this sweep produced an `arch` column — distinct strategies
+from the *untuned* panel — of 1 at `stationary` and 0 everywhere else, which meant
+the whole curve rested on bots fitted to the `hl=0.50x` catalogue. The cause was
+not subtle once looked for: **every one of the ten archetypes sized by `voltarget`
+or `fixed`, and every strategy the search has ever certified sizes
+`proportional`.** A whole position-sizing convention was missing from the priors.
+Filters were the other blank column — not one archetype carried a regime or
+volatility filter, though the search space has five and "trade the rule only when
+conditions suit it" is as textbook as the rules themselves.
 
-It also cannot say what a *search* would find at a fast rate; a search pointed at
-a 12-year halflife might discover a different kind of bot suited to it, and a
-fixed panel is blind to that by construction. `run.py loop --catalogue hl=0.25x`
-exists to answer that and has not been run to convergence.
+Adding those (same signals, same parameters, only the missing conventions) took
+the panel from 142 to 233 rules and the `arch` column at `stationary` from 1 to 5.
+It is coverage, not tuning: the additions were chosen by reading what the panel
+contained against what the search space allows, before measuring what any of them
+would do. Two of them certify at `stationary` on families — `futures_trend_daily`,
+`fx_major_daily` — that produce nothing at any decay rate, which is the kind of
+thing a silent panel was hiding.
 
 **Two smaller things fell out of building it.**
 
@@ -1080,6 +1091,58 @@ leads with the conservative number.
 
 ---
 
+## F27 · A search 30% bigger than the one that found four strategies finds none at half the halflife
+
+F23's curve is built from a fixed panel, so on its own it can only say that
+*known* strategies do not survive a faster fade. It is blind by construction to a
+search discovering something else — a shorter-horizon, lower-turnover rule that
+never wins at the shipped rate and so never entered the panel. That was the
+largest open question the curve left behind, and it is the one that decides
+whether the zero at 12 years is a fact about the rate or about the panel.
+
+`run.py loop --catalogue hl=0.25x` swaps the entire tradeable catalogue for one
+decay rung — base families *and* the two off-ladder twins are unregistered, so no
+candidate can wander onto a family fading at some other rate — and runs the
+ordinary loop against it, with its own ledger, its own priors pass and its own
+multiplicity burden.
+
+| | 24-year halflife (shipped) | 12-year halflife |
+|---|---|---|
+| candidates screened | 12,400 | **16,375** |
+| gauntlets | 353 | **459** |
+| generations | 19 | **22** |
+| expansion levels reached | 3 | **8** |
+| distinct strategies | 4 | **0** |
+
+**More search, more expansion, nothing.** The funnel is the informative part: 411
+of 459 died at G1 and the remaining 48 at G2. Not one candidate in 16,375 reached
+the permutation null. Best screen fitness plateaued at +0.51 from generation 10
+onward across four further expansions — the search was not still climbing when it
+ran out of budget, it had stopped.
+
+So the zero at 12 years is a property of the decay rate, not of the panel, and
+F23's curve can be read as a statement about what is *available* rather than about
+what these particular bots happen to do. The honest caveat that remains is
+narrower than before: a search is not a proof of absence, and this one was bounded
+at 5,627 seconds.
+
+**Alongside it, the number every threshold rests on is now bounded properly.** The
+false-positive rate had one probe behind it — 0 of 18, which by the rule of three
+only says "below about 17%". `run.py fpr --repeats 10` runs ten independent probes:
+
+> 20,000 candidates over 10 seeds on a structureless market, 137 reached the
+> gauntlet, **0 certified**, 95% upper bound **~2.2%**. Every one of the 137 died
+> at G1.
+
+That the entire rejection happens at the *first* gate is worth noting on its own.
+The expensive machinery downstream — replication, controls, cost stress, the
+permutation null, the deflated Sharpe — never has to fire on a random walk,
+because a strategy fitted to the first 60% of a structureless series has nothing
+left in the last 40%. The later gates exist for the harder case: a bot with a real
+but small edge that a big enough search would still have found by luck.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.
@@ -1108,5 +1171,7 @@ Stated because the point of this document is not to look finished.
 5. **Costs are a model.** Square-root impact against the bar's own dollar volume,
    with a fixed notional. No queue position, no partial fills, no adverse
    selection, no borrow recall.
-6. **The FPR measurement has one seed.** Zero out of 28 bounds the rate loosely,
-   not tightly. A proper estimate wants repeated probes at several seeds.
+6. **The FPR upper bound is 2.2%, not zero.** Ten independent probes returning 0
+   of 137 is a much tighter bound than the single probe it replaces (F27), but "no
+   false positive was observed in 137 tries" is not "the false-positive rate is
+   zero", and the ladder's thresholds rest on the difference.
