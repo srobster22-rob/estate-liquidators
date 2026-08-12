@@ -1150,6 +1150,72 @@ ok("Wilson reports a sane interval at zero events",
    _wlo == 0.0 and 0.0 < _whi < 0.15,
    f"0/50 -> [{_wlo:.3f}, {_whi:.3f}], where a normal interval collapses to a point at 0")
 
+print("\n8o. EXECUTION — the assumption under every bracket number in this project")
+from . import execution as _ex  # noqa: E402
+
+# A limit order does not pay through its limit. That is the whole distinction being drawn, so
+# assert it structurally rather than trusting the wiring: at any fill rate, the prices paid
+# must match the perfect-fill run, and only the number of legs filled may differ.
+_full = backtest.run(markets.dataset("crypto_bracket_stale", 51_000_000, 800),
+                     strategies.bracket_arb(min_edge=8, qty=250), backtest.Costs())
+_ioc = backtest.run(markets.dataset("crypto_bracket_stale", 51_000_000, 800),
+                    strategies.bracket_arb(min_edge=8, qty=250),
+                    backtest.Costs(leg_fill_rate=0.8))
+_slip = backtest.run(markets.dataset("crypto_bracket_stale", 51_000_000, 800),
+                     strategies.bracket_arb(min_edge=8, qty=250),
+                     backtest.Costs(extra_spread=1))
+ok("an IOC miss removes legs; it never worsens a price",
+   _ioc.n_trades < _full.n_trades and _ioc.n_contracts < _full.n_contracts,
+   f"{_full.n_trades} legs filled at perfect fill -> {_ioc.n_trades} at 80%/leg")
+ok("...whereas slippage worsens the price and fills every leg",
+   _slip.n_trades == _full.n_trades and _slip.gross_pnl < _full.gross_pnl,
+   f"same {_slip.n_trades} legs, gross {_full.gross_pnl:+,.0f} -> {_slip.gross_pnl:+,.0f}c")
+ok("leg_fill_rate=1.0 is exactly the old behaviour",
+   backtest.run(markets.dataset("crypto_bracket_stale", 51_000_000, 400),
+                strategies.bracket_arb(min_edge=8, qty=250),
+                backtest.Costs(leg_fill_rate=1.0)).group_pnl
+   == backtest.run(markets.dataset("crypto_bracket_stale", 51_000_000, 400),
+                   strategies.bracket_arb(min_edge=8, qty=250),
+                   backtest.Costs()).group_pnl,
+   "the new knob cannot have shifted any previously reported number")
+
+# THE FINDING, AND THE MISTAKE THAT PRECEDED IT. One seed said income RISES as fills get
+# worse (+25.4c at perfect fill vs +28.3c at 80%), which read as a discovery and was noise —
+# ~80 fires in 3,000 sets puts the mean's SE at 1.5-3.3c. Measured across seeds the mean is
+# flat and the whole story is in the second moment.
+_rows = _ex.modes()
+_perf = next(r for r in _rows if "perfect" in r["label"])
+_mk1 = next(r for r in _rows if "+1 tick" in r["label"])
+_i95 = next(r for r in _rows if "95%" in r["label"])
+_i60 = next(r for r in _rows if "60%" in r["label"])
+ok("the expected value is FLAT in the fill rate, not falling",
+   _ex.flat_in_fill_rate(_rows),
+   " | ".join(f"{r['per_set']:+.1f}+-{r['se']:.1f}" for r in _rows if "IOC" in r["label"])
+   + " — every row within 2 SE of the best, so the one-seed trend was noise")
+ok("...and the entire cost lands in the second moment",
+   _i60["sd"] > 3 * _perf["sd"] and _perf["losing"] == 0 < _i60["losing"],
+   f"sigma {_perf['sd']:,.0f} -> {_i60['sd']:,.0f}c, losing sets "
+   f"{_perf['losing']} -> {_i60['losing']}, worst {_i60['worst']:+,.0f}c")
+
+# Why the mean survives: a set that is collectively underpriced is on average made of
+# individually underpriced legs, so a partial fill is a positive-EV directional position.
+# That is K22's sentence being right about the mechanism and wrong about the consequence.
+ok("a partial bracket is positive-EV, not a loss",
+   _i60["per_set"] > 0.5 * _perf["per_set"],
+   f"at a 60% per-leg fill only {0.6 ** 5:.0%} of attempts complete, yet income holds at "
+   f"{_i60['per_set'] / _perf['per_set'] * 100:.0f}% of perfect fill")
+
+# AND THE VERDICT, which sharpens K22 rather than reversing it.
+ok("marketable execution has the LOWEST information cost of any mode",
+   all(_mk1["info_cost"] <= r["info_cost"] for r in _rows),
+   f"I={_mk1['info_cost']:,.0f} against perfect fill {_perf['info_cost']:,.0f} and "
+   f"IOC 95% {_i95['info_cost']:,.0f} — slippage shrinks mean and spread alike, and I is "
+   f"linear in a proportional shrink")
+ok("...so under IOC this stops being an arbitrage at all",
+   _i95["info_cost"] > 3000 and _i95["losing"] > 0,
+   f"I={_i95['info_cost']:,.0f} at a 95% per-leg fill — worse than snr_band's ~1,300-3,000, "
+   f"the directional strategy it was supposed to beat")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

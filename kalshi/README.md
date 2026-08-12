@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 176 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 184 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # family x strategy coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -28,6 +28,7 @@ python -m kalshi.arb               # why the riskless trade loses; writes ARB.md
 python -m kalshi.coherence --cost  # the one measurement needing no settlement
 python -m kalshi.coherence --selftest        # validate that instrument
 python -m kalshi.frontier          # information cost I = s^2/e; writes FRONTIER.md
+python -m kalshi.execution         # slippage vs partial fill; writes EXECUTION.md
 python -m kalshi.fees              # what the fee formula does to every price
 python -m kalshi.markets           # the market families and their planted edges
 python -m kalshi.strategies        # the strategy zoo and the size of the search space
@@ -58,7 +59,7 @@ checks themselves.
 | `config.json` | Every constant the backtester or gate depends on. Canonical, like `tuning.json`. |
 | `fees.py` | Kalshi's fee formula, with worked examples. The most important file. |
 | `paths.py` | The latent price engine. Prices are a martingale *by construction*. |
-| `markets.py` | Ten market families, the quoting layer, and every planted edge. |
+| `markets.py` | Eleven market families (ten plus a no-edge control), the quoting layer, and every planted edge. |
 | `strategies.py` | Thirteen strategies, five of them controls designed to lose. |
 | `backtest.py` | Execution: spread, depth, fees, maker fills, no lookahead. |
 | `evaluate.py` | The gate. Bootstrap, Holm correction, stress, tail risk, half-edge. |
@@ -72,7 +73,8 @@ checks themselves.
 | `frontier.py` | Information cost `I = s²/e`: what makes an opportunity good, independent of how often it appears. |
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
 | `coherence.py` | Bracket coherence from books alone — the one measurement needing no settled outcomes. Refuses partial sets. |
-| `selftest.py` | 176 checks that have to pass before any of the above means anything. |
+| `execution.py` | Marketable vs IOC limit: what a missed leg costs, and why it is not what finding 17 assumed. |
+| `selftest.py` | 184 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -82,12 +84,13 @@ checks themselves.
 | `ARB.md` | Bracket arbitrage: margins, slippage, leg leverage, incoherence channels. Generated. |
 | `FRONTIER.md` | Every strategy ranked by information cost, and the identity behind it. Generated. |
 | `COHERENCE.md` | What it would cost to measure the bracket edge for real. Generated. |
+| `EXECUTION.md` | Every execution mode on one basis, ranked by information cost. Generated. |
 
 ---
 
 ## The market families
 
-Eleven, spanning what Kalshi lists — plus one that exists only to catch bugs.
+Ten, spanning what Kalshi lists — plus one that exists only to catch bugs.
 
 | family | horizon | turns/yr | planted bias | why it's here |
 |---|---|---|---|---|
@@ -118,9 +121,9 @@ factory infinite money.
 From the run in `RESULTS.md` (seed 20260730). Simulated markets throughout.
 
 `RESULTS.md`, `CAPACITY.md` and `PORTFOLIO.md` are that one seeded run and predate the two
-bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–20 were
-measured directly by `arb.py`, `frontier.py` and `coherence.py` on fresh seeds rather than by
-the factory loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
+bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–21 were
+measured directly by `arb.py`, `frontier.py`, `coherence.py` and `execution.py` on fresh seeds
+rather than by the factory loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
 in-sample sets it does not fire often enough to clear the minimum trade count.
 
 **1. Fees decide almost everything, and they decide it before any strategy is written.**
@@ -424,6 +427,10 @@ your price by definition. That swaps slippage risk for fill risk, and finding 14
 resting orders are negative here at every fill rate from 0.15 to 1.00. Both doors are shut, and
 each is shut by the other's risk.
 
+*(Finding 21 found a third door this missed — an **IOC limit** is neither marketable nor
+resting: you pay your price or you get nothing. It turns out not to be shut for money at all.
+It is shut for the only property that made this trade interesting.)*
+
 **18. Frequency is free; information cost is the whole problem. My own K22 summary was
 wrong, and the correction made a prediction that then failed too.** `python -m kalshi.frontier`.
 
@@ -619,6 +626,66 @@ published research; this is the other half — the book itself — and it stays 
 someone runs `--record-event` for a fortnight. That is now the single highest-value thing
 anyone could do with this directory, and it is the first time that has been true of something
 achievable in under a year.
+
+**21. Every bracket number in this project assumes an order no sane implementation would
+send — and correcting it kills the strategy's whole reason for existing, while leaving the
+money intact.** `python -m kalshi.execution`.
+
+Findings 17–19 are all quoted at some number of *ticks of slippage per leg*. That models a
+**marketable** order, one that crosses and walks the book. A real bot would send a **limit
+order at the quoted ask**, immediate-or-cancel — and then it never pays worse than the price
+it computed the arb from. The risk doesn't vanish, it moves:
+
+| order type | you always | you sometimes |
+|---|---|---|
+| marketable | fill | pay worse — **slippage** |
+| IOC limit | pay your price | **miss** — partial fill |
+
+For a one-leg strategy these are interchangeable. For an N-leg arb they are not: a miss leaves
+you holding *k* of *N* mutually exclusive brackets. Finding 17 wrote that sentence and moved on
+without pricing it. Four seeds × 3,000 sets, with `I = s²/e` from finding 18:
+
+| execution | ¢/set | SE | σ | **I = s²/e** | losing sets | worst set |
+|---|---|---|---|---|---|---|
+| perfect fill (unachievable) | +21.00¢ | ±1.64 | 150¢ | 1,078 | 0/12,000 | +0¢ |
+| **marketable, +1 tick/leg** | +10.91¢ | ±0.74 | 81¢ | **595** | **0/12,000** | **+0¢** |
+| marketable, +2 ticks/leg | +0.82¢ | ±0.49 | 37¢ | 1,632 | 150/12,000 | −564¢ |
+| IOC limit, 95% per leg | +19.40¢ | ±1.39 | 305¢ | 4,808 | 15/12,000 | −16,125¢ |
+| IOC limit, 80% per leg | +18.16¢ | ±3.29 | 463¢ | 11,824 | 54/12,000 | −16,125¢ |
+| IOC limit, 60% per leg | +17.06¢ | ±2.25 | 534¢ | 16,708 | 105/12,000 | −16,125¢ |
+
+**The mistake I nearly published.** The first version ran *one seed* and found income **rising**
+as fills got worse — +25.4¢/set at perfect fill against +28.3¢ at an 80% fill rate. It read as a
+discovery. It was noise: ~80 fires in 3,000 sets puts the mean's SE at 1.5–3.3¢, so every row
+sat within about one of every other. That is precisely the error findings 5 and 8 exist to
+catch, committed one round after I congratulated myself for catching it. Measured across four
+seeds, **the expected value is flat in the fill rate** and the whole story is in σ.
+
+**Why the mean survives.** A set only fires when it is underpriced by at least the filter, and a
+collectively underpriced set is on average made of *individually* underpriced legs. So a partial
+fill is a **positive-EV directional position**, not a loss — at a 60% per-leg fill only 8% of
+attempts complete all five legs, yet income holds at 81% of perfect fill. Finding 17's phrase is
+right about the mechanism and wrong about the consequence: the money is fine, what you lose is
+*the reason you wanted the trade*.
+
+**And that is what settles it.** Marketable execution at +1 tick has the **lowest information
+cost of any mode measured, including perfect fill** — slippage shrinks the mean and the spread
+by almost the same proportion, and `I` is linear in a proportional shrink, so you buy a better
+risk profile at a fair price. IOC keeps the money and throws the risk profile away: σ rises 3.5×,
+losing sets go 0 → 105, worst case −$161 on a single set.
+
+So finding 17 modelled the right execution mode for the wrong reason, and the conclusion
+sharpens rather than reverses. **At a 95% per-leg fill rate this is no longer an arbitrage at
+all** — `I = 4,808`, worse than `snr_band`'s ~1,300–3,000, the plain directional strategy it was
+supposed to beat. A riskless trade you cannot execute risklessly is a directional trade with
+extra steps.
+
+Two things this does *not* settle. Fills here are **independent per leg**, and a fast move takes
+several books at once — correlated misses are worse than independent ones at the same marginal
+rate, and nothing here measures that. And the gate's stress criterion still applies 2 ticks *and*
+1.5× fees; two ticks is a marketable assumption an IOC limit does not face, so the right stress
+here is a fill-rate stress — but inventing one *after* seeing which way it falls is how a gate
+gets quietly loosened, so it is left alone.
 
 ## The gate
 

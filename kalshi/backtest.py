@@ -79,12 +79,23 @@ class Costs:
     """Execution assumptions. The gate re-runs every candidate through a harsher set of
     these; a bot whose edge does not survive that was fitting the assumptions."""
 
-    __slots__ = ("fee_mult", "extra_spread", "fill_mult", "label")
+    __slots__ = ("fee_mult", "extra_spread", "fill_mult", "label", "leg_fill_rate")
 
-    def __init__(self, fee_mult=1.0, extra_spread=0, fill_mult=1.0, label="base"):
+    def __init__(self, fee_mult=1.0, extra_spread=0, fill_mult=1.0, label="base",
+                 leg_fill_rate=1.0):
         self.fee_mult = fee_mult
         self.extra_spread = extra_spread
         self.fill_mult = fill_mult
+        # IOC-LIMIT EXECUTION. `extra_spread` models a marketable order that walks the book:
+        # you always fill, sometimes worse than the quote. A limit order at the quoted ask
+        # models the opposite trade-off — you NEVER pay worse than the quote, but you
+        # sometimes get nothing. `leg_fill_rate` is the per-order probability of the second.
+        #
+        # For a single-leg strategy the two are nearly interchangeable. For an N-leg arb they
+        # are not, and that is the whole reason this exists: a missed leg does not cost you a
+        # tick, it leaves you holding k of N brackets — a directional position you did not
+        # choose. K22 said that in words and never priced it. See `execution.py`.
+        self.leg_fill_rate = leg_fill_rate
         self.label = label
 
 
@@ -366,6 +377,11 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
                 px = min(99, ask_t + costs.extra_spread)
             else:
                 px = min(99, (100 - bid_t) + costs.extra_spread)
+            # A limit order that missed. Drawn per LEG, so an N-leg order can fill partially —
+            # which is the point. Drawn before the depth cap so a miss is a miss regardless of
+            # size, and drawn from the group's own rng so the run stays reproducible.
+            if costs.leg_fill_rate < 1.0 and rng.random() >= costs.leg_fill_rate:
+                continue
             qty = _cap_qty(it.qty, ep.depth[t], px, 0)
             if qty <= 0:
                 continue

@@ -517,6 +517,56 @@ here the cheap half costs a fortnight of polling instead of seven months of wait
 could do with this directory, and it is the first time that has been true of something
 achievable in under a year. 176 checks pass.
 
+K26 · Went after the assumption sitting under every bracket number in the project: they are
+all quoted at some number of TICKS OF SLIPPAGE PER LEG, and K22's whole conclusion rests on
+that axis. Built `kalshi/execution.py` and added `backtest.Costs(leg_fill_rate=...)`.
+
+A tick of slippage models a MARKETABLE order — one that crosses and walks the book. No sane
+implementation of this strategy would send one. You would send a LIMIT order at the quoted ask,
+immediate-or-cancel, and then you never pay worse than the price you computed the arb from. The
+risk does not vanish, it moves: marketable means you always fill and sometimes pay worse; IOC
+means you never pay worse and sometimes MISS. For one leg those are interchangeable. For an
+N-leg arb a miss leaves you holding k of N mutually exclusive brackets — K22 wrote exactly that
+sentence and moved on without pricing it, and it has been load-bearing since.
+
+**The mistake first.** The initial version ran ONE SEED and found income RISING as fills got
+worse — +25.4c/set at perfect fill against +28.3c at an 80% fill rate. It read as a discovery.
+It was noise: ~80 fires in 3,000 sets puts the mean's SE at 1.5-3.3c, so every row sat within
+about one of every other. That is the error K5 and K8 exist to catch, committed one round after
+congratulating myself for catching it. `measure()` now takes four seeds and reports an SE, and
+`flat_in_fill_rate()` asserts the honest reading.
+
+**Measured properly (4 seeds x 3,000 sets), with I = s^2/e from K23:** perfect fill +21.00c,
+sigma 150, I=1,078, 0 losing; marketable +1 tick +10.91c, sigma 81, **I=595**, 0 losing;
+marketable +2 ticks +0.82c, I=1,632, 150 losing; IOC 95% +19.40c, sigma 305, I=4,808, 15
+losing, worst -16,125c; IOC 80% +18.16c, I=11,824; IOC 60% +17.06c, sigma 534, I=16,708, 105
+losing. **The expected value is FLAT in the fill rate** — every IOC row within 2 SE of the best
+— and the entire story is in the second moment.
+
+**Why the mean survives:** a set only fires when it is underpriced by at least the filter, and a
+collectively underpriced set is on average made of INDIVIDUALLY underpriced legs. So a partial
+fill is a positive-EV directional position, not a loss — at a 60% per-leg fill only 8% of
+attempts complete all five legs and income still holds at 81% of perfect fill. K22's sentence is
+right about the mechanism and wrong about the consequence. The money is fine; what you lose is
+the reason you wanted the trade.
+
+**And that settles it.** Marketable at +1 tick has the LOWEST information cost of any mode
+measured, INCLUDING perfect fill — slippage shrinks mean and spread by nearly the same
+proportion and I is linear in a proportional shrink, so you buy a better risk profile at a fair
+price. IOC keeps the money and throws the risk profile away: sigma up 3.5x, losing sets 0 ->
+105, worst case -$161 on one set. So K22 modelled the right execution mode for the wrong reason
+and the conclusion SHARPENS: **at a 95% per-leg fill rate this is no longer an arbitrage at
+all**, I=4,808, worse than snr_band's ~1,300-3,000 — the plain directional strategy it was
+supposed to beat. A riskless trade you cannot execute risklessly is a directional trade with
+extra steps.
+
+Two things left open and stated rather than papered over. Fills here are INDEPENDENT per leg; a
+fast move takes several books at once, and correlated misses are worse than independent ones at
+the same marginal rate. And the gate's stress criterion still applies 2 ticks AND 1.5x fees —
+two ticks is a marketable assumption an IOC limit does not face, so the right stress here is a
+fill-rate stress, but inventing one after seeing which way it falls is how a gate gets quietly
+loosened. Left alone. 184 checks pass.
+
 ---
 
 ## Standing notes
