@@ -6,7 +6,8 @@ below is a plan — it's a statement of what you can run today, updated whenever
 **Run it:** open `proto3d/index.html`. `?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 137 checks, the real build in headless Chromium
+node proto3d/qa.mjs               # 135 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 135   # the numbers in these docs are the real ones
 python3 sim/check_drift.py        # 138 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
 node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
@@ -50,7 +51,6 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | The dolly | `DESIGN` §8 | Cart-class pieces are carried by two at a crawl instead. Flagged where it happens. |
 | Flicker / Slam / Hold | `DESIGN` §5.1 | The other three Static verbs need a lights system and door entities; neither exists. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
-| The ghost / dead-player verbs | `DESIGN` §5.1 | Player death ends the night. |
 | Radio, salt line, crowbar, breakers | `DESIGN` §8 | No tools beyond the appraiser and the flashlight. |
 | Disturbance levers | `DESIGN` §6.5 | Kill-lights and go-quiet are specced and unimplemented. |
 | Curses beyond value and ruin | `DESIGN` §4.2 | Grades affect price, attention and the ruin roll; no per-curse behaviour. |
@@ -58,7 +58,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 121 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 135 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.

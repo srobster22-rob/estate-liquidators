@@ -476,7 +476,13 @@ now excluded from banked, gross and fees; the only thing recovering one changes 
 up tomorrow. · One statistical check had to be loosened rather than fixed: "the last night is
 not passable on crew throughput alone" was asserting a rate to ten points off twelve runs and
 failed on its own noise. It now makes the coarse claim the sample supports and says `n=12` in
-the message. · Regression: QA 114/114, drift 124/124, three consecutive clean runs.
+the message. · Regression: QA 114/114, drift 124/124, three consecutive clean runs. · Post-round sweep found `STATUS.md` — written one round earlier —
+already contradicting itself: a row saying player death ends the night, directly under the row
+saying it doesn't, and three check counts quoted from memory that were all wrong. Wrote
+`sim/check_counts.py`, which asserts the numbers in the README and STATUS are the numbers the
+suites actually report, and injection-tested it. Documented counts have drifted three times in
+fifteen rounds; for a project whose main asset is trustworthy numbers, a wrong one in the
+first paragraph of the README is not a footnote.
 
 R28 · **Things break now.** Fragility 0–3 (DESIGN §5), a break chance that scales with
 fragility *and* with how fast you were moving when you let go, a broken piece worth $0 and
@@ -524,7 +530,7 @@ had to be rewritten to say something true rather than something flattering.** "T
 around the nights that fell short" is false as stated: it rescues about a third of them,
 because the player is doing nothing at all in these runs and a failed night is short by about
 one apex. What is defensible — and what is now asserted — is that the apex is the right *size*
-to be the thing that decides the night. · Regression: QA 137/137, drift 138/138, three
+to be the thing that decides the night. · Regression: QA 135/135, drift 138/138, three
 consecutive clean runs.
 
 ---
