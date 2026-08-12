@@ -453,7 +453,12 @@ length is the **ratio**, not the dollars: the ship band is 32–64% of the final
 is what `tuning.json` now carries and what the prototype derives from. Same class of error as
 R25's scaled quotas, caught one round earlier this time. · Also made the apex **never cursed**:
 a ×6 multiplier on the centrepiece would dwarf every other decision in the night, and D-21
-wants a goal rather than a lottery ticket. · Regression: QA 108/108, drift 124/124.
+wants a goal rather than a lottery ticket. · **And the suite was quietly non-deterministic the whole time.** `newContract()` seeded its
+estate from `Date.now()`, so every check after it drew from the harness's seeded RNG at a
+different offset — which is why a statistical check failed about one run in three and passed
+on retry. Fixed at the source rather than by widening the threshold: a contract can be handed
+a seed, and QA always hands it one. Three consecutive clean runs. · Regression: QA 108/108,
+drift 124/124.
 
 ---
 

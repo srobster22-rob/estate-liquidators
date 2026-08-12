@@ -1444,9 +1444,13 @@ function nextNight(){
   reset();
   return true;
 }
-function newContract(){
+// A seed may be supplied; without one the house is a surprise. QA always supplies
+// one - a Date.now() estate here advanced the seeded RNG by a variable number of
+// draws before every check that followed, which made the whole suite mildly
+// non-deterministic and produced statistics that failed one run in three.
+function newContract(seed){
   night=0; chainOver=false; chainEarnings=0; lastNight=null;
-  buildEstate((Date.now()&0x7fffffff)>>>0);
+  buildEstate((seed!==undefined?seed:(Date.now()&0x7fffffff))>>>0, 0);
   reset();
 }
 
