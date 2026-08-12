@@ -106,6 +106,31 @@ rich every night. The quota has to live inside that range or the chain has no sh
 | 3 | $10,750 | 17 | $10,997 | ~55% | someone has to go into a sealed wing |
 | 4 | $12,500 | 19 | $12,152 | ~40% | above the mean. The apex is not optional. |
 
+> ### ⚠️ R28: this curve is calibrated against CLOCK-gated depth, and does not survive a work gate
+>
+> D-20 (FIRM) says depth opens on work, never a timer. `chain_sim.py` scaled the unlock *clock* by
+> crew size, which is a half-fix. Given a real work gate — a prerequisite step costing 300
+> people-seconds from the same labour pool, per `validate_estate.py`'s own `TASK_SECONDS` —
+> **every night passes 100%**, which is precisely the failure this section's warning box describes.
+>
+> | night | quota | clock mean | pass | work mean | pass |
+> |---:|---:|---:|---:|---:|---:|
+> | 1 | $7,500 | $9,473 | 95% | $16,847 | **100%** |
+> | 4 | $12,500 | $12,124 | 39% | $21,613 | **100%** |
+>
+> The cause is in what the crew carries. Clock-gated it is apex + 8 armfuls + 5 pockets;
+> work-gated it is apex + 4 armfuls + 3 two-man and **no pocket junk at all**. Rushing all three
+> unlocks costs 225s of a 540s night and buys a van of tier-3 goods worth roughly four times as
+> much per slot. The clock was *forcing* 240 seconds of shallow hauling, and that forcing is what
+> the quota curve was fitted to.
+>
+> **This does not license doubling the quotas.** The work-gated model prices the prerequisite as
+> labour only, so a crew can buy an unlock at t=0 — but a real crew has to *find* the key before
+> it can turn it, and that discovery cost is what the clock was crudely standing in for. Pricing
+> labour without discovery is the same error R21 found in the Disturbance levers. The curve below
+> is correct for the world it was measured in; re-deriving it needs a prerequisite that costs
+> **search as well as labour**, which no model here has yet.
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The

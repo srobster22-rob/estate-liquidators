@@ -339,6 +339,13 @@ lobbies feel bad" is not a bug report anyone can act on.
 
 **Falsified if:** nothing. Any future timer-based gate is a bug.
 
+**R28:** `chain_sim.py` now runs a real work gate too, and the result is a warning rather than
+a fix: under it the calibrated quota curve loses all shape — every night passes 100%. The clock
+was *forcing* 240s of shallow hauling, and the quota curve was fitted to that forcing. The
+model prices the prerequisite as labour only, so it can be bought at t=0; a real crew must
+find the key first. **A prerequisite that costs search as well as labour is the missing piece,
+and until it exists the quota curve cannot be re-derived.** See `ECONOMY.md` §4.
+
 **R24:** every simulation in this repo violated this decision until `sim/work_gate.py`. That was not harmless — R23 traced the appraiser's apparent optimum, and with it D-23's threshold change, to dead time the clock gate created. `work_gate.py` runs both gates over the same code: the clock gate reproduces this decision's own reported inversion (a crew of two out-earning a crew of six) and the work gate removes it, and the scan-rate optimum is interior under the clock and a corner under work. The other eleven sims still gate on a timer; treat any result of theirs that runs through crew *time* as carrying the artifact.
 
 ---

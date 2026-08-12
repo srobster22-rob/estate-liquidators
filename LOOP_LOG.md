@@ -508,6 +508,31 @@ unchanged ($5,108 / $10,131 / $12,131 / $12,820 / $13,586 for crews 2–6), so D
 ECONOMY §8 stand; only the pass rates were wrong, and they were wrong in the direction that made
 the chain look unwinnable.
 
+R28 · Put a real work gate into `chain_sim.py` — the model that owns the quota curve — rather
+than growing `work_gate.py` into a second economy model. `chain_sim` already had the rich economy
+(per-class candidate pools, an adaptive reservation price, a shared labour pool); what it lacked
+was the gate. A prerequisite step is now 300 people-seconds drawn from that same pool, so it costs
+the hauls it displaces and six people open a wing faster than three — D-20's mechanism rather than
+a scale factor bolted onto a clock. · **The calibrated quota curve does not survive it. Every night
+passes 100%** — precisely the shape `ECONOMY.md` §4's own warning box calls a failed curve.
+Work-gated night 4 earns **$21,613 against a $12,500 quota**, versus $12,124 clock-gated.
+· **Checked the mechanism rather than trusting the number**, because 100% across the board is the
+exact shape of the failure the curve was built to fix. It is not a bug: the composition shows
+clock-gated crews carry apex + 8 armfuls + 5 pockets, work-gated crews carry apex + 4 armfuls +
+3 two-man and **no pocket junk at all**. Rushing all three unlocks costs 225s of a 540s night and
+buys a van of tier-3 goods worth roughly four times as much per slot. **The clock was *forcing*
+240 seconds of shallow hauling, and the quota curve was fitted to that forcing.** The transition is
+sharp — at 600 people-seconds per step instead of 300, night-4 pass falls 100% → 8%.
+· **Deliberately did not recalibrate the quotas on this.** The model prices the prerequisite as
+*labour only*, so a crew can buy an unlock at t=0 — but a real crew has to **find the key before it
+can turn it**, and that discovery cost is what the clock was crudely standing in for. Pricing
+labour without discovery is the same error R21 found in the Disturbance levers, which were priced
+on benefit and not cost. Doubling the quotas on a model with a known missing cost would repeat the
+mistake this loop has now corrected four times. · Recorded as a ⚠️ flag in `ECONOMY.md` §4 and in
+D-20: the curve is valid for the clock-gated world it was measured in, and **re-deriving it needs
+a prerequisite that costs search as well as labour** — which is now the clearest single gap in the
+simulation set.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

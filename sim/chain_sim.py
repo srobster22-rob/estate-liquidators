@@ -39,6 +39,14 @@ import statistics
 VAN_BASE = 14
 HAUL_WINDOW_S = 540.0
 
+# WORK GATING (R28). validate_estate.py's TASK_SECONDS = 75.0 is "rough cost of one
+# prerequisite step for a crew of 4", so one step is 300 people-seconds drawn from the
+# same labour pool everything else uses. Wall time for a step is therefore
+# 300 / labour_pool - six people open a wing faster than three, which is D-20's
+# mechanism rather than a scale factor bolted onto a clock.
+PREREQ_LABOUR = 75.0 * 4
+STEPS_FOR_TIER = {1: 0, 2: 1, 3: 2, 4: 3}
+
 # (unlock_time, tier) — the crew-of-4 BASELINE, not a wall-clock rule. current_tier()
 # scales these by 4/crew because depth gates on work, never on a timer (DECISIONS D-20).
 # The unscaled path (labour_gated=False) exists only to reproduce the failure D-20 records.
@@ -127,7 +135,7 @@ def current_tier(t, crew=4, labour_gated=True):
 
 
 def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
-              reserve_apex=True, labour_gated=True):
+              reserve_apex=True, labour_gated=True, gate="clock", depth_target=4):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -148,9 +156,20 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
     t = 0.0
     labour_pool = crew          # people available in parallel
     apex_offered = False
+    steps = 0
 
     while t < HAUL_WINDOW_S and slots_left > 0:
-        tier = current_tier(t, crew, labour_gated)
+        if gate == "work":
+            tier = max(ti for ti, need in STEPS_FOR_TIER.items() if steps >= need)
+            # Buy the next unlock if we still want depth and there is night left for it.
+            if tier < depth_target and steps < 3:
+                step_wall = PREREQ_LABOUR / labour_pool
+                if t + step_wall < HAUL_WINDOW_S:
+                    t += step_wall
+                    steps += 1
+                    continue
+        else:
+            tier = current_tier(t, crew, labour_gated)
 
         # The apex is ONE object per estate (LEVEL-SPEC.md 2), offered once.
         if tier == 4 and allow_apex and not apex_offered:
@@ -262,6 +281,46 @@ if __name__ == "__main__":
         d = a["mean"] / b["mean"] - 1
         print(f"{a['night']:<7}{a['mean']:>13,.0f}{b['mean']:>13,.0f}"
               f"{d:>10.1%}{a['apex']:>9.0%}")
+
+    print("\n\nQUOTA CURVE UNDER A WORK GATE  (R28)")
+    print("  D-20 is FIRM that depth opens on work, never a timer. This file scaled the")
+    print("  unlock CLOCK by crew size, which is a half-fix. Here a prerequisite step is")
+    print("  300 people-seconds from the same labour pool, so it costs the hauls it")
+    print("  displaces and six people open a wing faster than three.")
+    print("-" * 78)
+    print(f"{'night':<7}{'quota':>8}{'van':>5}{'clock mean':>12}{'pass':>7}"
+          f"{'   |':>4}{'work mean':>11}{'pass':>7}{'apex':>7}")
+    for night in range(4):
+        q, van = QUOTAS[night], VAN_BY_NIGHT[night]
+        row = []
+        for g in ("clock", "work"):
+            res = [run_night(random.Random(10_000 + night * 997 + s), 4, van, gate=g)
+                   for s in range(1500)]
+            vals = [r[0] for r in res]
+            row.append((statistics.mean(vals),
+                        sum(1 for v in vals if v >= q) / len(vals),
+                        statistics.mean(1 if r[1].get("apex") else 0 for r in res)))
+        (cm, cp, _), (wm, wp, wa) = row
+        print(f"{night + 1:<7}{q:>8,}{van:>5}{cm:>12,.0f}{cp:>7.0%}{'   |':>4}"
+              f"{wm:>11,.0f}{wp:>7.0%}{wa:>7.0%}")
+    print("""
+  READ THIS AS A FLAG, NOT A RECALIBRATION. Work-gated, every night passes 100% -
+  which is the exact shape ECONOMY.md 4's warning box calls a failed curve. The cause
+  is visible in what the crew carries: clock-gated it is apex + 8 armfuls + 5 pockets,
+  work-gated it is apex + 4 armfuls + 3 two-man and NO pocket junk at all. Rushing all
+  three unlocks costs 225s of a 540s night and buys a van of tier-3 goods worth roughly
+  four times as much per slot. The transition is sharp - at 600 people-seconds per step
+  instead of 300, night-4 pass falls from 100% to 8%.
+
+  What this does NOT license is doubling the quotas. This model prices the prerequisite
+  as LABOUR only, so a crew can buy an unlock at t=0. A real crew has to FIND the key
+  before it can turn it, and that discovery cost is what the clock was crudely standing
+  in for. Pricing labour without discovery is the same error R21 found in the
+  Disturbance levers, which were priced on benefit and not cost.
+
+  So: the calibrated curve is valid for the clock-gated world it was calibrated in, and
+  is NOT yet re-derivable. The outstanding job is a prerequisite that costs search as
+  well as labour. R28.""")
 
     print(f"\n\nCREW SIZE — night 4 (${QUOTAS[3]:,}, van {VAN_BY_NIGHT[3]})")
     print("-" * 78)

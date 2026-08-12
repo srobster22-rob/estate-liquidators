@@ -255,7 +255,10 @@ def trial(n=3000, **kw):
 
 
 if __name__ == "__main__":
-    N = int(os.environ.get("WORK_GATE_N", 3000))
+    # 1,200 keeps the full panel set inside a couple of minutes so this stays a usable
+    # regression citizen; R28 found the default blew a 10-minute sweep budget.
+    # WORK_GATE_N=8000 reproduces the figures quoted in D-22 and LOOP_LOG R26.
+    N = int(os.environ.get("WORK_GATE_N", 1200))
     print("=" * 78)
     print("DEPTH GATED ON WORK, NOT THE CLOCK  (D-20)")
     print(f"n = {N:,} nights per cell")
