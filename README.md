@@ -22,13 +22,16 @@ those state their own falsification conditions.
 What runs, and how to check it:
 
 ```bash
-python3 sim/check_drift.py        # 111 constants agree across four implementations
+node proto3d/qa.mjs               # 121 checks driving the real build in headless Chromium
+python3 sim/check_drift.py        # 129 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
 node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
   python3 sim/validate_estate.py --estate /tmp/e/*.json   # generated estates vs the contract
-node proto3d/qa.mjs               # 90 checks driving the real build in headless Chromium
 dotnet run --project unity/tests/CoreTests   # 31 assertions pinning C# to the sims
 ```
+
+**[STATUS.md](STATUS.md) is the honest inventory** — what the prototype implements, what it
+doesn't, and what the checks cannot tell you.
 
 Open `proto3d/index.html` in a browser to play it; the estate is generated per
 run and `?seed=12345` reproduces a specific house. The Unity build does not exist yet; the
@@ -48,7 +51,8 @@ prototypes are where the rules are being proved.
 | **[sim/chain_sim.py](sim/chain_sim.py)** | Full-night sim with weight classes, crew labour, and depth gating. | Before changing the quota curve, crew size, or the apex. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
-| **[proto3d/index.html](proto3d/index.html)** | Playable first-person prototype: haul, appraise, hide, stash, get retrieved. Raw WebGL, no dependencies. | Before arguing about feel. |
+| **[STATUS.md](STATUS.md)** | Spec against build: what exists, what doesn't, what the checks can't tell you. | First, if you want to know where this actually is. |
+| **[proto3d/index.html](proto3d/index.html)** | Playable first-person prototype: a generated house, a crew, an apex, four nights. Raw WebGL, no dependencies. | Before arguing about feel. |
 | **[proto3d/qa.mjs](proto3d/qa.mjs)** | Headless QA driving that build in Chromium. Every rule this project calls FIRM has a check here. | After changing any rule. |
 | **[BUILD-PROMPT.md](BUILD-PROMPT.md)** | Self-contained brief for shipping this on Steam: phases, exit criteria, non-negotiables. | Starting a build session. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |

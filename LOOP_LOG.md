@@ -493,39 +493,48 @@ in while the real measurement went below it. That is precisely the thing R14 wro
 about ("a checker that only ever passes is worthless"), and it survived in the file for about
 four minutes. Deleted. · Regression: QA 121/121, drift 129/129.
 
+R29 · Consistency sweep, which the iteration prompt asks for every round and which had gone
+five rounds without one. Wrote **`STATUS.md`**: spec against build, one row per system, with
+a second table for what is specified and *not* built and a third for what the checks cannot
+tell you. The project had no single place saying where it actually was — the loop log says
+what each round did, the design documents say what the game is, and nobody reading either
+could answer "so what runs?". · Rewrote the log's own next-step list, stale since R23, and
+corrected the README's counts (121 checks, 129 constants — it still said 90 and 111). ·
+Nothing was found broken, which after five rounds of changes is worth one line rather than
+five. Full regression green: QA 121/121, drift 129/129, both sample estates and twelve
+generated ones PASS.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
 
-Everything the previous list held open has been answered or superseded — the appraiser
-question (R18), the curse tail risk (R11), the cursed-cargo inertness (R18, in the last two
-places it was still wrong). Ranked by what most endangers the build:
+`STATUS.md` is the current spec-against-build inventory. Ranked by what most endangers the
+build:
 
-**1. The prototype has never been played by a human.** Every claim in this log below R16 is
-either a simulation result or a headless assertion. 70 checks say the rules behave; nothing
-says the game is *fun*, and DESIGN §11's Phase 2 gate — four friends find hauling junk to a
-van funny, without a monster — is the only thing that can. Twenty minutes with the file open
-is worth more than another round of this.
+**1. Nobody has played it.** 121 headless checks say the rules behave; none of them says the
+game is fun, and `DESIGN` §11's Phase 2 gate — four friends find hauling junk to a van funny,
+*without* a monster — is the only thing that can. Twenty minutes with `proto3d/index.html`
+open is worth more than another round of this. Every round since R16 has been building the
+thing that makes that twenty minutes informative.
 
-**2. The scan-breadth result needs a UI before it means anything.** D-24 found the appraiser
-is a *breadth* decision worth +14%, and that the payoff dies if players read scanning as an
-on/off mode. `proto3d` still appraises one aimed item at a time with no notion of "two of these
-four scanned", so the mechanic the sim priced does not exist in the build yet.
+**2. The whole social layer is unproven and unbuildable here.** The hot potato, proximity
+voice, the physics handoff at real latency: one player and three haul bots cannot test any of
+it, and the bots make the *shape* of the loop measurable without saying anything about whether
+four people shouting at each other is funny. This is Phase 0/1 and it needs two machines.
 
-**3. Weight classes and the two-man carry.** The whole physics-handoff risk (`TECH-SPEC` §B4,
-Phase 1) and the comedy that justifies non-kinematic carry live here, and nothing in any
-prototype has a piano in it. Single-player can't test the handoff, but it can test whether the
-dolly and the pinch points make the estate read as a logistics problem.
+**3. The tools are missing.** Dolly, radio, crowbar, salt line, breakers, and the two
+Disturbance levers are all specced and absent (`STATUS.md`). The dolly is the one with
+mechanical consequences — cart-class pieces are currently carried by two at a crawl, which is
+a stand-in, not the design.
 
-**4. A second estate.** One hand-authored wing has been carrying the whole build since R12,
-`LEVEL-SPEC`'s module contract has never generated anything, and `validate_estate.py` has
-never been pointed at the estate the prototype actually ships. V5 remains the weakest of its
-ten checks — it counts doors on the shortest path and has never failed anything.
+**4. Death is still an ending.** `DESIGN` §5.1 answers the genre's standing problem — the dead
+join the collection, with sight of the Curator and a budget of poltergeist verbs — and player
+death currently just ends the night. Crew death now leaves a body worth recovering (R27), which
+is half of it.
 
 **Standing:** the C# core suite (`unity/tests/CoreTests`, 31 assertions) has not run since R14
-— there is no .NET SDK in the container this loop is running in, so `check_drift.py` is
-currently the only thing holding the C# port to the canonical numbers. Run it on a machine
-that has `dotnet` before trusting the Unity side.
+— no .NET SDK in the container this loop runs in — so `check_drift.py` is the only thing
+holding the C# port to the canonical numbers. Run it on a machine that has `dotnet`.
 
 ---
 
