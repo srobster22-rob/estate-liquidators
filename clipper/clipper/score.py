@@ -5,6 +5,11 @@ than anything learned. Two reasons: there is no labelled data here, and a clip
 picker that cannot say *why* it chose a moment is impossible to tune against
 taste. Every score carries its own breakdown.
 
+Clip *length* is deliberately not scored. The band is a hard constraint the user
+sets, and inside it no length is known to be better than another — see D-8, where
+an unjustified 32-second target turned out to control the published selection
+more strongly than any other constant in the project.
+
 What the features are actually measuring is **self-containment**, not interest.
 A clip fails when the viewer needs context they do not have — it opens on "and
 that's why it works" with no antecedent, or stops before the point lands. That
@@ -83,7 +88,6 @@ class Weights:
     hook: float = 3.0
     self_contained: float = 3.5
     closure: float = 2.5
-    duration_fit: float = 1.5
     #: Raised from 1.0 at R3. Measured: on a fixture containing real dead air, a
     #: clip with a **10.5-second silence** in the middle of it ranked second and
     #: was published. At 3.0 it drops out of the top five. The feature was not
@@ -91,11 +95,6 @@ class Weights:
     #: simply contained no silences for it to find.
     pacing: float = 3.0
     payoff: float = 1.5
-
-    #: Target clip length in seconds, and the half-width over which the fit
-    #: score decays to zero.
-    ideal_duration: float = 32.0
-    duration_tolerance: float = 28.0
 
     #: The longest internal silence a clip may contain before it starts to lose
     #: points. A pause this long reads as a beat; much longer reads as a stall.
@@ -250,22 +249,37 @@ def self_containment(
     return max(0.0, score)
 
 
+#: How much a sentence-final mark is worth on its own. Not 1.0: punctuation can
+#: be a comma-spliced full stop, and the gap is independent corroboration.
+PUNCTUATION_EVIDENCE = 0.7
+
+
 def closure(candidate: Candidate, *, closing_gap: float, punctuated: bool) -> float:
-    """Whether the clip ends at a stop rather than mid-thought. 0..1."""
-    score = 0.0
-    if punctuated and candidate.ends_on_punctuation:
-        score += 0.7
-    if candidate.gap_after >= closing_gap:
-        score += 0.5
-    elif candidate.gap_after > 0:
-        score += 0.5 * (candidate.gap_after / closing_gap)
-    return min(1.0, score)
+    """Whether the clip ends at a stop rather than mid-thought. 0..1.
 
+    Two independent pieces of evidence — a sentence-final mark, and silence after
+    the last word — combined as a soft OR, so either alone is suggestive and both
+    together are strong.
 
-def duration_fit(duration: float, *, ideal: float, tolerance: float) -> float:
-    if tolerance <= 0:
-        return 1.0
-    return max(0.0, 1.0 - abs(duration - ideal) / tolerance)
+    The silence term is **smooth and unbounded** rather than a threshold test,
+    which is a correction. The previous version scored a flat 0.5 once the gap
+    passed `closing_gap` and interpolated below it, putting a kink in the
+    function exactly at the parameter's value. Measured at R6 on auto-captions,
+    where the gap is the *only* ending signal: `closing_gap` sat at 0.80 against
+    a candidate-gap median of 0.80, so it split the distribution through its own
+    mode and any nudge reclassified a third of all candidates at once — 48% churn
+    in the published selection, the most influential constant in the project once
+    `duration_fit` was gone. A threshold belongs in a gap between populations,
+    not inside one.
+
+    It also fixes a structural handicap: the old form could never exceed 0.5 on
+    an unpunctuated transcript, halving the range of the one feature carrying all
+    the ending evidence there.
+    """
+    gap = max(0.0, candidate.gap_after)
+    gap_evidence = gap / (gap + closing_gap) if closing_gap > 0 else 0.0
+    mark_evidence = PUNCTUATION_EVIDENCE if (punctuated and candidate.ends_on_punctuation) else 0.0
+    return 1.0 - (1.0 - mark_evidence) * (1.0 - gap_evidence)
 
 
 def pacing(candidate: Candidate, *, max_silence: float, falloff: float = 2.0) -> float:
@@ -350,9 +364,6 @@ def score(candidate: Candidate, seg: Segmentation, weights: Weights | None = Non
             gap_before=candidate.gap_before,
         ),
         "closure": closure(candidate, closing_gap=w.closing_gap, punctuated=seg.punctuated),
-        "duration_fit": duration_fit(
-            candidate.duration, ideal=w.ideal_duration, tolerance=w.duration_tolerance
-        ),
         "pacing": pacing(candidate, max_silence=w.max_silence),
         "payoff": 0.0 if cut_off else payoff_strength(text),
     }

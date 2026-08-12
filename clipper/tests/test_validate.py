@@ -42,7 +42,7 @@ class DiscriminationTests(unittest.TestCase):
         by_name = {d.feature: d for d in V.discrimination(rows)}
         # talk.srt contains no silence over 0.8s, so pacing cannot vary on it.
         self.assertTrue(by_name["pacing"].dead)
-        self.assertFalse(by_name["duration_fit"].dead)
+        self.assertFalse(by_name["self_contained"].dead)
 
     def test_pacing_comes_alive_on_content_with_real_dead_air(self):
         """R1 left this open: pacing was untested against actual silence."""
@@ -159,6 +159,33 @@ class SensitivityTests(unittest.TestCase):
             self.assertLess(worst, 3.0, f"published clip contains {worst:.1f}s of silence")
 
 
+class ParameterInfluenceTests(unittest.TestCase):
+    """No tuning constant may quietly control the output — see D-8 and D-22."""
+
+    def test_no_constant_is_dominant_on_any_fixture(self):
+        for fixture in ("talk.srt", "pauses.srt", "talk_auto.vtt"):
+            _, seg, cands = load(fixture)
+            for influence in V.parameter_sensitivity(cands, seg):
+                self.assertFalse(
+                    influence.dominant,
+                    f"{fixture}: {influence.constant} moves {influence.mean_churn:.0%}",
+                )
+
+    def test_every_swept_constant_exists_on_weights(self):
+        fields = set(SC.Weights.__dataclass_fields__)
+        self.assertTrue(set(V.SWEEPS).issubset(fields), set(V.SWEEPS) - fields)
+
+    def test_clip_length_is_no_longer_scored_at_all(self):
+        """R6: the band is a hard constraint, not a preference."""
+        self.assertNotIn("duration_fit", V.FEATURES)
+        self.assertNotIn("duration_fit", SC.Weights.__dataclass_fields__)
+
+    def test_influence_is_sorted_worst_first(self):
+        _, seg, cands = load("talk.srt")
+        churns = [i.mean_churn for i in V.parameter_sensitivity(cands, seg)]
+        self.assertEqual(churns, sorted(churns, reverse=True))
+
+
 class ReportTests(unittest.TestCase):
     def test_report_runs_and_mentions_each_section(self):
         out = io.StringIO()
@@ -166,7 +193,8 @@ class ReportTests(unittest.TestCase):
             code = V.report(FIXTURES / "talk.srt")
         self.assertEqual(code, 0)
         text = out.getvalue()
-        for heading in ("DISCRIMINATION", "REDUNDANCY", "ABLATION", "BOUNDARY SENSITIVITY"):
+        for heading in ("DISCRIMINATION", "REDUNDANCY", "ABLATION",
+                        "PARAMETER INFLUENCE", "BOUNDARY SENSITIVITY"):
             self.assertIn(heading, text)
 
     def test_main_requires_an_argument(self):

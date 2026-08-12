@@ -17,6 +17,10 @@ There is no labelled data here and there is not going to be, so the question
   deliberately broken one? If not, output quality rests entirely on the
   segmenter never generating a bad window, which is a much weaker guarantee
   than it looks.
+* **Parameter influence** — how much does each tuning constant move the
+  published selection? A number nobody can justify, with a large influence, is
+  the most dangerous thing in a scoring model: it looks like a decision and
+  behaves like a coin toss. This is how `ideal_duration` was caught at R6.
 
 Run it: ``python3 -m clipper.validate fixtures/talk.srt``
 """
@@ -32,7 +36,7 @@ from .score import Scored, Weights, rank, score, select
 from .segment import Candidate, Segmentation, Utterance, candidates, segment
 from .transcript import load
 
-FEATURES = ("hook", "self_contained", "closure", "duration_fit", "pacing", "payoff")
+FEATURES = ("hook", "self_contained", "closure", "pacing", "payoff")
 
 
 # --------------------------------------------------------------------------
@@ -204,6 +208,76 @@ def boundary_sensitivity(
 
 
 # --------------------------------------------------------------------------
+# Parameter sensitivity
+# --------------------------------------------------------------------------
+
+#: Plausible ranges for every tuning constant that shapes the score.
+#:
+#: Clip length appears nowhere here because it is no longer scored at all — the
+#: band is the user's stated constraint, enforced by `segment.candidates()`, and
+#: R6 removed the feature that pretended to have a preference inside it.
+SWEEPS: dict[str, list[float]] = {
+    "hook": [1.0, 2.0, 3.0, 4.5, 6.0],
+    "self_contained": [1.5, 2.5, 3.5, 5.0, 7.0],
+    "closure": [1.0, 1.75, 2.5, 3.5, 5.0],
+    "pacing": [1.0, 2.0, 3.0, 4.5, 6.0],
+    "payoff": [0.5, 1.0, 1.5, 2.5, 4.0],
+    "max_silence": [0.6, 0.9, 1.2, 1.8, 2.5],
+    "closing_gap": [0.4, 0.6, 0.8, 1.2, 1.6],
+}
+
+
+@dataclass
+class Influence:
+    """How much one tuning constant controls what actually gets published."""
+
+    constant: str
+    mean_churn: float
+    worst_churn: float
+
+    @property
+    def dominant(self) -> bool:
+        return self.mean_churn > 0.35
+
+
+def parameter_sensitivity(
+    cands: list[Candidate],
+    seg: Segmentation,
+    weights: Weights | None = None,
+    *,
+    count: int = 5,
+    sweeps: dict[str, list[float]] | None = None,
+) -> list[Influence]:
+    """Sweep each constant and measure how much the published selection moves.
+
+    Ablation asks whether a *feature* earns its place. This asks the sharper
+    question about the numbers themselves: if I cannot justify this value, how
+    much damage does that do? A constant with no evidence behind it and a large
+    influence is the most dangerous thing in a scoring model, because it looks
+    like a decision and behaves like a coin toss.
+
+    Measured at R6, `ideal_duration` scored 43% mean churn against under 10% for
+    everything else — an unjustified number was choosing the output. It was
+    replaced by a band-relative plateau, which is why it is not in `SWEEPS`.
+    """
+    weights = weights or Weights()
+    sweeps = sweeps or SWEEPS
+    baseline = {(s.start, s.end) for s in select(rank(cands, seg, weights), count=count)}
+    out: list[Influence] = []
+    for name, values in sweeps.items():
+        churns = []
+        for value in values:
+            modified = Weights(**{**_weight_dict(weights), name: value})
+            chosen = {
+                (s.start, s.end) for s in select(rank(cands, seg, modified), count=count)
+            }
+            churns.append(1.0 - len(baseline & chosen) / max(1, len(baseline)))
+        out.append(Influence(name, _mean(churns), max(churns)))
+    out.sort(key=lambda i: -i.mean_churn)
+    return out
+
+
+# --------------------------------------------------------------------------
 # Statistics
 # --------------------------------------------------------------------------
 
@@ -266,6 +340,11 @@ def report(path: str | Path, weights: Weights | None = None, *, count: int = 5) 
     for a in ablation(cands, seg, weights, count=count):
         flag = "  <-- INERT, changes nothing" if a.inert else ""
         print(f"  {a.feature:15s} keeps {a.kept}/{a.total} of the selection{flag}")
+
+    print(f"\nPARAMETER INFLUENCE  (how much each constant moves the published top-{count})")
+    for i in parameter_sensitivity(cands, seg, weights, count=count):
+        flag = "  <-- DOMINANT, and it had better be justified" if i.dominant else ""
+        print(f"  {i.constant:18s} mean churn {i.mean_churn:5.0%}  worst {i.worst_churn:5.0%}{flag}")
 
     print("\nBOUNDARY SENSITIVITY  (clean clip should beat a deliberately broken one)")
     for s in boundary_sensitivity(cands, seg, weights):

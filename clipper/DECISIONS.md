@@ -125,13 +125,48 @@ spacing is no worse — in which case drop the weighting and keep the flag.
 
 ---
 
-### D-8 · `ideal_duration = 32s` · OPEN
+### D-8 · Clip length is not scored at all · **RESOLVED at R6, by deletion**
 
-**This is a guess with nothing behind it.** It is the single least defensible number in the
-project. It sits in the middle of the 15–60s band and that is the entire justification.
+`duration_fit` and `ideal_duration` are gone. `--min-duration` / `--max-duration` are a hard
+constraint enforced by `segment.candidates()`; inside that band the scorer has no opinion.
 
-**Settled by:** retention data, or any published distribution of short-form clip length
-against completion rate. Until then, treat every `duration_fit` contribution as arbitrary.
+**Why the guess had to go rather than be improved:** measured, sweeping `ideal_duration`
+across its plausible range changed **4 of 5 published clips** — 43% mean churn against under
+10% for every other constant. The least justifiable number in the project was its dominant
+control. Three possible justifications were tested and all failed: no evidence exists for any
+target length; there is no short-clip bias to counterweight (`r(rank, duration)` = −0.00 and
+−0.08 on two of three fixtures); and only 4% of candidates cluster at the band edge, so
+"the edges have no slack" is too thin to carry a 40%-influence knob.
+
+Removing it also took auto-caption boundary sensitivity from 79%/83% to **100%/100%**:
+truncating a clip changes its duration, so the feature was the last channel through which
+breaking a clip could improve its score.
+
+**Reversed by:** real retention data showing a genuine length effect. Then it comes back as a
+*measured* preference, and its influence gets re-checked against `parameter_sensitivity`.
+
+---
+
+### D-22 · A threshold belongs in a gap between populations, never inside one · FIRM
+
+`closure` combines punctuation and silence as smooth, saturating evidence
+(`gap / (gap + closing_gap)`, soft-OR'd with a sentence mark) instead of testing the gap
+against a cutoff.
+
+**Why:** the thresholded version put a kink in the function exactly at the parameter's value,
+and on auto-captions `closing_gap` was 0.80 against a candidate-gap median of 0.80 — it
+sliced the distribution through its own mode, 39/77, so nudging it reclassified a third of all
+candidates and moved 48% of the published selection. That made it the most influential
+constant in the project the moment `duration_fit` was removed. Smoothing took it to 0% on all
+three fixtures with no loss of boundary sensitivity.
+
+The contrast that makes this a rule rather than a fix: `MIN_CONFIDENCE` (D-12) is also a
+threshold, and it is fine — because R2 placed it in a *measured gap between* two populations
+(0.128 versus 0.556–0.689). Same instrument, opposite outcome, and the difference is entirely
+whether anyone looked at the distribution first.
+
+**Falsified by:** a signal that genuinely is bimodal at the cutoff, where a hard decision
+carries information a smooth curve would blur away.
 
 ---
 

@@ -152,17 +152,66 @@ class PacingTests(unittest.TestCase):
         self.assertNotEqual(SC.pacing(a, max_silence=1.2), SC.pacing(b, max_silence=1.2))
 
 
-class DurationFitTests(unittest.TestCase):
-    def test_peaks_at_the_ideal(self):
-        self.assertEqual(SC.duration_fit(32.0, ideal=32.0, tolerance=28.0), 1.0)
+class ClosureTests(unittest.TestCase):
+    """Smooth evidence, not a threshold test — see D-22."""
 
-    def test_decays_symmetrically(self):
-        lo = SC.duration_fit(20.0, ideal=32.0, tolerance=28.0)
-        hi = SC.duration_fit(44.0, ideal=32.0, tolerance=28.0)
-        self.assertAlmostEqual(lo, hi)
+    def cand(self, gap, ends_on_punctuation=False):
+        w = [Word("a", 0.0, 1.0), Word("b.", 1.0, 2.0)]
+        return S.Candidate(0, 1, [S.Utterance(w, gap_after=gap,
+                                              ends_on_punctuation=ends_on_punctuation)])
 
-    def test_never_negative(self):
-        self.assertEqual(SC.duration_fit(500.0, ideal=32.0, tolerance=28.0), 0.0)
+    def test_no_evidence_scores_zero(self):
+        self.assertEqual(SC.closure(self.cand(0.0), closing_gap=0.8, punctuated=False), 0.0)
+
+    def test_silence_alone_can_exceed_a_half(self):
+        """The old form capped unpunctuated closure at 0.5, halving its range."""
+        self.assertGreater(SC.closure(self.cand(1.2), closing_gap=0.8, punctuated=False), 0.5)
+
+    def test_it_is_strictly_increasing_in_the_gap(self):
+        vals = [SC.closure(self.cand(g), closing_gap=0.8, punctuated=False)
+                for g in (0.0, 0.2, 0.5, 0.8, 1.1, 2.0, 5.0)]
+        self.assertEqual(vals, sorted(vals))
+        self.assertEqual(len(set(vals)), len(vals))
+
+    def test_there_is_no_kink_at_the_parameter(self):
+        """A threshold put a discontinuity in the slope exactly at closing_gap.
+
+        Measured at R6: that kink sat on the median of the real gap distribution,
+        so nudging the parameter reclassified a third of all candidates at once.
+        """
+        step = 0.01
+
+        def slope(g):
+            a = SC.closure(self.cand(g), closing_gap=0.8, punctuated=False)
+            b = SC.closure(self.cand(g + step), closing_gap=0.8, punctuated=False)
+            return (b - a) / step
+
+        # A smooth function still curves, so linearity is the wrong assertion.
+        # What must not happen is the curvature *spiking at the parameter*.
+        at_parameter = abs(slope(0.81) - slope(0.79))
+        elsewhere = abs(slope(0.41) - slope(0.39))
+        self.assertLess(at_parameter, elsewhere * 3.0)
+
+    def test_punctuation_and_silence_combine_as_a_soft_or(self):
+        gap_only = SC.closure(self.cand(0.8), closing_gap=0.8, punctuated=False)
+        mark_only = SC.closure(self.cand(0.0, True), closing_gap=0.8, punctuated=True)
+        both = SC.closure(self.cand(0.8, True), closing_gap=0.8, punctuated=True)
+        self.assertGreater(both, gap_only)
+        self.assertGreater(both, mark_only)
+        self.assertLessEqual(both, 1.0)
+
+    def test_punctuation_is_ignored_when_the_transcript_has_none(self):
+        self.assertEqual(
+            SC.closure(self.cand(0.5, True), closing_gap=0.8, punctuated=False),
+            SC.closure(self.cand(0.5, False), closing_gap=0.8, punctuated=False),
+        )
+
+    def test_stays_within_bounds(self):
+        for gap in (0.0, 0.5, 5.0, 500.0):
+            for punct in (False, True):
+                v = SC.closure(self.cand(gap, punct), closing_gap=0.8, punctuated=punct)
+                self.assertGreaterEqual(v, 0.0)
+                self.assertLessEqual(v, 1.0)
 
 
 class RankingTests(unittest.TestCase):
@@ -195,7 +244,7 @@ class RankingTests(unittest.TestCase):
         s = SC.rank(self.cands, self.seg)[0]
         self.assertEqual(
             set(s.features),
-            {"hook", "self_contained", "closure", "duration_fit", "pacing", "payoff"},
+            {"hook", "self_contained", "closure", "pacing", "payoff"},
         )
 
     def test_explain_is_readable(self):
@@ -206,7 +255,7 @@ class WeightsTests(unittest.TestCase):
     def test_round_trip(self):
         import tempfile
 
-        w = SC.Weights(hook=9.0, ideal_duration=45.0)
+        w = SC.Weights(hook=9.0, pacing=4.5)
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as fh:
             path = fh.name
         w.save(path)
@@ -225,9 +274,13 @@ class WeightsTests(unittest.TestCase):
         tr = T.load(FIXTURES / "talk.srt")
         seg = S.segment(tr)
         cands = S.candidates(seg)
-        short = SC.rank(cands, seg, SC.Weights(duration_fit=40.0, ideal_duration=16.0))
-        long = SC.rank(cands, seg, SC.Weights(duration_fit=40.0, ideal_duration=58.0))
-        self.assertLess(short[0].duration, long[0].duration)
+        only = lambda name: SC.Weights(
+            **{f: (50.0 if f == name else 0.0) for f in ("hook", "self_contained",
+                                                         "closure", "pacing", "payoff")}
+        )
+        a = [(s.start, s.end) for s in SC.rank(cands, seg, only("hook"))[:10]]
+        b = [(s.start, s.end) for s in SC.rank(cands, seg, only("closure"))[:10]]
+        self.assertNotEqual(a, b)
 
 
 if __name__ == "__main__":

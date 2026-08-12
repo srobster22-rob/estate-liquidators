@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 5. Works end to end, on local files.** 234 tests pass, including real ffmpeg encodes
+**Round 6. Works end to end, on local files.** 243 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -54,11 +54,21 @@ Six features, each 0–1, combined as a weighted sum:
 | `hook` | The opening promises nothing. |
 | `self_contained` | It opens on "and that's why *it* works" — a pronoun with no antecedent. |
 | `closure` | It stops mid-thought instead of landing. |
-| `duration_fit` | Too far from the target length. |
 | `pacing` | There's a long silence to sit through in the middle. |
 | `payoff` | No conclusion marker near the end. |
 
 Tune with `--weights weights.json`; `score.Weights` writes the file for you.
+
+## Clip length is not scored
+
+There is no preferred clip length, and that is deliberate. `--min-duration` / `--max-duration`
+are a **hard constraint**; inside that band the scorer is agnostic and content decides.
+
+An earlier version targeted 32 seconds. Measured at R6, that single unjustified number moved
+**4 of the 5 published clips** when swept across its plausible range — 43% churn against under
+10% for every other constant. It was removed rather than retuned, because no evidence exists
+for any target and a peak asserts knowledge nobody has. Want 40-second clips? Say
+`--min-duration 40`.
 
 ## Where it crops
 
@@ -94,6 +104,9 @@ python3 -m clipper.validate fixtures/talk.srt fixtures/pauses.srt fixtures/talk_
   than variance: a feature can vary healthily and still never flip a decision.
 * **Boundary sensitivity** — does the scorer prefer a clean clip to a deliberately broken
   one? Windows truncated mid-sentence are objectively worse and need no human labelling.
+* **Parameter influence** — how much does each tuning constant move the *published* selection?
+  A number nobody can justify, with a large influence, is the most dangerous thing in a scoring
+  model: it looks like a decision and behaves like a coin toss.
 
 That last one found the worst bug in the project so far — the scorer *preferring* broken
 clips, at R3 — and drove it from 28% to **100% on both fixtures** by R4.
@@ -106,8 +119,12 @@ rolling carry-over). Any difference between them is caused by the caption regime
 
 | Boundary sensitivity | punctuated | auto-captions |
 |---|---|---|
-| clean opening preferred | **100%** | 79% |
-| clean ending preferred | **100%** | 83% |
+| clean opening preferred | **100%** | **100%** |
+| clean ending preferred | **100%** | **100%** |
+
+The auto-caption column was 79%/83% at R5. R6 closed it — not by adding anything, but by
+*removing* the clip-length feature, which was the last channel through which truncating a clip
+could improve its score.
 
 The gap is structural. Punctuation and capitals are what let the scorer tell a sentence start
 from a mid-sentence cut; ASR provides neither, so it falls back to silence, which is weaker.
@@ -122,7 +139,7 @@ Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 234 tests, ~22s
+python3 -m unittest discover -s tests -t .      # 243 tests, ~25s
 python3 -m clipper.cli --help
 ```
 
@@ -145,7 +162,6 @@ Ranked by how much they'd hurt:
 3. **The aim is static, one per clip.** A speaker who moves *within* the frame mid-clip is
    framed for the average of where they were. Panning is the obvious next round; today the
    fallback catches the severe cases rather than following them.
-4. **`ideal_duration` is a guess**, not a measurement. 32s came from nowhere defensible.
 5. **Aiming is horizontal only.** Vertical position is always the frame's centre, which is
    fine for 16:9 → 9:16 but wrong for a source that is already tall.
 

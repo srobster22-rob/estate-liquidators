@@ -52,15 +52,25 @@ class PickTests(unittest.TestCase):
         self.assertEqual(picks, [])
 
     def test_custom_weights_are_applied(self):
-        short, _ = cli.pick(
-            self.tr, count=1, min_duration=15, max_duration=60,
-            weights=SC.Weights(duration_fit=50.0, ideal_duration=16.0),
+        """A weights file must be able to change what gets published."""
+        default, _ = cli.pick(
+            self.tr, count=1, min_duration=15, max_duration=60, weights=None
         )
-        long, _ = cli.pick(
+        hook_only, _ = cli.pick(
             self.tr, count=1, min_duration=15, max_duration=60,
-            weights=SC.Weights(duration_fit=50.0, ideal_duration=58.0),
+            weights=SC.Weights(hook=50.0, self_contained=0.0, closure=0.0,
+                               pacing=0.0, payoff=0.0),
         )
-        self.assertLess(short[0].duration, long[0].duration)
+        self.assertNotEqual(
+            (default[0].start, default[0].end), (hook_only[0].start, hook_only[0].end)
+        )
+
+    def test_the_band_is_a_hard_constraint_not_a_preference(self):
+        """R6 removed duration scoring; the band alone controls clip length."""
+        picks, _ = cli.pick(self.tr, count=3, min_duration=40, max_duration=60, weights=None)
+        for p in picks:
+            self.assertGreaterEqual(p.duration, 40.0)
+            self.assertLessEqual(p.duration, 60.0)
 
 
 class MainTests(unittest.TestCase):

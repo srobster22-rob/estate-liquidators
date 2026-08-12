@@ -13,7 +13,6 @@ import argparse
 import json
 import sys
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 
 from . import captions as C

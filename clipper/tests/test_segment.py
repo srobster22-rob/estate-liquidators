@@ -89,9 +89,11 @@ class CandidateTests(unittest.TestCase):
         )
         self.assertIs(S.candidates.__defaults__, None)  # keyword-only, no default cap
 
-    def test_uncapped_pool_reaches_the_ideal_duration(self):
+    def test_uncapped_pool_spans_the_whole_band(self):
         durations = [c.duration for c in S.candidates(self.seg)]
+        self.assertTrue(any(d < 20.0 for d in durations))
         self.assertTrue(any(30.0 <= d <= 34.0 for d in durations))
+        self.assertTrue(any(d > 50.0 for d in durations))
 
     def test_overlap_detection(self):
         cands = S.candidates(self.seg)

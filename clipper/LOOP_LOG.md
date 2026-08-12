@@ -232,3 +232,52 @@ one. Faking a signal there would be tuning against the fixture, which is the R2 
 cues, so intra-cue gaps are exactly zero and the gap structure is subtitle-shaped, not
 speech-shaped. The direction of the 79%/83% result is solid; the magnitude needs a real
 auto-caption file.
+
+---
+
+R6 · Added **parameter influence** to the validator — sweep every tuning constant and measure
+how much the *published* selection moves — then acted on what it said. 9 new tests, 243 total.
+· **Found that the least justified number in the project was also the most powerful, and then
+found its replacement:**
+
+**(a) `ideal_duration = 32s` controlled the output.** D-8 had carried an OPEN flag since R1
+admitting the number was a guess. Measured: sweeping it 15→60s changed **4 of 5 published
+clips** — 43% mean churn, against under 10% for *every other constant in the project*. The
+one value nobody could justify was steering the tool.
+
+Three candidate justifications were tested and all three failed. It is not a length preference
+— no evidence exists for any target. It is not a counterweight to a short-clip bias — measured
+`r(rank, duration)` is −0.00 and −0.08 on two of three fixtures, so there is no such bias. And
+the "band edges have no slack" argument is thin: only 4% of candidates sit within 2s of the
+minimum on `talk.srt`. So `duration_fit` was **removed entirely**, on the same standard that
+removed `density` at R1: a feature that cannot justify itself is deleted, not down-weighted.
+Clip length is now a hard constraint the user sets and nothing more.
+
+**It also fixed the auto-caption path outright.** Boundary sensitivity there was 79%/83% after
+R5; removing duration scoring took it to **100%/100%**, because a clip's duration changes when
+you truncate it — so the feature was the last remaining channel by which breaking a clip could
+raise its score. The R5 residual I had attributed to "length-forced boundaries" was mostly
+this.
+
+**(b) Removing the dominant constant revealed the next one, immediately.** With
+`duration_fit` gone, `closing_gap` jumped to **48% churn on auto-captions** — dominant. The
+diagnosis is exact: its value is 0.80 and the median candidate gap is 0.80, so the threshold
+sat *on the mode of the distribution it was slicing*, splitting it 39/77. Any nudge
+reclassified a third of all candidates at once. Compare `MIN_CONFIDENCE` at R2, which was
+deliberately placed in a measured gap **between** two populations — that is where a threshold
+belongs, and this one was inside one.
+
+Replaced the threshold with smooth saturating evidence, `gap / (gap + closing_gap)`, combined
+with punctuation as a soft OR. Influence went **48% → 0%** on all three fixtures, and
+boundary sensitivity stayed at 100%. It also removed a structural handicap nobody had noticed:
+the old form could never exceed 0.5 without punctuation, halving the range of the only ending
+signal auto-captions have.
+
+**After both fixes, no constant is dominant on any fixture** — the worst is 20%, down from
+43% and 48%.
+
+**The general lesson, now enforced by a test:** ablation asks whether a *feature* earns its
+place; parameter influence asks the sharper question about the *numbers*. A constant with no
+evidence behind it and a large influence is the most dangerous thing in a scoring model,
+because it looks like a decision and behaves like a coin toss. Both of R6's findings were
+invisible to every check that existed before it.
