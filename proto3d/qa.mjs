@@ -725,6 +725,76 @@ async function checks(g, fresh) {
     apex.late.every(a => a.value >= 2900 * 0.30 && a.value <= 3300 * 0.68),
     JSON.stringify(apex.late.map(a => a.value)));
 
+  // --- fragility (DESIGN 5) -------------------------------------------------
+  // "A broken item is worth $0 and makes a lot of noise. Fragile items are
+  // disproportionately valuable - the physics does the comedy."
+  await fresh();
+  const frag = await g(() => {
+    window.__g.parkCrew();
+    const list = window.__g.list();
+    const byGrade = [0, 1, 2, 3].map(g => list.filter(i => i.frag === g).length);
+    // Same piece, put down standing still vs let go at a run, many times over.
+    const trial = (speed) => {
+      let broke = 0, tries = 40;
+      for (let t = 0; t < tries; t++) {
+        window.__g.reset(); window.__g.parkCrew();
+        const l = window.__g.list();
+        const idx = l.findIndex(i => i.frag === 3 && i.klass === "armful");
+        if (idx < 0) return null;
+        window.__g.hold(idx);
+        window.__g.setSpeed(speed);
+        window.__g.grab();
+        if (window.__g.broken().length) broke++;
+      }
+      return broke / tries;
+    };
+    const still = trial(0), sprinting = trial(4.1);
+    return { byGrade, still, sprinting };
+  });
+  ok("fragility is spread across the loot",
+    frag.byGrade.every(n => n > 0), JSON.stringify(frag.byGrade));
+  ok("putting a piece down carefully never breaks it", frag.still === 0,
+    JSON.stringify(frag));
+  ok("letting go at a run breaks the fragile ones",
+    frag.sprinting > 0.4, JSON.stringify(frag));
+
+  const smashed = await g(() => {
+    window.__g.reset(); window.__g.parkCrew();
+    const l = window.__g.list();
+    const idx = l.findIndex(i => i.frag === 3 && i.klass === "armful");
+    const value = l[idx].value;
+    window.__g.setDist(40);
+    const before = window.__g.state().dist;
+    window.__g.hold(idx); window.__g.setSpeed(4.1);
+    let tries = 0;
+    while (!window.__g.broken().length && tries++ < 60) {
+      window.__g.grab();                       // drop
+      if (!window.__g.broken().length) window.__g.hold(idx);
+    }
+    const after = window.__g.state();
+    return { value, broke: window.__g.broken().length, noise: after.dist - before,
+             holding: after.holding, banked: after.banked, log: window.__g.noiseLog().slice(-1) };
+  });
+  ok("a broken piece is worth nothing and is out of the night",
+    smashed.broke > 0 && smashed.holding === null && smashed.banked === 0,
+    JSON.stringify(smashed));
+  ok("and it is heard", smashed.log.length === 1 && smashed.log[0].l >= 90,
+    JSON.stringify(smashed.log));
+
+  const premium = await g(() => {
+    const rows = [[], [], [], []];
+    for (let s = 1; s <= 8; s++) {
+      window.__g.newContract(s * 7919);
+      for (const it of window.__g.list())
+        if (it.klass === "armful" && it.grade === "clean" && it.tier === 1)
+          rows[it.frag].push(it.value);
+    }
+    window.__g.newContract(20260806);
+    return rows.map(r => r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : 0);
+  });
+  ok("a delicate piece is worth more than a sturdy one",
+    premium[3] > premium[0] * 1.3, JSON.stringify(premium));
+
   // --- the corpse economy (DESIGN 5) ----------------------------------------
   // "Recover him and he's back next night, free. Leave him and you run
   // tomorrow's higher quota one hauler short. That's the entire trade - no cash,

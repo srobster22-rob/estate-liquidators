@@ -110,6 +110,23 @@
       ]
     }
   },
+  "fragility": {
+    "_source": "DESIGN.md 5",
+    "_note": "Break chance scales with fragility and with impact speed. A broken piece is worth $0 and is heard at break_small / break_large.",
+    "grades": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "break_chance_at_full_speed": [
+      0.0,
+      0.18,
+      0.42,
+      0.75
+    ],
+    "value_premium_per_grade": 0.18
+  },
   "curse": {
     "_source": "ECONOMY.md 3 and 5, DESIGN.md 4.2",
     "value_multiplier": {

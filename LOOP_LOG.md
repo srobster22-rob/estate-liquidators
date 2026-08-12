@@ -478,6 +478,21 @@ not passable on crew throughput alone" was asserting a rate to ten points off tw
 failed on its own noise. It now makes the coarse claim the sample supports and says `n=12` in
 the message. · Regression: QA 114/114, drift 124/124, three consecutive clean runs.
 
+R28 · **Things break now.** Fragility 0–3 (DESIGN §5), a break chance that scales with
+fragility *and* with how fast you were moving when you let go, a broken piece worth $0 and
+gone, heard at L90–100, and a value premium so delicate pieces are worth more to begin with —
+"the physics does the comedy". Put a vase down standing still and it survives every time; let
+go of the same vase at a sprint and it breaks three times in four. Crew panic-drops run the
+same rule, which is where most of the breakage in a real night will come from: they let go at
+a run, by definition, every time the Curator gets within six metres. 7 new checks. · The one
+worth stating: **impact, not altitude.** Height would have needed a physics system this
+prototype does not have; speed at release is already in the movement code and produces the
+same decision — carry the good stuff slowly, and think twice before sprinting home with it. ·
+Caught myself writing a check that could never fail — an `ok(..., true, "")` placeholder left
+in while the real measurement went below it. That is precisely the thing R14 wrote a rule
+about ("a checker that only ever passes is worthless"), and it survived in the file for about
+four minutes. Deleted. · Regression: QA 121/121, drift 129/129.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

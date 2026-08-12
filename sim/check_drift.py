@@ -188,6 +188,13 @@ check("JS3d follower_drift", grab(js3, r"FOLLOWER_DRIFT_M=([\d.]+)"), w["followe
 
 # NOTE: do not name a loop variable `v` here - it is the van tuning dict below,
 # and shadowing it made this file crash rather than report a divergence.
+fr = TUNING["fragility"]
+mb = re.search(r"BREAK_AT_SPEED=\[([\d.,]+)\]", js3)
+for i, chance in enumerate(fr["break_chance_at_full_speed"]):
+    check(f"JS3d break_chance[{i}]", mb.group(1).split(",")[i] if mb else None, chance)
+check("JS3d frag_premium", grab(js3, r"FRAG_PREMIUM=([\d.]+)"),
+      fr["value_premium_per_grade"])
+
 ct = TUNING["contract"]
 mq = re.search(r"CONTRACT_QUOTA=\[([\d,]+)\]", js3)
 mv = re.search(r"CONTRACT_VAN=\[([\d,]+)\]", js3)
