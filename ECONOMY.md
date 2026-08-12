@@ -615,6 +615,46 @@ three different denominators. The answer: **yes, at +3% to +8% depending on the 
 only for a crew that chooses which rooms to stop in** — and every model that reported otherwise
 was one that could not express choosing.
 
+### R34 — the estate is infinite in every model, and its size is an unspecified balance constant
+
+Every model in this project draws candidates from an **infinite shelf**: each encounter
+generates four fresh objects forever, so a crew that searches twice as fast simply sees twice
+as much house and nothing ever runs out. That is why headcount scaled without limit (R33).
+
+A real estate does not work that way. `LEVEL-SPEC.md` §1 is CORE + 3–5 WINGS at ~5 plinths
+each, so an estate holds roughly **25–30 takeable objects**; `proto/index.html` ships 29. But
+**that number is never stated as a constraint, has no rationale attached, and is in no
+document as a tuning value** — and it turns out to control two of the project's open questions
+at once, in opposite directions:
+
+| Objects | Estate ÷ van | Appraiser edge | Crew 6 ÷ crew 4 |
+|---:|---:|---:|---:|
+| 20 | 1.1 | **+15.0%** | **1.07×** |
+| 28 (as specced) | 1.5 | +13.2% | 1.18× |
+| 40 | 2.1 | +5.9% | 1.54× |
+| 60 | 3.2 | −6.2% | 1.68× |
+| 80 | 4.2 | **−11.0%** | **1.90×** |
+
+**A tight estate makes crew size nearly irrelevant and the appraiser strongly worth using; a
+loose one does the reverse.** At the specced ~28 objects both sit in a good place — crew 6
+only 1.18× crew 4, appraiser +13.2% — which is a much better answer to R33's crew problem than
+any of the fixes that were on the table.
+
+> **Do not act on the appraiser column yet.** Its direction **contradicts §4.4's Requirement
+> A**, which says van space must bind and the crew must leave behind more than half of what
+> they could carry — this says the appraiser does *better* when the estate is tight. That may
+> be real (with a small estate, the order you take things in matters more than the set you
+> take) or it may be an artifact. **It is one model, one round old, and R34 already found one
+> bug in it** — an early `break` when tiers 1–3 were picked clean, which dropped the apex take
+> rate to 1% at some estate sizes and 100% at others and made blind earnings non-monotone in
+> estate size. That anomaly is what caught it. Verify the appraiser column against an
+> independent route before touching §4.4.
+
+**What is safe to act on now:** put the object count in `LEVEL-SPEC.md` as an explicit
+authored constant with its rationale, because right now it is an accident of how many plinths
+an author happens to place, and it is doing more balance work than several constants that have
+their own decision entries.
+
 ### What R26 did *not* establish
 
 `chain_sim` can now charge for scanning, so the obvious next question is what the appraiser

@@ -721,6 +721,42 @@ standing rule about comparisons differing in more than one way is now at **five 
 and the last three were mine — it is much easier to spot in someone else's table than in the
 one you just built.
 
+R34 · Went after R33's crew-size gap and found the cause was not in any of the places the last
+two rounds looked: **every model in this project draws from an infinite shelf.** Each encounter
+generates four fresh objects forever, so a crew that searches twice as fast simply sees twice
+as much house and nothing ever runs out — which is exactly why headcount scaled without limit.
+A real estate is CORE + 3–5 WINGS at ~5 plinths (`LEVEL-SPEC.md` §1), so **~25–30 objects**;
+the prototype ships 29. Built a finite estate in `chain_sim` — objects drawn once, consumed as
+the crew walks past them — behind `finite_estate=True` so nothing existing moves. · **It
+controls two open questions at once, in opposite directions:**
+
+    objects   estate/van   appraiser edge   crew6/crew4
+    20            1.1          +15.0%           1.07x
+    28 (spec)     1.5          +13.2%           1.18x
+    40            2.1           +5.9%           1.54x
+    80            4.2          -11.0%           1.90x
+
+**At the specced ~28 objects, crew 6 is only 1.18× crew 4** — R33's 1.90× problem largely
+dissolves, and it dissolves because of a constraint the game already has rather than any new
+mechanism. That is a far better answer than the three fixes that were on the table (capping
+value, compressing the curse tail, or accepting a 2× incentive). · **The object count is an
+unstated balance constant.** It is in no document as a tuning value, has no rationale attached,
+and is currently an accident of how many plinths an author happens to place — while doing more
+balance work than several constants that have their own decision entries. Recommended it be
+authored explicitly in `LEVEL-SPEC.md`. · **Two of my own bugs caught in one round, both by the
+output looking wrong rather than by re-reading the code.** First: `n=ESTATE_OBJECTS` as a
+default argument, bound once at import, so a seven-row sweep of that constant printed seven
+identical rows. Second and worse: an early `break` when tiers 1–3 were picked clean, which
+ended the night before the tier-4 apex was ever offered — apex take rate went 26% / 8% / 1% /
+100% across estate sizes, and since the apex is ~$6,000 that made blind earnings *non-monotone*
+in estate size. **The non-monotonicity is what caught it**, the same signal that saved R24 from
+publishing a bad capacity sweep. · **And a claim I am deliberately not making.** The appraiser
+column's direction contradicts `DESIGN.md` §4.4's Requirement A — it says the appraiser does
+*better* when the estate is tight, where §4.4 says van scarcity is what makes anyone scan. That
+may be real (with a small estate the *order* you take things in matters more than the set) or
+it may be a second artifact. It is one model, one round old, in which I have already found one
+bug. Logged as needing an independent route before anyone touches §4.4.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -728,14 +764,20 @@ one you just built.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R34: the crew-size question is now a design decision, not a modelling one.** R33 established
-that the economy prefers six people by roughly **1.9×** under every assumption tested, and that
-the largest single amplifier is the curse tail — extra search time buys higher value per slot,
-and the van caps quantity but not quality. D-18 keeps crew at four for voice legibility, which
-is untouched, but the design now has a **2× incentive pointing the other way** and no answer
-for it. Options worth costing: a van that caps *value* as well as slots; curse multipliers that
-compress at the top; or accepting it and saying so out loud. **Pick one deliberately** — this
-is exactly the kind of thing that gets discovered by players in week one.
+**R35: verify R34's appraiser column by an independent route, then spec the estate size.**
+R34 found that estate object count controls both the crew-size gap and the appraiser's edge,
+in opposite directions, and that at the specced ~28 objects both sit in a good place. The
+crew-size half is safe to act on. **The appraiser half is not** — its direction contradicts
+`DESIGN.md` §4.4's Requirement A, and it comes from a model one round old in which I already
+found two bugs. Check it in `appraiser_variance` (give it a finite candidate pool) or in the
+prototype, which already has a genuinely finite estate of 29 objects and can be driven. If it
+holds, §4.4's Requirement A needs rewriting — van scarcity may not be what makes people scan.
+If it does not, `chain_sim`'s finite estate has a third bug in it.
+
+**Then: put the object count in `LEVEL-SPEC.md` as an authored constant.** It is currently an
+accident of how many plinths a level author happens to place, it is in no document as a tuning
+value, and R34 showed it doing more balance work than several constants that have their own
+decision-log entries.
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their

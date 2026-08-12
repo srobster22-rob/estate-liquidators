@@ -39,6 +39,7 @@ import statistics
 VAN_BASE = 14
 HAUL_WINDOW_S = 540.0
 NIGHT_S = 720.0
+CANDIDATES = 4
 
 # R33: how crew throughput scales with headcount. Every model in this project previously
 # assumed perfect parallelism -- N people do N times the work -- and R32 showed that is
@@ -178,6 +179,41 @@ SPREAD_F = {"uniform": 0.3, "mixed": 1.0, "curio": 1.7}
 SPREAD_MIX = [("uniform", 0.25), ("mixed", 0.50), ("curio", 0.25)]
 
 
+# ------------------------------------------------------------------ R34: a finite estate
+# Every model in this project has drawn candidates from an INFINITE shelf: each encounter
+# generates four fresh objects forever, so a crew that searches twice as fast simply sees
+# twice as much house. That is why headcount scaled without limit (R33) -- extra search
+# time buys higher value per slot, and nothing ever runs out.
+#
+# A real estate does not work that way. LEVEL-SPEC 1 is CORE + 3-5 WINGS at ~5 plinths
+# each, so an estate holds roughly 25-30 takeable objects; proto/index.html ships 29. Once
+# the crew has walked past a shelf, it is walked past.
+ESTATE_OBJECTS = 28
+TIER_SHARE = {1: 0.40, 2: 0.30, 3: 0.30}
+
+
+def build_estate(rng, curses, rooms, n=None):
+    """One estate's worth of objects, drawn once and then consumed.
+
+    `n` defaults to the module global rather than binding it at definition time -- a
+    default argument is evaluated once at import, so `n=ESTATE_OBJECTS` silently ignored
+    every sweep of that constant and printed seven identical rows.
+    """
+    if n is None:
+        n = ESTATE_OBJECTS
+    pools = {}
+    for tier, share in TIER_SHARE.items():
+        room = draw_room(rng) if rooms else None
+        count = max(CANDIDATES, int(round(n * share)))
+        pools[tier] = generate_candidates(rng, tier, count, curses, room)
+        if rooms:                       # re-roll the room per shelf, not per tier
+            for i in range(0, len(pools[tier]), CANDIDATES):
+                r2 = draw_room(rng)
+                for it in pools[tier][i:i + CANDIDATES]:
+                    it["room"] = r2
+    return pools
+
+
 def draw_room(rng):
     r, acc = rng.random(), 0.0
     for name, prob in SPREAD_MIX:
@@ -278,7 +314,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
               reserve_apex=True, labour_gated=True, noise=False, scan=True,
               q_cap=0.90, depth_cap=False, metric="per_slot",
               rule="value", curses=False, cursed_cap=3, rooms=False,
-              scan_rooms=("uniform", "mixed", "curio")):
+              scan_rooms=("uniform", "mixed", "curio"), finite_estate=False):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -292,13 +328,13 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
 
     picky=False disables the threshold — take the best of every encounter regardless.
     """
-    CANDIDATES = 4
     slots_left = float(van_slots)
     cargo_value = 0.0
     took = {}
     t = 0.0
     labour_pool = crew_effort(crew)   # R33: sublinear, anchored at crew 4
     apex_offered = False
+    estate = build_estate(rng, curses, rooms) if finite_estate else None
     d = 0.0                     # Disturbance; stays 0 when noise=False
     lost = 0
     cursed_aboard = 0
@@ -339,8 +375,29 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 t += TIER_DATA[eff_tier][0] / labour_pool
                 continue
 
-        room = draw_room(rng) if rooms else None
-        pool = generate_candidates(rng, eff_tier, CANDIDATES, curses, room)
+        if estate is not None:
+            # A shelf you have walked past is walked past. When a tier is picked clean
+            # the crew moves on; when the whole estate is, the night is over even if
+            # there is time and van left -- which is the thing an infinite shelf could
+            # never model, and the reason headcount used to scale without limit.
+            avail = estate[eff_tier]
+            if not avail:
+                # Picked clean at this depth. Do NOT end the night just because tiers
+                # 1-3 are empty -- the apex is a tier-4 object of its own and may still
+                # be waiting. Ending early here dropped the apex take rate to 1% at some
+                # estate sizes and 100% at others, which is what made blind earnings
+                # non-monotone in estate size and nearly produced a confident wrong
+                # design recommendation.
+                if all(not v for v in estate.values()) and (apex_offered or not allow_apex):
+                    break
+                t += TIER_DATA[eff_tier][0] / labour_pool
+                continue
+            pool = avail[:CANDIDATES]
+            del avail[:CANDIDATES]
+            room = pool[0].get("room") if rooms else None
+        else:
+            room = draw_room(rng) if rooms else None
+            pool = generate_candidates(rng, eff_tier, CANDIDATES, curses, room)
 
         # R29: the appraiser becomes a per-room decision. `scan` is now "can this crew
         # appraise at all"; `scan_rooms` is which rooms it judges worth the noise.
