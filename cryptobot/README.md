@@ -161,55 +161,82 @@ sceptical.
 
 ---
 
-## A recorded run — ten seeds
+## A recorded run — before and after a miscalibrated gate
 
-Ten independent search trajectories on the 65-market universe (42 structured, 23
-decoys), ~9,200 trials each, 110 generations, twelve years of hourly history.
-
-```
-seed    5   11   21   33   47  101  102  103  104  105
-bots    0    0    2    1    1    0    0    2    2    1
-
-N=10   min 0 | median 1 | max 2 | mean 0.90 +/- 0.88
-       4 of 10 seeds found nothing at all
-```
-
-The standard deviation equals the mean. **A single run of this factory carries no
-information about how many bots the universe supports** — which retroactively voids
-every single-run count reported earlier in this project's history, including three
-that were presented as findings about markets, strategy families, and history
-length.
-
-### Only three markets are ever found, out of forty-two
+Same five seeds, same 65-market universe, same everything except gate 10:
 
 ```
-largecap_alt_1h    5/10 seeds
-alt_perp_4h        3/10 seeds
-trend_fast_1h      1/10 seeds
+seed        5    11    21    33    47
+before      0     0     2     1     1     mean 0.80 +/- 0.84   (sd == mean)
+after       4     6     4     6     5     mean 5.00 +/- 1.00   (sd == 20% of mean)
 ```
 
-Thirty-nine structured markets — each individually verified reachable at 1.0-2.4
-Sharpe by an unfitted probe — were never selected by any of ten searches. One
-genome out of seven appeared twice.
+Six times the bots, and the run-to-run variance collapses from "the standard
+deviation equals the mean" to a tight band. Distinct markets found goes from 3 to 8.
+Every seed now finds something; before, two of five found nothing at all.
 
-That is not a broken search. It is gate 10 doing arithmetic. At ~44 out-of-sample
-looks the deflated-Sharpe hurdle demands roughly 2.5-3.0 observed Sharpe before it
-will call an edge real, and only the two or three strongest markets in the universe
-can deliver that on a 3.1-year validation slice. The other thirty-nine edges are
-genuinely there and genuinely too small to distinguish from luck at this sample
-size. **The factory is hurdle-limited, not search-limited** — which is why adding
-markets, adding strategy families, and adding generations all failed to move the
-count, and why more history was the only lever that ever did.
+**The seed variance was never a property of the universe. It was the bug.** Several
+earlier sections of this project's history explained that variance in terms of
+markets, strategy families and history length. All of those explanations were wrong.
 
-Across ten seeds and ~92,000 trials, no seed ever confirmed a bot on any of the 23
-decoys.
+### The two bugs, and how they were found
 
-### The three honest outputs
+The hunt started from a falsifiable claim — "the factory is hurdle-limited, so the
+never-found markets should be exactly those below gate 10's bar" — and the test
+refuted it. The bar computed out at **7.4 Sharpe**, which nothing in the universe
+can reach, yet three markets were being found anyway. Something was inconsistent.
 
-- the **count** is 0-2, mean 0.90 +/- 0.88, and not reproducible from one run
-- the **genomes** are single draws from continuous parameter space, not findings
-- the **markets** reproduce, and `largecap_alt_1h` at 5/10 is the only result here
-  that deserves the word "finding"
+Checking *when* each winner was confirmed explained it:
+
+```
+seed 21   donchian@alt_perp_4h        look  1 of 41    validation Sharpe 1.89
+seed 33   ts_momentum@alt_perp_4h     look  2 of 44    validation Sharpe 1.81
+seed 104  ema_cross@largecap_alt_1h   look 15 of 44    validation Sharpe 4.66
+seed 21   ensemble@largecap_alt_1h    look 23 of 41    validation Sharpe 5.30
+```
+
+Every confirmed bot arrived in the first half of its run, and the weakest arrived
+first.
+
+**Bug 1 — the wrong sigma.** The expected-max correction was fed the observed spread
+of promoted candidates (~2.9). Those are survivors of an in-sample search: a mixed
+population of genuinely good and genuinely awful bots, whose spread is dominated by
+real quality differences. The correction asks a different question — *if these N
+strategies all had zero edge, how good would the luckiest one look?* — and that is
+the sampling error of a Sharpe estimate, which depends only on window length:
+`sqrt(1/T)`, or **0.56** on a 3.1-year slice. The wrong sigma pushed the hurdle from
+1.26 to 6.46.
+
+**Bug 2 — the bar depended on arrival order.** Deflating by the *running* look count
+meant the correction grew during a run, so a 1.8-Sharpe bot passed at look 1 while a
+4.7-Sharpe bot was rejected at look 30 of the same run. That is not a
+multiple-testing correction, it is a queue with statistical decoration.
+
+Together they made the gate **lax early and impossible late** — worse than either
+extreme, and undetectable from any single run's output.
+
+### The fix lowers the bar fivefold, so the calibration was mandatory
+
+`null-test` on structureless data, at the corrected hurdle and the same 110k-bar
+length: **0 false positives across 3 runs, ~1,700 trials.** Lowering a hurdle is
+exactly how a validator starts leaking, and this one does not.
+
+### What the corrected factory finds
+
+```
+trend_fast_1h      4/5 seeds   REPRODUCED
+largecap_alt_1h    4/5 seeds   REPRODUCED
+largecap_alt_4h    2/5 seeds   REPRODUCED
+trend_mid_4h       2/5 seeds   REPRODUCED
+trend2_e, trend2_c, trend2_f, trend_slow_1h    1/5 each
+```
+
+Four of eight markets reproduce across independent trajectories, and 7 of 16 exact
+genomes now repeat — up from 1 of 7. **Every market found is genuinely structured;
+across all five seeds no decoy was ever selected.**
+
+Vault burns rose to 6-10 per seed against a budget of 25, which is now the binding
+constraint rather than the hurdle.
 
 ---
 

@@ -363,14 +363,14 @@ def cmd_sweep(args):
     found, by_market = {}, {}
     for seed, bots, _, _ in details:
         for key, strat in bots:
-            found.setdefault((key, strat), []).append(seed)
+            found.setdefault((key, strat), set()).add(seed)
             by_market.setdefault(key, set()).add(seed)
     if found:
         print("\nexact genomes (market + strategy):")
         for (key, strat), seeds in sorted(found.items(),
                                           key=lambda kv: -len(kv[1])):
             mark = "reproduced" if len(seeds) > 1 else "one seed only"
-            print(f"  {strat:<18} @ {key:<20} seeds {seeds}  <- {mark}")
+            print(f"  {strat:<18} @ {key:<20} seeds {sorted(seeds)}  <- {mark}")
 
         # The market is the reproducible unit, not the genome. Parameters are drawn
         # from continuous ranges, so two independent searches will never converge on
