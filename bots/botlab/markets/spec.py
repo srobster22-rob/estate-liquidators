@@ -132,6 +132,14 @@ class MarketSpec:
     vol_fix: float = 1.0
 
     # --- bookkeeping -------------------------------------------------------
+    # Instance seeds normally derive from `name`, so two families never share a
+    # random draw. A *variant* of a family — the same instrument at a different
+    # decay rate — wants the opposite: the identical innovation, jump and regime
+    # stream, so that comparing the two isolates the parameter that changed
+    # instead of measuring a fresh set of random instances. Setting `seed_name`
+    # to the base family's name makes the comparison paired. Empty = use `name`,
+    # which is every catalogue family.
+    seed_name: str = ""
     tier: int = 1                    # search-space expansion tier that unlocks it
     control: bool = False            # True => must NOT be beatable (negative control)
     notes: str = ""

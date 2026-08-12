@@ -1,8 +1,8 @@
 # BOT FACTORY
 
 **A strategy search that has to prove its own results.** It generates trading
-bots across twelve market families and seven asset classes, tests each one
-through a seven-gate validation ladder, and keeps expanding the search space
+bots across thirteen market families and seven asset classes, tests each one
+through an eight-gate validation ladder, and keeps expanding the search space
 until the target number of bots survives — or until it runs out of budget and
 reports that nothing did.
 
@@ -14,6 +14,41 @@ compensation for risk rather than a mispricing waiting to be arbitraged.
 The committed run certified **4 distinct strategies** from 12,400 candidates on
 `commodity_meanrev_daily` and `eq_largecap_daily`. Nothing certified on either
 family that decays *faster* than the default.
+
+**Re-judged at the standard the run finished with, that is 3, not 4** (F26). G6's
+luck bar rises while the search is still going, so a bot certified in generation 5
+was measured against a smaller search than the run became. All three
+`eq_largecap_daily` genomes had headroom of 229-262 against a run that ended at
+353 confirmation tests, and they no longer clear it. The report prints both counts
+and leads with the conservative one.
+
+**That "4" is a number at one fade rate, so the headline is the curve, not the
+count** (`python bots/run.py decay`, `FINDINGS.md` F23). A fixed pre-registered
+panel — every untuned archetype plus every distinct certified strategy — run
+through the same gates at each rate, on seed-paired instances so nothing but the
+fade differs:
+
+| edge fades... | mean edge | distinct strategies |
+|---|---|---|
+| never | 1.00 | 5 |
+| halflife 48 yr | 0.82 | 4 |
+| **halflife 24 yr** *(shipped)* | **0.70** | **4** |
+| halflife 12 yr | 0.57 | **0** |
+| halflife 6 yr | 0.47 | 0 |
+| abrupt break, midway | 0.53 | 0 |
+
+**The cliff is between 24 years and 12, and it is a cliff.** Four strategies to
+none across a rung that only takes the mean edge from 0.70 to 0.57 — because the
+catalogue's entire population of viable strategies is packed into a 0.2-Sharpe
+band just above the +0.35 replication bar. A 20% edge cut does not thin that field,
+it empties it.
+
+**Halving your costs does not buy back a halved edge.** Sweeping edge and cost
+independently (`run.py costgrid`, F24) fits `net = a·edge − b·cost` at R² 0.87-0.98,
+against 0.61-0.74 for a pure ratio model: `e=1.0, c=1.0` makes +0.47 and
+`e=0.5, c=0.5` makes +0.27. Same ratio, 0.20 Sharpe apart. Edge level and cost
+level are separate axes, so the curve above cannot be traded away by finding a
+cheaper venue.
 
 **Decay changed the answer, not just the count.** The same catalogue with
 stationary edges certified 11 strategies from 960 candidates — thirteen times less
@@ -57,9 +92,9 @@ Three specific reasons, stated plainly:
    repository cannot tell you.
 2. **The decay rate is a modelling choice, not a measurement.** Every family
    fades, but the halflife was picked as the mildest setting that still certifies
-   anything — a quarter-series halflife certifies almost nothing. Nothing here
-   tells you which rate is right, and the answer moves every number in this
-   README.
+   anything. Nothing here tells you which rate is right, and the curve above shows
+   the answer flipping from four strategies to none across a single rung. Read
+   every number in this README as conditional on that choice.
 3. **No order has ever touched a book.** Fills, spreads, impact and funding are
    all models. Intrabar extremes come from a Brownian bridge between the open and
    the close, not from observed ticks, so stop and limit fills are distributional
@@ -92,13 +127,17 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 39 falsification tests
+python bots/run.py selftest              # 43 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
 python bots/run.py loop --target 3 --jobs 4
 python bots/run.py show <bot_id>
 python bots/run.py verify <bot_id>       # re-run the full gauntlet
+
+python bots/run.py decay                 # the survival curve over fade rates (F23)
+python bots/run.py costgrid              # sweep edge and cost independently (F24)
+python bots/run.py loop --catalogue hl=0.25x --state bots/state/fast.json
 ```
 
 `--target N` counts **distinct strategies**, not genomes: a run that certifies the
@@ -123,7 +162,7 @@ expensive gates.
 |---|---|---|
 | **G1** out-of-sample | Does it work on bars the search never scored? | in-sample fitting |
 | **G2** replication | Does it work on 20 fresh instances of its market? | instance-specific luck |
-| **G2b** durability | Is the edge still there in the second half of each instance? | crowded / arbitraged anomalies |
+| **G2b** durability | Is the edge still there in the second half *and the final quarter* of each instance? | crowded / arbitraged anomalies |
 | **G3** controls | Does it stay flat on a pure random walk? | artifacts, harness bugs |
 | **G4** stress | Survive 2× costs, 3× costs, +1 bar of delay? | frictionless fantasy |
 | **G5** permutation | Beat its own block-bootstrapped null at p ≤ 0.01? | return distribution posing as skill |
@@ -209,13 +248,13 @@ bots/
     engine.py               the backtester (execution model documented in full)
     metrics.py              performance, incl. alpha_sharpe and fitness
     stats.py                PSR, deflated Sharpe, block bootstrap
-    gauntlet.py             the seven gates and their thresholds
+    gauntlet.py             the eight gates and their thresholds
     factory.py              candidate generation and market coverage
     loop.py                 the generation loop and the expansion policy
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      34 falsification tests
+  tests/test_botlab.py      43 falsification tests
 ```
 
 ---

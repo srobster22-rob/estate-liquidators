@@ -73,7 +73,10 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
         L.append(f"**{len(sigs)} distinct strategies passed all eight gates** "
                  f"({len(proven)} genomes — several are the same rule at a different "
                  f"threshold or gene weight, which is why the headline counts "
-                 f"structures rather than genomes).")
+                 f"structures rather than genomes). Read that number together with the "
+                 f"two sections below it: what survives this run's *closing* standard of "
+                 f"proof rather than the standard in force when each bot was found, and "
+                 f"what survives a faster decay rate. Both are more conservative.")
         L.append("")
         L.append(f"{st.trials:,} candidates were screened across {st.generation} "
                  f"generations and {len(st.expansions)} search-space expansions; "
@@ -157,6 +160,13 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                  "searched so far. The funnel below shows which gate did the killing, which "
                  "is the useful information — see 'What to do next'.")
     L.append("")
+
+    # ---- the run's own closing standard ------------------------------------
+    if proven:
+        L.extend(_final_standard_section(st, cfg))
+
+    # ---- the decay curve ---------------------------------------------------
+    L.extend(_decay_curve_section())
 
     # ---- funnel ------------------------------------------------------------
     L.append("## Rejection funnel")
@@ -347,6 +357,95 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(text)
     return text
+
+
+def _final_standard_section(st, cfg) -> list[str]:
+    """A search that keeps going raises its own bar, so a bot certified early was
+    judged against a smaller search than the run became. This says how many
+    survive the standard the run actually finished with."""
+    rows = gauntlet.recheck_at_final_standard(st, cfg)
+    if not rows:
+        return []
+    kept = [r for r in rows if r["passed"]]
+    sig_all = {r["signature"] for r in rows}
+    sig_kept = {r["signature"] for r in kept}
+    L = ["## Re-judged at the standard this run finished with", ""]
+    L.append("G6's luck bar rises with the size of the search — that is what it is for — so a "
+             "bot certified in an early generation was measured against a smaller search than "
+             "this run eventually became. Two inputs drift as a run continues: the "
+             "confirmation-test count, and the variance of the trial-Sharpe distribution the "
+             "bar is built from. Below, every proven bot is re-judged at the closing values "
+             f"(**{rows[0]['final_burden']} confirmation tests, trial variance "
+             f"{rows[0]['final_var']:.3f}**). Nothing here can certify a bot that was not "
+             "already certified; it can only take one away.")
+    L.append("")
+    if len(kept) == len(rows):
+        L.append(f"**All {len(rows)} genomes ({len(sig_all)} distinct strategies) still clear "
+                 "the closing bar.** The headline is not an artefact of when in the run each "
+                 "bot happened to be found.")
+    else:
+        lost = [r for r in rows if not r["passed"]]
+        L.append(f"**{len(kept)} of {len(rows)} genomes still clear it — "
+                 f"{len(sig_kept)} distinct strategies, down from {len(sig_all)}.** "
+                 "The headline count above is the one each bot earned when it was found; "
+                 "this is the one the run's own closing standard supports, and it is the more "
+                 "conservative of the two.")
+        L.append("")
+        L.append(_table([[f"`{r['bot_id']}`", f"`{r['market']}`", r["as_certified_burden"],
+                          f"{r['as_certified_var']:.3f}", f"{r['dsr']:.3f}",
+                          f"{r['headroom']:,}"] for r in lost],
+                        ["bot", "market", "burden when certified", "variance then",
+                         "DSR now", "headroom now"]))
+    L.append("")
+    return L
+
+
+def _decay_curve_section() -> list[str]:
+    """Every number above is conditional on one parameter: how fast a planted
+    edge fades. Reporting a count at a single rate hides that; reporting the
+    curve makes the conditionality readable. Rendered only if the sweep has been
+    run — `python bots/run.py decay`."""
+    import json as _json
+
+    from . import decaysweep
+    if not os.path.exists(decaysweep.SWEEP_STATE):
+        return []
+    with open(decaysweep.SWEEP_STATE, encoding="utf-8") as fh:
+        sw = _json.load(fh)
+    if not sw.get("rungs"):
+        return []
+    L = ["## How much of this depends on the decay rate", ""]
+    L.append("The catalogue's fade — halflife half the series, 35% floor — was chosen as the "
+             "mildest setting that still certifies anything, not measured from data. So the "
+             "headline above is not a number, it is a number *at one rate*. The sweep below "
+             "re-runs a **fixed, pre-registered panel** — every untuned archetype of every "
+             "family, plus every distinct strategy the search has certified — at each fade "
+             "rate. Same genomes, same gates, same multiplicity denominator, seed-paired "
+             "instances: the only thing that differs between two rows is how fast the edge "
+             "goes away.")
+    L.append("")
+    rows = []
+    for label, hl_frac, *_ in decaysweep.RUNGS:
+        r = sw["rungs"].get(label)
+        if r is None:
+            continue
+        yr = "abrupt" if hl_frac <= 0 and label != "stationary" else (
+            "never" if label == "stationary" else f"{hl_frac * 12000 / 252.0:.0f} yr")
+        rows.append([f"`{label}`", yr, f"{r['mean_edge']:.2f}", f"{r['final_edge']:.2f}",
+                     r["n_distinct"], r["n_certified"],
+                     ", ".join(f"`{m}`" for m in r["markets"]) or "—"])
+    L.append(_table(rows, ["rung", "halflife", "mean edge", "edge at end",
+                           "distinct strategies", "genomes", "markets"]))
+    L.append("")
+    L.append("Read it as a sentence: **the strategies this lab has found survive a halflife "
+             "of about 24 simulated years and are gone by 12.** Four to none across one rung "
+             "that only takes the mean edge from 0.70 to 0.57 — because the whole population "
+             "of viable strategies sits in a narrow band just above the replication bar, so a "
+             "20% edge cut does not thin the field, it empties it. Nothing survives an abrupt "
+             "break in the first half of its life. Everything above is conditional on where in "
+             "that range the real world sits, and this repository cannot tell you.")
+    L.append("")
+    return L
 
 
 def _gate_meaning(gate: str) -> str:

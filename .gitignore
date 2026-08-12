@@ -32,5 +32,7 @@ __pycache__/
 # trial counts the standard of proof depends on. A fresh clone starts a fresh
 # ledger, which is correct: a new search's luck bar should reflect that search.
 bots/state/run_state.json
+# ... and any alternate ledger, e.g. a search run against a decay rung
+bots/state/fast_*.json
 bots/state/*.prev
 bots/state/*.tmp

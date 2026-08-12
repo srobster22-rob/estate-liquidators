@@ -22,8 +22,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 
-from bots.botlab import (calibrate, engine, gauntlet, loop, metrics,
-                         portfolio, report, state)
+from bots.botlab import (calibrate, costlever, decaysweep, engine, gauntlet,
+                         loop, metrics, portfolio, report, state)
 from bots.botlab.genome import Genome, SearchSpace
 from bots.botlab.markets import loader, universe
 
@@ -84,6 +84,18 @@ def cmd_loop(a) -> int:
         os.replace(a.state, a.state + ".prev")
         if os.path.exists(a.log):
             os.replace(a.log, a.log + ".prev")
+    if a.catalogue:
+        # Search a decay rung instead of the shipped catalogue. The panel sweep
+        # can only ask whether known strategies survive a faster fade; this asks
+        # whether a search can find different ones that do.
+        with decaysweep.use_catalogue(a.catalogue):
+            print(f"catalogue swapped to decay rung {a.catalogue}: "
+                  f"{', '.join(m.name for m in universe.tradeable(4))}")
+            return _loop_body(a)
+    return _loop_body(a)
+
+
+def _loop_body(a) -> int:
     cfg = gauntlet.GauntletConfig()
     if a.min_repl_sharpe is not None:
         cfg.min_repl_alpha_sr = a.min_repl_sharpe
@@ -192,6 +204,31 @@ def cmd_report(a) -> int:
     return 0
 
 
+def cmd_decay(a) -> int:
+    """The decay-rate curve: one fixed panel, seven fade rates, same gates."""
+    st = state.RunState.load_or_new(a.state, SearchSpace())
+    rungs = a.rungs.split(",") if a.rungs else None
+    sw = decaysweep.run_sweep(rungs, proven=st.proven, state_path=a.out,
+                              resume=not a.fresh, per_signature=a.per_signature)
+    print()
+    print(decaysweep.format_curve(sw))
+    print()
+    print(decaysweep.survival_table(sw))
+    print()
+    print(decaysweep.format_achievable(sw))
+    return 0
+
+
+def cmd_costgrid(a) -> int:
+    """Sweep planted edge and cost independently; test whether survival is a
+    function of the ratio, as F21 claims."""
+    out = costlever.run(state_path=a.out, n_instances=a.instances)
+    print(costlever.format_grid(out["rows"], bar=gauntlet.GauntletConfig().min_repl_alpha_sr))
+    print()
+    print(costlever.format_fit(out["fit"]))
+    return 0
+
+
 def cmd_selftest(a) -> int:
     import subprocess
     tests = os.path.join(HERE, "tests", "test_botlab.py")
@@ -238,6 +275,9 @@ def main(argv=None) -> int:
     p.add_argument("--log", default=DEFAULT_LOG)
     p.add_argument("--min-repl-sharpe", type=float, default=None,
                    help="override the replication bar (raising it is fine; lowering it is cheating)")
+    p.add_argument("--catalogue", default=None,
+                   help="search a decay rung instead of the shipped catalogue; "
+                        "see `decay --help` for the rung labels")
     p.set_defaults(fn=cmd_loop)
 
     p = sub.add_parser("show", help="print a bot and its evidence")
@@ -255,6 +295,18 @@ def main(argv=None) -> int:
     p.add_argument("--report", default=DEFAULT_REPORT)
     p.add_argument("--calibrate", action="store_true")
     p.set_defaults(fn=cmd_report)
+
+    p = sub.add_parser("decay", help="sweep the decay rate and report the survival curve")
+    p.add_argument("--rungs", default=None, help="comma-separated subset of rung labels")
+    p.add_argument("--out", default=decaysweep.SWEEP_STATE)
+    p.add_argument("--fresh", action="store_true", help="ignore cached rungs")
+    p.add_argument("--per-signature", type=int, default=3)
+    p.set_defaults(fn=cmd_decay)
+
+    p = sub.add_parser("costgrid", help="sweep edge and cost independently (F21's ratio claim)")
+    p.add_argument("--out", default=costlever.GRID_STATE)
+    p.add_argument("--instances", type=int, default=8)
+    p.set_defaults(fn=cmd_costgrid)
 
     p = sub.add_parser("selftest", help="run the falsification suite")
     p.set_defaults(fn=cmd_selftest)

@@ -146,25 +146,40 @@ def _panel_raw(series: list[Series], g: Genome, cost_mult: float = 1.0,
     return metrics.pooled_perf(results), per, results
 
 
-def _early_late_alpha(results) -> tuple[float, float]:
-    """Median alpha Sharpe over the first and second half of each run.
+def _window_alpha(results, lo: float, hi: float) -> float:
+    """Median alpha Sharpe over the [lo, hi) fraction of each run.
 
-    Computed by splitting the *return series already produced by G2*, not by
+    Computed by slicing the *return series already produced by G2*, not by
     re-running on sliced data: one continuous run with no warmup discontinuity at
-    the midpoint, and no extra backtests.
+    the boundary, and no extra backtests.
     """
-    early, late = [], []
+    out = []
     for res in results:
         r = res.active_ret
         m = res.active_market_ret[: r.size]
-        k = r.size // 2
-        if k < 32:
+        a, b = int(r.size * lo), int(r.size * hi)
+        if b - a < 32:
             continue
-        early.append(metrics.alpha_sharpe(r[:k], m[:k], res.bars_per_year))
-        late.append(metrics.alpha_sharpe(r[k:], m[k:], res.bars_per_year))
-    if not early:
-        return 0.0, 0.0
-    return float(np.median(early)), float(np.median(late))
+        out.append(metrics.alpha_sharpe(r[a:b], m[a:b], res.bars_per_year))
+    return float(np.median(out)) if out else 0.0
+
+
+def _early_late_alpha(results) -> tuple[float, float, float]:
+    """(first half, second half, final quarter).
+
+    The final quarter is separate from the second half because a *half* is not
+    short enough to see a death. An edge that vanishes in the last 15% of the
+    series still leaves 35 of the late half's 50 percentage points intact, so its
+    median late-half alpha reads +0.45 and the gate waves it through. Measured:
+    on a catalogue whose edge is cut by 85% at the 85% mark, the late-half test
+    certified four strategies — the same four it certifies on a catalogue with no
+    break at all — while the identical break placed at 45% certified none. Same
+    terminal edge, opposite verdict, because every window in the ladder averages
+    over a span long enough to hide the end.
+    """
+    return (_window_alpha(results, 0.0, 0.5),
+            _window_alpha(results, 0.5, 1.0),
+            _window_alpha(results, 0.75, 1.0))
 
 
 SCREEN_QUANTILE = 0.40          # score on the bad instances, not the average one
@@ -313,15 +328,28 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     # This is recalibration in response to a changed catalogue, measured the same
     # way the original thresholds were, and not a threshold relaxed because it
     # blocked a candidate — the distinction this file has insisted on throughout.
-    early_a, late_a = _early_late_alpha(repl_raw)
+    #
+    # THE WINDOW HAS TO BE SHORT ENOUGH TO SEE A DEATH. The late *half* is not:
+    # an edge that dies in the last 15% of the series still fills 70% of that
+    # window with live edge. So the same "is there still a usable edge" question
+    # is asked again over the final *quarter*, at the same +0.25 threshold. No new
+    # free parameter is introduced — the principle and the number are the ones
+    # already argued for, applied to a window that can actually resolve the end.
+    # That matters because this is a gate being tightened, and the standing rule
+    # is that gates move only when they are provably mis-specified. The proof is
+    # the break@85% rung: it certified four strategies whose edge was 85% gone for
+    # the last 15% of their lives.
+    early_a, late_a, final_a = _early_late_alpha(repl_raw)
     retention = (late_a / early_a) if early_a > 0.10 else 1.0
     stationary_market = universe.get(g.market).is_stationary
-    ok = late_a >= cfg.min_late_alpha_sr
+    ok = late_a >= cfg.min_late_alpha_sr and final_a >= cfg.min_late_alpha_sr
     if stationary_market:
         ok = ok and retention >= cfg.min_edge_retention
-    perf.update(early_alpha_sr=early_a, late_alpha_sr=late_a, edge_retention=retention)
+    perf.update(early_alpha_sr=early_a, late_alpha_sr=late_a,
+                final_alpha_sr=final_a, edge_retention=retention)
     stages.append(Stage("G2b-durability", ok,
-                        f"late-half alphaSR {late_a:+.2f} (need {cfg.min_late_alpha_sr:+.2f}) "
+                        f"late-half alphaSR {late_a:+.2f}, final-quarter {final_a:+.2f} "
+                        f"(both need {cfg.min_late_alpha_sr:+.2f}) "
                         f"vs early half {early_a:+.2f}, retained {retention:.0%}"
                         + (f" (need {cfg.min_edge_retention:.0%}; market is stationary)"
                            if stationary_market
@@ -529,6 +557,53 @@ def _burden_headroom(r_pooled: np.ndarray, bpy: float, z_null: float,
         else:
             hi = mid
     return lo
+
+
+def recheck_at_final_standard(st, config: GauntletConfig | None = None) -> list[dict]:
+    """Re-judge every proven bot against the standard the run *finished* with.
+
+    G6's luck bar rises with the size of the search — that is the point of it —
+    which means a bot certified in generation 5 was judged against a smaller
+    search than the run eventually became. Two inputs drift: the confirmation-test
+    count, and the variance of the trial-Sharpe distribution the bar is built
+    from. The first is already visible per bot as `burden_headroom`; the second
+    was not visible at all.
+
+    Measured on the committed run, the difference is not cosmetic: re-judging at
+    the closing standard drops 4 of 30 genomes and one of the four distinct
+    strategies, all of them `eq_largecap_daily` bots certified early with headroom
+    of 229-268 against a run that ended at 353 gauntlets.
+
+    This is not a gate change and nothing here can certify a bot that was not
+    already certified — it only asks whether the run's own closing bar still
+    clears what it cleared along the way. Cheap, because the permutation z-score
+    is already on the ledger; only the 20 replication backtests are re-run.
+    """
+    from .genome import Genome
+    cfg = config or GauntletConfig()
+    n_conf = max(int(getattr(st, "gauntlet_runs", 0)), 1)
+    var = st.var_trial_sharpe()
+    out = []
+    for p in st.proven:
+        g = Genome.from_dict(p["genome"])
+        perf = p["verdict"].get("perf", {})
+        z = float(perf.get("perm_z", 0.0))
+        repl = instances(g.market, universe.HOLDOUT_POOL, cfg.n_repl_instances)
+        r_pooled, _, bpy = metrics.pool([engine.run(s, g) for s in repl])
+        var_median = var * 1.57 / max(len(repl), 1)
+        dsr, sr0 = stats.deflated_sharpe(r_pooled, bpy, n_conf, var_median)
+        p_fw = min(1.0, (1.0 - stats.norm_cdf(z)) * n_conf)
+        out.append({
+            "bot_id": g.bot_id, "market": g.market, "signature": g.signature(),
+            "passed": bool(dsr >= cfg.min_dsr and p_fw <= cfg.family_wise_p_max),
+            "dsr": round(float(dsr), 4), "luck_bar_sr": round(float(sr0), 4),
+            "family_wise_p": float(p_fw),
+            "headroom": _burden_headroom(r_pooled, bpy, z, var_median, cfg),
+            "as_certified_burden": int(perf.get("n_confirm_tests", 0)),
+            "as_certified_var": float(perf.get("var_trial_sharpe", 0.0)),
+            "final_burden": n_conf, "final_var": round(float(var), 4),
+        })
+    return out
 
 
 def quick_report(v: Verdict) -> str:

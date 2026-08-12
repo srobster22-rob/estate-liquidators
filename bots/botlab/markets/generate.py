@@ -114,7 +114,7 @@ def synth(spec: MarketSpec, index: int, n_bars: int | None = None,
           _noise_mult: float = 1.0, _apply_fix: bool = True) -> Series:
     """Generate instance `index` of market family `spec`."""
     n = int(n_bars or spec.n_bars)
-    seed = instance_seed(spec.name, index)
+    seed = instance_seed(spec.seed_name or spec.name, index)
     rng = np.random.default_rng(seed)
 
     sigma_bar = spec.sigma_bar

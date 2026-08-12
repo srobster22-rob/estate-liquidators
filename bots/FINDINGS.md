@@ -854,16 +854,246 @@ record for every proven bot.
 
 ---
 
+## F23 · The decay-rate curve: 4 strategies at a 24-year halflife, 0 at 12
+
+Every headline this lab has produced was conditional on one number nobody had
+measured — how fast a planted edge fades. F21 chose a halflife of half the series
+because it was the mildest setting that still certified anything, which is an
+honest reason to pick a parameter and a bad reason to trust a result derived from
+it. So: report the curve.
+
+The sweep (`python bots/run.py decay`) evaluates a **fixed, pre-registered panel**
+at every rate — all 120 untuned archetypes plus every distinct strategy the search
+has certified, deduplicated by signature. Same genomes, same gates, same
+multiplicity denominator (131, the panel size), and **seed-paired instances**: the
+`~hl=0.125x` variant of a family draws the identical innovation, jump and regime
+stream as its `~stationary` twin, so the only difference between two rows is how
+fast the edge goes away.
+
+| rung | halflife | mean edge | edge at end | distinct | genomes |
+|---|---|---|---|---|---|
+| `stationary` | never | 1.00 | 1.00 | **5** | 12 |
+| `hl=1.00x` | 48 yr | 0.82 | 0.68 | **4** | 11 |
+| `hl=0.50x` *(shipped)* | 24 yr | 0.70 | 0.51 | **4** | 10 |
+| `hl=0.25x` | 12 yr | 0.57 | 0.39 | **0** | 0 |
+| `hl=0.125x` | 6 yr | 0.47 | 0.35 | **0** | 0 |
+| `hl=0.125x/f10` | 6 yr, 10% floor | 0.26 | 0.10 | **0** | 0 |
+| `break@45%` | abrupt, midway | 0.53 | 0.15 | **0** | 0 |
+| `break@85%` | abrupt, late | 0.87 | 0.15 | **1** | 1 |
+
+**The cliff is between a 24-year halflife and a 12-year one, and it is a cliff,
+not a slope.** Four strategies to none, across a rung that only takes the mean
+edge from 0.70 to 0.57.
+
+Why it is a cliff is visible in the achievable-alpha table the same command
+prints. The best archetype on `commodity_meanrev_daily` makes 0.52 net alpha
+Sharpe stationary, 0.35 at the shipped rate, 0.28 one rung faster. The replication
+bar is +0.35. The catalogue's whole population of strategies is packed into a
+0.2-Sharpe band just above the bar, so a 20% edge cut does not thin the field —
+it empties it.
+
+**What the curve does not show.** The `arch` column — distinct strategies from the
+*untuned* panel — is 1 at the stationary rung and 0 at every other. The entire
+curve is carried by strategies the search discovered against the `hl=0.50x`
+catalogue, which are fitted to that rung. The reassuring detail is that they do
+not peak there: every one of them scores highest at `stationary` and declines
+monotonically, which is what decay should look like and not what a fit to
+`hl=0.50x` would look like. But an honest reading is that this is a curve for
+*these* strategies, not for the strategy space.
+
+It also cannot say what a *search* would find at a fast rate; a search pointed at
+a 12-year halflife might discover a different kind of bot suited to it, and a
+fixed panel is blind to that by construction. `run.py loop --catalogue hl=0.25x`
+exists to answer that and has not been run to convergence.
+
+**Two smaller things fell out of building it.**
+
+*Seed pairing is not optional.* Instance seeds derive from the family name, so a
+renamed variant silently draws a fresh set of 47-year histories. With 11 families
+and ~50 instances each, that resampling noise is comparable in size to the decay
+effect, and the first version of this sweep would have been reporting both.
+`MarketSpec.seed_name` pins the stream, and
+`test_paired_variants_share_their_random_stream` holds it: a renamed-but-identical
+variant must be byte-identical to its base.
+
+*Decay barely moves realised volatility, and the constant that corrects it is
+noisier than the effect.* Fading the trend removes variance the `_noise_scale`
+budget subtracts unconditionally, so a decayed family should land slightly under
+its vol target. Measured paired across all 77 family-rung combinations, the
+systematic effect is **0.02%-0.42%** per family; the per-family offset in the
+locked `vol_fix` constants is up to **1.9%**. So the rungs inherit their base
+family's constant. Re-measuring per rung would have injected an order of magnitude
+more noise than it removed — which is the opposite of what "recalibrate everything
+you touch" would have suggested, and is why it was measured.
+
+---
+
+## F24 · F21's cost-leverage claim is a plane, not a ratio, and the difference matters
+
+F21 concluded that cost leverage is what selects the survivors of decay. That
+implies something checkable: if costs are a fixed subtraction and edge a
+proportional one, survival should depend on the **ratio** of gross edge to cost.
+`python bots/run.py costgrid` sweeps the two independently — an edge multiplier
+`e` applied through the same decay machinery the gauntlet uses, against a cost
+multiplier `c` — and fits both models.
+
+| market | a(edge) | b(cost) | intercept | R² plane | R² ratio-only | breakeven e/c |
+|---|---|---|---|---|---|---|
+| `commodity_meanrev_daily` | 0.396 | −0.057 | 0.116 | **0.94** | 0.69 | 0.14 |
+| `eq_largecap_daily` | 0.357 | −0.078 | 0.136 | **0.98** | 0.72 | 0.22 |
+| `futures_trend_daily` | 0.417 | −0.052 | −0.038 | **0.87** | 0.61 | 0.12 |
+| `eq_smallcap_daily` | 0.043 | −0.023 | 0.032 | 0.31 | 0.74 | 0.55 |
+
+**The ratio model loses a quarter of the explained variance.** The falsification
+is visible in the raw grid without any fitting: on `commodity_meanrev_daily`,
+`e=1.0, c=1.0` gives +0.47 net alpha and `e=0.5, c=0.5` gives +0.27. Same ratio,
+0.20 Sharpe apart.
+
+The reason is arithmetic once written down. Under `net = a·e − b·c`, scaling both
+by λ scales net by λ — it does not preserve it. A ratio determines the *sign* of
+net alpha, and only when the intercept is zero; it never determines the
+*magnitude*. And the gauntlet's bar is +0.35, not 0. So **halving your costs does
+not buy back a halved edge**, and the decay curve in F23 is a statement about edge
+levels that cannot be undone by trading somewhere cheaper.
+
+F21's underlying observation survives — a fixed cost base does amplify a
+proportional edge cut, and `a` is 5-8x `|b|`, which is exactly that amplification
+— but its generalisation to a ratio does not. Note also that F21's headline "a 30%
+edge cut takes 90% of net alpha" was measured on a *within-series fade*, where the
+bot's own calibration also drifts out of step with the market; the uniform level
+change measured here costs 36-49% instead. Both numbers are real and they measure
+different things.
+
+`eq_smallcap_daily` is in the table as the control: its best archetype makes
+nothing at any edge level once costs are at 1x or above, the plane fit collapses
+to R²=0.31 because the surface is censored at zero, and the ratio model "wins"
+only because both models are fitting a flat plate. The trap market is a trap at
+every edge level.
+
+---
+
+## F25 · The durability gate could not see an edge that died in the last 15% of its life
+
+This one was found by a control built to answer a different question, which is
+the third time in this file that has happened.
+
+The decay curve confounds two things that fall together in every gradual rung: how
+much edge there was *in total*, and how much was left *at the end*. To separate
+them, `break@85%` cuts 85% of the edge at the 85% mark — average edge 0.87, edge
+at the close 0.15. If certification tracked the average it should behave like
+`hl=1.00x`; if it tracked the terminal value it should behave like `break@45%`,
+which certifies nothing.
+
+**It behaved like `hl=1.00x`: four distinct strategies certified, with median
+late-half alpha +0.45.** Identical terminal edge to `break@45%`, opposite verdict.
+
+The cause is that every window in the ladder averages over a span long enough to
+hide the end. G1's out-of-sample window is the last 40% of the series; G2b's
+durability window is the last 50%. A death confined to the final 15% leaves 70% of
+the durability window full of live edge, and the median reads healthy. So the
+gauntlet was certifying strategies whose edge had been 85% gone for the last
+twelve simulated years of a forty-eight-year test, and reporting +0.45 late-half
+alpha while doing it.
+
+**The fix is a second leg on G2b: the same "is there still a usable edge"
+question, at the same +0.25 threshold, over the final *quarter*.** No new free
+parameter — the principle and the number are the ones already argued for in F22,
+applied to a window that can resolve the end. This is a gate being *tightened*
+because it was provably mis-specified, which is the only circumstance the standing
+rules permit a gate to move at all, and the proof was in hand before the change.
+
+What it cost, measured before and after on the identical panel:
+
+| rung | before | after |
+|---|---|---|
+| `stationary` | 5 distinct | 5 |
+| `hl=1.00x` | 4 | 4 |
+| `hl=0.50x` *(shipped)* | 4 (11 genomes) | 4 (10 genomes) |
+| `hl=0.25x` | 1 | **0** |
+| `break@85%` | 4 | **1** |
+
+It removed three of the four late-break certifications and the marginal 12-year
+survivor, and left the shipped catalogue's four strategies standing. False-positive
+rate re-measured at 0 of 18 afterwards; 42/42 tests pass.
+
+**It does not close the hole completely, and the residual is a windowing limit
+rather than an oversight.** The final quarter still contains 10 percentage points
+of pre-break series against 15 post-break, so its effective edge is ~0.49 —
+comparable to the shipped rung's 0.51, which certifies four. One strategy survives
+`break@85%` for that reason, and arguably should: it still earns +0.48 alpha in
+that window. Resolving a death confined to the last 15% needs a window that short,
+and a window that short is too noisy to gate on. The honest statement of what the
+ladder can now do: **it detects an edge death that occupies at least a quarter of
+the series, and detects one confined to the last 15% only for marginal
+strategies.**
+
+---
+
+## F26 · A run's own closing standard of proof rejects one of the four strategies it certified
+
+Re-running the current gauntlet over the committed ledger, to check what the F25
+gate change had cost, produced a bigger drop than the change could explain. The
+first attribution was wrong and worth recording as such: **the losses were not
+from the new gate, and not from permutation-seed noise either** — five re-runs at
+five different seeds returned byte-identical headroom values, which ruled that out
+immediately.
+
+The cause is that **G6's luck bar rises while the run is still going**, and two of
+its inputs drift:
+
+* the confirmation-test count (`n_confirm_tests`), already visible per bot as
+  `burden_headroom`; and
+* `var_trial_sharpe`, the variance of the trial-Sharpe distribution the bar is
+  built from, which was visible nowhere.
+
+So a bot certified in generation 5 was judged against a smaller search than the
+run eventually became. Two re-runs of the identical ledger separate the effects:
+
+| re-run | what varies | genomes | distinct |
+|---|---|---|---|
+| as certified | — | 30 | 4 |
+| **A:** each bot at *its own* recorded burden and variance | only the F25 gate | **28** | **4** |
+| **B:** every bot at the run's *closing* burden (353) and variance (0.123) | the closing standard | **27** | **3** |
+
+**A says the tightened durability gate cost 2 genomes and no strategies**, both
+marginal — final-quarter alpha +0.23 and +0.24 against a +0.25 bar.
+
+**B says the run's own closing standard costs a whole strategy.** All three
+`eq_largecap_daily` genomes fall, and their recorded headroom had already said
+they would: 229, 242 and 262 against a run that finished at 353 gauntlets. The
+headroom statistic (F17) was doing exactly its job; nothing was reading it.
+
+So `gauntlet.recheck_at_final_standard()` now runs at report time and prints both
+counts. It is cheap — the permutation z-score is on the ledger already, so only 20
+replication backtests per bot are re-run — and it is structurally incapable of
+certifying anything new: a bigger search can only take bots away, which
+`test_final_standard_recheck_can_only_take_bots_away` holds by checking the count
+is monotone as the burden goes 1 → 100 → 10⁴ → 10⁷.
+
+**The general lesson is about the shape of the claim, not the number.** "N
+strategies were certified during this run" and "N strategies clear the bar this
+run finished with" are different statements, and the first is the one every search
+naturally produces. Any lab that expands its search until it succeeds — which is
+precisely what the loop in this repository is instructed to do — will accumulate
+early certifications that its own final bar no longer supports. The report now
+leads with the conservative number.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.
 
-1. **The decay *rate* is a free parameter chosen to keep the lab useful.** Every
-   family decays now (F21), but the halflife was picked as the mildest setting
-   that still certifies anything, not estimated from data. A quarter-series
-   halflife certifies almost nothing. Nothing in the lab tells you which is right,
-   and the answer decides every headline number — so the honest reading of any
-   result here is conditional on a decay rate nobody has measured.
+1. **The decay *rate* is still a free parameter, but it is now reported as a
+   curve rather than assumed.** F23 sweeps it: 4 distinct strategies survive a
+   24-year halflife, 0 survive 12, 0 survive an abrupt break in the first half.
+   That is the honest form of every headline in this repository. What is still
+   missing is any evidence about *where in that range the real world sits* —
+   nothing here estimates a decay rate from data, and the curve is steep enough
+   between 24 and 12 years that the answer flips completely across it.
+   The curve is also carried almost entirely by strategies discovered at the
+   shipped rate; the untuned archetype panel certifies at most one at any rung, so
+   it is a curve for these strategies, not for the strategy space (F23).
 2. **The Bonferroni leg of G6 extrapolates.** It reads a Gaussian tail well past
    what 120 permutation draws can resolve. It is a sanity bound, not a measured
    p-value; the weight is carried by the conjunction of G2, G5 and G7.

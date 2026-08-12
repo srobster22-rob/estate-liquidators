@@ -488,6 +488,68 @@ def test_decay_actually_reaches_the_backtest():
         universe.unregister("stationary_probe")
 
 
+def test_paired_variants_share_their_random_stream():
+    """The decay curve compares one family against itself at several fade rates,
+    and that comparison is only readable if the two runs are the *same market*
+    with a different edge — same innovations, same jumps, same regime flips.
+
+    Instance seeds derive from the family name, so a renamed variant silently
+    draws a fresh 47-year history: with 11 families x ~50 instances that
+    resampling noise is comparable in size to the decay effect being measured,
+    and the curve would be reporting both. `seed_name` pins the stream. The sharp
+    version of the check: a renamed-but-otherwise-identical variant must be
+    byte-identical to its base when paired, and must differ when not.
+    """
+    import dataclasses
+    from bots.botlab.markets import generate as _gen
+    base = universe.get("commodity_meanrev_daily")
+    paired = dataclasses.replace(base, name="paired_probe", seed_name=base.name)
+    unpaired = dataclasses.replace(base, name="unpaired_probe")
+    b, p, u = (_gen.synth(base, 7), _gen.synth(paired, 7), _gen.synth(unpaired, 7))
+    assert np.array_equal(b.close, p.close), \
+        "seed_name did not reproduce the base family's instance exactly"
+    assert not np.array_equal(b.close, u.close), \
+        "an unpaired rename produced the identical series — seeds are not name-derived"
+
+    # ... and with the edge faded, the paired instance is still the same market:
+    # the shocks line up bar for bar, only the predictable part shrinks.
+    faded = dataclasses.replace(base, name="faded_probe", seed_name=base.name,
+                                edge_decay_halflife=base.n_bars * 0.125,
+                                edge_decay_floor=0.10)
+    f = _gen.synth(faded, 7)
+    rb, rf = np.diff(np.log(b.close)), np.diff(np.log(f.close))
+    ru = np.diff(np.log(u.close))
+    assert np.corrcoef(rb, rf)[0, 1] > 0.95, \
+        f"paired faded instance decorrelated from its base ({np.corrcoef(rb, rf)[0, 1]:.2f})"
+    assert abs(np.corrcoef(rb, ru)[0, 1]) < 0.10, \
+        "an unpaired instance should be independent of the base"
+
+
+def test_decay_sweep_rungs_are_a_monotone_ladder():
+    """The curve's x-axis has to be an axis. Each halflife rung must plant
+    strictly less total edge than the one above it, and every rung must be the
+    same instrument — paired to its base family — or the sweep is comparing
+    markets rather than rates."""
+    from bots.botlab import decaysweep as ds
+    hl_rungs = [r[0] for r in ds.RUNGS if r[2] == 0.35 or r[1] <= 0.0][:5]
+    means = []
+    for label in hl_rungs:
+        vs = ds.build_variants(label)
+        assert {v.seed_name for v in vs} == set(ds.BASE_FAMILIES), \
+            f"{label}: variants are not seed-paired to their base families"
+        means.append(float(np.mean([ds.mean_edge(v) for v in vs])))
+    assert all(a > b for a, b in zip(means, means[1:])), \
+        f"rungs are not monotone in mean planted edge: {means}"
+    assert means[0] == 1.0, "the stationary rung should plant its full edge"
+    # The off-axis rungs are the ones that matter most, so they must be off-axis:
+    # deeper than the fastest halflife, and abrupt rather than gradual.
+    deep = float(np.mean([ds.mean_edge(v) for v in ds.build_variants("hl=0.125x/f10")]))
+    brk = ds.build_variants("break@45%")
+    assert deep < means[-1], "the deep-floor rung is not harsher than the fast one"
+    assert all(float(v.edge_profile(v.n_bars)[-1]) < 0.2 for v in brk), \
+        "the break rung should leave almost nothing at the end"
+
+
 def test_durability_gate_can_fire():
     """G2b is currently unexercised — on the two decaying families G1 rejects
     everything first, because G1's window is already the last 40% of the series.
@@ -506,13 +568,83 @@ def test_durability_gate_can_fire():
                    entry_threshold=0.1, exit_threshold=0.02, sizing="voltarget",
                    target_vol=0.15, max_leverage=2.0)
         res = [engine.run(_gen.cached(mild, i), g) for i in range(1, 13)]
-        early, late = gauntlet._early_late_alpha(res)
+        early, late, final = gauntlet._early_late_alpha(res)
         retention = (late / early) if early > 0.10 else 1.0
         assert retention < gauntlet.GauntletConfig().min_edge_retention, \
             f"durability statistic did not register a 5,000-bar halflife: " \
             f"early {early:+.2f} late {late:+.2f} retention {retention:.2f}"
+        assert final <= late + 1e-9, \
+            f"final quarter ({final:+.2f}) should not read stronger than the " \
+            f"late half ({late:+.2f}) on a monotonically fading edge"
     finally:
         universe.unregister("mild_decay_probe")
+
+
+def test_final_standard_recheck_can_only_take_bots_away():
+    """The closing-standard recheck exists to be conservative. A bigger search
+    must never certify *more* than a smaller one, or the luck bar is not a bar."""
+    import types
+    from bots.botlab.markets import generate as _gen
+    spec = universe.get("commodity_meanrev_daily")
+    g = Genome(market=spec.name, genes=[Gene("rsi_rev", {"n": 14}, mode=-1)],
+               entry_threshold=0.2, exit_threshold=0.05, sizing="proportional",
+               target_vol=0.15, max_leverage=2.0)
+    repl = [_gen.cached(spec, i) for i in list(universe.HOLDOUT_POOL)[:20]]
+    z = 4.0
+    perf = {"perm_z": z, "n_confirm_tests": 10, "var_trial_sharpe": 0.12}
+    counts = []
+    for burden in (1, 100, 10_000, 10_000_000):
+        st = types.SimpleNamespace(
+            gauntlet_runs=burden, proven=[{"genome": g.to_dict(), "verdict": {"perf": perf}}],
+            var_trial_sharpe=lambda: 0.12)
+        rows = gauntlet.recheck_at_final_standard(st)
+        counts.append(sum(1 for r in rows if r["passed"]))
+    assert counts == sorted(counts, reverse=True), \
+        f"recheck is not monotone in search size: {counts}"
+    assert counts[-1] == 0, "a ten-million-test burden should certify nothing here"
+
+
+def test_durability_gate_sees_a_death_near_the_end():
+    """The late *half* cannot resolve an edge that dies in the last 15% of the
+    series: 70% of that window is still live, so the median reads healthy. This
+    is not hypothetical — it certified four strategies on a catalogue broken at
+    the 85% mark, the same four it certifies with no break at all.
+
+    So the gate asks the same question again over the final quarter. This test
+    holds that fix in place: on a probe whose edge is cut by 85% at 85% of the
+    way through, the late-half statistic must stay comfortable while the
+    final-quarter statistic must not.
+    """
+    import dataclasses
+    from bots.botlab.markets import generate as _gen
+    late_break = dataclasses.replace(universe.get("commodity_meanrev_daily"),
+                                     name="late_break_probe", seed_name="commodity_meanrev_daily",
+                                     edge_decay_halflife=0.0, edge_decay_floor=0.0,
+                                     edge_break_at=0.85, edge_break_mult=0.15, tier=1)
+    universe.register(late_break)
+    try:
+        # Pick the probe bot by its *early-half* alpha, a window that ends 35
+        # percentage points before the break. Selecting on it therefore cannot
+        # touch the late-versus-final comparison the test is about, while still
+        # guaranteeing a bot with a real edge — the comparison is meaningless on
+        # one that loses money in every window.
+        series = [_gen.cached(late_break, i) for i in range(1, 17)]
+        best, best_early = None, -9.0
+        for cand in genome.archetypes("late_break_probe"):
+            res = [engine.run(s, cand) for s in series]
+            e = gauntlet._window_alpha(res, 0.0, 0.5)
+            if e > best_early:
+                best, best_early, best_res = cand, e, res
+        assert best_early > 0.2, f"no archetype has an edge to lose ({best_early:+.2f})"
+        early, late, final = gauntlet._early_late_alpha(best_res)
+        assert late > final, \
+            f"a break at 85% should hurt the final quarter more than the late " \
+            f"half, got late {late:+.2f} final {final:+.2f}"
+        assert late - final > 0.15, \
+            f"the two windows barely differ (late {late:+.2f}, final {final:+.2f}) " \
+            f"— the final-quarter leg adds nothing over the late half"
+    finally:
+        universe.unregister("late_break_probe")
 
 
 def test_gauntlet_refuses_control_markets():

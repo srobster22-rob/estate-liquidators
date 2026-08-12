@@ -268,6 +268,19 @@ def unregister(name: str) -> None:
         _MARKETS.remove(spec)
 
 
+def reset(specs: list[MarketSpec]) -> None:
+    """Restore the catalogue to an exact earlier snapshot, order included.
+
+    `register` appends, so putting families back one at a time after a temporary
+    swap reorders the catalogue — and order decides which family the factory
+    proposes for first, so a run after a swap would not reproduce a run before
+    it. Used by `decaysweep.use_catalogue`.
+    """
+    _MARKETS[:] = list(specs)
+    BY_NAME.clear()
+    BY_NAME.update({m.name: m for m in _MARKETS})
+
+
 def all_markets(include_controls: bool = True) -> list[MarketSpec]:
     return [m for m in _MARKETS if include_controls or not m.control]
 

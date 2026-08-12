@@ -1,10 +1,10 @@
 # Bot factory: run report
 
-_Generated 2026-08-06 05:14:58 from `run_state.json`._
+_Generated 2026-08-12 11:54:07 from `run_state.json`._
 
 ## Result
 
-**4 distinct strategies passed all eight gates** (30 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes).
+**4 distinct strategies passed all eight gates** (30 genomes — several are the same rule at a different threshold or gene weight, which is why the headline counts structures rather than genomes). Read that number together with the two sections below it: what survives this run's *closing* standard of proof rather than the standard in force when each bot was found, and what survives a faster decay rate. Both are more conservative.
 
 12,400 candidates were screened across 19 generations and 2 search-space expansions; 353 reached the gauntlet; 29,049 backtests were run.
 
@@ -17,6 +17,35 @@ The certified bots retain **60%-84%** of their first-half alpha in the second ha
 None of the 2 families that decay *faster* than the default (`futures_trend_decay_daily`, `eq_largecap_break_daily`) certified anything.
 
 **Search-burden headroom.** These were certified after 353 confirmation tests, and G6's luck bar rises with that count — so the count matters as much as the Sharpe. Headroom is the largest search each bot's evidence could have come out of and still clear G6: **27 of 30 genomes clear a bar ten times harder than the one they actually faced** (headroom 12,019,039 down to 229). Read it before the Sharpe — a bot whose headroom is close to the tests already run would vanish in a more serious hunt.
+
+## Re-judged at the standard this run finished with
+
+G6's luck bar rises with the size of the search — that is what it is for — so a bot certified in an early generation was measured against a smaller search than this run eventually became. Two inputs drift as a run continues: the confirmation-test count, and the variance of the trial-Sharpe distribution the bar is built from. Below, every proven bot is re-judged at the closing values (**353 confirmation tests, trial variance 0.123**). Nothing here can certify a bot that was not already certified; it can only take one away.
+
+**27 of 30 genomes still clear it — 3 distinct strategies, down from 4.** The headline count above is the one each bot earned when it was found; this is the one the run's own closing standard supports, and it is the more conservative of the two.
+
+| bot | market | burden when certified | variance then | DSR now | headroom now |
+|---|---|---|---|---|---|
+| `5ea21d4fc2f9` | `eq_largecap_daily` | 222 | 0.110 | 0.778 | 143 |
+| `2129e0f45017` | `eq_largecap_daily` | 242 | 0.111 | 0.834 | 175 |
+| `e8840ff23941` | `eq_largecap_daily` | 262 | 0.114 | 0.851 | 188 |
+
+## How much of this depends on the decay rate
+
+The catalogue's fade — halflife half the series, 35% floor — was chosen as the mildest setting that still certifies anything, not measured from data. So the headline above is not a number, it is a number *at one rate*. The sweep below re-runs a **fixed, pre-registered panel** — every untuned archetype of every family, plus every distinct strategy the search has certified — at each fade rate. Same genomes, same gates, same multiplicity denominator, seed-paired instances: the only thing that differs between two rows is how fast the edge goes away.
+
+| rung | halflife | mean edge | edge at end | distinct strategies | genomes | markets |
+|---|---|---|---|---|---|---|
+| `stationary` | never | 1.00 | 1.00 | 5 | 12 | `commodity_meanrev_daily`, `eq_largecap_daily` |
+| `hl=1.00x` | 48 yr | 0.82 | 0.68 | 4 | 11 | `commodity_meanrev_daily`, `eq_largecap_daily` |
+| `hl=0.50x` | 24 yr | 0.70 | 0.51 | 4 | 10 | `commodity_meanrev_daily`, `eq_largecap_daily` |
+| `hl=0.25x` | 12 yr | 0.57 | 0.39 | 0 | 0 | — |
+| `hl=0.125x` | 6 yr | 0.47 | 0.35 | 0 | 0 | — |
+| `hl=0.125x/f10` | 6 yr | 0.26 | 0.10 | 0 | 0 | — |
+| `break@45%` | abrupt | 0.53 | 0.15 | 0 | 0 | — |
+| `break@85%` | abrupt | 0.87 | 0.15 | 1 | 1 | `commodity_meanrev_daily` |
+
+Read it as a sentence: **the strategies this lab has found survive a halflife of about 24 simulated years and are gone by 12.** Four to none across one rung that only takes the mean edge from 0.70 to 0.57 — because the whole population of viable strategies sits in a narrow band just above the replication bar, so a 20% edge cut does not thin the field, it empties it. Nothing survives an abrupt break in the first half of its life. Everything above is conditional on where in that range the real world sits, and this repository cannot tell you.
 
 ## Rejection funnel
 
@@ -2506,30 +2535,6 @@ The two portfolio numbers differ because this lab generates each market family i
 | 17 | 3 | 720 | 12 | 20 | 0 | 2 | +0.53 | 112s |
 | 18 | 3 | 720 | 12 | 19 | 0 | 2 | +0.55 | 122s |
 | 19 | 3 | 720 | 12 | 20 | 0 | 1 | +0.55 | 118s |
-
-## Market calibration
-
-`ceiling` is the perfect-foresight Sharpe bound implied by the planted structure; `gross`/`net` are the best textbook archetype without and with costs. A family whose net number is negative is a market where the honest answer is *don't trade this*.
-
-The two `control_*` rows show a positive net number (~+0.3) and that is expected, not a contradiction: it is the **maximum over 13 archetypes of a median over 6 instances**, which is a selection statistic, and on 12 years of daily data its null spread is about that size. The point of the controls is not that no single statistic on them is ever positive — it is that nothing survives *replication* on them, which is what the gauntlet tests and what `run.py fpr` measures end to end (0 certified from 3,000 candidates).
-
-| family | vol | ceiling SR | gross alphaSR | net alphaSR | cost bite | archetypes net + |
-|---|---|---|---|---|---|---|
-| eq_index_daily | 16.3% | 1.02 | +0.15 | +0.06 | +0.09 | 3/10 |
-| eq_largecap_daily | 29.1% | 0.82 | +0.47 | +0.36 | +0.10 | 4/10 |
-| eq_smallcap_daily | 46.0% | 1.30 | +0.56 | +0.00 | +0.00 | 1/10 |
-| fx_major_daily | 8.3% | 1.26 | +0.37 | +0.19 | +0.18 | 3/12 |
-| fx_em_daily | 13.8% | 1.02 | +0.22 | +0.01 | +0.19 | 3/12 |
-| crypto_major_hourly | 58.4% | 1.80 | +0.91 | -0.75 | +0.74 | 0/10 |
-| crypto_alt_hourly | 110.5% | 1.86 | +1.12 | -0.95 | +0.95 | 0/10 |
-| futures_trend_daily | 13.9% | 0.94 | +0.31 | +0.21 | +0.09 | 6/12 |
-| commodity_meanrev_daily | 35.7% | 0.87 | +0.48 | +0.36 | +0.12 | 4/12 |
-| rates_daily | 5.5% | 0.87 | +0.31 | +0.16 | +0.15 | 6/12 |
-| eq_intraday_15m | 21.9% | 1.82 | +0.74 | -0.00 | -0.00 | 0/10 |
-| futures_trend_decay_daily | 13.6% | 0.54 | +0.08 | +0.00 | -0.00 | 2/12 |
-| eq_largecap_break_daily | 29.2% | 0.62 | +0.29 | +0.22 | +0.06 | 5/10 |
-| control_efficient_daily | 20.5% | 0.00 | +0.12 | +0.08 | +0.04 | 4/10 |
-| control_martingale_daily | 20.0% | 0.00 | +0.09 | +0.07 | +0.02 | 6/10 |
 
 ## Standard of proof used
 
