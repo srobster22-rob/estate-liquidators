@@ -1,0 +1,11 @@
+{
+  "name": "Flood, water, and what your insurance doesn't cover",
+  "short_name": "Flood & water",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfaf7",
+  "theme_color": "#12405c",
+  "description": "Coverage gaps, the insurance waiting period as a date, and a damage record.",
+  "icons": []
+}

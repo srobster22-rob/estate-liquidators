@@ -57,8 +57,31 @@ export async function loadChain(): Promise<ChainEntry[]> {
   }
 }
 
+/** Thrown when the device refuses the write — quota exhausted, or private-mode storage. */
+export class StorageUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super('The record could not be saved on this device.');
+    this.name = 'StorageUnavailableError';
+    this.cause = cause;
+  }
+}
+
+/**
+ * Persists the chain, and REPORTS failure rather than swallowing it.
+ *
+ * The original version called setItem unguarded. On a full device, or in a private window where
+ * localStorage throws on write, the entry the user had just typed vanished with no message — on
+ * an app whose entire purpose is keeping a record somebody can rely on months later. Swallowing
+ * the error would have been worse: the entry would sit on screen looking saved until a reload.
+ *
+ * So the caller is told, keeps the entry in memory, and is pushed to export immediately.
+ */
 export async function saveChain(chain: ChainEntry[]): Promise<void> {
-  localStorage.setItem(CHAIN_KEY, JSON.stringify(chain));
+  try {
+    localStorage.setItem(CHAIN_KEY, JSON.stringify(chain));
+  } catch (err) {
+    throw new StorageUnavailableError(err);
+  }
 }
 
 /** Shown on the log screen, because running out of space silently is the failure to avoid. */

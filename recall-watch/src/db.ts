@@ -103,6 +103,7 @@ export function migrate(db: Db): void {
       claimed_at TEXT,
       sent_at TEXT,
       delivered INTEGER NOT NULL DEFAULT 0,
+      dead_lettered_at TEXT,
       last_error TEXT,
       created_at TEXT NOT NULL,
       UNIQUE (subscriber_id, recall_id)
@@ -120,7 +121,7 @@ export function migrate(db: Db): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_notifications_pending
-      ON notifications (delivered, claimed_at);
+      ON notifications (delivered, dead_lettered_at, claimed_at);
   `);
 }
 

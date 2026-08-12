@@ -5,7 +5,7 @@ import {
   appendEntry, verifyChain, describeTimestamp, makePhotoRecord, hashBytes, METHODOLOGY,
   type ChainEntry, type PhotoRecord,
 } from './evidence.js';
-import { loadChain, saveChain, putBlob, storageReport } from './store.js';
+import { loadChain, saveChain, putBlob, storageReport, StorageUnavailableError } from './store.js';
 
 const data = indexData as unknown as DataIndex;
 
@@ -142,9 +142,13 @@ function renderPrepare(): string {
 // ------------------------------------------------------------------ damage log
 
 let chain: ChainEntry[] = [];
+/** Entries held only in memory because the device refused to save them. */
+let unsavedCount = 0;
 
 async function renderLog(): Promise<string> {
-  chain = await loadChain();
+  // Only re-read from storage when nothing is being held in memory, or a failed save would be
+  // undone by the next render and the entry really would disappear.
+  if (unsavedCount === 0) chain = await loadChain();
   const check = await verifyChain(chain);
   const report = await storageReport();
 
@@ -163,8 +167,15 @@ async function renderLog(): Promise<string> {
       }).join('')
     : '<p>Nothing recorded yet.</p>';
 
+  const unsavedBanner = unsavedCount > 0
+    ? `<div class="callout callout-danger"><p><strong>${unsavedCount}
+        ${unsavedCount === 1 ? 'entry is' : 'entries are'} not saved on this device.</strong>
+        Save the PDF now — closing this tab will lose ${unsavedCount === 1 ? 'it' : 'them'}.</p></div>`
+    : '';
+
   return `
     <h1>Damage record</h1>
+    ${unsavedBanner}
     <p>Everything stays on this device. Entries cannot be edited — a change adds a correction and
       both stay visible, which is what makes the record worth anything.</p>
 
@@ -175,6 +186,8 @@ async function renderLog(): Promise<string> {
       <input type="file" id="photo" accept="image/*" /></p>
       <p><button class="btn" id="add">Add to record</button></p>
     </div>
+
+    <p><button class="btn btn-secondary" id="export">Save as a PDF for your insurer</button></p>
 
     <p>Chain: <span class="${check.intact ? 'chain-ok' : 'chain-broken'}">
       ${chain.length} ${chain.length === 1 ? 'entry' : 'entries'},
@@ -230,7 +243,18 @@ async function addLogEntry(): Promise<void> {
   }
 
   chain = [...chain, await appendEntry(chain, { note, ...(photo ? { photo } : {}) }, createdAt)];
-  await saveChain(chain);
+  try {
+    await saveChain(chain);
+  } catch (err) {
+    if (!(err instanceof StorageUnavailableError)) throw err;
+    // Keep it in memory so it can still be exported, and say so plainly. An entry that looks
+    // saved and is not is the worst outcome this screen can produce.
+    unsavedCount++;
+    alert(
+      'This device would not save the record — it may be out of space, or this may be a private ' +
+        'window. The entry is still here for now. Save the PDF before you close this tab.',
+    );
+  }
   await route();
 }
 
@@ -299,6 +323,17 @@ function wireCoverage(): void {
 
 function wireLog(): void {
   document.getElementById('add')?.addEventListener('click', () => { void addLogEntry(); });
+  document.getElementById('export')?.addEventListener('click', () => {
+    void (async () => {
+      // Loaded on demand. pdf-lib is ~175KB gzipped and the emergency screen must not carry it:
+      // that screen has to render offline in under two seconds on a bad phone, and nobody
+      // reaching it is about to generate a PDF. The byte-budget check caught this as a
+      // regression after the export landed — same treatment as exifr.
+      const { buildPacket, downloadBlob } = await import('./export.js');
+      const bytes = await buildPacket(chain, new Date().toISOString().slice(0, 10));
+      downloadBlob(bytes, `water-damage-record-${new Date().toISOString().slice(0, 10)}.pdf`);
+    })();
+  });
 }
 
 const buildLine = document.getElementById('build-line');
@@ -306,3 +341,11 @@ if (buildLine) buildLine.textContent = `Data built ${data.builtAt}`;
 
 window.addEventListener('hashchange', () => { void route(); });
 void route();
+
+// Offline is not a nicety here. The power is out during the event this app exists for, and the
+// emergency screen is the reason it exists. Registration failure never blocks the page.
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}

@@ -20,6 +20,35 @@ import type { Recall } from './types.js';
 
 const CLAIM_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * After this many failed attempts a message is dead-lettered and an operator is told.
+ *
+ * The version before this one left a permanently failing message in the table with `last_error`
+ * set and nobody informed — so a bad phone number, a suspended account, or a carrier block meant
+ * somebody silently stopped receiving recall alerts while the dashboard showed nothing wrong.
+ * For a safety notification service, failing quietly is the worst available behaviour.
+ */
+const MAX_ATTEMPTS = 5;
+
+export interface OperatorAlert {
+  kind: 'delivery_dead_letter';
+  notificationId: number;
+  subscriberId: number;
+  recallId: number;
+  attempts: number;
+  lastError: string;
+}
+
+/** Where dead letters go. Wire this to whatever a human actually reads. */
+export type OperatorSink = (alert: OperatorAlert) => void | Promise<void>;
+
+export const consoleOperatorSink: OperatorSink = (a) => {
+  console.error(
+    `[OPERATOR] notification ${a.notificationId} for subscriber ${a.subscriberId} gave up after ` +
+      `${a.attempts} attempts: ${a.lastError}. Somebody is not receiving recall alerts.`,
+  );
+};
+
 /** Only high-severity recalls earn a text. Everything else belongs in a digest, or nowhere. */
 export function earnsSms(severity: Recall['severity']): boolean {
   return severity === 'high';
@@ -74,7 +103,8 @@ export function claimBatch(db: Db, limit = 20, now = Date.now()): Claim[] {
     const rows = db.prepare(`
       SELECT n.id, s.phone, n.body, n.idempotency_key
       FROM notifications n JOIN subscribers s ON s.id = n.subscriber_id
-      WHERE n.delivered = 0 AND (n.claimed_at IS NULL OR n.claimed_at < ?)
+      WHERE n.delivered = 0 AND n.dead_lettered_at IS NULL
+        AND (n.claimed_at IS NULL OR n.claimed_at < ?)
       ORDER BY n.id LIMIT ?
     `).all(cutoff, limit) as unknown as Claim[];
     const mark = db.prepare('UPDATE notifications SET claimed_at = ?, attempts = attempts + 1 WHERE id = ?');
@@ -92,10 +122,12 @@ export async function deliverBatch(
   provider: SmsProvider,
   limit = 20,
   now = Date.now(),
-): Promise<{ attempted: number; delivered: number; failed: number }> {
+  onOperatorAlert: OperatorSink = consoleOperatorSink,
+): Promise<{ attempted: number; delivered: number; failed: number; deadLettered: number }> {
   const batch = claimBatch(db, limit, now);
   let delivered = 0;
   let failed = 0;
+  let deadLettered = 0;
 
   const ok = db.prepare('UPDATE notifications SET delivered = 1, sent_at = ?, last_error = NULL WHERE id = ?');
   const bad = db.prepare('UPDATE notifications SET claimed_at = NULL, last_error = ? WHERE id = ?');
@@ -108,13 +140,32 @@ export async function deliverBatch(
       ok.run(new Date(now).toISOString(), row.id);
       delivered++;
     } else {
-      // Release the claim so it is retried, and record why. A permanently failing message
-      // should raise an operator alert rather than sit silently — see VERIFY.md.
       bad.run(res.error ?? 'unknown', row.id);
       failed++;
+
+      const state = db.prepare(
+        'SELECT attempts, subscriber_id, recall_id FROM notifications WHERE id = ?',
+      ).get(row.id) as { attempts: number; subscriber_id: number; recall_id: number };
+
+      if (Number(state.attempts) >= MAX_ATTEMPTS) {
+        // Stop retrying and tell a person. `dead_lettered_at` keeps it out of future batches
+        // without marking it delivered, because it was not delivered and the record must not
+        // claim otherwise.
+        db.prepare('UPDATE notifications SET dead_lettered_at = ? WHERE id = ?')
+          .run(new Date(now).toISOString(), row.id);
+        deadLettered++;
+        await onOperatorAlert({
+          kind: 'delivery_dead_letter',
+          notificationId: row.id,
+          subscriberId: Number(state.subscriber_id),
+          recallId: Number(state.recall_id),
+          attempts: Number(state.attempts),
+          lastError: res.error ?? 'unknown',
+        });
+      }
     }
   }
-  return { attempted: batch.length, delivered, failed };
+  return { attempted: batch.length, delivered, failed, deadLettered };
 }
 
 export function unsubscribe(db: Db, phone: string, now = new Date().toISOString()): number {

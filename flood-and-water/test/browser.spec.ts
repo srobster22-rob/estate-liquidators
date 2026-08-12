@@ -99,3 +99,64 @@ test('screenshots', async ({ page }) => {
     await page.screenshot({ path: `screenshots/${s === '/' ? 'coverage' : 'now'}.png`, fullPage: true });
   }
 });
+
+test('the emergency screen works with the network cut', async ({ page, context }) => {
+  await page.goto('/');
+  await page.waitForSelector('#app h1');
+  await page.waitForTimeout(700); // let the worker install and claim
+  await context.setOffline(true);
+  await page.goto('/#/now');
+  await expect(page.locator('.emergency h1')).toContainText(/never walk or drive/i);
+  await page.goto('/#/log');
+  await expect(page.locator('#note')).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('the damage record exports a PDF containing the methodology', async ({ page }) => {
+  await page.goto('/#/log');
+  await page.locator('#note').fill('Water reached the third step');
+  await page.locator('#add').click();
+  await expect(page.locator('.entry')).toHaveCount(1);
+
+  const download = page.waitForEvent('download');
+  await page.locator('#export').click();
+  const file = await download;
+  const stream = await file.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const c of stream) chunks.push(c as Buffer);
+  const pdf = Buffer.concat(chunks);
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(pdf.length).toBeGreaterThan(1000);
+});
+
+test('a refused write is reported, not swallowed, and the entry survives', async ({ page }) => {
+  // The failure this guards: a full device or a private window makes localStorage.setItem throw,
+  // and the entry the user just typed disappears with no message.
+  await page.goto('/#/log');
+  await page.addInitScript(() => {
+    const real = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === 'fw.chain') throw new DOMException('quota', 'QuotaExceededError');
+      return real.call(this, k, v);
+    };
+  });
+  await page.reload();
+  await page.waitForSelector('#note');
+
+  const alerts: string[] = [];
+  page.on('dialog', (d) => { alerts.push(d.message()); void d.accept(); });
+
+  await page.locator('#note').fill('Water reached the third step');
+  await page.locator('#add').click();
+  await expect.poll(() => alerts.length).toBe(1);
+  expect(alerts[0]).toMatch(/would not save/i);
+
+  // Still on screen, and clearly flagged as not saved.
+  await expect(page.locator('.entry')).toHaveCount(1);
+  await expect(page.locator('.callout-danger')).toContainText(/not saved on this device/i);
+
+  // And still exportable, which is the whole point of keeping it in memory.
+  const download = page.waitForEvent('download');
+  await page.locator('#export').click();
+  expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+});

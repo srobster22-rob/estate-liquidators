@@ -390,9 +390,18 @@ function wireAnswer(): void {
     );
     if (!note) return;
     const key = 'dg.reports';
-    const existing = JSON.parse(localStorage.getItem(key) ?? '[]');
-    existing.push({ slug, note, on: new Date().toISOString().slice(0, 10) });
-    localStorage.setItem(key, JSON.stringify(existing));
+    try {
+      const existing = JSON.parse(localStorage.getItem(key) ?? '[]');
+      existing.push({ slug, note, on: new Date().toISOString().slice(0, 10) });
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch {
+      // Full device, or a private window. Tell them rather than appearing to have saved it.
+      alert(
+        "This device wouldn't save the report. Please tell whoever maintains this list directly " +
+          '— see the About page.',
+      );
+      return;
+    }
     btn.replaceWith(
       Object.assign(document.createElement('p'), {
         textContent:

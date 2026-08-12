@@ -334,3 +334,62 @@ describe('subscriber records hold the minimum', () => {
     expect(cols).toEqual(['id', 'phone', 'language', 'active', 'created_at']);
   });
 });
+
+describe('a permanently failing message is dead-lettered and an operator is told', () => {
+  it('gives up after the attempt limit and raises exactly one alert', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    const queued = enqueue(db, NOW);
+    expect(queued).toBeGreaterThan(0);
+
+    const alerts: unknown[] = [];
+    const sink = (a: unknown) => { alerts.push(a); };
+    const alwaysFails = new FlakySmsProvider(Number.MAX_SAFE_INTEGER);
+
+    // Five attempts, each a fresh claim window.
+    for (let i = 1; i <= 5; i++) {
+      await deliverBatch(db, alwaysFails, 20, Date.parse(NOW) + i * 10 * 60_000, sink);
+    }
+
+    expect(alerts).toHaveLength(queued);
+    const a = alerts[0] as Record<string, unknown>;
+    expect(a.kind).toBe('delivery_dead_letter');
+    expect(Number(a.attempts)).toBe(5);
+    expect(a.lastError).toBe('simulated failure');
+
+    // Dead-lettered rows are never claimed again — no infinite retry loop.
+    const after = await deliverBatch(db, alwaysFails, 20, Date.parse(NOW) + 60 * 60_000, sink);
+    expect(after.attempted).toBe(0);
+    expect(alerts).toHaveLength(queued);
+  });
+
+  it('a dead letter is never recorded as delivered', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    enqueue(db, NOW);
+    const alwaysFails = new FlakySmsProvider(Number.MAX_SAFE_INTEGER);
+    for (let i = 1; i <= 5; i++) {
+      await deliverBatch(db, alwaysFails, 20, Date.parse(NOW) + i * 10 * 60_000, () => {});
+    }
+    const rows = db.prepare(
+      'SELECT delivered, dead_lettered_at FROM notifications',
+    ).all() as { delivered: number; dead_lettered_at: string | null }[];
+    for (const r of rows) {
+      expect(Number(r.delivered)).toBe(0);
+      expect(r.dead_lettered_at).toBeTruthy();
+    }
+  });
+
+  it('a message that succeeds before the limit is never dead-lettered', async () => {
+    await ingestAll(db);
+    runMatching(db, NOW);
+    const queued = enqueue(db, NOW);
+    const flaky = new FlakySmsProvider(queued * 2); // fail each message twice
+    const alerts: unknown[] = [];
+    for (let i = 1; i <= 4; i++) {
+      await deliverBatch(db, flaky, 20, Date.parse(NOW) + i * 10 * 60_000, (a) => { alerts.push(a); });
+    }
+    expect(alerts).toHaveLength(0);
+    expect(flaky.sent).toHaveLength(queued);
+  });
+});
