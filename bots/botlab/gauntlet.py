@@ -81,10 +81,24 @@ class GauntletConfig:
 
 @dataclass
 class Stage:
+    """One gate's verdict.
+
+    `margin` is how much room the *binding* statistic had, in the units of that
+    gate — positive means it passed by that much. Pass/fail alone hides the
+    difference between clearing a bar by 0.01 and clearing it by 0.20, and that
+    difference is the whole evidential content. It is the same gap
+    `burden_headroom` was added to close for G6 (F17), generalised: measured on
+    the late-break catalogue, all four certified bots cleared the final-quarter
+    durability leg by between 0.00 and 0.02.
+
+    `None` where a gate has no single binding scalar.
+    """
+
     name: str
     passed: bool
     detail: str
     stats: dict = field(default_factory=dict)
+    margin: float | None = None
 
 
 @dataclass
@@ -267,7 +281,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     stages.append(Stage("G1-oos", ok,
                         f"alphaSR {pooled.alpha_sharpe:+.2f} (need {cfg.min_oos_alpha_sr:+.2f}), "
                         f"{pooled.n_trades} trades, {pos:.0%} instances positive",
-                        pooled.to_dict()))
+                        pooled.to_dict(),
+                        margin=pooled.alpha_sharpe - cfg.min_oos_alpha_sr))
     if not ok:
         return fail("G1-oos")
 
@@ -299,7 +314,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
                         f"(need {cfg.min_repl_pos_frac:.0%}), median DD {dd_med:.1%} "
                         f"/ worst {dd_worst:.1%} (allowed {-cfg.max_drawdown:.0%}"
                         f"/{-cfg.max_drawdown * 1.6:.0%}), {ruins} wipeouts",
-                        pooled.to_dict()))
+                        pooled.to_dict(),
+                        margin=med - cfg.min_repl_alpha_sr))
     if not ok:
         return fail("G2-replication")
 
@@ -353,7 +369,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
                         f"vs early half {early_a:+.2f}, retained {retention:.0%}"
                         + (f" (need {cfg.min_edge_retention:.0%}; market is stationary)"
                            if stationary_market
-                           else " (ratio not gated: this market decays by design)")))
+                           else " (ratio not gated: this market decays by design)"),
+                        margin=min(late_a, final_a) - cfg.min_late_alpha_sr))
     if not ok:
         return fail("G2b-durability")
 
@@ -369,7 +386,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     perf.update(control_worst_alpha_sr=worst_ctrl)
     stages.append(Stage("G3-controls", ok,
                         f"worst |alphaSR| {worst_ctrl:.2f} (allowed {cfg.max_control_alpha_sr:.2f}) "
-                        f"[{', '.join(ctrl_detail)}]"))
+                        f"[{', '.join(ctrl_detail)}]",
+                        margin=cfg.max_control_alpha_sr - worst_ctrl))
     if not ok:
         return fail("G3-controls")
 
@@ -386,7 +404,10 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     stages.append(Stage("G4-stress", ok,
                         f"2x costs {p2.alpha_sharpe:+.2f} (need {cfg.cost_stress_2x_min:+.2f}), "
                         f"3x {p3.alpha_sharpe:+.2f} (need {cfg.cost_stress_3x_min:+.2f}), "
-                        f"+1 bar delay {pd_.alpha_sharpe:+.2f} (need {cfg.delay_stress_min:+.2f})"))
+                        f"+1 bar delay {pd_.alpha_sharpe:+.2f} (need {cfg.delay_stress_min:+.2f})",
+                        margin=min(p2.alpha_sharpe - cfg.cost_stress_2x_min,
+                                   p3.alpha_sharpe - cfg.cost_stress_3x_min,
+                                   pd_.alpha_sharpe - cfg.delay_stress_min)))
     if not ok:
         return fail("G4-stress")
 
@@ -417,7 +438,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
                         f"real {real.alpha_sharpe:+.2f} vs null {null_mean:+.2f}"
                         f"+-{null_sd:.2f} (p99 {np.quantile(null_arr, 0.99):+.2f}) -> "
                         f"z={z_null:.1f}, p={p_value:.4f} of {null_arr.size} draws "
-                        f"(need <={cfg.perm_p_max})"))
+                        f"(need <={cfg.perm_p_max})",
+                        margin=cfg.perm_p_max - p_value))
     if not ok:
         return fail("G5-permutation")
 
@@ -478,7 +500,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
                         f"Bonferroni p {p_fw:.2e} "
                         f"(need <={cfg.family_wise_p_max}) | stricter all-trials view "
                         f"({n_trials} screened): DSR {dsr_all:.3f} vs SR {sr0_all:.2f}, "
-                        f"p {p_fw_all:.2e}"))
+                        f"p {p_fw_all:.2e}",
+                        margin=dsr - cfg.min_dsr))
     if not ok:
         return fail("G6-multiplicity")
 
@@ -499,7 +522,8 @@ def run_gauntlet(g: Genome, config: GauntletConfig | None = None,
     stages.append(Stage("G7-stress-pool", ok,
                         f"median alphaSR {med:+.2f} (need {cfg.min_stress_alpha_sr:+.2f}), "
                         f"{pos:.0%} positive (need {cfg.min_stress_pos_frac:.0%}), "
-                        f"CAGR {pooled.cagr:+.1%}, median DD {dd_med:.1%}"))
+                        f"CAGR {pooled.cagr:+.1%}, median DD {dd_med:.1%}",
+                        margin=med - cfg.min_stress_alpha_sr))
     if not ok:
         return fail("G7-stress-pool")
 

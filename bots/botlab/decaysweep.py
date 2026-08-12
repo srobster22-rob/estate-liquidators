@@ -74,6 +74,10 @@ RUNGS: list[tuple[str, float, float, float, float]] = [
 
 DEFAULT_RUNG = "hl=0.50x"
 
+#: Snapshot at import, so a test can assert the catalogue swap leaves G3's
+#: negative controls alone — they have no edge to decay and the ladder needs them.
+_BASE_CONTROLS = list(universe.controls())
+
 # The families the sweep varies. The two harsher twins already in the catalogue
 # (`futures_trend_decay_daily`, `eq_largecap_break_daily`) are excluded: they are
 # fixed points on this very axis, and re-decaying them would double-apply it.

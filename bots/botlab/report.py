@@ -17,6 +17,9 @@ from .genome import Genome, SearchSpace
 from .markets import universe
 from .state import RunState
 
+SHARPE_GATES = ("G1-oos", "G2-replication", "G2b-durability",
+                "G4-stress", "G7-stress-pool")
+
 FUNNEL_ORDER = ["G0-market", "G1-oos", "G2-replication", "G2b-durability",
                 "G3-controls", "G4-stress",
                 "G5-permutation", "G6-multiplicity", "G7-stress-pool", "unknown"]
@@ -213,11 +216,28 @@ def write_report(path: str, st: RunState, cfg: gauntlet.GauntletConfig,
                          f"number means the certification leans on the search having been "
                          f"small; a headroom far above it means the edge would survive a "
                          f"much larger hunt.")
+            # How close was this to failing? Pass/fail hides the difference
+            # between clearing a bar by 0.01 and clearing it by 0.20, and only
+            # the Sharpe-denominated gates are commensurable — G5's margin is in
+            # p-value units and capped by the permutation draw count, G6's is a
+            # probability, so both are reported in their own terms above and are
+            # deliberately excluded from this minimum.
+            tight = [(sg.get("margin"), sg["name"]) for sg in v.get("stages", [])
+                     if sg.get("margin") is not None and sg["name"] in SHARPE_GATES]
+            if tight:
+                m, gate = min(tight)
+                L.append(f"- **tightest gate margin: {m:+.3f} alpha Sharpe at {gate}** — how "
+                         f"much room the binding statistic had. A certification that clears "
+                         f"its narrowest gate by a hundredth is a different piece of evidence "
+                         f"from one that clears it by two tenths, and the verdict alone does "
+                         f"not say which this is.")
             L.append("")
             grows = []
-            for s in v.get("stages", []):
-                grows.append(["PASS" if s["passed"] else "FAIL", s["name"], s["detail"]])
-            L.append(_table(grows, ["", "gate", "evidence"]))
+            for sg in v.get("stages", []):
+                mg = sg.get("margin")
+                grows.append(["PASS" if sg["passed"] else "FAIL", sg["name"],
+                              "—" if mg is None else f"{mg:+.3f}", sg["detail"]])
+            L.append(_table(grows, ["", "gate", "margin", "evidence"]))
             L.append("")
             L.append("Confirmation-pool performance (third disjoint instance pool, 20 instances):")
             L.append("")

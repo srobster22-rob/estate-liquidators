@@ -217,6 +217,15 @@ def cmd_verify(a) -> int:
 
 
 def cmd_report(a) -> int:
+    # A ledger from `loop --catalogue <rung>` names markets that only exist while
+    # that rung is registered, so regenerating its report needs the same swap.
+    if a.catalogue:
+        with decaysweep.use_catalogue(a.catalogue):
+            return _report_body(a)
+    return _report_body(a)
+
+
+def _report_body(a) -> int:
     st = state.RunState.load_or_new(a.state, SearchSpace())
     cal = None
     if a.calibrate:
@@ -318,6 +327,9 @@ def main(argv=None) -> int:
     p = sub.add_parser("report", help="rewrite REPORT.md from saved state")
     p.add_argument("--report", default=DEFAULT_REPORT)
     p.add_argument("--calibrate", action="store_true")
+    p.add_argument("--catalogue", default=None,
+                   help="register a decay rung first; needed for a ledger produced "
+                        "by `loop --catalogue`")
     p.set_defaults(fn=cmd_report)
 
     p = sub.add_parser("decay", help="sweep the decay rate and report the survival curve")

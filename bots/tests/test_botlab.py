@@ -580,6 +580,45 @@ def test_durability_gate_can_fire():
         universe.unregister("mild_decay_probe")
 
 
+def test_default_rung_reproduces_the_shipped_catalogue():
+    """The `hl=0.50x` rung is meant to *be* the shipped catalogue, restated. If it
+    is not, every comparison the curve makes is against a straw catalogue and the
+    row labelled "shipped" is a different market from the one that ships."""
+    from bots.botlab import decaysweep as ds
+    from bots.botlab.markets import generate as _gen
+    for v in ds.build_variants("hl=0.50x"):
+        base = universe.get(ds.base_of(v.name))
+        assert v.edge_decay_halflife == base.edge_decay_halflife, \
+            f"{base.name}: rung halflife {v.edge_decay_halflife} != shipped {base.edge_decay_halflife}"
+        assert v.edge_decay_floor == base.edge_decay_floor
+        assert v.vol_fix == base.vol_fix
+        assert np.array_equal(_gen.synth(v, 3).close, _gen.synth(base, 3).close), \
+            f"{base.name}: the default rung is not the same instrument"
+
+
+def test_catalogue_swap_is_total_and_reversible():
+    """`loop --catalogue` has to replace the tradeable catalogue *completely*.
+
+    A candidate that wanders onto a family fading at some other rate would make
+    "what a search finds at rung X" quietly untrue, and the two off-ladder twins
+    (`futures_trend_decay_daily`, `eq_largecap_break_daily`) are exactly that —
+    fixed points on the same axis. Controls must survive the swap, because G3
+    needs them. And the catalogue must come back in its original order, since
+    order decides which family the factory proposes for first.
+    """
+    from bots.botlab import decaysweep as ds
+    before = [m.name for m in universe.all_markets()]
+    with ds.use_catalogue("hl=0.125x"):
+        tradeable = [m.name for m in universe.tradeable(4)]
+        assert tradeable, "the swap left no tradeable families"
+        assert all(n.endswith("~hl=0.125x") for n in tradeable), \
+            f"families at some other decay rate survived the swap: {tradeable}"
+        assert [m.name for m in universe.controls()] == \
+            [m.name for m in ds._BASE_CONTROLS], "the swap disturbed the controls"
+    assert [m.name for m in universe.all_markets()] == before, \
+        "the catalogue was not restored exactly (order included)"
+
+
 def test_final_standard_recheck_can_only_take_bots_away():
     """The closing-standard recheck exists to be conservative. A bigger search
     must never certify *more* than a smaller one, or the luck bar is not a bar."""

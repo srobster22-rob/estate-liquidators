@@ -1143,6 +1143,61 @@ but small edge that a big enough search would still have found by luck.
 
 ---
 
+## F28 · An edge that worked for forty years and then stopped is 19x easier to certify than one that faded gently
+
+F27 searched the fast-fade rung and found nothing. The obvious companion — search
+the *late-break* rung, where 85% of the edge vanishes at the 85% mark — produced
+the opposite result, and it is the most uncomfortable finding in this file.
+
+| catalogue | mean edge | edge at end | candidates | gauntlets | distinct |
+|---|---|---|---|---|---|
+| `break@85%` | 0.87 | 0.15 | **640** | 52 | **4** |
+| `hl=0.50x` *(shipped, 24 yr)* | 0.70 | 0.51 | 12,400 | 353 | 4 |
+| `hl=0.25x` (12 yr) | 0.57 | 0.39 | 16,375 | 459 | **0** |
+
+**Nineteen times less search for the same number of strategies** — and the
+strategies are on different markets. The late-break winners are trend rules on
+`futures_trend_daily` and `fx_major_daily`, two families that produce *nothing* at
+any gradual decay rate in this catalogue. Decay locks trend-following out; a late
+break lets it straight back in.
+
+The mechanism is not mysterious, and it is not a bug: `break@85%` simply has more
+total edge (mean 0.87 against 0.70), because it is at full strength for
+five-sixths of its life. Certification tracks the average over the test window,
+and by that measure the late-break catalogue is the *easiest* thing in the lab.
+
+**The uncomfortable part is what that means about the verdict.** A market that
+worked fully for forty years and then died certifies easily; one that faded gently
+over forty-eight years does not — even though the second is in better shape
+*today* (edge 0.51 against 0.15). The ladder is measuring "did this work, on
+average, across its history", and that is not the same question as "is this
+working now". The two answers diverge most exactly when an edge dies abruptly and
+recently, which is the realistic failure mode and the one a live trader has the
+least warning of.
+
+**G2b's final-quarter leg (F25) is the only gate that pushes back, and it is
+operating at its limit.** It rejected 9 of the 52 gauntleted candidates — 19% of
+the whole funnel, the largest share it has ever taken. But the four that got
+through cleared it by **+0.00, +0.01, +0.01 and +0.02**, against a +0.25 bar. Four
+certifications, decided by hundredths, on the one gate designed to catch this.
+
+Raising that bar to block them is precisely the p-hacking F22 defines — a
+threshold moved because it let through candidates one dislikes. Shortening the
+window costs the statistical power that makes the gate meaningful. So the change
+made instead is to **report the margin rather than move the bar**: every gate now
+records how much room its binding statistic had, and the report prints the
+tightest one for each proven bot. This is the same reasoning that produced
+`burden_headroom` for G6 (F17), generalised — a certification that clears its
+narrowest gate by a hundredth is different evidence from one that clears it by two
+tenths, and pass/fail cannot tell you which you are holding.
+
+The principled fix for the gate itself is a *changepoint* statistic rather than a
+shorter window: ask whether the late alpha series contains a break, not whether
+its average is high enough. That is written down in `ITERATION-PROMPT.md` and has
+not been built.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.
