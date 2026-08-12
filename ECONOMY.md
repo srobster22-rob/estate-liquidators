@@ -72,6 +72,30 @@ authored centrepiece would have become a joke.
 
 Re-banded to **$4,000–8,000**. `LEVEL-SPEC.md` §2 is updated to match.
 
+### The apex is always CLEAN, and that had never been written down
+
+Nothing in `LEVEL-SPEC.md` or this document said whether the apex object can carry a curse
+grade. R28 priced the silence, on night 4 (van 19, quota $10,250):
+
+| Apex policy | Night's earnings | Of which the apex | Vans lost |
+|---|---:|---:|---:|
+| skip it | $10,340 | — | 31% |
+| **take it, always clean** | **$12,260** | $5,998 | 23% |
+| take it, grade rolled like anything else | $13,840 | **$10,178** | 26% |
+
+**Taking it is worth +19%**, which settles D-21 against the *current* economy rather than
+against the pre-curse `chain_sim` that first established it. Reserving five slots for a single
+object is correct.
+
+**Letting it roll a grade is worth another +13%, and would ruin the game.** One object becomes
+70% of a night's income, decided by a hidden coin flip at spawn. A malignant apex is worth
+$24,000–48,000 against a $10,250 quota — it clears the night four times over, so nothing else
+a crew does that night matters. Every decision the economy is built out of gets flattened by
+one lottery ticket.
+
+Making it *visibly* malignant does not save it either: at four times the quota it is an
+auto-take, so it is not a decision, just a bigger number.
+
 Note that two-man items are deliberately *slightly* worse per slot than armfuls of the same
 tier. They're big single grabs that solve a logistics problem — one trip instead of three —
 and they cost two people and a pinch-point crossing to move. They should never also be the

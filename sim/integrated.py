@@ -79,6 +79,19 @@ RUIN_EXP = 1.8
 # DESIGN choice with a measurable price, so it is a parameter, not an assumption.
 CARRY_TELL = True
 
+# R28 - the apex object, priced against the curse economy for the first time.
+#
+# Every model that has judged the apex ran in chain_sim, which predates curses,
+# the marginal policy and the recalibrated quotas. And the specs never say
+# whether the apex can carry a curse grade at all - LEVEL-SPEC 2 gives it a
+# band and a class and stops. That silence is worth pricing: at x6 a malignant
+# apex is worth up to $48,000 against a night-4 quota of $10,250.
+APEX_SLOTS = 5.0                  # ECONOMY 1: a third of the van for one object
+APEX_BAND = (4000.0, 8000.0)      # ECONOMY 3, re-banded after the trap it used to be
+APEX_TRIP_S = 90.0 * 1.18         # tier-3 trip on the dolly (chain_sim CLASS_DATA)
+APEX_LOAD_S = 20.0                # getting a piano onto a dolly
+APEX_UNLOCK_S = 240.0             # tier 3 opens; D-21 says you SEE it long before
+
 
 def draw_grade(rng):
     r = rng.random()
@@ -124,7 +137,7 @@ def scan_cap_of(strategy, slots, slots_total=VAN_SLOTS):
 def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RISK_K,
               curse_cap=None, carry_tell=CARRY_TELL, van_slots=VAN_SLOTS,
               trip_scale=1.0, wards=0, appraise_seconds=APPRAISE_S,
-              appraise_l=None, ruin_exp=RUIN_EXP):
+              appraise_l=None, ruin_exp=RUIN_EXP, apex=None):
     """
     One night with Disturbance and the haul loop fully coupled.
 
@@ -141,6 +154,10 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
     scans = 0
     lost = 0
     modelling_curses = curse_cap is not None
+    # apex: None = not modelled; "skip" = walk past it; "clean"/"rolled" = take it,
+    # with its grade either guaranteed clean or drawn like anything else.
+    apex_taken = False
+    apex_value = 0.0
     cursed_aboard = 0
     gross = 0.0
     fees = 0.0
@@ -158,6 +175,32 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
         tier = depth_at(t)
         trip_s, band = TIER_DATA[tier]
         per_trip = trip_s / (CREW * PARALLEL_EFFICIENCY) * trip_scale
+
+        # The apex. D-21: the crew has seen it since minute one, so a crew that
+        # means to take it holds five slots back from the moment the night starts.
+        if apex and apex != "skip" and not apex_taken:
+            if t >= APEX_UNLOCK_S and slots >= APEX_SLOTS:
+                t += APEX_TRIP_S / (CREW * PARALLEL_EFFICIENCY) * trip_scale + APEX_LOAD_S
+                apex_taken = True
+                if t <= HAUL_S:
+                    grade = draw_grade(rng) if (apex == "rolled" and modelling_curses) \
+                            else "clean"
+                    v = rng.uniform(*APEX_BAND) * (GRADE_MULT[grade]
+                                                   if modelling_curses else 1.0)
+                    slots -= APEX_SLOTS
+                    apex_value = v
+                    if modelling_curses:
+                        gross += v
+                        fees += v * FEE[grade]
+                        if grade != "clean":
+                            cursed_aboard += 1
+                    else:
+                        banked += v
+                continue
+            # Reserving the slots is what makes it reachable at all.
+            if slots <= APEX_SLOTS:
+                t += per_trip
+                continue
 
         # Hold slots back for depth we know is coming.
         if filled >= TIER_CAP[tier] * van_slots and tier < 3:
@@ -338,7 +381,8 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
         banked = 0.0 if ruined else gross - fees
 
     return (banked, scans, lost, d, van_slots - slots, filled, t,
-            cursed_aboard, 1.0 if (modelling_curses and banked == 0.0) else 0.0)
+            cursed_aboard, 1.0 if (modelling_curses and banked == 0.0) else 0.0,
+            apex_value)
 
 
 def trial(strategy, n=2500, **kw):
@@ -359,6 +403,7 @@ def trial(strategy, n=2500, **kw):
         # curses ARE the valuable items.
         "cursed": statistics.mean(r[7] for r in res),
         "ruined": statistics.mean(r[8] for r in res),
+        "apex": statistics.mean(r[9] for r in res),
     }
 
 
@@ -486,6 +531,21 @@ if __name__ == "__main__":
     print("Wards that EXEMPT pieces make the crew safer; wards that gentle the EXPONENT")
     print("make it braver for the same money - 5.3 cursed pieces against 5.0, still")
     print("losing 18% of its vans. An upgrade should move the greed slider, not remove it.")
+
+    print("\n\nR28 — THE APEX, AND A QUESTION THE SPECS NEVER ANSWER")
+    print("Night 4: van 19, quota $10,250. Can the apex carry a curse grade? Nothing in")
+    print("LEVEL-SPEC or ECONOMY says, and the answer is worth a third of a night.")
+    print("-" * 78)
+    print(f"{'apex policy':<30}{'mean $':>10}{'from apex':>11}{'cursed':>8}{'ruined':>8}")
+    for label, ap in (("skip it", "skip"), ("take it, always clean", "clean"),
+                      ("take it, grade rolled", "rolled")):
+        r = trial("MARGIN_30", n=1500, curse_cap=99, apex=ap, van_slots=19)
+        print(f"{label:<30}{r['mean']:>10,.0f}{r['apex']:>11,.0f}"
+              f"{r['cursed']:>8.1f}{r['ruined']:>8.0%}")
+    print("\nTaking it is worth +19% clean, which settles D-21 against the current economy")
+    print("rather than against chain_sim's pre-curse one. Letting it ROLL a grade adds")
+    print("another +13% and makes one object 70% of the night's income - the whole game")
+    print("becomes a coin flip nobody can see. The apex is clean. D-28.")
 
     print("\n\nGREED: does hauling cursed cargo change the calculus?")
     print("-" * 78)

@@ -148,6 +148,48 @@ for line in block.splitlines():
     want = min(0.95, T["van"]["ruin_k"] * n ** T["van"]["ruin_exp"]) * 100
     check(f"DESIGN 4.2 ruin at {n} cursed", float(m.group(2)), want, 0.6)
 
+# ------------------------------------------------------- structure
+# R28 restored a "# Open decisions" heading that R27 had silently deleted while
+# appending a decision - the kind of damage a numbers-only checker sails past.
+# These are the counts three documents quote about each other, maintained by
+# hand for a dozen rounds, which is exactly how long that lasts.
+WORDS = {14: "fourteen", 15: "fifteen", 16: "sixteen", 17: "seventeen",
+         18: "eighteen", 19: "nineteen", 20: "twenty", 21: "twenty-one",
+         22: "twenty-two", 23: "twenty-three", 24: "twenty-four",
+         25: "twenty-five", 26: "twenty-six", 27: "twenty-seven",
+         28: "twenty-eight", 29: "twenty-nine", 30: "thirty",
+         31: "thirty-one", 32: "thirty-two", 33: "thirty-three",
+         34: "thirty-four", 35: "thirty-five"}
+
+decisions = (ROOT / "DECISIONS.md").read_text(encoding="utf-8")
+ids = sorted(int(m) for m in re.findall(r"^## D-(\d+) ", decisions, re.M))
+checks += 1
+if ids != list(range(1, len(ids) + 1)):
+    fails.append(f"DECISIONS.md: decision numbers are not contiguous - {ids}")
+checks += 1
+if "\n# Open decisions" not in decisions:
+    fails.append("DECISIONS.md: the '# Open decisions' section has gone missing")
+
+log = (ROOT / "LOOP_LOG.md").read_text(encoding="utf-8")
+# The middle dot matters: the log wraps, and a line inside R22 begins "R18
+# measured the appraiser...", which a looser pattern counts as a round of its own.
+rounds = len(re.findall(r"^R(\d+) · ", log, re.M))
+build = (ROOT / "BUILD-PROMPT.md").read_text(encoding="utf-8")
+transfer = (ROOT / "TRANSFER.md").read_text(encoding="utf-8")
+for doc, name, needle in ((build, "BUILD-PROMPT.md", f"{len(ids)} settled calls"),
+                          (transfer, "TRANSFER.md", f"({len(ids)} decisions logged")):
+    checks += 1
+    if needle not in doc:
+        fails.append(f"{name}: does not say '{needle}' - "
+                     f"DECISIONS.md now has {len(ids)}")
+word = WORDS.get(rounds)
+for doc, name in ((build, "BUILD-PROMPT.md"), (transfer, "TRANSFER.md")):
+    checks += 1
+    if word is None:
+        fails.append(f"{name}: {rounds} rounds is off the end of the number table")
+    elif f"{word} rounds" not in doc:
+        fails.append(f"{name}: does not say '{word} rounds' - LOOP_LOG has {rounds}")
+
 # ------------------------------------------------------- report
 print(f"DOC CHECK  -  {checks} numbers re-derived from tuning.json")
 print("-" * 74)

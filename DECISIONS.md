@@ -517,6 +517,36 @@ real crews route better than the model's every-trip-is-average assumption, which
 time cheaper than measured and shelving relatively more valuable to everyone. Re-measure trip
 variance from Milestone 2 telemetry before pricing the shop.
 
+---
+
+## D-28 · The apex object is never cursed
+**Status:** FIRM · `ECONOMY.md` §3, `LEVEL-SPEC.md` §2
+
+The estate's centrepiece always has curse grade CLEAN. Its danger is logistics — five van
+slots, a dolly, two people, every pinch point in the house — never a value multiplier.
+
+No document had ever said either way, and the silence was worth a third of a night. Rolling
+the apex's grade like any other item is worth +13% on top of taking it, and makes that one
+object **70% of a night's income**: a malignant apex is $24,000–48,000 against a night-4 quota
+of $10,250, so it clears the quota four times over and nothing else the crew does that night
+counts. Twenty-seven rounds of work went into making ordinary cargo a decision; one lottery
+ticket at spawn flattens all of it.
+
+Making the grade *visible* at spawn does not rescue it. At four times the quota it is an
+auto-take — a bigger number, not a choice.
+
+The apex is worth **+19%** clean, which is a healthy reward for reserving five slots and is
+the first time D-21's economics have been confirmed against the curse economy rather than
+against the pre-curse `chain_sim`.
+
+**Falsified if:** playtests find the apex ignored anyway — that would mean the five-slot
+reservation is too expensive in practice, and the fix is the slot cost or the unlock timing,
+never the grade.
+
+---
+
+# Open decisions
+
 | # | Question | Blocks | Notes |
 |---|---|---|---|
 | ~~O-01~~ | ~~Crew size 4 or 6?~~ | — | **Closed → D-18.** Four. |

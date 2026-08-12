@@ -422,6 +422,32 @@ closed three drift waivers that had gone stale in the same round that created th
 `integrated.py` now genuinely models appraise duration, the ruin constants and all three curse
 tables, so they are asserted rather than waived.
 
+R28 · The apex object — the estate's centrepiece, five van slots, the thing the whole night
+builds toward — had only ever been priced in `chain_sim`, which predates curses, the marginal
+policy and the recalibrated quotas. Modelled it in `integrated.py` with its real costs: the
+dolly trip, twenty seconds to load it, and five slots held back from the start of the night.
+· **Taking it is worth +19%**, so D-21's economics survive contact with the current economy.
+· **And the round found a hole in the specifications rather than in the code: nothing anywhere
+says whether the apex can carry a curse grade.** `LEVEL-SPEC` §2 gives it a band and a class
+and stops. Priced, that silence is worth a third of a night — rolling its grade like any other
+item adds **+13%** and makes one object **70% of the night's income**, because a malignant
+apex is **$24,000–48,000 against a night-4 quota of $10,250**. It clears the quota four times
+over, so nothing else the crew does that night counts, and twenty-seven rounds of work making
+ordinary cargo a decision is flattened by a coin flip at spawn. Making the grade *visible*
+does not rescue it: at four times the quota it is an auto-take, a bigger number rather than a
+choice. · **The apex is CLEAN**, now stated in D-28, `ECONOMY` §3 and the `LEVEL-SPEC` band
+table. Its danger is logistics, never a multiplier. · Worth noting how this was found: not by
+reading the specs but by trying to *model* something they describe, and discovering there was
+no rule to implement. Prose review cannot catch that — there is nothing on the page to
+disagree with. · **Then the round caught its own damage.** R27 had silently deleted
+`DECISIONS.md`'s "# Open decisions" heading while appending a decision, and nothing noticed
+for a whole round. `check_docs.py` now checks document *structure* as well as numbers:
+decision IDs contiguous, the open-decisions section present, and the round and decision counts
+that three documents quote about each other kept in agreement — bookkeeping I had been doing
+by hand for twelve rounds, which is about how long that lasts. It immediately caught two stale
+counts, and its own first pattern was wrong: it counted 28 rounds against 27, because a
+wrapped line inside R22 begins "R18 measured the appraiser".
+
 ---
 
 ## Next step (paste the loop prompt to resume)
