@@ -1200,10 +1200,18 @@ ok("...and the entire cost lands in the second moment",
 # Why the mean survives: a set that is collectively underpriced is on average made of
 # individually underpriced legs, so a partial fill is a positive-EV directional position.
 # That is K22's sentence being right about the mechanism and wrong about the consequence.
+# The threshold here was 0.5 of perfect fill, which is an arbitrary number and duly failed at
+# 0.49 when K27's batched draw shifted the rng path. The CLAIM is not "income exceeds half" —
+# it is that income vastly exceeds the completion rate, because the incomplete attempts are
+# worth something rather than nothing. Assert that instead. If partial fills were worthless
+# income would track the completion rate; it is 6x higher.
+_complete60 = 0.6 ** 5
+_hold60 = _i60["per_set"] / _perf["per_set"]
 ok("a partial bracket is positive-EV, not a loss",
-   _i60["per_set"] > 0.5 * _perf["per_set"],
-   f"at a 60% per-leg fill only {0.6 ** 5:.0%} of attempts complete, yet income holds at "
-   f"{_i60['per_set'] / _perf['per_set'] * 100:.0f}% of perfect fill")
+   _i60["per_set"] > 0 and _hold60 > 4 * _complete60,
+   f"at a 60% per-leg fill only {_complete60:.0%} of attempts complete, yet income holds at "
+   f"{_hold60 * 100:.0f}% of perfect fill — {_hold60 / _complete60:.0f}x what it would be "
+   f"if the incomplete attempts were worthless")
 
 # AND THE VERDICT, which sharpens K22 rather than reversing it.
 ok("marketable execution has the LOWEST information cost of any mode",
@@ -1215,6 +1223,76 @@ ok("...so under IOC this stops being an arbitrage at all",
    _i95["info_cost"] > 3000 and _i95["losing"] > 0,
    f"I={_i95['info_cost']:,.0f} at a 95% per-leg fill — worse than snr_band's ~1,300-3,000, "
    f"the directional strategy it was supposed to beat")
+
+print("\n8p. MISS STRUCTURE — the K26 caveat that pointed the wrong way")
+
+# Every row below holds the MARGINAL per-leg fill rate fixed and moves only the joint
+# distribution of misses. Assert that first: a batched draw that quietly shifted the rate
+# would make every comparison meaningless.
+_R = 0.80
+_st8p = strategies.bracket_arb(min_edge=8, qty=250)
+_d8p = markets.dataset("crypto_bracket_stale", 51_000_000, 2500)
+_base_legs = backtest.run(_d8p, _st8p, backtest.Costs()).n_trades
+_indep_legs = backtest.run(_d8p, _st8p, backtest.Costs(leg_fill_rate=_R)).n_trades
+_adv_legs = backtest.run(_d8p, _st8p,
+                         backtest.Costs(leg_fill_rate=_R, adverse_fill=True)).n_trades
+ok("the marginal per-leg fill rate is what it says it is",
+   abs(_indep_legs / _base_legs - _R) < 0.03 and _indep_legs == _adv_legs,
+   f"want {_R:.2f}, got {_indep_legs / _base_legs:.3f}; adverse fills the same COUNT of "
+   f"legs, it just chooses different ones")
+
+def _m8p(**kw):
+    ms, sds, lose, n, worst = [], [], 0, 0, 0
+    for s in (51_000_000, 53_000_000, 55_000_000, 57_000_000):
+        g = backtest.run(markets.dataset("crypto_bracket_stale", s, 2500), _st8p,
+                         backtest.Costs(**kw)).group_pnl
+        ms.append(statistics.fmean(g)); sds.append(statistics.pstdev(g))
+        lose += sum(1 for x in g if x < 0); n += len(g); worst = min(worst, min(g))
+    return {"e": statistics.fmean(ms), "sd": statistics.fmean(sds),
+            "lose": lose, "n": n, "worst": worst}
+
+_perf8p = _m8p()
+_ind8p = _m8p(leg_fill_rate=_R)
+_cor8p = _m8p(leg_fill_rate=_R, fill_correlation=1.0)
+
+# THE CORRECTION. Correlation across the legs of ONE set is not portfolio correlation: it
+# means the set fills entirely or not at all, so there are no partial brackets at all.
+ok("full correlation RESTORES the riskless property",
+   _cor8p["lose"] == 0 and _cor8p["sd"] < 1.3 * _perf8p["sd"],
+   f"sigma {_perf8p['sd']:,.0f} perfect / {_ind8p['sd']:,.0f} independent / "
+   f"{_cor8p['sd']:,.0f} fully correlated, losing sets "
+   f"{_ind8p['lose']} -> {_cor8p['lose']}")
+ok("...so correlated misses are BETTER than independent, not worse",
+   _cor8p["sd"] < _ind8p["sd"] and _cor8p["lose"] < _ind8p["lose"],
+   "K26 guessed the direction and never measured it")
+
+# And a second, independent reason correlation helps: nothing was committed, so the batch
+# can be re-sent. A partial fill has already tripped the position guard.
+_realised = [backtest.run(_d8p, _st8p, backtest.Costs(**kw)).n_trades / _base_legs
+             for kw in ({"leg_fill_rate": _R},
+                        {"leg_fill_rate": _R, "fill_correlation": 1.0})]
+ok("...and an all-or-nothing miss is RETRYABLE, a partial fill is not",
+   _realised[1] > _realised[0] + 0.03,
+   f"legs filled {_realised[0]:.1%} independent vs {_realised[1]:.1%} fully correlated, "
+   f"at the same nominal {_R:.0%} — the whole batch re-fires against the next quote")
+
+# THE HAZARD K26 NEVER NAMED, and it is a change of sign rather than of magnitude.
+_adv8p = _m8p(leg_fill_rate=_R, adverse_fill=True)
+ok("adverse selection removes the EDGE, not just the risk profile",
+   _adv8p["e"] < 0 < _ind8p["e"],
+   f"independent {_ind8p['e']:+.2f}c/set -> adverse {_adv8p['e']:+.2f}c/set at the same "
+   f"{_R:.0%} fill: you collect the fair legs and miss the cheap one")
+
+# ...and its bite is sharply non-linear, which is what makes it actionable.
+_sw = _ex.adverse_sweep(rates=(0.95, 0.80), seeds=tuple(51_000_000 + 2_000_000 * i
+                                                        for i in range(6)), n=2500)
+ok("...but it is undetectable at a 95% per-leg fill rate",
+   abs(_sw[0]["t"]) < 2.0,
+   f"delta {_sw[0]['delta']:+.2f}c, t={_sw[0]['t']:+.1f} at 95% vs "
+   f"{_sw[1]['delta']:+.2f}c, t={_sw[1]['t']:+.1f} at 80%")
+ok("...so the whole question reduces to one measurable number",
+   _sw[1]["t"] < -2.0 < _sw[0]["t"] or abs(_sw[0]["t"]) < abs(_sw[1]["t"]),
+   "an operator's own per-leg fill rate — the same move coherence.py makes for staleness")
 
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))

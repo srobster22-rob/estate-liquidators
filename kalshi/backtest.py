@@ -79,10 +79,11 @@ class Costs:
     """Execution assumptions. The gate re-runs every candidate through a harsher set of
     these; a bot whose edge does not survive that was fitting the assumptions."""
 
-    __slots__ = ("fee_mult", "extra_spread", "fill_mult", "label", "leg_fill_rate")
+    __slots__ = ("fee_mult", "extra_spread", "fill_mult", "label", "leg_fill_rate",
+                 "fill_correlation", "adverse_fill")
 
     def __init__(self, fee_mult=1.0, extra_spread=0, fill_mult=1.0, label="base",
-                 leg_fill_rate=1.0):
+                 leg_fill_rate=1.0, fill_correlation=0.0, adverse_fill=False):
         self.fee_mult = fee_mult
         self.extra_spread = extra_spread
         self.fill_mult = fill_mult
@@ -96,6 +97,23 @@ class Costs:
         # tick, it leaves you holding k of N brackets — a directional position you did not
         # choose. K22 said that in words and never priced it. See `execution.py`.
         self.leg_fill_rate = leg_fill_rate
+        # HOW MISSES ARE DISTRIBUTED ACROSS LEGS, which K26 named as unmeasured and guessed
+        # about in the wrong direction. Two dials, and they point opposite ways:
+        #
+        #   fill_correlation — probability the fill/miss draw is COMMON to the whole batch.
+        #       At 1.0 a set fills entirely or not at all, so there are no partial brackets
+        #       and the riskless property survives. Correlation is the FRIENDLY end.
+        #
+        #   adverse_fill — when a miss happens, it lands on the most underpriced unfilled
+        #       leg rather than a random one. That is the real mechanism: the quote carrying
+        #       the mispricing is the one whose maker pulls it first, so you systematically
+        #       collect the fair legs and miss the cheap one. This is the hostile end, and
+        #       neither dial is what "correlated misses" meant.
+        #
+        # Both are ENGINE-level: they model what the market does, not what the bot knows.
+        # `adverse_fill` reads true_p, which the engine may see and `View` still cannot.
+        self.fill_correlation = fill_correlation
+        self.adverse_fill = adverse_fill
         self.label = label
 
 
@@ -258,6 +276,58 @@ def _cap_qty(want, depth, cost_per, already_cents):
     return max(0, min(qty, room // cost_per))
 
 
+def _plan_misses(intents, legs, pos, t, costs, rng) -> set:
+    """Which limit orders in this batch fail to fill. Returns intent indices.
+
+    Three regimes, and K26 conflated the last two under "correlated misses are worse":
+
+      INDEPENDENT (fill_correlation=0, adverse_fill=False)
+          every leg draws its own coin. An N-leg order partially fills most of the time.
+
+      COMMON (fill_correlation -> 1)
+          one coin for the whole batch: the set fills entirely or not at all. There are no
+          partial brackets, so the riskless property SURVIVES. This is the friendly end, and
+          it is the opposite of what K26 assumed.
+
+      ADVERSE (adverse_fill=True)
+          the misses land on the most underpriced unfilled legs first, because the quote
+          carrying the mispricing is the one whose maker pulls it first. You collect the
+          fairly-priced legs and miss the cheap one — which is not a smaller version of the
+          independent case, it is a different sign.
+
+    Reads `true_p` to rank legs by mispricing. That is legitimate here and nowhere else: this
+    is the engine modelling the market's own information, and `View` — the only thing a
+    strategy ever sees — is untouched.
+    """
+    if costs.leg_fill_rate >= 1.0:
+        return set()
+    cand = [ix for ix, it in enumerate(intents)
+            if it.otype == "taker" and it.action == "open" and pos[it.leg] is None]
+    if not cand:
+        return set()
+
+    if costs.fill_correlation > 0.0 and rng.random() < costs.fill_correlation:
+        # One draw for the batch: all fill or none do.
+        return set() if rng.random() < costs.leg_fill_rate else set(cand)
+
+    n_miss = sum(1 for _ in cand if rng.random() >= costs.leg_fill_rate)
+    if n_miss <= 0:
+        return set()
+    if n_miss >= len(cand):
+        return set(cand)
+    if not costs.adverse_fill:
+        return set(rng.sample(cand, n_miss))
+
+    # Adverse: miss the legs quoted furthest BELOW their fair value, cheapest first.
+    def _underpricing(ix):
+        it = intents[ix]
+        ep = legs[it.leg]
+        fair = 100.0 * ep.true_p[t]
+        return fair - ep.ask[t] if it.side == "yes" else (100.0 - fair) - (100 - ep.bid[t])
+
+    return set(sorted(cand, key=_underpricing, reverse=True)[:n_miss])
+
+
 def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple[int, int, int, float, int, int]:
     """Backtest one market (or bracket set).
 
@@ -324,8 +394,14 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
         # --- 2. the strategy decides, seeing only the public book up to t -------------
         intents = strat.decide(gv, pos)
 
+        # --- 2b. decide which legs of this batch fill, JOINTLY ------------------------
+        # Done for the whole batch rather than per order, because that is the only place
+        # correlation between legs can live. `_missed` holds the intent indices that a limit
+        # order failed to fill; everything downstream just skips them.
+        _missed = _plan_misses(intents, legs, pos, t, costs, rng)
+
         # --- 3. execute ---------------------------------------------------------------
-        for it in intents:
+        for _ix, it in enumerate(intents):
             i = it.leg
             ep = legs[i]
             bid_t, ask_t = ep.bid[t], ep.ask[t]
@@ -377,10 +453,10 @@ def run_group(group: Group, strat, costs: Costs = BASE_COSTS, rng=None) -> tuple
                 px = min(99, ask_t + costs.extra_spread)
             else:
                 px = min(99, (100 - bid_t) + costs.extra_spread)
-            # A limit order that missed. Drawn per LEG, so an N-leg order can fill partially —
-            # which is the point. Drawn before the depth cap so a miss is a miss regardless of
-            # size, and drawn from the group's own rng so the run stays reproducible.
-            if costs.leg_fill_rate < 1.0 and rng.random() >= costs.leg_fill_rate:
+            # A limit order that missed — decided jointly for the batch in step 2b, so that
+            # misses can be independent, common to the whole set, or aimed at the leg
+            # carrying the mispricing. See `_plan_misses`.
+            if _ix in _missed:
                 continue
             qty = _cap_qty(it.qty, ep.depth[t], px, 0)
             if qty <= 0:

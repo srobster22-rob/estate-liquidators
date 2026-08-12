@@ -36,9 +36,31 @@ whether IOC beats marketable is therefore a comparison between two small numbers
 a small one and a catastrophe, and it has to be measured rather than argued.
 
 `backtest.Costs(leg_fill_rate=f)` implements the IOC side: each leg fills at the quoted ask
-with probability f, independently, and a leg that misses simply never opens. Partial positions
-then settle through the engine's existing logic with no special case, which is deliberate — a
-bespoke settlement path for partial arbs is exactly where a favourable bug would hide.
+with probability f, and a leg that misses simply never opens. Partial positions then settle
+through the engine's existing logic with no special case, which is deliberate — a bespoke
+settlement path for partial arbs is exactly where a favourable bug would hide.
+
+K27 — HOW THE MISSES ARE DISTRIBUTED, WHICH IS THE PART I GOT WRONG
+
+K26 closed by naming its own gap: "fills here are independent per leg; a fast move takes several
+books at once, so real misses are correlated, and correlated misses are worse than independent
+ones at the same marginal rate." The first half is a fair caveat. The second half is a guess,
+it was never measured, and it is BACKWARDS.
+
+Correlation across the legs of ONE set is not portfolio correlation. It means the set fills
+entirely or not at all — so there are no partial brackets and the riskless property survives
+intact. And an all-or-nothing miss is RETRYABLE: nothing was committed, so the batch can be
+re-sent against the next quote, while a partial fill leaves you already in. Both effects point
+the same way, and at full correlation IOC execution is indistinguishable from perfect fill.
+
+The real hazard is a third mechanism K26 never named, and it is a change of SIGN rather than of
+magnitude. ADVERSE SELECTION: the quote carrying the mispricing is the one whose maker pulls it
+first, so you systematically collect the fairly-priced legs and miss the cheap one. That does
+not add variance to an edge, it removes the edge. `adverse_fill=True` models it by aiming the
+misses at the most underpriced unfilled legs.
+
+Its bite is sharply non-linear in the fill rate, which is the operationally useful part — see
+`adverse_sweep`.
 """
 
 from __future__ import annotations
@@ -120,6 +142,71 @@ def flat_in_fill_rate(rows: list[dict]) -> bool:
     return all(r["per_set"] + 2 * r["se"] >= top for r in ioc)
 
 
+def miss_regimes(rate=0.80) -> list[dict]:
+    """The three-way comparison K26's caveat needed and did not run.
+
+    Same marginal per-leg fill rate throughout; only the JOINT distribution of misses moves.
+    """
+    return [
+        measure(backtest.Costs(label="perfect fill (unachievable)")),
+        measure(backtest.Costs(leg_fill_rate=rate,
+                               label=f"IOC {rate:.0%}, independent misses")),
+        measure(backtest.Costs(leg_fill_rate=rate, fill_correlation=0.5,
+                               label=f"IOC {rate:.0%}, half correlated")),
+        measure(backtest.Costs(leg_fill_rate=rate, fill_correlation=1.0,
+                               label=f"IOC {rate:.0%}, fully correlated")),
+        measure(backtest.Costs(leg_fill_rate=rate, adverse_fill=True,
+                               label=f"IOC {rate:.0%}, ADVERSE")),
+    ]
+
+
+def realised_fill_rate(rate=0.80, family=FAMILY, n=4000) -> list[tuple]:
+    """Legs actually filled, as a share of the perfect-fill run, per regime.
+
+    Full correlation lands ABOVE its nominal rate and that is not a leak — it is the second
+    reason correlation helps. When the whole batch misses, nothing is committed, so the
+    strategy re-fires against the next quote and often gets in. A PARTIAL fill cannot be
+    retried: the position guard has already been tripped by the legs that did fill.
+    """
+    st = strategies.bracket_arb(min_edge=MIN_EDGE, qty=QTY)
+    data = markets.dataset(family, SEEDS[0], n)
+    base = backtest.run(data, st, backtest.Costs()).n_trades
+    out = []
+    for label, c in (("independent", backtest.Costs(leg_fill_rate=rate)),
+                     ("adverse", backtest.Costs(leg_fill_rate=rate, adverse_fill=True)),
+                     ("fully correlated",
+                      backtest.Costs(leg_fill_rate=rate, fill_correlation=1.0))):
+        got = backtest.run(data, st, c).n_trades
+        out.append((label, got / base if base else 0.0))
+    return out
+
+
+def adverse_sweep(rates=(0.95, 0.90, 0.80), seeds=None, n=N) -> list[dict]:
+    """Where adverse selection actually bites, with a t-statistic on every row.
+
+    Ten seeds rather than four, because the four-seed version put the 90% row at t=-1.5 and
+    that is not enough to claim a cliff. The claim being made — harmless at 95%, fatal by 80%
+    — is a claim about WHERE the transition is, so the rows either side of it have to be
+    separated by more than their own noise.
+    """
+    seeds = seeds or tuple(51_000_000 + 2_000_000 * i for i in range(10))
+    st = strategies.bracket_arb(min_edge=MIN_EDGE, qty=QTY)
+    out = []
+    for r in rates:
+        arm = []
+        for adv in (False, True):
+            ms = [statistics.fmean(backtest.run(
+                markets.dataset(FAMILY, s, n), st,
+                backtest.Costs(leg_fill_rate=r, adverse_fill=adv)).group_pnl) for s in seeds]
+            arm.append((statistics.fmean(ms), statistics.pstdev(ms) / len(ms) ** 0.5))
+        d = arm[1][0] - arm[0][0]
+        se = (arm[0][1] ** 2 + arm[1][1] ** 2) ** 0.5
+        out.append({"rate": r, "indep": arm[0][0], "indep_se": arm[0][1],
+                    "adverse": arm[1][0], "adverse_se": arm[1][1],
+                    "delta": d, "t": d / se if se else 0.0})
+    return out
+
+
 def partial_anatomy(rows: list[dict]) -> dict:
     """What a partial fill costs, decomposed against what it does to the risk."""
     full = next(r for r in rows if "perfect" in r["label"])
@@ -131,7 +218,8 @@ def partial_anatomy(rows: list[dict]) -> dict:
     }
 
 
-def write_report(path: pathlib.Path, rows: list[dict], anat: dict, flat: bool) -> None:
+def write_report(path: pathlib.Path, rows: list[dict], anat: dict, flat: bool,
+                 regimes=None, sweep=None, realised=None) -> None:
     L = ["# Kalshi Bot Factory — Execution\n"]
     L.append("Every bracket number in this project is quoted at some number of **ticks of "
              "slippage per leg**, and K22's conclusion rests on that axis. That models a "
@@ -206,10 +294,60 @@ def write_report(path: pathlib.Path, rows: list[dict], anat: dict, flat: bool) -
              "the plain directional strategy it was supposed to beat. A riskless trade you "
              "cannot execute risklessly is a directional trade with extra steps.\n")
 
+    if regimes and sweep and realised:
+        L.append("## K27 — how the misses are distributed, which is the part I got wrong\n")
+        L.append("K26 closed by naming its own gap: *\"real misses are correlated, and "
+                 "correlated misses are worse than independent ones at the same marginal "
+                 "rate.\"* The caveat was fair; the direction was a guess, and it is "
+                 "**backwards**.\n")
+        L.append("Correlation across the legs of *one set* is not portfolio correlation. It "
+                 "means the set fills **entirely or not at all** — no partial brackets, so "
+                 "the riskless property survives. Same marginal fill rate in every row below; "
+                 "only the joint distribution moves.\n")
+        L.append("| regime | ¢/set | SE | σ | **I = s²/e** | losing sets | worst set |")
+        L.append("|---|---|---|---|---|---|---|")
+        for r in regimes:
+            ic = "—" if r["info_cost"] == float("inf") else f"{r['info_cost']:,.0f}"
+            L.append(f"| {r['label']} | {r['per_set']:+.2f}¢ | ±{r['se']:.2f} | "
+                     f"{r['sd']:,.0f}¢ | **{ic}** | {r['losing']}/{r['n']:,} | "
+                     f"{r['worst']:+,.0f}¢ |")
+        L.append("")
+        L.append("**At full correlation IOC is indistinguishable from perfect fill** — same "
+                 "σ, same zero losing sets, same information cost. And there is a second "
+                 "reason correlation helps that shows up in the realised fill rate:\n")
+        L.append("| regime | legs filled, vs perfect fill |")
+        L.append("|---|---|")
+        for label, share in realised:
+            L.append(f"| {label} | {share:.1%} |")
+        L.append("")
+        L.append("Full correlation lands *above* its nominal rate. That is not a leak — **an "
+                 "all-or-nothing miss is retryable.** Nothing was committed, so the batch "
+                 "re-fires against the next quote. A partial fill cannot be retried: the "
+                 "legs that did fill have already tripped the position guard.\n")
+
+        L.append("### The hazard is a third mechanism, and it changes the sign\n")
+        L.append("**Adverse selection.** The quote carrying the mispricing is the one whose "
+                 "maker pulls it first, so you systematically collect the fairly-priced legs "
+                 "and miss the cheap one. That does not add variance to an edge — it removes "
+                 "the edge. Ten seeds × 3,000 sets:\n")
+        L.append("| per-leg fill | independent | adverse | delta | t |")
+        L.append("|---|---|---|---|---|")
+        for r in sweep:
+            L.append(f"| {r['rate']:.0%} | {r['indep']:+.2f} ±{r['indep_se']:.2f}¢ | "
+                     f"{r['adverse']:+.2f} ±{r['adverse_se']:.2f}¢ | {r['delta']:+.2f}¢ | "
+                     f"**{r['t']:+.1f}** |")
+        L.append("")
+        L.append("**Sharply non-linear, and that is the operationally useful part.** At a 95% "
+                 "per-leg fill rate adverse selection is undetectable (t = "
+                 f"{sweep[0]['t']:+.1f}). By 80% it takes the strategy **negative**. The "
+                 "transition sits between 95% and 90%, which turns the whole question into "
+                 "one number an operator can measure from their own fill logs — the same move "
+                 "`COHERENCE.md` makes for the staleness rate.\n")
+
     L.append("## What this does not settle\n")
-    L.append("- Fills here are **independent per leg**. A fast move takes several books at "
-             "once, so real misses are correlated — and correlated misses are worse than "
-             "independent ones at the same marginal rate. Nothing here measures that.")
+    L.append("- Adverse selection is modelled as **perfectly informed**: misses land on the "
+             "most underpriced legs, always. Reality sits somewhere between that and random, "
+             "and nothing here locates it.")
     L.append("- The gate's **stress** criterion still applies 2 ticks *and* 1.5× fees. Two "
              "ticks is a marketable-order assumption an IOC limit does not face, so the "
              "right stress for this strategy is a fill-rate stress — but inventing one now, "
@@ -248,7 +386,27 @@ def main():
     print(f"  at a 95% per-leg fill rate this is no longer an arbitrage: I="
           f"{i95['info_cost']:,.0f}, worse than snr_band's ~1,300-3,000")
 
-    write_report(ROOT / "EXECUTION.md", rows, anat, flat)
+    print("\n  K27 — HOW THE MISSES ARE DISTRIBUTED (same marginal rate, different joint)")
+    regimes = miss_regimes()
+    for r in regimes:
+        ic = "  neg" if r["info_cost"] == float("inf") else f"{r['info_cost']:>7,.0f}"
+        print(f"    {r['label']:<34} {r['per_set']:>+8.2f} sd {r['sd']:>4,.0f} I={ic} "
+              f"{r['losing']:>4}/{r['n']:<6,} losing")
+
+    realised = realised_fill_rate()
+    print("\n  realised legs filled vs perfect fill (an all-or-nothing miss is RETRYABLE):")
+    for label, share in realised:
+        print(f"    {label:<20} {share:.1%}")
+
+    sweep = adverse_sweep()
+    print("\n  where adverse selection bites (10 seeds):")
+    print(f"    {'fill':>5} {'independent':>16} {'adverse':>16} {'delta':>9} {'t':>6}")
+    for r in sweep:
+        print(f"    {r['rate']:>5.0%} {r['indep']:>+11.2f}+-{r['indep_se']:<4.2f} "
+              f"{r['adverse']:>+11.2f}+-{r['adverse_se']:<4.2f} {r['delta']:>+9.2f} "
+              f"{r['t']:>6.1f}")
+
+    write_report(ROOT / "EXECUTION.md", rows, anat, flat, regimes, sweep, realised)
     print(f"\nwrote {ROOT / 'EXECUTION.md'}")
 
 

@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 184 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 191 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # family x strategy coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -73,8 +73,8 @@ checks themselves.
 | `frontier.py` | Information cost `I = s²/e`: what makes an opportunity good, independent of how often it appears. |
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
 | `coherence.py` | Bracket coherence from books alone — the one measurement needing no settled outcomes. Refuses partial sets. |
-| `execution.py` | Marketable vs IOC limit: what a missed leg costs, and why it is not what finding 17 assumed. |
-| `selftest.py` | 184 checks that have to pass before any of the above means anything. |
+| `execution.py` | Marketable vs IOC limit, and how the misses are distributed: what a missed leg actually costs. |
+| `selftest.py` | 191 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -84,7 +84,7 @@ checks themselves.
 | `ARB.md` | Bracket arbitrage: margins, slippage, leg leverage, incoherence channels. Generated. |
 | `FRONTIER.md` | Every strategy ranked by information cost, and the identity behind it. Generated. |
 | `COHERENCE.md` | What it would cost to measure the bracket edge for real. Generated. |
-| `EXECUTION.md` | Every execution mode on one basis, ranked by information cost. Generated. |
+| `EXECUTION.md` | Every execution mode and miss regime on one basis, ranked by information cost. Generated. |
 
 ---
 
@@ -121,7 +121,7 @@ factory infinite money.
 From the run in `RESULTS.md` (seed 20260730). Simulated markets throughout.
 
 `RESULTS.md`, `CAPACITY.md` and `PORTFOLIO.md` are that one seeded run and predate the two
-bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–21 were
+bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–22 were
 measured directly by `arb.py`, `frontier.py`, `coherence.py` and `execution.py` on fresh seeds
 rather than by the factory loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
 in-sample sets it does not fire often enough to clear the minimum trade count.
@@ -650,9 +650,9 @@ without pricing it. Four seeds × 3,000 sets, with `I = s²/e` from finding 18:
 | perfect fill (unachievable) | +21.00¢ | ±1.64 | 150¢ | 1,078 | 0/12,000 | +0¢ |
 | **marketable, +1 tick/leg** | +10.91¢ | ±0.74 | 81¢ | **595** | **0/12,000** | **+0¢** |
 | marketable, +2 ticks/leg | +0.82¢ | ±0.49 | 37¢ | 1,632 | 150/12,000 | −564¢ |
-| IOC limit, 95% per leg | +19.40¢ | ±1.39 | 305¢ | 4,808 | 15/12,000 | −16,125¢ |
-| IOC limit, 80% per leg | +18.16¢ | ±3.29 | 463¢ | 11,824 | 54/12,000 | −16,125¢ |
-| IOC limit, 60% per leg | +17.06¢ | ±2.25 | 534¢ | 16,708 | 105/12,000 | −16,125¢ |
+| IOC limit, 95% per leg | +12.29¢ | ±1.81 | 359¢ | 10,466 | 26/12,000 | −16,125¢ |
+| IOC limit, 80% per leg | +12.98¢ | ±3.73 | 505¢ | 19,662 | 70/12,000 | −16,125¢ |
+| IOC limit, 60% per leg | +10.25¢ | ±3.32 | 562¢ | 30,851 | 124/12,000 | −17,324¢ |
 
 **The mistake I nearly published.** The first version ran *one seed* and found income **rising**
 as fills got worse — +25.4¢/set at perfect fill against +28.3¢ at an 80% fill rate. It read as a
@@ -664,7 +664,8 @@ seeds, **the expected value is flat in the fill rate** and the whole story is in
 **Why the mean survives.** A set only fires when it is underpriced by at least the filter, and a
 collectively underpriced set is on average made of *individually* underpriced legs. So a partial
 fill is a **positive-EV directional position**, not a loss — at a 60% per-leg fill only 8% of
-attempts complete all five legs, yet income holds at 81% of perfect fill. Finding 17's phrase is
+attempts complete all five legs, yet income holds at 49% of perfect fill, six times what it
+would be if the incomplete attempts were worthless. Finding 17's phrase is
 right about the mechanism and wrong about the consequence: the money is fine, what you lose is
 *the reason you wanted the trade*.
 
@@ -676,16 +677,67 @@ losing sets go 0 → 105, worst case −$161 on a single set.
 
 So finding 17 modelled the right execution mode for the wrong reason, and the conclusion
 sharpens rather than reverses. **At a 95% per-leg fill rate this is no longer an arbitrage at
-all** — `I = 4,808`, worse than `snr_band`'s ~1,300–3,000, the plain directional strategy it was
-supposed to beat. A riskless trade you cannot execute risklessly is a directional trade with
+all** — `I = 10,466`, several times worse than `snr_band`'s ~1,300–3,000, the plain directional
+strategy it was supposed to beat. A riskless trade you cannot execute risklessly is a directional trade with
 extra steps.
 
-Two things this does *not* settle. Fills here are **independent per leg**, and a fast move takes
-several books at once — correlated misses are worse than independent ones at the same marginal
-rate, and nothing here measures that. And the gate's stress criterion still applies 2 ticks *and*
-1.5× fees; two ticks is a marketable assumption an IOC limit does not face, so the right stress
-here is a fill-rate stress — but inventing one *after* seeing which way it falls is how a gate
-gets quietly loosened, so it is left alone.
+The gate's stress criterion still applies 2 ticks *and* 1.5× fees; two ticks is a marketable
+assumption an IOC limit does not face, so the right stress here is a fill-rate stress — but
+inventing one *after* seeing which way it falls is how a gate gets quietly loosened, so it is
+left alone. And fills above are **independent per leg**, which finding 22 takes apart.
+
+**22. I closed finding 21 by naming its own gap and guessing which way it pointed. The guess
+was backwards, and the real hazard is a mechanism I never named.**
+
+Finding 21 ended: *"fills here are independent per leg; a fast move takes several books at
+once, so real misses are correlated, and correlated misses are worse than independent ones at
+the same marginal rate."* The caveat was fair. The direction was a guess and it was never
+measured.
+
+**Correlation across the legs of one set is not portfolio correlation.** It means the set fills
+**entirely or not at all** — so there are no partial brackets and the riskless property
+survives. Same marginal per-leg fill rate in every row; only the joint distribution moves:
+
+| regime | ¢/set | SE | σ | **I = s²/e** | losing sets | worst set |
+|---|---|---|---|---|---|---|
+| perfect fill (unachievable) | +21.00¢ | ±1.64 | 150¢ | 1,078 | 0/12,000 | +0¢ |
+| IOC 80%, independent misses | +12.98¢ | ±3.73 | 505¢ | 19,662 | 70/12,000 | −16,125¢ |
+| IOC 80%, half correlated | +13.01¢ | ±4.56 | 351¢ | 9,460 | 44/12,000 | −15,478¢ |
+| **IOC 80%, fully correlated** | +19.94¢ | ±1.00 | **149¢** | **1,119** | **0/12,000** | **+0¢** |
+| IOC 80%, ADVERSE | −1.01¢ | ±4.73 | 531¢ | — | 116/12,000 | −16,114¢ |
+
+**At full correlation IOC is indistinguishable from perfect fill** — same σ, same zero losing
+sets, same information cost. There is also a *second* reason correlation helps, visible in the
+realised fill rate: 78.8% of legs fill under independent misses against **86.1%** under full
+correlation, at the same nominal 80%. That is not a leak — **an all-or-nothing miss is
+retryable.** Nothing was committed, so the batch re-fires against the next quote. A partial fill
+cannot be retried: the legs that did fill have already tripped the position guard.
+
+**The hazard is adverse selection, and it changes the sign.** The quote carrying the mispricing
+is the one whose maker pulls it first, so you systematically collect the fairly-priced legs and
+miss the cheap one. That does not add variance to an edge — it *removes the edge*. Ten seeds ×
+3,000 sets:
+
+| per-leg fill | independent | adverse | delta | t |
+|---|---|---|---|---|
+| 95% | +14.27 ±1.97¢ | +13.31 ±2.64¢ | −0.96¢ | **−0.3** |
+| 90% | +16.03 ±1.92¢ | +4.81 ±2.55¢ | −11.22¢ | **−3.5** |
+| 80% | +13.02 ±2.53¢ | −4.80 ±2.54¢ | −17.82¢ | **−5.0** |
+
+**Sharply non-linear, and that is the useful part.** At a 95% per-leg fill rate adverse
+selection is undetectable (t = −0.3). By 80% it takes the strategy negative. The transition sits
+between 95% and 90% — which turns the whole question into **one number an operator can measure
+from their own fill logs**, the same move finding 20 makes for the staleness rate.
+
+So the honest state of the bracket branch is three conditionals deep and every one of them is
+measurable rather than assumed: it needs incoherence that a real book actually exhibits
+(finding 20), a margin filter of at least one tick per leg (finding 19), and a per-leg fill rate
+above ~95% *or* misses that arrive all-or-nothing (this finding). What it does not need is the
+`stale_leg_prob` guess, and what it still fails is the gate's stress criterion.
+
+One thing this does not settle: adverse selection is modelled as **perfectly informed** — misses
+always land on the most underpriced legs. Reality sits somewhere between that and random, and
+nothing here locates it.
 
 ## The gate
 

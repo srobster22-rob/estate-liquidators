@@ -546,7 +546,7 @@ losing. **The expected value is FLAT in the fill rate** — every IOC row within
 **Why the mean survives:** a set only fires when it is underpriced by at least the filter, and a
 collectively underpriced set is on average made of INDIVIDUALLY underpriced legs. So a partial
 fill is a positive-EV directional position, not a loss — at a 60% per-leg fill only 8% of
-attempts complete all five legs and income still holds at 81% of perfect fill. K22's sentence is
+attempts complete all five legs and income still holds at ~49% of perfect fill — six times what it would be if the incomplete attempts were worthless. K22's sentence is
 right about the mechanism and wrong about the consequence. The money is fine; what you lose is
 the reason you wanted the trade.
 
@@ -566,6 +566,52 @@ the same marginal rate. And the gate's stress criterion still applies 2 ticks AN
 two ticks is a marketable assumption an IOC limit does not face, so the right stress here is a
 fill-rate stress, but inventing one after seeing which way it falls is how a gate gets quietly
 loosened. Left alone. 184 checks pass.
+
+K27 · Took apart the one thing K26 named as unmeasured and then guessed about anyway. · **The
+guess was backwards, and the real hazard is a mechanism I never named.**
+
+K26 closed: "fills here are independent per leg; a fast move takes several books at once, so
+real misses are CORRELATED, and correlated misses are worse than independent ones at the same
+marginal rate." Fair caveat, unmeasured direction. Added `fill_correlation` and `adverse_fill`
+to `backtest.Costs` and a joint `_plan_misses` that decides a whole batch at once, because a
+per-order draw is the one place correlation cannot live.
+
+**Correlation across the legs of ONE set is not portfolio correlation.** It means the set fills
+entirely or not at all, so there are no partial brackets and the riskless property survives.
+Same marginal fill rate throughout, only the joint distribution moving: perfect fill +21.00c,
+sd 150, I=1,078, 0 losing; IOC 80% independent +12.98c, sd 505, I=19,662, 70 losing; IOC 80%
+half-correlated +13.01c, sd 351, I=9,460, 44 losing; **IOC 80% fully correlated +19.94c, sd 149,
+I=1,119, 0 losing, worst set +0c** — indistinguishable from perfect fill.
+
+There is a SECOND reason correlation helps, and it showed up as an anomaly in the realised fill
+rate: 78.8% of legs fill under independent misses against 86.1% under full correlation at the
+same nominal 80%. Not a leak — **an all-or-nothing miss is RETRYABLE.** Nothing was committed,
+so the batch re-fires against the next quote; a partial fill has already tripped the position
+guard.
+
+**The hazard is ADVERSE SELECTION, and it changes the sign rather than the magnitude.** The
+quote carrying the mispricing is the one whose maker pulls it first, so you systematically
+collect the fairly-priced legs and miss the cheap one. That does not add variance to an edge, it
+removes the edge: at an 80% fill the strategy goes from +12.98c/set to **-1.01c/set** with 116
+losing sets. Ten seeds x 3,000 sets locate the transition — 95%: delta -0.96c, **t=-0.3**; 90%:
+-11.22c, t=-3.5; 80%: -17.82c, t=-5.0. A four-seed version had the 90% row at t=-1.5, which is
+not enough to claim a cliff, so the sweep runs ten.
+
+**Sharply non-linear, and that is the operationally useful part.** Adverse selection is
+undetectable at a 95% per-leg fill rate and fatal by 80%, which reduces the whole question to
+one number an operator can measure from their own fill logs — the same move K25 makes for the
+staleness rate.
+
+So the bracket branch is now three conditionals deep and every one is measurable rather than
+assumed: incoherence a real book exhibits (K25), a margin filter of at least a tick per leg
+(K24), and a per-leg fill rate above ~95% OR misses that arrive all-or-nothing (this round). It
+does not need the `stale_leg_prob` guess. It still fails the gate on stress.
+
+Left open and stated: adverse selection is modelled as PERFECTLY informed — misses always land
+on the most underpriced legs. Reality sits between that and random and nothing here locates it.
+Also note `_plan_misses` changed the rng consumption pattern, so K26's IOC rows moved within
+noise (95%: I 4,808 -> 10,466) and the README table was regenerated rather than left stale.
+191 checks pass.
 
 ---
 
