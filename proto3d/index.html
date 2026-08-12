@@ -18,17 +18,35 @@
     font-size:12px;letter-spacing:.08em;color:#e6dfc9;pointer-events:none;
     text-shadow:0 2px 6px #000;white-space:nowrap}
   #start,#end{position:fixed;inset:0;background:rgba(6,7,9,.94);display:flex;
-    align-items:center;justify-content:center;text-align:center}
-  #end{display:none}
-  .panel{max-width:420px;font-size:13px;line-height:1.9}
-  .panel h1{font-family:Georgia,serif;font-weight:400;font-size:26px;letter-spacing:.04em;
-    margin:0 0 6px}
+    align-items:center;justify-content:center;text-align:center;
+    overflow:auto;padding:18px 14px}
+  #end,#help{display:none}
+  #help{position:fixed;inset:0;background:rgba(6,7,9,.96);z-index:5;
+    align-items:center;justify-content:center;text-align:center;overflow:auto;padding:18px 14px}
+  .panel.wide{max-width:720px}
+  /* Two columns where there is room: the full list is sixteen verbs and it has
+     to fit on a laptop without scrolling past the CLICK TO BEGIN. */
+  .keys{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:2px 12px;
+    font-size:11.5px;text-align:left;margin:10px 0;align-items:baseline;line-height:1.45}
+  .keys .h{grid-column:1/5}
+  @media (max-width:760px){
+    .keys{grid-template-columns:auto 1fr}
+    .keys .h{grid-column:1/3}
+  }
+  .keys .h{color:#8a6e24;letter-spacing:.12em;font-size:10.5px;
+    margin-top:7px;border-bottom:1px solid #22242a;padding-bottom:2px}
+  .keys .k{color:#efeade;white-space:nowrap}
+  .keys .v{color:#a5a29a}
+  .panel{max-width:420px;font-size:13px;line-height:1.75;margin:auto}
+  .panel h1{font-family:Georgia,serif;font-weight:400;font-size:23px;letter-spacing:.04em;
+    margin:0 0 4px}
+  .panel p{margin:6px 0}
   .panel .d{color:#8b8880}
   .panel table{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px}
   .panel td{padding:3px 0;border-bottom:1px solid #22242a}
   .panel td:last-child{text-align:right;font-variant-numeric:tabular-nums}
   .g{color:#61a08d}.r{color:#c97155}
-  kbd{background:#1d2024;border:1px solid #2c3036;padding:1px 5px;font-size:11px}
+  kbd{background:#1d2024;border:1px solid #2c3036;padding:0 4px;font-size:10.5px}
 </style>
 </head>
 <body>
@@ -37,20 +55,54 @@
 <div id="prompt"></div>
 <div id="hud"></div>
 
-<div id="start"><div class="panel">
+<div id="start"><div class="panel wide">
   <h1>ESTATE LIQUIDATORS</h1>
-  <p class="d">Empty the house before sunrise. The quota is in dollars, not items.<br>
-  Something in here is still curating the collection.</p>
-  <p><kbd>W A S D</kbd> move &nbsp; <kbd>MOUSE</kbd> look &nbsp; <kbd>SHIFT</kbd> run<br>
-  <kbd>E</kbd> grab / drop &nbsp; <kbd>F</kbd> hold to appraise<br>
-  <kbd>C</kbd> hide &nbsp; <kbd>G</kbd> stash &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>ESC</kbd> release cursor</p>
-  <p class="d">Carry loot to the van in the driveway. Appraising is loud.</p>
-  <p><b>CLICK TO BEGIN</b></p>
+  <p class="d">Four nights to empty a dead collector's house before sunrise. The quota
+  is in dollars, not items. Something in here is still curating the collection: it
+  doesn't hunt intruders, it retrieves property — so it follows whatever is most
+  valuable and currently leaving.</p>
+  <div id="keys"></div>
+  <p class="d">If your light dims, it is coming for you — and you can get rid of it by
+  handing the vase to someone else.</p>
+  <p><b>CLICK TO BEGIN</b> &nbsp;<span class="d">· press <kbd>H</kbd> in game for this list</span></p>
+</div></div>
+<div id="help"><div class="panel wide">
+  <h1>CONTROLS</h1>
+  <div id="keys2"></div>
+  <p class="d">press <kbd>H</kbd> to close</p>
 </div></div>
 <div id="end"><div class="panel" id="endtext"></div></div>
 
 <script>
 "use strict";
+// One list, rendered in two places. Sixteen verbs had accumulated against a start
+// screen that listed eight, which for a prototype whose whole purpose is to be
+// played by a person once is the difference between a playtest and a shrug.
+const CONTROLS=[
+  ["MOVING",[["W A S D","walk"],["MOUSE","look"],["SHIFT","run — louder, and it hears you"],
+             ["C","get into the furniture / climb out (loud)"]]],
+  ["LOOT",[["E","take, drop, or hand it to a crewmate you are looking at"],
+           ["F","hold to appraise — three seconds, stationary, loud"],
+           ["G","stash the piece in furniture: twenty seconds of quiet"],
+           ["T","take / let go of the dolly"],
+           ["R","load or unload the dolly (the apex only moves this way)"]]],
+  ["THE HOUSE",[["L","light this wing — silent, +25 disturbance"],
+                ["B","at the van: kill the breaker, −15, everything goes dark"],
+                ["Z","go quiet — nobody runs or scans, −20 over the window"],
+                ["U","at the van: unload cursed cargo into the yard"],
+                ["X","in a doorway: lay the salt line, once"]]],
+  ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you"],
+                 ["E","nudge something off a shelf"]]],
+  ["OTHER",[["H","this list"],["M","mute"],["N","next night"],["R","new contract (on the ledger)"],
+            ["ESC","release the cursor"]]],
+];
+function renderControls(el){
+  if(!el) return;
+  el.className="keys";
+  el.innerHTML=CONTROLS.map(([head,rows])=>
+    `<div class="h">${head}</div>`+rows.map(([k,v])=>
+      `<div class="k"><kbd>${k}</kbd></div><div class="v">${v}</div>`).join("")).join("");
+}
 // ===========================================================================
 // Estate Liquidators - first-person prototype. Raw WebGL, zero dependencies.
 //
@@ -60,6 +112,9 @@
 //   retrieval   first contact takes the item, second one kills you
 //   aggro tell  your flashlight dims to 60% when it is coming for you
 // ===========================================================================
+
+renderControls(document.getElementById("keys"));
+renderControls(document.getElementById("keys2"));
 
 const cv = document.getElementById("gl");
 const gl = cv.getContext("webgl", {antialias:true});
@@ -788,6 +843,12 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyT"&&started&&!over) takeDolly();
   if(e.code==="KeyR"&&started&&!over&&!player.dead){ if(!loadDolly()) unloadDolly(); }
   if(e.code==="KeyM") sfx.mute();
+  if(e.code==="KeyH"&&started){
+    const h=document.getElementById("help");
+    const showing=h.style.display==="flex";
+    h.style.display=showing?"none":"flex";
+    if(showing) cv.requestPointerLock?.(); else document.exitPointerLock?.();
+  }
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
   if(e.code==="KeyN"&&over&&nextNight()) document.getElementById("end").style.display="none";

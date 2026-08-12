@@ -905,6 +905,34 @@ async function checks(g, fresh) {
   ok("and it is lying in the yard where it can be reclaimed",
     unload.radiating === true, JSON.stringify(unload));
 
+  // --- the controls are discoverable ----------------------------------------
+  // The single most valuable thing this build can do is be played by a person
+  // once. Sixteen verbs had accumulated behind a start screen that listed eight.
+  const controls = await g(() => {
+    const listed = [...document.querySelectorAll("#keys kbd")].map(k => k.textContent);
+    const src = document.documentElement.innerHTML;
+    // Every key the game binds, straight out of the handler.
+    const bound = [...src.matchAll(/e\.code===\"Key([A-Z])\"/g)].map(m => m[1]);
+    const missing = [...new Set(bound)].filter(k =>
+      !listed.some(l => l.split(/\s+/).includes(k)));
+    return { listed: listed.length, bound: [...new Set(bound)].length, missing };
+  });
+  ok("every bound key is on the controls list",
+    controls.missing.length === 0, JSON.stringify(controls));
+
+  const help = await g(() => {
+    const h = document.getElementById("help");
+    const before = getComputedStyle(h).display;
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyH" }));
+    const during = h.style.display;
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyH" }));
+    return { before, during, after: h.style.display,
+             rows: document.querySelectorAll("#keys2 .k").length };
+  });
+  ok("H opens the list in game and closes it again",
+    help.during === "flex" && help.after === "none" && help.rows >= 15,
+    JSON.stringify(help));
+
   // --- the dolly (DESIGN 8) -------------------------------------------------
   // "Moves cart-class items - slow, loud on hardwood, tips over."
   await fresh();

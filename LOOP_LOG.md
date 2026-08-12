@@ -610,6 +610,20 @@ does it, which is the real mechanic anyway. And an apex check from R26 asserted 
 five slots — correct then, wrong now, and it failed the moment the rule changed, which is what
 it is for. · Regression: QA 159/159, drift 147/147.
 
+R35 · **Made it playable by a person**, which is item one on this log's own next-step list
+and has been for six rounds. Sixteen verbs had accumulated behind a start screen that listed
+eight — the salt line, the breaker, go quiet, the dolly, the ghost's Static verbs and the
+whole contract chain were all undiscoverable unless you read the source. One control list,
+rendered on the start screen and behind <kbd>H</kbd> in game, grouped by what you are doing
+rather than by keyboard order, with what each verb *costs* on the same line ("light this wing
+— silent, +25 disturbance"). · The check that matters here reads the key handler out of the
+page source and asserts **every bound key appears on the list**, so the next verb cannot ship
+undocumented. Injection-tested by deleting one row. · Two layout passes, both driven by a
+screenshot rather than by hope: the first list ran off the bottom of a 720p laptop with CLICK
+TO BEGIN below the fold, which for a prototype whose entire purpose is one honest playtest is
+worse than not writing it. Two columns and tighter leading now fit the whole thing on screen.
+· Regression: QA 161/161, drift 147/147.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

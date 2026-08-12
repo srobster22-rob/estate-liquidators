@@ -3,11 +3,12 @@
 The design documents describe the whole game. The prototype implements part of it. Nothing
 below is a plan — it's a statement of what you can run today, updated whenever that changes.
 
-**Run it:** open `proto3d/index.html`. `?seed=12345` reproduces a specific house.
+**Run it:** open `proto3d/index.html`. Controls are on the start screen and behind `H`.
+`?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 159 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 159   # the numbers in these docs are the real ones
+node proto3d/qa.mjs               # 161 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 161   # the numbers in these docs are the real ones
 python3 sim/check_drift.py        # 147 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
 node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
@@ -60,7 +61,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 159 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 161 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.
