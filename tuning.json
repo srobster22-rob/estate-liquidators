@@ -43,7 +43,8 @@
     "lever_go_quiet": 20.0,
     "tier_patrol_at": 30.0,
     "tier_pursue_at": 60.0,
-    "tier_collect_at": 85.0
+    "tier_collect_at": 85.0,
+    "lever_go_quiet_seconds_at_ship_night": 45.0
   },
   "attention": {
     "_source": "TECH-SPEC.md A3, corrected LOOP_LOG R2",

@@ -6,9 +6,9 @@ below is a plan — it's a statement of what you can run today, updated whenever
 **Run it:** open `proto3d/index.html`. `?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 141 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 141   # the numbers in these docs are the real ones
-python3 sim/check_drift.py        # 140 constants agree across four implementations
+node proto3d/qa.mjs               # 149 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 149   # the numbers in these docs are the real ones
+python3 sim/check_drift.py        # 142 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
 node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
   python3 sim/validate_estate.py --estate /tmp/e/*.json
@@ -41,6 +41,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | Generated estates, gated | `LEVEL-SPEC` | Rejected until the contract passes; richer houses later in the chain. |
 | Audio | `AUDIO-SPEC` §1, §A6.2 | Synthesised. The drag layer is never occluded to zero inside 8m. |
 | Lights and the breaker | `DESIGN` §6.5 | Lighting a wing is silent and +25; the breaker at the van is −15 and takes them all. |
+| All three Disturbance levers | `DESIGN` §6.5 | Kill the lights, go quiet (window scaled to this build's night), unload cursed cargo into the yard. |
 | Death as a role change | `DESIGN` §5.1 | 10s collection beat, then free movement, permanent sight of the Curator, curse-sight at 5m, and a Static budget. Knock and Nudge only. |
 
 ## Specified, not built
@@ -52,14 +53,13 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | The dolly | `DESIGN` §8 | Cart-class pieces are carried by two at a crawl instead. Flagged where it happens. |
 | Flicker / Slam / Hold | `DESIGN` §5.1 | The other three Static verbs need a lights system and door entities; neither exists. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
-| Radio, salt line, crowbar, breakers | `DESIGN` §8 | No tools beyond the appraiser and the flashlight. |
-| Go quiet, unload cursed cargo | `DESIGN` §6.5 | Two of the three Disturbance levers. Kill-the-lights is built. |
+| Radio, salt line, crowbar | `DESIGN` §8 | No tools beyond the appraiser and the flashlight. The breaker is built. |
 | Curses beyond value and ruin | `DESIGN` §4.2 | Grades affect price, attention and the ruin roll; no per-curse behaviour. |
 | Unity / Steam | `BUILD-PROMPT` | The C# core exists and is pinned to the sims; there is no Unity project. |
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 141 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 149 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.

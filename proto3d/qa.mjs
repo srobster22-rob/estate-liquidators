@@ -781,6 +781,79 @@ async function checks(g, fresh) {
     Math.abs((lights.beforeKill - lights.afterKill) - 15) < 0.2, JSON.stringify(lights));
   ok("and there is nothing to kill twice", lights.again === null, JSON.stringify(lights));
 
+  // Go quiet: no running, no scanning, crew-wide, -20 over the period.
+  await fresh();
+  const quiet = await g(() => {
+    window.__g.freezeCrew(false);
+    const r = window.__g.rooms().find(x => !x.van);
+    window.__g.tp(r.x, r.z);
+    window.__g.setDist(60);
+    const window0 = window.__g.levers().quietWindow;
+    const started = window.__g.goQuiet();
+    const twice = window.__g.goQuiet();               // no stacking
+    const before = window.__g.state().dist;
+    // Try to run during it.
+    const p0 = window.__g.raw();
+    window.__g.press("KeyW"); window.__g.press("ShiftLeft");
+    window.__g.step(60, 1 / 60);
+    const p1 = window.__g.raw();
+    window.__g.clearKeys();
+    const ranAt = Math.hypot(p1.x - p0.x, p1.z - p0.z) / 1.0;
+    // Ride it out; disturbance should fall by 20 more than decay alone.
+    for (let i = 0; i < window0 * 60; i++) window.__g.step(1, 1 / 60);
+    const after = window.__g.state().dist;
+    return { window0, started, twice, before, after, ranAt,
+             quietNow: window.__g.levers().quiet };
+  });
+  ok("going quiet is a window, not a toggle",
+    quiet.started !== null && quiet.twice === null && quiet.quietNow === 0,
+    JSON.stringify(quiet));
+  ok("its length is scaled to this build's night",
+    Math.abs(quiet.window0 - 45 * (210 / 720)) <= 1, `${quiet.window0}s`);
+  ok("you cannot run during it", quiet.ranAt < 3.4, `${quiet.ranAt.toFixed(2)} m/s`);
+  ok("and it takes twenty off the meter",
+    quiet.before - quiet.after >= 20, JSON.stringify(quiet));
+
+  // Unload cursed cargo: the floor contribution goes, and so does the strap.
+  await fresh();
+  const unload = await g(() => {
+    window.__g.parkCrew();
+    const v = window.__g.rooms().find(x => x.van);
+    // Re-read the list every time: hold() indexes the LIVE list and depositing
+    // removes an entry, so indices taken from one snapshot slide by one and you
+    // end up banking a clean piece you never chose.
+    let put = 0;
+    for (let attempt = 0; attempt < 40 && put < 2; attempt++) {
+      const live = window.__g.list();
+      const k = live.findIndex(i => i.grade !== "clean" && !i.corpse && !i.held
+                                    && i.klass === "armful");
+      if (k < 0) break;
+      window.__g.hold(k); window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60); put++;
+    }
+    window.__g.setT(0); window.__g.setDist(0); window.__g.step(2, 1 / 60);
+    const floorWith = window.__g.floor();
+    const banked = window.__g.state().banked;
+    const slots = window.__g.vanSlots();
+    const done = window.__g.unloadCursed();
+    window.__g.step(2, 1 / 60);
+    const floorWithout = window.__g.floor();
+    const loose = window.__g.list().filter(i => i.grade !== "clean" && !i.corpse);
+    return { put, done, floorWith, floorWithout, banked, bankedAfter: window.__g.state().banked,
+             slots, slotsAfter: window.__g.vanSlots(),
+             radiating: loose.some(i => Math.hypot(i.x - v.x, i.z - v.z) < 4) };
+  });
+  // The FLOOR, not the meter: the meter decays toward it rather than snapping,
+  // and asserting on the meter measures the decay rate instead of the rule.
+  ok("cursed cargo aboard raises the floor",
+    unload.put === 2 && unload.floorWith >= 13.9, JSON.stringify(unload));
+  ok("unloading it into the yard takes that floor away",
+    unload.done.unloaded === 2 && unload.floorWithout < 0.2, JSON.stringify(unload));
+  ok("but it is out of the van, so it is not money any more",
+    unload.bankedAfter < unload.banked && unload.slotsAfter > unload.slots,
+    JSON.stringify(unload));
+  ok("and it is lying in the yard where it can be reclaimed",
+    unload.radiating === true, JSON.stringify(unload));
+
   // --- the dead (DESIGN 5.1) ------------------------------------------------
   // "Die at minute three of a fourteen-minute night and the genre standard is
   // that you watch for eleven." The collection beat is deliberately slow, and
@@ -967,18 +1040,25 @@ async function checks(g, fresh) {
     JSON.stringify(smashed.log));
 
   const premium = await g(() => {
+    // Pooled over many seeds and over pairs of grades. The premium is 18% per
+    // grade against a band that spans 80-300, so a per-grade mean off eight
+    // seeds is mostly noise - this check failed one run in six on exactly that.
     const rows = [[], [], [], []];
-    for (let s = 1; s <= 8; s++) {
+    for (let s = 1; s <= 24; s++) {
       window.__g.newContract(s * 7919);
       for (const it of window.__g.list())
-        if (it.klass === "armful" && it.grade === "clean" && it.tier === 1)
+        if (it.klass === "armful" && it.grade === "clean" && it.tier <= 1)
           rows[it.frag].push(it.value);
     }
     window.__g.newContract(20260806);
-    return rows.map(r => r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : 0);
+    const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+    return { each: rows.map(r => Math.round(mean(r))), n: rows.map(r => r.length),
+             sturdy: Math.round(mean([...rows[0], ...rows[1]])),
+             delicate: Math.round(mean([...rows[2], ...rows[3]])) };
   });
-  ok("a delicate piece is worth more than a sturdy one",
-    premium[3] > premium[0] * 1.3, JSON.stringify(premium));
+  ok("delicate pieces are worth more than sturdy ones",
+    premium.delicate > premium.sturdy * 1.15 &&
+    premium.n.every(n => n > 10), JSON.stringify(premium));
 
   // --- the corpse economy (DESIGN 5) ----------------------------------------
   // "Recover him and he's back next night, free. Leave him and you run

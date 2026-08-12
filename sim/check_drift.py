@@ -216,6 +216,9 @@ for i, quota in enumerate(ct["quota_measured_210s"]):
 check("JS3d light_wing_gain", grab(js3, r"LIGHT_WING_GAIN=(\d+)"), d["light_wing_gain"])
 check("JS3d lever_kill_lights", grab(js3, r"LEVER_KILL_LIGHTS=(\d+)"),
       d["lever_kill_lights"])
+check("JS3d lever_go_quiet", grab(js3, r"LEVER_GO_QUIET=(\d+)"), d["lever_go_quiet"])
+check("JS3d quiet_ship_seconds", grab(js3, r"QUIET_SHIP_S=([\d.]+)"),
+      d["lever_go_quiet_seconds_at_ship_night"])
 
 dd = TUNING["dead"]
 check("JS3d collection_seconds", grab(js3, r"COLLECT_S=([\d.]+)"), dd["collection_seconds"])

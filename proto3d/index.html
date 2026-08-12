@@ -220,6 +220,12 @@ const KNOCK_L=25, COST_KNOCK=1, COST_NUDGE=3;
 // value": switching on a wing is silent and a flat +25. Killing the breaker is
 // -15 instantly, and the cost is that you hauled that wing lit for a reason.
 const LIGHT_WING_GAIN=25, LEVER_KILL_LIGHTS=15;
+// Go quiet: no running, no scanning, crew-wide, -20 over the period. The spec's
+// 45 seconds is 6% of a twelve-minute night; held at 45s here it would be a
+// fifth of the night, so the DURATION scales with night length and the -20 does
+// not - same rule as the quota and the apex band.
+const QUIET_SHIP_S=45.0, LEVER_GO_QUIET=20;
+const QUIET_S=Math.round(QUIET_SHIP_S*(NIGHT/SHIP_NIGHT));
 const GHOST_SPEED=7.2, GHOST_EYE=1.95;
 // A5 senses. One Loudness number, three consumers - this is the hearing one.
 const HEAR_PER_L=0.33, OCCLUSION_CURATOR=0.85, FUZZ_M=3.0;
@@ -629,7 +635,7 @@ function blocked(x,z){
 }
 
 // ------------------------------------------------------------------ state
-let noiseLog=[], gatesOff=false, broken=[], lit=new Set(), breakerUsed=0;
+let noiseLog=[], gatesOff=false, broken=[], lit=new Set(), breakerUsed=0, quiet=0;
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 // Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
@@ -748,7 +754,7 @@ function reset(){
   recoveredTonight=new Set();
   for(const h of HIDES) h.item=null;
   van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
-  t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];lit=new Set();breakerUsed=0;
+  t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];lit=new Set();breakerUsed=0;quiet=0;
   document.getElementById("end").style.display="none";
 }
 // Seed from the URL so a playtest can be handed back exactly: ?seed=12345.
@@ -765,6 +771,8 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyQ"&&started&&!over) knock();
   if(e.code==="KeyL"&&started&&!over) toggleLights();
   if(e.code==="KeyB"&&started&&!over) killLights();
+  if(e.code==="KeyZ"&&started&&!over) goQuiet();
+  if(e.code==="KeyU"&&started&&!over) unloadCursed();
   if(e.code==="KeyM") sfx.mute();
   if(e.code==="KeyG"&&started&&!over) stash();
   if(e.code==="KeyR"&&over){ newContract(); document.getElementById("end").style.display="none"; }
@@ -1058,6 +1066,7 @@ const sfx = (()=>{
 // in the house, and until R20 that is all the build had.
 function updateCrew(dt){
   if(crewFrozen) return;
+  if(quiet>0) return;   // hands down, crew-wide
   for(const a of crew){
     if(!a.alive) continue;
     if(a.down>0){ a.down-=dt; continue; }
@@ -1169,7 +1178,7 @@ function step(dt){
   let mx=(keys.KeyW?1:0)-(keys.KeyS?1:0), mz=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const mag=Math.hypot(mx,mz); if(mag){mx/=mag;mz/=mag;}
   const moving=!!mag;
-  const run=keys.ShiftLeft&&player.stam>0&&moving&&!player.hiding;
+  const run=keys.ShiftLeft&&player.stam>0&&moving&&!player.hiding&&quiet<=0;
   if(run){ player.stam=Math.max(0,player.stam-dt);
     dist=Math.min(100,dist+L.sprint*SUSTAINED*dt);
     // Footfalls are discrete events to a listener even though the Disturbance
@@ -1224,7 +1233,7 @@ function step(dt){
 
   // appraise: hold F, stationary, 3s, loud
   const tgt=player.holding||aimedItem();
-  if(keys.KeyF&&!moving&&!player.dead&&tgt&&!tgt.known){
+  if(keys.KeyF&&!moving&&!player.dead&&quiet<=0&&tgt&&!tgt.known){
     tgt.scan+=dt;
     if(tgt.scan>=APPRAISE_S){ tgt.known=true; tgt.scan=0; noise(L.appraise,true,0); }
   } else for(const it of items) if(!(keys.KeyF&&it===tgt)) it.scan=0;
@@ -1260,6 +1269,10 @@ function step(dt){
 
   updateCrew(dt);
   if(over) return;
+  if(quiet>0){
+    quiet=Math.max(0,quiet-dt);
+    dist=Math.max(floorNow(),dist-(LEVER_GO_QUIET/QUIET_S)*dt);
+  }
   dist=Math.max(floorNow(),Math.min(100,dist-DECAY_PER_S*dt));
   updateCurator(dt);
 }
@@ -1402,6 +1415,29 @@ function killLights(){
   return {wings:n, drop:LEVER_KILL_LIGHTS};
 }
 const roomLit=id=>lit.has(id);
+
+// The second lever. Everyone stops: no running, no scanning, and the crew put
+// their hands down. Its cost is the only thing this game has less of than money.
+function goQuiet(){
+  if(quiet>0||player.dead) return null;
+  quiet=QUIET_S;
+  return {seconds:QUIET_S, drop:LEVER_GO_QUIET};
+}
+// The third. Cursed cargo out of the van stops feeding the floor - but it is out
+// of the van, so it is not strapped, so it can be reclaimed.
+function unloadCursed(){
+  if(!roomAt(player.x,player.z)?.van) return null;
+  const out=van.cargo.filter(c=>!c.corpse&&c.grade!=="clean");
+  if(!out.length) return null;
+  const dv=R("drive");
+  for(const it of out){
+    van.cargo.splice(van.cargo.indexOf(it),1);
+    van.slots+=SLOTS[it.klass];
+    it.gone=false; it.moved=true; it.heldBy=null;
+    it.x=dv.x+rnd(-2.5,2.5); it.z=dv.z+rnd(-2.5,2.5); it.y=0.45;
+  }
+  return {unloaded:out.length};
+}
 
 function crewTarget(){
   let best=null,bd=1e9;
@@ -1854,6 +1890,7 @@ function hud(){
     (curator.open>0?`<span style="color:#c97155">SOMETHING IS AT THE DOOR  ${
       (HIDE_OPEN_S-curator.open).toFixed(1)}s</span><br>`:"")+
     (lit.size?`<span style="color:#b09a54">${lit.size} wing${lit.size>1?"s":""} lit</span><br>`:"")+
+    (quiet>0?`<span style="color:#8fae9c">GOING QUIET  ${quiet.toFixed(1)}s</span><br>`:"")+
     (items.some(i=>i.stash>0)?`<span style="color:#8b8880">stashed ${
       Math.ceil(Math.max(...items.map(i=>i.stash)))}s</span><br>`:"")+
     `<span style="color:#8b8880">${tierOf(dist)} ${dist.toFixed(0)}</span>`+
@@ -1977,6 +2014,9 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
   lights:()=>({lit:[...lit], breakerUsed}),
+  levers:()=>({quiet:+quiet.toFixed(2), quietWindow:QUIET_S}),
+  floor:()=>+floorNow().toFixed(2),
+  goQuiet, unloadCursed,
   toggleLights, killLights,
   broken:()=>broken.slice(),
   knock, nudge, curseSight:i=>{const it=items.filter(x=>!x.gone)[i];

@@ -550,6 +550,29 @@ because a ruined night loses the whole van and no single object was ever going t
 Ruin nights are excluded now, with the reason written next to the line. · Regression: QA
 141/141, drift 140/140, counts check green.
 
+R32 · The other two **Disturbance levers**, which closes DESIGN §6.5's set. **Go quiet** —
+no running, no scanning, crew-wide, −20 over the window — and **unload cursed cargo into the
+yard**, which takes that cargo's floor contribution away and, because it is out of the van and
+therefore not strapped, leaves it lying in the driveway radiating where the Curator can come
+and take it back. Both are real trades rather than free buttons: the first costs the only
+thing this game has less of than money, and the second converts a Disturbance floor into a
+theft risk. 8 new checks. · Go quiet's **duration** is scaled to this build's night the same
+way the quota and the apex band were: 45 seconds is 6% of a twelve-minute night and would be
+a fifth of this one. The −20 is not scaled, because it is a meter reading rather than a
+proportion. Third time this distinction has come up and the first time it went in without a
+wrong version first. · **Two checker bugs, both mine, both old friends.** One asserted on the
+Disturbance *meter* where the rule is about the *floor* — the meter decays toward the floor
+rather than snapping to it, so the check was measuring the decay rate. The other took item
+indices from one snapshot of the list and used them after depositing, which slides every index
+by one: it banked a clean piece it never chose and then reported that unloading did not work.
+That is the R20 index-shift bug exactly, in a different fixture, twelve rounds later. ·
+**And a third checker bug, found by running the suite six times instead of once:**
+the fragility-premium check took a per-grade mean off eight seeds to measure an 18%-per-grade
+effect against a band spanning 80-300, and failed one run in six on its own variance. Pooled
+across 24 seeds and across pairs of grades. Worth a standing note: every statistical check in
+this suite wants running several times before it is believed, and I have now been caught by
+that three times. · Regression: QA 149/149, drift 142/142, counts green, four consecutive clean runs.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
