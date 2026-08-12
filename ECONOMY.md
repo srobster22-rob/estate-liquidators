@@ -72,6 +72,43 @@ authored centrepiece would have become a joke.
 
 Re-banded to **$4,000–8,000**. `LEVEL-SPEC.md` §2 is updated to match.
 
+### Curses ride only on what one person can carry
+
+**Pocket and armful items may be cursed. Two-man, cart and apex pieces never are.**
+
+R30 put ECONOMY's weight classes into the model that drives the design — everything had been
+one slot since R5 — and the jackpot appeared immediately. A malignant tier-3 two-man piece is
+**$24,000 against a night-4 quota of $10,250**: one object, two people, three slots, and the
+contract is met twice over. That is D-28's apex hole one tier down, and nobody had noticed it
+because no model had weight classes and curses at the same time.
+
+Left open, it does not merely inflate earnings, it deletes the loop. The optimal policy stops
+having an interior optimum: refusing almost everything and waiting for a jackpot pays better
+at every bar we tested, up to refusing 90% of what the crew finds. Slots used falls to **7.6
+of 14** — the van stops binding, which is the single constraint this entire economy is built
+on (see the box at the top of this document).
+
+| Bar | Curses anywhere | Curses on light items only |
+|---|---:|---:|
+| BLIND | $8,047 | $6,424 |
+| MARGIN_30 | $9,674 | $7,855 |
+| **MARGIN_50** | $10,872 | **$7,874** |
+| MARGIN_80 | $11,714 | $5,280 |
+| MARGIN_120 | $12,053 | $5,015 |
+| MARGIN_200 | **$12,424** | $5,025 |
+
+Restrict curses to what a single player can carry and the shape comes back: the bar peaks
+around the 30th–50th percentile and over-selectivity costs **36%**.
+
+It is also the better fiction. Every curse effect in `DESIGN.md` §4.2 is intimate — it pulses
+*your* flashlight, gains mass in *your* hands, speaks in *your teammate's* voice. Those belong
+to a thing one person is holding. A haunted wardrobe carried by two people at either end was
+never that image, and the heavy classes keep the job they are better at: logistics.
+
+**One modelling note that generalises.** With weight classes, the marginal rule must price a
+**slot**, not an item — a two-man piece worth twice an armful at three times the slots is a
+worse buy, and only a per-slot comparison sees it.
+
 ### The apex is always CLEAN, and that had never been written down
 
 Nothing in `LEVEL-SPEC.md` or this document said whether the apex object can carry a curse

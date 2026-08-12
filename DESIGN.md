@@ -153,6 +153,13 @@ Every object has: **Value**, **Weight class**, **Fragility**, **Curse grade**, *
 | **Two-man** | requires 2 players in sync | armoires, safes, pianos, **corpses** |
 | **Cart-only** | must be loaded on the dolly | the big money |
 
+**Curse grades ride only on pocket and armful items** (D-29). Two-man pieces, the dolly's
+cargo and the apex are always clean: their danger is logistics — bodies, doorways, pinch
+points — never a multiplier. A malignant tier-3 two-man piece would be worth twice a night's
+quota on its own, and the correct play would become refusing almost everything while waiting
+for one. It is also the better fiction: every curse effect above is something that happens to
+*the person holding it*, which is not an image that survives two people carrying a wardrobe.
+
 **Fragility** (0–3) determines break threshold on impact velocity. A broken item is worth
 $0 and makes a *lot* of noise. Fragile items are disproportionately valuable — the physics
 does the comedy.

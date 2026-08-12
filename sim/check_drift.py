@@ -253,6 +253,11 @@ assert_("py/integrated", D + "decay_per_min_at_crew4", r"^DECAY_PER_MIN = ([\d.]
 assert_("py/integrated", D + "ratchet_end", r"^RATCHET_END = ([\d.]+)")
 assert_("py/integrated", D + "per_cursed_item_floor", r"^FLOOR_PER_CURSED = ([\d.]+)")
 assert_("py/integrated", "night.appraise_seconds", r"^APPRAISE_S = ([\d.]+)")
+PY_INT_SLOTS = r"^CLASS_SLOTS = \{.*?\}"
+for key in ("pocket", "armful", "two_man"):
+    assert_("py/integrated", f"van.slot_cost.{key}", rf"\"{key}\":\s*([\d.]+)",
+            PY_INT_SLOTS)
+assert_("py/integrated", "van.slot_cost.cart", r"^APEX_SLOTS = ([\d.]+)")
 assert_("py/integrated", "van.ruin_k", r"^RUIN_K = ([\d.]+)")
 assert_("py/integrated", "van.ruin_exp", r"^RUIN_EXP = ([\d.]+)")
 for grade in ("clean", "tainted", "malignant"):
@@ -420,7 +425,6 @@ WAIVERS = [
     ("py/integrated", "loudness_constants.localisation_fuzz_m", "no geometry in this model"),
     ("py/integrated", "attention.*", "attention is modelled in curator_attention.py"),
     ("py/integrated", "van.max_slots", "single night; upgrades are chain_sim's job"),
-    ("py/integrated", "van.slot_cost.*", "uniform items; weight classes are chain_sim's job"),
     ("py/integrated", "disturbance.lever_*", "levers not modelled"),
     ("py/integrated", "disturbance.light_wing_gain", "lighting not modelled"),
 

@@ -469,6 +469,27 @@ estates now, one per way of breaking a check, and both clean estates are asserte
 **a default that happens to be right for the only existing case is indistinguishable from a
 correct implementation until there are two cases.**
 
+R30 · Put ECONOMY §3's **weight classes** into `integrated.py` — every item had been one
+slot since R5, so the per-slot pricing the economy is built on had never met the curse
+economy, the marginal policy or the recalibrated quotas. · **The jackpot appeared immediately,
+and it is D-28's apex hole one tier down.** A malignant tier-3 two-man piece is **$24,000
+against a night-4 quota of $10,250** — one object, three slots, contract met twice over. No
+model had ever held weight classes and curses at the same time, so nothing could see it.
+· **It does not inflate the economy, it deletes the loop.** With curses on heavy items the
+optimum stops being interior: refusing almost everything and waiting for a jackpot pays better
+at every bar tested, out to refusing 90% of what the crew finds, and slots used falls to
+**7.6 of 14** — *the van stops binding*, which is the single constraint the whole economy is
+reverse-engineered from. · Restricting curse grades to **pocket and armful** — what one person
+can carry — restores the shape: the bar peaks at the 30th–50th percentile and over-selectivity
+costs 36%. D-29, and the fiction was already telling us: every curse effect in DESIGN §4.2 is
+something that happens to *the person holding it*, which was never an image of two people
+carrying a wardrobe. · One modelling note that generalises past this game: with weight classes
+the marginal rule has to price a **slot**, not an item — a piece worth twice an armful at
+three times the slots is a worse buy, and only a per-slot comparison sees it. · Two rounds
+running, the finding has been a rule the specs never stated rather than a number they stated
+wrongly. Both were found by *implementing* something the documents describe and discovering
+there was nothing to implement.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

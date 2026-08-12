@@ -545,6 +545,30 @@ never the grade.
 
 ---
 
+## D-29 · Curses ride only on what one person can carry
+**Status:** FIRM · `ECONOMY.md` §3, `DESIGN.md` §4.3
+
+Pocket and armful items may be cursed. Two-man, cart and apex pieces never are — their danger
+is logistics, never a value multiplier. This is D-28 generalised: R28 closed the hole for the
+apex, and R30 found the same hole one tier down the moment weight classes entered the model.
+
+A malignant tier-3 two-man piece is **$24,000 against a night-4 quota of $10,250**. Left open,
+the economy stops having an interior optimum at all: refusing almost everything and waiting
+for a jackpot pays better at every bar tested, and slots used falls to 7.6 of 14 — **the van
+stops binding**, which is the one constraint the entire economy is built on. Restricting
+curses to single-carry items restores the peak at the 30th–50th percentile and makes
+over-selectivity cost 36%.
+
+The fiction agrees, which is how it should have been caught earlier. Every curse effect in
+`DESIGN.md` §4.2 is intimate: it pulses *your* flashlight, gains mass in *your* hands, speaks
+in *your teammate's* voice. None of that is an image of two people carrying a wardrobe.
+
+**Falsified if:** playtests show crews ignoring two-man pieces entirely once they cannot be
+cursed. That would mean the per-slot pricing in §3 is too thin to justify a two-person job,
+and the fix is the band, not the grade.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |
