@@ -159,8 +159,19 @@ def wants_scan(policy, d, slots, f_hat, H, cap=VAN_SLOTS):
     raise ValueError(policy)
 
 
-def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2, van=None):
+def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2, van=None, estate=None):
+    """`estate` = total objects in the house (R35). None keeps the historical infinite
+    shelf, where every trip draws four fresh candidates forever.
+
+    R34 found that constraint controls both the crew-size gap and the appraiser's edge in
+    chain_sim, and that the appraiser half CONTRADICTS DESIGN 4.4's Requirement A -- it
+    said the appraiser does BETTER when the estate is tight, where 4.4 says van scarcity
+    is what makes anyone scan. That claim came from a model one round old with two bugs
+    already found in it, so it needed an independent route. This is that route: different
+    code, no classes, no apex, no curses.
+    """
     cap = VAN_SLOTS if van is None else van
+    left = estate
     rng = random.Random(seed)
     d, t, slots, banked, filled = 0.0, 0.0, float(cap), 0.0, 0.0
     trips, scan_trips, lost = 0, 0, 0
@@ -173,6 +184,11 @@ def run_night(seed, policy, H=0.0, sigma=0.0, cursed=2, van=None):
         if filled >= TIER_CAP[tier] * cap and tier < 3:
             t += per_trip
             continue
+
+        if left is not None:
+            if left <= 0:
+                break                     # the house is picked clean
+            left -= CANDIDATES
 
         # This room's spread. E[f] = 1 for every H, so the mean value of the room is
         # untouched -- only how much scanning is WORTH here changes.

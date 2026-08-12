@@ -640,15 +640,29 @@ loose one does the reverse.** At the specced ~28 objects both sit in a good plac
 only 1.18× crew 4, appraiser +13.2% — which is a much better answer to R33's crew problem than
 any of the fixes that were on the table.
 
-> **Do not act on the appraiser column yet.** Its direction **contradicts §4.4's Requirement
-> A**, which says van space must bind and the crew must leave behind more than half of what
-> they could carry — this says the appraiser does *better* when the estate is tight. That may
-> be real (with a small estate, the order you take things in matters more than the set you
-> take) or it may be an artifact. **It is one model, one round old, and R34 already found one
-> bug in it** — an early `break` when tiers 1–3 were picked clean, which dropped the apex take
-> rate to 1% at some estate sizes and 100% at others and made blind earnings non-monotone in
-> estate size. That anomaly is what caught it. Verify the appraiser column against an
-> independent route before touching §4.4.
+> **R35 — the appraiser column above is a denominator artifact. Requirement A survives, and
+> §4.4 needs no change.** Re-checked in `appraiser_variance` (different code, no classes, no
+> apex, no curses), the *percentage* falls with estate size exactly as `chain_sim` said —
+> 25.8% at 16 objects down to 8.8% at 60. **In dollars it rises monotonically the whole way:**
+>
+> | Objects | BLIND | Best | Edge % | **Edge $** |
+> |---:|---:|---:|---:|---:|
+> | 16 | $760 | $956 | 25.8% | **$196** |
+> | 20 | $950 | $1,165 | 22.7% | $215 |
+> | 28 | $1,610 | $1,900 | 18.0% | $290 |
+> | 40 | $3,020 | $3,427 | 13.5% | $407 |
+> | 60 | $6,422 | $6,990 | 8.8% | **$568** |
+>
+> A tight estate collapses *everyone's* earnings, so the ratio inflates against a shrinking
+> denominator while the actual money the appraiser earns you goes down. **The quota is in
+> dollars.** So a bigger estate makes the appraiser worth more, which is precisely what
+> Requirement A predicts — the third time "check the denominator" (R27) has been the answer.
+>
+> It also means **`chain_sim`'s finite estate has a further problem**: its blind crew earns
+> *less* as the estate grows ($14,782 at 20 objects → $12,359 at 80), which cannot be right —
+> more house should never make a blind crew poorer. Its appraiser column is discarded. **The
+> crew-size column is unaffected** and stands: it is a ratio between two crews measured on the
+> same estate, so the denominator moves with the numerator.
 
 **What is safe to act on now:** put the object count in `LEVEL-SPEC.md` as an explicit
 authored constant with its rationale, because right now it is an accident of how many plinths

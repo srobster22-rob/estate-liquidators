@@ -757,6 +757,31 @@ may be real (with a small estate the *order* you take things in matters more tha
 it may be a second artifact. It is one model, one round old, in which I have already found one
 bug. Logged as needing an independent route before anyone touches §4.4.
 
+R35 · Verified R34's contested appraiser column by an independent route, and **it was an
+artifact — one I would have shipped as a rewrite of `DESIGN.md` §4.4.** Gave
+`appraiser_variance` a finite candidate pool (different code, no classes, no apex, no curses)
+and re-ran. **The percentage confirmed R34 exactly**: 25.8% at 16 objects falling to 8.8% at
+60, monotone, in a model sharing nothing with `chain_sim` but its constants. Two independent
+routes agreeing is normally where you stop. · **Then checked the denominator, and it inverts
+the conclusion.** In dollars the same data rises monotonically the whole way — **$196 → $215 →
+$290 → $407 → $568**. A tight estate collapses *everyone's* earnings, so the ratio inflates
+against a shrinking base while the money the appraiser actually earns you falls. **The quota is
+in dollars.** So a bigger estate makes the appraiser worth more, which is exactly what §4.4's
+Requirement A predicts. **§4.4 needs no change and van scarcity is still what makes people
+scan.** · That is the **third time** "check the denominator" has been the answer — R27 found
++8.8% and +3.4% were one measurement against two bases, and now this. It is also the second
+time in three rounds that agreement between two models was not evidence of correctness: both
+models compute the same ratio, so both inherit the same collapsing base. **Independent routes
+protect against implementation error, not against asking the wrong question.** · One real
+finding survives from R34's estate work, and it is the one that mattered: **at the specced ~28
+objects, crew 6 is only 1.18× crew 4** rather than 1.90×. That column is a ratio between two
+crews on the *same* estate, so the denominator moves with the numerator and the artifact does
+not apply. R33's crew-size problem is largely answered by a constraint the game already has. ·
+And a defect logged rather than fixed: **`chain_sim`'s finite estate has a further problem** —
+its blind crew earns *less* as the estate grows ($14,782 at 20 objects → $12,359 at 80), which
+cannot be right. Its appraiser column is discarded. Third bug in that code path in two rounds,
+which is roughly what a two-round-old model deserves to be trusted at.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -764,20 +789,19 @@ bug. Logged as needing an independent route before anyone touches §4.4.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R35: verify R34's appraiser column by an independent route, then spec the estate size.**
-R34 found that estate object count controls both the crew-size gap and the appraiser's edge,
-in opposite directions, and that at the specced ~28 objects both sit in a good place. The
-crew-size half is safe to act on. **The appraiser half is not** — its direction contradicts
-`DESIGN.md` §4.4's Requirement A, and it comes from a model one round old in which I already
-found two bugs. Check it in `appraiser_variance` (give it a finite candidate pool) or in the
-prototype, which already has a genuinely finite estate of 29 objects and can be driven. If it
-holds, §4.4's Requirement A needs rewriting — van scarcity may not be what makes people scan.
-If it does not, `chain_sim`'s finite estate has a third bug in it.
+**R36: fix `chain_sim`'s finite estate, or delete it.** R35 found its blind crew earns *less*
+as the estate grows ($14,782 at 20 objects → $12,359 at 80), which cannot be right — more house
+should never make a blind crew poorer. That is the third bug in that code path in two rounds.
+Suspect the tier-pool split (`TIER_SHARE`) interacting with the depth cap and the phase clock:
+a crew that picks a tier clean idles until the next phase opens, so a *smaller* estate may be
+reaching depth sooner. Instrument time-spent-idling by estate size. **If it does not come clean
+in one round, delete `finite_estate` and keep only the crew-size result**, which R35 showed is
+immune to the artifact.
 
 **Then: put the object count in `LEVEL-SPEC.md` as an authored constant.** It is currently an
 accident of how many plinths a level author happens to place, it is in no document as a tuning
-value, and R34 showed it doing more balance work than several constants that have their own
-decision-log entries.
+value, and R34 showed it doing real balance work — crew 6 goes from 1.18× crew 4 at the specced
+~28 objects to 1.90× at 80.
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their
