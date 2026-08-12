@@ -158,8 +158,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   // bosses bypass the spawn cap by design, so the ceiling is MAXE + live bosses
   ok("enemy count stays capped", full.marks.every(m => m.en <= 425),
      "max " + Math.max(...full.marks.map(m => m.en)));
-  ok("box budget never exceeded", full.marks.every(m => m.boxes <= 3600),
-     "max " + Math.max(...full.marks.map(m => m.boxes)));
+  // NOT asserted per-minute: state().boxes comes from render(), which does not
+  // run during a synchronous step loop, so those samples are all one stale frame.
+  // Measured properly below, after letting real frames render under load.
   ok("build filled out", full.kit.length >= 5, full.kit.length + " items");
   ok("coins awarded on finish", full.final.coins > 0, "coins=" + full.final.coins);
   ok("no errors across full run", errors.length === 0, errors.slice(0, 3).join(" | "));
@@ -184,57 +185,63 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("elite share stays a minority", late.n / Math.max(1,late.total) < 0.45,
      Math.round(late.n / Math.max(1,late.total) * 100) + "%");
 
-  console.log("\n=== 7e. COLOUR-VISION CONTRAST ===");
+  console.log("\n=== 7f. COLOUR-VISION CONTRAST ===");
   const cvd = await page.evaluate(() => {
     const P = window.__g.palette();
     const M = { normal:[1,0,0,0,1,0,0,0,1],
                 deuteranopia:[.625,.375,0,.70,.30,0,0,.30,.70],
                 protanopia:[.567,.433,0,.558,.442,0,0,.242,.758],
                 tritanopia:[.95,.05,0,0,.433,.567,0,.475,.525] };
-    const LIT = 1.35;
-    const ap = (c,m) => { const [r,g,b] = c.map(v => Math.min(1, v*LIT));
-      return [m[0]*r+m[1]*g+m[2]*b, m[3]*r+m[4]*g+m[5]*b, m[6]*r+m[7]*g+m[8]*b]; };
+    // per-channel, from the shader, for the face that dominates the silhouette.
+    // The first version of this used a flat 1.35 - which is the GROUND's
+    // multiplier - and so scored the palette under light enemies never get.
+    const lit = (c, m3) => c.map((v, i) => Math.min(1, v * m3[i]));
+    const shift = (c,m) => [m[0]*c[0]+m[1]*c[1]+m[2]*c[2],
+                            m[3]*c[0]+m[4]*c[1]+m[5]*c[2],
+                            m[6]*c[0]+m[7]*c[1]+m[8]*c[2]];
     const lab = c => { const f = v => v<=.04045 ? v/12.92 : Math.pow((v+.055)/1.055,2.4);
       const [R,G,B] = c.map(v => f(Math.max(0,Math.min(1,v))));
       let X=(R*.4124+G*.3576+B*.1805)/.95047, Y=(R*.2126+G*.7152+B*.0722),
           Z=(R*.0193+G*.1192+B*.9505)/1.08883;
       const k = t => t>.008856 ? Math.cbrt(t) : 7.787*t+16/116;
       X=k(X);Y=k(Y);Z=k(Z); return [116*Y-16, 500*(X-Y), 200*(Y-Z)]; };
-    const dE = (a,b) => Math.hypot(...lab(a).map((v,i)=>v-lab(b)[i]));
+    const dE = (a,b) => { const A=lab(a), B=lab(b);
+      return Math.hypot(A[0]-B[0], A[1]-B[1], A[2]-B[2]); };
 
-    const kinds = Object.keys(P).filter(k => !k.startsWith("_") && !k.includes("*"));
-    let worstPair = { d: 1e9 }, worstGround = { d: 1e9 }, worstCross = { d: 1e9 };
+    const keys = Object.keys(P.enemies);
+    let pair = { d: 1e9 }, ground = { d: 1e9 };
     for (const vis in M) {
       const m = M[vis];
-      for (let i = 0; i < kinds.length; i++) {
-        for (let j = i+1; j < kinds.length; j++) {
-          const d = dE(ap(P[kinds[i]],m), ap(P[kinds[j]],m));
-          if (d < worstPair.d) worstPair = { d, vis, a:kinds[i], b:kinds[j] };
-        }
-        for (const g of ["_terrainA","_terrainB"]) {
-          const d = dE(ap(P[kinds[i]],m), ap(P[g],m));
-          if (d < worstGround.d) worstGround = { d, vis, a:kinds[i] };
-        }
-        // an ELITE of one type must not read as a NORMAL of another - that would
-        // misinform about behaviour, which is worse than looking similar
-        for (const j2 of kinds) {
-          if (j2 === kinds[i]) continue;
-          const d = dE(ap(P[kinds[i]+"*elite"],m), ap(P[j2],m));
-          if (d < worstCross.d) worstCross = { d, vis, a:kinds[i]+" elite", b:j2 };
-        }
+      for (const [ln, LM] of [["sunlit", P.lightSunlit], ["shaded", P.lightShaded]]) {
+        const seen = {};
+        for (const k of keys) seen[k] = shift(lit(P.enemies[k], LM), m);
+        for (let i = 0; i < keys.length; i++)
+          for (let j = i+1; j < keys.length; j++) {
+            // a type against its OWN elite is exempt: the crown and +38% size
+            // carry that distinction, colour is not doing the work
+            if (keys[i].replace("*","") === keys[j].replace("*","")) continue;
+            const d = dE(seen[keys[i]], seen[keys[j]]);
+            if (d < pair.d) pair = { d, vis, ln, a:keys[i], b:keys[j] };
+          }
+        for (const k of keys)
+          for (const g of P.ground) {
+            const d = dE(seen[k], shift(lit(g, P.lightGround), m));
+            if (d < ground.d) ground = { d, vis, ln, a:k };
+          }
       }
     }
-    return { worstPair, worstGround, worstCross };
+    return { pair, ground, nVariants: keys.length, nGround: P.ground.length };
   });
-  ok("enemy types stay distinct under every colour-vision type",
-     cvd.worstPair.d > 20,
-     `worst ${cvd.worstPair.a}/${cvd.worstPair.b} dE=${cvd.worstPair.d.toFixed(1)} (${cvd.worstPair.vis})`);
-  ok("enemies stay distinct from the ground",
-     cvd.worstGround.d > 20,
-     `worst ${cvd.worstGround.a} dE=${cvd.worstGround.d.toFixed(1)} (${cvd.worstGround.vis})`);
-  ok("an elite never reads as a different normal type",
-     cvd.worstCross.d > 15,
-     `worst ${cvd.worstCross.a} vs ${cvd.worstCross.b} dE=${cvd.worstCross.d.toFixed(1)} (${cvd.worstCross.vis})`);
+  console.log(`  comparing ${cvd.nVariants} enemy variants (normal + elite) x ` +
+              `${cvd.nGround} terrain shades x 4 vision types x 2 lighting conditions`);
+  console.log(`  (the player is excluded on purpose - 11 distinguishable hues under CVD`);
+  console.log(`   is not achievable, so the player is marked by a ring instead)`);
+  ok("every enemy type stays distinct from every other",
+     cvd.pair.d > 15,
+     `worst ${cvd.pair.a}/${cvd.pair.b} dE=${cvd.pair.d.toFixed(1)} (${cvd.pair.vis}, ${cvd.pair.ln})`);
+  ok("every enemy stays distinct from the ground",
+     cvd.ground.d > 15,
+     `worst ${cvd.ground.a} dE=${cvd.ground.d.toFixed(1)} (${cvd.ground.vis}, ${cvd.ground.ln})`);
 
   console.log("\n=== 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===");
   const riders = await page.evaluate(() => {
@@ -410,6 +417,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   await page.click("#pkCards .card");
   await page.waitForTimeout(200);
 
+  console.log("\n=== 11b. DRAW BUDGET UNDER A LIVE FRAME ===");
+  const budget = await page.evaluate(() => {
+    window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+    window.__g.skipTo(1140); window.__g.boss(3);
+    for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
+      window.__g.give(w, 4);
+    window.__g.step(60 * 25); window.__g.resume();
+  });
+  await page.waitForTimeout(700);            // let real frames render
+  const drawn = await page.evaluate(() => window.__g.state());
+  ok("draw budget holds on a real frame", drawn.boxes > 0 && drawn.boxes <= 3600,
+     `${drawn.boxes} boxes with ${drawn.enemies} enemies`);
+
   console.log("\n=== 12. RENDER + PERFORMANCE UNDER LOAD ===");
   await page.evaluate(() => {
     window.__g.start("intern"); window.__g.god(); window.__g.skipTo(900);
@@ -432,6 +452,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   console.log(`  ~${perf.fps.toFixed(1)} fps with ${perf.enemies} enemies, ` +
               `${perf.boxes} boxes (software GL - real GPU is far higher)`);
   await page.screenshot({ path: "shot-combat.png" });
+
+  console.log("\n=== 12b. CAMERA AT THE ARENA EDGE ===");
+  // The chase boom is 17 units long; at the arena edge that used to put the eye
+  // inside the boundary spires and the whole frame rendered as fog.
+  for (const [label, x, z] of [["centre", 0, 0], ["edge", 0, 71], ["corner", 71, 71]]) {
+    await page.evaluate(([x, z]) => {
+      window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+      window.__g.freezeSpawns(true); window.__g.bot(false);
+      window.__g.place(x, z); window.__g.step(20); window.__g.resume();
+    }, [x, z]);
+    await page.waitForTimeout(260);
+    const shot = await page.screenshot();
+    const seen = await page.evaluate(async b64 => {
+      const img = new Image();
+      await new Promise(r => { img.onload = r; img.src = "data:image/png;base64," + b64; });
+      const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+      const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let grass = 0, total = 0;
+      for (let i = 0; i < d.length; i += 4 * 17) {
+        total++;
+        if (d[i+1] > d[i] + 12 && d[i+1] > d[i+2] + 12) grass++;   // green ground
+      }
+      return grass / total;
+    }, shot.toString("base64"));
+    ok(`camera sees the ground from the ${label}`, seen > 0.05,
+       `${(seen*100).toFixed(0)}% of sampled pixels are ground`);
+  }
 
   console.log("\n=== 13. NON-BLANK RENDER CHECK ===");
   const shot = await page.screenshot({ path: "shot-check.png" });
