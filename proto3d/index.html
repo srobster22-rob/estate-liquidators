@@ -444,9 +444,21 @@ function render(){
     drawBox(it.x,it.y,it.z,it.size,it.size,it.size,col);
   }
 
-  const c=curator;
-  drawBox(c.x,1.0,c.z,0.34,1.0,0.34, c.state==="FIXATE"?[.55,.53,.50]:[.14,.145,.15]);
-  drawBox(c.x,2.12,c.z,0.20,0.22,0.20,[.20,.19,.18]);
+  // ART-DIRECTION 5: tall, narrow, domestic - staff, not monster, never a face.
+  // Two stacked boxes read as "placeholder"; the same box budget arranged as a long
+  // coat, narrow shoulders, long hanging arms and a small head reads as a person,
+  // and the small head is what makes it read tall. Silhouette only - the renderer
+  // has no rotation, so this is deliberately symmetric and identical from all sides.
+  const c=curator, lit=c.state==="FIXATE";
+  const COAT = lit?[.55,.53,.50]:[.13,.135,.14];
+  const PALE = lit?[.62,.60,.57]:[.17,.165,.16];
+  drawBox(c.x,       0.56, c.z, 0.30,  0.56, 0.28,  COAT);   // coat, hem to hip
+  drawBox(c.x,       1.50, c.z, 0.24,  0.38, 0.22,  COAT);   // torso
+  drawBox(c.x,       1.88, c.z, 0.36,  0.06, 0.19,  COAT);   // shoulders
+  drawBox(c.x-0.30,  1.44, c.z, 0.055, 0.40, 0.06,  COAT);   // arms, hanging, long
+  drawBox(c.x+0.30,  1.44, c.z, 0.055, 0.40, 0.06,  COAT);
+  drawBox(c.x,       1.99, c.z, 0.06,  0.06, 0.06,  PALE);   // neck
+  drawBox(c.x,       2.16, c.z, 0.115, 0.13, 0.115, PALE);   // head
 }
 
 // ------------------------------------------------------------------ HUD

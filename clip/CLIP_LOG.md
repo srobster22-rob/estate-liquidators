@@ -129,9 +129,21 @@ quantisation — the gate reported freezes on moving footage. Raised the freeze 
 slow pass across the near east wall at ~4 m, close enough to actually light. · Same lesson as
 C9, third time: **validate the instrument before believing what it says about the work.**
 
+C11 · Rebuilt the Curator to `ART-DIRECTION.md` §5 — "tall, narrow, domestic, reads as staff,
+not monster, no face ever". It was a 2 m column with a cube on top, which reads as placeholder
+art in the one shot the whole clip is built around. Now seven boxes at the same cost: long coat
+to the hip, narrower torso, a shoulder bar, two long hanging arms, a neck and a small pale
+head, 2.29 m total. **The small head is the trick** — it is what makes the figure read tall;
+the previous version's cube head was 0.20 m and made it read stocky. Visual only, no rules, no
+constants, drift 55/55. · **Found:** the renderer has no rotation — `M4.trs` is translate and
+scale only — so the Curator is necessarily axis-aligned and never turns to face you. Invisible
+with two symmetric boxes; the moment it has arms it is a real constraint, and it is the first
+thing that will need fixing if it ever gets an animation. A figure that walks at you without
+ever turning is uncanny in a way that is currently free and later will not be.
+
 ---
 
-## Next step (what C11 should attack, ranked)
+## Next step (what C12 should attack, ranked)
 
 1. **Someone has to listen to it.** G11 proves the bed is audible; it cannot prove it is good,
    and the mix has never been heard by a human. The knock and hiss levels in particular were
@@ -140,8 +152,9 @@ C9, third time: **validate the instrument before believing what it says about th
 2. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
    of the monster by handing the vase to your friend" — cannot be filmed until there are two
    players. Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that matters most.
-3. **The Curator is two boxes.** Fine for a dev-facing clip, blocks anything user-facing.
-   `ART-DIRECTION.md` wants a silhouette.
+3. **The Curator cannot turn.** C11 gave it a silhouette; the renderer has no rotation, so it
+   walks at you facing north regardless. Needs a rotation path in `M4`/`drawBox` before any
+   animation work, and it is a prototype job rather than a clip job.
 4. **The blind beat is done being optimised.** C7 and C8 both improved it and both hit the same
    structural wall. Anything further needs a shot where the player is *not* carrying, which
    contradicts the beat. Leave it until item 2 makes a second clip possible.

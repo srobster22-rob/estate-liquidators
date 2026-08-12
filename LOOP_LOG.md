@@ -202,6 +202,19 @@ find: the prototype's strafe basis is the negation of its view basis' right vect
 using the movement convention puts it on screen-left. Harmless today because strafe is
 symmetric, but it will bite the first time anything else is positioned relative to the player.
 
+R18 · **Built the Curator's silhouette in `proto3d` to `ART-DIRECTION.md` §5.** It was a 2 m
+column with a cube on top; it is now seven boxes — long coat to the hip, narrower torso, a
+shoulder bar, two long hanging arms, a neck, and a small pale head at 2.29 m. Visual only, no
+rules, no constants, drift 55/55. The small head is the load-bearing part: the old 0.20 m cube
+head made a 2 m figure read stocky, and shrinking it is what makes the same height read tall
+and narrow. · **Found a real limit in the renderer: `M4.trs` is translate and scale only, so
+there is no rotation and the Curator cannot face anything.** It walks toward you still facing
+north. Two symmetric boxes hid this completely; the moment it has arms and shoulders it is
+visible, and it is the first thing that must be fixed before any animation work — §5 says
+"movement, not geometry, carries the character", and right now movement cannot carry anything
+because the model has no facing. Cheap to fix (a yaw term in `drawBox`), and worth doing before
+the character work rather than during it.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

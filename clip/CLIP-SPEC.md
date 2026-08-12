@@ -156,9 +156,12 @@ build rather than quietly becoming a lie.
   pass and a concat, and the single unbroken take is a stronger claim of "this is the game
   running" anyway. Revisit when there is more than one estate worth showing.
 - **Placeholder audio.** See §4. Replace whole-file when AUDIO-SPEC's real assets exist.
-- **The Curator is two boxes.** ART-DIRECTION calls for a silhouette; this is the prototype's
-  stand-in and it reads as "unfinished game" to a viewer. Accepted for a dev-facing clip;
-  blocks anything user-facing on a store page.
+- **The Curator is seven boxes.** C11 rebuilt it from two (a column and a cube) into a
+  silhouette per `ART-DIRECTION.md` §5 — long coat, narrow shoulders, long hanging arms, small
+  pale head, 2.29 m. It reads as a person now rather than a placeholder. It is still
+  axis-aligned, because `proto3d`'s renderer has no rotation, so it never turns to face you:
+  fine for a symmetric standing figure, and the thing to fix first if it ever gets an
+  animation. Still blocks anything user-facing on a store page.
 - **No captions burned for accessibility** beyond the on-screen copy — no spoken word to
   caption yet.
 - **The grade is one static curve.** No per-beat looks, no keyframes. It is set for the
