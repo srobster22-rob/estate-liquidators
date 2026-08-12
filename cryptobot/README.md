@@ -161,63 +161,55 @@ sceptical.
 
 ---
 
-## A recorded run — five seeds, and what actually reproduces
+## A recorded run — ten seeds
 
-Five independent search trajectories on the 65-market universe (42 structured, 23
-decoys), ~9,500 trials each, 110 generations, twelve years of hourly history.
-
-```
-seed   bots  looks  burns  trials
-   5      0     42      1    9,127
-  11      0     44      0    9,143
-  21      2     41      2    9,818
-  33      1     44      1    9,794
-  47      1     44      1    8,989
-
-counts [0, 0, 2, 1, 1]   min 0 | median 1 | max 2
-```
-
-**Not one exact genome was found twice.** Four bots, four different parameter sets,
-each produced by exactly one seed. Reported at the genome level, this factory has a
-100% non-reproduction rate.
-
-That is the wrong unit, and realising why is the useful part. Parameters are drawn
-from continuous ranges, so two independent searches will never converge on the same
-numbers even when both are right about where the edge lives. The question the data
-can answer is *did another trajectory independently decide this market was
-tradeable*:
+Ten independent search trajectories on the 65-market universe (42 structured, 23
+decoys), ~9,200 trials each, 110 generations, twelve years of hourly history.
 
 ```
-alt_perp_4h        seeds [21, 33]   REPRODUCED 2/5
-largecap_alt_1h    seeds [21, 47]   REPRODUCED 2/5
+seed    5   11   21   33   47  101  102  103  104  105
+bots    0    0    2    1    1    0    0    2    2    1
+
+N=10   min 0 | median 1 | max 2 | mean 0.90 +/- 0.88
+       4 of 10 seeds found nothing at all
 ```
 
-Every market any seed selected was selected by a second, independent seed. Both are
-genuinely structured. **Across five seeds and ~47,000 trials, no seed ever confirmed
-a bot on any of the 23 decoy markets.**
+The standard deviation equals the mean. **A single run of this factory carries no
+information about how many bots the universe supports** — which retroactively voids
+every single-run count reported earlier in this project's history, including three
+that were presented as findings about markets, strategy families, and history
+length.
 
-So the honest summary is three statements, not one number:
+### Only three markets are ever found, out of forty-two
 
-- the *bot count* is 0-2, median 1, and not reproducible
-- the *specific genomes* are not findings; each is one draw from a continuous space
-- the *markets* reproduce, and they are the right unit to report
+```
+largecap_alt_1h    5/10 seeds
+alt_perp_4h        3/10 seeds
+trend_fast_1h      1/10 seeds
+```
 
-`sweep` now reports both levels, because reporting only the genome level makes a
-working factory look broken and reporting only the count makes a noisy one look
-authoritative.
+Thirty-nine structured markets — each individually verified reachable at 1.0-2.4
+Sharpe by an unfitted probe — were never selected by any of ten searches. One
+genome out of seven appeared twice.
 
-### What this cost to learn
+That is not a broken search. It is gate 10 doing arithmetic. At ~44 out-of-sample
+looks the deflated-Sharpe hurdle demands roughly 2.5-3.0 observed Sharpe before it
+will call an edge real, and only the two or three strongest markets in the universe
+can deliver that on a 3.1-year validation slice. The other thirty-nine edges are
+genuinely there and genuinely too small to distinguish from luck at this sample
+size. **The factory is hurdle-limited, not search-limited** — which is why adding
+markets, adding strategy families, and adding generations all failed to move the
+count, and why more history was the only lever that ever did.
 
-Two container restarts destroyed ~90 minutes of sweep work that existed only in
-memory. `sweep` is now resumable: each seed's result is written the moment it
-completes and a rerun skips what is recorded. For a job that runs longer than the
-machine it runs on, partial progress is the normal case, not an exception.
+Across ten seeds and ~92,000 trials, no seed ever confirmed a bot on any of the 23
+decoys.
 
-### About the Sharpe numbers elsewhere in this file
+### The three honest outputs
 
-They are not plausible for real markets and are not claims about one. These are
-series this repo generated with structure this repo inserted at strengths this repo
-chose.
+- the **count** is 0-2, mean 0.90 +/- 0.88, and not reproducible from one run
+- the **genomes** are single draws from continuous parameter space, not findings
+- the **markets** reproduce, and `largecap_alt_1h` at 5/10 is the only result here
+  that deserves the word "finding"
 
 ---
 
