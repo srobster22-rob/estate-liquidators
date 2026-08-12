@@ -360,17 +360,36 @@ def cmd_sweep(args):
         print("\nThe count is NOT reproducible across search trajectories. Quote the"
               "\nrange, never the best run — the best of N runs is a selected"
               "\nmaximum, and no gate in this project corrects for it.")
-    found = {}
+    found, by_market = {}, {}
     for seed, bots, _, _ in details:
         for key, strat in bots:
             found.setdefault((key, strat), []).append(seed)
+            by_market.setdefault(key, set()).add(seed)
     if found:
-        print("\nwhich bots each seed found:")
+        print("\nexact genomes (market + strategy):")
         for (key, strat), seeds in sorted(found.items(),
                                           key=lambda kv: -len(kv[1])):
             mark = "reproduced" if len(seeds) > 1 else "one seed only"
             print(f"  {strat:<18} @ {key:<20} seeds {seeds}  <- {mark}")
-        print("\nA bot only one seed ever found is a candidate, not a finding.")
+
+        # The market is the reproducible unit, not the genome. Parameters are drawn
+        # from continuous ranges, so two independent searches will never converge on
+        # the same numbers even when both are right about where the edge lives.
+        # Asking "did another trajectory independently decide this market was
+        # tradeable" is the question the data can actually answer.
+        print("\nMARKETS (the unit that can actually reproduce):")
+        multi = 0
+        for key, seeds in sorted(by_market.items(), key=lambda kv: -len(kv[1])):
+            n = len(seeds)
+            multi += n > 1
+            mark = (f"found by {n}/{len(details)} seeds  <- REPRODUCED" if n > 1
+                    else "one seed only")
+            print(f"  {key:<24} seeds {sorted(seeds)}  {mark}")
+        print(f"\n{multi} market(s) identified independently by more than one "
+              f"search trajectory.")
+        print("A market several seeds land on is a finding. A single genome that "
+              "only\none seed ever produced is a candidate — its parameters are a "
+              "draw, not\na discovery.")
     return 0
 
 

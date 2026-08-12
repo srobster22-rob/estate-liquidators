@@ -161,70 +161,63 @@ sceptical.
 
 ---
 
-## A recorded run — and why the number is a range
+## A recorded run — five seeds, and what actually reproduces
 
-Three independent seeds, 200 generations each, on the 65-market universe (42
-structured markets, every one verified reachable at 1.0-2.4 Sharpe by an unfitted
-probe; 23 decoys). ~18,000 trials per seed. Twelve years of hourly history, a
-3.1-year validation slice.
+Five independent search trajectories on the 65-market universe (42 structured, 23
+decoys), ~9,500 trials each, 110 generations, twelve years of hourly history.
 
 ```
-seed  5:  0 bots   (17,928 trials)
-seed 11:  0 bots   (17,713 trials)
-seed 21:  2 bots   (18,612 trials, 70 looks, 2 vault burns)
+seed   bots  looks  burns  trials
+   5      0     42      1    9,127
+  11      0     44      0    9,143
+  21      2     41      2    9,818
+  33      1     44      1    9,794
+  47      1     44      1    8,989
 
-              min 0 | median 0 | max 2
+counts [0, 0, 2, 1, 1]   min 0 | median 1 | max 2
 ```
 
-Seed 21's two:
+**Not one exact genome was found twice.** Four bots, four different parameter sets,
+each produced by exactly one seed. Reported at the genome level, this factory has a
+100% non-reproduction rate.
+
+That is the wrong unit, and realising why is the useful part. Parameters are drawn
+from continuous ranges, so two independent searches will never converge on the same
+numbers even when both are right about where the edge lives. The question the data
+can answer is *did another trajectory independently decide this market was
+tradeable*:
 
 ```
-donchian @ alt_perp_4h        validation 1.89 | vault 2.36 | maxDD 22.8%
-ensemble @ largecap_alt_1h    validation 5.30 | vault 6.87 | maxDD  4.8%
+alt_perp_4h        seeds [21, 33]   REPRODUCED 2/5
+largecap_alt_1h    seeds [21, 47]   REPRODUCED 2/5
 ```
 
-Neither was found by the other two seeds. **A bot only one seed ever located is a
-candidate, not a finding.**
+Every market any seed selected was selected by a second, independent seed. Both are
+genuinely structured. **Across five seeds and ~47,000 trials, no seed ever confirmed
+a bot on any of the 23 decoy markets.**
 
-### This invalidates the narrative the earlier sections told
+So the honest summary is three statements, not one number:
 
-Three expansions were run, each with a mechanism that sounded right, each reported
-as a single number:
+- the *bot count* is 0-2, median 1, and not reproducible
+- the *specific genomes* are not findings; each is one draw from a continuous space
+- the *markets* reproduce, and they are the right unit to report
 
-| Change | Reported | What it actually was |
-|---|---|---|
-| 5 -> 16 structured markets | 1 bot | one draw |
-| 14 -> 22 strategies, 7 -> 10 families | 1 bot | one draw |
-| 1.28 -> 3.14 year validation slice | 3 bots | one draw, and the high one |
-| 30 -> 65 markets | 0, 0, 2 | **a distribution** |
+`sweep` now reports both levels, because reporting only the genome level makes a
+working factory look broken and reporting only the count makes a noisy one look
+authoritative.
 
-The seed spread (0 to 2, and 1 to 3 on the previous universe) is wider than every
-difference those expansions were credited with. The effects were inside the noise.
-The explanations were plausible, the measurements were real, and the conclusions
-were unsupported — read from a sample of one, three times running.
+### What this cost to learn
 
-That is the same multiple-testing error this project is built to prevent, committed
-one level above where every defence sits. Gate 10 deflates for candidates tested
-against held-out data. **Nothing deflates for runs performed and best-of quoted.**
-The gauntlet cannot see the experimenter.
+Two container restarts destroyed ~90 minutes of sweep work that existed only in
+memory. `sweep` is now resumable: each seed's result is written the moment it
+completes and a rerun skips what is recorded. For a job that runs longer than the
+machine it runs on, partial progress is the normal case, not an exception.
 
-`python3 -m cryptobot.run sweep --seeds 1 2 3 4 5` now makes the distribution the
-default way to ask "how many bots", and flags any bot a single seed found.
+### About the Sharpe numbers elsewhere in this file
 
-### What the run does still establish
-
-The calibration holds: `null-test` on this 65-market universe returns **0 false
-positives**, so the gates are not leaking on a universe with twice as many markets
-to get lucky on. Both winners landed on structured markets; no seed ever confirmed a
-bot on one of the 23 decoys. The machinery works. What it does not do is produce a
-repeatable count, and a factory whose output changes by 2 bots on the RNG alone
-cannot support a claim finer than its own spread.
-
-### About those Sharpe numbers
-
-2.4 and 6.9 are not plausible for a real market and are not claims about one. These
-are series this repo generated with structure this repo inserted at strengths this
-repo chose.
+They are not plausible for real markets and are not claims about one. These are
+series this repo generated with structure this repo inserted at strengths this repo
+chose.
 
 ---
 
