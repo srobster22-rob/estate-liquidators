@@ -42,7 +42,7 @@ Run these before anything else; the answers change the plan.
 
 ```bash
 python3 sim/check_drift.py          # expect: 63/63 constants agree
-python3 sim/validate_estate.py      # expect: clean estate 12/12, broken estate trips 9
+python3 sim/validate_estate.py      # expect: clean estate 12/12, broken estate trips 10
 python3 sim/audit.py                # expect: every model reads canonical tuning
 dotnet run --project unity/tests/CoreTests   # expect: 31/31 assertions pass
 ```
@@ -83,5 +83,5 @@ Read `README.md`, then `BUILD-PROMPT.md`. The project is at the point where the 
 settled (28 decisions logged, 1 open and it is an art question), the rules are tested, and the
 next real step is Phase 0: **two people, a door, and spatial voice over Steam.**
 
-`LOOP_LOG.md` has twenty-one rounds of findings, including several corrections to the specs.
+`LOOP_LOG.md` has twenty-two rounds of findings, including several corrections to the specs.
 Where the log and a document disagree, the log is newer.

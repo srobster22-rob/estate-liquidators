@@ -405,6 +405,29 @@ catches it. Logged as D-29, FIRM.
 · Verified both checkers bite: broke a model's tuning read (audit exits 1, names the file) and
 flattened a quota step (drift exits 1, names the invariant), then reverted both.
 
+R22 · Took the last item on the list — V5, the weakest check in the validator, unchanged
+since R1 and never once having failed anything. · **It cannot fail, and that is the finding.**
+V5 tested whether the Curator's approach bus survived a wing's walls: `60 x 0.85^doors`
+against an audibility floor of 25, needing **six doors on one route** to fire. But
+`AUDIO-SPEC.md` §3.1 gives that bus an occlusion **floor of 0.45**, so its worst case through
+any geometry is `60 x 0.45 = 27` — above the audibility floor by design. The check was
+testing a geometric property that the *mixer* guarantees. Twenty-one rounds of green, and it
+was never capable of anything else.
+· **It was in the wrong suite.** "Can you hear it through walls" is a bus invariant only an
+audio test can break, and §3.1 already asks for that test in the Unity project — the floor is
+the guarantee, and the test exists to catch someone deleting the floor. A *level* can only
+break the other half of the same promise: not whether you can hear it, but whether you get
+eight metres of hearing it. A plinth four metres from its neighbour gives four metres of
+warning however loud the approach is.
+· Replaced V5 with the geometric half — every tier-2+ plinth ≥8m from every adjoining room —
+and planted a fault in `BROKEN_B` that changes no topology at all, only a room's position, so
+it is invisible in a portal graph and every other check still passes on it. Suite is 12
+checks, 10 planted faults, green. `AUDIO-SPEC.md` §3.1 now says explicitly that the bus test
+lives there and why.
+· **The habit worth keeping from R16-R22:** a check that has never fired is a hypothesis, not
+a guarantee. Five rounds found apparatus quietly not working; this one had been *read as
+reassurance* for twenty-one. When a check never fires, find out whether it can.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -426,11 +449,19 @@ deliberately rather than overlooked.
 ~~**Audit every remaining sim for the same class of staleness.**~~ **Done, R21.**
 `sim/audit.py`, and it caught R20's error on its first run.
 
-**1. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
-*shortest* path from plinth to van and counts doors, so a wing whose alternate route is
-acoustically dead passes. It has never failed anything, which for a check is a symptom rather
-than a reassurance — R16 found two other pieces of apparatus that were quietly not running, so
-treat "never fires" as suspect by default. Make it walk every route V3 guarantees.
+~~**V5 is the weakest check in the validator.**~~ **Done, R22** — and the diagnosis was wrong
+in an interesting way. It wasn't that V5 checked too few routes; it was that no route could
+ever fail it, because the audio floor makes the property unbreakable by geometry. Replaced
+with the half of the promise a level *can* break.
+
+**1. The C# core has not been run since R13.** `unity/tests/CoreTests` pins the C# against
+the Python models with 31 assertions, and no round since has been able to execute it — there
+is no `dotnet` in this environment. Meanwhile R16–R22 changed the cursed floor's provenance,
+the crew-decay exponent, the quota curve, the apex band and the lever model. `check_drift.py`
+reads the C# as text and confirms its *constants* still match, but nothing has verified its
+*behaviour* in nine rounds. **This is now the largest unverified surface in the project**, and
+it is exactly the shape of thing this project keeps finding: apparatus that everyone assumes
+is green.
 
 **Also worth doing at some point, none of it blocking:**
 

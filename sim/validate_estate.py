@@ -31,9 +31,12 @@ VALUE_BANDS = {
 }
 
 TASK_SECONDS = 75.0     # rough cost of one prerequisite step for a crew of 4
+# AUDIO-SPEC 3.1: the approach bus has an occlusion FLOOR of 0.45, so 60 x 0.45 = 27
+# always clears the audibility floor of 25. Geometry cannot mute the Curator, which is
+# why the old V5 never fired -- see V5_approach_warning. Kept for the arithmetic.
 APPROACH_L = 60.0       # AUDIO-SPEC 3.1 approach bus at source
 AUDIBILITY_FLOOR = 25.0
-OCCLUSION = 0.85        # per wall, Curator
+OCCLUSION_FLOOR = 0.45  # the guarantee that makes the bus unbreakable by walls
 
 
 class Estate:
@@ -199,17 +202,45 @@ def V4_pinch_points(e):
     return not bad, "; ".join(sorted(set(bad)))
 
 
-def V5_audibility(e):
-    """AUDIO-SPEC 3.1: the Curator must stay audible through the wing's geometry."""
+APPROACH_WARNING_M = 8.0
+
+
+def V5_approach_warning(e):
+    """The fairness contract's promise that you hear it coming, as GEOMETRY.
+
+    TECH-SPEC A6 rule 2: never less than 8m of audible approach before contact.
+
+    This check used to test whether the approach bus survived the wing's walls --
+    60 x 0.85^doors against an audibility floor of 25 -- and it had never failed
+    anything in twenty-one rounds. R22 worked out why: it *cannot* fail. AUDIO-SPEC
+    3.1 gives the approach bus an occlusion floor of **0.45**, so its worst case
+    through any geometry is 60 x 0.45 = 27, which clears the floor of 25 by design.
+    The old check needed six doors on a single route to fire, and even then it would
+    have been describing a mix the spec forbids.
+
+    **It was in the wrong suite.** "Can you hear it through walls" is a bus invariant
+    that only an audio test can break, and AUDIO-SPEC 3.1 already asks for that test
+    in the Unity project. What a LEVEL can break is the other half of the same
+    promise: not whether you can hear it, but whether you get eight metres of hearing
+    it. A plinth in a room whose neighbour is four metres away gives the player four
+    metres of warning no matter how loud the approach is.
+
+    So this now checks the distance a player has to react in, which is a property of
+    the floorplan and nothing else.
+    """
     bad = []
+    g = e.adj()
     for pl in e.plinths:
-        path = e.path(pl["room"], e.van)
-        if path is None:
-            continue
-        walls = sum(1 for a, b in zip(path, path[1:])
-                    if (e.portal_between(a, b) or {}).get("door"))
-        if APPROACH_L * OCCLUSION ** walls < AUDIBILITY_FLOOR:
-            bad.append(f"{pl['room']}: {walls} doors to van, approach bus inaudible")
+        if pl["tier"] < 2:
+            continue                      # foyer junk is not worth an ambush rule
+        for nb in g.get(pl["room"], []):
+            if nb == e.van:
+                continue
+            d = e.dist(pl["room"], nb)
+            if d < APPROACH_WARNING_M:
+                bad.append(f"tier-{pl['tier']} plinth in {pl['room']} is {d:.1f}m "
+                           f"from {nb} -- under {APPROACH_WARNING_M:.0f}m of approach, "
+                           f"so it arrives before you can react")
     return not bad, "; ".join(sorted(set(bad)))
 
 
@@ -356,7 +387,7 @@ CHECKS = [
     ("V2  depth pacing", V2_depth_pacing),
     ("V3  second route", V3_two_routes),
     ("V4  pinch points", V4_pinch_points),
-    ("V5  audibility", V5_audibility),
+    ("V5  approach warning", V5_approach_warning),
     ("V6  portal graph", V6_portal_graph),
     ("V7  curator navmesh", V7_curator_navmesh),
     ("V8  value bands", V8_value_bands),

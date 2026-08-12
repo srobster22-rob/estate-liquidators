@@ -2,7 +2,7 @@
 Sample estates for the validator.
 
 MANOR_A is the worked example from LEVEL-SPEC.md 8 (East Conservatory), built to pass.
-BROKEN_B is the same estate with nine deliberate faults, one per check, used to prove
+BROKEN_B is the same estate with ten deliberate faults, one per check, used to prove
 the validator actually detects things rather than just printing PASS ten times.
 """
 
@@ -81,7 +81,7 @@ MANOR_A = {
 
 def _broken():
     d = copy.deepcopy(MANOR_A)
-    d["id"] = "broken_b  (nine deliberate faults)"
+    d["id"] = "broken_b  (ten deliberate faults)"
 
     # V10 — the piano check. Narrow the ONLY cart-wide route out of the office.
     for p in d["portals"]:
@@ -108,6 +108,13 @@ def _broken():
     # V8 — a tier-1 plinth priced like tier 3.
     d["plinths"].append({"room": "study", "cls": "armful", "tier": 1, "value": 2400})
 
+    # V5 — an ambush room. Slide the potting room in until it is 5.8m from the
+    # conservatory, so the Curator can cross between them in under the 8m of approach
+    # the fairness contract promises. Nothing about the topology changes and every
+    # other check still passes on it, which is the point: this is a fault you cannot
+    # see in a portal graph, only in the distances.
+    d["rooms"]["potting_room"]["pos"] = (57, 7)
+
     # V11 — a flat house. Every room evenly priced, so scanning has a fixed rate of
     # return everywhere and the appraiser is a habit rather than a decision. This is
     # the fault that looks like nothing wrong: every room individually is fine.
@@ -131,4 +138,5 @@ def _broken():
 BROKEN_B = _broken()
 
 # What BROKEN_B is built to trip. The test asserts exactly this set.
-EXPECTED_FAILURES = {"V2", "V3", "V4", "V6", "V8", "V9", "V10", "V11", "V12"}
+EXPECTED_FAILURES = {"V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10", "V11",
+                     "V12"}

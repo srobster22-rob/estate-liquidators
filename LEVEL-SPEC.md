@@ -227,7 +227,7 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V2** | Deepest room unreachable before T+4min, apex before T+6min, via simulated traversal at 2.6 m/s carry speed | `DESIGN.md` §7 pacing |
 | **V3** | ≥2 topologically distinct routes from every wing to the van | fairness contract #5 |
 | **V4** | Every tier-3/4 plinth→van route crosses ≥2 pinch nodes | `TECH-SPEC.md` §A4 |
-| **V5** | Curator audibility ≥8m through every wall configuration in the wing | `AUDIO-SPEC.md` §3.1 — **the contract test** |
+| **V5** | Every tier-2+ plinth is ≥8m from every adjoining room | `TECH-SPEC.md` §A6 rule 2 — you get eight metres to react |
 | **V6** | Portal graph closed: no unreachable room, no orphan portal, every doorway has a door | audio occlusion |
 | **V7** | NavMesh connectivity: Curator can reach every plinth *and* carry an item back to it | RESEAT can't dead-end |
 | **V8** | Total wing value within ±15% of its depth band | economy sanity |
@@ -235,6 +235,24 @@ Run in CI on every level change. **A wing that fails any check does not enter th
 | **V10** | **Every two-man and cart-class plinth has a route to the van wide enough to carry it** | see below |
 | **V11** | Every room declares a `value_class`, and 15–35% of the wing's rooms are `curio` | §2.1 — the appraiser has a payoff worth reading the room for |
 | **V12** | ≥2 hiding places per wing, every plinth within 12m of one, none in a sole-exit room | §2.2 — three of §8.1's four verbs need furniture in reach |
+
+**V5 was replaced in R22, and why is worth reading before writing another check.** It used
+to test whether the Curator's approach bus survived the wing's walls — `60 × 0.85^doors`
+against an audibility floor of 25 — and in twenty-one rounds it had never failed anything.
+The reason is that **it cannot fail**: `AUDIO-SPEC.md` §3.1 gives that bus an occlusion floor
+of **0.45**, so its worst case through any geometry is `60 × 0.45 = 27`, which clears the
+floor by design. The old check needed six doors on one route to fire, and even then it would
+have been describing a mix the spec forbids.
+
+It was in the wrong suite. *"Can you hear it through walls"* is a bus invariant that only an
+audio test can break — §3.1 already asks for that test, in the Unity project, and it belongs
+there. What a **level** can break is the other half of the same promise: not whether you can
+hear it, but whether you get eight metres of hearing it. A plinth in a room whose neighbour is
+four metres away gives the player four metres of warning however loud the approach is.
+
+> **A check that has never fired is a hypothesis, not a guarantee.** This one had been read as
+> reassurance for twenty-one rounds. The general habit, after R16–R21 found four more pieces
+> of apparatus quietly not working: when a check never fires, find out whether it *can*.
 
 **V10 deserves its own paragraph.** A piano that physically cannot leave the room it spawned
 in is a rage-quit bug — four people spending three real minutes discovering that a doorway is

@@ -242,6 +242,17 @@ state, or a performance spike to break it. Write an automated test: spawn the Cu
 through every wall configuration in the estate library and assert the bus output exceeds the
 audibility floor. Run it in CI on every level change.
 
+> **This test belongs here and nowhere else — it is not a level check** (R22). The estate
+> validator carried a version of it as V5 for twenty-one rounds and it never once failed,
+> because the 0.45 occlusion floor makes it *unfailable by geometry*: the worst case through
+> any wall configuration is `60 × 0.45 = 27` against a floor of 25. Only a mix state or a
+> voice-budget spike can break this contract, so only an audio test can catch it. **The floor
+> is the guarantee; the test exists to catch someone deleting the floor.**
+>
+> The level suite now checks the *geometric* half of the same promise instead — that a plinth
+> is far enough from its neighbours to give a player eight metres of warning (`LEVEL-SPEC.md`
+> V5). Two halves, two suites, and neither can cover for the other.
+
 ## 3.2 Its vocabulary
 
 The Curator never roars, never screams, never stings. It is a caretaker doing a job it finds
