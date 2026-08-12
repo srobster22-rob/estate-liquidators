@@ -155,9 +155,18 @@ while the geometry is boxes — the first non-box mesh will need a real normal m
 · FIXATE facing is the first thing in the prototype that communicates intent through movement
 rather than through the HUD, which is what `ART-DIRECTION.md` §5 asked for all along.
 
+C13 · Gave the Curator a gait, per `ART-DIRECTION.md` §5's "moves like a person doing a job it
+finds tedious". Six lines: 0.75 m stride, 25 mm of vertical rise on the torso and above, 10 cm
+of counter-swung arms. · **The one decision worth recording is that the phase is driven by
+distance travelled, not by elapsed time.** A time-driven bob keeps walking on the spot whenever
+the character stops, which is the classic tell of fake animation — and this Curator stops
+constantly (FIXATE, arriving at a plinth, the clip's own staging pins). On distance it stands
+genuinely still, then starts moving again mid-stride. · Deliberately under-animated: §5 says
+never a monster run, and the horror is that it isn't hurrying.
+
 ---
 
-## Next step (what C13 should attack, ranked)
+## Next step (what C14 should attack, ranked)
 
 1. **Someone has to listen to it.** G11 proves the bed is audible; it cannot prove it is good,
    and the mix has never been heard by a human. The knock and hiss levels in particular were
@@ -166,11 +175,10 @@ rather than through the HUD, which is what `ART-DIRECTION.md` §5 asked for all 
 2. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
    of the monster by handing the vase to your friend" — cannot be filmed until there are two
    players. Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that matters most.
-3. **Give the walk a gait.** C12 made the Curator turn; it still glides. §5 says "movement, not
-   geometry, carries the character" and "it moves like a person doing a job it finds tedious" —
-   a slow vertical bob and a small counter-sway on the arms, driven by distance travelled rather
-   than by time, would cost about six lines now that `drawBox` takes a yaw. Do it in `proto3d`,
-   not in the clip.
+3. **Nothing else in the prototype can be improved from a clip.** C10-C13 walked the whole
+   visual chain the clip touches — carry pose, silhouette, facing, gait — and it is now ahead of
+   what a 24-second take can show. Further prototype work should be driven by playtests, not by
+   framing.
 4. **The blind beat is done being optimised.** C7 and C8 both improved it and both hit the same
    structural wall. Anything further needs a shot where the player is *not* carrying, which
    contradicts the beat. Leave it until item 2 makes a second clip possible.

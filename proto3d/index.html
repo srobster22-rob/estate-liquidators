@@ -386,6 +386,7 @@ function walkTo(e,gx,gz,sp,dt){
   }
   const a=Math.atan2(tx-e.x,tz-e.z);
   e.yaw=angLerp(e.yaw||0,a,Math.min(1,dt*6));   // it turns, then walks - never strafes
+  e.step=(e.step||0)+sp*dt;                    // stride phase, by distance not by time
   const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
   if(!solid(nx,e.z)) e.x=nx;
   if(!solid(e.x,nz)) e.z=nz;
@@ -474,13 +475,20 @@ function render(){
   // Offsets are in its own frame now, so the shoulders and arms swing round as it
   // turns. cs/sn place the two arms either side of whichever way it is facing.
   const cs=Math.cos(c.yaw), sn=Math.sin(c.yaw), AX=0.30;
-  drawBox(c.x,           0.56, c.z,           0.30,  0.56, 0.28,  COAT, c.yaw); // coat
-  drawBox(c.x,           1.50, c.z,           0.24,  0.38, 0.22,  COAT, c.yaw); // torso
-  drawBox(c.x,           1.88, c.z,           0.36,  0.06, 0.19,  COAT, c.yaw); // shoulders
-  drawBox(c.x-cs*AX,     1.44, c.z+sn*AX,     0.055, 0.40, 0.06,  COAT, c.yaw); // arms
-  drawBox(c.x+cs*AX,     1.44, c.z-sn*AX,     0.055, 0.40, 0.06,  COAT, c.yaw);
-  drawBox(c.x,           1.99, c.z,           0.06,  0.06, 0.06,  PALE, c.yaw); // neck
-  drawBox(c.x,           2.16, c.z,           0.115, 0.13, 0.115, PALE, c.yaw); // head
+  // ART-DIRECTION 5: "moves like a person doing a job it finds tedious". The gait is
+  // phased on distance travelled, not on time, so it stops dead when it stops - a
+  // time-driven bob keeps walking on the spot and is the classic tell of a fake.
+  // 0.75m stride, 25mm of rise, 10cm of arm swing. Deliberately too little rather
+  // than too much: this is staff crossing a landing, not a monster.
+  const ph=(c.step||0)*8.4, bob=Math.sin(ph*2)*0.025, sw=Math.sin(ph)*0.10;
+  const fx=Math.sin(c.yaw), fz=Math.cos(c.yaw);
+  drawBox(c.x,           0.56,     c.z,           0.30,  0.56, 0.28,  COAT, c.yaw); // coat
+  drawBox(c.x,           1.50+bob, c.z,           0.24,  0.38, 0.22,  COAT, c.yaw); // torso
+  drawBox(c.x,           1.88+bob, c.z,           0.36,  0.06, 0.19,  COAT, c.yaw); // shoulders
+  drawBox(c.x-cs*AX+fx*sw, 1.44+bob, c.z+sn*AX+fz*sw, 0.055,0.40,0.06, COAT, c.yaw); // arms
+  drawBox(c.x+cs*AX-fx*sw, 1.44+bob, c.z-sn*AX-fz*sw, 0.055,0.40,0.06, COAT, c.yaw);
+  drawBox(c.x,           1.99+bob, c.z,           0.06,  0.06, 0.06,  PALE, c.yaw); // neck
+  drawBox(c.x,           2.16+bob, c.z,           0.115, 0.13, 0.115, PALE, c.yaw); // head
 }
 
 // ------------------------------------------------------------------ HUD

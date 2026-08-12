@@ -229,6 +229,17 @@ normals survived rotation here without an inverse-transpose only because every b
 coordinate axis, so a non-uniform scale changes its length but not its direction. That stops
 being true the moment the geometry stops being boxes.
 
+R20 · **Gave the Curator a walk cycle** — 0.75 m stride, 25 mm of rise, 10 cm of counter-swung
+arms, six lines on top of R19's rotation. `ART-DIRECTION.md` §5 wanted movement rather than
+geometry to carry the character, and this is the first of it. · **The load-bearing decision:
+the stride phase is driven by distance travelled, not elapsed time.** A time-driven bob keeps
+walking on the spot whenever the character stands still, which is the classic tell of fake
+animation — and the Curator stands still constantly (FIXATE, arriving at a plinth, waiting out
+a reseat timer). On distance it stops dead and resumes mid-stride. Worth carrying into Unity as
+a standing rule for every character in the game, because the engine makes the wrong version
+easier. · Under-animated on purpose: §5 says never a monster run, and the horror is that it
+isn't hurrying.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
