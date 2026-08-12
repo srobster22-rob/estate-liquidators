@@ -155,7 +155,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 50 falsification tests
+python bots/run.py selftest              # 51 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -212,10 +212,18 @@ A dollar-neutral 12-leg basket makes +2.30 gross alpha Sharpe on a planted
 cross-sectional effect — the sqrt(K) arithmetic works, and it is 30x the best
 margin anywhere else in the lab. But the *control* basket, with the effect
 switched off, makes **+0.26 +- 0.036** gross alpha over 20 instances, which G3's
-+0.30 tolerance would wave through. Four causes were tested and rejected without
-finding it, so the class makes no claim: the `xs_*` primitives are tier 5 and the
-search caps at tier 4, so no expansion can reach them. That is F6's lesson applied
-before the result, not after it.
++0.30 tolerance would wave through. Six hypotheses later the cause is the bar
+model: the engine fills at the open, the open embeds part of its own bar's move
+(`gap_frac`), and a high-turnover long-short book therefore trades at prices
+displaced the way its signal points. It scales linearly with `gap_frac` and is
+exactly zero at zero.
+
+**The single-instrument catalogue is unaffected** — the same test on the
+random-walk control gives +0.006 +- 0.031, statistically zero — so nothing else in
+this repository is in doubt. But until the basket path is repaired the class makes
+no claim: the `xs_*` primitives are tier 5 and the search caps at tier 4, so no
+expansion can reach them. That is F6's lesson applied before the result rather
+than after it.
 
 **The false-positive rate is measured, not argued.** `run.py fpr --repeats 10`
 points ten independent searches at a structureless market: 20,000 candidates, 137
@@ -300,7 +308,7 @@ bots/
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      50 falsification tests
+  tests/test_botlab.py      51 falsification tests
 ```
 
 ---

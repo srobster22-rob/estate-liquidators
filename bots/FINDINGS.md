@@ -1356,7 +1356,7 @@ identical vol, identical costs — earns **+0.264 +- 0.036 gross alpha Sharpe ov
 20 instances, 95% of them positive.** Seven standard errors from zero. And it
 would pass G3, whose tolerance is 0.30.
 
-Four candidate causes were tested and all four rejected:
+Six candidate causes were tested. Five were rejected; the sixth is the answer.
 
 | hypothesis | test | result |
 |---|---|---|
@@ -1364,12 +1364,44 @@ Four candidate causes were tested and all four rejected:
 | `alpha_sharpe`'s beta correction manufactures it from a small negative beta against a drifting market | compare raw vs alpha Sharpe | identical: +0.108 vs +0.110, net exposure -0.0009 |
 | the generator plants cross-sectional reversion by accident | measure it directly in the closes | -0.0010, within one standard error of zero |
 | a fill or timing effect at the open | re-run with `exec_delay=2` | invariant: +0.205 -> +0.195 |
+| small-sample bias in the cross-sectional demeaning | vary K | artefact *grows* with K (+0.019 at K=4, +0.178 at 12, +0.201 at 48); a demeaning bias would shrink |
+| the nonlinear score-to-position transform (thresholds, rebalance band, leverage clamp applied per leg to a demeaned score) | strip them | *worse* without them: +0.105 shipped, +0.152 with no thresholds or band, +0.203 on sign-only sizing |
 
 It is also invariant to the lookback (+0.205 at lb=5, +0.225 at lb=20), which
 rules out anything proportional to turnover.
 
+**Localising it split the problem in half.** Taking the positions the engine
+actually held and re-pricing them by hand against the generated close-to-close
+returns: the hand-priced book is **flat (-0.045)** while the engine's book on the
+same positions is **positive (+0.076)**. So the score-to-forward-return
+relationship is exactly as innocent as the generator says it is, and the artefact
+lives in the fill path.
+
+**And the fill path names its own culprit.** The engine transacts at the open, and
+the bar model sets `open[t] = close[t-1] * exp(gap_frac * lr[t])` — the open
+already contains a fraction of its own bar's move. Sweeping that fraction:
+
+| `gap_frac` | control gross alpha SR |
+|---|---|
+| 0.35 *(as shipped)* | +0.147 +- 0.032 |
+| 0.15 | +0.066 +- 0.039 |
+| **0.00** | **+0.005 +- 0.034** |
+
+Monotone, and exactly zero when the gap is removed. A high-turnover long-short
+book transacts at prices displaced in the direction its own signal points, and
+across twelve legs that displacement compounds into a Sharpe.
+
+**The single-instrument catalogue is not affected, and that was checked rather
+than assumed.** The same test on `control_martingale_daily` — a pure random walk
+with the same `gap_frac` of 0.30, traded by a high-turnover reversal bot — gives
+**+0.0055 +- 0.0306 gross alpha, 50% of instances positive**. Statistically
+exactly zero. Every result in this repository predates and survives this finding;
+what the gap breaks is specifically the cross-sectional book, which is why the
+single-instrument controls never caught it and why a new strategy class needed a
+new control.
+
 **So the class does not get to make a claim, and is quarantined rather than
-merged.** The `xs_reversal` and `xs_momentum` primitives are tier 5, and
+merged** — the cause is now known but not yet fixed, and a known cause is not a fix. The `xs_reversal` and `xs_momentum` primitives are tier 5, and
 `SearchSpace.expanded()` caps the tier at 4, so no expansion can reach them — the
 quarantine is structural rather than a flag someone can forget, and
 `test_cross_sectional_primitives_are_quarantined_from_the_search` holds the cap
@@ -1389,6 +1421,21 @@ does amplify a real edge — but it amplifies everything else at the same rate, 
 a strategy class with 12x the leverage on its own errors needs a *better* control
 than a single-instrument one, not the same one. G3's +0.30 tolerance was
 calibrated for single instruments and is simply the wrong number here.
+
+**What the fix has to be.** Not `gap_frac = 0`: the overnight gap is a real
+feature of daily bars and deleting it to make a number go away is the wrong
+repair. Either the basket's opens must be drawn jointly rather than each leg
+gapping on its own realised return, or a cross-sectional book must transact at
+prices that do not embed the move it is reacting to. Which of those is right is
+the open question, and until it is answered the class stays behind the tier cap.
+
+**A note on method, because this one nearly went the other way.** The first
+version of this measurement reported +2.30 gross alpha and 30x the best margin in
+the lab, and every incentive pointed at writing that up. It took six hypotheses —
+five of them wrong, including two I was confident about — to get from "cross
+sectional strategies have room" to "cross-sectional strategies have a bar-model
+interaction". The control is the only reason the first version was not the one
+that got committed.
 
 ---
 

@@ -656,6 +656,50 @@ def test_cross_sectional_signals_are_inert_without_peers():
         assert np.all(out == 0.0), f"{name} produced a signal with no peers present"
 
 
+def test_the_basket_control_artefact_is_the_open_gap():
+    """Pins F31's diagnosis so it cannot quietly change under a repair.
+
+    A cross-sectional reversal bot earns positive gross alpha on a basket with no
+    cross-sectional effect planted, and the cause is the bar model: the engine
+    fills at the open, `open[t] = close[t-1]*exp(gap_frac*lr[t])` embeds part of
+    the bar's own move, and a high-turnover long-short book therefore transacts at
+    prices displaced the way its own signal points.
+
+    Two things must stay true. With the gap the artefact is present — if it ever
+    vanishes on its own, something else changed and the diagnosis is stale. Without
+    the gap it is gone — which is what identifies the cause, and what any fix has
+    to preserve while *keeping* a realistic gap.
+    """
+    import dataclasses
+    from bots.botlab import xsection
+    from bots.botlab.markets import basket
+    # The two arms share `seed_name`, so they are the *same* basket with and
+    # without the gap rather than two random ones — the F23 pairing lesson. The
+    # unpaired version of this test measured +0.048 against a +0.147 population
+    # value and would have failed for lack of power, which is a much worse
+    # failure than a wrong threshold because it looks like a real result.
+    leg = universe.get("eq_largecap_daily")
+    out = {}
+    for gf in (0.35, 0.0):
+        spec = basket.basket_control(basket.BasketSpec(
+            name=f"gap_probe_{gf}", leg=dataclasses.replace(leg, gap_frac=gf),
+            n_legs=12, n_bars=6000, beta_disp=0.0, seed_name="gap_probe"))
+        srs = []
+        for i in range(1, 11):
+            legs = basket.synth_basket(spec, i)
+            r = xsection.run_basket(legs, xsection.xs_genome(legs[0].spec.name, lb=5),
+                                    cost_mult=0.0)
+            if r["ok"]:
+                srs.append(r["alpha_sharpe"])
+        out[gf] = float(np.mean(srs))
+    assert out[0.35] - out[0.0] > 0.05, \
+        f"removing the open gap did not remove the artefact (gap {out[0.35]:+.3f} vs " \
+        f"no gap {out[0.0]:+.3f}) — either F31's diagnosis is wrong, or the artefact " \
+        f"has changed and the quarantine needs re-deriving rather than lifting"
+    assert out[0.0] < 0.06, \
+        f"the no-gap arm still shows {out[0.0]:+.3f}; the gap is not the whole cause"
+
+
 def test_cross_sectional_primitives_are_quarantined_from_the_search():
     """The basket control does not pass (F31): a cross-sectional reversal bot
     earns +0.11 to +0.26 gross alpha Sharpe on a basket with *no* cross-sectional

@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 50 falsification tests
+python bots/run.py selftest      # 51 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -59,27 +59,28 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **Find the cross-sectional control artefact.** This is now the top item, and
-   it blocks the only identified route to a strategy with real room. A
-   cross-sectional reversal bot earns **+0.26 gross alpha Sharpe on a basket with
-   no cross-sectional effect planted** (F31) — seven standard errors from zero,
-   and inside G3's +0.30 tolerance, so the current controls would wave it
-   through. Four causes are ruled out: beta dispersion, `alpha_sharpe`'s beta
-   correction, accidentally planted autocorrelation (measured at -0.001), and
-   execution timing (invariant to `exec_delay`). It is also invariant to the
-   lookback, which rules out anything proportional to turnover.
+1. **Fix the cross-sectional gap interaction (cause known, repair not chosen).**
+   F31 traced the basket control artefact to the bar model: the engine fills at
+   the open, `open[t] = close[t-1] * exp(gap_frac * lr[t])` embeds part of the
+   bar's own move, and a high-turnover long-short book therefore transacts at
+   prices displaced in the direction its own signal points. It scales linearly
+   with `gap_frac` and is exactly zero at zero (+0.147 / +0.066 / +0.005). The
+   single-instrument catalogue is unaffected — the same test on the random-walk
+   control gives +0.006 +- 0.031 — so nothing already in this repository is in
+   doubt.
 
-   Places not yet looked: the nonlinear per-leg transform between score and
-   position (entry/exit thresholds, the rebalance band and the leverage clamp are
-   applied per leg to a *demeaned* score, and a nonlinear function of a demeaned
-   vector does not stay demeaned); the interaction between GARCH conditional vol
-   and which legs the score selects; and the possibility that it is real
-   small-sample bias in the cross-sectional demeaning at K=12, which would predict
-   the artefact shrinking as K grows — cheap to test and not yet done.
+   **Do not fix it by setting `gap_frac = 0`.** The overnight gap is a real
+   feature of daily bars and deleting it to make a number go away is the wrong
+   repair, of exactly the kind the standing rules forbid. The two candidate fixes:
+   draw the basket's opens *jointly* rather than letting each leg gap on its own
+   realised return, or execute a cross-sectional book at prices that do not embed
+   the move it is reacting to. Deciding between them needs an argument about which
+   is the better model of a real venue, not about which produces a better number.
 
-   Until it is found, `xs_reversal`/`xs_momentum` stay tier 5, unreachable by any
-   expansion. Do not raise the tier cap to "widen the search"; that is what the
-   quarantine test exists to stop.
+   Until then `xs_reversal`/`xs_momentum` stay tier 5, unreachable by any
+   expansion. Do not raise the tier cap to "widen the search"; that is what
+   `test_cross_sectional_primitives_are_quarantined_from_the_search` exists to
+   stop.
 2. **The constructive question F30 asked is still open.** Every widening tried so
    far produces more bots at the same margin, and under a gauntlet 20% harder the
    four distinct strategies become **one**. Cross-sectional was the only candidate
