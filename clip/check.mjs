@@ -26,8 +26,17 @@ const SPEC = {
   safe: {x0: 64, y0: 200, x1: 900, y1: 1480},
   darkFrac: 0.97, darkLuma: 10,
   openDark: 12,          // frames of the opening fade that may be black
-  tailFrom: 630          // 21.0s: title card may hold still
+  tailFrom: 630,         // 21.0s: title card may hold still
+  phoneRms: -40,         // dBFS through the phone-speaker model, minimum
+  peakMax: -0.5          // dBFS true peak, maximum
 };
+
+// A phone speaker, roughly: nothing below 500 Hz (48 dB/oct), gentle top at 8 kHz.
+// Validated against tones - unity at 1 kHz, -12 dB at 500 Hz, -58 dB at 200 Hz.
+// The bed's whole reason to exist is what comes through this.
+const PHONE = ["highpass=f=500:poles=2", "highpass=f=500:poles=2",
+               "highpass=f=500:poles=2", "highpass=f=500:poles=2",
+               "lowpass=f=8000"].join(",");
 
 const results = [];
 const gate = (id, name, ok, detail) => results.push({id, name, ok: !!ok, detail});
@@ -66,9 +75,10 @@ function lumaFrames(ffmpeg, file, w = 24, h = 42){
   return out;
 }
 
-function audioRms(ffmpeg, file){
+function audioRms(ffmpeg, file, filter){
   const buf = execFileSync(ffmpeg,
     ["-hide_banner", "-loglevel", "error", "-i", file, "-map", "0:a",
+     ...(filter ? ["-af", filter] : []),
      "-f", "s16le", "-acodec", "pcm_s16le", "-ac", "2", "-ar", "44100", "-"],
     {maxBuffer: 1 << 28, encoding: "buffer"});
   const n = Math.floor(buf.length / 4);
@@ -79,6 +89,8 @@ function audioRms(ffmpeg, file){
   }
   return {seconds: n / 44100, rms: Math.sqrt(sum / Math.max(n, 1)), peak};
 }
+
+const dbfs = v => 20 * Math.log10(Math.max(v, 1e-9));
 
 function main(){
   const inDir = resolve(ROOT, arg("in", "clip/build"));
@@ -181,6 +193,15 @@ function main(){
     driftOk = /OK/.test(drift);
   } catch (e) { drift = String(e.stdout || e.message); }
   gate("G10", "no drift", driftOk, drift.trim().split("\n").pop());
+
+  // ---- G11 audible on a phone -------------------------------------------
+  // The bed shipped for eight rounds with 99% of its energy below 450 Hz, which is
+  // to say silent on the device it was made for. Nothing but a measurement catches
+  // that - "an audio stream exists" did not.
+  const ph = audioRms(ffmpeg, file, PHONE);
+  gate("G11", "audible", dbfs(ph.rms) >= SPEC.phoneRms && dbfs(au.peak) <= SPEC.peakMax,
+       `phone-band ${dbfs(ph.rms).toFixed(1)} dBFS (min ${SPEC.phoneRms}), ` +
+       `full-band peak ${dbfs(au.peak).toFixed(1)} dBFS (max ${SPEC.peakMax})`);
 
   // ---- report ----------------------------------------------------------
   const pad = s => String(s).padEnd(12);

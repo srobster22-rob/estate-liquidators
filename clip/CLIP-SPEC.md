@@ -93,17 +93,22 @@ because the payoff at 18.0 s is a *hole* in the sound and holes need sample accu
 
 | Layer | Source | Behaviour |
 |---|---|---|
-| Room tone | Brown noise, two-pole lowpass | Constant, quiet. The house. |
-| Drone | 55 Hz + 82.5 Hz (a fifth), detuned 0.13 Hz between channels | Constant, slow 0.07 Hz swell. |
-| Heart | 46 Hz, two thumps per 1.05 s | In from 9.0 s (the mark), out by 19.0 s. |
-| Riser | Phase-integrated sweep 150 → 620 Hz | 12.4 s → 15.6 s, arriving as it reaches the plinth. |
+| Room tone | Brown noise, two-pole lowpass | Constant, −32 dBFS. The house. |
+| Air | The same noise with everything below ~1.1 kHz removed | Constant. Inaudible on headphones; on a phone it *is* the room tone. |
+| Drone | 55 + 82.5 Hz (a fifth), detuned 0.13 Hz across channels, partials at 220 / 330 / 440 / 660 / 880 | Constant, 0.07 Hz swell. Fundamentals for headphones, partials for phones. |
+| Heart | 46 Hz thump ×2 per 1.05 s, each with a 700–1400 Hz knock | In from 9.0 s (the mark), out by 19.0 s. |
+| Riser | Phase-integrated sweep 210 → 1150 Hz plus a fifth above | 12.4 s → 15.6 s, arriving as it reaches the plinth. |
 | Drop | Everything ducked to 10 % for 260 ms at 17.95 s, back over 340 ms | The relief beat. Silence is the payoff, not a stinger. |
 
-Levels are set by construction — there is no `loudnorm` in the bundled ffmpeg build, so nothing
-here is measured, only headroomed to 0.89 peak. The gate asserts only that a stereo AAC track
-of the right length exists. **Unverified:** whether these levels survive TikTok's own
-normalisation, and whether a 46–55 Hz bed survives a phone speaker at all — it may need a
-harmonic an octave up to be audible off-headphones.
+**Levels are measured, not guessed** — that is the whole lesson of C9. There is no `loudnorm`
+in the bundled ffmpeg, so the yardstick is a phone-speaker model (48 dB/oct below 500 Hz,
+gentle top at 8 kHz, validated against tones: unity at 1 kHz, −12 dB at 500 Hz, −58 dB at
+200 Hz). Gate **G11** measures what survives it. Current bed: **−30.5 dBFS** phone-band,
+−1.5 dBFS peak. The first eight rounds shipped **−61.7 dBFS** — silent on the device the clip
+is made for, and nothing caught it because "an audio stream exists" was the only assertion.
+
+**Unverified:** whether these levels survive TikTok's own normalisation, and everything about
+how the bed actually *sounds* — no one has listened to it. G11 proves it is audible, not good.
 
 ---
 
@@ -125,9 +130,16 @@ remaining changes are taste.
 | G8 safe area | every caption and card bounding box is inside x ∈ [64, 900], y ∈ [200, 1480] |
 | G9 rules-true | the sim state trace shows: `marked` is true only while holding; the Curator's pursuit goal is one fixed point, the item's home, and it reaches it (< 1.6 m); `marked` goes false within 1.5 s of the drop |
 | G10 no drift | `python3 sim/check_drift.py` still passes — the clip harness never edits a tuning constant |
+| G11 audible | through the phone-speaker model, the audio is ≥ −40 dBFS RMS, and full-band true peak ≤ −0.5 dBFS |
 
 G5 and G6 read the encoded video back at 24 × 42 greyscale, so they judge what a viewer sees
-after the grade, not what the capture pass intended.
+after the grade, not what the capture pass intended. G11 does the same for sound: it measures
+the encoded audio through a phone speaker, not the WAV through a spec sheet.
+
+**A gate that only asserts existence is not a gate.** G11 exists because the original audio
+check — "a non-silent stereo AAC track of the right length" — passed happily on a bed that was
+31 dB below audible on a phone, for eight rounds. Every gate here should be able to fail on
+plausible work; if one cannot, it is decoration.
 
 G9 is the one that matters. It is why the clip is rendered from the prototype instead of
 animated: if a future tuning change breaks the claim the clip is making, the clip fails to

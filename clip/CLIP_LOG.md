@@ -89,15 +89,35 @@ sweeping through it rather than a box on black. · Standing lesson, twice earned
 the falloff before framing to it.** Both bad framing decisions in this project came from
 treating a smoothstep as if it were a cliff.
 
+C9 · Went after the sound — the only remaining item verifiable without a person listening.
+Built a phone-speaker model (48 dB/oct below 500 Hz, top at 8 kHz) and **validated the
+instrument against tones before trusting it**: unity at 1 kHz, −12 dB at 500 Hz, −58 dB at
+200 Hz. First attempt at measuring used a 12 dB/oct filter, which leaked the 55 Hz drone in at
+−49 dBFS and drowned the very thing being measured — the instrument was reading itself.
+· **Found a real bug that had been shipping since C1.** The bed measured **−61.7 dBFS** through
+the phone model: inaudible on the device the clip exists for. Chasing why, the room-tone layer
+turned out to be at gain 26 — **+10 dBFS RMS, peaking at 11.9** — so `toWav`'s peak normaliser
+was scaling the *entire mix* down by 22.5 dB on every build. The drone, heart, riser and drop
+were all 22 dB below where they were written. The bed was, in effect, brown noise. One
+unmeasured constant, silently rewriting every other level for eight rounds.
+· Fixed the gain structure (room tone to −32 dBFS, master trim to unity, and the normaliser
+demoted from level control to a 0.98 clip guard that should never fire), then added the
+partials and transients a phone can actually reproduce: drone partials at 220–880 Hz, an air
+layer above 1.1 kHz, a 700–1400 Hz knock on each heartbeat, and the riser moved from 150→620
+to 210→1150 Hz. **Phone-band went −61.7 → −30.5 dBFS, a 31 dB improvement**, peak −1.5 dBFS.
+· Added **gate G11**, which measures the encoded audio through the phone model. · Standing
+lesson: **a gate that only asserts existence is not a gate.** "A non-silent stereo AAC track of
+the right length" passed happily on a bed 31 dB below audible. Every gate should be able to
+fail on plausible work.
+
 ---
 
-## Next step (what C9 should attack, ranked)
+## Next step (what C10 should attack, ranked)
 
-1. **Sound has never been heard on a phone speaker.** The bed is 46–55 Hz and phone speakers
-   roll off below ~400 Hz, so it may be effectively silent where it will be watched. Add an
-   audible harmonic, and add a gate that measures energy above 400 Hz so this can never regress
-   silently. **The only remaining item verifiable without a person watching**, which is why
-   it is first.
+1. **Someone has to listen to it.** G11 proves the bed is audible; it cannot prove it is good,
+   and the mix has never been heard by a human. The knock and hiss levels in particular were
+   set to hit a number, which is exactly how you get a bed that measures well and sounds like
+   a modem. **This needs the owner, not another round.**
 2. **A second clip, not a better first one.** The hand-off — the actual pitch, "you can get rid
    of the monster by handing the vase to your friend" — cannot be filmed until there are two
    players. Phase 0 dependency (`BUILD-PROMPT.md`), and it is the clip that matters most.
