@@ -324,9 +324,38 @@ simultaneous speakers, proximity chat stops being intelligible, and this game is
 product with a horror game attached (`AUDIO-SPEC.md` §2.1). Four is a design choice about
 conversation, not about money, and it should be defended on those terms.
 
+> **R32 — the "+12%" is not a finding, it is an artifact, and the honest number is unknown.**
+> `chain_sim` divides a trip's labour by crew size **linearly**: six people do exactly 1.5× the
+> work of four. That is the assumption `PARALLEL_EFFICIENCY` was introduced in R7 to deny —
+> and note that constant is a *level* correction (`crew × 0.65`), still linear in crew, so it
+> says nothing about scaling either. **The project has no sublinear parallelism model
+> anywhere**, and every crew-size conclusion it has ever drawn rests on the assumption that N
+> people do N× the work.
+>
+> Re-measured against the current model (noise, curses, rooms), crew 6 earns **2.05×** crew 4,
+> not +12%. Swept against the parallelism exponent, the same comparison gives:
+>
+> | Labour model | crew 6 ÷ crew 4 |
+> |---|---:|
+> | `crew` (current, perfect parallelism) | **2.05×** |
+> | `crew^0.85` | 1.52× |
+> | `crew^0.75` | 1.17× |
+>
+> **The answer is anywhere between +17% and +105% depending on an exponent nobody has
+> measured.** The original +12% happens to sit near the `crew^0.75` end, so D-18's conclusion
+> may well be right — but it was reached by a model that assumed the opposite extreme, which
+> means it was right by accident.
+>
+> **D-18 itself survives**, because its stated justification is voice legibility and that is
+> untouched by any of this. What does not survive is the sentence below dismissing the
+> economic counter-argument: a crew of six being *twice as good at the game* is a real
+> incentive the design would have to answer for.
+
 **Falsified if:** playtest shows four players can't cover an estate's prerequisite chains in
-the time available — that would mean the level, not the crew, is mis-sized. The +12% that six
-players earn is not a reason to revisit this.
+the time available — that would mean the level, not the crew, is mis-sized. **And measure the
+parallelism exponent while you are there** — time a crew of two, four and six through the same
+estate. It is one afternoon's work, it is the single number that decides whether crew size is
+balanced, and every crew-size claim in this project is currently a guess about it.
 
 ---
 

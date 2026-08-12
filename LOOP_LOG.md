@@ -658,6 +658,36 @@ drift check red — the R23 ratchet caught both new constants as values that had
 is exactly the failure R18 spent a round diagnosing after it had gone unnoticed for four.
 Added to `CS_BACKLOG` (now 28) rather than papered over.
 
+R32 · Re-derived `ECONOMY.md` §8's three findings against the current model, since all three
+came from the free-information `chain_sim` that has now changed underneath them four times. ·
+**Finding 3 — "earnings rise monotonically with crew size, +12% from four to six" — does not
+survive, and the way it fails is the most instructive thing this round produced.** Re-measured
+with noise, curses and rooms, crew 6 earns **2.05×** crew 4, not +12%. The direction holds; the
+*shape* is gone, and the shape was the entire argument. · **My first hypothesis was wrong and
+testing it took four minutes.** I blamed R12's crew-scaled decay (`50 × crew/4`), which R12
+itself flagged as provisional — bigger crews get more decay against the same per-trip impulses,
+so they should be quieter and richer. Ran it with decay held fixed: **4,004 / 11,351 / 22,586
+against 4,119 / 11,351 / 23,028.** Essentially unchanged. Not the cause. · **The actual cause
+is structural, and it is that `chain_sim` divides a trip's labour by crew size linearly** —
+six people do exactly 1.5× the work of four. That is the assumption `PARALLEL_EFFICIENCY` was
+introduced in R7 to deny, and **the correction never reached the model that sweeps crew size.**
+Worse, `PARALLEL_EFFICIENCY` would not have helped: it is `crew × 0.65`, a *level* correction
+that is still linear in crew, and the appraiser sims never vary crew so it never mattered
+there. **The project has no sublinear parallelism model anywhere.** · Swept the exponent:
+`crew` → **2.05×**, `crew^0.85` → 1.52×, `crew^0.75` → 1.17×. **The honest answer is anywhere
+between +17% and +105% depending on a number nobody has measured**, and the original +12% sits
+near the `crew^0.75` end — so D-18's conclusion may well be right, but it was reached by a model
+assuming the opposite extreme, which means it was right by accident. · **D-18 itself survives**,
+because its stated justification is voice legibility and nothing here touches that. What does
+not survive is its explicit dismissal — "the +12% that six players earn is not a reason to
+revisit this" — because a crew of six being *twice as good at the game* is an incentive the
+design would have to answer for. Rewrote the falsification to ask for the exponent: time a crew
+of two, four and six through the same estate. One afternoon, and it is the single number that
+decides whether crew size is balanced. · **This is the third settled conclusion found resting
+on a model that moved underneath it** (D-19 in R24, the appraiser denominator in R27), and the
+first where the flaw is in the model's *structure* rather than in a constant — which is exactly
+the class §10's provenance table was not built to catch.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -665,12 +695,14 @@ Added to `CS_BACKLOG` (now 28) rather than papered over.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R32: re-derive `ECONOMY.md` §8's three findings — the last known-stale block in the docs.** Crew size (D-18), the apex re-band (D-21)
-and labour gating (D-20) all came from the free-information `chain_sim`, which has changed
-underneath them four times — noise, curses, rooms, the per-trip metric. **D-18 is the exposed
-one**: R12 established Disturbance decay scales with crew, so noise makes bigger crews louder
-in a way the original comparison could not see. This is the R24 pattern and it is now
-predictable enough to check before it bites.
+**R33: give the project a parallelism model, because it does not have one.** R32 found every
+crew-size conclusion resting on the assumption that N people do N× the work, and the answer
+swings from +17% to +105% across plausible exponents. `PARALLEL_EFFICIENCY = 0.65` is a level
+correction, not a scaling law. Pick a form (`crew^a` is the obvious one), put the exponent in
+`tuning.json` so the drift checker owns it, apply it in **both** `chain_sim` and the appraiser
+family, and re-run everything crew-shaped — §8 Finding 3, D-18, and R24's trip ceiling, which
+is `HAUL_S / per_trip` and therefore moves with it too. **Expect the 21-trip ceiling to
+change**, which would move D-19 for the second time.
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their

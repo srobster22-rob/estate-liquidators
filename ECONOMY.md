@@ -283,6 +283,23 @@ size: $5,108 / $10,131 / $12,131 / $12,820 / $13,586 for crews of 2–6.
 a flavour choice — **clock-based gating would silently punish larger crews**, and the bug
 would have been extremely hard to diagnose from playtest reports.
 
+> **R32 — Finding 3's *direction* survives; its *shape* does not, and the shape was the
+> argument.** Re-run against the current model (noise, curses, rooms), earnings still rise
+> monotonically with crew — but crew 6 earns **2.05×** crew 4 rather than +12%. The cause is
+> not noise or curses: it is that **`chain_sim` divides labour by crew linearly**, so six
+> people do exactly 1.5× the work of four. Sweeping the parallelism exponent moves the same
+> comparison from 2.05× (`crew`) to 1.52× (`crew^0.85`) to 1.17× (`crew^0.75`).
+>
+> So the number is unknown, and everything downstream of it is a guess about an unmeasured
+> exponent. `PARALLEL_EFFICIENCY = 0.65` does not help — it is a *level* correction
+> (`crew × 0.65`), still linear in crew, and the appraiser sims never sweep crew size so it
+> never mattered there. **The project has no sublinear parallelism model anywhere.**
+>
+> This is the third settled conclusion found resting on a model that changed underneath it
+> (after D-19 in R24 and the appraiser denominator in R27), and the first where the flaw is in
+> the model's *structure* rather than a constant — which is exactly the class §10's provenance
+> table cannot catch. Measure the exponent in the first playtest that has six people in it.
+
 ### What this cost D-18
 
 Crew size 4 was justified in the decision log on economics: a 40% overflow margin. The sim
