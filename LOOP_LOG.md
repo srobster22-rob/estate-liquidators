@@ -460,6 +460,24 @@ on retry. Fixed at the source rather than by widening the threshold: a contract 
 a seed, and QA always hands it one. Three consecutive clean runs. · Regression: QA 108/108,
 drift 124/124.
 
+R27 · **The corpse economy** (DESIGN §5). Until now a collected crewmate was a subtraction:
+they vanished and the ledger printed a name. Now they leave a **body** — a two-man object that
+reuses the entire item pipeline, exactly as the design says it should. The number on it is
+what he is worth *to the collection*, which is why the Curator wants him and why **carrying
+your friend makes you a target**; it is never paid to you. Haul him to the van and he is back
+tomorrow, free. Leave him and you run tomorrow's higher quota one hauler short. That is the
+whole trade — no cash, no fees, no invented currency, and it cost almost nothing to build
+because two-man carry, attention weighting, van slots and the ledger were all already there.
+7 new checks. · **The bug it found is the one DESIGN §5 says it already fixed once.** The
+HUD's quota bar summed everything in the van, so a recovered body read as **$2,056 toward the
+quota** — the earlier draft's incoherence ("the corpse both paying out on extraction and
+paying out if abandoned") reappearing through the back door of a running total. Bodies are
+now excluded from banked, gross and fees; the only thing recovering one changes is who turns
+up tomorrow. · One statistical check had to be loosened rather than fixed: "the last night is
+not passable on crew throughput alone" was asserting a rate to ten points off twelve runs and
+failed on its own noise. It now makes the coarse claim the sample supports and says `n=12` in
+the message. · Regression: QA 114/114, drift 124/124, three consecutive clean runs.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

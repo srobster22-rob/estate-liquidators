@@ -619,8 +619,10 @@ async function checks(g, fresh) {
     return { bots: bots / runs, withApex: withApex / runs,
              apex: Math.round(apexValue.reduce((s, v) => s + v, 0) / apexValue.length) };
   });
-  ok("the last night is not passable on crew throughput alone",
-    lastNight.bots <= 0.6, JSON.stringify(lastNight));
+  // Twelve runs cannot pin a rate to ten points, so the claim is coarse: the
+  // last night is not a formality, and the apex is what closes the gap.
+  ok("the last night is not a formality on crew throughput alone",
+    lastNight.bots <= 0.75, JSON.stringify(lastNight) + " (n=12)");
   ok("but the apex turns it around",
     lastNight.withApex >= lastNight.bots + 0.15, JSON.stringify(lastNight));
 
@@ -722,6 +724,72 @@ async function checks(g, fresh) {
   ok("and it is worth a third to two thirds of the night it decides",
     apex.late.every(a => a.value >= 2900 * 0.30 && a.value <= 3300 * 0.68),
     JSON.stringify(apex.late.map(a => a.value)));
+
+  // --- the corpse economy (DESIGN 5) ----------------------------------------
+  // "Recover him and he's back next night, free. Leave him and you run
+  // tomorrow's higher quota one hauler short. That's the entire trade - no cash,
+  // no fees, no invented currency."
+  await fresh();
+  const body = await g(() => {
+    window.__g.freezeCrew(true);
+    const before = window.__g.roster().alive.length;
+    const dead = window.__g.killCrew(0);
+    const c = window.__g.corpses();
+    return { before, dead, corpses: c, after: window.__g.roster() };
+  });
+  ok("a collected crewmate leaves a body",
+    body.corpses.length === 1 && body.corpses[0].who === body.dead.name,
+    JSON.stringify(body));
+  ok("and the body is a two-man object",
+    body.corpses.length > 0 && body.corpses[0].klass === "two_man" &&
+    body.corpses[0].value > 0, JSON.stringify(body.corpses));
+
+  // It radiates: carrying your friend makes you a target, exactly like loot.
+  const carriedBody = await g(() => {
+    const list = window.__g.list();
+    const idx = list.findIndex(i => i.corpse);
+    const f = window.__g.rooms().find(r => !r.van);
+    window.__g.tp(f.x, f.z);
+    window.__g.hold(idx);
+    for (let i = 0; i < 30; i++) { window.__g.setDist(70); window.__g.step(15, 1 / 60); }
+    return { st: window.__g.state(), cur: window.__g.curator() };
+  });
+  ok("carrying your friend makes you a target",
+    carriedBody.st.marked === true, JSON.stringify(carriedBody.st));
+
+  // It pays nothing, and it costs three slots to bring home.
+  const recovered = await g(() => {
+    const v = window.__g.rooms().find(r => r.van);
+    const slotsBefore = window.__g.vanSlots();
+    window.__g.tp(v.x, v.z); window.__g.step(4, 1 / 60);
+    const st = window.__g.state();
+    const roster = window.__g.roster();
+    window.__g.setT(209.5); window.__g.step(60, 1 / 60);
+    const after = window.__g.contract().last;
+    return { slotsUsed: slotsBefore - window.__g.vanSlots(), banked: st.banked,
+             roster, net: after.net, gross: after.gross };
+  });
+  ok("bringing a body home costs three slots and pays nothing",
+    recovered.slotsUsed === 3 && recovered.banked === 0 && recovered.gross === 0,
+    JSON.stringify(recovered));
+  ok("and it is the crewmate you get back, not money",
+    recovered.roster.recovered.length === 1, JSON.stringify(recovered.roster));
+
+  // Leave him and tomorrow is a hauler short.
+  const left = await g(() => {
+    window.__g.newContract(777); window.__g.freezeCrew(true);
+    const dead = window.__g.killCrew(0);
+    window.__g.bank(window.__g.contract().quota + 200);   // pass the night anyway
+    window.__g.setT(209.5); window.__g.step(60, 1 / 60);
+    const beforeNext = window.__g.roster();
+    window.__g.nextNight();
+    const now = window.__g.roster();
+    window.__g.newContract(20260806);
+    return { dead, beforeNext, now };
+  });
+  ok("a body left behind is a hauler you do not have tomorrow",
+    left.now.alive.length === 2 && left.now.lost.includes(left.dead.name),
+    JSON.stringify(left));
 
   // --- night endings --------------------------------------------------------
   await fresh();

@@ -190,6 +190,11 @@ const QUOTA_SCALE=NIGHT/SHIP_NIGHT;
 const quotaFor=n=>CONTRACT_QUOTA_HERE[Math.min(n,NIGHTS-1)];
 const vanFor=n=>CONTRACT_VAN[Math.min(n,NIGHTS-1)];
 let night=0, chainOver=false, chainEarnings=0, lastNight=null;
+// Who is not coming to work tomorrow. DESIGN 5: recover the body and he is back
+// next night free; leave him and you run the higher quota one hauler short. The
+// only currency is van space now against crew capacity tomorrow - no cash, no
+// fees, no invented currency.
+let lostCrew=new Set(), recoveredTonight=new Set();
 const VAN_SLOTS=CONTRACT_VAN[0], QUOTA=quotaFor(0);
 const EYE=1.62, WALK=3.2, RUN=5.6, CARRY=2.6, CARRY_RUN=4.1;
 const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
@@ -696,7 +701,7 @@ const inShelf=(x,z)=>shelves.some(sh=>
 function reset(){
   makeItems();
   const dv=R("drive");
-  crew=CREW_NAMES.map((name,i)=>({
+  crew=CREW_NAMES.filter(n=>!lostCrew.has(n)).map((name,i)=>({
     name, colour:CREW_COLOURS[i], x:dv.x+(i-1)*1.6, z:dv.z+1.5,
     holding:null, down:0, hits:0, alive:true, face:0, noise:[], light:true,
     goal:null, mood:"SEEK", panic:0}));
@@ -709,6 +714,7 @@ function reset(){
   curator={x:den.x,z:den.z,state:"PATROL",goal:null,carry:null,
            fixate:0,lock:0,reseat:0,target:false,mode:null,open:0,
            face:0,fix:null,step:0,who:null,recompute:0};
+  recoveredTonight=new Set();
   for(const h of HIDES) h.item=null;
   van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
   t=0;dist=0;over=false;overWhy="";noiseLog=[];
@@ -771,6 +777,9 @@ const actors=()=>[player,...crew.filter(c=>c.alive)];
 // In the van OR on its way there. Counting only the van let two crew each carry
 // a cursed piece under a cap of one and both deposit, which is how a cap of 1
 // produced 1.25 aboard.
+// A body in the van is not money and must never read as money on the quota bar -
+// the incoherence DESIGN 5 explicitly fixed was a corpse that paid out.
+const banked=()=>van.cargo.filter(i=>!i.corpse).reduce((s,i)=>s+i.value,0);
 const cursedAboard=()=>van.cargo.filter(c=>c.grade!=="clean").length
   + actors().filter(a=>a.holding&&a.holding.known&&a.holding.grade!=="clean").length;
 function noiseIfScanned(){}   // scan noise lands once, on completion
@@ -1065,6 +1074,7 @@ function updateCrew(dt){
       if(roomAt(a.x,a.z)?.van&&it.heldBy===a&&van.slots>=SLOTS[it.klass]){
         releaseItem(it); it.gone=true; it.claim=null;
         van.cargo.push(it); van.slots-=SLOTS[it.klass]; a.mood="SEEK";
+        if(it.corpse) recoveredTonight.add(it.who);
         if(van.slots<=0) finish("VAN FULL");
       }
     } else if(a.goal&&!a.goal.gone&&!a.goal.heldBy&&
@@ -1174,6 +1184,7 @@ function step(dt){
     if(van.slots>=SLOTS[it.klass]){
       releaseItem(it); it.gone=true;
       van.cargo.push(it); van.slots-=SLOTS[it.klass];
+      if(it.corpse) recoveredTonight.add(it.who);
       if(van.slots<=0) return finish("VAN FULL");
     }
   }
@@ -1222,6 +1233,7 @@ function contact(a){
     if(a===player) return finish("COLLECTED");
     a.alive=false;                              // the collection keeps them
     if(a.holding){ a.holding.heldBy=null; a.holding=null; }
+    dropCorpse(a);
     c.state="PATROL"; c.target=false; c.mode=null; c.lock=0; c.open=0; c.who=null;
     return;
   }
@@ -1232,6 +1244,18 @@ function contact(a){
 }
 
 // Nearest body it can actually perceive. A concealed player is not one.
+// A corpse is an item, and the number on it is what he is worth TO THE
+// COLLECTION - which is exactly why it wants him, and why carrying your friend
+// makes you a target. It is never paid to you (DESIGN 5).
+function dropCorpse(a){
+  const [lo,hi]=BAND[3].two_man;
+  items.push({x:a.x, y:0.5, z:a.z, hx:a.x, hz:a.z, hy:0.5,
+    grade:"clean", tier:3, shelf:null, klass:"two_man", corpse:true, who:a.name,
+    value:Math.round(rnd(lo,hi)), size:0.5,
+    known:true, heldBy:null, gone:false, scan:0, moved:true, stash:0, hideIn:null,
+    claim:null});
+}
+
 function crewTarget(){
   let best=null,bd=1e9;
   for(const a of actors()){
@@ -1400,14 +1424,19 @@ function walkTo(e,gx,gz,sp,dt,gated){
 
 function finish(why){
   over=true; overWhy=why; document.exitPointerLock?.();
-  const gross=van.cargo.reduce((s,i)=>s+i.value,0);
-  const fees=van.cargo.reduce((s,i)=>s+i.value*FEE[i.grade],0);
-  const cursed=van.cargo.filter(c=>c.grade!=="clean").length;
+  const goods=van.cargo.filter(i=>!i.corpse);
+  const gross=goods.reduce((s,i)=>s+i.value,0);
+  const fees=goods.reduce((s,i)=>s+i.value*FEE[i.grade],0);
+  const cursed=goods.filter(c=>c.grade!=="clean").length;
   const ruin=cursed>0&&Math.random()<Math.min(.95,RUIN_K*Math.pow(cursed,RUIN_EXP));
   const net=ruin?0:Math.round(gross-fees);
   const quota=quotaFor(night), met=net>=quota;
   lastNight={night, net, quota, met, ruin, cursed, why, gross:Math.round(gross),
     pieces:van.cargo.length};
+  // Bodies that came home are back at work tomorrow; the rest are gone for the
+  // rest of the contract, and tomorrow's quota is higher.
+  for(const name of recoveredTonight) lostCrew.delete(name);
+  for(const a of crew) if(!a.alive&&!recoveredTonight.has(a.name)) lostCrew.add(a.name);
   if(met){ chainEarnings+=net; } else { chainOver=true; }
   const last=met&&night>=NIGHTS-1;
   if(last) chainOver=true;
@@ -1419,6 +1448,10 @@ function finish(why){
        (van.cap-van.slots).toFixed(1).replace(/\.0$/,"")} / ${van.cap} slots</td></tr>
      ${crew.some(a=>!a.alive)?`<tr><td class="r">Crew collected</td><td class="r">${
        crew.filter(a=>!a.alive).map(a=>a.name).join(", ")}</td></tr>`:``}
+     ${recoveredTonight.size?`<tr><td class="g">Brought home</td><td class="g">${
+       [...recoveredTonight].join(", ")}</td></tr>`:``}
+     ${lostCrew.size?`<tr><td class="r">Short tomorrow</td><td class="r">${
+       [...lostCrew].join(", ")}</td></tr>`:``}
      <tr><td>Gross</td><td>$${Math.round(gross).toLocaleString()}</td></tr>
      <tr><td class="d">Curse fees</td><td class="d">-$${Math.round(fees).toLocaleString()}</td></tr>
      ${ruin?`<tr><td class="r">THE COLLECTION RECLAIMED THE VAN</td><td class="r">everything</td></tr>`:``}
@@ -1449,7 +1482,7 @@ function nextNight(){
 // draws before every check that followed, which made the whole suite mildly
 // non-deterministic and produced statistics that failed one run in three.
 function newContract(seed){
-  night=0; chainOver=false; chainEarnings=0; lastNight=null;
+  night=0; chainOver=false; chainEarnings=0; lastNight=null; lostCrew=new Set();
   buildEstate((seed!==undefined?seed:(Date.now()&0x7fffffff))>>>0, 0);
   reset();
 }
@@ -1638,7 +1671,7 @@ function hud(){
   document.getElementById("hud").innerHTML =
     `<b>${Math.max(0,NIGHT-t).toFixed(0)}s</b> until sunrise<br>`+
     `NIGHT <b>${night+1}/${NIGHTS}</b>&nbsp;&nbsp;VAN <b>${(van.cap-van.slots).toFixed(1).replace(/\.0$/,"")}/${van.cap}</b>&nbsp;&nbsp;`+
-    `$${van.cargo.reduce((s,i)=>s+i.value,0).toLocaleString()} / ${quotaFor(night).toLocaleString()}<br>`+
+    `$${banked().toLocaleString()} / ${quotaFor(night).toLocaleString()}<br>`+
     (held?`CARRYING ${held.known?"$"+held.value+" "+held.grade.toUpperCase():"UNAPPRAISED"}<br>`:"")+
     (marked?`<span style="color:#9fc4d6">IT IS COMING FOR YOU</span><br>`:"")+
     (!marked&&curator.target&&hunted()?
@@ -1667,7 +1700,7 @@ requestAnimationFrame(frame);
 // QA hook. proto3d/qa.mjs drives the real build through this in headless Chromium;
 // anything reachable only by hand is a rule nothing is guarding.
 window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist),
-    slots:van.slots,banked:van.cargo.reduce((s,i)=>s+i.value,0),
+    slots:van.slots,banked:banked(),
     cur:curator.state,mode:curator.mode,hits:player.hits,
     who:curator.who?curator.who.name:null,
     marked:markedPlayer(),
@@ -1704,7 +1737,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   list:()=>items.filter(i=>!i.gone).map((it,i)=>({i,x:+it.x.toFixed(2),z:+it.z.toFixed(2),
     grade:it.grade,tier:it.tier,value:it.value,known:it.known,held:!!it.heldBy,
     by:it.heldBy?it.heldBy.name:null,shelf:it.shelf,y:+it.y.toFixed(2),
-    klass:it.klass})),
+    klass:it.klass,corpse:!!it.corpse})),
   // Mirrors grabDrop's bookkeeping - an item picked up by a fixture is just as
   // displaced as one picked up by hand, and radiance() keys off exactly that.
   hold:i=>{const it=items.filter(x=>!x.gone)[i]; if(!it) return null;
@@ -1767,6 +1800,12 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   vanSlots:()=>van.slots,
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
+  corpses:()=>items.filter(i=>!i.gone&&i.corpse).map(i=>({who:i.who,value:i.value,
+    klass:i.klass, x:+i.x.toFixed(2), z:+i.z.toFixed(2)})),
+  roster:()=>({alive:crew.filter(a=>a.alive).map(a=>a.name),
+    lost:[...lostCrew], recovered:[...recoveredTonight]}),
+  killCrew:i=>{const a=crew[i]; if(!a||!a.alive) return null;
+    a.hits=1; contact(a); return {name:a.name, alive:a.alive};},
   apex:()=>{const list=items.filter(x=>!x.gone); const it=list.find(i=>i.klass==="cart");
     return it?{i:list.indexOf(it), value:it.value, room:roomAt(it.hx,it.hz)?.id,
       tier:it.tier}:null;},
