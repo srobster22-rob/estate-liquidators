@@ -1,10 +1,11 @@
-# Forty Game Concepts
+# Thirty-Nine Game Concepts
 
-`GAMES-PROJECT-PROMPT.md`, run once, then corrected and verified across five passes. **40 live
-concepts** in nine families, a ranked top eight, and a graveyard of thirty-one.
+`GAMES-PROJECT-PROMPT.md`, run once, then corrected, verified and partly tested across eleven
+rounds. **39 live concepts** in nine families, a ranked top eight, and a graveyard of thirty-two.
 
 All 47 cards have been checked against the market. **Seven were games that already exist; one
-was recovered from the graveyard once its rejection was audited.** The
+was recovered from the graveyard once its rejection was audited; one more died when its kill
+test was actually run.** The
 [verification ledger](#verification-ledger) records what the search found for **every card**,
 and the six cards it contradicted have been rewritten — so the cards and the ledger no longer
 disagree, and there's no "trust the newer one" clause to remember.
@@ -91,7 +92,11 @@ All 45 cards checked against the market on **2026-08-06**. This table is the doc
 current source of truth; where a card's `Nearest` field disagrees with this ledger, the
 ledger is newer.
 
-**Of 47 cards written: 7 dead, 4 wounded, 36 survived.** 40 remain live.
+**Of 47 cards written: 8 dead, 4 wounded, 35 survived.** 39 remain live.
+
+**Seven were killed by a search. One — #44 Ghosts — was killed by running its own kill
+test**, which is a different and more expensive kind of finding: no search could have reached
+it, because nothing like it exists to search for.
 
 **#47 Reservation** was written *after* its search rather than before, which is the order this
 document spent four passes learning. The search didn't just clear it — it supplied the
@@ -101,7 +106,7 @@ searches and about twenty minutes.
 
 | Verdict | Count | Cards | Meaning |
 |---|---|---|---|
-| **DEAD** | 7 | #3, #7, #9, #33, #36, #43, #45 | A shipped game occupies the concept *and* the bet. Tombstoned in place; graveyard entries 26–32. |
+| **DEAD** | 8 | #3, #7, #9, #33, #36, #43, #45 (search) · **#44 (kill test)** | Seven are occupied by shipped games. #44 failed its own kill condition when run. Tombstoned in place; graveyard entries 26–33. |
 | **WOUNDED** | 4 | #2, #37, #40, #41 | The bet was partly taken, or a claim on the card was factually wrong. All four cards rewritten. #2 and #40 need real work before either is buildable. |
 | **SURVIVED** | 35 | everything else | A real search found nothing occupying the bet. Not the same as "nothing exists" — see the caveats. |
 
@@ -159,7 +164,7 @@ card's `Nearest` is factually *contradicted* by this table, the card was rewritt
 | 40 | Shelf | **[*Shelf by Shelf: Bookstore Simulator*](https://store.steampowered.com/app/3943720/Shelf_by_Shelf_Bookstore_Simulator/)**. Unresolvable by search — see above |
 | 41 | Tell | **[*Echo*](https://store.steampowered.com/app/551770/ECHO/)** — enemies learn your moves and use them against you. Better comparable than the card had; adapts between cycles, not within a fight. Card rewritten |
 | 42 | Throng | `EMPTY` — crowd-as-fluid exists as [SPH crowd-simulation research](https://www.sciencedirect.com/science/article/abs/pii/S0097849321001205), never as an action game |
-| 44 | Ghosts | `EMPTY` — ghost replays are universally cosmetic (*Trackmania*, *Mario Kart*). Nobody has made them lethal |
+| ~~44~~ | ~~Ghosts~~ | `EMPTY` on search — nobody has made ghost replays lethal. **Then killed by its own kill test:** the pool converges to ~12 routes. Dead |
 | 46 | Direct | Gaze-directed steering as a **standard VR locomotion technique**; *Cameraman* (itch, but you still walk); US patent 10974149. Card rewritten |
 | 47 | Reservation | *Suck Up!*, *Whispers from the Star*, *1001 Nights*, *Wanderfolk* — **all let the model own the outcome**. *Recettear* is the ancestor without language |
 
@@ -1119,8 +1124,33 @@ one found has committed to recoil-only movement in **3D**, where the nausea risk
 real and unexplored. That's a different concept with a different kill condition, and it is not
 this card — if you want it, write it fresh rather than reviving this one.
 
-### 44 · Ghosts `POPULATION`
+### ~~44 · Ghosts~~ — **dead, killed by its own kill test, 2026-08-06**
 **A bullet-hell where the hazards are other players' recorded runs.**
+
+> **The first concept in this document killed by running something rather than by searching.**
+> `concepts-sim/ghosts.py`. The card's kill condition — *"the ghost pool converges… you've
+> built a hand-authored level the expensive way, via infrastructure"* — is met, and it is not
+> close.
+>
+> A population of optimisers produces **about a dozen distinct routes, and no more.** Flat at
+> ~6 whether the level is 8 lanes wide or 48. Falling as a *share* of pool size (10% at 30
+> ghosts, 4.6% at 240). With identical players it collapses to an exact **period-7 limit
+> cycle** — play the level eight times and you have seen every state it has. Giving players
+> different risk tolerances and different appetites for the fast line breaks the cycle but
+> lifts variety only from 5 distinct paths to 7. **A 2,060-run archive contains 12.**
+>
+> So "the danger *is* the population" is false. The danger is a dozen lines, authored by the
+> first few optimisers and then frozen. You would be paying for matchmaking, storage and
+> replay infrastructure to deliver what a designer could place by hand in an afternoon —
+> which is exactly the sentence the card wrote to kill itself with.
+>
+> **Salvage, and it is not this concept.** Everything that would restore variety works by
+> *fighting* convergence rather than relying on it: segment ghosts by skill band, draw from
+> players deliberately unlike you, inject archived runs from before the meta settled. Those
+> are reasonable features for a game that already works. None of them is "the danger is the
+> population," and a card built on them would need its own bet and its own search.
+>
+> Graveyard entry 33.
 
 - **The bet:** asynchronous PvP where the danger *is* the population. Nobody is online with
   you and everybody is against you.
@@ -1416,6 +1446,15 @@ search is a record of the market.
     *Gladio Mori* now models muscles, arteries and vitals; *GUTS* is a third. The most
     expensive concept in the document was also the most thoroughly occupied.
 
+*Killed by its own kill test rather than by a search — the first of these:*
+
+33. **Ghosts** (was #44) — a population of optimisers produces ~12 distinct routes in total;
+    identical players collapse to an exact period-7 limit cycle; neither level width, pool
+    size, player heterogeneity nor a 2,060-run archive rescues it.
+    `concepts-sim/ghosts.py`. It was `EMPTY` on search and ranked **first** among things left
+    to test — the document prioritised it correctly and then the test killed it, which is the
+    entire point of having tests that can.
+
 *Generated during the sweep to fill the breached action quota, and killed before being written
 up as cards:*
 
@@ -1618,16 +1657,41 @@ the least reliable thing here and adding a fourth unguarded sim would compound t
 A guard that cannot fail is the same tautology this round kept catching, so it was checked
 rather than assumed.
 
+**R11 · Running Ghosts — and the first concept killed by a test.** Built and ran
+`concepts-sim/ghosts.py` for #44. *Found:* **the kill condition is met, decisively.** A
+population of optimisers produces ~12 distinct routes in total. Identical players collapse to
+an exact **period-7 limit cycle** — eight plays and you've seen every state the level has.
+Heterogeneous preferences break the cycle but lift variety from 5 distinct paths to 7. Not a
+resolution artifact: flat at ~6 from an 8-lane level to a 48-lane one, and *falling* as a share
+of pool size. A 2,060-run archive holds 12. "The danger *is* the population" is false; the
+danger is a dozen lines, authored by the first few optimisers and then frozen.
+
+*The instrumentation lesson this round is a new category.* The first version passed G2 on
+"turnover > 0" — the hazard field was moving, so it looked alive. It was moving around a
+seven-state loop. **The code was correct and the criterion was wrong**, which is harder to
+catch than a bug because nothing looks broken. The previous four failures were all bad code
+or bad units; this one was a bad question. Ask what a measurement would look like if the thing
+you fear were true, not just whether the number is non-zero.
+
+*Two salvages exist and neither is this card:* segmenting ghosts by skill band, or seeding
+from pre-meta archives. Both work by **fighting** convergence rather than relying on it, so
+they're features for a game that already works, not a bet.
+
 ### Next, ranked
 
-1. **A third kill test — #44 Ghosts.** Needs no new game (replay 50 recorded runs as hazards,
-   measure path variance at day 1 vs day 7), it's `EMPTY` on search, and convergence is
-   measurable rather than a matter of taste. Best evidence-per-hour left.
+1. **Extend the regression guard to `ghosts.py`.** Three sims now, one guarded set of numbers
+   across two of them. The Ghosts figures are quoted in a tombstone and a graveyard entry and
+   are currently unprotected.
 2. **Dedupe the prompt.** Five separate clauses now say some version of "search first." One
    should say it and the rest should point at it — `IMPROVE-PROMPT.md`'s "prefer deleting
    duplication to adding features," applied to the prompt itself.
-3. **#47 Reservation's test needs a human**, and is the highest-value thing in the document
-   that no amount of simulation reaches. Worth saying plainly rather than looping past it.
+3. **Add "run the test" to the prompt as a phase.** Eleven rounds in, the document's most
+   valuable outputs have come from searching and running, not from generating — and the prompt
+   still only describes generating. It should say: generate, search, then *run the cheapest
+   test you can before ranking anything*.
+
+**And the thing no loop reaches:** #47 Reservation and #16's fifty dossiers both need a human.
+They are the two highest-value items in the document and simulation cannot touch either.
 
 Left rough deliberately: #40 still needs two hours of playing *Shelf by Shelf*, which no
 amount of looping substitutes for.

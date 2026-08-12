@@ -86,6 +86,35 @@ CHECKS.append((all(q <= 0.30 for _, q, _, _ in hits), "all viable points low-cat
                "#21 card — 'boats must be inefficient'"))
 
 
+# --- ghosts.py — quoted on GAME-CONCEPTS.md #44 (tombstone) and graveyard entry 33 -------
+
+import ghosts as G                # noqa: E402
+
+_, dist_hom, states_hom = G.run_heterogeneous(spread=0.0, gens=200, seed=7)
+check("Ghosts: distinct paths, identical players", dist_hom[-1], 5, 0, "#44 tombstone")
+check("Ghosts: limit-cycle period", G.cycle_period(states_hom), 7, 0,
+      "#44 tombstone, graveyard 33")
+
+_, dist_het, states_het = G.run_heterogeneous(spread=0.6, gens=200)
+check("Ghosts: distinct paths, heterogeneous", dist_het[-1], 7, 0, "#44 tombstone")
+CHECKS.append((G.cycle_period(states_het) is None,
+               "Ghosts: heterogeneity breaks the cycle", "no cycle", "no cycle",
+               "#44 tombstone"))
+
+# The load-bearing claim: variety does NOT scale with level width. If this ever starts
+# scaling, the "structural, not a resolution artifact" sentence on the tombstone is wrong
+# and the concept deserves reopening.
+_saved_lanes = G.LANES
+widths = {}
+for _w in (8, 48):
+    G.LANES = _w
+    widths[_w] = G.run_heterogeneous(spread=0.6, gens=180)[1][-1]
+G.LANES = _saved_lanes
+CHECKS.append((abs(widths[8] - widths[48]) <= 2,
+               "Ghosts: variety flat across level width", widths[8], widths[48],
+               "#44 tombstone — 'structural, not resolution'"))
+
+
 if __name__ == "__main__":
     width = max(len(c[1]) for c in CHECKS)
     failed = 0
