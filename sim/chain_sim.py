@@ -69,7 +69,7 @@ def tier_of_d(d):
     return next(n for thr, n in TIERS if d >= thr)
 
 
-def advance_disturbance(rng, d, span, t, crew):
+def advance_disturbance(rng, d, span, t, crew, cursed=0):
     """One trip's worth of Disturbance. Same shape as integrated.py: a fast-decaying
     noise level over a floor that ratchets up across the night.
 
@@ -79,7 +79,7 @@ def advance_disturbance(rng, d, span, t, crew):
     way it is nowhere else.
     """
     decay = DECAY_PER_MIN_AT_CREW4 * crew / 4.0
-    floor = RATCHET_END * (t / NIGHT_S)
+    floor = RATCHET_END * (t / NIGHT_S) + cursed * PER_CURSED_FLOOR
     for _ in range(int(span)):
         for _ in range(crew):
             if rng.random() < 0.04:
@@ -118,7 +118,34 @@ QUOTAS = [2000, 4500, 8000, 15000]
 VAN_BY_NIGHT = [14, 15, 17, 19]        # shelving upgrades, ceiling 20
 
 
-def generate_candidates(rng, tier, n):
+# ------------------------------------------------------------------ R28: the curse
+# R27 established that the appraiser's VALUE half is worth roughly nothing against a
+# night's total, and that its real defence must be the other half -- the grade. That
+# had never been measured in a model containing the apex, the classes and the noise,
+# because this model had no curses in it at all.
+#
+# The asymmetry is the whole point, and it is sharper than the value one: a blind crew
+# does not merely choose worse, it CANNOT EXECUTE THE POLICY. R11 found the optimum is
+# "take two or three cursed pieces, then refuse" -- and refusing requires knowing which
+# ones they are. A blind crew takes the base rate and rides whatever ruin roll it gets.
+GRADE_P = [("clean", 0.70), ("tainted", 0.22), ("malignant", 0.08)]
+VALUE_MULT = {"clean": 1.0, "tainted": 2.5, "malignant": 6.0}
+ATTENTION_MULT = {"clean": 1.0, "tainted": 1.5, "malignant": 3.0}
+LEDGER_FEE = {"clean": 0.0, "tainted": 0.08, "malignant": 0.20}
+PER_CURSED_FLOOR = 7.0          # R9/R18
+RUIN_K, RUIN_EXP = 0.015, 1.8   # R11
+
+
+def _grade(rng):
+    r, acc = rng.random(), 0.0
+    for g, prob in GRADE_P:
+        acc += prob
+        if r < acc:
+            return g
+    return "clean"
+
+
+def generate_candidates(rng, tier, n, curses=False):
     trip_s, classes = TIER_DATA[tier]
     out = []
     for _ in range(n):
@@ -126,11 +153,13 @@ def generate_candidates(rng, tier, n):
         lo, hi = classes[cls]
         slots, people, mult, setup = CLASS_DATA[cls]
         labour = (trip_s * mult + setup) * people
+        g = _grade(rng) if curses else "clean"
         out.append({
             "cls": cls,
-            "value": rng.uniform(lo, hi),
+            "value": rng.uniform(lo, hi) * VALUE_MULT[g],
             "slots": slots,
             "labour": labour,
+            "grade": g,
         })
     return out
 
@@ -199,7 +228,7 @@ def current_tier(t, crew=4, labour_gated=True):
 def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
               reserve_apex=True, labour_gated=True, noise=False, scan=True,
               q_cap=0.90, depth_cap=False, metric="per_slot",
-              rule="value"):
+              rule="value", curses=False, cursed_cap=3):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -222,6 +251,8 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
     apex_offered = False
     d = 0.0                     # Disturbance; stays 0 when noise=False
     lost = 0
+    cursed_aboard = 0
+    fees = 0.0
 
     while t < HAUL_WINDOW_S and slots_left > 0:
         tier = current_tier(t, crew, labour_gated)
@@ -258,7 +289,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 t += TIER_DATA[eff_tier][0] / labour_pool
                 continue
 
-        pool = generate_candidates(rng, eff_tier, CANDIDATES)
+        pool = generate_candidates(rng, eff_tier, CANDIDATES, curses)
         if noise and not scan:
             # D-10: category legible, magnitude illegible. A blind crew can see that a
             # thing is an armoire rather than a snuffbox, so it may pick the class with
@@ -339,11 +370,19 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 span = trip_cost + (APPRAISE_S * CANDIDATES / labour_pool
                                     if (noise and scan) else 0.0)
                 if noise:
-                    d = advance_disturbance(rng, d, span, t, crew)
+                    d = advance_disturbance(rng, d, span, t, crew, cursed_aboard)
                 t += span
                 continue
-            best = (rng.choice(allowed) if (noise and not scan)
-                    else max(allowed, key=lambda it: it["value"] / cost_of(it, metric)))
+            if noise and not scan:
+                best = rng.choice(allowed)
+            else:
+                # R11's optimum is "take two or three cursed pieces, then refuse", and
+                # refusing requires knowing which ones they are. Only a scanning crew
+                # can even express this policy -- which is the appraiser's other half.
+                pick = allowed
+                if curses and cursed_aboard >= cursed_cap:
+                    pick = [it for it in allowed if it["grade"] == "clean"] or allowed
+                best = max(pick, key=lambda it: it["value"] / cost_of(it, metric))
             take = best["slots"] <= effective_slots
         else:
             if noise and not scan:
@@ -356,7 +395,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
         span = (best["labour"] / labour_pool + scan_cost) if take else (
             trip_cost + scan_cost)
         if noise:
-            d = advance_disturbance(rng, d, span, t, crew)
+            d = advance_disturbance(rng, d, span, t, crew, cursed_aboard)
             if scan:
                 d = min(100.0, d + CANDIDATES * L["appraise"] * IMPULSE)
 
@@ -366,15 +405,29 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             # The haul still has to reach the van. R8: a lost item consumes the slot
             # anyway, or losing cargo acts as a free reroll and punishment makes the
             # picky strategy richer.
-            if noise and rng.random() < RETRIEVAL[tier_of_d(d)]:
+            risk = RETRIEVAL[tier_of_d(d)] * (
+                1.0 + 0.25 * (ATTENTION_MULT[best["grade"]] - 1.0))
+            if noise and rng.random() < risk:
                 lost += 1
             else:
                 cargo_value += best["value"]
+                fees += best["value"] * LEDGER_FEE[best["grade"]]
+                if best["grade"] != "clean":
+                    cursed_aboard += 1
                 took[best["cls"]] = took.get(best["cls"], 0) + 1
         else:
             t += trip_cost + scan_cost   # searched, took nothing
 
-    return cargo_value, took
+    # The collection reclaims the whole van (D-23 / DESIGN 4.2), super-linear in how
+    # many cursed pieces are aboard. This is the cost a blind crew cannot manage.
+    net = cargo_value - fees
+    if curses and cursed_aboard > 0:
+        if rng.random() < min(0.95, RUIN_K * cursed_aboard ** RUIN_EXP):
+            net = 0.0
+    took["cursed"] = cursed_aboard
+    took["lost"] = lost
+    took["endD"] = round(d)
+    return net, took
 
 
 def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,
@@ -412,6 +465,50 @@ def show(rows, title):
         print(f"{r['night']:<7}{r['quota']:>9,}{r['van']:>6}{r['mean']:>11,.0f}"
               f"{r['p10']:>11,.0f}{r['quota'] / r['mean']:>12.0%}"
               f"{r['pass']:>8.0%}{r['apex']:>8.0%}")
+
+
+def show_curse(n=2500):
+    """R28: the appraiser measured on the half R27 said was its real defence.
+
+    R27 found the VALUE half worth roughly nothing against a night's total, and argued
+    the mechanic must be earning its place on the GRADE instead -- R11 valued the curse
+    decision at +7%, and it is a decision a blind crew cannot even express, because
+    "take two or three and then refuse" requires knowing which ones they are.
+
+    Measured here for the first time in a model that has the apex, the classes, the
+    noise AND the curse together. The answer is not the rescue R27 expected.
+    """
+    print("\n\nR28 — THE APPRAISER ACROSS THE CONTRACT CHAIN, WITH CURSES")
+    print("-" * 78)
+    print(f"{'night':<7}{'van':>5}{'best SCAN $':>14}{'BLIND $':>11}{'edge':>9}"
+          f"{'scan endD':>11}{'lost':>7}")
+    for night, van in ((1, 14), (2, 15), (3, 17), (4, 19)):
+        def best(scan, **kw):
+            out = 0.0
+            for q in (0.45, 0.75, 0.90):
+                m = statistics.mean(
+                    run_night(random.Random(s * 97 + night), 4, van, noise=True,
+                              scan=scan, q_cap=q, depth_cap=True, metric="per_trip",
+                              rule="class", curses=True, **kw)[0]
+                    for s in range(n))
+                out = max(out, m)
+            return out
+        sc = max(best(True, cursed_cap=c) for c in (0, 2, 3, 4, 99))
+        bl = best(False)
+        diag = [run_night(random.Random(s * 97 + night), 4, van, noise=True, scan=True,
+                          q_cap=0.75, depth_cap=True, metric="per_trip", rule="class",
+                          curses=True, cursed_cap=99)[1] for s in range(600)]
+        print(f"{night:<7}{van:>5}{sc:>14,.0f}{bl:>11,.0f}{sc / bl - 1:>9.1%}"
+              f"{statistics.mean(x['endD'] for x in diag):>11.0f}"
+              f"{statistics.mean(x['lost'] for x in diag):>7.1f}")
+    print("\nThe edge DECAYS across the upgrade path and goes negative by night 3.")
+    print("Not because of the three seconds -- cutting appraise time to 1.0s changes")
+    print("nothing. It is the NOISE. Scanning pins Disturbance at ~100 (COLLECT) while a")
+    print("blind crew sits at 46-57 (PATROL), and a bigger van means more shelves, more")
+    print("pings, more of the night spent where the Curator takes your cargo: retrieval")
+    print("losses go 0.3 -> 1.5 items across the chain while the blind crew loses 0.1.")
+    print("Worse, it compounds: a scanning crew seeks value, cursed items ARE the value,")
+    print("and every cursed piece aboard lifts the Disturbance floor another 7 points.")
 
 
 def show_noise(quotas=(7500, 9000, 10750, 12500), n=2000):
@@ -456,3 +553,4 @@ if __name__ == "__main__":
         print(f"{crew:<7}{r['mean']:>12,.0f}{r['p10']:>12,.0f}"
               f"{r['pass']:>9.0%}{r['apex']:>8.0%}")
     show_noise()
+    show_curse(n=1200)

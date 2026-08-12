@@ -533,6 +533,40 @@ opt-in, and I checked: an earlier version of the class rule silently moved the f
 baseline from $9,373 to $13,536, which would have invalidated ECONOMY §4 and §8 without saying
 so. Gated it and confirmed `noise=False` reproduces 9,376 / 9,921 / 10,994 / 12,141 exactly.
 
+R28 · Put curses into `chain_sim` — so for the first time the apex, the classes, the noise
+**and** the curse are in one model — and measured the half R27 said had to be the appraiser's
+real defence. **It is not the rescue R27 expected. The appraiser's edge inverts across the
+contract chain: +9.6% on night 1, +6.6%, −1.8%, and −8.6% by night 4.** The mechanic doesn't
+merely fail to keep up with the crew; it becomes actively harmful exactly as they progress.
+That is `DESIGN.md` §4.4's nightmare arriving from a direction nobody was watching — not
+players tiring of the appraiser, but players being **correct** to abandon it. · **First
+explanation I wrote was wrong and I caught it by testing it.** I'd blamed the three seconds
+scaling with van size. Cutting appraise time 3.0s → 1.0s changes essentially nothing
+(+9/+5/+1/−9). **The cost is the noise**: a scanning crew sits pinned at Disturbance **98–100,
+COLLECT, all night**, while a blind crew sits at **46–57, PATROL**. A bigger van means more
+shelves, more pings, more of the night in the state where the Curator takes your cargo —
+retrieval losses climb **0.3 → 1.5 items** across the chain against the blind crew's 0.1.
+· **That independently re-confirms D-10's second bullet from a model sharing none of
+`haul_sim`'s bugs.** "Scan duration is not the cost, noise carries the whole cost" was a
+superseded-source claim per §10, and it has now survived re-derivation — one of very few
+things in `ECONOMY.md` that has. · **And the mechanism compounds, which is the part worth
+designing around.** A scanning crew seeks value; cursed items *are* the value (×2.5, ×6);
+every cursed piece aboard lifts the Disturbance floor another 7 (R9/R18). So the appraiser's
+own success makes the rest of its night more dangerous: scan → find the good thing → the good
+thing is cursed → floor rises → more retrieval. A blind crew never enters that loop because it
+never chases the multiplier. · Also worth recording: **R11's CAP_3 does not survive contact
+with the apex.** Sweeping the cursed cap, take-all wins on nights 1–2 and nothing beats blind
+by night 4 — because a ruin roll now destroys the apex too, and because the blind crew gets
+the value multipliers for free by accident while being unable to over-collect them
+deliberately. · **The honest limit on all of this, and it is a big one:** `chain_sim` has no
+rooms, so it can only express "appraise every shelf" or "appraise none". R17 established the
+good policy is *selective*, and this is the same binary framing R6 and R16 both found hides
+the interesting middle. **The finding is real but the model cannot see the fix.** Logged three
+candidates in `ECONOMY.md` §10 — selective scanning, an appraiser upgrade path to match the
+van's, or not growing the van — and flagged in D-10 that this must not be reopened as a tuning
+question. · Baseline discipline held: `curses=False` still reproduces 9,376 / 9,921 / 10,994 /
+12,141.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -540,22 +574,24 @@ so. Gated it and confirmed `noise=False` reproduces 9,376 / 9,921 / 10,994 / 12,
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R28 is a design question, not a modelling one, and it is the biggest open item in the
-project.** R27 established that the appraiser's *value-revealing* half is worth roughly zero
-against a night's total, and that its real defence is the **curse grade** (R11: +7%, and
-impossible without knowing it). `DESIGN.md` §4.4 is written as though the price were the
-point. **Rewrite §4.4 around the curse**, and with it `DESIGN.md` §11's kill criterion, which
-currently reads "do players use the appraiser" and should read **"do players appraise when the
-grade matters"** — a scan rate measured on cursed-heavy shelves, not on everything. That is a
-different instrument and a different Milestone 2.
+**R29 is the round the last four have been converging on: merge rooms into `chain_sim`.**
+Every model in this project is now partial in a way that matters, and the partials disagree
+for understood reasons (`ECONOMY.md` §10). `appraiser_variance` has **rooms and spread** and no
+apex, no classes, no curses. `chain_sim` has **the apex, classes, curses and noise** and no
+rooms — so it can only ask "appraise everything or nothing", which R6, R16 and now R28 have all
+shown is the framing that hides the answer. **R17 already established the good policy is
+selective, and no model containing the apex can express it.** Port `room_spread` into
+`chain_sim`: give each encounter a room class, let the crew scan only high-spread rooms, and
+re-run R28's chain. That is the round that either rescues the appraiser or kills it honestly,
+and it is the last big modelling gap.
 
-**R29: put curses into `chain_sim`.** It is now the only model with the apex, the classes and
-the noise, and it has no curses at all — so the half of the appraiser that actually earns its
-place is the one thing it cannot see. `curse_test.py` has the ruin curve and the grade tables;
-porting them in would let the whole mechanic be measured in one model for the first time.
-Expect it to be the round that finally settles D-10.
+**R30, and only after R29 says which: rewrite `DESIGN.md` §4.4.** It is written as though the
+*price* were the point, R27 showed the value half is worth ~0 against a night's total, and R28
+showed the grade half inverts across the chain. Whatever §4.4 becomes, `DESIGN.md` §11's kill
+criterion has to move with it — "do players use the appraiser" is the wrong instrument if the
+correct answer changes by night. Measure **scan rate by night**, and expect it to fall.
 
-**R30 (needs `dotnet`): port the economy into the C# core.** 26 values in `CS_BACKLOG`.
+**R31 (needs `dotnet`): port the economy into the C# core.** 26 values in `CS_BACKLOG`.
 *This environment cannot do it* — no toolchain, `dot.net` refused by the network policy.
 
 **Standing rules, each earned by getting it wrong first.**
@@ -563,20 +599,17 @@ Expect it to be the round that finally settles D-10.
 default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20).
 *Name the table you mean* (R14, R21). *A model verified in one projection is not verified in
 the one you ship* (R22). *Every guarantee has been weaker than it sounded* (R23). *A
-conclusion is only as current as the model underneath it* (R24) — enforced by `ECONOMY.md`
-§10: **quote a number with its model, or don't quote it.**
+conclusion is only as current as the model underneath it* (R24) — enforced by §10's rule,
+**quote a number with its model, or don't quote it**. *Every strategy needs the knowledge that
+has nothing to do with the thing being tested* (R5, R6, R24, R26 twice — six occurrences, both
+directions). *When two strategies differ in more than one way, you are not measuring the
+difference you named* (R26, R27). *Check the denominator* (R27) — +8.8% and +3.4% were one
+measurement all along.
 
-**Two more, both from R26–R27, and both about comparisons rather than measurements.**
-*Every strategy needs the knowledge that has nothing to do with the thing being tested* — now
-at six occurrences and in both directions: deny the baseline its depth reservation and it packs
-the van with junk, hand it a noiseless estimate and it becomes an oracle. And the new one:
-**when two strategies differ in more than one way, you are not measuring the difference you
-named.** R26 and R27 spent two rounds reading a *decision rule* gap as an *information* gap.
-Hold everything fixed but the one variable, or don't report the number.
-
-**And the sharpest of all, from R27: check the denominator.** +8.8% and +3.4% were the same
-measurement all along; one of them is against the loot you choose and the other against the
-night the quota is measured in. Nine rounds quoted the flattering one.
+**And the newest, from R28: test your explanation, not just your result.** The decay was real;
+the first mechanism I wrote for it — scan time scaling with van size — was wrong, and one
+sweep of `APPRAISE_S` falsified it. A correct finding with a wrong cause attached is worse
+than no finding, because the cause is what people design against.
 
 **Not blocked on anything except the C# port, which is blocked on a toolchain rather than a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks

@@ -477,6 +477,55 @@ most of the selection value in this economy is available from **category alone**
 and the appraiser's value half is buying a thin slice on top of that. The mechanic's real
 defence is the curse grade, not the price.
 
+### R28 — the appraiser decays across the upgrade path, and goes negative by night 3
+
+R27 argued the mechanic's real defence must be the **curse grade** rather than the price, since
+R11 valued the curse decision at +7% and a blind crew cannot even express it — "take two or
+three and then refuse" requires knowing which ones they are. R28 put curses into `chain_sim`,
+so for the first time the apex, the classes, the noise **and** the curse are in one model.
+
+**It is not the rescue R27 expected.** Measured with the scanning crew free to choose its own
+cursed cap, and both crews on the same decision rule:
+
+| Night | Van | Best SCAN | BLIND | Edge | Scan end-Disturbance | Cargo lost |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 14 | $12,456 | $11,360 | **+9.6%** | 98 | 0.3 |
+| 2 | 15 | $12,171 | $11,417 | **+6.6%** | 99 | 0.4 |
+| 3 | 17 | $11,322 | $11,529 | **−1.8%** | 99 | 0.8 |
+| 4 | 19 | $10,718 | $11,730 | **−8.6%** | 100 | 1.5 |
+
+**The appraiser is strongly worth using on night 1 and actively harmful by night 3.** The
+mechanic does not merely fail to grow with the crew — it inverts, exactly as they progress.
+This is `DESIGN.md` §4.4's nightmare arriving from a direction nobody was watching: not
+players tiring of the appraiser, but players being *correct* to abandon it.
+
+**The mechanism is noise, and the duration test proves it.** Cutting appraise time from 3.0s
+to 1.0s changes nothing (edges stay ≈ +9 / +5 / +1 / −9). What moves is Disturbance: a
+scanning crew sits pinned at **98–100 — COLLECT — all night**, while a blind crew sits at
+**46–57 — PATROL**. A bigger van means more shelves, more pings, more of the night in the state
+where the Curator takes your cargo: retrieval losses climb 0.3 → 1.5 items across the chain
+while the blind crew loses 0.1.
+
+> **This independently re-confirms D-10's second bullet from a model that shares none of
+> `haul_sim`'s bugs.** "Scan duration is not the cost; noise has to carry the whole cost" was
+> a superseded-source claim (§10) and it has now survived re-derivation. It is one of the few
+> things in this document that has.
+
+**And it compounds, which is the part worth designing around.** A scanning crew seeks value;
+cursed items *are* the value (×2.5 and ×6); every cursed piece aboard lifts the Disturbance
+floor another 7 points (R9/R18). So the appraiser's own success makes the rest of its night
+more dangerous — scan → find the good thing → the good thing is cursed → the floor rises →
+more retrieval → scan again to compensate. A blind crew never enters that loop because it
+never chases the multiplier.
+
+**Three candidate fixes, none yet tested.** (1) **Selective scanning** — R17 established that
+scanning *some* rooms is the good policy, and `chain_sim` has no rooms, so it can only express
+"appraise every shelf" or "appraise none". That binary is the same framing R6 and R16 both
+found hides the interesting middle, and it is the most likely resolution. (2) **An appraiser
+upgrade path** — the crew upgrades the van across a chain; if the tool does not get quieter,
+the mechanic decays by construction. (3) **Don't grow the van**, which D-19 already half-argues
+on other grounds (R24).
+
 ### What R26 did *not* establish
 
 `chain_sim` can now charge for scanning, so the obvious next question is what the appraiser

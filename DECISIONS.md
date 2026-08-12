@@ -182,6 +182,18 @@ Two things the sim changed:
 This is not proof. The model omits the Curator, the hot potato, curses, deaths, and human
 imperfection, and it was rigged generously toward the appraiser. It survived anyway.
 
+> **R28 — D-10's falsification condition may already be tripped, in simulation.** With curses,
+> the apex, classes and noise all in one model, the appraiser's edge is **+9.6% on night 1 and
+> −8.6% by night 4**: it inverts across the contract chain, because scanning pins Disturbance
+> at COLLECT and a growing van means more shelves, more pings, more cargo taken off you.
+> Players abandoning the appraiser at hour five would then be *correct*, not bored — which is
+> a harder problem than the one §4.4 was written to prevent, and a different fix.
+>
+> **Do not reopen this as a tuning question.** `chain_sim` can only express "appraise every
+> shelf" or "appraise none", and R17 already established that the good policy is *selective* —
+> the same binary framing R6 and R16 both found hides the interesting middle. The next real
+> step is a model with rooms and curses together, not another sweep.
+
 **Falsified if:** the Milestone 2 instrumentation shows scan rate under ~30% at hour five
 anyway (the mechanic is dead regardless), *or* if playtesters report the world feeling
 random rather than mysterious. These are different failures with different fixes.
