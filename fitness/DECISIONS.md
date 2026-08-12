@@ -654,3 +654,79 @@ is not measured here.
 achieve ~2.5% CV in practice — e.g. if near-limit singles turn out to be more variable in
 the field than the formula analysis suggests, which is entirely possible and would invert
 the recommendation toward moderate reps.
+
+---
+
+## D-27 · A fitted parameter set must be checked before anything is prescribed from it — FIRM
+
+`fit_is_usable()` refuses a fit with no interior optimum, or one implying a volume outside
+2–80 sets/week. `prescribe()` is the single entry point that produces a number for a
+person, and it returns an explicit `source` — `"prior"`, `"shrunk"` or `"fit"`.
+
+**Why:** R8 drove the whole pipeline end to end and found **1 fit in 12 collapses to the
+model's "never train" corner**, for lifters whose true MRV is as high as 60 sets/week. The
+fit does not fail, does not warn, and `mrv()` returns the lower bound of its own search
+interval. That lifter would have been told to do essentially nothing.
+
+**What every previous gate missed:** D-13 asks whether the *lifter* has earned a
+personalised number. D-25 asks whether their *plan* was informative enough. Neither asks
+whether the number the *fitter* produced is a number at all. Three rounds of gating, and
+the failure was downstream of all of it.
+
+**Why `source` is returned rather than inferred:** a prior and a fit are indistinguishable
+by inspecting the value. DESIGN idea 5 exists to stop a population average being presented
+as a personalised result, and that is unenforceable unless the caller is told which it is.
+
+**What would prove it wrong:** a collapse rate near zero on real logs, which would mean the
+guard is dead code and the failure was an artefact of synthetic lifters near the boundary.
+Still worth keeping — it costs one comparison.
+
+---
+
+## D-28 · Correct the half-rep truncation bias — WORKING
+
+`PerformanceTest.estimated_1rm` adds 0.5 reps by default.
+
+**Why:** under D-26's protocol a lifter does as many reps as they can while leaving the
+stated RIR, then records an integer. Someone who could have managed 4.7 records 4. The
+truncation is one-sided, so it is a **bias, not noise** — R8 measured **−1.4% on every
+observation** — and a bias does not average out over weeks the way sigma does; it tilts the
+whole fitted trajectory downward. The lost fraction is uniform on [0, 1), so its
+expectation is half a rep. Adding it back takes the bias to ~0.0% and cuts observation RMS
+error by roughly 40%.
+
+**What it costs:** nothing measurable, and one more thing that has to stay true.
+
+**THE PROTOCOL DEPENDENCE IS THE RISK.** "Do as many as you can leaving 1 in reserve"
+truncates in reps and wants this correction. "Do exactly 4 and rate your RIR" truncates in
+RIR instead, and applying the correction would double-count. It is a flag rather than a
+constant for exactly that reason: a project that changes protocol must change this too, and
+a constant would have made that invisible.
+
+**What would prove it wrong:** real logs where corrected observations sit systematically
+*above* a directly tested 1RM. That would mean lifters are not truncating the way the model
+assumes — most likely because they stop at a planned rep count rather than going to their
+RIR limit, which is the alternative protocol above.
+
+---
+
+## D-29 · Coarser plates fit better, and nobody knows why — OPEN
+
+At zero measurement noise, median MRV error is **3.4%** with 5 kg plates, **5.4%** at
+2.5 kg and **9.4%** at 1 kg. The ordering strengthens at n=28 rather than washing out, so
+it is not sampling noise (D-12).
+
+**Why it is logged as OPEN rather than explained:** observation-level accuracy is
+near-identical across plate sizes (RMS 1.6–1.9%), so it is *not* explained by measurement
+precision. The plausible story — that fine plates let the lifter re-target the load every
+week, pinning the rep count and flattening the signal the fit reads — is a hypothesis R8
+did not test.
+
+**Why it is not being chased:** the practical stakes are nil. Nobody selects a plate rack
+to improve a model fit, and D-17 says precision near the answer is worth almost nothing
+anyway. It is written down because an unexplained monotone effect in the measurement chain
+may matter for a question not yet asked.
+
+**What would resolve it:** compare the modelled protocol (re-target load weekly, reps near
+constant) against a fixed-load protocol (load held for a block, reps carry the signal). If
+the effect vanishes under fixed load, the re-targeting hypothesis is right.

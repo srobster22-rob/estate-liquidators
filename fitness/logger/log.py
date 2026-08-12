@@ -145,6 +145,24 @@ class Session:
 TEST_MAX_REPS = 8
 TEST_MAX_RIR = 1.0
 
+# Half-rep correction for truncation bias. D-28.
+#
+# Under the D-26 protocol a lifter performs as many reps as they can while leaving the
+# stated RIR, then records an integer. Someone who could have managed 4.7 writes 4. That
+# truncation is one-sided, so it is a BIAS rather than noise: R8 measured it at -1.4% on
+# every observation, and a bias does not average out over weeks the way sigma does — it
+# tilts the whole fitted trajectory downward.
+#
+# The lost fraction is uniform on [0, 1), so its expectation is 0.5 reps. Adding that back
+# removes the bias almost exactly (-1.4% -> 0.0%) and cuts observation RMS error by ~40%.
+#
+# THIS DEPENDS ON THE PROTOCOL and is wrong under the alternative. "Do as many as you can
+# leaving 1 in reserve" truncates in REPS, and the correction applies. "Do exactly 4 and
+# tell me your RIR" truncates in RIR instead, and applying this would double-count. D-26's
+# protocol is the first, so the correction is on by default — and it is a flag rather than
+# a constant precisely because a project that ever changes protocol must change this too.
+REP_TRUNCATION_CORRECTION = 0.5
+
 
 @dataclass
 class PerformanceTest:
@@ -163,13 +181,21 @@ class PerformanceTest:
     load: float
     rir: float = 0.0
 
-    def estimated_1rm(self, formula: str = DEFAULT_FORMULA) -> float:
-        return e1rm(self.load, self.reps, self.rir, formula)
+    def estimated_1rm(
+        self, formula: str = DEFAULT_FORMULA, correct_truncation: bool = True
+    ) -> float:
+        rir = self.rir + (REP_TRUNCATION_CORRECTION if correct_truncation else 0.0)
+        return e1rm(self.load, self.reps, rir, formula)
 
-    def as_percentage(self, baseline: float, formula: str = DEFAULT_FORMULA) -> float:
+    def as_percentage(
+        self,
+        baseline: float,
+        formula: str = DEFAULT_FORMULA,
+        correct_truncation: bool = True,
+    ) -> float:
         if baseline <= 0:
             raise ValueError("baseline must be positive")
-        return self.estimated_1rm(formula) / baseline * 100.0
+        return self.estimated_1rm(formula, correct_truncation) / baseline * 100.0
 
     def validate(self) -> list[str]:
         problems = []

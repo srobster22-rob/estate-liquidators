@@ -353,39 +353,84 @@ every record it saw, so logging three sets one at a time produced a week with fi
 Sessions are now keyed on (week, day) with last-write-wins, which is what makes
 append-only storage compatible with editing a day at all. Pinned.
 
+R8 · Built the end-to-end rehearsal (`logger/rehearsal.py`) plus 16 tests — the first code
+in the project that exercises the path a real person drives, from a logged set to a
+prescribed volume. Target taken from R7's ranking without deviation. Seven rounds had
+tested the fitter against arrays built by `fit.make_log`; nothing had tested it against
+arrays built by the logger, and only one of those ships.
+
+· **The paths agree, which is the licence the round was after.** Median MRV error over 26
+weeks: **10.6% production against 10.8% simulation.** Seven rounds of thresholds transfer
+to the shipping path.
+
+· **But the rehearsal found a live safety gap no component test could see.** **One fit in
+twelve collapses to a parameter set with no interior optimum** — the model's "never train"
+corner — for lifters whose *true* MRV is as high as 60 sets/week. The fit does not fail,
+does not warn, and `mrv()` returns the lower bound of its own search interval. Every gate
+before this asked whether the *lifter* had earned a personalised number; none asked whether
+the number the *fitter* produced was a number at all. `fit_is_usable()` now checks, and
+`prescribe()` is the single entry point that produces a volume, returning an explicit
+source so a caller cannot present a population average as a personalised result. D-27.
+
+· **Quantisation is not a rounding detail.** At **zero** measurement noise, plate rounding
+and integer reps alone cost **3–9% median MRV error** (p90 ~20%). No round before this had
+modelled it.
+
+· **And one third of that is a fixable bias.** Under D-26's protocol a lifter does as many
+reps as they can while leaving the stated RIR, then records an integer — someone who could
+manage 4.7 writes 4. The truncation is one-sided, so it is a **bias, not noise: −1.4% on
+every observation**, and a bias does not average out the way sigma does. The lost fraction
+is uniform on [0,1), so adding back half a rep takes the bias to **+0.02%** and cuts
+observation RMS by **~40%**. One constant. Protocol-dependent, so it is a flag rather than
+a constant — the alternative protocol truncates in RIR and would double-count it. D-28.
+
+· **Fixed a broken experiment of its own before reporting it.** The first quantisation
+sweep tried to separate "integer reps" from "continuous reps" as a factor. That is not
+separable — `PerformanceTest.reps` is an int because reps are integers in reality — and the
+flag was silently truncated by the record constructor, so two rows of the table differed in
+label only. Rewritten to sweep the factor that is real.
+
+· **Left one finding explicitly unexplained.** Coarser plates fit *better* (3.4% at 5 kg
+against 9.4% at 1 kg) and the ordering strengthens at n=28, so it is not sampling noise —
+but observation-level accuracy is near-identical across plate sizes, so it is not explained
+by measurement precision either. The plausible mechanism was not tested. Logged as D-29
+OPEN rather than explained badly.
+
 ---
 
 ## Next round
 
-**The project has changed phase, and the ranking changes with it.** R7 was the last item
-D-23 named. What follows is no longer "which simulation next" but "what does the first
-real dataset need", and the honest ordering is:
+**The pre-data work is now done.** R7 built the collector, R8 proved the shipping path
+recovers what the simulation path recovers and closed the last safety gap between a log and
+a prescription. There is no remaining item that changes what gets built.
 
-**R8: a seeded end-to-end rehearsal.** Generate a synthetic lifter, drive the LOGGER
-(not `make_log`) for 26 simulated weeks under the D-26 protocol, then fit through
-`to_fittable` and check the recovered MRV. Every round so far has tested the fitter
-against arrays built by `fit.make_log`; nothing has yet tested it against arrays built by
-the code a real person will use. Those are different code paths and only one of them will
-be in production. The rehearsal is cheap, it is the last thing that can be validated
-without volunteers, and it is exactly the kind of seam where R7's session-summing bug
-lived.
+**What the project needs is twenty lifters and six months.** Unchanged since R6, now fully
+unblocked. That dataset settles D-01 (do endurance priors transfer), D-04 (the saturation
+ceiling), D-09 (real measurement noise), D-16 (does anyone occupy the degenerate corner),
+D-20 (does any real covariate reach rho 0.5), D-24 (is RIR reporting biased), D-25 (the
+variation floor) and D-28 (is the truncation model right) — eight open decisions, one
+dataset. No simulation settles any of them.
 
-**Runner-up: the RIR bias correction (D-24).** R7 measured that a systematic RIR
-misestimate shifts the observation 4.8% and does not average out. A per-lifter offset term
-is estimable from the first dataset — the relationship between logged RIR-2 sets and
-tested maxes pins it. Worth specifying now so the logger records what the estimate needs,
-because data not collected in month one cannot be recovered in month six.
+Ranked, for as long as rounds continue without data:
 
-**Third: re-derive D-25's variation floor.** 0.18 is the weakest number in the logger —
-calibrated against a synthetic history, never against a real one. It gates whether real
-users get a personalised number at all, so it is the threshold most likely to be wrong in
-a way that a user actually feels.
+**R9: the RIR bias correction (D-24), specified now rather than later.** R7 measured that a
+systematic RIR misestimate shifts an observation 4.8% and does not average out; D-28 just
+showed how much a bias of that size matters. A per-lifter offset is estimable from the
+relationship between logged RIR-2 sets and tested maxes — but only if the logger records
+what the estimate needs. **Data not collected in month one cannot be recovered in month
+six**, which makes this the last thing that is cheap now and expensive later.
 
-**Then, and this is the real one: twenty lifters, six months.** Unchanged from R6's
-ranking and now unblocked, because the thing that collects the data exists. That dataset
-settles D-01, D-04, D-09, D-16, D-20, D-24 and D-25 simultaneously.
+**Runner-up: re-derive D-25's variation floor.** 0.18 is the weakest number in the logger,
+calibrated against a synthetic history and never a real one. It decides whether a real user
+ever gets a personalised number, so it is the threshold most likely to be wrong in a way
+someone actually feels.
 
-**Everything still open in simulation** — D-05 (frequency), D-06 (the volume-matched
-deload sweep, now unstarted through six rankings), D-11, D-18's confound — remains worth
-less than the uncertainty in the population definition (D-22, D-23). If a round is spent
-on one, spend it on D-06 purely to close it out.
+**Third: D-29's plate mystery.** Cheap, and the honest way to close an OPEN decision — run
+the modelled re-targeting protocol against a fixed-load protocol and see whether the effect
+survives.
+
+**Fourth: D-06, the volume-matched deload sweep.** Now unstarted through seven rankings.
+Worth one round purely to close it rather than carry it forever.
+
+**Everything else in simulation** remains worth less than the uncertainty in the population
+definition (D-22, D-23).

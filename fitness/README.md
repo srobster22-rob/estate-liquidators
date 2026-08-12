@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–7 complete. The premise survived each round, at a price each time.**
+**Rounds 1–8 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -75,8 +75,18 @@ a measurement, not a stimulus**, so it is capped at 8 reps and RIR 0–1 while t
 stays at RIR 1–3. That single change is worth a factor of 2.3 and costs nothing.
 `DESIGN.md` §4.6.
 
-**What comes next is twenty lifters and six months.** The collector exists now. That
-dataset settles seven open decisions at once.
+**R8 drove the whole thing end to end** — the first test of the path a real person
+actually walks, from a logged set to a prescribed volume. The shipping path recovers what
+the simulation path recovers (**10.6% against 10.8%** median MRV error), so eight rounds of
+thresholds transfer. But it found a live safety gap no component test could see: **1 fit in
+12 collapses to the model's "never train" corner**, silently, for lifters whose true MRV is
+60 sets/week. Now caught. It also found that quantisation alone — plates and integer reps —
+costs 3–9% error at zero measurement noise, a third of which is a **fixable bias** that one
+constant removes. `DESIGN.md` §4.7.
+
+**What comes next is twenty lifters and six months.** The collector exists, the path is
+proven, and the last gap between a log and a safe prescription is closed. That dataset
+settles eight open decisions at once — and no simulation settles any of them.
 
 Not built yet: the volume budget, the autoregulation controller, the logger.
 
@@ -103,7 +113,8 @@ Not built yet: the volume budget, the autoregulation controller, the logger.
 | **[sim/population_experiment.py](sim/population_experiment.py)** | Which conclusions survive the population definition and which don't. | Before quoting a figure outside this repo. |
 | **[logger/](logger/)** | The thing that collects real data: append-only log, readiness gate, CLI. | Before logging a single set. |
 | **[logger/formula_check.py](logger/formula_check.py)** | Is the measurement chain as clean as D-09 assumes? (No — and here is the protocol that fixes it.) | Before designing a test protocol. |
-| **[tests/](tests/)** | 119 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[logger/rehearsal.py](logger/rehearsal.py)** | The whole path, end to end, against a lifter whose truth is known. | Before trusting that the shipping code does what the simulation measured. |
+| **[tests/](tests/)** | 135 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -157,7 +168,9 @@ cd ../logger
 python3 formula_check.py          # what the measurement chain actually injects
 python3 -m logger.cli status LOG --muscle quads   # (from fitness/) what a log has earned
 
-cd .. && python3 -m unittest discover tests   # 119 tests
+python3 rehearsal.py              # production path vs simulation path
+
+cd .. && python3 -m unittest discover tests   # 135 tests
 ```
 
 ## What is solid and what isn't

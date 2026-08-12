@@ -203,6 +203,69 @@ def assess(log: TrainingLog, muscle_group: str) -> Readiness:
     )
 
 
+def fit_is_usable(params, sat) -> tuple[bool, str]:
+    """
+    Is a FITTED parameter set safe to prescribe from?
+
+    R8 found this gap by driving the whole pipeline end to end: **1 fit in 12 collapses to
+    a parameter set with no interior optimum** — the model's "never train at all" corner —
+    for lifters whose true MRV is as high as 60 sets/week. The fit does not fail, does not
+    warn, and `mrv()` dutifully returns the lower bound of its own search interval. A
+    lifter would have been told to do essentially nothing.
+
+    Every gate before this one asked whether the lifter had earned a personalised number.
+    None asked whether the number the fitter produced was a number at all.
+    """
+    from fit import has_interior_optimum, mrv
+
+    if not has_interior_optimum(params, sat):
+        return False, (
+            "the fit collapsed to a parameter set with no interior optimum — the model's "
+            "'never train' corner. This is a fit failure, not a finding about you; "
+            "falling back to the population prior (D-27)"
+        )
+    volume = mrv(params, sat)
+    if not (2.0 <= volume <= 80.0):
+        return False, (
+            f"the fit implies {volume:.0f} sets/week, outside anything a person trains — "
+            "falling back to the population prior (D-27)"
+        )
+    return True, ""
+
+
+def prescribe(log: TrainingLog, muscle_group: str, prior_mrv: float) -> tuple[float, str, list[str]]:
+    """
+    The one entry point that should ever produce a number for a person.
+
+    Returns (weekly_sets, source, notes). `source` is one of "prior", "shrunk", "fit", and
+    it is returned rather than inferred so a caller cannot present a prior as a
+    personalised result by accident — which is the exact failure DESIGN.md idea 5 exists
+    to prevent.
+    """
+    import math
+
+    r = assess(log, muscle_group)
+    notes = list(r.reasons)
+
+    if r.verdict == "prior":
+        return prior_mrv, "prior", notes
+
+    from fit import fit as run_fit, mrv
+
+    fittable = to_fittable(log, muscle_group)
+    params, sat, _ = run_fit(fittable.as_fit_log(), restarts=2)
+
+    usable, why = fit_is_usable(params, sat)
+    if not usable:
+        notes.append(why)
+        return prior_mrv, "prior", notes
+
+    w = r.trust_weight()
+    fitted = mrv(params, sat)
+    volume = math.exp(w * math.log(fitted) + (1.0 - w) * math.log(prior_mrv))
+    return volume, ("fit" if w >= 1.0 else "shrunk"), notes
+
+
 def report(log: TrainingLog, muscle_group: str) -> str:
     r = assess(log, muscle_group)
     lines = [

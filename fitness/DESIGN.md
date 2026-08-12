@@ -14,7 +14,7 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Rounds 1–7 complete.** The core model exists and is tested (119 tests,
+**Rounds 1–8 complete.** The core model exists and is tested (135 tests,
 `fitness/tests/`). Each round has overturned something the previous one established: R1
 found the model could not represent volume at all (§3), R2 found the fitter needs three
 times more data than the project was designed around (§4.1), R3 found the fitter is
@@ -40,7 +40,10 @@ simulation can substitute for it.
 
 **R7 built the logger** and found that the measurement chain feeding six rounds of
 thresholds is 2.2x noisier than assumed — recoverable, but only under a test protocol
-nobody had specified (§4.6).
+nobody had specified (§4.6). **R8 drove the whole thing end to end**: the shipping path
+recovers what the simulation path recovers (10.6% against 10.8%), so seven rounds of
+thresholds transfer — but 1 fit in 12 silently collapses to "never train", which is now
+caught (§4.7).
 
 Not built yet: the volume budget across muscle groups, the autoregulation controller.
 Ranked in `LOOP_LOG.md`.
@@ -716,6 +719,78 @@ now enforced in `PerformanceTest.validate()`. D-26.
 
 Note what this cost: nothing. The protocol is worth a factor of 2.3 in measurement noise
 and it is bought entirely by how one set per week is taken.
+
+---
+
+## 4.7 The rehearsal: does the shipping path work? (R8)
+
+Seven rounds tested the fitter against arrays built by `fit.make_log`. Nothing had tested
+it against arrays built by the logger — the code a real person drives. Those are different
+paths and only one of them ships. `logger/rehearsal.py` drives a known synthetic lifter
+through 26 weeks of a realistic plan, writing to a real JSONL log on disk, then reads it
+back, converts, fits, and compares.
+
+### The paths agree, which is the result the round wanted
+
+| | Median MRV error |
+|---|---|
+| Production — logger → disk → `to_fittable` → fit | **10.6%** |
+| Simulation — `make_log` → fit (what every round measured) | **10.8%** |
+
+Seven rounds of thresholds transfer to the shipping path. That is the licence to keep
+using them.
+
+### But the rehearsal found a live safety gap that no component test could
+
+**One fit in twelve collapses to a parameter set with no interior optimum** — the model's
+"never train" corner — for lifters whose *true* MRV is as high as 60 sets/week. The fit
+does not fail, does not warn, and `mrv()` returns the lower bound of its own search
+interval. The pipeline would have told that lifter to do essentially nothing.
+
+Every gate before this asked whether the *lifter* had earned a personalised number. None
+asked whether the number the *fitter* produced was a number at all. `fit_is_usable()` now
+checks, and `prescribe()` is the single entry point that should ever produce a volume for
+a person — returning an explicit `source` of `"prior"`, `"shrunk"` or `"fit"` so a caller
+cannot present a population average as a personalised result by accident. D-27.
+
+### Quantisation costs real accuracy, and one third of it is a fixable bias
+
+At **zero** measurement noise, plate rounding and integer reps alone cost **3–9% median
+MRV error** (p90 ~20%). That is not a rounding detail; it is a material share of the total
+error budget, and no round before this one had modelled it.
+
+Digging into it produced the more useful finding. Under D-26's protocol a lifter performs
+as many reps as they can while leaving the stated RIR, then records an integer — someone
+who could have managed 4.7 writes 4. **That truncation is one-sided, so it is a bias, not
+noise: −1.4% on every single observation.** A bias does not average out over weeks the way
+sigma does; it tilts the whole fitted trajectory downward.
+
+The lost fraction is uniform on [0, 1), so adding back its expectation of half a rep
+removes it almost exactly:
+
+| Plate | Bias, uncorrected | Bias, +0.5 rep | RMS, uncorrected | RMS, corrected |
+|---|---|---|---|---|
+| 1.0 kg | −1.40% | **+0.02%** | 1.87% | **1.24%** |
+| 2.5 kg | −1.42% | **+0.01%** | 1.73% | **0.98%** |
+| 5.0 kg | −1.44% | **−0.02%** | 1.62% | **0.72%** |
+
+One constant, bias eliminated and observation RMS down ~40%. It is protocol-dependent and
+therefore a flag rather than a constant: "do as many as you can" truncates in reps and
+wants the correction; "do exactly four and rate your RIR" truncates in RIR and would
+double-count it. D-28.
+
+### One thing this round could not explain, and is not pretending to
+
+Coarser plates fit *better* — 3.4% median error at 5 kg against 9.4% at 1 kg, and the
+ordering strengthens at n=28 rather than washing out, so it is not sampling noise.
+Observation-level accuracy is near-identical across plate sizes (RMS 1.6–1.9%), so it is
+**not** explained by measurement precision, and the obvious story — that fine plates let
+the lifter re-target the load every week and pin the rep count, flattening the signal — is
+a hypothesis this round did not test.
+
+Reported as unexplained. The practical stakes are low (nobody chooses a plate rack to
+improve a model fit) and the mechanism may matter later, so it is written down rather than
+resolved badly.
 
 ---
 
