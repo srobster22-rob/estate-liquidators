@@ -295,10 +295,39 @@ would have been extremely hard to diagnose from playtest reports.
 > (`crew × 0.65`), still linear in crew, and the appraiser sims never sweep crew size so it
 > never mattered there. **The project has no sublinear parallelism model anywhere.**
 >
+> **R33 built the parallelism model and then found it was not the cause.** `tuning.json` now
+> carries `labour.parallel_exponent` (default 0.75, **unmeasured**) and `chain_sim` uses
+> `effort(crew) = 4 × (crew/4)^a`, anchored so nothing about the four-player results moves.
+> R32's exponent sweep had conflated *level* with *scaling* — it changed crew 4's throughput
+> as well as the ratio — and with the level anchored the whole plausible range of exponents
+> moves crew 6 ÷ crew 4 only from **1.43× (a = 0.30) to 2.03× (a = 1.00)**. No parallelism
+> assumption recovers +12%.
+>
+> **Isolated properly, one variable at a time, with every policy switch held fixed:**
+>
+> | | crew 4 | crew 6 | ratio |
+> |---|---:|---:|---:|
+> | no noise, no curses | $10,986 | $15,867 | **1.44×** |
+> | + noise | $10,458 | $15,882 | 1.52× |
+> | + curses | $11,351 | $21,608 | **1.90×** |
+> | + curses, crew never appraises | $11,502 | $19,553 | 1.70× |
+>
+> **The base advantage is 1.44× before noise or curses exist at all**, noise contributes
+> almost nothing (+0.08), and the **curse tail is the single largest amplifier** (+0.38). The
+> mechanism is simple and probably real rather than artefactual: with a reservation-price
+> policy, extra search time converts directly into higher value *per slot*, and the van caps
+> quantity but not quality — so headcount buys quality without limit, and a heavy-tailed value
+> distribution (×2.5, ×6) pays for selectivity twice over.
+>
+> **So the gap between §8's +12% and today's 1.44× is the decision rule, not information,
+> noise, curses or parallelism.** §8 ran the old value-threshold rule on a per-slot metric;
+> R27 replaced both for reasons unrelated to crew size. The current model is the better one
+> and it says the economy prefers six people by a lot.
+>
 > This is the third settled conclusion found resting on a model that changed underneath it
-> (after D-19 in R24 and the appraiser denominator in R27), and the first where the flaw is in
-> the model's *structure* rather than a constant — which is exactly the class §10's provenance
-> table cannot catch. Measure the exponent in the first playtest that has six people in it.
+> (after D-19 in R24 and the appraiser denominator in R27). **Measure the exponent in the
+> first playtest that has six people in it** — it will not rescue crew 4, but it is the only
+> number here that is currently a pure guess.
 
 ### What this cost D-18
 

@@ -245,6 +245,11 @@ check("py validator occlusion_curator",
       grab(validator, r"^OCCLUSION\s*=\s*([\d.]+)", flags=re.M),
       lc["occlusion_curator"])
 
+check("py chain parallel_exponent",
+      grab(sims_chain := (ROOT / "sim" / "chain_sim.py").read_text(encoding="utf-8"),
+           r"PARALLEL_EXPONENT\s*=\s*([\d.]+)"),
+      TUNING["labour"]["parallel_exponent"])
+
 ca = TUNING["curator_audio"]
 check("JS patrol tell @30", grab(js, r"PATROL_TELL_AT_30\s*=\s*([\d.]+)"),
       ca["patrol_tell_interval_at_30_s"])
@@ -356,6 +361,7 @@ CS_BACKLOG = {
     # R31 added these two and the ratchet below caught them the same minute, which is
     # the check working exactly as designed: a value cannot enter tuning.json and quietly
     # skip the shipping implementation.
+    "labour.parallel_exponent",          # R33, and the C# has no labour model yet
     "curator_audio.patrol_tell_interval_at_30_s",
     "curator_audio.patrol_tell_interval_at_60_s",
     "curse.attention_multiplier.clean",

@@ -75,6 +75,12 @@
     "_ruin_note": "Tail risk, not a fee. A linear cost cannot balance a multiplicative benefit."
   },
 
+  "labour": {
+    "_source": "R32/R33. UNMEASURED - this is the project's biggest open number.",
+    "_note": "How crew throughput scales with headcount: effort(crew) = effort_at_4 * (crew/4)^parallel_exponent. Every model previously assumed 1.0 (N people do N times the work), which R32 showed makes crew 6 earn 2.05x crew 4; at 0.75 it earns 1.17x. Nothing in this project measures it. PARALLEL_EFFICIENCY does NOT cover this - it is a level correction at crew 4, still linear in crew. Measure it by timing crews of 2, 4 and 6 through one estate; until then every crew-size claim is a guess about this exponent.",
+    "parallel_exponent": 0.75
+  },
+
   "curator_audio": {
     "_source": "AUDIO-SPEC.md 3.2, added R31",
     "_note": "Within-PATROL gradient. The domestic sounds close up as Disturbance climbs toward PURSUE, so a crew can hear itself approaching the cliff. Interval interpolates linearly between the two anchors and is only used while 30 <= D < 60; DORMANT is silent and PURSUE is continuous footsteps.",

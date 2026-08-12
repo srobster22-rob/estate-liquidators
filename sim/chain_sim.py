@@ -40,6 +40,21 @@ VAN_BASE = 14
 HAUL_WINDOW_S = 540.0
 NIGHT_S = 720.0
 
+# R33: how crew throughput scales with headcount. Every model in this project previously
+# assumed perfect parallelism -- N people do N times the work -- and R32 showed that is
+# what produced "+12% from four to six" (it is really +105% under that assumption, and
+# +17% at 0.75). The form is anchored at crew 4 so nothing about the four-player results
+# moves; only the SCALING changes, which is the part that was never modelled.
+#
+#     effort(crew) = 4 * (crew/4) ** PARALLEL_EXPONENT
+#
+# The exponent is UNMEASURED and is the project's biggest open number. See tuning.json.
+PARALLEL_EXPONENT = 0.75
+
+
+def crew_effort(crew):
+    return 4.0 * (crew / 4.0) ** PARALLEL_EXPONENT
+
 # ---------------------------------------------------------------- R26: the noise half
 # ECONOMY.md 10 records what this model could not see: Disturbance and the Curator, at
 # all. Which means the quota curve in ECONOMY.md 4 was calibrated on a world where
@@ -282,7 +297,7 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
     cargo_value = 0.0
     took = {}
     t = 0.0
-    labour_pool = crew          # people available in parallel
+    labour_pool = crew_effort(crew)   # R33: sublinear, anchored at crew 4
     apex_offered = False
     d = 0.0                     # Disturbance; stays 0 when noise=False
     lost = 0

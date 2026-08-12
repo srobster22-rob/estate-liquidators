@@ -341,10 +341,14 @@ conversation, not about money, and it should be defended on those terms.
 > | `crew^0.85` | 1.52× |
 > | `crew^0.75` | 1.17× |
 >
-> **The answer is anywhere between +17% and +105% depending on an exponent nobody has
-> measured.** The original +12% happens to sit near the `crew^0.75` end, so D-18's conclusion
-> may well be right — but it was reached by a model that assumed the opposite extreme, which
-> means it was right by accident.
+> **R33 corrected this: the exponent is not the cause.** That sweep conflated *level* with
+> *scaling*. Anchored at crew 4 so only the ratio varies, the entire plausible range of
+> exponents moves crew 6 ÷ crew 4 from **1.43× to 2.03×** — no parallelism assumption recovers
+> +12%. Isolated one variable at a time, the base advantage is **1.44× before noise or curses
+> exist**, and the largest amplifier is the **curse tail** (+0.38), not noise (+0.08). The
+> mechanism: with a reservation-price policy, extra search time buys higher value *per slot*,
+> and the van caps quantity but not quality. **The economy prefers six people by roughly
+> 1.9×, under every assumption tested.**
 >
 > **D-18 itself survives**, because its stated justification is voice legibility and that is
 > untouched by any of this. What does not survive is the sentence below dismissing the

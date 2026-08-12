@@ -688,6 +688,39 @@ on a model that moved underneath it** (D-19 in R24, the appraiser denominator in
 first where the flaw is in the model's *structure* rather than in a constant — which is exactly
 the class §10's provenance table was not built to catch.
 
+R33 · Built the parallelism model R32 asked for — `labour.parallel_exponent` in `tuning.json`
+(default **0.75, and explicitly unmeasured**), `effort(crew) = 4 × (crew/4)^a` in `chain_sim`,
+drift-checked, and anchored at crew 4 so no four-player result moves. · **Then found it was not
+the cause, because R32's own sweep had been confounded.** That sweep varied `labour_pool =
+crew**a`, which changes crew 4's *level* as well as the *scaling* — so its headline "1.17× at
+a=0.75" was two effects at once. Anchored properly, the entire plausible range moves crew 6 ÷
+crew 4 only from **1.43× (a=0.30) to 2.03× (a=1.00)**. **No parallelism assumption recovers
++12%.** · **And R32's isolation table was confounded too** — its "free information" row
+differed from the others in *five* ways (rule, metric, depth cap, pickiness, information), not
+one, so its attribution of the effect to noise was worthless. Re-ran it holding every policy
+switch fixed and varying one thing at a time:
+
+    no noise, no curses      crew4 10,986   crew6 15,867   1.44x
+    + noise                        10,458         15,882   1.52x
+    + curses                       11,351         21,608   1.90x
+    + curses, never appraises      11,502         19,553   1.70x
+
+**The base advantage is 1.44× before noise or curses exist at all.** Noise contributes almost
+nothing (+0.08); the **curse tail is the largest amplifier** (+0.38). · **The mechanism is
+probably real rather than artefactual, and it is worth stating plainly: with a
+reservation-price policy, extra search time converts into higher value *per slot*, and the van
+caps quantity but not quality.** So headcount buys quality without limit, and a heavy-tailed
+value distribution (×2.5, ×6) pays for that selectivity twice over. · So the gap between §8's
++12% and today's 1.44× is **the decision rule** — §8 ran the old value-threshold rule on a
+per-slot metric, both of which R27 replaced for reasons that had nothing to do with crew size.
+D-18's *conclusion* still stands on voice legibility; its economic dismissal is dead under
+every assumption tested. · **Two mis-attributions of my own in two rounds, both the same error
+class, and both caught only by re-testing rather than by re-reading.** R32 blamed the decay
+scale factor (wrong), then the parallelism exponent (wrong); R33 blamed noise (wrong). The
+standing rule about comparisons differing in more than one way is now at **five occurrences**,
+and the last three were mine — it is much easier to spot in someone else's table than in the
+one you just built.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -695,14 +728,14 @@ the class §10's provenance table was not built to catch.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R33: give the project a parallelism model, because it does not have one.** R32 found every
-crew-size conclusion resting on the assumption that N people do N× the work, and the answer
-swings from +17% to +105% across plausible exponents. `PARALLEL_EFFICIENCY = 0.65` is a level
-correction, not a scaling law. Pick a form (`crew^a` is the obvious one), put the exponent in
-`tuning.json` so the drift checker owns it, apply it in **both** `chain_sim` and the appraiser
-family, and re-run everything crew-shaped — §8 Finding 3, D-18, and R24's trip ceiling, which
-is `HAUL_S / per_trip` and therefore moves with it too. **Expect the 21-trip ceiling to
-change**, which would move D-19 for the second time.
+**R34: the crew-size question is now a design decision, not a modelling one.** R33 established
+that the economy prefers six people by roughly **1.9×** under every assumption tested, and that
+the largest single amplifier is the curse tail — extra search time buys higher value per slot,
+and the van caps quantity but not quality. D-18 keeps crew at four for voice legibility, which
+is untouched, but the design now has a **2× incentive pointing the other way** and no answer
+for it. Options worth costing: a van that caps *value* as well as slots; curse multipliers that
+compress at the top; or accepting it and saying so out loud. **Pick one deliberately** — this
+is exactly the kind of thing that gets discovered by players in week one.
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their
