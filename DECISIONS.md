@@ -613,6 +613,51 @@ isn't frightening enough to pay for and the problem was never the lever.
 
 ---
 
+## D-29 · Every model reads the canonical tuning; nothing keeps a private copy
+
+**Status:** FIRM · `sim/audit.py`, `sim/check_drift.py`
+
+**Decision:** no simulation may declare its own value for a number that lives in
+`tuning.json`. `sim/audit.py` fails the build if a model stops reading it, loses its entry
+point, or multiplies a runtime term by a tuned literal.
+
+**Why this is FIRM rather than HELD.** Five consecutive rounds found apparatus that had
+quietly stopped describing the design, and every one was found *by accident* while doing
+something else:
+
+| | What had gone stale | How long | Found by |
+|---|---|---:|---|
+| R16 | `integrated.py` cursed floor 2.0 vs canonical 7.0 | 4 rounds | writing a different sim |
+| R17 | `validate_estate.py` had no entry point — printed nothing, exited 0 | unknown | adding a check to it |
+| R18 | `disturbance.py` still on pre-R4 decay, no ratcheting floor | 15 rounds | asking a crew-size question |
+| R20 | `chain_sim.py` quota list two rounds dead | 2 rounds | adding a swap phase |
+| R21 | the R20 quota curve was stale against R20's *own* apex re-band | same round | the check built this round |
+
+Every one is the same shape: **the checked surface was narrower than the file.** Luck found
+them five times; luck is not a process, and the sixth would have shipped.
+
+**What changed.** All nine models now read `tuning.json` at import. The per-literal Python
+checks in `check_drift.py` are *deleted* rather than extended — there is no literal left to
+check, which is a strictly stronger guarantee than checking one. Connecting all five
+disconnected models left every output byte-identical, which says the private copies happened
+to agree *today*; the point is that they can no longer disagree tomorrow.
+
+**The R21 entry in that table is the argument.** The new check caught an error introduced by
+the previous round, within minutes, before it reached anything downstream — R20 recalibrated
+the quota curve and *then* re-banded the apex, leaving its own curve stale by the end of its
+own round. `chain_sim.py` now prints measured pass rates beside their calibration targets and
+says so out loud when they diverge by more than ten points.
+
+**The failure this is really about is not wrong numbers.** It is a later change silently
+invalidating an earlier one. No amount of care prevents that; only a check that re-derives
+the relationship does.
+
+**Falsified if:** a round finds stale apparatus that both checkers pass. Then the surface is
+still too narrow and the specific gap should be added, not the checker rewritten — each of
+these five was a different kind of blindness, and the list of kinds is the asset.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

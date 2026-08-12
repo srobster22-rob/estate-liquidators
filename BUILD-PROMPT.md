@@ -23,7 +23,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 > 4. `TECH-SPEC.md` and `AUDIO-SPEC.md` — implementation detail for the two systems that
 >    carry the product.
 > 5. `LEVEL-SPEC.md`, `ECONOMY.md`, `STACK.md` — content contract, tuning, dependencies.
-> 6. `LOOP_LOG.md` — twenty rounds of findings, including several corrections to the specs.
+> 6. `LOOP_LOG.md` — twenty-one rounds of findings, including several corrections to the specs.
 >    Where the log contradicts a doc, **the log is newer**.
 > 7. `proto/index.html` — a running single-player prototype of the core loop. Play it before
 >    writing anything.
@@ -97,7 +97,7 @@ Everything below the line is the prompt. Notes on how to use it are at the botto
 >
 > ### Reuse the simulations
 >
-> `sim/` contains eleven Python models totalling ~2,800 lines that already answer most tuning
+> `sim/` contains twelve Python models totalling ~3,100 lines that already answer most tuning
 > questions, and they run in seconds with no dependencies. **Before changing any balance
 > number, re-run the relevant one.** They are the reason the current values are trustworthy,
 > and two of them exist specifically because earlier numbers were wrong.

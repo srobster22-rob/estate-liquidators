@@ -120,10 +120,10 @@
 
   "progression": {
     "_source": "ECONOMY.md 3 and 4, recalibrated LOOP_LOG R20",
-    "quota_by_night": [13250, 15250, 17250, 19000],
+    "quota_by_night": [15250, 17500, 19500, 21750],
     "van_by_night": [14, 15, 17, 19],
     "target_pass_rate": [0.95, 0.73, 0.55, 0.40],
-    "_quota_note": "R20. The previous curve (7500/9000/10750/12500) was calibrated on a model that ENDED THE NIGHT WHEN THE VAN FILLED. Real crews swap up instead of leaving, which is worth ~42%, so every night passed 100% under the old numbers -- the same shapelessness ECONOMY 4 was written to fix. Verified to reproduce 95/73/54/42%.",
+    "_quota_note": "R21. The previous curve (7500/9000/10750/12500) was calibrated on a model that ENDED THE NIGHT WHEN THE VAN FILLED; real crews swap up instead of leaving, which is worth ~42%, and every night passed 100% under it. R20 recalibrated but did so BEFORE re-banding the apex, so its curve (13250/15250/17250/19000) was stale against the final configuration by the time the round ended -- caught by chain_sim.py now printing measured pass rates against their calibration targets. This curve reproduces 96/73/59/38%.",
     "apex_band": [6000, 11000],
     "_apex_note": "R20, third setting of this band. At 4000-8000 the apex is a TRAP again: five indivisible slots plus a large labour block, measured at -3.8% against not taking it, because those five slots would otherwise be upgraded all night. Five marginal slots are worth ~$3,418 by sunrise (~$684/slot) and the labour costs the rest. At 6000-11000 it is +9.1% -- worth taking, cheap enough to skip on a bad night."
   },

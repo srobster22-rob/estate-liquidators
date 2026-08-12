@@ -371,6 +371,40 @@ shape: **the checked surface is narrower than the file.** Every fix so far has b
 what `check_drift.py` can see — inline literals hoisted, whole-file "does it read tuning.json"
 assertions, and now list-valued constants.
 
+R21 · Stopped finding stale apparatus by accident and built the check instead. `sim/audit.py`
+asks the question `check_drift.py` cannot: **what is the checker unable to see?** · Five
+rounds, five finds, all by luck — R16 an inline literal, R17 a validator with no entry point,
+R18 a sim on pre-R4 defaults, R20 a dead quota list, and now R21. Every one the same shape:
+the checked surface was narrower than the file.
+· **Designing the check taught me more than running it.** First cut flagged every literal
+equal to a canonical value: **176 findings, almost all coincidence** — `8` is a loudness
+value, `0.5` is a slot cost. Second cut kept only "distinctive" values: 60 findings, still
+mostly noise (a 0.08 probability matching a 0.08 ledger fee). Both were the wrong shape, and
+the reason is worth keeping: **numeric equality is weak evidence** — and it could never have
+caught R16 anyway, because that bug was `cursed * 2.0` against a canonical 7.0, so the literal
+did *not* match. What identifies a stale copy is CONTEXT: a line that discusses a concept and
+carries a number that is not that concept's value. Third cut, anchored on concept and
+restricted to the syntactic shapes a tuned copy actually takes: **8 findings, all real.** A
+checker that fires 176 times is exactly as useless as one that never fires, and this project
+had only learned the second half of that.
+· **Acted on all eight.** All five disconnected models now read `tuning.json`; every output
+is byte-identical, which says the private copies agreed *today* and is precisely why the risk
+was invisible. Deleted the per-literal Python checks from `check_drift.py` rather than
+extending them — there is no literal left to check, which is a stronger guarantee than
+checking one. Wired the three orphaned canonical values. Added an allowlist with *reasons* for
+values no model reads on purpose, because the reason is the thing that goes stale.
+· **The new check immediately caught an error from the round before it.** `chain_sim.py` now
+prints measured pass rates beside their calibration targets, and it fired on first run: nights
+2-4 were 20-30 points off. **R20 recalibrated the quota curve and then re-banded the apex**,
+leaving its own curve stale against its own final configuration by the end of its own round.
+Quotas recalibrated to **15,250 / 17,500 / 19,500 / 21,750**, reproducing 95/73/58/40%.
+· That is the real lesson, and it is not about wrong numbers. **It is about a later change
+silently invalidating an earlier one** — the one failure no amount of care prevents, because
+the number was right when it was written. Only a check that re-derives the relationship
+catches it. Logged as D-29, FIRM.
+· Verified both checkers bite: broke a model's tuning read (audit exits 1, names the file) and
+flattened a quota step (drift exits 1, names the invariant), then reverted both.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -389,16 +423,10 @@ published numbers. `haul_sim.py` is the one file left untouched — it is the ol
 its results are already superseded by `integrated.py` and `scan_risk.py`, so it was left alone
 deliberately rather than overlooked.
 
-**1. Audit every remaining sim for the same class of staleness, mechanically.** Four of the
-last five rounds found apparatus that was quietly not describing the current design, and each
-was found by accident while doing something else. That is luck, not process. The specific
-lesson from all four: **the checked surface is narrower than the file.** `check_drift.py` now
-covers scalars, list constants, and "does this file read tuning.json at all" — the next step is
-to invert it and enumerate what it *cannot* see, then decide deliberately which of those gaps
-matter. A structural check ("does every sim import tuning.json?") would have caught three of
-the four immediately.
+~~**Audit every remaining sim for the same class of staleness.**~~ **Done, R21.**
+`sim/audit.py`, and it caught R20's error on its first run.
 
-**2. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
+**1. V5 is still the weakest check in the validator**, unchanged since R1: it walks only the
 *shortest* path from plinth to van and counts doors, so a wing whose alternate route is
 acoustically dead passes. It has never failed anything, which for a check is a symptom rather
 than a reassurance — R16 found two other pieces of apparatus that were quietly not running, so

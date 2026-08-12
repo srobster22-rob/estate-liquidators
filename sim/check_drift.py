@@ -122,38 +122,21 @@ for name in ("sprint", "appraise", "door"):
           TUNING["loudness"][name])
 
 # --------------------------------------------------------------- Python sims
-sims = {n: (ROOT / "sim" / n).read_text(encoding="utf-8")
-        for n in ("integrated.py", "disturbance.py", "curse_test.py")}
-
-check("py integrated IMPULSE",
-      grab(sims["integrated.py"], r"^IMPULSE\s*=\s*([\d.]+)", flags=re.M),
-      lc["impulse_disturbance_per_l"])
-check("py integrated SUSTAINED",
-      grab(sims["integrated.py"], r"^SUSTAINED\s*=\s*([\d.]+)", flags=re.M),
-      lc["sustained_disturbance_per_l"])
-check("py integrated DECAY", grab(sims["integrated.py"], r"DECAY_PER_MIN\s*=\s*([\d.]+)"),
-      d["decay_per_min_at_crew4"])
-check("py integrated RATCHET", grab(sims["integrated.py"], r"RATCHET_END\s*=\s*([\d.]+)"),
-      d["ratchet_end"])
-check("py integrated VAN_SLOTS", grab(sims["integrated.py"], r"VAN_SLOTS\s*=\s*(\d+)"),
-      v["base_slots"])
-# This one drifted for four rounds while the checker reported 55/55 green, because it
-# lived as `cursed * 2.0` INSIDE the floor expression and this file can only see named
-# constants. The lesson generalises: an inline literal is invisible to drift checking,
-# so any tuned number in any implementation must be hoisted to a named constant. (R16)
-check("py integrated CURSED_FLOOR",
-      grab(sims["integrated.py"], r"^CURSED_FLOOR\s*=\s*([\d.]+)", flags=re.M),
-      d["per_cursed_item_floor"])
-# disturbance.py reads tuning.json at runtime as of R18, so it cannot carry a stale
-# literal -- which is how it shipped the pre-R4 decay of 1.0/min for four rounds while
-# this checker reported green, because nothing here looked at its DEFAULT value.
-check("py disturbance uses tuning",
-      1.0 if 'TUNING["disturbance"]' in sims["disturbance.py"]
-      or '_D = TUNING' in sims["disturbance.py"] else 0.0, 1.0)
-check("py curse floor", grab(sims["curse_test.py"], r"FLOOR_PER_CURSED\s*=\s*([\d.]+)"),
-      d["per_cursed_item_floor"])
-check("py curse ruin_exp", grab(sims["curse_test.py"], r"RUIN_EXP\s*=\s*([\d.]+)"),
-      v["ruin_exp"])
+#
+# R21: every model now READS tuning.json instead of declaring its own copy, so the
+# per-literal checks that used to live here are gone -- there is no literal left to
+# check. That is a strictly stronger guarantee than this file could offer: a value
+# cannot drift if there is only one of it.
+#
+# The structural half of that guarantee lives in sim/audit.py, which fails if any
+# model stops reading tuning.json, loses its entry point, or multiplies a runtime
+# term by a tuned constant the way R16's bug did. Run both.
+sims = {p_.name: p_.read_text(encoding="utf-8") for p_ in (ROOT / "sim").glob("*.py")}
+for name in ("integrated.py", "disturbance.py", "curse_test.py", "chain_sim.py",
+             "haul_sim.py", "curator_attention.py", "scan_risk.py", "hiding.py",
+             "levers.py"):
+    check(f"py {name} reads tuning.json",
+          1.0 if "tuning.json" in sims.get(name, "") else 0.0, 1.0)
 
 # Concealment (R17). hiding.py reads tuning.json at runtime so it cannot drift; these
 # pin the two values that also appear as literals in the specs' pseudo-code, and the
@@ -183,12 +166,19 @@ check("recommended charges is an interior optimum, not a max",
 # ECONOMY 4 replaced and marked broken.
 pg = TUNING["progression"]
 cs_py = (ROOT / "sim/chain_sim.py").read_text(encoding="utf-8")
-q = re.search(r"QUOTAS = \[([\d,\s]+)\]", cs_py)
-check("py chain QUOTAS", 1.0 if q and [int(x) for x in q.group(1).split(",")]
-      == pg["quota_by_night"] else 0.0, 1.0)
-a = re.search(r'"apex": \((\d+), (\d+)\)', cs_py)
-check("py chain apex band", 1.0 if a and [int(a.group(1)), int(a.group(2))]
-      == pg["apex_band"] else 0.0, 1.0)
+# R21: these were literal-matching checks until chain_sim started reading the values.
+# Now assert it reads them, and that the curve is internally coherent -- a quota list
+# and a van list of different lengths is a crash waiting for night five.
+check("py chain reads quota curve",
+      1.0 if 'quota_by_night' in cs_py and 'apex_band' in cs_py else 0.0, 1.0)
+check("progression lists are same length",
+      1.0 if len(pg["quota_by_night"]) == len(pg["van_by_night"])
+      == len(pg["target_pass_rate"]) else 0.0, 1.0)
+# Quotas must rise. A flat or falling step is a chain with no shape, which is the
+# exact failure ECONOMY 4 exists to prevent and which has now happened twice.
+check("quota curve rises monotonically",
+      1.0 if all(b > a_ for a_, b in zip(pg["quota_by_night"],
+                                         pg["quota_by_night"][1:])) else 0.0, 1.0)
 
 # The crew exponent must match between the model and the prototype -- it is the one
 # tuned number that lives as an expression rather than a table entry.

@@ -36,6 +36,20 @@ MODEL — online selection under partial information
 import random
 import statistics
 
+import json as _json
+import pathlib as _pathlib
+
+# R21: was a private copy of every tuned constant. See sim/audit.py for why that is
+# the project's most repeated failure -- there is nothing to notice when a canonical
+# value moves, which is how this very file carried a stale cursed floor for four
+# rounds (R16).
+TUNING = _json.loads(
+    (_pathlib.Path(__file__).resolve().parent.parent / "tuning.json")
+    .read_text(encoding="utf-8"))
+_D, _V, _C, _N = (TUNING["disturbance"], TUNING["van"], TUNING["curse"],
+                  TUNING["night"])
+_A, _R, _P = TUNING["attention"], TUNING["retrieval"], TUNING["progression"]
+
 VAN_BASE = 14
 HAUL_WINDOW_S = 540.0
 
@@ -47,7 +61,7 @@ TIER_DATA = {
     1: (45.0, {"pocket": (40, 150), "armful": (80, 300)}),
     2: (60.0, {"armful": (250, 700), "two_man": (700, 1900)}),
     3: (90.0, {"armful": (600, 1400), "two_man": (1800, 4000)}),
-    4: (110.0, {"apex": (6000, 11000)}),   # re-banded R20, see below
+    4: (110.0, {"apex": tuple(_P["apex_band"])}),   # re-banded R20, see below
 }
 
 # class -> (slots, people needed, carry-time multiplier, extra setup seconds)
@@ -62,8 +76,13 @@ CLASS_DATA = {
 # broken -- so this file printed pass rates against a quota curve the project had
 # already thrown away. Recalibrated against the corrected model (swap phase in) to
 # reproduce the intended 95/73/55/40% shape.
-QUOTAS = [13250, 15250, 17250, 19000]
-VAN_BY_NIGHT = [14, 15, 17, 19]        # shelving upgrades, ceiling 20
+QUOTAS = list(_P["quota_by_night"])
+VAN_BY_NIGHT = list(_P["van_by_night"])   # shelving upgrades, ceiling 20
+# The pass rates the quota curve was calibrated to reproduce (R20). Printed
+# alongside the measured ones so a drifted curve is visible in the output
+# rather than only in a diff -- R20 found this file reporting against a quota
+# list two rounds dead, and nothing in its output said so.
+TARGET_PASS = list(_P["target_pass_rate"])
 
 
 def generate_candidates(rng, tier, n):
@@ -264,6 +283,7 @@ def chain_trial(crew=4, n=3000, allow_apex=True, picky=True, reserve_apex=True,
             "night": night + 1,
             "quota": quota,
             "van": van,
+            "target": TARGET_PASS[night] if night < len(TARGET_PASS) else None,
             "mean": statistics.mean(totals),
             "p10": sorted(totals)[n // 10],
             "pass": passed,
@@ -276,11 +296,19 @@ def show(rows, title):
     print(f"\n{title}")
     print("-" * 78)
     print(f"{'night':<7}{'quota':>9}{'van':>6}{'mean $':>11}{'p10 $':>11}"
-          f"{'quota/mean':>12}{'pass':>8}{'apex':>8}")
+          f"{'quota/mean':>12}{'pass':>8}{'target':>8}{'apex':>8}")
+    drifted = []
     for r in rows:
+        tgt = r.get("target")
         print(f"{r['night']:<7}{r['quota']:>9,}{r['van']:>6}{r['mean']:>11,.0f}"
               f"{r['p10']:>11,.0f}{r['quota'] / r['mean']:>12.0%}"
-              f"{r['pass']:>8.0%}{r['apex']:>8.0%}")
+              f"{r['pass']:>8.0%}"
+              f"{(f'{tgt:.0%}' if tgt is not None else '-'):>8}{r['apex']:>8.0%}")
+        if tgt is not None and abs(r["pass"] - tgt) > 0.10:
+            drifted.append(r["night"])
+    if drifted:
+        print(f"  ** night(s) {drifted} are >10 points off their calibration target."
+              f" The quota curve or the model has moved.")
 
 
 if __name__ == "__main__":

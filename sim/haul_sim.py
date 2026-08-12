@@ -32,13 +32,28 @@ DELIBERATE OMISSIONS
 import random
 import statistics
 
+import json as _json
+import pathlib as _pathlib
+
+# R21: this file used to define its own copy of every tuned constant. Four of the five
+# rounds R16-R20 found apparatus that had quietly stopped describing the design, and a
+# private copy of the numbers is how that happens -- there is nothing to notice when
+# the canonical value moves. sim/audit.py now fails on any model that does not read
+# this file.
+TUNING = _json.loads(
+    (_pathlib.Path(__file__).resolve().parent.parent / "tuning.json")
+    .read_text(encoding="utf-8"))
+_D, _V, _C, _N = (TUNING["disturbance"], TUNING["van"], TUNING["curse"],
+                  TUNING["night"])
+_A, _R, _P = TUNING["attention"], TUNING["retrieval"], TUNING["progression"]
+
 # ---------------------------------------------------------------- parameters
 
-HAUL_WINDOW_S = 540.0        # ECONOMY.md 2
-APPRAISE_S = 3.0             # DESIGN.md 4.1
-CREW = 4
-VAN_SLOTS = 14               # ECONOMY.md 1
-CANDIDATES_PER_SHELF = 4     # items to choose between at a given shelf
+HAUL_WINDOW_S = float(_N["haul_window_seconds"])   # ECONOMY.md 2
+APPRAISE_S = _N["appraise_seconds"]                # DESIGN.md 4.1
+CREW = _N["crew"]
+VAN_SLOTS = _V["base_slots"]                       # ECONOMY.md 1
+CANDIDATES_PER_SHELF = TUNING["appraiser"]["candidates_per_shelf"]
 
 # Noise. AUDIO-SPEC 1.2: an appraiser ping is L=48, so +4.3 Disturbance; sprinting a
 # trip is L=45 sustained, call it +2.0 per trip. RISK_COEF scales Disturbance into a

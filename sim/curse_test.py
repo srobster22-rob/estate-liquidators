@@ -17,23 +17,39 @@ choice and DESIGN 4.2 needs rewriting rather than retuning.
 import random
 import statistics
 
+import json as _json
+import pathlib as _pathlib
+
+# R21: this file used to define its own copy of every tuned constant. Four of the five
+# rounds R16-R20 found apparatus that had quietly stopped describing the design, and a
+# private copy of the numbers is how that happens -- there is nothing to notice when
+# the canonical value moves. sim/audit.py now fails on any model that does not read
+# this file.
+TUNING = _json.loads(
+    (_pathlib.Path(__file__).resolve().parent.parent / "tuning.json")
+    .read_text(encoding="utf-8"))
+_D, _V, _C, _N = (TUNING["disturbance"], TUNING["van"], TUNING["curse"],
+                  TUNING["night"])
+_A, _R, _P = TUNING["attention"], TUNING["retrieval"], TUNING["progression"]
+
 CREW, HAUL_S, NIGHT_S, VAN = 4, 540.0, 720.0, 14
 DECAY, IMPULSE, SUSTAINED = 50.0, 0.09, 0.02
-RATCHET_END = 55.0
-FLOOR_PER_CURSED = 7.0                    # R9 recommendation, up from 2.0
+RATCHET_END = _D["ratchet_end"]
+FLOOR_PER_CURSED = _D["per_cursed_item_floor"]   # R9 recommendation, up from 2.0
 
 # R11 - the curse as a TAIL RISK. R10 proved a linear cost can never balance a
 # multiplicative benefit, so the cost has to be catastrophic instead of marginal: the
 # collection reclaims the WHOLE van, with probability rising super-linearly in how many
 # cursed pieces are aboard. One is a shrug; five should be a real chance of nothing.
 RUIN_K = 0.0
-RUIN_EXP = 1.8
+RUIN_EXP = _V["ruin_exp"]
 
 GRADE_P = [("clean", 0.70), ("tainted", 0.22), ("malignant", 0.08)]
-FEE = {"clean": 0.0, "tainted": 0.08, "malignant": 0.20}
-ATTENTION = {"clean": 1.0, "tainted": 1.5, "malignant": 3.0}
-RETRIEVAL = {"DORMANT": 0.0, "PATROL": 0.02, "PURSUE": 0.10, "COLLECT": 0.25}
-TIERS = [(85, "COLLECT"), (60, "PURSUE"), (30, "PATROL"), (0, "DORMANT")]
+FEE = _C["ledger_fee"]
+ATTENTION = _C["attention_multiplier"]
+RETRIEVAL = {k.upper(): v for k, v in _R.items()}
+TIERS = [(_D["tier_collect_at"], "COLLECT"), (_D["tier_pursue_at"], "PURSUE"),
+         (_D["tier_patrol_at"], "PATROL"), (0, "DORMANT")]
 TIER_DATA = {1: (45.0, (80, 300)), 2: (60.0, (250, 700)), 3: (90.0, (600, 1400))}
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3)]
 PAR_EFF = 0.65

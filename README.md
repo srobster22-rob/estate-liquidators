@@ -39,6 +39,7 @@ log, and even those state their own falsification conditions.
 | **[sim/hiding.py](sim/hiding.py)** | Concealment: whether run / hide / stash / hand off are four decisions or one. | Before touching §8.1 or the search state. |
 | **[sim/levers.py](sim/levers.py)** | What the Disturbance levers cost, and why the currency matters more than the price. | Before changing any lever or the COLLECT tier. |
 | **[sim/validate_estate.py](sim/validate_estate.py)** | The 12-check estate validator, with a self-test. `python sim/validate_estate.py` | Authoring or reviewing any wing. |
+| **[sim/audit.py](sim/audit.py)** | Audits the apparatus itself: which models have quietly stopped reading the canonical numbers. | Every round, before trusting any figure. |
 | **[STACK.md](STACK.md)** | Verified package status, licensing, and the one dependency risk. | Before Milestone 0. |
 | **[DECISIONS.md](DECISIONS.md)** | Every non-obvious call, why, and what would disprove it. | Before re-opening any settled argument. |
 | **[ITERATION-PROMPT.md](ITERATION-PROMPT.md)** | The reusable prompt for continuing this work. | Next session. |
@@ -65,8 +66,8 @@ log, and even those state their own falsification conditions.
 **Solid enough to build on:** the loop and economy; the Curator's state machine and attention
 model; the physics ownership protocol; the loudness model; the decision log.
 
-**Specified and partly tested:** the economy and the encounter, by eleven simulations that between
-them overturned nine things this project believed.
+**Specified and partly tested:** the economy and the encounter, by twelve simulations that between
+them overturned ten things this project believed.
 
 - The appraiser's edge dies entirely between 24 and 32 van slots. **Van capacity is the master
   constant.** The edge itself has been revised five times as the model got honest (+84% → +31%
@@ -75,6 +76,10 @@ them overturned nine things this project believed.
 - **A full van doesn't end the night.** Three haul models assumed it did; real crews stay and
   *upgrade*, which is worth +42% and reshaped the quota curve, the apex band, and the
   appraiser's magnitude in one round.
+- **The recurring bug isn't a wrong number, it's a later change invalidating an earlier one.**
+  Five rounds running found apparatus that had quietly stopped describing the design, every
+  time by accident. `sim/audit.py` now checks for it, and caught the previous round's error on
+  its first run.
 - **Scanning's payoff is a property of the room, not a constant** — it's `0.6 × spread ×
   mean`, so a house of evenly-priced rooms makes the signature verb a habit. Scanning only
   high-variance rooms earns **+8.8%**; scanning a random 25% of rooms earns +2.3%; scanning the

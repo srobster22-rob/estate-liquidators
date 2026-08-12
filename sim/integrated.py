@@ -19,26 +19,39 @@ Run: python integrated.py
 import random
 import statistics
 
-CREW = 4
-NIGHT_S = 720.0
-HAUL_S = 540.0
-VAN_SLOTS = 14
+import json as _json
+import pathlib as _pathlib
 
-IMPULSE = 0.09
-SUSTAINED = 0.02
-DECAY_PER_MIN = 50.0        # R4
-RATCHET_END = 55.0          # floor climbs 0 -> 55 across the night
+# R21: was a private copy of every tuned constant. See sim/audit.py for why that is
+# the project's most repeated failure -- there is nothing to notice when a canonical
+# value moves, which is how this very file carried a stale cursed floor for four
+# rounds (R16).
+TUNING = _json.loads(
+    (_pathlib.Path(__file__).resolve().parent.parent / "tuning.json")
+    .read_text(encoding="utf-8"))
+_D, _V, _C, _N = (TUNING["disturbance"], TUNING["van"], TUNING["curse"],
+                  TUNING["night"])
+_A, _R, _P = TUNING["attention"], TUNING["retrieval"], TUNING["progression"]
+
+CREW = _N["crew"]
+NIGHT_S = float(_N["seconds"])
+HAUL_S = float(_N["haul_window_seconds"])
+VAN_SLOTS = _V["base_slots"]
+
+IMPULSE = TUNING["loudness_constants"]["impulse_disturbance_per_l"]
+SUSTAINED = TUNING["loudness_constants"]["sustained_disturbance_per_l"]
+DECAY_PER_MIN = _D["decay_per_min_at_crew4"]   # R4
+RATCHET_END = _D["ratchet_end"]     # floor climbs 0 -> 55 across the night
 # R11 raised this 2.0 -> 7.0 (cursed cargo was inert at 2.0) and this file kept the old
 # value for four rounds, because it was an inline literal in the floor expression rather
 # than a named constant, and check_drift.py can only see named constants. Hoisted so it
 # is checkable. Correcting it moved this file's headline from +6.1% to +4.4%. (R16)
-CURSED_FLOOR = 7.0
+CURSED_FLOOR = _D["per_cursed_item_floor"]
 
-L = {"sprint": 45, "appraise": 48, "door": 60, "dolly": 35,
-     "radio": 38, "break_small": 90}
+L = {k: v for k, v in TUNING["loudness"].items() if not k.startswith("_")}
 
 # Per-trip chance the Curator relieves you of what you are carrying, by tier.
-CANDIDATES = 4
+CANDIDATES = TUNING["appraiser"]["candidates_per_shelf"]
 SCAN_EXPOSURE = 0.0   # extra risk while stationary and scanning
 
 # Four players do not achieve 4x throughput: they collide in doorways, wait on each
@@ -48,9 +61,10 @@ SCAN_EXPOSURE = 0.0   # extra risk while stationary and scanning
 # real crew at 20-24 extractions against 14 slots (~1.5x), so calibrate to that.
 PARALLEL_EFFICIENCY = 0.65
 
-RETRIEVAL = {"DORMANT": 0.00, "PATROL": 0.02, "PURSUE": 0.10, "COLLECT": 0.25}
+RETRIEVAL = {k.upper(): v for k, v in _R.items()}
 
-TIERS = [(85, "COLLECT"), (60, "PURSUE"), (30, "PATROL"), (0, "DORMANT")]
+TIERS = [(_D["tier_collect_at"], "COLLECT"), (_D["tier_pursue_at"], "PURSUE"),
+         (_D["tier_patrol_at"], "PATROL"), (0, "DORMANT")]
 TIER_DATA = {1: (45.0, (80, 300)), 2: (60.0, (250, 700)), 3: (90.0, (600, 1400))}
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3)]
 

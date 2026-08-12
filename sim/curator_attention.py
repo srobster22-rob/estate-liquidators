@@ -23,10 +23,25 @@ This measures four things:
 import random
 import statistics
 
-TICK = 2.0              # attention recompute, seconds
-STEAL = 1.25
-COMMIT = 8.0
-CURSE = {"clean": 1.0, "tainted": 1.5, "malignant": 3.0}
+import json as _json
+import pathlib as _pathlib
+
+# R21: this file used to define its own copy of every tuned constant. Four of the five
+# rounds R16-R20 found apparatus that had quietly stopped describing the design, and a
+# private copy of the numbers is how that happens -- there is nothing to notice when
+# the canonical value moves. sim/audit.py now fails on any model that does not read
+# this file.
+TUNING = _json.loads(
+    (_pathlib.Path(__file__).resolve().parent.parent / "tuning.json")
+    .read_text(encoding="utf-8"))
+_D, _V, _C, _N = (TUNING["disturbance"], TUNING["van"], TUNING["curse"],
+                  TUNING["night"])
+_A, _R, _P = TUNING["attention"], TUNING["retrieval"], TUNING["progression"]
+
+TICK = _A["recompute_seconds"]          # attention recompute, seconds
+STEAL = _A["steal_threshold"]
+COMMIT = _A["commit_seconds"]
+CURSE = _C["attention_multiplier"]
 
 
 class Player:

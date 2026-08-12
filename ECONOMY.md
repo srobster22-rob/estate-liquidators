@@ -113,24 +113,30 @@ crew skill.
 > | 3 | $8,000 | 100% |
 > | 4 | $15,000 | **1%** |
 
-**Calibrated curve.** A crew earns **$15,601 / $16,215 / $17,393 / $18,640** across the four
-nights — only **+19% growth**, because van capacity rises just 14→19 and the estates are
+**Calibrated curve.** A crew earns **$18,067 / $18,676 / $19,880 / $21,208** across the four
+nights — only **+17% growth**, because van capacity rises just 14→19 and the estates are
 equally rich every night. The quota has to live inside that range or the chain has no shape,
 and the narrowness of the range is exactly why the quota steps are small.
 
 | Night | Quota | Van | Sim mean | Pass rate | Feel |
 |---:|---:|---:|---:|---:|---|
-| 1 | **$13,250** | 14 | $15,601 | 95% | you can be a coward and survive |
-| 2 | **$15,250** | 15 | $16,215 | 73% | tier 2 is now mandatory |
-| 3 | **$17,250** | 17 | $17,393 | 54% | someone has to go into a sealed wing |
-| 4 | **$19,000** | 19 | $18,640 | 42% | above the mean. The apex is not optional. |
+| 1 | **$15,250** | 14 | $18,067 | 96% | you can be a coward and survive |
+| 2 | **$17,500** | 15 | $18,676 | 73% | tier 2 is now mandatory |
+| 3 | **$19,500** | 17 | $19,880 | 59% | someone has to go into a sealed wing |
+| 4 | **$21,750** | 19 | $21,208 | 38% | above the mean. The apex is not optional. |
 
 > **Recalibrated in R20, and the previous curve ($7,500 / $9,000 / $10,750 / $12,500) is dead.**
 > It was measured on a model that **ended the night when the van filled**. Real crews don't
 > leave — the van binds by ~40%, so the back half of a night is spent swapping a better thing
 > for a worse one, which is worth about **+42%**. Under the old quotas every night passed 100%:
 > the exact shapelessness this section was written to fix, reintroduced by a modelling
-> assumption nobody had questioned. Verified to reproduce the intended 95/73/54/42%.
+> assumption nobody had questioned.
+>
+> **Recalibrated once more in R21**, because R20 set the quota curve *before* re-banding the
+> apex and left it stale against its own final configuration by the end of the round. Caught
+> within minutes by `chain_sim.py` now printing measured pass rates beside their calibration
+> targets — the fix for a class of error this project keeps making, which is not getting a
+> number wrong but failing to notice when a later change invalidates an earlier one.
 
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses

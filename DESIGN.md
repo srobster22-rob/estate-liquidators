@@ -762,7 +762,7 @@ retrieval, not an instant death, on first contact (§6.3).
 Keep it thin. Meta-progression in this genre exists to give a session a shape, not to be an
 RPG.
 
-- **Contract chain:** 4 nights, quota escalating **$13,250 → $15,250 → $17,250 → $19,000**
+- **Contract chain:** 4 nights, quota escalating **$15,250 → $17,500 → $19,500 → $21,750**
   against van capacity 14 → 19. Miss one, the chain ends, you start a new chain. This is the
   run structure. *(The original curve here was $2,000 → $4,500 → $8,000 → $15,000 and it had
   no shape — simulated, nights 1–3 passed 100% of the time and night 4 passed 1%. Recalibrated
