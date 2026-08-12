@@ -459,6 +459,7 @@ window.__game = {
   step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) if(!over) step(dt); return window.__game.state(); },
   press:(k,v=true)=>{keys[k]=v;}, reset,
   items:()=>items.filter(i=>!i.gone).length,
+  noise:(l,impulse)=>{ noise(l,impulse,1); return dist; },
   raw:()=>items.map(i=>({sil:i.sil,value:i.value,grade:i.grade,tier:i.tier,room:i.room})),
   // R20: per-room spread readout, so the telegraph and the economics can both be
   // asserted from automation instead of eyeballed.

@@ -270,6 +270,20 @@ tedious, and it is *annoyed with you*. All of its audio is domestic:
 | RESEAT | footsteps, and the small satisfied sound of an object placed correctly on felt |
 | COLLECT (T4) | the footsteps are faster and the domestic sounds stop entirely |
 
+> **R30 — a gap this vocabulary does not cover: approaching a tier boundary.** Measured in the
+> prototype, the ratcheting floor *masks* accumulated noise — while a crew's noise sits under
+> the floor, scanning moves the meter not at all, and then it moves fast. A crew that appraises
+> 20 objects reads Disturbance 57; one that appraises 29 reads 92. The table above gives each
+> **state** a sound, but nothing distinguishes "comfortably inside PATROL" from "one more room
+> and it hunts you", so players get no warning before the cliff.
+>
+> **This wants a within-state gradient**, and PATROL is the state that needs it: the domestic
+> sounds (the case closing, the cloth folding) getting *closer together* as Disturbance climbs
+> toward 60, so the house audibly runs out of patience before anything changes. It stays
+> diegetic, costs no UI, and reuses sounds that already exist — but it is a real addition to
+> the model, not a mix note, and it should be specced before Milestone 2 rather than
+> discovered in a playtest.
+
 **Silence is its scariest sound.** FIXATE cutting to nothing does more work than any
 designed roar, because the player's own audio system has just told them something is about
 to happen and they don't know what. Never fill that gap.

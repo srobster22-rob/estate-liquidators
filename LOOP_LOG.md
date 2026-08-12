@@ -596,6 +596,38 @@ rate that does not **discriminate**: appraising uniform and curio rooms at the s
 hour five means players cannot read the telegraph (D-24) and the choice does not exist for
 them. **Measure the gap, and expect the total to fall.**
 
+R30 · Took R29's finding to the **prototype**, and closed R12's open item on the way. R12 left
+a worry that a solo player's Disturbance "tops out ~57 at sunrise, so the Curator rarely
+engages" — i.e. that scanning is free in the prototype and the room decision therefore cannot
+be felt there. Added a `__game.noise()` test affordance and measured it in headless Chromium
+rather than reasoning about it. · **R12's worry was a partial measurement.** Scanning does cost
+a solo player — the threshold is about **8 scans/minute**: at 0–4/min the meter sits at 55
+(PATROL) and behaviour is invisible, at 8/min it reaches PURSUE, at 16/min it pins COLLECT. ·
+**Then the real test: does the prototype independently price R29's room decision?** It ships an
+estate of 29 items across 7 rooms with V11's spread mix, so the policies are countable. Driving
+the actual game loop:
+
+    scan nothing        0 items   peak D 55   PATROL     0% of night in COLLECT
+    curio only          9 items   peak D 55   PATROL     0%
+    curio + mixed      20 items   peak D 57   PATROL     0%
+    everything         29 items   peak D 92   COLLECT    6%
+
+**Selective scanning is free; exhaustive scanning gets you hunted.** That is R29's ordering,
+reproduced by a real-time JS frame loop that shares no code with the Python Monte Carlo — same
+tuned constants (the drift checker guarantees that), completely different execution path. It
+validates the implementation rather than the model's assumptions, but two routes to one
+ordering is the strongest confirmation available without a playtest. · **And it surfaced a
+legibility problem the simulations structurally cannot see.** The jump is *abrupt*: 20 scans
+reads 57, 29 scans reads 92. The ratcheting floor **masks** the accumulating cost — while
+noise sits below the floor, scanning moves nothing at all, so the meter reads PATROL right up
+until it doesn't. Players get a free scanning budget with **no feedback that they are
+approaching its edge**, and since the tells are diegetic and tier-shaped (D-08, D-14,
+AUDIO-SPEC §3.2), there is nothing in the game that distinguishes "comfortably in PATROL" from
+"one room away from PURSUE". A Monte Carlo over whole nights cannot notice this; only watching
+the meter second by second can. **This wants a within-tier gradient in the Curator's audio** —
+the domestic sounds getting closer or more frequent as the floor is approached — and that is
+an `AUDIO-SPEC.md` question, logged rather than guessed at here.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -603,49 +635,47 @@ them. **Measure the gap, and expect the total to fall.**
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**The appraiser thread is closed, and this time it is closed with an answer rather than a
-shrug.** R29 settled it: selective scanning is positive on every night of the contract chain,
-the optimum tightens as the van grows, and every model that reported otherwise was one that
-could not express choosing. **Do not reopen it in simulation.** The next real information is
-Milestone 2, and `DESIGN.md` §4.4 now says what to instrument — scan rate **by room class**,
-because the total is *supposed* to fall.
+**R31: spec the within-PATROL audio gradient R30 found the need for.** The ratcheting floor
+masks accumulated noise, so the meter reads PATROL right up until it doesn't — 20 scans reads
+57, 29 scans reads 92 — and the diegetic tells are tier-shaped, so nothing warns a crew they
+are one room from being hunted. `AUDIO-SPEC.md` §3.2 now carries the gap. The fix is probably
+the domestic sounds getting closer together as Disturbance climbs toward 60, which stays
+diegetic (D-14), costs no UI, and reuses sounds that exist. **Spec it with numbers** — what
+interval at 30, what at 55 — and add it to `tuning.json` so the drift checker owns it. Then
+re-run `qa_pacing.mjs` and confirm a player can tell the difference.
 
-**R30: take `room_spread` into `proto/index.html`'s decision layer.** The prototype renders the
-telegraph (R20) but the game does not yet *price* it — there is no reason in the prototype to
-skip a uniform room, because nothing there models the noise cost of scanning against a van that
-grows. It is the only place a human can feel whether "which rooms are worth three seconds" is
-an interesting question or a chore, and that is the one thing no amount of simulation will
-settle. R22's warning applies: the cue that works top-down may not survive perspective.
+**R32: re-derive `ECONOMY.md` §8's three findings.** Crew size (D-18), the apex re-band (D-21)
+and labour gating (D-20) all came from the free-information `chain_sim`, which has changed
+underneath them four times — noise, curses, rooms, the per-trip metric. **D-18 is the exposed
+one**: R12 established Disturbance decay scales with crew, so noise makes bigger crews louder
+in a way the original comparison could not see. This is the R24 pattern and it is now
+predictable enough to check before it bites.
 
-**R31: the C# port — 26 values in `CS_BACKLOG`, and now a concept as well.** Retrieval table
-first, curse tables next, `room_spread` last because it needs a *type* and not just a constant.
-*This environment cannot do it* — no toolchain, `dot.net` refused by the network policy. Do it
-on a machine with `dotnet` and strike each value off as it lands; the check fails until you do.
+**R33 (needs `dotnet`): the C# port.** 26 values in `CS_BACKLOG` — retrieval table first, curse
+tables next, `room_spread` last because it needs a *type* and not just a constant. *This
+environment cannot do it*; `dot.net` is refused by the network policy.
 
-**R32: re-derive `ECONOMY.md` §8's three findings against the current model.** Crew size
-(D-18), the apex re-band (D-21) and labour gating (D-20) all came from the free-information
-`chain_sim`, which has now changed underneath them four times — noise, curses, rooms, and the
-per-trip metric. D-18 is the exposed one: R12 established Disturbance decay scales with crew,
-so noise makes bigger crews louder in a way the original comparison could not see. This is the
-R24 pattern, and it is now predictable enough to check before it bites.
+**The appraiser thread is closed, with an answer.** R29 settled it in simulation and R30
+confirmed the ordering in the running prototype from a different code path. `DESIGN.md` §4.4
+now says what Milestone 2 should instrument: **scan rate by room class**, because the total is
+supposed to fall. Do not reopen it in simulation.
 
 **Standing rules, each earned by getting it wrong first.**
 *A checker only checks what somebody named* (R18). *A check earns its place by failing the
 default an unaware author produces* (R19). *Ask a statistic at the right altitude* (R20).
 *Name the table you mean* (R14, R21). *A model verified in one projection is not verified in
 the one you ship* (R22). *Every guarantee has been weaker than it sounded* (R23). *A conclusion
-is only as current as the model underneath it* (R24) — enforced by §10, **quote a number with
-its model, or don't quote it**. *Every strategy needs the knowledge that has nothing to do with
-the thing being tested* (six occurrences, both directions). *When two strategies differ in more
-than one way, you are not measuring the difference you named* (R26, R27). *Check the
-denominator* (R27). *Test your explanation, not just your result* (R28).
+is only as current as the model underneath it* (R24). *Every strategy needs the knowledge that
+has nothing to do with the thing being tested* (six occurrences, both directions). *When two
+strategies differ in more than one way, you are not measuring the difference you named* (R26,
+R27). *Check the denominator* (R27). *Test your explanation, not just your result* (R28).
+*When a model says a mechanic is bad, check whether it can express the mechanic being good*
+(R29).
 
-**And the one R29 earned, which is the summary of the last six rounds:** *when a model says a
-mechanic is bad, check whether the model can express the mechanic being good.* Four rounds
-across two years of simulated nights said the appraiser was marginal or actively harmful.
-Every one of them was a model in which the only available policies were "always" and "never".
-**The interesting middle is not something the numbers reveal — it is something the model has
-to be built to contain.**
+**And R30's, which is about what simulations structurally cannot see:** *a Monte Carlo over
+whole nights cannot notice a legibility problem.* The masking cliff was invisible to twenty
+rounds of sweeps and obvious within one scripted playthrough, because it is a property of what
+the player can *perceive over time*, not of what the numbers total to. **Run the thing.**
 
 **Not blocked on anything except the C# port, which is blocked on a toolchain rather than a
 decision.** All open decisions except O-05 (does the Curator have a face — art, blocks
