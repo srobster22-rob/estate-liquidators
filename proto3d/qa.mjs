@@ -745,6 +745,41 @@ async function checks(g, fresh) {
     (lastNight.medianShort <= lastNight.apex * 2 && lastNight.rescued >= 1),
     JSON.stringify(lastNight));
 
+  // What actually stops a night in this build? ECONOMY 1 sells the van as the
+  // master scarcity lever and ECONOMY 4 wants later estates to be richer, and
+  // NEITHER of those is what binds here: at dawn the van still has free slots and
+  // almost all of the house is still on its shelves. Time binds, and it binds
+  // harder on the later nights, where the house is bigger and the van is larger.
+  // That is not a bug in the build - it is what a 210-second night does to a
+  // design calibrated for 720 - but it means this build cannot be used to tune
+  // capacity, and the check exists so that stays visible rather than becoming a
+  // thing everyone forgot.
+  const binds = await g(() => {
+    window.__g.freezeCrew(false);
+    const out = [];
+    for (const n of [0, 3]) {
+      let slots = 0, leftShare = 0, runs = 8;
+      for (let t = 0; t < runs; t++) {
+        window.__g.newContract((t + 1) * 104729 + n);
+        window.__g.regen((t + 1) * 104729 + n, n); window.__g.setNight(n);
+        const start = window.__g.list().reduce((a, i) => a + i.value, 0);
+        for (let i = 0; i < 210 * 60 && !window.__g.state().over; i++) window.__g.step(1, 1 / 60);
+        slots += window.__g.state().slots;
+        leftShare += window.__g.list().reduce((a, i) => a + i.value, 0) / Math.max(1, start);
+      }
+      out.push({ night: n + 1, van: window.__g.contract().van,
+        slotsFreeAtDawn: +(slots / runs).toFixed(1),
+        valueLeftInHouse: +(leftShare / runs).toFixed(2) });
+    }
+    window.__g.newContract(20260806); window.__g.regen(20260806);
+    return out;
+  });
+  ok("time is what binds a night here, not the van and not the house",
+    binds.every(b => b.slotsFreeAtDawn > 1.0 && b.valueLeftInHouse > 0.6),
+    JSON.stringify(binds) + " (n=8 per night)");
+  ok("and the van binds less on the last night than the first, not more",
+    binds[1].slotsFreeAtDawn > binds[0].slotsFreeAtDawn, JSON.stringify(binds));
+
   ok("night one is winnable and the last night is harder than the first",
     rates[0].pass >= 0.6 && rates[1].pass < rates[0].pass, JSON.stringify(rates));
 

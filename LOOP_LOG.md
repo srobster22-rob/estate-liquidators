@@ -776,6 +776,33 @@ was passing only because of it — all 183 still pass — but the crowbar checks
 boards could not be pried, and the reason was that nothing was stopping the player at all. ·
 Regression: QA 183/183, drift 168/168, claims 25/25.
 
+R40 · **What actually stops a night, and a wrong finding caught before it was published.**
+The round started with an alarm: nights measured at 24 runs came back **88 / 100 / 83 / 29**
+percent — a chain with no shape in the middle and a wall at the end, which would have meant
+the build's quotas had drifted out of calibration since R25. At 40 runs the same measurement
+reads **88 / 82 / 72 / 53**, a clean monotone curve. The distributions are wide enough that
+twenty-four nights cannot tell a formality from a coin flip, which is the same lesson three
+statistical checks already carry and which I still nearly published as a defect in the quota
+curve. Nothing was wrong with the quotas. · What *is* wrong is one layer down, and the wide
+distributions were the clue: the four nights' takes are nearly identical — median net 3,438 /
+3,499 / 3,204 / 3,579 — so **none of the escalation comes from the house**. Measuring what
+binds says why. At dawn, over 96 nights, the van still has **4 to 7.5 free slots** and **88–95%
+of the house's value is still on its shelves**. Time binds this build. Not capacity, not what
+is in the house — and it binds *harder* on the later nights, where the van is bigger and the
+house is larger. · So two of `ECONOMY`'s escalation levers are decoration in the thing you can
+actually play: the 14→19 van curve, which §1 calls the master scarcity lever, and "richer
+estates later in the chain". Neither can matter to a crew that never fills the van and never
+reaches most of the rooms. The entire escalation is the quota number going up — which is
+structurally the same failure §4 already records for the superseded curve, arriving by a
+different route. · This is a property of a 210-second night against a design calibrated for
+720, not a fault in the design, and the honest response is to say so rather than to re-tune
+the build around it: the prototype **cannot** be used to tune capacity, and `chain_sim.py`'s
+720s model is the only place that question can be asked. Both facts are now checks rather than
+paragraphs — `qa.mjs` asserts that the van still has slots at dawn and that most of the house
+is untouched, so if the night ever gets long enough for capacity to bite, the check that says
+it does not will be the thing that fails. · Regression: QA 185/185, drift 168/168, claims
+25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

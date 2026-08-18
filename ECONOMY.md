@@ -120,6 +120,14 @@ These four numbers are not a record of a run that happened once: `sim/check_clai
 re-derives them, and `chain_sim.py` runs this curve rather than the one above it. It did not,
 for eleven rounds — the sim kept printing the 1% night four that *caused* the replacement.
 
+> **Measured in the playable build, R40 — and it is not what escalates there.** At dawn the
+> van still has 4–7.5 free slots and 88–95% of the house's value is untouched, on every night
+> of the chain. In a 210-second night *time* binds, so the 14→19 van curve and the richer late
+> estates are both inert: the entire escalation is the quota number going up. That is the same
+> shape as the failure this section already records, and it is a property of the short night
+> rather than of the design — but it means the prototype cannot be used to tune capacity, and
+> the 720-second model in `sim/chain_sim.py` is the only place that question can be asked.
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The

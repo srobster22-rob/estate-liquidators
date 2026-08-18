@@ -7,8 +7,8 @@ below is a plan — it's a statement of what you can run today, updated whenever
 `?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 183 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 183   # the numbers in these docs are the real ones
+node proto3d/qa.mjs               # 185 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 185   # the numbers in these docs are the real ones
 python3 sim/check_drift.py        # 168 constants agree across four implementations
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
 python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
@@ -65,7 +65,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 183 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 185 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.
@@ -83,5 +83,13 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
   where it was (a linear cost cannot move a multiplicative decision — which is exactly the
   argument for D-11's ruin tail). Beyond the first lit wing, `disturbance.py` saturates and
   has nothing to say at all.
+- **The van never fills, so two of the design's levers are inert here.** Measured at dawn
+  over 96 nights: the van still has 4–7.5 free slots and **88–95% of the house's value is
+  still on its shelves**. Time binds this build, not capacity and not what is in the house —
+  and it binds *harder* on the later nights, where the van is bigger. So the 14→19 upgrade
+  curve and "richer estates later in the chain" are both decoration in the playable build,
+  and no conclusion about capacity can be drawn from it; `sim/chain_sim.py`'s 720-second
+  night is the only place that question can be asked. `qa.mjs` asserts this rather than
+  leaving it to be rediscovered.
 - **Statistical checks are coarse.** Pass-rate assertions run 12 nights and make shape claims
   ("harder than night one"), not rate claims; twelve runs cannot pin a rate to ten points.
