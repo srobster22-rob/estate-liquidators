@@ -126,7 +126,42 @@ def bars_from_log_returns(spec: MarketSpec, lr_arr: np.ndarray, sig_arr: np.ndar
     prev_close[0] = 100.0
     prev_close[1:] = close[:-1]
 
-    gap = spec.gap_frac * lr_arr
+    # THE OVERNIGHT GAP IS A SEPARATE DRAW, NOT A SLICE OF THE SAME NUMBER.
+    #
+    # This used to be `gap = gap_frac * lr`, which makes the open a deterministic
+    # function of the bar's own close-to-close return — correlation exactly 1. A
+    # strategy that transacts at the open therefore observes the gap and knows the
+    # rest of the bar precisely, because they are the same random variable split
+    # in two. Real bars do not work that way: overnight news and the intraday
+    # session are different events.
+    #
+    # What that bought: a 12-leg dollar-neutral cross-sectional book earned +0.147
+    # gross alpha Sharpe on a basket with *no* effect planted, scaling linearly
+    # with `gap_frac` and vanishing at zero (FINDINGS.md F31). Single instruments
+    # were unaffected, which is why the existing controls never caught it.
+    #
+    # The fix keeps `gap_frac` meaning what it says — the share of the bar's
+    # variance that happens overnight — while making the two components
+    # *uncorrelated*. Writing u for the gap and d = lr - u for the intraday move,
+    #
+    #     u = f*lr + sqrt(f*(1-f)) * sigma * xi,     xi ~ N(0,1) independent
+    #
+    # gives var(u) = f*var(lr), var(d) = (1-f)*var(lr) and cov(u, d) = 0 exactly,
+    # so the variance split is unchanged and the deterministic link is gone.
+    # corr(u, lr) falls from 1 to sqrt(f), which is the whole point: seeing the
+    # gap still tells you something about the bar, just no longer everything.
+    #
+    # `close` is untouched — it is built from `lr_arr` above — so every planted
+    # structure, every vol_fix constant and every realised-vol target survives
+    # this change. Only the open and, through it, the intrabar extremes move.
+    f = float(np.clip(spec.gap_frac, 0.0, 1.0))
+    if f <= 0.0:
+        gap = np.zeros(n)
+    elif f >= 1.0:
+        gap = lr_arr.copy()
+    else:
+        xi = rng.standard_normal(n)
+        gap = f * lr_arr + math.sqrt(f * (1.0 - f)) * sig_arr * xi
     open_ = prev_close * np.exp(gap)
 
     # Intrabar extremes as the running max/min of a BROWNIAN BRIDGE from the open

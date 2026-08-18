@@ -30,6 +30,8 @@ strategy class before the class is allowed to claim anything.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from . import engine, metrics
@@ -147,3 +149,115 @@ def format_measure(res: dict) -> str:
                      f"{r['margin']:>9.3f}{r['leg_alpha_med']:>12.3f}"
                      f"{r['net_exposure_abs']:>12.3f}")
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# the honest subset of the ladder
+# --------------------------------------------------------------------------- #
+
+def ladder(bspec, g: Genome | None = None, lb: int = 5, n_repl: int = 12,
+           verbose: bool = True) -> dict:
+    """Run the gates a basket harness can honestly run, and report the margins.
+
+    This is deliberately *not* called a gauntlet. The real ladder is eight gates
+    and this is five of them: out-of-sample window, replication on a disjoint
+    instance pool, the negative control, cost and latency stress, and a second
+    replication on a third pool. Missing are the permutation null and the
+    deflated-Sharpe correction, both of which need a search to have a size —
+    and cross-sectional strategies are quarantined out of the search, so there
+    is no trial count to deflate by. Reporting five gates as if they were eight
+    is exactly the kind of thing `verify --data` refuses to do, and so does this.
+
+    The control is a *gate here*, not a diagnostic. G3's +0.30 tolerance was
+    calibrated for single instruments; a K-leg dollar-neutral book carries about
+    sqrt(K) times the leverage on any artefact, so the tolerance is scaled down
+    accordingly. That is a stricter bar than the catalogue's, which is the right
+    direction for a class whose control has already failed once (F31).
+    """
+    from . import gauntlet
+    from .markets import universe
+    cfg = gauntlet.GauntletConfig()
+    g = g or xs_genome("x", lb=lb)
+    ctrl = basket.basket_control(bspec)
+
+    def pool_alpha(spec, pool, n, **kw):
+        srs = []
+        for i in list(pool)[:n]:
+            legs = basket.synth_basket(spec, int(i))
+            r = run_basket(legs, replace_market(g, legs[0].spec.name), **kw)
+            if r["ok"]:
+                srs.append(r["alpha_sharpe"])
+        return float(np.median(srs)) if srs else 0.0, srs
+
+    def window_alpha(spec, pool, n, lo, hi):
+        srs = []
+        for i in list(pool)[:n]:
+            legs = [s.slice(int(len(s) * lo), int(len(s) * hi))
+                    for s in basket.synth_basket(spec, int(i))]
+            r = run_basket(legs, replace_market(g, legs[0].spec.name))
+            if r["ok"]:
+                srs.append(r["alpha_sharpe"])
+        return float(np.median(srs)) if srs else 0.0
+
+    rows = []
+    oos = window_alpha(bspec, universe.SEARCH_POOL, 6, gauntlet.TRAIN_FRAC, 1.0)
+    rows.append(("XS1-oos", oos, cfg.min_oos_alpha_sr, oos >= cfg.min_oos_alpha_sr))
+
+    repl, repl_srs = pool_alpha(bspec, universe.HOLDOUT_POOL, n_repl)
+    pos = float(np.mean(np.asarray(repl_srs) > 0)) if repl_srs else 0.0
+    rows.append(("XS2-replication", repl, cfg.min_repl_alpha_sr,
+                 repl >= cfg.min_repl_alpha_sr and pos >= cfg.min_repl_pos_frac))
+
+    # THE CONTROL GATE, AND WHY IT IS ESTIMATED DIFFERENTLY FROM THE OTHERS.
+    #
+    # Two departures, both deliberate. The tolerance is scaled by sqrt(K): G3's
+    # +0.30 was calibrated for single instruments, and a K-leg dollar-neutral
+    # book carries about sqrt(K) times the leverage on any artefact, so the same
+    # underlying defect shows up sqrt(K) times larger here.
+    #
+    # And it uses the *mean over twice as many instances*, where every other gate
+    # uses a median. The other gates ask "is the typical instance good enough",
+    # for which a median is the robust choice. This one asks "is the expected
+    # artefact zero", which is a question about a bias — a median of twelve has a
+    # standard error around 0.04 against a tolerance of 0.087, so it fails
+    # roughly a third of the time on a clean strategy. The first version of this
+    # function did exactly that and reported a spurious rejection at -0.136 on a
+    # control whose mean is +0.054 +- 0.029.
+    ctrl_tol = cfg.max_control_alpha_sr / math.sqrt(max(bspec.n_legs, 1))
+    _, ctrl_srs = pool_alpha(ctrl, universe.HOLDOUT_POOL, 2 * n_repl, cost_mult=0.0)
+    ctrl_a = float(np.mean(ctrl_srs)) if ctrl_srs else 0.0
+    rows.append(("XS3-control", -abs(ctrl_a), -ctrl_tol, abs(ctrl_a) <= ctrl_tol))
+
+    c2, _ = pool_alpha(bspec, universe.HOLDOUT_POOL, max(6, n_repl // 2), cost_mult=2.0)
+    c3, _ = pool_alpha(bspec, universe.HOLDOUT_POOL, max(6, n_repl // 2), cost_mult=3.0)
+    dl, _ = pool_alpha(bspec, universe.HOLDOUT_POOL, max(6, n_repl // 2), exec_delay=2)
+    worst = min(c2 - cfg.cost_stress_2x_min, c3 - cfg.cost_stress_3x_min,
+                dl - cfg.delay_stress_min)
+    rows.append(("XS4-stress", min(c2, c3, dl), max(cfg.cost_stress_2x_min, 0.0),
+                 worst >= 0.0))
+
+    st, st_srs = pool_alpha(bspec, universe.STRESS_POOL, n_repl)
+    st_pos = float(np.mean(np.asarray(st_srs) > 0)) if st_srs else 0.0
+    rows.append(("XS5-stress-pool", st, cfg.min_stress_alpha_sr,
+                 st >= cfg.min_stress_alpha_sr and st_pos >= cfg.min_stress_pos_frac))
+
+    out = {"basket": bspec.name, "describe": g.describe(), "n_legs": bspec.n_legs,
+           "control_tolerance": round(ctrl_tol, 4),
+           "stages": [{"name": n, "stat": round(v, 4), "threshold": round(t, 4),
+                       "passed": bool(ok), "margin": round(v - t, 4)}
+                      for n, v, t, ok in rows]}
+    out["passed"] = all(s["passed"] for s in out["stages"])
+    out["tightest_margin"] = round(min(s["margin"] for s in out["stages"]), 4)
+    if verbose:
+        for s in out["stages"]:
+            print(f"  [{'PASS' if s['passed'] else 'FAIL'}] {s['name']:<16} "
+                  f"{s['stat']:+.3f} vs {s['threshold']:+.3f}  "
+                  f"margin {s['margin']:+.3f}", flush=True)
+        print(f"  => {'PASSED' if out['passed'] else 'REJECTED'} the five-gate subset, "
+              f"tightest margin {out['tightest_margin']:+.3f}")
+    return out
+
+
+def replace_market(g: Genome, market: str) -> Genome:
+    from dataclasses import replace as _replace
+    return _replace(g, market=market)

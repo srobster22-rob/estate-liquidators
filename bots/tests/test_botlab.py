@@ -656,34 +656,57 @@ def test_cross_sectional_signals_are_inert_without_peers():
         assert np.all(out == 0.0), f"{name} produced a signal with no peers present"
 
 
-def test_the_basket_control_artefact_is_the_open_gap():
-    """Pins F31's diagnosis so it cannot quietly change under a repair.
+def test_the_overnight_gap_is_not_a_slice_of_the_bar():
+    """The bar model's open must be a *separate draw*, not a fraction of the same
+    close-to-close return.
 
-    A cross-sectional reversal bot earns positive gross alpha on a basket with no
-    cross-sectional effect planted, and the cause is the bar model: the engine
-    fills at the open, `open[t] = close[t-1]*exp(gap_frac*lr[t])` embeds part of
-    the bar's own move, and a high-turnover long-short book therefore transacts at
-    prices displaced the way its own signal points.
-
-    Two things must stay true. With the gap the artefact is present — if it ever
-    vanishes on its own, something else changed and the diagnosis is stale. Without
-    the gap it is gone — which is what identifies the cause, and what any fix has
-    to preserve while *keeping* a realistic gap.
+    When it was `gap = gap_frac * lr`, the gap and the intraday move were the same
+    random variable split in two — correlation exactly 1 — so a strategy that
+    transacted at the open observed the gap and knew the rest of the bar. That
+    bought a 12-leg cross-sectional book +0.26 gross alpha Sharpe on a basket with
+    nothing planted in it (F31). The three properties below are what the repair
+    has to preserve: the variance split `gap_frac` names, zero correlation between
+    the gap and the intraday session, and a gap that is still informative about
+    the bar without determining it.
     """
-    import dataclasses
+    for name in ("eq_largecap_daily", "eq_index_daily", "fx_major_daily"):
+        spec = universe.get(name)
+        f = float(spec.gap_frac)
+        if not 0.0 < f < 1.0:
+            continue
+        s = generate.synth(spec, 4)
+        lr = np.diff(np.log(s.close))
+        gap = np.log(s.open[1:] / s.close[:-1])
+        intra = np.log(s.close[1:] / s.open[1:])
+        assert abs(np.corrcoef(gap, intra)[0, 1]) < 0.08, \
+            f"{name}: gap and intraday move are correlated at " \
+            f"{np.corrcoef(gap, intra)[0, 1]:+.3f}; they must be independent"
+        c = np.corrcoef(gap, lr)[0, 1]
+        assert abs(c - math.sqrt(f)) < 0.10, \
+            f"{name}: corr(gap, bar return) is {c:.3f}, expected sqrt(gap_frac)={math.sqrt(f):.3f}"
+        assert c < 0.95, f"{name}: the gap still determines the bar (corr {c:.3f})"
+        share = gap.var() / lr.var()
+        assert abs(share - f) < 0.08, \
+            f"{name}: the gap carries {share:.3f} of the bar's variance, not gap_frac={f:.3f}"
+
+
+def test_the_basket_control_stays_flat():
+    """The negative control for the cross-sectional strategy class.
+
+    A dollar-neutral basket has low volatility by construction, so a small
+    artefact divides into a large Sharpe — this class needs its own control and
+    could not borrow the single-instrument one, which never saw the problem. On a
+    basket with the cross-sectional effect switched off the book must make
+    nothing; on the same basket with it switched on it must make a lot, or the
+    control is passing only because the machinery is inert.
+    """
     from bots.botlab import xsection
     from bots.botlab.markets import basket
-    # The two arms share `seed_name`, so they are the *same* basket with and
-    # without the gap rather than two random ones — the F23 pairing lesson. The
-    # unpaired version of this test measured +0.048 against a +0.147 population
-    # value and would have failed for lack of power, which is a much worse
-    # failure than a wrong threshold because it looks like a real result.
-    leg = universe.get("eq_largecap_daily")
-    out = {}
-    for gf in (0.35, 0.0):
-        spec = basket.basket_control(basket.BasketSpec(
-            name=f"gap_probe_{gf}", leg=dataclasses.replace(leg, gap_frac=gf),
-            n_legs=12, n_bars=6000, beta_disp=0.0, seed_name="gap_probe"))
+    live = basket.BasketSpec(name="ctl_probe", leg=universe.get("eq_largecap_daily"),
+                             n_legs=12, n_bars=6000, beta_disp=0.0,
+                             seed_name="ctl_probe")
+    got = {}
+    for spec, tag in ((basket.basket_control(live), "control"), (live, "live")):
         srs = []
         for i in range(1, 11):
             legs = basket.synth_basket(spec, i)
@@ -691,22 +714,21 @@ def test_the_basket_control_artefact_is_the_open_gap():
                                     cost_mult=0.0)
             if r["ok"]:
                 srs.append(r["alpha_sharpe"])
-        out[gf] = float(np.mean(srs))
-    assert out[0.35] - out[0.0] > 0.05, \
-        f"removing the open gap did not remove the artefact (gap {out[0.35]:+.3f} vs " \
-        f"no gap {out[0.0]:+.3f}) — either F31's diagnosis is wrong, or the artefact " \
-        f"has changed and the quarantine needs re-deriving rather than lifting"
-    assert out[0.0] < 0.06, \
-        f"the no-gap arm still shows {out[0.0]:+.3f}; the gap is not the whole cause"
+        got[tag] = float(np.mean(srs))
+    assert got["control"] < 0.15, \
+        f"the basket control makes {got['control']:+.3f} gross alpha with nothing " \
+        f"planted — the F31 artefact is back, or a new one is"
+    assert got["live"] > 1.0, \
+        f"the live basket only makes {got['live']:+.3f}; the control passing means " \
+        f"nothing if the strategy cannot find a planted effect either"
 
 
 def test_cross_sectional_primitives_are_quarantined_from_the_search():
-    """The basket control does not pass (F31): a cross-sectional reversal bot
-    earns +0.11 to +0.26 gross alpha Sharpe on a basket with *no* cross-sectional
-    effect planted, and four candidate causes have been ruled out without finding
-    it. Until that is resolved the class must not be searchable — a strategy type
-    whose negative control fails will certify artefacts, which is the F6 story
-    exactly.
+    """The class is rejected by its own five-gate subset (F33): after the gap
+    repair it still fails the sqrt(K)-scaled control tolerance by 0.007, and it
+    fails cost stress outright (+1.10 net at 1x costs, -0.02 at 3x). Until it
+    clears its own gates it must not be searchable — a strategy type that cannot
+    pass a control will certify artefacts, which is the F6 story exactly.
 
     The quarantine is structural rather than a flag: the primitives are tier 5
     and `SearchSpace.expanded()` caps the tier at 4, so no expansion can reach

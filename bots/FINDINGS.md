@@ -870,11 +870,16 @@ multiplicity denominator (131, the panel size), and **seed-paired instances**: t
 stream as its `~stationary` twin, so the only difference between two rows is how
 fast the edge goes away.
 
+*(Numbers below are on the corrected bar model. The gap repair in F32 cut the
+whole table roughly in half — it was 8/4/3/0 across the first four rungs before —
+but every qualitative claim in this finding survived it unchanged, which is the
+reason to trust the shape rather than the level.)*
+
 | rung | halflife | mean edge | edge at end | distinct | genomes | markets |
 |---|---|---|---|---|---|---|
-| `stationary` | never | 1.00 | 1.00 | **8** | 16 | 4 |
-| `hl=1.00x` | 48 yr | 0.82 | 0.68 | **4** | 11 | 2 |
-| `hl=0.50x` *(shipped)* | 24 yr | 0.70 | 0.51 | **3** | 8 | 1 |
+| `stationary` | never | 1.00 | 1.00 | **5** | 7 | 4 |
+| `hl=1.00x` | 48 yr | 0.82 | 0.68 | **1** | 3 | 1 |
+| `hl=0.50x` *(shipped)* | 24 yr | 0.70 | 0.51 | **1** | 3 | 1 |
 | `hl=0.25x` | 12 yr | 0.57 | 0.39 | **0** | 0 | 0 |
 | `hl=0.125x` | 6 yr | 0.47 | 0.35 | **0** | 0 | 0 |
 | `hl=0.125x/f10` | 6 yr, 10% floor | 0.26 | 0.10 | **0** | 0 | 0 |
@@ -1254,10 +1259,16 @@ gates, paired instances — separates it from the alternative:
 
 | rung | certified | min margin | median | max | binding gate |
 |---|---|---|---|---|---|
-| `stationary` | 14 | 0.018 | **0.253** | 0.331 | G2-replication (6), G2b (4), G1 (3) |
-| `hl=1.00x` | 9 | 0.097 | **0.127** | 0.156 | G1-oos (6), G2 (2), G2b (1) |
-| `hl=0.50x` *(shipped)* | 9 | 0.000 | **0.026** | 0.054 | G2b (5), G1-oos (4) |
+| `stationary` | 7 | 0.014 | **0.153** | 0.254 | G2-replication (3), G1-oos (2), G7 (1), G2b (1) |
+| `hl=1.00x` | 3 | 0.082 | **0.085** | 0.142 | G2-replication (2), G1-oos (1) |
+| `hl=0.50x` *(shipped)* | 3 | 0.004 | **0.024** | 0.069 | G1-oos (2), G2-replication (1) |
 | `hl=0.25x` | 0 | — | — | — | — |
+
+*(Also re-measured on the corrected bar model after F32. The levels moved — the
+pre-fix medians were 0.253 / 0.127 / 0.026 — and every structural claim below
+held: the distributions at 48 and 24 years still do not overlap, the binding gate
+still migrates to the late-window gates as decay bites, and the collapse is still
+visible a rung before the count reaches zero.)*
 
 Both mechanisms are real and they act on different parts of the distribution.
 
@@ -1436,6 +1447,136 @@ five of them wrong, including two I was confident about — to get from "cross
 sectional strategies have room" to "cross-sectional strategies have a bar-model
 interaction". The control is the only reason the first version was not the one
 that got committed.
+
+---
+
+## F32 · Fixing the gap took half the certified strategies with it
+
+F31 traced the basket control artefact to the bar model. The repair, and what it
+cost, are separable findings and the second one is larger.
+
+**The defect, stated properly.** The generator set
+`open[t] = close[t-1] * exp(gap_frac * lr[t])` — the overnight gap was a *fraction
+of the same bar's close-to-close return*, so gap and intraday move were one random
+variable split in two, correlated at exactly 1.0. Observing the gap told you the
+rest of the bar precisely. Real bars are not like that: overnight news and the
+intraday session are different events, and knowing the first constrains the second
+without determining it.
+
+**The repair keeps `gap_frac` meaning what it says.** Writing `u` for the gap and
+`d = lr - u` for the intraday move:
+
+    u = f*lr + sqrt(f*(1-f)) * sigma * xi,     xi ~ N(0,1), independent
+
+gives `var(u) = f*var(lr)`, `var(d) = (1-f)*var(lr)` and `cov(u, d) = 0` exactly.
+The variance split `gap_frac` names is unchanged; only the deterministic link
+goes. Measured on `eq_largecap_daily` at `gap_frac` 0.35: corr(gap, bar return)
+falls from **1.000 to 0.601** against a predicted sqrt(0.35) = 0.592,
+corr(gap, intraday) is **+0.027**, and the variance shares land at 0.336 / 0.639
+against 0.35 / 0.65. `close` is untouched — it is built from the log-return path
+before any of this — so every planted structure, every `vol_fix` constant and
+every realised-vol target survives, which was checked rather than assumed.
+
+**It fixes what it was built to fix.** The basket control goes from
+**+0.264 +- 0.036 (95% of instances positive)** to **+0.047 +- 0.038 (65%)** —
+statistically zero. The live basket still makes +2.05, so the control passes
+because the artefact is gone, not because the machinery went inert. Both halves
+are now pinned by tests.
+
+**And then it took half the lab with it.** Re-running the ledger through the
+corrected generator at the run's closing standard:
+
+| | before the fix | after |
+|---|---|---|
+| genomes certified | 13 | **5** |
+| distinct strategies | 4 | **2** |
+
+Eight of thirteen dropped, at G1-oos and G2-replication.
+
+**This is F30's thesis arriving in person, and it is the reason that finding
+mattered.** F29 measured every certified strategy as clearing its narrowest gate
+by under 0.07 alpha Sharpe, and F30 argued that such a population is one modelling
+assumption away from empty. The gap repair is exactly one modelling assumption,
+applied for reasons that had nothing to do with these bots — it was found through
+a cross-sectional control on a strategy class the search cannot even reach — and it
+removed half of them.
+
+**What it does not mean.** The catalogue is not broken and the achievable edge did
+not collapse: `calibrate` puts the best archetype at +0.37 net alpha on
+`commodity_meanrev_daily` and +0.38 on `eq_largecap_daily`, essentially where they
+were. The false-positive rate is still zero (0 of 72 over five probes, 95% upper
+bound 4.2%). What changed is the fill prices, by an amount smaller than most of
+these bots' entire margin — so the survivors are the ones that had room, exactly as
+the margin statistic said they would be.
+
+**The single-instrument control did not catch this, and the reason is worth
+keeping.** Measured directly, a high-turnover reversal bot on the pure random walk
+gained **+0.006 +- 0.031** from the gap — nothing. The defect did not manufacture
+alpha out of noise on a single instrument; it distorted fills on markets that had
+real structure, and it compounded across a 12-leg book into something visible. A
+control that only asks "does this make money where there is nothing" cannot see a
+defect that only bites where there *is* something. That is a gap in the control
+design, not just in the bar model.
+
+---
+
+## F33 · With the gap fixed, the cross-sectional strategy is rejected on its own control and on costs
+
+The gap repair (F32) cleared the blocker, so the class could finally be put in
+front of gates rather than diagnostics. `xsection.ladder` runs the five of eight
+that a basket harness can honestly run — out-of-sample window, replication on the
+holdout pool, the negative control, cost and latency stress, and a second
+replication on the stress pool. The permutation null and the deflated-Sharpe
+correction are missing and the function says so: both need a search to have a
+size, and this class is quarantined out of the search, so there is no trial count
+to deflate by. Five gates reported as eight is what `verify --data` refuses to do.
+
+| gate | statistic | threshold | margin | |
+|---|---|---|---|---|
+| XS1 out-of-sample | +1.173 | +0.250 | +0.923 | PASS |
+| XS2 replication | +1.095 | +0.350 | +0.745 | PASS |
+| **XS3 control** | **-0.094** | **-0.087** | **-0.007** | **FAIL** |
+| **XS4 stress** | **-0.005** | **+0.150** | **-0.155** | **FAIL** |
+| XS5 stress pool | +1.145 | +0.280 | +0.865 | PASS |
+
+**The control gate is scaled, and the scaling was fixed before the run.** G3's
++0.30 was calibrated for single instruments; a K-leg dollar-neutral book carries
+about sqrt(K) times the leverage on any artefact, so the tolerance is
+0.30/sqrt(12) = 0.087. The residual artefact after the gap fix measures +0.094 on
+the holdout pool. It fails by 0.007, and widening the tolerance to admit it is
+precisely the move F22 defines as p-hacking, so it stays failed.
+
+**The cost failure is the economically interesting one.** By cost multiple, on the
+holdout pool: **+1.94 gross, +1.10 at 1x, +0.49 at 2x, -0.02 at 3x.** A twelve-leg
+book turning over 96,000 times has an enormous cost base, and the sqrt(K)
+aggregation that makes the gross number impressive does nothing for the costs —
+they scale with K linearly. This is F24's plane (`net = a*edge - b*cost`) showing
+up in a new strategy class: aggregation buys edge, not margin over costs.
+
+**A correction to my own gate, recorded because it nearly produced a false
+rejection.** The first version estimated the control with a *median over twelve
+instances*, matching the other gates. That statistic has a standard error around
+0.04 against a tolerance of 0.087, so it fails roughly a third of the time on a
+clean strategy — and it duly reported -0.136 on a control whose mean is
++0.054 +- 0.029. The other gates ask "is the typical instance good enough", where
+a median is right; this one asks "is the expected artefact zero", which is a
+question about a bias and wants a mean over more instances. Same threshold, better
+estimator, and the verdict survived it.
+
+**The residual artefact has a suspect, and it is the hypothesis I rejected too
+early.** F31 tested "beta dispersion lets the bot eat the factor's own
+time-series reversion" and rejected it, because the artefact persisted at
+`beta_disp = 0`. It persisted because the *gap* artefact dominated and swamped it.
+With the gap fixed, what is left does track beta dispersion: **+0.054 +- 0.029 at
+`beta_disp=0.25` against +0.011 +- 0.041 at zero.** The original hypothesis was
+probably right about a second, smaller effect; it was tested while a larger one was
+in the way. That is a general hazard of ruling things out one at a time, and worth
+remembering.
+
+**So the quarantine stands, for a measured reason rather than an unresolved one.**
+The class does not clear its own control at a principled tolerance, and it does not
+survive realistic cost stress. That is a result, and a more useful one than the
++2.30 gross Sharpe it started with.
 
 ---
 

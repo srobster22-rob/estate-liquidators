@@ -11,17 +11,27 @@ floor, so the average edge across an instance is 70% of its opening value. Only
 the predictable components fade; drift and carry do not, because a risk premium is
 compensation for risk rather than a mispricing waiting to be arbitraged.
 
-The committed run certified **4 distinct strategies** (13 genomes) from 9,570
-candidates, all on `commodity_meanrev_daily`. Nothing certified on any of the other
-twelve families, including both that decay faster than the default. All 13 still
-clear the standard the run *finished* with, which is not automatic — the previous
-run lost a whole strategy to it (F26), because G6's luck bar rises while the search
-is still going and a bot certified early was measured against a smaller search.
+The committed run certified **1 distinct strategy** (8 genomes) from 7,950
+candidates, on `commodity_meanrev_daily`. All 8 still clear the standard the run
+*finished* with, which is not automatic — an earlier run lost a whole strategy to
+it (F26), because G6's luck bar rises while the search is still going and a bot
+certified early was measured against a smaller search.
 
-**Read the margins before the Sharpes.** Every one of those 13 clears its narrowest
-gate by between **+0.000 and +0.064 alpha Sharpe** (F29). One clears G1 by zero to
-three decimals. So "passed all eight gates" here means "passed all eight gates,
-several of them by a rounding error", and pass/fail cannot say so.
+**That headline was 4 strategies until a bug fix took three of them** (F32). The
+bar model made the overnight gap a fixed *fraction of the same bar's return* —
+correlation exactly 1, so seeing the gap told you the rest of the bar. Making the
+gap an independent draw with the same variance share is unambiguously the better
+model, and re-running the ledger through it dropped 8 of 13 genomes and 2 of 4
+strategies; a fresh search then found 1. The catalogue is fine — `calibrate` still
+puts the best archetype at +0.37 net alpha — and the false-positive rate is still
+zero. What changed is fill prices, by less than most of those bots' entire margin.
+
+**Read the margins before the Sharpes.** Every one of those 8 clears its narrowest
+gate by between **+0.004 and +0.069 alpha Sharpe** (F29). So "passed all eight
+gates" here means "passed all eight gates, several of them by a rounding error",
+and pass/fail cannot say so. This is not academic: it is precisely why one bug fix
+in the bar model could take three of four strategies (F32) — a population with no
+margin is one modelling assumption away from empty, and that assumption arrived.
 
 That margin turns out to be the most predictive number in the lab (F30). Raising
 every Sharpe gate by 20% adds +0.050 to the two that bind, which exactly four of
@@ -45,16 +55,16 @@ panel — every untuned archetype plus every distinct certified strategy — run
 through the same gates at each rate, on seed-paired instances so nothing but the
 fade differs:
 
-| edge fades... | mean edge | distinct strategies | markets |
+| edge fades... | mean edge | distinct strategies | median margin |
 |---|---|---|---|
-| never | 1.00 | 8 | 4 |
-| halflife 48 yr | 0.82 | 4 | 2 |
-| **halflife 24 yr** *(shipped)* | **0.70** | **3** | **1** |
-| halflife 12 yr | 0.57 | **0** | 0 |
-| halflife 6 yr | 0.47 | 0 | 0 |
-| abrupt break, midway | 0.53 | 0 | 0 |
+| never | 1.00 | 5 | +0.153 |
+| halflife 48 yr | 0.82 | 1 | +0.085 |
+| **halflife 24 yr** *(shipped)* | **0.70** | **1** | **+0.024** |
+| halflife 12 yr | 0.57 | **0** | — |
+| halflife 6 yr | 0.47 | 0 | — |
+| abrupt break, midway | 0.53 | 0 | — |
 
-**The cliff is between 24 years and 12, and it is a cliff.** Three strategies to
+**The cliff is between 24 years and 12, and it is a cliff.** What is left goes to
 none across a rung that only takes the mean edge from 0.70 to 0.57 — because the
 catalogue's entire population of viable strategies is packed into a 0.2-Sharpe
 band just above the +0.35 replication bar. A 20% edge cut does not thin that field,
@@ -155,7 +165,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 51 falsification tests
+python bots/run.py selftest              # 52 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -207,23 +217,21 @@ with a 7% risk premium, levered buy-and-hold has a perfectly respectable Sharpe
 and zero skill. `fitness` takes the *worse* of raw and alpha Sharpe, so beta
 cannot buy a pass.
 
-**Cross-sectional strategies exist here but are quarantined** (`FINDINGS.md` F31).
-A dollar-neutral 12-leg basket makes +2.30 gross alpha Sharpe on a planted
-cross-sectional effect — the sqrt(K) arithmetic works, and it is 30x the best
-margin anywhere else in the lab. But the *control* basket, with the effect
-switched off, makes **+0.26 +- 0.036** gross alpha over 20 instances, which G3's
-+0.30 tolerance would wave through. Six hypotheses later the cause is the bar
-model: the engine fills at the open, the open embeds part of its own bar's move
-(`gap_frac`), and a high-turnover long-short book therefore trades at prices
-displaced the way its signal points. It scales linearly with `gap_frac` and is
-exactly zero at zero.
+**Cross-sectional strategies exist here, and are rejected by their own gates**
+(`FINDINGS.md` F31-F33). A dollar-neutral 12-leg basket makes +1.94 gross alpha
+Sharpe on a planted cross-sectional effect — the sqrt(K) arithmetic works. Finding
+that number was the easy part; the six hypotheses it took to explain the *control*
+basket were not, and they are what turned up the gap defect above.
 
-**The single-instrument catalogue is unaffected** — the same test on the
-random-walk control gives +0.006 +- 0.031, statistically zero — so nothing else in
-this repository is in doubt. But until the basket path is repaired the class makes
-no claim: the `xs_*` primitives are tier 5 and the search caps at tier 4, so no
-expansion can reach them. That is F6's lesson applied before the result rather
-than after it.
+With the gap fixed, the class goes in front of the five gates a basket harness can
+honestly run (the permutation null and the deflated Sharpe need a search to have a
+size, and this class is quarantined out of the search — five gates reported as
+eight is what `verify --data` refuses to do). It **fails two of them**: the
+negative control by 0.007 against a sqrt(K)-scaled tolerance, and cost stress
+outright — **+1.10 net at 1x costs, -0.02 at 3x**, because a twelve-leg book
+turning over 96,000 times has a cost base that aggregation does nothing for. So
+the `xs_*` primitives stay tier 5, unreachable by any expansion, and the quarantine
+now rests on a measurement rather than an open question.
 
 **The false-positive rate is measured, not argued.** `run.py fpr --repeats 10`
 points ten independent searches at a structureless market: 20,000 candidates, 137
@@ -308,7 +316,7 @@ bots/
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      51 falsification tests
+  tests/test_botlab.py      52 falsification tests
 ```
 
 ---

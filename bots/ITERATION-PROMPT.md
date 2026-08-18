@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 51 falsification tests
+python bots/run.py selftest      # 52 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -59,28 +59,21 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **Fix the cross-sectional gap interaction (cause known, repair not chosen).**
-   F31 traced the basket control artefact to the bar model: the engine fills at
-   the open, `open[t] = close[t-1] * exp(gap_frac * lr[t])` embeds part of the
-   bar's own move, and a high-turnover long-short book therefore transacts at
-   prices displaced in the direction its own signal points. It scales linearly
-   with `gap_frac` and is exactly zero at zero (+0.147 / +0.066 / +0.005). The
-   single-instrument catalogue is unaffected — the same test on the random-walk
-   control gives +0.006 +- 0.031 — so nothing already in this repository is in
-   doubt.
+1. **The residual cross-sectional control artefact, which now tracks beta
+   dispersion.** The gap is fixed (F32) and the class went in front of gates
+   (F33), where it fails the sqrt(K)-scaled control by 0.007 and cost stress
+   outright. What is left in the control measures **+0.054 +- 0.029 at
+   `beta_disp=0.25` against +0.011 +- 0.041 at zero** — which is the hypothesis
+   F31 tested and rejected, back again. It was rejected because the gap artefact
+   was five times larger and swamped it. Ruling causes out one at a time is
+   unsafe when one of them dominates, and this is the worked example.
 
-   **Do not fix it by setting `gap_frac = 0`.** The overnight gap is a real
-   feature of daily bars and deleting it to make a number go away is the wrong
-   repair, of exactly the kind the standing rules forbid. The two candidate fixes:
-   draw the basket's opens *jointly* rather than letting each leg gap on its own
-   realised return, or execute a cross-sectional book at prices that do not embed
-   the move it is reacting to. Deciding between them needs an argument about which
-   is the better model of a real venue, not about which produces a better number.
+   The mechanism to test: with dispersed betas the trailing *relative* return
+   contains `(beta_i - betabar) x trailing factor return`, so a "cross-sectional"
+   bot is partly running a beta-timing trade on the factor's own time-series
+   reversion. If that is it, the artefact should scale with `Var(beta)` and with
+   the factor family's own reversion strength — both cheap to sweep, neither done.
 
-   Until then `xs_reversal`/`xs_momentum` stay tier 5, unreachable by any
-   expansion. Do not raise the tier cap to "widen the search"; that is what
-   `test_cross_sectional_primitives_are_quarantined_from_the_search` exists to
-   stop.
 2. **The constructive question F30 asked is still open.** Every widening tried so
    far produces more bots at the same margin, and under a gauntlet 20% harder the
    four distinct strategies become **one**. Cross-sectional was the only candidate
