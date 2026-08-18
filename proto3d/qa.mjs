@@ -101,7 +101,13 @@ async function main() {
   await page.evaluate(() => window.__g.regen(20260806));
 
   const g = (fn, arg) => page.evaluate(fn, arg);   // run in page, return JSON
-  const fresh = () => page.evaluate(() => { window.__g.clearKeys(); window.__g.reset(); });
+  // gates(true) is sticky - it is a global QA switch, not night state, so reset()
+  // does not clear it. A block that turned it on left every later block running
+  // with the prerequisite chain disabled, which is how the crowbar checks came to
+  // report that boards cannot be pried: nothing was stopping the player at all.
+  const fresh = () => page.evaluate(() => {
+    window.__g.clearKeys(); window.__g.gates(false); window.__g.reset();
+  });
   const named = await page.evaluate(() => {
     const rs = window.__g.rooms();
     const byTier = t => rs.filter(r => r.tier === t && !r.van).map(r => r.id);
@@ -150,7 +156,13 @@ async function repeat(n) {
     await page.evaluate(() => window.__g.pause(true));
     await page.evaluate(() => window.__g.regen(20260806));
     const g = (fn, arg) => page.evaluate(fn, arg);
-    const fresh = () => page.evaluate(() => { window.__g.clearKeys(); window.__g.reset(); });
+    // gates(true) is sticky - it is a global QA switch, not night state, so reset()
+  // does not clear it. A block that turned it on left every later block running
+  // with the prerequisite chain disabled, which is how the crowbar checks came to
+  // report that boards cannot be pried: nothing was stopping the player at all.
+  const fresh = () => page.evaluate(() => {
+    window.__g.clearKeys(); window.__g.gates(false); window.__g.reset();
+  });
     try { await checks(g, fresh); }
     catch (e) { ok("the harness ran to completion", false, `threw: ${e.message}`); }
     for (const f of failures) {
@@ -1177,6 +1189,191 @@ async function checks(g, fresh) {
   });
   ok("flicker is a ghost's verb and needs a light on",
     flick.dark === null && flick.aliveTry === null, JSON.stringify(flick));
+
+  // --- the crowbar and the boarded wing (DESIGN 6.4, 8) ---------------------
+  // "The boarded stair needs the crowbar that's in the garage. You physically
+  // cannot be deep at minute one." V3 guarantees no single doorway seals anything,
+  // so the boards go on EVERY door into the deepest wing - the same shape of lock
+  // the prerequisite chain already uses, and the reason the salt line is a detour
+  // and this is not.
+  await fresh();
+  const bar = await g(() => {
+    const b = window.__g.boarded();
+    const c = window.__g.crowbar();
+    const rooms = window.__g.rooms();
+    const all = window.__g.doors().filter(d => d.a === b.wing || d.b === b.wing);
+    return { wing: b.wing, boards: b.doors.length, into: all.length, crowbar: c,
+      wingIsDeepest: rooms.filter(r => !r.van)
+        .every(r => r.tier <= (rooms.find(x => x.id === b.wing) || {}).tier) };
+  });
+  ok("the deepest wing is boarded shut, on every door into it",
+    bar.wing !== null && bar.boards > 0 && bar.boards === bar.into,
+    JSON.stringify(bar));
+  ok("and the crowbar that opens it is not inside it",
+    bar.crowbar !== null && bar.crowbar.room !== bar.wing && bar.crowbar.held === false,
+    JSON.stringify(bar.crowbar));
+
+  const pry = await g(() => {
+    window.__g.parkCrew();
+    const b = window.__g.boarded(), d = b.doors[0];
+    const rooms = window.__g.rooms();
+    const wing = rooms.find(r => r.id === b.wing);
+    // Face the wing. W walks along +z at yaw 0 and +x at yaw pi/2, so pointing the
+    // player at the room behind the boards is the difference between prying and
+    // wandering off down the corridor - which is what the first version of this
+    // check did, and it read as "the crowbar does not work".
+    const yaw = Math.atan2(wing.x - d.x, wing.z - d.z);
+    const walkInto = (frames) => {
+      window.__g.tp(d.x, d.z); window.__g.look(yaw);
+      window.__g.press("KeyW");
+      let i = 0;
+      for (; i < frames && window.__g.boarded().doors.length; i++)
+        window.__g.step(1, 1 / 60);
+      window.__g.clearKeys();
+      return i / 60;
+    };
+    walkInto(60 * 5);                        // bare hands: the boards do not care
+    const bare = window.__g.boarded().doors.length;
+    // Now fetch it. It is across the house, so QA moves it rather than walking.
+    window.__g.moveCrowbar(d.x, d.z);
+    window.__g.tp(d.x, d.z);
+    const took = window.__g.takeCrowbar();
+    const d0 = window.__g.state().dist;
+    const seconds = walkInto(60 * 8);
+    return { bare, took, seconds,
+      left: window.__g.boarded().doors.length, d0, d1: window.__g.state().dist,
+      loud: window.__g.noiseLog().slice(-1)[0] };
+  });
+  ok("bare hands do nothing to a board",
+    pry.bare > 0, JSON.stringify({ boards: pry.bare }));
+  ok("the crowbar takes about three seconds and opens the whole wing at once",
+    pry.took !== null && pry.left === 0 && pry.seconds > 2.5 && pry.seconds < 4.0,
+    JSON.stringify(pry));
+  ok("and it is the loudest thing in the toolkit - L75",
+    pry.loud && pry.loud.l === 75 && pry.d1 - pry.d0 >= 75 * 0.09 - 0.5,
+    JSON.stringify({ loud: pry.loud, gain: +(pry.d1 - pry.d0).toFixed(2) }));
+
+  await fresh();
+  const hands = await g(() => {
+    const took = { held: true };
+    // The real verb, not the hold() hook - hold() attaches an item directly and
+    // would happily put a vase in a hand that is already full of crowbar. It has
+    // to be aimed at a real piece too: grab() with nothing in front of you does
+    // nothing whether the rule is there or not, which is a check that cannot fail.
+    const it = window.__g.list()[0];
+    window.__g.moveCrowbar(it.x, it.z);
+    window.__g.tp(it.x, it.z - 1.1);
+    window.__g.look(0, 0);
+    window.__g.takeCrowbar();
+    window.__g.grab();
+    const gotDolly = window.__g.takeDolly();
+    window.__g.takeCrowbar();                      // put it down again
+    const after = window.__g.crowbar();
+    return { took, gotDolly, after, carry: window.__g.carry() };
+  });
+  ok("the crowbar takes both hands",
+    hands.took !== null && hands.carry === null && hands.gotDolly === null,
+    JSON.stringify(hands));
+  ok("and you can put it down where you are standing",
+    hands.after.held === false, JSON.stringify(hands.after));
+
+  // The deepest wing is shut twice over - by its prerequisite chain and by the
+  // boards - so "the crew cannot get in" says nothing about boards on its own.
+  // Clear the prerequisite first, and then the only thing left holding it is wood.
+  await fresh();
+  const onlyWood = await g(() => {
+    const b = window.__g.boarded();
+    // Empty every sideboard in the house except the wing's own: the prerequisite
+    // chain is then satisfied everywhere, the neighbours are open too, and the
+    // only thing left that can lock a door is wood. Clearing just the wing's own
+    // prerequisite is not enough - its neighbours are deep rooms with chains of
+    // their own, and they kept the doors shut whether or not boards did anything.
+    const emptied = window.__g.rooms().filter(r => !r.van && r.id !== b.wing)
+      .map(r => window.__g.clearRoom(r.id)).filter(Boolean).length;
+    const lockedAfter = window.__g.locked();
+    const boardIds = b.doors.map(d => d.id);
+    let inside = 0;
+    for (let i = 0; i < 60 * 60; i++) {
+      window.__g.step(1, 1 / 60);
+      if (i % 30) continue;
+      for (const c of window.__g.crew()) if (window.__g.roomAt(c.x, c.z) === b.wing) inside++;
+    }
+    return { wing: b.wing, emptied, lockedAfter, boardIds, inside };
+  });
+  ok("with every prerequisite in the house cleared, the boards are the only lock left",
+    onlyWood.lockedAfter.length === onlyWood.boardIds.length &&
+    onlyWood.boardIds.every(id => onlyWood.lockedAfter.includes(id)) &&
+    onlyWood.inside === 0, JSON.stringify(onlyWood));
+
+  // The boards are the crew's problem and the player's job. Nothing in the crew AI
+  // fetches a tool, so a night with the wing shut is a night worked around it.
+  await fresh();
+  const crewBoards = await g(() => {
+    const wing = window.__g.boarded().wing;
+    let inside = 0;
+    for (let i = 0; i < 60 * 90; i++) {
+      window.__g.step(1, 1 / 60);
+      if (i % 30) continue;
+      for (const c of window.__g.crew()) if (window.__g.roomAt(c.x, c.z) === wing) inside++;
+    }
+    return { inside, wing, banked: window.__g.state().banked,
+      quota: window.__g.contract().quota };
+  });
+  ok("the crew work around a boarded wing rather than jamming against it",
+    crewBoards.inside === 0 && crewBoards.banked > 0, JSON.stringify(crewBoards));
+
+  // ...and the Curator is not a crew member. It is the house.
+  await fresh();
+  const curBoards = await g(() => {
+    const b = window.__g.boarded(), d = b.doors[0];
+    const rooms = window.__g.rooms();
+    const out = rooms.find(r => r.id !== b.wing && (d.id.split("-").includes(r.id)));
+    window.__g.parkCrew();
+    window.__g.setCur(d.x, d.z, "PURSUE");
+    window.__g.tp(out.x, out.z);
+    let crossed = false;
+    for (let i = 0; i < 60 * 20 && !crossed; i++) {
+      window.__g.setDist(95);
+      window.__g.heard(65, out.x, out.z);
+      window.__g.step(1, 1 / 60);
+      const c = window.__g.curator();
+      if (window.__g.roomAt(c.x, c.z) === out.id) crossed = true;
+    }
+    return { crossed, boards: window.__g.boarded().doors.length };
+  });
+  ok("boards do not stop the Curator - it is the house, not a guest",
+    curBoards.crossed === true && curBoards.boards > 0, JSON.stringify(curBoards));
+
+  // What the crowbar actually buys: the thing the whole night builds toward.
+  const apexBehind = await g(() => {
+    window.__g.newContract(4242); window.__g.regen(4242, 3); window.__g.setNight(3);
+    const a = window.__g.apex(), b = window.__g.boarded();
+    return { apexRoom: a && a.room, wing: b.wing, boards: b.doors.length };
+  });
+  const reboard = await g(() => {
+    const before = window.__g.boarded();
+    window.__g.tp(before.doors[0].x, before.doors[0].z);
+    window.__g.moveCrowbar(before.doors[0].x, before.doors[0].z);
+    window.__g.takeCrowbar();
+    const wing = window.__g.rooms().find(r => r.id === before.wing);
+    window.__g.look(Math.atan2(wing.x - before.doors[0].x, wing.z - before.doors[0].z));
+    window.__g.press("KeyW");
+    for (let i = 0; i < 60 * 6 && window.__g.boarded().doors.length; i++)
+      window.__g.step(1, 1 / 60);
+    window.__g.clearKeys();
+    const opened = window.__g.boarded().doors.length;
+    window.__g.reset();
+    return { opened, after: window.__g.boarded().doors.length, was: before.doors.length };
+  });
+  ok("and a new night puts the boards back up",
+    reboard.opened === 0 && reboard.after === reboard.was && reboard.was > 0,
+    JSON.stringify(reboard));
+
+  ok("on a late night the apex is behind the boards",
+    apexBehind.apexRoom === apexBehind.wing && apexBehind.boards > 0,
+    JSON.stringify(apexBehind));
+
+  await g(() => { window.__g.newContract(20260806); window.__g.regen(20260806); });
 
   // --- the salt line (DESIGN 8) ---------------------------------------------
   // "Curator won't cross for 20s, single use, consumed."

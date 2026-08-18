@@ -7,9 +7,9 @@ below is a plan — it's a statement of what you can run today, updated whenever
 `?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 171 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 171   # the numbers in these docs are the real ones
-python3 sim/check_drift.py        # 166 constants agree across four implementations
+node proto3d/qa.mjs               # 183 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 183   # the numbers in these docs are the real ones
+python3 sim/check_drift.py        # 168 constants agree across four implementations
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
 python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
@@ -46,6 +46,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | Lights and the breaker | `DESIGN` §6.5 | Lighting a wing is silent and +25; the breaker at the van is −15 and takes them all. |
 | The dolly | `DESIGN` §8 | Cart-class pieces cannot be picked up at all. Slow, L35 while rolling, and it tips if you sprint with it. |
 | Salt line | `DESIGN` §8 | One charge, 20s, laid in a doorway. Buys a detour, not denial — see the note below. |
+| The crowbar and the boarded wing | `DESIGN` §6.4, §8 | Every door into the deepest wing is boarded. The crowbar is somewhere shallow, takes both hands, and prying is L75 — the loudest thing in the game. The crew work around it; the Curator ignores it. |
 | All three Disturbance levers | `DESIGN` §6.5 | Kill the lights, go quiet (window scaled to this build's night), unload cursed cargo into the yard. |
 | Death as a role change | `DESIGN` §5.1 | 10s collection beat, then free movement, permanent sight of the Curator, curse-sight at 5m, and a Static budget. |
 | Doors as entities | `DESIGN` §5.1 | Open until something shuts one; walking into a shut door costs 1.4s and a door's worth of noise. |
@@ -58,13 +59,13 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | **Multiplayer** | all of it | The prototype is one player and three haul bots. This is still the largest gap by far — but the *arithmetic* of it no longer is. `sim/netcode.py` puts `TECH-SPEC` B1–B4 on a clock with a delay in it: the hot potato survives (0.13s of wrong target at 120ms, against 2.5s to be caught), the pickup race only flips in a photo finish, the pry disagrees with the victim's own screen 3.6% of the time, and the two-man drift tolerance is entirely spent on latency before the physics gets any of it. What needs four people is the *feel*. |
 | **Proximity voice** | `AUDIO-SPEC` §2 | Needs two clients. Phase 0's exit criterion. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
-| Radio, crowbar | `DESIGN` §8 | No other tools. The appraiser, flashlight, salt line, breaker and dolly are built. |
+| Radio | `DESIGN` §8 | The last tool. It is a communication device in a game with one player, so it needs the multiplayer layer to mean anything. |
 | Curses beyond value and ruin | `DESIGN` §4.2 | Grades affect price, attention and the ruin roll; no per-curse behaviour. |
 | Unity / Steam | `BUILD-PROMPT` | The C# core exists and is pinned to the sims; there is no Unity project. |
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 171 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 183 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.

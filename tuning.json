@@ -85,6 +85,8 @@
   },
   "tools": {
     "_source": "DESIGN.md 8 toolkit",
+    "crowbar_pry_seconds": 3.0,
+    "_crowbar_note": "DESIGN 8: opens boarded doors, extremely loud. Boards seal the deepest wing until somebody walks the length of the house to fetch it - and the crowbar takes both hands, so they walk it back empty.",
     "salt_line_seconds": 20.0,
     "salt_line_charges": 1,
     "dolly_speed_mult": 0.55,

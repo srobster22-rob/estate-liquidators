@@ -451,6 +451,18 @@ shallow work is done**: the east wing key is in the study, the cellar breaker fe
 annex lights, the boarded stair needs the crowbar that's in the garage. You physically
 cannot be deep at minute one.
 
+> **Built, R39.** Every doorway into the deepest wing is boarded, not one — `LEVEL-SPEC` V3
+> guarantees no single portal can seal anything, which is exactly why the salt line buys a
+> detour rather than a wall, and why boarding one door would gate nothing at all. The crowbar
+> spawns shallow, never behind its own boards, and takes **both hands**: the trip to fetch it
+> is a trip nobody is hauling on. Prying is **L75**, the loudest thing in the toolkit, at a
+> doorway as deep in the house as the house goes.
+>
+> What it buys, measured: the crew work around a boarded wing and still make quota without it,
+> so the boards are not a wall across the night — they are the price of the **apex**, which
+> from night three lives behind them and is worth 32–64% of the final quota on its own. The
+> crowbar is how the last third of a contract gets paid, not a lock on the first.
+
 Sequencing this correctly is a level-design responsibility on every single estate module,
 and it is the thing most likely to be got wrong quietly. When authoring a new wing, state
 its prerequisite chain explicitly and verify the deepest room is unreachable before roughly
@@ -475,6 +487,7 @@ doors close. Anyone outside is left. Anything unstrapped is reclaimed.
 | **Dolly** | moves cart-class items | slow, loud on hardwood, tips over |
 | **Straps** | secures van cargo | 2s per item, someone has to stay behind |
 | **Crowbar** | opens boarded doors, breaks display cases | extremely loud |
+<!-- built R39: the boards, the fetch and the noise. Display cases are still a spec line. -->
 | **Salt line** *(unlock)* | Curator won't cross for 20s | single use, consumed |
 
 Deliberately no weapons. There is no fighting the Curator, ever. Every tool is a

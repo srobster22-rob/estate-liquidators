@@ -90,7 +90,8 @@ const CONTROLS=[
                 ["B","at the van: kill the breaker, −15, everything goes dark"],
                 ["Z","go quiet — nobody runs or scans, −20 over the window"],
                 ["U","at the van: unload cursed cargo into the yard"],
-                ["X","in a doorway: lay the salt line, once"]]],
+                ["X","in a doorway: lay the salt line, once"],
+                ["K","pick up / put down the crowbar — then walk into the boards"]]],
   ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you (1)"],
                  ["E","nudge something off a shelf (3)"],
                  ["F","flicker the lights — say <i>in here</i> without a radio (1)"],
@@ -228,7 +229,7 @@ const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
 const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
-const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35};
+const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35, crowbar:75};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
 const ATT_MULT={clean:1, tainted:1.5, malignant:3};
 const FEE={clean:0, tainted:.08, malignant:.20};
@@ -277,6 +278,7 @@ const COST_FLICKER=1, COST_SLAM=2, COST_HOLD=5, HOLD_S=4.0;
 // A door is a thing that takes time to get through, which is the only reason
 // slamming one is worth two Static.
 const DOOR_OPEN_S=1.4;
+const PRY_S=3.0;   // DESIGN 8: the crowbar is the loudest thing in the toolkit
 // DESIGN 6.5. Lights are the exception to "every gain comes from a Loudness
 // value": switching on a wing is silent and a flat +25. Killing the breaker is
 // -15 instantly, and the cost is that you hauled that wing lit for a reason.
@@ -323,6 +325,7 @@ const MIN_OVERLAP=DOOR_W+0.6;      // a doorway needs the rooms to face each oth
 const GAP=[1.4,2.6];               // corridor length between two rooms
 
 let ROOMS=[], LINKS=[], PREREQ={}, DOORS=[], HIDES=[];
+let BOARDED_WING=null, crowbar=null;
 let DOOR_FAULTS=[], HIDE_FAULTS=[], ADJ={}, estateSeed=0, estateTries=0;
 
 // A small LCG so an estate is reproducible from its seed alone. Deliberately not
@@ -601,10 +604,28 @@ function buildEstate(seed, forNight=night){
   if(!chosen){ chosen=generate(estateSeed, forNight); }   // pathological: play it, faults visible
   ROOMS=chosen.rooms; LINKS=chosen.links; PREREQ=chosen.prereq;
   buildDoors(); buildHides();
-  for(const d of DOORS){ d.shut=false; d.held=0; d.opening=0; }
+  for(const d of DOORS){ d.shut=false; d.held=0; d.opening=0; d.boarded=false; d.pry=0; }
+  boardTheDeepWing();
   ADJ={}; for(const [a,b] of LINKS){ (ADJ[a]??=[]).push(b); (ADJ[b]??=[]).push(a); }
   DOOR_FAULTS=gateEstate(chosen, forNight);
   if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
+}
+
+// The boarded wing. V3 guarantees no single doorway can seal anything - that is
+// what makes the salt line a detour rather than a wall - so boarding ONE door
+// would gate nothing at all. Board every door into the deepest wing instead,
+// which is the same shape of lock the prerequisite chain already uses and the same
+// shape DESIGN 6.4 describes: you physically cannot be deep at minute one.
+function boardTheDeepWing(){
+  BOARDED_WING=null;
+  const deep=deepestRoom();
+  if(!deep||deep.van) return;
+  const doors=DOORS.filter(d=>d.a===deep.id||d.b===deep.id);
+  // Never board a wing that touches the driveway: the van has to stay reachable,
+  // and a crew that cannot leave the house has no night at all.
+  if(!doors.length||doors.some(d=>d.a==="drive"||d.b==="drive")) return;
+  for(const d of doors) d.boarded=true;
+  BOARDED_WING=deep.id;
 }
 
 // Doorways are real geometry - a corridor rectangle spanning the gap between two
@@ -701,7 +722,12 @@ function roomOpen(id){
   const need=PREREQ[id];
   return !need || need.every(roomCleared);
 }
-function doorOpen(d){ return roomOpen(d.a)&&roomOpen(d.b); }
+// DESIGN 6.4: "the boarded stair needs the crowbar that is in the garage". A board
+// is the second kind of lock in the house - the first, the prerequisite chain, is
+// cleared by WORK somewhere else; this one is cleared by fetching a thing and
+// carrying it back, which costs you both hands and makes the loudest noise in the
+// game. The Curator is not bound by either: solid() is geometry and nothing else.
+function doorOpen(d){ return roomOpen(d.a)&&roomOpen(d.b)&&!d.boarded; }
 
 const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
 function inDoor(x,z){ for(const d of DOORS) if(inRect(d.rect,x,z)) return true; return false; }
@@ -837,6 +863,11 @@ function reset(){
            face:0,fix:null,step:0,who:null,recompute:0};
   const dv0=R("drive");
   dolly={x:dv0.x+2.2, z:dv0.z-2.2, held:false, load:null, tipped:0};
+  // A new night puts the boards back, and puts them back the same way the estate
+  // did - one place decides which doors are boarded, or an injection that changes
+  // the rule gets quietly repaired here every time the night restarts.
+  boardTheDeepWing();
+  crowbar=spawnCrowbar();
   recoveredTonight=new Set();
   // Doors are estate state, not night state, so nothing else was clearing them:
   // a door slammed on night two was still shut on night three, and a hold that
@@ -860,6 +891,7 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyE"&&started&&!over) grabDrop();
   if(e.code==="KeyC"&&started&&!over&&!player.dead) toggleHide();
   if(e.code==="KeyQ"&&started&&!over) knock();
+  if(e.code==="KeyK"&&started&&!over) takeCrowbar();
   if(e.code==="KeyF"&&started&&!over&&player.dead) flickerLights();
   if(e.code==="KeyV"&&started&&!over){ if(!slamDoor()) holdDoor(); }
   if(e.code==="KeyL"&&started&&!over) toggleLights();
@@ -979,6 +1011,7 @@ function grabDrop(){
   if(player.holding){ dropHeld(player, player.speed||0); return; }
   const it=aimedItem();
   if(!it) return;
+  if(crowbar&&crowbar.held) return;  // both hands: the crowbar or the vase, not both
   // B4 anchor/follower. You take one end and shout at somebody to take the other;
   // the anchor owns the object and the follower influences it. Alone, an armoire
   // is a thing you stand next to and swear at.
@@ -1317,9 +1350,6 @@ function step(dt){
   else if(moving){
     let sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
     if(player.holding&&player.holding.klass==="two_man") sp*=TWO_MAN_SPEED;
-    // Cart class should be on the dolly (DESIGN 8); there is no dolly yet, so it
-    // is carried by two at a crawl and the tool is noted as missing rather than
-    // faked. Flagged in the loop log.
     if(dolly&&dolly.held) sp*=DOLLY_SPEED;
     const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
     const nz=player.z+(fwd[2]*mx+right[2]*mz)*sp*dt;
@@ -1329,6 +1359,13 @@ function step(dt){
     const carriedAt=(px,pz)=>[px+d[0]*1.15, pz+d[2]*1.15];
     const shut=shutAt(nx,player.z)||shutAt(player.x,nz);
     if(shut&&!player.dead){ workDoor(shut,dt,player); return; }
+    // Boards work like a shut door that takes twice as long and needs a tool: walk
+    // into it holding the crowbar and it comes off. Without one you simply stop.
+    // gatesOff is the QA switch for "geometry checks are not gating checks", and a
+    // board is a gate: the doorway-width check walks an armoire through every door
+    // in the house and must not be stopped by a lock.
+    const board=gatesOff?null:(boardAt(nx,player.z)||boardAt(player.x,nz));
+    if(board&&!player.dead){ workBoard(board,dt,player); return; }
     const px=player.x, pz=player.z;
     if(!blocked(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
     if(!blocked(player.x,nz)&&!(big&&itemBlocked(big,...carriedAt(player.x,nz)))) player.z=nz;
@@ -1547,6 +1584,7 @@ const roomLit=id=>lit.has(id);
 // whole point: a slammed door is time, and time is what the Curator spends.
 function doorAt(x,z){ return DOORS.find(d=>inRect(d.rect,x,z)); }
 function shutAt(x,z){ const d=doorAt(x,z); return d&&d.shut?d:null; }
+function boardAt(x,z){ const d=doorAt(x,z); return d&&d.boarded?d:null; }
 function workDoor(d,dt,who){
   if(d.held>0) return false;                    // somebody is holding it
   d.opening+=dt;
@@ -1578,9 +1616,41 @@ function flickerLights(){
   return {seconds:flicker};
 }
 
+// --------------------------------------------------------------- the crowbar
+// It lives in a shallow room, never behind its own boards, and never in the
+// driveway - a tool you can pick up on the way out of the van is not a trip.
+function spawnCrowbar(){
+  const shallow=ROOMS.filter(r=>!r.van&&r.id!==BOARDED_WING&&r.tier<=1);
+  const pool=shallow.length?shallow:ROOMS.filter(r=>!r.van&&r.id!==BOARDED_WING);
+  const r=pool[0]??R("drive");
+  return {x:r.x+r.w/4, z:r.z-r.d/4, held:false, room:r.id};
+}
+const nearCrowbar=()=>crowbar&&!crowbar.held&&
+  Math.hypot(crowbar.x-player.x,crowbar.z-player.z)<1.9;
+// Both hands. You fetch the crowbar or you carry loot, never both, which is the
+// whole cost of the tool: somebody walks the length of the house empty-handed.
+function takeCrowbar(){
+  if(!crowbar||player.dead) return null;
+  if(crowbar.held){ crowbar.held=false; crowbar.x=player.x; crowbar.z=player.z;
+    return {held:false}; }
+  if(!nearCrowbar()||player.holding||dolly?.held) return null;
+  crowbar.held=true; return {held:true};
+}
+// Prying reuses the door-opening shape: you walk into it and it takes time. What
+// it costs is L75, the loudest thing in the toolkit, at a doorway deep in the house.
+function workBoard(d,dt,who){
+  if(!crowbar||!crowbar.held||who!==player) return false;
+  d.pry=(d.pry||0)+dt;
+  if(d.pry<PRY_S) return false;
+  d.pry=0;
+  for(const x of DOORS) if(x.a===BOARDED_WING||x.b===BOARDED_WING) x.boarded=false;
+  noise(L.crowbar,true,0,d.x,d.z,player);
+  return true;
+}
+
 function nearDolly(){ return dolly&&Math.hypot(dolly.x-player.x,dolly.z-player.z)<1.9; }
 function takeDolly(){
-  if(!dolly||player.dead||player.holding) return null;
+  if(!dolly||player.dead||player.holding||crowbar?.held) return null;
   if(dolly.held){ dolly.held=false; return {held:false}; }
   if(!nearDolly()) return null;
   dolly.held=true; return {held:true};
@@ -1995,6 +2065,20 @@ function render(){
   const dv=R("drive");
   drawBox(dv.x-1.6,1.05,dv.z,1.5,1.05,1.9,[.34,.28,.13]);
 
+  if(crowbar){
+    const cx=crowbar.held?player.x+lookDir()[0]*0.8:crowbar.x;
+    const cz=crowbar.held?player.z+lookDir()[2]*0.8:crowbar.z;
+    drawBox(cx,crowbar.held?1.05:0.10,cz,0.10,0.10,0.95,[.42,.20,.14]);
+  }
+  // Boards read as boards: a shut door is dark, a boarded one has planks across it.
+  for(const d of DOORS){
+    if(!d.boarded) continue;
+    for(let k=0;k<3;k++){
+      const y=0.5+k*0.9;
+      if(d.axis==="x") drawBox(d.x,y,d.z,0.12,0.16,DOOR_W*0.95,[.38,.26,.16]);
+      else drawBox(d.x,y,d.z,DOOR_W*0.95,0.16,0.12,[.38,.26,.16]);
+    }
+  }
   if(dolly){
     drawBox(dolly.x,0.28,dolly.z,0.55,0.10,0.42,[.30,.27,.22]);
     drawBox(dolly.x,0.12,dolly.z-0.34,0.5,0.12,0.06,[.16,.155,.15]);
@@ -2134,6 +2218,10 @@ function hud(){
       (salt.until-t).toFixed(1)}s</span><br>`:"")+
     (DOORS.some(d=>d.shut)?`<span style="color:#8b8880">${
       DOORS.filter(d=>d.shut).length} door${DOORS.filter(d=>d.shut).length>1?"s":""} shut</span><br>`:"")+
+    (crowbar&&crowbar.held?`<span style="color:#b09a54">CARRYING THE CROWBAR  ·  `+
+      `walk into the boarded doors to pry them  ·  [K] put it down</span><br>`:"")+
+    (crowbar&&!crowbar.held&&nearCrowbar()?`<span style="color:#8a8f7a">`+
+      `[K] pick up the crowbar</span><br>`:"")+
     (dolly&&dolly.held?`<span style="color:#b09a54">PUSHING THE DOLLY${
       dolly.load?" (loaded)":""}  ·  [R] ${dolly.load?"unload":"load"}</span><br>`:"")+
     (saltLeft>0?`<span style="color:#8b8880">salt x${saltLeft}  ·  [X] in a doorway</span><br>`:"")+
@@ -2181,6 +2269,7 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   clearCrew:()=>{for(const a of crew) if(a.holding){a.holding.heldBy=null;a.holding=null;}},
   parkCrew:()=>{for(const a of crew){ if(a.holding){a.holding.heldBy=null;a.holding=null;}
     a.alive=false; }},
+  roomAt:(x,z)=>roomAt(x,z)?.id??null,
   crew:()=>crew.map(a=>({name:a.name,x:+a.x.toFixed(2),z:+a.z.toFixed(2),
     alive:a.alive,hits:a.hits,mood:a.mood,holding:a.holding?a.holding.value:null})),
   giveCrew:(i,item)=>{const a=crew[i], it=items.filter(x=>!x.gone)[item];
@@ -2270,6 +2359,14 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   dolly:()=>dolly?{x:+dolly.x.toFixed(2),z:+dolly.z.toFixed(2),held:dolly.held,
     load:dolly.load?dolly.load.value:null,tipped:+dolly.tipped.toFixed(2)}:null,
   takeDolly, loadDolly, unloadDolly,
+  takeCrowbar,
+  crowbar:()=>crowbar?{x:+crowbar.x.toFixed(2), z:+crowbar.z.toFixed(2),
+    held:crowbar.held, room:roomAt(crowbar.x,crowbar.z)?.id??crowbar.room}:null,
+  boarded:()=>({wing:BOARDED_WING,
+    doors:DOORS.filter(d=>d.boarded).map(d=>({id:d.a+"-"+d.b,pry:+(d.pry||0).toFixed(2),
+      x:d.x, z:d.z}))}),
+  moveCrowbar:(x,z)=>{if(crowbar){crowbar.x=x;crowbar.z=z;crowbar.held=false;}
+    return !!crowbar;},
   moveDolly:(x,z)=>{if(dolly){dolly.x=x;dolly.z=z;} return !!dolly;},
   layStop, goQuiet, unloadCursed,
   // What the Curator's router would do next, which is a deterministic question -
@@ -2284,6 +2381,13 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     opening:+(d.opening||0).toFixed(2),x:d.x,z:d.z})),
   slamDoor, holdDoor, flickerLights, flicker:()=>+flicker.toFixed(2),
   // QA only: shut a door without being dead, to time the Curator against it.
+  // QA only: empty a room's sideboard, which is what "cleared" means to the
+  // prerequisite chain. Without it nothing can tell a wing shut by its PREREQ from
+  // a wing shut by boards, because the deepest wing is always both.
+  clearRoom:id=>{const sh=shelves.find(x=>x.room===id); if(!sh) return null;
+    let n=0; for(const it of items) if(it.shelf===sh.i&&!it.gone){ it.gone=true; n++; }
+    return {room:id, emptied:n};},
+  prereqOf:id=>PREREQ[id]??null,
   slamDoorForce:()=>{const d=doorAt(player.x,player.z); if(!d) return null;
     d.shut=true; d.opening=0; return {door:d.a+"-"+d.b};},
   holdDoorForce:()=>{const d=doorAt(player.x,player.z); if(!d||!d.shut) return null;

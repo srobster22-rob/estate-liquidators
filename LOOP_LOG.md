@@ -744,6 +744,38 @@ thirty-five rounds. · 15 injections, 12 caught; the three that are not are R37'
 blind spots and stayed that way on purpose. · Regression: claims 25/25, drift 166/166, QA
 171/171.
 
+R39 · **The crowbar, and the second kind of lock.** `DESIGN` §6.4 says it in one line — "the
+boarded stair needs the crowbar that's in the garage. You physically cannot be deep at minute
+one" — and the house has never had one. Now every doorway into the deepest wing is boarded.
+**Every** doorway, not one: `LEVEL-SPEC` V3 guarantees no single portal can seal anything,
+which is exactly why the salt line buys a detour rather than a wall, so boarding one door
+would have gated precisely nothing. Boarding a whole wing is the same shape of lock the
+prerequisite chain already uses, and it is the shape the design describes. · The crowbar
+spawns shallow, never behind its own boards, and takes **both hands** — you fetch it or you
+haul, never both, so the trip to get it is a trip nobody is earning on. Prying reuses the
+door-opening shape (walk into it and it takes time), costs three seconds, and is **L75**, the
+loudest thing in the toolkit, at a doorway as deep in the house as the house goes. The crew
+never touch it; the Curator ignores boards entirely, because it is the house and not a guest.
+· **What it buys, measured rather than asserted:** with the wing shut the crew still make
+quota on all four nights — 3,817 against 1,550 on night one, 4,830 against 3,300 on night four
+— so the boards are not a wall across the contract. What is behind them is the **apex**, from
+night three, worth 32–64% of the final quota on its own. The crowbar is how the last third of
+a contract gets paid, not a gate on the first, and `DESIGN` §6.4 now says so. · **Nine injections, nine caught — but only after two rounds in which three of them
+walked straight through, and those three were more useful than the checks.** "Boards do
+not lock anything" walked through untouched twice: the deepest wing is shut by its
+prerequisite chain *as well*, and its neighbours are deep rooms with chains of their own, so
+nothing could tell wood from prerequisites. It takes emptying every sideboard in the house
+first — then `locked()` must be exactly the boarded doors and nothing else. "Only one door is
+boarded" also survived, because `reset()` had its own copy of the boarding loop and quietly
+repaired the injected estate every night; one place decides now. And "you can hold a crowbar
+and a vase at once" survived because the fixture called `grab()` while aimed at nothing, which
+is a check that cannot fail. · **A latent suite-wide bug fell out of it:** `gates(true)` is a
+global QA switch and `reset()` does not clear it, so every check after a block that turned it
+on had been running with the prerequisite chain disabled. `fresh()` clears it now. Nothing
+was passing only because of it — all 183 still pass — but the crowbar checks reported that
+boards could not be pried, and the reason was that nothing was stopping the player at all. ·
+Regression: QA 183/183, drift 168/168, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
