@@ -131,6 +131,26 @@ rich every night. The quota has to live inside that range or the chain has no sh
 > is correct for the world it was measured in; re-deriving it needs a prerequisite that costs
 > **search as well as labour**, which no model here has yet.
 
+> ### R29: the quota has never been compared to what an estate actually holds
+>
+> `sim/estate_night.py` runs a night in the real LEVEL-SPEC §8 estate — MANOR_A from
+> `estates.py`, with rooms at coordinates, a prerequisite graph, and eight specific plinths —
+> pricing every unlock by the travel it takes to reach it. It is the first model to put
+> LEVEL-SPEC's geometry and this section's quota curve in the same place.
+>
+> **MANOR_A holds $14,120.** The night-4 quota of $12,500 is **89% of everything in the house**.
+>
+> | night | quota | quota / estate | pass |
+> |---:|---:|---:|---:|
+> | 1 | $7,500 | 53% | 100% |
+> | 4 | $12,500 | **89%** | 93% |
+>
+> A crew that opens the office banks ~96% of the estate and clears every quota, so the curve has
+> no shape here either — but for the *opposite* reason to R28's. There the work gate let crews
+> rush depth; here the house simply does not contain enough to make the target hard. The quota is
+> a number and the estate's total value is a number, and **nothing in this project has ever
+> compared them.** The paragraph below already prescribes the fix; this is the magnitude.
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The

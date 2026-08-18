@@ -533,6 +533,36 @@ D-20: the curve is valid for the clock-gated world it was measured in, and **re-
 a prerequisite that costs search as well as labour** — which is now the clearest single gap in the
 simulation set.
 
+R29 · Built `sim/estate_night.py` — the prerequisite that costs **search as well as labour**,
+which R28 named as the clearest gap in the simulation set. It stops inventing the estate and uses
+the one the repo already holds: `estates.py` MANOR_A, the LEVEL-SPEC §8 worked example, with rooms
+at coordinates, a real prerequisite graph and eight specific plinths, pathed with
+`validate_estate.py`'s own geometry. **LEVEL-SPEC and ECONOMY had never been in the same model.**
+· Three things change when the estate is real. Prerequisites have **locations** — opening the
+office needs grand_stair → landing → study → conservatory, **four** tasks in four rooms, not the
+three abstract steps R28 assumed. Depth costs **distance**: the foyer plinth is 12m from the van,
+the orangery 69m and five portals. And the estate is **finite** — $14,120 across eight plinths
+needing 16 slots for a van that holds 14, so what you leave behind is the decision, where every
+previous model drew from an infinite shelf of statistically identical goods. · **The headline: the
+quota has never been compared to what an estate contains.** MANOR_A holds $14,120; the night-4
+quota of $12,500 is **89% of everything in the house**, and a crew that opens the office banks
+~96% of it. So the curve has no shape here either — but for the *opposite* reason to R28's. There
+the work gate let crews rush depth; here the house does not hold enough to make the target hard.
+The quota is a number, the estate's total value is a number, and nothing in this project had ever
+put them side by side. ECONOMY §4 already prescribes richer estates rather than a tighter ceiling;
+this is the magnitude. · **Crew size behaves differently from `chain_sim`'s monotone rise**, and
+more interestingly: the prerequisite chain is a hard gate *below* four — a crew of two affords one
+unlock and never reaches the money ($2,414), a crew of three spends 83% of the night opening doors
+— while above four it goes flat, because a finite estate runs out and the **van** binds rather than
+the labour. Both ends are consequences of modelling a house instead of a shelf. · **Caught my own
+arithmetic by reading the intermediates, not the totals.** The first run had tier 4 banking **$0**
+with prereqs eating 393s of a 540s night. `TASK_SECONDS = 75` is already wall-time *for a crew of
+four*, and I multiplied by crew and divided by crew × 0.65, inflating every task by 1.54×. Parallel
+efficiency models contending for doorways while hauling, not four people standing at a breaker;
+the two kinds of work parallelise differently and now do. · Stated as assumptions, not results:
+walk 3.2 / carry 2.6 m/s come from `proto3d`, not `tuning.json`; the crew never splits to do two
+things at once; one estate, so no variance across houses.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
