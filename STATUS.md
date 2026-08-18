@@ -10,7 +10,8 @@ below is a plan — it's a statement of what you can run today, updated whenever
 node proto3d/qa.mjs               # 171 checks, the real build in headless Chromium
 python3 sim/check_counts.py --qa 171   # the numbers in these docs are the real ones
 python3 sim/check_drift.py        # 166 constants agree across four implementations
-python3 sim/check_claims.py       # 20 documented conclusions, re-derived from the sims
+python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
+python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
 node proto3d/dump-estate.mjs --seeds 24 --out /tmp/e && \
   python3 sim/validate_estate.py --estate /tmp/e/*.json   # 10 checks x 24, all four nights
@@ -54,7 +55,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 
 | System | Spec | Why not yet |
 |---|---|---|
-| **Multiplayer** | all of it | The prototype is one player and three haul bots. The hot potato, proximity voice, the physics handoff at 120ms and the whole social layer are unproven. This is the largest gap by far. |
+| **Multiplayer** | all of it | The prototype is one player and three haul bots. This is still the largest gap by far — but the *arithmetic* of it no longer is. `sim/netcode.py` puts `TECH-SPEC` B1–B4 on a clock with a delay in it: the hot potato survives (0.13s of wrong target at 120ms, against 2.5s to be caught), the pickup race only flips in a photo finish, the pry disagrees with the victim's own screen 3.6% of the time, and the two-man drift tolerance is entirely spent on latency before the physics gets any of it. What needs four people is the *feel*. |
 | **Proximity voice** | `AUDIO-SPEC` §2 | Needs two clients. Phase 0's exit criterion. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
 | Radio, crowbar | `DESIGN` §8 | No other tools. The appraiser, flashlight, salt line, breaker and dolly are built. |
@@ -74,7 +75,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
   costs the Curator a detour. That is the same V3/V4 tension R1 found and it is not a bug in
   either — but a tool sold as "it won't cross" behaves as "it goes the long way".
 - **The sims agree with the documents, and two of them can't see much.**
-  `check_claims.py` re-derives all 20 conclusions the design documents quote. Two of those
+  `check_claims.py` re-derives all 25 conclusions the design documents quote. Two of those
   claims are about the models' own blind spots and were written after injections walked
   through them untouched: halving the labour cost of a two-man piece moves the chain by 2%
   (trips bind a night, not people), and zeroing the curse fees entirely leaves the optimum

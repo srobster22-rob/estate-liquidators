@@ -36,8 +36,15 @@ class Player:
         self.noise = 0
         self.light = False
 
-    # Set MULTIPLICATIVE=True to test the fix described in LOOP_LOG R2.
-    MULTIPLICATIVE = False
+    # The shipped weight function (D-25, FIRM): noise and light MODIFY how visible
+    # your loot is, and cannot conjure a target out of an empty-handed player.
+    # The additive version below it is what R2 replaced, kept because the failure
+    # is the argument - set this False and a loud, lit, empty-handed player becomes
+    # the hunted one every single time. This file ran the superseded model as its
+    # DEFAULT for thirty-five rounds after the decision was made FIRM, which is
+    # the same rot R37 found in chain_sim.py: the model quietly disagreeing with
+    # the document that cites it.
+    MULTIPLICATIVE = True
 
     def weight(self):
         loot = sum(v * CURSE[g] for v, g in self.items)
@@ -275,6 +282,14 @@ if __name__ == "__main__":
     print("\n\n3. IS THE RICHEST PLAYER HUNTED?")
     print("-" * 74)
     print(f"  correct target {scenario_richest():.1%} of the time")
+
+    print("\n\n3b. CAN AN EMPTY-HANDED PLAYER BE HUNTED?  (D-06 / D-25: never)")
+    print("-" * 74)
+    for mult, label in ((True, "shipped, multiplicative over items"),
+                        (False, "superseded, additive per player")):
+        Player.MULTIPLICATIVE = mult
+        print(f"  {label:<38}{scenario_lootless_target():>6.0%} of the time")
+    Player.MULTIPLICATIVE = True
 
     print("\n\n4. SACRIFICE PLAY — can a volunteer pull the Curator off a friend?")
     print("-" * 74)

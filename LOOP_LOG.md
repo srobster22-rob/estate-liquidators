@@ -703,6 +703,47 @@ night saturates at the 100 ceiling where nothing extra can register. The claim i
 what the model can actually see, and says so. · Regression: claims 20/20, drift 166/166, QA
 171/171.
 
+R38 · **Put the largest gap on a clock.** `STATUS.md` has called multiplayer the biggest risk
+in the project for twenty rounds, and it is — but "unproven" was covering two different things.
+The *feel* of four people in a house needs four people. The *arithmetic* of a host-authoritative
+world with owner-authoritative carry needs a clock, a delay, and an honest account of who
+believes what and when, and that is a thing this container can settle — the same way
+`haul_sim.py` settled the appraiser before anyone built it. `sim/netcode.py` puts all four of
+`TECH-SPEC` B1–B4's promises on a 60Hz loop with one-way delay and jitter, at 30 / 80 / 120 /
+250ms.
+
+Three of the four survive, and one does not:
+
+- **The hot potato holds.** The override retargets instantly on the *host*, which learns about
+  the hand-off one trip later, so the giver keeps the Curator for 0.13s at the spec's own
+  budget and 0.26s at 250ms — against the 2.5s the Curator needs to reach you. The design's
+  most load-bearing promise is not close to breaking.
+- **The pickup race only flips in a photo finish.** A press gap over 150ms is never overturned
+  at any latency modelled, because human reach times dwarf the jitter differential. Optimistic
+  grab plus rollback is safe.
+- **The pry disagrees with the victim's own screen** 3.6% of the time at 120ms and 7.3% at
+  250ms: they walk out of range, watch themselves escape, and lose the item anyway. Not a bug
+  in the pry — that is where the authority is — but the 1.5s hold is long enough to fix cheaply,
+  and B3 now says how.
+- **The two-man drift tolerance is already spent.** B4 allows the follower 0.4m of drift before
+  a soft correction. At 120ms the follower's view of the far end is **0.38m behind at p95**.
+  Straight-line walking costs 0.13m of that; the rest is the *pivot*, because 1.4m of lever arm
+  turns a lazy doorway turn into two metres a second of far-end travel. At 250ms, 87% of pivots
+  are over the line. So 0.4m is not a slop budget with latency inside it — it *is* the latency,
+  and the physics gets nothing. B4 now says to scale it with measured RTT and to not let the
+  correction fire on a pivot, which is the one moment it is guaranteed to trigger and the worst
+  possible moment for the couch to snap.
+
+· And the same rot R37 found, one more time: `curator_attention.py` still had the **additive**
+weight function as its default — the one R2 replaced and D-25 made FIRM against — so anyone
+running it saw the pre-R2 model. Under it, a loud, lit, **empty-handed** player is hunted 100%
+of the time; under the shipped one, never. Both are now printed side by side, and the claim
+reads the module's default rather than setting it, because a check that sets the flag it is
+testing passes just as happily with the wrong model shipped. That is exactly how this survived
+thirty-five rounds. · 15 injections, 12 caught; the three that are not are R37's documented
+blind spots and stayed that way on purpose. · Regression: claims 25/25, drift 166/166, QA
+171/171.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

@@ -365,6 +365,13 @@ on a rare event beats input lag on every pickup.
     possible, hilarious, and impossible to do by accident.
   - **No cooldown.** Let them fight over the vase in a doorway while the Curator walks up
     behind them. That's the game.
+  - **Modelled, R38.** The pry resolves on the host, and the victim's escape is judged one trip
+    time late, so a victim who walks out of range in the last moments sees themselves escape on
+    their own screen and lose the item anyway: **3.6% of pries at 120ms, 7.3% at 250ms**
+    (`sim/netcode.py`). That is not a bug in the pry, it is where the authority is — but the
+    1.5s hold is long enough to fix it cheaply: judge the escape against the victim's own
+    reported position at the moment the pry completes, and let the victim's client win ties.
+    They are the one who will notice.
 
 ## B4. Two-man carry — the hardest problem in the project
 
@@ -392,6 +399,20 @@ It is **not physically honest**, and players will never know. Two people carryin
 real life are also not in agreement about where the couch is. What it must do is survive
 120ms of latency and look like two people carrying a piano, badly, which is what it looks
 like anyway.
+
+> **Modelled, R38 — the 0.4m is already spent.** `sim/netcode.py` measures how far behind the
+> follower's view of the far end actually is, and at the spec's own 120ms budget it is **0.27m
+> mean and 0.38m at p95** against a 0.4m tolerance. Walking in a straight line costs 0.13m; the
+> rest is the *pivot*, because the far end of a two-man object sweeps at ω·r and 1.4m of lever
+> arm turns a lazy turn into two metres a second of far-end travel. At 250ms, 87% of pivots
+> exceed the tolerance outright.
+>
+> So the tolerance as written is not a slop budget with latency inside it — it *is* the latency,
+> and the physics gets whatever is left, which at 120ms is nothing. Two consequences for the
+> implementation: **scale the tolerance with measured RTT** rather than fixing it at 0.4m, and
+> **do not let the correction fire on a pivot** — the one moment it will always trigger is the
+> doorway turn, which is exactly where a soft correction fighting the network will look worst.
+> The comedy needs the couch to be wrong; it does not need it to snap.
 
 **Which end is which matters for comedy:** the follower — walking backwards, unable to see,
 shouting "left, LEFT, MY left" — is the funnier job. Make sure both ends are worth being.

@@ -34,6 +34,7 @@ import curse_test
 import disturbance
 import haul_sim
 import integrated
+import netcode
 
 VERBOSE = "-v" in sys.argv
 stale, claims = [], 0
@@ -228,11 +229,58 @@ claim("D-25", "the hot potato always works, and is instant only with the overrid
       on > 0.99 and lat_on < 0.1 and lat_off > lat_on,
       f"override {on:.0%} at {lat_on:.1f}s, without {off:.0%} at {lat_off:.1f}s")
 
+# D-06 / D-25: aggro is a property of the object, so a loud, lit, empty-handed
+# player can never become the target. The additive weight function this replaced
+# makes them the target every single time, which is the argument for the decision -
+# and was this file's DEFAULT for thirty-five rounds after the decision was FIRM.
+# Read the DEFAULT before touching it: a check that sets the flag it is testing
+# passes just as happily with the file shipping the wrong model, which is how this
+# went unnoticed for thirty-five rounds in the first place.
+default_is_shipped = curator_attention.Player.MULTIPLICATIVE is True
+curator_attention.Player.MULTIPLICATIVE = True
+shipped = curator_attention.scenario_lootless_target(trials=400)
+curator_attention.Player.MULTIPLICATIVE = False
+additive = curator_attention.scenario_lootless_target(trials=400)
+curator_attention.Player.MULTIPLICATIVE = True
+claim("D-06", "an empty-handed player is never hunted, however loud and lit they are",
+      shipped == 0.0 and additive > 0.9 and default_is_shipped,
+      f"shipped weight {shipped:.0%}, the additive one it replaced {additive:.0%}"
+      + ("" if default_is_shipped else "  - AND THE FILE STILL DEFAULTS TO THE ADDITIVE ONE"))
+
 rich = curator_attention.scenario_richest(trials=600)
 claim("TECH-SPEC A3", "the richest carrier is the one being hunted",
       rich > 0.95, f"correct target {rich:.0%} of the time")
 
-# ---------------------------------------------------------------- report
+# ---------------------------------------------------------------- the network
+# TECH-SPEC B1-B4 make four promises with numbers attached, and 120ms is the budget
+# the spec sets for itself. netcode.py is what those promises look like on a clock.
+h = netcode.scenario_handoff(120.0)
+claim("D-25", "the hot potato survives the network - 'instantly' is a fifth of a second",
+      h["p99"] < 0.25 and h["worse_than_contact"] == 0.0,
+      f"the giver stays the target for {h['mean']:.3f}s mean, {h['p99']:.3f}s p99 at 120ms")
+
+p120 = netcode.scenario_pickup(120.0)
+p250 = netcode.scenario_pickup(250.0)
+claim("TECH-SPEC B2", "the pickup race only ever flips in a photo finish",
+      p120["not_even_close"] == 0.0 and p250["not_even_close"] == 0.0 and
+      p120["first_press_lost"] < 0.05,
+      f"first press loses {p120['first_press_lost']:.1%} at 120ms and "
+      f"{p250['first_press_lost']:.1%} at 250ms, never by more than 150ms")
+
+pry = [netcode.scenario_pry(r)["disagree"] for r in (30.0, 120.0, 250.0)]
+claim("TECH-SPEC B3", "the pry disagrees with the victim's own screen, and it scales with RTT",
+      pry[0] < pry[1] < pry[2] and pry[1] < 0.05,
+      "  ".join(f"{r:.0f}ms {d:.1%}" for r, d in zip((30, 120, 250), pry)))
+
+t120 = netcode.scenario_twoman(120.0)
+t250 = netcode.scenario_twoman(250.0)
+claim("TECH-SPEC B4", "at 120ms the follower's whole drift budget is spent on latency",
+      t120["p95_lag_m"] > 0.85 * netcode.DRIFT_TOLERANCE_M and
+      t250["over_tolerance"] > 0.5,
+      f"p95 lag {t120['p95_lag_m']:.2f}m against a {netcode.DRIFT_TOLERANCE_M}m tolerance "
+      f"at 120ms; {t250['over_tolerance']:.0%} of pivots over it at 250ms")
+
+# ---------------------------------------------------------------- the report
 print(f"CLAIM CHECK  -  {claims} documented conclusions re-derived "
       f"({time.time() - t0:.0f}s)")
 print("-" * 74)
