@@ -183,7 +183,12 @@
       "clean": 0.0,
       "tainted": 0.08,
       "malignant": 0.2
-    }
+    },
+    "_carry_note": "DESIGN 4.2: every curse cost must be FELT within ~30s of pickup and be obviously caused by the thing in your hands. A cost nobody can attribute is not a cost, it is noise.",
+    "tainted_disturbance_per_s": 1.0,
+    "malignant_mass_seconds": 20.0,
+    "malignant_slow_mult": 0.62,
+    "malignant_voice_seconds": 8.0
   },
   "van": {
     "_source": "ECONOMY.md 1, LOOP_LOG R11",

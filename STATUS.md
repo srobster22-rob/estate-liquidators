@@ -7,9 +7,9 @@ below is a plan — it's a statement of what you can run today, updated whenever
 `?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 185 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 185   # the numbers in these docs are the real ones
-python3 sim/check_drift.py        # 168 constants agree across four implementations
+node proto3d/qa.mjs               # 192 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 192   # the numbers in these docs are the real ones
+python3 sim/check_drift.py        # 173 constants agree across four implementations
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
 python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
@@ -48,6 +48,8 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | Salt line | `DESIGN` §8 | One charge, 20s, laid in a doorway. Buys a detour, not denial — see the note below. |
 | The crowbar and the boarded wing | `DESIGN` §6.4, §8 | Every door into the deepest wing is boarded. The crowbar is somewhere shallow, takes both hands, and prying is L75 — the loudest thing in the game. The crew work around it; the Curator ignores it. |
 | All three Disturbance levers | `DESIGN` §6.5 | Kill the lights, go quiet (window scaled to this build's night), unload cursed cargo into the yard. |
+| What a curse costs to carry | `DESIGN` §4.2 | Tainted takes your torch away and adds Disturbance faster than the crew can decay it; malignant gains mass over 20s and speaks in a crewmate's voice, which the Curator hears. All of it ends the frame you put the piece down. |
+| The torch as a verb | `DESIGN` §4.2, `TECH-SPEC` §A3 | Dark is a lighter mark and nearly blind. A cursed piece takes the choice away. |
 | Death as a role change | `DESIGN` §5.1 | 10s collection beat, then free movement, permanent sight of the Curator, curse-sight at 5m, and a Static budget. |
 | Doors as entities | `DESIGN` §5.1 | Open until something shuts one; walking into a shut door costs 1.4s and a door's worth of noise. |
 | All five Static verbs | `DESIGN` §5.1 | Knock 1, Flicker 1, Nudge 3, Slam 2, Hold 5 — against a cap of 6, so slam-then-hold does not fit in one budget. |
@@ -60,12 +62,12 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | **Proximity voice** | `AUDIO-SPEC` §2 | Needs two clients. Phase 0's exit criterion. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
 | Radio | `DESIGN` §8 | The last tool. It is a communication device in a game with one player, so it needs the multiplayer layer to mean anything. |
-| Curses beyond value and ruin | `DESIGN` §4.2 | Grades affect price, attention and the ruin roll; no per-curse behaviour. |
+| The van's interior light as a cursed-cargo gauge | `DESIGN` §4.2 | The floor rises per cursed piece, but the van does not visibly dim — the glanceable readout is still a UI number. |
 | Unity / Steam | `BUILD-PROMPT` | The C# core exists and is pinned to the sims; there is no Unity project. |
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 185 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 192 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.

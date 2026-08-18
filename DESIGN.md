@@ -116,6 +116,19 @@ taking every cursed item you see is catastrophic (it loses roughly 40% against p
 safe). That's a real decision with a real greed curve, and it's better fiction than a
 handling fee: the collection doesn't fine you, it takes everything back at once.
 
+> **Built, R41 — and the rule below is what decided the numbers.** TAINTED forces your torch
+> on and beats it, and adds Disturbance at **1.0/s while held**. That figure is not chosen for
+> feel: a crew of four decays Disturbance at 50/min, which is 0.83/s, so anything under that
+> makes the number fall *more slowly* instead of rising, and a cost that only slows a decline
+> is not one anybody can feel. MALIGNANT gains mass over **20 seconds** to ×0.62 speed, and
+> every 8 seconds it speaks in a living crewmate's voice — which to the Curator is simply an
+> L25 noise at your position. All three end the *frame* the piece leaves your hands.
+>
+> Giving TAINTED a torch cost meant giving the torch a switch first: every actor's light was
+> hard-wired on, so "your flashlight beats like a pulse" would have been a drawback that
+> changed nothing. Dark is now a real choice — a lighter mark to the Curator's eye, and nearly
+> blind to work in — and a cursed piece is the thing that takes the choice away from you.
+
 **Every curse cost must be felt within ~30 seconds of pickup and be obviously caused by the
 thing in your hands.** This is a hard rule, added after the first design review killed the
 original effects — "your flashlight drains 3× faster" is invisible across a 12-minute run,

@@ -1225,6 +1225,121 @@ async function checks(g, fresh) {
   ok("flicker is a ghost's verb and needs a light on",
     flick.dark === null && flick.aliveTry === null, JSON.stringify(flick));
 
+  // --- what a curse costs you while you hold it (DESIGN 4.2) ----------------
+  // The hard rule in the spec: every curse cost must be felt within thirty
+  // seconds of pickup and be obviously caused by the thing in your hands. Each of
+  // these measures one of the three, and each measures it against the SAME piece
+  // put down again, because "attributable" is the half of the rule that is easy
+  // to lose.
+  await fresh();
+  const curseCarry = await g(() => {
+    window.__g.parkCrew();
+    const out = {};
+    for (const grade of ["clean", "tainted", "malignant"]) {
+      // Re-read the list AFTER the reset: reset() remakes every item, so an index
+      // taken before it points at a different piece with a different grade. This
+      // is the third fixture in this file to be caught by exactly that.
+      window.__g.reset(); window.__g.parkCrew();
+      const idx = window.__g.list().findIndex(i => i.grade === grade);
+      if (idx < 0) { out[grade] = null; continue; }
+      // Stand somewhere that is not the van: reset() puts you in the driveway,
+      // and anything in your hands there is banked on the next frame. The first
+      // version of this fixture measured an empty pair of hands for thirty
+      // seconds and reported that curses cost nothing.
+      const room = window.__g.rooms().find(r => !r.van);
+      window.__g.tp(room.x, room.z);
+      window.__g.setDist(20);
+      const before = window.__g.state().dist;
+      // Go dark FIRST, with empty hands, so what is being measured is the piece
+      // taking the choice away rather than a switch that was never flipped.
+      window.__g.toggleTorch();
+      const darkBefore = window.__g.torch().on === false;
+      window.__g.hold(idx);
+      const t0 = window.__g.torch();
+      // Stand still for the thirty seconds the rule is about. Walking for them
+      // takes you out of the room and into the van, where the piece is banked and
+      // every effect stops - which the first version of this measured as "curses
+      // cost nothing" for all three grades.
+      window.__g.step(30 * 60, 1 / 60);
+      const t30 = window.__g.torch();
+      // Now try to turn it off while holding the thing. Get it ON first - after a
+      // clean thirty seconds it is still dark, and "toggle" on a dark torch is a
+      // request for light, which is not the question being asked.
+      window.__g.toggleTorch(); window.__g.step(1, 1 / 60);
+      const wasOn = window.__g.torch().on;
+      window.__g.toggleTorch(); window.__g.step(1, 1 / 60);
+      const stuck = window.__g.torch().on;
+      const gained = window.__g.state().dist - before;
+      const voices = window.__g.noiseLog().filter(n => n.l === 25).length;
+      // Then one second of walking, which is short enough to stay in the room and
+      // long enough to read the mass in metres rather than in the variable that
+      // is supposed to cause it.
+      window.__g.tp(room.x, room.z); window.__g.look(0, 0); window.__g.press("KeyW");
+      const p0 = window.__g.raw();
+      window.__g.step(60, 1 / 60);
+      const p1 = window.__g.raw();
+      window.__g.clearKeys();
+      window.__g.drop();
+      window.__g.toggleTorch();
+      out[grade] = { darkBefore, wasOn, stuck, lightBack: t30.on === true,
+        forced: t0.forced, gained: +gained.toFixed(2),
+        slow: t30.slow, walked: +Math.hypot(p1.x - p0.x, p1.z - p0.z).toFixed(2),
+        voices, afterDrop: window.__g.torch() };
+    }
+    return out;
+  });
+  // Disturbance DECAYS at 0.83/s with four crew, so "costs you nothing" is a
+  // number that goes down. Comparing the three grades against each other is the
+  // point: the clean piece is the baseline the other two are a cost against.
+  ok("a clean piece costs you nothing to carry",
+    curseCarry.clean && curseCarry.clean.darkBefore === true &&
+    curseCarry.clean.lightBack === false && curseCarry.clean.voices === 0 &&
+    curseCarry.clean.slow === 1 && curseCarry.clean.gained < 0,
+    JSON.stringify(curseCarry.clean));
+  ok("a tainted piece turns your torch back on and will not let you turn it off",
+    curseCarry.tainted && curseCarry.tainted.darkBefore === true &&
+    curseCarry.tainted.lightBack === true && curseCarry.tainted.stuck === true &&
+    curseCarry.clean.stuck === false, JSON.stringify(curseCarry.tainted));
+  // The number has to RISE, not fall more slowly - see the note on the constant.
+  ok("and it costs Disturbance faster than the crew can decay it",
+    curseCarry.tainted && curseCarry.tainted.gained > 2 &&
+    curseCarry.tainted.gained > curseCarry.clean.gained + 20,
+    JSON.stringify({ tainted: curseCarry.tainted.gained, clean: curseCarry.clean.gained }));
+  ok("a malignant piece is visibly heavier inside twenty seconds",
+    curseCarry.malignant && curseCarry.malignant.slow <= 0.63 &&
+    curseCarry.malignant.walked < curseCarry.clean.walked * 0.85,
+    JSON.stringify({ malignant: curseCarry.malignant.walked,
+      clean: curseCarry.clean.walked, slow: curseCarry.malignant.slow }));
+  ok("and it speaks in a crewmate's voice, which is a noise where you are standing",
+    curseCarry.malignant && curseCarry.malignant.voices >= 3,
+    JSON.stringify(curseCarry.malignant));
+  ok("putting it down gives you the torch back - the cost is the thing in your hands",
+    curseCarry.tainted && curseCarry.tainted.afterDrop.forced === false &&
+    curseCarry.malignant && curseCarry.malignant.afterDrop.mass === 0,
+    JSON.stringify({ tainted: curseCarry.tainted.afterDrop,
+      malignant: curseCarry.malignant.afterDrop }));
+
+  // The torch is a verb now, and going dark is worth something: A3 weights a lit
+  // carrier above an unlit one, so the choice is "be seen" against "be blind".
+  await fresh();
+  const torch = await g(() => {
+    window.__g.parkCrew();
+    const idx = window.__g.list().findIndex(i => i.grade === "clean");
+    window.__g.hold(idx);
+    const me = window.__g.raw();
+    // Facing matters: sees() is a cone, so a Curator dropped next to you looking
+    // the wrong way weighs a lit carrier exactly like an unlit one.
+    window.__g.setCur(me.x + 2.0, me.z, "PURSUE", Math.atan2(-2.0, 0));
+    window.__g.look(0, 0);
+    const lit = window.__g.weight();
+    window.__g.toggleTorch();
+    const dark = window.__g.weight();
+    window.__g.toggleTorch();
+    return { lit, dark, back: window.__g.torch().on };
+  });
+  ok("going dark makes you a lighter mark, which is what the torch verb is for",
+    torch.dark < torch.lit && torch.back === true, JSON.stringify(torch));
+
   // --- the crowbar and the boarded wing (DESIGN 6.4, 8) ---------------------
   // "The boarded stair needs the crowbar that's in the garage. You physically
   // cannot be deep at minute one." V3 guarantees no single doorway seals anything,

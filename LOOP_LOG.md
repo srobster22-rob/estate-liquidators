@@ -803,6 +803,35 @@ is untouched, so if the night ever gets long enough for capacity to bite, the ch
 it does not will be the thing that fails. · Regression: QA 185/185, drift 168/168, claims
 25/25.
 
+R41 · **What a curse costs you to carry** — the last content gap `DESIGN` §4.2 specified and
+nothing implemented. Grades moved price, attention and the ruin roll; none of them did
+anything to the hands holding the piece. Now: **TAINTED** forces your torch on and beats it,
+and adds Disturbance while held. **MALIGNANT** gains mass over twenty seconds to ×0.62 speed,
+and every eight seconds it speaks in a living crewmate's voice — which to the Curator is an
+L25 noise exactly where you are standing. All of it ends the *frame* the piece leaves your
+hands, because §4.2's hard rule is that a cost nobody can attribute is not a cost. · **The
+tainted gain is 1.0/s and that number is an argument, not a preference.** The first
+implementation used 0.25/s and the check reported Disturbance *falling* by six points across
+the thirty seconds it was supposed to be rising: a crew of four decays at 50/min, which is
+0.83/s, so anything under that makes the number drop more slowly instead of climbing. A cost
+that only slows a decline is not one anybody can feel, which is exactly what the rule
+forbids. · **Giving TAINTED a torch cost meant giving the torch a switch first.** Every
+actor's light was hard-wired on, so "your flashlight beats like a pulse — visible to everyone"
+would have been a drawback that changed nothing at all. Dark is a verb now: a lighter mark to
+the Curator's eye, because A3's light multiplier stops applying, and nearly blind to work in.
+A cursed piece is the thing that takes the choice away. · **Nine injections, and the first
+round caught six.** All three misses were the checks' fault and each was a different way of
+testing nothing. "A tainted piece leaves your torch alone" survived because the fixture never
+turned the torch off before picking the piece up, so there was nothing to turn back on. "The
+mass does nothing to your legs" survived because the check read the *variable* that is
+supposed to cause the slowdown instead of metres walked. And "a clean piece is cursed too"
+survived because nothing asserted what a clean piece costs — the baseline was missing, so
+there was nothing for the other two to be a cost *against*. · Three fixture faults on the way,
+all of them old friends: an index taken before `reset()` and used after it, a player standing
+in the van where anything in your hands is banked on the next frame, and thirty seconds of
+walking in a straight line that carried the piece out of the room and into the van mid-
+measurement. · Regression: QA 192/192, drift 173/173, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

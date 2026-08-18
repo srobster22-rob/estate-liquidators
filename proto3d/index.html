@@ -91,7 +91,8 @@ const CONTROLS=[
                 ["Z","go quiet — nobody runs or scans, −20 over the window"],
                 ["U","at the van: unload cursed cargo into the yard"],
                 ["X","in a doorway: lay the salt line, once"],
-                ["K","pick up / put down the crowbar — then walk into the boards"]]],
+                ["K","pick up / put down the crowbar — then walk into the boards"],
+                ["J","your torch on / off — dark is safer and nearly blind"]]],
   ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you (1)"],
                  ["E","nudge something off a shelf (3)"],
                  ["F","flicker the lights — say <i>in here</i> without a radio (1)"],
@@ -229,7 +230,8 @@ const nrm=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
 const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
-const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35, crowbar:75};
+const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35, crowbar:75,
+         voiceNormal:25};
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
 const ATT_MULT={clean:1, tainted:1.5, malignant:3};
 const FEE={clean:0, tainted:.08, malignant:.20};
@@ -279,6 +281,15 @@ const COST_FLICKER=1, COST_SLAM=2, COST_HOLD=5, HOLD_S=4.0;
 // slamming one is worth two Static.
 const DOOR_OPEN_S=1.4;
 const PRY_S=3.0;   // DESIGN 8: the crowbar is the loudest thing in the toolkit
+// DESIGN 4.2, the hard rule: a curse cost must be felt inside thirty seconds and
+// be obviously the thing in your hands. These three are what "felt" means -
+// a light you cannot switch off, a piece that gets heavier while you carry it,
+// and a voice that is not your crewmate's giving away where you are.
+// 1.0/s is chosen against the decay, not out of the air: a crew of four decays
+// Disturbance at 50/min, which is 0.83/s, so anything below that makes the number
+// fall more slowly rather than rise. A cost that only slows a decline is not a
+// cost anybody can feel, and DESIGN 4.2's hard rule is that it must be felt.
+const TAINT_DIST_PER_S=1.0, MAL_MASS_S=20.0, MAL_SLOW=0.62, MAL_VOICE_S=8.0;
 // DESIGN 6.5. Lights are the exception to "every gain comes from a Loudness
 // value": switching on a wing is silent and a flat +25. Killing the breaker is
 // -15 instantly, and the cost is that you hauled that wing lit for a reason.
@@ -892,6 +903,7 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyC"&&started&&!over&&!player.dead) toggleHide();
   if(e.code==="KeyQ"&&started&&!over) knock();
   if(e.code==="KeyK"&&started&&!over) takeCrowbar();
+  if(e.code==="KeyJ"&&started&&!over) toggleTorch();
   if(e.code==="KeyF"&&started&&!over&&player.dead) flickerLights();
   if(e.code==="KeyV"&&started&&!over){ if(!slamDoor()) holdDoor(); }
   if(e.code==="KeyL"&&started&&!over) toggleLights();
@@ -1031,6 +1043,10 @@ function grabDrop(){
 function dropHeld(a,speed){
   const it=a.holding; if(!it) return;
   releaseItem(it);
+  // The mass and the voice end the moment the thing leaves your hands, not on the
+  // next frame: DESIGN 4.2's rule is that the cost is attributable to the object,
+  // and a cost that outlives the object by even a frame is not.
+  if(a===player){ player.mass=0; player.voiceT=0; }
   it.x=a.x+Math.sin(a.yaw??a.face)*0.8; it.z=a.z+Math.cos(a.yaw??a.face)*0.8;
   it.y=it.klass==="two_man"?0.62:0.45;
   if(breaks(it,speed??0)){ shatter(it,a); return; }
@@ -1324,6 +1340,8 @@ function step(dt){
       sfx.event(L.sprint,player.x,player.z); } }
   else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
 
+  carryCurse(dt);
+
   // The dead move freely - no collision, no light needed, fast. You are the
   // crew's overwatch and the only way to deliver what you can see is out loud.
   if(player.dead){
@@ -1350,6 +1368,7 @@ function step(dt){
   else if(moving){
     let sp=player.holding?(run?CARRY_RUN:CARRY):(run?RUN:WALK);
     if(player.holding&&player.holding.klass==="two_man") sp*=TWO_MAN_SPEED;
+    sp*=massSlow();                 // DESIGN 4.2: a malignant piece gains mass
     if(dolly&&dolly.held) sp*=DOLLY_SPEED;
     const nx=player.x+(fwd[0]*mx+right[0]*mz)*sp*dt;
     const nz=player.z+(fwd[2]*mx+right[2]*mz)*sp*dt;
@@ -1557,6 +1576,55 @@ function nudge(){
 const curseSight=it=>player.dead&&Math.hypot(it.x-player.x,it.z-player.z)<=CURSE_SIGHT_M;
 
 // The two levers the crew actually has over the pacing spine.
+// DESIGN 4.2 gives TAINTED a carry cost of "your flashlight beats like a pulse -
+// visible to everyone, including the Curator". That is only a cost if the light
+// was ever yours to switch off, and it was not: every actor's torch was hard-wired
+// on, so the tainted grade would have been a no-op dressed as a drawback. So the
+// torch is a verb now - dark is quieter to the Curator's eye (A3's light
+// multiplier stops applying) and much harder to work in - and a tainted piece in
+// your arms takes the switch away from you.
+function toggleTorch(){
+  if(player.dead) return null;
+  if(taintedHeld()) return {forced:true, light:true};
+  player.light=!player.light;
+  return {forced:false, light:player.light};
+}
+const taintedHeld=()=>{
+  const it=player.holding;
+  return !!it && (it.grade==="tainted"||it.grade==="malignant");
+};
+const malignantHeld=()=>!!player.holding && player.holding.grade==="malignant";
+
+// The three carry costs, all of them inside DESIGN 4.2's thirty seconds and all of
+// them attributable to the object: the light you cannot switch off, the weight
+// that arrives while you walk, and the voice that is not your crewmate's.
+function carryCurse(dt){
+  const it=player.holding;
+  if(!it||player.dead||it.grade==="clean"){
+    player.mass=0; player.voiceT=0;
+    return;
+  }
+  // TAINTED: the torch is forced on and beats, so you are lit for the Curator's
+  // sight weighting the whole time you are holding it, and the room can see you.
+  player.light=true;
+  player.pulse=(player.pulse||0)+dt;
+  dist=Math.min(100,dist+TAINT_DIST_PER_S*dt);
+  if(it.grade!=="malignant"){ player.mass=0; player.voiceT=0; return; }
+  // MALIGNANT: it gains mass fast - you are visibly slower within twenty seconds -
+  // and it speaks in a crewmate's voice, which to the Curator is simply a noise
+  // where you are standing.
+  player.mass=Math.min(1,(player.mass||0)+dt/MAL_MASS_S);
+  player.voiceT=(player.voiceT||0)+dt;
+  if(player.voiceT>=MAL_VOICE_S){
+    player.voiceT=0;
+    const who=crew.find(a=>a.alive);
+    it.said=who?who.name:"SOMEBODY";
+    noise(L.voiceNormal,true,0,player.x,player.z,player);
+    sfx.event(L.voiceNormal,player.x,player.z);
+  }
+}
+const massSlow=()=>1-(1-MAL_SLOW)*(player.mass||0);
+
 function toggleLights(){
   const r=roomAt(player.x,player.z);
   if(!r||r.van||player.dead) return null;
@@ -2024,7 +2092,11 @@ function render(){
   // In a wardrobe the flashlight is off and you are looking through a gap - but
   // you can still see the room. Watching it come is the mechanic; at the first
   // pass the light was cut so hard that hiding was blind, which is just waiting.
-  gl.uniform1f(U.uRange, player.dead?26.0:player.hiding?12.0:(marked?11.5:19.0));
+  // A torch that is off is off: the beam is the only real light in the house, so
+  // going dark is a real cost and not a cosmetic one. A tainted piece beats it.
+  const beat = taintedHeld() ? 0.72+0.28*Math.sin((player.pulse||0)*7.5) : 1.0;
+  const torch = player.light||player.dead ? 1.0 : 0.0;
+  gl.uniform1f(U.uRange, torch*beat*(player.dead?26.0:player.hiding?12.0:(marked?11.5:19.0)));
   gl.uniform1f(U.uCone, marked?0.88:0.80);
   gl.uniform1f(U.uAmbient, (player.dead?0.10:player.hiding?0.115:0.045)+(flicker>0?0.22:0));
   const litRooms=ROOMS.filter(r=>lit.has(r.id)).slice(0,8);
@@ -2218,6 +2290,12 @@ function hud(){
       (salt.until-t).toFixed(1)}s</span><br>`:"")+
     (DOORS.some(d=>d.shut)?`<span style="color:#8b8880">${
       DOORS.filter(d=>d.shut).length} door${DOORS.filter(d=>d.shut).length>1?"s":""} shut</span><br>`:"")+
+    (player.holding&&player.holding.grade!=="clean"&&!player.dead?
+      `<span style="color:#a8683f">${player.holding.grade.toUpperCase()} IN YOUR HANDS`+
+      `  ·  torch stuck on${player.holding.grade==="malignant"
+        ? `  ·  heavier (${Math.round((player.mass||0)*100)}%)`+
+          (player.holding.said?`  ·  it just spoke in ${player.holding.said}'s voice`:"")
+        : ""}</span><br>`:"")+
     (crowbar&&crowbar.held?`<span style="color:#b09a54">CARRYING THE CROWBAR  ·  `+
       `walk into the boarded doors to pry them  ·  [K] put it down</span><br>`:"")+
     (crowbar&&!crowbar.held&&nearCrowbar()?`<span style="color:#8a8f7a">`+
@@ -2308,6 +2386,9 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     if(face!==undefined)curator.face=face;},
   setMode:m=>{curator.mode=m;},
   raw:()=>({x:player.x,z:player.z}),   // unrounded; pos() is display precision
+  weight:()=>+attentionWeight().toFixed(2),
+  drop:()=>{ if(!player.holding) return null;
+    const v=player.holding.value; dropHeld(player,0); return v; },
   cargo:()=>van.cargo.map(c=>({grade:c.grade,value:c.value})),
   noiseLog:()=>noiseLog.slice(),
   audio:()=>sfx.probe(), startAudio:()=>sfx.start(), mute:v=>sfx.mute(v),
@@ -2359,7 +2440,10 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   dolly:()=>dolly?{x:+dolly.x.toFixed(2),z:+dolly.z.toFixed(2),held:dolly.held,
     load:dolly.load?dolly.load.value:null,tipped:+dolly.tipped.toFixed(2)}:null,
   takeDolly, loadDolly, unloadDolly,
-  takeCrowbar,
+  takeCrowbar, toggleTorch,
+  torch:()=>({on:player.light, forced:taintedHeld(),
+    mass:+(player.mass||0).toFixed(3), slow:+massSlow().toFixed(3),
+    said:player.holding?player.holding.said??null:null}),
   crowbar:()=>crowbar?{x:+crowbar.x.toFixed(2), z:+crowbar.z.toFixed(2),
     held:crowbar.held, room:roomAt(crowbar.x,crowbar.z)?.id??crowbar.room}:null,
   boarded:()=>({wing:BOARDED_WING,
