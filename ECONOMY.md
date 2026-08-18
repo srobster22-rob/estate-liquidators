@@ -712,13 +712,32 @@ tiers.** That is where the quota curve's difficulty came from, and nothing in th
 actually requires it: paying 225s of prerequisite labour and then looting only tier 3 is
 strictly better, because deep loot is ~5× richer per slot.
 
-> **Do not re-calibrate off this either — the model is missing the thing that probably
-> prevents it.** `LEVEL-SPEC.md` §3 puts each prerequisite *in a shallower wing*: the
-> conservatory key is in a tier-1 room. So a crew cannot buy depth without **traversing**
-> shallow space, and this model lets them do prerequisite work abstractly, from nowhere.
-> Traversal is not the same as taking, though — **nothing forces a crew to spend van slots on
-> shallow loot, and the quota curve assumes they do.** That is the real open question, and it
-> needs the prerequisite to be located in space before it can be answered.
+> **R38 located the prerequisites in space, and the finding survives.** `LEVEL-SPEC.md` §3
+> puts each one in a shallower wing — the conservatory key is in a tier-1 room — so buying
+> depth now costs a trip back through the shallow tier, and the crew sees that tier's shelves
+> on the way. It narrows the gap and does not close it: night 1 goes $16,864 → $15,043, night
+> 4 $21,680 → $20,115, still 100% pass. **Traversal is not taking.** Walking past shallow loot
+> does not oblige a crew to spend van slots on it.
+>
+> It survives the full model too (noise, curses, rooms), where it is softer but still decisive:
+>
+> | Night | Quota | Wall-clock | Pass | Work-gated | Pass |
+> |---:|---:|---:|---:|---:|---:|
+> | 1 | $7,500 | $12,282 | 91% | $17,029 | 93% |
+> | 4 | $12,500 | $11,351 | 52% | $24,536 | **83%** |
+>
+> **So the conclusion is now well-tested: the quota curve is calibrated ~1.4–1.7× too easy,
+> and the difficulty it appears to have was supplied by a wall-clock schedule the design does
+> not specify.** It survived proper labour gating, three policy-bug fixes, prerequisites
+> located in space, and the full noise/curse/room model.
+>
+> **The design question this raises is the interesting one, and it is not a tuning question:
+> should rushing depth be optimal?** As specified it is — deep loot is ~5× richer per slot and
+> depth costs a fixed 225s of labour, so the shallow tiers are a toll rather than a place you
+> want to be. If that is wrong, something must make shallow time worth spending: prerequisites
+> whose *location* must be searched for rather than paid for, a Disturbance premium on depth,
+> or shallow wings that hold something depth does not. **Pick deliberately** — right now the
+> shallow half of every estate is content the optimal crew walks through.
 
 **What is safe to act on now:** put the object count in `LEVEL-SPEC.md` as an explicit
 authored constant with its rationale, because right now it is an accident of how many plinths

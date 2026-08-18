@@ -840,6 +840,27 @@ prerequisite work abstractly, from nowhere. But traversal is not taking: **nothi
 crew to spend van slots on shallow loot, and the quota curve assumes they do.** That is the
 real open question and it needs prerequisites located in space before it can be answered.
 
+R38 · Located the prerequisites in space, which is what R37 said was needed before its finding
+could be trusted. `LEVEL-SPEC.md` §3 puts each one in a shallower wing, so buying depth now
+costs a trip back through the shallow tier **and the crew sees that tier's shelves on the way**
+— the fix is one line, falling through to the normal encounter instead of skipping it. ·
+**It narrows the gap and does not close it.** Night 1 goes $16,864 → $15,043, night 4 $21,680 →
+$20,115, still 100% pass. **Traversal is not taking**: walking past shallow loot does not
+oblige a crew to spend van slots on it, which was exactly the distinction R37 flagged and could
+not test. · **Survives the full model too** (noise + curses + rooms), softer but decisive:
+work-gated earns 1.4–2.2× and passes 83–93% where the wall-clock crew passes 52–91%. · **So
+after four rounds of chasing it, the conclusion is well-tested: the quota curve is calibrated
+~1.4–1.7× too easy, and the difficulty it appears to have was supplied by a wall-clock schedule
+the design does not specify.** It has now survived proper labour gating (R37), three policy-bug
+fixes, prerequisites located in space, and the full noise/curse/room model. · **And the
+question it leaves is a design one, not a tuning one: should rushing depth be optimal?** As
+specified it is — deep loot is ~5× richer per slot and depth costs a fixed 225s of labour, so
+**the shallow half of every estate is a toll rather than a place you want to be.** If that is
+wrong, something has to make shallow time worth spending: prerequisites whose *location* must
+be searched for rather than paid for, a Disturbance premium on depth, or shallow wings holding
+something depth does not. That is a call to make deliberately, and it is the first thing in
+this project that four rounds of modelling have handed over unresolved rather than answered.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -847,20 +868,20 @@ real open question and it needs prerequisites located in space before it can be 
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R38: put prerequisites in space, which is the last thing standing between this model and a
-usable quota curve.** R37 showed the wall-clock schedule was the only thing making the crew
-spend time in shallow tiers, and that with depth genuinely bought a crew clears every quota by
-1.8×. But `LEVEL-SPEC.md` §3 requires each prerequisite to live in a *shallower wing*, so a
-crew must traverse tier 1 to buy tier 2 — this model lets them do the work from nowhere. Give
-the prerequisite a location: it costs a trip into the tier below, during which the crew sees
-that tier's shelves. **Then the real question becomes answerable — traversal is not taking, and
-nothing yet forces a crew to spend van slots on shallow loot while the quota curve assumes they
-do.** If it turns out nothing does, the quota curve is wrong by roughly 1.8× and §4 needs
-rewriting around a crew that rushes depth.
+**R39 is a decision, not a round, and it is the first thing four rounds of modelling have
+handed over unresolved: should rushing depth be optimal?** As the design stands it is — deep
+loot is ~5× richer per slot and depth costs a fixed 225s of labour, so the shallow half of
+every estate is a toll rather than a place a crew wants to be, and the quota curve's apparent
+difficulty came entirely from a wall-clock schedule the design never specified (R37/R38).
+Three ways out, all of them design rather than tuning: prerequisites whose **location** must be
+searched for rather than paid for; a **Disturbance premium on depth**, so deep trips cost noise
+as well as time; or shallow wings holding **something depth does not** — the light levers of
+`DESIGN.md` §6.5 are already specced and built nowhere, and they would be a reason to be
+downstairs. Whichever, the quota curve in §4 needs rewriting afterwards, not before.
 
-**Then: put the object count in `LEVEL-SPEC.md` as an authored constant** (R34), and fix the
-tier-relative reservation bar (R36/R37 confirmed it as a real defect worth ~1.7× at large
-estates).
+**Then the two mechanical items still queued:** put the object count in `LEVEL-SPEC.md` as an
+authored constant (R34), and fix the tier-relative reservation bar (R36/R37 confirmed it as a
+real defect worth ~1.7× at large estates).
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their

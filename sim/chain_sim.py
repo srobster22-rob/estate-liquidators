@@ -407,9 +407,17 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
                 # the apex at all -- which is ~$6,000 of a ~$12,000 night.
                 or (reserve_apex and allow_apex and not apex_offered))
             if want_deeper:
+                # R38: the prerequisite lives IN SPACE. LEVEL-SPEC 3 puts each one in a
+                # shallower wing -- the conservatory key is in a tier-1 room -- so buying
+                # depth means going back through the shallow tier and seeing its shelves
+                # on the way. R37 let the crew do this work from nowhere, which is what
+                # made rushing depth free. Falling through to the normal encounter below
+                # (rather than `continue`) is the whole fix: the crew pays the labour AND
+                # walks past the loot, and then chooses.
                 t += TASK_LABOUR / labour_pool
                 steps_done += 1
-                continue
+                if t >= HAUL_WINDOW_S:
+                    break
 
         # The apex is ONE object per estate (LEVEL-SPEC.md 2), offered once.
         if tier == 4 and allow_apex and not apex_offered:
