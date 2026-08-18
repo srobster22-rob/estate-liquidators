@@ -110,7 +110,14 @@ def build_real_log(
     plan = waved_plan(weeks)
 
     log = TrainingLog()
-    log.set_baseline(path, "squat", BASELINE_E1RM)
+    # Establish the baseline by taking the same test everything else is measured against.
+    # R9 (D-30) found that a constant RIR bias only cancels when the denominator was
+    # produced by the same lifter under the same protocol — a declared baseline nearly
+    # doubles median MRV error. Measuring it here is both the correct behaviour and the
+    # more realistic rehearsal.
+    b_load, b_reps, b_rir = observed_test(BASELINE_E1RM, plate)
+    log.set_baseline_from_test(path, PerformanceTest(
+        week=0, day=0, exercise="squat", reps=b_reps, load=b_load, rir=b_rir))
 
     daily: list[float] = []
     for w, weekly_target in enumerate(plan):

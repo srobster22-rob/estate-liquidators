@@ -43,10 +43,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="meso", description="MESO training log")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p = sub.add_parser("baseline", help="record a reference e1RM for a lift")
+    p = sub.add_parser(
+        "baseline",
+        help="establish a reference e1RM — prefer --reps/--load over --value (D-30)",
+    )
     p.add_argument("log")
     p.add_argument("--exercise", required=True)
-    p.add_argument("--value", type=float, required=True)
+    p.add_argument("--reps", type=int, help="reps on a baseline test set (preferred)")
+    p.add_argument("--load", type=float, help="load on a baseline test set (preferred)")
+    p.add_argument("--rir", type=float, default=1.0)
+    p.add_argument("--value", type=float,
+                   help="a declared e1RM from elsewhere — breaks bias cancellation, D-30")
 
     p = sub.add_parser("set", help="log one hard set")
     p.add_argument("log")
@@ -75,8 +82,22 @@ def main(argv: list[str] | None = None) -> int:
     log = load(args.log)
 
     if args.cmd == "baseline":
-        log.set_baseline(args.log, args.exercise, args.value)
-        print(f"baseline for {args.exercise}: {args.value}")
+        if args.reps and args.load:
+            t = PerformanceTest(week=0, day=0, exercise=args.exercise,
+                                reps=args.reps, load=args.load, rir=args.rir)
+            _warn(t.validate())
+            log.set_baseline_from_test(args.log, t)
+            print(f"baseline for {args.exercise}: {t.estimated_1rm():.1f} "
+                  f"(measured, same protocol)")
+        elif args.value is not None:
+            log.set_baseline(args.log, args.exercise, args.value)
+            print(f"baseline for {args.exercise}: {args.value} (declared)")
+            print("  ! a declared baseline breaks RIR-bias cancellation and nearly doubles",
+                  file=sys.stderr)
+            print("    fitting error (D-30). Prefer --reps/--load on a real test set.",
+                  file=sys.stderr)
+        else:
+            parser.error("baseline needs either --reps and --load, or --value")
 
     elif args.cmd == "set":
         ws = WorkSet(

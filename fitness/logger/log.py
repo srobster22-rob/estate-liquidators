@@ -238,6 +238,7 @@ class TrainingLog:
     sessions: list[Session] = field(default_factory=list)
     tests: list[PerformanceTest] = field(default_factory=list)
     baseline_e1rm: dict[str, float] = field(default_factory=dict)
+    baseline_source: dict[str, str] = field(default_factory=dict)
 
     # -- queries ---------------------------------------------------------
 
@@ -294,6 +295,12 @@ class TrainingLog:
         for t in self.tests:
             if t.exercise not in self.baseline_e1rm:
                 problems.append(f"no baseline recorded for test exercise '{t.exercise}'")
+            elif self.baseline_source.get(t.exercise) != "test":
+                problems.append(
+                    f"baseline for '{t.exercise}' was declared rather than measured by the "
+                    "same test protocol — a constant RIR bias no longer cancels, which "
+                    "nearly doubles fitting error (D-30). Prefer set_baseline_from_test."
+                )
         return problems
 
     # -- persistence -----------------------------------------------------
@@ -306,9 +313,34 @@ class TrainingLog:
         _append(path, {"type": "test", **asdict(test)})
         self.tests.append(test)
 
-    def set_baseline(self, path: str, exercise: str, value: float) -> None:
-        _append(path, {"type": "baseline", "exercise": exercise, "value": value})
+    def set_baseline(self, path: str, exercise: str, value: float,
+                     source: str = "declared") -> None:
+        """
+        Record a reference e1RM directly.
+
+        PREFER `set_baseline_from_test`. R9 found that a constant RIR reporting bias
+        CANCELS — observations are e1RM as a percentage of the baseline, so a bias that
+        scales every measurement scales the denominator too — but only if the baseline was
+        produced by the same lifter under the same protocol. A baseline that came from
+        somewhere else (a previous program, a coach's number, a true tested single) breaks
+        the cancellation and nearly doubles median MRV error, 6.7% to 12.8%. D-30.
+        """
+        _append(path, {"type": "baseline", "exercise": exercise, "value": value,
+                       "source": source})
         self.baseline_e1rm[exercise] = value
+        self.baseline_source[exercise] = source
+
+    def set_baseline_from_test(self, path: str, test: "PerformanceTest") -> None:
+        """
+        Establish the baseline by taking the same test everything else is measured
+        against.
+
+        This is the structural version of D-30: rather than asking a lifter to be
+        disciplined about where their reference number came from, compute it through the
+        identical code path as every weekly observation. Whatever bias they carry is then
+        in the numerator and the denominator alike, and cancels by construction.
+        """
+        self.set_baseline(path, test.exercise, test.estimated_1rm(), source="test")
 
 
 def _append(path: str, record: dict) -> None:
@@ -360,6 +392,7 @@ def load(path: str) -> TrainingLog:
                 log.tests.append(PerformanceTest(**rec))
             elif kind == "baseline":
                 log.baseline_e1rm[rec["exercise"]] = rec["value"]
+                log.baseline_source[rec["exercise"]] = rec.get("source", "declared")
 
     log.sessions = [sessions[k] for k in sorted(sessions)]
     return log

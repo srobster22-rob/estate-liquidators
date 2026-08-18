@@ -587,7 +587,7 @@ this decision is about diminishing returns, not about a ban.
 
 ---
 
-## D-24 · RIR is treated as extra reps, and that presumes an unbiased lifter — WORKING
+## D-24 · RIR is treated as extra reps, and that presumes an unbiased lifter — **RESOLVED as a protocol rule** (R9)
 
 A set of n reps at RIR r is scored as a set of (n + r) reps at failure, everywhere in the
 project.
@@ -607,6 +607,19 @@ this from an assumption into a per-lifter correction term.
 
 **Partly mitigated by D-26**, which moves the *test* to RIR 0–1 where there is almost no
 room to misestimate. The training sets still carry it.
+
+**R9 resolved it, and no estimator was needed.** A CONSTANT bias cancels: observations are
+e1RM as a percentage of a baseline, so a bias that scales every measurement scales the
+denominator too. Worth 0.3 percentage points across the full offset range — *provided the
+baseline was measured the same way* (D-30, which is the actual finding). Only bias that
+VARIES survives the ratio, and D-26's RIR cap bounds even that, since a bias large enough
+to saturate becomes a constant and cancels. The honest worst case, inside the unsaturated
+band, is +4.9 points.
+
+**What remains unaddressed:** state-dependent bias — judgement degrading with fatigue — is
+structurally the nastiest kind because it correlates with the signal being measured, and
+nothing corrects it. It costs 3.4 points at 1 rep of misjudgement at full fatigue. Real
+data is the only way to size it.
 
 ---
 
@@ -730,3 +743,53 @@ may matter for a question not yet asked.
 **What would resolve it:** compare the modelled protocol (re-target load weekly, reps near
 constant) against a fixed-load protocol (load held for a block, reps carry the signal). If
 the effect vanishes under fixed load, the re-targeting hypothesis is right.
+
+---
+
+## D-30 · The baseline must be measured with the same protocol as the tests — FIRM
+
+`set_baseline_from_test()` computes the reference e1RM through the identical code path as
+every weekly observation. The CLI's `baseline` verb prefers `--reps/--load` over `--value`,
+provenance is stored on the record, and `validate()` flags a declared baseline.
+
+**Why:** R9 found that a constant RIR reporting bias cancels — numerator and denominator
+scale together — but only under this condition. Measured the same way, a 1-rep constant
+offset costs **0.3 percentage points**. Taken from elsewhere (a previous program, a coach's
+number, a true tested single), the same offset takes median MRV error from **6.7% to
+12.8%**.
+
+**Why structural rather than advisory:** the failure is silent. A log with a declared
+baseline looks entirely normal, fits without complaint, and is nearly twice as wrong. A
+rule in a document would be followed by whoever read the document.
+
+**What it costs:** a lifter cannot seed the app with a 1RM they already know. Their first
+week is a test, and the number MESO uses will not match the number in their head — which
+will read as the app being wrong about them. That is a real onboarding cost and it is
+being paid deliberately.
+
+**What would prove it wrong:** real lifters whose declared and measured baselines agree
+within ~1%, which would mean the protocol difference does not exist in practice and the
+warning is noise. Also worth revisiting if the truncation correction (D-28) turns out to be
+what makes measured and declared baselines differ, rather than RIR judgement.
+
+---
+
+## D-31 · D-26's RIR cap bounds reporting bias, not just noise — FIRM (observation)
+
+A test is taken at RIR 0–1, and a lifter cannot report fewer than zero reps in reserve. A
+bias large enough to saturate therefore becomes a **constant** — and constants cancel
+(D-30). Only bias small enough to stay inside `0 < reported RIR < 1` can vary at all.
+
+**Why it is logged:** the cap was chosen in R7 purely to reduce measurement noise, and this
+second effect was not designed, noticed, or predicted. It is the kind of property that gets
+destroyed by a well-meaning change — someone widening the test window to RIR 0–3 for
+adherence reasons would remove a protection nobody documented.
+
+**The trap it set, which R9 nearly published:** a combined bias model with constant 1.5
+scores +0.2 points and reads as harmless. It is harmless only because it saturates into a
+constant. The number was correct and the interpretation would have been nonsense. Any
+future bias experiment must confirm its parameters leave `reported RIR` strictly inside
+(0, 1) before reporting a magnitude.
+
+**What would prove it wrong:** a protocol change to the test window. This decision is
+downstream of D-26 and dies with it.

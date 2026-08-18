@@ -396,41 +396,84 @@ but observation-level accuracy is near-identical across plate sizes, so it is no
 by measurement precision either. The plausible mechanism was not tested. Logged as D-29
 OPEN rather than explained badly.
 
+R9 · Built the RIR reporting-bias model and its experiments (`logger/rir_bias.py`,
+`logger/rir_experiment.py`) plus 18 tests, and closed D-24 — which had been open since R7
+and top-ranked by R8 on the grounds that data not collected in month one cannot be
+recovered in month six. **The estimator it asked for turned out to be unnecessary**, and
+checking whether the quantity reaches the answer *before* building machinery to correct it
+is what saved the round.
+
+· **A constant RIR bias cancels.** Observations are e1RM as a percentage of a baseline, so
+a bias scaling every measurement scales the denominator too. A 1-rep constant offset costs
+**0.3 percentage points** — 6.7% to 7.0% median MRV error.
+
+· **On one condition, which is the actual finding.** That cancellation requires the
+baseline to have been produced by the same lifter under the same protocol. Taken from
+anywhere else — a previous program, a coach's number, a tested single — the same offset
+takes median error from **6.7% to 12.8%**. Now structural rather than advisory:
+`set_baseline_from_test()` computes the baseline through the identical code path as every
+observation, the CLI prefers `--reps/--load` over `--value`, provenance is stored, and
+`validate()` flags a declared baseline. The failure it prevents is silent — a declared
+baseline produces a log that looks entirely normal and fits nearly twice as badly. D-30.
+
+· **Only varying bias survives, and D-26 already bounds it.** Drift of 0.05 reps/week costs
+14.5%, state-dependence of 1 rep at full fatigue costs 10.1%, and the honest worst case
+inside the unsaturated band is **+4.9 points**. But a test taken at RIR 0–1 cannot be
+under-reported below zero, so **a bias large enough to saturate becomes a constant — and
+constants cancel.** R7 chose that cap to reduce measurement noise; it also caps how much
+reporting bias can ever reach the answer. Nobody designed that. D-31.
+
+· **Caught the round's own trap before publishing it.** The first cost-of-ignoring
+experiment used a combined model with constant 1.5 and scored **+0.2 points**, which reads
+as "bias is harmless". It is harmless only because it saturates to a constant. The number
+was correct and the conclusion would have been nonsense. Any future bias experiment must
+confirm its parameters leave reported RIR strictly inside (0, 1) before quoting a
+magnitude.
+
+· Also fixed a broken first run: experiment 1 used a clean baseline of 140.0 while the
+lifter's observations carried bias, so it measured the *uncancelled* case and reported it
+as the general one. The corrected experiment sweeps both, which is what produced D-30.
+
+· **What is explicitly not established:** the offset estimator recovers a known value
+exactly, but that tests its arithmetic rather than its behaviour on noisy real logs. No
+estimator was built for the varying case — specifying one needs real data. D-24 closes as
+"one protocol rule instead of an estimator".
+
 ---
 
 ## Next round
 
-**The pre-data work is now done.** R7 built the collector, R8 proved the shipping path
-recovers what the simulation path recovers and closed the last safety gap between a log and
-a prescription. There is no remaining item that changes what gets built.
+**Nothing left before data is worth more than the data.** R7 built the collector, R8 proved
+the path and closed the last safety gap, R9 closed the last thing that was cheap now and
+expensive later. Every remaining ranked item is a refinement of a system that is waiting on
+twenty lifters and six months.
 
-**What the project needs is twenty lifters and six months.** Unchanged since R6, now fully
-unblocked. That dataset settles D-01 (do endurance priors transfer), D-04 (the saturation
-ceiling), D-09 (real measurement noise), D-16 (does anyone occupy the degenerate corner),
-D-20 (does any real covariate reach rho 0.5), D-24 (is RIR reporting biased), D-25 (the
-variation floor) and D-28 (is the truncation model right) — eight open decisions, one
-dataset. No simulation settles any of them.
+**The dataset settles, simultaneously:** D-01 (do endurance priors transfer), D-04 (the
+saturation ceiling, and whether the MRV discrepancy is a set-counting convention), D-09
+(real measurement noise under the D-26 protocol), D-16 (does anyone occupy the degenerate
+corner), D-20 (does any real covariate reach rho 0.5), D-24/D-30 (is RIR reporting biased,
+and do declared and measured baselines actually differ), D-25 (the variation floor) and
+D-28 (is the truncation model right). Eight decisions, one dataset, and no simulation
+settles any of them.
 
-Ranked, for as long as rounds continue without data:
+If rounds continue without data, ranked by what would change if the answer surprised us:
 
-**R9: the RIR bias correction (D-24), specified now rather than later.** R7 measured that a
-systematic RIR misestimate shifts an observation 4.8% and does not average out; D-28 just
-showed how much a bias of that size matters. A per-lifter offset is estimable from the
-relationship between logged RIR-2 sets and tested maxes — but only if the logger records
-what the estimate needs. **Data not collected in month one cannot be recovered in month
-six**, which makes this the last thing that is cheap now and expensive later.
+**R10: re-derive D-25's variation floor.** 0.18 is the weakest number in the shipping code
+— calibrated against a synthetic history, never a real one — and it decides whether a real
+user ever gets a personalised number at all. Wrong in either direction it is felt: too high
+and disciplined lifters are permanently told "population prior"; too low and D-10's
+unidentifiability leaks through the gate.
 
-**Runner-up: re-derive D-25's variation floor.** 0.18 is the weakest number in the logger,
-calibrated against a synthetic history and never a real one. It decides whether a real user
-ever gets a personalised number, so it is the threshold most likely to be wrong in a way
-someone actually feels.
+**Runner-up: D-29's plate mystery.** The honest way to close an OPEN decision. Run the
+modelled re-targeting protocol against a fixed-load protocol and see whether the effect
+survives; it also probes whether the *test protocol* should specify how load is chosen,
+which nothing currently does.
 
-**Third: D-29's plate mystery.** Cheap, and the honest way to close an OPEN decision — run
-the modelled re-targeting protocol against a fixed-load protocol and see whether the effect
-survives.
+**Third: D-06, the volume-matched deload sweep.** Unstarted through eight rankings. Worth
+one round purely to close it.
 
-**Fourth: D-06, the volume-matched deload sweep.** Now unstarted through seven rankings.
-Worth one round purely to close it rather than carry it forever.
+**Fourth: D-05, frequency.** Open since R1 and still the honest answer is probably "accept
+it as a user constraint rather than optimise it".
 
-**Everything else in simulation** remains worth less than the uncertainty in the population
-definition (D-22, D-23).
+**A standing note, per D-22 and D-23:** every number these rounds would produce is a
+property of `PRIOR_SPREAD` until real logs exist. Ratios transfer; magnitudes do not.

@@ -14,7 +14,7 @@ This document is written to be built from. Where a number is a guess it says so,
 
 ## 1. Status
 
-**Rounds 1–8 complete.** The core model exists and is tested (135 tests,
+**Rounds 1–9 complete.** The core model exists and is tested (153 tests,
 `fitness/tests/`). Each round has overturned something the previous one established: R1
 found the model could not represent volume at all (§3), R2 found the fitter needs three
 times more data than the project was designed around (§4.1), R3 found the fitter is
@@ -43,7 +43,9 @@ thresholds is 2.2x noisier than assumed — recoverable, but only under a test p
 nobody had specified (§4.6). **R8 drove the whole thing end to end**: the shipping path
 recovers what the simulation path recovers (10.6% against 10.8%), so seven rounds of
 thresholds transfer — but 1 fit in 12 silently collapses to "never train", which is now
-caught (§4.7).
+caught (§4.7). **R9** found the RIR bias D-24 worried about mostly cancels, on one
+condition that is now enforced structurally: the baseline must be measured with the same
+protocol (§4.8).
 
 Not built yet: the volume budget across muscle groups, the autoregulation controller.
 Ranked in `LOOP_LOG.md`.
@@ -791,6 +793,73 @@ a hypothesis this round did not test.
 Reported as unexplained. The practical stakes are low (nobody chooses a plate rack to
 improve a model fit) and the mechanism may matter later, so it is written down rather than
 resolved badly.
+
+---
+
+## 4.8 RIR reporting bias: mostly a non-problem, on one condition (R9)
+
+D-24 flagged that the project treats a set of n reps at RIR r as (n + r) reps at failure,
+which presumes the lifter's RIR estimate is unbiased. R7 measured a misestimate at 4.8%
+per observation and D-28 showed that a bias of that order matters far more than noise of
+the same size. R8 ranked building an estimator first, on the grounds that data not
+collected in month one cannot be recovered in month six.
+
+**The estimator turned out to be unnecessary.** Checking whether the quantity reaches the
+answer, before building machinery to correct it, saved the round.
+
+### A constant bias cancels — if the baseline was measured the same way
+
+Observations are e1RM as a **percentage of a baseline** (§4.1 — this is what makes
+`p0 = 100` a definition rather than a fifth free parameter). A bias that scales every
+measurement scales the denominator too:
+
+| Constant offset (reps) | Baseline measured same way | Baseline from elsewhere |
+|---|---|---|
+| 0.00 | 6.7% | 6.7% |
+| 0.50 | 6.9% | 8.0% |
+| 1.00 | **7.0%** | **12.8%** |
+
+**The condition is the whole finding.** Measure the baseline with the same protocol and a
+constant bias is worth 0.3 percentage points. Take it from anywhere else — a previous
+program, a coach's number, a true tested single — and it nearly doubles median MRV error.
+
+That is now structural rather than advisory: `set_baseline_from_test()` computes the
+baseline through the identical code path as every weekly observation, the CLI's `baseline`
+verb prefers `--reps/--load` over `--value`, provenance is recorded, and `validate()`
+flags a declared baseline. D-30.
+
+### Only varying bias survives, and D-26 already bounds it
+
+| Model | Median MRV error |
+|---|---|
+| no bias | 6.7% |
+| drift 0.05 reps/week (1.3 over the block) | 14.5% |
+| drift 0.10 reps/week | 18.8% |
+| state 1.0 reps at full fatigue | 10.1% |
+| state 2.0 reps at full fatigue | 13.0% |
+| **worst case inside the unsaturated band** | **11.7% (+4.9 pts)** |
+
+State-dependence is the structurally nastiest of these — judgement degrading with fatigue
+correlates with the very signal being measured — but it is not the largest.
+
+**And D-26's rep cap is doing protective work nobody designed it for.** A test is taken at
+RIR 0–1, and a lifter cannot claim fewer than zero reps in reserve. So a bias large enough
+to saturate becomes a *constant* — and constants cancel. Only bias small enough to stay
+inside `0 < reported RIR < 1` can vary at all, which bounds how much of it can ever reach
+the answer. The cap was chosen in R7 to reduce measurement noise; it also caps bias.
+
+**This is the trap the round nearly published.** A combined model with constant 1.5 scores
++0.2 points and looks harmless — but only because it saturates to a constant. The number
+was right and the interpretation would have been nonsense. The honest worst case sits
+inside the unsaturated band, at +4.9.
+
+### What is NOT established
+
+Experiment 3 shows the offset estimator recovers a known value exactly. That tests its
+arithmetic, not its behaviour on noisy real logs, and it is not evidence that a per-lifter
+offset is estimable in practice. It is left in place because D-30 makes it unnecessary for
+the constant case, and no estimator was built for the varying case — which would need real
+data to even specify. D-24 closes as "one protocol rule instead of an estimator".
 
 ---
 

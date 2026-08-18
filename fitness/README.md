@@ -11,7 +11,7 @@ almost nobody.
 
 ## Status
 
-**Rounds 1–8 complete. The premise survived each round, at a price each time.**
+**Rounds 1–9 complete. The premise survived each round, at a price each time.**
 
 **R1** set out to design a triggered-deload rule and instead found that the standard
 fitness-fatigue model **cannot represent volume at all** — its steady-state preparedness
@@ -84,9 +84,18 @@ thresholds transfer. But it found a live safety gap no component test could see:
 costs 3–9% error at zero measurement noise, a third of which is a **fixable bias** that one
 constant removes. `DESIGN.md` §4.7.
 
+**R9 closed the last thing that was cheap now and expensive later.** D-24 worried that
+lifters misjudge RIR, and asked for a per-lifter correction. Checking whether the quantity
+*reaches the answer* before building machinery to correct it saved the round: a constant
+bias **cancels**, because observations are a percentage of a baseline and the bias scales
+both. But only if the baseline was measured the same way — take it from a previous program
+or a coach's number and median error jumps **6.7% → 12.8%**. That is now structural, not
+advice: the baseline is computed through the identical code path as every weekly
+observation. `DESIGN.md` §4.8.
+
 **What comes next is twenty lifters and six months.** The collector exists, the path is
-proven, and the last gap between a log and a safe prescription is closed. That dataset
-settles eight open decisions at once — and no simulation settles any of them.
+proven, the last safety gap is closed, and the last cheap-now-expensive-later item is done.
+That dataset settles eight open decisions at once — and no simulation settles any of them.
 
 Not built yet: the volume budget, the autoregulation controller, the logger.
 
@@ -114,7 +123,8 @@ Not built yet: the volume budget, the autoregulation controller, the logger.
 | **[logger/](logger/)** | The thing that collects real data: append-only log, readiness gate, CLI. | Before logging a single set. |
 | **[logger/formula_check.py](logger/formula_check.py)** | Is the measurement chain as clean as D-09 assumes? (No — and here is the protocol that fixes it.) | Before designing a test protocol. |
 | **[logger/rehearsal.py](logger/rehearsal.py)** | The whole path, end to end, against a lifter whose truth is known. | Before trusting that the shipping code does what the simulation measured. |
-| **[tests/](tests/)** | 135 tests pinning the properties a later round could quietly break. | Every round, before and after. |
+| **[logger/rir_bias.py](logger/rir_bias.py)** | Which RIR reporting errors reach the answer, and which cancel. | Before building a correction for a bias that cancels. |
+| **[tests/](tests/)** | 153 tests pinning the properties a later round could quietly break. | Every round, before and after. |
 
 ## The five ideas everything hangs off
 
@@ -169,8 +179,9 @@ python3 formula_check.py          # what the measurement chain actually injects
 python3 -m logger.cli status LOG --muscle quads   # (from fitness/) what a log has earned
 
 python3 rehearsal.py              # production path vs simulation path
+python3 rir_experiment.py         # which reporting biases survive the ratio
 
-cd .. && python3 -m unittest discover tests   # 135 tests
+cd .. && python3 -m unittest discover tests   # 153 tests
 ```
 
 ## What is solid and what isn't

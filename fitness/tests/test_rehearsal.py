@@ -83,7 +83,14 @@ class TestEndToEnd(unittest.TestCase):
             back = load_log(path)
             self.assertEqual(back.weeks_logged(), 26)
             self.assertEqual(len(back.tests), 26)
-            self.assertEqual(back.baseline_e1rm["squat"], BASELINE_E1RM)
+            # The baseline is MEASURED, not declared (D-30), so it carries the same
+            # quantisation and truncation correction as every observation — it should be
+            # close to the truth but need not equal it. That offset is the mechanism by
+            # which a constant RIR bias cancels in the ratio.
+            self.assertLess(
+                abs(back.baseline_e1rm["squat"] - BASELINE_E1RM) / BASELINE_E1RM, 0.05
+            )
+            self.assertEqual(back.baseline_source["squat"], "test")
 
             f = to_fittable(back, "quads")
             self.assertEqual(len(f.observations), 26)

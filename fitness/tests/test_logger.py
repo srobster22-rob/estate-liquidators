@@ -272,7 +272,9 @@ class TestCLI(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
             path = os.path.join(d, "meso.jsonl")
-            self.assertEqual(main(["baseline", path, "--exercise", "squat", "--value", "140"]), 0)
+            # Measured baseline, the D-30 route the CLI now prefers.
+            self.assertEqual(main(["baseline", path, "--exercise", "squat",
+                                   "--reps", "4", "--load", "120", "--rir", "1"]), 0)
             self.assertEqual(main(["set", path, "--week", "0", "--day", "0",
                                    "--muscle", "quads", "--reps", "8", "--load", "100"]), 0)
             self.assertEqual(main(["test", path, "--week", "0", "--exercise", "squat",
@@ -282,6 +284,19 @@ class TestCLI(unittest.TestCase):
             back = load(path)
             self.assertEqual(len(back.sessions), 1)
             self.assertEqual(len(back.tests), 1)
+
+    def test_a_declared_baseline_warns_but_still_records(self):
+        """D-30 is advice at the CLI, not a refusal — a log is a record of what happened."""
+        from cli import main
+
+        with tempfile.TemporaryDirectory() as d, \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            path = os.path.join(d, "meso.jsonl")
+            self.assertEqual(
+                main(["baseline", path, "--exercise", "squat", "--value", "140"]), 0)
+            self.assertIn("D-30", err.getvalue())
+            self.assertEqual(load(path).baseline_source["squat"], "declared")
 
     def test_adding_a_second_set_to_the_same_day_keeps_both(self):
         from cli import main
