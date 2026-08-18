@@ -22,6 +22,7 @@ those state their own falsification conditions.
 What runs, and how to check it:
 
 ```bash
+node proto3d/play.mjs --trials 16 --check   # a competent player plays it, and it is asserted
 node proto3d/qa.mjs               # 202 checks driving the real build in headless Chromium
 node proto3d/qa.mjs -r 5           # run it five times; anything flaky is reported as flaky
 python3 sim/check_drift.py        # 178 constants agree across four implementations

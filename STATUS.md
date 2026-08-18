@@ -7,6 +7,8 @@ below is a plan — it's a statement of what you can run today, updated whenever
 `?seed=12345` reproduces a specific house.
 
 ```bash
+node proto3d/play.mjs              # watch a competent player play one night
+node proto3d/play.mjs --trials 16 --check   # what a player is worth, asserted
 node proto3d/qa.mjs               # 202 checks, the real build in headless Chromium
 python3 sim/check_counts.py --qa 202   # the numbers in these docs are the real ones
 python3 sim/check_drift.py        # 178 constants agree across four implementations
@@ -69,7 +71,10 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 ## Known limits of the checks
 
 - **Nobody has played this.** 202 headless checks say the rules behave. None of them says it
-  is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
+  is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can. What `play.mjs`
+  adds is narrower and still worth having: a competent *policy* plays the build through the
+  real verbs, and the numbers it produces are the first in this project measured with the
+  player doing anything at all.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.
 - **The C# suite has not run since R14** — no .NET SDK in the container this loop runs in.
@@ -94,5 +99,11 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
   and no conclusion about capacity can be drawn from it; `sim/chain_sim.py`'s 720-second
   night is the only place that question can be asked. `qa.mjs` asserts this rather than
   leaving it to be rediscovered.
+- **Every quota was calibrated against an idle player, and a player is worth about a third
+  of a night.** Measured over 24 nights per cell with `play.mjs`: bots alone bank $3,367 /
+  $3,165 / $3,172 / $3,363 net across the chain and a competent player takes that to $4,373 /
+  $3,654 / $4,531 / $4,319 — +15% to +43%, and the last night's pass rate moves 54% → 63%.
+  The chain still has its shape with somebody playing it, which is the thing that was never
+  actually checked.
 - **Statistical checks are coarse.** Pass-rate assertions run 12 nights and make shape claims
   ("harder than night one"), not rate claims; twelve runs cannot pin a rate to ten points.

@@ -875,6 +875,34 @@ faults — the first round of this loop in a while where the checks were right t
 which is what R42's four fixture faults bought. · Regression: QA 202/202, drift 178/178,
 claims 25/25.
 
+R44 · **Somebody finally played it.** Not a person — but every pass rate this project has ever
+quoted for the prototype was measured with the player **standing still in the driveway**.
+`qa.mjs` says so out loud in the last-night battery ("the player is doing NOTHING in these
+runs") and three other checks say it in the margin. For a game whose entire question is
+whether a night is winnable, the one actor who makes decisions was the one actor not making
+any. · `proto3d/play.mjs` is a competent policy driving the real build through the real
+verbs. It **walks** rather than teleporting, routes door by door over the same room graph the
+crew use — so it is subject to the same locks and boards they are — appraises before it
+commits, hides when it is marked and holding, and spends a lever at the van when Disturbance
+crosses 80. It is not optimal. It is meant to be somebody paying attention, which is the
+reference class every quota in `ECONOMY` §4 is implicitly written against. · **What a player
+is worth, over 24 nights a cell:** bots alone bank $3,367 / $3,165 / $3,172 / $3,363 net
+across the four nights; with a player, $4,373 / $3,654 / $4,531 / $4,319. That is **+15% to
++43%**, and the last night's pass rate moves **54% → 63%**. The chain keeps its shape with
+somebody playing it, which is the thing that had never been checked — the quotas were
+calibrated in R25 against an empty pair of hands and have been quoted ever since. · **The
+policy's first draft spent two minutes of a 210-second night looking at things.** It appraised
+whatever it walked to and then cleared its target, which sends the selector at the next
+unknown piece, so it scanned forty items and delivered three. A scan has to end in a
+*decision* about the piece in front of you — take it, or write it off and never come back —
+and with that one change and a twelve-scan budget it delivers five to eighteen. · **And the
+R40 lesson, immediately, at my own expense.** The first comparison ran six nights a cell and
+said a player makes night one *worse*: 83% → 33%. At twenty-four it reads 92% → 92%. Six
+nights cannot tell a contribution from a coin flip, and I would have published "the player is
+a liability on night one" if I had not already been caught by this exact thing four rounds
+ago. `--check` now refuses to run under sixteen trials and says why. · Regression: QA
+202/202, drift 178/178, claims 25/25, and the player check green.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
