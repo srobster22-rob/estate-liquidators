@@ -514,6 +514,28 @@ cause is older than either round, and it is the next thing to fix:** the crew dr
 costs only a trip. Waiting for a jackpot is correct in a world where jackpots keep arriving.
 Finite item supply is R32.
 
+R32 · Fixed the flaw R31 diagnosed: **the estate is now finite.** Every model since R5 drew
+four *fresh* candidates at every shelf, so a house never ran out and refusing an item cost
+only a trip — which is why four consecutive rounds answered "how picky should the crew be?"
+with *pickier*, out to a bar that refuses ninety percent of what it sees. Waiting for a
+jackpot is correct in a world where jackpots keep arriving. · **With the house finite, its
+size turns out to decide the answer**, and that is a link between level dressing and the
+economy that nothing in this project had drawn. At 28 objects against a 14-slot van the
+optimal bar sits at the 120th percentile with **both** failure modes punished — too low and
+the van fills with junk, too high and you strip the house with the van still half empty. At
+59 objects and up, pickiness has no ceiling. **Item count is a balance number, not dressing:**
+a wing dressed with twice the props of its neighbours quietly turns the appraiser from a
+judgement into a jackpot hunt. D-31, `ECONOMY` §3.1, `LEVEL-SPEC` §5. · At the right density
+the appraiser is worth **+76%** — the seventh value that figure has had, and the first time
+widening the model moved it *up*. · **One bug, caught by a result that moved the wrong way:**
+the first finite run earned *more* than the infinite one, which is impossible. The finite
+branch re-rolled grades the house had already been dressed with and applied the curse
+multiplier a second time, so a malignant piece was worth ×36. A house cannot be richer for
+having a bottom — that was the tell, and it is the cheapest kind of check to make a habit of:
+ask which direction the number should move before reading it. · And the doc checker earned
+its keep: appending D-31 deleted the `# Open decisions` heading exactly as R27 did, and the
+structure check R28 added caught it in the same run rather than a round later.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -550,7 +572,12 @@ project.** First thing on the Mac: `python3 check.py`, and the C# line must read
 nights and reproduced R22's coupling in the implementation. What it still cannot exercise is
 movement and collision, since it steers around walls by construction rather than through them.
 
-**6a — Finite item supply, and it is now the biggest modelling flaw.** `integrated.py` draws
+~~**6a — Finite item supply.**~~ **Done, R32** — and it produced D-31: the house holds about
+twice the van, and its size is what decides how picky the crew can afford to be. Still worth
+re-checking R18's and R22's bar findings against a finite house; they were measured against an
+infinite one.
+
+**6a-old — the flaw, kept for the record.** `integrated.py` draws
 four fresh candidates at every shelf, so an estate never runs out and refusing something costs
 only a trip. That is why every "how picky should you be" answer since R30 says *pickier*, and
 why R30's interior optimum evaporated when its slot bug was fixed. An estate is a fixed set of

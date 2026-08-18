@@ -595,6 +595,30 @@ The premium is a function of the grade table, not a constant — recompute it wh
 
 ---
 
+## D-31 · An estate holds about twice what the van can carry
+**Status:** HELD · `ECONOMY.md` §3.1, `LEVEL-SPEC.md` §5
+
+Roughly **28 hauled objects against 14 van slots**. Item count is a balance number that
+belongs to the economy, not a dressing choice that belongs to the art pass.
+
+Every model of this game from R5 to R31 drew four *fresh* candidates at every shelf, so the
+house never ran out and refusing an item cost only a trip. Under that assumption "how picky
+should the crew be?" has no answer except *pickier* — which is what four consecutive rounds
+kept measuring, and R31 finally diagnosed. Make the house finite and its size decides the
+answer: at 28 objects the optimal bar sits at the 120th percentile with **both** failure modes
+punished — too low fills the van with junk, too high strips the house with the van half
+empty. At 59 objects and above, pickiness has no ceiling and the crew simply waits for
+jackpots.
+
+So a wing dressed with twice the props of its neighbours is not more generous, it is a
+difficulty setting on a mechanic nobody can see being changed.
+
+**Falsified if:** playtests show crews clearing an estate out entirely — that would mean the
+house is too thin and the choosing has stopped, which is the same failure as an oversized van
+(D-19) arriving from the other direction.
+
+---
+
 # Open decisions
 
 | # | Question | Blocks | Notes |

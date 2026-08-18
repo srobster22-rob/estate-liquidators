@@ -167,6 +167,39 @@ pinch-point crossing. But **that comparison has to be made in expectation, not i
 equal value. The ×2.1 premium in §3 is what makes "slightly worse" true again instead of
 "catastrophically worse and quietly ignored".
 
+## 3.1 How much is in the house is a balance number
+
+**An estate holds about twice what the van can carry — roughly 28 objects against 14 slots.**
+That is not set dressing. R32 made the house finite for the first time (every model since R5
+drew four *fresh* candidates at every shelf, so an estate never ran out and refusing an item
+cost only a trip), and item count turned out to set how selective the optimal crew can be:
+
+| Objects in the house | Best bar | What happens |
+|---:|---:|---|
+| 17 | ~120th pct | thin; the crew takes nearly what it finds |
+| **28** | **~120th pct** | **interior optimum, punished on both sides** |
+| 59 | 200+ | pickiness stops having a ceiling |
+| 101 | 200+ | the crew waits for jackpots and ignores the loop |
+
+At the right density the shape is exactly what the design has been reaching for since R5:
+
+| Bar | Earnings | Slots used | Items taken |
+|---|---:|---:|---:|
+| BLIND | $8,510 | 13.7 | 11.2 |
+| MARGIN_80 | $14,071 | 12.1 | 6.6 |
+| **MARGIN_120** | **$14,969** | 11.4 | 5.4 |
+| MARGIN_160 | $14,070 | 9.7 | 4.6 |
+| MARGIN_200 | $11,177 | 6.9 | 3.4 |
+
+Both failure modes are legible at the table: set the bar too low and the van fills with junk,
+set it too high and you strip the house of candidates with the van still half empty. The
+appraiser is worth **+76%** here, the seventh figure that number has had and the first time
+widening the model moved it *up*.
+
+**For level authors:** more objects is not more generous, it is a difficulty setting on a
+mechanic you cannot see. A wing that dresses in twice the props of its neighbours quietly
+turns the appraiser from a judgement into a jackpot hunt.
+
 ## 4. Quota curve
 
 A contract chain is 4 nights. Van capacity rises with upgrades; accessible depth rises with

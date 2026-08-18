@@ -141,6 +141,13 @@ pathing is only frightening if the geometry gives it somewhere to intercept you.
 
 ## 5. Routes, doors, and sound
 
+**Object count is a balance number, not dressing** (D-31). An estate holds roughly **twice
+what the van can carry** — about 28 hauled objects against 14 slots, spread across the tiers.
+Dress a wing with twice the props of its neighbours and the appraiser stops being a judgement
+and becomes a jackpot hunt: with four times the van in the house, the optimal crew refuses
+almost everything and waits, and the van finishes the night half empty. `ECONOMY.md` §3.1 has
+the measurements.
+
 **Name the Core, in the van room, always.** The van room must carry `core_link: <room id>`
 naming the hub that every wing has to reach by two routes. This is a **required field** and it
 was undocumented until R29 — the validator defaulted it to a room called `foyer`, which only

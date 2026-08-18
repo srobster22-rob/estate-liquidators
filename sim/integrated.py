@@ -108,6 +108,24 @@ TIER_CLASSES = {
     3: [("armful", (600, 1400)), ("two_man", (3800, 8400))],
 }
 
+# R32 - THE ESTATE IS FINITE.
+#
+# Every model since R5 drew four FRESH candidates at every shelf, so a house
+# never ran out of things and refusing one cost only a trip. That is why every
+# "how picky should you be" answer since R30 came back *pickier*, out to a bar
+# that refuses 90% of what it sees: waiting for a jackpot is correct in a world
+# where jackpots keep arriving. A real estate is a fixed set of objects in fixed
+# rooms, and the crew that walks past a good vase does not get offered it again.
+#
+# Sized from ECONOMY 2: a functioning crew moves 20-24 items against 14 slots,
+# and LEVEL-SPEC wings run 3-5 rooms of 4-5 plinths. So the house holds a few
+# more than the crew can carry, and being picky spends a resource that does not
+# refill.
+# 28 objects against a 14-slot van - about twice what the crew can carry. R32
+# measured this as a balance lever, not dressing: at 60+ objects the optimal bar
+# has no ceiling, and at 24-40 it has a clear interior optimum. D-31.
+ESTATE_ITEMS = {1: 12, 2: 9, 3: 7}
+
 APEX_SLOTS = 5.0                  # ECONOMY 1: a third of the van for one object
 APEX_BAND = (6900.0, 13800.0)     # ECONOMY 3; x1.73 over its old band, R31
 APEX_TRIP_S = 90.0 * 1.18         # tier-3 trip on the dolly (chain_sim CLASS_DATA)
@@ -161,7 +179,7 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
               trip_scale=1.0, wards=0, appraise_seconds=APPRAISE_S,
               appraise_l=None, ruin_exp=RUIN_EXP, apex=None, classes=False,
               curse_classes=None, ban_classes=(), two_man_scale=1.0,
-              apex_scale=1.0):
+              apex_scale=1.0, finite=False, estate_scale=1.0):
     """
     One night with Disturbance and the haul loop fully coupled.
 
@@ -195,6 +213,25 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
     # (Third time this exact myopia bug has appeared in this project. See LOOP_LOG R5.)
     TIER_CAP = {1: 0.40, 2: 0.75, 3: 1.00}
     filled = 0.0
+
+    # The house, dressed once, before anybody walks in.
+    pool = {}
+    if finite and classes:
+        for tier, base in ESTATE_ITEMS.items():
+            count = max(4, round(base * estate_scale))
+            here = []
+            for _ in range(count):
+                cls, band = rng.choice(
+                    [p for p in TIER_CLASSES[tier] if p[0] not in ban_classes]
+                    or TIER_CLASSES[tier])
+                if cls == "two_man":
+                    band = (band[0] * two_man_scale, band[1] * two_man_scale)
+                g = draw_grade(rng) if (modelling_curses and
+                                        (curse_classes is None or cls in curse_classes)) \
+                    else "clean"
+                here.append([cls, rng.uniform(*band) * (GRADE_MULT[g]
+                                                        if modelling_curses else 1.0), g])
+            pool[tier] = here
 
     while t < HAUL_S and slots > 0:
         tier = depth_at(t)
@@ -237,7 +274,21 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
             t += per_trip          # scout / stage instead of hauling junk
             continue
 
-        if classes:
+        if finite and classes:
+            here = [it for it in pool[tier] if CLASS_SLOTS[it[0]] <= slots]
+            if not here:
+                # This tier is picked clean, or nothing left in it fits. Spend
+                # the trip looking; depth may open something on the next pass.
+                t += per_trip
+                filled += 1.0
+                if not any(pool[k] for k in pool):
+                    break
+                continue
+            shelf = rng.sample(here, min(CANDIDATES, len(here)))
+            classes_of = [it[0] for it in shelf]
+            candidates = [it[1] for it in shelf]
+            grades = [it[2] for it in shelf]
+        elif classes:
             # R31: a crew that refuses a whole weight class on sight. If banning
             # a class EARNS money, that class is a trap - the shape of the apex
             # bug ECONOMY 3 caught by arithmetic once already.
@@ -263,14 +314,20 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
         # R30: which classes may be cursed at all. A x6 multiplier on a tier-3
         # two-man piece is $24,000 against a night-4 quota of $10,250 - the same
         # hole D-28 closed for the apex, one tier down and never noticed.
-        grades = [draw_grade(rng)
-                  if modelling_curses and (curse_classes is None
-                                           or c in curse_classes) else "clean"
-                  for c in classes_of]
-        # A curse is worth taking: x6 before fees. The value the crew sees is the
-        # marked-up one, so a cursed piece clears any bar a clean one would.
-        if modelling_curses:
-            candidates = [v * GRADE_MULT[g] for v, g in zip(candidates, grades)]
+        # A finite house was dressed before the night started - its grades and
+        # marked-up values are already decided. Re-rolling them here overwrote
+        # what the house holds AND applied the curse multiplier a second time,
+        # so a malignant piece was worth x36 and the finite estate earned MORE
+        # than the infinite one. A result that moves the wrong way is the tell.
+        if not (finite and classes):
+            grades = [draw_grade(rng)
+                      if modelling_curses and (curse_classes is None
+                                               or c in curse_classes) else "clean"
+                      for c in classes_of]
+            # A curse is worth taking: x6 before fees. The value the crew sees is
+            # the marked-up one, so a cursed piece clears any bar a clean one would.
+            if modelling_curses:
+                candidates = [v * GRADE_MULT[g] for v, g in zip(candidates, grades)]
         cap = scan_cap_of(strategy, slots, van_slots)
         appraise = cap > 0
 
@@ -404,6 +461,14 @@ def run_night(seed, strategy, cursed=2, retrieval_scale=1.0, scan_risk_k=SCAN_RI
 
         picked_i = candidates.index(value)
         cls = classes_of[picked_i]
+        if finite and classes:
+            # Whatever the crew looked at and walked away from is gone for the
+            # night - you do not re-argue about the same lamp - and what they
+            # take is gone for good. This is the cost refusing never had.
+            for it in shelf:
+                if it in pool[tier] and (it[1] == value or declined or
+                                         strategy.startswith(("MARGIN_", "SKIP_"))):
+                    pool[tier].remove(it)
         # R31: a three-slot piece used to be loadable with one slot left, so the
         # van finished the night holding more than it can hold - 15.1 slots used
         # of 14. Every weight-class number from R30 was inflated by it.
@@ -636,6 +701,27 @@ if __name__ == "__main__":
         print(f"{pol:<14}{a:>17,.0f}{b:>22,.0f}")
     print("\nRestricting curses to what one person can carry restores the interior optimum:")
     print("the bar peaks around 30-50 and over-selectivity costs 36%. D-29.")
+
+    print("\n\nR32 — A FINITE HOUSE, AND WHAT ITS SIZE DECIDES")
+    print("Every model since R5 drew four FRESH candidates at each shelf, so an estate")
+    print("never ran out and refusing cost only a trip. That is why every answer since")
+    print("R30 came back 'be pickier'. With the house finite, how much is in it decides")
+    print("how picky the best crew can afford to be:")
+    print("-" * 78)
+    LIGHT = {"pocket", "armful"}
+    bars = ("MARGIN_50", "MARGIN_80", "MARGIN_120", "MARGIN_160", "MARGIN_200")
+    print(f"{'objects in the house':<22}" + "".join(f"{b[7:]:>10}" for b in bars)
+          + "     best")
+    for scale, label in ((0.6, "17"), (1.0, "28"), (2.1, "59"), (3.6, "101")):
+        row = {b: trial(b, n=700, curse_cap=99, classes=True, curse_classes=LIGHT,
+                        finite=True, estate_scale=scale)["mean"] for b in bars}
+        best = max(row, key=row.get)
+        print(f"{label + ' objects':<22}"
+              + "".join(f"{row[b]:>10,.0f}" for b in row) + f"     {best[7:]}")
+    print("\nA house holding twice the van has an interior optimum with a legible failure")
+    print("on each side: too low and you fill up with junk, too high and you run the")
+    print("estate dry with the van half empty. A house holding four times the van has no")
+    print("ceiling on pickiness at all - the crew simply waits for jackpots. D-31.")
 
     print("\n\nGREED: does hauling cursed cargo change the calculus?")
     print("-" * 78)
