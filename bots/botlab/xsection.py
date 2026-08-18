@@ -86,15 +86,27 @@ def run_basket(legs: list, g: Genome, cost_mult: float = 1.0,
     }
 
 
-def xs_genome(market: str, lb: int = 5, entry: float = 0.25, exit_: float = 0.05) -> Genome:
+def xs_genome(market: str, lb: int = 5, entry: float = 0.25, exit_: float = 0.05,
+              beta_neutral: bool = True, beta_lb: int = 250) -> Genome:
     """The textbook cross-sectional reversal rule, untuned.
 
     `proportional` sizing because the score is already a standardised
     cross-sectional z — position size should track how far a leg has diverged
     from its peers, which is what makes the book dollar-neutral rather than
     merely long-short.
+
+    `beta_neutral` defaults to **True**, and that default is the finding of F34
+    rather than a preference. Dollar-neutral is not enough: with dispersed factor
+    loadings the raw relative return still carries the factor's own time-series
+    behaviour, and the plain rule earns +0.10 to +0.18 gross alpha on a basket
+    with nothing planted in it. Neutralising beta takes that to +0.016 +- 0.031
+    while *raising* the planted-edge result (1.895 -> 1.911), because what it
+    removes was never edge. Pass False only to reproduce the contaminated
+    version.
     """
-    return Genome(market=market, genes=[Gene("xs_reversal", {"lb": lb})],
+    gene = (Gene("xs_reversal_bn", {"lb": lb, "beta_lb": beta_lb}) if beta_neutral
+            else Gene("xs_reversal", {"lb": lb}))
+    return Genome(market=market, genes=[gene],
                   entry_threshold=entry, exit_threshold=exit_,
                   direction="both", sizing="proportional", max_leverage=2.0,
                   rebalance_band=0.15, origin="archetype")

@@ -165,7 +165,7 @@ command says so rather than quietly reporting a weaker test under the same name.
 ```bash
 pip install -r bots/requirements.txt     # numpy, nothing else
 
-python bots/run.py selftest              # 52 falsification tests
+python bots/run.py selftest              # 53 falsification tests
 python bots/run.py fpr                   # false-positive rate on a random walk: must be 0
 python bots/run.py markets -v            # the catalogue
 python bots/run.py calibrate             # is each market's edge realistic AND findable?
@@ -223,15 +223,39 @@ Sharpe on a planted cross-sectional effect — the sqrt(K) arithmetic works. Fin
 that number was the easy part; the six hypotheses it took to explain the *control*
 basket were not, and they are what turned up the gap defect above.
 
-With the gap fixed, the class goes in front of the five gates a basket harness can
-honestly run (the permutation null and the deflated Sharpe need a search to have a
-size, and this class is quarantined out of the search — five gates reported as
-eight is what `verify --data` refuses to do). It **fails two of them**: the
-negative control by 0.007 against a sqrt(K)-scaled tolerance, and cost stress
-outright — **+1.10 net at 1x costs, -0.02 at 3x**, because a twelve-leg book
-turning over 96,000 times has a cost base that aggregation does nothing for. So
-the `xs_*` primitives stay tier 5, unreachable by any expansion, and the quarantine
-now rests on a measurement rather than an open question.
+With the gap fixed, the class went in front of the five gates a basket harness can
+honestly run and failed two — and both failures were informative (F33, F34).
+
+The control failure was the strategy's fault, not the harness's: a dollar-neutral
+book with dispersed betas is **not market-neutral**, because its relative return
+still carries `(beta_i - betabar) x the factor's own move`. It is partly a
+time-series bet that the factor reverts, in a cross-sectional costume. Swapping the
+factor's reversion off takes the control from +0.132 to +0.022 with everything else
+identical. Ranking on the **beta residual** instead cleans the control (+0.016)
+*and raises* the planted-edge result — what was removed was never edge.
+
+The cost failure needed the strategy to trade less. Six turnover configurations,
+fixed before running and all six reported; four cleared, and the best passes all
+five gates:
+
+| gate | margin | | gate | margin |
+|---|---|---|---|---|
+| XS1 out-of-sample | +1.067 | | XS4 **cost stress** | **+0.060** |
+| XS2 replication | +0.847 | | XS5 stress pool | +0.907 |
+| XS3 control | +0.065 | | | |
+
+**And that is the result, which is not the one it looks like.** The statistical
+gates clear by 0.85–1.07 — an order of magnitude more room than anything else here.
+The *binding* margin is **+0.060, on costs**, which is the same 0.00–0.07 band every
+single-instrument strategy sits in. **Aggregation buys statistical significance,
+not margin**: sqrt(K) legs make the edge unmistakable, but costs scale with K
+linearly, so the binding constraint moves from "is this real" to "does it survive
+frictions" and lands in exactly the same place. The lab's ceiling is the cost floor,
+and it is the same floor for every strategy class tried.
+
+The `xs_*` primitives stay tier 5, unreachable by any expansion: five gates is not
+eight, nothing here is deflated for the six configurations tried, and clearing the
+gates a harness can run is not a certification.
 
 **The false-positive rate is measured, not argued.** `run.py fpr --repeats 10`
 points ten independent searches at a structureless market: 20,000 candidates, 137
@@ -316,7 +340,7 @@ bots/
     portfolio.py            combining survivors, with the correlation caveat
     calibrate.py            are the markets realistic and findable?
     report.py               REPORT.md and LOOP_LOG.md
-  tests/test_botlab.py      52 falsification tests
+  tests/test_botlab.py      53 falsification tests
 ```
 
 ---

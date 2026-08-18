@@ -9,7 +9,7 @@ broke.
 ## Before you change anything
 
 ```bash
-python bots/run.py selftest      # 52 falsification tests
+python bots/run.py selftest      # 53 falsification tests
 python bots/run.py fpr           # false-positive rate on a structureless market: must be 0
 python bots/run.py calibrate     # are the market families still realistic and findable?
 ```
@@ -59,27 +59,31 @@ honest strategy reaches). Assume there are more of that kind still in here.
 
 Roughly in order of how much they would change what the lab can claim:
 
-1. **The residual cross-sectional control artefact, which now tracks beta
-   dispersion.** The gap is fixed (F32) and the class went in front of gates
-   (F33), where it fails the sqrt(K)-scaled control by 0.007 and cost stress
-   outright. What is left in the control measures **+0.054 +- 0.029 at
-   `beta_disp=0.25` against +0.011 +- 0.041 at zero** — which is the hypothesis
-   F31 tested and rejected, back again. It was rejected because the gap artefact
-   was five times larger and swamped it. Ruling causes out one at a time is
-   unsafe when one of them dominates, and this is the worked example.
+1. **Give the cross-sectional class the two gates it has not faced.** F34 got it
+   through five of eight — beta-neutralised so it clears its own control, and
+   turnover-controlled so it survives cost stress. Missing are G5 (the
+   permutation null) and G6 (the deflated Sharpe), and they are missing for a
+   structural reason: both need a search to have a size, and the class is
+   quarantined out of the search, so there is no trial count to deflate by. That
+   is circular and the way out is to break the circle deliberately — put basket
+   families in the catalogue behind their own control gate, let the loop search
+   them with its own ledger, and only then read G5/G6. Until that is done the
+   quarantine stands, and "passes the five gates a basket harness can run" is not
+   a certification and must not be written up as one.
 
-   The mechanism to test: with dispersed betas the trailing *relative* return
-   contains `(beta_i - betabar) x trailing factor return`, so a "cross-sectional"
-   bot is partly running a beta-timing trade on the factor's own time-series
-   reversion. If that is it, the artefact should scale with `Var(beta)` and with
-   the factor family's own reversion strength — both cheap to sweep, neither done.
-
-2. **The constructive question F30 asked is still open.** Every widening tried so
-   far produces more bots at the same margin, and under a gauntlet 20% harder the
-   four distinct strategies become **one**. Cross-sectional was the only candidate
-   for a structurally different source of return, and it is currently blocked by
-   item 1. If it stays blocked, the honest position is that this lab has one
-   result and no route to a second.
+2. **F30's constructive question now has an answer, and it is worth attacking.**
+   Cross-sectional strategies clear the statistical gates by 0.85-1.07 — an order
+   of magnitude more room than anything else — and then bind at **+0.060 on cost
+   stress**, the same 0.00-0.07 band as every single-instrument strategy (F34).
+   Aggregation buys significance, not margin. If that generalises, the lab's
+   ceiling is the cost floor and nothing about strategy *design* moves it, which
+   would be the most useful thing this repository knows.
+   To attack it: the prediction is that margin at the binding gate is
+   approximately invariant to strategy class and set by `cost / edge` alone (F24's
+   plane). Test it by taking a class with a genuinely different cost profile — low
+   turnover, or an instrument with a tenth of the spread — and checking whether
+   the binding margin moves. If it does not, the claim is strong. If it does, the
+   ceiling is not the cost floor and F34's reading is wrong.
 3. **The permutation null's block length vs the bot's holding horizon.** F12 is
    now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar

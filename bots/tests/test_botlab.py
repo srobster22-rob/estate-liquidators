@@ -723,6 +723,43 @@ def test_the_basket_control_stays_flat():
         f"nothing if the strategy cannot find a planted effect either"
 
 
+def test_beta_neutralising_is_what_makes_the_basket_control_clean():
+    """The load-bearing claim of F34, in both directions.
+
+    A dollar-neutral cross-sectional book with dispersed betas is *not*
+    market-neutral: its relative return still carries `(beta_i - betabar) x the
+    factor's own move`, so it is partly a time-series bet that the factor
+    reverts. The plain rule therefore fails its control on a basket with nothing
+    planted, and the beta-neutral rule does not — while keeping the edge, because
+    what was removed was never edge.
+    """
+    from bots.botlab import xsection
+    from bots.botlab.markets import basket
+    spec = basket.BasketSpec(name="bn_probe", leg=universe.get("eq_largecap_daily"),
+                             n_legs=12, n_bars=6000, beta_disp=0.5,
+                             seed_name="bn_probe")
+    ctrl = basket.basket_control(spec)
+    got = {}
+    for tag, bn in (("plain", False), ("beta_neutral", True)):
+        for arm, sp in (("control", ctrl), ("live", spec)):
+            srs = []
+            for i in range(1, 13):
+                legs = basket.synth_basket(sp, i)
+                g = xsection.xs_genome(legs[0].spec.name, lb=5, beta_neutral=bn)
+                r = xsection.run_basket(legs, g, cost_mult=0.0)
+                if r["ok"]:
+                    srs.append(r["alpha_sharpe"])
+            got[(tag, arm)] = float(np.mean(srs))
+    assert got[("plain", "control")] > got[("beta_neutral", "control")] + 0.05, \
+        f"beta-neutralising did not clean the control: plain " \
+        f"{got[('plain', 'control')]:+.3f} vs neutral {got[('beta_neutral', 'control')]:+.3f}"
+    assert abs(got[("beta_neutral", "control")]) < 0.10, \
+        f"the beta-neutral control still shows {got[('beta_neutral', 'control')]:+.3f}"
+    assert got[("beta_neutral", "live")] > 1.0, \
+        f"beta-neutralising cost the real edge too ({got[('beta_neutral', 'live')]:+.3f}); " \
+        f"a clean control means nothing if the strategy can no longer find anything"
+
+
 def test_cross_sectional_primitives_are_quarantined_from_the_search():
     """The class is rejected by its own five-gate subset (F33): after the gap
     repair it still fails the sqrt(K)-scaled control tolerance by 0.007, and it

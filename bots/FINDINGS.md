@@ -1580,6 +1580,96 @@ survive realistic cost stress. That is a result, and a more useful one than the
 
 ---
 
+## F34 · The cross-sectional book was never market-neutral, and fixing that does not buy it any margin
+
+F33 left the class failing its own control by 0.007. The residual tracked beta
+dispersion — the hypothesis F31 had tested and rejected, because the gap artefact
+was five times larger and swamped it. Ruling causes out one at a time is unsafe
+when one of them dominates; this is the worked example.
+
+**The mechanism, and two predictions that confirmed it.** With dispersed factor
+loadings, a leg's trailing return *relative to its peers* still contains
+`(beta_i - betabar) x trailing factor return`. So shorting the relative winners is
+partly shorting high-beta names after the factor has risen — a **time-series bet
+that the factor reverts, wearing a cross-sectional costume**. It predicts the
+artefact should scale with beta dispersion, and should need a mean-reverting
+factor. Both hold:
+
+| beta dispersion | 0.00 | 0.15 | 0.30 | 0.50 |
+|---|---|---|---|---|
+| control gross alpha | +0.062 +- 0.042 | +0.060 +- 0.033 | +0.134 +- 0.030 | +0.225 +- 0.036 |
+
+and at a fixed dispersion of 0.30, swapping the factor's own reversion off
+(`rev_kappa = 0`, everything else identical) takes it from **+0.132 +- 0.038 to
++0.022 +- 0.039**. Same dispersion, same vol, same costs; the factor's behaviour
+is the whole effect.
+
+**This is not a harness defect, and that is the point.** Unlike the gap (F32), the
+generator is modelling something real here — a dollar-neutral book with dispersed
+betas genuinely *is* exposed to the factor's time-series behaviour. The control
+was right and the strategy was wrong. So the repair belongs in the strategy:
+`xs_reversal_bn` estimates each leg's beta against the basket over a trailing
+window, subtracts `beta_i x basket return` from its trailing return, and ranks the
+residual.
+
+| | control gross | live gross |
+|---|---|---|
+| `xs_reversal`, dispersion 0.30 | +0.102 +- 0.033 | 1.895 |
+| **`xs_reversal_bn`**, dispersion 0.30 | **+0.016 +- 0.031** | **1.911** |
+| `xs_reversal`, dispersion 0.50 | +0.178 +- 0.043 | 1.589 |
+| **`xs_reversal_bn`**, dispersion 0.50 | **+0.026 +- 0.045** | **1.766** |
+
+The control goes to zero *and the planted-edge result goes up*, because what was
+removed was never edge. Dollar-neutral was never enough; the book has to be
+beta-neutral.
+
+**That cleared the control gate and left the cost gate.** Beta-neutral, the ladder
+reads PASS / PASS / PASS(+0.065) / **FAIL(-0.171)** / PASS. So the turnover axis
+was swept — six configurations of lookback, entry threshold and rebalance band,
+fixed before running and all six reported, because a pass found by searching
+configurations carries a burden of six and hiding the failures is how a lab lies
+to itself:
+
+| lb | entry | band | trades | 1x | 2x | 3x | delay | |
+|---|---|---|---|---|---|---|---|---|
+| 5 | 0.25 | 0.15 | 96,154 | 1.13 | 0.51 | -0.02 | 0.74 | fails |
+| **5** | **0.55** | **0.35** | **57,989** | **1.20** | **0.65** | **0.18** | **0.75** | clears |
+| 20 | 0.25 | 0.15 | 72,913 | 0.64 | 0.32 | 0.02 | 0.42 | clears |
+| 20 | 0.55 | 0.35 | 32,137 | 0.63 | 0.38 | 0.15 | 0.40 | clears |
+| 60 | 0.25 | 0.15 | 53,828 | 0.39 | 0.21 | 0.03 | 0.26 | clears |
+| 60 | 0.55 | 0.35 | 17,687 | 0.35 | 0.22 | 0.09 | 0.24 | fails |
+
+**And the best of them passes all five gates** — the first structurally different
+strategy in this lab to do so:
+
+    [PASS] XS1-oos          +1.317 vs +0.250   margin +1.067
+    [PASS] XS2-replication  +1.197 vs +0.350   margin +0.847
+    [PASS] XS3-control      -0.022 vs -0.087   margin +0.065
+    [PASS] XS4-stress       +0.210 vs +0.150   margin +0.060
+    [PASS] XS5-stress-pool  +1.187 vs +0.280   margin +0.907
+
+**Now read the margins, which is the actual result.** The statistical gates clear
+by 0.85 to 1.07 — an order of magnitude more room than anything else this lab has
+certified. And the *binding* margin is **+0.060, on cost stress** — which is the
+same 0.00-0.07 band every single-instrument strategy sits in (F29).
+
+So the answer to F30's constructive question is sharper than yes or no.
+**Aggregation buys statistical significance, not margin.** sqrt(K) legs make the
+edge unmistakable — the permutation and replication questions stop being close —
+but costs scale with K linearly, so the binding constraint simply moves from "is
+this real" to "does it survive frictions", and lands in exactly the same place.
+The lab's ceiling was never about how convincing a strategy could be made. It is
+the cost floor, and it is the same floor for every strategy class tried.
+
+**What this is not.** Five gates, not eight. The permutation null and the deflated
+Sharpe are missing because both need a search to have a size, and this class is
+quarantined out of the search — so nothing here is deflated for the six
+configurations tried, let alone for a real hunt. The quarantine therefore stays:
+what has been shown is that a cross-sectional strategy *can* clear the gates a
+basket harness can run, not that one has been certified.
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

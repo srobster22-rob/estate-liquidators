@@ -605,3 +605,69 @@ def _xs_momentum(s: Series, p: dict) -> np.ndarray:
     sd = np.nanstd(rel, axis=1, keepdims=True)
     z = np.divide(rel, sd, out=np.zeros_like(rel), where=sd > EPS)
     return _tanh(z[:, col])
+
+
+@_register("xs_reversal_bn", 5, {"lb": ("log", 2, 40), "beta_lb": ("log", 60, 500)},
+           lambda p: int(p["lb"]) + int(p["beta_lb"]) + 5, "cross_sectional")
+def _xs_reversal_bn(s: Series, p: dict) -> np.ndarray:
+    """Cross-sectional reversal on the *beta-residual* return, not the raw one.
+
+    `xs_reversal` ranks legs on their return relative to the peer mean. With
+    dispersed factor loadings that relative return still contains
+    `(beta_i - betabar) x trailing factor return`, so shorting the relative
+    winners is partly shorting high-beta names after the factor has risen — a
+    time-series bet that the factor reverts, wearing a cross-sectional costume.
+    It pays exactly when the factor mean-reverts, which is not a cross-sectional
+    edge and is not what the strategy claims to be trading.
+
+    Measured (FINDINGS.md F34): on a basket with *no* cross-sectional effect
+    planted, `xs_reversal` earns +0.062 / +0.134 / +0.225 gross alpha Sharpe at
+    beta dispersion 0.0 / 0.30 / 0.50 — and at fixed dispersion 0.30 it earns
+    +0.132 against a mean-reverting factor and +0.022 against a factor with the
+    reversion switched off. Same dispersion, same everything else; the factor's
+    own behaviour is the whole effect.
+
+    So this variant estimates each leg's beta against the equal-weight basket
+    over a trailing `beta_lb` window, subtracts `beta_i x basket return` from its
+    trailing return, and ranks what is left. Dollar-neutral was never enough —
+    the book has to be beta-neutral, and being explicit about which is the point.
+
+    Every window ends at t. The betas are estimated on strictly past data and the
+    engine acts at t+1.
+    """
+    r, col = _peer_log_returns(s)
+    if r is None:
+        return np.zeros(s.close.size)
+    lb = max(int(p["lb"]), 2)
+    blb = max(int(p["beta_lb"]), 20)
+    n, k = r.shape
+    mkt = r.mean(axis=1)
+
+    # Trailing beta per leg: cov(leg, basket) / var(basket), both over `blb` bars
+    # ending at t. Cumulative sums keep it O(n*k) rather than a rolling regression.
+    cs_xy = np.cumsum(r * mkt[:, None], axis=0)
+    cs_x = np.cumsum(mkt)
+    cs_y = np.cumsum(r, axis=0)
+    cs_xx = np.cumsum(mkt * mkt)
+    beta = np.ones((n, k))
+    if blb < n:
+        w = float(blb)
+        sxy = cs_xy[blb:] - cs_xy[:-blb]
+        sx = (cs_x[blb:] - cs_x[:-blb])[:, None]
+        sy = cs_y[blb:] - cs_y[:-blb]
+        sxx = (cs_xx[blb:] - cs_xx[:-blb])[:, None]
+        cov = sxy / w - (sx / w) * (sy / w)
+        var = sxx / w - (sx / w) ** 2
+        beta[blb:] = np.divide(cov, var, out=np.ones_like(cov), where=var > EPS)
+    beta = np.clip(beta, -3.0, 3.0)
+
+    # Residual return: strip each leg's factor exposure before ranking.
+    resid = r - beta * mkt[:, None]
+    cum = np.cumsum(resid, axis=0)
+    trail = np.full_like(cum, np.nan)
+    trail[lb:] = cum[lb:] - cum[:-lb]
+    trail[:blb] = np.nan                      # betas not yet estimated
+    rel = trail - np.nanmean(trail, axis=1, keepdims=True)
+    sd = np.nanstd(rel, axis=1, keepdims=True)
+    z = np.divide(rel, sd, out=np.zeros_like(rel), where=sd > EPS)
+    return _tanh(-np.nan_to_num(z[:, col]))
