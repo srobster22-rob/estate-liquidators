@@ -31,7 +31,15 @@ A loop with a weak validator does not find edges. It finds the strategies best a
 fooling the validator, and it finds them *faster the harder it searches*.
 
 So the loop here is built the other way around. The search may expand as much as it
-likes; the bar rises with it, and the bar is never lowered.
+likes; the bar is set by how many times the held-out data will be consulted, and the
+search cannot lower it.
+
+A caution earned the hard way: "the bar rises as you look harder" is the right
+instinct and the wrong implementation. Raising it *during* a run makes a candidate's
+verdict depend on when it happened to be promoted, which is luck, not evidence. The
+bar is now computed once from the run's whole look budget and applied equally to
+everyone. See "before and after a miscalibrated gate" below for what the wrong
+version cost.
 
 ---
 
@@ -117,9 +125,16 @@ the entire reason for holding data back.
 
 What must be paid for is the number of times the held-out data is **consulted**.
 Test 200 candidates against the validation slice and the best of them is the maximum
-of 200 draws. So gate 10 deflates by `oos_looks`, with the dispersion measured from
-the out-of-sample Sharpes of every look — passes and failures alike, because keeping
-only the winners' would understate the spread and quietly lower the hurdle.
+of 200 draws. So gate 10 deflates by the run's **look budget** — the same N for every
+candidate, whether it arrives first or last.
+
+The sigma in that correction is the one thing most easily got wrong. It must be the
+dispersion of Sharpe estimates **under the null of no edge**, which is the sampling
+error of a Sharpe over the window — `sqrt(1/T)`, about 0.56 over 3.1 years. It is
+*not* the observed spread of the candidates that reached the gate: those are
+survivors of an in-sample search, and their spread is dominated by real differences
+in quality rather than by noise. Using it inflated this project's hurdle from 1.26
+to 6.46 and demanded a 7.4 Sharpe before anything counted as real.
 
 Both counters live in `state/factory_state.json` and **persist across runs**.
 Restarting the factory twenty times does not buy twenty fresh chances. Deleting that

@@ -36,11 +36,11 @@ THE GATES, and what each one kills:
   11 mc_timing         bots whose 'edge' is exposure, not timing — measured against
                        random signals matched to their own trade frequency
 
-Gate 10 is the one that makes the loop honest. Its bar rises with every candidate
-tested out of sample, so a factory that tests ten times as many candidates must find
-something correspondingly better. Without it, "keep producing bots until one is
-profitable" is a machine for manufacturing false positives, and it will always
-succeed.
+Gate 10 is the one that makes the loop honest. Its bar is set by how many candidates
+the run will test out of sample, so a factory that plans to test ten times as many
+must find something correspondingly better. Without it, "keep producing bots until
+one is profitable" is a machine for manufacturing false positives, and it will
+always succeed.
 
 WHICH COUNT DEFLATES THE SHARPE, AND WHY IT ISN'T ALL OF THEM
 
@@ -52,9 +52,23 @@ WHICH COUNT DEFLATES THE SHARPE, AND WHY IT ISN'T ALL OF THEM
 
   What does need paying for is the number of times the held-out data is CONSULTED.
   Test 200 candidates against the validation slice and the best of them is the
-  maximum of 200 draws — so gate 10 deflates by `oos_looks`, the count of distinct
-  candidates that have reached this segment, with the dispersion measured from
-  their own out-of-sample Sharpes.
+  maximum of 200 draws — so gate 10 deflates by the run's LOOK BUDGET, the same N
+  for every candidate regardless of when it arrives.
+
+  Two mistakes were made here and both are worth naming, because each is easy to
+  make and neither is visible from a single run's output.
+
+  Deflating by the count of looks SPENT SO FAR makes the bar grow during a run, so
+  an identical bot passes at look 1 and fails at look 30. Every bot this factory
+  ever confirmed under that scheme arrived in the first half of its run, and the
+  weakest arrived first. That is a queue, not a correction.
+
+  Estimating the dispersion from the observed spread of promoted candidates uses
+  the wrong quantity. The correction asks how good the luckiest of N ZERO-EDGE
+  strategies would look, which is a question about sampling noise in a Sharpe
+  estimate — see stats.null_sharpe_dispersion. The promoted candidates are search
+  survivors whose spread reflects genuine quality differences; borrowing it drove
+  the hurdle from 1.26 to 6.46.
 
   The in-sample trial count is still tracked and still reported. It is the honest
   measure of how hard the search dug, it drives nothing directly, and it is the
@@ -151,10 +165,11 @@ def gauntlet(bot, segments, partner_segments=None, oos_looks=1, dispersion=0.6,
              trials=None):
     """Run every gate against `segment` (default: the validation slice).
 
-    `oos_looks` must be the number of distinct candidates that have been tested
-    against this segment, INCLUDING this one. Under-reporting it is the easiest way
-    to slip a bad bot past gate 10, and nothing about the output will look wrong
-    when you do. `trials` is the in-sample search count, carried through for
+    `oos_looks` is the N gate 10 deflates by: the run's whole look BUDGET, not the
+    number spent when this candidate happened to arrive. Passing a running count
+    makes the verdict depend on queue position — see the header. Under-reporting it
+    is still the easiest way to slip a bad bot through, and nothing in the output
+    looks wrong when you do. `trials` is the in-sample search count, carried for
     reporting only."""
     th = dict(THRESHOLDS, **(thresholds or {}))
     train = segments.train
