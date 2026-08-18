@@ -663,6 +663,30 @@ any of the fixes that were on the table.
 > more house should never make a blind crew poorer. Its appraiser column is discarded. **The
 > crew-size column is unaffected** and stands: it is a ratio between two crews measured on the
 > same estate, so the denominator moves with the numerator.
+>
+> **R36 traced it, and found two defects underneath.**
+>
+> **(a) The reservation bar is tier-relative.** `thresh = quantile(eff_tier, q)` — so a crew
+> standing in the foyer compares foyer objects against *foyer* quantiles and takes them. **It
+> never refuses an object for being shallow, only for being poor for its depth**, and the depth
+> cap (40% of the van at tier 1) is the sole restraint. With a big estate there is enough
+> shallow loot to actually spend that 40% on, which is why more house made a blind crew poorer.
+> Judging every object against the deepest tier's bar (`global_bar=True`) makes earnings
+> **monotone increasing** — $11,884 / $15,148 / $22,018 at 20 / 40 / 80 objects. The anomaly is
+> gone. This is the myopia family for the **seventh** time and the first in a *threshold*
+> rather than a missing cap.
+>
+> **(b) But the fix earns 1.7× and clears every quota 100%, and that result is not clean —
+> because this model does not implement D-20.** `current_tier()` is a function of elapsed time
+> scaled by crew size. **It never checks that any prerequisite work was done**, so a crew that
+> refuses everything and idles still has depth handed to it on schedule. That is wall-clock
+> gating with a crew multiplier; D-20 and `LEVEL-SPEC.md` §3 both require gating on *completed
+> tasks*. Any policy that trades shallow loot for depth is over-rewarded here, and `global_bar`
+> trades nothing else.
+>
+> **So the honest state is: the tier-relative bar is a real defect, and the size of its effect
+> is unknown until depth gating is implemented as specified.** Both flags are opt-in and the
+> default reproduces §4 and §8 exactly. Do not re-calibrate the quota curve off `global_bar`.
 
 **What is safe to act on now:** put the object count in `LEVEL-SPEC.md` as an explicit
 authored constant with its rationale, because right now it is an accident of how many plinths

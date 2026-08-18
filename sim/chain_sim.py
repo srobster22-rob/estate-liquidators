@@ -297,6 +297,14 @@ def current_tier(t, crew=4, labour_gated=True):
     depth on WORK — find the key, flip the breaker, pry the boards — not on the clock.
     Six people complete a prerequisite chain faster than three.
 
+    **R36: this does NOT actually implement D-20, and the gap is load-bearing.** The
+    unlock is a function of `t` alone, scaled by crew — it never checks that any
+    prerequisite work was done. So a crew that refuses every object and idles still gets
+    depth handed to it on schedule. That is wall-clock gating with a crew multiplier, and
+    D-20 / LEVEL-SPEC 3 both require gating on completed tasks. Any policy that trades
+    shallow loot for depth is over-rewarded here, which is exactly what `global_bar`
+    exposed.
+
     This matters more than it looks. With pure wall-clock gating, a big crew fills the
     van before the good tiers open and therefore earns LESS than a small one, which is
     absurd and was the last surviving artifact in this model. Task-based gating is
@@ -314,7 +322,8 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
               reserve_apex=True, labour_gated=True, noise=False, scan=True,
               q_cap=0.90, depth_cap=False, metric="per_slot",
               rule="value", curses=False, cursed_cap=3, rooms=False,
-              scan_rooms=("uniform", "mixed", "curio"), finite_estate=False):
+              scan_rooms=("uniform", "mixed", "curio"), finite_estate=False,
+              global_bar=False):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -430,7 +439,19 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
             remaining = max(0.0, (HAUL_WINDOW_S - t) / per_encounter)
             ratio = remaining / max(slots_left, 1.0)
             q = 0.0 if ratio <= 1.0 else min(q_cap, 1.0 - 1.0 / ratio)
-            thresh = quantile(eff_tier, q, metric)
+            # R36: the reservation bar is TIER-RELATIVE, which means a crew never
+            # refuses an object for being shallow -- only for being poor *for its
+            # depth*. Standing in the foyer it compares foyer objects against foyer
+            # quantiles and takes them, and the depth cap (40% of the van at tier 1) is
+            # the only thing restraining it. That is the myopia family again, seventh
+            # occurrence, and the first time it has been in the THRESHOLD rather than in
+            # a missing cap.
+            #
+            # global_bar=True judges every object against the deepest tier's bar. It
+            # makes blind earnings monotone in estate size, which fixes R35's anomaly --
+            # but see the caution in R36: it also earns 1.7x and clears every quota,
+            # which is NOT a clean result, because this model does not implement D-20.
+            thresh = quantile(3 if global_bar else eff_tier, q, metric)
 
         # A trip happens whether or not anything is taken — walking there costs time.
         trip_cost = TIER_DATA[eff_tier][0] / labour_pool

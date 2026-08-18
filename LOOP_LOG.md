@@ -782,6 +782,33 @@ its blind crew earns *less* as the estate grows ($14,782 at 20 objects → $12,3
 cannot be right. Its appraiser column is discarded. Third bug in that code path in two rounds,
 which is roughly what a two-round-old model deserves to be trusted at.
 
+R36 · Chased R35's leftover anomaly — `chain_sim`'s blind crew earning *less* as the estate
+grows — and found two defects stacked underneath it, the second of which stopped me publishing
+the first. · **(a) The reservation bar is tier-relative.** `thresh = quantile(eff_tier, q)`, so
+a crew standing in the foyer compares foyer objects against *foyer* quantiles and takes them.
+**It never refuses an object for being shallow, only for being poor for its depth** — the depth
+cap (40% of the van at tier 1) is the only restraint, and a big estate supplies enough shallow
+loot to actually spend that 40%. That is why more house made a blind crew poorer. Judging every
+object against the deepest tier's bar makes earnings **monotone increasing** — $11,884 /
+$15,148 / $22,018 at 20 / 40 / 80 objects — and the anomaly disappears. **Seventh occurrence of
+the myopia family, and the first inside a *threshold* rather than a missing cap.** · **(b) The
+fix earns 1.7× and clears every quota 100% against a designed 95/73/57/41%** — which reads like
+"the quota curve is calibrated against a crew making a systematic error", and I was one commit
+from writing that. **It does not survive one more check.** `current_tier()` is a function of
+elapsed time scaled by crew size and **never checks that any prerequisite work was done**, so a
+crew that refuses everything and idles gets depth handed to it on schedule. **`chain_sim` does
+not implement D-20** — that is wall-clock gating with a crew multiplier, where D-20 and
+`LEVEL-SPEC.md` §3 both require gating on completed *tasks*. Every policy that trades shallow
+loot for depth is over-rewarded here, and the global bar trades nothing else. · So the honest
+state: **(a) is a real defect, and the size of its effect is unmeasurable until (b) is fixed.**
+Both flags opt-in, default reproduces §4 and §8 exactly, and I have explicitly written into
+`ECONOMY.md` §10 not to re-calibrate the quota curve off `global_bar`. · **Third round running
+where the interesting finding was a reason *not* to act.** R34 found the estate constraint,
+R35 found its appraiser column was a denominator artifact, R36 found the fix for that is
+gated on a spec violation nobody had noticed. The model has been wrong in the same direction
+each time — too generous to whichever policy the round was arguing for — which is worth
+naming: **a model tends to flatter the hypothesis it was extended to test.**
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -789,19 +816,17 @@ which is roughly what a two-round-old model deserves to be trusted at.
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R36: fix `chain_sim`'s finite estate, or delete it.** R35 found its blind crew earns *less*
-as the estate grows ($14,782 at 20 objects → $12,359 at 80), which cannot be right — more house
-should never make a blind crew poorer. That is the third bug in that code path in two rounds.
-Suspect the tier-pool split (`TIER_SHARE`) interacting with the depth cap and the phase clock:
-a crew that picks a tier clean idles until the next phase opens, so a *smaller* estate may be
-reaching depth sooner. Instrument time-spent-idling by estate size. **If it does not come clean
-in one round, delete `finite_estate` and keep only the crew-size result**, which R35 showed is
-immune to the artifact.
+**R37: implement D-20 for real — depth gates on completed work, not on the clock.** R36 found
+`chain_sim`'s `current_tier()` never checks that any prerequisite was done, so an idle crew
+gets depth on schedule. Model the chain as `LEVEL-SPEC.md` §3 specifies: tier N needs a
+prerequisite task, tasks cost labour, labour comes from the same pool as hauling. **Then the
+assertion that should have existed from the start: a crew that takes nothing must never reach
+tier 3.** Once that holds, re-run R36's `global_bar` comparison — the tier-relative reservation
+bar is a genuine defect, and its true size is unknown until depth stops being free.
 
-**Then: put the object count in `LEVEL-SPEC.md` as an authored constant.** It is currently an
-accident of how many plinths a level author happens to place, it is in no document as a tuning
-value, and R34 showed it doing real balance work — crew 6 goes from 1.18× crew 4 at the specced
-~28 objects to 1.90× at 80.
+**Then: put the object count in `LEVEL-SPEC.md` as an authored constant.** Currently an
+accident of how many plinths an author places, in no document as a tuning value, and R34 showed
+it moving crew 6 from 1.18× crew 4 at the specced ~28 objects to 1.90× at 80.
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their

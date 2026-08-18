@@ -430,6 +430,21 @@ lobbies feel bad" is not a bug report anyone can act on.
 
 **Falsified if:** nothing. Any future timer-based gate is a bug.
 
+
+> **R36 — `chain_sim` does not actually implement this, and the gap matters.**
+> `current_tier()` unlocks depth as a function of *elapsed time* scaled by crew size. It never
+> checks that any prerequisite work was done, so a crew that refuses every object and idles
+> still has depth handed to it on schedule. That is wall-clock gating with a crew multiplier —
+> the exact thing this decision forbids.
+>
+> It went unnoticed because the flag is called `labour_gated` and it *does* fix the symptom
+> D-20 was written about (bigger crews earning less). It fixes it by scaling the clock, not by
+> modelling work. **Any policy that trades shallow loot for depth is over-rewarded** in every
+> result this model has produced, which is why R36 refused to re-calibrate the quota curve off
+> a policy change that appeared to earn 1.7×.
+>
+> **Falsified-in-the-model check to add:** a crew that takes nothing should never reach tier 3.
+> Assert it.
 ---
 
 ## D-21 · The apex object must be visible before it is reachable
