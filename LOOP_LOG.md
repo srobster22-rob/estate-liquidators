@@ -809,6 +809,37 @@ gated on a spec violation nobody had noticed. The model has been wrong in the sa
 each time — too generous to whichever policy the round was arguing for — which is worth
 naming: **a model tends to flatter the hypothesis it was extended to test.**
 
+R37 · Implemented D-20 for real: depth bought with prerequisite steps (1 / 2 / 3 for tiers
+2 / 3 / 4, each 75s of a four-person crew's labour) rather than handed out on a clock. **Wrote
+the assertion that should have existed since R0** — an idle crew reaches **tier 4** under the
+wall-clock gate and **tier 1** under the work gate. A gate nobody tests is a gate that quietly
+turns back into a clock. · **Three of my own policy bugs on the way in, each caught by a number
+that was obviously wrong rather than by re-reading code.** (1) The trigger for doing
+prerequisite work was conditioned on the `depth_cap` flag, which is off by default — so the
+work-gated crew never did any prerequisite at all, spent the whole night in the foyer, and
+earned $2,493. (2) With that fixed it still never bought the *third* door, because
+`reserve_apex` holds five slots for an apex it had not unlocked: the reserve stops you filling
+the van, so the depth budget never trips, so you never buy the door, so the reserve is never
+spent. A deadlock worth naming. (3) Task cost: I divided `TASK_SECONDS = 75` by the labour
+pool, making a step cost 19 seconds — but `validate_estate.py` documents that 75 as *"the cost
+for a crew of 4"*, i.e. wall clock, so it is 300 labour-seconds. A crew was buying the entire
+house in under a minute. · **The finding, once it worked: the wall-clock schedule was doing
+balance work nobody knew it was doing.** With depth genuinely bought, a crew earns **$16,869
+rising to $21,674** across the chain and clears **every quota 100%**, against the designed
+95/73/57/41%. The clock was *forcing* the crew to spend the first 240 seconds in shallow
+tiers — that is where the quota curve's difficulty came from — and nothing in the design
+requires it. Paying 225s of prerequisite labour and then looting only tier 3 is strictly
+better, because deep loot is ~5× richer per slot. · **Also settled R36's open question: the
+tier-relative reservation bar is a real defect of the size R36 measured** ($20,816 vs $12,499
+at 80 objects, essentially unchanged by work gating). R36's caution was right to stop, but
+wrong about the reason — the global bar was not exploiting free depth. · **And the caveat that
+stops this being actionable, which is the same shape as the last three rounds.** `LEVEL-SPEC.md`
+§3 puts each prerequisite *in a shallower wing* — the conservatory key is in a tier-1 room — so
+a crew cannot buy depth without **traversing** shallow space, and this model lets them do
+prerequisite work abstractly, from nowhere. But traversal is not taking: **nothing forces a
+crew to spend van slots on shallow loot, and the quota curve assumes they do.** That is the
+real open question and it needs prerequisites located in space before it can be answered.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
@@ -816,17 +847,20 @@ naming: **a model tends to flatter the hypothesis it was extended to test.**
 *This block went stale once before — it sat on an R11-era plan while R12–R15 built something
 else entirely. Rewrite it every round, even when the round changes nothing.*
 
-**R37: implement D-20 for real — depth gates on completed work, not on the clock.** R36 found
-`chain_sim`'s `current_tier()` never checks that any prerequisite was done, so an idle crew
-gets depth on schedule. Model the chain as `LEVEL-SPEC.md` §3 specifies: tier N needs a
-prerequisite task, tasks cost labour, labour comes from the same pool as hauling. **Then the
-assertion that should have existed from the start: a crew that takes nothing must never reach
-tier 3.** Once that holds, re-run R36's `global_bar` comparison — the tier-relative reservation
-bar is a genuine defect, and its true size is unknown until depth stops being free.
+**R38: put prerequisites in space, which is the last thing standing between this model and a
+usable quota curve.** R37 showed the wall-clock schedule was the only thing making the crew
+spend time in shallow tiers, and that with depth genuinely bought a crew clears every quota by
+1.8×. But `LEVEL-SPEC.md` §3 requires each prerequisite to live in a *shallower wing*, so a
+crew must traverse tier 1 to buy tier 2 — this model lets them do the work from nowhere. Give
+the prerequisite a location: it costs a trip into the tier below, during which the crew sees
+that tier's shelves. **Then the real question becomes answerable — traversal is not taking, and
+nothing yet forces a crew to spend van slots on shallow loot while the quota curve assumes they
+do.** If it turns out nothing does, the quota curve is wrong by roughly 1.8× and §4 needs
+rewriting around a crew that rushes depth.
 
-**Then: put the object count in `LEVEL-SPEC.md` as an authored constant.** Currently an
-accident of how many plinths an author places, in no document as a tuning value, and R34 showed
-it moving crew 6 from 1.18× crew 4 at the specced ~28 objects to 1.90× at 80.
+**Then: put the object count in `LEVEL-SPEC.md` as an authored constant** (R34), and fix the
+tier-relative reservation bar (R36/R37 confirmed it as a real defect worth ~1.7× at large
+estates).
 
 **R33: the PATROL gradient wants a second look once §8 is settled.** R31 built it and verified
 the rate discriminates, but the anchors (12s and 3s) were chosen for feel and only their

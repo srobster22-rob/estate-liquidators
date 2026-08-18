@@ -111,8 +111,24 @@ def advance_disturbance(rng, d, span, t, crew, cursed=0):
         d = max(floor, min(100.0, d - decay / 60.0))
     return d
 
-# (unlock_time, tier) — LEVEL-SPEC.md 3: chains gate depth by wall-clock
+# (unlock_time, tier) — the ORIGINAL wall-clock schedule, kept as the default so every
+# published result stays reproducible.
 PHASES = [(0.0, 1), (120.0, 2), (240.0, 3), (360.0, 4)]
+
+# R37: D-20 for real. LEVEL-SPEC.md 3 gates depth on completed PREREQUISITE STEPS -- find
+# the key, flip the breaker, pry the boards -- at 1 / 2 / 3 steps for tiers 2 / 3 / 4.
+# A step costs labour from the same pool the hauling draws on, so depth is bought with
+# time the crew could have spent carrying things, which is the trade the design intends
+# and the clock schedule silently gave away for free (R36).
+#
+# TASK_SECONDS matches sim/validate_estate.py, where it is documented as "rough cost of
+# one prerequisite step FOR A CREW OF 4" -- i.e. 75 seconds of wall clock at four people,
+# which is 300 labour-seconds. Dividing 75 by the labour pool instead made a step cost 19
+# seconds, a crew bought the whole house in under a minute, and the design's shallow-then-
+# deep arc vanished entirely.
+TASK_SECONDS = 75.0
+TASK_LABOUR = TASK_SECONDS * 4.0
+PREREQ_STEPS = {2: 1, 3: 2, 4: 3}
 
 # tier -> (round-trip seconds, {class: (value_lo, value_hi)})
 TIER_DATA = {
@@ -318,12 +334,26 @@ def current_tier(t, crew=4, labour_gated=True):
     return tier
 
 
+def tier_from_work(steps_done):
+    """R37: depth as a function of prerequisite steps COMPLETED, per D-20.
+
+    The property the clock version could not have: a crew that does no work never gets
+    deeper. Asserted in `_assert_work_gating()` below, because a gate nobody tests is a
+    gate that quietly turns back into a clock.
+    """
+    tier = 1
+    for ti, need in sorted(PREREQ_STEPS.items()):
+        if steps_done >= need:
+            tier = ti
+    return tier
+
+
 def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
               reserve_apex=True, labour_gated=True, noise=False, scan=True,
               q_cap=0.90, depth_cap=False, metric="per_slot",
               rule="value", curses=False, cursed_cap=3, rooms=False,
               scan_rooms=("uniform", "mixed", "curio"), finite_estate=False,
-              global_bar=False):
+              global_bar=False, work_gated=False):
     """Online selection: the crew walks the house and decides as it goes.
 
     This is neither the myopic version (fill the van with foyer junk) nor the
@@ -344,13 +374,42 @@ def run_night(rng, crew, van_slots, allow_apex=True, picky=True,
     labour_pool = crew_effort(crew)   # R33: sublinear, anchored at crew 4
     apex_offered = False
     estate = build_estate(rng, curses, rooms) if finite_estate else None
+    steps_done = 0
     d = 0.0                     # Disturbance; stays 0 when noise=False
     lost = 0
     cursed_aboard = 0
     fees = 0.0
 
     while t < HAUL_WINDOW_S and slots_left > 0:
-        tier = current_tier(t, crew, labour_gated)
+        tier = tier_from_work(steps_done) if work_gated else current_tier(
+            t, crew, labour_gated)
+
+        # R37: buy the next depth with labour. The crew works a prerequisite step when it
+        # no longer wants what is in front of it -- the current tier is picked clean, or
+        # its depth budget here is spent. That is the trade D-20 describes and the clock
+        # schedule gave away: every step is time not spent carrying.
+        if work_gated and tier < 4:
+            # When to stop looting here and go open the next door. This uses the same
+            # 40% / 75% depth schedule as `depth_cap`, but it is a DIFFERENT decision --
+            # depth_cap governs whether to refuse loot, this governs whether to spend
+            # labour on a prerequisite -- so it must not be conditioned on that flag.
+            # It was, at first, and a crew with depth_cap off never did any prerequisite
+            # work at all and spent the whole night in the foyer earning $2,500.
+            spent_here = van_slots - slots_left
+            budget = {1: 0.40, 2: 0.75, 3: 1.00}[min(tier, 3)]
+            want_deeper = (
+                (estate is not None and not estate.get(min(tier, 3)))
+                or spent_here >= budget * van_slots
+                # Holding five slots for an apex you have not unlocked yet is a deadlock:
+                # the reserve stops you filling the van, so the depth budget never trips,
+                # so you never buy the door, so the reserve is never spent. Go and open
+                # it. Without this the crew reached tier 3 and stopped, and never earned
+                # the apex at all -- which is ~$6,000 of a ~$12,000 night.
+                or (reserve_apex and allow_apex and not apex_offered))
+            if want_deeper:
+                t += TASK_LABOUR / labour_pool
+                steps_done += 1
+                continue
 
         # The apex is ONE object per estate (LEVEL-SPEC.md 2), offered once.
         if tier == 4 and allow_apex and not apex_offered:
@@ -600,6 +659,33 @@ def show(rows, title):
               f"{r['pass']:>8.0%}{r['apex']:>8.0%}")
 
 
+def _assert_work_gating(n=400):
+    """R37: the property D-20 asserts and the clock schedule could never have.
+
+    A crew that never takes anything and never works a prerequisite must never get
+    deeper than tier 1. Under the wall-clock gate it reaches tier 4 by simply existing,
+    which is how the model spent thirty rounds over-rewarding every policy that traded
+    shallow loot for depth (R36).
+    """
+    print("\n\nR37 — DOES DEPTH COST ANYTHING?")
+    print("-" * 78)
+    for label, kw in (("wall-clock gate (default)", {}),
+                      ("work gate (D-20)", dict(work_gated=True))):
+        deepest = 0
+        for s in range(n):
+            rng = random.Random(s * 97)
+            # A crew that refuses everything: no hauling, and with depth_cap off it
+            # never triggers a prerequisite step either. Pure idling.
+            t, steps = 0.0, 0
+            while t < HAUL_WINDOW_S:
+                tier = (tier_from_work(steps) if kw.get("work_gated")
+                        else current_tier(t, 4, True))
+                deepest = max(deepest, tier)
+                t += TIER_DATA[min(tier, 3)][0] / 4.0
+        print(f"  {label:<28} an idle crew reaches tier {deepest}")
+    print("\n  D-20 says depth is bought with work. Only the second row honours that.")
+
+
 def show_rooms(n=1200):
     """R29: the round every partial model had been converging on.
 
@@ -731,3 +817,4 @@ if __name__ == "__main__":
     show_noise()
     show_curse(n=1200)
     show_rooms(n=900)
+    _assert_work_gating()

@@ -687,6 +687,38 @@ any of the fixes that were on the table.
 > **So the honest state is: the tier-relative bar is a real defect, and the size of its effect
 > is unknown until depth gating is implemented as specified.** Both flags are opt-in and the
 > default reproduces §4 and §8 exactly. Do not re-calibrate the quota curve off `global_bar`.
+>
+> **R37 implemented the depth gating and the defect survived it** — the global bar still earns
+> $20,816 against $12,499 at 80 objects with work-gating on, essentially unchanged. So R36's
+> caution was wrong about the *reason*: the global bar was not exploiting free depth. **The
+> tier-relative bar is a real defect of the size R36 measured.**
+
+### R37 — the wall-clock schedule was doing balance work nobody knew about
+
+`current_tier()` unlocked depth on elapsed time, so **an idle crew reached tier 4 by simply
+existing** (asserted in `chain_sim._assert_work_gating`). R37 implemented D-20 as written:
+depth costs prerequisite steps, 1 / 2 / 3 of them for tiers 2 / 3 / 4, each costing 75 seconds
+of a four-person crew's labour. An idle crew now reaches tier 1 and stays there.
+
+**With depth genuinely bought, a crew that buys it early earns ~1.8× and clears every quota:**
+
+| Night | Quota | Wall-clock gate | Pass | Work-gated (D-20) | Pass |
+|---:|---:|---:|---:|---:|---:|
+| 1 | $7,500 | $9,376 | 95% | $16,869 | **100%** |
+| 4 | $12,500 | $12,141 | 41% | $21,674 | **100%** |
+
+**The wall-clock schedule was forcing the crew to spend the first 240 seconds in the shallow
+tiers.** That is where the quota curve's difficulty came from, and nothing in the design
+actually requires it: paying 225s of prerequisite labour and then looting only tier 3 is
+strictly better, because deep loot is ~5× richer per slot.
+
+> **Do not re-calibrate off this either — the model is missing the thing that probably
+> prevents it.** `LEVEL-SPEC.md` §3 puts each prerequisite *in a shallower wing*: the
+> conservatory key is in a tier-1 room. So a crew cannot buy depth without **traversing**
+> shallow space, and this model lets them do prerequisite work abstractly, from nowhere.
+> Traversal is not the same as taking, though — **nothing forces a crew to spend van slots on
+> shallow loot, and the quota curve assumes they do.** That is the real open question, and it
+> needs the prerequisite to be located in space before it can be answered.
 
 **What is safe to act on now:** put the object count in `LEVEL-SPEC.md` as an explicit
 authored constant with its rationale, because right now it is an accident of how many plinths
