@@ -63,6 +63,11 @@
   .slot.ev{border-color:var(--evo);box-shadow:0 0 12px #ff7a3d66}
   .slot i{position:absolute;bottom:-1px;right:1px;font-style:normal;font-size:9px;
     font-weight:700;color:var(--gold);text-shadow:0 1px 2px #000}
+  #pausebtn{position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    margin-left:96px;width:38px;height:38px;display:none;pointer-events:auto;
+    align-items:center;justify-content:center;background:#141922;
+    border:2px solid #000;box-shadow:0 2px 0 rgba(0,0,0,.55);
+    font-size:15px;color:#f2ece0;cursor:pointer;-webkit-user-select:none}
   #warn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     font-size:40px;font-weight:700;letter-spacing:.14em;color:#ff5c4d;opacity:0;
     text-shadow:0 0 30px #ff2d1a,0 4px 0 #000}
@@ -151,6 +156,7 @@
   <div id="kit"></div>
   <div id="hpwrap"><div id="hpbar"></div><div id="hptxt"></div></div>
   <div id="warn"></div>
+  <div id="pausebtn">II</div>
 </div>
 
 <div class="ov on" id="menu"><div class="wrap" id="menuBody"></div></div>
@@ -675,6 +681,7 @@ function startRun(id){
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0;
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
+  stick=null; look=null;                 // drop any thumb held across the retry
   running=true; over=false; paused=false; picking=false;
   hide("menu"); hide("end"); hide("paused"); hide("pick");
   audioInit(); if(AC && AC.state==="suspended") AC.resume();
@@ -689,8 +696,29 @@ const keys={};
 // Touch. The game asks for pointer lock and WASD, which makes it unopenable on
 // the device most people will follow a link with. Left thumb drives a virtual
 // stick, right thumb turns the camera, and a tap on the right jumps.
-const TOUCH = matchMedia("(pointer:coarse)").matches || navigator.maxTouchPoints > 0;
-if(TOUCH) addEventListener("DOMContentLoaded", ()=>{
+// A touchscreen laptop has both a mouse and a digitiser. Deciding "is a phone"
+// from maxTouchPoints killed mouse camera control on every Surface and touch
+// Chromebook: lockPointer() no-op'd and mousemove bails without the lock.
+//
+// Swapping that for a media query would only move the guess - an emulated touch
+// desktop reports (any-pointer:fine)=false, byte-identical to a phone, so the
+// two are not reliably distinguishable. So do not decide up front: install BOTH
+// input paths always, always attempt the lock, and let the auto-pause key off
+// whether a lock was ever genuinely held.
+const HAS_TOUCH = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+addEventListener("DOMContentLoaded", ()=>{
+  const pb = document.getElementById("pausebtn");
+  if(!pb || !HAS_TOUCH) return;
+  pb.style.display = "flex";
+  const hit = e => { e.preventDefault(); e.stopPropagation();
+                     if(running && !over && !picking) togglePause(!paused); };
+  pb.addEventListener("touchstart", hit, { passive:false });
+  pb.addEventListener("click", hit);
+});
+const HAS_MOUSE = matchMedia("(any-pointer:fine)").matches;
+const TOUCH = HAS_TOUCH;                       // install the touch handlers
+let hadLock = false;                    // did pointer lock ever really engage?
+if(HAS_TOUCH && !HAS_MOUSE) addEventListener("DOMContentLoaded", ()=>{
   const h = document.getElementById("pauseHint");
   if(h) h.innerHTML = "<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> camera " +
                       "&nbsp; <kbd>TAP RIGHT</kbd> jump<br>" +
@@ -720,7 +748,6 @@ if(TOUCH){
                  t0:performance.now() };
       }
     }
-    if(running && !over && paused && !picking) togglePause(false);
   }, { passive:false });
   cv.addEventListener("touchmove", e => {
     e.preventDefault();
@@ -768,9 +795,10 @@ addEventListener("mousemove", e=>{
   camPitch  = clamp(camPitch - e.movementY*0.0020, .18, 1.32);
 });
 document.addEventListener("pointerlockchange", ()=>{
-  if(TOUCH) return;                       // touch never holds the lock, so this
-                                          // would pause the game permanently
-  if(document.pointerLockElement!==cv && running && !over && !picking) togglePause(true);
+  if(document.pointerLockElement === cv){ hadLock = true; return; }
+  // Only a lock we genuinely held can be lost. Without this, a device that never
+  // acquires one pauses the game permanently on the first frame.
+  if(hadLock && running && !over && !picking) togglePause(true);
 });
 cv.addEventListener("click", ()=>{
   if(running && !over && paused && !picking) togglePause(false);
@@ -792,7 +820,9 @@ function togglePause(v){
 // locked, or if the browser rate-limits repeated calls. Both are harmless and
 // both surface as an uncaught error if you do not swallow them.
 function lockPointer(){
-  if(TOUCH) return;                       // there is no pointer to lock
+  // Always attempt it. On a device with no pointer this rejects harmlessly and
+  // hadLock stays false, so nothing downstream misbehaves - no capability guess
+  // required, and a mouse that shows up later still works.
   try{ const p = cv.requestPointerLock?.(); if(p && p.catch) p.catch(()=>{}); }
   catch(e){}
 }
@@ -1525,20 +1555,26 @@ function step(dt){
   }
 
   // ---- player
-  let dx=0, dz=0;
+  let dx=0, dz=0, analog=1;
   if(botDrive){ const v = botVector(); dx=v[0]; dz=v[1]; }
   else {
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
     let mx = (keys.KeyD?1:0)-(keys.KeyA?1:0);
     let mz = (keys.KeyW?1:0)-(keys.KeyS?1:0);
     const tv = touchVec();
-    if(tv){ mx = tv[0]; mz = -tv[1]; }     // screen-down is away from the camera
+    if(tv){
+      mx = tv[0]; mz = -tv[1];            // screen-down is away from the camera
+      // touchVec is already scaled to 0..1 by deflection, but the normalise
+      // below throws that away - so any push past the dead zone ran at full
+      // speed while the drawn knob showed a half-deflection. Keep the magnitude.
+      analog = Math.min(1, Math.hypot(tv[0], tv[1]));
+    }
     const mag = Math.hypot(mx,mz);
     if(mag){ mx/=mag; mz/=mag; dx = fx*mz + fz*mx; dz = fz*mz - fx*mx; }
   }
   if(dx || dz){
-    P.x = clamp(P.x + dx*P.spd*dt, -ARENA+1.5, ARENA-1.5);
-    P.z = clamp(P.z + dz*P.spd*dt, -ARENA+1.5, ARENA-1.5);
+    P.x = clamp(P.x + dx*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);
+    P.z = clamp(P.z + dz*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);
     P.face = Math.atan2(dx, dz);
   }
   const gy = groundY(P.x, P.z);
@@ -2105,7 +2141,10 @@ window.__g = {
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
-  isTouch: ()=>TOUCH,
+  hasTouch: ()=>HAS_TOUCH,
+  hasMouse: ()=>HAS_MOUSE,
+  hadLock:  ()=>hadLock,
+  isAirborne: ()=>!!P&&P.air,
   isPaused: ()=>paused,
   camYaw: ()=>camYaw,
   place: (x,z)=>{ P.x=clamp(x,-ARENA+1.5,ARENA-1.5);

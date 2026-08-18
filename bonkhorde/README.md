@@ -26,9 +26,15 @@ xdg-open bonkhorde/index.html      # Linux
 
 `WASD` move · `MOUSE` orbit camera · `SPACE` jump · `ESC` pause.
 
-**On a phone:** left thumb is a virtual stick, right thumb turns the camera, a tap on the
-right jumps. Pointer lock is skipped on touch devices — asking for it there is what made the
-game unopenable on the device most people follow a link with.
+**On a phone:** left thumb is a virtual stick (analog — a half push moves you at half speed),
+right thumb turns the camera, a tap on the right jumps, and there is a pause button because
+a phone has no Escape key.
+
+Nothing decides "is this a phone" up front. Both input paths are always installed and pointer
+lock is always attempted; the auto-pause keys off whether a lock was ever genuinely *held*.
+Guessing from `maxTouchPoints` killed mouse control on touchscreen laptops, and swapping it
+for a media query only moves the guess — an emulated touch desktop reports
+`(any-pointer:fine) = false`, byte-identical to a phone.
 
 Survive twenty minutes. Four bosses arrive at 5:00, 10:00, 15:00 and 19:00. Coins persist
 between runs and buy permanent upgrades.
@@ -97,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 90 checks: boot, every weapon, every evolution, every
+node test.js              # 98 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -111,7 +117,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **90 passing.**
+die, and checks that `localStorage` survives a reload. **98 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -259,7 +265,7 @@ only number here worth acting on.
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned twenty-nine things this build believed:
+That harness has overturned thirty-two things this build believed:
 
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
@@ -371,6 +377,20 @@ That harness has overturned twenty-nine things this build believed:
   virtual stick, right thumb turns the camera, a tap on the right jumps, and pointer lock is
   skipped entirely on touch — the `pointerlockchange` auto-pause would otherwise have frozen
   the game permanently on the first tap.
+- **Touch support broke mouse support.** Deriving "is a phone" from `maxTouchPoints` classified
+  every touchscreen laptop as touch-only, so pointer lock no-op'd and the `mousemove` handler
+  bailed — mouse camera control simply died there. Neither the desktop nor the phone test could
+  have caught it, because each has only one input.
+- **The analog stick was not analog.** `touchVec()` scaled by deflection, then the existing
+  normalise threw the magnitude away, so any push past the dead zone ran at full speed while
+  the drawn knob showed a half push. The control visibly disagreed with the game.
+- **The touch test never dispatched `touchend`.** It returned a page-side closure from
+  `page.evaluate` to fire the release later, and functions do not serialise across that
+  boundary — so tap-to-jump and stick release were entirely untested while the docs claimed
+  touch was covered.
+- **A phone player could not pause.** The overlay covers the canvas, so the canvas resume
+  handler was unreachable, and with `pointerlockchange` skipped on touch, `Escape`/`KeyP` were
+  the only pause triggers — neither of which a phone has. There was no way to reach ABANDON RUN.
 - **The clears metric silently broke.** It counted `t >= 1199`, which was synonymous with
   victory right up until sudden death let losing runs reach 22:00 — and then reported them as
   wins. The instrument has to be re-checked every time the thing it measures changes shape.

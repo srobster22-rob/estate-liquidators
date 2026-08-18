@@ -523,52 +523,136 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await mp.goto(FILE, { waitUntil: "load" });
     await mp.waitForTimeout(600);
 
-    ok("detects a touch device", await mp.evaluate(() => window.__g.isTouch()));
-    ok("mobile boot is clean", merr.length === 0, merr.slice(0, 2).join(" | "));
-
-    // synthetic touches, so the real handlers are what gets exercised
-    const swipe = (x0, y0, x1, y1, id) => mp.evaluate(([x0, y0, x1, y1, id]) => {
+    // One event per call. The previous version returned a page-side closure from
+    // evaluate() to fire touchend later - functions do not serialise across that
+    // boundary, so touchend was NEVER dispatched and both tap-to-jump and stick
+    // release went untested while the docs claimed touch was covered.
+    const fire = (type, x, y, id) => mp.evaluate(([type, x, y, id]) => {
       const cv = document.getElementById("gl");
-      const mk = (x, y) => new Touch({ identifier: id, target: cv, clientX: x, clientY: y });
-      const fire = (type, x, y) => cv.dispatchEvent(new TouchEvent(type, {
-        bubbles: true, cancelable: true,
-        touches: type === "touchend" ? [] : [mk(x, y)],
-        changedTouches: [mk(x, y)] }));
-      fire("touchstart", x0, y0);
+      const t = new Touch({ identifier: id, target: cv, clientX: x, clientY: y });
+      cv.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: type === "touchend" ? [] : [t], changedTouches: [t] }));
+    }, [type, x, y, id]);
+    const drag = async (x0, y0, x1, y1, id) => {
+      await fire("touchstart", x0, y0, id);
       for (let i = 1; i <= 8; i++)
-        fire("touchmove", x0 + (x1-x0)*i/8, y0 + (y1-y0)*i/8);
-      return { end: () => fire("touchend", x1, y1) };
-    }, [x0, y0, x1, y1, id]);
+        await fire("touchmove", x0 + (x1-x0)*i/8, y0 + (y1-y0)*i/8, id);
+    };
+
+    ok("detects a touch device", await mp.evaluate(() => window.__g.hasTouch()));
+    ok("mobile boot is clean", merr.length === 0, merr.slice(0, 2).join(" | "));
 
     await mp.evaluate(() => { window.__g.wipeSave(); window.__g.start("intern"); });
     await mp.waitForTimeout(150);
     ok("touch start does not leave the game paused",
        await mp.evaluate(() => !window.__g.isPaused()));
 
-    // left half = movement stick
+    // left half = movement stick. Hold it, then step a fixed number of ticks;
+    // waiting on wall-clock made this flaky because the context is render-bound.
     const before = await mp.evaluate(() => window.__g.state());
-    // hold the stick, then advance the sim a fixed number of ticks. Waiting on
-    // wall-clock made this flaky (3.0 / 2.8 / 3.3 against a 3.0 bar) because the
-    // mobile context is render-bound and the dt clamp slows simulated time.
-    await swipe(90, 600, 90, 480, 1);                 // push "forward", keep held
+    await drag(90, 600, 90, 480, 1);                    // full deflection forward
     const moved = await mp.evaluate(([bx, bz]) => {
-      window.__g.step(120);                            // exactly 2 simulated seconds
+      window.__g.step(120);
       const a = window.__g.state();
       return Math.hypot(a.x - bx, a.z - bz);
     }, [before.x, before.z]);
     ok("left-thumb stick moves the player", moved > 8,
        `moved ${moved.toFixed(1)}m in 2 simulated seconds`);
 
+    // the stick is analog: a small push must travel measurably less far
+    await fire("touchend", 90, 480, 1);
+    const small = await mp.evaluate(() => window.__g.state());
+    await drag(90, 600, 90, 578, 3);                    // ~22px, just over dead zone
+    const movedSmall = await mp.evaluate(([bx, bz]) => {
+      window.__g.step(120);
+      const a = window.__g.state();
+      return Math.hypot(a.x - bx, a.z - bz);
+    }, [small.x, small.z]);
+    ok("the stick is analog, not on/off", movedSmall < moved * 0.75,
+       `${movedSmall.toFixed(1)}m at part deflection vs ${moved.toFixed(1)}m at full`);
+
+    // releasing must actually stop you
+    await fire("touchend", 90, 578, 3);
+    const rel = await mp.evaluate(() => window.__g.state());
+    const drift = await mp.evaluate(([bx, bz]) => {
+      window.__g.step(120);
+      const a = window.__g.state();
+      return Math.hypot(a.x - bx, a.z - bz);
+    }, [rel.x, rel.z]);
+    ok("releasing the stick stops the player", drift < 0.5, `drifted ${drift.toFixed(2)}m`);
+
     // right half = camera
     const yaw0 = await mp.evaluate(() => window.__g.camYaw());
-    await swipe(300, 400, 180, 400, 2);
-    await mp.waitForTimeout(200);
+    await drag(300, 400, 180, 400, 2);
+    await fire("touchend", 180, 400, 2);
     const yaw1 = await mp.evaluate(() => window.__g.camYaw());
     ok("right-thumb drag turns the camera", Math.abs(yaw1 - yaw0) > 0.15,
        `yaw ${yaw0.toFixed(2)} -> ${yaw1.toFixed(2)}`);
 
+    // a quick tap on the right jumps
+    const jumped = await mp.evaluate(async () => {
+      const cv = document.getElementById("gl");
+      const mk = () => new Touch({ identifier: 9, target: cv, clientX: 300, clientY: 500 });
+      cv.dispatchEvent(new TouchEvent("touchstart", { bubbles:true, cancelable:true,
+        touches:[mk()], changedTouches:[mk()] }));
+      cv.dispatchEvent(new TouchEvent("touchend", { bubbles:true, cancelable:true,
+        touches:[], changedTouches:[mk()] }));
+      return window.__g.isAirborne();
+    });
+    ok("a tap on the right jumps", jumped === true, `airborne=${jumped}`);
+
+    // a phone has no Escape key, so the pause button has to exist and work
+    const paused = await mp.evaluate(() => {
+      const pb = document.getElementById("pausebtn");
+      if (!pb || getComputedStyle(pb).display === "none") return "missing";
+      pb.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      return window.__g.isPaused();
+    });
+    ok("the pause button exists and works on touch", paused === true, `result=${paused}`);
+
+    // a thumb still held when the run ends must not steer the next one
+    await drag(90, 600, 90, 470, 7);
+    const carried = await mp.evaluate(() => {
+      window.__g.start("intern");            // retry with the thumb still down
+      const b = window.__g.state();
+      window.__g.step(90);
+      const a = window.__g.state();
+      return Math.hypot(a.x - b.x, a.z - b.z);
+    });
+    ok("a held thumb does not steer the next run", carried < 0.5,
+       `drifted ${carried.toFixed(2)}m after restart`);
+    await fire("touchend", 90, 470, 7);
+
     await mp.screenshot({ path: "shot-mobile.png" });
     ok("no errors from touch handling", merr.length === 0, merr.slice(0, 2).join(" | "));
+    await ctx.close();
+  }
+
+  console.log("\n=== 15b. INPUT PATHS DO NOT EXCLUDE EACH OTHER ===");
+  {
+    // A touchscreen laptop has both a mouse and a digitiser, and this harness
+    // CANNOT emulate that: Playwright's hasTouch context reports
+    // (any-pointer:fine)=false and pointer:coarse - byte-identical to a phone.
+    // So testing the capability guess is impossible here, which is the argument
+    // for not having one. What IS testable is the mechanism that replaced it:
+    // the auto-pause must key off a lock actually held, never off a guess.
+    const ctx = await browser.newContext({
+      viewport: { width: 1280, height: 800 }, hasTouch: true, isMobile: false });
+    const lp = await ctx.newPage();
+    const lerr = [];
+    lp.on("pageerror", e => lerr.push(e.message));
+    await lp.goto(FILE, { waitUntil: "load" });
+    await lp.waitForTimeout(500);
+    const r = await lp.evaluate(() => {
+      window.__g.wipeSave(); window.__g.start("intern");
+      return { paused: window.__g.isPaused(), hadLock: window.__g.hadLock() };
+    });
+    await lp.waitForTimeout(500);
+    const still = await lp.evaluate(() => window.__g.isPaused());
+    ok("a device that never gets pointer lock is not auto-paused",
+       r.paused === false && still === false, `paused=${r.paused} then ${still}`);
+    ok("and it knows it never held the lock", r.hadLock === false);
+    ok("no errors in the both-inputs case", lerr.length === 0, lerr.slice(0,2).join(" | "));
     await ctx.close();
   }
 
