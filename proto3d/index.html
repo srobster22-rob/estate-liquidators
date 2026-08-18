@@ -2196,8 +2196,15 @@ function render(){
   gl.uniform4fv(U.uLit,buf);
   gl.uniform1i(U.uLitN,litRooms.length);
 
+  // DESIGN 4.2: "the van's interior lighting is the readout for total cursed cargo
+  // - a physical, glanceable gauge rather than a UI number, so the crew can SEE
+  // what their greed has done to the ride home." One notch per tainted piece, two
+  // per malignant, and the floor it stands on goes with it.
+  const notches=van.cargo.reduce((n,c)=>n+(c.grade==="malignant"?2:c.grade==="tainted"?1:0),0);
+  const vanGlow=Math.max(0.18,1-0.12*notches);
   for(const r of ROOMS){
-    drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
+    drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2,
+      r.van?[.30*vanGlow,.26*vanGlow,.19*vanGlow]:[.23,.225,.215]);
     drawBox(r.x,WALL_H,r.z,r.w/2,0.04,r.d/2,[.16,.16,.17]);
     wallRun("x", r.x-r.w/2, r.z-r.d/2, r.z+r.d/2, gapsOn("x", r.x-r.w/2));
     wallRun("x", r.x+r.w/2, r.z-r.d/2, r.z+r.d/2, gapsOn("x", r.x+r.w/2));
@@ -2540,6 +2547,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   cleared:id=>roomCleared(id),
   slots:()=>({...SLOTS}),
   vanSlots:()=>van.slots,
+  vanGlow:()=>{const n=van.cargo.reduce((a,c)=>a+(c.grade==="malignant"?2:
+    c.grade==="tainted"?1:0),0); return {notches:n, glow:+Math.max(0.18,1-0.12*n).toFixed(3)};},
   twoMan:()=>{const it=items.find(i=>!i.gone&&i.klass==="two_man");
     return it?items.filter(x=>!x.gone).indexOf(it):-1;},
   lights:()=>({lit:[...lit], breakerUsed}),

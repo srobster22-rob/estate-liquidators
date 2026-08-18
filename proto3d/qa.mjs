@@ -1344,6 +1344,31 @@ async function checks(g, fresh) {
   ok("the dead do not shout - they have Static for that",
     mute.dead === true && mute.said === null, JSON.stringify(mute));
 
+  // --- the van as a gauge (DESIGN 4.2) --------------------------------------
+  // "A physical, glanceable gauge rather than a UI number, so the crew can SEE
+  // what their greed has done to the ride home." One notch per tainted piece and
+  // two per malignant, because a malignant one is twice the burden everywhere else.
+  await fresh();
+  const gauge = await g(() => {
+    const before = window.__g.vanGlow();
+    const steps = [];
+    for (const grade of ["clean", "tainted", "malignant"]) {
+      window.__g.reset();
+      const idx = window.__g.list().findIndex(i => i.grade === grade);
+      if (idx < 0) { steps.push(null); continue; }
+      const v = window.__g.rooms().find(r => r.van);
+      window.__g.hold(idx); window.__g.tp(v.x, v.z); window.__g.step(2, 1 / 60);
+      steps.push({ grade, ...window.__g.vanGlow() });
+    }
+    return { before, steps };
+  });
+  ok("the van is dark before you have loaded anything cursed",
+    gauge.before.notches === 0 && gauge.before.glow === 1, JSON.stringify(gauge.before));
+  ok("and it dims one notch for a tainted piece and two for a malignant one",
+    gauge.steps[0].notches === 0 && gauge.steps[1].notches === 1 &&
+    gauge.steps[2].notches === 2 && gauge.steps[2].glow < gauge.steps[1].glow &&
+    gauge.steps[1].glow < gauge.steps[0].glow, JSON.stringify(gauge.steps));
+
   // --- the radio (DESIGN 8) -------------------------------------------------
   // "Talk to crew across map - broadcasts audibly in-world at BOTH ends." The
   // second clause is the tool. A shout is one loud noise where you are; the radio

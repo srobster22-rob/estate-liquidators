@@ -142,6 +142,17 @@ appraiser is the game's signature verb.
 
 **Knowingly accepted cost:** the world feels slightly arbitrary.
 
+**Measured in the build, R46** (`proto3d/play.mjs --ablate`): a competent policy that never
+appraises loses **$620 ± 508 per night** against the same policy on the *same houses*, and its
+pass rate falls 76% → 61%. Of the five verbs ablated, the appraiser is the only one whose cost
+clears its own noise band — narrowly, at 2.4 standard errors across five comparisons — — which is D-10's claim, measured for the first time in the thing
+you can actually play rather than in a model of it.
+
+> The unpaired version of that same table said the opposite. Run across separate seed sets it
+> reported that appraising *costs* 5% at eight nights a cell and *pays* 7% at twenty-four; the
+> houses differ by more than the verb does, and R11 had already learned this once. Paired on
+> identical estates, the answer stops moving.
+
 **Simulated 2026-07-29** (`ECONOMY.md` §6, `sim/haul_sim.py`): scanning beats blind hauling
 by **+84%** at 14 van slots, and the edge decays monotonically with capacity until blind
 hauling wins outright somewhere between 24 and 32 slots. The mechanism §4.4 predicted is

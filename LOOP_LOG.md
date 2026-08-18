@@ -932,6 +932,29 @@ apex-share assertion hardcoded the final quota, so re-measuring the chain failed
 the apex. It reads the contract now. · Regression: QA 202/202, drift 178/178, claims 25/25,
 validator 10 × 12, player check green.
 
+R46 · **What each verb is actually worth — and the same table, run two ways, giving opposite
+answers.** With a policy that plays properly, every verb can be switched off and the night
+re-run: never appraise, never hide, leave the apex, no cursed-cargo cap, never touch a lever.
+Every one of those has an answer in a design document and most have one in a sim. None of them
+had one *here*. · The first table was **unpaired** — each policy across its own set of houses
+— and it said the appraiser **costs 5%** at eight nights a cell and **pays 7%** at twenty-four,
+that hiding is worth −25%, and that the apex is a trap. Every one of those was the houses
+talking. Paired on **identical estates**, every verb has a positive point estimate and the
+table stops moving: never appraising costs **$620 ± 508** a night and drops the pass rate
+76% → 61%; no curse cap costs $538 ± 578; no levers $390 ± 559; leaving the apex $259 ± 605;
+never hiding $142 ± 591. · The appraiser is the only one that clears its own band, and
+narrowly — 2.4 standard errors across five comparisons. That is **D-10 measured in the build
+for the first time**, seventeen rounds after `haul_sim.py` predicted it, and it is the same
+number in the same direction. · The lesson is one this project has already learned twice and I
+still walked into: R11 used common random numbers for exactly this reason, and R25's
+curse-cap claim was published wrong and corrected for exactly this reason. Between-house
+variance is larger than every effect in the table. `--ablate --check` now refuses to run under
+twenty nights a cell, because at twelve the band is wider than anything it could measure. ·
+Also built, small and long-listed: **the van's interior light is now the cursed-cargo gauge**
+— one notch dimmer per tainted piece, two per malignant, so what your greed has done to the
+ride home is a thing you look at rather than a number in a corner (`DESIGN` §4.2). ·
+Regression: QA 204/204, drift 178/178, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

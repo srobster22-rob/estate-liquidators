@@ -9,8 +9,9 @@ below is a plan — it's a statement of what you can run today, updated whenever
 ```bash
 node proto3d/play.mjs              # watch a competent player play one night
 node proto3d/play.mjs --trials 16 --check   # what a player is worth, asserted
-node proto3d/qa.mjs               # 202 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 202   # the numbers in these docs are the real ones
+node proto3d/play.mjs --ablate --trials 20  # what each verb is worth, paired (~25 min)
+node proto3d/qa.mjs               # 204 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 204   # the numbers in these docs are the real ones
 python3 sim/check_drift.py        # 178 constants agree across four implementations
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
 python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
@@ -52,6 +53,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | All three Disturbance levers | `DESIGN` §6.5 | Kill the lights, go quiet (window scaled to this build's night), unload cursed cargo into the yard. |
 | What a curse costs to carry | `DESIGN` §4.2 | Tainted takes your torch away and adds Disturbance faster than the crew can decay it; malignant gains mass over 20s and speaks in a crewmate's voice, which the Curator hears. All of it ends the frame you put the piece down. |
 | The torch as a verb | `DESIGN` §4.2, `TECH-SPEC` §A3 | Dark is a lighter mark and nearly blind. A cursed piece takes the choice away. |
+| The van as a gauge | `DESIGN` §4.2 | The van's interior dims one notch per tainted piece and two per malignant, so what your greed has done to the ride home is a thing you look at rather than a number. |
 | The radio | `DESIGN` §8 | Sits in the van; you decide whether to take it. Keying it reaches the whole house — and puts an L38 in the room every listener is standing in, so it trades a beacon on you for a beacon on everybody. |
 | The voice ladder | `AUDIO-SPEC` §2 | Whisper 8, raised 45, shout 65, on the same hearing model as everything else: a whisper cannot cross the room you are in, a raised voice stops at the doorway, only a shout is heard next door — and the Curator is listening on the same channel. It is how you ask for the other end of an armoire. |
 | Death as a role change | `DESIGN` §5.1 | 10s collection beat, then free movement, permanent sight of the Curator, curse-sight at 5m, and a Static budget. |
@@ -65,12 +67,11 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | **Multiplayer** | all of it | The prototype is one player and three haul bots. This is still the largest gap by far — but the *arithmetic* of it no longer is. `sim/netcode.py` puts `TECH-SPEC` B1–B4 on a clock with a delay in it: the hot potato survives (0.13s of wrong target at 120ms, against 2.5s to be caught), the pickup race only flips in a photo finish, the pry disagrees with the victim's own screen 3.6% of the time, and the two-man drift tolerance is entirely spent on latency before the physics gets any of it. What needs four people is the *feel*. |
 | **Proximity voice** | `AUDIO-SPEC` §2 | Needs two clients. Phase 0's exit criterion. The *ladder* is built and on the same attenuation model — what is missing is a second mouth. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
-| The van's interior light as a cursed-cargo gauge | `DESIGN` §4.2 | The floor rises per cursed piece, but the van does not visibly dim — the glanceable readout is still a UI number. |
 | Unity / Steam | `BUILD-PROMPT` | The C# core exists and is pinned to the sims; there is no Unity project. |
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 202 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 204 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can. What `play.mjs`
   adds is narrower and still worth having: a competent *policy* plays the build through the
   real verbs, and the numbers it produces are the first in this project measured with the

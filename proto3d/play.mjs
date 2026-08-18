@@ -362,6 +362,98 @@ async function main() {
       + `${(carried + " taken").padStart(11)}${(scans + " scans").padStart(10)}`
       + `${(died + " died").padStart(9)}`);
   }
+  if (has("--ablate")) {
+    // What each verb is actually worth, in the build, to somebody playing it.
+    // Every one of these has an answer in a design document and most have one in
+    // a sim; none of them had one HERE, because until R44 nobody was playing.
+    const OFF = [
+      ["nothing", [], "the policy as it stands"],
+      ["scan", ["scan"], "never appraise - DESIGN 4.4 says the game rests on this"],
+      ["hide", ["hide"], "never use the furniture - DESIGN 8.1"],
+      ["apex", ["apex"], "leave the apex behind the boards - D-21"],
+      ["curse", ["curse"], "no cursed-cargo cap - R11 / D-11"],
+      ["levers", ["levers"], "never touch a lever - DESIGN 6.5"],
+    ];
+    console.log(`\nWHAT EACH VERB IS WORTH  -  ${trials} nights a night, all four nights`);
+    console.log("-".repeat(74));
+    console.log("policy".padEnd(10) + "vs full".padStart(11) + "95% band".padStart(10)
+      + "pass".padStart(8) + "ruined".padStart(8) + "died".padStart(7)
+      + "   what is off  (* = outside the band)");
+    // PAIRED, on identical houses. This project learned in R11 that comparing two
+    // policies across two sets of seeds measures the seeds: an unpaired first run
+    // of this table said appraising costs 5% at eight nights and pays 7% at
+    // twenty-four, which is the between-house variance talking, not the verb. The
+    // difference per house has a standard error a fraction of the size.
+    const ROWS = [];
+    const full = new Map();
+    for (let n = 0; n < 4; n++) {
+      for (let t = 0; t < trials; t++) {
+        const sd = (t + 1) * 104729 + n;
+        await page.evaluate(([s2, nn]) => {
+          window.__g.newContract(s2); window.__g.regen(s2, nn); window.__g.setNight(nn);
+        }, [sd, n]);
+        full.set(`${n}:${t}`, await page.evaluate(POLICY,
+          { seconds: 210, verbose: false, off: [] }));
+      }
+    }
+    for (const [name, off, why] of OFF) {
+      const diffs = [], met = [], ruin = [], died = [];
+      for (let n = 0; n < 4; n++) {
+        for (let t = 0; t < trials; t++) {
+          const sd = (t + 1) * 104729 + n;
+          const base = full.get(`${n}:${t}`);
+          let r = base;
+          if (off.length) {
+            await page.evaluate(([s2, nn]) => {
+              window.__g.newContract(s2); window.__g.regen(s2, nn); window.__g.setNight(nn);
+            }, [sd, n]);
+            r = await page.evaluate(POLICY, { seconds: 210, verbose: false, off });
+          }
+          diffs.push((r.net ?? 0) - (base.net ?? 0));
+          met.push(!!r.met); ruin.push((r.net ?? 0) === 0); died.push(!!r.dead);
+        }
+      }
+      const mean = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+      const sd = Math.sqrt(diffs.reduce((a, b) => a + (b - mean) ** 2, 0)
+        / Math.max(1, diffs.length - 1));
+      const se = sd / Math.sqrt(diffs.length);
+      const sig = off.length && Math.abs(mean) > 2 * se ? " *" : "";
+      ROWS.push({ name, mean, se });
+      console.log(name.padEnd(10)
+        + (off.length ? (mean >= 0 ? "+" : "") + Math.round(mean).toLocaleString() : "-")
+          .padStart(11)
+        + (off.length ? "+-" + Math.round(2 * se) : "-").padStart(10)
+        + (Math.round(met.filter(Boolean).length / met.length * 100) + "%").padStart(8)
+        + (Math.round(ruin.filter(Boolean).length / ruin.length * 100) + "%").padStart(8)
+        + String(died.filter(Boolean).length).padStart(7) + sig.padEnd(2) + " " + why);
+    }
+    if (has("--check")) {
+      const fails = [];
+      // Twelve nights a cell puts the appraiser at -301 +-898 and twenty puts it
+      // at -620 +-508. The effect is real and it is narrow; the band has to be
+      // small enough to see it before the claim means anything.
+      if (trials < 20) fails.push(`--ablate --check needs --trials 20 or more `
+        + `(got ${trials}); below that the band is wider than every effect in the table`);
+      const scan = ROWS.find(r => r.name === "scan");
+      if (!(scan.mean < 0 && Math.abs(scan.mean) > 2 * scan.se))
+        fails.push(`turning the appraiser off costs ${Math.round(scan.mean)} `
+          + `+-${Math.round(2 * scan.se)} - D-10 says the mechanic is dead if that is `
+          + "not clearly negative");
+      if (ROWS.filter(r => r.name !== "nothing").some(r => r.mean > 2 * r.se))
+        fails.push("a verb PAYS to switch off: "
+          + ROWS.filter(r => r.mean > 2 * r.se).map(r => r.name).join(", "));
+      console.log("-".repeat(74));
+      if (!fails.length) {
+        console.log("  OK   every verb is worth having, and the appraiser clearly so");
+      } else {
+        for (const f of fails) console.log("  FAIL  " + f);
+        await browser.close();
+        process.exit(1);
+      }
+    }
+    await browser.close();
+    return;
+  }
   if (has("--calibrate")) {
     // ECONOMY 4's pass rates are for a crew that includes somebody playing. The
     // build's quotas were measured in R25 against an idle player, which is why
