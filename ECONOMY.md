@@ -60,7 +60,18 @@ Depth must pay *per slot*, or the optimal play is to farm the foyer forever.
 | 2 | two-man | $700 – 1,900 | $233 – 633 |
 | 3 | armful | $600 – 1,400 | $600 – 1,400 |
 | 3 | two-man | $1,800 – 4,000 | $600 – 1,333 |
+| 4 | armful / two-man | as tier 3 | as tier 3 |
 | **4** | **apex (cart)** | **$4,000 – 8,000** | **$800 – 1,600** |
+
+A tier-4 wing is a tier-3 wing with the centrepiece in it: what makes it worth the walk is
+the apex, not the sideboard beside it, so its ordinary loot is banded as tier 3. That was
+implicit in the prototype's table and missing from this one, and the level validator — which
+had no tier-4 armful band at all — rejected every late-contract house on sight.
+
+**The bands are the price before two designed multipliers**, the curse grade (§4.2's ×2.5 and
+×6) *and* the fragility premium (`DESIGN` §5's +18% per grade, so a fragility-3 piece is worth
+1.54× its band). A check that divides out one and not the other rejects correct houses: V8
+did exactly that, and rejected 12 of 12 generated estates for being right.
 
 ### The apex bug this arithmetic caught
 

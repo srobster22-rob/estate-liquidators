@@ -624,6 +624,55 @@ TO BEGIN below the fold, which for a prototype whose entire purpose is one hones
 worse than not writing it. Two columns and tighter leading now fit the whole thing on screen.
 · Regression: QA 161/161, drift 147/147.
 
+R36 · **Doors, and the last three Static verbs** — which retires the whole "specified, not
+built" row for `DESIGN` §5.1. A door is now a thing rather than a hole: open until something
+shuts it, and walking into a shut one costs **1.4 seconds and a door's worth of noise**. That
+single number is what makes the ghost's remaining verbs worth their price — **Slam** (2) buys
+the Curator a delay, **Hold** (5) stops it dead for four seconds without the opening timer
+even starting, and **Flicker** (1) is how the dead say "in here" without a radio. Slam and
+Hold cost 7 between them against a cap of 6, so you cannot do both to one door on one budget;
+that is `DESIGN` §5.1's arithmetic and it is now asserted in two places, as behaviour in
+`qa.mjs` and as a constraint on the constants in `check_drift.py`. · Eight injections, all
+caught by the check they were aimed at. · **The door-timing check took three attempts and
+found a bug on the way.** It first measured the time for the Curator to reach the player and
+read *no difference at all*, because both runs spent the same two and a half seconds in
+FIXATE and 1.4s vanished into the noise of a longer walk — so it measures the crossing of the
+doorway itself. Then it started the Curator 1m from the door, which is *inside* the doorway
+rect, so the door spent its FIXATE seconds quietly opening and only half the delay survived.
+Then, with both fixed, it read the shut door as **faster** than the open one: `reset()` treats
+doors as estate furniture and was never clearing them, so a door slammed on night two was
+still shut on night three. Fixed, and asserted. · The pair is measured on one pinned random
+stream, restored afterwards, because hearing is fuzzed ±3m and that moves an approach further
+than the effect being measured.
+
+R36b · **The level validator had been rejecting every house the generator makes.** The command
+`README.md` tells you to run — dump estates, hand them to the Python authority — returned
+**12 of 12 REJECTED**, and had done for as long as the batch mode has existed, because nothing
+asserted its output. Three faults, all the checker's: V8 divided the *curse* multiplier back
+out of a price but not the **fragility premium**, which is just as designed (`DESIGN` §5, +18%
+per grade) and is why a delicate piece is worth more; there was **no tier-4 band** for ordinary
+loot, so the sideboard next to the apex was judged against the apex's own $4,000–8,000; and the
+apex was judged in **ship dollars** when this build bands it as a share of a 210-second night's
+quota. All three fixed, all three injection-tested, and the export now carries the `frag` grade
+and the night's quota so the authority can apply the rules it owns — D-26 writes down the
+general rule, which is that a band check has to be handed its multipliers rather than asked to
+infer them, and that a validator whose output nothing asserts is a script and not a check. 24 of 24 estates across all
+four nights now enter the pool. · The way in was a console error that appeared in about one QA
+run in four: `page.on("console")` delivers asynchronously, so "no page errors" was racing the
+errors it exists to catch. Recorded in-page instead, it is observed the moment it is asked for.
+· What it was hiding: the gate sweep only ever swept **night one**, and the gate asks for more
+on a late contract — a tier-3 wing always, an apex wing from night three. Night three failed
+**5% of seeds outright** and played them with their faults printed to a console nobody reads.
+The house is grown to fit the tier it has to hold, the retry loop asks for a *bigger* house
+every twenty failures rather than rerolling the same one, and the sweep now covers all four
+nights: 0 bad in 1,600 seed-nights, worst case 60 attempts against a cap of 120. · One
+injection here did *not* fail the suite and that was the informative one: taking the extra
+rooms away again left the gate still holding — the retry escalation covers for it — so the
+claim was rewritten from "it holds" to "it holds with margin", worst case under 80 attempts
+where the injected build needs 92. · Regression:
+QA 171/171, drift 166/166, the validator over 24 generated estates across all
+four nights plus its own two samples, and `-r 3` clean.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

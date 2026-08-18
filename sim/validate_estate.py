@@ -28,8 +28,10 @@ CLASS_WIDTH = {"pocket": 0.7, "armful": 0.9, "two_man": 1.6, "cart": 2.2}
 CLASS_SLOTS = {"pocket": 0.5, "armful": 1.0, "two_man": 3.0, "cart": 5.0}
 
 # ECONOMY.md 3
+# Tier 4 spans its ordinary loot AND the apex: a tier-4 wing is a tier-3 wing
+# with the centrepiece in it, so the sideboard beside the apex is banded as tier 3.
 VALUE_BANDS = {
-    0: (40, 300), 1: (80, 300), 2: (250, 1900), 3: (600, 4000), 4: (4000, 8000),
+    0: (40, 300), 1: (80, 300), 2: (250, 1900), 3: (600, 4000), 4: (600, 8000),
 }
 
 # ECONOMY.md 3, per class. The coarse per-tier band above spans both classes and
@@ -41,12 +43,24 @@ CLASS_BANDS = {
     (0, "armful"): (80, 300), (1, "armful"): (80, 300),
     (2, "armful"): (250, 700), (2, "two_man"): (700, 1900),
     (3, "armful"): (600, 1400), (3, "two_man"): (1800, 4000),
+    (4, "armful"): (600, 1400), (4, "two_man"): (1800, 4000),
     (4, "cart"): (4000, 8000),
 }
 
 # DESIGN.md 4.2 / D-11. A curse grade multiplies the piece's value; a malignant
 # tier-1 vase is legitimately worth six times its band and is not a banding fault.
 GRADE_MULT = {"clean": 1.0, "tainted": 2.5, "malignant": 6.0}
+
+# DESIGN.md 5. "Fragile pieces are worth more to begin with" - a fragility-3 piece
+# carries a 54% premium over its band, which is as much a designed multiplier as
+# the curse grade and has to come off the same way. It did not, and so this check
+# rejected every estate the generator has ever produced: 12 of 12 in the batch the
+# README tells you to run, on a fault that was the check's and not the house's.
+FRAG_PREMIUM = 0.18
+
+# ECONOMY.md 3 / D-21. What the apex is worth is a share of the final quota; the
+# $4,000-8,000 band is that share at ship values.
+APEX_SHARE = (0.32, 0.64)
 
 TASK_SECONDS = 75.0     # rough cost of one prerequisite step for a crew of 4
 APPROACH_L = 60.0       # AUDIO-SPEC 3.1 approach bus at source
@@ -62,6 +76,7 @@ class Estate:
         self.plinths = d["plinths"]
         self.prereqs = d.get("prereqs", {})
         self.curator_spawn = d["curator_spawn"]
+        self.final_quota = d.get("final_quota")
         self.van = next(r for r, v in self.rooms.items() if v.get("van"))
 
     def adj(self, min_width=0.0):
@@ -259,6 +274,8 @@ def V7_curator_navmesh(e):
 def V8_value_bands(e):
     """Banding is checked on the piece BEFORE its curse multiplier.
 
+Banding is checked before the fragility premium too - see FRAG_PREMIUM.
+
     The first run of this check against the prototype rejected it on nine plinths,
     all of which were correctly banded pieces that happened to be cursed - a
     malignant tier-3 vase is six times its band by design (D-11), and a check that
@@ -268,12 +285,18 @@ def V8_value_bands(e):
     """
     bad = []
     for pl in e.plinths:
-        base = pl["value"] / GRADE_MULT.get(pl.get("grade", "clean"), 1.0)
+        base = (pl["value"] / GRADE_MULT.get(pl.get("grade", "clean"), 1.0)
+                / (1.0 + FRAG_PREMIUM * pl.get("frag", 0)))
         lo, hi = VALUE_BANDS[pl["tier"]]
         if not lo <= base <= hi:
             bad.append(f"{pl['room']} ${base:,.0f} outside tier-{pl['tier']} band")
             continue
         cb = CLASS_BANDS.get((pl["tier"], pl["cls"]))
+        # ECONOMY 3 / D-21: the apex is 32-64% of the FINAL quota. The dollar
+        # band is that ratio at ship values; an estate that knows its own quota
+        # is checked against the ratio, which is the rule the band came from.
+        if pl["cls"] == "cart" and e.final_quota:
+            cb = (APEX_SHARE[0] * e.final_quota, APEX_SHARE[1] * e.final_quota)
         if cb and not cb[0] <= base <= cb[1]:
             bad.append(f"{pl['room']} ${base:,.0f} outside tier-{pl['tier']} "
                        f"{pl['cls']} band {cb[0]}-{cb[1]}")

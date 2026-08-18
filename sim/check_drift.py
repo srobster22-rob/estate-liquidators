@@ -169,13 +169,16 @@ vb = w["value_bands"]
 # made-up x2.6 two-man multiplier - which the level contract rejected on sight.
 for key, tier, cls in (("t2_armful", 2, "armful"), ("t2_two_man", 2, "two_man"),
                        ("t3_armful", 3, "armful"), ("t3_two_man", 3, "two_man"),
+                       ("t4_armful", 4, "armful"), ("t4_two_man", 4, "two_man"),
                        ("t4_cart", 4, "cart")):
     m = re.search(rf'\({tier}, "{cls}"\): \((\d+), (\d+)\)', sims["validate_estate.py"])
     check(f"py CLASS_BANDS[{tier},{cls}] lo", m.group(1) if m else None, vb[key][0])
     check(f"py CLASS_BANDS[{tier},{cls}] hi", m.group(2) if m else None, vb[key][1])
 
 for key, tier, cls in (("t2_armful", 2, "armful"), ("t2_two_man", 2, "two_man"),
-                       ("t3_armful", 3, "armful"), ("t3_two_man", 3, "two_man")):
+                       ("t3_armful", 3, "armful"), ("t3_two_man", 3, "two_man"),
+                       ("t4_armful", 4, "armful"), ("t4_two_man", 4, "two_man"),
+                       ("t4_cart", 4, "cart")):
     m = re.search(rf"{tier}:\{{[^}}]*{cls}:\[(\d+),(\d+)\]", js3)
     check(f"JS3d BAND[{tier}].{cls} lo", m.group(1) if m else None, vb[key][0])
     check(f"JS3d BAND[{tier}].{cls} hi", m.group(2) if m else None, vb[key][1])
@@ -208,6 +211,13 @@ check("JS3d ship_night", grab(js3, r"SHIP_NIGHT=(\d+)"), ct["ship_night_seconds"
 ma = re.search(r"APEX_SHARE=\[([\d.,]+)\]", js3)
 for i, share in enumerate(ct["apex_share_of_final_quota"]):
     check(f"JS3d apex_share[{i}]", ma.group(1).split(",")[i] if ma else None, share)
+# The validator bands the apex by the same ratio, because the dollar band in
+# ECONOMY 3 is that ratio at ship values and this build's night is shorter.
+mv = re.search(r"APEX_SHARE = \(([\d.]+), ([\d.]+)\)", sims["validate_estate.py"])
+for i, share in enumerate(ct["apex_share_of_final_quota"]):
+    check(f"py APEX_SHARE[{i}]", mv.group(i + 1) if mv else None, share)
+check("py FRAG_PREMIUM", grab(sims["validate_estate.py"], r"FRAG_PREMIUM = ([\d.]+)"),
+      TUNING["fragility"]["value_premium_per_grade"])
 mh = re.search(r"CONTRACT_QUOTA_HERE=\[([\d,]+)\]", js3)
 for i, quota in enumerate(ct["quota_measured_210s"]):
     check(f"JS3d measured_quota[{i}]",
@@ -235,6 +245,20 @@ check("JS3d curse_sight_m", grab(js3, r"CURSE_SIGHT_M=([\d.]+)"), dd["curse_sigh
 check("JS3d knock_loudness", grab(js3, r"KNOCK_L=(\d+)"), dd["knock_loudness"])
 check("JS3d cost_knock", grab(js3, r"COST_KNOCK=(\d+)"), dd["cost_knock"])
 check("JS3d cost_nudge", grab(js3, r"COST_NUDGE=(\d+)"), dd["cost_nudge"])
+check("JS3d cost_flicker", grab(js3, r"COST_FLICKER=(\d+)"), dd["cost_flicker"])
+check("JS3d cost_slam", grab(js3, r"COST_SLAM=(\d+)"), dd["cost_slam"])
+check("JS3d cost_hold", grab(js3, r"COST_HOLD=(\d+)"), dd["cost_hold"])
+check("JS3d hold_seconds", grab(js3, r"HOLD_S=([\d.]+)"), dd["hold_seconds"])
+check("JS3d door_open_seconds", grab(js3, r"DOOR_OPEN_S=([\d.]+)"),
+      TUNING["doors"]["open_seconds"])
+# Slam and Hold cost 7 between them against a cap of 6, so the two cannot be
+# spent on one door in one budget. That is DESIGN 5.1 arithmetic, and qa.mjs
+# asserts the behaviour; this asserts the numbers still produce it.
+checks += 1
+if dd["cost_slam"] + dd["cost_hold"] <= dd["static_cap"]:
+    fails.append("slam+hold fits inside one Static budget - DESIGN 5.1 says it "
+                 "should not (%d+%d <= %d)" % (dd["cost_slam"], dd["cost_hold"],
+                                               dd["static_cap"]))
 
 sn = TUNING["senses"]
 check("JS3d hear_per_l", grab(js3, r"HEAR_PER_L\s*=\s*([\d.]+)"),

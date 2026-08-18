@@ -72,14 +72,24 @@
     "curse_sight_m": 5.0,
     "knock_loudness": 25,
     "cost_knock": 1,
-    "cost_nudge": 3
+    "cost_nudge": 3,
+    "cost_flicker": 1,
+    "cost_slam": 2,
+    "cost_hold": 5,
+    "hold_seconds": 4.0
+  },
+  "doors": {
+    "_source": "DESIGN.md 5.1",
+    "_note": "A door is a thing that takes time to get through. That is the only reason slamming one is worth two Static and holding it is worth five.",
+    "open_seconds": 1.4
   },
   "tools": {
     "_source": "DESIGN.md 8 toolkit",
     "salt_line_seconds": 20.0,
     "salt_line_charges": 1,
     "dolly_speed_mult": 0.55,
-    "dolly_tip_speed": 2.2
+    "dolly_tip_speed": 2.2,
+    "door_open_seconds": 1.4
   },
   "senses": {
     "_source": "TECH-SPEC.md A5; hearing radius derives from AUDIO-SPEC 1.1",
@@ -98,7 +108,7 @@
     "two_man_speed_mult": 0.62,
     "follower_drift_m": 0.4,
     "value_bands": {
-      "_source": "ECONOMY.md 3. Base value before any curse multiplier.",
+      "_source": "ECONOMY.md 3. Base value before any curse multiplier and before the fragility premium.",
       "t0_armful": [
         80,
         300
@@ -120,6 +130,15 @@
         1400
       ],
       "t3_two_man": [
+        1800,
+        4000
+      ],
+      "_t4_note": "Tier 4 exists to hold the apex. Its ordinary loot is banded as tier 3 - the apex is what makes the wing worth the walk, not the sideboard beside it.",
+      "t4_armful": [
+        600,
+        1400
+      ],
+      "t4_two_man": [
         1800,
         4000
       ],

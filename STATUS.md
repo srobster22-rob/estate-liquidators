@@ -7,12 +7,12 @@ below is a plan — it's a statement of what you can run today, updated whenever
 `?seed=12345` reproduces a specific house.
 
 ```bash
-node proto3d/qa.mjs               # 161 checks, the real build in headless Chromium
-python3 sim/check_counts.py --qa 161   # the numbers in these docs are the real ones
-python3 sim/check_drift.py        # 147 constants agree across four implementations
+node proto3d/qa.mjs               # 171 checks, the real build in headless Chromium
+python3 sim/check_counts.py --qa 171   # the numbers in these docs are the real ones
+python3 sim/check_drift.py        # 166 constants agree across four implementations
 python3 sim/validate_estate.py    # 10 checks x 2 sample estates
-node proto3d/dump-estate.mjs --seeds 12 --out /tmp/e && \
-  python3 sim/validate_estate.py --estate /tmp/e/*.json
+node proto3d/dump-estate.mjs --seeds 24 --out /tmp/e && \
+  python3 sim/validate_estate.py --estate /tmp/e/*.json   # 10 checks x 24, all four nights
 dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SDK
 ```
 
@@ -39,13 +39,15 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 | Fragility and breakage | `DESIGN` §5 | Break chance by fragility × speed at release. |
 | Corpse recovery | `DESIGN` §5 | A body is a two-man object that pays nothing and costs three slots. |
 | Contract chain | `ECONOMY` §4 | Four nights, van 14→19, quotas measured for this build's shorter night. |
-| Generated estates, gated | `LEVEL-SPEC` | Rejected until the contract passes; richer houses later in the chain. |
+| Generated estates, gated | `LEVEL-SPEC` | Rejected until the contract passes, on every night of the chain; richer, deeper houses later in it. |
 | Audio | `AUDIO-SPEC` §1, §A6.2 | Synthesised. The drag layer is never occluded to zero inside 8m. |
 | Lights and the breaker | `DESIGN` §6.5 | Lighting a wing is silent and +25; the breaker at the van is −15 and takes them all. |
 | The dolly | `DESIGN` §8 | Cart-class pieces cannot be picked up at all. Slow, L35 while rolling, and it tips if you sprint with it. |
 | Salt line | `DESIGN` §8 | One charge, 20s, laid in a doorway. Buys a detour, not denial — see the note below. |
 | All three Disturbance levers | `DESIGN` §6.5 | Kill the lights, go quiet (window scaled to this build's night), unload cursed cargo into the yard. |
-| Death as a role change | `DESIGN` §5.1 | 10s collection beat, then free movement, permanent sight of the Curator, curse-sight at 5m, and a Static budget. Knock and Nudge only. |
+| Death as a role change | `DESIGN` §5.1 | 10s collection beat, then free movement, permanent sight of the Curator, curse-sight at 5m, and a Static budget. |
+| Doors as entities | `DESIGN` §5.1 | Open until something shuts one; walking into a shut door costs 1.4s and a door's worth of noise. |
+| All five Static verbs | `DESIGN` §5.1 | Knock 1, Flicker 1, Nudge 3, Slam 2, Hold 5 — against a cap of 6, so slam-then-hold does not fit in one budget. |
 
 ## Specified, not built
 
@@ -53,7 +55,6 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 |---|---|---|
 | **Multiplayer** | all of it | The prototype is one player and three haul bots. The hot potato, proximity voice, the physics handoff at 120ms and the whole social layer are unproven. This is the largest gap by far. |
 | **Proximity voice** | `AUDIO-SPEC` §2 | Needs two clients. Phase 0's exit criterion. |
-| Flicker / Slam / Hold | `DESIGN` §5.1 | The other three Static verbs need a lights system and door entities; neither exists. |
 | A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
 | Radio, crowbar | `DESIGN` §8 | No other tools. The appraiser, flashlight, salt line, breaker and dolly are built. |
 | Curses beyond value and ruin | `DESIGN` §4.2 | Grades affect price, attention and the ruin roll; no per-curse behaviour. |
@@ -61,7 +62,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 
 ## Known limits of the checks
 
-- **Nobody has played this.** 161 headless checks say the rules behave. None of them says it
+- **Nobody has played this.** 171 headless checks say the rules behave. None of them says it
   is fun, and the Phase 2 gate in `DESIGN` §11 is the only thing that can.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.

@@ -91,8 +91,10 @@ const CONTROLS=[
                 ["Z","go quiet — nobody runs or scans, −20 over the window"],
                 ["U","at the van: unload cursed cargo into the yard"],
                 ["X","in a doorway: lay the salt line, once"]]],
-  ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you"],
-                 ["E","nudge something off a shelf"]]],
+  ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you (1)"],
+                 ["E","nudge something off a shelf (3)"],
+                 ["F","flicker the lights — say <i>in here</i> without a radio (1)"],
+                 ["V","in a doorway: slam it (2), then hold it shut (5)"]]],
   ["OTHER",[["H","this list"],["M","mute"],["N","next night"],["R","new contract (on the ledger)"],
             ["ESC","release the cursor"]]],
 ];
@@ -271,6 +273,10 @@ const HIDE_ENTER_S=1.0, HIDE_OPEN_S=4.0, STASH_S=20.0, HIDE_EYE=1.25;
 // the dead can genuinely save the living, but the dead ARE the haunting.
 const COLLECT_S=10.0, STATIC_CAP=6, STATIC_REGEN_S=20.0, CURSE_SIGHT_M=5.0;
 const KNOCK_L=25, COST_KNOCK=1, COST_NUDGE=3;
+const COST_FLICKER=1, COST_SLAM=2, COST_HOLD=5, HOLD_S=4.0;
+// A door is a thing that takes time to get through, which is the only reason
+// slamming one is worth two Static.
+const DOOR_OPEN_S=1.4;
 // DESIGN 6.5. Lights are the exception to "every gain comes from a Loudness
 // value": switching on a wing is silent and a flat +25. Killing the breaker is
 // -15 instantly, and the cost is that you hauled that wing lit for a reason.
@@ -389,14 +395,21 @@ const CELL=13, MARGIN=[1.6,2.6];
 // deeper wings, more of them, and on the last nights an apex worth a third of
 // the van on its own.
 const MAX_TIER=[3,3,4,4];
-function generate(seed, forNight=0){
+function generate(seed, forNight=0, roomBonus=0){
   const rand=lcg(seed);
   const pick=a=>a[Math.floor(rand()*a.length)];
   const key=(i,j)=>i+","+j;
 
   // Grow a connected blob of cells, biased east so the house has depth rather
   // than fanning out around the van.
-  const want=5+forNight+Math.floor(rand()*3);   // 5-7 rooms on night one, 8-10 by night four
+  // The house has to be deep enough to hold the deepest tier the contract asks
+  // for - tier N lives at depth N+1, so an apex night needs a five-deep chain -
+  // and this blob is bushy: the frontier pick is biased toward cells near the
+  // van, which spends rooms on width. One room per night was not enough on the
+  // first apex night; 5% of night-three seeds failed the gate 60 times running
+  // and were played with their faults showing. Tie the budget to the tier cap.
+  const deep=MAX_TIER[Math.min(forNight,MAX_TIER.length-1)]-3;
+  const want=5+forNight+deep+roomBonus+Math.floor(rand()*3);   // 5-7 rooms on night one, 9-11 by night four
   const cells=new Map([[key(0,0),{i:0,j:0}]]);
   const has=(i,j)=>cells.has(key(i,j));
   const add=(i,j)=>{ if(i>=0&&!has(i,j)) cells.set(key(i,j),{i,j}); };
@@ -569,19 +582,26 @@ function gateEstate(e, forNight=0){
 // Build until one passes. A rejected estate is never seen by a player - which is
 // the whole point of having a contract, and is easier to enforce here than in a
 // pipeline that has already shipped five wings.
+const TRIES_MAX=120;
 function buildEstate(seed, forNight=night){
   let s=seed>>>0, tries=0, chosen=null, why=[];
-  for(; tries<60; tries++){
-    const e=generate(s+tries*7919, forNight);
+  for(; tries<TRIES_MAX; tries++){
+    // Rerolling the same size is how a house that is simply too small to be
+    // deep enough fails a hundred times running. Every twenty failures, ask for
+    // a bigger one - which is the actual diagnosis when the fault is "no apex
+    // wing" and the blob keeps coming back eleven rooms wide and three deep.
+    // Worst case over 1600 seed-nights: 60 attempts with this, 86 without.
+    const e=generate(s+tries*7919, forNight, Math.floor(tries/20));
     const faults=gateEstate(e, forNight);
     if(!faults.length){ chosen=e; break; }
     why=faults;
   }
   estateTries=tries;
-  estateSeed=s+Math.min(tries,59)*7919;
+  estateSeed=s+Math.min(tries,TRIES_MAX-1)*7919;
   if(!chosen){ chosen=generate(estateSeed, forNight); }   // pathological: play it, faults visible
   ROOMS=chosen.rooms; LINKS=chosen.links; PREREQ=chosen.prereq;
   buildDoors(); buildHides();
+  for(const d of DOORS){ d.shut=false; d.held=0; d.opening=0; }
   ADJ={}; for(const [a,b] of LINKS){ (ADJ[a]??=[]).push(b); (ADJ[b]??=[]).push(a); }
   DOOR_FAULTS=gateEstate(chosen, forNight);
   if(DOOR_FAULTS.length) console.error("ESTATE FAULT: "+DOOR_FAULTS.join("; "));
@@ -699,7 +719,7 @@ function blocked(x,z){
 
 // ------------------------------------------------------------------ state
 let noiseLog=[], gatesOff=false, broken=[], lit=new Set(), breakerUsed=0, quiet=0;
-let salt=null, saltLeft=SALT_CHARGES, dolly=null;
+let salt=null, saltLeft=SALT_CHARGES, dolly=null, flicker=0;
 let items=[],player,curator,crew=[],crewFrozen=false,van,t,dist,over,overWhy="",started=false,qaPaused=false;
 
 // Loot comes on SHELVES, four pieces to a sideboard. D-24 measured the appraiser
@@ -818,6 +838,11 @@ function reset(){
   const dv0=R("drive");
   dolly={x:dv0.x+2.2, z:dv0.z-2.2, held:false, load:null, tipped:0};
   recoveredTonight=new Set();
+  // Doors are estate state, not night state, so nothing else was clearing them:
+  // a door slammed on night two was still shut on night three, and a hold that
+  // had not expired was still holding. Found by the door-timing check, which
+  // measured the Curator getting through an OPEN door slower than a shut one.
+  for(const d of DOORS){ d.shut=false; d.held=0; d.opening=0; }
   for(const h of HIDES) h.item=null;
   van={slots:vanFor(night),cargo:[],cap:vanFor(night)};
   t=0;dist=0;over=false;overWhy="";noiseLog=[];broken=[];lit=new Set();breakerUsed=0;quiet=0;salt=null;saltLeft=SALT_CHARGES;
@@ -835,6 +860,8 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyE"&&started&&!over) grabDrop();
   if(e.code==="KeyC"&&started&&!over&&!player.dead) toggleHide();
   if(e.code==="KeyQ"&&started&&!over) knock();
+  if(e.code==="KeyF"&&started&&!over&&player.dead) flickerLights();
+  if(e.code==="KeyV"&&started&&!over){ if(!slamDoor()) holdDoor(); }
   if(e.code==="KeyL"&&started&&!over) toggleLights();
   if(e.code==="KeyB"&&started&&!over) killLights();
   if(e.code==="KeyZ"&&started&&!over) goQuiet();
@@ -1300,6 +1327,8 @@ function step(dt){
       ?player.holding:null;
     const d=lookDir();
     const carriedAt=(px,pz)=>[px+d[0]*1.15, pz+d[2]*1.15];
+    const shut=shutAt(nx,player.z)||shutAt(player.x,nz);
+    if(shut&&!player.dead){ workDoor(shut,dt,player); return; }
     const px=player.x, pz=player.z;
     if(!blocked(nx,player.z)&&!(big&&itemBlocked(big,...carriedAt(nx,player.z)))) player.x=nx;
     if(!blocked(player.x,nz)&&!(big&&itemBlocked(big,...carriedAt(player.x,nz)))) player.z=nz;
@@ -1326,6 +1355,8 @@ function step(dt){
   if(player.holding){ const d=lookDir(), it=player.holding;
     it.x=player.x+d[0]*1.15; it.z=player.z+d[2]*1.15; it.y=eyeH()+d[1]*1.15-0.30; }
   for(const it of items) if(it.stash>0) it.stash=Math.max(0,it.stash-dt);
+  for(const d of DOORS){ if(d.held>0) d.held-=dt; }
+  if(flicker>0) flicker=Math.max(0,flicker-dt);
   // The follower is dragged along behind the anchor - force, never position, and
   // allowed to lag before a soft correction eases it in (B4).
   for(const it of items){
@@ -1510,6 +1541,43 @@ function killLights(){
 const roomLit=id=>lit.has(id);
 
 // --------------------------------------------------------------------- dolly
+// --------------------------------------------------------------------- doors
+// Doors are open until something closes one. Walking into a shut door opens it -
+// it costs you a second and a half and a door's worth of noise, which is the
+// whole point: a slammed door is time, and time is what the Curator spends.
+function doorAt(x,z){ return DOORS.find(d=>inRect(d.rect,x,z)); }
+function shutAt(x,z){ const d=doorAt(x,z); return d&&d.shut?d:null; }
+function workDoor(d,dt,who){
+  if(d.held>0) return false;                    // somebody is holding it
+  d.opening+=dt;
+  if(d.opening<DOOR_OPEN_S) return false;
+  d.opening=0; d.shut=false;
+  noise(L.door,true,0,d.x,d.z,who??player);
+  return true;
+}
+function slamDoor(){
+  if(!player.dead) return null;
+  const d=doorAt(player.x,player.z);
+  if(!d||d.shut||!spend(COST_SLAM)) return null;
+  d.shut=true; d.opening=0;
+  noise(L.door,true,0,d.x,d.z,player);
+  return {door:d.a+"-"+d.b};
+}
+function holdDoor(){
+  if(!player.dead) return null;
+  const d=doorAt(player.x,player.z);
+  if(!d||!d.shut||!spend(COST_HOLD)) return null;
+  d.held=HOLD_S;
+  return {door:d.a+"-"+d.b, seconds:HOLD_S};
+}
+// Flicker: signal, or briefly reveal a room. Cheap, and it is how the dead say
+// "in here" without a radio.
+function flickerLights(){
+  if(!player.dead||!lit.size||!spend(COST_FLICKER)) return null;
+  flicker=1.2;
+  return {seconds:flicker};
+}
+
 function nearDolly(){ return dolly&&Math.hypot(dolly.x-player.x,dolly.z-player.z)<1.9; }
 function takeDolly(){
   if(!dolly||player.dead||player.holding) return null;
@@ -1752,7 +1820,13 @@ function walkTo(e,gx,gz,sp,dt,gated){
   const a=Math.atan2(tx-e.x,tz-e.z);
   if(e===curator) e.face=a;
   const nx=e.x+Math.sin(a)*sp*dt, nz=e.z+Math.cos(a)*sp*dt;
-  const stop=(x,z)=>wall(x,z)||(e===curator&&saltedAt(x,z));
+  const stop=(x,z)=>{
+    if(wall(x,z)) return true;
+    if(e===curator&&saltedAt(x,z)) return true;
+    const d=shutAt(x,z);
+    if(d){ workDoor(d,dt,e===curator?null:e); return true; }   // it has to open it
+    return false;
+  };
   if(!stop(nx,e.z)) e.x=nx;
   if(!stop(e.x,nz)) e.z=nz;
   if(e.carry){ e.carry.x=e.x; e.carry.z=e.z; e.carry.y=1.1; }
@@ -1882,7 +1956,7 @@ function render(){
   // pass the light was cut so hard that hiding was blind, which is just waiting.
   gl.uniform1f(U.uRange, player.dead?26.0:player.hiding?12.0:(marked?11.5:19.0));
   gl.uniform1f(U.uCone, marked?0.88:0.80);
-  gl.uniform1f(U.uAmbient, player.dead?0.10:player.hiding?0.115:0.045);
+  gl.uniform1f(U.uAmbient, (player.dead?0.10:player.hiding?0.115:0.045)+(flicker>0?0.22:0));
   const litRooms=ROOMS.filter(r=>lit.has(r.id)).slice(0,8);
   const buf=new Float32Array(32);
   litRooms.forEach((r,i)=>{ buf[i*4]=r.x-r.w/2; buf[i*4+1]=r.z-r.d/2;
@@ -1901,6 +1975,11 @@ function render(){
   // Corridors: floor, ceiling, and the two walls that make them a pinch point.
   for(const dr of DOORS){
     const q=dr.rect, cx=(q.x0+q.x1)/2, cz=(q.z0+q.z1)/2;
+    if(dr.shut){
+      const hx=(q.x1-q.x0)/2, hz=(q.z1-q.z0)/2;
+      drawBox(cx,WALL_H/2-0.2,cz, dr.axis==="x"?0.09:hx, WALL_H/2-0.2,
+              dr.axis==="x"?hz:0.09, dr.held>0?[.34,.26,.22]:[.26,.235,.20]);
+    }
     const hx=(q.x1-q.x0)/2, hz=(q.z1-q.z0)/2;
     drawBox(cx,-0.05,cz,hx,0.05,hz,[.215,.21,.20]);
     drawBox(cx,WALL_H,cz,hx,0.04,hz,[.155,.155,.165]);
@@ -2026,7 +2105,9 @@ function hud(){
     : scanning ? `APPRAISING  ${"▮".repeat(Math.round(scanning.scan/APPRAISE_S*10)).padEnd(10,"▯")}`
     : hidePlace ? (held?"[C] hide    [G] stash the piece    [E] drop":"[C] hide")
     : (held&&aimedCrew()) ? `[E] hand it to ${aimedCrew().name}`
-    : player.dead ? "the crew cannot hear you think  ·  [Q] knock (1)   [E] nudge (3)"
+    : player.dead ? (doorAt(player.x,player.z)
+        ? "[V] slam / hold this door (2 / 5)   ·   [Q] knock (1)   [F] flicker (1)"
+        : "[Q] knock (1)   [E] nudge (3)   [F] flicker (1)")
     : (roomAt(player.x,player.z)?.van&&lit.size) ? `[B] kill the lights  (-${LEVER_KILL_LIGHTS} disturbance)`
     : held ? "[E] drop    [F] appraise"
     : aim ? shelfPrompt(aim)
@@ -2051,6 +2132,8 @@ function hud(){
     (quiet>0?`<span style="color:#8fae9c">GOING QUIET  ${quiet.toFixed(1)}s</span><br>`:"")+
     (salt&&t<salt.until?`<span style="color:#cfc9b8">SALT HOLDS  ${
       (salt.until-t).toFixed(1)}s</span><br>`:"")+
+    (DOORS.some(d=>d.shut)?`<span style="color:#8b8880">${
+      DOORS.filter(d=>d.shut).length} door${DOORS.filter(d=>d.shut).length>1?"s":""} shut</span><br>`:"")+
     (dolly&&dolly.held?`<span style="color:#b09a54">PUSHING THE DOLLY${
       dolly.load?" (loaded)":""}  ·  [R] ${dolly.load?"unload":"load"}</span><br>`:"")+
     (saltLeft>0?`<span style="color:#8b8880">salt x${saltLeft}  ·  [X] in a doorway</span><br>`:"")+
@@ -2151,12 +2234,16 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   estate:()=>({
     id:"proto3d  (the wing in the prototype)",
     curator_spawn:deepestRoom().id,
+    // The apex is banded as a SHARE of the final quota, not in ship dollars -
+    // this build's night is 210s, not 720s. Export the quota it is a share of so
+    // the validator can check the ratio rather than the dollars.
+    final_quota:quotaFor(NIGHTS-1),
     rooms:Object.fromEntries(ROOMS.map(r=>[r.id,
       {pos:[r.x,r.z], tier:r.tier, ...(r.van?{van:true}:{})}])),
     portals:DOORS.map(d=>({a:d.a,b:d.b,width:+DOOR_W.toFixed(2),door:true,
       pinch:DOOR_W<=2.4, ...(d.a==="drive"||d.b==="drive"?{entrance:true}:{})})),
     plinths:items.filter(i=>!i.gone).map(i=>({room:roomAt(i.hx,i.hz)?.id??"VOID",
-      cls:i.klass, tier:i.tier, value:i.value, grade:i.grade})),
+      cls:i.klass, tier:i.tier, value:i.value, grade:i.grade, frag:i.frag})),
     prereqs:Object.fromEntries(Object.entries(PREREQ).map(([room,need])=>
       [room, need.map(r=>({room:r, type:"clear"}))])),
   }),
@@ -2193,6 +2280,14 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   goQuiet, unloadCursed,
   toggleLights, killLights,
   broken:()=>broken.slice(),
+  doors2:()=>DOORS.map(d=>({id:d.a+"-"+d.b,shut:!!d.shut,held:+(d.held||0).toFixed(2),
+    opening:+(d.opening||0).toFixed(2),x:d.x,z:d.z})),
+  slamDoor, holdDoor, flickerLights, flicker:()=>+flicker.toFixed(2),
+  // QA only: shut a door without being dead, to time the Curator against it.
+  slamDoorForce:()=>{const d=doorAt(player.x,player.z); if(!d) return null;
+    d.shut=true; d.opening=0; return {door:d.a+"-"+d.b};},
+  holdDoorForce:()=>{const d=doorAt(player.x,player.z); if(!d||!d.shut) return null;
+    d.held=HOLD_S; return {door:d.a+"-"+d.b, seconds:HOLD_S};},
   knock, nudge, curseSight:i=>{const it=items.filter(x=>!x.gone)[i];
     return it?curseSight(it):null;},
   ghost:()=>({dead:player.dead,collecting:+player.collecting.toFixed(2),

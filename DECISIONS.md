@@ -445,6 +445,31 @@ they carry — the COLLECT-tier crew hunt is exactly that, and it is handled as 
 rather than by folding people into the item weighting. If a second such case appears, the
 two-mode structure is the thing to re-examine, not this decision.
 
+## D-26 · A price is a band times its multipliers, and a checker has to divide out every one
+**Status:** FIRM · `ECONOMY.md` §3, `sim/validate_estate.py` V8, verified `proto3d/qa.mjs`
+
+An item's price is its tier-and-class band multiplied by the curse grade (§4.2, ×2.5 / ×6)
+and by the fragility premium (`DESIGN` §5, +18% per grade, so a fragility-3 piece is 1.54× its
+band). Both multipliers are deliberate and both are *invisible in the number*: a $462 tier-0
+armful is either three times its band or a delicate piece at the top of it, and nothing in the
+price says which.
+
+V8 divided out the curse and not the fragility, and so rejected **12 of 12** generated estates
+for being correct. It had done so for as long as the batch mode existed, because nothing
+asserted the output of the command the README tells you to run.
+
+The rule this fixes in general: **a band check must be handed the factors, not asked to infer
+them.** The estate export now carries the fragility grade alongside the curse grade, and the
+apex carries the night's quota it is a share of, because the apex is banded by ratio (D-21) and
+this build's night is 210 seconds rather than 720 — judged in ship dollars it fails too.
+
+The corollary is about checks, not prices: a validator whose output nothing asserts is not a
+check, it is a script. `qa.mjs` now asserts that the export still carries all three, which is
+the part a refactor can silently take away.
+
+**Falsified if:** a third multiplier appears that genuinely cannot be exported — at which point
+the band check has to move to where the multipliers are, rather than the factors moving to it.
+
 ---
 
 # Open decisions

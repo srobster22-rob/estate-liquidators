@@ -58,6 +58,23 @@ function near(label, got, want, tol) {
 const SEED_SCRIPT = `(() => {
   let s = 0x2f6e2b1;
   Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  // A paired measurement needs both runs to draw the SAME numbers - hearing is
+  // fuzzed +-3m, which moves an approach further than most effects being
+  // measured. This returns the previous state, so a check can pin the stream
+  // and then put it back: every check after it sees the sequence it always saw.
+  window.__seed = n => { const was = s; s = n >>> 0; return was; };
+  // console.error reaches the harness asynchronously, so "no page errors" was
+  // racing the errors it exists to catch - the same ESTATE FAULT appeared in
+  // roughly one run in four and was invisible in the rest. Recorded in-page,
+  // it is observed the moment it is asked for.
+  window.__errs = [];
+  const ce = console.error;
+  console.error = (...a) => {
+    let where = null;
+    try { where = window.__g ? window.__g.seed() : null; } catch (e) {}
+    window.__errs.push({ msg: a.map(String).join(" "), where });
+    ce.apply(console, a);
+  };
 })();`;
 
 const pageErrors = [];
@@ -101,7 +118,9 @@ async function main() {
     ok("the harness ran to completion", false, `threw: ${e.message}`);
   }
 
-  ok("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
+  const inPage = await page.evaluate(() => window.__errs.slice());
+  ok("no page errors", pageErrors.length === 0 && inPage.length === 0,
+    pageErrors.join(" | ") + inPage.map(e => ` | ${e.msg} @ ${JSON.stringify(e.where)}`).join(""));
   await browser.close();
 
   console.log(`PROTO3D QA  -  ${passed + failures.length} checks`);
@@ -168,20 +187,29 @@ async function checks(g, fresh) {
   // "A wing that fails any check does not enter the pool." The point of a
   // generator is that this stops being a review step and becomes an invariant,
   // so the assertion is over MANY seeds rather than the one being played.
+  // Swept over every night, not just night one: the gate asks for MORE on a late
+  // contract - a tier-3 wing always, and from night three an apex wing at tier 4 -
+  // and night three was the only night nothing was checking. It failed 5% of
+  // seeds outright and played them with their faults printed to the console.
   const sweep = await g(() => {
     const bad = [], tries = [];
-    for (let i = 1; i <= 120; i++) {
-      const r = window.__g.regen(i * 104729);
-      tries.push(window.__g.seed().tries);
-      if (r.faults.length) bad.push({ seed: r.seed, faults: r.faults.slice(0, 2) });
-    }
+    for (let n = 0; n <= 3; n++)
+      for (let i = 1; i <= 60; i++) {
+        const r = window.__g.regen(i * 104729, n);
+        tries.push(window.__g.seed().tries);
+        if (r.faults.length) bad.push({ night: n, seed: r.seed, faults: r.faults.slice(0, 2) });
+      }
     tries.sort((a, b) => a - b);
-    return { bad, median: tries[60], worst: tries[tries.length - 1] };
+    return { bad, median: tries[tries.length >> 1], worst: tries[tries.length - 1] };
   });
-  ok("every seed produces an estate that passes the gate",
+  ok("every seed produces an estate that passes the gate, on every night",
     sweep.bad.length === 0, JSON.stringify(sweep.bad.slice(0, 3)));
+  // The retry cap is 120. Asserting "under 120" only says the gate holds, which
+  // the check above already says; the number worth defending is the margin.
+  // Over 1,600 seed-nights the worst case is 60 attempts with the house grown to
+  // fit the tier it has to hold and 86 without, so 80 is the line between them.
   ok("and it does not take many attempts to find one",
-    sweep.median <= 12 && sweep.worst < 60,
+    sweep.median <= 12 && sweep.worst < 80,
     `median ${sweep.median}, worst ${sweep.worst}, ${sweep.bad.length} seeds unbuildable`);
 
   // The generated estate must also satisfy the properties the rest of the game
@@ -207,6 +235,25 @@ async function checks(g, fresh) {
   });
   ok("every generated estate is playable",
     shapes.length === 0, JSON.stringify(shapes.slice(0, 3)));
+
+  // The Python validator is the authority on the ten level checks, and it can
+  // only apply them to what the exporter hands it. Two of its checks divide a
+  // designed multiplier back out of a price - the curse grade and the fragility
+  // premium - and one bands the apex as a share of the final quota. Drop any of
+  // those three fields and V8 starts rejecting houses for being correct: it
+  // rejected 12 of 12 in the batch the README tells you to run.
+  const exported = await g(() => {
+    window.__g.regen(20260806, 3);
+    const e = window.__g.estate();
+    const cart = e.plinths.find(p => p.cls === "cart");
+    return { quota: e.final_quota,
+      missing: e.plinths.filter(p => p.grade === undefined || p.frag === undefined).length,
+      cart: cart ? cart.value : null };
+  });
+  ok("the export carries what the level validator needs to judge a price",
+    exported.missing === 0 && exported.quota > 0 &&
+    exported.cart >= 0.32 * exported.quota && exported.cart <= 0.64 * exported.quota,
+    JSON.stringify(exported));
 
   // The crew have to be able to get around the house they are given. A greedy
   // "walk at the nearest door" rule survived the hand-authored chain and jammed
@@ -1003,6 +1050,133 @@ async function checks(g, fresh) {
   ok("and it tips if you shove it",
     dollyChecks.loadedBefore !== null && dollyChecks.after.load === null &&
     dollyChecks.after.held === false, JSON.stringify(dollyChecks));
+
+  // --- doors, and the Static verbs they unlock (DESIGN 5.1) -----------------
+  // A door is a thing that takes time to get through. That is the only reason
+  // slamming one is worth two Static and holding it is worth five.
+  await fresh();
+  const doors = await g(() => {
+    window.__g.parkCrew(); window.__g.gates(true);
+    const start = window.__g.doors2();
+    // Become a ghost the quick way, then stand in a doorway.
+    const d = window.__g.doors()[1];
+    window.__g.tp(d.x, d.z);
+    const aliveSlam = window.__g.slamDoor();          // the living cannot
+    window.__g.setDist(95);
+    for (let hit = 0; hit < 2; hit++)
+      for (let i = 0; i < 3000 && window.__g.state().hits <= hit; i++) {
+        const p = window.__g.raw();
+        window.__g.setCur(p.x + 1.0, p.z, "PURSUE");
+        window.__g.setDist(95); window.__g.step(1, 1 / 60);
+      }
+    window.__g.step(60 * 11, 1 / 60);                 // through the collection beat
+    window.__g.tp(d.x, d.z);
+    window.__g.setStatic(6);
+    const s0 = window.__g.ghost().static;
+    const slam = window.__g.slamDoor();
+    const s1 = window.__g.ghost().static;
+    const shut = window.__g.doors2().find(x => x.id === `${d.a}-${d.b}`);
+    // Slam is 2 and Hold is 5 against a cap of 6, so you cannot do both on one
+    // budget - holding a door you just slammed means waiting out a regen tick
+    // first. That is DESIGN 5.1's arithmetic, not a bug, and it is why this
+    // fixture tops the budget back up.
+    const bothOnOneBudget = window.__g.holdDoor();
+    window.__g.setStatic(6);
+    const hold = window.__g.holdDoor();
+    const s2 = window.__g.ghost().static;
+    const held = window.__g.doors2().find(x => x.id === `${d.a}-${d.b}`);
+    return { start, aliveSlam, slam, hold, bothOnOneBudget, s0, s1, s2, shut, held };
+  });
+  ok("every door starts open",
+    doors.start.length > 0 && doors.start.every(x => !x.shut), JSON.stringify(doors.start));
+  ok("the living cannot slam a door - that is a ghost's verb",
+    doors.aliveSlam === null, JSON.stringify(doors.aliveSlam));
+  ok("slamming costs two Static and shuts it",
+    doors.slam !== null && doors.s0 - doors.s1 === 2 && doors.shut.shut === true,
+    JSON.stringify(doors));
+  ok("you cannot slam and hold the same door on one budget",
+    doors.bothOnOneBudget === null, JSON.stringify({ after: doors.s1 }));
+  ok("holding costs five and is a four-second thing",
+    doors.hold !== null && 6 - doors.s2 === 5 && doors.held.held > 3.5,
+    JSON.stringify(doors.held));
+
+  // The point of all of it: a shut door costs the Curator time. Three things had
+  // to be got right before this measured anything at all.
+  //   - Measure the crossing of the doorway, not the arrival at the player. The
+  //     first version measured the latter and read no difference, because both
+  //     runs spent the same two and a half seconds in FIXATE first and 1.4s
+  //     vanished inside the noise of a longer walk.
+  //   - Start the Curator OUTSIDE the door's rect. At 1m it is already standing
+  //     in the doorway, so the door spends its FIXATE seconds opening and only
+  //     half the delay survives to be measured.
+  //   - Give both runs the same random stream. Hearing is fuzzed +-3m, which
+  //     moves the approach by a second either way - more than the effect being
+  //     measured. __seed puts the stream back afterwards, so no check that
+  //     follows can tell this one ran.
+  const timed = await g(() => {
+    const d = window.__g.doors()[1];
+    const rooms = window.__g.rooms();
+    const A = rooms.find(r => r.id === d.a), B = rooms.find(r => r.id === d.b);
+    const along = d.axis === "x" ? [1, 0] : [0, 1];
+    const sign = d.axis === "x" ? Math.sign(B.x - A.x) : Math.sign(B.z - A.z);
+    const past = c => d.axis === "x" ? (c.x - d.x) * sign > 0.4 : (c.z - d.z) * sign > 0.4;
+
+    const run = (shut, held) => {
+      window.__seed(0x51ed);
+      window.__g.reset(); window.__g.parkCrew(); window.__g.gates(true);
+      window.__g.tp(d.x, d.z);
+      if (shut) window.__g.slamDoorForce();
+      if (held) window.__g.holdDoorForce();
+      window.__g.tp(B.x, B.z);
+      const me = window.__g.raw();
+      window.__g.setCur(d.x - along[0] * 2.2 * sign, d.z - along[1] * 2.2 * sign, "PURSUE");
+      let out = -1;
+      for (let i = 0; i < 60 * 20; i++) {
+        window.__g.setDist(95);
+        window.__g.heard(65, me.x, me.z);
+        window.__g.step(1, 1 / 60);
+        if (past(window.__g.curator())) { out = i / 60; break; }
+      }
+      return out;
+    };
+    const was = window.__seed(0);
+    const open = run(false, false), shut = run(true, false), held = run(true, true);
+    window.__seed(was);
+    return { open, shut, held, cost: +(shut - open).toFixed(2),
+      holdCost: +(held - shut).toFixed(2) };
+  });
+  // Doors are estate furniture, so nothing in the night reset was clearing them
+  // until this asked.
+  const doorNight = await g(() => {
+    const d = window.__g.doors()[1];
+    window.__g.tp(d.x, d.z); window.__g.slamDoorForce();
+    const before = window.__g.doors2().filter(x => x.shut).length;
+    window.__g.reset();
+    return { before, after: window.__g.doors2().filter(x => x.shut || x.held > 0).length };
+  });
+  ok("a new night reopens every door",
+    doorNight.before === 1 && doorNight.after === 0, JSON.stringify(doorNight));
+
+  ok("a shut door costs the Curator the time it takes to open it",
+    timed.open >= 0 && timed.shut >= 0 && timed.cost > 1.2 && timed.cost < 1.8,
+    JSON.stringify(timed));
+  // Held is the expensive verb because it is the only one that stops the
+  // Curator rather than slowing it: the opening timer does not even start.
+  ok("and a held door does not start opening at all until the hold lapses",
+    timed.held > timed.shut + 1.0, JSON.stringify(timed));
+
+  // Flicker: cheap, and only if there is a light to flicker.
+  await fresh();
+  const flick = await g(() => {
+    window.__g.parkCrew();
+    const dark = window.__g.flickerLights();       // no ghost, no lights
+    const r = window.__g.rooms().find(x => !x.van);
+    window.__g.tp(r.x, r.z); window.__g.toggleLights();
+    const aliveTry = window.__g.flickerLights();
+    return { dark, aliveTry };
+  });
+  ok("flicker is a ghost's verb and needs a light on",
+    flick.dark === null && flick.aliveTry === null, JSON.stringify(flick));
 
   // --- the salt line (DESIGN 8) ---------------------------------------------
   // "Curator won't cross for 20s, single use, consumed."
