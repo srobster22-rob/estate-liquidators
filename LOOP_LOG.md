@@ -859,6 +859,22 @@ seconds, which is exactly how long it takes to cross a room, so they turned back
 before arriving. Twelve seconds, and the number is now in `tuning.json` with the room width
 written next to it. · Regression: QA 198/198, drift 177/177, claims 25/25.
 
+R43 · **The radio, which is the last tool in `DESIGN` §8's table** and was listed as needing
+multiplayer to mean anything. It does not — R42's ladder made it buildable, because the tool
+is defined by what it costs and the cost is now expressible. "Talk to crew across map —
+**broadcasts audibly in-world at both ends**": keying it reaches everybody regardless of walls
+or distance, and puts an **L38 in the room each listener is standing in** as well as in yours.
+A shout is one loud beacon on yourself. The radio is four quieter ones spread through the
+house, one of them next to whoever is furthest from help. · It sits in the van, so taking it
+is a decision made before you know you need it, and unlike the crowbar it costs you nothing to
+carry — what it costs is paid every time you key it. · The check that matters is not "does it
+reach" but "does it give the crew away": with the Curator parked at the far end of the house
+next to the crew, a shout from the other side leaves it with nothing, and one radio call puts
+a fix within six metres of where they are standing. · Six injections, six caught, no fixture
+faults — the first round of this loop in a while where the checks were right the first time,
+which is what R42's four fixture faults bought. · Regression: QA 202/202, drift 178/178,
+claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

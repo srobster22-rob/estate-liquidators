@@ -497,11 +497,20 @@ doors close. Anyone outside is left. Anything unstrapped is reclaimed.
 | **Flashlight** | primary light, always available | battery; +Attention when visible |
 | **Appraiser** | value + curse grade | 3s stationary, loud |
 | **Radio** | talk to crew across map + to the dead | broadcasts audibly in-world at both ends |
+<!-- built R43: reach and both-ends broadcast. Talking to the dead needs a second player. -->
 | **Dolly** | moves cart-class items | slow, loud on hardwood, tips over |
 | **Straps** | secures van cargo | 2s per item, someone has to stay behind |
 | **Crowbar** | opens boarded doors, breaks display cases | extremely loud |
 <!-- built R39: the boards, the fetch and the noise. Display cases are still a spec line. -->
 | **Salt line** *(unlock)* | Curator won't cross for 20s | single use, consumed |
+
+> **Built, R43 — and the second clause is the whole tool.** Keying the radio reaches every
+> crew member in the house regardless of walls or distance, and puts an **L38 in the room each
+> of them is standing in** as well as in yours. A shout is one loud beacon on yourself; the
+> radio is four quieter ones spread through the house, one of them next to whoever is furthest
+> from help. It sits in the van, so taking it is a decision made before you know you need it.
+> Talking *to the dead* is the half that needs a second player — a ghost has Static, not a
+> voice (§5.1).
 
 Deliberately no weapons. There is no fighting the Curator, ever. Every tool is a
 **logistics** tool, and the horror is a logistics problem.

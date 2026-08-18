@@ -244,7 +244,8 @@ check("JS3d malignant_voice_s", grab(js3, r"MAL_VOICE_S=([\d.]+)"),
       cu["malignant_voice_seconds"])
 check("JS3d L[crowbar]", grab(js3, r"const L=\{[^}]*crowbar:(\d+)"), TUNING["loudness"]["crowbar"])
 for js_name, key in (("voiceWhisper", "voice_whisper"), ("voiceNormal", "voice_normal"),
-                     ("voiceRaised", "voice_raised"), ("voiceShout", "voice_shout")):
+                     ("voiceRaised", "voice_raised"), ("voiceShout", "voice_shout"),
+                     ("radio", "radio")):
     check(f"JS3d L[{js_name}]", grab(js3, rf"const L=\{{[^}}]*{js_name}:(\d+)"),
           TUNING["loudness"][key])
 check("JS3d dolly_speed", grab(js3, r"DOLLY_SPEED=([\d.]+)"), tl["dolly_speed_mult"])

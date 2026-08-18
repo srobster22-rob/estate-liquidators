@@ -1339,6 +1339,72 @@ async function checks(g, fresh) {
   ok("the dead do not shout - they have Static for that",
     mute.dead === true && mute.said === null, JSON.stringify(mute));
 
+  // --- the radio (DESIGN 8) -------------------------------------------------
+  // "Talk to crew across map - broadcasts audibly in-world at BOTH ends." The
+  // second clause is the tool. A shout is one loud noise where you are; the radio
+  // is a quieter one where you are AND one wherever each listener is standing, so
+  // it trades a beacon on yourself for a beacon on everybody.
+  await fresh();
+  const wireless = await g(() => {
+    const r = window.__g.radio();
+    const rooms = window.__g.rooms().filter(x => !x.van);
+    for (const x of rooms) window.__g.clearRoom(x.id);
+    // Crew scattered as far apart as the house allows, and the player further.
+    window.__g.unparkCrew(rooms[rooms.length - 1].x, rooms[rooms.length - 1].z);
+    window.__g.tp(rooms[0].x, rooms[0].z);
+    const far = Math.hypot(rooms[0].x - rooms[rooms.length - 1].x,
+                           rooms[0].z - rooms[rooms.length - 1].z);
+    // Off the air first: a shout across the whole house reaches nobody, and the
+    // radio cannot be keyed from across the room it is sitting in.
+    const shout = window.__g.speak("shout").heard.length;
+    const startedIn = r !== null && window.__g.roomAt(r.x, r.z) === null
+      ? false : true;
+    const reachedFor = window.__g.takeRadio();
+    window.__g.moveRadio(rooms[0].x, rooms[0].z);
+    const took = window.__g.takeRadio();
+    const before = window.__g.noiseLog().length;
+    const said = window.__g.speak("call");
+    const made = window.__g.noiseLog().slice(before);
+    return { far: +far.toFixed(1), shout, took, reachedFor, startedIn,
+      heard: said.heard.length, l: said.l,
+      noises: made.length, levels: [...new Set(made.map(n => n.l))],
+      crew: window.__g.crew().length };
+  });
+  ok("you have to go and get the radio - it starts in the van",
+    wireless.reachedFor === null && wireless.startedIn === true,
+    JSON.stringify({ reachedFor: wireless.reachedFor, startedIn: wireless.startedIn }));
+  ok("the radio reaches the whole house when a shout does not",
+    wireless.far > 25 && wireless.shout === 0 && wireless.took !== null &&
+    wireless.heard === wireless.crew, JSON.stringify(wireless));
+  ok("and it broadcasts at both ends - one noise at you, one at everybody listening",
+    wireless.noises === wireless.crew + 1 && wireless.levels.length === 1 &&
+    wireless.levels[0] === 38, JSON.stringify(wireless));
+
+  // The trade, stated as the thing a player would notice: keying the radio tells
+  // the house where your crew are, which shouting never does.
+  await fresh();
+  const beacons = await g(() => {
+    const rooms = window.__g.rooms().filter(x => !x.van);
+    for (const x of rooms) window.__g.clearRoom(x.id);
+    const near = rooms[rooms.length - 1];
+    window.__g.unparkCrew(near.x, near.z);
+    window.__g.tp(rooms[0].x, rooms[0].z);
+    // Curator standing next to the crew, at the far end from the player.
+    window.__g.setCur(near.x + 1.0, near.z, "PURSUE");
+    window.__g.setDist(95);
+    const shoutFix = (window.__g.speak("shout"), window.__g.fix());
+    window.__g.moveRadio(rooms[0].x, rooms[0].z);
+    window.__g.takeRadio();
+    window.__g.speak("call");
+    const radioFix = window.__g.fix();
+    return { shoutFix, radioFix, crewAt: { x: near.x, z: near.z } };
+  });
+  ok("keying it tells the house where your crew are standing, which a shout never does",
+    beacons.radioFix !== null &&
+    Math.hypot(beacons.radioFix.x - beacons.crewAt.x,
+               beacons.radioFix.z - beacons.crewAt.z) < 6,
+    JSON.stringify(beacons));
+
   // --- what a curse costs you while you hold it (DESIGN 4.2) ----------------
   // The hard rule in the spec: every curse cost must be felt within thirty
   // seconds of pickup and be obviously caused by the thing in your hands. Each of

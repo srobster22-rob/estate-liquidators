@@ -93,7 +93,8 @@ const CONTROLS=[
                 ["X","in a doorway: lay the salt line, once"],
                 ["K","pick up / put down the crowbar — then walk into the boards"],
                 ["J","your torch on / off — dark is safer and nearly blind"]]],
-  ["YOUR VOICE",[["V","call the crew over — L45, and the house hears it too"],
+  ["YOUR VOICE",[["Y","pick up / put down the radio (it starts in the van)"],
+                 ["V","call the crew over — L45, and the house hears it too"],
                  ["CTRL V","whisper — L8, and only as far as this room"],
                  ["SHIFT V","shout — L65, everybody, including the thing upstairs"]]],
   ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you (1)"],
@@ -234,7 +235,7 @@ const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
 const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35, crowbar:75,
-         voiceWhisper:8, voiceNormal:25, voiceRaised:45, voiceShout:65};
+         voiceWhisper:8, voiceNormal:25, voiceRaised:45, voiceShout:65, radio:38};
 // AUDIO-SPEC 2: the voice ladder. Four numbers that sat in tuning.json unused for
 // forty rounds, because the prototype had nothing to say. What they buy is the
 // only way to ask for the other end of an armoire - grabDrop has said "you take
@@ -242,6 +243,11 @@ const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35, cro
 // game - and the ladder is the decision: who hears you, against who else does.
 const VOICE={whisper:"voiceWhisper", talk:"voiceNormal", call:"voiceRaised",
              shout:"voiceShout"};
+// DESIGN 8: "talk to crew across map - broadcasts audibly in-world at BOTH ends."
+// That second clause is the whole tool. A shout is one loud noise where you are;
+// the radio is a quieter one where you are AND one at every person who hears it,
+// so it trades a beacon on yourself for four beacons spread through the house.
+// Free reach, paid for in everybody else's position.
 // A room is 13m and the crew cross it in about six seconds, so six was exactly
 // long enough for them to turn back one step before arriving - the check read
 // "three people heard you and nobody came".
@@ -350,7 +356,7 @@ const MIN_OVERLAP=DOOR_W+0.6;      // a doorway needs the rooms to face each oth
 const GAP=[1.4,2.6];               // corridor length between two rooms
 
 let ROOMS=[], LINKS=[], PREREQ={}, DOORS=[], HIDES=[];
-let BOARDED_WING=null, crowbar=null;
+let BOARDED_WING=null, crowbar=null, radio=null;
 let DOOR_FAULTS=[], HIDE_FAULTS=[], ADJ={}, estateSeed=0, estateTries=0;
 
 // A small LCG so an estate is reproducible from its seed alone. Deliberately not
@@ -893,6 +899,8 @@ function reset(){
   // the rule gets quietly repaired here every time the night restarts.
   boardTheDeepWing();
   crowbar=spawnCrowbar();
+  // The radio sits in the van, because it is the thing you decide to take with you.
+  radio={x:dv0.x-2.0, z:dv0.z-1.4, held:false};
   recoveredTonight=new Set();
   // Doors are estate state, not night state, so nothing else was clearing them:
   // a door slammed on night two was still shut on night three, and a hold that
@@ -918,6 +926,7 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyQ"&&started&&!over) knock();
   if(e.code==="KeyK"&&started&&!over) takeCrowbar();
   if(e.code==="KeyJ"&&started&&!over) toggleTorch();
+  if(e.code==="KeyY"&&started&&!over) takeRadio();
   if(e.code==="KeyF"&&started&&!over&&player.dead) flickerLights();
   if(e.code==="KeyV"&&started&&!over){
     if(player.dead){ if(!slamDoor()) holdDoor(); }
@@ -1097,18 +1106,33 @@ function voiceReaches(l,ax,az,bx,bz){
 // make the Knock worth one point and nothing.
 function speak(level){
   if(player.dead||!player.alive) return null;
-  const l=L[VOICE[level]??"voiceNormal"];
+  const onAir=!!(radio&&radio.held);
+  const l=onAir?L.radio:L[VOICE[level]??"voiceNormal"];
   noise(l,true,0,player.x,player.z,player);
   sfx.event(l,player.x,player.z);
   const came=[];
   for(const a of crew){
     if(!a.alive||a.down>0||a.holding) continue;
-    if(!voiceReaches(l,player.x,player.z,a.x,a.z)) continue;
+    if(!onAir&&!voiceReaches(l,player.x,player.z,a.x,a.z)) continue;
+    // The handset in their pocket is a speaker in the room they are standing in.
+    if(onAir){ noise(L.radio,true,0,a.x,a.z,a); sfx.event(L.radio,a.x,a.z); }
     a.called=CALL_S; a.callX=player.x; a.callZ=player.z;
     came.push(a.name);
   }
   player.wantHelp=player.holding&&player.holding.klass==="two_man"?CALL_S:0;
   return {level, l, heard:came};
+}
+
+const nearRadio=()=>radio&&!radio.held&&
+  Math.hypot(radio.x-player.x,radio.z-player.z)<1.9;
+// It clips to your belt: unlike the crowbar it costs you nothing to carry, which
+// is right - what it costs is paid every time you key it.
+function takeRadio(){
+  if(!radio||player.dead) return null;
+  if(radio.held){ radio.held=false; radio.x=player.x; radio.z=player.z;
+    return {held:false}; }
+  if(!nearRadio()) return null;
+  radio.held=true; return {held:true};
 }
 
 function nearestFreeCrew(it){
@@ -2199,6 +2223,11 @@ function render(){
   const dv=R("drive");
   drawBox(dv.x-1.6,1.05,dv.z,1.5,1.05,1.9,[.34,.28,.13]);
 
+  if(radio){
+    const rx=radio.held?player.x-lookDir()[0]*0.5:radio.x;
+    const rz=radio.held?player.z-lookDir()[2]*0.5:radio.z;
+    drawBox(rx,radio.held?0.95:0.10,rz,0.16,0.26,0.10,[.24,.28,.22]);
+  }
   if(crowbar){
     const cx=crowbar.held?player.x+lookDir()[0]*0.8:crowbar.x;
     const cz=crowbar.held?player.z+lookDir()[2]*0.8:crowbar.z;
@@ -2360,6 +2389,11 @@ function hud(){
         ? `  ·  heavier (${Math.round((player.mass||0)*100)}%)`+
           (player.holding.said?`  ·  it just spoke in ${player.holding.said}'s voice`:"")
         : ""}</span><br>`:"")+
+    (radio&&radio.held?`<span style="color:#7f9a7a">ON THE RADIO  ·  `+
+      `[V] reaches everybody — and puts an L38 in every room they are standing in`+
+      `  ·  [Y] leave it</span><br>`:"")+
+    (radio&&!radio.held&&nearRadio()?`<span style="color:#8a8f7a">`+
+      `[Y] take the radio</span><br>`:"")+
     (crowbar&&crowbar.held?`<span style="color:#b09a54">CARRYING THE CROWBAR  ·  `+
       `walk into the boarded doors to pry them  ·  [K] put it down</span><br>`:"")+
     (crowbar&&!crowbar.held&&nearCrowbar()?`<span style="color:#8a8f7a">`+
@@ -2513,6 +2547,9 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   takeDolly, loadDolly, unloadDolly,
   takeCrowbar, toggleTorch,
   speak, voiceReaches:(l,ax,az,bx,bz)=>voiceReaches(l,ax,az,bx,bz),
+  takeRadio, radio:()=>radio?{x:+radio.x.toFixed(2),z:+radio.z.toFixed(2),
+    held:radio.held,room:roomAt(radio.x,radio.z)?.id??null}:null,
+  moveRadio:(x,z)=>{if(radio){radio.x=x;radio.z=z;radio.held=false;} return !!radio;},
   called:()=>crew.filter(a=>a.called>0).map(a=>a.name),
   torch:()=>({on:player.light, forced:taintedHeld(),
     mass:+(player.mass||0).toFixed(3), slow:+massSlow().toFixed(3),
