@@ -151,20 +151,22 @@ def is_pattern(expr):
 
 
 ARGS = re.compile(r"\(([^)]*)\)")
-STATEMENT_BODIES = ["Weight"]
+STATEMENT_BODIES = ["Weight", "Update", "Reset"]
 
 
 def params(sig):
-    """`(NoiseKind k, float dt)` -> `k, dt`, dropping types and defaults."""
+    """`(NoiseKind k, float dt)` -> `k, dt`. C# defaults are kept as Python ones."""
     inner = ARGS.search(sig)
     if not inner or not inner.group(1).strip():
         return ""
     out = []
     for p in inner.group(1).split(","):
         p = p.strip()
+        default = ""
         if "=" in p:
-            p = p.split("=")[0].strip()
-        out.append(p.split()[-1])
+            p, default = p.split("=", 1)
+            default = "=" + expr(default)
+        out.append(p.strip().split()[-1] + default)
     return ", ".join(out)
 
 
@@ -178,6 +180,11 @@ STMT_RULES = [
     (re.compile(r"^for\s*\(int (\w+) = 0; \1 < ([\w.]+(?:\.Count)?); \1\+\+\)$"),
      lambda m: f"for {m.group(1)} in range({expr(m.group(2))}):"),
     (re.compile(r"^if\s*\((.+)\)$"), lambda m: f"if {expr(m.group(1))}:"),
+    # `if (cond) { a; b; }` all on one line, which this C# uses for the two-field
+    # updates in the selector.
+    (re.compile(r"^if\s*\((.+?)\)\s*\{(.+)\}$"),
+     lambda m: f"if {expr(m.group(1))}: "
+               + "; ".join(inline(x + ";") for x in m.group(2).split(";") if x.strip())),
     # `if (cond) <one statement>;` on a single line - the C# here uses it for the
     # pillar-2 guard and for the light multiplier, and both have to be readable.
     (re.compile(r"^if\s*\((.+?)\)\s+(?!return)(\S.*;)$"),
@@ -217,7 +224,7 @@ def inline(one):
 def block(lines, i, indent):
     """Translate a `{ ... }` block starting at lines[i]. Returns (python, next_i)."""
     out, n = [], len(lines)
-    if lines[i].strip() == "{":
+    if i < n and lines[i].strip() == "{":
         i += 1
         while i < n and lines[i].strip() != "}":
             i = stmt(lines, i, indent, out)
@@ -246,15 +253,50 @@ def stmt(lines, i, indent, out):
     raise SyntaxError(f"cannot read statement: {line!r}")
 
 
-def statement_body(src, name):
-    """Find `... Name(args) { ... }` and translate the block."""
-    m = re.search(rf"public static \w+ {name}\(([^)]*)\)\s*\n\s*\{{", src)
+# Instance fields become module globals, because the comparison only ever needs
+# one selector at a time and a class translator would be a lot of machinery for
+# one object. Any function that assigns one declares it global.
+FIELD = re.compile(r"public (?:\w+(?:<\w+>)?) (\w+) \{ get; (?:private )?set; \}"
+                   r"|^\s*(?:readonly )?(?:float|int) (_\w+);", re.M)
+
+
+def fields(src):
+    out = set()
+    for a, b in FIELD.findall(src):
+        out.add(a or b)
+    return out
+
+
+def statement_body(src, name, flds=()):
+    """Find `... Name(args) { ... }` and translate the block.
+
+    Handles a multi-line signature and a non-static method; `params` keeps C#
+    default values, so `IAttentionSubject handoffTo = null` stays optional.
+    """
+    # No braces or semicolons inside the argument list: with re.S and a lazy `.*?`
+    # a signature will otherwise swallow everything up to the NEXT method's brace,
+    # which is how `Reset` came to be translated with `Update`'s body inside it.
+    m = re.search(rf"public (?:static |sealed )?[\w<>]+ {name}\s*\("
+                  rf"([^{{}};]*?)\)\s*\n?\s*\{{", src, re.S)
     if not m:
         return None
-    args = params("(" + m.group(1) + ")")
-    lines = src[m.end() - 1:].splitlines()
-    body, _ = block(lines, 0, 1)
-    return f"def {name}({args}):\n" + "\n".join(body)
+    args = params("(" + " ".join(m.group(1).split()) + ")")
+    rest = src[m.end() - 1:]
+    first, _, tail = rest.partition("\n")
+    if first.strip() != "{" and first.strip().endswith("}"):
+        # A whole body on one line: `{ a; b; c; }`. Split it into statements, being
+        # careful that a `for (...;...;...)` header never appears in this form.
+        inner = first.strip()[1:-1]
+        lines = [x.strip() + ";" for x in inner.split(";") if x.strip()]
+        body, i2 = [], 0
+        while i2 < len(lines):
+            i2 = stmt(lines, i2, 1, body)
+    else:
+        body, _ = block(rest.splitlines(), 0, 1)
+    assigned = sorted(f for f in flds
+                      if re.search(rf"^\s*{f}\s*(?:[-+*/]?=|\+\+)", "\n".join(body), re.M))
+    head = [f"    global {', '.join(assigned)}"] if assigned else []
+    return f"def {name}({args}):\n" + "\n".join(head + body)
 
 
 def translate(src):
@@ -281,8 +323,11 @@ def translate(src):
         out.append(f"def {name}({args}):\n    return {expr_}")
         found.add(name)
         funcs.add(name)
+    flds = fields(src)
+    for f in sorted(flds):
+        out.append(f"{f} = None")
     for name in STATEMENT_BODIES:
-        py = statement_body(src, name)
+        py = statement_body(src, name, flds)
         if py:
             out.append(py)
             found.add(name)
@@ -299,7 +344,7 @@ UNREAD = {
     "AddNoise": "mutates instance state", "AddStatic": "mutates instance state",
     "Tick": "mutates instance state", "KillLights": "mutates instance state",
     "GoQuiet": "mutates instance state", "LightWing": "mutates instance state",
-    "Reset": "mutates instance state", "Update": "mutates instance state",
+
 
     "Value": "auto-property", "Elapsed": "auto-property", "Target": "auto-property",
     "Retargets": "auto-property", "Carried": "interface member",
@@ -416,7 +461,7 @@ for value, want in ((0, "Dormant"), (29.9, "Dormant"), (30, "Patrol"),
 #    and R2 found the additive version doing exactly that 100% of the time. It has
 #    a statement body, so R47 listed it as unreadable and left it unchecked - which
 #    left the most important function in the file as the one nothing looked at.
-A = load("Attention.cs", ["Weight", "Attention", "Value", "Fee"])
+A = load("Attention.cs", ["Weight", "Attention", "Value", "Fee", "Update", "Reset"])
 
 
 class Carried:
@@ -460,6 +505,59 @@ for value, grade, noise, light in ((100, "Clean", 0, False), (100, "Clean", 2, F
 check("Weight(two pieces)",
       A["Weight"](Subject([Carried(100, "Clean"), Carried(200, "Tainted")], 0, False)),
       100 * att["clean"] + 200 * att["tainted"])
+
+# The selector. TECH-SPEC A3's three rules, each exercised on both sides:
+#   1. a richer carrier is only stolen at 1.25x, not at 1.01x
+#   2. nothing retargets inside the 8-second commitment lock
+#   3. a hand-off punches through both, instantly - which is D-25's whole claim,
+#      and the thing R2 measured at 0.0s with the override and 6.0s without.
+def sel(*subjects):
+    A["Reset"]()
+    return list(subjects)
+
+
+P_RICH = Subject([Carried(1000, "Clean")])
+P_MID = Subject([Carried(800, "Clean")])
+P_POOR = Subject([Carried(100, "Clean")])
+P_EMPTY = Subject([])
+
+P_RICHER = Subject([Carried(1500, "Clean")])
+P_NUDGE = Subject([Carried(1100, "Clean")])      # 1.1x - under the threshold
+
+A["Update"](0.0, sel(P_POOR, P_RICH))
+check("selector takes the richest carrier", A["Target"] is P_RICH, True)
+
+# The lock has to be tested with a challenger that WOULD otherwise win, or it
+# passes whether the lock is there or not - which is how the first version of
+# these three checks let "the commitment lock is not honoured" walk through.
+A["Reset"]()
+A["Update"](0.0, [P_RICH])
+A["Update"](1.0, [P_RICH, P_RICHER])
+check("the commitment lock holds a 1.5x challenger off for eight seconds",
+      A["Target"] is P_RICH, True)
+A["Update"](9.0, [P_RICH, P_RICHER])
+check("and lets it through afterwards", A["Target"] is P_RICHER, True)
+
+# Same for the threshold: the challenger has to be richer, but not richer enough.
+A["Reset"]()
+A["Update"](0.0, [P_RICH])
+A["Update"](9.0, [P_RICH, P_NUDGE])
+check("1.1x does not clear the 1.25x steal threshold", A["Target"] is P_RICH, True)
+A["Update"](18.0, [P_RICH, P_RICHER])
+check("1.5x does", A["Target"] is P_RICHER, True)
+
+# The hand-off: inside the lock, which is when hand-offs actually happen.
+A["Reset"]()
+A["Update"](0.0, [P_RICH, P_POOR])
+A["Update"](1.0, [P_RICH, P_POOR], P_RICH, P_POOR)
+check("a hand-off punches through the commitment lock", A["Target"] is P_POOR, True)
+check("and it counts as a retarget", A["Retargets"], 1)
+
+# ...but only from the player who is actually being hunted.
+A["Reset"]()
+A["Update"](0.0, [P_RICH, P_POOR])
+A["Update"](1.0, [P_RICH, P_POOR], P_POOR, P_EMPTY)
+check("a hand-off from somebody else is not a hand-off", A["Target"] is P_RICH, True)
 
 check("StealThreshold", A["StealThreshold"], a["steal_threshold"])
 check("CommitSeconds", A["CommitSeconds"], a["commit_seconds"])

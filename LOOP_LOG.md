@@ -1003,6 +1003,26 @@ a hole in the checker — it is the file's own claim, demonstrated: the pillar i
 anything is worth as much as one that succeeds, provided you understand why. · Regression: C#
 114/114, QA 204/204, drift 178/178, claims 25/25.
 
+R49 · **The selector, which is where the three rules everyone cites actually live.** With
+statement bodies readable, `AttentionSelector.Update` came within reach: mutable state, an
+`if/else` over a null target, a counted loop, and the hand-off branch that punches through
+both hysteresis rules. Instance fields become module globals — one selector is all the
+comparison ever needs — and every function that assigns one declares it. **122 values** now.
+· **Twenty injections, nineteen caught, and every one of the nineteen is invisible to
+`check_drift.py`.** The new ones are the rules themselves: the steal threshold ignored, the
+commitment lock skipped, the hand-off override disconnected, a hand-off *from anybody*
+retargeting the Curator, and a hand-off that forgets to reset the lock. · **Two of those
+walked through on the first attempt, and both were the checks' fault in the same way.** I
+tested the commitment lock with a challenger worth 0.8× the target and the steal threshold
+with the same one — a challenger that would not have won *anyway*, so the check passed whether
+the rule was there or not. A hysteresis rule can only be tested with something that would
+otherwise win: 1.5× inside the lock, 1.1× outside it. · A translator bug worth recording
+because it is the classic one: with `re.S` and a lazy `.*?`, the signature pattern for `Reset`
+swallowed everything up to the *next* method's brace, so `Reset` was translated with `Update`'s
+body inside it — and it still ran, and still passed, because nothing called it yet.
+Constraining the argument list to contain no braces or semicolons fixes it. · Regression: C#
+122/122, QA 204/204, drift 178/178, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
