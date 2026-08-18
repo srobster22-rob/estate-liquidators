@@ -344,6 +344,70 @@ browser; disposal-guide 57 unit and 17 browser; 0 shared-file drift.
 
 ---
 
+## R12 — Pass 4 on the browser apps, and Pass 5 measured for the first time
+
+R10 ran the abuse pass against the server and stopped there. R12 ran it against the two browser
+apps, and ran Pass 5 — "the people it was built for" — which had never been run at all.
+
+**The YAML that gets pasted into a safety data file could contain things nobody typed.**
+`disposal-guide`'s `/verify` screen emits YAML a maintainer pastes into
+`data/locations/local.yaml`, the file that decides where somebody drives with a car full of
+hazardous waste. A note containing a newline escaped its `#` comment and emitted live keys:
+
+```
+#   note: ok
+  hazard: none        <- emitted as real YAML
+```
+
+How real: **latent, not live.** The only input path is `<input type="text">`, and browsers strip
+newlines from anything pasted into one — verified in a real browser rather than assumed. Fixed
+anyway, because the function is exported and independently used, and because the field is
+captioned "anything that changed" with a placeholder inviting a sentence, which is one considerate
+round away from being a textarea. Values with control characters now go out double-quoted, every
+comment line gets its own `#`, and the tests parse the result with the same YAML library the build
+uses — a string assertion would only prove the emitter agrees with itself.
+
+**A skipped test was hiding a feature that was never wired to the screen people see.** The 180-day
+staleness test had been skipped since M0 as "needs real verified locations to exercise". That was
+wrong: it needs a location with an old *date*, and one can be written in a test. The skip cost
+something real — `isStale` shipped in R8 and was wired into the maintainer's re-check screen and
+nowhere else, so the answer screen rendered `Confirmed 2023-04-01 by Dana` at any age with no flag
+at all. Brief acceptance test 5 was unbuilt on the only path that matters. There is now a
+`freshnessLine` that states elapsed time rather than a date the reader has to do arithmetic on
+("Last confirmed over 3 years ago — that is out of date. Call before you go.") with the phone
+number in the flag, and a deliberately source-level test asserting the answer screen uses it,
+because the bug was not wrong logic — it was correct logic wired to one screen out of two.
+
+**Pass 5: the ~6th grade reading level was a promise nobody had measured.** `scripts/reading-level.mjs`
+now scores every user-facing string in the built index. Two things had to be fixed in the tool
+before its output meant anything: it was scoring Spanish with Flesch–Kincaid, which is calibrated
+for English and reports ordinary Spanish as difficult, and it was scoring citation titles, which
+are the publisher's words and must not be rewritten.
+
+Then the gate itself was wrong. The first version failed the build on the grade score, and the
+worst offender was *"Tape over the terminals with non-conductive tape, or bag each battery
+separately"* — a clear twelve-word safety instruction penalised entirely for syllables, where any
+rewrite to satisfy the number would be worse. So the grade is now advisory, printed for a human to
+argue with, and **the build fails on sentence length**, which is the half of the measure a writer
+should actually act on. That gate immediately found a 45-word sentence about disposing of
+medicine and a 37-word one about the post-wildfire exception — the latter lengthened by R11's own
+fix, which added a real condition and made the sentence worse to read. Nine strings in
+`disposal-guide` and four in `flood-and-water` were split into shorter sentences with no loss of
+precision; the R11 test asserting every post-wildfire condition still appears still passes.
+English median grade: disposal-guide 7.9 → 7.2, flood-and-water 8.5 → 7.8.
+
+Wired into both projects' `npm run check`, duplicated per project rather than shared from
+`tools/` — the launch pack tells agents to build standalone repositories and a script reaching up
+to `../tools` breaks the moment one is cloned alone — and added to the drift checker, which now
+covers five files.
+
+**Verified:** the YAML escaping, the comment prefixing and the staleness wiring were each
+mutation-tested; restoring the old behaviour turns its own test red and nothing else.
+disposal-guide 64 unit and 17 browser tests; flood-and-water 53 unit and 21 browser;
+recall-watch 61, matcher still 100%/100%; 0 drift across 5 shared files.
+
+---
+
 ## The queue — what the next rounds should take
 
 Ordered by value, from the projects' own VERIFY files and what R10 left open:

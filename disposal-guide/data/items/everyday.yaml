@@ -16,9 +16,11 @@
     hazard: caution
     neverCurbside: false
     why:
-      en: Plastic bags wrap around the spinning parts of sorting machines. Facilities have to stop
-        the line and cut them out by hand, so most curbside programs do not want them even where
-        the plastic itself is recyclable.
+      en: Plastic bags wrap around the spinning parts of sorting machines. Facilities have to stop the line and cut
+        them out by hand. Most curbside
+        programs do not want them, even
+        where the plastic itself is
+        recyclable.
       es: Las bolsas de plástico se enredan en las máquinas de la planta de reciclaje.
     prep:
       - en: Many grocery stores have a collection bin for clean, dry bags and film near the
@@ -81,8 +83,9 @@
     hazard: none
     neverCurbside: false
     why:
-      en: Worn-out clothing that nobody would wear still has value as fiber, and textile
-        collection is a separate system from both donation and curbside recycling.
+      en: Worn-out clothing still has value as fiber, even when nobody would wear it. Textile
+        collection is its own system. It is not the same as donation, and not the same as
+        curbside recycling.
     prep:
       - en: Wearable items go to donation. Stained and torn items are not trash automatically —
           ask whether there is a textile recovery bin nearby.

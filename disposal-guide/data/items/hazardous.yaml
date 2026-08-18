@@ -12,7 +12,7 @@
     hazard: hazardous
     neverCurbside: true
     why:
-      en: Leftover paint is one of the most common household hazardous wastes, and rules for it
+      en: Leftover paint is one of the most common household hazardous wastes. The rules for it
         differ more between towns than almost anything else on this list.
     prep:
       - en: Keep it in the original container with the label on. Never pour it down a drain or
@@ -214,7 +214,7 @@
         removing it is licensed work in most states.
     prep:
       - en: Do not sand, scrape, cut, drill, or break material you suspect contains asbestos.
-      - en: Leave it alone and call your state or county environmental office for the list of
+      - en: Leave it alone. Call your state or county environmental office. Ask for the list of
           licensed inspectors and abatement contractors.
     sourceRefs: [epa-hhw]
 

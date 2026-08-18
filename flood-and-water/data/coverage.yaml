@@ -27,16 +27,18 @@ waitingPeriod:
       sourceRefs: [fema-waiting-period, nfip-buy-policy]
       question: Was your property recently moved into a high-risk flood zone by a map update in
         the last 12 months?
-      detail: A one-day waiting period applies if the property is in a newly designated high-risk
-        zone and the policy is bought within 12 months of the map update.
+      detail: There is a one-day waiting period instead of thirty, if the property was newly put in
+        a high-risk zone. You have to buy the policy within 12 months of the map
+        update.
     - id: post-wildfire
       days: 1
       sourceRefs: [nfip-post-wildfire, fema-waiting-period]
       question: Is the flood risk caused or worsened by a wildfire on federal land in the last 60
         days?
-      detail: A one-day waiting period applies when flooding is caused or worsened by wildfire on
-        federal land, for privately owned property, if the policy is bought on or before the fire
-        is contained or within 60 days of containment.
+      detail: There is a one-day waiting period instead of thirty, if all of this is true. The
+        flooding was caused or made worse by a wildfire on federal land. The property
+        is privately owned. You bought the policy on or before the fire was contained,
+        or within 60 days after.
   sourceRefs: [fema-waiting-period, nfip-buy-policy]
 
 # The gaps. Each is a distinct policy product; a household can have none, some, or all three.
@@ -57,10 +59,10 @@ gaps:
     what: Water coming up through a floor drain, a toilet, or a basement fixture.
     coveredByHomeowners: false
     why: Most homeowners policies do not cover sewer backup unless the coverage is added. It is
-      usually an endorsement on the homeowners policy, often at modest cost — and flood insurance
-      generally does not cover it either unless the backup results directly from a flood. This is
-      the most common uncovered basement loss and the two policies both have a hole in the same
-      place.
+      usually an endorsement on the homeowners policy, often at modest cost. Flood
+      insurance generally does not cover it either, unless the backup results directly from
+      a flood. This is the most common uncovered basement loss. Both policies have a hole
+      in the same place.
     sourceRefs: [iii-sewer-backup, nfip-what-covered]
 
   - id: named-storm-deductible
@@ -69,8 +71,8 @@ gaps:
       from a named storm.
     coveredByHomeowners: true
     why: This is not a coverage gap so much as a cost surprise. Check your declarations page for a
-      separate windstorm or hurricane deductible; it is often a percentage of the dwelling
-      amount rather than a flat dollar figure.
+      separate windstorm or hurricane deductible. It is often a percentage of the dwelling
+      amount, not a flat dollar figure.
     sourceRefs: [iii-disasters-covered]
 
 # Where to look on the user's own paperwork. The barrier is not understanding insurance, it is

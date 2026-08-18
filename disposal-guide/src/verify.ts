@@ -46,6 +46,36 @@ export function isStale(loc: Location, today: Date): boolean {
 }
 
 /**
+ * What the person standing in their garage is told about how current this is.
+ *
+ * Brief acceptance test 5: a location unverified for 180+ days renders the "call first" flag with
+ * its phone number. `isStale` existed from R8 and was used on the maintainer's re-check screen —
+ * and nowhere on the screen a member of the public sees. The answer screen rendered
+ * "Confirmed 2023-04-01 by Dana" at any age, with no flag, which is the failure mode this app is
+ * supposed to be about: a confident answer that quietly went out of date.
+ *
+ * It is stated in elapsed time rather than only as a date. "Confirmed 2023-04-01" requires the
+ * reader to do arithmetic before it means anything, and nobody standing in a garage does.
+ */
+export function freshnessLine(loc: Location, today: Date): { text: string; stale: boolean } {
+  const days = daysSince(loc.verifiedOn, today);
+  if (days === null) {
+    return { text: 'Nobody has confirmed this one. Call before you go.', stale: true };
+  }
+  const ago =
+    days < 1 ? 'today'
+      : days < 2 ? 'yesterday'
+      : days < 60 ? `${days} days ago`
+      : days < 365 ? `${Math.round(days / 30)} months ago`
+      : days < 730 ? 'over a year ago'
+      : `over ${Math.floor(days / 365)} years ago`;
+  const by = loc.verifiedBy ? ` by ${loc.verifiedBy}` : '';
+  return days >= STALE_AFTER_DAYS
+    ? { text: `Last confirmed ${ago}${by} — that is out of date. Call before you go.`, stale: true }
+    : { text: `Confirmed ${ago}${by} (${loc.verifiedOn}).`, stale: false };
+}
+
+/**
  * Oldest first, never-verified before everything, demo rows last.
  *
  * Demo rows sort last rather than being hidden: a maintainer looking at this screen should see
@@ -101,8 +131,50 @@ export function recordVerification(rec: VerifyRecord): boolean {
   }
 }
 
+/**
+ * A YAML scalar that cannot become YAML structure.
+ *
+ * This function's output is pasted by a human into `data/locations/local.yaml` — the file that
+ * decides where somebody drives with a car full of hazardous waste. Its contract is that what the
+ * maintainer typed is what lands in the file, and the single-quoted form alone did not hold that:
+ * a value containing a newline emitted a scalar that spanned lines, and a NOTE containing one
+ * escaped its `#` comment entirely and wrote live keys into the file.
+ *
+ *     #   note: ok
+ *       hazard: none        <- this was emitted as real YAML
+ *
+ * How real is it? Today, latent rather than live: the only input path is `<input type="text">`,
+ * and browsers strip newlines from anything pasted into one — verified in a real browser, not
+ * assumed. It is fixed anyway for two reasons. The function is exported and used directly, so
+ * nothing but that input element is enforcing the invariant; and the field is captioned "anything
+ * that changed" with a placeholder inviting a sentence, which is one considerate round away from
+ * being a textarea. A safety data file is the wrong place to find out.
+ */
 function yamlString(s: string): string {
+  // Anything with a newline, a tab, or another control character goes out double-quoted, which
+  // is the only YAML form that can carry an escape sequence.
+  if (/[\n\r\t\x00-\x1f\x7f]/.test(s)) {
+    const escaped = s
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t')
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1f\x7f]/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
+    return `"${escaped}"`;
+  }
   return `'${s.replace(/'/g, "''")}'`;
+}
+
+/**
+ * A comment that stays a comment.
+ *
+ * Every line gets its own `#`. A value with a newline used to comment out only its first line and
+ * leave the rest as live YAML.
+ */
+function yamlComment(prefix: string, text: string): string[] {
+  return String(text).split(/\r?\n/).map((line, i) => (i === 0 ? `${prefix}${line}` : `#   ${line}`));
 }
 
 /**
@@ -122,8 +194,8 @@ export function toYaml(records: VerifyRecord[], index: DataIndex): string {
   ];
   for (const r of records) {
     const loc = byId.get(r.locationId);
-    lines.push(`# ${loc?.name ?? r.locationId} — ${r.outcome} on ${r.on}`);
-    if (r.note) lines.push(`#   note: ${r.note}`);
+    lines.push(...yamlComment('# ', `${loc?.name ?? r.locationId} — ${r.outcome} on ${r.on}`));
+    if (r.note) lines.push(...yamlComment('#   note: ', r.note));
     if (r.outcome === 'closed') {
       lines.push(`#   CLOSED. Remove this location, or set active: false.`);
       lines.push(`# - id: ${r.locationId}`);
@@ -136,7 +208,7 @@ export function toYaml(records: VerifyRecord[], index: DataIndex): string {
       lines.push(`  verifiedBy: ${yamlString(r.by)}`);
       if (r.outcome === 'changed') {
         lines.push(`  # SOMETHING CHANGED — update the fields below before committing:`);
-        lines.push(`  #   ${r.note ?? '(no note recorded)'}`);
+        lines.push(...yamlComment('  #   ', r.note ?? '(no note recorded)'));
       }
     }
     lines.push('');

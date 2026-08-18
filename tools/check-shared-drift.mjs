@@ -52,6 +52,14 @@ const SHARED = [
     projects: ['disposal-guide', 'flood-and-water'],
     allowedToDiffer: [/--port|baseURL|url: 'http/],
   },
+  {
+    // Added in R12. Lives in each project rather than in tools/ for the same reason as
+    // check-budget.ts: the launch pack tells agents to create standalone repositories, and a
+    // script reaching up to ../tools would break the moment one is cloned on its own.
+    file: 'scripts/reading-level.mjs',
+    projects: ['disposal-guide', 'flood-and-water'],
+    allowedToDiffer: [],
+  },
 ];
 
 function normalize(text, allowed) {

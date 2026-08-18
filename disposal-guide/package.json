@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "npm run data && vitest run",
     "test:watch": "vitest",
-    "check": "npm run build && vitest run && tsx scripts/check-budget.ts && playwright test"
+    "check": "npm run build && vitest run && tsx scripts/check-budget.ts && playwright test && npm run reading",
+    "reading": "node scripts/reading-level.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

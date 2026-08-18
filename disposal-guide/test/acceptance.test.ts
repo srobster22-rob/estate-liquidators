@@ -9,7 +9,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import indexData from '../src/generated/index.json';
-import type { DataIndex, Item } from '../src/types.js';
+import type { DataIndex, Item, Location } from '../src/types.js';
+import { parse as parseYaml } from 'yaml';
+import { freshnessLine, toYaml, type VerifyRecord } from '../src/verify.js';
 import { SearchIndex, normalize, editDistance } from '../src/search.js';
 import { resolve, clampVerdict, isDisambiguation } from '../src/resolve.js';
 
@@ -148,8 +150,58 @@ describe('5. staleness is visible', () => {
     }
   });
 
-  it.skip('180-day staleness flag — needs real verified locations to exercise', () => {
-    // Blocked on M0: there are no non-demo locations yet. See VERIFY.md.
+  it('a location unverified for 180+ days says so and says to call first', () => {
+    // Skipped until R12 as "needs real verified locations to exercise", which was wrong: it needs
+    // a location with an old DATE, and one can be written here. The skip cost something real —
+    // `isStale` shipped in R8 and was wired only into the maintainer's re-check screen, so the
+    // answer screen a member of the public sees rendered "Confirmed 2023-04-01 by Dana" at any
+    // age with no flag at all. Brief acceptance test 5 was unbuilt on the only path that matters.
+    const today = new Date('2026-08-18T00:00:00Z');
+    const at = (iso: string): Location =>
+      ({ ...data.locations[0]!, verifiedOn: iso, verifiedBy: 'Dana', phone: '555-0101' });
+
+    expect(freshnessLine(at('2026-08-11'), today).stale).toBe(false);
+    // The boundary itself, from both sides.
+    expect(freshnessLine(at('2026-02-20'), today).stale).toBe(false);  // 179 days
+    expect(freshnessLine(at('2026-02-19'), today).stale).toBe(true);   // 180 days
+    expect(freshnessLine(at('2023-04-01'), today).stale).toBe(true);
+
+    const old = freshnessLine(at('2023-04-01'), today);
+    expect(old.text).toMatch(/call before you go/i);
+    expect(old.text).toMatch(/out of date/i);
+    // Elapsed time, not just a date the reader has to do arithmetic on.
+    expect(old.text).toMatch(/years ago/);
+
+    const never = freshnessLine({ ...data.locations[0]!, verifiedOn: undefined }, today);
+    expect(never.stale).toBe(true);
+    expect(never.text).toMatch(/call before you go/i);
+  });
+
+  it('the answer screen actually uses it — not just the maintainer screen', () => {
+    // A source-level check, and deliberately so. The bug it guards was not wrong logic: it was
+    // correct logic wired to one screen and not the other, for four rounds. `isStale` was used
+    // in the /verify view and nowhere a member of the public could see it. No behavioural test
+    // can catch that while destinations do not render at all (jurisdiction.configured is false
+    // until M0), so this asserts the wiring directly and says plainly that is what it is.
+    const main = readFileSync(join(root, 'src', 'main.ts'), 'utf8');
+    const renderPlace = main.slice(main.indexOf('function renderPlace'));
+    const body = renderPlace.slice(0, renderPlace.indexOf('\nfunction '));
+    expect(body).toContain('freshnessLine');
+    expect(body).toContain('place-callfirst');
+    // And the phone number goes in the flag, which is what the brief asks for.
+    expect(body).toMatch(/place-callfirst[\s\S]*tel:/);
+  });
+
+  it('a fresh location does not nag, and still shows its date', () => {
+    // The flag is worth nothing if it is on everything.
+    const today = new Date('2026-08-18T00:00:00Z');
+    const fresh = freshnessLine(
+      { ...data.locations[0]!, verifiedOn: '2026-08-01', verifiedBy: 'Dana' }, today,
+    );
+    expect(fresh.stale).toBe(false);
+    expect(fresh.text).not.toMatch(/call before you go/i);
+    expect(fresh.text).toContain('2026-08-01');
+    expect(fresh.text).toContain('Dana');
   });
 });
 
@@ -392,5 +444,56 @@ describe('ambiguity that bit us during the build', () => {
     const slugs = search.search('aceite usado', 8).map((h) => h.item.slug);
     expect(slugs).toContain('motor-oil');
     expect(slugs).toContain('cooking-oil');
+  });
+});
+
+// --- what /verify emits is pasted into a safety data file ---------------------
+
+/**
+ * `toYaml` output is pasted by a human into `data/locations/local.yaml` — the file that decides
+ * where somebody drives with a car full of hazardous waste. Its contract is that what the
+ * maintainer typed is what lands in the file, and nothing was enforcing it: a value with a
+ * newline escaped its comment and wrote live YAML keys.
+ *
+ * Parsed with the same YAML library the build uses, rather than matched as strings. A string
+ * assertion here would only be checking that the emitter agrees with itself.
+ */
+describe('the pasteable YAML cannot become something the maintainer did not type', () => {
+  const locId = data.locations[0]!.id;
+  const rec = (over: Partial<VerifyRecord> = {}): VerifyRecord => ({
+    locationId: locId, outcome: 'confirmed', on: '2026-08-18', by: 'Dana', ...over,
+  });
+
+  it('a note containing newlines stays entirely inside its comment', () => {
+    const y = toYaml([rec({ note: 'ok\n  hazard: none\n  neverCurbside: false' })], data);
+    for (const line of y.split('\n')) {
+      if (/hazard|neverCurbside/.test(line)) {
+        expect(line.trimStart().startsWith('#'), `escaped its comment: ${line}`).toBe(true);
+      }
+    }
+    const parsed = parseYaml(y) as Record<string, unknown>[];
+    expect(parsed).toHaveLength(1);
+    expect(Object.keys(parsed[0]!).sort()).toEqual(['id', 'verifiedBy', 'verifiedOn']);
+  });
+
+  it('a verifier name containing newlines stays one scalar', () => {
+    const y = toYaml([rec({ by: 'Dana\n- id: fake-site\n  active: true' })], data);
+    const parsed = parseYaml(y) as Record<string, unknown>[];
+    // One entry, not two. The injected id must not have become a location.
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]!.id).toBe(locId);
+    expect(parsed[0]!.verifiedBy).toBe('Dana\n- id: fake-site\n  active: true');
+  });
+
+  it('quotes, colons and YAML sigils in a name survive as text', () => {
+    for (const name of ["Dana O'Brien", 'Dana: the clerk', '&anchor *ref', '{a: 1}', '- item', '*']) {
+      const parsed = parseYaml(toYaml([rec({ by: name })], data)) as Record<string, unknown>[];
+      expect(parsed[0]!.verifiedBy, name).toBe(name);
+    }
+  });
+
+  it('a no-answer still emits nothing that could be committed as a verification', () => {
+    const y = toYaml([rec({ outcome: 'no_answer', by: 'Dana\n- id: fake\n  active: true' })], data);
+    expect(parseYaml(y) ?? []).toEqual([]);   // comments only
   });
 });

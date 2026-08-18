@@ -10,8 +10,8 @@
     hazard: hazardous
     neverCurbside: true
     why:
-      en: Medicine in the trash can be found by a child, a pet, or someone looking for it, and
-        medicine flushed down a toilet can end up in water.
+      en: Medicine in the trash can be found by a child, a pet, or someone looking for it. Medicine
+        flushed down a toilet can end up in water.
     prep:
       - en: A drug take-back location is the preferred option. Many pharmacies, hospital
           pharmacies, and police departments have a drop box, and some offer prepaid mail-back
@@ -22,9 +22,10 @@
       - en: A small number of medicines are on the FDA "flush list" because one dose can kill
           someone who takes it by accident. Only flush a medicine if it is on that list — check
           the list, do not assume.
-      - en: For anything not on the flush list, if you cannot get to a take-back site — take it out
-          of the container, mix it with something unappealing like dirt, cat litter, or used
-          coffee grounds, seal it in a bag, and put it in the trash. Do not crush tablets.
+      - en: If it is not on the flush list and you cannot get to a take-back site, put it in the
+          trash this way. Take it out of the container. Mix it with something
+          unappealing like dirt, cat litter, or used coffee grounds. Seal it in a bag.
+          Do not crush tablets.
         es: Si no puede llegar a un punto de recolección, mezcle el medicamento con algo
           desagradable como tierra o arena para gatos, séllelo en una bolsa y tírelo a la basura.
     nationalOptions:
@@ -51,8 +52,8 @@
           inodoro.
       - en: Put used sharps immediately into an FDA-cleared sharps container. Pharmacies, medical
           supply companies, and providers sell them.
-      - en: When the container is about three-quarters full, stop filling it — overfilling causes
-          needle sticks — and follow your community's rule for getting rid of it.
+      - en: Stop filling the container when it is about three-quarters full. Overfilling causes
+          needle sticks. Then follow your community's rule for getting rid of it.
     nationalOptions:
       - en: 'Safe Needle Disposal will tell you what your area does: 1-800-643-1643.'
     sourceRefs: [fda-sharps-dos-donts, fda-sharps-best-way]

@@ -4,7 +4,7 @@ import { SearchIndex } from './search.js';
 import { isDisambiguation, resolve, VERDICT_LABEL, VERDICT_SUBTEXT } from './resolve.js';
 import { logZeroResult } from './telemetry.js';
 import {
-  queue, questions, isStale, daysSince, readVerifications, recordVerification, toYaml,
+  queue, questions, isStale, daysSince, freshnessLine, readVerifications, recordVerification, toYaml,
   type Outcome,
 } from './verify.js';
 
@@ -162,19 +162,24 @@ function hoursLine(loc: Location): string {
 }
 
 function renderPlace(loc: Location): string {
+  const fresh = freshnessLine(loc, new Date());
   return `
-    <div class="place">
+    <div class="place${fresh.stale ? ' place-stale' : ''}">
       <p class="place-name">${esc(loc.name)}</p>
       <p class="place-meta">${esc(loc.address)}</p>
       ${loc.phone ? `<p class="place-meta"><a href="tel:${esc(loc.phone)}">${esc(loc.phone)}</a></p>` : ''}
       <p class="place-meta">${hoursLine(loc)}</p>
       ${loc.proofRequired ? `<p class="place-meta">Bring: ${esc(t(loc.proofRequired))}</p>` : ''}
       ${loc.feesNote ? `<p class="place-meta">${esc(t(loc.feesNote))}</p>` : ''}
-      <p class="place-meta">${
-        loc.verifiedOn
-          ? `Confirmed ${esc(loc.verifiedOn)} by ${esc(loc.verifiedBy ?? 'unknown')}`
-          : 'Not confirmed — call first.'
-      }</p>
+      ${
+        fresh.stale
+          ? `<p class="place-callfirst"><strong>${esc(fresh.text)}</strong>${
+              loc.phone
+                ? ` <a href="tel:${esc(loc.phone)}">${esc(loc.phone)}</a>`
+                : ' No phone number is recorded for this one.'
+            }</p>`
+          : `<p class="place-meta">${esc(fresh.text)}</p>`
+      }
     </div>`;
 }
 

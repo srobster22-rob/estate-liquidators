@@ -96,8 +96,8 @@
         es: Los aparatos con batería sellada adentro cuentan como baterías. Tampoco los ponga en
           un contenedor.
     nationalOptions:
-      - en: Battery collection sites are often at electronics and hardware retailers, and at
-          household hazardous waste facilities.
+      - en: Look for battery collection boxes at electronics and hardware stores. Household
+          hazardous waste facilities take them too.
     sourceRefs: [epa-lithium-batteries, epa-household-batteries, epa-lithium-fires]
 
 - slug: battery-button-cell
@@ -117,9 +117,9 @@
     hazard: hazardous
     neverCurbside: true
     why:
-      en: Button cells can contain metals that should not go to landfill, and a swallowed button
-        cell is a medical emergency for a child or a pet — keep them out of reach until you can
-        drop them off.
+      en: A swallowed button cell is a medical emergency for a child or a pet. Keep them out of
+        reach until you can drop them off. They also contain metals that should not go to
+        landfill.
     prep:
       - en: Tape over both faces of each cell.
       - en: Keep them where a small child or a pet cannot reach them. If one is swallowed, call

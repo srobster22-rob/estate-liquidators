@@ -274,3 +274,14 @@ table.list th, table.list td {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* A destination whose confirmation has aged out. Stated in words as well as shown by the border —
+   the same rule as the hazard tag: colour never carries meaning alone (WCAG 1.4.1), and this
+   page gets printed in black and white. */
+.place-stale { border-color: var(--warn-line); border-left-width: 5px; }
+.place-callfirst {
+  background: var(--warn-bg);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.7rem;
+  margin: 0.5rem 0 0;
+}
