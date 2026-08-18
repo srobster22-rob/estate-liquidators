@@ -93,6 +93,9 @@ const CONTROLS=[
                 ["X","in a doorway: lay the salt line, once"],
                 ["K","pick up / put down the crowbar — then walk into the boards"],
                 ["J","your torch on / off — dark is safer and nearly blind"]]],
+  ["YOUR VOICE",[["V","call the crew over — L45, and the house hears it too"],
+                 ["CTRL V","whisper — L8, and only as far as this room"],
+                 ["SHIFT V","shout — L65, everybody, including the thing upstairs"]]],
   ["IF YOU DIE",[["Q","knock — a noise where you are, that pulls it to you (1)"],
                  ["E","nudge something off a shelf (3)"],
                  ["F","flicker the lights — say <i>in here</i> without a radio (1)"],
@@ -231,7 +234,18 @@ const IMPULSE=0.09, SUSTAINED=0.02, RATCHET_END=55, CREW=1;
 const PER_CURSED_FLOOR=7;
 const DECAY_PER_S=(50*(CREW/4))/60;
 const L={sprint:45, appraise:48, door:60, drop:90, breakLarge:100, dolly:35, crowbar:75,
-         voiceNormal:25};
+         voiceWhisper:8, voiceNormal:25, voiceRaised:45, voiceShout:65};
+// AUDIO-SPEC 2: the voice ladder. Four numbers that sat in tuning.json unused for
+// forty rounds, because the prototype had nothing to say. What they buy is the
+// only way to ask for the other end of an armoire - grabDrop has said "you take
+// one end and shout at somebody to take the other" since R26 with no shout in the
+// game - and the ladder is the decision: who hears you, against who else does.
+const VOICE={whisper:"voiceWhisper", talk:"voiceNormal", call:"voiceRaised",
+             shout:"voiceShout"};
+// A room is 13m and the crew cross it in about six seconds, so six was exactly
+// long enough for them to turn back one step before arriving - the check read
+// "three people heard you and nobody came".
+const CALL_S=12.0;             // how long the crew keep coming after you call
 const GRADE_MULT={clean:1, tainted:2.5, malignant:6};
 const ATT_MULT={clean:1, tainted:1.5, malignant:3};
 const FEE={clean:0, tainted:.08, malignant:.20};
@@ -862,7 +876,7 @@ function reset(){
   crew=CREW_NAMES.filter(n=>!lostCrew.has(n)).map((name,i)=>({
     name, colour:CREW_COLOURS[i], x:dv.x+(i-1)*1.6, z:dv.z+1.5,
     holding:null, down:0, hits:0, alive:true, face:0, noise:[], light:true,
-    goal:null, mood:"SEEK", panic:0}));
+    goal:null, mood:"SEEK", panic:0, called:0, callX:0, callZ:0}));
   player={x:dv.x,z:dv.z,yaw:0,pitch:0,stam:STAM_MAX,holding:null,down:0,hits:0,
           hiding:null,hideEnter:0,name:"YOU",noise:[],light:true,alive:true,
           colour:[.72,.72,.68],dead:false,collecting:0,static:STATIC_CAP,staticT:0};
@@ -905,7 +919,10 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyK"&&started&&!over) takeCrowbar();
   if(e.code==="KeyJ"&&started&&!over) toggleTorch();
   if(e.code==="KeyF"&&started&&!over&&player.dead) flickerLights();
-  if(e.code==="KeyV"&&started&&!over){ if(!slamDoor()) holdDoor(); }
+  if(e.code==="KeyV"&&started&&!over){
+    if(player.dead){ if(!slamDoor()) holdDoor(); }
+    else speak(e.ctrlKey?"whisper":e.shiftKey?"shout":"call");
+  }
   if(e.code==="KeyL"&&started&&!over) toggleLights();
   if(e.code==="KeyB"&&started&&!over) killLights();
   if(e.code==="KeyZ"&&started&&!over) goQuiet();
@@ -1068,6 +1085,32 @@ function releaseItem(it){
   if(it.follower){ it.follower.holding=null; it.follower.follows=null; it.follower=null; }
   if(it.heldBy){ it.heldBy.holding=null; it.heldBy=null; }
 }
+// Who hears you is the same arithmetic the Curator uses on everything else: a
+// radius of L x 0.33, attenuated 0.85 per wall between. A whisper carries 2.6m and
+// does not leave the room; a shout carries 21m and is heard four rooms away, which
+// is also how the Curator finds you.
+function voiceReaches(l,ax,az,bx,bz){
+  return Math.hypot(bx-ax,bz-az) <=
+         l*HEAR_PER_L*Math.pow(OCCLUSION_CURATOR,hops(ax,az,bx,bz));
+}
+// The verb. The dead have Static instead - a ghost that could still shout would
+// make the Knock worth one point and nothing.
+function speak(level){
+  if(player.dead||!player.alive) return null;
+  const l=L[VOICE[level]??"voiceNormal"];
+  noise(l,true,0,player.x,player.z,player);
+  sfx.event(l,player.x,player.z);
+  const came=[];
+  for(const a of crew){
+    if(!a.alive||a.down>0||a.holding) continue;
+    if(!voiceReaches(l,player.x,player.z,a.x,a.z)) continue;
+    a.called=CALL_S; a.callX=player.x; a.callZ=player.z;
+    came.push(a.name);
+  }
+  player.wantHelp=player.holding&&player.holding.klass==="two_man"?CALL_S:0;
+  return {level, l, heard:came};
+}
+
 function nearestFreeCrew(it){
   let best=null,bd=6.0;
   for(const a of crew){ if(!a.alive||a.holding||a.down>0) continue;
@@ -1269,6 +1312,24 @@ function updateCrew(dt){
         }
         if(a.goal) a.goal.claim=a;
       }
+      // Somebody called. That outranks whatever sideboard they were walking to:
+      // a crew that ignores a shout is a crew you cannot ask for the other end of
+      // an armoire, which is the whole reason the verb exists.
+      if(a.called>0){
+        a.called-=dt;
+        a.mood="CALLED";
+        gx=a.callX; gz=a.callZ;
+        const need=player.holding&&player.holding.klass==="two_man"&&!player.holding.follower;
+        if(need&&Math.hypot(a.x-player.x,a.z-player.z)<2.0){
+          const it=player.holding;
+          it.follower=a; a.holding=it; a.mood="CARRY"; a.follows=it;
+          a.called=0; player.wantHelp=0;
+        }
+        walkTo(a,gx,gz,sp,dt,true);
+        a.stride=(a.stride||0)+dt;
+        if(a.stride>0.62){ a.stride=0; heard(sp>=RUN?L.sprint:20,a.x,a.z,a); }
+        continue;
+      }
       a.mood="SEEK";
       if(!a.goal) continue;
       gx=a.goal.x; gz=a.goal.z;
@@ -1341,6 +1402,7 @@ function step(dt){
   else player.stam=Math.min(STAM_MAX,player.stam+dt*(STAM_MAX/STAM_REGEN));
 
   carryCurse(dt);
+  if(player.wantHelp>0) player.wantHelp-=dt;
 
   // The dead move freely - no collision, no light needed, fast. You are the
   // crew's overwatch and the only way to deliver what you can see is out loud.
@@ -2290,6 +2352,8 @@ function hud(){
       (salt.until-t).toFixed(1)}s</span><br>`:"")+
     (DOORS.some(d=>d.shut)?`<span style="color:#8b8880">${
       DOORS.filter(d=>d.shut).length} door${DOORS.filter(d=>d.shut).length>1?"s":""} shut</span><br>`:"")+
+    (player.wantHelp>0?`<span style="color:#c0b070">`+
+      `NOBODY HAS THE OTHER END  ·  [V] call  ·  [SHIFT V] shout</span><br>`:"")+
     (player.holding&&player.holding.grade!=="clean"&&!player.dead?
       `<span style="color:#a8683f">${player.holding.grade.toUpperCase()} IN YOUR HANDS`+
       `  ·  torch stuck on${player.holding.grade==="malignant"
@@ -2347,6 +2411,13 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   clearCrew:()=>{for(const a of crew) if(a.holding){a.holding.heldBy=null;a.holding=null;}},
   parkCrew:()=>{for(const a of crew){ if(a.holding){a.holding.heldBy=null;a.holding=null;}
     a.alive=false; }},
+  unparkCrew:(x,z)=>{for(const a of crew){ a.alive=true; a.hits=0; a.down=0;
+    a.called=0; a.goal=null; a.mood="SEEK";
+    // Empty their hands as well as parkCrew does: a crew member who picked
+    // something up while the fixture was stepping is skipped by speak(), and a
+    // check that shouts at three people holding sideboards hears back nothing.
+    if(a.holding){ a.holding.heldBy=null; a.holding.claim=null; a.holding=null; }
+    if(x!==undefined){ a.x=x; a.z=z; } } return crew.length;},
   roomAt:(x,z)=>roomAt(x,z)?.id??null,
   crew:()=>crew.map(a=>({name:a.name,x:+a.x.toFixed(2),z:+a.z.toFixed(2),
     alive:a.alive,hits:a.hits,mood:a.mood,holding:a.holding?a.holding.value:null})),
@@ -2441,6 +2512,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     load:dolly.load?dolly.load.value:null,tipped:+dolly.tipped.toFixed(2)}:null,
   takeDolly, loadDolly, unloadDolly,
   takeCrowbar, toggleTorch,
+  speak, voiceReaches:(l,ax,az,bx,bz)=>voiceReaches(l,ax,az,bx,bz),
+  called:()=>crew.filter(a=>a.called>0).map(a=>a.name),
   torch:()=>({on:player.light, forced:taintedHeld(),
     mass:+(player.mass||0).toFixed(3), slow:+massSlow().toFixed(3),
     said:player.holding?player.holding.said??null:null}),

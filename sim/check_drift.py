@@ -234,6 +234,7 @@ tl = TUNING["tools"]
 check("JS3d salt_seconds", grab(js3, r"SALT_S=([\d.]+)"), tl["salt_line_seconds"])
 check("JS3d salt_charges", grab(js3, r"SALT_CHARGES=(\d+)"), tl["salt_line_charges"])
 check("JS3d crowbar_pry_s", grab(js3, r"PRY_S=([\d.]+)"), tl["crowbar_pry_seconds"])
+check("JS3d call_seconds", grab(js3, r"CALL_S=([\d.]+)"), tl["call_seconds"])
 cu = TUNING["curse"]
 check("JS3d tainted_dist_per_s", grab(js3, r"TAINT_DIST_PER_S=([\d.]+)"),
       cu["tainted_disturbance_per_s"])
@@ -242,8 +243,10 @@ check("JS3d malignant_slow", grab(js3, r"MAL_SLOW=([\d.]+)"), cu["malignant_slow
 check("JS3d malignant_voice_s", grab(js3, r"MAL_VOICE_S=([\d.]+)"),
       cu["malignant_voice_seconds"])
 check("JS3d L[crowbar]", grab(js3, r"const L=\{[^}]*crowbar:(\d+)"), TUNING["loudness"]["crowbar"])
-check("JS3d L[voiceNormal]", grab(js3, r"const L=\{[^}]*voiceNormal:(\d+)"),
-      TUNING["loudness"]["voice_normal"])
+for js_name, key in (("voiceWhisper", "voice_whisper"), ("voiceNormal", "voice_normal"),
+                     ("voiceRaised", "voice_raised"), ("voiceShout", "voice_shout")):
+    check(f"JS3d L[{js_name}]", grab(js3, rf"const L=\{{[^}}]*{js_name}:(\d+)"),
+          TUNING["loudness"][key])
 check("JS3d dolly_speed", grab(js3, r"DOLLY_SPEED=([\d.]+)"), tl["dolly_speed_mult"])
 check("JS3d dolly_tip_speed", grab(js3, r"DOLLY_TIP_SPEED=([\d.]+)"), tl["dolly_tip_speed"])
 check("JS3d L[dolly]", grab(js3, r"const L=\{[^}]*dolly:(\d+)"), TUNING["loudness"]["dolly"])

@@ -832,6 +832,33 @@ in the van where anything in your hands is banked on the next frame, and thirty 
 walking in a straight line that carried the piece out of the room and into the van mid-
 measurement. · Regression: QA 192/192, drift 173/173, claims 25/25.
 
+R42 · **The voice ladder** — four loudness values that had sat in `tuning.json` unused for
+forty rounds, because the prototype had nothing to say. `AUDIO-SPEC` §2.2 is the best mechanic
+in the audio design and the one that most obviously needs two clients, but only *half* of it
+does: falloff, occlusion filtering and the codec need a second mouth, and the **ladder** — how
+loud you are, and therefore who hears you — is arithmetic this build can carry. Whisper 8,
+raised 45, shout 65, on exactly the hearing model everything else uses: `L × 0.33` metres,
+`× 0.85` per wall. · What that exposed is a consequence nobody had written down. Rooms sit on
+a 13-metre lattice, so a **raised voice fills the room you are in and stops at the doorway**
+(14.9m) and only a **shout** is heard next door (21.5m, 18m through a wall). That makes the
+ladder a decision instead of three words for the same thing: asking for the other end of an
+armoire from across the house means telling the Curator exactly where you both are. ·
+`grabDrop` has carried the comment "you take one end and shout at somebody to take the other"
+since R26 with **no shout in the game** and a `wantHelp` flag that nothing ever read. Calling
+now brings whoever heard you, and the first one to reach you takes the far end. · **Eight
+injections, all caught** — but four fixture faults first, each one a different way of testing
+nothing: crew parked in the driveway four rooms out of earshot; crew who picked something up
+during the fixture's own five seconds of stepping, because `unparkCrew` emptied everything
+except their hands and `speak()` skips a crew member who is carrying; a `carry()` that goes
+null the moment an armoire held by one person is put down, thrown from inside a loop
+condition; and crew who could hear the shout perfectly well but could not legally *route* to
+a two-man piece, because two-man pieces live at tier 2 and deeper and the prerequisite chain
+was still shut. That last one is not a bug: calling for help from a locked wing correctly gets
+you nobody. · One real tuning fault fell out of the same check: the crew gave up after six
+seconds, which is exactly how long it takes to cross a room, so they turned back one step
+before arriving. Twelve seconds, and the number is now in `tuning.json` with the room width
+written next to it. · Regression: QA 198/198, drift 177/177, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

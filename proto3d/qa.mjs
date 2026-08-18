@@ -1225,6 +1225,120 @@ async function checks(g, fresh) {
   ok("flicker is a ghost's verb and needs a light on",
     flick.dark === null && flick.aliveTry === null, JSON.stringify(flick));
 
+  // --- the voice ladder (AUDIO-SPEC 2) --------------------------------------
+  // Four loudness values sat in tuning.json unused for forty rounds because the
+  // prototype had nothing to say. What they buy is the ask for the other end of
+  // an armoire, and the decision is the ladder itself: who hears you against who
+  // else does. Reach is the same arithmetic the Curator uses - L x 0.33, times
+  // 0.85 per wall - so a whisper does not leave the room and a shout crosses the
+  // house, and the thing upstairs is listening on the same channel.
+  await fresh();
+  const voice = await g(() => {
+    window.__g.parkCrew();
+    const out = {};
+    for (const level of ["whisper", "call", "shout"]) {
+      window.__g.reset(); window.__g.parkCrew();
+      const rooms = window.__g.rooms().filter(r => !r.van);
+      const here = rooms[0];
+      window.__g.tp(here.x, here.z);
+      const d0 = window.__g.state().dist;
+      const said = window.__g.speak(level);
+      const heard = window.__g.noiseLog().slice(-1)[0];
+      // Reach in metres, and then the two questions that matter: can it cross
+      // your own room, and can it be heard in the next one? Rooms sit on a 13m
+      // lattice, so those are 5m and 13m-through-a-wall.
+      const across = window.__g.voiceReaches(said.l, here.x, here.z, here.x + 5, here.z);
+      const nextRoom = window.__g.rooms().find(r =>
+        r.id !== here.id && Math.abs(Math.hypot(r.x - here.x, r.z - here.z) - 13) < 1);
+      const nextDoor = nextRoom
+        ? window.__g.voiceReaches(said.l, here.x, here.z, nextRoom.x, nextRoom.z) : null;
+      out[level] = { l: said.l, heard: heard && heard.l, across, nextDoor,
+        gained: +(window.__g.state().dist - d0).toFixed(2) };
+    }
+    return out;
+  });
+  ok("the voice ladder is the one in AUDIO-SPEC, and every rung is a real noise",
+    voice.whisper.l === 8 && voice.call.l === 45 && voice.shout.l === 65 &&
+    ["whisper", "call", "shout"].every(k => voice[k].heard === voice[k].l),
+    JSON.stringify(voice));
+  // L x 0.33 metres, 0.85 per wall: a whisper carries 2.6m and cannot cross the
+  // room you are standing in; a raised voice fills the room and stops at the
+  // doorway; only a shout is heard next door. That is the ladder being a decision
+  // rather than three words for the same thing.
+  ok("you have to shout to be heard in the next room, and a whisper stays with you",
+    voice.whisper.across === false && voice.call.across === true &&
+    voice.call.nextDoor === false && voice.shout.nextDoor === true,
+    JSON.stringify(voice));
+  ok("and talking costs Disturbance like anything else that makes a noise",
+    Math.abs(voice.shout.gained - 65 * 0.09) < 0.4 &&
+    voice.whisper.gained < voice.call.gained, JSON.stringify(voice));
+
+  // The reason the verb exists: grabDrop has said "you take one end and shout at
+  // somebody to take the other" since R26, with no shout in the game.
+  await fresh();
+  const otherEnd = await g(() => {
+    const idx = window.__g.twoMan();
+    const it = window.__g.list()[idx];
+    // Stand at the armoire with the crew parked at the far end of the house.
+    window.__g.parkCrew();
+    window.__g.tp(it.x, it.z);
+    window.__g.look(Math.atan2(it.x - it.x, it.z - it.z));
+    window.__g.hold(idx);
+    const alone = window.__g.carry();
+    // Put them in the NEXT room, not in the driveway where reset() left them and
+    // not on top of you: 13m through one wall is out of range of a whisper and
+    // inside a shout, which is the whole point of having a ladder. Whispering for
+    // help and having somebody arrive would mean the guard was doing nothing.
+    // Clear the prerequisite chain first. A two-man piece lives at tier 2 or
+    // deeper, which is behind a lock, and crew who cannot legally route to you
+    // walk to the nearest open door and stall there - which reads as "three
+    // people heard you and nobody came", and is in fact correct behaviour.
+    const mine = window.__g.roomAt(it.x, it.z);
+    for (const r of window.__g.rooms()) if (!r.van && r.id !== mine) window.__g.clearRoom(r.id);
+    const here = window.__g.rooms().find(r => r.id === mine);
+    const next = window.__g.rooms().find(r => r.id !== here.id && !r.van &&
+      Math.abs(Math.hypot(r.x - here.x, r.z - here.z) - 13) < 1) || here;
+    window.__g.unparkCrew(next.x, next.z);
+    const whispered = window.__g.speak("whisper").heard.length;
+    window.__g.step(60 * 5, 1 / 60);
+    // Null-safe: an armoire held by one person is not a stable state, and what is
+    // being asked here is whether anybody answered, not what happened to the piece.
+    const afterWhisper = window.__g.called().length;
+    // Put them back where they were: five seconds of SEEK carries them out of the
+    // room and into somebody's sideboard, and speak() skips a crew member with
+    // their hands full - which reads as "nobody heard the shout".
+    window.__g.unparkCrew(next.x, next.z);
+    window.__g.hold(window.__g.twoMan());       // re-find it: indices shift
+    const answered = window.__g.speak("shout").heard.length;
+    // carry() goes null the moment the piece leaves your hands, which an armoire
+    // held by one person does; the loop has to survive that rather than throw.
+    const follower = () => (window.__g.carry() || {}).follower ?? null;
+    for (let i = 0; i < 60 * 40 && !follower(); i++) window.__g.step(1, 1 / 60);
+    return { alone, whispered, afterWhisper, answered, follower: follower(),
+      carry: window.__g.carry(), called: window.__g.called() };
+  });
+  ok("shouting brings somebody to take the other end of an armoire",
+    otherEnd.answered > 0 && otherEnd.follower !== null, JSON.stringify(otherEnd));
+  ok("and whispering for help from the next room brings nobody at all",
+    otherEnd.whispered === 0 && otherEnd.afterWhisper === 0, JSON.stringify(otherEnd));
+
+  // A ghost has Static instead. A dead player who could still shout would make
+  // Knock worth one point and nothing.
+  const mute = await g(() => {
+    window.__g.reset(); window.__g.parkCrew();
+    window.__g.setDist(95);
+    for (let hit = 0; hit < 2; hit++)
+      for (let i = 0; i < 3000 && window.__g.state().hits <= hit; i++) {
+        const p = window.__g.raw();
+        window.__g.setCur(p.x + 1.0, p.z, "PURSUE");
+        window.__g.setDist(95); window.__g.step(1, 1 / 60);
+      }
+    window.__g.step(60 * 11, 1 / 60);
+    return { dead: window.__g.ghost().dead, said: window.__g.speak("shout") };
+  });
+  ok("the dead do not shout - they have Static for that",
+    mute.dead === true && mute.said === null, JSON.stringify(mute));
+
   // --- what a curse costs you while you hold it (DESIGN 4.2) ----------------
   // The hard rule in the spec: every curse cost must be felt within thirty
   // seconds of pickup and be obviously caused by the thing in your hands. Each of

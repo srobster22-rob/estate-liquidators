@@ -86,6 +86,8 @@
   "tools": {
     "_source": "DESIGN.md 8 toolkit",
     "crowbar_pry_seconds": 3.0,
+    "call_seconds": 12.0,
+    "_call_note": "AUDIO-SPEC 2.2: how long the crew keep walking toward a shout. A room is 13m and they walk it in about six seconds, so anything under that means they turn back before they arrive and the verb does nothing.",
     "_crowbar_note": "DESIGN 8: opens boarded doors, extremely loud. Boards seal the deepest wing until somebody walks the length of the house to fetch it - and the crowbar takes both hands, so they walk it back empty.",
     "salt_line_seconds": 20.0,
     "salt_line_charges": 1,

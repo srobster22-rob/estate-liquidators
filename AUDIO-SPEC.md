@@ -163,6 +163,21 @@ This is the best mechanic in the audio design because it needs no teaching, no U
 tutorial. Players discover in their first bad moment that panicking is punished, and they
 discover it by panicking.
 
+> **Built, R41–R42.** The ladder is in `proto3d/index.html` on the same hearing model as
+> everything else — `L × 0.33` metres, `× 0.85` per wall — with a key per rung instead of a
+> microphone, because a single-player prototype has no mouth to measure. What it exposed is a
+> consequence nobody had written down: rooms sit on a 13-metre lattice, so a **raised voice
+> (14.9m) fills the room you are in and stops at the doorway**, and only a **shout (21.5m,
+> 18m through a wall)** is heard next door. That makes the ladder a real decision rather than
+> three words for the same thing — asking for the other end of an armoire from across the
+> house means telling the Curator exactly where you both are. A malignant piece exercises the
+> same path without asking: it speaks in a crewmate's voice at L25 every eight seconds
+> (`DESIGN` §4.2).
+>
+> What is still missing is the half that needs two clients: falloff, occlusion filtering,
+> spatialisation and the codec. Those are Phase 0's exit criterion and no amount of headless
+> checking substitutes for them.
+
 **Fairness engineering — this is where it gets ruined if you're careless:**
 
 - **Lobby calibration.** Every player speaks one normal sentence in the van before their
