@@ -128,6 +128,20 @@ for eleven rounds — the sim kept printing the 1% night four that *caused* the 
 > rather than of the design — but it means the prototype cannot be used to tune capacity, and
 > the 720-second model in `sim/chain_sim.py` is the only place that question can be asked.
 
+> **Re-measured against somebody playing, R45.** The prototype's own quotas — the 210-second
+> ones, not the table above — were calibrated in R25 with the player standing in the driveway,
+> which is not the reference class these pass rates describe. Measured against a competent
+> policy (`proto3d/play.mjs`) the old numbers gave **100 / 88 / 63 / 88 percent**: the last
+> night was not a wall, it was a formality. Re-measured, they are **$2,000 / $3,500 / $4,650 /
+> $5,900**, which reproduces this table's shape with somebody in the house — and *without* one
+> the crew alone finish at **94 / 50 / 38 / 0**, so bot throughput can no longer complete the
+> contract. Night four's quota now sits above the played median, which is what "above the mean,
+> the apex is not optional" means arithmetically.
+>
+> One rung is unreachable by construction: **night one cannot pass 95% at any quota**, because
+> ruin alone ends more than one night in twenty at zero. A 95% night is not available in a
+> game that has a tail risk in it, and the table should be read as "as easy as it can be".
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The

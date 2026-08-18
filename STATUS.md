@@ -99,11 +99,12 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
   and no conclusion about capacity can be drawn from it; `sim/chain_sim.py`'s 720-second
   night is the only place that question can be asked. `qa.mjs` asserts this rather than
   leaving it to be rediscovered.
-- **Every quota was calibrated against an idle player, and a player is worth about a third
-  of a night.** Measured over 24 nights per cell with `play.mjs`: bots alone bank $3,367 /
-  $3,165 / $3,172 / $3,363 net across the chain and a competent player takes that to $4,373 /
-  $3,654 / $4,531 / $4,319 — +15% to +43%, and the last night's pass rate moves 54% → 63%.
-  The chain still has its shape with somebody playing it, which is the thing that was never
-  actually checked.
+- **The quotas were calibrated against an idle player and have been re-measured.** A
+  competent policy is worth 15–40% of a night, which was enough to turn the last night from a
+  wall into a formality: 88% at the old numbers. The quotas are now $2,000 / $3,500 / $4,650 /
+  $5,900, measured against a crew that includes somebody playing — **100 / 88 / 63 / 44** with
+  a player, **94 / 50 / 38 / 0** without, so bot throughput alone can no longer finish the
+  contract. Night one cannot reach 95% at any quota: ruin alone ends more than one night in
+  twenty at zero.
 - **Statistical checks are coarse.** Pass-rate assertions run 12 nights and make shape claims
   ("harder than night one"), not rate claims; twelve runs cannot pin a rate to ten points.

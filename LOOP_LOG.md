@@ -903,6 +903,35 @@ a liability on night one" if I had not already been caught by this exact thing f
 ago. `--check` now refuses to run under sixteen trials and says why. · Regression: QA
 202/202, drift 178/178, claims 25/25, and the player check green.
 
+R45 · **Teach the policy the apex run, and the contract falls over.** R44's player could not
+reach a third of the money: the apex sits behind the boards, and taking it is three tools in
+sequence — fetch the crowbar, walk it to the deepest wing, pry, then wheel the piece back on
+the dolly. With that in, and four fixes the policy needed to be worth calling competent, the
+numbers moved enough to break my own check: **the last night passed 88%** against `ECONOMY`
+§4's 40%. · The four fixes are each a small lesson about writing a policy against a real
+build. It **jammed in doorways** — 11,962 stuck frames and one item delivered — because a
+beeline catches the frame about as often as it goes through; strafing for a few frames is what
+a person does without thinking. It **could not reach anything on a shelf**, because a
+sideboard is solid and it was walking at the item rather than stopping 2.2m short, and it was
+aiming level at a piece half a metre below eye height. It **banked $0 on a night it hauled
+$5,618**, because the crew have a cursed-cargo cap and the player did not. And it found a
+genuine exploit in its own hands: unloading cursed cargo into the yard and **picking it
+straight back up**, 142 times in one second, because the yard is beside the van and the ruin
+roll happens at extraction either way. · **What that measured, once it played properly:** the
+quotas have been wrong since R25 — not arithmetically, but in their *reference class*. They
+were calibrated with the player standing in the driveway, which is not the crew `ECONOMY` §4's
+pass rates describe. Re-measured against somebody playing: **$2,000 / $3,500 / $4,650 /
+$5,900**, which gives **100 / 88 / 63 / 44** with a player and **94 / 50 / 38 / 0** without.
+Bot throughput alone can no longer finish the contract, night four's quota sits above the
+played median — which is what "above the mean, the apex is not optional" means in numbers —
+and the chain has its documented shape for the first time. · One rung turns out to be
+unreachable by construction: **night one cannot pass 95% at any quota**, because ruin alone
+ends more than one night in twenty at zero. A 95% night is not available in a game with a tail
+risk in it. · And a check broke for a reason that had nothing to do with what it checks: the
+apex-share assertion hardcoded the final quota, so re-measuring the chain failed a claim about
+the apex. It reads the contract now. · Regression: QA 202/202, drift 178/178, claims 25/25,
+validator 10 × 12, player check green.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

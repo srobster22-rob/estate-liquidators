@@ -270,11 +270,15 @@ const NIGHT=210, APPRAISE_S=3.0;
 // build. The van curve is not scaled either way - slots are slots.
 const SHIP_NIGHT=720;
 const CONTRACT_QUOTA=[7500,9000,10750,12500];        // ECONOMY 4, the ship night
-// Measured against a working crew (LOOP_LOG R25), then the last two rungs raised
-// so they are NOT passable on bot throughput alone: night three wants a two-man
-// piece out of a sealed wing and night four wants the apex, which is ECONOMY 4's
-// own description of those nights rather than a difficulty knob.
-const CONTRACT_QUOTA_HERE=[1550,2100,2450,3300];
+// Re-measured in R45 against a crew that includes somebody PLAYING (proto3d/play.mjs).
+// The R25 figures were taken with the player standing in the driveway, which is not
+// the reference class ECONOMY 4's pass rates are written against - measured against
+// a competent policy the last night passed 88% instead of biting, and night three
+// 94%. These are the quotas that reproduce 73 / 55 / 40 percent with a player in
+// the house, and night four sits ABOVE the played median, which is ECONOMY 4's own
+// description of it. Night one cannot reach 95% at any quota: ruin alone ends more
+// than one night in twenty at zero.
+const CONTRACT_QUOTA_HERE=[2000,3500,4650,5900];
 const CONTRACT_VAN=[14,15,17,19];
 const NIGHTS=CONTRACT_QUOTA.length;
 const QUOTA_SCALE=NIGHT/SHIP_NIGHT;

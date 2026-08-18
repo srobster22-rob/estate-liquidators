@@ -239,11 +239,12 @@
     ],
     "ship_night_seconds": 720,
     "quota_measured_210s": [
-      1550,
-      2100,
-      2450,
-      3300
+      2000,
+      3500,
+      4650,
+      5900
     ],
+    "_quota_measured_note": "R44/R45: re-measured against a crew that includes somebody PLAYING. The R25 figures were measured with the player standing in the driveway, which is not the reference class ECONOMY 4's pass rates describe - with a competent policy the last night passed 88% instead of biting. Night one cannot reach 95% at any quota: ruin alone ends more than 5% of nights at zero.",
     "measured_pass_rates": [
       95,
       73,

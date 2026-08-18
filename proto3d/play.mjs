@@ -45,7 +45,8 @@ const has = k => argv.includes(k);
 // ---------------------------------------------------------------- the policy
 // Runs INSIDE the page, because it has to see the world every frame. Everything
 // it uses is a hook qa.mjs already relies on; nothing here reaches past __g.
-const POLICY = ({ seconds, verbose }) => {
+const POLICY = ({ seconds, verbose, off }) => {
+  const can = v => !(off || []).includes(v);
   const g = window.__g;
   const log = [];
   const say = m => { if (verbose) log.push(`${g.state().t.toFixed(0)}s  ${m}`); };
@@ -71,11 +72,20 @@ const POLICY = ({ seconds, verbose }) => {
     g.press("KeyW");
     // Sprinting is loud (L45); walk unless the Curator is already on you.
     g.press("ShiftLeft", g.state().marked === true);
-    if (dist2(me.x, me.z, lastX, lastZ) < 0.01) stuckFor++; else stuckFor = 0;
+    // Unstick. A beeline at a doorway catches its frame about as often as it goes
+    // through, and a policy with no answer to that stands in a corridor for the
+    // rest of the night: the first draft logged 11,962 stuck frames and one item.
+    // Strafing for a few frames is what a person does without thinking about it.
+    if (dist2(me.x, me.z, lastX, lastZ) < 0.004) stuckFor++; else stuckFor = 0;
+    if (stuckFor > 25) {
+      g.press(((stuckFor >> 5) & 1) ? "KeyA" : "KeyD");
+      if (stuckFor > 180) { stuckFor = 0; return -1; }    // give up on this target
+    } else { g.press("KeyA", false); g.press("KeyD", false); }
     lastX = me.x; lastZ = me.z;
     return dist2(me.x, me.z, tx, tz);
   };
-  const stop = () => { g.press("KeyW", false); g.press("ShiftLeft", false); };
+  const stop = () => { g.press("KeyW", false); g.press("ShiftLeft", false);
+    g.press("KeyA", false); g.press("KeyD", false); };
 
   // What is worth carrying: the best appraised piece on a shelf we can reach,
   // preferring value per slot the way ECONOMY 3 prices depth.
@@ -91,6 +101,12 @@ const POLICY = ({ seconds, verbose }) => {
       if (!room) continue;
       if (g.locked().some(id => id.split("-").includes(room))) continue;
       if (skip.has(it.i)) continue;
+      // R11's policy, which the crew already follow and the player did not: take
+      // two or three cursed pieces and then stop. Ruin is 0.015 x cursed^1.8 at
+      // extraction, so a fourth is how a $5,618 night banks $0 - which is exactly
+      // what the first run of this policy did on night one.
+      if (can("curse") && it.known && it.grade !== "clean" && aboard() >= CURSE_CAP)
+        continue;
       // Value per slot, discounted by how far it is: a $300 vase four rooms away
       // is worth less than a $250 one in this room, because the night is short.
       const me = g.raw();
@@ -106,8 +122,10 @@ const POLICY = ({ seconds, verbose }) => {
   let took = 0, delivered = 0, idle = 0;
   // A scan is 3.2 seconds out of 210. Twelve of them is a fifth of the night,
   // which is about as much looking as hauling can pay for.
-  const SCAN_BUDGET = 12, WORTH_IT = 220;
+  const SCAN_BUDGET = 12, WORTH_IT = 220, CURSE_CAP = 3;
+  const aboard = () => g.cargo().filter(c => c.grade !== "clean").length;
   const skip = new Set();
+  let leverAt = 0;
   const HIDE_UNTIL = 3;
 
   for (let frame = 0; frame < seconds * 60; frame++) {
@@ -115,8 +133,55 @@ const POLICY = ({ seconds, verbose }) => {
     if (st.over) break;
     const me = g.raw();
 
+    // 0. The apex run. On a late night the biggest single thing in the house is a
+    // cart-class piece behind the boards, worth 32-64% of the final quota on its
+    // own (D-21), and it takes three tools in sequence: fetch the crowbar, walk it
+    // to the deepest wing, pry, then wheel the piece back on the dolly. A policy
+    // that cannot do that cannot reach a third of the night's money.
+    // Only once the house is open: the deepest wing sits behind the prerequisite
+    // chain as well as the boards, and a policy that sets off for it on minute one
+    // walks into a locked door and stays there. Hauling is what opens the chain,
+    // so this waits until the only locks left are wooden ones.
+    const apex = g.apex();
+    const onlyBoards = g.locked().every(id =>
+      g.boarded().doors.some(d => d.id === id));
+    if (can("apex") && apex && onlyBoards && phase !== "HIDE" && !st.holding) {
+      const bd = g.boarded();
+      const bar = g.crowbar(), doll = g.dolly();
+      if (bd.doors.length && !bar.held) {
+        // Go and get it.
+        if (walkToward(bar.x, bar.z) < 1.5) { stop(); g.takeCrowbar(); say("picked up the crowbar"); }
+        g.step(1, 1 / 60); continue;
+      }
+      if (bd.doors.length && bar.held) {
+        const d = bd.doors[0];
+        if (walkToward(d.x, d.z) < 0.9) { stop(); }   // walking into it pries it
+        if (!g.boarded().doors.length) say("pried the boards off");
+        g.step(1, 1 / 60); continue;
+      }
+      if (bar.held) { stop(); g.takeCrowbar(); }      // hands free from here on
+      if (!doll.held && !doll.load) {
+        if (walkToward(doll.x, doll.z) < 1.6) { stop(); g.takeDolly(); say("took the dolly"); }
+        g.step(1, 1 / 60); continue;
+      }
+      if (doll.held && !doll.load) {
+        const it = g.list().find(i => i.klass === "cart");
+        if (!it) { /* somebody else has it */ }
+        else if (walkToward(it.x, it.z) < 2.0) {
+          stop();
+          if (g.loadDolly()) say(`loaded the apex, $${it.value.toLocaleString()}`);
+        }
+        g.step(1, 1 / 60); continue;
+      }
+      if (doll.held && doll.load) {
+        const v = van();
+        if (walkToward(v.x, v.z) < 1.4) { stop(); }
+        g.step(1, 1 / 60); continue;
+      }
+    }
+
     // 1. Hunted and holding: hide. DESIGN 8.1 is the whole answer to COLLECT.
-    if (st.marked && st.holding && phase !== "HIDE") {
+    if (can("hide") && st.marked && st.holding && phase !== "HIDE") {
       const h = g.hides().filter(x => !x.item)
         .sort((a, b) => dist2(me.x, me.z, a.x, a.z) - dist2(me.x, me.z, b.x, b.z))[0];
       if (h && dist2(me.x, me.z, h.x, h.z) < 12) {
@@ -148,13 +213,25 @@ const POLICY = ({ seconds, verbose }) => {
       continue;
     }
 
-    // 3. Disturbance high and we are at the van: spend a lever.
-    if (st.dist > 80 && roomOf(me.x, me.z) === van().id) {
+    // 3. At the van: spend a lever if the night has got away from us, and dump the
+    // cursed cargo if the crew have loaded past the cap. Ruin is rolled at
+    // extraction, so the yard is the only place a fourth cursed piece can go.
+    if (can("levers") && roomOf(me.x, me.z) === van().id && st.t > leverAt) {
       const lv = g.levers();
-      if (g.lights().lit.length) { g.killLights(); say("killed the lights"); }
-      else if (lv.quiet <= 0) { g.goQuiet(); say("called for quiet"); }
-      else if (g.cargo().some(c => c.grade !== "clean")) {
-        g.unloadCursed(); say("dumped the cursed cargo in the yard");
+      if (aboard() > CURSE_CAP) {
+        g.unloadCursed();
+        // ...and do not pick them straight back up. The yard is beside the van,
+        // the pieces are still in the list, and the selector went for the nearest
+        // valuable thing: 142 pickups in one second, unloading and reloading the
+        // same $1,316 vase, with the ruin roll happening at extraction either way.
+        for (const it of g.list())
+          if (g.roomAt(it.x, it.z) === van().id) skip.add(it.i);
+        leverAt = st.t + 5;
+        say("dumped the cursed cargo in the yard");
+      } else if (st.dist > 80) {
+        if (g.lights().lit.length) { g.killLights(); say("killed the lights"); }
+        else if (lv.quiet <= 0) { g.goQuiet(); say("called for quiet"); }
+        leverAt = st.t + 10;
       }
     }
 
@@ -170,16 +247,25 @@ const POLICY = ({ seconds, verbose }) => {
     if (!target) { stop(); idle++; g.step(1, 1 / 60); continue; }
     const t = g.list().find(i => i.i === target.i) || target;
     const d = walkToward(t.x, t.z);
-    if (d < 1.6) {
+    if (d < 0) { skip.add(t.i); target = null; g.step(1, 1 / 60); continue; }
+    // 2.2m, not 1.6: a sideboard is solid, so walking at the item itself ends with
+    // the player pressed against the furniture and the piece still out of reach.
+    // Grab range is 3.2m in a 30-degree cone, and the cone is the part that has to
+    // be aimed - a piece on a shelf sits half a metre below eye level, which at
+    // this range is a pitch of about -0.3 rather than the -0.15 that was there.
+    if (d < 2.2) {
       stop();
-      g.look(Math.atan2(t.x - me.x, t.z - me.z), -0.15);
-      if (!t.known && appraised < SCAN_BUDGET) {
+      const drop = Math.max(0.05, 1.62 - t.y);
+      g.look(Math.atan2(t.x - me.x, t.z - me.z), -Math.atan2(drop, Math.max(0.4, d)));
+      if (can("scan") && !t.known && appraised < SCAN_BUDGET) {
         g.press("KeyF"); g.step(60 * 3.2, 1 / 60); g.press("KeyF", false);
         appraised++;
         const now = g.list().find(i => i.i === t.i);
         if (now && now.known && now.value / SLOT[now.klass] < WORTH_IT) {
           skip.add(t.i); target = null; say(`walked away from $${now.value}`);
         }
+      } else if (can("curse") && t.known && t.grade !== "clean" && aboard() >= CURSE_CAP) {
+        skip.add(t.i); target = null; say("left a cursed piece where it was");
       } else {
         g.grab();
         if (g.state().holding) { took++; say(`took $${g.state().holding}`); }
@@ -262,7 +348,9 @@ async function main() {
       bots: Math.round(bots.reduce((a, b) => a + b.net, 0) / bots.length),
       played: Math.round(played.reduce((a, b) => a + (b.net ?? 0), 0) / played.length),
       passBots: bots.filter(b => b.met).length / bots.length,
-      passPlayed: played.filter(p => p.met).length / played.length });
+      passPlayed: played.filter(p => p.met).length / played.length,
+      quota: played[0].quota,
+      nets: played.map(p => p.net ?? 0).sort((a, b) => a - b) });
     const died = played.filter(p => p.dead).length;
     const scans = mean(played.map(p => p.appraised));
     const carried = mean(played.map(p => p.took));
@@ -273,6 +361,24 @@ async function main() {
       + `${(Math.round(rate(played.map(p => p.met)) * 100) + "%").padStart(14)}`
       + `${(carried + " taken").padStart(11)}${(scans + " scans").padStart(10)}`
       + `${(died + " died").padStart(9)}`);
+  }
+  if (has("--calibrate")) {
+    // ECONOMY 4's pass rates are for a crew that includes somebody playing. The
+    // build's quotas were measured in R25 against an idle player, which is why
+    // the last night passes 88% here instead of biting. This prints the quota
+    // that would produce each documented rate against the PLAYED distribution.
+    console.log("\nWHAT THE QUOTA WOULD HAVE TO BE  (played, n=" + trials + ")");
+    console.log("-".repeat(74));
+    console.log("night".padEnd(7) + "now".padStart(9) + "95%".padStart(9)
+      + "73%".padStart(9) + "55%".padStart(9) + "40%".padStart(9) + "median".padStart(10));
+    for (const r of SUMMARY) {
+      const q = f => r.nets[Math.min(r.nets.length - 1,
+        Math.max(0, Math.floor(r.nets.length * (1 - f))))];
+      console.log(String(r.night).padEnd(7) + String(r.quota).padStart(9)
+        + String(q(0.95)).padStart(9) + String(q(0.73)).padStart(9)
+        + String(q(0.55)).padStart(9) + String(q(0.40)).padStart(9)
+        + String(r.nets[r.nets.length >> 1]).padStart(10));
+    }
   }
   if (has("--check")) {
     // A script whose output nothing asserts is not a check (R37). The claims are

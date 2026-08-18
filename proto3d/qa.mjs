@@ -869,6 +869,7 @@ async function checks(g, fresh) {
     out.haul = { byHand, took, loaded, slots: before - window.__g.vanSlots(),
                  banked: window.__g.state().banked, value: a.value };
     window.__g.gates(false); window.__g.freezeCrew(false);
+    out.finalQuota = window.__g.contract().curve[3].here;
     window.__g.newContract(20260806); window.__g.regen(20260806);
     return out;
   });
@@ -881,9 +882,13 @@ async function checks(g, fresh) {
   ok("and it costs five slots when it gets there",
     apex.haul.slots === 5 && apex.haul.banked >= apex.haul.value,
     JSON.stringify(apex.haul));
+  // Against the quota it is a share OF, read from the contract - the first version
+  // of this hardcoded the final quota, so re-measuring the chain in R45 broke a
+  // check about the apex for reasons that had nothing to do with the apex.
   ok("and it is worth a third to two thirds of the night it decides",
-    apex.late.every(a => a.value >= 2900 * 0.30 && a.value <= 3300 * 0.68),
-    JSON.stringify(apex.late.map(a => a.value)));
+    apex.late.every(a => a.value >= apex.finalQuota * 0.30 &&
+                         a.value <= apex.finalQuota * 0.68),
+    JSON.stringify({ values: apex.late.map(a => a.value), quota: apex.finalQuota }));
 
   // --- lights and the breaker (DESIGN 6.5) ----------------------------------
   // "Lights are the exception, being silent: switching on a wing is a flat +25."
