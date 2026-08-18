@@ -59,6 +59,28 @@ CAP = CFG["capacity"]
 GATE_MIN_DOLLARS = CFG["gate"]["min_annual_dollars"]
 SEEDS = CFG["seeds"]
 MARKETS_PER_YEAR = CAP["markets_per_year"]
+
+
+def sets_per_year(family: str) -> float:
+    """CONTRACTS per year divided by legs per group — the unit the backtester measures in.
+
+    THE SINGLE SOURCE OF TRUTH FOR THIS DIVISION, and it exists because the same error has
+    now been made three times. `markets_per_year` counts CONTRACTS: 534 for econ_print, which
+    is listed as a 4-rung ladder, and 17,520 for the crypto brackets, which are 5-leg sets.
+    `backtest.Result.group_pnl` has one entry per GROUP. Multiply a per-group mean by a
+    contract count and you overstate income by exactly the leg count.
+
+    K18 caught it in `capacity.py` and fixed it there. K22 caught it surviving in README prose
+    after the code was right. K28 caught it a THIRD time, still live in `factory.py` and
+    `portfolio.py`, where it was inflating every headline by 4x on econ_print — a passing bot
+    reported at $552/yr was really $138. Three occurrences of one error in three different
+    files is a sign that the division should not be written out by hand anywhere, so it is
+    written once, here, and everything else calls this.
+    """
+    fam = markets.FAMILIES.get(family)
+    legs = max(fam.n_brackets, fam.n_rungs, 1) if fam else 1
+    return MARKETS_PER_YEAR.get(family, 0) / legs
+
 PEAK_SIGMA = float(CAP["peak_sigma"])
 HOURS_PER_YEAR = 24 * 365
 ROOT = pathlib.Path(__file__).parent

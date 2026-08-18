@@ -70,9 +70,9 @@ Z2 = 1.96 ** 2
 
 
 def opportunities_per_year(family: str) -> float:
-    fam = markets.FAMILIES[family]
-    legs = max(fam.n_rungs, fam.n_brackets, 1)
-    return capacity.MARKETS_PER_YEAR.get(family, 0) / legs
+    """Delegates to `capacity.sets_per_year` — the one place the contracts-to-sets division
+    is written. It used to be spelled out here too, which is how it drifted three times."""
+    return capacity.sets_per_year(family)
 
 
 def profile(family: str, strat, n=N) -> dict | None:

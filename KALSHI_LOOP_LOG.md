@@ -609,9 +609,84 @@ does not need the `stale_leg_prob` guess. It still fails the gate on stress.
 
 Left open and stated: adverse selection is modelled as PERFECTLY informed — misses always land
 on the most underpriced legs. Reality sits between that and random and nothing here locates it.
-Also note `_plan_misses` changed the rng consumption pattern, so K26's IOC rows moved within
-noise (95%: I 4,808 -> 10,466) and the README table was regenerated rather than left stale.
-191 checks pass.
+
+K28 · Turned the audit on the machinery instead of the markets. · **The factory could never
+have found the best result in this project, and both reasons are in the search and the gate
+rather than in anything the simulator assumes.** Findings 17-22 were all produced by
+hand-written analysis modules on fresh seeds. Not one came out of the loop.
+
+**Block 1: the tail-risk criterion taxed a trade for its LEG COUNT, not its risk.** For an
+N-leg bracket set exactly one leg pays, so the per-LEG loss rate is (N-1)/N by construction
+whatever the strategy earns. Criterion 9 bounded that with Wilson and asked whether the strategy
+still profited, which means an N-leg trade had to show far more evidence than a one-leg trade
+with identical risk. Sets a trade that CANNOT LOSE (N legs for 90c against a certain 100c) must
+show before the criterion accepts it — **old: 191 / 243 / 284 / 209 / 118 at N=2/3/5/8/12;
+new: 35 at every N.** Same trade in every row, a 2.4x spread in the bill, and worst at N=5,
+which is exactly the bracket count this project uses. Non-monotone, because leg observations
+tighten Wilson faster than (1-p) shrinks — nothing in that sentence is a risk claim.
+
+Flagged in K24 and again in K26 and left alone both times, on the correct grounds that changing
+a gate to admit your own candidate is the cardinal sin here. Fixed by measuring the tail on the
+POSITION — the economic unit — instead of the leg. `n_losses` and `loss_rate` still report legs,
+the right unit for "how often does an ORDER lose money"; the gate binds on positions, the right
+unit for "how often does the POSITION lose money". Leg count has left the verdict and what
+remains is K7's rare-event logic doing its job: 0 losses in 30 positions is not evidence, 0 in
+100 is.
+
+Three things had to survive the change and do: single-leg strategies are bit-identical (a
+position IS a leg), `random_control` still fails on this criterion, and **the bracket candidate
+still fails the gate**, on stress, as before. That last is why the correction was safe now and
+not two rounds ago.
+
+**I first wrote this as "categorically unsatisfiable — negative at every leg count AND every
+sample size" and put the claim in the harness as an assertion. The assertion FAILED.** Scored
+per leg the Wilson bound converges and a riskless set does eventually pass; the defect is
+quantitative, not categorical. Third time in three rounds the harness has refused a claim of
+mine — after K26's one-seed trend and K27's backwards caveat — and the argument for writing the
+check before the prose.
+
+**Block 2: the loop cuts rare strategies before it scores them.** `bracket_arb` fires in ~1.7%
+of sets, so at the default 300 in-sample groups it books **25 leg-trades against a floor of
+50** — discarded before its mean is ever looked at, and in the log indistinguishable from a
+strategy that lost money. It is profitable in those 300 groups.
+
+That one is REPORTED rather than fixed, deliberately: lowering the floor admits strategies whose
+t-statistic is meaningless, raising the in-sample size taxes every candidate to rescue the rare
+ones, and neither is obviously right. The loop now says what it discarded and why — "NOT SCORED
+— too rare to screen, not unprofitable", with the family breakdown and the rarest example.
+
+**Block 3, found while cleaning up after the first two: the units bug is back, a THIRD time.**
+Regenerating RESULTS.md under the corrected gate produced a headline of **$1,186/yr**, roughly
+ten times what this project had been reporting. A jump that size immediately after touching the
+gate is exactly when to stop, so I checked whether criterion 9 caused it. It did not —
+econ_print's ladder rungs are monotone and rank-correlated, so legs and positions nearly
+coincide there and no verdict moved (+126.7c -> +128.2c tail-adjusted).
+
+The cause was `markets_per_year`, which counts CONTRACTS — 534 for econ_print, listed as a
+4-RUNG LADDER — while `group_pnl` has one entry per GROUP. K18 fixed this in capacity.py. K22
+caught it surviving in README prose after the code was right. It was **still live in factory.py
+and portfolio.py**: best bot $1,186 -> **$297/yr**, portfolio $1,014-$1,674 -> **$253-$418/yr**,
+and bots clearing the $250 money bar **4 -> 1**. Three of the four "winners" did not clear the
+bar at all.
+
+Three occurrences of one error across three files says the division should not be written by
+hand anywhere, so it now lives in exactly one function — `capacity.sets_per_year` — and arb.py,
+frontier.py, factory.py and portfolio.py all delegate to it. The harness asserts they agree and
+that a ladder's income is no longer 4x its true value.
+
+The general lesson is the uncomfortable one. Twenty-two rounds audited what the SIMULATOR
+assumed. These two blocks were in the SEARCH and the GATE — the parts doing the auditing — and
+they were invisible precisely because nothing they rejected ever appeared in a report. **A
+filter is only as trustworthy as its account of what it discarded**, and until this round this
+one gave none.
+
+Two checks broke on the change and both broke usefully. K7's rare-event synthetics perturbed
+`trade_pnl`, so when the criterion moved to the position basis they went quiet — both arms
+scored +0.0c and the check FAILED rather than passing vacuously, which is what you want from a
+check whose subject moved out from under it. Rewriting them on `group_pnl` also exposed that
+their label had always been wrong: the two arms never had "the same expectancy" (+93.6 vs
++85.5c/market), and the claim is stronger stated correctly — **the thinner tail scores worse
+DESPITE earning more**, because the gate prices what you have not yet seen. 203 checks pass.
 
 ---
 

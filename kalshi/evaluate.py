@@ -106,6 +106,7 @@ class Stats:
                  "p_one_sided", "lo95", "hi95", "annualized", "win_rate", "max_dd",
                  "fees_paid", "gross", "mean_per_trade", "fee_share",
                  "n_losses", "loss_rate", "wilson_loss_hi", "tail_mean", "worst_loss",
+                 "n_position_losses", "position_loss_rate",
                  "annual_dollars", "markets_per_year")
 
     def to_dict(self):
@@ -168,26 +169,44 @@ def summarize(res: backtest.Result, resamples: int | None = None, seed: int = 12
     # enough never to lose), and ask whether the strategy is still profitable. The fewer
     # losses observed, the wider the Wilson bound and the harsher this gets — which is the
     # correct direction, and it needs no arbitrary "minimum number of losses" threshold.
-    # Computed per TRADE, and for a multi-leg strategy that is pessimistic rather than
-    # wrong: `bracket_arb` books four guaranteed-losing legs for every winning one, so it
-    # reads as an 80% loss rate even though the arb as a whole cannot lose. Pessimistic is
-    # the safe direction for a gate — it can refuse a good bot, it cannot certify a bad one —
-    # and the other eight criteria use per-group PnL, which accounts for multi-leg trades
-    # correctly.
-    losses = [x for x in res.trade_pnl if x < 0]
-    wins = [x for x in res.trade_pnl if x >= 0]
-    s.n_losses = len(losses)
+    # MEASURED ON THE ECONOMIC UNIT, which is the POSITION, not the leg. K28 fixed this and
+    # the fix is not a loosening — the old version was provably unpassable rather than merely
+    # strict. For an N-leg bracket set exactly one leg pays, so the per-leg loss rate is
+    # (N-1)/N by construction whatever the strategy earns. Feed a set that CANNOT lose — N
+    # legs bought for 90c total against a certain 100c payout — through the old code and it
+    # scores -35.6c at N=2, -14.4c at N=5, -8.8c at N=8. Always negative, at every leg count,
+    # for a trade with no downside. That is not pessimism, it is a criterion that cannot be
+    # satisfied, and "pessimistic is the safe direction for a gate" was the wrong defence: a
+    # gate that rejects a whole STRUCTURE regardless of its merits is not conservative, it is
+    # blind, and it hid the best result in this project for four rounds.
+    #
+    # `trade_pnl` still exists and is still reported — n_losses and loss_rate describe legs,
+    # which is the right unit for "how often does an order lose money". The GATE binds on
+    # group_pnl, which is the right unit for "how often does the position lose money". For a
+    # single-leg strategy the two are identical, so no number previously reported moves; the
+    # harness asserts that.
+    #
+    # Zero-PnL groups are groups the bot declined to trade, so they are excluded here: a bot
+    # is not made safer by passing on markets. The rest of the gate deliberately uses the
+    # per-group-OFFERED basis and that has not changed.
+    traded = [x for x in res.group_pnl if x != 0]
+    losses = [x for x in traded if x < 0]
+    wins = [x for x in traded if x >= 0]
+    leg_losses = [x for x in res.trade_pnl if x < 0]
+    s.n_losses = len(leg_losses)
+    s.loss_rate = (len(leg_losses) / len(res.trade_pnl)) if res.trade_pnl else 0.0
+    s.n_position_losses = len(losses)
+    s.position_loss_rate = (len(losses) / len(traded)) if traded else 0.0
     s.worst_loss = min(losses) if losses else -res.max_position_cost
-    s.loss_rate = (len(losses) / len(res.trade_pnl)) if res.trade_pnl else 0.0
-    s.wilson_loss_hi = wilson_upper(len(losses), len(res.trade_pnl)) if res.trade_pnl else 1.0
-    if res.trade_pnl:
+    s.wilson_loss_hi = wilson_upper(len(losses), len(traded)) if traded else 1.0
+    if traded:
         mean_win = _mean(wins) if wins else 0.0
         mean_loss = _mean(losses) if losses else float(-res.max_position_cost)
         ph = s.wilson_loss_hi
-        # Per-trade expectancy if losses really arrive at the top of their interval, then
-        # rescaled to the per-market-offered basis the rest of the gate uses.
-        per_trade = (1.0 - ph) * mean_win + ph * mean_loss
-        s.tail_mean = per_trade * len(res.trade_pnl) / max(s.n_groups, 1)
+        # Per-position expectancy if losses really arrive at the top of their Wilson
+        # interval, rescaled to the per-market-offered basis the rest of the gate uses.
+        per_pos = (1.0 - ph) * mean_win + ph * mean_loss
+        s.tail_mean = per_pos * len(traded) / max(s.n_groups, 1)
     else:
         s.tail_mean = 0.0
 
@@ -345,8 +364,9 @@ def gate(oos: Stats, holdout: Stats | None, stress: Stats | None,
             f"${oos.annual_dollars:,.0f}/yr on ~{oos.markets_per_year:,} markets/yr, "
             f"bar is ${GATE['min_annual_dollars']:,}")
     v.check("tail_risk", oos.tail_mean > 0,
-            f"{oos.n_losses} losses in {oos.n_trades} trades (rate {oos.loss_rate * 100:.2f}%, "
-            f"Wilson upper {oos.wilson_loss_hi * 100:.2f}%, worst {oos.worst_loss:+,.0f}c) "
+            f"{oos.n_position_losses} losing POSITIONS (rate {oos.position_loss_rate * 100:.2f}%, "
+            f"Wilson upper {oos.wilson_loss_hi * 100:.2f}%, worst {oos.worst_loss:+,.0f}c; "
+            f"{oos.n_losses} of {oos.n_trades} LEGS lost) "
             f"-> tail-adjusted mean {oos.tail_mean:+.2f}c/market")
     return v.finish()
 

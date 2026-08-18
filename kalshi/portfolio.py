@@ -77,7 +77,7 @@ def build_member(family: str, strat, n_groups: int, seed_base: int) -> Member:
     res = backtest.run(data, strat)
     m.group_pnl = res.group_pnl
     m.n_groups = len(res.group_pnl)
-    m.mpy = capacity.MARKETS_PER_YEAR.get(family, 0)
+    m.mpy = capacity.sets_per_year(family)
     m.mean = res.total_pnl / max(m.n_groups, 1)
     m.annual_dollars = m.mpy * m.mean / 100.0
     m.cap = capacity.analyse(family, strat, seed_base=seed_base, n_groups=n_groups)

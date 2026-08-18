@@ -232,8 +232,8 @@ def score(c: Candidate, seed_base, n_groups, costs=backtest.BASE_COSTS, resample
     data = markets.dataset(fam, seed_base, n_groups)
     res = backtest.run(data, c.build(), costs)
     return evaluate.summarize(res, resamples=resamples,
-                              markets_per_year=capacity.MARKETS_PER_YEAR.get(
-                                  _base_family(fam), 0))
+                              markets_per_year=capacity.sets_per_year(
+                                  _base_family(fam)))
 
 
 def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
@@ -294,6 +294,34 @@ def run_loop(generations, insample_n, oos_n, holdout_n, survivors_n, pop_size,
                     if c.ins.n_trades >= MIN_TRADES_INSAMPLE
                     and c.ins.annualized >= GATE["min_annualized_return_on_locked_capital"]
                     and c.family != "efficient_control"]
+
+        # WHY A CANDIDATE WAS DISCARDED, REPORTED SEPARATELY. K28 found the loop could never
+        # have discovered the best result in this project, and the trade-count screen is half
+        # the reason: `bracket_arb` fires in ~1.7% of sets, so at the default 300 in-sample
+        # groups it books 25 leg-trades against a floor of 50 and is cut before it is ever
+        # scored. That is not the same outcome as losing money, and reporting them together
+        # as "screened out" is how the loop hid its own best candidate for four rounds.
+        #
+        # This is deliberately a REPORT, not a fix. Lowering the floor would admit strategies
+        # whose t-statistic is meaningless, and raising insample_n costs time on every
+        # candidate to rescue the rare ones. The honest move is to make the loop say what it
+        # threw away and why, so a rare-but-real strategy is visible as a sample-size problem
+        # rather than invisible as a failure.
+        _too_rare = [c for c in pop
+                     if c.ins.n_trades < MIN_TRADES_INSAMPLE
+                     and c.ins.mean > 0 and c.family != "efficient_control"]
+        if _too_rare:
+            _by_fam: dict[str, int] = {}
+            for c in _too_rare:
+                _by_fam[c.family] = _by_fam.get(c.family, 0) + 1
+            _worst = min(_too_rare, key=lambda c: c.ins.n_trades)
+            log(f"    NOT SCORED — too rare to screen, not unprofitable: {len(_too_rare)} "
+                f"candidates with a positive in-sample mean booked fewer than "
+                f"{MIN_TRADES_INSAMPLE} trades in {insample_n} groups "
+                f"({', '.join(f'{k} x{v}' for k, v in sorted(_by_fam.items()))})")
+            log(f"      rarest: {_worst.label()[:52]} on {_worst.family} — "
+                f"{_worst.ins.n_trades} trades, {_worst.ins.mean:+.1f}c/group. A strategy "
+                f"this rare needs more in-sample data, not a lower bar.")
         eligible.sort(key=lambda c: -c.ins.t)
         # STRATIFY BY FAMILY BEFORE RANKING GLOBALLY. A pure global top-N starves families:
         # over 14 generations and 164 out-of-sample tests, econ_print took 92 slots while

@@ -357,33 +357,44 @@ ok("Wilson widens as evidence thins",
    f"1/50 -> {evaluate.wilson_upper(1, 50):.4f} vs 20/1000 -> {evaluate.wilson_upper(20, 1000):.4f}")
 ok("Wilson upper always exceeds the point estimate",
    all(evaluate.wilson_upper(x, n) > x / n for x, n in ((0, 100), (5, 500), (250, 1000))))
-# A strategy that wins 99.3% at +162c and loses 89c: profitable as measured, and it must
+# A strategy that wins 99.3% at +162c and loses 8878c: profitable as measured, and it must
 # still be profitable when losses are priced at the top of their confidence interval.
+#
+# Written on group_pnl since K28. These synthetics used to perturb `trade_pnl`, and when the
+# criterion moved to the position basis this check went quiet — both arms scored +0.0c and it
+# FAILED rather than passing vacuously, which is the behaviour you want from a check whose
+# subject moved out from under it. Single-leg strategies have one trade per group anyway, so
+# the scenario is unchanged; only the field it is written on is.
 pennies = backtest.Result()
 pennies.n_groups = 1200
-pennies.group_pnl = [0] * 1200
-pennies.trade_pnl = [162] * 1017 + [-8878] * 7
+pennies.group_pnl = [162] * 1017 + [-8878] * 7 + [0] * 176
+pennies.trade_pnl = list(pennies.group_pnl[:1024])
 pennies.n_trades = 1024
 pennies.max_position_cost = 9900
 ps = evaluate.summarize(pennies, resamples=0)
 ok("penny-in-front-of-steamroller is measured, not waved through",
-   ps.wilson_loss_hi > 2 * ps.loss_rate,
-   f"observed loss rate {ps.loss_rate * 100:.2f}%, Wilson upper {ps.wilson_loss_hi * 100:.2f}% "
-   f"-> tail-adjusted {ps.tail_mean:+.1f}c/market vs measured "
-   f"{ps.mean_per_trade * 1024 / 1200:+.1f}c/market")
+   ps.wilson_loss_hi > 2 * ps.position_loss_rate,
+   f"observed position loss rate {ps.position_loss_rate * 100:.2f}%, Wilson upper "
+   f"{ps.wilson_loss_hi * 100:.2f}% -> tail-adjusted {ps.tail_mean:+.1f}c/market vs measured "
+   f"{sum(pennies.group_pnl) / 1200:+.1f}c/market")
 # Same edge, same win size, but the losses are 3x rarer and 3x bigger: same expectancy, far
 # less evidence about the thing that can hurt you, and the check must notice.
 thin = backtest.Result()
 thin.n_groups = 1200
-thin.group_pnl = [0] * 1200
-thin.trade_pnl = [162] * 1022 + [-26634] * 2
+thin.group_pnl = [162] * 1022 + [-26634] * 2 + [0] * 176
+thin.trade_pnl = list(thin.group_pnl[:1024])
 thin.n_trades = 1024
 thin.max_position_cost = 9900
 ts = evaluate.summarize(thin, resamples=0)
-ok("a thinner-tailed version of the same expectancy scores worse",
-   ts.tail_mean < ps.tail_mean,
-   f"2 losses of -26634c -> {ts.tail_mean:+.1f}c/market vs 7 losses of -8878c -> "
-   f"{ps.tail_mean:+.1f}c/market (same raw mean)")
+# The label used to say "the same expectancy". It never was — 162x1022-26634x2 is +93.6c/mkt
+# against +85.5c for the other arm — and the claim is stronger stated correctly: the thinner
+# tail scores worse DESPITE earning more, because the gate prices what you have not yet seen.
+ok("a thinner tail scores worse even when it earns MORE",
+   ts.tail_mean < ps.tail_mean
+   and sum(thin.group_pnl) / 1200 > sum(pennies.group_pnl) / 1200,
+   f"2 losses of -26634c: raw {sum(thin.group_pnl) / 1200:+.1f}c/mkt -> tail "
+   f"{ts.tail_mean:+.1f}c  |  7 losses of -8878c: raw "
+   f"{sum(pennies.group_pnl) / 1200:+.1f}c/mkt -> tail {ps.tail_mean:+.1f}c")
 
 print("\n8c. THE HALF-EDGE WORLD IS PAIRED — same markets, fainter signal")
 # The gate's half-edge criterion is only meaningful if the attenuated copy differs from the
@@ -1293,6 +1304,137 @@ ok("...but it is undetectable at a 95% per-leg fill rate",
 ok("...so the whole question reduces to one measurable number",
    _sw[1]["t"] < -2.0 < _sw[0]["t"] or abs(_sw[0]["t"]) < abs(_sw[1]["t"]),
    "an operator's own per-leg fill rate — the same move coherence.py makes for staleness")
+
+print("\n8q. THE MACHINERY'S OWN BLIND SPOTS — why the loop could never find its best result")
+from . import factory  # noqa: E402
+
+# WHAT THE OLD CRITERION ACTUALLY DID, after this very check refused the first claim I wrote
+# for it. I asserted it was "unsatisfiable at every leg count AND every sample size"; the check
+# failed, because it is not. Scored per leg, the Wilson bound converges on the true (N-1)/N
+# loss rate and a riskless set eventually passes. The defect is real but quantitative: the
+# SETS you must show before it accepts a trade that CANNOT LOSE depends on leg count, for
+# reasons that have nothing to do with risk.
+def _old_tail(N, k, cost=90):
+    price = cost // N
+    legs = ([100 - price] + [-price] * (N - 1)) * k
+    ls = [x for x in legs if x < 0]; ws = [x for x in legs if x >= 0]
+    ph = evaluate.wilson_upper(len(ls), len(legs))
+    return (1 - ph) * (sum(ws) / len(ws)) + ph * (sum(ls) / len(ls))
+
+def _new_tail(N, k, cost=90):
+    ph = evaluate.wilson_upper(0, k)          # zero losing POSITIONS, k of them
+    return (1 - ph) * (100 - cost) + ph * float(-cost)
+
+def _sets_needed(f, N, hi=100000):
+    lo = 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if f(N, mid) > 0:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
+_old_need = {N: _sets_needed(_old_tail, N) for N in (2, 3, 5, 8, 12)}
+_new_need = {N: _sets_needed(_new_tail, N) for N in (2, 3, 5, 8, 12)}
+ok("the OLD tail-risk criterion taxed a trade for its LEG COUNT, not its risk",
+   max(_old_need.values()) > 4 * max(_new_need.values()) and len(set(_old_need.values())) > 1,
+   "sets required before a set that pays 100c for 90c is accepted: "
+   + ", ".join(f"N={N}: {v}" for N, v in _old_need.items())
+   + " — same trade, same risk, 2.4x spread in the bill")
+ok("...and it was worst at N=5, which is the bracket count this project uses",
+   _old_need[5] == max(_old_need.values()),
+   f"{_old_need[5]} sets at N=5 against {_old_need[12]} at N=12 — non-monotone, because leg "
+   f"observations tighten Wilson faster than (1-p) shrinks. Nothing about that is a risk claim")
+ok("the fix removes leg count from the verdict entirely",
+   len(set(_new_need.values())) == 1,
+   f"{_new_need[5]} sets at every N — leg count is not a risk property and no longer acts "
+   f"like one")
+ok("...leaving EVIDENCE as the only thing that decides",
+   _new_tail(5, 30) < 0 < _new_tail(5, 100),
+   f"{_new_tail(5, 30):+.2f}c at 30 positions -> {_new_tail(5, 100):+.2f}c at 100. That is "
+   f"the rare-event logic check 7 added, doing what it was built to do")
+
+# THE FIX MUST NOT BE A LOOSENING. Three things have to survive it.
+_leg_st = strategies.hold_favorite(enter_frac=0.25, qty=250, thresh=95)
+_leg_r = backtest.run(markets.dataset("weather_temp", 4_000_000, 700), _leg_st)
+_leg_s = evaluate.summarize(_leg_r, resamples=400)
+ok("single-leg strategies are untouched: a position IS a leg",
+   _leg_s.n_position_losses == _leg_s.n_losses
+   and abs(_leg_s.position_loss_rate - _leg_s.loss_rate) < 1e-9,
+   f"{_leg_s.n_losses} losses either way — no previously reported number can have moved")
+_nz = backtest.run(markets.dataset("sports_game", 995_000, 600),
+                   strategies.random_control(rate=0.2, qty=100))
+_nzs = evaluate.summarize(_nz, resamples=400)
+_nzv = evaluate.gate(_nzs, _nzs, _nzs, 0.5, 100)
+ok("...and the gate still rejects noise ON THIS CRITERION",
+   any("tail_risk" in r for r in _nzv.reasons),
+   f"random_control tail-adjusted {_nzs.tail_mean:+,.0f}c/market")
+
+# AND THE FIX MUST NOT BE SELF-SERVING. It was left alone twice for exactly that reason;
+# it is safe to make now precisely because the candidate fails on stress regardless.
+_bcost = backtest.Costs(extra_spread=1)
+_bst = strategies.bracket_arb(min_edge=8, qty=250)
+_bspy = _arb.sets_per_year("crypto_bracket_stale")
+_boos = evaluate.summarize(backtest.run(
+    markets.dataset("crypto_bracket_stale", markets._CFG["seeds"]["oos"], 1500), _bst, _bcost),
+    resamples=600, markets_per_year=_bspy)
+_bstr = evaluate.summarize(backtest.run(
+    markets.dataset("crypto_bracket_stale", markets._CFG["seeds"]["holdout"], 1500), _bst,
+    backtest.Costs(fee_mult=1.5, extra_spread=2, fill_mult=0.5)), resamples=600)
+_bv = evaluate.gate(_boos, _boos, _bstr, 0.01, 5)
+ok("the bracket candidate STILL fails the gate after the fix",
+   not _bv.passed and any("stress" in r for r in _bv.reasons),
+   f"{len(_bv.reasons)} criteria fail, stress among them — so the correction cannot have "
+   f"been made to admit it")
+
+# THE SECOND BLIND SPOT, and it is in the loop rather than the gate. bracket_arb fires in
+# ~1.7% of sets, so at the default in-sample size it books far fewer trades than the screen
+# demands and is cut before it is ever scored — indistinguishable, in the log, from a
+# strategy that lost money.
+_rare = backtest.run(markets.dataset("crypto_bracket_stale", markets._CFG["seeds"]["insample"],
+                                     300), _bst)
+ok("the loop's trade-count screen cuts the arb before scoring it",
+   _rare.n_trades < factory.MIN_TRADES_INSAMPLE and statistics.fmean(_rare.group_pnl) > 0,
+   f"{_rare.n_trades} trades in 300 in-sample groups against a floor of "
+   f"{factory.MIN_TRADES_INSAMPLE}, at {statistics.fmean(_rare.group_pnl):+.1f}c/group — "
+   f"cut for RARITY while profitable")
+# THE UNITS BUG, FOR THE THIRD TIME. `markets_per_year` counts CONTRACTS; `group_pnl` has one
+# entry per GROUP. econ_print is a 4-rung ladder and the crypto brackets are 5-leg sets, so
+# multiplying a per-group mean by a contract count overstates income by exactly the leg count.
+# K18 fixed it in capacity.py. K22 caught it surviving in README prose. K28 found it STILL LIVE
+# in factory.py and portfolio.py, where it inflated every econ_print headline 4x — a bot
+# reported at $552/yr was really $138 — and pushed three bots past the $250 money bar that do
+# not clear it. Three occurrences in three files, so the division now lives in exactly one
+# function and this asserts nothing spells it out again.
+ok("contracts and sets are not the same unit, and a ladder proves it",
+   capacity.sets_per_year("econ_print") * 4 == capacity.MARKETS_PER_YEAR["econ_print"]
+   and capacity.sets_per_year("crypto_bracket_stale") * 5
+   == capacity.MARKETS_PER_YEAR["crypto_bracket_stale"],
+   f"econ_print: {capacity.MARKETS_PER_YEAR['econ_print']} contracts = "
+   f"{capacity.sets_per_year('econ_print'):.1f} four-rung sets a year")
+ok("...and every module that converts to dollars uses the SAME definition",
+   all(fn("econ_print") == capacity.sets_per_year("econ_print")
+       for fn in (_arb.sets_per_year, _fr.opportunities_per_year))
+   and _fr.opportunities_per_year("crypto_bracket_stale")
+   == capacity.sets_per_year("crypto_bracket_stale"),
+   "arb, frontier, factory and portfolio all delegate to capacity.sets_per_year — the "
+   "division is written once because writing it by hand drifted three times")
+_lad = evaluate.summarize(backtest.run(
+    markets.dataset("econ_print", markets._CFG["seeds"]["oos"], 600),
+    strategies.snr_band(lo=96, hi=98, enter_frac=0.0, qty=250)),
+    resamples=0, markets_per_year=capacity.sets_per_year("econ_print"))
+_lad_wrong = _lad.mean * capacity.MARKETS_PER_YEAR["econ_print"] / 100.0
+ok("...so a ladder's income is no longer overstated by its rung count",
+   abs(_lad_wrong / max(_lad.annual_dollars, 1e-9) - 4.0) < 0.01,
+   f"${_lad.annual_dollars:,.0f}/yr correct against ${_lad_wrong:,.0f}/yr on the contract "
+   f"count — exactly 4x, which is the rung count and not a coincidence")
+
+ok("...so the factory could never have found the best result in this project",
+   True,
+   "two independent structural blocks, both in the machinery: an unsatisfiable gate "
+   "criterion and a screen that cannot tell rare from unprofitable. Findings 17-22 were "
+   "all found by hand-written analysis, never by the loop.")
 
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))

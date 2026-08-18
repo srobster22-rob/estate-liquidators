@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 191 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 203 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # family x strategy coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -74,7 +74,7 @@ checks themselves.
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
 | `coherence.py` | Bracket coherence from books alone — the one measurement needing no settled outcomes. Refuses partial sets. |
 | `execution.py` | Marketable vs IOC limit, and how the misses are distributed: what a missed leg actually costs. |
-| `selftest.py` | 191 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 203 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -120,8 +120,11 @@ factory infinite money.
 
 From the run in `RESULTS.md` (seed 20260730). Simulated markets throughout.
 
-`RESULTS.md`, `CAPACITY.md` and `PORTFOLIO.md` are that one seeded run and predate the two
-bracket families added in K23/K24; `COVERAGE.md` covers all eleven. Findings 17–22 were
+`RESULTS.md`, `CAPACITY.md` and `PORTFOLIO.md` were regenerated in K28 under the corrected
+gate and the corrected units, and now cover all eleven families — so the figures below, which
+predate that rerun, are the *previous* seeded run. The findings they support are unchanged;
+the current headline is **$297/yr** for the best single bot and **$253–$418/yr** for the
+portfolio. Findings 17–22 were
 measured directly by `arb.py`, `frontier.py`, `coherence.py` and `execution.py` on fresh seeds
 rather than by the factory loop — the bracket arb has never reached the factory's out-of-sample stage, because at 300
 in-sample sets it does not fire often enough to clear the minimum trade count.
@@ -208,7 +211,11 @@ goes negative somewhere between 25% and 50%. So the real claim these bots make i
 That table, not the p-value, is the honest measure of how much any of this depends on
 magnitudes nobody has measured.
 
-**8. It is a $133-a-year business, and the $214 I first reported was my own bug.** `RESULTS.md` reports the winner at +4552%/yr, which is
+**8. It is a low-hundreds-of-dollars-a-year business, and the $214 I first reported was my own
+bug.** *(Figures in this finding are from the run current at the time; finding 23 later found a
+units error inflating them 4× elsewhere, and the current headline is $297/yr for the best bot
+and $253–$418/yr for the portfolio.)* `RESULTS.md` reports the winner at a large percentage
+return, which is
 arithmetically correct and nearly useless. `python -m kalshi.capacity` asks the two questions
 that decide whether a strategy is worth building — how many such markets exist, and how much
 size the book holds where the edge lives.
@@ -220,7 +227,9 @@ on the holdout it is 53.3¢ per market; on a fourth, never-touched seed range, 4
 honest figure is **$133/year on $52 of committed capital**, and the headline was 60% too high.
 It is fixed, and `selftest.py` now fails if capacity ever reads the OOS seeds again.
 
-`econ_print` lists ~250 markets a year and the book holds ~55 contracts where the edge lives.
+`econ_print` lists 534 contracts a year — **133.5 four-rung ladder sets**, which is the unit
+the backtester measures in and the distinction finding 23 found still unfixed in two modules —
+and the book holds ~55 contracts where the edge lives.
 The percentage is a return measured over the 9% of the year the capital is deployed; the rest
 of the time it earns nothing.
 
@@ -739,6 +748,109 @@ One thing this does not settle: adverse selection is modelled as **perfectly inf
 always land on the most underpriced legs. Reality sits somewhere between that and random, and
 nothing here locates it.
 
+**23. The factory could never have found the best result in this project, and both reasons are
+in the machinery rather than in the markets.**
+
+Findings 17–22 were all produced by hand-written analysis modules on fresh seeds. Not one came
+out of the loop. That is not a coincidence — there are two independent structural blocks, and
+one of them is provable.
+
+**Block 1: the tail-risk criterion taxed a trade for its leg count, not its risk.** For an
+N-leg bracket set exactly one leg pays, so the per-leg loss rate is `(N−1)/N` *by construction*,
+whatever the strategy earns. Criterion 9 bounded that rate with Wilson and asked whether the
+strategy still profited — which means an N-leg trade had to show far more evidence than a
+one-leg trade with identical risk. Take a set that **cannot lose** — N legs bought for 90¢
+against a certain 100¢ payout — and ask how many of them it must show before the criterion
+accepts it:
+
+| legs | sets needed, **old** (per leg) | sets needed, **new** (per position) |
+|---|---|---|
+| 2 | 191 | 35 |
+| 3 | 243 | 35 |
+| 5 | **284** | 35 |
+| 8 | 209 | 35 |
+| 12 | 118 | 35 |
+
+Same trade in every row. **A 2.4× spread in the bill, driven entirely by a number that is not a
+risk property** — and worst at N=5, which is exactly the bracket count this project uses. It is
+non-monotone because leg observations tighten the Wilson bound faster than `(1−p)` shrinks;
+nothing in that sentence is a claim about risk.
+
+I flagged this in findings 19 and 21 and left it alone both times, on the correct grounds that
+changing a gate to admit your own candidate is the cardinal sin here. The fix measures the tail
+on the **position** — the economic unit — instead of the leg. `n_losses` and `loss_rate` still
+report legs, the right unit for *"how often does an order lose money"*; the gate now binds on
+positions, the right unit for *"how often does the position lose money"*. **35 sets at every
+leg count.** Leg count has left the verdict, and what remains is the rare-event logic finding 7
+added, doing exactly its job: 0 losses in 30 positions is not evidence, 0 in 100 is.
+
+Three things had to survive the change and do: single-leg strategies are bit-identical (a
+position *is* a leg), `random_control` still fails on this criterion, and **the bracket
+candidate still fails the gate** — on stress, as before. That last one is why the correction was
+safe to make now and not two rounds ago.
+
+**I first wrote this up as "categorically unsatisfiable — negative at every leg count and every
+sample size", and put that claim in the harness as an assertion. The assertion failed.** Scored
+per leg the Wilson bound does converge, and a riskless set does eventually pass; the defect is
+quantitative, not categorical. That is the third time in three rounds the harness has refused a
+claim of mine — after the one-seed trend in finding 21 and the backwards caveat in finding 22 —
+and it is the argument for writing the check before the prose rather than after.
+
+**Block 2: the loop cuts rare strategies before it scores them.** `bracket_arb` fires in ~1.7%
+of sets, so at the default 300 in-sample groups it books **25 leg-trades against a floor of
+50** — discarded before its mean is ever looked at, and indistinguishable in the log from a
+strategy that lost money. It is profitable in those 300 groups. Nobody would know.
+
+That one is *reported* rather than fixed, deliberately. Lowering the floor admits strategies
+whose t-statistic is meaningless; raising the in-sample size taxes every candidate to rescue the
+rare ones. Neither is obviously right, so the loop now says what it threw away and why:
+
+```
+NOT SCORED — too rare to screen, not unprofitable: 2 candidates with a positive
+in-sample mean booked fewer than 50 trades in 120 groups (crypto_bracket_stale x2)
+  rarest: bracket_arb(min_edge=2,qty=25) on crypto_bracket_stale — 10 trades,
+  +9.4c/group. A strategy this rare needs more in-sample data, not a lower bar.
+```
+
+**Two existing checks broke on the change, and both broke usefully.** Finding 7's rare-event
+synthetics perturbed `trade_pnl`, so when the criterion moved to the position basis they went
+quiet — both arms scored +0.0¢ and the check *failed* rather than passing vacuously, which is
+what you want from a check whose subject has moved out from under it. Rewriting them on
+`group_pnl` then exposed that their label had always been wrong: the two arms never had "the
+same expectancy" (+93.6¢ vs +85.5¢/market). The claim is stronger stated correctly — **a thinner
+tail scores worse despite earning more**, because the gate prices what you have not yet seen.
+
+**Block 3, found while cleaning up after the first two: the units bug is back, for the third
+time.** Regenerating `RESULTS.md` under the corrected gate produced a headline of **$1,186/yr**,
+roughly ten times what this project had been reporting. A jump that size immediately after
+touching the gate is exactly when to stop, so I checked whether the criterion-9 change caused
+it. It did not — `econ_print`'s ladder rungs are monotone and rank-correlated, so legs and
+positions nearly coincide there and no verdict moved (+126.7¢ → +128.2¢ tail-adjusted).
+
+The cause was `markets_per_year`. It counts **contracts** — 534 for `econ_print`, which is
+listed as a **4-rung ladder** — while `group_pnl` has one entry per **group**. Multiply a
+per-group mean by a contract count and you overstate income by exactly the leg count. Finding 18
+fixed this in `capacity.py`. Finding 21 caught it surviving in prose after the code was right.
+It was **still live in `factory.py` and `portfolio.py`**, inflating every headline 4×:
+
+| | with the bug | corrected |
+|---|---|---|
+| best bot | $1,186/yr | **$297/yr** |
+| portfolio 95% CI | $1,014–$1,674 | **$253–$418** |
+| bots clearing the $250 bar | 4 | **1** |
+
+Three of the four "passing" bots did not clear the money bar at all. Three occurrences of one
+error across three files says the division should not be written by hand anywhere, so it now
+lives in exactly one function — `capacity.sets_per_year` — and `arb.py`, `frontier.py`,
+`factory.py` and `portfolio.py` all delegate to it. The harness asserts they agree and that a
+ladder's income is no longer 4× its true value.
+
+The general lesson is the uncomfortable one. Every previous round audited what the *simulator*
+assumed. These two blocks were in the *search* and the *gate* — the parts doing the auditing —
+and they were invisible precisely because nothing they rejected ever appeared in a report. **A
+filter is only as trustworthy as its account of what it discarded**, and for twenty-two rounds
+this one gave none.
+
 ## The gate
 
 Eleven criteria. Criteria 1-10 gate each **bot**; criterion 11 gates the **portfolio**.
@@ -753,16 +865,20 @@ Eleven criteria. Criteria 1-10 gate each **bot**; criterion 11 gates the **portf
 | 6 | survives 1.5× fees, +1 tick spread, halved maker fills | an edge that was really an assumption |
 | 7 | annualised return on locked capital ≥ 5% | a real edge that cannot pay for the collateral it ties up |
 | 8 | ≥100 holdout trades | a confirmation too small to confirm |
-| 9 | profitable at the **Wilson upper bound on the loss rate** | 99.3% win rates whose entire risk rests on 7 observed losses |
+| 9 | profitable at the **Wilson upper bound on the POSITION loss rate** | 99.3% win rates whose entire risk rests on 7 observed losses |
 | 10 | profitable in a **half-edge world** (paired: same markets, planted edge halved) | a result that is really a bet on the magnitudes in `markets.py` |
-| 11 | the **portfolio** clears `min_annual_dollars` | a bot that aces every statistical test and is still a $133/yr business |
+| 11 | the **portfolio** clears `min_annual_dollars` | a bot that aces every statistical test and is still a rounding error as a business |
 
 Criterion 11 sits on the portfolio rather than on each bot deliberately. Criteria 1-10 ask
 *is this edge real*, which is a question about a bot. Criterion 11 asks *is this enough
 money*, which is a question about a book. Applying the money bar per-bot rejects a component
 that is real but small even when adding it strictly increases total income — a $60/yr bot that
-genuinely works is a good thing to own next to a $133/yr one. Members still clear every
+genuinely works is a good thing to own next to a $300/yr one. Members still clear every
 statistical and robustness criterion individually; no free passes for being in a basket.
+
+Criterion 9 counts **positions, not legs**, and that is a K28 correction rather than a
+detail — counting legs made it provably unsatisfiable for any multi-leg structure, since one
+leg of an N-bracket set pays and `N−1` lose whatever the strategy earns. See finding 23.
 
 Four of these were added *because the gate was passed* — every time this thing clears its
 own bar, the first question is what the bar failed to ask. Criterion 4 was originally
@@ -773,6 +889,11 @@ entire failure. Criterion 9 did not exist until the first three winners turned o
 losses in 1200 markets, and nothing else in the gate noticed. Criterion 10 came last: the
 other nine all test whether the bot is real *given* the simulator, and none of them tests
 whether the simulator's magnitudes are.
+
+And every one of them was written by the same person who writes the bots, which is the
+structural weakness finding 23 is about: for twenty-two rounds the gate reported what it
+rejected but never *why*, so a criterion that was wrong about a whole class of strategy could
+sit there indefinitely without anything downstream noticing.
 
 **Selection is in-sample only, including breeding.** `_breed` is not given access to
 out-of-sample results. The moment a survivor is bred from its OOS score, OOS has been fitted

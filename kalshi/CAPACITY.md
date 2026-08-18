@@ -6,13 +6,11 @@ What the winning bots are worth **in dollars per year**, which is a different qu
 
 | bot | markets/yr | fill | edge/market | **annual P&L** | capital to commit | return on it | utilisation |
 |---|---|---|---|---|---|---|---|
-| `econ_print` / snr_band(enter_frac=0.0,hi=99,lo=96,qty=250) | 133.5 | 50 | +235.7c | **$315** | $71 | 441%/yr | 12% |
-| `econ_print` / hold_favorite(enter_frac=0.0,qty=25,thresh=85) | 133.5 | 25 | +84.6c | **$113** | $43 | 261%/yr | 15% |
-| `econ_print` / late_favorite(enter_frac=0.9,qty=25,thresh=85) | 133.5 | 23 | +58.2c | **$78** | $15 | 530%/yr | 6% |
+| `econ_print` / snr_band(enter_frac=0.25,hi=98,lo=96,qty=100) | 133.5 | 53 | +252.7c | **$337** | $69 | 488%/yr | 12% |
 
 ## What this changes
 
-The best bot in `RESULTS.md` reports a headline return in the thousands of percent. Its actual output is **$315 a year** on **$71** of committed capital, because `econ_print` lists roughly 133.5 markets a year and the book holds about 50 contracts at the price where the edge lives.
+The best bot in `RESULTS.md` reports a headline return in the thousands of percent. Its actual output is **$337 a year** on **$69** of committed capital, because `econ_print` lists roughly 133.5 markets a year and the book holds about 53 contracts at the price where the edge lives.
 
 The percentage is not wrong — it is a return on capital measured only over the 12% of the year that capital is deployed. Both numbers describe the same bot. Only one of them tells you whether to build it.
 

@@ -109,12 +109,9 @@ N = 4000
 
 
 def sets_per_year(family=FAMILY) -> float:
-    """Bracket SETS, not contracts. The census counts contracts; a set is N of them, and the
-    backtester measures per set. Confusing the two overstates income by exactly N — the same
-    units bug K18 caught on the econ ladders."""
-    fam = markets.FAMILIES[family]
-    legs = max(fam.n_brackets, fam.n_rungs, 1)
-    return capacity.MARKETS_PER_YEAR.get(family, 0) / legs
+    """Bracket SETS, not contracts. Delegates to `capacity.sets_per_year`, which is the one
+    place this division is written — see the note there on why it is not written twice."""
+    return capacity.sets_per_year(family)
 
 
 def margins(family=FAMILY, n=N) -> list[int]:
