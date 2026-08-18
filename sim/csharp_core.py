@@ -60,8 +60,15 @@ def check(label, got, want, tol=1e-6):
 # --------------------------------------------------------------- the translator
 def strip_comments(src):
     src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
-    return "\n".join(l for l in src.splitlines() if not l.strip().startswith("//")
-                     and not l.strip().startswith("///"))
+    out = []
+    for l in src.splitlines():
+        t = l.strip()
+        if t.startswith("//") or t.startswith("///"):
+            continue
+        # Trailing comments too: `if (loot <= 0) return 0;   // pillar 2` is a
+        # statement the reader has to see and a comment it must not try to parse.
+        out.append(re.sub(r"\s*//.*$", "", l))
+    return "\n".join(out)
 
 
 def numbers(src):
@@ -144,6 +151,7 @@ def is_pattern(expr):
 
 
 ARGS = re.compile(r"\(([^)]*)\)")
+STATEMENT_BODIES = ["Weight"]
 
 
 def params(sig):
@@ -158,6 +166,95 @@ def params(sig):
             p = p.split("=")[0].strip()
         out.append(p.split()[-1])
     return ", ".join(out)
+
+
+# --- statement bodies -------------------------------------------------------
+# Enough of C#'s statement grammar to read Attention.Weight and the selector's
+# Update: locals, a counted for loop, if with an optional else, early return,
+# compound assignment, and member access. Anything else raises.
+STMT_RULES = [
+    (re.compile(r"^(?:float|int|bool|var|IAttentionSubject)\s+(\w+)\s*=\s*(.+);$"),
+     lambda m: f"{m.group(1)} = {expr(m.group(2))}"),
+    (re.compile(r"^for\s*\(int (\w+) = 0; \1 < ([\w.]+(?:\.Count)?); \1\+\+\)$"),
+     lambda m: f"for {m.group(1)} in range({expr(m.group(2))}):"),
+    (re.compile(r"^if\s*\((.+)\)$"), lambda m: f"if {expr(m.group(1))}:"),
+    # `if (cond) <one statement>;` on a single line - the C# here uses it for the
+    # pillar-2 guard and for the light multiplier, and both have to be readable.
+    (re.compile(r"^if\s*\((.+?)\)\s+(?!return)(\S.*;)$"),
+     lambda m: f"if {expr(m.group(1))}: " + inline(m.group(2))),
+    (re.compile(r"^if\s*\((.+?)\)\s+return\s*(.*);$"),
+     lambda m: f"if {expr(m.group(1))}: return "
+               + (expr(m.group(2)) if m.group(2).strip() else "")),
+    (re.compile(r"^else$"), lambda m: "else:"),
+    (re.compile(r"^return\s*(.*);$"),
+     lambda m: f"return {expr(m.group(1))}" if m.group(1).strip() else "return"),
+    (re.compile(r"^(\w+(?:\.\w+)*)\s*([-+*/]?=)\s*(.+);$"),
+     lambda m: f"{expr(m.group(1))} {m.group(2)} {expr(m.group(3))}"),
+    (re.compile(r"^(\w+(?:\.\w+)*)\+\+;$"), lambda m: f"{expr(m.group(1))} += 1"),
+    (re.compile(r"^(\w+\([^;]*\));$"), lambda m: expr(m.group(1))),
+]
+
+
+def expr(e):
+    """Expression-level rewrites shared by every statement form."""
+    e = e.strip()
+    e = re.sub(r"\bReferenceEquals\(([^,]+),\s*([^)]+)\)", r"(\1 is \2)", e)
+    e = e.replace("null", "None").replace("&&", " and ").replace("||", " or ")
+    e = re.sub(r"(?<![!=<>])!(?=[\w(])", "not ", e)
+    e = re.sub(r"\.Count\b", "__COUNT__", e)
+    e = re.sub(r"([\w\]\)]+)__COUNT__", r"len(\1)", e)
+    e = re.sub(r"\b(?:Curse|Attention|Loudness|Van|Disturbance)\.(\w+)", r"\1", e)
+    return ternaries(e)
+
+
+def inline(one):
+    """One statement, for the tail of a single-line `if`."""
+    out = []
+    stmt([one], 0, 0, out)
+    return out[0].strip()
+
+
+def block(lines, i, indent):
+    """Translate a `{ ... }` block starting at lines[i]. Returns (python, next_i)."""
+    out, n = [], len(lines)
+    if lines[i].strip() == "{":
+        i += 1
+        while i < n and lines[i].strip() != "}":
+            i = stmt(lines, i, indent, out)
+        return out, i + 1
+    i = stmt(lines, i, indent, out)
+    return out, i
+
+
+def stmt(lines, i, indent, out):
+    line = lines[i].strip()
+    if not line or line == "{":
+        return i + 1
+    for rx, fn in STMT_RULES:
+        m = rx.match(line)
+        if not m:
+            continue
+        py = fn(m)
+        out.append("    " * indent + py)
+        if py.endswith(":"):
+            inner, j = block(lines, i + 1, indent + 1)
+            if not inner:
+                inner = ["    " * (indent + 1) + "pass"]
+            out.extend(inner)
+            return j
+        return i + 1
+    raise SyntaxError(f"cannot read statement: {line!r}")
+
+
+def statement_body(src, name):
+    """Find `... Name(args) { ... }` and translate the block."""
+    m = re.search(rf"public static \w+ {name}\(([^)]*)\)\s*\n\s*\{{", src)
+    if not m:
+        return None
+    args = params("(" + m.group(1) + ")")
+    lines = src[m.end() - 1:].splitlines()
+    body, _ = block(lines, 0, 1)
+    return f"def {name}({args}):\n" + "\n".join(body)
 
 
 def translate(src):
@@ -179,11 +276,17 @@ def translate(src):
         r"WeightClass|CurseGrade) (\w+)(\([^)]*\))?\s*=>\s*(.*?);", re.S)
     for m in pat.finditer(src):
         name, sig, body = m.group(1), m.group(2), " ".join(m.group(3).split())
-        expr = switch_expr(body) or is_pattern(body) or ternaries(body)
+        expr_ = switch_expr(body) or is_pattern(body) or ternaries(body)
         args = params(sig) if sig else ""
-        out.append(f"def {name}({args}):\n    return {expr}")
+        out.append(f"def {name}({args}):\n    return {expr_}")
         found.add(name)
         funcs.add(name)
+    for name in STATEMENT_BODIES:
+        py = statement_body(src, name)
+        if py:
+            out.append(py)
+            found.add(name)
+            funcs.add(name)
     return "\n".join(out), found, funcs
 
 
@@ -197,7 +300,7 @@ UNREAD = {
     "Tick": "mutates instance state", "KillLights": "mutates instance state",
     "GoQuiet": "mutates instance state", "LightWing": "mutates instance state",
     "Reset": "mutates instance state", "Update": "mutates instance state",
-    "Weight": "statement body over an interface - no objects to hand it here",
+
     "Value": "auto-property", "Elapsed": "auto-property", "Target": "auto-property",
     "Retargets": "auto-property", "Carried": "interface member",
     "NoiseEventsLast10s": "interface member", "LightVisible": "interface member",
@@ -306,6 +409,62 @@ for value, want in ((0, "Dormant"), (29.9, "Dormant"), (30, "Patrol"),
                     (85, "Collect"), (100, "Collect")):
     D["Value"] = value
     check(f"Tier(Disturbance={value})", D["Tier"](), want)
+
+# 6. Attention. TECH-SPEC A3's weight function is the one piece of arithmetic in
+#    this port that a design PILLAR rests on: "carry nothing, weigh nothing" is
+#    what makes it impossible for a loud, lit, empty-handed player to be hunted,
+#    and R2 found the additive version doing exactly that 100% of the time. It has
+#    a statement body, so R47 listed it as unreadable and left it unchecked - which
+#    left the most important function in the file as the one nothing looked at.
+A = load("Attention.cs", ["Weight", "Attention", "Value", "Fee"])
+
+
+class Carried:
+    def __init__(self, value, grade):
+        self.AppraisedValue, self.Grade = value, grade
+
+
+class Subject:
+    def __init__(self, carried, noise=0, light=False):
+        self.Carried = carried
+        self.NoiseEventsLast10s = noise
+        self.LightVisible = light
+
+
+att = TUNING["curse"]["attention_multiplier"]
+cval = TUNING["curse"]["value_multiplier"]
+a = TUNING["attention"]
+for grade, key in (("Clean", "clean"), ("Tainted", "tainted"), ("Malignant", "malignant")):
+    check(f"Curse.Attention({grade})", A["Attention"](grade), att[key])
+    check(f"Curse.Value({grade})", A["Value"](grade), cval[key])
+    check(f"Curse.Fee({grade})", A["Fee"](grade), TUNING["curse"]["ledger_fee"][key])
+
+# The pillar, stated as arithmetic: empty hands weigh nothing however loud and lit.
+for noise, light in ((0, False), (3, False), (0, True), (5, True)):
+    check(f"Weight(empty, noise={noise}, light={light})",
+          A["Weight"](Subject([], noise, light)), 0.0)
+
+# And the multiplicative form, on both modifiers at once.
+for value, grade, noise, light in ((100, "Clean", 0, False), (100, "Clean", 2, False),
+                                   (100, "Clean", 0, True), (100, "Malignant", 3, True),
+                                   (250, "Tainted", 1, False)):
+    want = value * att[grade.lower()]
+    want *= 1 + a["noise_multiplier_per_event"] * noise
+    if light:
+        want *= a["light_multiplier"]
+    check(f"Weight(${value} {grade}, noise={noise}, light={light})",
+          A["Weight"](Subject([Carried(value, grade)], noise, light)), want)
+
+# Several pieces at once: the sum is over ITEMS, which is what makes a hand-off
+# move the mark without any special case (D-25).
+check("Weight(two pieces)",
+      A["Weight"](Subject([Carried(100, "Clean"), Carried(200, "Tainted")], 0, False)),
+      100 * att["clean"] + 200 * att["tainted"])
+
+check("StealThreshold", A["StealThreshold"], a["steal_threshold"])
+check("CommitSeconds", A["CommitSeconds"], a["commit_seconds"])
+check("NoisePerEvent", A["NoisePerEvent"], a["noise_multiplier_per_event"])
+check("LightMultiplier", A["LightMultiplier"], a["light_multiplier"])
 
 # 5. Slots and the ruin tail - the two numbers ECONOMY 1 calls master constants.
 for cls, want in (("Pocket", 0.5), ("Armful", 1.0), ("TwoMan", 3.0), ("Cart", 5.0)):

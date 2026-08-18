@@ -12,7 +12,7 @@ node proto3d/play.mjs --trials 16 --check   # what a player is worth, asserted
 node proto3d/play.mjs --ablate --trials 20  # what each verb is worth, paired (~25 min)
 node proto3d/qa.mjs               # 204 checks, the real build in headless Chromium
 python3 sim/check_counts.py --qa 204   # the numbers in these docs are the real ones
-python3 sim/csharp_core.py        # 91 values, translated out of the C# and executed
+python3 sim/csharp_core.py        # 114 values, translated out of the C# and executed
 python3 sim/check_drift.py        # 178 constants agree across four implementations
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
 python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
@@ -81,10 +81,14 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
   clock, so the graph's gain values stay at zero however correct the mix is.
 - **The C# suite still has not run** — no .NET SDK here — but the port is no longer held only
   by its literals. `sim/csharp_core.py` translates the subset of C# these three files use into
-  Python, executes it, and compares 91 values against `tuning.json`. Ten deliberate breakages
-  of the port's *arithmetic* — hearing radius as a sum, the ratchet unclamped, the ruin tail
-  linear, retrieval swapped between PURSUE and COLLECT — are all caught, and **nine of the ten
-  pass `check_drift.py`**, which is what "pinned to the sims" was actually worth. What remains
+  Python, executes it, and compares 114 values against `tuning.json`, including
+  `Attention.Weight` — the function design pillar 2 rests on. Fifteen deliberate breakages of
+  the port's *arithmetic* — hearing radius as a sum, the ratchet unclamped, the ruin tail
+  linear, retrieval swapped between PURSUE and COLLECT, attention additive again — are caught,
+  and **fourteen of the fifteen pass `check_drift.py`**, which is what "pinned to the sims"
+  was actually worth. The fifteenth is a deliberate no-op: removing the `loot <= 0` guard
+  changes nothing, because the multiplicative form already makes an empty-handed player weigh
+  zero. That is the file's own claim, demonstrated. What remains
   unchecked is that the C# compiles, its types are right, and `unity/tests` passes.
 - **The salt line cannot deny a route.** V3 requires every wing to survive losing any one
   portal, so a house that passes the level contract always has a way round. Salting a doorway

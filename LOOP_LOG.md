@@ -982,6 +982,27 @@ one was mine: the `Floor` comparison recomputed the formula in Python instead of
 translated function, which is how a checker comes to agree with itself. · Regression: C# 91/91,
 QA 204/204, drift 178/178, claims 25/25.
 
+R48 · **The most important function in the C# port was the one R47 left out.** R47's own guard
+listed `Attention.Weight` as unreadable — statement body, interface parameter — and that is
+the function `TECH-SPEC` A3's whole argument rests on: *carry nothing, weigh nothing*, the
+multiplicative form that makes pillar 2 arithmetically impossible to violate rather than a
+property the constants happen to preserve. Leaving it unchecked left the port's most-cited
+rule as its least-covered one. · The translator now reads statement bodies: locals, a counted
+`for`, `if` with a one-statement tail, early return, compound assignment and member access.
+That is enough for `Weight`, and the comparison hands it real objects — empty hands, one
+piece, two pieces, both modifiers at once. **114 values** now, up from 91. · **Fifteen
+injections, fourteen caught, and fourteen of those fifteen pass `check_drift.py`.** The new
+ones: attention additive again (R2's original bug, restored), noise stopping being a
+multiplier, light added rather than multiplied, and the loop weighting loot by the *value*
+multiplier instead of the attention one — a one-word change that would have made every cursed
+piece twice as attractive as it should be, with every constant intact. · **The fifteenth
+injection was supposed to break pillar 2 and could not.** Removing the `loot <= 0` guard
+changes nothing, because a sum of zero items multiplied by anything is still zero. That is not
+a hole in the checker — it is the file's own claim, demonstrated: the pillar is enforced by the
+*form* of the arithmetic, and the guard is belt-and-braces. An injection that fails to break
+anything is worth as much as one that succeeds, provided you understand why. · Regression: C#
+114/114, QA 204/204, drift 178/178, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)
