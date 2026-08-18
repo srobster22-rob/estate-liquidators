@@ -1,7 +1,7 @@
 """
 Do the documented check counts match what the suites report?
 
-README.md and STATUS.md both quote "N checks" and "N constants". Those numbers
+README.md and STATUS.md both quote "N checks", "N constants" and "N claims". Those numbers
 drifted three times in fifteen rounds - written by hand, from memory, while the
 suite they describe was still growing. For a project whose main asset is that its
 numbers are trustworthy, a wrong number in the first paragraph of the README is
@@ -41,6 +41,14 @@ def main():
         return 2
     real_drift = int(m.group(1))
 
+    claims = subprocess.run([sys.executable, str(ROOT / "sim/check_claims.py")],
+                            capture_output=True, text=True)
+    mc = re.search(r"CLAIM CHECK\s+-\s+(\d+) documented", claims.stdout)
+    if not mc:
+        print("could not read a claim count from check_claims.py")
+        return 2
+    real_claims = int(mc.group(1))
+
     qa = None
     if "--qa" in sys.argv:
         qa = int(sys.argv[sys.argv.index("--qa") + 1])
@@ -50,6 +58,11 @@ def main():
             if n != real_drift:
                 fails.append(f"{name} says {n} constants, check_drift.py reports {real_drift}")
 
+    for name, nums in documented(r"check_claims\.py\s+#\s+(\d+) documented").items():
+        for n in nums:
+            if n != real_claims:
+                fails.append(f"{name} says {n} claims, check_claims.py reports {real_claims}")
+
     if qa is not None:
         for pat in (r"qa\.mjs\s+#\s+(\d+) checks", r"\*\* (\d+) headless checks"):
             for name, nums in documented(pat).items():
@@ -57,7 +70,8 @@ def main():
                     if n != qa:
                         fails.append(f"{name} says {n} checks, the harness reports {qa}")
 
-    print(f"COUNT CHECK  -  drift {real_drift}" + (f", qa {qa}" if qa else ""))
+    print(f"COUNT CHECK  -  drift {real_drift}, claims {real_claims}"
+          + (f", qa {qa}" if qa else ""))
     print("-" * 74)
     if not fails:
         print("  OK   the documented numbers are the real ones")

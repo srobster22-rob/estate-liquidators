@@ -116,6 +116,10 @@ rich every night. The quota has to live inside that range or the chain has no sh
 | 3 | $10,750 | 17 | $10,997 | ~55% | someone has to go into a sealed wing |
 | 4 | $12,500 | 19 | $12,152 | ~40% | above the mean. The apex is not optional. |
 
+These four numbers are not a record of a run that happened once: `sim/check_claims.py`
+re-derives them, and `chain_sim.py` runs this curve rather than the one above it. It did not,
+for eleven rounds — the sim kept printing the 1% night four that *caused* the replacement.
+
 **The better fix, and the one to make before ship:** growth should come from the *estates*,
 not from squeezing the crew against a flat ceiling. Later contracts should be richer houses
 with higher value bands, so earnings genuinely climb and the quota can climb with them. The

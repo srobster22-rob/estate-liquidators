@@ -673,6 +673,36 @@ where the injected build needs 92. · Regression:
 QA 171/171, drift 166/166, the validator over 24 generated estates across all
 four nights plus its own two samples, and `-r 3` clean.
 
+R37 · **The same failure again, in the six files nobody was asserting.** R36 ended on a rule —
+*a script whose output nothing asserts is not a check* — so the first thing this round did was
+ask which other scripts that describes. Six: `chain_sim`, `haul_sim`, `integrated`,
+`curse_test`, `disturbance`, `curator_attention`, between them the authority for most of the
+numbers in `DESIGN`, `ECONOMY` and `DECISIONS`, and not one assertion among them. · The one
+that had rotted was the worst possible one. `chain_sim.py` — the file that answers *is the
+contract chain achievable?* — was still running the quota curve `ECONOMY` §4 **replaced eleven
+rounds ago**, and printing a **1% night four**: the finding that caused the replacement,
+presented as if it were still the answer. Anyone who ran it would have concluded the chain is
+unwinnable. Pointed at the calibrated curve it reproduces the documented table almost exactly —
+94 / 73 / 56 / 42 against a published 95 / 73 / 55 / 40 — and the superseded curve is kept and
+still printed, because `ECONOMY` §4 records the failure on purpose. · `sim/check_claims.py`
+now restates **20 conclusions** as assertions, each tagged with the document that quotes it.
+The sims are seeded per trial, so it is reproducible rather than statistical: a failure means
+the model moved, not that the dice did. Ten seconds to run, and wired into `check_counts.py`
+so the number in the README cannot drift either. · **Ten injections, seven caught — and the
+three misses were the round's real content.** Halving the labour cost of a two-man piece moves
+the chain by 2%, because what binds a night is *trips*, not people; ECONOMY §3 justifies the
+two-man band partly on a cost the model can barely see. Zeroing the curse fees outright leaves
+the optimum cap exactly where it was, which is R9's finding restated — a *linear* van-side
+cost cannot move a *multiplicative* decision, and that is the entire argument for D-11's ruin
+tail. Both are now claims in their own right, so the checker states what the models cannot see
+rather than leaving it as a blind spot. The third miss, a three-minute apex load, corresponds
+to no claim any document makes, and I did not invent one to cover it. · One more inert lever
+found on the way: in `disturbance.py` only the **first** lit wing is measurable. The lever
+policy switches a wing back off as soon as Disturbance passes 78, and with the levers off the
+night saturates at the 100 ceiling where nothing extra can register. The claim is scoped to
+what the model can actually see, and says so. · Regression: claims 20/20, drift 166/166, QA
+171/171.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

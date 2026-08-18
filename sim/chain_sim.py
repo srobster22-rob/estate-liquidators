@@ -58,7 +58,15 @@ CLASS_DATA = {
     "apex":    (5.0, 1, 1.18, 20.0),   # dolly 2.2 m/s, plus loading a piano onto it
 }
 
-QUOTAS = [2000, 4500, 8000, 15000]
+# ECONOMY.md 4's calibrated curve. This file ran the SUPERSEDED one for eleven
+# rounds after the curve was replaced, and so answered "is the chain achievable?"
+# with a 1% night four - which is the finding that CAUSED the replacement, printed
+# as though it were still true. A sim quoted by a document has to be the same
+# arithmetic the document is describing.
+QUOTAS = [7500, 9000, 10750, 12500]
+# Kept, and still printed: ECONOMY 4 records it as an instructive failure - napkin
+# arithmetic that assumed earnings scale with the quota. Three formalities and a wall.
+SUPERSEDED_QUOTAS = [2000, 4500, 8000, 15000]
 VAN_BY_NIGHT = [14, 15, 17, 19]        # shelving upgrades, ceiling 20
 
 
@@ -243,6 +251,8 @@ if __name__ == "__main__":
     show(chain_trial(crew=4), "QUOTA CURVE — crew 4, selective crew")
     show(chain_trial(crew=4, picky=False),
          "QUOTA CURVE — crew 4, indiscriminate crew (best of every shelf, no threshold)")
+    show(chain_trial(crew=4, quotas=SUPERSEDED_QUOTAS),
+         "THE SUPERSEDED CURVE — kept because the failure is instructive (ECONOMY 4)")
 
     print("\n\nIS THE APEX WORTH ITS FIVE SLOTS?")
     print("-" * 78)
@@ -255,7 +265,7 @@ if __name__ == "__main__":
         print(f"{a['night']:<7}{a['mean']:>13,.0f}{b['mean']:>13,.0f}"
               f"{d:>10.1%}{a['apex']:>9.0%}")
 
-    print("\n\nCREW SIZE — night 4 ($15,000, van 19)")
+    print(f"\n\nCREW SIZE — night 4 (${QUOTAS[-1]:,}, van {VAN_BY_NIGHT[-1]})")
     print("-" * 78)
     print(f"{'crew':<7}{'mean $':>12}{'p10 $':>12}{'pass':>9}{'apex':>8}")
     for crew in (2, 3, 4, 5, 6):
