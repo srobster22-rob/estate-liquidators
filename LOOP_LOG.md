@@ -1023,6 +1023,29 @@ body inside it — and it still ran, and still passed, because nothing called it
 Constraining the argument list to contain no braces or semicolons fixes it. · Regression: C#
 122/122, QA 204/204, drift 178/178, claims 25/25.
 
+R50 · **"The first thing to check in playtest", checked.** `DESIGN` §5 has carried a sentence
+since the first draft: *death always costs the crew more than the ghost gives back — that
+margin is what keeps this honest, and it's the first thing to check in playtest.* Nobody had
+checked it, and until R44 nobody could: it needs somebody playing, dying, and then playing on
+as a ghost. · The policy can do all three now. A `killPlayer` fixture collects you at sixty
+seconds of two hundred and ten, and the ghost gets a policy of its own — knock to pull the
+hunt off whoever is carrying, which is what Knock is *for*. Paired on identical houses, the
+same night twice. · **The margin is not there.** A ghost that does nothing costs the crew
+**$550 ± 563** a night. A ghost that spends its Static recovers most of it, and the chain-wide
+figure then reads **−$328 ± 550 over 96 pairs** and **−$19 ± 574 over 80**. Two readings that
+far apart are themselves the answer: against a ~$4,700 night, dying is close to free. · The
+first measurement said −$550 and I nearly wrote that down as the number. It was a ghost
+averaging **0.3 knocks a night**, because I had it wait for `curator.who` to be set — which
+only happens while the Curator is hunting a named body. That tests a ghost that is not trying.
+Given a policy that watches the Curator and the crew instead, it knocks two to five times a
+night and takes the margin apart. · So the sentence is not wrong, it is **unverified**, and
+the word doing the work is *always*. What survives cleanly is the claim §5.1 actually guards —
+dying is never worth doing *on purpose* — and that is what `--death --check` asserts, because
+a check on a quantity that bounces around zero is a flake with a spec reference. · Worth
+re-measuring at the ship night before anyone concludes anything: a death at minute one of
+twelve costs far more of a night than one at second sixty of two hundred and ten. · Regression:
+QA 204/204, C# 122/122, drift 178/178, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

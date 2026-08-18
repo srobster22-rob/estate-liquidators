@@ -280,6 +280,22 @@ thing that matters. Their body is now a two-man object someone has to argue abou
 always costs the crew more than the ghost gives back — that margin is what keeps this honest,
 and it's the first thing to check in playtest.
 
+> **Measured, R50** (`proto3d/play.mjs --death`, paired nights on identical houses, the player
+> collected at 60 seconds of 210). **The margin is not there at any sample size this build can
+> afford.** A ghost that does nothing costs the crew $550 ± 563 a night. A ghost that spends
+> its Static pulling the hunt off whoever is carrying recovers most of that, and the chain-wide
+> figure then reads **−$328 ± 550 over 96 pairs and −$19 ± 574 over 80** — an estimate
+> bouncing around zero against a ~$4,700 night. Two readings that far apart *are* the finding:
+> dying is close to free here.
+>
+> That does not make the sentence above wrong; it makes it unverified, and the word doing the
+> work is *always*.
+>
+> What survives cleanly is the claim §5.1 actually guards — **dying is never worth doing on
+> purpose** — and that is what the check asserts. The margin is worth re-measuring at the ship
+> night: a death at minute one of twelve costs far more of a night than a death at second sixty
+> of two hundred and ten.
+
 ### Why this doesn't enable griefing
 
 Every hostile use of Static is self-punishing. Knock the vase off the shelf and you've cost

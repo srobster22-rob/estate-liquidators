@@ -45,7 +45,7 @@ const has = k => argv.includes(k);
 // ---------------------------------------------------------------- the policy
 // Runs INSIDE the page, because it has to see the world every frame. Everything
 // it uses is a hook qa.mjs already relies on; nothing here reaches past __g.
-const POLICY = ({ seconds, verbose, off }) => {
+const POLICY = ({ seconds, verbose, off, dieAt }) => {
   const can = v => !(off || []).includes(v);
   const g = window.__g;
   const log = [];
@@ -119,7 +119,7 @@ const POLICY = ({ seconds, verbose, off }) => {
   };
 
   let phase = "SEEK", target = null, hidTill = -1, appraised = 0;
-  let took = 0, delivered = 0, idle = 0;
+  let took = 0, delivered = 0, idle = 0, knocks = 0;
   // A scan is 3.2 seconds out of 210. Twelve of them is a fifth of the night,
   // which is about as much looking as hauling can pay for.
   const SCAN_BUDGET = 12, WORTH_IT = 220, CURSE_CAP = 3;
@@ -131,6 +131,7 @@ const POLICY = ({ seconds, verbose, off }) => {
   for (let frame = 0; frame < seconds * 60; frame++) {
     const st = g.state();
     if (st.over) break;
+    if (dieAt && st.t >= dieAt && !st.dead) { g.killPlayer(); say("died"); }
     const me = g.raw();
 
     // 0. The apex run. On a late night the biggest single thing in the house is a
@@ -178,6 +179,37 @@ const POLICY = ({ seconds, verbose, off }) => {
         if (walkToward(v.x, v.z) < 1.4) { stop(); }
         g.step(1, 1 / 60); continue;
       }
+    }
+
+    // 0b. Dead. DESIGN 5.1 makes this a role change rather than a spectator seat:
+    // the ghost can see the Curator at all times and has Static to spend. What a
+    // ghost is FOR is pulling the hunt off whoever is carrying - a knock is a
+    // noise at your location, which is the cheapest way to do that.
+    if (st.dead) {
+      if (st.collecting > 0) { g.step(1, 1 / 60); continue; }
+      const cur = g.curator();
+      // `who` is only set while it is hunting a named body. A ghost waiting for
+      // that does nothing all night - the first measurement of this averaged 0.3
+      // knocks a night, which tests a ghost that is not trying. What a ghost can
+      // actually see is the Curator and the crew, so: pull it off whoever is
+      // carrying and closest to it, whenever the night is at PURSUE or worse.
+      const carrying = g.crew().filter(c => c.alive && c.holding);
+      const hunted = g.crew().find(c => c.name === cur.who)
+        || (st.dist >= 60 && carrying.length
+            ? carrying.sort((x, y) => dist2(cur.x, cur.z, x.x, x.z)
+                                    - dist2(cur.x, cur.z, y.x, y.z))[0]
+            : null);
+      if (hunted && st.static >= 1 && dist2(cur.x, cur.z, hunted.x, hunted.z) < 16) {
+        // Stand somewhere the Curator will hear, away from whoever it is on.
+        const away = { x: (hunted.x + cur.x) / 2 + (cur.x - hunted.x),
+                       z: (hunted.z + cur.z) / 2 + (cur.z - hunted.z) };
+        if (dist2(me.x, me.z, away.x, away.z) > 2.0) walkToward(away.x, away.z);
+        else { stop(); if (g.knock()) { knocks++; say(`knocked to pull it off ${cur.who}`); } }
+      } else if (g.flickerLights && g.lights().lit.length && st.static >= 1) {
+        g.flickerLights();
+      }
+      g.step(1, 1 / 60);
+      continue;
     }
 
     // 1. Hunted and holding: hide. DESIGN 8.1 is the whole answer to COLLECT.
@@ -280,7 +312,7 @@ const POLICY = ({ seconds, verbose, off }) => {
   const c = g.contract();
   return { banked: st.banked, quota: c.quota, met: c.last ? c.last.met : null,
     net: c.last ? Math.round(c.last.net) : null, over: st.over, why: st.why,
-    dead: st.dead, dist: st.dist, appraised, took, delivered, idle,
+    dead: st.dead, dist: st.dist, appraised, took, delivered, idle, knocks,
     stuckFor, at: g.pos(), log };
 };
 
@@ -361,6 +393,67 @@ async function main() {
       + `${(Math.round(rate(played.map(p => p.met)) * 100) + "%").padStart(14)}`
       + `${(carried + " taken").padStart(11)}${(scans + " scans").padStart(10)}`
       + `${(died + " died").padStart(9)}`);
+  }
+  if (has("--death")) {
+    // DESIGN 5: "Death always costs the crew more than the ghost gives back -
+    // that margin is what keeps this honest, and it's the first thing to check in
+    // playtest." Nobody has ever checked it. Paired, on identical houses: the same
+    // night played through, against the same night with the player collected at
+    // sixty seconds and playing on as a ghost.
+    console.log(`\nWHAT DYING COSTS  -  ${trials} nights a night, paired`);
+    console.log("-".repeat(74));
+    console.log("night".padEnd(7) + "alive".padStart(10) + "died at 60s".padStart(13)
+      + "the margin".padStart(12) + "95% band".padStart(10) + "knocks".padStart(8));
+    const all = [];
+    for (let n = 0; n < 4; n++) {
+      const diffs = [], knocks = [];
+      let a = 0, d = 0;
+      for (let t = 0; t < trials; t++) {
+        const sd = (t + 1) * 104729 + n;
+        const setup = ([s2, nn]) => {
+          window.__g.newContract(s2); window.__g.regen(s2, nn); window.__g.setNight(nn);
+        };
+        await page.evaluate(setup, [sd, n]);
+        const alive = await page.evaluate(POLICY, { seconds: 210, verbose: false });
+        await page.evaluate(setup, [sd, n]);
+        const died = await page.evaluate(POLICY,
+          { seconds: 210, verbose: false, dieAt: 60 });
+        a += alive.net ?? 0; d += died.net ?? 0;
+        diffs.push((died.net ?? 0) - (alive.net ?? 0));
+        knocks.push(died.knocks);
+        all.push((died.net ?? 0) - (alive.net ?? 0));
+      }
+      const mean = diffs.reduce((x, y) => x + y, 0) / diffs.length;
+      const sd2 = Math.sqrt(diffs.reduce((x, y) => x + (y - mean) ** 2, 0)
+        / Math.max(1, diffs.length - 1));
+      console.log(String(n + 1).padEnd(7)
+        + ("$" + Math.round(a / trials).toLocaleString()).padStart(10)
+        + ("$" + Math.round(d / trials).toLocaleString()).padStart(13)
+        + ((mean >= 0 ? "+" : "") + Math.round(mean).toLocaleString()).padStart(12)
+        + ("+-" + Math.round(2 * sd2 / Math.sqrt(diffs.length))).padStart(10)
+        + (knocks.reduce((x, y) => x + y, 0) / knocks.length).toFixed(1).padStart(8));
+    }
+    const m = all.reduce((x, y) => x + y, 0) / all.length;
+    const sd3 = Math.sqrt(all.reduce((x, y) => x + (y - m) ** 2, 0) / (all.length - 1));
+    const se = sd3 / Math.sqrt(all.length);
+    console.log("-".repeat(74));
+    console.log(`  over the whole chain, dying is worth ${Math.round(m)} `
+      + `+-${Math.round(2 * se)} a night`);
+    if (has("--check")) {
+      // DESIGN 5 makes two claims and only one of them is checkable at this
+      // sample size. "Death always costs the crew more than the ghost gives back"
+      // is true in DIRECTION on every night and does not clear its band over the
+      // chain - a competent ghost recovers most of it, which is a finding rather
+      // than a failure. What IS checkable, and is the thing 5.1 actually guards
+      // against, is the other side: dying must never be worth doing on purpose.
+      const ok = m < 2 * se;
+      console.log(ok
+        ? `  OK   dying is not worth doing on purpose (${Math.round(m)} +-${Math.round(2 * se)})`
+        : "  FAIL  the crew are BETTER OFF with somebody dead - 5.1's premise is gone");
+      if (!ok) { await browser.close(); process.exit(1); }
+    }
+    await browser.close();
+    return;
   }
   if (has("--ablate")) {
     // What each verb is actually worth, in the build, to somebody playing it.

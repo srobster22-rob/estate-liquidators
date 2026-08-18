@@ -10,6 +10,7 @@ below is a plan — it's a statement of what you can run today, updated whenever
 node proto3d/play.mjs              # watch a competent player play one night
 node proto3d/play.mjs --trials 16 --check   # what a player is worth, asserted
 node proto3d/play.mjs --ablate --trials 20  # what each verb is worth, paired (~25 min)
+node proto3d/play.mjs --death --trials 20 --check   # what dying costs the crew
 node proto3d/qa.mjs               # 204 checks, the real build in headless Chromium
 python3 sim/check_counts.py --qa 204   # the numbers in these docs are the real ones
 python3 sim/csharp_core.py        # 122 values, translated out of the C# and executed
@@ -67,7 +68,7 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
 |---|---|---|
 | **Multiplayer** | all of it | The prototype is one player and three haul bots. This is still the largest gap by far — but the *arithmetic* of it no longer is. `sim/netcode.py` puts `TECH-SPEC` B1–B4 on a clock with a delay in it: the hot potato survives (0.13s of wrong target at 120ms, against 2.5s to be caught), the pickup race only flips in a photo finish, the pry disagrees with the victim's own screen 3.6% of the time, and the two-man drift tolerance is entirely spent on latency before the physics gets any of it. What needs four people is the *feel*. |
 | **Proximity voice** | `AUDIO-SPEC` §2 | Needs two clients. Phase 0's exit criterion. The *ladder* is built and on the same attenuation model — what is missing is a second mouth. |
-| A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. |
+| A body left behind costing you a hauler | `DESIGN` §5 | Works for crew. A single-player prototype has no way to be short a *player*, so your own body is an attention magnet and nothing else. What R50 *can* now measure is the other half — what dying costs, against what the ghost gives back — and the answer is that there is barely a margin at all: **−$328 ± 550** over 96 paired nights and **−$19 ± 574** over 80. Dying is close to free in this build. |
 | Unity / Steam | `BUILD-PROMPT` | The C# core exists and is pinned to the sims; there is no Unity project. |
 
 ## Known limits of the checks

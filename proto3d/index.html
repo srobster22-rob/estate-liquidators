@@ -2612,6 +2612,12 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     lost:[...lostCrew], recovered:[...recoveredTonight]}),
   killCrew:i=>{const a=crew[i]; if(!a||!a.alive) return null;
     a.hits=1; contact(a); return {name:a.name, alive:a.alive};},
+  // The same door, for the player: DESIGN 5 says death always costs the crew more
+  // than the ghost gives back, and calls that margin "the first thing to check in
+  // playtest". Checking it needs a way to die on demand.
+  killPlayer:()=>{if(player.dead) return null;
+    player.hits=1; contact(player); return {dead:player.dead,
+      collecting:+player.collecting.toFixed(1)};},
   apex:()=>{const list=items.filter(x=>!x.gone); const it=list.find(i=>i.klass==="cart");
     return it?{i:list.indexOf(it), value:it.value, room:roomAt(it.hx,it.hz)?.id,
       tier:it.tier}:null;},
