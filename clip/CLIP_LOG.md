@@ -164,9 +164,31 @@ constantly (FIXATE, arriving at a plinth, the clip's own staging pins). On dista
 genuinely still, then starts moving again mid-stride. · Deliberately under-animated: §5 says
 never a monster run, and the horror is that it isn't hurrying.
 
+C14 · Asked a question nobody had: **the clip has only ever been rendered at one seed.** The
+staging picks its hero out of whatever the estate rolled, so the shot could have been leaning
+on facts true of exactly one roll — and any tuning change, or any change to item generation,
+re-rolls it. Built `clip/seedcheck.mjs`, which boots the staging across N seeds and reports
+what the shot gets without capturing a frame: seconds per seed instead of four minutes.
+· **Found it on the first run: 1 seed in 10 shipped a `$41 CLEAN` hero.** The picker asked for
+"best tainted piece at tier ≤ 1" and fell through to `items[0]` when the roll had none — and
+`items[0]` is just whatever the generator emitted first. The clip would have built, passed all
+eleven gates, and shown a HUD reading `CARRYING $41` under a caption about greed. **A fallback
+that shrugs is worse than no fallback**, because it turns a missing precondition into a silently
+different film. Replaced it with an explicit ranking — grade first (tainted, then malignant,
+then clean), value second — inside a size cap.
+· **And the size cap was stale.** It was 1 because C3–C8 were fighting cargo that sat in the
+middle of the frame; C10 moved the cargo to the corner and nobody went back to re-ask. Tier 2
+now costs far less screen than it used to, so the cap is 2, which roughly triples the pool the
+picker chooses from. Verified with a full render at seed 20268725 — a $1150 tier-2 hero, all
+eleven gates green, and the bigger box still sits out of the way. **Every constraint downstream
+of a fix is worth re-deriving after the fix.**
+· 20/20 seeds now stage the shot. One of them has no tainted piece small enough to carry and
+gets a clean hero; that is a legitimate roll rather than a fault, and the checker reports it
+instead of failing — which was a bug in my own criteria, caught by looking at what it flagged.
+
 ---
 
-## Next step (what C14 should attack, ranked)
+## Next step (what C15 should attack, ranked)
 
 1. **Someone has to listen to it.** G11 proves the bed is audible; it cannot prove it is good,
    and the mix has never been heard by a human. The knock and hiss levels in particular were

@@ -25,7 +25,8 @@ node clip/build.mjs --skip-render  # re-grade / re-gate the frames you already h
 | `render.mjs` | Playwright capture pass → `clip/build/frames/*.png` + `trace.json`. |
 | `audio.mjs` | The synthesized bed, written sample by sample. No dependencies. |
 | `encode.mjs` | Frames + bed → H.264/AAC mp4. Also holds the grade. |
-| `check.mjs` | The ten gates. Exit code 1 if any fails. |
+| `check.mjs` | The eleven gates. Exit code 1 if any fails. |
+| `seedcheck.mjs` | Boots the staging across N estate rolls to prove the shot is not a coincidence. No render; seconds per seed. |
 | `build.mjs` | All of the above, in order. |
 
 ## How the capture is deterministic

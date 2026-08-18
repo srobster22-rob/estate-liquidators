@@ -59,8 +59,8 @@ in exactly one place.
 | # | Beat | t | What's on screen | Caption |
 |---|---|---|---|---|
 | 1 | `hook` | 0.0–3.0 | Dark landing. The Curator crosses the deep doorway, small, unremarked; the camera pans off it onto a piece on the floor. | **"the monster in this house isn't hunting you"** |
-| 2 | `bait` | 3.0–6.0 | Camera settles on the piece. Prompt reads `UNAPPRAISED`, then at 4.95 s the value resolves to `$678 TAINTED`. | **"it's hunting whatever you're picking up"** |
-| 3 | `take` | 6.0–9.0 | Grab at 6.35 s. HUD flips to `CARRYING $678 TAINTED`. Camera straightens toward the way home. | — (let the HUD talk) |
+| 2 | `bait` | 3.0–6.0 | Camera settles on the piece. Prompt reads `UNAPPRAISED`, then at 4.95 s the value resolves — `$678 TAINTED` at the default seed, whatever the roll gives at another. | **"it's hunting whatever you're picking up"** |
+| 3 | `take` | 6.0–9.0 | Grab at 6.35 s. HUD flips to `CARRYING $678 TAINTED` (value and grade are the roll's, not the script's). Camera straightens toward the way home. | — (let the HUD talk) |
 | 4 | `mark` | 9.0–13.0 | Disturbance jumps to COLLECT. Flashlight range drops 19 m → 11.5 m and the cone narrows, the held piece goes frost-blue, `IT IS COMING FOR YOU`. | **"your light dims when it's you"** |
 | 5 | `blind` | 13.0–17.5 | It is walking to the plinth the whole time and **you cannot see it** — a dimmed light does not reach that far. A nervous sweep between the dark doorway and the near corner; the only thing that comes back is a wall at ~2.5 m. | **"and now you can't see it coming"** → **"it's walking to the shelf you took it from"** |
 | 6 | `drop` | 17.5–21.0 | Drop at 17.95 s. Aggro clears in one frame, the light snaps back to full range — and it is standing on the plinth, between you and the door. | **"so put it down —"** → **"or hand it to your friend"** |
@@ -131,6 +131,15 @@ remaining changes are taste.
 | G9 rules-true | the sim state trace shows: `marked` is true only while holding; the Curator's pursuit goal is one fixed point, the item's home, and it reaches it (< 1.6 m); `marked` goes false within 1.5 s of the drop |
 | G10 no drift | `python3 sim/check_drift.py` still passes — the clip harness never edits a tuning constant |
 | G11 audible | through the phone-speaker model, the audio is ≥ −40 dBFS RMS, and full-band true peak ≤ −0.5 dBFS |
+
+**The shot must survive a re-roll.** `node clip/seedcheck.mjs 20` boots the staging across
+twenty seeds and reports what the shot actually gets — hero grade, tier, value, the dressing
+piece, and whether any other item is close enough to steal the interaction prompt. It is not
+one of the eleven gates because it needs no render and answers a different question: not "is
+this build good" but "is this build a coincidence". Run it after any change to item generation,
+tuning, or the staging block in `shots.js`. A *clean* hero is a legitimate roll and is reported
+rather than failed — some estates hold no tainted piece small enough to carry, the captions
+never mention the grade, and the greed hook rides on the number.
 
 G5 and G6 read the encoded video back as greyscale, so they judge what a viewer sees after the
 grade, not what the capture pass intended. They read it at *different resolutions on purpose*:

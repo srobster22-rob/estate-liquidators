@@ -35,9 +35,18 @@ const CROSS    = {x: 37.9, z0: -3.4, z1: -0.4}; // the hook: it crosses the deep
 // enough that a dimmed flashlight still lights it. Beat 5 has nothing else to see.
 const DRESS    = {x: 36.2, z: -2.6};
 
-// Highest tier the hero piece may come from. Drives its on-screen size far more than
-// its value; ?heroTier= on the render URL is only for A/B looks, not for shipping.
-const HERO_TIER = Number(new URLSearchParams(location.search).get("heroTier") || 1);
+// Highest tier the hero piece may come from - a size cap, not a value cap, since
+// proto3d sizes items by tier (0.26 / 0.34 / 0.42 m half-extent). It was 1 while the
+// cargo sat in the middle of the frame; C10 moved it to the corner, so tier 2 costs
+// far less screen than it used to and buys a much deeper pool to pick from.
+const HERO_TIER = Number(new URLSearchParams(location.search).get("heroTier") || 2);
+
+// Preference order for the hero piece: tainted first (the HUD grade the clip is
+// written around), then malignant, then clean, and within a grade the biggest number.
+// C14: the old picker asked for "best tainted at tier <= 1" and fell through to
+// items[0] when the roll had none - which on 1 seed in 10 staged a $41 CLEAN piece and
+// silently shipped a different clip. Never let a fallback be a shrug.
+const GRADE_RANK = {tainted: 2, malignant: 1, clean: 0};
 
 let hero = -1, dressIx = -1;
 
@@ -49,16 +58,13 @@ const S = {
   setup(C){
     const d = C.d();
 
-    // Hero item: the most valuable tainted piece the seed rolled, moved onto the
-    // plinth by the door. Tainted so the HUD shows a grade worth being nervous about.
-    // Tier is capped for SIZE, not value. proto3d sizes items by tier (0.26 / 0.34 /
-    // 0.42 m half-extent) and hangs the carried one 1.15 m from the eye, so tier is
-    // really "how much of a 41 deg-wide frame does the cargo eat": 13 deg at tier 1,
-    // 16.5 at tier 2, 20 at tier 3. See CLIP_LOG C8 for what that trade actually
-    // looked like on screen.
+    // Hero item: the best piece the seed rolled inside the size cap, moved onto the
+    // plinth by the door. Ranked by grade first so the HUD reads a grade worth being
+    // nervous about, then by value.
     const items = d.list();
-    const pick = items.filter(i => i.grade === "tainted" && i.tier <= HERO_TIER)
-                      .sort((a, b) => b.value - a.value)[0] || items[0];
+    const pick = items.filter(i => i.tier <= HERO_TIER)
+                      .sort((a, b) => (GRADE_RANK[b.grade] - GRADE_RANK[a.grade]) ||
+                                      (b.value - a.value))[0];
     hero = pick.ix;
     d.stage(hero, PLINTH.x, PLINTH.z);
 
