@@ -1677,21 +1677,47 @@ you fear were true, not just whether the number is non-zero.
 from pre-meta archives. Both work by **fighting** convergence rather than relying on it, so
 they're features for a game that already works, not a bet.
 
+**R12 · Fixing the prompt's shape.** Collapsed three overlapping "search first" clauses into
+one, and — the substantive change — replaced them with **`### The order of work`**:
+*generate → search → run → rank*. The prompt had only ever described the first and last of
+those, which is precisely how it put two shipped games in its own top five. Added the
+instrumentation warning as a first-class clause, naming the three flavours found here
+(tautology, units, wrong question) because they need different defences.
+
+*Honest accounting:* I set out to dedupe and the file got **longer**, 332 → 369 lines. The
+duplication did go, but a whole missing phase went in. That's the right trade and not the one
+I predicted, so it's recorded as it happened rather than as a tidy win.
+
+### What twelve rounds actually changed
+
+Worth stating plainly, because it isn't what I'd have guessed at R1. **The concepts were never
+the bottleneck.** Generating forty was the cheapest part and the least valuable. What moved the
+document:
+
+| Round type | Concepts removed | Cost |
+|---|---|---|
+| Generating (R1, R2) | — | most of the writing |
+| Searching (R3–R6) | 7 killed, 1 recovered | ~2 hours |
+| Auditing rejections (R5) | 0, but 6 reasons wrong | 6 searches |
+| Running tests (R7, R9, R11) | 1 killed, 1 retuned, 1 passed | 3 sims |
+
+**Every clause the prompt gained came from an embarrassment, not from an insight** — and the
+two most valuable clauses in it now (search before ranking, distrust your own instrument) could
+not have been written before running it. That is the argument for the loop, and also the
+argument for stopping: the prompt is now good enough that the next real gain is a human doing
+one of the two tests below, not another round of this.
+
 ### Next, ranked
 
-1. **Extend the regression guard to `ghosts.py`.** Three sims now, one guarded set of numbers
-   across two of them. The Ghosts figures are quoted in a tombstone and a graveyard entry and
-   are currently unprotected.
-2. **Dedupe the prompt.** Five separate clauses now say some version of "search first." One
-   should say it and the rest should point at it — `IMPROVE-PROMPT.md`'s "prefer deleting
-   duplication to adding features," applied to the prompt itself.
-3. **Add "run the test" to the prompt as a phase.** Eleven rounds in, the document's most
-   valuable outputs have come from searching and running, not from generating — and the prompt
-   still only describes generating. It should say: generate, search, then *run the cheapest
-   test you can before ranking anything*.
-
-**And the thing no loop reaches:** #47 Reservation and #16's fifty dossiers both need a human.
-They are the two highest-value items in the document and simulation cannot touch either.
+1. **The two tests that need a person.** #47 Reservation's twenty-person negotiation and #16's
+   fifty dossiers read by a friend. Both are the highest-value items in the document; neither
+   is reachable by simulation, and no further looping changes that.
+2. **A fourth kill test — #42 Throng.** `EMPTY` on search, and "can a player deliberately steer
+   500 boids" is measurable without a human. The last concept here a sim can meaningfully touch.
+3. **Re-run the whole prompt from scratch**, with all twelve rounds of clauses in place, and see
+   what a first draft looks like now. That's the only remaining check on whether the prompt
+   actually improved or just accumulated scar tissue — and it's the honest test of the whole
+   exercise.
 
 Left rough deliberately: #40 still needs two hours of playing *Shelf by Shelf*, which no
 amount of looping substitutes for.

@@ -88,7 +88,48 @@ there, are at the bottom.
 > If one of these is genuinely the right answer for a slot, use it and defend it in one line.
 > The ban is on arriving there by default.
 >
-> ### Then rank them — by cost to disprove, not by excitement
+> ### The order of work — this matters more than anything else in this prompt
+>
+> **Generate → search → run → rank.** The first version of this prompt had only the first and
+> last of those, and it confidently put two shipped games in its own top five. The middle two
+> steps are where every finding worth having came from.
+>
+> **1. Generate**, to the shape and quotas above. Mark every "nothing like this exists" as the
+> guess it is.
+>
+> **2. Search every card. Before ranking, not after.** Five minutes each. A search is the only
+> instrument here that can *kill* a concept outright, so it strictly dominates every prototype
+> at any price, and a ranking built on unchecked cards ranks against data you already know is
+> unreliable. Three things follow:
+> - **Assume taken until shown otherwise.** "I found nothing" after a real search is a finding.
+>   "I can't recall anything" is not.
+> - **Resolve a named suspicion with the cheapest instrument that can resolve it** — not with
+>   the test your ranking criterion happens to prefer. A card labelled "probably occupied" once
+>   got ranked fifth here, above the five-minute check that would have settled it.
+> - **The search designs, it doesn't only filter.** It routinely hands you the mechanism. One
+>   concept came back from the graveyard because a search surfaced a developer post-mortem
+>   explaining why the naive version fails and what the fix is — the rejection had been right
+>   about the naive build and wrong about the concept.
+>
+> **3. Run the cheapest test on your top few. Before ranking, not after.** You wrote a one-day
+> test on every card; run some. This is not optional polish — of three concepts tested here,
+> **one died outright, one only worked in 4 of 72 parameter settings, and the one that passed
+> turned up a mechanic nobody had designed.** A ranking of untested concepts is a ranking of
+> guesses about guesses.
+>
+> **And expect your test to be wrong before the concept is.** This is the most transferable
+> thing in this document and the least intuitive: across three test harnesses here, **five
+> separate measurements were confidently wrong before they were right** — two tautologies that
+> could only ever return a pass, a parameter specified three orders of magnitude too small to
+> affect anything, a sentinel value scored as a success, and a criterion that asked whether a
+> number moved when it should have asked how many states it moved between. Every one produced a
+> quotable, confident, false result. None was catchable by re-running anything. So: for each
+> measurement, ask **what it would look like if the thing you fear were true.** If it can't look
+> like that, it isn't a test.
+>
+> **4. Then rank**, on what survived — which will not be what you started with.
+>
+> ### Ranking — by cost to disprove, not by excitement
 >
 > Give me a **top eight, ordered**, and state the ordering criterion you used. Default to this
 > one: *how cheaply can I find out I'm wrong?* An idea that can be killed in an afternoon
@@ -135,24 +176,6 @@ there, are at the bottom.
 >   the tail is the standard failure and I will see it immediately. If quality genuinely runs
 >   out, **stop at the number where it broke and say so** — thirty-one real concepts and an
 >   honest note beats forty with nine of them furniture.
-> - **Search before you rank, not after.** You are working from memory of the games market and
->   that memory has a cutoff, so every "nothing like this exists" is a guess. Mark the guesses —
->   and then **check all of them against a store before the ranking section, not after it.**
->   Five minutes per card. This is not a nicety: a search is the only instrument here that can
->   *kill* a concept outright, so it strictly dominates every prototype, and a ranking built on
->   unchecked cards will confidently put a shipped game in its top five. That has already
->   happened once with this prompt — the card was even labelled "probably occupied" and got
->   ranked above the thing that would have settled it. **Resolve a named suspicion with the
->   cheapest instrument that can resolve it, before ranking, not with the test the ranking
->   prefers.**
-> - **Assume taken until shown otherwise.** Write the cards with a pessimistic prior. "I found
->   nothing" after a real search is a finding; "I can't recall anything" is not.
-> - **Search first because it designs, not only because it filters.** Searching before you
->   write the card doesn't just tell you whether to bother — it routinely hands you the
->   mechanism. One concept in this prompt's output came back from the graveyard because the
->   search surfaced a developer post-mortem explaining *why* the naive version fails and what
->   the fix is; the rejection had been correct about the naive version and wrong about the
->   concept. A card written after its search is a better card, not just a safer one.
 > - **Distrust a concept that has no problem.** If you can't name the thing that's hard about
 >   building it, you haven't thought about building it. Every card should have some friction
 >   visible.
@@ -248,24 +271,36 @@ Gives the model a way to be honest that isn't failure, which is the only way you
 out of a quantity target. Without it, the instruction "give me 40" is an instruction to
 produce 40 things regardless of whether 40 exist.
 
-**"Search before you rank, not after."**
-Started as `ITERATION-PROMPT.md`'s separate-verified-from-inferred clause, then earned a
-stronger form the hard way. Flagging a claim as unverified is *not enough*: when all 46 cards
-from the first run were finally searched, **seven were games that already existed — and three
-of those seven were cards the document had itself labelled "probably occupied" and then ranked
-highly.** The suspicion was recorded and changed nothing, because the ranking criterion (cost
-to disprove) only sees tests the document proposes, and a store search isn't one of them. It
-should be.
+**"Generate → search → run → rank."**
+Began as `ITERATION-PROMPT.md`'s separate-verified-from-inferred clause and earned each later
+step the hard way. Flagging a claim as unverified is *not enough*: when all 46 cards from the
+first run were finally searched, **seven were games that already existed — three of them on
+cards this document had itself labelled "probably occupied" and then ranked highly.** The
+suspicion was recorded and changed nothing, because the ranking criterion only sees tests the
+document proposes, and a store search wasn't one of them. One kill — a salvage game — had its
+recommended *weekend prototype* already on Steam, shipped five months earlier.
 
-A search can kill a concept outright in five minutes, which no prototype can do at any price.
-Two of the seven kills sat in the top eight, and one of them — a salvage game — had its
-recommended *weekend prototype* already on Steam, shipped five months earlier. Putting the
-search after the ranking buys nothing and ranks against data you know is unreliable.
+The corollary is the pessimistic prior. A 15% kill rate overall and 25% inside the most-
+considered section says the correlation runs the wrong way from comfort: **the more thought a
+concept received, the likelier it was to already exist**, because attention and market
+obviousness are the same signal.
 
-The corollary is the pessimistic prior. A 15% kill rate across the whole set and 25% inside
-the most-considered section says the correlation runs the wrong way from comfort: **the more
-thought a concept received, the likelier it was to already exist**, because attention and
-market obviousness are the same signal.
+Running the tests was added last and immediately justified itself: of the first three run, one
+concept died outright, one survived in only 4 of 72 parameter settings, and the one that passed
+produced a mechanic nobody had designed. **A search finds what exists; only running finds what
+doesn't work.** The `EMPTY` cards — where a search returns nothing — are precisely the ones a
+search cannot help with, and they are also the most tempting.
+
+**"Expect your test to be wrong before the concept is."**
+The least intuitive clause here, and the one I'd keep if I could keep only one. Five separate
+measurements across three test harnesses were confidently wrong before they were right, and
+every one produced a quotable false result that re-running would never have caught. They came
+in three flavours worth naming, because they need different defences: **tautologies** (a check
+whose construction guaranteed a pass), **units** (a parameter three orders of magnitude too
+small to influence anything, which made a whole sweep meaningless), and — hardest — **a wrong
+question**, where the code was correct and the criterion asked whether a number moved when it
+should have asked how many states it moved between. The defence is the same in all three
+cases: for each measurement, state what it would look like if the thing you fear were true.
 
 **"Don't design the sequel."**
 Progression systems are the most pleasant thing to write and the least informative. They also
@@ -307,26 +342,28 @@ which is the exact artefact it was written to avoid.
 
 ## The output
 
-`GAME-CONCEPTS.md` is this prompt, run once, then corrected twice and fully verified. **39 live
-concepts** out of 46 written, nine families, a ranked top eight, and a graveyard of thirty-two.
+`GAME-CONCEPTS.md` is this prompt, run once and then corrected over twelve rounds. **39 live
+concepts** out of 47 written, nine families, a ranked top eight, a graveyard of thirty-three,
+and three kill tests actually executed in `concepts-sim/`.
 
-Every correction is recorded there rather than tidied away, because they're worth more than
-the list:
+Every clause above exists because the output embarrassed the previous version of this file:
 
-1. **The action quota** above. Family 9 was added when the self-audit caught that forty
-   concepts had no twitch in any of them — and the interesting part was that the cause was the
-   scoring function, not taste.
-2. **The verification clause** above. All 46 cards were then searched. **Seven were games that
-   already exist**, three of them on cards already flagged as probably-occupied and ranked
-   highly anyway, two of them inside the top eight. Ninety minutes of searching outperformed
-   every prototype the document proposed.
+1. **The action quota** — added when the self-audit caught that forty concepts had no twitch
+   in any of them. The interesting part was the *cause*: the scoring function, not taste.
+   Ranking by cost-to-disprove structurally suppresses bets about feel.
+2. **Search before ranking** — added after all 46 cards were searched and **seven were games
+   that already exist**, two of them inside the top eight.
+3. **Check your rejections** — added after auditing the graveyard found six wrong reasons and
+   one belief that had killed two concepts while setting the kill condition on a third.
+4. **Run the tests, and distrust them** — added after three were run: one concept died, one
+   survived in 4 of 72 settings, and five of the harnesses' own measurements were wrong first.
 
-**And one thing the prompt got wrong that is still unfixed.** Family 9 now sits at four
-against a floor of six. Two replacement concepts were generated and searched *before* being
-written up; both died. Action is dense enough that this prompt may not be able to satisfy its
-own action quota — which is better information than three padded cards, and is why the breach
-is documented rather than papered over. If you hit the same wall, do the same thing.
+**Two things the prompt still can't fix, both stated rather than papered over.** The action
+quota is breached — Family 9 sits at three against a floor of six, and both replacement
+concepts were searched before being written and died. Action is dense enough that this prompt
+may not be able to satisfy its own quota. And the two highest-value items left in the output
+need a human: a twenty-person negotiation test and fifty text dossiers read by a friend. No
+amount of looping reaches either.
 
 That's the loop this prompt is for: run it, find where the output is thin or wrong, **fix the
-prompt**, re-run only the affected part, and write down the breaches you can't fix. Every
-clause above exists because the output embarrassed the previous version of this file.
+prompt**, re-run only the affected part, and write down the breaches you can't fix.
