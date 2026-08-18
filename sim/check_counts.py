@@ -41,6 +41,14 @@ def main():
         return 2
     real_drift = int(m.group(1))
 
+    cs = subprocess.run([sys.executable, str(ROOT / "sim/csharp_core.py")],
+                        capture_output=True, text=True)
+    mcs = re.search(r"C# CORE\s+-\s+(\d+) values", cs.stdout)
+    if not mcs:
+        print("could not read a value count from csharp_core.py")
+        return 2
+    real_cs = int(mcs.group(1))
+
     claims = subprocess.run([sys.executable, str(ROOT / "sim/check_claims.py")],
                             capture_output=True, text=True)
     mc = re.search(r"CLAIM CHECK\s+-\s+(\d+) documented", claims.stdout)
@@ -58,6 +66,11 @@ def main():
             if n != real_drift:
                 fails.append(f"{name} says {n} constants, check_drift.py reports {real_drift}")
 
+    for name, nums in documented(r"csharp_core\.py\s+#\s+(\d+) values").items():
+        for n in nums:
+            if n != real_cs:
+                fails.append(f"{name} says {n} C# values, csharp_core.py reports {real_cs}")
+
     for name, nums in documented(r"check_claims\.py\s+#\s+(\d+) documented").items():
         for n in nums:
             if n != real_claims:
@@ -70,7 +83,7 @@ def main():
                     if n != qa:
                         fails.append(f"{name} says {n} checks, the harness reports {qa}")
 
-    print(f"COUNT CHECK  -  drift {real_drift}, claims {real_claims}"
+    print(f"COUNT CHECK  -  drift {real_drift}, claims {real_claims}, C# {real_cs}"
           + (f", qa {qa}" if qa else ""))
     print("-" * 74)
     if not fails:

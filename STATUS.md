@@ -12,6 +12,7 @@ node proto3d/play.mjs --trials 16 --check   # what a player is worth, asserted
 node proto3d/play.mjs --ablate --trials 20  # what each verb is worth, paired (~25 min)
 node proto3d/qa.mjs               # 204 checks, the real build in headless Chromium
 python3 sim/check_counts.py --qa 204   # the numbers in these docs are the real ones
+python3 sim/csharp_core.py        # 91 values, translated out of the C# and executed
 python3 sim/check_drift.py        # 178 constants agree across four implementations
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
 python3 sim/netcode.py            # what B1-B4 promise, on a clock with a delay in it
@@ -78,8 +79,13 @@ dotnet run --project unity/tests/CoreTests   # 31 assertions — needs a .NET SD
   player doing anything at all.
 - **The audio checks assert the mixing rule, not sound.** Headless Chromium has no audio
   clock, so the graph's gain values stay at zero however correct the mix is.
-- **The C# suite has not run since R14** — no .NET SDK in the container this loop runs in.
-  `check_drift.py` is currently the only thing holding the C# port to the canonical numbers.
+- **The C# suite still has not run** — no .NET SDK here — but the port is no longer held only
+  by its literals. `sim/csharp_core.py` translates the subset of C# these three files use into
+  Python, executes it, and compares 91 values against `tuning.json`. Ten deliberate breakages
+  of the port's *arithmetic* — hearing radius as a sum, the ratchet unclamped, the ruin tail
+  linear, retrieval swapped between PURSUE and COLLECT — are all caught, and **nine of the ten
+  pass `check_drift.py`**, which is what "pinned to the sims" was actually worth. What remains
+  unchecked is that the C# compiles, its types are right, and `unity/tests` passes.
 - **The salt line cannot deny a route.** V3 requires every wing to survive losing any one
   portal, so a house that passes the level contract always has a way round. Salting a doorway
   costs the Curator a detour. That is the same V3/V4 tension R1 found and it is not a bug in

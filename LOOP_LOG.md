@@ -955,6 +955,33 @@ Also built, small and long-listed: **the van's interior light is now the cursed-
 ride home is a thing you look at rather than a number in a corner (`DESIGN` §4.2). ·
 Regression: QA 204/204, drift 178/178, claims 25/25.
 
+R47 · **The C# port was held by its literals and nothing else.** `STATUS.md` has carried the
+same line since R14 — *the C# suite has not run, and `check_drift.py` is the only thing
+holding the port to the canonical numbers* — and the second half of that sentence was doing
+much more work than it looked. `check_drift.py` pins **constants**. A port that keeps every
+number and changes a `*` to a `+`, or drops the clamp off the ratchet, or swaps which tier
+retrieves at 10% and which at 25%, passes every check this project has. · `sim/csharp_core.py`
+translates the subset of C# these three files actually use — expression-bodied members, switch
+expressions, `is A or B` patterns, ternary chains — into Python, executes it, and compares
+**91 values** against `tuning.json`. It is not a compiler and does not pretend to be: it fails
+loudly on anything it cannot read, because a translator that silently skips a method is worse
+than no translator. · **Ten injections into the port's arithmetic, ten caught — and nine of
+the ten pass `check_drift.py`.** Hearing radius as a sum instead of a product; walking becoming
+a sustained source; impulse and sustained gain applied the wrong way round; the cursed floor no
+longer scaling with how many are aboard; the ratchet unclamped so a long night runs past its
+ceiling; the ruin tail linear; a two-man piece costing one slot; retrieval swapped between
+PURSUE and COLLECT. Only the one that moved a literal was visible before today. · **Two holes
+in the checker itself, both found by making it refuse to be vague.** The first version listed
+which members it expected to read and said nothing about the rest, so an injected
+`public static float Whatever(...)` sailed through: a member the translator *can* read but the
+comparison never *calls* looks covered and is not. Requiring every translated function to be
+either compared or listed with a reason immediately found two that were already in that state
+— `DecayPerSecond` and `Tier`, the latter being the entire tier ladder of `DESIGN` §6.5, never
+once evaluated. Both are compared now, on both sides of all three thresholds. · And the second
+one was mine: the `Floor` comparison recomputed the formula in Python instead of calling the
+translated function, which is how a checker comes to agree with itself. · Regression: C# 91/91,
+QA 204/204, drift 178/178, claims 25/25.
+
 ---
 
 ## Next step (paste the loop prompt to resume)

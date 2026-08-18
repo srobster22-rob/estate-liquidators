@@ -25,6 +25,7 @@ What runs, and how to check it:
 node proto3d/play.mjs --trials 16 --check   # a competent player plays it, and it is asserted
 node proto3d/qa.mjs               # 204 checks driving the real build in headless Chromium
 node proto3d/qa.mjs -r 5           # run it five times; anything flaky is reported as flaky
+python3 sim/csharp_core.py        # 91 values, translated out of the C# and executed
 python3 sim/check_drift.py        # 178 constants agree across four implementations
 python3 sim/check_counts.py --qa 204   # the numbers in these docs are the real ones
 python3 sim/check_claims.py       # 25 documented conclusions, re-derived from the sims
