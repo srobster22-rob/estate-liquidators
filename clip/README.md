@@ -19,7 +19,7 @@ node clip/build.mjs --skip-render  # re-grade / re-gate the frames you already h
 
 | File | What it is |
 |---|---|
-| `CLIP-SPEC.md` | The contract: format, beat sheet, sound, the ten gates, and what the build found out about the game. **Read this first.** |
+| `CLIP-SPEC.md` | The contract: format, beat sheet, sound, the eleven gates, and what the build found out about the game. **Read this first.** |
 | `director.js` | Injected before the prototype's own script. Seeded RNG, a virtual clock, the caption overlay, and the camera helpers. |
 | `shots.js` | The performance — the only file that decides what the clip *shows*. |
 | `render.mjs` | Playwright capture pass → `clip/build/frames/*.png` + `trace.json`. |

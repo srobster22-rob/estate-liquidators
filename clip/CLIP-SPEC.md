@@ -85,11 +85,10 @@ punchline lands on its own.
 
 ## 4. Sound
 
-No recorded assets exist yet, so the bed is synthesized in `encode.mjs` from ffmpeg
-primitives. It is a placeholder with a defined replacement path, not a soundtrack.
-
-It is written sample by sample in `clip/audio.mjs` rather than as an ffmpeg filter graph,
-because the payoff at 18.0 s is a *hole* in the sound and holes need sample accuracy.
+No recorded assets exist yet (`AUDIO-SPEC.md` describes the mix that will replace this
+wholesale), so the bed is synthesized in `clip/audio.mjs` — sample by sample into a PCM buffer,
+not as an ffmpeg filter graph, because the payoff at 18.0 s is a *hole* in the sound and holes
+need sample accuracy. It is a placeholder with a defined replacement path, not a soundtrack.
 
 | Layer | Source | Behaviour |
 |---|---|---|
