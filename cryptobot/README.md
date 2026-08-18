@@ -250,8 +250,41 @@ Four of eight markets reproduce across independent trajectories, and 7 of 16 exa
 genomes now repeat — up from 1 of 7. **Every market found is genuinely structured;
 across all five seeds no decoy was ever selected.**
 
-Vault burns rose to 6-10 per seed against a budget of 25, which is now the binding
-constraint rather than the hurdle.
+The bots are not marginal admissions. Across all 30 winners:
+
+```
+vault Sharpe    min 1.77 | median 4.07 | max 5.82     none below 1.0
+confirmed at    look 1 through look 41                evenly spread, not front-loaded
+```
+
+That spread of confirmation looks is the signature of the ordering fix. Under the
+old gate every winner arrived in the first half of its run; now they arrive
+throughout, because arrival time no longer decides anything.
+
+### The new strategy families did earn their place after all
+
+An earlier conclusion in this project's history was that seven added strategy
+families "were used and earned nothing" — they reached the gauntlet and died there.
+That was the broken gate too, not the families. Against the corrected one:
+
+```
+ema_cross      13     original zoo
+kalman_trend    5     second wave
+donchian        5     original zoo
+ts_momentum     2     original zoo
+vol_squeeze     2     second wave
+ensemble        2     original zoo
+multi_tf        1     second wave
+```
+
+**Second-wave families account for 8 of 30 winners (27%)**, with `kalman_trend` — the
+Kalman filter written specifically because the synthetic trend markets are generated
+from a hidden AR(1) drift it is the optimal estimator for — the second most
+productive strategy in the zoo.
+
+The two families built to fail still find nothing: `seasonality` and `volume_thrust`
+produced **zero** winners, exactly as designed. That tripwire held while everything
+around it changed.
 
 ---
 
