@@ -371,3 +371,52 @@ three situations that need different responses — under-weighted (turn the knob
 **Left rough on purpose:** four independent texts is better than two and still not many, and
 all four were written by the same person for this purpose. Real transcripts would be better
 evidence than any of them.
+
+---
+
+R9 · Tried to replace the last lexicon with a structural signal, failed, and kept the failure.
+Then built the project's first ground-truth measurement. 4 new tests, 273 total.
+· **One negative result worth more than the feature would have been:**
+
+**(a) `topic_onset` passed every mechanical check and made the output worse.** The idea: a
+self-contained clip *starts* something rather than continuing it, measurable as lexical
+novelty against the preceding transcript — with content words identified from the document's
+own frequency distribution rather than a stopword list, so no new word list to curate. Its
+first parameterisation barely discriminated (sd 0.05–0.09), so I swept its parameters the way
+R3 swept `pacing`'s weight, to tell "wrong parameters" from "wrong idea". Discrimination rose
+monotonically as the opening window narrowed and the lookback lengthened; at window=5 and
+unlimited lookback it reached sd 0.18 — better than `closure`, a feature already kept.
+
+Then it passed everything: not inert on 2 of 4 texts, not beyond rescue on any, max
+correlation 0.30 so not redundant, boundary sensitivity untouched at 100%. **And it broke a
+quality test.** On `rambling.srt` the published clip moved off *"Everybody's rollback plan is
+fiction"* to start after it — because "rollback" and "plan" had appeared earlier, so the
+punchline scored as *low novelty*.
+
+That is not a tuning problem, it is the idea being wrong: **the best line in a talk is usually
+a restatement.** A speaker sets something up and then delivers the crystallised version, which
+by design reuses the setup's vocabulary. Novelty penalises precisely the sentences worth
+clipping. Deleted.
+
+The methodological finding is the valuable part, and it is uncomfortable: five rounds of
+mechanical checks — discrimination, redundancy, ablation, weight rescue, parameter influence,
+boundary sensitivity — **all approved a feature that degraded the output**. The only thing
+that caught it was a hand-written quality anchor from R8 asserting that one specific sentence
+should be found. The harness cannot replace human judgement about at least a few examples; it
+can only stop that judgement being quietly overwritten.
+
+**(b) Built the project's first ground truth.** `talk_auto.vtt` is `talk.srt` re-rendered as
+ASR, so the punctuated twin's sentence boundaries are an answer key for what the unpunctuated
+one inferred from silence. Measured: **68% recall, 42% precision** — the auto path finds two
+thirds of the real boundaries and invents roughly an equal number of false ones. That
+over-segmentation is the direct cause of auto clips that open mid-sentence, and it is now a
+number rather than a suspicion.
+
+Also measured across the pair: **5 of 5 clean picks have an overlapping auto counterpart, 81%
+mean temporal overlap.** The two regimes largely agree on which moments matter and disagree on
+where sentences begin, which is a much more precise statement of the auto path's weakness than
+"less reliable".
+
+**Deliberately not tuned.** The 42% could be raised by moving the gap threshold, and I did not
+touch it: the reference is synthetic, so optimising against it would fit `make_auto.py` rather
+than speech. That is the R2/R7 mistake, and this time it was avoidable in advance.

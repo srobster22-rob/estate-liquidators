@@ -470,3 +470,42 @@ absence of effect is a fact about the model.
 
 **Falsified by:** a large, genuinely diverse corpus of real transcripts on which a pattern
 still never fires. That would be evidence about the pattern rather than about the fixtures.
+
+---
+
+### D-27 · The validation harness does not replace human judgement about examples · FIRM
+
+At least one hand-written assertion per text names a specific sentence the scorer must find.
+They are the slowest tests to write and the only ones that have caught a whole class of error.
+
+**Why:** at R9 a new feature (`topic_onset`) passed *every* mechanical check the project had
+accumulated — discrimination, redundancy, ablation, weight rescue, parameter influence, and
+boundary sensitivity, across four texts — and still made the output worse, dropping the single
+best line in a fixture. Every check was measuring a property that was genuinely fine. None of
+them could ask "is this clip better?", which was the only question that mattered.
+
+The harness's job is to stop human judgement being *overwritten silently*, not to substitute
+for it.
+
+**Falsified by:** a quality anchor that fails for a reason the mechanical checks would also
+catch, repeatedly — which would suggest the anchors are redundant rather than load-bearing.
+
+---
+
+### D-28 · Lexical novelty is not a proxy for self-containment · FIRM
+
+Rejected: scoring a clip by how much new vocabulary its opening introduces.
+
+**Why:** it inverts on exactly the sentences worth clipping. A speaker sets an idea up and
+then delivers the crystallised version, so the quotable line is a *restatement* and reuses the
+setup's words. Measured at R9 on `rambling.srt`, the feature moved the published clip off
+*"Everybody's rollback plan is fiction"* precisely because "rollback" and "plan" had appeared
+earlier.
+
+Worth recording rather than silently dropping, because the idea is appealing and will occur to
+someone again: continuing-a-thought and restating-a-thought look identical to a novelty
+measure, and only one of them is a defect.
+
+**Falsified by:** a formulation that separates the two — for instance novelty weighted by
+whether the *sentence structure* is declarative and self-standing rather than by vocabulary
+alone.

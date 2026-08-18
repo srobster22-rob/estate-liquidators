@@ -64,6 +64,7 @@ PUNCTUATION_FLOOR = 0.02
 CAPITAL_FLOOR = 0.80
 
 _SENTENCE_END = re.compile(r"[.!?…]+[\"')\]]*$")
+_TOKEN = re.compile(r"[^\w']+")
 
 #: Trailing dots that are not sentence ends. Deliberately short — a false
 #: negative here merely fails to split, which the gap rule usually catches anyway.
@@ -127,6 +128,15 @@ class Segmentation:
 
     gap_threshold: float = DEFAULT_GAP
     """The silence threshold actually used — adaptive unless explicitly overridden."""
+
+    frequency: dict[str, int] = field(default_factory=dict)
+    """How often each token appears in this transcript.
+
+    Used to tell content words from function words *without a stopword list*:
+    the words a document leans on hardest are its own background. Deriving that
+    from the text rather than hardcoding it is the same move as `adaptive_gap`,
+    and for the same reason — one fixed list cannot fit every speaker or subject.
+    """
 
     def __len__(self) -> int:
         return len(self.utterances)
@@ -280,10 +290,16 @@ def segment(
             current = []
             pending_gap = gap_after
 
+    frequency: dict[str, int] = {}
+    for word in words:
+        token = _TOKEN.sub("", word.text.lower())
+        if token:
+            frequency[token] = frequency.get(token, 0) + 1
+
     starts = [u.words[0].text[:1] for u in utterances if u.words and u.words[0].text]
     alpha = [c for c in starts if c.isalpha()]
     capitalised = bool(alpha) and sum(1 for c in alpha if c.isupper()) / len(alpha) >= CAPITAL_FLOOR
-    return Segmentation(utterances, punctuated, capitalised, gap)
+    return Segmentation(utterances, punctuated, capitalised, gap, frequency)
 
 
 def candidates(

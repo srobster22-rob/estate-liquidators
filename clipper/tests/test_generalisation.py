@@ -140,6 +140,52 @@ class RobustnessAcrossTextsTests(unittest.TestCase):
                 self.assertTrue(inert, f"{name} has no dead air but pacing changed the output")
 
 
+class GroundTruthTests(unittest.TestCase):
+    """The paired fixture is the only answer key this project has."""
+
+    def setUp(self):
+        self.clean = S.segment(T.load(FIXTURES / "talk.srt"))
+        self.auto = S.segment(T.load(FIXTURES / "talk_auto.vtt"))
+
+    def test_the_measure_is_exact_against_itself(self):
+        perfect = V.boundary_agreement(self.clean, self.clean)
+        self.assertEqual((perfect.precision, perfect.recall), (1.0, 1.0))
+
+    def test_the_auto_path_finds_most_real_boundaries(self):
+        """Recall floor. Under-segmentation was R7's failure — 20 utterances
+        against 62 — and this is what stops it coming back quietly."""
+        self.assertGreater(V.boundary_agreement(self.auto, self.clean).recall, 0.55)
+
+    def test_the_auto_path_over_segments_and_we_know_by_how_much(self):
+        """Measured at R9: 42% precision. Recorded rather than tuned away — the
+        reference is synthetic, so optimising against it would fit the generator
+        rather than speech."""
+        agreement = V.boundary_agreement(self.auto, self.clean)
+        self.assertGreater(agreement.precision, 0.30)
+        self.assertLess(agreement.precision, 0.90)
+
+    def test_both_regimes_choose_the_same_moments(self):
+        """Same content, two caption formats: the picks should largely agree.
+
+        Measured at R9: 5 of 5 clean picks have an overlapping auto counterpart,
+        81% mean temporal overlap.
+        """
+        def picks(seg):
+            return SC.select(SC.rank(S.candidates(seg), seg), count=5)
+
+        clean, auto = picks(self.clean), picks(self.auto)
+        overlaps = []
+        for c in clean:
+            best = max(
+                (max(0.0, min(c.end, a.end) - max(c.start, a.start)) / c.duration
+                 for a in auto),
+                default=0.0,
+            )
+            overlaps.append(best)
+        self.assertGreaterEqual(sum(1 for o in overlaps if o > 0.5), 4)
+        self.assertGreater(sum(overlaps) / len(overlaps), 0.6)
+
+
 class LexiconEvidenceTests(unittest.TestCase):
     """A pattern that fires on no fixture is untested, not useless."""
 

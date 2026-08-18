@@ -12,7 +12,7 @@ python3 -m clipper.cli 'https://youtu.be/…' -n 5     # download first (see cav
 
 ## Status
 
-**Round 8. Works end to end, on local files.** 269 tests pass, including real ffmpeg encodes
+**Round 9. Works end to end, on local files.** 273 tests pass, including real ffmpeg encodes
 against synthesised source media. The download path is written but **unverified** — the
 sandbox this was built in has no route to YouTube, so `sources.py` is the one module nobody
 has watched work.
@@ -58,6 +58,24 @@ after measurement showed they could not change the output — see `LOOP_LOG.md` 
 | `pacing` | There's a long silence to sit through in the middle. |
 
 Tune with `--weights weights.json`; `score.Weights` writes the file for you.
+
+## The one piece of ground truth
+
+`talk_auto.vtt` is `talk.srt` re-rendered as ASR — same words, same timings — which makes the
+punctuated twin an **answer key** for what the unpunctuated one has to infer from silence
+alone. It is the only place in this project where a measurement can be scored right or wrong
+rather than merely compared.
+
+| Auto path vs its punctuated twin | |
+|---|---|
+| sentence boundaries found (recall) | 68% |
+| inferred boundaries that are real (precision) | 42% |
+| clean picks with an overlapping auto counterpart | 5 of 5 |
+| mean temporal overlap of those picks | 81% |
+
+So the two regimes largely agree on *which moments matter*, and disagree on exactly where the
+sentences start. The 42% is deliberately recorded rather than tuned away: the reference is
+synthetic, and optimising a threshold against it would fit the generator rather than speech.
 
 ## The fixtures deliberately disagree with each other
 
@@ -170,7 +188,7 @@ Needs Python 3.11+, `ffmpeg` and `ffprobe` on PATH, and `yt-dlp` only for URLs.
 
 ```bash
 cd clipper
-python3 -m unittest discover -s tests -t .      # 269 tests, ~42s
+python3 -m unittest discover -s tests -t .      # 273 tests, ~50s
 python3 -m clipper.cli --help
 ```
 

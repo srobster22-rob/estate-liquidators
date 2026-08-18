@@ -277,6 +277,71 @@ def parameter_sensitivity(
 
 
 # --------------------------------------------------------------------------
+# Boundary agreement against a reference
+# --------------------------------------------------------------------------
+
+#: How far an inferred boundary may sit from a true one and still count.
+BOUNDARY_TOLERANCE = 0.5
+
+
+@dataclass
+class Agreement:
+    """How well one segmentation reproduces another's boundaries."""
+
+    matched: int
+    inferred: int
+    reference: int
+
+    @property
+    def precision(self) -> float:
+        """Share of inferred boundaries that are real. Low means over-segmenting."""
+        return self.matched / self.inferred if self.inferred else 0.0
+
+    @property
+    def recall(self) -> float:
+        """Share of real boundaries found. Low means under-segmenting."""
+        return self.matched / self.reference if self.reference else 0.0
+
+    @property
+    def f1(self) -> float:
+        p, r = self.precision, self.recall
+        return 2 * p * r / (p + r) if p + r else 0.0
+
+
+def boundary_agreement(
+    inferred: Segmentation,
+    reference: Segmentation,
+    *,
+    tolerance: float = BOUNDARY_TOLERANCE,
+) -> Agreement:
+    """Score a segmentation against a trusted one covering the same speech.
+
+    This is the project's only *ground truth*. It exists because `talk_auto.vtt`
+    is `talk.srt` re-rendered as ASR — same words, same timings — so the
+    punctuated twin's sentence boundaries are the answer key for what the
+    unpunctuated one had to infer from silence alone.
+
+    Measured at R9: **42% precision, 68% recall.** The auto path finds two thirds
+    of the real boundaries and invents an equal number of false ones, which is
+    the concrete cost of having no punctuation, and the direct cause of clips
+    that open mid-sentence there.
+
+    Deliberately *not* used to tune the gap threshold. The reference is
+    synthetic, so optimising against it would fit the generator rather than
+    speech — the mistake R2 and R7 each paid a round for.
+    """
+    truth = [u.start for u in reference.utterances]
+    if not truth:
+        return Agreement(0, len(inferred.utterances), 0)
+    matched = sum(
+        1
+        for u in inferred.utterances
+        if min(abs(u.start - t) for t in truth) <= tolerance
+    )
+    return Agreement(matched, len(inferred.utterances), len(truth))
+
+
+# --------------------------------------------------------------------------
 # Weight rescue
 # --------------------------------------------------------------------------
 
