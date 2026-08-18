@@ -1654,7 +1654,9 @@ certified. And the *binding* margin is **+0.060, on cost stress** — which is t
 same 0.00-0.07 band every single-instrument strategy sits in (F29).
 
 So the answer to F30's constructive question is sharper than yes or no.
-**Aggregation buys statistical significance, not margin.** sqrt(K) legs make the
+**Aggregation buys statistical significance, not margin.** (F35 then tested this
+directly by sweeping costs, and it holds: a 10x cost cut takes the binding margin
+from +0.048 to +1.179.) sqrt(K) legs make the
 edge unmistakable — the permutation and replication questions stop being close —
 but costs scale with K linearly, so the binding constraint simply moves from "is
 this real" to "does it survive frictions", and lands in exactly the same place.
@@ -1667,6 +1669,56 @@ quarantined out of the search — so nothing here is deflated for the six
 configurations tried, let alone for a real hunt. The quarantine therefore stays:
 what has been shown is that a cross-sectional strategy *can* clear the gates a
 basket harness can run, not that one has been certified.
+
+---
+
+## F35 · The ceiling really is the cost floor — and the test that showed it first said the opposite, because of a flaw in the measure
+
+F34 ended on a claim worth attacking: the lab's ceiling is not about strategy
+design, it is the cost floor, and margin at the binding gate is set by costs
+alone. That predicts something sharp — cut the costs and the binding margin must
+move a long way.
+
+**First run, and it looked falsified.** Sweeping the leg cost model down 10x, the
+reported tightest margin was **0.040 / 0.056 / 0.039** at 1x / 0.3x / 0.1x. Flat.
+Read at face value that says the binding margin is invariant to costs and F34 is
+wrong.
+
+**It was the measure, not the claim.** The reported minimum was taken across all
+five gates, and one of them cannot score high. A "must exceed X" gate has an
+unbounded margin — a strategy twice as good scores twice as far above it. The
+control is "must stay *below* X", so its margin is `tolerance - |statistic|` and
+**caps at the tolerance itself**, here 0.087. Once the cost gate stopped binding,
+the minimum simply fell through to the control and sat at its ceiling. Comparing
+capped and uncapped margins with a plain `min` is apples-to-oranges, and it
+produced a number that looked like a finding.
+
+Taking the minimum over the uncapped gates and reporting the control alongside —
+the same treatment G6's headroom already gets — the sweep reads:
+
+| leg costs | binding gate | margin | XS1 | XS2 | XS3 (capped) | XS4 | XS5 |
+|---|---|---|---|---|---|---|---|
+| 1.0x *(as shipped)* | XS4-stress | **+0.048** | +1.08 | +0.80 | +0.04 | +0.05 | +0.94 |
+| 0.3x | XS4-stress | **+0.971** | +1.48 | +1.24 | +0.06 | +0.97 | +1.40 |
+| 0.1x | XS4-stress | **+1.179** | +1.54 | +1.36 | +0.04 | +1.18 | +1.52 |
+
+**A 10x cost cut buys a 25x increase in binding margin, and the binding gate never
+changes.** For this strategy class the margin is a cost story and nothing else
+measured touches it. F34's reading stands.
+
+**Two things to carry forward.** The capped-margin flaw applies to G3 in the main
+gauntlet too: its margin caps at `max_control_alpha_sr = 0.30`. That has not
+mattered there because the Sharpe gates' margins are far *below* 0.30, so the
+control has never been the minimum — but it is a live trap for anyone who tightens
+that tolerance, which is exactly what made it bite here.
+
+And this is the third time in two sessions that a plausible result turned out to
+be an artefact of how it was measured rather than of what was measured: the median
+control estimator (F33), the unpaired regression test (F31), and now the capped
+margin. All three produced numbers that were reportable-looking and wrong. The
+common shape is a summary statistic applied across things that are not
+commensurable — instances with different noise, arms with different seeds, gates
+with different geometry.
 
 ---
 

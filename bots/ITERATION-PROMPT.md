@@ -78,12 +78,13 @@ Roughly in order of how much they would change what the lab can claim:
    Aggregation buys significance, not margin. If that generalises, the lab's
    ceiling is the cost floor and nothing about strategy *design* moves it, which
    would be the most useful thing this repository knows.
-   To attack it: the prediction is that margin at the binding gate is
-   approximately invariant to strategy class and set by `cost / edge` alone (F24's
-   plane). Test it by taking a class with a genuinely different cost profile — low
-   turnover, or an instrument with a tenth of the spread — and checking whether
-   the binding margin moves. If it does not, the claim is strong. If it does, the
-   ceiling is not the cost floor and F34's reading is wrong.
+   **Attacked and it held (F35):** a 10x cost cut takes the binding margin from
+   +0.048 to +1.179 with the binding gate unchanged. What is *not* yet done is the
+   same sweep on a single-instrument strategy. If the ceiling is really the cost
+   floor for every class, the shipped catalogue's 1 distinct strategy should
+   become many at a tenth of the spreads — and if it does not, the two classes are
+   limited by different things and F34/F35 generalise less than they appear to.
+   That is a cheap run and the obvious next thing.
 3. **The permutation null's block length vs the bot's holding horizon.** F12 is
    now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar

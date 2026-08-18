@@ -250,8 +250,13 @@ The *binding* margin is **+0.060, on costs**, which is the same 0.00–0.07 band
 single-instrument strategy sits in. **Aggregation buys statistical significance,
 not margin**: sqrt(K) legs make the edge unmistakable, but costs scale with K
 linearly, so the binding constraint moves from "is this real" to "does it survive
-frictions" and lands in exactly the same place. The lab's ceiling is the cost floor,
-and it is the same floor for every strategy class tried.
+frictions" and lands in exactly the same place.
+
+Tested directly by sweeping the cost model (F35): a **10x cost cut takes the
+binding margin from +0.048 to +1.179**, and the binding gate never changes. For
+this class the margin is a cost story and nothing else measured touches it — so
+the lab's ceiling is the cost floor, and it is the same floor for every strategy
+class tried.
 
 The `xs_*` primitives stay tier 5, unreachable by any expansion: five gates is not
 eight, nothing here is deflated for the six configurations tried, and clearing the

@@ -253,20 +253,44 @@ def ladder(bspec, g: Genome | None = None, lb: int = 5, n_repl: int = 12,
     rows.append(("XS5-stress-pool", st, cfg.min_stress_alpha_sr,
                  st >= cfg.min_stress_alpha_sr and st_pos >= cfg.min_stress_pos_frac))
 
+    # CAPPED VERSUS UNCAPPED MARGINS, WHICH ARE NOT COMPARABLE.
+    #
+    # A "must exceed X" gate has an unbounded margin: a strategy twice as good
+    # scores twice as far above it. A "must stay below X" gate does not — the
+    # control's margin is `tolerance - |statistic|`, so even a perfectly clean
+    # strategy caps out at the tolerance itself, here 0.087. Taking a plain
+    # minimum across both kinds therefore reports the control almost whenever it
+    # is scaled tightly, regardless of the strategy.
+    #
+    # This was caught by a result that looked like a finding: sweeping costs down
+    # 10x moved the cost margin from +0.05 to +1.18 while the reported "tightest
+    # margin" sat at 0.040 / 0.056 / 0.039, which reads as "the binding margin is
+    # invariant to costs" and is really "the control margin cannot exceed 0.087".
+    # So the headline minimum is taken over the uncapped gates and the control is
+    # reported alongside, the same way G6's headroom is reported alongside rather
+    # than mixed in.
+    CAPPED = {"XS3-control"}
+    stages = [{"name": n, "stat": round(v, 4), "threshold": round(t, 4),
+               "passed": bool(ok), "margin": round(v - t, 4),
+               "margin_capped": n in CAPPED}
+              for n, v, t, ok in rows]
     out = {"basket": bspec.name, "describe": g.describe(), "n_legs": bspec.n_legs,
-           "control_tolerance": round(ctrl_tol, 4),
-           "stages": [{"name": n, "stat": round(v, 4), "threshold": round(t, 4),
-                       "passed": bool(ok), "margin": round(v - t, 4)}
-                      for n, v, t, ok in rows]}
-    out["passed"] = all(s["passed"] for s in out["stages"])
-    out["tightest_margin"] = round(min(s["margin"] for s in out["stages"]), 4)
+           "control_tolerance": round(ctrl_tol, 4), "stages": stages}
+    out["passed"] = all(s["passed"] for s in stages)
+    uncapped = [s for s in stages if not s["margin_capped"]]
+    out["tightest_margin"] = round(min(s["margin"] for s in uncapped), 4)
+    out["tightest_gate"] = min(uncapped, key=lambda s: s["margin"])["name"]
+    out["control_margin"] = round(
+        next(s["margin"] for s in stages if s["name"] == "XS3-control"), 4)
     if verbose:
         for s in out["stages"]:
             print(f"  [{'PASS' if s['passed'] else 'FAIL'}] {s['name']:<16} "
                   f"{s['stat']:+.3f} vs {s['threshold']:+.3f}  "
                   f"margin {s['margin']:+.3f}", flush=True)
-        print(f"  => {'PASSED' if out['passed'] else 'REJECTED'} the five-gate subset, "
-              f"tightest margin {out['tightest_margin']:+.3f}")
+        print(f"  => {'PASSED' if out['passed'] else 'REJECTED'} the five-gate subset; "
+              f"tightest uncapped margin {out['tightest_margin']:+.3f} at "
+              f"{out['tightest_gate']}, control margin {out['control_margin']:+.3f} "
+              f"(capped at {out['control_tolerance']:+.3f})")
     return out
 
 
