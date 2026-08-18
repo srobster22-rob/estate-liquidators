@@ -175,6 +175,7 @@ python bots/run.py verify <bot_id>       # re-run the full gauntlet
 
 python bots/run.py decay                 # the survival curve over fade rates (F23)
 python bots/run.py costgrid              # sweep edge and cost independently (F24)
+python bots/run.py costfloor             # how much alpha is behind the cost floor (F36)
 python bots/run.py loop --catalogue hl=0.25x --state bots/state/fast.json
 python bots/run.py loop --bar-scale 1.2         # a harder gauntlet (>=1.0 only)
 python bots/run.py revalidate                   # re-judge the ledger at the closing bar
@@ -261,6 +262,16 @@ class tried.
 The `xs_*` primitives stay tier 5, unreachable by any expansion: five gates is not
 eight, nothing here is deflated for the six configurations tried, and clearing the
 gates a harness can run is not a certification.
+
+**"Nothing certified here" hides two opposite situations** (`run.py costfloor`,
+F36). Re-pricing each family at a tenth of its costs: `eq_intraday_15m` goes from
++0.00 to **+0.84** and `eq_smallcap_daily` from +0.00 to +0.44 — a real edge behind
+a wall of frictions — while `rates_daily` goes +0.00 to +0.04 and `fx_major_daily`
+sits at **+0.17 at every cost level**, unchanged, against an oracle ceiling of 1.26.
+Identical at shipped costs, opposite conclusions. Families clearing the bar go from
+1 of 8 to 4 of 8. That turns some dead ends into a specific claim — *the edge is
+there and the spread is eating it* — which is a different thing to tell someone
+than "we found nothing".
 
 **The false-positive rate is measured, not argued.** `run.py fpr --repeats 10`
 points ten independent searches at a structureless market: 20,000 candidates, 137

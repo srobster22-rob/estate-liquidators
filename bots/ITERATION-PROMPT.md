@@ -78,13 +78,19 @@ Roughly in order of how much they would change what the lab can claim:
    Aggregation buys significance, not margin. If that generalises, the lab's
    ceiling is the cost floor and nothing about strategy *design* moves it, which
    would be the most useful thing this repository knows.
-   **Attacked and it held (F35):** a 10x cost cut takes the binding margin from
-   +0.048 to +1.179 with the binding gate unchanged. What is *not* yet done is the
-   same sweep on a single-instrument strategy. If the ceiling is really the cost
-   floor for every class, the shipped catalogue's 1 distinct strategy should
-   become many at a tenth of the spreads — and if it does not, the two classes are
-   limited by different things and F34/F35 generalise less than they appear to.
-   That is a cheap run and the obvious next thing.
+   **Attacked twice.** It held for the cross-sectional book (F35: a 10x cost cut
+   moves the binding margin +0.048 -> +1.179) and only partly for single
+   instruments (F36: families clearing the bar go 1 of 8 -> 4 of 8, but
+   `fx_major_daily` is flat at +0.17 at every cost level and the catalogue's one
+   certifying family releases just +0.12). So costs bind almost everywhere, and
+   how much is waiting behind them varies by family.
+
+   What that opens: `run.py costfloor` says `eq_intraday_15m` has **+0.84** behind
+   its spread and `eq_smallcap_daily` **+0.44**. Neither has ever certified
+   anything. Point the search at a cheap-execution variant of those two and see
+   whether the gauntlet certifies a *different kind* of strategy than
+   commodity mean-reversion — that would be the first real diversification this
+   lab has produced, and the cost sweep says the edge is there to find.
 3. **The permutation null's block length vs the bot's holding horizon.** F12 is
    now the sharpest open problem: a genuine edge on `eq_largecap_daily` fails G5
    because that market's 6-bar reversion halflife sits inside the null's 5-bar

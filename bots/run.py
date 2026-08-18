@@ -346,6 +346,15 @@ def cmd_decay(a) -> int:
     return 0
 
 
+def cmd_costfloor(a) -> int:
+    """Separates "the frictions are eating a real edge" from "there is nothing
+    here", which look identical at shipped costs and call for opposite responses."""
+    rows = costlever.cost_floor(n_instances=a.instances)
+    print()
+    print(costlever.format_cost_floor(rows))
+    return 0
+
+
 def cmd_costgrid(a) -> int:
     """Sweep planted edge and cost independently; test whether survival is a
     function of the ratio, as F21 claims."""
@@ -444,6 +453,11 @@ def main(argv=None) -> int:
     p.add_argument("--fresh", action="store_true", help="ignore cached rungs")
     p.add_argument("--per-signature", type=int, default=3)
     p.set_defaults(fn=cmd_decay)
+
+    p = sub.add_parser("costfloor",
+                       help="per family, how much alpha is hidden behind the cost floor")
+    p.add_argument("--instances", type=int, default=8)
+    p.set_defaults(fn=cmd_costfloor)
 
     p = sub.add_parser("costgrid", help="sweep edge and cost independently (F21's ratio claim)")
     p.add_argument("--out", default=costlever.GRID_STATE)

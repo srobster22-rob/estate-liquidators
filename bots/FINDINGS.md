@@ -1722,6 +1722,59 @@ with different geometry.
 
 ---
 
+## F36 · "Does not certify" hides two opposite situations, and one cost sweep separates them
+
+F35 showed a 10x cost cut takes the cross-sectional book's binding margin from
++0.048 to +1.179. The obvious follow-up was whether the single-instrument
+catalogue behaves the same way. It does not, and the difference is the useful
+part.
+
+Best archetype's net alpha per family, re-priced at a fraction of its own costs
+(`python bots/run.py costfloor`):
+
+| family | 1.0x | 0.3x | 0.1x | released |
+|---|---|---|---|---|
+| `eq_intraday_15m` | 0.00 | 0.55 | 0.84 | **+0.84** |
+| `crypto_major_hourly` | -0.75 | -0.10 | 0.28 | **+1.03** |
+| `eq_smallcap_daily` | 0.00 | 0.27 | 0.44 | **+0.44** |
+| `commodity_meanrev_daily` | 0.32 | 0.41 | 0.44 | +0.12 |
+| `eq_largecap_daily` | 0.27 | 0.33 | 0.35 | +0.08 |
+| `rates_daily` | 0.00 | 0.03 | 0.04 | +0.04 |
+| `futures_trend_daily` | 0.40 | 0.41 | 0.41 | +0.01 |
+| `fx_major_daily` | 0.17 | 0.17 | 0.17 | **+0.00** |
+
+Families clearing the +0.35 bar: **1 of 8 at shipped costs, 4 of 8 at a tenth.**
+
+**Three families are cost-limited and three are not, and at shipped costs they are
+indistinguishable.** `eq_intraday_15m`, `eq_smallcap_daily` and `rates_daily` all
+read +0.00 — "nothing here". Cut the costs and the first two turn into +0.84 and
++0.44 while `rates_daily` goes to +0.04. The first two have a real edge behind a
+wall of frictions; the third has nothing for these rules at any price. Same
+observation at 1x, opposite conclusions, and the sweep is what tells them apart.
+
+`fx_major_daily` is the sharpest case: **+0.17 at every cost level, unchanged to
+two decimals**, against an oracle ceiling of 1.26. Costs are irrelevant there. What
+limits it is the edge, the archetype panel, or both — and no amount of cheaper
+execution will help.
+
+**This narrows F34/F35 rather than confirming them.** "The ceiling is the cost
+floor" is true for the cross-sectional book, whose gross edge is enormous and
+whose only real constraint is frictions. For single instruments it is true for
+some families and false for others, and the catalogue's headline family
+(`commodity_meanrev_daily`, the one thing that certifies) releases only +0.12 —
+it is close to edge-limited already. The honest general statement is weaker and
+more useful than what F35 said: **costs bind almost everywhere, but how much is
+waiting behind them varies enormously by family, and aggregation is what puts a
+lot there.**
+
+**It is also a new diagnostic the lab did not have.** Every previous "nothing
+certified on this family" was a dead end. This turns a subset of them into a
+specific, actionable claim — *there is a +0.84 edge on `eq_intraday_15m` and the
+spread is eating all of it* — which is a completely different thing to tell someone
+than "we found nothing".
+
+---
+
 ## What is still wrong, or unproven
 
 Stated because the point of this document is not to look finished.

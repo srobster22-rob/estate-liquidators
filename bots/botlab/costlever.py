@@ -173,3 +173,86 @@ def run(state_path: str = GRID_STATE, **kw) -> dict:
     with open(state_path, "w", encoding="utf-8") as fh:
         json.dump(out, fh, indent=1)
     return out
+
+
+# --------------------------------------------------------------------------- #
+# the cost-floor diagnostic
+# --------------------------------------------------------------------------- #
+
+COST_MULTS_FLOOR = (1.0, 0.3, 0.1)
+
+
+def cost_floor(families: list[str] | None = None, mults=COST_MULTS_FLOOR,
+               n_instances: int = 8, verbose: bool = True) -> list[dict]:
+    """Per family: how much of the archetype panel's alpha is behind the cost floor?
+
+    Re-prices each family at a fraction of its costs and re-measures the best
+    archetype. The answer separates two situations that look identical at 1x and
+    call for opposite responses:
+
+      * **cost-limited** — alpha climbs steeply as costs fall. The edge is there
+        and the frictions are eating it, so the useful question is where to trade
+        it more cheaply. `eq_intraday_15m` goes +0.00 -> +0.84 across a 10x cut.
+      * **edge- or panel-limited** — alpha barely moves. Cheaper execution buys
+        nothing because there is nothing waiting behind the costs, for these
+        rules. `fx_major_daily` sits at +0.17 at every cost level.
+
+    Both read as "does not certify" at shipped costs, and the difference is the
+    whole decision. See FINDINGS.md F36.
+    """
+    from dataclasses import replace as _replace
+
+    from . import engine, gauntlet, genome, metrics
+    from .markets import generate, universe
+    bar = gauntlet.GauntletConfig().min_repl_alpha_sr
+    families = families or [m.name for m in universe.tradeable(4)]
+    rows = []
+    for fam in families:
+        base = universe.get(fam)
+        got = {}
+        for mult in mults:
+            c = base.costs
+            cm = _replace(c, spread_bps=c.spread_bps * mult,
+                          commission_bps=c.commission_bps * mult,
+                          impact_coef_bps=c.impact_coef_bps * mult,
+                          funding_bps_per_bar=c.funding_bps_per_bar * mult,
+                          borrow_ann=c.borrow_ann * mult)
+            spec = _replace(base, name=f"{fam}~c{mult}", seed_name=fam, costs=cm)
+            universe.register(spec)
+            try:
+                series = [generate.cached(spec, i)
+                          for i in list(universe.HOLDOUT_POOL)[:n_instances]]
+                got[mult] = max(
+                    float(np.median([metrics.evaluate(engine.run(s, g)).alpha_sharpe
+                                     for s in series]))
+                    for g in genome.archetypes(spec.name))
+            finally:
+                universe.unregister(spec.name)
+        lo, hi = mults[0], mults[-1]
+        rows.append({"market": fam, "by_mult": {str(k): round(v, 3) for k, v in got.items()},
+                     "released": round(got[hi] - got[lo], 3),
+                     "clears_at_shipped": got[lo] >= bar,
+                     "clears_when_cheap": got[hi] >= bar,
+                     "verdict": ("cost-limited" if got[hi] - got[lo] >= 0.15
+                                 else "edge- or panel-limited")})
+        if verbose:
+            r = rows[-1]
+            print(f"  {fam:<26}" + "".join(f"{got[m]:>9.2f}" for m in mults)
+                  + f"   released {r['released']:+.2f}  {r['verdict']}", flush=True)
+    return rows
+
+
+def format_cost_floor(rows: list[dict], mults=COST_MULTS_FLOOR) -> str:
+    head = f"{'market':<26}" + "".join(f"{m:>9}" for m in
+                                       [f"{x:.1f}x" for x in mults]) + f"{'released':>10}  verdict"
+    lines = [head, "-" * len(head)]
+    for r in rows:
+        lines.append(f"{r['market']:<26}"
+                     + "".join(f"{r['by_mult'][str(m)]:>9.2f}" for m in mults)
+                     + f"{r['released']:>10.2f}  {r['verdict']}")
+    n_ship = sum(1 for r in rows if r["clears_at_shipped"])
+    n_cheap = sum(1 for r in rows if r["clears_when_cheap"])
+    lines.append("")
+    lines.append(f"families whose best archetype clears the replication bar: "
+                 f"{n_ship} at shipped costs, {n_cheap} at {mults[-1]:.1f}x")
+    return "\n".join(lines)
