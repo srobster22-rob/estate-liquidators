@@ -291,8 +291,11 @@ That harness has overturned thirty-seven things this build believed:
   worse your weapon performed against it, which is precisely backwards. STINK at rank 5 is a
   6.5m cloud; the boss's surface could be a metre inside it, plainly on fire, taking nothing,
   because its centre sat at 9.5m. Routing every "what does this area hit" query through a
-  body-aware test moved rank-5 boss DPS from a median of 47 to 133 and lifted the weapons
-  that had been crippled the most — SKULLS ×6.4, CALTROPS ×4.8, PULSE ×4.2. It also ended
+  body-aware test moved rank-5 boss DPS from a median of 47 to 133, and lifted the
+  player-centred weapons most, since those are the ones whose whole reach was being eaten —
+  SKULLS, CALTROPS and PULSE all multiplied several times over. (Per-weapon multipliers from
+  that first comparison are *not* quoted here: both columns were n=3, which the entry below
+  shows is noise. The median across eight weapons is the part that survives.) It also ended
   MORTAR's strict dominance of all seven other weapons on both axes at once. A boundary
   sweep now pins the damage cliff at exactly 10.5m (6.5 ring + 4.0 body): damage at 10.4m,
   none at 10.6m.

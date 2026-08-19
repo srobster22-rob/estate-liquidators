@@ -31,9 +31,13 @@ jobs:
           cp -r proto     _site/proto
           cp -r proto3d   _site/proto3d
           cp .github/pages-index.html _site/index.html
-      # enablement turns Pages on for the repo if it is off, so a fresh clone
-      # deploys without anyone visiting Settings first. Needs Pages available
-      # on the plan - private repos need Pro or Team.
+      # enablement asks GitHub to switch Pages on rather than requiring someone
+      # to visit Settings first. On THIS repo it is denied - the workflow token
+      # gets "Create Pages site failed: Resource not accessible by integration",
+      # because the repo is private and Pages on a private repo needs a paid
+      # plan. Left in because it is the right default and costs nothing where
+      # the token is allowed; until then the owner enables Pages by hand at
+      # Settings -> Pages -> Source: GitHub Actions, and this job goes green.
       - uses: actions/configure-pages@v5
         with: { enablement: true }
       - uses: actions/upload-pages-artifact@v3
