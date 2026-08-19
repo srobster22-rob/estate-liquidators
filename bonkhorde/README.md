@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 117 checks: boot, every weapon, every evolution, every
+node test.js              # 123 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -118,7 +118,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **117 passing.**
+die, and checks that `localStorage` survives a reload. **123 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -305,8 +305,16 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned forty-nine things this build believed:
+That harness has overturned fifty things this build believed:
 
+- **The screen shake was not a flourish, it was the steady state.** This genre hits you several
+  times a second for twenty minutes, so "camera shake and a full-screen white flash on damage"
+  means near-continuous motion and strobing for the length of a run — a barrier for anyone with
+  vestibular or photosensitivity issues, not a preference. `prefers-reduced-motion` now picks
+  the default on first load and both shake and sound stay switchable from the pause card
+  (`M` mutes from anywhere). Shake off keeps a quarter of the flash, because the hit still has
+  to be legible. Section 16 holds the world still, cranks shake to 1.4 and compares consecutive
+  frames: byte-identical with it off, different with it on.
 - **MEGABONK was a strictly worse EARTHQUAKE, and the evolution is what did it.** BONK BAT's
   identity is a directional swing; its evolution turned that into a 360° slam at 150 damage
   per 0.78s in an 8.2m circle with kb 20 — against EARTHQUAKE's 150 per 0.85s in a 10.5m

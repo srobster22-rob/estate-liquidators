@@ -777,6 +777,71 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await ctx.close();
   }
 
+  console.log("\n=== 16. COMFORT: SHAKE AND SOUND CAN BE TURNED OFF ===");
+  {
+    // Getting hit several times a second for twenty minutes means the camera
+    // shake and the white flash are the steady state, not a flourish. The OS
+    // preference picks the default; both stay switchable; and a page you opened
+    // from a link must have a mute that is one key away.
+    const shot2 = async (page) => {
+      const a = await page.screenshot({ type: "png" });
+      await page.waitForTimeout(120);
+      const b = await page.screenshot({ type: "png" });
+      return Buffer.compare(a, b) !== 0;              // did the frame jitter?
+    };
+    const boot = async (reducedMotion) => {
+      const ctx = await browser.newContext({ viewport:{width:800,height:520}, reducedMotion });
+      const pg = await ctx.newPage();
+      await pg.goto(FILE, { waitUntil: "load" });
+      await pg.waitForTimeout(450);
+      return { ctx, pg };
+    };
+
+    const R = await boot("reduce");
+    await R.pg.evaluate(() => { window.__g.wipeSave(); location.reload(); });
+    await R.pg.waitForTimeout(700);
+    const rDefault = await R.pg.evaluate(() => window.__g.opts());
+    ok("prefers-reduced-motion picks the default", rDefault.motion === 0,
+       JSON.stringify(rDefault));
+
+    // hold the world still, crank the shake, and see whether the frame moves
+    await R.pg.evaluate(() => { window.__g.start("intern"); window.__g.god();
+                                window.__g.step(60 * 20); });
+    await R.pg.evaluate(() => { window.__g.setOpt("motion", 0); window.__g.setShake(1.4); });
+    await R.pg.waitForTimeout(200);
+    const stillOff = await shot2(R.pg);
+    await R.pg.evaluate(() => { window.__g.setOpt("motion", 1); window.__g.setShake(1.4); });
+    await R.pg.waitForTimeout(200);
+    const stillOn = await shot2(R.pg);
+    ok("shake off holds the camera perfectly still", stillOff === false);
+    ok("shake on moves it", stillOn === true);
+
+    const gains = await R.pg.evaluate(() => {
+      window.__g.setOpt("sound", 1); const on = window.__g.gain();
+      window.__g.setOpt("sound", 0); const off = window.__g.gain();
+      return { on, off };
+    });
+    ok("muting takes the master gain to zero", gains.off === 0 && gains.on > 0,
+       `on=${gains.on} off=${gains.off}`);
+
+    const kept = await R.pg.evaluate(async () => {
+      window.__g.setOpt("sound", 0); window.__g.setOpt("motion", 1);
+      location.reload(); return true;
+    });
+    await R.pg.waitForTimeout(700);
+    const after = await R.pg.evaluate(() => window.__g.opts());
+    ok("both choices survive a reload", kept && after.sound === 0 && after.motion === 1,
+       JSON.stringify(after));
+    await R.ctx.close();
+
+    const N = await boot("no-preference");
+    await N.pg.evaluate(() => { window.__g.wipeSave(); location.reload(); });
+    await N.pg.waitForTimeout(700);
+    const nDefault = await N.pg.evaluate(() => window.__g.opts());
+    ok("no preference leaves shake on", nDefault.motion === 1, JSON.stringify(nDefault));
+    await N.ctx.close();
+  }
+
   console.log("\n=== 15c. THE CAMERA TURNS WITHOUT POINTER LOCK ===");
   {
     // A sandboxed iframe can refuse pointer lock outright. When that happens the

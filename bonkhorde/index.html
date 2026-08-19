@@ -141,6 +141,8 @@
   .coins{font-size:15px;color:var(--gold);font-weight:700;letter-spacing:.08em}
   h2{font-size:12px;letter-spacing:.24em;color:var(--dim);font-weight:400;
     margin:26px 0 6px;text-align:left}
+  #opts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0 4px}
+  .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
 </style>
 </head>
 <body>
@@ -171,8 +173,13 @@
   <h1 style="font-size:34px">PAUSED</h1>
   <div class="sub">click to resume</div>
   <div class="hint" id="pauseHint">
-    <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> camera &nbsp; <kbd>SPACE</kbd> jump<br>
+    <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> camera &nbsp; <kbd>SPACE</kbd> jump
+    &nbsp; <kbd>M</kbd> mute<br>
     weapons fire themselves. your only job is to not be there.
+  </div>
+  <div id="opts">
+    <button class="btn gh opt" id="sndBtn">SOUND: ON</button>
+    <button class="btn gh opt" id="mtnBtn">SCREEN SHAKE: ON</button>
   </div>
   <button class="btn gh" id="quitBtn">ABANDON RUN</button>
 </div></div>
@@ -337,7 +344,8 @@ let AC=null, master=null;
 function audioInit(){
   if(AC) return;
   try{ AC = new (window.AudioContext||window.webkitAudioContext)();
-       master = AC.createGain(); master.gain.value=.32; master.connect(AC.destination); }
+       master = AC.createGain(); master.gain.value = save.sound ? .32 : 0;
+       master.connect(AC.destination); }
   catch(e){ AC=null; }
 }
 function blip(freq, dur, type, vol, slide){
@@ -701,6 +709,24 @@ function loadSave(){
   save.up = save.up||{}; save.unlocked = save.unlocked||{};
 }
 function writeSave(){ try{ localStorage.setItem(SAVEKEY, JSON.stringify(save)); }catch(e){} }
+
+// A survivors-like hits you several times a second, so "camera shake and a
+// white flash on damage" is not an occasional flourish - it is the steady state
+// for twenty minutes. That is a barrier rather than a taste, so the OS setting
+// picks the default the first time and both stay switchable afterwards. Shake
+// off keeps a quarter of the flash: the hit still has to be legible.
+if(save.motion === undefined)
+  save.motion = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1;
+if(save.sound === undefined) save.sound = 1;
+const shakeMul = ()=> save.motion ? 1 : 0;
+const flashMul = ()=> save.motion ? 1 : .25;
+function applySound(){ if(master) master.gain.value = save.sound ? .32 : 0; }
+function setOpt(k, v){ save[k] = v ? 1 : 0; writeSave(); applySound(); paintOpts(); }
+function paintOpts(){
+  const sb = document.getElementById("sndBtn"), mb = document.getElementById("mtnBtn");
+  if(sb) sb.textContent = "SOUND: "        + (save.sound  ? "ON" : "OFF");
+  if(mb) mb.textContent = "SCREEN SHAKE: " + (save.motion ? "ON" : "OFF");
+}
 const rank = id => save.up[id]||0;
 loadSave();
 
@@ -855,6 +881,7 @@ addEventListener("keydown", e=>{
   }
   if(e.code==="Escape" && running && !over && !picking) togglePause(true);
   if(e.code==="KeyP"  && running && !over && !picking) togglePause(!paused);
+  if(e.code==="KeyM") setOpt("sound", !save.sound);
   if(e.code==="Space") e.preventDefault();
 });
 addEventListener("keyup", e=>keys[e.code]=false);
@@ -886,6 +913,12 @@ document.getElementById("paused").addEventListener("click", e=>{
 document.getElementById("quitBtn").addEventListener("click", e=>{
   e.stopPropagation(); finish("ABANDONED", false);
 });
+for(const [id,k] of [["sndBtn","sound"],["mtnBtn","motion"]])
+  document.getElementById(id).addEventListener("click", e=>{
+    e.stopPropagation();                      // the overlay itself resumes on click
+    setOpt(k, !save[k]);
+  });
+paintOpts();
 function togglePause(v){
   if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
@@ -1889,7 +1922,7 @@ function render(){
   // ---- camera: chase, with a little lag and a lot of shake
   const px = P?P.x:0, pz = P?P.z:0, py = P?P.y:groundY(0,0);
   const dist = 17, hgt = 8.5 + camPitch*7;
-  const sk = shake*.6;
+  const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
   // edge puts it out among the boundary spires (radius 74-79, height 7-15) at an
   // eye height of ~12.8 - inside them, and the frame renders as fog. Clamping the
@@ -1918,7 +1951,7 @@ function render(){
   gl.uniform3fv(U.uFog,  [.44,.52,.63]);
   gl.uniform3fv(U.uEye,  eye);
   gl.uniform1f(U.uNear, 52); gl.uniform1f(U.uFar, 145);
-  gl.uniform1f(U.uFlash, flash*.30);
+  gl.uniform1f(U.uFlash, flash*.30*flashMul());
 
   // terrain (static buffer, its own draw)
   gl.bindBuffer(gl.ARRAY_BUFFER, terBuf); bindAttribs();
@@ -2329,6 +2362,11 @@ window.__g = {
   // render() sets drawnBoxes from 0 every frame, so parking it at -1 makes a
   // stale value impossible to mistake for a live one
   clearBoxes: ()=>{ drawnBoxes = -1; },
+  opts:    ()=>({ sound:save.sound, motion:save.motion }),
+  setOpt,
+  gain:    ()=> master ? master.gain.value : null,
+  // force the camera-shake term so a test can hold it still and compare frames
+  setShake:(v)=>{ shake = v; },
   // colours the player has to tell apart at a glance, for the contrast check
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,
