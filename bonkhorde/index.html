@@ -668,15 +668,16 @@ const MAXE = 420;
 const CHARS = [
 { id:"intern", nm:"THE INTERN", ic:"\u{1F9CD}", w:"bat",
   ds:"Nothing special. Statistically the best at everything.", mods:{} },
-// Measured at 1/12 veteran clears against THE GHOUL's 9/12. Its pickup bonus
-// expires - by minute 15 you are swimming in gems and the radius buys nothing -
-// while the HP cost does not, so the late game it has to survive is played as a
-// strictly worse INTERN. Speed is the axis that never expires in a game whose
-// only verb is positioning, and it is what separates it from THE OX, so the
-// fragile one is now genuinely the fast one rather than fast-ish and fragile.
+// Bottom of the table in every sweep, and the survival bench says why: it starts
+// with CALTROPS, which drops at your feet and benches the worst solo survival in
+// the game, and it pays 15% HP on top. Two survival penalties stacked on the one
+// character whose other two stats both expire by minute fifteen. +35% weapon
+// reach is the fix that follows from the measurement rather than from taste -
+// it is the only stat the bench found that keeps mattering, and it turns the
+// long-arms idea the pickup radius already implies into something that fights.
 { id:"scrap",  nm:"THE SCRAPPER", ic:"\u{1F9F2}", w:"caltrops",
-  ds:"+70% pickup radius, +16% speed, 15% less HP.",
-  mods:{ mag:1.7, spd:1.16, hp:.85 } },
+  ds:"+35% weapon reach, +70% pickup radius, +10% speed, 15% less HP.",
+  mods:{ mag:1.7, spd:1.10, hp:.85, reach:1.35 } },
 { id:"spark",  nm:"THE SPARK", ic:"⚡", w:"zap",
   ds:"-18% cooldowns. Made entirely of glass.",
   mods:{ cd:.82, hp:.72 } },
@@ -759,6 +760,7 @@ function baseStats(ch){
     red:   0,
     regen: (m.regen||0) + 0.55,
     tough: m.tough||1,
+    reach: m.reach||1,
   };
 }
 
@@ -1078,9 +1080,17 @@ function damageArea(x, z, r, base, kb, srcName){
 }
 
 // ================================================================= WEAPONS
+// Reach is the stat the survival bench found and no character had. Weapons that
+// reach survive 10-15 minutes solo and weapons that do not survive four, so a
+// character built out of speed and pickup radius - both of which stop mattering
+// by minute fifteen - was fighting the deciding phase with nothing that helps.
+// Damage and cooldown are deliberately untouched: this buys distance, not power.
 function wStat(w){
-  const W = WEAPONS[w.key];
-  return W.lv[w.evo ? 5 : w.l];
+  const W = WEAPONS[w.key], s = W.lv[w.evo ? 5 : w.l];
+  if(!P || P.reach === 1) return s;                 // nobody else pays for a copy
+  const o = Object.assign({}, s);
+  for(const k of ["rad","rng"]) if(o[k]) o[k] *= P.reach;
+  return o;
 }
 function fireWeapons(dt){
   for(const k in P.kit){
@@ -2367,6 +2377,9 @@ window.__g = {
   gain:    ()=> master ? master.gain.value : null,
   // force the camera-shake term so a test can hold it still and compare frames
   setShake:(v)=>{ shake = v; },
+  // explicit pause: a frame-to-frame comparison needs the world genuinely
+  // frozen, not incidentally frozen by whatever the harness last did
+  pause:   (v=true)=>togglePause(!!v),
   // colours the player has to tell apart at a glance, for the contrast check
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,

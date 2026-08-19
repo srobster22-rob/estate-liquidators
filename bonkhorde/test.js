@@ -693,6 +693,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and reach is not simply infinite", (await probe(30)).lost === 0);
   }
 
+  console.log("\n=== 7i. THE SCRAPPER'S REACH IS A REAL STAT ===");
+  {
+    // 6.5m STINK + 4.0m body puts everyone else's damage boundary at 10.5m.
+    // +35% reach moves THE SCRAPPER's to 12.775m. A gap of 11.6m therefore has
+    // to hurt for one character and do nothing at all for the other - which
+    // also proves the multiplier is not leaking onto anybody else.
+    const probe = (ch, gap) => page.evaluate(([ch, gap]) => {
+      window.__g.wipeSave(); window.__g.start(ch); window.__g.god();
+      window.__g.drainPicks(true); window.__g.freezeSpawns(true);
+      window.__g.give("aura", 4); window.__g.boss(3);
+      const b0 = window.__g.bossAt();
+      for (let i = 0; i < 90; i++) {
+        const b = window.__g.bossAt(); if (!b) break;
+        window.__g.place(b.x + gap, b.z); window.__g.step(1);
+      }
+      return b0.hp - window.__g.bossAt().hp;
+    }, [ch, gap]);
+
+    const between = 11.6;                      // past 10.5, short of 12.775
+    ok("THE SCRAPPER reaches past everyone else's boundary",
+       (await probe("scrap",  between)) > 0, `${between}m`);
+    ok("and THE INTERN, at the same distance, does not",
+       (await probe("intern", between)) === 0);
+    ok("THE SCRAPPER still has a boundary", (await probe("scrap", 13.5)) === 0);
+    ok("and both connect well inside it", (await probe("intern", 8)) > 0 &&
+                                          (await probe("scrap",  8)) > 0);
+  }
+
   console.log("\n=== 7h. OVERLAPPING HAZARDS STACK, BUT NOT WITHOUT LIMIT ===");
   {
     // SCORCHED EARTH is a trail laid over itself; stacking IS the weapon, and
@@ -804,9 +832,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("prefers-reduced-motion picks the default", rDefault.motion === 0,
        JSON.stringify(rDefault));
 
-    // hold the world still, crank the shake, and see whether the frame moves
+    // Hold the world genuinely still, crank the shake, and see whether the frame
+    // moves. The first version of this skipped the pause and passed anyway,
+    // because the harness happened to leave the game paused - a test that was
+    // right for a reason it did not state, and therefore a coin flip.
     await R.pg.evaluate(() => { window.__g.start("intern"); window.__g.god();
-                                window.__g.step(60 * 20); });
+                                window.__g.step(60 * 20); window.__g.pause(true); });
+    await R.pg.waitForTimeout(150);
+    ok("the world is actually frozen for this comparison",
+       await R.pg.evaluate(() => window.__g.isPaused()) === true);
     await R.pg.evaluate(() => { window.__g.setOpt("motion", 0); window.__g.setShake(1.4); });
     await R.pg.waitForTimeout(200);
     const stillOff = await shot2(R.pg);

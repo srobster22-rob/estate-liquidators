@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 123 checks: boot, every weapon, every evolution, every
+node test.js              # 128 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -118,7 +118,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **123 passing.**
+die, and checks that `localStorage` survives a reload. **128 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -291,9 +291,17 @@ cargo cult: the invariant that matters is *first run never clears and a maxed sh
 ending reachable*, and 0/60 against 25/60 says both. Chasing a third decimal on the veteran
 figure through a ±10-point noise floor is measuring the harness, not the game.
 
-The per-character spread — 2/12 to 7/12 — is roughly the noise floor wide, and the ordering
-does not survive re-sampling: THE GHOUL led at 8/12 one round ago and sits at 4/12 here on an
-unchanged character. THE SCRAPPER is the only one consistently at the bottom.
+The per-character spread is roughly the noise floor wide, and the ordering does not survive
+re-sampling: THE GHOUL led at 8/12 one round ago and sits at 4/12 here on an unchanged
+character. THE SCRAPPER was the only one consistently at the bottom, across every sweep — a
+signal rather than noise, and it took three passes to close:
+
+```
+                        scrap    control
+starting point           1/12    ghoul 9/12
++8% speed                3/12    ghoul 8/12
++35% weapon reach        4/12    ox    7/12   (ox measured 7/12 twice running)
+```
 
 **Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
 die around minute six, or you go the distance. A median over six runs just reports which side
@@ -305,8 +313,24 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned fifty things this build believed:
+That harness has overturned fifty-two things this build believed:
 
+- **THE SCRAPPER was paying two survival costs and had no survival stat.** It starts with
+  CALTROPS — which drops at your feet and benches the worst solo survival in the game at
+  4:13 — and pays 15% HP on top, while its other two stats, pickup radius and speed, both
+  stop deciding anything by minute fifteen. Speed alone took it from 1/12 veteran clears to
+  3/12. Giving it **+35% weapon reach**, the one stat the survival bench found that keeps
+  mattering, took it to **4/12** with THE OX control sitting at 7/12 across both runs. Reach
+  is deliberately not damage: it buys distance, and distance is what the third column
+  measures. Section 7i pins it — at 11.6m from THE FINAL BONK's centre, STINK burns for THE
+  SCRAPPER and does exactly nothing for THE INTERN.
+- **A test passed for a reason it did not state, which makes it a coin flip.** The shake
+  comparison — freeze the world, crank shake to 1.4, check whether consecutive frames differ —
+  passed on its first run because the harness *happened* to have left the game paused. Add an
+  unrelated section before it and the same assertion failed, because the world was moving and
+  every frame differed regardless of the setting. It now pauses explicitly and asserts that it
+  did. Two of this suite's sections have now been caught passing against something other than
+  what they claimed to measure.
 - **The screen shake was not a flourish, it was the steady state.** This genre hits you several
   times a second for twenty minutes, so "camera shake and a full-screen white flash on damage"
   means near-continuous motion and strobing for the length of a run — a barrier for anyone with
