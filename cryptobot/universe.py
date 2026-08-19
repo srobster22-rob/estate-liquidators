@@ -32,13 +32,21 @@ information OVERLAP. A trend with a 500-bar half-life that begins in training is
 still running at the start of validation, so the two windows are not independent
 draws and the "out-of-sample" test is partly a re-run of the in-sample one. The
 embargo therefore has to cover the data's own persistence — the longest trend
-half-life and spread half-life in the universe — which is what 1000 bars is sized
-against, not the longest lookback.
+half-life and spread half-life in the universe — not the longest lookback.
 
-That has a cost worth stating: at 1000 bars of embargo and a 25% vault, a market
-needs ~8,400 bars to be splittable at all. For daily bars that is twenty-three
-years, which nothing in crypto has, so the daily market in this universe is skipped
-with a message rather than quietly validated on a sample too short to mean anything.
+Persistence is measured in CALENDAR TIME, and that is the whole reason the embargo
+is specified in days rather than bars. A six-week trend is six weeks long whether
+you sample it every fifteen minutes or once a day. Sizing the embargo at "1000 bars"
+was really sizing it at six weeks of hourly data, and then spending the same 1000
+bars on a daily series embargoed it for three years — which made the only daily
+market in the universe unsplittable, so it was silently dropped from every run this
+project has ever done. The daily timeframe was never searched. Nobody noticed,
+because a skipped market looks exactly like a market that found nothing.
+
+So the embargo is EMBARGO_DAYS of wall-clock, converted per market. One cap
+survives: it never exceeds a twelfth of the history, because three embargoes plus a
+25% vault out of a short series leaves a validation slice too small to conclude
+anything from, and a 15-minute market with only a year of data hits that ceiling.
 
 The vault burn counter exists because out-of-sample data is a consumable. Test
 against it twenty times and it is training data with extra steps; the counter makes
@@ -50,7 +58,18 @@ import zlib
 
 from . import data as dta
 
-EMBARGO_BARS = 1000         # see the note on overlap below
+EMBARGO_DAYS = 42.0         # see the note on overlap above
+MAX_EMBARGO_FRACTION = 1.0 / 12.0
+EMBARGO_BARS = 1000         # hourly equivalent, kept for reference
+
+
+def embargo_bars(market):
+    """Bars of embargo for one market: EMBARGO_DAYS of its own calendar, capped at
+    a twelfth of its history and floored at 50 bars."""
+    per_day = 86400.0 / dta.SECONDS[market.interval]
+    want = int(round(EMBARGO_DAYS * per_day))
+    ceiling = max(50, int(len(market) * MAX_EMBARGO_FRACTION))
+    return max(50, min(want, ceiling))
 
 
 class Segments:
@@ -63,10 +82,12 @@ class Segments:
         self.vault = vault
 
 
-def split(market, train_frac=0.50, val_frac=0.25, embargo=EMBARGO_BARS):
+def split(market, train_frac=0.50, val_frac=0.25, embargo=None):
     """Chronological three-way split with embargo gaps. Chronological because a
     random split lets the optimiser interpolate across time, which no live bot can
-    do."""
+    do. `embargo` defaults to EMBARGO_DAYS of this market's own calendar."""
+    if embargo is None:
+        embargo = embargo_bars(market)
     n = len(market)
     need = 3 * embargo + 300
     if n < need:
@@ -287,10 +308,10 @@ REACHABLE = STRUCTURED - {"smallcap_alt_1h"}
 # any edge worth trading, so a short history makes the gate unpassable no matter how
 # good the bot is. These lengths put every market at 5+ years.
 #
-# The daily market is the instructive one: a 500-bar embargo plus a 25% vault means
-# it needs ~4,400 daily bars — twelve years — to be splittable at all. Supply less
-# and run.py skips it with a message. That is not a bug to route around; it is what
-# "validate a daily-bar strategy" actually costs.
+# The daily market used to be the casualty: with the embargo expressed as a flat
+# 1000 bars it needed 8,400 daily bars — twenty-three years — and was dropped from
+# every run without anyone noticing. Under a calendar-time embargo it needs 42 days
+# of gap, not 1000, and 4,600 bars is twelve years of genuinely searchable history.
 BARS_BY_INTERVAL = {"15m": 30000, "1h": 45000, "4h": 16000, "1d": 4600}
 
 

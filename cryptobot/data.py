@@ -426,10 +426,68 @@ def audit_universe(markets, min_coverage=0.98):
 
 # ---------------------------------------------------------------- real fetchers
 
-def _get_json(url, timeout=30):
+def _get_json(url, timeout=30, attempts=6):
+    """GET with backoff on the failures an exchange actually returns mid-fetch.
+
+    Pulling 45,000 bars for ten markets is several hundred requests. Exchanges
+    answer some of them with 429 (slow down), 5xx (transient) or a dropped
+    connection, and the first version of this let any one of those abort the whole
+    download — after twenty minutes of paging — and surface as "cannot reach venue".
+    Binance escalates repeated 429s to 418, an IP ban measured in minutes to days,
+    so retrying through one is worse than stopping: 418 raises immediately.
+
+    Retry-After is honoured when present; otherwise the wait doubles from one
+    second, which is slower than the ban threshold rises."""
     req = urllib.request.Request(url, headers={"User-Agent": "cryptobot/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode())
+    wait = 1.0
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        except urllib.error.HTTPError as exc:
+            if exc.code == 418:
+                raise RuntimeError(
+                    f"{url}: HTTP 418 — the venue has banned this IP for exceeding "
+                    f"its rate limit. Wait it out; retrying extends the ban."
+                ) from exc
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == attempts - 1:
+                raise
+            retry_after = exc.headers.get("Retry-After") if exc.headers else None
+            delay = float(retry_after) if retry_after and retry_after.isdigit() \
+                else wait
+            time.sleep(min(delay, 120.0))
+            wait *= 2
+        except (urllib.error.URLError, TimeoutError, OSError):
+            if attempt == attempts - 1:
+                raise
+            time.sleep(wait)
+            wait *= 2
+    raise RuntimeError(f"{url}: exhausted {attempts} attempts")
+
+
+def _clean_rows(rows, step_sec, now=None):
+    """Sort, de-duplicate, and drop the bar that is still forming.
+
+    Paged fetches can overlap at chunk boundaries — the timestamp a page ends on is
+    sometimes the one the next page starts on. Duplicates written to the cache make
+    read_csv_market raise on every subsequent run, and the fix is to know to delete
+    a file you did not know existed, so they are removed here instead.
+
+    The final bar is dropped when its close time has not passed. An in-progress
+    candle has the right open and a close that is just the last trade, with partial
+    high, low and volume. It looks like a bar and is not one, and a validation slice
+    that ends on it ends on a number that changes if you re-run the fetch an hour
+    later."""
+    if not rows:
+        return rows
+    by_ts = {}
+    for r in rows:
+        by_ts[int(r[0])] = r
+    out = [by_ts[t] for t in sorted(by_ts)]
+    cutoff = (now if now is not None else time.time())
+    while out and out[-1][0] + step_sec > cutoff:
+        out.pop()
+    return out
 
 
 def fetch_binance(symbol="BTCUSDT", interval="1h", bars=5000, kind="spot"):
@@ -457,8 +515,9 @@ def fetch_binance(symbol="BTCUSDT", interval="1h", bars=5000, kind="spot"):
             break
         time.sleep(0.25)                  # be a good citizen
 
-    bars_out = [[int(r[0]) // 1000, float(r[1]), float(r[2]), float(r[3]),
-                 float(r[4]), float(r[5]), 0.0] for r in rows]
+    bars_out = _clean_rows(
+        [[int(r[0]) // 1000, float(r[1]), float(r[2]), float(r[3]),
+          float(r[4]), float(r[5]), 0.0] for r in rows], SECONDS[interval])
 
     if kind == "perp" and bars_out:
         _apply_binance_funding(symbol, bars_out, SECONDS[interval])
@@ -522,6 +581,11 @@ def fetch_coinbase(symbol="BTC-USD", interval="1h", bars=5000, kind="spot"):
         url = (f"https://api.exchange.coinbase.com/products/{symbol}/candles"
                f"?granularity={gran}&start={start}&end={end}")
         chunk = _get_json(url)
+        if isinstance(chunk, dict):
+            # Coinbase reports bad granularity, unknown product and rate limits as
+            # a 200 with {"message": ...}. Sorting that raises AttributeError forty
+            # lines away from the cause.
+            raise RuntimeError(f"coinbase: {chunk.get('message', chunk)}")
         if not chunk:
             break
         # [ time, low, high, open, close, volume ], newest first
@@ -530,7 +594,7 @@ def fetch_coinbase(symbol="BTC-USD", interval="1h", bars=5000, kind="spot"):
                 float(r[4]), float(r[5]), 0.0] for r in chunk] + out
         end = start
         time.sleep(0.3)
-    return out[-bars:]
+    return _clean_rows(out, gran)[-bars:]
 
 
 def fetch_kraken(symbol="XBTUSD", interval="1h", bars=720, kind="spot"):
@@ -542,8 +606,9 @@ def fetch_kraken(symbol="XBTUSD", interval="1h", bars=720, kind="spot"):
     if payload.get("error"):
         raise RuntimeError(f"kraken: {payload['error']}")
     series = next(v for k, v in payload["result"].items() if k != "last")
-    return [[int(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4]),
-             float(r[6]), 0.0] for r in series][-bars:]
+    return _clean_rows(
+        [[int(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4]),
+          float(r[6]), 0.0] for r in series], SECONDS[interval])[-bars:]
 
 
 FETCHERS = {"binance": fetch_binance, "coinbase": fetch_coinbase,

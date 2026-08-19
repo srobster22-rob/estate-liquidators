@@ -436,7 +436,36 @@ class TestUniverse(unittest.TestCase):
         self.assertLess(seg.train.ts[-1], seg.validation.ts[0])
         self.assertLess(seg.validation.ts[-1], seg.vault.ts[0])
         gap = seg.validation.ts[0] - seg.train.ts[-1]
-        self.assertGreaterEqual(gap, uni.EMBARGO_BARS * 3600 * 0.9)
+        self.assertGreaterEqual(gap, uni.embargo_bars(m) * 3600 * 0.9)
+
+    def test_embargo_is_calendar_time_not_a_bar_count(self):
+        """A six-week trend is six weeks long however often you sample it. Sizing
+        the embargo in bars made it three years on a daily series, which dropped the
+        daily market out of every run in this project's history."""
+        spans = {}
+        for interval in ("15m", "1h", "4h", "1d"):
+            bars = uni.BARS_BY_INTERVAL[interval]
+            m = a_market(seed=5, bars=bars, interval=interval)
+            e = uni.embargo_bars(m)
+            spans[interval] = e * dta.SECONDS[interval] / 86400.0
+            self.assertLessEqual(e, len(m) / 12.0 + 1,
+                                 f"{interval}: embargo eats too much history")
+        # every timeframe lands in the same order of magnitude of wall-clock
+        self.assertLess(max(spans.values()) / min(spans.values()), 3.0, spans)
+        self.assertAlmostEqual(spans["1h"], uni.EMBARGO_DAYS, delta=1.0)
+
+    def test_every_timeframe_in_the_universe_is_splittable(self):
+        """A market that cannot be split is skipped silently, and a skipped market
+        looks exactly like one that found nothing. The daily market was invisible
+        for the whole project this way."""
+        markets = uni.synthetic_universe(bars=uni.BARS_BY_INTERVAL["1h"])
+        intervals = set()
+        for key, m in markets.items():
+            intervals.add(m.interval)
+            seg = uni.split(m)          # raises if the market would be dropped
+            self.assertGreater(len(seg.vault), 100, key)
+            self.assertGreater(len(seg.validation), 300, key)
+        self.assertEqual(intervals, {"15m", "1h", "4h", "1d"})
 
     def test_split_refuses_short_history(self):
         with self.assertRaises(ValueError):
