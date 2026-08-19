@@ -52,6 +52,10 @@ jobs:
       # 79 checks: every weapon, every evolution, every enemy and boss, elites,
       # boss abilities, draft rules, a full run, the sudden-death gate, saves,
       # and a non-blank render assertion
+      # a mutation whose anchor has drifted is a hole in the audit that reads as
+      # a pass; this catches that in milliseconds, without a browser
+      - name: Mutation anchors still point at real code
+        run: node bonkhorde/mutate.js --anchors
       - name: Headless game suite
         working-directory: bonkhorde
         run: node test.js

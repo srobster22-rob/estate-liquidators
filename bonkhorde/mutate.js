@@ -40,12 +40,15 @@ const MUTANTS = [
   // test was right: the stick drag it uses is purely vertical, so X was never
   // the axis under measurement. An incomplete mutation is a false alarm, the
   // same failure mode in the other direction.
+  // Re-pointed once already: the movement rewrite deleted the two lines this
+  // used to target, and the harness reported SKIP. SKIP is counted as NOT
+  // caught on purpose - a mutation whose anchor has drifted is a hole in the
+  // audit that looks like a pass, and looking like a pass is the whole failure
+  // mode this file exists to catch.
   { id:"analog-ignored", must:"15",
     why:"the stick goes back to on/off, throwing away partial deflection",
-    from:"    P.x = clamp(P.x + dx*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);\n" +
-         "    P.z = clamp(P.z + dz*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);",
-    to:  "    P.x = clamp(P.x + dx*P.spd*dt, -ARENA+1.5, ARENA-1.5);\n" +
-         "    P.z = clamp(P.z + dz*P.spd*dt, -ARENA+1.5, ARENA-1.5);" },
+    from:"  const wx = dx*P.spd*analog, wz = dz*P.spd*analog;",
+    to:  "  const wx = dx*P.spd, wz = dz*P.spd;" },
   { id:"ladder-early", must:"17",
     why:"every rung pays out immediately, whatever the number says",
     from:"if(u.now(save, runStats) >= u.at)", to:"if(u.now(save, runStats) >= 0)" },
@@ -62,6 +65,19 @@ const MUTANTS = [
     why:"the boom goes back to being welded to the player",
     from:"  camAnchor[0] = lerp(camAnchor[0], px, kf);", to:"  camAnchor[0] = px;" },
 ];
+
+// A stale anchor is a hole in the audit that reads as a pass, and the full run
+// takes over an hour to tell you. This takes milliseconds and needs no browser,
+// so CI can hold every mutation to the source on every push.
+if (process.argv[2] === "--anchors") {
+  const bad = MUTANTS.filter(m => !src.includes(m.from));
+  console.log("=".repeat(70));
+  console.log("ANCHOR CHECK  -  every mutation must still find its target");
+  console.log("-".repeat(70));
+  for (const m of bad) console.log(`  FAIL  ${m.id}: anchor no longer in index.html`);
+  if (!bad.length) console.log(`  OK   ${MUTANTS.length} mutations, every anchor present`);
+  process.exit(bad.length ? 1 : 0);
+}
 
 const want = process.argv[2];
 const run = MUTANTS.filter(m => !want || m.id.includes(want));

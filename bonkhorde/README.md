@@ -389,6 +389,14 @@ That harness has overturned sixty things this build believed:
       absence as no data rather than as a pass. **A meta-test can be broken in exactly the way
       it exists to detect**, and this one was, on its first outing.
 
+  It later grew to twelve mutations and read **11/12** — and the twelfth was not a survivor but
+  a **stale anchor**: the movement rewrite had deleted the exact two lines that mutation
+  targeted, so it silently checked nothing. The harness counts SKIP as *not caught* on purpose,
+  because a mutation that no longer finds its target is a hole in the audit that reads as a
+  pass — the precise failure mode the file exists to catch, one level up. Re-pointed and
+  re-verified at 12/12, and `mutate.js --anchors` now holds every mutation to the source in
+  milliseconds without a browser, on every CI push.
+
   With the harness fixed and the hazard test hardened, the audit reads **7/7 caught, each one
   failing in the section named for it** — so every claim in the two lists above is now backed
   by a demonstration that the assertion behind it goes red when the code stops being true.
