@@ -75,6 +75,13 @@ model; the physics ownership protocol; the loudness model; the decision log.
 **Specified and partly tested:** the economy, by two simulations that between them overturned
 four things this project believed.
 
+- **The two prototypes had no tests at all.** They are the only playable evidence this half of
+  the repository has, and nothing checked they still booted. `proto-tests.js` asks the three
+  questions a prototype fails silently: does it boot, does its loop advance state, and can you
+  steer it. `proto3d` failed the third — its mouse-look was gated on holding pointer lock, the
+  identical bug found in BONKHORDE, so in any embed it booted, the Curator walked, WASD worked
+  and the camera never turned again. Verified by reverting the fix: 16/17 with the old code,
+  17/17 with the new. Both prototypes now run in CI.
 - The appraiser's edge over blind hauling is **+6%**, not the +84% first reported. That first
   figure used a placeholder for scan noise; the second, +31%, survived a reroll bug. Both are
   in `LOOP_LOG.md` with the measurement that killed them. A 6% edge is small enough that

@@ -230,13 +230,27 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyR"&&over){ reset(); document.getElementById("end").style.display="none"; }
 });
 addEventListener("keyup",e=>keys[e.code]=false);
+// requestPointerLock rejects if the pointer is already locked or the browser
+// rate-limits the call, and both surface as an uncaught error unless swallowed.
+// It is also refused outright inside a sandboxed iframe - and mouse-look here
+// was gated on holding the lock, so in any embed the game booted, the Curator
+// walked, WASD worked and the camera never turned again. Silent, because a
+// refused lock throws nothing. Drag covers the unlocked case.
+function lockPointer(){
+  try{ const p = cv.requestPointerLock?.(); if(p && p.catch) p.catch(()=>{}); }
+  catch(e){}
+}
+let dragging=false;
 document.getElementById("start").addEventListener("click",()=>{
   document.getElementById("start").style.display="none";
-  started=true; cv.requestPointerLock();
+  started=true; lockPointer();
 });
-cv.addEventListener("click",()=>{ if(started&&!over) cv.requestPointerLock(); });
+cv.addEventListener("click",()=>{ if(started&&!over) lockPointer(); });
+cv.addEventListener("mousedown",()=>{ if(document.pointerLockElement!==cv) dragging=true; });
+addEventListener("mouseup",   ()=>dragging=false);
+addEventListener("mouseleave",()=>dragging=false);
 addEventListener("mousemove",e=>{
-  if(document.pointerLockElement!==cv) return;
+  if(document.pointerLockElement!==cv && !dragging) return;
   player.yaw   -= e.movementX*0.0022;
   player.pitch -= e.movementY*0.0022;
   player.pitch = Math.max(-1.35,Math.min(1.35,player.pitch));
@@ -480,7 +494,8 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
     room:roomAt(player.x,player.z)?.id??"VOID",yaw:+player.yaw.toFixed(2)}),
   step:(n=1,dt=1/60)=>{started=true;for(let i=0;i<n;i++) if(!over) step(dt);return window.__g.state();},
   press:(k,v=true)=>keys[k]=v, look:(y,p=0)=>{player.yaw=y;player.pitch=p;},
-  grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length };
+  grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length,
+  dragging:()=>dragging, yaw:()=>player.yaw };
 </script>
 </body>
 </html>

@@ -56,6 +56,10 @@ jobs:
       # a pass; this catches that in milliseconds, without a browser
       - name: Mutation anchors still point at real code
         run: node bonkhorde/mutate.js --anchors
+      # the two Estate prototypes are the only playable evidence that half of
+      # the repository has, and until now nothing checked they still booted
+      - name: Estate prototypes smoke suite
+        run: node proto-tests.js
       - name: Headless game suite
         working-directory: bonkhorde
         run: node test.js
