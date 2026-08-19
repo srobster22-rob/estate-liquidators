@@ -128,14 +128,14 @@ you can *close* a run; crowd DPS decides whether you survive to try.
 
 ```
 RANK 5          boss dps   crowd dps        EVOLVED        boss dps   crowd dps
-bat                   66        1286        MEGABONK            525        2726
-skulls               133        1378        CAROUSEL           1382        3348
-bolt                 127        1184        BOLTSTORM          1361        4929
-pulse                 57        1581        EARTHQUAKE          677        3152
-mortar               441        2197        BOMBARDIER         1449        3613
-zap                  196         595        TESLA COIL          607        1214
-aura                  71        1446        PLAGUE              276        2453
-caltrops             359        2003        SCORCHED EARTH     1093        2882
+bat                   72        1118        MEGABONK            538        2775
+skulls               119        1315        CAROUSEL           1260        3537
+bolt                 149        1108        BOLTSTORM          1244        4529
+pulse                 78        1595        EARTHQUAKE          675        3130
+mortar               399        2297        BOMBARDIER         1190        3776
+zap                  205         471        TESLA COIL          626        1208
+aura                  65        1364        PLAGUE              340        2226
+caltrops             413        1991        SCORCHED EARTH      983        2856
                                                                         (n=8)
 ```
 
@@ -143,11 +143,11 @@ Specialists are intentional — ZAP is a boss weapon that barely dents a crowd,
 AURA the reverse. What the bench is for is catching the ones that are not
 specialists but simply broken, and the test it applies is **strict dominance**:
 a weapon that beats every other weapon on *both* axes at once is not a
-specialist, it is a default. Unevolved MORTAR was exactly that before reach
-started counting bodies, and it still leads rank 5 by more than the table
-would like — a 15% cut moved it less than the bench's own noise, and a deeper
-one has collapsed clears before, so it stands as measured and flagged rather
-than tuned on a signal too small to read.
+specialist, it is a default. Unevolved MORTAR was exactly that — best boss DPS
+*and* best crowd DPS against all seven others — before reach started counting
+bodies. It no longer is: CALTROPS out-damages it against a boss and it keeps
+the crowd, which is a trade rather than a default. Nothing dominates either
+table now.
 
 ### Colour-vision contrast
 
@@ -201,33 +201,33 @@ Asserted from the centre, an edge and a corner.
 
 ### Every passive, against a no-passive control
 
-### Every passive, against a no-passive control
-
 Reaching an evolution means feeding one specific passive for about three of your
 picks, so the question is not "does the text say damage" but "is it a comparable
 pick". `passives.js` benches each one at rank 3 — the evolution gate — against a
 control with an identical weapon kit.
 
 ```
-                    dps   vs base   survived   vs base
-control            1950        --       9.4m        --
-spinach            2385       22%      11.5m       22%   offence partner
-clover             2290       17%      11.0m       18%   offence partner
-dupe               2502       28%      11.1m       19%   offence partner
-tempo              2265       16%      10.9m       17%   offence partner
-plating            2417       24%      11.2m       20%   defence partner
-magnet             2197       13%      11.1m       18%   defence partner
-heart              2174       11%      11.7m       25%   defence partner
-boots              2249       15%      10.6m       13%   defence partner
+                    dps   vs base   survived   vs base            (n=10)
+control            2166        --      10.9m        --
+spinach            2726       26%      11.3m        4%   offence partner
+dupe               2788       29%      11.5m        6%   offence partner
+tempo              2569       19%      12.2m       12%   offence partner
+clover             2421       12%      10.9m        0%   offence partner
+heart              2355        9%      12.7m       16%   defence partner
+boots              2362        9%      11.0m        1%   defence partner
+magnet             2275        5%      11.5m        5%   defence partner
+plating            2245        4%      12.7m       17%   defence partner
 
-  offence partners   avg +21% dps, +19% survival
-  defence partners   avg +16% dps, +19% survival
+  offence partners   avg +21% dps,  +5% survival
+  defence partners   avg  +7% dps, +10% survival
 ```
 
 It used to read **+25% dps / 0% survival** against **−0% dps / +4% survival**: half
 the roster ramped its power while chasing an evolution and half simply did not,
-for the same reward. The whole spread was 6%–50%; it is now 11%–28%. All four of the quiet ones now contribute, in their own
-idiom rather than by bolting "+damage" onto everything:
+for the same reward. The two rows now separate on the axis their names promise —
+offence buys damage, defence buys minutes — and no passive dominates another on
+both. All four of the quiet ones contribute in their own idiom rather than by
+bolting "+damage" onto everything:
 
 | | |
 |---|---|
@@ -282,8 +282,23 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned thirty-seven things this build believed:
+That harness has overturned forty-three things this build believed:
 
+- **The best offensive passive in the game was filed under defence.** PLATING benched at
+  **+36% DPS** against a no-passive control (n=10) — beating SPINACH's +25% and DUPLICATOR's
+  +28% at their own job — while also cutting incoming damage by a flat 8 and a further 25% at
+  rank 5. Its retaliation blast was a 7.1m, ~290-damage hit fired on *every* hit taken, and
+  the 0.68s invulnerability window lets that land 1.4 times a second: roughly **430 free area
+  DPS that no design document mentions**. The description did not mention the 25% mitigation
+  either. Retaliation is the flavour and mitigation is the passive, so the blast is now
+  5.35m / ~113 damage at rank 5 and it reads +4% DPS, +17% survival — the best defensive pick
+  and nearly the worst offensive one, which is the shape the word "defence" promises.
+- **Aim and damage disagreed about where things were.** Fixing reach left `nearest()` — what
+  BONK BAT and BOLT aim at — still measuring to centres while the damage that followed
+  measured to bodies. A swing could aim past a boss it was about to hit and then exclude it
+  on the arc test. Making the aim body-aware moved BAT +9% and BOLT +17%, both inside this
+  bench's noise, so it is recorded as a *consistency* fix rather than a buff: the point is
+  that the two halves of one weapon now agree, not that the number went up.
 - **Every weapon measured its reach to an enemy's CENTRE, and enemies are not points.**
   Contact damage had always counted the body — an enemy hits you at `e.rad + .75`. Weapons
   did not, so a target shrugged off exactly its own radius worth of your reach: 0.62m against

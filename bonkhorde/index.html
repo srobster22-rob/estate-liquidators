@@ -517,7 +517,7 @@ spinach: { name:"SPINACH",   ic:"\u{1F96C}", kind:"p", max:5, ds:"+13% damage." 
 boots:   { name:"BOOTS",     ic:"\u{1F45F}", kind:"p", max:5, ds:"+9% move speed, +6% damage. Momentum." },
 tempo:   { name:"METRONOME", ic:"\u{1F570}", kind:"p", max:5, ds:"-8% weapon cooldowns." },
 magnet:  { name:"MAGNET",    ic:"\u{1F9F2}", kind:"p", max:5, ds:"+35% pickup radius, and it drags the horde into a pile." },
-plating: { name:"PLATING",   ic:"\u{1F6E1}", kind:"p", max:5, ds:"-1.6 flat damage taken, and being hit blasts them off you." },
+plating: { name:"PLATING",   ic:"\u{1F6E1}", kind:"p", max:5, ds:"-1.6 flat and -5% damage taken, and being hit blasts them off you." },
 heart:   { name:"BIG HEART", ic:"❤",    kind:"p", max:5, ds:"+22 max HP, +5% damage. Pumps harder." },
 dupe:    { name:"DUPLICATOR",ic:"\u{1F500}", kind:"p", max:3, ds:"+1 shot for BOLT, SKULLS, MORTAR, ZAP. Copies hit for 55%." },
 clover:  { name:"CLOVER",    ic:"\u{1F340}", kind:"p", max:5, ds:"+7% crit. Crits hit for 2.3x." },
@@ -908,10 +908,15 @@ function hitNear(x,z,r,fn){
     }
   }
 }
+// "Nearest" has to mean nearest SURFACE, for the same reason damage does. BONK
+// BAT aims at whatever this returns and then damages whatever hitNear covers;
+// with one measured to a centre and the other to a body, the swing could aim
+// past a boss it was about to hit and exclude it on the arc test. Aim and
+// damage now agree on where things are.
 function nearest(x,z,maxR,skip){
-  let best=null, bd=maxR*maxR;
-  near(x,z,maxR,(e,d)=>{ if(skip&&skip.has(e)) return;
-    const q=d*d; if(q<bd){bd=q;best=e;} });
+  let best=null, bd=Infinity;
+  hitNear(x,z,maxR,(e,d)=>{ if(skip&&skip.has(e)) return;
+    const q=d-e.rad; if(q<bd){bd=q;best=e;} });
   return best;
 }
 
@@ -1338,9 +1343,17 @@ function playerHurt(raw){
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
   SFX.hurt();
   if(P.kit.plating){                       // spiked armour: getting hit hurts them
+    // Benched at +36% DPS and +14% survival over a no-passive control (n=10):
+    // the best OFFENSIVE passive in the game, filed under defence, beating
+    // SPINACH (+25%) and DUPLICATOR (+28%) at their own job while also cutting
+    // incoming damage by a flat 8 and a further 25% at rank 5. At the old
+    // numbers rank 5 was a 7.1m, ~290-damage blast on every hit, and the .68s
+    // iframe lets that land 1.4 times a second - about 430 free area DPS
+    // nobody had counted. It is a punish, not a second weapon: retaliation is
+    // the flavour, mitigation is the passive.
     const r = P.kit.plating.l + 1;
-    damageArea(P.x, P.z, 4.6 + r*0.5, 23*r*dmgScale(T), 13);
-    rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:4.6+r*0.5, life:.3, mx:.3 });
+    damageArea(P.x, P.z, 3.6 + r*0.35, 9*r*dmgScale(T), 13);
+    rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:3.6+r*0.35, life:.3, mx:.3 });
   }
   if(P.hp <= 0){
     if(!usedRevive && rank("rev")>0){
