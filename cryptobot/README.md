@@ -8,7 +8,7 @@ beat the null*.
 Standard library only. No numpy, no pandas, no network required.
 
 ```bash
-python3 -m unittest cryptobot.test_cryptobot     # 46 tests, ~10s
+python3 -m unittest cryptobot.test_cryptobot     # 81 tests, ~100s
 python3 -m cryptobot.run null-test               # calibration: run this FIRST
 python3 -m cryptobot.run evolve --markets synthetic
 python3 -m cryptobot.run report
@@ -47,11 +47,22 @@ version cost.
 
 ```
         TRAIN (50%)              VALIDATION (25%)           VAULT (25%)
-   ┌──────────────────┐  ~500   ┌──────────────┐  ~500   ┌──────────────┐
+   ┌──────────────────┐ 42 days ┌──────────────┐ 42 days ┌──────────────┐
    │ the search lives │ embargo │ the gauntlet │ embargo │  one-shot    │
-   │ here, unlimited  │  bars   │ 11 gates     │  bars   │  confirmation│
+   │ here, unlimited  │         │ 11 gates     │         │  confirmation│
    └──────────────────┘         └──────────────┘         └──────────────┘
 ```
+
+The embargo is **calendar time, not a bar count**, and the distinction is not
+pedantic. Its job is to cover the data's own persistence — a trend that starts in
+training is still running at the start of validation, so the two windows are not
+independent draws. Persistence is measured in weeks, and a six-week trend is six
+weeks long whether you sample it every fifteen minutes or once a day. This was
+originally written as a flat 1000 bars, which *is* six weeks of hourly data and
+three years of daily data; on the daily market that made the split impossible, the
+market was dropped with a message, and the daily timeframe went unsearched for the
+entire project. A skipped market looks exactly like a market that found nothing,
+which is why nobody noticed.
 
 Each generation: score the population in sample, promote the best few to the
 gauntlet, breed the survivors, and expand the search if progress has stalled.
@@ -290,13 +301,15 @@ around it changed.
 
 ## Markets
 
-`--markets synthetic` builds fourteen markets spanning the behaviours that matter —
-slow majors, high-beta alts, funding-bearing perps, fast timeframes where costs
-dominate, slow timeframes where sample size does — across 15m/1h/4h/1d.
+`--markets synthetic` builds **65 markets** spanning the behaviours that matter —
+slow majors, high-beta alts, funding-bearing perps (9 of them), cointegrated pairs,
+factor baskets, fast timeframes where costs dominate, slow timeframes where sample
+size does — across 15m/1h/4h/1d.
 
-**Five have deliberately added structure; nine have none.** `universe.STRUCTURED`
-names them, which makes a synthetic run auditable in a way no real market ever is:
-a factory that finds "edges" spread evenly across all fourteen is overfitting.
+**42 have deliberately added structure; 23 have none.** `universe.STRUCTURED` names
+them, which makes a synthetic run auditable in a way no real market ever is: a
+factory that finds "edges" spread evenly across all 65 is overfitting. Of the 42,
+`universe.REACHABLE` marks the 41 whose edge survives costs.
 
 One of the five, `smallcap_alt_1h`, has a genuine reversion edge sitting behind
 30bps of round-trip cost that eats it completely. The correct verdict there is *real
@@ -312,21 +325,56 @@ trend edges are *persistent drift*, which is what `trend_strength` models.
 ### Real data
 
 ```bash
-python3 -m cryptobot.run fetch --venue binance --symbol BTCUSDT --interval 1h
-python3 -m cryptobot.run evolve --markets real
+python3 -m cryptobot.run fetch --venue binance --symbol BTCUSDT --interval 1h --bars 45000
+python3 -m cryptobot.run audit  --markets real          # do this first
+python3 -m cryptobot.run null-test --markets real       # then this
+python3 -m cryptobot.run sweep  --markets real --seeds 5 11 21 33 47
 ```
 
 Public candle endpoints for Binance (spot and perp, with real funding history
-prorated per bar), Coinbase and Kraken. Results are cached as CSV; a market is
-loaded from cache if present. **If a venue is unreachable the fetch raises** rather
-than substituting synthetic data — that substitution is how people end up trading a
-backtest of a random number generator.
+charged on each payment's settlement bar), Coinbase and Kraken. Results are cached
+as CSV; a market is loaded from cache if present. **If a venue is unreachable the
+fetch raises** rather than substituting synthetic data — that substitution is how
+people end up trading a backtest of a random number generator.
+
+Kraken serves at most 720 bars per pair and is a sanity check only. `REAL_SPEC` uses
+Binance and Coinbase.
 
 Own data: name files `venue_SYMBOL_interval.csv` with columns
 `ts,open,high,low,close,volume[,funding]` and point `--markets csv:<dir>` at them.
+This is the same code path `--markets real` takes after the HTTP call, which is how
+the loader gets tested without a network.
 
-> This sandbox blocks outbound access to exchange APIs, so every run recorded here
-> is synthetic. A synthetic pass proves the harness works and **nothing else**.
+#### Audit the candles before you believe anything computed on them
+
+Everything in this repo was developed against a generator that emits a flawless
+grid. Real candles are not a flawless grid, and the differences are exactly the ways
+a backtest becomes fiction. `cryptobot audit` looks for four things and exits
+non-zero if it finds them:
+
+| defect | what it does to a backtest |
+|---|---|
+| **gap** | an outage removes bars, so the next bar carries a two-day move in a one-hour slot. The vol estimator reads a regime change; a momentum bot books a win it could not have traded, because the venue was down. Outages cluster on crash days, so the bias points one way. |
+| **stall** | a halt prints the same close for hours. A reversion bot sees no deviation and no vol, sizes up, then eats the gap return above. |
+| **broken bar** | `close` outside `[low, high]`, `high < low`, non-positive prices. A stop or a range indicator reading that bar returns a number with no meaning. |
+| **bad tick** | a single-bar move large enough to be a feed error, tagged with whether it lands right after a gap. |
+
+**Nothing is repaired automatically.** Interpolating a gap invents prices that never
+traded; dropping a stall rewrites history to be more tradeable than it was. Both
+make the backtest prettier and less true, which is the failure mode this codebase
+spends most of its lines defending against. You get the numbers and decide —
+`data.trim_to_contiguous()` is there if the right call is to keep the longest
+gap-free stretch.
+
+> This sandbox blocks outbound CONNECT to every exchange host (`api.binance.com`,
+> `fapi.binance.com`, `api.exchange.coinbase.com`, `api.kraken.com`,
+> `data.binance.vision` all answer 403 at the proxy), so **every result recorded here
+> is synthetic**. A synthetic pass proves the harness works and **nothing else**.
+> The file-loading path is exercised end to end via `--markets csv:` on candles
+> written to disk in the exact format `fetch` produces, so the loader, interval
+> inference, split, factory and gates are known to work on file-sourced data. The
+> HTTP call itself is the only untested line, and what it returns is the only thing
+> that can tell you whether any of this survives contact with a real market.
 
 ---
 
@@ -371,17 +419,17 @@ obvious edge. A validator nothing can ever pass is as useless as one everything 
 
 | File | What's in it |
 |---|---|
-| `data.py` | Market object, CSV cache, exchange fetchers, the synthetic generator |
+| `data.py` | Market object, CSV cache, exchange fetchers, data-quality audit, the synthetic generator |
 | `indicators.py` | O(n) causal indicators, memoised per market |
 | `strategies.py` | The zoo: trend, breakout, reversion, carry, cross-sectional, hybrid |
 | `backtest.py` | Sizing, costs, funding, stops, metrics |
 | `stats.py` | Deflated Sharpe, expected-max-Sharpe, stationary bootstrap, matched nulls |
-| `universe.py` | Market universe, three-way split with embargo, regime blocks |
+| `universe.py` | Market universe, three-way split with calendar-time embargo, regime blocks |
 | `bot.py` | The genome, and the fitness function the search maximises |
 | `validate.py` | The eleven gates |
 | `evolve.py` | The loop: breed, promote, expand, persist |
 | `run.py` | CLI |
-| `test_cryptobot.py` | 46 tests |
+| `test_cryptobot.py` | 81 tests |
 
 ---
 
