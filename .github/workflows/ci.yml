@@ -22,6 +22,10 @@ jobs:
       # its seven planted faults - no more, no fewer
       - name: Estate validator against its own fixtures
         run: python3 sim/validate_estate.py
+      # the README once listed a retracted +84% among the things that were
+      # solid, four paragraphs after saying the figure had been retracted twice
+      - name: No retracted number stated as current
+        run: python3 sim/check_claims.py
 
   core-csharp:
     name: Estate Liquidators — C# core

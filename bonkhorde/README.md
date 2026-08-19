@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 128 checks: boot, every weapon, every evolution, every
+node test.js              # 130 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -114,11 +114,13 @@ node balance.js 12 vet intern,scrap   # higher n on two characters
 node dps.js 8 5                   # per-weapon boss/crowd/survival bench
                                   # [dps trials] [survival trials]; n=3 is noise
 node passives.js 5                # per-passive offence/defence bench, n=5
+node mutate.js                    # break the game on purpose, one thing at a
+                                  # time, and check the suite notices
 ```
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **128 passing.**
+die, and checks that `localStorage` survives a reload. **130 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -313,8 +315,28 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned fifty-two things this build believed:
+That harness has overturned fifty-three things this build believed:
 
+- **The tool built to check that a green suite means something was itself green and
+  meaningless.** A passing test proves nothing until it has been shown to fail, and this suite
+  had already been caught twice passing against something other than what it claimed. So
+  `mutate.js` breaks one thing on purpose — reach back to centres, the hazard cap removed, THE
+  SCRAPPER's reach deleted, the lost context ignored, drag-look re-gated, reduced motion
+  overridden, the analog stick flattened — and names the section that must notice. It reported
+  two survivors. Both reports were wrong, in two different ways:
+    - The **hazard-cap test** really was weak — it derived its probe counts from the cap
+      itself, so setting the cap to 9999 made both probes kill the boss outright, both
+      readings clamp to its HP pool, and "no more than the cap" pass on two saturated numbers
+      measuring nothing. Fixed counts of 1, 3 and 12 now, plus an assertion that the boss
+      survived. Real bug, correctly found.
+    - The **analog mutation** was the audit's own fault: it stripped the multiplier from the X
+      axis while the stick drag under test is purely vertical. An incomplete mutation is a
+      false alarm, the same failure in the other direction.
+    - And then the hardened hazard test *still* reported SURVIVED — because the harness read
+      the child's verdict only from the success path, so a suite that failed correctly came
+      back looking like a suite that passed. It now parses the `RESULT:` line and treats its
+      absence as no data rather than as a pass. **A meta-test can be broken in exactly the way
+      it exists to detect**, and this one was, on its first outing.
 - **THE SCRAPPER was paying two survival costs and had no survival stat.** It starts with
   CALTROPS — which drops at your feet and benches the worst solo survival in the game at
   4:13 — and pays 15% HP on top, while its other two stats, pickup radius and speed, both

@@ -22,7 +22,10 @@ for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
 
 const path = require("path");
 
-const FILE = "file://" + path.resolve(__dirname, "index.html");
+// BONKHORDE_TARGET lets mutate.js point the whole suite at a deliberately
+// broken copy, to check that these assertions fail when the game is wrong.
+const FILE = "file://" + path.resolve(__dirname,
+                          process.env.BONKHORDE_TARGET || "index.html");
 let fails = 0, passes = 0;
 const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   console.log(`  ${c ? "PASS" : "FAIL"}  ${n}${extra ? "  " + extra : ""}`); };
@@ -739,17 +742,25 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       return b0.hp - b1.hp;
     }, n);
 
+    // Counts are FIXED, not derived from the cap. Deriving them let a mutation
+    // that set the cap to 9999 survive: both probes then killed the boss
+    // outright, both readings clamped to its HP pool, and "no more than the
+    // cap" passed on two saturated numbers that measured nothing.
     const cap = await page.evaluate(() => window.__g.burnStack());
-    const one  = await burn(1);
-    const atCap = await burn(cap);
-    const over  = await burn(cap * 4);
+    const one    = await burn(1);
+    const atCap  = await burn(3);
+    const over   = await burn(12);
 
+    ok("the cap is the three this test is written against", cap === 3, `cap=${cap}`);
     ok("one zone burns", one > 0, `${Math.round(one)} HP`);
-    ok("zones below the cap do stack",
-       atCap > one * (cap - 0.6), `${Math.round(one)} -> ${Math.round(atCap)} HP at ${cap} zones`);
-    ok(`${cap * 4} zones do no more than ${cap}`,
+    ok("three zones do three times one",
+       Math.abs(atCap - one * 3) <= one * 0.05,
+       `${Math.round(one)} -> ${Math.round(atCap)} HP`);
+    ok("twelve zones do no more than three",
        Math.abs(over - atCap) <= atCap * 0.05,
        `${Math.round(atCap)} vs ${Math.round(over)} HP`);
+    ok("and the boss survived all three probes, so nothing is clamped",
+       await page.evaluate(() => window.__g.bossAt() !== null));
   }
 
   console.log("\n=== 12c. THE GPU CAN BE TAKEN AWAY AND GIVEN BACK ===");
