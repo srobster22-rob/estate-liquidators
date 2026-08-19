@@ -1436,6 +1436,68 @@ ok("...so the factory could never have found the best result in this project",
    "criterion and a screen that cannot tell rare from unprofitable. Findings 17-22 were "
    "all found by hand-written analysis, never by the loop.")
 
+print("\n8r. DERIVED FAMILIES — four defects an adversarial audit found, all live")
+
+# BUG 1. `capacity.sets_per_year` did not resolve derived names and returned 0.0 for every
+# one of them — silently zeroing the dollar figure for criterion 10 and every sensitivity
+# row. It was introduced in K28 as the "single source of truth" for exactly this division,
+# which is what made it worth auditing. A lookup that answers 0 for a name it does not know
+# is worse than one that raises, so it now raises.
+_h = markets.attenuated("econ_print", 0.5)
+_v = markets.variant("econ_print", depth_scale=0.6)
+near("sets_per_year resolves an ATTENUATED name",
+     capacity.sets_per_year(_h), capacity.sets_per_year("econ_print"), 1e-9)
+near("...and a VARIANT name, which uses a different separator",
+     capacity.sets_per_year(_v), capacity.sets_per_year("econ_print"), 1e-9)
+_raised = False
+try:
+    markets.base_family("no_such_family")
+except KeyError:
+    _raised = True
+ok("...and an unknown family RAISES instead of answering zero",
+   _raised, "a silent 0 turned every derived dollar figure into $0 without any test noticing")
+
+# BUG 2. A copy of a family that BORROWS a salt must keep borrowing it. `attenuated` handed
+# the copy `base.name`, which unpaired crypto_bracket_stale — the one family in the project
+# with a borrowed salt, and therefore the only one where it mattered.
+_bs = markets._ATTENUATED[markets.attenuated("crypto_bracket_stale", 0.5)]
+ok("an attenuated copy keeps a BORROWED salt, so the pairing survives",
+   _bs.salt_name == markets.FAMILIES["crypto_bracket_stale"].salt_name
+   == "crypto_bracket_hourly",
+   f"salt {_bs.salt_name!r} — the half-edge comparison is paired or it is just two samples")
+
+# BUG 3. `attenuated` scaled EDGE 1 and EDGE 2 and left EDGE 3 and EDGE 3b at full strength,
+# so criterion 10 was inoperative for every bracket candidate: the "half-edge world" kept the
+# full planted incoherence. Assert every planted edge moves, and that microstructure does not.
+_base_b = markets.FAMILIES["crypto_bracket_stale"]
+ok("attenuating halves EVERY planted edge, not just two of them",
+   abs(_bs.stale_leg_prob - _base_b.stale_leg_prob * 0.5) < 1e-9
+   and abs(_bs.quote_noise - _base_b.quote_noise * 0.5) < 1e-9
+   and abs(_bs.underreact_cap - _base_b.underreact_cap * 0.5) < 1e-9,
+   f"stale_leg_prob {_base_b.stale_leg_prob}->{_bs.stale_leg_prob}, "
+   f"quote_noise {_base_b.quote_noise}->{_bs.quote_noise}")
+_he = markets._ATTENUATED[markets.attenuated("econ_print", 0.5)]
+ok("...but leaves MICROSTRUCTURE alone, including noise on a single-leg family",
+   _he.spread_lo == markets.FAMILIES["econ_print"].spread_lo
+   and _he.depth_hi == markets.FAMILIES["econ_print"].depth_hi
+   and _he.quote_noise == markets.FAMILIES["econ_print"].quote_noise,
+   "quote_noise is only an EDGE where there are legs to be incoherent between; on one leg "
+   "it is ordinary quoting noise and scaling it would change the book")
+
+# AND THE CONSEQUENCE. With the criterion repaired it has to actually bite on a bracket
+# candidate — a half-edge world that scores the same as the full one is not a test.
+_bst = strategies.bracket_arb(min_edge=8, qty=250)
+_bc = backtest.Costs(extra_spread=1)
+_full = statistics.fmean(backtest.run(
+    markets.dataset("crypto_bracket_stale", 7_000_000, 1200), _bst, _bc).group_pnl)
+_half = statistics.fmean(backtest.run(
+    markets.dataset(markets.attenuated("crypto_bracket_stale", 0.5), 7_000_000, 1200),
+    _bst, _bc).group_pnl)
+ok("criterion 10 now BITES on a bracket candidate instead of being a no-op",
+   _half < 0.75 * _full,
+   f"{_full:+.2f}c full -> {_half:+.2f}c at half edge; before the fix the half-edge world "
+   f"kept the full planted incoherence and sometimes scored HIGHER")
+
 print("\n9. THE GATE REJECTS NOISE")
 noise = backtest.run(markets.dataset("sports_game", 995_000, 600), strategies.random_control(rate=0.2, qty=100))
 ns = evaluate.summarize(noise, resamples=800)

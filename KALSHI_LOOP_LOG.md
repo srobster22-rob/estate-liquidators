@@ -688,6 +688,55 @@ their label had always been wrong: the two arms never had "the same expectancy" 
 +85.5c/market), and the claim is stronger stated correctly — **the thinner tail scores worse
 DESPITE earning more**, because the gate prices what you have not yet seen. 203 checks pass.
 
+K29 · Asked what the upside was. Ran a 16-agent audit — five upside axes measured, every figure
+attacked by two independent adversaries. · **The honest answer is not a number, it is a
+dependency: the entire result is one hand-typed constant. Finding that out cost four more bugs,
+one of them shipped last round.**
+
+**The whole result is `underreact_cap = 3.0`.** Paired variants, five fresh seeds, only that
+field changed: cap 0.0 -> **-$72/yr**; 1.0 -> +$3; 1.5 -> +$58; 2.0 -> +$126; **3.0 -> +$307**;
+4.0 -> +$485; 6.0 -> +$528. Break-even at cap ~1.0c — and `markets.py` assigns exactly 1.0 to
+crypto_hourly and index_bracket_daily, the two families it calls the most liquid on the
+exchange. **If econ books lag like the liquid ones, the bot loses money at every order size.**
+Nothing has ever measured the real number.
+
+Decomposing the planted edges also **disproves K3/finding 5's claim about the winner**: as
+shipped +230c/set; longshot compression off +224c (3% of the result); **quote lag off -54c**;
+both off, leaving only the 1-99c price grid, **-61c = -$81/yr**. The grid bias is real but it
+is **+1.13c at the 1-2c floor and -0.12c everywhere above** — finding 5's own measurement — and
+the winner buys at 96-98c, the wrong end. That page said "both bots that passed the gate trade
+in that boundary region" for twenty-four rounds. It is corrected in place with a box.
+
+**Two ceilings are hard and neither is a parameter.** Order size saturates at ~54 contracts:
+qty 100 / 250 / 1,000 / 5,000 / 20,000 all pay $389/yr, because the depth taper leaves 12-48
+contracts at the touch above 96c. Capacity is 133.5 ladder sets a year, counted not estimated.
+
+**My own generality claim was underpowered.** I reported "1 of 11 families" off a 1,200-group
+sweep; the dollar CI on crypto_hourly is **+-$12,824** against econ_print's +-$84, 150x
+coarser. The right word is UNMEASURED, not absent. The tempting high-frequency candidate pools
+to **+2.5 +- 12.9c, t = +0.19** over six seeds, seed values running -44.5c to +40.1c.
+
+**Four live defects, from pointing the audit at the auditor.** (1) `capacity.sets_per_year`
+did not resolve derived names and returned **0.0** — silently zeroing every criterion-10 and
+sensitivity dollar figure. It was introduced in K28 as the single source of truth for exactly
+that division. (2) `factory._base_family` split on '@' only, so `variant()` names using '|'
+fell through. (3) `attenuated()` overwrote `salt_name`, **unpairing crypto_bracket_stale** —
+the one family that borrows a salt. (4) `attenuated()` left `quote_noise` and `stale_leg_prob`
+at full strength, so **criterion 10 was a no-op for every bracket candidate**; repaired it cuts
+$390 -> $166. All four now have regression guards, and `base_family` RAISES on an unknown name
+rather than answering zero.
+
+**And the units error for the FOURTH time**, inside K21/finding 16 — the finding that had
+corrected the third. The sign test divides 580 events by the wrong rate: econ_print lists 534
+CONTRACTS = **133.5 four-rung SETS**, so it is **4.3 years, not 1**. Corrected in place.
+
+The lesson is not comfortable. Every round until now audited the simulator, then the search,
+then the gate. This one audited THE CORRECTIONS THEMSELVES and found the fix shipped one round
+earlier was broken, a claim standing twenty-four rounds was backwards, and the project's
+signature error had recurred inside the finding written to prevent it. **A self-correcting
+process is not self-correcting unless something outside it periodically checks the
+corrections.** 210 checks pass.
+
 ---
 
 ## Standing notes

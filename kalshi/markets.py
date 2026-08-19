@@ -427,6 +427,24 @@ def _apply_stale_leg(fam: Family, legs: list, rng) -> None:
         ep.bid[t], ep.ask[t], ep.depth[t] = b0, a0, d0
 
 
+def base_family(name: str) -> str:
+    """'econ_print@0.5' or 'econ_print|d0.6|s0|e1' -> 'econ_print'.
+
+    Derived families list exactly as many markets a year as the family they copy, so anything
+    converting a per-group mean into dollars has to resolve back to the base name first.
+
+    THE SINGLE RESOLVER, and it exists because there were two partial ones. `factory` split on
+    '@' only, so `variant()` names (which use '|') fell through; `capacity.sets_per_year` did
+    not resolve at all and returned 0.0 for every derived family — silently zeroing the dollar
+    figure for the half-edge criterion and every sensitivity row. A lookup that answers 0 for a
+    name it does not recognise is worse than one that raises, so this raises.
+    """
+    stem = name.split("@", 1)[0].split("|", 1)[0]
+    if stem not in FAMILIES:
+        raise KeyError(f"no base family for {name!r} (resolved to {stem!r})")
+    return stem
+
+
 def _family_salt(name: str) -> int:
     """A STABLE per-family seed offset.
 
@@ -546,15 +564,23 @@ def attenuated(family_name: str, factor: float) -> str:
     f = Family(
         key, f"{base.label} (edges x{factor:g})", base.steps, base.step_hours,
         base.schedule_kind, base.p0_mu, base.p0_sd,
-        logit_gamma=1.0 - (1.0 - base.logit_gamma) * factor,
+        logit_gamma=1.0 - (1.0 - base.logit_gamma) * factor,      # EDGE 1
         underreact_alpha=base.underreact_alpha,
         underreact_decay=base.underreact_decay,
-        underreact_cap=base.underreact_cap * factor,
-        quote_noise=base.quote_noise, spread_lo=base.spread_lo, spread_hi=base.spread_hi,
+        underreact_cap=base.underreact_cap * factor,               # EDGE 2
+        # EDGE 3 and EDGE 3b. These were left UNSCALED until K29, which made criterion 10
+        # inoperative for every bracket candidate: the half-edge world kept the full planted
+        # incoherence, so a bracket arb was scored against a world no weaker than the real
+        # one — and occasionally scored HIGHER there, which was the tell nobody chased.
+        # `quote_noise` is only an edge where there are legs to be incoherent BETWEEN; on a
+        # single-leg family it is ordinary quoting noise and scaling it would change
+        # microstructure, which this function is supposed to leave alone.
+        quote_noise=(base.quote_noise * factor if base.n_brackets > 1 else base.quote_noise),
+        spread_lo=base.spread_lo, spread_hi=base.spread_hi,
         depth_lo=base.depth_lo, depth_hi=base.depth_hi, n_brackets=base.n_brackets,
         n_rungs=base.n_rungs,
-        stale_leg_prob=base.stale_leg_prob, stale_leg_frac=base.stale_leg_frac,
-        schedule_kw=base.schedule_kw, salt_name=base.name,
+        stale_leg_prob=base.stale_leg_prob * factor, stale_leg_frac=base.stale_leg_frac,
+        schedule_kw=base.schedule_kw, salt_name=base.salt_name,
         notes=f"attenuated copy of {family_name} for the gate's half-edge criterion")
     _ATTENUATED[key] = f
     return key
@@ -587,7 +613,7 @@ def variant(family_name: str, depth_scale: float = 1.0, spread_extra: int = 0,
         n_brackets=b.n_brackets, n_rungs=b.n_rungs,
         stale_leg_prob=b.stale_leg_prob, stale_leg_frac=b.stale_leg_frac,
         schedule_kw=b.schedule_kw,
-        salt_name=b.name, notes=f"sensitivity variant of {family_name}")
+        salt_name=b.salt_name, notes=f"sensitivity variant of {family_name}")
     _ATTENUATED[key] = f
     return key
 

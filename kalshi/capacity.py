@@ -77,9 +77,10 @@ def sets_per_year(family: str) -> float:
     files is a sign that the division should not be written out by hand anywhere, so it is
     written once, here, and everything else calls this.
     """
-    fam = markets.FAMILIES.get(family)
-    legs = max(fam.n_brackets, fam.n_rungs, 1) if fam else 1
-    return MARKETS_PER_YEAR.get(family, 0) / legs
+    base = markets.base_family(family)
+    fam = markets.FAMILIES[base]
+    legs = max(fam.n_brackets, fam.n_rungs, 1)
+    return MARKETS_PER_YEAR.get(base, 0) / legs
 
 PEAK_SIGMA = float(CAP["peak_sigma"])
 HOURS_PER_YEAR = 24 * 365

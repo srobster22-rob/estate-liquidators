@@ -222,8 +222,9 @@ def _expand(survivors: list[Candidate], rng, log):
 
 
 def _base_family(name: str) -> str:
-    """'econ_print@0.5' -> 'econ_print'. Attenuated copies list the same markets a year."""
-    return name.split("@", 1)[0]
+    """Delegates to `markets.base_family`. This used to split on '@' only, so `variant()`
+    names — which use '|' — fell through unresolved."""
+    return markets.base_family(name)
 
 
 def score(c: Candidate, seed_base, n_groups, costs=backtest.BASE_COSTS, resamples=0,

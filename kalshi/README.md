@@ -17,7 +17,7 @@ needed only if you place authenticated orders.
 ## Run it
 
 ```bash
-python -m kalshi.selftest          # 203 harness checks. Run this FIRST and always.
+python -m kalshi.selftest          # 210 harness checks. Run this FIRST and always.
 python -m kalshi.factory           # the loop; writes RESULTS.md + results.json
 python -m kalshi.factory --sweep   # family x strategy coverage matrix; writes COVERAGE.md
 python -m kalshi.capacity          # dollars per year, not percent; writes CAPACITY.md
@@ -74,7 +74,7 @@ checks themselves.
 | `audit.py` | Measures the three conditions from a real recording. Refuses bad data. |
 | `coherence.py` | Bracket coherence from books alone — the one measurement needing no settled outcomes. Refuses partial sets. |
 | `execution.py` | Marketable vs IOC limit, and how the misses are distributed: what a missed leg actually costs. |
-| `selftest.py` | 203 checks that have to pass before any of the above means anything. |
+| `selftest.py` | 210 checks that have to pass before any of the above means anything. |
 | `RESULTS.md` | Output of the last full run. Generated. |
 | `COVERAGE.md` | Every family × strategy, in-sample. Generated. |
 | `CAPACITY.md` | What the winners are worth in dollars a year. Generated. |
@@ -176,9 +176,16 @@ A contract whose true probability is 99.8% can only be quoted at 99, so it is st
 underpriced by 0.8¢; a contract worth 0.2% must still trade at 1¢ or better. This shows up
 in `efficient_control`, where the bias is *exactly zero* by construction — measured at
 **+1.13¢ below 2¢ and −0.12¢ above it**. It was found by a self-test failing and being
-misread as a broken control. Both bots that passed the gate trade in that boundary region.
-Real feature of the exchange; also the most fragile result here, since it lives entirely in
-prices where a real book has almost no size.
+misread as a broken control. Real feature of the exchange, and the most fragile result here,
+since it lives entirely in prices where a real book has almost no size.
+
+> **Corrected in K29.** This finding used to end *"both bots that passed the gate trade in
+> that boundary region"*, and that was wrong — it read the effect as symmetric when this
+> finding's own measurement says it is not. The bias is **+1.13¢ at the 1–2¢ floor** and
+> **−0.12¢ everywhere above**, and the winning bot buys at **96–98¢**, the wrong end. Turning
+> off both planted edges and leaving only the price grid pays **−$81/yr** in that band on five
+> fresh seeds. The grid effect is real; it is not what the winner trades, and this page
+> claimed otherwise for twenty-four rounds.
 
 **6. The goal was reached in generation 0 — and that is a warning, not a win.**
 Three bots cleared all ten criteria: `hold_favorite(thresh=95)` and `band_fade(lo=5,hi=8)`
@@ -369,10 +376,18 @@ to trade needs the **sign**; deciding how much to size needs the **magnitude**. 
 
 | question | decides | data | time |
 |---|---|---|---|
-| is the edge positive? | trade or don't | ~580 events | **~1 year** |
-| how big is it, ±20%? | sizing, is it worth the effort | ~14,600 events | ~29 years |
+| is the edge positive? | trade or don't | ~580 events | **~4.3 years** |
+| how big is it, ±20%? | sizing, is it worth the effort | ~14,600 events | ~109 years |
 
-Both are true; quoting only the second overstated the problem. The sign is reachable.
+Both are true; quoting only the second overstated the problem. The sign is *cheaper*, but it
+is not cheap.
+
+> **Corrected in K29.** These rows said **~1 year** and **~29 years**, which divided the same
+> sample requirement by a different rate than every dollar figure on this page uses.
+> `econ_print` lists 534 **contracts** a year, which is **133.5 four-rung ladder sets** — the
+> unit the backtester measures in and the unit `capacity.sets_per_year` returns. 580 ÷ 133.5 =
+> **4.3 years**, not 1. That is the project's contracts-versus-sets error for the **fourth**
+> time, and this occurrence sat inside the finding that had corrected the previous one.
 
 *And the edge was in the wrong place.* Per-contract σ is `100·√(q(1−q))` — **30¢ at 90¢, 11¢ at
 97¢, 6¢ at 99¢** — so variance collapses far faster than the grid-capped edge does. Measured
@@ -580,7 +595,7 @@ don't caveat it*. Here it can be measured, for a reason nothing else in this dir
 
 | | needs | to establish the sign |
 |---|---|---|
-| a directional edge | **settled outcomes** | ~580 events ≈ **0.6 years** |
+| a directional edge | **settled outcomes** | ~580 events ≈ **4.3 years** |
 | bracket incoherence | **a snapshot of the book** | ~350 events ≈ **15 days of recording** |
 
 `E[100·outcome − ask]` cannot be evaluated until the market settles, so every observation costs
@@ -851,6 +866,67 @@ and they were invisible precisely because nothing they rejected ever appeared in
 filter is only as trustworthy as its account of what it discarded**, and for twenty-two rounds
 this one gave none.
 
+**24. Asked what the upside was, the honest answer turned out to be that the entire result is
+one hand-typed constant — and finding out cost four more bugs.**
+
+Sixteen agents measured five upside axes and attacked every figure. What survived is not an
+upside number, it is a dependency.
+
+**The whole result is `underreact_cap = 3.0`.** Paired variants, five fresh seeds each,
+`econ_print` with only that field changed:
+
+| lag cap | 0.0¢ | 1.0¢ | 1.5¢ | 2.0¢ | **3.0¢** | 4.0¢ | 6.0¢ |
+|---|---|---|---|---|---|---|---|
+| $/yr | −72 | +3 | +58 | +126 | **+307** | +485 | +528 |
+
+Break-even sits at **cap ≈ 1.0¢**, and `markets.py` assigns exactly 1.0 to `crypto_hourly` and
+`index_bracket_daily` — the two families it calls the most liquid on the exchange. **If econ
+books lag like the liquid ones, this bot loses money at every order size.** Nothing has ever
+measured the real number.
+
+Decomposing the two planted edges settles which one matters, and disproves finding 5's claim
+about the winner in passing:
+
+| configuration | ¢/set | $/yr |
+|---|---|---|
+| as shipped | +230 | +307 |
+| longshot compression off | +224 | +299 |
+| **quote lag off** | **−54** | **−72** |
+| both off — only the 1–99¢ price grid | −61 | −81 |
+
+**Two other ceilings are hard, and neither is a parameter.** Order size saturates at ~54
+contracts: qty 100, 250, 1,000, 5,000 and 20,000 all pay the same $389/yr, because the depth
+taper leaves 12–48 contracts at the touch above 96¢. And capacity is 133.5 ladder sets a year,
+counted rather than estimated.
+
+**What I claimed about generality was underpowered.** I reported "1 of 11 families" from a
+1,200-group sweep. The dollar confidence interval on `crypto_hourly` is **±$12,824** against
+`econ_print`'s ±$84 — 150× coarser. The right word is *unmeasured*, not absent. The tempting
+high-frequency candidate pools to **+2.5 ± 12.9¢, t = +0.19** across six seeds, with seed
+values running −44.5¢ to +40.1¢. Noise.
+
+**Four live defects, found by pointing the audit at the auditor.**
+
+| defect | effect |
+|---|---|
+| `capacity.sets_per_year` did not resolve derived names | returned **0.0**, silently zeroing every criterion-10 and sensitivity dollar figure |
+| `factory._base_family` split on `@` only | `variant()` names use `\|` and fell through unresolved |
+| `attenuated()` overwrote `salt_name` | **unpaired `crypto_bracket_stale`** — the one family that borrows a salt |
+| `attenuated()` left `quote_noise` and `stale_leg_prob` at full strength | **criterion 10 was a no-op for every bracket candidate**; repaired, it now cuts $390 → $166 |
+
+The first was introduced one round earlier as the *single source of truth* for exactly that
+division — which is what made it worth auditing. All four now have regression guards.
+
+**And the units error a fourth time**, inside finding 16, the finding that had corrected the
+third. See the correction box there: the sign test costs **4.3 years**, not 1.
+
+The general lesson, and it is not a comfortable one. Every round until now audited the
+simulator, then the search, then the gate. This round audited *the corrections themselves* —
+and found that the fix shipped one round earlier was broken, that a claim standing for
+twenty-four rounds was backwards, and that the project's signature error had recurred inside
+the finding written to prevent it. **A self-correcting process is not self-correcting unless
+something outside it periodically checks the corrections.**
+
 ## The gate
 
 Eleven criteria. Criteria 1-10 gate each **bot**; criterion 11 gates the **portfolio**.
@@ -983,7 +1059,7 @@ The path exists and it is not short:
 5. Only then ask whether the gate passes. Expect it not to.
 
 **Start at the bracket branch instead, because it is a fortnight rather than a year.** Steps
-3–5 need settled outcomes and finding 16 prices that at ~0.6 years just to establish a sign.
+3–5 need settled outcomes and finding 16 prices that at ~4.3 years just to establish a sign.
 The bracket path does not:
 
 1. `python -m kalshi.live --record-event <EVENT> --samples 600 --interval 60` — every leg of
