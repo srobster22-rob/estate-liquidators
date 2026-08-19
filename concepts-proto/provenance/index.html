@@ -1,0 +1,448 @@
+<title>Provenance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Petrona:ital,wght@0,400;0,600;1,400&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --ground:#EDEEE8; --surface:#F6F7F2; --sunk:#E3E5DC;
+  --ink:#161C22; --muted:#5B6570; --faint:#8A929B;
+  --rule:#C7CBC1; --rule-soft:#DCDFD6;
+  --accent:#2E6F63; --accent-soft:#DCE8E3;
+  --ok:#2F6B4F; --ok-soft:#DDE9E0;
+  --bad:#A0392B; --bad-soft:#F0DEDA;
+  --warn:#8A6B2F;
+  --shadow:0 1px 2px rgba(22,28,34,.06),0 8px 24px rgba(22,28,34,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#12161A; --surface:#1A1F25; --sunk:#0D1114;
+    --ink:#E6E8E1; --muted:#9AA3AC; --faint:#6E7780;
+    --rule:#2C333A; --rule-soft:#232930;
+    --accent:#5FAE9B; --accent-soft:#1B2E2A;
+    --ok:#6BB089; --ok-soft:#18271E;
+    --bad:#D2705F; --bad-soft:#2C1917;
+    --warn:#C0A063;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#12161A; --surface:#1A1F25; --sunk:#0D1114;
+  --ink:#E6E8E1; --muted:#9AA3AC; --faint:#6E7780;
+  --rule:#2C333A; --rule-soft:#232930;
+  --accent:#5FAE9B; --accent-soft:#1B2E2A;
+  --ok:#6BB089; --ok-soft:#18271E;
+  --bad:#D2705F; --bad-soft:#2C1917;
+  --warn:#C0A063;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:Archivo,system-ui,sans-serif; font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 24px 72px}
+
+/* ---- masthead ---- */
+header.mast{
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;border-bottom:1.5px solid var(--ink);padding-bottom:12px;margin-bottom:6px;
+}
+.mast h1{
+  font-family:Petrona,Georgia,serif;font-weight:600;font-size:30px;letter-spacing:-.015em;
+  margin:0;text-wrap:balance;
+}
+.mast .sub{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);
+}
+.rail{display:flex;gap:3px;margin:14px 0 22px;flex-wrap:wrap}
+.rail i{
+  width:13px;height:5px;background:var(--rule);border-radius:1px;display:block;
+  transition:background .2s;
+}
+.rail i.ok{background:var(--ok)} .rail i.bad{background:var(--bad)}
+.rail i.now{background:var(--accent);height:9px;margin-top:-2px}
+
+/* ---- layout ---- */
+.board{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:800px){.board{grid-template-columns:1fr}}
+
+.card{
+  background:var(--surface);border:1px solid var(--rule-soft);border-radius:3px;
+  box-shadow:var(--shadow);
+}
+.card.lot{padding:0;overflow:hidden}
+.lot-head{
+  padding:18px 22px 14px;border-bottom:1px solid var(--rule);
+  display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;
+}
+.lotno{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);font-weight:500;
+}
+.lot-head h2{
+  font-family:Petrona,Georgia,serif;font-weight:600;font-size:23px;margin:4px 0 0;
+  line-height:1.2;text-wrap:balance;
+}
+.attrib{
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
+  text-align:right;line-height:1.7;white-space:nowrap;
+}
+.attrib b{display:block;color:var(--ink);font-weight:500;font-size:12.5px}
+
+/* ---- dossier table ---- */
+table.dossier{width:100%;border-collapse:collapse;font-size:13.5px}
+table.dossier td{padding:9px 22px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+table.dossier tr:last-child td{border-bottom:0}
+td.k{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);width:40%;padding-top:11px;
+}
+td.v{font-weight:500}
+tr.flag td{background:var(--bad-soft)}
+tr.flag td.v::after{
+  content:attr(data-note);display:block;font-family:"IBM Plex Mono",monospace;
+  font-size:10.5px;letter-spacing:.04em;color:var(--bad);font-weight:400;margin-top:2px;
+}
+tr.late td{background:var(--accent-soft)}
+tr.late td.v::after{
+  content:attr(data-note);display:block;font-family:"IBM Plex Mono",monospace;
+  font-size:10.5px;letter-spacing:.04em;color:var(--warn);font-weight:400;margin-top:2px;
+}
+
+/* ---- call panel ---- */
+.panel{padding:18px 20px}
+.panel h3{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);margin:0 0 12px;font-weight:500;
+}
+.calls{display:grid;gap:9px}
+button.call{
+  font-family:Archivo,sans-serif;font-size:15px;font-weight:600;color:var(--ink);
+  background:var(--ground);border:1.5px solid var(--rule);border-radius:2px;
+  padding:14px 16px;cursor:pointer;text-align:left;transition:border-color .15s,background .15s;
+}
+button.call:hover{border-color:var(--accent);background:var(--surface)}
+button.call:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.call span{
+  display:block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  letter-spacing:.08em;color:var(--muted);font-weight:400;margin-top:3px;text-transform:uppercase;
+}
+
+.verdict{border-radius:2px;padding:14px 16px;border:1.5px solid}
+.verdict.right{background:var(--ok-soft);border-color:var(--ok)}
+.verdict.wrong{background:var(--bad-soft);border-color:var(--bad)}
+.verdict .head{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;font-weight:500;
+}
+.verdict.right .head{color:var(--ok)} .verdict.wrong .head{color:var(--bad)}
+.verdict p{margin:6px 0 0;font-size:13.5px;line-height:1.5}
+button.next{
+  width:100%;margin-top:12px;font-family:Archivo,sans-serif;font-weight:600;font-size:14px;
+  background:var(--ink);color:var(--ground);border:0;border-radius:2px;padding:12px;cursor:pointer;
+}
+button.next:hover{background:var(--accent)}
+button.next:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- tally ---- */
+.tally{display:flex;gap:0;border-top:1px solid var(--rule);margin-top:16px}
+.tally div{flex:1;padding:11px 0 2px;border-right:1px solid var(--rule-soft)}
+.tally div:last-child{border-right:0}
+.tally b{
+  display:block;font-family:Petrona,Georgia,serif;font-size:23px;font-weight:600;
+  font-variant-numeric:tabular-nums;line-height:1.1;
+}
+.tally span{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--faint);
+}
+
+/* ---- field notes ---- */
+.notes{margin-top:22px}
+.notes .grp{border-top:1px solid var(--rule-soft);padding:9px 0}
+.notes .grp:first-of-type{border-top:0}
+.notes .pname{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);font-weight:500;
+}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.chip{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:2px 6px;border-radius:2px;
+  background:var(--sunk);color:var(--muted);border:1px solid var(--rule-soft);
+}
+.chip.no{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.empty{color:var(--faint);font-size:12.5px;font-style:italic}
+
+/* ---- report ---- */
+.report{max-width:660px;margin:0 auto}
+.report h2{font-family:Petrona,Georgia,serif;font-size:27px;font-weight:600;margin:0 0 4px}
+.curve{display:flex;align-items:flex-end;gap:8px;height:130px;margin:22px 0 8px}
+.curve .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.curve .fill{background:var(--accent);border-radius:2px 2px 0 0;min-height:2px}
+.curve .lb{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;
+  color:var(--faint);text-align:center;margin-top:6px;text-transform:uppercase;
+}
+.curve .pc{
+  font-family:Petrona,serif;font-size:15px;font-weight:600;text-align:center;
+  font-variant-numeric:tabular-nums;margin-bottom:4px;
+}
+.finding{
+  border-left:2.5px solid var(--accent);padding:2px 0 2px 14px;margin:20px 0;
+  font-size:14px;line-height:1.6;
+}
+.foot{
+  margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);
+  font-size:12.5px;color:var(--muted);line-height:1.6;
+}
+.foot code{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+/* ============================================================================
+   Ported from concepts-sim/provenance.py — the verified model.
+   Genuine pieces may carry honest anomalies (repairs), which ALWAYS come from a
+   LATER period. Forgers err toward NEIGHBOURING periods, earlier or later.
+   So an earlier-period feature is damning; a later one is ambiguous. That
+   asymmetry is the whole skill, and it is why the sim found the optimal
+   threshold RISES with expertise.
+   ========================================================================== */
+const PERIODS=["Queen Anne","Georgian","Regency","Victorian","Edwardian"];
+const YEARS={"Queen Anne":"c. 1702–1730","Georgian":"c. 1714–1800","Regency":"c. 1800–1830",
+             "Victorian":"c. 1837–1901","Edwardian":"c. 1901–1910"};
+const RULES={
+ primary_wood:{"Queen Anne":["walnut","maple"],"Georgian":["mahogany","walnut"],"Regency":["mahogany","rosewood"],"Victorian":["mahogany","oak","rosewood"],"Edwardian":["oak","satinwood","mahogany"]},
+ secondary_wood:{"Queen Anne":["pine","oak"],"Georgian":["pine","oak"],"Regency":["pine","deal"],"Victorian":["deal","pine"],"Edwardian":["deal","plywood"]},
+ joinery:{"Queen Anne":["hand_dovetail_coarse"],"Georgian":["hand_dovetail_coarse","hand_dovetail_fine"],"Regency":["hand_dovetail_fine"],"Victorian":["hand_dovetail_fine","machine_dovetail"],"Edwardian":["machine_dovetail"]},
+ finish:{"Queen Anne":["oil_wax"],"Georgian":["oil_wax","shellac"],"Regency":["shellac","french_polish"],"Victorian":["french_polish","varnish"],"Edwardian":["varnish","spirit_lacquer"]},
+ hardware:{"Queen Anne":["handmade_brass","iron_pin"],"Georgian":["handmade_brass","cast_brass"],"Regency":["cast_brass"],"Victorian":["cast_brass","machine_screw"],"Edwardian":["machine_screw","pressed_steel"]},
+ saw_marks:{"Queen Anne":["pit_saw"],"Georgian":["pit_saw","frame_saw"],"Regency":["frame_saw"],"Victorian":["circular_saw","frame_saw"],"Edwardian":["circular_saw","band_saw"]},
+ wear_pattern:{"Queen Anne":["deep_uneven"],"Georgian":["deep_uneven","moderate"],"Regency":["moderate"],"Victorian":["moderate","light"],"Edwardian":["light","minimal"]}
+};
+const ATTRS=Object.keys(RULES);
+const LABEL={primary_wood:"Primary timber",secondary_wood:"Secondary timber",joinery:"Drawer joinery",
+             finish:"Surface finish",hardware:"Hardware",saw_marks:"Saw marks",wear_pattern:"Wear"};
+const NAME={walnut:"Walnut",maple:"Maple",mahogany:"Mahogany",rosewood:"Rosewood",oak:"Oak",
+  satinwood:"Satinwood",pine:"Pine",deal:"Deal",plywood:"Plywood",
+  hand_dovetail_coarse:"Hand-cut dovetails, coarse",hand_dovetail_fine:"Hand-cut dovetails, fine",
+  machine_dovetail:"Machine-cut dovetails",oil_wax:"Oil and wax",shellac:"Shellac",
+  french_polish:"French polish",varnish:"Varnish",spirit_lacquer:"Spirit lacquer",
+  handmade_brass:"Hand-made brass",iron_pin:"Iron pins",cast_brass:"Cast brass",
+  machine_screw:"Machine-threaded screws",pressed_steel:"Pressed steel",
+  pit_saw:"Pit-saw marks",frame_saw:"Frame-saw marks",circular_saw:"Circular-saw marks",
+  band_saw:"Band-saw marks",deep_uneven:"Deep and uneven",moderate:"Moderate",
+  light:"Light",minimal:"Minimal"};
+const FORMS=["bureau","chest of drawers","side table","bookcase","writing desk","linen press",
+  "card table","washstand","davenport","corner cupboard","tea table","chest-on-stand"];
+
+const R=(s=>()=>((s=s*1103515245+12345&0x7fffffff)/0x7fffffff))(Date.now()%100000+7);
+const pick=a=>a[Math.floor(R()*a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function genuine(p,anomalies=true){
+  const o={}; ATTRS.forEach(a=>o[a]=pick(RULES[a][p]));
+  if(!anomalies) return {obj:o,repairs:[]};
+  const r=R(); if(r<0.55) return {obj:o,repairs:[]};
+  const n=r<0.88?1:2, idx=PERIODS.indexOf(p), reps=[];
+  shuffle(ATTRS.slice()).slice(0,n).forEach(a=>{
+    const later=PERIODS.slice(idx+1).flatMap(q=>RULES[a][q]).filter(v=>!RULES[a][p].includes(v));
+    if(later.length){o[a]=pick(later); reps.push(a)}
+  });
+  return {obj:o,repairs:reps};
+}
+function skill(){const r=R(); return r<0.08?0:r<0.20?1:r<0.82?2+Math.floor(R()*2):4+Math.floor(R()*3)}
+function forgery(p){
+  // Clean base, exactly as make_forgery() does in provenance.py. Building on a
+  // repaired piece would hand the forger extra off-period features for free and
+  // push cue counts out of the learnable band — an 8-point drift when first ported.
+  const {obj:o}=genuine(p,false), k=skill(); if(k<=0) return {obj:o,errors:[]};
+  const idx=PERIODS.indexOf(p), errs=[];
+  shuffle(ATTRS.slice()).slice(0,Math.min(k,ATTRS.length)).forEach(a=>{
+    const nb=[idx-1,idx+1].filter(i=>i>=0&&i<PERIODS.length).map(i=>PERIODS[i]);
+    let c=[...new Set(nb.flatMap(q=>RULES[a][q]))].filter(v=>!RULES[a][p].includes(v));
+    if(!c.length) c=[...new Set(PERIODS.flatMap(q=>RULES[a][q]))].filter(v=>!RULES[a][p].includes(v));
+    if(c.length){o[a]=pick(c); errs.push(a)}
+  });
+  return {obj:o,errors:errs};
+}
+function earliestPeriodFor(attr,val){
+  for(let i=0;i<PERIODS.length;i++) if(RULES[attr][PERIODS[i]].includes(val)) return i;
+  return 99;
+}
+
+const LOTS=50;
+const deck=[]; {
+  const flags=shuffle(Array.from({length:LOTS},(_,i)=>i<LOTS/2));
+  for(let i=0;i<LOTS;i++){
+    const p=pick(PERIODS), fake=flags[i];
+    const built=fake?forgery(p):genuine(p);
+    deck.push({period:p,fake,obj:built.obj,form:pick(FORMS),
+               lot:100+i*3+Math.floor(R()*3)});
+  }
+}
+
+let i=0, answered=null, results=[];
+const notes={};  // period -> attr -> {ok:Set, no:Set}
+PERIODS.forEach(p=>{notes[p]={}; ATTRS.forEach(a=>notes[p][a]={ok:new Set(),no:new Set()})});
+
+const el=document.getElementById("app");
+const pct=(n,d)=>d?Math.round(100*n/d):0;
+
+function record(lot,correct){
+  results.push(correct);
+  ATTRS.forEach(a=>{
+    const v=lot.obj[a];
+    if(RULES[a][lot.period].includes(v)) notes[lot.period][a].ok.add(v);
+    else if(earliestPeriodFor(a,v)<PERIODS.indexOf(lot.period)) notes[lot.period][a].no.add(v);
+  });
+}
+
+function render(){
+  if(i>=LOTS) return report();
+  const lot=deck[i], idx=PERIODS.indexOf(lot.period);
+  const rows=ATTRS.map(a=>{
+    const v=lot.obj[a], inPeriod=RULES[a][lot.period].includes(v);
+    let cls="",note="";
+    if(answered&&!inPeriod){
+      const e=earliestPeriodFor(a,v);
+      if(e<idx){cls="flag";note="Impossible — predates the piece"}
+      else{cls="late";note="Later than the piece — a repair, or a slip"}
+    }
+    return `<tr class="${cls}"><td class="k">${LABEL[a]}</td><td class="v" data-note="${note}">${NAME[v]}</td></tr>`;
+  }).join("");
+
+  const right=answered===null?`
+    <h3>Your call</h3>
+    <div class="calls">
+      <button class="call" onclick="call(false)">Consistent with the attribution
+        <span>Catalogue it — genuine</span></button>
+      <button class="call" onclick="call(true)">Not what it claims to be
+        <span>Withdraw it — a forgery</span></button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">
+      Honest pieces get repaired. A part from <em>after</em> the piece was made is ordinary.
+      A part from <em>before</em> it cannot be.</p>`
+    : (()=>{
+      const ok=answered===lot.fake;
+      return `<div class="verdict ${ok?'right':'wrong'}">
+        <div class="head">${ok?"Correct":"Wrong"}</div>
+        <p><strong>${lot.fake?"A forgery.":"Genuine."}</strong> ${
+          lot.fake
+            ? "The maker worked from a neighbouring period and let it show."
+            : "Everything unusual here is honest age."}</p></div>
+        <button class="next" onclick="next()">${i===LOTS-1?"Close the sale":"Next lot"}</button>`;
+    })();
+
+  const seen=results.length;
+  el.innerHTML=`
+  <header class="mast">
+    <div><h1>Provenance</h1></div>
+    <div class="sub">Lot ${i+1} of ${LOTS} · Condition report</div>
+  </header>
+  <div class="rail">${deck.map((_,n)=>{
+    const c=n<results.length?(results[n]?"ok":"bad"):(n===i?"now":"");
+    return `<i class="${c}"></i>`}).join("")}</div>
+
+  <div class="board">
+    <div class="card lot">
+      <div class="lot-head">
+        <div>
+          <div class="lotno">Lot ${lot.lot}</div>
+          <h2>${NAME[lot.obj.primary_wood]} ${lot.form}</h2>
+        </div>
+        <div class="attrib">Attributed<b>${lot.period}</b>${YEARS[lot.period]}</div>
+      </div>
+      <table class="dossier">${rows}</table>
+    </div>
+
+    <div>
+      <div class="card panel">${right}</div>
+      <div class="card panel tallywrap" style="margin-top:14px">
+        <h3>Record</h3>
+        <div class="tally">
+          <div><b>${pct(results.filter(Boolean).length,seen)}%</b><span>Accuracy</span></div>
+          <div><b>${results.filter(Boolean).length}</b><span>Correct</span></div>
+          <div><b>${seen-results.filter(Boolean).length}</b><span>Missed</span></div>
+        </div>
+      </div>
+      <div class="card panel notes">
+        <h3>Field notes — what you've seen</h3>
+        ${notesHTML()}
+      </div>
+    </div>
+  </div>`;
+}
+
+function notesHTML(){
+  const out=PERIODS.filter(p=>ATTRS.some(a=>notes[p][a].ok.size||notes[p][a].no.size))
+    .map(p=>{
+      const chips=ATTRS.flatMap(a=>[
+        ...[...notes[p][a].ok].map(v=>`<span class="chip">${NAME[v]}</span>`),
+        ...[...notes[p][a].no].map(v=>`<span class="chip no">${NAME[v]}</span>`)
+      ]).join("");
+      return `<div class="grp"><div class="pname">${p}</div><div class="chips">${chips}</div></div>`;
+    }).join("");
+  return out||`<p class="empty">Fills in as you work. Plain chips are features you've
+    confirmed on a genuine piece; red ones are features that cannot belong to that period.</p>`;
+}
+
+function call(fake){ answered=fake; record(deck[i],fake===deck[i].fake); render() }
+function next(){ answered=null; i++; render() }
+
+function report(){
+  const first=results.slice(0,10), last=results.slice(-10);
+  const f=pct(first.filter(Boolean).length,first.length),
+        l=pct(last.filter(Boolean).length,last.length),
+        all=pct(results.filter(Boolean).length,results.length);
+  const bars=[["Lots 1–10",f],["Lots 11–40",pct(results.slice(10,40).filter(Boolean).length,30)],
+              ["Lots 41–50",l]];
+  el.innerHTML=`
+  <header class="mast"><div><h1>Provenance</h1></div>
+    <div class="sub">Sale closed · ${LOTS} lots</div></header>
+  <div class="report">
+    <div class="card panel" style="padding:26px 24px">
+      <h2>${all}% across the sale</h2>
+      <p style="color:var(--muted);margin:0">
+        The model's ceiling is <strong>85.5%</strong> — 7.8% of forgeries are built well enough
+        to be undetectable, so nobody gets them all.</p>
+      <div class="curve">
+        ${bars.map(([lb,v])=>`<div class="b">
+          <div class="pc">${v}%</div>
+          <div class="fill" style="height:${Math.max(2,v)}%"></div>
+          <div class="lb">${lb}</div></div>`).join("")}
+      </div>
+      <div class="finding">
+        ${l>f
+          ? `You improved by <strong>${l-f} points</strong> from the first ten lots to the last.
+             That climb is the thing the concept is betting on: the tells are learnable without
+             being memorisable, because no two pieces carry the same set.`
+          : l===f
+          ? `You finished level with where you started. Either the tells never landed, or you
+             had them from the first lot — both are findings, and both are what this test is for.`
+          : `You finished <strong>${f-l} points</strong> below where you started. Worth knowing:
+             a late slide usually means the honest repairs started reading as forgeries.`}
+      </div>
+      <p style="font-size:13.5px;color:var(--muted);line-height:1.6">
+        The rule underneath: a repair always uses a part from <em>after</em> the piece was made,
+        so a later feature is ambiguous and an earlier one is impossible. Experts don't spot more
+        — they <strong>raise their bar</strong>, calling a forgery only at two inconsistencies
+        rather than one. That behaviour wasn't designed in; it fell out of the model.</p>
+      <button class="next" onclick="location.reload()">Run another sale</button>
+    </div>
+    <div class="foot">
+      A playable version of concept #16 from <code>GAME-CONCEPTS.md</code>, built on the model in
+      <code>concepts-sim/provenance.py</code>. The simulation established that a learnable signal
+      exists; it could not establish whether a written dossier communicates it. That's what this
+      is for, and it's the question only a person can answer.
+    </div>
+  </div>`;
+}
+render();
+</script>
