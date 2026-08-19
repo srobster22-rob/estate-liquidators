@@ -31,7 +31,11 @@ jobs:
           cp -r proto     _site/proto
           cp -r proto3d   _site/proto3d
           cp .github/pages-index.html _site/index.html
+      # enablement turns Pages on for the repo if it is off, so a fresh clone
+      # deploys without anyone visiting Settings first. Needs Pages available
+      # on the plan - private repos need Pro or Team.
       - uses: actions/configure-pages@v5
+        with: { enablement: true }
       - uses: actions/upload-pages-artifact@v3
         with: { path: _site }
       - id: deploy

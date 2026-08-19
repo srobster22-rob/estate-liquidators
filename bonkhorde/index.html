@@ -468,11 +468,18 @@ mortar:{ name:"MORTAR", ic:"\u{1F4A3}", kind:"w",
   ds:"Lobs a shell at the thickest part of the crowd.",
   evo:{ name:"BOMBARDIER", need:"plating", ic:"\u{1F6E1}",
         ds:"Every shell splits into four. Stand still. Enjoy." },
-  lv:[{d:46,cd:2.3,rad:3.4,n:1},
-      {d:62,cd:2.1,rad:3.7,n:1},
-      {d:83,cd:1.9,rad:4.0,n:2},
-      {d:110,cd:1.75,rad:4.4,n:2},
-      {d:143,cd:1.6,rad:4.8,n:3},
+  // Unevolved MORTAR strictly dominated all seven other weapons on BOTH axes at
+  // rank 5 - best boss DPS and best crowd DPS at once, which is not a
+  // specialist, it is a default. A -23% cut once dropped clears 6/30 to 1/20,
+  // but that was when it was the only thing that could dent a boss (215 dps
+  // against a median of 47). With reach measured to the body the median is 137
+  // and four weapons clear 200, so it is no longer load-bearing and can pay.
+  // BOMBARDIER is untouched: evolved mortar benches at 1.14x median already.
+  lv:[{d:39,cd:2.3,rad:3.4,n:1},
+      {d:53,cd:2.1,rad:3.7,n:1},
+      {d:71,cd:1.9,rad:4.0,n:2},
+      {d:94,cd:1.75,rad:4.4,n:2},
+      {d:122,cd:1.6,rad:4.8,n:3},
       {d:230,cd:1.3,rad:5.6,n:4}] },
 
 zap:{ name:"ZAP", ic:"⚡", kind:"w",
@@ -525,11 +532,20 @@ spitter: { nm:"SPITBOI",  hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], 
 skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34 },
 };
 
+// HP is scaled to body size on purpose. Weapons used to measure reach to an
+// enemy's CENTRE, so every boss shrugged off exactly its own radius worth of
+// your damage - and the bigger the boss, the more it shrugged. Now that reach
+// is measured to the body, the biggest boss gained the most DPS against it, so
+// the biggest boss needs the most HP back. Same fight, honest numbers.
 const BOSSES = [
-{ t:300,  nm:"THE GRAVELORD", hp:3200,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
-{ t:600,  nm:"THE LANDLORD",  hp:12000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
-{ t:900,  nm:"MR. TEETH",     hp:42000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
-{ t:1140, nm:"THE FINAL BONK",hp:205000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
+{ t:300,  nm:"THE GRAVELORD", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
+{ t:600,  nm:"THE LANDLORD",  hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
+{ t:900,  nm:"MR. TEETH",     hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
+// The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
+// veteran run reaches sudden death and is decided there. Its HP is therefore
+// the one lever that moves the clear rate without making the other nineteen
+// minutes grindier, which is why it carries the correction on its own.
+{ t:1140, nm:"THE FINAL BONK",hp:370000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -597,9 +613,15 @@ const MAXE = 420;
 const CHARS = [
 { id:"intern", nm:"THE INTERN", ic:"\u{1F9CD}", w:"bat",
   ds:"Nothing special. Statistically the best at everything.", mods:{} },
+// Measured at 1/12 veteran clears against THE GHOUL's 9/12. Its pickup bonus
+// expires - by minute 15 you are swimming in gems and the radius buys nothing -
+// while the HP cost does not, so the late game it has to survive is played as a
+// strictly worse INTERN. Speed is the axis that never expires in a game whose
+// only verb is positioning, and it is what separates it from THE OX, so the
+// fragile one is now genuinely the fast one rather than fast-ish and fragile.
 { id:"scrap",  nm:"THE SCRAPPER", ic:"\u{1F9F2}", w:"caltrops",
-  ds:"+70% pickup radius, +8% speed, 15% less HP.",
-  mods:{ mag:1.7, spd:1.08, hp:.85 } },
+  ds:"+70% pickup radius, +16% speed, 15% less HP.",
+  mods:{ mag:1.7, spd:1.16, hp:.85 } },
 { id:"spark",  nm:"THE SPARK", ic:"⚡", w:"zap",
   ds:"-18% cooldowns. Made entirely of glass.",
   mods:{ cd:.82, hp:.72 } },
@@ -842,9 +864,11 @@ const CELL=4.5, GN=Math.ceil(ARENA*2/CELL)+2;
 const grid = new Array(GN*GN); for(let i=0;i<grid.length;i++) grid[i]=[];
 const gi = (x,z)=>{ const a=clamp(((x+ARENA)/CELL)|0,0,GN-1), b=clamp(((z+ARENA)/CELL)|0,0,GN-1);
                     return b*GN+a; };
+let maxBody = 0;                        // largest body radius on the field
 function rebuildGrid(){
   for(let i=0;i<grid.length;i++) if(grid[i].length) grid[i].length=0;
-  for(const e of enemies) grid[gi(e.x,e.z)].push(e);
+  maxBody = 0;
+  for(const e of enemies){ grid[gi(e.x,e.z)].push(e); if(e.rad > maxBody) maxBody = e.rad; }
 }
 function near(x,z,r,fn){
   const c  = Math.ceil(r/CELL);
@@ -858,6 +882,29 @@ function near(x,z,r,fn){
       const e=bucket[i]; if(e.dead) continue;
       const dx=e.x-x, dz=e.z-z;
       if(dx*dx+dz*dz <= r2) fn(e, Math.sqrt(dx*dx+dz*dz));
+    }
+  }
+}
+// Enemies are bodies, not points, and every one of them already hits YOU at
+// `e.rad + .75`. Weapons measured centre-to-centre, so the reach was short by
+// exactly the target's radius - .62m against a shambler, 4.0m against THE FINAL
+// BONK. The bigger the target, the worse your weapon performed against it,
+// which is backwards. Anything that asks "what does this area hit" uses this.
+// Cells expand by the largest body actually present, so an all-shambler field
+// scans exactly what it scanned before; only a boss fight pays the wider sweep.
+function hitNear(x,z,r,fn){
+  const c  = Math.ceil((r+maxBody)/CELL);
+  const cx = ((x+ARENA)/CELL)|0, cz = ((z+ARENA)/CELL)|0;
+  const a0 = clamp(cx-c,0,GN-1), a1 = clamp(cx+c,0,GN-1);
+  const b0 = clamp(cz-c,0,GN-1), b1 = clamp(cz+c,0,GN-1);
+  for(let b=b0;b<=b1;b++) for(let a=a0;a<=a1;a++){
+    const bucket=grid[b*GN+a];
+    for(let i=0;i<bucket.length;i++){
+      const e=bucket[i]; if(e.dead) continue;
+      const dx=e.x-x, dz=e.z-z, reach=r+e.rad;
+      // d stays centre-to-centre: knockback falloff and arc tests are all
+      // measured from the centre and must not change under this fix.
+      if(dx*dx+dz*dz <= reach*reach) fn(e, Math.sqrt(dx*dx+dz*dz));
     }
   }
 }
@@ -916,6 +963,8 @@ const mkGem = (x,z,v)=>({ x, z, y:groundY(x,z)+.45, v, bob:Math.random()*TAU, pu
 // gem into the new one instead of dropping it, so the XP economy is unchanged
 // and the per-frame cost is bounded.
 const GEM_CAP = 300;
+// How many overlapping hazard zones may burn one body per 0.25s window.
+const BURN_STACK = 3;
 function pushGem(x, z, v){
   if(gems.length >= GEM_CAP){
     let far=-1, fd=-1;
@@ -932,7 +981,7 @@ function pushGem(x, z, v){
 function damageArea(x, z, r, base, kb, srcName){
   const roll = dmgOut(base);
   let hits = 0;
-  near(x, z, r, (e,d)=>{
+  hitNear(x, z, r, (e,d)=>{
     const push = kb ? kb/Math.max(.6,d) : 0;
     hurt(e, roll.d, push?(e.x-x)/Math.max(.001,d)*push:0,
                     push?(e.z-z)/Math.max(.001,d)*push:0, roll.crit);
@@ -953,7 +1002,7 @@ function fireWeapons(dt){
     if(k === "aura"){ // continuous, no cooldown
       if((w.t -= dt) <= 0){
         w.t = .25;                                        // tick 4x/sec
-        near(P.x, P.z, s.rad, (e,d)=>{
+        hitNear(P.x, P.z, s.rad, (e,d)=>{
           const roll = dmgOut(s.dps*.25);
           hurt(e, roll.d, 0, 0, roll.crit);
           if(s.slow) e.slowT = .4;
@@ -980,7 +1029,7 @@ function fireBat(w,s){
   const ang = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
   swings.push({ x:P.x, z:P.z, y:P.y, ang, arc:s.arc, rng:s.rng, life:.20, max:.20, evo:w.evo });
   const roll = dmgOut(s.d);
-  near(P.x, P.z, s.rng, (e,d)=>{
+  hitNear(P.x, P.z, s.rng, (e,d)=>{
     if(s.arc < 6.2){
       let a = Math.atan2(e.x-P.x, e.z-P.z) - ang;
       while(a >  Math.PI) a -= TAU;
@@ -1017,7 +1066,7 @@ function fireMortar(w,s){
   for(let i=0;i<10;i++){
     const e = enemies[(Math.random()*enemies.length)|0];
     if(!e || e.dead) continue;
-    let c=0; near(e.x, e.z, s.rad, ()=>c++);
+    let c=0; hitNear(e.x, e.z, s.rad, ()=>c++);
     if(c > bs){ bs=c; best=e; }
   }
   if(!best) return;
@@ -1035,7 +1084,7 @@ function fireMortar(w,s){
 // threat and let the chain spread from there.
 function threatTarget(x, z, r, skip){
   let best = null, bs = -1e9;
-  near(x, z, r, (e,d)=>{
+  hitNear(x, z, r, (e,d)=>{
     if(skip && skip.has(e)) return;
     const w = (e.boss ? 400 : e.elite ? 40 : 0) - d;
     if(w > bs){ bs = w; best = e; }
@@ -1076,7 +1125,7 @@ function updateOrbiters(dt){
     const a = w.phase*(ring?-1:1) + i*(TAU/(w.evo?n/2:n));
     const rad = s.rad * (ring?.58:1);
     const ox = P.x + Math.sin(a)*rad, oz = P.z + Math.cos(a)*rad;
-    near(ox, oz, .95, e=>{
+    hitNear(ox, oz, .95, e=>{
       if(w.cool.has(e)) return;
       w.cool.set(e, s.cd);
       const roll = dmgOut(s.d * (i >= s.n ? DUPE_DMG : 1));
@@ -1108,7 +1157,8 @@ function spawnEnemy(type, atX, atZ){
     hp:    def.hp*hpScale(T)*em.hp,
     maxhp: def.hp*hpScale(T)*em.hp,
     dmg:   def.dmg*dmgScale(T)*em.dmg,
-    kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, dead:false, boss:false });
+    kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, burnCd:0, burnN:0,
+    dead:false, boss:false });
 }
 function spawnBoss(b){
   const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
@@ -1118,7 +1168,7 @@ function spawnBoss(b){
   const z = clamp(P.z+Math.sin(a)*26, -ARENA+5, ARENA-5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
-    kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, dead:false, boss:true,
+    kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, dead:false, boss:true,
     final: b.t===1140 });
   shake = 1.2; SFX.boss(); alert2(b.nm, "#ff5c4d");
 }
@@ -1215,6 +1265,7 @@ function updateEnemies(dt){
     if(e.dead){ enemies.splice(i,1); continue; }
     if(e.flash > -.2) e.flash -= dt;
     if(e.slowT>0) e.slowT -= dt;
+    if(e.burnCd>0) e.burnCd -= dt;
 
     // knockback decays hard - it should read as a shove, not a launch
     e.x += e.kx*dt; e.z += e.kz*dt;
@@ -1314,7 +1365,7 @@ function updateProjectiles(dt){
     b.x += Math.sin(b.a)*b.spd*dt; b.z += Math.cos(b.a)*b.spd*dt;
     b.y = groundY(b.x,b.z)+1.0;
     b.life -= dt;
-    near(b.x, b.z, .85, e=>{
+    hitNear(b.x, b.z, .85, e=>{
       if(b.hit.has(e) || b.pierce<=0) return;
       b.hit.add(e); b.pierce--;
       const roll = dmgOut(b.d);
@@ -1346,7 +1397,21 @@ function updateProjectiles(dt){
     const z = zones[i]; z.life -= dt; z.tick -= dt;
     if(z.tick <= 0){
       z.tick = .25;
-      near(z.x, z.z, z.r, e=>{ const roll=dmgOut(z.dps*.25); hurt(e, roll.d,0,0,roll.crit); });
+      // A trail lays zones on top of itself, and stacking is the weapon - the
+      // first attempt at this capped a body to ONE zone per window and dropped
+      // SCORCHED EARTH from the best boss weapon (3165 dps) to the worst (309),
+      // because its whole damage budget lives in the overlap. What actually
+      // broke was that the stack is UNBOUNDED against a large body: a 4m boss
+      // sits inside far more of the trail than a shambler does, so reach
+      // counting the body turned a 1.6x weapon into a 2.5x one. Bound the
+      // stack instead of removing it. A crowd body is covered by one or two
+      // zones and never notices the cap.
+      hitNear(z.x, z.z, z.r, e=>{
+        if(e.burnCd <= 0){ e.burnCd = .25; e.burnN = 0; }   // new window
+        if(e.burnN >= BURN_STACK) return;
+        e.burnN++;
+        const roll = dmgOut(z.dps*.25); hurt(e, roll.d, 0, 0, roll.crit);
+      });
     }
     if(z.life<=0) zones.splice(i,1);
   }
@@ -2130,6 +2195,10 @@ window.__g = {
                            clamp(P.z+Math.sin(a)*r,-ARENA+2,ARENA-2)); }
     } return enemies.length; },
   boss:  i=>spawnBoss(BOSSES[i||0]),
+  // position/HP/body of the boss on the field, so a test can hold an exact
+  // gap to it instead of chasing a target that walks toward the player.
+  bossAt:()=>{ const b=enemies.find(e=>e.boss && !e.dead);
+               return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad} : null; },
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },
   // split frame cost into simulation vs rendering. Software GL exaggerates the
   // render half enormously, so only the sim number transfers to real hardware.
@@ -2170,6 +2239,11 @@ window.__g = {
                 live:hazards.filter(h=>h.tel<=0).length }),
   casts: ()=>Object.assign({}, bossCasts),
   freezeSpawns: (v=true)=>{ noSpawn=v; },
+  // drop n identical hazard zones on one spot, so a test can prove the
+  // overlap cap without having to reproduce a whole SCORCHED EARTH trail
+  zones: (x,z,n,dps,r=2.2)=>{ for(let i=0;i<n;i++)
+    zones.push({ x, z, r, dps, life:9, max:9, c:[1,.42,.12], tick:0, evo:true }); },
+  burnStack: ()=>BURN_STACK,
   // colours the player has to tell apart at a glance, for the contrast check
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,

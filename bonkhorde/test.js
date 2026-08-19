@@ -656,6 +656,74 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await ctx.close();
   }
 
+  console.log("\n=== 7g. WEAPONS REACH THE BODY, NOT THE CENTRE ===");
+  {
+    // Every enemy hits the player at `e.rad + .75` - it counts its own body.
+    // Weapons did not: they measured centre-to-centre, so a target shrugged off
+    // exactly its own radius worth of reach, and the biggest boss shrugged off
+    // the most. STINK at rank 5 is a 6.5m ring; THE FINAL BONK is a 4.0m body.
+    // The damage boundary therefore belongs at 10.5m of centre distance, not
+    // 6.5m. Hold the gap by re-placing the player every frame, so the boss
+    // walking toward you cannot smear the measurement.
+    const probe = gap => page.evaluate((gap) => {
+      window.__g.wipeSave(); window.__g.start("ghoul"); window.__g.god();
+      window.__g.drainPicks(true); window.__g.freezeSpawns(true);
+      window.__g.give("aura", 4);
+      window.__g.boss(3);
+      const b0 = window.__g.bossAt();
+      for (let i = 0; i < 90; i++) {
+        const b = window.__g.bossAt(); if (!b) break;
+        window.__g.place(b.x + gap, b.z);
+        window.__g.step(1);
+      }
+      const b1 = window.__g.bossAt();
+      return { rad: b0.rad, lost: b0.hp - (b1 ? b1.hp : 0) };
+    }, gap);
+
+    const bossRad = (await probe(30)).rad;          // far enough to touch nothing
+    const inside  = await probe(6.5 + bossRad - 1); // body in the cloud, centre well out
+    const outside = await probe(6.5 + bossRad + 3); // body clear of the cloud
+
+    ok("the boss's body is 4.0m, so the ring must reach 10.5m",
+       Math.abs(bossRad - 4.0) < 0.01, `rad=${bossRad}`);
+    ok("a body inside the ring takes damage though its centre is outside",
+       inside.lost > 0, `lost ${Math.round(inside.lost)} HP at ${(6.5+bossRad-1)}m centre distance`);
+    ok("a body clear of the ring takes none",
+       outside.lost === 0, `lost ${Math.round(outside.lost)} HP`);
+    ok("and reach is not simply infinite", (await probe(30)).lost === 0);
+  }
+
+  console.log("\n=== 7h. OVERLAPPING HAZARDS STACK, BUT NOT WITHOUT LIMIT ===");
+  {
+    // SCORCHED EARTH is a trail laid over itself; stacking IS the weapon, and
+    // capping a body to one zone dropped it from best boss weapon to worst.
+    // What has to be bounded is the stack a LARGE body can sit inside, so this
+    // measures damage against zone count and asserts it plateaus at the cap
+    // rather than scaling forever.
+    const burn = n => page.evaluate((n) => {
+      window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
+      window.__g.drainPicks(true); window.__g.freezeSpawns(true);
+      window.__g.boss(3);
+      const b0 = window.__g.bossAt();
+      window.__g.zones(b0.x, b0.z, n, 400);
+      window.__g.step(30);                       // half a second: two windows
+      const b1 = window.__g.bossAt();
+      return b0.hp - b1.hp;
+    }, n);
+
+    const cap = await page.evaluate(() => window.__g.burnStack());
+    const one  = await burn(1);
+    const atCap = await burn(cap);
+    const over  = await burn(cap * 4);
+
+    ok("one zone burns", one > 0, `${Math.round(one)} HP`);
+    ok("zones below the cap do stack",
+       atCap > one * (cap - 0.6), `${Math.round(one)} -> ${Math.round(atCap)} HP at ${cap} zones`);
+    ok(`${cap * 4} zones do no more than ${cap}`,
+       Math.abs(over - atCap) <= atCap * 0.05,
+       `${Math.round(atCap)} vs ${Math.round(over)} HP`);
+  }
+
   console.log("\n=== 15c. THE CAMERA TURNS WITHOUT POINTER LOCK ===");
   {
     // A sandboxed iframe can refuse pointer lock outright. When that happens the

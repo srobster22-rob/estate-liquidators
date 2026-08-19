@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 102 checks: boot, every weapon, every evolution, every
+node test.js              # 109 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -111,13 +111,13 @@ node test.js              # 102 checks: boot, every weapon, every evolution, eve
                          # in a real phone-sized touch context
 node balance.js 6 both            # [trials] [first|vet|both] [char,char]
 node balance.js 12 vet intern,scrap   # higher n on two characters
-node dps.js 4                     # per-weapon boss/crowd DPS bench, n=4
+node dps.js 8                     # per-weapon boss/crowd DPS bench, n=8 (n=3 is noise)
 node passives.js 5                # per-passive offence/defence bench, n=5
 ```
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **102 passing.**
+die, and checks that `localStorage` survives a reload. **109 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -128,19 +128,26 @@ you can *close* a run; crowd DPS decides whether you survive to try.
 
 ```
 RANK 5          boss dps   crowd dps        EVOLVED        boss dps   crowd dps
-bat                   11        1194        MEGABONK            297        2402
-skulls                21        1371        CAROUSEL            306        2342
-bolt                  33        1170        BOLTSTORM           686        4358
-pulse                 38        1507        EARTHQUAKE          490        2923
-mortar               127        2120        BOMBARDIER          555        2863
-zap                  161         488        TESLA COIL          537        1261
-aura                  22        1160        PLAGUE              223        2150
-caltrops              93        1796        SCORCHED EARTH     1099        2996
+bat                   66        1286        MEGABONK            525        2726
+skulls               133        1378        CAROUSEL           1382        3348
+bolt                 127        1184        BOLTSTORM          1361        4929
+pulse                 57        1581        EARTHQUAKE          677        3152
+mortar               441        2197        BOMBARDIER         1449        3613
+zap                  196         595        TESLA COIL          607        1214
+aura                  71        1446        PLAGUE              276        2453
+caltrops             359        2003        SCORCHED EARTH     1093        2882
+                                                                        (n=8)
 ```
 
 Specialists are intentional — ZAP is a boss weapon that barely dents a crowd,
-SKULLS the reverse. What the bench is for is catching the ones that are not
-specialists but simply broken.
+AURA the reverse. What the bench is for is catching the ones that are not
+specialists but simply broken, and the test it applies is **strict dominance**:
+a weapon that beats every other weapon on *both* axes at once is not a
+specialist, it is a default. Unevolved MORTAR was exactly that before reach
+started counting bodies, and it still leads rank 5 by more than the table
+would like — a 15% cut moved it less than the bench's own noise, and a deeper
+one has collapsed clears before, so it stands as measured and flagged rather
+than tuned on a signal too small to read.
 
 ### Colour-vision contrast
 
@@ -233,40 +240,88 @@ idiom rather than by bolting "+damage" onto everything:
 
 `balance.js` runs an autopilot to death, many times over, and reports where runs actually end.
 Tuning a survivors-like by feel is how you ship something unwinnable in week one, so the
-difficulty curve here is a measurement. Current state, 6 trials per cell:
+difficulty curve here is a measurement. Current state, **pooled over two independent sweeps of
+6 trials per cell** — a single sweep swings the veteran total by ten points, so one is not a
+reading:
 
 ```
-                     median    worst     best   lvl  kills  evos  clears
-FIRST RUN   intern    04:16    03:53    05:27    11    554   0.0     0/6
-  (no perm  scrap     04:23    03:41    05:31    12    584   0.0     0/6
-  upgrades) spark     04:16    03:42    04:19    10    505   0.0     0/6
-            ox        05:25    04:21    11:07    14    999   0.0     0/6
-            ghoul     05:19    04:21    16:22    18   1481   0.2     0/6
+                                                          clears     pooled
+FIRST RUN   intern                                       0/6  0/6      0/12
+  (no perm  scrap                                        0/6  0/6      0/12
+  upgrades) spark                                        0/6  0/6      0/12
+            ox                                           0/6  0/6      0/12
+            ghoul                                        0/6  0/6      0/12
+                                                                       0/60
 
-VETERAN     intern    12:22    06:19    16:01    27   2757   0.7     0/6
-  (all      scrap     09:17    06:03    11:26    22   1724   0.3     0/6
-  upgrades  spark     21:35    05:31    22:47    43   6532   2.5     2/6
-  bought)   ox        22:04    05:44    23:05    44   6915   2.2     3/6
-            ghoul     22:01    09:06    23:25    60  10104   3.3     4/6
+VETERAN     intern                                       2/6  3/6      5/12
+  (all      scrap                                        1/6  2/6      3/12
+  upgrades  spark                                        1/6  3/6      4/12
+  bought)   ox                                           2/6  2/6      4/12
+            ghoul                                        3/6  5/6      8/12
+                                                                      24/60
 ```
 
-Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** (11 of 12
-in the histogram) and never once clear, though a lucky run occasionally reaches the final boss
-at 21:17 — so the ceiling is visible without being available. A maxed shop makes twenty minutes
-*reachable* and clears **9 of 30**; the medians above are mostly runs that got to sudden death
-and lost there, which is the fight being the fight.
+Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** — 20 of 24
+across both histograms — and **never once clear in sixty runs**, though a lucky run occasionally
+reaches minute nineteen, so the ceiling is visible without being available. A maxed shop makes
+twenty minutes *reachable* and clears **24 of 60**; the veteran medians run past 20:00 because
+almost every veteran run now reaches sudden death and is decided there, which is the fight being
+the fight.
+
+THE GHOUL leads at 8/12, and that is deliberate: it is the one character you have to unlock
+(survive 10:00 in a single run), so it is allowed to be the reward. The other four sit between
+3/12 and 5/12, which is inside this harness's noise floor of about ten points.
 
 **Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
 die around minute six, or you go the distance. A median over six runs just reports which side
 of that split got the fifth sample, and it swings wildly — THE SCRAPPER measured 15:20 and 06:31
 on *identical* configurations twenty minutes apart. The clear count over the whole table is the
-only number here worth acting on.
+only number here worth acting on, and even that needs pooling: the two sweeps above are the same
+build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a result.
 
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned thirty-three things this build believed:
+That harness has overturned thirty-seven things this build believed:
 
+- **Every weapon measured its reach to an enemy's CENTRE, and enemies are not points.**
+  Contact damage had always counted the body — an enemy hits you at `e.rad + .75`. Weapons
+  did not, so a target shrugged off exactly its own radius worth of your reach: 0.62m against
+  a shambler, **4.0m against THE FINAL BONK**. The bigger and more important the target, the
+  worse your weapon performed against it, which is precisely backwards. STINK at rank 5 is a
+  6.5m cloud; the boss's surface could be a metre inside it, plainly on fire, taking nothing,
+  because its centre sat at 9.5m. Routing every "what does this area hit" query through a
+  body-aware test moved rank-5 boss DPS from a median of 47 to 133 and lifted the weapons
+  that had been crippled the most — SKULLS ×6.4, CALTROPS ×4.8, PULSE ×4.2. It also ended
+  MORTAR's strict dominance of all seven other weapons on both axes at once. A boundary
+  sweep now pins the damage cliff at exactly 10.5m (6.5 ring + 4.0 body): damage at 10.4m,
+  none at 10.6m.
+- **Boss HP had to go up in proportion to body size, because that is the axis the bug ran
+  along.** Honest reach handed the most DPS to fights against the biggest bodies, so veteran
+  clears jumped from 10/30 to **34/60** across two samples. Scaling each boss's HP by roughly
+  how much reach it had been stealing (+19% for the 2.6m GRAVELORD, +46% for the 4.0m FINAL
+  BONK) put clears back to 24/60 — statistically indistinguishable from where they started,
+  which is the point. Same fight, honest numbers.
+- **Capping overlapping hazards to one zone destroyed the weapon it was meant to balance.**
+  Once reach counted a 4m body, SCORCHED EARTH sat at 2.47× the median boss weapon, because a
+  boss occupies far more of a burning trail than a shambler does. The principled-sounding
+  rule — one body burns once, strongest source wins — dropped it from **3165 DPS to 309**, the
+  best boss weapon to the worst, because stacking is not a bug in that weapon, it *is* that
+  weapon. What actually needed bounding was the stack a large body can sit inside, not the
+  stack. A cap of three lands it at 1.00× median and a crowd body, covered by one or two
+  zones, never reaches the cap at all.
+- **THE SCRAPPER's bonus expires and its cost does not.** Measured at 1/12 veteran clears
+  against THE GHOUL's 9/12. By minute fifteen you are swimming in gems and +70% pickup radius
+  buys nothing, so the phase that decides the run is played as a strictly worse INTERN with
+  15% less HP. Speed is the one stat that cannot expire in a game whose only verb is
+  positioning: +8% → +16% took it to 3/12 while the GHOUL control held at 8/12. It is now the
+  genuinely fast one rather than the fast-ish one, and it dodges the boss telegraphs its HP
+  pool cannot afford to eat.
+- **The DPS bench moves untouched weapons by 53% at n=3.** Between two consecutive runs that
+  changed only MORTAR, SKULLS read 137 then 64 and PULSE 87 then 53 — neither had been
+  touched. Every conclusion drawn from a single three-sample column in this file was drawn
+  from noise, including two on this list. n=8 is the floor for reading this bench, and the
+  numbers quoted above are all n=8 or pooled.
 - **Mouse-look was gated on pointer lock, so an embed froze the camera.** The handler
   returned early unless `document.pointerLockElement === cv`, which is correct on a page
   that can *get* the lock. A sandboxed iframe without `allow-pointer-lock` cannot, and the
