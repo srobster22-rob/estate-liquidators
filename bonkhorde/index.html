@@ -2426,13 +2426,18 @@ function render(){
     g2.fillText(n.v, s[0], s[1]);
   }
   g2.globalAlpha = 1;
-  let ay = h*0.19;
+  // 19% of the height puts these on top of the phase line on a phone in
+  // landscape - two pieces of text in the same place, at the exact moment the
+  // game most wants to tell you something. Floor it below the HUD header and
+  // scale the type to the screen it is actually on.
+  const asz = Math.max(19, Math.min(30, h*0.042));
+  let ay = Math.max(h*0.19, 84);
   for(const al of alerts.slice(-2)){
     g2.globalAlpha = clamp(al.life/2.6,0,1);
-    g2.font = "800 30px ui-monospace,Menlo,monospace";
+    g2.font = `800 ${asz.toFixed(0)}px ui-monospace,Menlo,monospace`;
     g2.lineWidth = 6; g2.strokeStyle = "#000"; g2.strokeText(al.text, w/2, ay);
     g2.fillStyle = al.col; g2.fillText(al.text, w/2, ay);
-    ay += 38;
+    ay += asz*1.28;
   }
   // virtual stick: an invisible control is not a control
   if(TOUCH && stick && running && !over){

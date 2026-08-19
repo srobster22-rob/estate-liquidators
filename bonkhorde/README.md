@@ -114,6 +114,7 @@ node balance.js 12 vet intern,scrap   # higher n on two characters
 node dps.js 8 5                   # per-weapon boss/crowd/survival bench
                                   # [dps trials] [survival trials]; n=3 is noise
 node passives.js 5                # per-passive offence/defence bench, n=5
+node starters.js 8                # one character, every starting weapon, n=8
 node mutate.js                    # break the game on purpose, one thing at a
                                   # time, and check the suite notices
 ```
@@ -315,8 +316,14 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned sixty-three things this build believed:
+That harness has overturned sixty-four things this build believed:
 
+- **Two pieces of text in the same place, at the moment the game most wants to tell you
+  something.** Boss-name alerts were drawn at 19% of the viewport height, which on a phone in
+  landscape is exactly where the phase line sits. Floored below the HUD header and scaled to
+  the screen — 30px on a desktop, 19px on a 390-tall one. Both phone orientations verified for
+  horizontal overflow while I was there: `scrollWidth` equals `innerWidth` and nothing sits
+  past the right edge in either.
 - **The starting weapon is a bigger lever than the entire character stat block.** Two new
   characters shipped and `balance.js` did not measure them, because its roster was a hardcoded
   list of five — a bench that quietly stops covering new content is worse than no bench, since
@@ -335,12 +342,29 @@ That harness has overturned sixty-three things this build believed:
   ```
 
   Handing THE INTERN a MORTAR instead of a BONK BAT is worth **five clears out of eight** —
-  more than any stat block in the game produces. Unevolved MORTAR benches at 3.3× the median
-  rank-5 weapon on boss damage, and it had quietly become a character-defining choice that no
-  part of the design treated as one. Nobody starts with it now; THE ACCOUNTANT starts with
-  SKULLS and sits at 6/8. That characters are balanced on their mods while the mods are a
-  rounding error next to the weapon they begin holding is the finding — the starter swap is
-  only the first thing done about it.
+  more than any stat block in the game produces. Characters were being balanced on their mods
+  while the mods were a rounding error next to the weapon they begin holding, and *nothing
+  measured that axis at all*. So `starters.js` now does: one character held constant, every
+  weapon in turn, so the numbers describe the starter and nothing else.
+
+  ```
+  start      clears   median   worst    lvl   kills      (intern, veteran shop, n=8)
+  mortar        7/8   22:50   20:21     70   12975
+  skulls        5/8   22:31    5:44     54    9126
+  pulse         5/8   22:22    6:16     52    8680
+  aura          4/8   22:29    5:16     53    9305
+  bolt          3/8   22:59   12:30     65   11822
+  zap           3/8   21:47    7:25     55    9023
+  bat           3/8   21:30    5:22     45    6885
+  caltrops      3/8   16:45    6:35     46    7037
+  ```
+
+  And the answer is better than expected: **MORTAR is the only outlier.** The other seven sit
+  between 3/8 and 5/8, which at n=8 is one sample of noise wide. Removing MORTAR from the
+  starting roster did not paper over a broken axis, it fixed the whole thing — the axis was
+  fine and one weapon was standing on it. (BOLT is the interesting row: second-highest level
+  reached and joint-lowest clears, which is the survival column saying the same thing again —
+  it keeps you alive and it does not close.)
 - **A test asserted on a discrete proxy for a continuous quantity.** "THE ACCOUNTANT banks more
   from the same gems" measured the *level* reached, passed at +34% XP, and failed at +18% — for
   a bonus that was still entirely present and simply no longer crossed a level boundary at that
