@@ -203,17 +203,47 @@ button.next:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
+<style>
+/* ---- examination bench ---- */
+.exam{display:grid;gap:6px}
+button.ex{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-family:Archivo,sans-serif;font-size:13.5px;font-weight:500;color:var(--ink);
+  background:var(--ground);border:1px solid var(--rule);border-radius:2px;
+  padding:9px 11px;cursor:pointer;text-align:left;transition:border-color .15s,background .15s;
+}
+button.ex:hover:not(:disabled){border-color:var(--accent);background:var(--surface)}
+button.ex:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.ex:disabled{opacity:.35;cursor:default}
+button.ex em{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-style:normal;
+  color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+button.ex.done{background:var(--sunk);border-style:dashed;color:var(--faint)}
+td.locked{color:var(--faint);font-style:italic}
+.free{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent);
+}
+.money{display:flex;justify-content:space-between;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--rule-soft)}
+.money:last-child{border-bottom:0}
+.money span{font-size:13px;color:var(--muted)}
+.money b{font-family:"IBM Plex Mono",monospace;font-size:14px;font-variant-numeric:tabular-nums}
+.money b.pos{color:var(--ok)} .money b.neg{color:var(--bad)}
+.valuebar{display:flex;align-items:baseline;gap:9px;margin-top:3px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
+.valuebar b{font-family:Petrona,serif;font-size:21px;font-weight:600;color:var(--ink)}
+.tier{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.11em;
+  text-transform:uppercase;padding:2px 6px;border-radius:2px;
+  background:var(--accent-soft);color:var(--accent)}
+.stakes{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);
+  line-height:1.75;margin-top:11px;padding-top:10px;border-top:1px solid var(--rule-soft)}
+.stakes s{display:block;text-decoration:none}
+.bust{border-color:var(--bad)!important;background:var(--bad-soft)!important}
+</style>
 <div class="wrap" id="app"></div>
-
 <script>
-/* ============================================================================
-   Ported from concepts-sim/provenance.py — the verified model.
-   Genuine pieces may carry honest anomalies (repairs), which ALWAYS come from a
-   LATER period. Forgers err toward NEIGHBOURING periods, earlier or later.
-   So an earlier-period feature is damning; a later one is ambiguous. That
-   asymmetry is the whole skill, and it is why the sim found the optimal
-   threshold RISES with expertise.
-   ========================================================================== */
 const PERIODS=["Queen Anne","Georgian","Regency","Victorian","Edwardian"];
 const YEARS={"Queen Anne":"c. 1702–1730","Georgian":"c. 1714–1800","Regency":"c. 1800–1830",
              "Victorian":"c. 1837–1901","Edwardian":"c. 1901–1910"};
@@ -258,11 +288,11 @@ function genuine(p,anomalies=true){
   return {obj:o,repairs:reps};
 }
 function skill(){const r=R(); return r<0.08?0:r<0.20?1:r<0.82?2+Math.floor(R()*2):4+Math.floor(R()*3)}
-function forgery(p){
+function forgery(p,kIn){
   // Clean base, exactly as make_forgery() does in provenance.py. Building on a
   // repaired piece would hand the forger extra off-period features for free and
   // push cue counts out of the learnable band — an 8-point drift when first ported.
-  const {obj:o}=genuine(p,false), k=skill(); if(k<=0) return {obj:o,errors:[]};
+  const {obj:o}=genuine(p,false), k=(kIn===undefined?skill():kIn); if(k<=0) return {obj:o,errors:[]};
   const idx=PERIODS.indexOf(p), errs=[];
   shuffle(ATTRS.slice()).slice(0,Math.min(k,ATTRS.length)).forEach(a=>{
     const nb=[idx-1,idx+1].filter(i=>i>=0&&i<PERIODS.length).map(i=>PERIODS[i]);
@@ -277,85 +307,164 @@ function earliestPeriodFor(attr,val){
   return 99;
 }
 
-const LOTS=50;
-const deck=[]; {
-  const flags=shuffle(Array.from({length:LOTS},(_,i)=>i<LOTS/2));
-  for(let i=0;i<LOTS;i++){
-    const p=pick(PERIODS), fake=flags[i];
-    const built=fake?forgery(p):genuine(p);
-    deck.push({period:p,fake,obj:built.obj,form:pick(FORMS),
-               lot:100+i*3+Math.floor(R()*3)});
-  }
+/* ============================================================================
+   THE GAME LAYER.
+   v1 of this prototype showed all seven attributes for free and asked one
+   question — which is a quiz, not a game. There was no decision in it.
+   The missing verb came from another card in the same portfolio: #17
+   Differential, whose bet is "the cost of a test is the game."
+   So: information costs money, the lot's value decides whether knowing is
+   worth buying, and a master forger only bothers with valuable pieces.
+   ========================================================================== */
+
+const EXAMS = [
+  {a:"primary_wood",   cost:30,  label:"Look it over",            note:"Timber, by eye"},
+  {a:"wear_pattern",   cost:40,  label:"Handle it",               note:"Wear at the edges"},
+  {a:"finish",         cost:60,  label:"Solvent test",            note:"Finish, on a hidden spot"},
+  {a:"hardware",       cost:70,  label:"Draw a handle",           note:"Hardware and its seating"},
+  {a:"secondary_wood", cost:90,  label:"Pull the drawers",        note:"Secondary timber"},
+  {a:"joinery",        cost:110, label:"Dismantle a drawer",      note:"How the corners are cut"},
+  {a:"saw_marks",      cost:140, label:"Open the carcase",        note:"Saw marks inside"},
+];
+const FULL = EXAMS.reduce((s,e)=>s+e.cost,0);   // £540
+
+const TIERS = [
+  {name:"modest",   lo:400,  hi:900,  skill:()=>3+Math.floor(R()*4)},   // crude fakes
+  {name:"middling", lo:900,  hi:2500, skill:()=>2+Math.floor(R()*3)},
+  {name:"fine",     lo:2500, hi:6000, skill:()=>Math.floor(R()*3)},     // master forgers
+];
+
+const RUN = 20;
+const START = 1500;
+
+function makeLot(){
+  const t = TIERS[Math.floor(R()*TIERS.length)];
+  const value = Math.round((t.lo + R()*(t.hi-t.lo))/50)*50;
+  const period = pick(PERIODS);
+  const fake = R() < 0.5;
+  const built = fake ? forgery(period, t.skill()) : genuine(period);
+  return {period, fake, value, tier:t.name, obj:built.obj,
+          form:pick(FORMS), lot:100+Math.floor(R()*800),
+          seen:new Set([pick(ATTRS)]), spent:0};
 }
 
-let i=0, answered=null, results=[];
-const notes={};  // period -> attr -> {ok:Set, no:Set}
+let cash = START, n = 0, lot = makeLot(), decided = null, history = [];
+const notes = {};
 PERIODS.forEach(p=>{notes[p]={}; ATTRS.forEach(a=>notes[p][a]={ok:new Set(),no:new Set()})});
 
-const el=document.getElementById("app");
-const pct=(n,d)=>d?Math.round(100*n/d):0;
+const gbp = v => (v<0?"−£":"£") + Math.abs(Math.round(v)).toLocaleString();
+const pctOf = (n,d) => d ? Math.round(100*n/d) : 0;
 
-function record(lot,correct){
-  results.push(correct);
-  ATTRS.forEach(a=>{
-    const v=lot.obj[a];
-    if(RULES[a][lot.period].includes(v)) notes[lot.period][a].ok.add(v);
-    else if(earliestPeriodFor(a,v)<PERIODS.indexOf(lot.period)) notes[lot.period][a].no.add(v);
-  });
+function payoff(lot, authenticate){
+  if(authenticate) return lot.fake ? -0.35*lot.value : 0.10*lot.value;
+  return lot.fake ? 60 : -0.04*lot.value;
 }
 
+function examine(idx){
+  const e = EXAMS[idx];
+  if(lot.seen.has(e.a) || decided) return;
+  if(cash < e.cost) return;
+  cash -= e.cost; lot.spent += e.cost; lot.seen.add(e.a); render();
+}
+
+function decide(authenticate){
+  if(decided) return;
+  const p = payoff(lot, authenticate);
+  cash += p;
+  decided = {authenticate, payoff:p, correct: authenticate !== lot.fake};
+  ATTRS.forEach(a=>{
+    const v = lot.obj[a];
+    if(RULES[a][lot.period].includes(v)) notes[lot.period][a].ok.add(v);
+    else if(earliestPeriodFor(a,v) < PERIODS.indexOf(lot.period)) notes[lot.period][a].no.add(v);
+  });
+  history.push({correct:decided.correct, payoff:p, spent:lot.spent,
+                value:lot.value, fake:lot.fake, authenticate});
+  render();
+}
+
+function nextLot(){
+  n++;
+  if(n>=RUN || cash<=0) return report();
+  lot = makeLot(); decided = null; render();
+}
+const el = document.getElementById("app");
+
 function render(){
-  if(i>=LOTS) return report();
-  const lot=deck[i], idx=PERIODS.indexOf(lot.period);
-  const rows=ATTRS.map(a=>{
-    const v=lot.obj[a], inPeriod=RULES[a][lot.period].includes(v);
-    let cls="",note="";
-    if(answered&&!inPeriod){
-      const e=earliestPeriodFor(a,v);
-      if(e<idx){cls="flag";note="Impossible — predates the piece"}
-      else{cls="late";note="Later than the piece — a repair, or a slip"}
+  const idx = PERIODS.indexOf(lot.period);
+  const rows = ATTRS.map(a=>{
+    const known = lot.seen.has(a) || decided;
+    const v = lot.obj[a];
+    const isFree = lot.seen.has(a) && !decided;
+    if(!known) return `<tr><td class="k">${LABEL[a]}</td><td class="v locked">not examined</td></tr>`;
+    let cls="", note="";
+    if(decided && !RULES[a][lot.period].includes(v)){
+      const e = earliestPeriodFor(a,v);
+      if(e < idx){ cls="flag"; note="Impossible — predates the piece"; }
+      else { cls="late"; note="Later than the piece — a repair, or a slip"; }
     }
-    return `<tr class="${cls}"><td class="k">${LABEL[a]}</td><td class="v" data-note="${note}">${NAME[v]}</td></tr>`;
+    return `<tr class="${cls}"><td class="k">${LABEL[a]}</td>
+      <td class="v" data-note="${note}">${NAME[v]}</td></tr>`;
   }).join("");
 
-  const right=answered===null?`
-    <h3>Your call</h3>
-    <div class="calls">
-      <button class="call" onclick="call(false)">Consistent with the attribution
-        <span>Catalogue it — genuine</span></button>
-      <button class="call" onclick="call(true)">Not what it claims to be
-        <span>Withdraw it — a forgery</span></button>
-    </div>
-    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">
-      Honest pieces get repaired. A part from <em>after</em> the piece was made is ordinary.
-      A part from <em>before</em> it cannot be.</p>`
-    : (()=>{
-      const ok=answered===lot.fake;
-      return `<div class="verdict ${ok?'right':'wrong'}">
-        <div class="head">${ok?"Correct":"Wrong"}</div>
-        <p><strong>${lot.fake?"A forgery.":"Genuine."}</strong> ${
-          lot.fake
-            ? "The maker worked from a neighbouring period and let it show."
-            : "Everything unusual here is honest age."}</p></div>
-        <button class="next" onclick="next()">${i===LOTS-1?"Close the sale":"Next lot"}</button>`;
-    })();
+  const bench = decided ? "" : `
+    <h3>Examination — each costs</h3>
+    <div class="exam">${EXAMS.map((e,i)=>{
+      const done = lot.seen.has(e.a), broke = cash < e.cost;
+      return `<button class="ex ${done?'done':''}" ${done||broke?'disabled':''}
+        onclick="examine(${i})">
+        <span>${done?'✓ ':''}${e.label}<br><em style="font-size:10.5px">${e.note}</em></span>
+        <em>${done?'paid':gbp(e.cost)}</em></button>`;
+    }).join("")}</div>
+    <div class="stakes">
+      <s>Authenticate, and it's genuine &nbsp;→&nbsp; <b style="color:var(--ok)">${gbp(0.10*lot.value)}</b></s>
+      <s>Authenticate a forgery &nbsp;→&nbsp; <b style="color:var(--bad)">${gbp(-0.35*lot.value)}</b></s>
+      <s>Reject a forgery &nbsp;→&nbsp; ${gbp(60)} finder's fee</s>
+      <s>Reject a genuine piece &nbsp;→&nbsp; ${gbp(-0.04*lot.value)} in lost goodwill</s>
+      <s style="margin-top:6px;color:var(--faint)">Examining everything costs ${gbp(FULL)}.</s>
+    </div>`;
 
-  const seen=results.length;
-  el.innerHTML=`
+  const call = decided ? (()=>{
+    const d = decided;
+    return `<div class="verdict ${d.correct?'right':'wrong'}">
+        <div class="head">${d.correct?"Correct":"Wrong"} · ${d.payoff>=0?'+':''}${gbp(d.payoff)}</div>
+        <p><strong>${lot.fake?"A forgery.":"Genuine."}</strong>
+        ${d.correct
+          ? (lot.fake ? "Rejected. The fee is small but the disaster was smaller."
+                      : "Authenticated, and the commission is yours.")
+          : (lot.fake ? "You put your name to a fake. That is the expensive mistake."
+                      : "You turned down an honest piece. Everything odd about it was age.")}
+        </p></div>
+      <div class="stakes"><s>Examinations this lot: ${gbp(lot.spent)}
+        &nbsp;·&nbsp; Net on the lot: <b style="color:var(--${d.payoff-lot.spent>=0?'ok':'bad'})">
+        ${gbp(d.payoff - lot.spent)}</b></s></div>
+      <button class="next" onclick="nextLot()">
+        ${n===RUN-1||cash<=0?"Close the books":"Next lot"}</button>`;
+  })() : `
+    <div class="calls" style="margin-top:14px">
+      <button class="call" onclick="decide(true)">Authenticate
+        <span>Put your name to it</span></button>
+      <button class="call" onclick="decide(false)">Reject
+        <span>Advise against — walk away</span></button>
+    </div>`;
+
+  const correct = history.filter(h=>h.correct).length;
+  el.innerHTML = `
   <header class="mast">
     <div><h1>Provenance</h1></div>
-    <div class="sub">Lot ${i+1} of ${LOTS} · Condition report</div>
+    <div class="sub">Lot ${n+1} of ${RUN} · ${gbp(cash)} in hand</div>
   </header>
-  <div class="rail">${deck.map((_,n)=>{
-    const c=n<results.length?(results[n]?"ok":"bad"):(n===i?"now":"");
+  <div class="rail">${Array.from({length:RUN},(_,k)=>{
+    const c = k<history.length ? (history[k].correct?"ok":"bad") : (k===n?"now":"");
     return `<i class="${c}"></i>`}).join("")}</div>
 
   <div class="board">
-    <div class="card lot">
+    <div class="card lot ${cash<=0?'bust':''}">
       <div class="lot-head">
         <div>
           <div class="lotno">Lot ${lot.lot}</div>
-          <h2>${NAME[lot.obj.primary_wood]} ${lot.form}</h2>
+          <h2>${lot.seen.has("primary_wood")||decided?NAME[lot.obj.primary_wood]+" ":""}${lot.form}</h2>
+          <div class="valuebar"><b>${gbp(lot.value)}</b>
+            <span class="tier">${lot.tier}</span> reserve</div>
         </div>
         <div class="attrib">Attributed<b>${lot.period}</b>${YEARS[lot.period]}</div>
       </div>
@@ -363,84 +472,106 @@ function render(){
     </div>
 
     <div>
-      <div class="card panel">${right}</div>
-      <div class="card panel tallywrap" style="margin-top:14px">
-        <h3>Record</h3>
-        <div class="tally">
-          <div><b>${pct(results.filter(Boolean).length,seen)}%</b><span>Accuracy</span></div>
-          <div><b>${results.filter(Boolean).length}</b><span>Correct</span></div>
-          <div><b>${seen-results.filter(Boolean).length}</b><span>Missed</span></div>
-        </div>
+      <div class="card panel">${bench}${call}</div>
+      <div class="card panel" style="margin-top:14px">
+        <h3>Ledger</h3>
+        <div class="money"><span>In hand</span>
+          <b class="${cash>=START?'pos':'neg'}">${gbp(cash)}</b></div>
+        <div class="money"><span>Calls right</span>
+          <b>${correct}/${history.length}${history.length?` · ${pctOf(correct,history.length)}%`:''}</b></div>
+        <div class="money"><span>Spent examining</span>
+          <b>${gbp(history.reduce((s,h)=>s+h.spent,0)+(decided?0:lot.spent))}</b></div>
       </div>
       <div class="card panel notes">
-        <h3>Field notes — what you've seen</h3>
-        ${notesHTML()}
+        <h3>Field notes — what you've seen</h3>${notesHTML()}
       </div>
     </div>
   </div>`;
 }
 
 function notesHTML(){
-  const out=PERIODS.filter(p=>ATTRS.some(a=>notes[p][a].ok.size||notes[p][a].no.size))
+  const out = PERIODS.filter(p=>ATTRS.some(a=>notes[p][a].ok.size||notes[p][a].no.size))
     .map(p=>{
-      const chips=ATTRS.flatMap(a=>[
+      const chips = ATTRS.flatMap(a=>[
         ...[...notes[p][a].ok].map(v=>`<span class="chip">${NAME[v]}</span>`),
         ...[...notes[p][a].no].map(v=>`<span class="chip no">${NAME[v]}</span>`)
       ]).join("");
       return `<div class="grp"><div class="pname">${p}</div><div class="chips">${chips}</div></div>`;
     }).join("");
-  return out||`<p class="empty">Fills in as you work. Plain chips are features you've
-    confirmed on a genuine piece; red ones are features that cannot belong to that period.</p>`;
+  return out || `<p class="empty">Fills in as you work. Plain chips are features you've
+    confirmed on a genuine piece; red ones cannot belong to that period at all.</p>`;
 }
-
-function call(fake){ answered=fake; record(deck[i],fake===deck[i].fake); render() }
-function next(){ answered=null; i++; render() }
-
 function report(){
-  const first=results.slice(0,10), last=results.slice(-10);
-  const f=pct(first.filter(Boolean).length,first.length),
-        l=pct(last.filter(Boolean).length,last.length),
-        all=pct(results.filter(Boolean).length,results.length);
-  const bars=[["Lots 1–10",f],["Lots 11–40",pct(results.slice(10,40).filter(Boolean).length,30)],
-              ["Lots 41–50",l]];
-  el.innerHTML=`
+  const done = history.length;
+  const correct = history.filter(h=>h.correct).length;
+  const spent = history.reduce((s,h)=>s+h.spent,0);
+  const gross = history.reduce((s,h)=>s+h.payoff,0);
+  const bust = cash<=0;
+
+  // The economic finding: did examination spend track lot value?
+  const byTier = {};
+  history.forEach((h,k)=>{
+    const t = h.value<900?"modest":h.value<2500?"middling":"fine";
+    (byTier[t] ||= {n:0,spent:0,right:0}); byTier[t].n++;
+    byTier[t].spent += h.spent; byTier[t].right += h.correct?1:0;
+  });
+  const order = ["modest","middling","fine"].filter(t=>byTier[t]);
+  const disc = order.length>1
+    ? Math.round(byTier[order[order.length-1]].spent/byTier[order[order.length-1]].n)
+      - Math.round(byTier[order[0]].spent/byTier[order[0]].n)
+    : 0;
+
+  const first = history.slice(0,7), last = history.slice(-7);
+  const f = pctOf(first.filter(h=>h.correct).length, first.length);
+  const l = pctOf(last.filter(h=>h.correct).length, last.length);
+
+  el.innerHTML = `
   <header class="mast"><div><h1>Provenance</h1></div>
-    <div class="sub">Sale closed · ${LOTS} lots</div></header>
+    <div class="sub">${bust?"Ruined":"Books closed"} · ${done} lots</div></header>
   <div class="report">
-    <div class="card panel" style="padding:26px 24px">
-      <h2>${all}% across the sale</h2>
-      <p style="color:var(--muted);margin:0">
-        The model's ceiling is <strong>85.5%</strong> — 7.8% of forgeries are built well enough
-        to be undetectable, so nobody gets them all.</p>
-      <div class="curve">
-        ${bars.map(([lb,v])=>`<div class="b">
-          <div class="pc">${v}%</div>
-          <div class="fill" style="height:${Math.max(2,v)}%"></div>
-          <div class="lb">${lb}</div></div>`).join("")}
-      </div>
+    <div class="card panel ${bust?'bust':''}" style="padding:26px 24px">
+      <h2>${bust?"You ran out of money.":gbp(cash)+" in hand"}</h2>
+      <p style="color:var(--muted);margin:0 0 18px">
+        Started with ${gbp(START)}. Earned ${gbp(gross)} on calls, spent ${gbp(spent)}
+        examining. ${correct} of ${done} calls right.</p>
+
+      <table class="dossier" style="border-top:1px solid var(--rule)">
+        <tr><td class="k">Tier</td><td class="k">Avg. examined</td><td class="k">Calls right</td></tr>
+        ${order.map(t=>`<tr><td class="v">${t}</td>
+          <td class="v">${gbp(byTier[t].spent/byTier[t].n)}</td>
+          <td class="v">${pctOf(byTier[t].right,byTier[t].n)}%</td></tr>`).join("")}
+      </table>
+
       <div class="finding">
-        ${l>f
-          ? `You improved by <strong>${l-f} points</strong> from the first ten lots to the last.
-             That climb is the thing the concept is betting on: the tells are learnable without
-             being memorisable, because no two pieces carry the same set.`
-          : l===f
-          ? `You finished level with where you started. Either the tells never landed, or you
-             had them from the first lot — both are findings, and both are what this test is for.`
-          : `You finished <strong>${f-l} points</strong> below where you started. Worth knowing:
-             a late slide usually means the honest repairs started reading as forgeries.`}
+        ${disc>80
+          ? `You spent <strong>${gbp(disc)} more</strong> examining a fine lot than a modest one.
+             That is the whole game working: on a ${gbp(600)} piece the full bench costs almost
+             as much as the commission, so you have to commit on thin evidence. On a ${gbp(5000)}
+             piece it is cheap insurance.`
+          : disc<-40
+          ? `You spent <em>more</em> on cheap lots than dear ones — worth a look. The commission
+             on a modest piece rarely covers a full examination.`
+          : `You examined every tier about equally. The economy says you shouldn't: a full bench
+             costs ${gbp(FULL)}, which is most of the commission on a modest lot and a rounding
+             error on a fine one.`}
       </div>
-      <p style="font-size:13.5px;color:var(--muted);line-height:1.6">
-        The rule underneath: a repair always uses a part from <em>after</em> the piece was made,
-        so a later feature is ambiguous and an earlier one is impossible. Experts don't spot more
-        — they <strong>raise their bar</strong>, calling a forgery only at two inconsistencies
-        rather than one. That behaviour wasn't designed in; it fell out of the model.</p>
-      <button class="next" onclick="location.reload()">Run another sale</button>
+
+      <p style="font-size:13.5px;color:var(--muted);line-height:1.65">
+        <strong>The rule underneath.</strong> A repair always uses a part from <em>after</em>
+        the piece was made, so a later feature is ambiguous and an earlier one is impossible.
+        And forgers work where the money is: modest lots carry crude fakes you can catch on one
+        look, fine lots carry the ones worth ${gbp(FULL)} to be sure about.
+        ${l>f?`Your accuracy went ${f}% → ${l}% across the sale.`:
+          l<f?`Your accuracy went ${f}% → ${l}%; the late slide usually means honest repairs
+               started reading as forgeries.`:`Your accuracy held at ${l}%.`}
+      </p>
+      <button class="next" onclick="location.reload()">Open another sale</button>
     </div>
     <div class="foot">
-      A playable version of concept #16 from <code>GAME-CONCEPTS.md</code>, built on the model in
-      <code>concepts-sim/provenance.py</code>. The simulation established that a learnable signal
-      exists; it could not establish whether a written dossier communicates it. That's what this
-      is for, and it's the question only a person can answer.
+      Concept #16 from <code>GAME-CONCEPTS.md</code>, on the verified model in
+      <code>concepts-sim/provenance.py</code>. The simulation proved a learnable signal exists;
+      it could not say whether a written dossier communicates it, nor whether deciding
+      <em>how much to look</em> is a good decision. Those need a person — which is what this is for.
     </div>
   </div>`;
 }
