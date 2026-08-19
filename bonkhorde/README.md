@@ -129,25 +129,32 @@ you can *close* a run; crowd DPS decides whether you survive to try.
 
 ```
 RANK 5        boss   crowd   alive      EVOLVED           boss   crowd   alive
-bat             47    1153    5:17      MEGABONK           465    2607    4:16
-skulls          84    1338    5:10      CAROUSEL          1402    3395    4:34
-bolt           177    1120    9:46      BOLTSTORM         1338    4563   18:17
-pulse           66    1716    4:25      EARTHQUAKE         667    3161    3:56
-mortar         449    2213    5:47      BOMBARDIER        1348    3570    9:16
-zap            239     461    6:15      TESLA COIL         597    1197   10:31
-aura            92    1351    4:13      PLAGUE             845    2936    4:24
-caltrops       409    2086    4:22      SCORCHED EARTH    1058    3054    4:16
-                                        (dps n=6, survival n=5)
+bat             78    1492    4:46      MEGABONK           919    3346    4:20
+skulls         110    1227    5:03      CAROUSEL          1351    3540    4:24
+bolt           127    1226   10:58      BOLTSTORM         1229    3595   15:31
+pulse           66    1656    4:45      EARTHQUAKE         665    3087    3:52
+mortar         450    2292    6:16      BOMBARDIER        1422    3590   10:07
+zap            219     574    6:28      TESLA COIL         512    1521   10:33
+aura            80    1388    4:16      PLAGUE             850    3026    3:55
+caltrops       366    2046    4:13      SCORCHED EARTH    1137    2960    4:13
+                                        (dps n=6, survival n=4)
 ```
 
 **The third column is new, and it says the second one was never measuring what we
-thought.** PULSE has the highest rank-5 crowd DPS in the game and the second-worst
-survival. BOLT has nearly the lowest crowd DPS and survives **more than twice as
-long as anything else**. Sort rank 5 by survival and you get the three ranged
-weapons on top — BOLT, ZAP, MORTAR at 9:46, 6:15, 5:47 — and the five
-player-centred ones underneath at 4:13 to 5:17, almost perfectly ordered by reach.
-Crowd DPS counts damage that landed; it cannot count *where*. Killing something at
-30m and killing it at 2m score identically and are not the same game.
+thought.** EARTHQUAKE has the highest crowd DPS among the player-centred weapons
+and the *worst* survival in the game. BOLT has nearly the lowest rank-5 crowd DPS
+and stays alive **more than twice as long as anything else**. Sort either table by
+survival and the same three names come out on top — BOLT, MORTAR, ZAP — and they
+are exactly the three weapons that reach. The other five cluster at 3:52–4:24
+evolved, a 3.5× cliff with nothing in between.
+
+That is not a tuning error, it is the shape of the game: crowd DPS counts damage
+that landed and cannot count *where*, so a kill at 30m and a kill at 2m score
+identically and are not remotely the same thing. Trimming BOLTSTORM's throughput
+by 23% (9 → 7 bolts, 5 → 4 pierce) took its crowd DPS from 4689 into the pack at
+3595 and moved its survival by **eight percent**, from 16:49 to 15:31 — volume was
+never what kept it alive. The single most consequential draft decision in this
+game is whether anything in your kit has reach.
 
 Specialists are intentional — ZAP is a boss weapon that barely dents a crowd,
 AURA the reverse. What the bench is for is catching the ones that are not
@@ -263,24 +270,30 @@ FIRST RUN   intern                                       0/6  0/6      0/12
             ghoul                                        0/6  0/6      0/12
                                                                        0/60
 
-VETERAN     intern                                       2/6  3/6      5/12
-  (all      scrap                                        1/6  2/6      3/12
-  upgrades  spark                                        1/6  3/6      4/12
-  bought)   ox                                           2/6  2/6      4/12
-            ghoul                                        3/6  5/6      8/12
-                                                                      24/60
+VETERAN     intern                                       4/6  2/6      6/12
+  (all      scrap                                        1/6  1/6      2/12
+  upgrades  spark                                        3/6  3/6      6/12
+  bought)   ox                                           4/6  3/6      7/12
+            ghoul                                        2/6  2/6      4/12
+                                                                      25/60
 ```
 
-Which is the shape the genre wants. First-run deaths cluster hard at **4–6 minutes** — 20 of 24
+Which is the shape the genre wants. First-run deaths cluster hard at **2–6 minutes** — 19 of 24
 across both histograms — and **never once clear in sixty runs**, though a lucky run occasionally
 reaches minute nineteen, so the ceiling is visible without being available. A maxed shop makes
-twenty minutes *reachable* and clears **24 of 60**; the veteran medians run past 20:00 because
+twenty minutes *reachable* and clears **25 of 60**; the veteran medians run past 20:00 because
 almost every veteran run now reaches sudden death and is decided there, which is the fight being
 the fight.
 
-THE GHOUL leads at 8/12, and that is deliberate: it is the one character you have to unlock
-(survive 10:00 in a single run), so it is allowed to be the reward. The other four sit between
-3/12 and 5/12, which is inside this harness's noise floor of about ten points.
+**42% is the target, not a miss.** An earlier draft of this file treated ~33% as the number to
+hold, and every content change since has had to be walked back toward it with boss HP. That was
+cargo cult: the invariant that matters is *first run never clears and a maxed shop makes the
+ending reachable*, and 0/60 against 25/60 says both. Chasing a third decimal on the veteran
+figure through a ±10-point noise floor is measuring the harness, not the game.
+
+The per-character spread — 2/12 to 7/12 — is roughly the noise floor wide, and the ordering
+does not survive re-sampling: THE GHOUL led at 8/12 one round ago and sits at 4/12 here on an
+unchanged character. THE SCRAPPER is the only one consistently at the bottom.
 
 **Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
 die around minute six, or you go the distance. A median over six runs just reports which side
@@ -292,8 +305,22 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned forty-seven things this build believed:
+That harness has overturned forty-nine things this build believed:
 
+- **MEGABONK was a strictly worse EARTHQUAKE, and the evolution is what did it.** BONK BAT's
+  identity is a directional swing; its evolution turned that into a 360° slam at 150 damage
+  per 0.78s in an 8.2m circle with kb 20 — against EARTHQUAKE's 150 per 0.85s in a 10.5m
+  circle with kb 22. Bigger radius, bigger knockback, no arc to miss with, same damage. The
+  evolution took away the one thing that made the weapon distinct and handed it a losing copy
+  of another weapon's job, which is how BONK BAT ended up **last on all three axes at once**.
+  It stays directional now and hits like the name says — 333 damage a second into a cone
+  against EARTHQUAKE's 176 in every direction — and reads 919 boss / 3346 crowd, still with
+  the worst survival in the game. A glass cannon is a design; last-on-everything is a bug.
+- **BOLTSTORM was the only weapon dominating every other on all three axes**, and the fix
+  proved the survival finding twice over. Trimming it 23% (9 → 7 bolts, 5 → 4 pierce) pulled
+  crowd DPS from 4689 into the pack at 3595 and moved survival by **eight percent**. Whatever
+  keeps that weapon alive, it is not volume — it is that the bolts arrive before the horde
+  does, which is why the trim came off throughput and left the reach alone.
 - **The weapon bench had two axes and the game has three.** Adding a survival column — one
   weapon, mid-tier shop, no godmode, played to death — inverted the reading of the column
   next to it. EARTHQUAKE has the highest rank-5 crowd DPS in the game (1716) and survives

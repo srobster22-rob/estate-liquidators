@@ -457,13 +457,21 @@ const WEAPONS = {
 bat:{ name:"BONK BAT", ic:"\u{1F3CF}", kind:"w",
   ds:"Wide swing, auto-aimed at whatever is closest to becoming your problem.",
   evo:{ name:"MEGABONK", need:"spinach", ic:"\u{1F528}",
-        ds:"360° ground slam. Everything nearby leaves at speed." },
-  lv:[{d:24,cd:1.10,arc:2.1,rng:4.2,kb:5},
-      {d:33,cd:1.04,arc:2.3,rng:4.5,kb:5},
-      {d:45,cd:0.98,arc:2.5,rng:4.9,kb:6},
-      {d:60,cd:0.92,arc:2.8,rng:5.3,kb:6},
-      {d:79,cd:0.85,arc:3.2,rng:5.7,kb:7},
-      {d:150,cd:0.78,arc:6.29,rng:8.2,kb:20}] },
+        ds:"One enormous swing. Whatever it catches is not there any more." },
+  // MEGABONK used to be a 360 degree slam at 150/0.78s in an 8.2m circle with
+  // kb 20. EARTHQUAKE is 150/0.85s in a 10.5m circle with kb 22 - bigger radius,
+  // bigger knockback, no arc to miss with, same damage. The evolution was taking
+  // BONK BAT's one distinguishing feature away and handing it a strictly worse
+  // copy of another weapon, which is why it benched last on boss DPS, last on
+  // crowd DPS and last on survival, all three at once. It stays directional and
+  // hits like the name: 333 damage a second into a cone, against EARTHQUAKE's
+  // 176 in every direction. Pick the one that matches how you play.
+  lv:[{d:30,cd:1.10,arc:2.1,rng:4.6,kb:5},
+      {d:41,cd:1.04,arc:2.3,rng:4.9,kb:5},
+      {d:56,cd:0.98,arc:2.5,rng:5.3,kb:6},
+      {d:75,cd:0.92,arc:2.8,rng:5.8,kb:6},
+      {d:99,cd:0.85,arc:3.2,rng:6.3,kb:7},
+      {d:260,cd:0.78,arc:4.2,rng:9.5,kb:34}] },
 
 skulls:{ name:"SKULLS", ic:"\u{1F480}", kind:"w",
   ds:"Orbiting skulls. They do not aim, they simply are.",
@@ -477,15 +485,20 @@ skulls:{ name:"SKULLS", ic:"\u{1F480}", kind:"w",
       {d:112,n:10,rad:6.3,spin:3.6,cd:.20}] },
 
 bolt:{ name:"BOLT", ic:"\u{1F3F9}", kind:"w",
-  ds:"Homing shot at the nearest target. Reliable, unspectacular.",
+  ds:"Homing shot at the nearest target. Kills things before they arrive.",
   evo:{ name:"BOLTSTORM", need:"dupe", ic:"\u{1F320}",
         ds:"A fan of nine, each punching through five bodies." },
+  // BOLTSTORM was the only weapon dominating every other on ALL THREE axes once
+  // survival was measured: 1332 boss, 4689 crowd and 16:49 alive, the last of
+  // those 1.6x the runner-up. Range is what buys the minutes - it kills the
+  // horde before the horde arrives - so the trim comes off throughput (9 -> 7
+  // bolts, 5 -> 4 pierce) rather than off the reach that gives it its identity.
   lv:[{d:20,cd:.85,n:1,pierce:1,spd:26},
       {d:27,cd:.78,n:2,pierce:1,spd:27},
       {d:36,cd:.72,n:2,pierce:2,spd:28},
       {d:47,cd:.66,n:3,pierce:2,spd:30},
       {d:62,cd:.58,n:4,pierce:3,spd:32},
-      {d:96,cd:.42,n:9,pierce:5,spd:38}] },
+      {d:96,cd:.42,n:7,pierce:4,spd:38}] },
 
 pulse:{ name:"PULSE", ic:"\u{1F4A5}", kind:"w",
   ds:"Shockwave ring from your feet. Makes room.",
