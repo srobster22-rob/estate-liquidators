@@ -789,8 +789,15 @@ addEventListener("keydown", e=>{
   if(e.code==="Space") e.preventDefault();
 });
 addEventListener("keyup", e=>keys[e.code]=false);
+// Pointer lock is not always grantable - a sandboxed iframe without
+// allow-pointer-lock refuses it outright. Locked or not, the camera has to
+// turn, so an unlocked mouse falls back to drag-to-look.
+let dragging = false;
+cv.addEventListener("mousedown", ()=>{ if(document.pointerLockElement!==cv) dragging=true; });
+addEventListener("mouseup",   ()=> dragging=false);
+addEventListener("mouseleave",()=> dragging=false);
 addEventListener("mousemove", e=>{
-  if(document.pointerLockElement!==cv) return;
+  if(document.pointerLockElement!==cv && !dragging) return;
   camYaw   -= e.movementX*0.0026;
   camPitch  = clamp(camPitch - e.movementY*0.0020, .18, 1.32);
 });
@@ -2144,6 +2151,7 @@ window.__g = {
   hasTouch: ()=>HAS_TOUCH,
   hasMouse: ()=>HAS_MOUSE,
   hadLock:  ()=>hadLock,
+  dragging: ()=>dragging,
   isAirborne: ()=>!!P&&P.air,
   isPaused: ()=>paused,
   camYaw: ()=>camYaw,

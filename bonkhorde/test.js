@@ -656,6 +656,44 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await ctx.close();
   }
 
+  console.log("\n=== 15c. THE CAMERA TURNS WITHOUT POINTER LOCK ===");
+  {
+    // A sandboxed iframe can refuse pointer lock outright. When that happens the
+    // mouse-look handler used to return early on every event, which froze the
+    // camera and left the game unplayable in any embed. Drag has to cover it.
+    const ctx = await browser.newContext({ viewport: { width: 1100, height: 700 } });
+    const dp = await ctx.newPage();
+    await dp.goto(FILE, { waitUntil: "load" });
+    await dp.waitForTimeout(500);
+    const r = await dp.evaluate(() => {
+      window.__g.wipeSave(); window.__g.start("intern");
+      const cv = document.getElementById("gl");
+      const move = dx => dispatchEvent(new MouseEvent("mousemove",
+        { movementX: dx, movementY: 0, bubbles: true }));
+      const locked = document.pointerLockElement === cv;
+      const a = window.__g.camYaw();
+      move(60);                                   // no button down, no lock
+      const idle = window.__g.camYaw();
+      cv.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      const held = window.__g.dragging();
+      move(60);                                   // dragging
+      const b = window.__g.camYaw();
+      dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      move(60);                                   // released again
+      const c = window.__g.camYaw();
+      return { locked, a, idle, b, c, held, after: window.__g.dragging() };
+    });
+    ok("drag turns the camera with no lock held",
+       r.locked === false && Math.abs(r.b - r.idle) > 0.1,
+       `locked=${r.locked} idle=${r.idle.toFixed(3)} dragged=${r.b.toFixed(3)}`);
+    ok("mousedown on the canvas starts a drag", r.held === true);
+    ok("a loose mouse does not steer", Math.abs(r.idle - r.a) < 1e-9,
+       `${r.a.toFixed(4)} -> ${r.idle.toFixed(4)}`);
+    ok("mouseup ends the drag", r.after === false && Math.abs(r.c - r.b) < 1e-9,
+       `dragging=${r.after} yaw ${r.b.toFixed(4)} -> ${r.c.toFixed(4)}`);
+    await ctx.close();
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

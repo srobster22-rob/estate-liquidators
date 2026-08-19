@@ -29,3 +29,4 @@ __pycache__/
 # Screenshots the BONKHORDE test harness writes on each run
 bonkhorde/shot-*.png
 bonkhorde/sudden.png
+bonkhorde/artifact.html

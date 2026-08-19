@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 98 checks: boot, every weapon, every evolution, every
+node test.js              # 102 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -117,7 +117,7 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **98 passing.**
+die, and checks that `localStorage` survives a reload. **102 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -265,8 +265,15 @@ only number here worth acting on.
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned thirty-two things this build believed:
+That harness has overturned thirty-three things this build believed:
 
+- **Mouse-look was gated on pointer lock, so an embed froze the camera.** The handler
+  returned early unless `document.pointerLockElement === cv`, which is correct on a page
+  that can *get* the lock. A sandboxed iframe without `allow-pointer-lock` cannot, and the
+  failure is silent: the game boots, the horde advances, WASD works, and the camera never
+  turns again. Nothing in 98 checks looked at the unlocked case, because every test ran the
+  file top-level where the lock is granted. Drag-to-look now covers it, and section 15c
+  asserts the camera turns with `locked === false`.
 - **Skitters moved at 6.2 against a player speed of 6.3.** You could not outrun the horde,
   which deletes the only verb the genre has. Kiting has to be possible or the game is just
   attrition with extra steps.
