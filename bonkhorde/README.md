@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 130 checks: boot, every weapon, every evolution, every
+node test.js              # 145 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -120,7 +120,7 @@ node mutate.js                    # break the game on purpose, one thing at a
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **130 passing.**
+die, and checks that `localStorage` survives a reload. **145 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -315,8 +315,29 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned fifty-seven things this build believed:
+That harness has overturned sixty things this build believed:
 
+- **There was one unlockable thing in the whole game, so after twenty minutes nothing moved.**
+  A survivors-like is a loop you re-enter, and the reason you re-enter is that the last run
+  changed something. This build had THE GHOUL and nothing else: the shop was the only ladder,
+  and it is a wallet, not a goal. Four rungs now, each stating its own condition against
+  lifetime numbers the save keeps — **THE ACCOUNTANT** (+34% XP, −18% damage; reach level 30),
+  **THE TWIN** (starts holding DUPLICATOR, −24% HP; clear a run), and a **TALLY** shop line
+  that is genuinely absent until 6,000 lifetime kills rather than greyed out. The end card
+  shows the nearest locked thing and how close you are, because a locked box with no progress
+  bar is just a locked box. Section 17 checks every rung on both sides of its threshold, that
+  it pays out once rather than every run, and that the two new characters do what their cards
+  claim.
+- **A smoke test was a balance number wearing a smoke test's clothes.** Section 3 asserted
+  "enemies spawned" as *alive right now > 5*, which had been sitting one enemy above the
+  threshold for months. Buffing BONK BAT — a change with nothing to do with spawning — made a
+  standing god-mode player clear the first minute fast enough to fail it. What the section is
+  for is "does the director produce enemies at all", so it counts the ones that arrived
+  (alive + killed) instead.
+- **An assertion that passes when nothing is running passes for the broken version too.** The
+  camera-lag test waited 50ms and read the anchor still at 0.00 — not because it lagged, but
+  because software rendering had not drawn a single frame in that window. A welded camera
+  would have read 0.00 too. It counts frames now, and reads 20.8 of 30 after three of them.
 - **"Clunky" was four specific things, none of them taste.** (1) The chase camera sat 17m back
   and 12.8m up, so the player was a speck and the world felt like scenery. (2) It was
   recomputed from the player's exact position every frame — a boom welded to you pins you to

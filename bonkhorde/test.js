@@ -64,7 +64,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   console.log("\n=== 3. SIMULATE 60s ===");
   s = await page.evaluate(() => { window.__g.god(); return window.__g.step(60 * 60); });
   ok("clock advanced ~60s", Math.abs(s.t - 60) < 2, "t=" + s.t);
-  ok("enemies spawned", s.enemies > 5, "n=" + s.enemies);
+  // Alive-right-now is a BALANCE number wearing a smoke test's clothes: it goes
+  // down whenever a starting weapon gets better, and it sat one enemy above the
+  // threshold until BONK BAT was buffed. What this section is for is "does the
+  // director produce enemies at all", so count the ones that arrived.
+  ok("the director spawns enemies", s.enemies + s.kills > 20,
+     `${s.enemies} alive + ${s.kills} killed`);
   ok("kills happening", s.kills > 0, "kills=" + s.kills);
   ok("player levelled", s.lvl > 1, "lvl=" + s.lvl);
   ok("no runtime errors", errors.length === 0, errors.slice(0, 3).join(" | "));
@@ -127,7 +132,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   }
 
   console.log("\n=== 7. EVERY CHARACTER ===");
-  for (const c of ["intern","scrap","spark","ox","ghoul"]) {
+  // read the roster from the game, so a new character cannot ship untested
+  const ROSTER = await page.evaluate(() => window.__g.chars());
+  ok("the roster is the one the test covers", ROSTER.length >= 7, ROSTER.join(","));
+  for (const c of ROSTER) {
     const before = errors.length;
     const r = await page.evaluate(c => {
       window.__g.start(c); window.__g.step(60 * 20);
@@ -885,6 +893,115 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const nDefault = await N.pg.evaluate(() => window.__g.opts());
     ok("no preference leaves shake on", nDefault.motion === 1, JSON.stringify(nDefault));
     await N.ctx.close();
+  }
+
+  console.log("\n=== 12d. THE CAMERA CHASES, IT IS NOT WELDED ===");
+  {
+    // A boom recomputed from the player's exact position every frame pins you
+    // to the dead centre of the screen forever, which means no acceleration you
+    // ever make is visible. That was most of what "clunky" meant here. The
+    // anchor has to trail the player and then catch up.
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 600 } });
+    const cp = await ctx.newPage();
+    await cp.goto(FILE, { waitUntil: "load" });
+    await cp.waitForTimeout(450);
+    await cp.evaluate(() => { window.__g.wipeSave(); window.__g.start("intern");
+                              window.__g.god(); window.__g.place(0, 0); });
+    await cp.waitForTimeout(500);                       // let it settle on the origin
+    const settled = await cp.evaluate(() => window.__g.camAnchor());
+    // Count FRAMES, not milliseconds. A first version waited 50ms and read the
+    // anchor still at 0.00 - not because it lagged, but because software
+    // rendering had not drawn a single frame in that window. An assertion that
+    // passes when nothing is running passes for a welded camera too.
+    const lagged = await cp.evaluate(() => new Promise(res => {
+      window.__g.place(30, 0);
+      let n = 0;
+      const tick = () => (++n < 4) ? requestAnimationFrame(tick)
+                                   : res(window.__g.camAnchor());
+      requestAnimationFrame(tick);
+    }));
+    await cp.waitForTimeout(1400);
+    const caught = await cp.evaluate(() => window.__g.camAnchor());
+
+    ok("the anchor starts on the player", Math.abs(settled[0]) < 1.5, `x=${settled[0]?.toFixed(2)}`);
+    ok("it does not teleport with them",
+       lagged[0] > 0.5 && lagged[0] < 26,
+       `x=${lagged[0]?.toFixed(2)} of 30 after three frames`);
+    ok("but it does get there", Math.abs(caught[0] - 30) < 1.5,
+       `x=${caught[0]?.toFixed(2)}`);
+    await ctx.close();
+  }
+
+  console.log("\n=== 17. THE UNLOCK LADDER ===");
+  {
+    // A locked box with no progress bar is just a locked box, and a ladder that
+    // pays out early or never is worse than no ladder. Each rung is checked on
+    // both sides of its own threshold.
+    const ctx = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+    const up = await ctx.newPage();
+    await up.goto(FILE, { waitUntil: "load" });
+    await up.waitForTimeout(450);
+
+    const probe = (patch) => up.evaluate((patch) => {
+      window.__g.wipeSave();
+      window.__g.setSave(patch);
+      return { got: window.__g.checkUnlocks().map(u => u.id),
+               unlocked: window.__g.saveState().unlocked };
+    }, patch);
+
+    const shy   = await probe({ best: 599, wins: 0, bestLvl: 29, kills: 5999 });
+    ok("nothing pays out one unit short",
+       shy.got.length === 0, JSON.stringify(shy.got));
+
+    const ghoul = await probe({ best: 600 });
+    ok("10:00 unlocks THE GHOUL", ghoul.got.join() === "ghoul", JSON.stringify(ghoul.got));
+    const twin  = await probe({ wins: 1 });
+    ok("a clear unlocks THE TWIN", twin.got.join() === "twin", JSON.stringify(twin.got));
+    const acc   = await probe({ bestLvl: 30 });
+    ok("level 30 unlocks THE ACCOUNTANT", acc.got.join() === "accnt", JSON.stringify(acc.got));
+    const tal   = await probe({ kills: 6000 });
+    ok("6,000 kills unlocks TALLY", tal.got.join() === "tally", JSON.stringify(tal.got));
+
+    const twice = await up.evaluate(() => {
+      window.__g.wipeSave(); window.__g.setSave({ best: 900 });
+      const a = window.__g.checkUnlocks().map(u => u.id);
+      const b = window.__g.checkUnlocks().map(u => u.id);
+      return { a, b };
+    });
+    ok("a rung pays out once, not every run",
+       twice.a.join() === "ghoul" && twice.b.length === 0, JSON.stringify(twice));
+
+    // the shop line is genuinely absent, not merely greyed
+    const hidden = await up.evaluate(() => {
+      window.__g.wipeSave(); location.reload(); return true;
+    });
+    await up.waitForTimeout(650);
+    const shopBefore = await up.evaluate(() =>
+      [...document.querySelectorAll("#shop .n")].map(e => e.textContent));
+    await up.evaluate(() => { window.__g.setSave({ kills: 6000 });
+                              window.__g.checkUnlocks(); window.__g.menu(); });
+    await up.waitForTimeout(250);
+    const shopAfter = await up.evaluate(() =>
+      [...document.querySelectorAll("#shop .n")].map(e => e.textContent));
+    ok("TALLY is absent from the shop until it is earned",
+       hidden && !shopBefore.includes("TALLY") && shopAfter.includes("TALLY"),
+       `${shopBefore.length} lines -> ${shopAfter.length}`);
+
+    // and the two new characters do what their cards claim
+    const twinKit = await up.evaluate(() => {
+      window.__g.start("twin"); return window.__g.kit();
+    });
+    ok("THE TWIN starts holding DUPLICATOR",
+       twinKit.some(k => k.startsWith("dupe")), twinKit.join(" "));
+    const xp = await up.evaluate(() => {
+      const one = (c) => { window.__g.start(c); window.__g.god(); window.__g.freezeSpawns(true);
+                           window.__g.drainPicks(true); window.__g.xp(100);
+                           return window.__g.state().lvl; };
+      return { intern: one("intern"), accnt: one("accnt") };
+    });
+    ok("THE ACCOUNTANT banks more from the same gems",
+       xp.accnt > xp.intern, `intern lv${xp.intern} vs accountant lv${xp.accnt}`);
+    await ctx.close();
   }
 
   console.log("\n=== 15c. THE CAMERA TURNS WITHOUT POINTER LOCK ===");

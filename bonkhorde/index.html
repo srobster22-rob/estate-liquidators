@@ -153,6 +153,19 @@
   .i .s{stroke:currentColor;fill:none}
   .i .k{fill:var(--bg);stroke:none}                /* punched out of a solid    */
   .i .ka{stroke:var(--bg);fill:none;stroke-width:2}
+  .dim2{color:#5c6470;font-weight:400;font-size:10px;letter-spacing:.06em}
+  .btn kbd{background:rgba(0,0,0,.34);border-color:rgba(0,0,0,.4);color:inherit;
+    opacity:.72;font-size:9.5px;padding:1px 5px}
+  .locks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  .lk{background:#0f1319;border:1px solid var(--line);border-bottom-width:3px;padding:11px 13px;text-align:left}
+  .lkn{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#a8a396}
+  .lkd{font-size:10px;color:var(--dim);margin:3px 0 8px}
+  .lkp{font-size:10px;color:var(--dim);margin-top:5px;font-variant-numeric:tabular-nums}
+  .allq{font-size:11px;color:var(--dim);letter-spacing:.1em}
+  .next{margin:16px auto 4px;max-width:330px}
+  .nb{height:5px;background:#1b2028;border:1px solid var(--line);overflow:hidden}
+  .nb i{display:block;height:100%;background:var(--gold)}
+  .nt{font-size:10px;letter-spacing:.12em;color:var(--dim);margin-top:6px}
   #opts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0 4px}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
 </style>
@@ -205,6 +218,9 @@
 <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" class="fa"/><path d="M12 7.4v9.2M9.6 9.6h3.6a1.9 1.9 0 0 1 0 3.8h-2.8a1.9 1.9 0 0 0 0 3.8h3.6" class="ka"/></symbol>
 <symbol id="i-start" viewBox="0 0 24 24"><path d="M12 2.4l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 21l1.4-6.8L2.2 9.5l6.9-.8z" class="fa"/></symbol>
 <symbol id="i-heal" viewBox="0 0 24 24"><path d="M9.6 4.2a4.6 4.6 0 0 1 8.4 3.2 4.4 4.4 0 0 1-4.6 4.4l-1.8 1.8-3.6-3.6 1.8-1.8a4.4 4.4 0 0 1-.2-4z" class="f"/><path d="M8.8 13.2l-5 5a2 2 0 0 0 2.8 2.8l5-5z" class="fa"/></symbol>
+<symbol id="i-accnt" viewBox="0 0 24 24"><rect x="4.2" y="2.6" width="15.6" height="18.8" rx="2" class="f"/><path d="M7.6 6.6h8.8v3.2H7.6z" class="k"/><circle cx="8.4" cy="13.4" r="1.15" class="k"/><circle cx="12" cy="13.4" r="1.15" class="k"/><circle cx="15.6" cy="13.4" r="1.15" class="k"/><circle cx="8.4" cy="17.4" r="1.15" class="k"/><circle cx="12" cy="17.4" r="1.15" class="k"/><circle cx="15.6" cy="17.4" r="1.15" class="ka"/></symbol>
+<symbol id="i-twin" viewBox="0 0 24 24"><circle cx="8.2" cy="6.6" r="3.2" class="f"/><path d="M2.6 20.4v-1.8a4.6 4.6 0 0 1 4.6-4.6h2a4.6 4.6 0 0 1 4.6 4.6v1.8z" class="f"/><circle cx="16.4" cy="7.6" r="2.8" class="fa"/><path d="M11.8 20.4v-1.4a4.2 4.2 0 0 1 4.2-4.2h1.2a4.2 4.2 0 0 1 4.2 4.2v1.4z" class="fa"/></symbol>
+<symbol id="i-tally" viewBox="0 0 24 24"><path d="M5 5.4v13.2M9.4 5.4v13.2M13.8 5.4v13.2M18.2 5.4v13.2"/><path d="M2.8 16.6L20.4 7" class="a"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
 </defs></svg>
 
@@ -751,6 +767,17 @@ const CHARS = [
 { id:"ghoul",  nm:"THE GHOUL", ic:"ghoul", w:"aura", lock:"survive 10:00 in one run",
   ds:"Heals 1.4 HP/s. Takes 18% more damage.",
   mods:{ regen:1.4, tough:1.18 } },
+// Levels faster than anyone and hits softer than anyone: the draft is the
+// power, not the numbers. Whether that trade is worth taking is the question
+// the character asks.
+{ id:"accnt",  nm:"THE ACCOUNTANT", ic:"accnt", w:"mortar", lock:"reach level 30 in one run",
+  ds:"+34% XP from every gem, 18% less damage.",
+  mods:{ xp:1.34, dmg:.82 } },
+// Starts holding the passive that splits its own starting weapon, and pays for
+// it in the only currency this game charges: room for error.
+{ id:"twin",   nm:"THE TWIN", ic:"twin", w:"bolt", lock:"clear a run",
+  ds:"Begins with DUPLICATOR. 24% less HP.",
+  mods:{ hp:.76 }, gift:"dupe" },
 ];
 
 const SHOP = [
@@ -763,11 +790,40 @@ const SHOP = [
 { id:"armor", ic:"armor",n:"THICK SKIN",   d:"-0.8 flat damage taken",max:5, cost:r=>85+r*75 },
 { id:"start", ic:"start",n:"HEAD START",   d:"begin one level higher",max:3, cost:r=>200+r*220 },
 { id:"rev",   ic:"rev", n:"SECOND WIND",  d:"revive once at 50% HP", max:2, cost:r=>400+r*500 },
+{ id:"tally", ic:"tally",n:"TALLY",        d:"+8% XP from every gem", max:4, cost:r=>140+r*130,
+  lock:"tally" },
 ];
 
 // ================================================================= META SAVE
 const SAVEKEY = "bonkhorde.save.v1";
-let save = { coins:0, up:{}, best:0, wins:0, unlocked:{} };
+let save = { coins:0, up:{}, best:0, wins:0, unlocked:{},
+             kills:0, runs:0, deaths:0, bestLvl:0 };
+
+// A survivors-like is a loop you re-enter, and the reason you re-enter is that
+// the last run moved something. This build had exactly one unlockable thing in
+// it - THE GHOUL - so after twenty minutes there was nothing left to move.
+// Every entry states its own condition against lifetime numbers the save now
+// keeps, and the menu shows how close you are to each, because a locked box
+// with no progress bar is just a locked box.
+const UNLOCKS = [
+  { id:"ghoul",  what:"THE GHOUL",     ds:"survive 10:00 in one run",
+    at:600,   now:(sv,r)=>Math.max(sv.best, r?r.t:0) },
+  { id:"twin",   what:"THE TWIN",      ds:"clear a run",
+    at:1,     now:(sv)=>sv.wins },
+  { id:"accnt",  what:"THE ACCOUNTANT",ds:"reach level 30 in one run",
+    at:30,    now:(sv,r)=>Math.max(sv.bestLvl, r?r.lvl:0) },
+  { id:"tally",  what:"TALLY (shop)",  ds:"6,000 lifetime kills",
+    at:6000,  now:(sv)=>sv.kills },
+];
+// returns the ids unlocked BY this call, so the end screen can call them out
+function checkUnlocks(runStats){
+  const got = [];
+  for(const u of UNLOCKS){
+    if(save.unlocked[u.id]) continue;
+    if(u.now(save, runStats) >= u.at){ save.unlocked[u.id] = true; got.push(u); }
+  }
+  return got;
+}
 function loadSave(){
   try{ const s=JSON.parse(localStorage.getItem(SAVEKEY));
        if(s && typeof s==="object") save = Object.assign(save, s); }catch(e){}
@@ -816,7 +872,7 @@ function baseStats(ch){
   return {
     maxhp: hp, hp,
     spd:   6.6 * (m.spd||1) * (1 + rank("spd")*.04),
-    dmg:   1 * (1 + rank("dmg")*.06),
+    dmg:   1 * (m.dmg||1) * (1 + rank("dmg")*.06),
     cd:    1 * (m.cd||1) * (1 - rank("cd")*.035),
     mag:   4.2 * (m.mag||1) * (1 + rank("mag")*.18),
     crit:  rank("crit")*.04,
@@ -825,6 +881,7 @@ function baseStats(ch){
     regen: (m.regen||0) + 0.55,
     tough: m.tough||1,
     reach: m.reach||1,
+    xpMul: (m.xp||1) * (1 + rank("tally")*.08),
   };
 }
 
@@ -835,6 +892,7 @@ function startRun(id){
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
+  if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
   for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
 
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
@@ -949,6 +1007,9 @@ addEventListener("keydown", e=>{
   if(e.code==="Escape" && running && !over && !picking) togglePause(true);
   if(e.code==="KeyP"  && running && !over && !picking) togglePause(!paused);
   if(e.code==="KeyM") setOpt("sound", !save.sound);
+  if((e.code==="Enter"||e.code==="NumpadEnter") && over){
+    const a = document.getElementById("againBtn"); if(a) a.click();
+  }
   if(e.code==="Space") e.preventDefault();
 });
 addEventListener("keyup", e=>keys[e.code]=false);
@@ -1649,10 +1710,22 @@ function updateGems(dt){
   }
 }
 function gainXP(v){
-  P.xp += v;
+  P.xp += v * (P.xpMul||1);
   while(P.xp >= P.need){ P.xp -= P.need; P.lvl++; P.need = xpFor(P.lvl); queueLevel(); }
 }
 function queueLevel(){ pendingLevels++; }
+
+// The single line that decides whether there is another run: not what you did,
+// but what you are close to. Shows the nearest locked thing and how far.
+function nextUp(){
+  const left = UNLOCKS.filter(u=>!save.unlocked[u.id])
+    .map(u=>({ u, frac: Math.min(1, u.now(save,null)/u.at) }))
+    .sort((a,b)=>b.frac-a.frac)[0];
+  if(!left) return `<p class="sub" style="margin-top:14px">Everything is unlocked.</p>`;
+  const pct = Math.round(left.frac*100);
+  return `<div class="next"><div class="nb"><i style="width:${pct}%"></i></div>
+    <div class="nt">${left.u.what} &nbsp;·&nbsp; ${left.u.ds} &nbsp;·&nbsp; ${pct}%</div></div>`;
+}
 
 // ------------------------------------------------------------ offer roller
 function offers(){
@@ -1919,8 +1992,13 @@ function finish(why, won){
   save.coins += earned;
   save.best = Math.max(save.best||0, T);
   if(won) save.wins = (save.wins||0)+1;
-  const newlyUnlocked = T >= 600 && !save.unlocked.ghoul;
-  if(newlyUnlocked) save.unlocked.ghoul = true;
+  const prevBest = save.best||0, prevLvl = save.bestLvl||0;
+  const beat = T > prevBest;
+  save.kills = (save.kills||0) + kills;
+  save.runs  = (save.runs||0) + 1;
+  if(!won) save.deaths = (save.deaths||0) + 1;
+  save.bestLvl = Math.max(save.bestLvl||0, P.lvl);
+  const got = checkUnlocks({ t:T, lvl:P.lvl });
   writeSave();
   won ? SFX.win() : SFX.die();
 
@@ -1942,14 +2020,18 @@ function finish(why, won){
     <h1 class="${won?'g':'r'}" style="font-size:44px">${why}</h1>
     <div class="sub">${flavor}</div>
     <table>
-      <tr><td>Survived</td><td>${fmt(T)}${T > RUN_LEN ? " (sudden death)" : " / "+fmt(RUN_LEN)}</td></tr>
-      <tr><td>Level reached</td><td>${P.lvl}</td></tr>
+      <tr><td>Survived</td><td>${fmt(T)}${T > RUN_LEN ? " (sudden death)" : " / "+fmt(RUN_LEN)}${
+        beat ? ` <span class="g">NEW BEST</span>` : prevBest ? ` <span class="dim2">best ${fmt(prevBest)}</span>` : ""}</td></tr>
+      <tr><td>Level</td><td>${P.lvl}${
+        P.lvl > prevLvl ? ` <span class="g">NEW BEST</span>` : prevLvl ? ` <span class="dim2">best ${prevLvl}</span>` : ""}</td></tr>
       <tr><td>Kills</td><td>${kills.toLocaleString()}</td></tr>
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
       <tr><td class="gold">Coins earned</td><td class="gold">+${earned}</td></tr>
     </table>
-    ${newlyUnlocked ? `<p class="g" style="font-size:11px">${icon("ghoul")} THE GHOUL UNLOCKED</p>`:``}
-    <button class="btn" id="againBtn">RUN AGAIN</button>
+    ${got.map(u=>`<p class="g" style="font-size:12px;letter-spacing:.1em">`+
+                 `${icon(u.id==="tally"?"tally":u.id)} ${u.what} UNLOCKED</p>`).join("")}
+    ${nextUp()}
+    <button class="btn" id="againBtn">RUN AGAIN &nbsp;<kbd>ENTER</kbd></button>
     <button class="btn gh" id="shopBtn">SHOP</button>`;
   show("end");
   document.getElementById("againBtn").onclick = ()=>{ hide("end"); startRun(charId); };
@@ -1970,6 +2052,8 @@ function openMenu(){
     <div class="row" id="chars"></div>
     <h2>PERMANENT UPGRADES &nbsp;—&nbsp; these carry across every run</h2>
     <div class="shop" id="shop"></div>
+    <h2>STILL LOCKED</h2>
+    <div class="locks" id="locks"></div>
     <div class="hint">
       ${TOUCH
         ? `<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> turn the camera<br>
@@ -1992,6 +2076,7 @@ function openMenu(){
   }
   const sh = document.getElementById("shop");
   for(const u of SHOP){
+    if(u.lock && !save.unlocked[u.lock]) continue;      // not earned yet
     const r = rank(u.id), maxed = r>=u.max, cost = u.cost(r);
     const afford = !maxed && save.coins >= cost;
     const el = document.createElement("div");
@@ -2004,6 +2089,20 @@ function openMenu(){
     if(afford) el.onclick = ()=>{ save.coins -= cost; save.up[u.id]=r+1; writeSave();
                                   SFX.buy(); openMenu(); };
     sh.appendChild(el);
+  }
+  const lk = document.getElementById("locks");
+  const left = UNLOCKS.filter(u=>!save.unlocked[u.id]);
+  if(!left.length) lk.innerHTML = `<div class="allq">Everything is unlocked. Go and win it again.</div>`;
+  for(const u of left){
+    const have = u.now(save, null), pct = Math.min(100, Math.round(have/u.at*100));
+    const el = document.createElement("div");
+    el.className = "lk";
+    el.innerHTML = `<div class="lkn">${u.what}</div>
+      <div class="lkd">${u.ds}</div>
+      <div class="nb"><i style="width:${pct}%"></i></div>
+      <div class="lkp">${have >= 1000 ? Math.floor(have).toLocaleString() : Math.floor(have)}
+        / ${u.at.toLocaleString()}</div>`;
+    lk.appendChild(el);
   }
   show("menu");
 }
@@ -2514,6 +2613,12 @@ window.__g = {
   // explicit pause: a frame-to-frame comparison needs the world genuinely
   // frozen, not incidentally frozen by whatever the harness last did
   pause:   (v=true)=>togglePause(!!v),
+  chars:   ()=>CHARS.map(c=>c.id),
+  checkUnlocks: (r=null)=>{ const g = checkUnlocks(r); writeSave(); return g; },
+  saveState: ()=>JSON.parse(JSON.stringify(save)),
+  setSave: (patch)=>{ Object.assign(save, patch); writeSave(); },
+  menu:    ()=>openMenu(),
+  camAnchor: ()=>camAnchor && camAnchor.slice(),
   // colours the player has to tell apart at a glance, for the contrast check
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,

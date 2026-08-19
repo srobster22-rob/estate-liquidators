@@ -46,6 +46,21 @@ const MUTANTS = [
          "    P.z = clamp(P.z + dz*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);",
     to:  "    P.x = clamp(P.x + dx*P.spd*dt, -ARENA+1.5, ARENA-1.5);\n" +
          "    P.z = clamp(P.z + dz*P.spd*dt, -ARENA+1.5, ARENA-1.5);" },
+  { id:"ladder-early", must:"17",
+    why:"every rung pays out immediately, whatever the number says",
+    from:"if(u.now(save, runStats) >= u.at)", to:"if(u.now(save, runStats) >= 0)" },
+  { id:"ladder-repeats", must:"17",
+    why:"a rung pays out again every single run",
+    from:"    if(save.unlocked[u.id]) continue;\n", to:"" },
+  { id:"shop-lock-ignored", must:"17",
+    why:"the locked shop line is on sale from run one",
+    from:"    if(u.lock && !save.unlocked[u.lock]) continue;      // not earned yet\n", to:"" },
+  { id:"xpmul-ignored", must:"17",
+    why:"THE ACCOUNTANT's whole identity silently does nothing",
+    from:"  P.xp += v * (P.xpMul||1);", to:"  P.xp += v;" },
+  { id:"camera-welded", must:"12d",
+    why:"the boom goes back to being welded to the player",
+    from:"  camAnchor[0] = lerp(camAnchor[0], px, kf);", to:"  camAnchor[0] = px;" },
 ];
 
 const want = process.argv[2];
