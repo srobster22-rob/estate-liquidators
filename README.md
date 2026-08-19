@@ -75,13 +75,31 @@ model; the physics ownership protocol; the loudness model; the decision log.
 **Specified and partly tested:** the economy, by two simulations that between them overturned
 four things this project believed.
 
+- **`proto3d` was drawing the entire house at about 13% grey.** Which reads as "atmospheric
+  night game" until you measure it: centre-of-frame luminance across four headings came back
+  **4, 34, 34 and 78 out of 255**. It was not broken, it was lit to almost nothing — a black
+  rectangle in a browser tab in daylight, and I nearly published it that way. Two causes. The
+  spotlight's `smoothstep(uCone, uCone + .28, …)` had an upper bound of **1.08**, and a cosine
+  cannot exceed 1, so the middle of the beam topped out at 80% of full and never reached it.
+  And the whole scene was multiplied by 1.5 over base colours around 0.23. Raising the
+  multiplier alone traded one failure for its opposite — 2.4× lifted the mid-ground and blew
+  near walls out to a flat yellow disc with no detail in it. A Reinhard rolloff
+  (`lin / (lin + 0.55)`) fixes both ends: a lit interior now reads 31/255 where it read 4, and
+  a wall at arm's length reads 131 instead of clipping.
 - **The two prototypes had no tests at all.** They are the only playable evidence this half of
   the repository has, and nothing checked they still booted. `proto-tests.js` asks the three
   questions a prototype fails silently: does it boot, does its loop advance state, and can you
   steer it. `proto3d` failed the third — its mouse-look was gated on holding pointer lock, the
   identical bug found in BONKHORDE, so in any embed it booted, the Curator walked, WASD worked
   and the camera never turned again. Verified by reverting the fix: 16/17 with the old code,
-  17/17 with the new. Both prototypes now run in CI.
+  17/17 with the new. Both prototypes now run in CI, at 20 checks.
+
+  And the suite I wrote to catch that shipped without the one check that would have caught the
+  *lighting*: it asserted "draws to a live WebGL context", which is not the same claim as "you
+  can see the house". Then the clipping assertion I added passed at **3.7/255** — because the
+  probe walked the player out of the building and measured the void. Both fixed; both are the
+  same mistake this file keeps recording, which is that an assertion is only worth what it
+  would have failed on.
 - The appraiser's edge over blind hauling is **+6%**, not the +84% first reported. That first
   figure used a placeholder for scan noise; the second, +31%, survived a reroll bug. Both are
   in `LOOP_LOG.md` with the measurement that killed them. A 6% edge is small enough that

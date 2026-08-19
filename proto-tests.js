@@ -97,6 +97,29 @@ const url = d => "file://" + path.resolve(__dirname, d, "index.html");
        `locked=${look.locked} ${look.idle.toFixed(3)} -> ${look.dragged.toFixed(3)}`);
     ok("a loose mouse does not steer", Math.abs(look.idle - look.a) < 1e-9);
     ok("mouseup ends the drag", Math.abs(look.after - look.dragged) < 1e-9);
+    // The check this suite shipped without, and the one that would have caught
+    // the actual defect: "a WebGL context exists" is not "you can see the
+    // house". It was drawing the whole interior at about 13% grey - four
+    // headings measured 4, 34, 34 and 78 out of 255 - which is atmospheric on a
+    // calibrated monitor in a dark room and a black rectangle in a browser tab.
+    const light = await p.evaluate(() => {
+      window.__g.reset();
+      window.__g.look(Math.PI/2, 0.03);                  // east, into the house
+      window.__g.press("KeyW", true); window.__g.step(700); window.__g.press("KeyW", false);
+      window.__g.step(10);
+      const inside = { room: window.__g.pos().room, lum: window.__g.brightness() };
+      // A first version walked FURTHER to find a wall and measured 3.7/255 -
+      // the player had left the building, so "it does not clip" passed against
+      // the void. Face a wall that is known to be there instead.
+      window.__g.reset(); window.__g.look(4.71, 0);
+      return { inside, pressed: window.__g.brightness() };
+    });
+    ok("walking east actually ends up indoors",
+       light.inside.room !== "VOID" && light.inside.room !== "drive", light.inside.room);
+    ok("a lit interior is legible, not a black rectangle",
+       light.inside.lum > 22, `${light.inside.lum}/255 in the ${light.inside.room}`);
+    ok("and the torch lights a near wall without clipping it to white",
+       light.pressed > 60 && light.pressed < 205, `${light.pressed}/255 point blank`);
     ok("no errors across the whole run", errs.length === 0, errs.slice(0,2).join(" | "));
     await p.close();
   }

@@ -85,12 +85,24 @@ void main(){
   float d = length(toEye);
   vec3 l = toEye / max(d, .001);
   // spotlight: the flashlight is the only real light in the house
-  float spot = smoothstep(uCone, uCone + .28, dot(normalize(-l), normalize(uDir)));
+  // uCone + .28 exceeded 1.0, so the cosine could never reach the top of the
+  // smoothstep and the middle of the beam topped out at 80% of full. Measured
+  // centre-of-frame luminance across four headings read 4, 34, 34 and 78 out of
+  // 255 - the house was being drawn at about 13% grey, which is atmospheric on
+  // a calibrated monitor in a dark room and a black rectangle in a browser tab.
+  float spot = smoothstep(uCone, min(1.0, uCone + .13), dot(normalize(-l), normalize(uDir)));
   float atten = clamp(1.0 - d / uRange, 0.0, 1.0);
   atten *= atten;
   float lam = max(dot(n, l), 0.0);
   float lit = spot * atten * (0.35 + 0.65 * lam);
-  vec3 c = vC * (uAmbient + lit * 1.5);
+  // Scaling the multiplier alone traded one failure for its opposite: 2.4x
+  // lifted the mid-distance walls to something readable and blew the near ones
+  // out to a flat yellow disc with no detail in it, because nothing was
+  // compressing the top end. A Reinhard rolloff fixes both ends at once - the
+  // lit mid-ground lands near 90/255, point blank near 130, and no surface can
+  // clip to white however close you press the torch against it.
+  vec3 lin = vC * (uAmbient + lit * 2.4);
+  vec3 c = lin / (lin + 0.55);
   c = mix(c, vec3(0.015,0.017,0.02), clamp(d/46.0, 0.0, 0.92)); // fog
   gl_FragColor = vec4(c, 1.0);
 }`;
@@ -424,7 +436,7 @@ function render(){
   // A7: the aggro tell. Your light dims to 60% and goes cold.
   gl.uniform1f(U.uRange, marked?11.5:19.0);
   gl.uniform1f(U.uCone, marked?0.88:0.80);
-  gl.uniform1f(U.uAmbient, 0.045);
+  gl.uniform1f(U.uAmbient, 0.16);    // enough to give unlit geometry a shape
 
   for(const r of ROOMS){
     drawBox(r.x,-0.05,r.z,r.w/2,0.05,r.d/2, r.van?[.30,.26,.19]:[.23,.225,.215]);
@@ -495,7 +507,15 @@ window.__g={ state:()=>({t:+t.toFixed(1),dist:+dist.toFixed(1),tier:tierOf(dist)
   step:(n=1,dt=1/60)=>{started=true;for(let i=0;i<n;i++) if(!over) step(dt);return window.__g.state();},
   press:(k,v=true)=>keys[k]=v, look:(y,p=0)=>{player.yaw=y;player.pitch=p;},
   grab:()=>grabDrop(), reset, items:()=>items.filter(i=>!i.gone).length,
-  dragging:()=>dragging, yaw:()=>player.yaw };
+  dragging:()=>dragging, yaw:()=>player.yaw,
+  // Mean luminance of the centre of a freshly drawn frame. "A WebGL context
+  // exists" is not the same claim as "you can see the house", and this game
+  // shipped rendering the whole interior at about 13% grey - technically
+  // correct, effectively a black screen in a browser tab in daylight.
+  brightness:()=>{ render(); const n=48, out=new Uint8Array(n*n*4);
+    gl.readPixels((cv.width-n)>>1,(cv.height-n)>>1,n,n,gl.RGBA,gl.UNSIGNED_BYTE,out);
+    let s=0; for(let i=0;i<out.length;i+=4) s+=(out[i]+out[i+1]+out[i+2])/3;
+    return +(s/(n*n)).toFixed(1); } };
 </script>
 </body>
 </html>
