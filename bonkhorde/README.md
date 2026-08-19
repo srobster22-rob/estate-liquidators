@@ -337,6 +337,11 @@ That harness has overturned fifty-three things this build believed:
       back looking like a suite that passed. It now parses the `RESULT:` line and treats its
       absence as no data rather than as a pass. **A meta-test can be broken in exactly the way
       it exists to detect**, and this one was, on its first outing.
+
+  With the harness fixed and the hazard test hardened, the audit reads **7/7 caught, each one
+  failing in the section named for it** — so every claim in the two lists above is now backed
+  by a demonstration that the assertion behind it goes red when the code stops being true.
+  The earlier "5/7" is not a smaller version of this result; it was not a result at all.
 - **THE SCRAPPER was paying two survival costs and had no survival stat.** It starts with
   CALTROPS — which drops at your feet and benches the worst solo survival in the game at
   4:13 — and pays 15% HP on top, while its other two stats, pickup radius and speed, both
