@@ -724,6 +724,59 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${Math.round(atCap)} vs ${Math.round(over)} HP`);
   }
 
+  console.log("\n=== 12c. THE GPU CAN BE TAKEN AWAY AND GIVEN BACK ===");
+  {
+    // A mobile browser reclaims the GPU when you switch apps. Lost-context GL
+    // calls fail SILENTLY rather than throwing, so with no handler the canvas
+    // is black forever while the simulation carries on behind it - which reads
+    // as a crash. This drives the real thing through WEBGL_lose_context.
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 600 } });
+    const cp = await ctx.newPage();
+    const cerr = [];
+    cp.on("pageerror", e => cerr.push(e.message));
+    await cp.goto(FILE, { waitUntil: "load" });
+    await cp.waitForTimeout(500);
+    await cp.evaluate(() => { window.__g.wipeSave(); window.__g.start("intern");
+                              window.__g.god(); window.__g.step(60 * 40); });
+    await cp.waitForTimeout(400);
+
+    const before = await cp.evaluate(() => window.__g.state().boxes);
+    const shotA  = await cp.screenshot({ type: "png" });
+
+    await cp.evaluate(() => window.__g.loseCtx());
+    await cp.waitForTimeout(300);
+    const lost = await cp.evaluate(() => ({ lost: window.__g.ctxLost(),
+                                            paused: window.__g.isPaused() }));
+    // A lost context keeps its last drawing buffer on screen and drawnBoxes
+    // keeps its last value, so "it renders" and "it isn't blank" both pass on a
+    // corpse. Park the counter and move the camera: only a LIVE frame can
+    // reset one and change the other.
+    await cp.evaluate(() => window.__g.clearBoxes());
+    const stale = await cp.evaluate(() => window.__g.state().boxes);
+
+    await cp.evaluate(() => window.__g.restoreCtx());
+    await cp.waitForTimeout(800);
+    const back = await cp.evaluate(() => window.__g.ctxLost());
+    await cp.evaluate(() => { window.__g.resume(); window.__g.place(-40, -40); });
+    await cp.waitForTimeout(800);
+    const after = await cp.evaluate(() => window.__g.state().boxes);
+    const shotB = await cp.screenshot({ type: "png" });
+    const hues  = new Set();
+    for (let i = 0; i < shotB.length - 4; i += 997) hues.add(shotB.readUInt32BE(i));
+
+    ok("losing the context is noticed, not ignored", lost.lost === true);
+    ok("and it pauses instead of playing on behind a black screen", lost.paused === true);
+    ok("nothing renders while the context is gone", stale === -1);
+    ok("restore clears the lost flag", back === false);
+    ok("a live frame draws after restore", after > 0 && before > 0,
+       `${before} boxes before, parked at ${stale}, ${after} after`);
+    ok("the restored frame is not a blank screen", hues.size > 20, `${hues.size} samples`);
+    ok("and it is a NEW frame, not the buffer left behind",
+       Buffer.compare(shotA, shotB) !== 0);
+    ok("nothing threw across loss and restore", cerr.length === 0, cerr.slice(0,2).join(" | "));
+    await ctx.close();
+  }
+
   console.log("\n=== 15c. THE CAMERA TURNS WITHOUT POINTER LOCK ===");
   {
     // A sandboxed iframe can refuse pointer lock outright. When that happens the

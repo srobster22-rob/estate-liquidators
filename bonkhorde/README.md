@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 109 checks: boot, every weapon, every evolution, every
+node test.js              # 117 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -111,13 +111,14 @@ node test.js              # 109 checks: boot, every weapon, every evolution, eve
                          # in a real phone-sized touch context
 node balance.js 6 both            # [trials] [first|vet|both] [char,char]
 node balance.js 12 vet intern,scrap   # higher n on two characters
-node dps.js 8                     # per-weapon boss/crowd DPS bench, n=8 (n=3 is noise)
+node dps.js 8 5                   # per-weapon boss/crowd/survival bench
+                                  # [dps trials] [survival trials]; n=3 is noise
 node passives.js 5                # per-passive offence/defence bench, n=5
 ```
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **109 passing.**
+die, and checks that `localStorage` survives a reload. **117 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -127,17 +128,26 @@ and attributes boss damage separately from crowd damage. Boss DPS decides whethe
 you can *close* a run; crowd DPS decides whether you survive to try.
 
 ```
-RANK 5          boss dps   crowd dps        EVOLVED        boss dps   crowd dps
-bat                   72        1118        MEGABONK            538        2775
-skulls               119        1315        CAROUSEL           1260        3537
-bolt                 149        1108        BOLTSTORM          1244        4529
-pulse                 78        1595        EARTHQUAKE          675        3130
-mortar               399        2297        BOMBARDIER         1190        3776
-zap                  205         471        TESLA COIL          626        1208
-aura                  65        1364        PLAGUE              340        2226
-caltrops             413        1991        SCORCHED EARTH      983        2856
-                                                                        (n=8)
+RANK 5        boss   crowd   alive      EVOLVED           boss   crowd   alive
+bat             47    1153    5:17      MEGABONK           465    2607    4:16
+skulls          84    1338    5:10      CAROUSEL          1402    3395    4:34
+bolt           177    1120    9:46      BOLTSTORM         1338    4563   18:17
+pulse           66    1716    4:25      EARTHQUAKE         667    3161    3:56
+mortar         449    2213    5:47      BOMBARDIER        1348    3570    9:16
+zap            239     461    6:15      TESLA COIL         597    1197   10:31
+aura            92    1351    4:13      PLAGUE             845    2936    4:24
+caltrops       409    2086    4:22      SCORCHED EARTH    1058    3054    4:16
+                                        (dps n=6, survival n=5)
 ```
+
+**The third column is new, and it says the second one was never measuring what we
+thought.** PULSE has the highest rank-5 crowd DPS in the game and the second-worst
+survival. BOLT has nearly the lowest crowd DPS and survives **more than twice as
+long as anything else**. Sort rank 5 by survival and you get the three ranged
+weapons on top — BOLT, ZAP, MORTAR at 9:46, 6:15, 5:47 — and the five
+player-centred ones underneath at 4:13 to 5:17, almost perfectly ordered by reach.
+Crowd DPS counts damage that landed; it cannot count *where*. Killing something at
+30m and killing it at 2m score identically and are not the same game.
 
 Specialists are intentional — ZAP is a boss weapon that barely dents a crowd,
 AURA the reverse. What the bench is for is catching the ones that are not
@@ -282,8 +292,36 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned forty-three things this build believed:
+That harness has overturned forty-seven things this build believed:
 
+- **The weapon bench had two axes and the game has three.** Adding a survival column — one
+  weapon, mid-tier shop, no godmode, played to death — inverted the reading of the column
+  next to it. EARTHQUAKE has the highest rank-5 crowd DPS in the game (1716) and survives
+  4:25. BOLT has nearly the lowest (1120) and survives **9:46**, more than twice anything
+  else; BOLTSTORM survives **18:17**. Sorted by survival, rank 5 is the three ranged weapons
+  on top and the five player-centred ones underneath, almost exactly ordered by reach. Crowd
+  DPS counts damage that landed and cannot count *where* it landed, so it scores a kill at
+  30m and a kill at 2m identically. One of those is why you are alive.
+- **PLAGUE was strictly dominated by six of the other seven weapons, on both axes at once.**
+  A flat damage aura is squeezed from both ends: against 8–22 HP trash nearly all of its
+  output is overkill that `hurt()` correctly refuses to count, and against a boss 120 DPS is
+  nothing. Stacking fixes only the end that was broken — 12% a tick to 2.44× after three
+  seconds in the cloud, which trash never lives to see. Boss DPS 340 → 845, and it is
+  dominated by four instead of six. The weakness moved to BONK BAT, which the new survival
+  column says is not hiding defensive value either: it is last on all three.
+- **The GPU can be taken away, and nothing handled it.** A mobile browser reclaims WebGL when
+  you switch apps, and lost-context GL calls fail *silently* rather than throwing — so the
+  canvas would be black forever while the simulation carried on behind it, which reads as a
+  crash on the one platform this build advertises. Every GL object is now re-creatable, loss
+  pauses the run and says so, and restore rebuilds the program, both buffers and the terrain.
+  Section 12c drives it through `WEBGL_lose_context`.
+- **The first version of that test passed against a corpse.** `restoreContext()` did nothing,
+  because `getExtension()` returns null on an already-lost context and the handle was being
+  fetched at restore time. The suite reported it anyway: a lost context keeps its last
+  drawing buffer on screen and `drawnBoxes` keeps its last value, so "the scene draws again"
+  and "the frame is not blank" both passed on a frame rendered before the loss. Only "restore
+  clears the flag" failed. The assertions now park the counter at −1 and move the camera, so
+  nothing but a live frame can satisfy them.
 - **The best offensive passive in the game was filed under defence.** PLATING benched at
   **+36% DPS** against a no-passive control (n=10) — beating SPINACH's +25% and DUPLICATOR's
   +28% at their own job — while also cutting incoming damage by a flat 8 and a further 25% at

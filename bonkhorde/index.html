@@ -237,18 +237,26 @@ void main(){
 function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o);
   if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o));
   return o; }
-const prog = gl.createProgram();
-gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
-gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
-gl.linkProgram(prog);
-if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-gl.useProgram(prog);
-
-const A = { pos:gl.getAttribLocation(prog,"aPos"), nrm:gl.getAttribLocation(prog,"aNrm"),
-            col:gl.getAttribLocation(prog,"aCol"), emit:gl.getAttribLocation(prog,"aEmit") };
-const U = {}; for(const n of ["uProj","uView","uSun","uSky","uGnd","uFog","uEye",
-  "uNear","uFar","uFlash"]) U[n] = gl.getUniformLocation(prog, n);
-gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+// A mobile browser reclaims the GPU when you switch apps, and the context does
+// not come back on its own: without a handler the canvas goes black forever
+// while the game keeps simulating behind it, because lost-context GL calls fail
+// silently rather than throwing. Every object below therefore has to be
+// re-creatable, which is why these are `let` and live in a function.
+let prog, A, U;
+function buildProgram(){
+  prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  A = { pos:gl.getAttribLocation(prog,"aPos"), nrm:gl.getAttribLocation(prog,"aNrm"),
+        col:gl.getAttribLocation(prog,"aCol"), emit:gl.getAttribLocation(prog,"aEmit") };
+  U = {}; for(const n of ["uProj","uView","uSun","uSky","uGnd","uFog","uEye",
+    "uNear","uFar","uFlash"]) U[n] = gl.getUniformLocation(prog, n);
+  gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+}
+buildProgram();
 
 // ------------------------------------------------------------ batched boxes
 // Everything dynamic is an axis-aligned box with optional yaw. One VBO, one
@@ -269,9 +277,13 @@ const BOXV = (()=>{                      // 36 verts of a unit cube, pos+nrm
 const MAXBOX = 3600;
 const VB = new Float32Array(MAXBOX*36*FLOATS);
 let vn=0, nbox=0, drawnBoxes=0;
-const dynBuf = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, dynBuf);
-gl.bufferData(gl.ARRAY_BUFFER, VB.byteLength, gl.DYNAMIC_DRAW);
+let dynBuf;
+function buildDynBuf(){
+  dynBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, dynBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, VB.byteLength, gl.DYNAMIC_DRAW);
+}
+buildDynBuf();
 
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
@@ -370,8 +382,8 @@ const TERRAIN_A = [.38,.52,.31], TERRAIN_B = [.30,.43,.26];
 const TERRAIN_H = [.030,.038,.024];      // per-quad height term
 const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
 
-const terBuf = gl.createBuffer(); let terCount = 0;
-(function buildTerrain(){
+let terBuf, terCount = 0, terData = null;
+const buildTerrain = (function(){
   const N=60, S=ARENA*2/N, out=[];
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
@@ -390,9 +402,31 @@ const terBuf = gl.createBuffer(); let terCount = 0;
     }
   }
   terCount = out.length/FLOATS;
-  gl.bindBuffer(gl.ARRAY_BUFFER, terBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(out), gl.STATIC_DRAW);
+  terData  = new Float32Array(out);            // kept, so a restore can re-upload
+  return function uploadTerrain(){
+    terBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, terBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, terData, gl.STATIC_DRAW);
+  };
 })();
+buildTerrain();
+
+let ctxLost = false;
+// Grabbed while the context is alive on purpose: getExtension() returns null on
+// a LOST context, so a handle fetched at restore time is null and the restore
+// call silently does nothing - which is exactly how the first version failed.
+const LOSE_EXT = gl.getExtension("WEBGL_lose_context");
+cv.addEventListener("webglcontextlost", e=>{
+  // Without preventDefault the browser never offers the context back at all.
+  e.preventDefault();
+  ctxLost = true;
+  if(running && !over && !picking) togglePause(true);
+  alert2("GRAPHICS PAUSED", "#f0b429");
+});
+cv.addEventListener("webglcontextrestored", ()=>{
+  buildProgram(); buildDynBuf(); buildTerrain();
+  ctxLost = false;                             // render() re-sets the viewport itself
+});
 
 // scenery: static, decorative, non-colliding. Purely for motion parallax.
 const PROPS = (()=>{
@@ -496,7 +530,7 @@ zap:{ name:"ZAP", ic:"⚡", kind:"w",
 aura:{ name:"STINK", ic:"☢", kind:"w",
   ds:"A permanent cloud of you. Damages anything standing in it.",
   evo:{ name:"PLAGUE", need:"heart", ic:"\u{1F9A0}",
-        ds:"Bigger, meaner, and it slows whatever it touches." },
+        ds:"Bigger, slower, and it gets worse the longer they breathe it." },
   lv:[{dps:19,rad:4.2},{dps:27,rad:4.7},{dps:37,rad:5.2},
       {dps:50,rad:5.8},{dps:66,rad:6.5},{dps:120,rad:8.4,slow:.55}] },
 
@@ -970,6 +1004,8 @@ const mkGem = (x,z,v)=>({ x, z, y:groundY(x,z)+.45, v, bob:Math.random()*TAU, pu
 const GEM_CAP = 300;
 // How many overlapping hazard zones may burn one body per 0.25s window.
 const BURN_STACK = 3;
+// PLAGUE ramps at 12% a tick to 2.44x after three seconds in the cloud.
+const PLAGUE_MAX = 12, PLAGUE_STEP = .12;
 function pushGem(x, z, v){
   if(gems.length >= GEM_CAP){
     let far=-1, fd=-1;
@@ -1008,7 +1044,20 @@ function fireWeapons(dt){
       if((w.t -= dt) <= 0){
         w.t = .25;                                        // tick 4x/sec
         hitNear(P.x, P.z, s.rad, (e,d)=>{
-          const roll = dmgOut(s.dps*.25);
+          let mul = 1;
+          // PLAGUE gets worse the longer you breathe it. Flat aura damage is
+          // structurally squeezed from both ends: against 8-22 HP trash almost
+          // all of it is overkill, and against a boss 120 dps is nothing, which
+          // is how the evolved aura ended up strictly dominated by six of the
+          // other seven weapons on both axes at once. Stacks fix the boss end
+          // without inflating the crowd end, because trash dies on tick one and
+          // never lives long enough to stack.
+          if(w.evo){
+            e.plague  = Math.min(PLAGUE_MAX, (e.plague||0) + 1);
+            e.plagueT = .9;                               // decays outside the cloud
+            mul = 1 + e.plague * PLAGUE_STEP;
+          }
+          const roll = dmgOut(s.dps*.25*mul);
           hurt(e, roll.d, 0, 0, roll.crit);
           if(s.slow) e.slowT = .4;
         });
@@ -1162,7 +1211,7 @@ function spawnEnemy(type, atX, atZ){
     hp:    def.hp*hpScale(T)*em.hp,
     maxhp: def.hp*hpScale(T)*em.hp,
     dmg:   def.dmg*dmgScale(T)*em.dmg,
-    kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, burnCd:0, burnN:0,
+    kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
     dead:false, boss:false });
 }
 function spawnBoss(b){
@@ -1173,7 +1222,7 @@ function spawnBoss(b){
   const z = clamp(P.z+Math.sin(a)*26, -ARENA+5, ARENA-5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
-    kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, dead:false, boss:true,
+    kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
     final: b.t===1140 });
   shake = 1.2; SFX.boss(); alert2(b.nm, "#ff5c4d");
 }
@@ -1271,6 +1320,7 @@ function updateEnemies(dt){
     if(e.flash > -.2) e.flash -= dt;
     if(e.slowT>0) e.slowT -= dt;
     if(e.burnCd>0) e.burnCd -= dt;
+    if(e.plagueT>0 && (e.plagueT -= dt) <= 0) e.plague = 0;
 
     // knockback decays hard - it should read as a shove, not a launch
     e.x += e.kx*dt; e.z += e.kz*dt;
@@ -1815,6 +1865,7 @@ const g2 = ui.getContext("2d");
 let VPM = null;
 
 function render(){
+  if(ctxLost) return;                          // every GL call would silently no-op
   const w = cv.width = ui.width = innerWidth;
   const h = cv.height = ui.height = innerHeight;
   gl.viewport(0,0,w,h);
@@ -2257,6 +2308,14 @@ window.__g = {
   zones: (x,z,n,dps,r=2.2)=>{ for(let i=0;i<n;i++)
     zones.push({ x, z, r, dps, life:9, max:9, c:[1,.42,.12], tick:0, evo:true }); },
   burnStack: ()=>BURN_STACK,
+  // WEBGL_lose_context is the only way to reproduce what a phone does when it
+  // reclaims the GPU, so the restore path gets exercised instead of assumed.
+  loseCtx:    ()=>LOSE_EXT?.loseContext(),
+  restoreCtx: ()=>LOSE_EXT?.restoreContext(),
+  ctxLost:    ()=>ctxLost,
+  // render() sets drawnBoxes from 0 every frame, so parking it at -1 makes a
+  // stale value impossible to mistake for a live one
+  clearBoxes: ()=>{ drawnBoxes = -1; },
   // colours the player has to tell apart at a glance, for the contrast check
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,
