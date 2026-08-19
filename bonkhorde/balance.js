@@ -29,8 +29,12 @@ for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
 // node balance.js [trials] [first|vet|both] [char,char]
 const TRIALS = +(process.argv[2] || 4);
 const TIER   = process.argv[3] || "both";
-const ALL    = ["intern", "scrap", "spark", "ox", "ghoul"];
-const CHARS  = process.argv[4] ? process.argv[4].split(",") : ALL;
+// Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
+// moment they shipped - a bench that quietly stops covering new content is
+// worse than no bench, because the gap looks like a clean sweep. Read from the
+// game instead. (test.js was fixed for this and balance.js was not, which is
+// how you end up with one instrument honest and the other out of date.)
+let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
 (async () => {
   const b = await chromium.launch(LAUNCH);
@@ -38,6 +42,7 @@ const CHARS  = process.argv[4] ? process.argv[4].split(",") : ALL;
   p.on("pageerror", e => console.log("ERR", e.message));
   await p.goto("file://" + require("path").resolve(__dirname, "index.html"));
   await p.waitForTimeout(400);
+  if (!CHARS) CHARS = await p.evaluate(() => window.__g.chars());
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 

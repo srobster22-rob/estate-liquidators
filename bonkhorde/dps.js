@@ -21,7 +21,7 @@ const LAUNCH = { args:["--use-gl=angle","--use-angle=swiftshader",
 for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
   if(fs.existsSync(p)) LAUNCH.executablePath = p;
 
-const WEAPONS = ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"];
+let WEAPONS = null;                       // read from the game, see below
 const SECONDS = 26;
 // Two axes were not enough. BONK BAT reads last on both of them while carrying
 // kb:20 at MEGABONK - by a distance the largest knockback in the game - and
@@ -39,6 +39,9 @@ const REPEATS = +(process.argv[2] || 3);
   p.on("pageerror", e => console.log("ERR", e.message));
   await p.goto("file://" + require("path").resolve(__dirname, "index.html"));
   await p.waitForTimeout(400);
+  // hardcoding this list means a ninth weapon ships unbenched and the table
+  // still prints a tidy eight rows, which reads as full coverage
+  WEAPONS = await p.evaluate(() => window.__g.weapons());
 
   // one scenario, both numbers: the sudden-death fight as it actually happens
   const bench = (w, evo) => p.evaluate(([w, evo, SECONDS]) => {

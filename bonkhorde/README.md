@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 145 checks: boot, every weapon, every evolution, every
+node test.js              # 148 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -120,7 +120,7 @@ node mutate.js                    # break the game on purpose, one thing at a
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **145 passing.**
+die, and checks that `localStorage` survives a reload. **148 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -315,8 +315,42 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned sixty things this build believed:
+That harness has overturned sixty-three things this build believed:
 
+- **The starting weapon is a bigger lever than the entire character stat block.** Two new
+  characters shipped and `balance.js` did not measure them, because its roster was a hardcoded
+  list of five — a bench that quietly stops covering new content is worse than no bench, since
+  the gap looks like a clean sweep. (`test.js` had been fixed to read the roster from the game;
+  `balance.js` had not, which is how you end up with one instrument honest and the other out of
+  date. All three benches read their coverage from the game now.) Both new characters turned
+  out overtuned — THE ACCOUNTANT at **7/8** veteran clears against THE INTERN's 4/8. Cutting
+  its bonus from +34% XP to +18% and deepening the damage cost to −26% moved it to **8/8**,
+  which is not how a nerf behaves. So: hold the character constant and swap only the weapon.
+
+  ```
+  intern + bat      2/8   lvl 46
+  intern + mortar   7/8   lvl 68     ← nothing but the starting weapon changed
+  accnt  + mortar   8/8   lvl 73
+  accnt  + bat      7/8   lvl 69
+  ```
+
+  Handing THE INTERN a MORTAR instead of a BONK BAT is worth **five clears out of eight** —
+  more than any stat block in the game produces. Unevolved MORTAR benches at 3.3× the median
+  rank-5 weapon on boss damage, and it had quietly become a character-defining choice that no
+  part of the design treated as one. Nobody starts with it now; THE ACCOUNTANT starts with
+  SKULLS and sits at 6/8. That characters are balanced on their mods while the mods are a
+  rounding error next to the weapon they begin holding is the finding — the starter swap is
+  only the first thing done about it.
+- **A test asserted on a discrete proxy for a continuous quantity.** "THE ACCOUNTANT banks more
+  from the same gems" measured the *level* reached, passed at +34% XP, and failed at +18% — for
+  a bonus that was still entirely present and simply no longer crossed a level boundary at that
+  gem count. It reads banked XP now: 100 versus 118 from the same hundred.
+- **Two harness bugs I wrote this round.** `location.reload()` inside a `page.evaluate()`
+  destroys the context the evaluate is still returning through — it survived one run and
+  crashed the whole suite the moment the timing shifted; every reload goes through Playwright
+  now. And `mutate.js --anchors` earned itself on its first day: rewriting `gainXP` drifted the
+  `xpmul-ignored` anchor, and the check named it in milliseconds instead of leaving a silent
+  hole for the next hour-long audit to find.
 - **There was one unlockable thing in the whole game, so after twenty minutes nothing moved.**
   A survivors-like is a loop you re-enter, and the reason you re-enter is that the last run
   changed something. This build had THE GHOUL and nothing else: the shop was the only ladder,

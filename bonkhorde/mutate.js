@@ -60,7 +60,7 @@ const MUTANTS = [
     from:"    if(u.lock && !save.unlocked[u.lock]) continue;      // not earned yet\n", to:"" },
   { id:"xpmul-ignored", must:"17",
     why:"THE ACCOUNTANT's whole identity silently does nothing",
-    from:"  P.xp += v * (P.xpMul||1);", to:"  P.xp += v;" },
+    from:"  const got = v * (P.xpMul||1);", to:"  const got = v;" },
   { id:"camera-welded", must:"12d",
     why:"the boom goes back to being welded to the player",
     from:"  camAnchor[0] = lerp(camAnchor[0], px, kf);", to:"  camAnchor[0] = px;" },

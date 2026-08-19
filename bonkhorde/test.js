@@ -845,7 +845,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     };
 
     const R = await boot("reduce");
-    await R.pg.evaluate(() => { window.__g.wipeSave(); location.reload(); });
+    await R.pg.evaluate(() => window.__g.wipeSave());
+    await R.pg.reload({ waitUntil: "load" });
     await R.pg.waitForTimeout(700);
     const rDefault = await R.pg.evaluate(() => window.__g.opts());
     ok("prefers-reduced-motion picks the default", rDefault.motion === 0,
@@ -877,18 +878,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("muting takes the master gain to zero", gains.off === 0 && gains.on > 0,
        `on=${gains.on} off=${gains.off}`);
 
-    const kept = await R.pg.evaluate(async () => {
-      window.__g.setOpt("sound", 0); window.__g.setOpt("motion", 1);
-      location.reload(); return true;
-    });
+    await R.pg.evaluate(() => { window.__g.setOpt("sound", 0);
+                                window.__g.setOpt("motion", 1); });
+    await R.pg.reload({ waitUntil: "load" });
     await R.pg.waitForTimeout(700);
+    const kept = true;
     const after = await R.pg.evaluate(() => window.__g.opts());
     ok("both choices survive a reload", kept && after.sound === 0 && after.motion === 1,
        JSON.stringify(after));
     await R.ctx.close();
 
     const N = await boot("no-preference");
-    await N.pg.evaluate(() => { window.__g.wipeSave(); location.reload(); });
+    await N.pg.evaluate(() => window.__g.wipeSave());
+    await N.pg.reload({ waitUntil: "load" });
     await N.pg.waitForTimeout(700);
     const nDefault = await N.pg.evaluate(() => window.__g.opts());
     ok("no preference leaves shake on", nDefault.motion === 1, JSON.stringify(nDefault));
@@ -932,6 +934,26 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await ctx.close();
   }
 
+  console.log("\n=== 16b. THE MIX TRACKS THE PRESSURE ===");
+  {
+    // The pulse is the only thing in the game that states the shape of a run
+    // out loud, so it has to actually move: quiet and slow on an empty first
+    // minute, fast with the arena full at nineteen minutes.
+    const bpm = await page.evaluate(() => {
+      window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
+      window.__g.freezeSpawns(true); window.__g.drainPicks(true);
+      const early = window.__g.bpm();
+      window.__g.skipTo(1150); window.__g.spawn("shambler", 240);
+      const late = window.__g.bpm();
+      return { early, late };
+    });
+    ok("an empty first minute is slow", bpm.early < 82, bpm.early.toFixed(1));
+    ok("a full arena at nineteen minutes is not",
+       bpm.late > 150, bpm.late.toFixed(1));
+    ok("and it is a curve, not a switch", bpm.late - bpm.early > 60,
+       `${bpm.early.toFixed(0)} -> ${bpm.late.toFixed(0)} bpm`);
+  }
+
   console.log("\n=== 17. THE UNLOCK LADDER ===");
   {
     // A locked box with no progress bar is just a locked box, and a ladder that
@@ -971,11 +993,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a rung pays out once, not every run",
        twice.a.join() === "ghoul" && twice.b.length === 0, JSON.stringify(twice));
 
-    // the shop line is genuinely absent, not merely greyed
-    const hidden = await up.evaluate(() => {
-      window.__g.wipeSave(); location.reload(); return true;
-    });
+    // the shop line is genuinely absent, not merely greyed.
+    // Reload through Playwright, not location.reload() inside an evaluate:
+    // navigating destroys the context the evaluate is still returning through,
+    // which crashes the whole harness the moment the timing shifts.
+    await up.evaluate(() => window.__g.wipeSave());
+    await up.reload({ waitUntil: "load" });
     await up.waitForTimeout(650);
+    const hidden = true;
     const shopBefore = await up.evaluate(() =>
       [...document.querySelectorAll("#shop .n")].map(e => e.textContent));
     await up.evaluate(() => { window.__g.setSave({ kills: 6000 });
@@ -993,14 +1018,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("THE TWIN starts holding DUPLICATOR",
        twinKit.some(k => k.startsWith("dupe")), twinKit.join(" "));
+    // Levels are DISCRETE. This asserted on them and passed at +34%, then failed
+    // at +18% for a bonus that was still entirely there - the smaller multiplier
+    // simply stopped crossing a level boundary at that gem count. Measure the
+    // continuous quantity the mod actually changes.
     const xp = await up.evaluate(() => {
       const one = (c) => { window.__g.start(c); window.__g.god(); window.__g.freezeSpawns(true);
                            window.__g.drainPicks(true); window.__g.xp(100);
-                           return window.__g.state().lvl; };
+                           return window.__g.xpBanked(); };
       return { intern: one("intern"), accnt: one("accnt") };
     });
     ok("THE ACCOUNTANT banks more from the same gems",
-       xp.accnt > xp.intern, `intern lv${xp.intern} vs accountant lv${xp.accnt}`);
+       xp.accnt > xp.intern * 1.1,
+       `${xp.intern} vs ${xp.accnt} XP from the same 100`);
     await ctx.close();
   }
 

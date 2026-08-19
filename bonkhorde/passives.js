@@ -21,7 +21,7 @@ const LAUNCH = { args:["--use-gl=angle","--use-angle=swiftshader",
 for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
   if(fs.existsSync(p)) LAUNCH.executablePath = p;
 
-const PASSIVES = ["spinach","clover","dupe","tempo","plating","magnet","heart","boots"];
+let PASSIVES = null;                      // read from the game, see below
 const OFFENSIVE = new Set(["spinach","clover","dupe","tempo"]);
 const N = +(process.argv[2] || 4);
 
@@ -31,6 +31,7 @@ const N = +(process.argv[2] || 4);
   p.on("pageerror", e => console.log("ERR", e.message));
   await p.goto("file://" + require("path").resolve(__dirname, "index.html"));
   await p.waitForTimeout(400);
+  PASSIVES = await p.evaluate(() => window.__g.passives());
 
   const trial = (passive, mode) => p.evaluate(([passive, mode]) => {
     window.__g.wipeSave();

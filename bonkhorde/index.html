@@ -68,7 +68,7 @@
     align-items:center;justify-content:center;background:#141922;
     border:2px solid #000;box-shadow:0 2px 0 rgba(0,0,0,.55);
     font-size:15px;color:#f2ece0;cursor:pointer;-webkit-user-select:none}
-  #warn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  #warn{position:absolute;top:27%;left:50%;transform:translate(-50%,-50%);
     font-size:40px;font-weight:700;letter-spacing:.14em;color:#ff5c4d;opacity:0;
     text-shadow:0 0 30px #ff2d1a,0 4px 0 #000}
 
@@ -770,14 +770,26 @@ const CHARS = [
 // Levels faster than anyone and hits softer than anyone: the draft is the
 // power, not the numbers. Whether that trade is worth taking is the question
 // the character asks.
-{ id:"accnt",  nm:"THE ACCOUNTANT", ic:"accnt", w:"mortar", lock:"reach level 30 in one run",
-  ds:"+34% XP from every gem, 18% less damage.",
-  mods:{ xp:1.34, dmg:.82 } },
+// Shipped at +34%/-18% and benched 7/8 veteran clears against THE INTERN's 4/8,
+// the strongest character in the game on its first measurement. XP is the most
+// compounding stat there is - it ended runs fifteen levels and a whole
+// evolution ahead - so a flat damage cut was never going to pay for it.
+// Started with MORTAR, which is 3.3x the median rank-5 weapon on boss damage.
+// Holding the character constant and swapping ONLY the starting weapon moved
+// THE INTERN from 2/8 veteran clears to 7/8 - a bigger swing than any character
+// stat block in the game produces. Nobody starts with MORTAR now. That the
+// choice of starting weapon outweighs the entire stat block is the finding;
+// this is just the first thing done about it.
+{ id:"accnt",  nm:"THE ACCOUNTANT", ic:"accnt", w:"skulls", lock:"reach level 30 in one run",
+  ds:"+18% XP from every gem, 26% less damage.",
+  mods:{ xp:1.18, dmg:.74 } },
 // Starts holding the passive that splits its own starting weapon, and pays for
 // it in the only currency this game charges: room for error.
+// Same story, smaller: 6/8 against 4/8. A free passive at minute zero is worth
+// more than a quarter of the HP pool, because the head start compounds too.
 { id:"twin",   nm:"THE TWIN", ic:"twin", w:"bolt", lock:"clear a run",
-  ds:"Begins with DUPLICATOR. 24% less HP.",
-  mods:{ hp:.76 }, gift:"dupe" },
+  ds:"Begins with DUPLICATOR. 34% less HP.",
+  mods:{ hp:.66 }, gift:"dupe" },
 ];
 
 const SHOP = [
@@ -898,7 +910,7 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
-  gemStreak=0; gemStreakT=0;
+  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0;
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   stick=null; look=null;                 // drop any thumb held across the retry
@@ -1709,8 +1721,11 @@ function updateGems(dt){
     }
   }
 }
+let xpBanked = 0;                    // cumulative, for tests: levels are discrete
 function gainXP(v){
-  P.xp += v * (P.xpMul||1);
+  const got = v * (P.xpMul||1);
+  xpBanked += got;
+  P.xp += got;
   while(P.xp >= P.need){ P.xp -= P.need; P.lvl++; P.need = xpFor(P.lvl); queueLevel(); }
 }
 function queueLevel(){ pendingLevels++; }
@@ -2499,10 +2514,28 @@ let last = performance.now();
 let hitstop = 0;
 const HOLD = { crit:.05, elite:.075, boss:.20, hurt:.065 };
 const hold = k => { if(save.motion || k === "boss") hitstop = Math.max(hitstop, HOLD[k]); };
+// The run is a pressure curve and the mix should be able to say so. One low
+// pulse, its tempo driven by how many things are on the field and how late it
+// is - 78bpm on an empty first minute, ~158 with the arena full at nineteen
+// minutes, and it drops a fourth the moment sudden death starts. It rides the
+// same master gain as everything else, so M silences it too, and it lives in
+// the real-time loop so a headless bench never makes a sound or spends a cycle
+// on it.
+let beatT = 0;
+function pulse(d){
+  if(!AC || !running || over || paused || picking) return;
+  const dens = Math.min(1, enemies.length/220), late = Math.min(1, T/RUN_LEN);
+  if((beatT -= d) > 0) return;
+  beatT = 60 / (78 + dens*54 + late*26);
+  const root = sudden ? 41.2 : 55 - late*7;
+  blip(root, .17, "sine", .10 + dens*.05, .55);
+  if(dens > .45) blip(root*4, .05, "triangle", .022 + dens*.02, 1.4);
+}
 function frame(now){
   dt = Math.min(.042, (now-last)/1000); last = now;
   if(hitstop > 0) hitstop -= dt;
   else if(running && !over && !paused && !picking) step(dt);
+  pulse(dt);
   render(); hud();
   requestAnimationFrame(frame);
 }
@@ -2613,12 +2646,21 @@ window.__g = {
   // explicit pause: a frame-to-frame comparison needs the world genuinely
   // frozen, not incidentally frozen by whatever the harness last did
   pause:   (v=true)=>togglePause(!!v),
+  // the benches read their coverage from here rather than hardcoding it - a
+  // list that silently stops covering new content looks exactly like a clean
+  // sweep, which is how THE ACCOUNTANT and THE TWIN shipped unmeasured
   chars:   ()=>CHARS.map(c=>c.id),
+  weapons: ()=>Object.keys(WEAPONS),
+  passives:()=>Object.keys(PASSIVES),
   checkUnlocks: (r=null)=>{ const g = checkUnlocks(r); writeSave(); return g; },
   saveState: ()=>JSON.parse(JSON.stringify(save)),
   setSave: (patch)=>{ Object.assign(save, patch); writeSave(); },
   menu:    ()=>openMenu(),
   camAnchor: ()=>camAnchor && camAnchor.slice(),
+  // beats per minute the pressure pulse is currently running at
+  xpBanked:()=>xpBanked,
+  bpm:     ()=>{ const dens=Math.min(1,enemies.length/220), late=Math.min(1,T/RUN_LEN);
+                 return 78 + dens*54 + late*26; },
   // colours the player has to tell apart at a glance, for the contrast check
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,
@@ -2651,6 +2693,10 @@ window.__g = {
   patchChar: (id, mods)=>{ const c = CHARS.find(x=>x.id===id);
                            if(c) c.mods = Object.assign({}, c.mods, mods);
                            return c && c.mods; },
+  // swap a character's STARTING WEAPON, so its contribution can be separated
+  // from the stat block it is bundled with
+  patchStart: (id, w)=>{ const c = CHARS.find(x=>x.id===id);
+                         if(c && WEAPONS[w]) c.w = w; return c && c.w; },
   hp:    ()=>P.hp,
   elites:()=>{ const med = a => { const v=a.slice().sort((x,y)=>x-y);
                                   return v.length ? v[v.length>>1] : 0; };
