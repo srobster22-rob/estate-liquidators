@@ -37,17 +37,30 @@ from . import data as dta             # noqa: E402
 STATE_DIR = pathlib.Path(__file__).parent / "state"
 
 
-def build_universe(spec, bars, refresh=False):
+def build_markets(spec, bars, refresh=False):
     if spec == "synthetic":
-        markets = uni.synthetic_universe(bars=bars)
-    elif spec == "null":
-        markets = uni.null_universe(bars=bars)
-    elif spec == "real":
-        markets = uni.real_universe(bars=bars, refresh=refresh)
-    elif spec.startswith("csv:"):
-        markets = uni.csv_universe(spec[4:])
-    else:
-        raise SystemExit(f"unknown --markets value: {spec}")
+        return uni.synthetic_universe(bars=bars)
+    if spec == "null":
+        return uni.null_universe(bars=bars)
+    if spec == "real":
+        return uni.real_universe(bars=bars, refresh=refresh)
+    if spec.startswith("csv:"):
+        return uni.csv_universe(spec[4:])
+    raise SystemExit(f"unknown --markets value: {spec}")
+
+
+def build_universe(spec, bars, refresh=False):
+    markets = build_markets(spec, bars, refresh=refresh)
+
+    if spec == "real" or spec.startswith("csv:"):
+        _, suspect = dta.audit_universe(markets)
+        if suspect:
+            print(f"WARNING: {len(suspect)} market(s) failed the data-quality "
+                  f"audit and are being backtested anyway:")
+            for key in suspect:
+                for reason in dta.audit_verdict(dta.audit_market(markets[key]))[1]:
+                    print(f"    {key}: {reason}")
+            print("  run `cryptobot audit` for the full report\n")
 
     segments, skipped = {}, []
     for key, m in markets.items():
@@ -398,7 +411,36 @@ def cmd_fetch(args):
                          bars=args.bars, kind=args.kind, refresh=True)
     print(m.describe())
     print(f"cached: {dta.cache_path(args.venue, args.symbol, args.interval, args.kind)}")
+    print()
+    print(dta.format_audit(dta.audit_market(m)))
     return 0
+
+
+def cmd_audit(args):
+    """Data quality, before any strategy touches it.
+
+    Run this the moment real candles land and before believing a single backtest
+    number computed on them. Every result this project has produced came from the
+    synthetic generator, which cannot have gaps, stalls or broken bars; the first
+    time those appear, they appear here."""
+    markets = build_markets(args.markets, args.bars, refresh=False)
+    reports, suspect = dta.audit_universe(markets, min_coverage=args.min_coverage)
+    for key in sorted(reports):
+        print(dta.format_audit(reports[key], args.min_coverage))
+        print()
+    print(f"{len(reports) - len(suspect)} of {len(reports)} markets usable as-is")
+    if suspect:
+        print("\nSUSPECT — do not trust a backtest on these until you know why:")
+        for key in suspect:
+            r = reports[key]
+            print(f"    {key}   coverage {r['coverage']:.2%}, "
+                  f"{len(r['gaps'])} gaps, longest clean run "
+                  f"{r['longest_contiguous']} bars")
+        print("\nOptions: drop them, or trim each to its longest gap-free stretch\n"
+              "with data.trim_to_contiguous(). Nothing is repaired automatically —\n"
+              "filling a gap invents prices that never traded, and this codebase\n"
+              "does not manufacture data to make a backtest look better.")
+    return 1 if suspect else 0
 
 
 def cmd_report(args):
@@ -543,6 +585,16 @@ def main(argv=None):
     ft.add_argument("--kind", default="spot", choices=("spot", "perp"))
     ft.add_argument("--bars", type=int, default=8000)
     ft.set_defaults(func=cmd_fetch)
+
+    au = sub.add_parser("audit",
+                        help="data-quality report — run this before trusting any "
+                             "backtest on real candles")
+    au.add_argument("--markets", default="real",
+                    help="synthetic | real | null | csv:<dir>")
+    au.add_argument("--bars", type=int, default=45000)
+    au.add_argument("--min-coverage", type=float, default=0.98,
+                    help="fraction of the calendar that must have bars")
+    au.set_defaults(func=cmd_audit)
 
     rp = sub.add_parser("report", help="summarise the factory state")
     rp.add_argument("--state", default=None)

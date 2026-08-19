@@ -225,6 +225,205 @@ def _infer_interval(ts):
     raise ValueError(f"unrecognised bar spacing: {gap}s")
 
 
+# ------------------------------------------------------------------- data audit
+#
+# Everything in this project was developed against the synthetic generator, which
+# emits a perfect grid: every bar present, every OHLC consistent, every return
+# drawn from a distribution with finite everything. Real candles are not like that,
+# and the ways they differ are precisely the ways a backtest turns into fiction.
+#
+# The four that matter, in order of how much damage they do:
+#
+#   GAPS          An exchange outage removes bars. The bar that follows the hole
+#                 carries a two-day price move in a one-hour slot. Nothing in the
+#                 engine knows that: the vol estimator reads it as a regime change,
+#                 the impact model prices it as a normal fill, and a momentum bot
+#                 books the whole move as a win it could never have traded — the
+#                 venue was down. Outages cluster on crash days, so this is not a
+#                 rare inconvenience, it is a bias pointed in one direction.
+#
+#   STALE RUNS    A halted or illiquid symbol prints the same close for hours. A
+#                 reversion bot sees zero deviation and no vol, sizes up, and earns
+#                 a flat line for free. Then the halt lifts and the gap-return above
+#                 lands on top of the oversized position.
+#
+#   BAD OHLC      close outside [low, high], high < low, zero or negative prices.
+#                 Any of these means the feed is broken somewhere, and a stop or a
+#                 range indicator reading that bar produces a number with no meaning.
+#
+#   BAD TICKS     A single-bar 60% move that reverses next bar is a data error, not
+#                 a flash crash, and it is indistinguishable from one after the fact.
+#                 Both are real hazards for a vol-targeted sizer.
+#
+# audit_market() finds all four and reports them. It deliberately does NOT repair
+# anything by default. Interpolating a gap invents a price path that never traded;
+# dropping a stale run rewrites history to be more tradeable than it was. Both make
+# the backtest better-looking and less true, which is the exact failure mode this
+# codebase spends most of its lines defending against. The caller gets the numbers
+# and makes the call.
+
+
+def contiguous_runs(market):
+    """Index ranges over which bars are spaced exactly one interval apart.
+
+    Returns [(start, end), ...] half-open, longest first."""
+    step = SECONDS[market.interval]
+    ts = market.ts
+    runs, start = [], 0
+    for i in range(1, len(ts)):
+        if ts[i] - ts[i - 1] != step:
+            runs.append((start, i))
+            start = i
+    runs.append((start, len(ts)))
+    runs.sort(key=lambda r: r[1] - r[0], reverse=True)
+    return runs
+
+
+def trim_to_contiguous(market, min_bars=500):
+    """The longest gap-free stretch, as a fresh Market.
+
+    Use when a gap sits near one end of the history — the usual case for a symbol
+    that was listed part-way through the window, or one whose feed broke once. If
+    the holes are scattered through the middle this throws away most of the data
+    and you are better off keeping the gaps and knowing they are there, which is
+    why this is never applied automatically."""
+    runs = contiguous_runs(market)
+    start, end = runs[0]
+    if end - start < min_bars:
+        raise ValueError(
+            f"{market.key}: longest gap-free run is {end - start} bars, "
+            f"under the {min_bars} required")
+    return market.slice(start, end)
+
+
+def audit_market(market, extreme_return=0.35, stale_run=12):
+    """Data-quality findings for one market. Pure inspection, no mutation.
+
+    `extreme_return` is a per-bar log move flagged as suspicious (0.35 ~= 42% up or
+    30% down in a single bar). `stale_run` is how many identical closes in a row
+    count as a stall."""
+    n = len(market)
+    step = SECONDS[market.interval]
+    ts, c, h, l, o, v = (market.ts, market.close, market.high, market.low,
+                         market.open, market.volume)
+
+    gaps, missing = [], 0
+    for i in range(1, n):
+        delta = ts[i] - ts[i - 1]
+        if delta != step:
+            skipped = delta // step - 1 if delta > step else -1
+            gaps.append({"index": i, "at": ts[i - 1], "seconds": delta,
+                         "bars_missing": skipped})
+            if skipped > 0:
+                missing += skipped
+
+    bad_ohlc = [i for i in range(n)
+                if not (l[i] <= min(o[i], c[i]) and h[i] >= max(o[i], c[i])
+                        and h[i] >= l[i])]
+    nonpositive = [i for i in range(n) if c[i] <= 0.0 or o[i] <= 0.0]
+
+    stalls, run_len, longest_stall = 0, 1, 1
+    for i in range(1, n):
+        if c[i] == c[i - 1]:
+            run_len += 1
+        else:
+            if run_len >= stale_run:
+                stalls += 1
+            longest_stall = max(longest_stall, run_len)
+            run_len = 1
+    if run_len >= stale_run:
+        stalls += 1
+    longest_stall = max(longest_stall, run_len)
+
+    extremes, worst = [], 0.0
+    gap_indices = {g["index"] for g in gaps}
+    for i in range(1, n):
+        if c[i] <= 0.0 or c[i - 1] <= 0.0:
+            continue
+        r = math.log(c[i] / c[i - 1])
+        worst = max(worst, abs(r))
+        if abs(r) > extreme_return:
+            extremes.append({"index": i, "log_return": r,
+                             "spans_gap": i in gap_indices})
+
+    runs = contiguous_runs(market)
+    span = ts[-1] - ts[0] if n > 1 else 0
+    expected = span // step + 1 if step else n
+
+    return {
+        "key": market.key,
+        "interval": market.interval,
+        "kind": market.kind,
+        "bars": n,
+        "span_days": span / 86400.0,
+        "expected_bars": expected,
+        "coverage": n / expected if expected else 1.0,
+        "gaps": gaps,
+        "bars_missing": missing,
+        "longest_contiguous": runs[0][1] - runs[0][0],
+        "bad_ohlc": bad_ohlc,
+        "nonpositive": nonpositive,
+        "stalls": stalls,
+        "longest_stall": longest_stall,
+        "zero_volume": sum(1 for x in v if x == 0.0),
+        "extremes": extremes,
+        "extremes_spanning_gaps": sum(1 for e in extremes if e["spans_gap"]),
+        "worst_bar_return": worst,
+        "funding_bars": sum(1 for x in market.funding if x != 0.0),
+    }
+
+
+def audit_verdict(report, min_coverage=0.98):
+    """Reduce an audit to (ok, [reasons]). `ok` False means the numbers a backtest
+    on this market produces should not be believed until the reason is understood."""
+    bad = []
+    if report["bad_ohlc"]:
+        bad.append(f"{len(report['bad_ohlc'])} bars with impossible OHLC")
+    if report["nonpositive"]:
+        bad.append(f"{len(report['nonpositive'])} bars at or below zero price")
+    if report["coverage"] < min_coverage:
+        bad.append(f"only {report['coverage']:.1%} of the calendar has bars "
+                   f"({report['bars_missing']} missing across "
+                   f"{len(report['gaps'])} gaps)")
+    if report["extremes_spanning_gaps"]:
+        bad.append(f"{report['extremes_spanning_gaps']} large moves land on the "
+                   f"bar right after a gap — untradeable, the venue was down")
+    if report["longest_stall"] >= 48:
+        bad.append(f"price frozen for {report['longest_stall']} consecutive bars")
+    return (not bad), bad
+
+
+def format_audit(report, min_coverage=0.98):
+    """One market's audit as a short block of text."""
+    ok, reasons = audit_verdict(report, min_coverage)
+    lines = [f"{report['key']}  ({report['kind']}, {report['interval']})",
+             f"    bars {report['bars']} of {report['expected_bars']} expected"
+             f"   coverage {report['coverage']:.2%}"
+             f"   span {report['span_days']:.0f}d",
+             f"    gaps {len(report['gaps'])}"
+             f"   missing bars {report['bars_missing']}"
+             f"   longest clean run {report['longest_contiguous']}",
+             f"    stalls {report['stalls']} (longest {report['longest_stall']} "
+             f"bars)   zero-volume bars {report['zero_volume']}",
+             f"    worst 1-bar move {report['worst_bar_return']:+.1%} log"
+             f"   outliers {len(report['extremes'])}"
+             f" ({report['extremes_spanning_gaps']} of them post-gap)"]
+    if report["funding_bars"]:
+        lines.append(f"    funding charged on {report['funding_bars']} bars")
+    lines.append("    VERDICT: usable" if ok else "    VERDICT: SUSPECT")
+    for r in reasons:
+        lines.append(f"      - {r}")
+    return "\n".join(lines)
+
+
+def audit_universe(markets, min_coverage=0.98):
+    """Audit a whole universe. Returns (reports, [keys that failed])."""
+    reports = {k: audit_market(m) for k, m in markets.items()}
+    suspect = [k for k, r in reports.items()
+               if not audit_verdict(r, min_coverage)[0]]
+    return reports, suspect
+
+
 # ---------------------------------------------------------------- real fetchers
 
 def _get_json(url, timeout=30):

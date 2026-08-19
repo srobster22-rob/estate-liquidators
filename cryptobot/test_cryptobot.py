@@ -711,6 +711,187 @@ class TestGauntlet(unittest.TestCase):
         self.assertIn("beats_benchmark", names, report.render())
 
 
+class TestDataAudit(unittest.TestCase):
+    """The real-data path was written months before any real data could reach it.
+
+    Every number this project has produced came off the synthetic generator, which
+    emits a flawless grid. These tests inject the four things real candles actually
+    do — outages, halts, broken bars, bad ticks — and assert the audit names each
+    one, because the alternative is finding out from a backtest that looks great."""
+
+    def _rows(self, bars=800, step=3600):
+        base = 1_600_000_000
+        rows = []
+        price = 100.0
+        rng = random.Random(11)
+        for i in range(bars):
+            price *= math.exp(rng.gauss(0, 0.004))
+            rows.append([base + i * step, price, price * 1.002, price * 0.998,
+                         price, 10.0, 0.0])
+        return rows
+
+    def _market(self, rows):
+        import tempfile, os
+        fd, path = tempfile.mkstemp(suffix=".csv")
+        os.close(fd)
+        dta.write_csv(path, rows)
+        try:
+            return dta.read_csv_market(path, key="probe")
+        finally:
+            os.unlink(path)
+
+    def test_clean_data_passes(self):
+        rep = dta.audit_market(self._market(self._rows()))
+        ok, reasons = dta.audit_verdict(rep)
+        self.assertTrue(ok, reasons)
+        self.assertEqual(rep["coverage"], 1.0)
+        self.assertEqual(rep["gaps"], [])
+
+    def test_outage_is_found_and_measured(self):
+        rows = self._rows()
+        del rows[300:340]                       # a 40-bar exchange outage
+        rep = dta.audit_market(self._market(rows))
+        self.assertEqual(len(rep["gaps"]), 1)
+        self.assertEqual(rep["bars_missing"], 40)
+        self.assertEqual(rep["gaps"][0]["bars_missing"], 40)
+        self.assertLess(rep["coverage"], 1.0)
+        self.assertFalse(dta.audit_verdict(rep)[0])
+
+    def test_gap_return_is_flagged_as_untradeable(self):
+        """The bar after an outage carries the whole move that happened while the
+        venue was down. A momentum bot books it as a win it could not have made."""
+        rows = self._rows()
+        del rows[300:340]
+        for r in rows[300:]:                    # the world moved 50% during the hole
+            r[1] *= 1.5; r[2] *= 1.5; r[3] *= 1.5; r[4] *= 1.5
+        rep = dta.audit_market(self._market(rows))
+        self.assertEqual(rep["extremes_spanning_gaps"], 1)
+        ok, reasons = dta.audit_verdict(rep)
+        self.assertFalse(ok)
+        self.assertTrue(any("venue was down" in r for r in reasons), reasons)
+
+    def test_halt_is_found(self):
+        rows = self._rows()
+        frozen = rows[500][4]
+        for r in rows[500:560]:
+            r[1] = r[2] = r[3] = r[4] = frozen
+        rep = dta.audit_market(self._market(rows))
+        self.assertGreaterEqual(rep["longest_stall"], 60)
+        self.assertEqual(rep["stalls"], 1)
+        self.assertFalse(dta.audit_verdict(rep)[0])
+
+    def test_broken_bar_is_found(self):
+        rows = self._rows()
+        rows[200][4] = rows[200][2] * 1.5       # close above the high
+        rep = dta.audit_market(self._market(rows))
+        self.assertIn(200, rep["bad_ohlc"])
+        self.assertFalse(dta.audit_verdict(rep)[0])
+
+    def test_contiguous_runs_and_trim(self):
+        rows = self._rows(bars=1000)
+        del rows[100:110]                       # small hole early
+        m = self._market(rows)
+        runs = dta.contiguous_runs(m)
+        self.assertEqual(len(runs), 2)
+        self.assertEqual(runs[0][1] - runs[0][0], 890)   # longest first
+        trimmed = dta.trim_to_contiguous(m, min_bars=100)
+        self.assertEqual(len(trimmed), 890)
+        self.assertEqual(dta.audit_market(trimmed)["gaps"], [])
+
+    def test_trim_refuses_when_nothing_survives(self):
+        rows = self._rows(bars=200)
+        del rows[100:105]
+        with self.assertRaises(ValueError):
+            dta.trim_to_contiguous(self._market(rows), min_bars=500)
+
+    def test_audit_never_mutates(self):
+        m = self._market(self._rows())
+        before = (list(m.ts), list(m.close), len(m))
+        dta.audit_market(m)
+        dta.audit_verdict(dta.audit_market(m))
+        self.assertEqual((m.ts, m.close, len(m)), before)
+
+    def test_synthetic_universe_is_clean(self):
+        """If the generator ever starts emitting gaps or halts, every result in the
+        repo is suspect. Cheap insurance."""
+        markets = uni.synthetic_universe(bars=1200)
+        reports, suspect = dta.audit_universe(markets)
+        self.assertEqual(suspect, [])
+
+    def test_format_audit_is_printable(self):
+        text = dta.format_audit(dta.audit_market(self._market(self._rows())))
+        self.assertIn("VERDICT", text)
+        self.assertIn("coverage", text)
+
+
+class TestCsvRoundTrip(unittest.TestCase):
+    """`--markets csv:<dir>` and `--markets real` share every line after the HTTP
+    call. Exercising the CSV path is how the real path gets tested without a
+    network, so it needs to be airtight."""
+
+    def test_written_market_reloads_identically(self):
+        import tempfile, os, pathlib as pl
+        m = a_market(seed=5, bars=10000)
+        d = tempfile.mkdtemp()
+        try:
+            path = pl.Path(d) / "binance_BTCUSDT_1h.csv"
+            dta.write_csv(path, list(zip(m.ts, m.open, m.high, m.low, m.close,
+                                         m.volume, m.funding)))
+            back = dta.read_csv_market(path)
+            self.assertEqual(back.interval, "1h")
+            self.assertEqual(back.venue, "binance")
+            self.assertEqual(back.symbol, "BTCUSDT")
+            self.assertEqual(len(back), len(m))
+            for x, y in zip(back.close, m.close):
+                self.assertAlmostEqual(x, y, places=6)
+            uni.split(back)          # the chain a real fetch would take
+        finally:
+            import shutil; shutil.rmtree(d)
+
+    def test_millisecond_timestamps_are_detected(self):
+        import tempfile, os
+        base = 1_600_000_000_000
+        rows = [[base + i * 3600_000, 100.0, 101.0, 99.0, 100.0, 1.0, 0.0]
+                for i in range(50)]
+        fd, path = tempfile.mkstemp(suffix=".csv"); os.close(fd)
+        try:
+            dta.write_csv(path, rows)
+            m = dta.read_csv_market(path)
+            self.assertEqual(m.interval, "1h")
+            self.assertLess(m.ts[0], 10_000_000_000)
+        finally:
+            os.unlink(path)
+
+    def test_interval_inference_survives_a_gap(self):
+        """min-gap, not first-gap: a hole in the history must not be mistaken for
+        the bar size."""
+        import tempfile, os
+        base = 1_600_000_000
+        ts = [base + i * 3600 for i in range(40)]
+        ts += [t + 40 * 3600 * 5 for t in ts[-10:]]
+        rows = [[t, 100.0, 101.0, 99.0, 100.0, 1.0, 0.0] for t in sorted(set(ts))]
+        fd, path = tempfile.mkstemp(suffix=".csv"); os.close(fd)
+        try:
+            dta.write_csv(path, rows)
+            self.assertEqual(dta.read_csv_market(path).interval, "1h")
+        finally:
+            os.unlink(path)
+
+    def test_non_monotonic_timestamps_raise(self):
+        import tempfile, os
+        base = 1_600_000_000
+        rows = [[base + i * 3600, 100.0, 101.0, 99.0, 100.0, 1.0, 0.0]
+                for i in range(50)]
+        rows[20][0] = rows[19][0]        # duplicate
+        fd, path = tempfile.mkstemp(suffix=".csv"); os.close(fd)
+        try:
+            dta.write_csv(path, rows)
+            with self.assertRaises(ValueError):
+                dta.read_csv_market(path)
+        finally:
+            os.unlink(path)
+
+
 if __name__ == "__main__":
     unittest.main()
 
