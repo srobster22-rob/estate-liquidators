@@ -315,8 +315,38 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned fifty-three things this build believed:
+That harness has overturned fifty-seven things this build believed:
 
+- **"Clunky" was four specific things, none of them taste.** (1) The chase camera sat 17m back
+  and 12.8m up, so the player was a speck and the world felt like scenery. (2) It was
+  recomputed from the player's exact position every frame — a boom welded to you pins you to
+  the dead centre of the screen forever, which means **no acceleration you make is ever
+  visible**. (3) Movement was binary: full speed on the frame you pressed a key, dead stop on
+  the frame you released. (4) Nothing in the game had hitstop. Fixed in order: 12.4m back and
+  6.3m up with the boom stretching as you speed up; a chase anchor that lags at ~11/s and aims
+  where your velocity points; a 62 m/s² ramp that costs a third of a metre over two seconds
+  and gives every direction change something to read; and 50–200ms of held simulation on a
+  crit into a boss, an elite death, a boss kill and a hit taken. Hitstop lives in the
+  real-time loop and never in `step()`, because `step()` is what the benches and the suite
+  drive and those have to stay deterministic.
+- **The reward for every kill was arriving too slowly to notice.** Gems crawled in at a flat
+  6 m/s from the edge of the pickup radius. They accelerate to 44 now, so a wave arrives as a
+  rush rather than a drift, and the pickup note climbs a semitone per gem in a streak that
+  decays in a third of a second — collecting twenty gems in two seconds should *sound* like
+  collecting twenty gems in two seconds.
+- **You could not find yourself in your own game.** The player is a 0.34m box among four
+  hundred boxes, and positioning is the entire design; losing track of yourself is not a
+  difficulty, it is the controls not working. Twelve lit boxes in a ring at your feet, out of
+  ~2300 on screen. White rather than gold, because CAROUSEL, SKULLS and the mortar rings are
+  all yellow — a marker sharing a hue with three weapons is not a marker — and because white
+  is the one choice that survives every colour-vision simulation, for the same reason the
+  enemy palette is sorted by lightness rather than hue.
+- **Emoji read as placeholders because they are placeholders.** They carry another designer's
+  style, render differently on every platform, and a grid of them looks generated rather than
+  drawn. All 41 are now hand-drawn `<symbol>`s on one inlined 24×24 sheet — 2.4 stroke, round
+  caps, two colours: the ink of whatever they sit on plus the gold the UI already uses. Flat
+  and chunky on purpose, because the game is boxes. No external asset, no network request, so
+  the single-file property survives.
 - **The tool built to check that a green suite means something was itself green and
   meaningless.** A passing test proves nothing until it has been shown to fail, and this suite
   had already been caught twice passing against something other than what it claimed. So

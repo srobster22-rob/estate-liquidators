@@ -141,11 +141,73 @@
   .coins{font-size:15px;color:var(--gold);font-weight:700;letter-spacing:.08em}
   h2{font-size:12px;letter-spacing:.24em;color:var(--dim);font-weight:400;
     margin:26px 0 6px;text-align:left}
+  /* --- icons: one inlined sheet, no emoji, no external asset ------------- */
+  #icons{position:absolute;width:0;height:0;overflow:hidden}
+  .i{width:1.06em;height:1.06em;display:inline-block;vertical-align:-.18em;
+     fill:none;stroke:currentColor;stroke-width:2.4;
+     stroke-linecap:round;stroke-linejoin:round}
+  .i .f{fill:currentColor;stroke:currentColor}     /* solid, in the local ink   */
+  .i .fa{fill:var(--gold);stroke:var(--gold)}      /* solid, in the accent      */
+  .card .ic .i,.ch .ic .i{filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))}
+  .i .a{stroke:var(--gold);fill:none}              /* accent line               */
+  .i .s{stroke:currentColor;fill:none}
+  .i .k{fill:var(--bg);stroke:none}                /* punched out of a solid    */
+  .i .ka{stroke:var(--bg);fill:none;stroke-width:2}
   #opts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0 4px}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
 </style>
 </head>
 <body>
+<!-- Icon set. Emoji were placeholders and read as placeholders: they carry
+     another designer's style, they render differently on every platform, and a
+     grid of them looks generated rather than drawn. These are one sheet of
+     <symbol>s on a 24x24 grid, 2.6 stroke, round caps, two colours - the ink of
+     whatever they sit on, plus the gold the rest of the UI already uses. Flat
+     and chunky on purpose: the game is boxes, the icons should be too. -->
+<svg id="icons" aria-hidden="true"><defs>
+<symbol id="i-bat" viewBox="0 0 24 24"><path d="M5 19l3-3"/><path d="M9 15l6-6a3.2 3.2 0 0 1 4.6 4.4l-6.1 5.8z" class="f"/><path d="M4.4 19.6l1.2 1.2"/></symbol>
+<symbol id="i-megabonk" viewBox="0 0 24 24"><path d="M4 20l4-4"/><path d="M9.5 14.5l4-4 6 6-4 4z" class="f"/><path d="M15 5l1.6 3.2M20.5 8.5l-3.2 1.6M18.5 3.5l.6 2.4" class="a"/></symbol>
+<symbol id="i-skulls" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" stroke-dasharray="2.6 3.4" class="a"/><path d="M12 6.4a4.2 4.2 0 0 1 4.2 4.2v2.1l-1.3 1.3v1.6H9.1V14l-1.3-1.3v-2.1A4.2 4.2 0 0 1 12 6.4z" class="f"/><circle cx="10.2" cy="10.9" r="1.05" class="k"/><circle cx="13.8" cy="10.9" r="1.05" class="k"/></symbol>
+<symbol id="i-carousel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="2.4 3.2"/><circle cx="12" cy="12" r="4.6" stroke-dasharray="2.4 3.2" class="a"/><circle cx="12" cy="3" r="1.7" class="f"/><circle cx="12" cy="21" r="1.7" class="f"/><circle cx="16.6" cy="12" r="1.4" class="fa"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M3.5 20.5L20 4"/><path d="M20 4l-6.4.6L19.4 10z" class="fa"/><path d="M7 17l-2.6.6.6-2.6"/></symbol>
+<symbol id="i-boltstorm" viewBox="0 0 24 24"><path d="M3 13.5L12 6M4.5 18L15 10.5M8 21l9-6.5"/><path d="M12 6l-3.4-.2L11 8.9z" class="fa"/><path d="M15 10.5l-3.4-.2 2.4 3.1z" class="fa"/><path d="M17 14.5l-3.4-.2 2.4 3.1z" class="fa"/></symbol>
+<symbol id="i-pulse" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" class="f"/><path d="M6.6 12a5.4 5.4 0 0 1 10.8 0"/><path d="M3 12a9 9 0 0 1 18 0" class="a"/><path d="M6.6 12a5.4 5.4 0 0 0 10.8 0"/><path d="M3 12a9 9 0 0 0 18 0" class="a"/></symbol>
+<symbol id="i-earthquake" viewBox="0 0 24 24"><path d="M2 15h3.6l2.2-5 2.6 9 2.6-11 2.4 7 1.8-2.4H22" class="a"/><path d="M4 20h4M10.5 20h3.5M16.5 20H20"/></symbol>
+<symbol id="i-mortar" viewBox="0 0 24 24"><path d="M3.5 19.5C5 11 11 6.5 20.5 5.5" stroke-dasharray="2.2 3"/><circle cx="18.2" cy="16.4" r="3.6" class="f"/><path d="M20.6 13.6l2.2-2.2M20 11.4l.6 2.2 2.2.6" class="a"/></symbol>
+<symbol id="i-bombardier" viewBox="0 0 24 24"><circle cx="12" cy="6.4" r="2.9" class="f"/><path d="M9.6 9.2L5 15.4M14.4 9.2L19 15.4M11.4 9.8L9.6 17M12.6 9.8L14.4 17" class="a"/><circle cx="4.4" cy="17.4" r="1.7" class="fa"/><circle cx="19.6" cy="17.4" r="1.7" class="fa"/><circle cx="9.2" cy="19.4" r="1.7" class="fa"/><circle cx="14.8" cy="19.4" r="1.7" class="fa"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13.6 2.5L5.5 13.4h5l-1.1 8.1 8.1-11h-5z" class="fa"/></symbol>
+<symbol id="i-tesla" viewBox="0 0 24 24"><path d="M9 21h6M12 21v-4.4"/><path d="M8.4 16.6h7.2l-1.4-3.4H9.8z" class="f"/><path d="M10.6 13.2V9.4M13.4 13.2V9.4"/><path d="M12 2.6l-2.6 4.2h5.2z" class="fa"/><path d="M4.6 9.2l2 1.4M19.4 9.2l-2 1.4" class="a"/></symbol>
+<symbol id="i-aura" viewBox="0 0 24 24"><path d="M6.8 17.5a4 4 0 0 1 .5-7.9 5.2 5.2 0 0 1 10.1-.6 3.9 3.9 0 0 1 .4 7.7z" class="f"/><circle cx="9" cy="20.4" r="1.15" class="a"/><circle cx="13.4" cy="21.2" r=".95" class="a"/><circle cx="17.4" cy="20" r="1.15" class="a"/></symbol>
+<symbol id="i-plague" viewBox="0 0 24 24"><path d="M6.8 16.6a4 4 0 0 1 .5-7.9 5.2 5.2 0 0 1 10.1-.6 3.9 3.9 0 0 1 .4 7.7z" class="f"/><circle cx="10" cy="11.4" r="1.15" class="k"/><circle cx="14.4" cy="11.4" r="1.15" class="k"/><path d="M10 14.4h4.4" class="k"/><circle cx="8.6" cy="20.2" r="1.05" class="a"/><circle cx="13" cy="21.2" r=".9" class="a"/><circle cx="17.2" cy="19.8" r="1.05" class="a"/></symbol>
+<symbol id="i-caltrops" viewBox="0 0 24 24"><path d="M12 3.4l4.4 7.6h-8.8z" class="f"/><path d="M6.6 13.6l3.4 5.8h-6.8z" class="fa"/><path d="M17.4 13.6l3.4 5.8h-6.8z" class="fa"/></symbol>
+<symbol id="i-scorched" viewBox="0 0 24 24"><path d="M12 2.6c4.2 4 6.4 7 6.4 10.4a6.4 6.4 0 0 1-12.8 0C5.6 9.6 7.8 6.6 12 2.6z" class="f"/><path d="M12 12.4c1.9 1.9 2.8 3.2 2.8 4.6a2.8 2.8 0 0 1-5.6 0c0-1.4.9-2.7 2.8-4.6z" class="ka"/></symbol>
+<symbol id="i-spinach" viewBox="0 0 24 24"><path d="M4.5 19.5C4 12 8.5 5.5 19.5 4.5c1 11-5.5 15.5-13 15z" class="f"/><path d="M6.5 19C9 14 13 10.5 17 8.5" class="ka"/></symbol>
+<symbol id="i-boots" viewBox="0 0 24 24"><path d="M7.4 3.5h4.2v8.2l7 3.6a3 3 0 0 1 1.6 2.7v2.5H7.4z" class="f"/><path d="M2.5 8h3M2.5 12h4M2.5 16h3" class="a"/></symbol>
+<symbol id="i-tempo" viewBox="0 0 24 24"><path d="M9 3.2h6l4.4 17.6H4.6z" class="f"/><path d="M12 18.4L17 6.6" class="ka"/><circle cx="15.8" cy="9.6" r="1.5" class="fa"/></symbol>
+<symbol id="i-magnet" viewBox="0 0 24 24"><path d="M6 20V10.5a6 6 0 0 1 12 0V20"/><path d="M6 20h4.4v-3.6H6zM13.6 20H18v-3.6h-4.4z" class="fa"/></symbol>
+<symbol id="i-plating" viewBox="0 0 24 24"><path d="M12 2.6l8 3v6.2c0 4.8-3.2 8.4-8 9.6-4.8-1.2-8-4.8-8-9.6V5.6z" class="f"/><path d="M12 7.4v8.4M8.4 11.6h7.2" class="ka"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/></symbol>
+<symbol id="i-dupe" viewBox="0 0 24 24"><rect x="3.2" y="3.2" width="11" height="11" rx="1.6" class="f"/><rect x="9.8" y="9.8" width="11" height="11" rx="1.6" class="fa"/></symbol>
+<symbol id="i-clover" viewBox="0 0 24 24"><path d="M11.4 11.4a3.4 3.4 0 1 1 0-4.8 3.4 3.4 0 1 1 4.8 0 3.4 3.4 0 1 1 0 4.8 3.4 3.4 0 1 1-4.8 0z" class="f"/><path d="M13.6 13.2c1 3 2.8 5.4 5.4 7.2" class="a"/></symbol>
+<symbol id="i-intern" viewBox="0 0 24 24"><circle cx="12" cy="6.6" r="3.6" class="f"/><path d="M4.6 21v-2.4a5.4 5.4 0 0 1 5.4-5.4h4a5.4 5.4 0 0 1 5.4 5.4V21z" class="f"/></symbol>
+<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M14.6 3.4a5 5 0 0 0 6 6.6L9.4 21.2a2.6 2.6 0 0 1-3.7-3.7z" class="f"/><path d="M7.6 19.4l.02.02" class="ka"/><path d="M3.4 8.6h5M6 6v5.2" class="a"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" stroke-dasharray="3 3.6" class="a"/><path d="M13.2 5.6L7.8 12.8h4l-1 5.6 5.4-7.2h-4z" class="fa"/></symbol>
+<symbol id="i-ox" viewBox="0 0 24 24"><path d="M3 6.4c3.2-.6 5 .8 5.6 3.6M21 6.4c-3.2-.6-5 .8-5.6 3.6" /><path d="M8.2 9.4h7.6a2.6 2.6 0 0 1 2.6 2.6v3a6.4 6.4 0 0 1-12.8 0v-3a2.6 2.6 0 0 1 2.6-2.6z" class="f"/><circle cx="10" cy="13.6" r="1.05" class="k"/><circle cx="14" cy="13.6" r="1.05" class="k"/></symbol>
+<symbol id="i-ghoul" viewBox="0 0 24 24"><path d="M4.6 21V10.4a7.4 7.4 0 0 1 14.8 0V21l-2.5-1.8-2.4 1.8-2.5-1.8-2.4 1.8-2.5-1.8z" class="f"/><circle cx="9.4" cy="10.8" r="1.3" class="k"/><circle cx="14.6" cy="10.8" r="1.3" class="k"/></symbol>
+<symbol id="i-hp" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/><path d="M12 8.6v5M9.5 11.1h5" class="ka"/></symbol>
+<symbol id="i-dmg" viewBox="0 0 24 24"><path d="M20.6 3.4l-9.4 9.4 1.4 1.4 9.4-9.4z" class="fa"/><path d="M11.2 12.8L8 16l-1.6-1.6L3.4 17l3.6 3.6 2.6-3 -1.6-1.6 3.2-3.2z" class="f"/></symbol>
+<symbol id="i-spd" viewBox="0 0 24 24"><path d="M8.4 4.5h4.2v8.2l6 3.2a3 3 0 0 1 1.6 2.7v2h-11.8z" class="f"/><path d="M2 7h4M1 11.5h5M2.4 16h3.6" class="a"/></symbol>
+<symbol id="i-mag" viewBox="0 0 24 24"><path d="M5 19.5V11a6.2 6.2 0 0 1 12.4 0v8.5"/><path d="M5 19.5h4.5v-3.7H5zM12.9 19.5h4.5v-3.7h-4.5z" class="fa"/><circle cx="11.2" cy="6.2" r="2.6" class="fa"/></symbol>
+<symbol id="i-cd" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8.4" class="f"/><path d="M12 8.6V13l3 2.2" class="ka"/><path d="M9 2.4h6M12 2.4v2.4" class="a"/></symbol>
+<symbol id="i-crit" viewBox="0 0 24 24"><path d="M12 1.8l2.6 6.6 6.6 2.6-6.6 2.6L12 20.2 9.4 13.6 2.8 11l6.6-2.6z" class="fa"/><path d="M19 17.6l.9 2.2 2.2.9-2.2.9-.9 2.2" class="a"/></symbol>
+<symbol id="i-armor" viewBox="0 0 24 24"><path d="M12 2.6l8 3v6.2c0 4.8-3.2 8.4-8 9.6-4.8-1.2-8-4.8-8-9.6V5.6z" class="f"/><path d="M7.8 10.4h8.4M7.8 14h8.4" class="ka"/></symbol>
+<symbol id="i-rev" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" stroke-dasharray="3.2 3.4" class="a"/><path d="M12 17.4V7M12 7l-3.4 3.4M12 7l3.4 3.4" class="s"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" class="fa"/><path d="M12 7.4v9.2M9.6 9.6h3.6a1.9 1.9 0 0 1 0 3.8h-2.8a1.9 1.9 0 0 0 0 3.8h3.6" class="ka"/></symbol>
+<symbol id="i-start" viewBox="0 0 24 24"><path d="M12 2.4l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 21l1.4-6.8L2.2 9.5l6.9-.8z" class="fa"/></symbol>
+<symbol id="i-heal" viewBox="0 0 24 24"><path d="M9.6 4.2a4.6 4.6 0 0 1 8.4 3.2 4.4 4.4 0 0 1-4.6 4.4l-1.8 1.8-3.6-3.6 1.8-1.8a4.4 4.4 0 0 1-.2-4z" class="f"/><path d="M8.8 13.2l-5 5a2 2 0 0 0 2.8 2.8l5-5z" class="fa"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
+</defs></svg>
+
 <canvas id="gl"></canvas>
 <canvas id="ui"></canvas>
 
@@ -370,7 +432,9 @@ const SFX = {
   zap:   ()=>blip(rnd(700,900), .06, "sawtooth",.05, .3),
   pop:   ()=>blip(rnd(300,420), .05, "triangle",.06, 2.2),
   boom:  ()=>{ noiseBurst(.28,.22); blip(70,.3,"sine",.2,.4); },
-  gem:   ()=>blip(rnd(880,1180), .045,"sine",   .05, 1.6),
+  // the note climbs a semitone per gem in a streak, capped two octaves up
+  gem:   (n=0)=>blip(rnd(840,900)*Math.pow(1.0595, Math.min(n,24)),
+                     .045,"sine", .05, 1.6),
   levelup:()=>{ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>blip(f,.14,"triangle",.13),i*62)); },
   hurt:  ()=>{ noiseBurst(.14,.18); blip(120,.16,"sawtooth",.12,.4); },
   boss:  ()=>{ blip(58,1.0,"sawtooth",.26,.7); noiseBurst(.7,.16); },
@@ -462,9 +526,9 @@ const PROPS = (()=>{
 // `evo` (weapon at max + partner passive at rank 3).
 
 const WEAPONS = {
-bat:{ name:"BONK BAT", ic:"\u{1F3CF}", kind:"w",
+bat:{ name:"BONK BAT", ic:"bat", kind:"w",
   ds:"Wide swing, auto-aimed at whatever is closest to becoming your problem.",
-  evo:{ name:"MEGABONK", need:"spinach", ic:"\u{1F528}",
+  evo:{ name:"MEGABONK", need:"spinach", ic:"megabonk",
         ds:"One enormous swing. Whatever it catches is not there any more." },
   // MEGABONK used to be a 360 degree slam at 150/0.78s in an 8.2m circle with
   // kb 20. EARTHQUAKE is 150/0.85s in a 10.5m circle with kb 22 - bigger radius,
@@ -481,9 +545,9 @@ bat:{ name:"BONK BAT", ic:"\u{1F3CF}", kind:"w",
       {d:99,cd:0.85,arc:3.2,rng:6.3,kb:7},
       {d:260,cd:0.78,arc:4.2,rng:9.5,kb:34}] },
 
-skulls:{ name:"SKULLS", ic:"\u{1F480}", kind:"w",
+skulls:{ name:"SKULLS", ic:"skulls", kind:"w",
   ds:"Orbiting skulls. They do not aim, they simply are.",
-  evo:{ name:"CAROUSEL", need:"clover", ic:"\u{1F3A0}",
+  evo:{ name:"CAROUSEL", need:"clover", ic:"carousel",
         ds:"Two counter-spinning rings. Nothing gets in." },
   lv:[{d:16,n:2,rad:3.2,spin:2.2,cd:.40},
       {d:22,n:3,rad:3.4,spin:2.4,cd:.38},
@@ -492,9 +556,9 @@ skulls:{ name:"SKULLS", ic:"\u{1F480}", kind:"w",
       {d:53,n:6,rad:4.3,spin:3.1,cd:.30},
       {d:112,n:10,rad:6.3,spin:3.6,cd:.20}] },
 
-bolt:{ name:"BOLT", ic:"\u{1F3F9}", kind:"w",
+bolt:{ name:"BOLT", ic:"bolt", kind:"w",
   ds:"Homing shot at the nearest target. Kills things before they arrive.",
-  evo:{ name:"BOLTSTORM", need:"dupe", ic:"\u{1F320}",
+  evo:{ name:"BOLTSTORM", need:"dupe", ic:"boltstorm",
         ds:"A fan of nine, each punching through five bodies." },
   // BOLTSTORM was the only weapon dominating every other on ALL THREE axes once
   // survival was measured: 1332 boss, 4689 crowd and 16:49 alive, the last of
@@ -508,9 +572,9 @@ bolt:{ name:"BOLT", ic:"\u{1F3F9}", kind:"w",
       {d:62,cd:.58,n:4,pierce:3,spd:32},
       {d:96,cd:.42,n:7,pierce:4,spd:38}] },
 
-pulse:{ name:"PULSE", ic:"\u{1F4A5}", kind:"w",
+pulse:{ name:"PULSE", ic:"pulse", kind:"w",
   ds:"Shockwave ring from your feet. Makes room.",
-  evo:{ name:"EARTHQUAKE", need:"tempo", ic:"\u{1F30B}",
+  evo:{ name:"EARTHQUAKE", need:"tempo", ic:"earthquake",
         ds:"Never stops pulsing. The ground is now yours." },
   lv:[{d:30,cd:2.6,rad:5.4,kb:11},
       {d:41,cd:2.4,rad:6.0,kb:12},
@@ -519,9 +583,9 @@ pulse:{ name:"PULSE", ic:"\u{1F4A5}", kind:"w",
       {d:96,cd:1.8,rad:8.0,kb:16},
       {d:150,cd:0.85,rad:10.5,kb:22}] },
 
-mortar:{ name:"MORTAR", ic:"\u{1F4A3}", kind:"w",
+mortar:{ name:"MORTAR", ic:"mortar", kind:"w",
   ds:"Lobs a shell at the thickest part of the crowd.",
-  evo:{ name:"BOMBARDIER", need:"plating", ic:"\u{1F6E1}",
+  evo:{ name:"BOMBARDIER", need:"plating", ic:"bombardier",
         ds:"Every shell splits into four. Stand still. Enjoy." },
   // Unevolved MORTAR strictly dominated all seven other weapons on BOTH axes at
   // rank 5 - best boss DPS and best crowd DPS at once, which is not a
@@ -537,9 +601,9 @@ mortar:{ name:"MORTAR", ic:"\u{1F4A3}", kind:"w",
       {d:122,cd:1.6,rad:4.8,n:3},
       {d:230,cd:1.3,rad:5.6,n:4}] },
 
-zap:{ name:"ZAP", ic:"⚡", kind:"w",
+zap:{ name:"ZAP", ic:"zap", kind:"w",
   ds:"Chain lightning. Loses bite with every jump.",
-  evo:{ name:"TESLA COIL", need:"magnet", ic:"\u{1F5FC}",
+  evo:{ name:"TESLA COIL", need:"magnet", ic:"tesla",
         ds:"Twelve jumps, no falloff. Conduct yourself accordingly." },
   lv:[{d:26,cd:1.5,jumps:3,fall:.78,rng:9},
       {d:35,cd:1.4,jumps:4,fall:.80,rng:10},
@@ -548,16 +612,16 @@ zap:{ name:"ZAP", ic:"⚡", kind:"w",
       {d:82,cd:1.1,jumps:7,fall:.86,rng:13},
       {d:118,cd:.85,jumps:12,fall:1.0,rng:16}] },
 
-aura:{ name:"STINK", ic:"☢", kind:"w",
+aura:{ name:"STINK", ic:"aura", kind:"w",
   ds:"A permanent cloud of you. Damages anything standing in it.",
-  evo:{ name:"PLAGUE", need:"heart", ic:"\u{1F9A0}",
+  evo:{ name:"PLAGUE", need:"heart", ic:"plague",
         ds:"Bigger, slower, and it gets worse the longer they breathe it." },
   lv:[{dps:19,rad:4.2},{dps:27,rad:4.7},{dps:37,rad:5.2},
       {dps:50,rad:5.8},{dps:66,rad:6.5},{dps:120,rad:8.4,slow:.55}] },
 
-caltrops:{ name:"CALTROPS", ic:"\u{1F53A}", kind:"w",
+caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
   ds:"Drops a hazard behind you. Rewards running away, which you will.",
-  evo:{ name:"SCORCHED EARTH", need:"boots", ic:"\u{1F525}",
+  evo:{ name:"SCORCHED EARTH", need:"boots", ic:"scorched",
         ds:"A continuous burning trail. Do not look back." },
   lv:[{dps:22,cd:1.6,rad:1.9,life:4.0},
       {dps:30,cd:1.45,rad:2.1,life:4.3},
@@ -568,14 +632,14 @@ caltrops:{ name:"CALTROPS", ic:"\u{1F53A}", kind:"w",
 };
 
 const PASSIVES = {
-spinach: { name:"SPINACH",   ic:"\u{1F96C}", kind:"p", max:5, ds:"+13% damage." },
-boots:   { name:"BOOTS",     ic:"\u{1F45F}", kind:"p", max:5, ds:"+9% move speed, +6% damage. Momentum." },
-tempo:   { name:"METRONOME", ic:"\u{1F570}", kind:"p", max:5, ds:"-8% weapon cooldowns." },
-magnet:  { name:"MAGNET",    ic:"\u{1F9F2}", kind:"p", max:5, ds:"+35% pickup radius, and it drags the horde into a pile." },
-plating: { name:"PLATING",   ic:"\u{1F6E1}", kind:"p", max:5, ds:"-1.6 flat and -5% damage taken, and being hit blasts them off you." },
-heart:   { name:"BIG HEART", ic:"❤",    kind:"p", max:5, ds:"+22 max HP, +5% damage. Pumps harder." },
-dupe:    { name:"DUPLICATOR",ic:"\u{1F500}", kind:"p", max:3, ds:"+1 shot for BOLT, SKULLS, MORTAR, ZAP. Copies hit for 55%." },
-clover:  { name:"CLOVER",    ic:"\u{1F340}", kind:"p", max:5, ds:"+7% crit. Crits hit for 2.3x." },
+spinach: { name:"SPINACH",   ic:"spinach", kind:"p", max:5, ds:"+13% damage." },
+boots:   { name:"BOOTS",     ic:"boots", kind:"p", max:5, ds:"+9% move speed, +6% damage. Momentum." },
+tempo:   { name:"METRONOME", ic:"tempo", kind:"p", max:5, ds:"-8% weapon cooldowns." },
+magnet:  { name:"MAGNET",    ic:"magnet", kind:"p", max:5, ds:"+35% pickup radius, and it drags the horde into a pile." },
+plating: { name:"PLATING",   ic:"plating", kind:"p", max:5, ds:"-1.6 flat and -5% damage taken, and being hit blasts them off you." },
+heart:   { name:"BIG HEART", ic:"heart",    kind:"p", max:5, ds:"+22 max HP, +5% damage. Pumps harder." },
+dupe:    { name:"DUPLICATOR",ic:"dupe", kind:"p", max:3, ds:"+1 shot for BOLT, SKULLS, MORTAR, ZAP. Copies hit for 55%." },
+clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:5, ds:"+7% crit. Crits hit for 2.3x." },
 };
 
 const ENEMIES = {
@@ -666,7 +730,7 @@ const dmgScale = t => 1 + Math.max(0, t-300)/560;        // x1 to 5:00, x2.6 by 
 const MAXE = 420;
 
 const CHARS = [
-{ id:"intern", nm:"THE INTERN", ic:"\u{1F9CD}", w:"bat",
+{ id:"intern", nm:"THE INTERN", ic:"intern", w:"bat",
   ds:"Nothing special. Statistically the best at everything.", mods:{} },
 // Bottom of the table in every sweep, and the survival bench says why: it starts
 // with CALTROPS, which drops at your feet and benches the worst solo survival in
@@ -675,30 +739,30 @@ const CHARS = [
 // reach is the fix that follows from the measurement rather than from taste -
 // it is the only stat the bench found that keeps mattering, and it turns the
 // long-arms idea the pickup radius already implies into something that fights.
-{ id:"scrap",  nm:"THE SCRAPPER", ic:"\u{1F9F2}", w:"caltrops",
+{ id:"scrap",  nm:"THE SCRAPPER", ic:"scrap", w:"caltrops",
   ds:"+35% weapon reach, +70% pickup radius, +10% speed, 15% less HP.",
   mods:{ mag:1.7, spd:1.10, hp:.85, reach:1.35 } },
-{ id:"spark",  nm:"THE SPARK", ic:"⚡", w:"zap",
+{ id:"spark",  nm:"THE SPARK", ic:"spark", w:"zap",
   ds:"-18% cooldowns. Made entirely of glass.",
   mods:{ cd:.82, hp:.72 } },
-{ id:"ox",     nm:"THE OX", ic:"\u{1F402}", w:"pulse",
+{ id:"ox",     nm:"THE OX", ic:"ox", w:"pulse",
   ds:"+70 HP, -14% speed. Slow is a strategy.",
   mods:{ hpFlat:70, spd:.86 } },
-{ id:"ghoul",  nm:"THE GHOUL", ic:"\u{1F9DF}", w:"aura", lock:"survive 10:00 in one run",
+{ id:"ghoul",  nm:"THE GHOUL", ic:"ghoul", w:"aura", lock:"survive 10:00 in one run",
   ds:"Heals 1.4 HP/s. Takes 18% more damage.",
   mods:{ regen:1.4, tough:1.18 } },
 ];
 
 const SHOP = [
-{ id:"hp",    ic:"❤",       n:"CONSTITUTION", d:"+16 starting HP",       max:6, cost:r=>60+r*55 },
-{ id:"dmg",   ic:"\u{1F5E1}",    n:"MEAN STREAK",  d:"+6% damage",            max:6, cost:r=>75+r*70 },
-{ id:"spd",   ic:"\u{1F45F}",    n:"LIGHT FEET",   d:"+4% move speed",        max:5, cost:r=>70+r*60 },
-{ id:"mag",   ic:"\u{1F9F2}",    n:"GREED",        d:"+18% pickup radius",    max:5, cost:r=>50+r*40 },
-{ id:"cd",    ic:"\u{1F570}",    n:"IMPATIENCE",   d:"-3.5% cooldowns",       max:5, cost:r=>90+r*85 },
-{ id:"crit",  ic:"\u{1F340}",    n:"LUCK",         d:"+4% crit chance",       max:5, cost:r=>80+r*70 },
-{ id:"armor", ic:"\u{1F6E1}",    n:"THICK SKIN",   d:"-0.8 flat damage taken",max:5, cost:r=>85+r*75 },
-{ id:"start", ic:"⭐",       n:"HEAD START",   d:"begin one level higher",max:3, cost:r=>200+r*220 },
-{ id:"rev",   ic:"\u{1F54A}",    n:"SECOND WIND",  d:"revive once at 50% HP", max:2, cost:r=>400+r*500 },
+{ id:"hp",    ic:"hp",  n:"CONSTITUTION", d:"+16 starting HP",       max:6, cost:r=>60+r*55 },
+{ id:"dmg",   ic:"dmg", n:"MEAN STREAK",  d:"+6% damage",            max:6, cost:r=>75+r*70 },
+{ id:"spd",   ic:"spd", n:"LIGHT FEET",   d:"+4% move speed",        max:5, cost:r=>70+r*60 },
+{ id:"mag",   ic:"mag", n:"GREED",        d:"+18% pickup radius",    max:5, cost:r=>50+r*40 },
+{ id:"cd",    ic:"cd",  n:"IMPATIENCE",   d:"-3.5% cooldowns",       max:5, cost:r=>90+r*85 },
+{ id:"crit",  ic:"crit",n:"LUCK",         d:"+4% crit chance",       max:5, cost:r=>80+r*70 },
+{ id:"armor", ic:"armor",n:"THICK SKIN",   d:"-0.8 flat damage taken",max:5, cost:r=>85+r*75 },
+{ id:"start", ic:"start",n:"HEAD START",   d:"begin one level higher",max:3, cost:r=>200+r*220 },
+{ id:"rev",   ic:"rev", n:"SECOND WIND",  d:"revive once at 50% HP", max:2, cost:r=>400+r*500 },
 ];
 
 // ================================================================= META SAVE
@@ -768,14 +832,15 @@ function startRun(id){
   charId = id;
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
-  P = { x:0, z:0, y:groundY(0,0), vy:0, air:false, face:0,
+  P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
 
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
-  T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0;
+  T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
+  gemStreak=0; gemStreakT=0;
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   stick=null; look=null;                 // drop any thumb held across the retry
@@ -937,6 +1002,8 @@ function lockPointer(){
   try{ const p = cv.requestPointerLock?.(); if(p && p.catch) p.catch(()=>{}); }
   catch(e){}
 }
+// every icon in the UI comes from the inlined sheet, by id
+const icon = id => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const hide = id => document.getElementById(id).classList.remove("on");
 const show = id => document.getElementById(id).classList.add("on");
 
@@ -1010,6 +1077,7 @@ function dmgOut(base){
   return { d: d, crit };
 }
 function hurt(e, amount, kx, kz, crit){
+  if(crit && (e.boss || e.elite)) hold("crit");
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
   if(e.boss) dmgBoss += eff;
@@ -1026,19 +1094,20 @@ function hurt(e, amount, kx, kz, crit){
 function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++;
-  const n = e.boss ? 26 : e.elite ? 14 : e.rad>1 ? 9 : 5;
+  const n = e.boss ? 30 : e.elite ? 16 : e.rad>1 ? 11 : 6;
   for(let i=0;i<n;i++) if(pops.length<340)
-    pops.push({ x:e.x, y:e.y+e.def.h*.5, z:e.z, vx:rnd(-6,6), vy:rnd(2,9), vz:rnd(-6,6),
-                life:rnd(.35,.8), c:e.def.c, s:e.boss?.42:.20 });
+    pops.push({ x:e.x, y:e.y+e.def.h*.5, z:e.z, vx:rnd(-8,8), vy:rnd(3,12), vz:rnd(-8,8),
+                life:rnd(.35,.8), c:e.def.c, s:e.boss?.46:.26 });
   // XP: bosses shatter into a payday, everything else drops one gem
   if(e.boss){
     for(let i=0;i<16;i++) pushGem(e.x+rnd(-3,3), e.z+rnd(-3,3), Math.ceil(e.xp/16));
-    coinsRun += 90; shake = Math.max(shake, 1.4); SFX.boom();
+    coinsRun += 90; shake = Math.max(shake, 1.4); SFX.boom(); hold("boss");
     alert2(e.def.nm+" DOWN", "#6ddba0");
     if(e.final){ finish("VICTORY", true); return; }
   } else {
     pushGem(e.x, e.z, e.xp);
     if(Math.random() < .012) coinsRun += 5;
+    if(e.elite){ hold("elite"); shake = Math.max(shake, .3); }
     SFX.pop();
   }
 }
@@ -1447,7 +1516,7 @@ function playerHurt(raw){
   d = Math.max(1, d - P.armor - (P.kit.plating ? (P.kit.plating.l+1)*1.6 : 0));
   if(P.kit.plating) d *= (1 - (P.kit.plating.l+1)*.05);
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
-  SFX.hurt();
+  hold("hurt"); SFX.hurt();
   if(P.kit.plating){                       // spiked armour: getting hit hurts them
     // Benched at +36% DPS and +14% survival over a no-passive control (n=10):
     // the best OFFENSIVE passive in the game, filed under defence, beating
@@ -1551,20 +1620,32 @@ function updateProjectiles(dt){
 }
 
 // ======================================================================= XP
+// Gems used to crawl in at a flat 6 m/s from the edge of the pickup radius.
+// The pull is the reward for every kill you make, several times a second, and
+// a reward that arrives slowly is a reward you stop noticing. They accelerate
+// now, so a wave of them arrives as a rush, and the pickup note climbs with a
+// streak that decays in a third of a second - collecting twenty gems in two
+// seconds should sound like collecting twenty gems in two seconds.
+let gemStreak = 0, gemStreakT = 0;
 function updateGems(dt){
   const R = P.mag;
+  if(gemStreakT > 0 && (gemStreakT -= dt) <= 0) gemStreak = 0;
   for(let i=gems.length-1;i>=0;i--){
     const g = gems[i];
     const dx = P.x-g.x, dz = P.z-g.z, d = Math.hypot(dx,dz);
     if(d < R) g.pulled = true;
     if(g.pulled){
-      const s = 6 + (R-Math.min(d,R))*3.2;
-      g.x += dx/(d||1)*s*dt; g.z += dz/(d||1)*s*dt;
-      g.y = lerp(g.y, P.y+.8, 1-Math.pow(.001,dt));
+      g.s = Math.min(44, (g.s || 7) + 78*dt);           // snap, do not drift
+      g.x += dx/(d||1)*g.s*dt; g.z += dz/(d||1)*g.s*dt;
+      g.y = lerp(g.y, P.y+.8, 1-Math.pow(.0004,dt));
     } else {
       g.bob += dt*3; g.y = groundY(g.x,g.z)+.45+Math.sin(g.bob)*.12;
     }
-    if(d < 1.1){ gainXP(g.v); gems.splice(i,1); SFX.gem(); }
+    if(d < 1.1){
+      gainXP(g.v); gems.splice(i,1);
+      gemStreak = Math.min(24, gemStreak+1); gemStreakT = .34;
+      SFX.gem(gemStreak);
+    }
   }
 }
 function gainXP(v){
@@ -1616,7 +1697,7 @@ function offers(){
     for(let j=0;j<pool.length;j++){ r-=pool[j].weight; if(r<=0){hitIdx=j;break;} }
     out.push(pool.splice(hitIdx,1)[0]);
   }
-  if(!out.length) out.push({ type:"heal", ic:"\u{1F357}", nm:"ROAST CHICKEN",
+  if(!out.length) out.push({ type:"heal", ic:"heal", nm:"ROAST CHICKEN",
                              lv:"REFRESHMENT", ds:"Heal 40 HP. Nothing left to learn.", weight:1 });
   return out;
 }
@@ -1631,7 +1712,7 @@ function showPick(){
   offers().forEach((o,i)=>{
     const el = document.createElement("div");
     el.className = "card" + (o.type==="evo" ? " evo" : "");
-    el.innerHTML = `<div class="key">${i+1}</div><div class="ic">${o.ic}</div>`+
+    el.innerHTML = `<div class="key">${i+1}</div><div class="ic">${icon(o.ic)}</div>`+
       `<div class="nm">${o.nm}</div><div class="lv">${o.lv}</div><div class="ds">${o.ds}</div>`;
     el.dataset.otype = o.type; el.dataset.okey = o.key||"";
     el.onclick = ()=>take(o);
@@ -1763,11 +1844,23 @@ function step(dt){
     const mag = Math.hypot(mx,mz);
     if(mag){ mx/=mag; mz/=mag; dx = fx*mz + fz*mx; dz = fz*mz - fx*mx; }
   }
-  if(dx || dz){
-    P.x = clamp(P.x + dx*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);
-    P.z = clamp(P.z + dz*P.spd*analog*dt, -ARENA+1.5, ARENA-1.5);
-    P.face = Math.atan2(dx, dz);
+  // Movement used to be binary - full speed on the frame you pressed a key, dead
+  // stop on the frame you let go. Nothing on screen could tell you that you had
+  // started moving, because you were already at top speed and the camera was
+  // welded to you. Ramping over ~0.11s costs a third of a metre across two
+  // seconds and gives every direction change something to read.
+  const ACCEL = 62, BRAKE = 46;
+  const wx = dx*P.spd*analog, wz = dz*P.spd*analog;
+  const rate = (dx||dz) ? ACCEL : BRAKE;
+  const step_ = rate*dt;
+  const ex = wx-P.vx, ez = wz-P.vz, el = Math.hypot(ex,ez);
+  if(el <= step_){ P.vx = wx; P.vz = wz; }
+  else { P.vx += ex/el*step_; P.vz += ez/el*step_; }
+  if(P.vx || P.vz){
+    P.x = clamp(P.x + P.vx*dt, -ARENA+1.5, ARENA-1.5);
+    P.z = clamp(P.z + P.vz*dt, -ARENA+1.5, ARENA-1.5);
   }
+  if(dx || dz) P.face = Math.atan2(dx, dz);
   const gy = groundY(P.x, P.z);
   if(keys.Space && !P.air){ P.vy = 11; P.air = true; }
   if(P.air){ P.vy -= 30*dt; P.y += P.vy*dt;
@@ -1834,7 +1927,7 @@ function finish(why, won){
   const kit = Object.keys(P.kit).map(k=>{
     const w = P.kit[k], D = WEAPONS[k]||PASSIVES[k];
     const nm = (WEAPONS[k] && w.evo) ? WEAPONS[k].evo.name : D.name;
-    return `${D.ic} ${nm} ${w.evo?"★":"lv"+(w.l+1)}`;
+    return `${icon(D.ic)} ${nm} ${w.evo?"★":"lv"+(w.l+1)}`;
   }).join(" &nbsp;·&nbsp; ");
 
   const flavor = won ? "The estate is clear. Nobody is going to thank you."
@@ -1855,7 +1948,7 @@ function finish(why, won){
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
       <tr><td class="gold">Coins earned</td><td class="gold">+${earned}</td></tr>
     </table>
-    ${newlyUnlocked ? `<p class="g" style="font-size:11px">\u{1F9DF} THE GHOUL UNLOCKED</p>`:``}
+    ${newlyUnlocked ? `<p class="g" style="font-size:11px">${icon("ghoul")} THE GHOUL UNLOCKED</p>`:``}
     <button class="btn" id="againBtn">RUN AGAIN</button>
     <button class="btn gh" id="shopBtn">SHOP</button>`;
   show("end");
@@ -1870,7 +1963,7 @@ function openMenu(){
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
     <div class="sub">SURVIVE TWENTY MINUTES &nbsp;·&nbsp; YOU DO NOT CONTROL THE WEAPONS</div>
-    <div class="coins">\u{1FA99} ${save.coins.toLocaleString()} COINS${
+    <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
       save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
       save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
     <h2>CREW</h2>
@@ -1890,7 +1983,7 @@ function openMenu(){
     const locked = c.lock && !save.unlocked[c.id];
     const el = document.createElement("div");
     el.className = "ch" + (locked?" lock":"");
-    el.innerHTML = `<div class="ic">${locked?"\u{1F512}":c.ic}</div>
+    el.innerHTML = `<div class="ic">${icon(locked?"lock":c.ic)}</div>
       <div class="nm">${locked?"???":c.nm}</div>
       <div class="ds">${locked?c.lock:c.ds}</div>
       <div class="pk">${locked?"":"start: "+WEAPONS[c.w].name}</div>`;
@@ -1903,7 +1996,7 @@ function openMenu(){
     const afford = !maxed && save.coins >= cost;
     const el = document.createElement("div");
     el.className = "up" + (afford?"":" no");
-    el.innerHTML = `<div class="ic">${u.ic}</div>
+    el.innerHTML = `<div class="ic">${icon(u.ic)}</div>
       <div class="t"><div class="n">${u.n}</div><div class="d">${u.d}</div>
       <div class="pips">${Array.from({length:u.max},(_,i)=>
         `<s class="${i<r?"f":""}"></s>`).join("")}</div></div>
@@ -1919,6 +2012,7 @@ function openMenu(){
 const ui = document.getElementById("ui");
 const g2 = ui.getContext("2d");
 let VPM = null;
+let camAnchor = null;              // lagged chase point, see render()
 
 function render(){
   if(ctxLost) return;                          // every GL call would silently no-op
@@ -1929,9 +2023,24 @@ function render(){
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   drawnBoxes = 0;
 
-  // ---- camera: chase, with a little lag and a lot of shake
+  // ---- camera: chase, with real lag and a lot of shake
+  // It used to sit 17m back and 12.8m up, recomputed from the player's exact
+  // position every frame. Two problems, both of them "clunky": at that distance
+  // the player is a speck, and a boom welded to the player pins you to the dead
+  // centre of the screen forever, so no acceleration you make is ever visible.
+  // Closer, lower, anchored to a point that CHASES you, and aimed slightly
+  // ahead of where you are going.
   const px = P?P.x:0, pz = P?P.z:0, py = P?P.y:groundY(0,0);
-  const dist = 17, hgt = 8.5 + camPitch*7;
+  const pvx = P?P.vx||0:0, pvz = P?P.vz||0:0;
+  const spdFrac = P ? Math.min(1, Math.hypot(pvx,pvz)/(P.spd||6.6)) : 0;
+  if(!camAnchor) camAnchor = [px,py,pz];
+  const kf = 1-Math.pow(.0009, Math.min(dt,.05));      // ~11/s, frame-rate free
+  camAnchor[0] = lerp(camAnchor[0], px, kf);
+  camAnchor[1] = lerp(camAnchor[1], py, kf);
+  camAnchor[2] = lerp(camAnchor[2], pz, kf);
+  // and the boom stretches as you pick up speed, which is the cheapest and
+  // loudest "you are moving fast" cue there is
+  const dist = 12.4 + spdFrac*1.9, hgt = 6.3 + camPitch*5.4 + spdFrac*.7;
   const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
   // edge puts it out among the boundary spires (radius 74-79, height 7-15) at an
@@ -1940,18 +2049,21 @@ function render(){
   // loses the third-person view. Instead SHORTEN the boom until it fits, and lift
   // it as it shortens so the player stays framed.
   const CAM_BOUND = ARENA - 3;
+  const cax = camAnchor[0], cay = camAnchor[1], caz = camAnchor[2];
   let ox = -Math.sin(camYaw)*dist*Math.cos(camPitch*.55);
   let oz = -Math.cos(camYaw)*dist*Math.cos(camPitch*.55);
   let k = 1;
-  if(Math.abs(px+ox) > CAM_BOUND) k = Math.min(k, (Math.sign(ox)*CAM_BOUND - px)/ox);
-  if(Math.abs(pz+oz) > CAM_BOUND) k = Math.min(k, (Math.sign(oz)*CAM_BOUND - pz)/oz);
+  if(Math.abs(cax+ox) > CAM_BOUND) k = Math.min(k, (Math.sign(ox)*CAM_BOUND - cax)/ox);
+  if(Math.abs(caz+oz) > CAM_BOUND) k = Math.min(k, (Math.sign(oz)*CAM_BOUND - caz)/oz);
   k = clamp(k, .34, 1);
   const hgt2 = hgt * (1 + (1-k)*0.85);
-  const eye = [ px + ox*k + rnd(-sk,sk),
-                py + hgt2 + rnd(-sk,sk),
-                pz + oz*k + rnd(-sk,sk) ];
-  const at  = [ px + Math.sin(camYaw)*3, py+1.4, pz + Math.cos(camYaw)*3 ];
-  const proj = M4.persp(1.05, w/h, .2, 260);
+  const eye = [ cax + ox*k + rnd(-sk,sk),
+                cay + hgt2 + rnd(-sk,sk),
+                caz + oz*k + rnd(-sk,sk) ];
+  // aim where you are going, not where the stick is pointed
+  const at  = [ px + Math.sin(camYaw)*2.2 + pvx*.20, py+1.4,
+                pz + Math.cos(camYaw)*2.2 + pvz*.20 ];
+  const proj = M4.persp(1.02 + spdFrac*.085, w/h, .2, 260);
   const view = M4.look(eye, at, [0,1,0]);
   gl.uniformMatrix4fv(U.uProj,false,proj);
   gl.uniformMatrix4fv(U.uView,false,view);
@@ -2098,7 +2210,20 @@ function render(){
       box(rx, groundY(rx,rz)+.10, rz, .13,.08,.13, [1,1,1], .95);
     }
     box(P.x, P.y+.05, P.z, .80,.03,.80, [.08,.10,.09], 0);
-    box(P.x, P.y+.62, P.z, .34,.62,.34, c, P.iframe>0?.55:.18, P.face);
+    // You are a 0.34m box among four hundred boxes, and positioning is the
+    // entire game - losing track of yourself in the horde is not a difficulty,
+    // it is the controls not working. A lit ring at your feet costs twelve
+    // boxes out of ~2300 and is readable through any crowd density.
+    // White, not gold: CAROUSEL, SKULLS and the mortar rings are all yellow, and
+    // a marker that shares a hue with three weapons is not a marker. White is
+    // also the one choice that survives every colour-vision simulation, which
+    // is the same reason the enemy palette is sorted by lightness.
+    for(let i=0;i<12;i++){
+      const a = i*(TAU/12) + T*.7;
+      box(P.x+Math.sin(a)*.62, P.y+.07, P.z+Math.cos(a)*.62,
+          .11,.05,.11, [1,1,1], 1.0);
+    }
+    box(P.x, P.y+.62, P.z, .34,.62,.34, c, P.iframe>0?.55:.30, P.face);
     box(P.x, P.y+1.42, P.z, .27,.24,.27, [.92,.80,.66], 0, P.face);
     box(P.x, P.y+1.70, P.z, .34,.09,.34, [.85,.28,.24], 0, P.face);
     for(const sgn of [-1,1]){
@@ -2244,7 +2369,7 @@ function hud(){
   $("hptxt").textContent = `${Math.max(0,Math.ceil(P.hp))} / ${Math.round(P.maxhp)}`;
   $("stats").innerHTML =
     `<b>${kills.toLocaleString()}</b> kills<br>`+
-    `<span style="color:#f0b429">\u{1FA99} ${Math.floor(coinsRun + kills/9 + T/6)}</span><br>`+
+    `<span style="color:#f0b429">${icon("coin")} ${Math.floor(coinsRun + kills/9 + T/6)}</span><br>`+
     `<span style="color:#5c6470">${enemies.length} on screen</span>`;
 
   let html = "";
@@ -2254,7 +2379,7 @@ function hud(){
     const maxL = W ? 5 : Pa.max;
     const cls = w.evo ? "ev" : (w.l+1>=maxL ? "mx" : "");
     html += `<div class="slot ${Pa?"p":""} ${cls}" title="${
-      (W&&w.evo)?W.evo.name:D.name}">${ic}<i>${w.evo?"★":w.l+1}</i></div>`;
+      (W&&w.evo)?W.evo.name:D.name}">${icon(ic)}<i>${w.evo?"★":w.l+1}</i></div>`;
   }
   $("kit").innerHTML = html;
 
@@ -2267,9 +2392,18 @@ function hud(){
 
 // ==================================================================== LOOP
 let last = performance.now();
+// Hitstop: hold the whole simulation for a few dozen milliseconds when
+// something important connects. It is the single loudest piece of feedback in
+// an action game and it costs nothing. It lives HERE, in the real-time loop,
+// and not inside step() on purpose - window.__g.step() drives the benches and
+// the test suite, and those must stay deterministic and instant.
+let hitstop = 0;
+const HOLD = { crit:.05, elite:.075, boss:.20, hurt:.065 };
+const hold = k => { if(save.motion || k === "boss") hitstop = Math.max(hitstop, HOLD[k]); };
 function frame(now){
   dt = Math.min(.042, (now-last)/1000); last = now;
-  if(running && !over && !paused && !picking) step(dt);
+  if(hitstop > 0) hitstop -= dt;
+  else if(running && !over && !paused && !picking) step(dt);
   render(); hud();
   requestAnimationFrame(frame);
 }
