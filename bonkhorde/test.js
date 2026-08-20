@@ -944,42 +944,43 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await cp.waitForTimeout(450);
     await cp.evaluate(() => { window.__g.wipeSave(); window.__g.start("intern");
                               window.__g.god(); window.__g.place(0, 0); });
-    await cp.waitForTimeout(500);                       // let it settle on the origin
-    const settled = await cp.evaluate(() => window.__g.camAnchor());
-    // Count FRAMES, not milliseconds. A first version waited 50ms and read the
-    // anchor still at 0.00 - not because it lagged, but because software
-    // rendering had not drawn a single frame in that window. An assertion that
-    // passes when nothing is running passes for a welded camera too.
-    const lagged = await cp.evaluate(() => new Promise(res => {
+    // Every read here is frame-counted and null-tolerant, because camAnchor is
+    // null until render() has run once and this suite shares a machine. The
+    // first two versions of this check were both wrong for the same reason in
+    // different costumes - 50ms with nothing drawn reads 0.00 and passes a
+    // welded camera; 1400ms with a bench hogging the CPU reads 28.42 and fails
+    // a working one; and a 500ms settle under real load reads null and takes
+    // the whole harness down.
+    const untilAnchor = (test, cap = 900) => cp.evaluate(([src, cap]) => new Promise(res => {
+      const pass = new Function("a", src);
+      let n = 0;
+      const tick = () => {
+        const a = window.__g.camAnchor();
+        if ((a && pass(a)) || ++n > cap) return res(a);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }), [test, cap]);
+
+    const settled = await untilAnchor("return Math.abs(a[0]) < 0.05");
+    const lagged  = await cp.evaluate(() => new Promise(res => {
       window.__g.place(30, 0);
       let n = 0;
       const tick = () => (++n < 4) ? requestAnimationFrame(tick)
                                    : res(window.__g.camAnchor());
       requestAnimationFrame(tick);
     }));
-    // And the SECOND half of the same check then went back to waiting 1400ms,
-    // which is the identical mistake: under a busy machine the renderer drew
-    // fewer frames in that window and the anchor read 28.42 of 30, failing a
-    // camera that was working perfectly. Poll frames until it arrives.
-    const caught = await cp.evaluate(() => new Promise(res => {
-      let n = 0;
-      const tick = () => {
-        // camAnchor is null until render() has run once, and the poll can beat
-        // the first frame - which is the same "nothing had drawn yet" trap in
-        // its third costume.
-        const a = window.__g.camAnchor();
-        if ((a && Math.abs(a[0] - 30) < 0.5) || ++n > 600) return res(a || [NaN]);
-        requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }));
+    const caught  = await untilAnchor("return Math.abs(a[0] - 30) < 0.5");
 
-    ok("the anchor starts on the player", Math.abs(settled[0]) < 1.5, `x=${settled[0]?.toFixed(2)}`);
+    // A null anchor means no frame ever rendered, which is a FAILURE and not a
+    // crash - it is exactly the state that used to make this section pass.
+    ok("the anchor starts on the player", !!settled && Math.abs(settled[0]) < 1.5,
+       `x=${settled ? settled[0].toFixed(2) : "no frame rendered"}`);
     ok("it does not teleport with them",
-       lagged[0] > 0.5 && lagged[0] < 26,
-       `x=${lagged[0]?.toFixed(2)} of 30 after three frames`);
-    ok("but it does get there", Math.abs(caught[0] - 30) < 1.5,
-       `x=${caught[0]?.toFixed(2)}`);
+       !!lagged && lagged[0] > 0.5 && lagged[0] < 26,
+       `x=${lagged ? lagged[0].toFixed(2) : "no frame"} of 30 after three frames`);
+    ok("but it does get there", !!caught && Math.abs(caught[0] - 30) < 1.5,
+       `x=${caught ? caught[0].toFixed(2) : "no frame"}`);
     await ctx.close();
   }
 
