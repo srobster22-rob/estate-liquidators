@@ -334,33 +334,40 @@ bolting "+damage" onto everything:
 
 `balance.js` runs an autopilot to death, many times over, and reports where runs actually end.
 Tuning a survivors-like by feel is how you ship something unwinnable in week one, so the
-difficulty curve here is a measurement. Current state, **pooled over two independent sweeps of
-6 trials per cell** — a single sweep swings the veteran total by ten points, so one is not a
-reading:
+difficulty curve here is a measurement. Current state, all seven monster lines, 6 trials per
+cell, monster levels at 1 so this reads the in-run evolution and nothing from the meta layer:
 
 ```
-                                                          clears     pooled
-FIRST RUN   intern                                       0/6  0/6      0/12
-  (no perm  scrap                                        0/6  0/6      0/12
-  upgrades) spark                                        0/6  0/6      0/12
-            ox                                           0/6  0/6      0/12
-            ghoul                                        0/6  0/6      0/12
-                                                                       0/60
+                            median              clears
+FIRST RUN   MOPLING          05:13                0/6
+  (no perm  RUSTLET          10:57                0/6
+  upgrades) ZAPLET           06:12                0/6
+            LUGGIT           10:47                0/6
+            MOULDLING        04:29                0/6
+            TALLYMITE        04:35                0/6
+            SPLITKIN         05:03                0/6
+                                                  0/42
 
-VETERAN     intern                                       4/6  2/6      6/12
-  (all      scrap                                        1/6  1/6      2/12
-  upgrades  spark                                        3/6  3/6      6/12
-  bought)   ox                                           4/6  3/6      7/12
-            ghoul                                        2/6  2/6      4/12
-                                                                      25/60
+VETERAN     MOPLING          24:00                2/6
+  (all      RUSTLET          22:32                4/6
+  upgrades  ZAPLET           24:00                1/6
+  bought)   LUGGIT           24:00                3/6
+            MOULDLING        23:29                5/6
+            TALLYMITE        23:51                4/6
+            SPLITKIN         24:00                2/6
+                                                 21/42
 ```
 
-Which is the shape the genre wants. First-run deaths cluster hard at **2–6 minutes** — 19 of 24
-across both histograms — and **never once clear in sixty runs**, though a lucky run occasionally
-reaches minute nineteen, so the ceiling is visible without being available. A maxed shop makes
-twenty minutes *reachable* and clears **25 of 60**; the veteran medians run past 20:00 because
-almost every veteran run now reaches sudden death and is decided there, which is the fight being
-the fight.
+Which is the shape the genre wants, and it is the same shape it was before monsters, evolution
+and bunnyhopping went in: **0 first-run clears in 42**, and **21 of 42** with a maxed shop
+against 25 of 60 (42%) on the build before this round — the same number inside a noise floor
+this table has already been shown to have. What did move is how far a first run *gets*: RUSTLET
+and LUGGIT now median past ten minutes where every line used to die around four, and a lucky
+run reaches sudden death and loses there. The ceiling is visible without being available, which
+is what it is for.
+
+The veteran medians read past 20:00 because almost every veteran run reaches sudden death and
+is decided there — the fight being the fight.
 
 **Side events changed what these numbers mean.** Caches and altars are a power source the
 difficulty was never tuned against, worth +25 points of veteran clear rate measured against
@@ -369,30 +376,32 @@ twenty minutes is reachable **because** you went and got them — a first run ca
 clear on a lucky one, roughly one in twenty-four, where before it was zero in sixty. That
 ceiling being *visible but rare* is the shape the feature was for.
 
-**42% is the target, not a miss.** An earlier draft of this file treated ~33% as the number to
-hold, and every content change since has had to be walked back toward it with boss HP. That was
+**50% is the target, not a miss.** An earlier draft of this file treated ~33% as the number to
+hold, and every content change since had to be walked back toward it with boss HP. That was
 cargo cult: the invariant that matters is *first run never clears and a maxed shop makes the
-ending reachable*, and 0/60 against 25/60 says both. Chasing a third decimal on the veteran
+ending reachable*, and 0/42 against 21/42 says both. Chasing a third decimal on the veteran
 figure through a ±10-point noise floor is measuring the harness, not the game.
 
 The per-character spread is roughly the noise floor wide, and the ordering does not survive
-re-sampling: THE GHOUL led at 8/12 one round ago and sits at 4/12 here on an unchanged
-character. THE SCRAPPER was the only one consistently at the bottom, across every sweep — a
-signal rather than noise, and it took three passes to close:
+re-sampling: MOULDLING led at 8/12 two rounds ago, sat at 4/12 the round after on an unchanged
+character, and leads again here at 5/6. RUSTLET was the only line consistently at the bottom
+across every sweep — a signal rather than noise, and it took three passes to close, at which
+point it overshot into the top half and stayed there:
 
 ```
-                        scrap    control
-starting point           1/12    ghoul 9/12
-+8% speed                3/12    ghoul 8/12
-+35% weapon reach        4/12    ox    7/12   (ox measured 7/12 twice running)
+                        RUSTLET   control
+starting point           1/12     MOULDLING 9/12
++8% speed                3/12     MOULDLING 8/12
++35% weapon reach        4/12     LUGGIT    7/12
+this round               4/6      MOULDLING 5/6
 ```
 
 **Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
 die around minute six, or you go the distance. A median over six runs just reports which side
 of that split got the fifth sample, and it swings wildly — THE SCRAPPER measured 15:20 and 06:31
 on *identical* configurations twenty minutes apart. The clear count over the whole table is the
-only number here worth acting on, and even that needs pooling: the two sweeps above are the same
-build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a result.
+only number here worth acting on, and even that needs pooling: two sweeps of the same build one
+round ago read 9/30 and 15/30. Anything smaller than a ten-point move is not a result.
 
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
