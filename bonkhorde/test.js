@@ -1292,9 +1292,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       jump(); steps(1);                           // a cold jump: no chain
       const cold = g.hop().n;
 
-      const chain = [];
-      for (let k = 0; k < 8; k++) { land(); jump(); g.step(1 / 60); chain.push(g.hop().n);
-                                    if (g.hop().r > 40) home(); }
+      const chain = [], mults = [];
+      for (let k = 0; k < 14; k++) { land(); jump(); g.step(1 / 60);
+                                     chain.push(g.hop().n); mults.push(g.hop().mul);
+                                     if (g.hop().r > 40) home(); }
       steps(30); watch();                         // let the speed catch up in air
       const top = g.hop();
 
@@ -1326,19 +1327,69 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("jumping on the landing frame links the chain",
        r.chain[0] === 1 && r.chain[1] === 2 && r.chain[2] === 3,
        `chain ${r.chain.join(",")}`);
-    ok("the chain caps", r.chain[6] === 5 && r.chain[7] === 5, `chain ${r.chain.join(",")}`);
+    ok("the chain keeps counting past where it used to stop",
+       r.chain[13] === 14, `chain reached ${r.chain[13]}`);
+    // The old cap made hopping a thing you FINISHED. Every link has to still
+    // buy something, and the gains have to shrink rather than stop.
+    ok("every link still pays, and later ones pay less",
+       r.mults.every((m, i) => i === 0 || m > r.mults[i-1]) &&
+       (r.mults[13] - r.mults[12]) < (r.mults[1] - r.mults[0]) * 0.4,
+       `+${((r.mults[0]-1)*100).toFixed(0)}% / +${((r.mults[4]-1)*100).toFixed(0)}% / ` +
+       `+${((r.mults[11]-1)*100).toFixed(0)}% at links 1/5/12`);
+    ok("and it converges instead of running away",
+       r.mults[13] < 1.62, `x${r.mults[13].toFixed(3)} at link 14`);
     ok("a full chain is measurably faster than walking",
-       r.top.spd > r.base * 1.22,
+       r.top.spd > r.base * 1.4,
        `${r.base.toFixed(2)} -> ${r.top.spd.toFixed(2)} m/s  (x${(r.top.spd/r.base).toFixed(2)})`);
     ok("landing and standing bleeds the chain rather than snapping it",
-       r.bleeding > 3.4 && r.bleeding < 5,
-       `5 -> ${r.bleeding.toFixed(2)} after half a second`);
+       r.bleeding > 12.4 && r.bleeding < 14,
+       `14 -> ${r.bleeding.toFixed(2)} after half a second`);
     ok("and it is gone after three seconds on the ground", r.dead === 0, `n=${r.dead}`);
     ok("speed comes back down with it",
        Math.abs(r.backToBase - r.base) < 0.15,
        `${r.top.spd.toFixed(2)} -> ${r.backToBase.toFixed(2)} vs base ${r.base.toFixed(2)}`);
     ok("a HELD spacebar does not auto-hop", r.heldBuf === 0, `buf=${r.heldBuf}`);
     ok("and none of that was measured against a wall", r.hitWall === false);
+  }
+
+  console.log("\n=== 19c. KEEPING TEMPO PAYS ===");
+  {
+    // The chain has to be worth keeping for something other than speed, or it
+    // is a movement tech rather than a mechanic. Every link pulls loot in;
+    // every fifth pays XP and coins with a number on it.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const key = c => { dispatchEvent(new KeyboardEvent("keydown", { code: c }));
+                         dispatchEvent(new KeyboardEvent("keyup",   { code: c })); };
+      const land = () => { let n = 0; while (g.hop().air && n++ < 400) g.step(1/60); };
+      dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+      g.place(0, 0);
+      for (let i = 0; i < 60; i++) g.step(1/60);
+
+      // a gem five metres away, well outside the 4.2m pickup radius
+      g.place(0, 0);
+      const before = { xp: g.xpBanked(), coins: g.runCoins() };
+      const out = [];
+      for (let k = 0; k < 11; k++) {
+        land(); key("Space"); g.step(1/60);
+        out.push({ n: g.hop().n, xp: g.xpBanked(), coins: g.runCoins() });
+        if (g.hop().r > 40) g.place(0, 0);
+      }
+      dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+      return { before, out };
+    });
+    const gained = r.out.map((o, i) => o.xp - (i ? r.out[i-1].xp : r.before.xp));
+    const paid   = gained.map((v, i) => v > 0 ? i + 1 : 0).filter(Boolean);
+    ok("every fifth link pays out", paid.join() === "5,10",
+       `links that paid: ${paid.join() || "none"}`);
+    ok("and the links between them do not",
+       gained.filter(v => v > 0).length === 2, `${gained.filter(v=>v>0).length} payouts in 11 links`);
+    ok("the payout scales with the level it happens at",
+       gained[4] >= 3, `+${gained[4]} XP at link 5`);
+    ok("coins too",
+       r.out[9].coins > r.out[3].coins, `${r.out[3].coins} -> ${r.out[9].coins}`);
   }
 
   console.log("\n=== 19b. THE JUMP INPUT IS BUFFERED ===");

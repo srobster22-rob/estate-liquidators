@@ -61,12 +61,15 @@
   #hop{position:absolute;bottom:92px;left:50%;transform:translateX(-50%);
     display:flex;gap:4px;align-items:center;opacity:0;transition:opacity .18s}
   #hop.on{opacity:1}
-  #hop i{width:13px;height:5px;background:#1b2029;border:1px solid #000;
+  #hop .hb{display:block;width:118px;height:6px;background:#141920;border:1px solid #000;
     box-shadow:0 1px 0 rgba(0,0,0,.6)}
-  #hop i.lit{background:linear-gradient(90deg,#3ad0ff,#8affd0);box-shadow:0 0 8px #3ad0ffaa}
-  #hop b{margin-left:7px;font-size:10px;color:#8affd0;min-width:36px;text-align:left;
-    text-shadow:0 1px 2px #000}
-  #hop.max i.lit{background:linear-gradient(90deg,#f0b429,#ffe08a);box-shadow:0 0 10px #f0b429cc}
+  #hop .hb i{display:block;height:100%;width:0;
+    background:linear-gradient(90deg,#3ad0ff,#8affd0);box-shadow:0 0 9px #3ad0ffaa;
+    transition:width .07s linear}
+  #hop b{font-size:13px;font-weight:900;color:#8affd0;min-width:46px;text-align:left;
+    text-shadow:0 2px 0 #000;font-variant-numeric:tabular-nums}
+  #hop em{font-style:normal;font-size:9px;letter-spacing:.16em;color:#5c6470}
+  #hop.max .hb i{background:linear-gradient(90deg,#f0b429,#ffe08a);box-shadow:0 0 11px #f0b429cc}
   #hop.max b{color:#ffe08a}
   #stats{position:absolute;top:12px;right:14px;text-align:right;line-height:1.7;
     color:var(--dim)}
@@ -195,6 +198,12 @@
   .nb i{display:block;height:100%;background:var(--gold)}
   .nt{font-size:10px;letter-spacing:.12em;color:var(--dim);margin-top:6px}
   #opts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0 4px}
+  #dev,.devrow{display:flex;gap:6px;justify-content:center;align-items:center;
+    flex-wrap:wrap;margin:14px auto 4px;padding:9px 12px;max-width:640px;
+    border:1px dashed #3a4250;background:#0f1319}
+  #dev b,.devrow b{font-size:9px;letter-spacing:.24em;color:#5c6470;margin-right:4px}
+  .dv{font-size:9px;padding:6px 10px;letter-spacing:.1em}
+  .dv.on{border-color:var(--gold);color:var(--gold)}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
 </style>
 </head>
@@ -261,7 +270,7 @@
   <div id="clock">00:00</div>
   <div id="phase"></div>
   <div id="stats"></div>
-  <div id="hop"><i></i><i></i><i></i><i></i><i></i><b></b></div>
+  <div id="hop"><span class="hb"><i></i></span><b></b><em></em></div>
   <div id="kit"></div>
   <div id="hpwrap"><div id="hpbar"></div><div id="hptxt"></div></div>
   <div id="warn"></div>
@@ -283,8 +292,8 @@
   <div class="hint" id="pauseHint">
     <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> camera &nbsp; <kbd>SPACE</kbd> jump
     &nbsp; <kbd>M</kbd> mute<br>
-    hit <kbd>SPACE</kbd> again the moment you land to chain a hop &mdash; five links
-    is +28% move speed, and one hit takes it all away<br>
+    hit <kbd>SPACE</kbd> again the moment you land to chain a hop &mdash; it never
+    stops paying: +12% on the first, +40% by five, +55% by twelve. One hit takes it all.<br>
     weapons fire themselves. your only job is to not be there.
   </div>
   <div id="opts">
@@ -323,23 +332,28 @@ const TAU = Math.PI * 2;
 //            the input has to land inside a single 16ms frame, which is not a
 //            skill, it is a coin flip.
 //   HOP_WIN  and 0.16s AFTER. Together ~0.30s of real forgiveness.
-//   HOP_MAX  five links, +5.5% each, so a perfect chain is 1.275x base speed.
-//            It shipped at six links of +8.5%, which is 1.51x - and the bench
-//            said what that is: the autopilot's FIRST-run median went from 4:06
-//            to 9:14, and THE SCRAPPER's to the full 24:00 with 58 levels and
-//            ten thousand kills, on a build where a first run had never once
-//            survived past minute twenty. In a game whose only verb is
-//            positioning, half again the movement speed is not a mechanic, it
-//            is a difficulty setting.
+//   the curve  A hard cap at five links made the chain a thing you FINISHED,
+//            and then hopping stopped paying. It should never stop paying and
+//            it should never run away either, so the multiplier is asymptotic:
+//            1 + HOP_TOP*(1 - HOP_FALL^n). Every link is worth something, the
+//            early ones are worth a lot, and the total converges.
+//              1 link  +12%     5 links +40%    12 links +55%
+//              2 links +22%     8 links +50%    20 links +59%
+//            The first version was a flat +8.5% x6 = 1.51x, which the bench
+//            called what it was - the autopilot's FIRST-run median went 4:06 to
+//            9:14 - but that was measured in an arena 32% too small, and the
+//            real culprit was the arena. Re-opened and re-measured against the
+//            arena at its proper size.
 //   HOP_BLEED  grounded past the grace period, the chain drains over ~2.5s
 //            instead of snapping to zero - losing it should feel like slowing
 //            down, not like being switched off.
 // The press must be an EDGE, not a held key. Auto-hop from a held spacebar is
 // free top speed for twenty minutes and there is nothing left to do well.
-const HOP_WIN = .16, HOP_BUF = .14, HOP_MAX = 5, HOP_GAIN = .055,
+const HOP_WIN = .16, HOP_BUF = .14, HOP_MAX = 24,
+      HOP_TOP = .60, HOP_FALL = .80,
       HOP_BLEED = 2.4, HOP_GRACE = .20;
 let jumpBuf = 0;
-const hopMul = ()=> 1 + (P ? P.hop : 0) * HOP_GAIN;
+const hopMul = ()=> 1 + HOP_TOP * (1 - Math.pow(HOP_FALL, P ? P.hop : 0));
 function jumpPressed(){ jumpBuf = HOP_BUF; }
 const clamp = (v,a,b)=>v<a?a:v>b?b:v;
 const lerp  = (a,b,t)=>a+(b-a)*t;
@@ -521,8 +535,10 @@ const SFX = {
   buy:   ()=>{ blip(660,.07,"square",.1); setTimeout(()=>blip(990,.1,"square",.1),70); },
   // a fourth up the chain, so six links walk you two octaves. The chain is
   // audible before it is visible, which is what makes you go for the seventh.
-  hop:   (n=1)=>{ blip(300*Math.pow(1.335, n-1), .07, "triangle", .07, 1.9);
+  hop:   (n=1)=>{ blip(300*Math.pow(1.335, Math.min(n,8)-1), .07, "triangle", .07, 1.9);
                   noiseBurst(.05, .10); },
+  tempo: (n=5)=>{ [523,659,880].forEach((f,i)=>
+                    setTimeout(()=>blip(f*(1+Math.min(n,20)/40), .16, "triangle", .11), i*55)); },
   // Six notes, deliberately longer than anything else in the mix. An evolution
   // happens twice in a good run; it is allowed to interrupt.
   evolve:()=>{ [392,523,659,784,1046,1568].forEach((f,i)=>
@@ -611,10 +627,16 @@ cv.addEventListener("webglcontextrestored", ()=>{
   ctxLost = false;                             // render() re-sets the viewport itself
 });
 
-// scenery: static, decorative, non-colliding. Purely for motion parallax.
+// Scenery: static, decorative, non-colliding, purely for motion parallax. The
+// trees and rocks are OFF - a horde game asks you to read four hundred moving
+// bodies against the ground, and 270 static ones standing in the same field
+// are 270 things your eye has to rule out first. The floor keeps its
+// checkerboard, which is what the parallax was actually for. FLOOR_CLUTTER
+// turns them back on in one place if the empty field ever reads as empty.
+const FLOOR_CLUTTER = false;
 const PROPS = (()=>{
   const p=[];
-  for(let i=0;i<270;i++){                                    // scaled with the area
+  for(let i=0;FLOOR_CLUTTER && i<270;i++){
     // sqrt() on the radius or every prop in the world piles into the middle
     const pa=Math.random()*TAU, pr=Math.sqrt(Math.random())*(RIM-4);
     const x=Math.cos(pa)*pr, z=Math.sin(pa)*pr;
@@ -1010,14 +1032,18 @@ const SHOP = [
 // them that way means evolveTo() can compute the ratio between any two stages
 // and apply it once, which is also what makes a test able to jump straight to
 // stage 2 without walking the whole line.
+// Three shades of one hue is a repaint. Every species carries a BELLY (a pale
+// underside, which is what stops a shape reading as a solid lump) and an ACCENT
+// in a genuinely different hue, for markings, glow and the one detail that
+// makes it a character rather than a colour.
 const MTYPE = {
-  plain:{ nm:"MOP",   c:[.87,.81,.60] },
-  scrap:{ nm:"SCRAP", c:[.93,.53,.20] },
-  volt: { nm:"VOLT",  c:[.34,.80,1.00] },
-  stone:{ nm:"STONE", c:[.72,.57,.34] },
-  rot:  { nm:"ROT",   c:[.47,.79,.35] },
-  tally:{ nm:"TALLY", c:[.98,.79,.25] },
-  echo: { nm:"ECHO",  c:[.71,.49,.98] },
+  plain:{ nm:"MOP",   c:[.87,.81,.60], bel:[.97,.94,.82], acc:[.55,.38,.22] },
+  scrap:{ nm:"SCRAP", c:[.93,.53,.20], bel:[.99,.79,.44], acc:[.34,.36,.44] },
+  volt: { nm:"VOLT",  c:[.34,.80,1.00], bel:[.82,.96,1.00], acc:[1,.92,.34] },
+  stone:{ nm:"STONE", c:[.72,.57,.34], bel:[.89,.79,.59], acc:[.36,.82,.70] },
+  rot:  { nm:"ROT",   c:[.47,.79,.35], bel:[.80,.93,.58], acc:[.88,.40,.74] },
+  tally:{ nm:"TALLY", c:[.98,.79,.25], bel:[1,.94,.64], acc:[.24,.26,.34] },
+  echo: { nm:"ECHO",  c:[.71,.49,.98], bel:[.91,.82,1.00], acc:[.44,1,.88] },
 };
 // Level 7 lands in the first three minutes of a FIRST run, which is the whole
 // point - a mechanic the median run never reaches is a mechanic that does not
@@ -1172,244 +1198,323 @@ let camEye=[0,0,0];                     // last rendered eye, so a test can see 
 // question with an answer.
 const BODY = {
 
-plain(D){                                                  // the mop line
-  const { mb, c, dk, lt, em, gait, st, t } = D;
+// ------------------------------------------------------------------ THE MOP
+plain(D){
+  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const br = Math.sin(t*2.1)*.02;                       // breathing
   if(st === 0){
-    // MOPLING. No head, no neck, no dignity. A fringe and two eyes under it.
-    mb(0, 0, .50, .30,.30,.26, c, em);
-    for(let i=0;i<14;i++){ const a=i/14*TAU;
-      mb(Math.sin(a)*.30, Math.cos(a)*.26, .34+Math.sin(t*7+i)*.02, .05,.28,.05, lt, 0); }
-    D.eye(-.11,.24,.56); D.eye(.11,.24,.56);
-    for(const rs of [-1,1]) mb(rs*.14, .02+Math.max(0,gait*rs)*.10, .06, .10,.06,.14, dk, 0);
+    // MOPLING. A head of hair with feet. Everything it owns is under there.
+    blob(0, 0, .50+br, .32,.30,.28, c, em);
+    blob(0, .06, .30, .28,.14,.24, bel, em*.7);         // pale underside
+    for(let i=0;i<16;i++){ const a=i/16*TAU, w=Math.sin(t*7+i)*.03;
+      taper(Math.sin(a)*.31+w, Math.cos(a)*.27, .44, 0,0,-.11, 3, .055,.075,.055,
+            i%3 ? c : acc, 0); }
+    eyes(0, .27, .54+br, .12, .085);
+    mb(0, .29, .40+br, .09,.03,.03, acc, 0);            // a small unimpressed mouth
+    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.10;
+      blob(rs*.15, .04, .07+lf, .10,.06,.14, acc, 0); }
   } else if(st === 1){
-    // MOPHAND. It grew arms, and each one ends in a mop head it drags around.
-    mb(0, 0, .74, .32,.34,.28, c, em);
-    for(let i=0;i<16;i++){ const a=i/16*TAU;
-      mb(Math.sin(a)*.32, Math.cos(a)*.28, .48+Math.sin(t*7+i)*.03, .05,.32,.05, lt, 0); }
-    D.eye(-.12,.26,.86,.07); D.eye(.12,.26,.86,.07);
+    // MOPHAND. It grew arms. Each one ends in a mop it is not letting go of.
+    blob(0, 0, .78+br, .34,.36,.30, c, em);
+    blob(0, .08, .48, .30,.16,.26, bel, em*.7);
+    for(let i=0;i<18;i++){ const a=i/18*TAU, w=Math.sin(t*7+i)*.035;
+      taper(Math.sin(a)*.33+w, Math.cos(a)*.29, .70, 0,0,-.13, 4, .055,.08,.055,
+            i%3 ? c : acc, 0); }
+    eyes(0, .30, .88+br, .14, .10);
+    grin(0, .32, .66, .14, .045, 4);
     for(const rs of [-1,1]){ const sw = Math.sin(t*5+(rs>0?0:2.2))*.16;
-      mb(rs*.42, .10+sw, .76, .07,.24,.07, dk, 0);
-      mb(rs*.46, .18+sw, .34, .16,.20,.16, lt, .05); }
-    for(const rs of [-1,1]) mb(rs*.16, .02+Math.max(0,gait*rs)*.12, .08, .11,.08,.15, dk, 0);
+      taper(rs*.40, .08+sw, .82, rs*.035,.03,-.13, 4, .075,.075,.075, acc, 0);
+      blob(rs*.50, .20+sw, .30, .17,.15,.17, lt, .05);
+      for(let i=0;i<6;i++){ const a=i/6*TAU;
+        mb(rs*.50+Math.sin(a)*.15, .20+sw+Math.cos(a)*.15, .16, .04,.16,.04, c, 0); } }
+    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.12;
+      blob(rs*.17, .04, .09+lf, .11,.07,.15, acc, 0); }
   } else {
-    // MOPMAW. The fringe is a mane and the thing under it is a mouth the size
-    // of the body. Four arms. Do not leave it unattended near a bucket.
-    mb(0, 0, .92, .40,.42,.34, c, em);
-    for(let i=0;i<20;i++){ const a=i/20*TAU;
-      mb(Math.sin(a)*.42, Math.cos(a)*.36, .74+Math.sin(t*7+i)*.04, .06,.34,.06, lt, .04); }
-    mb(0, .30, .70, .30,.22,.10, [.05,.05,.06], 0);
-    for(let i=0;i<7;i++){ D.tooth(-.26+i*.088, .34, .86); D.tooth(-.26+i*.088, .34, .54); }
-    D.eye(-.16,.30,1.20,.08); D.eye(.16,.30,1.20,.08);
+    // MOPMAW. The mane opened. Most of what is inside it is teeth.
+    blob(0, 0, .98+br, .42,.46,.36, c, em);
+    blob(0, .10, .58, .36,.20,.30, bel, em*.7);
+    for(let i=0;i<24;i++){ const a=i/24*TAU, w=Math.sin(t*7+i)*.045;
+      taper(Math.sin(a)*.44+w, Math.cos(a)*.38, .96, 0,0,-.15, 5, .06,.09,.06,
+            i%3 ? c : acc, i%7 ? 0 : .3); }
+    grin(0, .36, .74, .30, .20, 8);
+    eyes(0, .34, 1.26+br, .19, .11, [.92,.24,.18]);
+    for(let i=0;i<5;i++){ const a=(i-2)*.32;            // a crest of raised strands
+      taper(Math.sin(a)*.20, -.10, 1.34, Math.sin(a)*.05,-.05,.13, 4, .05,.08,.05, acc, .25); }
     for(const rs of [-1,1]) for(const k of [0,1]){
       const sw = Math.sin(t*5+rs+k*1.6)*.18;
-      mb(rs*(.48+k*.10), .12+sw-k*.28, .96-k*.20, .07,.28,.07, dk, 0);
-      mb(rs*(.52+k*.10), .20+sw-k*.28, .46-k*.14, .17,.22,.17, lt, .06); }
-    for(const rs of [-1,1]) mb(rs*.18, .02+Math.max(0,gait*rs)*.14, .09, .12,.09,.17, dk, 0);
+      taper(rs*(.48+k*.10), .12+sw-k*.28, 1.02-k*.20, rs*.04,.03,-.15, 4, .08,.08,.08, acc, 0);
+      blob(rs*(.58+k*.10), .24+sw-k*.28, .44-k*.14, .18,.16,.18, lt, .06); }
+    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.14;
+      blob(rs*.19, .04, .10+lf, .12,.08,.17, acc, 0); }
   }
 },
 
-scrap(D){                                                  // the bin line
-  const { mb, c, dk, lt, em, gait, st, t } = D;
+// ---------------------------------------------------------------- THE SCRAP
+scrap(D){
+  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const flap = .10 + Math.abs(gait)*.14;
   if(st === 0){
-    // RUSTLET. A bucket with legs and a lid that will not sit straight.
-    mb(0, 0, .44, .26,.34,.24, c, em);
-    mb(0, 0, .80, .30,.04,.28, dk, 0);
-    mb(0, -.06, .88+flap, .28,.04,.26, lt, .05);
-    D.eye(-.10,.22,.56); D.eye(.10,.22,.56);
-    for(const rs of [-1,1]) mb(rs*.20, 0, .10+Math.max(0,gait*rs)*.09, .04,.10,.04, dk, 0);
+    // RUSTLET. A dented bucket wearing its own lid at an angle.
+    blob(0, 0, .46, .28,.34,.26, c, em);
+    mb(0, .04, .28, .24,.12,.20, bel, em*.6);           // rusted-through patch
+    mb(0, 0, .82, .32,.045,.30, acc, 0);                // rim
+    mb(0, -.06, .90+flap, .30,.045,.28, lt, .06, .22);  // lid, worn as a cap
+    mb(-.05, -.02, .98+flap, .07,.05,.07, acc, 0);      // its handle
+    eyes(0, .25, .56, .12, .085);
+    mb(0, .27, .40, .10,.028,.03, acc, 0);
+    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.09;
+      taper(rs*.20, 0, .22+lf, 0,0,-.07, 3, .045,.055,.045, acc, 0);
+      mb(rs*.21, .05, .04+lf, .07,.04,.09, acc, 0); }
   } else if(st === 1){
-    // RUSTJAW. A wheelie bin, and the lid is a jaw.
-    mb(0, 0, .62, .32,.44,.28, c, em);
-    mb(0, 0, 1.08, .36,.05,.32, dk, 0);
-    mb(0, -.10, 1.20+flap*1.4, .34,.06,.30, lt, .05);
-    for(let i=0;i<6;i++) D.tooth(-.22+i*.088, .26, 1.02);
-    D.eye(-.13,.30,.80,.07); D.eye(.13,.30,.80,.07);
-    for(let k=0;k<3;k++) mb(-.14+k*.14, -.04, 1.30+(k%2)*.10, .05,.11,.05, lt, .12);
-    for(const rs of [-1,1]) mb(rs*.30, -.14, .16, .13,.14,.05, dk, .04);
-    for(const rs of [-1,1]) mb(rs*.22, .18, .12+Math.max(0,gait*rs)*.10, .05,.12,.05, dk, 0);
+    // RUSTJAW. A wheelie bin whose lid learned what a jaw is for.
+    blob(0, 0, .66, .34,.46,.30, c, em);
+    mb(0, .06, .40, .28,.18,.24, bel, em*.6);
+    mb(0, 0, 1.14, .38,.05,.34, acc, 0);
+    mb(0, -.12, 1.28+flap*1.4, .36,.055,.32, lt, .06);  // the lid, hinged at the back
+    for(let i=0;i<7;i++) D.tooth(-.26+i*.088, .30, 1.06, .042);
+    eyes(0, .32, .80, .15, .10);
+    for(let k=0;k<4;k++)                                // junk poking out of the top
+      taper(-.16+k*.11, -.06, 1.34, .02,.01,.09, 3, .05,.07,.05, k%2?acc:lt, .08);
+    for(const rs of [-1,1]){                            // wheels
+      mb(rs*.32, -.16, .18, .13,.15,.055, acc, .04);
+      mb(rs*.34, -.16, .18, .05,.05,.05, lt, .2); }
+    for(const rs of [-1,1]) taper(rs*.24, .20, .26+Math.max(0,gait*rs)*.10, 0,0,-.08, 3,
+                                  .05,.06,.05, acc, 0);
   } else {
-    // RUSTLORD. A skip with a crown, a grabber arm, and no intention of closing.
-    mb(0, 0, .70, .48,.50,.38, c, em);
-    mb(0, 0, 1.24, .52,.06,.42, dk, 0);
-    mb(0, -.22, 1.44, .48,.06,.30, lt, .05);
-    for(let i=0;i<9;i++) D.tooth(-.36+i*.09, .36, 1.16);
-    D.eye(-.18,.38,.92,.08); D.eye(.18,.38,.92,.08);
-    for(let k=0;k<7;k++){ const a=k/7*TAU;
-      mb(Math.sin(a)*.40, Math.cos(a)*.32, 1.44, .05,.18,.05, lt, .16); }
-    const gr = Math.sin(t*3)*.22;
-    mb(.52, .18+gr, 1.10, .07,.26,.07, dk, 0);
-    mb(.56, .30+gr, .72, .12,.10,.12, lt, .10);
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      mb(rs*.44, fs*.28, .18+Math.max(0,gait*rs*fs)*.10, .07,.18,.07, dk, 0);
+    // RUSTLORD. A skip that stopped waiting to be emptied.
+    blob(0, 0, .76, .50,.54,.40, c, em);
+    mb(0, .08, .44, .42,.22,.32, bel, em*.6);
+    mb(0, 0, 1.34, .54,.06,.44, acc, 0);
+    mb(0, -.26, 1.56, .50,.06,.32, lt, .06);            // lid thrown right back
+    for(let i=0;i<10;i++) D.tooth(-.40+i*.09, .40, 1.24, .046);
+    eyes(0, .42, .96, .21, .12, [1,.72,.16]);
+    for(let k=0;k<9;k++){ const a=k/9*TAU;              // a crown of scrap
+      taper(Math.sin(a)*.42, Math.cos(a)*.34, 1.52, Math.sin(a)*.03,Math.cos(a)*.03,.11, 4,
+            .055,.075,.055, k%2?lt:acc, .18); }
+    const gr = Math.sin(t*3)*.22;                       // the grabber
+    taper(.56, .18+gr, 1.18, -.01,.02,-.16, 5, .075,.075,.075, acc, 0);
+    blob(.58, .32+gr, .70, .13,.11,.13, lt, .12);
+    for(let i=0;i<3;i++) mb(.58+(i-1)*.09, .40+gr, .58, .03,.10,.03, acc, 0);
+    for(const rs of [-1,1]) for(const fs of [-1,1]){
+      mb(rs*.46, fs*.30, .20, .09,.19,.075, acc, 0);
+      mb(rs*.46, fs*.30, .06+Math.max(0,gait*rs*fs)*.05, .11,.055,.10, lt, .04); }
   }
 },
 
-volt(D){                                                   // the storm line
-  const { mb, c, dk, lt, em, gait, st, t } = D;
+// ----------------------------------------------------------------- THE VOLT
+volt(D){
+  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const hov = Math.sin(t*3)*.09;
   if(st === 0){
-    // ZAPLET. An orb with antennae and a bad temper.
-    mb(0, 0, .78+hov, .26,.26,.24, c, em+.14);
-    D.eye(-.11,.22,.86+hov); D.eye(.11,.22,.86+hov);
-    for(const rs of [-1,1]) mb(rs*.12, -.04, 1.10+hov, .03,.13,.03, dk, .2);
-    for(let i=0;i<3;i++){ const a=t*2.4+i/3*TAU;
-      mb(Math.sin(a)*.44, Math.cos(a)*.40, .78+hov+Math.sin(t*5+i)*.12, .05,.05,.05, lt, 1.0); }
+    // ZAPLET. An orb, a bolt crest, and no impulse control.
+    blob(0, 0, .80+hov, .28,.28,.26, c, em+.16);
+    blob(0, .10, .68+hov, .20,.14,.18, bel, em+.2);
+    eyes(0, .26, .88+hov, .13, .10, [.10,.20,.34]);
+    mb(0, .28, .70+hov, .07,.025,.03, acc, .3);
+    for(let i=0;i<4;i++){ const zz=(i%2?1:-1)*.06;      // zig-zag crest
+      mb(zz, -.02, 1.10+hov+i*.09, .045,.055,.045, acc, .95); }
+    for(const rs of [-1,1]){                            // antennae with lit tips
+      taper(rs*.16, -.02, 1.02+hov, rs*.03,0,.10, 3, .028,.05,.028, dk, .1);
+      mb(rs*.24, -.02, 1.32+hov, .05,.05,.05, acc, 1.0); }
+    for(let i=0;i<4;i++){ const a=t*2.4+i/4*TAU;
+      mb(Math.sin(a)*.46, Math.cos(a)*.42, .80+hov+Math.sin(t*5+i)*.12,
+         .05,.05,.05, acc, 1.0); }
   } else if(st === 1){
-    // VOLTHOUND. The orb grew a body, and the body runs.
-    mb(0, -.04, .70, .28,.26,.36, c, em+.06);
-    mb(0, .40, .88, .24,.22,.22, c, em+.10);
-    mb(0, .48, .70, .20,.07,.18, dk, 0);
-    D.eye(-.11,.56,.96,.07); D.eye(.11,.56,.96,.07);
-    for(const rs of [-1,1]) mb(rs*.16, .40, 1.16, .06,.13,.04, dk, .1);
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      mb(rs*.20, fs*.24, .18+Math.max(0,gait*rs*fs)*.12, .06,.18,.06, dk, 0);
-    for(let k=0;k<3;k++)
-      mb(Math.sin(t*7+k)*.10*(k+1), -.40-k*.16, .76+k*.16, .05,.09,.05, lt, .9);
+    // VOLTHOUND. The orb grew a body and the body will not stop running.
+    blob(0, -.06, .72, .30,.28,.38, c, em+.08);
+    mb(0, -.02, .50, .24,.13,.30, bel, em+.1);
+    blob(0, .42, .92, .26,.24,.24, c, em+.12);
+    mb(0, .54, .76, .19,.08,.16, bel, em+.1);           // snout
+    mb(0, .66, .78, .06,.04,.05, acc, .3);              // nose
+    eyes(0, .56, 1.00, .13, .095, [.10,.20,.34]);
+    for(const rs of [-1,1]){                            // ears, flicking
+      const fl = Math.sin(t*4+(rs>0?0:1.1))*.10;
+      taper(rs*.18, .40+fl, 1.14, rs*.03,-.02,.09, 3, .06,.08,.045, acc, .12); }
+    mb(0, .28, .74, .27,.05,.20, acc, .55);             // a lit collar
+    for(const rs of [-1,1]) for(const fs of [-1,1]){
+      taper(rs*.21, fs*.26, .30, 0,0,-.10, 3, .06,.075,.06, dk, 0);
+      mb(rs*.21, fs*.28, .05+Math.max(0,gait*rs*fs)*.12, .075,.045,.09, acc, .1); }
+    for(let k=0;k<4;k++)                                // bolt tail
+      mb(Math.sin(t*7+k)*.10*(k+1), -.44-k*.14, .80+k*.15, .05,.09,.05, acc, .95);
     for(let i=0;i<5;i++){ const a=t*2.4+i/5*TAU;
-      mb(Math.sin(a)*.52, Math.cos(a)*.46, .90+Math.sin(t*5+i)*.14, .05,.05,.05, lt, 1.0); }
+      mb(Math.sin(a)*.54, Math.cos(a)*.48, .94+Math.sin(t*5+i)*.14, .05,.05,.05, acc, 1.0); }
   } else {
-    // STORMWICK. No legs left. A cloud with a skull in it and its own weather.
-    for(let i=0;i<9;i++){ const a=i/9*TAU;
-      mb(Math.sin(a)*(.30+(i%2)*.14), Math.cos(a)*(.26+(i%2)*.12),
-         1.06+hov+Math.sin(t*2+i)*.05, .18,.14,.16, c, em+.10); }
-    mb(0, .10, 1.02+hov, .22,.20,.20, lt, .35);
-    D.eye(-.10,.28,1.08+hov,.07); D.eye(.10,.28,1.08+hov,.07);
-    for(let i=0;i<8;i++){ const a=t*2.0+i/8*TAU;
-      mb(Math.sin(a)*.62, Math.cos(a)*.54, .96+hov+Math.sin(t*4+i)*.18, .05,.14,.05, lt, 1.0); }
-    for(let k=0;k<5;k++){ const rp=(t*1.5+k*.37)%1;
-      mb(Math.sin(k*2.3)*.34, Math.cos(k*2.3)*.30, .86-rp*.78, .03,.09,.03, lt, .7); }
+    // STORMWICK. No legs. A cloud, a lit core, and its own bad weather.
+    for(let i=0;i<11;i++){ const a=i/11*TAU;
+      blob(Math.sin(a)*(.32+(i%2)*.15), Math.cos(a)*(.28+(i%2)*.13),
+           1.10+hov+Math.sin(t*2+i)*.05, .17,.13,.15, i%3 ? c : bel, em+.10); }
+    blob(0, .06, 1.04+hov, .21,.19,.19, acc, .75);      // the core, burning through
+    eyes(0, .28, 1.12+hov, .15, .105, [.10,.16,.30]);
+    grin(0, .28, .90+hov, .13, .05, 5);
+    for(let i=0;i<9;i++){ const a=t*2.0+i/9*TAU;
+      mb(Math.sin(a)*.66, Math.cos(a)*.58, 1.00+hov+Math.sin(t*4+i)*.18,
+         .05,.15,.05, acc, 1.0); }
+    for(let k=0;k<7;k++){ const rp=(t*1.5+k*.29)%1;
+      mb(Math.sin(k*2.3)*.36, Math.cos(k*2.3)*.32, .92-rp*.84, .03,.10,.03, bel, .8); }
   }
 },
 
-stone(D){                                                  // the rock line
-  const { mb, c, dk, lt, em, gait, st, t } = D;
+// ---------------------------------------------------------------- THE STONE
+stone(D){
+  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   if(st === 0){
-    // LUGGIT. A pebble with a brow and legs it clearly did not ask for.
-    mb(0, 0, .34, .34,.26,.30, c, em);
-    mb(0, .10, .60, .30,.10,.24, lt, em*.6);
-    D.eye(-.13,.24,.52,.05); D.eye(.13,.24,.52,.05);
+    // LUGGIT. A pebble with a heavy brow and one crystal it is proud of.
+    blob(0, 0, .36, .36,.28,.32, c, em);
+    mb(0, .06, .18, .30,.11,.26, bel, em*.7);
+    mb(0, .12, .62, .32,.10,.26, dk, em*.5);            // brow
+    eyes(0, .26, .48, .14, .075, [.14,.12,.10]);
+    mb(0, .24, .28, .10,.03,.03, dk, 0);
+    taper(-.10, -.10, .60, .01,-.01,.09, 3, .07,.09,.07, acc, .35);
     for(const rs of [-1,1]) for(const fs of [-1,1])
-      mb(rs*.22, fs*.18, .07+Math.max(0,gait*rs*fs)*.05, .07,.07,.07, dk, 0);
+      blob(rs*.24, fs*.19, .09+Math.max(0,gait*rs*fs)*.05, .08,.075,.08, dk, 0);
   } else if(st === 1){
-    // HAULOX. A boulder that took a job carrying things.
-    mb(0, 0, .48, .50,.36,.44, c, em);
-    mb(0, .14, .88, .40,.14,.32, lt, em*.5);
-    D.eye(-.19,.30,.78,.05); D.eye(.19,.30,.78,.05);
-    mb(0, -.10, 1.06, .46,.07,.20, dk, 0);
-    for(let k=0;k<3;k++) mb(-.22+k*.22, -.16, 1.22, .13,.11,.13, lt, .08);
+    // HAULOX. A boulder that took a job and takes it seriously.
+    blob(0, 0, .52, .52,.38,.46, c, em);
+    mb(0, .08, .26, .44,.16,.36, bel, em*.7);
+    mb(0, .16, .92, .42,.14,.34, dk, em*.5);
+    eyes(0, .34, .76, .21, .085, [.14,.12,.10]);
+    grin(0, .34, .50, .18, .06, 6);
+    mb(0, -.12, 1.10, .48,.07,.20, dk, 0);              // the yoke
+    for(let k=0;k<3;k++) blob(-.24+k*.24, -.18, 1.28, .13,.12,.13, k%2?acc:lt, .08);
+    for(let k=0;k<4;k++){ const a=k/4*TAU;              // crystals along the back
+      taper(Math.sin(a)*.26, Math.cos(a)*.20-.06, 1.00, Math.sin(a)*.02,0,.08, 3,
+            .06,.09,.06, acc, .35); }
     for(const rs of [-1,1]) for(const fs of [-1,1])
-      mb(rs*.34, fs*.26, .10+Math.max(0,gait*rs*fs)*.06, .10,.10,.10, dk, 0);
+      blob(rs*.36, fs*.28, .12+Math.max(0,gait*rs*fs)*.06, .11,.10,.11, dk, 0);
   } else {
-    // MONOLITH. It stopped walking. Tall, carved, and followed by its own rubble.
-    mb(0, 0, 1.10, .34,.96,.26, c, em);
-    mb(0, .22, 1.46, .26,.22,.10, dk, 0);
-    D.eye(-.12,.30,1.54,.07); D.eye(.12,.30,1.54,.07);
-    for(let i=0;i<7;i++) D.tooth(-.22+i*.074, .30, 1.24);
-    for(let i=0;i<7;i++){ const a=t*.8+i/7*TAU;
-      mb(Math.sin(a)*(.62+(i%2)*.16), Math.cos(a)*(.56+(i%2)*.14),
-         .70+Math.sin(t*1.6+i)*.30, .09,.09,.09, lt, .10); }
-    mb(0, 0, .12, .44,.10,.36, dk, 0);
+    // MONOLITH. It stopped walking. Carved, lit, and followed by its own rubble.
+    blob(0, 0, 1.14, .36,1.00,.28, c, em);
+    mb(0, .16, 1.14, .26,.86,.06, bel, em*.6);          // a face-plate down the front
+    for(let k=0;k<5;k++)                                // carved runes, lit
+      mb((k%2?1:-1)*.12, .22, .62+k*.20, .06,.05,.02, acc, .85);
+    mb(0, .22, 1.52, .28,.24,.10, dk, 0);
+    eyes(0, .30, 1.58, .14, .085, [.10,.24,.22]);
+    grin(0, .30, 1.28, .20, .06, 7);
+    for(let i=0;i<8;i++){ const a=t*.8+i/8*TAU;
+      blob(Math.sin(a)*(.64+(i%2)*.16), Math.cos(a)*(.58+(i%2)*.14),
+           .74+Math.sin(t*1.6+i)*.30, .09,.09,.09, i%3?dk:acc, i%3?.05:.4); }
+    mb(0, 0, .12, .46,.10,.38, dk, 0);
   }
 },
 
-rot(D){                                                    // the fungus line
-  const { mb, c, dk, lt, em, gait, st, t } = D;
-  const wob = Math.sin(t*5)*.03;
+// ------------------------------------------------------------------ THE ROT
+rot(D){
+  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const wob = Math.sin(t*5)*.035;
+  const shroom = (r,f,y,sc,cap)=>{
+    taper(r, f, y, 0,0,.05, 3, .035*sc,.07*sc,.035*sc, bel, .06);
+    blob(r, f, y+.19*sc, .13*sc,.055*sc,.13*sc, cap, .16);
+    for(let i=0;i<3;i++) mb(r+(i-1)*.07*sc, f+.05*sc, y+.22*sc, .022*sc,.02*sc,.02*sc, bel, .3);
+  };
   if(st === 0){
-    // MOULDLING. A puddle with one mushroom and an opinion.
-    mb(0, 0, .26+wob, .34,.26,.30, c, em+.08);
-    mb(0, .26, .24, .20,.07,.05, [.05,.06,.05], 0);
-    D.eye(-.13,.24,.42+wob); D.eye(.13,.24,.42+wob);
-    mb(.10, -.08, .48+wob, .03,.10,.03, [.86,.84,.72], .06);
-    mb(.10, -.08, .62+wob, .11,.05,.11, lt, .12);
+    // MOULDLING. A puddle with one mushroom and strong opinions about it.
+    blob(0, 0, .28+wob, .36,.26,.32, c, em+.10);
+    mb(0, .06, .14, .28,.09,.24, bel, em*.8);
+    eyes(0, .28, .40+wob, .14, .095, [.10,.20,.10]);
+    grin(0, .30, .22, .12, .04, 4);
+    shroom(.12, -.10, .44+wob, 1, acc);
+    for(let k=0;k<3;k++){ const dp=(t*1.1+k*.4)%1;      // it drips
+      mb(Math.sin(k*2.1)*.28, Math.cos(k*2.1)*.24, .16-dp*.14, .035,.05,.035, lt, .12); }
   } else if(st === 1){
-    // ROTHERD. Something has been growing on it, and it does not mind.
-    mb(0, 0, .34+wob, .44,.32,.40, c, em+.08);
-    mb(0, .34, .32, .28,.09,.06, [.05,.06,.05], 0);
-    for(let i=0;i<6;i++) D.tooth(-.22+i*.09, .36, .38);
-    D.eye(-.17,.30,.58+wob,.07); D.eye(.17,.30,.58+wob,.07);
-    for(let k=0;k<5;k++){ const a=k/5*TAU+.4;
-      mb(Math.sin(a)*.24, Math.cos(a)*.24, .58+wob, .035,.13,.035, [.86,.84,.72], .06);
-      mb(Math.sin(a)*.24, Math.cos(a)*.24, .76+wob, .13,.05,.13, lt, .12); }
-    for(let k=0;k<3;k++){ const a=t*1.3+k*2.1;
-      mb(Math.sin(a)*.36, Math.cos(a)*.32, .84+Math.sin(t*2+k)*.16, .04,.04,.04, lt, .5); }
+    // ROTHERD. Something has been growing on it and it does not mind at all.
+    blob(0, 0, .38+wob, .46,.34,.42, c, em+.10);
+    mb(0, .08, .18, .38,.12,.32, bel, em*.8);
+    eyes(0, .34, .60+wob, .18, .105, [.10,.20,.10]);
+    grin(0, .36, .34, .20, .065, 6);
+    for(let k=0;k<6;k++){ const a=k/6*TAU+.4;
+      shroom(Math.sin(a)*.26, Math.cos(a)*.24, .62+wob, .9+ (k%2)*.3, k%2?acc:lt); }
+    for(let k=0;k<4;k++){ const a=t*1.3+k*1.7;          // spores drifting off
+      mb(Math.sin(a)*.40, Math.cos(a)*.34, .90+Math.sin(t*2+k)*.18, .04,.04,.04, acc, .6); }
   } else {
     // GRAVEMAW. A headstone that grew a mouth and stopped being decorative.
-    mb(0, 0, .84, .40,.72,.24, c, em);
-    mb(0, 0, 1.58, .40,.12,.24, c, em);
-    mb(0, .22, .90, .30,.24,.08, [.05,.06,.05], 0);
-    for(let i=0;i<8;i++){ D.tooth(-.26+i*.075, .26, 1.08); D.tooth(-.26+i*.075, .26, .72); }
-    D.eye(-.16,.24,1.34,.08); D.eye(.16,.24,1.34,.08);
-    for(let k=0;k<7;k++){ const a=k/7*TAU;
-      mb(Math.sin(a)*.30, Math.cos(a)*.20, 1.72, .04,.12,.04, [.86,.84,.72], .06);
-      mb(Math.sin(a)*.30, Math.cos(a)*.20, 1.90, .13,.05,.13, lt, .16); }
+    blob(0, 0, .90, .42,.76,.26, c, em);
+    blob(0, 0, 1.66, .42,.14,.26, c, em);               // the rounded top
+    mb(0, .14, .96, .32,.60,.05, bel, em*.6);
+    for(let k=0;k<3;k++) mb(0, .20, 1.44-k*.16, .18,.035,.02, acc, .5);   // an epitaph
+    grin(0, .26, .90, .30, .22, 9);
+    eyes(0, .28, 1.40, .18, .115, [.86,.28,.20]);
+    for(let k=0;k<8;k++){ const a=k/8*TAU;
+      shroom(Math.sin(a)*.30, Math.cos(a)*.20, 1.78, 1.15, k%2?acc:lt); }
     for(const rs of [-1,1]){ const g2 = Math.sin(t*2+(rs>0?0:1.4))*.06;
-      mb(rs*.46, .18, .18+g2, .07,.18,.07, lt, .06);
-      for(let i=0;i<3;i++) mb(rs*.46+(i-1)*.07, .22, .40+g2, .025,.09,.025, lt, .06); }
+      taper(rs*.48, .18, .22+g2, 0,0,.10, 3, .075,.09,.075, bel, .06);
+      for(let i=0;i<3;i++) taper(rs*.48+(i-1)*.075, .22, .46+g2, 0,0,.06, 2,
+                                 .028,.05,.028, bel, .06); }
+    for(let k=0;k<4;k++){ const a=t*1.1+k*1.6;
+      mb(Math.sin(a)*.50, Math.cos(a)*.40, 1.10+Math.sin(t*1.8+k)*.30, .04,.04,.04, acc, .65); }
   }
 },
 
-tally(D){                                                  // the ledger line
-  const { mb, c, dk, lt, em, gait, st, t } = D;
+// ---------------------------------------------------------------- THE TALLY
+tally(D){
+  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   if(st === 0){
     // TALLYMITE. A beetle whose shell is a ledger, counting under its breath.
-    mb(0, 0, .30, .30,.20,.34, c, em);
-    mb(0, 0, .10, .28,.05,.32, dk, 0);
-    mb(0, .38, .26, .15,.13,.12, dk, 0);
-    D.eye(-.07,.46,.30,.05); D.eye(.07,.46,.30,.05);
-    for(const rs of [-1,1]) mb(rs*.07, .42, .48, .02,.11,.02, dk, .1);
-    for(let k=0;k<3;k++) for(const rs of [-1,1])
-      mb(rs*.28, .20-k*.20, .10+Math.max(0,Math.sin(t*13+k*2+(rs>0?0:3)))*.07, .035,.10,.035, dk, 0);
-    for(let k=0;k<4;k++) mb(-.16+k*.11, .06, .50, .015,.02,.08, lt, .3);
+    blob(0, -.02, .34, .32,.22,.36, c, em);
+    mb(0, 0, .12, .28,.06,.32, bel, em*.7);
+    mb(0, -.02, .56, .04,.03,.34, acc, 0);              // the seam down the shell
+    for(let k=0;k<5;k++) mb(-.17+k*.085, .04, .55, .016,.022,.09, acc, .35);
+    blob(0, .40, .30, .16,.14,.13, acc, 0);
+    eyes(0, .50, .34, .085, .065, [1,.86,.30]);
+    for(const rs of [-1,1]) taper(rs*.07, .44, .48, rs*.02,-.01,.07, 3, .022,.04,.022, acc, .1);
+    for(let k=0;k<3;k++) for(const rs of [-1,1]){
+      const lf = Math.max(0, Math.sin(t*13+k*2+(rs>0?0:3)))*.07;
+      taper(rs*.29, .20-k*.20, .18+lf, rs*.02,0,-.055, 3, .032,.045,.032, acc, 0); }
   } else if(st === 1){
     // LEDGERLING. The shell opened. It audits from the air now.
     const hov = Math.sin(t*3.4)*.06;
-    for(const rs of [-1,1]) mb(rs*.20, -.04, .66+hov, .16,.16,.32, c, em);
-    mb(0, 0, .52+hov, .24,.10,.34, dk, 0);
-    mb(0, .40, .70+hov, .17,.15,.14, dk, 0);
-    for(const rs of [-1,1]){ mb(rs*.08, .50, .74+hov, .07,.07,.02, [.96,.96,.92], .55);
-                             mb(rs*.08, .53, .74+hov, .04,.04,.02, [.05,.05,.06], 0); }
-    for(const rs of [-1,1]) mb(rs*.09, .44, .94+hov, .02,.12,.02, dk, .1);
-    for(let i=0;i<6;i++){ const a=t*2.6+i/6*TAU;
-      mb(Math.sin(a)*.50, Math.cos(a)*.44, .66+hov, .05,.05,.05, lt, .55); }
+    for(const rs of [-1,1]) blob(rs*.22, -.06, .70+hov, .17,.17,.33, c, em, rs*.14);
+    mb(0, 0, .54+hov, .26,.10,.34, acc, 0);
+    for(const rs of [-1,1]) for(let k=0;k<3;k++)        // wings blurring
+      mb(rs*.34, -.10, .84+hov+Math.sin(t*22+k)*.05, .18,.012,.14, bel, .25, rs*.5);
+    blob(0, .42, .74+hov, .18,.16,.15, acc, 0);
+    for(const rs of [-1,1]){ mb(rs*.085, .54, .78+hov, .075,.075,.02, [.97,.97,.94], .6);
+                             mb(rs*.085, .57, .78+hov, .042,.042,.02, [.06,.07,.10], 0); }
+    for(const rs of [-1,1]) taper(rs*.09, .46, .96+hov, rs*.02,-.01,.07, 3, .022,.045,.022, acc, .1);
+    for(let i=0;i<7;i++){ const a=t*2.6+i/7*TAU;        // abacus beads in orbit
+      blob(Math.sin(a)*.52, Math.cos(a)*.46, .70+hov+Math.sin(t*3+i)*.06,
+           .055,.055,.055, i%2?lt:bel, .55); }
     for(let k=0;k<3;k++) for(const rs of [-1,1])
-      mb(rs*.26, .16-k*.18, .34+hov, .03,.10,.03, dk, 0);
+      taper(rs*.27, .16-k*.18, .38+hov, rs*.015,0,-.05, 3, .028,.04,.028, acc, 0);
   } else {
     // GRAND AUDITOR. It stood up, and it has your file.
-    mb(0, 0, .90, .32,.66,.26, c, em);
-    for(let k=0;k<3;k++){ mb(0, .28, .50+k*.40, .26,.13,.03, dk, 0);
-                          mb(0, .32, .50+k*.40, .07,.03,.02, lt, .3); }
-    mb(0, .10, 1.72, .26,.22,.22, dk, 0);
-    mb(.10, .30, 1.76, .09,.09,.02, [.96,.96,.92], .6);
-    mb(.10, .33, 1.76, .05,.05,.02, [.05,.05,.06], 0);
-    D.eye(-.10,.30,1.76,.06);
-    for(const rs of [-1,1]) mb(rs*.10, .12, 1.98, .02,.14,.02, dk, .1);
-    for(const rs of [-1,1]) for(const k of [0,1]){
+    blob(0, 0, .94, .34,.68,.28, c, em);
+    for(let k=0;k<3;k++){ mb(0, .28, .52+k*.42, .27,.14,.035, acc, 0);
+                          mb(0, .33, .52+k*.42, .08,.032,.025, lt, .35); }
+    blob(0, .08, 1.76, .27,.23,.23, acc, 0);
+    mb(.11, .32, 1.80, .095,.095,.02, [.97,.97,.94], .65);   // the monocle
+    mb(.11, .35, 1.80, .05,.05,.02, [.06,.07,.10], 0);
+    mb(.11, .34, 1.66, .012,.09,.012, lt, .3);               // and its chain
+    eyes(-.10, .32, 1.80, 0, .075, [1,.88,.32]);
+    for(const rs of [-1,1]) taper(rs*.11, .12, 1.98, rs*.03,-.01,.09, 3, .022,.05,.022, acc, .1);
+    for(const rs of [-1,1]) for(const k of [0,1]){           // four arms, all busy
       const sw = Math.sin(t*3+rs+k*1.7)*.14;
-      mb(rs*.42, .06+sw, 1.30-k*.34, .06,.20,.06, dk, 0); }
-    for(const rs of [-1,1]) mb(rs*.16, .02+Math.max(0,gait*rs)*.10, .16, .09,.16,.09, dk, 0);
-    for(let i=0;i<8;i++){ const a=t*1.4+i/8*TAU;
-      mb(Math.sin(a)*.62, Math.cos(a)*.54, 1.50+Math.sin(t*2+i)*.10, .02,.10,.02, lt, .8); }
+      taper(rs*.42, .06+sw, 1.36-k*.34, rs*.03,.02,-.11, 4, .06,.065,.06, acc, 0);
+      mb(rs*.54, .16+sw, 1.02-k*.34, .07,.05,.06, lt, .1); }
+    for(const rs of [-1,1]) blob(rs*.17, .04, .17+Math.max(0,gait*rs)*.10, .10,.16,.11, acc, 0);
+    for(let i=0;i<9;i++){ const a=t*1.4+i/9*TAU;             // a ring of tally marks
+      mb(Math.sin(a)*.66, Math.cos(a)*.58, 1.52+Math.sin(t*2+i)*.10, .02,.11,.02, lt, .85); }
   }
 },
 
-echo(D){                                                   // the swarm line
-  const { mb, c, dk, lt, em, st, t } = D;
-  // SPLITKIN is two of it, TWINSPAWN is three and one wears a crown, TRIPLICATE
-  // is four and they drag after-images. The count IS the evolution.
+// ----------------------------------------------------------------- THE ECHO
+echo(D){
+  const { blob, taper, eyes, mb, c, dk, lt, bel, acc, em, st, t } = D;
+  // SPLITKIN is two of it. TWINSPAWN is three and one wears a crown. TRIPLICATE
+  // is four and they drag their own after-images. The COUNT is the evolution.
   const n = 2 + st;
   for(let i=0;i<n;i++){
-    const a = t*1.5 + i/n*TAU, rr = .28 + n*.045;
+    const a = t*1.5 + i/n*TAU, rr = .30 + n*.045;
     const px = Math.sin(a)*rr, pf = Math.cos(a)*rr;
-    const yy = .40 + Math.sin(t*3.4 + i*1.7)*.10;
-    mb(px, pf, yy, .19,.21,.17, i ? lt : c, em);
-    D.eye(px-.07, pf+.16, yy+.10, .05); D.eye(px+.07, pf+.16, yy+.10, .05);
-    mb(px, pf, yy+.28, .035,.09,.035, dk, .1);
-    if(i === 0 && st >= 1) for(let k=0;k<5;k++){ const ca=k/5*TAU;
-      mb(px+Math.sin(ca)*.13, pf+Math.cos(ca)*.13, yy+.40, .03,.07,.03, lt, .5); }
+    const yy = .44 + Math.sin(t*3.4 + i*1.7)*.10;
+    blob(px, pf, yy, .20,.22,.18, i ? lt : c, em);
+    mb(px, pf+.06, yy-.14, .15,.07,.12, bel, em*.8);
+    eyes(px, pf+.18, yy+.06, .085, .07, [.22,.10,.34]);
+    mb(px, pf+.20, yy-.08, .055,.022,.025, acc, .2);
+    taper(px, pf, yy+.24, 0,0,.06, 3, .04,.055,.04, acc, .25);
+    if(i === 0 && st >= 1) for(let k=0;k<6;k++){ const ca=k/6*TAU;
+      mb(px+Math.sin(ca)*.14, pf+Math.cos(ca)*.14, yy+.42, .03,.075,.03, acc, .7); }
     if(st >= 2) for(let g=1;g<=2;g++){ const ga = a - g*.30;
-      mb(Math.sin(ga)*rr, Math.cos(ga)*rr, yy, .13-g*.03,.15-g*.03,.12-g*.03, lt, .06); }
+      blob(Math.sin(ga)*rr, Math.cos(ga)*rr, yy, .14-g*.035,.16-g*.035,.13-g*.035, acc, .10); }
   }
 },
 
@@ -1420,6 +1525,7 @@ let bodyCap = null, bodyCapOut = null;
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 let stage=0;                            // 0..2 - where you are in the monster's line
+let devGod=false, devHp=0;              // pause-screen godmode toggle
 let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
@@ -1454,7 +1560,7 @@ function startRun(id){
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
-        hop:0, hopWin:0, hopGrace:0, hopFx:0,
+        hop:0, hopWin:0, hopGrace:0, hopFx:0, idle:1,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
@@ -1611,6 +1717,16 @@ document.getElementById("paused").addEventListener("click", e=>{
   if(e.target.id==="quitBtn") return;
   if(running && !over) togglePause(false);
 });
+const dvBind = (id, fn)=>{ const el = document.getElementById(id);
+                           if(el) el.addEventListener("click", e=>{ e.stopPropagation(); fn(el); }); };
+dvBind("dvLvl",  ()=>{ if(!P) return; P.xp = P.need; gainXP(0.0001); });
+dvBind("dvEvo",  ()=>{ if(!P) return; evolveTo(Math.min(2, stage+1)); });
+dvBind("dvSkip", ()=>{ if(!P) return; T += 300; });
+dvBind("dvGod",  el=>{ if(!P) return;
+                       devGod = !devGod;
+                       el.classList.toggle("on", devGod);
+                       if(devGod){ devHp = P.maxhp; P.maxhp = 1e9; P.hp = 1e9; }
+                       else { P.maxhp = devHp || 115; P.hp = P.maxhp; } });
 document.getElementById("quitBtn").addEventListener("click", e=>{
   e.stopPropagation(); finish("ABANDONED", false);
 });
@@ -2757,7 +2873,7 @@ function step(dt){
     }
     P.x = cx2; P.z = cz2;
   }
-  if(dx || dz) P.face = Math.atan2(dx, dz);
+  if(dx || dz){ P.face = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
 
   // ---- jump / bunnyhop
   const gy = groundY(P.x, P.z);
@@ -2770,9 +2886,28 @@ function step(dt){
         P.hop = Math.min(HOP_MAX, Math.floor(P.hop) + 1);
         P.hopFx = .34; SFX.hop(P.hop);
         rings.push({ x:P.x, z:P.z, y:gy, r:0, max:1.5+P.hop*.35, life:.26, mx:.26 });
+        // KEEPING TEMPO PAYS. Every link snaps nearby gems to you - the reward
+        // for keeping time is that the loot comes and finds you - and every
+        // fifth link is a real payout with a number on it.
+        // A flat XP trickle per hop was the first idea and it is the wrong
+        // shape: a run collects about twelve thousand XP across roughly twelve
+        // hundred hops, so a per-hop bonus small enough not to distort the
+        // curve is 0.5 XP and completely invisible. Rare and loud beats
+        // constant and unnoticeable.
+        const pull = 3.0 + P.hop*.55;
+        for(const g of gems)
+          if(!g.pulled && Math.hypot(g.x-P.x, g.z-P.z) < pull) g.pulled = true;
+        if(P.hop % 5 === 0){
+          const bonus = Math.max(3, Math.round(P.need * .05));
+          coinsRun += 1 + Math.floor(P.hop/5);
+          nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:bonus, life:.9, crit:true, vy:3.2 });
+          alert2(`TEMPO x${P.hop}`, "#8affd0");
+          SFX.tempo(P.hop);
+          gainXP(bonus);
+        }
       } else P.hop = 0;            // a cold jump starts a new chain at zero
       P.hopWin = 0; P.hopGrace = 0;
-      P.vy = 11 + P.hop*.26;       // each link gets you fractionally more air
+      P.vy = 11 + Math.min(6, P.hop)*.26;   // more air per link, but only for a while
       P.air = true;
     } else if(P.hopGrace > 0) P.hopGrace -= dt;
     else if(P.hop > 0) P.hop = Math.max(0, P.hop - HOP_BLEED*dt);
@@ -2907,6 +3042,12 @@ function openMenu(){
     <div class="hint" style="margin:-4px 0 10px">Every run banks its XP into the
       monster that ran it. Each monster level is +2% HP and +1.2% damage, for that
       monster only, forever.</div>
+    <div class="devrow"><b>DEV</b>
+      <button class="btn gh dv" id="dvAll">UNLOCK EVERYTHING</button>
+      <button class="btn gh dv" id="dvWipe">WIPE SAVE</button>
+      <span style="font-size:9px;color:#5c6470">every monster, every upgrade, 99,999 coins,
+        all seven at monster LV ${MON_CAP}</span>
+    </div>
     <h2>PERMANENT UPGRADES &nbsp;—&nbsp; these carry across every run</h2>
     <div class="shop" id="shop"></div>
     <h2>STILL LOCKED</h2>
@@ -2914,11 +3055,11 @@ function openMenu(){
     <div class="hint">
       ${TOUCH
         ? `<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> turn the camera<br>
-           <kbd>TAP RIGHT</kbd> jump &mdash; tap again the instant you land to chain it`
+           <kbd>TAP RIGHT</kbd> jump &mdash; tap again the instant you land, and keep going`
         : `<kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> orbit camera &nbsp;
            <kbd>SPACE</kbd> jump &nbsp; <kbd>ESC</kbd> pause<br>
-           chain a jump on the frame you land and you keep the speed &mdash;
-           five links is +28%, and one hit resets it`}<br>
+           chain a jump on the frame you land and the speed keeps building &mdash;
+           +12% on the first link, +40% by five, +55% by twelve. One hit resets it.`}<br>
       Weapons fire on their own. Positioning is the entire game.
     </div>`;
   const cr = document.getElementById("chars");
@@ -2944,6 +3085,10 @@ function openMenu(){
     if(!locked) el.onclick = ()=>{ audioInit(); startRun(c.id); };
     cr.appendChild(el);
   }
+  const dvA = document.getElementById("dvAll");
+  if(dvA) dvA.onclick = ()=>{ unlockAll(); SFX.buy(); openMenu(); };
+  const dvW = document.getElementById("dvWipe");
+  if(dvW) dvW.onclick = ()=>{ wipeAll(); openMenu(); };
   const sh = document.getElementById("shop");
   for(const u of SHOP){
     if(u.lock && !save.unlocked[u.lock]) continue;      // not earned yet
@@ -3247,6 +3392,17 @@ function render(){
     }
   }
 
+  // Twenty-one faces are worth building and you spend the whole run looking at
+  // the back of one. Standing still, the monster turns and looks at you - which
+  // covers the pause screen and the level-up screen, the two moments you are
+  // actually looking AT it rather than through it. It lives in render() and not
+  // in step() on purpose: step does not run while the game is paused, and the
+  // pause screen is exactly where this needs to work.
+  if(P && P.idle && running){
+    const want = camYaw + Math.PI;
+    const d2 = ((want - P.face + Math.PI*3) % TAU) - Math.PI;
+    P.face += d2 * (1 - Math.pow(.05, Math.min(.05, dt)));
+  }
   // player: body, head, hat, and a shadow-ish base so you never lose yourself
   if(P){
     // A blue box with a head, a cap and two dot eyes was a PERSON, and the one
@@ -3279,6 +3435,9 @@ function render(){
     };
     const mLt = [Math.min(1,mTc[0]*1.22+.03), Math.min(1,mTc[1]*1.22+.03),
                  Math.min(1,mTc[2]*1.22+.03)];
+    const flash = P.iframe>0 && (Math.floor(T*22)%2);
+    const mBl = flash ? [1,1,1] : (mTy.bel || mLt);
+    const mAc = flash ? [1,1,1] : (mTy.acc || mDk);
     // Eleven mutually-distinguishable colours (5 enemies + 5 elite tints + you)
     // under four vision types is not achievable - the best player colour tested
     // still sat at dE 7.5 from something. So the player is marked by SHAPE
@@ -3303,7 +3462,45 @@ function render(){
           .10,.05,.10, [1,1,1], 1.0);
     }
     const gait = Math.hypot(P.vx,P.vz) > .4 ? Math.sin(T*13) : 0;
-    const D = { mb, c:mTc, dk:mDk, lt:mLt, em:mEm, gait, st:stage, t:T,
+    // ---- the shape vocabulary. Everything this renderer can draw is an
+    // axis-aligned box, so "not a block" has to be built OUT of blocks:
+    //   blob   three slabs, each thin on one axis, so the corners are chamfered
+    //          and the volume reads as ROUND at this size. Three boxes.
+    //   taper  a stack that shrinks as it goes, which is what turns a column
+    //          into a limb, a horn, a stalk or a tail.
+    //   eyes   sclera, pupil and a highlight, with a blink. A dot is a rivet;
+    //          this is a face, and a face is most of what makes a creature.
+    //   grin   a dark slot with teeth top and bottom.
+    // The chamfer costs 3x the boxes of a plain cube and buys the single
+    // biggest difference between a creature and a crate.
+    const blob = (r,f,y,hx,hy,hz,col,em2,rot)=>{
+      mb(r,f,y, hx*.78, hy,     hz*.78, col, em2, rot);
+      mb(r,f,y, hx,     hy*.78, hz*.78, col, em2, rot);
+      mb(r,f,y, hx*.78, hy*.78, hz,     col, em2, rot);
+    };
+    const taper = (r,f,y, dr,df,dy, n, hx,hy,hz, col,em2)=>{
+      for(let i=0;i<n;i++){ const k = 1 - i/(n+1)*.62;
+        mb(r+dr*i, f+df*i, y+dy*i, hx*k, hy*k, hz*k, col, em2); }
+    };
+    // A blink is 90ms out of every 2.7 seconds. Long enough to see, short
+    // enough that you notice it happened rather than that it is happening.
+    const blk = ((T*0.37) % 1) > .966 ? .16 : 1;
+    const eyes = (r,f,y,sp,sz,pup)=>{
+      for(const sg of [-1,1]){
+        mb(r+sg*sp, f,       y,             sz,     sz*1.05*blk, .05, [.98,.98,1.0], .85);
+        mb(r+sg*sp, f+.035,  y-sz*.12*blk,  sz*.46, sz*.52*blk,  .04, pup||[.06,.07,.11], .05);
+        mb(r+sg*sp-sz*.34, f+.05, y+sz*.36*blk, sz*.20, sz*.20*blk, .03, [1,1,1], 1.0);
+      }
+    };
+    const grin = (r,f,y,w,h,n)=>{
+      mb(r,f,y, w,h,.05, [.05,.05,.07], 0);
+      for(let i=0;i<n;i++){ const tx = r - w + (i+.5)*(w*2/n);
+        mb(tx, f+.02, y+h*.62, .032,.045,.04, [.96,.96,.92], .18);
+        mb(tx, f+.02, y-h*.62, .032,.045,.04, [.96,.96,.92], .18); }
+    };
+    const D = { mb, blob, taper, eyes, grin,
+                c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
+                gait, st:stage, t:T,
                 eye:  (r,f,y,s)=>mb(r,f,y, s||.06, (s||.06)*1.15, .04, [1,1,1], 1.0),
                 tooth:(r,f,y,s)=>mb(r,f,y, s||.038, (s||.038)*1.6, .04, [.96,.96,.92], .15) };
     (BODY[mCh.type] || BODY.plain)(D);
@@ -3498,11 +3695,15 @@ function hud(){
 
   // The chain has to be readable without looking away from the fight, so it
   // sits directly under the kit bar and only exists while a chain does.
-  const hopEl = $("hop"), links = Math.round(P.hop*10)/10;
-  hopEl.classList.toggle("on", links > 0 || P.hopFx > 0);
-  hopEl.classList.toggle("max", P.hop >= HOP_MAX);
-  for(let i=0;i<HOP_MAX;i++) hopEl.children[i].className = i < P.hop ? "lit" : "";
-  hopEl.lastElementChild.textContent = links > 0 ? "+"+Math.round((hopMul()-1)*100)+"%" : "";
+  // Six pips could say "five of five". They cannot say "you are on link
+  // fourteen and still climbing", which is the whole point of the curve.
+  const hopEl = $("hop"), pct = Math.round((hopMul()-1)*100);
+  hopEl.classList.toggle("on", P.hop > 0 || P.hopFx > 0);
+  hopEl.classList.toggle("max", pct >= Math.round(HOP_TOP*100) - 6);
+  hopEl.firstElementChild.firstElementChild.style.width =
+    Math.min(100, (hopMul()-1)/HOP_TOP*100).toFixed(1)+"%";
+  hopEl.children[1].textContent = pct > 0 ? "+"+pct+"%" : "";
+  hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) : "";
 
   // The evolution banner. It scales in over ~0.2s and holds, because the one
   // moment in a twenty-minute run where the game should stop shouting about
@@ -3638,6 +3839,7 @@ window.__g = {
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
   freezeEvo:(v=true)=>{ noEvo = v; },
+  unlockAll:()=>unlockAll(),
   // Arm the capture, let a frame render, then read it back. The signature is
   // the box COUNT plus every box's half-extents sorted - nothing in a body plan
   // animates a size, so it is stable frame to frame, and two forms built from
