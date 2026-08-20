@@ -1421,20 +1421,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         }
       }
 
-      // and the camera cannot end up outside the wall looking in through it
-      g.place(0, 0);
-      let eyeMax = 0;
-      for (let a = 0; a < 16; a++) {
-        g.setShake(0);
-        g.place(Math.cos(a/16*Math.PI*2)*RIM, Math.sin(a/16*Math.PI*2)*RIM);
-        // The boom hangs off camAnchor, which LERPS toward the player - three
-        // frames after a teleport it is still near the middle of the map, and
-        // the first version of this read an eye radius of 11.7 and called the
-        // edge case tested. Let it catch up.
-        for (let i = 0; i < 90; i++) g.step(1/60);
-        eyeMax = Math.max(eyeMax, Math.hypot(g.eye()[0], g.eye()[2]));
-      }
-      return { RIM, corner, worst, evOut, evMax, evSeen, eyeMax,
+      return { RIM, corner, worst, evOut, evMax, evSeen,
                wall: g.wall(), propsOut: g.propsOut() };
     });
     ok("there is a continuous wall, not a picket fence",
@@ -1470,8 +1457,39 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("no side event spawns outside the wall",
        r.evSeen > 200 && r.evOut === 0,
        `${r.evSeen} sampled, ${r.evOut} outside, furthest ${r.evMax.toFixed(1)} of ${r.RIM}`);
-    ok("and the camera stays inside it too",
-       r.eyeMax <= r.RIM, `eye reached ${r.eyeMax.toFixed(1)} of ${r.RIM}`);
+    {
+      // camEye is written by render(), and render() runs on requestAnimationFrame
+      // - NOT inside __g.step(). The first version of this stepped the sim 90
+      // times per angle and then read the eye, which never re-rendered once: it
+      // reported 11.7 of 84, i.e. the boom from whatever frame happened to have
+      // drawn last, with the player still near the middle. Same trap as the
+      // camera-lag check, third file. Real frames, and wait for the anchor to
+      // actually arrive before reading anything.
+      const eye = await page.evaluate(RIM => new Promise(res => {
+        const angles = [0, 0.25, 0.5, 0.75].map(f => f * Math.PI * 2);
+        let i = 0, n = 0, worst = 0, placed = false;
+        window.__g.setShake(0);
+        const tick = () => {
+          const tx = Math.cos(angles[i]) * RIM, tz = Math.sin(angles[i]) * RIM;
+          if (!placed) { window.__g.place(tx, tz); placed = true; n = 0; }
+          window.__g.place(tx, tz);                 // hold it against the wall
+          const a = window.__g.camAnchor(), e = window.__g.eye();
+          const there = a && Math.hypot(a[0] - window.__g.state().x,
+                                        a[2] - window.__g.state().z) < 1.0;
+          if (there || ++n > 400) {
+            worst = Math.max(worst, Math.hypot(e[0], e[2]));
+            if (++i >= angles.length) return res({ worst, converged: there });
+            placed = false;
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }), r.RIM);
+      ok("and the camera stays inside it too",
+         eye.converged && eye.worst > r.RIM * 0.5 && eye.worst <= r.RIM,
+         `eye reached ${eye.worst.toFixed(1)} of ${r.RIM}${
+           eye.converged ? "" : " (anchor never arrived)"}`);
+    }
     ok("no scenery is stranded out there either", r.propsOut === 0, `${r.propsOut} props`);
   }
 
