@@ -49,9 +49,10 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
-      # 79 checks: every weapon, every evolution, every enemy and boss, elites,
+      # 199 checks: every weapon, every evolution, every enemy and boss, elites,
       # boss abilities, draft rules, a full run, the sudden-death gate, saves,
-      # and a non-blank render assertion
+      # a non-blank render assertion, the bunnyhop window, the arena wall, and
+      # every monster line
       # a mutation whose anchor has drifted is a hole in the audit that reads as
       # a pass; this catches that in milliseconds, without a browser
       - name: Mutation anchors still point at real code

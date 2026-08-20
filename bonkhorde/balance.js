@@ -32,6 +32,15 @@ const TIER   = process.argv[3] || "both";
 // BONKHORDE_NOEVENTS=1 measures the same build with side events switched
 // off, which is the only way to read what they are actually worth.
 const NOEV   = !!process.env.BONKHORDE_NOEVENTS;
+// BONKHORDE_NOHOP=1 turns the autopilot's bunnyhopping off. The bot chains
+// perfectly - it jumps on the frame it lands, every time - so it measures the
+// CEILING of the mechanic and not the median player. Running the same build
+// both ways is the only way to read what the hop is actually worth, and it is
+// how the six-link version was caught doubling the first-run median.
+const NOHOP  = !!process.env.BONKHORDE_NOHOP;
+// BONKHORDE_NOEVO=1 holds the monster at the bottom of its line, so the
+// evolution stat block can be read apart from everything that shipped with it.
+const NOEVO  = !!process.env.BONKHORDE_NOEVO;
 // Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
 // moment they shipped - a bench that quietly stops covering new content is
 // worse than no bench, because the gap looks like a clean sweep. Read from the
@@ -49,18 +58,20 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv]) => {
+  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo]) => {
     window.__g.wipeSave();
     if (shopped) window.__g.setUpgrades(
       { hp:6, dmg:6, spd:5, mag:5, cd:5, crit:5, armor:5, start:3, rev:2 });
     window.__g.start(ch);
     if (noEv) window.__g.freezeEvents(true);   // startRun resets the timer
+    window.__g.botHop(!noHop);
+    if (noEvo) window.__g.freezeEvo(true);
     window.__g.bot(true);
     const st = window.__g.runOut();
     return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
              evos: window.__g.kit().filter(k => k.includes("EVO")).length };
-  }, [ch, shopped, NOEV]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {

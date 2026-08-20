@@ -957,8 +957,22 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                                    : res(window.__g.camAnchor());
       requestAnimationFrame(tick);
     }));
-    await cp.waitForTimeout(1400);
-    const caught = await cp.evaluate(() => window.__g.camAnchor());
+    // And the SECOND half of the same check then went back to waiting 1400ms,
+    // which is the identical mistake: under a busy machine the renderer drew
+    // fewer frames in that window and the anchor read 28.42 of 30, failing a
+    // camera that was working perfectly. Poll frames until it arrives.
+    const caught = await cp.evaluate(() => new Promise(res => {
+      let n = 0;
+      const tick = () => {
+        // camAnchor is null until render() has run once, and the poll can beat
+        // the first frame - which is the same "nothing had drawn yet" trap in
+        // its third costume.
+        const a = window.__g.camAnchor();
+        if ((a && Math.abs(a[0] - 30) < 0.5) || ++n > 600) return res(a || [NaN]);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }));
 
     ok("the anchor starts on the player", Math.abs(settled[0]) < 1.5, `x=${settled[0]?.toFixed(2)}`);
     ok("it does not teleport with them",
@@ -1423,7 +1437,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                wall: g.wall(), propsOut: g.propsOut() };
     });
     ok("there is a continuous wall, not a picket fence",
-       r.wall.n >= 120, `${r.wall.n} segments`);
+       r.wall.n >= Math.floor(2*Math.PI*r.RIM/3.0), `${r.wall.n} segments at rim ${r.RIM}`);
     ok("every segment sits at exactly the play radius",
        Math.abs(r.wall.rmin - r.RIM) < 0.01 && Math.abs(r.wall.rmax - r.RIM) < 0.01,
        `RIM ${r.RIM}, segments ${r.wall.rmin}..${r.wall.rmax}`);

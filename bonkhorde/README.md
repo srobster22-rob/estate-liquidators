@@ -230,8 +230,10 @@ metres past that ring, so the wall was scenery you walked straight through and t
 going into empty checkerboard on the other side — and side events clamped to the same square,
 which is how they ended up spawning out there with you.
 
-It is one shape now: a play radius of 70, a continuous 150-segment wall drawn at exactly that
-radius, and every spawn, every enemy, every hazard and the camera all confined to it. The
+It is one shape now: a play radius of 84 — the same area as the old square, because shrinking
+it turned out to matter more than fixing it (see the findings below) — a continuous wall of
+182 slabs drawn at exactly that radius, and every spawn, every enemy, every hazard and the
+camera all confined to it. The
 player slides along it instead of sticking, and the velocity component aimed into it is dropped
 — otherwise you accumulate speed you are not travelling at and the hop chain cashes it in the
 moment you turn away.
@@ -260,6 +262,36 @@ whole frame rendering as fog. Clamping the eye sideways fixes the blindness but
 slides the camera onto the player and loses the third-person view; the boom now
 *shortens* until it fits and lifts as it shortens, so the player stays framed.
 Asserted from the centre, an edge and a corner.
+
+### The monsters, and what an evolution is allowed to be worth
+
+Seven lines, three forms each. The stage mods are **absolute** multipliers against the base
+stat block rather than increments — stage 3 is ×1.38 HP *total*, not ×1.38 on top of stage 2 —
+which is what lets `evolveTo()` compute the ratio between any two stages and apply it once, and
+lets a test jump straight to the top of a line without walking it.
+
+| | stage 1 | stage 2 (LV 7) | stage 3 (LV 20) | signature |
+|---|---|---|---|---|
+| PLAIN | MOPLING | MOPHAND | MOPMAW | SWEEP — +20% weapon reach |
+| SCRAP | RUSTLET | RUSTJAW | RUSTLORD | SALVAGE — +60% pickup radius |
+| VOLT | ZAPLET | VOLTHOUND | STORMWICK | OVERCLOCK — −13% cooldowns |
+| STONE | LUGGIT | HAULOX | MONOLITH | BEDROCK — +5 flat armour |
+| ROT | MOULDLING | ROTHERD | GRAVEMAW | FEAST — regeneration ×2.4 |
+| TALLY | TALLYMITE | LEDGERLING | GRAND AUDITOR | COMPOUND — +15% XP |
+| ECHO | SPLITKIN | TWINSPAWN | TRIPLICATE | CHORUS — +28% damage |
+
+**Evolving heals exactly the HP it added, and no more.** More than that and level 7 is a panic
+button you save for a bad moment; less and a +16% maxhp bonus reads on the HP bar as a *loss*,
+which is how it looked the first time. The assertion is the equality, not an inequality.
+
+An evolution also queues a level-up pick of its own, on top of the level that triggered it —
+the moment should hand you a decision, not just a bigger number.
+
+**Per-monster levels** are the between-runs half. Every run banks its gross XP into whichever
+monster ran it, and a monster level is +2% HP and +1.2% damage *for that monster alone*. The
+first level costs 250 XP and each one after adds 320, so a two-minute death still visibly moves
+the bar — a progression bar that does not move on a bad run teaches you that bad runs are worth
+nothing, which is the opposite of what a survivors-like needs you to believe.
 
 ### Every passive, against a no-passive control
 
@@ -365,7 +397,61 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned seventy-six things this build believed:
+That harness has overturned eighty things this build believed:
+
+- **A circle is not a square with the corners rounded off, and the bench said so before I
+  noticed.** Replacing the 148×148 movement clamp with a play radius of 70 looked like a pure
+  bug fix — the wall finally matched the boundary — and it cut the play area by 32%. THE
+  SPARK's *first-run* median went from **3:59 to the full 24:00**, with 57 levels and eleven
+  thousand kills, on a build where a first run had never once passed minute twenty. Two
+  reasons, neither of them the wall:
+  - **A third more density is a third more bodies inside every AoE**, and in a survivors-like
+    the horde *is* the economy. Kills buy levels buy kills; the loop compounds off the first
+    push.
+  - **The despawn valve stopped venting.** Enemies are culled at 70m from the player, so a
+    140m-wide arena means the cull can never fire and the horde only ever accumulates.
+
+  The radius is 84 now — π·84² is 22,167 m² against the old square's 21,904. Same room, one
+  shape. Held constant against the fix, the first-run death histogram goes back to what it has
+  always been: **9 of 10 dead inside six minutes** with the two new mechanics switched off,
+  and 7 of 10 inside eight with them on.
+- **Half again the move speed is not a mechanic, it is a difficulty setting.** Bunnyhopping
+  shipped at six links of +8.5% — 1.51× at a perfect chain — and the autopilot chains
+  perfectly, because it jumps on the frame it lands. First-run median 4:06 → 9:14; THE
+  SCRAPPER's to 24:00. Five links of +5.5% now, air acceleration cut to 16% of ground, and one
+  hit resets the chain, which is the part that makes it point at clean play rather than at
+  holding a button. `BONKHORDE_NOHOP=1` and `BONKHORDE_NOEVO=1` bench the same build without
+  each, because a mechanic measured only in combination cannot be attributed.
+- **The wall shipped as a picket fence and the assertion covering it passed.** `box()`'s local
+  X axis maps to world `(cos r, −sin r)`, so rotating each slab by `−θ` points its long axis
+  straight out from the middle: 150 radial spokes with daylight between every one. The check
+  compared *positions*, which were right the whole time. It walks the ring at every half-degree
+  now and asks whether there is material there — the widest gap anywhere on 528m of wall is
+  under 0.1m.
+- **The camera clamp was the same square bug, one function along.** A boom pointed at a corner
+  is 103m from the middle before a half-extent of 73 notices it, so backing into the wall put
+  the eye outside looking in through the slabs. It solves for the largest fraction of the boom
+  that still ends inside the ring, and the floor on that fraction came down from 0.34 to 0.18 —
+  at 0.34 the eye could still finish five metres past the wall, inside the buttresses, which is
+  the *camera went blind at the arena edge* bug coming back through the door it was fixed at.
+- **An input window one frame wide is a coin flip, not a skill.** The bunnyhop window is 0.16s
+  after touchdown *plus* a 0.14s buffer before it, so a press made on the way down still spends
+  itself on landing. Without the buffer the press has to land inside a single 16ms frame. It is
+  also a press and not a hold: `e.repeat` is rejected, because auto-hop from a held spacebar is
+  free top speed for twenty minutes and nothing left to do well.
+- **Two of the new assertions passed by measuring nothing, and one of my own instruments lied.**
+  `spawnEvent()` returns the event's *kind*, not the event, so `.x` was `undefined`, `NaN > RIM`
+  is `false`, and "no side event spawns outside the wall" was green across 300 spawns it never
+  looked at. The camera-eye check read the boom three frames after a teleport, while `camAnchor`
+  was still lerping from the middle of the map, and called an eye radius of 11.7 an edge case.
+  And `jumpBuf` decremented once past zero and sat at −0.01 forever — harmless to the `> 0`
+  test it feeds, and a hook that reports a negative buffer is still a hook that lies.
+- **A time-based camera assertion, in a file whose own comment says not to write one.** "The
+  anchor gets there" waited 1400ms and then checked — four lines under a comment explaining
+  that the previous version of the same check failed because software rendering had not drawn a
+  frame in the window it waited. It failed at 28.42 of 30 while a bench was hogging the machine.
+  It counts frames now, like the half of the check that was already right.
+
 
 - **A day cycle costs colour discrimination, and no palette buys it back.** One run is one
   evening now — afternoon, gold at the first boss, dusk by the third, night while you are

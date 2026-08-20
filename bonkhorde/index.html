@@ -531,7 +531,7 @@ const SFX = {
 };
 
 // ---------------------------------------------------------------- terrain
-const ARENA = 74;                       // half-extent of the TERRAIN mesh.
+const ARENA = 92;                       // half-extent of the TERRAIN mesh.
 // The boundary used to be two different shapes at once. Movement clamped to a
 // 148x148 square while the only thing in the world that looked like a wall was
 // a ring of spires at radius 74 - and the square's corners sit thirty metres
@@ -539,7 +539,17 @@ const ARENA = 74;                       // half-extent of the TERRAIN mesh.
 // and the map kept going into empty checkerboard on the other side. Side events
 // clamped to the same square, which is how they ended up spawning out there
 // with you. One shape now, and it is the shape you can see.
-const RIM = 70;                         // play radius. the wall is drawn here.
+// 84, not 70. Turning a 148x148 square into a circle is not a free change of
+// shape - the first version cut the play area by 32% and the bench said what
+// that does: THE SPARK's FIRST-run median went from 3:59 to the full 24:00 with
+// 57 levels and eleven thousand kills, on a build where a first run had never
+// once passed minute twenty. Two reasons, and neither is the wall. A third
+// more density means a third more bodies inside every AoE, and in a
+// survivors-like the horde IS the economy - kills buy levels buy kills. And
+// enemies are culled at 70m from the player, so a 140m-wide arena means the
+// cull can never fire and the horde only ever accumulates. pi*84^2 is 22,167
+// square metres against the old square's 21,904: same room, one shape.
+const RIM = 84;                         // play radius. the wall is drawn here.
 function confine(x, z, pad){
   const lim = RIM - pad, d2 = x*x + z*z;
   if(d2 <= lim*lim) return [x, z];
@@ -557,7 +567,7 @@ const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
 
 let terBuf, terCount = 0, terData = null;
 const buildTerrain = (function(){
-  const N=60, S=ARENA*2/N, out=[];
+  const N=72, S=ARENA*2/N, out=[];      // ~2.6m quads, same as the old 60 over 148
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
     const x0=-ARENA+i*S, z0=-ARENA+j*S, x1=x0+S, z1=z0+S;
@@ -604,7 +614,7 @@ cv.addEventListener("webglcontextrestored", ()=>{
 // scenery: static, decorative, non-colliding. Purely for motion parallax.
 const PROPS = (()=>{
   const p=[];
-  for(let i=0;i<190;i++){
+  for(let i=0;i<270;i++){                                    // scaled with the area
     // sqrt() on the radius or every prop in the world piles into the middle
     const pa=Math.random()*TAU, pr=Math.sqrt(Math.random())*(RIM-4);
     const x=Math.cos(pa)*pr, z=Math.sin(pa)*pr;
@@ -616,10 +626,12 @@ const PROPS = (()=>{
     else           p.push({x,z,t:3,s:rnd(.5,.8),  h:rnd(1.3,2.2), c:[.68,.64,.48], r:rnd(0,TAU)});
   }
   // THE WALL. Tangential slabs, overlapping, at exactly the radius the player
-  // is stopped at - so the thing you cannot pass is the thing you can see. 150
-  // segments around a 440m circumference is 2.9m of arc each against 3.4m of
-  // slab, which leaves no gap to read as a door.
-  const SEG = 150;
+  // is stopped at - so the thing you cannot pass is the thing you can see. The
+  // spacing is 2.9m of arc against 3.4m of slab, which leaves no gap anywhere
+  // on the ring to read as a door.
+  // Derived, not typed: at RIM 84 the ring is 528m around, and a fixed 150
+  // segments would leave 3.5m of arc against 3.4m of slab - a gap every time.
+  const SEG = Math.ceil(TAU*RIM / 2.9);
   for(let a=0;a<SEG;a++){
     const th = a/SEG*TAU;
     const cx = Math.cos(th)*RIM, cz = Math.sin(th)*RIM;
@@ -1183,7 +1195,7 @@ function startRun(id){
         hop:0, hopWin:0, hopGrace:0, hopFx:0,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
-  stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0;
+  stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
   for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
@@ -2320,8 +2332,11 @@ function evolveTo(i){
   P.armor += (to.armorFlat||0) - (from.armorFlat||0);
   applyBoons();
   const d = line[i] || {};
-  evoT = 3.2; evoNm = d.nm || ""; evoSub = d.sig ? `${d.sig} - ${d.sigDs}` : `EVOLVED FROM ${wasNm}`;
-  alert2(`${wasNm} EVOLVED INTO ${d.nm}`, "#8affd0");
+  // One banner, not two. This used to also fire alert2(), which draws its own
+  // line in the same third of the screen - so the biggest moment in the run
+  // arrived as two overlapping pieces of text saying the same thing.
+  evoT = 3.4; evoNm = d.nm || "";
+  evoSub = d.sig ? `${d.sig} - ${d.sigDs}` : `${wasNm} EVOLVED`;
   shake = Math.max(shake, 1.1*shakeMul()); flash = Math.max(flash, .5*flashMul());
   SFX.evolve();
   for(let k=0;k<3;k++)
@@ -2329,7 +2344,9 @@ function evolveTo(i){
   queueLevel();                          // the evolution itself is worth a pick
   return true;
 }
+let noEvo = false;                       // bench-only: hold the line at stage 1
 function checkEvolve(){
+  if(noEvo) return;
   const line = curMon().st||[];
   let want = 0;
   for(let i=0;i<line.length;i++) if(P.lvl >= (EVO_AT[i]||1e9)) want = i;
@@ -3356,6 +3373,7 @@ window.__g = {
                 regen:+P.regen.toFixed(3), armor:+P.armor.toFixed(2),
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
+  freezeEvo:(v=true)=>{ noEvo = v; },
   monLvl: id=>monLvl(id||charId),
   monNeed:l=>MON_NEED(l),
   setMon: (id,xp)=>{ save.mon[id]=xp; writeSave(); },
