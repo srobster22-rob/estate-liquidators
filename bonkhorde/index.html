@@ -45,6 +45,10 @@
   #lvl b{color:var(--ink);font-size:17px}
   #lvl em{display:block;font-style:normal;font-size:10px;letter-spacing:.14em;
     color:#8affd0;margin-top:2px;text-shadow:0 1px 2px #000}
+  #biome{position:absolute;top:12px;left:14px;margin-top:44px;font-size:10px;
+    letter-spacing:.16em;color:#8e8878;text-shadow:0 1px 2px #000;max-width:220px}
+  #biome b{display:block;color:#c9c2ae;font-size:11px;letter-spacing:.2em}
+  #biome span{font-size:9px;color:#5c6470;letter-spacing:.06em;line-height:1.5}
   #evo{position:absolute;top:31%;left:50%;transform:translate(-50%,-50%);
     text-align:center;opacity:0;pointer-events:none}
   #evo .en{font-size:34px;font-weight:900;letter-spacing:.12em;color:#8affd0;
@@ -280,6 +284,7 @@
   <div id="hpwrap"><div id="hpbar"></div><div id="hptxt"></div></div>
   <div id="warn"></div>
   <div id="evo"><div class="en"></div><div class="es"></div></div>
+  <div id="biome"><b></b><span></span></div>
   <div id="pausebtn">II</div>
 </div>
 
@@ -577,8 +582,107 @@ function confine(x, z, pad){
   const s = lim / Math.sqrt(d2);
   return [x*s, z*s];
 }
-const groundY = (x,z)=> Math.sin(x*0.045)*1.7 + Math.cos(z*0.051)*1.5
-                      + Math.sin((x+z)*0.027)*2.0;
+// ================================================================== THE MAP
+// One green disc for twenty minutes, every run, is a backdrop rather than a
+// place. The arena is rolled fresh each run instead: five or six regions with
+// their own ground, their own elevation and one gameplay rule each, laid out by
+// nearest-seed so the borders are irregular and nobody memorises the map.
+//
+// Two constraints shaped every colour in here.
+//   1. The enemy palette is five saturated primaries picked against GRASS. Six
+//      new grounds is six new chances for a body to disappear into the floor,
+//      so every biome is deliberately desaturated and mid-value, and the
+//      contrast harness now walks all of them rather than just the green one.
+//   2. Saturation, not brightness, is what destroys hue discrimination - that
+//      was the finding when the day cycle went in, and it applies twice as hard
+//      to a surface that fills the screen.
+//
+// Each biome's rule has to be readable from inside it without a tooltip: you
+// are slower, or you are taking more, or the loot is coming to you.
+const BIOMES = [
+  { id:"grass", nm:"THE GREEN",     ds:"nothing in particular",
+    a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mod:{} },
+  { id:"ash",   nm:"THE ASHES",     ds:"the ground is still warm  -  +12% damage taken",
+    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 } },
+  { id:"bog",   nm:"THE SLUDGE",    ds:"it holds on to your feet  -  -14% move speed",
+    a:[.27,.35,.31], b:[.21,.29,.26], amp:0.35, lift:-2.4, mod:{ spd:0.86 } },
+  { id:"ice",   nm:"THE GLASS",     ds:"nothing here has any grip  -  you slide",
+    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 } },
+  { id:"sand",  nm:"THE FLATS",     ds:"you can see what you dropped  -  +40% pickup radius",
+    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 } },
+  { id:"bone",  nm:"THE MIDDEN",    ds:"more of them, and more to take  -  +22% XP",
+    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 } },
+  { id:"rust",  nm:"THE SCRAPYARD", ds:"something here sharpens what you carry  -  +12% damage",
+    a:[.47,.34,.25], b:[.39,.28,.21], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
+];
+const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
+
+// Landmarks: the things you steer toward. They do not collide - a horde game
+// where the floor has walls in it is a horde game where the horde stacks in a
+// corner - they are silhouette and orientation, and side events prefer to
+// appear at them, which is what turns "a shape over there" into somewhere to go.
+const MARK_KINDS = [
+  { id:"ring",   nm:"STONE RING",  r:7.5 },
+  { id:"crater", nm:"CRATER",      r:8.0 },
+  { id:"arch",   nm:"THE ARCH",    r:4.5 },
+  { id:"spires", nm:"THE FINGERS", r:5.0 },
+  { id:"midden", nm:"BONE PILE",   r:6.0 },
+];
+
+let cells = [], marks = [], worldSeed = 0;
+const BLEND = 9;                    // metres over which two regions cross-fade
+
+// The spawn region is ALWAYS the neutral one. A run that opens with you stuck
+// in the sludge is a run whose first ten seconds lie about how the game moves.
+function rollWorld(){
+  worldSeed = (Math.random()*1e9)|0;
+  const pool = BIOMES.filter(b => b.id !== "grass").sort(()=>Math.random()-.5);
+  const n = 4 + ((Math.random()*2)|0);                 // four or five outer regions
+  cells = [{ x:0, z:0, b:BIOME_BY.grass }];
+  for(let i=0;i<n;i++){
+    let x=0, z=0;
+    for(let tries=0; tries<40; tries++){
+      const a = Math.random()*TAU, r = rnd(RIM*.34, RIM*.92);
+      x = Math.cos(a)*r; z = Math.sin(a)*r;
+      if(cells.every(c => Math.hypot(c.x-x, c.z-z) > RIM*.42)) break;
+    }
+    cells.push({ x, z, b: pool[i % pool.length] });
+  }
+  marks = [];
+  for(let i=0, tries=0; i<5 && tries<200; tries++){
+    const a = Math.random()*TAU, r = rnd(20, RIM-14);
+    const x = Math.cos(a)*r, z = Math.sin(a)*r;
+    const k = MARK_KINDS[(Math.random()*MARK_KINDS.length)|0];
+    if(marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + k.r + 10)) continue;
+    marks.push({ x, z, k, rot: Math.random()*TAU, seed: (Math.random()*1e6)|0 });
+    i++;
+  }
+}
+
+// Nearest two seeds, and how decisively the nearest one wins. Everything about
+// the ground - its colour, its height, its rule - comes out of this one call.
+function nearestCells(x, z){
+  let i1=0, d1=1e9, i2=0, d2=1e9;
+  for(let i=0;i<cells.length;i++){
+    const c = cells[i], d = (c.x-x)*(c.x-x) + (c.z-z)*(c.z-z);
+    if(d < d1){ d2=d1; i2=i1; d1=d; i1=i; }
+    else if(d < d2){ d2=d; i2=i; }
+  }
+  return [i1, i2, Math.sqrt(d1), Math.sqrt(d2)];
+}
+const biomeAt = (x,z)=> cells.length ? cells[nearestCells(x,z)[0]].b : BIOME_BY.grass;
+
+// A hard elevation step at a region border is a cliff you fall off. Cross-fade
+// the amplitude and the lift across BLEND metres and the seam becomes a slope.
+const BASE_Y = (x,z)=> Math.sin(x*0.045)*1.7 + Math.cos(z*0.051)*1.5
+                     + Math.sin((x+z)*0.027)*2.0;
+const groundY = (x,z)=>{
+  if(!cells.length) return BASE_Y(x,z);
+  const [i1,i2,d1,d2] = nearestCells(x,z);
+  const w = 0.5 + Math.min(1, (d2-d1)/BLEND)*0.5;
+  const A = cells[i1].b, B = cells[i2].b;
+  return BASE_Y(x,z) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w));
+};
 
 // Terrain tint, shared by the mesh builder and the contrast check. These were
 // duplicated into the test hook, so a recolour here would not have been caught.
@@ -587,7 +691,12 @@ const TERRAIN_H = [.030,.038,.024];      // per-quad height term
 const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
 
 let terBuf, terCount = 0, terData = null;
-const buildTerrain = (function(){
+// Split in two, because the arena is rolled fresh every run now: makeTerrain()
+// regenerates the vertex data against the current regions, uploadTerrain() puts
+// it on the GPU. A context restore only needs the second half - terData
+// survives the loss and re-rolling the world on a restore would hand you a
+// different map mid-run.
+function makeTerrain(){
   const N=72, S=ARENA*2/N, out=[];      // ~2.6m quads, same as the old 60 over 148
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
@@ -597,7 +706,8 @@ const buildTerrain = (function(){
     // checkerboard reads as speed - a flat plane makes you feel motionless
     const chk = (i+j)&1;
     const h   = (P[0][1]+P[2][1])/4 + .5;
-    const base = chk ? TERRAIN_A : TERRAIN_B;
+    const bm  = biomeAt(x0+S*.5, z0+S*.5);
+    const base = chk ? bm.a : bm.b;
     const c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
     // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
     for(const [a,b,d] of [[0,2,1],[0,3,2]]){
@@ -607,13 +717,14 @@ const buildTerrain = (function(){
   }
   terCount = out.length/FLOATS;
   terData  = new Float32Array(out);            // kept, so a restore can re-upload
-  return function uploadTerrain(){
-    terBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, terBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, terData, gl.STATIC_DRAW);
-  };
-})();
-buildTerrain();
+}
+function uploadTerrain(){
+  if(!terData) makeTerrain();
+  terBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, terBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, terData, gl.STATIC_DRAW);
+}
+rollWorld(); makeTerrain(); uploadTerrain();
 
 let ctxLost = false;
 // Grabbed while the context is alive on purpose: getExtension() returns null on
@@ -628,7 +739,7 @@ cv.addEventListener("webglcontextlost", e=>{
   alert2("GRAPHICS PAUSED", "#f0b429");
 });
 cv.addEventListener("webglcontextrestored", ()=>{
-  buildProgram(); buildDynBuf(); buildTerrain();
+  buildProgram(); buildDynBuf(); uploadTerrain();
   ctxLost = false;                             // render() re-sets the viewport itself
 });
 
@@ -1704,6 +1815,7 @@ let bodyCap = null, bodyCapOut = null;
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 let stage=0;                            // 0..2 - where you are in the monster's line
+let lastBiome=null, biomeT=0;           // for the "you have crossed into" banner
 let devGod=false, devHp=0;              // pause-screen godmode toggle
 let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
@@ -1743,6 +1855,8 @@ function startRun(id){
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
+  rollWorld(); makeTerrain(); uploadTerrain();
+  P.y = groundY(0,0); lastBiome = biomeAt(0,0);
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
   for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
@@ -2011,6 +2125,9 @@ function dmgOut(base){
 }
 function hurt(e, amount, kx, kz, crit){
   if(crit && (e.boss || e.elite)) hold("crit");
+  // THE SCRAPYARD sharpens what you carry. Keyed off where the PLAYER is
+  // standing, not the target - you are the one who walked in there.
+  if(P) amount *= biomeAt(P.x, P.z).mod.dmg || 1;
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
   if(e.boss) dmgBoss += eff;
@@ -2404,6 +2521,16 @@ function spawnEvent(kind, atX, atZ){
     // far enough that it is a decision, near enough that it is not a hike
     const band = d.spawnR || [20, 38];
     for(let i=0;i<24;i++){
+      // Two thirds of the time, put it at a landmark that is roughly the right
+      // distance away. A structure you have no reason to walk to is set
+      // dressing; a structure that is where the chest turns up is a place.
+      const near = marks.filter(m => { const d2 = Math.hypot(m.x-P.x, m.z-P.z);
+                                       return d2 > band[0]*.7 && d2 < band[1]*1.6; });
+      if(near.length && Math.random() < .66){
+        const m = near[(Math.random()*near.length)|0];
+        [x, z] = confine(m.x + rnd(-2.5,2.5), m.z + rnd(-2.5,2.5), 6);
+        break;
+      }
       const a = Math.random()*TAU, r = rnd(band[0], band[1]);
       [x, z] = confine(P.x + Math.sin(a)*r, P.z + Math.cos(a)*r, 6);
       if(Math.hypot(x-P.x, z-P.z) > band[0]*.8) break;
@@ -2583,7 +2710,7 @@ function updateEnemies(dt){
 function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
 
 function playerHurt(raw){
-  let d = raw * P.tough;
+  let d = raw * P.tough * (biomeAt(P.x,P.z).mod.tough || 1);
   d = Math.max(1, d - P.armor - (P.kit.plating ? (P.kit.plating.l+1)*1.6 : 0));
   if(P.kit.plating) d *= (1 - (P.kit.plating.l+1)*.05);
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
@@ -2708,7 +2835,7 @@ function updateGems(dt){
   for(let i=gems.length-1;i>=0;i--){
     const g = gems[i];
     const dx = P.x-g.x, dz = P.z-g.z, d = Math.hypot(dx,dz);
-    if(d < R) g.pulled = true;
+    if(d < R * (biomeAt(P.x,P.z).mod.mag || 1)) g.pulled = true;
     if(g.pulled){
       g.s = Math.min(44, (g.s || 7) + 78*dt);           // snap, do not drift
       g.x += dx/(d||1)*g.s*dt; g.z += dz/(d||1)*g.s*dt;
@@ -2725,7 +2852,7 @@ function updateGems(dt){
 }
 let xpBanked = 0;                    // cumulative, for tests: levels are discrete
 function gainXP(v){
-  const got = v * (P.xpMul||1);
+  const got = v * (P.xpMul||1) * (P ? (biomeAt(P.x,P.z).mod.xp || 1) : 1);
   xpBanked += got;
   P.xp += got;
   while(P.xp >= P.need){ P.xp -= P.need; P.lvl++; P.need = xpFor(P.lvl); queueLevel();
@@ -3031,14 +3158,23 @@ function step(dt){
   // started moving, because you were already at top speed and the camera was
   // welded to you. Ramping over ~0.11s costs a third of a metre across two
   // seconds and gives every direction change something to read.
+  // The ground you are standing on. One rule each, applied here so it is felt
+  // through the controls rather than read off a tooltip.
+  const bm = biomeAt(P.x, P.z), bmod = bm.mod;
+  if(bm !== lastBiome){ lastBiome = bm; biomeT = 3.0;
+                        if(running && !over) alert2(bm.nm, "#c9c2ae"); }
   const ACCEL = 62, BRAKE = 46;
-  const hm = hopMul();
+  const hm = hopMul() * (bmod.spd || 1);
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
   // braking. That asymmetry IS the mechanic: a chain you steer through is a
   // chain you have to plan, and letting go mid-flight keeps the speed instead
   // of dumping it. On the ground both are unchanged from before.
-  const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCEL) : (P.air ? BRAKE*.10 : BRAKE);
+  // THE GLASS has no grip: you keep almost everything you had, which is exactly
+  // the surface a hop chain wants and exactly the surface a dodge does not.
+  const grip = bmod.slide ? .30 : 1;
+  const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCEL*grip)
+                        : (P.air ? BRAKE*.10 : BRAKE*grip);
   const step_ = rate*dt;
   const ex = wx-P.vx, ez = wz-P.vz, el = Math.hypot(ex,ez);
   if(el <= step_){ P.vx = wx; P.vz = wz; }
@@ -3438,6 +3574,44 @@ function render(){
     else if(p.t===5){ box(p.x, y+p.h*.5, p.z, p.s,p.h*.5,.55, p.c, 0, p.r);
                       box(p.x, y+p.h+.16, p.z, p.s,.16,.72, [.20,.21,.27], 0, p.r); }
     else box(p.x, y+p.h*.5, p.z, p.s*.5,p.h*.5,p.s*.32, p.c, 0, p.r);
+  }
+  // LANDMARKS. Non-colliding on purpose: a horde game whose floor has walls in
+  // it is a horde game where four hundred bodies stack behind one of them. They
+  // are silhouette, orientation and somewhere to go - side events prefer to
+  // appear at them, which is what turns "a shape over there" into a reason.
+  for(const m of marks){
+    const md = Math.hypot(m.x-px, m.z-pz);
+    if(md > 120) continue;
+    const bm = biomeAt(m.x, m.z);
+    const lt = [Math.min(1,bm.a[0]*1.5+.10), Math.min(1,bm.a[1]*1.5+.10),
+                Math.min(1,bm.a[2]*1.5+.10)];
+    const dk = [bm.b[0]*.55, bm.b[1]*.55, bm.b[2]*.55];
+    const K = m.k.id;
+    if(K === "ring"){
+      for(let i=0;i<9;i++){ const a = m.rot + i/9*TAU;
+        const x = m.x+Math.cos(a)*m.k.r, z = m.z+Math.sin(a)*m.k.r;
+        box(x, groundY(x,z)+2.0, z, .55, 2.0, .55, dk, .02, a);
+        box(x, groundY(x,z)+4.2, z, .70, .22, .70, lt, .10, a); }
+    } else if(K === "crater"){
+      for(let i=0;i<16;i++){ const a = m.rot + i/16*TAU;
+        const rr = m.k.r + Math.sin(i*2.3)*.8;
+        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
+        box(x, groundY(x,z)+.55, z, 1.10, .55, 1.10, dk, .02, a); }
+    } else if(K === "arch"){
+      for(const sg of [-1,1]){
+        const x = m.x+Math.cos(m.rot)*sg*m.k.r, z = m.z+Math.sin(m.rot)*sg*m.k.r;
+        box(x, groundY(x,z)+3.4, z, .78, 3.4, .78, dk, .02, m.rot); }
+      box(m.x, groundY(m.x,m.z)+7.2, m.z, m.k.r+.8, .55, .78, lt, .10, m.rot);
+    } else if(K === "spires"){
+      for(let i=0;i<5;i++){ const a = m.rot + i*1.257, rr = m.k.r*(.35+ (i%3)*.30);
+        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr, h = 3.5+ (i%4)*2.2;
+        for(let k=0;k<4;k++){ const t2 = 1-k*.22;
+          box(x, groundY(x,z)+h*(k*.5+.5), z, .60*t2, h*.28, .60*t2, k?lt:dk, .04, a); } }
+    } else {
+      for(let i=0;i<11;i++){ const a = m.rot + i*1.9, rr = m.k.r*(.3+(i%4)*.22);
+        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
+        box(x, groundY(x,z)+.32+(i%3)*.24, z, .95, .30, .42, i%2?lt:dk, .03, a); }
+    }
   }
 
   // ground decals first so bodies read on top of them
@@ -3912,6 +4086,11 @@ function hud(){
     ev.lastElementChild.textContent  = evoSub;
   } else ev.style.opacity = 0;
 
+  const bm = biomeAt(P.x, P.z), bel = $("biome");
+  bel.firstElementChild.textContent = bm.nm;
+  bel.lastElementChild.textContent  = biomeT > 0 ? bm.ds : "";
+  if(biomeT > 0) biomeT -= dt;
+
   const wr = $("warn");
   if(nb && nb.t-T < 5 && nb.t-T > 0){
     wr.style.opacity = (Math.sin(T*10)*.5+.5).toFixed(2);
@@ -4034,6 +4213,9 @@ window.__g = {
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
   freezeEvo:(v=true)=>{ noEvo = v; },
+  // Deal one exact hit and report what it actually cost, iframes bypassed.
+  hitMe: (raw)=>{ P.iframe = 0; const before = P.hp; playerHurt(raw);
+                  return +(before - P.hp).toFixed(3); },
   unlockAll:()=>unlockAll(),
   // Every species' declared body plan, and whether EBODY actually has it. A
   // typo in `body:"papper"` falls back to the generic silently, which is the
@@ -4062,6 +4244,13 @@ window.__g = {
   jump:  ()=>jumpPressed(),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
+  world: ()=>({ seed:worldSeed,
+                cells: cells.map(c=>({ x:+c.x.toFixed(2), z:+c.z.toFixed(2), id:c.b.id })),
+                marks: marks.map(m=>({ x:+m.x.toFixed(2), z:+m.z.toFixed(2), k:m.k.id })) }),
+  biomeAt:(x,z)=>{ const b = biomeAt(x,z); return { id:b.id, nm:b.nm, mod:{...b.mod} }; },
+  reroll:()=>{ rollWorld(); makeTerrain(); uploadTerrain(); return window.__g.world(); },
+  terHash:()=>{ let h = 0; for(let i=6;i<terData.length;i+=997)
+                  h = (h*31 + Math.round(terData[i]*1000)) | 0; return h; },
   eye:   ()=>camEye.slice(),
   wall:  ()=>{ const w = PROPS.filter(p=>p.t===5);
                const r = w.map(p=>Math.hypot(p.x,p.z));
@@ -4166,9 +4355,13 @@ window.__g = {
                      lerp(c[2],.10,ELITE_TINT)];
     const enemies = {}, ground = [];
     for(const k in ENEMIES){ enemies[k] = ENEMIES[k].c; enemies[k+"*"] = el(ENEMIES[k].c); }
-    for(const base of [TERRAIN_A, TERRAIN_B])
-      for(const h of [TERRAIN_HRANGE[0], 0.5, TERRAIN_HRANGE[1]])
-        ground.push([base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]]);
+    // EVERY region's ground, not just the green one. The arena has seven
+    // palettes on it now; a contrast check that still walks one of them is an
+    // instrument measuring a surface the player mostly is not standing on.
+    for(const bm of BIOMES)
+      for(const base of [bm.a, bm.b])
+        for(const h of [TERRAIN_HRANGE[0], 0.5, TERRAIN_HRANGE[1]])
+          ground.push([base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]]);
     // shader: lit = c*(hemi*0.78 + sunC*d*0.92) + c*sunC*backlight*0.14
     // There is a day cycle now, so one hardcoded noon is a statement about one
     // moment of a twenty-minute run. Report the whole arc and let the contrast

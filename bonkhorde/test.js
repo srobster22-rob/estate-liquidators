@@ -1718,6 +1718,111 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.far < r.near * 0.75, `${r.near} boxes near -> ${r.far} far`);
   }
 
+  console.log("\n=== 23. THE ARENA IS ROLLED, NOT REMEMBERED ===");
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+
+      const snap = () => { const w = g.world();
+                           return { key: w.cells.map(c=>c.id+"@"+c.x+","+c.z).join("|"),
+                                    marks: w.marks.map(m=>m.k+"@"+m.x+","+m.z).join("|"),
+                                    ter: g.terHash(), w }; };
+      const a = snap(), b = (g.reroll(), snap()), c = (g.reroll(), snap());
+
+      // coverage: does the whole disc resolve, and to more than one thing
+      const RIM = g.rim(), seen = {};
+      let unresolved = 0;
+      for (let i = 0; i < 900; i++) {
+        const th = Math.random()*Math.PI*2, rr = Math.sqrt(Math.random())*RIM*0.98;
+        const bm = g.biomeAt(Math.cos(th)*rr, Math.sin(th)*rr);
+        if (!bm || !bm.id) unresolved++; else seen[bm.id] = (seen[bm.id]||0)+1;
+      }
+
+      // spawn must always be neutral, across many rolls
+      let badSpawn = 0;
+      for (let i = 0; i < 60; i++) { g.reroll(); if (g.biomeAt(0,0).id !== "grass") badSpawn++; }
+
+      // landmarks: inside the wall, clear of spawn, not stacked on each other
+      let outside = 0, tooClose = 0, overlapping = 0, total = 0;
+      for (let i = 0; i < 40; i++) {
+        const w = g.reroll();
+        for (let j = 0; j < w.marks.length; j++) {
+          const m = w.marks[j]; total++;
+          if (Math.hypot(m.x, m.z) > RIM) outside++;
+          if (Math.hypot(m.x, m.z) < 18) tooClose++;
+          for (let k = j+1; k < w.marks.length; k++)
+            if (Math.hypot(m.x-w.marks[k].x, m.z-w.marks[k].z) < 10) overlapping++;
+        }
+      }
+      return { a, b, c, seen, unresolved, badSpawn, outside, tooClose, overlapping, total };
+    });
+    ok("no two runs get the same layout",
+       r.a.key !== r.b.key && r.b.key !== r.c.key && r.a.key !== r.c.key,
+       `${new Set([r.a.key, r.b.key, r.c.key]).size} distinct layouts of 3`);
+    ok("and the ground mesh is actually rebuilt for it",
+       new Set([r.a.ter, r.b.ter, r.c.ter]).size === 3,
+       `terrain hashes ${r.a.ter}, ${r.b.ter}, ${r.c.ter}`);
+    ok("the landmarks move too",
+       new Set([r.a.marks, r.b.marks, r.c.marks]).size === 3);
+    ok("every point in the arena belongs to a region",
+       r.unresolved === 0, `${r.unresolved} unresolved of 900`);
+    ok("and more than one region is on the map",
+       Object.keys(r.seen).length >= 4,
+       Object.entries(r.seen).map(([k,v])=>`${k}:${v}`).join(" "));
+    ok("you never open a run standing in one of the bad ones",
+       r.badSpawn === 0, `${r.badSpawn} of 60 rolls put you somewhere else`);
+    ok("landmarks stay inside the wall", r.outside === 0, `${r.outside} of ${r.total} outside`);
+    ok("and off the spawn point", r.tooClose === 0, `${r.tooClose} of ${r.total} within 18m`);
+    ok("and off each other", r.overlapping === 0, `${r.overlapping} overlapping pairs`);
+  }
+
+  console.log("\n=== 23b. STANDING SOMEWHERE HAS TO MEAN SOMETHING ===");
+  {
+    // A region you can only identify by its colour is a texture swap. Each one
+    // is measured through the thing it claims to change.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      // roll until the map contains the regions we need to stand in
+      let w = null;
+      for (let i = 0; i < 400; i++) {
+        g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true);
+        w = g.world();
+        const ids = w.cells.map(c => c.id);
+        if (ids.includes("bog") && ids.includes("ash") && ids.includes("sand")) break;
+      }
+      const cellOf = id => w.cells.find(c => c.id === id);
+      const speedAt = (x, z) => {
+        g.place(x, z);
+        dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+        for (let i = 0; i < 60; i++) { g.step(1/60); g.place(x, z); }
+        const v = g.hop().spd;
+        dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+        return v;
+      };
+      const green = cellOf("grass"), bog = cellOf("bog"), ash = cellOf("ash");
+      const out = { ids: w.cells.map(c=>c.id) };
+      out.vGreen = speedAt(green.x, green.z);
+      out.vBog   = speedAt(bog.x, bog.z);
+      out.inBog  = g.biomeAt(bog.x, bog.z).id;
+
+      // damage taken in the ashes vs on the green, same hit
+      const hitAt = (x, z) => { g.place(x, z); return g.hitMe(40); };
+      out.dGreen = hitAt(green.x, green.z);
+      out.dAsh   = hitAt(ash.x, ash.z);
+      return out;
+    });
+    ok("the sludge is slower than the green",
+       r.vBog < r.vGreen * 0.92,
+       `${r.vGreen.toFixed(2)} m/s on THE GREEN -> ${r.vBog.toFixed(2)} in THE SLUDGE`);
+    ok("and it is the sludge you were standing in", r.inBog === "bog", r.inBog);
+    ok("the ashes cost you more for the same hit",
+       r.dAsh > r.dGreen * 1.05,
+       `${r.dGreen.toFixed(1)} damage on THE GREEN -> ${r.dAsh.toFixed(1)} in THE ASHES`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
