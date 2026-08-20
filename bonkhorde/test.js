@@ -1707,9 +1707,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("every species has a body plan of its own",
        Object.keys(sp).every(k => sp[k].want && sp[k].has),
        Object.keys(sp).map(k => `${k}:${sp[k].want || "none"}${sp[k].has ? "" : " MISSING"}`).join(" "));
+    // Count DECLARED plans only. Counting the undefineds too meant a species
+    // with no plan at all still contributed a distinct value, and this passed
+    // while THE HEIRLOOM was falling back to the generic box.
+    const want = Object.values(sp).map(v => v.want).filter(Boolean);
     ok("and no two species share one",
-       new Set(Object.values(sp).map(v => v.want)).size === Object.keys(sp).length,
-       `${new Set(Object.values(sp).map(v=>v.want)).size} plans for ${Object.keys(sp).length} species`);
+       new Set(want).size === Object.keys(sp).length,
+       `${new Set(want).size} distinct plans for ${Object.keys(sp).length} species`);
     ok("distance buys the box budget back",
        r.far < r.near * 0.75, `${r.near} boxes near -> ${r.far} far`);
   }

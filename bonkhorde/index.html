@@ -852,8 +852,8 @@ skitter: { nm:"SILVERFISH",hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04]
 // hues this palette needs were already spoken for, so the replacement came out
 // of a grid search scored by the suite's own CIELAB maths rather than by eye -
 // worst pair 18.5, worst against any terrain shade 17.6.
-collector:{ nm:"THE COLLECTOR", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
-            c:[.82,.94,.36], h:2.0, w:.82, flee:true },
+collector:{ nm:"THE HEIRLOOM", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
+            c:[.82,.94,.36], h:2.0, w:.82, flee:true, body:"heirloom" },
 };
 
 // HP is scaled to body size on purpose. Weapons used to measure reach to an
@@ -1153,9 +1153,33 @@ fish(e, face, W, H, c, glow, lod, y0){
        W*.06, H*.10, W*.06, [.48,.48,.56], .05);
 },
 
-// Everything without a plan of its own - bosses, THE HEIRLOOM - keeps the old
-// build, scaled up. A boss is already the biggest thing on the field with a
-// health bar over it; it does not need to also be the most detailed.
+// THE HEIRLOOM - the one thing in the house actually worth keeping, and the
+// only thing that runs. Gilded urn, domed lid, a stone set in the front, and
+// little legs going as fast as they can. It has to look expensive from across
+// the arena or chasing it is a chore rather than a decision.
+heirloom(e, face, W, H, c, glow, lod, y0){
+  const scut = Math.sin(T*16 + e.bob);
+  eb(e, face, 0, 0, y0 + H*.34, W*.62, H*.26, W*.56, c, glow);
+  eb(e, face, 0, 0, y0 + H*.62, W*.38, H*.10, W*.34, c, glow);
+  eb(e, face, 0, 0, y0 + H*.78, W*.56, H*.10, W*.50, [.98,.86,.36], .35);
+  if(lod < 1) return;
+  eb(e, face, 0, 0, y0 + H*.94, W*.13, H*.10, W*.13, [.98,.86,.36], .55);
+  eb(e, face, 0, W*.50, y0 + H*.36, W*.17, W*.17, .05, [.42,.94,.86], .85);
+  for(const sg of [-1,1]) eb(e, face, sg*W*.28, 0,
+    y0 + H*.10 + Math.max(0, scut*sg)*H*.09, W*.09, H*.10, W*.09, [.98,.86,.36], .25);
+  if(lod < 2) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.68, 0, y0 + H*.44,
+                             W*.08, H*.16, W*.08, [.98,.86,.36], .4);
+  for(let i=0;i<3;i++) eb(e, face, 0, W*.52, y0 + H*.56 + i*H*.09,
+                          W*.34 - i*W*.07, H*.02, .04, [.98,.86,.36], .3);
+  for(let i=0;i<4;i++){ const a = i*(TAU/4) + T*1.3;
+    eb(e, face, Math.sin(a)*W*.80, Math.cos(a)*W*.72, y0 + H*.80,
+       W*.05, W*.05, W*.05, [1,.95,.62], .95, face); }
+},
+
+// Everything without a plan of its own - the bosses - keeps the old build,
+// scaled up. A boss is already the biggest thing on the field with a health bar
+// over it; it does not need to also be the most detailed.
 generic(e, face, W, H, c, glow, lod, y0){
   const bh = H*.62;
   eb(e, face, 0, 0, y0 + bh*.5, W*.5, bh*.5, W*.5, c, glow);
