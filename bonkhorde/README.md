@@ -443,6 +443,19 @@ That harness has overturned eighty things this build believed:
   that still ends inside the ring, and the floor on that fraction came down from 0.34 to 0.18 —
   at 0.34 the eye could still finish five metres past the wall, inside the buttresses, which is
   the *camera went blind at the arena edge* bug coming back through the door it was fixed at.
+- **The camera was rendering the world from inside the wall, and the check said it was fine.**
+  `camEye` is written by `render()`, and `render()` runs on `requestAnimationFrame` — not inside
+  `__g.step()`. So a probe that stepped the sim ninety times per angle and then read the eye
+  never re-rendered once: it reported "eye reached 11.7 of 84" with the player pinned against a
+  wall 84 metres out, because 11.7 was the boom from whatever frame happened to have drawn last.
+  It reported *exactly* 11.7 at radius 70 as well, which is the tell — a number that does not
+  move when the map doubles is not measuring the map. Driving real frames, it failed on its
+  first honest run at **84.1 against slabs occupying 83.45–84.55**: the eye was finishing inside
+  the masonry. Shortening the boom cannot fix that alone — the floor on `k` is still two metres
+  of boom and a player 1.5m off the wall has 1.5m of room — so the eye is projected back onto
+  the ring afterwards, keeping the height it earned, and slides along the inside of the wall
+  instead of climbing into it. The check now also asserts a *lower* bound, so "the camera never
+  went anywhere" fails rather than passes.
 - **An input window one frame wide is a coin flip, not a skill.** The bunnyhop window is 0.16s
   after touchdown *plus* a 0.14s buffer before it, so a press made on the way down still spends
   itself on landing. Without the buffer the press has to land inside a single 16ms frame. It is
