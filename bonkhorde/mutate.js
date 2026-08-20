@@ -98,7 +98,7 @@ const MUTANTS = [
     to:  "const HOP_WIN = .16, HOP_BUF = .14, HOP_MAX = 3," },
   { id:"hop-never-bleeds", must:"19",
     why:"a chain earned once is a chain kept forever",
-    from:"    else if(P.hop > 0) P.hop = Math.max(0, P.hop - HOP_BLEED*dt);", to:"" },
+    from:"    else if(P.hop > 0) P.hop = Math.max(0, P.hop - (HOP_BLEED + P.hop*.55)*dt);", to:"" },
   { id:"hop-autohop", must:"19",
     why:"a held spacebar hops for you, which is free top speed for twenty minutes",
     from:"  if(e.code===\"Space\" && !e.repeat && running && !paused && !picking) jumpPressed();",

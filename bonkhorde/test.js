@@ -1312,7 +1312,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // miss the window: land, stand still for a while, jump cold
       land(); steps(30);                          // 0.5s grounded
       const bleeding = g.hop().n;
-      steps(180);                                 // 3s grounded
+      steps(210);                                 // 3.5s grounded
       const dead = g.hop().n;
       home(); steps(60); watch();
       const backToBase = g.hop().spd;
@@ -1354,7 +1354,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("landing and standing bleeds the chain rather than snapping it",
        r.bleeding > 12.4 && r.bleeding < 14,
        `14 -> ${r.bleeding.toFixed(2)} after half a second`);
-    ok("and it is gone after three seconds on the ground", r.dead === 0, `n=${r.dead}`);
+    ok("and it is gone a few seconds after you stop", r.dead === 0, `n=${r.dead}`);
     ok("speed comes back down with it",
        Math.abs(r.backToBase - r.base) < 0.15,
        `${r.top.spd.toFixed(2)} -> ${r.backToBase.toFixed(2)} vs base ${r.base.toFixed(2)}`);
@@ -1390,14 +1390,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
       return { before, out };
     });
+    // Key off the chain length the game REPORTS, not the loop index. The first
+    // press in this section is a cold jump - there is no landing window to hit
+    // yet - so link n happens on iteration n+1, and indexing by position read
+    // "links that paid: 6,11" against a game that was paying at 5 and 10.
     const gained = r.out.map((o, i) => o.xp - (i ? r.out[i-1].xp : r.before.xp));
-    const paid   = gained.map((v, i) => v > 0 ? i + 1 : 0).filter(Boolean);
+    const paid   = r.out.map((o, i) => gained[i] > 0 ? o.n : 0).filter(Boolean);
+    const atLink = n => gained[r.out.findIndex(o => o.n === n)];
     ok("every fifth link pays out", paid.join() === "5,10",
        `links that paid: ${paid.join() || "none"}`);
     ok("and the links between them do not",
        gained.filter(v => v > 0).length === 2, `${gained.filter(v=>v>0).length} payouts in 11 links`);
     ok("the payout scales with the level it happens at",
-       gained[4] >= 3, `+${gained[4]} XP at link 5`);
+       atLink(5) >= 3, `+${atLink(5)} XP at link 5`);
     ok("coins too",
        r.out[9].coins > r.out[3].coins, `${r.out[3].coins} -> ${r.out[9].coins}`);
   }

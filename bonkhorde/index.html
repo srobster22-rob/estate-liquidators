@@ -2913,7 +2913,12 @@ function step(dt){
       P.vy = 11 + Math.min(6, P.hop)*.26;   // more air per link, but only for a while
       P.air = true;
     } else if(P.hopGrace > 0) P.hopGrace -= dt;
-    else if(P.hop > 0) P.hop = Math.max(0, P.hop - HOP_BLEED*dt);
+    // The bleed has to scale with the chain or an unbounded chain takes an
+    // unbounded time to lose: a flat 2.4/s left a 14-link chain still worth +40%
+    // three seconds after you stopped, which is not "lose the rhythm, lose the
+    // speed", it is a grace period. Proportional, so every chain length decays
+    // in about the same two and a half seconds.
+    else if(P.hop > 0) P.hop = Math.max(0, P.hop - (HOP_BLEED + P.hop*.55)*dt);
   }
   if(P.hopFx > 0) P.hopFx -= dt;
   if(P.air){ P.vy -= 30*dt; P.y += P.vy*dt;
