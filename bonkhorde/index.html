@@ -680,7 +680,13 @@ const BOSSES = [
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
 // minutes grindier, which is why it carries the correction on its own.
-{ t:1140, nm:"THE FINAL BONK",hp:370000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
+// Side events are a power source the difficulty was never tuned against.
+// Measured under identical conditions - same build, same characters, n=8 -
+// they are worth +25 points of veteran clear rate: 11/24 with them frozen,
+// 17/24 with them live. The finale is where nearly every veteran run is
+// decided, so it asks for those points back. The intent is that the
+// twenty-minute clear is now reachable BECAUSE you went and got them.
+{ t:1140, nm:"THE FINAL BONK",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -868,7 +874,7 @@ loadSave();
 // screen too, before any run exists.
 let P = null;
 let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
-    arcs=[], pops=[], nums=[], spits=[], alerts=[], hazards=[];
+    arcs=[], pops=[], nums=[], spits=[], alerts=[], hazards=[], events=[];
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62;
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
@@ -911,6 +917,9 @@ function startRun(id){
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0;
+  events=[]; boons=[]; nextEvent=rnd(24,32);
+  evStats.spawned=evStats.caches=evStats.altars=evStats.expired=0;
+  boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   stick=null; look=null;                 // drop any thumb held across the retry
@@ -1498,6 +1507,90 @@ function bossExecute(e, A){
   else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
 }
 
+// ======================================================= SIDE EVENTS
+// The whole design is "you do not control the weapons, you control where you
+// are". So the optional content has to be positional too, or it is a different
+// game bolted on: a CACHE is a reward placed somewhere you are not, with the
+// horde in between, and an ALTAR is the opposite demand - hold one spot while
+// the horde arrives, in a game whose entire default is to keep moving. Neither
+// asks you to press anything. Both ask you to go somewhere and pay for it.
+const BOONS = [
+  { nm:"HEAVY HANDS", ds:"+15% damage",        fn:()=>{ boonMul.dmg *= 1.15; P.dmg *= 1.15; } },
+  { nm:"LONG ARMS",   ds:"+12% weapon reach",  fn:()=>{ boonMul.reach *= 1.12; P.reach *= 1.12; } },
+  { nm:"QUICK HANDS", ds:"-7% cooldowns",      fn:()=>{ boonMul.cd *= .93; applyBoons(); } },
+  { nm:"LIGHT FEET",  ds:"+7% move speed",     fn:()=>{ boonMul.spd *= 1.07; applyBoons(); } },
+  { nm:"DEEP LUNGS",  ds:"+28 max HP, healed", fn:()=>{ P.maxhp += 28; P.hp = P.maxhp; } },
+  { nm:"MAGPIE",      ds:"+25% pickup radius", fn:()=>{ boonMul.mag *= 1.25; applyBoons(); } },
+];
+const EV = {
+  cache: { nm:"CACHE", life:40, r:2.2, c:[1,.78,.20] },
+  // 3.6m for 5.5 continuous seconds completed exactly zero times across three
+  // twenty-minute runs - every altar in the game expired unclaimed. Standing
+  // still is the one thing this game trains you never to do, so the ask has to
+  // be a hard moment, not an impossible one: a wider ring, a shorter hold, and
+  // a slower bleed so ducking out to dodge a slam costs you rather than ends it.
+  altar: { nm:"ALTAR", life:64, r:4.8, c:[.62,.42,.95], hold:4.0 },
+};
+let nextEvent = 0, noEvents = false, boons = [];
+const evStats = { spawned:0, caches:0, altars:0, expired:0 };
+
+function spawnEvent(kind, atX, atZ){
+  const d = EV[kind]; if(!d) return null;
+  let x = atX, z = atZ;
+  if(x === undefined){
+    // far enough that it is a decision, near enough that it is not a hike
+    for(let i=0;i<24;i++){
+      const a = Math.random()*TAU, r = rnd(20, 38);
+      x = clamp(P.x + Math.sin(a)*r, -ARENA+6, ARENA-6);
+      z = clamp(P.z + Math.cos(a)*r, -ARENA+6, ARENA-6);
+      if(Math.hypot(x-P.x, z-P.z) > 16) break;
+    }
+  }
+  const e = { kind, x, z, life:d.life, max:d.life, chg:0, bob:0 };
+  events.push(e); evStats.spawned++;
+  alert2(d.nm + " NEARBY", kind==="cache" ? "#f0b429" : "#a98cf5");
+  SFX.gem(6);
+  return e;
+}
+
+function updateEvents(dt){
+  if(!noEvents && (nextEvent -= dt) <= 0){
+    // First pass fired one every ~41s: 29 a run, half of them expiring
+    // unvisited. That is wallpaper, not an occasion. ~14 a run, and the ones
+    // you skip are a decision you made rather than a stream you ignored.
+    nextEvent = rnd(72, 96);
+    spawnEvent(events.some(e=>e.kind==="cache") || Math.random() < .5 ? "altar" : "cache");
+  }
+  for(let i=events.length-1;i>=0;i--){
+    const e = events[i], d = EV[e.kind];
+    e.bob += dt*2.2;
+    const near = Math.hypot(P.x-e.x, P.z-e.z) < d.r;
+    if(e.kind === "cache"){
+      if(near){
+        events.splice(i,1);
+        queueLevel(); coinsRun += 40;
+        for(let k=0;k<9;k++) pushGem(e.x+rnd(-2,2), e.z+rnd(-2,2), 4);
+        evStats.caches++;
+        alert2("CACHE OPENED", "#f0b429"); shake = Math.max(shake,.5); SFX.levelup();
+        continue;
+      }
+    } else {
+      // charges while you stand in it and bleeds back out when you leave, so
+      // stepping away to dodge costs you progress but never all of it
+      e.chg = clamp(e.chg + (near ? dt : -dt*.32), 0, d.hold);
+      if(e.chg >= d.hold){
+        events.splice(i,1);
+        const b = pick(BOONS.filter(x=>!boons.includes(x.nm)) .length
+                       ? BOONS.filter(x=>!boons.includes(x.nm)) : BOONS);
+        boons.push(b.nm); b.fn(); evStats.altars++;
+        alert2(b.nm + " - " + b.ds, "#a98cf5"); shake = Math.max(shake,.7); SFX.levelup();
+        continue;
+      }
+    }
+    if((e.life -= dt) <= 0){ events.splice(i,1); evStats.expired++; alert2(d.nm+" LOST", "#5c6470"); }
+  }
+}
+
 function updateHazards(dt){
   for(let i=hazards.length-1;i>=0;i--){
     const h = hazards[i];
@@ -1840,13 +1933,21 @@ function recalcDmg(){
        * (1 + (P.kit.spinach ? (P.kit.spinach.l+1)*.13 : 0))
        * (1 + (P.kit.boots   ? (P.kit.boots.l+1)*.08  : 0))   // momentum
        * (1 + (P.kit.heart   ? (P.kit.heart.l+1)*.05  : 0)); }
+// Altar boons multiply in HERE rather than being written onto P, because every
+// one of these recomputes its stat from scratch the next time you take a
+// passive - a boon assigned directly to P.cd survives exactly until your next
+// level-up and then silently evaporates.
+let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1 };
 function recalcSpd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return 6.6*(m.spd||1)*(1+rank("spd")*.04) * (1 + (P.kit.boots ? (P.kit.boots.l+1)*.09 : 0)); }
+  return 6.6*(m.spd||1)*(1+rank("spd")*.04) * boonMul.spd
+       * (1 + (P.kit.boots ? (P.kit.boots.l+1)*.09 : 0)); }
 function recalcCd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return Math.max(.58, 1*(m.cd||1)*(1-rank("cd")*.035)
+  return Math.max(.58, 1*(m.cd||1)*(1-rank("cd")*.035) * boonMul.cd
                      * Math.pow(.92, P.kit.tempo ? P.kit.tempo.l+1 : 0)); }
 function recalcMag(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return 4.2*(m.mag||1)*(1+rank("mag")*.18) * (1 + (P.kit.magnet ? (P.kit.magnet.l+1)*.35 : 0)); }
+  return 4.2*(m.mag||1)*(1+rank("mag")*.18) * boonMul.mag
+       * (1 + (P.kit.magnet ? (P.kit.magnet.l+1)*.35 : 0)); }
+function applyBoons(){ P.spd = recalcSpd(); P.cd = recalcCd(); P.mag = recalcMag(); }
 
 // ====================================================== AUTOPILOT (testing)
 // A deliberately mediocre kiter: repel from the local crowd, respect the walls,
@@ -1892,6 +1993,23 @@ function botVector(){
       const after = Math.hypot(dx*P.spd - hx, dz*P.spd - hz);  // one second of running
       if(after < h.r + 1.6) s -= 55;                      // straight into it
       else if(hd < h.r + 1.0) s += 30;                    // and we are standing in one
+    }
+    // Side events, or the bench measures a player who does not know they exist.
+    // Weaker than the gem pull per metre, so it never overrides the survival
+    // term - a plausible player detours for a cache, they do not walk into a
+    // brute for one. The altar pull is stronger inside its ring, because the
+    // whole point of an altar is that leaving costs you.
+    for(const ev of events){
+      const ex = ev.x-P.x, ez = ev.z-P.z, ed = Math.hypot(ex,ez);
+      if(ed > 44 || ed < .4) continue;
+      const proj = (ex*dx + ez*dz)/ed;
+      const urgency = ev.life < 14 ? 1.8 : 1;
+      if(ev.kind === "altar" && ed < EV.altar.r){
+        // inside the ring the question is not "go there", it is "do not leave" -
+        // score how far this heading would take it in one second
+        const fx = P.x + dx*P.spd - ev.x, fz = P.z + dz*P.spd - ev.z;
+        s += (Math.hypot(fx,fz) < EV.altar.r - .6) ? 26 : -20;
+      } else s += proj * (1.35 - ed/44) * 3.2 * urgency;
     }
     const nx = P.x+dx*12, nz = P.z+dz*12;                 // and off the walls
     if(Math.abs(nx) > ARENA-7 || Math.abs(nz) > ARENA-7) s -= 9;
@@ -1965,6 +2083,7 @@ function step(dt){
   updateEnemies(dt);
   updateProjectiles(dt);
   updateHazards(dt);
+  updateEvents(dt);
   updateGems(dt);
 
   // ---- director
@@ -2216,6 +2335,33 @@ function render(){
     }
     box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, z.c, .75*a);
   }
+
+  // ---- side events. A reward you cannot find is not a reward, so each one
+  // stands under a beam tall enough to clear the horde and read from the far
+  // side of the arena, and the ALTAR's ring fills as you hold the ground.
+  for(const e of events){
+    const d = EV[e.kind], gy = groundY(e.x,e.z);
+    const fade = Math.min(1, e.life/6);                 // the last six seconds blink
+    const on = e.life > 6 || Math.floor(e.life*4)%2 === 0;
+    if(!on) continue;
+    for(let i=0;i<9;i++)                                // the beam
+      box(e.x, gy + 1.4 + i*1.7, e.z, .30,.85,.30, d.c, .85 - i*.07);
+    if(e.kind === "cache"){
+      const lift = Math.sin(e.bob)*.12;
+      box(e.x, gy+.55+lift, e.z, .62,.44,.46, [.42,.30,.16], .10, e.bob*.35);
+      box(e.x, gy+.94+lift, e.z, .66,.16,.50, d.c,          .55, e.bob*.35);
+    } else {
+      box(e.x, gy+1.05, e.z, .40,1.05,.40, [.20,.16,.30], .06);
+      box(e.x, gy+2.25, e.z, .52,.22,.52, d.c, .55);
+      const seg = 20, frac = e.chg/d.hold;
+      for(let i=0;i<seg;i++){
+        const lit = i/seg < frac;
+        const th = i/seg*TAU + (lit ? 0 : e.bob*.4);
+        box(e.x+Math.sin(th)*d.r, gy+.12, e.z+Math.cos(th)*d.r,
+            .20,.07,.20, lit ? [1,1,1] : d.c, lit ? 1 : .30*fade);
+      }
+    }
+  }
   // Boss telegraphs. The outer ring says WHERE, the ring closing inward says
   // WHEN - so the read is "that circle, that soon" without reading a number.
   for(const h of hazards){
@@ -2439,6 +2585,34 @@ function render(){
     g2.fillStyle = al.col; g2.fillText(al.text, w/2, ay);
     ay += asz*1.28;
   }
+  // Off-screen events get an edge marker with a distance. Without one you only
+  // ever find the ones that happen to spawn in front of you, and the feature
+  // reads as random rather than as something you chose to go and get.
+  for(const e of events){
+    const d = EV[e.kind];
+    const p = project(e.x, groundY(e.x,e.z)+4.2, e.z);   // [x,y] in pixels, or null
+    const onScreen = !!p && p[0] > 40 && p[0] < w-40 && p[1] > 40 && p[1] < h-90;
+    if(onScreen) continue;
+    const dx = e.x-P.x, dz = e.z-P.z;
+    // screen-space direction, from the camera's yaw rather than world axes
+    const rx =  Math.cos(camYaw)*dx - Math.sin(camYaw)*dz;
+    const rz =  Math.sin(camYaw)*dx + Math.cos(camYaw)*dz;
+    const ang = Math.atan2(rx, rz);
+    const mr = Math.min(w,h)*.36;
+    const mx = w/2 + Math.sin(ang)*mr, my = h/2 - Math.cos(ang)*mr*.72;
+    const col = e.kind==="cache" ? "#f0b429" : "#a98cf5";
+    g2.globalAlpha = e.life > 6 ? .92 : (Math.floor(e.life*4)%2 ? .92 : .25);
+    g2.save(); g2.translate(mx,my); g2.rotate(ang);
+    g2.fillStyle = col; g2.beginPath();
+    g2.moveTo(0,-11); g2.lineTo(8,7); g2.lineTo(-8,7); g2.closePath(); g2.fill();
+    g2.restore();
+    g2.font = "700 11px ui-monospace,Menlo,monospace"; g2.textAlign = "center";
+    g2.lineWidth = 4; g2.strokeStyle = "#000";
+    const lbl = `${d.nm} ${Math.round(Math.hypot(dx,dz))}m`;
+    g2.strokeText(lbl, mx, my+24); g2.fillText(lbl, mx, my+24);
+    g2.globalAlpha = 1;
+  }
+
   // virtual stick: an invisible control is not a control
   if(TOUCH && stick && running && !over){
     const dx = stick.x-stick.ox, dy = stick.y-stick.oy;
@@ -2643,6 +2817,14 @@ window.__g = {
   // render() sets drawnBoxes from 0 every frame, so parking it at -1 makes a
   // stale value impossible to mistake for a live one
   clearBoxes: ()=>{ drawnBoxes = -1; },
+  events:  ()=>events.map(e=>({ kind:e.kind, x:+e.x.toFixed(1), z:+e.z.toFixed(1),
+                                life:+e.life.toFixed(1), chg:+e.chg.toFixed(2) })),
+  spawnEvent: (k,x,z)=>{ const e = spawnEvent(k,x,z); return e && e.kind; },
+  freezeEvents: (v=true)=>{ noEvents = v; },
+  boons:   ()=>boons.slice(),
+  evStats: ()=>({...evStats}),
+  grantBoon:(nm)=>{ const b = BOONS.find(x=>x.nm===nm); if(!b) return null;
+                    boons.push(b.nm); b.fn(); return b.nm; },
   opts:    ()=>({ sound:save.sound, motion:save.motion }),
   setOpt,
   gain:    ()=> master ? master.gain.value : null,

@@ -64,6 +64,17 @@ const MUTANTS = [
   { id:"camera-welded", must:"12d",
     why:"the boom goes back to being welded to the player",
     from:"  camAnchor[0] = lerp(camAnchor[0], px, kf);", to:"  camAnchor[0] = px;" },
+  { id:"cache-never-opens", must:"18",
+    why:"walking into a cache does nothing at all",
+    from:"      if(near){\n        events.splice(i,1);", to:"      if(false){\n        events.splice(i,1);" },
+  { id:"altar-charges-anywhere", must:"18",
+    why:"the altar charges whether you are standing in it or not",
+    from:"      e.chg = clamp(e.chg + (near ? dt : -dt*.32), 0, d.hold);",
+    to:  "      e.chg = clamp(e.chg + dt, 0, d.hold);" },
+  { id:"boon-not-durable", must:"18",
+    why:"boons are written onto P and evaporate at the next passive pick",
+    from:"  return Math.max(.58, 1*(m.cd||1)*(1-rank(\"cd\")*.035) * boonMul.cd",
+    to:  "  return Math.max(.58, 1*(m.cd||1)*(1-rank(\"cd\")*.035)" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

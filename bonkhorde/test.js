@@ -934,6 +934,100 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await ctx.close();
   }
 
+  console.log("\n=== 18. SIDE EVENTS ===");
+  {
+    const at = (kind, dx, dz) => page.evaluate(([kind,dx,dz]) => {
+      window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
+      window.__g.drainPicks(true); window.__g.freezeSpawns(true);
+      window.__g.freezeEvents(true); window.__g.place(0,0);
+      window.__g.spawnEvent(kind, dx, dz);
+      return window.__g.events().length;
+    }, [kind,dx,dz]);
+
+    ok("a cache can be placed", (await at("cache", 20, 0)) === 1);
+
+    // walking into it opens it; standing near it does not
+    const cache = await page.evaluate(() => {
+      const before = window.__g.state();
+      window.__g.place(14, 0); window.__g.step(4);          // 6m away
+      const far = window.__g.events().length;
+      window.__g.place(20, 0); window.__g.step(4);          // on top of it
+      return { far, after: window.__g.events().length,
+               levels: window.__g.state().lvl - before.lvl,
+               picking: window.__g.state().picking };
+    });
+    ok("a cache six metres away stays shut", cache.far === 1);
+    ok("walking into it opens it", cache.after === 0);
+    ok("and it pays out a level-up", cache.picking === true || cache.levels > 0,
+       `picking=${cache.picking} +${cache.levels} levels`);
+
+    await at("altar", 20, 0);
+    const altar = await page.evaluate(() => {
+      window.__g.place(14, 0); window.__g.step(120);        // 6m away, two seconds
+      const idle = window.__g.events()[0].chg;
+      window.__g.place(20, 0); window.__g.step(90);         // standing in it
+      const part = window.__g.events()[0].chg;
+      window.__g.place(0, 0);  window.__g.step(60);         // walked off again
+      const bled = window.__g.events()[0].chg;
+      window.__g.place(20, 0); window.__g.step(60 * 7);     // hold it out
+      return { idle, part, bled, left: window.__g.events().length,
+               boons: window.__g.boons() };
+    });
+    ok("an altar does not charge from six metres away", altar.idle === 0, `${altar.idle}`);
+    ok("standing in it charges it", altar.part > 1, `${altar.part}s`);
+    ok("stepping out bleeds progress rather than resetting it",
+       altar.bled < altar.part && altar.bled > 0, `${altar.part} -> ${altar.bled}`);
+    ok("holding it out grants a boon",
+       altar.left === 0 && altar.boons.length === 1, altar.boons.join());
+
+    // the failure a naive implementation ships: every stat here is recomputed
+    // from scratch on the next passive pick, so a boon written onto P alone
+    // survives until your next level-up and then quietly evaporates
+    // The failure a naive implementation ships: every one of these stats is
+    // recomputed from scratch on the next passive pick, so a boon written onto
+    // P alone survives until your next level-up and then quietly evaporates.
+    //
+    // A first version of this used give("tempo", 0) as the passive pick. That
+    // is a no-op - cooldown stayed at exactly 1 - so the assertion passed
+    // without ever triggering the recompute it existed to survive. Assert the
+    // PRODUCT instead: boon-then-passive must equal passive alone times the
+    // boon's own multiplier, which can only hold if both are in one calculation.
+    const durable = await page.evaluate(() => {
+      const boot = () => { window.__g.wipeSave(); window.__g.start("intern");
+                           window.__g.god(); window.__g.freezeEvents(true);
+                           window.__g.freezeSpawns(true); window.__g.place(0,0); };
+      const out = {};
+      boot(); out.baseCd = window.__g.state().cd;
+      boot(); window.__g.give("tempo", 2); out.tempoCd = window.__g.state().cd;
+      boot(); window.__g.grantBoon("QUICK HANDS");
+      out.boonCd = window.__g.state().cd;
+      window.__g.give("tempo", 2); out.bothCd = window.__g.state().cd;
+      boot(); window.__g.give("boots", 2); out.bootsSpd = window.__g.state().spd;
+      boot(); window.__g.grantBoon("LIGHT FEET");
+      window.__g.give("boots", 2); out.bothSpd = window.__g.state().spd;
+      return out;
+    });
+    ok("the passive pick really does recompute the stat",
+       durable.tempoCd < durable.baseCd * 0.95,
+       `${durable.baseCd} -> ${durable.tempoCd} with METRONOME 3`);
+    ok("QUICK HANDS cuts cooldowns", durable.boonCd < durable.baseCd,
+       `${durable.baseCd} -> ${durable.boonCd}`);
+    ok("and it survives that recompute, multiplying through it",
+       Math.abs(durable.bothCd - durable.tempoCd * 0.93) < 0.004,
+       `${durable.tempoCd} x0.93 = ${(durable.tempoCd*0.93).toFixed(3)}, got ${durable.bothCd}`);
+    ok("LIGHT FEET multiplies through it too",
+       Math.abs(durable.bothSpd - durable.bootsSpd * 1.07) < 0.02,
+       `${durable.bootsSpd} x1.07 = ${(durable.bootsSpd*1.07).toFixed(2)}, got ${durable.bothSpd}`);
+
+    const expired = await page.evaluate(() => {
+      window.__g.start("intern"); window.__g.god(); window.__g.freezeEvents(true);
+      window.__g.place(0,0); window.__g.spawnEvent("cache", 40, 40);
+      window.__g.step(60 * 45);
+      return window.__g.events().length;
+    });
+    ok("an event you ignore expires", expired === 0);
+  }
+
   console.log("\n=== 16b. THE MIX TRACKS THE PRESSURE ===");
   {
     // The pulse is the only thing in the game that states the shape of a run

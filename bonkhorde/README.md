@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 148 checks: boot, every weapon, every evolution, every
+node test.js              # 161 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -121,7 +121,7 @@ node mutate.js                    # break the game on purpose, one thing at a
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **148 passing.**
+die, and checks that `localStorage` survives a reload. **161 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -288,6 +288,13 @@ twenty minutes *reachable* and clears **25 of 60**; the veteran medians run past
 almost every veteran run now reaches sudden death and is decided there, which is the fight being
 the fight.
 
+**Side events changed what these numbers mean.** Caches and altars are a power source the
+difficulty was never tuned against, worth +25 points of veteran clear rate measured against
+the identical build with them frozen. The late curve absorbs that now, and the intent is that
+twenty minutes is reachable **because** you went and got them — a first run can even scrape a
+clear on a lucky one, roughly one in twenty-four, where before it was zero in sixty. That
+ceiling being *visible but rare* is the shape the feature was for.
+
 **42% is the target, not a miss.** An earlier draft of this file treated ~33% as the number to
 hold, and every content change since has had to be walked back toward it with boss HP. That was
 cargo cult: the invariant that matters is *first run never clears and a maxed shop makes the
@@ -316,8 +323,40 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned sixty-four things this build believed:
+That harness has overturned sixty-nine things this build believed:
 
+- **Spawning enemies as the "cost" of a reward is a reward.** Caches and altars went in as
+  optional content — a chest you walk into, a shrine you hold ground on — and took veteran
+  clears from 46% to 71%. The obvious fix was to guard them: enemies around an opened cache,
+  more arriving while an altar charges. That took clears to **92%**. In a survivors-like more
+  bodies is more XP, and the horde *is* the economy: a cost billed in enemies is a discount.
+  The altar bills health instead — 4% of your pool a second, ~16% for a full charge, and it
+  cannot kill you outright, so the price of greed is the next hit rather than the altar.
+- **A guaranteed level-up is worth the same at minute two and minute nineteen.** Replacing the
+  cache's level-up with a fixed XP payout was meant to make it decay in relative terms late.
+  It went the other way — 71% to 88% — because a fixed payout that is one level at minute
+  nineteen is *five* at minute two, and everything downstream compounds off those five. Back
+  to one level, which is also the readable version.
+- **The finale had stopped being the binding constraint and I did not notice for two rounds.**
+  With events live you arrive at THE FINAL BONK about fifteen levels stronger, so taking it
+  from 370k HP to 520k — a 40% rise — moved clears by four points. The lever had to be the
+  curve that makes the whole late game hard, not the last minute of it: `hpScale`'s quadratic
+  term went 2.5 → 3.6, which is +29% at minute nineteen and +10% at minute ten, and the finale
+  came back down to 430k. Veteran clears land at **11/24**, exactly the events-off baseline.
+- **The autopilot did not know the feature existed, so the first balance numbers measured a
+  player who ignores it.** Teaching it to detour for a cache was easy. Holding an altar was
+  not: across three full runs it completed **zero**, and every altar in the game expired
+  unclaimed — standing still is the one thing every other term in that bot exists to prevent.
+  Inside the ring it now scores "would this heading keep me in it" rather than "is this toward
+  it", and the altar asks for less: 4.8m instead of 3.6, four seconds instead of 5.5, and a
+  slower bleed so ducking out to dodge costs progress rather than ending it. The first pass
+  also fired one every ~41 seconds — 29 a run, half expiring unvisited, which is wallpaper
+  rather than an occasion. Now ~14.
+- **And the events are only measurable because the bench can switch them off.** `BONKHORDE_
+  NOEVENTS=1` runs the identical build with them frozen, which is the only way to say what
+  they are worth rather than guess: 11/24 against 17/24, same characters, same n. Three rounds
+  of tuning happened before that flag existed and every one of them was poking at a number
+  with no control to compare it to.
 - **Two pieces of text in the same place, at the moment the game most wants to tell you
   something.** Boss-name alerts were drawn at 19% of the viewport height, which on a phone in
   landscape is exactly where the phase line sits. Floored below the HUD header and scaled to

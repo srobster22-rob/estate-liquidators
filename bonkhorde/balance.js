@@ -29,6 +29,9 @@ for(const p of ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome"])
 // node balance.js [trials] [first|vet|both] [char,char]
 const TRIALS = +(process.argv[2] || 4);
 const TIER   = process.argv[3] || "both";
+// BONKHORDE_NOEVENTS=1 measures the same build with side events switched
+// off, which is the only way to read what they are actually worth.
+const NOEV   = !!process.env.BONKHORDE_NOEVENTS;
 // Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
 // moment they shipped - a bench that quietly stops covering new content is
 // worse than no bench, because the gap looks like a clean sweep. Read from the
@@ -46,17 +49,18 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped) => p.evaluate(([ch, shopped]) => {
+  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv]) => {
     window.__g.wipeSave();
     if (shopped) window.__g.setUpgrades(
       { hp:6, dmg:6, spd:5, mag:5, cd:5, crit:5, armor:5, start:3, rev:2 });
     window.__g.start(ch);
+    if (noEv) window.__g.freezeEvents(true);   // startRun resets the timer
     window.__g.bot(true);
     const st = window.__g.runOut();
     return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
              evos: window.__g.kit().filter(k => k.includes("EVO")).length };
-  }, [ch, shopped]);
+  }, [ch, shopped, NOEV]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {
