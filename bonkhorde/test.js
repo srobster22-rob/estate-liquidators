@@ -637,9 +637,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         touches:[mk()], changedTouches:[mk()] }));
       cv.dispatchEvent(new TouchEvent("touchend", { bubbles:true, cancelable:true,
         touches:[], changedTouches:[mk()] }));
-      return window.__g.isAirborne();
+      // Jump input is BUFFERED now, so a tap arms it and the next step spends
+      // it. Reading isAirborne() straight off the touchend read false and would
+      // have gone on reading false however broken the jump was.
+      const armed = window.__g.hop().buf > 0;
+      window.__g.step(1/60);
+      return { armed, air: window.__g.isAirborne() };
     });
-    ok("a tap on the right jumps", jumped === true, `airborne=${jumped}`);
+    ok("a tap on the right arms a jump", jumped.armed === true, `buf armed=${jumped.armed}`);
+    ok("a tap on the right jumps", jumped.air === true, `airborne=${jumped.air}`);
 
     // a phone has no Escape key, so the pause button has to exist and work
     const paused = await mp.evaluate(() => {
@@ -1238,6 +1244,292 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("mouseup ends the drag", r.after === false && Math.abs(r.c - r.b) < 1e-9,
        `dragging=${r.after} yaw ${r.b.toFixed(4)} -> ${r.c.toFixed(4)}`);
     await ctx.close();
+  }
+
+  console.log("\n=== 19. BUNNYHOPPING ===");
+  {
+    // The mechanic is "jump on the frame you land and keep the momentum", so
+    // every assertion here is about the WINDOW, not about the jump. A test that
+    // only checked "space makes you airborne" would have passed against a build
+    // with no chain in it at all.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const key = (t, code, repeat = false) =>
+        dispatchEvent(new KeyboardEvent(t, { code, repeat }));
+      const steps = n => { for (let i = 0; i < n; i++) g.step(1 / 60); };
+      const jump  = () => { key("keydown", "Space"); key("keyup", "Space"); };
+      const land  = () => { let n = 0; while (g.hop().air && n++ < 400) g.step(1 / 60); };
+
+      // Twelve seconds of running north crosses the whole arena, and the wall
+      // slide zeroes the velocity aimed into it - which read as "the chain cost
+      // you all your speed" the first time this ran. Re-centre between phases
+      // and assert we never reached the wall at all.
+      const home = () => g.place(0, 0);
+      let hitWall = false;
+      const watch = () => { if (g.hop().r > g.rim() - 3) hitWall = true; };
+
+      key("keydown", "KeyW");
+      home(); steps(60); watch();                 // settle at base top speed
+      const base = g.hop().spd, baseN = g.hop().n;
+
+      jump(); steps(1);                           // a cold jump: no chain
+      const cold = g.hop().n;
+
+      const chain = [];
+      for (let k = 0; k < 8; k++) { land(); jump(); g.step(1 / 60); chain.push(g.hop().n);
+                                    if (g.hop().r > 40) home(); }
+      steps(30); watch();                         // let the speed catch up in air
+      const top = g.hop();
+
+      // miss the window: land, stand still for a while, jump cold
+      land(); steps(30);                          // 0.5s grounded
+      const bleeding = g.hop().n;
+      steps(180);                                 // 3s grounded
+      const dead = g.hop().n;
+      home(); steps(60); watch();
+      const backToBase = g.hop().spd;
+
+      // holding the key must not auto-hop
+      land();
+      key("keydown", "Space", true);
+      const heldBuf = g.hop().buf;
+
+      // and a press slightly BEFORE touchdown still counts
+      jump(); g.step(1 / 60);                     // airborne again
+      let n2 = 0; while (g.hop().air && g.hop().spd >= 0 && n2++ < 400) {
+        g.step(1 / 60);
+        if (!g.hop().air) break;
+      }
+      key("keyup", "KeyW");
+      return { base, baseN, cold, chain, top, bleeding, dead, backToBase, heldBuf,
+               hitWall, max: g.hop().mul };
+    });
+    ok("standing still, there is no chain", r.baseN === 0, `n=${r.baseN}`);
+    ok("a cold jump starts the chain at zero", r.cold === 0, `n=${r.cold}`);
+    ok("jumping on the landing frame links the chain",
+       r.chain[0] === 1 && r.chain[1] === 2 && r.chain[2] === 3,
+       `chain ${r.chain.join(",")}`);
+    ok("the chain caps", r.chain[6] === 5 && r.chain[7] === 5, `chain ${r.chain.join(",")}`);
+    ok("a full chain is measurably faster than walking",
+       r.top.spd > r.base * 1.22,
+       `${r.base.toFixed(2)} -> ${r.top.spd.toFixed(2)} m/s  (x${(r.top.spd/r.base).toFixed(2)})`);
+    ok("landing and standing bleeds the chain rather than snapping it",
+       r.bleeding > 3.4 && r.bleeding < 5,
+       `5 -> ${r.bleeding.toFixed(2)} after half a second`);
+    ok("and it is gone after three seconds on the ground", r.dead === 0, `n=${r.dead}`);
+    ok("speed comes back down with it",
+       Math.abs(r.backToBase - r.base) < 0.15,
+       `${r.top.spd.toFixed(2)} -> ${r.backToBase.toFixed(2)} vs base ${r.base.toFixed(2)}`);
+    ok("a HELD spacebar does not auto-hop", r.heldBuf === 0, `buf=${r.heldBuf}`);
+    ok("and none of that was measured against a wall", r.hitWall === false);
+  }
+
+  console.log("\n=== 19b. THE JUMP INPUT IS BUFFERED ===");
+  {
+    // Landing frames are 16ms wide. Without a pre-land buffer the window is not
+    // a skill, it is a coin flip on frame timing - so a press issued while still
+    // airborne has to survive until touchdown and spend itself there.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true);
+      const key = c => { dispatchEvent(new KeyboardEvent("keydown", { code: c }));
+                         dispatchEvent(new KeyboardEvent("keyup",   { code: c })); };
+      dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+      for (let i = 0; i < 60; i++) g.step(1 / 60);
+
+      key("Space"); g.step(1 / 60);                  // airborne, chain 0
+      // Fire the press on the way DOWN and then never touch the key again. The
+      // buffer is 0.14s and a jump is airborne for 0.73s, so pressing at the top
+      // of the arc proves nothing except that buffers expire - the press has to
+      // land inside the window it exists to widen.
+      let armedInAir = false, n = 0;
+      while (g.hop().air && n++ < 400) {
+        g.step(1 / 60);
+        if (g.hop().air && g.hop().vy < -9 && !armedInAir) {
+          key("Space"); armedInAir = g.hop().buf > 0;
+        }
+      }
+      g.step(1 / 60);                                 // the frame after touchdown
+      const linkedFromBuffer = g.hop().n;
+
+      // and a press that is too early expires instead of hanging around
+      key("Space");
+      for (let i = 0; i < 12; i++) g.step(1 / 60);    // 0.2s > HOP_BUF
+      const expired = g.hop().buf;
+      dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+      return { armedInAir, linkedFromBuffer, expired };
+    });
+    ok("a press made in mid-air is stored", r.armedInAir === true);
+    ok("and it links the chain on touchdown without a second press",
+       r.linkedFromBuffer === 1, `n=${r.linkedFromBuffer}`);
+    ok("a buffer nobody spends expires", r.expired === 0, `buf=${r.expired}`);
+  }
+
+  console.log("\n=== 20. THE WALL IS THE EDGE OF THE MAP ===");
+  {
+    // The boundary used to be a square clamp with a decorative ring of spires
+    // inside it, thirty metres short of the corners. You walked through the wall
+    // and the map kept going. These check the two shapes are now one shape.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.start("intern"); g.god(); g.freezeSpawns(true); g.drainPicks(true);
+      const RIM = g.rim();
+      g.place(500, 500);
+      const st1 = g.state();
+      const corner = Math.hypot(st1.x, st1.z);
+
+      // walk into the wall for four seconds and see if it holds
+      g.place(0, 0);
+      dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+      let worst = 0;
+      for (let i = 0; i < 60 * 20; i++) { g.step(1 / 60);
+        const s = g.state(); worst = Math.max(worst, Math.hypot(s.x, s.z)); }
+      dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+
+      // 300 event spawns, all of which used to be able to land in a corner
+      g.freezeEvents(false);
+      // g.spawnEvent() returns the KIND, not the event - reading .x off it gave
+      // NaN, and "NaN > RIM" is false, so the first version of this check passed
+      // by measuring nothing at all. Read the live list instead.
+      let evOut = 0, evMax = 0, evSeen = 0;
+      for (let i = 0; i < 300; i++) {
+        g.place((Math.random()*2-1)*RIM*0.7, (Math.random()*2-1)*RIM*0.7);
+        if (!g.spawnEvent(["cache","altar","hunt"][i % 3])) continue;
+        for (const e of g.events()) {
+          const d = Math.hypot(e.x, e.z);
+          if (!isFinite(d)) continue;
+          evSeen++; evMax = Math.max(evMax, d);
+          if (d > RIM) evOut++;
+        }
+      }
+
+      // and the camera cannot end up outside the wall looking in through it
+      g.place(0, 0);
+      let eyeMax = 0;
+      for (let a = 0; a < 16; a++) {
+        g.setShake(0);
+        g.place(Math.cos(a/16*Math.PI*2)*RIM, Math.sin(a/16*Math.PI*2)*RIM);
+        // The boom hangs off camAnchor, which LERPS toward the player - three
+        // frames after a teleport it is still near the middle of the map, and
+        // the first version of this read an eye radius of 11.7 and called the
+        // edge case tested. Let it catch up.
+        for (let i = 0; i < 90; i++) g.step(1/60);
+        eyeMax = Math.max(eyeMax, Math.hypot(g.eye()[0], g.eye()[2]));
+      }
+      return { RIM, corner, worst, evOut, evMax, evSeen, eyeMax,
+               wall: g.wall(), propsOut: g.propsOut() };
+    });
+    ok("there is a continuous wall, not a picket fence",
+       r.wall.n >= 120, `${r.wall.n} segments`);
+    ok("every segment sits at exactly the play radius",
+       Math.abs(r.wall.rmin - r.RIM) < 0.01 && Math.abs(r.wall.rmax - r.RIM) < 0.01,
+       `RIM ${r.RIM}, segments ${r.wall.rmin}..${r.wall.rmax}`);
+    {
+      // Position alone says nothing about ORIENTATION, and the first build of
+      // this wall had all 150 slabs rotated 90 degrees - a ring of radial
+      // spokes with daylight between every one, which the check above passed.
+      // Walk the ring and ask, at every half-degree, whether there is material.
+      let worst = 0, worstA = 0;
+      for (let i = 0; i < 720; i++) {
+        const th = i / 720 * Math.PI * 2;
+        const qx = Math.cos(th) * r.RIM, qz = Math.sin(th) * r.RIM;
+        let best = 1e9;
+        for (const g of r.wall.seg) {
+          const t = Math.max(-g.L, Math.min(g.L, (qx - g.x) * g.ux + (qz - g.z) * g.uz));
+          const dx = qx - (g.x + g.ux * t), dz = qz - (g.z + g.uz * t);
+          best = Math.min(best, Math.hypot(dx, dz));
+        }
+        if (best > worst) { worst = best; worstA = th; }
+      }
+      ok("and the ring actually closes - no gap anywhere on it",
+         worst < 0.1,
+         `widest gap ${worst.toFixed(3)}m at ${(worstA * 180 / Math.PI).toFixed(0)} degrees`);
+    }
+    ok("teleporting outside puts you back inside",
+       r.corner <= r.RIM - 1.4, `${r.corner.toFixed(2)} vs rim ${r.RIM}`);
+    ok("walking into it for twenty seconds does not get through",
+       r.worst <= r.RIM - 1.4, `furthest ${r.worst.toFixed(2)} of ${r.RIM}`);
+    ok("no side event spawns outside the wall",
+       r.evSeen > 200 && r.evOut === 0,
+       `${r.evSeen} sampled, ${r.evOut} outside, furthest ${r.evMax.toFixed(1)} of ${r.RIM}`);
+    ok("and the camera stays inside it too",
+       r.eyeMax <= r.RIM, `eye reached ${r.eyeMax.toFixed(1)} of ${r.RIM}`);
+    ok("no scenery is stranded out there either", r.propsOut === 0, `${r.propsOut} props`);
+  }
+
+  console.log("\n=== 21. MONSTERS EVOLVE MID-RUN ===");
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const lines = g.chars().map(id => { g.start(id); return g.mon(); });
+
+      g.start("intern"); g.god(); g.freezeSpawns(true); g.drainPicks(true);
+      const s0 = g.mon();
+      // level 7 is stage 2 of 3
+      while (g.state().lvl < 7) g.xp(200);
+      const s1 = g.mon();
+      const hpJump = s1.maxhp / s0.maxhp;
+      // and the top of the line at 20, where the signature turns on
+      while (g.state().lvl < 20) g.xp(2000);
+      const s2 = g.mon();
+
+      // Healing: an evolution must hand back exactly the HP it added. More and
+      // level 7 is a panic button; nothing and a +16% maxhp bonus reads on the
+      // HP bar as a LOSS, which is exactly how it looked the first time.
+      g.start("intern"); g.freezeSpawns(true); g.drainPicks(true);
+      const pre  = { maxhp: g.mon().maxhp, hp: g.state().hp };
+      g.evolveTo(1);
+      const post = { maxhp: g.mon().maxhp, hp: g.state().hp };
+      const heal = { pre, post };
+
+      // an evolution is worth a pick of its own, on top of the level that caused it
+      g.start("intern"); g.freezeSpawns(true); g.drainPicks(true);
+      const q0 = g.state().pending;
+      g.evolveTo(1);
+      const q1 = g.state().pending;
+
+      // monster levels are per monster and permanent
+      g.wipeSave();
+      g.start("intern"); const fresh = g.mon();
+      g.setMon("intern", 40000);
+      g.start("intern"); const raised = g.mon();
+      g.start("scrap");  const other  = g.mon();
+      return { lines, s0, s1, s2, hpJump, heal, q0, q1, fresh, raised, other,
+               freshLvl: fresh.lvl, raisedLvl: raised.lvl, otherLvl: other.lvl };
+    });
+    ok("every monster is a three-stage line with a signature",
+       r.lines.every(m => m.line.length === 3 && m.line.every(x => typeof x === "string" && x)),
+       r.lines.map(m => m.line.join(">")).join("  "));
+    ok("you start at the bottom of your line",
+       r.s0.stage === 0 && r.s0.nm === r.s0.line[0], `${r.s0.nm} stage ${r.s0.stage}`);
+    ok("level 7 evolves you", r.s1.stage === 1 && r.s1.nm === r.s1.line[1],
+       `${r.s0.nm} -> ${r.s1.nm}`);
+    ok("and it is a real stat block, not a rename",
+       r.hpJump > 1.1, `maxhp x${r.hpJump.toFixed(3)}`);
+    ok("level 20 reaches the top of the line",
+       r.s2.stage === 2 && r.s2.nm === r.s2.line[2], `${r.s1.nm} -> ${r.s2.nm}`);
+    ok("MOPMAW's signature is live at stage 3",
+       Math.abs(r.s2.reach - 1.20) < 0.001, `reach ${r.s2.reach}`);
+    ok("evolving heals exactly the HP it added, and no more",
+       Math.abs((r.heal.post.hp - r.heal.pre.hp) -
+                (r.heal.post.maxhp - r.heal.pre.maxhp)) < 1.5 &&
+       r.heal.post.hp <= r.heal.post.maxhp + 0.01,
+       `hp +${(r.heal.post.hp - r.heal.pre.hp).toFixed(1)}, maxhp +${
+         (r.heal.post.maxhp - r.heal.pre.maxhp).toFixed(1)}`);
+    ok("an evolution is worth a level-up pick of its own",
+       r.q1 === r.q0 + 1, `${r.q0} -> ${r.q1} queued`);
+    ok("banking XP raises that monster's level",
+       r.raisedLvl > r.freshLvl, `${r.freshLvl} -> ${r.raisedLvl}`);
+    ok("and it raises its starting HP with it",
+       r.raised.maxhp > r.fresh.maxhp * 1.05,
+       `${r.fresh.maxhp} -> ${r.raised.maxhp}`);
+    ok("a level on one monster is not a level on another",
+       r.otherLvl === 1, `scrap is LV ${r.otherLvl}`);
   }
 
   console.log("\n" + "=".repeat(58));

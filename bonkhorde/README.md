@@ -11,6 +11,10 @@ from Megabonk's third-person camera. No engine, no build step, no dependencies �
 You never attack. Every weapon fires on its own cooldown at its own targets. The only verb is
 **positioning**, and every death is a positioning mistake.
 
+You play a **monster**, and it evolves twice while you are running it — at level 7 and level 20
+it becomes a bigger animal with a new name, a better stat block and, at the top of its line, a
+named signature. Between runs each monster keeps the XP it earned and levels on its own.
+
 ![BONKHORDE](screenshot.png)
 
 ---
@@ -25,6 +29,13 @@ xdg-open bonkhorde/index.html      # Linux
 ```
 
 `WASD` move · `MOUSE` orbit camera · `SPACE` jump · `ESC` pause.
+
+**Bunnyhop.** Hit `SPACE` again on the frame you land and you keep the momentum: five links,
++5.5% move speed each, +28% at the top of the chain. Miss the window and it bleeds off over a
+couple of seconds; take a hit and it is gone instantly. The window is 0.16s after touchdown
+plus a 0.14s pre-land buffer, so a press made on the way down still counts — without that the
+input has to land inside a single 16ms frame, which is a coin flip rather than a skill. A held
+spacebar does nothing: it has to be a press.
 
 **On a phone:** left thumb is a virtual stick (analog — a half push moves you at half speed),
 right thumb turns the camera, a tap on the right jumps, and there is a pause button because
@@ -68,7 +79,9 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **5 enemy types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
-| **5 characters** | different starting weapon and stat profile; one unlocks by surviving 10:00 |
+| **7 monsters, 21 forms** | each is a three-stage line — MOPLING → MOPHAND → MOPMAW — that evolves at run level 7 and 20, with a named signature at the top |
+| **per-monster levels** | every run banks its XP into the monster that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
+| **bunnyhopping** | chain a jump on the frame you land for up to +28% move speed; one hit resets it |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
 Roughly 1,600 lines of JavaScript, no libraries.
@@ -103,7 +116,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 166 checks: boot, every weapon, every evolution, every
+node test.js              # 199 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -121,7 +134,7 @@ node mutate.js                    # break the game on purpose, one thing at a
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **166 passing.**
+die, and checks that `localStorage` survives a reload. **199 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -208,6 +221,35 @@ lighting levels, against grass — the best player colour tested still sat at Δ
 7.5 from something. So the player stopped competing for a hue and is marked by
 **shape** instead: a bright ring nothing else draws, which no deficiency can take
 away. Knowing when to stop using a channel is part of using it.
+
+### The map had two different edges
+
+The boundary was a **square** movement clamp 148m across, and the only thing in the world that
+looked like a wall was a ring of decorative spires at radius 74. A square's corners sit thirty
+metres past that ring, so the wall was scenery you walked straight through and the map kept
+going into empty checkerboard on the other side — and side events clamped to the same square,
+which is how they ended up spawning out there with you.
+
+It is one shape now: a play radius of 70, a continuous 150-segment wall drawn at exactly that
+radius, and every spawn, every enemy, every hazard and the camera all confined to it. The
+player slides along it instead of sticking, and the velocity component aimed into it is dropped
+— otherwise you accumulate speed you are not travelling at and the hop chain cashes it in the
+moment you turn away.
+
+Two things went wrong on the way, both of them caught by adding an assertion rather than by
+looking:
+
+- **The wall shipped as a picket fence.** `box()`'s local X axis maps to world `(cos r, −sin r)`,
+  so rotating each slab by `−θ` points its long axis straight out from the middle. 150 radial
+  spokes with daylight between every one — and the assertion in the suite checked *position*,
+  which was correct the whole time. The check now walks the ring at every half-degree and asks
+  whether there is material there; a fence fails it at the first gap.
+- **The camera clamp was still a square.** Same bug, one function along: a boom pointed at a
+  corner is 103m from the middle before a half-extent of 73 notices it, so backing into the wall
+  put the eye outside looking in. It solves for the largest fraction of the boom that still ends
+  inside the ring, and the floor on that fraction came down from 0.34 to 0.18 — at 0.34 the eye
+  could still finish five metres past the wall, inside the buttresses, which is the *next*
+  section's bug coming back through the door it was fixed at.
 
 ### The camera went blind at the arena edge
 

@@ -43,6 +43,14 @@
     transition:width .09s linear;box-shadow:0 0 14px #3ad0ff88}
   #lvl{position:absolute;top:12px;left:14px;font-size:11px;color:var(--dim)}
   #lvl b{color:var(--ink);font-size:17px}
+  #lvl em{display:block;font-style:normal;font-size:10px;letter-spacing:.14em;
+    color:#8affd0;margin-top:2px;text-shadow:0 1px 2px #000}
+  #evo{position:absolute;top:31%;left:50%;transform:translate(-50%,-50%);
+    text-align:center;opacity:0;pointer-events:none}
+  #evo .en{font-size:34px;font-weight:900;letter-spacing:.12em;color:#8affd0;
+    text-shadow:0 3px 0 #000,0 0 26px #3ad0ff99}
+  #evo .es{font-size:11px;letter-spacing:.2em;color:#ffe08a;margin-top:6px;
+    text-shadow:0 2px 0 #000}
   #hpwrap{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
     width:300px;height:16px;background:#14171d;border:2px solid #000;
     box-shadow:0 3px 0 rgba(0,0,0,.6)}
@@ -50,6 +58,16 @@
     transition:width .12s}
   #hptxt{position:absolute;inset:0;text-align:center;line-height:12px;font-size:10px;
     font-weight:700;text-shadow:0 1px 2px #000;letter-spacing:.1em}
+  #hop{position:absolute;bottom:92px;left:50%;transform:translateX(-50%);
+    display:flex;gap:4px;align-items:center;opacity:0;transition:opacity .18s}
+  #hop.on{opacity:1}
+  #hop i{width:13px;height:5px;background:#1b2029;border:1px solid #000;
+    box-shadow:0 1px 0 rgba(0,0,0,.6)}
+  #hop i.lit{background:linear-gradient(90deg,#3ad0ff,#8affd0);box-shadow:0 0 8px #3ad0ffaa}
+  #hop b{margin-left:7px;font-size:10px;color:#8affd0;min-width:36px;text-align:left;
+    text-shadow:0 1px 2px #000}
+  #hop.max i.lit{background:linear-gradient(90deg,#f0b429,#ffe08a);box-shadow:0 0 10px #f0b429cc}
+  #hop.max b{color:#ffe08a}
   #stats{position:absolute;top:12px;right:14px;text-align:right;line-height:1.7;
     color:var(--dim)}
   #stats b{color:var(--ink)}
@@ -110,6 +128,16 @@
   .ch .nm{font-size:12px;font-weight:700;margin-bottom:4px}
   .ch .ds{font-size:10px;color:#9a9588;line-height:1.55}
   .ch .pk{font-size:10px;color:var(--gold);margin-top:6px}
+  .ch{width:172px}
+  .ch .ty{font-size:9px;letter-spacing:.16em;font-weight:700;display:inline-block;
+    padding:2px 6px;border:1px solid currentColor;margin-bottom:6px;opacity:.9}
+  .ch .ln{font-size:9px;color:#6f7683;letter-spacing:.06em;margin:5px 0 4px;line-height:1.5}
+  .ch .ln s{text-decoration:none;color:#9a9588}
+  .ch .ml{display:flex;align-items:center;gap:6px;font-size:9px;color:#8affd0;
+    letter-spacing:.1em;margin-top:6px}
+  .ch .mb{flex:1;height:4px;background:#0d1116;border:1px solid #000}
+  .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
+  .ch .sg{font-size:9px;color:var(--gold);margin-top:5px;letter-spacing:.05em}
 
   .shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;
     margin-top:8px;text-align:left}
@@ -202,9 +230,9 @@
 <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/></symbol>
 <symbol id="i-dupe" viewBox="0 0 24 24"><rect x="3.2" y="3.2" width="11" height="11" rx="1.6" class="f"/><rect x="9.8" y="9.8" width="11" height="11" rx="1.6" class="fa"/></symbol>
 <symbol id="i-clover" viewBox="0 0 24 24"><path d="M11.4 11.4a3.4 3.4 0 1 1 0-4.8 3.4 3.4 0 1 1 4.8 0 3.4 3.4 0 1 1 0 4.8 3.4 3.4 0 1 1-4.8 0z" class="f"/><path d="M13.6 13.2c1 3 2.8 5.4 5.4 7.2" class="a"/></symbol>
-<symbol id="i-intern" viewBox="0 0 24 24"><circle cx="12" cy="6.6" r="3.6" class="f"/><path d="M4.6 21v-2.4a5.4 5.4 0 0 1 5.4-5.4h4a5.4 5.4 0 0 1 5.4 5.4V21z" class="f"/></symbol>
-<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M14.6 3.4a5 5 0 0 0 6 6.6L9.4 21.2a2.6 2.6 0 0 1-3.7-3.7z" class="f"/><path d="M7.6 19.4l.02.02" class="ka"/><path d="M3.4 8.6h5M6 6v5.2" class="a"/></symbol>
-<symbol id="i-spark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" stroke-dasharray="3 3.6" class="a"/><path d="M13.2 5.6L7.8 12.8h4l-1 5.6 5.4-7.2h-4z" class="fa"/></symbol>
+<symbol id="i-intern" viewBox="0 0 24 24"><path d="M12 3.6c4.4 0 7.4 3.3 7.4 8v6.2c0 1.8-1.2 3-3 3H7.6c-1.8 0-3-1.2-3-3v-6.2c0-4.7 3-8 7.4-8z" class="f"/><circle cx="9.2" cy="11.2" r="1.7" class="k"/><circle cx="14.8" cy="11.2" r="1.7" class="k"/><path d="M8 17.4h8" class="ka"/><path d="M9.2 3.9L8.2 1.3M14.8 3.9l1-2.6" class="a"/></symbol>
+<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M12 1.9l3.1 3.3 4.3-.6-1.4 4.1 2.9 3.1-3.5 2.2.4 4.3-4.1-1.2-3.3 2.8-2-3.9-4.3-.8 1.7-3.9L3.7 7.9l4.1-1.3z" class="f"/><circle cx="11.5" cy="10.4" r="2.3" class="k"/><circle cx="11.5" cy="10.4" r="1" class="fa"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 6.4c4.2 0 7 2.9 7 6.7s-2.8 7.3-7 7.3-7-3.5-7-7.3 2.8-6.7 7-6.7z" class="f"/><circle cx="9.4" cy="12.6" r="1.7" class="k"/><circle cx="14.6" cy="12.6" r="1.7" class="k"/><path d="M8.7 6.8L6.3 2.1l3.8 2.1M15.3 6.8l2.4-4.7-3.8 2.1" class="a"/><path d="M9.8 16.9h4.4" class="ka"/></symbol>
 <symbol id="i-ox" viewBox="0 0 24 24"><path d="M3 6.4c3.2-.6 5 .8 5.6 3.6M21 6.4c-3.2-.6-5 .8-5.6 3.6" /><path d="M8.2 9.4h7.6a2.6 2.6 0 0 1 2.6 2.6v3a6.4 6.4 0 0 1-12.8 0v-3a2.6 2.6 0 0 1 2.6-2.6z" class="f"/><circle cx="10" cy="13.6" r="1.05" class="k"/><circle cx="14" cy="13.6" r="1.05" class="k"/></symbol>
 <symbol id="i-ghoul" viewBox="0 0 24 24"><path d="M4.6 21V10.4a7.4 7.4 0 0 1 14.8 0V21l-2.5-1.8-2.4 1.8-2.5-1.8-2.4 1.8-2.5-1.8z" class="f"/><circle cx="9.4" cy="10.8" r="1.3" class="k"/><circle cx="14.6" cy="10.8" r="1.3" class="k"/></symbol>
 <symbol id="i-hp" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/><path d="M12 8.6v5M9.5 11.1h5" class="ka"/></symbol>
@@ -218,8 +246,8 @@
 <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" class="fa"/><path d="M12 7.4v9.2M9.6 9.6h3.6a1.9 1.9 0 0 1 0 3.8h-2.8a1.9 1.9 0 0 0 0 3.8h3.6" class="ka"/></symbol>
 <symbol id="i-start" viewBox="0 0 24 24"><path d="M12 2.4l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 21l1.4-6.8L2.2 9.5l6.9-.8z" class="fa"/></symbol>
 <symbol id="i-heal" viewBox="0 0 24 24"><path d="M9.6 4.2a4.6 4.6 0 0 1 8.4 3.2 4.4 4.4 0 0 1-4.6 4.4l-1.8 1.8-3.6-3.6 1.8-1.8a4.4 4.4 0 0 1-.2-4z" class="f"/><path d="M8.8 13.2l-5 5a2 2 0 0 0 2.8 2.8l5-5z" class="fa"/></symbol>
-<symbol id="i-accnt" viewBox="0 0 24 24"><rect x="4.2" y="2.6" width="15.6" height="18.8" rx="2" class="f"/><path d="M7.6 6.6h8.8v3.2H7.6z" class="k"/><circle cx="8.4" cy="13.4" r="1.15" class="k"/><circle cx="12" cy="13.4" r="1.15" class="k"/><circle cx="15.6" cy="13.4" r="1.15" class="k"/><circle cx="8.4" cy="17.4" r="1.15" class="k"/><circle cx="12" cy="17.4" r="1.15" class="k"/><circle cx="15.6" cy="17.4" r="1.15" class="ka"/></symbol>
-<symbol id="i-twin" viewBox="0 0 24 24"><circle cx="8.2" cy="6.6" r="3.2" class="f"/><path d="M2.6 20.4v-1.8a4.6 4.6 0 0 1 4.6-4.6h2a4.6 4.6 0 0 1 4.6 4.6v1.8z" class="f"/><circle cx="16.4" cy="7.6" r="2.8" class="fa"/><path d="M11.8 20.4v-1.4a4.2 4.2 0 0 1 4.2-4.2h1.2a4.2 4.2 0 0 1 4.2 4.2v1.4z" class="fa"/></symbol>
+<symbol id="i-accnt" viewBox="0 0 24 24"><path d="M12 4.3c3.9 0 6.7 3.2 6.7 7.6s-2.8 8.4-6.7 8.4-6.7-4-6.7-8.4S8.1 4.3 12 4.3z" class="f"/><path d="M12 6v13" class="ka"/><path d="M8.6 9.6h1.5M8.6 12.3h1.5M8.6 15h1.5M13.9 9.6h1.5M13.9 12.3h1.5" class="ka"/><path d="M9.3 4.5L7.5 1.7M14.7 4.5l1.8-2.8" class="a"/></symbol>
+<symbol id="i-twin" viewBox="0 0 24 24"><path d="M17.2 6.4c2.8 0 4.6 2.1 4.6 5v3.1c0 1.5-1 2.5-2.5 2.5h-4.2c-1.5 0-2.5-1-2.5-2.5v-3.1c0-2.9 1.8-5 4.6-5z" class="fa"/><path d="M8.4 7.6c3.2 0 5.3 2.5 5.3 5.8v3.5c0 1.7-1.1 2.8-2.8 2.8H5.9c-1.7 0-2.8-1.1-2.8-2.8v-3.5c0-3.3 2.1-5.8 5.3-5.8z" class="f"/><circle cx="6.5" cy="13.2" r="1.4" class="k"/><circle cx="10.3" cy="13.2" r="1.4" class="k"/><path d="M5.9 7.9L5.1 5.6M10.9 7.9l.8-2.3" class="a"/></symbol>
 <symbol id="i-tally" viewBox="0 0 24 24"><path d="M5 5.4v13.2M9.4 5.4v13.2M13.8 5.4v13.2M18.2 5.4v13.2"/><path d="M2.8 16.6L20.4 7" class="a"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
 </defs></svg>
@@ -229,13 +257,15 @@
 
 <div id="hud">
   <div id="xpwrap"><div id="xpbar"></div></div>
-  <div id="lvl">LV <b>1</b></div>
+  <div id="lvl">LV <b>1</b><em></em></div>
   <div id="clock">00:00</div>
   <div id="phase"></div>
   <div id="stats"></div>
+  <div id="hop"><i></i><i></i><i></i><i></i><i></i><b></b></div>
   <div id="kit"></div>
   <div id="hpwrap"><div id="hpbar"></div><div id="hptxt"></div></div>
   <div id="warn"></div>
+  <div id="evo"><div class="en"></div><div class="es"></div></div>
   <div id="pausebtn">II</div>
 </div>
 
@@ -253,6 +283,8 @@
   <div class="hint" id="pauseHint">
     <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> camera &nbsp; <kbd>SPACE</kbd> jump
     &nbsp; <kbd>M</kbd> mute<br>
+    hit <kbd>SPACE</kbd> again the moment you land to chain a hop &mdash; five links
+    is +28% move speed, and one hit takes it all away<br>
     weapons fire themselves. your only job is to not be there.
   </div>
   <div id="opts">
@@ -283,6 +315,32 @@
 // ===========================================================================
 
 const TAU = Math.PI * 2;
+// ------------------------------------------------------------- BUNNYHOPPING
+// Jump on the frame you land and you keep - and compound - the momentum. Miss
+// it and the chain bleeds off. That is the whole mechanic, and everything here
+// is about making the window teachable rather than punishing:
+//   HOP_BUF  a press up to 0.14s BEFORE touchdown still counts. Without this
+//            the input has to land inside a single 16ms frame, which is not a
+//            skill, it is a coin flip.
+//   HOP_WIN  and 0.16s AFTER. Together ~0.30s of real forgiveness.
+//   HOP_MAX  five links, +5.5% each, so a perfect chain is 1.275x base speed.
+//            It shipped at six links of +8.5%, which is 1.51x - and the bench
+//            said what that is: the autopilot's FIRST-run median went from 4:06
+//            to 9:14, and THE SCRAPPER's to the full 24:00 with 58 levels and
+//            ten thousand kills, on a build where a first run had never once
+//            survived past minute twenty. In a game whose only verb is
+//            positioning, half again the movement speed is not a mechanic, it
+//            is a difficulty setting.
+//   HOP_BLEED  grounded past the grace period, the chain drains over ~2.5s
+//            instead of snapping to zero - losing it should feel like slowing
+//            down, not like being switched off.
+// The press must be an EDGE, not a held key. Auto-hop from a held spacebar is
+// free top speed for twenty minutes and there is nothing left to do well.
+const HOP_WIN = .16, HOP_BUF = .14, HOP_MAX = 5, HOP_GAIN = .055,
+      HOP_BLEED = 2.4, HOP_GRACE = .20;
+let jumpBuf = 0;
+const hopMul = ()=> 1 + (P ? P.hop : 0) * HOP_GAIN;
+function jumpPressed(){ jumpBuf = HOP_BUF; }
 const clamp = (v,a,b)=>v<a?a:v>b?b:v;
 const lerp  = (a,b,t)=>a+(b-a)*t;
 const rnd   = (a,b)=>a+Math.random()*(b-a);
@@ -461,10 +519,33 @@ const SFX = {
   die:   ()=>[440,330,247,165].forEach((f,i)=>setTimeout(()=>blip(f,.3,"sawtooth",.16,.6),i*130)),
   win:   ()=>[523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>blip(f,.26,"triangle",.15),i*110)),
   buy:   ()=>{ blip(660,.07,"square",.1); setTimeout(()=>blip(990,.1,"square",.1),70); },
+  // a fourth up the chain, so six links walk you two octaves. The chain is
+  // audible before it is visible, which is what makes you go for the seventh.
+  hop:   (n=1)=>{ blip(300*Math.pow(1.335, n-1), .07, "triangle", .07, 1.9);
+                  noiseBurst(.05, .10); },
+  // Six notes, deliberately longer than anything else in the mix. An evolution
+  // happens twice in a good run; it is allowed to interrupt.
+  evolve:()=>{ [392,523,659,784,1046,1568].forEach((f,i)=>
+                 setTimeout(()=>blip(f,.30,"triangle",.15),i*95));
+               setTimeout(()=>noiseBurst(.5,.10), 560); },
 };
 
 // ---------------------------------------------------------------- terrain
-const ARENA = 74;                       // half-extent. play area is 148 x 148.
+const ARENA = 74;                       // half-extent of the TERRAIN mesh.
+// The boundary used to be two different shapes at once. Movement clamped to a
+// 148x148 square while the only thing in the world that looked like a wall was
+// a ring of spires at radius 74 - and the square's corners sit thirty metres
+// past that ring. So the wall was decorative, you walked straight through it,
+// and the map kept going into empty checkerboard on the other side. Side events
+// clamped to the same square, which is how they ended up spawning out there
+// with you. One shape now, and it is the shape you can see.
+const RIM = 70;                         // play radius. the wall is drawn here.
+function confine(x, z, pad){
+  const lim = RIM - pad, d2 = x*x + z*z;
+  if(d2 <= lim*lim) return [x, z];
+  const s = lim / Math.sqrt(d2);
+  return [x*s, z*s];
+}
 const groundY = (x,z)=> Math.sin(x*0.045)*1.7 + Math.cos(z*0.051)*1.5
                       + Math.sin((x+z)*0.027)*2.0;
 
@@ -524,19 +605,41 @@ cv.addEventListener("webglcontextrestored", ()=>{
 const PROPS = (()=>{
   const p=[];
   for(let i=0;i<190;i++){
-    const x=rnd(-ARENA+3,ARENA-3), z=rnd(-ARENA+3,ARENA-3);
-    if(Math.hypot(x,z) < 12) continue;                       // keep spawn clear
+    // sqrt() on the radius or every prop in the world piles into the middle
+    const pa=Math.random()*TAU, pr=Math.sqrt(Math.random())*(RIM-4);
+    const x=Math.cos(pa)*pr, z=Math.sin(pa)*pr;
+    if(pr < 12) continue;                                    // keep spawn clear
     const k=Math.random();
     if(k<.42)      p.push({x,z,t:0,s:rnd(.5,.9),  h:rnd(1.0,1.9), c:[.60,.61,.66], r:rnd(0,TAU)});
     else if(k<.72) p.push({x,z,t:1,s:rnd(.45,.85),h:rnd(2.6,5.2), c:[.26,.19,.14], r:rnd(0,TAU)});
     else if(k<.90) p.push({x,z,t:2,s:rnd(.7,1.5), h:rnd(.4,.8),  c:[.50,.52,.54], r:rnd(0,TAU)});
     else           p.push({x,z,t:3,s:rnd(.5,.8),  h:rnd(1.3,2.2), c:[.68,.64,.48], r:rnd(0,TAU)});
   }
-  // boundary spires
-  for(let a=0;a<170;a++){
-    const th=a/170*TAU, rr=ARENA+rnd(1,5);
+  // THE WALL. Tangential slabs, overlapping, at exactly the radius the player
+  // is stopped at - so the thing you cannot pass is the thing you can see. 150
+  // segments around a 440m circumference is 2.9m of arc each against 3.4m of
+  // slab, which leaves no gap to read as a door.
+  const SEG = 150;
+  for(let a=0;a<SEG;a++){
+    const th = a/SEG*TAU;
+    const cx = Math.cos(th)*RIM, cz = Math.sin(th)*RIM;
+    // Tall enough to be a wall rather than a kerb: at 6.4-7.4m it reads as
+    // something you cannot see over from a 6m-high camera, which is the point.
+    // -(th + PI/2), not -th. box()'s local X axis maps to world (cos r, -sin r),
+    // so -th points the slab's LONG axis straight out from the middle - which
+    // built a fence of 150 radial spokes with a gap between every one of them,
+    // and the position-only assertion in the suite passed the whole way.
+    p.push({x:cx, z:cz, t:5, s:1.7, h:rnd(6.4,7.4), c:[.31,.32,.39],
+            r:-(th + Math.PI/2)});
+    if(a % 5 === 0)                                          // buttress, BEHIND the wall
+      p.push({x:Math.cos(th)*(RIM+1.5), z:Math.sin(th)*(RIM+1.5), t:4,
+              s:rnd(1.0,1.4), h:rnd(9,13), c:[.25,.26,.33], r:th});
+  }
+  // backdrop, well behind the wall and mostly eaten by fog. Purely silhouette.
+  for(let a=0;a<80;a++){
+    const th=a/80*TAU + rnd(-.02,.02), rr=RIM+rnd(3.5,7.5);
     p.push({x:Math.cos(th)*rr, z:Math.sin(th)*rr, t:4,
-            s:rnd(1.6,3.0), h:rnd(7,15), c:[.26,.28,.36], r:rnd(0,TAU)});
+            s:rnd(1.6,3.0), h:rnd(9,17), c:[.21,.22,.29], r:rnd(0,TAU)});
   }
   return p;
 })();
@@ -877,10 +980,108 @@ const SHOP = [
   lock:"tally" },
 ];
 
+// ============================================================== THE BESTIARY
+// The crew were seven people with stat blocks, and the thing a stat block
+// cannot do is change while you are looking at it. You picked THE OX at minute
+// zero and you were still exactly THE OX at minute nineteen; the only thing
+// that ever moved was the loadout bolted onto the outside of you.
+//
+// So they are monsters now, and monsters evolve. Each one is a three-stage
+// line: it starts small, and at run level 7 and run level 20 it becomes a
+// visibly different animal - new name, bigger body, more horns, better stat
+// block, and at the top of the line a named SIGNATURE that is the reason to
+// take that line at all. Run power stops being purely a shopping list and
+// starts being something that happens TO you, on a clock you can feel coming.
+//
+// The stage mods are ABSOLUTE multipliers against the base stat block, not
+// increments - stage 2 is x1.38 HP total, not x1.38 on top of stage 1. Storing
+// them that way means evolveTo() can compute the ratio between any two stages
+// and apply it once, which is also what makes a test able to jump straight to
+// stage 2 without walking the whole line.
+const MTYPE = {
+  plain:{ nm:"PLAIN", c:[.63,.66,.72] },
+  scrap:{ nm:"SCRAP", c:[.93,.53,.20] },
+  volt: { nm:"VOLT",  c:[.34,.80,1.00] },
+  stone:{ nm:"STONE", c:[.72,.57,.34] },
+  rot:  { nm:"ROT",   c:[.47,.79,.35] },
+  tally:{ nm:"TALLY", c:[.98,.79,.25] },
+  echo: { nm:"ECHO",  c:[.71,.49,.98] },
+};
+// Level 7 lands in the first three minutes of a FIRST run, which is the whole
+// point - a mechanic the median run never reaches is a mechanic that does not
+// exist. Level 20 is the reward for a run that is going well; the median first
+// run ends around 12, so the top of a line has to be earned.
+const EVO_AT = [1, 7, 20];
+const LINES = {
+  intern:{ type:"plain", st:[
+    { nm:"MOPLING" },
+    { nm:"MOPHAND", mods:{ hp:1.16, dmg:1.09 } },
+    { nm:"MOPMAW",  mods:{ hp:1.38, dmg:1.20, reach:1.20 },
+      sig:"SWEEP", sigDs:"+20% weapon reach" } ]},
+  scrap:{ type:"scrap", st:[
+    { nm:"RUSTLET" },
+    { nm:"RUSTJAW", mods:{ hp:1.16, dmg:1.09, mag:1.25 } },
+    { nm:"RUSTLORD",mods:{ hp:1.38, dmg:1.20, mag:1.60 },
+      sig:"SALVAGE", sigDs:"+60% pickup radius" } ]},
+  spark:{ type:"volt", st:[
+    { nm:"ZAPLET" },
+    { nm:"VOLTHOUND", mods:{ hp:1.18, dmg:1.09, cd:.95 } },
+    { nm:"STORMWICK", mods:{ hp:1.42, dmg:1.20, cd:.87 },
+      sig:"OVERCLOCK", sigDs:"-13% cooldowns" } ]},
+  ox:{ type:"stone", st:[
+    { nm:"LUGGIT" },
+    { nm:"HAULOX",  mods:{ hp:1.20, dmg:1.09, armorFlat:2 } },
+    { nm:"MONOLITH",mods:{ hp:1.46, dmg:1.20, armorFlat:5 },
+      sig:"BEDROCK", sigDs:"+5 flat armour" } ]},
+  ghoul:{ type:"rot", st:[
+    { nm:"MOULDLING" },
+    { nm:"ROTHERD",  mods:{ hp:1.16, dmg:1.09, regen:1.5 } },
+    { nm:"GRAVEMAW", mods:{ hp:1.38, dmg:1.20, regen:2.4 },
+      sig:"FEAST", sigDs:"regeneration x2.4" } ]},
+  accnt:{ type:"tally", st:[
+    { nm:"TALLYMITE" },
+    { nm:"LEDGERLING",   mods:{ hp:1.16, dmg:1.09, xp:1.07 } },
+    { nm:"GRAND AUDITOR",mods:{ hp:1.38, dmg:1.20, xp:1.15 },
+      sig:"COMPOUND", sigDs:"+15% XP on top of everything else" } ]},
+  twin:{ type:"echo", st:[
+    { nm:"SPLITKIN" },
+    { nm:"TWINSPAWN", mods:{ hp:1.20, dmg:1.10 } },
+    { nm:"TRIPLICATE",mods:{ hp:1.44, dmg:1.28 },
+      sig:"CHORUS", sigDs:"+28% damage - three of everything" } ]},
+};
+for(const c of CHARS){
+  const L = LINES[c.id]; if(!L) continue;
+  c.type = L.type; c.st = L.st; c.line = L.st.map(x=>x.nm);
+  c.nm = L.st[0].nm;                       // the roster shows what you start as
+}
+const monTop = ch => (ch.st ? ch.st[ch.st.length-1] : {});
+
+// ---- persistent monster levels. Pokemon's actual loop is not the fight, it is
+// that the thing you fought with is different next time. Every run banks its XP
+// into the monster that earned it, and a monster's level is a small permanent
+// stat curve on that monster alone - so replaying a favourite is progress and
+// not just repetition. The first level is cheap on purpose: a two-minute death
+// still has to move the bar, or the bar teaches you that dying is worth nothing.
+const MON_CAP  = 20;
+const MON_NEED = l => 250 + (l-1)*320;       // XP to go from level l to l+1
+function monBank(id){ return (save.mon && save.mon[id]) || 0; }
+function monLvl(id){
+  let xp = monBank(id), l = 1;
+  while(l < MON_CAP && xp >= MON_NEED(l)){ xp -= MON_NEED(l); l++; }
+  return l;
+}
+function monProg(id){                        // [xp into this level, xp needed]
+  let xp = monBank(id), l = 1;
+  while(l < MON_CAP && xp >= MON_NEED(l)){ xp -= MON_NEED(l); l++; }
+  return l >= MON_CAP ? [1,1] : [xp, MON_NEED(l)];
+}
+const monHp  = id => 1 + (monLvl(id)-1)*.020;
+const monDmg = id => 1 + (monLvl(id)-1)*.012;
+
 // ================================================================= META SAVE
 const SAVEKEY = "bonkhorde.save.v1";
 let save = { coins:0, up:{}, best:0, wins:0, unlocked:{},
-             kills:0, runs:0, deaths:0, bestLvl:0 };
+             kills:0, runs:0, deaths:0, bestLvl:0, mon:{} };
 
 // A survivors-like is a loop you re-enter, and the reason you re-enter is that
 // the last run moved something. This build had exactly one unlockable thing in
@@ -889,11 +1090,11 @@ let save = { coins:0, up:{}, best:0, wins:0, unlocked:{},
 // keeps, and the menu shows how close you are to each, because a locked box
 // with no progress bar is just a locked box.
 const UNLOCKS = [
-  { id:"ghoul",  what:"THE GHOUL",     ds:"survive 10:00 in one run",
+  { id:"ghoul",  what:"MOULDLING",      ds:"survive 10:00 in one run",
     at:600,   now:(sv,r)=>Math.max(sv.best, r?r.t:0) },
-  { id:"twin",   what:"THE TWIN",      ds:"clear a run",
+  { id:"twin",   what:"SPLITKIN",       ds:"clear a run",
     at:1,     now:(sv)=>sv.wins },
-  { id:"accnt",  what:"THE ACCOUNTANT",ds:"reach level 30 in one run",
+  { id:"accnt",  what:"TALLYMITE",      ds:"reach level 30 in one run",
     at:30,    now:(sv,r)=>Math.max(sv.bestLvl, r?r.lvl:0) },
   { id:"tally",  what:"TALLY (shop)",  ds:"6,000 lifetime kills",
     at:6000,  now:(sv)=>sv.kills },
@@ -910,7 +1111,7 @@ function checkUnlocks(runStats){
 function loadSave(){
   try{ const s=JSON.parse(localStorage.getItem(SAVEKEY));
        if(s && typeof s==="object") save = Object.assign(save, s); }catch(e){}
-  save.up = save.up||{}; save.unlocked = save.unlocked||{};
+  save.up = save.up||{}; save.unlocked = save.unlocked||{}; save.mon = save.mon||{};
 }
 function writeSave(){ try{ localStorage.setItem(SAVEKEY, JSON.stringify(save)); }catch(e){} }
 
@@ -942,7 +1143,10 @@ let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
     arcs=[], pops=[], nums=[], spits=[], alerts=[], hazards=[], events=[];
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62;
+let camEye=[0,0,0];                     // last rendered eye, so a test can see it
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
+let stage=0;                            // 0..2 - where you are in the monster's line
+let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
 let noSpawn=false;                      // test-only: isolate a boss fight
@@ -951,11 +1155,14 @@ let runWon=false, runWhy="";
 
 function baseStats(ch){
   const m = ch.mods||{};
-  const hp = Math.round((115 + rank("hp")*16 + (m.hpFlat||0)) * (m.hp||1));
+  // The monster's own level multiplies in here and NOT through monMul, because
+  // it is fixed for the whole run - folding it into the ratio machinery would
+  // make it get re-applied on every evolution.
+  const hp = Math.round((115 + rank("hp")*16 + (m.hpFlat||0)) * (m.hp||1) * monHp(ch.id));
   return {
     maxhp: hp, hp,
     spd:   6.6 * (m.spd||1) * (1 + rank("spd")*.04),
-    dmg:   1 * (m.dmg||1) * (1 + rank("dmg")*.06),
+    dmg:   1 * (m.dmg||1) * (1 + rank("dmg")*.06) * monDmg(ch.id),
     cd:    1 * (m.cd||1) * (1 - rank("cd")*.035),
     mag:   4.2 * (m.mag||1) * (1 + rank("mag")*.18),
     crit:  rank("crit")*.04,
@@ -973,7 +1180,10 @@ function startRun(id){
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
+        hop:0, hopWin:0, hopGrace:0, hopFx:0,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
+  jumpBuf = 0;
+  stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0;
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
   for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
@@ -1074,8 +1284,8 @@ if(TOUCH){
       if(stick && t.identifier === stick.id) stick = null;
       else if(look && t.identifier === look.id){
         // a quick tap that did not drag is a jump
-        if(look.moved < 16 && performance.now() - look.t0 < 260 && P && !P.air){
-          P.vy = 11; P.air = true;
+        if(look.moved < 16 && performance.now() - look.t0 < 260 && P){
+          jumpPressed();
         }
         look = null;
       }
@@ -1085,6 +1295,9 @@ if(TOUCH){
   cv.addEventListener("touchcancel", end, { passive:false });
 }
 addEventListener("keydown", e=>{
+  // e.repeat is the whole reason this is an edge: holding space fires keydown
+  // at the OS repeat rate, which would auto-hop about as well as a human can.
+  if(e.code==="Space" && !e.repeat && running && !paused && !picking) jumpPressed();
   keys[e.code]=true;
   if(picking && /^Digit[1-4]$/.test(e.code)){
     const i=+e.code.slice(5)-1; const c=document.getElementById("pkCards").children[i];
@@ -1476,8 +1689,7 @@ function spawnEnemy(type, atX, atZ){
   if(x===undefined){
     // spawn on a ring just past the far edge of the screen
     const a = Math.random()*TAU, r = rnd(30, 38);
-    x = clamp(P.x + Math.cos(a)*r, -ARENA+2, ARENA-2);
-    z = clamp(P.z + Math.sin(a)*r, -ARENA+2, ARENA-2);
+    [x, z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
   }
   // ELITES. The late game is x14.5 HP by minute 20 with no visual change at
   // all, so minute 18 looks exactly like minute 8 while nothing dies - which
@@ -1499,8 +1711,7 @@ function spawnBoss(b){
   const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
                 c:b.c, h:b.h, w:b.w, ai:b.ai };
   const a = Math.random()*TAU;
-  const x = clamp(P.x+Math.cos(a)*26, -ARENA+5, ARENA-5);
-  const z = clamp(P.z+Math.sin(a)*26, -ARENA+5, ARENA-5);
+  const [x, z] = confine(P.x+Math.cos(a)*26, P.z+Math.sin(a)*26, 5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
@@ -1536,8 +1747,7 @@ function bossAI(e, dt){
   // act
   if(A.kind === "charge"){
     const sp = e.def.spd * 4.4;
-    e.x = clamp(e.x + Math.sin(A.dir)*sp*dt, -ARENA+2, ARENA-2);
-    e.z = clamp(e.z + Math.cos(A.dir)*sp*dt, -ARENA+2, ARENA-2);
+    [e.x, e.z] = confine(e.x + Math.sin(A.dir)*sp*dt, e.z + Math.cos(A.dir)*sp*dt, 2);
   }
   if(A.t <= 0){ A.phase = "move"; A.t = ABILITIES[A.kind].rest; }
   return false;
@@ -1553,9 +1763,8 @@ function bossTelegraph(e, A){
   } else if(A.kind === "evict"){
     for(let i=0;i<5;i++){
       const a = Math.random()*TAU, r = rnd(4.5, 15);
-      hazards.push(mkHaz(clamp(P.x+Math.cos(a)*r, -ARENA+2, ARENA-2),
-                         clamp(P.z+Math.sin(a)*r, -ARENA+2, ARENA-2),
-                         4.2, ABILITIES.evict.tell, 7.0, 8*s));
+      const [hx, hz] = confine(P.x+Math.cos(a)*r, P.z+Math.sin(a)*r, 2);
+      hazards.push(mkHaz(hx, hz, 4.2, ABILITIES.evict.tell, 7.0, 8*s));
     }
   } else if(A.kind === "charge"){
     A.dir = Math.atan2(P.x-e.x, P.z-e.z);
@@ -1626,8 +1835,7 @@ function spawnEvent(kind, atX, atZ){
     const band = d.spawnR || [20, 38];
     for(let i=0;i<24;i++){
       const a = Math.random()*TAU, r = rnd(band[0], band[1]);
-      x = clamp(P.x + Math.sin(a)*r, -ARENA+6, ARENA-6);
-      z = clamp(P.z + Math.cos(a)*r, -ARENA+6, ARENA-6);
+      [x, z] = confine(P.x + Math.sin(a)*r, P.z + Math.cos(a)*r, 6);
       if(Math.hypot(x-P.x, z-P.z) > band[0]*.8) break;
     }
   }
@@ -1741,12 +1949,10 @@ function updateEnemies(dt){
       // away from the player, and away from the walls it would otherwise pin
       // itself against - a quarry that corners itself is not a chase either
       let fx = -dx/d, fz = -dz/d;
-      const bx = P.x >= 0 ? -1 : 1, bz = P.z >= 0 ? -1 : 1;
-      if(Math.abs(e.x) > ARENA-14) fx += bx*1.5;
-      if(Math.abs(e.z) > ARENA-14) fz += bz*1.5;
+      const er = Math.hypot(e.x, e.z);
+      if(er > RIM-14 && er > 0){ fx += -e.x/er*1.8; fz += -e.z/er*1.8; }
       const fl = Math.hypot(fx,fz)||1;
-      e.x = clamp(e.x + fx/fl*spd*dt, -ARENA+3, ARENA-3);
-      e.z = clamp(e.z + fz/fl*spd*dt, -ARENA+3, ARENA-3);
+      [e.x, e.z] = confine(e.x + fx/fl*spd*dt, e.z + fz/fl*spd*dt, 3);
       e.y = groundY(e.x,e.z);
       continue;
     }
@@ -1793,7 +1999,7 @@ function updateEnemies(dt){
     // cumulative spawns rather than spawn RATE, and minute 6 is a wall.
     if(!e.boss && d > 70){ enemies.splice(i,1); continue; }
 
-    e.x = clamp(e.x, -ARENA+1, ARENA-1); e.z = clamp(e.z, -ARENA+1, ARENA-1);
+    [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
     e.bob += dt * (4 + e.def.spd);
 
@@ -1811,6 +2017,10 @@ function playerHurt(raw){
   d = Math.max(1, d - P.armor - (P.kit.plating ? (P.kit.plating.l+1)*1.6 : 0));
   if(P.kit.plating) d *= (1 - (P.kit.plating.l+1)*.05);
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
+  // Taking a hit knocks the chain out of you. Without this the hop is a pure
+  // gift - you go faster and nothing about the fight asks anything back - and
+  // it makes the reward point at clean play rather than at holding a button.
+  P.hop = 0; P.hopWin = 0;
   hold("hurt"); SFX.hurt();
   if(P.kit.plating){                       // spiked armour: getting hit hurts them
     // Benched at +36% DPS and +14% survival over a no-passive control (n=10):
@@ -1948,7 +2158,8 @@ function gainXP(v){
   const got = v * (P.xpMul||1);
   xpBanked += got;
   P.xp += got;
-  while(P.xp >= P.need){ P.xp -= P.need; P.lvl++; P.need = xpFor(P.lvl); queueLevel(); }
+  while(P.xp >= P.need){ P.xp -= P.need; P.lvl++; P.need = xpFor(P.lvl); queueLevel();
+                         checkEvolve(); }
 }
 function queueLevel(){ pendingLevels++; }
 
@@ -2067,16 +2278,63 @@ function recalcDmg(){
 // passive - a boon assigned directly to P.cd survives exactly until your next
 // level-up and then silently evaporates.
 let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1 };
+// Evolution rides the same rail, for the same reason: P.cd is recomputed from
+// scratch every time you take a passive, so a stage bonus written straight onto
+// P survives until your next level-up and then quietly evaporates.
+let monMul = { spd:1, cd:1, mag:1 };
 function recalcSpd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return 6.6*(m.spd||1)*(1+rank("spd")*.04) * boonMul.spd
+  return 6.6*(m.spd||1)*(1+rank("spd")*.04) * boonMul.spd * monMul.spd
        * (1 + (P.kit.boots ? (P.kit.boots.l+1)*.09 : 0)); }
 function recalcCd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return Math.max(.58, 1*(m.cd||1)*(1-rank("cd")*.035) * boonMul.cd
+  return Math.max(.58, 1*(m.cd||1)*(1-rank("cd")*.035) * boonMul.cd * monMul.cd
                      * Math.pow(.92, P.kit.tempo ? P.kit.tempo.l+1 : 0)); }
 function recalcMag(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
-  return 4.2*(m.mag||1)*(1+rank("mag")*.18) * boonMul.mag
+  return 4.2*(m.mag||1)*(1+rank("mag")*.18) * boonMul.mag * monMul.mag
        * (1 + (P.kit.magnet ? (P.kit.magnet.l+1)*.35 : 0)); }
 function applyBoons(){ P.spd = recalcSpd(); P.cd = recalcCd(); P.mag = recalcMag(); }
+
+// ---------------------------------------------------------------- EVOLUTION
+function curMon(){ return CHARS.find(c=>c.id===charId)||CHARS[0]; }
+function stageDef(i){ const l = curMon().st||[]; return l[i===undefined?stage:i]||{}; }
+const stageNm = ()=> stageDef().nm || curMon().nm;
+function evolveTo(i){
+  const line = curMon().st||[];
+  i = clamp(i, 0, line.length-1);
+  if(!P || i === stage) return false;
+  const from = (line[stage]||{}).mods||{}, to = (line[i]||{}).mods||{};
+  const r = k => (to[k]||1)/(from[k]||1);
+  const wasNm = stageNm();
+  stage = i;
+  monMul.spd *= r("spd"); monMul.cd *= r("cd"); monMul.mag *= r("mag");
+  const hpR = r("hp"), before = P.maxhp;
+  P.maxhp = Math.round(P.maxhp * hpR);
+  // Evolving heals you by exactly the HP it just added. Handing back a fuller
+  // bar than you earned would make the level-7 moment a panic button; handing
+  // back nothing would make a +38% maxhp bonus read as a LOSS on the HP bar,
+  // which is how it looked the first time.
+  P.hp = Math.min(P.maxhp, P.hp + Math.max(0, P.maxhp - before));
+  P.dmg   *= r("dmg");
+  P.reach *= r("reach");
+  P.xpMul *= r("xp");
+  P.regen *= r("regen");
+  P.armor += (to.armorFlat||0) - (from.armorFlat||0);
+  applyBoons();
+  const d = line[i] || {};
+  evoT = 3.2; evoNm = d.nm || ""; evoSub = d.sig ? `${d.sig} - ${d.sigDs}` : `EVOLVED FROM ${wasNm}`;
+  alert2(`${wasNm} EVOLVED INTO ${d.nm}`, "#8affd0");
+  shake = Math.max(shake, 1.1*shakeMul()); flash = Math.max(flash, .5*flashMul());
+  SFX.evolve();
+  for(let k=0;k<3;k++)
+    rings.push({ x:P.x, z:P.z, y:P.y, r:k*1.2, max:7+k*2.4, life:.9, mx:.9, evo:true });
+  queueLevel();                          // the evolution itself is worth a pick
+  return true;
+}
+function checkEvolve(){
+  const line = curMon().st||[];
+  let want = 0;
+  for(let i=0;i<line.length;i++) if(P.lvl >= (EVO_AT[i]||1e9)) want = i;
+  if(want > stage) evolveTo(want);
+}
 
 // ====================================================== AUTOPILOT (testing)
 // A deliberately mediocre kiter: repel from the local crowd, respect the walls,
@@ -2096,6 +2354,12 @@ function applyBoons(){ P.spd = recalcSpd(); P.cd = recalcCd(); P.mag = recalcMag
 // range ahead are heavily penalised; enemies at weapon range ahead are a small
 // BONUS, because standing off is how you stop killing and lose slowly.
 let botDrive = false;
+// The autopilot is the only thing that has ever played this game for twenty
+// minutes, so a mechanic it cannot use is a mechanic that measures as zero -
+// which is exactly how the side events read the first three times. It hops on
+// the frame it lands, i.e. perfectly, which is the ceiling and not the median;
+// botHop(false) benches the floor.
+let botHop = true;
 const BOT_DIRS = 20;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
@@ -2146,7 +2410,7 @@ function botVector(){
       } else s += proj * (1.35 - ed/44) * 3.2 * urgency;
     }
     const nx = P.x+dx*12, nz = P.z+dz*12;                 // and off the walls
-    if(Math.abs(nx) > ARENA-7 || Math.abs(nz) > ARENA-7) s -= 9;
+    if(Math.hypot(nx, nz) > RIM-7) s -= 9;
     if(s > best){ best = s; bestA = a; }
   }
   return [Math.sin(bestA), Math.cos(bestA)];
@@ -2168,7 +2432,8 @@ function step(dt){
 
   // ---- player
   let dx=0, dz=0, analog=1;
-  if(botDrive){ const v = botVector(); dx=v[0]; dz=v[1]; }
+  if(botDrive){ const v = botVector(); dx=v[0]; dz=v[1];
+                if(botHop && !P.air && (dx||dz)) jumpPressed(); }
   else {
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
     let mx = (keys.KeyD?1:0)-(keys.KeyA?1:0);
@@ -2190,21 +2455,53 @@ function step(dt){
   // welded to you. Ramping over ~0.11s costs a third of a metre across two
   // seconds and gives every direction change something to read.
   const ACCEL = 62, BRAKE = 46;
-  const wx = dx*P.spd*analog, wz = dz*P.spd*analog;
-  const rate = (dx||dz) ? ACCEL : BRAKE;
+  const hm = hopMul();
+  const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
+  // In the air you get a third of the acceleration and almost none of the
+  // braking. That asymmetry IS the mechanic: a chain you steer through is a
+  // chain you have to plan, and letting go mid-flight keeps the speed instead
+  // of dumping it. On the ground both are unchanged from before.
+  const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCEL) : (P.air ? BRAKE*.10 : BRAKE);
   const step_ = rate*dt;
   const ex = wx-P.vx, ez = wz-P.vz, el = Math.hypot(ex,ez);
   if(el <= step_){ P.vx = wx; P.vz = wz; }
   else { P.vx += ex/el*step_; P.vz += ez/el*step_; }
   if(P.vx || P.vz){
-    P.x = clamp(P.x + P.vx*dt, -ARENA+1.5, ARENA-1.5);
-    P.z = clamp(P.z + P.vz*dt, -ARENA+1.5, ARENA-1.5);
+    const nx2 = P.x + P.vx*dt, nz2 = P.z + P.vz*dt;
+    const [cx2, cz2] = confine(nx2, nz2, 1.5);
+    if(cx2 !== nx2 || cz2 !== nz2){
+      // Slide along the wall, and drop the component aimed into it. Without
+      // this you keep accumulating speed you are not travelling at, and the
+      // hop chain pays out the instant you turn away from the wall.
+      const lim = RIM - 1.5, ux = cx2/lim, uz = cz2/lim, into = P.vx*ux + P.vz*uz;
+      if(into > 0){ P.vx -= ux*into; P.vz -= uz*into; }
+    }
+    P.x = cx2; P.z = cz2;
   }
   if(dx || dz) P.face = Math.atan2(dx, dz);
+
+  // ---- jump / bunnyhop
   const gy = groundY(P.x, P.z);
-  if(keys.Space && !P.air){ P.vy = 11; P.air = true; }
+  if(jumpBuf > 0) jumpBuf = Math.max(0, jumpBuf - dt);
+  if(P.hopWin > 0) P.hopWin -= dt;
+  if(!P.air){
+    if(jumpBuf > 0){
+      jumpBuf = 0;
+      if(P.hopWin > 0){            // landed and jumped again inside the window
+        P.hop = Math.min(HOP_MAX, Math.floor(P.hop) + 1);
+        P.hopFx = .34; SFX.hop(P.hop);
+        rings.push({ x:P.x, z:P.z, y:gy, r:0, max:1.5+P.hop*.35, life:.26, mx:.26 });
+      } else P.hop = 0;            // a cold jump starts a new chain at zero
+      P.hopWin = 0; P.hopGrace = 0;
+      P.vy = 11 + P.hop*.26;       // each link gets you fractionally more air
+      P.air = true;
+    } else if(P.hopGrace > 0) P.hopGrace -= dt;
+    else if(P.hop > 0) P.hop = Math.max(0, P.hop - HOP_BLEED*dt);
+  }
+  if(P.hopFx > 0) P.hopFx -= dt;
   if(P.air){ P.vy -= 30*dt; P.y += P.vy*dt;
-    if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false; } }
+    if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false;
+                   P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE; } }
   else P.y = lerp(P.y, gy, 1-Math.pow(.0001,dt));
 
   if(P.iframe>0) P.iframe -= dt;
@@ -2266,6 +2563,13 @@ function finish(why, won){
   save.runs  = (save.runs||0) + 1;
   if(!won) save.deaths = (save.deaths||0) + 1;
   save.bestLvl = Math.max(save.bestLvl||0, P.lvl);
+  // Every run pays into the monster that ran it, win or lose. xpBanked is the
+  // gross XP the run collected, which is the only number here that scales with
+  // how well it actually went rather than with how long it lasted.
+  const monBefore = monLvl(charId);
+  save.mon = save.mon || {};
+  save.mon[charId] = (save.mon[charId]||0) + Math.round(xpBanked);
+  const monAfter = monLvl(charId), monGain = monAfter - monBefore;
   const got = checkUnlocks({ t:T, lvl:P.lvl });
   writeSave();
   won ? SFX.win() : SFX.die();
@@ -2293,6 +2597,9 @@ function finish(why, won){
       <tr><td>Level</td><td>${P.lvl}${
         P.lvl > prevLvl ? ` <span class="g">NEW BEST</span>` : prevLvl ? ` <span class="dim2">best ${prevLvl}</span>` : ""}</td></tr>
       <tr><td>Kills</td><td>${kills.toLocaleString()}</td></tr>
+      <tr><td>${curMon().line[0]}</td><td>${stageNm()} &nbsp;<span class="dim2">stage ${stage+1}/3</span>
+        &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
+        <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
       <tr><td class="gold">Coins earned</td><td class="gold">+${earned}</td></tr>
     </table>
@@ -2312,12 +2619,15 @@ function openMenu(){
   const b = document.getElementById("menuBody");
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
-    <div class="sub">SURVIVE TWENTY MINUTES &nbsp;·&nbsp; YOU DO NOT CONTROL THE WEAPONS</div>
+    <div class="sub">SURVIVE TWENTY MINUTES &nbsp;·&nbsp; YOUR MONSTER EVOLVES TWICE ON THE WAY</div>
     <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
       save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
       save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
-    <h2>CREW</h2>
+    <h2>YOUR MONSTERS</h2>
     <div class="row" id="chars"></div>
+    <div class="hint" style="margin:-4px 0 10px">Every run banks its XP into the
+      monster that ran it. Each monster level is +2% HP and +1.2% damage, for that
+      monster only, forever.</div>
     <h2>PERMANENT UPGRADES &nbsp;—&nbsp; these carry across every run</h2>
     <div class="shop" id="shop"></div>
     <h2>STILL LOCKED</h2>
@@ -2325,9 +2635,11 @@ function openMenu(){
     <div class="hint">
       ${TOUCH
         ? `<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> turn the camera<br>
-           <kbd>TAP RIGHT</kbd> jump`
+           <kbd>TAP RIGHT</kbd> jump &mdash; tap again the instant you land to chain it`
         : `<kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> orbit camera &nbsp;
-           <kbd>SPACE</kbd> jump &nbsp; <kbd>ESC</kbd> pause`}<br>
+           <kbd>SPACE</kbd> jump &nbsp; <kbd>ESC</kbd> pause<br>
+           chain a jump on the frame you land and you keep the speed &mdash;
+           five links is +28%, and one hit resets it`}<br>
       Weapons fire on their own. Positioning is the entire game.
     </div>`;
   const cr = document.getElementById("chars");
@@ -2335,10 +2647,21 @@ function openMenu(){
     const locked = c.lock && !save.unlocked[c.id];
     const el = document.createElement("div");
     el.className = "ch" + (locked?" lock":"");
+    const ty = MTYPE[c.type] || MTYPE.plain;
+    const tcss = `rgb(${ty.c.map(v=>Math.round(v*255)).join(",")})`;
+    const ml = monLvl(c.id), [pxp, pneed] = monProg(c.id);
+    const top = monTop(c);
     el.innerHTML = `<div class="ic">${icon(locked?"lock":c.ic)}</div>
+      <div class="ty" style="color:${tcss}">${locked?"???":ty.nm}</div>
       <div class="nm">${locked?"???":c.nm}</div>
+      <div class="ln">${locked ? "" : c.line.map((x,i)=>
+          i ? `<span style="opacity:.5"> &#8594; LV${EVO_AT[i]} </span><s>${x}</s>` : `<s>${x}</s>`
+        ).join("")}</div>
       <div class="ds">${locked?c.lock:c.ds}</div>
-      <div class="pk">${locked?"":"start: "+WEAPONS[c.w].name}</div>`;
+      ${locked?"":`<div class="sg">&#9733; ${top.sig}: ${top.sigDs}</div>`}
+      <div class="pk">${locked?"":"start: "+WEAPONS[c.w].name}</div>
+      ${locked?"":`<div class="ml">LV ${ml}<div class="mb"><i style="width:${
+        ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${ml>=MON_CAP?"MAX":""}</div>`}`;
     if(!locked) el.onclick = ()=>{ audioInit(); startRun(c.id); };
     cr.appendChild(el);
   }
@@ -2400,7 +2723,10 @@ function render(){
   // ahead of where you are going.
   const px = P?P.x:0, pz = P?P.z:0, py = P?P.y:groundY(0,0);
   const pvx = P?P.vx||0:0, pvz = P?P.vz||0:0;
-  const spdFrac = P ? Math.min(1, Math.hypot(pvx,pvz)/(P.spd||6.6)) : 0;
+  // Used to clamp at 1, which is base top speed - so a full hop chain read on
+  // the camera exactly like walking. It goes past 1 now, and the boom, the
+  // height and the FOV all keep opening up while it does.
+  const spdFrac = P ? Math.min(1.45, Math.hypot(pvx,pvz)/(P.spd||6.6)) : 0;
   if(!camAnchor) camAnchor = [px,py,pz];
   const kf = 1-Math.pow(.0009, Math.min(dt,.05));      // ~11/s, frame-rate free
   camAnchor[0] = lerp(camAnchor[0], px, kf);
@@ -2416,18 +2742,37 @@ function render(){
   // eye sideways fixes the blindness but slides the camera onto the player and
   // loses the third-person view. Instead SHORTEN the boom until it fits, and lift
   // it as it shortens so the player stays framed.
-  const CAM_BOUND = ARENA - 3;
+  // This was a SQUARE test while the wall is a circle, which is the same bug the
+  // movement clamp had: a boom pointed at a corner is 103m from the middle
+  // before a half-extent of 73 notices, so backing into the wall put the eye
+  // outside it looking in through the slabs. Solve for the largest fraction of
+  // the boom that still ends inside the ring instead.
+  // RIM-1.4 sits a shade OUTSIDE the player's own limit of RIM-1.5, which is
+  // what keeps the quadratic well behaved: the anchor is a lerp toward the
+  // player, so it is always inside the circle and C is always negative.
+  const CAM_R = RIM - 1.4;
   const cax = camAnchor[0], cay = camAnchor[1], caz = camAnchor[2];
   let ox = -Math.sin(camYaw)*dist*Math.cos(camPitch*.55);
   let oz = -Math.cos(camYaw)*dist*Math.cos(camPitch*.55);
   let k = 1;
-  if(Math.abs(cax+ox) > CAM_BOUND) k = Math.min(k, (Math.sign(ox)*CAM_BOUND - cax)/ox);
-  if(Math.abs(caz+oz) > CAM_BOUND) k = Math.min(k, (Math.sign(oz)*CAM_BOUND - caz)/oz);
-  k = clamp(k, .34, 1);
+  {
+    const A = ox*ox + oz*oz, B = 2*(cax*ox + caz*oz), C = cax*cax + caz*caz - CAM_R*CAM_R;
+    if(A > 1e-6 && A + B + C > 0){                    // the far end pokes out
+      const disc = B*B - 4*A*C;
+      if(disc >= 0) k = Math.min(k, (-B + Math.sqrt(disc)) / (2*A));
+    }
+  }
+  // The old floor of .34 left the eye able to end up 5m past the wall, inside
+  // the buttresses - which is the "camera went blind at the arena edge" bug
+  // coming back through the door it was fixed at. At .18 the boom collapses to
+  // about two metres against the wall and the lift turns it into a near
+  // top-down shot, which is ugly for a second and never blind.
+  k = clamp(k, .18, 1);
   const hgt2 = hgt * (1 + (1-k)*0.85);
   const eye = [ cax + ox*k + rnd(-sk,sk),
                 cay + hgt2 + rnd(-sk,sk),
                 caz + oz*k + rnd(-sk,sk) ];
+  camEye = eye;
   // aim where you are going, not where the stick is pointed
   const at  = [ px + Math.sin(camYaw)*2.2 + pvx*.20, py+1.4,
                 pz + Math.cos(camYaw)*2.2 + pvz*.20 ];
@@ -2457,6 +2802,8 @@ function render(){
     if(p.t===1){ box(p.x, y+p.h*.5, p.z, .22,p.h*.5,.22, [.36,.25,.16], 0, p.r);
                  box(p.x, y+p.h, p.z, p.s,p.s*.8,p.s, [.27,.50,.27], 0, p.r); }
     else if(p.t===4) box(p.x, y+p.h*.5, p.z, p.s,p.h*.5,p.s, p.c, 0, p.r);
+    else if(p.t===5){ box(p.x, y+p.h*.5, p.z, p.s,p.h*.5,.55, p.c, 0, p.r);
+                      box(p.x, y+p.h+.16, p.z, p.s,.16,.72, [.20,.21,.27], 0, p.r); }
     else box(p.x, y+p.h*.5, p.z, p.s*.5,p.h*.5,p.s*.32, p.c, 0, p.r);
   }
 
@@ -2612,7 +2959,25 @@ function render(){
 
   // player: body, head, hat, and a shadow-ish base so you never lose yourself
   if(P){
-    const c = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : [.16,.52,1.0];
+    // A blue box with a head, a cap and two dot eyes was a PERSON, and the one
+    // thing every card in the menu now promises is that you are not one. It is
+    // a quadruped so the silhouette reads as an animal from a camera that is
+    // mostly above you; it is tinted by species type; it grows 13% and gains a
+    // pair of horns at every evolution, so "what am I" and "how far along am I"
+    // are both answerable without looking at the HUD.
+    const mCh = curMon(), mTy = MTYPE[mCh.type] || MTYPE.plain;
+    const mTc = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : mTy.c;
+    const mDk = [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];
+    // 1.34 because the first pass built a monster the same HEIGHT as the person
+    // it replaced - and a quadruped that tall is half the silhouette, so from a
+    // camera 13m up it read as a lump. It is a head taller than the old player
+    // now and half again as wide.
+    const mSc = 1.34 * (1 + stage*.13) * (1 + Math.max(0, P.hopFx)*.20);
+    const mCf = Math.cos(P.face), mSf = Math.sin(P.face);
+    const mEm = P.iframe>0 ? .55 : .20;
+    const mb = (r,f,y,hx,hy,hz,col,em)=> box(
+      P.x + mCf*r*mSc + mSf*f*mSc, P.y + y*mSc, P.z - mSf*r*mSc + mCf*f*mSc,
+      hx*mSc, hy*mSc, hz*mSc, col, em||0, P.face);
     // Eleven mutually-distinguishable colours (5 enemies + 5 elite tints + you)
     // under four vision types is not achievable - the best player colour tested
     // still sat at dE 7.5 from something. So the player is marked by SHAPE
@@ -2620,10 +2985,10 @@ function render(){
     // deficiency can take away. Colour stops having to carry this.
     for(let i=0;i<16;i++){
       const a = i/16*TAU + T*0.5;
-      const rx = P.x+Math.sin(a)*1.15, rz = P.z+Math.cos(a)*1.15;
+      const rx = P.x+Math.sin(a)*1.34, rz = P.z+Math.cos(a)*1.34;
       box(rx, groundY(rx,rz)+.10, rz, .13,.08,.13, [1,1,1], .95);
     }
-    box(P.x, P.y+.05, P.z, .80,.03,.80, [.08,.10,.09], 0);
+    box(P.x, P.y+.05, P.z, .98,.03,.98, [.08,.10,.09], 0);
     // You are a 0.34m box among four hundred boxes, and positioning is the
     // entire game - losing track of yourself in the horde is not a difficulty,
     // it is the controls not working. A lit ring at your feet costs twelve
@@ -2634,17 +2999,34 @@ function render(){
     // is the same reason the enemy palette is sorted by lightness.
     for(let i=0;i<12;i++){
       const a = i*(TAU/12) + T*.7;
-      box(P.x+Math.sin(a)*.62, P.y+.07, P.z+Math.cos(a)*.62,
-          .11,.05,.11, [1,1,1], 1.0);
+      box(P.x+Math.sin(a)*.82, P.y+.07, P.z+Math.cos(a)*.82,
+          .12,.05,.12, [1,1,1], 1.0);
     }
-    box(P.x, P.y+.62, P.z, .34,.62,.34, c, P.iframe>0?.55:.30, P.face);
-    box(P.x, P.y+1.42, P.z, .27,.24,.27, [.92,.80,.66], 0, P.face);
-    box(P.x, P.y+1.70, P.z, .34,.09,.34, [.85,.28,.24], 0, P.face);
-    for(const sgn of [-1,1]){
-      const ox = Math.cos(P.face)*.11*sgn + Math.sin(P.face)*.26;
-      const oz = -Math.sin(P.face)*.11*sgn + Math.cos(P.face)*.26;
-      box(P.x+ox, P.y+1.46, P.z+oz, .06,.06,.03, [.08,.08,.1], .5, P.face);
+    const gait = Math.hypot(P.vx,P.vz) > .4 ? Math.sin(T*13) : 0;
+    for(const rs of [-1,1]) for(const fs of [-1,1])
+      mb(rs*.22, fs*.19, .19 + Math.max(0, gait*rs*fs)*.11, .09,.19,.09, mDk, 0);
+    mb(0, -.02, .70, .35,.31,.42, mTc, mEm);          // barrel
+    mb(0,  .32, .86, .22,.18,.20, mDk, 0);            // neck
+    mb(0,  .55, .99, .30,.26,.28, mTc, mEm);          // skull
+    mb(0,  .63, .76, .27,.09,.23, mDk, 0);            // jaw
+    for(let i=0;i<4;i++) mb(-.18+i*.12, .78, .84, .04,.07,.04, [.96,.96,.92], .15);
+    for(const rs of [-1,1]) mb(rs*.15, .77, 1.09, .06,.07,.04, [1,1,1], 1.0);
+    // one pair of horns per stage reached, longer each time. This is the read:
+    // a two-horned monster is a monster that has evolved once.
+    for(let k=0;k<=stage;k++) for(const rs of [-1,1])
+      mb(rs*(.21+k*.03), .32-k*.27, 1.22+k*.11, .05,.14+k*.06,.05, mDk, .10);
+    // A dorsal ridge, because the camera is behind you for twenty minutes and
+    // the head is on the other side of the body. One more plate per stage, so
+    // the evolution is legible from the only angle you ever actually see.
+    const mLt = [Math.min(1,mTc[0]*1.35+.06), Math.min(1,mTc[1]*1.35+.06),
+                 Math.min(1,mTc[2]*1.35+.06)];
+    for(let k=0;k<3+stage;k++){
+      const hy = .21 - k*.026;
+      mb(0, .26 - k*.23, .98 + hy, .05, hy, .13, mLt, .12);
     }
+    for(let k=0;k<3;k++)
+      mb(Math.sin(T*4 + k*.9)*.10*(k+1), -.44-k*.23, .66-k*.07,
+         .09-k*.02, .09-k*.02, .12, mTc, 0);
     // stink aura
     const aw = P.kit.aura;
     if(aw){
@@ -2812,7 +3194,8 @@ function hud(){
     ? `THE FINAL BONK  ${Math.max(0,Math.ceil(fb.hp)).toLocaleString()} HP  -  KILL IT`
     : nb ? `${nb.nm} IN ${fmt(Math.max(0,nb.t-T))}` : "FINAL STAND";
   $("xpbar").style.width = (P.xp/P.need*100).toFixed(1)+"%";
-  $("lvl").innerHTML = `LV <b>${P.lvl}</b>`;
+  $("lvl").innerHTML = `LV <b>${P.lvl}</b><em>${stageNm()}${
+    stage < 2 ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</em>`;
   const hp = clamp(P.hp/P.maxhp,0,1);
   $("hpbar").style.width = (hp*100).toFixed(1)+"%";
   $("hptxt").textContent = `${Math.max(0,Math.ceil(P.hp))} / ${Math.round(P.maxhp)}`;
@@ -2831,6 +3214,26 @@ function hud(){
       (W&&w.evo)?W.evo.name:D.name}">${icon(ic)}<i>${w.evo?"★":w.l+1}</i></div>`;
   }
   $("kit").innerHTML = html;
+
+  // The chain has to be readable without looking away from the fight, so it
+  // sits directly under the kit bar and only exists while a chain does.
+  const hopEl = $("hop"), links = Math.round(P.hop*10)/10;
+  hopEl.classList.toggle("on", links > 0 || P.hopFx > 0);
+  hopEl.classList.toggle("max", P.hop >= HOP_MAX);
+  for(let i=0;i<HOP_MAX;i++) hopEl.children[i].className = i < P.hop ? "lit" : "";
+  hopEl.lastElementChild.textContent = links > 0 ? "+"+Math.round((hopMul()-1)*100)+"%" : "";
+
+  // The evolution banner. It scales in over ~0.2s and holds, because the one
+  // moment in a twenty-minute run where the game should stop shouting about
+  // enemies and shout about YOU is the moment you turn into something else.
+  const ev = $("evo");
+  if(evoT > 0){
+    const a = Math.min(1, (3.2-evoT)/.18), o = Math.min(1, evoT/.7);
+    ev.style.opacity = (a*o).toFixed(2);
+    ev.style.transform = `translate(-50%,-50%) scale(${(0.82+a*0.18).toFixed(3)})`;
+    ev.firstElementChild.textContent = evoNm;
+    ev.lastElementChild.textContent  = evoSub;
+  } else ev.style.opacity = 0;
 
   const wr = $("warn");
   if(nb && nb.t-T < 5 && nb.t-T > 0){
@@ -2871,6 +3274,7 @@ function frame(now){
   if(hitstop > 0) hitstop -= dt;
   else if(running && !over && !paused && !picking) step(dt);
   pulse(dt);
+  if(evoT > 0) evoT -= dt;
   render(); hud();
   requestAnimationFrame(frame);
 }
@@ -2884,7 +3288,8 @@ window.__g = {
                 x:+P?.x.toFixed(1), z:+P?.z.toFixed(1),
                 kills, enemies:enemies?.length, gems:gems?.length, boxes:drawnBoxes,
                 dps:+(P?.dmg).toFixed(2), spd:+(P?.spd).toFixed(2), cd:+(P?.cd).toFixed(3),
-                over, won:runWon, why:runWhy, sudden, picking, coins:save.coins }),
+                over, won:runWon, why:runWhy, sudden, picking, coins:save.coins,
+                pending:pendingLevels, stage }),
   kit:   ()=>Object.keys(P.kit).map(k=>`${k}:${P.kit[k].evo?"EVO":P.kit[k].l+1}`),
   start: (id)=>startRun(id||"intern"),
   // scripted driving ignores the pause that losing pointer lock would cause
@@ -2912,8 +3317,8 @@ window.__g = {
   spawn: (t,n=1,radius)=>{ for(let i=0;i<n;i++){
       if(radius===undefined) spawnEnemy(t);
       else { const a=Math.random()*TAU, r=Math.random()*radius;
-             spawnEnemy(t, clamp(P.x+Math.cos(a)*r,-ARENA+2,ARENA-2),
-                           clamp(P.z+Math.sin(a)*r,-ARENA+2,ARENA-2)); }
+             const [sx, sz] = confine(P.x+Math.cos(a)*r, P.z+Math.sin(a)*r, 2);
+             spawnEnemy(t, sx, sz); }
     } return enemies.length; },
   boss:  i=>spawnBoss(BOSSES[i||0]),
   // position/HP/body of the boss on the field, so a test can hold an exact
@@ -2943,10 +3348,37 @@ window.__g = {
   hadLock:  ()=>hadLock,
   dragging: ()=>dragging,
   isAirborne: ()=>!!P&&P.air,
+  mon:   ()=>({ id:charId, stage, nm:stageNm(), line:curMon().line,
+                type:curMon().type, at:EVO_AT.slice(),
+                lvl:monLvl(charId), bank:monBank(charId),
+                maxhp:+P.maxhp.toFixed(1), dmg:+P.dmg.toFixed(4),
+                reach:+P.reach.toFixed(4), xpMul:+P.xpMul.toFixed(4),
+                regen:+P.regen.toFixed(3), armor:+P.armor.toFixed(2),
+                cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
+  evolveTo:(i)=>evolveTo(i),
+  monLvl: id=>monLvl(id||charId),
+  monNeed:l=>MON_NEED(l),
+  setMon: (id,xp)=>{ save.mon[id]=xp; writeSave(); },
+  hop:   ()=>({ n:+P.hop.toFixed(2), win:+P.hopWin.toFixed(3), buf:+jumpBuf.toFixed(3),
+                vy:+P.vy.toFixed(2), r:+Math.hypot(P.x,P.z).toFixed(2),
+                mul:+hopMul().toFixed(3), spd:+Math.hypot(P.vx,P.vz).toFixed(2),
+                base:+P.spd.toFixed(2), air:P.air }),
+  jump:  ()=>jumpPressed(),
+  botHop:(on=true)=>botHop=on,
+  rim:   ()=>RIM,
+  eye:   ()=>camEye.slice(),
+  wall:  ()=>{ const w = PROPS.filter(p=>p.t===5);
+               const r = w.map(p=>Math.hypot(p.x,p.z));
+               return { n:w.length, rmin:+Math.min(...r).toFixed(3),
+                        rmax:+Math.max(...r).toFixed(3),
+                        // centre, half-length and long-axis unit vector, so a
+                        // test can ask whether the ring actually CLOSES
+                        seg: w.map(p=>({ x:p.x, z:p.z, L:p.s,
+                                         ux:Math.cos(p.r), uz:-Math.sin(p.r) })) }; },
+  propsOut:()=>PROPS.filter(p=>p.t<4 && Math.hypot(p.x,p.z) > RIM).length,
   isPaused: ()=>paused,
   camYaw: ()=>camYaw,
-  place: (x,z)=>{ P.x=clamp(x,-ARENA+1.5,ARENA-1.5);
-                  P.z=clamp(z,-ARENA+1.5,ARENA-1.5); P.y=groundY(P.x,P.z); },
+  place: (x,z)=>{ [P.x, P.z] = confine(x, z, 1.5); P.y=groundY(P.x,P.z); },
   hpx:   ()=>hpScale(T),
   // Report the HP MULTIPLIER (maxhp / species base), not raw HP. Raw medians
   // compare a population whose elite half is mostly skitters (8 base HP) with a
@@ -3095,7 +3527,7 @@ window.__g = {
   comp:  ()=>enemies.reduce((a,e)=>{ a[e.type]=(a[e.type]||0)+1; return a; }, {}),
   skipTo:s=>{ T=s; },
   wipeSave: ()=>{ localStorage.removeItem(SAVEKEY);
-                  save={coins:0,up:{},best:0,wins:0,unlocked:{}}; openMenu(); },
+                  save={coins:0,up:{},best:0,wins:0,unlocked:{},mon:{}}; openMenu(); },
   // set permanent upgrades directly - localStorage is only read at page load,
   // so a test cannot simulate a veteran save by writing to it mid-session
   setUpgrades: (up)=>{ save.up = Object.assign({}, up); writeSave(); return save.up; },
