@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 165 checks: boot, every weapon, every evolution, every
+node test.js              # 166 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -121,7 +121,7 @@ node mutate.js                    # break the game on purpose, one thing at a
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **165 passing.**
+die, and checks that `localStorage` survives a reload. **166 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -323,8 +323,40 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned seventy-three things this build believed:
+That harness has overturned seventy-six things this build believed:
 
+- **A day cycle costs colour discrimination, and no palette buys it back.** One run is one
+  evening now — afternoon, gold at the first boss, dusk by the third, night while you are
+  counting seconds, and a blood-red horizon the moment sudden death starts. It is also
+  information: you can read how deep you are from the sky without looking at the clock. But
+  extending the contrast check across the cycle (6 times of day × 2 face orientations × 4
+  vision types, up from 2 conditions) immediately failed it — CHONK and SKITTER at **dE 2.3**
+  under tritanopia at the darkest hour, and THE COLLECTOR at **1.7** against the ground.
+  - Scaling the night ambient up and down moved the worst pair from 2.3 to 5.5. It was never
+    brightness — it was **saturation**. A strongly red ambient makes every object red, which
+    destroys hue discrimination by construction. Colour lives in the key light and the fog now;
+    the ambient stays near neutral.
+  - Re-running the colour grid search against the full cycle found **nothing above 12.1**, and
+    the binding pair was `brute*` against the terrain — a constraint no choice of collector
+    colour could move. The existing palette simply cannot hold dE 15 against the ground once
+    the light changes.
+  - So that separation is carried by a **contact shadow under every body**, which does not
+    depend on hue, light level or the viewer's colour vision. Enemy-against-enemy is still
+    hue's job at dE > 15 (15.2 now); enemy-against-ground is hue > 9 plus a guaranteed shadow,
+    asserted as 47 shadows for 47 enemies. The graphics fix and the accessibility fix turned
+    out to be the same fix, and the shadows also stopped everything looking like it was
+    hovering, which it was.
+- **My own instrument lost three dE in the refactor.** Moving the palette hook to report the
+  whole day cycle changed the ground's diffuse term from the sun's vertical component to a
+  vertical face's — the terrain is horizontal, so that is simply wrong, and it made the ground
+  read darker than it is. Three dE of headroom that was never actually missing, which I nearly
+  spent a palette redesign chasing.
+- **An edit that silently did nothing, for two commits.** A `python3` block that was supposed
+  to take the finale from 520k HP down to 430k ran against the wrong working directory. It
+  printed nothing, changed nothing, and both the source comment and this file went on claiming
+  430k while the constant sat at 520k. Every measurement after it is consistent, because the
+  value never moved — it was only ever the prose that was wrong. It surfaced because a
+  screenshot's HUD read "520,000 HP" while I was looking at something else entirely.
 - **The third event type was unreachable for four different reasons, none of them the one I
   guessed.** THE COLLECTOR flees instead of charging — the only thing in twenty minutes that
   asks whether you can bring damage *somewhere* rather than wait for it to arrive. It was
@@ -372,7 +404,10 @@ That harness has overturned seventy-three things this build believed:
   from 370k HP to 520k — a 40% rise — moved clears by four points. The lever had to be the
   curve that makes the whole late game hard, not the last minute of it: `hpScale`'s quadratic
   term went 2.5 → 3.6, which is +29% at minute nineteen and +10% at minute ten, and the finale
-  came back down to 430k. Veteran clears land at **11/24**, exactly the events-off baseline.
+  stayed at 520k. (An edit meant to bring it back down to 430k ran against the wrong working
+  directory and silently did nothing — the constant never moved, so every measurement after it
+  is consistent and it was the prose that was wrong for two commits. Caught by reading a
+  screenshot's HUD, which is the only reason it was caught at all.)
 - **The autopilot did not know the feature existed, so the first balance numbers measured a
   player who ignores it.** Teaching it to detour for a cache was easy. Holding an altar was
   not: across three full runs it completed **zero**, and every altar in the game expired

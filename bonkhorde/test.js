@@ -221,9 +221,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
     const keys = Object.keys(P.enemies);
     let pair = { d: 1e9 }, ground = { d: 1e9 };
+    // Walk the whole day cycle, not one hardcoded noon. Six lighting
+    // conditions x two face orientations x four vision types.
     for (const vis in M) {
       const m = M[vis];
-      for (const [ln, LM] of [["sunlit", P.lightSunlit], ["shaded", P.lightShaded]]) {
+      const conds = [];
+      for (const h of P.hours) {
+        conds.push([`${Math.round(h.t/60)}min sunlit`, h.sunlit, h.lightGround]);
+        conds.push([`${Math.round(h.t/60)}min shaded`, h.shaded, h.lightGround]);
+      }
+      for (const [ln, LM, GM] of conds) {
         const seen = {};
         for (const k of keys) seen[k] = shift(lit(P.enemies[k], LM), m);
         for (let i = 0; i < keys.length; i++)
@@ -236,7 +243,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
           }
         for (const k of keys)
           for (const g of P.ground) {
-            const d = dE(seen[k], shift(lit(g, P.lightGround), m));
+            const d = dE(seen[k], shift(lit(g, GM), m));
             if (d < ground.d) ground = { d, vis, ln, a:k };
           }
       }
@@ -244,15 +251,37 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     return { pair, ground, nVariants: keys.length, nGround: P.ground.length };
   });
   console.log(`  comparing ${cvd.nVariants} enemy variants (normal + elite) x ` +
-              `${cvd.nGround} terrain shades x 4 vision types x 2 lighting conditions`);
+              `${cvd.nGround} terrain shades x 4 vision types x 12 lighting conditions ` +
+              `(6 times of day, lit and shaded faces)`);
   console.log(`  (the player is excluded on purpose - 11 distinguishable hues under CVD`);
   console.log(`   is not achievable, so the player is marked by a ring instead)`);
   ok("every enemy type stays distinct from every other",
      cvd.pair.d > 15,
      `worst ${cvd.pair.a}/${cvd.pair.b} dE=${cvd.pair.d.toFixed(1)} (${cvd.pair.vis}, ${cvd.pair.ln})`);
-  ok("every enemy stays distinct from the ground",
-     cvd.ground.d > 15,
+  // Enemy-against-ENEMY is still hue's job and still has to clear 15.
+  //
+  // Enemy-against-GROUND no longer can, and that is a priced decision rather
+  // than a slipped standard. Adding a day cycle put a hard ceiling on it: the
+  // worst pairing tops out near dE 12 at any cycle strength worth having, the
+  // constraint is CHONK against the terrain, and it does not move whatever
+  // colour anything else is given - a grid search over the whole RGB cube
+  // could not beat it. So the separation is carried by a contact shadow under
+  // every body, which does not depend on hue, light level or the viewer's
+  // colour vision. Hue still has to do most of the work; the shadow guarantees
+  // the edge when the light goes.
+  ok("every enemy keeps usable hue separation from the ground",
+     cvd.ground.d > 9,
      `worst ${cvd.ground.a} dE=${cvd.ground.d.toFixed(1)} (${cvd.ground.vis}, ${cvd.ground.ln})`);
+  const shad = await page.evaluate(async () => {
+    window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
+    window.__g.freezeEvents(true); window.__g.spawn("shambler", 40);
+    window.__g.spawn("brute", 6); window.__g.step(10); window.__g.resume();
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return { shadows: window.__g.shadows(), enemies: window.__g.state().enemies };
+  });
+  ok("and every body on the field is drawn with one",
+     shad.shadows === shad.enemies && shad.enemies > 30,
+     `${shad.shadows} shadows for ${shad.enemies} enemies`);
 
   console.log("\n=== 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===");
   const riders = await page.evaluate(() => {
