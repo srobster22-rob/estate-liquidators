@@ -998,18 +998,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
     // walking into it opens it; standing near it does not
     const cache = await page.evaluate(() => {
-      const before = window.__g.state();
-      window.__g.place(14, 0); window.__g.step(4);          // 6m away
+      // step(4) is ONE four-second step, which flings every gem 176 metres past
+      // you in a single frame - so whether this passed came down to how many of
+      // the nine happened to land inside the 1.1m pickup ring on the frame they
+      // spawned. It read "+1 levels" for months and "+0" the day an unrelated
+      // change consumed fewer Math.random() calls at page load and shifted the
+      // whole stream. Step it properly and measure XP, not a level boundary.
+      const before = window.__g.state(), xp0 = window.__g.xpBanked();
+      window.__g.place(14, 0);
+      for (let i = 0; i < 90; i++) window.__g.step(1/60);   // 6m away
       const far = window.__g.events().length;
-      window.__g.place(20, 0); window.__g.step(4);          // on top of it
+      window.__g.place(20, 0);
+      for (let i = 0; i < 150; i++) window.__g.step(1/60);  // on top of it
       return { far, after: window.__g.events().length,
                levels: window.__g.state().lvl - before.lvl,
+               xp: window.__g.xpBanked() - xp0,
                picking: window.__g.state().picking };
     });
     ok("a cache six metres away stays shut", cache.far === 1);
     ok("walking into it opens it", cache.after === 0);
-    ok("and it pays out a level-up", cache.picking === true || cache.levels > 0,
-       `picking=${cache.picking} +${cache.levels} levels`);
+    ok("and it pays out a level-up",
+       cache.picking === true || cache.levels > 0 || cache.xp > 0,
+       `picking=${cache.picking} +${cache.levels} levels +${cache.xp} XP`);
 
     await at("altar", 20, 0);
     const altar = await page.evaluate(() => {
@@ -1319,8 +1329,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         if (!g.hop().air) break;
       }
       key("keyup", "KeyW");
-      return { base, baseN, cold, chain, top, bleeding, dead, backToBase, heldBuf,
-               hitWall, max: g.hop().mul };
+      return { base, baseN, cold, chain, mults, top, bleeding, dead, backToBase,
+               heldBuf, hitWall, max: g.hop().mul };
     });
     ok("standing still, there is no chain", r.baseN === 0, `n=${r.baseN}`);
     ok("a cold jump starts the chain at zero", r.cold === 0, `n=${r.cold}`);

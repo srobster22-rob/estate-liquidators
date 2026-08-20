@@ -1737,6 +1737,7 @@ for(const [id,k] of [["sndBtn","sound"],["mtnBtn","motion"]])
   });
 paintOpts();
 function togglePause(v){
+  if(v) faceCamera();
   if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
   document.getElementById("paused").classList.toggle("on", v);
@@ -2612,7 +2613,9 @@ function offers(){
                              lv:"REFRESHMENT", ds:"Heal 40 HP. Nothing left to learn.", weight:1 });
   return out;
 }
+function faceCamera(){ if(P) P.face = camYaw + Math.PI; }
 function showPick(){
+  faceCamera();
   picking = true;
   if(paused){ paused = false; document.getElementById("paused").classList.remove("on"); }
   document.exitPointerLock?.();
@@ -3398,7 +3401,7 @@ function render(){
   // actually looking AT it rather than through it. It lives in render() and not
   // in step() on purpose: step does not run while the game is paused, and the
   // pause screen is exactly where this needs to work.
-  if(P && P.idle && running){
+  if(P && P.idle && running && !paused && !picking){
     const want = camYaw + Math.PI;
     const d2 = ((want - P.face + Math.PI*3) % TAU) - Math.PI;
     P.face += d2 * (1 - Math.pow(.05, Math.min(.05, dt)));
