@@ -1683,6 +1683,37 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        keys.map(k => `${sigs[k].nm}:${sigs[k].stage}`).join(" "));
   }
 
+  console.log("\n=== 22. THE HORDE IS NOT FIVE COLOURED BOXES ===");
+  {
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.setShake(0);
+      const b = g.bodies();
+
+      // LOD: the same forty bodies, once inside the full-detail radius and once
+      // well outside it. If distance does not buy anything back, four hundred
+      // enemies at fourteen boxes each is the whole frame budget.
+      g.place(0, 0);
+      const count = async () => { await frame(); await frame(); return g.state().boxes; };
+      g.spawn("brute", 40, 9);      await frame();
+      const near = await count();
+      g.place(0, 60);               // same enemies, now ~60m away
+      const far  = await count();
+      return { b, near, far };
+    });
+    const sp = r.b.species;
+    ok("every species has a body plan of its own",
+       Object.keys(sp).every(k => sp[k].want && sp[k].has),
+       Object.keys(sp).map(k => `${k}:${sp[k].want || "none"}${sp[k].has ? "" : " MISSING"}`).join(" "));
+    ok("and no two species share one",
+       new Set(Object.values(sp).map(v => v.want)).size === Object.keys(sp).length,
+       `${new Set(Object.values(sp).map(v=>v.want)).size} plans for ${Object.keys(sp).length} species`);
+    ok("distance buys the box budget back",
+       r.far < r.near * 0.75, `${r.near} boxes near -> ${r.far} far`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

@@ -8,8 +8,34 @@
 from Megabonk's third-person camera. No engine, no build step, no dependencies — open
 `index.html` in a browser and it runs.
 
+> A collector died, and the estate is large enough to have its own weather. Nothing in it was
+> ever thrown away, so everything in it has been sitting there long enough to **wake up**. The
+> mop woke up. The bin woke up. The ledger woke up, and it has been counting.
+>
+> You are one of those things. At dawn the house goes to probate and is signed away — and
+> before then **the claims** arrive. Every debt the collector left, walking in through the walls
+> to take what it is owed. They do not negotiate.
+>
+> **Twenty minutes. Clear the house.**
+
 You never attack. Every weapon fires on its own cooldown at its own targets. The only verb is
 **positioning**, and every death is a positioning mistake.
+
+The horde is not undead, it is **accounting** — which is why the roster is a mop and a wheelie
+bin, and why the things coming through the walls are an overdue notice, a bailiff, a safe, an
+appraiser and a silverfish. The contents of the house are defending the house.
+
+| the claims | what it is | how it plays |
+|---|---|---|
+| **ARREARS** | an overdue notice that learned to walk | slow, patient, always more |
+| **BAILIFF** | all elbows and clipboard | gets there first |
+| **THE LIEN** | a safe with legs — a charge against the property | slow, enormous, 150 HP |
+| **APPRAISER** | hangs back and throws valuations across the room | the only one that outranges you |
+| **SILVERFISH** | eats paper, breeds in filing cabinets | tiny, 5.0 m/s, arrives in numbers |
+| **THE HEIRLOOM** | the one thing worth keeping, and it knows it | flees; pays coins if you catch it |
+
+And they answer to someone: **THE EXECUTOR** at 5:00, **THE LANDLORD** at 10:00, **MR. TEETH**
+at 15:00, and **THE FINAL BONK** at 19:00.
 
 You play a **monster**, and it evolves twice while you are running it. At level 7 and level 20
 it becomes a *different animal* — new name, new body, better stat block, and at the top of its

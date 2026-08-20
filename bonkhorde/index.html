@@ -131,6 +131,11 @@
   .ch .nm{font-size:12px;font-weight:700;margin-bottom:4px}
   .ch .ds{font-size:10px;color:#9a9588;line-height:1.55}
   .ch .pk{font-size:10px;color:var(--gold);margin-top:6px}
+  .story{max-width:640px;margin:0 auto 22px;text-align:left;color:#8e8878;
+    font-size:11px;line-height:1.95;border-left:2px solid #2a313c;padding:2px 0 2px 16px}
+  .story p{margin:0 0 9px}
+  .story b{color:var(--ink);font-weight:700}
+  .story .tag{color:var(--gold);letter-spacing:.2em;font-size:10px;font-weight:700;margin:0}
   .ch{width:172px}
   .ch .ty{font-size:9px;letter-spacing:.16em;font-weight:700;display:inline-block;
     padding:2px 6px;border:1px solid currentColor;margin-bottom:6px;opacity:.9}
@@ -239,11 +244,11 @@
 <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/></symbol>
 <symbol id="i-dupe" viewBox="0 0 24 24"><rect x="3.2" y="3.2" width="11" height="11" rx="1.6" class="f"/><rect x="9.8" y="9.8" width="11" height="11" rx="1.6" class="fa"/></symbol>
 <symbol id="i-clover" viewBox="0 0 24 24"><path d="M11.4 11.4a3.4 3.4 0 1 1 0-4.8 3.4 3.4 0 1 1 4.8 0 3.4 3.4 0 1 1 0 4.8 3.4 3.4 0 1 1-4.8 0z" class="f"/><path d="M13.6 13.2c1 3 2.8 5.4 5.4 7.2" class="a"/></symbol>
-<symbol id="i-intern" viewBox="0 0 24 24"><path d="M12 2.6c4.4 0 7.4 3.1 7.4 7.1v3.1H4.6V9.7c0-4 3-7.1 7.4-7.1z" class="f"/><rect x="4.6" y="12.4" width="1.9" height="8.6" class="f"/><rect x="7.3" y="12.4" width="1.9" height="7.1" class="f"/><rect x="10" y="12.4" width="1.9" height="9" class="f"/><rect x="12.7" y="12.4" width="1.9" height="6.9" class="f"/><rect x="15.4" y="12.4" width="1.9" height="8.7" class="f"/><rect x="18.1" y="12.4" width="1.3" height="7.3" class="f"/><circle cx="9.5" cy="8.8" r="1.7" class="k"/><circle cx="14.5" cy="8.8" r="1.7" class="k"/></symbol>
-<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M6.9 9.4h10.2l-.9 8.3a1.7 1.7 0 0 1-1.7 1.5H9.5a1.7 1.7 0 0 1-1.7-1.5z" class="f"/><path d="M4.4 6.6l15-2.7.5 2.9-15 2.7z" class="f"/><circle cx="10" cy="12.6" r="1.3" class="k"/><circle cx="14" cy="12.6" r="1.3" class="k"/><path d="M9.6 15.8l1.2 1.4 1.2-1.4 1.2 1.4 1.2-1.4" class="ka"/><path d="M7.2 19.2v3M16.8 19.2v3" class="a"/></symbol>
-<symbol id="i-spark" viewBox="0 0 24 24"><circle cx="12" cy="13.2" r="6.1" class="f"/><circle cx="9.8" cy="12.4" r="1.6" class="k"/><circle cx="14.2" cy="12.4" r="1.6" class="k"/><path d="M9 7.4L7.3 3.1l3.3 2M15 7.4l1.7-4.3-3.3 2" class="a"/><circle cx="2.9" cy="10.4" r="1.4" class="fa"/><circle cx="21.1" cy="15.6" r="1.4" class="fa"/><circle cx="12" cy="22.2" r="1.2" class="fa"/></symbol>
-<symbol id="i-ox" viewBox="0 0 24 24"><path d="M2.4 16.6L5 9.2a2.2 2.2 0 0 1 2.1-1.5h9.8a2.2 2.2 0 0 1 2.1 1.5l2.6 7.4z" class="f"/><rect x="5.2" y="16.6" width="2.6" height="3.6" class="f"/><rect x="16.2" y="16.6" width="2.6" height="3.6" class="f"/><path d="M6.4 11.8h11.2" class="ka"/><circle cx="9.4" cy="14" r="1.2" class="k"/><circle cx="14.6" cy="14" r="1.2" class="k"/></symbol>
-<symbol id="i-ghoul" viewBox="0 0 24 24"><path d="M2.4 21c0-5.3 4.3-9.6 9.6-9.6s9.6 4.3 9.6 9.6z" class="f"/><path d="M7.6 16.6h8.8v1.1a4.4 4.4 0 0 1-8.8 0z" class="k"/><path d="M9.4 16.6v2.5M12 16.6v3.1M14.6 16.6v2.5" class="ka"/><circle cx="8.8" cy="14.4" r="1.2" class="k"/><circle cx="15.2" cy="14.4" r="1.2" class="k"/><path d="M15.6 11.6V7.4" class="a"/><ellipse cx="15.6" cy="6" rx="3.3" ry="1.8" class="fa"/></symbol>
+<symbol id="i-intern" viewBox="0 0 24 24"><path d="M12 2.2c5 0 8.4 3.4 8.4 8v3.2H3.6V10.2c0-4.6 3.4-8 8.4-8z" class="f"/><rect x="3.6" y="13" width="3.6" height="8.8" class="f"/><rect x="8.4" y="13" width="3.6" height="7" class="f"/><rect x="13.2" y="13" width="3.6" height="9.2" class="f"/><rect x="18" y="13" width="2.4" height="7.4" class="f"/><circle cx="9.2" cy="8.4" r="2.2" class="k"/><circle cx="14.8" cy="8.4" r="2.2" class="k"/></symbol>
+<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M5.6 9.2h12.8l-1.4 11.2a1.8 1.8 0 0 1-1.8 1.6H8.8a1.8 1.8 0 0 1-1.8-1.6z" class="f"/><path d="M3.4 5.6l17-3.2 1 4.4-17 3.2z" class="f"/><circle cx="9.6" cy="13.6" r="1.9" class="k"/><circle cx="14.4" cy="13.6" r="1.9" class="k"/><path d="M9.4 17.8h5.2v2.4H9.4z" class="k"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><circle cx="12" cy="14.4" r="7.4" class="f"/><circle cx="9.4" cy="13.2" r="2.2" class="k"/><circle cx="14.6" cy="13.2" r="2.2" class="k"/><path d="M12 1.4l-3.4 5h3l-2 4.4L14 5.4h-3z" class="fa"/></symbol>
+<symbol id="i-ox" viewBox="0 0 24 24"><path d="M1.8 16.8L4.8 9a2.6 2.6 0 0 1 2.4-1.7h9.6A2.6 2.6 0 0 1 19.2 9l3 7.8z" class="f"/><rect x="4.4" y="16.8" width="3.4" height="4" class="f"/><rect x="16.2" y="16.8" width="3.4" height="4" class="f"/><path d="M5.2 11.6h13.6v2.2H5.2z" class="k"/><circle cx="9.2" cy="15.2" r="1.5" class="k"/><circle cx="14.8" cy="15.2" r="1.5" class="k"/></symbol>
+<symbol id="i-ghoul" viewBox="0 0 24 24"><path d="M1.6 21.4c0-5.7 4.7-10.2 10.4-10.2s10.4 4.5 10.4 10.2z" class="f"/><path d="M6.6 16.8h10.8v1.6a5.4 5.4 0 0 1-10.8 0z" class="k"/><circle cx="8.4" cy="14.2" r="1.7" class="k"/><circle cx="15.6" cy="14.2" r="1.7" class="k"/><rect x="16.4" y="5.8" width="2.4" height="6.4" class="fa"/><ellipse cx="17.6" cy="5" rx="4.4" ry="2.6" class="fa"/></symbol>
 <symbol id="i-hp" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/><path d="M12 8.6v5M9.5 11.1h5" class="ka"/></symbol>
 <symbol id="i-dmg" viewBox="0 0 24 24"><path d="M20.6 3.4l-9.4 9.4 1.4 1.4 9.4-9.4z" class="fa"/><path d="M11.2 12.8L8 16l-1.6-1.6L3.4 17l3.6 3.6 2.6-3 -1.6-1.6 3.2-3.2z" class="f"/></symbol>
 <symbol id="i-spd" viewBox="0 0 24 24"><path d="M8.4 4.5h4.2v8.2l6 3.2a3 3 0 0 1 1.6 2.7v2h-11.8z" class="f"/><path d="M2 7h4M1 11.5h5M2.4 16h3.6" class="a"/></symbol>
@@ -255,8 +260,8 @@
 <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" class="fa"/><path d="M12 7.4v9.2M9.6 9.6h3.6a1.9 1.9 0 0 1 0 3.8h-2.8a1.9 1.9 0 0 0 0 3.8h3.6" class="ka"/></symbol>
 <symbol id="i-start" viewBox="0 0 24 24"><path d="M12 2.4l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 21l1.4-6.8L2.2 9.5l6.9-.8z" class="fa"/></symbol>
 <symbol id="i-heal" viewBox="0 0 24 24"><path d="M9.6 4.2a4.6 4.6 0 0 1 8.4 3.2 4.4 4.4 0 0 1-4.6 4.4l-1.8 1.8-3.6-3.6 1.8-1.8a4.4 4.4 0 0 1-.2-4z" class="f"/><path d="M8.8 13.2l-5 5a2 2 0 0 0 2.8 2.8l5-5z" class="fa"/></symbol>
-<symbol id="i-accnt" viewBox="0 0 24 24"><ellipse cx="12" cy="13.8" rx="5.9" ry="7" class="f"/><path d="M12 7v13.6" class="ka"/><path d="M9 11.2h1.4M9 13.8h1.4M9 16.4h1.4M13.6 11.2H15M13.6 13.8H15" class="ka"/><ellipse cx="12" cy="5.6" rx="2.8" ry="2.4" class="f"/><circle cx="10.7" cy="5.4" r="1.5" class="fa"/><circle cx="13.3" cy="5.4" r="1.5" class="fa"/><path d="M6.1 11.4L2.6 9.6M6.1 15l-3.5.5M6.1 18.4l-3 2M17.9 11.4l3.5-1.8M17.9 15l3.5.5M17.9 18.4l3 2" class="a"/></symbol>
-<symbol id="i-twin" viewBox="0 0 24 24"><circle cx="12" cy="6.3" r="4.1" class="fa"/><circle cx="6.5" cy="16.1" r="4.6" class="f"/><circle cx="17.5" cy="16.1" r="4.6" class="f"/><circle cx="10.8" cy="5.8" r="1" class="k"/><circle cx="13.2" cy="5.8" r="1" class="k"/><circle cx="5.3" cy="15.5" r="1.1" class="k"/><circle cx="7.7" cy="15.5" r="1.1" class="k"/><circle cx="16.3" cy="15.5" r="1.1" class="k"/><circle cx="18.7" cy="15.5" r="1.1" class="k"/></symbol>
+<symbol id="i-accnt" viewBox="0 0 24 24"><ellipse cx="12" cy="14.4" rx="7.4" ry="8" class="f"/><rect x="10.9" y="7" width="2.2" height="15" class="k"/><rect x="6.4" y="10.4" width="2" height="7.6" class="k"/><rect x="15.6" y="10.4" width="2" height="7.6" class="k"/><ellipse cx="12" cy="5.2" rx="4" ry="3.2" class="f"/><circle cx="10.2" cy="5" r="1.8" class="fa"/><circle cx="13.8" cy="5" r="1.8" class="fa"/></symbol>
+<symbol id="i-twin" viewBox="0 0 24 24"><circle cx="15.8" cy="8.4" r="6" class="fa"/><circle cx="8.4" cy="15.6" r="7.4" class="f"/><circle cx="14.2" cy="7.6" r="1.6" class="k"/><circle cx="17.8" cy="7.6" r="1.6" class="k"/><circle cx="6" cy="14.4" r="2.1" class="k"/><circle cx="10.8" cy="14.4" r="2.1" class="k"/></symbol>
 <symbol id="i-tally" viewBox="0 0 24 24"><path d="M5 5.4v13.2M9.4 5.4v13.2M13.8 5.4v13.2M18.2 5.4v13.2"/><path d="M2.8 16.6L20.4 7" class="a"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
 </defs></svg>
@@ -799,13 +804,37 @@ dupe:    { name:"DUPLICATOR",ic:"dupe", kind:"p", max:3, ds:"+1 shot for BOLT, S
 clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:5, ds:"+7% crit. Crits hit for 2.3x." },
 };
 
+// ================================================================ THE STORY
+// A collector died. The estate is large enough to have its own weather, and
+// nothing in it was ever thrown away - which means everything in it has been
+// sitting there long enough to wake up. The mop woke up. The bin woke up. The
+// ledger woke up, and it has been counting.
+//
+// You are one of those things. At dawn the estate goes to probate and the house
+// is signed away, and before then THE CLAIMS arrive: every debt the collector
+// left behind, walking in through the walls to take what it is owed. They do
+// not negotiate and they do not stop. The horde is not undead - it is
+// accounting.
+//
+// So the bestiary is paperwork with legs, and it is why the roster is a mop and
+// a wheelie bin: the contents of the house are defending the house. Twenty
+// minutes. Clear it.
 const ENEMIES = {
-shambler:{ nm:"SHAMBLER", hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55 },
-runner:  { nm:"SPRINTBOI",hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40 },
-brute:   { nm:"CHONK",    hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15 },
-spitter: { nm:"SPITBOI",  hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
-           ranged:{cd:2.6, spd:15, r:22} },
-skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34 },
+// An overdue notice that learned to walk. Folded, stamped, and very patient.
+shambler:{ nm:"ARREARS",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
+           body:"paper" },
+// All elbows and clipboard. Gets there first and writes it all down.
+runner:  { nm:"BAILIFF",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
+           body:"bailiff" },
+// A safe with legs. It is not a monster, it is a charge against the property.
+brute:   { nm:"THE LIEN", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
+           body:"safe" },
+// Hangs back and throws valuations at you from across the room.
+spitter: { nm:"APPRAISER",hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
+           ranged:{cd:2.6, spd:15, r:22}, body:"appraiser" },
+// Eats paper, breeds in filing cabinets, arrives in numbers.
+skitter: { nm:"SILVERFISH",hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
+           body:"fish" },
 // Everything else in this game walks at you. This one walks away, which makes
 // it the only thing in twenty minutes that asks whether you can bring your
 // damage somewhere rather than wait for it to arrive.
@@ -833,7 +862,7 @@ collector:{ nm:"THE COLLECTOR", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 // is measured to the body, the biggest boss gained the most DPS against it, so
 // the biggest boss needs the most HP back. Same fight, honest numbers.
 const BOSSES = [
-{ t:300,  nm:"THE GRAVELORD", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
+{ t:300,  nm:"THE EXECUTOR", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
 { t:600,  nm:"THE LANDLORD",  hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
 { t:900,  nm:"MR. TEETH",     hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
@@ -1013,6 +1042,132 @@ const SHOP = [
 { id:"tally", ic:"tally",n:"TALLY",        d:"+8% XP from every gem", max:4, cost:r=>140+r*130,
   lock:"tally" },
 ];
+
+// ======================================================= ENEMY BODY PLANS
+// The horde was a box, a smaller box and two white dots, five species deep,
+// separated by hue alone - which is why it read as coloured boxes. These are
+// paperwork with legs, per the story, and each one is built so you can name it
+// from its silhouette before you have read its colour.
+//
+// The catch is that there can be four hundred of them and about twenty of you.
+// So detail is spent by DISTANCE: full build inside 16m, a reduced one out to
+// 32m, and a silhouette beyond that. Roughly 40 near x 14 boxes, 120 mid x 8
+// and 240 far x 4 is ~2,500 - the same order as the old flat five-per-body, put
+// where you can actually see it.
+function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
+  box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
+      e.z - Math.sin(face)*r + Math.cos(face)*f,
+      hx, hy, hz, col, em||0, rot===undefined ? face : rot);
+}
+const EBODY = {
+
+// ARREARS - an overdue notice that learned to walk. Folded, stamped, patient.
+paper(e, face, W, H, c, glow, lod, y0){
+  const sway = Math.sin(T*3 + e.bob)*.08;
+  // Wide and thin, so it is a SHEET from every angle. The first build was
+  // barely wider than it was deep and the horde read as scattered cubes.
+  eb(e, face, 0, sway*.4, y0 + H*.56, W*1.15, H*.50, W*.07, c, glow);
+  eb(e, face, W*.86, sway, y0 + H*.90, W*.34, H*.20, W*.06, c, glow, face + .6);
+  eb(e, face, 0, W*.09, y0 + H*.64, W*.30, W*.30, .05, [.86,.14,.12], .50);
+  eb(e, face, 0, W*.09, y0 + H*.64, W*.16, W*.16, .05, [.24,.05,.05], 0);
+  if(lod < 1) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.34, 0,
+    y0 + H*.14 + Math.max(0, Math.sin(T*9 + e.bob + (sg>0?0:3)))*H*.06,
+    W*.10, H*.15, W*.10, [.92,.90,.84], .05);
+  if(lod < 2) return;
+  for(let i=0;i<3;i++) eb(e, face, -W*.5 + i*W*.5, W*.13, y0 + H*.86 - i*H*.10,
+                          W*.30, H*.012, .04, [.30,.30,.34], .05);
+  eb(e, face, 0, W*.13, y0 + H*.30, W*.44, H*.012, .04, [.30,.30,.34], .05);
+},
+
+// BAILIFF - all elbows and clipboard. Gets there first and writes it down.
+bailiff(e, face, W, H, c, glow, lod, y0){
+  const st = Math.sin(T*11 + e.bob);
+  eb(e, face, 0, 0, y0 + H*.55, W*.52, H*.30, W*.40, c, glow);
+  eb(e, face, 0, 0, y0 + H*.88, W*.38, H*.13, W*.34, c, glow);
+  eb(e, face, 0, 0, y0 + H*1.14, W*.30, H*.16, W*.30, [.10,.10,.13], .10);
+  if(lod < 1) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.26, st*sg*W*.30, y0 + H*.18,
+                             W*.11, H*.20, W*.11, [.14,.14,.18], 0);
+  eb(e, face, 0, W*.26, y0 + H*.92, W*.14, H*.05, .05, [1,1,1], .85);
+  if(lod < 2) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.46, W*.16, y0 + H*.62,
+                             W*.09, H*.16, W*.09, c, glow);
+  eb(e, face, W*.10, W*.40, y0 + H*.60, W*.34, H*.22, .04, [.94,.92,.86], .10);
+  eb(e, face, W*.10, W*.42, y0 + H*.72, W*.20, H*.03, .03, [.30,.30,.34], .05);
+},
+
+// THE LIEN - a safe with legs. Not a monster: a charge against the property.
+safe(e, face, W, H, c, glow, lod, y0){
+  eb(e, face, 0, 0, y0 + H*.50, W*.62, H*.40, W*.50, c, glow);
+  eb(e, face, 0, W*.50, y0 + H*.50, W*.50, H*.32, W*.05, [.80,.80,.86], .10);
+  eb(e, face, 0, W*.56, y0 + H*.54, W*.17, W*.17, .05, [.30,.32,.40], .20);
+  if(lod < 1) return;
+  eb(e, face, 0, W*.60, y0 + H*.54, W*.08, W*.08, .05, [.95,.86,.42], .55);
+  for(const sg of [-1,1]) for(const fs of [-1,1])
+    eb(e, face, sg*W*.44, fs*W*.34, y0 + H*.10, W*.13, H*.10, W*.13, [.12,.12,.16], 0);
+  if(lod < 2) return;
+  for(let i=0;i<4;i++){ const a = i*(TAU/4) + T*.6;
+    eb(e, face, Math.sin(a)*W*.30, W*.58, y0 + H*.54 + Math.cos(a)*W*.30,
+       W*.045, W*.045, .04, [.95,.86,.42], .5, face); }
+  eb(e, face, 0, -W*.10, y0 + H*.92, W*.56, H*.06, W*.44, [.12,.12,.16], .05);
+  for(const sg of [-1,1]) eb(e, face, sg*W*.34, 0, y0 + H*.50, W*.06, H*.42, W*.54,
+                             [.55,.55,.62], .06);
+},
+
+// APPRAISER - hangs back and throws valuations across the room.
+appraiser(e, face, W, H, c, glow, lod, y0){
+  const lean = Math.sin(T*2.2 + e.bob)*.05;
+  eb(e, face, 0, lean, y0 + H*.42, W*.56, H*.34, W*.46, c, glow);
+  eb(e, face, 0, W*.24, y0 + H*.86, W*.26, H*.16, W*.24, c, glow);
+  eb(e, face, W*.13, W*.44, y0 + H*.90, W*.15, W*.15, .05, [.94,.94,.98], .75);
+  if(lod < 1) return;
+  eb(e, face, W*.13, W*.50, y0 + H*.90, W*.08, W*.08, .04, [.10,.12,.16], 0);
+  eb(e, face, -W*.14, W*.42, y0 + H*.88, W*.09, W*.07, .04, [1,1,1], .85);
+  eb(e, face, 0, W*.06, y0 + H*.70, W*.13, H*.10, W*.13, [.20,.18,.12], 0);
+  if(lod < 2) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.44, W*.10, y0 + H*.40,
+                             W*.08, H*.20, W*.08, [.22,.20,.14], 0);
+  eb(e, face, -W*.40, -W*.14, y0 + H*.34, W*.24, H*.20, W*.14, [.36,.28,.18], .05);
+  for(const sg of [-1,1]) eb(e, face, sg*W*.24, 0, y0 + H*.10, W*.11, H*.11, W*.11,
+                             [.22,.20,.14], 0);
+},
+
+// SILVERFISH - eats paper, breeds in filing cabinets, arrives in numbers.
+fish(e, face, W, H, c, glow, lod, y0){
+  const wig = Math.sin(T*14 + e.bob);
+  const n = lod >= 2 ? 4 : lod >= 1 ? 3 : 2;
+  for(let i=0;i<n;i++){
+    const k = 1 - i*.17;
+    eb(e, face, wig*.10*i, W*.42 - i*W*.42, y0 + H*.34*k,
+       W*.42*k, H*.30*k, W*.34*k, c, glow);
+  }
+  if(lod < 1) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.20, W*.66, y0 + H*.50,
+                             W*.05, H*.05, W*.22, [.62,.62,.70], .25);
+  eb(e, face, 0, W*.54, y0 + H*.40, W*.20, H*.06, .04, [1,1,1], .8);
+  if(lod < 2) return;
+  for(let i=0;i<3;i++) for(const sg of [-1,1])
+    eb(e, face, sg*W*.40, W*.24 - i*W*.34,
+       y0 + H*.10 + Math.max(0, Math.sin(T*16 + i*2 + (sg>0?0:3)))*H*.08,
+       W*.06, H*.10, W*.06, [.48,.48,.56], .05);
+},
+
+// Everything without a plan of its own - bosses, THE HEIRLOOM - keeps the old
+// build, scaled up. A boss is already the biggest thing on the field with a
+// health bar over it; it does not need to also be the most detailed.
+generic(e, face, W, H, c, glow, lod, y0){
+  const bh = H*.62;
+  eb(e, face, 0, 0, y0 + bh*.5, W*.5, bh*.5, W*.5, c, glow);
+  eb(e, face, 0, 0, y0 + bh + H*.19, W*.40, H*.19, W*.40, c, glow);
+  for(const sg of [-1,1]) eb(e, face, sg*W*.17, W*.40, y0 + bh + H*.23,
+                             W*.10, W*.10, .04, [1,1,1], .9);
+  if(lod < 2) return;
+  for(const sg of [-1,1]) eb(e, face, sg*W*.62, 0, y0 + bh*.55,
+                             W*.14, bh*.36, W*.14, c, glow);
+},
+
+};
 
 // ============================================================== THE BESTIARY
 // The crew were seven people with stat blocks, and the thing a stat block
@@ -3042,6 +3197,17 @@ function openMenu(){
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
     <div class="sub">SURVIVE TWENTY MINUTES &nbsp;·&nbsp; YOUR MONSTER EVOLVES TWICE ON THE WAY</div>
+    <div class="story">
+      <p>A collector died, and the estate is large enough to have its own weather.
+      Nothing in it was ever thrown away, so everything in it has been sitting
+      there long enough to <b>wake up</b>. The mop woke up. The bin woke up. The
+      ledger woke up, and it has been counting.</p>
+      <p>You are one of those things. At dawn the house goes to probate and is
+      signed away &mdash; and before then <b>the claims</b> arrive. Every debt the
+      collector left, walking in through the walls to take what it is owed. They
+      do not negotiate.</p>
+      <p class="tag">TWENTY MINUTES. CLEAR THE HOUSE.</p>
+    </div>
     <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
       save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
       save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
@@ -3371,17 +3537,14 @@ function render(){
     const c = e.flash>0 ? [lerp(base[0],1,.72), lerp(base[1],1,.72), lerp(base[2],1,.72)]
                         : base;
     const face = Math.atan2(P.x-e.x, P.z-e.z);
-    const bh = H*.62;
-    box(e.x, e.y+bh*.5+hop, e.z, W*.5*sq, bh*.5, W*.5*sq, c, glow, face);
-    // head + googly eyes. This is 3 boxes and it is most of the personality.
-    const hy = e.y + bh + H*.19 + hop;
-    box(e.x, hy, e.z, W*.40, H*.19, W*.40, c, glow, face);
-    const ex = W*.17, ez = W*.40;
-    for(const sgn of [-1,1]){
-      const ox = Math.cos(face)*ex*sgn + Math.sin(face)*ez;
-      const oz = -Math.sin(face)*ex*sgn + Math.cos(face)*ez;
-      box(e.x+ox, hy+H*.04, e.z+oz, W*.10,W*.10,.04, [1,1,1], .9, face);
-    }
+    // Detail by distance. A body plan you cannot resolve is boxes you paid for
+    // and did not get: full build inside 16m, reduced to 32m, silhouette past
+    // that. Bosses are always full - there is only ever one.
+    const dp = P ? Math.hypot(e.x-P.x, e.z-P.z) : 0;
+    const lod = e.boss ? 2 : dp < 16 ? 2 : dp < 32 ? 1 : 0;
+    const plan = EBODY[e.def.body] || EBODY.generic;
+    plan(e, face, W*sq, H, c, glow, lod, e.y + hop);
+    const hy = e.y + H*.62 + H*.19 + hop;
     // and a crown. A tint alone vanishes in a crowd of 300 - this needs to be
     // a silhouette you can pick out at a glance and decide to deal with.
     if(e.elite){
@@ -3433,7 +3596,7 @@ function render(){
     // and that is what the monster was: the two marker rings around its feet
     // were each wider than the animal inside them. It is the biggest thing on
     // screen after a boss now, which is what a game about YOUR monster owes it.
-    const mSc = 1.85 * (1 + stage*.06) * (1 + Math.max(0, P.hopFx)*.20);
+    const mSc = 2.05 * (1 + stage*.06) * (1 + Math.max(0, P.hopFx)*.20);
     const mCf = Math.cos(P.face), mSf = Math.sin(P.face);
     const mEm = P.iframe>0 ? .55 : .20;
     const mb = (r,f,y,hx,hy,hz,col,em)=>{
@@ -3848,6 +4011,13 @@ window.__g = {
   evolveTo:(i)=>evolveTo(i),
   freezeEvo:(v=true)=>{ noEvo = v; },
   unlockAll:()=>unlockAll(),
+  // Every species' declared body plan, and whether EBODY actually has it. A
+  // typo in `body:"papper"` falls back to the generic silently, which is the
+  // realistic way five hand-built bodies quietly become one again.
+  bodies:()=>{ const out={};
+    for(const k in ENEMIES) out[k] = { want:ENEMIES[k].body||null,
+                                       has:!!(ENEMIES[k].body && EBODY[ENEMIES[k].body]) };
+    return { plans:Object.keys(EBODY), species:out }; },
   // Arm the capture, let a frame render, then read it back. The signature is
   // the box COUNT plus every box's half-extents sorted - nothing in a body plan
   // animates a size, so it is stable frame to frame, and two forms built from
