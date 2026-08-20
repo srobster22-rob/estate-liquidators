@@ -11,9 +11,11 @@ from Megabonk's third-person camera. No engine, no build step, no dependencies �
 You never attack. Every weapon fires on its own cooldown at its own targets. The only verb is
 **positioning**, and every death is a positioning mistake.
 
-You play a **monster**, and it evolves twice while you are running it — at level 7 and level 20
-it becomes a bigger animal with a new name, a better stat block and, at the top of its line, a
-named signature. Between runs each monster keeps the XP it earned and levels on its own.
+You play a **monster**, and it evolves twice while you are running it. At level 7 and level 20
+it becomes a *different animal* — new name, new body, better stat block, and at the top of its
+line a named signature. A MOPLING is a mop with eyes; a MOPHAND has grown arms it drags
+mop-heads on; a MOPMAW is mostly mouth. **Twenty-one forms, twenty-one meshes** — asserted, not
+promised. Between runs each monster keeps the XP it earned and levels on its own.
 
 ![BONKHORDE](screenshot.png)
 
@@ -79,7 +81,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **5 enemy types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
-| **7 monsters, 21 forms** | each is a three-stage line — MOPLING → MOPHAND → MOPMAW — that evolves at run level 7 and 20, with a named signature at the top |
+| **7 monsters, 21 forms** | a mop, a wheelie bin, a storm, a boulder, a fungus, a ledger beetle and a swarm — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body |
 | **per-monster levels** | every run banks its XP into the monster that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
 | **bunnyhopping** | chain a jump on the frame you land for up to +28% move speed; one hit resets it |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
@@ -272,13 +274,31 @@ lets a test jump straight to the top of a line without walking it.
 
 | | stage 1 | stage 2 (LV 7) | stage 3 (LV 20) | signature |
 |---|---|---|---|---|
-| PLAIN | MOPLING | MOPHAND | MOPMAW | SWEEP — +20% weapon reach |
+| MOP | MOPLING | MOPHAND | MOPMAW | SWEEP — +20% weapon reach |
 | SCRAP | RUSTLET | RUSTJAW | RUSTLORD | SALVAGE — +60% pickup radius |
 | VOLT | ZAPLET | VOLTHOUND | STORMWICK | OVERCLOCK — −13% cooldowns |
 | STONE | LUGGIT | HAULOX | MONOLITH | BEDROCK — +5 flat armour |
 | ROT | MOULDLING | ROTHERD | GRAVEMAW | FEAST — regeneration ×2.4 |
 | TALLY | TALLYMITE | LEDGERLING | GRAND AUDITOR | COMPOUND — +15% XP |
 | ECHO | SPLITKIN | TWINSPAWN | TRIPLICATE | CHORUS — +28% damage |
+
+Each line is a different *kind* of thing, not a palette swap, and each stage changes the
+silhouette rather than the scale:
+
+| | it starts as | it becomes | it ends as |
+|---|---|---|---|
+| **MOP** | a fringe with two eyes under it | arms, each dragging a mop head | mostly mouth, four arms, a mane |
+| **SCRAP** | a bucket whose lid won't sit straight | a wheelie bin, lid as a jaw | a skip with a crown and a grabber arm |
+| **VOLT** | an orb with antennae | the orb grew a body and it runs | a cloud with a skull in it and its own rain |
+| **STONE** | a pebble with a brow | a boulder carrying cargo on a yoke | a standing stone, hovering, trailed by rubble |
+| **ROT** | a puddle with one mushroom | a slime under a mushroom forest | a headstone that grew a mouth and two hands |
+| **TALLY** | a beetle whose shell is a ledger | the shell opened; it audits from the air | a filing cabinet that stood up, with a monocle |
+| **ECHO** | two of it | three, and one wears a crown | four, dragging after-images |
+
+Nothing in a body plan animates a *size*, only positions — so `__g.bodySig()` (box count plus
+every box's half-extents, sorted) is stable frame to frame, and two forms built from the same
+mesh come back byte-identical. The suite reads all twenty-one and requires twenty-one distinct
+strings. **The version this replaced would have failed that check with 3 distinct out of 21.**
 
 **Evolving heals exactly the HP it added, and no more.** More than that and level 7 is a panic
 button you save for a bad moment; less and a +16% maxhp bonus reads on the HP bar as a *loss*,

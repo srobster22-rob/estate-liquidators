@@ -1565,6 +1565,55 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.otherLvl === 1, `scrap is LV ${r.otherLvl}`);
   }
 
+  console.log("\n=== 21b. TWENTY-ONE FORMS, NOT ONE MESH IN SEVEN COLOURS ===");
+  {
+    // The whole roster used to be a single quadruped tinted seven ways, and it
+    // read exactly like that. Nothing in a body plan animates a size, so the
+    // signature - box count plus every box's half-extents, sorted - is stable
+    // frame to frame, and two forms sharing a mesh come back byte-identical.
+    const sigs = await page.evaluate(async ids => {
+      const frame = () => new Promise(r => requestAnimationFrame(() => r()));
+      const out = {};
+      for (const id of ids) {
+        for (const [lv, tag] of [[1, "s1"], [7, "s2"], [20, "s3"]]) {
+          window.__g.wipeSave(); window.__g.start(id); window.__g.god();
+          window.__g.freezeSpawns(true); window.__g.freezeEvents(true);
+          window.__g.drainPicks(true);
+          // xp() in small bites: one big grant skips whole stages at once, and
+          // the first version of this handed over 4000 XP and screenshotted the
+          // SAME form for s2 and s3 while reporting them as two.
+          for (let g = 0; g < 5000 && window.__g.state().lvl < lv; g++) window.__g.xp(4);
+          window.__g.step(1 / 60);
+          await frame();
+          window.__g.captureBody();
+          await frame(); await frame();
+          out[id + "-" + tag] = { sig: window.__g.bodySig(),
+                                  stage: window.__g.mon().stage,
+                                  nm: window.__g.mon().nm };
+        }
+      }
+      return out;
+    }, ["intern", "scrap", "spark", "ox", "ghoul", "accnt", "twin"]);
+
+    const keys = Object.keys(sigs);
+    const all  = keys.map(k => sigs[k].sig);
+    ok("every form actually rendered a body",
+       all.every(v => typeof v === "string" && v.length > 0),
+       keys.filter(k => !sigs[k].sig).join(",") || "all 21 captured");
+    ok("twenty-one forms, twenty-one distinct meshes",
+       new Set(all).size === 21, `${new Set(all).size} distinct of ${all.length}`);
+    ok("each line's three forms are three different animals",
+       ["intern","scrap","spark","ox","ghoul","accnt","twin"].every(id =>
+         new Set(["s1","s2","s3"].map(t => sigs[id + "-" + t].sig)).size === 3),
+       ["intern","scrap","spark","ox","ghoul","accnt","twin"]
+         .map(id => `${id} ${["s1","s2","s3"].map(t =>
+           sigs[id + "-" + t].sig.split("|")[0]).join("/")}`).join("  "));
+    ok("and the stage the test asked for is the stage it got",
+       ["s1","s2","s3"].every((t, i) =>
+         Object.keys(sigs).filter(k => k.endsWith(t)).every(k => sigs[k].stage === i)),
+       keys.map(k => `${sigs[k].nm}:${sigs[k].stage}`).join(" "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
