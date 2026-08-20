@@ -2789,6 +2789,15 @@ function render(){
   const eye = [ cax + ox*k + rnd(-sk,sk),
                 cay + hgt2 + rnd(-sk,sk),
                 caz + oz*k + rnd(-sk,sk) ];
+  // Hard backstop. Shortening the boom cannot on its own keep the eye inside:
+  // the floor on k is 0.18, that is still two metres of boom, and a player
+  // standing 1.5m off the wall has 1.5m of room - so the eye finished at 84.1
+  // with the wall slabs occupying 83.45 to 84.55, i.e. INSIDE the masonry,
+  // rendering the world through the back of a wall. Whatever the boom maths
+  // decided, project the eye back onto the ring and keep the height it earned.
+  // It slides along the inside of the wall instead of climbing into it.
+  const er = Math.hypot(eye[0], eye[2]);
+  if(er > CAM_R){ const f = CAM_R/er; eye[0] *= f; eye[2] *= f; }
   camEye = eye;
   // aim where you are going, not where the stick is pointed
   const at  = [ px + Math.sin(camYaw)*2.2 + pvx*.20, py+1.4,
