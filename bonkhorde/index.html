@@ -665,6 +665,25 @@ brute:   { nm:"CHONK",    hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88]
 spitter: { nm:"SPITBOI",  hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
            ranged:{cd:2.6, spd:15, r:22} },
 skitter: { nm:"SKITTER",  hp:8,   spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34 },
+// Everything else in this game walks at you. This one walks away, which makes
+// it the only thing in twenty minutes that asks whether you can bring your
+// damage somewhere rather than wait for it to arrive.
+// Traced live with a 90-strong horde: it held 396 HP for forty-five seconds and
+// took ZERO damage, at every distance from 19m to 113m. Targeting priority was
+// never the problem. In a bullet-hell your projectiles are eaten by whatever
+// they pass through, so BOLT dies in the crowd metres from you, ZAP's chain is
+// a 13m leash, MORTAR aims at density and the bat is melee - a distant target
+// is unreachable no matter how badly the game wants to shoot it. The horde is
+// armour. So it has to be run down: 4.6 is faster than anything else on the
+// field but slower than you, which makes catching it a positional problem,
+// which is the only kind this game has.
+// Its first colour was a warm yellow that section 7f rejected on sight: dE 8.1
+// from SPITBOI under tritanopia, against a threshold of 15. Ten of the eleven
+// hues this palette needs were already spoken for, so the replacement came out
+// of a grid search scored by the suite's own CIELAB maths rather than by eye -
+// worst pair 18.5, worst against any terrain shade 17.6.
+collector:{ nm:"THE COLLECTOR", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
+            c:[.82,.94,.36], h:2.0, w:.82, flee:true },
 };
 
 // HP is scaled to body size on purpose. Weapons used to measure reach to an
@@ -918,7 +937,7 @@ function startRun(id){
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
-  evStats.spawned=evStats.caches=evStats.altars=evStats.expired=0;
+  evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
@@ -1147,7 +1166,10 @@ function hitNear(x,z,r,fn){
 function nearest(x,z,maxR,skip){
   let best=null, bd=Infinity;
   hitNear(x,z,maxR,(e,d)=>{ if(skip&&skip.has(e)) return;
-    const q=d-e.rad; if(q<bd){bd=q;best=e;} });
+    // a fleeing target counts as much closer than it is, so BOLT and the swing
+    // will commit to it when it is in range at all
+    const q = (d - e.rad) * (e.def.flee ? .25 : 1);
+    if(q<bd){bd=q;best=e;} });
   return best;
 }
 
@@ -1347,7 +1369,11 @@ function threatTarget(x, z, r, skip){
   let best = null, bs = -1e9;
   hitNear(x, z, r, (e,d)=>{
     if(skip && skip.has(e)) return;
-    const w = (e.boss ? 400 : e.elite ? 40 : 0) - d;
+    // The COLLECTOR flees, so it is never the nearest thing, and in a game
+    // where you do not aim that made it functionally immune - zero killed
+    // across six full runs. Auto-targeting has to WANT it, or the hunt is a
+    // marker on a thing you cannot touch.
+    const w = (e.boss ? 400 : e.def.flee ? 120 : e.elite ? 40 : 0) - d;
     if(w > bs){ bs = w; best = e; }
   });
   return best;
@@ -1411,15 +1437,17 @@ function spawnEnemy(type, atX, atZ){
   // all, so minute 18 looks exactly like minute 8 while nothing dies - which
   // reads as "my weapons got worse", not "these are tougher". Elites give the
   // curve a face: a readable, prioritisable target that is visibly the reason.
-  const elite = T > ELITE_FROM && Math.random() < eliteChance(T);
+  const elite = type !== "collector" && T > ELITE_FROM && Math.random() < eliteChance(T);
   const em = elite ? ELITE : NORMAL;
-  enemies.push({ x, z, y:groundY(x,z), def, type, elite,
+  const made = { x, z, y:groundY(x,z), def, type, elite,
     rad: def.r*em.sz, sz: em.sz, xp: def.xp*em.xp, spdMul: em.spd,
     hp:    def.hp*hpScale(T)*em.hp,
     maxhp: def.hp*hpScale(T)*em.hp,
     dmg:   def.dmg*dmgScale(T)*em.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
-    dead:false, boss:false });
+    dead:false, boss:false };
+  enemies.push(made);
+  return made;                                  // the hunt event needs a handle
 }
 function spawnBoss(b){
   const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
@@ -1524,6 +1552,16 @@ const BOONS = [
 ];
 const EV = {
   cache: { nm:"CACHE", life:40, r:2.2, c:[1,.78,.20] },
+  // Pays in COINS, not power. Everything this build learned about rewards says
+  // that anything paid into the current run has to be balanced against the
+  // whole difficulty curve; coins pay into the shop instead, so a hunt can be
+  // as generous as it likes without touching the run it happened in.
+  // 26 seconds and a 20-38m spawn meant the bot never once caught one across
+  // six full runs, while an isolated COLLECTOR next to an armed player dies in
+  // under a second. It was never a damage problem - it was a distance-and-clock
+  // problem. It starts inside your reach and gives you the better part of a
+  // minute; it still has to be chased, and it still gets away if you dawdle.
+  hunt:  { nm:"COLLECTOR", life:45, r:0, c:[.95,.86,.30], spawnR:[11,19] },
   // 3.6m for 5.5 continuous seconds completed exactly zero times across three
   // twenty-minute runs - every altar in the game expired unclaimed. Standing
   // still is the one thing this game trains you never to do, so the ask has to
@@ -1532,21 +1570,27 @@ const EV = {
   altar: { nm:"ALTAR", life:64, r:4.8, c:[.62,.42,.95], hold:4.0 },
 };
 let nextEvent = 0, noEvents = false, boons = [];
-const evStats = { spawned:0, caches:0, altars:0, expired:0 };
+const evStats = { spawned:0, caches:0, altars:0, hunts:0, expired:0 };
 
 function spawnEvent(kind, atX, atZ){
   const d = EV[kind]; if(!d) return null;
   let x = atX, z = atZ;
   if(x === undefined){
     // far enough that it is a decision, near enough that it is not a hike
+    const band = d.spawnR || [20, 38];
     for(let i=0;i<24;i++){
-      const a = Math.random()*TAU, r = rnd(20, 38);
+      const a = Math.random()*TAU, r = rnd(band[0], band[1]);
       x = clamp(P.x + Math.sin(a)*r, -ARENA+6, ARENA-6);
       z = clamp(P.z + Math.cos(a)*r, -ARENA+6, ARENA-6);
-      if(Math.hypot(x-P.x, z-P.z) > 16) break;
+      if(Math.hypot(x-P.x, z-P.z) > band[0]*.8) break;
     }
   }
   const e = { kind, x, z, life:d.life, max:d.life, chg:0, bob:0 };
+  if(kind === "hunt"){
+    e.ref = spawnEnemy("collector", x, z);
+    if(!e.ref) return null;
+    e.ref.hp = e.ref.maxhp = 230 + hpScale(T)*44;   // catchable, not a boss
+  }
   events.push(e); evStats.spawned++;
   alert2(d.nm + " NEARBY", kind==="cache" ? "#f0b429" : "#a98cf5");
   SFX.gem(6);
@@ -1555,15 +1599,33 @@ function spawnEvent(kind, atX, atZ){
 
 function updateEvents(dt){
   if(!noEvents && (nextEvent -= dt) <= 0){
+    const roll = Math.random();
     // First pass fired one every ~41s: 29 a run, half of them expiring
     // unvisited. That is wallpaper, not an occasion. ~14 a run, and the ones
     // you skip are a decision you made rather than a stream you ignored.
     nextEvent = rnd(72, 96);
-    spawnEvent(events.some(e=>e.kind==="cache") || Math.random() < .5 ? "altar" : "cache");
+    spawnEvent(roll < .38 ? "cache" : roll < .72 ? "altar" : "hunt");
   }
   for(let i=events.length-1;i>=0;i--){
     const e = events[i], d = EV[e.kind];
     e.bob += dt*2.2;
+    if(e.kind === "hunt"){
+      if(!e.ref || e.ref.dead){                       // caught it
+        events.splice(i,1); evStats.hunts++;
+        const paid = 120 + Math.floor(T/6);
+        coinsRun += paid;
+        for(let k=0;k<10;k++) pushGem(e.x+rnd(-2,2), e.z+rnd(-2,2), 3);
+        alert2("COLLECTOR DOWN  +" + paid, "#f5dc4e");
+        shake = Math.max(shake,.8); SFX.boom();
+        continue;
+      }
+      e.x = e.ref.x; e.z = e.ref.z;                   // the marker follows it
+      if((e.life -= dt) <= 0){
+        e.ref.dead = true; events.splice(i,1); evStats.expired++;
+        alert2("IT GOT AWAY", "#5c6470");
+      }
+      continue;
+    }
     const near = Math.hypot(P.x-e.x, P.z-e.z) < d.r;
     if(e.kind === "cache"){
       if(near){
@@ -1621,6 +1683,27 @@ function updateEnemies(dt){
     const spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
 
     const pursue = e.boss ? bossAI(e, dt) : true;
+
+    if(e.def.flee){
+      // Zero caught across three full runs at a flat 6.2 m/s. A quarry that
+      // never stops is a treadmill, not a chase - there has to be a window.
+      // Three seconds of running, one and a bit of gloating, and the pause is
+      // where you kill it.
+      e.rest = (e.rest === undefined) ? 3.0 : e.rest - dt;
+      if(e.rest <= -1.3) e.rest = 3.0;
+      if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); continue; }
+      // away from the player, and away from the walls it would otherwise pin
+      // itself against - a quarry that corners itself is not a chase either
+      let fx = -dx/d, fz = -dz/d;
+      const bx = P.x >= 0 ? -1 : 1, bz = P.z >= 0 ? -1 : 1;
+      if(Math.abs(e.x) > ARENA-14) fx += bx*1.5;
+      if(Math.abs(e.z) > ARENA-14) fz += bz*1.5;
+      const fl = Math.hypot(fx,fz)||1;
+      e.x = clamp(e.x + fx/fl*spd*dt, -ARENA+3, ARENA-3);
+      e.z = clamp(e.z + fz/fl*spd*dt, -ARENA+3, ARENA-3);
+      e.y = groundY(e.x,e.z);
+      continue;
+    }
 
     if(e.def.ranged){
       // spitters hold at range and lob
@@ -2009,6 +2092,11 @@ function botVector(){
         // score how far this heading would take it in one second
         const fx = P.x + dx*P.spd - ev.x, fz = P.z + dz*P.spd - ev.z;
         s += (Math.hypot(fx,fz) < EV.altar.r - .6) ? 26 : -20;
+      } else if(ev.kind === "hunt"){
+        // weaker than a cache on purpose: the first version chased the
+        // COLLECTOR across the whole arena and stopped completing altars
+        // entirely, which is one feature eating another
+        s += proj * (1.1 - ed/44) * 1.5;
       } else s += proj * (1.35 - ed/44) * 3.2 * urgency;
     }
     const nx = P.x+dx*12, nz = P.z+dz*12;                 // and off the walls
@@ -2346,6 +2434,13 @@ function render(){
     if(!on) continue;
     for(let i=0;i<9;i++)                                // the beam
       box(e.x, gy + 1.4 + i*1.7, e.z, .30,.85,.30, d.c, .85 - i*.07);
+    if(e.kind === "hunt"){
+      // a short beam rather than the tall one: enough to pick it out of four
+      // hundred bodies, not so much that it stops being something you hunt
+      for(let i=0;i<4;i++)
+        box(e.x, gy + 2.6 + i*1.3, e.z, .22,.60,.22, d.c, .9 - i*.15);
+      continue;
+    }
     if(e.kind === "cache"){
       const lift = Math.sin(e.bob)*.12;
       box(e.x, gy+.55+lift, e.z, .62,.44,.46, [.42,.30,.16], .10, e.bob*.35);
@@ -2600,7 +2695,9 @@ function render(){
     const ang = Math.atan2(rx, rz);
     const mr = Math.min(w,h)*.36;
     const mx = w/2 + Math.sin(ang)*mr, my = h/2 - Math.cos(ang)*mr*.72;
-    const col = e.kind==="cache" ? "#f0b429" : "#a98cf5";
+    // was a two-way ternary, which quietly drew the gold COLLECTOR in the
+    // altar's purple - the marker has to be the same colour as the thing
+    const col = { cache:"#f0b429", altar:"#a98cf5", hunt:"#f5dc4e" }[e.kind];
     g2.globalAlpha = e.life > 6 ? .92 : (Math.floor(e.life*4)%2 ? .92 : .25);
     g2.save(); g2.translate(mx,my); g2.rotate(ang);
     g2.fillStyle = col; g2.beginPath();
@@ -2823,6 +2920,14 @@ window.__g = {
   freezeEvents: (v=true)=>{ noEvents = v; },
   boons:   ()=>boons.slice(),
   evStats: ()=>({...evStats}),
+  runCoins:()=>coinsRun,        // state().coins is the SAVED wallet, not this run
+
+  huntInfo:()=>{ const e = events.find(x=>x.kind==="hunt");
+                 if(!e) return null;
+                 return { d:+Math.hypot(e.x-P.x,e.z-P.z).toFixed(1),
+                          hp:e.ref?Math.round(e.ref.hp):null,
+                          max:e.ref?Math.round(e.ref.maxhp):null,
+                          life:+e.life.toFixed(1) }; },
   grantBoon:(nm)=>{ const b = BOONS.find(x=>x.nm===nm); if(!b) return null;
                     boons.push(b.nm); b.fn(); return b.nm; },
   opts:    ()=>({ sound:save.sound, motion:save.motion }),
@@ -2852,6 +2957,7 @@ window.__g = {
   // Everything the contrast check needs, derived from the real constants rather
   // than retyped: enemy colours, their elite tints, the full terrain shade range,
   // and the per-channel lighting an enemy side face actually receives.
+  setEnemyColour: (k,c)=>{ if(ENEMIES[k]) ENEMIES[k].c = c.slice(); },
   palette: ()=>{
     const el = c => [lerp(c[0],1,ELITE_TINT), lerp(c[1],.42,ELITE_TINT),
                      lerp(c[2],.10,ELITE_TINT)];

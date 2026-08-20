@@ -75,6 +75,12 @@ const MUTANTS = [
     why:"boons are written onto P and evaporate at the next passive pick",
     from:"  return Math.max(.58, 1*(m.cd||1)*(1-rank(\"cd\")*.035) * boonMul.cd",
     to:  "  return Math.max(.58, 1*(m.cd||1)*(1-rank(\"cd\")*.035)" },
+  { id:"collector-charges", must:"18",
+    why:"the collector walks at you like everything else, so there is no hunt",
+    from:"    if(e.def.flee){", to:"    if(false){" },
+  { id:"collector-never-rests", must:"18",
+    why:"it never pauses, which is a treadmill rather than a chase",
+    from:"      if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); continue; }", to:"" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

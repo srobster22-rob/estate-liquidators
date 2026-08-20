@@ -103,7 +103,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 161 checks: boot, every weapon, every evolution, every
+node test.js              # 165 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -121,7 +121,7 @@ node mutate.js                    # break the game on purpose, one thing at a
 
 `test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **161 passing.**
+die, and checks that `localStorage` survives a reload. **165 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
@@ -323,8 +323,38 @@ build and read 9/30 and 15/30. Anything smaller than a ten-point move is not a r
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
 
-That harness has overturned sixty-nine things this build believed:
+That harness has overturned seventy-three things this build believed:
 
+- **The third event type was unreachable for four different reasons, none of them the one I
+  guessed.** THE COLLECTOR flees instead of charging — the only thing in twenty minutes that
+  asks whether you can bring damage *somewhere* rather than wait for it to arrive. It was
+  caught **zero times across six full runs**. In order: a quarry that never stops is a
+  treadmill, so it pauses now; the autopilot chased it across the whole arena and stopped
+  completing altars entirely, so its pull is weaker than a cache's; auto-targeting never
+  picked it because a fleeing enemy is never the nearest thing, so `threatTarget` weights it
+  at 120 and `nearest` counts it as four times closer than it is. And then it *still* took
+  zero damage at 6.8m with a full kit — because in a bullet-hell your projectiles are eaten by
+  whatever they pass through. BOLT dies in the crowd metres from you, ZAP's chain is a 13m
+  leash, MORTAR aims at density and the bat is melee. **The horde is armour.** So it is run
+  down instead: 4.6 m/s, faster than anything else on the field and slower than you, which
+  makes catching it a positional problem — the only kind this game has.
+- **And the run that proved all of that was measuring a bot with one rank-1 bat.** The probe
+  used `drainPicks(true)`, which sets `noLevels` and suppresses level-ups for the whole run.
+  Twenty simulated minutes, no weapons, and I read four rounds of conclusions off it. With the
+  bot actually levelling: 16–17 events a run, 4–6 caches, 4–7 altars, **3–4 collectors caught**,
+  and only 1–4 expiring.
+- **It pays in coins, and that is the design lesson from the round above.** Everything paid
+  into the current run has to be balanced against the whole difficulty curve, and three
+  attempts to do that went backwards. Coins pay into the shop instead, so a hunt can be as
+  generous as it likes without touching the run it happened in. Measured with all three types
+  live: **13/24 veteran clears against 7/24 with events frozen** — going and getting them
+  nearly doubles your chances, which is the claim the feature was for.
+- **The colour-vision harness rejected the new enemy on sight.** THE COLLECTOR's first colour
+  was a warm yellow at dE 8.1 from SPITBOI under tritanopia, against a threshold of 15. Ten of
+  the eleven hues this palette needs were already spoken for, so the replacement came from a
+  grid search over RGB scored by *the suite's own CIELAB maths* rather than by eye — a search
+  that scores candidates differently from the check they have to survive is a search for the
+  wrong thing. Worst pair 18.5, worst against any terrain shade 17.6.
 - **Spawning enemies as the "cost" of a reward is a reward.** Caches and altars went in as
   optional content — a chest you walk into, a shrine you hold ground on — and took veteran
   clears from 46% to 71%. The obvious fix was to guard them: enemies around an opened cache,

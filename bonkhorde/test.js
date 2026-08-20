@@ -1019,6 +1019,51 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Math.abs(durable.bothSpd - durable.bootsSpd * 1.07) < 0.02,
        `${durable.bootsSpd} x1.07 = ${(durable.bootsSpd*1.07).toFixed(2)}, got ${durable.bothSpd}`);
 
+    // THE COLLECTOR: the only thing in the game that walks away from you
+    const hunt = await page.evaluate(() => {
+      window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
+      window.__g.drainPicks(true); window.__g.freezeSpawns(true);
+      window.__g.freezeEvents(true); window.__g.place(0,0);
+      window.__g.spawnEvent("hunt", 8, 0);
+      const d0 = window.__g.huntInfo().d;
+      const seen = [];
+      for (let i = 0; i < 60 * 6; i++) {                 // six seconds of flight
+        window.__g.place(0, 0);                          // hold the player still
+        window.__g.step(1);
+        const h = window.__g.huntInfo(); if (!h) break;
+        seen.push(h.d);
+      }
+      // it must PAUSE, or it is a treadmill: look for a second where it barely moved
+      let stalled = 0;
+      for (let i = 1; i < seen.length; i++) if (seen[i] - seen[i-1] < 0.002) stalled++;
+      return { d0, d1: seen[seen.length-1], stalledFrames: stalled };
+    });
+    ok("the collector runs away rather than at you", hunt.d1 > hunt.d0 + 8,
+       `${hunt.d0}m -> ${hunt.d1}m in six seconds`);
+    ok("and it stops often enough to be caught",
+       hunt.stalledFrames > 40, `${hunt.stalledFrames} stationary frames of 360`);
+
+    const paid = await page.evaluate(() => {
+      window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+      window.__g.freezeSpawns(true); window.__g.freezeEvents(true);
+      window.__g.place(0,0);
+      for (const w of ["bat","bolt","zap","mortar"]) window.__g.give(w, 4);
+      // state().coins is the SAVED wallet and only moves when a run ends, so
+      // asserting on it measured nothing and read +0 against a kill that had
+      // definitely happened. coinsRun is the number the reward touches.
+      const before = window.__g.runCoins();
+      window.__g.spawnEvent("hunt", 5, 0);
+      for (let i = 0; i < 60 * 20; i++) {
+        window.__g.place(0,0); window.__g.step(1);
+        if (!window.__g.huntInfo()) break;
+      }
+      return { got: window.__g.evStats().hunts, coins: window.__g.runCoins() - before,
+               left: window.__g.events().length };
+    });
+    ok("an armed player kills it", paid.got === 1 && paid.left === 0, JSON.stringify(paid));
+    ok("and it pays in coins, which cannot destabilise the run it happened in",
+       paid.coins > 100, `+${paid.coins}`);
+
     const expired = await page.evaluate(() => {
       window.__g.start("intern"); window.__g.god(); window.__g.freezeEvents(true);
       window.__g.place(0,0); window.__g.spawnEvent("cache", 40, 40);
