@@ -1352,7 +1352,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.top.spd > r.base * 1.4,
        `${r.base.toFixed(2)} -> ${r.top.spd.toFixed(2)} m/s  (x${(r.top.spd/r.base).toFixed(2)})`);
     ok("landing and standing bleeds the chain rather than snapping it",
-       r.bleeding > 12.4 && r.bleeding < 14,
+    // The bound, not the behaviour: this was written against a flat 2.4/s bleed
+    // and the bleed is proportional now. What the assertion is FOR is that half
+    // a second off-tempo costs you real chain and not all of it.
+       r.bleeding > 9 && r.bleeding < 13.5,
        `14 -> ${r.bleeding.toFixed(2)} after half a second`);
     ok("and it is gone a few seconds after you stop", r.dead === 0, `n=${r.dead}`);
     ok("speed comes back down with it",
