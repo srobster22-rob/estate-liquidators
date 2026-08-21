@@ -604,16 +604,22 @@ const BIOMES = [
     a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mod:{} },
   { id:"ash",   nm:"THE ASHES",     ds:"the ground is still warm  -  +12% damage taken",
     a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 } },
+  // Murkier and more olive than it started. The original teal-green sat at
+  // dE 7.7 from THE LIEN's elite tint under tritanopia - a blue enemy vanishing
+  // into a blue-green floor - and the search found this inside the same hue
+  // family at 15.2. It still reads as sludge; it just stopped being teal.
   { id:"bog",   nm:"THE SLUDGE",    ds:"it holds on to your feet  -  -14% move speed",
-    a:[.27,.35,.31], b:[.21,.29,.26], amp:0.35, lift:-2.4, mod:{ spd:0.86 } },
+    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mod:{ spd:0.86 } },
   { id:"ice",   nm:"THE GLASS",     ds:"nothing here has any grip  -  you slide",
     a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 } },
   { id:"sand",  nm:"THE FLATS",     ds:"you can see what you dropped  -  +40% pickup radius",
     a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 } },
   { id:"bone",  nm:"THE MIDDEN",    ds:"more of them, and more to take  -  +22% XP",
     a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 } },
+  // Weathered rather than deep. The original brown was dE 7.1 from APPRAISER's
+  // yellow under tritanopia; this clears at 14.2 and is still visibly rust.
   { id:"rust",  nm:"THE SCRAPYARD", ds:"something here sharpens what you carry  -  +12% damage",
-    a:[.47,.34,.25], b:[.39,.28,.21], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
+    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 
@@ -4260,6 +4266,7 @@ window.__g = {
   jump:  ()=>jumpPressed(),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
+  biomes:()=>BIOMES.map(b=>({id:b.id,nm:b.nm,a:b.a.slice(),b:b.b.slice(),mod:{...b.mod}})),
   world: ()=>({ seed:worldSeed,
                 cells: cells.map(c=>({ x:+c.x.toFixed(2), z:+c.z.toFixed(2), id:c.b.id })),
                 marks: marks.map(m=>({ x:+m.x.toFixed(2), z:+m.z.toFixed(2), k:m.k.id })) }),

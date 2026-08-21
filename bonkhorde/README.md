@@ -210,6 +210,62 @@ bodies. It no longer is: CALTROPS out-damages it against a boss and it keeps
 the crowd, which is a trade rather than a default. Nothing dominates either
 table now.
 
+### The arena is rolled, not remembered
+
+One green disc for twenty minutes, every run, is a backdrop rather than a place. The map is
+five or six regions laid out by nearest-seed, rolled fresh at the start of every run, each with
+its own ground, its own elevation and **one rule you feel through the controls** rather than
+read off a tooltip.
+
+| | |
+|---|---|
+| **THE GREEN** | nothing in particular — and always where you spawn |
+| **THE ASHES** | the ground is still warm — +12% damage taken |
+| **THE SLUDGE** | it holds on to your feet — −14% move speed |
+| **THE GLASS** | nothing here has any grip — 30% of normal traction |
+| **THE FLATS** | you can see what you dropped — +40% pickup radius |
+| **THE MIDDEN** | more of them, and more to take — +22% XP |
+| **THE SCRAPYARD** | something here sharpens what you carry — +12% damage |
+
+Measured through the thing each one claims to change: **6.60 m/s on THE GREEN against 5.68 in
+THE SLUDGE**, and **40.0 damage on the green against 44.8 in THE ASHES**.
+
+A hard elevation step at a region border is a cliff you fall off, so amplitude and lift
+cross-fade over nine metres and the seam becomes a slope. The spawn region is *always* the
+neutral one — a run that opens with you stuck in the sludge lies about how the game moves.
+
+**Landmarks** — a stone ring, a crater, an arch, spires, a bone pile — are placed randomly and
+**do not collide**, because a horde game whose floor has walls in it is a horde game where four
+hundred bodies stack behind one of them. Two thirds of side events appear at one, which is what
+turns a shape on the horizon into somewhere to go. Asserted across 40 rolls: 200 landmarks, all
+inside the wall, none within 18m of spawn, none within 10m of each other.
+
+### The colour space ran out
+
+Extending the contrast harness from 6 ground shades to 42 — every region's palette, not just
+the green one — failed it immediately, and every one of the worst eighteen pairs was the same
+one: **THE HEIRLOOM against the rust and sand grounds, ΔE 2.0** under deuteranopia at nineteen
+minutes. Yellow-green and yellow-brown are the same colour to a deuteranope.
+
+A grid search over RGB, scored by the suite's own CIELAB maths across four vision types and
+twelve lighting conditions, returns **zero** replacement colours clearing ΔE 9 against every
+ground *and* ΔE 15 against every other enemy:
+
+| best achievable | vs ground | vs other enemies |
+|---|---|---|
+| optimising for ground | **16.7** | 4.9 |
+| optimising for enemies | 0.7 | **22.5** |
+| best balance | 12.5 | 9.8 |
+
+Six enemy hues, their elite tints and seven ground palettes across a day cycle is more than RGB
+has room for. So THE HEIRLOOM stopped competing for a hue and is **marked by shape**: a rotating
+gold ring and a beam, neither of which anything else in the game draws — the same trade the
+player made when eleven mutually distinguishable hues turned out not to exist.
+
+The exemption is paid for by an assertion, not by a lowered bar: *"and the one that is exempt is
+marked instead"* checks 3 markers for 3 heirlooms and 0 with none on the field. Delete it and
+the exemption becomes a hole.
+
 ### Colour-vision contrast
 
 You have to tell a SPRINTBOI (charges you) from a SPITBOI (holds at range) at a

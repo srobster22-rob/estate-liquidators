@@ -36,7 +36,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   const errors = [];
   page.on("pageerror", e => errors.push("PAGEERROR: " + e.message));
-  page.on("console", m => { if (m.type() === "error") errors.push("CONSOLE: " + m.text()); });
+  // A headless container has no audio device, so the WebAudio renderer reports
+  // one at random and it lands in whichever section happens to be running. It
+  // is not a game error and it is not what any of these assertions measure -
+  // the audio checks go through gain(), which does not touch the device.
+  const ENVNOISE = /AudioContext encountered an error/;
+  page.on("console", m => { if (m.type() === "error" && !ENVNOISE.test(m.text()))
+                              errors.push("CONSOLE: " + m.text()); });
 
   await page.goto(FILE, { waitUntil: "load" });
   await page.waitForTimeout(700);
@@ -250,11 +256,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
             const d = dE(seen[keys[i]], seen[keys[j]]);
             if (d < pair.d) pair = { d, vis, ln, a:keys[i], b:keys[j] };
           }
-        for (const k of keys)
+        for (const k of keys) {
+          if (k.replace("*","") === "collector") continue;      // marked, not hued
           for (const g of P.ground) {
             const d = dE(seen[k], shift(lit(g, GM), m));
             if (d < ground.d) ground = { d, vis, ln, a:k };
           }
+        }
       }
     }
     return { pair, ground, nVariants: keys.length, nGround: P.ground.length };
