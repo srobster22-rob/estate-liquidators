@@ -117,7 +117,9 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
                 `${"".padStart(40)}${totClear}/${totN}`);
   }
 
-  if (TIER === "vet") { await b.close(); return; }
+  // The histogram is twelve more full-length runs. When a sweep only needs the
+  // table it is half the wall clock for nothing.
+  if (TIER === "vet" || process.env.BONKHORDE_NOHIST) { await b.close(); return; }
 
   // where does the run actually end?
   console.log(`\n${"=".repeat(66)}\nDEATH TIMING (intern, first run, ${TRIALS*2} trials)\n${"=".repeat(66)}`);

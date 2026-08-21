@@ -281,3 +281,16 @@ and three of them hit. All four fixed, and the eight passive descriptions now qu
 numbers instead of five-rank ones. **Next:** read the A/B at n=6 on `early`/`clears`, then
 decide whether the real problem is difficulty at all or the *variance* — "die at 5:00 or coast
 to 24:00" is a worse shape than either end of it.
+
+**R3c — the A/B, on statistics that hold still.** 42 trials a side. Baseline (7a38c11) vs
+current: runs dead before 10:00 went **12/42 → 0/42**; clears went 1/42 → 3/42, i.e. unmoved;
+average weapon evolutions per run went 1.5–4.0 → 4.5–4.8. So the remap did not make the game
+clearable, it made the first ten minutes unloseable — because evolving a weapon now costs
+rank 3 + passive rank 3 = six picks where it cost rank 5 + rank 3 = eight, and each pick is
+worth 1.67 old ranks, so nearly every weapon in the kit evolves and they arrive twice as early.
+That is a direct consequence of "3 max" and the fix belongs on the threat side, not by walking
+the ranks back. hpQuad is the wrong lever for it (~0 before 6:00, which is why the 4.5/9/20
+sweeps barely moved anything); `HP_LIN` and `DMG_DIV` are the two that bite early. Sweeping
+2.5,380,220 and 2.5,260,150 at n=4×7 now. Target: `early` back to roughly 8–12/42 with clears
+still near zero. **Next:** pick the curve off that sweep, confirm at n=6, then update the
+README's balance section — it still publishes the old table and calls the median the headline.
