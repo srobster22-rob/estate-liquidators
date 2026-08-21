@@ -424,3 +424,16 @@ rebake on a new arena, that it is a map rather than one flat colour (10 tones), 
 reaches the screen (134 tones in the corner it occupies) rather than only memory. 271 checks
 pass. **Next:** the minimap makes a compass unnecessary but nothing yet tells you *why* to go to
 a den — the boon is invisible until it drops. Worth showing what a den pays on approach.
+
+**R10 — a den says what it costs and what it pays.** Each den is dealt a *specific* boon at
+world-roll, round-robin off a shuffled list so no run is six dens holding the same thing, and
+advertises it from sixty metres along with its name and pack size — floating over the ember,
+fading in with distance and dimmed during the wake grace. A reward you only learn after the
+fight is a surprise; a reward you can read across a field is a plan. Two bugs on the way: dealing
+the boons inside `rollWorld()` was a TDZ error at load, because the menu rolls a world for its
+background *before* `const BOONS` initialises, and it took the whole QA hook down with it —
+split into `dealDens()`. And for the third time today a probe used `freezeSpawns(true)`, which
+sets `noSpawn`, which `wakeDen` refuses to wake into. 274 checks pass. **Next:** the arena is
+still not reproducible — `rollWorld` uses `Math.random()` directly, so `worldSeed` is recorded
+but cannot be replayed. A seeded world would let the bench pin an arena and would make "this run
+was unfair" checkable.

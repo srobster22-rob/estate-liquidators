@@ -138,7 +138,13 @@ than the ambient horde, under a pulsing column you can find the fight from anywh
 | **THE FINGERS** | a SPITTOAD colony, spitting from the high ground | 7–11 |
 | **BONE PILE** | a RATLING swarm — the bones are not the problem | 16–24 |
 
-Clear it and it pays a boon, forty coins and a scatter of gems, and plants a green marker so you
+**A den advertises what it costs and what it pays**, from sixty metres: its name, the size of the
+pack, and the *specific* boon it is holding. A reward you only learn after the fight is a
+surprise; a reward you can read across a field is a plan — you go and take HEAVY HANDS because
+you wanted HEAVY HANDS. The boons are dealt round-robin off a shuffled list at world-roll, so no
+run is six dens all offering the same thing.
+
+Clear it and it pays that boon, forty coins and a scatter of gems, and plants a green marker so you
 can see what you have already taken. **Walking away is always allowed:** get 110 metres out and
 the den goes quiet again and can be taken later, which is the difference between an explorable
 area and a leash. Den packs are exempt from the ordinary 80-metre cull for the same reason —

@@ -2055,6 +2055,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and it can be taken later instead",
        r.again && r.again.woke && r.again.alive > 3,
        r.again ? `${r.again.alive} awake on the second visit` : "no den");
+    // A reward you only learn after the fight is a surprise. A den advertises a
+    // SPECIFIC boon from sixty metres, so going to one is a plan.
+    const adv = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      // NOT freezeSpawns: that sets noSpawn, and a den will not wake into a world
+      // where spawning is off. Third time this trap has been walked into today.
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true);
+      g.drainPicks(true); g.skipTo(90);
+      for (const w of ["bat", "zap", "aura"]) g.give(w, 3);   // enough to take one
+      const dens = g.dens();
+      const target = dens[0];
+      g.place(target.x + 20, target.z);        // close enough to read, not to wake
+      await frame(); await frame();
+      const shot = { named: dens.every(d => d.boon && d.n > 0),
+                     spread: new Set(dens.map(d => d.boon)).size,
+                     total: dens.length, want: target.boon };
+      g.place(target.x + 6, target.z); g.step(1, 1/60);
+      g.step(60 * 45, 1/60);
+      return Object.assign(shot, { got: g.boons() });
+    });
+    ok("every den names a boon and a pack size before you commit",
+       adv.named, `${adv.total} dens, all named: ${adv.named}`);
+    ok("and a run's dens are not six of the same offer",
+       adv.spread >= 4, `${adv.spread} distinct boons across ${adv.total} dens`);
+    ok("clearing one pays the boon it advertised",
+       adv.got.includes(adv.want), `advertised ${adv.want}, got ${adv.got.join(", ") || "none"}`);
+
     ok("clearing one pays a boon",
        r.done && r.done.cleared && r.boons.length > 0,
        r.done ? `cleared=${r.done.cleared}, boons: ${r.boons.join(", ") || "none"}` : "no den");

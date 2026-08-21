@@ -786,9 +786,26 @@ function rollWorld(){
     if(Math.hypot(x,z) > RIM-14) continue;
     if(marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + k.r + 10)) continue;
     marks.push({ x, z, k, rot: Math.random()*TAU, seed: (Math.random()*1e6)|0,
-                 den: Math.random() < DEN_CHANCE, woke:false, cleared:false, pack:[] });
+                 den: Math.random() < DEN_CHANCE, woke:false, cleared:false, pack:[],
+                 n: Math.round(rnd(k.pack[0], k.pack[1])) });
     i++;
   }
+}
+// Each den is dealt a SPECIFIC boon, and says so before you commit. A reward you
+// only learn after the fight is a surprise; a reward you can read from sixty
+// metres is a plan - you go and take HEAVY HANDS because you wanted HEAVY HANDS.
+// Dealt round-robin off a shuffled list so no run is six dens all offering the
+// same thing, and there are always more dens than boons, so the ones past the
+// sixth pay coins and it is fine that those repeat.
+//
+// Separate from rollWorld() on purpose: the menu rolls a world to have something
+// behind it, and it does that before BOONS is initialised. Reaching for a const
+// from a function that runs at module scope is a TDZ error at load, and it took
+// the whole QA hook down with it.
+function dealDens(){
+  const deal = BOONS.slice().sort(()=>Math.random()-.5);
+  let di = 0;
+  for(const m of marks) if(m.den) m.boon = deal[di++ % deal.length];
 }
 
 // Nearest two seeds, and how decisively the nearest one wins. Everything about
@@ -2345,7 +2362,7 @@ function startRun(id){
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
-  rollWorld(); makeTerrain(); uploadTerrain(); bakeMap();
+  rollWorld(); dealDens(); makeTerrain(); uploadTerrain(); bakeMap();
   P.y = groundY(0,0); lastBiome = biomeAt(0,0);
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
@@ -3097,7 +3114,7 @@ const evStats = { spawned:0, caches:0, altars:0, hunts:0, expired:0 };
 // allowed: leave the area and the den goes quiet again and can be taken later.
 function wakeDen(m){
   if(m.woke || m.cleared || !m.den || noSpawn || T < DEN_GRACE) return;
-  const K = m.k, n = Math.round(rnd(K.pack[0], K.pack[1]));
+  const K = m.k, n = m.n || Math.round(rnd(K.pack[0], K.pack[1]));
   m.woke = true; m.alive = 0; m.pack = [];
   for(let i=0;i<n;i++){
     const a = Math.random()*TAU, r = Math.sqrt(Math.random())*K.r;
@@ -3126,9 +3143,10 @@ function denLost(m){
   // so a run that took every den and rolled badly would end at thirty-three
   // times damage. Past the sixth den the reward is paid in coins, which land in
   // the shop rather than in the run and cannot compound against the curve.
-  const pool = BOONS.filter(x => !boons.includes(x.nm));
-  if(pool.length){
-    const b = pick(pool);
+  // The one it advertised, if you have not already taken it elsewhere.
+  const b = m.boon && !boons.includes(m.boon.nm) ? m.boon
+          : pick(BOONS.filter(x => !boons.includes(x.nm)));
+  if(b){
     boons.push(b.nm); b.fn();
     alert2(m.k.nm + " CLEARED - " + b.nm, "#ffd24a");
   } else {
@@ -4797,6 +4815,30 @@ function render(){
     g2.fill();
   }
   g2.globalAlpha = 1;
+  // ---- den labels. A den advertises its price and its payoff from sixty
+  // metres, so walking to one is a plan rather than a surprise. Only the ones
+  // you have not taken, and only when you are close enough that the decision is
+  // live - a screen full of floating labels is a menu, not a world.
+  if(running && !over && P) for(const m of marks){
+    if(!m.den || m.cleared || m.woke) continue;
+    const d = Math.hypot(m.x - P.x, m.z - P.z);
+    if(d > 62) continue;
+    const sp = project(m.x, groundY(m.x, m.z) + 3.4, m.z);
+    if(!sp) continue;
+    const a2 = clamp((62 - d)/16, 0, 1) * (T < DEN_GRACE ? .35 : 1);
+    g2.globalAlpha = a2;
+    g2.textAlign = "center";
+    g2.font = "800 13px ui-monospace,Menlo,monospace";
+    g2.fillStyle = "#000"; g2.fillText(m.k.nm, sp[0]+1.5, sp[1]+1.5);
+    g2.fillStyle = "#ffb45c"; g2.fillText(m.k.nm, sp[0], sp[1]);
+    g2.font = "700 11px ui-monospace,Menlo,monospace";
+    const sub = `${m.n} ${ENEMIES[m.k.den].nm}` +
+                (m.boon && !boons.includes(m.boon.nm) ? `  \u00b7  ${m.boon.nm}` : "  \u00b7  COINS");
+    g2.fillStyle = "#000"; g2.fillText(sub, sp[0]+1.2, sp[1]+15.2);
+    g2.fillStyle = "#f2ece0"; g2.fillText(sub, sp[0], sp[1]+14);
+  }
+  g2.globalAlpha = 1;
+
   if(running && !over) drawMap(w, h);
   if(P && P.hp/P.maxhp < .35 && running){
     const p = 1 - P.hp/P.maxhp;
@@ -5012,7 +5054,7 @@ window.__g = {
   evolveTo:(i)=>evolveTo(i),
   dens: ()=>marks.filter(m=>m.den).map(m=>({ x:+m.x.toFixed(1), z:+m.z.toFixed(1),
           k:m.k.id, sp:m.k.den, woke:!!m.woke, cleared:!!m.cleared,
-          alive:m.alive||0 })),
+          alive:m.alive||0, n:m.n, boon:m.boon ? m.boon.nm : null })),
   denStats: ()=>Object.assign({}, denStats, { total:marks.filter(m=>m.den).length,
                                               marks:marks.length }),
   boons: ()=>boons.slice(),
@@ -5103,7 +5145,8 @@ window.__g = {
                 cells: cells.map(c=>({ x:+c.x.toFixed(2), z:+c.z.toFixed(2), id:c.b.id })),
                 marks: marks.map(m=>({ x:+m.x.toFixed(2), z:+m.z.toFixed(2), k:m.k.id })) }),
   biomeAt:(x,z)=>{ const b = biomeAt(x,z); return { id:b.id, nm:b.nm, mod:{...b.mod} }; },
-  reroll:()=>{ rollWorld(); makeTerrain(); uploadTerrain(); return window.__g.world(); },
+  reroll:()=>{ rollWorld(); dealDens(); makeTerrain(); uploadTerrain(); bakeMap();
+                return window.__g.world(); },
   terHash:()=>{ let h = 0; for(let i=6;i<terData.length;i+=997)
                   h = (h*31 + Math.round(terData[i]*1000)) | 0; return h; },
   eye:   ()=>camEye.slice(),
