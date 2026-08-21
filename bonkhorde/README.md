@@ -626,26 +626,38 @@ where it used to be rank 5 plus rank 3, eight — and each pick is worth 1.67 of
 So evolutions arrive about twice as early and nearly the whole kit reaches its evolved form.
 The clear rate, which is what "beat the game" means, did not move.
 
-**What the bench cannot resolve.** Four sweeps went looking for the counterweight — enemy HP
-before minute six, contact damage, the late quadratic, the cost of a level — and the honest
-result is that none of them can be told apart at this sample size. Two XP-need candidates 8%
-apart returned 9 early deaths in 28 and 1 in 42. That is the bimodality again: near the
-threshold a whole cell flips. Separating a 20% early-death rate from a 30% one needs about 50
-trials a cell, which is roughly four hours of bench per candidate. So the levers are wired
-(`HP_QUAD`, `HP_LIN`, `DMG_DIV`, `XP_NEED`, reachable from `__g.curve()` and from
-`BONKHORDE_CURVE=q,d,l,x`) and shipped at their measured-neutral values, rather than shipping a
-number that cannot be defended.
+**The bench used to be unable to resolve any of this, and now it can.** Four sweeps went looking
+for a counterweight and none of them could be told apart, because the instrument had a band that
+read 7/42 and 15/42 *on identical code*. Two changes fixed that. Every roll a run makes — the
+arena, the spawn mix, the crits, the drops, the draft sampling, the autopilot's own choices —
+comes from one seeded stream, so a trial is a pure function of (arena seed, run seed, character,
+build) and is reproducible to the kill count. And `balance.js` pairs its seeds by default: trial
+*i* of every bench runs seed BASE+*i*, so a candidate and its control are measured on the same
+forty-two worlds. Two independent runs of the same build now produce **byte-identical tables**,
+row for row.
 
-The third row is where it landed. Four carry slots and twenty-five dens went in together: the
-dens are a power source the curve was never tuned against, the slots take breadth away, and the
-counts came out where they were — 1/42 dead early, 3/42 clears — while **weapon evolutions per
-run fell from 4.5–4.8 to 2.2–3.3**, which is the whole point. Two runs of the same line stop
-being the same build. The veteran tier reaches the ending 13 times in 42, against the same build
-measured twice at 7/42 and 15/42 an hour apart, which is the band this instrument has and why
-nothing here is tuned to a decimal.
+With that, the answer arrived, and it was not the one four rounds of guessing were looking for:
 
-The invariant still holds and is the only thing worth holding: **a first run essentially never
-clears, and a maxed shop makes the ending reachable.**
+```
+                             dead <10:00   clears   avg lvl
+control (shipped)                2/42       0/42     53-87
+XP_NEED 1.4                      0/42       2/42     54-75
+XP_NEED 1.8                      3/42       1/42     46-66
+XP_NEED 2.2                      3/42       0/42     31-60
+damage grows from t=0            1/42       0/42     64-85
+   ... and 47% steeper           1/42       0/42     58-78
+```
+
+Doubling what a level costs ends the run twenty-odd levels lower and moves early deaths by **one
+run in forty-two**. Deleting the five-minute contact-damage grace entirely, and steepening the
+ramp on top of that, moves it by one the other way. **No constant on either side of the fight
+touches the early game**, because the autopilot is not losing to enemy stats — it is not being
+hit at all. Movement dominates the first ten minutes: you outrun the horde, and nothing you can
+put in a number changes that.
+
+Which makes stat tuning the wrong tool, and it is why the levers ship at their original values.
+The thing that *does* make you stop and fight is a den, and dens are a mechanic rather than a
+constant.
 
 The thing that *was* deterministic got fixed instead. Everything maxes at rank 3, so a full kit
 is about fifty picks while a long run reaches level 70–80 — which meant the back thirty
@@ -1298,12 +1310,12 @@ the same trap caught the clears metric later, for the same reason.
   is a plausible player rather than a good one — a human reads incoming waves and plans routes
   across the whole arena, which it cannot. Expect the real curve to sit longer than the table
   says, and expect the veteran tier to look too easy once someone competent tries it.
-- **The difficulty curve is wired but not set.** `HP_QUAD`, `HP_LIN`, `DMG_DIV` and `XP_NEED`
-  are levers now, and all four ship at the values they had before the three-rank remap, because
-  four sweeps could not distinguish any candidate from any other at the sample size a loop can
-  afford. The measured fact that needs a counterweight is real — 12/42 runs dead before ten
-  minutes became 0/42 — but the counterweight needs ~50 trials a cell to choose, which is
-  hours per candidate. Do that once, deliberately, rather than in a round.
+- **The early game cannot be lost, and no constant fixes it.** Six exact sweeps (see the balance
+  section) say the same thing: neither the cost of a level nor the growth of contact damage moves
+  early deaths by more than one run in forty-two. The autopilot is not losing to enemy stats, it
+  is not being hit — movement dominates the first ten minutes. Whatever fixes this is a mechanic
+  that makes running cost something, not a number. Dens are the first one; there is room for
+  more.
 - **THE SCRAPPER is still the weakest character.** Its HP penalty was isolated and cleared
   (patching `hp` back to 1.0 changes nothing — identical clears, identical median), and the
   partner rework has lifted it further, but it remains the least reliable closer. What is
