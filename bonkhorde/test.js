@@ -1905,6 +1905,51 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.bare} -> ${r.at3} m/s, x${(r.at3 / r.bare).toFixed(3)} (five ranks of +9% was x1.45)`);
   }
 
+  console.log("\n=== 22c. A LEVEL-UP WITH NOTHING ON IT IS NOT A SCREEN ===");
+  {
+    // Everything maxes at rank 3 now, so a full kit is about fifty picks - and a
+    // long run reaches level 70-80. The back thirty were full-screen drafts with
+    // exactly one card on them, ROAST CHICKEN, each one unlocking the pointer,
+    // freezing the chain and stopping the camera to be dismissed. That is the
+    // "too many levels to upgrade" complaint in its purest form and no amount of
+    // rank remapping touches it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.freezeSpawns(true); g.freezeEvents(true);
+      // max everything the draft could ever offer
+      for (const k of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops",
+                       "spinach","boots","tempo","magnet","plating","heart","dupe","clover"])
+        g.give(k, 3);
+      // and evolve every weapon, or the eight EVOLUTION cards are still real
+      // choices sitting in the pool - which they should be.
+      for (const k of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
+        g.evolve(k);
+      g.hitMe(40);                        // room to notice a heal
+      const before = g.state();
+      g.xp(9000);                         // several levels, nothing left to learn
+      g.step(1, 1/60);                    // the drain runs in the loop, not in gainXP
+      const after = g.state();
+      return { picking: after.picking, pending: after.pending,
+               gained: after.lvl - before.lvl, healed: after.hp > before.hp,
+               kit: g.kit().length };
+    });
+    ok("a full kit still levels", r.gained > 3, `+${r.gained} levels, ${r.kit} things carried`);
+    ok("and none of those levels opened a screen",
+       r.picking === false && r.pending === 0,
+       `picking=${r.picking}, ${r.pending} queued`);
+    ok("the refreshment is taken for you instead", r.healed, "healed on the way past");
+
+    // and the opposite: a level-up that DOES have a choice still stops the game.
+    const real = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.xp(60); g.step(1, 1/60);
+      return g.state();
+    });
+    ok("a level-up with a real choice still opens one", real.picking === true,
+       `picking=${real.picking}`);
+  }
+
   console.log("\n=== 23. THE ARENA IS ROLLED, NOT REMEMBERED ===");
   {
     const r = await page.evaluate(() => {

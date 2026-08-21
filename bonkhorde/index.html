@@ -2286,8 +2286,15 @@ function startRun(id){
 // in 40% fewer picks than it used to, so the supply of picks is now a lever in
 // its own right - and it is the OTHER half of "too many levels to upgrade":
 // fewer ranks per thing is one answer, fewer level-up screens is the other.
+// A lever, shipped at 1. Two benches on it disagreed by more than the change
+// could possibly explain - uniform 1.7 gave 9 early deaths in 28 and growth-only
+// 1.6 gave 1 in 42, against an 8% difference in what a level costs - which says
+// the bench cannot resolve this at n<=6, not that 1.7 is the answer. Run length
+// here is bimodal and a cell flips whole. Left at 1 rather than shipping a magic
+// number I cannot defend; the pick-fatigue problem it was aimed at is fixed
+// where it actually lives, in offers().
 let XP_NEED = 1;
-const xpFor = l => Math.round((5 + l*4 + Math.pow(l,1.45)*1.5) * XP_NEED);
+const xpFor = l => Math.round(5 + (l*4 + Math.pow(l,1.45)*1.5) * XP_NEED);
 
 // ==================================================================== INPUT
 const keys={};
@@ -3441,7 +3448,7 @@ function showPick(){
 }
 function take(o){
   if(o.type==="heal") P.hp = Math.min(P.maxhp, P.hp+40);
-  else if(o.type==="evo"){ P.kit[o.key].evo = true; P.kit[o.key].l = 5; shake=.7; }
+  else if(o.type==="evo"){ P.kit[o.key].evo = true; P.kit[o.key].l = WMAX-1; shake=.7; }
   else if(o.type==="new"){ P.kit[o.key] = { key:o.key, l:0, t:0, evo:false }; applyPassive(o.key); }
   else { P.kit[o.key].l++; applyPassive(o.key); }
   pendingLevels--;
@@ -3800,7 +3807,22 @@ function step(dt){
 
   if(shake>0) shake = Math.max(0, shake - dt*2.2);
   if(flash>0) flash = Math.max(0, flash - dt*2.6);
-  if(pendingLevels>0 && !picking && !noLevels) showPick();
+  // A draft with one card and no choice on it is not a decision, it is a modal.
+  // Past about level fifty every weapon and passive is maxed, so the back half
+  // of a long run was twenty-odd full-screen interruptions - pointer unlocked,
+  // chain frozen, camera stopped - to press ROAST CHICKEN. Take it and say so.
+  while(pendingLevels>0 && !picking && !noLevels){
+    const only = offers();
+    if(only.length === 1 && only[0].type === "heal"){
+      pendingLevels--;
+      P.hp = Math.min(P.maxhp, P.hp + 40);
+      nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:40, life:.9, heal:true, vy:3.2 });
+      alert2("LV " + P.lvl + "  ·  +40 HP", "#6ddba0");
+      SFX.levelup();
+      continue;
+    }
+    showPick();
+  }
 }
 
 // ================================================================== FINISH
@@ -4493,8 +4515,8 @@ function render(){
     g2.font = n.crit ? "800 21px ui-monospace,Menlo,monospace"
                      : "700 14px ui-monospace,Menlo,monospace";
     g2.fillStyle = "#000"; g2.fillText(n.v, s[0]+1.5, s[1]+1.5);
-    g2.fillStyle = n.crit ? "#ffd24a" : "#fff3dd";
-    g2.fillText(n.v, s[0], s[1]);
+    g2.fillStyle = n.heal ? "#6ddba0" : n.crit ? "#ffd24a" : "#fff3dd";
+    g2.fillText(n.heal ? "+" + n.v : n.v, s[0], s[1]);
   }
   g2.globalAlpha = 1;
   // 19% of the height puts these on top of the phase line on a phone in

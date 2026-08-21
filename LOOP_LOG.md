@@ -307,3 +307,18 @@ was answered with fewer ranks per thing, and fewer level-up screens per run is t
 from the other side. **Next:** pick the value, confirm at n=6 against `early` 8–12/42 and
 clears near zero, then rewrite the README balance section around `early`/`clears` and retire
 the median as its headline.
+
+**R3e — the pick-fatigue fix, where the problem actually lives.** Two XP-need benches disagreed
+by far more than the change could explain (uniform 1.7 → 9 early deaths in 28; growth-only 1.6 →
+1 in 42, on an 8% difference in what a level costs), which says the bench cannot resolve
+difficulty at n≤6, not that either number is right. Run length is bimodal and a cell flips
+whole; distinguishing a 20% from a 30% early-death rate needs n≈50 a cell, ~4 hours of bench.
+So `XP_NEED` ships at 1 — no magic number I cannot defend — and the complaint it was aimed at is
+fixed where it lives instead. Everything maxes at rank 3, so a full kit is ~50 picks while a
+long run reaches level 70–80: **the back thirty level-ups were full-screen drafts with one card
+on them**, each unlocking the pointer, freezing the hop chain and stopping the camera to press
+ROAST CHICKEN. A draft with no choice on it is now taken for you with a toast and a green +40.
+Section 22c asserts both directions — a maxed, fully-evolved kit gains 40 levels and opens zero
+screens, and a level-up with a real choice still opens one. 250 checks pass. **Next:** publish,
+then the README balance section (it still prints the old table and treats the median as the
+headline) — and note in it what the bench can and cannot resolve.
