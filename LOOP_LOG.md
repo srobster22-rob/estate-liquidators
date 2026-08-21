@@ -391,3 +391,14 @@ would finish at thirty-three times damage against a curve tuned without any of i
 pay coins past the sixth boon, which land in the shop rather than in the run. Asserted at forty
 awards: six boons, six distinct, ×1.15 damage total. 266 checks pass. **Next:** now bench it —
 first-run and veteran, with dens live and four weapon slots, and read `early`/`clears`.
+
+**R7c — dens benched, and a grace on the opening.** First run with dens, four weapon slots and
+the boon cap, 42 trials: `early` 1/42, clears 3/42 — unchanged from before dens, so the new
+power source is absorbed. What *did* move is exactly what the slot cut was for: weapon
+evolutions per run went 4.5–4.8 → **2.2–3.3**, so two runs of the same line no longer end up as
+the same build. The bench also found a run that ended at **01:25** — a level-one creature with
+one rank-one weapon walked into a bone pile and twenty-four RATLINGs came out. The ember does
+telegraph it, but on a first run nobody knows what an ember means yet, and dying in eighty-five
+seconds for not knowing teaches nothing. Nothing wakes in the first 45 seconds now; asserted by
+standing on a den at T=0. 267 checks pass. **Next:** veteran bench in flight, then both tables
+into the README.

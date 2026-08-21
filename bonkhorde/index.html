@@ -683,6 +683,13 @@ const MARK_KINDS = [
 ];
 const DEN_WAKE = 15;         // metres. close enough to be a decision you made.
 const DEN_CHANCE = .55;      // not every landmark has something in it.
+// Nothing wakes in the first three quarters of a minute. The bench found a run
+// that ended at 01:25 - a level-one creature with one weapon at rank one walked
+// into a bone pile and twenty-four RATLINGs came out. The ember does telegraph
+// it, but on a FIRST run nobody knows yet what an ember means, and a game that
+// kills you in eighty-five seconds for not knowing has taught you nothing. The
+// grace is short enough that it is a head start, not a safe period.
+const DEN_GRACE = 45;
 
 let cells = [], marks = [], worldSeed = 0;
 const BLEND = 9;                    // metres over which two regions cross-fade
@@ -3025,7 +3032,7 @@ const evStats = { spawned:0, caches:0, altars:0, hunts:0, expired:0 };
 // that made it - and clearing it pays a boon and coins. Walking away is always
 // allowed: leave the area and the den goes quiet again and can be taken later.
 function wakeDen(m){
-  if(m.woke || m.cleared || !m.den || noSpawn) return;
+  if(m.woke || m.cleared || !m.den || noSpawn || T < DEN_GRACE) return;
   const K = m.k, n = Math.round(rnd(K.pack[0], K.pack[1]));
   m.woke = true; m.alive = 0; m.pack = [];
   for(let i=0;i<n;i++){

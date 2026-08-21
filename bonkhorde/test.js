@@ -1972,6 +1972,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const all = g.dens();
       if (!all.length) return { err: "no dens rolled", stats: g.denStats() };
       const d = all[0], find = () => g.dens().find(m => m.k === d.k && m.x === d.x);
+      // standing ON it, before the grace is up
+      g.place(d.x, d.z); g.step(1, 1/60);
+      const grace = find(), graceT = g.state().t;
+      g.skipTo(90);
       g.place(d.x + 60, d.z); g.step(1, 1/60);   const far = find();
       g.place(d.x + 6,  d.z); g.step(1, 1/60);   const near = find();
       // 150m TOWARD the centre, not +200 on x - the arena confines a position,
@@ -1983,11 +1987,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.place(d.x + 6,  d.z); g.step(1, 1/60);   const again = find();
       g.step(60 * 45, 1/60);                      const done = find();
       return { total: all.length, stats: g.denStats(), species: d.sp,
-               far, near, left, again, done, boons: g.boons() };
+               grace, graceT, far, near, left, again, done, boons: g.boons() };
     });
     ok("the arena rolls dens into its landmarks",
        !r.err && r.total > 4 && r.total < r.stats.marks,
        r.err || `${r.total} dens across ${r.stats.marks} landmarks`);
+    ok("nothing wakes in the opening seconds",
+       r.grace && !r.grace.woke,
+       r.grace ? `woke=${r.grace.woke} standing on it at T=${r.graceT}s` : "no den");
     ok("a den is asleep until you go to it",
        r.far && !r.far.woke, r.far ? `woke=${r.far.woke} at 60m` : "no den");
     ok("and it wakes with a pack of what lives there",
