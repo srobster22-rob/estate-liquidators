@@ -4520,8 +4520,16 @@ window.__g = {
                         medHP: hs[hs.length>>1]??0, dmg: P.dmg*100 }; },
   comp:  ()=>enemies.reduce((a,e)=>{ a[e.type]=(a[e.type]||0)+1; return a; }, {}),
   skipTo:s=>{ T=s; },
-  wipeSave: ()=>{ localStorage.removeItem(SAVEKEY);
-                  save={coins:0,up:{},best:0,wins:0,unlocked:{},mon:{}}; openMenu(); },
+  // Writes a fresh save rather than REMOVING one, and writes dev:0 into it.
+  // Removing the key means the next page load finds no preference, defaults
+  // DEV MODE back on and unlocks everything again - which is how "TALLY is
+  // absent from the shop until it is earned" started failing at 10 lines
+  // instead of 9, and how a run that begins three levels up put a level-up
+  // screen in front of a test that then could not pause. A wipe here means a
+  // brand-new player with the ladder live, and it has to survive a reload.
+  wipeSave: ()=>{ save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, mon:{},
+                           kills:0, runs:0, deaths:0, bestLvl:0, dev:0 };
+                  writeSave(); openMenu(); },
   // set permanent upgrades directly - localStorage is only read at page load,
   // so a test cannot simulate a veteran save by writing to it mid-session
   setUpgrades: (up)=>{ save.up = Object.assign({}, up); writeSave(); return save.up; },
