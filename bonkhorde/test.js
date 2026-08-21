@@ -1957,6 +1957,53 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22f. THE LANDMARKS HAVE SOMETHING IN THEM ===");
+  {
+    // Landmarks were scenery that side events happened to prefer as spawn
+    // points. A place you can see from far off and might decide to take is an
+    // explorable area; a rock you have no reason to walk to is not. Each den is
+    // dormant until you are close, wakes into the pack the terrain implies,
+    // goes quiet again if you leave, and pays a boon when cleared. Every one of
+    // those five states is a place this could silently do nothing.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.drainPicks(true);
+      for (const w of ["bat", "zap", "aura"]) g.give(w, 3);
+      const all = g.dens();
+      if (!all.length) return { err: "no dens rolled", stats: g.denStats() };
+      const d = all[0], find = () => g.dens().find(m => m.k === d.k && m.x === d.x);
+      g.place(d.x + 60, d.z); g.step(1, 1/60);   const far = find();
+      g.place(d.x + 6,  d.z); g.step(1, 1/60);   const near = find();
+      // 150m TOWARD the centre, not +200 on x - the arena confines a position,
+      // so a den out near the rim clamps straight back inside the retire radius
+      // and the check reads "still awake" for a reason that is not the game.
+      const L = Math.hypot(d.x, d.z) || 1;
+      g.place(d.x - d.x / L * 150, d.z - d.z / L * 150); g.step(1, 1/60);
+      const left = find();
+      g.place(d.x + 6,  d.z); g.step(1, 1/60);   const again = find();
+      g.step(60 * 45, 1/60);                      const done = find();
+      return { total: all.length, stats: g.denStats(), species: d.sp,
+               far, near, left, again, done, boons: g.boons() };
+    });
+    ok("the arena rolls dens into its landmarks",
+       !r.err && r.total > 4 && r.total < r.stats.marks,
+       r.err || `${r.total} dens across ${r.stats.marks} landmarks`);
+    ok("a den is asleep until you go to it",
+       r.far && !r.far.woke, r.far ? `woke=${r.far.woke} at 60m` : "no den");
+    ok("and it wakes with a pack of what lives there",
+       r.near && r.near.woke && r.near.alive > 3,
+       r.near ? `${r.near.alive} ${r.species} awake at 6m` : "no den");
+    ok("walking away puts it back to sleep - the fight is not a leash",
+       r.left && !r.left.woke && r.left.alive === 0,
+       r.left ? `woke=${r.left.woke} alive=${r.left.alive} at 200m` : "no den");
+    ok("and it can be taken later instead",
+       r.again && r.again.woke && r.again.alive > 3,
+       r.again ? `${r.again.alive} awake on the second visit` : "no den");
+    ok("clearing one pays a boon",
+       r.done && r.done.cleared && r.boons.length > 0,
+       r.done ? `cleared=${r.done.cleared}, boons: ${r.boons.join(", ") || "none"}` : "no den");
+  }
+
   console.log("\n=== 22e. BREADTH COSTS SLOTS ===");
   {
     // Six weapon slots was sized for five ranks. At three, a full kit is 36 picks

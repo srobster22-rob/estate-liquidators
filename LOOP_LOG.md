@@ -365,3 +365,20 @@ shortage. 258 checks pass. **Next:** the six SITES designed three rounds ago (TH
 ARCHIVE, THE FURNACE, THE DEEP FREEZE, THE ESTATE SALE, THE WELL) are still unbuilt, and their
 names are from the estate world the game no longer tells — they need redesigning for the
 creature world before any of them is worth building.
+
+**R7 — the landmarks have something in them.** The map rolls ~51 landmarks and they were
+scenery the side-event spawner happened to prefer as spawn points. About half are **dens** now:
+dormant under a low amber ember until you come within 15m, then they wake into the pack the
+terrain implies (STONE RING → a TUSKLING herd, CRATER → a GRUBBER nest, THE ARCH → a FLITTER
+roost, THE FINGERS → a SPITTOAD colony, BONE PILE → a RATLING swarm), 25% tougher than ambient,
+under a column you can find from anywhere. Clear it for a boon, 40 coins and a gem scatter, and
+a green marker so you can see what you have taken. Get 110m away and it goes quiet and can be
+taken later — the difference between an explorable area and a leash — and den packs are exempt
+from the 80m cull so a wide circle does not delete the fight you started. Nothing is required:
+you can run past every den and still finish. This is the "explorable areas with a drive but not
+a requirement" ask, finally built, on the creature world rather than the six estate-themed sites
+designed three rounds ago and never built. Section 22f asserts all five states; the retire check
+failed first time because `confine()` clamps a place() out past the rim straight back inside the
+retire radius. 264 checks pass. **Next:** re-bench with dens live — they are a power source the
+difficulty was never tuned against, exactly like side events were, and the README says so about
+those.

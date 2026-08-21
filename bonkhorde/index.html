@@ -665,13 +665,24 @@ const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 // where the floor has walls in it is a horde game where the horde stacks in a
 // corner - they are silhouette and orientation, and side events prefer to
 // appear at them, which is what turns "a shape over there" into somewhere to go.
+// Landmarks, and what lives in them. A structure you have no reason to walk to
+// is set dressing - side events already lean on these as spawn points for that
+// reason - but a place you can SEE from far off and might decide to take is an
+// explorable area, which is the thing this map was missing. Each one is a den:
+// dormant until you come close, then it wakes, and what comes out is what the
+// terrain says should live there. Clear it and it pays.
+//
+// Optional on purpose. You can run past every den in the arena and finish the
+// twenty minutes; the drive is the boon, not a gate.
 const MARK_KINDS = [
-  { id:"ring",   nm:"STONE RING",  r:7.5 },
-  { id:"crater", nm:"CRATER",      r:8.0 },
-  { id:"arch",   nm:"THE ARCH",    r:4.5 },
-  { id:"spires", nm:"THE FINGERS", r:5.0 },
-  { id:"midden", nm:"BONE PILE",   r:6.0 },
+  { id:"ring",   nm:"STONE RING",  r:7.5, den:"brute",    pack:[5,8],   ds:"a herd, and they were here first" },
+  { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid eggs in the pit" },
+  { id:"arch",   nm:"THE ARCH",    r:4.5, den:"runner",   pack:[9,14],  ds:"the whole roost goes up at once" },
+  { id:"spires", nm:"THE FINGERS", r:5.0, den:"spitter",  pack:[7,11],  ds:"they spit from the high ground" },
+  { id:"midden", nm:"BONE PILE",   r:6.0, den:"skitter",  pack:[16,24], ds:"the bones are not the problem" },
 ];
+const DEN_WAKE = 15;         // metres. close enough to be a decision you made.
+const DEN_CHANCE = .55;      // not every landmark has something in it.
 
 let cells = [], marks = [], worldSeed = 0;
 const BLEND = 9;                    // metres over which two regions cross-fade
@@ -703,7 +714,8 @@ function rollWorld(){
     const k = MARK_KINDS[(Math.random()*MARK_KINDS.length)|0];
     if(Math.hypot(x,z) > RIM-14) continue;
     if(marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + k.r + 10)) continue;
-    marks.push({ x, z, k, rot: Math.random()*TAU, seed: (Math.random()*1e6)|0 });
+    marks.push({ x, z, k, rot: Math.random()*TAU, seed: (Math.random()*1e6)|0,
+                 den: Math.random() < DEN_CHANCE, woke:false, cleared:false, pack:[] });
     i++;
   }
 }
@@ -2583,6 +2595,7 @@ function hurt(e, amount, kx, kz, crit){
 function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++;
+  if(e.denRef) denLost(e.denRef);
   const n = e.boss ? 30 : e.elite ? 16 : e.rad>1 ? 11 : 6;
   for(let i=0;i<n;i++) if(pops.length<340)
     pops.push({ x:e.x, y:e.y+e.def.h*.5, z:e.z, vx:rnd(-8,8), vy:rnd(3,12), vz:rnd(-8,8),
@@ -3005,6 +3018,59 @@ const EV = {
 let nextEvent = 0, noEvents = false, boons = [];
 const evStats = { spawned:0, caches:0, altars:0, hunts:0, expired:0 };
 
+// ------------------------------------------------------------------ DENS
+// A landmark you walk past is scenery. A landmark that wakes up is a place.
+// Dormant until you are inside DEN_WAKE, then the pack the terrain implies
+// comes out at once - a stone ring keeps a herd, a bone pile keeps the things
+// that made it - and clearing it pays a boon and coins. Walking away is always
+// allowed: leave the area and the den goes quiet again and can be taken later.
+function wakeDen(m){
+  if(m.woke || m.cleared || !m.den || noSpawn) return;
+  const K = m.k, n = Math.round(rnd(K.pack[0], K.pack[1]));
+  m.woke = true; m.alive = 0; m.pack = [];
+  for(let i=0;i<n;i++){
+    const a = Math.random()*TAU, r = Math.sqrt(Math.random())*K.r;
+    const [x, z] = confine(m.x + Math.cos(a)*r, m.z + Math.sin(a)*r, 2);
+    const e = spawnEnemy(K.den, x, z);
+    if(!e) continue;
+    e.denRef = m; m.alive++; m.pack.push(e);
+    // A den pack is a den pack, not a wave. Slightly tougher, visibly a group.
+    e.hp = e.maxhp = e.maxhp * 1.25;
+  }
+  if(!m.alive){ m.woke = false; return; }
+  denStats.woke++;
+  alert2(K.nm + " - " + K.ds, "#ffb45c");
+  shake = Math.max(shake, .5); SFX.boss();
+}
+function denLost(m){
+  if(!m.woke || m.cleared) return;
+  if(--m.alive > 0) return;
+  m.cleared = true; m.pack = []; denStats.cleared++;
+  const pool = BOONS.filter(x => !boons.includes(x.nm));
+  const b = pick(pool.length ? pool : BOONS);
+  boons.push(b.nm); b.fn();
+  coinsRun += 40;
+  for(let i=0;i<10;i++) pushGem(m.x + rnd(-4,4), m.z + rnd(-4,4), 8);
+  rings.push({ x:m.x, z:m.z, y:groundY(m.x,m.z), r:0, max:m.k.r+6, life:.7, mx:.7 });
+  alert2(m.k.nm + " CLEARED - " + b.nm, "#ffd24a");
+  shake = Math.max(shake, .9); SFX.levelup();
+}
+// Leave and it goes quiet. Without this a woken den either follows you across
+// the arena forever or evaporates at the normal cull and leaves the place
+// permanently half-taken with no way to finish it.
+function denPatrol(){
+  for(const m of marks){
+    if(!m.den || m.cleared) continue;
+    const d = Math.hypot(m.x - P.x, m.z - P.z);
+    if(!m.woke){ if(d < DEN_WAKE) wakeDen(m); continue; }
+    if(d > 110){
+      for(const e of m.pack) if(!e.dead){ e.denRef = null; e.dead = true; }
+      m.woke = false; m.alive = 0; m.pack = [];
+    }
+  }
+}
+const denStats = { woke:0, cleared:0 };
+
 function spawnEvent(kind, atX, atZ){
   const d = EV[kind]; if(!d) return null;
   let x = atX, z = atZ;
@@ -3190,7 +3256,11 @@ function updateEnemies(dt){
     // one still works; close enough that it costs more than a straight line.
     // 80, not 95. Every extra metre of cull radius is more bodies standing
     // between your projectiles and whatever you are aiming at.
-    if(!e.boss && d > 80){ enemies.splice(i,1); continue; }
+    // Den packs are exempt: they are not the ambient horde, they are a place
+    // you decided to take, and culling them at 80m means walking a wide circle
+    // deletes the fight you started. denPatrol() retires them instead.
+    if(e.dead && e.denRef === null && !e.boss){ enemies.splice(i,1); continue; }
+    if(!e.boss && !e.denRef && d > 80){ enemies.splice(i,1); continue; }
 
     [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
@@ -3825,6 +3895,7 @@ function step(dt){
   if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
     spawnBoss(BOSSES[bossIdx++]);
 
+  denPatrol();
   if(startBank > 0){
     startBankT -= dt;
     if(startBankT <= 0){
@@ -4177,6 +4248,29 @@ function render(){
     const lt = [Math.min(1,bm.a[0]*1.5+.10), Math.min(1,bm.a[1]*1.5+.10),
                 Math.min(1,bm.a[2]*1.5+.10)];
     const dk = [bm.b[0]*.55, bm.b[1]*.55, bm.b[2]*.55];
+    // A den has to read as occupied from far enough away to be a decision. Three
+    // states, three silhouettes: dormant carries a low amber ember at its centre,
+    // woken puts a tall pulsing column over it so you can find the fight you
+    // started from anywhere, and cleared plants a calm green marker so you can
+    // see at a glance what you have already taken.
+    if(m.den){
+      const my = groundY(m.x, m.z);
+      if(m.cleared){
+        box(m.x, my + 1.1, m.z, .22, 1.1, .22, [.42,.86,.56], .55);
+        box(m.x, my + 2.5, m.z, .70, .18, .70, [.42,.86,.56], .75);
+      } else if(m.woke){
+        for(let i=0;i<10;i++)
+          box(m.x, my + 1.5 + i*2.1, m.z, .34, 1.0, .34, [1,.55,.24],
+              .95 - i*.06 + Math.sin(T*5 - i*.5)*.10);
+        for(let i=0;i<12;i++){ const a2 = i*(TAU/12) + T*.8;
+          box(m.x + Math.cos(a2)*m.k.r, my + .18, m.z + Math.sin(a2)*m.k.r,
+              .32, .09, .32, [1,.55,.24], .80); }
+      } else {
+        box(m.x, my + .60 + Math.sin(T*1.6 + m.seed)*.12, m.z,
+            .30, .30, .30, [1,.72,.26], .85);
+        box(m.x, my + .12, m.z, .95, .07, .95, [1,.72,.26], .45);
+      }
+    }
     const K = m.k.id;
     if(K === "ring"){
       for(let i=0;i<9;i++){ const a = m.rot + i/9*TAU;
@@ -4825,6 +4919,12 @@ window.__g = {
                 regen:+P.regen.toFixed(3), armor:+P.armor.toFixed(2),
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
+  dens: ()=>marks.filter(m=>m.den).map(m=>({ x:+m.x.toFixed(1), z:+m.z.toFixed(1),
+          k:m.k.id, sp:m.k.den, woke:!!m.woke, cleared:!!m.cleared,
+          alive:m.alive||0 })),
+  denStats: ()=>Object.assign({}, denStats, { total:marks.filter(m=>m.den).length,
+                                              marks:marks.length }),
+  boons: ()=>boons.slice(),
   slots: ()=>({ w:WSLOTS, p:PSLOTS,
                 carried: Object.keys(P.kit).filter(k=>WEAPONS[k] && !P.kit[k].fromEvo).length,
                 granted: Object.keys(P.kit).filter(k=>WEAPONS[k] && P.kit[k].fromEvo).length,

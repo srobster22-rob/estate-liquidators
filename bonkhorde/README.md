@@ -110,6 +110,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **8 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | every one contributes to output, not just the four with "damage" in the text — PLATING blasts attackers off you, MAGNET drags the horde into a pile |
 | **5 wildlife types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
+| **~25 dens** | half the landmarks keep a pack of what lives there — optional, repayable, worth a boon |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
 | **7 creature lines, 21 forms** | fire, water, storm, stone, fungus, wind and echo — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body, every line its own move |
@@ -118,6 +119,34 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
 Roughly 1,600 lines of JavaScript, no libraries.
+
+### The landmarks have something in them
+
+The arena rolls about fifty landmarks — stone rings, craters, an arch, spires, bone piles — and
+for most of the project they were scenery that the side-event spawner happened to prefer. A rock
+you have no reason to walk to is set dressing. About half of them are **dens** now.
+
+A den is dormant until you come within fifteen metres, carrying a low amber ember you can pick
+out at distance. Walk in and it wakes: the pack the terrain implies comes out at once, 25% tougher
+than the ambient horde, under a pulsing column you can find the fight from anywhere in the arena.
+
+| | what lives there | how many |
+|---|---|---|
+| **STONE RING** | a TUSKLING herd — they were here first | 5–8 |
+| **CRATER** | a GRUBBER nest — something laid eggs in the pit | 10–16 |
+| **THE ARCH** | a FLITTER roost — the whole thing goes up at once | 9–14 |
+| **THE FINGERS** | a SPITTOAD colony, spitting from the high ground | 7–11 |
+| **BONE PILE** | a RATLING swarm — the bones are not the problem | 16–24 |
+
+Clear it and it pays a boon, forty coins and a scatter of gems, and plants a green marker so you
+can see what you have already taken. **Walking away is always allowed:** get 110 metres out and
+the den goes quiet again and can be taken later, which is the difference between an explorable
+area and a leash. Den packs are exempt from the ordinary 80-metre cull for the same reason —
+culling them would mean walking a wide circle deletes the fight you started.
+
+None of it is required. You can run past every den in the arena and finish the twenty minutes;
+the drive is the boon, not a gate. All five states are asserted, because each one is a place this
+could quietly do nothing.
 
 ## How it's built
 
