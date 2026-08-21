@@ -3938,7 +3938,11 @@ function render(){
     // and did not get: full build inside 16m, reduced to 32m, silhouette past
     // that. Bosses are always full - there is only ever one.
     const dp = P ? Math.hypot(e.x-P.x, e.z-P.z) : 0;
-    const lod = e.boss ? 2 : dp < 16 ? 2 : dp < 32 ? 1 : 0;
+    // 11m, not 16. The chamfered build is three boxes where one used to be, and
+    // at 16m the top tier was covering enough of the horde to put a live frame
+    // at 4,046 boxes against a 3,600 batch. Past about twelve metres the
+    // chamfer is under a pixel wide - it was being paid for and not delivered.
+    const lod = e.boss ? 2 : dp < 11 ? 2 : dp < 26 ? 1 : 0;
     const plan = EBODY[e.def.body] || EBODY.generic;
     plan(e, face, W*sq, H, c, glow, lod, e.y + hop);
     const hy = e.y + H*.62 + H*.19 + hop;
