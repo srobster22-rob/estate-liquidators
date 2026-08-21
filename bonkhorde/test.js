@@ -239,7 +239,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       for (const [ln, LM, GM] of conds) {
         const seen = {};
         for (const k of keys) seen[k] = shift(lit(P.enemies[k], LM), m);
-        // THE HEIRLOOM is exempt from the GROUND comparison, and it is exempt
+        // GLIMMERFOWL is exempt from the GROUND comparison, and it is exempt
         // for a measured reason rather than a convenient one: with seven ground
         // palettes on the map, a grid search over RGB scored by this same maths
         // returns ZERO colours clearing dE 9 against every ground AND dE 15
@@ -294,14 +294,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     window.__g.freezeEvents(true); window.__g.freezeSpawns(true);
     window.__g.spawn("collector", 3, 14); window.__g.step(1/60);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const withThem = window.__g.heirloomMarks();
+    const withThem = window.__g.fowlMarks();
     window.__g.start("intern"); window.__g.freezeSpawns(true); window.__g.step(1/60);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    return { withThem, without: window.__g.heirloomMarks() };
+    return { withThem, without: window.__g.fowlMarks() };
   });
   ok("and the one that is exempt is marked instead",
      mark.withThem === 3 && mark.without === 0,
-     `${mark.withThem} markers for 3 heirlooms, ${mark.without} with none on the field`);
+     `${mark.withThem} markers for 3 fowl, ${mark.without} with none on the field`);
   const shad = await page.evaluate(async () => {
     window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
     window.__g.freezeEvents(true); window.__g.spawn("shambler", 40);
@@ -1751,13 +1751,31 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Object.keys(sp).map(k => `${k}:${sp[k].want || "none"}${sp[k].has ? "" : " MISSING"}`).join(" "));
     // Count DECLARED plans only. Counting the undefineds too meant a species
     // with no plan at all still contributed a distinct value, and this passed
-    // while THE HEIRLOOM was falling back to the generic box.
+    // while GLIMMERFOWL was falling back to the generic box.
     const want = Object.values(sp).map(v => v.want).filter(Boolean);
     ok("and no two species share one",
        new Set(want).size === Object.keys(sp).length,
        `${new Set(want).size} distinct plans for ${Object.keys(sp).length} species`);
     ok("distance buys the box budget back",
        r.far < r.near * 0.75, `${r.near} boxes near -> ${r.far} far`);
+
+    // GLIMMERFOWL draws its ring and beam BEFORE its body, so a throw halfway
+    // down the plan still leaves fowlMarks reading 3. Count the boxes instead:
+    // fifteen of them are the marker, so a bird that only marks itself and then
+    // dies shows up here as a bird made of nothing.
+    const fowl = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const settle = async () => { await frame(); await frame(); return g.state().boxes; };
+      g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.setShake(0); g.place(0, 0);
+      const bare = await settle();
+      g.spawn("collector", 3, 8); g.step(1/60);
+      return { bare, withFowl: await settle() };
+    });
+    const per = (fowl.withFowl - fowl.bare) / 3;
+    ok("and GLIMMERFOWL is a bird, not fifteen marker boxes",
+       per > 26, `${per.toFixed(1)} boxes each, 15 of which are the marker`);
   }
 
   console.log("\n=== 23. THE ARENA IS ROLLED, NOT REMEMBERED ===");

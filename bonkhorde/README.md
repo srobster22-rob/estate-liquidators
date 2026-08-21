@@ -8,40 +8,43 @@
 from Megabonk's third-person camera. No engine, no build step, no dependencies — open
 `index.html` in a browser and it runs.
 
-> A collector died, and the estate is large enough to have its own weather. Nothing in it was
-> ever thrown away, so everything in it has been sitting there long enough to **wake up**. The
-> mop woke up. The bin woke up. The ledger woke up, and it has been counting.
+> Something very large woke up under the world and started eating it from below. Everything
+> living on top of it has **twenty minutes** before the ground itself goes.
 >
-> You are one of those things. At dawn the house goes to probate and is signed away — and
-> before then **the claims** arrive. Every debt the collector left, walking in through the walls
-> to take what it is owed. They do not negotiate.
+> You are a hatchling. Nothing here is going to save you and nothing here is coming with you,
+> and the only thing a small creature can do in twenty minutes is **grow**. So you eat — grubs,
+> birds, boars, toads, rats, the ordinary wildlife of a world that is about to end, running in
+> every direction at once and all of it worth something.
 >
-> **Twenty minutes. Clear the house.**
+> Eat enough and you change shape. Twice.
+>
+> At twenty minutes the thing under the world comes up. That is the whole game: you against
+> **TERRAVORE**, at whatever size you managed to reach.
 
 You never attack. Every weapon fires on its own cooldown at its own targets. The only verb is
 **positioning**, and every death is a positioning mistake.
 
-The horde is not undead, it is **accounting** — which is why the roster is a mop and a wheelie
-bin, and why the things coming through the walls are an overdue notice, a bailiff, a safe, an
-appraiser and a silverfish. The contents of the house are defending the house.
+The horde is **wildlife**, not an army. It is not attacking the world, it is fleeing across it,
+and you are in the way.
 
-| the claims | what it is | how it plays |
+| the wildlife | what it is | how it plays |
 |---|---|---|
-| **ARREARS** | an overdue notice that learned to walk | slow, patient, always more |
-| **BAILIFF** | all elbows and clipboard | gets there first |
-| **THE LIEN** | a safe with legs — a charge against the property | slow, enormous, 150 HP |
-| **APPRAISER** | hangs back and throws valuations across the room | the only one that outranges you |
-| **SILVERFISH** | eats paper, breeds in filing cabinets | tiny, 5.0 m/s, arrives in numbers |
-| **THE HEIRLOOM** | the one thing worth keeping, and it knows it | flees; pays coins if you catch it |
+| **GRUBBER** | a fat segmented larva with mandibles | slow, patient, always more |
+| **FLITTER** | a bird in a permanent hurry | gets there first, never on purpose |
+| **TUSKLING** | a boar, heavy at the front | slow, enormous, 150 HP, does not turn |
+| **SPITTOAD** | bloated, eyes on top, spits | the only one that outranges you |
+| **RATLING** | individually nothing | tiny, 5.0 m/s, never individually |
+| **GLIMMERFOWL** | a jewelled bird that knows what it is worth | flees; pays coins if you catch it |
 
-And they answer to someone: **THE EXECUTOR** at 5:00, **THE LANDLORD** at 10:00, **MR. TEETH**
-at 15:00, and **THE FINAL BONK** at 19:00.
+And above them: **THE MATRIARCH** at 5:00, **THORNBACK** at 10:00, **SKYSPLITTER** at 15:00,
+and **TERRAVORE** at 19:00.
 
-You play a **monster**, and it evolves twice while you are running it. At level 7 and level 20
-it becomes a *different animal* — new name, new body, better stat block, and at the top of its
-line a named signature. A MOPLING is a mop with eyes; a MOPHAND has grown arms it drags
-mop-heads on; a MOPMAW is mostly mouth. **Twenty-one forms, twenty-one meshes** — asserted, not
-promised. Between runs each monster keeps the XP it earned and levels on its own.
+You play a **creature**, and it evolves twice while you are running it. At level 7 and level 20
+it becomes a *different animal* — new name, new body, better stat block, and **the move it
+fights with**. Abilities do not come from the shop; they come from evolving. A CINDERPUP is a
+pup made of embers; a FLAREHOUND has grown into the fire it leaves behind; a PYROWYRM is
+mostly fire. **Twenty-one forms, twenty-one meshes** — asserted, not promised. Between runs
+each creature keeps the XP it earned and levels on its own.
 
 ![BONKHORDE](screenshot.png)
 
@@ -58,9 +61,11 @@ xdg-open bonkhorde/index.html      # Linux
 
 `WASD` move · `MOUSE` orbit camera · `SPACE` jump · `ESC` pause.
 
-**Bunnyhop.** Hit `SPACE` again on the frame you land and you keep the momentum: five links,
-+5.5% move speed each, +28% at the top of the chain. Miss the window and it bleeds off over a
-couple of seconds; take a hit and it is gone instantly. The window is 0.16s after touchdown
+**Bunnyhop.** Hit `SPACE` again on the frame you land and you keep the momentum, and it
+compounds: the chain runs to 24 links on an asymptotic curve — **+12%** move speed at one link,
+**+40%** at five, **+54%** at ten, **+60%** at the ceiling. Every fifth link also pays XP and
+coins, sucks the loose gems on the floor toward you, and says so. Miss the window and it bleeds
+off — faster the higher it was; take a hit and it is gone instantly. The window is 0.16s after touchdown
 plus a 0.14s pre-land buffer, so a press made on the way down still counts — without that the
 input has to land inside a single 16ms frame, which is a coin flip rather than a skill. A held
 spacebar does nothing: it has to be a press.
@@ -78,7 +83,7 @@ for a media query only moves the guess — an emulated touch desktop reports
 Survive twenty minutes. Four bosses arrive at 5:00, 10:00, 15:00 and 19:00. Coins persist
 between runs and buy permanent upgrades.
 
-**The clock does not win the run.** THE FINAL BONK arrives at 19:00, and if it is still alive
+**The clock does not win the run.** TERRAVORE arrives at 19:00, and if it is still alive
 at 20:00 the timer stops mattering — you go to **sudden death**, the horde thickens for as
 long as you stall, and victory means killing it. You have four minutes.
 
@@ -88,10 +93,10 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 
 | | |
 |---|---|
-| **THE GRAVELORD** 5:00 | `slam` — a ring under your feet, then a stomp. One lesson, taught once. |
-| **THE LANDLORD** 10:00 | `evict` — scatters lingering zones that eat the arena, plus slams. |
-| **MR. TEETH** 15:00 | `charge` — marks a lane, pauses, then runs it at 4.4× speed. |
-| **THE FINAL BONK** 19:00 | all of the above plus `spokes`, a radial burst you dodge between. |
+| **THE MATRIARCH** 5:00 | `slam` — a ring under your feet, then a stomp. One lesson, taught once. |
+| **THORNBACK** 10:00 | `evict` — scatters lingering zones that eat the arena, plus slams. |
+| **SKYSPLITTER** 15:00 | `charge` — marks a lane, pauses, then runs it at 4.4× speed. |
+| **TERRAVORE** 19:00 | all of the above plus `spokes`, a radial burst you dodge between. |
 
 ![Sudden death](screenshot-final.png)
 
@@ -104,12 +109,12 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **8 weapons** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, ground hazards |
 | **8 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | every one contributes to output, not just the four with "damage" in the text — PLATING blasts attackers off you, MAGNET drags the horde into a pile |
-| **5 enemy types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
+| **5 wildlife types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
-| **7 monsters, 21 forms** | a mop, a wheelie bin, a storm, a boulder, a fungus, a ledger beetle and a swarm — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body |
-| **per-monster levels** | every run banks its XP into the monster that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
-| **bunnyhopping** | chain a jump on the frame you land for up to +28% move speed; one hit resets it |
+| **7 creature lines, 21 forms** | fire, water, storm, stone, fungus, wind and echo — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body, every line its own move |
+| **per-creature levels** | every run banks its XP into the creature that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
+| **bunnyhopping** | chain a jump on the frame you land, 24 links deep, up to +60% move speed, paying XP every fifth; one hit resets it |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
 Roughly 1,600 lines of JavaScript, no libraries.
@@ -119,8 +124,9 @@ Roughly 1,600 lines of JavaScript, no libraries.
 **Rendering.** Hand-rolled WebGL. Everything dynamic is an axis-aligned box, and all of them
 go into a single vertex buffer that is uploaded once and drawn in one call — ~2,300 boxes per
 frame at peak. The alternative, one `drawElements` per object, costs more in driver overhead
-than the entire simulation does. Terrain is a separate static buffer: a 60×60 heightfield with
-a checkerboard tint, because a flat untextured plane gives you no sense of speed.
+than the entire simulation does. Terrain is a separate static buffer: a 60×60 heightfield tinted
+by a hashed three-tone noise field, because a flat untextured plane gives you no sense of
+speed and a checkerboard gives you a chessboard.
 
 **Simulation.** Enemies are bucketed into a uniform spatial grid, rebuilt each frame. Every
 weapon query (nearest target, everything in radius) and enemy-vs-enemy separation runs against
@@ -287,7 +293,7 @@ inside the wall, none within 18m of spawn, none within 10m of each other.
 
 Extending the contrast harness from 6 ground shades to 42 — every region's palette, not just
 the green one — failed it immediately, and every one of the worst eighteen pairs was the same
-one: **THE HEIRLOOM against the rust and sand grounds, ΔE 2.0** under deuteranopia at nineteen
+one: **GLIMMERFOWL against the rust and sand grounds, ΔE 2.0** under deuteranopia at nineteen
 minutes. Yellow-green and yellow-brown are the same colour to a deuteranope.
 
 A grid search over RGB, scored by the suite's own CIELAB maths across four vision types and
@@ -301,7 +307,7 @@ ground *and* ΔE 15 against every other enemy:
 | best balance | 12.5 | 9.8 |
 
 Six enemy hues, their elite tints and seven ground palettes across a day cycle is more than RGB
-has room for. So THE HEIRLOOM stopped competing for a hue and is **marked by shape**: a rotating
+has room for. So GLIMMERFOWL stopped competing for a hue and is **marked by shape**: a rotating
 gold ring and a beam, neither of which anything else in the game draws — the same trade the
 player made when eleven mutually distinguishable hues turned out not to exist.
 
@@ -390,34 +396,40 @@ slides the camera onto the player and loses the third-person view; the boom now
 *shortens* until it fits and lifts as it shortens, so the player stays framed.
 Asserted from the centre, an edge and a corner.
 
-### The monsters, and what an evolution is allowed to be worth
+### The creatures, and what an evolution is allowed to be worth
 
 Seven lines, three forms each. The stage mods are **absolute** multipliers against the base
 stat block rather than increments — stage 3 is ×1.38 HP *total*, not ×1.38 on top of stage 2 —
 which is what lets `evolveTo()` compute the ratio between any two stages and apply it once, and
 lets a test jump straight to the top of a line without walking it.
 
-| | stage 1 | stage 2 (LV 7) | stage 3 (LV 20) | signature |
-|---|---|---|---|---|
-| MOP | MOPLING | MOPHAND | MOPMAW | SWEEP — +20% weapon reach |
-| SCRAP | RUSTLET | RUSTJAW | RUSTLORD | SALVAGE — +60% pickup radius |
-| VOLT | ZAPLET | VOLTHOUND | STORMWICK | OVERCLOCK — −13% cooldowns |
-| STONE | LUGGIT | HAULOX | MONOLITH | BEDROCK — +5 flat armour |
-| ROT | MOULDLING | ROTHERD | GRAVEMAW | FEAST — regeneration ×2.4 |
-| TALLY | TALLYMITE | LEDGERLING | GRAND AUDITOR | COMPOUND — +15% XP |
-| ECHO | SPLITKIN | TWINSPAWN | TRIPLICATE | CHORUS — +28% damage |
+| | stage 1 | stage 2 (LV 7) | stage 3 (LV 20) | move it learns | signature |
+|---|---|---|---|---|---|
+| **EMBER** | CINDERPUP | FLAREHOUND | PYROWYRM | CINDERTRAIL | WILDFIRE — +20% weapon reach |
+| **TIDE** | DRIPLET | TIDEMAW | LEVIATHAN | UNDERTOW | UNDERCURRENT — +60% pickup radius |
+| **VOLT** | ZAPLET | VOLTHOUND | STORMWICK | ARCLASH | OVERCLOCK — −13% cooldowns |
+| **STONE** | PEBBLIN | BOULDOG | MONOLITH | TREMOR | BEDROCK — +5 flat armour |
+| **ROT** | SPORELING | MYCONID | GRAVEMAW | SPORECLOUD | BLOOM — regeneration ×2.4 |
+| **GALE** | GUSTLING | SKREECH | TEMPESTRIX | GALEDIVE | UPDRAFT — +15% XP |
+| **ECHO** | SPLITKIN | TWINSPAWN | TRIPLICATE | MIRRORBOLT | CHORUS — +28% damage |
 
-Each line is a different *kind* of thing, not a palette swap, and each stage changes the
+**Your move comes from evolving, not from the shop.** Each line owns exactly one of the eight
+weapons and cannot be handed it any other way: the first evolution *teaches* it, the second
+*sharpens* it two ranks. That is the whole reason to reach level 7 with something still alive,
+and it is asserted per line — seven lines, seven different moves, and owning it already ranks
+it up rather than duplicating it.
+
+Each line is a different *kind* of animal, not a palette swap, and each stage changes the
 silhouette rather than the scale:
 
 | | it starts as | it becomes | it ends as |
 |---|---|---|---|
-| **MOP** | a fringe with two eyes under it | arms, each dragging a mop head | mostly mouth, four arms, a mane |
-| **SCRAP** | a bucket whose lid won't sit straight | a wheelie bin, lid as a jaw | a skip with a crown and a grabber arm |
+| **EMBER** | a pup made of embers | it has grown into the fire it leaves | mostly fire, and long |
+| **TIDE** | a droplet with a face | a maw with water circling it | a leviathan, and the water follows |
 | **VOLT** | an orb with antennae | the orb grew a body and it runs | a cloud with a skull in it and its own rain |
-| **STONE** | a pebble with a brow | a boulder carrying cargo on a yoke | a standing stone, hovering, trailed by rubble |
+| **STONE** | a pebble with a brow | a boulder that decided to be a dog | a standing stone, hovering, trailed by rubble |
 | **ROT** | a puddle with one mushroom | a slime under a mushroom forest | a headstone that grew a mouth and two hands |
-| **TALLY** | a beetle whose shell is a ledger | the shell opened; it audits from the air | a filing cabinet that stood up, with a monocle |
+| **GALE** | a gust with eyes | it audits the field from the air | a storm-bird with a crown of wind |
 | **ECHO** | two of it | three, and one wears a crown | four, dragging after-images |
 
 Nothing in a body plan animates a *size*, only positions — so `__g.bodySig()` (box count plus
@@ -432,11 +444,46 @@ which is how it looked the first time. The assertion is the equality, not an ine
 An evolution also queues a level-up pick of its own, on top of the level that triggered it —
 the moment should hand you a decision, not just a bigger number.
 
-**Per-monster levels** are the between-runs half. Every run banks its gross XP into whichever
-monster ran it, and a monster level is +2% HP and +1.2% damage *for that monster alone*. The
+**Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
+creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The
 first level costs 250 XP and each one after adds 320, so a two-minute death still visibly moves
 the bar — a progression bar that does not move on a bad run teaches you that bad runs are worth
 nothing, which is the opposite of what a survivors-like needs you to believe.
+
+### Three ranks, not five
+
+Every upgradeable thing used to take five ranks. Across a twenty-minute run with eight weapons
+and eight passives that is forty-plus level-up screens spent pressing the same card again, and
+the fifth press of SPINACH is not a decision — it is a formality with a menu in front of it.
+
+The naive fix, deleting ranks 4 and 5, deletes the top of every power curve with them and
+makes the whole game weaker. So the rank *count* dropped and the power ceiling did not: the
+five-entry stat tables are still in the file, and `RANKMAP = [0, 2, 4]` says which three of them
+the three ranks read. Rank 1 is the old rank 1, rank 2 is the old rank 3, rank 3 is the old
+rank 5. Passives scale by `PSCALE = 5 / WMAX` per rank instead, so three ranks of BOOTS is
+exactly what five used to be.
+
+The evolution gate moves with it — a weapon at rank 3 plus its passive at rank 3 — so an
+evolution is reachable in roughly half the picks and lands mid-run instead of near the end,
+which is when a replacement weapon is actually interesting.
+
+### The floor is not a chessboard
+
+The terrain tint was a literal checkerboard: `(i + j) & 1` picking between two shades. It reads
+as graph paper, and graph paper is the one texture that tells you nothing about where you are.
+
+Smooth value noise was the obvious replacement and was worse — adjacent quads came out within a
+percent of each other, which is a flat plane with extra maths. What works is *quantised*: a
+per-quad hash biased by a broad low-frequency patch field, snapped to three tones. Three tones
+is enough to break the grid without inventing detail the geometry doesn't have, and the patch
+field means the tones come in drifts rather than static.
+
+Every tone is a blend strictly between the region's own two palette colours, which is what
+keeps the colour-vision harness honest: it brackets the ground with those two, so a floor that
+invents a third colour outside them would silently escape the contrast check.
+
+And each region now says what it is. A biome banner runs 4.6s on entry: the region's name and
+one line of what happened there for the first 3.2s, then the rule it plays by.
 
 ### Every passive, against a no-passive control
 
@@ -479,26 +526,26 @@ bolting "+damage" onto everything:
 
 `balance.js` runs an autopilot to death, many times over, and reports where runs actually end.
 Tuning a survivors-like by feel is how you ship something unwinnable in week one, so the
-difficulty curve here is a measurement. Current state, all seven monster lines, 6 trials per
-cell, monster levels at 1 so this reads the in-run evolution and nothing from the meta layer:
+difficulty curve here is a measurement. Current state, all seven creature lines, 6 trials per
+cell, creature levels at 1 so this reads the in-run evolution and nothing from the meta layer:
 
 ```
                             median              clears
-FIRST RUN   MOPLING          05:13                0/6
-  (no perm  RUSTLET          10:57                0/6
+FIRST RUN   CINDERPUP        05:13                0/6
+  (no perm  DRIPLET          10:57                0/6
   upgrades) ZAPLET           06:12                0/6
-            LUGGIT           10:47                0/6
-            MOULDLING        04:29                0/6
-            TALLYMITE        04:35                0/6
+            PEBBLIN          10:47                0/6
+            SPORELING        04:29                0/6
+            GUSTLING         04:35                0/6
             SPLITKIN         05:03                0/6
                                                   0/42
 
-VETERAN     MOPLING          24:00                2/6
-  (all      RUSTLET          22:32                4/6
+VETERAN     CINDERPUP        24:00                2/6
+  (all      DRIPLET          22:32                4/6
   upgrades  ZAPLET           24:00                1/6
-  bought)   LUGGIT           24:00                3/6
-            MOULDLING        23:29                5/6
-            TALLYMITE        23:51                4/6
+  bought)   PEBBLIN          24:00                3/6
+            SPORELING        23:29                5/6
+            GUSTLING         23:51                4/6
             SPLITKIN         24:00                2/6
                                                  21/42
 ```
@@ -506,8 +553,8 @@ VETERAN     MOPLING          24:00                2/6
 Which is the shape the genre wants, and it is the same shape it was before monsters, evolution
 and bunnyhopping went in: **0 first-run clears in 42**, and **21 of 42** with a maxed shop
 against 25 of 60 (42%) on the build before this round — the same number inside a noise floor
-this table has already been shown to have. What did move is how far a first run *gets*: RUSTLET
-and LUGGIT now median past ten minutes where every line used to die around four, and a lucky
+this table has already been shown to have. What did move is how far a first run *gets*: DRIPLET
+and PEBBLIN now median past ten minutes where every line used to die around four, and a lucky
 run reaches sudden death and loses there. The ceiling is visible without being available, which
 is what it is for.
 
@@ -528,17 +575,17 @@ ending reachable*, and 0/42 against 21/42 says both. Chasing a third decimal on 
 figure through a ±10-point noise floor is measuring the harness, not the game.
 
 The per-character spread is roughly the noise floor wide, and the ordering does not survive
-re-sampling: MOULDLING led at 8/12 two rounds ago, sat at 4/12 the round after on an unchanged
+re-sampling: SPORELING led at 8/12 two rounds ago, sat at 4/12 the round after on an unchanged
 character, and leads again here at 5/6. RUSTLET was the only line consistently at the bottom
 across every sweep — a signal rather than noise, and it took three passes to close, at which
 point it overshot into the top half and stayed there:
 
 ```
-                        RUSTLET   control
-starting point           1/12     MOULDLING 9/12
-+8% speed                3/12     MOULDLING 8/12
-+35% weapon reach        4/12     LUGGIT    7/12
-this round               4/6      MOULDLING 5/6
+                        DRIPLET   control
+starting point           1/12     SPORELING 9/12
++8% speed                3/12     SPORELING 8/12
++35% weapon reach        4/12     PEBBLIN   7/12
+this round               4/6      SPORELING 5/6
 ```
 
 **Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
