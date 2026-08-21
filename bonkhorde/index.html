@@ -2553,8 +2553,14 @@ function spawnEnemy(type, atX, atZ){
     // is the only kind of decision this game has.
     const spd2 = Math.hypot(P.vx, P.vz);
     let a;
-    if(spd2 > 1.5 && Math.random() < .66)
-      a = Math.atan2(P.vz, P.vx) + rnd(-1.05, 1.05);   // +/-60 degrees of heading
+    // 0.80 into +/-45 degrees, from 0.66 into +/-60. Two thirds into a third of
+    // the circle is twice the density ahead of you; four fifths into a quarter
+    // is 3.2x. The first setting took the roster's WORST first runs from 24:00
+    // to 4:25 - every run used to survive - but THE OX, THE GHOUL and THE TWIN
+    // still medianed the full clock, because on a map this size you never lap
+    // your own tail and a 120-degree arc is still mostly open ground.
+    if(spd2 > 1.5 && Math.random() < .80)
+      a = Math.atan2(P.vz, P.vx) + rnd(-.79, .79);      // +/-45 degrees of heading
     else a = Math.random()*TAU;
     const r = rnd(30, 38);
     [x, z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
