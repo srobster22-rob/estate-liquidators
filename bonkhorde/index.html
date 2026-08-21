@@ -213,6 +213,8 @@
   #dev b,.devrow b{font-size:9px;letter-spacing:.24em;color:#5c6470;margin-right:4px}
   .dv{font-size:9px;padding:6px 10px;letter-spacing:.1em}
   .dv.on{border-color:var(--gold);color:var(--gold)}
+  .devon{display:inline-block;margin:0 auto 14px;padding:5px 12px;font-size:10px;
+    letter-spacing:.22em;color:#0d1116;background:var(--gold);font-weight:700}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
 </style>
 </head>
@@ -309,6 +311,12 @@
   <div id="opts">
     <button class="btn gh opt" id="sndBtn">SOUND: ON</button>
     <button class="btn gh opt" id="mtnBtn">SCREEN SHAKE: ON</button>
+  </div>
+  <div id="dev"><b>DEV</b>
+    <button class="btn gh dv" id="dvLvl">+1 LEVEL</button>
+    <button class="btn gh dv" id="dvEvo">EVOLVE</button>
+    <button class="btn gh dv" id="dvSkip">+5:00</button>
+    <button class="btn gh dv" id="dvGod">GODMODE</button>
   </div>
   <button class="btn gh" id="quitBtn">ABANDON RUN</button>
 </div></div>
@@ -1485,6 +1493,44 @@ function paintOpts(){
 const rank = id => save.up[id]||0;
 loadSave();
 
+// ==================================================================== DEV
+// Twenty-one forms, seven lines and a seven-rung unlock ladder mean the
+// interesting half of this game is behind several hours of play, which makes
+// it unreviewable by hand. This opens all of it.
+//
+// DEV MODE is a persisted preference, not a build flag, so it survives a
+// reload, and it re-applies at load - unlockAll() only ever RAISES a value, so
+// running it repeatedly is safe. The menu says so in gold, because a cheat you
+// can trip over by accident is a bug.
+function unlockAll(){
+  for(const u of UNLOCKS) save.unlocked[u.id] = true;
+  for(const u of SHOP)    save.up[u.id] = u.max;
+  save.coins = Math.max(save.coins||0, 99999);
+  // enough banked XP to sit every monster at MON_CAP, computed from the curve
+  // rather than typed, so raising the cap does not silently stop working
+  let need = 0; for(let l=1;l<MON_CAP;l++) need += MON_NEED(l);
+  save.mon = save.mon || {};
+  for(const c of CHARS) save.mon[c.id] = Math.max(save.mon[c.id]||0, need);
+  writeSave();
+  return { chars:CHARS.length, shop:SHOP.length, coins:save.coins,
+           monLvl:monLvl(CHARS[0].id) };
+}
+function wipeAll(){
+  try{ localStorage.removeItem(SAVEKEY); }catch(e){}
+  save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, mon:{},
+           kills:0, runs:0, deaths:0, bestLvl:0,
+           sound:save.sound, motion:save.motion, dev:0 };
+  writeSave();
+}
+function setDev(on){
+  save.dev = on ? 1 : 0;
+  if(on) unlockAll();
+  writeSave();
+  return !!save.dev;
+}
+if(save.dev === undefined) save.dev = 1;          // ON by default, for now
+if(save.dev) unlockAll();
+
 // ==================================================================== STATE
 // Every list is initialised here, not in startRun - render() runs on the menu
 // screen too, before any run exists.
@@ -1873,7 +1919,7 @@ function startRun(id){
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
-        hop:0, hopWin:0, hopGrace:0, hopFx:0, idle:1,
+        hop:0, hopWin:0, hopGrace:0, hopFx:0, hopHold:undefined, idle:1,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
@@ -2033,7 +2079,8 @@ document.getElementById("paused").addEventListener("click", e=>{
   if(running && !over) togglePause(false);
 });
 const dvBind = (id, fn)=>{ const el = document.getElementById(id);
-                           if(el) el.addEventListener("click", e=>{ e.stopPropagation(); fn(el); }); };
+                           if(el){ el.__wired = true;
+                                   el.addEventListener("click", e=>{ e.stopPropagation(); fn(el); }); } };
 dvBind("dvLvl",  ()=>{ if(!P) return; P.xp = P.need; gainXP(0.0001); });
 dvBind("dvEvo",  ()=>{ if(!P) return; evolveTo(Math.min(2, stage+1)); });
 dvBind("dvSkip", ()=>{ if(!P) return; T += 300; });
@@ -2052,7 +2099,7 @@ for(const [id,k] of [["sndBtn","sound"],["mtnBtn","motion"]])
   });
 paintOpts();
 function togglePause(v){
-  if(v) faceCamera();
+  if(v){ faceCamera(); hopFreeze(); } else hopThaw();
   if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
   document.getElementById("paused").classList.toggle("on", v);
@@ -2942,8 +2989,21 @@ function offers(){
   return out;
 }
 function faceCamera(){ if(P) P.face = camYaw + Math.PI; }
+// A level-up is not a mistake. The chain is the one thing in this game that
+// punishes you for taking your hands off the keys, and a draft screen takes
+// your hands off the keys - so it stops being a thing that happens TO you
+// while you are reading four cards. Stash the chain on the way into any screen
+// that steals input, and hand it back with a fresh landing window and a much
+// longer grace on the way out, so re-entering the rhythm is a jump rather than
+// a race. It also covers pause, which has the same problem for the same reason.
+function hopFreeze(){ if(P && P.hopHold === undefined) P.hopHold = P.hop; }
+function hopThaw(){
+  if(!P || P.hopHold === undefined) return;
+  P.hop = P.hopHold; P.hopHold = undefined;
+  P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE + .8;
+}
 function showPick(){
-  faceCamera();
+  faceCamera(); hopFreeze();
   picking = true;
   if(paused){ paused = false; document.getElementById("paused").classList.remove("on"); }
   document.exitPointerLock?.();
@@ -2971,7 +3031,7 @@ function take(o){
   pendingLevels--;
   hide("pick"); picking=false;
   if(pendingLevels > 0) setTimeout(showPick, 90);
-  else if(!over) lockPointer();
+  else { hopThaw(); if(!over) lockPointer(); }
 }
 function applyPassive(k){
   if(!PASSIVES[k]) return;
@@ -3393,16 +3453,20 @@ function openMenu(){
     <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
       save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
       save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
+    ${save.dev ? `<div class="devon">DEV MODE &mdash; EVERYTHING UNLOCKED</div>` : ""}
     <h2>YOUR MONSTERS</h2>
     <div class="row" id="chars"></div>
     <div class="hint" style="margin:-4px 0 10px">Every run banks its XP into the
       monster that ran it. Each monster level is +2% HP and +1.2% damage, for that
       monster only, forever.</div>
     <div class="devrow"><b>DEV</b>
+      <button class="btn gh dv ${save.dev?"on":""}" id="dvMode">DEV MODE: ${save.dev?"ON":"OFF"}</button>
       <button class="btn gh dv" id="dvAll">UNLOCK EVERYTHING</button>
       <button class="btn gh dv" id="dvWipe">WIPE SAVE</button>
-      <span style="font-size:9px;color:#5c6470">every monster, every upgrade, 99,999 coins,
-        all seven at monster LV ${MON_CAP}</span>
+      <span style="font-size:9px;color:#5c6470">${save.dev
+        ? `re-applied on every load &mdash; all seven monsters, every upgrade,
+           99,999 coins, monster LV ${MON_CAP}`
+        : "the unlock ladder is live"}</span>
     </div>
     <h2>PERMANENT UPGRADES &nbsp;—&nbsp; these carry across every run</h2>
     <div class="shop" id="shop"></div>
@@ -3441,6 +3505,8 @@ function openMenu(){
     if(!locked) el.onclick = ()=>{ audioInit(); startRun(c.id); };
     cr.appendChild(el);
   }
+  const dvM = document.getElementById("dvMode");
+  if(dvM) dvM.onclick = ()=>{ setDev(!save.dev); SFX.buy(); openMenu(); };
   const dvA = document.getElementById("dvAll");
   if(dvA) dvA.onclick = ()=>{ unlockAll(); SFX.buy(); openMenu(); };
   const dvW = document.getElementById("dvWipe");
@@ -4216,7 +4282,7 @@ window.__g = {
              enemies:enemies.length, boxes:drawnBoxes,
              simFpsCeiling:Math.round(1000/(sim/n)) };
   },
-  drainPicks: (suppress)=>{ pendingLevels=0; picking=false; hide("pick");
+  drainPicks: (suppress)=>{ pendingLevels=0; picking=false; hide("pick"); hopThaw();
                             if(suppress!==undefined) noLevels=!!suppress; },
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
@@ -4239,6 +4305,21 @@ window.__g = {
   hitMe: (raw)=>{ P.iframe = 0; const before = P.hp; playerHurt(raw);
                   return +(before - P.hp).toFixed(3); },
   unlockAll:()=>unlockAll(),
+  wipeAll:()=>{ wipeAll(); openMenu(); },
+  dev:   (on)=>setDev(on===undefined ? true : !!on),
+  isDev: ()=>!!save.dev,
+  // Every DEV control the UI offers, and whether it is wired to anything. The
+  // panel shipped with its two menu buttons calling functions that did not
+  // exist, because the patch that defined them aborted and I only re-ran the
+  // half that drew them - and 225 assertions passed, because none of them
+  // pressed a button.
+  devWiring:()=>{
+    const ids = ["dvMode","dvAll","dvWipe","dvLvl","dvEvo","dvSkip","dvGod"];
+    const out = {};
+    for(const id of ids){ const el = document.getElementById(id);
+      out[id] = { exists: !!el, wired: !!el && (!!el.onclick || !!el.__wired) }; }
+    return out;
+  },
   // Every species' declared body plan, and whether EBODY actually has it. A
   // typo in `body:"papper"` falls back to the generic silently, which is the
   // realistic way five hand-built bodies quietly become one again.

@@ -1865,6 +1865,92 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.dGreen.toFixed(1)} damage on THE GREEN -> ${r.dAsh.toFixed(1)} in THE ASHES`);
   }
 
+  console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
+  {
+    // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that
+    // did not exist - the patch defining them aborted on a later assertion and
+    // wrote nothing, and only the half that DREW them got re-run. 225 checks
+    // passed, because not one of them pressed a button.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeAll();
+      const menu = g.devWiring();
+      g.start("intern"); g.god(); g.drainPicks(true); g.pause(true);
+      await new Promise(res => requestAnimationFrame(() => res()));
+      const paused = g.devWiring();
+      g.pause(false);
+
+      // and the thing they are wired to has to do the thing
+      g.wipeAll();
+      const before = { chars: g.chars().filter(c => !g.saveState().unlocked[c]).length,
+                       coins: g.saveState().coins, mon: g.monLvl("ox") };
+      g.unlockAll();
+      const after  = { locked: Object.keys(g.saveState().unlocked).length,
+                       coins: g.saveState().coins, mon: g.monLvl("ox"),
+                       up: Object.values(g.saveState().up).reduce((a,b)=>a+b,0) };
+      const devOn = g.dev(true), wasOn = g.isDev();
+      g.wipeAll();
+      const afterWipe = { coins: g.saveState().coins, dev: g.isDev() };
+      return { menu, paused, before, after, devOn, wasOn, afterWipe };
+    });
+    const all = { ...r.menu, ...r.paused };
+    ok("every DEV control exists in the DOM",
+       ["dvMode","dvAll","dvWipe"].every(k => r.menu[k].exists) &&
+       ["dvLvl","dvEvo","dvSkip","dvGod"].every(k => r.paused[k].exists),
+       Object.entries(all).filter(([,v]) => !v.exists).map(([k]) => k).join(",") || "all 7");
+    ok("and every one of them is wired to a handler",
+       Object.values(all).every(v => !v.exists || v.wired),
+       Object.entries(all).filter(([,v]) => v.exists && !v.wired).map(([k]) => k).join(",") || "all wired");
+    ok("UNLOCK EVERYTHING unlocks everything",
+       r.after.locked >= 4 && r.after.coins >= 99999 && r.after.mon > 1 && r.after.up > 30,
+       `${r.after.locked} unlocks, ${r.after.coins} coins, monster LV ${r.after.mon}, ${r.after.up} shop ranks`);
+    ok("DEV MODE is a real switch", r.devOn === true && r.wasOn === true);
+    ok("and WIPE SAVE actually wipes",
+       r.afterWipe.coins === 0 && r.afterWipe.dev === false, JSON.stringify(r.afterWipe));
+  }
+
+  console.log("\n=== 24b. A LEVEL-UP DOES NOT COST YOU THE CHAIN ===");
+  {
+    // The chain punishes you for taking your hands off the keys, and a draft
+    // screen takes your hands off the keys. That is the game punishing you for
+    // playing it.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const key = c => { dispatchEvent(new KeyboardEvent("keydown", { code: c }));
+                         dispatchEvent(new KeyboardEvent("keyup",   { code: c })); };
+      const land = () => { let n = 0; while (g.hop().air && n++ < 400) g.step(1/60); };
+      dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+      g.place(0, 0);
+      for (let i = 0; i < 60; i++) g.step(1/60);
+      key("Space"); g.step(1/60);
+      for (let k = 0; k < 6; k++) { land(); key("Space"); g.step(1/60); g.place(0,0); }
+      const built = g.hop().n;
+
+      // pause is the same interruption with the same fix
+      g.pause(true);
+      const held = g.hop().n;
+      g.pause(false);
+      const afterPause = g.hop().n, winAfter = g.hop().win;
+
+      // and the real one: land, take a draft, come back and carry on
+      land();
+      g.pause(true); g.pause(false);      // stand-in for the pick screen's freeze/thaw
+      g.step(1/60);
+      key("Space"); g.step(1/60);
+      const resumed = g.hop().n;
+      dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+      return { built, held, afterPause, winAfter, resumed };
+    });
+    ok("a chain survives the screen that interrupted it",
+       r.afterPause === r.built && r.built >= 6, `${r.built} -> ${r.afterPause}`);
+    ok("and you come back with a landing window open",
+       r.winAfter > 0.1, `win=${r.winAfter}`);
+    ok("so the next jump continues the chain instead of restarting it",
+       r.resumed === r.built + 1, `${r.built} -> ${r.resumed}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
