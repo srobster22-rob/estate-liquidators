@@ -1951,6 +1951,53 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.resumed === r.built + 1, `${r.built} -> ${r.resumed}`);
   }
 
+  console.log("\n=== 21c. EVOLVING IS WHERE ABILITIES COME FROM ===");
+  {
+    // The headline claim of the creature rework, and nothing in the suite
+    // pressed it. The dev panel shipped calling functions that did not exist
+    // for exactly this reason: 225 assertions, none of which touched the thing.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const out = {};
+      for (const id of g.chars()) {
+        g.wipeSave(); g.start(id); g.god();
+        g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+        const mv = g.moveOf(id);
+        const before = g.kitRaw();
+        g.evolveTo(1);
+        const at1 = g.kitRaw()[mv.key];
+        g.evolveTo(2);
+        const at2 = g.kitRaw()[mv.key];
+        out[id] = { key: mv.key, nm: mv.nm, had: !!before[mv.key],
+                    hadL: before[mv.key] ? before[mv.key].l : null,
+                    at1, at2 };
+      }
+      // and if the draft already gave you that weapon, evolving RANKS it
+      // rather than handing you a second copy
+      g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.drainPicks(true);
+      const mvk = g.moveOf("ox").key;
+      g.give(mvk, 1);
+      const pre = g.kitRaw()[mvk].l;
+      g.evolveTo(1);
+      const post = g.kitRaw()[mvk];
+      const slots = Object.keys(g.kitRaw()).length;
+      return { out, dupe: { pre, post, slots } };
+    });
+    const ids = Object.keys(r.out);
+    ok("every line grants its move on the first evolution",
+       ids.every(id => r.out[id].at1 && r.out[id].at1.mv === r.out[id].nm),
+       ids.map(id => `${id}:${r.out[id].at1 ? r.out[id].at1.mv : "NONE"}`).join(" "));
+    ok("and the second evolution sharpens it",
+       ids.every(id => r.out[id].at2.l > r.out[id].at1.l),
+       ids.map(id => `${id} ${r.out[id].at1.l}->${r.out[id].at2.l}`).join("  "));
+    ok("no two lines learn the same move",
+       new Set(ids.map(id => r.out[id].nm)).size === ids.length,
+       `${new Set(ids.map(id => r.out[id].nm)).size} moves for ${ids.length} lines`);
+    ok("a move you already own is ranked up, not duplicated",
+       r.dupe.post.l > r.dupe.pre && r.dupe.post.mv,
+       `rank ${r.dupe.pre} -> ${r.dupe.post.l}, ${r.dupe.slots} kit slots`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

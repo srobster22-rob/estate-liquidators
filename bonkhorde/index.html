@@ -56,7 +56,8 @@
   #biome{position:absolute;top:12px;left:14px;margin-top:44px;font-size:10px;
     letter-spacing:.16em;color:#8e8878;text-shadow:0 1px 2px #000;max-width:220px}
   #biome b{display:block;color:#c9c2ae;font-size:11px;letter-spacing:.2em}
-  #biome span{font-size:9px;color:#5c6470;letter-spacing:.06em;line-height:1.5}
+  #biome span{font-size:9px;color:#5c6470;letter-spacing:.06em;line-height:1.5;
+    display:block;max-width:230px}
   #evo{position:absolute;top:31%;left:50%;transform:translate(-50%,-50%);
     text-align:center;opacity:0;pointer-events:none}
   #evo .en{font-size:34px;font-weight:900;letter-spacing:.12em;color:#8affd0;
@@ -631,24 +632,31 @@ function confine(x, z, pad){
 // are slower, or you are taking more, or the loot is coming to you.
 const BIOMES = [
   { id:"grass", nm:"THE GREEN",     ds:"nothing in particular",
+    story:"Grass, and nothing else. Everything starts here.",
     a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mod:{} },
   { id:"ash",   nm:"THE ASHES",     ds:"the ground is still warm  -  +12% damage taken",
+    story:"Something came through burning and nothing has grown back.",
     a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 } },
   // Murkier and more olive than it started. The original teal-green sat at
   // dE 7.7 from THE LIEN's elite tint under tritanopia - a blue enemy vanishing
   // into a blue-green floor - and the search found this inside the same hue
   // family at 15.2. It still reads as sludge; it just stopped being teal.
   { id:"bog",   nm:"THE SLUDGE",    ds:"it holds on to your feet  -  -14% move speed",
+    story:"The water has nowhere to go, so it stays and thickens.",
     a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mod:{ spd:0.86 } },
   { id:"ice",   nm:"THE GLASS",     ds:"nothing here has any grip  -  you slide",
+    story:"It froze mid-flood and never thought better of it.",
     a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 } },
   { id:"sand",  nm:"THE FLATS",     ds:"you can see what you dropped  -  +40% pickup radius",
+    story:"The wind took the topsoil a long time ago. Nothing hides here.",
     a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 } },
   { id:"bone",  nm:"THE MIDDEN",    ds:"more of them, and more to take  -  +22% XP",
+    story:"Generations of them died on this spot. It is very good ground.",
     a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 } },
   // Weathered rather than deep. The original brown was dE 7.1 from APPRAISER's
   // yellow under tritanopia; this clears at 14.2 and is still visibly rust.
-  { id:"rust",  nm:"THE SCRAPYARD", ds:"something here sharpens what you carry  -  +12% damage",
+  { id:"rust",  nm:"THE RUST BARRENS", ds:"something here sharpens what you carry  -  +12% damage",
+    story:"Iron in the soil. It gets into whatever you are carrying.",
     a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
@@ -731,6 +739,21 @@ const TERRAIN_A = [.38,.52,.31], TERRAIN_B = [.30,.43,.26];
 const TERRAIN_H = [.030,.038,.024];      // per-quad height term
 const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
 
+// Cheap deterministic value noise. Hash the lattice, smooth-interpolate. It has
+// to be a pure function of position or the ground would shimmer every time the
+// terrain is rebuilt, and it is rebuilt every run.
+function vhash(x, y){
+  let h = x*374761393 + y*668265263;
+  h = (h ^ (h >> 13)) * 1274126177;
+  return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+}
+function vnoise(x, y){
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+  return lerp(lerp(vhash(xi,yi),   vhash(xi+1,yi),   u),
+              lerp(vhash(xi,yi+1), vhash(xi+1,yi+1), u), v);
+}
 let terBuf, terCount = 0, terData = null, terChunks = [];
 // The whole map used to go up as one draw call, which was fine at 184m across
 // and is 41,000 triangles at 584m - all of it submitted every frame, nearly all
@@ -754,11 +777,36 @@ function makeTerrain(){
       const x0=-ARENA+ci*CS+i*S, z0=-ARENA+cj*CS+j*S, x1=x0+S, z1=z0+S;
       const P=[[x0,groundY(x0,z0),z0],[x1,groundY(x1,z0),z0],
                [x1,groundY(x1,z1),z1],[x0,groundY(x0,z1),z1]];
-      // checkerboard reads as speed - a flat plane makes you feel motionless
-      const chk = (ci*TER_Q+i + cj*TER_Q+j)&1;
+      // A CHECKERBOARD is two colours in a grid, and a grid is the one pattern
+      // nature never makes - it read as a chessboard because it was one. The
+      // structure still has to be there, though: a flat untextured plane makes
+      // you feel motionless, which is why the checker existed in the first
+      // place. So it is two octaves of value noise instead - broad patches you
+      // can see yourself crossing, plus per-quad grain - and both stay strictly
+      // BETWEEN the region's two tones, so the contrast harness still brackets
+      // every colour that reaches the screen without needing to know about any
+      // of this.
+      const gi2 = ci*TER_Q+i, gj2 = cj*TER_Q+j;
+      // Weighted toward the GRAIN, and the grain is pushed through a contrast
+      // curve. Smooth low-frequency noise looks like ground and gives you no
+      // sense of speed at all - which is the exact problem the checkerboard was
+      // solving. High-frequency variation between adjacent quads is what your
+      // eye reads as motion; it just must not be a grid while it does it.
+      // SMOOTH noise between two close tones is a flat plane with extra steps -
+      // adjacent quads come out nearly identical and you feel motionless again,
+      // which is the exact failure the checkerboard was built to avoid. What
+      // your eye reads as speed is high-frequency contrast between neighbours;
+      // the checkerboard just delivered it on a grid. So: a per-quad hash,
+      // quantised to three tones and biased by a broad patch field. Irregular,
+      // so it is not a chessboard - discrete and high-frequency, so it moves.
+      const patch = vnoise(gi2*.13, gj2*.13);          // broad, ~8 quads across
+      const step  = Math.floor(clamp(patch*.45 + vhash(gi2, gj2)*.55, 0, .999) * 3);
+      const mix   = step / 2;
       const h   = (P[0][1]+P[2][1])/4 + .5;
       const bm  = biomeAt(x0+S*.5, z0+S*.5);
-      const base = chk ? bm.a : bm.b;
+      const base = [lerp(bm.b[0], bm.a[0], mix),
+                    lerp(bm.b[1], bm.a[1], mix),
+                    lerp(bm.b[2], bm.a[2], mix)];
       const c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
       // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
       for(const [a,b,d] of [[0,2,1],[0,3,2]]){
@@ -959,14 +1007,14 @@ caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
 };
 
 const PASSIVES = {
-spinach: { name:"SPINACH",   ic:"spinach", kind:"p", max:5, ds:"+13% damage." },
-boots:   { name:"BOOTS",     ic:"boots", kind:"p", max:5, ds:"+9% move speed, +6% damage. Momentum." },
-tempo:   { name:"METRONOME", ic:"tempo", kind:"p", max:5, ds:"-8% weapon cooldowns." },
-magnet:  { name:"MAGNET",    ic:"magnet", kind:"p", max:5, ds:"+35% pickup radius, and it drags the horde into a pile." },
-plating: { name:"PLATING",   ic:"plating", kind:"p", max:5, ds:"-1.6 flat and -5% damage taken, and being hit blasts them off you." },
-heart:   { name:"BIG HEART", ic:"heart",    kind:"p", max:5, ds:"+22 max HP, +5% damage. Pumps harder." },
+spinach: { name:"SPINACH",   ic:"spinach", kind:"p", max:3, ds:"+13% damage." },
+boots:   { name:"BOOTS",     ic:"boots", kind:"p", max:3, ds:"+9% move speed, +6% damage. Momentum." },
+tempo:   { name:"METRONOME", ic:"tempo", kind:"p", max:3, ds:"-8% weapon cooldowns." },
+magnet:  { name:"MAGNET",    ic:"magnet", kind:"p", max:3, ds:"+35% pickup radius, and it drags the horde into a pile." },
+plating: { name:"PLATING",   ic:"plating", kind:"p", max:3, ds:"-1.6 flat and -5% damage taken, and being hit blasts them off you." },
+heart:   { name:"BIG HEART", ic:"heart",    kind:"p", max:3, ds:"+22 max HP, +5% damage. Pumps harder." },
 dupe:    { name:"DUPLICATOR",ic:"dupe", kind:"p", max:3, ds:"+1 shot for BOLT, SKULLS, MORTAR, ZAP. Copies hit for 55%." },
-clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:5, ds:"+7% crit. Crits hit for 2.3x." },
+clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:3, ds:"+7% crit. Crits hit for 2.3x." },
 };
 
 // ================================================================ THE STORY
@@ -1245,124 +1293,127 @@ function eey(e, face, r, f, y, sp, sz, pup, lit){
 }
 const EBODY = {
 
-// ARREARS - an overdue notice that learned to walk. A paper wraith: the sheet
-// is the cloak, the seal is the face, and it drags rather than steps.
+// GRUBBER - a fat soft larva that has never hurried anywhere.
 paper(e, face, W, H, c, glow, lod, y0){
-  const sway = Math.sin(T*3 + e.bob)*.09;
+  const wob = Math.sin(T*4 + e.bob);
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, sway*.4, y0 + H*.54, W*1.10, H*.48, W*.10, c, glow);
-  B(e, face, 0, sway*.5, y0 + H*.94, W*.42, H*.16, W*.14, c, glow, face + sway*.4);
-  eb(e, face, 0, W*.11, y0 + H*.96, W*.26, W*.26, .05, [.86,.14,.12], .55);
-  eb(e, face, 0, W*.14, y0 + H*.96, W*.13, W*.13, .05, [.30,.05,.05], 0);
+  const n = lod>=2 ? 4 : lod>=1 ? 3 : 2;
+  for(let i=0;i<n;i++){ const k = 1 - i*.12;
+    B(e, face, wob*.05*i, W*.34 - i*W*.40, y0 + H*.34*k,
+      W*.46*k, H*.32*k, W*.42*k, i%2 ? c : [c[0]*.86, c[1]*.86, c[2]*.90], glow); }
   if(lod < 1) return;
-  for(const sg of [-1,1])
-    etp(e, face, sg*W*.92, sway*sg, y0 + H*.62, sg*.03,.02,-.12, 3, W*.16,H*.10,W*.05, c, glow);
-  for(let i=0;i<4;i++)
-    eb(e, face, -W*.72 + i*W*.48, W*.09, y0 + H*.16 + (i%2)*H*.07,
-       W*.20, H*.13, W*.05, c, glow, face + (i%2?.3:-.3));
+  eey(e, face, 0, W*.62, y0 + H*.44, W*.17, W*.085, [.12,.16,.20]);
+  eb(e, face, 0, W*.66, y0 + H*.24, W*.16, H*.05, W*.06, [.30,.34,.38], .05);
   if(lod < 2) return;
-  for(let i=0;i<4;i++) eb(e, face, -W*.5 + i*W*.34, W*.12, y0 + H*.74 - i*H*.06,
-                          W*.26, H*.012, .04, [.34,.34,.38], .05);
+  for(const sg of [-1,1])                                    // mandibles
+    eb(e, face, sg*W*.20, W*.72, y0 + H*.26, W*.05, H*.06, W*.10, [.90,.88,.80], .12,
+       face + sg*.4);
+  for(let i=0;i<3;i++) for(const sg of [-1,1])                // stubby prolegs
+    eb(e, face, sg*W*.38, W*.16 - i*W*.34,
+       y0 + H*.08 + Math.max(0, Math.sin(T*8 + i*1.4 + (sg>0?0:3)))*H*.05,
+       W*.08, H*.07, W*.08, [c[0]*.7,c[1]*.7,c[2]*.75], 0);
 },
 
-// BAILIFF - long coat, taller hat, one lit eye and a clipboard he is already
-// filling in. Gets there first.
+// FLITTER - a small bird in a permanent hurry.
 bailiff(e, face, W, H, c, glow, lod, y0){
-  const st = Math.sin(T*11 + e.bob);
+  const flap = Math.sin(T*17 + e.bob), hop = Math.abs(Math.sin(T*7 + e.bob))*H*.10;
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, 0, y0 + H*.56, W*.46, H*.32, W*.34, c, glow);
-  eb(e, face, 0, 0, y0 + H*.28, W*.52, H*.16, W*.38, c, glow, face + st*.06);
-  B(e, face, 0, .02, y0 + H*.90, W*.30, H*.13, W*.26, [.13,.13,.17], .04);
-  eb(e, face, 0, 0, y0 + H*1.12, W*.26, H*.05, W*.24, [.10,.10,.13], .06);
-  eb(e, face, 0, 0, y0 + H*1.30, W*.19, H*.16, W*.17, [.10,.10,.13], .06);
+  B(e, face, 0, 0, y0 + H*.40 + hop, W*.66, H*.20, W*.58, c, glow);   // round body
+  B(e, face, 0, W*.40, y0 + H*.58 + hop, W*.40, H*.15, W*.36, c, glow); // head
+  etp(e, face, 0, W*.68, y0 + H*.56 + hop, 0,.07,-.01, 3, W*.14,H*.06,W*.12, [1,.72,.16], .25);
   if(lod < 1) return;
-  for(const sg of [-1,1])
-    etp(e, face, sg*W*.22, st*sg*W*.34, y0 + H*.20, 0,.02,-.08, 3, W*.10,H*.13,W*.10, [.12,.12,.16], 0);
-  eb(e, face, -W*.09, W*.24, y0 + H*.92, W*.10, H*.055, .04, [1,.42,.30], .95);
+  eey(e, face, 0, W*.58, y0 + H*.66 + hop, W*.22, W*.09, [.10,.10,.14]);
+  for(const sg of [-1,1])                                     // wings
+    for(let k=0;k<3;k++)
+      etp(e, face, sg*(W*.62+k*W*.30), flap*W*.16 - k*W*.05, y0 + H*.42 + hop + k*H*.03,
+          sg*.06,-.03,.01, 2, W*.26-k*W*.05, H*.035, W*.30-k*W*.06,
+          k%2 ? [c[0]*1.3+.08,c[1]*1.3+.08,c[2]*1.35+.10] : c, glow+.05);
   if(lod < 2) return;
-  for(const sg of [-1,1])
-    etp(e, face, sg*W*.42, W*.10, y0 + H*.66, sg*.02,.03,-.10, 3, W*.09,H*.10,W*.09, c, glow);
-  eb(e, face, W*.16, W*.44, y0 + H*.58, W*.30, H*.20, .04, [.94,.92,.86], .12, face + .35);
-  for(let i=0;i<3;i++)
-    eb(e, face, W*.16, W*.46, y0 + H*.66 - i*H*.05, W*.18, H*.014, .03, [.34,.34,.38], .05, face + .35);
+  for(const sg of [-1,1])                                     // legs
+    etp(e, face, sg*W*.18, 0, y0 + H*.20 + hop*.4, 0,0,-.07, 3, W*.07,H*.07,W*.07,
+        [1,.72,.16], .15);
+  for(let i=0;i<3;i++)                                        // tail
+    eb(e, face, (i-1)*W*.18, -W*.62, y0 + H*.40 + hop, W*.14, H*.035, W*.28,
+       [c[0]*1.2,c[1]*1.2,c[2]*1.25], glow, face + (i-1)*.22);
+  eb(e, face, 0, W*.32, y0 + H*.76 + hop, W*.07, H*.07, W*.07, [1,.72,.16], .25);
 },
 
-// THE LIEN - a charge against the property, walking. It was a cube with a door
-// on it, which is exactly what a cube renderer should never be asked to draw.
-// Now it is a hunched thing WEARING the strongbox: safe-door chest with a dial
-// for a heart, padlock fists on the ends of heavy arms, chains over the
-// shoulders, and a small mean head sunk between them.
+// TUSKLING - a boar. Heavy at the front, and it does not turn quickly.
 safe(e, face, W, H, c, glow, lod, y0){
-  const lum = Math.sin(T*9 + e.bob)*.5 + .5;
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, -W*.06, y0 + H*.54, W*.60, H*.30, W*.46, c, glow);          // barrel chest
-  B(e, face, 0, -W*.10, y0 + H*.22, W*.50, H*.16, W*.40, c, glow);          // hips
-  eb(e, face, 0, W*.40, y0 + H*.54, W*.44, H*.26, W*.07, [.74,.75,.82], .12); // the door
-  eb(e, face, 0, W*.47, y0 + H*.56, W*.15, W*.15, .05, [.30,.32,.40], .18);   // the dial
-  eb(e, face, 0, W*.50, y0 + H*.56, W*.07, W*.07, .05, [1,.86,.34], .35+lum*.5);
-  B(e, face, 0, W*.02, y0 + H*.86, W*.24, H*.13, W*.22, [.16,.17,.22], .05);  // sunken head
-  eey(e, face, 0, W*.22, y0 + H*.90, W*.11, W*.075, [.20,.30,.55], .25);
+  const st = Math.sin(T*7 + e.bob);
+  B(e, face, 0, -W*.10, y0 + H*.52, W*.52, H*.28, W*.54, c, glow);   // haunches
+  B(e, face, 0, W*.26, y0 + H*.56, W*.58, H*.32, W*.40, c, glow);    // shoulders
+  B(e, face, 0, W*.62, y0 + H*.44, W*.36, H*.24, W*.30, c, glow);    // head
+  eb(e, face, 0, W*.86, y0 + H*.38, W*.24, H*.14, W*.14,
+     [c[0]*1.3+.08,c[1]*1.3+.08,c[2]*1.3+.08], glow);                // snout
   if(lod < 1) return;
-  for(const sg of [-1,1]){                                                    // heavy arms
-    const sw = Math.sin(T*4 + (sg>0?0:1.7))*.10;
-    etp(e, face, sg*W*.62, sw*W*.3, y0 + H*.62, sg*.02,.03,-.13, 3, W*.17,H*.13,W*.17, c, glow);
-    eb(e, face, sg*W*.70, sw*W*.4, y0 + H*.22, W*.19, H*.15, W*.17, [.72,.73,.80], .10);
-    eb(e, face, sg*W*.70, sw*W*.4 + W*.16, y0 + H*.24, W*.08, H*.09, W*.05, [.30,.32,.40], .12);
-  }
+  eey(e, face, 0, W*.72, y0 + H*.60, W*.24, W*.075, [.90,.36,.20], .25);
+  for(const sg of [-1,1])                                            // tusks
+    etp(e, face, sg*W*.22, W*.90, y0 + H*.36, sg*.02,.03,.05, 3, W*.07,H*.05,W*.07,
+        [.94,.92,.84], .18);
   for(const sg of [-1,1]) for(const fs of [-1,1])
-    eb(e, face, sg*W*.34, fs*W*.24, y0 + H*.08, W*.15, H*.09, W*.15, [.12,.12,.16], 0);
+    eb(e, face, sg*W*.34, W*.20 + fs*W*.34, y0 + H*.14 + Math.max(0, st*sg*fs)*H*.06,
+       W*.13, H*.14, W*.13, [c[0]*.55,c[1]*.55,c[2]*.6], 0);
   if(lod < 2) return;
-  for(let i=0;i<6;i++){                                                       // draped chain
-    const a = -W*.52 + i*W*.21, dp = Math.sin(i/5*Math.PI)*H*.10;
-    eb(e, face, a, -W*.30, y0 + H*.80 - dp, W*.07, H*.05, W*.07, [.55,.56,.62], .10); }
-  for(let i=0;i<4;i++) eb(e, face, -W*.30 + i*W*.20, W*.44, y0 + H*.78,
-                          W*.06, H*.03, .04, [.55,.56,.62], .10);
+  for(let i=0;i<6;i++)                                               // bristled spine
+    etp(e, face, 0, W*.34 - i*W*.20, y0 + H*.84, 0,0,.05, 2, W*.05,H*.09,W*.05,
+        [.86,.88,.94], .12);
+  for(const sg of [-1,1])                                            // ears
+    eb(e, face, sg*W*.26, W*.54, y0 + H*.74, W*.09, H*.09, W*.05,
+       [c[0]*.6,c[1]*.6,c[2]*.66], 0, face + sg*.5);
+  eb(e, face, 0, -W*.44, y0 + H*.56, W*.05, H*.05, W*.14,
+     [c[0]*.6,c[1]*.6,c[2]*.66], 0, face + st*.4);
 },
 
-// APPRAISER - stooped over a brass loupe, valuing you from across the room.
+// SPITTOAD - squat, wide, and it inflates before it does anything.
 appraiser(e, face, W, H, c, glow, lod, y0){
-  const lean = Math.sin(T*2.2 + e.bob)*.05;
+  const puff = (Math.sin(T*2.4 + e.bob)*.5 + .5);
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, lean, y0 + H*.40, W*.50, H*.30, W*.42, c, glow);
-  etp(e, face, 0, W*.14, y0 + H*.66, 0,.05,.07, 3, W*.16,H*.09,W*.16, c, glow);   // stooped neck
-  B(e, face, 0, W*.30, y0 + H*.88, W*.23, H*.14, W*.21, c, glow);
-  eb(e, face, W*.12, W*.50, y0 + H*.90, W*.14, W*.14, .05, [.86,.72,.30], .35);   // brass ring
-  eb(e, face, W*.12, W*.54, y0 + H*.90, W*.09, W*.09, .04, [.80,.94,1], .80);     // the lens
+  B(e, face, 0, 0, y0 + H*.34, W*.62, H*.28, W*.54, c, glow);
+  eb(e, face, 0, W*.20, y0 + H*.14, W*.50, H*.10, W*.36,
+     [c[0]*1.2+.06,c[1]*1.2+.06,c[2]*.9], glow);                     // pale belly
+  eb(e, face, 0, W*.44, y0 + H*.30, W*.40, H*.09, W*.14, [.12,.10,.06], 0);  // the mouth
   if(lod < 1) return;
-  eb(e, face, -W*.13, W*.46, y0 + H*.88, W*.09, W*.07, .04, [1,1,1], .85);
-  eb(e, face, -W*.13, W*.49, y0 + H*.88, W*.045, W*.05, .04, [.10,.12,.16], 0);
-  etp(e, face, W*.12, W*.44, y0 + H*.78, .01,.01,-.07, 3, W*.04,H*.05,W*.04, [.86,.72,.30], .2);
+  for(const sg of [-1,1])                                            // eyes ON TOP
+    eey(e, face, sg*W*.001, W*.22, y0 + H*.64, W*.26, W*.11, [.14,.10,.04], .1);
+  eb(e, face, 0, W*.34, y0 + H*.18, W*.24*(1+puff*.5), H*.14*(1+puff*.6), W*.16,
+     [c[0]*1.15,c[1]*1.05,c[2]*.7], glow+puff*.25);                  // throat sac
   if(lod < 2) return;
-  for(const sg of [-1,1])
-    etp(e, face, sg*W*.40, W*.10, y0 + H*.44, sg*.02,.03,-.10, 3, W*.08,H*.10,W*.08, [.24,.22,.15], 0);
-  eb(e, face, -W*.44, -W*.16, y0 + H*.32, W*.22, H*.18, W*.13, [.38,.29,.18], .05);
-  eb(e, face, -W*.30, -W*.04, y0 + H*.52, W*.05, H*.14, W*.05, [.38,.29,.18], .05, face+.5);
-  for(const sg of [-1,1])
-    etp(e, face, sg*W*.22, 0, y0 + H*.14, 0,0,-.06, 2, W*.11,H*.10,W*.11, [.24,.22,.15], 0);
+  for(const sg of [-1,1]){                                           // splayed legs
+    etp(e, face, sg*W*.50, -W*.16, y0 + H*.20, sg*.04,-.03,-.05, 3, W*.11,H*.08,W*.11,
+        [c[0]*.72,c[1]*.72,c[2]*.6], 0);
+    etp(e, face, sg*W*.44, W*.30, y0 + H*.16, sg*.04,.03,-.04, 3, W*.09,H*.07,W*.09,
+        [c[0]*.72,c[1]*.72,c[2]*.6], 0); }
+  for(let i=0;i<5;i++){ const a=i*1.257;                             // warts
+    eb(e, face, Math.sin(a)*W*.34, Math.cos(a)*W*.28 - W*.06, y0 + H*.60,
+       W*.07, H*.05, W*.07, [c[0]*.66,c[1]*.7,c[2]*.5], 0); }
 },
 
-// SILVERFISH - it eats paper, it breeds in filing cabinets, and there are more
-// of them than of anything else. Bristled, tapering, and far too fast.
+// RATLING - low, quick, and never once alone.
 fish(e, face, W, H, c, glow, lod, y0){
-  const wig = Math.sin(T*14 + e.bob);
-  const n = lod >= 2 ? 5 : lod >= 1 ? 3 : 2;
-  for(let i=0;i<n;i++){
-    const k = 1 - i*.15;
-    eb(e, face, wig*.11*i, W*.46 - i*W*.36, y0 + H*.32*k,
-       W*.40*k, H*.26*k, W*.32*k, i%2 ? c : [c[0]*1.35+.06, c[1]*1.35+.06, c[2]*1.4+.10], glow+.05);
-  }
+  const scut = Math.sin(T*16 + e.bob);
+  const B = lod>=2 ? ebl : eb;
+  B(e, face, 0, -W*.08, y0 + H*.36, W*.40, H*.26, W*.46, c, glow);
+  B(e, face, 0, W*.42, y0 + H*.38, W*.28, H*.20, W*.24, c, glow);
+  etp(e, face, 0, W*.62, y0 + H*.32, 0,.05,-.01, 3, W*.11,H*.08,W*.10,
+      [c[0]*1.5+.10,c[1]*1.4+.08,c[2]*1.4+.08], glow+.06);            // snout
   if(lod < 1) return;
-  for(const sg of [-1,1])
-    etp(e, face, sg*W*.18, W*.62, y0 + H*.48, sg*.03,.04,.02, 3, W*.05,H*.05,W*.16, [.68,.70,.80], .30);
-  eey(e, face, 0, W*.56, y0 + H*.40, W*.16, W*.07, [.90,.30,.24], .5);
+  eey(e, face, 0, W*.56, y0 + H*.46, W*.15, W*.07, [.92,.30,.24], .45);
+  for(const sg of [-1,1])                                             // big round ears
+    eb(e, face, sg*W*.24, W*.34, y0 + H*.60, W*.12, H*.11, W*.05,
+       [c[0]*1.6+.12,c[1]*1.4+.10,c[2]*1.4+.10], glow+.06, face + sg*.35);
+  for(let k=0;k<4;k++)                                                // the tail
+    eb(e, face, Math.sin(T*9 + k*.8)*W*.16*(k+1), -W*.34 - k*W*.22, y0 + H*.24,
+       W*.05-k*.006, H*.05-k*.006, W*.12, [c[0]*1.5+.14,c[1]*1.3+.10,c[2]*1.3+.10], .08);
   if(lod < 2) return;
-  for(let i=0;i<4;i++) for(const sg of [-1,1])
-    eb(e, face, sg*W*.38, W*.30 - i*W*.28,
-       y0 + H*.08 + Math.max(0, Math.sin(T*16 + i*2 + (sg>0?0:3)))*H*.09,
-       W*.05, H*.09, W*.05, [.55,.57,.66], .10, face + sg*.5);
-  for(let i=0;i<3;i++)
-    etp(e, face, 0, -W*.72 - i*W*.10, y0 + H*.24, 0,-.05,.01, 2, W*.05,H*.04,W*.05,
-        [.68,.70,.80], .25);
+  for(let i=0;i<2;i++) for(const sg of [-1,1])
+    etp(e, face, sg*W*.34, W*.24 - i*W*.42,
+        y0 + H*.10 + Math.max(0, scut*(i?1:-1)*sg)*H*.07, 0,0,-.05, 2,
+        W*.06,H*.08,W*.06, [c[0]*.7,c[1]*.7,c[2]*.75], 0);
+  for(const sg of [-1,1]) for(let i=0;i<3;i++)                        // whiskers
+    eb(e, face, sg*W*.16, W*.70, y0 + H*.40 + (i-1)*H*.05, W*.14, H*.008, .02,
+       [.80,.78,.74], .10, face + sg*.9);
 },
 
 // THE HEIRLOOM - the one thing in the house actually worth keeping, and the
@@ -2393,8 +2444,25 @@ function damageArea(x, z, r, base, kb, srcName){
 // character built out of speed and pickup radius - both of which stop mattering
 // by minute fifteen - was fighting the deciding phase with nothing that helps.
 // Damage and cooldown are deliberately untouched: this buys distance, not power.
+// THREE RANKS, not five. Five upgrades per weapon meant a twenty-minute run
+// spent most of its level-ups nudging something you already had, and the draft
+// stopped being a decision somewhere around the fourth identical card.
+//
+// The ranks are REMAPPED rather than truncated: rank 1/2/3 read lv[0], lv[2],
+// lv[4], so a maxed weapon is exactly as strong as it always was and the whole
+// dps bench still applies. Capping at lv[2] instead would have quietly nerfed
+// every weapon in the game by two ranks and called it a UI change.
+const WMAX = 3;
+const RANKMAP = [0, 2, 4];
+// Passives get the same treatment and the same guarantee. Their effects are all
+// written as (rank x coefficient), so three ranks would silently be a two-rank
+// nerf across the whole passive roster. prank() returns the EFFECTIVE rank -
+// 1.67, 3.33, 5 - so rank 3 of 3 is worth exactly what rank 5 of 5 was, and
+// every number in the passive bench still means what it said.
+const PSCALE = 5 / WMAX;
+const prank = w => w ? (w.l + 1) * PSCALE : 0;
 function wStat(w){
-  const W = WEAPONS[w.key], s = W.lv[w.evo ? 5 : w.l];
+  const W = WEAPONS[w.key], s = W.lv[w.evo ? 5 : RANKMAP[Math.min(w.l, WMAX-1)]];
   if(!P || P.reach === 1) return s;                 // nobody else pays for a copy
   const o = Object.assign({}, s);
   for(const k of ["rad","rng"]) if(o[k]) o[k] *= P.reach;
@@ -2834,7 +2902,7 @@ function updateHazards(dt){
 
 function updateEnemies(dt){
   // precomputed once per frame rather than per enemy
-  const magPull = P.kit.magnet ? 0.50*(P.kit.magnet.l+1) : 0;
+  const magPull = 0.50*prank(P.kit.magnet);
   const magR    = P.mag * 1.6;
   for(let i=enemies.length-1;i>=0;i--){
     const e = enemies[i];
@@ -2934,8 +3002,8 @@ function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
 
 function playerHurt(raw){
   let d = raw * P.tough * (biomeAt(P.x,P.z).mod.tough || 1);
-  d = Math.max(1, d - P.armor - (P.kit.plating ? (P.kit.plating.l+1)*1.6 : 0));
-  if(P.kit.plating) d *= (1 - (P.kit.plating.l+1)*.05);
+  d = Math.max(1, d - P.armor - prank(P.kit.plating)*1.6);
+  if(P.kit.plating) d *= (1 - prank(P.kit.plating)*.05);
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
   // Taking a hit knocks the chain out of you. Without this the hop is a pure
   // gift - you go faster and nothing about the fight asks anything back - and
@@ -3101,7 +3169,7 @@ function offers(){
   // 1. evolutions first, and they are never crowded out
   for(const k in have){
     const w = have[k], W = WEAPONS[k];
-    if(!W || w.evo || w.l < 4) continue;
+    if(!W || w.evo || w.l < WMAX-1) continue;
     const need = have[W.evo.need];
     if(need && need.l >= 2)
       out.push({ type:"evo", key:k, ic:W.evo.ic, nm:W.evo.name, lv:"EVOLUTION",
@@ -3112,7 +3180,7 @@ function offers(){
   const pCount = Object.keys(have).filter(k=>PASSIVES[k]).length;
   for(const k in WEAPONS){
     const w = have[k];
-    if(w){ if(w.evo || w.l>=4) continue;
+    if(w){ if(w.evo || w.l >= WMAX-1) continue;
       pool.push({ type:"up", key:k, ic:WEAPONS[k].ic, nm:WEAPONS[k].name,
                   lv:"LV "+(w.l+2), ds:WEAPONS[k].ds, weight:10 }); }
     else if(wCount < 6)
@@ -3205,9 +3273,9 @@ function applyPassive(k){
 // recompute from base each time so ranks never compound into nonsense
 function recalcDmg(){
   return (1 + rank("dmg")*.06)
-       * (1 + (P.kit.spinach ? (P.kit.spinach.l+1)*.13 : 0))
-       * (1 + (P.kit.boots   ? (P.kit.boots.l+1)*.08  : 0))   // momentum
-       * (1 + (P.kit.heart   ? (P.kit.heart.l+1)*.05  : 0)); }
+       * (1 + prank(P.kit.spinach)*.13)
+       * (1 + prank(P.kit.boots)*.08)                       // momentum
+       * (1 + prank(P.kit.heart)*.05); }
 // Altar boons multiply in HERE rather than being written onto P, because every
 // one of these recomputes its stat from scratch the next time you take a
 // passive - a boon assigned directly to P.cd survives exactly until your next
@@ -3219,13 +3287,13 @@ let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1 };
 let monMul = { spd:1, cd:1, mag:1 };
 function recalcSpd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
   return 6.6*(m.spd||1)*(1+rank("spd")*.04) * boonMul.spd * monMul.spd
-       * (1 + (P.kit.boots ? (P.kit.boots.l+1)*.09 : 0)); }
+       * (1 + prank(P.kit.boots)*.09); }
 function recalcCd(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
   return Math.max(.58, 1*(m.cd||1)*(1-rank("cd")*.035) * boonMul.cd * monMul.cd
-                     * Math.pow(.92, P.kit.tempo ? P.kit.tempo.l+1 : 0)); }
+                     * Math.pow(.92, prank(P.kit.tempo))); }
 function recalcMag(){ const ch=CHARS.find(c=>c.id===charId)||CHARS[0]; const m=ch.mods||{};
   return 4.2*(m.mag||1)*(1+rank("mag")*.18) * boonMul.mag * monMul.mag
-       * (1 + (P.kit.magnet ? (P.kit.magnet.l+1)*.35 : 0)); }
+       * (1 + prank(P.kit.magnet)*.35); }
 function applyBoons(){ P.spd = recalcSpd(); P.cd = recalcCd(); P.mag = recalcMag(); }
 
 // ---------------------------------------------------------------- EVOLUTION
@@ -3238,7 +3306,7 @@ function evolveTo(i){
   if(!P || i === stage) return false;
   const from = (line[stage]||{}).mods||{}, to = (line[i]||{}).mods||{};
   const r = k => (to[k]||1)/(from[k]||1);
-  const wasNm = stageNm();
+  const wasNm = stageNm(), stageFrom = stage;
   stage = i;
   monMul.spd *= r("spd"); monMul.cd *= r("cd"); monMul.mag *= r("mag");
   const hpR = r("hp"), before = P.maxhp;
@@ -3254,12 +3322,27 @@ function evolveTo(i){
   P.regen *= r("regen");
   P.armor += (to.armorFlat||0) - (from.armorFlat||0);
   applyBoons();
+  // THE MOVE. The first evolution hands it to you, the second sharpens it. If
+  // the draft already gave you the same weapon it ranks up instead, which is
+  // the right answer either way - your line's move is a thing you are better at.
+  const mv = curMon().move;
+  let learned = null;
+  if(mv && i > stageFrom){
+    const have = P.kit[mv.key];
+    if(!have){ P.kit[mv.key] = { key:mv.key, l: i>=2 ? 2 : 1, t:0, evo:false, mvNm:mv.nm };
+               learned = mv.nm; }
+    else { have.mvNm = mv.nm;
+           if(!have.evo && have.l < WMAX-1){ have.l = Math.min(WMAX-1, have.l + (i>=2 ? 2 : 1));
+                                             learned = mv.nm + " SHARPENED"; } }
+    applyPassive(mv.key);
+  }
   const d = line[i] || {};
   // One banner, not two. This used to also fire alert2(), which draws its own
   // line in the same third of the screen - so the biggest moment in the run
   // arrived as two overlapping pieces of text saying the same thing.
   evoT = 3.4; evoNm = d.nm || "";
-  evoSub = d.sig ? `${d.sig} - ${d.sigDs}` : `${wasNm} EVOLVED`;
+  evoSub = learned ? `LEARNED ${learned}`
+         : d.sig  ? `${d.sig} - ${d.sigDs}` : `${wasNm} EVOLVED`;
   shake = Math.max(shake, 1.1*shakeMul()); flash = Math.max(flash, .5*flashMul());
   SFX.evolve();
   for(let k=0;k<3;k++)
@@ -3397,7 +3480,7 @@ function step(dt){
   // The ground you are standing on. One rule each, applied here so it is felt
   // through the controls rather than read off a tooltip.
   const bm = biomeAt(P.x, P.z), bmod = bm.mod;
-  if(bm !== lastBiome){ lastBiome = bm; biomeT = 3.0;
+  if(bm !== lastBiome){ lastBiome = bm; biomeT = 4.6;
                         if(running && !over) alert2(bm.nm, "#c9c2ae"); }
   const ACCEL = 62, BRAKE = 46;
   const hm = hopMul() * (bmod.spd || 1);
@@ -4141,7 +4224,7 @@ function render(){
     const sw = P.kit.skulls;
     if(sw){
       const s = wStat(sw);
-      const n = s.n + (P.kit.dupe ? P.kit.dupe.l+1 : 0);
+      const n = s.n + Math.round(prank(P.kit.dupe));
       for(let i=0;i<n;i++){
         const ring = sw.evo && i>=n/2;
         const a = (sw.phase||0)*(ring?-1:1) + i*(TAU/(sw.evo?n/2:n));
@@ -4308,7 +4391,7 @@ function hud(){
   for(const k in P.kit){
     const w = P.kit[k], W = WEAPONS[k], Pa = PASSIVES[k];
     const D = W||Pa, ic = (W&&w.evo) ? W.evo.ic : D.ic;
-    const maxL = W ? 5 : Pa.max;
+    const maxL = W ? WMAX : Pa.max;
     const cls = w.evo ? "ev" : (w.l+1>=maxL ? "mx" : "");
     const shown = w.mvNm && !w.evo ? w.mvNm : (W&&w.evo) ? W.evo.name : D.name;
     html += `<div class="slot ${Pa?"p":""} ${cls} ${w.mvNm?"mv":""}" title="${shown}">${
@@ -4342,7 +4425,10 @@ function hud(){
 
   const bm = biomeAt(P.x, P.z), bel = $("biome");
   bel.firstElementChild.textContent = bm.nm;
-  bel.lastElementChild.textContent  = biomeT > 0 ? bm.ds : "";
+  // On the way in you get what the place IS; after a couple of seconds it
+  // settles back to what it DOES, which is the half you need mid-fight.
+  bel.lastElementChild.textContent =
+    biomeT > 1.4 ? (bm.story || bm.ds) : biomeT > 0 ? bm.ds : "";
   if(biomeT > 0) biomeT -= dt;
 
   const wr = $("warn");
@@ -4467,6 +4553,9 @@ window.__g = {
                 regen:+P.regen.toFixed(3), armor:+P.armor.toFixed(2),
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
+  kitRaw:()=>{ const out={}; for(const k in P.kit){ const w=P.kit[k];
+                 out[k]={ l:w.l, evo:!!w.evo, mv:w.mvNm||null }; } return out; },
+  moveOf:(id)=>{ const c=CHARS.find(x=>x.id===(id||charId)); return c && c.move; },
   freezeEvo:(v=true)=>{ noEvo = v; },
   // Deal one exact hit and report what it actually cost, iframes bypassed.
   hitMe: (raw)=>{ P.iframe = 0; const before = P.hp; playerHurt(raw);
