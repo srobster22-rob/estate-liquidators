@@ -148,6 +148,16 @@ None of it is required. You can run past every den in the arena and finish the t
 the drive is the boon, not a gate. All five states are asserted, because each one is a place this
 could quietly do nothing.
 
+**And you can see where you are.** Twenty-five dens across 222,000 square metres with no map is
+a lottery rather than an arena: the dormant ember only draws inside 120 m, and the woken column
+only exists once you are already in the fight. There is a minimap now — the whole arena in a
+148-pixel disc, regions tinted, dens as amber / orange / green dots for asleep / awake / taken,
+side events and any live boss on it, and your heading at the centre. The regions never move once
+a world is rolled, so the background is **baked once per run** into an offscreen canvas and
+blitted; sampling seven Voronoi cells per pixel per frame would cost more than the horde does.
+Asserted both ways — that the bake happens and rebakes for a new arena, and that it actually
+reaches the screen rather than only memory.
+
 **A boon can be taken once, ever.** The altar had always fallen back to re-rolling the whole
 list once the pool was dry, which is survivable at one altar a run and is an unbounded multiplier
 at twenty-five dens — HEAVY HANDS is ×1.15 *compounding*, so a run that took every den and rolled

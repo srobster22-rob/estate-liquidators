@@ -412,3 +412,15 @@ weapon evolutions per run as a column because that is the number the slot cut wa
 clears (3/42), a maxed shop makes the ending reachable (13/42). **Next:** THE OX has medianed at
 the bottom across most sweeps this session and its price is −14% speed on a map where space made
 speed free; `starters.js` already ruled out the weapon. The untested lever is pickup radius.
+
+**R9 — you can see where you are.** Dens were unfindable: the dormant ember only draws inside
+120m and the woken column only exists once you are already in the fight, so twenty-five of them
+across 222,000 m² was a lottery, not an explorable arena. Added a minimap — the whole arena in a
+148px disc, regions tinted, dens as amber/orange/green for asleep/awake/taken, side events and
+any live boss, heading arrow at the centre. The regions never move once a world is rolled so the
+background is baked once per run into an offscreen canvas and blitted; sampling seven Voronoi
+cells per pixel per frame would cost more than the horde does. Section 22g asserts the bake, the
+rebake on a new arena, that it is a map rather than one flat colour (10 tones), and that it
+reaches the screen (134 tones in the corner it occupies) rather than only memory. 271 checks
+pass. **Next:** the minimap makes a compass unnecessary but nothing yet tells you *why* to go to
+a den — the boon is invisible until it drops. Worth showing what a den pays on approach.

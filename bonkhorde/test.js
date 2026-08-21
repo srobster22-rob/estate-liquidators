@@ -1957,6 +1957,55 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22g. YOU CAN SEE WHERE YOU ARE ===");
+  {
+    // Twenty-five dens across 222,000 square metres with no map is a lottery,
+    // not an explorable arena: the dormant ember only draws inside 120m and the
+    // woken column only exists once you are already in the fight. The regions
+    // never move once a world is rolled, so the background is baked once per run
+    // rather than sampling seven Voronoi cells per pixel per frame.
+    const m = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.place(0, 0);
+      await frame(); await frame();
+      const baked = g.map();
+      // the map has to be REBUILT for a new world, not carried over
+      const h0 = g.terHash();
+      g.start("ox");
+      await frame(); await frame();
+      return { baked, h0, h1: g.terHash(), rebaked: g.map() };
+    });
+    ok("the run bakes a map of its own arena",
+       m.baked && m.baked.px > 100 && m.baked.painted.opaque > 12000,
+       m.baked ? `${m.baked.px}px, ${m.baked.painted.opaque} painted pixels` : "no map");
+    ok("and it is a map, not one flat colour",
+       m.baked && m.baked.painted.tones >= 6,
+       m.baked ? `${m.baked.painted.tones} distinct tones` : "no map");
+    ok("a new arena rebakes it",
+       m.h0 !== m.h1 && m.rebaked && m.rebaked.painted.opaque > 12000,
+       `terrain ${m.h0} -> ${m.h1}, ${m.rebaked ? m.rebaked.painted.opaque : 0} painted`);
+
+    // and it actually reaches the screen
+    const shot = await page.screenshot();
+    const seen = await page.evaluate(async b64 => {
+      const img = new Image();
+      await new Promise(r => { img.onload = r; img.src = "data:image/png;base64," + b64; });
+      const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+      const x2 = c.getContext("2d"); x2.drawImage(img, 0, 0);
+      // bottom-right corner, where the map lives
+      const w = c.width, h = c.height;
+      const d = x2.getImageData(w - 190, h - 190, 180, 180).data;
+      const tones = new Set();
+      for (let i = 0; i < d.length; i += 4)
+        tones.add(((d[i] >> 4) << 8) | ((d[i+1] >> 4) << 4) | (d[i+2] >> 4));
+      return tones.size;
+    }, shot.toString("base64"));
+    ok("and it is drawn on the screen, not just in memory",
+       seen >= 10, `${seen} distinct tones in the corner it occupies`);
+  }
+
   console.log("\n=== 22f. THE LANDMARKS HAVE SOMETHING IN THEM ===");
   {
     // Landmarks were scenery that side events happened to prefer as spawn

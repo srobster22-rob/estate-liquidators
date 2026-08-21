@@ -696,6 +696,70 @@ const BLEND = 9;                    // metres over which two regions cross-fade
 
 // The spawn region is ALWAYS the neutral one. A run that opens with you stuck
 // in the sludge is a run whose first ten seconds lie about how the game moves.
+// ------------------------------------------------------------- THE MINIMAP
+// Twenty-five dens across 222,000 square metres is not an explorable map, it is
+// a lottery: the landmark ember only draws inside 120m and the woken column
+// only exists once you are already in the fight. You cannot decide to go
+// somewhere you cannot see.
+//
+// The regions never move once a world is rolled, so the background is baked
+// ONCE into an offscreen canvas and blitted - sampling seven Voronoi cells per
+// pixel per frame would cost more than the horde does. Only the dots are live.
+const MAP_PX = 148;
+let mapBg = null;
+function bakeMap(){
+  const c = document.createElement("canvas");
+  c.width = c.height = MAP_PX;
+  const x2 = c.getContext("2d"), img = x2.createImageData(MAP_PX, MAP_PX);
+  const half = MAP_PX/2, scale = RIM/half;
+  for(let py=0; py<MAP_PX; py++) for(let px=0; px<MAP_PX; px++){
+    const i = (py*MAP_PX + px)*4;
+    const wx = (px - half)*scale, wz = (py - half)*scale;
+    if(Math.hypot(wx, wz) > RIM){ img.data[i+3] = 0; continue; }
+    const bm = biomeAt(wx, wz), t = (Math.floor(px/3)+Math.floor(py/3)) % 2 ? .58 : .42;
+    img.data[i]   = Math.round((bm.a[0]*t + bm.b[0]*(1-t))*255);
+    img.data[i+1] = Math.round((bm.a[1]*t + bm.b[1]*(1-t))*255);
+    img.data[i+2] = Math.round((bm.a[2]*t + bm.b[2]*(1-t))*255);
+    img.data[i+3] = 205;
+  }
+  x2.putImageData(img, 0, 0);
+  mapBg = c;
+}
+function drawMap(w, h){
+  if(!mapBg || !P) return;
+  const half = MAP_PX/2, k = half/RIM;
+  const ox = w - MAP_PX - 18, oy = h - MAP_PX - 18;
+  const cx = ox + half, cy = oy + half;
+  g2.save();
+  g2.globalAlpha = 1;
+  g2.beginPath(); g2.arc(cx, cy, half, 0, TAU); g2.clip();
+  g2.drawImage(mapBg, ox, oy);
+  const at = (x, z) => [cx + x*k, cy + z*k];
+  const dot = (x, z, r, col) => { const [a,b2] = at(x,z);
+    g2.fillStyle = col; g2.beginPath(); g2.arc(a, b2, r, 0, TAU); g2.fill(); };
+  for(const m of marks){
+    if(!m.den){ dot(m.x, m.z, 1.2, "rgba(255,255,255,.28)"); continue; }
+    if(m.cleared)   dot(m.x, m.z, 2.4, "#5ad48a");
+    else if(m.woke){ dot(m.x, m.z, 4.2, "rgba(255,120,50,.35)");
+                     dot(m.x, m.z, 2.6, "#ff8a3c"); }
+    else            dot(m.x, m.z, 2.4, "#f0b429");
+  }
+  for(const e of events) dot(e.x, e.z, 3.0, e.kind === "cache" ? "#ffd24a" : "#c0a6ff");
+  for(const e of enemies) if(e.boss && !e.dead) dot(e.x, e.z, 4.4, "#ff5c4d");
+  const [pxm, pzm] = at(P.x, P.z);
+  g2.fillStyle = "#fff";
+  g2.beginPath();
+  g2.moveTo(pxm + Math.sin(P.face)*6, pzm + Math.cos(P.face)*6);
+  g2.lineTo(pxm + Math.sin(P.face+2.5)*4.4, pzm + Math.cos(P.face+2.5)*4.4);
+  g2.lineTo(pxm + Math.sin(P.face-2.5)*4.4, pzm + Math.cos(P.face-2.5)*4.4);
+  g2.closePath(); g2.fill();
+  g2.restore();
+  g2.strokeStyle = "rgba(0,0,0,.55)"; g2.lineWidth = 3;
+  g2.beginPath(); g2.arc(cx, cy, half, 0, TAU); g2.stroke();
+  g2.strokeStyle = "rgba(242,236,224,.32)"; g2.lineWidth = 1.5;
+  g2.beginPath(); g2.arc(cx, cy, half, 0, TAU); g2.stroke();
+}
+
 function rollWorld(){
   worldSeed = (Math.random()*1e9)|0;
   const pool = BIOMES.filter(b => b.id !== "grass").sort(()=>Math.random()-.5);
@@ -2281,7 +2345,7 @@ function startRun(id){
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
-  rollWorld(); makeTerrain(); uploadTerrain();
+  rollWorld(); makeTerrain(); uploadTerrain(); bakeMap();
   P.y = groundY(0,0); lastBiome = biomeAt(0,0);
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
@@ -4733,6 +4797,7 @@ function render(){
     g2.fill();
   }
   g2.globalAlpha = 1;
+  if(running && !over) drawMap(w, h);
   if(P && P.hp/P.maxhp < .35 && running){
     const p = 1 - P.hp/P.maxhp;
     const gr = g2.createRadialGradient(w/2,h/2,Math.min(w,h)*.30, w/2,h/2,Math.max(w,h)*.62);
@@ -5018,6 +5083,12 @@ window.__g = {
   jump:  ()=>jumpPressed(),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
+  map:   ()=>mapBg ? { px:mapBg.width, painted:(()=>{
+           const x2 = mapBg.getContext("2d"), d = x2.getImageData(0,0,MAP_PX,MAP_PX).data;
+           let n = 0, tones = new Set();
+           for(let i=0;i<d.length;i+=4) if(d[i+3] > 0){ n++;
+             tones.add(((d[i]>>4)<<8) | ((d[i+1]>>4)<<4) | (d[i+2]>>4)); }
+           return { opaque:n, tones:tones.size }; })() } : null,
   // Read or set the difficulty curve. No argument reads it, which is what the
   // suite uses to assert the shipped values did not drift during a sweep.
   curve: (q, d, l, x)=>{ if(q!==undefined) HP_QUAD = q;
