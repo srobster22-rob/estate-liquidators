@@ -468,3 +468,12 @@ single capture can land on a frame the compositor has not painted; best-of-five 
 counter so a flat corner with a stuck counter reads as the different failure it is. 284 checks
 pass. **Next:** re-run the difficulty question this session gave up on — with paired seeds it is
 answerable, and `HP_LIN`/`DMG_DIV`/`XP_NEED` are already wired.
+
+**R12b — the band is gone.** Ran the same build twice on paired seeds: the two tables are
+**byte-identical**, row for row, including every median, level and kill count. TOTAL 2/42 early,
+0/42 clears, both times. An instrument that read 7/42 and 15/42 on identical code four hours ago
+now has *zero* variance, which means any difference between a candidate and this control is
+entirely the candidate. Every difficulty question this session gave up on is answerable now.
+Sweeping `XP_NEED` at 1.4 / 1.8 / 2.2 against this control. **Next:** pick the value off an exact
+comparison, ship it, and rewrite the README's "what the bench cannot resolve" paragraph — it is
+no longer true.
