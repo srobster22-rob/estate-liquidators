@@ -45,6 +45,11 @@ const NOEVO  = !!process.env.BONKHORDE_NOEVO;
 // bench, so a sweep is three env vars rather than three edits. Printed in the
 // header of every table, because a balance number with no curve attached to it
 // is a number you cannot reproduce.
+// BONKHORDE_SEED pins the arena for every trial. Region layout and den placement
+// are variance the bench does not want and cannot currently subtract: a
+// candidate measured on 42 different arenas against a control measured on 42
+// other arenas is comparing two things that differ in more than the candidate.
+const SEED   = process.env.BONKHORDE_SEED ? +process.env.BONKHORDE_SEED : null;
 const CURVE  = process.env.BONKHORDE_CURVE
              ? process.env.BONKHORDE_CURVE.split(",").map(Number) : null;
 // Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
@@ -64,9 +69,10 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve]) => {
+  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed]) => {
     window.__g.wipeSave();
     if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3]);
+    if (seed !== null) window.__g.pin(seed);
     if (shopped) window.__g.setUpgrades(
       { hp:6, dmg:6, spd:5, mag:5, cd:5, crit:5, armor:5, start:3, rev:2 });
     window.__g.start(ch);
@@ -78,7 +84,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
              evos: window.__g.kit().filter(k => k.includes("EVO")).length };
-  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, SEED]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {
@@ -86,6 +92,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
     if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]}`);
+    if (SEED !== null) console.log(`arena pinned to seed ${SEED}`);
     console.log("=".repeat(66));
     // The median is the WRONG headline for this game and it has now cost a whole
     // round of work. Run lengths here are bimodal - a run either falls apart in

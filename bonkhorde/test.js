@@ -1957,6 +1957,42 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22h. THE ARENA CAN BE REPLAYED ===");
+  {
+    // worldSeed was recorded from the first day and could never be replayed,
+    // because generation called Math.random() directly - a label on a run nobody
+    // could re-enter. The point is not seed-sharing: every balance trial rolled
+    // a fresh arena, so region layout and den placement were variance baked into
+    // a bench whose noise band has already cost this project two rounds.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const snap = () => ({ ter: g.terHash(),
+                            biomes: g.biomes().map(b => `${b.id}@${b.x},${b.z}`).join("|"),
+                            dens: g.dens().map(d => `${d.k}${d.x},${d.z}:${d.n}:${d.boon}`).join("|") });
+      g.wipeSave();
+      g.pin(1234567); g.start("intern"); const a = snap();
+      g.start("ox");                       const b = snap();
+      g.pin(7654321); g.start("intern");   const c = snap();
+      g.pin(1234567); g.start("intern");   const d = snap();
+      g.pin(null);   g.start("intern");    const e1 = snap();
+      g.start("intern");                   const e2 = snap();
+      return { a, b, c, d, e1, e2, seed: g.world().seed };
+    });
+    ok("the same seed builds the same ground",
+       r.a.ter === r.b.ter && r.a.ter === r.d.ter,
+       `${r.a.ter} / ${r.b.ter} / ${r.d.ter}`);
+    ok("and the same regions in the same places",
+       r.a.biomes === r.d.biomes && r.a.biomes.length > 20,
+       `${r.a.biomes.split("|").length} regions, identical: ${r.a.biomes === r.d.biomes}`);
+    ok("and the same dens holding the same boons",
+       r.a.dens === r.d.dens && r.a.dens.length > 40,
+       `${r.a.dens.split("|").length} dens, identical: ${r.a.dens === r.d.dens}`);
+    ok("a different seed builds a different arena",
+       r.c.ter !== r.a.ter && r.c.dens !== r.a.dens, `${r.a.ter} vs ${r.c.ter}`);
+    ok("and unpinned still rolls a fresh one every run",
+       r.e1.ter !== r.e2.ter, `${r.e1.ter} vs ${r.e2.ter}`);
+  }
+
   console.log("\n=== 22g. YOU CAN SEE WHERE YOU ARE ===");
   {
     // Twenty-five dens across 222,000 square metres with no map is a lottery,

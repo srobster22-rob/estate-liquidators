@@ -437,3 +437,15 @@ sets `noSpawn`, which `wakeDen` refuses to wake into. 274 checks pass. **Next:**
 still not reproducible — `rollWorld` uses `Math.random()` directly, so `worldSeed` is recorded
 but cannot be replayed. A seeded world would let the bench pin an arena and would make "this run
 was unfair" checkable.
+
+**R11 — the arena can be replayed.** `worldSeed` was recorded from day one and could never be
+replayed, because generation called `Math.random()` directly — a label on a run nobody could
+re-enter. It is a real seed now (mulberry32, one stream, every roll that shapes a world), with
+`__g.pin(seed)` and `BONKHORDE_SEED` to fix the arena for a whole bench. The point is not
+seed-sharing: every trial used to roll a fresh arena, so region layout and den placement were
+variance baked into a bench whose noise band has already cost this project two rounds of work —
+a candidate on 42 arenas against a control on 42 *other* arenas differs in more than the
+candidate. Section 22h asserts same seed → same ground, same regions, same dens holding the same
+boons; different seed → different arena; unpinned → still fresh every run. 279 checks pass.
+**Next:** measure whether pinning actually shrinks the band — same build, same seed, twice —
+because if it does, every difficulty question this session gave up on becomes answerable.
