@@ -477,3 +477,16 @@ entirely the candidate. Every difficulty question this session gave up on is ans
 Sweeping `XP_NEED` at 1.4 / 1.8 / 2.2 against this control. **Next:** pick the value off an exact
 comparison, ship it, and rewrite the README's "what the bench cannot resolve" paragraph — it is
 no longer true.
+
+**R13 — the exact answer: player power was never the lever.** With zero-variance paired seeds,
+`XP_NEED` swept against the control on the same 42 worlds: 1.0 → 2/42 early, 1.4 → 0/42, 1.8 →
+3/42, 2.2 → 3/42. Doubling what a level costs — which ends the run 20+ levels lower — moves early
+deaths by *one run in forty-two*. That is not noise any more, it is a measurement, and it says
+the first ten minutes are unloseable for a reason that has nothing to do with how strong the
+player is. Left `XP_NEED` at 1. The thing that had been sitting in plain sight the whole time:
+`dmgScale` is flat ×1 until **t=300** — five full minutes where contact damage never grows — and
+every sweep this session went at the *slope* past that point rather than at the grace itself.
+`DMG_FROM` is a lever now; sweeping 0 with the shipped slope and with a steeper one. **Next:**
+whatever that says, write the finding into the README's balance section and stop chasing the
+curve — the shape (survive twenty, lose to TERRAVORE, veteran clears ~a third) is defensible and
+the instrument is what this session actually needed to build.

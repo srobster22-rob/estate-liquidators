@@ -77,7 +77,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed]) => {
     window.__g.wipeSave();
-    if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3]);
+    if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3], curve[4]);
     window.__g.pin(seed);          // null unpins, which is what SEED_BASE=0 gives
     window.__g.pinRun(seed);
     if (shopped) window.__g.setUpgrades(
@@ -98,7 +98,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     console.log(`\n${"=".repeat(66)}`);
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
-    if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]}`);
+    if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]} dmgFrom=${CURVE[4]}`);
     console.log(SEED_BASE ? `paired seeds ${SEED_BASE}..${SEED_BASE + TRIALS - 1}`
                           : `unpaired - fresh world every trial`);
     console.log("=".repeat(66));

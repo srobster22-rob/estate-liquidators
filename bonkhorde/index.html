@@ -1342,7 +1342,13 @@ const RUN_LEN = 1200;                    // 20:00
 // bench, and forgetting which number produced which table.
 let HP_QUAD = 2.5, DMG_DIV = 560, HP_LIN = 340;
 const hpScale  = t => 1 + t/HP_LIN + Math.pow(Math.max(0, t-360)/420, 2) * HP_QUAD;
-const dmgScale = t => 1 + Math.max(0, t-300)/DMG_DIV;    // x1 to 5:00, x2.6 by 20:00
+// DMG_FROM is when contact damage starts to grow. It sat at 300 from the first
+// day and never got swept, because every sweep went at the SLOPE. Five minutes
+// of flat base damage is most of why a first run cannot lose the early game:
+// the exact bench says doubling what a level costs moves early deaths by one
+// run in forty-two, so it was never the player's power.
+let DMG_FROM = 300;
+const dmgScale = t => 1 + Math.max(0, t-DMG_FROM)/DMG_DIV;
 const MAXE = 420;
 
 const CHARS = [
@@ -5173,12 +5179,13 @@ window.__g = {
            return { opaque:n, tones:tones.size }; })() } : null,
   // Read or set the difficulty curve. No argument reads it, which is what the
   // suite uses to assert the shipped values did not drift during a sweep.
-  curve: (q, d, l, x)=>{ if(q!==undefined) HP_QUAD = q;
-                         if(d!==undefined) DMG_DIV = d;
-                         if(l!==undefined) HP_LIN  = l;
-                         if(x!==undefined) XP_NEED = x;
-                         return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV,
-                                  hpLin:HP_LIN, xpNeed:XP_NEED }; },
+  curve: (q, d, l, x, f)=>{ if(q!==undefined) HP_QUAD  = q;
+                            if(d!==undefined) DMG_DIV  = d;
+                            if(l!==undefined) HP_LIN   = l;
+                            if(x!==undefined) XP_NEED  = x;
+                            if(f!==undefined) DMG_FROM = f;
+                            return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV, hpLin:HP_LIN,
+                                     xpNeed:XP_NEED, dmgFrom:DMG_FROM }; },
   biomes:()=>BIOMES.map(b=>({id:b.id,nm:b.nm,a:b.a.slice(),b:b.b.slice(),mod:{...b.mod}})),
   chunks:()=>({ drawn:drawnChunks, total:terChunks.length, verts:terCount }),
   world: ()=>({ seed:worldSeed,
