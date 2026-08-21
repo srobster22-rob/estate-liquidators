@@ -1007,14 +1007,14 @@ caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
 };
 
 const PASSIVES = {
-spinach: { name:"SPINACH",   ic:"spinach", kind:"p", max:3, ds:"+13% damage." },
-boots:   { name:"BOOTS",     ic:"boots", kind:"p", max:3, ds:"+9% move speed, +6% damage. Momentum." },
-tempo:   { name:"METRONOME", ic:"tempo", kind:"p", max:3, ds:"-8% weapon cooldowns." },
-magnet:  { name:"MAGNET",    ic:"magnet", kind:"p", max:3, ds:"+35% pickup radius, and it drags the horde into a pile." },
-plating: { name:"PLATING",   ic:"plating", kind:"p", max:3, ds:"-1.6 flat and -5% damage taken, and being hit blasts them off you." },
-heart:   { name:"BIG HEART", ic:"heart",    kind:"p", max:3, ds:"+22 max HP, +5% damage. Pumps harder." },
-dupe:    { name:"DUPLICATOR",ic:"dupe", kind:"p", max:3, ds:"+1 shot for BOLT, SKULLS, MORTAR, ZAP. Copies hit for 55%." },
-clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:3, ds:"+7% crit. Crits hit for 2.3x." },
+spinach: { name:"SPINACH",   ic:"spinach", kind:"p", max:3, ds:"+22% damage." },
+boots:   { name:"BOOTS",     ic:"boots", kind:"p", max:3, ds:"+15% move speed, +10% damage. Momentum." },
+tempo:   { name:"METRONOME", ic:"tempo", kind:"p", max:3, ds:"-13% weapon cooldowns." },
+magnet:  { name:"MAGNET",    ic:"magnet", kind:"p", max:3, ds:"+58% pickup radius, and it drags the horde into a pile." },
+plating: { name:"PLATING",   ic:"plating", kind:"p", max:3, ds:"-2.7 flat and -8% damage taken, and being hit blasts them off you." },
+heart:   { name:"BIG HEART", ic:"heart",    kind:"p", max:3, ds:"+37 max HP, +8% damage. Pumps harder." },
+dupe:    { name:"DUPLICATOR",ic:"dupe", kind:"p", max:3, ds:"More shots for BOLT, SKULLS, MORTAR, ZAP - 1, 3, 5. Copies hit for 55%." },
+clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:3, ds:"+12% crit. Crits hit for 2.3x." },
 };
 
 // ================================================================ THE STORY
@@ -1185,7 +1185,14 @@ const eliteChance = t => Math.min(.20, (t - ELITE_FROM) / 3600);
 // the draft will not offer it to a kit that cannot use it at all.
 const DUPE_WEAPONS = ["bolt", "skulls", "mortar", "zap"];
 const DUPE_DMG = 0.55;
-const dupeN = () => P.kit.dupe ? P.kit.dupe.l + 1 : 0;
+// One source of truth for the copy count, and it reads the EFFECTIVE rank.
+// Two bugs lived in the gap: the raw index made DUPLICATOR max at +3 shots
+// after the remap instead of the +5 it is documented and benched at, and the
+// SKULLS renderer was already reading prank while the simulation read l+1 - so
+// at rank 3 you watched five skulls orbit and exactly three of them hit.
+// Floored, not rounded: floor(1.67, 3.33, 5) is 1, 3, 5, which keeps the first
+// rank worth one shot and the last worth five. Rounding would hand rank 1 two.
+const dupeN = () => P.kit.dupe ? Math.floor(prank(P.kit.dupe)) : 0;
 
 const RUN_LEN = 1200;                    // 20:00
 // Player power grows MULTIPLICATIVELY - evolutions roughly double a weapon, then
@@ -3196,7 +3203,12 @@ function playerHurt(raw){
     // iframe lets that land 1.4 times a second - about 430 free area DPS
     // nobody had counted. It is a punish, not a second weapon: retaliation is
     // the flavour, mitigation is the passive.
-    const r = P.kit.plating.l + 1;
+    // prank, not l+1. Every other PLATING term reads the EFFECTIVE rank, and
+    // this one read the raw index - which was the same number when there were
+    // five ranks and is 3 against 5 now, so the remap quietly cut the blast by
+    // 40% at max while the mitigation half kept its full value. A passive that
+    // is documented as rank-scaled has to scale by the same rank everywhere.
+    const r = prank(P.kit.plating);
     damageArea(P.x, P.z, 3.6 + r*0.35, 9*r*dmgScale(T), 13);
     rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:3.6+r*0.35, life:.3, mx:.3 });
   }
@@ -3440,9 +3452,15 @@ function applyPassive(k){
     case "boots":   P.spd   = recalcSpd(); P.dmg = recalcDmg(); break;
     case "tempo":   P.cd    = recalcCd();  break;
     case "magnet":  P.mag   = recalcMag(); break;
-    case "clover":  P.crit  = rank("crit")*.04 + (l+1)*.07; break;
-    case "heart":   P.maxhp += 22; P.hp = Math.min(P.maxhp, P.hp+22);
-                    P.regen += .30; P.dmg = recalcDmg(); break;
+    // Both of these were still counting RAW ranks after the remap, which is a
+    // silent 40% nerf: five ranks of +7% crit is +35%, three ranks of +7% is
+    // +21%, and the whole point of prank() is that rank 3 of 3 is worth rank 5
+    // of 5. CLOVER recomputes from the rank so it just reads prank; BIG HEART
+    // accumulates per pick, so its per-pick value is what has to scale.
+    case "clover":  P.crit  = rank("crit")*.04 + prank(P.kit.clover)*.07; break;
+    case "heart":   { const add = Math.round(22*PSCALE);
+                      P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp+add);
+                      P.regen += .30*PSCALE; P.dmg = recalcDmg(); } break;
     case "plating": break;                                // read directly in playerHurt
     case "dupe":    break;                                // read directly by weapons
   }
@@ -4408,7 +4426,7 @@ function render(){
     const sw = P.kit.skulls;
     if(sw){
       const s = wStat(sw);
-      const n = s.n + Math.round(prank(P.kit.dupe));
+      const n = s.n + dupeN();
       for(let i=0;i<n;i++){
         const ring = sw.evo && i>=n/2;
         const a = (sw.phase||0)*(ring?-1:1) + i*(TAU/(sw.evo?n/2:n));

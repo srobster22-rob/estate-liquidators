@@ -261,3 +261,23 @@ needle (intern still dying at 22–24 min). **Next:** two much larger candidates
 (9,300,220 and 20,220,150) — and the suspicion is the remap is only half of it: evolution now
 hands you a *whole extra weapon* at rank 1 and ranks it to 3, on top of every pick you already
 had, which is power the curve was never tuned against.
+
+**R3b — correction: I read medians off a bimodal distribution and called it a broken game.**
+Benching the pre-rework build (7a38c11 — the exact commit the README's "0/42, medians 4:29–10:57"
+table describes) at n=3 returned medians of 24:00 on four of seven lines. The baseline does not
+reproduce its own published table, because run length here is bimodal: a run either falls apart
+before five minutes or coasts to the twenty-minute wall, so at n=3–6 the median is whichever
+side got one extra sample. Clears — the statistic that actually defines the difficulty claim —
+are 0/21 at baseline and 1/36 now, i.e. unmoved. The player IS meaningfully stronger (average
+level 59→80, kills 10.5k→15k for intern) but the game was never "broken open"; my R3 note said
+it was and that was wrong. `balance.js` now prints `early` (runs dead before 10:00) and a TOTAL
+row, because counts over all trials move smoothly where the median does not. Sweeping also
+turned up four call sites the rank remap missed, all reading the RAW index where every
+neighbouring line reads `prank()`: PLATING's retaliation blast, CLOVER's crit, BIG HEART's
+per-pick HP and regen, and DUPLICATOR's copy count — each a silent 40% nerf against the "rank 3
+of 3 is worth rank 5 of 5" contract, and the DUPLICATOR one was visible: the SKULLS *renderer*
+already read `prank` while the simulation read `l+1`, so at rank 3 you watched five skulls orbit
+and three of them hit. All four fixed, and the eight passive descriptions now quote three-rank
+numbers instead of five-rank ones. **Next:** read the A/B at n=6 on `early`/`clears`, then
+decide whether the real problem is difficulty at all or the *variance* — "die at 5:00 or coast
+to 24:00" is a worse shape than either end of it.

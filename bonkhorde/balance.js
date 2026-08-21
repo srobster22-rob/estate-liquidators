@@ -87,20 +87,34 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
                         : "FIRST RUN  (no permanent upgrades)");
     if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]}`);
     console.log("=".repeat(66));
-    console.log("char     n   median    worst     best   lvl  kills   evos  clears");
+    // The median is the WRONG headline for this game and it has now cost a whole
+    // round of work. Run lengths here are bimodal - a run either falls apart in
+    // the first five minutes or coasts to the twenty-minute wall - so at n=3 or
+    // n=6 the median is whichever side got one more sample, and it swings from
+    // 05:08 to 24:00 on builds that are otherwise identical. `early` (share of
+    // runs dead before 10:00) and `clears` are counts over every trial, they
+    // move smoothly, and they are what the difficulty claim is actually about.
+    console.log("char     n   early  median    worst     best   lvl  kills   evos  clears");
+    let totEarly = 0, totClear = 0, totN = 0;
     for (const ch of CHARS) {
       const rs = [];
       for (let i = 0; i < TRIALS; i++) rs.push(await runOne(ch, shopped));
       const ts = rs.map(r => r.t).sort((a, b) => a - b);
       const med = ts[Math.floor(ts.length / 2)];
       const clears = rs.filter(r => r.won).length;   // NOT t>=1199 - sudden death runs past 20:00
+      const early  = rs.filter(r => r.t < 600).length;
       const avg = k => (rs.reduce((s, r) => s + r[k], 0) / rs.length);
+      totEarly += early; totClear += clears; totN += TRIALS;
       console.log(
         `${ch.padEnd(8)} ${String(TRIALS).padStart(2)}  ` +
+        `${`${early}/${TRIALS}`.padStart(5)}  ` +
         `${fmt(med).padStart(6)}   ${fmt(ts[0]).padStart(6)}   ${fmt(ts[ts.length-1]).padStart(6)}  ` +
         `${avg("lvl").toFixed(0).padStart(4)} ${avg("kills").toFixed(0).padStart(6)}  ` +
         `${avg("evos").toFixed(1).padStart(5)}  ${clears}/${TRIALS}`);
     }
+    console.log(`${"TOTAL".padEnd(8)} ${String(totN).padStart(2)}  ` +
+                `${`${totEarly}/${totN}`.padStart(5)}` +
+                `${"".padStart(40)}${totClear}/${totN}`);
   }
 
   if (TIER === "vet") { await b.close(); return; }
