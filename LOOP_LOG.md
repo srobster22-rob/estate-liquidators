@@ -402,3 +402,13 @@ telegraph it, but on a first run nobody knows what an ember means yet, and dying
 seconds for not knowing teaches nothing. Nothing wakes in the first 45 seconds now; asserted by
 standing on a den at T=0. 267 checks pass. **Next:** veteran bench in flight, then both tables
 into the README.
+
+**R8 — both tables published.** Veteran with dens: **13/42** clears, 0/42 early, evos 2.3–3.2 —
+against the same build measured twice at 7/42 and 15/42 an hour apart, which is the band this
+instrument actually has and the reason nothing is tuned to a decimal here. README's balance
+section now carries four rows: pre-remap, post-remap, post-slots-and-dens, and veteran, with
+weapon evolutions per run as a column because that is the number the slot cut was aimed at
+(4.5–4.8 → 2.2–3.3). The invariant that matters still holds: a first run essentially never
+clears (3/42), a maxed shop makes the ending reachable (13/42). **Next:** THE OX has medianed at
+the bottom across most sweeps this session and its price is −14% speed on a map where space made
+speed free; `starters.js` already ruled out the weapon. The untested lever is pickup radius.

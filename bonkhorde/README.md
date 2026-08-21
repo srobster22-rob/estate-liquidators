@@ -597,9 +597,11 @@ many clear. Current state against the pre-rework build, 42 trials a side, creatu
 so this reads the in-run evolution and nothing from the meta layer:
 
 ```
-                       dead <10:00   clears   avg lvl   avg kills   weapon evos
-before the rank remap     12/42       1/42     37-75     5.6k-14k     1.5-4.0
-after                      0/42       3/42     65-92     10k-16k      4.5-4.8
+                          dead <10:00   clears   avg lvl   weapon evos
+before the rank remap        12/42       1/42     37-75      1.5-4.0
+after                         0/42       3/42     65-92      4.5-4.8
+after slots + dens (now)      1/42       3/42     65-89      2.2-3.3
+VETERAN, now                  0/42      13/42     74-85      2.3-3.2
 ```
 
 Read that as one finding: **three ranks did not make the game clearable, it made the first ten
@@ -617,6 +619,17 @@ trials a cell, which is roughly four hours of bench per candidate. So the levers
 (`HP_QUAD`, `HP_LIN`, `DMG_DIV`, `XP_NEED`, reachable from `__g.curve()` and from
 `BONKHORDE_CURVE=q,d,l,x`) and shipped at their measured-neutral values, rather than shipping a
 number that cannot be defended.
+
+The third row is where it landed. Four carry slots and twenty-five dens went in together: the
+dens are a power source the curve was never tuned against, the slots take breadth away, and the
+counts came out where they were — 1/42 dead early, 3/42 clears — while **weapon evolutions per
+run fell from 4.5–4.8 to 2.2–3.3**, which is the whole point. Two runs of the same line stop
+being the same build. The veteran tier reaches the ending 13 times in 42, against the same build
+measured twice at 7/42 and 15/42 an hour apart, which is the band this instrument has and why
+nothing here is tuned to a decimal.
+
+The invariant still holds and is the only thing worth holding: **a first run essentially never
+clears, and a maxed shop makes the ending reachable.**
 
 The thing that *was* deterministic got fixed instead. Everything maxes at rank 3, so a full kit
 is about fifty picks while a long run reaches level 70–80 — which meant the back thirty
