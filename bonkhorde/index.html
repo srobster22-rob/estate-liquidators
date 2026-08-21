@@ -3046,13 +3046,24 @@ function denLost(m){
   if(!m.woke || m.cleared) return;
   if(--m.alive > 0) return;
   m.cleared = true; m.pack = []; denStats.cleared++;
-  const pool = BOONS.filter(x => !boons.includes(x.nm));
-  const b = pick(pool.length ? pool : BOONS);
-  boons.push(b.nm); b.fn();
   coinsRun += 40;
   for(let i=0;i<10;i++) pushGem(m.x + rnd(-4,4), m.z + rnd(-4,4), 8);
   rings.push({ x:m.x, z:m.z, y:groundY(m.x,m.z), r:0, max:m.k.r+6, life:.7, mx:.7 });
-  alert2(m.k.nm + " CLEARED - " + b.nm, "#ffd24a");
+  // ONE of each boon, ever. The altar could get away with `pick(pool.length ?
+  // pool : BOONS)` because an altar is rare; with twenty-five dens in the arena
+  // that fallback is an unbounded multiplier - HEAVY HANDS is x1.15 compounding,
+  // so a run that took every den and rolled badly would end at thirty-three
+  // times damage. Past the sixth den the reward is paid in coins, which land in
+  // the shop rather than in the run and cannot compound against the curve.
+  const pool = BOONS.filter(x => !boons.includes(x.nm));
+  if(pool.length){
+    const b = pick(pool);
+    boons.push(b.nm); b.fn();
+    alert2(m.k.nm + " CLEARED - " + b.nm, "#ffd24a");
+  } else {
+    coinsRun += 110;
+    alert2(m.k.nm + " CLEARED - 150 COINS", "#ffd24a");
+  }
   shake = Math.max(shake, .9); SFX.levelup();
 }
 // Leave and it goes quiet. Without this a woken den either follows you across
@@ -3150,10 +3161,18 @@ function updateEvents(dt){
       e.chg = clamp(e.chg + (near ? dt : -dt*.32), 0, d.hold);
       if(e.chg >= d.hold){
         events.splice(i,1);
-        const b = pick(BOONS.filter(x=>!boons.includes(x.nm)) .length
-                       ? BOONS.filter(x=>!boons.includes(x.nm)) : BOONS);
-        boons.push(b.nm); b.fn(); evStats.altars++;
-        alert2(b.nm + " - " + b.ds, "#a98cf5"); shake = Math.max(shake,.7); SFX.levelup();
+        // Same rule as a den: one of each, ever, then coins. A repeat boon is a
+        // multiplier that compounds against a difficulty curve tuned without it.
+        const pool = BOONS.filter(x=>!boons.includes(x.nm));
+        evStats.altars++;
+        if(pool.length){
+          const b = pick(pool); boons.push(b.nm); b.fn();
+          alert2(b.nm + " - " + b.ds, "#a98cf5");
+        } else {
+          coinsRun += 150;
+          alert2("ALTAR - 150 COINS", "#a98cf5");
+        }
+        shake = Math.max(shake,.7); SFX.levelup();
         continue;
       }
     }
@@ -4925,6 +4944,10 @@ window.__g = {
   denStats: ()=>Object.assign({}, denStats, { total:marks.filter(m=>m.den).length,
                                               marks:marks.length }),
   boons: ()=>boons.slice(),
+  // award one the way a den does, so a test can ask what happens on the fortieth
+  boon:  ()=>{ const pool = BOONS.filter(x=>!boons.includes(x.nm));
+               if(!pool.length){ coinsRun += 110; return null; }
+               const b = pick(pool); boons.push(b.nm); b.fn(); return b.nm; },
   slots: ()=>({ w:WSLOTS, p:PSLOTS,
                 carried: Object.keys(P.kit).filter(k=>WEAPONS[k] && !P.kit[k].fromEvo).length,
                 granted: Object.keys(P.kit).filter(k=>WEAPONS[k] && P.kit[k].fromEvo).length,

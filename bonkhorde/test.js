@@ -2002,6 +2002,25 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("clearing one pays a boon",
        r.done && r.done.cleared && r.boons.length > 0,
        r.done ? `cleared=${r.done.cleared}, boons: ${r.boons.join(", ") || "none"}` : "no den");
+
+    // One of each boon, ever. The altar's old fallback - re-roll from the whole
+    // list once the pool is dry - was survivable at one altar a run and is an
+    // unbounded multiplier at twenty-five dens: HEAVY HANDS is x1.15 compounding.
+    const cap = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true);
+      const dmg0 = g.state().dps;
+      for (let i = 0; i < 40; i++) g.boon();      // far more than the list holds
+      const b = g.boons();
+      return { n: b.length, uniq: new Set(b).size, dmg0, dmg1: g.state().dps };
+    });
+    ok("a boon can be taken once, however many dens you clear",
+       cap.n === cap.uniq && cap.n <= 8,
+       `${cap.n} boons, ${cap.uniq} distinct, after forty awards`);
+    ok("so run power cannot compound off them",
+       cap.dmg1 / cap.dmg0 < 1.6,
+       `damage x${(cap.dmg1 / cap.dmg0).toFixed(2)} with every boon in the game`);
   }
 
   console.log("\n=== 22e. BREADTH COSTS SLOTS ===");

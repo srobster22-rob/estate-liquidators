@@ -382,3 +382,12 @@ failed first time because `confine()` clamps a place() out past the rim straight
 retire radius. 264 checks pass. **Next:** re-bench with dens live — they are a power source the
 difficulty was never tuned against, exactly like side events were, and the README says so about
 those.
+
+**R7b — a boon can be taken once, ever.** Killed the den bench before it finished because it was
+about to measure a hole: the altar's reward path fell back to re-rolling the whole boon list once
+the pool was dry. Survivable at one altar a run; at twenty-five dens it is an unbounded
+multiplier, since HEAVY HANDS is ×1.15 *compounding* — a run that took every den and rolled badly
+would finish at thirty-three times damage against a curve tuned without any of it. Both paths now
+pay coins past the sixth boon, which land in the shop rather than in the run. Asserted at forty
+awards: six boons, six distinct, ×1.15 damage total. 266 checks pass. **Next:** now bench it —
+first-run and veteran, with dens live and four weapon slots, and read `early`/`clears`.

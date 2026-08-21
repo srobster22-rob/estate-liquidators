@@ -148,6 +148,13 @@ None of it is required. You can run past every den in the arena and finish the t
 the drive is the boon, not a gate. All five states are asserted, because each one is a place this
 could quietly do nothing.
 
+**A boon can be taken once, ever.** The altar had always fallen back to re-rolling the whole
+list once the pool was dry, which is survivable at one altar a run and is an unbounded multiplier
+at twenty-five dens — HEAVY HANDS is ×1.15 *compounding*, so a run that took every den and rolled
+badly would end at thirty-three times damage against a curve tuned without any of it. Past the
+sixth, a den pays 150 coins instead, which land in the shop rather than in the run and cannot
+compound. Asserted at forty awards: six boons, six distinct, ×1.15 damage total.
+
 ## How it's built
 
 **Rendering.** Hand-rolled WebGL. Everything dynamic is an axis-aligned box, and all of them
