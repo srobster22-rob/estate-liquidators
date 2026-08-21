@@ -2542,8 +2542,21 @@ function spawnEnemy(type, atX, atZ){
   const def = ENEMIES[type];
   let x=atX, z=atZ;
   if(x===undefined){
-    // spawn on a ring just past the far edge of the screen
-    const a = Math.random()*TAU, r = rnd(30, 38);
+    // Spawn on a ring just past the far edge of the screen - but NOT uniformly
+    // around it. On a 22,000 square-metre arena the wall did the work of making
+    // distance cost something; at 222,000 it never touches you, and a uniform
+    // ring means running in a straight line is free, because everything arrives
+    // behind you and despawns. The bench was unambiguous: THE INTERN's FIRST-run
+    // median went 5:13 -> 23:56 and a first run cleared for the first time ever.
+    // Two thirds of arrivals now come out of the arc you are heading INTO, so
+    // open ground stops being an exit and TURNING is what buys you room - which
+    // is the only kind of decision this game has.
+    const spd2 = Math.hypot(P.vx, P.vz);
+    let a;
+    if(spd2 > 1.5 && Math.random() < .66)
+      a = Math.atan2(P.vz, P.vx) + rnd(-1.05, 1.05);   // +/-60 degrees of heading
+    else a = Math.random()*TAU;
+    const r = rnd(30, 38);
     [x, z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
   }
   // ELITES. The late game is x14.5 HP by minute 20 with no visual change at
@@ -2862,7 +2875,10 @@ function updateEnemies(dt){
 
     // outrun it far enough and it gives up. Without this the alive-count is
     // cumulative spawns rather than spawn RATE, and minute 6 is a wall.
-    if(!e.boss && d > 70){ enemies.splice(i,1); continue; }
+    // 95, from 70. The cull is what lets you shed a tail by running, and on a
+    // map this size 70m is shed almost immediately. Far enough that outrunning
+    // one still works; close enough that it costs more than a straight line.
+    if(!e.boss && d > 95){ enemies.splice(i,1); continue; }
 
     [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
