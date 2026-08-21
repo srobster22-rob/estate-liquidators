@@ -1957,6 +1957,80 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22i. A TYPE IS SOMEWHERE YOU BELONG ===");
+  {
+    // Seven types and seven regions, and until now the type was a colour: two
+    // lines with the same stat mods played identically wherever you stood. Each
+    // type has one region it is at home in and one it is not, and both have to
+    // be felt through the fight rather than read off a card.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const cells = () => g.world().cells;
+      const at = (id) => { const c = cells().find(x => x.id === id); return c; };
+      const out = { lines: {} };
+      for (const ch of g.chars()) {
+        g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true);
+        const a = g.aff();
+        // roll until this creature's home AND weak regions are both on the map
+        let tries = 0;
+        while (tries++ < 300 && !(at(a.home) && at(a.weak))) { g.start(ch); g.drainPicks(true); }
+        const home = at(a.home), weak = at(a.weak);
+        if (!home || !weak) { out.lines[ch] = "no map"; continue; }
+        // Divide the region's own tough mod back out. THE ASHES is +12% on its
+        // own account, so a raw 40-vs-46 comparison between two regions is
+        // measuring the regions, not the affinity - which is how this first
+        // read GHOUL at 47/61 and called it a failure.
+        const hitAt = (c) => { g.place(c.x, c.z);
+                               return g.hitMe(40) / (g.biomeMod(c.x, c.z).tough || 1); };
+        out.lines[ch] = { type: a.type,
+                          dWeak: hitAt(weak), dHome: hitAt(home),
+                          affHome: (g.place(home.x, home.z), g.aff().now),
+                          affWeak: (g.place(weak.x, weak.z), g.aff().now) };
+      }
+      return out;
+    });
+    const rows = Object.entries(r.lines).filter(([, v]) => typeof v === "object");
+    ok("every line has a home and a weakness on the map",
+       rows.length === 7, `${rows.length} of 7 lines measured`);
+    ok("home ground reads as home for every one of them",
+       rows.every(([, v]) => v.affHome === 1 && v.affWeak === -1),
+       rows.map(([k, v]) => `${k}:${v.affHome}/${v.affWeak}`).join(" "));
+    ok("the wrong ground costs you, and home ground does not",
+       rows.every(([, v]) => Math.abs(v.dWeak / v.dHome - 1.15) < 0.02),
+       rows.map(([k, v]) => `${k} ${v.dHome.toFixed(1)}->${v.dWeak.toFixed(1)}`).join("  "));
+
+    // and the other half: home ground has to actually hit harder. Same boss,
+    // same weapons, same number of frames, two different pieces of ground.
+    const out = await page.evaluate(() => {
+      const g = window.__g;
+      const dmgOn = (id) => {
+        g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true);
+        let c = null, tries = 0;
+        while (tries++ < 300 && !c) { c = g.world().cells.find(x => x.id === id);
+                                      if (!c) { g.start("intern"); g.drainPicks(true); } }
+        if (!c) return null;
+        for (const w of ["bat", "zap", "aura"]) g.give(w, 3);
+        g.place(c.x, c.z); g.boss(0);
+        const b = g.bossAt();
+        g.place(b.x, b.z);                     // stand on it, in the region
+        const hp0 = g.bossAt().hp;
+        g.step(60 * 3, 1/60);
+        const b1 = g.bossAt();
+        return { here: g.aff().now, dealt: hp0 - (b1 ? b1.hp : 0) };
+      };
+      const home = dmgOn(g.chars() && "ash"), neutral = dmgOn("bone");
+      return { home, neutral };
+    });
+    ok("home ground hits harder",
+       out.home && out.neutral && out.home.here === 1 && out.neutral.here === 0 &&
+       out.home.dealt > out.neutral.dealt * 1.12,
+       out.home && out.neutral
+         ? `${out.neutral.dealt.toFixed(0)} damage on neutral ground -> ${out.home.dealt.toFixed(0)} at home`
+         : "region not on the map");
+  }
+
   console.log("\n=== 22h. THE ARENA CAN BE REPLAYED ===");
   {
     // worldSeed was recorded from the first day and could never be replayed,
@@ -2058,9 +2132,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // require that drawMap actually ran between them - a flat corner with the
     // counter stuck is a paused game, which is a different failure.
     const hits0 = await page.evaluate(() => window.__g.mapHits());
-    let seen = 0, shot = null;
+    let seen = 0, shot = null, over = "none";
     for (let i = 0; i < 5 && seen < 10; i++) {
-      await page.evaluate(() => { window.__g.resume(); });
+      // Clear anything that could be sitting on top of the corner, and record
+      // what it was. A flat corner told me nothing three times running; the
+      // overlay name is the difference between "no map" and "a modal".
+      over = await page.evaluate(() => {
+        window.__g.drainPicks(true); window.__g.resume();
+        const up = ["pick", "end", "paused", "menu"]
+          .filter(id => { const el = document.getElementById(id);
+                          return el && getComputedStyle(el).display !== "none"
+                                    && getComputedStyle(el).opacity !== "0"; });
+        for (const id of up) { const el = document.getElementById(id);
+                               el.classList.remove("on"); el.style.display = "none"; }
+        return up.join(",") || "none";
+      });
       await page.waitForTimeout(180);
       shot = await page.screenshot();
       seen = Math.max(seen, await page.evaluate(async b64 => {
@@ -2081,7 +2167,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the map is being drawn every frame", hits1 > hits0,
        `${hits1 - hits0} draws across the captures`);
     ok("and it is drawn on the screen, not just in memory",
-       seen >= 10, `${seen} distinct tones in the corner it occupies`);
+       seen >= 10, `${seen} distinct tones in the corner it occupies` +
+                   (over === "none" ? "" : `, overlays up: ${over}`));
   }
 
   console.log("\n=== 22f. THE LANDMARKS HAVE SOMETHING IN THEM ===");

@@ -113,6 +113,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **~25 dens** | half the landmarks keep a pack of what lives there — optional, repayable, worth a boon |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
+| **type affinity** | every line has a region it is at home in (+20% damage) and one it is not (+15% damage taken) |
 | **7 creature lines, 21 forms** | fire, water, storm, stone, fungus, wind and echo — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body, every line its own move |
 | **per-creature levels** | every run banks its XP into the creature that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
 | **bunnyhopping** | chain a jump on the frame you land, 24 links deep, up to +60% move speed, paying XP every fifth; one hit resets it |
@@ -501,6 +502,25 @@ creature ran it, and a creature level is +2% HP and +1.2% damage *for that creat
 first level costs 250 XP and each one after adds 320, so a two-minute death still visibly moves
 the bar — a progression bar that does not move on a bad run teaches you that bad runs are worth
 nothing, which is the opposite of what a survivors-like needs you to believe.
+
+### A type is somewhere you belong
+
+Seven creature types, seven regions, and until this round the type was a colour: two lines with
+the same stat mods played identically wherever you stood. Each type now has one region it is at
+home in and one it is not — EMBER belongs in THE ASHES and hates THE SLUDGE, TIDE the reverse,
+VOLT owns THE GLASS, STONE the rust, ROT the midden, GALE the flats, ECHO the plain green.
+
+On home ground you hit **20% harder**; on the wrong ground you take **15% more**. Both are small
+on purpose. The map is *rolled*, so a bonus big enough to decide a run would be a bonus that is
+absent half the time and decisive the other half — the size is chosen so that crossing the ashes
+as a fire creature is a different proposition from crossing the sludge, without either being the
+run. The banner tells you which you are standing in and stays up the whole time you are there; a
+bonus you are told about for four seconds is a bonus you cannot plan around.
+
+Both halves are asserted, and the first version of the test was wrong in an instructive way: it
+compared raw damage between two regions and read GHOUL at 47 against 61, which looks like a
+failure and is really THE ASHES charging its own +12% on top. The check divides the region's own
+modifier back out now, and every line reads ×1.15 exactly.
 
 ### Three ranks, not five
 

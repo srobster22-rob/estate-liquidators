@@ -160,6 +160,7 @@
   .ch .mb{flex:1;height:4px;background:#0d1116;border:1px solid #000}
   .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
   .ch .sg{font-size:9px;color:var(--gold);margin-top:5px;letter-spacing:.05em}
+  .af{font-size:9px;letter-spacing:.09em;color:#8e8878;margin-top:3px}
   .ch .mv{font-size:9px;color:#8affd0;margin-top:6px;letter-spacing:.05em;line-height:1.5}
   .ch .mv s{display:block;text-decoration:none;color:#6f7683;letter-spacing:0}
 
@@ -671,6 +672,36 @@ const BIOMES = [
     a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
+
+// TYPE AND GROUND. Seven creature types and seven regions, and until now the
+// type was a colour: two lines with the same stat mods played identically no
+// matter where you stood. A type ought to mean somewhere you are at home.
+//
+// Each type has one region it belongs to and one it does not. On home ground
+// you hit 20% harder; on the wrong ground you take 15% more. Both are small
+// enough that no run is decided by where the dice put the regions - the map is
+// rolled, so a guaranteed-relevant bonus would be a guaranteed-irrelevant one
+// half the time - and large enough that a fire creature crossing the ashes is
+// a different proposition from a fire creature crossing the sludge.
+const AFFINITY = {
+  plain:{ home:"ash",   nm:"THE ASHES",        weak:"bog",   weakNm:"THE SLUDGE" },
+  scrap:{ home:"bog",   nm:"THE SLUDGE",       weak:"sand",  weakNm:"THE FLATS" },
+  volt: {home:"ice",    nm:"THE GLASS",        weak:"bone",  weakNm:"THE MIDDEN" },
+  stone:{ home:"rust",  nm:"THE RUST BARRENS", weak:"ice",   weakNm:"THE GLASS" },
+  rot:  { home:"bone",  nm:"THE MIDDEN",       weak:"ash",   weakNm:"THE ASHES" },
+  tally:{ home:"sand",  nm:"THE FLATS",        weak:"rust",  weakNm:"THE RUST BARRENS" },
+  echo: { home:"grass", nm:"THE GREEN",        weak:"bone",  weakNm:"THE MIDDEN" },
+};
+const AFF_DMG = 1.20, AFF_TOUGH = 1.15;
+// Which way the ground under you is leaning. Read by damage and by the HUD, so
+// the number you are told is the number you are getting.
+function affNow(){
+  if(!P) return 0;
+  const a = AFFINITY[curMon().type];
+  if(!a) return 0;
+  const here = biomeAt(P.x, P.z).id;
+  return here === a.home ? 1 : here === a.weak ? -1 : 0;
+}
 
 // Landmarks: the things you steer toward. They do not collide - a horde game
 // where the floor has walls in it is a horde game where the horde stacks in a
@@ -2711,7 +2742,14 @@ function hurt(e, amount, kx, kz, crit){
   if(crit && (e.boss || e.elite)) hold("crit");
   // THE SCRAPYARD sharpens what you carry. Keyed off where the PLAYER is
   // standing, not the target - you are the one who walked in there.
-  if(P) amount *= biomeAt(P.x, P.z).mod.dmg || 1;
+  if(P){
+    amount *= biomeAt(P.x, P.z).mod.dmg || 1;
+    // Home ground. Applied at the damage source rather than to P.dmg, because
+    // every recalc rebuilds P.dmg from the kit and would drop it silently -
+    // the boons were already bitten by exactly that.
+    const af = affNow();
+    if(af > 0) amount *= AFF_DMG;
+  }
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
   if(e.boss) dmgBoss += eff;
@@ -3430,6 +3468,7 @@ function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
 
 function playerHurt(raw){
   let d = raw * P.tough * (biomeAt(P.x,P.z).mod.tough || 1);
+  if(affNow() < 0) d *= AFF_TOUGH;              // the wrong ground for what you are
   d = Math.max(1, d - P.armor - prank(P.kit.plating)*1.6);
   if(P.kit.plating) d *= (1 - prank(P.kit.plating)*.05);
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
@@ -4141,6 +4180,10 @@ function finish(why, won){
         &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
         <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
+      <tr><td>Explored</td><td>${denStats.cleared
+        ? `${denStats.cleared} den${denStats.cleared>1?"s":""} cleared`
+        : denStats.woke ? `${denStats.woke} woken, none cleared` : "nothing"}${
+        boons.length ? ` <span class="dim2">&nbsp;${boons.join(" \u00b7 ")}</span>` : ""}</td></tr>
       <tr><td class="gold">Coins earned</td><td class="gold">+${earned}</td></tr>
     </table>
     ${got.map(u=>`<p class="g" style="font-size:12px;letter-spacing:.1em">`+
@@ -4214,6 +4257,9 @@ function openMenu(){
       ${locked?"":`<div class="mv">&#9670; LEARNS ${c.move.nm} AT LV${EVO_AT[1]}
         <s>${c.move.ds}</s></div>`}
       ${locked?"":`<div class="sg">&#9733; ${top.sig}: ${top.sigDs}</div>`}
+      ${locked || !AFFINITY[c.type] ? "" :
+        `<div class="af">&#9650; HOME ${AFFINITY[c.type].nm}
+         &nbsp;&#183;&nbsp; &#9660; WEAK ${AFFINITY[c.type].weakNm}</div>`}
       <div class="pk">${locked?"":"start: "+WEAPONS[c.w].name}</div>
       ${locked?"":`<div class="ml">LV ${ml}<div class="mb"><i style="width:${
         ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${ml>=MON_CAP?"MAX":""}</div>`}`;
@@ -4963,11 +5009,18 @@ function hud(){
   } else ev.style.opacity = 0;
 
   const bm = biomeAt(P.x, P.z), bel = $("biome");
+  // Home ground outranks the region's own line, and it stays up the whole time
+  // you are standing on it - a bonus you are only told about for four seconds
+  // is a bonus you will not plan around.
+  const af = affNow();
   bel.firstElementChild.textContent = bm.nm;
+  bel.firstElementChild.style.color = af > 0 ? "#8affd0" : af < 0 ? "#ff8a6a" : "";
   // On the way in you get what the place IS; after a couple of seconds it
   // settles back to what it DOES, which is the half you need mid-fight.
   bel.lastElementChild.textContent =
-    biomeT > 1.4 ? (bm.story || bm.ds) : biomeT > 0 ? bm.ds : "";
+    af > 0 ? `HOME GROUND  \u00b7  +${Math.round((AFF_DMG-1)*100)}% DAMAGE`
+  : af < 0 ? `WRONG GROUND  \u00b7  +${Math.round((AFF_TOUGH-1)*100)}% DAMAGE TAKEN`
+  : biomeT > 1.4 ? (bm.story || bm.ds) : biomeT > 0 ? bm.ds : "";
   if(biomeT > 0) biomeT -= dt;
 
   const wr = $("warn");
@@ -5107,6 +5160,10 @@ window.__g = {
   boon:  ()=>{ const pool = BOONS.filter(x=>!boons.includes(x.nm));
                if(!pool.length){ coinsRun += 110; return null; }
                const b = pick(pool); boons.push(b.nm); b.fn(); return b.nm; },
+  biomeMod: (x,z)=>Object.assign({}, biomeAt(x,z).mod),
+  aff:   ()=>{ const a = AFFINITY[curMon().type];
+               return { type:curMon().type, home:a.home, weak:a.weak,
+                        here:biomeAt(P.x,P.z).id, now:affNow() }; },
   slots: ()=>({ w:WSLOTS, p:PSLOTS,
                 carried: Object.keys(P.kit).filter(k=>WEAPONS[k] && !P.kit[k].fromEvo).length,
                 granted: Object.keys(P.kit).filter(k=>WEAPONS[k] && P.kit[k].fromEvo).length,

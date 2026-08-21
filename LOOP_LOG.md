@@ -490,3 +490,19 @@ every sweep this session went at the *slope* past that point rather than at the 
 whatever that says, write the finding into the README's balance section and stop chasing the
 curve — the shape (survive twenty, lose to TERRAVORE, veteran clears ~a third) is defensible and
 the instrument is what this session actually needed to build.
+
+**R14 — a type is somewhere you belong.** The seven types were a colour: two lines with the same
+stat mods played identically wherever you stood. Each type now has a home region (+20% damage)
+and a weak one (+15% damage taken) — EMBER in THE ASHES, TIDE in THE SLUDGE, VOLT on THE GLASS,
+STONE in the rust, ROT in the midden, GALE on the flats, ECHO on the green. Both are deliberately
+small: the map is rolled, so a bonus big enough to decide a run would be absent half the time and
+decisive the other half. The region banner names which you are in and stays up the whole time you
+stand there. The menu card shows each line's home and weakness before you pick, and the end
+screen finally admits dens exist (cleared count and the boons taken). Section 22i asserts both
+halves — ×1.15 taken on the wrong ground for all seven lines, 840 → 1008 damage dealt on home
+ground; the first version compared raw damage across regions and read GHOUL at 47/61, which was
+THE ASHES charging its own +12% on top, so it divides the region's modifier back out now. Also
+finally pinned the intermittent minimap-screenshot failure: the map *was* drawing (34 draws
+across the captures) and a modal was sitting on the corner — the check now clears overlays and
+names them in its failure message. 288 checks pass. **Next:** the bosses are still the flattest
+part of a run; with a zero-variance bench their abilities can be tuned exactly for the first time.
