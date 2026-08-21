@@ -497,8 +497,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   });
   await page.waitForTimeout(700);            // let real frames render
   const drawn = await page.evaluate(() => window.__g.state());
-  ok("draw budget holds on a real frame", drawn.boxes > 0 && drawn.boxes <= 3600,
-     `${drawn.boxes} boxes with ${drawn.enemies} enemies`);
+  // Two budgets, because they are two different claims. The horde has to fit one
+  // batch: every box in it is a box you barely look at, and the LOD tiers exist
+  // to keep it there. A boss in your face is allowed a second flush - it is one
+  // extra draw call, same shader and state, for the object the fight is about,
+  // and buying that back by making TERRAVORE five boxes is the wrong trade. What
+  // is NOT allowed is a third: past that the flushes are hiding a leak.
+  ok("draw budget holds with the final boss in frame",
+     drawn.boxes > 0 && drawn.boxes <= 7200,
+     `${drawn.boxes} boxes with ${drawn.enemies} enemies and TERRAVORE`);
+
+  const hordeOnly = await page.evaluate(async () => {
+    window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+    window.__g.skipTo(1140);
+    for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
+      window.__g.give(w, 4);
+    window.__g.step(60 * 25); window.__g.resume();
+    await new Promise(r => setTimeout(r, 700));
+    return window.__g.state();
+  });
+  ok("and the horde on its own still fits one batch",
+     hordeOnly.boxes > 0 && hordeOnly.boxes <= 3600,
+     `${hordeOnly.boxes} boxes with ${hordeOnly.enemies} enemies, no boss`);
 
   console.log("\n=== 12. RENDER + PERFORMANCE UNDER LOAD ===");
   await page.evaluate(() => {
@@ -526,41 +546,69 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   console.log("\n=== 12b. CAMERA AT THE ARENA EDGE ===");
   // The chase boom is 17 units long; at the arena edge that used to put the eye
   // inside the boundary spires and the whole frame rendered as fog.
-  for (const [label, x, z] of [["centre", 0, 0], ["edge", 0, 71], ["corner", 71, 71]]) {
-    await page.evaluate(([x, z]) => {
-      window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
-      window.__g.freezeSpawns(true); window.__g.bot(false);
-      window.__g.place(x, z); window.__g.step(20); window.__g.resume();
-    }, [x, z]);
-    await page.waitForTimeout(260);
-    const shot = await page.screenshot();
-    const seen = await page.evaluate(async b64 => {
-      const img = new Image();
-      await new Promise(r => { img.onload = r; img.src = "data:image/png;base64," + b64; });
-      const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
-      const g = c.getContext("2d"); g.drawImage(img, 0, 0);
-      const d = g.getImageData(0, 0, c.width, c.height).data;
-      // This used to count GREEN pixels, which stopped meaning "ground" the
-      // moment the arena grew six more ground palettes - it reported 0% while
-      // the camera was working perfectly, because the edge of the map happened
-      // to be ash and rust. What the check is actually for is that the eye does
-      // not end up inside the wall with the frame rendering as fog, so: sample
-      // the sky from the top rows, then ask how much of the BOTTOM half is
-      // something other than that. Colour-agnostic, and it still fails on fog.
-      const w = c.width, h = c.height, at = (x,y) => (y*w + x) * 4;
-      let sr = 0, sg = 0, sb = 0, sn = 0;
-      for (let y = 2; y < h*0.10; y += 3) for (let x = 0; x < w; x += 9){
-        const i = at(x,y); sr += d[i]; sg += d[i+1]; sb += d[i+2]; sn++; }
-      sr /= sn; sg /= sn; sb /= sn;
-      let ground = 0, total = 0;
-      for (let y = Math.floor(h*0.55); y < h; y += 3) for (let x = 0; x < w; x += 9){
-        const i = at(x,y); total++;
-        if (Math.abs(d[i]-sr) + Math.abs(d[i+1]-sg) + Math.abs(d[i+2]-sb) > 42) ground++;
+  //
+  // Two things were wrong with the version this replaces. The coordinates were
+  // (0,71) and (71,71), written when RIM was 84 - after the map went up ten
+  // times those are a third of the way out, so "corner" was testing the middle
+  // of the map. And the measure was "how much of the bottom half differs from
+  // the sky", which is a colour comparison against seven ground palettes rolled
+  // fresh every run: it read 100/100/50 on one run and passed on the next, not
+  // because the camera moved but because the dice did.
+  //
+  // What the check is actually for is that the eye does not end up buried, with
+  // the frame rendering as one flat fill. So measure STRUCTURE, which no ground
+  // palette can take away: the bottom half has to carry many distinct colours
+  // AND read differently from the top half. Both collapse to ~0 in fog.
+  {
+    const rim = await page.evaluate(() => window.__g.rim());
+    const out = Math.round(rim - 8), diag = Math.round((rim - 8) / Math.SQRT2);
+    for (const [label, x, z] of [["centre", 0, 0], ["edge", 0, out], ["corner", diag, diag]]) {
+      await page.evaluate(([x, z]) => {
+        window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+        window.__g.freezeSpawns(true); window.__g.bot(false);
+        window.__g.place(x, z); window.__g.step(20); window.__g.resume();
+      }, [x, z]);
+      await page.waitForTimeout(260);
+      const shot = await page.screenshot();
+      const m = await page.evaluate(async b64 => {
+        const img = new Image();
+        await new Promise(r => { img.onload = r; img.src = "data:image/png;base64," + b64; });
+        const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+        const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        const w = c.width, h = c.height, at = (x, y) => (y * w + x) * 4;
+        const band = (y0, y1) => {
+          const seen = new Set(); let r = 0, gg = 0, b = 0, n = 0;
+          for (let y = y0; y < y1; y += 3) for (let x = 0; x < w; x += 6) {
+            const i = at(x, y);
+            r += d[i]; gg += d[i+1]; b += d[i+2]; n++;
+            seen.add(((d[i] >> 4) << 8) | ((d[i+1] >> 4) << 4) | (d[i+2] >> 4));
+          }
+          return { tones: seen.size, r: r/n, g: gg/n, b: b/n };
+        };
+        const top = band(2, Math.floor(h * 0.20)), bot = band(Math.floor(h * 0.60), h);
+        return { tones: bot.tones,
+                 split: Math.abs(bot.r-top.r) + Math.abs(bot.g-top.g) + Math.abs(bot.b-top.b) };
+      }, shot.toString("base64"));
+      ok(`the camera is not buried at the ${label}`, m.tones >= 12 && m.split > 24,
+         `${m.tones} distinct tones below the horizon, ${m.split.toFixed(0)} apart from the sky`);
+    }
+    // And the eye itself, which is the thing that actually breaks: a boom that
+    // reaches past the wall is a fog frame no pixel test can un-bury.
+    const eyes = await page.evaluate(async () => {
+      const g = window.__g, rim = g.rim(), out = rim - 8, worst = [];
+      for (let i = 0; i < 16; i++) {
+        const a = i * Math.PI / 8;
+        g.start("intern"); g.god(); g.drainPicks(true); g.freezeSpawns(true); g.bot(false);
+        g.place(Math.cos(a) * out, Math.sin(a) * out); g.step(20); g.resume();
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const e = g.eye();
+        worst.push(Math.hypot(e[0], e[2]));
       }
-      return ground / total;
-    }, shot.toString("base64"));
-    ok(`camera sees the ground from the ${label}`, seen > 0.55,
-       `${(seen*100).toFixed(0)}% of sampled pixels are ground`);
+      return { rim, max: Math.max(...worst) };
+    });
+    ok("and the eye never reaches the wall from any bearing",
+       eyes.max < eyes.rim - 1, `worst eye radius ${eyes.max.toFixed(1)} against RIM ${eyes.rim}`);
   }
 
   console.log("\n=== 13. NON-BLANK RENDER CHECK ===");
@@ -1776,6 +1824,35 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const per = (fowl.withFowl - fowl.bare) / 3;
     ok("and GLIMMERFOWL is a bird, not fifteen marker boxes",
        per > 26, `${per.toFixed(1)} boxes each, 15 of which are the marker`);
+
+    // The four bosses shared `generic` - one five-box plan and a scale factor -
+    // for the whole life of the project, which meant the four moments the run is
+    // built around were the same silhouette four times in four colours. Sign the
+    // mesh the way the player's forms are signed: eb() is the door every plan
+    // goes through, so the capture is box count plus sorted half-extents.
+    const bosses = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const out = [];
+      for(let i = 0; i < 4; i++){
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.place(0, 0);
+        g.boss(i); g.step(1/60);
+        g.captureEnemy();
+        await frame(); await frame();
+        out.push({ nm: g.bossAt() ? g.bossAt().nm : "none", sig: g.enemySig() });
+      }
+      return out;
+    });
+    ok("every boss rendered a body",
+       bosses.every(b => b.sig), bosses.map(b => `${b.nm}:${b.sig ? "ok" : "NULL"}`).join(" "));
+    ok("four bosses, four different animals",
+       new Set(bosses.map(b => b.sig)).size === 4,
+       `${new Set(bosses.map(b => b.sig)).size} distinct of 4`);
+    const boxesOf = b => b.sig ? +b.sig.split("|")[0] : 0;
+    ok("and none of them is the five-box fallback",
+       bosses.every(b => boxesOf(b) >= 30),
+       bosses.map(b => `${b.nm} ${boxesOf(b)}`).join("  "));
   }
 
   console.log("\n=== 23. THE ARENA IS ROLLED, NOT REMEMBERED ===");

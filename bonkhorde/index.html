@@ -1078,9 +1078,9 @@ collector:{ nm:"GLIMMERFOWL", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 // is measured to the body, the biggest boss gained the most DPS against it, so
 // the biggest boss needs the most HP back. Same fight, honest numbers.
 const BOSSES = [
-{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
-{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
-{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
+{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" , body:"matriarch" },
+{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" , body:"thornback" },
+{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" , body:"skysplitter" },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
@@ -1093,7 +1093,7 @@ const BOSSES = [
 // constraint; hpScale's quadratic went 2.5 -> 3.6 and carries the rest.
 // Latest A/B at THIS value: 13/24 veteran with events live, 7/24 frozen. The
 // intent is that twenty minutes is reachable BECAUSE you went and got them.
-{ t:1140, nm:"TERRAVORE",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
+{ t:1140, nm:"TERRAVORE",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" , body:"terravore" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -1194,8 +1194,14 @@ const RUN_LEN = 1200;                    // 20:00
 // at 20:00. The second term is ~0 before minute 6, so first runs (which end near
 // 5:00) never feel it, and it dominates by the endgame: x2 at 5min, x8 at 15min,
 // x14.5 at 20min.
-const hpScale  = t => 1 + t/340 + Math.pow(Math.max(0, t-360)/420, 2) * 2.5;
-const dmgScale = t => 1 + Math.max(0, t-300)/560;        // x1 to 5:00, x2.6 by 20:00
+// The two constants the whole difficulty curve turns on, and the two that were
+// hardest to move because every candidate value cost a fifteen-minute bench.
+// They are `let` and reachable from the QA hook so a sweep can measure three
+// curves in one sitting - the alternative is editing a magic number, running a
+// bench, and forgetting which number produced which table.
+let HP_QUAD = 2.5, DMG_DIV = 560;
+const hpScale  = t => 1 + t/340 + Math.pow(Math.max(0, t-360)/420, 2) * HP_QUAD;
+const dmgScale = t => 1 + Math.max(0, t-300)/DMG_DIV;    // x1 to 5:00, x2.6 by 20:00
 const MAXE = 420;
 
 const CHARS = [
@@ -1271,6 +1277,7 @@ const SHOP = [
 // and 240 far x 4 is ~2,500 - the same order as the old flat five-per-body, put
 // where you can actually see it.
 function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
+  if(ebCap) ebCap.push(hx, hy, hz);
   box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
       e.z - Math.sin(face)*r + Math.cos(face)*f,
       hx, hy, hz, col, em||0, rot===undefined ? face : rot);
@@ -1468,9 +1475,158 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
        W*.045, W*.045, W*.045, [1,.95,.62], .95, face); }
 },
 
-// Everything without a plan of its own - the bosses - keeps the old build,
-// scaled up. A boss is already the biggest thing on the field with a health bar
-// over it; it does not need to also be the most detailed.
+// ------------------------------------------------------------- THE BOSSES
+// These used to share `generic` - five boxes and a scale factor - on the
+// argument that a boss already has a health bar over it and does not need to
+// also be the most detailed thing on screen. That argument holds for a horde
+// enemy you see four hundred of. It does not hold for the four moments the
+// whole run is built around, and it especially does not hold for the last one,
+// which is the thing the story says ate the world. Each boss is always LOD 2
+// and there is only ever one of it, so the budget is not the constraint here.
+// Each plan is built around the ability it telegraphs, so the silhouette warns
+// you before the ring does.
+
+// THE MATRIARCH - slam. Everything heavy is at the front: she plants two
+// enormous forelimbs and brings them down, so the body reads front-loaded and
+// low, with a brood of young riding the spine behind her.
+matriarch(e, face, W, H, c, glow, lod, y0){
+  const br = Math.sin(T*2.2 + e.bob), st = Math.sin(T*3.4 + e.bob);
+  const lit = [c[0]*1.3+.10, c[1]*1.1+.05, c[2]*1.1+.05];
+  ebl(e, face, 0, -W*.16, y0 + H*.42, W*.56, H*.24, W*.54, c, glow);          // haunches
+  ebl(e, face, 0, W*.24, y0 + H*.54 + br*H*.012, W*.78, H*.26, W*.46, c, glow); // shoulders
+  eb(e, face, 0, W*.66, y0 + H*.38, W*.44, H*.19, W*.34, lit, glow);           // low head
+  eb(e, face, 0, W*.98, y0 + H*.33, W*.32, H*.11, W*.20, lit, glow+.04);       // jaw
+  eey(e, face, 0, W*.80, y0 + H*.50, W*.26, W*.10, [1,.82,.26], .80);
+  if(lod < 1) return;
+  for(const sg of [-1,1])                                                       // brow horns
+    etp(e, face, sg*W*.30, W*.72, y0 + H*.56, sg*.03,.02,.06, 4, W*.09,H*.05,W*.09,
+        [.94,.90,.82], .20);
+  for(const sg of [-1,1]){                                                      // slam forelimbs
+    eb(e, face, sg*W*.62, W*.34, y0 + H*.42, W*.18, H*.20, W*.18, c, glow);
+    eb(e, face, sg*W*.66, W*.40, y0 + H*.14 + Math.max(0, st*sg)*H*.05,
+       W*.20, H*.14, W*.24, lit, glow);
+    for(let i=0;i<3;i++)                                                        // claws
+      eb(e, face, sg*W*.66 + (i-1)*W*.11, W*.62, y0 + H*.06, W*.05, H*.05, W*.10,
+         [.94,.90,.82], .25);
+  }
+  for(const sg of [-1,1])                                                       // hind legs
+    eb(e, face, sg*W*.46, -W*.28, y0 + H*.20, W*.15, H*.20, W*.15,
+       [c[0]*.66,c[1]*.66,c[2]*.70], 0);
+  if(lod < 2) return;
+  for(let i=0;i<5;i++){                                                         // the brood
+    const k = 1 - i*.13;
+    eb(e, face, Math.sin(T*1.6+i)*W*.10, W*.06 - i*W*.20, y0 + H*.74 + br*H*.01,
+       W*.13*k, H*.10*k, W*.13*k, lit, glow+.10);
+    eey(e, face, Math.sin(T*1.6+i)*W*.10, W*.06 - i*W*.20 + W*.10,
+        y0 + H*.77 + br*H*.01, W*.05*k, W*.035*k, [1,.82,.26], .70);
+  }
+  for(let i=0;i<4;i++)                                                          // tail
+    eb(e, face, Math.sin(T*2+i*.7)*W*.10*(i+1), -W*.86 - i*W*.24, y0 + H*.34,
+       W*.11-i*.012, H*.09-i*.010, W*.20, c, glow);
+},
+
+// THORNBACK - evict. It does not chase you, it takes the room away from you,
+// so the body is a wall of back-facing spines that shed as the zones drop.
+thornback(e, face, W, H, c, glow, lod, y0){
+  const pulse = (Math.sin(T*1.8 + e.bob)+1)*.5;
+  const lit = [c[0]*1.1+.06, c[1]*1.2+.10, c[2]*1.3+.14];
+  const spine = [.86,.90,1.00];
+  ebl(e, face, 0, -W*.04, y0 + H*.40, W*.66, H*.26, W*.70, c, glow);          // slab body
+  ebl(e, face, 0, 0, y0 + H*.64, W*.58, H*.12, W*.62, lit, glow + pulse*.20);  // shell
+  eb(e, face, 0, W*.62, y0 + H*.44, W*.36, H*.17, W*.30, lit, glow);           // blunt head
+  eb(e, face, 0, W*.90, y0 + H*.40, W*.24, H*.10, W*.16, c, glow+.05);
+  eey(e, face, 0, W*.76, y0 + H*.55, W*.20, W*.085, [.50,1,.90], .75);
+  if(lod < 1) return;
+  for(let ring=0; ring<4; ring++)                                              // the thorns
+    for(let i=0;i<6;i++){
+      const a = -1.3 + i*(2.6/5), lift = Math.max(0, Math.sin(T*1.8 + ring*.9)) * H*.05;
+      etp(e, face, Math.sin(a)*W*.50, W*.28 - ring*W*.30, y0 + H*.70 + lift,
+          Math.sin(a)*.05, -.02, .09, 3, W*.075, H*.06, W*.075, spine, .35 + pulse*.30);
+    }
+  if(lod < 2) return;
+  for(const sg of [-1,1]) for(const fs of [-1,1])                              // squat legs
+    eb(e, face, sg*W*.56, fs*W*.34, y0 + H*.16, W*.14, H*.16, W*.16,
+       [c[0]*.62,c[1]*.62,c[2]*.70], 0);
+  for(let i=0;i<3;i++)                                                          // tail club
+    eb(e, face, 0, -W*.78 - i*W*.22, y0 + H*.36, W*.13+i*.02, H*.11+i*.02, W*.18,
+       i===2 ? spine : c, i===2 ? .45 : glow);
+},
+
+// SKYSPLITTER - charge. It marks a lane and then runs it at 4.4x, so it is
+// built like something that only ever goes forwards: swept wings, a beak, and
+// legs that are mostly stride.
+skysplitter(e, face, W, H, c, glow, lod, y0){
+  const flap = Math.sin(T*4.2 + e.bob), st = Math.sin(T*5.0 + e.bob);
+  const lit = [c[0]*1.15+.08, c[1]*1.15+.08, c[2]*1.4+.14];
+  const beak = [1,.86,.28];
+  ebl(e, face, 0, W*.04, y0 + H*.46, W*.44, H*.26, W*.52, c, glow);            // deep chest
+  eb(e, face, 0, W*.30, y0 + H*.72, W*.20, H*.18, W*.20, c, glow);             // neck
+  eb(e, face, 0, W*.44, y0 + H*.92, W*.22, H*.16, W*.22, lit, glow+.05);       // head
+  eb(e, face, 0, W*.76, y0 + H*.88, W*.12, H*.09, W*.26, beak, .45);           // beak
+  eey(e, face, 0, W*.58, y0 + H*.98, W*.17, W*.085, [.10,.10,.14], .30);
+  if(lod < 1) return;
+  for(let i=0;i<4;i++)                                                          // crest
+    eb(e, face, 0, W*.34 - i*W*.09, y0 + H*1.10 + Math.sin(T*6+i)*H*.02,
+       W*.05, H*.13 - i*.012, W*.05, beak, .55, face);
+  for(const sg of [-1,1]) for(let k=0;k<4;k++)                                  // swept wings
+    etp(e, face, sg*(W*.44 + k*W*.34), -k*W*.22 + flap*W*.06,
+        y0 + H*.66 + flap*H*.05 + k*H*.05, sg*.10, -.06, .02, 2,
+        W*.30 - k*W*.05, H*.045, W*.34 - k*W*.06,
+        k%2 ? lit : c, glow + .06 + k*.04);
+  if(lod < 2) return;
+  for(const sg of [-1,1])                                                       // stride legs
+    etp(e, face, sg*W*.20, st*sg*W*.26, y0 + H*.30, 0,0,-.11, 4,
+        W*.08, H*.11, W*.08, beak, .20);
+  for(let i=0;i<4;i++)                                                          // tail streamers
+    eb(e, face, (i-1.5)*W*.16, -W*.56 - Math.abs(i-1.5)*W*.14, y0 + H*.56,
+       W*.09, H*.035, W*.36, i%2 ? beak : lit, .40, face + (i-1.5)*.16);
+},
+
+// TERRAVORE - the thing under the world, and the reason there is a clock. It
+// comes up mouth first, so the mouth is the front of it and the body is plated
+// segments dragging out of the ground behind, seams still lit from below.
+terravore(e, face, W, H, c, glow, lod, y0){
+  const gy = groundY(e.x, e.z);
+  const chew = (Math.sin(T*3.1 + e.bob)+1)*.5, heat = (Math.sin(T*1.4)+1)*.5;
+  const plate = [c[0]*.52, c[1]*.46, c[2]*.48];
+  const seam  = [1, .52 + heat*.30, .12];
+  for(let i=0;i<12;i++){ const a = i*(TAU/12) + T*.5;      // the ground gives up around it
+    box(e.x+Math.sin(a)*W*1.35, gy+.12, e.z+Math.cos(a)*W*1.35,
+        W*.16, .07, W*.16, seam, .85 + heat*.15); }
+  const segs = lod >= 2 ? 5 : lod >= 1 ? 3 : 2;
+  for(let s=0; s<segs; s++){                                // plated segments
+    const k = 1 - s*.12, sw = Math.sin(T*1.7 - s*.6)*W*.10;
+    ebl(e, face, sw, -W*.22 - s*W*.42, y0 + H*.40*k, W*.62*k, H*.24*k, W*.40*k, plate, glow);
+    eb(e, face, sw, -W*.22 - s*W*.42, y0 + H*.64*k, W*.50*k, H*.045, W*.34*k,
+       seam, .55 + heat*.35);
+    for(const sg of [-1,1])                                 // legs down each side
+      etp(e, face, sw + sg*W*.66*k, -W*.22 - s*W*.42, y0 + H*.34*k,
+          sg*.06,0,-.09, 3, W*.09*k, H*.08*k, W*.09*k, plate, 0);
+  }
+  ebl(e, face, 0, W*.36, y0 + H*.48, W*.72, H*.28, W*.50, c, glow+.06);        // head plate
+  eb(e, face, 0, W*.30, y0 + H*.78, W*.60, H*.06, W*.40, seam, .70 + heat*.30);
+  for(const sg of [-1,1]){                                                      // mandibles
+    etp(e, face, sg*(W*.60 + chew*W*.10), W*.78, y0 + H*.44,
+        -sg*.08, .07, .02, 5, W*.11, H*.09, W*.11, [.96,.92,.86], .25);
+    eb(e, face, sg*W*.46, W*.62, y0 + H*.74, W*.10, H*.16, W*.10, [.96,.92,.86], .30);
+  }
+  if(lod < 1) return;
+  for(let i=0;i<7;i++){                                                         // the ring of teeth
+    const a = i*(TAU/7) + T*.9, rr = W*.26 + chew*W*.06;
+    eb(e, face, Math.sin(a)*rr, W*.72, y0 + H*.46 + Math.cos(a)*rr,
+       W*.07, H*.06, W*.12, [.96,.92,.86], .35, face + a);
+  }
+  eb(e, face, 0, W*.74, y0 + H*.46, W*.22 - chew*W*.04, H*.18, W*.22 - chew*W*.04,
+     [.20,.03,.02], .0);                                                        // the throat
+  if(lod < 2) return;
+  for(const sg of [-1,1]) for(let i=0;i<3;i++)                                  // eye cluster
+    eey(e, face, sg*W*.16, W*.52, y0 + H*.66 + i*H*.05, W*.13 + i*W*.04, W*.055,
+        seam, .85);
+},
+
+// The fallback, for anything that reaches the draw without a plan of its own.
+// Nothing ships pointing at this - it exists so a typo in a `body:` key renders
+// something instead of throwing mid-frame.
 generic(e, face, W, H, c, glow, lod, y0){
   const bh = H*.62;
   eb(e, face, 0, 0, y0 + bh*.5, W*.5, bh*.5, W*.5, c, glow);
@@ -2048,6 +2204,11 @@ echo(D){
 // QA: when this is an array, the next frame records every box the monster body
 // emits, so a test can ask whether two forms are actually the same mesh.
 let bodyCap = null, bodyCapOut = null;
+// The same capture, for enemy body plans. eb() is the only door every plan
+// goes through - ebl() and etp() both call it - so hooking it here signs the
+// whole mesh without touching twelve plans. Direct box() calls are markers
+// (GLIMMERFOWL's ring, TERRAVORE's scorched ground), not mesh, and stay out.
+let ebCap = null, ebCapOut = null;
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 let stage=0;                            // 0..2 - where you are in the monster's line
@@ -2693,8 +2854,12 @@ function spawnEnemy(type, atX, atZ){
   return made;                                  // the hunt event needs a handle
 }
 function spawnBoss(b){
+  // Hand-copied, not spread, so every field a boss carries has to be listed
+  // here on purpose. That is the point of it and it is also the trap: `body`
+  // was added to the four boss entries and silently did not arrive, so all four
+  // rendered the five-box fallback while the table said otherwise.
   const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
-                c:b.c, h:b.h, w:b.w, ai:b.ai };
+                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body };
   const a = Math.random()*TAU;
   const [x, z] = confine(P.x+Math.cos(a)*26, P.z+Math.sin(a)*26, 5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
@@ -4086,9 +4251,16 @@ function render(){
     // at 16m the top tier was covering enough of the horde to put a live frame
     // at 4,046 boxes against a 3,600 batch. Past about twelve metres the
     // chamfer is under a pixel wide - it was being paid for and not delivered.
-    const lod = e.boss ? 2 : dp < 11 ? 2 : dp < 26 ? 1 : 0;
+    // A boss used to be pinned at full detail on the grounds that there is only
+    // ever one. That held while the fallback plan was five boxes; TERRAVORE is
+    // ninety-eight, and a hundred boxes of mandible taper at sixty metres is the
+    // same waste as a chamfer at sixteen. Its radius is just far more generous
+    // than the horde's, because it is the thing you are looking at.
+    const lod = e.boss ? (dp < 45 ? 2 : dp < 90 ? 1 : 0)
+                       : dp < 11 ? 2 : dp < 26 ? 1 : 0;
     const plan = EBODY[e.def.body] || EBODY.generic;
     plan(e, face, W*sq, H, c, glow, lod, e.y + hop);
+    if(ebCap){ ebCapOut = ebCap; ebCap = null; }
     const hy = e.y + H*.62 + H*.19 + hop;
     // and a crown. A tint alone vanishes in a crowd of 300 - this needs to be
     // a silhouette you can pick out at a glance and decide to deal with.
@@ -4533,7 +4705,7 @@ window.__g = {
   // position/HP/body of the boss on the field, so a test can hold an exact
   // gap to it instead of chasing a target that walks toward the player.
   bossAt:()=>{ const b=enemies.find(e=>e.boss && !e.dead);
-               return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad} : null; },
+               return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad, nm:b.def.nm, body:b.def.body} : null; },
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },
   // split frame cost into simulation vs rendering. Software GL exaggerates the
   // render half enormously, so only the sim number transfers to real hardware.
@@ -4603,6 +4775,12 @@ window.__g = {
   // animates a size, so it is stable frame to frame, and two forms built from
   // the same mesh produce byte-identical strings.
   captureBody:()=>{ bodyCap = []; bodyCapOut = null; },
+  captureEnemy:()=>{ ebCap = []; ebCapOut = null; },
+  enemySig:()=>{ if(!ebCapOut) return null;
+                 const n = ebCapOut.length/3, sz = [];
+                 for(let i=0;i<n;i++) sz.push(ebCapOut.slice(i*3,i*3+3)
+                                               .map(v=>v.toFixed(3)).join(","));
+                 return n + "|" + sz.sort().join(" "); },
   bodySig:()=>{ if(!bodyCapOut) return null;
                 const n = bodyCapOut.length/3, sz = [];
                 for(let i=0;i<n;i++) sz.push(bodyCapOut.slice(i*3,i*3+3)
@@ -4618,6 +4796,11 @@ window.__g = {
   jump:  ()=>jumpPressed(),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
+  // Read or set the difficulty curve. No argument reads it, which is what the
+  // suite uses to assert the shipped values did not drift during a sweep.
+  curve: (q, d)=>{ if(q!==undefined) HP_QUAD = q;
+                   if(d!==undefined) DMG_DIV = d;
+                   return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV }; },
   biomes:()=>BIOMES.map(b=>({id:b.id,nm:b.nm,a:b.a.slice(),b:b.b.slice(),mod:{...b.mod}})),
   chunks:()=>({ drawn:drawnChunks, total:terChunks.length, verts:terCount }),
   world: ()=>({ seed:worldSeed,

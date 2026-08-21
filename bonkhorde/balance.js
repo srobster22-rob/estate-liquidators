@@ -41,6 +41,12 @@ const NOHOP  = !!process.env.BONKHORDE_NOHOP;
 // BONKHORDE_NOEVO=1 holds the monster at the bottom of its line, so the
 // evolution stat block can be read apart from everything that shipped with it.
 const NOEVO  = !!process.env.BONKHORDE_NOEVO;
+// BONKHORDE_CURVE="hpQuad,dmgDiv" overrides the difficulty curve for the whole
+// bench, so a sweep is three env vars rather than three edits. Printed in the
+// header of every table, because a balance number with no curve attached to it
+// is a number you cannot reproduce.
+const CURVE  = process.env.BONKHORDE_CURVE
+             ? process.env.BONKHORDE_CURVE.split(",").map(Number) : null;
 // Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
 // moment they shipped - a bench that quietly stops covering new content is
 // worse than no bench, because the gap looks like a clean sweep. Read from the
@@ -58,8 +64,9 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo]) => {
+  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve]) => {
     window.__g.wipeSave();
+    if (curve) window.__g.curve(curve[0], curve[1]);
     if (shopped) window.__g.setUpgrades(
       { hp:6, dmg:6, spd:5, mag:5, cd:5, crit:5, armor:5, start:3, rev:2 });
     window.__g.start(ch);
@@ -71,13 +78,14 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
              evos: window.__g.kit().filter(k => k.includes("EVO")).length };
-  }, [ch, shopped, NOEV, NOHOP, NOEVO]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {
     console.log(`\n${"=".repeat(66)}`);
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
+    if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]}`);
     console.log("=".repeat(66));
     console.log("char     n   median    worst     best   lvl  kills   evos  clears");
     for (const ch of CHARS) {

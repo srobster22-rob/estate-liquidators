@@ -211,3 +211,37 @@ the shortest path and has never failed anything.
 
 **Not blocked on anything.** All open decisions except O-05 (does the Curator have a face —
 art, blocks nothing) are closed.
+
+---
+
+## BONKHORDE loop
+
+**R1 — GLIMMERFOWL is a bird; the story matches the game.** Rebuilt the last old-world body
+(gilded urn → jewelled bird: crest, beak, tucked wings, running legs, five-plume tail fan),
+keeping the gold ring + sky beam that pay for its contrast exemption. Found that the marker
+draws *before* the body, so `fowlMarks` read 3 even if the plan threw — replaced with a box
+count (46 each, 15 of them marker). Rewrote the story block, per-species comments, end-screen
+flavour and the sudden-death banner (now reads the last boss's own name instead of hardcoding
+"THE FINAL BONK"). README caught up on four rounds: creature bestiary, the seven lines and the
+move each learns, three ranks and why the ceiling didn't move, the floor, the real hop curve.
+238 checks pass. **Next:** the balance table is stale — it predates the 3-rank remap — and the
+four bosses still have no body plans of their own, they are generic boxes scaled up.
+
+**R2 — The four bosses stopped being the same box in four colours.** They shared `generic`
+(five boxes and a scale factor) for the whole project: THE MATRIARCH is now a front-loaded slam
+beast with a brood riding her spine, THORNBACK a spined slab that sheds its thorns, SKYSPLITTER
+a swept-wing raptor built to only go forwards, TERRAVORE a plated burrower that comes up mouth
+first with lit seams and a ring of teeth — 61/91/42/98 boxes. Three bugs fell out: `spawnBoss`
+hand-copies `def` field by field and silently dropped `body`, so all four rendered the fallback
+while the table said otherwise (caught by a box-count floor, not the sig check — four different
+*sizes* give four different sigs); the boss LOD was pinned at 2 forever, which was free at five
+boxes and 3733-over-3600 at ninety-eight (now 45m/90m tiers, 3474); and the arena-edge camera
+check was still probing (0,71)/(71,71) from when RIM was 84, measuring the middle of the map
+with a ground-vs-sky colour test that passed or failed on which biome the dice rolled there.
+Rewritten to probe RIM−8, measure *structure* (distinct tones below the horizon + separation
+from the sky) instead of hue, and to sweep the eye radius from 16 bearings. 243 checks pass.
+**Next:** the balance bench says the 3-rank remap broke the game open — a first run with **no**
+permanent upgrades now medians **24:00** on every line (was ~5:13), reaching level 76–95 and
+15,000 kills. Power per pick roughly doubled and the threat curve did not move. `hpScale`/
+`dmgScale` are now `let` behind `__g.curve()` and `BONKHORDE_CURVE=hpQuad,dmgDiv` so the fix can
+be swept instead of guessed.
