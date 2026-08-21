@@ -32,6 +32,14 @@
 
   /* ---------------------------------------------------------------- HUD */
   #hud{position:fixed;inset:0;pointer-events:none;font-size:12px;letter-spacing:.05em}
+  /* The pause menu is the wrong place for a control you want DURING a run -
+     opening it stops the thing you were trying to watch. This strip is the
+     only part of the HUD that takes clicks, and only when DEV MODE is on. */
+  #devhud{position:absolute;left:14px;bottom:14px;display:none;gap:5px;
+    align-items:center;pointer-events:auto;padding:7px 9px;
+    border:1px dashed #3a4250;background:#0f1319e8}
+  #devhud.on{display:flex}
+  #devhud b{font-size:9px;letter-spacing:.24em;color:#5c6470;margin-right:2px}
   #clock{position:absolute;top:10px;left:50%;transform:translateX(-50%);
     font-size:30px;font-weight:700;letter-spacing:.06em;font-variant-numeric:tabular-nums;
     text-shadow:0 3px 0 #000,0 0 22px rgba(0,0,0,.9)}
@@ -288,6 +296,14 @@
   <div id="evo"><div class="en"></div><div class="es"></div></div>
   <div id="biome"><b></b><span></span></div>
   <div id="pausebtn">II</div>
+  <div id="devhud">
+    <b>DEV</b>
+    <button class="btn gh dv" id="dhLvl">+ LEVEL</button>
+    <button class="btn gh dv" id="dhEvo">EVOLVE</button>
+    <button class="btn gh dv" id="dhAuto">AUTO EVO</button>
+    <button class="btn gh dv" id="dhSkip">+5:00</button>
+    <button class="btn gh dv" id="dhGod">GOD</button>
+  </div>
 </div>
 
 <div class="ov on" id="menu"><div class="wrap" id="menuBody"></div></div>
@@ -455,7 +471,7 @@ const BOXV = (()=>{                      // 36 verts of a unit cube, pos+nrm
 })();
 const MAXBOX = 3600;
 const VB = new Float32Array(MAXBOX*36*FLOATS);
-let vn=0, nbox=0, drawnBoxes=0, drawnShadows=0, drawnMarks=0;
+let vn=0, nbox=0, drawnBoxes=0, drawnShadows=0, drawnMarks=0, drawnChunks=0;
 let dynBuf;
 function buildDynBuf(){
   dynBuf = gl.createBuffer();
@@ -565,7 +581,7 @@ const SFX = {
 };
 
 // ---------------------------------------------------------------- terrain
-const ARENA = 92;                       // half-extent of the TERRAIN mesh.
+const ARENA = 292;                      // half-extent of the TERRAIN mesh.
 // The boundary used to be two different shapes at once. Movement clamped to a
 // 148x148 square while the only thing in the world that looked like a wall was
 // a ring of spires at radius 74 - and the square's corners sit thirty metres
@@ -583,7 +599,10 @@ const ARENA = 92;                       // half-extent of the TERRAIN mesh.
 // enemies are culled at 70m from the player, so a 140m-wide arena means the
 // cull can never fire and the horde only ever accumulates. pi*84^2 is 22,167
 // square metres against the old square's 21,904: same room, one shape.
-const RIM = 84;                         // play radius. the wall is drawn here.
+// 266, from 84. TEN TIMES THE AREA - pi*266^2 is 222,000 square metres against
+// 22,167 - which is radius x3.16, not x10; ten times the RADIUS would be a
+// hundred times the area and a different game entirely.
+const RIM = 266;                        // play radius. the wall is drawn here.
 function confine(x, z, pad){
   const lim = RIM - pad, d2 = x*x + z*z;
   if(d2 <= lim*lim) return [x, z];
@@ -651,22 +670,27 @@ const BLEND = 9;                    // metres over which two regions cross-fade
 function rollWorld(){
   worldSeed = (Math.random()*1e9)|0;
   const pool = BIOMES.filter(b => b.id !== "grass").sort(()=>Math.random()-.5);
-  const n = 4 + ((Math.random()*2)|0);                 // four or five outer regions
+  // Region count scales with area or a ten-times map is five enormous colour
+  // fields you cross once. One region per ~17,000 square metres, which is about
+  // what a single region covered when the arena was 84m.
+  const n = Math.round(Math.PI*RIM*RIM / 17000);
   cells = [{ x:0, z:0, b:BIOME_BY.grass }];
   for(let i=0;i<n;i++){
     let x=0, z=0;
     for(let tries=0; tries<40; tries++){
-      const a = Math.random()*TAU, r = rnd(RIM*.34, RIM*.92);
+      const a = Math.random()*TAU, r = Math.sqrt(rnd(.06,1))*RIM*.94;
       x = Math.cos(a)*r; z = Math.sin(a)*r;
-      if(cells.every(c => Math.hypot(c.x-x, c.z-z) > RIM*.42)) break;
+      if(cells.every(c => Math.hypot(c.x-x, c.z-z) > RIM*.30)) break;
     }
     cells.push({ x, z, b: pool[i % pool.length] });
   }
   marks = [];
-  for(let i=0, tries=0; i<5 && tries<200; tries++){
-    const a = Math.random()*TAU, r = rnd(20, RIM-14);
+  const nMarks = Math.round(Math.PI*RIM*RIM / 4400);   // one per ~4,400 sq m
+  for(let i=0, tries=0; i<nMarks && tries<nMarks*40; tries++){
+    const a = Math.random()*TAU, r = Math.sqrt(rnd(.005,1))*(RIM-14) + 20;
     const x = Math.cos(a)*r, z = Math.sin(a)*r;
     const k = MARK_KINDS[(Math.random()*MARK_KINDS.length)|0];
+    if(Math.hypot(x,z) > RIM-14) continue;
     if(marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + k.r + 10)) continue;
     marks.push({ x, z, k, rot: Math.random()*TAU, seed: (Math.random()*1e6)|0 });
     i++;
@@ -704,30 +728,43 @@ const TERRAIN_A = [.38,.52,.31], TERRAIN_B = [.30,.43,.26];
 const TERRAIN_H = [.030,.038,.024];      // per-quad height term
 const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
 
-let terBuf, terCount = 0, terData = null;
+let terBuf, terCount = 0, terData = null, terChunks = [];
+// The whole map used to go up as one draw call, which was fine at 184m across
+// and is 41,000 triangles at 584m - all of it submitted every frame, nearly all
+// of it beyond the fog. It is built as a grid of contiguous chunks in one
+// buffer now and only the chunks near the camera are drawn, so the per-frame
+// triangle count is a function of view distance rather than of map size.
+const TER_CH = 12;                      // chunks per side
+const TER_Q  = 12;                      // quads per chunk side
 // Split in two, because the arena is rolled fresh every run now: makeTerrain()
 // regenerates the vertex data against the current regions, uploadTerrain() puts
 // it on the GPU. A context restore only needs the second half - terData
 // survives the loss and re-rolling the world on a restore would hand you a
 // different map mid-run.
 function makeTerrain(){
-  const N=72, S=ARENA*2/N, out=[];      // ~2.6m quads, same as the old 60 over 148
+  const CS = ARENA*2/TER_CH, S = CS/TER_Q, out=[];
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
-  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
-    const x0=-ARENA+i*S, z0=-ARENA+j*S, x1=x0+S, z1=z0+S;
-    const P=[[x0,groundY(x0,z0),z0],[x1,groundY(x1,z0),z0],
-             [x1,groundY(x1,z1),z1],[x0,groundY(x0,z1),z1]];
-    // checkerboard reads as speed - a flat plane makes you feel motionless
-    const chk = (i+j)&1;
-    const h   = (P[0][1]+P[2][1])/4 + .5;
-    const bm  = biomeAt(x0+S*.5, z0+S*.5);
-    const base = chk ? bm.a : bm.b;
-    const c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
-    // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
-    for(const [a,b,d] of [[0,2,1],[0,3,2]]){
-      const n = nrm(cross(sub(P[b],P[a]), sub(P[d],P[a])));
-      push(P[a],n,c); push(P[b],n,c); push(P[d],n,c);
+  terChunks = [];
+  for(let ci=0;ci<TER_CH;ci++) for(let cj=0;cj<TER_CH;cj++){
+    const start = out.length/FLOATS;
+    for(let i=0;i<TER_Q;i++) for(let j=0;j<TER_Q;j++){
+      const x0=-ARENA+ci*CS+i*S, z0=-ARENA+cj*CS+j*S, x1=x0+S, z1=z0+S;
+      const P=[[x0,groundY(x0,z0),z0],[x1,groundY(x1,z0),z0],
+               [x1,groundY(x1,z1),z1],[x0,groundY(x0,z1),z1]];
+      // checkerboard reads as speed - a flat plane makes you feel motionless
+      const chk = (ci*TER_Q+i + cj*TER_Q+j)&1;
+      const h   = (P[0][1]+P[2][1])/4 + .5;
+      const bm  = biomeAt(x0+S*.5, z0+S*.5);
+      const base = chk ? bm.a : bm.b;
+      const c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
+      // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
+      for(const [a,b,d] of [[0,2,1],[0,3,2]]){
+        const n = nrm(cross(sub(P[b],P[a]), sub(P[d],P[a])));
+        push(P[a],n,c); push(P[b],n,c); push(P[d],n,c);
+      }
     }
+    terChunks.push({ x:-ARENA+ci*CS+CS*.5, z:-ARENA+cj*CS+CS*.5,
+                     start, count: out.length/FLOATS - start });
   }
   terCount = out.length/FLOATS;
   terData  = new Float32Array(out);            // kept, so a restore can re-upload
@@ -1184,98 +1221,145 @@ function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
       e.z - Math.sin(face)*r + Math.cos(face)*f,
       hx, hy, hz, col, em||0, rot===undefined ? face : rot);
 }
+// The same vocabulary the player monsters got, because the reason the horde
+// looked like boxes is that it WAS boxes: chamfered volumes, tapered limbs and
+// eyes with a pupil in them. Chamfering costs 3x, so it is spent at LOD 2 only
+// - the forty bodies close enough to resolve - and the far ones stay cheap.
+function ebl(e, face, r, f, y, hx, hy, hz, col, em, rot){
+  eb(e, face, r, f, y, hx*.76, hy, hz*.76, col, em, rot);
+  eb(e, face, r, f, y, hx, hy*.76, hz*.76, col, em, rot);
+  eb(e, face, r, f, y, hx*.76, hy*.76, hz, col, em, rot);
+}
+function etp(e, face, r, f, y, dr, df, dy, n, hx, hy, hz, col, em){
+  for(let i=0;i<n;i++){ const k = 1 - i/(n+1)*.58;
+    eb(e, face, r+dr*i, f+df*i, y+dy*i, hx*k, hy*k, hz*k, col, em); }
+}
+function eey(e, face, r, f, y, sp, sz, pup, lit){
+  for(const sg of [-1,1]){
+    eb(e, face, r+sg*sp, f, y, sz, sz*1.05, .04, [.97,.97,1], .85);
+    eb(e, face, r+sg*sp, f+.03, y-sz*.12, sz*.46, sz*.5, .035, pup||[.06,.07,.11], lit||.05);
+  }
+}
 const EBODY = {
 
-// ARREARS - an overdue notice that learned to walk. Folded, stamped, patient.
+// ARREARS - an overdue notice that learned to walk. A paper wraith: the sheet
+// is the cloak, the seal is the face, and it drags rather than steps.
 paper(e, face, W, H, c, glow, lod, y0){
-  const sway = Math.sin(T*3 + e.bob)*.08;
-  // Wide and thin, so it is a SHEET from every angle. The first build was
-  // barely wider than it was deep and the horde read as scattered cubes.
-  eb(e, face, 0, sway*.4, y0 + H*.56, W*1.15, H*.50, W*.07, c, glow);
-  eb(e, face, W*.86, sway, y0 + H*.90, W*.34, H*.20, W*.06, c, glow, face + .6);
-  eb(e, face, 0, W*.09, y0 + H*.64, W*.30, W*.30, .05, [.86,.14,.12], .50);
-  eb(e, face, 0, W*.09, y0 + H*.64, W*.16, W*.16, .05, [.24,.05,.05], 0);
+  const sway = Math.sin(T*3 + e.bob)*.09;
+  const B = lod>=2 ? ebl : eb;
+  B(e, face, 0, sway*.4, y0 + H*.54, W*1.10, H*.48, W*.10, c, glow);
+  B(e, face, 0, sway*.5, y0 + H*.94, W*.42, H*.16, W*.14, c, glow, face + sway*.4);
+  eb(e, face, 0, W*.11, y0 + H*.96, W*.26, W*.26, .05, [.86,.14,.12], .55);
+  eb(e, face, 0, W*.14, y0 + H*.96, W*.13, W*.13, .05, [.30,.05,.05], 0);
   if(lod < 1) return;
-  for(const sg of [-1,1]) eb(e, face, sg*W*.34, 0,
-    y0 + H*.14 + Math.max(0, Math.sin(T*9 + e.bob + (sg>0?0:3)))*H*.06,
-    W*.10, H*.15, W*.10, [.92,.90,.84], .05);
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*.92, sway*sg, y0 + H*.62, sg*.03,.02,-.12, 3, W*.16,H*.10,W*.05, c, glow);
+  for(let i=0;i<4;i++)
+    eb(e, face, -W*.72 + i*W*.48, W*.09, y0 + H*.16 + (i%2)*H*.07,
+       W*.20, H*.13, W*.05, c, glow, face + (i%2?.3:-.3));
   if(lod < 2) return;
-  for(let i=0;i<3;i++) eb(e, face, -W*.5 + i*W*.5, W*.13, y0 + H*.86 - i*H*.10,
-                          W*.30, H*.012, .04, [.30,.30,.34], .05);
-  eb(e, face, 0, W*.13, y0 + H*.30, W*.44, H*.012, .04, [.30,.30,.34], .05);
+  for(let i=0;i<4;i++) eb(e, face, -W*.5 + i*W*.34, W*.12, y0 + H*.74 - i*H*.06,
+                          W*.26, H*.012, .04, [.34,.34,.38], .05);
 },
 
-// BAILIFF - all elbows and clipboard. Gets there first and writes it down.
+// BAILIFF - long coat, taller hat, one lit eye and a clipboard he is already
+// filling in. Gets there first.
 bailiff(e, face, W, H, c, glow, lod, y0){
   const st = Math.sin(T*11 + e.bob);
-  eb(e, face, 0, 0, y0 + H*.55, W*.52, H*.30, W*.40, c, glow);
-  eb(e, face, 0, 0, y0 + H*.88, W*.38, H*.13, W*.34, c, glow);
-  eb(e, face, 0, 0, y0 + H*1.14, W*.30, H*.16, W*.30, [.10,.10,.13], .10);
+  const B = lod>=2 ? ebl : eb;
+  B(e, face, 0, 0, y0 + H*.56, W*.46, H*.32, W*.34, c, glow);
+  eb(e, face, 0, 0, y0 + H*.28, W*.52, H*.16, W*.38, c, glow, face + st*.06);
+  B(e, face, 0, .02, y0 + H*.90, W*.30, H*.13, W*.26, [.13,.13,.17], .04);
+  eb(e, face, 0, 0, y0 + H*1.12, W*.26, H*.05, W*.24, [.10,.10,.13], .06);
+  eb(e, face, 0, 0, y0 + H*1.30, W*.19, H*.16, W*.17, [.10,.10,.13], .06);
   if(lod < 1) return;
-  for(const sg of [-1,1]) eb(e, face, sg*W*.26, st*sg*W*.30, y0 + H*.18,
-                             W*.11, H*.20, W*.11, [.14,.14,.18], 0);
-  eb(e, face, 0, W*.26, y0 + H*.92, W*.14, H*.05, .05, [1,1,1], .85);
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*.22, st*sg*W*.34, y0 + H*.20, 0,.02,-.08, 3, W*.10,H*.13,W*.10, [.12,.12,.16], 0);
+  eb(e, face, -W*.09, W*.24, y0 + H*.92, W*.10, H*.055, .04, [1,.42,.30], .95);
   if(lod < 2) return;
-  for(const sg of [-1,1]) eb(e, face, sg*W*.46, W*.16, y0 + H*.62,
-                             W*.09, H*.16, W*.09, c, glow);
-  eb(e, face, W*.10, W*.40, y0 + H*.60, W*.34, H*.22, .04, [.94,.92,.86], .10);
-  eb(e, face, W*.10, W*.42, y0 + H*.72, W*.20, H*.03, .03, [.30,.30,.34], .05);
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*.42, W*.10, y0 + H*.66, sg*.02,.03,-.10, 3, W*.09,H*.10,W*.09, c, glow);
+  eb(e, face, W*.16, W*.44, y0 + H*.58, W*.30, H*.20, .04, [.94,.92,.86], .12, face + .35);
+  for(let i=0;i<3;i++)
+    eb(e, face, W*.16, W*.46, y0 + H*.66 - i*H*.05, W*.18, H*.014, .03, [.34,.34,.38], .05, face + .35);
 },
 
-// THE LIEN - a safe with legs. Not a monster: a charge against the property.
+// THE LIEN - a charge against the property, walking. It was a cube with a door
+// on it, which is exactly what a cube renderer should never be asked to draw.
+// Now it is a hunched thing WEARING the strongbox: safe-door chest with a dial
+// for a heart, padlock fists on the ends of heavy arms, chains over the
+// shoulders, and a small mean head sunk between them.
 safe(e, face, W, H, c, glow, lod, y0){
-  eb(e, face, 0, 0, y0 + H*.50, W*.62, H*.40, W*.50, c, glow);
-  eb(e, face, 0, W*.50, y0 + H*.50, W*.50, H*.32, W*.05, [.80,.80,.86], .10);
-  eb(e, face, 0, W*.56, y0 + H*.54, W*.17, W*.17, .05, [.30,.32,.40], .20);
+  const lum = Math.sin(T*9 + e.bob)*.5 + .5;
+  const B = lod>=2 ? ebl : eb;
+  B(e, face, 0, -W*.06, y0 + H*.54, W*.60, H*.30, W*.46, c, glow);          // barrel chest
+  B(e, face, 0, -W*.10, y0 + H*.22, W*.50, H*.16, W*.40, c, glow);          // hips
+  eb(e, face, 0, W*.40, y0 + H*.54, W*.44, H*.26, W*.07, [.74,.75,.82], .12); // the door
+  eb(e, face, 0, W*.47, y0 + H*.56, W*.15, W*.15, .05, [.30,.32,.40], .18);   // the dial
+  eb(e, face, 0, W*.50, y0 + H*.56, W*.07, W*.07, .05, [1,.86,.34], .35+lum*.5);
+  B(e, face, 0, W*.02, y0 + H*.86, W*.24, H*.13, W*.22, [.16,.17,.22], .05);  // sunken head
+  eey(e, face, 0, W*.22, y0 + H*.90, W*.11, W*.075, [.20,.30,.55], .25);
   if(lod < 1) return;
-  eb(e, face, 0, W*.60, y0 + H*.54, W*.08, W*.08, .05, [.95,.86,.42], .55);
+  for(const sg of [-1,1]){                                                    // heavy arms
+    const sw = Math.sin(T*4 + (sg>0?0:1.7))*.10;
+    etp(e, face, sg*W*.62, sw*W*.3, y0 + H*.62, sg*.02,.03,-.13, 3, W*.17,H*.13,W*.17, c, glow);
+    eb(e, face, sg*W*.70, sw*W*.4, y0 + H*.22, W*.19, H*.15, W*.17, [.72,.73,.80], .10);
+    eb(e, face, sg*W*.70, sw*W*.4 + W*.16, y0 + H*.24, W*.08, H*.09, W*.05, [.30,.32,.40], .12);
+  }
   for(const sg of [-1,1]) for(const fs of [-1,1])
-    eb(e, face, sg*W*.44, fs*W*.34, y0 + H*.10, W*.13, H*.10, W*.13, [.12,.12,.16], 0);
+    eb(e, face, sg*W*.34, fs*W*.24, y0 + H*.08, W*.15, H*.09, W*.15, [.12,.12,.16], 0);
   if(lod < 2) return;
-  for(let i=0;i<4;i++){ const a = i*(TAU/4) + T*.6;
-    eb(e, face, Math.sin(a)*W*.30, W*.58, y0 + H*.54 + Math.cos(a)*W*.30,
-       W*.045, W*.045, .04, [.95,.86,.42], .5, face); }
-  eb(e, face, 0, -W*.10, y0 + H*.92, W*.56, H*.06, W*.44, [.12,.12,.16], .05);
-  for(const sg of [-1,1]) eb(e, face, sg*W*.34, 0, y0 + H*.50, W*.06, H*.42, W*.54,
-                             [.55,.55,.62], .06);
+  for(let i=0;i<6;i++){                                                       // draped chain
+    const a = -W*.52 + i*W*.21, dp = Math.sin(i/5*Math.PI)*H*.10;
+    eb(e, face, a, -W*.30, y0 + H*.80 - dp, W*.07, H*.05, W*.07, [.55,.56,.62], .10); }
+  for(let i=0;i<4;i++) eb(e, face, -W*.30 + i*W*.20, W*.44, y0 + H*.78,
+                          W*.06, H*.03, .04, [.55,.56,.62], .10);
 },
 
-// APPRAISER - hangs back and throws valuations across the room.
+// APPRAISER - stooped over a brass loupe, valuing you from across the room.
 appraiser(e, face, W, H, c, glow, lod, y0){
   const lean = Math.sin(T*2.2 + e.bob)*.05;
-  eb(e, face, 0, lean, y0 + H*.42, W*.56, H*.34, W*.46, c, glow);
-  eb(e, face, 0, W*.24, y0 + H*.86, W*.26, H*.16, W*.24, c, glow);
-  eb(e, face, W*.13, W*.44, y0 + H*.90, W*.15, W*.15, .05, [.94,.94,.98], .75);
+  const B = lod>=2 ? ebl : eb;
+  B(e, face, 0, lean, y0 + H*.40, W*.50, H*.30, W*.42, c, glow);
+  etp(e, face, 0, W*.14, y0 + H*.66, 0,.05,.07, 3, W*.16,H*.09,W*.16, c, glow);   // stooped neck
+  B(e, face, 0, W*.30, y0 + H*.88, W*.23, H*.14, W*.21, c, glow);
+  eb(e, face, W*.12, W*.50, y0 + H*.90, W*.14, W*.14, .05, [.86,.72,.30], .35);   // brass ring
+  eb(e, face, W*.12, W*.54, y0 + H*.90, W*.09, W*.09, .04, [.80,.94,1], .80);     // the lens
   if(lod < 1) return;
-  eb(e, face, W*.13, W*.50, y0 + H*.90, W*.08, W*.08, .04, [.10,.12,.16], 0);
-  eb(e, face, -W*.14, W*.42, y0 + H*.88, W*.09, W*.07, .04, [1,1,1], .85);
-  eb(e, face, 0, W*.06, y0 + H*.70, W*.13, H*.10, W*.13, [.20,.18,.12], 0);
+  eb(e, face, -W*.13, W*.46, y0 + H*.88, W*.09, W*.07, .04, [1,1,1], .85);
+  eb(e, face, -W*.13, W*.49, y0 + H*.88, W*.045, W*.05, .04, [.10,.12,.16], 0);
+  etp(e, face, W*.12, W*.44, y0 + H*.78, .01,.01,-.07, 3, W*.04,H*.05,W*.04, [.86,.72,.30], .2);
   if(lod < 2) return;
-  for(const sg of [-1,1]) eb(e, face, sg*W*.44, W*.10, y0 + H*.40,
-                             W*.08, H*.20, W*.08, [.22,.20,.14], 0);
-  eb(e, face, -W*.40, -W*.14, y0 + H*.34, W*.24, H*.20, W*.14, [.36,.28,.18], .05);
-  for(const sg of [-1,1]) eb(e, face, sg*W*.24, 0, y0 + H*.10, W*.11, H*.11, W*.11,
-                             [.22,.20,.14], 0);
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*.40, W*.10, y0 + H*.44, sg*.02,.03,-.10, 3, W*.08,H*.10,W*.08, [.24,.22,.15], 0);
+  eb(e, face, -W*.44, -W*.16, y0 + H*.32, W*.22, H*.18, W*.13, [.38,.29,.18], .05);
+  eb(e, face, -W*.30, -W*.04, y0 + H*.52, W*.05, H*.14, W*.05, [.38,.29,.18], .05, face+.5);
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*.22, 0, y0 + H*.14, 0,0,-.06, 2, W*.11,H*.10,W*.11, [.24,.22,.15], 0);
 },
 
-// SILVERFISH - eats paper, breeds in filing cabinets, arrives in numbers.
+// SILVERFISH - it eats paper, it breeds in filing cabinets, and there are more
+// of them than of anything else. Bristled, tapering, and far too fast.
 fish(e, face, W, H, c, glow, lod, y0){
   const wig = Math.sin(T*14 + e.bob);
-  const n = lod >= 2 ? 4 : lod >= 1 ? 3 : 2;
+  const n = lod >= 2 ? 5 : lod >= 1 ? 3 : 2;
   for(let i=0;i<n;i++){
-    const k = 1 - i*.17;
-    eb(e, face, wig*.10*i, W*.42 - i*W*.42, y0 + H*.34*k,
-       W*.42*k, H*.30*k, W*.34*k, c, glow);
+    const k = 1 - i*.15;
+    eb(e, face, wig*.11*i, W*.46 - i*W*.36, y0 + H*.32*k,
+       W*.40*k, H*.26*k, W*.32*k, i%2 ? c : [c[0]*1.35+.06, c[1]*1.35+.06, c[2]*1.4+.10], glow+.05);
   }
   if(lod < 1) return;
-  for(const sg of [-1,1]) eb(e, face, sg*W*.20, W*.66, y0 + H*.50,
-                             W*.05, H*.05, W*.22, [.62,.62,.70], .25);
-  eb(e, face, 0, W*.54, y0 + H*.40, W*.20, H*.06, .04, [1,1,1], .8);
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*.18, W*.62, y0 + H*.48, sg*.03,.04,.02, 3, W*.05,H*.05,W*.16, [.68,.70,.80], .30);
+  eey(e, face, 0, W*.56, y0 + H*.40, W*.16, W*.07, [.90,.30,.24], .5);
   if(lod < 2) return;
-  for(let i=0;i<3;i++) for(const sg of [-1,1])
-    eb(e, face, sg*W*.40, W*.24 - i*W*.34,
-       y0 + H*.10 + Math.max(0, Math.sin(T*16 + i*2 + (sg>0?0:3)))*H*.08,
-       W*.06, H*.10, W*.06, [.48,.48,.56], .05);
+  for(let i=0;i<4;i++) for(const sg of [-1,1])
+    eb(e, face, sg*W*.38, W*.30 - i*W*.28,
+       y0 + H*.08 + Math.max(0, Math.sin(T*16 + i*2 + (sg>0?0:3)))*H*.09,
+       W*.05, H*.09, W*.05, [.55,.57,.66], .10, face + sg*.5);
+  for(let i=0;i<3;i++)
+    etp(e, face, 0, -W*.72 - i*W*.10, y0 + H*.24, 0,-.05,.01, 2, W*.05,H*.04,W*.05,
+        [.68,.70,.80], .25);
 },
 
 // THE HEIRLOOM - the one thing in the house actually worth keeping, and the
@@ -2081,8 +2165,23 @@ document.getElementById("paused").addEventListener("click", e=>{
 const dvBind = (id, fn)=>{ const el = document.getElementById(id);
                            if(el){ el.__wired = true;
                                    el.addEventListener("click", e=>{ e.stopPropagation(); fn(el); }); } };
-dvBind("dvLvl",  ()=>{ if(!P) return; P.xp = P.need; gainXP(0.0001); });
-dvBind("dvEvo",  ()=>{ if(!P) return; evolveTo(Math.min(2, stage+1)); });
+const devLevel = ()=>{ if(P){ P.xp = P.need; gainXP(0.0001); } };
+const devEvolve = ()=>{ if(P) evolveTo(Math.min(2, stage+1)); };
+// AUTO EVO does not wait for the level threshold: it steps the line every time
+// it can, which is the whole point of being able to look at all twenty-one
+// forms without playing twenty minutes for each one.
+let devAuto = false;
+dvBind("dhLvl",  devLevel);
+dvBind("dhEvo",  devEvolve);
+dvBind("dhSkip", ()=>{ if(P) T += 300; });
+dvBind("dhAuto", el=>{ devAuto = !devAuto; el.classList.toggle("on", devAuto);
+                       if(devAuto) devEvolve(); });
+dvBind("dhGod",  el=>{ if(!P) return;
+                       devGod = !devGod; el.classList.toggle("on", devGod);
+                       if(devGod){ devHp = P.maxhp; P.maxhp = 1e9; P.hp = 1e9; }
+                       else { P.maxhp = devHp || 115; P.hp = P.maxhp; } });
+dvBind("dvLvl",  devLevel);
+dvBind("dvEvo",  devEvolve);
 dvBind("dvSkip", ()=>{ if(!P) return; T += 300; });
 dvBind("dvGod",  el=>{ if(!P) return;
                        devGod = !devGod;
@@ -3649,12 +3748,24 @@ function render(){
 
   // terrain (static buffer, its own draw)
   gl.bindBuffer(gl.ARRAY_BUFFER, terBuf); bindAttribs();
-  gl.drawArrays(gl.TRIANGLES, 0, terCount);
+  // Only the chunks you could possibly see. The cull radius is generous - a
+  // chunk is 48m across and the fog closes at 145 - and it is measured from the
+  // PLAYER rather than the eye, so a fast camera swing cannot pop a chunk in.
+  // 120, not 210: fog closes at 145, so 210 was submitting 88 of 144 chunks -
+  // most of the map, nearly all of it invisible - which is the cost the
+  // chunking existed to avoid.
+  const CULL = 120, CS2 = ARENA*2/TER_CH;
+  drawnChunks = 0;
+  for(const ch of terChunks){
+    if(Math.hypot(ch.x-px, ch.z-pz) > CULL + CS2) continue;
+    gl.drawArrays(gl.TRIANGLES, ch.start, ch.count);
+    drawnChunks++;
+  }
 
   // ---- everything dynamic, batched
   for(const p of PROPS){
     const d = Math.hypot(p.x-px, p.z-pz);
-    if(d > 110) continue;
+    if(d > 190) continue;
     const y = groundY(p.x,p.z);
     if(p.t===1){ box(p.x, y+p.h*.5, p.z, .22,p.h*.5,.22, [.36,.25,.16], 0, p.r);
                  box(p.x, y+p.h, p.z, p.s,p.s*.8,p.s, [.27,.50,.27], 0, p.r); }
@@ -4120,6 +4231,7 @@ const $ = id => document.getElementById(id);
 function hud(){
   const on = running && !over;
   $("hud").style.display = on ? "block" : "none";
+  const dh = $("devhud"); if(dh) dh.classList.toggle("on", on && !!save.dev);
   if(!on || !P) return;
   $("clock").textContent = sudden ? "SUDDEN DEATH" : fmt(Math.max(0, RUN_LEN - T));
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
@@ -4219,6 +4331,7 @@ function frame(now){
   else if(running && !over && !paused && !picking) step(dt);
   pulse(dt);
   if(evoT > 0) evoT -= dt;
+  if(devAuto && P && running && !over && stage < 2 && evoT <= 0) devEvolve();
   render(); hud();
   requestAnimationFrame(frame);
 }
@@ -4307,6 +4420,8 @@ window.__g = {
   unlockAll:()=>unlockAll(),
   wipeAll:()=>{ wipeAll(); openMenu(); },
   dev:   (on)=>setDev(on===undefined ? true : !!on),
+  devAuto:(on)=>{ devAuto = !!on; return devAuto; },
+  devLevel:()=>{ devLevel(); return P ? P.lvl : 0; },
   isDev: ()=>!!save.dev,
   // Every DEV control the UI offers, and whether it is wired to anything. The
   // panel shipped with its two menu buttons calling functions that did not
@@ -4314,7 +4429,8 @@ window.__g = {
   // half that drew them - and 225 assertions passed, because none of them
   // pressed a button.
   devWiring:()=>{
-    const ids = ["dvMode","dvAll","dvWipe","dvLvl","dvEvo","dvSkip","dvGod"];
+    const ids = ["dvMode","dvAll","dvWipe","dvLvl","dvEvo","dvSkip","dvGod",
+                 "dhLvl","dhEvo","dhAuto","dhSkip","dhGod"];
     const out = {};
     for(const id of ids){ const el = document.getElementById(id);
       out[id] = { exists: !!el, wired: !!el && (!!el.onclick || !!el.__wired) }; }
@@ -4348,6 +4464,7 @@ window.__g = {
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
   biomes:()=>BIOMES.map(b=>({id:b.id,nm:b.nm,a:b.a.slice(),b:b.b.slice(),mod:{...b.mod}})),
+  chunks:()=>({ drawn:drawnChunks, total:terChunks.length, verts:terCount }),
   world: ()=>({ seed:worldSeed,
                 cells: cells.map(c=>({ x:+c.x.toFixed(2), z:+c.z.toFixed(2), id:c.b.id })),
                 marks: marks.map(m=>({ x:+m.x.toFixed(2), z:+m.z.toFixed(2), k:m.k.id })) }),
