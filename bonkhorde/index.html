@@ -94,6 +94,7 @@
   .slot.p{background:#191521}
   .slot.mx{border-color:var(--gold)}
   .slot.ev{border-color:var(--evo);box-shadow:0 0 12px #ff7a3d66}
+  .slot.mv{border-color:#8affd0;box-shadow:0 0 10px #8affd066}
   .slot i{position:absolute;bottom:-1px;right:1px;font-style:normal;font-size:9px;
     font-weight:700;color:var(--gold);text-shadow:0 1px 2px #000}
   #pausebtn{position:absolute;top:8px;left:50%;transform:translateX(-50%);
@@ -143,8 +144,8 @@
   .ch .nm{font-size:12px;font-weight:700;margin-bottom:4px}
   .ch .ds{font-size:10px;color:#9a9588;line-height:1.55}
   .ch .pk{font-size:10px;color:var(--gold);margin-top:6px}
-  .story{max-width:640px;margin:0 auto 22px;text-align:left;color:#8e8878;
-    font-size:11px;line-height:1.95;border-left:2px solid #2a313c;padding:2px 0 2px 16px}
+  .story{max-width:560px;margin:0 auto 20px;text-align:center;color:#8e8878;
+    font-size:11px;line-height:1.9}
   .story p{margin:0 0 9px}
   .story b{color:var(--ink);font-weight:700}
   .story .tag{color:var(--gold);letter-spacing:.2em;font-size:10px;font-weight:700;margin:0}
@@ -158,6 +159,8 @@
   .ch .mb{flex:1;height:4px;background:#0d1116;border:1px solid #000}
   .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
   .ch .sg{font-size:9px;color:var(--gold);margin-top:5px;letter-spacing:.05em}
+  .ch .mv{font-size:9px;color:#8affd0;margin-top:6px;letter-spacing:.05em;line-height:1.5}
+  .ch .mv s{display:block;text-decoration:none;color:#6f7683;letter-spacing:0}
 
   .shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;
     margin-top:8px;text-align:left}
@@ -258,8 +261,8 @@
 <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.6S3.4 15.2 3.4 9.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11.2-8.6 11.2z" class="f"/></symbol>
 <symbol id="i-dupe" viewBox="0 0 24 24"><rect x="3.2" y="3.2" width="11" height="11" rx="1.6" class="f"/><rect x="9.8" y="9.8" width="11" height="11" rx="1.6" class="fa"/></symbol>
 <symbol id="i-clover" viewBox="0 0 24 24"><path d="M11.4 11.4a3.4 3.4 0 1 1 0-4.8 3.4 3.4 0 1 1 4.8 0 3.4 3.4 0 1 1 0 4.8 3.4 3.4 0 1 1-4.8 0z" class="f"/><path d="M13.6 13.2c1 3 2.8 5.4 5.4 7.2" class="a"/></symbol>
-<symbol id="i-intern" viewBox="0 0 24 24"><path d="M12 2.2c5 0 8.4 3.4 8.4 8v3.2H3.6V10.2c0-4.6 3.4-8 8.4-8z" class="f"/><rect x="3.6" y="13" width="3.6" height="8.8" class="f"/><rect x="8.4" y="13" width="3.6" height="7" class="f"/><rect x="13.2" y="13" width="3.6" height="9.2" class="f"/><rect x="18" y="13" width="2.4" height="7.4" class="f"/><circle cx="9.2" cy="8.4" r="2.2" class="k"/><circle cx="14.8" cy="8.4" r="2.2" class="k"/></symbol>
-<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M5.6 9.2h12.8l-1.4 11.2a1.8 1.8 0 0 1-1.8 1.6H8.8a1.8 1.8 0 0 1-1.8-1.6z" class="f"/><path d="M3.4 5.6l17-3.2 1 4.4-17 3.2z" class="f"/><circle cx="9.6" cy="13.6" r="1.9" class="k"/><circle cx="14.4" cy="13.6" r="1.9" class="k"/><path d="M9.4 17.8h5.2v2.4H9.4z" class="k"/></symbol>
+<symbol id="i-intern" viewBox="0 0 24 24"><path d="M4.4 2.6l3 4.2 3-1.2-.4 4.6-4.8 1.2z" class="fa"/><path d="M12.4 7.6c4.4 0 7.4 3 7.4 7.2v3.4c0 1.9-1.3 3.2-3.2 3.2H8.2c-1.9 0-3.2-1.3-3.2-3.2v-3.4c0-4.2 3-7.2 7.4-7.2z" class="f"/><path d="M6.6 6.4l2.4 3.6-3.6 1.6zM18.2 6.4l-2.4 3.6 3.6 1.6z" class="f"/><circle cx="9.6" cy="14" r="2" class="k"/><circle cx="15.2" cy="14" r="2" class="k"/><path d="M10.4 18.4h4v2.4h-4z" class="k"/></symbol>
+<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M12 1.4l6.6 11.2A7.4 7.4 0 1 1 5.4 12.6z" class="f"/><circle cx="9.6" cy="14.6" r="2" class="k"/><circle cx="14.4" cy="14.6" r="2" class="k"/><path d="M9.8 19h4.4v2.2H9.8z" class="k"/><path d="M2.2 14.8l3.2-1.4.6 4z" class="fa"/><path d="M21.8 14.8l-3.2-1.4-.6 4z" class="fa"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><circle cx="12" cy="14.4" r="7.4" class="f"/><circle cx="9.4" cy="13.2" r="2.2" class="k"/><circle cx="14.6" cy="13.2" r="2.2" class="k"/><path d="M12 1.4l-3.4 5h3l-2 4.4L14 5.4h-3z" class="fa"/></symbol>
 <symbol id="i-ox" viewBox="0 0 24 24"><path d="M1.8 16.8L4.8 9a2.6 2.6 0 0 1 2.4-1.7h9.6A2.6 2.6 0 0 1 19.2 9l3 7.8z" class="f"/><rect x="4.4" y="16.8" width="3.4" height="4" class="f"/><rect x="16.2" y="16.8" width="3.4" height="4" class="f"/><path d="M5.2 11.6h13.6v2.2H5.2z" class="k"/><circle cx="9.2" cy="15.2" r="1.5" class="k"/><circle cx="14.8" cy="15.2" r="1.5" class="k"/></symbol>
 <symbol id="i-ghoul" viewBox="0 0 24 24"><path d="M1.6 21.4c0-5.7 4.7-10.2 10.4-10.2s10.4 4.5 10.4 10.2z" class="f"/><path d="M6.6 16.8h10.8v1.6a5.4 5.4 0 0 1-10.8 0z" class="k"/><circle cx="8.4" cy="14.2" r="1.7" class="k"/><circle cx="15.6" cy="14.2" r="1.7" class="k"/><rect x="16.4" y="5.8" width="2.4" height="6.4" class="fa"/><ellipse cx="17.6" cy="5" rx="4.4" ry="2.6" class="fa"/></symbol>
@@ -274,7 +277,7 @@
 <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" class="fa"/><path d="M12 7.4v9.2M9.6 9.6h3.6a1.9 1.9 0 0 1 0 3.8h-2.8a1.9 1.9 0 0 0 0 3.8h3.6" class="ka"/></symbol>
 <symbol id="i-start" viewBox="0 0 24 24"><path d="M12 2.4l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 21l1.4-6.8L2.2 9.5l6.9-.8z" class="fa"/></symbol>
 <symbol id="i-heal" viewBox="0 0 24 24"><path d="M9.6 4.2a4.6 4.6 0 0 1 8.4 3.2 4.4 4.4 0 0 1-4.6 4.4l-1.8 1.8-3.6-3.6 1.8-1.8a4.4 4.4 0 0 1-.2-4z" class="f"/><path d="M8.8 13.2l-5 5a2 2 0 0 0 2.8 2.8l5-5z" class="fa"/></symbol>
-<symbol id="i-accnt" viewBox="0 0 24 24"><ellipse cx="12" cy="14.4" rx="7.4" ry="8" class="f"/><rect x="10.9" y="7" width="2.2" height="15" class="k"/><rect x="6.4" y="10.4" width="2" height="7.6" class="k"/><rect x="15.6" y="10.4" width="2" height="7.6" class="k"/><ellipse cx="12" cy="5.2" rx="4" ry="3.2" class="f"/><circle cx="10.2" cy="5" r="1.8" class="fa"/><circle cx="13.8" cy="5" r="1.8" class="fa"/></symbol>
+<symbol id="i-accnt" viewBox="0 0 24 24"><path d="M12 3.4c4.6 0 7.8 3.2 7.8 7.6v4c0 3.2-2.4 5.6-5.6 5.6h-4.4c-3.2 0-5.6-2.4-5.6-5.6v-4c0-4.4 3.2-7.6 7.8-7.6z" class="f"/><circle cx="9.4" cy="10.4" r="2.3" class="k"/><circle cx="14.6" cy="10.4" r="2.3" class="k"/><path d="M12 13.6l3.2 2.6-3.2 2.6-3.2-2.6z" class="fa"/><path d="M10.4 1l1.6 2.6L13.6 1zM7.2 1.8l1 2.8 1.6-2z" class="fa"/><path d="M2.6 12.4l3.4-2.2 1 4.6zM21.4 12.4l-3.4-2.2-1 4.6z" class="f"/></symbol>
 <symbol id="i-twin" viewBox="0 0 24 24"><circle cx="15.8" cy="8.4" r="6" class="fa"/><circle cx="8.4" cy="15.6" r="7.4" class="f"/><circle cx="14.2" cy="7.6" r="1.6" class="k"/><circle cx="17.8" cy="7.6" r="1.6" class="k"/><circle cx="6" cy="14.4" r="2.1" class="k"/><circle cx="10.8" cy="14.4" r="2.1" class="k"/></symbol>
 <symbol id="i-tally" viewBox="0 0 24 24"><path d="M5 5.4v13.2M9.4 5.4v13.2M13.8 5.4v13.2M18.2 5.4v13.2"/><path d="M2.8 16.6L20.4 7" class="a"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
@@ -983,19 +986,19 @@ clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:5, ds:"+7% crit. Crits h
 // minutes. Clear it.
 const ENEMIES = {
 // An overdue notice that learned to walk. Folded, stamped, and very patient.
-shambler:{ nm:"ARREARS",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
+shambler:{ nm:"GRUBBER",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
            body:"paper" },
 // All elbows and clipboard. Gets there first and writes it all down.
-runner:  { nm:"BAILIFF",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
+runner:  { nm:"FLITTER",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
            body:"bailiff" },
 // A safe with legs. It is not a monster, it is a charge against the property.
-brute:   { nm:"THE LIEN", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
+brute:   { nm:"TUSKLING", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
            body:"safe" },
 // Hangs back and throws valuations at you from across the room.
-spitter: { nm:"APPRAISER",hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
+spitter: { nm:"SPITTOAD", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
            ranged:{cd:2.6, spd:15, r:22}, body:"appraiser" },
 // Eats paper, breeds in filing cabinets, arrives in numbers.
-skitter: { nm:"SILVERFISH",hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
+skitter: { nm:"RATLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
            body:"fish" },
 // Everything else in this game walks at you. This one walks away, which makes
 // it the only thing in twenty minutes that asks whether you can bring your
@@ -1014,7 +1017,7 @@ skitter: { nm:"SILVERFISH",hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04]
 // hues this palette needs were already spoken for, so the replacement came out
 // of a grid search scored by the suite's own CIELAB maths rather than by eye -
 // worst pair 18.5, worst against any terrain shade 17.6.
-collector:{ nm:"THE HEIRLOOM", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
+collector:{ nm:"GLIMMERFOWL", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
             c:[.82,.94,.36], h:2.0, w:.82, flee:true, body:"heirloom" },
 };
 
@@ -1024,9 +1027,9 @@ collector:{ nm:"THE HEIRLOOM", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 // is measured to the body, the biggest boss gained the most DPS against it, so
 // the biggest boss needs the most HP back. Same fight, honest numbers.
 const BOSSES = [
-{ t:300,  nm:"THE EXECUTOR", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
-{ t:600,  nm:"THE LANDLORD",  hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
-{ t:900,  nm:"MR. TEETH",     hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
+{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" },
+{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" },
+{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
@@ -1039,7 +1042,7 @@ const BOSSES = [
 // constraint; hpScale's quadratic went 2.5 -> 3.6 and carries the rest.
 // Latest A/B at THIS value: 13/24 veteran with events live, 7/24 frozen. The
 // intent is that twenty minutes is reachable BECAUSE you went and got them.
-{ t:1140, nm:"THE FINAL BONK",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
+{ t:1140, nm:"TERRAVORE",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -1146,7 +1149,7 @@ const MAXE = 420;
 
 const CHARS = [
 { id:"intern", nm:"THE INTERN", ic:"intern", w:"bat",
-  ds:"Nothing special. Statistically the best at everything.", mods:{} },
+  ds:"No weakness, no trick.", mods:{} },
 // Bottom of the table in every sweep, and the survival bench says why: it starts
 // with CALTROPS, which drops at your feet and benches the worst solo survival in
 // the game, and it pays 15% HP on top. Two survival penalties stacked on the one
@@ -1155,16 +1158,16 @@ const CHARS = [
 // it is the only stat the bench found that keeps mattering, and it turns the
 // long-arms idea the pickup radius already implies into something that fights.
 { id:"scrap",  nm:"THE SCRAPPER", ic:"scrap", w:"caltrops",
-  ds:"+35% weapon reach, +70% pickup radius, +10% speed, 15% less HP.",
+  ds:"Long reach, wide grasp, thin skin.",
   mods:{ mag:1.7, spd:1.10, hp:.85, reach:1.35 } },
 { id:"spark",  nm:"THE SPARK", ic:"spark", w:"zap",
-  ds:"-18% cooldowns. Made entirely of glass.",
+  ds:"Fires fast. Breaks faster.",
   mods:{ cd:.82, hp:.72 } },
 { id:"ox",     nm:"THE OX", ic:"ox", w:"pulse",
-  ds:"+70 HP, -14% speed. Slow is a strategy.",
+  ds:"Heavy. Slow. Difficult to remove.",
   mods:{ hpFlat:70, spd:.86 } },
 { id:"ghoul",  nm:"THE GHOUL", ic:"ghoul", w:"aura", lock:"survive 10:00 in one run",
-  ds:"Heals 1.4 HP/s. Takes 18% more damage.",
+  ds:"Never stops healing. Feels everything.",
   mods:{ regen:1.4, tough:1.18 } },
 // Levels faster than anyone and hits softer than anyone: the draft is the
 // power, not the numbers. Whether that trade is worth taking is the question
@@ -1180,14 +1183,14 @@ const CHARS = [
 // choice of starting weapon outweighs the entire stat block is the finding;
 // this is just the first thing done about it.
 { id:"accnt",  nm:"THE ACCOUNTANT", ic:"accnt", w:"skulls", lock:"reach level 30 in one run",
-  ds:"+18% XP from every gem, 26% less damage.",
+  ds:"Grows quickest. Hits softest.",
   mods:{ xp:1.18, dmg:.74 } },
 // Starts holding the passive that splits its own starting weapon, and pays for
 // it in the only currency this game charges: room for error.
 // Same story, smaller: 6/8 against 4/8. A free passive at minute zero is worth
 // more than a quarter of the HP pool, because the head start compounds too.
 { id:"twin",   nm:"THE TWIN", ic:"twin", w:"bolt", lock:"clear a run",
-  ds:"Begins with DUPLICATOR. 34% less HP.",
+  ds:"Never arrives alone. Half the health.",
   mods:{ hp:.66 }, gift:"dupe" },
 ];
 
@@ -1440,13 +1443,15 @@ generic(e, face, W, H, c, glow, lod, y0){
 // underside, which is what stops a shape reading as a solid lump) and an ACCENT
 // in a genuinely different hue, for markings, glow and the one detail that
 // makes it a character rather than a colour.
+// Type IDS stay - plain/scrap/tally are load-bearing across the body table and
+// two hundred assertions - but nothing the player reads says them.
 const MTYPE = {
-  plain:{ nm:"MOP",   c:[.87,.81,.60], bel:[.97,.94,.82], acc:[.55,.38,.22] },
-  scrap:{ nm:"SCRAP", c:[.93,.53,.20], bel:[.99,.79,.44], acc:[.34,.36,.44] },
+  plain:{ nm:"EMBER", c:[.96,.44,.18], bel:[1,.80,.44], acc:[1,.90,.34] },
+  scrap:{ nm:"TIDE",  c:[.26,.60,.90], bel:[.74,.93,1.00], acc:[1,1,1] },
   volt: { nm:"VOLT",  c:[.34,.80,1.00], bel:[.82,.96,1.00], acc:[1,.92,.34] },
   stone:{ nm:"STONE", c:[.72,.57,.34], bel:[.89,.79,.59], acc:[.36,.82,.70] },
   rot:  { nm:"ROT",   c:[.47,.79,.35], bel:[.80,.93,.58], acc:[.88,.40,.74] },
-  tally:{ nm:"TALLY", c:[.98,.79,.25], bel:[1,.94,.64], acc:[.24,.26,.34] },
+  tally:{ nm:"GALE",  c:[.86,.88,.96], bel:[1,1,1], acc:[.42,.62,.92] },
   echo: { nm:"ECHO",  c:[.71,.49,.98], bel:[.91,.82,1.00], acc:[.44,1,.88] },
 };
 // Level 7 lands in the first three minutes of a FIRST run, which is the whole
@@ -1454,46 +1459,69 @@ const MTYPE = {
 // exist. Level 20 is the reward for a run that is going well; the median first
 // run ends around 12, so the top of a line has to be earned.
 const EVO_AT = [1, 7, 20];
+// Every line ends in a MOVE, and the move is the reason to get there. It is
+// granted the first time you evolve and sharpened the second, so evolving is
+// where abilities come from rather than another row of percentages.
+//
+// Each move REUSES a firing behaviour the game already has and has already
+// benched. Seven brand-new weapons would be seven new places for this to be
+// subtly wrong, and the honest version of "a fire creature leaves burning
+// ground behind it" is the ground-hazard weapon with a different name and a
+// different colour - which is what it always was.
 const LINES = {
-  intern:{ type:"plain", st:[
-    { nm:"MOPLING" },
-    { nm:"MOPHAND", mods:{ hp:1.16, dmg:1.09 } },
-    { nm:"MOPMAW",  mods:{ hp:1.38, dmg:1.20, reach:1.20 },
-      sig:"SWEEP", sigDs:"+20% weapon reach" } ]},
-  scrap:{ type:"scrap", st:[
-    { nm:"RUSTLET" },
-    { nm:"RUSTJAW", mods:{ hp:1.16, dmg:1.09, mag:1.25 } },
-    { nm:"RUSTLORD",mods:{ hp:1.38, dmg:1.20, mag:1.60 },
-      sig:"SALVAGE", sigDs:"+60% pickup radius" } ]},
-  spark:{ type:"volt", st:[
-    { nm:"ZAPLET" },
-    { nm:"VOLTHOUND", mods:{ hp:1.18, dmg:1.09, cd:.95 } },
-    { nm:"STORMWICK", mods:{ hp:1.42, dmg:1.20, cd:.87 },
-      sig:"OVERCLOCK", sigDs:"-13% cooldowns" } ]},
-  ox:{ type:"stone", st:[
-    { nm:"LUGGIT" },
-    { nm:"HAULOX",  mods:{ hp:1.20, dmg:1.09, armorFlat:2 } },
-    { nm:"MONOLITH",mods:{ hp:1.46, dmg:1.20, armorFlat:5 },
-      sig:"BEDROCK", sigDs:"+5 flat armour" } ]},
-  ghoul:{ type:"rot", st:[
-    { nm:"MOULDLING" },
-    { nm:"ROTHERD",  mods:{ hp:1.16, dmg:1.09, regen:1.5 } },
-    { nm:"GRAVEMAW", mods:{ hp:1.38, dmg:1.20, regen:2.4 },
-      sig:"FEAST", sigDs:"regeneration x2.4" } ]},
-  accnt:{ type:"tally", st:[
-    { nm:"TALLYMITE" },
-    { nm:"LEDGERLING",   mods:{ hp:1.16, dmg:1.09, xp:1.07 } },
-    { nm:"GRAND AUDITOR",mods:{ hp:1.38, dmg:1.20, xp:1.15 },
-      sig:"COMPOUND", sigDs:"+15% XP on top of everything else" } ]},
-  twin:{ type:"echo", st:[
-    { nm:"SPLITKIN" },
-    { nm:"TWINSPAWN", mods:{ hp:1.20, dmg:1.10 } },
-    { nm:"TRIPLICATE",mods:{ hp:1.44, dmg:1.28 },
-      sig:"CHORUS", sigDs:"+28% damage - three of everything" } ]},
+  intern:{ type:"plain",
+    move:{ key:"caltrops", nm:"CINDERTRAIL", ds:"it burns where you have been" },
+    st:[
+      { nm:"CINDERPUP" },
+      { nm:"FLAREHOUND", mods:{ hp:1.16, dmg:1.09 } },
+      { nm:"PYROWYRM",  mods:{ hp:1.38, dmg:1.20, reach:1.20 },
+        sig:"WILDFIRE", sigDs:"+20% reach on everything you carry" } ]},
+  scrap:{ type:"scrap",
+    move:{ key:"skulls", nm:"UNDERTOW", ds:"water circles you, and it pulls" },
+    st:[
+      { nm:"DRIPLET" },
+      { nm:"TIDEMAW", mods:{ hp:1.16, dmg:1.09, mag:1.25 } },
+      { nm:"LEVIATHAN",mods:{ hp:1.38, dmg:1.20, mag:1.60 },
+        sig:"UNDERCURRENT", sigDs:"+60% pickup radius" } ]},
+  spark:{ type:"volt",
+    move:{ key:"zap", nm:"ARCLASH", ds:"it jumps, and keeps jumping" },
+    st:[
+      { nm:"ZAPLET" },
+      { nm:"VOLTHOUND", mods:{ hp:1.18, dmg:1.09, cd:.95 } },
+      { nm:"STORMWICK", mods:{ hp:1.42, dmg:1.20, cd:.87 },
+        sig:"OVERCLOCK", sigDs:"-13% cooldowns" } ]},
+  ox:{ type:"stone",
+    move:{ key:"pulse", nm:"TREMOR", ds:"the ground answers you" },
+    st:[
+      { nm:"PEBBLIN" },
+      { nm:"BOULDOG",  mods:{ hp:1.20, dmg:1.09, armorFlat:2 } },
+      { nm:"MONOLITH", mods:{ hp:1.46, dmg:1.20, armorFlat:5 },
+        sig:"BEDROCK", sigDs:"+5 flat armour" } ]},
+  ghoul:{ type:"rot",
+    move:{ key:"aura", nm:"SPORECLOUD", ds:"you are difficult to be near" },
+    st:[
+      { nm:"SPORELING" },
+      { nm:"MYCONID",  mods:{ hp:1.16, dmg:1.09, regen:1.5 } },
+      { nm:"GRAVEMAW", mods:{ hp:1.38, dmg:1.20, regen:2.4 },
+        sig:"BLOOM", sigDs:"regeneration x2.4" } ]},
+  accnt:{ type:"tally",
+    move:{ key:"mortar", nm:"GALEDIVE", ds:"it comes down out of the sky" },
+    st:[
+      { nm:"GUSTLING" },
+      { nm:"SKREECH",    mods:{ hp:1.16, dmg:1.09, xp:1.07 } },
+      { nm:"TEMPESTRIX", mods:{ hp:1.38, dmg:1.20, xp:1.15 },
+        sig:"UPDRAFT", sigDs:"+15% XP from everything" } ]},
+  twin:{ type:"echo",
+    move:{ key:"bolt", nm:"MIRRORBOLT", ds:"whatever you throw, there is another" },
+    st:[
+      { nm:"SPLITKIN" },
+      { nm:"TWINSPAWN", mods:{ hp:1.20, dmg:1.10 } },
+      { nm:"TRIPLICATE",mods:{ hp:1.44, dmg:1.28 },
+        sig:"CHORUS", sigDs:"+28% damage - three of everything" } ]},
 };
 for(const c of CHARS){
   const L = LINES[c.id]; if(!L) continue;
-  c.type = L.type; c.st = L.st; c.line = L.st.map(x=>x.nm);
+  c.type = L.type; c.st = L.st; c.move = L.move; c.line = L.st.map(x=>x.nm);
   c.nm = L.st[0].nm;                       // the roster shows what you start as
 }
 const monTop = ch => (ch.st ? ch.st[ch.st.length-1] : {});
@@ -1640,106 +1668,100 @@ let camEye=[0,0,0];                     // last rendered eye, so a test can see 
 // question with an answer.
 const BODY = {
 
-// ------------------------------------------------------------------ THE MOP
+// ------------------------------------------------------------------ EMBER
 plain(D){
   const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const br = Math.sin(t*2.1)*.02;                       // breathing
+  const br = Math.sin(t*2.1)*.02;
+  const fl = (r,f,y,sc,n)=>{ for(let i=0;i<n;i++){
+    const w = Math.sin(t*9 + i*1.3)*.05*sc;
+    mb(r+w, f, y + i*.15*sc, (.11-i*.016)*sc, (.10-i*.012)*sc, (.11-i*.016)*sc,
+       i%2 ? acc : lt, .55 + i*.10); } };
   if(st === 0){
-    // MOPLING. A head of hair with feet. Everything it owns is under there.
-    blob(0, 0, .50+br, .32,.30,.28, c, em);
-    blob(0, .06, .30, .28,.14,.24, bel, em*.7);         // pale underside
-    for(let i=0;i<16;i++){ const a=i/16*TAU, w=Math.sin(t*7+i)*.03;
-      taper(Math.sin(a)*.31+w, Math.cos(a)*.27, .44, 0,0,-.11, 3, .055,.075,.055,
-            i%3 ? c : acc, 0); }
-    eyes(0, .27, .54+br, .12, .085);
-    mb(0, .29, .40+br, .09,.03,.03, acc, 0);            // a small unimpressed mouth
-    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.10;
-      blob(rs*.15, .04, .07+lf, .10,.06,.14, acc, 0); }
+    // CINDERPUP. Too much head, four legs, and a tail that will not go out.
+    blob(0, -.04, .46+br, .28,.24,.32, c, em);
+    mb(0, 0, .24, .22,.09,.26, bel, em*.8);
+    blob(0, .32, .66+br, .27,.24,.24, c, em);                 // the head, oversized
+    mb(0, .48, .54+br, .18,.09,.14, bel, em*.6);              // muzzle
+    mb(0, .58, .58+br, .06,.045,.05, dk, .1);                 // nose
+    eyes(0, .46, .74+br, .13, .105, [.20,.10,.06]);
+    for(const rs of [-1,1]) taper(rs*.19, .26, .86+br, rs*.04,-.03,.09, 3, .07,.10,.05, acc, .18);
+    for(const rs of [-1,1]) for(const fs of [-1,1])
+      blob(rs*.18, fs*.20, .13 + Math.max(0,gait*rs*fs)*.09, .075,.13,.075, dk, 0);
+    fl(0, -.34, .52, 1.0, 4);
   } else if(st === 1){
-    // MOPHAND. It grew arms. Each one ends in a mop it is not letting go of.
-    blob(0, 0, .78+br, .34,.36,.30, c, em);
-    blob(0, .08, .48, .30,.16,.26, bel, em*.7);
-    for(let i=0;i<18;i++){ const a=i/18*TAU, w=Math.sin(t*7+i)*.035;
-      taper(Math.sin(a)*.33+w, Math.cos(a)*.29, .70, 0,0,-.13, 4, .055,.08,.055,
-            i%3 ? c : acc, 0); }
-    eyes(0, .30, .88+br, .14, .10);
-    grin(0, .32, .66, .14, .045, 4);
-    for(const rs of [-1,1]){ const sw = Math.sin(t*5+(rs>0?0:2.2))*.16;
-      taper(rs*.40, .08+sw, .82, rs*.035,.03,-.13, 4, .075,.075,.075, acc, 0);
-      blob(rs*.50, .20+sw, .30, .17,.15,.17, lt, .05);
-      for(let i=0;i<6;i++){ const a=i/6*TAU;
-        mb(rs*.50+Math.sin(a)*.15, .20+sw+Math.cos(a)*.15, .16, .04,.16,.04, c, 0); } }
-    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.12;
-      blob(rs*.17, .04, .09+lf, .11,.07,.15, acc, 0); }
+    // FLAREHOUND. It got the legs it was promised, and a mane.
+    blob(0, -.06, .62+br, .32,.28,.42, c, em);
+    mb(0, -.02, .34, .26,.11,.34, bel, em*.8);
+    taper(0, .26, .78, 0,.05,.05, 2, .18,.13,.16, c, em);
+    blob(0, .44, .92+br, .26,.23,.24, c, em);
+    mb(0, .62, .80+br, .19,.10,.16, bel, em*.6);
+    mb(0, .74, .84+br, .06,.05,.05, dk, .1);
+    eyes(0, .60, 1.00+br, .13, .10, [.20,.10,.06]);
+    grin(0, .62, .70+br, .12, .04, 4);
+    for(const rs of [-1,1]) taper(rs*.20, .38, 1.12+br, rs*.05,-.04,.10, 3, .07,.11,.05, acc, .18);
+    for(let i=0;i<7;i++){ const a=(i-3)*.36;                   // mane
+      fl(Math.sin(a)*.24, .18+Math.cos(a)*.10, .96, .85, 3); }
+    for(const rs of [-1,1]) for(const fs of [-1,1])
+      taper(rs*.21, fs*.26, .30, 0,0,-.10, 3, .08,.10,.08, dk, 0);
+    fl(0, -.46, .70, 1.2, 5);
   } else {
-    // MOPMAW. The mane opened. Most of what is inside it is teeth.
-    blob(0, 0, .98+br, .42,.46,.36, c, em);
-    blob(0, .10, .58, .36,.20,.30, bel, em*.7);
-    for(let i=0;i<24;i++){ const a=i/24*TAU, w=Math.sin(t*7+i)*.045;
-      taper(Math.sin(a)*.44+w, Math.cos(a)*.38, .96, 0,0,-.15, 5, .06,.09,.06,
-            i%3 ? c : acc, i%7 ? 0 : .3); }
-    grin(0, .36, .74, .30, .20, 8);
-    eyes(0, .34, 1.26+br, .19, .11, [.92,.24,.18]);
-    for(let i=0;i<5;i++){ const a=(i-2)*.32;            // a crest of raised strands
-      taper(Math.sin(a)*.20, -.10, 1.34, Math.sin(a)*.05,-.05,.13, 4, .05,.08,.05, acc, .25); }
-    for(const rs of [-1,1]) for(const k of [0,1]){
-      const sw = Math.sin(t*5+rs+k*1.6)*.18;
-      taper(rs*(.48+k*.10), .12+sw-k*.28, 1.02-k*.20, rs*.04,.03,-.15, 4, .08,.08,.08, acc, 0);
-      blob(rs*(.58+k*.10), .24+sw-k*.28, .44-k*.14, .18,.16,.18, lt, .06); }
-    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.14;
-      blob(rs*.19, .04, .10+lf, .12,.08,.17, acc, 0); }
+    // PYROWYRM. No legs left. It is mostly spine, and the spine is burning.
+    const hov = Math.sin(t*2.4)*.10;
+    for(let i=0;i<7;i++){ const k = 1 - i*.10, sw = Math.sin(t*3 - i*.7)*.16;
+      blob(sw, -.10 - i*.34, .70 + hov + Math.sin(t*2.2 - i*.6)*.14,
+           .30*k,.24*k,.30*k, i%2 ? c : lt, em+.06);
+      fl(sw, -.10 - i*.34, .92 + hov, .8 - i*.07, 2); }
+    blob(0, .34, .92+hov, .32,.29,.30, c, em+.06);
+    mb(0, .58, .78+hov, .24,.12,.20, bel, em*.6);
+    for(let i=0;i<6;i++) mb(-.18+i*.072, .70, .84+hov, .035,.05,.04, [.98,.98,.94], .2);
+    eyes(0, .56, 1.04+hov, .16, .115, [1,.86,.20]);
+    for(const rs of [-1,1]) taper(rs*.24, .18, 1.16+hov, rs*.06,-.05,.13, 4, .07,.13,.06, acc, .35);
+    for(const rs of [-1,1]) for(let k=0;k<2;k++){              // wings of flame
+      const wa = Math.sin(t*5 + k)*.12;
+      taper(rs*(.44+k*.16), -.10+wa, 1.00+hov+k*.10, rs*.10,-.06,.05, 4, .10,.05,.16, acc, .5); }
   }
 },
 
-// ---------------------------------------------------------------- THE SCRAP
+// ------------------------------------------------------------------- TIDE
 scrap(D){
   const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const flap = .10 + Math.abs(gait)*.14;
+  const bob = Math.sin(t*2.6)*.05;
   if(st === 0){
-    // RUSTLET. A dented bucket wearing its own lid at an angle.
-    blob(0, 0, .46, .28,.34,.26, c, em);
-    mb(0, .04, .28, .24,.12,.20, bel, em*.6);           // rusted-through patch
-    mb(0, 0, .82, .32,.045,.30, acc, 0);                // rim
-    mb(0, -.06, .90+flap, .30,.045,.28, lt, .06, .22);  // lid, worn as a cap
-    mb(-.05, -.02, .98+flap, .07,.05,.07, acc, 0);      // its handle
-    eyes(0, .25, .56, .12, .085);
-    mb(0, .27, .40, .10,.028,.03, acc, 0);
-    for(const rs of [-1,1]){ const lf = Math.max(0,gait*rs)*.09;
-      taper(rs*.20, 0, .22+lf, 0,0,-.07, 3, .045,.055,.045, acc, 0);
-      mb(rs*.21, .05, .04+lf, .07,.04,.09, acc, 0); }
+    // DRIPLET. A drop of water that has decided things.
+    blob(0, 0, .42+bob, .28,.30,.28, c, em+.12);
+    taper(0, 0, .74+bob, 0,0,.07, 3, .14,.10,.14, lt, em+.16);   // the point on top
+    mb(0, .06, .22, .22,.08,.20, bel, em*.9);
+    eyes(0, .26, .50+bob, .12, .10, [.06,.20,.34]);
+    mb(0, .28, .32+bob, .08,.03,.03, acc, .3);
+    for(const rs of [-1,1]) mb(rs*.28, -.04, .34+bob, .10,.13,.04, lt, em+.2, rs*.4);
+    for(let k=0;k<3;k++){ const dp=(t*1.2+k*.34)%1;
+      mb(Math.sin(k*2.1)*.26, Math.cos(k*2.1)*.22, .12-dp*.10, .04,.05,.04, lt, .25); }
   } else if(st === 1){
-    // RUSTJAW. A wheelie bin whose lid learned what a jaw is for.
-    blob(0, 0, .66, .34,.46,.30, c, em);
-    mb(0, .06, .40, .28,.18,.24, bel, em*.6);
-    mb(0, 0, 1.14, .38,.05,.34, acc, 0);
-    mb(0, -.12, 1.28+flap*1.4, .36,.055,.32, lt, .06);  // the lid, hinged at the back
-    for(let i=0;i<7;i++) D.tooth(-.26+i*.088, .30, 1.06, .042);
-    eyes(0, .32, .80, .15, .10);
-    for(let k=0;k<4;k++)                                // junk poking out of the top
-      taper(-.16+k*.11, -.06, 1.34, .02,.01,.09, 3, .05,.07,.05, k%2?acc:lt, .08);
-    for(const rs of [-1,1]){                            // wheels
-      mb(rs*.32, -.16, .18, .13,.15,.055, acc, .04);
-      mb(rs*.34, -.16, .18, .05,.05,.05, lt, .2); }
-    for(const rs of [-1,1]) taper(rs*.24, .20, .26+Math.max(0,gait*rs)*.10, 0,0,-.08, 3,
-                                  .05,.06,.05, acc, 0);
+    // TIDEMAW. Fins, a crest, and considerably more mouth.
+    blob(0, -.04, .58+bob, .34,.30,.42, c, em+.10);
+    mb(0, 0, .30, .28,.12,.34, bel, em*.9);
+    blob(0, .40, .74+bob, .30,.25,.26, c, em+.10);
+    grin(0, .58, .58+bob, .22,.07, 7);
+    eyes(0, .54, .86+bob, .16, .11, [.06,.20,.34]);
+    for(let i=0;i<5;i++)                                        // dorsal crest
+      taper(0, .16 - i*.20, .90+bob, 0,0,.07, 2, .05,.11-i*.012,.10, lt, em+.2);
+    for(const rs of [-1,1]) taper(rs*.34, .06, .48+bob, rs*.08,-.05,.03, 3, .13,.05,.17, lt, em+.18);
+    for(const rs of [-1,1]) for(const fs of [-1,1])
+      taper(rs*.22, fs*.24, .26, 0,0,-.09, 3, .08,.09,.08, dk, 0);
+    for(let k=0;k<3;k++) taper(Math.sin(t*4+k)*.10*(k+1), -.52-k*.20, .58+bob,
+                               0,0,-.02, 2, .10-k*.02,.09,.13, lt, em+.14);
   } else {
-    // RUSTLORD. A skip that stopped waiting to be emptied.
-    blob(0, 0, .76, .50,.54,.40, c, em);
-    mb(0, .08, .44, .42,.22,.32, bel, em*.6);
-    mb(0, 0, 1.34, .54,.06,.44, acc, 0);
-    mb(0, -.26, 1.56, .50,.06,.32, lt, .06);            // lid thrown right back
-    for(let i=0;i<10;i++) D.tooth(-.40+i*.09, .40, 1.24, .046);
-    eyes(0, .42, .96, .21, .12, [1,.72,.16]);
-    for(let k=0;k<9;k++){ const a=k/9*TAU;              // a crown of scrap
-      taper(Math.sin(a)*.42, Math.cos(a)*.34, 1.52, Math.sin(a)*.03,Math.cos(a)*.03,.11, 4,
-            .055,.075,.055, k%2?lt:acc, .18); }
-    const gr = Math.sin(t*3)*.22;                       // the grabber
-    taper(.56, .18+gr, 1.18, -.01,.02,-.16, 5, .075,.075,.075, acc, 0);
-    blob(.58, .32+gr, .70, .13,.11,.13, lt, .12);
-    for(let i=0;i<3;i++) mb(.58+(i-1)*.09, .40+gr, .58, .03,.10,.03, acc, 0);
-    for(const rs of [-1,1]) for(const fs of [-1,1]){
-      mb(rs*.46, fs*.30, .20, .09,.19,.075, acc, 0);
-      mb(rs*.46, fs*.30, .06+Math.max(0,gait*rs*fs)*.05, .11,.055,.10, lt, .04); }
+    // LEVIATHAN. It is a river with a head on one end.
+    const hov = Math.sin(t*2.2)*.09;
+    for(let i=0;i<8;i++){ const k = 1 - i*.09, sw = Math.sin(t*2.6 - i*.62)*.20;
+      blob(sw, -.16 - i*.36, .62 + hov + Math.sin(t*2 - i*.55)*.16,
+           .30*k,.25*k,.32*k, i%2 ? c : lt, em+.10);
+      if(i%2===0) taper(sw, -.16 - i*.36, .86+hov, 0,0,.06, 2, .05,.10,.10, lt, em+.24); }
+    blob(0, .38, .88+hov, .36,.31,.32, c, em+.10);
+    grin(0, .62, .70+hov, .30,.14, 9);
+    eyes(0, .58, 1.04+hov, .20, .12, [.10,.90,1]);
+    for(let i=0;i<4;i++) taper(0, .22 - i*.16, 1.12+hov, 0,0,.08, 3, .05,.13,.11, lt, em+.28);
+    for(const rs of [-1,1]) taper(rs*.42, .10, .74+hov, rs*.11,-.06,.04, 4, .14,.05,.20, lt, em+.2);
   }
 },
 
@@ -1886,58 +1908,57 @@ rot(D){
   }
 },
 
-// ---------------------------------------------------------------- THE TALLY
+// ------------------------------------------------------------------- GALE
 tally(D){
   const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const hop = Math.abs(Math.sin(t*3.2))*.05;
   if(st === 0){
-    // TALLYMITE. A beetle whose shell is a ledger, counting under its breath.
-    blob(0, -.02, .34, .32,.22,.36, c, em);
-    mb(0, 0, .12, .28,.06,.32, bel, em*.7);
-    mb(0, -.02, .56, .04,.03,.34, acc, 0);              // the seam down the shell
-    for(let k=0;k<5;k++) mb(-.17+k*.085, .04, .55, .016,.022,.09, acc, .35);
-    blob(0, .40, .30, .16,.14,.13, acc, 0);
-    eyes(0, .50, .34, .085, .065, [1,.86,.30]);
-    for(const rs of [-1,1]) taper(rs*.07, .44, .48, rs*.02,-.01,.07, 3, .022,.04,.022, acc, .1);
-    for(let k=0;k<3;k++) for(const rs of [-1,1]){
-      const lf = Math.max(0, Math.sin(t*13+k*2+(rs>0?0:3)))*.07;
-      taper(rs*.29, .20-k*.20, .18+lf, rs*.02,0,-.055, 3, .032,.045,.032, acc, 0); }
+    // GUSTLING. Mostly fluff, two enormous eyes, wings that do not work yet.
+    blob(0, 0, .44+hop, .30,.28,.28, c, em);
+    mb(0, .08, .24, .24,.10,.22, bel, em*.85);
+    eyes(0, .28, .54+hop, .14, .12, [.10,.14,.30]);
+    taper(0, .34, .40+hop, 0,.05,-.01, 3, .07,.055,.06, acc, .25);   // beak
+    for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.10;
+      taper(rs*.30, fw, .44+hop, rs*.05,-.04,.02, 3, .09,.14,.06, lt, em+.1); }
+    for(let i=0;i<3;i++) taper((i-1)*.07, -.02, .74+hop, 0,0,.06, 2, .04,.07,.04, acc, .2);
+    for(const rs of [-1,1]) taper(rs*.11, .06, .14, 0,0,-.05, 2, .045,.06,.045, acc, .15);
+    for(let k=0;k<3;k++) taper(Math.sin(t*5+k)*.06*(k+1), -.30-k*.12, .40+hop,
+                               0,0,0, 2, .07,.06,.05, lt, em+.06);
   } else if(st === 1){
-    // LEDGERLING. The shell opened. It audits from the air now.
-    const hov = Math.sin(t*3.4)*.06;
-    for(const rs of [-1,1]) blob(rs*.22, -.06, .70+hov, .17,.17,.33, c, em, rs*.14);
-    mb(0, 0, .54+hov, .26,.10,.34, acc, 0);
-    for(const rs of [-1,1]) for(let k=0;k<3;k++)        // wings blurring
-      mb(rs*.34, -.10, .84+hov+Math.sin(t*22+k)*.05, .18,.012,.14, bel, .25, rs*.5);
-    blob(0, .42, .74+hov, .18,.16,.15, acc, 0);
-    for(const rs of [-1,1]){ mb(rs*.085, .54, .78+hov, .075,.075,.02, [.97,.97,.94], .6);
-                             mb(rs*.085, .57, .78+hov, .042,.042,.02, [.06,.07,.10], 0); }
-    for(const rs of [-1,1]) taper(rs*.09, .46, .96+hov, rs*.02,-.01,.07, 3, .022,.045,.022, acc, .1);
-    for(let i=0;i<7;i++){ const a=t*2.6+i/7*TAU;        // abacus beads in orbit
-      blob(Math.sin(a)*.52, Math.cos(a)*.46, .70+hov+Math.sin(t*3+i)*.06,
-           .055,.055,.055, i%2?lt:bel, .55); }
-    for(let k=0;k<3;k++) for(const rs of [-1,1])
-      taper(rs*.27, .16-k*.18, .38+hov, rs*.015,0,-.05, 3, .028,.04,.028, acc, 0);
+    // SKREECH. The wings work now, and it is not friendly.
+    blob(0, -.02, .66+hop, .28,.28,.34, c, em);
+    mb(0, .04, .38, .22,.11,.28, bel, em*.85);
+    blob(0, .26, .92+hop, .21,.18,.20, c, em);
+    taper(0, .42, .86+hop, 0,.07,-.02, 4, .08,.06,.07, acc, .3);      // hooked beak
+    eyes(0, .36, 1.00+hop, .13, .10, [1,.72,.16], .35);
+    for(let i=0;i<4;i++) taper((i-1.5)*.06, .10, 1.14+hop, 0,0,.06, 2, .035,.08,.035, acc, .25);
+    for(const rs of [-1,1]){ const fw = Math.sin(t*9 + (rs>0?0:1.6))*.22;
+      for(let k=0;k<4;k++)
+        taper(rs*(.34+k*.16), fw - k*.06, .74+hop+k*.05, rs*.06,-.03,.01, 2,
+              .13-k*.02,.035,.20-k*.03, k%2?lt:bel, em+.08); }
+    for(const rs of [-1,1]) taper(rs*.13, .06, .22, 0,0,-.07, 3, .05,.08,.05, acc, .15);
+    for(let k=0;k<4;k++) taper(Math.sin(t*5+k)*.07*(k+1), -.40-k*.15, .58+hop,
+                               0,0,0, 2, .08-k*.01,.05,.06, lt, em+.06);
   } else {
-    // GRAND AUDITOR. It stood up, and it has your file.
-    blob(0, 0, .94, .34,.68,.28, c, em);
-    for(let k=0;k<3;k++){ mb(0, .28, .52+k*.42, .27,.14,.035, acc, 0);
-                          mb(0, .33, .52+k*.42, .08,.032,.025, lt, .35); }
-    blob(0, .08, 1.76, .27,.23,.23, acc, 0);
-    mb(.11, .32, 1.80, .095,.095,.02, [.97,.97,.94], .65);   // the monocle
-    mb(.11, .35, 1.80, .05,.05,.02, [.06,.07,.10], 0);
-    mb(.11, .34, 1.66, .012,.09,.012, lt, .3);               // and its chain
-    eyes(-.10, .32, 1.80, 0, .075, [1,.88,.32]);
-    for(const rs of [-1,1]) taper(rs*.11, .12, 1.98, rs*.03,-.01,.09, 3, .022,.05,.022, acc, .1);
-    for(const rs of [-1,1]) for(const k of [0,1]){           // four arms, all busy
-      const sw = Math.sin(t*3+rs+k*1.7)*.14;
-      taper(rs*.42, .06+sw, 1.36-k*.34, rs*.03,.02,-.11, 4, .06,.065,.06, acc, 0);
-      mb(rs*.54, .16+sw, 1.02-k*.34, .07,.05,.06, lt, .1); }
-    for(const rs of [-1,1]) blob(rs*.17, .04, .17+Math.max(0,gait*rs)*.10, .10,.16,.11, acc, 0);
-    for(let i=0;i<9;i++){ const a=t*1.4+i/9*TAU;             // a ring of tally marks
-      mb(Math.sin(a)*.66, Math.cos(a)*.58, 1.52+Math.sin(t*2+i)*.10, .02,.11,.02, lt, .85); }
+    // TEMPESTRIX. It brought weather with it.
+    const hov = Math.sin(t*2.2)*.13;
+    blob(0, -.02, .96+hov, .30,.32,.38, c, em);
+    mb(0, .04, .64+hov, .24,.12,.30, bel, em*.85);
+    blob(0, .28, 1.28+hov, .23,.20,.22, c, em);
+    taper(0, .46, 1.20+hov, 0,.08,-.02, 4, .09,.07,.08, acc, .4);
+    eyes(0, .38, 1.38+hov, .14, .105, [1,.78,.20], .55);
+    for(let i=0;i<5;i++) taper((i-2)*.07, .10, 1.52+hov, 0,0,.08, 3, .035,.10,.035, acc, .45);
+    for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.26;
+      for(let k=0;k<6;k++)
+        taper(rs*(.36+k*.19), fw - k*.08, 1.04+hov+k*.06, rs*.07,-.04,.01, 2,
+              .16-k*.02,.035,.24-k*.03, k%2?lt:bel, em+.10); }
+    for(let i=0;i<7;i++){ const a=t*2.4+i/7*TAU;                       // wind
+      mb(Math.sin(a)*.72, Math.cos(a)*.62, .90+hov+Math.sin(t*3+i)*.18,
+         .05,.05,.13, lt, .75, a); }
+    for(let k=0;k<5;k++) taper(Math.sin(t*4+k)*.09*(k+1), -.44-k*.17, .86+hov,
+                               0,0,0, 2, .09-k*.012,.05,.07, lt, em+.08);
   }
 },
-
 // ----------------------------------------------------------------- THE ECHO
 echo(D){
   const { blob, taper, eyes, mb, c, dk, lt, bel, acc, em, st, t } = D;
@@ -3571,18 +3592,10 @@ function openMenu(){
   const b = document.getElementById("menuBody");
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
-    <div class="sub">SURVIVE TWENTY MINUTES &nbsp;·&nbsp; YOUR MONSTER EVOLVES TWICE ON THE WAY</div>
-    <div class="story">
-      <p>A collector died, and the estate is large enough to have its own weather.
-      Nothing in it was ever thrown away, so everything in it has been sitting
-      there long enough to <b>wake up</b>. The mop woke up. The bin woke up. The
-      ledger woke up, and it has been counting.</p>
-      <p>You are one of those things. At dawn the house goes to probate and is
-      signed away &mdash; and before then <b>the claims</b> arrive. Every debt the
-      collector left, walking in through the walls to take what it is owed. They
-      do not negotiate.</p>
-      <p class="tag">TWENTY MINUTES. CLEAR THE HOUSE.</p>
-    </div>
+    <div class="sub">RAISE A CREATURE &nbsp;·&nbsp; EVOLVE IT TWICE &nbsp;·&nbsp; KILL WHAT COMES AT DAWN</div>
+    <div class="story"><p>Pick one. Keep it alive. It changes twice on the way,
+      and each change teaches it something.</p>
+      <p class="tag">TWENTY MINUTES &nbsp;·&nbsp; THEN TERRAVORE</p></div>
     <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
       save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
       save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
@@ -3631,6 +3644,8 @@ function openMenu(){
           i ? `<span style="opacity:.5"> &#8594; LV${EVO_AT[i]} </span><s>${x}</s>` : `<s>${x}</s>`
         ).join("")}</div>
       <div class="ds">${locked?c.lock:c.ds}</div>
+      ${locked?"":`<div class="mv">&#9670; LEARNS ${c.move.nm} AT LV${EVO_AT[1]}
+        <s>${c.move.ds}</s></div>`}
       ${locked?"":`<div class="sg">&#9733; ${top.sig}: ${top.sigDs}</div>`}
       <div class="pk">${locked?"":"start: "+WEAPONS[c.w].name}</div>
       ${locked?"":`<div class="ml">LV ${ml}<div class="mb"><i style="width:${
@@ -4295,8 +4310,9 @@ function hud(){
     const D = W||Pa, ic = (W&&w.evo) ? W.evo.ic : D.ic;
     const maxL = W ? 5 : Pa.max;
     const cls = w.evo ? "ev" : (w.l+1>=maxL ? "mx" : "");
-    html += `<div class="slot ${Pa?"p":""} ${cls}" title="${
-      (W&&w.evo)?W.evo.name:D.name}">${icon(ic)}<i>${w.evo?"★":w.l+1}</i></div>`;
+    const shown = w.mvNm && !w.evo ? w.mvNm : (W&&w.evo) ? W.evo.name : D.name;
+    html += `<div class="slot ${Pa?"p":""} ${cls} ${w.mvNm?"mv":""}" title="${shown}">${
+      icon(ic)}<i>${w.evo?"★":w.l+1}</i></div>`;
   }
   $("kit").innerHTML = html;
 
