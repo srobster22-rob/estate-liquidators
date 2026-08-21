@@ -1957,6 +1957,38 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22e. BREADTH COSTS SLOTS ===");
+  {
+    // Six weapon slots was sized for five ranks. At three, a full kit is 36 picks
+    // plus six evolutions against the ~80 a long run hands you - so every run
+    // took six of the eight weapons, maxed all of them, and came out as the same
+    // build as every other run. Four chosen weapons and five passives, and your
+    // line's own move is free on top, because that move is the whole reason a
+    // CINDERPUP run should not look like a ZAPLET run.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      const lim = g.slots();
+      for (let i = 0; i < 400; i++) { g.xp(400); g.step(1, 1/60); }   // draft, forever
+      const full = g.slots();
+      g.monLvl && g.evolveTo(2);                                       // learn the line's move
+      g.step(1, 1/60);
+      return { lim, full, after: g.slots() };
+    });
+    ok("a run cannot carry more than four chosen weapons",
+       r.full.carried <= r.lim.w,
+       `${r.full.carried} carried against a limit of ${r.lim.w}`);
+    ok("nor more than five passives",
+       r.full.passives <= r.lim.p,
+       `${r.full.passives} carried against a limit of ${r.lim.p}`);
+    ok("and it fills them - the cap is a choice, not a shortage",
+       r.full.carried === r.lim.w && r.full.passives === r.lim.p,
+       `${r.full.carried}w ${r.full.passives}p`);
+    ok("the line's own move rides free on top",
+       r.after.granted >= 1 && r.after.carried <= r.lim.w,
+       `${r.after.carried} chosen + ${r.after.granted} granted`);
+  }
+
   console.log("\n=== 22d. A RUN BEGINS AT ZERO ===");
   {
     // HEAD START handed you its levels at t=0, so a run with the shop maxed

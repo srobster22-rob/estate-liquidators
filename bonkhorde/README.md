@@ -106,7 +106,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 
 | | |
 |---|---|
-| **8 weapons** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, ground hazards |
+| **8 weapons, 4 slots** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, ground hazards — you carry four of them, plus your line's own move for free |
 | **8 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | every one contributes to output, not just the four with "damage" in the text — PLATING blasts attackers off you, MAGNET drags the horde into a pile |
 | **5 wildlife types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
@@ -468,6 +468,15 @@ evolution is reachable in roughly half the picks and lands mid-run instead of ne
 which is when a replacement weapon is actually interesting. That is also the single biggest
 effect the remap had on difficulty, and it is measured rather than assumed: see the balance
 section.
+
+**Breadth had to start costing something.** Six weapon slots and six passive slots were sized
+for five ranks: 60 picks to fill, against the ~80 a long run hands you. At three ranks a full
+kit is 36 picks plus six evolutions, so every run took six of the eight weapons, maxed all of
+them, and came out as the same build as every other run — the autopilot was averaging 4.2–4.8
+evolved weapons a run against 1.5–4.0 before. The ceiling stayed where it was; what disappeared
+was the *choice*. So the slots came down to **four weapons and five passives**, and your line's
+own move rides free on top of the four, because that move is the whole reason a CINDERPUP run
+should not look like a ZAPLET run.
 
 **And a level-up with nothing on it is no longer a level-up.** Everything maxing at rank 3
 means a full kit is about fifty picks, while a long run reaches level 70–80 — so the back thirty

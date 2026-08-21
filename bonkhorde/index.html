@@ -2652,6 +2652,8 @@ function damageArea(x, z, r, base, kb, srcName){
 // dps bench still applies. Capping at lv[2] instead would have quietly nerfed
 // every weapon in the game by two ranks and called it a UI change.
 const WMAX = 3;
+// Carry slots. See offers() for why these are 4 and 5 rather than 6 and 6.
+const WSLOTS = 4, PSLOTS = 5;
 const RANKMAP = [0, 2, 4];
 // Passives get the same treatment and the same guarantee. Their effects are all
 // written as (rank x coefficient), so three ranks would silently be a two-rank
@@ -3384,17 +3386,27 @@ function offers(){
                  ds:W.evo.ds, weight:999 });
   }
   const pool=[];
-  const wCount = Object.keys(have).filter(k=>WEAPONS[k]).length;
+  // Six weapon slots and six passive slots was sized for five ranks. At three,
+  // a full kit is thirty-six picks plus six evolutions and a long run hands you
+  // eighty - so every run took six of the eight weapons, maxed all of them, and
+  // ended up as the same build as every other run. Breadth got cheap, so it has
+  // to cost slots instead: four weapons you CHOOSE, five passives.
+  //
+  // Your line's own move does not take one of the four. It is the thing that
+  // makes a CINDERPUP run different from a ZAPLET run, and charging a slot for
+  // it would mean the creature you picked eats a quarter of the build you were
+  // going to make.
+  const wCount = Object.keys(have).filter(k=>WEAPONS[k] && !have[k].fromEvo).length;
   const pCount = Object.keys(have).filter(k=>PASSIVES[k]).length;
   for(const k in WEAPONS){
     const w = have[k];
     if(w){ if(w.evo || w.l >= WMAX-1) continue;
       pool.push({ type:"up", key:k, ic:WEAPONS[k].ic, nm:WEAPONS[k].name,
                   lv:"LV "+(w.l+2), ds:WEAPONS[k].ds, weight:10 }); }
-    else if(wCount < 6)
+    else if(wCount < WSLOTS)
       // an empty weapon slot beats a marginal rank, so weight it up hard
       pool.push({ type:"new", key:k, ic:WEAPONS[k].ic, nm:WEAPONS[k].name,
-                  lv:"NEW WEAPON", ds:WEAPONS[k].ds, weight: wCount<3 ? 34 : 18 });
+                  lv:"NEW WEAPON", ds:WEAPONS[k].ds, weight: wCount<2 ? 34 : 18 });
   }
   for(const k in PASSIVES){
     const p = have[k], P2 = PASSIVES[k];
@@ -3403,7 +3415,7 @@ function offers(){
     if(p){ if(p.l+1 >= P2.max) continue;
       pool.push({ type:"up", key:k, ic:P2.ic, nm:P2.name, lv:"LV "+(p.l+2),
                   ds:P2.ds, weight:9 }); }
-    else if(pCount < 6)
+    else if(pCount < PSLOTS)
       pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"NEW", ds:P2.ds, weight:13 });
   }
   // weighted sample without replacement
@@ -3543,7 +3555,8 @@ function evolveTo(i){
   let learned = null;
   if(mv && i > stageFrom){
     const have = P.kit[mv.key];
-    if(!have){ P.kit[mv.key] = { key:mv.key, l: i>=2 ? 2 : 1, t:0, evo:false, mvNm:mv.nm };
+    if(!have){ P.kit[mv.key] = { key:mv.key, l: i>=2 ? 2 : 1, t:0, evo:false,
+                                mvNm:mv.nm, fromEvo:true };
                learned = mv.nm; }
     else { have.mvNm = mv.nm;
            if(!have.evo && have.l < WMAX-1){ have.l = Math.min(WMAX-1, have.l + (i>=2 ? 2 : 1));
@@ -4812,6 +4825,10 @@ window.__g = {
                 regen:+P.regen.toFixed(3), armor:+P.armor.toFixed(2),
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
+  slots: ()=>({ w:WSLOTS, p:PSLOTS,
+                carried: Object.keys(P.kit).filter(k=>WEAPONS[k] && !P.kit[k].fromEvo).length,
+                granted: Object.keys(P.kit).filter(k=>WEAPONS[k] && P.kit[k].fromEvo).length,
+                passives: Object.keys(P.kit).filter(k=>PASSIVES[k]).length }),
   kitRaw:()=>{ const out={}; for(const k in P.kit){ const w=P.kit[k];
                  out[k]={ l:w.l, evo:!!w.evo, mv:w.mvNm||null }; } return out; },
   moveOf:(id)=>{ const c=CHARS.find(x=>x.id===(id||charId)); return c && c.move; },

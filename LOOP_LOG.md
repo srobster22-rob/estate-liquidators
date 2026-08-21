@@ -352,3 +352,16 @@ cost held at 29.8/30.0/30.8 across runs whose totals were 450 boxes apart. 254 c
 **Next:** breadth got cheap. With everything maxing in three picks the autopilot now carries and
 maxes six weapons every run (4.2–4.8 evolutions), so builds no longer differ from each other —
 worth a carry-slot look, and it is deterministic, unlike the difficulty curve.
+
+**R6 — breadth costs slots again.** Six weapon and six passive slots were sized for five ranks:
+60 picks to fill against the ~80 a long run hands you. At three ranks a full kit is 36 picks
+plus six evolutions, so every run took six of the eight weapons, maxed all of them, and came out
+as the same build as every other run — 4.2–4.8 evolved weapons a run against 1.5–4.0 before. The
+ceiling never moved; the *choice* did. Slots are now **four weapons and five passives**, and the
+line's own move rides free on top of the four rather than eating a quarter of the build the
+creature you picked was supposed to enable. Section 22e asserts the cap in both directions —
+never more than four chosen, and it does fill all four, so it reads as a decision and not a
+shortage. 258 checks pass. **Next:** the six SITES designed three rounds ago (THE VAULT, THE
+ARCHIVE, THE FURNACE, THE DEEP FREEZE, THE ESTATE SALE, THE WELL) are still unbuilt, and their
+names are from the estate world the game no longer tells — they need redesigning for the
+creature world before any of them is worth building.
