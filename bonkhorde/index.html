@@ -2282,7 +2282,12 @@ function startRun(id){
   // free levels from HEAD START are granted as real picks
   for(let i=0;i<rank("start");i++) queueLevel();
 }
-const xpFor = l => Math.round(5 + l*4 + Math.pow(l,1.45)*1.5);
+// Picks per run. Three ranks at 1.67x value each means the same power arrives
+// in 40% fewer picks than it used to, so the supply of picks is now a lever in
+// its own right - and it is the OTHER half of "too many levels to upgrade":
+// fewer ranks per thing is one answer, fewer level-up screens is the other.
+let XP_NEED = 1;
+const xpFor = l => Math.round((5 + l*4 + Math.pow(l,1.45)*1.5) * XP_NEED);
 
 // ==================================================================== INPUT
 const keys={};
@@ -4821,10 +4826,12 @@ window.__g = {
   rim:   ()=>RIM,
   // Read or set the difficulty curve. No argument reads it, which is what the
   // suite uses to assert the shipped values did not drift during a sweep.
-  curve: (q, d, l)=>{ if(q!==undefined) HP_QUAD = q;
-                      if(d!==undefined) DMG_DIV = d;
-                      if(l!==undefined) HP_LIN  = l;
-                      return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV, hpLin:HP_LIN }; },
+  curve: (q, d, l, x)=>{ if(q!==undefined) HP_QUAD = q;
+                         if(d!==undefined) DMG_DIV = d;
+                         if(l!==undefined) HP_LIN  = l;
+                         if(x!==undefined) XP_NEED = x;
+                         return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV,
+                                  hpLin:HP_LIN, xpNeed:XP_NEED }; },
   biomes:()=>BIOMES.map(b=>({id:b.id,nm:b.nm,a:b.a.slice(),b:b.b.slice(),mod:{...b.mod}})),
   chunks:()=>({ drawn:drawnChunks, total:terChunks.length, verts:terCount }),
   world: ()=>({ seed:worldSeed,

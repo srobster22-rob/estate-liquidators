@@ -66,7 +66,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve]) => {
     window.__g.wipeSave();
-    if (curve) window.__g.curve(curve[0], curve[1], curve[2]);
+    if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3]);
     if (shopped) window.__g.setUpgrades(
       { hp:6, dmg:6, spd:5, mag:5, cd:5, crit:5, armor:5, start:3, rev:2 });
     window.__g.start(ch);
@@ -85,7 +85,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     console.log(`\n${"=".repeat(66)}`);
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
-    if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]}`);
+    if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]}`);
     console.log("=".repeat(66));
     // The median is the WRONG headline for this game and it has now cost a whole
     // round of work. Run lengths here are bimodal - a run either falls apart in

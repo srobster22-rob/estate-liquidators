@@ -294,3 +294,16 @@ sweeps barely moved anything); `HP_LIN` and `DMG_DIV` are the two that bite earl
 2.5,380,220 and 2.5,260,150 at n=4×7 now. Target: `early` back to roughly 8–12/42 with clears
 still near zero. **Next:** pick the curve off that sweep, confirm at n=6, then update the
 README's balance section — it still publishes the old table and calls the median the headline.
+
+**R3d — the early levers are the wrong ones; the pick supply is the right one.** Sweeping the
+two levers that bite before minute six (hpLin 340→220, dmgDiv 560→380) moved `early` only
+2/28 against a baseline of 12/42, and dropped clears no further. The reason is that the bot is
+not dying to enemy stats at all — it is clearing the screen, and it clears the screen because
+it now reaches nearly every weapon's evolved form. Under the remap the same power arrives in
+about 40% fewer picks, so the honest counterweight is the **supply of picks**, not the health
+of what they shoot. Added `XP_NEED` (a multiplier on `xpFor`) as a fourth lever; sweeping 1.7
+and 2.4. This is also the other half of the user's own complaint — "too many levels to upgrade"
+was answered with fewer ranks per thing, and fewer level-up screens per run is the same fix
+from the other side. **Next:** pick the value, confirm at n=6 against `early` 8–12/42 and
+clears near zero, then rewrite the README balance section around `early`/`clears` and retire
+the median as its headline.
