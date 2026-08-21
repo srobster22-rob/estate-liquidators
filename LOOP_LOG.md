@@ -245,3 +245,19 @@ permanent upgrades now medians **24:00** on every line (was ~5:13), reaching lev
 15,000 kills. Power per pick roughly doubled and the threat curve did not move. `hpScale`/
 `dmgScale` are now `let` behind `__g.curve()` and `BONKHORDE_CURVE=hpQuad,dmgDiv` so the fix can
 be swept instead of guessed.
+
+**R3a — instruments before the fix.** Added `HP_QUAD`/`HP_LIN`/`DMG_DIV` behind `__g.curve()`
+and `BONKHORDE_CURVE=hpQuad,dmgDiv,hpLin` so a difficulty candidate is an env var, not an edit.
+Found and fixed a harness bug while sweeping: `__g.give(k,n)` still clamped at `l<4`, which
+`wStat` hides for weapons (it clamps its own index) but `prank()` does not — so
+`give("magnet",4)` was handing a passive 8.33 effective ranks against a legal ceiling of 5, and
+every passive measured through that hook was 67% over-strength. Clamped to `WMAX-1`; new
+section 22b asserts both halves of the remap contract — three ranks is the ceiling however hard
+you push (rank index 2 at nine picks), and three ranks is worth what five were (×1.450 speed
+against the old five-rank ×1.45). Also asserted the boss LOD claim directly (TERRAVORE 98 boxes
+at 10m → 36 at 110m) rather than leaning on the frame budget, which now passes either way.
+Seven new mutations, 44 anchors, none drifted. First sweep at hpQuad 4.5 barely moved the
+needle (intern still dying at 22–24 min). **Next:** two much larger candidates in flight
+(9,300,220 and 20,220,150) — and the suspicion is the remap is only half of it: evolution now
+hands you a *whole extra weapon* at rank 1 and ranks it to 3, on top of every pick you already
+had, which is power the curve was never tuned against.

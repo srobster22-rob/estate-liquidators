@@ -1853,6 +1853,56 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and none of them is the five-box fallback",
        bosses.every(b => boxesOf(b) >= 30),
        bosses.map(b => `${b.nm} ${boxesOf(b)}`).join("  "));
+
+    // A boss was pinned at full detail forever, which was free at five boxes and
+    // is not at ninety-eight. State the LOD claim directly rather than leaning on
+    // the frame budget - the budget passes either way now, so it cannot notice.
+    const lod = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const at = async dist => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.place(0, 0);
+        g.boss(3); g.step(1/60);
+        const b = g.bossAt();
+        g.place(b.x - dist, b.z); g.step(1/60);
+        g.captureEnemy(); await frame(); await frame();
+        const sig = g.enemySig();
+        return sig ? +sig.split("|")[0] : 0;
+      };
+      return { near: await at(10), far: await at(110) };
+    });
+    ok("and distance thins a boss out too",
+       lod.far > 0 && lod.far < lod.near * 0.55,
+       `TERRAVORE ${lod.near} boxes at 10m -> ${lod.far} at 110m`);
+  }
+
+  console.log("\n=== 22b. THREE RANKS, AND THE CEILING DID NOT MOVE ===");
+  {
+    // The rank COUNT dropped from five to three. The rank VALUE did not: RANKMAP
+    // reads lv[0], lv[2], lv[4] and passives scale by 5/3, so rank 3 of 3 is
+    // worth exactly what rank 5 of 5 was. Both halves of that need asserting -
+    // a version that quietly caps at lv[2] is a two-rank nerf wearing a UI
+    // change, and a version that lets a rank run past 3 is the same bug pointing
+    // the other way.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.drainPicks(true);
+                           g.freezeSpawns(true); g.freezeEvents(true); };
+      boot(); g.give("boots", 3);
+      const at3 = g.state().spd;
+      boot(); g.give("boots", 9);          // ask for far more than the game allows
+      const at9 = g.state().spd, kit9 = g.kitRaw().boots.l;
+      boot();
+      const bare = g.state().spd;
+      return { bare, at3, at9, kit9, wmax: g.wmax ? g.wmax() : null };
+    });
+    ok("three ranks is the ceiling, however hard you push",
+       r.at9 === r.at3 && r.kit9 === 2,
+       `rank index ${r.kit9} at nine picks, spd ${r.at3} vs ${r.at9}`);
+    ok("and three ranks is worth what five used to be",
+       Math.abs(r.at3 / r.bare - 1.45) < 0.02,
+       `${r.bare} -> ${r.at3} m/s, x${(r.at3 / r.bare).toFixed(3)} (five ranks of +9% was x1.45)`);
   }
 
   console.log("\n=== 23. THE ARENA IS ROLLED, NOT REMEMBERED ===");

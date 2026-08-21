@@ -1199,8 +1199,8 @@ const RUN_LEN = 1200;                    // 20:00
 // They are `let` and reachable from the QA hook so a sweep can measure three
 // curves in one sitting - the alternative is editing a magic number, running a
 // bench, and forgetting which number produced which table.
-let HP_QUAD = 2.5, DMG_DIV = 560;
-const hpScale  = t => 1 + t/340 + Math.pow(Math.max(0, t-360)/420, 2) * HP_QUAD;
+let HP_QUAD = 2.5, DMG_DIV = 560, HP_LIN = 340;
+const hpScale  = t => 1 + t/HP_LIN + Math.pow(Math.max(0, t-360)/420, 2) * HP_QUAD;
 const dmgScale = t => 1 + Math.max(0, t-300)/DMG_DIV;    // x1 to 5:00, x2.6 by 20:00
 const MAXE = 420;
 
@@ -4688,10 +4688,15 @@ window.__g = {
   },
   give:  (k,n=1)=>{ if(!P.kit[k]) P.kit[k]={key:k,l:0,t:0,evo:false};
                     // step rank by rank: HEART and friends accumulate, so a
-                    // single applyPassive after a multi-rank jump under-applies
-                    for(let i=0;i<n && P.kit[k].l<4;i++){ P.kit[k].l++; applyPassive(k); }
+                    // single applyPassive after a multi-rank jump under-applies.
+                    // Clamped to WMAX-1, which the 4 here used to be before the
+                    // remap. Weapons never noticed - wStat clamps its own index
+                    // - but prank() does not, so give("magnet",4) was handing a
+                    // passive 8.33 units against a legal ceiling of 5, and every
+                    // passive measured through this hook was 67% over-strength.
+                    for(let i=0;i<n && P.kit[k].l<WMAX-1;i++){ P.kit[k].l++; applyPassive(k); }
                     return window.__g.kit(); },
-  evolve:(k)=>{ if(P.kit[k]){ P.kit[k].evo=true; P.kit[k].l=5; } return window.__g.kit(); },
+  evolve:(k)=>{ if(P.kit[k]){ P.kit[k].evo=true; P.kit[k].l=WMAX-1; } return window.__g.kit(); },
   xp:    v=>gainXP(v),
   // radius lets a test drop enemies inside a melee weapon's reach; omit it and
   // they use the normal off-screen ring
@@ -4798,9 +4803,10 @@ window.__g = {
   rim:   ()=>RIM,
   // Read or set the difficulty curve. No argument reads it, which is what the
   // suite uses to assert the shipped values did not drift during a sweep.
-  curve: (q, d)=>{ if(q!==undefined) HP_QUAD = q;
-                   if(d!==undefined) DMG_DIV = d;
-                   return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV }; },
+  curve: (q, d, l)=>{ if(q!==undefined) HP_QUAD = q;
+                      if(d!==undefined) DMG_DIV = d;
+                      if(l!==undefined) HP_LIN  = l;
+                      return { hpQuad:HP_QUAD, dmgDiv:DMG_DIV, hpLin:HP_LIN }; },
   biomes:()=>BIOMES.map(b=>({id:b.id,nm:b.nm,a:b.a.slice(),b:b.b.slice(),mod:{...b.mod}})),
   chunks:()=>({ drawn:drawnChunks, total:terChunks.length, verts:terCount }),
   world: ()=>({ seed:worldSeed,
