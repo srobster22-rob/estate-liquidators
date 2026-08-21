@@ -233,6 +233,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       for (const [ln, LM, GM] of conds) {
         const seen = {};
         for (const k of keys) seen[k] = shift(lit(P.enemies[k], LM), m);
+        // THE HEIRLOOM is exempt from the GROUND comparison, and it is exempt
+        // for a measured reason rather than a convenient one: with seven ground
+        // palettes on the map, a grid search over RGB scored by this same maths
+        // returns ZERO colours clearing dE 9 against every ground AND dE 15
+        // against every other enemy. Best achievable is 12.5/9.8, or 16.7/4.9.
+        // So it stopped competing for a hue and is marked by a gold ring and a
+        // beam instead - the same trade the player made, for the same reason.
+        // The exemption is paid for by "and the one that is exempt is marked"
+        // below; delete that assertion and this one becomes a hole.
         for (let i = 0; i < keys.length; i++)
           for (let j = i+1; j < keys.length; j++) {
             // a type against its OWN elite is exempt: the crown and +38% size
@@ -272,6 +281,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("every enemy keeps usable hue separation from the ground",
      cvd.ground.d > 9,
      `worst ${cvd.ground.a} dE=${cvd.ground.d.toFixed(1)} (${cvd.ground.vis}, ${cvd.ground.ln})`);
+  const mark = await page.evaluate(async () => {
+    window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
+    window.__g.freezeEvents(true); window.__g.freezeSpawns(true);
+    window.__g.spawn("collector", 3, 14); window.__g.step(1/60);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const withThem = window.__g.heirloomMarks();
+    window.__g.start("intern"); window.__g.freezeSpawns(true); window.__g.step(1/60);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return { withThem, without: window.__g.heirloomMarks() };
+  });
+  ok("and the one that is exempt is marked instead",
+     mark.withThem === 3 && mark.without === 0,
+     `${mark.withThem} markers for 3 heirlooms, ${mark.without} with none on the field`);
   const shad = await page.evaluate(async () => {
     window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
     window.__g.freezeEvents(true); window.__g.spawn("shambler", 40);
@@ -510,14 +532,26 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
       const g = c.getContext("2d"); g.drawImage(img, 0, 0);
       const d = g.getImageData(0, 0, c.width, c.height).data;
-      let grass = 0, total = 0;
-      for (let i = 0; i < d.length; i += 4 * 17) {
-        total++;
-        if (d[i+1] > d[i] + 12 && d[i+1] > d[i+2] + 12) grass++;   // green ground
+      // This used to count GREEN pixels, which stopped meaning "ground" the
+      // moment the arena grew six more ground palettes - it reported 0% while
+      // the camera was working perfectly, because the edge of the map happened
+      // to be ash and rust. What the check is actually for is that the eye does
+      // not end up inside the wall with the frame rendering as fog, so: sample
+      // the sky from the top rows, then ask how much of the BOTTOM half is
+      // something other than that. Colour-agnostic, and it still fails on fog.
+      const w = c.width, h = c.height, at = (x,y) => (y*w + x) * 4;
+      let sr = 0, sg = 0, sb = 0, sn = 0;
+      for (let y = 2; y < h*0.10; y += 3) for (let x = 0; x < w; x += 9){
+        const i = at(x,y); sr += d[i]; sg += d[i+1]; sb += d[i+2]; sn++; }
+      sr /= sn; sg /= sn; sb /= sn;
+      let ground = 0, total = 0;
+      for (let y = Math.floor(h*0.55); y < h; y += 3) for (let x = 0; x < w; x += 9){
+        const i = at(x,y); total++;
+        if (Math.abs(d[i]-sr) + Math.abs(d[i+1]-sg) + Math.abs(d[i+2]-sb) > 42) ground++;
       }
-      return grass / total;
+      return ground / total;
     }, shot.toString("base64"));
-    ok(`camera sees the ground from the ${label}`, seen > 0.05,
+    ok(`camera sees the ground from the ${label}`, seen > 0.55,
        `${(seen*100).toFixed(0)}% of sampled pixels are ground`);
   }
 

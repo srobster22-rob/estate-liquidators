@@ -447,7 +447,7 @@ const BOXV = (()=>{                      // 36 verts of a unit cube, pos+nrm
 })();
 const MAXBOX = 3600;
 const VB = new Float32Array(MAXBOX*36*FLOATS);
-let vn=0, nbox=0, drawnBoxes=0, drawnShadows=0;
+let vn=0, nbox=0, drawnBoxes=0, drawnShadows=0, drawnMarks=0;
 let dynBuf;
 function buildDynBuf(){
   dynBuf = gl.createBuffer();
@@ -1269,6 +1269,22 @@ fish(e, face, W, H, c, glow, lod, y0){
 // little legs going as fast as they can. It has to look expensive from across
 // the arena or chasing it is a chore rather than a decision.
 heirloom(e, face, W, H, c, glow, lod, y0){
+  // A MARKER, not a hue. Seven ground palettes across a day cycle exhausted the
+  // colour space: a grid search over RGB scored by the suite's own CIELAB maths
+  // returns ZERO colours that clear dE 9 against every ground AND dE 15 against
+  // every other enemy. The ceiling is 12.5/9.8 or 16.7/4.9 - you can have one.
+  // So this stops competing for a hue and is marked by shape instead, exactly
+  // as the player was for the same reason: a gold ring nothing else in the game
+  // draws, and a beam you can find from across the arena. The exemption in the
+  // contrast check is paid for here, and asserted.
+  const gy = groundY(e.x, e.z);
+  for(let i=0;i<10;i++){ const a = i*(TAU/10) + T*1.1;
+    box(e.x+Math.sin(a)*W*1.5, gy+.10, e.z+Math.cos(a)*W*1.5,
+        W*.16, .06, W*.16, [1,.86,.30], 1.0); }
+  for(let i=0;i<5;i++)
+    box(e.x, gy + 2.4 + i*1.5 + Math.sin(T*2+i)*.20, e.z,
+        .10, .55, .10, [1,.92,.52], .95);
+  drawnMarks++;
   const scut = Math.sin(T*16 + e.bob);
   eb(e, face, 0, 0, y0 + H*.34, W*.62, H*.26, W*.56, c, glow);
   eb(e, face, 0, 0, y0 + H*.62, W*.38, H*.10, W*.34, c, glow);
@@ -3470,7 +3486,7 @@ function render(){
   const SC = skyAt(T);                 // horizon matches the fog it fades into
   gl.clearColor(SC.fog[0], SC.fog[1], SC.fog[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawnBoxes = 0; drawnShadows = 0;
+  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0;
 
   // ---- camera: chase, with real lag and a lot of shake
   // It used to sit 17m back and 12.8m up, recomputed from the player's exact
@@ -4291,6 +4307,7 @@ window.__g = {
   // stale value impossible to mistake for a live one
   clearBoxes: ()=>{ drawnBoxes = -1; },
   shadows: ()=>drawnShadows,
+  heirloomMarks: ()=>drawnMarks,
   events:  ()=>events.map(e=>({ kind:e.kind, x:+e.x.toFixed(1), z:+e.z.toFixed(1),
                                 life:+e.life.toFixed(1), chg:+e.chg.toFixed(2) })),
   spawnEvent: (k,x,z)=>{ const e = spawnEvent(k,x,z); return e && e.kind; },
