@@ -395,8 +395,19 @@ const hopMul = ()=> 1 + HOP_TOP * (1 - Math.pow(HOP_FALL, P ? P.hop : 0));
 function jumpPressed(){ jumpBuf = HOP_BUF; }
 const clamp = (v,a,b)=>v<a?a:v>b?b:v;
 const lerp  = (a,b,t)=>a+(b-a)*t;
-const rnd   = (a,b)=>a+Math.random()*(b-a);
-const pick  = a=>a[(Math.random()*a.length)|0];
+// THE RUN STREAM. Every roll a run makes comes from here, so a trial is a pure
+// function of (arena seed, run seed, character, build) - which is what turns the
+// balance bench from an instrument with a plus-or-minus-four-in-forty-two band
+// into one that can answer a question. Pinning only the ARENA was not enough:
+// the same build on the same seed measured 10/42 and 14/42, because the spawn
+// mix, the crits, the drops, the draft sampling and the autopilot's own choices
+// were all still coming out of Math.random().
+//
+// Seeded per run from a run seed. Unpinned, that seed is itself random, so
+// nothing about ordinary play changes.
+let R = Math.random;
+const rnd   = (a,b)=>a+R()*(b-a);
+const pick  = a=>a[(R()*a.length)|0];
 
 // ---------------------------------------------------------------- GL setup
 const cv = document.getElementById("gl");
@@ -706,7 +717,7 @@ const BLEND = 9;                    // metres over which two regions cross-fade
 // ONCE into an offscreen canvas and blitted - sampling seven Voronoi cells per
 // pixel per frame would cost more than the horde does. Only the dots are live.
 const MAP_PX = 148;
-let mapBg = null;
+let mapBg = null, mapHits = 0;
 function bakeMap(){
   const c = document.createElement("canvas");
   c.width = c.height = MAP_PX;
@@ -778,8 +789,9 @@ function mulberry32(a){
   };
 }
 let wr = Math.random;                       // the world stream
-// Set it and every run rolls the same arena. Null means roll a fresh one.
-let pinSeed = null;
+// Set either and every run repeats. Null means roll a fresh one.
+let pinSeed = null, pinRun = null;
+let runSeed = 0;
 const wrnd = (a, b) => a + wr()*(b - a);
 function rollWorld(seed){
   worldSeed = (seed === undefined ? (Math.random()*1e9)|0 : seed) >>> 0;
@@ -978,10 +990,10 @@ const PROPS = (()=>{
   const p=[];
   for(let i=0;FLOOR_CLUTTER && i<270;i++){
     // sqrt() on the radius or every prop in the world piles into the middle
-    const pa=Math.random()*TAU, pr=Math.sqrt(Math.random())*(RIM-4);
+    const pa=R()*TAU, pr=Math.sqrt(R())*(RIM-4);
     const x=Math.cos(pa)*pr, z=Math.sin(pa)*pr;
     if(pr < 12) continue;                                    // keep spawn clear
-    const k=Math.random();
+    const k=R();
     if(k<.42)      p.push({x,z,t:0,s:rnd(.5,.9),  h:rnd(1.0,1.9), c:[.60,.61,.66], r:rnd(0,TAU)});
     else if(k<.72) p.push({x,z,t:1,s:rnd(.45,.85),h:rnd(2.6,5.2), c:[.26,.19,.14], r:rnd(0,TAU)});
     else if(k<.90) p.push({x,z,t:2,s:rnd(.7,1.5), h:rnd(.4,.8),  c:[.50,.52,.54], r:rnd(0,TAU)});
@@ -2384,6 +2396,10 @@ function startRun(id){
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
+  // Seed the run stream BEFORE anything rolls, including the world - the arena
+  // has its own stream but everything after it comes out of this one.
+  runSeed = (pinRun === null ? (Math.random()*1e9)|0 : pinRun) >>> 0;
+  R = mulberry32(runSeed);
   rollWorld(pinSeed === null ? undefined : pinSeed);
   dealDens(); makeTerrain(); uploadTerrain(); bakeMap();
   P.y = groundY(0,0); lastBiome = biomeAt(0,0);
@@ -2681,7 +2697,7 @@ function nearest(x,z,maxR,skip){
 // ================================================================== COMBAT
 function dmgOut(base){
   let d = base * P.dmg;
-  const crit = Math.random() < P.crit;
+  const crit = R() < P.crit;
   if(crit) d *= 2.3;
   return { d: d, crit };
 }
@@ -2719,12 +2735,12 @@ function killEnemy(e){
     if(e.final){ finish("VICTORY", true); return; }
   } else {
     pushGem(e.x, e.z, e.xp);
-    if(Math.random() < .012) coinsRun += 5;
+    if(R() < .012) coinsRun += 5;
     if(e.elite){ hold("elite"); shake = Math.max(shake, .3); }
     SFX.pop();
   }
 }
-const mkGem = (x,z,v)=>({ x, z, y:groundY(x,z)+.45, v, bob:Math.random()*TAU, pulled:false });
+const mkGem = (x,z,v)=>({ x, z, y:groundY(x,z)+.45, v, bob:R()*TAU, pulled:false });
 
 // Long-range weapons kill things outside pickup radius, so gems left behind
 // accumulate forever - a 20-minute run measured 15,006 of them, every one
@@ -2875,7 +2891,7 @@ function fireMortar(w,s){
   // aim at the densest cluster, not the nearest body - that is what makes it feel smart
   let best=null, bs=-1;
   for(let i=0;i<10;i++){
-    const e = enemies[(Math.random()*enemies.length)|0];
+    const e = enemies[(R()*enemies.length)|0];
     if(!e || e.dead) continue;
     let c=0; hitNear(e.x, e.z, s.rad, ()=>c++);
     if(c > bs){ bs=c; best=e; }
@@ -2983,9 +2999,9 @@ function spawnEnemy(type, atX, atZ){
     // Levels and kills were HIGHER than before, so it was never a power
     // problem - the damage was landing on the wrong bodies.
     const bossUp = enemies.some(e2 => e2.boss && !e2.dead);
-    if(!bossUp && spd2 > 1.5 && Math.random() < .80)
+    if(!bossUp && spd2 > 1.5 && R() < .80)
       a = Math.atan2(P.vz, P.vx) + rnd(-.79, .79);      // +/-45 degrees of heading
-    else a = Math.random()*TAU;
+    else a = R()*TAU;
     const r = rnd(30, 38);
     [x, z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
   }
@@ -2993,14 +3009,14 @@ function spawnEnemy(type, atX, atZ){
   // all, so minute 18 looks exactly like minute 8 while nothing dies - which
   // reads as "my weapons got worse", not "these are tougher". Elites give the
   // curve a face: a readable, prioritisable target that is visibly the reason.
-  const elite = type !== "collector" && T > ELITE_FROM && Math.random() < eliteChance(T);
+  const elite = type !== "collector" && T > ELITE_FROM && R() < eliteChance(T);
   const em = elite ? ELITE : NORMAL;
   const made = { x, z, y:groundY(x,z), def, type, elite,
     rad: def.r*em.sz, sz: em.sz, xp: def.xp*em.xp, spdMul: em.spd,
     hp:    def.hp*hpScale(T)*em.hp,
     maxhp: def.hp*hpScale(T)*em.hp,
     dmg:   def.dmg*dmgScale(T)*em.dmg,
-    kx:0, kz:0, flash:-1, atk:0, bob:Math.random()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
+    kx:0, kz:0, flash:-1, atk:0, bob:R()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
     dead:false, boss:false };
   enemies.push(made);
   return made;                                  // the hunt event needs a handle
@@ -3012,7 +3028,7 @@ function spawnBoss(b){
   // rendered the five-box fallback while the table said otherwise.
   const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
                 c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body };
-  const a = Math.random()*TAU;
+  const a = R()*TAU;
   const [x, z] = confine(P.x+Math.cos(a)*26, P.z+Math.sin(a)*26, 5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
@@ -3064,7 +3080,7 @@ function bossTelegraph(e, A){
     hazards.push(mkHaz(P.x, P.z, 5.6, ABILITIES.slam.tell, .34, 37*s));
   } else if(A.kind === "evict"){
     for(let i=0;i<5;i++){
-      const a = Math.random()*TAU, r = rnd(4.5, 15);
+      const a = R()*TAU, r = rnd(4.5, 15);
       const [hx, hz] = confine(P.x+Math.cos(a)*r, P.z+Math.sin(a)*r, 2);
       hazards.push(mkHaz(hx, hz, 4.2, ABILITIES.evict.tell, 7.0, 8*s));
     }
@@ -3076,7 +3092,7 @@ function bossTelegraph(e, A){
                          2.9, ABILITIES.charge.tell, .55, 27*s));
     }
   } else if(A.kind === "spokes"){
-    A.dir = Math.random()*TAU;
+    A.dir = R()*TAU;
   }
   SFX.zap();
 }
@@ -3140,7 +3156,7 @@ function wakeDen(m){
   const K = m.k, n = m.n || Math.round(rnd(K.pack[0], K.pack[1]));
   m.woke = true; m.alive = 0; m.pack = [];
   for(let i=0;i<n;i++){
-    const a = Math.random()*TAU, r = Math.sqrt(Math.random())*K.r;
+    const a = R()*TAU, r = Math.sqrt(R())*K.r;
     const [x, z] = confine(m.x + Math.cos(a)*r, m.z + Math.sin(a)*r, 2);
     const e = spawnEnemy(K.den, x, z);
     if(!e) continue;
@@ -3206,12 +3222,12 @@ function spawnEvent(kind, atX, atZ){
       // dressing; a structure that is where the chest turns up is a place.
       const near = marks.filter(m => { const d2 = Math.hypot(m.x-P.x, m.z-P.z);
                                        return d2 > band[0]*.7 && d2 < band[1]*1.6; });
-      if(near.length && Math.random() < .66){
-        const m = near[(Math.random()*near.length)|0];
+      if(near.length && R() < .66){
+        const m = near[(R()*near.length)|0];
         [x, z] = confine(m.x + rnd(-2.5,2.5), m.z + rnd(-2.5,2.5), 6);
         break;
       }
-      const a = Math.random()*TAU, r = rnd(band[0], band[1]);
+      const a = R()*TAU, r = rnd(band[0], band[1]);
       [x, z] = confine(P.x + Math.sin(a)*r, P.z + Math.cos(a)*r, 6);
       if(Math.hypot(x-P.x, z-P.z) > band[0]*.8) break;
     }
@@ -3230,7 +3246,7 @@ function spawnEvent(kind, atX, atZ){
 
 function updateEvents(dt){
   if(!noEvents && (nextEvent -= dt) <= 0){
-    const roll = Math.random();
+    const roll = R();
     // First pass fired one every ~41s: 29 a run, half of them expiring
     // unvisited. That is wallpaper, not an occasion. ~14 a run, and the ones
     // you skip are a decision you made rather than a stream you ignored.
@@ -3623,7 +3639,7 @@ function offers(){
   const n = Math.min(4 - out.length, pool.length);
   for(let i=0;i<n;i++){
     let tot=0; for(const o of pool) tot+=o.weight;
-    let r = Math.random()*tot, hitIdx=0;
+    let r = R()*tot, hitIdx=0;
     for(let j=0;j<pool.length;j++){ r-=pool[j].weight; if(r<=0){hitIdx=j;break;} }
     out.push(pool.splice(hitIdx,1)[0]);
   }
@@ -4010,7 +4026,7 @@ function step(dt){
     if(enemies.length < MAXE){
       const keysM = Object.keys(ph.mix);
       let tot=0; for(const k of keysM) tot += ph.mix[k];
-      let r = Math.random()*tot, chosen = keysM[0];
+      let r = R()*tot, chosen = keysM[0];
       for(const k of keysM){ r -= ph.mix[k]; if(r<=0){ chosen=k; break; } }
       spawnEnemy(chosen);
       // Skitters arrive as a pack or they are just bad shamblers - but a pack
@@ -4862,7 +4878,7 @@ function render(){
   }
   g2.globalAlpha = 1;
 
-  if(running && !over) drawMap(w, h);
+  if(running && !over){ drawMap(w, h); mapHits++; }
   if(P && P.hp/P.maxhp < .35 && running){
     const p = 1 - P.hp/P.maxhp;
     const gr = g2.createRadialGradient(w/2,h/2,Math.min(w,h)*.30, w/2,h/2,Math.max(w,h)*.62);
@@ -5035,7 +5051,7 @@ window.__g = {
   // they use the normal off-screen ring
   spawn: (t,n=1,radius)=>{ for(let i=0;i<n;i++){
       if(radius===undefined) spawnEnemy(t);
-      else { const a=Math.random()*TAU, r=Math.random()*radius;
+      else { const a=R()*TAU, r=R()*radius;
              const [sx, sz] = confine(P.x+Math.cos(a)*r, P.z+Math.sin(a)*r, 2);
              spawnEnemy(t, sx, sz); }
     } return enemies.length; },
@@ -5148,6 +5164,7 @@ window.__g = {
   jump:  ()=>jumpPressed(),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
+  mapHits: ()=>mapHits,
   map:   ()=>mapBg ? { px:mapBg.width, painted:(()=>{
            const x2 = mapBg.getContext("2d"), d = x2.getImageData(0,0,MAP_PX,MAP_PX).data;
            let n = 0, tones = new Set();
@@ -5173,6 +5190,11 @@ window.__g = {
   // pin the arena for every subsequent run. null unpins.
   pin: (seed)=>{ pinSeed = (seed === undefined || seed === null) ? null : seed>>>0;
                  return pinSeed; },
+  // pin the RUN stream: spawn mix, crits, drops, draft sampling, the lot. With
+  // both pinned, a trial is a pure function of (arena, run, character, build).
+  pinRun: (seed)=>{ pinRun = (seed === undefined || seed === null) ? null : seed>>>0;
+                    return pinRun; },
+  seeds: ()=>({ world:worldSeed, run:runSeed, pinned:pinSeed, pinnedRun:pinRun }),
   terHash:()=>{ let h = 0; for(let i=6;i<terData.length;i+=997)
                   h = (h*31 + Math.round(terData[i]*1000)) | 0; return h; },
   eye:   ()=>camEye.slice(),

@@ -449,3 +449,22 @@ candidate. Section 22h asserts same seed → same ground, same regions, same den
 boons; different seed → different arena; unpinned → still fresh every run. 279 checks pass.
 **Next:** measure whether pinning actually shrinks the band — same build, same seed, twice —
 because if it does, every difficulty question this session gave up on becomes answerable.
+
+**R12 — the whole run is seeded, and two contaminated measurements.** Pinning the arena was not
+enough: the same build on the same seed measured **10/42 and 14/42**, because the spawn mix, the
+crits, the drops, the draft sampling and the autopilot's own choices were all still
+`Math.random()`. All 24 simulation call sites now draw from one seeded run stream, so a trial is
+a pure function of (arena seed, run seed, character, build) — verified reproducible **to the
+kill**. `balance.js` now uses **paired seeds by default**: trial *i* of every bench runs seed
+BASE+i, so a candidate and its control are measured on the same forty-two worlds with the same
+spawn mix and the same draft rolls, and the difference between them is the candidate rather than
+the dice. `BONKHORDE_SEED=0` restores fresh worlds. Two harness bugs fell out. Section 23b's
+speed probe read 8.03 on the green and 7.97 in the sludge — not a broken biome but a hop chain
+left running by the autopilot from an earlier section, two links deep for the first reading and
+six for the second; a chain multiplies speed by up to 1.6, which is more than the sludge's 0.86
+takes away. It now turns the bot off and refuses to report a speed taken mid-chain (6.60 →
+5.68, exactly ×0.861). And the minimap screenshot check read a flat corner intermittently — a
+single capture can land on a frame the compositor has not painted; best-of-five now, with a draw
+counter so a flat corner with a stuck counter reads as the different failure it is. 284 checks
+pass. **Next:** re-run the difficulty question this session gave up on — with paired seeds it is
+answerable, and `HP_LIN`/`DMG_DIV`/`XP_NEED` are already wired.

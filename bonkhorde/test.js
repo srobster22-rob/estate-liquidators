@@ -1991,6 +1991,30 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.c.ter !== r.a.ter && r.c.dens !== r.a.dens, `${r.a.ter} vs ${r.c.ter}`);
     ok("and unpinned still rolls a fresh one every run",
        r.e1.ter !== r.e2.ter, `${r.e1.ter} vs ${r.e2.ter}`);
+
+    // The arena was only a slice of it. Pinned to one arena, the same build
+    // measured 10/42 and 14/42 - the spawn mix, the crits, the drops, the draft
+    // sampling and the autopilot's own choices were all still Math.random().
+    // With the run stream seeded too, a trial is a pure function of its inputs,
+    // which is what lets a candidate and its control share forty-two worlds.
+    const det = await page.evaluate(() => {
+      const g = window.__g;
+      const trial = () => { g.wipeSave(); g.start("intern"); g.bot(true);
+                            const st = g.runOut();
+                            return `${st.t.toFixed(2)}/${st.lvl}/${st.kills}`; };
+      g.pin(999); g.pinRun(555);
+      const a = trial(), b = trial();
+      g.pinRun(556);            const c = trial();
+      g.pin(null); g.pinRun(null);
+      const d = trial(), e = trial();
+      return { a, b, c, d, e };
+    });
+    ok("a fully pinned trial is reproducible to the kill",
+       det.a === det.b, `${det.a} vs ${det.b}`);
+    ok("a different run seed on the same arena is a different run",
+       det.c !== det.a, `${det.a} vs ${det.c}`);
+    ok("and unpinned play is still random",
+       det.d !== det.e, `${det.d} vs ${det.e}`);
   }
 
   console.log("\n=== 22g. YOU CAN SEE WHERE YOU ARE ===");
@@ -2010,8 +2034,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // the map has to be REBUILT for a new world, not carried over
       const h0 = g.terHash();
       g.start("ox");
+      // resume, or a lost pointer lock leaves the game paused and the corner
+      // this check samples is a flat overlay - which is exactly what it read
+      // once the section above started ending its own runs by dying.
+      g.resume(); g.place(0, 0);
       await frame(); await frame();
-      return { baked, h0, h1: g.terHash(), rebaked: g.map() };
+      return { baked, h0, h1: g.terHash(), rebaked: g.map(),
+               live: g.state().over === false };
     });
     ok("the run bakes a map of its own arena",
        m.baked && m.baked.px > 100 && m.baked.painted.opaque > 12000,
@@ -2023,9 +2052,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        m.h0 !== m.h1 && m.rebaked && m.rebaked.painted.opaque > 12000,
        `terrain ${m.h0} -> ${m.h1}, ${m.rebaked ? m.rebaked.painted.opaque : 0} painted`);
 
-    // and it actually reaches the screen
-    const shot = await page.screenshot();
-    const seen = await page.evaluate(async b64 => {
+    // and it actually reaches the screen. Retried: a single capture can land on a
+    // frame the compositor has not painted yet, which reads as a flat corner and
+    // says nothing about whether the map is drawn. Take the best of five, and
+    // require that drawMap actually ran between them - a flat corner with the
+    // counter stuck is a paused game, which is a different failure.
+    const hits0 = await page.evaluate(() => window.__g.mapHits());
+    let seen = 0, shot = null;
+    for (let i = 0; i < 5 && seen < 10; i++) {
+      await page.evaluate(() => { window.__g.resume(); });
+      await page.waitForTimeout(180);
+      shot = await page.screenshot();
+      seen = Math.max(seen, await page.evaluate(async b64 => {
       const img = new Image();
       await new Promise(r => { img.onload = r; img.src = "data:image/png;base64," + b64; });
       const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
@@ -2037,7 +2075,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       for (let i = 0; i < d.length; i += 4)
         tones.add(((d[i] >> 4) << 8) | ((d[i+1] >> 4) << 4) | (d[i+2] >> 4));
       return tones.size;
-    }, shot.toString("base64"));
+    }, shot.toString("base64")));
+    }
+    const hits1 = await page.evaluate(() => window.__g.mapHits());
+    ok("the map is being drawn every frame", hits1 > hits0,
+       `${hits1 - hits0} draws across the captures`);
     ok("and it is drawn on the screen, not just in memory",
        seen >= 10, `${seen} distinct tones in the corner it occupies`);
   }
@@ -2277,19 +2319,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         if (ids.includes("bog") && ids.includes("ash") && ids.includes("sand")) break;
       }
       const cellOf = id => w.cells.find(c => c.id === id);
+      // g.bot(false) FIRST. A section that left the autopilot running hands this
+      // one a driver that presses jump, and a hop chain multiplies move speed by
+      // up to 1.6 - which is more than the sludge's 0.86 takes away. It read
+      // 8.03 on the green and 7.97 in the bog: not a broken biome, a chain that
+      // was two links deep for the first reading and six for the second. The
+      // measurement now refuses to report a speed taken mid-chain.
+      let chain = 0;
       const speedAt = (x, z) => {
-        g.place(x, z);
+        g.bot(false); g.place(x, z);
         dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
         for (let i = 0; i < 60; i++) { g.step(1/60); g.place(x, z); }
-        const v = g.hop().spd;
+        const h = g.hop();
+        chain = Math.max(chain, h.n);
         dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
-        return v;
+        return h.spd;
       };
       const green = cellOf("grass"), bog = cellOf("bog"), ash = cellOf("ash");
       const out = { ids: w.cells.map(c=>c.id) };
       out.vGreen = speedAt(green.x, green.z);
       out.vBog   = speedAt(bog.x, bog.z);
       out.inBog  = g.biomeAt(bog.x, bog.z).id;
+      out.chain  = chain;
 
       // damage taken in the ashes vs on the green, same hit
       const hitAt = (x, z) => { g.place(x, z); return g.hitMe(40); };
@@ -2301,6 +2352,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.vBog < r.vGreen * 0.92,
        `${r.vGreen.toFixed(2)} m/s on THE GREEN -> ${r.vBog.toFixed(2)} in THE SLUDGE`);
     ok("and it is the sludge you were standing in", r.inBog === "bog", r.inBog);
+    ok("and neither reading was taken mid-hop-chain", r.chain === 0,
+       `deepest chain during the measurement: ${r.chain}`);
     ok("the ashes cost you more for the same hit",
        r.dAsh > r.dGreen * 1.05,
        `${r.dGreen.toFixed(1)} damage on THE GREEN -> ${r.dAsh.toFixed(1)} in THE ASHES`);

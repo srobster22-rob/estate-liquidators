@@ -45,11 +45,17 @@ const NOEVO  = !!process.env.BONKHORDE_NOEVO;
 // bench, so a sweep is three env vars rather than three edits. Printed in the
 // header of every table, because a balance number with no curve attached to it
 // is a number you cannot reproduce.
-// BONKHORDE_SEED pins the arena for every trial. Region layout and den placement
-// are variance the bench does not want and cannot currently subtract: a
-// candidate measured on 42 different arenas against a control measured on 42
-// other arenas is comparing two things that differ in more than the candidate.
-const SEED   = process.env.BONKHORDE_SEED ? +process.env.BONKHORDE_SEED : null;
+// PAIRED SEEDS, on by default. A run is a pure function of (arena seed, run
+// seed, character, build), so trial i of every bench uses seed BASE+i - which
+// means a candidate and its control are measured on the SAME forty-two worlds
+// with the same spawn mix, the same crits and the same draft rolls, and the
+// difference between them is the candidate rather than the dice.
+//
+// This is the fix for a band that read 10/42 and 14/42 on identical builds and
+// cost this project two rounds of work. BONKHORDE_SEED=<n> picks a different
+// base; BONKHORDE_SEED=0 turns pairing off and rolls fresh worlds like before.
+const SEED_BASE = process.env.BONKHORDE_SEED !== undefined
+                ? +process.env.BONKHORDE_SEED : 20260821;
 const CURVE  = process.env.BONKHORDE_CURVE
              ? process.env.BONKHORDE_CURVE.split(",").map(Number) : null;
 // Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
@@ -69,10 +75,11 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed]) => {
+  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed]) => {
     window.__g.wipeSave();
     if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3]);
-    if (seed !== null) window.__g.pin(seed);
+    window.__g.pin(seed);          // null unpins, which is what SEED_BASE=0 gives
+    window.__g.pinRun(seed);
     if (shopped) window.__g.setUpgrades(
       { hp:6, dmg:6, spd:5, mag:5, cd:5, crit:5, armor:5, start:3, rev:2 });
     window.__g.start(ch);
@@ -84,7 +91,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
              evos: window.__g.kit().filter(k => k.includes("EVO")).length };
-  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, SEED]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {
@@ -92,7 +99,8 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
     if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]}`);
-    if (SEED !== null) console.log(`arena pinned to seed ${SEED}`);
+    console.log(SEED_BASE ? `paired seeds ${SEED_BASE}..${SEED_BASE + TRIALS - 1}`
+                          : `unpaired - fresh world every trial`);
     console.log("=".repeat(66));
     // The median is the WRONG headline for this game and it has now cost a whole
     // round of work. Run lengths here are bimodal - a run either falls apart in
@@ -105,7 +113,8 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     let totEarly = 0, totClear = 0, totN = 0;
     for (const ch of CHARS) {
       const rs = [];
-      for (let i = 0; i < TRIALS; i++) rs.push(await runOne(ch, shopped));
+      for (let i = 0; i < TRIALS; i++)
+        rs.push(await runOne(ch, shopped, SEED_BASE ? SEED_BASE + i : null));
       const ts = rs.map(r => r.t).sort((a, b) => a - b);
       const med = ts[Math.floor(ts.length / 2)];
       const clears = rs.filter(r => r.won).length;   // NOT t>=1199 - sudden death runs past 20:00
