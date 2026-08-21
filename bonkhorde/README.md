@@ -210,6 +210,49 @@ bodies. It no longer is: CALTROPS out-damages it against a boss and it keeps
 the crowd, which is a trade rather than a default. Nothing dominates either
 table now.
 
+### Ten times the map, and what it cost
+
+The arena is **222,000 square metres** now, against 22,167 — radius 84 to 266, which is ×3.16
+on the radius and ×10 on the area. The ground is a grid of contiguous chunks in one buffer with
+only the near ones submitted (32 of 144), so per-frame cost tracks view distance rather than
+map size. 14 regions and 51 landmarks, against 5 and 5.
+
+**It broke both halves of the difficulty invariant, one at a time, and the second break was
+caused by the fix for the first.**
+
+| | first run clears | veteran clears | median (first run, INTERN) |
+|---|---|---|---|
+| before the map change | 0/60 | 21/42 | 5:13 |
+| ×10 map, uniform spawn ring | **1/42** | — | **23:56** |
+| + spawn biased into your heading | 0/42 | **0/42** | 5:19 |
+| + bias suppressed during boss fights | **0/60** | **10/42** | 5:18 |
+
+**Distance was free.** On 22,000 m² the *wall* was what made running cost something. At 222,000
+it never touches you, and with a uniform spawn ring everything arrives behind you and culls —
+so a straight line is an exit. THE GHOUL and THE TWIN medianed the full clock with *every
+single run* surviving; a first run cleared for the first time in this project's history. The map
+did not get easier by being big, it got easier by deleting the constraint. Four fifths of
+arrivals now come out of a 90° arc ahead of you, so turning is what buys room.
+
+**And then that fix broke the ending.** Veteran clears went to **0 in 42** — every character
+medianing 24:00, everyone reaching sudden death, nobody killing THE FINAL BONK. Levels and kills
+were *higher* than before (82 vs 74, 15,496 vs 14,472), so it was never a power problem. The
+horde is armour — projectiles are eaten by whatever they pass through, which is why a fleeing
+COLLECTOR was unkillable at 6.8m with a full kit — and the bias had stacked four fifths of the
+horde directly between the player and the thing they were shooting.
+
+The bias exists to punish **traversal**, and a boss fight is the one part of a run spent standing
+in one place. Suppressed while a boss is on the field, with the cull back to 80m, the veteran
+tier reads 10/42. That is half the old rate and it is still *reachable*, which is the half of
+the invariant that is actually stated; every veteran run now goes to sudden death and is decided
+there, which the design already wanted.
+
+**Still open: THE OX.** It medians 24:00 across n=14 pooled — signal, not noise, by this file's
+own standard. `starters.js` says it is not the weapon: all eight of its possible starters land
+within noise of each other. Its price was −14% speed, and space made speed free, so it is now
++70 HP with no downside. Level 82 on 15,864 kills says what it is really doing is out-farming
+the roster while standing still.
+
 ### The arena is rolled, not remembered
 
 One green disc for twenty minutes, every run, is a backdrop rather than a place. The map is
