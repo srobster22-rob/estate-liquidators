@@ -1266,7 +1266,7 @@ const SHOP = [
 { id:"cd",    ic:"cd",  n:"IMPATIENCE",   d:"-3.5% cooldowns",       max:5, cost:r=>90+r*85 },
 { id:"crit",  ic:"crit",n:"LUCK",         d:"+4% crit chance",       max:5, cost:r=>80+r*70 },
 { id:"armor", ic:"armor",n:"THICK SKIN",   d:"-0.8 flat damage taken",max:5, cost:r=>85+r*75 },
-{ id:"start", ic:"start",n:"HEAD START",   d:"begin one level higher",max:3, cost:r=>200+r*220 },
+{ id:"start", ic:"start",n:"HEAD START",   d:"a free level, once a run is under way",max:3, cost:r=>200+r*220 },
 { id:"rev",   ic:"rev", n:"SECOND WIND",  d:"revive once at 50% HP", max:2, cost:r=>400+r*500 },
 { id:"tally", ic:"tally",n:"TALLY",        d:"+8% XP from every gem", max:4, cost:r=>140+r*130,
   lock:"tally" },
@@ -2218,6 +2218,9 @@ let bodyCap = null, bodyCapOut = null;
 let ebCap = null, ebCapOut = null;
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
+// HEAD START's levels, waiting their turn. See startRun().
+const START_BANK_GAP = 12;
+let startBank = 0, startBankT = 0;
 let stage=0;                            // 0..2 - where you are in the monster's line
 let lastBiome=null, biomeT=0;           // for the "you have crossed into" banner
 let devGod=false, devHp=0;              // pause-screen godmode toggle
@@ -2263,7 +2266,6 @@ function startRun(id){
   P.y = groundY(0,0); lastBiome = biomeAt(0,0);
   P.kit[ch.w] = { key:ch.w, l:0, t:0, evo:false };
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
-  for(let i=0;i<rank("start");i++){ P.lvl++; P.need = xpFor(P.lvl); }
 
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
@@ -2280,7 +2282,12 @@ function startRun(id){
   audioInit(); if(AC && AC.state==="suspended") AC.resume();
   lockPointer();
   // free levels from HEAD START are granted as real picks
-  for(let i=0;i<rank("start");i++) queueLevel();
+  // HEAD START used to hand you its levels at t=0, which meant the run OPENED on
+  // a stack of draft screens - "PICK ONE, 3 MORE QUEUED" - before a single enemy
+  // had walked on. That is the run starting on a menu. They are banked instead
+  // and released one at a time over the first minute, so the run begins at zero
+  // and the head start arrives while you are playing it.
+  startBank = rank("start"); startBankT = START_BANK_GAP;
 }
 // Picks per run. Three ranks at 1.67x value each means the same power arrives
 // in 40% fewer picks than it used to, so the supply of picks is now a lever in
@@ -3805,23 +3812,41 @@ function step(dt){
   if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
     spawnBoss(BOSSES[bossIdx++]);
 
+  if(startBank > 0){
+    startBankT -= dt;
+    if(startBankT <= 0){
+      startBank--; startBankT = START_BANK_GAP;
+      P.lvl++; P.need = xpFor(P.lvl); queueLevel();
+      alert2("HEAD START", "#f0b429");
+    }
+  }
   if(shake>0) shake = Math.max(0, shake - dt*2.2);
   if(flash>0) flash = Math.max(0, flash - dt*2.6);
   // A draft with one card and no choice on it is not a decision, it is a modal.
   // Past about level fifty every weapon and passive is maxed, so the back half
   // of a long run was twenty-odd full-screen interruptions - pointer unlocked,
   // chain frozen, camera stopped - to press ROAST CHICKEN. Take it and say so.
+  let autoLv = 0, autoHp = 0;
   while(pendingLevels>0 && !picking && !noLevels){
     const only = offers();
     if(only.length === 1 && only[0].type === "heal"){
       pendingLevels--;
+      const was = P.hp;
       P.hp = Math.min(P.maxhp, P.hp + 40);
-      nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:40, life:.9, heal:true, vy:3.2 });
-      alert2("LV " + P.lvl + "  ·  +40 HP", "#6ddba0");
-      SFX.levelup();
+      autoLv++; autoHp += P.hp - was;
       continue;
     }
     showPick();
+  }
+  // Batched, because a big XP pickup can drain a dozen of these in one frame and
+  // a dozen level-up chimes on top of each other is not a reward, it is a fault
+  // noise. One toast, one number, one sound, however many levels it was.
+  if(autoLv){
+    alert2(autoLv > 1 ? `LV ${P.lvl}  ·  +${autoLv} LEVELS  ·  +${Math.round(autoHp)} HP`
+                      : `LV ${P.lvl}  ·  +${Math.round(autoHp)} HP`, "#6ddba0");
+    if(autoHp > 0)
+      nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:Math.round(autoHp), life:.9, heal:true, vy:3.2 });
+    SFX.levelup();
   }
 }
 

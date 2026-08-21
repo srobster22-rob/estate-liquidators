@@ -335,3 +335,20 @@ documented ±10 noise band and in the wrong direction, so it is not going in the
 replicates. Re-running the same build now. **Next:** if 7/42 replicates, bisect it — the
 suspicious change is the auto-taken level-up, since it is the only one that touches the
 level-up path the veteran tier spends the whole run in.
+
+**R5 — a run begins at zero, and the veteran "regression" was the dice.** Re-ran the veteran
+bench on identical code: **15/42** against the previous run's 7/42. Nothing to bisect — the band
+at n=6×7 is far wider than the ±10 points the README claims, and the earlier 21/42 was never
+comparable either. Then the user's report: HEAD START handed you its levels at `t=0`, so a run
+with the shop maxed (which dev mode always is) *opened* on "PICK ONE · 3 MORE QUEUED" before an
+enemy had walked on — the run starting on a menu. The levels are banked now and released one
+every twelve seconds, so the run begins at level 1 with an empty bar and the head start arrives
+while you are playing. Section 22d asserts all three parts. Also batched the auto-taken
+level-ups: a big XP pickup could drain a dozen in one frame and a dozen level-up chimes stacked
+is a fault noise, so it is one toast, one number, one sound however many it was. And rewrote the
+draw-budget check to measure **boxes per enemy** rather than the total — the standing horde
+varies 104/109/118/125 run to run so a fixed total was measuring the dice, where the per-enemy
+cost held at 29.8/30.0/30.8 across runs whose totals were 450 boxes apart. 254 checks pass.
+**Next:** breadth got cheap. With everything maxing in three picks the autopilot now carries and
+maxes six weapons every run (4.2–4.8 evolutions), so builds no longer differ from each other —
+worth a carry-slot look, and it is deterministic, unlike the difficulty curve.
