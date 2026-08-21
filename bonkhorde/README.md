@@ -465,7 +465,18 @@ exactly what five used to be.
 
 The evolution gate moves with it — a weapon at rank 3 plus its passive at rank 3 — so an
 evolution is reachable in roughly half the picks and lands mid-run instead of near the end,
-which is when a replacement weapon is actually interesting.
+which is when a replacement weapon is actually interesting. That is also the single biggest
+effect the remap had on difficulty, and it is measured rather than assumed: see the balance
+section.
+
+**And a level-up with nothing on it is no longer a level-up.** Everything maxing at rank 3
+means a full kit is about fifty picks, while a long run reaches level 70–80 — so the back thirty
+were full-screen drafts carrying exactly one card, ROAST CHICKEN, each unlocking the pointer,
+freezing the hop chain and stopping the camera to be dismissed. That is the original complaint
+in its purest form, and the rank count was never the part doing the interrupting. A draft with
+no decision in it is now taken on the way past: 40 HP, a green number, a toast, no stop. A
+draft with a real choice — and the eight EVOLUTION cards are choices — still stops the game.
+Both directions are asserted.
 
 ### The floor is not a chessboard
 
@@ -522,57 +533,60 @@ bolting "+damage" onto everything:
 | **PLATING** | spiked armour. Being hit blasts them off you, which rewards the tank build for doing the thing it is built to do. |
 | **MAGNET** | it pulls more than loot. A weak inward drag on the horde clumps them, so every AoE weapon lands more — and brings them closer to you, which is the cost. |
 
-### Balance is measured, not guessed
+### Balance is measured, and the median is not the measurement
 
 `balance.js` runs an autopilot to death, many times over, and reports where runs actually end.
 Tuning a survivors-like by feel is how you ship something unwinnable in week one, so the
-difficulty curve here is a measurement. Current state, all seven creature lines, 6 trials per
-cell, creature levels at 1 so this reads the in-run evolution and nothing from the meta layer:
+difficulty curve here is a measurement.
+
+**The median was the wrong headline, and it cost a whole round of work to find that out.**
+Run length in this game is *bimodal*: a run either falls apart in the first five minutes or
+survives the twenty-minute wall and is decided at the final boss. Almost nothing lands in
+between. So at 3 or 6 trials a cell the median is simply whichever side got one extra sample,
+and it swings from 05:08 to 24:00 on builds that are otherwise identical. Benched against the
+build this table used to describe, the median came back at 24:00 on four of seven lines — that
+build disagreeing with its own published numbers.
+
+What holds still are *counts over every trial*: how many runs die before ten minutes, and how
+many clear. Current state against the pre-rework build, 42 trials a side, creature levels at 1
+so this reads the in-run evolution and nothing from the meta layer:
 
 ```
-                            median              clears
-FIRST RUN   CINDERPUP        05:13                0/6
-  (no perm  DRIPLET          10:57                0/6
-  upgrades) ZAPLET           06:12                0/6
-            PEBBLIN          10:47                0/6
-            SPORELING        04:29                0/6
-            GUSTLING         04:35                0/6
-            SPLITKIN         05:03                0/6
-                                                  0/42
-
-VETERAN     CINDERPUP        24:00                2/6
-  (all      DRIPLET          22:32                4/6
-  upgrades  ZAPLET           24:00                1/6
-  bought)   PEBBLIN          24:00                3/6
-            SPORELING        23:29                5/6
-            GUSTLING         23:51                4/6
-            SPLITKIN         24:00                2/6
-                                                 21/42
+                       dead <10:00   clears   avg lvl   avg kills   weapon evos
+before the rank remap     12/42       1/42     37-75     5.6k-14k     1.5-4.0
+after                      0/42       3/42     65-92     10k-16k      4.5-4.8
 ```
 
-Which is the shape the genre wants, and it is the same shape it was before monsters, evolution
-and bunnyhopping went in: **0 first-run clears in 42**, and **21 of 42** with a maxed shop
-against 25 of 60 (42%) on the build before this round — the same number inside a noise floor
-this table has already been shown to have. What did move is how far a first run *gets*: DRIPLET
-and PEBBLIN now median past ten minutes where every line used to die around four, and a lucky
-run reaches sudden death and loses there. The ceiling is visible without being available, which
-is what it is for.
+Read that as one finding: **three ranks did not make the game clearable, it made the first ten
+minutes unloseable.** Evolving a weapon costs rank 3 plus its passive at rank 3 — six picks,
+where it used to be rank 5 plus rank 3, eight — and each pick is worth 1.67 of the old ranks.
+So evolutions arrive about twice as early and nearly the whole kit reaches its evolved form.
+The clear rate, which is what "beat the game" means, did not move.
 
-The veteran medians read past 20:00 because almost every veteran run reaches sudden death and
-is decided there — the fight being the fight.
+**What the bench cannot resolve.** Four sweeps went looking for the counterweight — enemy HP
+before minute six, contact damage, the late quadratic, the cost of a level — and the honest
+result is that none of them can be told apart at this sample size. Two XP-need candidates 8%
+apart returned 9 early deaths in 28 and 1 in 42. That is the bimodality again: near the
+threshold a whole cell flips. Separating a 20% early-death rate from a 30% one needs about 50
+trials a cell, which is roughly four hours of bench per candidate. So the levers are wired
+(`HP_QUAD`, `HP_LIN`, `DMG_DIV`, `XP_NEED`, reachable from `__g.curve()` and from
+`BONKHORDE_CURVE=q,d,l,x`) and shipped at their measured-neutral values, rather than shipping a
+number that cannot be defended.
+
+The thing that *was* deterministic got fixed instead. Everything maxes at rank 3, so a full kit
+is about fifty picks while a long run reaches level 70–80 — which meant the back thirty
+level-ups were full-screen drafts with one card on them. See below.
+
+**50% is the target for the veteran tier, not a miss.** An earlier draft of this file treated
+~33% as the number to hold, and every content change since had to be walked back toward it with
+boss HP. That was cargo cult: the invariant that matters is *a first run never clears and a
+maxed shop makes the ending reachable*, and the counts above say the first half still holds.
+Chasing a third decimal through a ±10-point noise floor is measuring the harness, not the game.
 
 **Side events changed what these numbers mean.** Caches and altars are a power source the
-difficulty was never tuned against, worth +25 points of veteran clear rate measured against
-the identical build with them frozen. The late curve absorbs that now, and the intent is that
-twenty minutes is reachable **because** you went and got them — a first run can even scrape a
-clear on a lucky one, roughly one in twenty-four, where before it was zero in sixty. That
-ceiling being *visible but rare* is the shape the feature was for.
-
-**50% is the target, not a miss.** An earlier draft of this file treated ~33% as the number to
-hold, and every content change since had to be walked back toward it with boss HP. That was
-cargo cult: the invariant that matters is *first run never clears and a maxed shop makes the
-ending reachable*, and 0/42 against 21/42 says both. Chasing a third decimal on the veteran
-figure through a ±10-point noise floor is measuring the harness, not the game.
+difficulty was never tuned against, worth +25 points of veteran clear rate measured against the
+identical build with them frozen. The late curve absorbs that now, and the intent is that
+twenty minutes is reachable **because** you went and got them.
 
 The per-character spread is roughly the noise floor wide, and the ordering does not survive
 re-sampling: SPORELING led at 8/12 two rounds ago, sat at 4/12 the round after on an unchanged
@@ -588,12 +602,11 @@ starting point           1/12     SPORELING 9/12
 this round               4/6      SPORELING 5/6
 ```
 
-**Read the total, not the rows — and be suspicious of the median.** The outcome is bimodal: you
-die around minute six, or you go the distance. A median over six runs just reports which side
-of that split got the fifth sample, and it swings wildly — THE SCRAPPER measured 15:20 and 06:31
-on *identical* configurations twenty minutes apart. The clear count over the whole table is the
-only number here worth acting on, and even that needs pooling: two sweeps of the same build one
-round ago read 9/30 and 15/30. Anything smaller than a ten-point move is not a result.
+**Read the total, not the rows.** Two more data points for the bimodality above: THE SCRAPPER
+measured 15:20 and 06:31 on *identical* configurations twenty minutes apart, and two sweeps of
+the same build one round ago read 9/30 and 15/30 clears. Anything smaller than a ten-point move
+is not a result — which is why `balance.js` now prints a TOTAL row, and why the table it prints
+leads with `early` rather than the median.
 
 Note the veteran medians read past 20:00 because sudden death runs the clock on. Survival time
 is no longer the same thing as winning.
@@ -1211,6 +1224,12 @@ the same trap caught the clears metric later, for the same reason.
   is a plausible player rather than a good one — a human reads incoming waves and plans routes
   across the whole arena, which it cannot. Expect the real curve to sit longer than the table
   says, and expect the veteran tier to look too easy once someone competent tries it.
+- **The difficulty curve is wired but not set.** `HP_QUAD`, `HP_LIN`, `DMG_DIV` and `XP_NEED`
+  are levers now, and all four ship at the values they had before the three-rank remap, because
+  four sweeps could not distinguish any candidate from any other at the sample size a loop can
+  afford. The measured fact that needs a counterweight is real — 12/42 runs dead before ten
+  minutes became 0/42 — but the counterweight needs ~50 trials a cell to choose, which is
+  hours per candidate. Do that once, deliberately, rather than in a round.
 - **THE SCRAPPER is still the weakest character.** Its HP penalty was isolated and cleared
   (patching `hp` back to 1.0 changes nothing — identical clears, identical median), and the
   partner rework has lifted it further, but it remains the least reliable closer. What is
@@ -1219,4 +1238,5 @@ the same trap caught the clears metric later, for the same reason.
   on identical builds. Directionally reliable, not precise — do not tune to one decimal.
 - Weapon variety is broad but shallow — 8 weapons with one evolution each. The genre expects
   more, and the data tables are the easy part to extend.
-- No run modifiers, no stage variety, no unlock tree beyond one character.
+- No run modifiers and no unlock tree beyond the seven starting lines. Stage variety exists now
+  (seven regions with their own rules and their own story) but nothing gates on it.

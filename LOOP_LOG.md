@@ -322,3 +322,16 @@ Section 22c asserts both directions — a maxed, fully-evolved kit gains 40 leve
 screens, and a level-up with a real choice still opens one. 250 checks pass. **Next:** publish,
 then the README balance section (it still prints the old table and treats the median as the
 headline) — and note in it what the bench can and cannot resolve.
+
+**R4 — the README stopped publishing a table its own build disagrees with.** Rewrote the balance
+section around `early`/`clears` over 42 trials a side, with the before/after that actually says
+what three ranks did (12/42 → 0/42 dead before ten minutes; clears 1/42 → 3/42; weapon
+evolutions 1.5–4.0 → 4.5–4.8), and a paragraph on what the bench *cannot* resolve and what
+sample size it would take. Added "the difficulty curve is wired but not set" to Not done, and
+documented the pick-fatigue fix under the three-rank section. Fresh veteran bench came back
+**7/42** against 21/42 on the build two commits ago — a 33-point move where every change between
+was a buff (four `prank` call sites restored, +40 HP per surplus level). That is outside the
+documented ±10 noise band and in the wrong direction, so it is not going in the README until it
+replicates. Re-running the same build now. **Next:** if 7/42 replicates, bisect it — the
+suspicious change is the auto-taken level-up, since it is the only one that touches the
+level-up path the veteran tier spends the whole run in.
