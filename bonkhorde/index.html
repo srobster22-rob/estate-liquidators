@@ -2559,7 +2559,17 @@ function spawnEnemy(type, atX, atZ){
     // to 4:25 - every run used to survive - but THE OX, THE GHOUL and THE TWIN
     // still medianed the full clock, because on a map this size you never lap
     // your own tail and a 120-degree arc is still mostly open ground.
-    if(spd2 > 1.5 && Math.random() < .80)
+    // ...and NOT while a boss is on the field. The bias exists to punish
+    // TRAVERSING, and a boss fight is not traversal - it is the one part of the
+    // run you spend in one place. Stacking four fifths of arrivals between you
+    // and the thing you are shooting turns the horde into armour, which this
+    // project already learned is what makes a fleeing target unkillable. The
+    // veteran tier went from 21/42 clears to 0/42 and every character medianed
+    // the full clock: everyone reached sudden death, nobody killed the finale.
+    // Levels and kills were HIGHER than before, so it was never a power
+    // problem - the damage was landing on the wrong bodies.
+    const bossUp = enemies.some(e2 => e2.boss && !e2.dead);
+    if(!bossUp && spd2 > 1.5 && Math.random() < .80)
       a = Math.atan2(P.vz, P.vx) + rnd(-.79, .79);      // +/-45 degrees of heading
     else a = Math.random()*TAU;
     const r = rnd(30, 38);
@@ -2884,7 +2894,9 @@ function updateEnemies(dt){
     // 95, from 70. The cull is what lets you shed a tail by running, and on a
     // map this size 70m is shed almost immediately. Far enough that outrunning
     // one still works; close enough that it costs more than a straight line.
-    if(!e.boss && d > 95){ enemies.splice(i,1); continue; }
+    // 80, not 95. Every extra metre of cull radius is more bodies standing
+    // between your projectiles and whatever you are aiming at.
+    if(!e.boss && d > 80){ enemies.splice(i,1); continue; }
 
     [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
