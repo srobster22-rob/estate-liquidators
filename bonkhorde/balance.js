@@ -54,6 +54,10 @@ const NOEVO  = !!process.env.BONKHORDE_NOEVO;
 // This is the fix for a band that read 10/42 and 14/42 on identical builds and
 // cost this project two rounds of work. BONKHORDE_SEED=<n> picks a different
 // base; BONKHORDE_SEED=0 turns pairing off and rolls fresh worlds like before.
+// BONKHORDE_HURT=1 adds the damage ledger to the table: how many times the run
+// was hit and by what. "The autopilot is not being hit" was inferred from the
+// absence of deaths for a whole session before anyone counted.
+const HURT   = !!process.env.BONKHORDE_HURT;
 const SEED_BASE = process.env.BONKHORDE_SEED !== undefined
                 ? +process.env.BONKHORDE_SEED : 20260821;
 const CURVE  = process.env.BONKHORDE_CURVE
@@ -88,9 +92,12 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     if (noEvo) window.__g.freezeEvo(true);
     window.__g.bot(true);
     const st = window.__g.runOut();
+    const h = window.__g.hurtBy();
     return { t: st.t, lvl: st.lvl, kills: st.kills, over: st.over, won: st.won, why: st.why,
              kit: window.__g.kit().length,
-             evos: window.__g.kit().filter(k => k.includes("EVO")).length };
+             evos: window.__g.kit().filter(k => k.includes("EVO")).length,
+             hContact: h.contact, hSpit: h.spit, hHaz: h.hazard, hTotal: h.total,
+             hHits: h.hits.contact + h.hits.spit + h.hits.hazard };
   }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
@@ -109,7 +116,8 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     // 05:08 to 24:00 on builds that are otherwise identical. `early` (share of
     // runs dead before 10:00) and `clears` are counts over every trial, they
     // move smoothly, and they are what the difficulty claim is actually about.
-    console.log("char     n   early  median    worst     best   lvl  kills   evos  clears");
+    console.log("char     n   early  median    worst     best   lvl  kills   evos  clears" +
+                (HURT ? "   hits  contact   spit    haz" : ""));
     let totEarly = 0, totClear = 0, totN = 0;
     for (const ch of CHARS) {
       const rs = [];
@@ -126,7 +134,11 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
         `${`${early}/${TRIALS}`.padStart(5)}  ` +
         `${fmt(med).padStart(6)}   ${fmt(ts[0]).padStart(6)}   ${fmt(ts[ts.length-1]).padStart(6)}  ` +
         `${avg("lvl").toFixed(0).padStart(4)} ${avg("kills").toFixed(0).padStart(6)}  ` +
-        `${avg("evos").toFixed(1).padStart(5)}  ${clears}/${TRIALS}`);
+        `${avg("evos").toFixed(1).padStart(5)}  ${clears}/${TRIALS}` +
+        (HURT ? `  ${avg("hHits").toFixed(0).padStart(5)} ` +
+                `${avg("hContact").toFixed(0).padStart(8)} ` +
+                `${avg("hSpit").toFixed(0).padStart(6)} ` +
+                `${avg("hHaz").toFixed(0).padStart(6)}` : ""));
     }
     console.log(`${"TOTAL".padEnd(8)} ${String(totN).padStart(2)}  ` +
                 `${`${totEarly}/${totN}`.padStart(5)}` +

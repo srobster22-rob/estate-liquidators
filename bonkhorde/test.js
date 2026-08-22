@@ -1957,6 +1957,40 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22j. THE DAMAGE LEDGER SAYS WHO HIT YOU ===");
+  {
+    // "The autopilot is not being hit" was inferred from the absence of deaths
+    // for a whole session before anything counted. Three sources, and each one
+    // has to be filed under itself or the ledger is worse than no ledger.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.freezeSpawns(true);
+                           g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); };
+      boot();
+      const zero = g.hurtBy();
+      // contact: a body on top of you
+      g.spawn("brute", 4, 1); g.step(120, 1/60);
+      const contact = g.hurtBy();
+      // spit: a projectile
+      boot(); g.spawn("spitter", 6, 8); g.step(60 * 8, 1/60);
+      const spit = g.hurtBy();
+      // hazard: a boss ability's ground
+      boot(); g.boss(0); g.step(60 * 12, 1/60);
+      const haz = g.hurtBy();
+      return { zero, contact, spit, haz };
+    });
+    ok("a fresh run has taken nothing", r.zero.total === 0, JSON.stringify(r.zero.hits));
+    ok("a body on you is filed as contact",
+       r.contact.contact > 0 && r.contact.spit === 0,
+       `contact ${r.contact.contact}, spit ${r.contact.spit}, hazard ${r.contact.hazard}`);
+    ok("a projectile is filed as a spit",
+       r.spit.spit > 0 && r.spit.spit > r.spit.contact,
+       `contact ${r.spit.contact}, spit ${r.spit.spit}, hazard ${r.spit.hazard}`);
+    ok("and a boss's ground is filed as a hazard",
+       r.haz.hazard > 0,
+       `contact ${r.haz.contact}, spit ${r.haz.spit}, hazard ${r.haz.hazard}`);
+  }
+
   console.log("\n=== 22i. A TYPE IS SOMEWHERE YOU BELONG ===");
   {
     // Seven types and seven regions, and until now the type was a colour: two

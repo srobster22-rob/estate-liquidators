@@ -506,3 +506,15 @@ finally pinned the intermittent minimap-screenshot failure: the map *was* drawin
 across the captures) and a modal was sitting on the corner — the check now clears overlays and
 names them in its failure message. 288 checks pass. **Next:** the bosses are still the flattest
 part of a run; with a zero-variance bench their abilities can be tuned exactly for the first time.
+
+**R15 — counted what hits you, and the horde does not.** "The autopilot is not being hit" had
+been *inferred* from the absence of deaths for a whole session. There is a damage ledger now —
+every point the player takes, filed under contact, spit or hazard — printed by the bench under
+`BONKHORDE_HURT=1`. Over full 20-minute runs: intern 87 hits, **189 damage from contact against
+1072 from spits and 243 from hazards**; TWIN took **zero contact damage in a 24-minute run**. So
+the melee horde, which is four hundred bodies and the entire visual of the game, contributes
+about 12% of the threat, and one line never touched the player at all. That is the mechanic-level
+answer the six constant sweeps kept pointing at, now measured rather than deduced. Section 22j
+asserts each source lands in its own column. 292 checks pass. **Next:** give the horde a way to
+reach you — a dive on FLITTER, which is a bird and ought to. Positioning is meant to be the only
+verb, and it cannot be while proximity is free.
