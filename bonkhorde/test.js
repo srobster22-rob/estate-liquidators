@@ -1957,6 +1957,40 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22o. EVOLVING IS A MOMENT, NOT A STAT CHANGE ===");
+  {
+    // The centrepiece of a game about raising a creature was a caption: the body
+    // swapped to the next form between one frame and the next, six percent
+    // larger, while a banner explained what had happened.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); g.setShake(0);
+      await frame(); await frame();
+      const before = g.state().boxes, fx0 = g.evoFx();
+      g.evolveTo(1);
+      const fx1 = g.evoFx();
+      await frame(); await frame();
+      const during = g.state().boxes;
+      g.step(120, 1/60);                      // two seconds later
+      const fx2 = g.evoFx();
+      await frame(); await frame();
+      const after = g.state().boxes;
+      return { before, during, after, fx0, fx1, fx2 };
+    });
+    ok("evolving starts a transformation", r.fx0 === 0 && r.fx1 > 0,
+       `${r.fx0} -> ${r.fx1}`);
+    ok("and it puts light on the screen while it runs",
+       r.during > r.before + 15, `${r.before} boxes -> ${r.during} mid-transformation`);
+    // NOT "back to the box count it started at" - the point of evolving is that
+    // you are a different, larger animal afterwards. What has to go away is the
+    // burst, so compare against the peak rather than against the start.
+    ok("then it ends and takes its light with it",
+       r.fx2 === 0 && r.after < r.during - 30,
+       `fx ${r.fx2}, ${r.during} boxes mid-burst -> ${r.after} after (${r.before} before)`);
+  }
+
   console.log("\n=== 22n. THE GAME USES THE NAME IT GAVE YOU ===");
   {
     // Evolving announces "LEARNED CINDERTRAIL" and then every surface in the

@@ -2489,6 +2489,14 @@ let stage=0;                            // 0..2 - where you are in the monster's
 let lastBiome=null, biomeT=0, lastAff=0; // for the "you have crossed into" banner
 let devGod=false, devHp=0;              // pause-screen godmode toggle
 let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
+// THE TRANSFORMATION. Separate from the banner, and shorter. Evolving is the
+// centrepiece of a game about raising a creature and it was a stat change with
+// a caption: the body swapped to the next form between one frame and the next,
+// six percent larger, while a banner explained what had happened. The moment
+// needs a beat of its own - the old shape goes white and swells, the new one
+// lands out of it, and light comes off the ground while it happens.
+let evoFx = 0;
+const EVO_FX = 1.05;
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
 let noSpawn=false;                      // test-only: isolate a boss fight
@@ -2525,7 +2533,7 @@ function startRun(id){
         hop:0, hopWin:0, hopGrace:0, hopFx:0, hopHold:undefined, idle:1,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
   jumpBuf = 0;
-  stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; noEvo = false;
+  stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; evoFx = 0; noEvo = false;
   // Seed the run stream BEFORE anything rolls, including the world - the arena
   // has its own stream but everything after it comes out of this one.
   runSeed = (pinRun === null ? (Math.random()*1e9)|0 : pinRun) >>> 0;
@@ -4009,7 +4017,7 @@ function evolveTo(i){
   // One banner, not two. This used to also fire alert2(), which draws its own
   // line in the same third of the screen - so the biggest moment in the run
   // arrived as two overlapping pieces of text saying the same thing.
-  evoT = 3.4; evoNm = d.nm || "";
+  evoT = 3.4; evoFx = EVO_FX; evoNm = d.nm || "";
   evoSub = learned ? `LEARNED ${learned}`
          : d.sig  ? `${d.sig} - ${d.sigDs}` : `${wasNm} EVOLVED`;
   shake = Math.max(shake, 1.1*shakeMul()); flash = Math.max(flash, .5*flashMul());
@@ -4267,6 +4275,7 @@ function step(dt){
   if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
     spawnBoss(BOSSES[bossIdx++]);
 
+  if(evoFx > 0) evoFx = Math.max(0, evoFx - dt);
   denPatrol();
   if(startBank > 0){
     startBankT -= dt;
@@ -4856,7 +4865,11 @@ function render(){
     // pair of horns at every evolution, so "what am I" and "how far along am I"
     // are both answerable without looking at the HUD.
     const mCh = curMon(), mTy = MTYPE[mCh.type] || MTYPE.plain;
-    const mTc = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : mTy.c;
+    let mTc = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : mTy.c;
+    if(evoFx > 0){                        // washing out toward the new form
+      const k = Math.min(1, evoFx / EVO_FX * 1.3);
+      mTc = [lerp(mTc[0],1,k), lerp(mTc[1],1,k), lerp(mTc[2],1,k)];
+    }
     const mDk = [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];
     // 1.34 because the first pass built a monster the same HEIGHT as the person
     // it replaced - and a quadruped that tall is half the silhouette, so from a
@@ -4869,9 +4882,13 @@ function render(){
     // and that is what the monster was: the two marker rings around its feet
     // were each wider than the animal inside them. It is the biggest thing on
     // screen after a boss now, which is what a game about YOUR monster owes it.
-    const mSc = 2.05 * (1 + stage*.06) * (1 + Math.max(0, P.hopFx)*.20);
+    // 0 -> 1 across the burst. Swell hard, overshoot, settle - the shape of a
+    // thing becoming a bigger thing rather than a thing being replaced.
+    const ef = evoFx > 0 ? evoFx / EVO_FX : 0;
+    const swell = ef > 0 ? Math.sin(ef * Math.PI) * .45 + ef * ef * .25 : 0;
+    const mSc = 2.05 * (1 + stage*.06) * (1 + Math.max(0, P.hopFx)*.20) * (1 + swell);
     const mCf = Math.cos(P.face), mSf = Math.sin(P.face);
-    const mEm = P.iframe>0 ? .55 : .20;
+    const mEm = Math.max(P.iframe>0 ? .55 : .20, ef * .95);
     const mb = (r,f,y,hx,hy,hz,col,em)=>{
       if(bodyCap) bodyCap.push(hx, hy, hz);
       box(P.x + mCf*r*mSc + mSf*f*mSc, P.y + y*mSc, P.z - mSf*r*mSc + mCf*f*mSc,
@@ -4887,6 +4904,20 @@ function render(){
     // still sat at dE 7.5 from something. So the player is marked by SHAPE
     // instead: a bright ring nothing else in the game draws, which no colour
     // deficiency can take away. Colour stops having to carry this.
+    // Light off the ground while it happens: a rising column and a ring of
+    // shards thrown outward, both driven off the same curve as the swell so the
+    // whole moment reads as one event rather than three effects.
+    if(evoFx > 0){
+      const gy2 = groundY(P.x, P.z), up = 1 - ef;
+      for(let i=0;i<9;i++)
+        box(P.x, gy2 + .3 + i*1.5 + up*5, P.z,
+            .30 - i*.02, .95, .30 - i*.02, [1, .95, .78], ef*.95);
+      for(let i=0;i<12;i++){
+        const a2 = i*(TAU/12) + T*2.2, rr = 1.4 + (1-ef)*7.5;
+        box(P.x + Math.cos(a2)*rr, gy2 + .5 + (1-ef)*3.2, P.z + Math.sin(a2)*rr,
+            .22, .22, .22, [1, .90, .55], ef);
+      }
+    }
     box(P.x, P.y+.05, P.z, 1.24,.03,1.24, [.08,.10,.09], 0);
     // You are a 0.34m box among four hundred boxes, and positioning is the
     // entire game - losing track of yourself in the horde is not a difficulty,
@@ -5423,6 +5454,7 @@ window.__g = {
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
   sfxSrc:   ()=>Object.assign({}, SFX_SRC),
+  evoFx: ()=>+evoFx.toFixed(3),
   mapHits: ()=>mapHits,
   mapBox: ()=>mapBox(innerWidth, innerHeight),
   map:   ()=>mapBg ? { px:mapBg.width, painted:(()=>{

@@ -592,3 +592,16 @@ minutes the autopilot survives to the clock regardless of what it carries, so it
 discriminating while costing most of the bench's wall clock. 307 checks pass. **Next:**
 `starters.js` is the last bench that has not been re-run, and it is the one that would say
 whether any of the seven lines is now the weak pick.
+
+**R21 — evolving is a moment now.** The centrepiece of a game about raising a creature was a
+caption: the body swapped to the next form between one frame and the next, six percent larger,
+while a banner explained what had happened. There is a beat now — about a second in which the old
+shape washes white and swells on a `sin` curve that overshoots and settles, a column of light
+rises out of the ground and a ring of shards is thrown outward, every part driven off the *same*
+curve so it reads as one event rather than three effects. Section 22o asserts it starts, puts
+light on the screen (204 → 349 boxes) and takes the light away again — compared against the
+**peak** rather than the start, because being a different and larger animal afterwards is the
+entire point and the first version of the assertion got that backwards. 310 checks pass.
+**Next:** the per-line spread is the last unexamined thing — with paired seeds the veteran table
+reads OX 4/6 and ACCOUNTANT 4/6 against TWIN 0/6 and SPARK 0/6, and that is now an exact number
+rather than dice.

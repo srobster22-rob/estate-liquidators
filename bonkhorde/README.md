@@ -537,6 +537,16 @@ every box's half-extents, sorted) is stable frame to frame, and two forms built 
 mesh come back byte-identical. The suite reads all twenty-one and requires twenty-one distinct
 strings. **The version this replaced would have failed that check with 3 distinct out of 21.**
 
+**Evolving is a moment, not a stat change.** The centrepiece of a game about raising a creature
+was a caption: the body swapped to the next form between one frame and the next, six percent
+larger, while a banner explained what had happened. There is a beat now — the old shape washes
+white and swells on a `sin` curve that overshoots and settles, a column of light rises out of
+the ground and a ring of shards is thrown outward, all driven off the *same* curve so it reads
+as one event rather than three effects. About a second, and it ends cleanly: asserted that it
+starts, that it puts light on the screen, and that it takes the light away again — measured
+against the *peak* box count rather than the starting one, because the whole point is that you
+are a different and larger animal afterwards.
+
 **Evolving heals exactly the HP it added, and no more.** More than that and level 7 is a panic
 button you save for a bad moment; less and a +16% maxhp bonus reads on the HP bar as a *loss*,
 which is how it looked the first time. The assertion is the equality, not an inequality.
