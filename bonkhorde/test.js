@@ -1957,6 +1957,69 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22l. THE HUD FITS ON A PHONE ===");
+  {
+    // Three things went onto the HUD this session - the minimap, the affinity
+    // line, den labels - and none of them was ever looked at below 1280px. The
+    // minimap shipped as a fixed 148px disc: 12% of a desktop screen and 38% of
+    // a phone, sitting exactly where the right thumb drags the camera. And the
+    // centred phase line ran straight through the level readout, so a 360px
+    // screen printed "CINDERPUP - LV 7" and "MATRIARCH IN 04:49" on top of each
+    // other. Both were visible in the first screenshot anyone took.
+    const IDS = ["lvl", "phase", "clock", "biome", "stats", "hop", "kit", "hpwrap"];
+    const sizes = [["phone", 390, 844], ["small", 360, 640],
+                   ["tall", 412, 915], ["desktop", 1280, 760]];
+    const rows = [];
+    for (const [nm, w, h] of sizes) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h },
+        hasTouch: nm !== "desktop", isMobile: nm !== "desktop", deviceScaleFactor: 1 });
+      const pp = await ctx.newPage();
+      await pp.goto(FILE, { waitUntil: "load" });
+      await pp.waitForTimeout(500);
+      await pp.evaluate(() => { window.__g.wipeSave(); window.__g.start("intern");
+                                window.__g.god(); window.__g.resume();
+                                window.__g.step(600, 1/60); });
+      await pp.waitForTimeout(400);
+      rows.push(await pp.evaluate(ids => {
+        const R = {}, PAD = 4;
+        for (const id of ids) {
+          const e = document.getElementById(id); if (!e) continue;
+          const b = e.getBoundingClientRect();
+          if (b.width && getComputedStyle(e).display !== "none")
+            R[id] = { l: b.left, t: b.top, r: b.right, b: b.bottom };
+        }
+        // Four pixels of tolerance: a text element's line box overhangs its
+        // glyphs, and two things stacked centre-screen touch by a pixel while
+        // looking perfectly fine.
+        const hit = [], k = Object.keys(R);
+        for (let i = 0; i < k.length; i++) for (let j = i + 1; j < k.length; j++) {
+          const a = R[k[i]], b = R[k[j]];
+          const ox = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+          const oy = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+          if (ox > PAD && oy > PAD) hit.push(`${k[i]}/${k[j]}`);
+        }
+        const m = window.__g.mapBox();
+        const strip = Object.values(R).filter(r => r.t > innerHeight * 0.75);
+        return { hit, mapD: m.d, mapBottom: m.oy + m.d,
+                 frac: m.d / Math.min(innerWidth, innerHeight),
+                 stripTop: strip.length ? Math.min(...strip.map(r => r.t)) : innerHeight,
+                 stripLeft: strip.length ? Math.min(...strip.map(r => r.l)) : innerWidth,
+                 mapLeft: m.ox, w: innerWidth };
+      }, IDS));
+      await ctx.close();
+    }
+    const named = sizes.map((s, i) => [s[0], rows[i]]);
+    ok("nothing on the HUD overlaps anything else, at any size",
+       named.every(([, r]) => r.hit.length === 0),
+       named.map(([n, r]) => `${n}:${r.hit.join(",") || "ok"}`).join("  "));
+    ok("the minimap is a proportion of the screen, not 148 pixels",
+       named.every(([, r]) => r.frac <= 0.25 && r.mapD >= 80),
+       named.map(([n, r]) => `${n} ${r.mapD.toFixed(0)}px (${(r.frac*100).toFixed(0)}%)`).join("  "));
+    ok("and it never sits on the bottom HUD strip",
+       named.every(([, r]) => r.mapBottom <= r.stripTop + 4 || r.mapLeft > r.stripLeft),
+       named.map(([n, r]) => `${n} map ends ${r.mapBottom.toFixed(0)}, strip at ${r.stripTop.toFixed(0)}`).join("  "));
+  }
+
   console.log("\n=== 22k. THE HORDE CAN REACH YOU NOW ===");
   {
     // FLITTER dives. Everything here is a way this could be a no-op or a

@@ -534,3 +534,16 @@ is rewards that require holding ground — dens, altars, bosses — which is a d
 constant. 297 checks pass. **Next:** move off difficulty. Other aspects are overdue — audio has
 had no attention this session, and the mobile path has not been checked since dens, the minimap
 and affinity all added HUD.
+
+**R17 — the HUD fits on a phone again.** Three things went onto the HUD this session (minimap,
+affinity line, den labels) and none had been looked at below 1280px. The first phone screenshot
+showed both failures at once: the minimap was a fixed 148px disc — 12% of a desktop screen, **38%
+of a phone**, sitting exactly where the right thumb drags the camera — and the centred phase line
+ran straight through the level readout, printing `CINDERPUP → LV 7` and `MATRIARCH IN 04:49` over
+each other at 360px. The map is now a proportion of the smaller viewport dimension (19–23% from
+360px to 1280px), scales its dots with the disc, and lifts clear of the bottom HUD strip on
+narrow screens; two media queries stack the top-left block and the phase line instead of letting
+them share a row. Section 22l asserts no two HUD elements overlap by more than four pixels at
+four viewport sizes, plus both minimap properties — a guard every future HUD addition now has to
+pass. 300 checks pass. **Next:** audio has had no attention this session, and the dive, dens and
+affinity all landed without a sound of their own.

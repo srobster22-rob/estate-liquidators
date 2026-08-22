@@ -17,6 +17,11 @@
   /* phones: the HUD is sized for a 1280px window and has to come down a lot */
   @media (max-width:720px), (pointer:coarse){
     #clock{font-size:22px} #phase{font-size:9px;top:34px}
+    /* Under about 560px the centred phase line runs straight through the
+       level readout in the top-left - "CINDERPUP - LV 7" and "MATRIARCH IN 14"
+       printed over each other. Stack them instead: the phase drops below the
+       clock's own column and the left block keeps the corner to itself. */
+    #lvl em{font-size:9px;letter-spacing:.08em}
     #hpwrap{width:min(62vw,300px);bottom:12px}
     .slot{width:30px;height:30px;font-size:15px}
     #kit{bottom:34px;gap:4px;max-width:92vw}
@@ -53,6 +58,19 @@
   #lvl b{color:var(--ink);font-size:17px}
   #lvl em{display:block;font-style:normal;font-size:10px;letter-spacing:.14em;
     color:#8affd0;margin-top:2px;text-shadow:0 1px 2px #000}
+  @media (max-width:400px){
+    /* At 360 the level block still reached the clock. Narrow one, shrink the
+       other, and they stop sharing a row. */
+    #clock{font-size:19px} #lvl{max-width:34vw} #lvl b{font-size:15px}
+  }
+  @media (max-width:560px){
+    #lvl{max-width:44vw}
+    #phase{top:58px;font-size:8px;letter-spacing:.14em;
+           max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #biome{margin-top:78px;max-width:56vw}
+    #biome span{max-width:56vw}
+    #stats{font-size:9px}
+  }
   #biome{position:absolute;top:12px;left:14px;margin-top:44px;font-size:10px;
     letter-spacing:.16em;color:#8e8878;text-shadow:0 1px 2px #000;max-width:220px}
   #biome b{display:block;color:#c9c2ae;font-size:11px;letter-spacing:.2em}
@@ -771,18 +789,30 @@ function bakeMap(){
   x2.putImageData(img, 0, 0);
   mapBg = c;
 }
+// Where the map goes, given a viewport. Split out because it is the half that
+// was wrong: a fixed 148px disc is 12% of a desktop screen and 38% of a phone,
+// sitting exactly where the right thumb drags the camera. It scales with the
+// smaller dimension now, and on a narrow screen it lifts clear of the bottom
+// HUD strip - the hop bar, the kit row and the health bar all live down there.
+function mapBox(w, h){
+  const d = clamp(Math.min(w, h) * 0.21, 84, 148);
+  const narrow = w < 560;
+  return { d, ox: w - d - (narrow ? 10 : 18),
+              oy: h - d - (narrow ? 104 : 18) };
+}
 function drawMap(w, h){
   if(!mapBg || !P) return;
-  const half = MAP_PX/2, k = half/RIM;
-  const ox = w - MAP_PX - 18, oy = h - MAP_PX - 18;
+  const box = mapBox(w, h), half = box.d/2, k = half/RIM;
+  const ox = box.ox, oy = box.oy;
   const cx = ox + half, cy = oy + half;
   g2.save();
   g2.globalAlpha = 1;
   g2.beginPath(); g2.arc(cx, cy, half, 0, TAU); g2.clip();
-  g2.drawImage(mapBg, ox, oy);
+  g2.drawImage(mapBg, ox, oy, box.d, box.d);
   const at = (x, z) => [cx + x*k, cy + z*k];
+  const ds = box.d / 148;                       // dots scale with the disc
   const dot = (x, z, r, col) => { const [a,b2] = at(x,z);
-    g2.fillStyle = col; g2.beginPath(); g2.arc(a, b2, r, 0, TAU); g2.fill(); };
+    g2.fillStyle = col; g2.beginPath(); g2.arc(a, b2, Math.max(1, r*ds), 0, TAU); g2.fill(); };
   for(const m of marks){
     if(!m.den){ dot(m.x, m.z, 1.2, "rgba(255,255,255,.28)"); continue; }
     if(m.cleared)   dot(m.x, m.z, 2.4, "#5ad48a");
@@ -795,9 +825,9 @@ function drawMap(w, h){
   const [pxm, pzm] = at(P.x, P.z);
   g2.fillStyle = "#fff";
   g2.beginPath();
-  g2.moveTo(pxm + Math.sin(P.face)*6, pzm + Math.cos(P.face)*6);
-  g2.lineTo(pxm + Math.sin(P.face+2.5)*4.4, pzm + Math.cos(P.face+2.5)*4.4);
-  g2.lineTo(pxm + Math.sin(P.face-2.5)*4.4, pzm + Math.cos(P.face-2.5)*4.4);
+  g2.moveTo(pxm + Math.sin(P.face)*6*ds, pzm + Math.cos(P.face)*6*ds);
+  g2.lineTo(pxm + Math.sin(P.face+2.5)*4.4*ds, pzm + Math.cos(P.face+2.5)*4.4*ds);
+  g2.lineTo(pxm + Math.sin(P.face-2.5)*4.4*ds, pzm + Math.cos(P.face-2.5)*4.4*ds);
   g2.closePath(); g2.fill();
   g2.restore();
   g2.strokeStyle = "rgba(0,0,0,.55)"; g2.lineWidth = 3;
@@ -5308,6 +5338,7 @@ window.__g = {
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
   mapHits: ()=>mapHits,
+  mapBox: ()=>mapBox(innerWidth, innerHeight),
   map:   ()=>mapBg ? { px:mapBg.width, painted:(()=>{
            const x2 = mapBg.getContext("2d"), d = x2.getImageData(0,0,MAP_PX,MAP_PX).data;
            let n = 0, tones = new Set();

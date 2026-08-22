@@ -70,6 +70,15 @@ plus a 0.14s pre-land buffer, so a press made on the way down still counts — w
 input has to land inside a single 16ms frame, which is a coin flip rather than a skill. A held
 spacebar does nothing: it has to be a press.
 
+**The HUD is checked at four sizes, because three things went onto it before anyone looked
+below 1280px.** The minimap shipped as a fixed 148-pixel disc — 12% of a desktop screen and 38%
+of a phone, sitting exactly where the right thumb drags the camera — and the centred phase line
+ran straight through the level readout, so a 360px screen printed `CINDERPUP → LV 7` and
+`MATRIARCH IN 04:49` on top of each other. Both were visible in the first screenshot taken. The
+map is a proportion of the smaller viewport dimension now (19–23% across 360px to 1280px) and
+lifts clear of the bottom HUD strip on narrow screens, and the suite asserts that no two HUD
+elements overlap by more than four pixels at 360×640, 390×844, 412×915 or 1280×760.
+
 **On a phone:** left thumb is a virtual stick (analog — a half push moves you at half speed),
 right thumb turns the camera, a tap on the right jumps, and there is a pause button because
 a phone has no Escape key.
