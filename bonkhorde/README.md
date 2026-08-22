@@ -725,8 +725,8 @@ so this reads the in-run evolution and nothing from the meta layer:
                           dead <10:00   clears   avg lvl   weapon evos
 before the rank remap        12/42       1/42     37-75      1.5-4.0
 after                         0/42       3/42     65-92      4.5-4.8
-after slots + dens (now)      1/42       3/42     65-89      2.2-3.3
-VETERAN, now                  0/42      13/42     74-85      2.3-3.2
+after slots + dens            1/42       3/42     65-89      2.2-3.3
+VETERAN (now, paired)         0/42       8/42     70-97      2.5-3.3
 ```
 
 Read that as one finding: **three ranks did not make the game clearable, it made the first ten
@@ -771,6 +771,25 @@ constant.
 The thing that *was* deterministic got fixed instead. Everything maxes at rank 3, so a full kit
 is about fifty picks while a long run reaches level 70–80 — which meant the back thirty
 level-ups were full-screen drafts with one card on them. See below.
+
+**The per-line spread says what the damage ledger said.** With the run stream seeded, the veteran
+table can be read across its columns for the first time:
+
+```
+line        contact dmg taken    kills    clears
+INTERN                    533   13,000       4/6
+GHOUL                    1030   14,802       2/6
+ACCOUNTANT                395   16,128       0/6
+TWIN                       14   16,297       0/6
+```
+
+Clears track neither level nor kills — THE TWIN finishes with the **highest** kill count and the
+**highest** level of any line and closes nothing. What they track is *damage taken*. The lines
+that clear are the lines that get hit, because closing a run means standing next to TERRAVORE,
+and the autopilot's kiting is optimal for surviving twenty minutes and fatal for finishing them.
+That is the game's central tension rather than a per-line balance bug, and it is not something to
+tune away: a human who wants the kill will walk in. Six trials a line is too few to act on in any
+case — this file already records that the per-character ordering does not survive re-sampling.
 
 **50% is the target for the veteran tier, not a miss.** An earlier draft of this file treated
 ~33% as the number to hold, and every content change since had to be walked back toward it with
