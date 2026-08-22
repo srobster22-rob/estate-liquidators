@@ -561,3 +561,15 @@ no sound is a copy of another wearing a different name — the second failure be
 silence, since it teaches the wrong thing. 19 sounds, no duplicates. 305 checks pass.
 **Next:** the seven weapon evolutions are the last content the creature rework never touched —
 their names and descriptions are still from the estate world.
+
+**R19 — the game uses the name it gave you.** Evolving announces `LEARNED CINDERTRAIL` and then
+every surface in the game went on saying `CALTROPS`: it named a thing and never used the name
+again, which quietly undid the point of moves coming from evolution. `wName()` is now the single
+place that decides what a weapon is called — the learned move name wins where one exists, the
+evolved form's name wins over that, and the generic name stays for any line that picked the
+weapon out of the draft without learning it (a MYCONID carrying hazards has not learned
+CINDERTRAIL and is not told it has). Section 22n asserts both directions. Also renamed the two
+evolved forms that were machines in a world of animals: TESLA COIL → **THUNDERHEAD**, BOMBARDIER
+→ **SKYFALL**. 307 checks pass. **Next:** `starters.js` and `dps.js` have not been run since the
+three-rank remap, the four `prank` fixes and the carry-slot cut — three changes that all move
+weapon power, measured by benches nobody has re-run.

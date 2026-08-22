@@ -1957,6 +1957,36 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22n. THE GAME USES THE NAME IT GAVE YOU ===");
+  {
+    // Evolving announces "LEARNED CINDERTRAIL" and then every surface in the
+    // game went on saying CALTROPS. The move name has to win wherever one was
+    // learned - and only there, because a MYCONID that picks up hazards in the
+    // draft has not learned CINDERTRAIL and should not be told it has.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const learn = (ch) => {
+        g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true);
+        const before = g.wNames();
+        g.evolveTo(1);
+        const mv = g.moveOf(ch);           // returns the move OBJECT
+        return { move: mv && mv.nm, before, after: g.wNames() };
+      };
+      const a = learn("intern");
+      // the generic name survives for a line that did not learn it
+      g.wipeSave(); g.start("ghoul"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.give("caltrops", 1);
+      const borrowed = g.wNames();
+      return { a, borrowed };
+    });
+    ok("the move you were taught is what the game calls it",
+       r.a.after.includes(r.a.move) && !r.a.before.includes(r.a.move),
+       `learned ${r.a.move}; kit went [${r.a.before}] -> [${r.a.after}]`);
+    ok("and a line that never learned it still sees the generic name",
+       r.borrowed.includes("CALTROPS"), `[${r.borrowed}]`);
+  }
+
   console.log("\n=== 22m. THE NEW THINGS MAKE A NOISE ===");
   {
     // The dive, the dens and the affinity all shipped silent, and the dive is a

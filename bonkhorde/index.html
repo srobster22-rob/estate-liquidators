@@ -1192,7 +1192,7 @@ pulse:{ name:"PULSE", ic:"pulse", kind:"w",
 
 mortar:{ name:"MORTAR", ic:"mortar", kind:"w",
   ds:"Lobs a shell at the thickest part of the crowd.",
-  evo:{ name:"BOMBARDIER", need:"plating", ic:"bombardier",
+  evo:{ name:"SKYFALL", need:"plating", ic:"bombardier",
         ds:"Every shell splits into four. Stand still. Enjoy." },
   // Unevolved MORTAR strictly dominated all seven other weapons on BOTH axes at
   // rank 5 - best boss DPS and best crowd DPS at once, which is not a
@@ -1210,7 +1210,7 @@ mortar:{ name:"MORTAR", ic:"mortar", kind:"w",
 
 zap:{ name:"ZAP", ic:"zap", kind:"w",
   ds:"Chain lightning. Loses bite with every jump.",
-  evo:{ name:"TESLA COIL", need:"magnet", ic:"tesla",
+  evo:{ name:"THUNDERHEAD", need:"magnet", ic:"tesla",
         ds:"Twelve jumps, no falloff. Conduct yourself accordingly." },
   lv:[{d:26,cd:1.5,jumps:3,fall:.78,rng:9},
       {d:35,cd:1.4,jumps:4,fall:.80,rng:10},
@@ -2930,6 +2930,17 @@ const RANKMAP = [0, 2, 4];
 // every number in the passive bench still means what it said.
 const PSCALE = 5 / WMAX;
 const prank = w => w ? (w.l + 1) * PSCALE : 0;
+// What to call a weapon on screen. A line's evolution announces "LEARNED
+// CINDERTRAIL" and then every surface in the game went on saying CALTROPS - the
+// game named a thing and never used the name again. The move name wins wherever
+// one has been learned; the generic name is what the draft offers to everyone
+// else, because a MYCONID picking up hazards has not learned CINDERTRAIL.
+function wName(k, w){
+  w = w || (P && P.kit[k]);
+  if(w && w.evo && WEAPONS[k]) return WEAPONS[k].evo.name;
+  if(w && w.mvNm) return w.mvNm;
+  return (WEAPONS[k] || PASSIVES[k] || {}).name || k;
+}
 function wStat(w){
   const W = WEAPONS[w.key], s = W.lv[w.evo ? 5 : RANKMAP[Math.min(w.l, WMAX-1)]];
   if(!P || P.reach === 1) return s;                 // nobody else pays for a copy
@@ -3797,7 +3808,7 @@ function offers(){
   for(const k in WEAPONS){
     const w = have[k];
     if(w){ if(w.evo || w.l >= WMAX-1) continue;
-      pool.push({ type:"up", key:k, ic:WEAPONS[k].ic, nm:WEAPONS[k].name,
+      pool.push({ type:"up", key:k, ic:WEAPONS[k].ic, nm:wName(k, w),
                   lv:"LV "+(w.l+2), ds:WEAPONS[k].ds, weight:10 }); }
     else if(wCount < WSLOTS)
       // an empty weapon slot beats a marginal rank, so weight it up hard
@@ -4289,7 +4300,7 @@ function finish(why, won){
 
   const kit = Object.keys(P.kit).map(k=>{
     const w = P.kit[k], D = WEAPONS[k]||PASSIVES[k];
-    const nm = (WEAPONS[k] && w.evo) ? WEAPONS[k].evo.name : D.name;
+    const nm = wName(k, w);
     return `${icon(D.ic)} ${nm} ${w.evo?"★":"lv"+(w.l+1)}`;
   }).join(" &nbsp;·&nbsp; ");
 
@@ -5314,6 +5325,7 @@ window.__g = {
                 carried: Object.keys(P.kit).filter(k=>WEAPONS[k] && !P.kit[k].fromEvo).length,
                 granted: Object.keys(P.kit).filter(k=>WEAPONS[k] && P.kit[k].fromEvo).length,
                 passives: Object.keys(P.kit).filter(k=>PASSIVES[k]).length }),
+  wNames: ()=>Object.keys(P.kit).map(k=>wName(k)),
   kitRaw:()=>{ const out={}; for(const k in P.kit){ const w=P.kit[k];
                  out[k]={ l:w.l, evo:!!w.evo, mv:w.mvNm||null }; } return out; },
   moveOf:(id)=>{ const c=CHARS.find(x=>x.id===(id||charId)); return c && c.move; },

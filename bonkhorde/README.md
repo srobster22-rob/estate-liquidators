@@ -480,6 +480,13 @@ lets a test jump straight to the top of a line without walking it.
 | **GALE** | GUSTLING | SKREECH | TEMPESTRIX | GALEDIVE | UPDRAFT — +15% XP |
 | **ECHO** | SPLITKIN | TWINSPAWN | TRIPLICATE | MIRRORBOLT | CHORUS — +28% damage |
 
+**And the game uses the name it gave you.** Evolving announced `LEARNED CINDERTRAIL` and then
+every surface went on saying `CALTROPS` — the game named a thing and never used the name again.
+The move name now wins wherever one was learned, and only there: a MYCONID that picks hazards out
+of the draft has not learned CINDERTRAIL and is not told it has. Two evolved forms were also
+machines in a world of animals and are not any more — TESLA COIL is **THUNDERHEAD**, BOMBARDIER
+is **SKYFALL**.
+
 **Your move comes from evolving, not from the shop.** Each line owns exactly one of the eight
 weapons and cannot be handed it any other way: the first evolution *teaches* it, the second
 *sharpens* it two ranks. That is the whole reason to reach level 7 with something still alive,
