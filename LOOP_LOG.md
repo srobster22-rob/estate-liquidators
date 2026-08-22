@@ -547,3 +547,17 @@ them share a row. Section 22l asserts no two HUD elements overlap by more than f
 four viewport sizes, plus both minimap properties — a guard every future HUD addition now has to
 pass. 300 checks pass. **Next:** audio has had no attention this session, and the dive, dens and
 affinity all landed without a sound of their own.
+
+**R18 — the new things make a noise.** The dive, dens and affinity all shipped silent, and the
+dive is a hit the player is meant to *dodge* — with the camera behind you a bird winding up at
+your flank is off-screen as often as not, so a telegraph you can only see is half a telegraph.
+Five sounds added: a rising two-note chirp on a wind-up (nothing else in the mix climbs a fifth
+in 90ms, so it reads as "behind you"), a low wide horn when a den wakes and the same interval
+resolved upward when it is taken, and a two-note pair each way for crossing on and off your
+type's ground — the direction of the interval is the information. Den wake/clear had been
+borrowing `SFX.boss` and `SFX.levelup`. Every sound is now counted and fingerprinted at
+definition, so section 22m can assert that each new feature actually makes a noise **and** that
+no sound is a copy of another wearing a different name — the second failure being worse than
+silence, since it teaches the wrong thing. 19 sounds, no duplicates. 305 checks pass.
+**Next:** the seven weapon evolutions are the last content the creature rework never touched —
+their names and descriptions are still from the estate world.

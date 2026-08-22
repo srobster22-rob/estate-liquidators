@@ -195,7 +195,12 @@ weapon query (nearest target, everything in radius) and enemy-vs-enemy separatio
 it. Without that, separation is O(n²) at n≈400 and the horde collapses into one stacked
 super-enemy that is both invisible and unkillable.
 
-**Audio.** A ~40-line Web Audio synth. No files.
+**Audio.** A ~60-line Web Audio synth. No files, nineteen sounds, and every one of them is
+asserted to be its own — the failure mode that matters is not silence but a "new" sound that is a
+copy of an old one, because that teaches the player the wrong thing. The dive chirp exists for a
+specific reason: the camera is behind you, so a bird winding up at your flank is off-screen as
+often as not, and a telegraph you can only see is half a telegraph. Nothing else in the mix
+climbs a fifth in 90 ms, so it reads as *behind you* rather than as another pop.
 
 **Cost.** The simulation is **0.4 ms/frame at 300 enemies** — a ~2,400 fps ceiling — so the
 frame budget is entirely rendering. (The harness reports ~10 fps under load, but that is

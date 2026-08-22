@@ -1957,6 +1957,66 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22m. THE NEW THINGS MAKE A NOISE ===");
+  {
+    // The dive, the dens and the affinity all shipped silent, and the dive is a
+    // hit you are meant to dodge - the camera is behind you, so a bird winding
+    // up at your flank is off-screen as often as not. A telegraph you can only
+    // see is half a telegraph.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+                           g.freezeEvents(true); g.drainPicks(true); g.place(0, 0);
+                           g.setOpt("sound", 1); g.sfxReset(); };
+      boot(); g.spawn("runner", 6, 7);
+      for (let i = 0; i < 200; i++) { g.step(1, 1/60); g.place(0, 0); }
+      const dive = g.sfx().dive || 0;
+
+      // a den waking and a den taken
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.drainPicks(true);
+      for (const w of ["bat", "zap", "aura"]) g.give(w, 3);
+      g.skipTo(90);
+      const d = g.dens()[0];
+      g.sfxReset();
+      g.place(d.x + 6, d.z); g.step(1, 1/60);
+      const woke = g.sfx().denWake || 0;
+      g.step(60 * 45, 1/60);
+      const done = g.sfx().denDone || 0;
+
+      // crossing onto home ground and off it
+      let aff = { affIn: 0, affOut: 0 }, tries = 0, home = null, weak = null;
+      while (tries++ < 300 && !(home && weak)) {
+        g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true);
+        const a = g.aff(), cs = g.world().cells;
+        home = cs.find(c => c.id === a.home); weak = cs.find(c => c.id === a.weak);
+      }
+      if (home && weak) {
+        g.sfxReset();
+        g.place(home.x, home.z); g.step(1, 1/60); g.hud && g.hud();
+        await new Promise(res => requestAnimationFrame(() => res()));
+        g.place(weak.x, weak.z); g.step(1, 1/60);
+        await new Promise(res => requestAnimationFrame(() => res()));
+        aff = g.sfx();
+      }
+      return { dive, woke, done, affIn: aff.affIn || 0, affOut: aff.affOut || 0,
+               src: g.sfxSrc() };
+    });
+    ok("a bird winding up on you is audible", r.dive > 0, `${r.dive} chirps`);
+    ok("a den waking says so", r.woke > 0, `${r.woke}`);
+    ok("and a den taken says so differently", r.done > 0, `${r.done}`);
+    ok("crossing onto your own ground is audible", r.affIn > 0 && r.affOut > 0,
+       `in ${r.affIn}, out ${r.affOut}`);
+    // and no sound is a copy of another wearing a new name
+    const src = r.src, names = Object.keys(src);
+    const dupes = [];
+    for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++)
+      if (src[names[i]] === src[names[j]]) dupes.push(`${names[i]}=${names[j]}`);
+    ok("every sound in the game is its own sound",
+       dupes.length === 0 && names.length >= 18,
+       `${names.length} sounds, duplicates: ${dupes.join(",") || "none"}`);
+  }
+
   console.log("\n=== 22l. THE HUD FITS ON A PHONE ===");
   {
     // Three things went onto the HUD this session - the minimap, the affinity

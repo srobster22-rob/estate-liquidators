@@ -612,7 +612,40 @@ const SFX = {
   evolve:()=>{ [392,523,659,784,1046,1568].forEach((f,i)=>
                  setTimeout(()=>blip(f,.30,"triangle",.15),i*95));
                setTimeout(()=>noiseBurst(.5,.10), 560); },
+
+  // Three things shipped this session with no sound of their own, and one of
+  // them is a hit you are supposed to dodge. A telegraph you can only see is
+  // half a telegraph - the camera is behind you and a bird winding up at your
+  // flank is off-screen as often as not.
+  //
+  // A rising two-note chirp: short, bright, and nothing else in the mix climbs
+  // in 90ms, so it reads as "behind you" rather than as another pop.
+  dive:  ()=>{ blip(880, .05, "square", .045, 2.0);
+               setTimeout(()=>blip(1320, .06, "square", .05, 2.0), 55); },
+  // A den waking is the arena telling you it noticed. Low, wide, and long
+  // enough to turn around for - a boss horn's smaller cousin.
+  denWake:()=>{ blip(96, .55, "sawtooth", .17, .55); noiseBurst(.35, .13);
+                setTimeout(()=>blip(72, .40, "sine", .13, .5), 130); },
+  // And taken: the same interval resolved upward instead of down.
+  denDone:()=>{ [392,587,784,1175].forEach((f,i)=>
+                  setTimeout(()=>blip(f,.20,"triangle",.13),i*70));
+                setTimeout(()=>blip(1568,.34,"sine",.10),300); },
+  // Crossing onto ground your type owns, and off it. Two notes each way, and
+  // the direction of the interval IS the information.
+  affIn: ()=>{ blip(523,.10,"sine",.07,1.4); setTimeout(()=>blip(784,.16,"sine",.08,1.4),75); },
+  affOut:()=>{ blip(392,.10,"sine",.06,1.0); setTimeout(()=>blip(262,.18,"sine",.07,1.0),75); },
 };
+// Every sound, counted and fingerprinted. Counted so a test can ask whether the
+// thing that just happened made a noise - three features shipped this session
+// silent and nobody noticed until someone went looking. Fingerprinted because
+// the other failure mode is a "new" sound that is a copy of an old one, which
+// is worse than silence: it teaches the player the wrong thing.
+const SFX_SRC = {}, sfxCount = {};
+for(const k in SFX){
+  SFX_SRC[k] = SFX[k].toString().replace(/\s+/g, " ");
+  const f = SFX[k];
+  SFX[k] = (...a)=>{ sfxCount[k] = (sfxCount[k]||0) + 1; return f(...a); };
+}
 
 // ---------------------------------------------------------------- terrain
 const ARENA = 292;                      // half-extent of the TERRAIN mesh.
@@ -2444,7 +2477,7 @@ let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, 
 const START_BANK_GAP = 12;
 let startBank = 0, startBankT = 0;
 let stage=0;                            // 0..2 - where you are in the monster's line
-let lastBiome=null, biomeT=0;           // for the "you have crossed into" banner
+let lastBiome=null, biomeT=0, lastAff=0; // for the "you have crossed into" banner
 let devGod=false, devHp=0;              // pause-screen godmode toggle
 let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
@@ -2497,7 +2530,7 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
-  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt();
+  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
@@ -3262,7 +3295,7 @@ function wakeDen(m){
   if(!m.alive){ m.woke = false; return; }
   denStats.woke++;
   alert2(K.nm + " - " + K.ds, "#ffb45c");
-  shake = Math.max(shake, .5); SFX.boss();
+  shake = Math.max(shake, .5); SFX.denWake();
 }
 function denLost(m){
   if(!m.woke || m.cleared) return;
@@ -3287,7 +3320,7 @@ function denLost(m){
     coinsRun += 110;
     alert2(m.k.nm + " CLEARED - 150 COINS", "#ffd24a");
   }
-  shake = Math.max(shake, .9); SFX.levelup();
+  shake = Math.max(shake, .9); SFX.denDone();
 }
 // Leave and it goes quiet. Without this a woken den either follows you across
 // the arena forever or evaporates at the normal cull and leaves the place
@@ -3451,14 +3484,15 @@ function updateEnemies(dt){
         spd *= DIVE_SPD;
       } else if(e.dv <= 0 && d < DIVE_R && d > 1.2){
         e.dvW = (e.dvW || 0) + dt;
+        if(e.dvW > 0 && !e.dvS){ e.dvS = 1; SFX.dive(); }   // once, on the wind-up
         if(e.dvW >= DIVE_TELL){
-          e.dvW = 0; e.dvT = DIVE_TIME; e.dv = DIVE_REST;
+          e.dvW = 0; e.dvS = 0; e.dvT = DIVE_TIME; e.dv = DIVE_REST;
           // lead the target: where you will be, not where you are
           const lead = DIVE_TIME * .55;
           e.dvX = P.x + P.vx*lead; e.dvZ = P.z + P.vz*lead;
           e.flash = Math.max(e.flash, .18);
         } else spd *= .25;                             // the wind-up is a pause
-      } else e.dvW = 0;
+      } else { e.dvW = 0; e.dvS = 0; }
     }
 
     const pursue = e.boss ? bossAI(e, dt) : true;
@@ -5113,6 +5147,8 @@ function hud(){
   // you are standing on it - a bonus you are only told about for four seconds
   // is a bonus you will not plan around.
   const af = affNow();
+  if(af !== lastAff){ if(af > 0) SFX.affIn(); else if(af < 0) SFX.affOut();
+                      lastAff = af; }
   bel.firstElementChild.textContent = bm.nm;
   bel.firstElementChild.style.color = af > 0 ? "#8affd0" : af < 0 ? "#ff8a6a" : "";
   // On the way in you get what the place IS; after a couple of seconds it
@@ -5337,6 +5373,9 @@ window.__g = {
   jump:  ()=>jumpPressed(),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
+  sfx:      ()=>Object.assign({}, sfxCount),
+  sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
+  sfxSrc:   ()=>Object.assign({}, SFX_SRC),
   mapHits: ()=>mapHits,
   mapBox: ()=>mapBox(innerWidth, innerHeight),
   map:   ()=>mapBg ? { px:mapBg.width, painted:(()=>{
