@@ -646,6 +646,28 @@ The horde stays legible because legibility of the horde is what the minimap is f
 
 Twenty-one forms, still twenty-one distinct meshes — asserted, as before.
 
+### A boss arrives
+
+Bosses were 4.2 to 6.4 units tall against a player that draws at about 2.5 — the biggest thing in
+the game was two and a half times the size of the thing looking at it, and after the creature
+rebuild the *player* was the better-built model. They are 6.8, 7.8, 8.8 and **13.5** now, which
+makes TERRAVORE five times the player and the first version of it that looks like it could have
+eaten the world. Scale is the cheapest wow there is and it costs nothing here: `h` and `w` are
+visual only, the hitbox is `r` and reach is measured to `rad`, so not one balance number moved.
+
+And they arrive instead of appearing. A boss used to blink into existence twenty-six metres away
+with a line of text under it. It comes **up out of the ground** over a second and a half now —
+drawn below the floor and let the terrain hide it, which is the whole trick, so no body plan has
+to know this exists — shoving earth off itself with a column of dust over the top, and it can
+neither act nor be hit until it is out.
+
+That last clause broke five checks, which is the interesting part: three damage probes stepped
+exactly 90 frames, which is exactly 1.5 seconds, so all of them were measuring damage against
+something immune. They wait for the arrival now. The fifth was the per-enemy draw budget — the
+creature rebuild took the player from about ninety boxes to two hundred, and dividing the whole
+frame by the enemy count charged every one of those to the horde, so the metric moved because the
+player got better looking. It subtracts a no-horde frame now.
+
 ### A type is somewhere you belong
 
 Seven creature types, seven regions, and until this round the type was a colour: two lines with

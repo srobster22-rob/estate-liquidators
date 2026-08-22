@@ -520,10 +520,22 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   // 109, 125 on identical builds - so a fixed ceiling on the total is measuring
   // the dice. The cost PER enemy is what the LOD tiers control and it holds
   // still: 30.0 and 29.8 across runs whose totals were 456 boxes apart.
-  const per = hordeOnly.boxes / hordeOnly.enemies;
+  // Subtract the frame that has no horde in it. The creature rebuild took the
+  // player from about ninety boxes to two hundred, and dividing the WHOLE frame
+  // by the enemy count charged every one of those to the horde - the metric
+  // moved because the player got better looking, which is not what it measures.
+  const bare = await page.evaluate(async () => {
+    window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+    window.__g.freezeSpawns(true); window.__g.freezeEvents(true);
+    window.__g.step(30); window.__g.resume();
+    await new Promise(r => setTimeout(r, 400));
+    return window.__g.state().boxes;
+  });
+  const per = (hordeOnly.boxes - bare) / hordeOnly.enemies;
   ok("the horde's cost per enemy stays bounded",
      hordeOnly.enemies > 40 && per <= 34,
-     `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies (${hordeOnly.boxes} total)`);
+     `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies ` +
+     `(${hordeOnly.boxes} total, ${bare} of it not the horde)`);
   ok("and the frame still fits two flushes without a boss",
      hordeOnly.boxes > 0 && hordeOnly.boxes <= 7200, `${hordeOnly.boxes} boxes`);
 
@@ -813,6 +825,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       window.__g.drainPicks(true); window.__g.freezeSpawns(true);
       window.__g.give("aura", 4);
       window.__g.boss(3);
+      // Let it finish arriving. A boss is buried and untouchable for its first
+      // 1.5s now, and these probes run for exactly 90 frames - which is 1.5s,
+      // so all of them were measuring damage against something immune.
+      window.__g.step(120);
       const b0 = window.__g.bossAt();
       for (let i = 0; i < 90; i++) {
         const b = window.__g.bossAt(); if (!b) break;
@@ -846,6 +862,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       window.__g.wipeSave(); window.__g.start(ch); window.__g.god();
       window.__g.drainPicks(true); window.__g.freezeSpawns(true);
       window.__g.give("aura", 4); window.__g.boss(3);
+      window.__g.step(120);                 // let it finish arriving; see above
       const b0 = window.__g.bossAt();
       for (let i = 0; i < 90; i++) {
         const b = window.__g.bossAt(); if (!b) break;
@@ -875,6 +892,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
       window.__g.drainPicks(true); window.__g.freezeSpawns(true);
       window.__g.boss(3);
+      // Let it finish arriving. A boss is buried and untouchable for its first
+      // 1.5s now, and these probes run for exactly 90 frames - which is 1.5s,
+      // so all of them were measuring damage against something immune.
+      window.__g.step(120);
       const b0 = window.__g.bossAt();
       window.__g.zones(b0.x, b0.z, n, 400);
       window.__g.step(30);                       // half a second: two windows
@@ -1955,6 +1976,37 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("a level-up with a real choice still opens one", real.picking === true,
        `picking=${real.picking}`);
+  }
+
+  console.log("\n=== 22q. A BOSS ARRIVES ===");
+  {
+    // Bosses used to appear: one frame not there, the next frame there,
+    // twenty-six metres away, with a line of text. Something five times your
+    // size should not be able to do that quietly. And the rise has to be safe
+    // in both directions - a boss that can be shot while buried is a free kill,
+    // one that can hit you while buried is an ambush you cannot see.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); g.setShake(0);
+      g.boss(3); g.step(1, 1/60);
+      const b0 = g.bossAt();
+      await frame(); await frame();
+      const drawnRising = g.state().boxes;
+      const hp0 = g.bossAt().hp;
+      g.hitBoss ? g.hitBoss(9999) : null;
+      g.step(6, 1/60);
+      const hpWhileBuried = g.bossAt().hp;
+      g.step(150, 1/60);                       // well past the rise
+      const b1 = g.bossAt();
+      return { started: b0 ? b0.rise : null, hp0, hpWhileBuried,
+               after: b1 ? b1.rise : null, drawnRising };
+    });
+    ok("a boss starts buried", r.started > 0, `rise=${r.started}`);
+    ok("and cannot be damaged while it is",
+       r.hpWhileBuried === r.hp0, `${r.hp0} -> ${r.hpWhileBuried}`);
+    ok("and it finishes arriving", r.after === 0, `rise=${r.after}`);
   }
 
   console.log("\n=== 22p. THERE IS SOMETHING AFTER THE FIRST CLEAR ===");

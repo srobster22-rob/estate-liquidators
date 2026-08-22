@@ -1356,10 +1356,18 @@ collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 // your damage - and the bigger the boss, the more it shrugged. Now that reach
 // is measured to the body, the biggest boss gained the most DPS against it, so
 // the biggest boss needs the most HP back. Same fight, honest numbers.
+// Bosses were 4.2 to 6.4 units tall against a player that draws at about 2.5,
+// so the biggest thing in the game was two and a half times the size of the
+// thing looking at it - and after the creature rebuild the PLAYER was the
+// better-built model. Scale is the cheapest wow there is and it costs nothing:
+// h and w are visual only, the hitbox is `r` and reach is measured to `rad`,
+// so none of this touches a single balance number. TERRAVORE is thirteen and a
+// half units now - five times the player - which is the first time the thing
+// that ate the world has looked like it could.
 const BOSSES = [
-{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:4.2, w:2.1, ai:"slam" , body:"matriarch" },
-{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:4.8, w:2.4, ai:"evict" , body:"thornback" },
-{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:5.2, w:2.6, ai:"charge" , body:"skysplitter" },
+{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch" },
+{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback" },
+{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter" },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
@@ -1372,7 +1380,7 @@ const BOSSES = [
 // constraint; hpScale's quadratic went 2.5 -> 3.6 and carries the rest.
 // Latest A/B at THIS value: 13/24 veteran with events live, 7/24 frozen. The
 // intent is that twenty minutes is reachable BECAUSE you went and got them.
-{ t:1140, nm:"TERRAVORE",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:6.4, w:3.2, ai:"all" , body:"terravore" },
+{ t:1140, nm:"TERRAVORE",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -2997,6 +3005,7 @@ function dmgOut(base){
   return { d: d, crit };
 }
 function hurt(e, amount, kx, kz, crit){
+  if(e.rise > 0) return;             // still coming out of the ground
   if(crit && (e.boss || e.elite)) hold("crit");
   // THE SCRAPYARD sharpens what you carry. Keyed off where the PLAYER is
   // standing, not the target - you are the one who walked in there.
@@ -3402,9 +3411,21 @@ function spawnBoss(b){
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
+    // THE ARRIVAL. A boss used to appear: one frame it was not there, the next
+    // it was, twenty-six metres away, and a line of text said so. Something
+    // five times your size should not be able to arrive quietly. It comes up
+    // OUT OF THE GROUND over BOSS_RISE seconds - buried at the start, shoving
+    // the ground up around it, and it cannot act or be hit until it is out.
+    rise: BOSS_RISE,
     final: b.t===1140 });
-  shake = 1.2; SFX.boss(); alert2(b.nm, "#ff5c4d");
+  shake = 1.6; SFX.boss(); alert2(b.nm, "#ff5c4d");
+  for(let i=0;i<20;i++){                       // the ground breaking around it
+    const a2 = i*(TAU/20);
+    rings.push({ x:x+Math.cos(a2)*b.w*.4, z:z+Math.sin(a2)*b.w*.4, y:groundY(x,z),
+                 r:0, max:b.w*(1.4+Math.random()), life:.8+Math.random()*.5, mx:1.3 });
+  }
 }
+const BOSS_RISE = 1.5;
 function alert2(text, col){ alerts.push({ text, col, life:2.6 }); }
 
 // hazards are the enemy mirror of `zones`: they hurt the PLAYER. `tel` counts
@@ -3736,6 +3757,12 @@ function updateEnemies(dt){
       } else { e.dvW = 0; e.dvS = 0; }
     }
 
+    if(e.rise > 0){
+      e.rise = Math.max(0, e.rise - dt);
+      shake = Math.max(shake, .35*(e.rise/BOSS_RISE));
+      if(!(T % .18 < dt)) { /* dust is emitted below, in the draw */ }
+      continue;                                 // buried: no AI, no contact, no hits
+    }
     const pursue = e.boss ? bossAI(e, dt) : true;
 
     if(e.def.flee){
@@ -5060,7 +5087,22 @@ function render(){
     const lod = e.boss ? (dp < 45 ? 2 : dp < 90 ? 1 : 0)
                        : dp < 11 ? 2 : dp < 26 ? 1 : 0;
     const plan = EBODY[e.def.body] || EBODY.generic;
-    plan(e, face, W*sq, H, c, glow, lod, e.y + hop);
+    // Coming up out of the ground. Drawing it below the floor and letting the
+    // terrain hide it is the whole trick - the mesh is unchanged, it is just
+    // lower, so nothing about the body plan has to know this exists.
+    const rise = e.rise > 0 ? e.rise / BOSS_RISE : 0;
+    plan(e, face, W*sq, H, c, glow, lod, e.y + hop - rise*H*1.15);
+    if(rise > 0){
+      const gy2 = groundY(e.x, e.z), up = 1 - rise;
+      for(let i=0;i<16;i++){                       // earth thrown off it
+        const a2 = i*(TAU/16) + T*1.6, rr = W*(.9 + up*1.5);
+        box(e.x+Math.cos(a2)*rr, gy2 + .3 + Math.sin(T*4+i)*.5*up, e.z+Math.sin(a2)*rr,
+            W*.11, W*.09, W*.11, [.34,.27,.22], .05);
+      }
+      for(let i=0;i<7;i++)                         // and a column of dust over it
+        box(e.x, gy2 + 1 + i*H*.30, e.z, W*(.5-i*.05), H*.16, W*(.5-i*.05),
+            [.52,.44,.36], .10*rise);
+    }
     if(ebCap){ ebCapOut = ebCap; ebCap = null; }
     const hy = e.y + H*.62 + H*.19 + hop;
     // and a crown. A tint alone vanishes in a crowd of 300 - this needs to be
@@ -5635,7 +5677,8 @@ window.__g = {
   // position/HP/body of the boss on the field, so a test can hold an exact
   // gap to it instead of chasing a target that walks toward the player.
   bossAt:()=>{ const b=enemies.find(e=>e.boss && !e.dead);
-               return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad, nm:b.def.nm, body:b.def.body} : null; },
+               return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad, nm:b.def.nm, body:b.def.body,
+                           rise:+(b.rise||0).toFixed(3)} : null; },
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },
   // split frame cost into simulation vs rendering. Software GL exaggerates the
   // render half enormously, so only the sim number transfers to real hardware.
@@ -5651,6 +5694,9 @@ window.__g = {
   },
   drainPicks: (suppress)=>{ pendingLevels=0; picking=false; hide("pick"); hopThaw();
                             if(suppress!==undefined) noLevels=!!suppress; },
+  // screenshot helper: point the camera and the creature the same way
+  aim: (a)=>{ camYaw = a; if(P) P.face = a; return camYaw; },
+  hitBoss: (n)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b) hurt(b, n||1, 0, 0); },
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,

@@ -667,3 +667,17 @@ forms are. CINDERTRAIL's hazard recoloured ember-red because a gold ring around 
 was the brightest thing on screen and it was the floor. 316 checks pass, 21 forms still 21
 distinct meshes. **Next:** the bosses need the wow factor — they are 42–98 boxes against a player
 that is now bigger and better built than they are.
+
+**R26 — a boss arrives, and it is five times your size.** Bosses were 4.2–6.4 units against a
+player drawing at ~2.5, so the biggest thing in the game was 2.5× the thing looking at it — and
+after the creature rebuild the player was the better model. Now 6.8/7.8/8.8/**13.5**, and it cost
+nothing: `h`/`w` are visual only, the hitbox is `r` and reach is measured to `rad`, so no balance
+number moved. They also **arrive** instead of appearing — up out of the ground over 1.5s, drawn
+below the floor and hidden by the terrain (which is the whole trick, so no body plan needs to know
+it exists), throwing earth off with a dust column, unable to act or be hit until out. That last
+clause broke five checks and each was worth having: three damage probes stepped exactly 90 frames
+= exactly 1.5s, so every one was measuring damage against something immune; the fifth was the
+per-enemy draw budget, which divides the whole frame by the enemy count and so moved because the
+*player* got better looking — it subtracts a no-horde frame now. 319 checks pass. **Next:** the
+regions still read as an estate's grounds (SLUDGE, FLATS, MIDDEN). They should be a prehistoric
+world — ash plains, tar, bone fields, crystal.
