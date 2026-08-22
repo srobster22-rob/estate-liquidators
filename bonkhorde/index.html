@@ -785,9 +785,9 @@ function affNow(){
 const DIVE_R = 9.5, DIVE_TELL = .42, DIVE_TIME = .45,
       DIVE_REST = 2.6, DIVE_SPD = 4.0, DIVE_DMG = 2.2;
 const MARK_KINDS = [
-  { id:"ring",   nm:"STONE RING",  r:7.5, den:"brute",    pack:[5,8],   ds:"a herd, and they were here first" },
-  { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid eggs in the pit" },
-  { id:"arch",   nm:"THE ARCH",    r:4.5, den:"runner",   pack:[9,14],  ds:"the whole roost goes up at once" },
+  { id:"ring",   nm:"STONE RING",  r:7.5, den:"brute",    pack:[5,8],   ds:"a horned herd, and they were here first" },
+  { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid a clutch in the pit" },
+  { id:"arch",   nm:"THE ARCH",    r:4.5, den:"runner",   pack:[9,14],  ds:"the whole flock goes up at once" },
   { id:"spires", nm:"THE FINGERS", r:5.0, den:"spitter",  pack:[7,11],  ds:"they spit from the high ground" },
   { id:"midden", nm:"BONE PILE",   r:6.0, den:"skitter",  pack:[16,24], ds:"the bones are not the problem" },
 ];
@@ -1315,20 +1315,20 @@ clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:3, ds:"+12% crit. Crits 
 // So the bestiary is WILDLIFE, not an army - it is not attacking the world, it
 // is fleeing across it, and you are in the way. Twenty minutes. Get big.
 const ENEMIES = {
-// A fat segmented larva. It has no idea what is happening and it never stops.
-shambler:{ nm:"GRUBBER",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
+// A fat grub the size of a dog. No idea what is happening, and it never stops.
+shambler:{ nm:"GRUBLING",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
            body:"paper" },
-// A panicked bird. First to arrive, every time, and never on purpose.
-runner:  { nm:"FLITTER",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
+// A small pterosaur. First to arrive, every time, and never on purpose.
+runner:  { nm:"PTERLING",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
            body:"bailiff", dive:true },
-// A boar. Heavy at the front, slow to turn, and it does not intend to stop.
-brute:   { nm:"TUSKLING", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
+// A young ceratopsian. All frill and shoulder, and it does not intend to stop.
+brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
            body:"safe" },
-// A bloated toad. Hangs back and spits at you from across the field.
-spitter: { nm:"SPITTOAD", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
+// A crested spitter. Hangs back and puts something caustic across the field.
+spitter: { nm:"DILOPHO", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
            ranged:{cd:2.6, spd:15, r:22}, body:"appraiser" },
-// A rat. Individually nothing. Never individually.
-skitter: { nm:"RATLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
+// A hatchling raptor. Individually nothing. Never individually.
+skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
            body:"fish" },
 // Everything else in this game walks at you. This one walks away, which makes
 // it the only thing in twenty minutes that asks whether you can bring your
@@ -1347,7 +1347,7 @@ skitter: { nm:"RATLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04],
 // hues this palette needs were already spoken for, so the replacement came out
 // of a grid search scored by the suite's own CIELAB maths rather than by eye -
 // worst pair 18.5, worst against any terrain shade 17.6.
-collector:{ nm:"GLIMMERFOWL", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
+collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
             c:[.82,.94,.36], h:2.0, w:.82, flee:true, body:"glimmerfowl" },
 };
 
@@ -2017,51 +2017,51 @@ const LINES = {
   intern:{ type:"plain",
     move:{ key:"caltrops", nm:"CINDERTRAIL", ds:"it burns where you have been" },
     st:[
-      { nm:"CINDERPUP" },
-      { nm:"FLAREHOUND", mods:{ hp:1.16, dmg:1.09 } },
-      { nm:"PYROWYRM",  mods:{ hp:1.38, dmg:1.20, reach:1.20 },
+      { nm:"CINDERWHELP" },
+      { nm:"FLAREDRAKE", mods:{ hp:1.16, dmg:1.09 } },
+      { nm:"PYRAETHON", mods:{ hp:1.38, dmg:1.20, reach:1.20 },
         sig:"WILDFIRE", sigDs:"+20% reach on everything you carry" } ]},
   scrap:{ type:"scrap",
     move:{ key:"skulls", nm:"UNDERTOW", ds:"water circles you, and it pulls" },
     st:[
-      { nm:"DRIPLET" },
-      { nm:"TIDEMAW", mods:{ hp:1.16, dmg:1.09, mag:1.25 } },
+      { nm:"SPAWNLING" },
+      { nm:"TIDESERPENT", mods:{ hp:1.16, dmg:1.09, mag:1.25 } },
       { nm:"LEVIATHAN",mods:{ hp:1.38, dmg:1.20, mag:1.60 },
         sig:"UNDERCURRENT", sigDs:"+60% pickup radius" } ]},
   spark:{ type:"volt",
     move:{ key:"zap", nm:"ARCLASH", ds:"it jumps, and keeps jumping" },
     st:[
-      { nm:"ZAPLET" },
-      { nm:"VOLTHOUND", mods:{ hp:1.18, dmg:1.09, cd:.95 } },
-      { nm:"STORMWICK", mods:{ hp:1.42, dmg:1.20, cd:.87 },
+      { nm:"SPARKLET" },
+      { nm:"STORMCLAW", mods:{ hp:1.18, dmg:1.09, cd:.95 } },
+      { nm:"STORMWYRM", mods:{ hp:1.42, dmg:1.20, cd:.87 },
         sig:"OVERCLOCK", sigDs:"-13% cooldowns" } ]},
   ox:{ type:"stone",
     move:{ key:"pulse", nm:"TREMOR", ds:"the ground answers you" },
     st:[
-      { nm:"PEBBLIN" },
-      { nm:"BOULDOG",  mods:{ hp:1.20, dmg:1.09, armorFlat:2 } },
-      { nm:"MONOLITH", mods:{ hp:1.46, dmg:1.20, armorFlat:5 },
+      { nm:"SHALEBACK" },
+      { nm:"ANKYLOS",  mods:{ hp:1.20, dmg:1.09, armorFlat:2 } },
+      { nm:"TITANHIDE", mods:{ hp:1.46, dmg:1.20, armorFlat:5 },
         sig:"BEDROCK", sigDs:"+5 flat armour" } ]},
   ghoul:{ type:"rot",
     move:{ key:"aura", nm:"SPORECLOUD", ds:"you are difficult to be near" },
     st:[
-      { nm:"SPORELING" },
-      { nm:"MYCONID",  mods:{ hp:1.16, dmg:1.09, regen:1.5 } },
-      { nm:"GRAVEMAW", mods:{ hp:1.38, dmg:1.20, regen:2.4 },
+      { nm:"MIRELING" },
+      { nm:"SWAMPJAW",  mods:{ hp:1.16, dmg:1.09, regen:1.5 } },
+      { nm:"BASILISK", mods:{ hp:1.38, dmg:1.20, regen:2.4 },
         sig:"BLOOM", sigDs:"regeneration x2.4" } ]},
   accnt:{ type:"tally",
     move:{ key:"mortar", nm:"GALEDIVE", ds:"it comes down out of the sky" },
     st:[
-      { nm:"GUSTLING" },
-      { nm:"SKREECH",    mods:{ hp:1.16, dmg:1.09, xp:1.07 } },
-      { nm:"TEMPESTRIX", mods:{ hp:1.38, dmg:1.20, xp:1.15 },
+      { nm:"WYVERNET" },
+      { nm:"SKYREND",    mods:{ hp:1.16, dmg:1.09, xp:1.07 } },
+      { nm:"THE ROC", mods:{ hp:1.38, dmg:1.20, xp:1.15 },
         sig:"UPDRAFT", sigDs:"+15% XP from everything" } ]},
   twin:{ type:"echo",
     move:{ key:"bolt", nm:"MIRRORBOLT", ds:"whatever you throw, there is another" },
     st:[
-      { nm:"SPLITKIN" },
-      { nm:"TWINSPAWN", mods:{ hp:1.20, dmg:1.10 } },
-      { nm:"TRIPLICATE",mods:{ hp:1.44, dmg:1.28 },
+      { nm:"HYDRALING" },
+      { nm:"TRIHYDRA", mods:{ hp:1.20, dmg:1.10 } },
+      { nm:"THE HYDRA",mods:{ hp:1.44, dmg:1.28 },
         sig:"CHORUS", sigDs:"+28% damage - three of everything" } ]},
 };
 for(const c of CHARS){
@@ -2217,62 +2217,77 @@ let camEye=[0,0,0];                     // last rendered eye, so a test can see 
 const BODY = {
 
 // ------------------------------------------------------------------ EMBER
+// A fire drake, hatchling to wyrm. Horns from the first form, membrane wings
+// from the second, and by the third it has left the ground and the fire has
+// stopped being decoration and become most of the animal.
 plain(D){
-  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const br = Math.sin(t*2.1)*.02;
   const fl = (r,f,y,sc,n)=>{ for(let i=0;i<n;i++){
     const w = Math.sin(t*9 + i*1.3)*.05*sc;
     mb(r+w, f, y + i*.15*sc, (.11-i*.016)*sc, (.10-i*.012)*sc, (.11-i*.016)*sc,
        i%2 ? acc : lt, .55 + i*.10); } };
   if(st === 0){
-    // CINDERPUP. Too much head, four legs, and a tail that will not go out.
-    blob(0, -.04, .46+br, .28,.24,.32, c, em);
-    mb(0, 0, .24, .22,.09,.26, bel, em*.8);
-    blob(0, .32, .66+br, .27,.24,.24, c, em);                 // the head, oversized
-    mb(0, .48, .54+br, .18,.09,.14, bel, em*.6);              // muzzle
-    mb(0, .58, .58+br, .06,.045,.05, dk, .1);                 // nose
-    eyes(0, .46, .74+br, .13, .105, [.20,.10,.06]);
-    for(const rs of [-1,1]) taper(rs*.19, .26, .86+br, rs*.04,-.03,.09, 3, .07,.10,.05, acc, .18);
+    // CINDERWHELP. Hatchling: all skull and feet, with the horns already in.
+    blob(0, -.06, .46+br, .27,.23,.34, c, em);
+    mb(0, -.02, .25, .21,.09,.28, bel, em*.8);
+    ridge(-.26, .16, .66+br, 5, .09, acc, .30);
+    blob(0, .30, .64+br, .26,.23,.25, c, em);                  // heavy skull
+    mb(0, .48, .55+br, .19,.10,.15, bel, em*.6);               // snout
+    mb(0, .60, .58+br, .07,.05,.06, dk, .1);
+    grin(0, .55, .48+br, .13, .035, 5);
+    eyes(0, .44, .74+br, .13, .10, [1,.72,.18]);
+    for(const rs of [-1,1]) horn(rs*.17, .30, .82+br, rs*.045,-.035,.075, 4, .065, acc, .30);
     for(const rs of [-1,1]) for(const fs of [-1,1])
-      blob(rs*.18, fs*.20, .13 + Math.max(0,gait*rs*fs)*.09, .075,.13,.075, dk, 0);
-    fl(0, -.34, .52, 1.0, 4);
+      claw(rs*.19, fs*.21, .11 + Math.max(0,gait*rs*fs)*.09, rs, .075, dk);
+    taper(0, -.34, .46, 0,-.16,.02, 4, .11,.10,.13, c, em);
+    fl(0, -.86, .50, .8, 3);
   } else if(st === 1){
-    // FLAREHOUND. It got the legs it was promised, and a mane.
-    blob(0, -.06, .62+br, .32,.28,.42, c, em);
-    mb(0, -.02, .34, .26,.11,.34, bel, em*.8);
-    taper(0, .26, .78, 0,.05,.05, 2, .18,.13,.16, c, em);
-    blob(0, .44, .92+br, .26,.23,.24, c, em);
-    mb(0, .62, .80+br, .19,.10,.16, bel, em*.6);
-    mb(0, .74, .84+br, .06,.05,.05, dk, .1);
-    eyes(0, .60, 1.00+br, .13, .10, [.20,.10,.06]);
-    grin(0, .62, .70+br, .12, .04, 4);
-    for(const rs of [-1,1]) taper(rs*.20, .38, 1.12+br, rs*.05,-.04,.10, 3, .07,.11,.05, acc, .18);
-    for(let i=0;i<7;i++){ const a=(i-3)*.36;                   // mane
-      fl(Math.sin(a)*.24, .18+Math.cos(a)*.10, .96, .85, 3); }
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      taper(rs*.21, fs*.26, .30, 0,0,-.10, 3, .08,.10,.08, dk, 0);
-    fl(0, -.46, .70, 1.2, 5);
+    // FLAREDRAKE. It has wings now, and it uses them to get off the ground when
+    // it hits something rather than to fly.
+    const beat = t*4.4;
+    blob(0, -.08, .62+br, .31,.27,.44, c, em);
+    mb(0, -.04, .34, .25,.11,.36, bel, em*.8);
+    ridge(-.44, .28, .84+br, 7, .13, acc, .34);
+    taper(0, .24, .80, 0,.06,.05, 2, .18,.14,.16, c, em);      // neck
+    blob(0, .46, .94+br, .25,.22,.25, c, em);
+    mb(0, .66, .84+br, .20,.11,.17, bel, em*.6);
+    mb(0, .80, .87+br, .07,.05,.06, dk, .1);
+    grin(0, .70, .74+br, .14, .045, 6);
+    eyes(0, .58, 1.02+br, .14, .105, [1,.72,.18]);
+    for(const rs of [-1,1]) horn(rs*.18, .40, 1.10+br, rs*.055,-.05,.085, 5, .07, acc, .34);
+    for(const rs of [-1,1]) wing(rs, rs*.30, -.02, .84+br, .62, c, acc, beat + (rs>0?0:.4));
+    for(const rs of [-1,1]) for(const fs of [-1,1]){
+      taper(rs*.22, fs*.26, .32, 0,0,-.09, 2, .085,.10,.085, dk, 0);
+      claw(rs*.22, fs*.26, .10, rs, .08, dk);
+    }
+    taper(0, -.50, .62, 0,-.19,-.02, 5, .12,.11,.14, c, em);
+    fl(0, -1.10, .58, 1.0, 4);
   } else {
-    // PYROWYRM. No legs left. It is mostly spine, and the spine is burning.
-    const hov = Math.sin(t*2.4)*.10;
+    // PYRAETHON. Off the ground for good. Seven burning coils, a crowned skull,
+    // and wings that are more fire than membrane.
+    const hov = Math.sin(t*2.4)*.10, beat = t*3.0;
     for(let i=0;i<7;i++){ const k = 1 - i*.10, sw = Math.sin(t*3 - i*.7)*.16;
       blob(sw, -.10 - i*.34, .70 + hov + Math.sin(t*2.2 - i*.6)*.14,
            .30*k,.24*k,.30*k, i%2 ? c : lt, em+.06);
-      fl(sw, -.10 - i*.34, .92 + hov, .8 - i*.07, 2); }
-    blob(0, .34, .92+hov, .32,.29,.30, c, em+.06);
-    mb(0, .58, .78+hov, .24,.12,.20, bel, em*.6);
-    for(let i=0;i<6;i++) mb(-.18+i*.072, .70, .84+hov, .035,.05,.04, [.98,.98,.94], .2);
-    eyes(0, .56, 1.04+hov, .16, .115, [1,.86,.20]);
-    for(const rs of [-1,1]) taper(rs*.24, .18, 1.16+hov, rs*.06,-.05,.13, 4, .07,.13,.06, acc, .35);
-    for(const rs of [-1,1]) for(let k=0;k<2;k++){              // wings of flame
-      const wa = Math.sin(t*5 + k)*.12;
-      taper(rs*(.44+k*.16), -.10+wa, 1.00+hov+k*.10, rs*.10,-.06,.05, 4, .10,.05,.16, acc, .5); }
+      mb(sw, -.10 - i*.34, .94 + hov + Math.sin(t*2.2 - i*.6)*.14,
+         .05, .13*k, .10*k, acc, .45);                          // a fin on every coil
+      fl(sw, -.10 - i*.34, .96 + hov, .8 - i*.07, 2); }
+    blob(0, .34, .94+hov, .32,.29,.31, c, em+.06);
+    mb(0, .62, .82+hov, .25,.13,.21, bel, em*.6);
+    grin(0, .66, .70+hov, .17, .055, 7);
+    eyes(0, .54, 1.06+hov, .16, .115, [1,.90,.28]);
+    for(const rs of [-1,1]) horn(rs*.22, .22, 1.18+hov, rs*.07,-.055,.11, 6, .075, acc, .50);
+    for(const rs of [-1,1]) horn(rs*.28, -.02, 1.02+hov, rs*.09,-.03,.05, 4, .055, acc, .40);
+    for(const rs of [-1,1]) wing(rs, rs*.34, -.14, 1.02+hov, .92, lt, acc, beat + (rs>0?0:.5));
   }
 },
 
 // ------------------------------------------------------------------- TIDE
 scrap(D){
-  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const bob = Math.sin(t*2.6)*.05;
   if(st === 0){
     // DRIPLET. A drop of water that has decided things.
@@ -2290,12 +2305,14 @@ scrap(D){
     mb(0, 0, .30, .28,.12,.34, bel, em*.9);
     blob(0, .40, .74+bob, .30,.25,.26, c, em+.10);
     grin(0, .58, .58+bob, .22,.07, 7);
+    for(const rs of [-1,1]) horn(rs*.20, .34, .90+bob, rs*.06,-.05,.06, 4, .055, lt, .34);
     eyes(0, .54, .86+bob, .16, .11, [.06,.20,.34]);
     for(let i=0;i<5;i++)                                        // dorsal crest
       taper(0, .16 - i*.20, .90+bob, 0,0,.07, 2, .05,.11-i*.012,.10, lt, em+.2);
     for(const rs of [-1,1]) taper(rs*.34, .06, .48+bob, rs*.08,-.05,.03, 3, .13,.05,.17, lt, em+.18);
-    for(const rs of [-1,1]) for(const fs of [-1,1])
+    for(const rs of [-1,1]) for(const fs of [-1,1]){
       taper(rs*.22, fs*.24, .26, 0,0,-.09, 3, .08,.09,.08, dk, 0);
+      claw(rs*.22, fs*.24, .07, rs, .07, dk); }
     for(let k=0;k<3;k++) taper(Math.sin(t*4+k)*.10*(k+1), -.52-k*.20, .58+bob,
                                0,0,-.02, 2, .10-k*.02,.09,.13, lt, em+.14);
   } else {
@@ -2307,6 +2324,11 @@ scrap(D){
       if(i%2===0) taper(sw, -.16 - i*.36, .86+hov, 0,0,.06, 2, .05,.10,.10, lt, em+.24); }
     blob(0, .38, .88+hov, .36,.31,.32, c, em+.10);
     grin(0, .62, .70+hov, .30,.14, 9);
+    // A crown of horns. LEVIATHAN is the top of its line and the only thing
+    // that separated it from the middle form was length.
+    for(const rs of [-1,1]){
+      horn(rs*.26, .30, 1.06+hov, rs*.08,-.06,.10, 6, .07, lt, .40);
+      horn(rs*.32, .04, .92+hov, rs*.10,-.03,.04, 4, .05, lt, .32); }
     eyes(0, .58, 1.04+hov, .20, .12, [.10,.90,1]);
     for(let i=0;i<4;i++) taper(0, .22 - i*.16, 1.12+hov, 0,0,.08, 3, .05,.13,.11, lt, em+.28);
     for(const rs of [-1,1]) taper(rs*.42, .10, .74+hov, rs*.11,-.06,.04, 4, .14,.05,.20, lt, em+.2);
@@ -2315,86 +2337,109 @@ scrap(D){
 
 // ----------------------------------------------------------------- THE VOLT
 volt(D){
-  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const hov = Math.sin(t*3)*.09;
   if(st === 0){
-    // ZAPLET. An orb, a bolt crest, and no impulse control.
-    blob(0, 0, .80+hov, .28,.28,.26, c, em+.16);
-    blob(0, .10, .68+hov, .20,.14,.18, bel, em+.2);
-    eyes(0, .26, .88+hov, .13, .10, [.10,.20,.34]);
-    mb(0, .28, .70+hov, .07,.025,.03, acc, .3);
-    for(let i=0;i<4;i++){ const zz=(i%2?1:-1)*.06;      // zig-zag crest
-      mb(zz, -.02, 1.10+hov+i*.09, .045,.055,.045, acc, .95); }
-    for(const rs of [-1,1]){                            // antennae with lit tips
-      taper(rs*.16, -.02, 1.02+hov, rs*.03,0,.10, 3, .028,.05,.028, dk, .1);
-      mb(rs*.24, -.02, 1.32+hov, .05,.05,.05, acc, 1.0); }
+    // SPARKLET. A storm raptor, newly out of the shell: two legs, a stub tail,
+    // and a crest that is already arcing.
+    blob(0, -.04, .52+hov*.4, .24,.22,.32, c, em+.14);
+    mb(0, 0, .32, .19,.09,.26, bel, em+.18);
+    ridge(-.22, .12, .70+hov*.4, 4, .07, acc, .70);
+    taper(0, .22, .66, 0,.05,.06, 2, .13,.11,.12, c, em+.14);      // neck
+    blob(0, .38, .82+hov*.4, .20,.18,.20, c, em+.16);
+    mb(0, .52, .74+hov*.4, .14,.07,.13, bel, em+.16);
+    eyes(0, .46, .90+hov*.4, .11, .09, [.10,.20,.34]);
+    for(const rs of [-1,1]) horn(rs*.12, .34, .96+hov*.4, rs*.035,-.03,.07, 4, .045, acc, .85);
+    for(const rs of [-1,1]) for(const fs of [-1,1])
+      claw(rs*.16, fs*.16, .10 + Math.max(0,gait*rs*fs)*.08, rs, .065, dk);
+    for(let k=0;k<3;k++)
+      mb(Math.sin(t*7+k)*.07*(k+1), -.34-k*.13, .52+k*.07, .045,.075,.045, acc, .95);
     for(let i=0;i<4;i++){ const a=t*2.4+i/4*TAU;
-      mb(Math.sin(a)*.46, Math.cos(a)*.42, .80+hov+Math.sin(t*5+i)*.12,
-         .05,.05,.05, acc, 1.0); }
+      mb(Math.sin(a)*.42, Math.cos(a)*.38, .74+hov+Math.sin(t*5+i)*.12,
+         .045,.045,.045, acc, 1.0); }
   } else if(st === 1){
-    // VOLTHOUND. The orb grew a body and the body will not stop running.
-    blob(0, -.06, .72, .30,.28,.38, c, em+.08);
-    mb(0, -.02, .50, .24,.13,.30, bel, em+.1);
-    blob(0, .42, .92, .26,.24,.24, c, em+.12);
-    mb(0, .54, .76, .19,.08,.16, bel, em+.1);           // snout
-    mb(0, .66, .78, .06,.04,.05, acc, .3);              // nose
-    eyes(0, .56, 1.00, .13, .095, [.10,.20,.34]);
-    for(const rs of [-1,1]){                            // ears, flicking
-      const fl = Math.sin(t*4+(rs>0?0:1.1))*.10;
-      taper(rs*.18, .40+fl, 1.14, rs*.03,-.02,.09, 3, .06,.08,.045, acc, .12); }
-    mb(0, .28, .74, .27,.05,.20, acc, .55);             // a lit collar
-    for(const rs of [-1,1]) for(const fs of [-1,1]){
-      taper(rs*.21, fs*.26, .30, 0,0,-.10, 3, .06,.075,.06, dk, 0);
-      mb(rs*.21, fs*.28, .05+Math.max(0,gait*rs*fs)*.12, .075,.045,.09, acc, .1); }
-    for(let k=0;k<4;k++)                                // bolt tail
-      mb(Math.sin(t*7+k)*.10*(k+1), -.44-k*.14, .80+k*.15, .05,.09,.05, acc, .95);
+    // STORMCLAW. Full raptor: a low horizontal spine, a counterweight tail and
+    // the sickle claw the whole animal is named for.
+    const beat = t*5.2;
+    blob(0, -.10, .66, .27,.24,.44, c, em+.08);
+    mb(0, -.06, .46, .22,.11,.34, bel, em+.1);
+    ridge(-.44, .22, .86, 7, .11, acc, .75);
+    taper(0, .24, .84, 0,.07,.07, 3, .15,.12,.13, c, em+.10);
+    blob(0, .50, 1.00, .21,.19,.22, c, em+.12);
+    mb(0, .68, .92, .15,.08,.15, bel, em+.1);
+    grin(0, .64, .84, .12, .04, 6);
+    eyes(0, .60, 1.08, .12, .09, [.10,.20,.34]);
+    for(const rs of [-1,1]) horn(rs*.14, .44, 1.16, rs*.045,-.035,.085, 5, .05, acc, .90);
+    mb(0, .28, .82, .26,.05,.19, acc, .60);                        // lit collar
+    for(const rs of [-1,1]) wing(rs, rs*.24, -.04, .84, .40, c, acc, beat + (rs>0?0:.5));
+    for(const rs of [-1,1]){
+      taper(rs*.19, -.02, .40, 0,.03,-.11, 3, .07,.085,.07, dk, 0);
+      claw(rs*.19, .08, .09 + Math.max(0,gait*rs)*.13, rs, .085, dk);
+      mb(rs*.19, .22, .16, .05,.10,.05, [.96,.94,.88], .22); }     // the sickle
+    for(let k=0;k<5;k++)
+      mb(Math.sin(t*7+k)*.09*(k+1), -.56-k*.17, .70+k*.05, .05,.085,.05, acc, .95);
     for(let i=0;i<5;i++){ const a=t*2.4+i/5*TAU;
       mb(Math.sin(a)*.54, Math.cos(a)*.48, .94+Math.sin(t*5+i)*.14, .05,.05,.05, acc, 1.0); }
   } else {
-    // STORMWICK. No legs. A cloud, a lit core, and its own bad weather.
-    for(let i=0;i<11;i++){ const a=i/11*TAU;
-      blob(Math.sin(a)*(.32+(i%2)*.15), Math.cos(a)*(.28+(i%2)*.13),
-           1.10+hov+Math.sin(t*2+i)*.05, .17,.13,.15, i%3 ? c : bel, em+.10); }
-    blob(0, .06, 1.04+hov, .21,.19,.19, acc, .75);      // the core, burning through
-    eyes(0, .28, 1.12+hov, .15, .105, [.10,.16,.30]);
-    grin(0, .28, .90+hov, .13, .05, 5);
-    for(let i=0;i<9;i++){ const a=t*2.0+i/9*TAU;
-      mb(Math.sin(a)*.66, Math.cos(a)*.58, 1.00+hov+Math.sin(t*4+i)*.18,
-         .05,.15,.05, acc, 1.0); }
-    for(let k=0;k<7;k++){ const rp=(t*1.5+k*.29)%1;
-      mb(Math.sin(k*2.3)*.36, Math.cos(k*2.3)*.32, .92-rp*.84, .03,.10,.03, bel, .8); }
+    // STORMWYRM. It stopped being an animal that makes lightning and became the
+    // storm: a coiled body inside its own cloud, with wings of charge.
+    const beat = t*3.4;
+    for(let i=0;i<6;i++){ const k = 1 - i*.11, sw = Math.sin(t*2.8 - i*.66)*.18;
+      blob(sw, -.14 - i*.32, .86 + hov + Math.sin(t*2.4 - i*.6)*.13,
+           .26*k,.21*k,.28*k, i%2 ? c : lt, em+.12);
+      mb(sw, -.14 - i*.32, 1.08 + hov, .045,.12*k,.09*k, acc, .85); }
+    for(let i=0;i<9;i++){ const a=i/9*TAU;                          // the cloud it rides
+      blob(Math.sin(a)*(.34+(i%2)*.14), Math.cos(a)*(.30+(i%2)*.12),
+           1.24+hov+Math.sin(t*2+i)*.05, .15,.11,.13, i%3 ? bel : c, em+.06); }
+    blob(0, .30, 1.02+hov, .27,.24,.25, c, em+.14);
+    mb(0, .54, .94+hov, .19,.10,.17, bel, em+.12);
+    grin(0, .50, .86+hov, .15, .05, 7);
+    eyes(0, .46, 1.12+hov, .15, .105, [.20,.94,1]);
+    for(const rs of [-1,1]){
+      horn(rs*.18, .22, 1.24+hov, rs*.06,-.05,.10, 6, .06, acc, 1.0);
+      horn(rs*.26, -.02, 1.10+hov, rs*.08,-.03,.05, 4, .045, acc, .9); }
+    for(const rs of [-1,1]) wing(rs, rs*.30, -.16, 1.06+hov, .78, lt, acc, beat + (rs>0?0:.6));
+    for(let k=0;k<7;k++){ const rp=(t*1.5+k*.29)%1;                 // its own rain
+      mb(Math.sin(k*2.3)*.40, Math.cos(k*2.3)*.34, 1.10-rp*1.00, .03,.11,.03, bel, .8); }
   }
 },
-
 // ---------------------------------------------------------------- THE STONE
 stone(D){
-  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   if(st === 0){
-    // LUGGIT. A pebble with a heavy brow and one crystal it is proud of.
+    // SHALEBACK. A hatchling ankylosaur: low, wide, already plated.
     blob(0, 0, .36, .36,.28,.32, c, em);
     mb(0, .06, .18, .30,.11,.26, bel, em*.7);
     mb(0, .12, .62, .32,.10,.26, dk, em*.5);            // brow
     eyes(0, .26, .48, .14, .075, [.14,.12,.10]);
     mb(0, .24, .28, .10,.03,.03, dk, 0);
-    taper(-.10, -.10, .60, .01,-.01,.09, 3, .07,.09,.07, acc, .35);
+    ridge(-.28, .18, .58, 5, .10, acc, .30);
+    for(const rs of [-1,1]) horn(rs*.24, .10, .52, rs*.05,-.02,.02, 3, .06, acc, .30);
     for(const rs of [-1,1]) for(const fs of [-1,1])
-      blob(rs*.24, fs*.19, .09+Math.max(0,gait*rs*fs)*.05, .08,.075,.08, dk, 0);
+      claw(rs*.24, fs*.19, .08+Math.max(0,gait*rs*fs)*.05, rs, .075, dk);
+    taper(0, -.34, .30, 0,-.14,0, 4, .11,.09,.12, c, em);          // tail
+    blob(0, -.86, .32, .13,.12,.13, acc, .35);                     // and a club
   } else if(st === 1){
-    // HAULOX. A boulder that took a job and takes it seriously.
+    // ANKYLOS. Grown, and now mostly armour, spikes and tail club.
     blob(0, 0, .52, .52,.38,.46, c, em);
     mb(0, .08, .26, .44,.16,.36, bel, em*.7);
     mb(0, .16, .92, .42,.14,.34, dk, em*.5);
     eyes(0, .34, .76, .21, .085, [.14,.12,.10]);
     grin(0, .34, .50, .18, .06, 6);
-    mb(0, -.12, 1.10, .48,.07,.20, dk, 0);              // the yoke
-    for(let k=0;k<3;k++) blob(-.24+k*.24, -.18, 1.28, .13,.12,.13, k%2?acc:lt, .08);
-    for(let k=0;k<4;k++){ const a=k/4*TAU;              // crystals along the back
-      taper(Math.sin(a)*.26, Math.cos(a)*.20-.06, 1.00, Math.sin(a)*.02,0,.08, 3,
-            .06,.09,.06, acc, .35); }
+    ridge(-.50, .26, .94, 8, .16, acc, .34);            // a plated back
+    for(const rs of [-1,1]){
+      horn(rs*.34, .18, .82, rs*.08,-.02,.02, 4, .075, acc, .34);  // shoulder spikes
+      horn(rs*.40, -.10, .74, rs*.09,-.03,.01, 4, .065, acc, .30); }
     for(const rs of [-1,1]) for(const fs of [-1,1])
-      blob(rs*.36, fs*.28, .12+Math.max(0,gait*rs*fs)*.06, .11,.10,.11, dk, 0);
+      claw(rs*.36, fs*.28, .11+Math.max(0,gait*rs*fs)*.06, rs, .105, dk);
+    taper(0, -.52, .46, 0,-.19,0, 5, .15,.12,.16, c, em);
+    blob(Math.sin(t*2.2)*.10, -1.24, .50, .21,.19,.21, acc, .40);  // the club
+    for(const rs of [-1,1]) horn(rs*.16, -1.24, .50, rs*.07,0,.01, 3, .06, lt, .40);
   } else {
-    // MONOLITH. It stopped walking. Carved, lit, and followed by its own rubble.
+    // TITANHIDE. It stopped walking. A standing slab of plated hide, lit from
+    // the seams, orbited by the ground it tore up getting here.
     blob(0, 0, 1.14, .36,1.00,.28, c, em);
     mb(0, .16, 1.14, .26,.86,.06, bel, em*.6);          // a face-plate down the front
     for(let k=0;k<5;k++)                                // carved runes, lit
@@ -2411,7 +2456,8 @@ stone(D){
 
 // ------------------------------------------------------------------ THE ROT
 rot(D){
-  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const wob = Math.sin(t*5)*.035;
   const shroom = (r,f,y,sc,cap)=>{
     taper(r, f, y, 0,0,.05, 3, .035*sc,.07*sc,.035*sc, bel, .06);
@@ -2419,16 +2465,18 @@ rot(D){
     for(let i=0;i<3;i++) mb(r+(i-1)*.07*sc, f+.05*sc, y+.22*sc, .022*sc,.02*sc,.02*sc, bel, .3);
   };
   if(st === 0){
-    // MOULDLING. A puddle with one mushroom and strong opinions about it.
+    // MIRELING. A hatchling basilisk, still more bog than snake.
     blob(0, 0, .28+wob, .36,.26,.32, c, em+.10);
     mb(0, .06, .14, .28,.09,.24, bel, em*.8);
     eyes(0, .28, .40+wob, .14, .095, [.10,.20,.10]);
     grin(0, .30, .22, .12, .04, 4);
     shroom(.12, -.10, .44+wob, 1, acc);
+    for(const rs of [-1,1]) horn(rs*.16, .18, .48+wob, rs*.04,-.03,.04, 3, .04, acc, .28);
+    taper(0, -.30, .24, 0,-.15,-.01, 4, .10,.08,.11, c, em+.10);
     for(let k=0;k<3;k++){ const dp=(t*1.1+k*.4)%1;      // it drips
       mb(Math.sin(k*2.1)*.28, Math.cos(k*2.1)*.24, .16-dp*.14, .035,.05,.035, lt, .12); }
   } else if(st === 1){
-    // ROTHERD. Something has been growing on it and it does not mind at all.
+    // SWAMPJAW. Long in the body now, and the jaw arrived before the manners.
     blob(0, 0, .38+wob, .46,.34,.42, c, em+.10);
     mb(0, .08, .18, .38,.12,.32, bel, em*.8);
     eyes(0, .34, .60+wob, .18, .105, [.10,.20,.10]);
@@ -2437,8 +2485,14 @@ rot(D){
       shroom(Math.sin(a)*.26, Math.cos(a)*.24, .62+wob, .9+ (k%2)*.3, k%2?acc:lt); }
     for(let k=0;k<4;k++){ const a=t*1.3+k*1.7;          // spores drifting off
       mb(Math.sin(a)*.40, Math.cos(a)*.34, .90+Math.sin(t*2+k)*.18, .04,.04,.04, acc, .6); }
+    ridge(-.42, .20, .68+wob, 6, .11, acc, .26);
+    for(const rs of [-1,1]) horn(rs*.22, .26, .66+wob, rs*.06,-.04,.05, 4, .055, acc, .30);
+    for(const rs of [-1,1]) for(const fs of [-1,1])
+      claw(rs*.28, fs*.24, .09, rs, .08, dk);
+    taper(0, -.46, .34, 0,-.20,-.01, 5, .13,.10,.14, c, em+.10);
   } else {
-    // GRAVEMAW. A headstone that grew a mouth and stopped being decorative.
+    // BASILISK. Reared up off the ground, crowned, and looking straight at you.
+    // The mushrooms stayed because a basilisk that lives in a bog would.
     blob(0, 0, .90, .42,.76,.26, c, em);
     blob(0, 0, 1.66, .42,.14,.26, c, em);               // the rounded top
     mb(0, .14, .96, .32,.60,.05, bel, em*.6);
@@ -2447,6 +2501,12 @@ rot(D){
     eyes(0, .28, 1.40, .18, .115, [.86,.28,.20]);
     for(let k=0;k<8;k++){ const a=k/8*TAU;
       shroom(Math.sin(a)*.30, Math.cos(a)*.20, 1.78, 1.15, k%2?acc:lt); }
+    for(const rs of [-1,1]){
+      horn(rs*.24, .18, 1.62, rs*.08,-.05,.10, 6, .07, acc, .55);
+      horn(rs*.34, -.06, 1.44, rs*.09,-.03,.04, 4, .05, acc, .45); }
+    for(let i=0;i<7;i++)                                  // a coiled body below it
+      blob(Math.sin(t*1.6 - i*.7)*.18, -.20 - i*.24, .18 + i*.02,
+           .22 - i*.014, .13, .24 - i*.016, i%2 ? c : lt, em+.06);
     for(const rs of [-1,1]){ const g2 = Math.sin(t*2+(rs>0?0:1.4))*.06;
       taper(rs*.48, .18, .22+g2, 0,0,.10, 3, .075,.09,.075, bel, .06);
       for(let i=0;i<3;i++) taper(rs*.48+(i-1)*.075, .22, .46+g2, 0,0,.06, 2,
@@ -2458,10 +2518,12 @@ rot(D){
 
 // ------------------------------------------------------------------- GALE
 tally(D){
-  const { blob, taper, eyes, grin, mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
   const hop = Math.abs(Math.sin(t*3.2))*.05;
   if(st === 0){
-    // GUSTLING. Mostly fluff, two enormous eyes, wings that do not work yet.
+    // WYVERNET. A wyvern chick: two enormous eyes, a hooked beak, and wings
+    // that are not load-bearing yet.
     blob(0, 0, .44+hop, .30,.28,.28, c, em);
     mb(0, .08, .24, .24,.10,.22, bel, em*.85);
     eyes(0, .28, .54+hop, .14, .12, [.10,.14,.30]);
@@ -2469,11 +2531,12 @@ tally(D){
     for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.10;
       taper(rs*.30, fw, .44+hop, rs*.05,-.04,.02, 3, .09,.14,.06, lt, em+.1); }
     for(let i=0;i<3;i++) taper((i-1)*.07, -.02, .74+hop, 0,0,.06, 2, .04,.07,.04, acc, .2);
+    for(const rs of [-1,1]) horn(rs*.13, .18, .64+hop, rs*.035,-.025,.05, 3, .04, acc, .30);
     for(const rs of [-1,1]) taper(rs*.11, .06, .14, 0,0,-.05, 2, .045,.06,.045, acc, .15);
     for(let k=0;k<3;k++) taper(Math.sin(t*5+k)*.06*(k+1), -.30-k*.12, .40+hop,
                                0,0,0, 2, .07,.06,.05, lt, em+.06);
   } else if(st === 1){
-    // SKREECH. The wings work now, and it is not friendly.
+    // SKYREND. The wings work now, and there are talons on the end of them.
     blob(0, -.02, .66+hop, .28,.28,.34, c, em);
     mb(0, .04, .38, .22,.11,.28, bel, em*.85);
     blob(0, .26, .92+hop, .21,.18,.20, c, em);
@@ -2484,11 +2547,16 @@ tally(D){
       for(let k=0;k<4;k++)
         taper(rs*(.34+k*.16), fw - k*.06, .74+hop+k*.05, rs*.06,-.03,.01, 2,
               .13-k*.02,.035,.20-k*.03, k%2?lt:bel, em+.08); }
-    for(const rs of [-1,1]) taper(rs*.13, .06, .22, 0,0,-.07, 3, .05,.08,.05, acc, .15);
+    for(const rs of [-1,1]){
+      taper(rs*.13, .06, .22, 0,0,-.07, 3, .05,.08,.05, acc, .15);
+      claw(rs*.13, .10, .05, rs, .07, acc);
+      horn(rs*.15, .22, 1.06+hop, rs*.045,-.035,.065, 4, .045, acc, .32); }
+    ridge(-.30, .10, .84+hop, 5, .09, acc, .28);
     for(let k=0;k<4;k++) taper(Math.sin(t*5+k)*.07*(k+1), -.40-k*.15, .58+hop,
                                0,0,0, 2, .08-k*.01,.05,.06, lt, em+.06);
   } else {
-    // TEMPESTRIX. It brought weather with it.
+    // THE ROC. The legendary one. It brought weather with it, and the wingspan
+    // is the point - everything else on this animal is hung off the wings.
     const hov = Math.sin(t*2.2)*.13;
     blob(0, -.02, .96+hov, .30,.32,.38, c, em);
     mb(0, .04, .64+hov, .24,.12,.30, bel, em*.85);
@@ -2500,6 +2568,9 @@ tally(D){
       for(let k=0;k<6;k++)
         taper(rs*(.36+k*.19), fw - k*.08, 1.04+hov+k*.06, rs*.07,-.04,.01, 2,
               .16-k*.02,.035,.24-k*.03, k%2?lt:bel, em+.10); }
+    for(const rs of [-1,1]){
+      horn(rs*.17, .20, 1.46+hov, rs*.055,-.045,.085, 5, .05, acc, .45);
+      claw(rs*.15, .12, .48+hov, rs, .085, acc); }                    // talons
     for(let i=0;i<7;i++){ const a=t*2.4+i/7*TAU;                       // wind
       mb(Math.sin(a)*.72, Math.cos(a)*.62, .90+hov+Math.sin(t*3+i)*.18,
          .05,.05,.13, lt, .75, a); }
@@ -2509,26 +2580,51 @@ tally(D){
 },
 // ----------------------------------------------------------------- THE ECHO
 echo(D){
-  const { blob, taper, eyes, mb, c, dk, lt, bel, acc, em, st, t } = D;
-  // SPLITKIN is two of it. TWINSPAWN is three and one wears a crown. TRIPLICATE
-  // is four and they drag their own after-images. The COUNT is the evolution.
-  const n = 2 + st;
+  const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          mb, c, dk, lt, bel, acc, em, st, t } = D;
+  // A HYDRA, not a flock. This line used to be N heads orbiting each other with
+  // no body between them, which reads as three separate small animals rather
+  // than one large one - and the count was the only thing the evolution
+  // changed. It is one serpent now with N necks growing out of it: two at
+  // HYDRALING, three at TRIHYDRA, four at THE HYDRA, and the body grows with
+  // them so the silhouette gets bigger rather than just busier.
+  const n = 2 + st, gr = 1 + st*.18;
+  const coil = Math.sin(t*1.8)*.06;
+  // the body: a low serpentine mass, thickest under the necks
+  for(let i=0;i<6;i++){
+    const k = 1 - i*.11, sw = Math.sin(t*1.6 - i*.6)*.14*gr;
+    blob(sw, -.10 - i*.30*gr, (.30 + coil)*gr,
+         .26*k*gr, .17*k*gr, .30*k*gr, i%2 ? c : lt, em);
+    if(i<4) mb(sw, -.10 - i*.30*gr, (.48 + coil)*gr, .05*gr, .10*k*gr, .10*k*gr, acc, .30);
+  }
+  for(const rs of [-1,1]) for(const fs of [-1,1])
+    claw(rs*.24*gr, (fs*.22 - .10)*gr, .09*gr, rs, .075*gr, dk);
+  // the necks, fanned forward, each with a head on it
   for(let i=0;i<n;i++){
-    const a = t*1.5 + i/n*TAU, rr = .30 + n*.045;
-    const px = Math.sin(a)*rr, pf = Math.cos(a)*rr;
-    const yy = .44 + Math.sin(t*3.4 + i*1.7)*.10;
-    blob(px, pf, yy, .20,.22,.18, i ? lt : c, em);
-    mb(px, pf+.06, yy-.14, .15,.07,.12, bel, em*.8);
-    eyes(px, pf+.18, yy+.06, .085, .07, [.22,.10,.34]);
-    mb(px, pf+.20, yy-.08, .055,.022,.025, acc, .2);
-    taper(px, pf, yy+.24, 0,0,.06, 3, .04,.055,.04, acc, .25);
-    if(i === 0 && st >= 1) for(let k=0;k<6;k++){ const ca=k/6*TAU;
-      mb(px+Math.sin(ca)*.14, pf+Math.cos(ca)*.14, yy+.42, .03,.075,.03, acc, .7); }
-    if(st >= 2) for(let g=1;g<=2;g++){ const ga = a - g*.30;
-      blob(Math.sin(ga)*rr, Math.cos(ga)*rr, yy, .14-g*.035,.16-g*.035,.13-g*.035, acc, .10); }
+    const spread = (i - (n-1)/2) * (.52 - n*.03);
+    const sway = Math.sin(t*2.6 + i*1.9)*.09;
+    const bx = Math.sin(spread)*.16*gr, bf = .14*gr;
+    const hx = Math.sin(spread)*.52*gr + sway, hf = (.34 + Math.cos(spread)*.20)*gr;
+    const hy = (.86 + Math.cos(spread)*.10 + Math.sin(t*3.1 + i*1.3)*.05)*gr;
+    for(let k=1;k<=4;k++){                                   // the neck itself
+      const t2 = k/4;
+      blob(bx + (hx-bx)*t2, bf + (hf-bf)*t2, (.34*gr) + (hy - .34*gr)*t2,
+           (.11 - k*.008)*gr, (.11 - k*.008)*gr, (.11 - k*.008)*gr,
+           i ? lt : c, em+.04);
+    }
+    blob(hx, hf, hy, .155*gr, .145*gr, .155*gr, i ? lt : c, em+.06);
+    mb(hx, hf+.14*gr, hy-.03*gr, .10*gr, .055*gr, .10*gr, bel, em*.8);
+    grin(hx, hf+.13*gr, hy-.09*gr, .085*gr, .028*gr, 4);
+    eyes(hx, hf+.09*gr, hy+.05*gr, .075*gr, .062*gr, [.30,.10,.44]);
+    for(const rs of [-1,1])
+      horn(hx + rs*.09*gr, hf, hy+.12*gr, rs*.03*gr, -.025*gr, .05*gr, 3, .035*gr, acc, .45);
+    // THE HYDRA drags an after-image of every head, which is the line's
+    // signature made visible rather than a fourth head nobody can count.
+    if(st >= 2) for(let g=1;g<=2;g++)
+      blob(hx - sway*g*.7, hf - g*.10*gr, hy, (.12 - g*.03)*gr,
+           (.11 - g*.03)*gr, (.12 - g*.03)*gr, acc, .12);
   }
 },
-
 };
 // QA: when this is an array, the next frame records every box the monster body
 // emits, so a test can ask whether two forms are actually the same mesh.
@@ -3211,7 +3307,11 @@ function fireZap(w,s){
 }
 function fireCaltrops(w,s){
   zones.push({ x:P.x, z:P.z, r:s.rad, dps:s.dps, life:s.life, max:s.life,
-               c:w.evo?[1,.42,.12]:[.86,.62,.20], tick:0, evo:w.evo });
+               // Ember red, not gold. A gold ring around an orange drake is the
+               // brightest thing on screen and it is the FLOOR - the animal the
+               // game is about was reading as the second most important object
+               // inside its own hazard.
+               c:w.evo?[1,.34,.08]:[.80,.24,.10], tick:0, evo:w.evo });
 }
 function updateOrbiters(dt){
   const w = P.kit.skulls; if(!w) return;
@@ -4647,7 +4747,13 @@ function render(){
   // loudest "you are moving fast" cue there is
   // Pulled in and lowered. At 12.4 out and 6.3 up you saw the top of a
   // creature; the interesting half of every one of these forms is its front.
-  const dist = 10.9 + spdFrac*1.9, hgt = 5.4 + camPitch*4.7 + spdFrac*.7;
+  // In again, and lower again. 10.9/5.4 still framed the animal at about a
+  // tenth of the screen height and looked down on it at 26 degrees, which is
+  // enough to read a silhouette and not enough to read horns, wings, teeth or
+  // a dorsal ridge - all the things these forms are actually made of. 8.9/4.1
+  // is 17 degrees and about half again the on-screen size. The horde is still
+  // legible because the horde is what the MINIMAP is for.
+  const dist = 8.9 + spdFrac*2.1, hgt = 4.1 + camPitch*4.7 + spdFrac*.8;
   const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
   // edge puts it out among the boundary spires (radius 74-79, height 7-15) at an
@@ -5117,7 +5223,56 @@ function render(){
         mb(tx, f+.075, y+h*.62, .032,.045,.055, [.96,.96,.92], .18);
         mb(tx, f+.075, y-h*.62, .032,.045,.055, [.96,.96,.92], .18); }
     };
-    const D = { mb, blob, taper, eyes, grin,
+    // ---- THE BEAST VOCABULARY. Seven lines that are all supposed to be
+    // draconic, prehistoric or legendary should be built out of the same parts,
+    // or they are seven unrelated animals in one game. These are those parts.
+    // Horn: curves as it goes, tapers as it curves. Nothing else in the game
+    // bends, so a horned silhouette reads as a horned silhouette at any size.
+    const horn = (r,f,y, dr,df,dy, n, sz, col, em2)=>{
+      let cr = r, cf = f, cy = y, k = 1;
+      for(let i=0;i<n;i++){
+        mb(cr, cf, cy, sz*k, sz*k*1.15, sz*k, col, em2||.12);
+        cr += dr*(1 + i*.35); cf += df*(1 + i*.35); cy += dy*(1 - i*.12); k *= .80;
+      }
+    };
+    // Dorsal plates. A ridge down the spine is the cheapest thing that says
+    // "this is a reptile" and it is legible from directly behind, which is
+    // where the camera lives.
+    const ridge = (f0, f1, y, n, h, col, em2)=>{
+      for(let i=0;i<n;i++){
+        const t2 = i/(n-1 || 1), ff = f0 + (f1-f0)*t2;
+        const hh = h * Math.sin(.35 + t2*2.4);
+        mb(0, ff, y + hh*.5, .045, hh, .09 + hh*.25, col, em2||.10);
+      }
+    };
+    // A membrane wing: leading-edge bones with a sheet hung between them.
+    // Wings that read as wings. The first version laid four flat slabs straight
+    // out sideways at a constant height, which from a camera behind the animal
+    // is a horizontal bar through its shoulders. A wing has to do three things
+    // at once: go OUT, go BACK, and go UP - and the membrane has to hang behind
+    // the leading edge rather than sit level with it.
+    const wing = (rs, r,f,y, span, col, memb, beat)=>{
+      const lift = Math.sin(beat)*.20;
+      for(let i=0;i<5;i++){
+        const t2 = (i+1)/5, yaw = rs*(.55 + t2*.35);
+        const bx = r + rs*span*t2*1.05;
+        const by = y + span*(.30*t2 + .10*(1-t2)) + lift*t2*t2;
+        const bf = f - span*.42*t2*t2;
+        mb(bx, bf, by, span*.19, .04, span*.11*(1+t2*.7), col, .12, yaw);   // finger bone
+        if(i) mb(bx - rs*span*.16, bf - span*.20*t2, by - span*.05*t2,
+                 span*.22, .026, span*.34*t2, memb, .05, yaw);              // membrane
+      }
+      mb(r + rs*span*.28, f + span*.10, y + span*.16, span*.13, .05, span*.10,
+         col, .12, rs*.4);                                                  // shoulder
+    };
+    // Three toes and a dewclaw, which is what makes a leg read as a foot.
+    const claw = (r,f,y, rs, sz, col)=>{
+      mb(r, f, y, sz*1.1, sz*.5, sz*1.3, col, 0);
+      for(let i=-1;i<=1;i++)
+        mb(r + i*sz*.7, f + sz*1.1, y - sz*.15, sz*.26, sz*.26, sz*.5,
+           [.94,.92,.86], .16);
+    };
+    const D = { mb, blob, taper, eyes, grin, horn, ridge, wing, claw,
                 c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
                 gait, st:stage, t:T,
                 // Solids, for the same reason. A .04-deep plate on a curved face

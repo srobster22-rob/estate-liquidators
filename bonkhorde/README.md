@@ -29,12 +29,12 @@ and you are in the way.
 
 | the wildlife | what it is | how it plays |
 |---|---|---|
-| **GRUBBER** | a fat segmented larva with mandibles | slow, patient, always more |
-| **FLITTER** | a bird in a permanent hurry | gets there first, never on purpose |
-| **TUSKLING** | a boar, heavy at the front | slow, enormous, 150 HP, does not turn |
-| **SPITTOAD** | bloated, eyes on top, spits | the only one that outranges you |
-| **RATLING** | individually nothing | tiny, 5.0 m/s, never individually |
-| **GLIMMERFOWL** | a jewelled bird that knows what it is worth | flees; pays coins if you catch it |
+| **GRUBLING** | a grub the size of a dog | slow, patient, always more |
+| **PTERLING** | a small pterosaur, and it dives | gets there first, never on purpose |
+| **CERATOP** | a young ceratopsian, all frill and shoulder | slow, enormous, 150 HP, does not turn |
+| **DILOPHO** | a crested spitter | the only one that outranges you |
+| **RAPTORLING** | a hatchling raptor, individually nothing | tiny, 5.0 m/s, never individually |
+| **GILDWING** | a jewelled flyer that knows what it is worth | flees; pays coins if you catch it |
 
 And above them: **THE MATRIARCH** at 5:00, **THORNBACK** at 10:00, **SKYSPLITTER** at 15:00,
 and **TERRAVORE** at 19:00.
@@ -518,13 +518,13 @@ lets a test jump straight to the top of a line without walking it.
 
 | | stage 1 | stage 2 (LV 7) | stage 3 (LV 20) | move it learns | signature |
 |---|---|---|---|---|---|
-| **EMBER** | CINDERPUP | FLAREHOUND | PYROWYRM | CINDERTRAIL | WILDFIRE — +20% weapon reach |
-| **TIDE** | DRIPLET | TIDEMAW | LEVIATHAN | UNDERTOW | UNDERCURRENT — +60% pickup radius |
-| **VOLT** | ZAPLET | VOLTHOUND | STORMWICK | ARCLASH | OVERCLOCK — −13% cooldowns |
-| **STONE** | PEBBLIN | BOULDOG | MONOLITH | TREMOR | BEDROCK — +5 flat armour |
-| **ROT** | SPORELING | MYCONID | GRAVEMAW | SPORECLOUD | BLOOM — regeneration ×2.4 |
-| **GALE** | GUSTLING | SKREECH | TEMPESTRIX | GALEDIVE | UPDRAFT — +15% XP |
-| **ECHO** | SPLITKIN | TWINSPAWN | TRIPLICATE | MIRRORBOLT | CHORUS — +28% damage |
+| **EMBER** | CINDERWHELP | FLAREDRAKE | PYRAETHON | CINDERTRAIL | WILDFIRE — +20% weapon reach |
+| **TIDE** | SPAWNLING | TIDESERPENT | LEVIATHAN | UNDERTOW | UNDERCURRENT — +60% pickup radius |
+| **VOLT** | SPARKLET | STORMCLAW | STORMWYRM | ARCLASH | OVERCLOCK — −13% cooldowns |
+| **STONE** | SHALEBACK | ANKYLOS | TITANHIDE | TREMOR | BEDROCK — +5 flat armour |
+| **ROT** | MIRELING | SWAMPJAW | BASILISK | SPORECLOUD | BLOOM — regeneration ×2.4 |
+| **GALE** | WYVERNET | SKYREND | THE ROC | GALEDIVE | UPDRAFT — +15% XP |
+| **ECHO** | HYDRALING | TRIHYDRA | THE HYDRA | MIRRORBOLT | CHORUS — +28% damage |
 
 **And the game uses the name it gave you.** Evolving announced `LEARNED CINDERTRAIL` and then
 every surface went on saying `CALTROPS` — the game named a thing and never used the name again.
@@ -544,13 +544,13 @@ silhouette rather than the scale:
 
 | | it starts as | it becomes | it ends as |
 |---|---|---|---|
-| **EMBER** | a pup made of embers | it has grown into the fire it leaves | mostly fire, and long |
-| **TIDE** | a droplet with a face | a maw with water circling it | a leviathan, and the water follows |
-| **VOLT** | an orb with antennae | the orb grew a body and it runs | a cloud with a skull in it and its own rain |
-| **STONE** | a pebble with a brow | a boulder that decided to be a dog | a standing stone, hovering, trailed by rubble |
-| **ROT** | a puddle with one mushroom | a slime under a mushroom forest | a headstone that grew a mouth and two hands |
-| **GALE** | a gust with eyes | it audits the field from the air | a storm-bird with a crown of wind |
-| **ECHO** | two of it | three, and one wears a crown | four, dragging after-images |
+| **EMBER** | a horned hatchling, all skull and feet | it has wings, and it uses them | mostly fire, coiled, crowned |
+| **TIDE** | a droplet with a face | a finned serpent with fangs and claws | a river with a crowned head on one end |
+| **VOLT** | a storm raptor out of the shell | a full raptor with the sickle claw | the storm itself, coiled in its own cloud |
+| **STONE** | a plated hatchling with a tail club | mostly armour, spikes and club | a standing slab, lit at the seams |
+| **ROT** | more bog than snake | long in the body, and the jaw arrived first | reared up, crowned, looking at you |
+| **GALE** | a wyvern chick with wings that don't work | they work now, with talons on the end | the legendary one, hung off its wingspan |
+| **ECHO** | one serpent, two necks | three necks | four, each dragging an after-image |
 
 Nothing in a body plan animates a *size*, only positions — so `__g.bodySig()` (box count plus
 every box's half-extents, sorted) is stable frame to frame, and two forms built from the same
@@ -611,6 +611,40 @@ a threat source does not add threat** while hit intake is rate-limited.
 Closing a 10× gap is a deliberate change to what the game asks of you, not a constant and not one
 enemy behaviour. The direction the design already points is *rewards that require holding ground*
 — dens, altars, bosses — rather than a horde that can outrun you.
+
+### The creatures are dragons and dinosaurs now, and the eyes stopped flickering
+
+Two things, and the first one is a bug that had been in every creature in the game since the
+bodies were built.
+
+**The eye was three flat plates.** Sclera, pupil and glint at `f`, `f+.035` and `f+.05`, with
+half-depths of .05, .04 and .03 — so their front faces landed within fifteen thousandths of each
+other, *and* inside the head blob. Coplanar surfaces, so the depth buffer had to choose, and the
+choice changed with the camera. Every creature flickered, and the plates were invisible edge-on
+besides. They are solids now, sized off the eye radius, each front face clearly ahead of the last
+and the assembly proud of the skull. Interpenetration is fine — z-fighting is a coplanar-faces
+problem, not an overlap problem. The same mistake was in the enemy eye helper, the eye and tooth
+decals, and the teeth in `grin`.
+
+**And the seven lines were farm animals.** A mop, a hound, an orb with antennae. They are
+draconic, prehistoric and legendary now, built out of a **shared vocabulary** — `horn` curves and
+tapers as it goes, `ridge` runs dorsal plates down a spine, `wing` hangs a membrane behind a
+leading edge that goes out *and* back *and* up, `claw` puts three toes and a dewclaw on a leg —
+because seven lines that are all supposed to be dragons should be made of the same parts or they
+are seven unrelated animals in one game.
+
+Two lines were rebuilt outright rather than accented. VOLT was an orb with antennae and is now a
+storm raptor that grows into a wyrm inside its own cloud. ECHO was N heads orbiting each other
+with no body between them, which reads as several small animals rather than one large one — and
+the head count was the only thing its evolutions changed. It is a **hydra** now: one serpentine
+body with two, three and four necks growing out of it, and the body grows with them.
+
+**The camera came in and down**, from 10.9 out and 5.4 up to 8.9 and 4.1 — 26° of look-down to
+17°, and about half again the on-screen size. The old framing was enough to read a silhouette and
+not enough to read horns, wings, teeth or a dorsal ridge, which is all these forms are made of.
+The horde stays legible because legibility of the horde is what the minimap is for.
+
+Twenty-one forms, still twenty-one distinct meshes — asserted, as before.
 
 ### A type is somewhere you belong
 

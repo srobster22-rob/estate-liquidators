@@ -648,3 +648,22 @@ an earlier code change is *not* accounted for and is written down rather than ha
 checks pass. **Next:** the retheme the user asked for — dinosaur/dragon/legendary across all
 seven lines, mobs kept plain so they do not outshine the player, bosses given real scale, and the
 regions moved to match.
+
+**R25 — the creatures are dragons and dinosaurs, and the camera can see them.** Seven lines
+rebuilt on a shared beast vocabulary added to the body bundle: `horn` (curves and tapers as it
+goes), `ridge` (dorsal plates down a spine), `wing` (membrane hung behind a leading edge that
+goes out *and* back *and* up — the first version laid flat slabs sideways, which from a camera
+behind the animal is a bar through its shoulders), `claw` (three toes and a dewclaw). EMBER is a
+fire drake hatchling → winged drake → coiled wyrm; TIDE grows a horned crown and claws; VOLT was
+an orb with antennae and is now a storm raptor → sickle-clawed raptor → wyrm in its own cloud;
+STONE is an ankylosaur line with plates, shoulder spikes and a tail club; ROT is a basilisk that
+rears up; GALE is a wyvern chick → taloned skyrend → THE ROC; ECHO was N heads orbiting nothing
+and is now a real **hydra** — one serpentine body, two/three/four necks growing out of it, body
+scaling with the count. Enemies renamed to small prehistoric fry (GRUBLING, PTERLING, CERATOP,
+DILOPHO, RAPTORLING, GILDWING) and deliberately left plain so they do not outshine the player.
+Camera in and down, 10.9/5.4 → 8.9/4.1 (26° of look-down to 17°, half again the on-screen size) —
+the old framing could read a silhouette but not horns, wings, teeth or a ridge, which is all these
+forms are. CINDERTRAIL's hazard recoloured ember-red because a gold ring around an orange drake
+was the brightest thing on screen and it was the floor. 316 checks pass, 21 forms still 21
+distinct meshes. **Next:** the bosses need the wow factor — they are 42–98 boxes against a player
+that is now bigger and better built than they are.
