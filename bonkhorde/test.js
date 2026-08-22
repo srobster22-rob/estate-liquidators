@@ -1978,6 +1978,78 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22s. NO PART OF A CREATURE FIGHTS ANOTHER PART ===");
+  {
+    // Reported as "the models glitch into each other". A rounded box in this
+    // renderer is three concentric boxes, each full-size on one axis and shrunk
+    // on the other two - and the shrink factor was the SAME .78 on every axis,
+    // so box A and box C were both .78 wide, A and B both .78 deep, B and C
+    // both .78 tall. Three pairs of exactly coplanar faces at the same centre,
+    // in every rounded part of every creature in the game.
+    //
+    // Two surfaces at the same depth make the depth buffer pick, and the pick
+    // changes with the camera. This counts them: a pair is fighting if a face
+    // plane coincides within a millimetre AND the boxes actually overlap on the
+    // other two axes, because coplanar faces that do not overlap never show.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      // The capture is filled by render(), not by step() - the body is drawn in
+      // the frame, not in the simulation. Stepping and then reading gives null.
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const EPS = 0.001;
+      const out = [];
+      for (const ch of g.chars()) for (const st of [0, 1, 2]) {
+        g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.place(0, 0);
+        if (st) g.evolveTo(st);
+        g.resume(); g.capturePos();
+        await frame(); await frame();
+        const b = g.posOut();
+        if (!b) { out.push({ ch, st, nm: g.stageNm(), bad: -1, n: 0 }); continue; }
+        const n = b.length / 6, box = i => b.slice(i*6, i*6+6);   // r f y hx hy hz
+        let bad = 0, cores = 0;
+        for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++) {
+          const A = box(i), B = box(j);
+          // CONCENTRIC and coplanar is the always-visible case: two boxes on
+          // the same centre with a face on the same plane have BOTH faces
+          // exposed, because neither can hide the other. That is what blob()
+          // was doing on three axis pairs in every rounded part of every model,
+          // and it is the class that has to be zero.
+          const same = Math.abs(A[0]-B[0]) < EPS && Math.abs(A[1]-B[1]) < EPS
+                    && Math.abs(A[2]-B[2]) < EPS;
+          for (let k = 0; k < 3; k++) {
+            const o1 = (k+1)%3, o2 = (k+2)%3;
+            // must overlap on the other two axes, or the shared plane is invisible
+            const ov = (ax) => Math.min(A[ax]+A[ax+3], B[ax]+B[ax+3])
+                             - Math.max(A[ax]-A[ax+3], B[ax]-B[ax+3]);
+            if (ov(o1) <= EPS || ov(o2) <= EPS) continue;
+            const hi = Math.abs((A[k]+A[k+3]) - (B[k]+B[k+3]));
+            const lo = Math.abs((A[k]-A[k+3]) - (B[k]-B[k+3]));
+            if (hi < EPS || lo < EPS) { bad++; if (same) cores++; break; }
+          }
+        }
+        out.push({ ch, st, nm: g.stageNm(), bad, cores, n });
+      }
+      return out;
+    });
+    const worst = r.slice().sort((a, b) => b.bad - a.bad).slice(0, 3);
+    const total = r.reduce((s, x) => s + Math.max(0, x.bad), 0);
+    const cores = r.reduce((s, x) => s + Math.max(0, x.cores || 0), 0);
+    ok("every form was captured", r.every(x => x.bad >= 0), `${r.length} forms`);
+    ok("no two concentric parts share a face plane - the always-visible case",
+       cores === 0, `${cores} concentric fighting pairs across 21 forms`);
+    // A BUDGET, not a zero, and the difference is worth stating. Boxes that are
+    // not concentric can share a face plane and still never show it, because a
+    // third box is usually in front of the seam - so demanding zero here would
+    // be demanding a property the renderer does not need. 853 was the number
+    // before the chamfer and the draw-index nudge went in; this holds the gain
+    // and fails loudly if a new body plan reintroduces rows of identical parts.
+    ok("and the total stays inside its budget",
+       total <= 300,
+       `${total} pairs across 21 forms (was 853); worst: ` +
+       worst.map(x => `${x.nm} ${x.bad}/${x.n}`).join(", "));
+  }
+
   console.log("\n=== 22r. THE ANIMATION IS DRIVEN BY WHAT YOU DID ===");
   {
     // The creature had one animation: sin(T*13) while moving, hard zero while
@@ -3002,6 +3074,69 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a move you already own is ranked up, not duplicated",
        r.dupe.post.l > r.dupe.pre && r.dupe.post.mv,
        `rank ${r.dupe.pre} -> ${r.dupe.post.l}, ${r.dupe.slots} kit slots`);
+  }
+
+  console.log("\n=== 25. THE MENU SHOWS YOU THE ANIMAL ===");
+  {
+    // Seven hand-built body plans and the menu used to describe them in prose
+    // next to a flat glyph. The cards render the real mesh through the real
+    // engine now, so this section checks the three things that can silently
+    // break: that the canvases exist, that something was actually painted into
+    // them, and that seven different monsters produce seven different images -
+    // one shared GL canvas blitted into seven cards is exactly the setup where
+    // a stale readback would show you the same animal seven times.
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(async () => {
+      const cards = [...document.querySelectorAll(".ch")];
+      const open  = cards.filter(c => !c.classList.contains("lock"));
+      // give the portrait pass a few frames to paint
+      await new Promise(res => { let n = 0;
+        const tick = () => (++n > 20 ? res() : requestAnimationFrame(tick));
+        requestAnimationFrame(tick); });
+      const shots = [];
+      for (const c of cards.filter(c => c.querySelector("canvas.pv"))) {
+        const cv = c.querySelector("canvas.pv");
+        const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+        let h = 2166136261, lit = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          h = Math.imul(h ^ d[i], 16777619) ^ d[i+1] ^ d[i+2];
+          if (d[i] + d[i+1] + d[i+2] > 120) lit++;
+        }
+        shots.push({ nm: c.querySelector(".nm").textContent.trim(),
+                     hash: h >>> 0, lit, px: d.length / 4 });
+      }
+      return { cards: cards.length, open: open.length,
+               pv: document.querySelectorAll(".ch canvas.pv").length,
+               prose: open.filter(c => c.querySelector(".ds")).length,
+               lockProse: cards.filter(c => c.classList.contains("lock")
+                                         && c.querySelector(".ds")).length,
+               locked: cards.length - open.length,
+               shots };
+    });
+    ok("every unlocked card carries a live portrait",
+       r.pv === r.open && r.pv > 0, `${r.pv} portraits / ${r.open} unlocked`);
+    ok("and no unlocked card carries a description any more",
+       r.prose === 0, `${r.prose} prose blocks on ${r.open} open cards`);
+    ok("a locked card still says what unlocks it",
+       r.locked === 0 || r.lockProse === r.locked,
+       `${r.lockProse} of ${r.locked} locked cards explain themselves`);
+    // "painted" means a real spread of lit pixels: a clear-only frame is all
+    // background, and a blit of the wrong region is usually all background too.
+    const painted = r.shots.filter(s => s.lit > s.px * 0.02 && s.lit < s.px * 0.92);
+    ok("something is actually drawn into each one",
+       painted.length === r.shots.length,
+       r.shots.map(s => `${s.nm} ${(s.lit / s.px * 100).toFixed(0)}%`).join("  "));
+    ok("and no two monsters produce the same picture",
+       new Set(r.shots.map(s => s.hash)).size === r.shots.length,
+       `${new Set(r.shots.map(s => s.hash)).size} distinct of ${r.shots.length}`);
+    const after = await page.evaluate(() => {
+      window.__g.start("plain");
+      return { live: window.__g.portraits(), menu: window.__g.menuUp() };
+    });
+    ok("starting a run stops the portraits rendering",
+       after.live === 0 && after.menu === false,
+       `${after.live} live, menuUp ${after.menu}`);
   }
 
   console.log("\n" + "=".repeat(58));

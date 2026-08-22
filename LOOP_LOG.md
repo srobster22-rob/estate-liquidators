@@ -723,3 +723,18 @@ EMBER a drake that loses its legs. Per-line box counts went from spreads like 19
 79/93/115 — every stage substantial. 326 checks pass, still 21 distinct meshes. **Next:** the
 enemies are the last thing on the old plan — they should be small dinosaurs at a fraction of the
 player's detail.
+
+**R29 — the menu shows you the animal.** Lifted the 270-line player-model block out of `render()`
+into `drawMonBody(mCh, P, ANIM, stage, evoFx, T)` — the parameters deliberately shadow the globals
+the in-game call used to read, so not one line of body plan had to change — and gave every
+character card a live portrait: the real mesh, real engine, drawn into a corner viewport of the
+game canvas under a scissor and blitted into the card's own 2D canvas, so seven cards cost seven
+extra draws and no second GL context. The prose that used to sit under each name is gone with it.
+Three things bit: the base `canvas{position:fixed;inset:0}` rule made every portrait cover the
+whole viewport; the marker ring and ground quad that keep you findable in a horde read as
+twelve pieces of confetti at card size (portraits opt out via `P.portrait`); and a three-slab
+plinth is a twelve-pointed star with a 41% ripple, not a disc — six slabs at 30° gets it under 1%.
+Cameras are auto-framed off the same `bodyPos` capture the coplanar test uses, so a new body plan
+frames itself. 335 checks pass. · **Next:** "level up the models even further" — the block texture
+is right but the forms are still simple and clunky in close-up, and the enemies still animate off
+a clock rather than off what they did.
