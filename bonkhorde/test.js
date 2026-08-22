@@ -1978,6 +1978,63 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22r. THE ANIMATION IS DRIVEN BY WHAT YOU DID ===");
+  {
+    // The creature had one animation: sin(T*13) while moving, hard zero while
+    // not. One frequency, one amplitude, no ramp - so a careful walk and a
+    // hop-chain sprint animated identically, stopping snapped the legs to a
+    // dead pose mid-stride, and nothing the player did was visible on the
+    // animal. Every term below is a thing the player can do.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god();
+                           g.freezeSpawns(true); g.freezeEvents(true);
+                           g.drainPicks(true); g.place(0, 0); g.step(30, 1/60); };
+      const hold = (code, n) => { dispatchEvent(new KeyboardEvent("keydown", { code }));
+                                  g.step(n, 1/60);
+                                  dispatchEvent(new KeyboardEvent("keyup", { code })); };
+      // 1. standing still settles to no gait at all
+      boot(); g.step(90, 1/60);
+      const still = g.anim();
+      // 2. walking builds one, and the PHASE advances with distance
+      boot(); hold("KeyW", 40);
+      const walk = g.anim();
+      const d0 = g.state();
+      g.step(1, 1/60);
+      // 3. the phase must track distance, not the clock: same seconds, no
+      //    movement, must not advance
+      boot(); const p0 = g.anim().ph; g.step(60, 1/60); const p1 = g.anim().ph;
+      // 4. a landing crouches it
+      boot(); hold("KeyW", 20);
+      g.jump(); g.step(4, 1/60);
+      const air = g.anim();
+      // NOT "step until vy === 0" - vertical speed passes through zero at the
+      // APEX, so that exits halfway up and measures a creature still climbing.
+      // Step until the landing actually registers.
+      let landed = null;
+      for (let i = 0; i < 120; i++) { g.step(1, 1/60);
+        if (g.anim().land > 0) { landed = g.anim(); break; } }
+      landed = landed || g.anim();
+      // 5. taking a hit recoils it
+      boot(); g.hitMe(30); g.step(1, 1/60);
+      const hit = g.anim();
+      // 6. something nearby turns the head
+      boot(); g.spawn("brute", 1, 9); g.step(40, 1/60);
+      const looking = g.anim();
+      return { still, walk, standPh: p1 - p0, air, landed, hit, looking };
+    });
+    ok("standing still has no gait", r.still.amp < 0.03, `amp=${r.still.amp}`);
+    ok("walking builds one", r.walk.amp > 0.5, `amp=${r.walk.amp}`);
+    ok("the stride is measured in distance, not seconds",
+       Math.abs(r.standPh) < 0.001, `phase moved ${r.standPh} across a second of standing still`);
+    ok("moving leans the animal", Math.abs(r.walk.lean) > 0.02, `lean=${r.walk.lean}`);
+    ok("landing crouches it", r.landed.sq < 0.99 && r.landed.land > 0,
+       `sq=${r.landed.sq}, land=${r.landed.land}`);
+    ok("a hit recoils it", r.hit.lunge < 0, `lunge=${r.hit.lunge}`);
+    ok("and it looks at what is next to it",
+       Math.abs(r.looking.look) > 0.05, `look=${r.looking.look}`);
+  }
+
   console.log("\n=== 22q. A BOSS ARRIVES ===");
   {
     // Bosses used to appear: one frame not there, the next frame there,
@@ -2345,7 +2402,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         while (tries++ < 300 && !(at(a.home) && at(a.weak))) { g.start(ch); g.drainPicks(true); }
         const home = at(a.home), weak = at(a.weak);
         if (!home || !weak) { out.lines[ch] = "no map"; continue; }
-        // Divide the region's own tough mod back out. THE ASHES is +12% on its
+        // Divide the region's own tough mod back out. THE CINDERFLATS is +12% on
         // own account, so a raw 40-vs-46 comparison between two regions is
         // measuring the regions, not the affinity - which is how this first
         // read GHOUL at 47/61 and called it a failure.
@@ -2803,15 +2860,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.dAsh   = hitAt(ash.x, ash.z);
       return out;
     });
-    ok("the sludge is slower than the green",
+    ok("the tarpits are slower than the fernlands",
        r.vBog < r.vGreen * 0.92,
-       `${r.vGreen.toFixed(2)} m/s on THE GREEN -> ${r.vBog.toFixed(2)} in THE SLUDGE`);
-    ok("and it is the sludge you were standing in", r.inBog === "bog", r.inBog);
+       `${r.vGreen.toFixed(2)} m/s on THE FERNLANDS -> ${r.vBog.toFixed(2)} in THE TARPITS`);
+    ok("and it is the tarpits you were standing in", r.inBog === "bog", r.inBog);
     ok("and neither reading was taken mid-hop-chain", r.chain === 0,
        `deepest chain during the measurement: ${r.chain}`);
-    ok("the ashes cost you more for the same hit",
+    ok("the cinderflats cost you more for the same hit",
        r.dAsh > r.dGreen * 1.05,
-       `${r.dGreen.toFixed(1)} damage on THE GREEN -> ${r.dAsh.toFixed(1)} in THE ASHES`);
+       `${r.dGreen.toFixed(1)} damage on THE FERNLANDS -> ${r.dAsh.toFixed(1)} in THE CINDERFLATS`);
   }
 
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");

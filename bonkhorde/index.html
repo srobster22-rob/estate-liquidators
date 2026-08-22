@@ -58,19 +58,6 @@
   #lvl b{color:var(--ink);font-size:17px}
   #lvl em{display:block;font-style:normal;font-size:10px;letter-spacing:.14em;
     color:#8affd0;margin-top:2px;text-shadow:0 1px 2px #000}
-  @media (max-width:400px){
-    /* At 360 the level block still reached the clock. Narrow one, shrink the
-       other, and they stop sharing a row. */
-    #clock{font-size:19px} #lvl{max-width:34vw} #lvl b{font-size:15px}
-  }
-  @media (max-width:560px){
-    #lvl{max-width:44vw}
-    #phase{top:58px;font-size:8px;letter-spacing:.14em;
-           max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #biome{margin-top:78px;max-width:56vw}
-    #biome span{max-width:56vw}
-    #stats{font-size:9px}
-  }
   #biome{position:absolute;top:12px;left:14px;margin-top:44px;font-size:10px;
     letter-spacing:.16em;color:#8e8878;text-shadow:0 1px 2px #000;max-width:220px}
   #biome b{display:block;color:#c9c2ae;font-size:11px;letter-spacing:.2em}
@@ -254,6 +241,27 @@
   .deep i.on{background:#ff8a6a;border-color:#ff8a6a;color:#12151b;font-weight:700}
   .deep s{display:block;text-decoration:none;font-size:9px;color:#5c6470;margin-top:5px}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
+  /* LAST in the sheet on purpose. These are overrides at the same
+     specificity as the base rules they override, so they only win by
+     source order - sitting them above the defaults, which is where they
+     started, meant every one of them was silently ignored. */
+  @media (max-width:400px){
+    /* At 360 the level block still reached the clock. Narrow one, shrink the
+       other, and they stop sharing a row. */
+    #clock{font-size:19px} #lvl{max-width:34vw} #lvl b{font-size:15px}
+  }
+  @media (max-width:560px){
+    #lvl{max-width:44vw}
+    #phase{top:58px;font-size:8px;letter-spacing:.14em;
+           max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* The region names got longer with the retheme - THE CINDERFLATS against
+       THE ASHES - and at 360px the block grew into the phase line above it.
+       Caught by the overlap guard, which is what it is for. */
+    #biome{margin-top:96px;max-width:52vw}
+    #biome b{font-size:10px;letter-spacing:.14em}
+    #biome span{max-width:52vw}
+    #stats{font-size:9px}
+  }
 </style>
 </head>
 <body>
@@ -707,32 +715,32 @@ function confine(x, z, pad){
 // Each biome's rule has to be readable from inside it without a tooltip: you
 // are slower, or you are taking more, or the loot is coming to you.
 const BIOMES = [
-  { id:"grass", nm:"THE GREEN",     ds:"nothing in particular",
-    story:"Grass, and nothing else. Everything starts here.",
+  { id:"grass", nm:"THE FERNLANDS", ds:"nothing in particular",
+    story:"Ferns to the horizon. Every hatchling starts here.",
     a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mod:{} },
-  { id:"ash",   nm:"THE ASHES",     ds:"the ground is still warm  -  +12% damage taken",
-    story:"Something came through burning and nothing has grown back.",
+  { id:"ash",   nm:"THE CINDERFLATS", ds:"the ground is still warm  -  +12% damage taken",
+    story:"A caldera floor. It has not finished cooling and it is not going to.",
     a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 } },
   // Murkier and more olive than it started. The original teal-green sat at
   // dE 7.7 from THE LIEN's elite tint under tritanopia - a blue enemy vanishing
   // into a blue-green floor - and the search found this inside the same hue
   // family at 15.2. It still reads as sludge; it just stopped being teal.
-  { id:"bog",   nm:"THE SLUDGE",    ds:"it holds on to your feet  -  -14% move speed",
-    story:"The water has nowhere to go, so it stays and thickens.",
+  { id:"bog",   nm:"THE TARPITS",   ds:"it holds on to your feet  -  -14% move speed",
+    story:"Older animals than you are still standing in it, exactly where they stopped.",
     a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mod:{ spd:0.86 } },
-  { id:"ice",   nm:"THE GLASS",     ds:"nothing here has any grip  -  you slide",
-    story:"It froze mid-flood and never thought better of it.",
+  { id:"ice",   nm:"THE GLACIER",   ds:"nothing here has any grip  -  you slide",
+    story:"It froze mid-flood and kept whatever was swimming in it.",
     a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 } },
-  { id:"sand",  nm:"THE FLATS",     ds:"you can see what you dropped  -  +40% pickup radius",
-    story:"The wind took the topsoil a long time ago. Nothing hides here.",
+  { id:"sand",  nm:"THE DUSTSEA",   ds:"you can see what you dropped  -  +40% pickup radius",
+    story:"The wind took the topsoil an age ago. Nothing hides out here, including you.",
     a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 } },
-  { id:"bone",  nm:"THE MIDDEN",    ds:"more of them, and more to take  -  +22% XP",
-    story:"Generations of them died on this spot. It is very good ground.",
+  { id:"bone",  nm:"THE BONEFIELD", ds:"more of them, and more to take  -  +22% XP",
+    story:"A migration died here, all at once, a very long time ago.",
     a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 } },
   // Weathered rather than deep. The original brown was dE 7.1 from APPRAISER's
   // yellow under tritanopia; this clears at 14.2 and is still visibly rust.
-  { id:"rust",  nm:"THE RUST BARRENS", ds:"something here sharpens what you carry  -  +12% damage",
-    story:"Iron in the soil. It gets into whatever you are carrying.",
+  { id:"rust",  nm:"THE SPINEROCK", ds:"something here sharpens what you carry  -  +12% damage",
+    story:"Iron in the soil and something enormous fossilised in the ridge.",
     a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
@@ -748,13 +756,13 @@ const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 // half the time - and large enough that a fire creature crossing the ashes is
 // a different proposition from a fire creature crossing the sludge.
 const AFFINITY = {
-  plain:{ home:"ash",   nm:"THE ASHES",        weak:"bog",   weakNm:"THE SLUDGE" },
-  scrap:{ home:"bog",   nm:"THE SLUDGE",       weak:"sand",  weakNm:"THE FLATS" },
-  volt: {home:"ice",    nm:"THE GLASS",        weak:"bone",  weakNm:"THE MIDDEN" },
-  stone:{ home:"rust",  nm:"THE RUST BARRENS", weak:"ice",   weakNm:"THE GLASS" },
-  rot:  { home:"bone",  nm:"THE MIDDEN",       weak:"ash",   weakNm:"THE ASHES" },
-  tally:{ home:"sand",  nm:"THE FLATS",        weak:"rust",  weakNm:"THE RUST BARRENS" },
-  echo: { home:"grass", nm:"THE GREEN",        weak:"bone",  weakNm:"THE MIDDEN" },
+  plain:{ home:"ash",   nm:"THE CINDERFLATS",  weak:"bog",   weakNm:"THE TARPITS" },
+  scrap:{ home:"bog",   nm:"THE TARPITS",      weak:"sand",  weakNm:"THE DUSTSEA" },
+  volt: {home:"ice",    nm:"THE GLACIER",      weak:"bone",  weakNm:"THE BONEFIELD" },
+  stone:{ home:"rust",  nm:"THE SPINEROCK",    weak:"ice",   weakNm:"THE GLACIER" },
+  rot:  { home:"bone",  nm:"THE BONEFIELD",    weak:"ash",   weakNm:"THE CINDERFLATS" },
+  tally:{ home:"sand",  nm:"THE DUSTSEA",      weak:"rust",  weakNm:"THE SPINEROCK" },
+  echo: { home:"grass", nm:"THE FERNLANDS",    weak:"bone",  weakNm:"THE BONEFIELD" },
 };
 const AFF_DMG = 1.20, AFF_TOUGH = 1.15;
 // Which way the ground under you is leaning. Read by damage and by the HUD, so
@@ -785,11 +793,11 @@ function affNow(){
 const DIVE_R = 9.5, DIVE_TELL = .42, DIVE_TIME = .45,
       DIVE_REST = 2.6, DIVE_SPD = 4.0, DIVE_DMG = 2.2;
 const MARK_KINDS = [
-  { id:"ring",   nm:"STONE RING",  r:7.5, den:"brute",    pack:[5,8],   ds:"a horned herd, and they were here first" },
+  { id:"ring",   nm:"THE RIBCAGE", r:7.5, den:"brute",    pack:[5,8],   ds:"a horned herd, and they were here first" },
   { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid a clutch in the pit" },
   { id:"arch",   nm:"THE ARCH",    r:4.5, den:"runner",   pack:[9,14],  ds:"the whole flock goes up at once" },
-  { id:"spires", nm:"THE FINGERS", r:5.0, den:"spitter",  pack:[7,11],  ds:"they spit from the high ground" },
-  { id:"midden", nm:"BONE PILE",   r:6.0, den:"skitter",  pack:[16,24], ds:"the bones are not the problem" },
+  { id:"spires", nm:"THE TUSKS",   r:5.0, den:"spitter",  pack:[7,11],  ds:"they spit from the high ground" },
+  { id:"midden", nm:"THE OSSUARY", r:6.0, den:"skitter",  pack:[16,24], ds:"the bones are not the problem" },
 ];
 const DEN_WAKE = 15;         // metres. close enough to be a decision you made.
 const DEN_CHANCE = .55;      // not every landmark has something in it.
@@ -2230,8 +2238,14 @@ const BODY = {
 // stopped being decoration and become most of the animal.
 plain(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const br = Math.sin(t*2.1)*.02;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph, st, t } = D;
+  // Breathing is an IDLE animation, so it fades out as the animal starts
+  // moving - a creature at a full sprint should not also be gently inflating.
+  const br = Math.sin(t*2.1)*.02*(1-amp*.8);
+  // The head leads. `lk` slides the skull sideways toward whatever the animal
+  // is looking at and `lkf` pushes it forward as it turns, which is what makes
+  // a neck read as a neck rather than as a post.
+  const lk = look*.16, lkf = -Math.abs(look)*.05;
   const fl = (r,f,y,sc,n)=>{ for(let i=0;i<n;i++){
     const w = Math.sin(t*9 + i*1.3)*.05*sc;
     mb(r+w, f, y + i*.15*sc, (.11-i*.016)*sc, (.10-i*.012)*sc, (.11-i*.016)*sc,
@@ -2241,16 +2255,24 @@ plain(D){
     blob(0, -.06, .46+br, .27,.23,.34, c, em);
     mb(0, -.02, .25, .21,.09,.28, bel, em*.8);
     ridge(-.26, .16, .66+br, 5, .09, acc, .30);
-    blob(0, .30, .64+br, .26,.23,.25, c, em);                  // heavy skull
-    mb(0, .48, .55+br, .19,.10,.15, bel, em*.6);               // snout
-    mb(0, .60, .58+br, .07,.05,.06, dk, .1);
-    grin(0, .55, .48+br, .13, .035, 5);
-    eyes(0, .44, .74+br, .13, .10, [1,.72,.18]);
-    for(const rs of [-1,1]) horn(rs*.17, .30, .82+br, rs*.045,-.035,.075, 4, .065, acc, .30);
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      claw(rs*.19, fs*.21, .11 + Math.max(0,gait*rs*fs)*.09, rs, .075, dk);
-    taper(0, -.34, .46, 0,-.16,.02, 4, .11,.10,.13, c, em);
-    fl(0, -.86, .50, .8, 3);
+    blob(lk*.6, .30+lkf, .64+br, .26,.23,.25, c, em);          // heavy skull
+    mb(lk, .48+lkf, .55+br, .19,.10,.15, bel, em*.6);          // snout
+    mb(lk, .60+lkf, .58+br, .07,.05,.06, dk, .1);
+    grin(lk, .55+lkf, .48+br, .13, .035, 5);
+    eyes(lk, .44+lkf, .74+br, .13, .10, [1,.72,.18]);
+    for(const rs of [-1,1]) horn(lk+rs*.17, .30+lkf, .82+br, rs*.045,-.035,.075, 4, .065, acc, .30);
+    // A diagonal gait: front-left with back-right. The old version keyed every
+    // foot off rs*fs, which pairs the two feet on each side and gives you a
+    // rabbit rather than a lizard.
+    for(const rs of [-1,1]) for(const fs of [-1,1]){
+      const ph = (rs*fs > 0) ? gait : -gait;
+      claw(rs*.19, fs*.21 + ph*.05, .11 + Math.max(0, ph)*.11, rs, .075, dk); }
+    // The tail counter-swings against the stride, which is what stops a walk
+    // cycle from looking like a toy being slid along the floor.
+    for(let i=0;i<4;i++){ const k = 1 - i*.16;
+      blob(-gait*.10*(i+1), -.34 - i*.16, .46 - i*.02 + gait2*.02*i,
+           .11*k,.10*k,.13*k, c, em); }
+    fl(-gait*.42, -.90, .50, .8, 3);
   } else if(st === 1){
     // FLAREDRAKE. It has wings now, and it uses them to get off the ground when
     // it hits something rather than to fly.
@@ -2258,51 +2280,62 @@ plain(D){
     blob(0, -.08, .62+br, .31,.27,.44, c, em);
     mb(0, -.04, .34, .25,.11,.36, bel, em*.8);
     ridge(-.44, .28, .84+br, 7, .13, acc, .34);
-    taper(0, .24, .80, 0,.06,.05, 2, .18,.14,.16, c, em);      // neck
-    blob(0, .46, .94+br, .25,.22,.25, c, em);
-    mb(0, .66, .84+br, .20,.11,.17, bel, em*.6);
-    mb(0, .80, .87+br, .07,.05,.06, dk, .1);
-    grin(0, .70, .74+br, .14, .045, 6);
-    eyes(0, .58, 1.02+br, .14, .105, [1,.72,.18]);
-    for(const rs of [-1,1]) horn(rs*.18, .40, 1.10+br, rs*.055,-.05,.085, 5, .07, acc, .34);
-    for(const rs of [-1,1]) wing(rs, rs*.30, -.02, .84+br, .62, c, acc, beat + (rs>0?0:.4));
+    taper(lk*.4, .24+lkf*.5, .80, 0,.06,.05, 2, .18,.14,.16, c, em);   // neck
+    blob(lk, .46+lkf, .94+br, .25,.22,.25, c, em);
+    mb(lk*1.1, .66+lkf, .84+br, .20,.11,.17, bel, em*.6);
+    mb(lk*1.1, .80+lkf, .87+br, .07,.05,.06, dk, .1);
+    grin(lk*1.1, .70+lkf, .74+br, .14, .045, 6);
+    eyes(lk, .58+lkf, 1.02+br, .14, .105, [1,.72,.18]);
+    for(const rs of [-1,1]) horn(lk+rs*.18, .40+lkf, 1.10+br, rs*.055,-.05,.085, 5, .07, acc, .34);
+    // Airborne, the wings actually beat. On the ground they idle.
+    for(const rs of [-1,1]) wing(rs, rs*.30, -.02, .84+br, .62*(air?1.25:1), c, acc,
+                                 beat*(air?2.3:1) + (rs>0?0:.4));
     for(const rs of [-1,1]) for(const fs of [-1,1]){
-      taper(rs*.22, fs*.26, .32, 0,0,-.09, 2, .085,.10,.085, dk, 0);
-      claw(rs*.22, fs*.26, .10, rs, .08, dk);
+      const ph = (rs*fs > 0) ? gait : -gait;
+      taper(rs*.22, fs*.26 + ph*.06, .32, 0,0,-.09, 2, .085,.10,.085, dk, 0);
+      claw(rs*.22, fs*.26 + ph*.06, .10 + Math.max(0, ph)*.13, rs, .08, dk);
     }
-    taper(0, -.50, .62, 0,-.19,-.02, 5, .12,.11,.14, c, em);
-    fl(0, -1.10, .58, 1.0, 4);
+    for(let i=0;i<5;i++){ const k = 1 - i*.13;
+      blob(-gait*.13*(i+1), -.50 - i*.19, .62 - i*.02 + gait2*.025*i,
+           .12*k,.11*k,.14*k, c, em); }
+    fl(-gait*.55, -1.16, .58, 1.0, 4);
   } else {
     // PYRAETHON. Off the ground for good. Seven burning coils, a crowned skull,
     // and wings that are more fire than membrane.
-    const hov = Math.sin(t*2.4)*.10, beat = t*3.0;
-    for(let i=0;i<7;i++){ const k = 1 - i*.10, sw = Math.sin(t*3 - i*.7)*.16;
-      blob(sw, -.10 - i*.34, .70 + hov + Math.sin(t*2.2 - i*.6)*.14,
-           .30*k,.24*k,.30*k, i%2 ? c : lt, em+.06);
-      mb(sw, -.10 - i*.34, .94 + hov + Math.sin(t*2.2 - i*.6)*.14,
-         .05, .13*k, .10*k, acc, .45);                          // a fin on every coil
-      fl(sw, -.10 - i*.34, .96 + hov, .8 - i*.07, 2); }
-    blob(0, .34, .94+hov, .32,.29,.31, c, em+.06);
-    mb(0, .62, .82+hov, .25,.13,.21, bel, em*.6);
-    grin(0, .66, .70+hov, .17, .055, 7);
-    eyes(0, .54, 1.06+hov, .16, .115, [1,.90,.28]);
-    for(const rs of [-1,1]) horn(rs*.22, .22, 1.18+hov, rs*.07,-.055,.11, 6, .075, acc, .50);
-    for(const rs of [-1,1]) horn(rs*.28, -.02, 1.02+hov, rs*.09,-.03,.05, 4, .055, acc, .40);
-    for(const rs of [-1,1]) wing(rs, rs*.34, -.14, 1.02+hov, .92, lt, acc, beat + (rs>0?0:.5));
+    // The coils undulate along their own length and the wave travels FASTER
+    // when the animal is moving - a serpent that swims at the same rate whether
+    // it is holding station or sprinting is a serpent on a conveyor belt.
+    const hov = Math.sin(t*2.4)*.10, beat = t*(air ? 6.4 : 3.0);
+    const swim = ph*.9 + t*3;
+    for(let i=0;i<7;i++){ const k = 1 - i*.10, sw = Math.sin(swim - i*.7)*(.16 + amp*.14);
+      const cy = .70 + hov + Math.sin(swim*.8 - i*.6)*(.14 + amp*.10);
+      blob(sw, -.10 - i*.34, cy, .30*k,.24*k,.30*k, i%2 ? c : lt, em+.06);
+      mb(sw, -.10 - i*.34, cy + .24, .05, .13*k, .10*k, acc, .45);   // a fin per coil
+      fl(sw, -.10 - i*.34, cy + .26, .8 - i*.07, 2); }
+    blob(lk, .34+lkf, .94+hov, .32,.29,.31, c, em+.06);
+    mb(lk*1.1, .62+lkf, .82+hov, .25,.13,.21, bel, em*.6);
+    grin(lk*1.1, .66+lkf, .70+hov, .17, .055, 7);
+    eyes(lk, .54+lkf, 1.06+hov, .16, .115, [1,.90,.28]);
+    for(const rs of [-1,1]) horn(lk+rs*.22, .22+lkf, 1.18+hov, rs*.07,-.055,.11, 6, .075, acc, .50);
+    for(const rs of [-1,1]) horn(lk+rs*.28, -.02, 1.02+hov, rs*.09,-.03,.05, 4, .055, acc, .40);
+    for(const rs of [-1,1]) wing(rs, rs*.34, -.14, 1.02+hov, .92*(air?1.2:1), lt, acc,
+                                 beat + (rs>0?0:.5));
   }
 },
 
 // ------------------------------------------------------------------- TIDE
 scrap(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const bob = Math.sin(t*2.6)*.05;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
+  const bob = Math.sin(t*2.6)*.05*(1-amp*.7);
+  const lk = look*.15, lkf = -Math.abs(look)*.045;
   if(st === 0){
     // DRIPLET. A drop of water that has decided things.
     blob(0, 0, .42+bob, .28,.30,.28, c, em+.12);
     taper(0, 0, .74+bob, 0,0,.07, 3, .14,.10,.14, lt, em+.16);   // the point on top
     mb(0, .06, .22, .22,.08,.20, bel, em*.9);
-    eyes(0, .26, .50+bob, .12, .10, [.06,.20,.34]);
+    eyes(lk, .26+lkf, .50+bob, .12, .10, [.06,.20,.34]);
     mb(0, .28, .32+bob, .08,.03,.03, acc, .3);
     for(const rs of [-1,1]) mb(rs*.28, -.04, .34+bob, .10,.13,.04, lt, em+.2, rs*.4);
     for(let k=0;k<3;k++){ const dp=(t*1.2+k*.34)%1;
@@ -2312,9 +2345,9 @@ scrap(D){
     blob(0, -.04, .58+bob, .34,.30,.42, c, em+.10);
     mb(0, 0, .30, .28,.12,.34, bel, em*.9);
     blob(0, .40, .74+bob, .30,.25,.26, c, em+.10);
-    grin(0, .58, .58+bob, .22,.07, 7);
+    grin(lk, .58+lkf, .58+bob, .22,.07, 7);
     for(const rs of [-1,1]) horn(rs*.20, .34, .90+bob, rs*.06,-.05,.06, 4, .055, lt, .34);
-    eyes(0, .54, .86+bob, .16, .11, [.06,.20,.34]);
+    eyes(lk, .54+lkf, .86+bob, .16, .11, [.06,.20,.34]);
     for(let i=0;i<5;i++)                                        // dorsal crest
       taper(0, .16 - i*.20, .90+bob, 0,0,.07, 2, .05,.11-i*.012,.10, lt, em+.2);
     for(const rs of [-1,1]) taper(rs*.34, .06, .48+bob, rs*.08,-.05,.03, 3, .13,.05,.17, lt, em+.18);
@@ -2331,13 +2364,13 @@ scrap(D){
            .30*k,.25*k,.32*k, i%2 ? c : lt, em+.10);
       if(i%2===0) taper(sw, -.16 - i*.36, .86+hov, 0,0,.06, 2, .05,.10,.10, lt, em+.24); }
     blob(0, .38, .88+hov, .36,.31,.32, c, em+.10);
-    grin(0, .62, .70+hov, .30,.14, 9);
+    grin(lk, .62+lkf, .70+hov, .30,.14, 9);
     // A crown of horns. LEVIATHAN is the top of its line and the only thing
     // that separated it from the middle form was length.
     for(const rs of [-1,1]){
       horn(rs*.26, .30, 1.06+hov, rs*.08,-.06,.10, 6, .07, lt, .40);
       horn(rs*.32, .04, .92+hov, rs*.10,-.03,.04, 4, .05, lt, .32); }
-    eyes(0, .58, 1.04+hov, .20, .12, [.10,.90,1]);
+    eyes(lk, .58+lkf, 1.04+hov, .20, .12, [.10,.90,1]);
     for(let i=0;i<4;i++) taper(0, .22 - i*.16, 1.12+hov, 0,0,.08, 3, .05,.13,.11, lt, em+.28);
     for(const rs of [-1,1]) taper(rs*.42, .10, .74+hov, rs*.11,-.06,.04, 4, .14,.05,.20, lt, em+.2);
   }
@@ -2346,8 +2379,10 @@ scrap(D){
 // ----------------------------------------------------------------- THE VOLT
 volt(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const hov = Math.sin(t*3)*.09;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
+  const hov = Math.sin(t*3)*.09*(1-amp*.6);
+  const lk = look*.15, lkf = -Math.abs(look)*.045;
   if(st === 0){
     // SPARKLET. A storm raptor, newly out of the shell: two legs, a stub tail,
     // and a crest that is already arcing.
@@ -2357,7 +2392,7 @@ volt(D){
     taper(0, .22, .66, 0,.05,.06, 2, .13,.11,.12, c, em+.14);      // neck
     blob(0, .38, .82+hov*.4, .20,.18,.20, c, em+.16);
     mb(0, .52, .74+hov*.4, .14,.07,.13, bel, em+.16);
-    eyes(0, .46, .90+hov*.4, .11, .09, [.10,.20,.34]);
+    eyes(lk, .46+lkf, .90+hov*.4, .11, .09, [.10,.20,.34]);
     for(const rs of [-1,1]) horn(rs*.12, .34, .96+hov*.4, rs*.035,-.03,.07, 4, .045, acc, .85);
     for(const rs of [-1,1]) for(const fs of [-1,1])
       claw(rs*.16, fs*.16, .10 + Math.max(0,gait*rs*fs)*.08, rs, .065, dk);
@@ -2376,8 +2411,8 @@ volt(D){
     taper(0, .24, .84, 0,.07,.07, 3, .15,.12,.13, c, em+.10);
     blob(0, .50, 1.00, .21,.19,.22, c, em+.12);
     mb(0, .68, .92, .15,.08,.15, bel, em+.1);
-    grin(0, .64, .84, .12, .04, 6);
-    eyes(0, .60, 1.08, .12, .09, [.10,.20,.34]);
+    grin(lk, .64+lkf, .84, .12, .04, 6);
+    eyes(lk, .60+lkf, 1.08, .12, .09, [.10,.20,.34]);
     for(const rs of [-1,1]) horn(rs*.14, .44, 1.16, rs*.045,-.035,.085, 5, .05, acc, .90);
     mb(0, .28, .82, .26,.05,.19, acc, .60);                        // lit collar
     for(const rs of [-1,1]) wing(rs, rs*.24, -.04, .84, .40, c, acc, beat + (rs>0?0:.5));
@@ -2402,8 +2437,8 @@ volt(D){
            1.24+hov+Math.sin(t*2+i)*.05, .15,.11,.13, i%3 ? bel : c, em+.06); }
     blob(0, .30, 1.02+hov, .27,.24,.25, c, em+.14);
     mb(0, .54, .94+hov, .19,.10,.17, bel, em+.12);
-    grin(0, .50, .86+hov, .15, .05, 7);
-    eyes(0, .46, 1.12+hov, .15, .105, [.20,.94,1]);
+    grin(lk, .50+lkf, .86+hov, .15, .05, 7);
+    eyes(lk, .46+lkf, 1.12+hov, .15, .105, [.20,.94,1]);
     for(const rs of [-1,1]){
       horn(rs*.18, .22, 1.24+hov, rs*.06,-.05,.10, 6, .06, acc, 1.0);
       horn(rs*.26, -.02, 1.10+hov, rs*.08,-.03,.05, 4, .045, acc, .9); }
@@ -2415,13 +2450,19 @@ volt(D){
 // ---------------------------------------------------------------- THE STONE
 stone(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
+  const lk = look*.12, lkf = -Math.abs(look)*.035;
+  // Heavy animals do not bounce, they SETTLE. A slow breath, and a rock from
+  // side to side that only exists while it is walking.
+  const heave = Math.sin(t*1.5)*.018*(1-amp*.5) + Math.abs(gait)*.03;
+  const roll  = gait*.05;
   if(st === 0){
     // SHALEBACK. A hatchling ankylosaur: low, wide, already plated.
     blob(0, 0, .36, .36,.28,.32, c, em);
     mb(0, .06, .18, .30,.11,.26, bel, em*.7);
     mb(0, .12, .62, .32,.10,.26, dk, em*.5);            // brow
-    eyes(0, .26, .48, .14, .075, [.14,.12,.10]);
+    eyes(lk, .26+lkf, .48, .14, .075, [.14,.12,.10]);
     mb(0, .24, .28, .10,.03,.03, dk, 0);
     ridge(-.28, .18, .58, 5, .10, acc, .30);
     for(const rs of [-1,1]) horn(rs*.24, .10, .52, rs*.05,-.02,.02, 3, .06, acc, .30);
@@ -2434,8 +2475,8 @@ stone(D){
     blob(0, 0, .52, .52,.38,.46, c, em);
     mb(0, .08, .26, .44,.16,.36, bel, em*.7);
     mb(0, .16, .92, .42,.14,.34, dk, em*.5);
-    eyes(0, .34, .76, .21, .085, [.14,.12,.10]);
-    grin(0, .34, .50, .18, .06, 6);
+    eyes(lk, .34+lkf, .76, .21, .085, [.14,.12,.10]);
+    grin(lk, .34+lkf, .50, .18, .06, 6);
     ridge(-.50, .26, .94, 8, .16, acc, .34);            // a plated back
     for(const rs of [-1,1]){
       horn(rs*.34, .18, .82, rs*.08,-.02,.02, 4, .075, acc, .34);  // shoulder spikes
@@ -2453,8 +2494,8 @@ stone(D){
     for(let k=0;k<5;k++)                                // carved runes, lit
       mb((k%2?1:-1)*.12, .22, .62+k*.20, .06,.05,.02, acc, .85);
     mb(0, .22, 1.52, .28,.24,.10, dk, 0);
-    eyes(0, .30, 1.58, .14, .085, [.10,.24,.22]);
-    grin(0, .30, 1.28, .20, .06, 7);
+    eyes(lk, .30+lkf, 1.58, .14, .085, [.10,.24,.22]);
+    grin(lk, .30+lkf, 1.28, .20, .06, 7);
     for(let i=0;i<8;i++){ const a=t*.8+i/8*TAU;
       blob(Math.sin(a)*(.64+(i%2)*.16), Math.cos(a)*(.58+(i%2)*.14),
            .74+Math.sin(t*1.6+i)*.30, .09,.09,.09, i%3?dk:acc, i%3?.05:.4); }
@@ -2465,8 +2506,10 @@ stone(D){
 // ------------------------------------------------------------------ THE ROT
 rot(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const wob = Math.sin(t*5)*.035;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
+  const wob = Math.sin(t*5)*.035*(1-amp*.7);
+  const lk = look*.14, lkf = -Math.abs(look)*.04;
   const shroom = (r,f,y,sc,cap)=>{
     taper(r, f, y, 0,0,.05, 3, .035*sc,.07*sc,.035*sc, bel, .06);
     blob(r, f, y+.19*sc, .13*sc,.055*sc,.13*sc, cap, .16);
@@ -2476,8 +2519,8 @@ rot(D){
     // MIRELING. A hatchling basilisk, still more bog than snake.
     blob(0, 0, .28+wob, .36,.26,.32, c, em+.10);
     mb(0, .06, .14, .28,.09,.24, bel, em*.8);
-    eyes(0, .28, .40+wob, .14, .095, [.10,.20,.10]);
-    grin(0, .30, .22, .12, .04, 4);
+    eyes(lk, .28+lkf, .40+wob, .14, .095, [.10,.20,.10]);
+    grin(lk, .30+lkf, .22, .12, .04, 4);
     shroom(.12, -.10, .44+wob, 1, acc);
     for(const rs of [-1,1]) horn(rs*.16, .18, .48+wob, rs*.04,-.03,.04, 3, .04, acc, .28);
     taper(0, -.30, .24, 0,-.15,-.01, 4, .10,.08,.11, c, em+.10);
@@ -2487,8 +2530,8 @@ rot(D){
     // SWAMPJAW. Long in the body now, and the jaw arrived before the manners.
     blob(0, 0, .38+wob, .46,.34,.42, c, em+.10);
     mb(0, .08, .18, .38,.12,.32, bel, em*.8);
-    eyes(0, .34, .60+wob, .18, .105, [.10,.20,.10]);
-    grin(0, .36, .34, .20, .065, 6);
+    eyes(lk, .34+lkf, .60+wob, .18, .105, [.10,.20,.10]);
+    grin(lk, .36+lkf, .34, .20, .065, 6);
     for(let k=0;k<6;k++){ const a=k/6*TAU+.4;
       shroom(Math.sin(a)*.26, Math.cos(a)*.24, .62+wob, .9+ (k%2)*.3, k%2?acc:lt); }
     for(let k=0;k<4;k++){ const a=t*1.3+k*1.7;          // spores drifting off
@@ -2505,8 +2548,8 @@ rot(D){
     blob(0, 0, 1.66, .42,.14,.26, c, em);               // the rounded top
     mb(0, .14, .96, .32,.60,.05, bel, em*.6);
     for(let k=0;k<3;k++) mb(0, .20, 1.44-k*.16, .18,.035,.02, acc, .5);   // an epitaph
-    grin(0, .26, .90, .30, .22, 9);
-    eyes(0, .28, 1.40, .18, .115, [.86,.28,.20]);
+    grin(lk, .26+lkf, .90, .30, .22, 9);
+    eyes(lk, .28+lkf, 1.40, .18, .115, [.86,.28,.20]);
     for(let k=0;k<8;k++){ const a=k/8*TAU;
       shroom(Math.sin(a)*.30, Math.cos(a)*.20, 1.78, 1.15, k%2?acc:lt); }
     for(const rs of [-1,1]){
@@ -2527,14 +2570,17 @@ rot(D){
 // ------------------------------------------------------------------- GALE
 tally(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, gait, st, t } = D;
-  const hop = Math.abs(Math.sin(t*3.2))*.05;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
+  // A bird's bob belongs to the STRIDE, not to the clock.
+  const hop = Math.abs(Math.sin(ph*.5 + t*1.2))*(.03 + amp*.06);
+  const lk = look*.15, lkf = -Math.abs(look)*.045;
   if(st === 0){
     // WYVERNET. A wyvern chick: two enormous eyes, a hooked beak, and wings
     // that are not load-bearing yet.
     blob(0, 0, .44+hop, .30,.28,.28, c, em);
     mb(0, .08, .24, .24,.10,.22, bel, em*.85);
-    eyes(0, .28, .54+hop, .14, .12, [.10,.14,.30]);
+    eyes(lk, .28+lkf, .54+hop, .14, .12, [.10,.14,.30]);
     taper(0, .34, .40+hop, 0,.05,-.01, 3, .07,.055,.06, acc, .25);   // beak
     for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.10;
       taper(rs*.30, fw, .44+hop, rs*.05,-.04,.02, 3, .09,.14,.06, lt, em+.1); }
@@ -2549,7 +2595,7 @@ tally(D){
     mb(0, .04, .38, .22,.11,.28, bel, em*.85);
     blob(0, .26, .92+hop, .21,.18,.20, c, em);
     taper(0, .42, .86+hop, 0,.07,-.02, 4, .08,.06,.07, acc, .3);      // hooked beak
-    eyes(0, .36, 1.00+hop, .13, .10, [1,.72,.16], .35);
+    eyes(lk, .36+lkf, 1.00+hop, .13, .10, [1,.72,.16], .35);
     for(let i=0;i<4;i++) taper((i-1.5)*.06, .10, 1.14+hop, 0,0,.06, 2, .035,.08,.035, acc, .25);
     for(const rs of [-1,1]){ const fw = Math.sin(t*9 + (rs>0?0:1.6))*.22;
       for(let k=0;k<4;k++)
@@ -2570,7 +2616,7 @@ tally(D){
     mb(0, .04, .64+hov, .24,.12,.30, bel, em*.85);
     blob(0, .28, 1.28+hov, .23,.20,.22, c, em);
     taper(0, .46, 1.20+hov, 0,.08,-.02, 4, .09,.07,.08, acc, .4);
-    eyes(0, .38, 1.38+hov, .14, .105, [1,.78,.20], .55);
+    eyes(lk, .38+lkf, 1.38+hov, .14, .105, [1,.78,.20], .55);
     for(let i=0;i<5;i++) taper((i-2)*.07, .10, 1.52+hov, 0,0,.08, 3, .035,.10,.035, acc, .45);
     for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.26;
       for(let k=0;k<6;k++)
@@ -2589,7 +2635,8 @@ tally(D){
 // ----------------------------------------------------------------- THE ECHO
 echo(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
-          mb, c, dk, lt, bel, acc, em, st, t } = D;
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
   // A HYDRA, not a flock. This line used to be N heads orbiting each other with
   // no body between them, which reads as three separate small animals rather
   // than one large one - and the count was the only thing the evolution
@@ -2659,6 +2706,81 @@ let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
 // lands out of it, and light comes off the ground while it happens.
 let evoFx = 0;
 const EVO_FX = 1.05;
+
+// ====================================================== THE ANIMATION STATE
+// The creature had one animation: `Math.sin(T*13)` when moving and a hard zero
+// when not. One frequency, one amplitude, no ramp - so a careful walk and a
+// full hop-chain sprint animated identically, stopping snapped the legs to a
+// dead pose mid-stride, and nothing the player did to the animal was visible on
+// the animal. Jumping, landing, turning, firing and taking a hit all looked the
+// same as standing still.
+//
+// This is the state that fixes that. Every term is driven by something the
+// player actually did, and every one is smoothed, because the reason the old
+// version read as cheap was not the poses - it was that everything snapped.
+const ANIM = {
+  ph: 0,      // gait PHASE, advanced by distance covered rather than by clock,
+              // so the step rate follows speed for free and stopping freezes
+              // the stride where it was instead of resetting it
+  amp: 0,     // 0..1, eased - how much of the walk cycle to apply
+  lean: 0,    // forward/back shear, from acceleration
+  bank: 0,    // left/right shear, from turning
+  sq: 1,      // squash and stretch: <1 crouched, >1 stretched
+  lunge: 0,   // a brief shove forward when a weapon fires
+  look: 0,    // head yaw toward the nearest thing worth looking at
+  land: 0,    // decays after a landing, drives the crouch
+};
+function resetAnim(){ ANIM.ph = 0; ANIM.amp = 0; ANIM.lean = 0; ANIM.bank = 0;
+                      ANIM.sq = 1; ANIM.lunge = 0; ANIM.look = 0; ANIM.land = 0; }
+let animPrevV = 0, animPrevFace = 0, animWasAir = false;
+function stepAnim(dt){
+  if(!P || dt <= 0) return;
+  const v = Math.hypot(P.vx, P.vz);
+  // Stride length, not stride rate: a metre covered is a step taken, which is
+  // what stops a sprint and a shuffle from sharing a frequency.
+  ANIM.ph += (v * dt) * 2.35;
+  const want = P.air ? 0 : clamp(v / 5.2, 0, 1);
+  ANIM.amp += (want - ANIM.amp) * Math.min(1, dt * 11);
+
+  // Lean out of acceleration, bank out of turning. Both are differences
+  // between frames, so both need smoothing or they read as jitter.
+  const dv = (v - animPrevV) / Math.max(dt, .0001);
+  animPrevV = v;
+  let dface = P.face - animPrevFace;
+  while(dface >  Math.PI) dface -= TAU;
+  while(dface < -Math.PI) dface += TAU;
+  animPrevFace = P.face;
+  const wantLean = clamp(dv * .012, -.22, .30) + clamp(v * .022, 0, .16);
+  const wantBank = clamp(-(dface / Math.max(dt, .0001)) * .045, -.30, .30);
+  ANIM.lean += (wantLean - ANIM.lean) * Math.min(1, dt * 8);
+  ANIM.bank += (wantBank - ANIM.bank) * Math.min(1, dt * 9);
+
+  // Squash and stretch. Stretch on the way up, and crouch hard on the frame you
+  // land - which is also the frame the hop chain is decided on, so the animation
+  // and the mechanic are telling you the same thing at the same time.
+  if(animWasAir && !P.air) ANIM.land = 1;
+  animWasAir = P.air;
+  ANIM.land = Math.max(0, ANIM.land - dt * 4.6);
+  const stretch = P.air ? clamp(P.vy * .020, -.10, .16) : 0;
+  const wantSq = 1 + stretch - ANIM.land * ANIM.land * .26
+                 + (ANIM.amp * Math.sin(ANIM.ph * 2) * .035);
+  ANIM.sq += (wantSq - ANIM.sq) * Math.min(1, dt * 18);
+
+  // lunge runs negative for a recoil, so decay toward zero from either side
+  ANIM.lunge -= Math.sign(ANIM.lunge) * Math.min(Math.abs(ANIM.lunge), dt * 5.2);
+
+  // The head turns toward whatever is closest, which is the cheapest thing that
+  // makes an animal look like it is aware of the fight it is in.
+  const tgt = nearest(P.x, P.z, 18);
+  let wantLook = 0;
+  if(tgt){
+    let a = Math.atan2(tgt.x - P.x, tgt.z - P.z) - P.face;
+    while(a >  Math.PI) a -= TAU;
+    while(a < -Math.PI) a += TAU;
+    wantLook = clamp(a, -.75, .75);
+  }
+  ANIM.look += (wantLook - ANIM.look) * Math.min(1, dt * 5);
+}
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
 let noSpawn=false;                      // test-only: isolate a boss fight
@@ -2712,7 +2834,7 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
-  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0;
+  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
   events=[]; boons=[]; nextEvent=rnd(24,32);
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
@@ -3162,6 +3284,7 @@ function fireWeapons(dt){
     w.t -= dt;
     if(w.t > 0) continue;
     w.t = (s.cd||1) * P.cd;
+    if(k !== "skulls") ANIM.lunge = Math.min(1, ANIM.lunge + .55);
     switch(k){
       case "bat":      fireBat(w,s); break;
       case "skulls":   w.t = s.cd*P.cd; break;            // orbiters tick in update
@@ -3871,6 +3994,7 @@ function playerHurt(raw){
   d = Math.max(1, d - P.armor - prank(P.kit.plating)*1.6);
   if(P.kit.plating) d *= (1 - prank(P.kit.plating)*.05);
   hurtLog[hurtSrc] += d; hurtLog.n[hurtSrc]++;
+  ANIM.lunge = -1;                     // recoil: the lunge, backwards
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
   // Taking a hit knocks the chain out of you. Without this the hop is a pure
   // gift - you go faster and nothing about the fight asks anything back - and
@@ -4499,6 +4623,7 @@ function step(dt){
     spawnBoss(BOSSES[bossIdx++]);
 
   if(evoFx > 0) evoFx = Math.max(0, evoFx - dt);
+  stepAnim(dt);
   denPatrol();
   if(startBank > 0){
     startBankT -= dt;
@@ -4909,10 +5034,17 @@ function render(){
     }
     const K = m.k.id;
     if(K === "ring"){
-      for(let i=0;i<9;i++){ const a = m.rot + i/9*TAU;
-        const x = m.x+Math.cos(a)*m.k.r, z = m.z+Math.sin(a)*m.k.r;
-        box(x, groundY(x,z)+2.0, z, .55, 2.0, .55, dk, .02, a);
-        box(x, groundY(x,z)+4.2, z, .70, .22, .70, lt, .10, a); }
+      // A ribcage, not a circle of standing stones. Each rib leans inward as it
+      // rises and thins toward the top, which is the difference between a
+      // henge and something's chest.
+      for(let i=0;i<10;i++){ const a = m.rot + i/10*TAU;
+        for(let k=0;k<4;k++){
+          const lean = 1 - k*.13, hh = 1.1 + k*1.5;
+          const x = m.x+Math.cos(a)*m.k.r*lean, z = m.z+Math.sin(a)*m.k.r*lean;
+          box(x, groundY(x,z)+hh, z, .42-k*.06, 1.05, .42-k*.06, k?lt:dk, .03, a);
+        } }
+      for(let i=0;i<7;i++)                                  // the spine it hangs off
+        box(m.x, groundY(m.x,m.z)+.5, m.z + (i-3)*m.k.r*.30, .55,.42,.42, dk, .02, m.rot);
     } else if(K === "crater"){
       for(let i=0;i<16;i++){ const a = m.rot + i/16*TAU;
         const rr = m.k.r + Math.sin(i*2.3)*.8;
@@ -4924,10 +5056,16 @@ function render(){
         box(x, groundY(x,z)+3.4, z, .78, 3.4, .78, dk, .02, m.rot); }
       box(m.x, groundY(m.x,m.z)+7.2, m.z, m.k.r+.8, .55, .78, lt, .10, m.rot);
     } else if(K === "spires"){
-      for(let i=0;i<5;i++){ const a = m.rot + i*1.257, rr = m.k.r*(.35+ (i%3)*.30);
-        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr, h = 3.5+ (i%4)*2.2;
-        for(let k=0;k<4;k++){ const t2 = 1-k*.22;
-          box(x, groundY(x,z)+h*(k*.5+.5), z, .60*t2, h*.28, .60*t2, k?lt:dk, .04, a); } }
+      // Tusks: two pairs, curving in toward each other and tapering as they go.
+      for(const sg of [-1,1]) for(const pr of [0,1]){
+        let x = m.x + Math.cos(m.rot + pr*1.1)*m.k.r*(.5+pr*.3) + Math.cos(m.rot+1.57)*sg*m.k.r*.45;
+        let z = m.z + Math.sin(m.rot + pr*1.1)*m.k.r*(.5+pr*.3) + Math.sin(m.rot+1.57)*sg*m.k.r*.45;
+        const gy2 = groundY(x,z);
+        for(let k=0;k<6;k++){
+          const t2 = k/5, w2 = (.62 - t2*.42) * (1 - pr*.22);
+          box(x, gy2 + .8 + k*1.35, z, w2, .70, w2, k>3?lt:dk, .04, m.rot);
+          x -= Math.cos(m.rot+1.57)*sg*.34*t2; z -= Math.sin(m.rot+1.57)*sg*.34*t2;
+        } }
     } else {
       for(let i=0;i<11;i++){ const a = m.rot + i*1.9, rr = m.k.r*(.3+(i%4)*.22);
         const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
@@ -5167,10 +5305,25 @@ function render(){
     const mSc = 2.05 * (1 + stage*.06) * (1 + Math.max(0, P.hopFx)*.20) * (1 + swell);
     const mCf = Math.cos(P.face), mSf = Math.sin(P.face);
     const mEm = Math.max(P.iframe>0 ? .55 : .20, ef * .95);
+    // The whole animal is sheared and squashed here rather than in the plans.
+    // A lean is a shear - offset forward in proportion to height - and squash
+    // and stretch is a scale on Y with the inverse on X and Z so the volume
+    // holds. Doing it at this level means all twenty-one forms get the same
+    // weight for free, and no body plan has to know what a landing is.
+    //
+    // bodyCap deliberately records the UNTRANSFORMED extents: the "twenty-one
+    // distinct meshes" check has to compare shapes, and if the signature moved
+    // with the animation it would compare moments in time instead.
+    const aSq = ANIM.sq, aInv = 1 / Math.sqrt(Math.max(.35, aSq));
+    const aLean = ANIM.lean + ANIM.lunge * .26;
+    const aBank = ANIM.bank;
     const mb = (r,f,y,hx,hy,hz,col,em)=>{
       if(bodyCap) bodyCap.push(hx, hy, hz);
-      box(P.x + mCf*r*mSc + mSf*f*mSc, P.y + y*mSc, P.z - mSf*r*mSc + mCf*f*mSc,
-          hx*mSc, hy*mSc, hz*mSc, col, em||0, P.face);
+      const yy = y * aSq;
+      const rr = r * aInv + yy * aBank;
+      const ff = f * aInv + yy * aLean;
+      box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + yy*mSc, P.z - mSf*rr*mSc + mCf*ff*mSc,
+          hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em||0, P.face);
     };
     const mLt = [Math.min(1,mTc[0]*1.22+.03), Math.min(1,mTc[1]*1.22+.03),
                  Math.min(1,mTc[2]*1.22+.03)];
@@ -5214,7 +5367,13 @@ function render(){
       box(P.x+Math.sin(a)*1.28, P.y+.07, P.z+Math.cos(a)*1.28,
           .10,.05,.10, [1,1,1], 1.0);
     }
-    const gait = Math.hypot(P.vx,P.vz) > .4 ? Math.sin(T*13) : 0;
+    // The plans all read `gait` as a signed -1..1 leg swing. It is the same
+    // shape as before and now it means something: phase from distance covered,
+    // amplitude eased off speed, so a shuffle is a shuffle and a sprint is a
+    // sprint and stopping settles instead of snapping to a dead pose.
+    const gait  = Math.sin(ANIM.ph) * ANIM.amp;
+    const gait2 = Math.sin(ANIM.ph * 2 + 1.1) * ANIM.amp;   // the off-beat
+    const look  = ANIM.look;
     // ---- the shape vocabulary. Everything this renderer can draw is an
     // axis-aligned box, so "not a block" has to be built OUT of blocks:
     //   blob   three slabs, each thin on one axis, so the corners are chamfered
@@ -5316,7 +5475,9 @@ function render(){
     };
     const D = { mb, blob, taper, eyes, grin, horn, ridge, wing, claw,
                 c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
-                gait, st:stage, t:T,
+                gait, gait2, look, amp:ANIM.amp, land:ANIM.land, air:!!P.air,
+                ph:ANIM.ph,
+                st:stage, t:T,
                 // Solids, for the same reason. A .04-deep plate on a curved face
                 // is either invisible or fighting the surface behind it.
                 eye:  (r,f,y,s)=>mb(r,f,y, s||.06, (s||.06)*1.15, (s||.06)*.9,
@@ -5810,6 +5971,10 @@ window.__g = {
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
   sfxSrc:   ()=>Object.assign({}, SFX_SRC),
+  anim: ()=>({ ph:+ANIM.ph.toFixed(3), amp:+ANIM.amp.toFixed(3),
+               lean:+ANIM.lean.toFixed(3), bank:+ANIM.bank.toFixed(3),
+               sq:+ANIM.sq.toFixed(3), lunge:+ANIM.lunge.toFixed(3),
+               look:+ANIM.look.toFixed(3), land:+ANIM.land.toFixed(3) }),
   evoFx: ()=>+evoFx.toFixed(3),
   mapHits: ()=>mapHits,
   mapBox: ()=>mapBox(innerWidth, innerHeight),

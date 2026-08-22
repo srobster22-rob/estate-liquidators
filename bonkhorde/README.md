@@ -646,6 +646,42 @@ The horde stays legible because legibility of the horde is what the minimap is f
 
 Twenty-one forms, still twenty-one distinct meshes — asserted, as before.
 
+### The animation had one frame of information in it
+
+The creature had exactly one animation: `sin(T*13)` while moving and a hard zero while not. One
+frequency, one amplitude, no ramp. A careful walk and a full hop-chain sprint animated
+identically; stopping snapped the legs to a dead pose mid-stride; and nothing the player did to
+the animal — jumping, landing, turning, firing, being hit — was visible on the animal.
+
+There is an animation state now, and every term in it is something the player did:
+
+| | driven by | why it is not a constant |
+|---|---|---|
+| **gait phase** | *distance covered*, not the clock | stride rate follows speed for free, and stopping freezes the stride where it was instead of resetting it |
+| **gait amplitude** | speed, eased over ~90 ms | a shuffle is a shuffle and a sprint is a sprint |
+| **lean** | acceleration | the animal tips into what it is doing |
+| **bank** | rate of turn | it leans through corners |
+| **squash / stretch** | vertical speed, and a landing spike | stretches on the way up, crouches hard on the frame it lands — which is the frame the hop chain is decided on, so the animation and the mechanic say the same thing at the same time |
+| **lunge** | firing a weapon, or taking a hit | forward on a shot, *negative* on a hit, so a recoil is the same term run backwards |
+| **look** | nearest enemy within 18 m | the head leads, which is the cheapest thing that makes an animal look aware of the fight it is in |
+
+The shear and the squash are applied at the **transform**, not in the plans — a lean is an offset
+proportional to height, and squash scales Y with the inverse on X and Z so volume holds. All
+twenty-one forms get the same weight for free and no body plan has to know what a landing is.
+`bodyCap` deliberately records the *untransformed* extents, because the twenty-one-distinct-meshes
+check compares shapes, and a signature that moved with the animation would compare moments in time.
+
+Per-line work on top of that: a **diagonal gait** (front-left with back-right — the old code keyed
+every foot off `rs*fs`, which pairs the two feet on each *side* and gives you a rabbit rather than
+a lizard), tails that counter-swing against the stride, wings that beat harder in the air than on
+the ground, serpent coils whose wave travels faster the faster you go, and breathing that fades
+out as the animal starts moving, because a creature at a full sprint should not also be gently
+inflating.
+
+Seven checks, one per term. The landing one is worth reading: the first version stepped until
+vertical speed hit zero, which is the **apex**, not the landing — it measured a creature still
+climbing.
+
 ### A boss arrives
 
 Bosses were 4.2 to 6.4 units tall against a player that draws at about 2.5 — the biggest thing in

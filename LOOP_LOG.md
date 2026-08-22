@@ -681,3 +681,26 @@ per-enemy draw budget, which divides the whole frame by the enemy count and so m
 *player* got better looking — it subtracts a no-horde frame now. 319 checks pass. **Next:** the
 regions still read as an estate's grounds (SLUDGE, FLATS, MIDDEN). They should be a prehistoric
 world — ash plains, tar, bone fields, crystal.
+
+**R27 — the map is prehistoric, and the animation stopped being one sine wave.** Regions renamed
+and re-storied for the dinosaur world (THE FERNLANDS, THE CINDERFLATS, THE TARPITS, THE GLACIER,
+THE DUSTSEA, THE BONEFIELD, THE SPINEROCK) with the landmarks to match — STONE RING is a
+**RIBCAGE** now, ribs leaning inward off a spine rather than a henge, and THE FINGERS are **THE
+TUSKS**, two curving pairs. Renaming immediately tripped the HUD overlap guard (THE CINDERFLATS is
+longer than THE ASHES and collided at 360px) which then exposed something worse: *every*
+narrow-screen override I had added was being silently ignored, because the media blocks sat
+**above** the base rules they override at equal specificity. Moved to the end of the sheet.
+Then the animation, which is the thing the user actually called lazy. It was `sin(T*13)` when
+moving and a hard zero when not — one frequency, one amplitude, no ramp. There is a state now with
+seven terms, each driven by something the player did: gait phase from **distance covered** rather
+than the clock, amplitude eased off speed, lean from acceleration, bank from turn rate, squash and
+stretch from vertical speed with a hard crouch on the landing frame (the same frame the hop chain
+is decided on), lunge forward on a shot and *negative* on a hit, and a head that looks at the
+nearest enemy. Shear and squash are applied at the transform so all 21 forms get weight for free
+and no plan needs to know what a landing is — and `bodyCap` records untransformed extents so the
+distinct-meshes check still compares shapes rather than moments. Per-line: a **diagonal** gait
+(the old code keyed feet off `rs*fs`, pairing the two feet on each side — a rabbit, not a lizard),
+counter-swinging tails, wings that beat harder airborne, coil waves that travel with speed, and
+breathing that fades out under sprint. 326 checks pass. **Next:** the enemy bodies still animate
+off `e.bob` and a clock; they should get the same treatment at a fraction of the detail, since
+they must not outshine the player.
