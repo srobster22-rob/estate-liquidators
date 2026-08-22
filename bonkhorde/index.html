@@ -716,6 +716,10 @@ function affNow(){
 //
 // Optional on purpose. You can run past every den in the arena and finish the
 // twenty minutes; the drive is the boon, not a gate.
+// The dive, in one place. Tuned so the wind-up is long enough to read at a
+// glance and the crossing is short enough that a turn beats it.
+const DIVE_R = 9.5, DIVE_TELL = .42, DIVE_TIME = .45,
+      DIVE_REST = 2.6, DIVE_SPD = 4.0, DIVE_DMG = 2.2;
 const MARK_KINDS = [
   { id:"ring",   nm:"STONE RING",  r:7.5, den:"brute",    pack:[5,8],   ds:"a herd, and they were here first" },
   { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid eggs in the pit" },
@@ -1206,7 +1210,7 @@ shambler:{ nm:"GRUBBER",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:
            body:"paper" },
 // A panicked bird. First to arrive, every time, and never on purpose.
 runner:  { nm:"FLITTER",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
-           body:"bailiff" },
+           body:"bailiff", dive:true },
 // A boar. Heavy at the front, slow to turn, and it does not intend to stop.
 brute:   { nm:"TUSKLING", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
            body:"safe" },
@@ -1504,7 +1508,24 @@ paper(e, face, W, H, c, glow, lod, y0){
 
 // FLITTER - a small bird in a permanent hurry.
 bailiff(e, face, W, H, c, glow, lod, y0){
-  const flap = Math.sin(T*17 + e.bob), hop = Math.abs(Math.sin(T*7 + e.bob))*H*.10;
+  // The dive has to be legible or it is an unfair hit. Winding up, it rears and
+  // its wings snap back and go white-hot; crossing, it flattens into a line and
+  // trails. Two silhouettes nothing else on the field makes.
+  const wind = e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0;
+  const div  = e.dvT > 0 ? 1 : 0;
+  const flap = Math.sin(T*(17 + wind*40) + e.bob) * (1 - div*.85),
+        hop  = Math.abs(Math.sin(T*7 + e.bob))*H*.10 + wind*H*.30 - div*H*.16;
+  if(wind > .15){
+    const gy2 = groundY(e.x, e.z);
+    for(let i=0;i<3;i++)                                        // a warning above it
+      box(e.x, gy2 + H*1.5 + i*.42, e.z, .09, .16, .09, [1,.86,.30], .55 + wind*.45);
+  }
+  if(div) for(let i=1;i<=4;i++)                                 // the streak behind
+    box(e.x - Math.sin(face)*i*.55, e.y + H*.42, e.z - Math.cos(face)*i*.55,
+        W*.20 - i*.02, H*.03, W*.20 - i*.02, [1,.92,.72], .70 - i*.13, face);
+  c = wind > .15 ? [Math.min(1,c[0]+wind*.5), Math.min(1,c[1]+wind*.35),
+                    Math.min(1,c[2]+wind*.35)] : c;
+  glow = glow + wind*.55 + div*.35;
   const B = lod>=2 ? ebl : eb;
   B(e, face, 0, 0, y0 + H*.40 + hop, W*.66, H*.20, W*.58, c, glow);   // round body
   B(e, face, 0, W*.40, y0 + H*.58 + hop, W*.40, H*.15, W*.36, c, glow); // head
@@ -3380,7 +3401,35 @@ function updateEnemies(dt){
     e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
 
     const dx = P.x-e.x, dz = P.z-e.z, d = Math.hypot(dx,dz)||1;
-    const spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
+    let spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
+
+    // THE DIVE. The ledger says the melee horde deals about a tenth of the
+    // damage in a run and one line finished twenty-four minutes having taken
+    // literally none of it: four hundred bodies that cannot reach you. Nothing
+    // written as a constant fixes that - six sweeps proved it - because the
+    // problem is not how hard they hit, it is that they never arrive.
+    //
+    // So FLITTER dives, which is what a bird does. Inside DIVE_R it winds up for
+    // a beat with its wings back, then crosses at four times its own speed
+    // AIMED WHERE YOU ARE GOING rather than where you are. It is dodgeable - a
+    // turn beats it, which is exactly the verb this game says it is about - and
+    // it makes proximity cost something without making anything unoutrunnable.
+    if(e.def.dive && !e.dead){
+      e.dv = (e.dv || 0) - dt;
+      if(e.dvT > 0){                                   // committed, mid-dive
+        e.dvT -= dt;
+        spd *= DIVE_SPD;
+      } else if(e.dv <= 0 && d < DIVE_R && d > 1.2){
+        e.dvW = (e.dvW || 0) + dt;
+        if(e.dvW >= DIVE_TELL){
+          e.dvW = 0; e.dvT = DIVE_TIME; e.dv = DIVE_REST;
+          // lead the target: where you will be, not where you are
+          const lead = DIVE_TIME * .55;
+          e.dvX = P.x + P.vx*lead; e.dvZ = P.z + P.vz*lead;
+          e.flash = Math.max(e.flash, .18);
+        } else spd *= .25;                             // the wind-up is a pause
+      } else e.dvW = 0;
+    }
 
     const pursue = e.boss ? bossAI(e, dt) : true;
 
@@ -3415,7 +3464,12 @@ function updateEnemies(dt){
                      spd:e.def.ranged.spd, d:e.dmg, life:2.4 });
       }
     } else if(pursue){
-      e.x += dx/d*spd*dt; e.z += dz/d*spd*dt;
+      // A committed dive flies at the point it aimed at, not at you. That is
+      // the whole dodge: turn and it goes where you were going to be.
+      if(e.dvT > 0){
+        const ax = e.dvX - e.x, az = e.dvZ - e.z, al = Math.hypot(ax, az) || 1;
+        e.x += ax/al*spd*dt; e.z += az/al*spd*dt;
+      } else { e.x += dx/d*spd*dt; e.z += dz/d*spd*dt; }
     }
 
     // Separation keeps the horde a crowd instead of one stacked blob - but it
@@ -3458,9 +3512,11 @@ function updateEnemies(dt){
     e.y = groundY(e.x, e.z);
     e.bob += dt * (4 + e.def.spd);
 
-    // contact damage
+    // contact damage. A landed dive hits for more, because a dive you failed to
+    // turn out of should read as a mistake rather than as a tick of chip.
     if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0){
-      playerHurt(e.dmg);
+      playerHurt(e.dvT > 0 ? e.dmg * DIVE_DMG : e.dmg);
+      if(e.dvT > 0){ e.dvT = 0; e.dv = DIVE_REST; }
     }
   }
 }
@@ -5175,6 +5231,13 @@ window.__g = {
                if(!pool.length){ coinsRun += 110; return null; }
                const b = pick(pool); boons.push(b.nm); b.fn(); return b.nm; },
   biomeMod: (x,z)=>Object.assign({}, biomeAt(x,z).mod),
+  // A/B control for the dive. Same forty-two worlds, one line of behaviour
+  // different, which is the only way to say what it was worth.
+  noDive:(off)=>{ ENEMIES.runner.dive = !off; return !!ENEMIES.runner.dive; },
+  dives: ()=>enemies.filter(e=>e.def.dive && !e.dead)
+                   .map(e=>({ d:+Math.hypot(e.x-P.x,e.z-P.z).toFixed(1),
+                              wind:+(e.dvW||0).toFixed(2), diving:(e.dvT||0)>0,
+                              rest:+(e.dv||0).toFixed(2) })),
   hurtBy: ()=>({ contact:+hurtLog.contact.toFixed(1), spit:+hurtLog.spit.toFixed(1),
                  hazard:+hurtLog.hazard.toFixed(1), hits:Object.assign({}, hurtLog.n),
                  total:+(hurtLog.contact+hurtLog.spit+hurtLog.hazard).toFixed(1) }),

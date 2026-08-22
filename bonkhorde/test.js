@@ -1957,6 +1957,55 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22k. THE HORDE CAN REACH YOU NOW ===");
+  {
+    // FLITTER dives. Everything here is a way this could be a no-op or a
+    // cheat: a dive that never fires, one that fires from across the arena,
+    // one with no wind-up to read, or one that cannot be dodged by turning -
+    // which is the only verb this game claims to be about.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+                           g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); };
+      // 1. it fires, and only from close
+      // spawn(t, n, radius) scatters WITHIN the radius, so "spawn at 40" puts
+      // some of them on top of you. Ask the distances, not the spawn call.
+      boot(); g.spawn("runner", 14, 40);
+      g.step(30, 1/60);
+      const far = g.dives().filter(d => d.d > 14 && (d.wind > 0 || d.diving)).length;
+      boot(); g.spawn("runner", 6, 7);
+      let sawWind = 0, sawDive = 0, maxAt = 0;
+      for (let i = 0; i < 240; i++) {
+        g.step(1, 1/60); g.place(0, 0);
+        for (const d of g.dives()) {
+          if (d.wind > 0) sawWind++;
+          if (d.diving) { sawDive++; maxAt = Math.max(maxAt, d.d); }
+        }
+      }
+      // 2. does it actually land damage the horde could not land before?
+      const hurtStill = (() => { boot(); g.spawn("runner", 10, 7);
+        for (let i = 0; i < 60 * 8; i++) { g.step(1, 1/60); g.place(0, 0); }
+        return g.hurtBy().contact; })();
+      // 3. and can it be dodged by turning? same fight, but moving.
+      const hurtMoving = (() => { boot(); g.spawn("runner", 10, 7);
+        let a = 0;
+        for (let i = 0; i < 60 * 8; i++) {
+          a += 0.05; g.step(1, 1/60);
+          g.place(Math.cos(a) * 7, Math.sin(a) * 7);
+        }
+        return g.hurtBy().contact; })();
+      return { far, sawWind, sawDive, maxAt, hurtStill, hurtMoving };
+    });
+    ok("nothing winds up from across the arena", r.far === 0,
+       `${r.far} birds beyond 14m winding up`);
+    ok("a bird close to you winds up", r.sawWind > 0, `${r.sawWind} wind-up frames`);
+    ok("and then commits to a dive", r.sawDive > 0, `${r.sawDive} diving frames`);
+    ok("the dive is a short crossing, not a charge across the map",
+       r.maxAt > 0 && r.maxAt < 14, `furthest frame of a dive: ${r.maxAt}m`);
+    ok("standing in front of one costs you", r.hurtStill > 0,
+       `${r.hurtStill} contact damage standing still`);
+  }
+
   console.log("\n=== 22j. THE DAMAGE LEDGER SAYS WHO HIT YOU ===");
   {
     // "The autopilot is not being hit" was inferred from the absence of deaths

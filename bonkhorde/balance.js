@@ -58,6 +58,8 @@ const NOEVO  = !!process.env.BONKHORDE_NOEVO;
 // was hit and by what. "The autopilot is not being hit" was inferred from the
 // absence of deaths for a whole session before anyone counted.
 const HURT   = !!process.env.BONKHORDE_HURT;
+// BONKHORDE_NODIVE=1 is the control for FLITTER's dive.
+const NODIVE = !!process.env.BONKHORDE_NODIVE;
 const SEED_BASE = process.env.BONKHORDE_SEED !== undefined
                 ? +process.env.BONKHORDE_SEED : 20260821;
 const CURVE  = process.env.BONKHORDE_CURVE
@@ -79,9 +81,10 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed]) => {
+  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed, noDive]) => {
     window.__g.wipeSave();
     if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3], curve[4]);
+    window.__g.noDive(noDive);
     window.__g.pin(seed);          // null unpins, which is what SEED_BASE=0 gives
     window.__g.pinRun(seed);
     if (shopped) window.__g.setUpgrades(
@@ -98,7 +101,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
              evos: window.__g.kit().filter(k => k.includes("EVO")).length,
              hContact: h.contact, hSpit: h.spit, hHaz: h.hazard, hTotal: h.total,
              hHits: h.hits.contact + h.hits.spit + h.hits.hazard };
-  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed, NODIVE]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {

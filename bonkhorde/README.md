@@ -503,6 +503,38 @@ first level costs 250 XP and each one after adds 320, so a two-minute death stil
 the bar — a progression bar that does not move on a bad run teaches you that bad runs are worth
 nothing, which is the opposite of what a survivors-like needs you to believe.
 
+### What actually hits you
+
+Six sweeps of six constants all said the early game cannot be lost, and all of them were
+reasoning from the *absence of deaths*. Nothing was looking at damage. There is a ledger now —
+every point the player takes, filed under contact, spit or hazard — and it says the quiet part
+out loud:
+
+```
+                        hits    contact    spit   hazard      (42 trials, totals)
+FLITTER dives            618       2738    5217     1721
+control, no dive         525       2805    5083     1584
+```
+
+Two things fall out. The melee horde — four hundred bodies, the entire visual of this game — is
+about a fifth of the damage taken, and before the dive one line (THE TWIN) finished a
+twenty-four-minute run having taken **literally zero** contact damage. And the totals are the
+real story: **~230 damage per twenty-minute run from every source combined**, spread over about
+fifteen hits. A run is hit once every eighty seconds. That is not a difficulty curve that needs
+tuning, it is a fight the player is not in.
+
+**The dive is a good mechanic and it is not the fix.** FLITTER is a bird, so it dives: inside 9.5 m
+it rears with its wings snapped back and a warning over it, then crosses at four times its speed
+*aimed where you are going* rather than where you are — dodgeable by turning, which is the verb
+this game claims to be about, and it hits for 2.2× if you do not. It lifted hits from 525 to 618
+across 42 trials and left total damage flat, because the extra FLITTER hits displace heavier ones
+inside the 0.68 s of invulnerability every hit grants. Which is worth knowing on its own: **adding
+a threat source does not add threat** while hit intake is rate-limited.
+
+Closing a 10× gap is a deliberate change to what the game asks of you, not a constant and not one
+enemy behaviour. The direction the design already points is *rewards that require holding ground*
+— dens, altars, bosses — rather than a horde that can outrun you.
+
 ### A type is somewhere you belong
 
 Seven creature types, seven regions, and until this round the type was a colour: two lines with

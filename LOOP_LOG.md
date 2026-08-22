@@ -518,3 +518,19 @@ answer the six constant sweeps kept pointing at, now measured rather than deduce
 asserts each source lands in its own column. 292 checks pass. **Next:** give the horde a way to
 reach you — a dive on FLITTER, which is a bird and ought to. Positioning is meant to be the only
 verb, and it cannot be while proximity is free.
+
+**R16 — FLITTER dives, and the A/B says why that is not enough.** Birds dive: inside 9.5m a
+FLITTER rears, wings snapped back with a warning marker over it, then crosses at 4× its speed
+aimed at where you *will* be, hitting for 2.2× if you did not turn. Two silhouettes nothing else
+makes, so it is readable. Paired A/B over 42 trials each, dive on vs off: hits **525 → 618**,
+total contact damage **2805 → 2738** — more contacts, no more damage, because the extra FLITTER
+hits displace heavier ones inside the 0.68s iframe every hit grants. **Adding a threat source
+does not add threat while intake is rate-limited**, which is worth more than the dive. And the
+totals give the real scale: **~230 damage per 20-minute run from every source**, across about
+fifteen hits — one hit every eighty seconds. The gap is an order of magnitude, not a nudge, so no
+single behaviour closes it. Kept the dive (the horde needed a behaviour and now has a legible
+one), wrote the finding into the README, and stopped: the direction that would actually close it
+is rewards that require holding ground — dens, altars, bosses — which is a design decision, not a
+constant. 297 checks pass. **Next:** move off difficulty. Other aspects are overdue — audio has
+had no attention this session, and the mobile path has not been checked since dens, the minimap
+and affinity all added HUD.
