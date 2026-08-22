@@ -542,15 +542,15 @@ it up rather than duplicating it.
 Each line is a different *kind* of animal, not a palette swap, and each stage changes the
 silhouette rather than the scale:
 
-| | it starts as | it becomes | it ends as |
+| | skeleton | it starts as | it ends as |
 |---|---|---|---|
-| **EMBER** | a horned hatchling, all skull and feet | it has wings, and it uses them | mostly fire, coiled, crowned |
-| **TIDE** | a droplet with a face | a finned serpent with fangs and claws | a river with a crowned head on one end |
-| **VOLT** | a storm raptor out of the shell | a full raptor with the sickle claw | the storm itself, coiled in its own cloud |
-| **STONE** | a plated hatchling with a tail club | mostly armour, spikes and club | a standing slab, lit at the seams |
-| **ROT** | more bog than snake | long in the body, and the jaw arrived first | reared up, crowned, looking at you |
-| **GALE** | a wyvern chick with wings that don't work | they work now, with talons on the end | the legendary one, hung off its wingspan |
-| **ECHO** | one serpent, two necks | three necks | four, each dragging an after-image |
+| **EMBER** | quadruped drake, then winged, then legless | a horned hatchling, all skull and feet | mostly fire, coiled, crowned |
+| **TIDE** | plesiosaur — long neck, barrel, four flippers | a hatchling with a neck too long for it | a small head a long way in front of a rowing body |
+| **VOLT** | biped raptor — horizontal spine, counterweight tail | a storm raptor out of the shell | the storm itself, coiled in its own cloud |
+| **STONE** | ceratopsian — low, broad, a wall of frill | a plated hatchling | a frill wider than the animal, three horns in front of it |
+| **ROT** | serpent — **no legs at any stage** | more bog than snake | reared up, crowned, hooded |
+| **GALE** | pterosaur — wingspan and crest, two hind legs | a chick whose wings do not work | a crest taller than the skull it is on |
+| **ECHO** | hydra — one body, many necks | one serpent, two necks | four, each dragging an after-image |
 
 Nothing in a body plan animates a *size*, only positions — so `__g.bodySig()` (box count plus
 every box's half-extents, sorted) is stable frame to frame, and two forms built from the same
@@ -645,6 +645,31 @@ not enough to read horns, wings, teeth or a dorsal ridge, which is all these for
 The horde stays legible because legibility of the horde is what the minimap is for.
 
 Twenty-one forms, still twenty-one distinct meshes — asserted, as before.
+
+### Seven lines, seven skeletons
+
+The first pass at this renamed the seven lines and bolted horns onto them, and the result was
+exactly what it sounds like: six of the seven were still a blob, a head and four legs wearing
+different hats. ROT in particular was still a literal headstone with mushrooms growing out of it,
+under the name BASILISK.
+
+What separates them now is **topology**, not decoration:
+
+- **TIDE** is a plesiosaur. A small head a long way in front of a barrel on four flippers, and
+  the flippers row front-against-back rather than walking. The neck is the silhouette.
+- **ROT** has **no legs at any stage** — a chain of segments with a phase delay running down it,
+  so the wave travels rather than the whole animal waving, and the head rides on the front of the
+  chain rather than being parked above it. It grows longer, not taller, and gains a crown and
+  then a hood.
+- **STONE** is a ceratopsian: low and broad, with a scalloped **frill wider than the animal** and
+  three horns in front of it. Nothing else in the game is wide.
+- **GALE** is a pterosaur: a small body slung under the wing roots, no forelegs, a beak longer
+  than the torso and a crest that ends up taller than the skull.
+- **VOLT** is a biped raptor, **ECHO** a hydra, **EMBER** a drake that loses its legs as it grows.
+
+Still twenty-one distinct meshes, and the per-line box counts went from `19/86/100`-style spreads
+(a small thing growing into a bigger thing) to 79/93/115 — every stage substantial, none of them
+a sketch.
 
 ### The animation had one frame of information in it
 

@@ -704,3 +704,22 @@ counter-swinging tails, wings that beat harder airborne, coil waves that travel 
 breathing that fades out under sprint. 326 checks pass. **Next:** the enemy bodies still animate
 off `e.bob` and a clock; they should get the same treatment at a fraction of the detail, since
 they must not outshine the player.
+
+**R28 — seven lines, seven skeletons, and the animation dialled back.** Two corrections from the
+user, both right. First: the animation was too *big*, not too small — CINDERWHELP's tail tip swept
+0.40 units on a body 0.55 wide, continuously, which is a windscreen wiper bolted to a lizard. The
+rule now written into the code: **motion amplitude is inversely proportional to how often the
+motion happens.** Added `idle`, `sway`, `twitch(seed, every)` and `drag(delay)` to the body bundle
+— the tail *lags* the stride with the lag growing down its length (peak deflection at the tip is
+now .07), fire flickers in **brightness** instead of waving in position, wings fold when idle
+instead of beating, and the life comes from small fast events: a horn flick and a sniff every few
+seconds, a slow weight shift, a head that settles a beat behind the body. Second: the lines all
+looked the same because I had renamed and accessorised rather than rebuilt. ROT was still a
+headstone with mushrooms. They differ by **skeleton** now — TIDE is a plesiosaur (long neck,
+barrel, four rowing flippers), ROT is **legless at every stage** (a segment chain with a phase
+delay so the wave travels), STONE is a ceratopsian with a frill wider than the animal, GALE is a
+pterosaur with no forelegs and a crest taller than its skull, VOLT a biped raptor, ECHO a hydra,
+EMBER a drake that loses its legs. Per-line box counts went from spreads like 19/86/100 to
+79/93/115 — every stage substantial. 326 checks pass, still 21 distinct meshes. **Next:** the
+enemies are the last thing on the old plan — they should be small dinosaurs at a fraction of the
+player's detail.

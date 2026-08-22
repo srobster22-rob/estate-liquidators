@@ -2238,6 +2238,7 @@ const BODY = {
 // stopped being decoration and become most of the animal.
 plain(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph, st, t } = D;
   // Breathing is an IDLE animation, so it fades out as the animal starts
   // moving - a creature at a full sprint should not also be gently inflating.
@@ -2246,33 +2247,53 @@ plain(D){
   // is looking at and `lkf` pushes it forward as it turns, which is what makes
   // a neck read as a neck rather than as a post.
   const lk = look*.16, lkf = -Math.abs(look)*.05;
+  // Fire FLICKERS, it does not wave. The old version moved every ember box
+  // sideways at 9 rad/s, which is a lot of motion for something that is meant
+  // to sit at the back of the animal - and it fought the tail it was attached
+  // to. The position wobble is a quarter of what it was and slower; the life
+  // is in the BRIGHTNESS now, which costs no movement at all.
   const fl = (r,f,y,sc,n)=>{ for(let i=0;i<n;i++){
-    const w = Math.sin(t*9 + i*1.3)*.05*sc;
+    const w  = Math.sin(t*3.1 + i*1.3)*.012*sc;
+    const lit = .55 + i*.10 + Math.sin(t*7.3 + i*2.1)*.22;
     mb(r+w, f, y + i*.15*sc, (.11-i*.016)*sc, (.10-i*.012)*sc, (.11-i*.016)*sc,
-       i%2 ? acc : lt, .55 + i*.10); } };
+       i%2 ? acc : lt, lit); } };
   if(st === 0){
     // CINDERWHELP. Hatchling: all skull and feet, with the horns already in.
-    blob(0, -.06, .46+br, .27,.23,.34, c, em);
-    mb(0, -.02, .25, .21,.09,.28, bel, em*.8);
+    // A head this size on a body this size does not sit still: it settles a
+    // beat behind the body, and every few seconds it snaps somewhere.
+    const flick = twitch(0, 3.9), sniff = twitch(1.3, 5.2);
+    const hb = br*1.5 + Math.sin(t*2.1 - .7)*.012*idle;
+    blob(sway, -.06, .46+br, .27,.23,.34, c, em);
+    mb(sway, -.02, .25, .21,.09,.28, bel, em*.8);
     ridge(-.26, .16, .66+br, 5, .09, acc, .30);
-    blob(lk*.6, .30+lkf, .64+br, .26,.23,.25, c, em);          // heavy skull
-    mb(lk, .48+lkf, .55+br, .19,.10,.15, bel, em*.6);          // snout
-    mb(lk, .60+lkf, .58+br, .07,.05,.06, dk, .1);
-    grin(lk, .55+lkf, .48+br, .13, .035, 5);
-    eyes(lk, .44+lkf, .74+br, .13, .10, [1,.72,.18]);
-    for(const rs of [-1,1]) horn(lk+rs*.17, .30+lkf, .82+br, rs*.045,-.035,.075, 4, .065, acc, .30);
+    const hx = lk*.6 + sway*.6 + flick*.035;                   // the head settle
+    const hf = .30 + lkf + sniff*.022;
+    blob(hx, hf, .64+hb, .26,.23,.25, c, em);                  // heavy skull
+    mb(hx*1.3, hf+.18, .55+hb, .19,.10,.15, bel, em*.6);       // snout
+    mb(hx*1.3, hf+.30, .58+hb, .07,.05,.06, dk, .1);
+    grin(hx*1.3, hf+.25, .48+hb, .13, .035, 5);
+    eyes(hx*1.2, hf+.14, .74+hb, .13, .10, [1,.72,.18]);
+    // The horns flick on their own schedule, which is the whole trick: one
+    // small fast thing every few seconds reads as alive where a permanent
+    // wobble reads as a mechanism.
+    for(const rs of [-1,1])
+      horn(hx+rs*.17, hf, .82+hb + flick*.02*rs, rs*.045,-.035,.075, 4, .065, acc, .30);
     // A diagonal gait: front-left with back-right. The old version keyed every
     // foot off rs*fs, which pairs the two feet on each side and gives you a
     // rabbit rather than a lizard.
     for(const rs of [-1,1]) for(const fs of [-1,1]){
       const ph = (rs*fs > 0) ? gait : -gait;
       claw(rs*.19, fs*.21 + ph*.05, .11 + Math.max(0, ph)*.11, rs, .075, dk); }
-    // The tail counter-swings against the stride, which is what stops a walk
-    // cycle from looking like a toy being slid along the floor.
+    // The tail LAGS the stride rather than counter-swinging it, and the lag
+    // grows down its length so the tip arrives last. Peak deflection at the tip
+    // is about .07 units against a body .55 wide - follow-through you notice
+    // without a wag you cannot stop noticing. Plus a slow idle curl, so a
+    // standing animal is not a statue with a live head.
     for(let i=0;i<4;i++){ const k = 1 - i*.16;
-      blob(-gait*.10*(i+1), -.34 - i*.16, .46 - i*.02 + gait2*.02*i,
+      const lag = drag(.55 + i*.45)*.018*(i+1) + Math.sin(t*.9 - i*.5)*.010*idle*(i+1);
+      blob(lag + sway*(i+1)*.5, -.34 - i*.16, .46 - i*.02,
            .11*k,.10*k,.13*k, c, em); }
-    fl(-gait*.42, -.90, .50, .8, 3);
+    fl(drag(2.35)*.075 + Math.sin(t*.9 - 2)*.04*idle, -.90, .50, .8, 3);
   } else if(st === 1){
     // FLAREDRAKE. It has wings now, and it uses them to get off the ground when
     // it hits something rather than to fly.
@@ -2288,17 +2309,20 @@ plain(D){
     eyes(lk, .58+lkf, 1.02+br, .14, .105, [1,.72,.18]);
     for(const rs of [-1,1]) horn(lk+rs*.18, .40+lkf, 1.10+br, rs*.055,-.05,.085, 5, .07, acc, .34);
     // Airborne, the wings actually beat. On the ground they idle.
-    for(const rs of [-1,1]) wing(rs, rs*.30, -.02, .84+br, .62*(air?1.25:1), c, acc,
-                                 beat*(air?2.3:1) + (rs>0?0:.4));
+    // Folded when it is standing. A wing that beats while the animal is idle is
+    // the single busiest thing on the model and it never stops.
+    for(const rs of [-1,1]) wing(rs, rs*.30, -.02, .84+br,
+                                 .62*(air?1.25:1)*(1 - idle*.14), c, acc,
+                                 beat*(air?2.3:1)*(1 - idle*.72) + (rs>0?0:.4));
     for(const rs of [-1,1]) for(const fs of [-1,1]){
       const ph = (rs*fs > 0) ? gait : -gait;
       taper(rs*.22, fs*.26 + ph*.06, .32, 0,0,-.09, 2, .085,.10,.085, dk, 0);
       claw(rs*.22, fs*.26 + ph*.06, .10 + Math.max(0, ph)*.13, rs, .08, dk);
     }
     for(let i=0;i<5;i++){ const k = 1 - i*.13;
-      blob(-gait*.13*(i+1), -.50 - i*.19, .62 - i*.02 + gait2*.025*i,
-           .12*k,.11*k,.14*k, c, em); }
-    fl(-gait*.55, -1.16, .58, 1.0, 4);
+      const lag = drag(.55 + i*.42)*.020*(i+1) + Math.sin(t*.85 - i*.45)*.011*idle*(i+1);
+      blob(lag + sway*(i+1)*.4, -.50 - i*.19, .62 - i*.02, .12*k,.11*k,.14*k, c, em); }
+    fl(drag(2.65)*.10 + Math.sin(t*.85 - 2.3)*.05*idle, -1.16, .58, 1.0, 4);
   } else {
     // PYRAETHON. Off the ground for good. Seven burning coils, a crowned skull,
     // and wings that are more fire than membrane.
@@ -2326,59 +2350,72 @@ plain(D){
 // ------------------------------------------------------------------- TIDE
 scrap(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
-  const bob = Math.sin(t*2.6)*.05*(1-amp*.7);
-  const lk = look*.15, lkf = -Math.abs(look)*.045;
-  if(st === 0){
-    // DRIPLET. A drop of water that has decided things.
-    blob(0, 0, .42+bob, .28,.30,.28, c, em+.12);
-    taper(0, 0, .74+bob, 0,0,.07, 3, .14,.10,.14, lt, em+.16);   // the point on top
-    mb(0, .06, .22, .22,.08,.20, bel, em*.9);
-    eyes(lk, .26+lkf, .50+bob, .12, .10, [.06,.20,.34]);
-    mb(0, .28, .32+bob, .08,.03,.03, acc, .3);
-    for(const rs of [-1,1]) mb(rs*.28, -.04, .34+bob, .10,.13,.04, lt, em+.2, rs*.4);
-    for(let k=0;k<3;k++){ const dp=(t*1.2+k*.34)%1;
-      mb(Math.sin(k*2.1)*.26, Math.cos(k*2.1)*.22, .12-dp*.10, .04,.05,.04, lt, .25); }
-  } else if(st === 1){
-    // TIDEMAW. Fins, a crest, and considerably more mouth.
-    blob(0, -.04, .58+bob, .34,.30,.42, c, em+.10);
-    mb(0, 0, .30, .28,.12,.34, bel, em*.9);
-    blob(0, .40, .74+bob, .30,.25,.26, c, em+.10);
-    grin(lk, .58+lkf, .58+bob, .22,.07, 7);
-    for(const rs of [-1,1]) horn(rs*.20, .34, .90+bob, rs*.06,-.05,.06, 4, .055, lt, .34);
-    eyes(lk, .54+lkf, .86+bob, .16, .11, [.06,.20,.34]);
-    for(let i=0;i<5;i++)                                        // dorsal crest
-      taper(0, .16 - i*.20, .90+bob, 0,0,.07, 2, .05,.11-i*.012,.10, lt, em+.2);
-    for(const rs of [-1,1]) taper(rs*.34, .06, .48+bob, rs*.08,-.05,.03, 3, .13,.05,.17, lt, em+.18);
-    for(const rs of [-1,1]) for(const fs of [-1,1]){
-      taper(rs*.22, fs*.24, .26, 0,0,-.09, 3, .08,.09,.08, dk, 0);
-      claw(rs*.22, fs*.24, .07, rs, .07, dk); }
-    for(let k=0;k<3;k++) taper(Math.sin(t*4+k)*.10*(k+1), -.52-k*.20, .58+bob,
-                               0,0,-.02, 2, .10-k*.02,.09,.13, lt, em+.14);
-  } else {
-    // LEVIATHAN. It is a river with a head on one end.
-    const hov = Math.sin(t*2.2)*.09;
-    for(let i=0;i<8;i++){ const k = 1 - i*.09, sw = Math.sin(t*2.6 - i*.62)*.20;
-      blob(sw, -.16 - i*.36, .62 + hov + Math.sin(t*2 - i*.55)*.16,
-           .30*k,.25*k,.32*k, i%2 ? c : lt, em+.10);
-      if(i%2===0) taper(sw, -.16 - i*.36, .86+hov, 0,0,.06, 2, .05,.10,.10, lt, em+.24); }
-    blob(0, .38, .88+hov, .36,.31,.32, c, em+.10);
-    grin(lk, .62+lkf, .70+hov, .30,.14, 9);
-    // A crown of horns. LEVIATHAN is the top of its line and the only thing
-    // that separated it from the middle form was length.
-    for(const rs of [-1,1]){
-      horn(rs*.26, .30, 1.06+hov, rs*.08,-.06,.10, 6, .07, lt, .40);
-      horn(rs*.32, .04, .92+hov, rs*.10,-.03,.04, 4, .05, lt, .32); }
-    eyes(lk, .58+lkf, 1.04+hov, .20, .12, [.10,.90,1]);
-    for(let i=0;i<4;i++) taper(0, .22 - i*.16, 1.12+hov, 0,0,.08, 3, .05,.13,.11, lt, em+.28);
-    for(const rs of [-1,1]) taper(rs*.42, .10, .74+hov, rs*.11,-.06,.04, 4, .14,.05,.20, lt, em+.2);
+  // A PLESIOSAUR, growing into a sea serpent. The silhouette is the neck: a
+  // small head a long way in front of a barrel body on four flippers. Nothing
+  // else in this game has that outline, which is the point - six of the seven
+  // lines used to be a blob, a head and four legs with different hats.
+  const bob = Math.sin(t*1.7)*.035*idle + Math.sin(ph*.5)*.02*amp;
+  const lk = look*.20, lkf = -Math.abs(look)*.06;
+  const gr = 1 + st*.18;
+  const NECK = 4 + st*2;
+  const flick = twitch(.6, 4.3);
+  // the barrel. Wide and deep, because everything else hangs off it.
+  blob(sway, -.10*gr, (.50+bob)*gr, .32*gr,.26*gr,.44*gr, c, em+.08);
+  mb(sway, -.06*gr, (.26+bob)*gr, .26*gr,.10*gr,.36*gr, bel, em*.9);
+  ridge(-.44*gr, .10*gr, (.74+bob)*gr, 6, .10*gr, lt, em+.22);
+  // FLIPPERS. Four of them, rowing - front and back on opposite beats, which is
+  // what a swimming animal does and what a walking animal does not.
+  for(const rs of [-1,1]) for(const fs of [-1,1]){
+    const beat = Math.sin(ph*.8 + (fs>0 ? 0 : Math.PI)) * (.35 + amp*.55);
+    const y = (.30 + beat*.10)*gr + bob*gr;
+    for(let i=0;i<3;i++){
+      const t2 = (i+1)/3;
+      mb(sway + rs*(.30 + t2*.30)*gr, (fs*.24 - t2*.14*fs)*gr, y - t2*.05*gr,
+         (.16 - i*.02)*gr, .035*gr, (.15 + t2*.10)*gr, i%2 ? lt : c, em+.10,
+         rs*(.5 + beat*.25));
+    }
   }
+  // THE NECK. Long, and it curves - a straight neck is a pipe.
+  let nx = sway, nf = .26*gr, ny = (.62+bob)*gr;
+  for(let i=0;i<NECK;i++){
+    const t2 = (i+1)/NECK, k = 1 - t2*.42;
+    nx += (lk*.9)/NECK + Math.sin(t*1.1 - i*.55)*.012*gr*(1+idle);
+    nf += (.20 + t2*.06)*gr + lkf/NECK;
+    ny += (.17 - t2*.05)*gr;
+    blob(nx, nf, ny, .13*k*gr, .13*k*gr, .13*k*gr, i%2 ? c : lt, em+.08);
+    if(i > 1) mb(nx, nf, ny + .12*k*gr, .035*gr, .07*k*gr, .06*k*gr, acc, .28);
+  }
+  // the head: small, which is what sells the length behind it
+  blob(nx, nf + .10*gr, ny + .04*gr, .13*gr,.11*gr,.15*gr, c, em+.10);
+  mb(nx, nf + .24*gr, ny + .00*gr, .095*gr,.055*gr,.11*gr, bel, em*.8);
+  grin(nx, nf + .22*gr, ny - .05*gr, .085*gr, .03*gr, 6);
+  eyes(nx, nf + .17*gr, ny + .08*gr, .07*gr, .058*gr, [.20,.86,1], .40);
+  for(const rs of [-1,1])
+    horn(nx + rs*.09*gr, nf + .04*gr, ny + .11*gr, rs*.03*gr,-.02*gr,.05*gr,
+         3 + st, .03*gr, lt, .35 + st*.12);
+  if(flick > .02) mb(nx, nf + (.28 + flick*.10)*gr, ny - .05*gr,
+                     .012*gr, .010*gr, .05*gr*flick, [.90,.34,.48], .35);
+  // THE TAIL. Short and flat - a rudder, not a whip.
+  for(let i=0;i<4+st;i++){
+    const k = 1 - i*.15;
+    const lag = drag(.6 + i*.5)*.024*(i+1)*gr + Math.sin(t*.8 - i*.4)*.012*idle*(i+1)*gr;
+    blob(sway + lag, (-.44 - i*.22)*gr, (.44 + bob - i*.015)*gr,
+         .13*k*gr, .09*k*gr, .16*k*gr, i%2 ? c : lt, em+.08);
+    if(i > 1) mb(sway + lag, (-.44 - i*.22)*gr, (.58 + bob)*gr,
+                 .03*gr, .10*k*gr, .13*k*gr, lt, em+.24);
+  }
+  // and the top of the line trails its own water
+  if(st === 2) for(let i=0;i<8;i++){ const a = t*1.4 + i/8*TAU;
+    mb(Math.sin(a)*.78*gr, Math.cos(a)*.66*gr,
+       (.30 + Math.sin(t*2.2+i)*.16)*gr, .05*gr,.05*gr,.12*gr, lt, .55, a); }
 },
-
 // ----------------------------------------------------------------- THE VOLT
 volt(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   const hov = Math.sin(t*3)*.09*(1-amp*.6);
@@ -2450,191 +2487,199 @@ volt(D){
 // ---------------------------------------------------------------- THE STONE
 stone(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
-  const lk = look*.12, lkf = -Math.abs(look)*.035;
-  // Heavy animals do not bounce, they SETTLE. A slow breath, and a rock from
-  // side to side that only exists while it is walking.
-  const heave = Math.sin(t*1.5)*.018*(1-amp*.5) + Math.abs(gait)*.03;
-  const roll  = gait*.05;
-  if(st === 0){
-    // SHALEBACK. A hatchling ankylosaur: low, wide, already plated.
-    blob(0, 0, .36, .36,.28,.32, c, em);
-    mb(0, .06, .18, .30,.11,.26, bel, em*.7);
-    mb(0, .12, .62, .32,.10,.26, dk, em*.5);            // brow
-    eyes(lk, .26+lkf, .48, .14, .075, [.14,.12,.10]);
-    mb(0, .24, .28, .10,.03,.03, dk, 0);
-    ridge(-.28, .18, .58, 5, .10, acc, .30);
-    for(const rs of [-1,1]) horn(rs*.24, .10, .52, rs*.05,-.02,.02, 3, .06, acc, .30);
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      claw(rs*.24, fs*.19, .08+Math.max(0,gait*rs*fs)*.05, rs, .075, dk);
-    taper(0, -.34, .30, 0,-.14,0, 4, .11,.09,.12, c, em);          // tail
-    blob(0, -.86, .32, .13,.12,.13, acc, .35);                     // and a club
-  } else if(st === 1){
-    // ANKYLOS. Grown, and now mostly armour, spikes and tail club.
-    blob(0, 0, .52, .52,.38,.46, c, em);
-    mb(0, .08, .26, .44,.16,.36, bel, em*.7);
-    mb(0, .16, .92, .42,.14,.34, dk, em*.5);
-    eyes(lk, .34+lkf, .76, .21, .085, [.14,.12,.10]);
-    grin(lk, .34+lkf, .50, .18, .06, 6);
-    ridge(-.50, .26, .94, 8, .16, acc, .34);            // a plated back
-    for(const rs of [-1,1]){
-      horn(rs*.34, .18, .82, rs*.08,-.02,.02, 4, .075, acc, .34);  // shoulder spikes
-      horn(rs*.40, -.10, .74, rs*.09,-.03,.01, 4, .065, acc, .30); }
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      claw(rs*.36, fs*.28, .11+Math.max(0,gait*rs*fs)*.06, rs, .105, dk);
-    taper(0, -.52, .46, 0,-.19,0, 5, .15,.12,.16, c, em);
-    blob(Math.sin(t*2.2)*.10, -1.24, .50, .21,.19,.21, acc, .40);  // the club
-    for(const rs of [-1,1]) horn(rs*.16, -1.24, .50, rs*.07,0,.01, 3, .06, lt, .40);
-  } else {
-    // TITANHIDE. It stopped walking. A standing slab of plated hide, lit from
-    // the seams, orbited by the ground it tore up getting here.
-    blob(0, 0, 1.14, .36,1.00,.28, c, em);
-    mb(0, .16, 1.14, .26,.86,.06, bel, em*.6);          // a face-plate down the front
-    for(let k=0;k<5;k++)                                // carved runes, lit
-      mb((k%2?1:-1)*.12, .22, .62+k*.20, .06,.05,.02, acc, .85);
-    mb(0, .22, 1.52, .28,.24,.10, dk, 0);
-    eyes(lk, .30+lkf, 1.58, .14, .085, [.10,.24,.22]);
-    grin(lk, .30+lkf, 1.28, .20, .06, 7);
-    for(let i=0;i<8;i++){ const a=t*.8+i/8*TAU;
-      blob(Math.sin(a)*(.64+(i%2)*.16), Math.cos(a)*(.58+(i%2)*.14),
-           .74+Math.sin(t*1.6+i)*.30, .09,.09,.09, i%3?dk:acc, i%3?.05:.4); }
-    mb(0, 0, .12, .46,.10,.38, dk, 0);
+  // A CERATOPSIAN. The silhouette is the FRILL: a wall of bone behind the head,
+  // wider than the animal, with horns in front of it. Low, broad and slow -
+  // the opposite of the raptor and the opposite of the serpent, which is what
+  // it is for. It used to be a pebble, then a boulder with a yoke, then a
+  // standing menhir: three objects, no animal.
+  const lk = look*.10, lkf = -Math.abs(look)*.03;
+  const gr = 1 + st*.22;
+  // Heavy animals settle rather than bounce, and they roll from side to side
+  // over their shoulders as they walk.
+  const heave = Math.sin(t*1.3)*.014*idle*gr + Math.abs(gait)*.026*gr;
+  const roll  = gait*.045;
+  const snort = twitch(.9, 4.6);
+  const FR = (.42 + st*.16) * gr;                    // frill half-width
+  // body: long, low, wide
+  blob(sway + roll*.4, -.16*gr, (.40+heave)*gr, .34*gr,.24*gr,.46*gr, c, em);
+  mb(sway, -.12*gr, (.18+heave)*gr, .28*gr,.10*gr,.38*gr, bel, em*.7);
+  ridge(-.50*gr, .10*gr, (.62+heave)*gr, 7, .09*gr, dk, .06);
+  // shoulders, which on this animal are the widest part of the trunk
+  blob(sway + roll*.6, .16*gr, (.44+heave)*gr, .38*gr,.22*gr,.28*gr, c, em);
+  // THE FRILL. A fan of plates behind the skull, scalloped along the rim.
+  const fx = sway + lk, ff = .34*gr + lkf, fy = (.56 + heave)*gr;
+  for(let i=0;i<9;i++){
+    const a = (i - 4) / 4;                            // -1..1 across the fan
+    const h = (1 - a*a*.55);
+    mb(fx + a*FR, ff - .10*gr + Math.abs(a)*.06*gr, fy + h*.26*gr,
+       FR*.14, h*.24*gr, .05*gr, i%2 ? lt : c, em+.06, a*.5);
+    // the scallops on the rim, which is what makes it read as bone
+    mb(fx + a*FR, ff - .12*gr + Math.abs(a)*.06*gr, fy + h*.50*gr,
+       FR*.10, .05*gr, .045*gr, acc, .22, a*.5);
   }
+  // the skull, in front of the frill: a beak and a heavy brow
+  blob(fx, ff + .16*gr, (.46+heave)*gr, .21*gr,.17*gr,.22*gr, c, em);
+  mb(fx, ff + .34*gr, (.40+heave)*gr, .13*gr,.09*gr,.14*gr, bel, em*.7);
+  mb(fx, ff + .46*gr, (.37+heave+snort*.01)*gr, .09*gr,.06*gr,.09*gr, dk, .10);  // beak
+  eyes(fx, ff + .26*gr, (.56+heave)*gr, .14*gr, .075*gr, [.90,.74,.30], .25);
+  // the horns: two long brow horns and a short nasal one
+  for(const rs of [-1,1])
+    horn(fx + rs*.15*gr, ff + .26*gr, (.62+heave)*gr,
+         rs*.035*gr, .075*gr, .045*gr, 5 + st, .052*gr, acc, .18);
+  horn(fx, ff + .44*gr, (.46+heave)*gr, 0, .05*gr, .04*gr, 3 + st, .04*gr, acc, .18);
+  // four pillar legs, diagonal gait, and they are columns rather than sticks
+  for(const rs of [-1,1]) for(const fs of [-1,1]){
+    const phs = (rs*fs > 0) ? gait : -gait;
+    const y = (.14 + Math.max(0, phs)*.05)*gr;
+    blob(sway + rs*.32*gr, (fs*.26 + phs*.045)*gr, y + .06*gr,
+         .10*gr,.12*gr,.11*gr, dk, 0);
+    claw(sway + rs*.32*gr, (fs*.26 + phs*.045)*gr, y - .04*gr, rs, .085*gr, dk);
+  }
+  // a short heavy tail, and at the top of the line a club on the end of it
+  for(let i=0;i<4;i++){ const k = 1 - i*.17;
+    const lag = drag(.6 + i*.45)*.016*(i+1)*gr;
+    blob(sway + lag, (-.54 - i*.20)*gr, (.36 + heave - i*.01)*gr,
+         .14*k*gr,.11*k*gr,.16*k*gr, c, em); }
+  if(st >= 1){
+    blob(sway + drag(2.4)*.03*gr, -1.36*gr, (.36+heave)*gr,
+         .19*gr,.17*gr,.19*gr, acc, .22);
+    for(const rs of [-1,1])
+      horn(sway + rs*.14*gr, -1.36*gr, (.36+heave)*gr, rs*.06*gr, 0, .01*gr, 3, .05*gr, lt, .30);
+  }
+  // and the top of the line drags the ground it walked over
+  if(st === 2) for(let i=0;i<7;i++){ const a = t*.7 + i/7*TAU;
+    blob(Math.sin(a)*(.80+(i%2)*.16)*gr, Math.cos(a)*(.70+(i%2)*.14)*gr,
+         (.14 + Math.abs(Math.sin(t*1.4+i))*.20)*gr, .08*gr,.07*gr,.08*gr,
+         i%3?dk:acc, i%3?.04:.30); }
 },
-
 // ------------------------------------------------------------------ THE ROT
 rot(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
-  const wob = Math.sin(t*5)*.035*(1-amp*.7);
-  const lk = look*.14, lkf = -Math.abs(look)*.04;
-  const shroom = (r,f,y,sc,cap)=>{
-    taper(r, f, y, 0,0,.05, 3, .035*sc,.07*sc,.035*sc, bel, .06);
-    blob(r, f, y+.19*sc, .13*sc,.055*sc,.13*sc, cap, .16);
-    for(let i=0;i<3;i++) mb(r+(i-1)*.07*sc, f+.05*sc, y+.22*sc, .022*sc,.02*sc,.02*sc, bel, .3);
-  };
-  if(st === 0){
-    // MIRELING. A hatchling basilisk, still more bog than snake.
-    blob(0, 0, .28+wob, .36,.26,.32, c, em+.10);
-    mb(0, .06, .14, .28,.09,.24, bel, em*.8);
-    eyes(lk, .28+lkf, .40+wob, .14, .095, [.10,.20,.10]);
-    grin(lk, .30+lkf, .22, .12, .04, 4);
-    shroom(.12, -.10, .44+wob, 1, acc);
-    for(const rs of [-1,1]) horn(rs*.16, .18, .48+wob, rs*.04,-.03,.04, 3, .04, acc, .28);
-    taper(0, -.30, .24, 0,-.15,-.01, 4, .10,.08,.11, c, em+.10);
-    for(let k=0;k<3;k++){ const dp=(t*1.1+k*.4)%1;      // it drips
-      mb(Math.sin(k*2.1)*.28, Math.cos(k*2.1)*.24, .16-dp*.14, .035,.05,.035, lt, .12); }
-  } else if(st === 1){
-    // SWAMPJAW. Long in the body now, and the jaw arrived before the manners.
-    blob(0, 0, .38+wob, .46,.34,.42, c, em+.10);
-    mb(0, .08, .18, .38,.12,.32, bel, em*.8);
-    eyes(lk, .34+lkf, .60+wob, .18, .105, [.10,.20,.10]);
-    grin(lk, .36+lkf, .34, .20, .065, 6);
-    for(let k=0;k<6;k++){ const a=k/6*TAU+.4;
-      shroom(Math.sin(a)*.26, Math.cos(a)*.24, .62+wob, .9+ (k%2)*.3, k%2?acc:lt); }
-    for(let k=0;k<4;k++){ const a=t*1.3+k*1.7;          // spores drifting off
-      mb(Math.sin(a)*.40, Math.cos(a)*.34, .90+Math.sin(t*2+k)*.18, .04,.04,.04, acc, .6); }
-    ridge(-.42, .20, .68+wob, 6, .11, acc, .26);
-    for(const rs of [-1,1]) horn(rs*.22, .26, .66+wob, rs*.06,-.04,.05, 4, .055, acc, .30);
-    for(const rs of [-1,1]) for(const fs of [-1,1])
-      claw(rs*.28, fs*.24, .09, rs, .08, dk);
-    taper(0, -.46, .34, 0,-.20,-.01, 5, .13,.10,.14, c, em+.10);
-  } else {
-    // BASILISK. Reared up off the ground, crowned, and looking straight at you.
-    // The mushrooms stayed because a basilisk that lives in a bog would.
-    blob(0, 0, .90, .42,.76,.26, c, em);
-    blob(0, 0, 1.66, .42,.14,.26, c, em);               // the rounded top
-    mb(0, .14, .96, .32,.60,.05, bel, em*.6);
-    for(let k=0;k<3;k++) mb(0, .20, 1.44-k*.16, .18,.035,.02, acc, .5);   // an epitaph
-    grin(lk, .26+lkf, .90, .30, .22, 9);
-    eyes(lk, .28+lkf, 1.40, .18, .115, [.86,.28,.20]);
-    for(let k=0;k<8;k++){ const a=k/8*TAU;
-      shroom(Math.sin(a)*.30, Math.cos(a)*.20, 1.78, 1.15, k%2?acc:lt); }
-    for(const rs of [-1,1]){
-      horn(rs*.24, .18, 1.62, rs*.08,-.05,.10, 6, .07, acc, .55);
-      horn(rs*.34, -.06, 1.44, rs*.09,-.03,.04, 4, .05, acc, .45); }
-    for(let i=0;i<7;i++)                                  // a coiled body below it
-      blob(Math.sin(t*1.6 - i*.7)*.18, -.20 - i*.24, .18 + i*.02,
-           .22 - i*.014, .13, .24 - i*.016, i%2 ? c : lt, em+.06);
-    for(const rs of [-1,1]){ const g2 = Math.sin(t*2+(rs>0?0:1.4))*.06;
-      taper(rs*.48, .18, .22+g2, 0,0,.10, 3, .075,.09,.075, bel, .06);
-      for(let i=0;i<3;i++) taper(rs*.48+(i-1)*.075, .22, .46+g2, 0,0,.06, 2,
-                                 .028,.05,.028, bel, .06); }
-    for(let k=0;k<4;k++){ const a=t*1.1+k*1.6;
-      mb(Math.sin(a)*.50, Math.cos(a)*.40, 1.10+Math.sin(t*1.8+k)*.30, .04,.04,.04, acc, .65); }
+  // A BASILISK. No legs, at any stage - that is the whole silhouette, and it is
+  // the one thing none of the other six lines can be mistaken for. It used to
+  // be a puddle, then a slime under a mushroom forest, then a literal headstone
+  // with a mouth: three different objects that happened to share a colour.
+  //
+  // A serpent is a chain of segments with a phase delay down it, so the wave
+  // travels rather than the whole body waving. The head rides on the front of
+  // that chain instead of being parked above it.
+  const lk = look*.15, lkf = -Math.abs(look)*.045;
+  const flick = twitch(0, 3.1);                    // the tongue
+  const N = 7 + st*3;                              // it gets longer, not taller
+  const gr = 1 + st*.16;
+  const wave = ph*.85 + t*(1.3 + st*.25);
+  const rear = (.34 + st*.30) * gr;                // how far the front lifts
+  const seg = [];
+  for(let i=0;i<N;i++){
+    const k = 1 - i/(N+1)*.62;
+    const lat = Math.sin(wave - i*.62) * (.10 + amp*.13 + idle*.05) * gr;
+    // the front third lifts off the ground and the rest stays on it
+    const lift = i < 3 ? rear * (1 - i/3) : 0;
+    const y = (.16 + lift) * gr + Math.sin(wave*.8 - i*.5)*.02*gr;
+    const f = (.30 - i*.34) * gr;
+    seg.push([lat, f, y, k]);
+    blob(lat, f, y, .21*k*gr, .16*k*gr, .23*k*gr, i%2 ? c : lt, em+.06);
+    // belly scutes, which is what stops a chain of blobs reading as a caterpillar
+    if(i < N-1) mb(lat, f - .17*gr, y - .13*k*gr, .15*k*gr, .03*gr, .10*gr, bel, em*.7);
+    if(i > 0 && i < N-2)
+      mb(lat, f, y + .17*k*gr, .04*gr, .09*k*gr, .07*k*gr, acc, .22);
+  }
+  // the head, on the front segment
+  const [hx0, hf0, hy0] = seg[0];
+  const hx = hx0 + lk, hf = hf0 + .22*gr + lkf, hy = hy0 + .10*gr;
+  blob(hx, hf, hy, .19*gr, .15*gr, .21*gr, c, em+.08);
+  mb(hx, hf + .17*gr, hy - .02*gr, .13*gr, .075*gr, .13*gr, bel, em*.7);
+  grin(hx, hf + .15*gr, hy - .08*gr, .12*gr, .035*gr, 6);
+  // the forked tongue, out and back every few seconds
+  if(flick > .02) for(let i=0;i<2;i++)
+    mb(hx + (i?.03:-.03)*gr, hf + (.24 + flick*.16)*gr, hy - .09*gr,
+       .014*gr, .012*gr, .06*gr*flick, [.90,.30,.44], .35);
+  eyes(hx, hf + .12*gr, hy + .06*gr, .085*gr, .072*gr, [.94,.86,.20], .45);
+  // the crown. A basilisk is a KING serpent; the frill is the claim.
+  for(let i=0;i<5;i++){
+    const a = (i - 2) * .40;
+    horn(hx + Math.sin(a)*.13*gr, hf - .04*gr + Math.cos(a)*.03*gr, hy + .13*gr,
+         Math.sin(a)*.035*gr, -.02*gr, .055*gr, 4, .035*gr, acc, .40 + st*.15);
+  }
+  for(const rs of [-1,1])
+    horn(hx + rs*.17*gr, hf + .02*gr, hy - .02*gr, rs*.05*gr, .01*gr, .015*gr,
+         3, .03*gr, acc, .30);
+  // and at the top of the line it grows a hood, which is the only thing on this
+  // animal that is not part of the spine
+  if(st === 2) for(const rs of [-1,1]) for(let i=0;i<4;i++){
+    const t2 = (i+1)/4;
+    mb(hx + rs*(.16 + t2*.30)*gr, hf - t2*.16*gr, hy + (.02 - t2*.06)*gr,
+       .10*gr, .025*gr, (.10 + t2*.14)*gr, i%2 ? lt : acc, .18, rs*.5);
   }
 },
-
 // ------------------------------------------------------------------- GALE
 tally(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
-  // A bird's bob belongs to the STRIDE, not to the clock.
-  const hop = Math.abs(Math.sin(ph*.5 + t*1.2))*(.03 + amp*.06);
-  const lk = look*.15, lkf = -Math.abs(look)*.045;
-  if(st === 0){
-    // WYVERNET. A wyvern chick: two enormous eyes, a hooked beak, and wings
-    // that are not load-bearing yet.
-    blob(0, 0, .44+hop, .30,.28,.28, c, em);
-    mb(0, .08, .24, .24,.10,.22, bel, em*.85);
-    eyes(lk, .28+lkf, .54+hop, .14, .12, [.10,.14,.30]);
-    taper(0, .34, .40+hop, 0,.05,-.01, 3, .07,.055,.06, acc, .25);   // beak
-    for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.10;
-      taper(rs*.30, fw, .44+hop, rs*.05,-.04,.02, 3, .09,.14,.06, lt, em+.1); }
-    for(let i=0;i<3;i++) taper((i-1)*.07, -.02, .74+hop, 0,0,.06, 2, .04,.07,.04, acc, .2);
-    for(const rs of [-1,1]) horn(rs*.13, .18, .64+hop, rs*.035,-.025,.05, 3, .04, acc, .30);
-    for(const rs of [-1,1]) taper(rs*.11, .06, .14, 0,0,-.05, 2, .045,.06,.045, acc, .15);
-    for(let k=0;k<3;k++) taper(Math.sin(t*5+k)*.06*(k+1), -.30-k*.12, .40+hop,
-                               0,0,0, 2, .07,.06,.05, lt, em+.06);
-  } else if(st === 1){
-    // SKYREND. The wings work now, and there are talons on the end of them.
-    blob(0, -.02, .66+hop, .28,.28,.34, c, em);
-    mb(0, .04, .38, .22,.11,.28, bel, em*.85);
-    blob(0, .26, .92+hop, .21,.18,.20, c, em);
-    taper(0, .42, .86+hop, 0,.07,-.02, 4, .08,.06,.07, acc, .3);      // hooked beak
-    eyes(lk, .36+lkf, 1.00+hop, .13, .10, [1,.72,.16], .35);
-    for(let i=0;i<4;i++) taper((i-1.5)*.06, .10, 1.14+hop, 0,0,.06, 2, .035,.08,.035, acc, .25);
-    for(const rs of [-1,1]){ const fw = Math.sin(t*9 + (rs>0?0:1.6))*.22;
-      for(let k=0;k<4;k++)
-        taper(rs*(.34+k*.16), fw - k*.06, .74+hop+k*.05, rs*.06,-.03,.01, 2,
-              .13-k*.02,.035,.20-k*.03, k%2?lt:bel, em+.08); }
-    for(const rs of [-1,1]){
-      taper(rs*.13, .06, .22, 0,0,-.07, 3, .05,.08,.05, acc, .15);
-      claw(rs*.13, .10, .05, rs, .07, acc);
-      horn(rs*.15, .22, 1.06+hop, rs*.045,-.035,.065, 4, .045, acc, .32); }
-    ridge(-.30, .10, .84+hop, 5, .09, acc, .28);
-    for(let k=0;k<4;k++) taper(Math.sin(t*5+k)*.07*(k+1), -.40-k*.15, .58+hop,
-                               0,0,0, 2, .08-k*.01,.05,.06, lt, em+.06);
-  } else {
-    // THE ROC. The legendary one. It brought weather with it, and the wingspan
-    // is the point - everything else on this animal is hung off the wings.
-    const hov = Math.sin(t*2.2)*.13;
-    blob(0, -.02, .96+hov, .30,.32,.38, c, em);
-    mb(0, .04, .64+hov, .24,.12,.30, bel, em*.85);
-    blob(0, .28, 1.28+hov, .23,.20,.22, c, em);
-    taper(0, .46, 1.20+hov, 0,.08,-.02, 4, .09,.07,.08, acc, .4);
-    eyes(lk, .38+lkf, 1.38+hov, .14, .105, [1,.78,.20], .55);
-    for(let i=0;i<5;i++) taper((i-2)*.07, .10, 1.52+hov, 0,0,.08, 3, .035,.10,.035, acc, .45);
-    for(const rs of [-1,1]){ const fw = Math.sin(t*7 + (rs>0?0:1.6))*.26;
-      for(let k=0;k<6;k++)
-        taper(rs*(.36+k*.19), fw - k*.08, 1.04+hov+k*.06, rs*.07,-.04,.01, 2,
-              .16-k*.02,.035,.24-k*.03, k%2?lt:bel, em+.10); }
-    for(const rs of [-1,1]){
-      horn(rs*.17, .20, 1.46+hov, rs*.055,-.045,.085, 5, .05, acc, .45);
-      claw(rs*.15, .12, .48+hov, rs, .085, acc); }                    // talons
-    for(let i=0;i<7;i++){ const a=t*2.4+i/7*TAU;                       // wind
-      mb(Math.sin(a)*.72, Math.cos(a)*.62, .90+hov+Math.sin(t*3+i)*.18,
-         .05,.05,.13, lt, .75, a); }
-    for(let k=0;k<5;k++) taper(Math.sin(t*4+k)*.09*(k+1), -.44-k*.17, .86+hov,
-                               0,0,0, 2, .09-k*.012,.05,.07, lt, em+.08);
+  // A PTEROSAUR. The silhouette is the WINGSPAN and the head crest: a small
+  // body slung under an enormous membrane, two hind legs, no forelegs, and a
+  // skull longer than the torso. It reads as a flyer from any angle, which is
+  // the one thing none of the other six do.
+  const gr = 1 + st*.20;
+  const hov = (air ? .22 : 0) + Math.sin(t*1.9)*.03*idle;
+  const beat = t*(air ? 5.6 : 1.9) + ph*.5;
+  const lk = look*.18, lkf = -Math.abs(look)*.05;
+  const preen = twitch(1.1, 5.8);
+  const SPAN = (.66 + st*.30) * gr;
+  const stand = (.52 + hov) * gr;
+  // torso: small, and slung UNDER the wing roots
+  blob(sway, -.04*gr, stand, .19*gr,.20*gr,.26*gr, c, em);
+  mb(sway, .00*gr, stand - .16*gr, .15*gr,.08*gr,.20*gr, bel, em*.85);
+  // THE WINGS. Four fingers of bone with membrane between, swept back, and they
+  // fold in against the body when it is standing still rather than beating.
+  const fold = 1 - idle*.55;
+  for(const rs of [-1,1]) wing(rs, sway + rs*.16*gr, .02*gr, stand + .10*gr,
+                               SPAN*fold, c, lt, beat + (rs>0?0:.55));
+  // the long neck and the longer skull
+  const nx = sway + lk, nf = .22*gr + lkf, ny = stand + .22*gr;
+  blob(nx*.5, nf*.6, ny - .06*gr, .11*gr,.11*gr,.12*gr, c, em);
+  blob(nx, nf, ny, .12*gr,.12*gr,.13*gr, c, em);
+  // the beak: long, thin, tapering, which is most of what says pterosaur
+  for(let i=0;i<5;i++){ const t2=(i+1)/5;
+    mb(nx, nf + (.10 + t2*.34)*gr, ny - t2*.055*gr,
+       (.075 - i*.011)*gr, (.05 - i*.007)*gr, (.09 - i*.010)*gr, i?bel:c, em*.7); }
+  grin(nx, nf + .22*gr, ny - .09*gr, .07*gr, .022*gr, 7);
+  eyes(nx, nf + .09*gr, ny + .05*gr, .085*gr, .07*gr, [1,.80,.22], .45);
+  // THE CREST. A blade of bone off the back of the skull, and it grows with the
+  // line - at the top it is taller than the head it is attached to.
+  for(let i=0;i<4+st*2;i++){ const t2=(i+1)/(4+st*2);
+    mb(nx - Math.sin(preen*1.2)*.01*gr, nf - t2*.16*gr, ny + (.10 + t2*(.24+st*.16))*gr,
+       (.05 - t2*.02)*gr, (.09 + st*.03)*gr, (.055 - t2*.02)*gr,
+       i%2 ? acc : lt, .35 + st*.15); }
+  // two hind legs only, tucked when airborne
+  for(const rs of [-1,1]){
+    const phs = rs > 0 ? gait : -gait;
+    const ly = air ? stand - .26*gr : (.16 + Math.max(0, phs)*.07)*gr;
+    taper(sway + rs*.13*gr, (air ? -.14 : phs*.05)*gr, ly + .12*gr,
+          0, air ? -.03 : 0, -.07*gr, 3, .055*gr,.075*gr,.055*gr, dk, 0);
+    claw(sway + rs*.13*gr, (air ? -.18 : phs*.05)*gr, ly - .02*gr, rs, .07*gr, acc);
   }
+  // a short vaned tail for steering
+  for(let i=0;i<3;i++){ const k=1-i*.2;
+    const lag = drag(.7 + i*.5)*.03*(i+1)*gr;
+    mb(sway + lag, (-.30 - i*.20)*gr, stand - .04*gr - i*.02*gr,
+       .05*k*gr, .035*gr, (.12 - i*.02)*gr, lt, em+.12); }
+  if(st === 2) for(let i=0;i<7;i++){ const a = t*2.2 + i/7*TAU;   // it brings weather
+    mb(Math.sin(a)*.80*gr, Math.cos(a)*.70*gr,
+       stand + Math.sin(t*3+i)*.20*gr, .05*gr,.05*gr,.13*gr, lt, .70, a); }
 },
 // ----------------------------------------------------------------- THE ECHO
 echo(D){
   const { blob, taper, eyes, grin, horn, ridge, wing, claw,
+          idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   // A HYDRA, not a flock. This line used to be N heads orbiting each other with
@@ -5473,7 +5518,32 @@ function render(){
         mb(r + i*sz*.7, f + sz*1.1, y - sz*.15, sz*.26, sz*.26, sz*.5,
            [.94,.92,.86], .16);
     };
+    // ---- SUBTLE LIFE. The rule these exist to enforce: motion amplitude is
+    // inversely proportional to how often the motion happens. A tail that
+    // swings every stride may move a few hundredths of a unit; a thing that
+    // fires once every four seconds may move a lot. The first pass at these
+    // animations got that exactly backwards - CINDERWHELP's tail tip swept
+    // 0.40 units on a body 0.55 wide, continuously, which reads as a windscreen
+    // wiper bolted to a lizard rather than as an animal that is alive.
+    //
+    // `idle` is how still the animal is, so idle-only motion can fade in when
+    // it stops rather than switching on.
+    const idle = 1 - Math.min(1, ANIM.amp * 1.4);
+    // A weight shift: very slow, very small, and only while standing.
+    const sway = Math.sin(T*0.54) * .012 * idle;
+    // TWITCH. Life is mostly stillness punctuated by something small and quick.
+    // A flick every few seconds beats a permanent wobble, and it costs one
+    // sine and a threshold. Returns 0 most of the time and a short 0..1 pulse
+    // otherwise; `seed` staggers different parts so nothing twitches in unison.
+    const twitch = (seed, every)=>{
+      const u = ((T + seed*1.7) % (every || 3.4)) / .22;
+      return u < 1 ? Math.sin(u * Math.PI) : 0;
+    };
+    // Follow-through: a value that LAGS the gait by `d` of a cycle, which is
+    // what makes a tail read as attached rather than as driven.
+    const drag = (d)=> Math.sin(ANIM.ph - d) * ANIM.amp;
     const D = { mb, blob, taper, eyes, grin, horn, ridge, wing, claw,
+                idle, sway, twitch, drag,
                 c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
                 gait, gait2, look, amp:ANIM.amp, land:ANIM.land, air:!!P.air,
                 ph:ANIM.ph,
