@@ -1156,12 +1156,21 @@ skulls:{ name:"SKULLS", ic:"skulls", kind:"w",
   ds:"Orbiting skulls. They do not aim, they simply are.",
   evo:{ name:"CAROUSEL", need:"clover", ic:"carousel",
         ds:"Two counter-spinning rings. Nothing gets in." },
-  lv:[{d:16,n:2,rad:3.2,spin:2.2,cd:.40},
-      {d:22,n:3,rad:3.4,spin:2.4,cd:.38},
-      {d:30,n:4,rad:3.7,spin:2.6,cd:.36},
-      {d:40,n:5,rad:4.0,spin:2.8,cd:.33},
-      {d:53,n:6,rad:4.3,spin:3.1,cd:.30},
-      {d:112,n:10,rad:6.3,spin:3.6,cd:.20}] },
+  // Last on BOTH axes at top rank - 57 boss dps and 1048 crowd against a median
+  // of 131 - which makes it strictly dominated by BONK BAT and therefore a card
+  // nobody should ever take. The reason is structural rather than numeric: a
+  // ring only hits what comes to you, and the damage ledger says almost nothing
+  // does. Four hundred bodies deal about a tenth of the damage in a run.
+  //
+  // So the ring reaches out instead of waiting. Same damage, same count, a
+  // radius that sweeps rather than guards - which is also the only version of
+  // an orbiter that means anything in a game whose horde cannot catch you.
+  lv:[{d:16,n:2,rad:4.0,spin:2.2,cd:.40},
+      {d:22,n:3,rad:4.4,spin:2.4,cd:.38},
+      {d:30,n:4,rad:4.8,spin:2.6,cd:.36},
+      {d:40,n:5,rad:5.3,spin:2.8,cd:.33},
+      {d:53,n:6,rad:5.8,spin:3.1,cd:.30},
+      {d:112,n:10,rad:7.6,spin:3.6,cd:.20}] },
 
 bolt:{ name:"BOLT", ic:"bolt", kind:"w",
   ds:"Homing shot at the nearest target. Kills things before they arrive.",
@@ -3037,9 +3046,35 @@ function fireMortar(w,s){
   }
   if(!best) return;
   const shells = s.n + dupeN();
+  // Each shell picks its OWN cluster. The extra shells used to jitter +/-3.5m
+  // around one aim point, which is smaller than a boss - so against a 4m body
+  // all three landed on it and the shell count multiplied single-target damage
+  // directly. That is how MORTAR ended up best on BOTH axes at top rank (404
+  // boss dps against a median of 131, and the highest crowd dps as well), which
+  // by this project's own rule is not a specialist, it is a default. The README
+  // recorded fixing that once; it crept back the moment n reached 3.
+  //
+  // Aiming each shell separately keeps everything the description promises - it
+  // still lobs at the thickest part of the crowd, and now it lobs at the second
+  // and third thickest too - while a lone target stops being worth three shells.
+  const aims = [best];
+  const APART = s.rad * 1.8;
+  for(let k=1;k<shells;k++){
+    let pick2 = null, pb = -1;
+    for(let t=0;t<10;t++){
+      const e = enemies[(R()*enemies.length)|0];
+      if(!e || e.dead) continue;
+      if(aims.some(a2 => Math.hypot(a2.x-e.x, a2.z-e.z) < APART)) continue;
+      let c=0; hitNear(e.x, e.z, s.rad, ()=>c++);
+      if(c > pb){ pb = c; pick2 = e; }
+    }
+    aims.push(pick2 || best);          // nothing else worth hitting: pile on
+  }
   for(let i=0;i<shells;i++){
-    const jitter = i ? rnd(-3.5,3.5) : 0;
-    mortars.push({ x0:P.x, z0:P.z, y0:P.y+1, tx:best.x+jitter, tz:best.z+rnd(-3.5,3.5)*(i?1:0),
+    const a2 = aims[i], solo = a2 === best && i > 0;
+    const j = solo ? 3.5 : 1.2;        // only the fallback needs scattering
+    mortars.push({ x0:P.x, z0:P.z, y0:P.y+1,
+                   tx:a2.x + (i?rnd(-j,j):0), tz:a2.z + (i?rnd(-j,j):0),
                    t:0, dur:.62, d: s.d * (i >= s.n ? DUPE_DMG : 1), rad:s.rad });
   }
 }

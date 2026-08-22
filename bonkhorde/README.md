@@ -245,25 +245,55 @@ and attributes boss damage separately from crowd damage. Boss DPS decides whethe
 you can *close* a run; crowd DPS decides whether you survive to try.
 
 ```
-RANK 5        boss   crowd   alive      EVOLVED           boss   crowd   alive
-bat             78    1492    4:46      MEGABONK           919    3346    4:20
-skulls         110    1227    5:03      CAROUSEL          1351    3540    4:24
-bolt           127    1226   10:58      BOLTSTORM         1229    3595   15:31
-pulse           66    1656    4:45      EARTHQUAKE         665    3087    3:52
-mortar         450    2292    6:16      BOMBARDIER        1422    3590   10:07
-zap            219     574    6:28      TESLA COIL         512    1521   10:33
-aura            80    1388    4:16      PLAGUE             850    3026    3:55
-caltrops       366    2046    4:13      SCORCHED EARTH    1137    2960    4:13
-                                        (dps n=6, survival n=4)
+TOP RANK      boss   crowd      EVOLVED           boss   crowd
+bat             68    1632      MEGABONK           935    3443
+skulls          81    1544      CAROUSEL          1170    3799
+bolt           140    1130      BOLTSTORM         1437    3899
+pulse           67    1575      EARTHQUAKE         777    3286
+mortar         262    2364      SKYFALL            826    4009
+zap            138     658      THUNDERHEAD        578    1374
+aura            75    1497      PLAGUE             593    2988
+caltrops       272    1839      SCORCHED EARTH     733    2785
+        median 138                        median  826      (n=4, paired seeds)
 ```
 
-**The third column is new, and it says the second one was never measuring what we
-thought.** EARTHQUAKE has the highest crowd DPS among the player-centred weapons
-and the *worst* survival in the game. BOLT has nearly the lowest rank-5 crowd DPS
-and stays alive **more than twice as long as anything else**. Sort either table by
-survival and the same three names come out on top — BOLT, MORTAR, ZAP — and they
-are exactly the three weapons that reach. The other five cluster at 3:52–4:24
-evolved, a 3.5× cliff with nothing in between.
+**This bench is paired now too.** Eight weapons were each measured on a different arena with a
+different spawn mix and then compared to each other — which is not a comparison. Trial *i* of
+every weapon runs seed BASE+*i*, so the rows share their worlds, and the payoff was immediate:
+after changing one weapon the other seven rows came back **byte-identical**, which is how you
+know the number that moved was the one you moved.
+
+**Two weapons failed the dominance test and both are fixed.** The rule this project applies is
+that a weapon beating every other on *both* axes at once is not a specialist, it is a default —
+and the mirror of that, a weapon losing on both, is a card nobody should take.
+
+*MORTAR was a default again.* The README recorded fixing this once; it crept back the moment the
+shell count reached three. The extra shells jittered ±3.5 m around a single aim point, which is
+smaller than a 4 m boss, so all three landed on it and the shell count multiplied single-target
+damage directly: 404 boss DPS against a median of 131, *and* the highest crowd DPS in the game.
+Each shell picks its own cluster now — it still lobs at the thickest part of the crowd, and now
+at the second and third thickest too — which took boss DPS to 262 while crowd DPS went **up** to
+2364. CALTROPS leads the boss column, MORTAR the crowd column: a trade rather than a default.
+
+*SKULLS was the mirror.* Last on both axes at 57/1048, strictly dominated by BONK BAT, and the
+reason was structural rather than numeric — a ring only hits what comes to you, and the damage
+ledger says almost nothing does. The ring reaches out now instead of guarding (radius 4.3 → 5.8
+at top rank, same damage, same count), which is the only version of an orbiter that means
+anything in a game whose horde cannot catch you: 81/1544, ahead of BAT on boss and just behind
+on crowd.
+
+Nothing leads both columns in either table. What is left is inside a couple of percent, and
+chasing that would be measuring the harness.
+
+**A survival column used to sit beside these and it has been dropped.** It said the crowd column
+was never measuring what we thought — EARTHQUAKE had the highest crowd DPS among the
+player-centred weapons and the *worst* survival, while BOLT had nearly the lowest crowd DPS and
+stayed alive more than twice as long as anything else, because the three weapons that *reach*
+were the three that survived. That was worth knowing and it is written down below. It is no
+longer worth measuring every time: the damage ledger says a run now takes about 230 damage in
+twenty minutes, so the autopilot survives to the clock almost regardless of what it is carrying,
+and eight weapons × four runs-to-death was most of this bench's wall clock for a column that had
+stopped discriminating.
 
 That is not a tuning error, it is the shape of the game: crowd DPS counts damage
 that landed and cannot count *where*, so a kill at 30m and a kill at 2m score
@@ -273,15 +303,11 @@ by 23% (9 → 7 bolts, 5 → 4 pierce) took its crowd DPS from 4689 into the pac
 never what kept it alive. The single most consequential draft decision in this
 game is whether anything in your kit has reach.
 
-Specialists are intentional — ZAP is a boss weapon that barely dents a crowd,
-AURA the reverse. What the bench is for is catching the ones that are not
-specialists but simply broken, and the test it applies is **strict dominance**:
-a weapon that beats every other weapon on *both* axes at once is not a
-specialist, it is a default. Unevolved MORTAR was exactly that — best boss DPS
-*and* best crowd DPS against all seven others — before reach started counting
-bodies. It no longer is: CALTROPS out-damages it against a boss and it keeps
-the crowd, which is a trade rather than a default. Nothing dominates either
-table now.
+Specialists are intentional — ZAP is a boss weapon that barely dents a crowd, AURA the reverse.
+What the bench is for is catching the ones that are not specialists but simply broken, and the
+test it applies is **strict dominance** in both directions: a weapon that beats every other on
+*both* axes is a default, and one that loses on both is a card nobody should take. Two failed it
+this round and both are fixed above.
 
 ### Ten times the map, and what it cost
 

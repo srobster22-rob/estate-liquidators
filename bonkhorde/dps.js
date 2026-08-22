@@ -29,6 +29,17 @@ const SECONDS = 26;
 // spot that made MAGNET look like the worst passive. So: a third column, one
 // weapon and nothing else, played to death.
 const SURV_N = +(process.argv[3] || 4);
+// Paired seeds, same as balance.js. Without them this bench had the same
+// problem the difficulty bench had: eight weapons each measured on a different
+// arena with a different spawn mix, then compared to each other. Trial i of
+// every weapon now runs seed BASE+i, so the eight rows share their worlds and
+// the column is a comparison rather than eight separate experiments.
+const SEED_BASE = process.env.BONKHORDE_SEED !== undefined
+                ? +process.env.BONKHORDE_SEED : 20260821;
+// BONKHORDE_TIERS=rank benches only the top of the normal table. The evolved
+// half runs eight weapons to death with evolved kit, which is eight full
+// twenty-four minute runs and most of the wall clock.
+const TIERS = (process.env.BONKHORDE_TIERS || "both");
 // One sample per cell swung crowd DPS by 40% between runs (skulls 1110 -> 1631).
 // Averaging is not optional when the thing you are measuring has a horde in it.
 const REPEATS = +(process.argv[2] || 3);
@@ -44,8 +55,9 @@ const REPEATS = +(process.argv[2] || 3);
   WEAPONS = await p.evaluate(() => window.__g.weapons());
 
   // one scenario, both numbers: the sudden-death fight as it actually happens
-  const bench = (w, evo) => p.evaluate(([w, evo, SECONDS]) => {
+  const bench = (w, evo, seed) => p.evaluate(([w, evo, SECONDS, seed]) => {
     window.__g.wipeSave();
+    if (seed !== null) { window.__g.pin(seed); window.__g.pinRun(seed); }
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
     window.__g.skipTo(1140);
     window.__g.give(w, 4);
@@ -57,33 +69,40 @@ const REPEATS = +(process.argv[2] || 3);
     window.__g.step(60 * SECONDS);
     const d = window.__g.dmg();
     return { boss: d.boss / SECONDS, crowd: (d.all - d.boss) / SECONDS };
-  }, [w, evo, SECONDS]);
+  }, [w, evo, SECONDS, seed]);
 
   // one weapon, mid-tier shop, no godmode, autopilot, run until it dies
-  const surv = (w, evo) => p.evaluate(([w, evo]) => {
+  const surv = (w, evo, seed) => p.evaluate(([w, evo, seed]) => {
     window.__g.wipeSave();
+    if (seed !== null) { window.__g.pin(seed); window.__g.pinRun(seed); }
     window.__g.setUpgrades({hp:3,dmg:3,spd:3,mag:3,cd:3,crit:3,armor:3});
     window.__g.start("intern"); window.__g.drainPicks(true);
     window.__g.give(w, 4);
     if (evo) window.__g.evolve(w);
     window.__g.bot(true);
     return window.__g.runOut().t;
-  }, [w, evo]);
+  }, [w, evo, seed]);
 
-  for (const evo of [false, true]) {
+  const tiers = TIERS === "rank" ? [false] : TIERS === "evo" ? [true] : [false, true];
+  for (const evo of tiers) {
     console.log(`\n${"=".repeat(58)}`);
-    console.log(evo ? "EVOLVED" : "RANK 5");
+    // "RANK 5" was the top of a five-rank table. It is rank 3 of 3 now and it
+    // reads the same stat block - see RANKMAP - so the number did not move,
+    // only the label anyone reading this would check it against.
+    console.log(evo ? "EVOLVED" : "TOP RANK");
     console.log("=".repeat(58));
     console.log(`weapon        boss dps    crowd dps    survived   boss vs median` +
-                `   (dps n=${REPEATS}, survival n=${SURV_N})`);
+                `   (dps n=${REPEATS}, survival n=${SURV_N}` +
+                (SEED_BASE ? `, seeds ${SEED_BASE}..${SEED_BASE + Math.max(REPEATS, SURV_N) - 1}` : ", unseeded") + ")");
     const rows = [];
     for (const w of WEAPONS) {
       let boss = 0, crowd = 0, alive = 0;
       for (let i = 0; i < REPEATS; i++) {
-        const r = await bench(w, evo);
+        const r = await bench(w, evo, SEED_BASE ? SEED_BASE + i : null);
         boss += r.boss / REPEATS; crowd += r.crowd / REPEATS;
       }
-      for (let i = 0; i < SURV_N; i++) alive += (await surv(w, evo)) / SURV_N;
+      for (let i = 0; i < SURV_N; i++)
+        alive += (await surv(w, evo, SEED_BASE ? SEED_BASE + i : null)) / SURV_N;
       rows.push({ w, boss, crowd, alive });
     }
     const med = rows.map(r=>r.boss).sort((a,b)=>a-b)[rows.length>>1];

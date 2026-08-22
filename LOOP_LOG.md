@@ -573,3 +573,22 @@ evolved forms that were machines in a world of animals: TESLA COIL → **THUNDER
 → **SKYFALL**. 307 checks pass. **Next:** `starters.js` and `dps.js` have not been run since the
 three-rank remap, the four `prank` fixes and the carry-slot cut — three changes that all move
 weapon power, measured by benches nobody has re-run.
+
+**R20 — the weapon bench is paired, and two weapons failed the dominance test.** `dps.js` had
+never been re-run since the three-rank remap, the four `prank` fixes or the carry-slot cut, and
+it was measuring eight weapons on eight *different* arenas and calling that a comparison. Paired
+seeds went in (and `BONKHORDE_TIERS=rank` to skip the expensive half); the payoff was immediate —
+after changing one weapon the other seven rows came back byte-identical. Then the rule this
+project already states caught two: **MORTAR was a default again** (404 boss DPS against a median
+of 131 *and* the highest crowd DPS — the README recorded fixing this once and it crept back the
+moment the shell count hit three, because the extra shells jittered ±3.5m around one aim point,
+which is smaller than a 4m boss, so all three landed on it). Each shell picks its own cluster
+now: boss 404 → **262** while crowd went *up* to 2364, so CALTROPS leads boss and MORTAR leads
+crowd. And **SKULLS was the mirror** — last on both at 57/1048, strictly dominated by BONK BAT,
+for a structural reason: a ring only hits what comes to you and the ledger says nothing does. The
+ring reaches now (radius 4.3 → 5.8, same damage, same count) → 81/1544. Nothing leads both
+columns in either table. Also dropped the survival column: with runs taking ~230 damage in twenty
+minutes the autopilot survives to the clock regardless of what it carries, so it had stopped
+discriminating while costing most of the bench's wall clock. 307 checks pass. **Next:**
+`starters.js` is the last bench that has not been re-run, and it is the one that would say
+whether any of the seven lines is now the weak pick.
