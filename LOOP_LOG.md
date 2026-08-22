@@ -605,3 +605,17 @@ entire point and the first version of the assertion got that backwards. 310 chec
 **Next:** the per-line spread is the last unexamined thing — with paired seeds the veteran table
 reads OX 4/6 and ACCOUNTANT 4/6 against TWIN 0/6 and SPARK 0/6, and that is now an exact number
 rather than dice.
+
+**R22 — the per-line spread is the ledger's finding again, not a balance bug.** Veteran on paired
+seeds: 8/42 clears, inside the 7–15 band this instrument has produced. Reading across columns for
+the first time, clears track neither level nor kills — **THE TWIN finishes with the highest kill
+count and the highest level of any line and closes nothing** — they track *damage taken*: INTERN
+533 contact and 4/6, GHOUL 1030 and 2/6, TWIN 14 and 0/6. The lines that clear are the lines that
+get hit, because closing means standing next to TERRAVORE, and the autopilot's kiting is optimal
+for surviving twenty minutes and fatal for finishing them. That is the game's central tension,
+not a per-line bug, and six trials a line is too few to act on anyway — this project has already
+recorded that per-character ordering does not survive re-sampling. Total went 13/42 → 8/42 after
+the MORTAR fix, which is the nerf landing on ACCOUNTANT, the line that owns mortar; inside the
+band, and undoing a dominance fix to chase a per-line number would be the wrong trade. Written
+into the README rather than tuned away. **Next:** stop benching. The remaining gaps are content —
+eight weapons is thin for the genre, and nothing gates on the seven regions yet.
