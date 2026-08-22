@@ -278,6 +278,8 @@
 <symbol id="i-tesla" viewBox="0 0 24 24"><path d="M9 21h6M12 21v-4.4"/><path d="M8.4 16.6h7.2l-1.4-3.4H9.8z" class="f"/><path d="M10.6 13.2V9.4M13.4 13.2V9.4"/><path d="M12 2.6l-2.6 4.2h5.2z" class="fa"/><path d="M4.6 9.2l2 1.4M19.4 9.2l-2 1.4" class="a"/></symbol>
 <symbol id="i-aura" viewBox="0 0 24 24"><path d="M6.8 17.5a4 4 0 0 1 .5-7.9 5.2 5.2 0 0 1 10.1-.6 3.9 3.9 0 0 1 .4 7.7z" class="f"/><circle cx="9" cy="20.4" r="1.15" class="a"/><circle cx="13.4" cy="21.2" r=".95" class="a"/><circle cx="17.4" cy="20" r="1.15" class="a"/></symbol>
 <symbol id="i-plague" viewBox="0 0 24 24"><path d="M6.8 16.6a4 4 0 0 1 .5-7.9 5.2 5.2 0 0 1 10.1-.6 3.9 3.9 0 0 1 .4 7.7z" class="f"/><circle cx="10" cy="11.4" r="1.15" class="k"/><circle cx="14.4" cy="11.4" r="1.15" class="k"/><path d="M10 14.4h4.4" class="k"/><circle cx="8.6" cy="20.2" r="1.05" class="a"/><circle cx="13" cy="21.2" r=".9" class="a"/><circle cx="17.2" cy="19.8" r="1.05" class="a"/></symbol>
+<symbol id="i-gore" viewBox="0 0 24 24"><path d="M4 12h9" class="a"/><path d="M20 12l-6-4v8z" class="f"/><path d="M4.5 8.5h5M4.5 15.5h5" class="a"/></symbol>
+<symbol id="i-stampede" viewBox="0 0 24 24"><path d="M22 12l-6-4.5v9z" class="f"/><path d="M3 7.5h9M2 12h11M3 16.5h9" class="a"/></symbol>
 <symbol id="i-caltrops" viewBox="0 0 24 24"><path d="M12 3.4l4.4 7.6h-8.8z" class="f"/><path d="M6.6 13.6l3.4 5.8h-6.8z" class="fa"/><path d="M17.4 13.6l3.4 5.8h-6.8z" class="fa"/></symbol>
 <symbol id="i-scorched" viewBox="0 0 24 24"><path d="M12 2.6c4.2 4 6.4 7 6.4 10.4a6.4 6.4 0 0 1-12.8 0C5.6 9.6 7.8 6.6 12 2.6z" class="f"/><path d="M12 12.4c1.9 1.9 2.8 3.2 2.8 4.6a2.8 2.8 0 0 1-5.6 0c0-1.4.9-2.7 2.8-4.6z" class="ka"/></symbol>
 <symbol id="i-spinach" viewBox="0 0 24 24"><path d="M4.5 19.5C4 12 8.5 5.5 19.5 4.5c1 11-5.5 15.5-13 15z" class="f"/><path d="M6.5 19C9 14 13 10.5 17 8.5" class="ka"/></symbol>
@@ -627,6 +629,10 @@ const SFX = {
   //
   // A rising two-note chirp: short, bright, and nothing else in the mix climbs
   // in 90ms, so it reads as "behind you" rather than as another pop.
+  // GORE: a short bodily thud with a rising tail - a charge, not a swing.
+  gore:  ()=>{ blip(rnd(90,110), .09, "sawtooth", .10, .45);
+               setTimeout(()=>blip(rnd(190,230), .07, "square", .06, 1.5), 40);
+               noiseBurst(.10, .12); },
   dive:  ()=>{ blip(880, .05, "square", .045, 2.0);
                setTimeout(()=>blip(1320, .06, "square", .05, 2.0), 55); },
   // A den waking is the arena telling you it noticed. Low, wide, and long
@@ -1242,6 +1248,31 @@ aura:{ name:"STINK", ic:"aura", kind:"w",
   lv:[{dps:19,rad:4.2},{dps:27,rad:4.7},{dps:37,rad:5.2},
       {dps:50,rad:5.8},{dps:66,rad:6.5},{dps:120,rad:8.4,slow:.55}] },
 
+// GORE - the only weapon in the game that cares which way you are pointing.
+//
+// Every other weapon auto-aims, which is correct for the genre and means the
+// player's facing does nothing: it follows your movement and no system reads
+// it. So there was no reason to run AT anything, and the damage ledger says
+// nobody ever did - a run takes about 230 damage in twenty minutes because the
+// autopilot kites and never engages.
+//
+// This one fires straight ahead, along the direction you are moving, and hits
+// everything in the lane. It also only fires while you are MOVING, because it
+// is a charge - standing still with it equipped does nothing at all. Together
+// that makes "turn into the horde and run through it" a real option in a game
+// that otherwise only rewards running away, and it pairs with the hop chain:
+// the faster you are going, the more often the lane is full.
+gore:{ name:"GORE", ic:"gore", kind:"w",
+  ds:"Everything in front of you, while you are moving. Turn into them.",
+  evo:{ name:"STAMPEDE", need:"boots", ic:"stampede",
+        ds:"Wider, longer, and it throws what it does not kill." },
+  lv:[{d:30,cd:1.05,rng:7.0,w:1.5,kb:6},
+      {d:41,cd:.98,rng:7.8,w:1.7,kb:7},
+      {d:55,cd:.90,rng:8.6,w:1.9,kb:8},
+      {d:73,cd:.82,rng:9.5,w:2.2,kb:9},
+      {d:96,cd:.74,rng:10.5,w:2.5,kb:10},
+      {d:190,cd:.58,rng:14.0,w:3.6,kb:22}] },
+
 caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
   ds:"Drops a hazard behind you. Rewards running away, which you will.",
   evo:{ name:"SCORCHED EARTH", need:"boots", ic:"scorched",
@@ -1569,10 +1600,14 @@ function etp(e, face, r, f, y, dr, df, dy, n, hx, hy, hz, col, em){
   for(let i=0;i<n;i++){ const k = 1 - i/(n+1)*.58;
     eb(e, face, r+dr*i, f+df*i, y+dy*i, hx*k, hy*k, hz*k, col, em); }
 }
+// The enemy eye, fixed the same way the player's was: two flat plates .03
+// apart on a curved face are coplanar surfaces, and the depth buffer picks
+// between them differently every frame. Solids, front faces clearly apart.
 function eey(e, face, r, f, y, sp, sz, pup, lit){
   for(const sg of [-1,1]){
-    eb(e, face, r+sg*sp, f, y, sz, sz*1.05, .04, [.97,.97,1], .85);
-    eb(e, face, r+sg*sp, f+.03, y-sz*.12, sz*.46, sz*.5, .035, pup||[.06,.07,.11], lit||.05);
+    eb(e, face, r+sg*sp, f+sz*.5,  y,           sz,     sz*1.05, sz*.78, [.97,.97,1], .85);
+    eb(e, face, r+sg*sp, f+sz*1.2, y-sz*.12,    sz*.50, sz*.54,  sz*.30,
+       pup||[.06,.07,.11], lit||.05);
   }
 }
 const EBODY = {
@@ -3029,6 +3064,7 @@ function fireWeapons(dt){
       case "pulse":    firePulse(w,s); break;
       case "mortar":   fireMortar(w,s); break;
       case "zap":      fireZap(w,s); break;
+      case "gore":     fireGore(w,s); break;
       case "caltrops": fireCaltrops(w,s); break;
     }
   }
@@ -3068,6 +3104,31 @@ function firePulse(w,s){
   damageArea(P.x, P.z, s.rad, s.d, s.kb);
   shake = Math.max(shake, w.evo?.35:.18);
   SFX.boom();
+}
+// A lane, not a circle. Walk the length in steps and damage a disc at each -
+// hitNear is the only spatial query this game has and it is a radius query, so
+// a rectangle is a row of overlapping discs. Cheaper than it sounds: eight
+// queries at a 2m radius touch far fewer cells than one at 10m.
+function fireGore(w,s){
+  if(P.idle) { w.t = .12; return; }          // it is a charge. stand still, nothing.
+  const cf = Math.cos(P.face), sf = Math.sin(P.face);
+  const rng = s.rng * P.reach, half = s.w * P.reach;
+  const steps = Math.max(3, Math.round(rng / (half*1.4)));
+  const roll = dmgOut(s.d), seen = new Set();
+  for(let i=1;i<=steps;i++){
+    const t = i/steps, x = P.x + sf*rng*t, z = P.z + cf*rng*t;
+    // one hit per body per swing, however many discs it falls inside
+    hitNear(x, z, half, (e)=>{
+      if(seen.has(e)) return;
+      seen.add(e);
+      const dx = e.x-P.x, dz = e.z-P.z, d2 = Math.hypot(dx,dz)||1;
+      hurt(e, roll.d, dx/d2*s.kb, dz/d2*s.kb, roll.crit);
+    });
+  }
+  swings.push({ x:P.x, z:P.z, y:P.y, ang:P.face, rng, gw:half, life:.22, max:.22,
+                gore:true, evo:!!w.evo });
+  shake = Math.max(shake, w.evo ? .22 : .10);
+  SFX.gore();
 }
 function fireMortar(w,s){
   // aim at the densest cluster, not the nearest body - that is what makes it feel smart
@@ -4089,6 +4150,8 @@ let botHop = true;
 const BOT_DIRS = 20;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
+  const gw = P && P.kit.gore;
+  const goreLane = gw ? wStat(gw).rng * P.reach : 0;
   _bx.length = _bz.length = _bd.length = 0;
   near(P.x, P.z, 26, (e,d)=>{ _bx.push(e.x-P.x); _bz.push(e.z-P.z); _bd.push(Math.max(.5,d)); });
   let bestA = 0, best = -1e9;
@@ -4100,6 +4163,13 @@ function botVector(){
       if(proj <= 0) continue;
       if(d < 7.5)      s -= proj*(7.5-d)*5.0;             // do not walk into teeth
       else if(d < 19)  s += proj*0.30;                    // but stay where weapons reach
+      // Carrying GORE changes what a good heading is. It is the one weapon that
+      // fires along the way you are MOVING, so a player holding it turns into
+      // the crowd rather than away from it - and a bot that never does makes
+      // the weapon unmeasurable, which is how it first benched at 13 boss DPS
+      // against a median of 81. Weaker than the do-not-walk-into-teeth term, so
+      // it steers the lane onto bodies at reach without walking into them.
+      if(goreLane && d >= 4.5 && d < goreLane) s += proj*1.15;
     }
     for(const g of gems){
       const gx=g.x-P.x, gz=g.z-P.z, d=Math.hypot(gx,gz);
@@ -4818,7 +4888,22 @@ function render(){
     }
   }
   for(const s of swings){
-    const a = s.life/s.max, seg = s.evo?22:11;
+    const a = s.life/s.max;
+    // GORE is a lane, so it draws as one: a swathe down the direction you were
+    // moving, widening as it fades, with the far end brightest. Nothing else on
+    // the field is a straight line, which is the whole point of the weapon.
+    if(s.gore){
+      const n = Math.max(6, Math.round(s.rng/1.3));
+      for(let i=0;i<n;i++){
+        const t = (i+.5)/n, rr = s.rng*t;
+        const x = s.x+Math.sin(s.ang)*rr, z = s.z+Math.cos(s.ang)*rr;
+        const wd = s.gw*(0.75 + t*0.5) * (1 + (1-a)*.35);
+        box(x, groundY(x,z)+.55+t*.25, z, wd, .16, wd*.55,
+            s.evo?[1,.58,.20]:[1,.86,.52], (.35+t*.6)*a, s.ang);
+      }
+      continue;
+    }
+    const seg = s.evo?22:11;
     for(let i=0;i<seg;i++){
       const th = s.ang + (i/(seg-1)-.5)*s.arc;
       const rr = s.rng*(0.45+0.55*(1-a));
@@ -5005,24 +5090,42 @@ function render(){
     // A blink is 90ms out of every 2.7 seconds. Long enough to see, short
     // enough that you notice it happened rather than that it is happening.
     const blk = ((T*0.37) % 1) > .966 ? .16 : 1;
+    // EYES USED TO Z-FIGHT, AND THAT IS WHAT "THE FIRE DOG EYES GLITCH" WAS.
+    // Three flat plates - sclera, pupil, glint - at f, f+.035 and f+.05 with
+    // half-depths of .05, .04 and .03. Their front faces landed within
+    // fifteen thousandths of each other and inside the head blob, so the
+    // depth buffer had to pick between coplanar surfaces every frame and the
+    // pick changed with the camera. Flickering eyes on every creature in the
+    // game, and the flat plates were invisible edge-on besides.
+    //
+    // They are solids now, sized off sz, each one's FRONT face clearly ahead of
+    // the last, and the whole assembly pushed proud of the skull. Interpenetration
+    // is fine - z-fighting is a coplanar-faces problem, not an overlap problem.
     const eyes = (r,f,y,sp,sz,pup)=>{
       for(const sg of [-1,1]){
-        mb(r+sg*sp, f,       y,             sz,     sz*1.05*blk, .05, [.98,.98,1.0], .85);
-        mb(r+sg*sp, f+.035,  y-sz*.12*blk,  sz*.46, sz*.52*blk,  .04, pup||[.06,.07,.11], .05);
-        mb(r+sg*sp-sz*.34, f+.05, y+sz*.36*blk, sz*.20, sz*.20*blk, .03, [1,1,1], 1.0);
+        mb(r+sg*sp, f+sz*.55,  y,              sz,     sz*1.02*blk, sz*.80,
+           [.98,.98,1.0], .85);                                   // eyeball, proud
+        mb(r+sg*sp, f+sz*1.28, y-sz*.10*blk,   sz*.52, sz*.56*blk, sz*.30,
+           pup||[.06,.07,.11], .05);                              // pupil, ahead of it
+        mb(r+sg*sp-sz*.36, f+sz*1.62, y+sz*.34*blk, sz*.18, sz*.18*blk, sz*.14,
+           [1,1,1], 1.0);                                         // glint, ahead again
       }
     };
     const grin = (r,f,y,w,h,n)=>{
-      mb(r,f,y, w,h,.05, [.05,.05,.07], 0);
+      mb(r,f,y, w,h,.07, [.05,.05,.07], 0);
       for(let i=0;i<n;i++){ const tx = r - w + (i+.5)*(w*2/n);
-        mb(tx, f+.02, y+h*.62, .032,.045,.04, [.96,.96,.92], .18);
-        mb(tx, f+.02, y-h*.62, .032,.045,.04, [.96,.96,.92], .18); }
+        mb(tx, f+.075, y+h*.62, .032,.045,.055, [.96,.96,.92], .18);
+        mb(tx, f+.075, y-h*.62, .032,.045,.055, [.96,.96,.92], .18); }
     };
     const D = { mb, blob, taper, eyes, grin,
                 c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
                 gait, st:stage, t:T,
-                eye:  (r,f,y,s)=>mb(r,f,y, s||.06, (s||.06)*1.15, .04, [1,1,1], 1.0),
-                tooth:(r,f,y,s)=>mb(r,f,y, s||.038, (s||.038)*1.6, .04, [.96,.96,.92], .15) };
+                // Solids, for the same reason. A .04-deep plate on a curved face
+                // is either invisible or fighting the surface behind it.
+                eye:  (r,f,y,s)=>mb(r,f,y, s||.06, (s||.06)*1.15, (s||.06)*.9,
+                                    [1,1,1], 1.0),
+                tooth:(r,f,y,s)=>mb(r,f,y, s||.038, (s||.038)*1.6, (s||.038)*1.1,
+                                    [.96,.96,.92], .15) };
     (BODY[mCh.type] || BODY.plain)(D);
     if(bodyCap){ bodyCapOut = bodyCap; bodyCap = null; }
     // stink aura

@@ -633,3 +633,18 @@ dev mode should hand you the whole game rather than drop you on layer nine. Sect
 six things including that the surface is still exactly ×1. 316 checks pass. **Next:** the eight
 weapons are thin for the genre and the README has said so since the beginning — with the bench
 paired and the dominance test automatic, adding one is now cheap to verify.
+
+**R24 — the eye glitch was z-fighting, in the shared helper, on every creature.** Reported as "the
+fire dog eyes glitch". The eye was three flat plates — sclera, pupil, glint — at `f`, `f+.035`
+and `f+.05` with half-depths of .05, .04 and .03, so their front faces landed within fifteen
+thousandths of each other *and* inside the head blob. Coplanar surfaces, so the depth buffer had
+to pick, and the pick changed with the camera: flicker on every creature in the game, plus the
+plates were invisible edge-on. They are solids now, sized off `sz`, each front face clearly ahead
+of the last and the assembly proud of the skull — interpenetration is fine, z-fighting is a
+coplanar-faces problem, not an overlap one. Same fix applied to the enemy eye helper (`eey`), the
+`eye`/`tooth` decals and the `grin` teeth. Also confirmed the weapon bench is genuinely
+deterministic (two full runs byte-identical); an unexplained CALTROPS delta of 282 → 194 across
+an earlier code change is *not* accounted for and is written down rather than hand-waved. 316
+checks pass. **Next:** the retheme the user asked for — dinosaur/dragon/legendary across all
+seven lines, mobs kept plain so they do not outshine the player, bosses given real scale, and the
+regions moved to match.
