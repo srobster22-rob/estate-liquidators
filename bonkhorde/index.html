@@ -246,6 +246,13 @@
   .dv.on{border-color:var(--gold);color:var(--gold)}
   .devon{display:inline-block;margin:0 auto 14px;padding:5px 12px;font-size:10px;
     letter-spacing:.22em;color:#0d1116;background:var(--gold);font-weight:700}
+  .deep{margin:6px 0 10px;font-size:10px;letter-spacing:.16em;color:#8e8878}
+  .deep b{color:#ff8a6a;margin-right:8px;letter-spacing:.22em}
+  .deep i{display:inline-block;font-style:normal;min-width:22px;padding:3px 7px;margin:0 2px;
+    border:1px solid #2a3140;border-radius:5px;cursor:pointer;color:#8e8878;font-size:10px}
+  .deep i:hover{border-color:#ff8a6a;color:#f2ece0}
+  .deep i.on{background:#ff8a6a;border-color:#ff8a6a;color:#12151b;font-weight:700}
+  .deep s{display:block;text-decoration:none;font-size:9px;color:#5c6470;margin-top:5px}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
 </style>
 </head>
@@ -1447,15 +1454,28 @@ const RUN_LEN = 1200;                    // 20:00
 // They are `let` and reachable from the QA hook so a sweep can measure three
 // curves in one sitting - the alternative is editing a magic number, running a
 // bench, and forgetting which number produced which table.
+// THE DEEP. Clearing a run was the end of the game: twenty minutes, TERRAVORE
+// dies, and the only thing left to do is the same twenty minutes again. Every
+// clear opens one more layer, and each layer is the same world dug one level
+// further down - more of it awake, and it hits harder.
+//
+// Deliberately a multiplier on the curve rather than new content. The levers are
+// already wired and already measured, so a layer is a number this project can
+// reason about instead of a second game it has to balance from scratch.
+const DEEP_MAX = 9;
+const deepHp  = ()=> 1 + deepAt*0.34;      // x1.34 a layer, compounding on the curve
+const deepDmg = ()=> 1 + deepAt*0.16;
+const deepPay = ()=> 1 + deepAt*0.30;      // coins, so a hard layer is worth running
+let deepAt = 0;
 let HP_QUAD = 2.5, DMG_DIV = 560, HP_LIN = 340;
-const hpScale  = t => 1 + t/HP_LIN + Math.pow(Math.max(0, t-360)/420, 2) * HP_QUAD;
+const hpScale  = t => (1 + t/HP_LIN + Math.pow(Math.max(0, t-360)/420, 2) * HP_QUAD) * deepHp();
 // DMG_FROM is when contact damage starts to grow. It sat at 300 from the first
 // day and never got swept, because every sweep went at the SLOPE. Five minutes
 // of flat base damage is most of why a first run cannot lose the early game:
 // the exact bench says doubling what a level costs moves early deaths by one
 // run in forty-two, so it was never the player's power.
 let DMG_FROM = 300;
-const dmgScale = t => 1 + Math.max(0, t-DMG_FROM)/DMG_DIV;
+const dmgScale = t => (1 + Math.max(0, t-DMG_FROM)/DMG_DIV) * deepDmg();
 const MAXE = 420;
 
 const CHARS = [
@@ -2041,7 +2061,7 @@ const monDmg = id => 1 + (monLvl(id)-1)*.012;
 // ================================================================= META SAVE
 const SAVEKEY = "bonkhorde.save.v1";
 let save = { coins:0, up:{}, best:0, wins:0, unlocked:{},
-             kills:0, runs:0, deaths:0, bestLvl:0, mon:{} };
+             kills:0, runs:0, deaths:0, bestLvl:0, mon:{}, deep:0, deepSel:0 };
 
 // A survivors-like is a loop you re-enter, and the reason you re-enter is that
 // the last run moved something. This build had exactly one unlockable thing in
@@ -2113,13 +2133,16 @@ function unlockAll(){
   let need = 0; for(let l=1;l<MON_CAP;l++) need += MON_NEED(l);
   save.mon = save.mon || {};
   for(const c of CHARS) save.mon[c.id] = Math.max(save.mon[c.id]||0, need);
+  // Every layer of THE DEEP opened, but the SELECTION left alone: unlocking
+  // everything should hand you the whole game, not drop you on layer nine.
+  save.deep = Math.max(save.deep|0, DEEP_MAX);
   writeSave();
   return { chars:CHARS.length, shop:SHOP.length, coins:save.coins,
-           monLvl:monLvl(CHARS[0].id) };
+           deep:save.deep, monLvl:monLvl(CHARS[0].id) };
 }
 function wipeAll(){
   try{ localStorage.removeItem(SAVEKEY); }catch(e){}
-  save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, mon:{},
+  save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, mon:{}, deep:0, deepSel:0,
            kills:0, runs:0, deaths:0, bestLvl:0,
            sound:save.sound, motion:save.motion, dev:0 };
   writeSave();
@@ -2536,6 +2559,9 @@ function startRun(id){
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; evoFx = 0; noEvo = false;
   // Seed the run stream BEFORE anything rolls, including the world - the arena
   // has its own stream but everything after it comes out of this one.
+  // The layer is fixed for the whole run: changing it mid-run would rescale
+  // every enemy already standing on the field.
+  deepAt = clamp(save.deepSel|0, 0, Math.min(DEEP_MAX, (save.deep|0) + 0));
   runSeed = (pinRun === null ? (Math.random()*1e9)|0 : pinRun) >>> 0;
   R = mulberry32(runSeed);
   rollWorld(pinSeed === null ? undefined : pinSeed);
@@ -4321,10 +4347,17 @@ function finish(why, won){
   over = true; running = false; picking = false; runWon = !!won; runWhy = why;
   document.exitPointerLock?.();
   hide("pick"); hide("paused");
-  const earned = Math.floor(coinsRun + kills/9 + T/6 + (won?250:0));
+  const earned = Math.floor((coinsRun + kills/9 + T/6 + (won?250:0)) * deepPay());
   save.coins += earned;
   save.best = Math.max(save.best||0, T);
-  if(won) save.wins = (save.wins||0)+1;
+  if(won){
+    save.wins = (save.wins||0)+1;
+    // Clearing layer N opens layer N+1, and moves you onto it - the next run
+    // should be the new thing unless you say otherwise.
+    if(deepAt >= (save.deep|0) && deepAt < DEEP_MAX){
+      save.deep = deepAt + 1; save.deepSel = save.deep;
+    }
+  }
   const prevBest = save.best||0, prevLvl = save.bestLvl||0;
   const beat = T > prevBest;
   save.kills = (save.kills||0) + kills;
@@ -4373,7 +4406,10 @@ function finish(why, won){
         ? `${denStats.cleared} den${denStats.cleared>1?"s":""} cleared`
         : denStats.woke ? `${denStats.woke} woken, none cleared` : "nothing"}${
         boons.length ? ` <span class="dim2">&nbsp;${boons.join(" \u00b7 ")}</span>` : ""}</td></tr>
-      <tr><td class="gold">Coins earned</td><td class="gold">+${earned}</td></tr>
+      ${deepAt ? `<tr><td>The Deep</td><td><span style="color:#ff8a6a">LAYER ${deepAt}</span>${
+        won && save.deep === deepAt + 1 ? ` <span class="g">LAYER ${save.deep} OPEN</span>` : ""}</td></tr>` : ""}
+      <tr><td class="gold">Coins earned</td><td class="gold">+${earned}${
+        deepAt ? ` <span class="dim2">&nbsp;x${deepPay().toFixed(2)} depth</span>` : ""}</td></tr>
     </table>
     ${got.map(u=>`<p class="g" style="font-size:12px;letter-spacing:.1em">`+
                  `${icon(u.id==="tally"?"tally":u.id)} ${u.what} UNLOCKED</p>`).join("")}
@@ -4395,6 +4431,12 @@ function openMenu(){
     <div class="story"><p>Pick one. Keep it alive. It changes twice on the way,
       and each change teaches it something.</p>
       <p class="tag">TWENTY MINUTES &nbsp;·&nbsp; THEN TERRAVORE</p></div>
+    ${(save.deep|0) > 0 ? `<div class="deep" id="deeprow"><b>THE DEEP</b>${
+        Array.from({length: Math.min(DEEP_MAX, save.deep|0) + 1}, (_,i)=>
+          `<i data-d="${i}" class="${i === (save.deepSel|0) ? "on" : ""}">${i || "SURFACE"}</i>`
+        ).join("")}<s>+${Math.round(((1 + (save.deepSel|0)*0.34)-1)*100)}% enemy health &nbsp;&#183;&nbsp; +${
+          Math.round(((1 + (save.deepSel|0)*0.16)-1)*100)}% their damage &nbsp;&#183;&nbsp; +${
+          Math.round(((1 + (save.deepSel|0)*0.30)-1)*100)}% coins</s></div>` : ""}
     <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
       save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
       save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
@@ -4455,6 +4497,9 @@ function openMenu(){
     if(!locked) el.onclick = ()=>{ audioInit(); startRun(c.id); };
     cr.appendChild(el);
   }
+  const dr = document.getElementById("deeprow");
+  if(dr) for(const el of dr.querySelectorAll("i"))
+    el.onclick = ()=>{ save.deepSel = +el.dataset.d; writeSave(); SFX.buy(); openMenu(); };
   const dvM = document.getElementById("dvMode");
   if(dvM) dvM.onclick = ()=>{ setDev(!save.dev); SFX.buy(); openMenu(); };
   const dvA = document.getElementById("dvAll");
@@ -5166,6 +5211,7 @@ function hud(){
   const dh = $("devhud"); if(dh) dh.classList.toggle("on", on && !!save.dev);
   if(!on || !P) return;
   $("clock").textContent = sudden ? "SUDDEN DEATH" : fmt(Math.max(0, RUN_LEN - T));
+  $("clock").style.color = deepAt ? "#ff8a6a" : "";
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   const nb = BOSSES[bossIdx];
   const fb = sudden ? enemies.find(e => e.final && !e.dead) : null;
@@ -5368,6 +5414,12 @@ window.__g = {
           alive:m.alive||0, n:m.n, boon:m.boon ? m.boon.nm : null })),
   denStats: ()=>Object.assign({}, denStats, { total:marks.filter(m=>m.den).length,
                                               marks:marks.length }),
+  deep:  ()=>({ at:deepAt, unlocked:save.deep|0, sel:save.deepSel|0, max:DEEP_MAX,
+                hp:+deepHp().toFixed(3), dmg:+deepDmg().toFixed(3), pay:+deepPay().toFixed(3) }),
+  setDeep:(n)=>{ save.deep = clamp(n|0, 0, DEEP_MAX);
+                 save.deepSel = Math.min(save.deepSel|0, save.deep);
+                 writeSave(); return save.deep; },
+  pickDeep:(n)=>{ save.deepSel = clamp(n|0, 0, save.deep|0); writeSave(); return save.deepSel; },
   boons: ()=>boons.slice(),
   // award one the way a den does, so a test can ask what happens on the fortieth
   boon:  ()=>{ const pool = BOONS.filter(x=>!boons.includes(x.nm));
@@ -5662,7 +5714,7 @@ window.__g = {
   // instead of 9, and how a run that begins three levels up put a level-up
   // screen in front of a test that then could not pause. A wipe here means a
   // brand-new player with the ladder live, and it has to survive a reload.
-  wipeSave: ()=>{ save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, mon:{},
+  wipeSave: ()=>{ save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, mon:{}, deep:0, deepSel:0,
                            kills:0, runs:0, deaths:0, bestLvl:0, dev:0 };
                   writeSave(); openMenu(); },
   // set permanent upgrades directly - localStorage is only read at page load,

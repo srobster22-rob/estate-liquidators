@@ -126,6 +126,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **7 creature lines, 21 forms** | fire, water, storm, stone, fungus, wind and echo — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body, every line its own move |
 | **per-creature levels** | every run banks its XP into the creature that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
 | **bunnyhopping** | chain a jump on the frame you land, 24 links deep, up to +60% move speed, paying XP every fifth; one hit resets it |
+| **THE DEEP** | nine layers, one opened per clear — +34% enemy health and +30% coins each |
 | **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
 Roughly 1,600 lines of JavaScript, no libraries.
@@ -180,6 +181,25 @@ at twenty-five dens — HEAVY HANDS is ×1.15 *compounding*, so a run that took 
 badly would end at thirty-three times damage against a curve tuned without any of it. Past the
 sixth, a den pays 150 coins instead, which land in the shop rather than in the run and cannot
 compound. Asserted at forty awards: six boons, six distinct, ×1.15 damage total.
+
+### There is something after the first clear
+
+Clearing a run was the end of the game. TERRAVORE dies, the screen says VICTORY, and the only
+thing left to do is the same twenty minutes again.
+
+**THE DEEP** is a layer ladder. Every clear opens one more, up to nine, and each layer is the
+same world dug one level further down: **+34% enemy health, +16% their damage, +30% coins**, all
+compounding on the curve that is already there. You pick a layer from the menu before a run and
+the clock turns red while you are on one.
+
+It is deliberately a multiplier rather than new content. The levers are already wired and already
+measured, so a layer is a number this project can reason about — not a second game it would have
+to balance from scratch. The coins are the point of the +30%: a hard layer has to be worth
+running, or the ladder is a difficulty setting with a penalty attached.
+
+Asserted end to end: a fresh save can only play the surface and cannot pick past it, a layer
+actually scales the curve, the surface is still exactly ×1, the ladder has a top, and clearing a
+layer opens the next one.
 
 ## How it's built
 

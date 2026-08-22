@@ -619,3 +619,17 @@ the MORTAR fix, which is the nerf landing on ACCOUNTANT, the line that owns mort
 band, and undoing a dominance fix to chase a per-line number would be the wrong trade. Written
 into the README rather than tuned away. **Next:** stop benching. The remaining gaps are content —
 eight weapons is thin for the genre, and nothing gates on the seven regions yet.
+
+**R23 — there is something after the first clear.** Clearing a run was the end of the game:
+TERRAVORE dies and the only thing left is the same twenty minutes again. **THE DEEP** is a nine
+layer ladder — every clear opens one more, and each layer is the same world dug further down at
++34% enemy health, +16% their damage and +30% coins, all compounding on the curve that already
+exists. Picked from the menu, clock turns red while you are on one, end screen names the layer
+and the layer it just opened. Deliberately a multiplier rather than new content: the levers are
+wired and measured, so a layer is a number this project can reason about instead of a second game
+to balance from scratch — and the coin bonus is load-bearing, or the ladder is just a difficulty
+setting with a penalty. `unlockAll()` opens every layer but leaves the *selection* alone, since
+dev mode should hand you the whole game rather than drop you on layer nine. Section 22p asserts
+six things including that the surface is still exactly ×1. 316 checks pass. **Next:** the eight
+weapons are thin for the genre and the README has said so since the beginning — with the bench
+paired and the dominance test automatic, adding one is now cheap to verify.

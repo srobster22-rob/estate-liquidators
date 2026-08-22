@@ -1957,6 +1957,52 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${real.picking}`);
   }
 
+  console.log("\n=== 22p. THERE IS SOMETHING AFTER THE FIRST CLEAR ===");
+  {
+    // Clearing a run was the end of the game: TERRAVORE dies and the only thing
+    // left is the same twenty minutes again. THE DEEP is a layer ladder - every
+    // clear opens one more, each one the same world dug further down.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave();
+      const fresh = g.deep();
+      // a fresh save can only play the surface
+      g.pickDeep(4);
+      const clamped = g.deep().sel;
+      // opening layers lets you pick them, and picking one scales the curve
+      g.setDeep(3); g.pickDeep(2);
+      g.start("intern");
+      const on2 = g.deep();
+      g.pickDeep(0); g.start("intern");
+      const on0 = g.deep();
+      // and the ceiling holds
+      g.setDeep(99);
+      return { fresh, clamped, on2, on0, cap: g.deep().unlocked, max: g.deep().max };
+    });
+    ok("a fresh save has only the surface",
+       r.fresh.unlocked === 0 && r.fresh.at === 0, JSON.stringify(r.fresh));
+    ok("and cannot pick a layer it has not opened", r.clamped === 0, `picked ${r.clamped}`);
+    ok("a layer makes the run harder and pays more",
+       r.on2.at === 2 && r.on2.hp > 1.5 && r.on2.dmg > 1.2 && r.on2.pay > 1.4,
+       `layer ${r.on2.at}: hp x${r.on2.hp}, dmg x${r.on2.dmg}, coins x${r.on2.pay}`);
+    ok("and the surface is still the surface",
+       r.on0.at === 0 && r.on0.hp === 1 && r.on0.dmg === 1 && r.on0.pay === 1,
+       JSON.stringify({ hp: r.on0.hp, dmg: r.on0.dmg }));
+    ok("the ladder has a top", r.cap === r.max, `${r.cap} of ${r.max}`);
+
+    // clearing a layer opens the next one
+    const won = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.setDeep(1); g.pickDeep(1);
+      g.start("intern"); g.god(); g.drainPicks(true);
+      g.skipTo(1140); g.boss(3);
+      g.step(1, 1/60);
+      g.killBoss();                            // the win condition, directly
+      return g.deep();
+    });
+    ok("clearing a layer opens the next", won.unlocked >= 1, JSON.stringify(won));
+  }
+
   console.log("\n=== 22o. EVOLVING IS A MOMENT, NOT A STAT CHANGE ===");
   {
     // The centrepiece of a game about raising a creature was a caption: the body
