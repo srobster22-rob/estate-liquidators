@@ -2631,59 +2631,128 @@ rot(D){
           eyeGlow, viperJaw, idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
+  // A BASILISK, and the line that gets there. Reported as "basilisk is wonky,
+  // the evolution isn't connected", and both halves were fair: all three forms
+  // were the same tube of blobs with a head the same width as the neck, and
+  // the only thing the evolution changed was how many blobs and a pair of pink
+  // flaps that read as ears.
+  //
+  // A serpent is three things and this line grows all three together: it is
+  // THICKEST AT MIDBODY and tapers both ways, which is what stops a chain of
+  // segments reading as a caterpillar; its SKULL is a wedge clearly wider than
+  // the neck behind it, which is what stops the head reading as one more
+  // segment; and it REARS, further at every stage, which is the whole
+  // silhouette. The crown goes two nubs, three spines, seven; the hood only
+  // arrives at the top and it stands UP behind the skull like a cobra's rather
+  // than sticking out sideways.
   const lk = look*.15, lkf = -Math.abs(look)*.045;
   const flick = twitch(0, 3.1);                    // the tongue
-  const N = 7 + st*3;                              // it gets longer, not taller
+  const hiss  = twitch(1.7, 5.6);                  // the jaw
+  const N = 8 + st*4;                              // it gets longer, not taller
   const gr = 1 + st*.16;
   const wave = ph*.85 + t*(1.3 + st*.25);
-  const rear = (.34 + st*.30) * gr;                // how far the front lifts
+  const REAR = (.34 + st*.36) * gr;                // how high the front stands
+  const LIFT = 3 + st*2;                           // over how many segments
+  const GIRTH = (.20 + st*.02) * gr;
   const spine = [];
   for(let i=0;i<N;i++){
+    const u = i/(N-1);
     const lat = Math.sin(wave - i*.62) * (.10 + amp*.13 + idle*.05) * gr;
-    const lift = i < 3 ? rear * (1 - i/3) : 0;
-    const y = (.16 + lift) * gr + Math.sin(wave*.8 - i*.5)*.02*gr;
-    const f = (.30 - i*.34) * gr;
-    spine.push([lat, f, y]);
+    // the rise is a smooth curve over the front LIFT segments, not a step
+    const rc = i < LIFT ? Math.pow(1 - i/LIFT, 1.6) : 0;
+    const y = (.16 + REAR*rc) * gr + Math.sin(wave*.8 - i*.5)*.02*gr;
+    // segments crowd together where the body stands up, which is what a
+    // reared coil actually does
+    const f = (.30 - i*.34 + (i < LIFT ? (LIFT-i)*.06 : 0)) * gr;
+    spine.push([lat, f, y, u]);
   }
-  chain(spine, .23*gr, .07*gr, c, em+.06, [.92, .70, 1]);
+  // THE TAPER. Thin at the neck, thickest a third of the way back, thin at the
+  // tail - drawn as two runs so the peak is in the middle rather than at an end.
+  const mid = Math.max(1, Math.round(N*0.34));
+  chain(spine.slice(0, mid+1).map(p=>[p[0],p[1],p[2]]),
+        GIRTH*.80, GIRTH*1.18, c, em+.06, [.94, .82, 1]);
+  chain(spine.slice(mid).map(p=>[p[0],p[1],p[2]]),
+        GIRTH*1.18, GIRTH*.30, c, em+.06, [.94, .82, 1]);
   for(let i=0;i<N;i++){
-    const k = 1 - i/(N+1)*.62;
-    if(i < N-1) mb(spine[i][0], spine[i][1] - .10*gr, spine[i][2] - .12*k*gr,
-                   .15*k*gr, .05*gr, .12*gr, bel, em*.7);
-    if(i > 0 && i < N-2)
-      mb(spine[i][0], spine[i][1], spine[i][2] + .13*k*gr,
-         .045*gr, .11*k*gr, .09*k*gr, acc, .22);
+    const [lx, lf, ly, u] = spine[i];
+    const k = (u < .34 ? .80 + u*1.1 : 1.18 - (u-.34)*1.33);
+    // belly scutes: pale bands across the underside, the one detail that reads
+    // as "snake" from any angle
+    if(i < N-1 && i % 1 === 0)
+      mb(lx, lf, ly - GIRTH*k*.84, GIRTH*k*.62, .022*gr, GIRTH*k*.44, bel, em*.8);
+    // dorsal scales, bigger toward the middle of the animal
+    if(i > 0 && i < N-2){
+      // A saw, not a dotted line: the scales stand tallest over the thickest
+      // part of the animal and shrink to nothing at both ends, so the back
+      // reads as one serrated ridge instead of a row of identical pink pips.
+      const sc = Math.sin(Math.min(1, u*1.25) * Math.PI) * .55 + .45;
+      mb(lx, lf, ly + GIRTH*k*.76, .05*gr, GIRTH*k*.46*sc, GIRTH*k*.40*sc, acc, .22);
+    }
   }
-  // the head, on the front of the chain
-  const [hx0, hf0, hy0] = spine[0];
-  const hx = hx0 + lk, hf = hf0 + .16*gr + lkf, hy = hy0 + .07*gr;
-  blob(hx, hf, hy, .19*gr, .15*gr, .21*gr, c, em+.08);
-  viperJaw(hx, hf + .06*gr, hy - .02*gr, .13*gr, .24*gr, c, flick*.05*gr);
+  // ---- THE SKULL. A wedge: wide behind the eyes, narrowing to the snout, and
+  // flat on top. It has to be visibly bigger than the neck or the animal has
+  // no head at all, which is what the old one looked like.
+  const [nx0, nf0, ny0] = spine[0];
+  const HW = (.20 + st*.035) * gr;                 // skull half-width
+  const hx = nx0 + lk, hf = nf0 + .14*gr + lkf, hy = ny0 + .05*gr;
+  chain([[hx, hf - .12*gr, hy - .01*gr], [hx, hf + .10*gr, hy]],
+        HW*.78, HW, c, em+.08, [1.18, .70, 1]);
+  chain([[hx, hf + .10*gr, hy], [hx, hf + .30*gr, hy - .03*gr]],
+        HW, HW*.60, c, em+.08, [1.10, .66, 1]);
+  // brow ridges over the eyes - the scowl a viper has and a worm does not
+  for(const rs of [-1,1])
+    mb(hx + rs*HW*.62, hf + .12*gr, hy + HW*.44, HW*.40, HW*.20, HW*.52, dk, .04);
+  // A hatchling's eyes are large FOR ITS HEAD and a big animal's are small for
+  // its head - the single cheapest way to make three sizes of one creature read
+  // as three ages rather than three scales of the same model.
+  eyeGlow(hx, hf + .14*gr, hy + HW*.20, HW*.60, HW*(.62 - st*.10), [.80,1,.34]);
+  viperJaw(hx, hf + .22*gr, hy - HW*.22, HW*.68, (.22 + st*.05)*gr, c,
+           hiss*(.05 + st*.02)*gr);
   // the forked tongue, out and back every few seconds
   if(flick > .02) for(let i=0;i<2;i++)
-    fx(hx + (i?.03:-.03)*gr, hf + (.26 + flick*.16)*gr, hy - .10*gr,
-       .014*gr, .012*gr, .06*gr*flick, [.90,.30,.44], .35);
-  eyeGlow(hx, hf + .10*gr, hy + .07*gr, .10*gr, .070*gr, [.80,1,.34]);
-  // the crown. A basilisk is a KING serpent; the frill is the claim.
-  for(let i=0;i<5;i++){
-    const a = (i - 2) * .58;
-    // sized off the index, not just mirrored: two crown spines of the exact
-    // same size sitting next to each other put a face on one plane
-    horn(hx + Math.sin(a)*.17*gr, hf - .06*gr + Math.cos(a)*.03*gr, hy + .10*gr,
-         Math.sin(a)*.050*gr, -.02*gr, .055*gr, 4, (.032 + i*.0026)*gr,
-         acc, .40 + st*.15);
+    fx(hx + (i?.04:-.04)*gr, hf + (.44 + flick*.20)*gr, hy - HW*.36,
+       .015*gr, .013*gr, .07*gr*flick, [.90,.30,.44], .35);
+  // ---- THE CROWN. Two nubs, three spines, seven: the same place on the same
+  // skull at every stage, so the line reads as one animal growing into a title.
+  const CR = 2 + st*2 + (st === 2 ? 1 : 0);
+  for(let i=0;i<CR;i++){
+    const a = CR > 1 ? (i/(CR-1) - .5) * (1.5 + st*.30) : 0;
+    horn(hx + Math.sin(a)*HW*.80, hf - .10*gr - Math.abs(a)*.03*gr, hy + HW*.52,
+         Math.sin(a)*(.055 + st*.012)*gr, -.030*gr, (.055 + st*.022)*gr,
+         3 + st, (.030 + st*.008 + i*.002)*gr, acc, .40 + st*.18);
   }
+  // cheek spikes, back along the jaw line
   for(const rs of [-1,1])
-    horn(hx + rs*.14*gr, hf + .02*gr, hy - .03*gr, rs*.05*gr, .01*gr, .015*gr,
-         3, .032*gr, acc, .30);
-  // and at the top of the line it grows a hood
-  if(st === 2) for(const rs of [-1,1]) for(let i=0;i<4;i++){
-    const t2 = (i+1)/4;
-    chain([[hx + rs*.10*gr, hf - .06*gr, hy - .02*gr],
-           [hx + rs*(.16 + t2*.30)*gr, hf - (.06 + t2*.18)*gr, hy + (.02 - t2*.07)*gr]],
-          .09*gr, .085*gr, i%2 ? lt : acc, .18, [1, .26, 1]);
+    horn(hx + rs*HW*.80, hf + .08*gr, hy - HW*.10, rs*(.05+st*.01)*gr, -.03*gr, .012*gr,
+         3, (.026 + st*.006)*gr, acc, .30);
+  // ---- THE HOOD, at the top of the line only. A cobra's hood is a SHIELD that
+  // stands up behind the skull, not a pair of flaps off the side of it.
+  // A hood is thin FORE-AFT and wide across - a plate you are looking at. The
+  // first pass had it thin across and wide fore-aft, which drew two blades
+  // sticking out of the neck like ears.
+  if(st === 2) for(const rs of [-1,1]) for(let i=0;i<6;i++){
+    const u = i/5;                                  // 0 at the spine, 1 at the rim
+    const arc = u * 1.32;                           // sweeps out and over
+    const ox = Math.sin(arc) * .62 * gr, oy = (1 - Math.cos(arc)) * .52 * gr;
+    chain([[hx + rs*HW*.24, hf - .20*gr, hy + HW*.05],
+           [hx + rs*ox*.55, hf - .26*gr, hy + HW*.05 + oy*.55],
+           [hx + rs*ox,     hf - .30*gr, hy + HW*.05 + oy]],
+          .105*gr, .095*gr, i%2 ? lt : bel, em+.14, [1, 1, .26]);
+    mb(hx + rs*ox*1.03, hf - .31*gr, hy + HW*.05 + oy*1.03,
+       .062*gr, .062*gr, .040*gr, acc, .34);
+  }
+  // ---- THE STARE. A basilisk's whole legend is what happens when it looks at
+  // you, and the line had no way of showing it. A short cone of grey motes off
+  // the eyes, drifting forward - ambient, so it stays out of the mesh.
+  if(st === 2) for(let i=0;i<7;i++){
+    const u = ((t*0.9 + i*.143) % 1);
+    const sp = .06 + u*.34;
+    fx(hx + Math.sin(i*2.4)*sp*.5, hf + .30*gr + u*.85*gr, hy + HW*.16 + Math.cos(i*2.4)*sp*.4,
+       .035*gr*(1-u*.5), .035*gr*(1-u*.5), .035*gr*(1-u*.5),
+       [.78, .82, .74], .55*(1-u));
   }
 },
+
 // ------------------------------------------------------------------- GALE
 // A WYVERN. Reported as "looks goofy and not dragon like at all", and it was:
 // a pale torso with a long thin bill and four flat slabs for wings, which is a
