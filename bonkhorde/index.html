@@ -63,7 +63,7 @@
   #biome b{display:block;color:#c9c2ae;font-size:11px;letter-spacing:.2em}
   #biome span{font-size:9px;color:#5c6470;letter-spacing:.06em;line-height:1.5;
     display:block;max-width:230px}
-  #evo{position:absolute;top:31%;left:50%;transform:translate(-50%,-50%);
+  #evo{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);
     text-align:center;opacity:0;pointer-events:none}
   #evo .en{font-size:34px;font-weight:900;letter-spacing:.12em;color:#8affd0;
     text-shadow:0 3px 0 #000,0 0 26px #3ad0ff99}
@@ -7230,11 +7230,17 @@ function render(){
   // game most wants to tell you something. Floor it below the HUD header and
   // scale the type to the screen it is actually on.
   const asz = Math.max(19, Math.min(30, h*0.042));
-  // The evolution banner owns the middle of the screen for three seconds and
-  // is the single loudest thing the game says. Toasts step out of its way
-  // rather than stacking on top of it - the audit caught TEMPO x10, the new
-  // form's name and its signature line all live at once.
-  let ay = Math.max(h*0.19, 84) + (evoT > 0 ? h*0.30 : 0);
+  // ONE LANE EACH. Five text systems were landing in the same two hundred
+  // pixels over the player: the toast stack, the evolution banner, its
+  // signature line, the world-space landmark labels and the damage numbers.
+  // The previous pass pushed toasts DOWN by thirty percent of the height when
+  // the banner was up, which moved them from 19% straight onto the banner at
+  // 31% - it made the collision it was written to prevent. Toasts own a tight
+  // lane under the clock and stay there; the banner owns the middle third; and
+  // the landmark labels fade out entirely while the banner is up, because
+  // nothing else needs to be legible during the three seconds the game is
+  // telling you what you just became.
+  let ay = Math.max(h*0.155, 78);
   for(const al of alerts.slice(-2)){
     g2.globalAlpha = clamp(al.life/2.6,0,1);
     g2.font = `800 ${asz.toFixed(0)}px ui-monospace,Menlo,monospace`;
@@ -7302,16 +7308,25 @@ function render(){
     if(d > 62) continue;
     const sp = project(m.x, groundY(m.x, m.z) + 3.4, m.z);
     if(!sp) continue;
-    const a2 = clamp((62 - d)/16, 0, 1) * (T < DEN_GRACE ? .35 : 1);
+    const a2 = clamp((62 - d)/16, 0, 1) * (T < DEN_GRACE ? .35 : 1)
+             * (evoT > 0 ? .18 : 1);          // yield to the evolution banner
     g2.globalAlpha = a2;
     g2.textAlign = "center";
-    g2.font = "800 13px ui-monospace,Menlo,monospace";
-    g2.fillStyle = "#000"; g2.fillText(m.k.nm, sp[0]+1.5, sp[1]+1.5);
-    g2.fillStyle = "#ffb45c"; g2.fillText(m.k.nm, sp[0], sp[1]);
-    g2.font = "700 11px ui-monospace,Menlo,monospace";
     const sub = `${m.n} ${ENEMIES[m.k.den].nm}` +
                 (m.boon && !boons.includes(m.boon.nm) ? `  \u00b7  ${m.boon.nm}` : "  \u00b7  COINS");
-    g2.fillStyle = "#000"; g2.fillText(sub, sp[0]+1.2, sp[1]+15.2);
+    // a plate, for the same reason the toasts got one: orange-on-sand and
+    // cream-on-glacier are both invisible, and a drop shadow is not a fix
+    g2.font = "700 11px ui-monospace,Menlo,monospace";
+    const sw = g2.measureText(sub).width;
+    g2.font = "800 13px ui-monospace,Menlo,monospace";
+    const nw = g2.measureText(m.k.nm).width;
+    const pw = Math.max(sw, nw) + 18;
+    g2.globalAlpha = a2 * .62;
+    g2.fillStyle = "#080a0e";
+    g2.fillRect(sp[0] - pw/2, sp[1] - 13, pw, 32);
+    g2.globalAlpha = a2;
+    g2.fillStyle = "#ffb45c"; g2.fillText(m.k.nm, sp[0], sp[1]);
+    g2.font = "700 11px ui-monospace,Menlo,monospace";
     g2.fillStyle = "#f2ece0"; g2.fillText(sub, sp[0], sp[1]+14);
   }
   g2.globalAlpha = 1;
