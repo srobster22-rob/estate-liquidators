@@ -126,6 +126,36 @@
     padding:1px 6px;font-size:10px;border-radius:3px}
 
   /* cards */
+  /* THE DRAFT STRIP. #pick keeps its markup and stops being a modal: no
+     backdrop, no blur, no pointer capture, parked along the bottom of the
+     screen with only the cards themselves clickable. */
+  #pick{position:fixed;inset:auto 0 86px 0;top:auto;background:none;backdrop-filter:none;
+    align-items:flex-end;justify-content:center;padding:0;pointer-events:none;z-index:8}
+  #pick .wrap{width:min(880px,98vw);max-height:none;overflow:visible;padding:0;
+    pointer-events:none}
+  /* the header needs its own ground: over THE GLACIER it was pale text on a
+     pale world and disappeared entirely */
+  #pick .wrap > h1, #pick .wrap > .sub{background:#0a0c10e6;border:1px solid #2a313c;
+    padding:3px 9px}
+  #pick h1{font-size:13px;letter-spacing:.18em;margin:0 -1px 5px 0;text-shadow:0 2px 0 #000;
+    display:inline-block;vertical-align:middle;border-right:none}
+  #pick .sub{font-size:10px;margin:0 0 5px;display:inline-block;vertical-align:middle;
+    color:var(--gold);border-left:none}
+  #pick .hint{display:none}
+  /* One row, always. Four cards on a second row ran off the bottom of the
+     screen and buried the health bar, which is a worse interruption than the
+     modal this replaced. */
+  #pick .cards{flex-wrap:nowrap;gap:7px;margin:0}
+  #pick .card{pointer-events:auto;padding:7px 9px;width:min(21vw,178px);
+    background:#12161df2;border-bottom-width:3px;min-width:0}
+  #pick .card .ic{font-size:17px;margin-bottom:2px}
+  #pick .card .nm{font-size:11px}
+  #pick .card .lv{font-size:9px}
+  #pick .card .ds{font-size:9px;line-height:1.35;max-height:2.7em;overflow:hidden}
+  /* the number is the control now, so it is the biggest thing on the card */
+  #pick .card .key{top:5px;right:7px;font-size:15px;font-weight:800;color:var(--gold);
+    opacity:.95}
+  #pick .card:hover .key{color:#fff}
   .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:6px}
   .card{width:196px;background:#12161d;border:2px solid #2a313c;border-bottom-width:4px;
     padding:16px 13px;cursor:pointer;text-align:left;transition:.09s;position:relative}
@@ -147,7 +177,7 @@
   .ch.lock{opacity:.4;cursor:not-allowed}
   .ch.lock:hover{border-color:#2a313c;transform:none}
   /* the rule meter - same shape as the hop chain readout, its own colours */
-  #rule{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;display:none;
+  #rule{position:fixed;left:50%;transform:translateX(-50%);bottom:198px;display:none;
     align-items:center;gap:8px;font:700 11px/1 ui-monospace,monospace;letter-spacing:.14em;
     pointer-events:none;z-index:6}
   #rule.on{display:flex}
@@ -374,8 +404,7 @@
 
 <div class="ov on" id="menu"><div class="wrap" id="menuBody"></div></div>
 <div class="ov" id="pick"><div class="wrap">
-  <h1 style="font-size:30px">LEVEL <span id="pkLv">2</span></h1>
-  <div class="sub" id="pkSub">PICK ONE</div>
+  <h1>LEVEL <span id="pkLv">2</span></h1><div class="sub" id="pkSub">PICK ONE</div>
   <div class="cards" id="pkCards"></div>
   <div class="hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> or click</div>
 </div></div>
@@ -3343,7 +3372,7 @@ function startRun(id){
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
         hop:0, hopWin:0, hopGrace:0, hopFx:0, hopHold:undefined, idle:1,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0,
-        surge:0, surgeT:0, rebirths:0, rebirthCd:0 };
+        surge:0, surgeT:0, rebirths:0, rebirthCd:0, grown:0, hp0:s.maxhp };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; evoFx = 0; noEvo = false;
   // Seed the run stream BEFORE anything rolls, including the world - the arena
@@ -3487,14 +3516,14 @@ if(TOUCH){
 addEventListener("keydown", e=>{
   // e.repeat is the whole reason this is an edge: holding space fires keydown
   // at the OS repeat rate, which would auto-hop about as well as a human can.
-  if(e.code==="Space" && !e.repeat && running && !paused && !picking) jumpPressed();
+  if(e.code==="Space" && !e.repeat && running && !paused) jumpPressed();
   keys[e.code]=true;
   if(picking && /^Digit[1-4]$/.test(e.code)){
     const i=+e.code.slice(5)-1; const c=document.getElementById("pkCards").children[i];
     if(c) c.click();
   }
-  if(e.code==="Escape" && running && !over && !picking) togglePause(true);
-  if(e.code==="KeyP"  && running && !over && !picking) togglePause(!paused);
+  if(e.code==="Escape" && running && !over) togglePause(true);
+  if(e.code==="KeyP"  && running && !over) togglePause(!paused);
   if(e.code==="KeyM") setOpt("sound", !save.sound);
   if((e.code==="Enter"||e.code==="NumpadEnter") && over){
     const a = document.getElementById("againBtn"); if(a) a.click();
@@ -4704,6 +4733,16 @@ function gainXP(v){
                          checkEvolve(); }
 }
 function queueLevel(){ pendingLevels++; }
+// +1.7% of the health you started the run with, and +1.1% damage, compounding.
+// Deliberately small: this is what a level is worth when it has nothing else
+// to give you, not a second progression system running alongside the draft.
+const LVL_HP = .017, LVL_DMG = .011;
+function levelGrowth(){
+  const add = Math.max(1, Math.round((P.hp0 || P.maxhp) * LVL_HP));
+  P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp + add);
+  P.grown = (P.grown || 0) + 1;
+  P.dmg = recalcDmg();
+}
 
 // The single line that decides whether there is another run: not what you did,
 // but what you are close to. Shows the nearest locked thing and how far.
@@ -4788,14 +4827,26 @@ function hopThaw(){
   P.hop = P.hopHold; P.hopHold = undefined;
   P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE + .8;
 }
+// THE DRAFT DOES NOT STOP THE GAME ANY MORE. It used to: full-screen overlay,
+// pointer released, camera parked, hop chain frozen, simulation halted. A long
+// run levels forty times, so the back half of every run was a slideshow of
+// modals - and the thing the game is actually about, positioning, was switched
+// off for all of it. The cards are a strip along the bottom now. The horde
+// keeps coming while you read them, which is the correct amount of pressure to
+// put on a decision that is supposed to matter.
+const PICK_HOLD = 11;             // seconds before an ignored draft resolves itself
+let pickT = 0;
 function showPick(){
-  faceCamera(); hopFreeze();
-  picking = true;
-  if(paused){ paused = false; document.getElementById("paused").classList.remove("on"); }
-  document.exitPointerLock?.();
+  picking = true; pickT = 0;
   document.getElementById("pkLv").textContent = P.lvl;
+  // KEYS, NOT CLICKS. The draft no longer releases the pointer - it cannot,
+  // because the mouse is the camera and the fight is still happening - so on
+  // desktop the cards are chosen with the number keys and the number is the
+  // loudest thing on the card. Touch still taps them; there is no pointer lock
+  // on a phone.
   document.getElementById("pkSub").textContent =
-    pendingLevels > 1 ? `PICK ONE  ·  ${pendingLevels-1} MORE QUEUED` : "PICK ONE";
+    (TOUCH ? "TAP ONE" : "PRESS 1-4") +
+    (pendingLevels > 1 ? `  ·  ${pendingLevels-1} MORE QUEUED` : "");
   const box = document.getElementById("pkCards"); box.innerHTML="";
   offers().forEach((o,i)=>{
     const el = document.createElement("div");
@@ -4817,7 +4868,6 @@ function take(o){
   pendingLevels--;
   hide("pick"); picking=false;
   if(pendingLevels > 0) setTimeout(showPick, 90);
-  else { hopThaw(); if(!over) lockPointer(); }
 }
 function applyPassive(k){
   if(!PASSIVES[k]) return;
@@ -4842,7 +4892,11 @@ function applyPassive(k){
 }
 // recompute from base each time so ranks never compound into nonsense
 function recalcDmg(){
-  return (1 + rank("dmg")*.06)
+  // Growth rides the recalc rail for the same reason the boons and the stage
+  // bonuses do: every passive pick rebuilds P.dmg from scratch, so anything
+  // written straight onto P survives exactly until the next level-up.
+  return Math.pow(1 + LVL_DMG, (P && P.grown) || 0)
+       * (1 + rank("dmg")*.06)
        * (1 + prank(P.kit.spinach)*.13)
        * (1 + prank(P.kit.boots)*.08)                       // momentum
        * (1 + prank(P.kit.heart)*.05); }
@@ -5224,13 +5278,29 @@ function step(dt){
   while(pendingLevels>0 && !picking && !noLevels){
     const only = offers();
     if(only.length === 1 && only[0].type === "heal"){
+      // A level with nothing to choose used to hand out forty hit points and a
+      // full-screen menu to accept them. Past about level fifty everything is
+      // maxed, so the last third of a good run was a slideshow of modals whose
+      // only content was a snack. It is permanent GROWTH now - the number on
+      // the HUD means something on its own, and the reward for outliving your
+      // own build compounds instead of evaporating.
       pendingLevels--;
       const was = P.hp;
-      P.hp = Math.min(P.maxhp, P.hp + 40);
+      levelGrowth();
       autoLv++; autoHp += P.hp - was;
       continue;
     }
     showPick();
+  }
+  // An ignored draft resolves itself. The strip no longer stops the game, so
+  // it CAN be ignored - and a card that sits on screen for the rest of the run
+  // is a worse interruption than the modal it replaced.
+  if(picking){
+    pickT += dt;
+    if(pickT > PICK_HOLD){
+      const c = document.getElementById("pkCards").children[0];
+      if(c) c.click(); else { pendingLevels = Math.max(0, pendingLevels-1); picking = false; }
+    }
   }
   // Batched, because a big XP pickup can drain a dozen of these in one frame and
   // a dozen level-up chimes on top of each other is not a reward, it is a fault
@@ -6778,7 +6848,7 @@ function render(){
   // actually looking AT it rather than through it. It lives in render() and not
   // in step() on purpose: step does not run while the game is paused, and the
   // pause screen is exactly where this needs to work.
-  if(P && P.idle && running && !paused && !picking){
+  if(P && P.idle && running && !paused){
     const want = camYaw + Math.PI;
     const d2 = ((want - P.face + Math.PI*3) % TAU) - Math.PI;
     P.face += d2 * (1 - Math.pow(.05, Math.min(.05, dt)));
@@ -7107,7 +7177,7 @@ function pulse(d){
 function frame(now){
   dt = Math.min(.042, (now-last)/1000); last = now;
   if(hitstop > 0) hitstop -= dt;
-  else if(running && !over && !paused && !picking) step(dt);
+  else if(running && !over && !paused) step(dt);
   pulse(dt);
   if(evoT > 0) evoT -= dt;
   if(devAuto && P && running && !over && stage < 2 && evoT <= 0) devEvolve();
@@ -7202,6 +7272,13 @@ window.__g = {
   dmgOut:(base)=>{ const was = P.crit; P.crit = 0;
                    const d = dmgOut(base).d; P.crit = was; return +d.toFixed(4); },
   fillSurge:()=>{ P.surge = .999; },
+  // take card i the way the number keys do, because the draft strip is
+  // keyboard-driven now and a synthetic click has to go through the same door
+  pick:  (i=0)=>{ const c = document.getElementById("pkCards").children[i|0];
+                  if(c) c.click(); return !!c; },
+  // step() WITHOUT the auto-pick the scripted driver does, so a test can watch
+  // what happens while a draft is deliberately left on screen
+  stepRaw:(d=1/60)=>{ if(!over) step(d); return +T.toFixed(2); },
   hasTouch: ()=>HAS_TOUCH,
   hasMouse: ()=>HAS_MOUSE,
   hadLock:  ()=>hadLock,

@@ -484,7 +484,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("offers 2-4 cards", cards.length >= 2 && cards.length <= 4, cards.length + "");
   console.log("  offered:", cards.join(" | "));
   await page.screenshot({ path: "shot-levelup.png" });
-  await page.click("#pkCards .card");
+  // The strip does not release the pointer any more - the mouse is still the
+  // camera and the fight is still running - so a card is taken the way a
+  // player takes one, with a number key.
+  await page.evaluate(() => window.__g.pick(0));
   await page.waitForTimeout(200);
 
   console.log("\n=== 11b. DRAW BUDGET UNDER A LIVE FRAME ===");
@@ -3269,6 +3272,70 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the second rebirth costs more than the first",
        r.two.rebirths === 2 && r.two.rebirthCd > r.one.rebirthCd,
        `${r.one.rebirthCd}s then ${r.two.rebirthCd}s`);
+  }
+
+  console.log("\n=== 27. LEVELLING UP DOES NOT STOP THE GAME ===");
+  {
+    // The draft used to be a full-screen modal: pointer released, camera
+    // parked, simulation halted. A long run levels forty times, so the back
+    // half of every run was a slideshow - and the thing the game is about,
+    // positioning, was switched off for all of it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.unlockAll(); g.start("intern"); g.god();
+      g.freezeEvents(true);
+      g.xp(500);                                  // a fistful of levels
+      g.step(1);                                  // one tick queues and shows
+      const open = document.getElementById("pick").classList.contains("on");
+      const t0 = g.state().t, n0 = g.state().enemies;
+      // the world keeps turning while the cards are on screen
+      for (let i = 0; i < 120; i++) g.stepRaw(1/60);
+      const t1 = g.state().t;
+      const stillOpen = document.getElementById("pick").classList.contains("on");
+      // and an ignored draft eventually resolves itself rather than sitting
+      // there for the rest of the run
+      for (let i = 0; i < 60 * 14; i++) g.stepRaw(1/60);
+      const resolved = !document.getElementById("pick").classList.contains("on")
+                    || g.state().pending < 500;
+      return { open, t0, t1, n0, stillOpen, resolved,
+               modal: getComputedStyle(document.getElementById("pick")).backdropFilter };
+    });
+    ok("the draft opens on a level", r.open === true, `open ${r.open}`);
+    ok("and the clock keeps running underneath it",
+       r.t1 - r.t0 > 1.5, `${r.t0}s -> ${r.t1}s with cards on screen`);
+    ok("it is not a modal any more",
+       r.modal === "none" || r.modal === "" , `backdrop-filter: ${r.modal}`);
+    ok("an ignored draft resolves itself", r.resolved === true, `${r.resolved}`);
+  }
+
+  console.log("\n=== 27b. A LEVEL WITH NOTHING TO CHOOSE IS STILL WORTH SOMETHING ===");
+  {
+    // Past about level fifty everything is maxed and the draft has one card on
+    // it that says ROAST CHICKEN. That level used to be forty hit points and a
+    // modal to accept them. It is permanent growth now.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.unlockAll(); g.start("intern");
+      g.freezeSpawns(true); g.freezeEvents(true);
+      for (const w of ["bat","skulls","bolt","pulse"]) g.give(w, 4);
+      for (const p of ["spinach","boots","tempo","magnet","plating"]) g.give(p, 4);
+      for (const k of Object.keys(g.kitRaw())) g.evolve(k);
+      const before = { hp: g.state().maxhp, dmg: g.state().dps };
+      g.xp(40000);                                 // a great many empty levels
+      for (let i = 0; i < 240; i++) g.stepRaw(1/60);
+      const after = { hp: g.state().maxhp, dmg: g.state().dps, lvl: g.state().lvl };
+      // and it has to SURVIVE the next recalc, which is what killed the boons
+      g.give("spinach", 1);
+      const kept = { hp: g.state().maxhp, dmg: g.state().dps };
+      return { before, after, kept };
+    });
+    ok("empty levels raise max HP", r.after.hp > r.before.hp * 1.05,
+       `${r.before.hp} -> ${r.after.hp} by LV ${r.after.lvl}`);
+    ok("and they raise damage", r.after.dmg > r.before.dmg * 1.05,
+       `${r.before.dmg} -> ${r.after.dmg}`);
+    ok("and the growth survives the next recalc",
+       r.kept.dmg >= r.after.dmg * 0.999,
+       `${r.after.dmg} -> ${r.kept.dmg} after another passive`);
   }
 
   console.log("\n" + "=".repeat(58));
