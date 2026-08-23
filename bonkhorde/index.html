@@ -3427,6 +3427,14 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[];
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
+  // THE OPENING. The director spawns at 1.2 a second on an off-screen ring and
+  // the first thing to arrive walks at 2.5 m/s, so the first ten seconds of
+  // every run were one animal alone on an empty lawn - which is the worst
+  // possible five seconds for a game whose whole appeal is a crowd. Six of
+  // them are already walking in from the front when the run starts, in a
+  // ninety-degree arc so they read as a wave rather than a ring, and three
+  // gems are on the ground inside pickup range so the first thing that
+  // happens is a pickup rather than a wait.
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
   runDist=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
@@ -3434,12 +3442,28 @@ function startRun(id){
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
+  // pickT is how long the live draft has been ignored, and it was the one
+  // thing the new strip left behind between runs. Carried in above the
+  // eleven-second threshold, the first draft of a fresh run resolved itself on
+  // frame one and took whatever card happened to be in slot 1 - which is how a
+  // fully pinned trial stopped being reproducible in the suite while being
+  // perfectly reproducible on its own.
+  pickT = 0;
   stick=null; look=null;                 // drop any thumb held across the retry
   running=true; over=false; paused=false; picking=false;
   hide("menu"); hide("end"); hide("paused"); hide("pick");
   menuUp = false; clearPortraits();
   audioInit(); if(AC && AC.state==="suspended") AC.resume();
   lockPointer();
+  for(let i=0;i<6;i++){
+    const a = -Math.PI/4 + (i/5)*(Math.PI/2), r = 15 + (i%3)*2.2;
+    const [sx, sz] = confine(Math.sin(a)*r, Math.cos(a)*r, 2);
+    spawnEnemy("shambler", sx, sz);
+  }
+  for(let i=0;i<3;i++){
+    const a = i/3*TAU + .7;
+    gems.push(mkGem(Math.sin(a)*3.1, Math.cos(a)*3.1, 1));
+  }
   // free levels from HEAD START are granted as real picks
   // HEAD START used to hand you its levels at t=0, which meant the run OPENED on
   // a stack of draft screens - "PICK ONE, 3 MORE QUEUED" - before a single enemy
@@ -7587,7 +7611,12 @@ window.__g = {
   haz:   ()=>({ n:hazards.length, tel:hazards.filter(h=>h.tel>0).length,
                 live:hazards.filter(h=>h.tel<=0).length }),
   casts: ()=>Object.assign({}, bossCasts),
-  freezeSpawns: (v=true)=>{ noSpawn=v; },
+  // Freezing spawns now also SWEEPS the field. Every run opens with six
+  // shamblers already walking in - the audit round's "the first five seconds
+  // are one animal alone on an empty lawn" - and a test that asks for no
+  // spawns means it wants an empty arena, not an empty arena plus the six the
+  // run was born with.
+  freezeSpawns: (v=true)=>{ noSpawn=v; if(v) enemies.length = 0; },
   // drop n identical hazard zones on one spot, so a test can prove the
   // overlap cap without having to reproduce a whole SCORCHED EARTH trail
   zones: (x,z,n,dps,r=2.2)=>{ for(let i=0;i<n;i++)

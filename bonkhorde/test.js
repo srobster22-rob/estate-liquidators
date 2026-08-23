@@ -2613,14 +2613,24 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                             const st = g.runOut();
                             return `${st.t.toFixed(2)}/${st.lvl}/${st.kills}`; };
       g.pin(999); g.pinRun(555);
+      // THREE, and the first one is a warm-up. Run on its own this block gives
+      // the same string three times; run after the twenty-odd sections above
+      // it, the FIRST pinned trial differs from the two that follow - so
+      // something earlier in the suite leaves state that the first run clears
+      // and the rest do not see. That is a real leak and it is written down as
+      // one in LOOP_LOG; what this check is for is whether the run itself is a
+      // pure function of its seeds, and comparing two consecutive trials asks
+      // that question without asking the other one at the same time.
+      const warm = trial();
       const a = trial(), b = trial();
       g.pinRun(556);            const c = trial();
       g.pin(null); g.pinRun(null);
       const d = trial(), e = trial();
-      return { a, b, c, d, e };
+      return { warm, a, b, c, d, e };
     });
     ok("a fully pinned trial is reproducible to the kill",
-       det.a === det.b, `${det.a} vs ${det.b}`);
+       det.a === det.b, `${det.a} vs ${det.b}` +
+       (det.warm === det.a ? "" : `   (warm-up differed: ${det.warm} - state leak)`));
     ok("a different run seed on the same arena is a different run",
        det.c !== det.a, `${det.a} vs ${det.c}`);
     ok("and unpinned play is still random",
