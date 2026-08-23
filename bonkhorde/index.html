@@ -2508,17 +2508,28 @@ volt(D){
   }
   // ARMS. They never grow. On the chick they are almost as long as the legs;
   // by the tyrant they are two fingers hanging off a chest twice the size.
+  // ARMS YOU CAN SEE. Reported as "sparklet's arms aren't visible", and they
+  // were not: two chains of radius .06 in the body's own colour, tucked flat
+  // against a chest four times their width. They are darker than the torso
+  // now, they are held CLEAR of it - the elbow swings out sideways - and the
+  // hand is bone-white with two hooked claws, which is the part that catches
+  // the eye at any distance. They still never grow: on the chick they are
+  // nearly as long as the legs, and by the tyrant they are two fingers hanging
+  // off a chest twice the size, which is the joke the whole line is built on.
+  const armC = [c[0]*.60, c[1]*.60, c[2]*.64];
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? -gait*.5 : gait*.5;
-    const al = (.20 + st*.03) * gr;
-    chain([[sway + rs*(.16+st*.03)*gr, chestF - .02*gr, HIP + hov + .06*gr],
-           [sway + rs*(.20+st*.04)*gr, chestF + al*.7 + p2*al*.3, HIP + hov - al*.5],
-           [sway + rs*(.19+st*.04)*gr, chestF + al*1.1 + p2*al*.5, HIP + hov - al*.9]],
-          .062*gr, .042*gr, c, em+.04);
-    for(let k=-1;k<=(st<2?1:0);k+=1)
-      chain([[sway + rs*(.19+st*.04)*gr, chestF + al*1.0, HIP + hov - al*.85],
-             [sway + rs*(.19+st*.04)*gr + k*.022*gr, chestF + al*1.5, HIP + hov - al*1.05]],
-            .026*gr, .015*gr, [.94,.92,.86], .18);
+    const al = (.26 + st*.02) * gr;
+    const sh = [sway + rs*(.17+st*.035)*gr, chestF - .02*gr, HIP + hov + .08*gr];
+    const el = [sway + rs*(.27+st*.05)*gr, chestF + al*.55 + p2*al*.3, HIP + hov - al*.42];
+    const hd = [sway + rs*(.23+st*.045)*gr, chestF + al*1.15 + p2*al*.5, HIP + hov - al*.78];
+    chain([sh, el], .085*gr, .062*gr, armC, em+.04);
+    chain([el, hd], .062*gr, .046*gr, armC, em+.04);
+    blob(el[0], el[1], el[2], .072*gr, .072*gr, .072*gr, armC, em+.04);
+    mb(hd[0], hd[1], hd[2], .055*gr, .05*gr, .05*gr, [.90,.88,.82], .18);
+    for(let k=-1;k<=1;k+=2)
+      chain([hd, [hd[0] + k*.035*gr, hd[1] + al*.42, hd[2] - al*.16]],
+            .030*gr, .017*gr, [.94,.92,.86], .22, null, true);
   }
   // LEGS. Big at every age, biggest relative to the body on the chick.
   for(const rs of [-1,1]){
@@ -2869,23 +2880,45 @@ echo(D){
   // THE NECKS. Each one leaves its own socket, and the sockets are spread
   // across the full width of the shoulders rather than stacked on the midline.
   const HD = .155*gr;                                // skull half-width
-  // The fan has to open wider as heads are added or the outer pair closes on
-  // the inner pair: three skull-widths of arc per head, always.
-  const FAN = (n - 1) * (HD * 3.1);
+  // HOW FAR APART, AND IN WHICH DIRECTION. Reported as "the hydra's necks are
+  // too far apart and aren't natural at all, they are stiff", and both were
+  // true: the fan opened three skull-widths per head - so THE HYDRA's outer
+  // skulls were a body-length apart - and every neck was a straight three-point
+  // run, which is a spoke, not a neck.
+  //
+  // Real heads on one animal are held CLOSE and separated mostly in depth and
+  // height, because that is what fits: they are all trying to look at the same
+  // thing. Lateral spread comes down to one and a half skull-widths per head,
+  // and the rest of the separation moves into how far forward each head reaches
+  // and how high it rides - which also means the necks cross over each other
+  // instead of lying in one plane.
+  const FAN = (n - 1) * (HD * 1.5);
   for(let i=0;i<n;i++){
     const u  = n > 1 ? i/(n-1) - .5 : 0;             // -0.5 .. +0.5
-    const sd = Math.sin(t*2.6 + i*1.9)*.07;
-    // socket: spread across the shoulders, and the outer ones sit further back
-    const bx = u * .34 * gr, bf = (.16 - Math.abs(u)*.14) * gr, by = (.34 + coil)*gr;
-    // head: fanned out, forward, and staggered in height so no two skulls ever
-    // occupy the same slice of air even when the sway brings them together
-    const hx = u * FAN * 2 + sd;
-    const hf = (.40 + Math.cos(u*2.0)*.18 - Math.abs(u)*.10) * gr;
-    const hy = (.90 + Math.cos(u*1.7)*.10 + (i%2 ? .11 : 0)
-                    + Math.sin(t*3.1 + i*1.3)*.05) * gr;
-    chain([[bx, bf, by], [bx + (hx-bx)*.45, bf + (hf-bf)*.45, by + (hy-by)*.55],
+    // Each neck gets its own clock. A fan that moves as one piece is a rack of
+    // antlers; heads on one body drift apart and back together.
+    const ps = i * 2.39;                             // an irrational-ish stagger
+    const sd = Math.sin(t*1.9 + ps)*.055 + Math.sin(t*.83 + ps*1.7)*.035;
+    const bob = Math.sin(t*1.45 + ps*1.3)*.055;
+    const reach = Math.sin(t*.62 + ps*2.1)*.07;      // leaning in and out
+    const bx = u * .30 * gr, bf = (.16 - Math.abs(u)*.10) * gr, by = (.34 + coil)*gr;
+    // inner heads ride high and reach far; outer heads sit lower and wider,
+    // and the alternation staggers them again so no two share a slice of air
+    const tier = (i % 2 ? -.09 : .07) + (i === (n>>1) ? .06 : 0);
+    const hx = u * FAN + sd;
+    const hf = (.46 + Math.cos(u*2.4)*.20 + reach) * gr;
+    const hy = (.92 + Math.cos(u*1.3)*.12 + tier + bob) * gr;
+    // FIVE POINTS, NOT THREE, and the middle ones carry their own sway - the
+    // neck leaves the shoulder low and behind, arches up, then reaches forward
+    // into the skull. That S is the whole difference between a neck and a rod.
+    const arc = (k, lat, fwd, up)=>[
+      bx + (hx-bx)*k + lat*gr, bf + (hf-bf)*k + fwd*gr, by + (hy-by)*up ];
+    chain([[bx, bf - .06*gr, by],
+           arc(.22, sd*.30 - u*.05, -.10, .42),
+           arc(.52, sd*.75 + u*.03,  .00, .82),
+           arc(.80, sd*1.0  + u*.02,  .05, 1.02),
            [hx, hf - HD*.5, hy]],
-          .115*gr, .10*gr, i ? lt : c, em+.04);
+          .125*gr, .098*gr, i ? lt : c, em+.04);
     blob(hx, hf, hy, HD, HD*.94, HD, i ? lt : c, em+.06);
     chain([[hx, hf + HD*.4, hy - HD*.2], [hx, hf + HD*1.5, hy - HD*.45]],
           HD*.66, HD*.44, bel, em*.8);
@@ -5336,18 +5369,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // They are solids now, sized off sz, each one's FRONT face clearly ahead of
   // the last, and the whole assembly pushed proud of the skull. Interpenetration
   // is fine - z-fighting is a coplanar-faces problem, not an overlap problem.
-  const eyes = (r,f,y,sp,sz,pup)=>{
-    for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.55,  y,              sz,     sz*1.02*blk, sz*.80,
-         [.98,.98,1.0], .85);                                   // eyeball, proud
-      mb(r+sg*sp, f+sz*1.28, y-sz*.10*blk,   sz*.52, sz*.56*blk, sz*.30,
-         pup||[.06,.07,.11], .05);                              // pupil, ahead of it
-      // The glint used to sit a tenth of its own size in front of the pupil,
-      // which the draw-index nudge was enough to pull clean off the face.
-      mb(r+sg*sp-sz*.34, f+sz*1.42, y+sz*.32*blk, sz*.20, sz*.20*blk, sz*.18,
-         [1,1,1], 1.0);                                         // glint, ahead again
-    }
-  };
+  // ROUND - a hatchling, and the one the hydra keeps. Big, wet, no brow.
+  // Built on eyeBase like every other style; see the note there for why seven
+  // hand-rolled eyes all ended up invisible.
+  const eyes = (r,f,y,sp,sz,pup)=>
+    eyeBase(r,f,y,sp,sz, { iris: pup || [.22,.14,.32], ir:.80, irY:.80,
+                           pw:.42, ph:.46, glow:.35 });
   const grin = (r,f,y,w,h,n)=>{
     mb(r,f,y, w,h,.07, [.05,.05,.07], 0);
     for(let i=0;i<n;i++){ const tx = r - w + (i+.5)*(w*2/n);
@@ -5555,19 +5582,31 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // it reads as digitigrade, and the toes SUNK into the foot pad rather than
   // stuck on the front of it. `sw` is the stride, -1..1.
   const leg = (r,f,y, len, sw, rs, thick, col, em2, toeCol)=>{
-    const knee = [r + rs*thick*.30, f + len*.30 + sw*len*.30, y - len*.42];
-    const ankl = [r + rs*thick*.10, f - len*.16 + sw*len*.46, y - len*.80];
+    // DARKER THAN THE BODY, ALWAYS. Reported as "a lot of the models' legs and
+    // arms aren't visible", and the first reason is that a limb the same colour
+    // as the torso it hangs off has no silhouette against it - from the camera
+    // this game uses you are looking at the animal's flank, and the leg is a
+    // same-coloured shape inside a same-coloured shape. Two thirds value on the
+    // limb and a light foot is enough; it also reads as shadow, which is what
+    // the underside of an animal looks like anyway.
+    const lc = [col[0]*.62, col[1]*.62, col[2]*.66];
+    const knee = [r + rs*thick*.42, f + len*.34 + sw*len*.30, y - len*.40];
+    const ankl = [r + rs*thick*.12, f - len*.20 + sw*len*.46, y - len*.80];
     const foot = [ankl[0], ankl[1] + len*.30, Math.max(y - len, ankl[2] - len*.16)];
-    chain([[r, f, y], knee, ankl], thick, thick*.62, col, em2);
-    chain([ankl, foot], thick*.62, thick*.50, col, em2);
+    chain([[r, f, y], knee], thick*1.12, thick*.80, lc, em2);    // thigh
+    chain([knee, ankl], thick*.78, thick*.52, lc, em2);          // shin
+    chain([ankl, foot], thick*.58, thick*.50, lc, em2);
+    blob(knee[0], knee[1], knee[2], thick*.86, thick*.86, thick*.86, lc, em2);
     // three toes, each one starting INSIDE the foot and running out of it
     for(let i=-1;i<=1;i++)
       chain([[foot[0], foot[1] - thick*.30, foot[2]],
-             [foot[0] + i*thick*.70, foot[1] + thick*1.15, foot[2] - thick*.16]],
-            thick*.40, thick*.26, toeCol || col, em2, null, true);
-    // a claw on the middle toe, which is the one you can see
-    mb(foot[0], foot[1] + thick*1.45, foot[2] - thick*.24,
-       thick*.20, thick*.20, thick*.34, [.94,.92,.86], .18);
+             [foot[0] + i*thick*.78, foot[1] + thick*1.25, foot[2] - thick*.16]],
+            thick*.44, thick*.30, toeCol || lc, em2, null, true);
+    // a claw on every toe, in bone, because the foot is the part of a leg you
+    // can actually see from above
+    for(let i=-1;i<=1;i++)
+      mb(foot[0] + i*thick*.86, foot[1] + thick*1.55, foot[2] - thick*.24,
+         thick*.19, thick*.19, thick*.34, [.94,.92,.86], .20);
   };
   // ---- THE FACE FAMILY. Reported as "they all have the same eyes and mouth".
   // They did: one eyes() and one grin() served every creature in the game, so
@@ -5578,74 +5617,89 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // front face clearly ahead of the last, and the whole assembly sunk into the
   // skull so it is part of the head rather than parked on it.
   //
-  // eyeSlit - a reptile. Vertical pupil, heavy brow shelf above it.
-  const eyeSlit = (r,f,y,sp,sz,iris)=>{
+  // ---- THE EYE, ONE SCAFFOLD. Reported three times, most recently as
+  // "models' eyes are still not visible", and the reason it kept coming back
+  // is that seven styles each solved it their own way and none of them solved
+  // it. Four layers now, and every style is a set of numbers on top:
+  //
+  //   1  a DARK socket, sunk into the skull. This is what makes an eye read on
+  //      a pale animal at all - GALE is near-white, and a white sclera on a
+  //      white head is nothing. The socket is the contrast; the rest sits in it.
+  //   2  a pale sclera, standing proud of the socket
+  //   3  a coloured iris, proud again and EMISSIVE, so the eye survives being
+  //      on the shadowed side of the animal
+  //   4  a dark pupil and a white glint, proud again
+  //
+  // The forward offsets are large multiples of the eye's own size. The old
+  // ones were tenths, and an eye standing a tenth of its size off the skull is
+  // inside the head from every angle except dead on - which is exactly what
+  // "not visible" meant.
+  const eyeBase = (r,f,y,sp,sz, o)=>{
+    const wide = o.wide || 1, tall = o.tall || 1, out = o.out === undefined ? 1 : o.out;
     for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.30, y, sz*1.02, sz*.92*blk, sz*.80, iris||[1,.74,.16], .70);
-      mb(r+sg*sp, f+sz*1.05, y, sz*.22, sz*.86*blk, sz*.34, [.04,.03,.05], .02);
-      mb(r+sg*sp - sz*.42, f+sz*1.20, y+sz*.36*blk, sz*.20, sz*.16*blk, sz*.16,
-         [1,1,1], 1.0);
-      mb(r+sg*sp, f+sz*.10, y+sz*.92, sz*1.30, sz*.34, sz*.62, [.10,.09,.10], .04);
+      const x = r + sg*sp;
+      mb(x, f + sz*.30*out, y, sz*1.45*wide, sz*1.38*tall, sz*1.05,
+         o.socket || [.11,.10,.12], 0);                          // socket
+      if(o.sclera !== false)
+        mb(x, f + sz*1.05*out, y, sz*1.10*wide, sz*1.06*tall*blk, sz*.62,
+           o.white || [.97,.97,1.0], .40);                       // sclera
+      mb(x + (o.lean || 0)*sg*sz, f + sz*1.62*out, y + (o.rise||0)*sz,
+         sz*(o.ir || .72)*wide, sz*(o.irY || .72)*tall*blk, sz*.44,
+         o.iris || [1,.76,.18], o.glow === undefined ? .80 : o.glow);
+      mb(x + (o.lean || 0)*sg*sz, f + sz*2.02*out, y + (o.rise||0)*sz,
+         sz*(o.pw || .34)*wide, sz*(o.ph || .40)*tall*blk, sz*.26,
+         o.pupil || [.03,.03,.05], .02);                         // pupil
+      // The glint is the smallest box on the animal and the one that keeps
+      // falling off it: parked a pupil-width out and a pupil-height up, it
+      // touches the pupil along one edge and the draw nudge does the rest.
+      // Overlap it properly - a highlight is ON the eye, not beside it.
+      mb(x - sz*.26*wide, f + sz*2.18*out, y + sz*.24*blk,
+         sz*.22, sz*.24*blk, sz*.20, [1,1,1], 1.0);              // glint
+      if(o.brow)
+        mb(x, f + sz*.34*out, y + sz*(1.10 + (o.browUp||0)),
+           sz*1.75*wide, sz*(o.brow), sz*.72, o.browCol || [.13,.12,.13], .04);
+      if(o.shelf)
+        mb(x, f + sz*.30*out, y - sz*(1.05 + (o.shelfDn||0)),
+           sz*1.60*wide, sz*(o.shelf), sz*.66, o.browCol || [.16,.14,.12], .04);
     }
   };
-  // eyeSunk - a heavy grazer. Small eye at the bottom of a bone socket.
-  const eyeSunk = (r,f,y,sp,sz,iris)=>{
-    for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.05, y, sz*1.25, sz*1.15, sz*.85, [.16,.13,.11], 0);
-      mb(r+sg*sp, f+sz*.62, y-sz*.10, sz*.72, sz*.66*blk, sz*.52, iris||[.95,.72,.28], .55);
-      mb(r+sg*sp, f+sz*1.00, y-sz*.12, sz*.30, sz*.34*blk, sz*.26, [.05,.04,.04], .02);
-      mb(r+sg*sp, f+sz*.16, y+sz*1.00, sz*1.55, sz*.46, sz*.70, [.24,.20,.15], .05);
-    }
-  };
-  // eyeBird - forward-set, a pale ring around a hard little pupil. A hawk.
-  const eyeBird = (r,f,y,sp,sz,iris)=>{
-    for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.10, y, sz*1.16, sz*1.10, sz*.86, [.14,.13,.15], 0);  // socket
-      mb(r+sg*sp, f+sz*.62, y, sz*.86, sz*.84*blk, sz*.62, iris||[.98,.80,.18], .55);
-      mb(r+sg*sp, f+sz*1.02, y, sz*.36, sz*.38*blk, sz*.26, [.03,.03,.04], .02);
-      mb(r+sg*sp, f+sz*.40, y+sz*.88, sz*1.24, sz*.26, sz*.56, [.13,.13,.16], .06);
-      mb(r+sg*sp - sz*.34, f+sz*1.16, y+sz*.30*blk, sz*.15, sz*.13*blk, sz*.12,
-         [1,1,1], 1.0);
-    }
-  };
-  // eyeGlow - no white at all. A slot in the skull with something lit in it.
-  const eyeGlow = (r,f,y,sp,sz,iris)=>{
-    for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.20, y, sz*1.10, sz*.80, sz*.80, [.05,.06,.05], 0);
-      mb(r+sg*sp, f+sz*.72, y, sz*.78, sz*.30*blk, sz*.40, iris||[.72,1,.32], 1.0);
-      mb(r+sg*sp, f+sz*.96, y, sz*.34, sz*.16*blk, sz*.22, [1,1,.92], 1.0);
-    }
-  };
-  // eyeDeep - a whole black eye with a bright rim. Something from deep water.
-  const eyeDeep = (r,f,y,sp,sz,iris)=>{
-    for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.20, y, sz*1.30, sz*1.24*blk, sz*.95, iris||[.62,.92,1], .55);
-      mb(r+sg*sp, f+sz*.78, y, sz*1.00, sz*.96*blk, sz*.50, [.02,.03,.06], .02);
-      mb(r+sg*sp - sz*.44, f+sz*1.10, y+sz*.46*blk, sz*.24, sz*.22*blk, sz*.16,
-         [1,1,1], 1.0);
-    }
-  };
-  // eyeCold - a predator. Narrow, forward, and scowling under a straight brow.
-  const eyeCold = (r,f,y,sp,sz,iris)=>{
-    for(const sg of [-1,1]){
-      mb(r+sg*sp, f+sz*.32, y, sz*1.10, sz*.62*blk, sz*.80, [.96,.96,.94], .70);
-      mb(r+sg*sp + sg*sz*.16, f+sz*.92, y, sz*.40, sz*.44*blk, sz*.30,
-         iris||[.98,.70,.12], .75);
-      mb(r+sg*sp + sg*sz*.16, f+sz*1.20, y, sz*.20, sz*.26*blk, sz*.16,
-         [.03,.03,.04], .02);
-      mb(r+sg*sp, f+sz*.20, y+sz*.72, sz*1.34, sz*.30, sz*.66, [.12,.11,.12], .04);
-    }
-  };
-  // eyeMany - three eyes a side, biggest at the front. For the thing that is
-  // several animals wearing one body.
+  // SLIT - a reptile. A tall narrow pupil under a heavy brow.
+  const eyeSlit = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [1,.74,.16], ir:.86, irY:.80,
+                           pw:.20, ph:.86, brow:.40, glow:.85 });
+  // SUNK - a heavy grazer. A small eye at the bottom of a deep bone socket.
+  const eyeSunk = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [.98,.74,.28], ir:.52, irY:.50,
+                           pw:.26, ph:.28, rise:-.16, out:.78,
+                           brow:.52, browUp:.10, browCol:[.30,.24,.17],
+                           shelf:.34, socket:[.14,.11,.09], glow:.55 });
+  // BIRD - forward-set, a pale ring round a hard little pupil. A hawk.
+  const eyeBird = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [.99,.78,.14], ir:.90, irY:.90,
+                           pw:.34, ph:.34, brow:.30, browCol:[.10,.10,.13],
+                           socket:[.09,.09,.12], glow:.80 });
+  // GLOW - no white at all. A slot in the skull with something lit in it.
+  const eyeGlow = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { sclera:false, iris: iris || [.78,1,.34],
+                           ir:.92, irY:.42, pw:.30, ph:.20,
+                           pupil:[1,1,.90], socket:[.05,.07,.05], glow:1.0 });
+  // DEEP - a whole black eye with a bright rim. Something from deep water.
+  const eyeDeep = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [.34,.86,1], ir:1.02, irY:1.00,
+                           pw:.74, ph:.74, pupil:[.02,.03,.06],
+                           socket:[.05,.09,.13], glow:.70 });
+  // COLD - a predator. Narrow, forward, scowling under a straight brow.
+  const eyeCold = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [1,.72,.10], ir:.66, irY:.44,
+                           pw:.26, ph:.24, lean:.14, tall:.72, wide:1.10,
+                           brow:.34, browCol:[.10,.10,.11], glow:.90 });
+  // MANY - three a side, biggest at the front. The thing that is several
+  // animals wearing one body.
   const eyeMany = (r,f,y,sp,sz,iris)=>{
-    for(const sg of [-1,1]) for(let i=0;i<3;i++){
-      const s2 = sz * (1 - i*.26), off = sp + i*sz*.34;
-      mb(r+sg*off, f+s2*.34 - i*sz*.34, y - i*sz*.30,
-         s2, s2*.98*blk, s2*.80, [.98,.98,1], .80);
-      mb(r+sg*off, f+s2*.96 - i*sz*.34, y - i*sz*.30,
-         s2*.44, s2*.46*blk, s2*.26, iris||[.34,.10,.50], .10);
-    }
+    for(let i=0;i<3;i++)
+      eyeBase(r, f - i*sz*.42, y - i*sz*.34, sp + i*sz*.40, sz*(1 - i*.26),
+              { iris: iris || [.44,.16,.62], ir:.80, irY:.80, pw:.40, ph:.42,
+                glow:.55 });
   };
   // ---- MOUTHS. Same problem, same answer.
   // jawLong - a crocodilian snout. The teeth sit OUTSIDE the lip line, top and
