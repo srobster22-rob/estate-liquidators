@@ -1113,6 +1113,19 @@ const TER_Q  = 12;                      // quads per chunk side
 // it on the GPU. A context restore only needs the second half - terData
 // survives the loss and re-rolling the world on a restore would hand you a
 // different map mid-run.
+// The unit cube as faces the terrain baker can walk. BOXV is a flat typed
+// array built for the dynamic batcher's stride; the static builder wants
+// positions and normals it can transform one vertex at a time.
+const BOXV_F = (()=>{
+  const F=[[0,0,1,[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
+           [0,0,-1,[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]],
+           [1,0,0,[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]],
+           [-1,0,0,[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]],
+           [0,1,0,[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]],
+           [0,-1,0,[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]]];
+  return F.map(f=>({ n:[f[0],f[1],f[2]],
+                     v:[0,1,2,0,2,3].map(k=>f[3+k]) }));
+})();
 function makeTerrain(){
   const CS = ARENA*2/TER_CH, S = CS/TER_Q, out=[];
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
@@ -1158,6 +1171,78 @@ function makeTerrain(){
       for(const [a,b,d] of [[0,2,1],[0,3,2]]){
         const n = nrm(cross(sub(P[b],P[a]), sub(P[d],P[a])));
         push(P[a],n,c); push(P[b],n,c); push(P[d],n,c);
+      }
+    }
+    // ---- SCATTER. Reported in the audit as "the terrain has no small detail
+    // at all", and it did not: two tones of value noise on a plane, and
+    // nothing on it you could be beside. Everything below is baked into the
+    // TERRAIN buffer inside this chunk's vertex range, so it costs nothing per
+    // frame, it is culled with the chunk it belongs to, and it is generated
+    // from a pure hash rather than from the run stream - the arena is rolled
+    // per world, and adding detail to it must not move a single die in the
+    // simulation.
+    {
+      const bx = (px,py,pz, hx,hy,hz, col)=>{
+        for(const f of BOXV_F){
+          const n = f.n;
+          for(const v of f.v)
+            push([px+v[0]*hx, py+v[1]*hy, pz+v[2]*hz], n, col);
+        }
+      };
+      // Eleven per chunk, which on a 48-metre chunk is roughly one every
+      // fourteen metres - enough that there is always something near you to
+      // measure your own speed against, few enough that the buffer stays
+      // about the size of the ground it decorates.
+      const N = 11;
+      for(let s=0;s<N;s++){
+        const hx1 = vhash(ci*97 + s*13, cj*31 + s*7);
+        const hz1 = vhash(cj*61 + s*11, ci*53 + s*3);
+        const sx = -ARENA + ci*CS + hx1*CS, sz = -ARENA + cj*CS + hz1*CS;
+        if(Math.hypot(sx,sz) > RIM - 3) continue;            // not into the wall
+        const bm = biomeAt(sx, sz), gy = groundY(sx, sz);
+        const r3 = vhash(s*7919 + ci*13, s*104729 + cj*17);
+        const sc = .78 + r3*1.15;
+        const dk2 = [bm.b[0]*.66, bm.b[1]*.66, bm.b[2]*.70];
+        const lt2 = [Math.min(1,bm.a[0]*1.22), Math.min(1,bm.a[1]*1.22),
+                     Math.min(1,bm.a[2]*1.22)];
+        switch(bm.id){
+          case "grass":                                      // fern tufts
+            for(let k=0;k<3;k++)
+              bx(sx + (k-1)*.16*sc, gy + .30*sc, sz + (k%2?.10:-.08)*sc,
+                 .045*sc, .34*sc - k*.05*sc, .045*sc,
+                 k%2 ? [.20,.42,.19] : [.26,.52,.23]);
+            break;
+          case "ash":                                        // cinder chunks
+            bx(sx, gy + .10*sc, sz, .34*sc, .11*sc, .30*sc, dk2);
+            bx(sx + .10*sc, gy + .22*sc, sz - .06*sc, .13*sc, .10*sc, .12*sc,
+               [.42,.16,.09]);
+            break;
+          case "bog":                                        // reeds
+            for(let k=0;k<2;k++)
+              bx(sx + (k?.13:-.11)*sc, gy + .42*sc, sz + (k?-.09:.07)*sc,
+                 .035*sc, .46*sc, .035*sc, [.26,.30,.18]);
+            bx(sx, gy + .05*sc, sz, .26*sc, .05*sc, .24*sc, dk2);
+            break;
+          case "ice":                                        // shards
+            bx(sx, gy + .34*sc, sz, .10*sc, .38*sc, .10*sc, lt2);
+            bx(sx + .14*sc, gy + .17*sc, sz + .06*sc, .07*sc, .20*sc, .07*sc,
+               [.72,.86,.95]);
+            break;
+          case "sand":                                       // stones
+            bx(sx, gy + .07*sc, sz, .22*sc, .07*sc, .30*sc, dk2);
+            break;
+          case "bone":                                       // fragments
+            // half-buried, because pale bone on a pale bone field is invisible
+            // without something dark under it
+            bx(sx, gy + .03*sc, sz, .46*sc, .04*sc, .16*sc, dk2);
+            bx(sx, gy + .10*sc, sz, .38*sc, .07*sc, .085*sc, [.88,.85,.75]);
+            bx(sx + .30*sc, gy + .13*sc, sz, .10*sc, .10*sc, .10*sc, [.93,.90,.80]);
+            break;
+          default:                                           // rust nodules
+            bx(sx, gy + .12*sc, sz, .24*sc, .13*sc, .22*sc, dk2);
+            bx(sx - .08*sc, gy + .26*sc, sz + .05*sc, .11*sc, .10*sc, .10*sc,
+               [.46,.26,.18]);
+        }
       }
     }
     terChunks.push({ x:-ARENA+ci*CS+CS*.5, z:-ARENA+cj*CS+CS*.5,
