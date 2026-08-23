@@ -1162,10 +1162,20 @@ function makeTerrain(){
       const step  = Math.floor(clamp(patch*.45 + vhash(gi2, gj2)*.55, 0, .999) * 3);
       const mix   = step / 2;
       const h   = (P[0][1]+P[2][1])/4 + .5;
-      const bm  = biomeAt(x0+S*.5, z0+S*.5);
-      const base = [lerp(bm.b[0], bm.a[0], mix),
-                    lerp(bm.b[1], bm.a[1], mix),
-                    lerp(bm.b[2], bm.a[2], mix)];
+      // COLOUR CROSS-FADES THE WAY THE HEIGHT ALREADY DID. groundY() blends the
+      // amplitude and the lift of two regions over BLEND metres so a border is
+      // a slope rather than a cliff - but the colour snapped to whichever cell
+      // was nearest, so every seam in the world was a hard jagged line drawn
+      // across a smooth hill. Same two cells, same nine metres, same curve.
+      const mx0 = x0+S*.5, mz0 = z0+S*.5;
+      const nc  = nearestCells(mx0, mz0);
+      const bm  = cells.length ? cells[nc[0]].b : BIOME_BY.grass;
+      const bm2 = cells.length ? cells[nc[1]].b : bm;
+      const eg  = clamp((nc[3] - nc[2]) / BLEND, 0, 1);   // 1 well inside a region
+      const w2  = (1 - eg) * .5;                          // at most half-and-half
+      const tone = (k)=> lerp(lerp(bm.b[k], bm.a[k], mix),
+                              lerp(bm2.b[k], bm2.a[k], mix), w2);
+      const base = [tone(0), tone(1), tone(2)];
       const c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
       // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
       for(const [a,b,d] of [[0,2,1],[0,3,2]]){
