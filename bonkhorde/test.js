@@ -2126,7 +2126,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       boot(); g.hitMe(30); g.step(1, 1/60);
       const hit = g.anim();
       // 6. something nearby turns the head
-      boot(); g.spawn("brute", 1, 9); g.step(40, 1/60);
+      // placed, not rolled: "one within nine metres" lands at a random angle,
+      // and about one time in twenty it lands dead ahead - where the correct
+      // answer for "which way did the head turn" is nought
+      boot(); g.spawnAt("brute", 7, 1); g.step(40, 1/60);
       const looking = g.anim();
       return { still, walk, standPh: p1 - p0, air, landed, hit, looking };
     });
@@ -2607,6 +2610,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // sampling and the autopilot's own choices were all still Math.random().
     // With the run stream seeded too, a trial is a pure function of its inputs,
     // which is what lets a candidate and its control share forty-two worlds.
+    // Snapshot the module-level state a run can inherit. It matches a freshly
+    // loaded page now - noEvents, a stale hand of cards and a negative hitstop
+    // were all leaking through startRun and are reset there - and the warm-up
+    // trial STILL differs, so whatever is left is not one of these twenty-five
+    // knobs. Printed only when it matters, so the pass is quiet.
+    const snapBefore = await page.evaluate(() => window.__g.snapshot());
     const det = await page.evaluate(() => {
       const g = window.__g;
       const trial = () => { g.wipeSave(); g.start("intern"); g.bot(true);
@@ -2630,7 +2639,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("a fully pinned trial is reproducible to the kill",
        det.a === det.b, `${det.a} vs ${det.b}` +
-       (det.warm === det.a ? "" : `   (warm-up differed: ${det.warm} - state leak)`));
+       (det.warm === det.a ? "" :
+        `   (warm-up differed: ${det.warm} - state leak, entering state ` +
+        `${JSON.stringify(snapBefore)})`));
     ok("a different run seed on the same arena is a different run",
        det.c !== det.a, `${det.a} vs ${det.c}`);
     ok("and unpinned play is still random",

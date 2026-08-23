@@ -3449,6 +3449,13 @@ function startRun(id){
   // fully pinned trial stopped being reproducible in the suite while being
   // perfectly reproducible on its own.
   pickT = 0;
+  // ...and neither should a run inherit "events are off" or a hand of cards
+  // from whatever ran before it. Both were leaking: a snapshot taken twenty
+  // sections into the suite showed noEvents true and four stale cards still in
+  // the DOM before a single line of the block that needed a clean start.
+  noEvents = false;
+  document.getElementById("pkCards").innerHTML = "";
+  hitstop = Math.max(0, hitstop);
   stick=null; look=null;                 // drop any thumb held across the retry
   running=true; over=false; paused=false; picking=false;
   hide("menu"); hide("end"); hide("paused"); hide("pick");
@@ -7426,6 +7433,24 @@ window.__g = {
   // varies run to run - which turned a metric that held to a tenth of a box
   // into one that swung a box and a half. Sweep them before measuring.
   clearGems:()=>{ const n = gems.length; gems.length = 0; return n; },
+  // exact placement, because "spawn one within nine metres" puts the thing at
+  // a random angle and a test that measures WHICH WAY the head turned cannot
+  // use a random angle
+  spawnAt:(t,x,z)=>{ spawnEnemy(t, x, z); return enemies.length; },
+  // Every module-level knob a run could inherit from whatever ran before it.
+  // Written to hunt one specific bug - a pinned trial that is reproducible on
+  // its own and not reproducible after the rest of the suite - and kept
+  // because "what state does a run start from" is a question worth being able
+  // to ask at any time.
+  snapshot:()=>({ noSpawn, noEvents, noLevels, devAuto, botDrive, botHop,
+                  pinSeed, pinRun, deepAt, XP_NEED, HP_QUAD, HP_LIN, DMG_DIV,
+                  DMG_FROM, startBank, startBankT: +startBankT.toFixed(2),
+                  nextEvent: +nextEvent.toFixed(2), pickT: +pickT.toFixed(2),
+                  pendingLevels, picking, stage, evoT: +evoT.toFixed(2),
+                  hitstop: +hitstop.toFixed(3), MAXE, RUN_LEN,
+                  keys: Object.keys(keys).filter(k=>keys[k]).join(","),
+                  dev: !!save.dev, up: JSON.stringify(save.up||{}),
+                  cards: document.getElementById("pkCards").children.length }),
   // take card i the way the number keys do, because the draft strip is
   // keyboard-driven now and a synthetic click has to go through the same door
   pick:  (i=0)=>{ const c = document.getElementById("pkCards").children[i|0];
