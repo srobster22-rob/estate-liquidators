@@ -2442,7 +2442,15 @@ function setDev(on){
   writeSave();
   return !!save.dev;
 }
-if(save.dev === undefined) save.dev = 1;          // ON by default, for now
+// OFF BY DEFAULT, AND THE "FOR NOW" IS OVER. This shipped at 1, so every
+// first-time player opened the menu holding 99,999 coins, all nine monsters,
+// every permanent upgrade maxed and THE DEEP one through nine - which makes
+// the unlock ladder, the coin economy and the monster-level grind invisible on
+// first contact. Three quarters of the systems in this game are progression,
+// and a build that hands them all over at the title screen is a build with no
+// progression in it. The panel is still one click away in the menu for
+// whoever wants it.
+if(save.dev === undefined) save.dev = 0;
 if(save.dev) unlockAll();
 
 // ==================================================================== STATE
