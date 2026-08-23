@@ -516,7 +516,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     window.__g.skipTo(1140);
     for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
       window.__g.give(w, 4);
-    window.__g.step(60 * 25); window.__g.resume();
+    window.__g.step(60 * 25); window.__g.clearGems(); window.__g.resume();
     await new Promise(r => setTimeout(r, 700));
     return window.__g.state();
   });
@@ -531,13 +531,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   const bare = await page.evaluate(async () => {
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
     window.__g.freezeSpawns(true); window.__g.freezeEvents(true);
-    window.__g.step(30); window.__g.resume();
+    window.__g.step(30); window.__g.clearGems(); window.__g.resume();
     await new Promise(r => setTimeout(r, 400));
     return window.__g.state().boxes;
   });
   const per = (hordeOnly.boxes - bare) / hordeOnly.enemies;
   ok("the horde's cost per enemy stays bounded",
-     hordeOnly.enemies > 40 && per <= 34,
+     hordeOnly.enemies > 40 && per <= 33,
      `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies ` +
      `(${hordeOnly.boxes} total, ${bare} of it not the horde)`);
   ok("and the frame still fits two flushes without a boss",

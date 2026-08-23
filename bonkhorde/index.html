@@ -6843,8 +6843,24 @@ function render(){
                             lerp(D.c[2],.10,ELITE_TINT)]
                          : D.c;
     const glow = e.flash>0 ? .45 : e.elite ? .32 : 0;
-    const c = e.flash>0 ? [lerp(base[0],1,.72), lerp(base[1],1,.72), lerp(base[2],1,.72)]
-                        : base;
+    let c = e.flash>0 ? [lerp(base[0],1,.72), lerp(base[1],1,.72), lerp(base[2],1,.72)]
+                      : base;
+    // LIFTED AT RANGE. Reported in the audit as "distant enemies are
+    // unreadable black blobs", and the palette explains it: the colours were
+    // chosen by a colour-vision optimiser that wanted them separated by
+    // LIGHTNESS, so the smallest and most numerous of them, RAPTORLING, is
+    // literally [.02,.02,.04]. Then the fog puts another twenty metres of grey
+    // over it. The hues stay exactly where the optimiser put them - the
+    // contrast test reads the palette, not this - but the far tier is blended
+    // toward light so the horde keeps a silhouette at the distance you
+    // actually make decisions from.
+    if(!e.boss && P){
+      const dfar = Math.hypot(e.x-P.x, e.z-P.z);
+      if(dfar > 20){
+        const u = Math.min(.42, (dfar - 20) / 46);
+        c = [lerp(c[0], .74, u), lerp(c[1], .76, u), lerp(c[2], .80, u)];
+      }
+    }
     const face = Math.atan2(P.x-e.x, P.z-e.z);
     // Detail by distance. A body plan you cannot resolve is boxes you paid for
     // and did not get: full build inside 16m, reduced to 32m, silhouette past
@@ -7381,6 +7397,11 @@ window.__g = {
                    const d = dmgOut(base).d; P.crit = was; return +d.toFixed(4); },
   fillSurge:()=>{ P.surge = .999; },
   dropGem:(x,z,v)=>{ gems.push(mkGem(x, z, v)); return gems.length; },
+  // The per-enemy draw budget is supposed to measure BODIES. Gems are three
+  // silhouettes now instead of one cube, and how many are lying on the floor
+  // varies run to run - which turned a metric that held to a tenth of a box
+  // into one that swung a box and a half. Sweep them before measuring.
+  clearGems:()=>{ const n = gems.length; gems.length = 0; return n; },
   // take card i the way the number keys do, because the draft strip is
   // keyboard-driven now and a synthetic click has to go through the same door
   pick:  (i=0)=>{ const c = document.getElementById("pkCards").children[i|0];
