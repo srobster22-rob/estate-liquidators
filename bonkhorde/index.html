@@ -6837,12 +6837,51 @@ function render(){
       }
       continue;
     }
-    const seg = s.evo?22:11;
-    for(let i=0;i<seg;i++){
-      const th = s.ang + (i/(seg-1)-.5)*s.arc;
-      const rr = s.rng*(0.45+0.55*(1-a));
+    // A SWING, NOT A FENCE. Reported in the audit as "the BAT swing draws as a
+    // fence of cream boxes", and it did: eleven identical cubes appeared along
+    // the whole arc at once and faded together, so the one melee weapon in the
+    // game had no direction, no travel and no edge.
+    //
+    // It sweeps now. The leading edge walks the arc across the life of the
+    // swing and drags a short trail behind it; every segment is a flattened
+    // slab yawed to the TANGENT, so consecutive ones form a ribbon instead of
+    // a row of dice; the radius opens as it goes and the whole thing dips
+    // through the middle of the arc the way a real swing does. The tip is the
+    // brightest thing on it, because that is the part that hits.
+    const prog = 1 - a;                       // 0 at the start, 1 at the end
+    const span = s.arc * (s.evo ? .46 : .38); // how much of the arc the blade covers
+    const lead = s.ang + (prog - .5) * s.arc;
+    const N = s.evo ? 16 : 12;
+    for(let i=0;i<N;i++){
+      const u = i/(N-1);                      // 0 at the tip, 1 at the tail
+      const th = lead - u * span;
+      if(Math.abs(th - s.ang) > s.arc*.55) continue;
+      const rr = s.rng * (.62 + .34*prog) * (1 - u*.08);
       const x = s.x+Math.sin(th)*rr, z = s.z+Math.cos(th)*rr;
-      box(x, groundY(x,z)+.7, z, .30,.30,.30, s.evo?[1,.62,.22]:[.95,.92,.7], .9*a);
+      const dip = Math.sin(prog*Math.PI) * .30;
+      const k = (1 - u*.70);                  // the tail is thin and dim
+      // OVERLAPPING, not yawed. Sizing each slab to the gap between it and its
+      // neighbour and letting them interpenetrate makes a ribbon without
+      // having to reason about which way a yawed box's local axes point - the
+      // first attempt yawed each slab to the tangent, guessed wrong, and drew
+      // a comb of radial spokes instead of a blade.
+      const gap = rr * span / (N-1) * .85;
+      // A BLADE, NOT A ROAD. At MEGABONK's reach the gap between samples is
+      // most of a metre, and sizing the slab to it drew a two-metre-wide
+      // yellow carpet across the arena. Overlap is what the gap buys; the
+      // width is the weapon's, and it tapers to nothing at the tail.
+      const w = Math.max(gap, s.rng*.05) * (0.50 + k*0.62);
+      box(x, groundY(x,z) + 1.02 - dip - u*.10, z,
+          w, (.17 + .26*k), w,
+          s.evo ? [1, .56+.32*k, .16] : [.92, .87+.11*k, .58],
+          (.30 + .70*k) * Math.min(1, a*2.4));
+    }
+    // and a bright chip right on the tip, which is what sells the edge
+    {
+      const rr = s.rng * (.62 + .34*prog);
+      const x = s.x+Math.sin(lead)*rr, z = s.z+Math.cos(lead)*rr;
+      box(x, groundY(x,z) + 1.02 - Math.sin(prog*Math.PI)*.30, z,
+          s.rng*.10, .21, s.rng*.10, s.evo?[1,.92,.62]:[1,1,.90], 1.0);
     }
   }
 
