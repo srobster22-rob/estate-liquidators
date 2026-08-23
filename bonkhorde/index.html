@@ -7015,16 +7015,25 @@ function render(){
   g2.clearRect(0,0,w,h);
   VPM = { proj, view, w, h };
   g2.textAlign="center"; g2.font="700 15px ui-monospace,Menlo,monospace";
+  // DAMAGE NUMBERS YOU CAN ACTUALLY READ. They were cream text with a black
+  // copy offset a pixel and a half behind it, faded on a curve that started
+  // dropping the instant they appeared - which over a green field at minute
+  // three is grey on green, and the audit round could not read a single one of
+  // them. An outline all the way round instead of a drop copy, full opacity
+  // for most of the life and the fade at the end, and the number gets bigger
+  // the harder the hit so the big ones read from further away.
   for(const n of nums){
     const s = project(n.x,n.y,n.z);
     if(!s) continue;
-    const a = clamp(n.life/.72,0,1);
-    g2.globalAlpha = a;
-    g2.font = n.crit ? "800 21px ui-monospace,Menlo,monospace"
-                     : "700 14px ui-monospace,Menlo,monospace";
-    g2.fillStyle = "#000"; g2.fillText(n.v, s[0]+1.5, s[1]+1.5);
-    g2.fillStyle = n.heal ? "#6ddba0" : n.crit ? "#ffd24a" : "#fff3dd";
-    g2.fillText(n.heal ? "+" + n.v : n.v, s[0], s[1]);
+    g2.globalAlpha = clamp(n.life/.34, 0, 1);
+    const heft = n.crit ? 22 : Math.min(20, 13 + Math.log10(Math.max(1, +n.v)) * 3.4);
+    g2.font = `${n.crit ? 800 : 700} ${heft.toFixed(0)}px ui-monospace,Menlo,monospace`;
+    g2.lineWidth = n.crit ? 5 : 4; g2.lineJoin = "round";
+    g2.strokeStyle = n.heal ? "#04301c" : n.crit ? "#3d1c00" : "#12100a";
+    const txt = n.heal ? "+" + n.v : n.v;
+    g2.strokeText(txt, s[0], s[1]);
+    g2.fillStyle = n.heal ? "#7dfab4" : n.crit ? "#ffd24a" : "#fffbf0";
+    g2.fillText(txt, s[0], s[1]);
   }
   g2.globalAlpha = 1;
   // 19% of the height puts these on top of the phase line on a phone in
@@ -7032,13 +7041,24 @@ function render(){
   // game most wants to tell you something. Floor it below the HUD header and
   // scale the type to the screen it is actually on.
   const asz = Math.max(19, Math.min(30, h*0.042));
-  let ay = Math.max(h*0.19, 84);
+  // The evolution banner owns the middle of the screen for three seconds and
+  // is the single loudest thing the game says. Toasts step out of its way
+  // rather than stacking on top of it - the audit caught TEMPO x10, the new
+  // form's name and its signature line all live at once.
+  let ay = Math.max(h*0.19, 84) + (evoT > 0 ? h*0.30 : 0);
   for(const al of alerts.slice(-2)){
     g2.globalAlpha = clamp(al.life/2.6,0,1);
     g2.font = `800 ${asz.toFixed(0)}px ui-monospace,Menlo,monospace`;
+    // a plate, because a coloured word on a sunlit field is not readable and
+    // an outline alone only half fixes it
+    const tw = g2.measureText(al.text).width;
+    g2.globalAlpha *= .68;
+    g2.fillStyle = "#080a0e";
+    g2.fillRect(w/2 - tw/2 - 14, ay - asz*.86, tw + 28, asz*1.20);
+    g2.globalAlpha = clamp(al.life/2.6,0,1);
     g2.lineWidth = 6; g2.strokeStyle = "#000"; g2.strokeText(al.text, w/2, ay);
     g2.fillStyle = al.col; g2.fillText(al.text, w/2, ay);
-    ay += asz*1.28;
+    ay += asz*1.42;
   }
   // Off-screen events get an edge marker with a distance. Without one you only
   // ever find the ones that happen to spawn in front of you, and the feature
