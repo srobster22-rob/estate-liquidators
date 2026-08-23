@@ -4836,7 +4836,13 @@ function hopThaw(){
 // put on a decision that is supposed to matter.
 const PICK_HOLD = 11;             // seconds before an ignored draft resolves itself
 let pickT = 0;
-function showPick(){
+// ROLLED ONCE. The step loop asks offers() whether this level has a real
+// choice on it, and showPick() used to ask AGAIN to decide what to draw - two
+// independent rolls of a random draft. So a level could pass the "there is
+// something to choose here" test and then render a single ROAST CHICKEN,
+// which is exactly the dead modal the growth path exists to remove. The hand
+// is dealt once and handed over.
+function showPick(hand){
   picking = true; pickT = 0;
   document.getElementById("pkLv").textContent = P.lvl;
   // KEYS, NOT CLICKS. The draft no longer releases the pointer - it cannot,
@@ -4848,7 +4854,7 @@ function showPick(){
     (TOUCH ? "TAP ONE" : "PRESS 1-4") +
     (pendingLevels > 1 ? `  ·  ${pendingLevels-1} MORE QUEUED` : "");
   const box = document.getElementById("pkCards"); box.innerHTML="";
-  offers().forEach((o,i)=>{
+  (hand || offers()).forEach((o,i)=>{
     const el = document.createElement("div");
     el.className = "card" + (o.type==="evo" ? " evo" : "");
     el.innerHTML = `<div class="key">${i+1}</div><div class="ic">${icon(o.ic)}</div>`+
@@ -5290,7 +5296,7 @@ function step(dt){
       autoLv++; autoHp += P.hp - was;
       continue;
     }
-    showPick();
+    showPick(only);
   }
   // An ignored draft resolves itself. The strip no longer stops the game, so
   // it CAN be ignored - and a card that sits on screen for the rest of the run
