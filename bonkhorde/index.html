@@ -146,6 +146,18 @@
   .ch:hover{border-color:var(--gold);transform:translateY(-3px)}
   .ch.lock{opacity:.4;cursor:not-allowed}
   .ch.lock:hover{border-color:#2a313c;transform:none}
+  /* the rule meter - same shape as the hop chain readout, its own colours */
+  #rule{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;display:none;
+    align-items:center;gap:8px;font:700 11px/1 ui-monospace,monospace;letter-spacing:.14em;
+    pointer-events:none;z-index:6}
+  #rule.on{display:flex}
+  #rule .hb{display:block;width:150px;height:7px;background:#0d1116;border:1px solid #000}
+  #rule .hb i{display:block;height:100%;width:0%;background:#ff5c4d;transition:width .06s linear}
+  #rule b{color:#ff8a6a;min-width:36px}
+  #rule em{color:#5c6470;font-style:normal}
+  #rule.hot .hb i{background:#ffd166}
+  #rule.hot b{color:#ffd166}
+  #rule.cold .hb i{background:#5c6470}
   .ch .ic{font-size:26px;margin-bottom:6px}
   /* the live portrait. Backed at 2x and scaled down, so the box edges stay
      hard instead of turning into the grey mush a 1x readback gives. */
@@ -323,6 +335,8 @@
 <symbol id="i-heal" viewBox="0 0 24 24"><path d="M9.6 4.2a4.6 4.6 0 0 1 8.4 3.2 4.4 4.4 0 0 1-4.6 4.4l-1.8 1.8-3.6-3.6 1.8-1.8a4.4 4.4 0 0 1-.2-4z" class="f"/><path d="M8.8 13.2l-5 5a2 2 0 0 0 2.8 2.8l5-5z" class="fa"/></symbol>
 <symbol id="i-accnt" viewBox="0 0 24 24"><path d="M12 3.4c4.6 0 7.8 3.2 7.8 7.6v4c0 3.2-2.4 5.6-5.6 5.6h-4.4c-3.2 0-5.6-2.4-5.6-5.6v-4c0-4.4 3.2-7.6 7.8-7.6z" class="f"/><circle cx="9.4" cy="10.4" r="2.3" class="k"/><circle cx="14.6" cy="10.4" r="2.3" class="k"/><path d="M12 13.6l3.2 2.6-3.2 2.6-3.2-2.6z" class="fa"/><path d="M10.4 1l1.6 2.6L13.6 1zM7.2 1.8l1 2.8 1.6-2z" class="fa"/><path d="M2.6 12.4l3.4-2.2 1 4.6zM21.4 12.4l-3.4-2.2-1 4.6z" class="f"/></symbol>
 <symbol id="i-twin" viewBox="0 0 24 24"><circle cx="15.8" cy="8.4" r="6" class="fa"/><circle cx="8.4" cy="15.6" r="7.4" class="f"/><circle cx="14.2" cy="7.6" r="1.6" class="k"/><circle cx="17.8" cy="7.6" r="1.6" class="k"/><circle cx="6" cy="14.4" r="2.1" class="k"/><circle cx="10.8" cy="14.4" r="2.1" class="k"/></symbol>
+<symbol id="i-surge" viewBox="0 0 24 24"><path d="M3.4 17.6c3.4 0 5.4-1.6 8.6-1.6s5.2 1.6 8.6 1.6" class="a"/><path d="M4.2 13.4c1.4-6.2 4-9.4 7.8-9.4s6.4 3.2 7.8 9.4z" class="f"/><path d="M9 13.4c.6-4.4 1.6-6.8 3-6.8s2.4 2.4 3 6.8z" class="ka"/><path d="M2 21h20" class="a"/></symbol>
+<symbol id="i-pyre" viewBox="0 0 24 24"><path d="M12 1.8c3.6 4.4 5.2 7.4 5.2 10.2A5.2 5.2 0 0 1 12 17.2a5.2 5.2 0 0 1-5.2-5.2c0-2.8 1.6-5.8 5.2-10.2z" class="f"/><path d="M12 9.6c1.5 2 2.2 3.3 2.2 4.4a2.2 2.2 0 0 1-4.4 0c0-1.1.7-2.4 2.2-4.4z" class="ka"/><path d="M4.4 14.6l-2.6 5.8 5.4-2.4M19.6 14.6l2.6 5.8-5.4-2.4" class="fa"/></symbol>
 <symbol id="i-tally" viewBox="0 0 24 24"><path d="M5 5.4v13.2M9.4 5.4v13.2M13.8 5.4v13.2M18.2 5.4v13.2"/><path d="M2.8 16.6L20.4 7" class="a"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
 </defs></svg>
@@ -337,6 +351,11 @@
   <div id="phase"></div>
   <div id="stats"></div>
   <div id="hop"><span class="hb"><i></i></span><b></b><em></em></div>
+  <!-- One readout, two rule-characters. THE COURIER fills it by moving and
+       spends it all at once; THE TEMP empties it by dying and waits for it to
+       come back. Neither rule is legible without a bar, and a rule the player
+       cannot see is a rule the player does not have. -->
+  <div id="rule"><span class="hb"><i></i></span><b></b><em></em></div>
   <div id="kit"></div>
   <div id="hpwrap"><div id="hpbar"></div><div id="hptxt"></div></div>
   <div id="warn"></div>
@@ -770,6 +789,8 @@ const AFFINITY = {
   rot:  { home:"bone",  nm:"THE BONEFIELD",    weak:"ash",   weakNm:"THE CINDERFLATS" },
   tally:{ home:"sand",  nm:"THE DUSTSEA",      weak:"rust",  weakNm:"THE SPINEROCK" },
   echo: { home:"grass", nm:"THE FERNLANDS",    weak:"bone",  weakNm:"THE BONEFIELD" },
+  surge:{ home:"bog",   nm:"THE TARPITS",      weak:"ice",   weakNm:"THE GLACIER" },
+  pyre: { home:"ash",   nm:"THE CINDERFLATS",  weak:"ice",   weakNm:"THE GLACIER" },
 };
 const AFF_DMG = 1.20, AFF_TOUGH = 1.15;
 // Which way the ground under you is leaning. Read by damage and by the HUD, so
@@ -1577,6 +1598,26 @@ const CHARS = [
 { id:"twin",   nm:"THE TWIN", ic:"twin", w:"bolt", lock:"clear a run",
   ds:"Never arrives alone. Half the health.",
   mods:{ hp:.66 }, gift:"dupe" },
+// ------------------------------------------------- THE TWO THAT ARE NOT STATS
+// Every character above is a stat block: more reach, less health, faster
+// cooldowns, more XP. Seven of those is the ceiling of the idea - an eighth
+// would be "+9% of something" and nobody would feel it. These two are RULES,
+// and the rule is the whole character.
+//
+// THE COURIER only hits hard while it is moving. Its meter fills off distance
+// covered and drains while it stands still; when it fills, the animal goes off
+// for four seconds - nearly double damage, faster cooldowns. Positioning is
+// already the entire game, and this is the character that says so out loud.
+{ id:"surge",  nm:"THE COURIER", ic:"surge", w:"bolt", lock:"cover 12,000m across all runs",
+  ds:"Charges by moving. Cashes it in all at once.",
+  mods:{ spd:1.12, hp:.86 } },
+// THE TEMP dies and comes back. Half the health of anyone else, so it dies
+// often, and every death is a bomb: it detonates, returns at 45%, and the
+// rebirth goes on a cooldown that grows each time it is used. Playing it well
+// means SPENDING deaths, which nothing else in the game can do.
+{ id:"pyre",   nm:"THE TEMP", ic:"pyre", w:"pulse", lock:"lose 25 runs",
+  ds:"Half the health. Death is a resource.",
+  mods:{ hp:.52, dmg:1.12 } },
 ];
 
 const SHOP = [
@@ -2023,6 +2064,10 @@ const MTYPE = {
   rot:  { nm:"ROT",   c:[.47,.79,.35], bel:[.80,.93,.58], acc:[.88,.40,.74] },
   tally:{ nm:"GALE",  c:[.86,.88,.96], bel:[1,1,1], acc:[.42,.62,.92] },
   echo: { nm:"ECHO",  c:[.71,.49,.98], bel:[.91,.82,1.00], acc:[.44,1,.88] },
+  // Two more, and the hues were chosen against the seven above rather than for
+  // themselves: crimson and gold were the only ones nothing else held.
+  surge:{ nm:"SURGE", c:[.86,.20,.30], bel:[1,.66,.54], acc:[1,.84,.26] },
+  pyre: { nm:"PYRE",  c:[1,.74,.14],  bel:[1,.95,.70], acc:[1,.30,.08] },
 };
 // Level 7 lands in the first three minutes of a FIRST run, which is the whole
 // point - a mechanic the median run never reaches is a mechanic that does not
@@ -2089,6 +2134,23 @@ const LINES = {
       { nm:"THE HYDRA",mods:{ hp:1.44, dmg:1.28 },
         sig:"CHORUS", sigDs:"+28% damage - three of everything" } ]},
 };
+// The two rule-characters get lines built the same way as the seven: a body
+// plan, a firing behaviour the game has already benched, and a signature that
+// sharpens the RULE instead of adding another percentage.
+LINES.surge = { type:"surge",
+  move:{ key:"gore", nm:"RIVERRUN", ds:"everything in front of you, while you move" },
+  st:[
+    { nm:"SAILFIN" },
+    { nm:"RIVERKING", mods:{ hp:1.16, dmg:1.09, spd:1.04 } },
+    { nm:"THE SPINE", mods:{ hp:1.34, dmg:1.18, spd:1.08 },
+      sig:"WHITEWATER", sigDs:"momentum builds twice as fast" } ]};
+LINES.pyre = { type:"pyre",
+  move:{ key:"bat", nm:"WINGBEAT", ds:"a wide burning sweep, both sides" },
+  st:[
+    { nm:"SUNCHICK" },
+    { nm:"PYREWING", mods:{ hp:1.22, dmg:1.10 } },
+    { nm:"THE PHOENIX", mods:{ hp:1.48, dmg:1.24 },
+      sig:"EVERBURNING", sigDs:"the rebirth returns twice as fast" } ]};
 for(const c of CHARS){
   const L = LINES[c.id]; if(!L) continue;
   c.type = L.type; c.st = L.st; c.move = L.move; c.line = L.st.map(x=>x.nm);
@@ -2121,7 +2183,7 @@ const monDmg = id => 1 + (monLvl(id)-1)*.012;
 // ================================================================= META SAVE
 const SAVEKEY = "bonkhorde.save.v1";
 let save = { coins:0, up:{}, best:0, wins:0, unlocked:{},
-             kills:0, runs:0, deaths:0, bestLvl:0, mon:{}, deep:0, deepSel:0 };
+             kills:0, runs:0, deaths:0, dist:0, bestLvl:0, mon:{}, deep:0, deepSel:0 };
 
 // A survivors-like is a loop you re-enter, and the reason you re-enter is that
 // the last run moved something. This build had exactly one unlockable thing in
@@ -2138,6 +2200,13 @@ const UNLOCKS = [
     at:30,    now:(sv,r)=>Math.max(sv.bestLvl, r?r.lvl:0) },
   { id:"tally",  what:"TALLY (shop)",  ds:"6,000 lifetime kills",
     at:6000,  now:(sv)=>sv.kills },
+  // Two unlocks on axes nothing else uses. A ladder made entirely of "kill
+  // more" and "survive longer" only ever rewards the same play; one of these
+  // rewards walking and the other rewards losing.
+  { id:"surge",  what:"SAILFIN",        ds:"cover 12,000m across all runs",
+    at:12000, now:(sv)=>sv.dist||0 },
+  { id:"pyre",   what:"SUNCHICK",       ds:"lose 25 runs",
+    at:25,    now:(sv)=>sv.deaths },
 ];
 // returns the ids unlocked BY this call, so the end screen can call them out
 function checkUnlocks(runStats){
@@ -2934,6 +3003,186 @@ echo(D){
          (HD*.72 - g*.03*gr), (HD*.78 - g*.03*gr), acc, .12);
   }
 },
+// ------------------------------------------------------------------- SURGE
+// A SPINOSAURUS, and the only animal in the game whose back is the point. A
+// sail taller than the skull, a gharial snout that is nothing but jaw, a heavy
+// counterweight tail with a paddle on the end, and hooked thumb claws. It also
+// carries THE COURIER's rule on its body: the sail LIGHTS as the momentum
+// meter fills and burns while the surge is up, so the mechanic is legible from
+// across the arena without reading the HUD.
+surge(D){
+  const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
+          eyeRidge, gharJaw, idle, sway, twitch, drag,
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t, surge } = D;
+  const gr = 1 + st*.26;
+  const hov = Math.sin(t*2.0)*.018*idle*gr;
+  const lk = look*.16, lkf = -Math.abs(look)*.05;
+  const snap = twitch(.8, 4.2);
+  const HIP = (.66 + st*.14) * gr + hov;
+  const chestF = (.24 + st*.06)*gr;
+  // charge 0..2: 0..1 is the meter filling, above 1 the surge is up
+  const ch = Math.min(2, surge || 0), lit = ch > 1 ? 1 : ch;
+  // spine: hips through chest, held level - this is a runner, not a rearer
+  chain([[sway, -.24*gr, HIP], [sway, .02*gr, HIP + .06*gr], [sway, chestF, HIP + .08*gr]],
+        (.21 + st*.04)*gr, (.20 + st*.045)*gr, c, em+.06, [1, .94, 1]);
+  mb(sway, .02*gr, HIP - (.18+st*.02)*gr, (.17+st*.03)*gr, .09*gr, (.24+st*.04)*gr,
+     bel, em+.08);
+  // ---- THE SAIL. Spines off the whole spine, tallest over the hips, and they
+  // brighten with the meter. Eleven of them, because a sail made of five reads
+  // as a stegosaur's plates and a sail made of eleven reads as a sail.
+  const SN = 9 + st*2, SH = (.34 + st*.24) * gr;
+  for(let i=0;i<SN;i++){
+    const u = i/(SN-1);
+    const h = SH * Math.sin(.30 + u*2.55);
+    const ff = (-.40 + u*.82) * gr;
+    const glow = lit * (.55 + Math.sin(t*7 - u*3.4)*.25*(ch>1?1:.4));
+    chain([[sway, ff, HIP + .02*gr],
+           [sway + Math.sin(t*1.2 - u*2)*.012*gr, ff - h*.10, HIP + h]],
+          .062*gr, .050*gr,
+          [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
+          .10 + glow*.85, [1, 1, .34]);
+    mb(sway, ff - h*.12, HIP + h*1.04, .048*gr, .050*gr, .040*gr, acc, .30 + glow*.6);
+  }
+  // ---- THE HEAD. All snout. The skull is narrow, the jaws are half the animal.
+  const nx = sway + lk, nf = chestF + .12*gr, ny = HIP + (.16 + st*.03)*gr;
+  const hx = nx + lk*.5, hf = nf + (.24 + st*.05)*gr + lkf, hy = ny + .07*gr;
+  chain([[sway, chestF - .04*gr, HIP + .06*gr], [nx, nf, ny], [hx, hf - .08*gr, hy]],
+        (.14+st*.02)*gr, (.125+st*.02)*gr, c, em+.05);
+  blob(hx, hf, hy, (.135+st*.02)*gr, (.125+st*.018)*gr, (.15+st*.02)*gr, c, em+.06);
+  gharJaw(hx, hf + .08*gr, hy - .03*gr, (.085+st*.012)*gr, (.42+st*.10)*gr,
+          6 + st, c, snap*.05*gr);
+  eyeRidge(hx, hf - .02*gr, hy + (.085+st*.012)*gr, (.095+st*.012)*gr,
+           (.058 + st*.008)*gr, [1,.88,.34]);
+  for(const rs of [-1,1])                                   // a low crest ridge
+    horn(hx + rs*.06*gr, hf - .10*gr, hy + .10*gr, rs*.02*gr, -.05*gr, .028*gr,
+         3, .030*gr, acc, .34);
+  // ---- ARMS. Real ones, unlike the tyrant's: three fingers and a hooked thumb.
+  const armC = [c[0]*.62, c[1]*.62, c[2]*.66];
+  for(const rs of [-1,1]){
+    const p2 = rs > 0 ? -gait*.6 : gait*.6;
+    const al = (.30 + st*.04) * gr;
+    const shd = [sway + rs*(.17+st*.03)*gr, chestF - .04*gr, HIP + .02*gr];
+    const elb = [sway + rs*(.26+st*.04)*gr, chestF + al*.5 + p2*al*.3, HIP - al*.52];
+    const hnd = [sway + rs*(.22+st*.035)*gr, chestF + al*1.0 + p2*al*.5, HIP - al*.92];
+    chain([shd, elb], .085*gr, .062*gr, armC, em+.04);
+    chain([elb, hnd], .062*gr, .048*gr, armC, em+.04);
+    blob(elb[0], elb[1], elb[2], .072*gr, .072*gr, .072*gr, armC, em+.04);
+    for(let k=-1;k<=1;k++)
+      chain([hnd, [hnd[0] + k*.045*gr, hnd[1] + al*(k===-1?.60:.40), hnd[2] - al*.22]],
+            .032*gr, .016*gr, [.94,.92,.86], .22, null, true);
+  }
+  // ---- LEGS. Shorter than the tyrant's, because this animal wades.
+  for(const rs of [-1,1]){
+    const p2 = rs > 0 ? gait : -gait;
+    leg(sway + rs*(.17+st*.03)*gr, -.06*gr, HIP, HIP*.80, p2, rs,
+        (.105+st*.012)*gr, c, em+.04, dk);
+  }
+  // ---- THE TAIL. Long, and it ends in a paddle - the one thing that says this
+  // animal spends its life in a river rather than on a plain.
+  const TN = 6 + st;
+  const tail = [[sway, -.24*gr, HIP]];
+  for(let i=0;i<TN;i++){
+    const lag = drag(.5 + i*.34)*.026*(i+1) + Math.sin(t*.8 - i*.36)*.011*idle*(i+1);
+    tail.push([sway + lag, -(.44 + i*(.26+st*.03))*gr, HIP - i*.035*gr]);
+  }
+  chain(tail, (.155+st*.02)*gr, .05*gr, c, em+.06, [.86, 1, 1]);
+  const tp = tail[tail.length-1];
+  for(let i=0;i<4;i++)                                       // the paddle fin
+    mb(tp[0], tp[1] - .05*gr - i*.11*gr, tp[2] + (i<2?.02:-.01)*gr,
+       .05*gr, (.16 - i*.028)*gr, (.07 + i*.02)*gr,
+       [ lerp(c[0], 1, lit*.6), lerp(c[1], .84, lit*.5), lerp(c[2], .30, lit*.4) ],
+       em + .10 + lit*.5);
+  // and while the surge is up the animal drags its own wake
+  if(ch > 1) for(let i=0;i<8;i++){ const a = t*3.2 + i/8*TAU;
+    fx(sway + Math.sin(a)*.70*gr, Math.cos(a)*.62*gr - .20*gr,
+       HIP - .34*gr + Math.sin(t*6+i)*.10*gr, .055*gr,.055*gr,.10*gr, acc, .85, a); }
+},
+// -------------------------------------------------------------------- PYRE
+// A PHOENIX. Feathers, not membrane - the wing is a row of separate quills off
+// a short arm rather than a sheet stretched between bones, which is the whole
+// difference between this and the wyvern. Two legs, a hooked beak, a crest, and
+// three tail streamers that get longer at every stage until they are most of
+// the animal. It is on fire the entire time, and the fire is ambient rather
+// than anatomy, so the mesh stays a bird.
+pyre(D){
+  const { blob, chain, leg, taper, horn, ridge, plume, beakHook, claw, fx,
+          eyeSolar, idle, sway, twitch, drag,
+          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          st, t } = D;
+  const gr = 1 + st*.26;
+  const hov = (air ? .24 : 0) + Math.sin(t*2.3)*.032*idle;
+  const beat = t*(air ? 5.2 : 1.9) + ph*.5;
+  const lk = look*.18, lkf = -Math.abs(look)*.05;
+  const call = twitch(1.3, 4.8);
+  const SPAN = (.70 + st*.36) * gr;
+  const HIP = (.56 + st*.15) * gr + hov;
+  const upr = .78 - st*.10;                       // a chick stands more upright
+  // FLAME. Ambient, so the mesh is a bird and not a bonfire.
+  const fl = (x, f2, y2, sc, n)=>{ for(let i=0;i<n;i++){
+    const w = Math.sin(t*4.1 + i*1.7 + x*3)*.02*sc;
+    const li = .60 + i*.10 + Math.sin(t*9.1 + i*2.3)*.25;
+    fx(x + w, f2, y2 + i*.16*sc, (.10 - i*.014)*sc, (.11 - i*.013)*sc,
+       (.10 - i*.014)*sc, i%2 ? acc : lt, li); } };
+  // ---- BODY. A deep keeled chest over small hips: a flyer.
+  chain([[sway, -.20*gr, HIP - .02*gr],
+         [sway, .00*gr, HIP + .14*gr*upr],
+         [sway, .20*gr, HIP + .24*gr*upr]],
+        (.17+st*.02)*gr, (.20+st*.03)*gr, c, em+.10, [1, 1, .88]);
+  mb(sway, .14*gr, HIP + .06*gr*upr, .15*gr, .17*gr, .13*gr, bel, em+.12);   // keel
+  // ---- WINGS. Feathers, and they fold in when it is perched.
+  const fold = air ? 1 : (.52 + (1-idle)*.30);
+  for(const rs of [-1,1])
+    plume(rs, sway + rs*.15*gr, .08*gr, HIP + .24*gr*upr, SPAN*fold, c, acc,
+          beat + (rs>0?0:.6), 6 + st);
+  // ---- NECK AND HEAD.
+  const nx = sway + lk*.5, nf = .20*gr + lkf*.5, ny = HIP + (.34 + .18*upr)*gr;
+  const hx = nx + lk, hf = nf + (.14 + st*.03)*gr + lkf, hy = ny + (.16 + .08*upr)*gr;
+  chain([[sway, .18*gr, HIP + .22*gr*upr], [nx, nf, ny], [hx, hf - .06*gr, hy]],
+        .115*gr, .105*gr, c, em+.08);
+  blob(hx, hf, hy, (.145+st*.02)*gr, (.135+st*.018)*gr, (.15+st*.02)*gr, c, em+.10);
+  beakHook(hx, hf + .07*gr, hy - .02*gr, (.085+st*.012)*gr, (.24+st*.05)*gr,
+           acc, call*.06*gr);
+  eyeSolar(hx, hf + .04*gr, hy + .07*gr, (.10+st*.012)*gr, (.058+st*.010)*gr);
+  // ---- THE CREST. Three flames off the crown, and they ARE flames.
+  for(let i=0;i<2+st;i++){
+    const a = (i - (1+st)/2) * .62;
+    chain([[hx + Math.sin(a)*.07*gr, hf - .08*gr, hy + .09*gr],
+           [hx + Math.sin(a)*.19*gr, hf - (.16 + Math.abs(a)*.05)*gr,
+            hy + (.26 + st*.09)*gr]],
+          .040*gr, .022*gr, acc, .75, null, true);
+    fl(hx + Math.sin(a)*.20*gr, hf - .18*gr, hy + (.26 + st*.09)*gr, .55, 2);
+  }
+  // ---- LEGS. Bird legs: long shins, backward hock, and big grasping feet.
+  for(const rs of [-1,1]){
+    const p2 = rs > 0 ? gait : -gait;
+    leg(sway + rs*.13*gr, air ? -.14*gr : -.02*gr, HIP,
+        air ? .26*gr : HIP*.90, air ? p2*.3 : p2, rs, .072*gr, c, em+.06, acc);
+  }
+  // ---- TAIL STREAMERS. Three of them, and by the top of the line they are
+  // longer than the bird. This is the silhouette.
+  for(let i=0;i<3;i++){
+    const off = (i - 1) * .10 * gr;
+    const L = (.62 + st*.46) * gr * (i === 1 ? 1.22 : 1);
+    const pts = [[sway + off, -.18*gr, HIP - .02*gr]];
+    for(let k=1;k<=4;k++){
+      const u = k/4;
+      const lag = drag(.6 + i*.5 + k*.35)*.05*k + Math.sin(t*1.1 - k*.5 - i)*.022*k;
+      pts.push([sway + off*(1 + u*1.6) + lag, -.18*gr - L*u,
+                HIP - .02*gr + Math.sin(u*2.2 + i)*.10*gr - u*.10*gr]);
+    }
+    chain(pts, .055*gr, .028*gr, i === 1 ? acc : c, .35, [1, .34, 1], true);
+    const e = pts[pts.length-1];
+    mb(e[0], e[1] - .05*gr, e[2], .055*gr, .085*gr, .05*gr, acc, .90);
+    fl(e[0], e[1] - .08*gr, e[2], .45, 2);
+  }
+  // ---- IT IS ON FIRE. A corona at the top of the line, embers at every stage.
+  fl(sway, -.10*gr, HIP + .34*gr*upr, .7 + st*.25, 2 + st);
+  if(st === 2) for(let i=0;i<10;i++){ const a = t*1.7 + i/10*TAU;
+    fx(sway + Math.sin(a)*.86*gr, Math.cos(a)*.76*gr,
+       HIP + .10*gr + Math.sin(t*3.4+i)*.26*gr, .055*gr,.055*gr,.055*gr,
+       i%2 ? acc : lt, .95); }
+},
 };
 // QA: when this is an array, the next frame records every box the monster body
 // emits, so a test can ask whether two forms are actually the same mesh.
@@ -2949,6 +3198,26 @@ let boxSeq = 0;
 let ebCap = null, ebCapOut = null;
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
+// ===================================================== THE TWO RULE-CHARACTERS
+// MOMENTUM. THE COURIER's meter fills off ground covered and drains while it
+// stands still. Full, it spends itself: four seconds of nearly double damage
+// and faster weapons, then back to nothing. Distance, not time, so a character
+// whose whole point is movement cannot charge by idling in a corner.
+// 1/30 of a metre and .09 a second, and the two numbers have to be read
+// together: base speed is 6.6 m/s, so running fills at .22 and drains at .09
+// for a net .13 - about eight seconds of movement per surge. The first pass
+// had them at 1/58 and .13, which is a fill of .114 against a drain of .13:
+// the character could not charge its own meter AT A DEAD SPRINT. The suite
+// caught it on the first run, which is the entire argument for testing a
+// mechanic rather than eyeballing it.
+const SURGE_FILL = 1/30;        // metres of travel for a full meter
+const SURGE_DRAIN = .09;        // per second, standing still
+const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
+// REBIRTH. THE TEMP detonates instead of dying, comes back at 45%, and the
+// rebirth goes on a cooldown that grows every time it is used - so it is a
+// resource with a floor, not a second health bar.
+const REBIRTH_CD = 70, REBIRTH_STEP = 22, REBIRTH_HP = .45;
+let runDist = 0;                // metres this run, for the unlock ladder
 // HEAD START's levels, waiting their turn. See startRun().
 const START_BANK_GAP = 12;
 let startBank = 0, startBankT = 0;
@@ -3073,7 +3342,8 @@ function startRun(id){
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
         hop:0, hopWin:0, hopGrace:0, hopFx:0, hopHold:undefined, idle:1,
-        ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0 };
+        ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0,
+        surge:0, surgeT:0, rebirths:0, rebirthCd:0 };
   jumpBuf = 0;
   stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; evoFx = 0; noEvo = false;
   // Seed the run stream BEFORE anything rolls, including the world - the arena
@@ -3093,6 +3363,7 @@ function startRun(id){
   arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
+  runDist=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
@@ -3382,8 +3653,13 @@ function nearest(x,z,maxR,skip){
 }
 
 // ================================================================== COMBAT
+// Which rule-character is in play. Read off the LINE's type rather than the
+// character id, so a future line can inherit a rule without a special case.
+function isSurge(){ return (curMon().type || "plain") === "surge"; }
+function isPyre(){  return (curMon().type || "plain") === "pyre"; }
+function surgeUp(){ return !!(P && P.surgeT > 0); }
 function dmgOut(base){
-  let d = base * P.dmg;
+  let d = base * P.dmg * (surgeUp() ? SURGE_DMG : 1);
   const crit = R() < P.crit;
   if(crit) d *= 2.3;
   return { d: d, crit };
@@ -3516,6 +3792,10 @@ function wStat(w){
   return o;
 }
 function fireWeapons(dt){
+  // A surge is a tempo change as well as a damage change - the same weapons,
+  // played faster. Scaling the clock rather than each weapon's cooldown means
+  // every weapon, evolution and move gets it for free.
+  if(surgeUp()) dt *= SURGE_RATE;
   for(const k in P.kit){
     if(!WEAPONS[k]) continue;                             // passives have no cooldown
     const w = P.kit[k], s = wStat(w);
@@ -4282,6 +4562,20 @@ function playerHurt(raw){
     rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:3.6+r*0.35, life:.3, mx:.3 });
   }
   if(P.hp <= 0){
+    // REBIRTH first, because it is the character rather than a shop item, and
+    // because burning SECOND WIND on a death THE TEMP was always going to walk
+    // away from would be the worst possible order.
+    if(isPyre() && P.rebirthCd <= 0){
+      P.rebirths++;
+      P.hp = P.maxhp * REBIRTH_HP; P.iframe = 2.2;
+      // the cooldown grows, halved at the top of the line by EVERBURNING
+      P.rebirthCd = (REBIRTH_CD + (P.rebirths-1)*REBIRTH_STEP) * (stage >= 2 ? .5 : 1);
+      damageArea(P.x, P.z, 13.5, 340 * dmgScale(T), 26);
+      for(let i=0;i<14;i++){ const a = i/14*TAU;
+        rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:13.5, life:.42, mx:.42 }); break; }
+      alert2("REBIRTH", "#ffbe2e"); shake = 1.2; flash = .9; SFX.levelup();
+      return;
+    }
     if(!usedRevive && rank("rev")>0){
       usedRevive = true; P.hp = P.maxhp*.5; P.iframe = 2.4;
       damageArea(P.x, P.z, 16, 400, 24);
@@ -4784,6 +5078,12 @@ function step(dt){
   const ex = wx-P.vx, ez = wz-P.vz, el = Math.hypot(ex,ez);
   if(el <= step_){ P.vx = wx; P.vz = wz; }
   else { P.vx += ex/el*step_; P.vz += ez/el*step_; }
+  // How far the animal actually travelled this frame. Declared out here on
+  // purpose: the block below only runs while there is velocity, and the first
+  // version of the momentum meter lived INSIDE it - so standing perfectly
+  // still neither drained the meter nor ticked the surge down. The character
+  // whose entire rule is "moving charges you" was charging by not moving.
+  let moved = 0;
   if(P.vx || P.vz){
     const nx2 = P.x + P.vx*dt, nz2 = P.z + P.vz*dt;
     const [cx2, cz2] = confine(nx2, nz2, 1.5);
@@ -4794,8 +5094,27 @@ function step(dt){
       const lim = RIM - 1.5, ux = cx2/lim, uz = cz2/lim, into = P.vx*ux + P.vz*uz;
       if(into > 0){ P.vx -= ux*into; P.vz -= uz*into; }
     }
+    moved = Math.hypot(cx2 - P.x, cz2 - P.z);
     P.x = cx2; P.z = cz2;
+    runDist += moved;
   }
+  // MOMENTUM, charged by ground covered and drained by every second that goes
+  // past. Doubling the fill rate is what the top of the line buys - the only
+  // signature in the game that sharpens a rule rather than a number.
+  if(isSurge()){
+    if(P.surgeT > 0) P.surgeT -= dt;
+    else {
+      P.surge += moved * SURGE_FILL * (stage >= 2 ? 2 : 1) - dt*SURGE_DRAIN;
+      if(P.surge >= 1){
+        P.surge = 0; P.surgeT = SURGE_TIME;
+        rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:4.2, life:.34, mx:.34 });
+        shake = Math.max(shake, .30); SFX.hop(4);
+        alert2("SURGE", "#ff5c4d");
+      }
+      P.surge = Math.max(0, P.surge);
+    }
+  }
+  if(P.rebirthCd > 0) P.rebirthCd = Math.max(0, P.rebirthCd - dt);
   if(dx || dz){ P.face = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
 
   // ---- jump / bunnyhop
@@ -4946,6 +5265,7 @@ function finish(why, won){
   const beat = T > prevBest;
   save.kills = (save.kills||0) + kills;
   save.runs  = (save.runs||0) + 1;
+  save.dist  = (save.dist||0) + runDist;
   if(!won) save.deaths = (save.deaths||0) + 1;
   save.bestLvl = Math.max(save.bestLvl||0, P.lvl);
   // Every run pays into the monster that ran it, win or lose. xpBanked is the
@@ -5473,6 +5793,49 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
             span*.05, span*.028, col, .10, null, true);
     }
   };
+  // A FEATHERED WING. The membrane wing() is a sheet stretched between bones;
+  // this is the opposite construction - a row of separate quills off a short
+  // arm, each one longer than the last and each one visibly its own object.
+  // A phoenix with bat wings would be a wyvern, and this game already has one.
+  const plume = (rs, r,f,y, span, col, tip, beat, n)=>{
+    const lift = Math.sin(beat)*.26, N = n || 7;
+    const sh = [r + rs*span*.10, f + span*.06, y];
+    const el = [r + rs*span*.40, f - span*.04, y + span*(.26 + lift*.34)];
+    const wr = [r + rs*span*.68, f - span*.10, y + span*(.34 + lift*.85)];
+    chain([sh, el, wr], span*.16, span*.07, col, .10);
+    for(let i=0;i<N;i++){
+      const u = i/(N-1);
+      // primaries at the wrist are the long ones; coverts at the shoulder are
+      // short and stack forward, which is the shape that reads as a bird
+      const len = span * (.34 + .72*Math.pow(u, 1.5));
+      const root = [ sh[0] + (wr[0]-sh[0])*u, sh[1] + (wr[1]-sh[1])*u,
+                     sh[2] + (wr[2]-sh[2])*u ];
+      const sweep = -span*(.18 + .52*u);
+      chain([root, [root[0] + rs*len*.55, root[1] + sweep, root[2] - span*.10*u]],
+            span*.085 - u*span*.03, span*.055 - u*span*.03,
+            i%2 ? col : tip, .18, [1, .16, 1], true);
+    }
+  };
+  // A GHARIAL SNOUT. Long, narrow, near-parallel-sided, with a bulb on the end
+  // and teeth that stick out sideways rather than down - a fish-catcher, and
+  // nothing else in the game has a head this shape.
+  const gharJaw = (r,f,y, w, len, n, col, gape)=>{
+    const g = gape || 0;
+    chain([[r, f, y], [r, f + len*.55, y - len*.05], [r, f + len, y - len*.10]],
+          w*1.0, w*.42, col, .05, [1, .74, 1]);
+    chain([[r, f, y - w*.54 - g], [r, f + len*.92, y - w*.56 - len*.09 - g]],
+          w*.80, w*.34, col, .05, [1, .50, 1]);
+    mb(r, f + len*1.02, y - len*.09, w*.64, w*.50, w*.44, col, .06);   // the bulb
+    for(let i=0;i<n;i++){
+      const t2 = (i+.5)/n, fx2 = f + len*t2, sc = 1 - t2*.30;
+      for(const sg of [-1,1]){
+        mb(r + sg*w*.64, fx2, y - w*.26, w*.20*sc, w*.13*sc, w*.11*sc,
+           [.96,.95,.88], .20);
+        mb(r + sg*w*.58, fx2 + len/n*.5, y - w*.32 - g, w*.17*sc, w*.12*sc, w*.10*sc,
+           [.96,.95,.88], .20);
+      }
+    }
+  };
   // Three toes and a dewclaw, which is what makes a leg read as a foot. The
   // toes now START inside the pad and run out of it, instead of being parked a
   // toe-length off the front of it.
@@ -5638,29 +6001,41 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     const wide = o.wide || 1, tall = o.tall || 1, out = o.out === undefined ? 1 : o.out;
     for(const sg of [-1,1]){
       const x = r + sg*sp;
-      mb(x, f + sz*.30*out, y, sz*1.45*wide, sz*1.38*tall, sz*1.05,
-         o.socket || [.11,.10,.12], 0);                          // socket
+      // SCALED TO sz, AND sz MEANS THE EYE. The first version of this scaffold
+      // made the socket 1.45 of sz and the brow 1.75, so a pair of eyes on
+      // CINDERWHELP spanned .51 against a skull .52 wide - the whole front of
+      // the head was eye, with a black bar across the top where the brow was.
+      // An eye of size sz occupies about 2*sz across now, which is what every
+      // call site was already written for.
+      // FOUR PLATES, EACH SMALLER AND FURTHER FORWARD THAN THE LAST. That
+      // ordering is the whole design: the socket is a rim you see AROUND the
+      // sclera, the sclera is a ring you see around the iris, and the pupil is
+      // a small mark on top. Get the depths wrong and the pupil's side face
+      // becomes a black bar across the head from three quarters on, which is
+      // exactly what "the eyes are very messed up" looked like.
+      mb(x, f + sz*.30*out, y, sz*1.05*wide, sz*1.00*tall, sz*.55,
+         o.socket || [.11,.10,.12], 0);                          // socket rim
       if(o.sclera !== false)
-        mb(x, f + sz*1.05*out, y, sz*1.10*wide, sz*1.06*tall*blk, sz*.62,
+        mb(x, f + sz*1.15*out, y, sz*.80*wide, sz*.78*tall*blk, sz*.40,
            o.white || [.97,.97,1.0], .40);                       // sclera
-      mb(x + (o.lean || 0)*sg*sz, f + sz*1.62*out, y + (o.rise||0)*sz,
-         sz*(o.ir || .72)*wide, sz*(o.irY || .72)*tall*blk, sz*.44,
+      mb(x + (o.lean || 0)*sg*sz*.5, f + sz*1.70*out, y + (o.rise||0)*sz*.7,
+         sz*(o.ir || .72)*.58*wide, sz*(o.irY || .72)*.58*tall*blk, sz*.26,
          o.iris || [1,.76,.18], o.glow === undefined ? .80 : o.glow);
-      mb(x + (o.lean || 0)*sg*sz, f + sz*2.02*out, y + (o.rise||0)*sz,
-         sz*(o.pw || .34)*wide, sz*(o.ph || .40)*tall*blk, sz*.26,
+      mb(x + (o.lean || 0)*sg*sz*.5, f + sz*2.00*out, y + (o.rise||0)*sz*.7,
+         sz*(o.pw || .34)*.60*wide, sz*(o.ph || .40)*.60*tall*blk, sz*.13,
          o.pupil || [.03,.03,.05], .02);                         // pupil
-      // The glint is the smallest box on the animal and the one that keeps
-      // falling off it: parked a pupil-width out and a pupil-height up, it
-      // touches the pupil along one edge and the draw nudge does the rest.
-      // Overlap it properly - a highlight is ON the eye, not beside it.
-      mb(x - sz*.26*wide, f + sz*2.18*out, y + sz*.24*blk,
-         sz*.22, sz*.24*blk, sz*.20, [1,1,1], 1.0);              // glint
+      // Low and generous, because eyeGlow's pupil is a horizontal slot only a
+      // tenth of sz tall and a highlight parked above it touches nothing.
+      mb(x - sz*.18*wide, f + sz*2.10*out, y + sz*.13*blk,
+         sz*.13, sz*.19*blk, sz*.13, [1,1,1], 1.0);              // glint
+      // A brow is a RIDGE, not a visor: narrower than the socket, set back,
+      // and a dark warm grey rather than the near-black that drew as a bar.
       if(o.brow)
-        mb(x, f + sz*.34*out, y + sz*(1.10 + (o.browUp||0)),
-           sz*1.75*wide, sz*(o.brow), sz*.72, o.browCol || [.13,.12,.13], .04);
+        mb(x, f + sz*.12*out, y + sz*(.86 + (o.browUp||0)),
+           sz*1.16*wide, sz*(o.brow)*.62, sz*.60, o.browCol || [.22,.19,.19], .04);
       if(o.shelf)
-        mb(x, f + sz*.30*out, y - sz*(1.05 + (o.shelfDn||0)),
-           sz*1.60*wide, sz*(o.shelf), sz*.66, o.browCol || [.16,.14,.12], .04);
+        mb(x, f + sz*.10*out, y - sz*(.84 + (o.shelfDn||0)),
+           sz*1.06*wide, sz*(o.shelf)*.62, sz*.56, o.browCol || [.24,.20,.16], .04);
     }
   };
   // SLIT - a reptile. A tall narrow pupil under a heavy brow.
@@ -5693,6 +6068,19 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     eyeBase(r,f,y,sp,sz, { iris: iris || [1,.72,.10], ir:.66, irY:.44,
                            pw:.26, ph:.24, lean:.14, tall:.72, wide:1.10,
                            brow:.34, browCol:[.10,.10,.11], glow:.90 });
+  // RIDGE - a river hunter. The eye sits HIGH and just behind a bony ridge, so
+  // the animal can watch the bank with the rest of its head under water.
+  const eyeRidge = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [1,.86,.34], ir:.70, irY:.58,
+                           pw:.22, ph:.60, out:.85, rise:.10,
+                           brow:.58, browUp:.24, browCol:[.24,.10,.12],
+                           socket:[.16,.07,.09], glow:.80 });
+  // SOLAR - no pupil at all, a burning ring. The only face in the game with
+  // nothing dark in it.
+  const eyeSolar = (r,f,y,sp,sz,iris)=>
+    eyeBase(r,f,y,sp,sz, { iris: iris || [1,.90,.36], ir:1.05, irY:1.05,
+                           pw:.46, ph:.46, pupil:[1,1,.86], white:[1,.62,.16],
+                           socket:[.34,.12,.03], glow:1.0 });
   // MANY - three a side, biggest at the front. The thing that is several
   // animals wearing one body.
   const eyeMany = (r,f,y,sp,sz,iris)=>{
@@ -5835,6 +6223,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
               chain, leg,
               eyeSlit, eyeSunk, eyeBird, eyeGlow, eyeDeep, eyeCold, eyeMany,
               jawLong, beakHook, hookJaw, rostrum, fangs, mawRow, viperJaw, fx,
+              eyeRidge, eyeSolar, plume, gharJaw, surge:(P.surgeT>0?1:0)+((P.surge)||0),
               idle, sway, twitch, drag,
               c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
               gait, gait2, look, amp:ANIM.amp, land:ANIM.land, air:!!P.air,
@@ -6627,6 +7016,31 @@ function hud(){
   hopEl.children[1].textContent = pct > 0 ? "+"+pct+"%" : "";
   hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) : "";
 
+  // THE RULE METER. Only one character in a run can have a rule, so one bar
+  // serves both - it just means opposite things. Filling and red is momentum
+  // building; full and gold is the surge burning down. For THE TEMP it is the
+  // rebirth: grey while it recharges, gold the moment it is available again,
+  // which is the only number that character needs to read mid-fight.
+  const ruleEl = $("rule");
+  if(isSurge()){
+    const up = P.surgeT > 0, f = up ? P.surgeT/SURGE_TIME : P.surge;
+    ruleEl.classList.add("on"); ruleEl.classList.toggle("hot", up);
+    ruleEl.classList.remove("cold");
+    ruleEl.firstElementChild.firstElementChild.style.width =
+      (Math.min(1, f)*100).toFixed(1)+"%";
+    ruleEl.children[1].textContent = up ? "SURGE" : Math.round(P.surge*100)+"%";
+    ruleEl.children[2].textContent = up ? `x${SURGE_DMG.toFixed(2)} DAMAGE` : "MOMENTUM";
+  } else if(isPyre()){
+    const ready = P.rebirthCd <= 0;
+    const full = (REBIRTH_CD + P.rebirths*REBIRTH_STEP) * (stage >= 2 ? .5 : 1);
+    ruleEl.classList.add("on"); ruleEl.classList.toggle("hot", ready);
+    ruleEl.classList.toggle("cold", !ready);
+    ruleEl.firstElementChild.firstElementChild.style.width =
+      (ready ? 100 : (1 - P.rebirthCd/full)*100).toFixed(1)+"%";
+    ruleEl.children[1].textContent = ready ? "READY" : Math.ceil(P.rebirthCd)+"s";
+    ruleEl.children[2].textContent = P.rebirths ? `REBIRTH x${P.rebirths}` : "REBIRTH";
+  } else ruleEl.classList.remove("on");
+
   // The evolution banner. It scales in over ~0.2s and holds, because the one
   // moment in a twenty-minute run where the game should stop shouting about
   // enemies and shout about YOU is the moment you turn into something else.
@@ -6779,6 +7193,15 @@ window.__g = {
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
+  // The two rule-characters, exposed so the suite can press on the rules
+  // rather than on the stat block - which is the whole reason they exist.
+  rule:  ()=>({ surge:+(P.surge||0).toFixed(4), surgeT:+(P.surgeT||0).toFixed(3),
+                rebirths:P.rebirths|0, rebirthCd:+(P.rebirthCd||0).toFixed(2),
+                dist:+runDist.toFixed(1), isSurge:isSurge(), isPyre:isPyre() }),
+  // damage straight through the funnel, crit removed so the number is stable
+  dmgOut:(base)=>{ const was = P.crit; P.crit = 0;
+                   const d = dmgOut(base).d; P.crit = was; return +d.toFixed(4); },
+  fillSurge:()=>{ P.surge = .999; },
   hasTouch: ()=>HAS_TOUCH,
   hasMouse: ()=>HAS_MOUSE,
   hadLock:  ()=>hadLock,

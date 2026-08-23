@@ -2516,11 +2516,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                           affHome: (g.place(home.x, home.z), g.aff().now),
                           affWeak: (g.place(weak.x, weak.z), g.aff().now) };
       }
-      return out;
+      return { lines: out.lines, count: g.chars().length };
     });
     const rows = Object.entries(r.lines).filter(([, v]) => typeof v === "object");
+    // Nine now, not seven: THE COURIER and THE TEMP joined the roster. The
+    // count is read off the game rather than written here, so the next line
+    // added does not have to come back and edit this number.
     ok("every line has a home and a weakness on the map",
-       rows.length === 7, `${rows.length} of 7 lines measured`);
+       rows.length === r.count && rows.length >= 9,
+       `${rows.length} of ${r.count} lines measured`);
     ok("home ground reads as home for every one of them",
        rows.every(([, v]) => v.affHome === 1 && v.affWeak === -1),
        rows.map(([k, v]) => `${k}:${v.affHome}/${v.affWeak}`).join(" "));
@@ -3168,6 +3172,103 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("starting a run stops the portraits rendering",
        after.live === 0 && after.menu === false,
        `${after.live} live, menuUp ${after.menu}`);
+  }
+
+  console.log("\n=== 26. THE COURIER CHARGES BY MOVING ===");
+  {
+    // Seven characters are stat blocks; this one is a rule, and a rule that
+    // only exists in the HUD is not a rule. Everything here presses on the
+    // mechanic itself: does distance fill it, does standing still drain it,
+    // does it fire, and is the payoff real at the damage funnel.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.unlockAll(); g.start("surge"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const isSurge = g.rule().isSurge;
+      // baseline first, on an empty meter, so "cold" can never accidentally be
+      // measured during a surge the walk below set off
+      const cold = g.dmgOut(100);
+      g.bot(true);
+      g.step(120);                                  // walk for two seconds
+      const moved = g.rule();
+      g.bot(false);
+      // stand still long enough for the drain to beat any residual sliding
+      const before = moved.surge;
+      g.step(300);
+      const idled = g.rule();
+      // fill it and walk until it trips
+      g.fillSurge(); g.bot(true); g.step(45); g.bot(false);
+      const fired = g.rule();
+      const hot = g.dmgOut(100);
+      return { isSurge, moved, before, idled, fired, hot, cold,
+               plainCold: (g.wipeSave(), g.start("intern"), g.god(), g.dmgOut(100)) };
+    });
+    ok("the line knows it has a rule", r.isSurge === true, `isSurge ${r.isSurge}`);
+    ok("covering ground fills the meter",
+       r.moved.surge > .10 && r.moved.dist > 8,
+       `${(r.moved.surge*100).toFixed(0)}% after ${r.moved.dist.toFixed(0)}m`);
+    ok("and standing still bleeds it back out",
+       r.idled.surge < r.before - .05,
+       `${(r.before*100).toFixed(0)}% -> ${(r.idled.surge*100).toFixed(0)}% after five seconds still`);
+    ok("a full meter spends itself all at once",
+       r.fired.surgeT > 3 && r.fired.surge < .2,
+       `surge ${r.fired.surgeT.toFixed(2)}s, meter back to ${(r.fired.surge*100).toFixed(0)}%`);
+    ok("and while it is up the damage funnel pays out",
+       r.hot / r.cold > 1.7 && r.hot / r.cold < 2.0,
+       `${r.cold.toFixed(1)} -> ${r.hot.toFixed(1)} = x${(r.hot/r.cold).toFixed(2)}`);
+    ok("nobody else gets it", Math.abs(r.plainCold - 100) < 40 && r.cold > 0,
+       `THE INTERN ${r.plainCold.toFixed(1)} for a base of 100`);
+  }
+
+  console.log("\n=== 26b. THE TEMP SPENDS DEATHS ===");
+  {
+    // The only character in the game that can lose a fight and keep the run.
+    // What has to hold: the first lethal hit does not end it, the second one
+    // inside the cooldown does, and the cooldown grows so it cannot carry a
+    // whole run on its own.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.unlockAll(); g.start("pyre");
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const isPyre = g.rule().isPyre;
+      const maxhp = g.state().maxhp;
+      g.hitMe(1e6);                                  // certain death
+      const after = { st: g.state(), rule: g.rule() };
+      const cd1 = after.rule.rebirthCd;
+      // unlockAll hands out SECOND WIND too, so the ORDER is the thing worth
+      // checking: the character's own rule first, the shop's revive second,
+      // and only then the run ends.
+      g.hitMe(1e6);
+      const wind = g.state();
+      g.hitMe(1e6);
+      const dead = g.state();
+      // a fresh one, run past the cooldown, and spend it a second time
+      g.wipeSave(); g.unlockAll(); g.start("pyre");
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      g.hitMe(1e6);
+      const one = g.rule();
+      g.step(60 * Math.ceil(one.rebirthCd) + 120);
+      const cooled = g.rule();
+      g.hitMe(1e6);
+      const two = g.rule();
+      return { isPyre, maxhp, after, cd1, wind, dead, one, cooled, two };
+    });
+    ok("the line knows it has a rule", r.isPyre === true, `isPyre ${r.isPyre}`);
+    ok("a lethal hit does not end the run the first time",
+       r.after.st.over === false && r.after.st.hp > 0,
+       `over ${r.after.st.over}, ${r.after.st.hp} HP left`);
+    ok("it comes back at 45%",
+       Math.abs(r.after.st.hp / r.maxhp - 0.45) < 0.03,
+       `${r.after.st.hp} of ${r.maxhp} = ${(r.after.st.hp/r.maxhp*100).toFixed(0)}%`);
+    ok("and the rebirth goes on a cooldown", r.cd1 > 30, `${r.cd1}s`);
+    ok("the character's rule fires before the shop's revive",
+       r.wind.over === false && r.dead.over === true,
+       `rebirth, then SECOND WIND (over ${r.wind.over}), then dead (over ${r.dead.over})`);
+    ok("the cooldown runs down", r.cooled.rebirthCd === 0,
+       `${r.cooled.rebirthCd}s left after waiting it out`);
+    ok("and the second rebirth costs more than the first",
+       r.two.rebirths === 2 && r.two.rebirthCd > r.one.rebirthCd,
+       `${r.one.rebirthCd}s then ${r.two.rebirthCd}s`);
   }
 
   console.log("\n" + "=".repeat(58));
