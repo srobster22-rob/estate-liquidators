@@ -609,6 +609,34 @@ function bindAttribs(){
   gl.enableVertexAttribArray(A.col);  gl.vertexAttribPointer(A.col, 3,gl.FLOAT,false,S,24);
   gl.enableVertexAttribArray(A.emit); gl.vertexAttribPointer(A.emit,1,gl.FLOAT,false,S,36);
 }
+// ======================================================== CONTACT SHADOWS
+// Reported in the audit round as the worst thing in every screenshot: every
+// object in the game - enemies, gems, pickups, the player - sat on a hard
+// axis-aligned near-black rectangle, so from any angle the whole scene read as
+// cut-out stickers on a lawn.
+//
+// Three things were wrong and all three are cheap to fix. It was SQUARE, and
+// the squares all faced the same way because nothing passed a yaw. It was
+// near-BLACK, which is not what a shadow is - a shadow is the ground with less
+// light on it, and this renderer has no alpha, so the colour has to be mixed
+// on the CPU from the ground it falls on. And it never changed with HEIGHT, so
+// a jumping creature dragged the same hard patch under it as a standing one.
+//
+// Two quads at 45 degrees make an octagon for two boxes. The ground tint comes
+// from the biome, which the terrain is already coloured from, so a shadow on
+// the ash reads warm and a shadow on the glacier reads cold.
+function shadow(x, y, z, r, lift, yaw){
+  const b = biomeAt(x, z);
+  // how far off the ground: fades and spreads, the way a real one does
+  const h = Math.max(0, lift || 0);
+  const k = 1 / (1 + h * .55);                    // 1 on the deck, less in the air
+  const sp = r * (1 + h * .22);
+  const m = .30 + (1 - k) * .34;                  // darkest in contact
+  const col = [ b.a[0]*m, b.a[1]*m, b.a[2]*m*1.04 ];
+  box(x, y + .035, z, sp*1.02, .028, sp*1.02, col, 0, yaw || 0);
+  box(x, y + .028, z, sp*1.06, .022, sp*1.06, col, 0, (yaw || 0) + Math.PI/4);
+  drawnShadows++;
+}
 function flush(){
   if(!nbox) return;
   gl.bindBuffer(gl.ARRAY_BUFFER, dynBuf); bindAttribs();
@@ -4736,8 +4764,14 @@ function queueLevel(){ pendingLevels++; }
 // +1.7% of the health you started the run with, and +1.1% damage, compounding.
 // Deliberately small: this is what a level is worth when it has nothing else
 // to give you, not a second progression system running alongside the draft.
-const LVL_HP = .017, LVL_DMG = .011;
+// AND CAPPED. The bench put a good run at level 55 to 93, which is sixty-odd
+// empty levels - at 1.7% and 1.1% apiece that is double the health and double
+// the damage arriving quietly in the back half of every long run. Fifty stacks
+// is the ceiling: +75% health and +49% damage, reached only by a run that was
+// already going to win, and nothing at all before the kit maxes out.
+const LVL_HP = .015, LVL_DMG = .008, LVL_CAP = 50;
 function levelGrowth(){
+  if((P.grown || 0) >= LVL_CAP){ P.hp = Math.min(P.maxhp, P.hp + 40); return; }
   const add = Math.max(1, Math.round((P.hp0 || P.maxhp) * LVL_HP));
   P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp + add);
   P.grown = (P.grown || 0) + 1;
@@ -4871,7 +4905,10 @@ function take(o){
   else if(o.type==="evo"){ P.kit[o.key].evo = true; P.kit[o.key].l = WMAX-1; shake=.7; }
   else if(o.type==="new"){ P.kit[o.key] = { key:o.key, l:0, t:0, evo:false }; applyPassive(o.key); }
   else { P.kit[o.key].l++; applyPassive(o.key); }
-  pendingLevels--;
+  // Clamped, because the strip is now live: the eleven-second auto-resolve and
+  // a scripted driver's own pick can both land on the same open hand, and two
+  // takes for one level drove the counter negative.
+  pendingLevels = Math.max(0, pendingLevels - 1);
   hide("pick"); picking=false;
   if(pendingLevels > 0) setTimeout(showPick, 90);
 }
@@ -4901,7 +4938,7 @@ function recalcDmg(){
   // Growth rides the recalc rail for the same reason the boons and the stage
   // bonuses do: every passive pick rebuilds P.dmg from scratch, so anything
   // written straight onto P survives exactly until the next level-up.
-  return Math.pow(1 + LVL_DMG, (P && P.grown) || 0)
+  return Math.pow(1 + LVL_DMG, Math.min(LVL_CAP, (P && P.grown) || 0))
        * (1 + rank("dmg")*.06)
        * (1 + prank(P.kit.spinach)*.13)
        * (1 + prank(P.kit.boots)*.08)                       // momentum
@@ -5679,7 +5716,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // A menu portrait has a plinth of its own and no horde to be lost in, so it
   // takes neither the ground quad nor the marker ring - fourteen white boxes
   // in a circle read as confetti at card size.
-  if(!P.portrait) box(P.x, P.y+.05, P.z, 1.24,.03,1.24, [.08,.10,.09], 0);
+  if(!P.portrait) shadow(P.x, P.y, P.z, .62, 0, P.face);
   // You are a 0.34m box among four hundred boxes, and positioning is the
   // entire game - losing track of yourself in the horde is not a difficulty,
   // it is the controls not working. A lit ring at your feet costs twelve
@@ -6783,8 +6820,8 @@ function render(){
     // contact patch puts a hard edge under every body that does not depend on
     // hue, light level or the player's colour vision. It also stops everything
     // looking like it is hovering, which it was.
-    box(e.x, groundY(e.x,e.z)+.035, e.z, W*1.15, .03, W*1.15, [.05,.05,.06], 0);
-    drawnShadows++;
+    shadow(e.x, groundY(e.x,e.z), e.z, W*.62, e.y - groundY(e.x,e.z),
+           Math.atan2(P.x-e.x, P.z-e.z));
     const hop = Math.abs(Math.sin(e.bob))*(e.boss?.10:.20);
     const sq = e.flash>0 ? 1.25 : 1;
     // elites keep their species colour but run hot, so you can still tell a

@@ -309,9 +309,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     return { shadows: window.__g.shadows(), enemies: window.__g.state().enemies };
   });
+  // enemies plus one: the player casts a real shadow now too
   ok("and every body on the field is drawn with one",
-     shad.shadows === shad.enemies && shad.enemies > 30,
-     `${shad.shadows} shadows for ${shad.enemies} enemies`);
+     shad.shadows === shad.enemies + 1 && shad.enemies > 30,
+     `${shad.shadows} shadows for ${shad.enemies} enemies and one player`);
 
   console.log("\n=== 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===");
   const riders = await page.evaluate(() => {
