@@ -625,16 +625,24 @@ function bindAttribs(){
 // Two quads at 45 degrees make an octagon for two boxes. The ground tint comes
 // from the biome, which the terrain is already coloured from, so a shadow on
 // the ash reads warm and a shadow on the glacier reads cold.
-function shadow(x, y, z, r, lift, yaw){
+function shadow(x, y, z, r, lift, yaw, soft){
   const b = biomeAt(x, z);
   // how far off the ground: fades and spreads, the way a real one does
   const h = Math.max(0, lift || 0);
   const k = 1 / (1 + h * .55);                    // 1 on the deck, less in the air
   const sp = r * (1 + h * .22);
-  const m = .30 + (1 - k) * .34;                  // darkest in contact
+  // `soft` lifts the whole thing back toward the ground colour. A creature
+  // wants a shadow you can read its footprint from; a gem lying on the grass
+  // wants a hint, or a field of loot turns into a field of dark holes - which
+  // at .54 of the ground colour is exactly what it looked like.
+  const m = soft ? (.62 + soft*.26) : (.30 + (1 - k) * .34);
   const col = [ b.a[0]*m, b.a[1]*m, b.a[2]*m*1.04 ];
   box(x, y + .035, z, sp*1.02, .028, sp*1.02, col, 0, yaw || 0);
-  box(x, y + .028, z, sp*1.06, .022, sp*1.06, col, 0, (yaw || 0) + Math.PI/4);
+  // The second quad is what turns a square into an octagon, and it is the one
+  // thing here that costs. A creature is worth two boxes; a gem lying on the
+  // grass is not - a hundred and twenty of them on the floor is a hundred and
+  // twenty boxes for a shape nobody looks at.
+  if(!soft) box(x, y + .028, z, sp*1.06, .022, sp*1.06, col, 0, (yaw || 0) + Math.PI/4);
   drawnShadows++;
 }
 function flush(){
@@ -6820,8 +6828,13 @@ function render(){
     // contact patch puts a hard edge under every body that does not depend on
     // hue, light level or the player's colour vision. It also stops everything
     // looking like it is hovering, which it was.
+    // The octagon is a two-box shape and it is only worth two boxes up close.
+    // Past twenty-two metres the second quad is a couple of pixels wide, and
+    // the horde is mostly out there - so the cheap single quad is the default
+    // and the round one is the LOD tier, same as the bodies above it.
+    const sd2 = Math.hypot(e.x-P.x, e.z-P.z);
     shadow(e.x, groundY(e.x,e.z), e.z, W*.62, e.y - groundY(e.x,e.z),
-           Math.atan2(P.x-e.x, P.z-e.z));
+           Math.atan2(P.x-e.x, P.z-e.z), sd2 > 22 ? .18 : 0);
     const hop = Math.abs(Math.sin(e.bob))*(e.boss?.10:.20);
     const sq = e.flash>0 ? 1.25 : 1;
     // elites keep their species colour but run hot, so you can still tell a
@@ -6957,11 +6970,43 @@ function render(){
     }
   }
   for(const p of pops) box(p.x,p.y,p.z, p.s,p.s,p.s, p.c, .3);
+  // XP, AS TREASURE. Reported in the audit as reading like litter at density,
+  // and it did: every gem was one box of one size, so a floor covered in them
+  // was a floor covered in identical cubes. Three tiers with three silhouettes
+  // now - a flat chip, a cut stone, a standing crystal - each with a lit core
+  // that is brighter than its shell, and each sitting on a real contact shadow
+  // so it is ON the ground rather than hovering over it. The spin is unchanged;
+  // the reason you could not see it was that a cube looks the same at every
+  // angle, which a tapered stone does not.
   for(const g of gems){
     if(Math.abs(g.x-px) > 78 || Math.abs(g.z-pz) > 78) continue;
-    const v = g.v>=20 ? [1,.72,.2] : g.v>=5 ? [.6,.45,1] : [.35,.9,.7];
-    const s = g.v>=20 ? .27 : .19;
-    box(g.x,g.y,g.z, s,s*1.45,s, v, .9, T*3+g.bob);
+    const big = g.v >= 20, mid = !big && g.v >= 5, small = !big && !mid;
+    const v = big ? [1,.72,.2] : mid ? [.62,.44,1] : [.34,.92,.70];
+    const core = big ? [1,.95,.66] : mid ? [.86,.78,1] : [.74,1,.94];
+    const yaw = T*3 + g.bob, s = big ? .25 : mid ? .19 : .15;
+    const gy = groundY(g.x, g.z);
+    // and only near enough to see: past twenty metres a gem's contact patch is
+    // two pixels of slightly darker grass
+    if(!small && Math.abs(g.x-px) < 20 && Math.abs(g.z-pz) < 20)
+      shadow(g.x, gy, g.z, s*.80, g.y - gy, yaw, .55);
+    if(big){
+      // a standing crystal: a wide base, a tall body, a bright point
+      box(g.x, g.y - s*.55, g.z, s*1.05, s*.34, s*1.05, v, .55, yaw);
+      box(g.x, g.y + s*.35, g.z, s*.78, s*1.15, s*.78, v, .90, yaw);
+      box(g.x, g.y + s*1.45, g.z, s*.34, s*.52, s*.34, core, 1.0, yaw);
+    } else if(mid){
+      // a cut stone: two frusta back to back, which is the shape of a gem
+      box(g.x, g.y - s*.20, g.z, s*.92, s*.46, s*.92, v, .70, yaw);
+      box(g.x, g.y + s*.46, g.z, s*.60, s*.62, s*.60, v, .95, yaw + .5);
+      box(g.x, g.y + s*.30, g.z, s*.30, s*.34, s*.30, core, 1.0, yaw + .5);
+    } else {
+      // A chip, and ONE box for it. The small drop is the one there are two
+      // hundred of on the floor at minute fifteen, so it is the one that has to
+      // stay cheap: a hundred and twenty enemies each leaving a three-box gem
+      // put the horde's per-enemy draw cost seven boxes over its ceiling. Low,
+      // wide, and lying at an angle so a field of them is not a grid.
+      box(g.x, g.y - s*.20, g.z, s*.95, s*.40, s*.70, v, .95, yaw);
+    }
   }
 
   flush();
@@ -7315,6 +7360,7 @@ window.__g = {
   dmgOut:(base)=>{ const was = P.crit; P.crit = 0;
                    const d = dmgOut(base).d; P.crit = was; return +d.toFixed(4); },
   fillSurge:()=>{ P.surge = .999; },
+  dropGem:(x,z,v)=>{ gems.push(mkGem(x, z, v)); return gems.length; },
   // take card i the way the number keys do, because the draft strip is
   // keyboard-driven now and a synthetic click has to go through the same door
   pick:  (i=0)=>{ const c = document.getElementById("pkCards").children[i|0];
