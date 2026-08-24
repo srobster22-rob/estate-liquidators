@@ -3285,11 +3285,14 @@ stone(D){
   // twice the skull, sticking out past the frill like a pair of antennae.
   // and the brow horns arrive with the frill rather than being there from the
   // start: a nub on the juvenile, a spike by the top of the line.
+  // BONE, not teal: the audit read the accent-coloured brow horns as
+  // "eyebrows or fins". Horn is keratin; the teal stays on the frill.
   for(const rs of [-1,1])
     horn(fx0 + rs*.15*gr, ff + .30*gr, (.60+heave)*gr,
          rs*.012*gr, (.026 + st*.022)*gr, (.010 + st*.008)*gr,
-         3 + st, (.040 + st*.008 + (rs>0?.003:0))*gr, acc, .18);
-  horn(fx0, ff + .52*gr, (.46+heave)*gr, 0, .028*gr, .036*gr, 3, .040*gr, acc, .18);
+         3 + st, (.040 + st*.008 + (rs>0?.003:0))*gr, [.91,.88,.79], .16);
+  horn(fx0, ff + .52*gr, (.46+heave)*gr, 0, .028*gr, .036*gr, 3, .040*gr,
+       [.91,.88,.79], .16);
   // four pillar legs, diagonal gait, and they are columns rather than sticks
   for(const rs of [-1,1]) for(const fs of [-1,1]){
     const p2 = (rs*fs > 0) ? gait : -gait;
@@ -5321,7 +5324,17 @@ function updateEnemies(dt){
     e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
 
     const dx = P.x-e.x, dz = P.z-e.z, d = Math.hypot(dx,dz)||1;
-    let spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * (e.boss?1:rndSeed(e));
+    // Water drags the horde exactly as it drags a wading player, so a lake is
+    // TERRAIN, not a player-only tax: the aquatic lines hunt in them at full
+    // song, everyone else - pursuer and pursued alike - wades. Divers cross
+    // above it, and bosses wade at a lighter .85 so a lake is an edge against
+    // them rather than a cheese.
+    // NOT e.dvT <= 0: only divers ever have a dvT, and undefined <= 0 is
+    // false in this language - the first guard exempted every walker in the
+    // game and the averaged test caught the rule applying to nobody.
+    const wading = !(e.dvT > 0) && inWater(e.x, e.z) ? (e.boss ? .85 : .74) : 1;
+    let spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * wading
+            * (e.boss?1:rndSeed(e));
 
     // THE DIVE. The ledger says the melee horde deals about a tenth of the
     // damage in a run and one line finished twenty-four minutes having taken
@@ -7273,8 +7286,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
                            shelf:.34, socket:[.14,.11,.09], glow:.55 });
   // BIRD - forward-set, a pale ring round a hard little pupil. A hawk.
   const eyeBird = (r,f,y,sp,sz,iris)=>
+    // the near-black brow at .30 wrapped the pale skull like a blindfold from
+    // the play camera (audit); a slate tone reads as a brow, not a band
     eyeBase(r,f,y,sp,sz, { iris: iris || [.99,.78,.14], ir:.90, irY:.90,
-                           pw:.34, ph:.34, brow:.30, browCol:[.10,.10,.13],
+                           pw:.34, ph:.34, brow:.24, browCol:[.28,.28,.34],
                            socket:[.09,.09,.12], glow:.80 });
   // GLOW - no white at all. A slot in the skull with something lit in it.
   const eyeGlow = (r,f,y,sp,sz,iris)=>
@@ -8786,6 +8801,7 @@ window.__g = {
   clearMortars:()=>{ statShells = 0; },
   clearBolts:()=>{ statBolts = 0; },
   boltsPeak:()=>statBolts,
+  enemiesPos:()=>enemies.filter(e=>!e.dead).map(e=>({ x:+e.x.toFixed(3), z:+e.z.toFixed(3) })),
   nearestEnemy:()=>{ const e = nearest(P.x, P.z, 999);
                      return e ? { x:+e.x.toFixed(3), z:+e.z.toFixed(3),
                                   slowT:+(e.slowT||0).toFixed(3) } : null; },
