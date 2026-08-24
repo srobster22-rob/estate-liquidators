@@ -2699,21 +2699,29 @@ scrap(D){
     const beat = Math.sin(ph*.8 + (fs>0 ? 0 : Math.PI)) * (.35 + amp*.55);
     const y = (.36 + beat*.10)*gr + bob*gr;
     const yaw = rs*(.55 + beat*.30);
-    // shoulder inside the body, blade sweeping out and back
-    chain([[sway + rs*.22*gr, fs*.24*gr, y],
-           [sway + rs*(.22 + .30*FLIP)*gr, (fs*.22 - .08*fs)*gr, y - .05*gr],
-           [sway + rs*(.22 + .60*FLIP)*gr, (fs*.18 - .26*fs*FLIP)*gr, y - .13*gr]],
+    // shoulder inside the body, blade sweeping out and back. The ROW is a
+    // fore-aft sweep, not just a change of height: measured across a full
+    // stride this line moved less than any other in the game - two percent of
+    // its own height on average - because the only thing that actually went
+    // anywhere was the tip of a flipper, and only up and down.
+    const row = beat * .17 * gr;
+    chain([[sway + rs*.22*gr, fs*.24*gr + row*.35, y],
+           [sway + rs*(.22 + .30*FLIP)*gr, (fs*.22 - .08*fs)*gr + row*.75, y - .05*gr],
+           [sway + rs*(.22 + .60*FLIP)*gr, (fs*.18 - .26*fs*FLIP)*gr + row, y - .13*gr]],
           .17*gr, .10*gr, c, em+.10, [1, .30, 1.6]);
-    mb(sway + rs*(.22 + .44*FLIP)*gr, (fs*.12 - .16*fs*FLIP)*gr, y - .09*gr,
+    mb(sway + rs*(.22 + .44*FLIP)*gr, (fs*.12 - .16*fs*FLIP)*gr + row*.85, y - .09*gr,
        .26*gr*FLIP, .04*gr, .27*gr*FLIP, lt, em+.12, yaw);
   }
   // THE NECK. Long, and it curves - a straight neck is a pipe.
   const neck = [[sway, .14*gr, (.54+bob)*gr]];
   let nx = sway, nf = .26*gr, ny = (.62+bob)*gr;
   for(let i=0;i<NECK;i++){
-    nx += (lk*.9)/NECK + Math.sin(t*1.1 - i*.55)*.012*gr*(1+idle);
+    // A NECK THIS LONG HAS TO MOVE. At .012 of lateral wander it was a rigid
+    // mast: the animal swam and its neck went along for the ride. The wave
+    // runs on the STRIDE, deepens with speed, and travels down the neck.
+    nx += (lk*.9)/NECK + Math.sin(ph*.85 - i*.62)*(.022 + amp*.045)*gr;
     nf += (.16 + (i+1)/NECK*.05)*gr + lkf/NECK;
-    ny += (.17 - (i+1)/NECK*.05)*gr;
+    ny += (.17 - (i+1)/NECK*.05)*gr + Math.sin(ph*.85 - i*.62 + 1.1)*(.010 + amp*.026)*gr;
     neck.push([nx, nf, ny]);
   }
   chain(neck, .16*gr, .095*gr, c, em+.08);
@@ -2729,7 +2737,8 @@ scrap(D){
   // THE TAIL. Short and flat - a rudder, not a whip.
   const tail = [[sway, -.30*gr, (.44+bob)*gr]];
   for(let i=0;i<4+st;i++){
-    const lag = drag(.6 + i*.5)*.024*(i+1)*gr + Math.sin(t*.8 - i*.4)*.012*idle*(i+1)*gr;
+    const lag = drag(.6 + i*.5)*.024*(i+1)*gr
+              + Math.sin(ph*.9 - i*.5)*(.008 + amp*.028)*(i+1)*gr;
     tail.push([sway + lag, (-.44 - i*.17)*gr, (.42 + bob - i*.02)*gr]);
   }
   chain(tail, .15*gr, .055*gr, c, em+.08, [.80, .68, 1.15]);
@@ -2881,8 +2890,14 @@ stone(D){
           st, t } = D;
   const lk = look*.10, lkf = -Math.abs(look)*.03;
   const gr = 1 + st*.22;
-  const heave = Math.sin(t*1.3)*.014*idle*gr + Math.abs(gait)*.026*gr;
-  const roll  = gait*.045;
+  // A HEAVY ANIMAL IS NOT A RIGID ONE. Rasterised this line at the two
+  // extremes of a stride and only nine percent of TITANHIDE was in a different
+  // place half a step later - the lowest in the roster by a factor of three,
+  // and it read as a table being pushed along. It should be PONDEROUS, which
+  // means it moves a lot and slowly, not that it does not move.
+  const heave = Math.sin(t*1.3)*.014*idle*gr + Math.abs(gait)*.058*gr;
+  const roll  = gait*.10;
+  const swing = Math.sin(ph*.9)*amp;               // the whole body, one beat
   const snort = twitch(.9, 4.6);
   // THE FRILL IS THE EVOLUTION. It grew .09 a stage from a base of .40, so
   // SHALEBACK already wore most of a TITANHIDE's shield and the three forms
@@ -2901,7 +2916,7 @@ stone(D){
   ridge(-.46*gr, .12*gr, (.58+heave)*gr, 7, .09*gr, dk, .06);
   // THE FRILL. A fan of plates behind the skull, scalloped along the rim, and
   // each plate now leans out of the head rather than standing beside it.
-  const fx0 = sway + lk, ff = .34*gr + lkf, fy = (.54 + heave)*gr;
+  const fx0 = sway + lk + swing*.05*gr, ff = .34*gr + lkf, fy = (.54 + heave)*gr;
   // A frill is a SHIELD, standing up behind the skull and leaning back over the
   // shoulders. The first rebuild fanned it sideways and level, which from any
   // camera above the animal read as a pair of wings.
@@ -2960,10 +2975,13 @@ stone(D){
   // a short heavy tail, and at the top of the line a club on the end of it
   const tail = [[sway, -.40*gr, (.38+heave)*gr]];
   for(let i=0;i<4;i++){
-    const lag = drag(.6 + i*.45)*.016*(i+1)*gr;
-    tail.push([sway + lag, (-.60 - i*.20)*gr, (.36 + heave - i*.012)*gr]);
+    const lag = drag(.6 + i*.45)*.016*(i+1)*gr
+              + Math.sin(ph*.9 - i*.55)*(.008 + amp*.040)*(i+1)*gr;
+    tail.push([sway + lag, (-.60 - i*.20)*gr,
+               (.36 + heave - i*.012 + Math.sin(ph*1.8 - i*.4)*amp*.018)*gr]);
   }
-  if(st >= 1) tail.push([sway + drag(2.4)*.03*gr, -1.44*gr, (.36+heave)*gr]);
+  if(st >= 1) tail.push([sway + drag(2.4)*.03*gr + Math.sin(ph*.9 - 2.75)*(.012 + amp*.060)*gr,
+                         -1.44*gr, (.36+heave)*gr]);
   chain(tail, .155*gr, st >= 1 ? .19*gr : .06*gr, c, em, [1, .88, 1]);
   // ARMOUR RINGS. The tail was a smooth rectangular plank from hips to club -
   // the one part of an ankylosaur nobody would draw smooth. A dark band and a
@@ -3310,9 +3328,16 @@ echo(D){
     // Each neck gets its own clock. A fan that moves as one piece is a rack of
     // antlers; heads on one body drift apart and back together.
     const ps = i * 2.39;                             // an irrational-ish stagger
-    const sd = Math.sin(t*1.9 + ps)*.055 + Math.sin(t*.83 + ps*1.7)*.035;
-    const bob = Math.sin(t*1.45 + ps*1.3)*.055;
-    const reach = Math.sin(t*.62 + ps*2.1)*.07;      // leaning in and out
+    // Two clocks: an idle drift that never stops, and a surge that only
+    // happens when the animal is moving. Measured across a full stride this
+    // line shifted four percent of its own height - the necks drifted on their
+    // own time and the run did nothing to them, so a hydra at a dead sprint
+    // looked like a hydra standing still being carried along.
+    const sd = Math.sin(t*1.9 + ps)*.055 + Math.sin(t*.83 + ps*1.7)*.035
+             + Math.sin(ph*.90 + ps)*amp*.115;
+    const bob = Math.sin(t*1.45 + ps*1.3)*.055 + Math.sin(ph*1.8 + ps*.7)*amp*.085;
+    const reach = Math.sin(t*.62 + ps*2.1)*.07       // leaning in and out
+                + Math.sin(ph*.90 + ps*1.4)*amp*.10;
     const bx = u * .30 * gr, bf = (.16 - Math.abs(u)*.10) * gr, by = (.34 + coil)*gr;
     // inner heads ride high and reach far; outer heads sit lower and wider,
     // and the alternation staggers them again so no two share a slice of air
@@ -3676,7 +3701,20 @@ function stepAnim(dt){
     let a = Math.atan2(tgt.x - P.x, tgt.z - P.z) - P.face;
     while(a >  Math.PI) a -= TAU;
     while(a < -Math.PI) a += TAU;
-    wantLook = clamp(a, -.75, .75);
+    // ONLY WHAT IT COULD ACTUALLY SEE. Reported as "I don't like how the
+    // monster looks back at you while receiving no inputs". This clamped, so a
+    // target DIRECTLY BEHIND the animal - which is where the horde is whenever
+    // you have been running from it, and which is also where the camera is -
+    // pinned the head at the far edge of its arc and held it there. Stop
+    // moving and your creature turned round and stared down the lens.
+    //
+    // An animal tracks what is in front of it. Outside a sixty-degree arc
+    // there is nothing to track, so the head eases back to the way the body is
+    // pointed: the last direction you actually drove it.
+    // A hundred and ten degrees, not sixty: an animal can absolutely look at
+    // something standing beside it, and the suite already asserts that it
+    // does. What it cannot do is crane round at something directly astern.
+    if(Math.abs(a) < 1.90) wantLook = clamp(a, -.75, .75);
   }
   ANIM.look += (wantLook - ANIM.look) * Math.min(1, dt * 5);
 }
@@ -3970,7 +4008,12 @@ for(const [id,k] of [["sndBtn","sound"],["mtnBtn","motion"]])
   });
 paintOpts();
 function togglePause(v){
-  if(v){ faceCamera(); hopFreeze(); } else hopThaw();
+  // IT KEEPS ITS OWN HEADING. Pausing used to spin the animal around to face
+  // the camera, on the theory that a paused game is a good look at your
+  // creature. Reported, and fair: the thing you were driving snapped to a pose
+  // it was never in, so the pause read as the animal noticing you rather than
+  // as the game stopping. It stays pointed wherever you left it.
+  if(v) hopFreeze(); else hopThaw();
   if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
   document.getElementById("paused").classList.toggle("on", v);
@@ -5201,7 +5244,6 @@ function offers(){
                              lv:"REFRESHMENT", ds:"Heal 40 HP. Nothing left to learn.", weight:1 });
   return out;
 }
-function faceCamera(){ if(P) P.face = camYaw + Math.PI; }
 // A level-up is not a mistake. The chain is the one thing in this game that
 // punishes you for taking your hands off the keys, and a draft screen takes
 // your hands off the keys - so it stops being a thing that happens TO you
@@ -6012,8 +6054,21 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // distinct meshes" check has to compare shapes, and if the signature moved
   // with the animation it would compare moments in time instead.
   const aSq = ANIM.sq, aInv = 1 / Math.sqrt(Math.max(.35, aSq));
-  const aLean = ANIM.lean + ANIM.lunge * .26;
-  const aBank = ANIM.bank;
+  // WEIGHT, AND WHERE IT IS. Captured the mesh at the two extremes of a stride
+  // and measured how far each box moved: the mean was two to nine percent of
+  // the animal's own height. The legs swung and the animal did not - a rigid
+  // slab sliding along on moving sticks, which is why a walk cycle was
+  // invisible from the camera this game actually uses.
+  //
+  // Three terms, all applied here so every plan gets them and none has to ask.
+  // A walking animal RISES between footfalls and drops onto each one, so the
+  // bob runs on |sin| inverted; it ROCKS onto whichever leg is carrying it,
+  // which is a lateral shear on the stride itself; and it PITCHES on the
+  // off-beat, twice a stride, with the squash that ANIM.sq already carries.
+  const aBob  = ANIM.amp * (.42 - Math.abs(Math.sin(ANIM.ph))) * .10;
+  const aLean = ANIM.lean + ANIM.lunge * .26
+              + ANIM.amp * Math.sin(ANIM.ph * 2) * .022;
+  const aBank = ANIM.bank + ANIM.amp * Math.sin(ANIM.ph) * .075;
   const mb = (r,f,y,hx,hy,hz,col,em,rot)=>{
     // DEPTH SEPARATION. Fixing blob() removed the worst coplanar faces but not
     // all of them: any row of repeated parts - the plates down a spine, the
@@ -6081,7 +6136,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // game was drawn axis-aligned. That is most of why the wings read as a
     // horizontal bar and the frill read as a wall: nothing in twenty-one forms
     // was allowed to sit at an angle to the animal carrying it.
-    box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + yy*mSc, P.z - mSf*rr*mSc + mCf*ff*mSc,
+    box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
+        P.z - mSf*rr*mSc + mCf*ff*mSc,
         hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em||0, P.face + (rot||0));
   };
   // AMBIENT, NOT ANATOMY. Sparks, embers, orbiting storm motes, trailing water,
@@ -6091,7 +6147,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // to reason about a cloud of loose particles that is meant to be loose.
   const fx = (r,f,y,hx,hy,hz,col,em2,rot)=>{
     const yy = y * aSq, rr = r * aInv + yy * aBank, ff = f * aInv + yy * aLean;
-    box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + yy*mSc, P.z - mSf*rr*mSc + mCf*ff*mSc,
+    box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
+        P.z - mSf*rr*mSc + mCf*ff*mSc,
         hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em2||0, P.face + (rot||0));
   };
   const mLt = [Math.min(1,mTc[0]*1.22+.03), Math.min(1,mTc[1]*1.22+.03),
@@ -7837,7 +7894,8 @@ window.__g = {
                 kills, enemies:enemies?.length, gems:gems?.length, boxes:drawnBoxes,
                 dps:+(P?.dmg).toFixed(2), spd:+(P?.spd).toFixed(2), cd:+(P?.cd).toFixed(3),
                 over, won:runWon, why:runWhy, sudden, picking, coins:save.coins,
-                pending:pendingLevels, stage }),
+                pending:pendingLevels, stage, face:+(P?.face || 0).toFixed(4),
+                air:!!P?.air }),
   kit:   ()=>Object.keys(P.kit).map(k=>`${k}:${P.kit[k].evo?"EVO":P.kit[k].l+1}`),
   start: (id)=>startRun(id||"intern"),
   // scripted driving ignores the pause that losing pointer lock would cause
@@ -7873,6 +7931,9 @@ window.__g = {
              const [sx, sz] = confine(P.x+Math.cos(a)*r, P.z+Math.sin(a)*r, 2);
              spawnEnemy(t, sx, sz); }
     } return enemies.length; },
+  // A head-tracking check has to start from an empty field, or whatever the
+  // director left lying around is the nearest thing worth looking at.
+  clearEnemies:()=>{ enemies.length = 0; rebuildGrid(); return enemies.length; },
   boss:  i=>spawnBoss(BOSSES[i||0]),
   // position/HP/body of the boss on the field, so a test can hold an exact
   // gap to it instead of chasing a target that walks toward the player.

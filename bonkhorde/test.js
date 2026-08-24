@@ -2085,6 +2085,63 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        worst.map(x => `${x.nm} ${x.bad}/${x.n}`).join(", "));
   }
 
+  console.log("\n=== 22p. THE ANIMAL KEEPS ITS OWN HEADING ===");
+  {
+    // Reported: "I don't like how the monster looks back at you while
+    // receiving no inputs, change it to where it looks last place where it is
+    // left". Pausing called faceCamera(), which spun the animal round to face
+    // the lens - so the thing you were driving snapped to a pose it was never
+    // in, and the pause read as the creature noticing you rather than as the
+    // game stopping. Standing still must not turn it either.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); g.aim(0);
+      dispatchEvent(new KeyboardEvent("keydown", { code: "KeyA" }));
+      g.step(60, 1/60);
+      dispatchEvent(new KeyboardEvent("keyup", { code: "KeyA" }));
+      const moving = g.state().face;
+      g.step(40, 1/60);
+      const idle = g.state().face;
+      g.pause(true);
+      const paused = g.state().face;
+      g.pause(false);
+      // NOT g.aim() with no argument - that setter takes whatever it is given,
+      // so reading the camera that way sets the camera to undefined.
+      return { moving, idle, paused };
+    });
+    const near = (a, b) => Math.abs(a - b) < 1e-3;
+    ok("walking left points the animal left, not at the camera",
+       Math.abs(Math.abs(r.moving) - Math.PI / 2) < .25,
+       `face ${r.moving} with the camera at 0`);
+    ok("standing still does not turn it",
+       near(r.moving, r.idle), `${r.moving} walking -> ${r.idle} idle`);
+    ok("and neither does pausing",
+       near(r.idle, r.paused), `${r.idle} idle -> ${r.paused} paused`);
+
+    // THE HEAD, TOO. The body kept its heading but ANIM.look clamped the head
+    // toward the nearest enemy at any bearing, so a horde BEHIND the animal -
+    // which is where the horde is whenever you have been running from it, and
+    // where the camera is - pinned the head at the far edge of its arc and
+    // held it there. That is the "looks back at you" in the report.
+    const h = await page.evaluate(async () => {
+      const g = window.__g;
+      const run = (n) => g.step(n, 1/60);
+      const set = (x, z) => {
+        g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); g.aim(0);
+        run(20); g.clearEnemies(); g.spawnAt("shambler", x, z); run(50);
+        return Math.abs(g.anim().look);
+      };
+      // face is 0, which is +z: dead ahead is +z, dead astern is -z
+      return { ahead: set(3.5, 9), behind: set(3.5, -9) };
+    });
+    ok("the head tracks something in front of it",
+       h.ahead > .12, `look ${h.ahead} with a target dead ahead`);
+    ok("and does not crane round at something behind it",
+       h.behind < .05, `look ${h.behind} with the same target astern`);
+  }
+
   console.log("\n=== 22r. THE ANIMATION IS DRIVEN BY WHAT YOU DID ===");
   {
     // The creature had one animation: sin(T*13) while moving, hard zero while
