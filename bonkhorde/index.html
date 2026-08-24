@@ -3129,9 +3129,15 @@ tally(D){
     for(const rs of [-1,1])                                // barbs, at the top
       horn(tp[0] + rs*.05*gr, tp[1] - .16*gr, tp[2], rs*.05*gr, -.03*gr, .02*gr,
            3, .035*gr, acc, .40);
-    for(let i=0;i<7;i++){ const a = t*2.2 + i/7*TAU;       // it brings weather
-      fx(Math.sin(a)*.86*gr, Math.cos(a)*.74*gr,
-         HIP + Math.sin(t*3+i)*.22*gr, .05*gr,.05*gr,.13*gr, lt, .70, a); }
+    // IT BRINGS WEATHER. Five wind streaks, not seven bricks: at .05 by .05 by
+    // .13 in near-white at .70 of emission these read as a handful of solid
+    // white blocks floating loose around the animal, which is the last thing a
+    // model already reported as "too many blocks" needs. A streak is thin on
+    // two axes and long on the third, tinted rather than white, and dim enough
+    // to read as air moving rather than as debris.
+    for(let i=0;i<5;i++){ const a = t*2.4 + i/5*TAU;
+      fx(Math.sin(a)*.78*gr, Math.cos(a)*.66*gr,
+         HIP + Math.sin(t*3+i)*.20*gr, .018*gr,.018*gr,.34*gr, acc, .38, a); }
   }
 },
 // ------------------------------------------------------------------- ECHO
@@ -5852,12 +5858,21 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // millimetres that cycles on the draw index. Nothing changes shape, no
     // flush join stops looking flush at 0.1% of a creature's height, and two
     // boxes can no longer land a face on the same plane by accident.
-    // Slotted, not random. Each axis gets one of ~12 evenly spaced offsets
+    // Slotted, not random. Each axis gets one of a few evenly spaced offsets
     // 1.5 thousandths apart, chosen by a different coprime modulus - so the
     // offsets are far enough apart to be real separations rather than noise
     // in the same plane, and two boxes have to match on all three moduli
-    // (which needs their draw indices to differ by a multiple of 1716) to
-    // land on the same plane on every axis at once.
+    // (which needs their draw indices to differ by a multiple of 315) to land
+    // on the same plane on every axis at once.
+    //
+    // FIVE SLOTS, NOT TWELVE. Twelve slots 1.6 thousandths apart is a spread
+    // of nineteen thousandths, and this thing is applied to two parts that are
+    // SUPPOSED to be stacked - the layers of an eye, two segments of a neck -
+    // as readily as to two that merely collide. A pupil seven thousandths deep
+    // sunk five into its iris came apart, and that is a floating pupil in the
+    // middle of a face. What the depth buffer needs is that two boxes land on
+    // DIFFERENT planes, not that they land far apart; five slots gives the
+    // same spacing with a third of the excursion.
     // SCALED TO THE PART. A flat 1.5 thousandths is nothing on a ribcage and
     // it is half a tooth on a tooth: two horn segments 39 thousandths apart
     // with a radius of 23 were being pushed 16 apart and coming off the horn.
@@ -5869,9 +5884,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
           // faces the same plane inside one thousandth - a nudge below that
           // separates nothing as far as the depth buffer is concerned.
           nud = Math.min(.0016, Math.max(.0011, (hx+hy+hz)*.012));
-    r += ((q % 12) - 5.5) * nud;
-    f += (((q * 5) % 13) - 6) * nud;
-    y += (((q * 7) % 11) - 5) * nud;
+    r += ((q % 5) - 2) * nud;
+    f += (((q * 3) % 7) - 3) * nud;
+    y += (((q * 4) % 9) - 4) * nud;
     // Extents AND the monster-frame position. Extents alone answer "are these
     // two forms the same mesh"; positions are what let a check ask whether two
     // parts of ONE mesh are sitting on top of each other.
@@ -5960,35 +5975,34 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const look  = ANIM.look;
   // ---- the shape vocabulary. Everything this renderer can draw is an
   // axis-aligned box, so "not a block" has to be built OUT of blocks:
-  //   blob   three slabs, each thin on one axis, so the corners are chamfered
-  //          and the volume reads as ROUND at this size. Three boxes.
+  //   blob   ONE box. It used to be three concentric slabs so the corners
+  //          read as chamfered; see the note on it below for why a creature
+  //          made of chamfers turned out to be a creature made of gravel.
   //   taper  a stack that shrinks as it goes, which is what turns a column
   //          into a limb, a horn, a stalk or a tail.
   //   eyes   sclera, pupil and a highlight, with a blink. A dot is a rivet;
   //          this is a face, and a face is most of what makes a creature.
   //   grin   a dark slot with teeth top and bottom.
-  // The chamfer costs 3x the boxes of a plain cube and buys the single
-  // biggest difference between a creature and a crate.
-  // THE CHAMFER, AND WHY EVERY MODEL IN THIS GAME WAS FIGHTING ITSELF.
-  // A rounded box is three concentric boxes, each full-size on one axis and
-  // shrunk on the other two. The shrink factor used to be the SAME .78
-  // everywhere, which means box A and box C were both .78 wide, box A and box
-  // B were both .78 deep, and box B and box C were both .78 tall - three
-  // pairs of exactly coplanar faces, at the same centre, in every single
-  // blob() call in the game. The depth buffer has to pick between coplanar
-  // surfaces and the pick changes with the camera, so every rounded part of
-  // every creature shimmered against itself.
+  // A CHAMFER IS WORTH THREE BOXES ON A MASS AND WORTHLESS ON A PEBBLE.
+  // Reported as "the models have too many blocks on them making it hard to
+  // tell what's going on". A rounded box is three concentric boxes, each
+  // full-size on one axis and shrunk on the other two, so the corners come off
+  // and the volume reads as ROUND rather than as a crate. That is the single
+  // biggest difference between a creature and a shipping container - on a
+  // CHEST. On a wing rib, a tooth, a toe or one segment of a neck it is three
+  // sets of faces a couple of centimetres apart that nobody can resolve, and
+  // it was tripling the cost of every animal in the game to draw them.
   //
-  // Nine distinct factors, minimum separation .04 of the extent, which at a
-  // typical part size is about two centimetres of world space - far more than
-  // the depth buffer needs and far less than the eye can see as a shape
-  // change. Same bug, same fix, as the eyes.
-  // FOUR CHAMFERS, NOT ONE. chain() builds a neck, a tail or a serpent out of a
-  // run of blobs of the SAME radius, and if every blob chamfers by the same
-  // nine factors then every one of those blobs puts a face on the same plane as
-  // its neighbours. One shrink table gave 6,245 coplanar pairs across the
-  // twenty-one forms; rotating through four tables whose factors are at least
-  // three percent apart cuts it by most of an order of magnitude, for free.
+  // So: chamfer the masses, and only the masses. The test is the SMALLEST
+  // half-extent, not the largest: a wing bone stretched a third of a metre
+  // along its span is still a stick two centimetres thick, and taking the
+  // corners off a stick spends three boxes to change nothing. Only a block
+  // that is thick on ALL THREE axes reads as a volume, and only a volume has
+  // corners worth removing.
+  const CHAMFER = .13;
+  // FOUR CHAMFER TABLES, NOT ONE. Nine shrink factors at least three percent
+  // apart, so no two boxes in a chamfer share a face plane; four tables keyed
+  // on the draw index, so a row of same-size masses does not either.
   const BLOBF = [
     [.78, 1, .74,  1, .81, .70,  .72, .77, 1],
     [.83, 1, .69,  1, .86, .75,  .67, .72, 1],
@@ -5996,6 +6010,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     [.87, 1, .64,  1, .71, .79,  .62, .68, 1],
   ];
   const blob = (r,f,y,hx,hy,hz,col,em2,rot)=>{
+    if(Math.min(hx,hy,hz) < CHAMFER) return mb(r,f,y,hx,hy,hz,col,em2,rot);
     const F = BLOBF[boxSeq & 3];
     mb(r,f,y, hx*F[0], hy*F[1], hz*F[2], col, em2, rot);
     mb(r,f,y, hx*F[3], hy*F[4], hz*F[5], col, em2, rot);
@@ -6189,86 +6204,72 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // have to INTERPENETRATE, not meet.
   //
   // chain() takes a polyline - the plan still computes its own sway, drag and
-  // curl - and walks it, inserting as many blobs as it takes for consecutive
-  // ones to share volume. Spacing is capped at 1.15 of the local radius, so
-  // the overlap is never less than about forty percent of a segment.
-  // `thin` draws each sample as ONE box rather than a chamfered three. A horn,
-  // a toe, a tooth and a wing rib are all narrower than the chamfer would be,
-  // so the extra two boxes buy nothing and cost a third of the frame: the
-  // first version of this ran PYRAETHON at 1888 boxes against the 210 it used
-  // to be, which is most of a horde's budget spent on one animal.
+  // curl - and walks it, laying down blocks that COVER the run.
+  //
+  // It used to walk the line dropping a round-ish sample every 1.15 radii, and
+  // every sample was a chamfered three-box blob. A neck a metre long and
+  // twelve centimetres thick cost fifty boxes to say "tube", and fifty
+  // near-identical pebbles in a row do not read as a neck - they read as
+  // gravel. That was the second half of "the models have too many blocks on
+  // them making it hard to tell what's going on".
+  //
+  // A box is already a length, so stretch it instead of repeating it. One
+  // block per sub-span, half-extent r on every axis PLUS half the distance the
+  // run covers on each axis. A run straight down one axis is one block however
+  // long it is; a run that goes down AND forward is a short staircase, because
+  // a single block spanning a diagonal is a cube of mostly empty air. Blocks
+  // still interpenetrate by construction - two neighbours both reach r past
+  // the point they share, on every axis - so nothing here can leave a gap.
+  //
+  // `sh` scales the block per axis, which is what makes a membrane, a fin or a
+  // frill plate flat. `thin` is accepted and ignored: it used to select one box
+  // instead of three, and there is only one now.
   const chain = (pts, ra, rb, col, em2, sh, thin)=>{
     const sx = sh ? sh[0] : 1, sy = sh ? sh[1] : 1, sz = sh ? sh[2] : 1;
-    const N = pts.length;
-    const put = thin ? mb : blob;
-    // HOW MUCH OF THE RADIUS ACTUALLY POINTS ALONG THE RUN. A flattened shape
-    // - a membrane, a fin, a frill plate - is full size on two axes and a
-    // tenth on the third, and taking the SMALLEST of the three meant a sheet
-    // travelling sideways had to be sized as if it were travelling through its
-    // own thickness. That is why the wyvern's wing came out as a pair of
-    // planks two thirds as wide as the animal: each membrane rib was being
-    // inflated eight-fold to satisfy a constraint on an axis it barely moves
-    // along. Solve it per axis instead, on the direction the span is actually
-    // going. Points are [lateral, fore-aft, vertical]; the scales are
-    // [lateral, vertical, fore-aft], which is the mapping mb() takes.
-    const fit = (dr, df, dy, d)=>{
-      const ur = Math.abs(dr)/d, uf = Math.abs(df)/d, uy = Math.abs(dy)/d;
-      let m = 1e9;
-      if(ur > .02) m = Math.min(m, sx/ur);
-      if(uf > .02) m = Math.min(m, sz/uf);
-      if(uy > .02) m = Math.min(m, sy/uy);
-      return Math.min(m, 4);            // never inflate a part more than 4x
-    };
+    // positions are [lateral, fore-aft, vertical]; mb's extents are
+    // [lateral, VERTICAL, fore-aft], so the scales get reordered on the way in
+    // and reordered again on the way out.
+    const sc = [sx, sz, sy], N = pts.length;
     for(let i=0;i<N-1;i++){
       const a = pts[i], b = pts[i+1];
-      const d = Math.hypot(b[0]-a[0], b[1]-a[1], b[2]-a[2]);
-      const tight = d > 1e-6 ? fit(b[0]-a[0], b[1]-a[1], b[2]-a[2], d) : 1;
+      const d = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
       const ua = i/(N-1), ub = (i+1)/(N-1);
-      // Sample off the AVERAGE radius of this span, not the smallest: a long
-      // taper down to a point otherwise spends most of its samples on the
-      // last tenth of its length, where nobody can see them.
-      const avg = (ra + (rb-ra)*(ua+ub)/2) * tight;
-      let steps = Math.max(1, Math.min(5, Math.ceil(d / Math.max(.015, avg * 1.5))));
-      const spc = d / steps;
+      const rm = Math.max(.004, (ra + (rb-ra)*(ua+ub)/2));
+      // The axis the run travels furthest along, measured in its own radius so
+      // a flat part counts its thickness fairly, is the one the block may
+      // stretch along for free. Drift on any OTHER axis is empty air inside
+      // the block, and more than about a radius of it stops describing the run.
+      let dom = 0;
+      for(let k=1;k<3;k++)
+        if(Math.abs(d[k])/sc[k] > Math.abs(d[dom])/sc[dom]) dom = k;
+      let steps = 1;
+      for(let k=0;k<3;k++) if(k !== dom)
+        steps = Math.max(steps, Math.ceil(Math.abs(d[k]) / (rm*sc[k]*1.35)));
+      // and a long run gets split anyway, so a tapering part tapers in visible
+      // stages instead of coming out as one plank. Three radii, not five: a
+      // serpent whose whole body is one box is a plank with a head on it, and
+      // the steps between segments are most of what says "this is an animal
+      // built out of blocks" rather than "this is a block".
+      steps = Math.min(6, Math.max(steps,
+                Math.ceil(Math.abs(d[dom]) / (rm*sc[dom]*3))));
       for(let k=0;k<steps;k++){
-        const u = k/steps, t2 = ua + (ub-ua)*u;
-        // Capped at five samples per span, so the radius has to make up the
-        // difference or a long span comes apart at exactly the place the cap
-        // bit. Nothing in this function is ever allowed to leave a gap.
-        // .58 of the spacing on each side is 16% of overlap; the +.004 is the
-        // draw-index nudge, which can push two neighbours apart by twice its
-        // own amplitude and does not care how small the part is.
-        // .58 of the spacing on each side is 16% of overlap; the +.006 absorbs
-        // the draw-index nudge, which can push two neighbours apart by twice
-        // its own amplitude and does not care how small the part is. The last
-        // term is a deterministic 0-4% wobble on the radius: without it a
-        // clamped run has every sample at EXACTLY the same size, so all their
-        // top faces land on one plane and the whole chain fights itself.
-        // .86, not .58. Two boxes each reach r*s_a along axis a, so keeping a
-        // separation of spc*|u_a| covered needs 2*.58 = 1.16 of it - which the
-        // old min-of-three `tight` supplied by accident and the exact per-axis
-        // one does not. Solve it properly: r >= .86 * spc * max(|u_a| / s_a).
-        const r = Math.max(ra + (rb-ra)*t2, spc * .86 / tight + .006)
-                // Keyed to the GLOBAL draw index, not to a counter local to
-                // this call: two horns of the same size drawn by the same loop
-                // both start their own counter at zero, so a local key gives
-                // the two of them identical radii and puts their faces on one
-                // plane. boxSeq never repeats within a creature.
-                * (1 + ((boxSeq * 3) % 7) * .009);
-        put(a[0]+(b[0]-a[0])*u, a[1]+(b[1]-a[1])*u, a[2]+(b[2]-a[2])*u,
-            r*sx, r*sy, r*sz, col, em2);
+        const u = (k+.5)/steps, t2 = ua + (ub-ua)*u;
+        // a deterministic 0-5% wobble on the radius, keyed to the GLOBAL draw
+        // index: a left horn and a right horn are the same numbers drawn by
+        // the same loop, and without this they come out at identical extents
+        // and land their faces on one plane.
+        const r = Math.max(.004, ra + (rb-ra)*t2) * (1 + ((boxSeq*3) % 7) * .009);
+        const h = [0,0,0];
+        // the +.003 is the draw-index nudge: two neighbours can be pushed
+        // apart by twice its amplitude and it does not care how small the
+        // part is, so every block carries enough margin to absorb it.
+        for(let q=0;q<3;q++) h[q] = r*sc[q] + Math.abs(d[q])/(2*steps) + .003;
+        // through blob(), so a block big enough to read as a MASS - a chest, a
+        // thigh, the root of a tail - still gets its corners taken off, and
+        // everything smaller stays one block. See CHAMFER.
+        blob(a[0]+d[0]*u, a[1]+d[1]*u, a[2]+d[2]*u, h[0], h[2], h[1], col, em2);
       }
     }
-    // The terminal sample used the raw tip radius with none of the clamp the
-    // rest of the run gets, so the last box of every long taper - horn tips,
-    // crest spines, tail vanes - was the one that came off.
-    const e = pts[N-1], p = pts[Math.max(0, N-2)];
-    const dEnd = Math.hypot(e[0]-p[0], e[1]-p[1], e[2]-p[2]);
-    const tEnd = dEnd > 1e-6 ? fit(e[0]-p[0], e[1]-p[1], e[2]-p[2], dEnd) : 1;
-    const lastSpc = dEnd / Math.max(1, Math.min(5, Math.ceil(
-                      dEnd / Math.max(.015, rb * tEnd * 1.5))));
-    const re = Math.max(rb, lastSpc * .86 / tEnd + .006) * (1 + ((boxSeq*3) % 7) * .009);
-    put(e[0], e[1], e[2], re*sx, re*sy, re*sz, col, em2);
   };
   // A LEG, as one run of meat rather than three parts hovering near each other.
   // Hip to knee to ankle to foot, the knee driven forward and the hock back so
@@ -6350,21 +6351,25 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // skull. Half the depth, so it hides inside the head; and the default
       // colour is the creature's own dark tone rather than near-black, so
       // where it does show it reads as a lid instead of a gap.
-      mb(x, f + sz*.30*out, y, sz*1.02*wide, sz*.96*tall, sz*.30,
+      // Depths are generous on purpose: every layer has to reach BACK into the
+      // one behind it far enough that the draw-index nudge cannot pull them
+      // apart. A pupil that comes off its iris is a black dot floating in
+      // front of a face, and a connectivity report caught exactly that.
+      mb(x, f + sz*.30*out, y, sz*1.02*wide, sz*.96*tall, sz*.34,
          o.socket || [mDk[0]*.52, mDk[1]*.52, mDk[2]*.58], 0);    // socket rim
       if(o.sclera !== false)
-        mb(x, f + sz*1.15*out, y, sz*.80*wide, sz*.78*tall*blk, sz*.40,
+        mb(x, f + sz*1.15*out, y, sz*.80*wide, sz*.78*tall*blk, sz*.52,
            o.white || [.97,.97,1.0], .40);                       // sclera
       mb(x + (o.lean || 0)*sg*sz*.5, f + sz*1.70*out, y + (o.rise||0)*sz*.7,
-         sz*(o.ir || .72)*.58*wide, sz*(o.irY || .72)*.58*tall*blk, sz*.26,
+         sz*(o.ir || .72)*.58*wide, sz*(o.irY || .72)*.58*tall*blk, sz*.36,
          o.iris || [1,.76,.18], o.glow === undefined ? .80 : o.glow);
       mb(x + (o.lean || 0)*sg*sz*.5, f + sz*2.00*out, y + (o.rise||0)*sz*.7,
-         sz*(o.pw || .34)*.60*wide, sz*(o.ph || .40)*.60*tall*blk, sz*.13,
+         sz*(o.pw || .34)*.60*wide, sz*(o.ph || .40)*.60*tall*blk, sz*.24,
          o.pupil || [.03,.03,.05], .02);                         // pupil
       // Low and generous, because eyeGlow's pupil is a horizontal slot only a
       // tenth of sz tall and a highlight parked above it touches nothing.
       mb(x - sz*.18*wide, f + sz*2.10*out, y + sz*.13*blk,
-         sz*.13, sz*.19*blk, sz*.13, [1,1,1], 1.0);              // glint
+         sz*.13, sz*.19*blk, sz*.22, [1,1,1], 1.0);              // glint
       // A brow is a RIDGE, not a visor: narrower than the socket, set back,
       // and a dark warm grey rather than the near-black that drew as a bar.
       if(o.brow)
