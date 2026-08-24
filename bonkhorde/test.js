@@ -1726,8 +1726,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       return { lines, s0, s1, s2, hpJump, heal, q0, q1, fresh, raised, other,
                freshLvl: fresh.lvl, raisedLvl: raised.lvl, otherLvl: other.lvl };
     });
-    ok("every monster is a three-stage line with a signature",
-       r.lines.every(m => m.line.length === 3 && m.line.every(x => typeof x === "string" && x)),
+    // Four stages since the APEX arrived - three growth forms and the mega.
+    ok("every monster is a four-stage line, capped by its apex",
+       r.lines.every(m => m.line.length === 4 && m.line.every(x => typeof x === "string" && x)),
        r.lines.map(m => m.line.join(">")).join("  "));
     ok("you start at the bottom of your line",
        r.s0.stage === 0 && r.s0.nm === r.s0.line[0], `${r.s0.nm} stage ${r.s0.stage}`);
@@ -2002,7 +2003,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const frame = () => new Promise(res => requestAnimationFrame(() => res()));
       const EPS = 0.001;
       const out = [];
-      for (const ch of g.chars()) for (const st of [0, 1, 2]) {
+      for (const ch of g.chars()) for (const st of [0, 1, 2, 3]) {
         g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
         g.drainPicks(true); g.place(0, 0);
         if (st) g.evolveTo(st);
@@ -2083,6 +2084,128 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        total <= boxes * 1.15,
        `${total} pairs / ${boxes} boxes = ${(total/boxes).toFixed(2)} per box; worst: ` +
        worst.map(x => `${x.nm} ${x.bad}/${x.n}`).join(", "));
+  }
+
+  console.log("\n=== 22n. THE APEX IS A FOURTH ANIMAL, AND ITS POWER IS REAL ===");
+  {
+    // Requested as "a fourth evolution that takes the monster to the next
+    // level just like pokemon does their mega evolutions". Every line gains a
+    // stage at level 34. Two families of claim, both checked here: the stage
+    // EXISTS and arrives through the level system, and each apex POWER does
+    // the thing its card says.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = (id) => { g.wipeSave(); g.start(id); g.god();
+        g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+        g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      const out = { names: {}, apexAt: {} };
+      // 1. all nine lines have a fourth, distinct stage
+      for (const id of g.chars()) {
+        boot(id);
+        g.evolveTo(2); const was = g.mon().nm;
+        g.evolveTo(3); const now = g.mon().nm;
+        out.names[id] = { was, now, distinct: was !== now, stage: g.mon().stage };
+      }
+      // 2. and it arrives BY LEVELLING, not only by the dev hook
+      boot("spark");
+      for (let i = 0; i < 40; i++) g.levelUp ? g.levelUp() : g.xp(2000);
+      g.step(30, 1/60);
+      out.byLevel = { lvl: g.state().lvl, stage: g.mon().stage };
+      return out;
+    });
+    ok("all nine lines grow a fourth, differently named form",
+       Object.values(r.names).every(x => x.distinct && x.stage === 3),
+       Object.entries(r.names).map(([k, v]) => `${k}:${v.now}`).join(" "));
+    ok("and the apex arrives through the level system at 34",
+       r.byLevel.lvl >= 34 && r.byLevel.stage === 3,
+       `level ${r.byLevel.lvl} -> stage ${r.byLevel.stage}`);
+
+    const p = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = (id) => { g.wipeSave(); g.start(id); g.god();
+        g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+        g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      const out = {};
+
+      // STORMCALL: a hop landing at the apex fires the line's zap for free.
+      boot("spark"); g.evolveTo(3); g.clearEnemies();
+      g.spawnAt("brute", 0, 6); g.step(5, 1/60);
+      g.setWT("zap", 99);                    // silence the carried zap's own clock
+      const arcs0 = g.fxCounts().arcs;
+      g.jump(); g.step(90, 1/60);            // up, land
+      out.stormcall = { arcs: g.fxCounts().arcs - arcs0 };
+
+      // RIPTIDE: an enemy inside the pickup radius is dragged in.
+      const closed = (st) => { boot("scrap"); g.evolveTo(st); g.clearEnemies();
+        g.spawnAt("shambler", 0, 6); g.step(45, 1/60);
+        const e = g.nearestEnemy(); return e ? +Math.hypot(e.x, e.z).toFixed(2) : 99; };
+      out.riptide = { st2: closed(2), st3: closed(3) };
+
+      // PETRIFY: the sporecloud holds enemies at the slow.
+      boot("ghoul"); g.evolveTo(3); g.give("aura", 1); g.clearEnemies();
+      g.spawnAt("brute", 0, 2); g.step(30, 1/60);
+      out.petrify = { slowed: g.nearestEnemy ? g.nearestEnemy().slowT > 0 : false };
+
+      // WARCHOIR: one bolt more per volley than the same build one stage down.
+      const volley = (st) => { boot("twin"); g.evolveTo(st); g.give("bolt", 1);
+        g.clearEnemies(); g.spawnAt("brute", 0, 10);
+        g.clearBolts(); g.step(40, 1/60); return g.boltsPeak(); };
+      out.warchoir = { st2: volley(2), st3: volley(3) };
+
+      // BREAKWATER: the apex surge outlives the stage-2 surge.
+      const surged = (st) => { boot("surge"); g.evolveTo(st);
+        g.setSurge(1.2); g.step(1, 1/60); return g.rule().surgeT; };
+      out.breakwater = { st2: surged(2), st3: surged(3) };
+
+      // SUNDIAL: the third rebirth costs the same as the first.
+      boot("pyre"); g.evolveTo(3);
+      const cds = [];
+      for (let k = 0; k < 3; k++) { g.hitMe(1e12); cds.push(g.rule().rebirthCd);
+        g.setRebirthCd(0); g.step(1, 1/60); }
+      out.sundial = { cds };
+
+      // UPHEAVAL: taking a hit answers with a pulse ring.
+      boot("ox"); g.evolveTo(3); g.give("pulse", 1);
+      const rings0 = g.fxCounts().rings;
+      g.hitMe(10); g.step(2, 1/60);
+      out.upheaval = { rings: g.fxCounts().rings - rings0 };
+
+      // EYEWALL: the mortar fires twice as often at the apex.
+      const shells = (st) => { boot("accnt"); g.evolveTo(st); g.give("mortar", 1);
+        g.clearEnemies(); g.spawnAt("brute", 0, 12);
+        g.clearMortars(); g.step(60 * 6, 1/60); return g.mortarsFired(); };
+      out.eyewall = { st2: shells(2), st3: shells(3) };
+
+      // STARFIRE: flying writes burning ground.
+      boot("intern"); g.evolveTo(3); g.give("caltrops", 1);
+      const z0 = g.fxCounts().zones;
+      g.jump(); g.holdJump(true); g.step(80, 1/60); g.holdJump(false);
+      out.starfire = { zones: g.fxCounts().zones - z0 };
+      return out;
+    });
+    ok("STORMCALL: a hop landing calls down a zap",
+       p.stormcall.arcs >= 1, `${p.stormcall.arcs} arc(s) from one landing`);
+    ok("RIPTIDE: the pickup radius drags enemies in",
+       p.riptide.st3 < p.riptide.st2 - .5,
+       `same enemy after .75s: ${p.riptide.st2} away at stage 2, ${p.riptide.st3} at the apex`);
+    ok("PETRIFY: the sporecloud slows what stands in it",
+       p.petrify.slowed, `slowT set by the cloud`);
+    ok("WARCHOIR: the apex volley carries one bolt more",
+       p.warchoir.st3 === p.warchoir.st2 + 1,
+       `${p.warchoir.st2} bolts at stage 2 -> ${p.warchoir.st3} at the apex`);
+    ok("BREAKWATER: the apex surge lasts longer",
+       p.breakwater.st3 > p.breakwater.st2 * 1.4,
+       `${p.breakwater.st2}s -> ${p.breakwater.st3}s`);
+    ok("SUNDIAL: the rebirth cooldown stops growing",
+       Math.abs(p.sundial.cds[2] - p.sundial.cds[0]) < .01,
+       `cooldowns ${p.sundial.cds.join(", ")}`);
+    ok("UPHEAVAL: taking a hit answers with a tremor",
+       p.upheaval.rings >= 1, `${p.upheaval.rings} ring(s) from one hit`);
+    ok("EYEWALL: the mortar falls twice as often",
+       p.eyewall.st3 >= p.eyewall.st2 * 1.7,
+       `${p.eyewall.st2} shells in 6s -> ${p.eyewall.st3}`);
+    ok("STARFIRE: flight writes burning ground",
+       p.starfire.zones >= 2, `${p.starfire.zones} zones from one flight`);
   }
 
   console.log("\n=== 22o. PYRAETHON FLIES ===");
