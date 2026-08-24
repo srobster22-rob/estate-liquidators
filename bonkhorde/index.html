@@ -2673,14 +2673,27 @@ scrap(D){
   // A plesiosaur is a neck, but a neck five units long is a neck the camera
   // cannot frame with the animal on the end of it. Fewer segments, each
   // shorter, and it is still unmistakably the long-necked one.
-  const NECK = 4 + st;
+  //
+  // AND THE NECK IS THE EVOLUTION. At four segments plus one a stage the three
+  // forms were the same plesiosaur at three zooms - the one thing this line
+  // has is its neck, so it starts with almost none and finishes with all of
+  // it. Same for the flippers, the dorsal ridge and the horns: a hatchling has
+  // paddles, no crest and no horns; the LEVIATHAN has oars, a full ridge and a
+  // horned skull.
+  const NECK = 2 + st*2;
+  const FLIP = .62 + st*.24;
   const flick = twitch(.6, 4.3);
   // the barrel, as a run from tail root to shoulder
   chain([[sway, -.40*gr, (.44+bob)*gr], [sway, -.14*gr, (.50+bob)*gr],
          [sway, .10*gr, (.52+bob)*gr], [sway, .28*gr, (.50+bob)*gr]],
         .40*gr, .30*gr, c, em+.08, [1, .78, 1.05]);
-  mb(sway, -.06*gr, (.26+bob)*gr, .26*gr,.11*gr,.36*gr, bel, em*.9);
-  ridge(-.40*gr, .12*gr, (.66+bob)*gr, 6, .10*gr, lt, em+.22);
+  mb(sway, -.06*gr, (.24+bob)*gr, .34*gr,.14*gr,.40*gr, bel, em*.9);   // pale underside
+  // COUNTERSHADED. This line is one flat blue from nose to tail and the camera
+  // looks at it from above, so the surface a player actually sees is the one
+  // surface with nothing on it. A dark back over a pale belly is what a marine
+  // animal looks like and it costs one box.
+  mb(sway, -.04*gr, (.72+bob)*gr, .33*gr,.10*gr,.44*gr, dk, em*.5);
+  if(st) ridge(-.40*gr, .12*gr, (.66+bob)*gr, 4 + st*2, (.07 + st*.035)*gr, lt, em+.22);
   // FLIPPERS. Four of them, rowing - front and back on opposite beats.
   for(const rs of [-1,1]) for(const fs of [-1,1]){
     const beat = Math.sin(ph*.8 + (fs>0 ? 0 : Math.PI)) * (.35 + amp*.55);
@@ -2688,11 +2701,11 @@ scrap(D){
     const yaw = rs*(.55 + beat*.30);
     // shoulder inside the body, blade sweeping out and back
     chain([[sway + rs*.22*gr, fs*.24*gr, y],
-           [sway + rs*.52*gr, (fs*.22 - .08*fs)*gr, y - .05*gr],
-           [sway + rs*.82*gr, (fs*.18 - .26*fs)*gr, y - .13*gr]],
+           [sway + rs*(.22 + .30*FLIP)*gr, (fs*.22 - .08*fs)*gr, y - .05*gr],
+           [sway + rs*(.22 + .60*FLIP)*gr, (fs*.18 - .26*fs*FLIP)*gr, y - .13*gr]],
           .17*gr, .10*gr, c, em+.10, [1, .30, 1.6]);
-    mb(sway + rs*.66*gr, (fs*.12 - .16*fs)*gr, y - .09*gr,
-       .26*gr, .04*gr, .27*gr, lt, em+.12, yaw);
+    mb(sway + rs*(.22 + .44*FLIP)*gr, (fs*.12 - .16*fs*FLIP)*gr, y - .09*gr,
+       .26*gr*FLIP, .04*gr, .27*gr*FLIP, lt, em+.12, yaw);
   }
   // THE NECK. Long, and it curves - a straight neck is a pipe.
   const neck = [[sway, .14*gr, (.54+bob)*gr]];
@@ -2707,12 +2720,12 @@ scrap(D){
   for(let i=2;i<neck.length;i++)
     mb(neck[i][0], neck[i][1], neck[i][2] + .07*gr, .035*gr, .075*gr, .06*gr, acc, .28);
   // the head: small, which is what sells the length behind it
-  blob(nx, nf + .08*gr, ny + .03*gr, .125*gr,.105*gr,.14*gr, c, em+.10);
+  blob(nx, nf + .08*gr, ny + .03*gr, (.160-st*.014)*gr,(.136-st*.012)*gr,(.175-st*.014)*gr, c, em+.10);
   jawLong(nx, nf + .12*gr, ny - .01*gr, .085*gr, .30*gr, 5, c, flick*.03*gr);
-  eyeDeep(nx, nf + .12*gr, ny + .08*gr, .075*gr, .055*gr, [.20,.86,1]);
-  for(const rs of [-1,1])
+  eyeDeep(nx, nf + .16*gr, ny + .08*gr, (.090-st*.006)*gr, (.062-st*.003)*gr, [.20,.86,1]);
+  if(st) for(const rs of [-1,1])
     horn(nx + rs*.08*gr, nf + .02*gr, ny + .09*gr, rs*.03*gr,-.02*gr,.05*gr,
-         3 + st, .032*gr, lt, .35 + st*.12);
+         2 + st, .032*gr, lt, .35 + st*.12);
   // THE TAIL. Short and flat - a rudder, not a whip.
   const tail = [[sway, -.30*gr, (.44+bob)*gr]];
   for(let i=0;i<4+st;i++){
