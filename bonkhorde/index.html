@@ -3239,10 +3239,16 @@ echo(D){
     const sw = Math.sin(t*1.6 - i*.6)*.14*gr;
     spine.push([sw, -.10 - i*.30*gr, (.30 + coil)*gr]);
   }
-  chain(spine, .30*gr, .13*gr, c, em, [.92, .62, 1]);   // thick at the shoulders
+  // .62 of vertical scale flattened the whole animal into a ribbon - from
+  // behind, THE HYDRA's tail was a plank with three teal cubes on it. A body
+  // is deeper than it is wide at the shoulder and the tail tapers to a point
+  // rather than to a flat edge.
+  chain(spine, .30*gr, .075*gr, c, em, [.92, .82, 1]);  // thick at the shoulders
+  // dorsal plates: PLATES. At .11 deep against .055 wide these read as a row
+  // of cubes sitting on the tail rather than as a crest standing out of it.
   for(let i=0;i<spine.length-2;i++)
-    mb(spine[i][0], spine[i][1], spine[i][2] + .13*gr,
-       .055*gr, .12*gr, .11*gr, acc, .30);
+    mb(spine[i][0], spine[i][1], spine[i][2] + .15*gr,
+       .048*gr, .17*gr, .075*gr, acc, .30);
   for(const rs of [-1,1]) for(const fs of [-1,1])
     leg(rs*.22*gr, (fs*.20 - .10)*gr, (.26 + coil)*gr, .20*gr,
         (rs*fs > 0) ? gait : -gait, rs, .075*gr, c, em, dk);
@@ -3287,8 +3293,15 @@ echo(D){
            arc(.52, sd*.75 + u*.03,  .00, .82),
            arc(.80, sd*1.0  + u*.02,  .05, 1.02),
            [hx, hf - HD*.5, hy]],
-          .125*gr, .098*gr, i ? lt : c, em+.04);
-    blob(hx, hf, hy, HD, HD*.94, HD, i ? lt : c, em+.06);
+    // THINNER, AND ALTERNATING. Four necks a quarter of a unit thick fanned
+    // across seven tenths of one is four necks that touch each other along
+    // their whole length: from the side THE HYDRA was one purple arch with
+    // heads on the end of it. Narrower necks leave air between them, and
+    // alternating the tone means that even where two do cross you can see
+    // which is which. Only the first neck was the body colour before, so
+    // three of the four were the same pale tone anyway.
+          .095*gr, .076*gr, i%2 ? lt : c, em+.04);
+    blob(hx, hf, hy, HD, HD*.94, HD, i%2 ? lt : c, em+.06);
     chain([[hx, hf + HD*.4, hy - HD*.2], [hx, hf + HD*1.5, hy - HD*.45]],
           HD*.66, HD*.44, bel, em*.8);
     grin(hx, hf + HD*.9, hy - HD*.62, HD*.60, HD*.20, 4);
