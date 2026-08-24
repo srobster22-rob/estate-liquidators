@@ -2942,6 +2942,20 @@ stone(D){
   }
   if(st >= 1) tail.push([sway + drag(2.4)*.03*gr, -1.44*gr, (.36+heave)*gr]);
   chain(tail, .155*gr, st >= 1 ? .19*gr : .06*gr, c, em, [1, .88, 1]);
+  // ARMOUR RINGS. The tail was a smooth rectangular plank from hips to club -
+  // the one part of an ankylosaur nobody would draw smooth. A dark band and a
+  // pair of osteoderms every segment cost eleven boxes and turn a plank into
+  // something that was grown.
+  const tEnd = st >= 1 ? .19*gr : .06*gr;
+  for(let i=1;i<tail.length;i++){
+    // sized off what the tail chain actually drew here, PROUD of it - a ring
+    // the same width as the tail it rings is a ring inside the tail
+    const w = (.155*gr + (tEnd - .155*gr) * (i/(tail.length-1)));
+    mb(tail[i][0], tail[i][1] + .06*gr, tail[i][2], w*1.16, w*1.00, w*.30, dk, em*.6);
+    for(const rs of [-1,1])
+      mb(tail[i][0] + rs*w*1.16, tail[i][1] + .06*gr, tail[i][2] + w*.16,
+         w*.30, w*.28, w*.24, acc, .18);
+  }
   if(st >= 1) for(const rs of [-1,1])
     horn(sway + rs*.10*gr, -1.44*gr, (.36+heave)*gr, rs*.06*gr, 0, .01*gr, 3, .05*gr, lt, .30);
   // and the top of the line drags the ground it walked over. SHARDS, low and
@@ -3403,7 +3417,15 @@ surge(D){
     const lag = drag(.5 + i*.34)*.026*(i+1) + Math.sin(t*.8 - i*.36)*.011*idle*(i+1);
     tail.push([sway + lag, -(.36 + i*(.16+st*.01))*gr, HIP - i*.035*gr]);
   }
-  chain(tail, (.155+st*.02)*gr, .05*gr, c, em+.06, [.86, 1, 1]);
+  // BANDED. This line is one crimson from nose to tail tip and reads as a
+  // single red mass at any distance; a spinosaur is a striped animal anyway.
+  // Drawn a segment at a time, alternating into a darker tone - the same box
+  // count, and now you can count the length of the tail from across the arena.
+  const tBnd = [c[0]*.62, c[1]*.52, c[2]*.60];
+  const tR = i => (.155+st*.02)*gr + ((.05*gr) - (.155+st*.02)*gr) * (i/TN);
+  for(let i=0;i<tail.length-1;i++)
+    chain([tail[i], tail[i+1]], tR(i), tR(i+1),
+          i%2 ? tBnd : c, em+.06, [.86, 1, 1]);
   const tp = tail[tail.length-1];
   for(let i=0;i<4;i++)                                       // the paddle fin
     mb(tp[0], tp[1] - .05*gr - i*.11*gr, tp[2] + (i<2?.02:-.01)*gr,
