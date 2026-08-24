@@ -2285,8 +2285,13 @@ const LINES = {
     st:[
       { nm:"CINDERWHELP" },
       { nm:"FLAREDRAKE", mods:{ hp:1.16, dmg:1.09 } },
-      { nm:"PYRAETHON", mods:{ hp:1.38, dmg:1.20, reach:1.20 },
-        sig:"WILDFIRE", sigDs:"+20% reach on everything you carry" } ]},
+      // FLIGHT, at the top of this line only. Every other creature in the
+      // game is stuck to the floor; a fire drake that has grown into a wyrm
+      // should not be, and it is the one thing an evolution can give you that
+      // changes how you MOVE rather than how hard you hit.
+      { nm:"PYRAETHON", mods:{ hp:1.38, dmg:1.20, reach:1.20 }, fly:true,
+        sig:"WILDFIRE",
+        sigDs:"+20% reach, and hold JUMP to fly - the ground cannot touch you" } ]},
   scrap:{ type:"scrap",
     move:{ key:"skulls", nm:"UNDERTOW", ds:"water circles you, and it pulls" },
     st:[
@@ -3607,6 +3612,17 @@ let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, 
 // the character could not charge its own meter AT A DEAD SPRINT. The suite
 // caught it on the first run, which is the entire argument for testing a
 // mechanic rather than eyeballing it.
+// ---- FLIGHT, PYRAETHON's evolution. Hold JUMP in the air and it beats its
+// wings: it climbs to a hover, ground hazards and anything that has to touch
+// you to hurt you cannot reach, and it costs a meter that only refills when
+// you are back on the floor. What it costs you is the hop chain - you cannot
+// chain a hop you never land from - so flight and tempo are a real choice
+// rather than a strict upgrade.
+const FLY_H = 3.1,        // hover height above the ground
+      FLY_DRAIN = .34,    // meter per second in the air
+      FLY_FILL  = .30,    // per second on the ground
+      FLY_SAFE  = 1.6,    // how high is out of reach
+      FLY_SPD   = 1.12;   // wings are faster than legs
 const SURGE_FILL = 1/30;        // metres of travel for a full meter
 const SURGE_DRAIN = .09;        // per second, standing still
 const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
@@ -3743,6 +3759,8 @@ function baseStats(ch){
     tough: m.tough||1,
     reach: m.reach||1,
     xpMul: (m.xp||1) * (1 + rank("tally")*.08),
+    wing:  1,          // flight meter, full at the start of a run
+    fly:   false,
   };
 }
 
@@ -4105,6 +4123,10 @@ function nearest(x,z,maxR,skip){
 // ================================================================== COMBAT
 // Which rule-character is in play. Read off the LINE's type rather than the
 // character id, so a future line can inherit a rule without a special case.
+// High enough that nothing on the floor can reach you. Checked against the
+// GROUND under the player rather than against a flat height, because the arena
+// is not flat.
+function aloft(){ return !!(P && P.fly && P.y - groundY(P.x, P.z) > FLY_SAFE); }
 function isSurge(){ return (curMon().type || "plain") === "surge"; }
 function isPyre(){  return (curMon().type || "plain") === "pyre"; }
 function surgeUp(){ return !!(P && P.surgeT > 0); }
@@ -4818,7 +4840,7 @@ function updateHazards(dt){
     const h = hazards[i];
     if(h.tel > 0){ h.tel -= dt; continue; }
     h.live -= dt;
-    if(P.iframe <= 0 && Math.hypot(P.x-h.x, P.z-h.z) < h.r){
+    if(P.iframe <= 0 && !aloft() && Math.hypot(P.x-h.x, P.z-h.z) < h.r){
       hurtSrc = "hazard"; playerHurt(h.dmg); hurtSrc = "contact"; }
     if(h.live <= 0) hazards.splice(i,1);
   }
@@ -4961,7 +4983,9 @@ function updateEnemies(dt){
 
     // contact damage. A landed dive hits for more, because a dive you failed to
     // turn out of should read as a mistake rather than as a tick of chip.
-    if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0){
+    // A diving enemy is coming from ABOVE, so it can still reach you up there;
+    // everything else has to walk into you, and cannot.
+    if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0 && !(aloft() && e.dvT <= 0)){
       playerHurt(e.dvT > 0 ? e.dmg * DIVE_DMG : e.dmg);
       if(e.dvT > 0){ e.dvT = 0; e.dv = DIVE_REST; }
     }
@@ -5409,7 +5433,12 @@ function evolveTo(i){
   // line in the same third of the screen - so the biggest moment in the run
   // arrived as two overlapping pieces of text saying the same thing.
   evoT = 3.4; evoFx = EVO_FX; evoNm = d.nm || "";
-  evoSub = learned ? `LEARNED ${learned}`
+  // A NEW VERB BEATS A SHARPER WEAPON. The banner preferred whatever the move
+  // did, so the one evolution in the game that changes how you MOVE announced
+  // itself as "LEARNED CINDERTRAIL SHARPENED" and the player was left to
+  // discover flight by accident.
+  evoSub = d.fly ? "YOU CAN FLY - HOLD JUMP"
+         : learned ? `LEARNED ${learned}`
          : d.sig  ? `${d.sig} - ${d.sigDs}` : `${wasNm} EVOLVED`;
   shake = Math.max(shake, 1.1*shakeMul()); flash = Math.max(flash, .5*flashMul());
   SFX.evolve();
@@ -5560,7 +5589,7 @@ function step(dt){
   if(bm !== lastBiome){ lastBiome = bm; biomeT = 4.6;
                         if(running && !over) alert2(bm.nm, "#c9c2ae"); }
   const ACCEL = 62, BRAKE = 46;
-  const hm = hopMul() * (bmod.spd || 1);
+  const hm = hopMul() * (bmod.spd || 1) * (P.fly ? FLY_SPD : 1);
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
   // braking. That asymmetry IS the mechanic: a chain you steer through is a
@@ -5657,9 +5686,26 @@ function step(dt){
     else if(P.hop > 0) P.hop = Math.max(0, P.hop - (HOP_BLEED + P.hop*.55)*dt);
   }
   if(P.hopFx > 0) P.hopFx -= dt;
-  if(P.air){ P.vy -= 30*dt; P.y += P.vy*dt;
-    if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false;
-                   P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE; } }
+  // ---- FLIGHT. Hold JUMP in the air, if this form has wings and the meter
+  // has anything in it. Engaging cancels the fall rather than adding to it, so
+  // it is a hover you steer, not a second jump.
+  if(stageDef().fly){
+    const held = !!keys.Space;
+    if(P.fly){ if(!held || P.wing <= 0 || !P.air) P.fly = false; }
+    else if(held && P.air && P.wing > .08) { P.fly = true; SFX.hop(2); }
+  } else P.fly = false;
+  if(P.fly) P.wing = Math.max(0, P.wing - dt*FLY_DRAIN);
+  // On the ground it comes back quickly; falling, barely at all, so letting go
+  // to top up is not free.
+  else P.wing = Math.min(1, P.wing + dt*FLY_FILL*(P.air ? .18 : 1));
+  if(P.air){
+    if(P.fly){ P.y += (gy + FLY_H - P.y) * Math.min(1, dt*3.2); P.vy = 0; }
+    else {
+      P.vy -= 30*dt; P.y += P.vy*dt;
+      if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false;
+                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE; }
+    }
+  }
   else P.y = lerp(P.y, gy, 1-Math.pow(.0001,dt));
 
   if(P.iframe>0) P.iframe -= dt;
@@ -7803,6 +7849,16 @@ function hud(){
       (ready ? 100 : (1 - P.rebirthCd/full)*100).toFixed(1)+"%";
     ruleEl.children[1].textContent = ready ? "READY" : Math.ceil(P.rebirthCd)+"s";
     ruleEl.children[2].textContent = P.rebirths ? `REBIRTH x${P.rebirths}` : "REBIRTH";
+  } else if(stageDef().fly){
+    // The wings, on the same bar as the other two rules: gold while you are up
+    // there burning it, grey when there is not enough left to take off with.
+    const f = P.wing;
+    ruleEl.classList.add("on");
+    ruleEl.classList.toggle("hot", !!P.fly);
+    ruleEl.classList.toggle("cold", !P.fly && f < .12);
+    ruleEl.firstElementChild.firstElementChild.style.width = (f*100).toFixed(1)+"%";
+    ruleEl.children[1].textContent = P.fly ? "FLYING" : Math.round(f*100)+"%";
+    ruleEl.children[2].textContent = P.fly ? "HOLD JUMP" : "WINGS";
   } else ruleEl.classList.remove("on");
 
   // The evolution banner. It scales in over ~0.2s and holds, because the one
@@ -8109,6 +8165,15 @@ window.__g = {
                 mul:+hopMul().toFixed(3), spd:+Math.hypot(P.vx,P.vz).toFixed(2),
                 base:+P.spd.toFixed(2), air:P.air }),
   jump:  ()=>jumpPressed(),
+  // A hazard exactly where the test wants one, already live, so a check on
+  // what can and cannot reach the player does not have to wait for a boss.
+  hazardAt:(x,z,r=3,dmg=40)=>{ hazards.push(mkHaz(x,z,r,0,6,dmg));
+                               return hazards.length; },
+  // Flight, for a test: how high above the ground, how much meter is left, and
+  // whether anything on the floor can currently reach you.
+  wings: ()=>({ can:!!stageDef().fly, fly:!!P.fly, wing:+P.wing.toFixed(3),
+                alt:+(P.y - groundY(P.x,P.z)).toFixed(2), aloft:aloft(),
+                air:!!P.air }),
   botHop:(on=true)=>botHop=on,
   rim:   ()=>RIM,
   sfx:      ()=>Object.assign({}, sfxCount),
@@ -8119,6 +8184,9 @@ window.__g = {
                sq:+ANIM.sq.toFixed(3), lunge:+ANIM.lunge.toFixed(3),
                look:+ANIM.look.toFixed(3), land:+ANIM.land.toFixed(3) }),
   evoFx: ()=>+evoFx.toFixed(3),
+  // What the evolution banner is currently saying. Reading it off the DOM only
+  // works if a frame has been rendered since, which a stepped test has not.
+  evoTxt:()=>({ nm:evoNm, sub:evoSub, t:+evoT.toFixed(2) }),
   mapHits: ()=>mapHits,
   mapBox: ()=>mapBox(innerWidth, innerHeight),
   map:   ()=>mapBg ? { px:mapBg.width, painted:(()=>{

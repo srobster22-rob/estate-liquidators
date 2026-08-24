@@ -2085,6 +2085,66 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        worst.map(x => `${x.nm} ${x.bad}/${x.n}`).join(", "));
   }
 
+  console.log("\n=== 22o. PYRAETHON FLIES ===");
+  {
+    // Reported: "cinderwelp 2nd evolution should unlock flying". The EMBER
+    // line's top form holds JUMP to beat its wings: it climbs to a hover,
+    // nothing that has to touch you can reach it up there, and it costs a
+    // meter that only refills on the ground. What it costs is the hop chain,
+    // because you cannot chain a hop you never land from.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = (st) => { g.wipeSave(); g.start("intern"); g.god();
+        g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+        g.place(0, 0); g.aim(0); if (st) g.evolveTo(st); g.step(40, 1/60); };
+      const down = () => dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }));
+      const up   = () => dispatchEvent(new KeyboardEvent("keyup",   { code: "Space" }));
+      const out = {};
+      boot(0); down(); g.step(90, 1/60); out.whelp = g.wings(); up();
+      boot(1); down(); g.step(90, 1/60); out.drake = g.wings(); up();
+      boot(2); down(); g.step(20, 1/60);  out.launch = g.wings();
+      g.step(110, 1/60);                  out.hover  = g.wings();
+      g.step(200, 1/60);                  out.spent  = g.wings();
+      up(); g.step(300, 1/60);            out.back   = g.wings();
+      // and the ground cannot touch it. Same hazard, on the floor and in the air.
+      // Short exposure on purpose: the meter is under three seconds and when
+      // it runs out the animal falls into the fire, which is the mechanic
+      // working rather than the immunity failing.
+      const burn = (fly) => {
+        boot(2);
+        if (fly) { down(); g.step(45, 1/60); }
+        const hp0 = g.state().hp;
+        g.hazardAt(0, 0, 3);
+        g.step(60, 1/60);
+        if (fly) up();
+        return hp0 - g.state().hp;
+      };
+      out.hurtGround = burn(false);
+      out.hurtAir    = burn(true);
+      // and the moment it happens has to say so
+      boot(1); g.evolveTo(2);
+      out.banner = g.evoTxt().sub;
+      return out;
+    });
+    ok("CINDERWHELP cannot fly", !r.whelp.can && !r.whelp.fly,
+       `can=${r.whelp.can} fly=${r.whelp.fly}`);
+    ok("nor can FLAREDRAKE", !r.drake.can && !r.drake.fly,
+       `can=${r.drake.can} fly=${r.drake.fly}`);
+    ok("PYRAETHON leaves the ground when you hold jump",
+       r.launch.can && r.launch.fly && r.launch.alt > 1.2,
+       `alt ${r.launch.alt} with ${r.launch.wing} of meter left`);
+    ok("and holds a hover rather than climbing forever",
+       Math.abs(r.hover.alt - 3.1) < .35, `alt ${r.hover.alt}`);
+    ok("the meter runs out and puts it back on the floor",
+       !r.spent.fly && r.spent.alt < .5, `fly=${r.spent.fly} alt=${r.spent.alt}`);
+    ok("and refills on the ground", r.back.wing > .95, `wing ${r.back.wing}`);
+    ok("and the evolution that grants it says so",
+       /FLY/.test(r.banner), `banner read "${r.banner}"`);
+    ok("up there the burning ground cannot reach it",
+       r.hurtGround > 0 && r.hurtAir === 0,
+       `${r.hurtGround.toFixed(1)} damage on the floor, ${r.hurtAir.toFixed(1)} in the air`);
+  }
+
   console.log("\n=== 22p. THE ANIMAL KEEPS ITS OWN HEADING ===");
   {
     // Reported: "I don't like how the monster looks back at you while
