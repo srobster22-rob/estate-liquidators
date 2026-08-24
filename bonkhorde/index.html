@@ -2670,7 +2670,10 @@ scrap(D){
   const bob = Math.sin(t*1.7)*.035*idle + Math.sin(ph*.5)*.02*amp;
   const lk = look*.20, lkf = -Math.abs(look)*.06;
   const gr = 1 + st*.18;
-  const NECK = 4 + st*2;
+  // A plesiosaur is a neck, but a neck five units long is a neck the camera
+  // cannot frame with the animal on the end of it. Fewer segments, each
+  // shorter, and it is still unmistakably the long-necked one.
+  const NECK = 4 + st;
   const flick = twitch(.6, 4.3);
   // the barrel, as a run from tail root to shoulder
   chain([[sway, -.40*gr, (.44+bob)*gr], [sway, -.14*gr, (.50+bob)*gr],
@@ -2696,7 +2699,7 @@ scrap(D){
   let nx = sway, nf = .26*gr, ny = (.62+bob)*gr;
   for(let i=0;i<NECK;i++){
     nx += (lk*.9)/NECK + Math.sin(t*1.1 - i*.55)*.012*gr*(1+idle);
-    nf += (.20 + (i+1)/NECK*.06)*gr + lkf/NECK;
+    nf += (.16 + (i+1)/NECK*.05)*gr + lkf/NECK;
     ny += (.17 - (i+1)/NECK*.05)*gr;
     neck.push([nx, nf, ny]);
   }
@@ -2714,7 +2717,7 @@ scrap(D){
   const tail = [[sway, -.30*gr, (.44+bob)*gr]];
   for(let i=0;i<4+st;i++){
     const lag = drag(.6 + i*.5)*.024*(i+1)*gr + Math.sin(t*.8 - i*.4)*.012*idle*(i+1)*gr;
-    tail.push([sway + lag, (-.48 - i*.22)*gr, (.42 + bob - i*.02)*gr]);
+    tail.push([sway + lag, (-.44 - i*.17)*gr, (.42 + bob - i*.02)*gr]);
   }
   chain(tail, .15*gr, .055*gr, c, em+.08, [.80, .68, 1.15]);
   for(let i=2;i<tail.length;i++)
@@ -2738,7 +2741,7 @@ volt(D){
           eyeCold, mawRow, idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
-  const gr = 1 + st*.30;
+  const gr = 1 + st*.20;
   const hov = Math.sin(t*2.2)*.02*idle*gr;
   const lk = look*.16, lkf = -Math.abs(look)*.05;
   const roar = twitch(.4, 4.6 + st);
@@ -2760,11 +2763,11 @@ volt(D){
         5 + st*2, (.08 + st*.02)*gr, acc, .72);
   // NECK -> SKULL. An S in the young animal, short and thick in the adult.
   const nx = sway + lk, nf = chestF + (.14 + st*.10)*gr, ny = HIP + hov + (.30 + st*.10)*gr;
-  const hx = nx + lk*.6, hf = nf + (.22 + st*.24)*gr + lkf, hy = ny + (.22*up + .06)*gr;
+  const hx = nx + lk*.6, hf = nf + (.22 + st*.16)*gr + lkf, hy = ny + (.22*up + .06)*gr;
   chain([[sway, chestF - .04*gr, HIP + hov + .18*gr], [nx, nf, ny], [hx, hf - .10*gr, hy]],
         (.16+st*.03)*gr, (.15+st*.035)*gr, c, em+.06);
   // the skull itself: a box that gets longer and deeper every stage
-  const SK = (.19 + st*.03)*gr, SL = (.20 + st*.16)*gr;
+  const SK = (.19 + st*.03)*gr, SL = (.20 + st*.11)*gr;
   blob(hx, hf, hy, SK, SK*.92, SK*1.05, c, em+.10);
   chain([[hx, hf + SK*.5, hy - SK*.10], [hx, hf + SK*.5 + SL, hy - SK*.34]],
         SK*.82, SK*.56, c, em+.08, [1, .80, 1]);
@@ -2823,12 +2826,16 @@ volt(D){
     chain([[sway + rs*.20*gr, bodyF + .30*gr, .16*gr],
            [sway + rs*.20*gr, bodyF + .40*gr, .30*gr]],
           .045*gr, .022*gr, [.96,.94,.88], .24);
-  // THE TAIL. Short and up on the chick, long and level on the tyrant.
-  const TN = 4 + st*2;
+  // THE TAIL. Short and up on the chick, long and level on the tyrant - but
+  // measured against the camera boom rather than by eye, because eight
+  // segments each a third of a unit apart put four and a half units of tail
+  // behind the hips and made STORMTYRANT nineteen units long, which is most of
+  // the visible field. It is still the longest part of the animal.
+  const TN = 4 + st;
   const tail = [[sway, bodyF - .18*gr, HIP + hov - up*.02]];
   for(let i=0;i<TN;i++){
     const lag = drag(.5 + i*.38)*.022*(i+1) + Math.sin(t*.85 - i*.4)*.010*idle*(i+1);
-    tail.push([sway + lag, bodyF - (.34 + i*(.24 + st*.05))*gr,
+    tail.push([sway + lag, bodyF - (.30 + i*(.17 + st*.01))*gr,
                HIP + hov + up*(.10 - i*.05)*gr - (1-up)*i*.02*gr]);
   }
   chain(tail, (.15 + st*.02)*gr, .05*gr, c, em+.06, [.94, .90, 1]);
@@ -2944,22 +2951,36 @@ rot(D){
   const lk = look*.15, lkf = -Math.abs(look)*.045;
   const flick = twitch(0, 3.1);                    // the tongue
   const hiss  = twitch(1.7, 5.6);                  // the jaw
-  const N = 8 + st*4;                              // it gets longer, not taller
+  // HOW LONG IS TOO LONG. Measured every form's world footprint against the
+  // camera boom, which sits 8.9 behind the animal: at eight segments plus four
+  // per stage, spaced a third of a unit, BASILISK came out NINETEEN AND A HALF
+  // UNITS long - two thirds of the visible field, so the player's own animal
+  // was the thing hiding the game. It is still by some way the longest thing
+  // in the roster at twelve segments and a fifth of a unit; it just fits on
+  // the screen with the horde it is fighting.
+  const N = 8 + st*2;                              // it gets longer, not taller
   const gr = 1 + st*.16;
   const wave = ph*.85 + t*(1.3 + st*.25);
-  const REAR = (.34 + st*.36) * gr;                // how high the front stands
+  const REAR = (.30 + st*.26) * gr;                // how high the front stands
   const LIFT = 3 + st*2;                           // over how many segments
   const GIRTH = (.20 + st*.02) * gr;
   const spine = [];
   for(let i=0;i<N;i++){
     const u = i/(N-1);
-    const lat = Math.sin(wave - i*.62) * (.10 + amp*.13 + idle*.05) * gr;
+    // IT HAS TO COIL. A serpent whose body trails straight out behind it is
+    // pointed directly down the camera's own axis, so ten units of animal
+    // foreshorten into one green column standing between the player and the
+    // fight - which is exactly how BASILISK looked in a mid-run screenshot.
+    // A wave three times deeper, and a full one over the length of the body,
+    // puts the animal side-on to its own camera: you see a snake instead of a
+    // staircase, and you can see the arena past it.
+    const lat = Math.sin(wave - i*.86) * (.34 + amp*.16 + idle*.06) * gr;
     // the rise is a smooth curve over the front LIFT segments, not a step
     const rc = i < LIFT ? Math.pow(1 - i/LIFT, 1.6) : 0;
     const y = (.16 + REAR*rc) * gr + Math.sin(wave*.8 - i*.5)*.02*gr;
     // segments crowd together where the body stands up, which is what a
     // reared coil actually does
-    const f = (.30 - i*.34 + (i < LIFT ? (LIFT-i)*.06 : 0)) * gr;
+    const f = (.30 - i*.21 + (i < LIFT ? (LIFT-i)*.04 : 0)) * gr;
     spine.push([lat, f, y, u]);
   }
   // THE TAPER. Thin at the neck, thickest a third of the way back, thin at the
@@ -3237,7 +3258,7 @@ surge(D){
           eyeRidge, gharJaw, idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t, surge } = D;
-  const gr = 1 + st*.26;
+  const gr = 1 + st*.22;
   const hov = Math.sin(t*2.0)*.018*idle*gr;
   const lk = look*.16, lkf = -Math.abs(look)*.05;
   const snap = twitch(.8, 4.2);
@@ -3272,7 +3293,7 @@ surge(D){
   chain([[sway, chestF - .04*gr, HIP + .06*gr], [nx, nf, ny], [hx, hf - .08*gr, hy]],
         (.14+st*.02)*gr, (.125+st*.02)*gr, c, em+.05);
   blob(hx, hf, hy, (.135+st*.02)*gr, (.125+st*.018)*gr, (.15+st*.02)*gr, c, em+.06);
-  gharJaw(hx, hf + .08*gr, hy - .03*gr, (.085+st*.012)*gr, (.42+st*.10)*gr,
+  gharJaw(hx, hf + .08*gr, hy - .03*gr, (.085+st*.012)*gr, (.38+st*.06)*gr,
           6 + st, c, snap*.05*gr);
   eyeRidge(hx, hf - .02*gr, hy + (.085+st*.012)*gr, (.095+st*.012)*gr,
            (.058 + st*.008)*gr, [1,.88,.34]);
@@ -3302,11 +3323,15 @@ surge(D){
   }
   // ---- THE TAIL. Long, and it ends in a paddle - the one thing that says this
   // animal spends its life in a river rather than on a plain.
-  const TN = 6 + st;
+  // Eight segments a quarter-unit apart put two and a half units of tail
+  // behind an animal already two long in front of its hips, and THE SPINE
+  // measured sixteen and a half units against a camera boom of nine. Shorter
+  // and heavier: a counterweight, not a whip.
+  const TN = 5 + st;
   const tail = [[sway, -.24*gr, HIP]];
   for(let i=0;i<TN;i++){
     const lag = drag(.5 + i*.34)*.026*(i+1) + Math.sin(t*.8 - i*.36)*.011*idle*(i+1);
-    tail.push([sway + lag, -(.44 + i*(.26+st*.03))*gr, HIP - i*.035*gr]);
+    tail.push([sway + lag, -(.36 + i*(.16+st*.01))*gr, HIP - i*.035*gr]);
   }
   chain(tail, (.155+st*.02)*gr, .05*gr, c, em+.06, [.86, 1, 1]);
   const tp = tail[tail.length-1];
@@ -3606,6 +3631,10 @@ function startRun(id){
   // fully pinned trial stopped being reproducible in the suite while being
   // perfectly reproducible on its own.
   pickT = 0;
+  // The camera frames itself off the animal it is following, so a new run must
+  // not inherit the last one's measurements for the frame before its own body
+  // has been drawn once.
+  bodyLen = 4; bodyTop = 2.4;
   // ...and neither should a run inherit "events are off" or a hand of cards
   // from whatever ran before it. Both were leaking: a snapshot taken twenty
   // sections into the suite showed noEvents true and four stale cards still in
@@ -5794,6 +5823,14 @@ const ui = document.getElementById("ui");
 const g2 = ui.getContext("2d");
 let VPM = null;
 let camAnchor = null;              // lagged chase point, see render()
+// HOW BIG IS THE ANIMAL, IN WORLD UNITS. Filled by the player's own body draw
+// and read by the camera on the next frame. The forms are not one size: the
+// roster runs from a hatchling three and a half units long to a reared basilisk
+// ten long and six tall, and a camera boom tuned for the hatchling puts the
+// basilisk between the player and the entire game. Measuring it is free - two
+// comparisons per box - and it means every form, including any form added
+// later, is framed by what it actually is rather than by a constant.
+let bodyLen = 4, bodyTop = 2.4;
 
 // ------------------------------------------------------- ONE MONSTER, DRAWN
 // Lifted out of render() so the MENU can draw the same twenty-one bodies as a
@@ -5810,6 +5847,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // mostly above you; it is tinted by species type; it grows 13% and gains a
   // pair of horns at every evolution, so "what am I" and "how far along am I"
   // are both answerable without looking at the HUD.
+  let mLo = 1e9, mHi = -1e9, mFa = 1e9, mFb = -1e9;   // this form's own extent
   const mTy = MTYPE[mCh.type] || MTYPE.plain;
   let mTc = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : mTy.c;
   if(evoFx > 0){                        // washing out toward the new form
@@ -5832,7 +5870,11 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // thing becoming a bigger thing rather than a thing being replaced.
   const ef = evoFx > 0 ? evoFx / EVO_FX : 0;
   const swell = ef > 0 ? Math.sin(ef * Math.PI) * .45 + ef * ef * .25 : 0;
-  const mSc = 2.05 * (P.mscale || 1) * (1 + stage*.06) * (1 + Math.max(0, P.hopFx)*.20) * (1 + swell);
+  // The steady size, without the hop squash or the evolution swell: the camera
+  // frames itself off this, and a boom that breathed with every jump would be
+  // a seasick camera.
+  const mScB = 2.05 * (P.mscale || 1) * (1 + stage*.06);
+  const mSc = mScB * (1 + Math.max(0, P.hopFx)*.20) * (1 + swell);
   const mCf = Math.cos(P.face), mSf = Math.sin(P.face);
   const mEm = Math.max(P.iframe>0 ? .55 : .20, ef * .95);
   // The whole animal is sheared and squashed here rather than in the plans.
@@ -5899,6 +5941,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // mapping since it was written. Push the extents in the same order as the
     // positions and the pairing is right by construction.
     if(bodyPos) bodyPos.push(r, f, y, hx, hz, hy);
+    if(y + hy > mHi) mHi = y + hy;                 // for the camera, see bodyTop
+    if(y - hy < mLo) mLo = y - hy;
+    if(f + hz > mFb) mFb = f + hz;
+    if(f - hz < mFa) mFa = f - hz;
     const yy = y * aSq;
     const rr = r * aInv + yy * aBank;
     const ff = f * aInv + yy * aLean;
@@ -6579,6 +6625,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
                                   [.96,.96,.92], .15) };
   boxSeq = 0;
   (BODY[mCh.type] || BODY.plain)(D);
+  // The live animal only. A portrait draws through the same code with its own
+  // scale, and letting a menu card retune the game camera would be a fine bug.
+  if(!P.portrait && mHi > mLo){
+    bodyTop = (mHi - Math.min(0, mLo)) * mScB;
+    bodyLen = (mFb - mFa) * mScB;
+  }
 }
 
 // ---------------------------------------------------------------- PORTRAITS
@@ -6758,7 +6810,16 @@ function render(){
   // a dorsal ridge - all the things these forms are actually made of. 8.9/4.1
   // is 17 degrees and about half again the on-screen size. The horde is still
   // legible because the horde is what the MINIMAP is for.
-  const dist = 8.9 + spdFrac*2.1, hgt = 4.1 + camPitch*4.7 + spdFrac*.8;
+  // FRAMED TO THE ANIMAL. 8.9 and 4.1 were measured against a mid-sized form
+  // and they are right for one; on THE SPINE or a reared BASILISK - eleven
+  // units long, six and a half tall, standing between the lens and the fight -
+  // the player's own body was the thing hiding the game. The boom lengthens and
+  // lifts with the body it is following, both capped, so a hatchling is framed
+  // exactly as before and the largest forms give the horde its screen back.
+  const bigF = clamp((bodyLen - 6.4) * .42, 0, 2.9),
+        bigH = clamp((bodyTop - 4.2) * .40, 0, 1.5);
+  const dist = 8.9 + bigF + spdFrac*2.1,
+        hgt  = 4.1 + bigH + camPitch*4.7 + spdFrac*.8;
   const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
   // edge puts it out among the boundary spires (radius 74-79, height 7-15) at an
