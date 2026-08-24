@@ -2767,10 +2767,15 @@ volt(D){
   chain([[sway, chestF - .04*gr, HIP + hov + .18*gr], [nx, nf, ny], [hx, hf - .10*gr, hy]],
         (.16+st*.03)*gr, (.15+st*.035)*gr, c, em+.06);
   // the skull itself: a box that gets longer and deeper every stage
-  const SK = (.19 + st*.03)*gr, SL = (.20 + st*.11)*gr;
+  // A HEAD IS NOT A CHEST. At .19 plus .03 a stage on a scale of 1.4 the skull
+  // came out .70 across against a torso .80 across, and the muzzle in front of
+  // it was .82 of that again - so head-on, the only angle where a face is a
+  // face, STORMTYRANT was a cyan wall with two eyes in the top corners. A
+  // tyrant's skull is deep and long, not wide.
+  const SK = (.165 + st*.02)*gr, SL = (.22 + st*.13)*gr;
   blob(hx, hf, hy, SK, SK*.92, SK*1.05, c, em+.10);
   chain([[hx, hf + SK*.5, hy - SK*.10], [hx, hf + SK*.5 + SL, hy - SK*.34]],
-        SK*.82, SK*.56, c, em+.08, [1, .80, 1]);
+        SK*.78, SK*.46, c, em+.08, [1, .88, 1]);
   chain([[hx, hf + SK*.5, hy - SK*.62 - gape],
          [hx, hf + SK*.4 + SL*.92, hy - SK*.86 - gape]],
         SK*.66, SK*.44, c, em+.06, [1, .58, 1]);
@@ -2783,9 +2788,11 @@ volt(D){
   // angle that matters for a face, the snout covered both of them completely.
   // On the cheeks and above the tooth line, which is where a tyrant's eyes are
   // anyway.
-  eyeCold(hx, hf + SK*.34, hy + SK*.52, SK*.86, SK*.42, [1,.86,.24]);
+  eyeCold(hx, hf + SK*.34, hy + SK*.46, SK*.74, SK*.40, [1,.86,.24]);
   for(const rs of [-1,1]){
-    horn(hx + rs*SK*.74, hf + SK*.10, hy + SK*.42, rs*.035*gr, -.026*gr, .05*gr,
+    // rooted INSIDE the skull, not on its corner: the skull got narrower and
+    // .74 of its half-width put the first segment of the horn out in the air.
+    horn(hx + rs*SK*.58, hf + SK*.08, hy + SK*.30, rs*.035*gr, -.026*gr, .05*gr,
          3 + st, .038*gr, acc, .70);
     mb(hx + rs*SK*.86, hf + SK*.40, hy - SK*.10, SK*.22, SK*.34, SK*.46, acc, .30);
   }
@@ -3006,26 +3013,44 @@ rot(D){
     spine.push([lat, f, y, u]);
   }
   // THE TAPER. Thin at the neck, thickest a third of the way back, thin at the
-  // tail - drawn as two runs so the peak is in the middle rather than at an end.
-  const mid = Math.max(1, Math.round(N*0.34));
-  chain(spine.slice(0, mid+1).map(p=>[p[0],p[1],p[2]]),
-        GIRTH*.80, GIRTH*1.18, c, em+.06, [.94, .82, 1]);
-  chain(spine.slice(mid).map(p=>[p[0],p[1],p[2]]),
-        GIRTH*1.18, GIRTH*.30, c, em+.06, [.94, .82, 1]);
+  // tail, so a chain of segments does not read as a caterpillar.
+  //
+  // BANDED, one segment at a time. Drawn as two long runs in one colour this
+  // animal was a single flat green tube from end to end - no light side, no
+  // dark side, nothing for the eye to count along, which is most of why it
+  // read as a grub with a flower on its head. Banding is what a snake has
+  // instead of shading, it costs not one extra box, and it makes the length of
+  // the body legible at a glance from the camera this game actually uses.
+  const rAt = u => u < .34 ? GIRTH*(.80 + u*1.10) : GIRTH*(1.18 - (u-.34)*1.33);
+  const bnd = [c[0]*.58, c[1]*.72, c[2]*.50];
+  for(let i=0;i<N-1;i++)
+    chain([[spine[i][0], spine[i][1], spine[i][2]],
+           [spine[i+1][0], spine[i+1][1], spine[i+1][2]]],
+          rAt(spine[i][3]), rAt(spine[i+1][3]),
+          i%2 ? c : bnd, em+.06, [.94, .82, 1]);
   for(let i=0;i<N;i++){
     const [lx, lf, ly, u] = spine[i];
     const k = (u < .34 ? .80 + u*1.1 : 1.18 - (u-.34)*1.33);
     // belly scutes: pale bands across the underside, the one detail that reads
     // as "snake" from any angle
-    if(i < N-1 && i % 1 === 0)
-      mb(lx, lf, ly - GIRTH*k*.84, GIRTH*k*.62, .022*gr, GIRTH*k*.44, bel, em*.8);
+    // A BAND, not a sliver. At .022 of half-height tucked under the belly this
+    // was invisible from every angle a player ever sees, and the animal was one
+    // flat green with no light side and no dark side - which is most of why
+    // BASILISK read as a caterpillar. It is deep enough to catch the light on
+    // the lower flank now, which is where a snake's countershading actually is.
+    if(i < N-1)
+      mb(lx, lf, ly - GIRTH*k*.72, GIRTH*k*.74, GIRTH*k*.30, GIRTH*k*.50, bel, em*.9);
     // dorsal scales, bigger toward the middle of the animal
     if(i > 0 && i < N-2){
       // A saw, not a dotted line: the scales stand tallest over the thickest
       // part of the animal and shrink to nothing at both ends, so the back
       // reads as one serrated ridge instead of a row of identical pink pips.
       const sc = Math.sin(Math.min(1, u*1.25) * Math.PI) * .55 + .45;
-      mb(lx, lf, ly + GIRTH*k*.76, .05*gr, GIRTH*k*.46*sc, GIRTH*k*.40*sc, acc, .22);
+      // and a KEEL under the saw, in the dark tone, so the back has an edge
+      // even where the scales are small. A row of magenta pips on a green tube
+      // is a dotted line; a dark ridge with magenta teeth on it is a spine.
+      mb(lx, lf, ly + GIRTH*k*.66, GIRTH*k*.68, GIRTH*k*.34, GIRTH*k*.56, dk, .05);
+      mb(lx, lf, ly + GIRTH*k*.88, .055*gr, GIRTH*k*.54*sc, GIRTH*k*.46*sc, acc, .30);
     }
   }
   // ---- THE SKULL. A wedge: wide behind the eyes, narrowing to the snout, and
@@ -3038,13 +3063,19 @@ rot(D){
         HW*.78, HW, c, em+.08, [1.18, .70, 1]);
   chain([[hx, hf + .10*gr, hy], [hx, hf + .30*gr, hy - .03*gr]],
         HW, HW*.60, c, em+.08, [1.10, .66, 1]);
-  // brow ridges over the eyes - the scowl a viper has and a worm does not
-  for(const rs of [-1,1])
+  // brow ridges over the eyes - the scowl a viper has and a worm does not -
+  // and a dark mask down the cheek, which is what separates the skull from the
+  // neck behind it on an animal that is one colour from end to end.
+  for(const rs of [-1,1]){
     mb(hx + rs*HW*.62, hf + .12*gr, hy + HW*.44, HW*.40, HW*.20, HW*.52, dk, .04);
+    mb(hx + rs*HW*.80, hf + .04*gr, hy - HW*.02, HW*.30, HW*.46, HW*.42, dk, .04);
+  }
   // A hatchling's eyes are large FOR ITS HEAD and a big animal's are small for
   // its head - the single cheapest way to make three sizes of one creature read
   // as three ages rather than three scales of the same model.
-  eyeGlow(hx, hf + .14*gr, hy + HW*.20, HW*.60, HW*(.62 - st*.10), [.80,1,.34]);
+  // AMBER, not yellow-green. A green-yellow slot on a green head is the same
+  // colour as the head; this line's eye has to be the one warm thing on it.
+  eyeGlow(hx, hf + .14*gr, hy + HW*.20, HW*.62, HW*(.70 - st*.10), [1,.72,.16]);
   viperJaw(hx, hf + .22*gr, hy - HW*.22, HW*.68, (.22 + st*.05)*gr, c,
            hiss*(.05 + st*.02)*gr);
   // the forked tongue, out and back every few seconds
@@ -3056,9 +3087,13 @@ rot(D){
   const CR = 2 + st*2 + (st === 2 ? 1 : 0);
   for(let i=0;i<CR;i++){
     const a = CR > 1 ? (i/(CR-1) - .5) * (1.5 + st*.30) : 0;
+    // SHORT. horn() compounds its step 35% a segment, so five segments of
+    // .099 is a spike a whole unit tall - seven of them fanned across the
+    // skull, and BASILISK's silhouette was a magenta flower with a snake
+    // underneath it. A crown is a crest, not a bouquet.
     horn(hx + Math.sin(a)*HW*.80, hf - .10*gr - Math.abs(a)*.03*gr, hy + HW*.52,
-         Math.sin(a)*(.055 + st*.012)*gr, -.030*gr, (.055 + st*.022)*gr,
-         3 + st, (.030 + st*.008 + i*.002)*gr, acc, .40 + st*.18);
+         Math.sin(a)*(.030 + st*.008)*gr, -.022*gr, (.034 + st*.010)*gr,
+         3, (.030 + st*.008 + i*.002)*gr, acc, .40 + st*.18);
   }
   // cheek spikes, back along the jaw line
   for(const rs of [-1,1])
@@ -6318,8 +6353,16 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // serpent whose whole body is one box is a plank with a head on it, and
       // the steps between segments are most of what says "this is an animal
       // built out of blocks" rather than "this is a block".
+      steps = Math.max(steps, Math.ceil(Math.abs(d[dom]) / (rm*sc[dom]*3)));
+      // A SPAN THAT TAPERS HAS TO SHOW IT. One block per span takes the radius
+      // at the MIDPOINT, so a two-point run from thick to thin - which is how
+      // every snout, horn, toe and tail tip in the game is authored - came out
+      // as one straight box at the average. That is why STORMTYRANT's muzzle
+      // read as a slab as wide as its chest. Split by how much the radius
+      // actually changes, so the step down is visible.
+      const rA = Math.max(.004, ra + (rb-ra)*ua), rB = Math.max(.004, ra + (rb-ra)*ub);
       steps = Math.min(6, Math.max(steps,
-                Math.ceil(Math.abs(d[dom]) / (rm*sc[dom]*3))));
+                Math.ceil(Math.abs(rA-rB) / (Math.min(rA,rB)*.30))));
       for(let k=0;k<steps;k++){
         const u = (k+.5)/steps, t2 = ua + (ub-ua)*u;
         // a deterministic 0-5% wobble on the radius, keyed to the GLOBAL draw
@@ -6328,10 +6371,13 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
         // and land their faces on one plane.
         const r = Math.max(.004, ra + (rb-ra)*t2) * (1 + ((boxSeq*3) % 7) * .009);
         const h = [0,0,0];
-        // the +.003 is the draw-index nudge: two neighbours can be pushed
-        // apart by twice its amplitude and it does not care how small the
-        // part is, so every block carries enough margin to absorb it.
-        for(let q=0;q<3;q++) h[q] = r*sc[q] + Math.abs(d[q])/(2*steps) + .003;
+        // the +.0055 is the draw-index nudge: five slots 1.6 thousandths
+        // apart is an excursion of ±3.2, two neighbours can take it in
+        // opposite directions, and it does not care how small the part is. So
+        // every block carries more margin than the nudge can spend - which
+        // also means a part that merely KISSES its neighbour, rather than
+        // interpenetrating it, still survives being nudged.
+        for(let q=0;q<3;q++) h[q] = r*sc[q] + Math.abs(d[q])/(2*steps) + .0055;
         // through blob(), so a block big enough to read as a MASS - a chest, a
         // thigh, the root of a tail - still gets its corners taken off, and
         // everything smaller stays one block. See CHAMFER.
@@ -6595,10 +6641,15 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const mawRow = (r,f,y, w, len, n, gape)=>{
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, sc = 1.15 - t2*.55, fx = f + len*t2;
+      // ROOTED IN THE JAW. Teeth hung .16 and .30 of the jaw's width below its
+      // centre line sat in the gap between the two jaws, and once the skull
+      // narrowed there was nothing for the upper row to be attached to - a
+      // connectivity report found one of them flying in formation. They start
+      // inside the bone and hang out of it, which is also what a tooth does.
       for(const sg of [-1,1]){
-        mb(r + sg*w*.80, fx, y - w*.16, w*.15*sc, w*.34*sc, w*.16*sc,
+        mb(r + sg*w*.74, fx, y - w*.08, w*.15*sc, w*.40*sc, w*.16*sc,
            [.96,.95,.88], .20);
-        mb(r + sg*w*.74, fx + len/n*.5, y - w*.30 - gape, w*.13*sc, w*.30*sc, w*.14*sc,
+        mb(r + sg*w*.70, fx + len/n*.5, y - w*.26 - gape, w*.13*sc, w*.34*sc, w*.14*sc,
            [.96,.95,.88], .20);
       }
     }
