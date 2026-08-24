@@ -1552,16 +1552,20 @@ shambler:{ nm:"GRUBLING",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h
            body:"paper" },
 // A small pterosaur. First to arrive, every time, and never on purpose.
 runner:  { nm:"PTERLING",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
-           body:"bailiff", dive:true },
+           body:"pterling", dive:true },
 // A young ceratopsian. All frill and shoulder, and it does not intend to stop.
-brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:2.6, w:1.15,
-           body:"safe" },
+// LOW AND BROAD, not tall. h and w are visual only - the hitbox is r and reach
+// is measured to rad - and at 2.6 by 1.15 this animal was a cube, which is why
+// it read as a blue slab whatever was drawn inside it. A ceratopsian is a
+// coffee table with a shield on the front.
+brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:1.85, w:1.5,
+           body:"ceratop" },
 // A crested spitter. Hangs back and puts something caustic across the field.
 spitter: { nm:"DILOPHO", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
-           ranged:{cd:2.6, spd:15, r:22}, body:"appraiser" },
+           ranged:{cd:2.6, spd:15, r:22}, body:"dilopho" },
 // A hatchling raptor. Individually nothing. Never individually.
 skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
-           body:"fish" },
+           body:"raptor" },
 // Everything else in this game walks at you. This one walks away, which makes
 // it the only thing in twenty minutes that asks whether you can bring your
 // damage somewhere rather than wait for it to arrive.
@@ -1895,14 +1899,19 @@ paper(e, face, W, H, c, glow, lod, y0){
        W*.08, H*.07, W*.08, [c[0]*.7,c[1]*.7,c[2]*.75], 0);
 },
 
-// FLITTER - a small bird in a permanent hurry.
-bailiff(e, face, W, H, c, glow, lod, y0){
+// PTERLING - a small pterosaur. It used to be a FLITTER, a songbird with
+// feathered wings, and a valley of dinosaurs had a sparrow in it. A pterosaur
+// is a MEMBRANE stretched off one long finger and a crest swept back off the
+// skull; nothing else on the field is a flat sheet, which is what makes it
+// readable in a crowd. The dive telegraph is untouched - it was the best thing
+// this enemy had.
+pterling(e, face, W, H, c, glow, lod, y0){
   // The dive has to be legible or it is an unfair hit. Winding up, it rears and
   // its wings snap back and go white-hot; crossing, it flattens into a line and
   // trails. Two silhouettes nothing else on the field makes.
   const wind = e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0;
   const div  = e.dvT > 0 ? 1 : 0;
-  const flap = Math.sin(T*(17 + wind*40) + e.bob) * (1 - div*.85),
+  const flap = Math.sin(T*(13 + wind*36) + e.bob) * (1 - div*.85),
         hop  = Math.abs(Math.sin(T*7 + e.bob))*H*.10 + wind*H*.30 - div*H*.16;
   if(wind > .15){
     const gy2 = groundY(e.x, e.z);
@@ -1916,102 +1925,141 @@ bailiff(e, face, W, H, c, glow, lod, y0){
                     Math.min(1,c[2]+wind*.35)] : c;
   glow = glow + wind*.55 + div*.35;
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, 0, y0 + H*.40 + hop, W*.66, H*.20, W*.58, c, glow);   // round body
-  B(e, face, 0, W*.40, y0 + H*.58 + hop, W*.40, H*.15, W*.36, c, glow); // head
-  etp(e, face, 0, W*.68, y0 + H*.56 + hop, 0,.07,-.01, 3, W*.14,H*.06,W*.12, [1,.72,.16], .25);
+  const lt = [Math.min(1,c[0]*1.3+.10), Math.min(1,c[1]*1.25+.08), Math.min(1,c[2]*1.3+.10)];
+  B(e, face, 0, 0, y0 + H*.44 + hop, W*.40, H*.19, W*.42, c, glow);       // body
+  eb(e, face, 0, W*.32, y0 + H*.56 + hop, W*.19, H*.13, W*.20, c, glow);  // head
+  etp(e, face, 0, W*.54, y0 + H*.53 + hop, 0,.10,-.014, 3,
+      W*.085,H*.055,W*.13, lt, glow+.12);                                 // the beak
   if(lod < 1) return;
-  eey(e, face, 0, W*.58, y0 + H*.66 + hop, W*.22, W*.09, [.10,.10,.14]);
-  for(const sg of [-1,1])                                     // wings
-    for(let k=0;k<3;k++)
-      etp(e, face, sg*(W*.62+k*W*.30), flap*W*.16 - k*W*.05, y0 + H*.42 + hop + k*H*.03,
-          sg*.06,-.03,.01, 2, W*.26-k*W*.05, H*.035, W*.30-k*W*.06,
-          k%2 ? [c[0]*1.3+.08,c[1]*1.3+.08,c[2]*1.35+.10] : c, glow+.05);
+  eey(e, face, 0, W*.44, y0 + H*.64 + hop, W*.14, W*.065, [.10,.10,.14]);
+  etp(e, face, 0, W*.24, y0 + H*.70 + hop, 0,-.075,.055, 3,
+      W*.05,H*.11,W*.09, lt, glow+.20);                                   // the crest
+  for(const sg of [-1,1]){                                                // the wings
+    // The span is the animal. At half a unit of reach these read as two
+    // sticks; a pterosaur is mostly wing, and the sheet has to be wider than
+    // the body it hangs off or nothing about it says membrane.
+    etp(e, face, sg*W*.34, W*.12 + flap*W*.10, y0 + H*.50 + hop,
+        sg*.62,-.07, .06 + flap*.06, 3, W*.13,H*.055,W*.11, c, glow);     // finger
+    for(let k=0;k<2;k++)                                                  // membrane
+      eb(e, face, sg*(W*.86 + k*W*.92), -W*.14 - k*W*.24 + flap*W*.14,
+         y0 + H*.48 + hop + (k+1)*flap*H*.07,
+         W*.62 - k*W*.16, H*.024, W*.44 - k*W*.12,
+         k ? lt : c, glow+.05, face + sg*.10);
+  }
   if(lod < 2) return;
-  for(const sg of [-1,1])                                     // legs
-    etp(e, face, sg*W*.18, 0, y0 + H*.20 + hop*.4, 0,0,-.07, 3, W*.07,H*.07,W*.07,
-        [1,.72,.16], .15);
-  for(let i=0;i<3;i++)                                        // tail
-    eb(e, face, (i-1)*W*.18, -W*.62, y0 + H*.40 + hop, W*.14, H*.035, W*.28,
-       [c[0]*1.2,c[1]*1.2,c[2]*1.25], glow, face + (i-1)*.22);
-  eb(e, face, 0, W*.32, y0 + H*.76 + hop, W*.07, H*.07, W*.07, [1,.72,.16], .25);
+  for(const sg of [-1,1])                                                 // legs
+    etp(e, face, sg*W*.16, 0, y0 + H*.26 + hop*.4, 0,0,-.07, 3,
+        W*.06,H*.06,W*.06, lt, .15);
+  for(let i=0;i<3;i++)                                                    // rudder tail
+    eb(e, face, 0, -W*.42 - i*W*.20, y0 + H*.42 + hop, W*.055, H*.028, W*.13,
+       lt, glow);
 },
 
-// TUSKLING - a boar. Heavy at the front, and it does not turn quickly.
-safe(e, face, W, H, c, glow, lod, y0){
+// CERATOP - a young ceratopsian. It used to be a BOAR: the species was renamed
+// when the roster went prehistoric and the model never was, so the thing the
+// table calls "all frill and shoulder" was drawing tusks and a bristled spine.
+// The frill is the whole silhouette and it is the part that has to survive
+// being thirty metres away and forty pixels tall, so it is drawn first, big,
+// and in the dark tone that separates it from the body in front of it.
+ceratop(e, face, W, H, c, glow, lod, y0){
   const B = lod>=2 ? ebl : eb;
-  const st = Math.sin(T*7 + e.bob);
-  B(e, face, 0, -W*.10, y0 + H*.52, W*.52, H*.28, W*.54, c, glow);   // haunches
-  B(e, face, 0, W*.26, y0 + H*.56, W*.58, H*.32, W*.40, c, glow);    // shoulders
-  B(e, face, 0, W*.62, y0 + H*.44, W*.36, H*.24, W*.30, c, glow);    // head
-  eb(e, face, 0, W*.86, y0 + H*.38, W*.24, H*.14, W*.14,
-     [c[0]*1.3+.08,c[1]*1.3+.08,c[2]*1.3+.08], glow);                // snout
+  const st = Math.sin(T*6 + e.bob);
+  const dk = [c[0]*.52+.03, c[1]*.52+.03, c[2]*.58+.04];
+  const bone = [.93,.91,.83];
+  // WIDER THAN IT IS TALL, and BEHIND the head rather than in front of it: a
+  // plate as tall as the animal reads as a signboard with legs, which is what
+  // the first pass drew.
+  // The camera in this game looks DOWN at the field, so a frill standing
+  // upright behind the skull hides it: this one is a wide low band that the
+  // head sits clearly in front of and below.
+  eb(e, face, 0, W*.34, y0 + H*.56, W*.80, H*.13, W*.09, dk, glow*.5);   // frill
+  eb(e, face, 0, W*.40, y0 + H*.55, W*.62, H*.085, W*.13, c, glow);      // its face
+  B(e, face, 0, -W*.20, y0 + H*.30, W*.52, H*.19, W*.48, c, glow);       // haunches
+  B(e, face, 0,  W*.18, y0 + H*.34, W*.58, H*.21, W*.40, c, glow);       // shoulders
+  eb(e, face, 0, W*.78, y0 + H*.38, W*.40, H*.21, W*.32, c, glow);       // skull
+  eb(e, face, 0, W*1.12, y0 + H*.31, W*.24, H*.12, W*.22, dk, glow);     // beak
   if(lod < 1) return;
-  eey(e, face, 0, W*.72, y0 + H*.60, W*.24, W*.075, [.90,.36,.20], .25);
-  for(const sg of [-1,1])                                            // tusks
-    etp(e, face, sg*W*.22, W*.90, y0 + H*.36, sg*.02,.03,.05, 3, W*.07,H*.05,W*.07,
-        [.94,.92,.84], .18);
-  for(const sg of [-1,1]) for(const fs of [-1,1])
-    eb(e, face, sg*W*.34, W*.20 + fs*W*.34, y0 + H*.14 + Math.max(0, st*sg*fs)*H*.06,
-       W*.13, H*.14, W*.13, [c[0]*.55,c[1]*.55,c[2]*.6], 0);
+  eey(e, face, 0, W*.92, y0 + H*.47, W*.28, W*.078, [.98,.76,.26], .40);
+  eb(e, face, 0, W*1.08, y0 + H*.48, W*.07, H*.12, W*.09, bone, .18);    // nose horn
+  for(const sg of [-1,1])                                                // brow horns
+    etp(e, face, sg*W*.26, W*.86, y0 + H*.48, sg*.012,.07,.018, 3,
+        W*.08,H*.05,W*.08, bone, .18);
+  for(const sg of [-1,1]) for(const fs of [-1,1])                        // four columns
+    eb(e, face, sg*W*.36, W*.14 + fs*W*.30,
+       y0 + H*.13 + Math.max(0, st*sg*fs)*H*.05, W*.13, H*.14, W*.13, dk, 0);
   if(lod < 2) return;
-  for(let i=0;i<6;i++)                                               // bristled spine
-    etp(e, face, 0, W*.34 - i*W*.20, y0 + H*.84, 0,0,.05, 2, W*.05,H*.09,W*.05,
-        [.86,.88,.94], .12);
-  for(const sg of [-1,1])                                            // ears
-    eb(e, face, sg*W*.26, W*.54, y0 + H*.74, W*.09, H*.09, W*.05,
-       [c[0]*.6,c[1]*.6,c[2]*.66], 0, face + sg*.5);
-  eb(e, face, 0, -W*.44, y0 + H*.56, W*.05, H*.05, W*.14,
-     [c[0]*.6,c[1]*.6,c[2]*.66], 0, face + st*.4);
+  // scallops on the OUTER EDGE, not across the top: four bright nubs in a row
+  // above a dark plate read as a set of teeth, which is not what a frill is.
+  for(const sg of [-1,1]) for(let i=0;i<2;i++)
+    eb(e, face, sg*W*(.66 + i*.13), W*.34, y0 + H*(.60 - i*.10),
+       W*.09, H*.06, W*.09, bone, .16);
+  etp(e, face, 0, -W*.46, y0 + H*.30, 0,-.15,-.025, 3, W*.15,H*.11,W*.17, c, glow);
 },
 
-// SPITTOAD - squat, wide, and it inflates before it does anything.
-appraiser(e, face, W, H, c, glow, lod, y0){
+// DILOPHO - a crested spitter. It used to be a TOAD, squat and warty, which is
+// what the species was before the roster went prehistoric. The twin crests are
+// the whole point of the animal and they are the only part of it a player has
+// to be able to pick out of a crowd, so they are tall, pale and lit. The
+// throat still inflates before it spits, because that tell was the good part
+// of the toad.
+dilopho(e, face, W, H, c, glow, lod, y0){
   const puff = (Math.sin(T*2.4 + e.bob)*.5 + .5);
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, 0, y0 + H*.34, W*.62, H*.28, W*.54, c, glow);
-  eb(e, face, 0, W*.20, y0 + H*.14, W*.50, H*.10, W*.36,
-     [c[0]*1.2+.06,c[1]*1.2+.06,c[2]*.9], glow);                     // pale belly
-  eb(e, face, 0, W*.44, y0 + H*.30, W*.40, H*.09, W*.14, [.12,.10,.06], 0);  // the mouth
+  const lt = [Math.min(1,c[0]*1.25+.06), Math.min(1,c[1]*1.18+.05), c[2]*.82];
+  const dk = [c[0]*.54, c[1]*.54, c[2]*.50];
+  B(e, face, 0, -W*.12, y0 + H*.44, W*.34, H*.21, W*.40, c, glow);   // hips
+  B(e, face, 0,  W*.20, y0 + H*.54, W*.32, H*.19, W*.32, c, glow);   // chest
+  eb(e, face, 0, W*.38, y0 + H*.70, W*.15, H*.13, W*.18, c, glow);   // neck
+  eb(e, face, 0, W*.58, y0 + H*.78, W*.18, H*.12, W*.26, c, glow);   // skull
+  eb(e, face, 0, W*.84, y0 + H*.72, W*.12, H*.085, W*.16, lt, glow); // muzzle
   if(lod < 1) return;
-  for(const sg of [-1,1])                                            // eyes ON TOP
-    eey(e, face, sg*W*.001, W*.22, y0 + H*.64, W*.26, W*.11, [.14,.10,.04], .1);
-  eb(e, face, 0, W*.34, y0 + H*.18, W*.24*(1+puff*.5), H*.14*(1+puff*.6), W*.16,
-     [c[0]*1.15,c[1]*1.05,c[2]*.7], glow+puff*.25);                  // throat sac
+  eey(e, face, 0, W*.66, y0 + H*.86, W*.15, W*.068, [.22,.18,.05], .35);
+  for(const sg of [-1,1])                                            // THE CRESTS
+    eb(e, face, sg*W*.13, W*.60, y0 + H*.97, W*.045, H*.16, W*.21, lt, glow+.28);
+  eb(e, face, 0, W*.46, y0 + H*.62, W*.15*(1+puff*.55), H*.10*(1+puff*.65), W*.12,
+     [Math.min(1,c[0]*1.1), c[1]*.88, c[2]*.40], glow + puff*.35);   // throat sac
+  etp(e, face, 0, -W*.34, y0 + H*.44, 0,-.20,-.03, 4, W*.11,H*.095,W*.17, c, glow);
   if(lod < 2) return;
-  for(const sg of [-1,1]){                                           // splayed legs
-    etp(e, face, sg*W*.50, -W*.16, y0 + H*.20, sg*.04,-.03,-.05, 3, W*.11,H*.08,W*.11,
-        [c[0]*.72,c[1]*.72,c[2]*.6], 0);
-    etp(e, face, sg*W*.44, W*.30, y0 + H*.16, sg*.04,.03,-.04, 3, W*.09,H*.07,W*.09,
-        [c[0]*.72,c[1]*.72,c[2]*.6], 0); }
-  for(let i=0;i<5;i++){ const a=i*1.257;                             // warts
-    eb(e, face, Math.sin(a)*W*.34, Math.cos(a)*W*.28 - W*.06, y0 + H*.60,
-       W*.07, H*.05, W*.07, [c[0]*.66,c[1]*.7,c[2]*.5], 0); }
+  for(const sg of [-1,1]){
+    eb(e, face, sg*W*.20, W*.02, y0 + H*.22, W*.10, H*.21, W*.11, dk, 0);    // shins
+    eb(e, face, sg*W*.20, W*.16, y0 + H*.04, W*.09, H*.045, W*.15, dk, 0);   // feet
+    etp(e, face, sg*W*.26, W*.28, y0 + H*.50, sg*.02,.05,-.05, 2,
+        W*.055,H*.055,W*.055, dk, 0);                                        // arms
+  }
 },
 
-// RATLING - low, quick, and never once alone.
-fish(e, face, W, H, c, glow, lod, y0){
-  const scut = Math.sin(T*16 + e.bob);
+// RAPTORLING - a hatchling dromaeosaur. It used to be a RAT, with round ears
+// and whiskers, which is a strange thing to find in a valley full of dinosaurs.
+// A raptor is a horizontal animal: the spine runs level from hip to skull, the
+// tail is a stiff rod held out behind as a counterweight rather than a whip,
+// and the killing toe is carried clear of the ground. Individually nothing.
+// Never individually.
+raptor(e, face, W, H, c, glow, lod, y0){
+  const st = Math.sin(T*15 + e.bob);
   const B = lod>=2 ? ebl : eb;
-  B(e, face, 0, -W*.08, y0 + H*.36, W*.40, H*.26, W*.46, c, glow);
-  B(e, face, 0, W*.42, y0 + H*.38, W*.28, H*.20, W*.24, c, glow);
-  etp(e, face, 0, W*.62, y0 + H*.32, 0,.05,-.01, 3, W*.11,H*.08,W*.10,
-      [c[0]*1.5+.10,c[1]*1.4+.08,c[2]*1.4+.08], glow+.06);            // snout
+  const lt = [c[0]*1.7+.18, c[1]*1.5+.14, c[2]*1.5+.14];
+  const dk = [c[0]*.55+.06, c[1]*.55+.06, c[2]*.60+.07];
+  B(e, face, 0, -W*.16, y0 + H*.46, W*.34, H*.23, W*.44, c, glow);   // hips
+  B(e, face, 0,  W*.26, y0 + H*.52, W*.32, H*.21, W*.34, c, glow);   // chest
+  eb(e, face, 0, W*.54, y0 + H*.60, W*.15, H*.12, W*.20, c, glow);   // neck
+  eb(e, face, 0, W*.76, y0 + H*.62, W*.19, H*.14, W*.25, c, glow);   // skull
+  eb(e, face, 0, W*.98, y0 + H*.56, W*.12, H*.085, W*.16, lt, glow); // muzzle
   if(lod < 1) return;
-  eey(e, face, 0, W*.56, y0 + H*.46, W*.15, W*.07, [.92,.30,.24], .45);
-  for(const sg of [-1,1])                                             // big round ears
-    eb(e, face, sg*W*.24, W*.34, y0 + H*.60, W*.12, H*.11, W*.05,
-       [c[0]*1.6+.12,c[1]*1.4+.10,c[2]*1.4+.10], glow+.06, face + sg*.35);
-  for(let k=0;k<4;k++)                                                // the tail
-    eb(e, face, Math.sin(T*9 + k*.8)*W*.16*(k+1), -W*.34 - k*W*.22, y0 + H*.24,
-       W*.05-k*.006, H*.05-k*.006, W*.12, [c[0]*1.5+.14,c[1]*1.3+.10,c[2]*1.3+.10], .08);
+  eey(e, face, 0, W*.82, y0 + H*.70, W*.16, W*.072, [1,.80,.22], .55);
+  etp(e, face, 0, -W*.44, y0 + H*.46, 0,-.24,-.02, 4, W*.11,H*.10,W*.21, lt, glow+.05);
+  for(const sg of [-1,1])                                            // two legs
+    eb(e, face, sg*W*.24, W*.04 + Math.max(0, st*sg)*W*.20,
+       y0 + H*.22, W*.09, H*.20, W*.10, dk, 0);
   if(lod < 2) return;
-  for(let i=0;i<2;i++) for(const sg of [-1,1])
-    etp(e, face, sg*W*.34, W*.24 - i*W*.42,
-        y0 + H*.10 + Math.max(0, scut*(i?1:-1)*sg)*H*.07, 0,0,-.05, 2,
-        W*.06,H*.08,W*.06, [c[0]*.7,c[1]*.7,c[2]*.75], 0);
-  for(const sg of [-1,1]) for(let i=0;i<3;i++)                        // whiskers
-    eb(e, face, sg*W*.16, W*.70, y0 + H*.40 + (i-1)*H*.05, W*.14, H*.008, .02,
-       [.80,.78,.74], .10, face + sg*.9);
+  for(const sg of [-1,1]){
+    eb(e, face, sg*W*.24, W*.18 + Math.max(0, st*sg)*W*.20, y0 + H*.05,
+       W*.08, H*.05, W*.13, dk, 0);                                   // foot
+    eb(e, face, sg*W*.24, W*.30 + Math.max(0, st*sg)*W*.20, y0 + H*.13,
+       W*.04, H*.07, W*.05, [.95,.93,.86], .30, face + sg*.2);        // the sickle
+  }
+  for(let i=0;i<3;i++)                                               // dorsal quills
+    eb(e, face, 0, W*.30 - i*W*.26, y0 + H*.70 - i*H*.015, W*.03, H*.075, W*.05,
+       lt, glow+.22);
 },
 
 // GLIMMERFOWL - the jewelled bird the whole run is chasing. It does not fight,
