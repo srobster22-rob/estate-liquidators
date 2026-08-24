@@ -2597,7 +2597,7 @@ plain(D){
     chain([[sway, -.26, .42], [sway, -.06, .46+br], [sway, .14, .50+br]],
           .27, .25, c, em, [1, .86, 1]);
     mb(sway, -.02, .27, .21,.10,.28, bel, em*.8);
-    ridge(-.26, .18, .62+br, 5, .09, acc, .30);
+    ridge(-.26, .18, .72+br, 5, .09, acc, .30);
     const hx = lk*.6 + sway*.6 + flick*.035;
     const hf = .30 + lkf + sniff*.022;
     // neck into skull, continuous
@@ -2629,7 +2629,7 @@ plain(D){
     chain([[sway, -.40, .56], [sway, -.10, .62+br], [sway, .18, .64+br]],
           .31, .28, c, em, [1, .88, 1]);
     mb(sway, -.06, .36, .25,.11,.34, bel, em*.8);
-    ridge(-.44, .28, .80+br, 7, .13, acc, .34);
+    ridge(-.44, .28, .89+br, 7, .13, acc, .34);
     chain([[sway, .22, .68+br], [lk*.6, .40+lkf*.6, .84+br]], .19, .24, c, em);
     blob(lk, .48+lkf, .92+br, .25,.22,.25, c, em);
     chain([[lk, .58+lkf, .86+br], [lk, .76+lkf, .82+br]], .19, .14, bel, em*.6);
@@ -2663,7 +2663,7 @@ plain(D){
            [sway, .06, .94+hov], [sway, .22, 1.00+hov]],
           .30, .26, c, em, [1, .92, 1]);
     mb(sway, .00, .64+hov, .23,.11,.28, bel, em*.8);
-    ridge(-.56, .34, 1.14+hov, 9, .13, acc, .34);
+    ridge(-.56, .34, 1.25+hov, 9, .13, acc, .34);
     // THE NECK, arched forward and up
     const neck = [[sway, .18, 1.02+hov]];
     let nx = sway, nf = .22, ny = 1.14+hov;
@@ -2746,7 +2746,7 @@ scrap(D){
   // surface with nothing on it. A dark back over a pale belly is what a marine
   // animal looks like and it costs one box.
   mb(sway, -.04*gr, (.72+bob)*gr, .33*gr,.10*gr,.44*gr, dk, em*.5);
-  if(st) ridge(-.40*gr, .12*gr, (.66+bob)*gr, 4 + st*2, (.07 + st*.035)*gr, lt, em+.22);
+  if(st) ridge(-.40*gr, .12*gr, (.80+bob)*gr, 4 + st*2, (.07 + st*.035)*gr, lt, em+.22);
   // FLIPPERS. Four of them, rowing - front and back on opposite beats.
   for(const rs of [-1,1]) for(const fs of [-1,1]){
     const beat = Math.sin(ph*.8 + (fs>0 ? 0 : Math.PI)) * (.35 + amp*.55);
@@ -2966,7 +2966,7 @@ stone(D){
          [sway + roll*.6, .18*gr, (.44+heave)*gr]],
         .34*gr, .38*gr, c, em, [1, .70, 1.10]);
   mb(sway, -.12*gr, (.18+heave)*gr, .28*gr,.11*gr,.38*gr, bel, em*.7);
-  ridge(-.46*gr, .12*gr, (.58+heave)*gr, 7, .09*gr, dk, .06);
+  ridge(-.46*gr, .12*gr, (.70+heave)*gr, 7, .09*gr, dk, .06);
   // THE FRILL. A fan of plates behind the skull, scalloped along the rim, and
   // each plate now leans out of the head rather than standing beside it.
   const fx0 = sway + lk + swing*.05*gr, ff = .34*gr + lkf, fy = (.54 + heave)*gr;
@@ -2979,7 +2979,18 @@ stone(D){
   // behind it. A real frill leans BACK over the shoulders more than it stands
   // up: seven plates now, rising a little over a quarter and reaching more
   // than twice as far back, so the head is in front of it instead of under it.
-  for(let i=0;i<FN;i++){
+  // A JUVENILE HAS A SHELF. Reported as "things like SHALEBACK's shield being
+  // inside it are very glitchy": at a frill half-width of .21 the five plates
+  // of the fan all rooted within .06 of the midline, which is well inside a
+  // skull .265 wide - so the whole shield was drawn inside the head, every
+  // plate fighting the plate next to it and none of them visible. The first
+  // form gets one wide low plate that clears the skull instead, and the fan
+  // arrives with the frill that can carry it.
+  if(st === 0){
+    mb(fx0, ff - .20*gr, fy + .12*gr, FR*1.30, .085*gr, .10*gr, lt, em+.06);
+    mb(fx0, ff - .26*gr, fy + .20*gr, FR*1.05, .060*gr, .07*gr, acc, .22);
+  }
+  else for(let i=0;i<FN;i++){
     const a = (i - (FN-1)/2) / ((FN-1)/2);            // -1..1 across the fan
     const h = (1 - a*a*.42);
     chain([[fx0 + a*FR*.30, ff - .02*gr, fy + .02*gr],
@@ -3265,7 +3276,7 @@ tally(D){
          [sway, .20*gr, HIP + .26*gr*perch]],
         .19*gr, .23*gr, c, em, [1, 1, .86]);
   mb(sway, .12*gr, HIP + .10*gr*perch, .15*gr, .16*gr, .13*gr, bel, em*.85);  // keel
-  ridge(-.22*gr, .18*gr, HIP + .30*gr*perch, 6, .08*gr, acc, .30);
+  ridge(-.22*gr, .18*gr, HIP + .42*gr*perch, 6, .08*gr, acc, .30);
   // THE WINGS ARE THE ARMS. They root at the shoulder, and when it is not
   // flying they fold down the flanks instead of vanishing.
   const fold = air ? 1 : (.46 + (1-idle)*.30);
@@ -3465,7 +3476,10 @@ surge(D){
     const h = SH * Math.sin(.30 + u*2.55);
     const ff = (-.40 + u*.82) * gr;
     const glow = lit * (.55 + Math.sin(t*7 - u*3.4)*.25*(ch>1?1:.4));
-    chain([[sway, ff, HIP + .02*gr],
+    // rooted at the BACK, not at the spine: started .02 above the hip line
+    // the bottom third of every spine was inside the torso, which on thirteen
+    // spines is thirty-odd boxes nobody can see.
+    chain([[sway, ff, HIP + .20*gr],
            [sway + Math.sin(t*1.2 - u*2)*.012*gr, ff - h*.10, HIP + h]],
           .062*gr, .050*gr,
           [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
@@ -6400,8 +6414,25 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       const t2 = i/(n-1 || 1), ff = f0 + (f1-f0)*t2;
       const hh = h * Math.sin(.35 + t2*2.4);
       const sp = Math.abs(f1-f0) / Math.max(1, n-1);
-      mb(0, ff, y + hh*.20, .052, hh*1.25, Math.max(sp*.62, .085 + hh*.25),
-         col, em2||.10);
+      // PROUD OF THE BACK, NOT IN IT. `y` IS THE BODY'S SURFACE, not its
+      // spine - every caller was passing the spine. Centred at a fifth of its own height
+      // above the line it is given, a plate reached 1.45 of that height into
+      // the air - and every caller passes the SPINE, which is inside the body,
+      // not the body's surface. Measured: the dorsal ridge on the EMBER, VOLT
+      // and STONE lines had no volume of its own at all, i.e. the game was
+      // drawing a row of plates nobody could see. It reaches 2.1 of its height
+      // now and still sinks half of it in, which is all the attachment it ever
+      // needed.
+      // and SEPARATE. At .62 of the spacing plus a floor of .085 the plates
+      // overlapped each other by half, so the ridge was a solid strip with
+      // most of its boxes inside the strip rather than a row of plates.
+      //
+      // The sink is a fraction of the ridge's NOMINAL height, not of this
+      // plate's: the end plates are the short ones, and sinking a short plate
+      // by a fraction of itself leaves it hovering over the back. Five forms
+      // came apart at exactly that plate.
+      mb(0, ff, y + hh*.55 - h*.10, .055, hh*1.05 + h*.12,
+         Math.max(sp*.52, .050 + hh*.18), col, em2||.10);
     }
   };
   // A membrane wing: leading-edge bones with a sheet hung between them.
@@ -6588,6 +6619,16 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       const rA = Math.max(.004, ra + (rb-ra)*ua), rB = Math.max(.004, ra + (rb-ra)*ub);
       steps = Math.min(6, Math.max(steps,
                 Math.ceil(Math.abs(rA-rB) / (Math.min(rA,rB)*.30))));
+      // AND NEVER MORE BLOCKS THAN THE RUN HAS ROOM FOR. Every block reaches a
+      // full radius past each end of its own sub-span, so two blocks whose
+      // centres are closer together than a radius are very nearly the same
+      // block drawn twice: no volume of its own, nothing to see, and two
+      // coincident surfaces for the depth buffer to argue over. Reported as
+      // "things like SHALEBACK's shield being inside it are very glitchy", and
+      // measured: between a quarter and two thirds of every creature in the
+      // game was boxes that contributed no volume of their own.
+      steps = Math.max(1, Math.min(steps,
+                Math.ceil(Math.abs(d[dom]) / (Math.max(.004, rm*sc[dom]) * 1.30))));
       for(let k=0;k<steps;k++){
         const u = (k+.5)/steps, t2 = ua + (ub-ua)*u;
         // a deterministic 0-5% wobble on the radius, keyed to the GLOBAL draw
@@ -6602,7 +6643,22 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
         // every block carries more margin than the nudge can spend - which
         // also means a part that merely KISSES its neighbour, rather than
         // interpenetrating it, still survives being nudged.
-        for(let q=0;q<3;q++) h[q] = r*sc[q] + Math.abs(d[q])/(2*steps) + .0055;
+        // HOW FAR PAST ITS OWN ENDS A BLOCK REACHES. It used to be a full
+        // radius at each end, which is what connects a run to the next thing
+        // along - but when the sub-span is shorter than two radii, and on a
+        // banded serpent or a segmented tail it usually is, consecutive blocks
+        // are then two thirds the same block. Reported as "things like
+        // SHALEBACK's shield being inside it are very glitchy", and measured:
+        // between a quarter and two thirds of every creature was boxes with no
+        // volume of their own, each one a pair of coincident surfaces for the
+        // depth buffer to argue over.
+        //
+        // Along the axis the run travels, a block reaches .58 of a radius past
+        // each end. Two neighbours still overlap by 1.16 radii, which is more
+        // than enough to hold, and the redundancy is gone. Across the other
+        // two axes the radius IS the thickness and stays whole.
+        for(let q=0;q<3;q++)
+          h[q] = r*sc[q]*(q === dom ? .58 : 1) + Math.abs(d[q])/(2*steps) + .0055;
         // through blob(), so a block big enough to read as a MASS - a chest, a
         // thigh, the root of a tail - still gets its corners taken off, and
         // everything smaller stays one block. See CHAMFER.
