@@ -2904,10 +2904,14 @@ scrap(D){
   const NECK = 2 + st*2;
   const FLIP = .62 + st*.24;
   const flick = twitch(.6, 4.3);
-  // the barrel, as a run from tail root to shoulder
-  chain([[sway, -.40*gr, (.44+bob)*gr], [sway, -.14*gr, (.50+bob)*gr],
+  // the barrel, as a run from tail root to shoulder. SHOULDER-heavy: the
+  // first version put the .40 radius at the TAIL end, so the rear view was a
+  // flat wall the size of the whole animal with a tail poking over it (the
+  // audit's "blank rear wall"). The stern tapers into the tail root now and
+  // the widest station is the shoulder, where the muscle would be.
+  chain([[sway, -.44*gr, (.42+bob)*gr], [sway, -.14*gr, (.50+bob)*gr],
          [sway, .10*gr, (.52+bob)*gr], [sway, .28*gr, (.50+bob)*gr]],
-        .40*gr, .30*gr, c, em+.08, [1, .78, 1.05]);
+        .26*gr, .33*gr, c, em+.08, [1, .78, 1.05]);
   mb(sway, -.06*gr, (.24+bob)*gr, .34*gr,.14*gr,.40*gr, bel, em*.9);   // pale underside
   // COUNTERSHADED. This line is one flat blue from nose to tail and the camera
   // looks at it from above, so the surface a player actually sees is the one
@@ -2918,6 +2922,16 @@ scrap(D){
   mb(sway, -.04*gr, (.72+bob)*gr, .33*gr,.10*gr,.44*gr,
      [c[0]*.74, c[1]*.74, c[2]*.78], em*.6);
   if(st) ridge(-.40*gr, .12*gr, (.80+bob)*gr, 4 + st*2, (.07 + st*.035)*gr, lt, em+.22);
+  // THE TORSO EVOLVES TOO. Neck, flippers and ridge all grew a stage and the
+  // hull stayed the same blue barrel at three zooms - the audit's "torso
+  // never evolves". The serpent earns a row of dark flank scutes at the
+  // waterline; the LEVIATHAN grows barnacle patches on the old dark back.
+  if(st) for(const rs of [-1,1]) for(let i=0;i<3;i++)
+    mb(sway + rs*.295*gr, (-.26 + i*.22)*gr, (.46+bob)*gr,
+       .035*gr, .075*gr, .10*gr, dk, .12);
+  if(st >= 2) for(const rs of [-1,1]) for(let i=0;i<3;i++)
+    mb(sway + rs*(.16 + i*.07)*gr, (.10 - i*.16)*gr, (.78 + bob - i*.02)*gr,
+       .05*gr, .06*gr, .035*gr, [.86,.90,.92], .18);
   // ---- THE MAELSTROM. Six flippers, not four - the extra midship pair rows
   // on its own beat - a tall dorsal fin at the shoulder, and a slow spiral of
   // water always turning around the animal: the whirlpool made flesh.
