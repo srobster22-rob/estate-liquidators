@@ -2789,7 +2789,11 @@ plain(D){
            [sway, .06, .94+hov], [sway, .22, 1.00+hov]],
           .30, .26, c, em, [1, .92, 1]);
     mb(sway, .00, .64+hov, .23,.11,.28, bel, em*.8);
-    ridge(-.56, .34, 1.25+hov, 9, .13, acc, .34);
+    // DEEP EMBER, not gold: the walk audit found crest, wing feathers and
+    // tail plates merging into "one yellow pile" from the play camera - three
+    // different parts wearing the same accent. The wings keep the gold; the
+    // ridge runs a hot dark orange that reads as its own material.
+    ridge(-.56, .34, 1.25+hov, 9, .13, [.88,.42,.12], .22);
     // THE NECK, arched forward and up
     const neck = [[sway, .18, 1.02+hov]];
     let nx = sway, nf = .22, ny = 1.14+hov;
@@ -2896,7 +2900,10 @@ scrap(D){
   // looks at it from above, so the surface a player actually sees is the one
   // surface with nothing on it. A dark back over a pale belly is what a marine
   // animal looks like and it costs one box.
-  mb(sway, -.04*gr, (.72+bob)*gr, .33*gr,.10*gr,.44*gr, dk, em*.5);
+  // three-quarters value, not the dark tone: the full dk read as a hole in
+  // the back from the play camera - the same fault the ox saddle had
+  mb(sway, -.04*gr, (.72+bob)*gr, .33*gr,.10*gr,.44*gr,
+     [c[0]*.74, c[1]*.74, c[2]*.78], em*.6);
   if(st) ridge(-.40*gr, .12*gr, (.80+bob)*gr, 4 + st*2, (.07 + st*.035)*gr, lt, em+.22);
   // ---- THE MAELSTROM. Six flippers, not four - the extra midship pair rows
   // on its own beat - a tall dorsal fin at the shoulder, and a slow spiral of
@@ -3045,6 +3052,33 @@ volt(D){
         SK*.66, SK*.44, c, em+.06, [1, .58, 1]);
   mawRow(hx, hf + SK*.5, hy - SK*.28, SK*.80, SL, 4 + st, gape);
   mb(hx, hf + SK*.5 + SL*.96, hy - SK*.16, SK*.34, SK*.22, SK*.20, dk, .10);
+  // THE FRONT OF THE FACE. Head-on this line read as "a blank tombstone slab"
+  // (audit, all stages): mawRow's teeth hang on the SIDES of the muzzle and
+  // nothing at all sat on its front plane. Two nostril pits at the snout tip
+  // and a pair of forward canines give the one angle the player actually
+  // fights at something to read.
+  // ON TOP of the muzzle, not on its front cap: the camera lives above the
+  // animal, so a nostril on the tip's front face is hidden by the tip itself.
+  // Croc grammar - a dark bridge stripe down the snout and two nostril pits
+  // rising at its end - reads from exactly the angle the game is played at.
+  // the muzzle TOP is at about hy + .58*SK at its root and slopes to about
+  // hy + .07*SK at the tip - the first cut of this sat a full quarter-skull
+  // BELOW the surface and rendered inside the snout, invisible
+  mb(hx, hf + SK*.5 + SL*.35, hy + SK*.46, SK*.15, SK*.15, SL*.30,
+     [c[0]*.52, c[1]*.52, c[2]*.56], .03);                             // bridge
+  mb(hx, hf + SK*.5 + SL*.72, hy + SK*.26, SK*.14, SK*.14, SL*.26,
+     [c[0]*.52, c[1]*.52, c[2]*.56], .03);                             // bridge tip
+  for(const rs of [-1,1]){
+    mb(hx + rs*SK*.17, hf + SK*.5 + SL*.92, hy + SK*.20,
+       SK*.11, SK*.13, SK*.10, [c[0]*.36, c[1]*.36, c[2]*.40], .02);   // nostril
+    mb(hx + rs*SK*.30, hf + SK*.5 + SL*.96, hy - SK*.52 - gape,
+       SK*.13, SK*.24, SK*.12, [.96,.95,.88], .22);                    // canine
+  }
+  // and an UNDERBITE: the lower jaw's tip flares a shade wider than the
+  // muzzle above it, which is the step that stops the head-on read being one
+  // flat plane from brow to chin
+  mb(hx, hf + SK*.4 + SL*.86, hy - SK*.72 - gape, SK*.62, SK*.20, SK*.26,
+     bel, em+.06);
   // HIGH AND WIDE, OR THE SNOUT EATS THEM. Verified head-on and the VOLT line
   // had no face at all: the eyes sat at .62 of the skull half-width and .18
   // ahead of its centre, while the muzzle in front of them is .82 wide and
@@ -3425,6 +3459,12 @@ rot(D){
   // as three ages rather than three scales of the same model.
   // AMBER, not yellow-green. A green-yellow slot on a green head is the same
   // colour as the head; this line's eye has to be the one warm thing on it.
+  // a dark eye-stripe along the skull side, so the emissive eye has a ground
+  // to stand on in PROFILE - the audit found the pink crown fan reading as
+  // the eye from the side because the real one vanished into the green
+  for(const rs of [-1,1])
+    mb(hx + rs*HW*.86, hf + .10*gr, hy + HW*.22, HW*.16, HW*.26, HW*.50,
+       [.10,.14,.08], .02);
   eyeGlow(hx, hf + .14*gr, hy + HW*.20, HW*.62, HW*(.70 - st*.10), [1,.72,.16]);
   viperJaw(hx, hf + .22*gr, hy - HW*.22, HW*.68, (.22 + st*.05)*gr, c,
            hiss*(.05 + st*.02)*gr);
@@ -3537,6 +3577,24 @@ tally(D){
   // back; only the airborne pose spreads them.
   const fold = air ? 1 : (.40 + (1-idle)*.26);
   const wtuck = air ? 0 : .16*gr;
+  // SKYREND'S OWN FEATHERS. The audit called stage 1 "a near-clone of
+  // WYVERNET - evolution adds nothing nameable", and it was right: the only
+  // differences were percentages. From the first evolution the line now
+  // carries a pale CHEST BLAZE and a bone THUMB-CLAW at each wing's wrist -
+  // gone again into the storm-silhouette at the apex, which has its own tells.
+  if(st >= 1){
+    mb(sway, .26*gr, HIP + .16*gr*perch, .13*gr, .17*gr, .10*gr,
+       [.99,.99,1.0], em+.10);
+    // at the wing's SHOULDER, which does not move with the flap: the first
+    // anchor aimed for the wrist, double-applied the growth factor, and the
+    // connectivity report found both claws five boxes each, flying formation
+    for(const rs of [-1,1]){
+      const sp3 = SPAN*fold;
+      horn(sway + rs*(.17*gr + sp3*.26), .10*gr + sp3*.05,
+           HIP + .28*gr*perch + wtuck + sp3*.16,
+           rs*.028*gr, .050*gr, .034*gr, 3, .036*gr, [.94,.92,.86], .22);
+    }
+  }
   // ---- THE HURRICANE. Four wings: a second, smaller pair set low and aft,
   // beating a half-cycle out of phase - the silhouette of a storm cell seen
   // side-on, and nothing else in the roster has it.

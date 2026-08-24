@@ -2134,9 +2134,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const s2 = g.state();
         return Math.hypot(s2.x - x0, s2.z - z0);
       };
-      // starting a run REROLLS the world, so the lake must be looked up after
-      // start, inside runFor - a lake cached before it is a lake that no
-      // longer exists. null places at the current world's first lake.
+      // PINNED. Each start rerolls the world, so the four runs were swimming
+      // four different lakes in four different biomes - the ratio comparison
+      // assumed one lake, and an ice lake for one animal only flaked it. One
+      // pinned arena, one lake, every run.
+      g.pin(31337);
       const runFor2 = (id, wet) => {
         g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true);
         g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
@@ -2156,12 +2158,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const s2 = g.state();
         return Math.hypot(s2.x - x0, s2.z - z0);
       };
-      return {
+      const out2 = {
         aquaWet:  runFor2("scrap", true),
         aquaDry:  runFor2("scrap", false),
         landWet:  runFor2("ox",    true),
         landDry:  runFor2("ox",    false),
       };
+      g.pin(null);
+      return out2;
     });
     // Each animal against ITS OWN dry speed, and swimmer against wader. A
     // straight wet-vs-dry check flaked whenever the roll parked the lake in a
