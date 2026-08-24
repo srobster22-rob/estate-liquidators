@@ -2864,7 +2864,10 @@ stone(D){
   const heave = Math.sin(t*1.3)*.014*idle*gr + Math.abs(gait)*.026*gr;
   const roll  = gait*.045;
   const snort = twitch(.9, 4.6);
-  const FR = (.42 + st*.16) * gr;                    // frill half-width
+  // It grows, but not into furniture: at .42 plus .16 a stage on top of a gr
+  // of 1.44, TITANHIDE's frill was over two units across and overhung the
+  // whole animal like a mushroom cap.
+  const FR = (.40 + st*.09) * gr;                    // frill half-width
   // body: long, low, wide, widest at the shoulders
   chain([[sway + roll*.3, -.44*gr, (.38+heave)*gr],
          [sway + roll*.4, -.14*gr, (.40+heave)*gr],
@@ -2878,31 +2881,47 @@ stone(D){
   // A frill is a SHIELD, standing up behind the skull and leaning back over the
   // shoulders. The first rebuild fanned it sideways and level, which from any
   // camera above the animal read as a pair of wings.
-  for(let i=0;i<9;i++){
-    const a = (i - 4) / 4;                            // -1..1 across the fan
-    const h = (1 - a*a*.45);
-    chain([[fx0 + a*FR*.34, ff - .02*gr, fy + .02*gr],
-           [fx0 + a*FR*.86, ff - .12*gr - Math.abs(a)*.02*gr, fy + h*.40*gr],
-           [fx0 + a*FR, ff - .24*gr - Math.abs(a)*.04*gr, fy + h*.74*gr]],
-          FR*(.17 + i*.005), FR*(.12 + i*.004), i%2 ? lt : c, em+.06,
+  // A SHIELD, NOT A SAIL. Nine plates climbing three quarters of a unit above
+  // the skull made a fan taller than the animal's own head, and from every
+  // angle the game actually uses it was a wall with a triceratops hiding
+  // behind it. A real frill leans BACK over the shoulders more than it stands
+  // up: seven plates now, rising a little over a quarter and reaching more
+  // than twice as far back, so the head is in front of it instead of under it.
+  for(let i=0;i<7;i++){
+    const a = (i - 3) / 3;                            // -1..1 across the fan
+    const h = (1 - a*a*.42);
+    chain([[fx0 + a*FR*.30, ff - .02*gr, fy + .02*gr],
+           [fx0 + a*FR*.80, ff - .18*gr - Math.abs(a)*.03*gr, fy + h*.26*gr],
+           [fx0 + a*FR, ff - .38*gr - Math.abs(a)*.06*gr, fy + h*.44*gr]],
+          FR*(.21 + i*.007), FR*(.16 + i*.006), i%2 ? lt : c, em+.06,
           [1, 1, .34]);
-    mb(fx0 + a*FR*1.01, ff - .27*gr - Math.abs(a)*.04*gr, fy + h*.80*gr,
-       FR*.13, .09*gr, .055*gr, acc, .22, a*.55);
+    mb(fx0 + a*FR*1.02, ff - .41*gr - Math.abs(a)*.06*gr, fy + h*.49*gr,
+       FR*.15, .085*gr, .06*gr, acc, .22, a*.55);
   }
-  // the skull, in front of the frill: a beak and a heavy brow
-  blob(fx0, ff + .16*gr, (.46+heave)*gr, .21*gr,.17*gr,.22*gr, c, em);
-  rostrum(fx0, ff + .28*gr, (.44+heave+snort*.008)*gr, .13*gr, .26*gr, c);
+  // THE SKULL IS THE POINT OF THIS ANIMAL, so it cannot be the smallest thing
+  // on it. At .21 by .17 it was a third of the frill behind it and half the
+  // width of one thigh, tucked so far back that the fan closed over it: from
+  // the front this creature was a shield with a nose. Bigger, and pushed
+  // forward clear of the frill's root.
+  blob(fx0, ff + .24*gr, (.46+heave)*gr, .265*gr,.215*gr,.275*gr, c, em);
+  rostrum(fx0, ff + .42*gr, (.43+heave+snort*.008)*gr, .15*gr, .28*gr, c);
   // OUTBOARD OF THE BEAK, ABOVE THE JAW LINE. Same failure the VOLT line had
   // and verified the same way: at .15 of spread and .22 ahead of the skull
   // centre the eyes sat directly behind a rostrum .14 wide reaching twice as
   // far forward, so head-on - the only angle where a face is a face - this
   // animal had none. A ceratopsian's eyes are on the sides of the skull anyway.
-  eyeSunk(fx0, ff + .30*gr, (.60+heave)*gr, .20*gr, .066*gr, [.95,.74,.28]);
+  eyeSunk(fx0, ff + .34*gr, (.56+heave)*gr, .245*gr, .076*gr, [.95,.74,.28]);
   // the horns: two long brow horns and a short nasal one
+  // FORWARD, not outward. At .035 of lateral step compounding 35% a segment
+  // the brow horns swept out sideways past the frill and read as a moustache;
+  // a ceratopsian's brow horns point where the animal is going.
+  // and SHORT. horn() grows its step 35% a segment, so five segments of .105
+  // is not a horn a third of a unit long, it is one nearly a whole unit long -
+  // twice the skull, sticking out past the frill like a pair of antennae.
   for(const rs of [-1,1])
-    horn(fx0 + rs*.14*gr, ff + .24*gr, (.58+heave)*gr,
-         rs*.035*gr, .075*gr, .045*gr, 5 + st, (.050 + (rs>0?.003:0))*gr, acc, .18);
-  horn(fx0, ff + .40*gr, (.44+heave)*gr, 0, .05*gr, .04*gr, 3 + st, .038*gr, acc, .18);
+    horn(fx0 + rs*.15*gr, ff + .30*gr, (.60+heave)*gr,
+         rs*.012*gr, .058*gr, .022*gr, 4 + st, (.052 + (rs>0?.003:0))*gr, acc, .18);
+  horn(fx0, ff + .52*gr, (.46+heave)*gr, 0, .028*gr, .036*gr, 3, .040*gr, acc, .18);
   // four pillar legs, diagonal gait, and they are columns rather than sticks
   for(const rs of [-1,1]) for(const fs of [-1,1]){
     const p2 = (rs*fs > 0) ? gait : -gait;
@@ -2918,11 +2937,14 @@ stone(D){
   chain(tail, .155*gr, st >= 1 ? .19*gr : .06*gr, c, em, [1, .88, 1]);
   if(st >= 1) for(const rs of [-1,1])
     horn(sway + rs*.10*gr, -1.44*gr, (.36+heave)*gr, rs*.06*gr, 0, .01*gr, 3, .05*gr, lt, .30);
-  // and the top of the line drags the ground it walked over
-  if(st === 2) for(let i=0;i<7;i++){ const a = t*.7 + i/7*TAU;
-    fx(Math.sin(a)*(.80+(i%2)*.16)*gr, Math.cos(a)*(.70+(i%2)*.14)*gr,
-       (.14 + Math.abs(Math.sin(t*1.4+i))*.20)*gr, .08*gr,.07*gr,.08*gr,
-       i%3?dk:acc, i%3?.04:.30); }
+  // and the top of the line drags the ground it walked over. SHARDS, low and
+  // flat: seven eight-hundredths cubes bobbing at knee height around the
+  // animal read as floating dice, which is the same fault the ROC's weather
+  // had. Ground debris lies close to the ground and is wider than it is tall.
+  if(st === 2) for(let i=0;i<6;i++){ const a = t*.7 + i/6*TAU;
+    fx(Math.sin(a)*(.86+(i%2)*.14)*gr, Math.cos(a)*(.76+(i%2)*.12)*gr,
+       (.05 + Math.abs(Math.sin(t*1.4+i))*.09)*gr, .11*gr,.022*gr,.10*gr,
+       i%3?dk:acc, i%3?.04:.24, a); }
 },
 // -------------------------------------------------------------------- ROT
 // A BASILISK. No legs, at any stage - that is the whole silhouette, and it is
@@ -3343,7 +3365,7 @@ surge(D){
   // and while the surge is up the animal drags its own wake
   if(ch > 1) for(let i=0;i<8;i++){ const a = t*3.2 + i/8*TAU;
     fx(sway + Math.sin(a)*.70*gr, Math.cos(a)*.62*gr - .20*gr,
-       HIP - .34*gr + Math.sin(t*6+i)*.10*gr, .055*gr,.055*gr,.10*gr, acc, .85, a); }
+       HIP - .34*gr + Math.sin(t*6+i)*.10*gr, .022*gr,.022*gr,.26*gr, acc, .85, a); }
 },
 // -------------------------------------------------------------------- PYRE
 // A PHOENIX. Feathers, not membrane - the wing is a row of separate quills off
@@ -3427,8 +3449,8 @@ pyre(D){
   fl(sway, -.10*gr, HIP + .34*gr*upr, .7 + st*.25, 2 + st);
   if(st === 2) for(let i=0;i<10;i++){ const a = t*1.7 + i/10*TAU;
     fx(sway + Math.sin(a)*.86*gr, Math.cos(a)*.76*gr,
-       HIP + .10*gr + Math.sin(t*3.4+i)*.26*gr, .055*gr,.055*gr,.055*gr,
-       i%2 ? acc : lt, .95); }
+       HIP + .10*gr + Math.sin(t*3.4+i)*.26*gr, .020*gr,.020*gr,.22*gr,
+       i%2 ? acc : lt, .95, a); }
 },
 };
 // QA: when this is an array, the next frame records every box the monster body
