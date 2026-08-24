@@ -2871,10 +2871,14 @@ stone(D){
   const heave = Math.sin(t*1.3)*.014*idle*gr + Math.abs(gait)*.026*gr;
   const roll  = gait*.045;
   const snort = twitch(.9, 4.6);
-  // It grows, but not into furniture: at .42 plus .16 a stage on top of a gr
-  // of 1.44, TITANHIDE's frill was over two units across and overhung the
-  // whole animal like a mushroom cap.
-  const FR = (.40 + st*.09) * gr;                    // frill half-width
+  // THE FRILL IS THE EVOLUTION. It grew .09 a stage from a base of .40, so
+  // SHALEBACK already wore most of a TITANHIDE's shield and the three forms
+  // were one animal at three zooms. A juvenile ceratopsian has a bony SHELF,
+  // not a fan; the fan is the thing the line grows into. It also stops growing
+  // into furniture - at .42 plus .16 a stage on a gr of 1.44 the top form's
+  // frill was over two units across and overhung the animal like a mushroom.
+  const FR = (.21 + st*.20) * gr;                    // frill half-width
+  const FN = 5 + st;                                 // and how many plates
   // body: long, low, wide, widest at the shoulders
   chain([[sway + roll*.3, -.44*gr, (.38+heave)*gr],
          [sway + roll*.4, -.14*gr, (.40+heave)*gr],
@@ -2894,15 +2898,18 @@ stone(D){
   // behind it. A real frill leans BACK over the shoulders more than it stands
   // up: seven plates now, rising a little over a quarter and reaching more
   // than twice as far back, so the head is in front of it instead of under it.
-  for(let i=0;i<7;i++){
-    const a = (i - 3) / 3;                            // -1..1 across the fan
+  for(let i=0;i<FN;i++){
+    const a = (i - (FN-1)/2) / ((FN-1)/2);            // -1..1 across the fan
     const h = (1 - a*a*.42);
     chain([[fx0 + a*FR*.30, ff - .02*gr, fy + .02*gr],
-           [fx0 + a*FR*.80, ff - .18*gr - Math.abs(a)*.03*gr, fy + h*.26*gr],
-           [fx0 + a*FR, ff - .38*gr - Math.abs(a)*.06*gr, fy + h*.44*gr]],
+           [fx0 + a*FR*.80, ff - (.12 + st*.05)*gr - Math.abs(a)*.03*gr,
+            fy + h*(.14 + st*.08)*gr],
+           [fx0 + a*FR, ff - (.22 + st*.10)*gr - Math.abs(a)*.06*gr,
+            fy + h*(.22 + st*.14)*gr]],
           FR*(.21 + i*.007), FR*(.16 + i*.006), i%2 ? lt : c, em+.06,
           [1, 1, .34]);
-    mb(fx0 + a*FR*1.02, ff - .41*gr - Math.abs(a)*.06*gr, fy + h*.49*gr,
+    mb(fx0 + a*FR*1.02, ff - (.24 + st*.10)*gr - Math.abs(a)*.06*gr,
+       fy + h*(.25 + st*.15)*gr,
        FR*.15, .085*gr, .06*gr, acc, .22, a*.55);
   }
   // THE SKULL IS THE POINT OF THIS ANIMAL, so it cannot be the smallest thing
@@ -2925,9 +2932,12 @@ stone(D){
   // and SHORT. horn() grows its step 35% a segment, so five segments of .105
   // is not a horn a third of a unit long, it is one nearly a whole unit long -
   // twice the skull, sticking out past the frill like a pair of antennae.
+  // and the brow horns arrive with the frill rather than being there from the
+  // start: a nub on the juvenile, a spike by the top of the line.
   for(const rs of [-1,1])
     horn(fx0 + rs*.15*gr, ff + .30*gr, (.60+heave)*gr,
-         rs*.012*gr, .058*gr, .022*gr, 4 + st, (.052 + (rs>0?.003:0))*gr, acc, .18);
+         rs*.012*gr, (.026 + st*.022)*gr, (.010 + st*.008)*gr,
+         3 + st, (.040 + st*.008 + (rs>0?.003:0))*gr, acc, .18);
   horn(fx0, ff + .52*gr, (.46+heave)*gr, 0, .028*gr, .036*gr, 3, .040*gr, acc, .18);
   // four pillar legs, diagonal gait, and they are columns rather than sticks
   for(const rs of [-1,1]) for(const fs of [-1,1]){
