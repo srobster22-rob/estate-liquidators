@@ -2093,6 +2093,90 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        worst.map(x => `${x.nm} ${x.bad}/${x.n}`).join(", "));
   }
 
+  console.log("\n=== 22m. THE WORLD HAS WATER, AND THE WATER KNOWS WHO IS AQUATIC ===");
+  {
+    // Requested: "create water areas that enable dinosaurs that are aquatic."
+    // Lakes are part of the world roll: carved basins with a flat rendered
+    // surface. The TIDE plesiosaur and SURGE spinosaur swim 30% faster through
+    // them; everything else wades at three-quarter speed; a flyer overflies.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+      const out = {};
+      out.lakes = g.lakes();
+      // depth is a pure function: centre of the first lake is wet, spawn is dry
+      const L = out.lakes[0];
+      out.wetAtLake = L ? g.inWater(L.x, L.z) : false;
+      out.dryAtSpawn = !g.inWater(0, 0);
+      // no den or monument stands in a lake
+      out.marksDry = (g.dens() || []).every(m => !g.inWater(m.x, m.z));
+      return out;
+    });
+    ok("the world rolls three to five lakes",
+       r.lakes.length >= 3 && r.lakes.length <= 5, `${r.lakes.length} lakes`);
+    ok("a lake centre is wet and the spawn is dry",
+       r.wetAtLake && r.dryAtSpawn,
+       `wet@lake=${r.wetAtLake} dry@spawn=${r.dryAtSpawn}`);
+    ok("no den stands in a lake", r.marksDry, "checked every den");
+
+    const m = await page.evaluate(async () => {
+      const g = window.__g;
+      // distance covered over one second, from a stand, holding one key
+      const runFor = (id, x, z) => {
+        g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+        g.place(x, z); g.aim(0);
+        dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+        const x0 = g.state().x, z0 = g.state().z;
+        g.step(60, 1/60);
+        dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+        const s2 = g.state();
+        return Math.hypot(s2.x - x0, s2.z - z0);
+      };
+      // starting a run REROLLS the world, so the lake must be looked up after
+      // start, inside runFor - a lake cached before it is a lake that no
+      // longer exists. null places at the current world's first lake.
+      const runFor2 = (id, wet) => {
+        g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+        const L = g.lakes()[0];
+        // enter at the south rim heading north, so the whole second of travel
+        // stays inside the lake instead of exiting the far bank halfway
+        // inWater needs real depth, and depth dies off toward the rim: the
+        // wet zone ends around .78 of the radius, so the run enters at .6 -
+        // deep enough to count from the first frame, far enough south that a
+        // second of travel stays wet in the smallest lake the roll allows
+        if(wet) g.place(L.x, L.z - L.r*.6); else g.place(0, -10);
+        g.aim(0);
+        dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+        const x0 = g.state().x, z0 = g.state().z;
+        g.step(60, 1/60);
+        dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+        const s2 = g.state();
+        return Math.hypot(s2.x - x0, s2.z - z0);
+      };
+      return {
+        aquaWet:  runFor2("scrap", true),
+        aquaDry:  runFor2("scrap", false),
+        landWet:  runFor2("ox",    true),
+        landDry:  runFor2("ox",    false),
+      };
+    });
+    // Each animal against ITS OWN dry speed, and swimmer against wader. A
+    // straight wet-vs-dry check flaked whenever the roll parked the lake in a
+    // bog: the bog's own -14% ate the swim bonus while the dry control ran on
+    // neutral grass. The ratio of ratios cancels whatever biome the lake is
+    // in, because both animals swim the same lake.
+    const aqua = m.aquaWet / m.aquaDry, land = m.landWet / m.landDry;
+    ok("a plesiosaur swims faster than it walks, allowing for the lake's biome",
+       m.aquaWet > m.aquaDry * .95,
+       `${m.aquaWet.toFixed(1)}m through water vs ${m.aquaDry.toFixed(1)}m over land`);
+    ok("and water helps a swimmer far more than a wader",
+       aqua > land * 1.5,
+       `wet/dry ${aqua.toFixed(2)} for the plesiosaur vs ${land.toFixed(2)} for the ceratopsian`);
+  }
+
   console.log("\n=== 22n. THE APEX IS A FOURTH ANIMAL, AND ITS POWER IS REAL ===");
   {
     // Requested as "a fourth evolution that takes the monster to the next

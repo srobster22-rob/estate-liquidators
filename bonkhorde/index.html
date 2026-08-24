@@ -965,6 +965,11 @@ function bakeMap(){
     const wx = (px - half)*scale, wz = (py - half)*scale;
     if(Math.hypot(wx, wz) > RIM){ img.data[i+3] = 0; continue; }
     const bm = biomeAt(wx, wz), t = (Math.floor(px/3)+Math.floor(py/3)) % 2 ? .58 : .42;
+    // lakes on the map, because an aquatic line plans its route around them
+    if(waterDepth(wx, wz) > .10){
+      img.data[i] = 46; img.data[i+1] = 94; img.data[i+2] = 122;
+      img.data[i+3] = 205; continue;
+    }
     img.data[i]   = Math.round((bm.a[0]*t + bm.b[0]*(1-t))*255);
     img.data[i+1] = Math.round((bm.a[1]*t + bm.b[1]*(1-t))*255);
     img.data[i+2] = Math.round((bm.a[2]*t + bm.b[2]*(1-t))*255);
@@ -1060,6 +1065,26 @@ function rollWorld(seed){
     }
     cells.push({ x, z, b: pool[i % pool.length] });
   }
+  // ---- LAKES. Rolled before the marks so a den never lands in one. Placed
+  // clear of the spawn (nothing should start a run swimming) and of each
+  // other. The surface sits just under the UNCARVED ground at the centre, so
+  // every shore is a real bank: the ground slopes down into the water.
+  lakes = [];
+  const nLakes = 3 + ((wr()*3)|0);
+  for(let i=0, tries=0; i<nLakes && tries<60; tries++){
+    const a = wr()*TAU, r = Math.sqrt(wrnd(.05,.85))*RIM;
+    const x = Math.cos(a)*r, z = Math.sin(a)*r;
+    const rad = wrnd(9, 15);
+    if(Math.hypot(x,z) < 26 + rad) continue;
+    if(Math.hypot(x,z) > RIM - rad - 6) continue;
+    if(lakes.some(L => Math.hypot(L.x-x, L.z-z) < L.r + rad + 8)) continue;
+    const dry = groundY(x, z);                 // lakes is still short this one
+    // .55 deep, surface .20 under the bank: waist-deep on a mid-sized form.
+    // The first cut was .95 and LEVIATHAN vanished to the neck - a swimmer
+    // whose silhouette is gone is a model nobody can see.
+    lakes.push({ x, z, r: rad, dp: .55, y: dry - .20 });
+    i++;
+  }
   marks = [];
   const nMarks = Math.round(Math.PI*RIM*RIM / 4400);   // one per ~4,400 sq m
   for(let i=0, tries=0; i<nMarks && tries<nMarks*40; tries++){
@@ -1067,6 +1092,7 @@ function rollWorld(seed){
     const x = Math.cos(a)*r, z = Math.sin(a)*r;
     const k = MARK_KINDS[(wr()*MARK_KINDS.length)|0];
     if(Math.hypot(x,z) > RIM-14) continue;
+    if(waterDepth(x, z) > 0) continue;         // no monuments standing in a lake
     if(marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + k.r + 10)) continue;
     marks.push({ x, z, k, rot: wr()*TAU, seed: (wr()*1e6)|0,
                  den: wr() < DEN_CHANCE, woke:false, cleared:false, pack:[],
@@ -1104,6 +1130,30 @@ function nearestCells(x, z){
 }
 const biomeAt = (x,z)=> cells.length ? cells[nearestCells(x,z)[0]].b : BIOME_BY.grass;
 
+// ---- WATER. Lakes are part of the world roll: three to five basins carved
+// into the ground, each with a flat surface the terrain mesh renders as water.
+// waterDepth() is a pure function of position, like everything else about the
+// ground - the physics carve, the mesh, the movement rule and the tests all
+// ask the same question and get the same answer.
+let lakes = [];
+function waterDepth(x, z){
+  let d = 0;
+  for(const L of lakes){
+    const u = Math.hypot(x - L.x, z - L.z) / L.r;
+    if(u < 1){ const k = 1 - u*u; d = Math.max(d, L.dp * k * k); }
+  }
+  return d;
+}
+// The surface level at a point, or Infinity on dry land. Overlapping lakes
+// keep the lower surface so the seam never floats.
+function waterSurfY(x, z){
+  let y = Infinity;
+  for(const L of lakes)
+    if(Math.hypot(x - L.x, z - L.z) < L.r) y = Math.min(y, L.y);
+  return y;
+}
+const inWater = (x, z)=> waterDepth(x, z) > .14;
+
 // A hard elevation step at a region border is a cliff you fall off. Cross-fade
 // the amplitude and the lift across BLEND metres and the seam becomes a slope.
 const BASE_Y = (x,z)=> Math.sin(x*0.045)*1.7 + Math.cos(z*0.051)*1.5
@@ -1113,7 +1163,8 @@ const groundY = (x,z)=>{
   const [i1,i2,d1,d2] = nearestCells(x,z);
   const w = 0.5 + Math.min(1, (d2-d1)/BLEND)*0.5;
   const A = cells[i1].b, B = cells[i2].b;
-  return BASE_Y(x,z) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w));
+  return BASE_Y(x,z) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w))
+       - waterDepth(x,z);          // lakes are carved, not painted
 };
 
 // Terrain tint, shared by the mesh builder and the contrast check. These were
@@ -1171,8 +1222,20 @@ function makeTerrain(){
     const start = out.length/FLOATS;
     for(let i=0;i<TER_Q;i++) for(let j=0;j<TER_Q;j++){
       const x0=-ARENA+ci*CS+i*S, z0=-ARENA+cj*CS+j*S, x1=x0+S, z1=z0+S;
+      // WATER QUADS. A corner under a lake surface snaps UP to it, so inside
+      // a lake the mesh is a level sheet and at the shore it is a sloped bank
+      // that meets the water exactly - one mesh, no second pass, and the
+      // opaque surface is what makes a wading creature read as half-submerged.
+      const wsy=[[x0,z0],[x1,z0],[x1,z1],[x0,z1]].map(p2=>waterSurfY(p2[0],p2[1]));
       const P=[[x0,groundY(x0,z0),z0],[x1,groundY(x1,z0),z0],
                [x1,groundY(x1,z1),z1],[x0,groundY(x0,z1),z1]];
+      // waterSurfY is Infinity on dry land, and "ground < Infinity" is every
+      // corner of the map: the first draft snapped the whole world to
+      // Infinity, which the terrain-hash and buried-camera checks both caught
+      // inside one suite run. Finite surface only.
+      let wet = 0;
+      for(let k2=0;k2<4;k2++)
+        if(wsy[k2] < 1e9 && P[k2][1] < wsy[k2]){ P[k2][1] = wsy[k2]; wet++; }
       // A CHECKERBOARD is two colours in a grid, and a grid is the one pattern
       // nature never makes - it read as a chessboard because it was one. The
       // structure still has to be there, though: a flat untextured plane makes
@@ -1213,7 +1276,22 @@ function makeTerrain(){
       const tone = (k)=> lerp(lerp(bm.b[k], bm.a[k], mix),
                               lerp(bm2.b[k], bm2.a[k], mix), w2);
       const base = [tone(0), tone(1), tone(2)];
-      const c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
+      let c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
+      // water colour: deeper = darker, with the same per-quad grain the land
+      // has so the surface still gives a sense of motion when crossed
+      if(wet === 4){
+        const wd = waterDepth(mx0, mz0), k3 = clamp(wd/.55, 0, 1);
+        const g2 = .90 + vhash(gi2*7+3, gj2*5+1)*.14;
+        // murky, not sky-blue: the buried-camera check measures the ground
+        // band's distance from the sky, and a bright blue lake near the
+        // horizon halves it - and the first render read as a swimming pool,
+        // so the shallow and deep tones sit close together now
+        c = [lerp(.20,.11,k3)*g2, lerp(.36,.26,k3)*g2, lerp(.42,.36,k3)*g2];
+      } else if(wet > 0){
+        // the shore keeps most of its own land colour, just darkened as if
+        // damp - a pale rim ring read as tiles around a pool
+        c = [c[0]*.62+.05, c[1]*.66+.06, c[2]*.72+.08];
+      }
       // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
       for(const [a,b,d] of [[0,2,1],[0,3,2]]){
         const n = nrm(cross(sub(P[b],P[a]), sub(P[d],P[a])));
@@ -1246,6 +1324,7 @@ function makeTerrain(){
         const hz1 = vhash(cj*61 + s*11, ci*53 + s*3);
         const sx = -ARENA + ci*CS + hx1*CS, sz = -ARENA + cj*CS + hz1*CS;
         if(Math.hypot(sx,sz) > RIM - 3) continue;            // not into the wall
+        if(waterDepth(sx, sz) > 0) continue;   // ferns do not grow out of lakes
         const bm = biomeAt(sx, sz), gy = groundY(sx, sz);
         const r3 = vhash(s*7919 + ci*13, s*104729 + cj*17);
         const sc = .78 + r3*1.15;
@@ -3938,6 +4017,7 @@ const START_BANK_GAP = 12;
 let startBank = 0, startBankT = 0;
 let stage=0;                            // 0..2 - where you are in the monster's line
 let lastBiome=null, biomeT=0, lastAff=0; // for the "you have crossed into" banner
+let lastWet=false;                       // for the shoreline announcement
 let devGod=false, devHp=0;              // pause-screen godmode toggle
 let evoT=0, evoNm="", evoSub="";        // the banner, driven from hud()
 // THE TRANSFORMATION. Separate from the banner, and shorter. Evolving is the
@@ -4114,6 +4194,7 @@ function startRun(id){
   // fully pinned trial stopped being reproducible in the suite while being
   // perfectly reproducible on its own.
   pickT = 0;
+  lastWet = false;
   // The camera frames itself off the animal it is following, so a new run must
   // not inherit the last one's measurements for the frame before its own body
   // has been drawn once.
@@ -5927,7 +6008,21 @@ function step(dt){
   if(bm !== lastBiome){ lastBiome = bm; biomeT = 4.6;
                         if(running && !over) alert2(bm.nm, "#c9c2ae"); }
   const ACCEL = 62, BRAKE = 46;
-  const hm = hopMul() * (bmod.spd || 1) * (P.fly ? FLY_SPD : 1);
+  // ---- WATER. Requested: "create water areas that enable dinosaurs that are
+  // aquatic". The two water animals - the TIDE plesiosaur and the SURGE
+  // spinosaur - SWIM: thirty percent faster through a lake than over land.
+  // Everyone else wades at three quarters speed, and a flyer over water is
+  // just flying. The rule is felt through the controls and announced once at
+  // the first shoreline, the same contract the biomes keep.
+  const wet = !P.fly && !P.air && inWater(P.x, P.z);
+  const AQUA = (curMon().type === "scrap" || curMon().type === "surge");
+  if(wet !== lastWet){ lastWet = wet;
+    if(wet && running && !over)
+      alert2(AQUA ? "WATER - YOU WERE BUILT FOR THIS" : "WATER - IT DRAGS AT YOU",
+             AQUA ? "#5ec8e8" : "#c9c2ae"); }
+  const wmul = wet ? (AQUA ? 1.30 : .74) : 1;
+  const ACCELW = wet && !AQUA ? ACCEL*.6 : ACCEL;
+  const hm = hopMul() * (bmod.spd || 1) * (P.fly ? FLY_SPD : 1) * wmul;
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
   // braking. That asymmetry IS the mechanic: a chain you steer through is a
@@ -5936,7 +6031,7 @@ function step(dt){
   // THE GLASS has no grip: you keep almost everything you had, which is exactly
   // the surface a hop chain wants and exactly the surface a dodge does not.
   const grip = bmod.slide ? .30 : 1;
-  const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCEL*grip)
+  const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCELW*grip)
                         : (P.air ? BRAKE*.10 : BRAKE*grip);
   const step_ = rate*dt;
   const ex = wx-P.vx, ez = wz-P.vz, el = Math.hypot(ex,ez);
@@ -6076,7 +6171,16 @@ function step(dt){
                        fireZap(P.kit.zap, wStat(P.kit.zap)); }
     }
   }
-  else P.y = lerp(P.y, gy, 1-Math.pow(.0001,dt));
+  else {
+    // BUOYANCY. An aquatic line in water rides just under the surface - a
+    // plesiosaur SWIMS, its barrel at the waterline where you can see it -
+    // while everyone else stands on the lakebed and reads as wading. The
+    // float target never sits below the ground, so a drying lake edge hands
+    // you back to the land smoothly.
+    const wsy2 = (wet && AQUA) ? waterSurfY(P.x, P.z) : Infinity;
+    const target = wsy2 < 1e9 ? Math.max(gy, wsy2 - .30) : gy;
+    P.y = lerp(P.y, target, 1-Math.pow(.0001,dt));
+  }
 
   if(P.iframe>0) P.iframe -= dt;
   if(P.regen) P.hp = Math.min(P.maxhp, P.hp + P.regen*dt);
@@ -7951,6 +8055,26 @@ function render(){
     drawMonBody(curMon(), P, ANIM, stage, evoFx, T);
     if(bodyCap){ bodyCapOut = bodyCap; bodyCap = null; }
     if(bodyPos){ bodyPosOut = bodyPos; bodyPos = null; }
+    // FOAM. In water the ground shadow is under an opaque surface, so the
+    // foam ring is what grounds the animal instead: a broken ring of pale
+    // plates riding the surface, spreading with speed, plus a short wake
+    // behind a swimmer moving at pace.
+    if(!P.air && inWater(P.x, P.z)){
+      const wy = waterSurfY(P.x, P.z);
+      // SMALL. The first foam ring was plates a third of a metre wide on a
+      // metre-and-a-half radius - it rendered as a starburst of ice floes
+      // around the animal. Foam is froth: six chips, close in, dim.
+      const sp2 = Math.min(1, Math.hypot(P.vx, P.vz)/7);
+      for(let i=0;i<6;i++){
+        const a = i/6*TAU + T*.9;
+        const fr = .58 + sp2*.22 + Math.sin(T*3.1+i*2.2)*.07;
+        box(P.x + Math.sin(a)*fr, wy + .04, P.z + Math.cos(a)*fr,
+            .075 + sp2*.02, .025, .06, [.85,.92,.94], .16 + sp2*.14, a);
+      }
+      for(let i=1;i<=4 && sp2 > .25;i++)
+        box(P.x - Math.sin(P.face)*i*.55, wy + .035, P.z - Math.cos(P.face)*i*.55,
+            .10 - i*.012, .022, .08 - i*.008, [.80,.90,.92], .22 - i*.05, P.face);
+    }
     // stink aura
     const aw = P.kit.aura;
     if(aw){
@@ -8021,7 +8145,11 @@ function render(){
     const v = big ? [1,.72,.2] : mid ? [.62,.44,1] : [.34,.92,.70];
     const core = big ? [1,.95,.66] : mid ? [.86,.78,1] : [.74,1,.94];
     const yaw = T*3 + g.bob, s = big ? .25 : mid ? .19 : .15;
-    const gy = groundY(g.x, g.z);
+    // A gem that fell in a lake floats: the surface is opaque, so a drop on
+    // the lakebed is loot the player cannot see and does not know to collect.
+    let gy = groundY(g.x, g.z);
+    const gwy = waterSurfY(g.x, g.z);
+    if(gwy < 1e9) gy = Math.max(gy, gwy - .02);
     // and only near enough to see: past twenty metres a gem's contact patch is
     // two pixels of slightly darker grass
     if(!small && Math.abs(g.x-px) < 20 && Math.abs(g.z-pz) < 20)
@@ -8586,6 +8714,10 @@ window.__g = {
                 base:+P.spd.toFixed(2), air:P.air }),
   jump:  ()=>jumpPressed(),
   holdJump:(on=true)=>{ keys.Space = !!on; },
+  lakes: ()=>lakes.map(L=>({ x:+L.x.toFixed(1), z:+L.z.toFixed(1),
+                             r:+L.r.toFixed(1), y:+L.y.toFixed(2) })),
+  inWater:(x,z)=>inWater(x,z),
+  waterDepth:(x,z)=>+waterDepth(x,z).toFixed(3),
   levelUp:()=>{ if(P){ P.xp = P.need; gainXP(0.0001); } return P && P.lvl; },
   setWT: (k,v)=>{ if(P.kit[k]) P.kit[k].t = +v; },
   setSurge:(v)=>{ if(P) P.surge = +v; },
