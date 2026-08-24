@@ -3386,7 +3386,11 @@ echo(D){
   // and the rest of the separation moves into how far forward each head reaches
   // and how high it rides - which also means the necks cross over each other
   // instead of lying in one plane.
-  const FAN = (n - 1) * (HD * 1.5);
+  // At two necks this came out NARROWER than the pair of sockets they leave
+  // from - so HYDRALING's necks converged on each other and read as one thick
+  // neck with two heads stuck on the end. Whatever the count, the heads end up
+  // further apart than the shoulders they grew out of.
+  const FAN = Math.max((n - 1) * (HD * 1.5), HD * 3.0);
   for(let i=0;i<n;i++){
     const u  = n > 1 ? i/(n-1) - .5 : 0;             // -0.5 .. +0.5
     // Each neck gets its own clock. A fan that moves as one piece is a rack of
