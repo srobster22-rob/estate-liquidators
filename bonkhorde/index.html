@@ -7155,28 +7155,43 @@ function render(){
     const seg = Math.max(16, Math.round(h.r*4.2));
     if(h.tel > 0){
       const p = 1 - h.tel/h.telMax;
+      // PAINTED ON THE GROUND. A telegraph has to be the loudest thing on the
+      // field and it must not be a WALL: forty cubes standing a quarter of a
+      // unit up, in an orange a shade off the EMBER line's own body colour,
+      // cut the animal off at the knees and from behind you could not tell
+      // which orange was you. Flat plates are just as loud - brighter, even,
+      // because nothing shades them - and they never occlude anything.
       for(let i=0;i<seg;i++){
         const th = i/seg*TAU;
         const x = h.x+Math.sin(th)*h.r, z = h.z+Math.cos(th)*h.r;
-        box(x, groundY(x,z)+.26, z, .30,.26,.30, [.95,.14,.08], .70);
+        box(x, groundY(x,z)+.05, z, .46,.05,.46, [1,.12,.06], .90, th);
       }
       const ir = h.r*p;                        // the closing window
       for(let i=0;i<seg;i++){
         const th = i/seg*TAU + p*1.5;
         const x = h.x+Math.sin(th)*ir, z = h.z+Math.cos(th)*ir;
-        box(x, groundY(x,z)+.22, z, .26,.22,.26, [1,.70,.12], .98);
+        box(x, groundY(x,z)+.09, z, .34,.05,.34, [1,.78,.14], 1.0, th);
       }
     } else {
       const a = clamp(h.live/h.liveMax, 0, 1);
+      // SCORCHED GROUND, not a ring of bricks. Sixteen cubes standing a third
+      // of a unit off the floor is an OBJECT - it has a silhouette and it
+      // occludes - and on the EMBER line it is the same orange as the animal
+      // standing in it, so at SCORCHED EARTH's rate the player and the fire
+      // they were dropping merged into one long orange shape. Fire lies flat
+      // and burns from the ground up: a charred rim and a hot centre, both
+      // plates, and the centre is the part that flickers.
       for(let i=0;i<seg;i++){
         const th = i/seg*TAU;
         const x = h.x+Math.sin(th)*h.r, z = h.z+Math.cos(th)*h.r;
-        box(x, groundY(x,z)+.30, z, .34,.30,.34, [1,.46,.10], .98*a);
+        box(x, groundY(x,z)+.05, z, .42,.05,.42, [.46,.15,.05], .30*a, th);
       }
-      for(let i=0;i<seg;i++){                  // inner fill so live reads as solid
-        const th = i/seg*TAU + T*1.4;
-        const x = h.x+Math.sin(th)*h.r*.55, z = h.z+Math.cos(th)*h.r*.55;
-        box(x, groundY(x,z)+.16, z, .26,.12,.26, [1,.28,.08], .85*a);
+      const inner = Math.max(8, (seg*.62)|0);
+      for(let i=0;i<inner;i++){
+        const th = i/inner*TAU + T*1.4;
+        const x = h.x+Math.sin(th)*h.r*.58, z = h.z+Math.cos(th)*h.r*.58;
+        box(x, groundY(x,z)+.09 + Math.abs(Math.sin(T*6+i))*.07, z,
+            .30,.13,.30, [1,.40,.08], .95*a, th);
       }
     }
   }
