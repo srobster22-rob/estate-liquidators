@@ -194,7 +194,7 @@
   /* the base `canvas` rule pins the two game canvases to the viewport with
      position:fixed;inset:0 - a card portrait has to opt back out of both */
   .ch canvas.pv{display:block;position:static;inset:auto;width:100%;height:auto;
-    margin-bottom:7px;background:#0b0d11;border:1px solid #232a34}
+    margin:0;background:#0b0d11;border:0;border-bottom:1px solid #232a34}
   .ch:hover canvas.pv{border-color:#3d4552}
   .ch .nm{font-size:12px;font-weight:700;margin-bottom:4px}
   .ch .ds{font-size:10px;color:#9a9588;line-height:1.55}
@@ -204,19 +204,44 @@
   .story p{margin:0 0 9px}
   .story b{color:var(--ink);font-weight:700}
   .story .tag{color:var(--gold);letter-spacing:.2em;font-size:10px;font-weight:700;margin:0}
-  .ch{width:172px}
-  .ch .ty{font-size:9px;letter-spacing:.16em;font-weight:700;display:inline-block;
-    padding:2px 6px;border:1px solid currentColor;margin-bottom:6px;opacity:.9}
-  .ch .ln{font-size:9px;color:#6f7683;letter-spacing:.06em;margin:5px 0 4px;line-height:1.5}
-  .ch .ln s{text-decoration:none;color:#9a9588}
+  /* THE CHARACTER CARD, REBUILT. It was nine stacked rows of nine-pixel text
+     in six colours - line, learns, signature, home, weak, start, level - with
+     the portrait, the only thing on it anybody looks at, getting the least
+     vertical space of anything. Three blocks now: the ANIMAL (full-bleed
+     portrait, name over it), what it BECOMES (three chips and two arrows), and
+     what it DOES (four labelled rows on one grid). Two accent colours, not
+     six: gold for what you gain, dim grey for everything descriptive. */
+  .ch{width:212px;padding:0 0 9px;overflow:hidden}
+  .ch .hd{position:relative}
+  .ch .ty{position:absolute;left:8px;top:8px;font-size:8px;letter-spacing:.16em;
+    font-weight:700;padding:2px 6px;background:#080a0ecc;border:1px solid currentColor}
+  .ch .nm{position:absolute;left:9px;bottom:7px;right:9px;font-size:15px;
+    font-weight:800;letter-spacing:.05em;margin:0;color:#fff;
+    text-shadow:0 2px 0 #000,0 0 14px #000d}
+  .ch .bd{padding:8px 10px 0}
+  .ch .ln{display:flex;align-items:center;gap:3px;flex-wrap:wrap;
+    font-size:8px;color:#5c6470;letter-spacing:.04em;margin:0 0 7px;line-height:1.4}
+  .ch .ln s{text-decoration:none;color:#cfc9bb;background:#0d1116;
+    border:1px solid #262d38;padding:2px 5px;letter-spacing:.06em}
+  .ch .ln s.now{color:#fff;border-color:var(--gold)}
+  .ch .rw{display:grid;grid-template-columns:34px 1fr;gap:2px 6px;font-size:9px;
+    line-height:1.45;margin-bottom:4px}
+  .ch .rw b{color:#5c6470;font-weight:700;letter-spacing:.1em;font-size:8px;
+    padding-top:1px}
+  .ch .rw i{font-style:normal;color:#cfc9bb}
+  .ch .rw i em{font-style:normal;color:var(--gold)}
+  .ch .rw i s{display:block;text-decoration:none;color:#6f7683;letter-spacing:0;
+    font-size:8px}
   .ch .ml{display:flex;align-items:center;gap:6px;font-size:9px;color:#8affd0;
-    letter-spacing:.1em;margin-top:6px}
+    letter-spacing:.1em;margin:7px 10px 0}
   .ch .mb{flex:1;height:4px;background:#0d1116;border:1px solid #000}
   .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
-  .ch .sg{font-size:9px;color:var(--gold);margin-top:5px;letter-spacing:.05em}
-  .af{font-size:9px;letter-spacing:.09em;color:#8e8878;margin-top:3px}
-  .ch .mv{font-size:9px;color:#8affd0;margin-top:6px;letter-spacing:.05em;line-height:1.5}
-  .ch .mv s{display:block;text-decoration:none;color:#6f7683;letter-spacing:0}
+  .ch .ds{padding:0 10px}
+  /* a locked card keeps the portrait's footprint, so the row does not become
+     four tall cards and five short ones with a padlock floating in the middle */
+  .ch .lockbox{display:flex;align-items:center;justify-content:center;
+    aspect-ratio:4/3;background:#0b0d11;border-bottom:1px solid #232a34;
+    font-size:34px;color:#39414d}
 
   .shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;
     margin-top:8px;text-align:left}
@@ -5642,24 +5667,32 @@ function openMenu(){
     // unlocked one gets the animal itself, rendered live. The prose that used
     // to sit under the name is gone with it: a paragraph describing a monster
     // is what you write when you cannot show the monster.
-    el.innerHTML = `${locked
-        ? `<div class="ic">${icon("lock")}</div>`
-        : `<canvas class="pv" width="${PV_W}" height="${PV_H}"></canvas>`}
-      <div class="ty" style="color:${tcss}">${locked?"???":ty.nm}</div>
-      <div class="nm">${locked?"???":c.nm}</div>
-      <div class="ln">${locked ? "" : c.line.map((x,i)=>
-          i ? `<span style="opacity:.5"> &#8594; LV${EVO_AT[i]} </span><s>${x}</s>` : `<s>${x}</s>`
-        ).join("")}</div>
-      ${locked?`<div class="ds">${c.lock}</div>`:""}
-      ${locked?"":`<div class="mv">&#9670; LEARNS ${c.move.nm} AT LV${EVO_AT[1]}
-        <s>${c.move.ds}</s></div>`}
-      ${locked?"":`<div class="sg">&#9733; ${top.sig}: ${top.sigDs}</div>`}
-      ${locked || !AFFINITY[c.type] ? "" :
-        `<div class="af">&#9650; HOME ${AFFINITY[c.type].nm}
-         &nbsp;&#183;&nbsp; &#9660; WEAK ${AFFINITY[c.type].weakNm}</div>`}
-      <div class="pk">${locked?"":"start: "+WEAPONS[c.w].name}</div>
-      ${locked?"":`<div class="ml">LV ${ml}<div class="mb"><i style="width:${
-        ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${ml>=MON_CAP?"MAX":""}</div>`}`;
+    const aff = AFFINITY[c.type];
+    el.innerHTML = locked
+      ? `<div class="hd"><div class="ic lockbox">${icon("lock")}</div>
+         <div class="ty" style="color:${tcss}">???</div>
+         <div class="nm">???</div></div>
+         <div class="bd"><div class="rw"><b>UNLOCK</b><i>${c.lock}</i></div></div>`
+      : `<div class="hd">
+           <canvas class="pv" width="${PV_W}" height="${PV_H}"></canvas>
+           <div class="ty" style="color:${tcss}">${ty.nm}</div>
+           <div class="nm">${c.nm}</div>
+         </div>
+         <div class="bd">
+           <div class="ln">${c.line.map((x,i)=>
+               (i ? `<span>&#8594;&#8202;LV${EVO_AT[i]}</span>` : "") +
+               `<s class="${i?"":"now"}">${x}</s>`).join("")}</div>
+           <div class="rw"><b>START</b><i>${WEAPONS[c.w].name}</i></div>
+           <div class="rw"><b>LV${EVO_AT[1]}</b><i><em>${c.move.nm}</em>
+             <s>${c.move.ds}</s></i></div>
+           <div class="rw"><b>LV${EVO_AT[2]}</b><i><em>${top.sig}</em>
+             <s>${top.sigDs}</s></i></div>
+           ${aff ? `<div class="rw"><b>GROUND</b><i>&#9650;&#8201;${aff.nm}
+             <s>&#9660;&#8201;${aff.weakNm}</s></i></div>` : ""}
+         </div>
+         <div class="ml">LV ${ml}<div class="mb"><i style="width:${
+           ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${
+           ml>=MON_CAP?"MAX":""}</div>`;
     if(!locked) el.onclick = ()=>{ audioInit(); startRun(c.id); };
     cr.appendChild(el);
     const pv = el.querySelector("canvas.pv");
@@ -6504,7 +6537,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
 // before the browser ever composites. Seven cards therefore cost seven extra
 // draw calls on a frame that is otherwise doing nothing but sitting in a menu.
 // Backing size of one card portrait. 2x the CSS width it is shown at.
-const PV_W = 300, PV_H = 224;
+const PV_W = 424, PV_H = 318;
 const PORTRAITS = [];
 // The menu is not a run, so T does not advance while you are looking at it.
 // Portraits keep their own wall clock.

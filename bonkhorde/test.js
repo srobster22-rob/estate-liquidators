@@ -3169,8 +3169,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       return { cards: cards.length, open: open.length,
                pv: document.querySelectorAll(".ch canvas.pv").length,
                prose: open.filter(c => c.querySelector(".ds")).length,
+               // the locked card's unlock condition moved out of a .ds prose
+               // block and into the same labelled grid the open cards use
                lockProse: cards.filter(c => c.classList.contains("lock")
-                                         && c.querySelector(".ds")).length,
+                            && /UNLOCK/.test(c.textContent)
+                            && c.textContent.replace(/\s+/g," ").length > 20).length,
                locked: cards.length - open.length,
                shots };
     });
