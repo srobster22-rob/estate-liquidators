@@ -237,6 +237,17 @@
   .ch .mb{flex:1;height:4px;background:#0d1116;border:1px solid #000}
   .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
   .ch .ds{padding:0 10px}
+  /* the end screen's portrait: the same renderer as the menu cards, framed */
+  .next .nb{position:relative}
+  .next .nb u{position:absolute;right:4px;top:50%;transform:translateY(-50%);
+    text-decoration:none;font-size:8px;font-weight:700;letter-spacing:.1em;
+    color:#0a0c10;mix-blend-mode:screen}
+  .next .nt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .endpv{display:block;position:static;inset:auto;width:min(260px,52vw);height:auto;
+    margin:0 auto 4px;background:#0b0d11;border:1px solid #232a34}
+  /* one left edge for every label, and no wrapping on a two-word one */
+  #endBody table td:first-child{white-space:nowrap;padding-right:16px;
+    vertical-align:top}
   /* a locked card keeps the portrait's footprint, so the row does not become
      four tall cards and five short ones with a padlock floating in the middle */
   .ch .lockbox{display:flex;align-items:center;justify-content:center;
@@ -4953,8 +4964,12 @@ function nextUp(){
     .sort((a,b)=>b.frac-a.frac)[0];
   if(!left) return `<p class="sub" style="margin-top:14px">Everything is unlocked.</p>`;
   const pct = Math.round(left.frac*100);
-  return `<div class="next"><div class="nb"><i style="width:${pct}%"></i></div>
-    <div class="nt">${left.u.what} &nbsp;·&nbsp; ${left.u.ds} &nbsp;·&nbsp; ${pct}%</div></div>`;
+  // The percentage rides ON the bar. As a third clause on the caption it was
+  // the thing that pushed the line to two rows on a 1280 screen, and a wrapped
+  // "77%" hanging under a progress bar reads as a typo.
+  return `<div class="next"><div class="nb"><i style="width:${pct}%"></i>
+      <u>${pct}%</u></div>
+    <div class="nt">${left.u.what} &nbsp;·&nbsp; ${left.u.ds}</div></div>`;
 }
 
 // ------------------------------------------------------------ offer roller
@@ -5044,6 +5059,10 @@ let pickT = 0;
 // which is exactly the dead modal the growth path exists to remove. The hand
 // is dealt once and handed over.
 function showPick(hand){
+  // A take() with levels still queued schedules the next hand on a 90ms
+  // timeout, and a run can END inside that 90ms - so the draft strip was
+  // reappearing on top of the death screen, under the RUN AGAIN button.
+  if(over || !running){ pendingLevels = 0; picking = false; hide("pick"); return; }
   picking = true; pickT = 0;
   document.getElementById("pkLv").textContent = P.lvl;
   // KEYS, NOT CLICKS. The draft no longer releases the pointer - it cannot,
@@ -5573,7 +5592,14 @@ function finish(why, won){
             "You stopped moving. That was the mistake.",
             "The horde would like to thank you for your time."]);
 
+  // THE ANIMAL YOU DIED AS. The end screen was a headline over a table with a
+  // hand's width of empty screen above it, on a game whose entire subject is
+  // the creature you raised - and the portrait renderer that draws the menu
+  // cards was sitting right there. It is the same call, at the stage the run
+  // actually reached.
+  const endMon = curMon(), endStage = stage;
   document.getElementById("endBody").innerHTML = `
+    <canvas class="endpv" width="${PV_W}" height="${PV_H}"></canvas>
     <h1 class="${won?'g':'r'}" style="font-size:44px">${why}</h1>
     <div class="sub">${flavor}</div>
     <table>
@@ -5601,6 +5627,10 @@ function finish(why, won){
     <button class="btn" id="againBtn">RUN AGAIN &nbsp;<kbd>ENTER</kbd></button>
     <button class="btn gh" id="shopBtn">SHOP</button>`;
   show("end");
+  {
+    const epv = document.querySelector("#endBody .endpv");
+    if(epv){ clearPortraits(); addPortrait(epv, endMon, endStage); menuUp = true; }
+  }
   document.getElementById("againBtn").onclick = ()=>{ hide("end"); startRun(charId); };
   document.getElementById("shopBtn").onclick  = ()=>{ hide("end"); openMenu(); };
 }
