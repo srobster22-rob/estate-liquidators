@@ -2674,15 +2674,23 @@ plain(D){
     chain([[lk, .58+lkf, .86+br], [lk, .76+lkf, .82+br]], .19, .14, bel, em*.6);
     mb(lk, .80+lkf, .85+br, .075,.055,.07, dk, .1);
     fangs(lk, .70+lkf, .76+br, .12, .042, c);
-    eyeSlit(lk, .56+lkf, 1.00+br, .14, .095, [1,.72,.18]);
+    // .70 ahead of the skull centre, not .56: head-on the muzzle hid it and
+    // the profile eye smeared onto the horn line (audit, two findings)
+    eyeSlit(lk, .70+lkf, 1.00+br, .15, .095, [1,.72,.18]);
     for(const rs of [-1,1])
       horn(lk+rs*.16, .38+lkf, 1.04+br, rs*.055,-.05,.085, 5, .068, acc, .34);
-    for(const rs of [-1,1]) wing(rs, sway + rs*.24, -.02, .82+br,
+    // Wings on the BACK when grounded, not draped down the flanks: the audit
+    // found all eight walk frames with "zero visible legs - reads as a legless
+    // hovercraft", because the folded membrane curtained them completely.
+    // .90 grounded, not .98: at .98 the whole wing cleared the torso's top
+    // face by eight thousandths and the connectivity report found both wings
+    // flying in formation - the exact bug class this project measures for.
+    for(const rs of [-1,1]) wing(rs, sway + rs*.24, -.02, (air ? .82 : .90)+br,
                                  .62*(air?1.25:1)*(1 - idle*.20), c, acc,
                                  beat + (rs>0?0:.4));
     for(const rs of [-1,1]) for(const fs of [-1,1]){
       const p2 = (rs*fs > 0) ? gait : -gait;
-      leg(rs*.22, fs*.25, .46 + (fs>0?.04:0), .34, p2, rs, .095, c, em, dk);
+      leg(rs*.26, fs*.25, .48 + (fs>0?.04:0), .42, p2, rs, .100, c, em, dk);
     }
     const tail = [[sway, -.38, .60]];
     for(let i=0;i<5;i++){
@@ -2832,6 +2840,10 @@ scrap(D){
          (.20 + i*.07)*gr, .020*gr,.020*gr,.30*gr, lt, .45, a2 + 1.2); }
   }
   // FLIPPERS. Four of them, rowing - front and back on opposite beats.
+  // Rear pair FORWARD of the tail root: the audit found the tail fluke slicing
+  // through the rear blades - both claimed the volume behind the hips. The
+  // rear flippers root ahead of where they did and their blades sweep down and
+  // back UNDER the tail line instead of through it.
   for(const rs of [-1,1]) for(const fs of [-1,1]){
     const beat = Math.sin(ph*.8 + (fs>0 ? 0 : Math.PI)) * (.35 + amp*.55);
     const y = (.36 + beat*.10)*gr + bob*gr;
@@ -2842,11 +2854,11 @@ scrap(D){
     // its own height on average - because the only thing that actually went
     // anywhere was the tip of a flipper, and only up and down.
     const row = beat * .17 * gr;
-    chain([[sway + rs*.22*gr, fs*.24*gr + row*.35, y],
-           [sway + rs*(.22 + .30*FLIP)*gr, (fs*.22 - .08*fs)*gr + row*.75, y - .05*gr],
+    chain([[sway + rs*.22*gr, (fs>0 ? .24 : -.08)*gr + row*.35, y],
+           [sway + rs*(.22 + .30*FLIP)*gr, (fs>0 ? .14 : -.22)*gr + row*.75, y - .07*gr],
            [sway + rs*(.22 + .60*FLIP)*gr, (fs*.18 - .26*fs*FLIP)*gr + row, y - .13*gr]],
           .17*gr, .10*gr, c, em+.10, [1, .30, 1.6]);
-    mb(sway + rs*(.22 + .44*FLIP)*gr, (fs*.12 - .16*fs*FLIP)*gr + row*.85, y - .09*gr,
+    mb(sway + rs*(.22 + .44*FLIP)*gr, (fs>0 ? .10 : -.30*FLIP)*gr + row*.85, y - .12*gr,
        .26*gr*FLIP, .04*gr, .27*gr*FLIP, lt, em+.12, yaw);
   }
   // THE NECK. Long, and it curves - a straight neck is a pipe.
@@ -2880,7 +2892,7 @@ scrap(D){
   }
   chain(tail, .15*gr, .055*gr, c, em+.08, [.80, .68, 1.15]);
   for(let i=2;i<tail.length;i++)
-    mb(tail[i][0], tail[i][1], tail[i][2] + .10*gr, .03*gr, .12*gr, .13*gr, lt, em+.24);
+    mb(tail[i][0], tail[i][1], tail[i][2] + .14*gr, .03*gr, .13*gr, .13*gr, lt, em+.24);
   // and the top of the line trails its own water
   if(st >= 2) for(let i=0;i<8;i++){ const a = t*1.4 + i/8*TAU;
     fx(Math.sin(a)*.78*gr, Math.cos(a)*.66*gr,
@@ -2987,9 +2999,16 @@ volt(D){
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? -gait*.5 : gait*.5;
     const al = (.26 + st*.02) * gr;
-    const sh = [sway + rs*(.17+st*.035)*gr, chestF - .02*gr, HIP + hov + .08*gr];
-    const el = [sway + rs*(.27+st*.05)*gr, chestF + al*.55 + p2*al*.3, HIP + hov - al*.42];
-    const hd = [sway + rs*(.23+st*.045)*gr, chestF + al*1.15 + p2*al*.5, HIP + hov - al*.78];
+    // CARRIED HIGH, ROOTED DEEP. The audit found the hands dangling below the
+    // belly line - four white claw slivers hovering in midair between the legs
+    // head-on - and daylight between the upper arm and the chest at some walk
+    // phases. The shoulder now wears a deltoid pad that overlaps the chest at
+    // every phase, and the whole arm carries higher: elbow at .30 of its
+    // length below the shoulder, hand at .55, claws tucked above the belly.
+    const sh = [sway + rs*(.15+st*.030)*gr, chestF - .02*gr, HIP + hov + .08*gr];
+    const el = [sway + rs*(.26+st*.05)*gr, chestF + al*.55 + p2*al*.3, HIP + hov - al*.30];
+    const hd = [sway + rs*(.22+st*.045)*gr, chestF + al*1.15 + p2*al*.5, HIP + hov - al*.55];
+    blob(sh[0], sh[1], sh[2], .105*gr, .095*gr, .095*gr, armC, em+.04);
     chain([sh, el], .085*gr, .062*gr, armC, em+.04);
     chain([el, hd], .062*gr, .046*gr, armC, em+.04);
     blob(el[0], el[1], el[2], .072*gr, .072*gr, .072*gr, armC, em+.04);
@@ -3068,7 +3087,12 @@ stone(D){
          [sway + roll*.6, .18*gr, (.44+heave)*gr]],
         .34*gr, .38*gr, c, em, [1, .70, 1.10]);
   mb(sway, -.12*gr, (.18+heave)*gr, .28*gr,.11*gr,.38*gr, bel, em*.7);
-  ridge(-.46*gr, .12*gr, (.70+heave)*gr, 7, .09*gr, dk, .06);
+  // MID-BROWN, NOT SHADOW. The saddle ran in the dark tone and from the play
+  // camera it read as "an irregular black pit in the middle of the back" - a
+  // hole, not a ridge. Three-quarters value with a touch of light catches the
+  // top faces and reads as raised armour.
+  ridge(-.46*gr, .12*gr, (.70+heave)*gr, 7, .09*gr,
+        [c[0]*.76, c[1]*.76, c[2]*.72], .12);
   // THE FRILL. A fan of plates behind the skull, scalloped along the rim, and
   // each plate now leans out of the head rather than standing beside it.
   const fx0 = sway + lk + swing*.05*gr, ff = .34*gr + lkf, fy = (.54 + heave)*gr;
@@ -3123,6 +3147,9 @@ stone(D){
       mb(sway + (i-1)*.14*gr, (-.16 + (i%2)*.12)*gr, (.66+heave)*gr,
          .14*gr, .055*gr, .17*gr, [dk[0]*.8, dk[1]*.95, dk[2]*.7], .04, (i-1)*.4);
   }
+  // a nape mass between skull and frill root, so the rear-quarter view does
+  // not see through the gap and read the shell as hollow
+  mb(fx0, ff - .14*gr, fy - .04*gr, FR*.44, .13*gr, .13*gr, c, em);
   // THE SKULL IS THE POINT OF THIS ANIMAL, so it cannot be the smallest thing
   // on it. At .21 by .17 it was a third of the frill behind it and half the
   // width of one thigh, tucked so far back that the fan closed over it: from
@@ -3192,7 +3219,7 @@ stone(D){
   // had. Ground debris lies close to the ground and is wider than it is tall.
   if(st >= 2) for(let i=0;i<6;i++){ const a = t*.7 + i/6*TAU;
     fx(Math.sin(a)*(.86+(i%2)*.14)*gr, Math.cos(a)*(.76+(i%2)*.12)*gr,
-       (.05 + Math.abs(Math.sin(t*1.4+i))*.09)*gr, .11*gr,.022*gr,.10*gr,
+       .035*gr, .11*gr,.020*gr,.10*gr,
        i%3?dk:acc, i%3?.04:.24, a); }
 },
 // -------------------------------------------------------------------- ROT
@@ -3310,7 +3337,9 @@ rot(D){
   // neck behind it on an animal that is one colour from end to end.
   for(const rs of [-1,1]){
     mb(hx + rs*HW*.62, hf + .12*gr, hy + HW*.44, HW*.40, HW*.20, HW*.52, dk, .04);
-    mb(hx + rs*HW*.80, hf + .04*gr, hy - HW*.02, HW*.30, HW*.46, HW*.42, dk, .04);
+    // reaches BACK to the neck: the audit found this band "hanging loose off
+    // the head, ending in mid-air" - a mask has to wrap onto something
+    mb(hx + rs*HW*.72, hf - .04*gr, hy - HW*.02, HW*.30, HW*.46, HW*.60, dk, .04);
   }
   // A hatchling's eyes are large FOR ITS HEAD and a big animal's are small for
   // its head - the single cheapest way to make three sizes of one creature read
@@ -3375,12 +3404,17 @@ rot(D){
   // ---- THE STARE. A basilisk's whole legend is what happens when it looks at
   // you, and the line had no way of showing it. A short cone of grey motes off
   // the eyes, drifting forward - ambient, so it stays out of the mesh.
-  if(st >= 2) for(let i=0;i<7;i++){
-    const u = ((t*0.9 + i*.143) % 1);
-    const sp = .06 + u*.34;
-    fx(hx + Math.sin(i*2.4)*sp*.5, hf + .30*gr + u*.85*gr, hy + HW*.16 + Math.cos(i*2.4)*sp*.4,
-       .035*gr*(1-u*.5), .035*gr*(1-u*.5), .035*gr*(1-u*.5),
-       [.78, .82, .74], .55*(1-u));
+  // The audit called the first draft of this what it was: detached white-grey
+  // voxels floating in mid-air off the snout, reading as glitch debris rather
+  // than as anything the animal is doing. Grey cubes scattered in a cone LOOK
+  // like debris. A gaze is a LINE: four amber motes now, on one ray out of the
+  // eye line, each smaller and dimmer than the last, the first rooted against
+  // the muzzle - a beam you can follow back to the eyes that emit it.
+  if(st >= 2) for(let i=0;i<4;i++){
+    const u = ((t*1.1 + i*.25) % 1);
+    fx(hx, hf + (.34 + u*.75)*gr, hy + HW*.20 - u*.06*gr,
+       .030*gr*(1-u*.55), .030*gr*(1-u*.55), .050*gr*(1-u*.4),
+       [1,.76,.16], .70*(1-u*.8));
   }
 },
 
@@ -3417,15 +3451,21 @@ tally(D){
   ridge(-.22*gr, .18*gr, HIP + .42*gr*perch, 6, .08*gr, acc, .30);
   // THE WINGS ARE THE ARMS. They root at the shoulder, and when it is not
   // flying they fold down the flanks instead of vanishing.
-  const fold = air ? 1 : (.46 + (1-idle)*.30);
+  // Tucked HIGH when grounded. At full droop the folded wing's feather slabs
+  // curtained the legs completely - the audit found "not a single leg pixel
+  // visible in eight walk frames; all three stages read as gliding along the
+  // ground on their bellies". A walking wyvern carries its wings up on its
+  // back; only the airborne pose spreads them.
+  const fold = air ? 1 : (.40 + (1-idle)*.26);
+  const wtuck = air ? 0 : .16*gr;
   // ---- THE HURRICANE. Four wings: a second, smaller pair set low and aft,
   // beating a half-cycle out of phase - the silhouette of a storm cell seen
   // side-on, and nothing else in the roster has it.
   if(st === 3) for(const rs of [-1,1])
-    wing(rs, sway + rs*.15*gr, -.26*gr, HIP + .10*gr*perch, SPAN*.62*fold, dk, acc,
+    wing(rs, sway + rs*.15*gr, -.26*gr, HIP + .10*gr*perch + wtuck, SPAN*.62*fold, dk, acc,
          beat + 1.6 + (rs>0?0:.6));
   for(const rs of [-1,1])
-    wing(rs, sway + rs*.17*gr, .10*gr, HIP + .28*gr*perch, SPAN*fold, c, acc,
+    wing(rs, sway + rs*.17*gr, .10*gr, HIP + .28*gr*perch + wtuck, SPAN*fold, c, acc,
          beat + (rs>0?0:.55));
   // NECK -> SKULL. An S-curve, carried high when perched.
   const nx = sway + lk*.5, nf = .22*gr + lkf*.5, ny = HIP + (.34 + .22*perch)*gr;
@@ -3449,8 +3489,10 @@ tally(D){
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? gait : -gait;
     const ly = air ? HIP - .10*gr : HIP;
-    leg(sway + rs*.15*gr, air ? -.16*gr : -.02*gr, ly,
-        air ? .30*gr : HIP*.88, air ? p2*.3 : p2, rs, .085*gr, c, em, acc);
+    // and the legs stride PROUD of the feathers: longer, planted wider, with
+    // the line's accent on the feet so a footfall reads at the play camera
+    leg(sway + rs*.19*gr, air ? -.16*gr : -.02*gr, ly,
+        air ? .30*gr : HIP*1.02, air ? p2*.3 : p2, rs, .092*gr, c, em, acc);
   }
   // THE TAIL. Long, stiff, and it ends in a vane - the counterweight that makes
   // the perched pose possible and the rudder that makes the flying pose work.
@@ -3470,15 +3512,17 @@ tally(D){
     for(const rs of [-1,1])                                // barbs, at the top
       horn(tp[0] + rs*.05*gr, tp[1] - .16*gr, tp[2], rs*.05*gr, -.03*gr, .02*gr,
            3, .035*gr, acc, .40);
-    // IT BRINGS WEATHER. Five wind streaks, not seven bricks: at .05 by .05 by
-    // .13 in near-white at .70 of emission these read as a handful of solid
-    // white blocks floating loose around the animal, which is the last thing a
-    // model already reported as "too many blocks" needs. A streak is thin on
-    // two axes and long on the third, tinted rather than white, and dim enough
-    // to read as air moving rather than as debris.
-    for(let i=0;i<5;i++){ const a = t*2.4 + i/5*TAU;
-      fx(Math.sin(a)*.78*gr, Math.cos(a)*.66*gr,
-         HIP + Math.sin(t*3+i)*.20*gr, .018*gr,.018*gr,.34*gr, acc, .38, a); }
+    // IT BRINGS WEATHER - ON THE GROUND. The wind used to be five streaks
+    // orbiting at hip height, and a ten-agent audit called them exactly what
+    // they were: "detached blue rods floating in midair, connected to nothing
+    // at either end", severity five. Air you cannot see moving is not worth
+    // drawing; ground you can see it moving IS. Six flat shards now, low and
+    // wide like the STONE line's dust, skating around the animal on the floor
+    // it is actually stirring up.
+    for(let i=0;i<6;i++){ const a = t*1.8 + i/6*TAU;
+      fx(Math.sin(a)*(.84+(i%2)*.14)*gr, Math.cos(a)*(.74+(i%2)*.12)*gr,
+         (.04 + Math.abs(Math.sin(t*2.2+i))*.07)*gr, .11*gr,.020*gr,.09*gr,
+         i%2 ? acc : lt, .30, a); }
   }
 },
 // ------------------------------------------------------------------- ECHO
@@ -6751,7 +6795,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // Level. A rib that also drops as it runs back is travelling through its
       // own thickness, and chain() then has to fatten it until the sheet is a
       // slab. The droop belongs to the ARM the ribs hang from.
-      chain([[px, pf, py], [px - rs*span*.07, pf - back, py - span*.05*u]],
+      chain([[px, pf, py],
+             [px - rs*span*.07, pf - back, Math.max(span*.10, py - span*.05*u)]],
             span*.085 - u*span*.03, span*.055 - u*span*.02, memb, .05,
             [1, .10, 1], true);
     }

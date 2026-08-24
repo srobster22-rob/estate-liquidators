@@ -2066,8 +2066,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // on. The nudge quantises to twelve, thirteen and eleven slots, so a
     // collision on one axis is a one-in-twelve event and with four hundred
     // boxes a creature it will happen. Eight is the ceiling, not the target.
+    // A RATE against the roster size, like the incidental budget below it:
+    // the ceiling was 8 across 21 forms (all of them MIRRORED left/right
+    // pairs whose nudges landed in the same slot on the one axis their
+    // positions agree on). The apex stages took the roster to 36 forms, and
+    // every apex adds mirrored pairs by design - rods, streamers, eye-spots.
+    // Same allowance per form, not the old absolute.
     ok("no rows of IDENTICAL parts share a face plane",
-       twins <= 8, `${twins} same-size fighting pairs across 21 forms`);
+       twins <= Math.ceil(r.length * .4),
+       `${twins} same-size fighting pairs across ${r.length} forms (ceiling ${Math.ceil(r.length*.4)})`);
     // A RATE, not a total, and the change is worth stating plainly. The budget
     // here used to be 300 against meshes of about a hundred boxes. chain()
     // rebuilt every creature as a run of interpenetrating segments to close
