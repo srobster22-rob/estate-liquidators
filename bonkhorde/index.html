@@ -2715,15 +2715,23 @@ plain(D){
     chain([[sway, -.26, .42], [sway, -.06, .46+br], [sway, .14, .50+br]],
           .27, .25, c, em, [1, .86, 1]);
     mb(sway, -.02, .27, .21,.10,.28, bel, em*.8);
-    ridge(-.26, .18, .72+br, 5, .09, acc, .30);
+    ridge(-.26, .18, .72+br, 5, .09, [.88,.42,.12], .22);
     const hx = lk*.6 + sway*.6 + flick*.035;
     const hf = .30 + lkf + sniff*.022;
     // neck into skull, continuous
     chain([[sway, .16, .50+br], [hx, hf, .62+hb]], .17, .24, c, em);
     blob(hx, hf, .64+hb, .26,.23,.25, c, em);                  // heavy skull
-    chain([[hx, hf+.10, .58+hb], [hx, hf+.26, .55+hb]], .17, .13, bel, em*.6);
-    mb(hx, hf+.30, .57+hb, .075,.055,.07, dk, .1);             // nostril block
-    fangs(hx, hf+.26, .49+hb, .11, .035, c);
+    // The snout wears the BODY colour and the belly tone is the JAW under it.
+    // The first version was one belly-tone box with a dark block centred on
+    // its flat front cap - the audit called it a face slab, and it was the
+    // same tombstone VOLT had: nothing on the sloping surfaces, everything
+    // pasted on the end. Skull over jaw splits the face; the nostrils are two
+    // pits on the snout TOP near the tip, where a snout keeps them.
+    chain([[hx, hf+.08, .59+hb], [hx, hf+.26, .56+hb]], .15, .105, c, em);
+    mb(hx, hf+.21, .47+hb, .135,.11,.05, bel, em*.6);          // underbite jaw
+    for(const rs of [-1,1])
+      mb(hx+rs*.055, hf+.30, .655+hb, .026,.024,.020, dk, .08);
+    fangs(hx, hf+.28, .50+hb, .10, .032, c);
     eyeSlit(hx, hf+.13, .73+hb, .13, .085, [1,.72,.18]);
     for(const rs of [-1,1])
       horn(hx+rs*.15, hf-.02, .78+hb + flick*.02*rs, rs*.045,-.035,.075, 4, .062, acc, .30);
@@ -2747,7 +2755,9 @@ plain(D){
     chain([[sway, -.40, .56], [sway, -.10, .62+br], [sway, .18, .64+br]],
           .31, .28, c, em, [1, .88, 1]);
     mb(sway, -.06, .36, .25,.11,.34, bel, em*.8);
-    ridge(-.44, .28, .89+br, 7, .13, acc, .34);
+    // Deep ember, same rule the audit set for PYRAETHON: the gold belongs to
+    // the horns and the flame. A gold comb over gold wings read as ribs.
+    ridge(-.44, .28, .89+br, 7, .13, [.88,.42,.12], .22);
     chain([[sway, .22, .68+br], [lk*.6, .40+lkf*.6, .84+br]], .19, .24, c, em);
     blob(lk, .48+lkf, .92+br, .25,.22,.25, c, em);
     chain([[lk, .58+lkf, .86+br], [lk, .76+lkf, .82+br]], .19, .14, bel, em*.6);
@@ -2764,8 +2774,11 @@ plain(D){
     // .90 grounded, not .98: at .98 the whole wing cleared the torso's top
     // face by eight thousandths and the connectivity report found both wings
     // flying in formation - the exact bug class this project measures for.
+    // Membrane in dark leather, not gold: gold ribs on an orange arm made the
+    // folded wing read as a striped caterpillar lying on the back (audit).
+    // The drake earns gold membranes at PYRAETHON, where the wing is open.
     for(const rs of [-1,1]) wing(rs, sway + rs*.24, -.02, (air ? .82 : .90)+br,
-                                 .62*(air?1.25:1)*(1 - idle*.20), c, acc,
+                                 .62*(air?1.25:1)*(1 - idle*.20), c, dk,
                                  beat + (rs>0?0:.4));
     for(const rs of [-1,1]) for(const fs of [-1,1]){
       const p2 = (rs*fs > 0) ? gait : -gait;
