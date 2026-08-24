@@ -2773,7 +2773,14 @@ volt(D){
         SK*.66, SK*.44, c, em+.06, [1, .58, 1]);
   mawRow(hx, hf + SK*.5, hy - SK*.28, SK*.80, SL, 4 + st, gape);
   mb(hx, hf + SK*.5 + SL*.96, hy - SK*.16, SK*.34, SK*.22, SK*.20, dk, .10);
-  eyeCold(hx, hf + SK*.18, hy + SK*.34, SK*.62, SK*.44, [1,.86,.24]);
+  // HIGH AND WIDE, OR THE SNOUT EATS THEM. Verified head-on and the VOLT line
+  // had no face at all: the eyes sat at .62 of the skull half-width and .18
+  // ahead of its centre, while the muzzle in front of them is .82 wide and
+  // reaches four times further forward - so from directly in front, the one
+  // angle that matters for a face, the snout covered both of them completely.
+  // On the cheeks and above the tooth line, which is where a tyrant's eyes are
+  // anyway.
+  eyeCold(hx, hf + SK*.34, hy + SK*.52, SK*.86, SK*.42, [1,.86,.24]);
   for(const rs of [-1,1]){
     horn(hx + rs*SK*.74, hf + SK*.10, hy + SK*.42, rs*.035*gr, -.026*gr, .05*gr,
          3 + st, .038*gr, acc, .70);
@@ -2878,7 +2885,12 @@ stone(D){
   // the skull, in front of the frill: a beak and a heavy brow
   blob(fx0, ff + .16*gr, (.46+heave)*gr, .21*gr,.17*gr,.22*gr, c, em);
   rostrum(fx0, ff + .28*gr, (.44+heave+snort*.008)*gr, .13*gr, .26*gr, c);
-  eyeSunk(fx0, ff + .22*gr, (.54+heave)*gr, .15*gr, .062*gr, [.95,.74,.28]);
+  // OUTBOARD OF THE BEAK, ABOVE THE JAW LINE. Same failure the VOLT line had
+  // and verified the same way: at .15 of spread and .22 ahead of the skull
+  // centre the eyes sat directly behind a rostrum .14 wide reaching twice as
+  // far forward, so head-on - the only angle where a face is a face - this
+  // animal had none. A ceratopsian's eyes are on the sides of the skull anyway.
+  eyeSunk(fx0, ff + .30*gr, (.60+heave)*gr, .20*gr, .066*gr, [.95,.74,.28]);
   // the horns: two long brow horns and a short nasal one
   for(const rs of [-1,1])
     horn(fx0 + rs*.14*gr, ff + .24*gr, (.58+heave)*gr,
@@ -6331,8 +6343,15 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // a small mark on top. Get the depths wrong and the pupil's side face
       // becomes a black bar across the head from three quarters on, which is
       // exactly what "the eyes are very messed up" looked like.
-      mb(x, f + sz*.30*out, y, sz*1.05*wide, sz*1.00*tall, sz*.55,
-         o.socket || [.11,.10,.12], 0);                          // socket rim
+      // THE SOCKET IS A RIM, AND IT IS NOT BLACK. Verified against the VOLT
+      // line and it failed there: near-black at 1.05 by 1.00 of the eye with
+      // .55 of depth is a solid dark box whose SIDE face is exposed on the
+      // cheek, so from three-quarters on the eye read as a hole punched in the
+      // skull. Half the depth, so it hides inside the head; and the default
+      // colour is the creature's own dark tone rather than near-black, so
+      // where it does show it reads as a lid instead of a gap.
+      mb(x, f + sz*.30*out, y, sz*1.02*wide, sz*.96*tall, sz*.30,
+         o.socket || [mDk[0]*.52, mDk[1]*.52, mDk[2]*.58], 0);    // socket rim
       if(o.sclera !== false)
         mb(x, f + sz*1.15*out, y, sz*.80*wide, sz*.78*tall*blk, sz*.40,
            o.white || [.97,.97,1.0], .40);                       // sclera
@@ -6362,8 +6381,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
                            pw:.20, ph:.86, brow:.40, glow:.85 });
   // SUNK - a heavy grazer. A small eye at the bottom of a deep bone socket.
   const eyeSunk = (r,f,y,sp,sz,iris)=>
-    eyeBase(r,f,y,sp,sz, { iris: iris || [.98,.74,.28], ir:.52, irY:.50,
-                           pw:.26, ph:.28, rise:-.16, out:.78,
+    eyeBase(r,f,y,sp,sz, { iris: iris || [.98,.74,.28], ir:.62, irY:.58,
+                           pw:.28, ph:.30, rise:-.12, out:1,
                            brow:.52, browUp:.10, browCol:[.30,.24,.17],
                            shelf:.34, socket:[.14,.11,.09], glow:.55 });
   // BIRD - forward-set, a pale ring round a hard little pupil. A hawk.
