@@ -6401,10 +6401,18 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     const knee = [r + rs*thick*.42, f + len*.34 + sw*len*.30, y - len*.40];
     const ankl = [r + rs*thick*.12, f - len*.20 + sw*len*.46, y - len*.80];
     const foot = [ankl[0], ankl[1] + len*.30, Math.max(y - len, ankl[2] - len*.16)];
-    chain([[r, f, y], knee], thick*1.12, thick*.80, lc, em2);    // thigh
-    chain([knee, ankl], thick*.78, thick*.52, lc, em2);          // shin
-    chain([ankl, foot], thick*.58, thick*.50, lc, em2);
-    blob(knee[0], knee[1], knee[2], thick*.86, thick*.86, thick*.86, lc, em2);
+    // A LEG READS BY ITS ZIGZAG, and a limb thicker than the zigzag it makes
+    // has no zigzag. On the heavy lines thick is .17 against a stride of .25,
+    // so thigh, shin and foot merged into one dark column and four legs read
+    // as two slabs. The thigh keeps its full width where it meets the hip -
+    // that joint has to hold - and then halves by the knee; the shin is two
+    // thirds of what it was and a shade lighter than the thigh, so the knee is
+    // a place where something changes rather than a place where nothing does.
+    const sc2 = [lc[0]*1.22, lc[1]*1.22, lc[2]*1.20];
+    chain([[r, f, y], knee], thick*1.12, thick*.60, lc, em2);    // thigh
+    chain([knee, ankl], thick*.56, thick*.40, sc2, em2);         // shin
+    chain([ankl, foot], thick*.48, thick*.44, sc2, em2);
+    blob(knee[0], knee[1], knee[2], thick*.66, thick*.66, thick*.66, lc, em2);
     // three toes, each one starting INSIDE the foot and running out of it
     for(let i=-1;i<=1;i++)
       chain([[foot[0], foot[1] - thick*.30, foot[2]],
