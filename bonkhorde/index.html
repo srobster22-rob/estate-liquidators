@@ -5972,7 +5972,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // mostly above you; it is tinted by species type; it grows 13% and gains a
   // pair of horns at every evolution, so "what am I" and "how far along am I"
   // are both answerable without looking at the HUD.
-  let mLo = 1e9, mHi = -1e9, mFa = 1e9, mFb = -1e9;   // this form's own extent
+  let mLo = 1e9, mHi = -1e9, mFa = 1e9, mFb = -1e9, mRa = 1e9, mRb = -1e9;
   const mTy = MTYPE[mCh.type] || MTYPE.plain;
   let mTc = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : mTy.c;
   if(evoFx > 0){                        // washing out toward the new form
@@ -6070,6 +6070,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     if(y - hy < mLo) mLo = y - hy;
     if(f + hz > mFb) mFb = f + hz;
     if(f - hz < mFa) mFa = f - hz;
+    if(r + hx > mRb) mRb = r + hx;                 // wings count too, see bodyLen
+    if(r - hx < mRa) mRa = r - hx;
     const yy = y * aSq;
     const rr = r * aInv + yy * aBank;
     const ff = f * aInv + yy * aLean;
@@ -6327,9 +6329,13 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       const root = [ sh[0] + (wr[0]-sh[0])*u, sh[1] + (wr[1]-sh[1])*u,
                      sh[2] + (wr[2]-sh[2])*u ];
       const sweep = -span*(.18 + .52*u);
+      // NARROW. At full lateral scale a quill is .24 across and they are
+      // planted .12 apart, so eight of them are a sheet - THE PHOENIX's wings
+      // read as two painted planks. Slightly over half width leaves air
+      // between them, which is the difference between a wing and a board.
       chain([root, [root[0] + rs*len*.55, root[1] + sweep, root[2] - span*.10*u]],
             span*.085 - u*span*.03, span*.055 - u*span*.03,
-            i%2 ? col : tip, .18, [1, .16, 1], true);
+            i%2 ? col : tip, .18, [.58, .18, 1], true);
     }
   };
   // A GHARIAL SNOUT. Long, narrow, near-parallel-sided, with a bulb on the end
@@ -6778,7 +6784,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // scale, and letting a menu card retune the game camera would be a fine bug.
   if(!P.portrait && mHi > mLo){
     bodyTop = (mHi - Math.min(0, mLo)) * mScB;
-    bodyLen = (mFb - mFa) * mScB;
+    // The WIDER of the two, because a phoenix in flight is three times wider
+    // than it is long and the boom has no idea: measuring only fore-aft, the
+    // camera framed a bird whose wings ran off both edges of the screen.
+    bodyLen = Math.max(mFb - mFa, (mRb - mRa) * .82) * mScB;
   }
 }
 
@@ -7228,12 +7237,16 @@ function render(){
       }
     }
   }
+  // A SHOCKWAVE IS A WAVE, not a fence. Twenty-six cubes standing a fifth of a
+  // unit up made a ring of ice blocks around the player - the same fault the
+  // telegraph and the burning ground had. Flat plates, laid along the ring, and
+  // they fade as they spread.
   for(const r of rings){
     const seg = 26, a = clamp(r.life/r.mx,0,1);
     for(let i=0;i<seg;i++){
       const th = i/seg*TAU, x = r.x+Math.sin(th)*r.r, z = r.z+Math.cos(th)*r.r;
-      box(x, groundY(x,z)+.2, z, .30,.30,.30,
-          r.hot?[1,.55,.18]:[.55,.85,1], .8*a);
+      box(x, groundY(x,z)+.07, z, .34,.07,.34,
+          r.hot?[1,.55,.18]:[.55,.85,1], .95*a, th);
     }
   }
   for(const s of swings){
