@@ -3185,10 +3185,16 @@ volt(D){
   for(let i=1;i<tail.length-1;i++)
     mb(tail[i][0], tail[i][1], tail[i][2] + (.11 + st*.02)*gr,
        .032*gr, (.08 + st*.02)*gr, (.09 + st*.02)*gr, acc, .55);
-  // its own weather, and it gets worse with age
+  // ITS OWN WEATHER, tethered to the spine it comes off. A wide ring at wide
+  // radius and generous vertical travel put these motes well clear of the
+  // animal's own silhouette in every turntable angle - isolated yellow cubes
+  // hovering beside the creature rather than static coming off it (audit:
+  // "walk float"). They hug the dorsal ridge now, close enough that every
+  // frame reads as the ridge sparking rather than debris drifting nearby.
   for(let i=0;i<3+st*2;i++){ const a = t*2.5 + i/(3+st*2)*TAU;
-    fx(sway + Math.sin(a)*(.42 + st*.14)*gr, Math.cos(a)*(.38 + st*.12)*gr,
-       HIP + hov + (.24 + Math.sin(t*5+i)*.14)*gr, .045*gr,.045*gr,.045*gr, acc, 1.0); }
+    fx(sway + Math.sin(a)*.10*gr, chestF*.4 + Math.cos(a)*.10*gr,
+       HIP + hov + (.42 + st*.10)*gr + Math.sin(t*5+i)*.05*gr,
+       .032*gr,.032*gr,.032*gr, acc, 1.0); }
   if(st >= 2) for(let k=0;k<5;k++){ const rp=(t*1.7+k*.31)%1;
     fx(Math.sin(k*2.3)*.34, Math.cos(k*2.3)*.30, 1.30-rp*1.10, .028,.10,.028, bel, .75); }
 },
@@ -3283,9 +3289,12 @@ stone(D){
       mb(fx0 + a2*FR*.64, ff - .55*gr - Math.abs(a2)*.05*gr,
          fy + (1 - a2*a2*.40)*.64*gr, FR*.14, .08*gr, .06*gr, acc, .26, a2*.5);
     }
+    // spread down the actual back line, clear of the frill: three slabs all
+    // crowded at one station under the double-decker's shadow read as rubble
+    // caught in the shield rather than a landscape (audit: "rear jumble").
     for(let i=0;i<3;i++)
-      mb(sway + (i-1)*.14*gr, (-.16 + (i%2)*.12)*gr, (.66+heave)*gr,
-         .14*gr, .055*gr, .17*gr, [dk[0]*.8, dk[1]*.95, dk[2]*.7], .04, (i-1)*.4);
+      mb(sway + (i-1)*.05*gr, (-.30 + i*.16)*gr, (.44 - i*.03 + heave)*gr,
+         .15*gr, .05*gr, .15*gr, [dk[0]*.8, dk[1]*.95, dk[2]*.7], .04, (i-1)*.15);
   }
   // a nape mass between skull and frill root, so the rear-quarter view does
   // not see through the gap and read the shell as hollow
@@ -3463,6 +3472,19 @@ rot(D){
       // is a dotted line; a dark ridge with magenta teeth on it is a spine.
       mb(lx, lf, ly + GIRTH*k*.66, GIRTH*k*.68, GIRTH*k*.34, GIRTH*k*.56, dk, .05);
       mb(lx, lf, ly + GIRTH*k*.88, .055*gr, GIRTH*k*.54*sc, GIRTH*k*.46*sc, acc, .30);
+      // FLANK BLOTCHES. Everything drawn on this animal so far bands the TOP
+      // and UNDERSIDE - the belly scutes, the dorsal saw - and left the whole
+      // side of the tube, the one surface the play camera actually frames
+      // square-on, one flat green with nothing on it (audit: "flank blank").
+      // A dark diamond every other segment, offset along the body's own
+      // perpendicular so it sits on the flank at any coil angle, not the
+      // world axis.
+      const [px, pf] = spine[i-1], [nx2, nf2] = spine[i+1];
+      const tl = nx2 - px, tf = nf2 - pf, tlen = Math.hypot(tl, tf) || 1;
+      const perpX = -tf/tlen, perpF = tl/tlen;
+      for(const rs of [-1,1])
+        mb(lx + perpX*GIRTH*k*.80*rs, lf + perpF*GIRTH*k*.80*rs, ly,
+           GIRTH*k*.30, GIRTH*k*.42, GIRTH*k*.34, dk, .05);
     }
   }
   // ---- THE SKULL. A wedge: wide behind the eyes, narrowing to the snout, and
@@ -3670,7 +3692,14 @@ tally(D){
     tail.push([sway + lag, (-.40 - i*.26)*gr,
                HIP - (.02 + i*(.10 - .02*perch))*gr]);
   }
+  // THE TAIL WAS A POLE. Uniform pale radius tapering smoothly to a vane read
+  // as a stick with a flag on it - nothing broke the shaft up along its own
+  // length. A ring of dark accent bands, evenly spaced, does what vertebrae
+  // do on every real tail: it tells the eye the rod is a jointed spine.
   chain(tail, .10*gr, .038*gr, c, em+.06, [1, 1, .92]);
+  for(let i=1;i<tail.length-1;i+=2)
+    mb(tail[i][0], tail[i][1], tail[i][2], .062*gr*(1-i/tail.length),
+       .050*gr*(1-i/tail.length), .062*gr*(1-i/tail.length), acc, .30);
   const tp = tail[tail.length-1];
   for(let i=0;i<3;i++)                                     // the vane
     mb(tp[0], tp[1] - .04*gr - i*.10*gr, tp[2] - i*.03*gr,
