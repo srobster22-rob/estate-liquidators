@@ -3731,6 +3731,50 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.after.dmg} -> ${r.kept.dmg} after another passive`);
   }
 
+  console.log("\n=== 28. THE GROUND HOLDS THE HORDE TOO ===");
+  {
+    // Every biome had a rule for the player and none for anything chasing
+    // them - THE TARPITS' "-14% move speed" was a player-only tax on terrain
+    // the game itself describes as gripping "your" feet, no different from
+    // the mud gripping anything else standing in it. Same fix as the lake:
+    // the ground is terrain, not a player-exclusive cost.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.pin(31337);
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+      // find a bog cell near the middle of the map by scanning a spiral -
+      // the same technique the water test uses via g.lakes(), but biomes
+      // aren't listed anywhere so this walks the ground itself
+      let bogAt = null;
+      const STEPS = 24;
+      for(let ring=10; ring<200 && !bogAt; ring+=6)
+        for(let a=0; a<STEPS && !bogAt; a++){
+          const ang = a/STEPS*Math.PI*2;
+          const x = Math.cos(ang)*ring, z = Math.sin(ang)*ring;
+          if(g.biomeAt(x,z).id === "bog") bogAt = {x,z};
+        }
+      const walk = (x, z) => { g.clearEnemies(); g.place(x, z + 30);
+        for(let k2=0;k2<6;k2++) g.spawnAt("shambler", x + (k2%3-1)*1.2, z + (k2/3|0)*1.2);
+        g.step(1, 1/60);
+        const p0 = g.enemiesPos(); g.step(90, 1/60);
+        const p1 = g.enemiesPos();
+        let d2 = 0;
+        for(let k2=0;k2<p0.length;k2++)
+          d2 += Math.hypot(p1[k2].x - p0[k2].x, p1[k2].z - p0[k2].z);
+        return d2 / p0.length; };
+      const dry = walk(0, 0);
+      const wet = bogAt ? walk(bogAt.x, bogAt.z) : null;
+      g.pin(null);
+      return { dry, wet, found: !!bogAt };
+    });
+    ok("a bog cell exists to test against", r.found, "world rolled with no THE TARPITS in range");
+    if(r.found)
+      ok("and the horde bogs down too - the ground is terrain, not a player tax",
+         r.wet < r.dry * .92,
+         `a shambler covered ${r.wet.toFixed(1)}m through THE TARPITS vs ${r.dry.toFixed(1)}m on THE FERNLANDS`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

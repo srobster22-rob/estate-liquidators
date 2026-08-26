@@ -5389,7 +5389,13 @@ function updateEnemies(dt){
     // false in this language - the first guard exempted every walker in the
     // game and the averaged test caught the rule applying to nobody.
     const wading = !(e.dvT > 0) && inWater(e.x, e.z) ? (e.boss ? .85 : .74) : 1;
-    let spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * wading
+    // THE GROUND HOLDS THE HORDE TOO. bmod.spd already slows the player 14%
+    // in THE TARPITS - a player-only tax, on terrain the game itself
+    // describes as gripping "your" feet, no different from the mud gripping
+    // anything else standing in it. Divers cross above the mud the same way
+    // they cross above water; everyone that actually walks through it does.
+    const ground = !(e.dvT > 0) ? (biomeAt(e.x, e.z).mod.spd || 1) : 1;
+    let spd = e.def.spd * e.spdMul * (e.slowT>0 ? .45 : 1) * wading * ground
             * (e.boss?1:rndSeed(e));
 
     // THE DIVE. The ledger says the melee horde deals about a tenth of the
