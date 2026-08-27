@@ -2178,7 +2178,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${m.aquaWet.toFixed(1)}m through water vs ${m.aquaDry.toFixed(1)}m over land`);
     const en = await page.evaluate(async () => {
       const g = window.__g;
-      g.pin(31337);
+      // BOTH streams pinned - see R77's note on section 28. Each shambler's
+      // own speed multiplier comes off the RUN stream, which reseeds itself
+      // from Math.random() on any start() that does not pin it, so this
+      // average of six was carrying the same latent flake the bog check had
+      // even though its wider margin (.88 against a true .74) never tripped it.
+      g.pin(31337); g.pinRun(31337);
       g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
       g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
       const L = g.lakes()[0];
@@ -2197,7 +2202,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
           d2 += Math.hypot(p1[k2].x - p0[k2].x, p1[k2].z - p0[k2].z);
         return d2 / p0.length; };
       const dry = walk(0, -30), wet = walk(L.x, L.z);
-      g.pin(null);
+      g.pin(null); g.pinRun(null);
       return { dry, wet };
     });
     ok("and the horde wades too - a lake is terrain, not a player tax",
