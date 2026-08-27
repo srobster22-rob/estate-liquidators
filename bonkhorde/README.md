@@ -115,21 +115,21 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 
 | | |
 |---|---|
-| **8 weapons, 4 slots** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, ground hazards — you carry four of them, plus your line's own move for free |
-| **8 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
+| **10 weapons, 4 slots** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, a forward charge, ground hazards, and a hunting pack that runs with you — you carry four of them, plus your line's own move for free |
+| **10 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | every one contributes to output, not just the four with "damage" in the text — PLATING blasts attackers off you, MAGNET drags the horde into a pile |
 | **6 wildlife types + 4 bosses** | TERRAPIN, PTERLING, CERATOP, DILOPHO, RAPTORLING and the GILDWING that runs off with your gold, against THE MATRIARCH, THORNBACK, SKYSPLITTER and TERRAVORE — with a spawn director that reweights the mix over 11 phases |
 | **~25 dens** | half the landmarks keep a pack of what lives there — optional, repayable, worth a boon |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
-| **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
+| **5 boss abilities** | slam, evict, charge, spokes and a sinkhole ring that leaves the caster's own ground safe — telegraphed, dodgeable, worth dodging |
 | **type affinity** | every line has a region it is at home in (+20% damage) and one it is not (+15% damage taken) |
 | **9 creature lines, 36 forms** | fire, water, storm, stone, fungus, wind, echo, river and sun — each a FOUR-stage line that evolves at run level 7 and 20 and again at the APEX, every form its own hand-built body, every line its own move |
 | **per-creature levels** | every run banks its XP into the creature that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
 | **bunnyhopping** | chain a jump on the frame you land, 24 links deep, up to +60% move speed, paying XP every fifth; one hit resets it |
 | **THE DEEP** | nine layers, one opened per clear — +34% enemy health and +30% coins each |
-| **9 permanent upgrades** | bought with coins, persisted to `localStorage` |
+| **10 permanent upgrades** | bought with coins, persisted to `localStorage` |
 
-Roughly 1,600 lines of JavaScript, no libraries.
+About 9,100 lines of JavaScript in one file, no libraries.
 
 ### The landmarks have something in them
 
@@ -265,6 +265,17 @@ node mutate.js                    # break the game on purpose, one thing at a
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
 die, and checks that `localStorage` survives a reload. **406 passing.**
+
+**"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
+compare a stationary player against the autopilot, and the autopilot's closest approach to the
+boss over thirty seconds was 19.8 m against a mean of 67.5 m — it was not dodging anything, it
+was running away, so the check had been proving that fleeing works. It now parks both arms 34 m
+out, where contact damage is zero in each and cannot drown the signal, and the only difference
+between them is standing in the marked circle or two metres beside it: over 624 telegraph
+frames, **standing in them costs 448 HP and standing beside them costs 0**. Every point of that
+damage is avoidable by reading the tell. A hazard rigged to hit 1.6× wider than it is drawn
+takes the second arm from 0 HP to 153 and turns the check red, which is how you know it is
+still asking the question.
 
 ### Every weapon, on the two axes that decide a run
 
