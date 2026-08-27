@@ -7912,6 +7912,32 @@ function render(){
           box(x, gy2 + .8 + k*1.35, z, w2, .70, w2, k>3?lt:dk, .04, m.rot);
           x -= Math.cos(m.rot+1.57)*sg*.34*t2; z -= Math.sin(m.rot+1.57)*sg*.34*t2;
         } }
+    } else if(K === "midden"){
+      // THE OSSUARY - a bone pile, not a ring: the one landmark shape that had
+      // fallen into the generic catch-all below, eleven identical slabs in a
+      // circle with no relation to what its own flavour text promised. A low
+      // irregular heap, long bones jutting out of it at every angle, and a
+      // scatter of pale skulls on top - the shape reads as a midden even
+      // before the pack that lives in it comes out.
+      const bone = [.90,.87,.78];
+      for(let i=0;i<14;i++){                              // the heap itself
+        const a = m.rot + i*2.4, rr = m.k.r*(.15+(i%5)*.16);
+        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
+        box(x, groundY(x,z)+.22+(i%3)*.12, z, .60,.22,.60, i%2?lt:dk, .03, a);
+      }
+      for(let i=0;i<9;i++){                                // long bones, jutting
+        const a = m.rot + i*1.4, rr = m.k.r*(.10+(i%4)*.20);
+        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
+        box(x, groundY(x,z)+.40+(i%4)*.22, z, .10,1.0,.10, bone, .05, a*.7);
+      }
+      for(let i=0;i<3;i++){                                // skulls
+        const a = m.rot + 2.1 + i*2.3, rr = m.k.r*.32;
+        const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr, gy2 = groundY(x,z);
+        box(x, gy2+.40, z, .34,.28,.40, bone, .08, a);
+        for(const sg of [-1,1])
+          box(x+Math.cos(a+1.57)*sg*.11, gy2+.42, z+Math.sin(a+1.57)*sg*.11,
+              .07,.07,.05, [.05,.04,.03], .01, a);
+      }
     } else {
       for(let i=0;i<11;i++){ const a = m.rot + i*1.9, rr = m.k.r*(.3+(i%4)*.22);
         const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
