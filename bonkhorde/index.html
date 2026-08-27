@@ -1580,12 +1580,12 @@ gore:{ name:"GORE", ic:"gore", kind:"w",
   ds:"Everything in front of you, while you are moving. Turn into them.",
   evo:{ name:"STAMPEDE", need:"boots", ic:"stampede",
         ds:"Wider, longer, and it throws what it does not kill." },
-  lv:[{d:30,cd:1.05,rng:7.0,w:1.5,kb:6},
-      {d:41,cd:.98,rng:7.8,w:1.7,kb:7},
-      {d:55,cd:.90,rng:8.6,w:1.9,kb:8},
-      {d:73,cd:.82,rng:9.5,w:2.2,kb:9},
-      {d:96,cd:.74,rng:10.5,w:2.5,kb:10},
-      {d:190,cd:.58,rng:14.0,w:3.6,kb:22}] },
+  lv:[{d:54,cd:1.05,rng:9.5,w:2.0,kb:6},
+      {d:74,cd:.98,rng:10.6,w:2.2,kb:7},
+      {d:99,cd:.90,rng:11.7,w:2.5,kb:8},
+      {d:131,cd:.82,rng:12.8,w:2.9,kb:9},
+      {d:173,cd:.74,rng:14.0,w:3.3,kb:10},
+      {d:342,cd:.58,rng:18.0,w:4.7,kb:22}] },
 
 caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
   ds:"Drops a hazard behind you. Rewards running away, which you will.",
@@ -6483,9 +6483,23 @@ function botVector(){
       // fires along the way you are MOVING, so a player holding it turns into
       // the crowd rather than away from it - and a bot that never does makes
       // the weapon unmeasurable, which is how it first benched at 13 boss DPS
-      // against a median of 81. Weaker than the do-not-walk-into-teeth term, so
-      // it steers the lane onto bodies at reach without walking into them.
-      if(goreLane && d >= 4.5 && d < goreLane) s += proj*1.15;
+      // against a median of 81.
+      // That first weight was 1.15, chosen to sit UNDER the do-not-walk-into-
+      // teeth term, and it left the weapon still last in the game on both axes:
+      // 19 boss dps and 561 crowd against a field median of 172. The reason is
+      // arithmetic. Avoidance scores (7.5-d)*5.0, so anywhere inside seven
+      // metres it is worth up to thirty-seven points while this was worth one -
+      // the bot held GORE and then kited exactly as if it were holding
+      // anything else, which measures a player who took the card and refused to
+      // use it. Raising the WEAPON could not fix that: x1.8 damage moved boss
+      // 19 to 34, and reach 10.5 to 14 moved it 34 to 39, both far short, while
+      // the evolved tier - which already had the reach - responded to the same
+      // damage change by tripling. The lane was never the problem, the heading
+      // was. At 2.80 it competes with avoidance at the distances GORE actually
+      // fires from: 109 boss and 1530 crowd, with survival 3:41 to 6:39.
+      // Only a player holding GORE is affected: goreLane is 0 otherwise and
+      // this whole term is inert, so no other weapon's bench moves.
+      if(goreLane && d >= 4.5 && d < goreLane) s += proj*2.80;
     }
     for(const g of gems){
       const gx=g.x-P.x, gz=g.z-P.z, d=Math.hypot(gx,gz);
