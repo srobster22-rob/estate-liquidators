@@ -3943,7 +3943,14 @@ echo(D){
   // from - so HYDRALING's necks converged on each other and read as one thick
   // neck with two heads stuck on the end. Whatever the count, the heads end up
   // further apart than the shoulders they grew out of.
-  const FAN = Math.max((n - 1) * (HD * 1.5), HD * 3.0);
+  // ...and one and a half skull-widths per head is a pitch of HD*1.5 between
+  // neighbours against a skull that is HD*2 WIDE, so from THE LEGION's five
+  // heads onward every neighbour overlapped its neighbour and the fan closed
+  // into one lumpy mass you cannot count heads in - which is the whole identity
+  // of a hydra. That tuning was set when this line topped out at fewer heads.
+  // The pitch clears a skull now, and the rest of the separation goes where
+  // this plan always said it should: into depth and height, below.
+  const FAN = Math.max((n - 1) * (HD * 1.9), HD * 3.0);
   for(let i=0;i<n;i++){
     const u  = n > 1 ? i/(n-1) - .5 : 0;             // -0.5 .. +0.5
     // Each neck gets its own clock. A fan that moves as one piece is a rack of
@@ -3962,9 +3969,12 @@ echo(D){
     const bx = u * .30 * gr, bf = (.16 - Math.abs(u)*.10) * gr, by = (.34 + coil)*gr;
     // inner heads ride high and reach far; outer heads sit lower and wider,
     // and the alternation staggers them again so no two share a slice of air
-    const tier = (i % 2 ? -.09 : .07) + (i === (n>>1) ? .06 : 0);
+    const tier = (i % 2 ? -.15 : .11) + (i === (n>>1) ? .07 : 0);
     const hx = u * FAN + sd;
-    const hf = (.46 + Math.cos(u*2.4)*.20 + reach) * gr;
+    // the centre head leads and the outer ones sit back - at .20 that was a
+    // spread of .13 of a unit across the whole fan, which is a third of a
+    // skull and reads as no stagger at all
+    const hf = (.46 + Math.cos(u*2.4)*.42 + reach) * gr;
     const hy = (.92 + Math.cos(u*1.3)*.12 + tier + bob) * gr;
     // FIVE POINTS, NOT THREE, and the middle ones carry their own sway - the
     // neck leaves the shoulder low and behind, arches up, then reaches forward
