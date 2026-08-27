@@ -4123,6 +4123,27 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.clearEnemies();                       // only the brood is left near you
       g.step(60*6, 1/60);
       out.hpDrop = +(hp0 - g.state().hp).toFixed(1);
+      // 5. and six of them are six animals. A render caught the pack standing
+      //    inside itself - two of six visibly interpenetrating - and no check
+      //    here noticed, because every one of them counted pets rather than
+      //    looking at where they were. Measured over a real fight: the closest
+      //    pair of the pack, every frame.
+      boot(4, true);
+      g.clearEnemies();
+      for(let i=0;i<14;i++) g.spawnAt("shambler", -8 + (i%5)*4, 10 + (i/5|0)*3);
+      let worst = 1e9, overlap = 0, frames = 0;
+      for(let i=0;i<60*10;i++){
+        g.step(1/60);
+        const ps = g.pets();
+        if(!ps || ps.length < 2) continue;
+        let mn = 1e9;
+        for(let a=0;a<ps.length;a++) for(let b2=a+1;b2<ps.length;b2++)
+          mn = Math.min(mn, Math.hypot(ps[a].x-ps[b2].x, ps[a].z-ps[b2].z));
+        frames++; worst = Math.min(worst, mn);
+        if(mn < 0.9) overlap++;
+      }
+      out.closest = +worst.toFixed(2);
+      out.overlapPct = Math.round(100*overlap/Math.max(1,frames));
       return out;
     });
     ok("a brood actually puts something on the field",
@@ -4138,6 +4159,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.far < 40, `furthest a hatchling strayed from its owner: ${r.far}m`);
     ok("and standing next to your own brood is free",
        r.hpDrop <= 0, `owner lost ${r.hpDrop} HP alone with it`);
+    // A pack that renders as one animal is not a pack. Before the pets took a
+    // side of the target each, the closest pair of a four-strong brood averaged
+    // 0.011m apart and spent 100% of frames inside a body radius.
+    ok("and a pack of six is six animals, not one",
+       r.overlapPct <= 2 && r.closest > 0.6,
+       `closest any two came: ${r.closest}m, and ${r.overlapPct}% of frames ` +
+       `had a pair inside a body radius`);
   }
 
   console.log("\n" + "=".repeat(58));

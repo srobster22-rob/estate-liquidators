@@ -1644,11 +1644,11 @@ brood:{ name:"BROOD", ic:"brood", kind:"w",
   // The evolved bite is deliberately a big jump on the base curve: every
   // other weapon gains ~8x on evolution and BROOD's pack size and cooldown
   // only pay for 1.8x of that, so the rest has to come from the bite.
-  lv:[{d:12,cd:1.44,n:1,rng:15},
-      {d:16,cd:1.38,n:1,rng:16},
-      {d:21,cd:1.32,n:2,rng:17},
-      {d:27,cd:1.26,n:2,rng:18},
-      {d:35,cd:1.20,n:3,rng:19},
+  lv:[{d:18,cd:1.44,n:1,rng:15},
+      {d:23,cd:1.38,n:1,rng:16},
+      {d:31,cd:1.32,n:2,rng:17},
+      {d:40,cd:1.26,n:2,rng:18},
+      {d:52,cd:1.20,n:3,rng:19},
       {d:95,cd:0.85,n:4,rng:24}] },
 };
 
@@ -5274,7 +5274,18 @@ function updateBrood(dt){
     for(const e2 of enemies)
       if(e2.boss && !e2.dead && Math.hypot(e2.x-P.x, e2.z-P.z) < s.rng*1.6){ tgt = e2; break; }
     if(!tgt) tgt = nearest(p2.x, p2.z, s.rng);
-    if(tgt){ tx = tgt.x; tz = tgt.z; biting = tgt; }
+    // EACH PET TAKES ITS OWN SIDE. Aiming every pet at the target's centre
+    // walked the whole pack onto one coordinate: measured over 2400 frames of
+    // a real run, the closest pair of a four-strong pack averaged 0.011m apart
+    // and spent 100% of frames inside a body radius of each other. A pack that
+    // renders as one animal is not a pack, and a render caught it before this
+    // did - two of six visibly interpenetrating. They ring the target instead,
+    // which also spreads the area bite over more of what is standing around it.
+    if(tgt){
+      const ring = (tgt.rad || .6) + .9, ta = (i + .5) * TAU / pets.length;
+      tx = tgt.x + Math.sin(ta)*ring; tz = tgt.z + Math.cos(ta)*ring;
+      biting = tgt;
+    }
     const dx = tx - p2.x, dz = tz - p2.z, d = Math.hypot(dx,dz) || 1;
     // a pet that has somehow been left behind rejoins rather than trails
     if(Math.hypot(p2.x-P.x, p2.z-P.z) > s.rng + 12){ p2.x = P.x; p2.z = P.z; }
@@ -5283,6 +5294,19 @@ function updateBrood(dt){
       p2.x += dx*k; p2.z += dz*k;
       p2.face = Math.atan2(dx, dz);
       p2.step += spd*dt;
+    }
+    // and they do not stand inside each other on the way there. The ring above
+    // handles the common case; this is the backstop for the moments it cannot -
+    // two pets arriving at one slot, or a pack that has just spawned on top of
+    // its owner.
+    for(let j=0;j<pets.length;j++){
+      if(j === i) continue;
+      const q = pets[j];
+      const sx = p2.x-q.x, sz = p2.z-q.z, sd = Math.hypot(sx,sz);
+      if(sd >= PET_SEP) continue;
+      if(sd < 1e-3){ p2.x += (i%2 ? .05 : -.05); continue; }   // break an exact tie
+      const push = (PET_SEP - sd) * .5;
+      p2.x += sx/sd*push; p2.z += sz/sd*push;
     }
     p2.y = groundY(p2.x, p2.z);
     if(biting && p2.cool <= 0 &&
@@ -5307,8 +5331,10 @@ function updateBrood(dt){
       // and past that the only way up is to make the bite an aura, which is a
       // different weapon.
       // So it goes the other way. BROOD is the pack that brings down the big
-      // one and does nothing whatever for the horde - top of the boss column,
-      // bottom of the crowd column, dominated by nobody in either direction.
+      // one and is thin cover against the horde - top of the boss column,
+      // eighth of ten on crowd, dominated by nobody in either direction.
+      // Shipped at 351/1030 at rank 5 against a field median of 119, and
+      // 1417/1438 evolved against 953.
       // The multiplier is the honest way to buy that: raising the bite itself
       // would drag the crowd column up with it and blur the trade, whereas
       // this lands only on the thing with the health bar. The lunge still
@@ -6226,6 +6252,8 @@ let pickT = 0;
 // Sim time is the only clock a deterministic run may use.
 // How much harder a brood bites a boss than it bites trash. See updateBrood.
 const BROOD_BOSS = 2.9;
+// How far apart a pack's own animals stay. Roughly two hatchling widths.
+const PET_SEP = 1.1;
 const PICK_GAP = .09;
 let pickGap = 0;
 // ROLLED ONCE. The step loop asks offers() whether this level has a real

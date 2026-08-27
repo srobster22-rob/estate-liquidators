@@ -205,6 +205,10 @@ const MUTANTS = [
     why:"the pack stays one animal at every rank, so five ranks buy nothing",
     from:"const s = wStat(w), n = Math.min(6, s.n + dupeN());",
     to:  "const s = wStat(w), n = 1;" },
+  { id:"pack-stacks", must:"30",
+    why:"a pack's own animals stand inside each other again, so six hatchlings " +
+        "render as fewer than six and the rank you bought is invisible",
+    from:"const PET_SEP = 1.1;", to:"const PET_SEP = 0;" },
   { id:"tail-comes-off", must:"29",
     why:"a tapered chain stops clamping to its own neighbours, so tails and " +
         "limbs float free of the body that owns them",
