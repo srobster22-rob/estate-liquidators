@@ -5308,6 +5308,20 @@ function updateBrood(dt){
       const push = (PET_SEP - sd) * .5;
       p2.x += sx/sd*push; p2.z += sz/sd*push;
     }
+    // AND NOT INSIDE THE THING IT IS BITING. Nothing stops a pet walking
+    // through an enemy body, and crossing to a ring slot on the far side means
+    // walking straight through the middle of one. Measured with the owner at
+    // melee range of THE MATRIARCH - a legitimate place to stand, three metres
+    // outside its hitbox - one of six pets ended up 0.59m from a centre of
+    // radius 2.6, which draws a hatchling buried inside the boss.
+    if(biting){
+      const gx = p2.x-biting.x, gz = p2.z-biting.z, gd = Math.hypot(gx,gz);
+      const keep = biting.rad + .35;
+      if(gd < keep){
+        if(gd < 1e-3){ p2.x = biting.x + keep; }
+        else { p2.x = biting.x + gx/gd*keep; p2.z = biting.z + gz/gd*keep; }
+      }
+    }
     p2.y = groundY(p2.x, p2.z);
     if(biting && p2.cool <= 0 &&
        Math.hypot(biting.x-p2.x, biting.z-p2.z) < biting.rad + 1.0){

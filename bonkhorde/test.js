@@ -4144,6 +4144,23 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       out.closest = +worst.toFixed(2);
       out.overlapPct = Math.round(100*overlap/Math.max(1,frames));
+      // 6. and none of them stands INSIDE what it is biting. Nothing stops a
+      //    pet walking through an enemy body, and a ring slot on the far side
+      //    of a boss means crossing straight through the middle of one. Caught
+      //    with the owner at melee range, which is where it happens.
+      boot(4, true);
+      g.clearEnemies(); g.boss(0); g.step(1/60);
+      const b0 = g.bossAt();
+      out.bossRad = b0 ? b0.rad : 0;
+      let inside = 1e9;
+      for(let i=0;i<60*8;i++){
+        const bb = g.bossAt(); if(!bb) break;
+        g.place(bb.x - 7, bb.z);              // three metres outside its hitbox
+        g.step(1/60);
+        for(const q of (g.pets()||[]))
+          inside = Math.min(inside, Math.hypot(q.x-bb.x, q.z-bb.z));
+      }
+      out.nearestToBoss = inside === 1e9 ? -1 : +inside.toFixed(2);
       return out;
     });
     ok("a brood actually puts something on the field",
@@ -4166,6 +4183,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.overlapPct <= 2 && r.closest > 0.6,
        `closest any two came: ${r.closest}m, and ${r.overlapPct}% of frames ` +
        `had a pair inside a body radius`);
+    // A hatchling drawn inside the boss is a hatchling you cannot see fighting.
+    ok("and none of them stands inside what it is biting",
+       r.nearestToBoss > r.bossRad,
+       `closest a pet came to a ${r.bossRad}m boss centre: ${r.nearestToBoss}m`);
   }
 
   console.log("\n" + "=".repeat(58));

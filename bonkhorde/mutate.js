@@ -205,6 +205,10 @@ const MUTANTS = [
     why:"the pack stays one animal at every rank, so five ranks buy nothing",
     from:"const s = wStat(w), n = Math.min(6, s.n + dupeN());",
     to:  "const s = wStat(w), n = 1;" },
+  { id:"pets-walk-through-bosses", must:"30",
+    why:"a pet crossing to a ring slot on the far side walks through the boss " +
+        "and stands inside it, which draws a hatchling buried in the model",
+    from:"      const keep = biting.rad + .35;", to:"      const keep = 0;" },
   { id:"pack-stacks", must:"30",
     why:"a pack's own animals stand inside each other again, so six hatchlings " +
         "render as fewer than six and the rank you bought is invisible",
