@@ -278,20 +278,34 @@ for (const m of run) {
     survived++; continue;
   }
   const nFail = +verdict[2];
+  // WHICH SECTIONS FAILED, not just the first one. Reading only the first was
+  // ambiguous in a way that hid a real hole: a lower-case "caught" meant "the
+  // first failure was somewhere else", which is damning when the expected
+  // section runs EARLIER (it ran and passed a broken game) and means nothing
+  // when it runs later (it may never have been reached before something else
+  // went red). Both printed the same. collector-never-rests was the first kind
+  // and section 18 had genuinely stopped working; jump-unbuffered looked
+  // identical and was the second kind. Track every section that failed, and
+  // say plainly whether the one that owns this mutation was among them.
   const lines = out.split("\n");
-  let section = "(none)";
+  let section = "(none)", first = null;
+  const failedIn = new Set();
   for (const line of lines) {
-    if (line.includes("FAIL")) break;
     const h = line.match(/^=== ([\w.]+)\./);
-    if (h) section = h[1];
+    if (h) { section = h[1]; continue; }
+    if (line.includes("FAIL")) { failedIn.add(section); if (!first) first = section; }
   }
   const caught = nFail > 0;
-  const right  = caught && section === m.must;
-  console.log(`${caught ? (right ? "CAUGHT  " : "caught  ") : "SURVIVED"}  ` +
-              `${m.id.padEnd(22)} expected ${m.must.padEnd(4)} ` +
-              `${caught ? `first failure in ${section}, ${nFail} assertion(s)`
+  const byOwner = failedIn.has(m.must);
+  const tag = !caught ? "SURVIVED" : byOwner ? "CAUGHT  " : "elsewhere";
+  console.log(`${tag.padEnd(9)} ${m.id.padEnd(22)} expected ${m.must.padEnd(4)} ` +
+              `${caught ? `${nFail} assertion(s), first in ${first}` +
+                          (byOwner ? (first === m.must ? "" : ` and ${m.must} also caught it`)
+                                   : ` - ${m.must} did NOT`)
                         : "the suite passed a broken game"}`);
-  if (!caught) survived++;
+  // A mutation caught only by a section that does not own it is a hole in the
+  // owning section, even though the suite went red. Count it as one.
+  if (!caught || !byOwner) survived++;
 }
 fs.existsSync(TMP) && fs.unlinkSync(TMP);
 console.log(`\n${run.length - survived}/${run.length} mutations caught`);
