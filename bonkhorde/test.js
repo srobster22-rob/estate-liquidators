@@ -1266,18 +1266,30 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `picking=${cache.picking} +${cache.levels} levels +${cache.xp} XP`);
 
     await at("altar", 20, 0);
+    // READ THE CHARGE, DO NOT ASSUME THERE IS ONE. This block used to index
+    // events()[0] directly, which is fine while the altar behaves and fatal
+    // when it does not: an altar that charges from anywhere completes during
+    // the first sample and events() is empty, so the next line read .chg off
+    // undefined and the whole HARNESS died. A dead harness prints no RESULT
+    // line, and no RESULT line is not a failing test - the mutation audit
+    // scores it as no data, which is the same column as a hole. A check that
+    // cannot report its own failure is worth less than one that can, so this
+    // reports -1 for "the altar was already gone" and lets the assertions below
+    // fail on it in the ordinary way.
     const altar = await page.evaluate(() => {
+      const chg = () => { const e = window.__g.events()[0]; return e ? e.chg : -1; };
       window.__g.place(14, 0); window.__g.step(120);        // 6m away, two seconds
-      const idle = window.__g.events()[0].chg;
+      const idle = chg();
       window.__g.place(20, 0); window.__g.step(90);         // standing in it
-      const part = window.__g.events()[0].chg;
+      const part = chg();
       window.__g.place(0, 0);  window.__g.step(60);         // walked off again
-      const bled = window.__g.events()[0].chg;
+      const bled = chg();
       window.__g.place(20, 0); window.__g.step(60 * 7);     // hold it out
       return { idle, part, bled, left: window.__g.events().length,
                boons: window.__g.boons() };
     });
-    ok("an altar does not charge from six metres away", altar.idle === 0, `${altar.idle}`);
+    ok("an altar does not charge from six metres away", altar.idle === 0,
+       altar.idle === -1 ? "the altar had already completed itself" : `${altar.idle}`);
     ok("standing in it charges it", altar.part > 1, `${altar.part}s`);
     ok("stepping out bleeds progress rather than resetting it",
        altar.bled < altar.part && altar.bled > 0, `${altar.part} -> ${altar.bled}`);
