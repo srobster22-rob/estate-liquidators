@@ -113,6 +113,16 @@ const MIN = +(process.argv[2] || 0);
       }
       return out;
     };
+    // WHAT IS DELIBERATELY NOT HERE, because an open question that keeps coming
+    // back costs more than the answer written down:
+    //   - THE ELITE CROWN. Four boxes that orbit the head, drawn with box() in
+    //     world space AFTER the capture closes, so they never enter this
+    //     analysis. That is correct rather than a gap: a crown is supposed to
+    //     float clear of the animal, and a connectivity report that demanded it
+    //     touch the skull would be asking for the wrong thing.
+    //   - DEN PACK BODIES. A den spawns through spawnEnemy(K.den, ...) with the
+    //     same five kinds listed below and one change, maxhp * 1.25. Same body
+    //     plan, same boxes; running them again would re-measure these rows.
     const mobs = ["shambler","runner","brute","spitter","skitter","collector"];
     for(const k of mobs)
       hordeRes.push(Object.assign({ ch:k, st:"", nm:k.toUpperCase() },
