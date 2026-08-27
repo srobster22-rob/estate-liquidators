@@ -81,7 +81,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("no runtime errors", errors.length === 0, errors.slice(0, 3).join(" | "));
 
   console.log("\n=== 4. EVERY WEAPON FIRES WITHOUT THROWING ===");
-  const weapons = ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"];
+  const weapons = ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops","brood"];
   for (const w of weapons) {
     const before = errors.length;
     const r = await page.evaluate(w => {
@@ -99,7 +99,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   console.log("\n=== 5. EVERY EVOLUTION ===");
   const evos = { bat:"spinach", skulls:"clover", bolt:"dupe", pulse:"tempo",
-                 mortar:"plating", zap:"magnet", aura:"heart", caltrops:"boots" };
+                 mortar:"plating", zap:"magnet", aura:"heart", caltrops:"boots",
+                 brood:"dupe" };
   for (const [w, p] of Object.entries(evos)) {
     const before = errors.length;
     const r = await page.evaluate(([w, p]) => {
@@ -3095,32 +3096,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                             const st = g.runOut();
                             return `${st.t.toFixed(2)}/${st.lvl}/${st.kills}`; };
       g.pin(999); g.pinRun(555);
-      // THREE, and the first one is a warm-up. Run on its own this block gives
-      // the same string three times; run after the twenty-odd sections above
-      // it, the FIRST pinned trial differs from the two that follow - so
-      // something earlier in the suite leaves state that the first run clears
-      // and the rest do not see. That is a real leak and it is written down as
-      // one in LOOP_LOG; what this check is for is whether the run itself is a
-      // pure function of its seeds, and comparing two consecutive trials asks
-      // that question without asking the other one at the same time.
-      // Warm up until two consecutive trials agree, up to four: the leak's
-      // influence used to wash out in one trial and now takes two (isolated,
-      // the same block returns four identical strings - the impurity comes in
-      // with the suite, not with the sim). A REAL nondeterminism never
-      // converges and still fails the assertion below.
-      let warm = trial(), prev = trial(), warms = 1;
-      while(prev !== warm && warms < 4){ warm = prev; prev = trial(); warms++; }
-      const a = prev, b = trial();
+      // NO WARM-UP ANY MORE. This used to throw away up to four trials until
+      // two of them agreed, because the first pinned run of a pair reliably
+      // differed from the rest and nobody could find why. The why was the
+      // spatial grid: near() and hitNear() read a grid rebuilt in step()'s
+      // world section, after the block the autopilot steers from, so a run's
+      // first frame read the PREVIOUS RUN's grid - empty on the very first
+      // trial, full of a dead run's bodies on every one after. The bot opened
+      // on a different heading, the spawn director biases arrivals off that
+      // heading, and ten seconds later it was a different game. startRun()
+      // rebuilds the grid now, so the honest question can be asked directly:
+      // the first pinned trial and the two after it must all agree.
+      const a = trial(), b = trial(), c0 = trial();
       g.pinRun(556);            const c = trial();
       g.pin(null); g.pinRun(null);
       const d = trial(), e = trial();
-      return { warm, a, b, c, d, e };
+      return { a, b, c0, c, d, e };
     });
     ok("a fully pinned trial is reproducible to the kill",
-       det.a === det.b, `${det.a} vs ${det.b}` +
-       (det.warm === det.a ? "" :
-        `   (warm-up differed: ${det.warm} - state leak, entering state ` +
-        `${JSON.stringify(snapBefore)})`));
+       det.a === det.b && det.b === det.c0,
+       `${det.a} / ${det.b} / ${det.c0}` +
+       (det.a === det.b && det.b === det.c0 ? "" :
+        `   (state leak, entering state ${JSON.stringify(snapBefore)})`));
     ok("a different run seed on the same arena is a different run",
        det.c !== det.a, `${det.a} vs ${det.c}`);
     ok("and unpinned play is still random",
@@ -4034,6 +4031,69 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                     : `${r.length} bodies, all in one piece`);
     ok("and each one actually drew something to check",
        r.every(x => x.n > 10), r.map(x => `${x.nm} ${x.n}`).join(" "));
+  }
+
+  console.log("\n=== 30. THE BROOD IS A BODY, NOT A BULLET ===");
+  {
+    // Nine weapons and not one of them put another body on the field. A summon
+    // is a different KIND of thing to test: it is not "did the shot land", it
+    // is "is there something out there, does it fight, and can it be walked off
+    // the edge of the world while its owner is somewhere else".
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = (rank, evo) => {
+        g.wipeSave(); g.start("intern"); g.god();
+        g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+        g.give("brood", rank);
+        if(evo){ g.give("dupe", 2); g.evolve("brood"); }
+        g.place(0,0); g.aim(0); g.step(30, 1/60);
+      };
+      const out = {};
+      // 1. it exists, and how many of it there are follows the rank
+      boot(0, false); out.n0 = g.pets().length;
+      boot(4, false); out.n4 = g.pets().length;
+      boot(4, true);  out.nEvo = g.pets().length;
+      // 2. it fights on its own - the player never moves and never fires at it
+      boot(4, false);
+      g.clearEnemies();
+      for(let i=0;i<12;i++) g.spawnAt("shambler", -6 + (i%4)*3, 9 + (i/4|0)*2);
+      const k0 = g.state().kills;
+      g.step(60*8, 1/60);
+      out.killed = g.state().kills - k0;
+      // 3. it cannot be baited off the map: park a lone target far away and
+      //    check the brood stays inside its leash of the PLAYER
+      boot(4, false);
+      g.clearEnemies(); g.place(0,0);
+      g.spawnAt("shambler", 0, 120);
+      let far = 0;
+      for(let i=0;i<60*10;i++){ g.step(1/60);
+        for(const p of g.pets()) far = Math.max(far, p.d); }
+      out.far = +far.toFixed(1);
+      // 4. and it never costs the owner health
+      boot(4, false);
+      g.clearEnemies();
+      for(let i=0;i<8;i++) g.spawnAt("shambler", -4 + i, 4);
+      g.ungod && g.ungod();
+      const hp0 = g.state().hp;
+      g.freezeSpawns(true);
+      g.clearEnemies();                       // only the brood is left near you
+      g.step(60*6, 1/60);
+      out.hpDrop = +(hp0 - g.state().hp).toFixed(1);
+      return out;
+    });
+    ok("a brood actually puts something on the field",
+       r.n0 === 1, `${r.n0} hatchling at rank 1`);
+    ok("and the pack grows with the rank",
+       r.n4 > r.n0 && r.nEvo > r.n4,
+       `rank1 ${r.n0} -> rank5 ${r.n4} -> evolved ${r.nEvo}`);
+    ok("it hunts on its own, with the owner standing still",
+       r.killed > 0, `${r.killed} killed while the player never moved`);
+    // the leash is the whole reason this is playable: a follower that chases
+    // one distant straggler is a follower you do not have when the crowd lands
+    ok("and it cannot be baited off the map",
+       r.far < 40, `furthest a hatchling strayed from its owner: ${r.far}m`);
+    ok("and standing next to your own brood is free",
+       r.hpDrop <= 0, `owner lost ${r.hpDrop} HP alone with it`);
   }
 
   console.log("\n" + "=".repeat(58));
