@@ -235,7 +235,15 @@ if (process.argv[2] === "--anchors") {
 
 const want = process.argv[2];
 const run = MUTANTS.filter(m => !want || m.id.includes(want));
-const TMP = path.resolve(__dirname, "_mutant.html");
+// ONE TEMP FILE PER RUN, named after the process. Two audits sharing a fixed
+// filename do not fail loudly, they fail as nonsense: the second run's children
+// load whatever the first run last wrote, so a mutation gets scored against
+// somebody else's game, and when one run finishes and unlinks the file the
+// other's next page load dies on ERR_FILE_NOT_FOUND. Both happened - a stale
+// audit that a kill had not actually reaped was still writing this path while
+// a fresh one ran, and the fresh one's rows came back as a wall of
+// "no RESULT line" that looked like findings.
+const TMP  = path.resolve(__dirname, `_mutant.${process.pid}.html`);
 // SNAPSHOT THE SUITE TOO, not just the game. A full run takes hours, and this
 // tool read `src` once at startup but shelled out to test.js FROM DISK for
 // every mutant - so editing the suite mid-run silently changed the instrument
@@ -247,7 +255,7 @@ const TMP = path.resolve(__dirname, "_mutant.html");
 // scored as holes, and every one of them an artefact of the edit rather than a
 // finding. Copying the suite next to the mutant makes a run a snapshot of BOTH
 // halves, so an audit measures the pair it started with.
-const TMPT = path.resolve(__dirname, "_mutant_test.js");
+const TMPT = path.resolve(__dirname, `_mutant.${process.pid}.test.js`);
 fs.writeFileSync(TMPT, fs.readFileSync(path.resolve(__dirname, "test.js"), "utf8"));
 let survived = 0;
 
@@ -266,7 +274,7 @@ for (const m of run) {
   let out = "", crash = null;
   try {
     out = execFileSync(process.execPath, [TMPT],
-      { env: { ...process.env, BONKHORDE_TARGET: "_mutant.html" },
+      { env: { ...process.env, BONKHORDE_TARGET: path.basename(TMP) },
         encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 32 << 20, timeout: 30 * 60e3 });
   } catch (e) {
