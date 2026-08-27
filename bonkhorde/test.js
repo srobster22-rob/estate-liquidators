@@ -491,19 +491,63 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   // The point of a telegraph is that it can be read. If a dodging player eats
   // the same damage as a stationary one, these are not mechanics - they are a tax.
+  // THE SUITE'S ONLY FLAKY CHECK, and the flake was the smaller half of what
+  // was wrong with it. It compared a stationary player against the AUTOPILOT
+  // on unpinned seeds, and then asked for a 40% saving from a margin that sat
+  // around 38%, so roughly one run in four came back red on a build nobody had
+  // touched. Pinning the seeds made it byte-stable - and byte-stable at
+  // "dodging lost 0 HP", which is when it was worth instrumenting rather than
+  // believing. The autopilot's closest approach to the boss over thirty
+  // seconds was 19.8m and its mean distance was 67.5m: it was not dodging
+  // anything, it was running away, and this check had been asserting that
+  // fleeing works rather than that a telegraph can be read.
+  // It asks the real question now, with no autopilot in it. Both arms are
+  // parked well outside the boss's reach so contact damage is zero in each and
+  // cannot drown the signal, and the ONLY difference between them is where
+  // they stand relative to the marked circle: one in the middle of it, one
+  // just outside it. If the marked area and the damaged area are the same
+  // area, the second arm walks away clean.
   const dodge = await page.evaluate(() => {
-    const trial = (useBot) => {
-      window.__g.start("ox"); window.__g.god(); window.__g.drainPicks(true);
-      window.__g.freezeSpawns(true); window.__g.skipTo(900);
-      window.__g.bot(useBot); window.__g.boss(2);          // MR. TEETH, charge+slam
-      const hp0 = window.__g.hp();                         // godmode: nobody dies,
-      for (let k = 0; k < 60 * 30; k++) window.__g.step(1);// so this compares damage
-      return hp0 - window.__g.hp();
+    const g = window.__g;
+    const trial = (dodging, seed) => {
+      g.pin(seed); g.pinRun(seed);
+      g.start("ox"); g.god(); g.drainPicks(true); g.freezeSpawns(true);
+      g.skipTo(900); g.bot(false); g.boss(2);      // MR. TEETH, charge+slam
+      const hp0 = g.hp();                          // godmode: nobody dies,
+      let tel = 0;                                 // so this compares damage
+      for(let k = 0; k < 60 * 30; k++){
+        const bs = g.bossAt();
+        let px = bs ? bs.x + 34 : 34, pz = bs ? bs.z : 0;   // home, out of reach
+        const hz = g.hazAt().filter(h =>
+          !bs || Math.hypot(h.x - bs.x, h.z - bs.z) > bs.rad + h.r + 6);
+        if(hz.length){
+          tel++;
+          let best = hz[0];
+          for(const h of hz) if(h.r > best.r) best = h;
+          if(dodging){
+            px = best.x + best.r + 2.0; pz = best.z;
+            for(let it = 0; it < 8; it++){        // and out of every OTHER circle
+              let moved = false;
+              for(const h of hz){
+                const dx = px - h.x, dz = pz - h.z, d = Math.hypot(dx, dz) || 1;
+                if(d < h.r + 1.5){ const q = (h.r + 1.8)/d; px = h.x + dx*q; pz = h.z + dz*q; moved = true; }
+              }
+              if(!moved) break;
+            }
+          } else { px = best.x; pz = best.z; }
+        }
+        g.place(px, pz); g.step(1);
+      }
+      return { dmg: hp0 - g.hp(), tel };
     };
-    return { still: trial(false), moving: trial(true) };
+    const a = trial(false, 20260821), b = trial(true, 20260821);
+    g.pin(null); g.pinRun(null);
+    return { still: a.dmg, moving: b.dmg, tel: a.tel };
   });
-  ok("boss telegraphs are dodgeable", dodge.moving < dodge.still * 0.6,
-     `stationary lost ${Math.round(dodge.still)} HP, dodging lost ${Math.round(dodge.moving)}`);
+  ok("boss telegraphs are dodgeable",
+     dodge.tel > 100 && dodge.still > 200 && dodge.moving < dodge.still * 0.15,
+     `${dodge.tel} frames under a marked circle: standing in them lost ` +
+     `${Math.round(dodge.still)} HP, standing beside them lost ${Math.round(dodge.moving)}`);
 
   console.log("\n=== 8b. SUDDEN DEATH GATE ===");
   const gate = await page.evaluate(() => {
