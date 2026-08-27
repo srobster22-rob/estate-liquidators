@@ -236,6 +236,19 @@ if (process.argv[2] === "--anchors") {
 const want = process.argv[2];
 const run = MUTANTS.filter(m => !want || m.id.includes(want));
 const TMP = path.resolve(__dirname, "_mutant.html");
+// SNAPSHOT THE SUITE TOO, not just the game. A full run takes hours, and this
+// tool read `src` once at startup but shelled out to test.js FROM DISK for
+// every mutant - so editing the suite mid-run silently changed the instrument
+// underneath the experiment. It happened: a round added a setHp QA hook to
+// index.html and a check that calls it to test.js, and every mutant after that
+// point ran the new suite against a snapshot of the game that predated the
+// hook. g.setHp was not a function, the harness died in section 21 whatever
+// the mutation was, and eight consecutive rows came back "no RESULT line" -
+// scored as holes, and every one of them an artefact of the edit rather than a
+// finding. Copying the suite next to the mutant makes a run a snapshot of BOTH
+// halves, so an audit measures the pair it started with.
+const TMPT = path.resolve(__dirname, "_mutant_test.js");
+fs.writeFileSync(TMPT, fs.readFileSync(path.resolve(__dirname, "test.js"), "utf8"));
 let survived = 0;
 
 for (const m of run) {
@@ -252,7 +265,7 @@ for (const m of run) {
   // check that a green result means something was itself green and meaningless.
   let out = "", crash = null;
   try {
-    out = execFileSync(process.execPath, [path.resolve(__dirname, "test.js")],
+    out = execFileSync(process.execPath, [TMPT],
       { env: { ...process.env, BONKHORDE_TARGET: "_mutant.html" },
         encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 32 << 20, timeout: 30 * 60e3 });
@@ -308,5 +321,6 @@ for (const m of run) {
   if (!caught || !byOwner) survived++;
 }
 fs.existsSync(TMP) && fs.unlinkSync(TMP);
+fs.existsSync(TMPT) && fs.unlinkSync(TMPT);
 console.log(`\n${run.length - survived}/${run.length} mutations caught`);
 process.exit(survived ? 1 : 0);

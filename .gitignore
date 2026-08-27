@@ -35,6 +35,9 @@ bonkhorde/sudden.png
 # and the hand-written ones that exist so a single check can be tested in
 # isolation while an audit is already running and holding _mutant.html.
 bonkhorde/_mutant*.html
+# the suite snapshot an audit runs against, so editing test.js mid-run cannot
+# change the instrument underneath the experiment
+bonkhorde/_mutant_test.js
 bonkhorde/_altarprobe.html
 # and the throwaway runner that drives one of those, which only lives in this
 # directory because it resolves index.html and test.js relative to itself
