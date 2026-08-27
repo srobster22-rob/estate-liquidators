@@ -1,6 +1,8 @@
 // Weapon DPS bench. Two axes that decide a run: BOSS (can you close it) and
 // CROWD (can you survive to try).
 //
+// Usage: node dps.js [repeats] [survivalRuns] [weapon,weapon...]
+//
 // v1 of this measured boss DPS against a lone boss with the autopilot on, and
 // reported exactly 0.0 for skulls, pulse and caltrops. That was not DPS, it was
 // REACH: with one enemy and no gems on the floor the bot has no reason to be
@@ -53,6 +55,16 @@ const REPEATS = +(process.argv[2] || 3);
   // hardcoding this list means a ninth weapon ships unbenched and the table
   // still prints a tidy eight rows, which reads as full coverage
   WEAPONS = await p.evaluate(() => window.__g.weapons());
+  // ...but tuning ONE weapon should not cost a full-roster bench. A fourth
+  // argument filters the list (comma separated), which turns a re-measure after
+  // a numbers change from ten weapons into one. The unfiltered run stays the
+  // default precisely so a new weapon cannot ship unbenched.
+  const ONLY = (process.argv[4] || "").split(",").filter(Boolean);
+  if(ONLY.length){
+    const miss = ONLY.filter(k => !WEAPONS.includes(k));
+    if(miss.length){ console.error("no such weapon: " + miss.join(",")); process.exit(2); }
+    WEAPONS = WEAPONS.filter(k => ONLY.includes(k));
+  }
 
   // one scenario, both numbers: the sudden-death fight as it actually happens
   const bench = (w, evo, seed) => p.evaluate(([w, evo, SECONDS, seed]) => {

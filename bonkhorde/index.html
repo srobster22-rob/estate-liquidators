@@ -1618,12 +1618,38 @@ brood:{ name:"BROOD", ic:"brood", kind:"w",
   // n is how many run with you, rng is how far from YOU they will chase - the
   // leash is on the player, not on the pet, so a brood cannot be baited off
   // across the arena while you are somewhere else getting hit.
-  lv:[{d:24,cd:1.10,n:1,rng:15},
-      {d:32,cd:1.05,n:1,rng:16},
-      {d:42,cd:1.00,n:2,rng:17},
-      {d:55,cd:0.95,n:2,rng:18},
-      {d:72,cd:0.90,n:3,rng:19},
-      {d:132,cd:0.70,n:4,rng:24}] },
+  // BENCHED THREE TIMES, and the first two readings were both lying about the
+  // same thing. Shipped on guesswork at 35 boss dps against a median of 106,
+  // the worst weapon in the game; x2.4 on the bite moved it to 60 and the
+  // evolved tier to 91 out of a THEORETICAL 2113, which is four percent uptime
+  // - not a numbers problem, an aiming one. The pets were spreading across
+  // whatever trash was nearest and almost never on the thing with the health
+  // bar. With boss priority and an area bite in, the third bench read 672 and
+  // 2191: full uptime, and six times the median it was meant to sit under.
+  // So the damage comes back OUT, and it comes out as cooldown rather than as
+  // a smaller number - a pet that lands one heavy bite every two seconds reads
+  // as an animal, one that chews continuously reads as a damage aura.
+  // That landed the boss column on the nose - 119 against a median of 119, and
+  // 975 against 953 - and then the FULL field said it still was not done,
+  // which a single-weapon bench can never tell you. SKULLS beat it on both
+  // axes at both tiers (172/1723 against 119/635), and a card that loses on
+  // both is a card nobody should take. The crowd column had paid for the
+  // cooldown.
+  // Cadence was tried first and did almost nothing - halving the bite while
+  // halving the cooldown doubles the number of area bites for the same boss
+  // damage, and crowd moved 635 to 682 - which is the measurement that told
+  // this weapon what it actually is. See the PACK TAKEDOWN note in
+  // updateBrood: the crowd column here is limited by reach, not by damage,
+  // and the fix went the other way instead.
+  // The evolved bite is deliberately a big jump on the base curve: every
+  // other weapon gains ~8x on evolution and BROOD's pack size and cooldown
+  // only pay for 1.8x of that, so the rest has to come from the bite.
+  lv:[{d:12,cd:1.44,n:1,rng:15},
+      {d:16,cd:1.38,n:1,rng:16},
+      {d:21,cd:1.32,n:2,rng:17},
+      {d:27,cd:1.26,n:2,rng:18},
+      {d:35,cd:1.20,n:3,rng:19},
+      {d:95,cd:0.85,n:4,rng:24}] },
 };
 
 const PASSIVES = {
@@ -2465,15 +2491,34 @@ terravore(e, face, W, H, c, glow, lod, y0){
     ebl(e, face, sw, -W*.22 - s*W*.42, y0 + H*.40*k, W*.62*k, H*.24*k, W*.40*k, plate, glow);
     eb(e, face, sw, -W*.22 - s*W*.42, y0 + H*.64*k, W*.50*k, H*.045, W*.34*k,
        seam, .55 + heat*.35);
+    // LEGS THAT REACH THE GROUND. These rooted at H*.34 and stepped DOWN by
+    // .09 a segment against a body half-height of 3.24, so every one of them
+    // bottomed out 1.35 units above the belly: six boxes a segment, thirty
+    // across the animal, sealed inside the flank and drawn for nobody. The
+    // horde-wide buried-volume pass put TERRAVORE at 61 of 98 boxes invisible
+    // and these were most of it. They root at the lower flank now and step out
+    // and down far enough that the foot lands near the floor, which is also the
+    // difference between a thing that walks and a thing that hovers.
     for(const sg of [-1,1])                                 // legs down each side
-      etp(e, face, sw + sg*W*.66*k, -W*.22 - s*W*.42, y0 + H*.34*k,
-          sg*.06,0,-.09, 3, W*.09*k, H*.08*k, W*.09*k, plate, 0);
+      etp(e, face, sw + sg*W*.66*k, -W*.22 - s*W*.42, y0 + H*.24*k,
+          sg*.35, 0, -1.1, 3, W*.09*k, H*.08*k, W*.09*k, plate, 0);
   }
   ebl(e, face, 0, W*.36, y0 + H*.48, W*.72, H*.28, W*.50, c, glow+.06);        // head plate
   eb(e, face, 0, W*.30, y0 + H*.78, W*.60, H*.06, W*.40, seam, .70 + heat*.30);
   for(const sg of [-1,1]){                                                      // mandibles
-    etp(e, face, sg*(W*.60 + chew*W*.10), W*.78, y0 + H*.44,
-        -sg*.08, .07, .02, 5, W*.11, H*.09, W*.11, [.96,.92,.86], .25);
+    // OUTSIDE the head plate, or they are not mandibles. Rooted at .60 of the
+    // width against a head reaching .72, all five segments a side sat inside
+    // the skull and cleared its front face by two tenths of a unit - ten more
+    // boxes drawn for nobody. They root at .80 now, which still overlaps the
+    // head enough to stay attached, and step FORWARD rather than inward so
+    // each segment leaves the skull instead of burrowing back into it.
+    // .70, not .80: the root is ANIMATED - chew adds another tenth of the
+    // width at full gape - so a value chosen against the resting pose opened a
+    // quarter-unit gap at the top of the chew cycle and took both mandibles
+    // clean off the animal. The connectivity report caught it; sizing against
+    // the widest frame of the animation rather than the still one is the rule.
+    etp(e, face, sg*(W*.70 + chew*W*.10), W*.78, y0 + H*.44,
+        -sg*.06, .16, .02, 5, W*.11, H*.09, W*.11, [.96,.92,.86], .25);
     eb(e, face, sg*W*.46, W*.62, y0 + H*.74, W*.10, H*.16, W*.10, [.96,.92,.86], .30);
   }
   if(lod < 1) return;
@@ -5214,7 +5259,21 @@ function updateBrood(dt){
     // home slot, so an idle brood reads as a formation and not as a pile
     const a = P.face + Math.PI + (i - (pets.length-1)/2) * .55;
     let tx = P.x + Math.sin(a)*2.6, tz = P.z + Math.cos(a)*2.6, biting = null;
-    const tgt = nearest(P.x, P.z, s.rng);
+    // WHAT A PET AIMS AT decides almost everything, and the first cut got it
+    // wrong twice over. It picked whatever was nearest the PLAYER, so four
+    // pets all converged on one trash mob, killed it, and set off together
+    // for the next one - travel with a bite on the end of it. And it never
+    // preferred a boss, so during the only fight where damage has to land on
+    // one body the pack peeled off to chase the horde standing next to it.
+    // The bench put THE PACK at 91 boss dps out of a theoretical 2113, which
+    // is four percent uptime: not a numbers problem, an aiming one.
+    // A boss in reach is always the job; otherwise each pet takes what is
+    // nearest to ITSELF, so the pack spreads over the crowd instead of
+    // queueing for one throat.
+    let tgt = null;
+    for(const e2 of enemies)
+      if(e2.boss && !e2.dead && Math.hypot(e2.x-P.x, e2.z-P.z) < s.rng*1.6){ tgt = e2; break; }
+    if(!tgt) tgt = nearest(p2.x, p2.z, s.rng);
     if(tgt){ tx = tgt.x; tz = tgt.z; biting = tgt; }
     const dx = tx - p2.x, dz = tz - p2.z, d = Math.hypot(dx,dz) || 1;
     // a pet that has somehow been left behind rejoins rather than trails
@@ -5229,9 +5288,38 @@ function updateBrood(dt){
     if(biting && p2.cool <= 0 &&
        Math.hypot(biting.x-p2.x, biting.z-p2.z) < biting.rad + 1.0){
       p2.cool = s.cd;
-      const roll = dmgOut(s.d);
-      const bx = biting.x-p2.x, bz = biting.z-p2.z, bl = Math.hypot(bx,bz)||1;
-      hurt(biting, roll.d, bx/bl*4.0, bz/bl*4.0, roll.crit);
+      // THE BITE CATCHES WHAT IS BESIDE IT. Raising the damage per bite by
+      // 2.4x moved boss dps 35 -> 60 and left crowd dps flat at ~500, and that
+      // pair of numbers is the whole diagnosis: hurt() ledgers EFFECTIVE
+      // damage, so everything past a shambler's hit points was never damage at
+      // all, it was overkill. Against a boss the bigger bite lands in full;
+      // against the horde it bought nothing. A pack does not queue up to bite
+      // one animal at a time - a lunge catches whatever is shoulder to
+      // shoulder with its target - so the bite has a small radius now, which
+      // turns that waste into spread without touching what it does to a boss.
+      // PACK TAKEDOWN. The full field said BROOD was strictly dominated -
+      // SKULLS beat it on both axes at both tiers - and the attempts to fix
+      // that from the crowd side all failed the same way. Doubling the bite
+      // count moved crowd 635 to 682; widening the bite is what moved it at
+      // all, and only because a bigger circle catches more bodies. Crowd
+      // throughput here is not limited by damage or by cadence, it is limited
+      // by REACH: three or four animals can only be in three or four places,
+      // and past that the only way up is to make the bite an aura, which is a
+      // different weapon.
+      // So it goes the other way. BROOD is the pack that brings down the big
+      // one and does nothing whatever for the horde - top of the boss column,
+      // bottom of the crowd column, dominated by nobody in either direction.
+      // The multiplier is the honest way to buy that: raising the bite itself
+      // would drag the crowd column up with it and blur the trade, whereas
+      // this lands only on the thing with the health bar. The lunge still
+      // catches whatever stands shoulder to shoulder with the target, but
+      // those bystanders take the ordinary bite, not the takedown.
+      const heavy = biting.boss ? BROOD_BOSS : 1;
+      const roll = dmgOut(s.d * heavy);
+      hitNear(p2.x, p2.z, 3.2, (e2)=>{
+        const bx = e2.x-p2.x, bz = e2.z-p2.z, bl = Math.hypot(bx,bz)||1;
+        hurt(e2, roll.d * (e2.boss ? 1 : 1/heavy), bx/bl*4.0, bz/bl*4.0, roll.crit);
+      });
     }
   }
 }
@@ -6136,6 +6224,8 @@ let pickT = 0;
 // from one trial to two, and why adding a tenth weapon flipped it into a
 // perfect A-B-A-B alternation: it changed how often a run ends mid-queue.
 // Sim time is the only clock a deterministic run may use.
+// How much harder a brood bites a boss than it bites trash. See updateBrood.
+const BROOD_BOSS = 2.9;
 const PICK_GAP = .09;
 let pickGap = 0;
 // ROLLED ONCE. The step loop asks offers() whether this level has a real

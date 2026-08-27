@@ -118,12 +118,12 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **8 weapons, 4 slots** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, ground hazards — you carry four of them, plus your line's own move for free |
 | **8 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | every one contributes to output, not just the four with "damage" in the text — PLATING blasts attackers off you, MAGNET drags the horde into a pile |
-| **5 wildlife types + 4 bosses** | with a spawn director that reweights the mix over 11 phases |
+| **6 wildlife types + 4 bosses** | TERRAPIN, PTERLING, CERATOP, DILOPHO, RAPTORLING and the GILDWING that runs off with your gold, against THE MATRIARCH, THORNBACK, SKYSPLITTER and TERRAVORE — with a spawn director that reweights the mix over 11 phases |
 | **~25 dens** | half the landmarks keep a pack of what lives there — optional, repayable, worth a boon |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **4 boss abilities** | slam, evict, charge, spokes — telegraphed, dodgeable, worth dodging |
 | **type affinity** | every line has a region it is at home in (+20% damage) and one it is not (+15% damage taken) |
-| **7 creature lines, 21 forms** | fire, water, storm, stone, fungus, wind and echo — each a three-stage line that evolves at run level 7 and 20, every form its own hand-built body, every line its own move |
+| **9 creature lines, 36 forms** | fire, water, storm, stone, fungus, wind, echo, river and sun — each a FOUR-stage line that evolves at run level 7 and 20 and again at the APEX, every form its own hand-built body, every line its own move |
 | **per-creature levels** | every run banks its XP into the creature that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
 | **bunnyhopping** | chain a jump on the frame you land, 24 links deep, up to +60% move speed, paying XP every fifth; one hit resets it |
 | **THE DEEP** | nine layers, one opened per clear — +34% enemy health and +30% coins each |
@@ -237,7 +237,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 199 checks: boot, every weapon, every evolution, every
+node test.js              # 406 checks: boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -247,19 +247,28 @@ node balance.js 6 both            # [trials] [first|vet|both] [char,char]
 node balance.js 12 vet intern,scrap   # higher n on two characters
 node dps.js 8 5                   # per-weapon boss/crowd/survival bench
                                   # [dps trials] [survival trials]; n=3 is noise
+node dps.js 3 4 brood             # third arg filters to named weapons - a fast
+                                  # loop while tuning ONE card, but note the
+                                  # "vs median" column is against the weapons
+                                  # actually run, so a single-weapon bench
+                                  # always prints 1.00x and means nothing
+node analyze.js                   # is every creature ONE connected object?
+                                  # 46 forms x 6 animation phases, both rosters
+node buried.js                    # which boxes have no visible volume of their
+                                  # own - parts sealed inside other parts
 node passives.js 5                # per-passive offence/defence bench, n=5
 node starters.js 8                # one character, every starting weapon, n=8
 node mutate.js                    # break the game on purpose, one thing at a
                                   # time, and check the suite notices
 ```
 
-`test.js` covers each of the 8 weapons and all 8 evolutions individually, spawns every enemy
+`test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **199 passing.**
+die, and checks that `localStorage` survives a reload. **406 passing.**
 
 ### Every weapon, on the two axes that decide a run
 
-`dps.js` benches all eight weapons at rank 5 and evolved, inside the actual
+`dps.js` benches all ten weapons at rank 5 and evolved, inside the actual
 sudden-death fight — horde present, gems pulling you back in, autopilot kiting —
 and attributes boss damage separately from crowd damage. Boss DPS decides whether
 you can *close* a run; crowd DPS decides whether you survive to try.
