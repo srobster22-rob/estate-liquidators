@@ -2206,6 +2206,35 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and water helps a swimmer far more than a wader",
        aqua > land * 1.5,
        `wet/dry ${aqua.toFixed(2)} for the plesiosaur vs ${land.toFixed(2)} for the ceratopsian`);
+
+    // SURE FOOT is the den reward for the seven lines that pay every terrain
+    // cost water and mud added: it does not shrink the tax, it buys it off.
+    const sf = await page.evaluate(async () => {
+      const g = window.__g;
+      g.pin(31337);
+      const run = (id, x, z, boon) => {
+        g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+        if(boon) g.giveBoon("SURE FOOT");
+        if(x !== null) g.place(x, z);
+        g.aim(0);
+        dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+        const x0 = g.state().x, z0 = g.state().z;
+        g.step(60, 1/60);
+        dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+        const s2 = g.state();
+        return Math.hypot(s2.x - x0, s2.z - z0);
+      };
+      const L = (() => { g.wipeSave(); g.start("ox"); return g.lakes()[0]; })();
+      const dry       = run("ox", 0, -10, false);
+      const wetPlain  = run("ox", L.x, L.z - L.r*.6, false);
+      const wetSure   = run("ox", L.x, L.z - L.r*.6, true);
+      g.pin(null);
+      return { dry, wetPlain, wetSure };
+    });
+    ok("SURE FOOT buys off the water tax rather than shrinking it",
+       sf.wetSure > sf.wetPlain * 1.2 && sf.wetSure >= sf.dry * .97,
+       `dry ${sf.dry.toFixed(1)}m, wet ${sf.wetPlain.toFixed(1)}m, wet+SURE FOOT ${sf.wetSure.toFixed(1)}m`);
   }
 
   console.log("\n=== 22n. THE APEX IS A FOURTH ANIMAL, AND ITS POWER IS REAL ===");
@@ -3740,7 +3769,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // the ground is terrain, not a player-exclusive cost.
     const r = await page.evaluate(async () => {
       const g = window.__g;
-      g.pin(31337);
+      // BOTH streams pinned. The world stream alone left the six shamblers'
+      // individual speed multipliers - drawn from the RUN stream, reseeded
+      // fresh from Math.random() every start() that does not pin it - free
+      // to vary from one execution of this file to the next, and averaging
+      // six of a +/-12% draw does not kill enough of that noise to clear a
+      // tight margin reliably. Pinned, the six draws are the same every time.
+      g.pin(31337); g.pinRun(31337);
       g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
       g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
       // find a bog cell near the middle of the map by scanning a spiral -
@@ -3765,14 +3800,43 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         return d2 / p0.length; };
       const dry = walk(0, 0);
       const wet = bogAt ? walk(bogAt.x, bogAt.z) : null;
-      g.pin(null);
-      return { dry, wet, found: !!bogAt };
+      g.pin(null); g.pinRun(null);
+      return { dry, wet, found: !!bogAt, bogAt };
     });
     ok("a bog cell exists to test against", r.found, "world rolled with no THE TARPITS in range");
     if(r.found)
       ok("and the horde bogs down too - the ground is terrain, not a player tax",
          r.wet < r.dry * .92,
          `a shambler covered ${r.wet.toFixed(1)}m through THE TARPITS vs ${r.dry.toFixed(1)}m on THE FERNLANDS`);
+
+    // and SURE FOOT buys the player back out of the same mud
+    const sf = r.found ? await page.evaluate(async (bogAt) => {
+      const g = window.__g;
+      g.pin(31337);
+      const run = (boon) => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+        if(boon) g.giveBoon("SURE FOOT");
+        g.place(bogAt.x, bogAt.z); g.aim(0);
+        dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+        const x0 = g.state().x, z0 = g.state().z;
+        g.step(60, 1/60);
+        dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+        const s2 = g.state();
+        return Math.hypot(s2.x - x0, s2.z - z0);
+      };
+      const plain = run(false), sure = run(true);
+      g.pin(null);
+      return { plain, sure };
+    }, r.bogAt) : null;
+    // THE TARPITS' own penalty is .86, so the theoretical ceiling on this
+    // ratio is 1/.86 = 1.163; a second of acceleration ramp eats some of
+    // that before top speed is reached, so 1.08 is comfortably above noise
+    // and comfortably below "no effect" without demanding the ideal number.
+    if(sf)
+      ok("and SURE FOOT buys the player back out of the same mud",
+         sf.sure > sf.plain * 1.08,
+         `${sf.plain.toFixed(1)}m plain vs ${sf.sure.toFixed(1)}m with SURE FOOT`);
   }
 
   console.log("\n" + "=".repeat(58));

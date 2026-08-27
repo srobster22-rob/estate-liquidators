@@ -4301,7 +4301,7 @@ function startRun(id){
   runDist=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
-  boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1 };
+  boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, sureFoot:false };
   camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   // pickT is how long the live draft has been ignored, and it was the one
@@ -5166,6 +5166,12 @@ const BOONS = [
   { nm:"LIGHT FEET",  ds:"+7% move speed",     fn:()=>{ boonMul.spd *= 1.07; applyBoons(); } },
   { nm:"DEEP LUNGS",  ds:"+28 max HP, healed", fn:()=>{ P.maxhp += 28; P.hp = P.maxhp; } },
   { nm:"MAGPIE",      ds:"+25% pickup radius", fn:()=>{ boonMul.mag *= 1.25; applyBoons(); } },
+  // Water and mud were built as terrain, not a player-only tax - which means
+  // they are also the one cost in the game a reward can buy off outright
+  // rather than just shrink. Aquatic lines never paid it and still don't;
+  // this is the boon for the other seven.
+  { nm:"SURE FOOT",   ds:"ignore mud, water, and ice",
+    fn:()=>{ boonMul.sureFoot = true; } },
 ];
 const EV = {
   cache: { nm:"CACHE", life:40, r:2.2, c:[1,.78,.20] },
@@ -5920,7 +5926,7 @@ function recalcDmg(){
 // one of these recomputes its stat from scratch the next time you take a
 // passive - a boon assigned directly to P.cd survives exactly until your next
 // level-up and then silently evaporates.
-let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1 };
+let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1, sureFoot:false };
 // Evolution rides the same rail, for the same reason: P.cd is recomputed from
 // scratch every time you take a passive, so a stage bonus written straight onto
 // P survives until your next level-up and then quietly evaporates.
@@ -6153,9 +6159,15 @@ function step(dt){
     if(wet && running && !over)
       alert2(AQUA ? "WATER - YOU WERE BUILT FOR THIS" : "WATER - IT DRAGS AT YOU",
              AQUA ? "#5ec8e8" : "#c9c2ae"); }
-  const wmul = wet ? (AQUA ? 1.30 : .74) : 1;
-  const ACCELW = wet && !AQUA ? ACCEL*.6 : ACCEL;
-  const hm = hopMul() * (bmod.spd || 1) * (P.fly ? FLY_SPD : 1) * wmul;
+  // SURE FOOT buys off every terrain cost outright rather than shrinking it -
+  // it does not grant the swimmer's bonus, it just makes the ground under a
+  // non-aquatic line stop mattering, the one thing a den reward can do that a
+  // stat boost cannot.
+  const sureFoot = boonMul.sureFoot && !AQUA;
+  const wmul = wet ? (AQUA ? 1.30 : (sureFoot ? 1 : .74)) : 1;
+  const ACCELW = wet && !AQUA && !sureFoot ? ACCEL*.6 : ACCEL;
+  const groundSpd = sureFoot ? 1 : (bmod.spd || 1);
+  const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul;
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
   // braking. That asymmetry IS the mechanic: a chain you steer through is a
@@ -6163,7 +6175,7 @@ function step(dt){
   // of dumping it. On the ground both are unchanged from before.
   // THE GLASS has no grip: you keep almost everything you had, which is exactly
   // the surface a hop chain wants and exactly the surface a dodge does not.
-  const grip = bmod.slide ? .30 : 1;
+  const grip = bmod.slide && !sureFoot ? .30 : 1;
   const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCELW*grip)
                         : (P.air ? BRAKE*.10 : BRAKE*grip);
   const step_ = rate*dt;
@@ -8769,6 +8781,12 @@ window.__g = {
   boon:  ()=>{ const pool = BOONS.filter(x=>!boons.includes(x.nm));
                if(!pool.length){ coinsRun += 110; return null; }
                const b = pick(pool); boons.push(b.nm); b.fn(); return b.nm; },
+  // a specific boon, by name, without the others a random draw would also
+  // hand out on the way to it - the difference a test needs to isolate one
+  // effect matters here even though a real run never asks for it
+  giveBoon: (nm)=>{ const b = BOONS.find(x=>x.nm===nm);
+                     if(!b || boons.includes(b.nm)) return null;
+                     boons.push(b.nm); b.fn(); return b.nm; },
   biomeMod: (x,z)=>Object.assign({}, biomeAt(x,z).mod),
   // A/B control for the dive. Same forty-two worlds, one line of behaviour
   // different, which is the only way to say what it was worth.
