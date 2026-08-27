@@ -9593,6 +9593,12 @@ window.__g = {
   patchStart: (id, w)=>{ const c = CHARS.find(x=>x.id===id);
                          if(c && WEAPONS[w]) c.w = w; return c && c.w; },
   hp:    ()=>P.hp,
+  // Put the player on a KNOWN amount of health. Added for the evolution-heal
+  // check, which could not tell "hands back exactly what it added" from
+  // "refills the bar" while it tested an undamaged player - at full health the
+  // two do identical things. Clamped to at least 1 so this cannot kill anyone
+  // as a side effect of setting up a measurement.
+  setHp: (v)=>{ P.hp = Math.max(1, Math.min(P.maxhp, v)); return P.hp; },
   elites:()=>{ const med = a => { const v=a.slice().sort((x,y)=>x-y);
                                   return v.length ? v[v.length>>1] : 0; };
     const E = enemies.filter(e=>e.elite), N = enemies.filter(e=>!e.elite&&!e.boss);

@@ -1854,11 +1854,20 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // Healing: an evolution must hand back exactly the HP it added. More and
       // level 7 is a panic button; nothing and a +16% maxhp bonus reads on the
       // HP bar as a LOSS, which is exactly how it looked the first time.
+      // ON A DAMAGED PLAYER, which is the whole point and was missing. This
+      // ran on a fresh run, where hp already equals maxhp - and at full health
+      // "hand back exactly what the evolution added" and "refill the bar" do
+      // the identical thing, so the assertion below could not tell them apart.
+      // The mutation audit proved it: replacing the payback with P.hp = P.maxhp
+      // sailed through this section and was only caught, by accident, eleven
+      // sections later. Take four tenths of the bar off first and the two come
+      // apart immediately.
       g.start("intern"); g.freezeSpawns(true); g.drainPicks(true);
+      g.setHp(g.mon().maxhp * 0.4);
       const pre  = { maxhp: g.mon().maxhp, hp: g.state().hp };
       g.evolveTo(1);
       const post = { maxhp: g.mon().maxhp, hp: g.state().hp };
-      const heal = { pre, post };
+      const heal = { pre, post, wasDamaged: pre.hp < pre.maxhp * 0.6 };
 
       // an evolution is worth a pick of its own, on top of the level that caused it
       g.start("intern"); g.freezeSpawns(true); g.drainPicks(true);
@@ -1890,6 +1899,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("MOPMAW's signature is live at stage 3",
        Math.abs(r.s2.reach - 1.20) < 0.001, `reach ${r.s2.reach}`);
     ok("evolving heals exactly the HP it added, and no more",
+       r.heal.wasDamaged &&
        Math.abs((r.heal.post.hp - r.heal.pre.hp) -
                 (r.heal.post.maxhp - r.heal.pre.maxhp)) < 1.5 &&
        r.heal.post.hp <= r.heal.post.maxhp + 0.01,
