@@ -2166,10 +2166,20 @@ ceratop(e, face, W, H, c, glow, lod, y0){
   eb(e, face, 0, W*.78, y0 + H*.38, W*.40, H*.21, W*.32, c, glow);       // skull
   eb(e, face, 0, W*1.12, y0 + H*.31, W*.24, H*.12, W*.22, dk, glow);     // beak
   if(lod < 1) return;
-  eey(e, face, 0, W*.92, y0 + H*.47, W*.28, W*.078, [.98,.76,.26], .40);
+  // ON THE FLANK, where a ceratopsian's eyes are - and where they can be SEEN.
+  // At a lateral offset of .28 the whole eye sat .537 out against a skull half
+  // a unit wider than that, and .69 to 1.65 deep against an eye occupying 1.35
+  // to 1.53: enclosed on every axis, invisible from every angle, four boxes a
+  // body drawn for nobody. The first horde-wide buried-volume pass found it -
+  // the same tool that had only ever been pointed at the player.
+  eey(e, face, 0, W*.86, y0 + H*.47, W*.40, W*.078, [.98,.76,.26], .40);
   eb(e, face, 0, W*1.08, y0 + H*.48, W*.07, H*.12, W*.09, bone, .18);    // nose horn
+  // ABOVE the skull, not inside it. The brow pair sat at .888 of a skull whose
+  // top face is at 1.09, so all six boxes of them - both horns, every segment -
+  // were enclosed and drawn for nobody. A ceratopsian's brow horns are the
+  // second thing you name it by after the frill; they have to clear the head.
   for(const sg of [-1,1])                                                // brow horns
-    etp(e, face, sg*W*.26, W*.86, y0 + H*.48, sg*.012,.07,.018, 3,
+    etp(e, face, sg*W*.26, W*.86, y0 + H*.60, sg*.012,.06,.05, 3,
         W*.08,H*.05,W*.08, bone, .18);
   for(const sg of [-1,1]) for(const fs of [-1,1])                        // four columns
     eb(e, face, sg*W*.36, W*.14 + fs*W*.30,
@@ -2177,8 +2187,14 @@ ceratop(e, face, W, H, c, glow, lod, y0){
   if(lod < 2) return;
   // scallops on the OUTER EDGE, not across the top: four bright nubs in a row
   // above a dark plate read as a set of teeth, which is not what a frill is.
+  // ...and ON the outer edge, which is what the note above always said they
+  // were for. At .66 of the width the inner pair sat inside a frill reaching
+  // .80, so half the scallops were enclosed by the plate they were supposed to
+  // be scalloping. They start past the rim now and step outward by less than
+  // their own width, so each still overlaps the one inboard of it and the row
+  // stays part of the animal.
   for(const sg of [-1,1]) for(let i=0;i<2;i++)
-    eb(e, face, sg*W*(.66 + i*.13), W*.34, y0 + H*(.60 - i*.10),
+    eb(e, face, sg*W*(.82 + i*.09), W*.34, y0 + H*(.60 - i*.10),
        W*.09, H*.06, W*.09, bone, .16);
   etp(e, face, 0, -W*.46, y0 + H*.30, 0,-.15,-.025, 3, W*.15,H*.11,W*.17, c, glow);
 },
