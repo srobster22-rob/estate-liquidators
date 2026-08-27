@@ -3842,6 +3842,38 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       ok("and SURE FOOT buys the player back out of the same mud",
          sf.sure > sf.plain * 1.08,
          `${sf.plain.toFixed(1)}m plain vs ${sf.sure.toFixed(1)}m with SURE FOOT`);
+
+    // AQUA lines still walk on dry mud like everyone else - the first cut of
+    // SURE FOOT gated all three terrain effects behind one "not aquatic" flag
+    // and silently zeroed the boon for a swimmer standing on the bank rather
+    // than in the lake. Same bog cell, the "scrap" line (a swimmer) instead.
+    const sfAqua = r.found ? await page.evaluate(async (bogAt) => {
+      const g = window.__g;
+      g.pin(31337);
+      const run = (boon) => {
+        g.wipeSave(); g.start("scrap"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.step(10, 1/60);
+        if(boon) g.giveBoon("SURE FOOT");
+        g.place(bogAt.x, bogAt.z); g.aim(0);
+        dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+        const x0 = g.state().x, z0 = g.state().z;
+        g.step(60, 1/60);
+        dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+        const s2 = g.state();
+        return Math.hypot(s2.x - x0, s2.z - z0);
+      };
+      const plain = run(false), sure = run(true);
+      g.pin(null);
+      return { plain, sure };
+    }, r.bogAt) : null;
+    // "scrap" runs 10% faster than "ox" to start with, so the same one-second
+    // window spends proportionally more of it still accelerating toward a
+    // higher top speed - the ratio this masks is real, not a smaller effect,
+    // so the bar is 1.05 rather than 1.08: still well clear of "no effect".
+    if(sfAqua)
+      ok("and it still helps a swimmer standing on dry mud",
+         sfAqua.sure > sfAqua.plain * 1.05,
+         `${sfAqua.plain.toFixed(1)}m plain vs ${sfAqua.sure.toFixed(1)}m with SURE FOOT, on "scrap"`);
   }
 
   console.log("\n" + "=".repeat(58));

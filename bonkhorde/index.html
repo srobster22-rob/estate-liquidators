@@ -6162,10 +6162,15 @@ function step(dt){
   // SURE FOOT buys off every terrain cost outright rather than shrinking it -
   // it does not grant the swimmer's bonus, it just makes the ground under a
   // non-aquatic line stop mattering, the one thing a den reward can do that a
-  // stat boost cannot.
-  const sureFoot = boonMul.sureFoot && !AQUA;
-  const wmul = wet ? (AQUA ? 1.30 : (sureFoot ? 1 : .74)) : 1;
-  const ACCELW = wet && !AQUA && !sureFoot ? ACCEL*.6 : ACCEL;
+  // stat boost cannot. AQUA only exempts the WATER case, where a swimmer
+  // already has the better end of the deal - it still bogs down in mud and
+  // slides on ice like everyone else, so SURE FOOT still has a job there.
+  // The first cut gated all three terrain effects behind one !AQUA flag and
+  // silently zeroed the boon for the two lines standing on dry mud or ice.
+  const sureFoot = boonMul.sureFoot;
+  const sureFootWater = sureFoot && !AQUA;
+  const wmul = wet ? (AQUA ? 1.30 : (sureFootWater ? 1 : .74)) : 1;
+  const ACCELW = wet && !AQUA && !sureFootWater ? ACCEL*.6 : ACCEL;
   const groundSpd = sureFoot ? 1 : (bmod.spd || 1);
   const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul;
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
