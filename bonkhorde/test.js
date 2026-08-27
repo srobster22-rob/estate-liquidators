@@ -3876,6 +3876,89 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
          `${sfAqua.plain.toFixed(1)}m plain vs ${sfAqua.sure.toFixed(1)}m with SURE FOOT, on "scrap"`);
   }
 
+  console.log("\n=== 29. THE HORDE IS ONE OBJECT EACH, TOO ===");
+  {
+    // analyze.js has asked "is this animal ONE object?" of the 36 player forms
+    // since the first model round and never once of the horde - and the first
+    // time it was pointed at the enemy roster it found five of ten bodies in
+    // pieces, including two red squares that had been hanging in the air beside
+    // every PTERLING on screen since the pterosaur rebuild. A report nobody is
+    // obliged to run is not a guard, so the same question is asked here.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      // capture layout is (r, f, y, hx, hz, hy) - same six numbers the player
+      // capture uses, so this is the same union-find analyze.js runs
+      const comps = (bx) => {
+        const n = bx.length / 6, P = i => bx.slice(i*6, i*6+6);
+        const ov = (A,B,k) => Math.min(A[k]+A[k+3], B[k]+B[k+3])
+                            - Math.max(A[k]-A[k+3], B[k]-B[k+3]);
+        const par = Array.from({length:n}, (_,i)=>i);
+        const find = a => { while(par[a]!==a){ par[a]=par[par[a]]; a=par[a]; } return a; };
+        for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+          const A=P(i), B=P(j);
+          if(Math.min(ov(A,B,0), ov(A,B,1), ov(A,B,2)) > 0){
+            const a=find(i), b=find(j); if(a!==b) par[b]=a;
+          }
+        }
+        return new Set(Array.from({length:n}, (_,i)=>find(i))).size;
+      };
+      g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      g.place(0,0); g.aim(0); g.step(20, 1/60);
+      const out = [];
+      // SIX PHASES, not one. Brood sway, tail lag and wing flap all move parts
+      // relative to each other, so whether a body holds together is a question
+      // about the whole animation, not about whichever frame the check happened
+      // to land on - and a deliberately broken wing proved it, failing THE
+      // MATRIARCH on one sampling run and passing her on the next. The slowest
+      // sway in the roster cycles about every 240 frames, so six samples 40
+      // frames apart walk right around it, and the worst one is the answer.
+      // The clock is advanced with the field EMPTY and the body respawned
+      // fresh for each sample: run the enemy for 240 frames instead and it
+      // walks out of full detail, or the player's own weapon kills it, and
+      // the check starts reporting zero boxes it never looked at.
+      const worst = async (spawn) => {
+        let parts = 0, n = 0;
+        for(let ph=0; ph<6; ph++){
+          g.clearEnemies();
+          g.step(40, 1/60);
+          spawn();
+          g.step(3, 1/60);
+          g.resume(); g.captureEnemy();
+          await frame(); await frame();
+          const bx = g.enemyPos();
+          if(!bx) return { n:0, parts:-1 };
+          n = bx.length/6;
+          parts = Math.max(parts, comps(bx));
+        }
+        return { n, parts };
+      };
+      // close enough to draw at full detail: a body plan that only comes apart
+      // at LOD 2 is still a body plan that comes apart
+      for(const k of ["shambler","runner","brute","spitter","skitter","collector"])
+        out.push(Object.assign({ nm:k }, await worst(()=>{
+          g.place(0,0); g.spawnAt(k, 0, 7); })));
+      for(let bi=0; bi<4; bi++){
+        let nm = "boss"+bi;
+        const r2 = await worst(()=>{
+          g.boss(bi); g.step(1/60);
+          const b = g.bossAt();
+          if(b){ nm = b.nm; g.place(b.x - 9, b.z); g.step(120, 1/60); }
+        });
+        out.push(Object.assign({ nm }, r2));
+      }
+      return out;
+    });
+    const broke = r.filter(x => x.parts !== 1);
+    ok("every trash body and every boss is a single connected object",
+       r.length === 10 && broke.length === 0,
+       broke.length ? broke.map(x => `${x.nm}: ${x.parts} parts of ${x.n} boxes`).join(", ")
+                    : `${r.length} bodies, all in one piece`);
+    ok("and each one actually drew something to check",
+       r.every(x => x.n > 10), r.map(x => `${x.nm} ${x.n}`).join(" "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

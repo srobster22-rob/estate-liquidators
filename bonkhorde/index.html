@@ -1926,7 +1926,15 @@ const SHOP = [
 // and 240 far x 4 is ~2,500 - the same order as the old flat five-per-body, put
 // where you can actually see it.
 function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
-  if(ebCap) ebCap.push(hx, hy, hz);
+  // POSITION, not just size. This capture recorded three numbers a box - the
+  // half-extents - which is enough to fingerprint a silhouette and not nearly
+  // enough to ask whether the animal is ONE object. analyze.js has asked that
+  // of the 36 player forms since the first model round and never once of the
+  // horde, and a detached wing tip sat on PTERLING the whole time because of
+  // it. Same six-number layout the player's bodyPos uses - (r, f, y) local,
+  // then the half-extents in (x, z, y) order - so one connectivity pass reads
+  // both without a second convention to keep straight.
+  if(ebCap) ebCap.push(r, f, y, hx, hz, hy);
   box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
       e.z - Math.sin(face)*r + Math.cos(face)*f,
       hx, hy, hz, col, em||0, rot===undefined ? face : rot);
@@ -1942,9 +1950,31 @@ function ebl(e, face, r, f, y, hx, hy, hz, col, em, rot){
   eb(e, face, r, f, y, hx,     hy*.79, hz*.68, col, em, rot);
   eb(e, face, r, f, y, hx*.70, hy*.75, hz,     col, em, rot);
 }
+// A CHAIN THAT COMES APART IS NOT A CHAIN. This took an absolute step per
+// segment with no relation to the half-extents it was busy shrinking, so
+// whether two consecutive segments still touched was luck, decided separately
+// at all eighteen call sites - and the first horde connectivity pass ever run
+// found the luck had run out on three tails. DILOPHO's missed by a thousandth
+// on the first joint and by a twentieth of a unit on the last.
+// The step is clamped per segment now: a caller gets the longest reach that
+// still overlaps the previous segment on every axis, so a taper is always one
+// object no matter what it asks for. Callers that were already inside the
+// limit - most of them - are untouched.
 function etp(e, face, r, f, y, dr, df, dy, n, hx, hy, hz, col, em){
-  for(let i=0;i<n;i++){ const k = 1 - i/(n+1)*.58;
-    eb(e, face, r+dr*i, f+df*i, y+dy*i, hx*k, hy*k, hz*k, col, em); }
+  let cr = r, cf = f, cy = y;
+  for(let i=0;i<n;i++){
+    const k = 1 - i/(n+1)*.58;
+    if(i){
+      // .82 of the summed half-extents, so the joint carries real overlap
+      // rather than a kiss the draw-index nudge could pull open
+      const kp = 1 - (i-1)/(n+1)*.58, sum = (k + kp) * .82;
+      let s = 1;
+      const cap = (d, h)=>{ if(d){ const m = Math.abs(h)*sum/Math.abs(d); if(m < s) s = m; } };
+      cap(dr, hx); cap(df, hz); cap(dy, hy);      // dr rides hx, df rides hz
+      cr += dr*s; cf += df*s; cy += dy*s;
+    }
+    eb(e, face, cr, cf, cy, hx*k, hy*k, hz*k, col, em);
+  }
 }
 // The enemy eye, fixed the same way the player's was: two flat plates .03
 // apart on a curved face are coplanar surfaces, and the depth buffer picks
@@ -2036,17 +2066,37 @@ pterling(e, face, W, H, c, glow, lod, y0){
     // The span is the animal. At half a unit of reach these read as two
     // sticks; a pterosaur is mostly wing, and the sheet has to be wider than
     // the body it hangs off or nothing about it says membrane.
-    etp(e, face, sg*W*.34, W*.12 + flap*W*.10, y0 + H*.50 + hop,
-        sg*.62,-.07, .06 + flap*.06, 3, W*.13,H*.055,W*.11, c, glow);     // finger
+    //
+    // THE SHEET IS WHAT HOLDS IT TOGETHER. Finger joints spaced far enough
+    // apart to give a pterosaur its span cannot touch each other - that is
+    // what the membrane between them is for - so the joints are built here
+    // rather than through etp(), whose clamp would pull the span in to the
+    // thickness of a knuckle. The panels used to sit at fixed offsets that
+    // stopped .24 short of the outermost joint, so each wing carried one box
+    // connected to nothing at all: two red squares hanging in the air beside
+    // the animal, on screen since the pterosaur rebuild and invisible to a
+    // connectivity report that only ever looked at the player. Each panel is
+    // centred on the midpoint of a finger span now and cut wider than the
+    // step, so it always bridges the two joints it hangs between.
+    const STEP = .62, BACK = -.07, RISE = .06 + flap*.06;
+    const jr = i => sg*(W*.34 + STEP*i);
+    const jf = i => W*.12 + flap*W*.10 + BACK*i;
+    const jy = i => y0 + H*.50 + hop + RISE*i;
+    for(let i=0;i<3;i++){ const k = 1 - i/4*.58;                          // finger
+      eb(e, face, jr(i), jf(i), jy(i), W*.13*k, H*.055*k, W*.11*k, c, glow); }
     for(let k=0;k<2;k++)                                                  // membrane
-      eb(e, face, sg*(W*.86 + k*W*.92), -W*.14 - k*W*.24 + flap*W*.14,
-         y0 + H*.48 + hop + (k+1)*flap*H*.07,
-         W*.62 - k*W*.16, H*.024, W*.44 - k*W*.12,
+      eb(e, face, jr(k+.5), jf(k+.5) - W*.14 - k*W*.10, jy(k+.5),
+         STEP*.58, H*.024, W*.44 - k*W*.12,
          k ? lt : c, glow+.05, face + sg*.10);
   }
   if(lod < 2) return;
+  // The legs rode only four tenths of the body's hop, so every unit the animal
+  // rose it left them a further six tenths behind - fine at a walk, and during
+  // the dive TELEGRAPH, where hop triples, both legs came off the bird
+  // entirely. They carry the full hop now and sit a little higher into the
+  // belly, so the gap between leg and body is a constant no animation can open.
   for(const sg of [-1,1])                                                 // legs
-    etp(e, face, sg*W*.16, 0, y0 + H*.26 + hop*.4, 0,0,-.07, 3,
+    etp(e, face, sg*W*.16, 0, y0 + H*.28 + hop, 0,0,-.07, 3,
         W*.06,H*.06,W*.06, lt, .15);
   for(let i=0;i<3;i++)                                                    // rudder tail
     eb(e, face, 0, -W*.42 - i*W*.20, y0 + H*.42 + hop, W*.055, H*.028, W*.13,
@@ -2192,10 +2242,17 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
   for(let i=0;i<3;i++)                                                        // crest
     eb(e, face, (i-1)*W*.10, W*.30, y0 + H*1.04 + bob + Math.sin(T*9+i)*H*.015,
        W*.035, H*.09, W*.035, [.42,.94,.86], .70, face + (i-1)*.30);
-  for(let k=0;k<5;k++){                                                       // the tail fan
+  // THE TAIL FAN. Five feathers that missed each other by twenty-seven ten
+  // thousandths of a unit sideways, and missed her back by two hundredths
+  // vertically on the lifted ones - so the fan was five separate objects
+  // trailing behind a bird, which is what the horde connectivity pass found
+  // the first time it was pointed at this roster. Wider feathers so the vanes
+  // overlap the way a fan's do, and half the lift, so the alternating ones
+  // still read as a fan without leaving the body they grow out of.
+  for(let k=0;k<5;k++){
     const sp = (k-2)*.40;
     eb(e, face, Math.sin(sp)*W*.62, -W*.52 - Math.cos(sp)*W*.30,
-       y0 + H*.62 + bob + (k%2)*H*.05, W*.10, H*.03, W*.34,
+       y0 + H*.62 + bob + (k%2)*H*.02, W*.145, H*.03, W*.34,
        k%2 ? [.42,.94,.86] : [1,.86,.30], .55, face + sp); }
   if(lod < 2) return;
   for(const sg of [-1,1])                                                     // tucked wings
@@ -2204,9 +2261,14 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
   for(const sg of [-1,1])                                                     // long running legs
     etp(e, face, sg*W*.18, stride*sg*W*.22, y0 + H*.24, 0,0,-.10, 3,
         W*.055,H*.09,W*.055, [1,.82,.24], .20);
+  // The sparks orbit clear of the animal on purpose, so they are FX and go out
+  // through box() like the ring and the beam above rather than through eb() -
+  // the same rule the player's plans keep with fx(), and for the same reason:
+  // a shower of sparks is not a limb that came off, and the mesh census should
+  // not have to argue about it.
   for(let i=0;i<4;i++){ const a = i*(TAU/4) + T*1.3;                          // it sheds sparks
-    eb(e, face, Math.sin(a)*W*.72, Math.cos(a)*W*.64, y0 + H*1.02,
-       W*.045, W*.045, W*.045, [1,.95,.62], .95, face); }
+    box(e.x + Math.sin(a)*W*.72, y0 + H*1.02, e.z + Math.cos(a)*W*.64,
+        W*.045, W*.045, W*.045, [1,.95,.62], .95); }
 },
 
 // ------------------------------------------------------------- THE BOSSES
@@ -2247,15 +2309,30 @@ matriarch(e, face, W, H, c, glow, lod, y0){
     eb(e, face, sg*W*.46, -W*.28, y0 + H*.20, W*.15, H*.20, W*.15,
        [c[0]*.66,c[1]*.66,c[2]*.70], 0);
   if(lod < 2) return;
-  for(let i=0;i<5;i++){                                                         // the brood
+  // THE BROOD RIDES HER, and riding means touching. Spaced a fifth of her width
+  // apart while each young shrank 13% a step, the last two sat clear of the one
+  // in front and clear of her back as well - a stack of blocks hovering over
+  // the spine. Closer together and seated lower, so the row runs along the back
+  // it is supposed to be clinging to.
+  for(let i=0;i<5;i++){
     const k = 1 - i*.13;
-    eb(e, face, Math.sin(T*1.6+i)*W*.10, W*.06 - i*W*.20, y0 + H*.74 + br*H*.01,
+    eb(e, face, Math.sin(T*1.6+i)*W*.10, W*.06 - i*W*.13, y0 + H*.70 + br*H*.01,
        W*.13*k, H*.10*k, W*.13*k, lit, glow+.10);
-    eey(e, face, Math.sin(T*1.6+i)*W*.10, W*.06 - i*W*.20 + W*.10,
-        y0 + H*.77 + br*H*.01, W*.05*k, W*.035*k, [1,.82,.26], .70);
+    // the eye sits proud of ITS OWN young, not of the one in front: a fixed
+    // forward offset was wider than the shrinking bodies' own half-depth, so
+    // the smallest babies' eyes floated ahead of them and landed on whichever
+    // sibling the sway happened to swing into reach - which is why this came
+    // apart at some phases of the animation and held together at others.
+    eey(e, face, Math.sin(T*1.6+i)*W*.10, W*.06 - i*W*.13 + W*.10*k,
+        y0 + H*.73 + br*H*.01, W*.05*k, W*.035*k, [1,.82,.26], .70);
   }
+  // The lag was written as a swing that GREW down the tail on an absolute tenth
+  // of her width, so the tip travelled over a unit sideways while each segment
+  // stayed a third of one wide - two segments could end up further apart than
+  // their own thickness and the last one came off. A third the amplitude and a
+  // shorter phase step keeps the whip and keeps the tail attached to it.
   for(let i=0;i<4;i++)                                                          // tail
-    eb(e, face, Math.sin(T*2+i*.7)*W*.10*(i+1), -W*.86 - i*W*.24, y0 + H*.34,
+    eb(e, face, Math.sin(T*2+i*.4)*W*.03*(i+1), -W*.86 - i*W*.24, y0 + H*.34,
        W*.11-i*.012, H*.09-i*.010, W*.20, c, glow);
 },
 
@@ -8897,11 +8974,14 @@ window.__g = {
   capturePos: ()=>{ bodyPos = []; bodyPosOut = null; },
   posOut:     ()=>bodyPosOut ? bodyPosOut.slice() : null,
   captureEnemy:()=>{ ebCap = []; ebCapOut = null; },
+  // stride 6 now, sizes in slots 3..5 - the signature is unchanged, it just
+  // reads past the position the capture also carries
   enemySig:()=>{ if(!ebCapOut) return null;
-                 const n = ebCapOut.length/3, sz = [];
-                 for(let i=0;i<n;i++) sz.push(ebCapOut.slice(i*3,i*3+3)
+                 const n = ebCapOut.length/6, sz = [];
+                 for(let i=0;i<n;i++) sz.push(ebCapOut.slice(i*6+3,i*6+6)
                                                .map(v=>v.toFixed(3)).join(","));
                  return n + "|" + sz.sort().join(" "); },
+  enemyPos:()=>ebCapOut ? ebCapOut.slice() : null,
   bodySig:()=>{ if(!bodyCapOut) return null;
                 const n = bodyCapOut.length/3, sz = [];
                 for(let i=0;i<n;i++) sz.push(bodyCapOut.slice(i*3,i*3+3)

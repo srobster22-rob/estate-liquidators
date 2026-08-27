@@ -34,19 +34,13 @@ const MIN = +(process.argv[2] || 0);
   const out = await page.evaluate(async (MIN) => {
     const g = window.__g;
     const frame = () => new Promise(r => requestAnimationFrame(() => r()));
-    const res = [];
-    for(const ch of g.chars()) for(const st of [0,1,2,3]){
-      g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
-      g.drainPicks(true); g.place(0,0);
-      if(st) g.evolveTo(st);
-      g.resume(); g.capturePos();
-      await frame(); await frame();
-      const bx = g.posOut();
-      if(!bx){ res.push({ ch, st, nm:"?", n:0, comps:-1 }); continue; }
+    // ONE analysis, two rosters. Player forms and horde bodies capture into the
+    // same six-number layout - (r, f, y) local, then half-extents in (x, z, y)
+    // order - so the union-find below does not care which it was handed.
+    const analyse = (bx) => {
       const n = bx.length/6, P = i => bx.slice(i*6, i*6+6);
       const ov = (A,B,k) => Math.min(A[k]+A[k+3], B[k]+B[k+3])
                           - Math.max(A[k]-A[k+3], B[k]-B[k+3]);
-      // union-find over "these two boxes actually share volume"
       const par = Array.from({length:n}, (_,i)=>i);
       const find = a => { while(par[a]!==a){ par[a]=par[par[a]]; a=par[a]; } return a; };
       const uni  = (a,b)=>{ a=find(a); b=find(b); if(a!==b) par[b]=a; };
@@ -61,41 +55,97 @@ const MIN = +(process.argv[2] || 0);
       for(let i=0;i<n;i++){ const r = find(i); (roots[r] = roots[r] || []).push(i); }
       const groups = Object.values(roots).sort((a,b)=>b.length-a.length);
       const loose = groups.slice(1);
-      res.push({ ch, st, nm: g.stageNm(), n, comps: groups.length,
-                 biggest: groups[0].length, weak,
-                 orphans: deg.filter(d=>d===0).length,
-                 stray: loose.slice(0,3).map(gp => {
-                   const A = P(gp[0]);
-                   // nearest box in the main group, and which axis fails
-                   let best = null;
-                   for(const m of groups[0]){
-                     const B = P(m);
-                     const g3 = [ov(A,B,0), ov(A,B,1), ov(A,B,2)];
-                     const worstAx = g3.indexOf(Math.min(...g3));
-                     const score = -Math.min(...g3);
-                     if(!best || score < best.score)
-                       best = { score, m, g3, B, worstAx };
-                   }
-                   return `${gp.length}@(${A[0].toFixed(2)},${A[1].toFixed(2)},${A[2].toFixed(2)})` +
-                     `sz(${A[3].toFixed(3)},${A[4].toFixed(3)},${A[5].toFixed(3)})i${gp[0]}` +
-                     ` | nearest i${best.m}@(${best.B[0].toFixed(2)},${best.B[1].toFixed(2)},${best.B[2].toFixed(2)})` +
+      return { n, comps: groups.length, biggest: groups[0] ? groups[0].length : 0, weak,
+               orphans: deg.filter(d=>d===0).length,
+               stray: loose.slice(0,3).map(gp => {
+                 const A = P(gp[0]);
+                 let best = null;
+                 for(const m of groups[0]){
+                   const B = P(m);
+                   const g3 = [ov(A,B,0), ov(A,B,1), ov(A,B,2)];
+                   const score = -Math.min(...g3);
+                   if(!best || score < best.score) best = { score, m, g3, B };
+                 }
+                 return `${gp.length}@(${A[0].toFixed(2)},${A[1].toFixed(2)},${A[2].toFixed(2)})` +
+                   `sz(${A[3].toFixed(3)},${A[4].toFixed(3)},${A[5].toFixed(3)})i${gp[0]}` +
+                   (best ? ` | nearest i${best.m}@(${best.B[0].toFixed(2)},${best.B[1].toFixed(2)},${best.B[2].toFixed(2)})` +
                      `sz(${best.B[3].toFixed(3)},${best.B[4].toFixed(3)},${best.B[5].toFixed(3)})` +
-                     ` ov[${best.g3.map(v=>v.toFixed(4)).join(",")}]`;
-                 }) });
+                     ` ov[${best.g3.map(v=>v.toFixed(4)).join(",")}]` : "");
+               }) };
+    };
+    const res = [], hordeRes = [];
+    for(const ch of g.chars()) for(const st of [0,1,2,3]){
+      g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.place(0,0);
+      if(st) g.evolveTo(st);
+      g.resume(); g.capturePos();
+      await frame(); await frame();
+      const bx = g.posOut();
+      if(!bx){ res.push({ ch, st, nm:"?", n:0, comps:-1 }); continue; }
+      res.push(Object.assign({ ch, st, nm: g.stageNm() }, analyse(bx)));
     }
-    return res;
+    // ---- THE HORDE. Six trash bodies and four bosses, each spawned alone and
+    // close enough to draw at full detail, because a body plan that only comes
+    // apart at LOD 2 is still a body plan that comes apart.
+    g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+    g.drainPicks(true); g.setShake(0); g.place(0,0); g.aim(0);
+    g.step(20, 1/60);
+    // SIX PHASES, and the worst one is the answer. Sway, tail lag and wing flap
+    // all move parts relative to each other, so "is it one object" is a question
+    // about the animation, not about whichever frame the report happened to
+    // catch - two bodies passed a single-frame check and came apart elsewhere in
+    // their own cycle. The clock is advanced with the field EMPTY and the body
+    // respawned for each sample, because running the enemy for 240 frames walks
+    // it out of full detail or lets the player's own weapon kill it.
+    const worstOf = async (spawn) => {
+      let out = null;
+      for(let ph=0; ph<6; ph++){
+        g.clearEnemies();
+        g.step(40, 1/60);
+        spawn();
+        g.step(3, 1/60);
+        g.resume(); g.captureEnemy();
+        await frame(); await frame();
+        const bx = g.enemyPos();
+        if(!bx) return { n:0, comps:-1, stray:[], weak:0 };
+        const a = analyse(bx);
+        if(!out || a.comps > out.comps) out = a;
+      }
+      return out;
+    };
+    const mobs = ["shambler","runner","brute","spitter","skitter","collector"];
+    for(const k of mobs)
+      hordeRes.push(Object.assign({ ch:k, st:"", nm:k.toUpperCase() },
+        await worstOf(()=>{ g.place(0,0); g.spawnAt(k, 0, 7); })));
+    for(let bi=0; bi<4; bi++){
+      let nm = "boss" + bi;
+      const r2 = await worstOf(()=>{
+        g.boss(bi); g.step(1/60);
+        const b = g.bossAt();
+        if(b){ nm = b.nm; g.place(b.x - 9, b.z); g.step(120, 1/60); }
+      });
+      hordeRes.push(Object.assign({ ch:"boss"+bi, st:"", nm }, r2));
+    }
+    return { res, hordeRes };
   }, MIN);
 
-  let bad = 0;
-  console.log(`\n  min overlap to count as joined: ${MIN}\n`);
-  console.log("  FORM                    boxes  parts  loose  weak-joints");
-  for(const r of out){
-    if(r.comps > 1) bad++;
-    const flag = r.comps > 1 ? "  <-- " + r.stray.join(" ") : "";
-    console.log(`  ${(r.ch+" st"+r.st).padEnd(12)}${(r.nm||"").padEnd(14)}` +
-                `${String(r.n).padStart(4)}${String(r.comps).padStart(7)}` +
-                `${String(r.comps-1).padStart(7)}${String(r.weak).padStart(8)}${flag}`);
-  }
-  console.log(`\n  ${bad} of ${out.length} forms are not a single connected object\n`);
+  const report = (rows, title) => {
+    let bad = 0;
+    console.log(`\n  ${title}`);
+    console.log("  FORM                    boxes  parts  loose  weak-joints");
+    for(const r of rows){
+      if(r.comps > 1 || r.comps === -1) bad++;
+      const flag = r.comps > 1 ? "  <-- " + (r.stray||[]).join(" ") : "";
+      console.log(`  ${(r.ch+" "+r.st).padEnd(12)}${(r.nm||"").padEnd(14)}` +
+                  `${String(r.n).padStart(4)}${String(r.comps).padStart(7)}` +
+                  `${String(r.comps-1).padStart(7)}${String(r.weak).padStart(8)}${flag}`);
+    }
+    console.log(`\n  ${bad} of ${rows.length} are not a single connected object`);
+    return bad;
+  };
+  console.log(`\n  min overlap to count as joined: ${MIN}`);
+  const badP = report(out.res, "PLAYER FORMS");
+  const badH = report(out.hordeRes, "THE HORDE");
+  console.log(`\n  TOTAL: ${badP + badH} of ${out.res.length + out.hordeRes.length} broken\n`);
   await b.close();
 })();
