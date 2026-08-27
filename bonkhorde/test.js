@@ -408,8 +408,50 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     return window.__g.casts();
   });
   ok("THE FINAL BONK uses its whole kit",
-     ["slam","spokes","charge","evict"].every(k => allKinds[k] > 0),
+     ["slam","spokes","charge","evict","sinkhole"].every(k => allKinds[k] > 0),
      JSON.stringify(allKinds));
+
+  // SINKHOLE claims a specific SHAPE - a closed ring centred on the boss, with
+  // the ground under its feet left safe - and a telegraph that only claims to
+  // exist is not a telegraph. Every other ability makes somewhere dangerous and
+  // leaves "away" free; this one has to actually close, or it is just evict.
+  const sink = await page.evaluate(() => {
+    const g = window.__g;
+    g.wipeSave(); g.start("intern"); g.god(); g.drainPicks(true);
+    g.freezeSpawns(true); g.freezeEvents(true); g.skipTo(1140); g.boss(3);
+    const b0 = g.bossAt();
+    // step until the ring appears: 13 telegraphing hazards all at one radius
+    let ring = null, bx = b0.x, bz = b0.z;
+    for(let k=0; k<60*40 && !ring; k++){
+      g.step(1);
+      const h = g.hazAt().filter(x => x.tel > 0 && x.r === 3);
+      if(h.length >= 12){ ring = h; const b = g.bossAt(); bx = b.x; bz = b.z; }
+    }
+    if(!ring) return { found:false };
+    // the boss's own ground is outside every circle of the ring
+    const safeCentre = ring.every(h => Math.hypot(h.x-bx, h.z-bz) > h.r);
+    // and the ring is CLOSED: sort by bearing and check no neighbouring pair is
+    // further apart along the arc than the two circles can between them span
+    const ang = ring.map(h => Math.atan2(h.z-bz, h.x-bx)).sort((a,b)=>a-b);
+    let widest = 0;
+    for(let i=0;i<ang.length;i++){
+      const d = (i ? ang[i]-ang[i-1] : ang[0]+Math.PI*2-ang[ang.length-1]);
+      widest = Math.max(widest, d);
+    }
+    const rad = ring.reduce((s,h)=>s+Math.hypot(h.x-bx,h.z-bz),0)/ring.length;
+    return { found:true, n:ring.length, safeCentre, widest, rad,
+             gapM: widest*rad, span: 2*3 };
+  });
+  ok("SINKHOLE opens a ring, not a blob",
+     sink.found && sink.n >= 12 && sink.rad > 8,
+     sink.found ? `${sink.n} circles at a mean ${sink.rad.toFixed(1)}m` : "never cast one");
+  ok("and it leaves the ground under the boss safe",
+     sink.found && sink.safeCentre,
+     "every circle of the ring clears the boss's own footing");
+  ok("and the ring actually closes - there is no seam to walk through",
+     sink.found && sink.gapM < sink.span,
+     sink.found ? `widest arc gap ${sink.gapM.toFixed(2)}m against a ${sink.span}m span`
+                : "n/a");
 
   // The point of a telegraph is that it can be read. If a dodging player eats
   // the same damage as a stationary one, these are not mechanics - they are a tax.

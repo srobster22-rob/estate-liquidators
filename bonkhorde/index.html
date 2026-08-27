@@ -1708,12 +1708,22 @@ const ABILITIES = {
   evict:  { tell:0.85, act:0.20, rest:3.1 },   // scatters lingering zones, eats the arena
   charge: { tell:0.95, act:0.85, rest:2.3 },   // marks a lane, then runs it
   spokes: { tell:0.70, act:0.20, rest:2.1 },   // radial burst, dodge between the arms
+  // SINKHOLE inverts the question the other four ask. Every one of them makes
+  // somewhere DANGEROUS and leaves the rest of the arena safe, so the answer is
+  // always the same verb - move away - and against the finale, which is where
+  // nearly every veteran run is decided, "away" is free because the arena is
+  // 84m and the boss is one object. This one opens a ring of ground centred on
+  // the boss ITSELF: the safe places are the disc under its feet and the whole
+  // field beyond, and the band between them is not. There is no running away
+  // from it, only picking a side and committing, which is the one positional
+  // demand this fight did not have.
+  sinkhole:{ tell:1.10, act:0.30, rest:3.0 },
 };
 const BOSS_KIT = {
   slam:   ["slam"],                            // the teaching boss: one lesson
   evict:  ["evict", "slam"],
   charge: ["charge", "slam", "charge"],
-  all:    ["slam", "spokes", "charge", "evict"],   // the finale uses everything
+  all:    ["slam", "spokes", "sinkhole", "charge", "evict"],  // the finale uses everything
 };
 
 // spawn director: rate is enemies/sec, mix is a weight table
@@ -5191,6 +5201,7 @@ function bossAI(e, dt){
     if(A.t > 0) return true;
     const kit = BOSS_KIT[e.def.ai] || ["slam"];
     A.kind = kit[(A.n++) % kit.length];
+    if(A.kind === "sinkhole") A.dir = R()*TAU;   // never the same seam twice
     A.phase = "tell"; A.t = ABILITIES[A.kind].tell;
     bossTelegraph(e, A);
     return false;                              // rooted while winding up
@@ -5232,6 +5243,17 @@ function bossTelegraph(e, A){
     }
   } else if(A.kind === "spokes"){
     A.dir = R()*TAU;
+  } else if(A.kind === "sinkhole"){
+    // A CLOSED ring, or it is not a decision. Thirteen circles of radius 3 on a
+    // ring of radius 11 sit 5.3m apart along the arc against a 6m span, so
+    // there is no gap to walk through and the choice is genuinely in-or-out.
+    // Centred where the boss stands when it winds up, and the ground does not
+    // follow it, so committing inside means committing to its reach.
+    for(let i=0;i<13;i++){
+      const a = A.dir + i*(TAU/13);
+      const [hx, hz] = confine(e.x + Math.cos(a)*11, e.z + Math.sin(a)*11, 2);
+      hazards.push(mkHaz(hx, hz, 3.0, ABILITIES.sinkhole.tell, 1.4, 30*s));
+    }
   }
   SFX.zap();
 }
@@ -5245,6 +5267,7 @@ function bossExecute(e, A){
     SFX.boom();
   } else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
   else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
+  else if(A.kind === "sinkhole"){ shake = Math.max(shake,.85); SFX.boom(); }
 }
 
 // ======================================================= SIDE EVENTS
@@ -9095,6 +9118,10 @@ window.__g = {
                return { all:d, boss:b }; },
   haz:   ()=>({ n:hazards.length, tel:hazards.filter(h=>h.tel>0).length,
                 live:hazards.filter(h=>h.tel<=0).length }),
+  // where they actually are, so a shaped telegraph can be checked for the
+  // shape it claims rather than just for existing
+  hazAt: ()=>hazards.map(h=>({ x:+h.x.toFixed(2), z:+h.z.toFixed(2),
+                               r:h.r, tel:+h.tel.toFixed(2) })),
   casts: ()=>Object.assign({}, bossCasts),
   // Freezing spawns now also SWEEPS the field. Every run opens with six
   // shamblers already walking in - the audit round's "the first five seconds
