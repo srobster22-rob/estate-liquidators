@@ -5249,9 +5249,16 @@ function bossTelegraph(e, A){
     // there is no gap to walk through and the choice is genuinely in-or-out.
     // Centred where the boss stands when it winds up, and the ground does not
     // follow it, so committing inside means committing to its reach.
+    // DROPPED, not confined, when a point falls off the map. confine() pulls
+    // an out-of-bounds point back INSIDE the arena, and for a boss fighting near
+    // the rim that drags the whole far side of the ring inward - far enough, at
+    // the very edge, to land a circle on the boss's own feet and destroy the one
+    // thing this ability promises. The wall is already a wall: drop the points
+    // that do not fit and let the rim close that side of the ring instead.
     for(let i=0;i<13;i++){
       const a = A.dir + i*(TAU/13);
-      const [hx, hz] = confine(e.x + Math.cos(a)*11, e.z + Math.sin(a)*11, 2);
+      const hx = e.x + Math.cos(a)*11, hz = e.z + Math.sin(a)*11;
+      if(Math.hypot(hx, hz) > RIM - 2) continue;
       hazards.push(mkHaz(hx, hz, 3.0, ABILITIES.sinkhole.tell, 1.4, 30*s));
     }
   }

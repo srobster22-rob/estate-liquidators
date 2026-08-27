@@ -453,6 +453,41 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
      sink.found ? `widest arc gap ${sink.gapM.toFixed(2)}m against a ${sink.span}m span`
                 : "n/a");
 
+  // AND IT HOLDS AT THE WALL. confine() pulls an out-of-bounds point back inside
+  // the arena, so a boss casting this near the rim would have had the far side
+  // of its own ring dragged inward - at the very edge, far enough to land a
+  // circle on its own feet and take away the safe disc the whole ability is
+  // about. Fight it against the wall and check the promise survives there.
+  const rim = await page.evaluate(() => {
+    const g = window.__g;
+    g.wipeSave(); g.start("intern"); g.god(); g.drainPicks(true);
+    g.freezeSpawns(true); g.freezeEvents(true); g.skipTo(1140); g.boss(3);
+    const R = g.rim();
+    let casts = 0, worstToBoss = 1e9, farthestBoss = 0;
+    for(let k=0; k<60*120; k++){
+      g.place(R - 3, 0);                     // pinned against the wall
+      g.step(1);
+      const b = g.bossAt();
+      if(!b) break;
+      farthestBoss = Math.max(farthestBoss, Math.hypot(b.x, b.z));
+      const h = g.hazAt().filter(x => x.tel > 0 && x.r === 3);
+      if(h.length >= 3){
+        casts++;
+        for(const c of h)
+          worstToBoss = Math.min(worstToBoss, Math.hypot(c.x-b.x, c.z-b.z) - c.r);
+        // let this cast expire before counting another
+        for(let j=0;j<70;j++){ g.place(R - 3, 0); g.step(1); }
+      }
+    }
+    return { casts, worstToBoss, farthestBoss, rim:R };
+  });
+  ok("SINKHOLE keeps the boss's own ground safe even against the wall",
+     rim.casts > 0 && rim.worstToBoss > 0,
+     rim.casts ? `${rim.casts} casts with the boss out to ${rim.farthestBoss.toFixed(0)}m ` +
+                 `of a ${rim.rim}m rim; closest circle cleared its feet by ` +
+                 `${rim.worstToBoss.toFixed(2)}m`
+               : "never cast one at the wall");
+
   // The point of a telegraph is that it can be read. If a dodging player eats
   // the same damage as a stationary one, these are not mechanics - they are a tax.
   const dodge = await page.evaluate(() => {
