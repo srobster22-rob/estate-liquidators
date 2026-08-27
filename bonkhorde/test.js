@@ -1337,15 +1337,30 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const h = window.__g.huntInfo(); if (!h) break;
         seen.push(h.d);
       }
-      // it must PAUSE, or it is a treadmill: look for a second where it barely moved
-      let stalled = 0;
-      for (let i = 1; i < seen.length; i++) if (seen[i] - seen[i-1] < 0.002) stalled++;
-      return { d0, d1: seen[seen.length-1], stalledFrames: stalled };
+      // It must PAUSE, or it is a treadmill. Counting stationary frames was the
+      // first attempt and it does not work: a quarry that never rests still
+      // produces them in bulk, because any frame where it turns or runs mostly
+      // sideways barely changes its DISTANCE from you. Measured against a build
+      // with the rest deleted, the count came back 74 and then 103 against a
+      // real 167 and then 120 - two overlapping noisy ranges either side of a
+      // threshold of 40, so the check passed a treadmill every time.
+      // The pause is a CONTIGUOUS thing, which is what separates it from
+      // jitter: the longest unbroken run of stationary frames is 78 on the real
+      // build - the 1.3s rest, exactly - and 1 without it.
+      let stalled = 0, run = 0, longest = 0;
+      for (let i = 1; i < seen.length; i++) {
+        if (seen[i] - seen[i-1] < 0.002) { stalled++; run++; if (run > longest) longest = run; }
+        else run = 0;
+      }
+      return { d0, d1: seen[seen.length-1], stalledFrames: stalled, longestPause: longest };
     });
     ok("the collector runs away rather than at you", hunt.d1 > hunt.d0 + 8,
        `${hunt.d0}m -> ${hunt.d1}m in six seconds`);
     ok("and it stops often enough to be caught",
-       hunt.stalledFrames > 40, `${hunt.stalledFrames} stationary frames of 360`);
+       hunt.longestPause > 40,
+       `longest unbroken pause ${hunt.longestPause} frames ` +
+       `(${hunt.stalledFrames} stationary frames of 360 in total, which is the ` +
+       `number that could not tell a rest from jitter)`);
 
     const paid = await page.evaluate(() => {
       window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
