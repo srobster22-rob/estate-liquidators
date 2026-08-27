@@ -266,6 +266,15 @@ for (const m of run) {
   if (!verdict) {
     console.log(`ERROR     ${m.id.padEnd(22)} expected ${m.must.padEnd(4)} ` +
                 `no RESULT line - ${crash || "the suite did not finish"}`);
+    // AND WHY. A full run costs about five minutes, so an ERROR that says only
+    // "did not finish" buys a second five minutes to find out what everybody
+    // already had on stdout. The tail is almost always the answer: the section
+    // header it died under, and the exception under that. Note the difference
+    // this exposes - a `crash` value means the child was KILLED (timeout, a
+    // signal), while its absence means the child exited on its own without
+    // printing a verdict, which is a crash rather than a hang.
+    const tail = out.trimEnd().split("\n").slice(-8);
+    for (const line of tail) console.log(`          | ${line}`);
     survived++; continue;
   }
   const nFail = +verdict[2];
