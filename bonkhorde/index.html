@@ -3662,8 +3662,17 @@ rot(D){
     // flat green with no light side and no dark side - which is most of why
     // BASILISK read as a caterpillar. It is deep enough to catch the light on
     // the lower flank now, which is where a snake's countershading actually is.
+    // DEEPER IS NOT THE SAME AS LOWER, which is what the note above missed.
+    // The scute was made a band instead of a sliver by growing its half-height
+    // to .30k, but its CENTRE stayed at -.72k - and the segment tube has a
+    // radius of about k, so the band spans -1.02k to -.42k and all but the last
+    // two hundredths of it is inside the animal. Measured on BASILISK, the
+    // scutes are one of the two families of boxes with no volume of their own.
+    // Sit it ON the belly line instead: same band, centred where the tube's
+    // surface is, so half of it is outside and half is the overlap that keeps
+    // it attached.
     if(i < N-1)
-      mb(lx, lf, ly - GIRTH*k*.72, GIRTH*k*.74, GIRTH*k*.30, GIRTH*k*.50, bel, em*.9);
+      mb(lx, lf, ly - GIRTH*k*1.00, GIRTH*k*.74, GIRTH*k*.30, GIRTH*k*.50, bel, em*.9);
     // dorsal scales, bigger toward the middle of the animal
     if(i > 0 && i < N-2){
       // A saw, not a dotted line: the scales stand tallest over the thickest
@@ -3695,8 +3704,14 @@ rot(D){
       const [px, pf] = spine[i-1], [nx2, nf2] = spine[i+1];
       const tl = nx2 - px, tf = nf2 - pf, tlen = Math.hypot(tl, tf) || 1;
       const perpX = -tf/tlen, perpF = tl/tlen;
+      // and OUT on the flank, for the same reason the scute had to come down:
+      // a diamond centred .80k from the axis of a tube of radius k, with
+      // horizontal half-extents of about .3k, breaks the surface by a tenth of
+      // a radius at best and less than that wherever the coil turns it off
+      // axis. Straddle the surface at 1.00k - half proud, half buried, and the
+      // buried half is what holds it on.
       for(const rs of [-1,1])
-        mb(lx + perpX*GIRTH*k*.80*rs, lf + perpF*GIRTH*k*.80*rs, ly,
+        mb(lx + perpX*GIRTH*k*1.00*rs, lf + perpF*GIRTH*k*1.00*rs, ly,
            GIRTH*k*.30, GIRTH*k*.42, GIRTH*k*.34, dk, .05);
     }
   }
