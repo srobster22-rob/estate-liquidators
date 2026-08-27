@@ -3099,9 +3099,13 @@ scrap(D){
     }
     chain([[sway, .16*gr, (.72+bob)*gr], [sway, .06*gr, (1.02+bob)*gr]],
           .11*gr, .05*gr, dk, em+.10, [.30, 1, 1]);
+    // The whirlpool, as water rather than as sticks. Seven rods .6 long and
+    // .04 thick spiralling up around the animal is the same shape the audit
+    // called debris everywhere else it appears; a vortex is sheets of water
+    // peeling upward, so these are flat plates on the same spiral.
     for(let i=0;i<7;i++){ const a2 = t*1.1 + i/7*TAU;
-      fx(Math.sin(a2)*.92*gr, Math.cos(a2)*.80*gr,
-         (.20 + i*.07)*gr, .020*gr,.020*gr,.30*gr, lt, .45, a2 + 1.2); }
+      fx(Math.sin(a2)*.88*gr, Math.cos(a2)*.76*gr,
+         (.14 + i*.075)*gr, .105*gr,.020*gr,.085*gr, lt, .45, a2 + 1.2); }
   }
   // FLIPPERS. Four of them, rowing - front and back on opposite beats.
   // Rear pair FORWARD of the tail root: the audit found the tail fluke slicing
@@ -3158,9 +3162,12 @@ scrap(D){
   for(let i=2;i<tail.length;i++)
     mb(tail[i][0], tail[i][1], tail[i][2] + .14*gr, .03*gr, .13*gr, .13*gr, lt, em+.24);
   // and the top of the line trails its own water
+  // and the trail it leaves, on the floor where a wake belongs rather than
+  // bobbing at a third of a unit in the air
   if(st >= 2) for(let i=0;i<8;i++){ const a = t*1.4 + i/8*TAU;
-    fx(Math.sin(a)*.78*gr, Math.cos(a)*.66*gr,
-       (.30 + Math.sin(t*2.2+i)*.16)*gr, .05*gr,.05*gr,.12*gr, lt, .55, a); }
+    fx(Math.sin(a)*.74*gr, Math.cos(a)*.62*gr,
+       (.05 + Math.abs(Math.sin(t*2.2+i))*.06)*gr,
+       .085*gr,.018*gr,.07*gr, lt, .55, a); }
 },
 // ------------------------------------------------------------------- VOLT
 // A TYRANT, all three stages of it. This line used to be a hatchling, then a
@@ -4132,9 +4139,14 @@ surge(D){
        [ lerp(c[0], 1, lit*.6), lerp(c[1], .84, lit*.5), lerp(c[2], .30, lit*.4) ],
        em + .10 + lit*.5);
   // and while the surge is up the animal drags its own wake
+  // The SECOND ring on this line, and the one a player actually sees, because
+  // it fires while the meter is charged. Same rods, same fault - flattened to
+  // the same spray the wake above uses, kept brighter and faster because this
+  // one is telling you the meter is up.
   if(ch > 1) for(let i=0;i<8;i++){ const a = t*3.2 + i/8*TAU;
-    fx(sway + Math.sin(a)*.70*gr, Math.cos(a)*.62*gr - .20*gr,
-       HIP - .34*gr + Math.sin(t*6+i)*.10*gr, .022*gr,.022*gr,.26*gr, acc, .85, a); }
+    fx(sway + Math.sin(a)*.64*gr, Math.cos(a)*.56*gr - .18*gr,
+       (.05 + Math.abs(Math.sin(t*6+i))*.07)*gr,
+       .075*gr,.018*gr,.065*gr, acc, .85, a); }
 },
 // -------------------------------------------------------------------- PYRE
 // A PHOENIX. Feathers, not membrane - the wing is a row of separate quills off
@@ -4244,10 +4256,22 @@ pyre(D){
   }
   // ---- IT IS ON FIRE. A corona at the top of the line, embers at every stage.
   fl(sway, -.10*gr, HIP + .34*gr*upr, .7 + st*.25, 2 + st);
-  if(st >= 2) for(let i=0;i<10;i++){ const a = t*1.7 + i/10*TAU;
-    fx(sway + Math.sin(a)*.86*gr, Math.cos(a)*.76*gr,
-       HIP + .10*gr + Math.sin(t*3.4+i)*.26*gr, .020*gr,.020*gr,.22*gr,
-       i%2 ? acc : lt, .95, a); }
+  // EMBERS, NOT RODS. Ten bars .44 long and .04 thick, orbiting at hip height
+  // on a bob deep enough to lift them clear of the bird, attached to nothing at
+  // either end: the THIRD instance in this roster of the fault a ten-agent
+  // audit called severity five on THE ROC, and pyre is the last of the three
+  // lines that audit never reached. A phoenix has earned a corona, so unlike
+  // the ROC's wind this one is not pushed down to the floor - but a corona is
+  // made of SPARKS. They spiral out and up off the body, shrinking and dimming
+  // as they go, so every one of them is visibly leaving the animal rather than
+  // hanging beside it.
+  if(st >= 2) for(let i=0;i<10;i++){
+    const a = t*1.7 + i/10*TAU, rise = (t*.55 + i*.31) % 1;
+    const sz = (.058 - rise*.026)*gr;
+    fx(sway + Math.sin(a)*(.50 + rise*.20)*gr,
+       Math.cos(a)*(.44 + rise*.18)*gr,
+       HIP + (.02 + rise*.66)*gr, sz, sz, sz,
+       i%2 ? acc : lt, .95*(1 - rise*.6)); }
 },
 };
 // QA: when this is an array, the next frame records every box the monster body
