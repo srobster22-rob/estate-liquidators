@@ -3674,7 +3674,17 @@ rot(D){
       // even where the scales are small. A row of magenta pips on a green tube
       // is a dotted line; a dark ridge with magenta teeth on it is a spine.
       mb(lx, lf, ly + GIRTH*k*.66, GIRTH*k*.68, GIRTH*k*.34, GIRTH*k*.56, dk, .05);
-      mb(lx, lf, ly + GIRTH*k*.88, .055*gr, GIRTH*k*.54*sc, GIRTH*k*.46*sc, acc, .30);
+      // THE TEETH HAVE TO CLEAR THE KEEL THEY SIT ON. The keel spans +.10k to
+      // +1.22k of the segment radius; the accent used to sit at +.88k with a
+      // half-height of .46k*sc, and sc falls to .45 toward both ends of the
+      // animal by design - so at every segment but the thickest, the magenta
+      // scale's entire span was inside the dark box drawn under it. Measured:
+      // the ghoul line ran 30, 42, 95 and 112 boxes with no volume of their
+      // own across its four forms, the worst mean-own in either roster at
+      // 0.064. A serration you cannot see is a draw call and a z-fight.
+      // Rooted at the keel's shoulder instead, so the tooth always protrudes
+      // above it while still overlapping it by a quarter of a radius.
+      mb(lx, lf, ly + GIRTH*k*1.18, .055*gr, GIRTH*k*.54*sc, GIRTH*k*.46*sc, acc, .30);
       // FLANK BLOTCHES. Everything drawn on this animal so far bands the TOP
       // and UNDERSIDE - the belly scutes, the dorsal saw - and left the whole
       // side of the tube, the one surface the play camera actually frames
