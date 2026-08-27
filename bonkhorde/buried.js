@@ -37,10 +37,22 @@ const ONLY = process.argv[2];
       const ch=job.ch, st=job.st;
       if(ONLY && ch!==ONLY) continue;
       {
-        let bx, nm;
+        let nm;
+        // SIX PHASES, and a box counts as invisible only if it is invisible in
+        // ALL of them. One frame was the first version and it over-reports:
+        // parts move relative to each other, so a plate sealed inside the flank
+        // at rest can swing clear mid-stride, and calling that "no volume of
+        // its own" sends somebody hunting a part that is on screen half the
+        // time. The same lesson analyze.js learned about connectivity, which
+        // two bodies passed on one frame and failed elsewhere in their cycle.
+        // Per box, keep the BEST exclusive fraction it manages anywhere in the
+        // walk; only a box that never earns any volume is really buried.
+        const capture = async (ph) => {
+        let bx;
         if(!job.horde){
           g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
           g.drainPicks(true); g.place(0,0); if(st) g.evolveTo(st);
+          if(ph) g.step(ph*13, 1/60);          // walk the clock into this phase
           g.resume(); g.capturePos(); await frame(); await frame();
           bx=g.posOut(); nm=g.stageNm();
         } else {
@@ -50,36 +62,72 @@ const ONLY = process.argv[2];
           if(job.boss!==undefined){ g.boss(job.boss); g.step(1/60);
             const bb=g.bossAt(); if(bb){ nm=bb.nm; g.place(bb.x-9,bb.z); g.step(150,1/60); } }
           else { g.spawnAt(ch,0,7); g.step(30,1/60); nm=ch.toUpperCase(); }
+          if(ph) g.step(ph*13, 1/60);          // walk the clock into this phase
           g.resume(); g.captureEnemy(); await frame(); await frame();
           bx=g.enemyPos();
         }
+        return bx;
+        };
+        // Advance the animation clock between samples. The field is cleared and
+        // the body respawned for the horde inside capture(), so a long walk
+        // cannot carry an enemy out of full detail or let the player kill it.
+        let bx = null;
+        const perPhase = [];
+        for(let ph=0; ph<6; ph++){
+          // The advance has to happen INSIDE capture, after its setup: capture
+          // opens with wipeSave()/start(), which resets the clock, so stepping
+          // between calls was thrown away and all six samples were one frame.
+          // Caught because the horde rows came back byte-identical to the
+          // single-frame baseline - BRUTE 32 boxes 2 invisible, TERRAVORE 41 -
+          // which is not what a real change looks like.
+          const b2 = await capture(ph);
+          if(b2) perPhase.push(b2);
+          if(!bx) bx = b2;
+        }
         if(!bx){ res.push({ch,st,nm:nm||"?"}); continue; }
         const n=bx.length/6;
-        let lo=[9,9,9], hi=[-9,-9,-9];
-        for(let i=0;i<bx.length;i+=6) for(let k=0;k<3;k++){
-          lo[k]=Math.min(lo[k], bx[i+k]-bx[i+3+k]); hi[k]=Math.max(hi[k], bx[i+k]+bx[i+3+k]); }
-        const N=80, cell=[0,1,2].map(k=>Math.max(1e-4,(hi[k]-lo[k])/N));
-        const cnt=new Uint8Array(N*N*N);
-        const span=(i)=>{
-          const a0=[0,1,2].map(k=>Math.max(0, Math.floor((bx[i+k]-bx[i+3+k]-lo[k])/cell[k])));
-          const a1=[0,1,2].map(k=>Math.min(N-1, Math.floor((bx[i+k]+bx[i+3+k]-lo[k])/cell[k])));
-          return [a0,a1];
+        // Rasterise ONE phase and return each box's exclusive fraction.
+        const fracs = (bxp) => {
+          let lo=[9,9,9], hi=[-9,-9,-9];
+          for(let i=0;i<bxp.length;i+=6) for(let k=0;k<3;k++){
+            lo[k]=Math.min(lo[k], bxp[i+k]-bxp[i+3+k]); hi[k]=Math.max(hi[k], bxp[i+k]+bxp[i+3+k]); }
+          const N=80, cell=[0,1,2].map(k=>Math.max(1e-4,(hi[k]-lo[k])/N));
+          const cnt=new Uint8Array(N*N*N);
+          const span=(i)=>{
+            const a0=[0,1,2].map(k=>Math.max(0, Math.floor((bxp[i+k]-bxp[i+3+k]-lo[k])/cell[k])));
+            const a1=[0,1,2].map(k=>Math.min(N-1, Math.floor((bxp[i+k]+bxp[i+3+k]-lo[k])/cell[k])));
+            return [a0,a1];
+          };
+          for(let i=0;i<bxp.length;i+=6){ const [a0,a1]=span(i);
+            for(let x=a0[0];x<=a1[0];x++) for(let y=a0[1];y<=a1[1];y++)
+              for(let z=a0[2];z<=a1[2];z++){ const q=(x*N+y)*N+z; if(cnt[q]<255) cnt[q]++; } }
+          // What matters is not how much of a part is shared - parts are SUPPOSED
+          // to interpenetrate, and a chamfer is three boxes deliberately inside
+          // each other - it is whether the part contributes any volume that is
+          // ITS OWN. A box with no exclusive cells is invisible: it cannot be
+          // seen from any angle, it costs a draw, and it z-fights whatever
+          // contains it. That is the "glitchy" in the report.
+          const out2=[];
+          for(let i=0;i<bxp.length;i+=6){ const [a0,a1]=span(i);
+            let tot=0, own=0;
+            for(let x=a0[0];x<=a1[0];x++) for(let y=a0[1];y<=a1[1];y++)
+              for(let z=a0[2];z<=a1[2];z++){ tot++; if(cnt[(x*N+y)*N+z]===1) own++; }
+            out2.push(tot ? own/tot : 0);
+          }
+          return out2;
         };
-        for(let i=0;i<bx.length;i+=6){ const [a0,a1]=span(i);
-          for(let x=a0[0];x<=a1[0];x++) for(let y=a0[1];y<=a1[1];y++)
-            for(let z=a0[2];z<=a1[2];z++){ const q=(x*N+y)*N+z; if(cnt[q]<255) cnt[q]++; } }
-        // What matters is not how much of a part is shared - parts are SUPPOSED
-        // to interpenetrate, and a chamfer is three boxes deliberately inside
-        // each other - it is whether the part contributes any volume that is
-        // ITS OWN. A box with no exclusive cells is invisible: it cannot be
-        // seen from any angle, it costs a draw, and it z-fights whatever
-        // contains it. That is the "glitchy" in the report.
+        // BEST across the walk, per box.
+        let best = null;
+        for(const bxp of perPhase){
+          if(bxp.length !== bx.length) continue;   // a plan that changes box count mid-cycle
+          const f = fracs(bxp);
+          if(!best) best = f;
+          else for(let i=0;i<f.length;i++) if(f[i] > best[i]) best[i] = f[i];
+        }
+        if(!best) best = fracs(bx);
         let sum=0, deep=0, worst=[];
-        for(let i=0;i<bx.length;i+=6){ const [a0,a1]=span(i);
-          let tot=0, own=0;
-          for(let x=a0[0];x<=a1[0];x++) for(let y=a0[1];y<=a1[1];y++)
-            for(let z=a0[2];z<=a1[2];z++){ tot++; if(cnt[(x*N+y)*N+z]===1) own++; }
-          const f = tot ? own/tot : 0;
+        for(let i=0;i<bx.length;i+=6){
+          const f = best[i/6];
           sum += f; if(f < .02) deep++;
           worst.push({ i:i/6, f:+f.toFixed(3),
                        sz:[bx[i+3],bx[i+4],bx[i+5]].map(v=>+v.toFixed(3)) });
