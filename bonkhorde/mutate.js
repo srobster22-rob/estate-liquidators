@@ -233,8 +233,34 @@ if (process.argv[2] === "--anchors") {
   process.exit(bad.length ? 1 : 0);
 }
 
-const want = process.argv[2];
-const run = MUTANTS.filter(m => !want || m.id.includes(want));
+// RESUMABLE, because a full pass is 48 browser suites and this machine is never
+// free for the four hours that takes. One run was lost to a container restart at
+// row 37 and another wedged on a single mutant for six hours, and both threw
+// away everything already measured. With --resume the results FILE is the
+// state: rows already in it are skipped, and each new row is appended the
+// moment it is known, so a pass can be run in slices between other work and
+// survives anything that kills it.
+//
+//   node mutate.js --resume        # everything not yet recorded
+//   node mutate.js --resume 4      # at most four more, then stop
+const RESUME = process.argv.includes("--resume");
+const LOG = path.resolve(__dirname, "mutate-results.txt");
+const done = new Set();
+let slice = Infinity;
+if (RESUME) {
+  if (fs.existsSync(LOG))
+    for (const line of fs.readFileSync(LOG, "utf8").split("\n")) {
+      const mm = line.match(/^\S+\s+(\S+)/);
+      if (mm) done.add(mm[1]);
+    }
+  const n = process.argv.slice(3).find(a => /^\d+$/.test(a));
+  if (n) slice = +n;
+  console.log(`resuming: ${done.size} recorded, ${MUTANTS.length - done.size} to go` +
+              (slice === Infinity ? "" : `, doing at most ${slice} now`));
+}
+const want = RESUME ? null : process.argv[2];
+let run = MUTANTS.filter(m => (!want || m.id.includes(want)) && !done.has(m.id));
+if (slice !== Infinity) run = run.slice(0, slice);
 // ONE TEMP FILE PER RUN, named after the process. Two audits sharing a fixed
 // filename do not fail loudly, they fail as nonsense: the second run's children
 // load whatever the first run last wrote, so a mutation gets scored against
