@@ -1472,12 +1472,12 @@ bat:{ name:"BONK BAT", ic:"bat", kind:"w",
   // crowd DPS and last on survival, all three at once. It stays directional and
   // hits like the name: 333 damage a second into a cone, against EARTHQUAKE's
   // 176 in every direction. Pick the one that matches how you play.
-  lv:[{d:30,cd:1.10,arc:2.1,rng:4.6,kb:5},
-      {d:41,cd:1.04,arc:2.3,rng:4.9,kb:5},
-      {d:56,cd:0.98,arc:2.5,rng:5.3,kb:6},
-      {d:75,cd:0.92,arc:2.8,rng:5.8,kb:6},
-      {d:99,cd:0.85,arc:3.2,rng:6.3,kb:7},
-      {d:260,cd:0.78,arc:4.2,rng:9.5,kb:34}] },
+  lv:[{d:42,cd:1.10,arc:2.1,rng:5.9,kb:5},
+      {d:57,cd:1.04,arc:2.3,rng:6.3,kb:5},
+      {d:78,cd:0.98,arc:2.5,rng:6.8,kb:6},
+      {d:104,cd:0.92,arc:2.8,rng:7.4,kb:6},
+      {d:162,cd:0.85,arc:3.2,rng:8.1,kb:7},
+      {d:305,cd:0.78,arc:4.2,rng:11.0,kb:34}] },
 
 skulls:{ name:"SKULLS", ic:"skulls", kind:"w",
   ds:"Orbiting skulls. They do not aim, they simply are.",
@@ -9178,6 +9178,13 @@ window.__g = {
                 pending:pendingLevels, stage, face:+(P?.face || 0).toFixed(4),
                 air:!!P?.air }),
   kit:   ()=>Object.keys(P.kit).map(k=>`${k}:${P.kit[k].evo?"EVO":P.kit[k].l+1}`),
+  // Take every weapon away. For checks that measure what the HORDE does, where
+  // the player's kit is not the subject but is quite capable of deleting it:
+  // section 22k spawns birds at seven metres to watch them wind up and dive,
+  // and a BONK BAT retune gave the starting weapon the reach and damage to kill
+  // them first, turning three correct assertions red. A check about a dive
+  // should not depend on how hard the default weapon happens to hit this month.
+  disarm: ()=>{ for(const k of Object.keys(P.kit)) delete P.kit[k]; return Object.keys(P.kit).length; },
   start: (id)=>startRun(id||"intern"),
   // scripted driving ignores the pause that losing pointer lock would cause
   step:  (n=60, d=1/60)=>{ if(paused) togglePause(false);

@@ -3013,8 +3013,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // which is the only verb this game claims to be about.
     const r = await page.evaluate(() => {
       const g = window.__g;
+      // DISARMED, because the subject here is the bird. This booted with the
+      // default kit, and a BONK BAT retune gave the starting weapon the reach
+      // and damage to kill a bird at seven metres before it could wind up -
+      // three assertions about diving went red because the player got faster,
+      // which is the same failure as a check that hardcodes a weapon's radius:
+      // it measures something other than what its name says.
       const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
-                           g.freezeEvents(true); g.drainPicks(true); g.place(0, 0); };
+                           g.freezeEvents(true); g.drainPicks(true); g.place(0, 0);
+                           g.disarm(); };
       // 1. it fires, and only from close
       // spawn(t, n, radius) scatters WITHIN the radius, so "spawn at 40" puts
       // some of them on top of you. Ask the distances, not the spawn call.
