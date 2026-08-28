@@ -285,27 +285,44 @@ and attributes boss damage separately from crowd damage. Boss DPS decides whethe
 you can *close* a run; crowd DPS decides whether you survive to try.
 
 ```
-TOP RANK      boss   crowd      EVOLVED           boss   crowd
-bat             68    1632      MEGABONK           935    3443
-skulls          81    1544      CAROUSEL          1170    3799
-bolt           140    1130      BOLTSTORM         1437    3899
-pulse           67    1575      EARTHQUAKE         777    3286
-mortar         262    2364      SKYFALL            826    4009
-zap            138     658      THUNDERHEAD        578    1374
-aura            75    1497      PLAGUE             593    2988
-caltrops       272    1839      SCORCHED EARTH     733    2785
-        median 138                        median  826      (n=4, paired seeds)
+                TOP RANK                              EVOLVED
+weapon        boss  crowd  survived      name        boss  crowd  survived
+bat             63   1410     4:12    MEGABONK        813   3413    14:16
+skulls         172   1723     7:31    CAROUSEL       1209   3777    12:47
+bolt           106   1161    15:38    BOLTSTORM      1229   4007    20:30
+pulse           81   1317     4:22    EARTHQUAKE      780   3359    13:23
+mortar         251   2246    10:19    SKYFALL         885   3857    14:00
+zap            246    547    10:39    THUNDERHEAD     618   1241    13:22
+aura            34   1298     4:59    PLAGUE          953   3008    12:49
+gore           109   1530     6:39    STAMPEDE        479   3037    17:52
+caltrops       296   1774     4:03    SCORCHED EARTH  983   2980     4:33
+brood          409   1010     6:22    THE PACK       1433   1747     8:40
+        median 172                            median  953
+                              (dps n=3, survival n=4, paired seeds 20260821..)
 ```
 
-**This bench is paired now too.** Eight weapons were each measured on a different arena with a
-different spawn mix and then compared to each other — which is not a comparison. Trial *i* of
-every weapon runs seed BASE+*i*, so the rows share their worlds, and the payoff was immediate:
-after changing one weapon the other seven rows came back **byte-identical**, which is how you
-know the number that moved was the one you moved.
+**This bench is paired.** The weapons were each measured on a different arena with a different
+spawn mix and then compared to each other — which is not a comparison. Trial *i* of every weapon
+runs seed BASE+*i*, so the rows share their worlds, and the payoff was immediate: after changing
+one weapon the other nine rows came back **byte-identical**, which is how you know the number
+that moved was the one you moved. It is also what makes a *single-weapon* run safe to iterate on
+— though note its "vs median" column is computed against the weapons actually run, so a filtered
+bench always prints 1.00x and that column means nothing there.
 
-**Two weapons failed the dominance test and both are fixed.** The rule this project applies is
-that a weapon beating every other on *both* axes at once is not a specialist, it is a default —
-and the mirror of that, a weapon losing on both, is a card nobody should take.
+**The rule, and where the roster currently stands against it.** A weapon beating every other on
+*both* axes at once is not a specialist, it is a default — and the mirror of that, a weapon
+losing on both, is a card nobody should take.
+
+**Five cards currently fail it, and the table above is how you can tell.** Judged on boss and
+crowd alone the count looks worse — seven of ten — but that reading throws away the third column.
+Survival is an axis: BOLT sits mid-table on damage and survives **20:30 evolved**, the longest in
+the game, and ZAP buys 10:39 with the worst crowd figure on the board. On all three axes the
+dominated set is **BAT, PULSE, AURA, GORE and SKULLS** — each beaten outright by another card on
+damage *and* on how long the run lasts. AURA is the worst of them at 34/1298/4:59.
+
+That is a roster-wide question rather than a card, and it is recorded here rather than quietly
+retuned five weapons at a time: the numbers below describe fixes that were made, not the current
+state of the field.
 
 *MORTAR was a default again.* The README recorded fixing this once; it crept back the moment the
 shell count reached three. The extra shells jittered ±3.5 m around a single aim point, which is
