@@ -942,15 +942,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // Every enemy hits the player at `e.rad + .75` - it counts its own body.
     // Weapons did not: they measured centre-to-centre, so a target shrugged off
     // exactly its own radius worth of reach, and the biggest boss shrugged off
-    // the most. STINK at rank 5 is a 6.5m ring; THE FINAL BONK is a 4.0m body.
-    // The damage boundary therefore belongs at 10.5m of centre distance, not
-    // 6.5m. Hold the gap by re-placing the player every frame, so the boss
-    // walking toward you cannot smear the measurement.
-    const probe = gap => page.evaluate((gap) => {
+    // the most.
+    // WITHOUT NAMING A RADIUS. This block used to probe at 6.5 + bossRad, the
+    // 6.5 copied out of STINK's table, and when STINK was retuned to 9.4 the
+    // "outside" probe survived by ten centimetres - it was one tweak away from
+    // going red for the same reason section 7i actually did. The claim does not
+    // need the weapon's number at all: if reach counts the target's BODY, then
+    // measuring the boundary against two bosses of DIFFERENT sizes has to give
+    // two boundaries differing by exactly the difference in their radii. That
+    // is true whatever the weapon's radius is, and it is false the moment
+    // anything goes back to measuring centre-to-centre.
+    const probe = (bi, gap) => page.evaluate(([bi, gap]) => {
       window.__g.wipeSave(); window.__g.start("ghoul"); window.__g.god();
       window.__g.drainPicks(true); window.__g.freezeSpawns(true);
       window.__g.give("aura", 4);
-      window.__g.boss(3);
+      window.__g.boss(bi);
       // Let it finish arriving. A boss is buried and untouchable for its first
       // 1.5s now, and these probes run for exactly 90 frames - which is 1.5s,
       // so all of them were measuring damage against something immune.
@@ -963,19 +969,30 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       const b1 = window.__g.bossAt();
       return { rad: b0.rad, lost: b0.hp - (b1 ? b1.hp : 0) };
-    }, gap);
+    }, [bi, gap]);
+    const edge = async (bi) => {
+      let lo = 1, hi = 40;
+      for (let i = 0; i < 9; i++) {
+        const mid = (lo + hi) / 2;
+        if ((await probe(bi, mid)).lost > 0) lo = mid; else hi = mid;
+      }
+      return (lo + hi) / 2;
+    };
+    const bigRad = (await probe(3, 40)).rad, smallRad = (await probe(0, 40)).rad;
+    const bigEdge = await edge(3), smallEdge = await edge(0);
 
-    const bossRad = (await probe(30)).rad;          // far enough to touch nothing
-    const inside  = await probe(6.5 + bossRad - 1); // body in the cloud, centre well out
-    const outside = await probe(6.5 + bossRad + 3); // body clear of the cloud
-
-    ok("the boss's body is 4.0m, so the ring must reach 10.5m",
-       Math.abs(bossRad - 4.0) < 0.01, `rad=${bossRad}`);
+    ok("the two bosses really are different sizes",
+       bigRad - smallRad > 0.5, `${bigRad}m vs ${smallRad}m`);
+    ok("a bigger body is reached from further out, by exactly its extra radius",
+       Math.abs((bigEdge - smallEdge) - (bigRad - smallRad)) < 0.5,
+       `boundaries ${bigEdge.toFixed(1)}m and ${smallEdge.toFixed(1)}m differ by ` +
+       `${(bigEdge - smallEdge).toFixed(1)}m, radii differ by ${(bigRad - smallRad).toFixed(1)}m`);
     ok("a body inside the ring takes damage though its centre is outside",
-       inside.lost > 0, `lost ${Math.round(inside.lost)} HP at ${(6.5+bossRad-1)}m centre distance`);
+       (await probe(3, bigEdge - 1)).lost > 0 && bigEdge - 1 > bigRad,
+       `centre ${(bigEdge - 1).toFixed(1)}m out, body only ${bigRad}m thick`);
     ok("a body clear of the ring takes none",
-       outside.lost === 0, `lost ${Math.round(outside.lost)} HP`);
-    ok("and reach is not simply infinite", (await probe(30)).lost === 0);
+       (await probe(3, bigEdge + 2)).lost === 0, `nothing at ${(bigEdge + 2).toFixed(1)}m`);
+    ok("and reach is not simply infinite", (await probe(3, 40)).lost === 0);
   }
 
   console.log("\n=== 7i. THE SCRAPPER'S REACH IS A REAL STAT ===");
