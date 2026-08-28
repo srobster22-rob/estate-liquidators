@@ -1559,8 +1559,8 @@ aura:{ name:"STINK", ic:"aura", kind:"w",
   ds:"A permanent cloud of you. Damages anything standing in it.",
   evo:{ name:"PLAGUE", need:"heart", ic:"plague",
         ds:"Bigger, slower, and it gets worse the longer they breathe it." },
-  lv:[{dps:19,rad:4.2},{dps:27,rad:4.7},{dps:37,rad:5.2},
-      {dps:50,rad:5.8},{dps:66,rad:6.5},{dps:120,rad:8.4,slow:.55}] },
+  lv:[{dps:26,rad:5.9},{dps:37,rad:6.7},{dps:51,rad:7.5},
+      {dps:68,rad:8.4},{dps:90,rad:9.4},{dps:158,rad:10.4,slow:.55}] },
 
 // GORE - the only weapon in the game that cares which way you are pointing.
 //
@@ -8748,7 +8748,14 @@ function render(){
     // stink aura
     const aw = P.kit.aura;
     if(aw){
-      const s = wStat(aw), seg = 30;
+      // SPACING, not segment count. Thirty markers is a ring at radius 4.2 -
+      // gaps of under a metre - and a dotted scatter at 9.4, where the same
+      // thirty have to cover a fifty-nine metre circumference and sit two
+      // metres apart. The boundary of a damage field is the one thing about
+      // this weapon a player has to be able to read, and it got harder to read
+      // exactly as the field got bigger. Fixed spacing instead, so the ring
+      // looks the same at every rank and the count follows the radius.
+      const s = wStat(aw), seg = Math.max(30, Math.min(96, Math.round(TAU*s.rad/.9)));
       for(let i=0;i<seg;i++){
         const th = i/seg*TAU + T*.6;
         const x = P.x+Math.sin(th)*s.rad, z = P.z+Math.cos(th)*s.rad;

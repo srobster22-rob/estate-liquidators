@@ -980,10 +980,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   console.log("\n=== 7i. THE SCRAPPER'S REACH IS A REAL STAT ===");
   {
-    // 6.5m STINK + 4.0m body puts everyone else's damage boundary at 10.5m.
-    // +35% reach moves THE SCRAPPER's to 12.775m. A gap of 11.6m therefore has
-    // to hurt for one character and do nothing at all for the other - which
-    // also proves the multiplier is not leaking onto anybody else.
+    // MEASURE THE BOUNDARY, do not hardcode where it should be. This block used
+    // to read "6.5m STINK + 4.0m body puts everyone else's boundary at 10.5m"
+    // and probe at fixed gaps of 11.6 and 13.5 either side of it - numbers
+    // copied out of the weapon table. Retuning STINK's radius moved every one
+    // of those boundaries and turned two correct assertions red, which is a
+    // test failing for the one reason a test must not: the thing it measures
+    // moved and it was still looking at the old address.
+    // It finds each character's boundary by bisection now and checks the STAT,
+    // which is what the section is actually about: reach multiplies the
+    // weapon's radius, so the extra distance THE SCRAPPER gets has to be 35% of
+    // the radius - recovered from its own boundary minus the boss's body -
+    // whatever that radius happens to be this month.
     const probe = (ch, gap) => page.evaluate(([ch, gap]) => {
       window.__g.wipeSave(); window.__g.start(ch); window.__g.god();
       window.__g.drainPicks(true); window.__g.freezeSpawns(true);
@@ -994,17 +1002,33 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const b = window.__g.bossAt(); if (!b) break;
         window.__g.place(b.x + gap, b.z); window.__g.step(1);
       }
-      return b0.hp - window.__g.bossAt().hp;
+      return { dmg: b0.hp - window.__g.bossAt().hp, rad: b0.rad };
     }, [ch, gap]);
-
-    const between = 11.6;                      // past 10.5, short of 12.775
-    ok("THE SCRAPPER reaches past everyone else's boundary",
-       (await probe("scrap",  between)) > 0, `${between}m`);
-    ok("and THE INTERN, at the same distance, does not",
-       (await probe("intern", between)) === 0);
-    ok("THE SCRAPPER still has a boundary", (await probe("scrap", 13.5)) === 0);
-    ok("and both connect well inside it", (await probe("intern", 8)) > 0 &&
-                                          (await probe("scrap",  8)) > 0);
+    // largest gap that still connects, to a tenth of a metre
+    const boundary = async (ch) => {
+      let lo = 1, hi = 40;
+      for (let i = 0; i < 9; i++) {
+        const mid = (lo + hi) / 2;
+        if ((await probe(ch, mid)).dmg > 0) lo = mid; else hi = mid;
+      }
+      return (lo + hi) / 2;
+    };
+    const bIntern = await boundary("intern"), bScrap = await boundary("scrap");
+    const bossRad = (await probe("intern", 4)).rad;
+    const radius  = bIntern - bossRad;           // the weapon's own reach
+    const want    = radius * 1.35 + bossRad;     // what +35% has to buy
+    ok("THE SCRAPPER reaches further than everyone else",
+       bScrap > bIntern + 0.5,
+       `intern ${bIntern.toFixed(1)}m, scrapper ${bScrap.toFixed(1)}m`);
+    ok("and the extra distance is exactly the +35% reach stat",
+       Math.abs(bScrap - want) < 0.6,
+       `radius ${radius.toFixed(1)}m + boss ${bossRad.toFixed(1)}m -> expected ` +
+       `${want.toFixed(1)}m, measured ${bScrap.toFixed(1)}m`);
+    ok("and reach is a boundary, not an absence of one",
+       bScrap < 39 && (await probe("scrap", bScrap + 3)).dmg === 0,
+       `nothing lands ${(bScrap + 3).toFixed(1)}m out`);
+    ok("and both connect well inside it", (await probe("intern", 8)).dmg > 0 &&
+                                          (await probe("scrap",  8)).dmg > 0);
   }
 
   console.log("\n=== 7h. OVERLAPPING HAZARDS STACK, BUT NOT WITHOUT LIMIT ===");
