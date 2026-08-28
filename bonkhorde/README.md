@@ -290,14 +290,14 @@ weapon        boss  crowd  survived      name        boss  crowd  survived
 bat            265   2157     5:05    MEGABONK       1262   3776    15:17
 skulls         213   1990     9:28    CAROUSEL       1456   4102    14:57
 bolt           125   1202    15:43    BOLTSTORM      1256   3863    20:54
-pulse          220   2076    10:47    EARTHQUAKE      782   3398    12:37
-mortar         259   2027     9:23    SKYFALL         777   3602    14:03
+pulse          220   2076    10:47    EARTHQUAKE      918   3917    15:41
+mortar         259   2027     9:23    SKYFALL         880   3948    15:17
 zap            224    860     9:21    THUNDERHEAD     606   1466    14:26
 aura           231   2174    10:39    PLAGUE         1225   3769    14:22
-gore           204   1932     6:51    STAMPEDE        611   2758    16:40
-caltrops       382   2044     4:06    SCORCHED EARTH 1137   2759     4:29
+gore           204   1932     6:51    STAMPEDE        674   4223    19:31
+caltrops       382   2044     4:06    SCORCHED EARTH 1479   3991     9:23
 brood          368   1076     6:30    THE PACK       1578   1961     9:48
-        median 231                            median 1225
+        median 231                            median 1256
                               (dps n=3, survival n=4, paired seeds 20260821..)
 ```
 
@@ -324,8 +324,29 @@ while leading no column of its own — CALTROPS had more boss damage, BOLT more 
 a default rather than a specialist. Cutting its blast radius from 4.8m to 3.9m freed two of them
 with the boss column untouched, because a boss is one target inside the blast whatever its size.
 
-**The evolved tier is where this now lives**, with six of ten dominated, and it has had far less
-attention than rank 5.
+**The evolved tier was where this lived**, at six of ten dominated, and it is now two. Every one
+of the four that were freed turned out to be failing on *the axis its own description already
+claimed*, and fixing each meant reading the card rather than reaching for damage:
+
+| card | before | after | what changed |
+|---|---|---|---|
+| SCORCHED EARTH | 1137/2759/4:29 | 1479/3991/9:23 | patch life 3.0s → 14.0s |
+| EARTHQUAKE | 782/3398/12:37 | 918/3917/15:41 | radius 10.5m → 15.5m |
+| SKYFALL | 777/3602/14:03 | 880/3948/15:17 | shells 4 → 6 |
+| STAMPEDE | 611/2758/16:40 | 674/4223/19:31 | lane width 4.7m → 7.2m |
+
+SCORCHED EARTH is the sharpest of them: the *evolution* shortened patch life from rank five's 5.4s
+to 3.0, so the card whose whole idea is ground you have already covered kept less of it than the
+rank below it. Damage was the obvious lever and the wrong one — **+37% dps moved boss five
+percent**, because a burning trail is uptime-limited rather than damage-limited. None of the four
+captured another card on its way out.
+
+**The two that remain are the two tuning cannot honestly fix.** THUNDERHEAD runs at 88% of its own
+structural ceiling — twelve jumps at 118 damage every 0.85s is ~1666 theoretical crowd DPS against
+1466 measured — so it is capped by design rather than underpowered, and needs a different card
+rather than a bigger number. PLAGUE loses to MEGABONK by 37 boss, 7 crowd and 55 seconds, margins
+smaller than the documented noise of a four-trial survival measure; "fixing" that would be tuning
+to the instrument.
 
 **A caution about reading this table too finely.** AURA, PULSE, SKULLS, GORE and MORTAR have
 converged on roughly one point — 200–260 boss, 1900–2200 crowd, 560–650 survival. At that spacing
