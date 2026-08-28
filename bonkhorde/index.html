@@ -1524,7 +1524,13 @@ pulse:{ name:"PULSE", ic:"pulse", kind:"w",
       {d:45,cd:1.38,rad:8.6,kb:13},
       {d:59,cd:1.25,rad:9.5,kb:14},
       {d:78,cd:1.12,rad:10.4,kb:16},
-      {d:150,cd:0.85,rad:10.5,kb:22}] },
+      // EARTHQUAKE reaches 15.5m, not 10.5. Its rank-5 form was rebuilt into an
+      // area-denial card - radius, not damage, was what took base PULSE from
+      // 95/1568/4:53 to 220/2076/10:47 - and the evolution had not followed it
+      // there: at 782/3398/12:37 it led no axis and lost to PLAGUE on all
+      // three. The same lever, applied to the same card one tier up:
+      // 918/3917/15:41, which clears PLAGUE on crowd and survival at once.
+      {d:150,cd:0.85,rad:15.5,kb:22}] },
 
 mortar:{ name:"MORTAR", ic:"mortar", kind:"w",
   ds:"Lobs a shell at the thickest part of the crowd.",
