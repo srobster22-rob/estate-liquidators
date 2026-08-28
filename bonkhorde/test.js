@@ -4106,8 +4106,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         }
         return new Set(Array.from({length:n}, (_,i)=>find(i))).size;
       };
+      // DISARMED. The note below already knew the player's own weapon could
+      // kill the subject before it was captured, and mitigated it by stepping
+      // only three frames after the spawn - which held until PULSE, the weapon
+      // THE OX starts with, was widened to a 10.4m radius and began firing
+      // inside that window. A 14 HP runner then reported "0 boxes" and this
+      // section failed for a reason that had nothing to do with body plans.
+      // The subject here is the horde, so the player carries nothing.
       g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true);
-      g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.disarm();
       g.place(0,0); g.aim(0); g.step(20, 1/60);
       const out = [];
       // SIX PHASES, not one. Brood sway, tail lag and wing flap all move parts
