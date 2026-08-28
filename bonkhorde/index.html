@@ -8589,7 +8589,15 @@ function render(){
   // telegraph and the burning ground had. Flat plates, laid along the ring, and
   // they fade as they spread.
   for(const r of rings){
-    const seg = 26, a = clamp(r.life/r.mx,0,1);
+    // SEGMENTS PER METRE, not per ring. A fixed 26 was chosen when the biggest
+    // shockwave was 10.5m across; EARTHQUAKE reaches 15.5m now, and 26 blocks
+    // of .34 spread around a 97m circumference is a gap of nearly four metres
+    // between them - a scattered dotted line rather than a wave front. Spacing
+    // is what the eye reads, so hold the spacing and let the count follow the
+    // radius, with a floor so a small ring still closes and a ceiling so it
+    // cannot run away with the draw budget.
+    const a = clamp(r.life/r.mx,0,1);
+    const seg = Math.max(18, Math.min(64, Math.round(TAU*r.r / 1.6)));
     for(let i=0;i<seg;i++){
       const th = i/seg*TAU, x = r.x+Math.sin(th)*r.r, z = r.z+Math.cos(th)*r.r;
       box(x, groundY(x,z)+.07, z, .34,.07,.34,
