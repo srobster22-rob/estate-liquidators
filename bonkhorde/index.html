@@ -1560,7 +1560,15 @@ mortar:{ name:"MORTAR", ic:"mortar", kind:"w",
       {d:71,cd:1.9,rad:3.3,n:2},
       {d:94,cd:1.75,rad:3.6,n:2},
       {d:122,cd:1.6,rad:3.9,n:3},
-      {d:230,cd:1.3,rad:5.6,n:4}] },
+      // SIX SHELLS, and this is the one card where shell count is safe to raise.
+      // Each shell picks its OWN cluster - added earlier precisely so that
+      // adding shells could not multiply single-target damage the way three
+      // shells landing on one boss used to - so the count buys crowd and leaves
+      // boss alone. That is exactly what SKYFALL needed: it sat at
+      // 777/3602/14:03 leading no axis and losing to PLAGUE on all three, and
+      // four to six gives 880/3948/15:17, clearing PLAGUE on crowd and
+      // survival together while the boss column moves a hundred points.
+      {d:230,cd:1.3,rad:5.6,n:6}] },
 
 zap:{ name:"ZAP", ic:"zap", kind:"w",
   ds:"Chain lightning. Loses bite with every jump.",
