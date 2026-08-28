@@ -1611,7 +1611,15 @@ gore:{ name:"GORE", ic:"gore", kind:"w",
       {d:99,cd:.90,rng:11.7,w:2.5,kb:8},
       {d:131,cd:.82,rng:12.8,w:2.9,kb:9},
       {d:173,cd:.74,rng:14.0,w:3.3,kb:10},
-      {d:342,cd:.58,rng:18.0,w:4.7,kb:22}] },
+      // STAMPEDE is 7.2m WIDE, not 4.7. Its card says "wider, longer, and it
+      // throws what it does not kill", and it was none of those relative to the
+      // field: 611/2758/16:40, last but one on damage and beaten outright by
+      // BOLTSTORM. Width is the axis its own description promises and the one
+      // its kb of 22 - the highest in the game - is built to use, so a wider
+      // lane clears more bodies per charge rather than hitting each one harder.
+      // 4.7 to 7.2 gives 674/4223/19:31: the crowd leader of the whole evolved
+      // tier, ahead of CAROUSEL's 4102, with the boss column barely moving.
+      {d:342,cd:.58,rng:18.0,w:7.2,kb:22}] },
 
 caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
   ds:"Drops a hazard behind you. Rewards running away, which you will.",
