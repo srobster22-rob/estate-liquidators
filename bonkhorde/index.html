@@ -8476,14 +8476,33 @@ function render(){
   // ground decals first so bodies read on top of them
   // Hazard zones are drawn as a terrain-following ring, not a flat slab - a
   // single big quad half-buried in a hillside reads as a rendering fault.
+  // A PATCH COOLS AS IT AGES, in ring density and in colour, not just in glow.
+  // SCORCHED EARTH's burn was lengthened from 3s to 14s for balance reasons
+  // that hold - but at a drop every .22s that is around sixty live zones, and
+  // each one drawing a twelve-box ring carpeted the whole frame in bright
+  // orange. A render showed the player, who is an orange drake, sitting inside
+  // a solid field of its own hazard: exactly the fault the note in
+  // fireCaltrops already records about the ring reading louder than the animal,
+  // arriving again by a different route.
+  // Both of these are pure presentation - the zone's radius, damage and life
+  // are untouched, so the bench does not move - and both say the same thing the
+  // card's name does. A fresh drop is a full bright ring; an old one is a few
+  // charred blocks. Sixty zones at mixed ages now draw roughly half the boxes
+  // they did, and the brightest orange on screen is the newest ground rather
+  // than all of it.
+  const CHAR = [.20,.10,.07];
   for(const z of zones){
-    const a = clamp(z.life/z.max,0,1), seg = 12;
+    const a = clamp(z.life/z.max,0,1);
+    const seg = Math.max(3, Math.round(12*a));
+    const col = [z.c[0]*a + CHAR[0]*(1-a),
+                 z.c[1]*a + CHAR[1]*(1-a),
+                 z.c[2]*a + CHAR[2]*(1-a)];
     for(let i=0;i<seg;i++){
       const th = i/seg*TAU + z.life*.7;
       const x = z.x+Math.sin(th)*z.r, zz = z.z+Math.cos(th)*z.r;
-      box(x, groundY(x,zz)+.16, zz, .21,.10,.21, z.c, .75*a);
+      box(x, groundY(x,zz)+.16, zz, .21,.10,.21, col, .75*a);
     }
-    box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, z.c, .75*a);
+    box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, col, .75*a);
   }
 
   // ---- side events. A reward you cannot find is not a reward, so each one
