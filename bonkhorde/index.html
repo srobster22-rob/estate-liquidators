@@ -1608,7 +1608,22 @@ caltrops:{ name:"CALTROPS", ic:"caltrops", kind:"w",
       {dps:40,cd:1.3,rad:2.3,life:4.6},
       {dps:53,cd:1.15,rad:2.6,life:5.0},
       {dps:70,cd:1.0,rad:2.9,life:5.4},
-      {dps:120,cd:.22,rad:3.2,life:3.0}] },
+      // SCORCHED EARTH burns for FOURTEEN seconds, not three. The evolved tier
+      // had six of ten cards dominated and this was the clearest of them:
+      // 1137/2759/4:29, beaten outright by CAROUSEL, and the only evolution in
+      // the game that survived under nine minutes when the rest run 9:48 to
+      // 20:54. The reason was in its own numbers - the evolution SHORTENED the
+      // burn from rank five's 5.4s to 3.0, so the card whose whole idea is
+      // ground you have already covered kept less of it than the rank below.
+      // Damage was the obvious lever and the wrong one: +37% moved boss five
+      // percent, because a trail is not damage-limited, it is uptime-limited -
+      // the same thing GORE and BROOD each turned out to be. Life is the lever
+      // and it pays on every axis at once: 3.0 to 14.0 took it from
+      // 1137/2759/4:29 to 1479/3991/9:23. It leads the boss column of its own
+      // evolution tier now, dominates nobody because its survival is still the
+      // shortest, and BURN_STACK already caps what overlapping patches can do
+      // so a denser trail cannot compound into a damage exploit.
+      {dps:120,cd:.22,rad:3.2,life:14.0}] },
 
 // BROOD. Nine weapons and not one of them puts another BODY on the field: every
 // one is a swing, a shot, a ring or a patch of ground, all of them anchored to
