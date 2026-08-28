@@ -2373,7 +2373,13 @@ matriarch(e, face, W, H, c, glow, lod, y0){
   ebl(e, face, 0, W*.24, y0 + H*.54 + br*H*.012, W*.78, H*.26, W*.46, c, glow); // shoulders
   eb(e, face, 0, W*.66, y0 + H*.38, W*.44, H*.19, W*.34, lit, glow);           // low head
   eb(e, face, 0, W*.98, y0 + H*.33, W*.32, H*.11, W*.20, lit, glow+.04);       // jaw
-  eey(e, face, 0, W*.80, y0 + H*.50, W*.26, W*.10, [1,.82,.26], .80);
+  // ON THE SIDE OF THE SKULL, not in it. The buried-volume pass found both
+  // eyes and both pupils with no volume of their own on this boss and on
+  // THORNBACK, which is the CERATOP fault again: the skull box spans W*.32 to
+  // W*1.00 forward and W*.44 to each side, and an eye at W*.26 out and W*.80
+  // forward is inside all of it. A boss you cannot make eye contact with is the
+  // one animal in the game a player stares at for a whole minute.
+  eey(e, face, 0, W*.80, y0 + H*.50, W*.44, W*.10, [1,.82,.26], .80);
   if(lod < 1) return;
   for(const sg of [-1,1])                                                       // brow horns
     etp(e, face, sg*W*.30, W*.72, y0 + H*.56, sg*.03,.02,.06, 4, W*.09,H*.05,W*.09,
@@ -2427,7 +2433,9 @@ thornback(e, face, W, H, c, glow, lod, y0){
   ebl(e, face, 0, 0, y0 + H*.64, W*.58, H*.12, W*.62, lit, glow + pulse*.20);  // shell
   eb(e, face, 0, W*.62, y0 + H*.44, W*.36, H*.17, W*.30, lit, glow);           // blunt head
   eb(e, face, 0, W*.90, y0 + H*.40, W*.24, H*.10, W*.16, c, glow+.05);
-  eey(e, face, 0, W*.76, y0 + H*.55, W*.20, W*.085, [.50,1,.90], .75);
+  // Same fault, same fix: the blunt head is W*.36 to each side and the eyes sat
+  // at W*.20, wholly inside it.
+  eey(e, face, 0, W*.76, y0 + H*.55, W*.36, W*.085, [.50,1,.90], .75);
   if(lod < 1) return;
   for(let ring=0; ring<4; ring++)                                              // the thorns
     for(let i=0;i<6;i++){

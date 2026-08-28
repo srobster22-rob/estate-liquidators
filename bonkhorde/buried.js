@@ -91,7 +91,24 @@ const ONLY = process.argv[2];
           let lo=[9,9,9], hi=[-9,-9,-9];
           for(let i=0;i<bxp.length;i+=6) for(let k=0;k<3;k++){
             lo[k]=Math.min(lo[k], bxp[i+k]-bxp[i+3+k]); hi[k]=Math.max(hi[k], bxp[i+k]+bxp[i+3+k]); }
-          const N=80, cell=[0,1,2].map(k=>Math.max(1e-4,(hi[k]-lo[k])/N));
+          // RESOLUTION HAS TO FIT THE SMALLEST PART, not the whole animal. At a
+          // fixed 80 cells across the bounding box, a boss twelve units long
+          // gets cells of .15 - wider than the sliver of a pupil that sticks
+          // out past the eye white - so the pupil rasterises as if it had no
+          // volume of its own and gets reported as buried. Proved by raising
+          // the grid alone, with no change to the game: THE MATRIARCH read 27
+          // buried at N=80 and 21 at N=160, and the two boxes that dropped off
+          // were exactly the pair of pupils. Every number this tool has ever
+          // printed for a LARGE body was therefore too high.
+          // Size the cell to the smallest half-extent present instead, so the
+          // finest detail on the animal is always a few cells across, and cap
+          // it where the memory stops being reasonable (260^3 is ~17MB).
+          let fine = Infinity;
+          for(let i=0;i<bxp.length;i+=6)
+            for(let k=3;k<6;k++) if(bxp[i+k] > 1e-4) fine = Math.min(fine, bxp[i+k]);
+          const maxSpan = Math.max(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2]);
+          const N = Math.max(80, Math.min(260, Math.ceil(maxSpan / Math.max(1e-4, fine/2.5))));
+          const cell=[0,1,2].map(k=>Math.max(1e-4,(hi[k]-lo[k])/N));
           const cnt=new Uint8Array(N*N*N);
           const span=(i)=>{
             const a0=[0,1,2].map(k=>Math.max(0, Math.floor((bxp[i+k]-bxp[i+3+k]-lo[k])/cell[k])));
