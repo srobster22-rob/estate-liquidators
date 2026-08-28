@@ -41,3 +41,4 @@ bonkhorde/_altarprobe.html
 # and the throwaway runner that drives one of those, which only lives in this
 # directory because it resolves index.html and test.js relative to itself
 bonkhorde/mutate[0-9].js
+bonkhorde/mutate-results.txt

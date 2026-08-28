@@ -319,11 +319,15 @@ for (const m of run) {
   const caught = nFail > 0;
   const byOwner = failedIn.has(m.must);
   const tag = !caught ? "SURVIVED" : byOwner ? "CAUGHT  " : "elsewhere";
-  console.log(`${tag.padEnd(9)} ${m.id.padEnd(22)} expected ${m.must.padEnd(4)} ` +
+  const row = `${tag.padEnd(9)} ${m.id.padEnd(22)} expected ${m.must.padEnd(4)} ` +
               `${caught ? `${nFail} assertion(s), first in ${first}` +
                           (byOwner ? (first === m.must ? "" : ` and ${m.must} also caught it`)
                                    : ` - ${m.must} did NOT`)
-                        : "the suite passed a broken game"}`);
+                        : "the suite passed a broken game"}`;
+  console.log(row);
+  // Append the moment it is known, not at the end: a run that dies has still
+  // banked everything it measured.
+  if (RESUME) fs.appendFileSync(LOG, row + "\n");
   // A mutation caught only by a section that does not own it is a hole in the
   // owning section, even though the suite went red. Count it as one.
   if (!caught || !byOwner) survived++;
