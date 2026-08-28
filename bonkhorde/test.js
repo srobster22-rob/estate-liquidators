@@ -658,8 +658,20 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     return window.__g.state().boxes;
   });
   const per = (hordeOnly.boxes - bare) / hordeOnly.enemies;
+  // SAY WHICH HALF FAILED. This is a ratio, and a ratio has a precondition: it
+  // needs a horde to divide by. The enemies > 40 guard was already here and
+  // already right, but it was folded into the same assertion as the bound, so
+  // a thin horde and an expensive horde printed the identical message. Found by
+  // running the whole suite against a deliberately absurd weapon - PULSE at ten
+  // times damage and two and a half times radius - which culled the standing
+  // horde to 34 and failed this line with a per-enemy figure of 26.2, a number
+  // comfortably INSIDE the bound. The check was red, the reported number looked
+  // fine, and nothing said why.
+  ok("there is enough horde standing to measure a per-enemy cost",
+     hordeOnly.enemies > 40,
+     `${hordeOnly.enemies} enemies standing after 25s at minute 19`);
   ok("the horde's cost per enemy stays bounded",
-     hordeOnly.enemies > 40 && per <= 33,
+     per <= 33,
      `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies ` +
      `(${hordeOnly.boxes} total, ${bare} of it not the horde)`);
   ok("and the frame still fits two flushes without a boss",

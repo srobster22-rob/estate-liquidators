@@ -287,17 +287,17 @@ you can *close* a run; crowd DPS decides whether you survive to try.
 ```
                 TOP RANK                              EVOLVED
 weapon        boss  crowd  survived      name        boss  crowd  survived
-bat             63   1410     4:12    MEGABONK        813   3413    14:16
-skulls         172   1723     7:31    CAROUSEL       1209   3777    12:47
-bolt           106   1161    15:38    BOLTSTORM      1229   4007    20:30
-pulse           81   1317     4:22    EARTHQUAKE      780   3359    13:23
-mortar         251   2246    10:19    SKYFALL         885   3857    14:00
-zap            246    547    10:39    THUNDERHEAD     618   1241    13:22
-aura            34   1298     4:59    PLAGUE          953   3008    12:49
-gore           109   1530     6:39    STAMPEDE        479   3037    17:52
-caltrops       296   1774     4:03    SCORCHED EARTH  983   2980     4:33
-brood          409   1010     6:22    THE PACK       1433   1747     8:40
-        median 172                            median  953
+bat            265   2157     5:05    MEGABONK       1262   3776    15:17
+skulls         213   1990     9:28    CAROUSEL       1456   4102    14:57
+bolt           125   1202    15:43    BOLTSTORM      1256   3863    20:54
+pulse          220   2076    10:47    EARTHQUAKE      782   3398    12:37
+mortar         259   2027     9:23    SKYFALL         777   3602    14:03
+zap            224    860     9:21    THUNDERHEAD     606   1466    14:26
+aura           231   2174    10:39    PLAGUE         1225   3769    14:22
+gore           204   1932     6:51    STAMPEDE        611   2758    16:40
+caltrops       382   2044     4:06    SCORCHED EARTH 1137   2759     4:29
+brood          368   1076     6:30    THE PACK       1578   1961     9:48
+        median 231                            median 1225
                               (dps n=3, survival n=4, paired seeds 20260821..)
 ```
 
@@ -313,16 +313,26 @@ bench always prints 1.00x and that column means nothing there.
 *both* axes at once is not a specialist, it is a default — and the mirror of that, a weapon
 losing on both, is a card nobody should take.
 
-**Five cards currently fail it, and the table above is how you can tell.** Judged on boss and
-crowd alone the count looks worse — seven of ten — but that reading throws away the third column.
-Survival is an axis: BOLT sits mid-table on damage and survives **20:30 evolved**, the longest in
-the game, and ZAP buys 10:39 with the worst crowd figure on the board. On all three axes the
-dominated set is **BAT, PULSE, AURA, GORE and SKULLS** — each beaten outright by another card on
-damage *and* on how long the run lasts. AURA is the worst of them at 34/1298/4:59.
+**Three cards fail it at top rank, six at evolved — and the table above is how you can tell.**
+Judged on boss and crowd alone the count looks worse, but that reading throws away the third
+column. Survival is an axis: BOLT sits last on damage and survives **20:54 evolved**, the longest
+in the game.
 
-That is a roster-wide question rather than a card, and it is recorded here rather than quietly
-retuned five weapons at a time: the numbers below describe fixes that were made, not the current
-state of the field.
+At top rank the dominated set is **SKULLS, ZAP and GORE**, down from five. The round that moved it
+was not a buff: five cards were failing to a single one. MORTAR beat all five on all three axes
+while leading no column of its own — CALTROPS had more boss damage, BOLT more survival — which is
+a default rather than a specialist. Cutting its blast radius from 4.8m to 3.9m freed two of them
+with the boss column untouched, because a boss is one target inside the blast whatever its size.
+
+**The evolved tier is where this now lives**, with six of ten dominated, and it has had far less
+attention than rank 5.
+
+**A caution about reading this table too finely.** AURA, PULSE, SKULLS, GORE and MORTAR have
+converged on roughly one point — 200–260 boss, 1900–2200 crowd, 560–650 survival. At that spacing
+which card dominates which is decided by margins inside the noise of a four-trial survival
+measure, and successive retunes each freed one card while capturing another. What separates a ring
+from a cloud from a shockwave is qualitative, and no amount of tuning on these three axes will
+express it.
 
 *MORTAR was a default again.* The README recorded fixing this once; it crept back the moment the
 shell count reached three. The extra shells jittered ±3.5 m around a single aim point, which is
