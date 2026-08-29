@@ -3620,6 +3620,44 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.dGreen.toFixed(1)} damage on THE FERNLANDS -> ${r.dAsh.toFixed(1)} in THE CINDERFLATS`);
   }
 
+  console.log("\n=== 23c. THE THICKET SHORTENS YOUR REACH ===");
+  {
+    // The eighth region and the first that touches a WEAPON stat rather than a
+    // player one. Every other region's effect was already measured by 23b's
+    // pattern - speed, damage taken - so this asks the same kind of question of
+    // reach: where does a ring STOP landing, in the open versus in the thicket.
+    // forceBiome exists for exactly this - the alternative is 23b's own
+    // reject-and-reroll loop, which this section does not need since the biome
+    // can be set directly rather than waited for.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const boundary = (biome) => {
+        let farthest = 0;
+        for (let d = 0; d <= 20; d += 0.5) {
+          g.pin(20260821); g.pinRun(20260821);
+          g.wipeSave(); g.start("intern"); g.god(); g.drainPicks(true); g.freezeSpawns(true);
+          g.give("aura", 4);
+          if (!g.forceBiome(biome)) throw new Error("forceBiome failed for " + biome);
+          g.boss(3); g.step(120);
+          const b0 = g.bossAt(), hp0 = b0.hp;
+          g.place(b0.x + d, b0.z);
+          for (let i = 0; i < 30; i++) g.step(1);
+          if (g.bossAt().hp < hp0) farthest = d;
+        }
+        return farthest;
+      };
+      return { grass: boundary("grass"), thicket: boundary("bramble"),
+               inThicket: g.biomeIdAt(0, 0) };
+    });
+    // -18% on the WEAPON's own radius, diluted at the boundary by the boss's
+    // own body - hitNear counts rad + bossRad, and only rad is cut - so the
+    // measured shrink at the edge is smaller than the raw modifier and the
+    // window below is set from that, not from -18% directly.
+    ok("a ring reaches less far in THE THICKET",
+       r.thicket < r.grass * 0.95 && r.thicket > r.grass * 0.75,
+       `${r.grass}m in THE FERNLANDS -> ${r.thicket}m in THE THICKET`);
+  }
+
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
   {
     // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that

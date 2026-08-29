@@ -872,6 +872,15 @@ const BIOMES = [
   { id:"rust",  nm:"THE SPINEROCK", ds:"something here sharpens what you carry  -  +12% damage",
     story:"Iron in the soil and something enormous fossilised in the ridge.",
     a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
+  // EIGHTH BIOME, and the first that touches a WEAPON STAT rather than a
+  // player stat. Every mod so far has been move speed, damage in or out, pickup
+  // radius or XP - all read once at the point of use. Reach is different: it is
+  // read every time a weapon fires, through the same wStat() chokepoint that
+  // already applies P.reach for THE SCRAPPER and LONG ARMS, so a live, position-
+  // dependent factor slots in there rather than needing new plumbing.
+  { id:"bramble", nm:"THE THICKET", ds:"everything is closer than it looks  -  -18% weapon reach",
+    story:"Waist-high bramble, close-packed and springy. It closes back in before you have finished the swing.",
+    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mod:{ reach:0.82 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 
@@ -1365,6 +1374,16 @@ function makeTerrain(){
             bx(sx, gy + .03*sc, sz, .46*sc, .04*sc, .16*sc, dk2);
             bx(sx, gy + .10*sc, sz, .38*sc, .07*sc, .085*sc, [.88,.85,.75]);
             bx(sx + .30*sc, gy + .13*sc, sz, .10*sc, .10*sc, .10*sc, [.93,.90,.80]);
+            break;
+          case "bramble":                                   // briar roots
+            // a low tangled base plus a couple of thin dark spikes reaching up
+            // and out - the silhouette that "closer than it looks" describes,
+            // since a scatter prop this shape is the thing that would actually
+            // snag a swing.
+            bx(sx, gy + .06*sc, sz, .28*sc, .08*sc, .26*sc, dk2);
+            for(let k=0;k<2;k++)
+              bx(sx + (k?.13:-.11)*sc, gy + .24*sc, sz + (k?-.09:.10)*sc,
+                 .03*sc, .28*sc, .03*sc, [.09,.07,.03]);
             break;
           default:                                           // rust nodules
             bx(sx, gy + .12*sc, sz, .24*sc, .13*sc, .22*sc, dk2);
@@ -5103,9 +5122,21 @@ function wName(k, w){
 }
 function wStat(w){
   const W = WEAPONS[w.key], s = W.lv[w.evo ? 5 : RANKMAP[Math.min(w.l, WMAX-1)]];
-  if(!P || P.reach === 1) return s;                 // nobody else pays for a copy
+  if(!P) return s;
+  // THE THICKET's -18% folds in here rather than at each weapon, because this
+  // is the one place every weapon's geometry already passes through for
+  // P.reach. "w" joins rad/rng below for the same reason the double-scale bug
+  // below existed: GORE is the only weapon with a lane WIDTH, and it used to
+  // apply P.reach to it locally, a second time, on top of a copy this function
+  // had already scaled - width was never in the list, but its rng was, so a
+  // player at 1.35x reach (THE SCRAPPER) drove GORE's LANE LENGTH to 1.35x
+  // twice over (1.82x) while every other weapon's rng got the honest 1.35x.
+  // Scaling width HERE and only here removes fireGore's local multiply and
+  // fixes both at once: one factor, applied once, to every geometric field.
+  const reach = P.reach * (biomeAt(P.x, P.z).mod.reach || 1);
+  if(reach === 1) return s;                         // nobody else pays for a copy
   const o = Object.assign({}, s);
-  for(const k of ["rad","rng"]) if(o[k]) o[k] *= P.reach;
+  for(const k of ["rad","rng","w"]) if(o[k]) o[k] *= reach;
   return o;
 }
 function fireWeapons(dt){
@@ -5210,7 +5241,8 @@ function firePulse(w,s){
 function fireGore(w,s){
   if(P.idle) { w.t = .12; return; }          // it is a charge. stand still, nothing.
   const cf = Math.cos(P.face), sf = Math.sin(P.face);
-  const rng = s.rng * P.reach, half = s.w * P.reach;
+  // s.rng and s.w are already reach-scaled by wStat - see the note there.
+  const rng = s.rng, half = s.w;
   const steps = Math.max(3, Math.round(rng / (half*1.4)));
   const roll = dmgOut(s.d), seen = new Set();
   for(let i=1;i<=steps;i++){
@@ -9664,6 +9696,11 @@ window.__g = {
   // than retyped: enemy colours, their elite tints, the full terrain shade range,
   // and the per-channel lighting an enemy side face actually receives.
   setEnemyColour: (k,c)=>{ if(ENEMIES[k]) ENEMIES[k].c = c.slice(); },
+  // Force every terrain cell to one biome, for rendering and playing a region
+  // on demand rather than waiting on the world seed to roll it.
+  forceBiome: (id)=>{ if(!BIOME_BY[id]) return false;
+    for(const c of cells) c.b = BIOME_BY[id]; return true; },
+  biomeIdAt: (x,z)=> biomeAt(x,z).id,
   // scale the ambient term of the last two keyframes, to find how dark the
   // night can get before the palette stops being readable
   setSkyAmbient: (k)=>{ for(const f of SKY.slice(-2)){

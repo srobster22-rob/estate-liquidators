@@ -218,6 +218,11 @@ const MUTANTS = [
         "limbs float free of the body that owns them",
     from:"cap(dr, hx); cap(df, hz); cap(dy, hy);",
     to:  "s = 1;" },
+  { id:"thicket-reach-ignored", must:"23c",
+    why:"THE THICKET stops shortening weapon reach, so the region does " +
+        "nothing but change colour",
+    from:"const reach = P.reach * (biomeAt(P.x, P.z).mod.reach || 1);",
+    to:  "const reach = P.reach;" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

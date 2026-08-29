@@ -122,6 +122,7 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **~25 dens** | half the landmarks keep a pack of what lives there — optional, repayable, worth a boon |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **5 boss abilities** | slam, evict, charge, spokes and a sinkhole ring that leaves the caster's own ground safe — telegraphed, dodgeable, worth dodging |
+| **8 named regions** | THE FERNLANDS, CINDERFLATS, TARPITS, GLACIER, DUSTSEA, BONEFIELD, SPINEROCK and THE THICKET — each its own colour, ground props and a mechanical effect. THE THICKET is the first to touch a WEAPON stat rather than a player one: -18% reach, so a lane or a ring falls short of where it would land in the open |
 | **type affinity** | every line has a region it is at home in (+20% damage) and one it is not (+15% damage taken) |
 | **9 creature lines, 36 forms** | fire, water, storm, stone, fungus, wind, echo, river and sun — each a FOUR-stage line that evolves at run level 7 and 20 and again at the APEX, every form its own hand-built body, every line its own move |
 | **per-creature levels** | every run banks its XP into the creature that ran it: +2% HP and +1.2% damage a level, that monster only, forever |
