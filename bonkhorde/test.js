@@ -3658,6 +3658,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.grass}m in THE FERNLANDS -> ${r.thicket}m in THE THICKET`);
   }
 
+  console.log("\n=== 23d. THE WARRENS SPAWN MORE OF THEM ===");
+  {
+    // The ninth region and the first that touches the DIRECTOR: +35% spawn
+    // rate while the player stands in it. Measured the only way a spawn rate
+    // can be - count the arrivals. Same pinned seed, same 40 phase-0 seconds,
+    // a disarmed god so nothing dies and nothing interferes; the only variable
+    // is the ground under the player's feet.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const arrivals = (biome) => {
+        g.pin(777); g.pinRun(777);
+        g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+        g.drainPicks(true); g.freezeEvents(true); g.place(0, 0);
+        if (!g.forceBiome(biome)) throw new Error("forceBiome failed for " + biome);
+        g.clearEnemies();
+        g.step(40 * 60, 1/60);
+        return g.state().enemies;
+      };
+      return { grass: arrivals("grass"), warren: arrivals("warren") };
+    });
+    // 40s at 1.2/s is 48 on grass and 64-65 in the warrens; the window is set
+    // off the ratio so a director retune that moves the base rate does not
+    // break a test about the REGION.
+    ok("the horde arrives faster in THE WARRENS",
+       r.warren > r.grass * 1.20 && r.warren < r.grass * 1.50,
+       `${r.grass} arrivals in 40s on THE FERNLANDS -> ${r.warren} in THE WARRENS`);
+  }
+
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
   {
     // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that

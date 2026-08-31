@@ -881,6 +881,16 @@ const BIOMES = [
   { id:"bramble", nm:"THE THICKET", ds:"everything is closer than it looks  -  -18% weapon reach",
     story:"Waist-high bramble, close-packed and springy. It closes back in before you have finished the swing.",
     a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mod:{ reach:0.82 } },
+  // NINTH BIOME, and the first that touches the DIRECTOR rather than a stat on
+  // either side of a hit. Every mod so far changes how hard something hits,
+  // how fast it moves or what it drops; this one changes how many of them
+  // there ARE, through the single nextSpawn line every arrival already passes
+  // through - so more danger and more to harvest arrive as the same fact, and
+  // whether the trade is worth taking depends entirely on how the build is
+  // going, which is what a region modifier is for.
+  { id:"warren", nm:"THE WARRENS", ds:"they keep coming out of the ground  -  +35% spawn rate",
+    story:"The soil is more tunnel than soil. Stand anywhere long enough and something answers.",
+    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mod:{ swarm:1.35 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 
@@ -1374,6 +1384,14 @@ function makeTerrain(){
             bx(sx, gy + .03*sc, sz, .46*sc, .04*sc, .16*sc, dk2);
             bx(sx, gy + .10*sc, sz, .38*sc, .07*sc, .085*sc, [.88,.85,.75]);
             bx(sx + .30*sc, gy + .13*sc, sz, .10*sc, .10*sc, .10*sc, [.93,.90,.80]);
+            break;
+          case "warren":                                    // burrow mounds
+            // a kicked-up earth mound with a dark opening on one side - the
+            // hole is what says "something lives down there", so it faces
+            // sideways where the play camera can see it, not straight up
+            bx(sx, gy + .09*sc, sz, .30*sc, .11*sc, .26*sc, dk2);
+            bx(sx + .18*sc, gy + .07*sc, sz - .02*sc, .10*sc, .08*sc, .12*sc,
+               [.13,.10,.06]);
             break;
           case "bramble":                                   // briar roots
             // a low tangled base plus a couple of thin dark spikes reaching up
@@ -6936,8 +6954,12 @@ function step(dt){
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   nextSpawn -= dt;
   if(nextSpawn <= 0 && !noSpawn){
-    // in sudden death the horde keeps thickening for as long as you stall
-    nextSpawn = 1/(ph.rate * (sudden ? 1 + Math.min(2.5,(T-RUN_LEN)/40) : 1));
+    // in sudden death the horde keeps thickening for as long as you stall.
+    // THE WARRENS reads the PLAYER's ground, not the spawn point's: the
+    // question the region asks is "how dangerous is standing here", and the
+    // spawn ring is off-screen where no one can see what it is standing on.
+    nextSpawn = 1/(ph.rate * (biomeAt(P.x, P.z).mod.swarm || 1)
+                           * (sudden ? 1 + Math.min(2.5,(T-RUN_LEN)/40) : 1));
     if(enemies.length < MAXE){
       const keysM = Object.keys(ph.mix);
       let tot=0; for(const k of keysM) tot += ph.mix[k];
