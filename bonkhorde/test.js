@@ -3716,6 +3716,36 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.grass} arrivals in 40s on THE FERNLANDS -> ${r.warren} in THE WARRENS`);
   }
 
+  console.log("\n=== 23e. THE HOTSPRINGS MEND YOU FASTER ===");
+  {
+    // The tenth region and the first that touches REGENERATION. Every heal in
+    // the game trickles through one line in step(), so the region is measured
+    // at that stat's only outlet: same character, same 20 seconds, an empty
+    // swept field with events frozen so nothing else can move the bar - the
+    // only variable is the ground under the animal. No god(), deliberately:
+    // god sets hp to 1e9 and the measurement needs a bar with room to climb.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const healed = (biome) => {
+        g.pin(777); g.pinRun(777);
+        g.wipeSave(); g.start("intern"); g.disarm();
+        g.drainPicks(true); g.freezeEvents(true); g.freezeSpawns(true);
+        g.place(0, 0);
+        if (!g.forceBiome(biome)) throw new Error("forceBiome failed for " + biome);
+        const from = g.setHp(40);
+        g.step(20 * 60, 1/60);
+        return +(g.hp() - from).toFixed(1);
+      };
+      return { grass: healed("grass"), spring: healed("spring") };
+    });
+    // base regen is deterministic (no crits, no drops in an empty field), so
+    // the ratio should land on 2.5 nearly exactly; the window is width for
+    // frame-count rounding, not for noise.
+    ok("standing in THE HOTSPRINGS heals two and a half times as fast",
+       r.spring > r.grass * 2.2 && r.spring < r.grass * 2.8,
+       `+${r.grass} HP in 20s on THE FERNLANDS -> +${r.spring} in THE HOTSPRINGS`);
+  }
+
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
   {
     // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that

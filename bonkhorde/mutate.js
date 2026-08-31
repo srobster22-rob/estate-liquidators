@@ -233,6 +233,11 @@ const MUTANTS = [
         "nothing but change colour",
     from:"nextSpawn = 1/(ph.rate * (biomeAt(P.x, P.z).mod.swarm || 1)",
     to:  "nextSpawn = 1/(ph.rate * 1" },
+  { id:"spring-regen-ignored", must:"23e",
+    why:"THE HOTSPRINGS stops multiplying regeneration, so the tenth region " +
+        "does nothing but change colour",
+    from:"P.hp = Math.min(P.maxhp, P.hp + P.regen*dt * (bmod.regen || 1));",
+    to:  "P.hp = Math.min(P.maxhp, P.hp + P.regen*dt);" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run
