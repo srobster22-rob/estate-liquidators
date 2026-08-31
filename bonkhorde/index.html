@@ -3337,15 +3337,25 @@ scrap(D){
        .26*gr*FLIP, .04*gr, .27*gr*FLIP, lt, em+.12, yaw);
   }
   // THE NECK. Long, and it curves - a straight neck is a pipe.
+  // AND THE YOUNG SERPENT REARS BEFORE IT STRETCHES. At stage one the neck
+  // rose at the same 45 degrees as the adult's, and the play camera - above
+  // and behind - foreshortened that slope to nothing: the form NAMED
+  // TIDESERPENT read as a fish with a face on the hull. The young neck rears
+  // now: early segments climb, late segments arch forward (the cobra's S),
+  // and the rake relaxes toward the adult's level reach as the stages add
+  // segments - by LEVIATHAN the term is under five percent and the read the
+  // owner liked is untouched.
+  const REAR2 = Math.max(0, 1 - st*.45);
   const neck = [[sway, .14*gr, (.54+bob)*gr]];
   let nx = sway, nf = .26*gr, ny = (.62+bob)*gr;
   for(let i=0;i<NECK;i++){
     // A NECK THIS LONG HAS TO MOVE. At .012 of lateral wander it was a rigid
     // mast: the animal swam and its neck went along for the ride. The wave
     // runs on the STRIDE, deepens with speed, and travels down the neck.
+    const arch = REAR2*(1 - (NECK < 2 ? 1 : i/(NECK-1)));
     nx += (lk*.9)/NECK + Math.sin(ph*.85 - i*.62)*(.022 + amp*.045)*gr;
-    nf += (.16 + (i+1)/NECK*.05)*gr + lkf/NECK;
-    ny += (.17 - (i+1)/NECK*.05)*gr + Math.sin(ph*.85 - i*.62 + 1.1)*(.010 + amp*.026)*gr;
+    nf += (.16 + (i+1)/NECK*.05)*(1 - arch*.70)*gr + lkf/NECK;
+    ny += (.17 - (i+1)/NECK*.05)*(1 + arch*1.15)*gr + Math.sin(ph*.85 - i*.62 + 1.1)*(.010 + amp*.026)*gr;
     neck.push([nx, nf, ny]);
   }
   chain(neck, .16*gr, .095*gr, c, em+.08);
