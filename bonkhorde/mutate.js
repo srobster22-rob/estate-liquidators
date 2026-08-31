@@ -223,6 +223,11 @@ const MUTANTS = [
         "nothing but change colour",
     from:"const reach = P.reach * (biomeAt(P.x, P.z).mod.reach || 1);",
     to:  "const reach = P.reach;" },
+  { id:"final-form-unreachable", must:"22n",
+    why:"EVO_AT loses its fifth entry, so the final form exists in the data " +
+        "but no run can ever reach it by levelling",
+    from:"const EVO_AT = [1, 7, 20, 34, 48];",
+    to:  "const EVO_AT = [1, 7, 20, 34];" },
   { id:"warren-swarm-ignored", must:"23d",
     why:"THE WARRENS stops speeding up the director, so the region does " +
         "nothing but change colour",

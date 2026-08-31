@@ -74,7 +74,7 @@ const MIN = +(process.argv[2] || 0);
                }) };
     };
     const res = [], hordeRes = [];
-    for(const ch of g.chars()) for(const st of [0,1,2,3]){
+    for(const ch of g.chars()) for(const st of [0,1,2,3,4]){
       g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
       g.drainPicks(true); g.place(0,0);
       if(st) g.evolveTo(st);

@@ -1937,9 +1937,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       return { lines, s0, s1, s2, hpJump, heal, q0, q1, fresh, raised, other,
                freshLvl: fresh.lvl, raisedLvl: raised.lvl, otherLvl: other.lvl };
     });
-    // Four stages since the APEX arrived - three growth forms and the mega.
-    ok("every monster is a four-stage line, capped by its apex",
-       r.lines.every(m => m.line.length === 4 && m.line.every(x => typeof x === "string" && x)),
+    // Five stages since the FINAL FORM arrived - three growth forms, the
+    // apex, and the final above it.
+    ok("every monster is a five-stage line, capped by its final form",
+       r.lines.every(m => m.line.length === 5 && m.line.every(x => typeof x === "string" && x)),
        r.lines.map(m => m.line.join(">")).join("  "));
     ok("you start at the bottom of your line",
        r.s0.stage === 0 && r.s0.nm === r.s0.line[0], `${r.s0.nm} stage ${r.s0.stage}`);
@@ -1947,7 +1948,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.s0.nm} -> ${r.s1.nm}`);
     ok("and it is a real stat block, not a rename",
        r.hpJump > 1.1, `maxhp x${r.hpJump.toFixed(3)}`);
-    ok("level 20 reaches the top of the line",
+    ok("level 20 reaches the signature stage",
        r.s2.stage === 2 && r.s2.nm === r.s2.line[2], `${r.s1.nm} -> ${r.s2.nm}`);
     ok("MOPMAW's signature is live at stage 3",
        Math.abs(r.s2.reach - 1.20) < 0.001, `reach ${r.s2.reach}`);
@@ -2215,7 +2216,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const frame = () => new Promise(res => requestAnimationFrame(() => res()));
       const EPS = 0.001;
       const out = [];
-      for (const ch of g.chars()) for (const st of [0, 1, 2, 3]) {
+      for (const ch of g.chars()) for (const st of [0, 1, 2, 3, 4]) {
         g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
         g.drainPicks(true); g.place(0, 0);
         if (st) g.evolveTo(st);
@@ -2467,26 +2468,55 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
         g.place(0, 0); g.aim(0); g.step(30, 1/60); };
       const out = { names: {}, apexAt: {} };
-      // 1. all nine lines have a fourth, distinct stage
+      // 1. all nine lines have a fourth AND a fifth distinct stage - and the
+      // fifth is a different MESH, not the apex renamed: same signature
+      // check 21b runs on the growth stages (box count + sorted extents)
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
       for (const id of g.chars()) {
         boot(id);
         g.evolveTo(2); const was = g.mon().nm;
         g.evolveTo(3); const now = g.mon().nm;
-        out.names[id] = { was, now, distinct: was !== now, stage: g.mon().stage };
+        const apexStage = g.mon().stage;
+        g.step(240, 1/60); g.resume(); g.captureBody();
+        await frame(); await frame();
+        const apexSig = g.bodySig();
+        g.evolveTo(4); const fin = g.mon().nm;
+        g.step(240, 1/60); g.resume(); g.captureBody();
+        await frame(); await frame();
+        const finSig = g.bodySig();
+        out.names[id] = { was, now, fin, apexStage,
+                          distinct: was !== now && now !== fin && was !== fin,
+                          meshDiffers: !!apexSig && !!finSig && apexSig !== finSig,
+                          stage: g.mon().stage };
       }
-      // 2. and it arrives BY LEVELLING, not only by the dev hook
+      // 2. and both arrive BY LEVELLING, not only by the dev hook - 40 levels
+      // lands between the apex gate (34) and the final gate (48), 15 more
+      // clears the final
       boot("spark");
       for (let i = 0; i < 40; i++) g.levelUp ? g.levelUp() : g.xp(2000);
       g.step(30, 1/60);
       out.byLevel = { lvl: g.state().lvl, stage: g.mon().stage };
+      for (let i = 0; i < 15; i++) g.levelUp ? g.levelUp() : g.xp(4000);
+      g.step(30, 1/60);
+      out.byLevel2 = { lvl: g.state().lvl, stage: g.mon().stage };
       return out;
     });
     ok("all nine lines grow a fourth, differently named form",
-       Object.values(r.names).every(x => x.distinct && x.stage === 3),
+       Object.values(r.names).every(x => x.distinct && x.apexStage === 3),
        Object.entries(r.names).map(([k, v]) => `${k}:${v.now}`).join(" "));
+    ok("and a fifth above it - the final form, its own name again",
+       Object.values(r.names).every(x => x.distinct && x.stage === 4),
+       Object.entries(r.names).map(([k, v]) => `${k}:${v.fin}`).join(" "));
+    ok("and the final form is a different mesh, not the apex renamed",
+       Object.values(r.names).every(x => x.meshDiffers),
+       Object.entries(r.names).filter(([, v]) => !v.meshDiffers)
+         .map(([k]) => k).join(",") || "all 9 differ");
     ok("and the apex arrives through the level system at 34",
-       r.byLevel.lvl >= 34 && r.byLevel.stage === 3,
+       r.byLevel.lvl >= 34 && r.byLevel.lvl < 48 && r.byLevel.stage === 3,
        `level ${r.byLevel.lvl} -> stage ${r.byLevel.stage}`);
+    ok("and the final form arrives through the level system at 48",
+       r.byLevel2.lvl >= 48 && r.byLevel2.stage === 4,
+       `level ${r.byLevel2.lvl} -> stage ${r.byLevel2.stage}`);
 
     const p = await page.evaluate(async () => {
       const g = window.__g;

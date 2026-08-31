@@ -29,7 +29,7 @@ const ONLY = process.argv[2];
     // field, so an invisible box is a draw call paid four hundred times a frame
     // for something nobody can see from any angle.
     const jobs=[];
-    for(const ch of g.chars()) for(const st of [0,1,2,3]) jobs.push({ch,st,horde:false});
+    for(const ch of g.chars()) for(const st of [0,1,2,3,4]) jobs.push({ch,st,horde:false});
     for(const k of ["shambler","runner","brute","spitter","skitter","collector"])
       jobs.push({ch:k,st:"",horde:true});
     for(let bi=0;bi<4;bi++) jobs.push({ch:"boss"+bi,st:"",horde:true,boss:bi});

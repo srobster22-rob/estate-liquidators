@@ -2691,7 +2691,13 @@ const MTYPE = {
 // and a struggling one dies around 25, so 34 is reachable in every run that is
 // going well and aspirational in one that is not. The mega belongs to a run
 // that earned it, exactly like the level-20 signature does.
-const EVO_AT = [1, 7, 20, 34];
+// Five, not four. The fifth is the FINAL FORM, and it is priced off the same
+// traces the apex was: a winning first run reaches level ~48, so the final is
+// the last thing a perfect first run sees - and a levelled monster, carrying
+// banked XP and shop ranks, reaches it as the reward for surviving the back
+// third. It keeps the apex power (it grew out of that animal, it did not
+// trade it away); what it adds is the body.
+const EVO_AT = [1, 7, 20, 34, 48];
 // Every line ends in a MOVE, and the move is the reason to get there. It is
 // granted the first time you evolve and sharpened the second, so evolving is
 // where abilities come from rather than another row of percentages.
@@ -2718,7 +2724,13 @@ const LINES = {
       // bigger number. Each apex power bends the line's own rule.
       { nm:"THE CINDERSTAR", mods:{ hp:1.72, dmg:1.45, reach:1.35 }, fly:true,
         apex:true, sig:"STARFIRE",
-        sigDs:"flight leaves burning ground behind you" } ]},
+        sigDs:"flight leaves burning ground behind you" },
+      // ---- THE FINAL FORM. One per line, at level 48. It keeps apex:true
+      // because every apex power tests stageDef().apex - the final grew out
+      // of that animal and did not trade its power away.
+      { nm:"THE SUPERNOVA", mods:{ hp:2.05, dmg:1.72, reach:1.50 }, fly:true,
+        apex:true, final:true, sig:"STARFIRE",
+        sigDs:"the fire that outgrew its dragon" } ]},
   scrap:{ type:"scrap",
     move:{ key:"skulls", nm:"UNDERTOW", ds:"water circles you, and it pulls" },
     st:[
@@ -2728,7 +2740,10 @@ const LINES = {
         sig:"UNDERCURRENT", sigDs:"+60% pickup radius" },
       { nm:"THE MAELSTROM", mods:{ hp:1.72, dmg:1.42, mag:2.10 },
         apex:true, sig:"RIPTIDE",
-        sigDs:"enemies in your pickup radius are dragged toward you" } ]},
+        sigDs:"enemies in your pickup radius are dragged toward you" },
+      { nm:"THE ABYSS", mods:{ hp:2.05, dmg:1.68, mag:2.60 },
+        apex:true, final:true, sig:"RIPTIDE",
+        sigDs:"the sea stopped having a bottom" } ]},
   spark:{ type:"volt",
     move:{ key:"zap", nm:"ARCLASH", ds:"it jumps, and keeps jumping" },
     st:[
@@ -2738,7 +2753,10 @@ const LINES = {
         sig:"OVERCLOCK", sigDs:"-13% cooldowns" },
       { nm:"THE SUPERCELL", mods:{ hp:1.75, dmg:1.45, cd:.78 },
         apex:true, sig:"STORMCALL",
-        sigDs:"every hop landing calls down a free ZAP" } ]},
+        sigDs:"every hop landing calls down a free ZAP" },
+      { nm:"THE TEMPEST", mods:{ hp:2.10, dmg:1.72, cd:.70 },
+        apex:true, final:true, sig:"STORMCALL",
+        sigDs:"the storm no longer needs a sky" } ]},
   ox:{ type:"stone",
     move:{ key:"pulse", nm:"TREMOR", ds:"the ground answers you" },
     st:[
@@ -2748,7 +2766,10 @@ const LINES = {
         sig:"BEDROCK", sigDs:"+5 flat armour" },
       { nm:"THE MOUNTAIN", mods:{ hp:1.90, dmg:1.42, armorFlat:9 },
         apex:true, sig:"UPHEAVAL",
-        sigDs:"taking a hit answers with a free TREMOR" } ]},
+        sigDs:"taking a hit answers with a free TREMOR" },
+      { nm:"THE CONTINENT", mods:{ hp:2.30, dmg:1.68, armorFlat:14 },
+        apex:true, final:true, sig:"UPHEAVAL",
+        sigDs:"too big to argue with" } ]},
   ghoul:{ type:"rot",
     move:{ key:"aura", nm:"SPORECLOUD", ds:"you are difficult to be near" },
     st:[
@@ -2758,7 +2779,10 @@ const LINES = {
         sig:"BLOOM", sigDs:"regeneration x2.4" },
       { nm:"THE GORGON", mods:{ hp:1.70, dmg:1.44, regen:3.4 },
         apex:true, sig:"PETRIFY",
-        sigDs:"everything in your sporecloud is slowed to half speed" } ]},
+        sigDs:"everything in your sporecloud is slowed to half speed" },
+      { nm:"THE OUROBOROS", mods:{ hp:2.05, dmg:1.70, regen:4.6 },
+        apex:true, final:true, sig:"PETRIFY",
+        sigDs:"the rot that outlived everything it touched" } ]},
   accnt:{ type:"tally",
     move:{ key:"mortar", nm:"GALEDIVE", ds:"it comes down out of the sky" },
     st:[
@@ -2768,7 +2792,10 @@ const LINES = {
         sig:"UPDRAFT", sigDs:"+15% XP from everything" },
       { nm:"THE HURRICANE", mods:{ hp:1.70, dmg:1.42, xp:1.30 },
         apex:true, sig:"EYEWALL",
-        sigDs:"GALEDIVE falls twice as often" } ]},
+        sigDs:"GALEDIVE falls twice as often" },
+      { nm:"THE MONSOON", mods:{ hp:2.05, dmg:1.68, xp:1.45 },
+        apex:true, final:true, sig:"EYEWALL",
+        sigDs:"a season, not an animal" } ]},
   twin:{ type:"echo",
     move:{ key:"bolt", nm:"MIRRORBOLT", ds:"whatever you throw, there is another" },
     st:[
@@ -2778,7 +2805,10 @@ const LINES = {
         sig:"CHORUS", sigDs:"+28% damage - three of everything" },
       { nm:"THE LEGION", mods:{ hp:1.80, dmg:1.55 },
         apex:true, sig:"WARCHOIR",
-        sigDs:"five heads, and every volley carries one bolt more" } ]},
+        sigDs:"five heads, and every volley carries one bolt more" },
+      { nm:"THE MYRIAD", mods:{ hp:2.15, dmg:1.85 },
+        apex:true, final:true, sig:"WARCHOIR",
+        sigDs:"six heads, one appetite" } ]},
 };
 // The two rule-characters get lines built the same way as the seven: a body
 // plan, a firing behaviour the game has already benched, and a signature that
@@ -2792,7 +2822,10 @@ LINES.surge = { type:"surge",
       sig:"WHITEWATER", sigDs:"momentum builds twice as fast" },
     { nm:"THE FLOOD", mods:{ hp:1.66, dmg:1.45, spd:1.12 },
       apex:true, sig:"BREAKWATER",
-      sigDs:"the surge lasts longer, and running keeps it burning" } ]};
+      sigDs:"the surge lasts longer, and running keeps it burning" },
+    { nm:"THE DELUGE", mods:{ hp:2.00, dmg:1.72, spd:1.16 },
+      apex:true, final:true, sig:"BREAKWATER",
+      sigDs:"the river won" } ]};
 LINES.pyre = { type:"pyre",
   move:{ key:"bat", nm:"WINGBEAT", ds:"a wide burning sweep, both sides" },
   st:[
@@ -2802,7 +2835,10 @@ LINES.pyre = { type:"pyre",
       sig:"EVERBURNING", sigDs:"the rebirth returns twice as fast" },
     { nm:"THE ETERNAL", mods:{ hp:1.80, dmg:1.50 },
       apex:true, sig:"SUNDIAL",
-      sigDs:"the rebirth cooldown stops growing" } ]};
+      sigDs:"the rebirth cooldown stops growing" },
+    { nm:"THE SECOND SUN", mods:{ hp:2.15, dmg:1.78 },
+      apex:true, final:true, sig:"SUNDIAL",
+      sigDs:"it rises on its own schedule" } ]};
 for(const c of CHARS){
   const L = LINES[c.id]; if(!L) continue;
   c.type = L.type; c.st = L.st; c.move = L.move; c.line = L.st.map(x=>x.nm);
@@ -3119,7 +3155,7 @@ plain(D){
     for(let i=0;i<3;i++) fl(nx+(i-1)*.07, nf+.24, ny-.24, .55, 2);
     const fold = 1 - idle*.42;
     // THE CINDERSTAR spreads a fifth more wing, and the membrane burns.
-    const wspan = st === 3 ? 1.20 : 1.00, wmemb = st === 3 ? [1,.42,.10] : acc;
+    const wspan = st >= 3 ? 1.20 : 1.00, wmemb = st >= 3 ? [1,.42,.10] : acc;
     for(const rs of [-1,1]) wing(rs, sway + rs*.24, .06, 1.02+hov, wspan*fold,
                                  wmemb, acc, beat + (rs>0?0:.5));
     // ---- THE CINDERSTAR. LAVA SEAMS: the hide has cracked open along the
@@ -3127,7 +3163,7 @@ plain(D){
     // side, pulsing slowly out of phase, plus a crown pair over the brow and
     // a burning vane at the end of each wing's reach. The apex is the animal
     // the fire finally got out of.
-    if(st === 3){
+    if(st >= 3){
       // two long seams a side, sunk INTO the flank so they read as cracks in
       // the hide rather than stripes hovering beside it
       for(const rs of [-1,1]) for(let i=0;i<2;i++){
@@ -3138,6 +3174,21 @@ plain(D){
       for(const rs of [-1,1])
         horn(nx+rs*.09, nf-.06, ny+.16, rs*.030, -.045, .085, 2, .060, [1,.62,.16], .70);
       fl(sway, -.02, 1.30+hov, .8, 3);
+    }
+    // ---- THE SUPERNOVA. The star it swallowed shows through the chest: one
+    // white-hot core burning between the seams, pulsing on its own slow clock.
+    // One box - the final form is a presence, not another layer of parts.
+    if(st >= 4){
+      const core = .70 + Math.sin(t*1.4)*.25;
+      // ON THE BACK, between the wing roots. Two chest placements probed and
+      // both were real boxes nobody saw: the play camera sits high, so the
+      // head shadows everything on the front of an animal this shape. The
+      // one surface that camera always owns is the spine - which is where
+      // the volt line's rods and every dorsal ridge in the roster already
+      // live, for the same reason.
+      mb(sway, .12, 1.26 + hov, .11, .10, .11, [1,.94,.74], .65 + core*.35);
+      for(const rs of [-1,1])                    // and a third seam pair, high
+        mb(sway + rs*.262, .02, 1.02 + hov, .045, .05, .11, [1,.60,.16], .40*core);
     }
     for(const rs of [-1,1]){                              // heavy hind legs
       const p2 = rs > 0 ? gait : -gait;
@@ -3152,7 +3203,7 @@ plain(D){
       const lag = drag(.55 + i*.40)*.022*(i+1) + Math.sin(t*.8 - i*.4)*.012*idle*(i+1);
       tail.push([sway + lag, -.62 - i*.26, .64 - i*.05]);
     }
-    if(st === 3){
+    if(st >= 3){
       const tp2 = tail[tail.length-1];
       for(const rs of [-1,1])
         mb(tp2[0] + rs*.10, tp2[1] - .06, tp2[2] + .04,
@@ -3191,7 +3242,9 @@ scrap(D){
   // it. Same for the flippers, the dorsal ridge and the horns: a hatchling has
   // paddles, no crest and no horns; the LEVIATHAN has oars, a full ridge and a
   // horned skull.
-  const NECK = 2 + st*2;
+  // the final form grows through scale and signature, not footprint - the
+  // camera-boom budget the comments above set is a budget for st4 too
+  const NECK = 2 + Math.min(st,3)*2;
   const FLIP = .62 + st*.24;
   const flick = twitch(.6, 4.3);
   // the barrel, as a run from tail root to shoulder. SHOULDER-heavy: the
@@ -3211,7 +3264,8 @@ scrap(D){
   // the back from the play camera - the same fault the ox saddle had
   mb(sway, -.04*gr, (.72+bob)*gr, .33*gr,.10*gr,.44*gr,
      [c[0]*.74, c[1]*.74, c[2]*.78], em*.6);
-  if(st) ridge(-.40*gr, .12*gr, (.80+bob)*gr, 4 + st*2, (.07 + st*.035)*gr, lt, em+.22);
+  if(st) ridge(-.40*gr, .12*gr, (.80+bob)*gr, 4 + Math.min(st,3)*2,
+               (.07 + st*.035)*gr, lt, em+.22);
   // THE TORSO EVOLVES TOO. Neck, flippers and ridge all grew a stage and the
   // hull stayed the same blue barrel at three zooms - the audit's "torso
   // never evolves". The serpent earns a row of dark flank scutes at the
@@ -3225,7 +3279,7 @@ scrap(D){
   // ---- THE MAELSTROM. Six flippers, not four - the extra midship pair rows
   // on its own beat - a tall dorsal fin at the shoulder, and a slow spiral of
   // water always turning around the animal: the whirlpool made flesh.
-  if(st === 3){
+  if(st >= 3){
     const beatM = Math.sin(ph*.8 + 1.6) * (.35 + amp*.55);
     for(const rs of [-1,1]){
       const y = (.38 + beatM*.10)*gr + bob*gr;
@@ -3245,6 +3299,15 @@ scrap(D){
     for(let i=0;i<7;i++){ const a2 = t*1.1 + i/7*TAU;
       fx(Math.sin(a2)*.88*gr, Math.cos(a2)*.76*gr,
          (.14 + i*.075)*gr, .105*gr,.020*gr,.085*gr, lt, .45, a2 + 1.2); }
+  }
+  // ---- THE ABYSS. The deep answered back: a row of lamp-spots down each
+  // flank at the waterline, pulsing on the animal's own slow clock - the
+  // only light down there is the light it brought.
+  if(st >= 4){
+    const lum = .55 + Math.sin(t*2.2)*.25;
+    for(const rs of [-1,1]) for(let i=0;i<4;i++)
+      mb(sway + rs*.30*gr, (-.34 + i*.20)*gr, (.58+bob)*gr,
+         .035*gr, .045*gr, .045*gr, [.45,.95,1], (.35 + lum*.45)*(i%2 ? .8 : 1.1));
   }
   // FLIPPERS. Four of them, rowing - front and back on opposite beats.
   // Rear pair FORWARD of the tail root: the audit found the tail fluke slicing
@@ -3350,7 +3413,7 @@ volt(D){
   // stacked slivers fighting each other's faces - the buried scan showed
   // three consecutive boxes per rod with no volume of their own. A rod is
   // the one shape a single box already is.
-  if(st === 3) for(let i=0;i<4;i++){
+  if(st >= 3) for(let i=0;i<4;i++){
     const rf = bodyF - .26*gr + i*(.18*gr);
     const tall = (.72 + (i===1||i===2 ? .16 : 0))*gr;
     const chg = .55 + Math.sin(t*9 - i*1.6)*.45;          // the charge travels
@@ -3359,6 +3422,19 @@ volt(D){
        .042*gr, (z1-z0)/2, .042*gr, [1,.95,.55], .30 + chg*.55);
     mb(sway, rf - .03*gr, z1 + .05*gr,
        .052*gr, .055*gr, .052*gr, [1,1,.82], .95*chg);
+  }
+  // ---- THE TEMPEST. The fence closes: an arc lives between each pair of
+  // rod tips, flickering on the same travelling charge. Spanning boxes, not
+  // floaters - each one touches the tip orb at both of its ends.
+  if(st >= 4) for(let i=0;i<3;i++){
+    const rf0 = bodyF - .26*gr + i*(.18*gr), rf1 = rf0 + .18*gr;
+    const t0 = (.72 + (i===1||i===2 ? .16 : 0))*gr;
+    const t1 = (.72 + (i+1===1||i+1===2 ? .16 : 0))*gr;
+    const za = HIP + hov + t0 + .05*gr, zb = HIP + hov + t1 + .05*gr;
+    const arcF = .45 + Math.sin(t*11 - i*2.1)*.40;
+    mb(sway, (rf0+rf1)/2 - .03*gr, (za+zb)/2,
+       .020*gr, Math.abs(za-zb)/2 + .035*gr, .105*gr,
+       [1,1,.88], .40 + arcF*.55);
   }
   // NECK -> SKULL. An S in the young animal, short and thick in the adult.
   const nx = sway + lk, nf = chestF + (.14 + st*.10)*gr, ny = HIP + hov + (.30 + st*.10)*gr;
@@ -3421,7 +3497,7 @@ volt(D){
     horn(hx + rs*SK*.58, hf + SK*.08, hy + SK*.30, rs*.045*gr, -.034*gr, .065*gr,
          3, .046*gr, acc, .70);
     // the apex crown: a second, forward-hooked pair over the brow
-    if(st === 3)
+    if(st >= 3)
       horn(hx + rs*SK*.40, hf + SK*.30, hy + SK*.56, rs*.040*gr, .068*gr, .080*gr,
            2, .058*gr, [1,.95,.55], .80);
     mb(hx + rs*SK*.86, hf + SK*.40, hy - SK*.10, SK*.22, SK*.34, SK*.46, acc, .30);
@@ -3475,7 +3551,7 @@ volt(D){
   // segments each a third of a unit apart put four and a half units of tail
   // behind the hips and made STORMTYRANT nineteen units long, which is most of
   // the visible field. It is still the longest part of the animal.
-  const TN = 4 + st;
+  const TN = 4 + Math.min(st,3);   // tail segments cap at the apex count
   const tail = [[sway, bodyF - .18*gr, HIP + hov - up*.02]];
   for(let i=0;i<TN;i++){
     const lag = drag(.5 + i*.38)*.022*(i+1) + Math.sin(t*.85 - i*.4)*.010*idle*(i+1);
@@ -3527,7 +3603,8 @@ stone(D){
   // into furniture - at .42 plus .16 a stage on a gr of 1.44 the top form's
   // frill was over two units across and overhung the animal like a mushroom.
   const FR = (.21 + st*.20) * gr;                    // frill half-width
-  const FN = 5 + st;                                 // and how many plates
+  const FN = 5 + Math.min(st, 3);                    // and how many plates -
+                                                     // the final grows SIZE, not count
   // body: long, low, wide, widest at the shoulders
   chain([[sway + roll*.3, -.44*gr, (.38+heave)*gr],
          [sway + roll*.4, -.14*gr, (.40+heave)*gr],
@@ -3576,11 +3653,17 @@ stone(D){
     mb(fx0 + a*FR*1.02, ff - (.24 + st*.10)*gr - Math.abs(a)*.06*gr,
        fy + h*(.25 + st*.15)*gr,
        FR*.15, .085*gr, .06*gr, acc, .22, a*.55);
+    // ---- THE CONTINENT. High ground gets weather: every plate of the fan
+    // carries a snow cap above its rim nub. A mountain range, walking.
+    if(st >= 4)
+      mb(fx0 + a*FR*1.02, ff - (.24 + st*.10)*gr - Math.abs(a)*.06*gr,
+         fy + h*(.25 + st*.15)*gr + .075*gr,
+         FR*.13, .045*gr, .052*gr, [.95,.96,.98], .30, a*.55);
   }
   // ---- THE MOUNTAIN. A second, higher deck behind the frill - a double
   // shield nothing younger carries - plus TERRAIN: moss-dark slabs down the
   // back, because a mountain has a landscape on it, and spikes on the club.
-  if(st === 3){
+  if(st >= 3){
     for(let i=0;i<5;i++){
       const a2 = (i - 2) / 2;
       chain([[fx0 + a2*FR*.26, ff - .30*gr, fy + .06*gr],
@@ -3665,7 +3748,7 @@ stone(D){
   if(st >= 1) for(const rs of [-1,1])
     horn(sway + rs*.10*gr, -1.44*gr, (.36+heave)*gr, rs*.06*gr, 0, .01*gr, 3, .05*gr, lt, .30);
   // the apex club carries a ring of spikes, so the tail ends in a morning star
-  if(st === 3) for(let k=0;k<4;k++){ const a2 = k/4*TAU + .4;
+  if(st >= 3) for(let k=0;k<4;k++){ const a2 = k/4*TAU + .4;
     horn(sway + Math.sin(a2)*.13*gr, -1.50*gr, (.40+heave)*gr + Math.cos(a2)*.10*gr,
          Math.sin(a2)*.05*gr, -.03*gr, Math.cos(a2)*.045*gr, 2, .042*gr, lt, .30); }
   // and the top of the line drags the ground it walked over. SHARDS, low and
@@ -3711,11 +3794,14 @@ rot(D){
   // was the thing hiding the game. It is still by some way the longest thing
   // in the roster at twelve segments and a fifth of a unit; it just fits on
   // the screen with the horde it is fighting.
-  const N = 8 + st*2;                              // it gets longer, not taller
+  const N = 8 + Math.min(st,3)*2;                  // it gets longer, not taller -
+                                                   // and the final caps at the apex
+                                                   // count: the camera budget above
+                                                   // is a budget for st4 too
   const gr = 1 + st*.16;
   const wave = ph*.85 + t*(1.3 + st*.25);
-  const REAR = (.30 + st*.26) * gr;                // how high the front stands
-  const LIFT = 3 + st*2;                           // over how many segments
+  const REAR = (.30 + Math.min(st,3)*.26) * gr;    // how high the front stands
+  const LIFT = 3 + Math.min(st,3)*2;               // over how many segments
   const GIRTH = (.20 + st*.02) * gr;
   const spine = [];
   for(let i=0;i<N;i++){
@@ -3907,14 +3993,14 @@ rot(D){
     // hood's third and fifth rib, a false stare on each side, glowing amber
     // like the real eye below them - so the apex is watched from every angle,
     // which is the whole story of the gorgon. Plus a gold circlet at the brow.
-    if(st === 3 && (i === 1 || i === 3)){
+    if(st >= 3 && (i === 1 || i === 3)){
       mb(hx + rs*ox*.72, hf - .335*gr, hy + HW*.05 + oy*.72,
          .058*gr, .058*gr, .030*gr, [.06,.05,.09], .05);
       mb(hx + rs*ox*.72, hf - .345*gr, hy + HW*.05 + oy*.72,
          .034*gr, .034*gr, .022*gr, [1,.72,.16], .85);
     }
   }
-  if(st === 3) for(let k=0;k<5;k++){ const a2 = (k-2)*.5;
+  if(st >= 3) for(let k=0;k<5;k++){ const a2 = (k-2)*.5;
     // each bead reaches down INTO the skull - a crown that merely rests on a
     // head is a crown the connectivity report finds floating
     mb(hx + Math.sin(a2)*HW*.66, hf + .08*gr, hy + HW*.60 + Math.cos(a2)*HW*.10,
@@ -3933,6 +4019,24 @@ rot(D){
     fx(hx, hf + (.34 + u*.75)*gr, hy + HW*.20 - u*.06*gr,
        .030*gr*(1-u*.55), .030*gr*(1-u*.55), .050*gr*(1-u*.4),
        [1,.76,.16], .70*(1-u*.8));
+  }
+  // ---- THE OUROBOROS. The tail ends in a second skull, half scale, jaws
+  // toward the body it trails - the loop that outlived everything it touched.
+  // Skull grammar reused at .45: a wedge wider than the tail it caps, one
+  // amber eye pair, two crown nubs. It stares BACKWARD, which is the point.
+  if(st >= 4){
+    const [tx, tf, ty] = spine[N-1];
+    const TW = HW*.45;
+    // wedge narrows toward +f - eyeGlow stacks its plates toward +f, so the
+    // snout and the stare have to agree on which way the skull points
+    chain([[tx, tf - .16*gr, ty], [tx, tf, ty + .01*gr]],
+          TW*.70, TW, c, em+.08, [1.18, .70, 1]);
+    chain([[tx, tf, ty + .01*gr], [tx, tf + .14*gr, ty - .01*gr]],
+          TW, TW*.55, c, em+.08, [1.10, .66, 1]);
+    eyeGlow(tx, tf + .02*gr, ty + TW*.22, TW*.72, TW*.66, [1,.72,.16]);
+    for(const rs of [-1,1])
+      horn(tx + rs*TW*.60, tf - .10*gr, ty + TW*.50,
+           rs*.020*gr, -.016*gr, .040*gr, 2, .026*gr, acc, .40);
   }
 },
 
@@ -3997,7 +4101,7 @@ tally(D){
   // ---- THE HURRICANE. Four wings: a second, smaller pair set low and aft,
   // beating a half-cycle out of phase - the silhouette of a storm cell seen
   // side-on, and nothing else in the roster has it.
-  if(st === 3) for(const rs of [-1,1])
+  if(st >= 3) for(const rs of [-1,1])
     wing(rs, sway + rs*.15*gr, -.26*gr, HIP + .10*gr*perch + wtuck, SPAN*.62*fold, dk, acc,
          beat + 1.6 + (rs>0?0:.6));
   for(const rs of [-1,1])
@@ -4036,7 +4140,7 @@ tally(D){
   }
   // THE TAIL. Long, stiff, and it ends in a vane - the counterweight that makes
   // the perched pose possible and the rudder that makes the flying pose work.
-  const TN = 5 + st;
+  const TN = 5 + Math.min(st,3);   // tail segments cap at the apex count
   const tail = [[sway, -.22*gr, HIP - .02*gr]];
   for(let i=0;i<TN;i++){
     const lag = drag(.7 + i*.44)*.026*(i+1)*gr + Math.sin(t*.9 - i*.42)*.012*idle*(i+1)*gr;
@@ -4052,9 +4156,11 @@ tally(D){
     mb(tail[i][0], tail[i][1], tail[i][2], .062*gr*(1-i/tail.length),
        .050*gr*(1-i/tail.length), .062*gr*(1-i/tail.length), acc, .30);
   const tp = tail[tail.length-1];
-  for(let i=0;i<3;i++)                                     // the vane
-    mb(tp[0], tp[1] - .04*gr - i*.10*gr, tp[2] - i*.03*gr,
-       (.055 + i*.02)*gr, (.13 - i*.035)*gr, (.09 + i*.05)*gr, lt, em+.20);
+  const vaneS = st >= 4 ? 1.30 : 1;                        // the MONSOON flies
+  for(let i=0;i<3;i++)                                     // a bigger flag
+    mb(tp[0], tp[1] - .04*gr - i*.10*gr*vaneS, tp[2] - i*.03*gr,
+       (.055 + i*.02)*gr*vaneS, (.13 - i*.035)*gr*vaneS,
+       (.09 + i*.05)*gr*vaneS, lt, em+.20);
   if(st >= 2){
     for(const rs of [-1,1])                                // barbs, at the top
       horn(tp[0] + rs*.05*gr, tp[1] - .16*gr, tp[2], rs*.05*gr, -.03*gr, .02*gr,
@@ -4066,10 +4172,14 @@ tally(D){
     // drawing; ground you can see it moving IS. Six flat shards now, low and
     // wide like the STONE line's dust, skating around the animal on the floor
     // it is actually stirring up.
-    for(let i=0;i<6;i++){ const a = t*1.8 + i/6*TAU;
+    // ---- THE MONSOON widens the weather: nine shards, and the pale ones
+    // turn rain-slate - the season arriving, told on the ground where this
+    // game's wind has always been legible.
+    const WN = st >= 4 ? 9 : 6;
+    for(let i=0;i<WN;i++){ const a = t*1.8 + i/WN*TAU;
       fx(Math.sin(a)*(.84+(i%2)*.14)*gr, Math.cos(a)*(.74+(i%2)*.12)*gr,
          (.04 + Math.abs(Math.sin(t*2.2+i))*.07)*gr, .11*gr,.020*gr,.09*gr,
-         i%2 ? acc : lt, .30, a); }
+         i%2 ? acc : (st >= 4 ? [.58,.66,.80] : lt), .30, a); }
   }
 },
 // ------------------------------------------------------------------- ECHO
@@ -4102,7 +4212,7 @@ echo(D){
   // is armour - a dark chest plate across the shoulders where the five necks
   // root, and a second, offset row of dorsal plates - so the apex reads as a
   // war-beast carrying its heads, not a hydra that kept sprouting.
-  if(st === 3){
+  if(st >= 3){
     mb(0, .10*gr, (.40 + coil)*gr, .34*gr, .16*gr, .13*gr, dk, .06);
     mb(0, .22*gr, (.46 + coil)*gr, .28*gr, .13*gr, .10*gr, dk, .06);
     for(let i=1;i<spine.length-2;i+=2){
@@ -4249,6 +4359,12 @@ surge(D){
        .045*gr, (y1-y0)/2, .088*gr,
        [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
        .10 + glow*.85);
+    // ---- THE DELUGE. The sail crests white, spine by spine - a standing
+    // wave the length of the animal's back. Each cap overlaps its own spine's
+    // top face, so the crest is part of the sail, not weather beside it.
+    if(st >= 4)
+      mb(sway + Math.sin(t*1.2 - u*2)*.010*gr, ff - h*.10, y1 + .040*gr,
+         .050*gr, .048*gr, .096*gr, [.96,.98,1], .40 + glow*.45);
   }
   // ---- THE HEAD. All snout. The skull is narrow, the jaws are half the animal.
   const nx = sway + lk, nf = chestF + .12*gr, ny = HIP + (.16 + st*.03)*gr;
@@ -4290,7 +4406,7 @@ surge(D){
   // behind an animal already two long in front of its hips, and THE SPINE
   // measured sixteen and a half units against a camera boom of nine. Shorter
   // and heavier: a counterweight, not a whip.
-  const TN = 5 + st;
+  const TN = 5 + Math.min(st,3);   // tail segments cap at the apex count
   const tail = [[sway, -.24*gr, HIP]];
   for(let i=0;i<TN;i++){
     const lag = drag(.5 + i*.34)*.026*(i+1) + Math.sin(t*.8 - i*.36)*.011*idle*(i+1);
@@ -4309,7 +4425,7 @@ surge(D){
   // spines rides the tail all the way to the paddle, so nose-to-tail the whole
   // animal is one crest - plus a wake that never switches off. Water follows
   // the flood everywhere it goes.
-  if(st === 3){
+  if(st >= 3){
     for(let i=1;i<tail.length;i+=2){
       const u2 = i/(tail.length-1);
       const h2 = SH * .62 * (1 - u2*.55);
@@ -4430,25 +4546,32 @@ pyre(D){
   // and shorter, so the tail is a peacock of fire - and a HALO: a slow ring of
   // seven flames turning above the head, which is the whole legend in one
   // ambient piece. Nothing else in the game wears one.
-  if(st === 3){
+  if(st >= 3){
     for(let i=0;i<3;i++){
       const off = (i - 1) * .16 * gr;
-      const L2 = (.24 + st*.44) * gr;
+      const L2 = (.24 + Math.min(st,3)*.44) * gr;
       chain([[sway + off*.5, -.20*gr, HIP + .18*gr*upr],
              [sway + off, -.20*gr - L2*.7, HIP + (.30 + .10*Math.sin(t*1.9 + i))*gr]],
             .040*gr, .018*gr, i%2 ? acc : lt, .55, [1, .30, 1], true);
       fl(sway + off, -.20*gr - L2*.7, HIP + .32*gr, .5, 2);
     }
-    for(let k=0;k<7;k++){ const a2 = t*1.5 + k/7*TAU;
+    // ---- THE SECOND SUN doubles the halo: ten flames on the outer ring and
+    // an inner ring of five turning the other way - a corona, not a crown.
+    const HN = st >= 4 ? 10 : 7;
+    for(let k=0;k<HN;k++){ const a2 = t*1.5 + k/HN*TAU;
       fx(hx + Math.sin(a2)*.30*gr, hf - .04*gr + Math.cos(a2)*.30*gr,
          hy + (.42 + st*.06)*gr, .030*gr, .030*gr, .045*gr,
          k%2 ? acc : [1,.95,.70], .80); }
+    if(st >= 4) for(let k=0;k<5;k++){ const a2 = -t*2.1 + k/5*TAU;
+      fx(hx + Math.sin(a2)*.17*gr, hf - .04*gr + Math.cos(a2)*.17*gr,
+         hy + (.48 + st*.06)*gr, .024*gr, .024*gr, .036*gr,
+         [1,.98,.82], .90); }
   }
   // ---- TAIL STREAMERS. Three of them, and by the top of the line they are
   // longer than the bird. This is the silhouette.
   for(let i=0;i<3;i++){
     const off = (i - 1) * .10 * gr;
-    const L = (.24 + st*.66) * gr * (i === 1 ? 1.22 : 1);
+    const L = (.24 + Math.min(st,3)*.66) * gr * (i === 1 ? 1.22 : 1);
     const pts = [[sway + off, -.18*gr, HIP - .02*gr]];
     for(let k=1;k<=4;k++){
       const u = k/4;
@@ -4905,7 +5028,7 @@ const dvBind = (id, fn)=>{ const el = document.getElementById(id);
                            if(el){ el.__wired = true;
                                    el.addEventListener("click", e=>{ e.stopPropagation(); fn(el); }); } };
 const devLevel = ()=>{ if(P){ P.xp = P.need; gainXP(0.0001); } };
-const devEvolve = ()=>{ if(P) evolveTo(Math.min(2, stage+1)); };
+const devEvolve = ()=>{ if(P) evolveTo(Math.min((curMon().st||[]).length-1, stage+1)); };
 // AUTO EVO does not wait for the level threshold: it steps the line every time
 // it can, which is the whole point of being able to look at all twenty-one
 // forms without playing twenty minutes for each one.
@@ -6584,7 +6707,8 @@ function evolveTo(i){
   // discover flight by accident.
   // The APEX outranks even flight in the announcement: it is the one moment
   // the whole run builds to, and its power is the headline.
-  evoSub = d.apex ? `APEX - ${d.sig}: ${d.sigDs}`
+  evoSub = d.final ? `FINAL FORM - ${d.sigDs}`
+         : d.apex ? `APEX - ${d.sig}: ${d.sigDs}`
          : d.fly ? "YOU CAN FLY - HOLD JUMP"
          : learned ? `LEARNED ${learned}`
          : d.sig  ? `${d.sig} - ${d.sigDs}` : `${wasNm} EVOLVED`;
@@ -7102,7 +7226,7 @@ function finish(why, won){
       <tr><td>Level</td><td>${P.lvl}${
         P.lvl > prevLvl ? ` <span class="g">NEW BEST</span>` : prevLvl ? ` <span class="dim2">best ${prevLvl}</span>` : ""}</td></tr>
       <tr><td>Kills</td><td>${kills.toLocaleString()}</td></tr>
-      <tr><td>${curMon().line[0]}</td><td>${stageNm()} &nbsp;<span class="dim2">stage ${stage+1}/3</span>
+      <tr><td>${curMon().line[0]}</td><td>${stageNm()} &nbsp;<span class="dim2">stage ${stage+1}/${(curMon().st||[]).length}</span>
         &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
         <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
@@ -7307,7 +7431,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // 18% and leans it toward its own dark - one rule, all nine lines - so a
   // mega reads as a different ANIMAL before you can name the new parts. The
   // accents stay full strength, which is what makes them start to burn.
-  if(stage === 3) mTc = [mTc[0]*.82, mTc[1]*.82, mTc[2]*.86];
+  if(stage >= 3) mTc = [mTc[0]*.82, mTc[1]*.82, mTc[2]*.86];
   const mDk = [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];
   // 1.34 because the first pass built a monster the same HEIGHT as the person
   // it replaced - and a quadruped that tall is half the silhouette, so from a
@@ -9228,8 +9352,12 @@ function hud(){
     ? `${BOSSES[BOSSES.length-1].nm}  ${Math.max(0,Math.ceil(fb.hp)).toLocaleString()} HP  -  KILL IT`
     : nb ? `${nb.nm} IN ${fmt(Math.max(0,nb.t-T))}` : "FINAL STAND";
   $("xpbar").style.width = (P.xp/P.need*100).toFixed(1)+"%";
+  // the arrow points at the NEXT evolution for as long as there is one -
+  // it used to stop at stage 2, so the apex and the final both arrived
+  // unannounced
   $("lvl").innerHTML = `LV <b>${P.lvl}</b><em>${stageNm()}${
-    stage < 2 ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</em>`;
+    stage < (curMon().st||[]).length-1
+      ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</em>`;
   const hp = clamp(P.hp/P.maxhp,0,1);
   $("hpbar").style.width = (hp*100).toFixed(1)+"%";
   $("hptxt").textContent = `${Math.max(0,Math.ceil(P.hp))} / ${Math.round(P.maxhp)}`;
@@ -9366,7 +9494,8 @@ function frame(now){
   else if(running && !over && !paused) step(dt);
   pulse(dt);
   if(evoT > 0) evoT -= dt;
-  if(devAuto && P && running && !over && stage < 2 && evoT <= 0) devEvolve();
+  if(devAuto && P && running && !over && stage < (curMon().st||[]).length-1 && evoT <= 0)
+    devEvolve();
   // BEFORE render(), deliberately. The portraits borrow a corner of the game
   // canvas as scratch space and blit it out again immediately; drawing them
   // first means render() then paints over every pixel they touched, so the
