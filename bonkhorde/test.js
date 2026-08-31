@@ -3841,6 +3841,45 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        !r.still, "gone after its 26 seconds");
   }
 
+  console.log("\n=== 23h. THE LAKES GROW PEARLS ===");
+  {
+    // With the director frozen, the kit disarmed and the field swept, NOTHING
+    // in the game can put a gem on the ground except a pearl - so the check
+    // needs no gem-position hook: any gem that exists after thirty quiet
+    // seconds beside a lake is the feature, and any gem that exists after
+    // thirty quiet seconds in the middle of nowhere is a bug.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const L = g.lakes()[0];
+      if(!L) return { err: "no lakes rolled" };
+      g.clearGems();
+      g.place(L.x + L.r + 14, L.z);              // beside it, not in it
+      g.step(30 * 60, 1/60);
+      const near = g.state().gems;
+      // somewhere no lake can reach: walk candidate spots until one clears
+      // 70m from every lake on the map
+      let fx = 0, fz = 0, found = false;
+      for(let a = 0; a < 24 && !found; a++){
+        const x = Math.cos(a * 2.4) * (40 + a * 8), z = Math.sin(a * 2.4) * (40 + a * 8);
+        if(g.lakes().every(l => Math.hypot(l.x - x, l.z - z) > 70)){
+          fx = x; fz = z; found = true; }
+      }
+      if(!found) return { err: "no lake-free ground found" };
+      g.clearGems();
+      g.place(fx, fz);
+      g.step(30 * 60, 1/60);
+      return { near, far: g.state().gems };
+    });
+    ok("a lake beside you grows a pearl",
+       !r.err && r.near >= 1 && r.near <= 3,
+       r.err || `${r.near} pearl(s) surfaced in 30s beside the lake`);
+    ok("and open ground grows nothing",
+       !r.err && r.far === 0,
+       r.err || `${r.far} gems appeared 70m from every lake`);
+  }
+
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
   {
     // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that

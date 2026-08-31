@@ -247,6 +247,11 @@ const MUTANTS = [
     why:"the landing keeps issuing the stock window, so THERMALS does nothing",
     from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
     to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
+  { id:"pearls-never-surface", must:"23h",
+    why:"the pearl tick finds its lake and then drops nothing, so lakes go " +
+        "back to being water you walk around",
+    from:"  const px2 = L.x + rnd(-2, 2), pz2 = L.z + rnd(-2, 2);\n  pushGem(px2, pz2, Math.round(rnd(24, 34)));",
+    to:  "  const px2 = L.x + rnd(-2, 2), pz2 = L.z + rnd(-2, 2);" },
   { id:"upwelling-dry", must:"23g",
     why:"the upwelling's tick stops dropping anything, so the fourth event " +
         "is a green ring around ordinary ground",

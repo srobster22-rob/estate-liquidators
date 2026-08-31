@@ -4988,7 +4988,7 @@ function startRun(id){
   // happens is a pickup rather than a wait.
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
   runDist=0;
-  events=[]; boons=[]; nextEvent=rnd(24,32);
+  events=[]; boons=[]; nextEvent=rnd(24,32); pearlT=16; pearlSeen=false;
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.storms=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
   camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
@@ -6079,6 +6079,28 @@ const EV = {
   storm: { nm:"UPWELLING", life:26, r:8.5, c:[.44,.88,.52] },
 };
 let nextEvent = 0, noEvents = false, boons = [];
+// ---- PEARLS. The minimap draws lakes "because an aquatic line plans its
+// route around them", and until now the plan's payoff was a swim-speed
+// bonus over water you had no reason to be in. A lake near the player that
+// is not already holding one now grows a PEARL every so often - a top-tier
+// gem surfacing with a splash - so lakes are larders: the two aquatic lines
+// harvest them at full song, everyone else wades in at three-quarter speed
+// with the horde behind them and decides whether it is worth it.
+let pearlT = 0, pearlSeen = false;
+function updatePearls(dt){
+  if((pearlT -= dt) > 0) return;
+  pearlT = 24;
+  const L = lakes.find(l => {
+    const d = Math.hypot(l.x - P.x, l.z - P.z);
+    return d < 58 && !gems.some(g2 => g2.v >= 18 &&
+                                Math.hypot(g2.x - l.x, g2.z - l.z) < l.r);
+  });
+  if(!L) return;
+  const px2 = L.x + rnd(-2, 2), pz2 = L.z + rnd(-2, 2);
+  pushGem(px2, pz2, Math.round(rnd(24, 34)));
+  rings.push({ x:px2, z:pz2, y:L.y, r:0, max:2.6, life:.5, mx:.5 });
+  if(!pearlSeen){ pearlSeen = true; alert2("A PEARL SURFACES", "#8fd8e8"); }
+}
 const evStats = { spawned:0, caches:0, altars:0, hunts:0, storms:0, expired:0 };
 
 // ------------------------------------------------------------------ DENS
@@ -7297,6 +7319,7 @@ function step(dt){
   updateHazards(dt);
   updateEvents(dt);
   updateGems(dt);
+  updatePearls(dt);
 
   // ---- director
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
