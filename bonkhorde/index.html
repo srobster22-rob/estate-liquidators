@@ -3020,7 +3020,7 @@ const BODY = {
 // could.
 plain(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
-          eyeSlit, fangs, idle, sway, twitch, drag,
+          eyeSlit, eyeGlow, fangs, idle, sway, twitch, drag,
           mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   const br = Math.sin(t*2.1)*.02*(1-amp*.8);
@@ -3148,10 +3148,24 @@ plain(D){
       mb(neck[i][0], neck[i][1], neck[i][2] + .09, .042,.10,.085, acc, .34);
     // the skull: brow, jaw, canines, and horns swept back off it
     blob(nx, nf+.14, ny+.02, .21,.18,.22, c, em+.06);
-    chain([[nx, nf+.22, ny-.02], [nx, nf+.44, ny-.06]], .155, .105, bel, em*.7);
+    // THE SNOUT WEARS THE BODY COLOUR - the line's own split-face rule, set
+    // by the whelp (snout in c, the belly tone is the JAW under it) and then
+    // broken by every stage after it: the muzzle chain shipped in belly
+    // cream, which merged with the sclera into one pale plate and read as a
+    // cartoon dog at three stages and every angle. Snout in c; the jaw
+    // under it is the only belly tone on the face.
+    chain([[nx, nf+.22, ny-.02], [nx, nf+.44, ny-.06]], .155, .105, c, em+.04);
+    mb(nx, nf+.38, ny-.155, .125, .115, .055, bel, em*.6);       // the jaw
     mb(nx, nf+.48, ny-.03, .075,.055,.065, dk, .12);
     fangs(nx, nf+.34, ny-.14, .135, .05, c);
-    eyeSlit(nx, nf+.22, ny+.09, .12, .10, [1,.76,.16]);
+    // and the apex tier's eyes are LIT: no sclera, a slot in the skull with
+    // fire showing through - white circles with pupils read as a friendly
+    // dog on a form whose banner says the fire outgrew the dragon. The
+    // CINDERSTAR burns ember-orange; the SUPERNOVA's slots go the
+    // white-gold of its core.
+    if(st >= 3) eyeGlow(nx, nf+.22, ny+.09, .12, .10,
+                        st >= 4 ? [1,.86,.44] : [1,.56,.12]);
+    else eyeSlit(nx, nf+.22, ny+.09, .12, .10, [1,.76,.16]);
     for(const rs of [-1,1]){
       horn(nx+rs*.14, nf+.02, ny+.12, rs*.055,-.075,.075, 3, .082, acc, .40);
       horn(nx+rs*.17, nf+.12, ny-.02, rs*.05,.02,-.02, 2, .054, acc, .32); }
