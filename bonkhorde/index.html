@@ -3542,12 +3542,29 @@ volt(D){
   // LEGS. Big at every age, biggest relative to the body on the chick.
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? gait : -gait;
-    leg(sway + rs*(.17 + st*.035)*gr, bodyF + .04*gr, HIP + hov,
+    const LX = sway + rs*(.17 + st*.035)*gr, LF = bodyF + .04*gr, LY = HIP + hov;
+    const LL = HIP - .05*gr, TH = (.105 + st*.012)*gr;
+    leg(LX, LF, LY,
         // HIP minus a fixed bend, never a FRACTION of HIP: at .86-.04st the
         // gap under the feet grew with the hip it was a fraction of, and the
         // float audit measured THE TEMPEST idling 1.6 world units off the
         // floor. Legs reach the ground; that is what legs are.
-        HIP - .05*gr, p2, rs, (.105 + st*.012)*gr, c, em+.04, dk);
+        LL, p2, rs, TH, c, em+.04, dk);
+    // ---- STORMTYRANT's bolt BRANDS, on the thigh because the thigh IS the
+    // flank at hip height: probed, the body core's face sits at x .41 and
+    // the thigh's at .57, so a mark on the core is a mark inside the leg
+    // (the first cut of this was exactly that, and invisible). The zigzag
+    // rides the upper thigh, leaning with the stride the way the limb it is
+    // seared into does - same knee lerp, same p2.
+    if(st >= 2){
+      const knee = [LX + rs*TH*.42, LF + LL*.34 + p2*LL*.30, LY - LL*.40];
+      const zig = [[.06, -.045],[.18, .045],[.30, -.045]];
+      for(const [d, fj] of zig)
+        mb(LX + (knee[0]-LX)*d + rs*TH*(1.12 - .52*d),
+           LF + (knee[1]-LF)*d + fj*gr,
+           LY + (knee[2]-LY)*d,
+           .030*gr, .055*gr, .050*gr, acc, .50 + Math.sin(t*6 + rs)*.12);
+    }
   }
   // the SICKLE on the second toe, which is the line's own detail and only the
   // middle form is fast enough to be named for it
@@ -3574,6 +3591,24 @@ volt(D){
   for(let i=1;i<tail.length-1;i++)
     mb(tail[i][0], tail[i][1], tail[i][2] + (.11 + st*.02)*gr,
        .032*gr, (.08 + st*.02)*gr, (.09 + st*.02)*gr, acc, .55);
+  // ---- STORMTYRANT. Stage two owned nothing a player could name - it was
+  // STORMCLAW at a bigger zoom (the sickle is st1-only by design, the rods
+  // are the apex's). Two badges now arrive with the crown: a CONDUCTOR FORK
+  // at the tail tip - two bone prongs splayed off the last segment with a
+  // charge guttering in the throat between them - and bolt BRANDS seared
+  // into both haunches. The play camera lives behind the animal, so the tail
+  // tip is the closest geometry to the eye in every fight; that is where the
+  // tyrant's badge goes.
+  if(st >= 2){
+    const tp = tail[tail.length-1];
+    const chg = .40 + Math.sin(t*7.5)*.42 + Math.sin(t*23)*.18;
+    for(const rs of [-1,1])
+      chain([[tp[0], tp[1] + .02*gr, tp[2]],
+             [tp[0] + rs*.14*gr, tp[1] - .21*gr, tp[2] + .15*gr]],
+            .048*gr, .026*gr, [.96,.94,.86], .30);
+    mb(tp[0], tp[1] - .065*gr, tp[2] + .055*gr, .058*gr, .058*gr, .058*gr,
+       acc, .30 + Math.max(0, chg)*.65);
+  }
   // ITS OWN WEATHER, tethered to the spine it comes off. A wide ring at wide
   // radius and generous vertical travel put these motes well clear of the
   // animal's own silhouette in every turntable angle - isolated yellow cubes
