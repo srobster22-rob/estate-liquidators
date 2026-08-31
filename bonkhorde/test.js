@@ -3007,8 +3007,38 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++)
       if (src[names[i]] === src[names[j]]) dupes.push(`${names[i]}=${names[j]}`);
     ok("every sound in the game is its own sound",
-       dupes.length === 0 && names.length >= 18,
+       dupes.length === 0 && names.length >= 21,
        `${names.length} sounds, duplicates: ${dupes.join(",") || "none"}`);
+
+    // The danger-pays arc's own voices, held to the bar this section set the
+    // first time features shipped silent: the pearl, the angry den and the
+    // upwelling each say so, and the fingerprint sweep above already proves
+    // none of them is an old sound wearing a new name.
+    const r2 = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const L = g.lakes()[0];
+      let pearl = 0;
+      if (L) { g.clearGems(); g.place(L.x + L.r + 14, L.z); g.sfxReset();
+               g.step(30 * 60, 1/60); pearl = g.sfx().pearl || 0; }
+      let angry = 0, d = null;
+      for (let seed = 500; seed < 560 && !d; seed++) {
+        g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true);
+        g.drainPicks(true); g.reroll(seed);
+        d = g.dens().find(m => m.angry);
+      }
+      if (d) { g.skipTo(90); g.sfxReset(); g.place(d.x + 6, d.z); g.step(2, 1/60);
+               angry = g.sfx().denWakeAngry || 0; }
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.sfxReset();
+      g.spawnEvent("storm", 20, 0);
+      const upwell = g.sfx().upwell || 0;
+      return { pearl, angry, upwell };
+    });
+    ok("a pearl breaking the surface is audible", r2.pearl > 0, `${r2.pearl} plips`);
+    ok("an angry den sounds angrier than a den", r2.angry > 0, `${r2.angry}`);
+    ok("and the upwelling rumbles when it opens", r2.upwell > 0, `${r2.upwell}`);
   }
 
   console.log("\n=== 22l. THE HUD FITS ON A PHONE ===");

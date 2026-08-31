@@ -247,6 +247,11 @@ const MUTANTS = [
     why:"the landing keeps issuing the stock window, so THERMALS does nothing",
     from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
     to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
+  { id:"pearl-splash-silent", must:"22m",
+    why:"the pearl surfaces without a sound, which is the exact silent-ship " +
+        "failure the sound ledger exists to catch",
+    from:"  SFX.pearl();",
+    to:  "" },
   { id:"pearls-never-surface", must:"23h",
     why:"the pearl tick finds its lake and then drops nothing, so lakes go " +
         "back to being water you walk around",

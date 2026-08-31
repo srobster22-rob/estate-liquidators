@@ -785,6 +785,21 @@ const SFX = {
   // the direction of the interval IS the information.
   affIn: ()=>{ blip(523,.10,"sine",.07,1.4); setTimeout(()=>blip(784,.16,"sine",.08,1.4),75); },
   affOut:()=>{ blip(392,.10,"sine",.06,1.0); setTimeout(()=>blip(262,.18,"sine",.07,1.0),75); },
+  // Three features shipped in one arc and the ledger below exists precisely
+  // because features ship silent when nobody is checking. A pearl BREAKS THE
+  // SURFACE: a soft splash under two quick rising water notes - two notes,
+  // where the gem chime is one, so the ear files it as an arrival rather
+  // than a pickup. An ANGRY den is the ordinary horn's bigger sibling: a
+  // fourth lower, doubled, with more gravel - same family, worse news. The
+  // UPWELLING is the ground itself: a long low swell with rubble in it,
+  // nothing melodic at all, because it is not an animal.
+  pearl: ()=>{ noiseBurst(.07,.06); blip(340,.09,"sine",.09,2.6);
+               setTimeout(()=>blip(760,.12,"sine",.07,1.3),70); },
+  denWakeAngry:()=>{ blip(68,.70,"sawtooth",.20,.50); noiseBurst(.45,.16);
+                     setTimeout(()=>blip(51,.50,"sawtooth",.15,.45),150);
+                     setTimeout(()=>noiseBurst(.20,.12),330); },
+  upwell:()=>{ blip(44,.90,"sine",.22,1.8); noiseBurst(.60,.18);
+               setTimeout(()=>blip(58,.50,"triangle",.10,1.5),200); },
 };
 // Every sound, counted and fingerprinted. Counted so a test can ask whether the
 // thing that just happened made a noise - three features shipped this session
@@ -6099,6 +6114,7 @@ function updatePearls(dt){
   const px2 = L.x + rnd(-2, 2), pz2 = L.z + rnd(-2, 2);
   pushGem(px2, pz2, Math.round(rnd(24, 34)));
   rings.push({ x:px2, z:pz2, y:L.y, r:0, max:2.6, life:.5, mx:.5 });
+  SFX.pearl();
   if(!pearlSeen){ pearlSeen = true; alert2("A PEARL SURFACES", "#8fd8e8"); }
 }
 const evStats = { spawned:0, caches:0, altars:0, hunts:0, storms:0, expired:0 };
@@ -6137,7 +6153,8 @@ function wakeDen(m){
   denStats.woke++;
   alert2((m.angry ? "ANGRY " : "") + K.nm + " - " + K.ds,
          m.angry ? "#ff5c4d" : "#ffb45c");
-  shake = Math.max(shake, .5); SFX.denWake();
+  shake = Math.max(shake, m.angry ? .7 : .5);
+  if(m.angry) SFX.denWakeAngry(); else SFX.denWake();
 }
 function denLost(m){
   if(!m.woke || m.cleared) return;
@@ -6211,7 +6228,7 @@ function spawnEvent(kind, atX, atZ){
   events.push(e); evStats.spawned++;
   alert2(d.nm + " NEARBY", kind==="cache" ? "#f0b429"
                          : kind==="storm" ? "#5ad48a" : "#a98cf5");
-  SFX.gem(6);
+  if(kind === "storm") SFX.upwell(); else SFX.gem(6);
   return e;
 }
 
