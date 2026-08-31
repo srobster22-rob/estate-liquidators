@@ -3811,6 +3811,36 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.err || `${r.alive} awake, ${r.elites} wearing crowns at x${r.mult} toughness`);
   }
 
+  console.log("\n=== 23g. THE UPWELLING RAINS GEMS AND ROCK ===");
+  {
+    // The fourth event kind. Its whole design is one clock driving both
+    // halves, so the check asserts both at once: gems accumulate AND
+    // hazards exist while it lives, and it subsides on schedule. The player
+    // stands well outside the disc so pickup cannot eat the evidence.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      // freezeEvents stops the DIRECTOR, not a manual spawn - without it the
+      // timer rolled a fresh event mid-check and, one run in five, that
+      // fresh event was itself a storm, so "it subsides" read the new one
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      g.place(0, 0);
+      g.clearGems();
+      const gems0 = g.state().gems;
+      g.spawnEvent("storm", 20, 0);
+      g.step(10 * 60, 1/60);
+      const mid = { gems: g.state().gems, haz: g.haz().n };
+      g.step(25 * 60, 1/60);
+      const still = g.events().some(e => e.kind === "storm");
+      return { gems0, mid, still };
+    });
+    ok("the upwelling drops gems and telegraphed rock while it lives",
+       r.mid.gems > r.gems0 + 6 && r.mid.haz > 0,
+       `+${r.mid.gems - r.gems0} gems on the ground and ${r.mid.haz} hazards after 10s`);
+    ok("and it subsides instead of raining forever",
+       !r.still, "gone after its 26 seconds");
+  }
+
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
   {
     // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that

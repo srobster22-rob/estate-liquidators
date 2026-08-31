@@ -247,6 +247,11 @@ const MUTANTS = [
     why:"the landing keeps issuing the stock window, so THERMALS does nothing",
     from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
     to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
+  { id:"upwelling-dry", must:"23g",
+    why:"the upwelling's tick stops dropping anything, so the fourth event " +
+        "is a green ring around ordinary ground",
+    from:"        hazards.push(mkHaz(e.x + Math.cos(a2)*rr, e.z + Math.sin(a2)*rr,\n                           2.1, .75, .30, 14*dmgScale(T)));\n        const ga = R()*TAU, gr2 = Math.sqrt(R())*d.r*.9;\n        pushGem(e.x + Math.cos(ga)*gr2, e.z + Math.sin(ga)*gr2, 4);",
+    to:  "" },
   { id:"angry-den-tame", must:"23f",
     why:"an angry den wakes its pack on the plain den numbers, so the red " +
         "ember advertises a fight that never shows up",

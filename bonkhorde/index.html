@@ -4989,7 +4989,7 @@ function startRun(id){
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
   runDist=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
-  evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
+  evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.storms=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
   camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
@@ -6070,9 +6070,16 @@ const EV = {
   // be a hard moment, not an impossible one: a wider ring, a shorter hold, and
   // a slower bleed so ducking out to dodge a slam costs you rather than ends it.
   altar: { nm:"ALTAR", life:64, r:4.8, c:[.62,.42,.95], hold:4.0 },
+  // The fourth kind, with its own verb. A cache is GO THERE, an altar is
+  // HOLD STILL, a hunt is CHASE; the upwelling is STAND IN DANGER - for
+  // twenty-six seconds one disc of ground pushes both treasure and rock up
+  // at once, a gem every beat and a telegraphed slab of falling stone on the
+  // same clock, so harvesting it is a dodging exercise in a ring. The gems
+  // persist after it subsides - the reward for going is the going.
+  storm: { nm:"UPWELLING", life:26, r:8.5, c:[.44,.88,.52] },
 };
 let nextEvent = 0, noEvents = false, boons = [];
-const evStats = { spawned:0, caches:0, altars:0, hunts:0, expired:0 };
+const evStats = { spawned:0, caches:0, altars:0, hunts:0, storms:0, expired:0 };
 
 // ------------------------------------------------------------------ DENS
 // A landmark you walk past is scenery. A landmark that wakes up is a place.
@@ -6180,7 +6187,8 @@ function spawnEvent(kind, atX, atZ){
     e.ref.hp = e.ref.maxhp = 230 + hpScale(T)*44;   // catchable, not a boss
   }
   events.push(e); evStats.spawned++;
-  alert2(d.nm + " NEARBY", kind==="cache" ? "#f0b429" : "#a98cf5");
+  alert2(d.nm + " NEARBY", kind==="cache" ? "#f0b429"
+                         : kind==="storm" ? "#5ad48a" : "#a98cf5");
   SFX.gem(6);
   return e;
 }
@@ -6192,7 +6200,7 @@ function updateEvents(dt){
     // unvisited. That is wallpaper, not an occasion. ~14 a run, and the ones
     // you skip are a decision you made rather than a stream you ignored.
     nextEvent = rnd(72, 96);
-    spawnEvent(roll < .38 ? "cache" : roll < .72 ? "altar" : "hunt");
+    spawnEvent(roll < .30 ? "cache" : roll < .58 ? "altar" : roll < .82 ? "hunt" : "storm");
   }
   for(let i=events.length-1;i>=0;i--){
     const e = events[i], d = EV[e.kind];
@@ -6211,6 +6219,24 @@ function updateEvents(dt){
       if((e.life -= dt) <= 0){
         e.ref.dead = true; events.splice(i,1); evStats.expired++;
         alert2("IT GOT AWAY", "#5c6470");
+      }
+      continue;
+    }
+    if(e.kind === "storm"){
+      // one clock for both halves, so the treasure and the danger arrive as
+      // the same fact - which is the whole trade the event is
+      e.tick = (e.tick || 0) - dt;
+      if(e.tick <= 0){
+        e.tick = .85;
+        const a2 = R()*TAU, rr = Math.sqrt(R())*d.r;
+        hazards.push(mkHaz(e.x + Math.cos(a2)*rr, e.z + Math.sin(a2)*rr,
+                           2.1, .75, .30, 14*dmgScale(T)));
+        const ga = R()*TAU, gr2 = Math.sqrt(R())*d.r*.9;
+        pushGem(e.x + Math.cos(ga)*gr2, e.z + Math.sin(ga)*gr2, 4);
+      }
+      if((e.life -= dt) <= 0){
+        events.splice(i,1); evStats.storms++;
+        alert2("THE UPWELLING SUBSIDES", "#5c6470");
       }
       continue;
     }
@@ -9023,6 +9049,19 @@ function render(){
         box(e.x, gy + 2.6 + i*1.3, e.z, .22,.60,.22, d.c, .9 - i*.15);
       continue;
     }
+    if(e.kind === "storm"){
+      // the disc, ringed in its own green, and rising motes inside it - the
+      // gems and rock the event actually drops draw themselves
+      const seg = 22;
+      for(let i2=0;i2<seg;i2++){ const th = i2/seg*TAU + T*.5;
+        const x = e.x+Math.sin(th)*d.r, z = e.z+Math.cos(th)*d.r;
+        box(x, groundY(x,z)+.10, z, .26,.06,.26, d.c, .55*fade, th); }
+      for(let i2=0;i2<5;i2++){ const u = ((T*.9 + i2*.23) % 1);
+        const mx = e.x+Math.sin(i2*2.4)*d.r*.5, mz = e.z+Math.cos(i2*2.4)*d.r*.5;
+        box(mx, groundY(mx,mz) + .3 + u*3.6, mz,
+            .15,.15,.15, d.c, .80*(1-u*.5)); }
+      continue;
+    }
     if(e.kind === "cache"){
       const lift = Math.sin(e.bob)*.12;
       box(e.x, gy+.55+lift, e.z, .62,.44,.46, [.42,.30,.16], .10, e.bob*.35);
@@ -9502,7 +9541,8 @@ function render(){
     const mx = w/2 + Math.sin(ang)*mr, my = h/2 - Math.cos(ang)*mr*.72;
     // was a two-way ternary, which quietly drew the gold COLLECTOR in the
     // altar's purple - the marker has to be the same colour as the thing
-    const col = { cache:"#f0b429", altar:"#a98cf5", hunt:"#f5dc4e" }[e.kind];
+    const col = { cache:"#f0b429", altar:"#a98cf5", hunt:"#f5dc4e",
+                  storm:"#5ad48a" }[e.kind];
     g2.globalAlpha = e.life > 6 ? .92 : (Math.floor(e.life*4)%2 ? .92 : .25);
     g2.save(); g2.translate(mx,my); g2.rotate(ang);
     g2.fillStyle = col; g2.beginPath();
