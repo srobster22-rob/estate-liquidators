@@ -3777,6 +3777,40 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `+${r.grass} HP in 20s on THE FERNLANDS -> +${r.spring} in THE HOTSPRINGS`);
   }
 
+  console.log("\n=== 23f. AN ANGRY DEN WAKES ELITE ===");
+  {
+    // About one den in five wakes as an ELITE pack: fewer bodies, the full
+    // elite treatment apiece, double the coin payout. Rolled off the mark's
+    // own seed so it is a property of the world, findable by rerolling.
+    // NOT freezeSpawns - a den will not wake into a world where spawning is
+    // off; that trap is already documented at the section-21 den harness.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true);
+      g.drainPicks(true);
+      let d = null;
+      for(let seed = 500; seed < 560 && !d; seed++){
+        g.reroll(seed);
+        d = g.dens().find(m => m.angry);
+      }
+      if(!d) return { err: "no angry den in 60 seeds" };
+      g.skipTo(90);                                 // past the wake grace
+      g.place(d.x + 6, d.z); g.step(2, 1/60);
+      const woke = g.dens().find(m => m.x === d.x && m.z === d.z);
+      const el = g.elites();
+      return { woke: !!(woke && woke.woke), alive: woke ? woke.alive : 0,
+               elites: el.n, mult: el.mult };
+    });
+    // elites() reports the HP multiplier against species base; an angry pack
+    // carries ELITE.hp (3.2) on top of hpScale(90s) ~1.26, so ~4 - while a
+    // plain den pack sits at 1.25 x 1.26 and an ambient spawn at 90s cannot
+    // be elite at all (ELITE_FROM is 360). Elite crowns before minute six can
+    // only have come from the den.
+    ok("an angry den rolls, wakes, and the pack comes up elite",
+       !r.err && r.woke && r.alive >= 3 && r.elites >= r.alive && r.mult > 2.8,
+       r.err || `${r.alive} awake, ${r.elites} wearing crowns at x${r.mult} toughness`);
+  }
+
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");
   {
     // It shipped with UNLOCK EVERYTHING and WIPE SAVE calling functions that

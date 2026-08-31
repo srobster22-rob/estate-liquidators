@@ -247,6 +247,11 @@ const MUTANTS = [
     why:"the landing keeps issuing the stock window, so THERMALS does nothing",
     from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
     to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
+  { id:"angry-den-tame", must:"23f",
+    why:"an angry den wakes its pack on the plain den numbers, so the red " +
+        "ember advertises a fight that never shows up",
+    from:"    if(m.angry){\n      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;\n      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;\n      e.hp = e.maxhp = e.maxhp * ELITE.hp;\n    }\n    else e.hp = e.maxhp = e.maxhp * 1.25;",
+    to:  "    e.hp = e.maxhp = e.maxhp * 1.25;" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

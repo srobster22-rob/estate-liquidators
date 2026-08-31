@@ -1131,8 +1131,15 @@ function rollWorld(seed){
     if(Math.hypot(x,z) > RIM-14) continue;
     if(waterDepth(x, z) > 0) continue;         // no monuments standing in a lake
     if(marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + k.r + 10)) continue;
-    marks.push({ x, z, k, rot: wr()*TAU, seed: (wr()*1e6)|0,
-                 den: wr() < DEN_CHANCE, woke:false, cleared:false, pack:[],
+    // ANGRY dens: about one den in five wakes as an ELITE pack - fewer
+    // bodies, three times the toughness, crowns you can read from the ember.
+    // Decided off the mark's own seed rather than a fresh wr() roll, so the
+    // world stream stays byte-identical and every pinned arena that existed
+    // before this feature still rolls the same ground.
+    const mRot = wr()*TAU, mSeed = (wr()*1e6)|0, isDen = wr() < DEN_CHANCE;
+    marks.push({ x, z, k, rot: mRot, seed: mSeed,
+                 den: isDen, angry: isDen && mSeed % 100 < 18,
+                 woke:false, cleared:false, pack:[],
                  n: Math.round(wrnd(k.pack[0], k.pack[1])) });
     i++;
   }
@@ -6075,7 +6082,10 @@ const evStats = { spawned:0, caches:0, altars:0, hunts:0, expired:0 };
 // allowed: leave the area and the den goes quiet again and can be taken later.
 function wakeDen(m){
   if(m.woke || m.cleared || !m.den || noSpawn || T < DEN_GRACE) return;
-  const K = m.k, n = m.n || Math.round(rnd(K.pack[0], K.pack[1]));
+  const K = m.k, n0 = m.n || Math.round(rnd(K.pack[0], K.pack[1]));
+  // an angry den sends FEWER of them and every one comes up elite - the
+  // trade reads at a glance because elites wear crowns and half again the size
+  const n = m.angry ? Math.max(3, Math.ceil(n0*.55)) : n0;
   m.woke = true; m.alive = 0; m.pack = [];
   for(let i=0;i<n;i++){
     const a = R()*TAU, r = Math.sqrt(R())*K.r;
@@ -6083,19 +6093,28 @@ function wakeDen(m){
     const e = spawnEnemy(K.den, x, z);
     if(!e) continue;
     e.denRef = m; m.alive++; m.pack.push(e);
-    // A den pack is a den pack, not a wave. Slightly tougher, visibly a group.
-    e.hp = e.maxhp = e.maxhp * 1.25;
+    // A den pack is a den pack, not a wave. Slightly tougher, visibly a
+    // group - and an ANGRY den's pack takes the full elite treatment instead
+    // (the same numbers ELITE applies to an ambient spawn), which replaces
+    // the den's own 1.25 rather than stacking on it.
+    if(m.angry){
+      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;
+      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;
+      e.hp = e.maxhp = e.maxhp * ELITE.hp;
+    }
+    else e.hp = e.maxhp = e.maxhp * 1.25;
   }
   if(!m.alive){ m.woke = false; return; }
   denStats.woke++;
-  alert2(K.nm + " - " + K.ds, "#ffb45c");
+  alert2((m.angry ? "ANGRY " : "") + K.nm + " - " + K.ds,
+         m.angry ? "#ff5c4d" : "#ffb45c");
   shake = Math.max(shake, .5); SFX.denWake();
 }
 function denLost(m){
   if(!m.woke || m.cleared) return;
   if(--m.alive > 0) return;
   m.cleared = true; m.pack = []; denStats.cleared++;
-  coinsRun += 40;
+  coinsRun += m.angry ? 100 : 40;         // the angrier fight pays angrier
   for(let i=0;i<10;i++) pushGem(m.x + rnd(-4,4), m.z + rnd(-4,4), 8);
   rings.push({ x:m.x, z:m.z, y:groundY(m.x,m.z), r:0, max:m.k.r+6, life:.7, mx:.7 });
   // ONE of each boon, ever. The altar could get away with `pick(pool.length ?
@@ -8861,9 +8880,12 @@ function render(){
           box(m.x + Math.cos(a2)*m.k.r, my + .18, m.z + Math.sin(a2)*m.k.r,
               .32, .09, .32, [1,.55,.24], .80); }
       } else {
+        // an angry den's ember burns red, so the trade is readable from as
+        // far away as the ordinary amber is
+        const emb = m.angry ? [1,.34,.16] : [1,.72,.26];
         box(m.x, my + .60 + Math.sin(T*1.6 + m.seed)*.12, m.z,
-            .30, .30, .30, [1,.72,.26], .85);
-        box(m.x, my + .12, m.z, .95, .07, .95, [1,.72,.26], .45);
+            .30, .30, .30, emb, .85);
+        box(m.x, my + .12, m.z, .95, .07, .95, emb, .45);
       }
     }
     const K = m.k.id;
@@ -9520,7 +9542,8 @@ function render(){
              * (evoT > 0 ? .18 : 1);          // yield to the evolution banner
     g2.globalAlpha = a2;
     g2.textAlign = "center";
-    const sub = `${m.n} ${ENEMIES[m.k.den].nm}` +
+    const packN = m.angry ? Math.max(3, Math.ceil(m.n*.55)) : m.n;
+    const sub = (m.angry ? "ANGRY  \u00b7  " : "") + `${packN} ${ENEMIES[m.k.den].nm}` +
                 (m.boon && !boons.includes(m.boon.nm) ? `  \u00b7  ${m.boon.nm}` : "  \u00b7  COINS");
     // a plate, for the same reason the toasts got one: orange-on-sand and
     // cream-on-glacier are both invisible, and a drop shadow is not a fix
@@ -9864,6 +9887,7 @@ window.__g = {
   evolveTo:(i)=>evolveTo(i),
   dens: ()=>marks.filter(m=>m.den).map(m=>({ x:+m.x.toFixed(1), z:+m.z.toFixed(1),
           k:m.k.id, sp:m.k.den, woke:!!m.woke, cleared:!!m.cleared,
+          angry:!!m.angry,
           alive:m.alive||0, n:m.n, boon:m.boon ? m.boon.nm : null })),
   denStats: ()=>Object.assign({}, denStats, { total:marks.filter(m=>m.den).length,
                                               marks:marks.length }),
