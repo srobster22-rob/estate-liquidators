@@ -4179,8 +4179,19 @@ tally(D){
     wing(rs, sway + rs*.17*gr, .10*gr, HIP + .28*gr*perch + wtuck, SPAN*fold, c, acc,
          beat + (rs>0?0:.55));
   // NECK -> SKULL. An S-curve, carried high when perched.
-  const nx = sway + lk*.5, nf = .22*gr + lkf*.5, ny = HIP + (.34 + .22*perch)*gr;
-  const hx = nx + lk, hf = nf + (.20 + st*.05)*gr + lkf, hy = ny + (.20 + .10*perch)*gr;
+  // THE PIGEON-WALK. Measured across the roster (walkmeter: peak shape-change
+  // over a stride, translation removed, normalized by height) this line was
+  // the stiffest walker in the game at 4.6 percent: the legs strode and every
+  // feather above them was furniture. A walking bird THRUSTS ITS HEAD once
+  // per footfall and holds while the body catches up - the one gait every
+  // player has watched a pigeon do. The whole skull assembly - beak, ruff,
+  // crest, cheek spikes, eyes - rides nf/hf, so one term here bobs all of it
+  // together, and it scales with amp so the perched pose keeps its stillness.
+  const peck = Math.sin(ph*2 - .5)*amp;
+  const nx = sway + lk*.5, nf = .22*gr + lkf*.5 + peck*.070*gr,
+        ny = HIP + (.34 + .22*perch)*gr - Math.max(0, peck)*.035*gr;
+  const hx = nx + lk, hf = nf + (.20 + st*.05)*gr + lkf + peck*.085*gr,
+        hy = ny + (.20 + .10*perch)*gr - Math.max(0, peck)*.045*gr;
   chain([[sway, .18*gr, HIP + .24*gr*perch], [nx, nf, ny], [hx, hf - .08*gr, hy]],
         .125*gr, .115*gr, c, em);
   blob(hx, hf, hy, .19*gr, .165*gr, .19*gr, c, em+.04);
@@ -4221,9 +4232,16 @@ tally(D){
   const TN = 5 + Math.min(st,3);   // tail segments cap at the apex count
   const tail = [[sway, -.22*gr, HIP - .02*gr]];
   for(let i=0;i<TN;i++){
-    const lag = drag(.7 + i*.44)*.026*(i+1)*gr + Math.sin(t*.9 - i*.42)*.012*idle*(i+1)*gr;
+    // the idle wander dies exactly when the animal walks (it scales on idle),
+    // which left the vane a dead pole mid-stride - so the stride itself now
+    // wags it: a lateral swish and a counter-flick of the tip on the same
+    // two-beat the head bobs on, both scaled by amp like every other
+    // stride-driven term in the roster
+    const lag = drag(.7 + i*.44)*.026*(i+1)*gr + Math.sin(t*.9 - i*.42)*.012*idle*(i+1)*gr
+              + Math.sin(ph*.9 - i*.5)*.011*amp*(i+1)*gr;
     tail.push([sway + lag, (-.40 - i*.26)*gr,
-               HIP - (.02 + i*(.10 - .02*perch))*gr]);
+               HIP - (.02 + i*(.10 - .02*perch))*gr
+               + Math.sin(ph*2 + 1.0)*.008*amp*(i+1)*gr]);
   }
   // THE TAIL WAS A POLE. Uniform pale radius tapering smoothly to a vane read
   // as a stick with a flag on it - nothing broke the shaft up along its own
