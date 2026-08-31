@@ -2966,11 +2966,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       for (let i = 0; i < 200; i++) { g.step(1, 1/60); g.place(0, 0); }
       const dive = g.sfx().dive || 0;
 
-      // a den waking and a den taken
+      // a den waking and a den taken. An ORDINARY den, deliberately: dens
+      // have two voices now, and about one in five sounds the angry horn
+      // instead - picking dens()[0] blind made this an 18% coin flip.
       g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.drainPicks(true);
       for (const w of ["bat", "zap", "aura"]) g.give(w, 3);
       g.skipTo(90);
-      const d = g.dens()[0];
+      const d = g.dens().find(m => !m.angry) || g.dens()[0];
       g.sfxReset();
       g.place(d.x + 6, d.z); g.step(1, 1/60);
       const woke = g.sfx().denWake || 0;
@@ -3057,6 +3059,27 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a new run starts its den ledger at zero",
        dr.woke1 > 0 && dr.woke2 === 0,
        `run one woke ${dr.woke1}; run two opened at ${dr.woke2}`);
+
+    // The receipt counts a pearl the player actually took - surfaced beside
+    // a lake, walked onto, counted at pickup and per-run like everything
+    // else on the end screen.
+    const pr = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const L = g.lakes()[0];
+      if (!L) return { err: "no lakes rolled" };
+      g.clearGems();
+      g.place(L.x + L.r + 14, L.z);
+      g.step(20 * 60, 1/60);                        // a pearl surfaces
+      g.place(L.x, L.z); g.step(4 * 60, 1/60);      // wade in and take it
+      const taken = g.pearlsTaken();
+      g.start("intern");
+      return { taken, fresh: g.pearlsTaken() };
+    });
+    ok("a pearl taken lands on the run's receipt",
+       !pr.err && pr.taken >= 1 && pr.fresh === 0,
+       pr.err || `${pr.taken} taken; a new run opens at ${pr.fresh}`);
   }
 
   console.log("\n=== 22l. THE HUD FITS ON A PHONE ===");

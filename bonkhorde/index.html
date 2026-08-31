@@ -4833,6 +4833,7 @@ const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
 // resource with a floor, not a second health bar.
 const REBIRTH_CD = 70, REBIRTH_STEP = 22, REBIRTH_HP = .45;
 let runDist = 0;                // metres this run, for the unlock ladder
+let runPearls = 0;              // pearls taken this run, for the receipt
 // HEAD START's levels, waiting their turn. See startRun().
 const START_BANK_GAP = 12;
 let startBank = 0, startBankT = 0;
@@ -5002,7 +5003,7 @@ function startRun(id){
   // gems are on the ground inside pickup range so the first thing that
   // happens is a pickup rather than a wait.
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
-  runDist=0;
+  runDist=0; runPearls=0;
   events=[]; boons=[]; nextEvent=rnd(24,32); pearlT=16; pearlSeen=false;
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.storms=evStats.expired=0;
   // PER-RUN, like everything else on the end screen. denStats was a module
@@ -6119,6 +6120,7 @@ function updatePearls(dt){
   if(!L) return;
   const px2 = L.x + rnd(-2, 2), pz2 = L.z + rnd(-2, 2);
   pushGem(px2, pz2, Math.round(rnd(24, 34)));
+  gems[gems.length-1].pearl = true;
   rings.push({ x:px2, z:pz2, y:L.y, r:0, max:2.6, life:.5, mx:.5 });
   SFX.pearl();
   if(!pearlSeen){ pearlSeen = true; alert2("A PEARL SURFACES", "#8fd8e8"); }
@@ -6680,6 +6682,7 @@ function updateGems(dt){
       g.bob += dt*3; g.y = groundY(g.x,g.z)+.45+Math.sin(g.bob)*.12;
     }
     if(d < 1.1){
+      if(g.pearl) runPearls++;
       gainXP(g.v); gems.splice(i,1);
       gemStreak = Math.min(24, gemStreak+1); gemStreakT = .34;
       SFX.gem(gemStreak);
@@ -7500,9 +7503,14 @@ function finish(why, won){
         &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
         <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>
       <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
-      <tr><td>Explored</td><td>${denStats.cleared
-        ? `${denStats.cleared} den${denStats.cleared>1?"s":""} cleared`
-        : denStats.woke ? `${denStats.woke} woken, none cleared` : "nothing"}${
+      <tr><td>Explored</td><td>${[
+          denStats.cleared ? `${denStats.cleared} den${denStats.cleared>1?"s":""} cleared`
+            : denStats.woke ? `${denStats.woke} woken, none cleared` : "",
+          evStats.caches ? `${evStats.caches} cache${evStats.caches>1?"s":""}` : "",
+          evStats.altars ? `${evStats.altars} altar${evStats.altars>1?"s":""}` : "",
+          evStats.hunts  ? `${evStats.hunts} hunt${evStats.hunts>1?"s":""}` : "",
+          runPearls      ? `${runPearls} pearl${runPearls>1?"s":""}` : "",
+        ].filter(Boolean).join(" \u00b7 ") || "nothing"}${
         boons.length ? ` <span class="dim2">&nbsp;${boons.join(" \u00b7 ")}</span>` : ""}</td></tr>
       ${deepAt ? `<tr><td>The Deep</td><td><span style="color:#ff8a6a">LAYER ${deepAt}</span>${
         won && save.deep === deepAt + 1 ? ` <span class="g">LAYER ${save.deep} OPEN</span>` : ""}</td></tr>` : ""}
@@ -10253,6 +10261,7 @@ window.__g = {
   camAnchor: ()=>camAnchor && camAnchor.slice(),
   // beats per minute the pressure pulse is currently running at
   xpBanked:()=>xpBanked,
+  pearlsTaken:()=>runPearls,
   bpm:     ()=>{ const dens=Math.min(1,enemies.length/220), late=Math.min(1,T/RUN_LEN);
                  return 78 + dens*54 + late*26; },
   // colours the player has to tell apart at a glance, for the contrast check

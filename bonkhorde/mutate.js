@@ -247,6 +247,11 @@ const MUTANTS = [
     why:"the landing keeps issuing the stock window, so THERMALS does nothing",
     from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
     to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
+  { id:"pearl-uncounted", must:"22m",
+    why:"a pearl taken never reaches the run's receipt, so the end screen " +
+        "under-reports the one treasure the lakes grow",
+    from:"      if(g.pearl) runPearls++;",
+    to:  "" },
   { id:"den-ledger-immortal", must:"22m",
     why:"denStats goes back to never resetting, so every end screen after " +
         "the first over-reports what the run explored",
