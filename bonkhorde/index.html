@@ -959,6 +959,12 @@ const MARK_KINDS = [
   { id:"arch",   nm:"THE ARCH",    r:4.5, den:"runner",   pack:[9,14],  ds:"the whole flock goes up at once" },
   { id:"spires", nm:"THE TUSKS",   r:5.0, den:"spitter",  pack:[7,11],  ds:"they spit from the high ground" },
   { id:"midden", nm:"THE OSSUARY", r:6.0, den:"skitter",  pack:[16,24], ds:"the bones are not the problem" },
+  // The sixth kind. Five kinds across ~25 landmarks a map meant every shape
+  // appeared five times; a sixth cuts the repetition by a fifth for the cost
+  // of one draw branch. It keeps a terrapin den - the species already reads
+  // as something that would live under a shell - at a heavier pack than the
+  // crater's clutch, because these ones grew up in there.
+  { id:"shell",  nm:"THE SHELL",   r:6.5, den:"shambler", pack:[6,10],  ds:"something is living under the old one" },
 ];
 const DEN_WAKE = 15;         // metres. close enough to be a decision you made.
 const DEN_CHANCE = .55;      // not every landmark has something in it.
@@ -8894,6 +8900,25 @@ function render(){
           box(x, gy2 + .8 + k*1.35, z, w2, .70, w2, k>3?lt:dk, .04, m.rot);
           x -= Math.cos(m.rot+1.57)*sg*.34*t2; z -= Math.sin(m.rot+1.57)*sg*.34*t2;
         } }
+    } else if(K === "shell"){
+      // An overturned shell the size of a house, half-buried: four shrinking
+      // tiers of rim slabs climbing to a crown plate, and one dark opening
+      // at the rot-facing end. The hole is what says OCCUPIED before the den
+      // ever wakes - the same trick the warren mounds play.
+      const gy2 = groundY(m.x, m.z);
+      // courses WIDER than the arc between them, so each tier reads as one
+      // ring of masonry rather than a circle of separate dice
+      for(let tier=0; tier<4; tier++){
+        const rr = m.k.r*(1 - tier*.24), hh = .8 + tier*.85, n2 = 12 - tier*2;
+        const arc = rr*TAU/n2;
+        for(let i=0;i<n2;i++){ const a = m.rot + i/n2*TAU + tier*.26;
+          const x = m.x+Math.cos(a)*rr, z = m.z+Math.sin(a)*rr;
+          box(x, gy2 + hh, z, arc*.62, .52, 1.15 - tier*.16,
+              tier%2 ? lt : dk, .02, a + Math.PI/2); } }
+      box(m.x, gy2 + 3.85, m.z, 1.35, .44, 1.35, lt, .04, m.rot);
+      box(m.x+Math.cos(m.rot)*m.k.r*.90, gy2 + .8,
+          m.z+Math.sin(m.rot)*m.k.r*.90, 1.30, .85, 1.30,
+          [.08,.07,.05], .01, m.rot);                        // the way in
     } else if(K === "midden"){
       // THE OSSUARY - a bone pile, not a ring: the one landmark shape that had
       // fallen into the generic catch-all below, eleven identical slabs in a
