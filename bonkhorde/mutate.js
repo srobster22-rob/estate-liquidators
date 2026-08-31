@@ -238,6 +238,15 @@ const MUTANTS = [
         "does nothing but change colour",
     from:"P.hp = Math.min(P.maxhp, P.hp + P.regen*dt * (bmod.regen || 1));",
     to:  "P.hp = Math.min(P.maxhp, P.hp + P.regen*dt);" },
+  { id:"mosshide-inert", must:"18",
+    why:"MOSSHIDE stops adding regeneration, so the eighth boon is a card " +
+        "that says a thing and does nothing",
+    from:'{ nm:"MOSSHIDE",    ds:"+1.1/s regeneration",\n    fn:()=>{ P.regen += 1.1; } },',
+    to:  '{ nm:"MOSSHIDE",    ds:"+1.1/s regeneration",\n    fn:()=>{} },' },
+  { id:"thermals-window-ignored", must:"18",
+    why:"the landing keeps issuing the stock window, so THERMALS does nothing",
+    from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
+    to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

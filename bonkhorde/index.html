@@ -4977,7 +4977,7 @@ function startRun(id){
   runDist=0;
   events=[]; boons=[]; nextEvent=rnd(24,32);
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
-  boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, sureFoot:false };
+  boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
   camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   // pickT is how long the live draft has been ignored, and it was the one
@@ -6023,6 +6023,21 @@ const BOONS = [
   // this is the boon for the other seven.
   { nm:"SURE FOOT",   ds:"ignore mud, water, and ice",
     fn:()=>{ boonMul.sureFoot = true; } },
+  // Two more, because seven boons against ~25 dens a run meant the back half
+  // of every exploration paid coins - the table was the thinnest in the game.
+  // MOSSHIDE writes P.regen directly, which is CORRECT here and wrong for
+  // almost any other stat: regen has no recompute rail (applyPassive never
+  // rebuilds it), so a flat add survives every level-up the way DEEP LUNGS'
+  // maxhp does - and a later evolution multiplying it means the moss grows
+  // with the animal, which is what moss does.
+  { nm:"MOSSHIDE",    ds:"+1.1/s regeneration",
+    fn:()=>{ P.regen += 1.1; } },
+  // THERMALS sharpens the game's own core verb instead of a stat: the hop
+  // landing window opens half again wider, so keeping a chain through a
+  // fight stops demanding frame-perfect play. It rides boonMul because the
+  // window is re-issued from the constant at every landing.
+  { nm:"THERMALS",    ds:"the hop landing window stays open half again longer",
+    fn:()=>{ boonMul.hopWin = 1.5; } },
 ];
 const EV = {
   cache: { nm:"CACHE", life:40, r:2.2, c:[1,.78,.20] },
@@ -6685,7 +6700,7 @@ function hopFreeze(){ if(P && P.hopHold === undefined) P.hopHold = P.hop; }
 function hopThaw(){
   if(!P || P.hopHold === undefined) return;
   P.hop = P.hopHold; P.hopHold = undefined;
-  P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE + .8;
+  P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE + .8;
 }
 // THE DRAFT DOES NOT STOP THE GAME ANY MORE. It used to: full-screen overlay,
 // pointer released, camera parked, hop chain frozen, simulation halted. A long
@@ -6795,7 +6810,7 @@ function recalcDmg(){
 // one of these recomputes its stat from scratch the next time you take a
 // passive - a boon assigned directly to P.cd survives exactly until your next
 // level-up and then silently evaporates.
-let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1, sureFoot:false };
+let boonMul = { spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
 // Evolution rides the same rail, for the same reason: P.cd is recomputed from
 // scratch every time you take a passive, so a stage bonus written straight onto
 // P survives until your next level-up and then quietly evaporates.
@@ -7196,7 +7211,7 @@ function step(dt){
     else {
       P.vy -= 30*dt; P.y += P.vy*dt;
       if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false;
-                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;
+                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;
                      // STORMCALL, THE SUPERCELL's apex power: the storm keeps
                      // the beat. Every landing calls down the line's own move,
                      // free - the hop chain the whole game teaches becomes a

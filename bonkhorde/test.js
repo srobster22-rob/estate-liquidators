@@ -1388,6 +1388,33 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Math.abs(durable.bothSpd - durable.bootsSpd * 1.07) < 0.02,
        `${durable.bootsSpd} x1.07 = ${(durable.bootsSpd*1.07).toFixed(2)}, got ${durable.bothSpd}`);
 
+    // The eighth and ninth boons, each measured at its own outlet. MOSSHIDE
+    // is a direct write to the one stat with no recompute rail, so the
+    // assertion is the stat; THERMALS re-issues from the constant at every
+    // landing, so the assertion is a real landing's window - jump, wait for
+    // the ground, read what the landing handed back.
+    const nb = await page.evaluate(() => {
+      const boot = () => { window.__g.wipeSave(); window.__g.start("intern");
+                           window.__g.god(); window.__g.freezeEvents(true);
+                           window.__g.freezeSpawns(true); window.__g.place(0,0); };
+      const out = {};
+      boot(); out.baseRegen = window.__g.mon().regen;
+      window.__g.grantBoon("MOSSHIDE"); out.mossRegen = window.__g.mon().regen;
+      const land = () => { window.__g.jump();
+        for(let i=0;i<200 && !window.__g.isAirborne();i++) window.__g.stepRaw(1/60);
+        for(let i=0;i<400 && window.__g.isAirborne();i++) window.__g.stepRaw(1/60);
+        return window.__g.hop().win; };
+      boot(); out.baseWin = land();
+      boot(); window.__g.grantBoon("THERMALS"); out.thermWin = land();
+      return out;
+    });
+    ok("MOSSHIDE adds 1.1 of regeneration",
+       Math.abs(nb.mossRegen - nb.baseRegen - 1.1) < .01,
+       `${nb.baseRegen}/s -> ${nb.mossRegen}/s`);
+    ok("THERMALS holds the landing window open half again longer",
+       nb.thermWin > nb.baseWin * 1.35 && nb.thermWin < nb.baseWin * 1.65,
+       `a ${nb.baseWin}s window -> ${nb.thermWin}s with THERMALS`);
+
     // THE COLLECTOR: the only thing in the game that walks away from you
     const hunt = await page.evaluate(() => {
       window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
@@ -3468,8 +3495,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const b = g.boons();
       return { n: b.length, uniq: new Set(b).size, dmg0, dmg1: g.state().dps };
     });
+    // <= 10, from <= 8: the table grew to nine with MOSSHIDE and THERMALS.
+    // The cap the check actually guards is n === uniq - no boon twice - and
+    // the ceiling only exists to notice the table growing without this test
+    // hearing about it, which is exactly what just happened.
     ok("a boon can be taken once, however many dens you clear",
-       cap.n === cap.uniq && cap.n <= 8,
+       cap.n === cap.uniq && cap.n <= 10,
        `${cap.n} boons, ${cap.uniq} distinct, after forty awards`);
     ok("so run power cannot compound off them",
        cap.dmg1 / cap.dmg0 < 1.6,
