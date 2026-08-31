@@ -5005,6 +5005,12 @@ function startRun(id){
   runDist=0;
   events=[]; boons=[]; nextEvent=rnd(24,32); pearlT=16; pearlSeen=false;
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.storms=evStats.expired=0;
+  // PER-RUN, like everything else on the end screen. denStats was a module
+  // const that nothing ever reset, so "Explored: N dens cleared" summed every
+  // run since the page loaded - the second run of a session over-reported and
+  // a rule-character sweep caught it claiming 39 dens cleared of the 26 that
+  // exist.
+  denStats.woke = 0; denStats.cleared = 0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
   camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};

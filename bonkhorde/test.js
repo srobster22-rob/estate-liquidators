@@ -3039,6 +3039,24 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a pearl breaking the surface is audible", r2.pearl > 0, `${r2.pearl} plips`);
     ok("an angry den sounds angrier than a den", r2.angry > 0, `${r2.angry}`);
     ok("and the upwelling rumbles when it opens", r2.upwell > 0, `${r2.upwell}`);
+
+    // The end screen's den count is PER-RUN. denStats was a module const that
+    // nothing reset, so "Explored: N dens cleared" summed every run since the
+    // page loaded - a rule-character sweep caught a second run claiming 39
+    // dens cleared of the 26 that exist.
+    const dr = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.drainPicks(true);
+      g.skipTo(90);
+      const d = g.dens()[0];
+      g.place(d.x + 6, d.z); g.step(2, 1/60);
+      const woke1 = g.denStats().woke;
+      g.start("intern");
+      return { woke1, woke2: g.denStats().woke };
+    });
+    ok("a new run starts its den ledger at zero",
+       dr.woke1 > 0 && dr.woke2 === 0,
+       `run one woke ${dr.woke1}; run two opened at ${dr.woke2}`);
   }
 
   console.log("\n=== 22l. THE HUD FITS ON A PHONE ===");

@@ -247,6 +247,11 @@ const MUTANTS = [
     why:"the landing keeps issuing the stock window, so THERMALS does nothing",
     from:"                     P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;",
     to:  "                     P.hopWin = HOP_WIN; P.hopGrace = HOP_GRACE;" },
+  { id:"den-ledger-immortal", must:"22m",
+    why:"denStats goes back to never resetting, so every end screen after " +
+        "the first over-reports what the run explored",
+    from:"  denStats.woke = 0; denStats.cleared = 0;",
+    to:  "" },
   { id:"pearl-splash-silent", must:"22m",
     why:"the pearl surfaces without a sound, which is the exact silent-ship " +
         "failure the sound ledger exists to catch",
