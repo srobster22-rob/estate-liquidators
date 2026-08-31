@@ -7506,9 +7506,9 @@ function openMenu(){
   const b = document.getElementById("menuBody");
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
-    <div class="sub">RAISE A CREATURE &nbsp;·&nbsp; EVOLVE IT TWICE &nbsp;·&nbsp; KILL WHAT COMES AT DAWN</div>
-    <div class="story"><p>Pick one. Keep it alive. It changes twice on the way,
-      and each change teaches it something.</p>
+    <div class="sub">RAISE A CREATURE &nbsp;·&nbsp; GROW IT TO ITS FINAL FORM &nbsp;·&nbsp; KILL WHAT COMES AT DAWN</div>
+    <div class="story"><p>Pick one. Keep it alive. It changes four times on the
+      way, and each change teaches it something.</p>
       <p class="tag">TWENTY MINUTES &nbsp;·&nbsp; THEN TERRAVORE</p></div>
     ${(save.deep|0) > 0 ? `<div class="deep" id="deeprow"><b>THE DEEP</b>${
         Array.from({length: Math.min(DEEP_MAX, save.deep|0) + 1}, (_,i)=>
@@ -7582,8 +7582,10 @@ function openMenu(){
              <s>${c.move.ds}</s></i></div>
            <div class="rw"><b>LV${EVO_AT[2]}</b><i><em>${(c.st[2]||{}).sig}</em>
              <s>${(c.st[2]||{}).sigDs}</s></i></div>
-           ${top.apex ? `<div class="rw apx"><b>LV${EVO_AT[3]}</b><i><em>${top.sig}</em>
-             <s>${top.sigDs}</s></i></div>` : ""}
+           ${(c.st[3]||{}).apex ? `<div class="rw apx"><b>LV${EVO_AT[3]}</b><i><em>${c.st[3].sig}</em>
+             <s>${c.st[3].sigDs}</s></i></div>` : ""}
+           ${(c.st[4]||{}).final ? `<div class="rw apx"><b>LV${EVO_AT[4]}</b><i><em>${c.st[4].nm}</em>
+             <s>${c.st[4].sigDs}</s></i></div>` : ""}
            ${aff ? `<div class="rw"><b>GROUND</b><i>&#9650;&#8201;${aff.nm}
              <s>&#9660;&#8201;${aff.weakNm}</s></i></div>` : ""}
          </div>
