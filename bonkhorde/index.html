@@ -4470,16 +4470,21 @@ surge(D){
     const ff = (-.40 + u*.82) * gr;
     const glow = lit * (.55 + Math.sin(t*7 - u*3.4)*.25*(ch>1?1:.4));
     const y0 = HIP + .16*gr, y1 = HIP + h*1.05;
+    // the apex tiers' spines carry real breadth: at .045 across, the tallest
+    // spine seen from dead front was a striped pole a body-height tall (the
+    // R143 sheet sweep's one surge finding) - a sail has thickness
     mb(sway + Math.sin(t*1.2 - u*2)*.010*gr, ff - h*.06, (y0+y1)/2,
-       .045*gr, (y1-y0)/2, .088*gr,
+       (st >= 3 ? .065 : .045)*gr, (y1-y0)/2, .088*gr,
        [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
        .10 + glow*.85);
     // ---- THE DELUGE. The sail crests white, spine by spine - a standing
     // wave the length of the animal's back. Each cap overlaps its own spine's
-    // top face, so the crest is part of the sail, not weather beside it.
+    // top face, so the crest is part of the sail, not weather beside it -
+    // and it breaks WIDER than the spine it caps, the way foam does, which
+    // is also what stops the head-on read being a mast with a white tip.
     if(st >= 4)
       mb(sway + Math.sin(t*1.2 - u*2)*.010*gr, ff - h*.10, y1 + .040*gr,
-         .050*gr, .048*gr, .096*gr, [.96,.98,1], .40 + glow*.45);
+         .085*gr, .048*gr, .096*gr, [.96,.98,1], .40 + glow*.45);
   }
   // ---- THE HEAD. All snout. The skull is narrow, the jaws are half the animal.
   const nx = sway + lk, nf = chestF + .12*gr, ny = HIP + (.16 + st*.03)*gr;
