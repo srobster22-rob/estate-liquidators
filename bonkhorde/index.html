@@ -4612,8 +4612,19 @@ pyre(D){
          [1,.98,.82], .90); }
   }
   // ---- TAIL STREAMERS. Three of them, and by the top of the line they are
-  // longer than the bird. This is the silhouette.
-  for(let i=0;i<3;i++){
+  // longer than the bird. This is the silhouette - and it ARRIVES at
+  // PYREWING: the chick has a tail the length of a thumb and no streamers,
+  // because a hatchling has not earned a display yet.
+  // ---- THE TAIL FAN, at THE PHOENIX: three golden plates spread over the
+  // streamer roots - the display feathers that make stage two its own bird
+  // instead of PYREWING at a bigger zoom (the sheet audit's finding).
+  if(st >= 2) for(let i=0;i<3;i++){
+    const a = (i-1)*.5;
+    mb(sway + Math.sin(a)*.13*gr, -.26*gr,
+       HIP + (.12 + Math.cos(a)*.16)*gr,
+       .052*gr, .115*gr, .048*gr, i===1 ? acc : [1,.60,.14], .45, a*.6);
+  }
+  if(st) for(let i=0;i<3;i++){
     const off = (i - 1) * .10 * gr;
     const L = (.24 + Math.min(st,3)*.66) * gr * (i === 1 ? 1.22 : 1);
     const pts = [[sway + off, -.18*gr, HIP - .02*gr]];
