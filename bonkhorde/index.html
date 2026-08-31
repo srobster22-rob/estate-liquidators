@@ -2939,7 +2939,7 @@ let pets=[];
 let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
     arcs=[], pops=[], nums=[], spits=[], alerts=[], hazards=[], events=[];
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
-let shake=0, flash=0, camYaw=0, camPitch=.62;
+let shake=0, flash=0, camYaw=0, camPitch=.62, camZoom=1;
 let camEye=[0,0,0];                     // last rendered eye, so a test can see it
 // ======================================================= MONSTER BODY PLANS
 // One mesh recoloured seven ways is one monster with seven paint jobs, and it
@@ -3006,7 +3006,7 @@ plain(D){
     fangs(hx, hf+.28, .50+hb, .10, .032, c);
     eyeSlit(hx, hf+.13, .73+hb, .13, .085, [1,.72,.18]);
     for(const rs of [-1,1])
-      horn(hx+rs*.15, hf-.02, .78+hb + flick*.02*rs, rs*.045,-.035,.075, 4, .062, acc, .30);
+      horn(hx+rs*.15, hf-.02, .78+hb + flick*.02*rs, rs*.045,-.035,.075, 3, .072, acc, .30);
     // A diagonal gait: front-left with back-right.
     for(const rs of [-1,1]) for(const fs of [-1,1]){
       const p2 = (rs*fs > 0) ? gait : -gait;
@@ -3029,7 +3029,7 @@ plain(D){
     mb(sway, -.06, .36, .25,.11,.34, bel, em*.8);
     // Deep ember, same rule the audit set for PYRAETHON: the gold belongs to
     // the horns and the flame. A gold comb over gold wings read as ribs.
-    ridge(-.44, .28, .89+br, 7, .13, [.88,.42,.12], .22);
+    ridge(-.44, .28, .89+br, 5, .16, [.88,.42,.12], .22);
     chain([[sway, .22, .68+br], [lk*.6, .40+lkf*.6, .84+br]], .19, .24, c, em);
     blob(lk, .48+lkf, .92+br, .25,.22,.25, c, em);
     chain([[lk, .58+lkf, .86+br], [lk, .76+lkf, .82+br]], .19, .14, bel, em*.6);
@@ -3039,7 +3039,7 @@ plain(D){
     // the profile eye smeared onto the horn line (audit, two findings)
     eyeSlit(lk, .70+lkf, 1.00+br, .15, .095, [1,.72,.18]);
     for(const rs of [-1,1])
-      horn(lk+rs*.16, .38+lkf, 1.04+br, rs*.055,-.05,.085, 5, .068, acc, .34);
+      horn(lk+rs*.16, .38+lkf, 1.04+br, rs*.055,-.05,.085, 3, .082, acc, .34);
     // Wings on the BACK when grounded, not draped down the flanks: the audit
     // found all eight walk frames with "zero visible legs - reads as a legless
     // hovercraft", because the folded membrane curtained them completely.
@@ -3078,7 +3078,7 @@ plain(D){
     // tail plates merging into "one yellow pile" from the play camera - three
     // different parts wearing the same accent. The wings keep the gold; the
     // ridge runs a hot dark orange that reads as its own material.
-    ridge(-.56, .34, 1.25+hov, 9, .13, [.88,.42,.12], .22);
+    ridge(-.56, .34, 1.25+hov, 5, .17, [.88,.42,.12], .22);
     // THE NECK, arched forward and up
     const neck = [[sway, .18, 1.02+hov]];
     let nx = sway, nf = .22, ny = 1.14+hov;
@@ -3096,8 +3096,8 @@ plain(D){
     fangs(nx, nf+.34, ny-.14, .135, .05, c);
     eyeSlit(nx, nf+.22, ny+.09, .12, .10, [1,.76,.16]);
     for(const rs of [-1,1]){
-      horn(nx+rs*.14, nf+.02, ny+.12, rs*.055,-.075,.075, 6, .066, acc, .40);
-      horn(nx+rs*.17, nf+.12, ny-.02, rs*.05,.02,-.02, 4, .044, acc, .32); }
+      horn(nx+rs*.14, nf+.02, ny+.12, rs*.055,-.075,.075, 3, .082, acc, .40);
+      horn(nx+rs*.17, nf+.12, ny-.02, rs*.05,.02,-.02, 2, .054, acc, .32); }
     for(let i=0;i<3;i++) fl(nx+(i-1)*.07, nf+.24, ny-.24, .55, 2);
     const fold = 1 - idle*.42;
     // THE CINDERSTAR spreads a fifth more wing, and the membrane burns.
@@ -3118,7 +3118,7 @@ plain(D){
            [1,.44,.10], .45*pulse);
       }
       for(const rs of [-1,1])
-        horn(nx+rs*.09, nf-.06, ny+.16, rs*.030, -.045, .085, 4, .050, [1,.62,.16], .70);
+        horn(nx+rs*.09, nf-.06, ny+.16, rs*.030, -.045, .085, 2, .060, [1,.62,.16], .70);
       fl(sway, -.02, 1.30+hov, .8, 3);
     }
     for(const rs of [-1,1]){                              // heavy hind legs
@@ -3323,19 +3323,23 @@ volt(D){
   mb(sway, bodyF + .06*gr, HIP + hov - (.16 + st*.02)*gr,
      (.16+st*.04)*gr, .09*gr, (.24+st*.05)*gr, bel, em+.10);
   ridge(bodyF - .30*gr, chestF + .22*gr, HIP + hov + (.30 + st*.06)*gr,
-        5 + st*2, (.08 + st*.02)*gr, acc, .72);
+        4 + st, (.11 + st*.025)*gr, acc, .72);
   // ---- THE SUPERCELL. The dorsal ridge grows LIGHTNING RODS: four tall thin
   // spires that carry a travelling charge, so the whole back reads as the
   // leading edge of a storm. This is the apex silhouette element - a tyrant
   // with a fence of light down its spine is not a bigger STORMTYRANT.
+  // ONE BOX PER ROD. Each rod was a vertical chain that split into six-plus
+  // stacked slivers fighting each other's faces - the buried scan showed
+  // three consecutive boxes per rod with no volume of their own. A rod is
+  // the one shape a single box already is.
   if(st === 3) for(let i=0;i<4;i++){
     const rf = bodyF - .26*gr + i*(.18*gr);
     const tall = (.72 + (i===1||i===2 ? .16 : 0))*gr;
     const chg = .55 + Math.sin(t*9 - i*1.6)*.45;          // the charge travels
-    chain([[sway, rf, HIP + hov + .30*gr],
-           [sway + Math.sin(t*2+i)*.012*gr, rf - .03*gr, HIP + hov + tall]],
-          .052*gr, .026*gr, [1,.95,.55], .30 + chg*.55, null, true);
-    mb(sway, rf - .03*gr, HIP + hov + tall + .05*gr,
+    const z0 = HIP + hov + .28*gr, z1 = HIP + hov + tall;
+    mb(sway + Math.sin(t*2+i)*.010*gr, rf - .015*gr, (z0+z1)/2,
+       .042*gr, (z1-z0)/2, .042*gr, [1,.95,.55], .30 + chg*.55);
+    mb(sway, rf - .03*gr, z1 + .05*gr,
        .052*gr, .055*gr, .052*gr, [1,1,.82], .95*chg);
   }
   // NECK -> SKULL. An S in the young animal, short and thick in the adult.
@@ -3396,12 +3400,12 @@ volt(D){
   for(const rs of [-1,1]){
     // rooted INSIDE the skull, not on its corner: the skull got narrower and
     // .74 of its half-width put the first segment of the horn out in the air.
-    horn(hx + rs*SK*.58, hf + SK*.08, hy + SK*.30, rs*.035*gr, -.026*gr, .05*gr,
-         3 + st, .038*gr, acc, .70);
+    horn(hx + rs*SK*.58, hf + SK*.08, hy + SK*.30, rs*.045*gr, -.034*gr, .065*gr,
+         3, .046*gr, acc, .70);
     // the apex crown: a second, forward-hooked pair over the brow
     if(st === 3)
-      horn(hx + rs*SK*.40, hf + SK*.30, hy + SK*.56, rs*.030*gr, .052*gr, .062*gr,
-           4, .048*gr, [1,.95,.55], .80);
+      horn(hx + rs*SK*.40, hf + SK*.30, hy + SK*.56, rs*.040*gr, .068*gr, .080*gr,
+           2, .058*gr, [1,.95,.55], .80);
     mb(hx + rs*SK*.86, hf + SK*.40, hy - SK*.10, SK*.22, SK*.34, SK*.46, acc, .30);
   }
   // ARMS. They never grow. On the chick they are almost as long as the legs;
@@ -3516,7 +3520,7 @@ stone(D){
   // camera it read as "an irregular black pit in the middle of the back" - a
   // hole, not a ridge. Three-quarters value with a touch of light catches the
   // top faces and reads as raised armour.
-  ridge(-.46*gr, .12*gr, (.70+heave)*gr, 7, .09*gr,
+  ridge(-.46*gr, .12*gr, (.70+heave)*gr, 5, .11*gr,
         [c[0]*.76, c[1]*.76, c[2]*.72], .12);
   // THE FRILL. A fan of plates behind the skull, scalloped along the rim, and
   // each plate now leans out of the head rather than standing beside it.
@@ -3605,7 +3609,7 @@ stone(D){
   for(const rs of [-1,1])
     horn(fx0 + rs*.15*gr, ff + .30*gr, (.60+heave)*gr,
          rs*.012*gr, (.026 + st*.022)*gr, (.010 + st*.008)*gr,
-         3 + st, (.040 + st*.008 + (rs>0?.003:0))*gr, [.91,.88,.79], .16);
+         3, (.044 + st*.010 + (rs>0?.003:0))*gr, [.91,.88,.79], .16);
   horn(fx0, ff + .52*gr, (.46+heave)*gr, 0, .028*gr, .036*gr, 3, .040*gr,
        [.91,.88,.79], .16);
   // four pillar legs, diagonal gait, and they are columns rather than sticks
@@ -3628,8 +3632,10 @@ stone(D){
   // the one part of an ankylosaur nobody would draw smooth. A dark band and a
   // pair of osteoderms every segment cost eleven boxes and turn a plank into
   // something that was grown.
+  // every OTHER segment: a band per segment made the tail more ring than
+  // tail, and the rings between rings had no volume of their own
   const tEnd = st >= 1 ? .19*gr : .06*gr;
-  for(let i=1;i<tail.length;i++){
+  for(let i=1;i<tail.length;i+=2){
     // sized off what the tail chain actually drew here, PROUD of it - a ring
     // the same width as the tail it rings is a ring inside the tail
     const w = (.155*gr + (tEnd - .155*gr) * (i/(tail.length-1)));
@@ -3747,8 +3753,12 @@ rot(D){
     // Sit it ON the belly line instead: same band, centred where the tube's
     // surface is, so half of it is outside and half is the overlap that keeps
     // it attached.
-    if(i < N-1)
-      mb(lx, lf, ly - GIRTH*k*1.00, GIRTH*k*.74, GIRTH*k*.30, GIRTH*k*.50, bel, em*.9);
+    // EVERY OTHER SEGMENT in the simplification pass, half again as long, so
+    // the underside still bands but the box count halves. A scute per segment
+    // was one of five boxes every segment was carrying, and five rows of
+    // per-segment detail on a coiled body is what "too many blocks" meant.
+    if(i < N-1 && !(i & 1))
+      mb(lx, lf, ly - GIRTH*k*1.00, GIRTH*k*.74, GIRTH*k*.30, GIRTH*k*.78, bel, em*.9);
     // dorsal scales, bigger toward the middle of the animal
     if(i > 0 && i < N-2){
       // A saw, not a dotted line: the scales stand tallest over the thickest
@@ -3758,7 +3768,11 @@ rot(D){
       // and a KEEL under the saw, in the dark tone, so the back has an edge
       // even where the scales are small. A row of magenta pips on a green tube
       // is a dotted line; a dark ridge with magenta teeth on it is a spine.
-      mb(lx, lf, ly + GIRTH*k*.66, GIRTH*k*.68, GIRTH*k*.34, GIRTH*k*.56, dk, .05);
+      // The keel row is GONE in the simplification pass. It was a full dark
+      // box under every tooth, and up close it read as black rubble scattered
+      // along the spine - the single loudest source of "can't tell what is
+      // going on" on this animal. The teeth alone, every other segment and a
+      // shade larger, carry the serrated-ridge read by themselves.
       // THE TEETH HAVE TO CLEAR THE KEEL THEY SIT ON. The keel spans +.10k to
       // +1.22k of the segment radius; the accent used to sit at +.88k with a
       // half-height of .46k*sc, and sc falls to .45 toward both ends of the
@@ -3769,7 +3783,8 @@ rot(D){
       // 0.064. A serration you cannot see is a draw call and a z-fight.
       // Rooted at the keel's shoulder instead, so the tooth always protrudes
       // above it while still overlapping it by a quarter of a radius.
-      mb(lx, lf, ly + GIRTH*k*1.18, .055*gr, GIRTH*k*.54*sc, GIRTH*k*.46*sc, acc, .30);
+      if(!(i & 1))
+        mb(lx, lf, ly + GIRTH*k*.98, .06*gr, GIRTH*k*.66*sc, GIRTH*k*.56*sc, acc, .30);
       // FLANK BLOTCHES. Everything drawn on this animal so far bands the TOP
       // and UNDERSIDE - the belly scutes, the dorsal saw - and left the whole
       // side of the tube, the one surface the play camera actually frames
@@ -3786,9 +3801,14 @@ rot(D){
       // a radius at best and less than that wherever the coil turns it off
       // axis. Straddle the surface at 1.00k - half proud, half buried, and the
       // buried half is what holds it on.
-      for(const rs of [-1,1])
-        mb(lx + perpX*GIRTH*k*1.00*rs, lf + perpF*GIRTH*k*1.00*rs, ly,
-           GIRTH*k*.30, GIRTH*k*.42, GIRTH*k*.34, dk, .05);
+      // ONE diamond every third segment, alternating sides, in the
+      // simplification pass - two per segment was sixty boxes of dark
+      // confetti on a coiled body. Nine well-spaced blotches still say
+      // "patterned flank"; sixty said "broken".
+      if(i % 3 === 0)
+        mb(lx + perpX*GIRTH*k*1.00*((i/3|0)%2 ? 1 : -1),
+           lf + perpF*GIRTH*k*1.00*((i/3|0)%2 ? 1 : -1), ly,
+           GIRTH*k*.34, GIRTH*k*.48, GIRTH*k*.40, dk, .05);
     }
   }
   // ---- THE SKULL. A wedge: wide behind the eyes, narrowing to the snout, and
@@ -3804,12 +3824,14 @@ rot(D){
   // brow ridges over the eyes - the scowl a viper has and a worm does not -
   // and a dark mask down the cheek, which is what separates the skull from the
   // neck behind it on an animal that is one colour from end to end.
-  for(const rs of [-1,1]){
-    mb(hx + rs*HW*.62, hf + .12*gr, hy + HW*.44, HW*.40, HW*.20, HW*.52, dk, .04);
-    // reaches BACK to the neck: the audit found this band "hanging loose off
-    // the head, ending in mid-air" - a mask has to wrap onto something
-    mb(hx + rs*HW*.72, hf - .04*gr, hy - HW*.02, HW*.30, HW*.46, HW*.60, dk, .04);
-  }
+  // The rear cheek band is gone in the simplification pass: up close it was
+  // the biggest black slab on the animal, and with the eye stripe already
+  // grounding the face in profile it was saying the same thing twice, louder.
+  // The brow is GONE. Every size tried - a bar, nubs, outboard nubs - ended
+  // as freestanding black geometry on a light head: at this scale, near-black
+  // boxes dominate whatever they sit on. The socket rim inside eyeGlow already
+  // draws the lid, the crown already gives the skull its character, and a
+  // snake never had eyebrows to begin with.
   // A hatchling's eyes are large FOR ITS HEAD and a big animal's are small for
   // its head - the single cheapest way to make three sizes of one creature read
   // as three ages rather than three scales of the same model.
@@ -3818,10 +3840,12 @@ rot(D){
   // a dark eye-stripe along the skull side, so the emissive eye has a ground
   // to stand on in PROFILE - the audit found the pink crown fan reading as
   // the eye from the side because the real one vanished into the green
-  for(const rs of [-1,1])
-    mb(hx + rs*HW*.86, hf + .10*gr, hy + HW*.22, HW*.16, HW*.26, HW*.50,
-       [.10,.14,.08], .02);
-  eyeGlow(hx, hf + .14*gr, hy + HW*.20, HW*.62, HW*(.70 - st*.10), [1,.72,.16]);
+  // The dark cheek stripe went with it: it existed to ground the eye in
+  // profile back when the eye was small, and the enlarged eye grounds itself.
+  // A quarter larger in the simplification pass: with the brow bar reduced to
+  // nubs the eyes own the front of the face, and at play distance an eye that
+  // is technically present but unreadable is not an eye.
+  eyeGlow(hx, hf + .16*gr, hy + HW*.20, HW*.74, HW*(.80 - st*.09), [1,.72,.16]);
   viperJaw(hx, hf + .22*gr, hy - HW*.22, HW*.68, (.22 + st*.05)*gr, c,
            hiss*(.05 + st*.02)*gr);
   // the forked tongue, out and back every few seconds
@@ -3830,28 +3854,29 @@ rot(D){
        .015*gr, .013*gr, .07*gr*flick, [.90,.30,.44], .35);
   // ---- THE CROWN. Two nubs, three spines, seven: the same place on the same
   // skull at every stage, so the line reads as one animal growing into a title.
-  const CR = 2 + st*2 + (st >= 2 ? 1 : 0);
+  // SIMPLIFICATION PASS: 2/4/5/5 spines instead of 2/4/7/7, two segments
+  // instead of three, each a third thicker - the same crest silhouette from
+  // half the boxes, and a spike you can count beats two you cannot. The cheek
+  // spikes are gone outright: six boxes that read at play distance as orange
+  // debris stuck to the jaw, and the crown says "crowned" on its own.
+  const CR = 2 + st + (st >= 1 ? 1 : 0);
   for(let i=0;i<CR;i++){
     const a = CR > 1 ? (i/(CR-1) - .5) * (1.5 + st*.30) : 0;
-    // SHORT. horn() compounds its step 35% a segment, so five segments of
-    // .099 is a spike a whole unit tall - seven of them fanned across the
-    // skull, and BASILISK's silhouette was a magenta flower with a snake
-    // underneath it. A crown is a crest, not a bouquet.
+    // Taller step, slimmer base: five thick nubs at one height merged into a
+    // pink slab from the front. A crest is countable spikes or it is a hat.
     horn(hx + Math.sin(a)*HW*.80, hf - .10*gr - Math.abs(a)*.03*gr, hy + HW*.52,
-         Math.sin(a)*(.030 + st*.008)*gr, -.022*gr, (.034 + st*.010)*gr,
-         3, (.030 + st*.008 + i*.002)*gr, acc, .40 + st*.18);
+         Math.sin(a)*(.030 + st*.008)*gr, -.022*gr, (.058 + st*.014)*gr,
+         2, (.034 + st*.008 + i*.002)*gr, acc, .40 + st*.18);
   }
-  // cheek spikes, back along the jaw line
-  for(const rs of [-1,1])
-    horn(hx + rs*HW*.80, hf + .08*gr, hy - HW*.10, rs*(.05+st*.01)*gr, -.03*gr, .012*gr,
-         3, (.026 + st*.006)*gr, acc, .30);
   // ---- THE HOOD, at the top of the line only. A cobra's hood is a SHIELD that
   // stands up behind the skull, not a pair of flaps off the side of it.
   // A hood is thin FORE-AFT and wide across - a plate you are looking at. The
   // first pass had it thin across and wide fore-aft, which drew two blades
   // sticking out of the neck like ears.
-  if(st >= 2) for(const rs of [-1,1]) for(let i=0;i<6;i++){
-    const u = i/5;                                  // 0 at the spine, 1 at the rim
+  // Four ribs a side, not six - the hood still reads as a shield, and the
+  // ribs stop overlapping each other at the rim where six of them met.
+  if(st >= 2) for(const rs of [-1,1]) for(let i=0;i<4;i++){
+    const u = i/3;                                  // 0 at the spine, 1 at the rim
     const arc = u * 1.32;                           // sweeps out and over
     const ox = Math.sin(arc) * .62 * gr, oy = (1 - Math.cos(arc)) * .52 * gr;
     chain([[hx + rs*HW*.24, hf - .20*gr, hy + HW*.05],
@@ -3864,7 +3889,7 @@ rot(D){
     // hood's third and fifth rib, a false stare on each side, glowing amber
     // like the real eye below them - so the apex is watched from every angle,
     // which is the whole story of the gorgon. Plus a gold circlet at the brow.
-    if(st === 3 && (i === 2 || i === 4)){
+    if(st === 3 && (i === 1 || i === 3)){
       mb(hx + rs*ox*.72, hf - .335*gr, hy + HW*.05 + oy*.72,
          .058*gr, .058*gr, .030*gr, [.06,.05,.09], .05);
       mb(hx + rs*ox*.72, hf - .345*gr, hy + HW*.05 + oy*.72,
@@ -3923,7 +3948,7 @@ tally(D){
          [sway, .20*gr, HIP + .26*gr*perch]],
         .19*gr, .23*gr, c, em, [1, 1, .86]);
   mb(sway, .12*gr, HIP + .10*gr*perch, .15*gr, .16*gr, .13*gr, bel, em*.85);  // keel
-  ridge(-.22*gr, .18*gr, HIP + .42*gr*perch, 6, .08*gr, acc, .30);
+  ridge(-.22*gr, .18*gr, HIP + .42*gr*perch, 4, .10*gr, acc, .30);
   // THE WINGS ARE THE ARMS. They root at the shoulder, and when it is not
   // flying they fold down the flanks instead of vanishing.
   // Tucked HIGH when grounded. At full droop the folded wing's feather slabs
@@ -3970,14 +3995,18 @@ tally(D){
   eyeBird(hx, hf + .06*gr, hy + .10*gr, .125*gr, .072*gr, [1,.80,.22]);
   // THE CREST. Backswept horns off the skull, and they grow with the line -
   // at the top there are five of them and they are longer than the head.
+  // THREE SEGMENTS A HORN, with the per-stage reach moved into the step: the
+  // crest was (3+st) horns of (4+st) joints - forty-plus boxes of backswept
+  // knuckle at the apex, most with no volume of their own.
   for(let i=0;i<3+st;i++){
     const a = (i - (2+st)/2) * .70;
     horn(hx + Math.sin(a)*.20*gr, hf - .10*gr - Math.abs(a)*.02*gr, hy + .07*gr,
-         Math.sin(a)*.060*gr, -.075*gr, .055*gr, 4 + st, .040*gr, acc, .40 + st*.14);
+         Math.sin(a)*(.10 + st*.055)*gr, -(.13 + st*.078)*gr, (.080 + st*.015)*gr,
+         3, .052*gr, acc, .40 + st*.14);
   }
   for(const rs of [-1,1])                                  // cheek spikes
-    horn(hx + rs*.13*gr, hf + .06*gr, hy - .04*gr, rs*.045*gr, .015*gr, -.02*gr,
-         3, .028*gr, acc, .32);
+    horn(hx + rs*.13*gr, hf + .06*gr, hy - .04*gr, rs*.070*gr, .024*gr, -.03*gr,
+         2, .034*gr, acc, .32);
   // TWO HIND LEGS, and nothing else touches the ground.
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? gait : -gait;
@@ -4058,15 +4087,17 @@ echo(D){
   if(st === 3){
     mb(0, .10*gr, (.40 + coil)*gr, .34*gr, .16*gr, .13*gr, dk, .06);
     mb(0, .22*gr, (.46 + coil)*gr, .28*gr, .13*gr, .10*gr, dk, .06);
-    for(let i=1;i<spine.length-2;i++) for(const rs of [-1,1])
+    for(let i=1;i<spine.length-2;i+=2){
+      const rs = (i>>1)&1 ? 1 : -1;
       mb(spine[i][0] + rs*.11*gr, spine[i][1] - .04*gr, spine[i][2] + .12*gr,
-         .038*gr, .13*gr, .06*gr, acc, .26);
+         .048*gr, .15*gr, .07*gr, acc, .26);
+    }
   }
   // dorsal plates: PLATES. At .11 deep against .055 wide these read as a row
   // of cubes sitting on the tail rather than as a crest standing out of it.
-  for(let i=0;i<spine.length-2;i++)
+  for(let i=0;i<spine.length-2;i+=2)
     mb(spine[i][0], spine[i][1], spine[i][2] + .15*gr,
-       .048*gr, .17*gr, .075*gr, acc, .30);
+       .060*gr, .22*gr, .085*gr, acc, .30);
   for(const rs of [-1,1]) for(const fs of [-1,1])
     leg(rs*.22*gr, (fs*.20 - .10)*gr, (.26 + coil)*gr, .20*gr,
         (rs*fs > 0) ? gait : -gait, rs, .075*gr, c, em, dk);
@@ -4096,7 +4127,7 @@ echo(D){
   // of a hydra. That tuning was set when this line topped out at fewer heads.
   // The pitch clears a skull now, and the rest of the separation goes where
   // this plan always said it should: into depth and height, below.
-  const FAN = Math.max((n - 1) * (HD * 1.9), HD * 3.0);
+  const FAN = Math.max((n - 1) * (HD * 2.4), HD * 3.0);
   for(let i=0;i<n;i++){
     const u  = n > 1 ? i/(n-1) - .5 : 0;             // -0.5 .. +0.5
     // Each neck gets its own clock. A fan that moves as one piece is a rack of
@@ -4115,7 +4146,7 @@ echo(D){
     const bx = u * .30 * gr, bf = (.16 - Math.abs(u)*.10) * gr, by = (.34 + coil)*gr;
     // inner heads ride high and reach far; outer heads sit lower and wider,
     // and the alternation staggers them again so no two share a slice of air
-    const tier = (i % 2 ? -.15 : .11) + (i === (n>>1) ? .07 : 0);
+    const tier = (i % 2 ? -.24 : .15) + (i === (n>>1) ? .10 : 0);
     const hx = u * FAN + sd;
     // the centre head leads and the outer ones sit back - at .20 that was a
     // spread of .13 of a unit across the whole fan, which is a third of a
@@ -4146,13 +4177,12 @@ echo(D){
     grin(hx, hf + HD*.9, hy - HD*.62, HD*.60, HD*.20, 4);
     eyes(hx, hf + HD*.5, hy + HD*.36, HD*.52, HD*.42, [.30,.10,.44]);
     for(const rs of [-1,1])
-      horn(hx + rs*HD*.60, hf - HD*.2, hy + HD*.70, rs*.03*gr, -.025*gr, .05*gr,
-           3, .032*gr, acc, .45);
+      horn(hx + rs*HD*.60, hf - HD*.2, hy + HD*.70, rs*.045*gr, -.038*gr, .075*gr,
+           2, .040*gr, acc, .45);
     // THE HYDRA drags an after-image of every head, which is the line's
     // signature made visible rather than a head nobody can count.
-    if(st >= 2) for(let g=1;g<=2;g++)
-      fx(hx - sd*g*.7, hf - g*.10*gr, hy, (HD*.78 - g*.03*gr),
-         (HD*.72 - g*.03*gr), (HD*.78 - g*.03*gr), acc, .12);
+    if(st >= 2)
+      fx(hx - sd*.7, hf - .10*gr, hy, HD*.75, HD*.69, HD*.75, acc, .12);
   }
 },
 // ------------------------------------------------------------------- SURGE
@@ -4183,21 +4213,24 @@ surge(D){
   // ---- THE SAIL. Spines off the whole spine, tallest over the hips, and they
   // brighten with the meter. Eleven of them, because a sail made of five reads
   // as a stegosaur's plates and a sail made of eleven reads as a sail.
-  const SN = 9 + st*2, SH = (.34 + st*.24) * gr;
+  // ONE BOX PER SPINE. Each spine used to be a chain that split into three
+  // stacked blocks plus an accent nub - four boxes to say "tall thin thing",
+  // and at thirteen spines that is fifty boxes of sail. A single tall box per
+  // spine, wide enough fore-aft to overlap its neighbour, reads as MORE of a
+  // sail because the surface is solid instead of knuckled.
+  const SN = 6 + st, SH = (.34 + st*.24) * gr;
   for(let i=0;i<SN;i++){
     const u = i/(SN-1);
-    const h = SH * Math.sin(.30 + u*2.55);
+    // clamped: the sin envelope drops the end spines below the root line,
+    // and a box whose top is under its own bottom has negative extent
+    const h = Math.max(SH * Math.sin(.30 + u*2.55), .23*gr);
     const ff = (-.40 + u*.82) * gr;
     const glow = lit * (.55 + Math.sin(t*7 - u*3.4)*.25*(ch>1?1:.4));
-    // rooted at the BACK, not at the spine: started .02 above the hip line
-    // the bottom third of every spine was inside the torso, which on thirteen
-    // spines is thirty-odd boxes nobody can see.
-    chain([[sway, ff, HIP + .20*gr],
-           [sway + Math.sin(t*1.2 - u*2)*.012*gr, ff - h*.10, HIP + h]],
-          .062*gr, .050*gr,
-          [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
-          .10 + glow*.85, [1, 1, .34]);
-    mb(sway, ff - h*.12, HIP + h*1.04, .048*gr, .050*gr, .040*gr, acc, .30 + glow*.6);
+    const y0 = HIP + .16*gr, y1 = HIP + h*1.05;
+    mb(sway + Math.sin(t*1.2 - u*2)*.010*gr, ff - h*.06, (y0+y1)/2,
+       .045*gr, (y1-y0)/2, .088*gr,
+       [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
+       .10 + glow*.85);
   }
   // ---- THE HEAD. All snout. The skull is narrow, the jaws are half the animal.
   const nx = sway + lk, nf = chestF + .12*gr, ny = HIP + (.16 + st*.03)*gr;
@@ -4210,8 +4243,8 @@ surge(D){
   eyeRidge(hx, hf - .02*gr, hy + (.085+st*.012)*gr, (.095+st*.012)*gr,
            (.058 + st*.008)*gr, [1,.88,.34]);
   for(const rs of [-1,1])                                   // a low crest ridge
-    horn(hx + rs*.06*gr, hf - .10*gr, hy + .10*gr, rs*.02*gr, -.05*gr, .028*gr,
-         3, .030*gr, acc, .34);
+    horn(hx + rs*.06*gr, hf - .10*gr, hy + .10*gr, rs*.03*gr, -.07*gr, .042*gr,
+         2, .036*gr, acc, .34);
   // ---- ARMS. Real ones, unlike the tyrant's: three fingers and a hooked thumb.
   const armC = [c[0]*.62, c[1]*.62, c[2]*.66];
   for(const rs of [-1,1]){
@@ -4259,15 +4292,15 @@ surge(D){
   // animal is one crest - plus a wake that never switches off. Water follows
   // the flood everywhere it goes.
   if(st === 3){
-    for(let i=1;i<tail.length;i++){
+    for(let i=1;i<tail.length;i+=2){
       const u2 = i/(tail.length-1);
       const h2 = SH * .62 * (1 - u2*.55);
       const glow2 = lit * (.45 + Math.sin(t*7 - u2*4)*.25);
-      chain([[tail[i][0], tail[i][1], tail[i][2] + .06*gr],
-             [tail[i][0], tail[i][1] - h2*.10, tail[i][2] + h2]],
-            .050*gr, .034*gr,
-            [ lerp(c[0], 1, glow2*.85), lerp(c[1], .86, glow2*.6), lerp(c[2], .30, glow2*.5) ],
-            .10 + glow2*.75, [1, 1, .34]);
+      const z0 = tail[i][2] + .03*gr, z1 = tail[i][2] + h2;
+      mb(tail[i][0], tail[i][1] - h2*.06, (z0+z1)/2,
+         .038*gr, (z1-z0)/2, .070*gr,
+         [ lerp(c[0], 1, glow2*.85), lerp(c[1], .86, glow2*.6), lerp(c[2], .30, glow2*.5) ],
+         .10 + glow2*.75);
     }
     // WAKE, NOT DEBRIS. Six rods half a unit long, a fiftieth of a unit thick,
     // in the line's brightest tone, orbiting at HIP height and attached to
@@ -4648,7 +4681,7 @@ function startRun(id){
   events=[]; boons=[]; nextEvent=rnd(24,32);
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.expired=0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, sureFoot:false };
-  camYaw=0; camPitch=.62; usedRevive=false; pendingLevels=0; sudden=false;
+  camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
   // pickT is how long the live draft has been ignored, and it was the one
   // thing the new strip left behind between runs. Carried in above the
@@ -7461,7 +7494,14 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // corners off a stick spends three boxes to change nothing. Only a block
   // that is thick on ALL THREE axes reads as a volume, and only a volume has
   // corners worth removing.
-  const CHAMFER = .13;
+  //
+  // RAISED from .13 to .26 in the simplification pass. At .13 the bar let
+  // through every mid-sized part - jaw blocks, neck segments, thigh masses -
+  // and the roster averaged two hundred boxes a form against a horde that
+  // reads better at thirty. The player asked for the excess blocks gone; the
+  // chamfer is the single biggest multiplier, so the bar moves to where only
+  // the torso-and-skull class of mass pays three boxes for its corners.
+  const CHAMFER = .26;
   // FOUR CHAMFER TABLES, NOT ONE. Nine shrink factors at least three percent
   // apart, so no two boxes in a chamfer share a face plane; four tables keyed
   // on the draw index, so a row of same-size masses does not either.
@@ -7587,8 +7627,13 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // and runs back and DOWN - the trailing edge of a membrane hangs, it does
     // not float level with the bone holding it up - and the ribs are wider than
     // the gap between them, so the result is a sheet and not a fringe.
-    for(let i=1;i<=8;i++){
-      const u = i/8, uu = u*u;
+    // FIVE ribs, forty percent wider each, in the simplification pass. Eight
+    // ribs was twenty-plus boxes a wing and THE HURRICANE flies four wings -
+    // nearly half that animal's five hundred boxes were wing sheet. Five wide
+    // ribs make the same sheet; the rule is the one already written below:
+    // wider than the gap between them.
+    for(let i=1;i<=5;i++){
+      const u = i/5, uu = u*u;
       // sample the arm itself so the sheet always starts on the bone
       const seg = u < .38 ? [sh, el, u/.38]
                 : u < .74 ? [el, wr, (u-.38)/.36]
@@ -7606,16 +7651,18 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // slab. The droop belongs to the ARM the ribs hang from.
       chain([[px, pf, py],
              [px - rs*span*.07, pf - back, Math.max(span*.10, py - span*.05*u)]],
-            span*.085 - u*span*.03, span*.055 - u*span*.02, memb, .05,
+            span*.125 - u*span*.04, span*.080 - u*span*.03, memb, .05,
             [1, .10, 1], true);
     }
     // three trailing fingers off the wrist, which is what gives the back edge
     // of the wing its scallops
-    for(let i=0;i<3;i++){
-      const u = i/2;
+    // two scallop fingers, not three - the middle one lived entirely inside
+    // its neighbours' silhouette
+    for(let i=0;i<2;i++){
+      const u = i;
       chain([wr, [r + rs*span*(.96 - u*.30), f - span*(.44 + u*.50) + flap*span*.10,
                   y + span*(.22 - u*.16) + lift*span*(.62 - u*.26)]],
-            span*.05, span*.028, col, .10, null, true);
+            span*.055, span*.030, col, .10, null, true);
     }
   };
   // A FEATHERED WING. The membrane wing() is a sheet stretched between bones;
@@ -7623,7 +7670,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // arm, each one longer than the last and each one visibly its own object.
   // A phoenix with bat wings would be a wyvern, and this game already has one.
   const plume = (rs, r,f,y, span, col, tip, beat, n)=>{
-    const lift = Math.sin(beat)*.26, N = n || 7;
+    // Five quills by default in the simplification pass, each a third wider -
+    // still countable, still a fan, half the boxes.
+    const lift = Math.sin(beat)*.26, N = n || 5;
     const sh = [r + rs*span*.10, f + span*.06, y];
     const el = [r + rs*span*.40, f - span*.04, y + span*(.26 + lift*.34)];
     const wr = [r + rs*span*.68, f - span*.10, y + span*(.34 + lift*.85)];
@@ -7641,7 +7690,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // read as two painted planks. Slightly over half width leaves air
       // between them, which is the difference between a wing and a board.
       chain([root, [root[0] + rs*len*.55, root[1] + sweep, root[2] - span*.10*u]],
-            span*.085 - u*span*.03, span*.055 - u*span*.03,
+            span*.115 - u*span*.04, span*.075 - u*span*.04,
             i%2 ? col : tip, .18, [.58, .18, 1], true);
     }
   };
@@ -7728,7 +7777,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
         if(Math.abs(d[k])/sc[k] > Math.abs(d[dom])/sc[dom]) dom = k;
       let steps = 1;
       for(let k=0;k<3;k++) if(k !== dom)
-        steps = Math.max(steps, Math.ceil(Math.abs(d[k]) / (rm*sc[k]*1.35)));
+        steps = Math.max(steps, Math.ceil(Math.abs(d[k]) / (rm*sc[k]*1.85)));
       // and a long run gets split anyway, so a tapering part tapers in visible
       // stages instead of coming out as one plank. Three radii, not five: a
       // serpent whose whole body is one box is a plank with a head on it, and
@@ -7742,8 +7791,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // read as a slab as wide as its chest. Split by how much the radius
       // actually changes, so the step down is visible.
       const rA = Math.max(.004, ra + (rb-ra)*ua), rB = Math.max(.004, ra + (rb-ra)*ub);
-      steps = Math.min(6, Math.max(steps,
-                Math.ceil(Math.abs(rA-rB) / (Math.min(rA,rB)*.30))));
+      // .30 -> .55 and the cap 6 -> 3 in the simplification pass: a taper
+      // that stepped down six times over one snout was most of why a coiled
+      // serpent read as rubble. Three visible steps still says "tapers"; the
+      // other three said nothing anyone could see.
+      steps = Math.min(3, Math.max(steps,
+                Math.ceil(Math.abs(rA-rB) / (Math.min(rA,rB)*.55))));
       // AND NEVER MORE BLOCKS THAN THE RUN HAS ROOM FOR. Every block reaches a
       // full radius past each end of its own sub-span, so two blocks whose
       // centres are closer together than a radius are very nearly the same
@@ -7753,7 +7806,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // measured: between a quarter and two thirds of every creature in the
       // game was boxes that contributed no volume of their own.
       steps = Math.max(1, Math.min(steps,
-                Math.ceil(Math.abs(d[dom]) / (Math.max(.004, rm*sc[dom]) * 1.30))));
+                Math.ceil(Math.abs(d[dom]) / (Math.max(.004, rm*sc[dom]) * 1.85))));
       for(let k=0;k<steps;k++){
         const u = (k+.5)/steps, t2 = ua + (ub-ua)*u;
         // a deterministic 0-5% wobble on the radius, keyed to the GLOBAL draw
@@ -7883,7 +7936,14 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // one behind it far enough that the draw-index nudge cannot pull them
       // apart. A pupil that comes off its iris is a black dot floating in
       // front of a face, and a connectivity report caught exactly that.
-      mb(x, f + sz*.30*out, y, sz*1.02*wide, sz*.96*tall, sz*.34,
+      // o.so scales the rim. At full size it is a frame as big as the eye,
+      // and when the simplification pass grew the eyes to read at play
+      // distance, the frames grew with them into a pair of dark goggles that
+      // out-shouted the glow they were framing - instrumented, not guessed:
+      // the two darkest boxes on BASILISK's head were exactly these, at
+      // sz*1.02 by sz*.96. A glowing eye wants a sliver of lid, not goggles.
+      const so = o.so || 1;
+      mb(x, f + sz*.30*out, y, sz*1.02*wide*so, sz*.96*tall*so, sz*.34,
          o.socket || [mDk[0]*.52, mDk[1]*.52, mDk[2]*.58], 0);    // socket rim
       if(o.sclera !== false)
         mb(x, f + sz*1.15*out, y, sz*.80*wide, sz*.78*tall*blk, sz*.52,
@@ -7898,11 +7958,16 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // tenth of sz tall and a highlight parked above it touches nothing.
       mb(x - sz*.18*wide, f + sz*2.10*out, y + sz*.13*blk,
          sz*.13, sz*.19*blk, sz*.22, [1,1,1], 1.0);              // glint
-      // A brow is a RIDGE, not a visor: narrower than the socket, set back,
-      // and a dark warm grey rather than the near-black that drew as a bar.
+      // A brow is a RIDGE, not a visor: narrower than the socket, set back.
+      // o.brow only ever set the THICKNESS - the width was 1.16 of sz no
+      // matter what, so on a big-eyed skull the two brows nearly met and drew
+      // as one grey bar (probed on THE FLOOD: the widest dark box on the head
+      // was the brow at sz*1.16). Narrower, and tinted to the line's own dark
+      // tone instead of flat grey, so it reads as bone over THIS animal's eye.
       if(o.brow)
         mb(x, f + sz*.12*out, y + sz*(.86 + (o.browUp||0)),
-           sz*1.16*wide, sz*(o.brow)*.62, sz*.60, o.browCol || [.22,.19,.19], .04);
+           sz*.90*wide, sz*(o.brow)*.62, sz*.60,
+           o.browCol || [mDk[0]*.95, mDk[1]*.95, mDk[2]*.95], .04);
       if(o.shelf)
         mb(x, f + sz*.10*out, y - sz*(.84 + (o.shelfDn||0)),
            sz*1.06*wide, sz*(o.shelf)*.62, sz*.56, o.browCol || [.24,.20,.16], .04);
@@ -7926,10 +7991,15 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
                            pw:.34, ph:.34, brow:.24, browCol:[.28,.28,.34],
                            socket:[.09,.09,.12], glow:.80 });
   // GLOW - no white at all. A slot in the skull with something lit in it.
+  // The socket override is gone: eyeBase's own default is the creature's dark
+  // tone for exactly the reason its comment gives - near-black at eye scale is
+  // a hole, not a lid - and with the simplification pass enlarging eyes, the
+  // near-black override had grown into a pair of black picture frames that
+  // out-shouted the eyes they framed.
   const eyeGlow = (r,f,y,sp,sz,iris)=>
     eyeBase(r,f,y,sp,sz, { sclera:false, iris: iris || [.78,1,.34],
-                           ir:.92, irY:.42, pw:.30, ph:.20,
-                           pupil:[1,1,.90], socket:[.05,.07,.05], glow:1.0 });
+                           ir:.92, irY:.42, pw:.30, ph:.20, so:.60,
+                           pupil:[1,1,.90], glow:1.0 });
   // DEEP - a whole black eye with a bright rim. Something from deep water.
   const eyeDeep = (r,f,y,sp,sz,iris)=>
     eyeBase(r,f,y,sp,sz, { iris: iris || [.34,.86,1], ir:1.02, irY:1.00,
@@ -7939,14 +8009,25 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const eyeCold = (r,f,y,sp,sz,iris)=>
     eyeBase(r,f,y,sp,sz, { iris: iris || [1,.72,.10], ir:.66, irY:.44,
                            pw:.26, ph:.24, lean:.14, tall:.72, wide:1.10,
-                           brow:.34, browCol:[.10,.10,.11], glow:.90 });
+                           // the near-black brow read as a bar across the
+                           // skull, same as eyeRidge's did - line-dark scowls
+                           // just as hard without going black
+                           brow:.34, glow:.90 });
   // RIDGE - a river hunter. The eye sits HIGH and just behind a bony ridge, so
   // the animal can watch the bank with the rest of its head under water.
   const eyeRidge = (r,f,y,sp,sz,iris)=>
     eyeBase(r,f,y,sp,sz, { iris: iris || [1,.86,.34], ir:.70, irY:.58,
                            pw:.22, ph:.60, out:.85, rise:.10,
-                           brow:.58, browUp:.24, browCol:[.24,.10,.12],
-                           socket:[.16,.07,.09], glow:.80 });
+                           // the .58 near-black brow bars met over the snout
+                           // and drew as one slab - same goggle failure the
+                           // colour probe caught on BASILISK. A ridge is
+                           // narrow, grey, and the socket is a sliver.
+                           // browUp .24 left the narrowed ridge floating a
+                           // hundredth above the socket (connectivity: THE
+                           // FLOOD, 2 loose) - it sits ON the socket now
+                           brow:.42, browUp:.12, so:.60,
+                           socket:[mDk[0]*.80, mDk[1]*.80, mDk[2]*.84],
+                           glow:.80 });
   // SOLAR - no pupil at all, a burning ring. The only face in the game with
   // nothing dark in it.
   const eyeSolar = (r,f,y,sp,sz,iris)=>
@@ -8310,7 +8391,7 @@ function render(){
   // exactly as before and the largest forms give the horde its screen back.
   const bigF = clamp((bodyLen - 6.4) * .42, 0, 2.9),
         bigH = clamp((bodyTop - 4.2) * .40, 0, 1.5);
-  const dist = 8.9 + bigF + spdFrac*2.1,
+  const dist = (8.9 + bigF + spdFrac*2.1) * camZoom,
         hgt  = 4.1 + bigH + camPitch*4.7 + spdFrac*.8;
   const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
@@ -9701,6 +9782,12 @@ window.__g = {
   forceBiome: (id)=>{ if(!BIOME_BY[id]) return false;
     for(const c of cells) c.b = BIOME_BY[id]; return true; },
   biomeIdAt: (x,z)=> biomeAt(x,z).id,
+  // Point the camera without turning the animal - the drag-look decoupling,
+  // scriptable. Every turntable and play-camera audit needs it, and the scratch
+  // harnesses that used to fake it with synthetic drags die with the container.
+  setCam: (yaw, pitch, zoom)=>{ camYaw = yaw;
+    if(pitch !== undefined) camPitch = clamp(pitch, .18, 1.32);
+    if(zoom  !== undefined) camZoom  = clamp(zoom, .5, 4); },
   // scale the ambient term of the last two keyframes, to find how dark the
   // night can get before the palette stops being readable
   setSkyAmbient: (k)=>{ for(const f of SKY.slice(-2)){

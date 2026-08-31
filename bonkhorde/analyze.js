@@ -89,6 +89,11 @@ const MIN = +(process.argv[2] || 0);
     // apart at LOD 2 is still a body plan that comes apart.
     g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
     g.drainPicks(true); g.setShake(0); g.place(0,0); g.aim(0);
+    // DISARMED, same fix the suite's own horde section already carries: THE
+    // OX starts with PULSE, the balance arc widened it, and a live weapon on
+    // the observer means the subject can be dead before it is captured - the
+    // "-1 parts of 0 boxes" rows are exactly that, not broken bodies.
+    g.disarm();
     g.step(20, 1/60);
     // SIX PHASES, and the worst one is the answer. Sway, tail lag and wing flap
     // all move parts relative to each other, so "is it one object" is a question
