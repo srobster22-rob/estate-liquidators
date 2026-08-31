@@ -3132,7 +3132,10 @@ plain(D){
     // tail plates merging into "one yellow pile" from the play camera - three
     // different parts wearing the same accent. The wings keep the gold; the
     // ridge runs a hot dark orange that reads as its own material.
-    ridge(-.56, .34, 1.25+hov, 5, .17, [.88,.42,.12], .22);
+    // the CINDERSTAR's comb catches fire: taller, and it glows - so the apex
+    // reads as a different animal from the back, which is where the camera is
+    ridge(-.56, .34, 1.25+hov, 5, st >= 3 ? .23 : .17,
+          st >= 3 ? [1,.44,.10] : [.88,.42,.12], st >= 3 ? .55 : .22);
     // THE NECK, arched forward and up
     const neck = [[sway, .18, 1.02+hov]];
     let nx = sway, nf = .22, ny = 1.14+hov;
@@ -3192,7 +3195,7 @@ plain(D){
     }
     for(const rs of [-1,1]){                              // heavy hind legs
       const p2 = rs > 0 ? gait : -gait;
-      leg(sway + rs*.25, -.30, .68+hov, .52, p2, rs, .125, c, em, dk);
+      leg(sway + rs*.25, -.30, .68+hov, .64, p2, rs, .125, c, em, dk);
     }
     for(const rs of [-1,1]){                              // small folded forelimbs
       const p2 = rs > 0 ? -gait*.4 : gait*.4;
@@ -3255,7 +3258,9 @@ scrap(D){
   chain([[sway, -.44*gr, (.42+bob)*gr], [sway, -.14*gr, (.50+bob)*gr],
          [sway, .10*gr, (.52+bob)*gr], [sway, .28*gr, (.50+bob)*gr]],
         .26*gr, .33*gr, c, em+.08, [1, .78, 1.05]);
-  mb(sway, -.06*gr, (.24+bob)*gr, .34*gr,.14*gr,.40*gr, bel, em*.9);   // pale underside
+  // the pale underside REACHES THE FLOOR: the hull rode .12-.21 of a unit of
+  // clear air (float audit) - a plesiosaur out of water rests on its belly
+  mb(sway, -.06*gr, (.20+bob)*gr, .34*gr,.19*gr,.40*gr, bel, em*.9);   // pale underside
   // COUNTERSHADED. This line is one flat blue from nose to tail and the camera
   // looks at it from above, so the surface a player actually sees is the one
   // surface with nothing on it. A dark back over a pale belly is what a marine
@@ -3538,13 +3543,20 @@ volt(D){
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? gait : -gait;
     leg(sway + rs*(.17 + st*.035)*gr, bodyF + .04*gr, HIP + hov,
-        HIP*(.86 - st*.04), p2, rs, (.105 + st*.012)*gr, c, em+.04, dk);
+        // HIP minus a fixed bend, never a FRACTION of HIP: at .86-.04st the
+        // gap under the feet grew with the hip it was a fraction of, and the
+        // float audit measured THE TEMPEST idling 1.6 world units off the
+        // floor. Legs reach the ground; that is what legs are.
+        HIP - .05*gr, p2, rs, (.105 + st*.012)*gr, c, em+.04, dk);
   }
   // the SICKLE on the second toe, which is the line's own detail and only the
   // middle form is fast enough to be named for it
+  // rooted at the GROUNDED foot: when the legs stopped floating (the leg-gap
+  // fix) the sickle stayed at the old foot height and the connectivity report
+  // found both claws in the air - it starts at toe level now
   if(st === 1) for(const rs of [-1,1])
-    chain([[sway + rs*.20*gr, bodyF + .30*gr, .16*gr],
-           [sway + rs*.20*gr, bodyF + .40*gr, .30*gr]],
+    chain([[sway + rs*.20*gr, bodyF + .30*gr, .05*gr],
+           [sway + rs*.20*gr, bodyF + .40*gr, .20*gr]],
           .045*gr, .022*gr, [.96,.94,.88], .24);
   // THE TAIL. Short and up on the chick, long and level on the tyrant - but
   // measured against the camera boom rather than by eye, because eight
@@ -4113,6 +4125,13 @@ tally(D){
   chain([[sway, .18*gr, HIP + .24*gr*perch], [nx, nf, ny], [hx, hf - .08*gr, hy]],
         .125*gr, .115*gr, c, em);
   blob(hx, hf, hy, .19*gr, .165*gr, .19*gr, c, em+.04);
+  // ---- THE ROC wears a RUFF: a collar of pale storm-feathers flared behind
+  // the skull, the second evolution's own nameable feature - SKYREND has the
+  // blaze and the thumb-claws, the ROC has the collar, the HURRICANE has the
+  // second wings. No stage is the last one at a bigger zoom.
+  if(st >= 2) for(let k=-1;k<=1;k++)
+    mb(hx + k*.13*gr, hf - .17*gr, hy + (.04 - Math.abs(k)*.05)*gr,
+       .060*gr, .115*gr, .048*gr, [.93,.94,.97], em+.10, k*.38);
   hookJaw(hx, hf + .10*gr, hy - .03*gr, .125*gr, .38*gr, 5, c, screech*.07*gr);
   eyeBird(hx, hf + .06*gr, hy + .10*gr, .125*gr, .072*gr, [1,.80,.22]);
   // THE CREST. Backswept horns off the skull, and they grow with the line -
@@ -4223,15 +4242,20 @@ echo(D){
   }
   // dorsal plates: PLATES. At .11 deep against .055 wide these read as a row
   // of cubes sitting on the tail rather than as a crest standing out of it.
-  for(let i=0;i<spine.length-2;i+=2)
+  // They ARRIVE at TRIHYDRA: a hatchling is a smooth grub with two heads, and
+  // the first evolution armours the back - so the stages differ by something
+  // nameable, not just a third head.
+  if(st) for(let i=0;i<spine.length-2;i+=2)
     mb(spine[i][0], spine[i][1], spine[i][2] + .15*gr,
        .060*gr, .22*gr, .085*gr, acc, .30);
   for(const rs of [-1,1]) for(const fs of [-1,1])
-    leg(rs*.22*gr, (fs*.20 - .10)*gr, (.26 + coil)*gr, .20*gr,
+    leg(rs*.22*gr, (fs*.20 - .10)*gr, (.26 + coil)*gr, (.24 + coil)*gr,
         (rs*fs > 0) ? gait : -gait, rs, .075*gr, c, em, dk);
   // THE NECKS. Each one leaves its own socket, and the sockets are spread
   // across the full width of the shoulders rather than stacked on the midline.
-  const HD = .155*gr;                                // skull half-width
+  // a hatchling's heads are big FOR ITS BODY - the same age-read every
+  // other line's chick already carries
+  const HD = (st ? .155 : .185)*gr;                  // skull half-width
   // HOW FAR APART, AND IN WHICH DIRECTION. Reported as "the hydra's necks are
   // too far apart and aren't natural at all, they are stiff", and both were
   // true: the fan opened three skull-widths per head - so THE HYDRA's outer
@@ -4311,6 +4335,10 @@ echo(D){
     // signature made visible rather than a head nobody can count.
     if(st >= 2)
       fx(hx - sd*.7, hf - .10*gr, hy, HD*.75, HD*.69, HD*.75, acc, .12);
+    // ---- THE MYRIAD is CROWNED, every head: the sixth head is the count,
+    // the six gold circlets are the title.
+    if(st >= 4)
+      mb(hx, hf - HD*.25, hy + HD*1.02, HD*.40, HD*.20, HD*.36, [1,.84,.30], .55);
   }
 },
 // ------------------------------------------------------------------- SURGE
@@ -4346,9 +4374,19 @@ surge(D){
   // and at thirteen spines that is fifty boxes of sail. A single tall box per
   // spine, wide enough fore-aft to overlap its neighbour, reads as MORE of a
   // sail because the surface is solid instead of knuckled.
+  // THE SAIL IS THE EVOLUTION. All three growth stages used to wear the same
+  // full sail at three zooms - the audit's "26% zoom" failure on this line's
+  // own signature. Now the sail is the thing each evolution ADDS: SAILFIN
+  // carries three fin-buds and a promise; RIVERKING raises the rear half,
+  // hips to mid-back; THE SPINE completes it nose-to-hip - which is the
+  // moment the line's name starts being about the animal.
   const SN = 6 + st, SH = (.34 + st*.24) * gr;
-  for(let i=0;i<SN;i++){
+  if(st === 0) for(let i=0;i<3;i++)
+    mb(sway, (-.34 + i*.20)*gr, HIP + .19*gr,
+       .040*gr, .080*gr, .070*gr, acc, .28 + lit*.4);
+  else for(let i=0;i<SN;i++){
     const u = i/(SN-1);
+    if(st === 1 && u > .55) continue;            // rear half only
     // clamped: the sin envelope drops the end spines below the root line,
     // and a box whose top is under its own bottom has negative extent
     const h = Math.max(SH * Math.sin(.30 + u*2.55), .23*gr);
@@ -4371,11 +4409,14 @@ surge(D){
   const hx = nx + lk*.5, hf = nf + (.24 + st*.05)*gr + lkf, hy = ny + .07*gr;
   chain([[sway, chestF - .04*gr, HIP + .06*gr], [nx, nf, ny], [hx, hf - .08*gr, hy]],
         (.14+st*.02)*gr, (.125+st*.02)*gr, c, em+.05);
-  blob(hx, hf, hy, (.135+st*.02)*gr, (.125+st*.018)*gr, (.15+st*.02)*gr, c, em+.06);
-  gharJaw(hx, hf + .08*gr, hy - .03*gr, (.085+st*.012)*gr, (.38+st*.06)*gr,
-          6 + st, c, snap*.05*gr);
+  // A HATCHLING IS MOSTLY HEAD - the chick rule every other line already
+  // follows: the skull a third bigger, the eye half again, the jaw a stub
+  blob(hx, hf, hy, (st ? .135+st*.02 : .175)*gr, (st ? .125+st*.018 : .162)*gr,
+       (st ? .15+st*.02 : .19)*gr, c, em+.06);
+  gharJaw(hx, hf + .08*gr, hy - .03*gr, (.085+st*.012)*gr,
+          (st ? .38+st*.06 : .27)*gr, st ? 6 + st : 4, c, snap*.05*gr);
   eyeRidge(hx, hf - .02*gr, hy + (.085+st*.012)*gr, (.095+st*.012)*gr,
-           (.058 + st*.008)*gr, [1,.88,.34]);
+           (st ? .058 + st*.008 : .078)*gr, [1,.88,.34]);
   for(const rs of [-1,1])                                   // a low crest ridge
     horn(hx + rs*.06*gr, hf - .10*gr, hy + .10*gr, rs*.03*gr, -.07*gr, .042*gr,
          2, .036*gr, acc, .34);
@@ -4397,7 +4438,7 @@ surge(D){
   // ---- LEGS. Shorter than the tyrant's, because this animal wades.
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? gait : -gait;
-    leg(sway + rs*(.17+st*.03)*gr, -.06*gr, HIP, HIP*.80, p2, rs,
+    leg(sway + rs*(.17+st*.03)*gr, -.06*gr, HIP, HIP - .05*gr, p2, rs,
         (.105+st*.012)*gr, c, em+.04, dk);
   }
   // ---- THE TAIL. Long, and it ends in a paddle - the one thing that says this
@@ -4416,11 +4457,14 @@ surge(D){
   // single red mass at any distance; a spinosaur is a striped animal anyway.
   // Drawn a segment at a time, alternating into a darker tone - the same box
   // count, and now you can count the length of the tail from across the arena.
+  // banding arrives at THE SPINE with the full sail - a stripe pattern is a
+  // thing an adult grows into, and it gives the second evolution a second
+  // tell beyond "the sail finished"
   const tBnd = [c[0]*.62, c[1]*.52, c[2]*.60];
   const tR = i => (.155+st*.02)*gr + ((.05*gr) - (.155+st*.02)*gr) * (i/TN);
   for(let i=0;i<tail.length-1;i++)
     chain([tail[i], tail[i+1]], tR(i), tR(i+1),
-          i%2 ? tBnd : c, em+.06, [.86, 1, 1]);
+          (st >= 2 && i%2) ? tBnd : c, em+.06, [.86, 1, 1]);
   // ---- THE FLOOD. The sail no longer stops at the hips: a second run of
   // spines rides the tail all the way to the paddle, so nose-to-tail the whole
   // animal is one crest - plus a wake that never switches off. Water follows
@@ -4540,7 +4584,7 @@ pyre(D){
   for(const rs of [-1,1]){
     const p2 = rs > 0 ? gait : -gait;
     leg(sway + rs*.13*gr, air ? -.14*gr : -.02*gr, HIP,
-        air ? .26*gr : HIP*.90, air ? p2*.3 : p2, rs, .072*gr, c, em+.06, acc);
+        air ? .26*gr : HIP - .03*gr, air ? p2*.3 : p2, rs, .072*gr, c, em+.06, acc);
   }
   // ---- THE ETERNAL. Six streamers, not three - the extra rank rides higher
   // and shorter, so the tail is a peacock of fire - and a HALO: a slow ring of
@@ -8535,8 +8579,26 @@ function render(){
   // the player's own body was the thing hiding the game. The boom lengthens and
   // lifts with the body it is following, both capped, so a hatchling is framed
   // exactly as before and the largest forms give the horde its screen back.
-  const bigF = clamp((bodyLen - 6.4) * .42, 0, 2.9),
-        bigH = clamp((bodyTop - 4.2) * .40, 0, 1.5);
+  // THE CAPS SCALE WITH THE ROSTER, OR THEY ARE NOT CAPS, THEY ARE A CEILING
+  // THE ROSTER OUTGREW. 2.9 and 1.5 were set when the largest form measured
+  // about eleven units; the apex and final tiers measure seventeen long and
+  // ten tall in world units, so at the old caps the eye sat INSIDE the
+  // animal's own bounding box and the player reported exactly that: "we need
+  // to scale the FOV and back up to see gameplay". The slopes are unchanged -
+  // a hatchling's framing is bit-identical - only the ceilings moved, and the
+  // boom now also widens the lens a touch (below) once the body is the reason.
+  // Slopes steepened with the ceilings: at .42 a seventeen-unit body earned
+  // 4.7 of boom - the eye kept pace with the roster's old top and lost the
+  // new one. The eye wants to sit most of a body-length back; .62 and .55
+  // put it there for the final tier while a mid-size form barely notices.
+  // and a TALL body needs DISTANCE, not just eye height: lifting the eye to
+  // a reared serpent's brow keeps it level with the head and still crops the
+  // crown - backing up is what actually fits a ten-unit animal in a 1.1-rad
+  // lens. Verified against a live wave: without this the OUROBOROS's head
+  // left the top of the frame at the default pitch.
+  const bigF = clamp((bodyLen - 6.4) * .62, 0, 9.0)
+             + clamp((bodyTop - 7.0) * .95, 0, 4.0),
+        bigH = clamp((bodyTop - 4.2) * .55, 0, 5.5);
   const dist = (8.9 + bigF + spdFrac*2.1) * camZoom,
         hgt  = 4.1 + bigH + camPitch*4.7 + spdFrac*.8;
   const sk = shake*.6*shakeMul();
@@ -8589,7 +8651,11 @@ function render(){
   // aim where you are going, not where the stick is pointed
   const at  = [ px + Math.sin(camYaw)*2.2 + pvx*.20, py+1.4,
                 pz + Math.cos(camYaw)*2.2 + pvz*.20 ];
-  const proj = M4.persp(1.02 + spdFrac*.085, w/h, .2, 260);
+  // the lens widens with the animal, not just the sprint: up to ~7 degrees
+  // on the largest bodies, zero on a hatchling - distance does most of the
+  // work, FOV buys the margin that keeps the horde in frame beside a big body
+  const proj = M4.persp(1.02 + spdFrac*.085 + clamp((bodyTop - 4.2)*.022, 0, .13),
+                        w/h, .2, 260);
   const view = M4.look(eye, at, [0,1,0]);
   gl.uniformMatrix4fv(U.uProj,false,proj);
   gl.uniformMatrix4fv(U.uView,false,view);
