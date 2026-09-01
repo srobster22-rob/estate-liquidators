@@ -277,6 +277,11 @@ const MUTANTS = [
         "ember advertises a fight that never shows up",
     from:"    if(m.angry){\n      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;\n      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;\n      e.hp = e.maxhp = e.maxhp * ELITE.hp;\n    }\n    else e.hp = e.maxhp = e.maxhp * 1.25;",
     to:  "    e.hp = e.maxhp = e.maxhp * 1.25;" },
+  { id:"shop-button-blind", must:"15",
+    why:"the end screen's SHOP button opens the menu at the top again, the " +
+        "shop somewhere below nine monster cards",
+    from:"    const sh = document.getElementById(\"shop\");\n    if(sh) (sh.previousElementSibling || sh).scrollIntoView({ block:\"start\" });",
+    to:  "" },
   { id:"pause-cheats-ungated", must:"24",
     why:"the pause screen's DEV strip shows for every player again - GODMODE " +
         "one accidental tap away on a phone",

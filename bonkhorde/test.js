@@ -926,6 +926,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `drifted ${carried.toFixed(2)}m after restart`);
     await fire("touchend", 90, 470, 7);
 
+    // SHOP on the end screen must land on the SHOP - on a phone the upgrades
+    // sit below nine monster cards, so "open the menu at the top" is not it
+    const landed = await mp.evaluate(() => {
+      const g = window.__g;
+      g.hitMe(1e12); g.step(2, 1/60);        // die, so the end screen is real
+      document.getElementById("shopBtn").click();
+      const r = document.getElementById("shop").getBoundingClientRect();
+      return { over: g.state().over, top: Math.round(r.top), vh: innerHeight };
+    });
+    ok("the end screen's SHOP button lands on the shop",
+       landed.over === true && landed.top >= 0 && landed.top < landed.vh * .8,
+       `over=${landed.over}, shop top at ${landed.top}px of ${landed.vh}`);
+
     await mp.screenshot({ path: "shot-mobile.png" });
     ok("no errors from touch handling", merr.length === 0, merr.slice(0, 2).join(" | "));
     await ctx.close();
