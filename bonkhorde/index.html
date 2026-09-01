@@ -5395,7 +5395,11 @@ function hurt(e, amount, kx, kz, crit){
   if(e.boss) dmgBoss += eff;
   e.hp -= amount;
   if(e.flash <= -.06) e.flash = .09;   // refractory, or it never turns off
-  if(kx||kz){ e.kx += kx; e.kz += kz; }
+  // MASS. A shove stops a grunt; a boss leans into it and keeps coming, and
+  // an elite splits the difference - without this a maxed kit juggled the
+  // finale, and the fight the whole run builds to never reached you.
+  if(kx||kz){ const mass = e.boss ? .22 : e.elite ? .6 : 1;
+              e.kx += kx*mass; e.kz += kz*mass; }
   // An AoE hit can land on fifty bodies in one tick. Past ~30 on screen the
   // numbers stop being information and start being a wall, so cap and jitter.
   if(nums.length < 30 || crit)

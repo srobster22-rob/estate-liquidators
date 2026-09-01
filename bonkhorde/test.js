@@ -1217,7 +1217,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // because the harness happened to leave the game paused - a test that was
     // right for a reason it did not state, and therefore a coin flip.
     await R.pg.evaluate(() => { window.__g.start("intern"); window.__g.god();
-                                window.__g.step(60 * 20); window.__g.pause(true); });
+                                window.__g.step(60 * 20);
+                                // if a level-up draft opened on the very last
+                                // frame, picking=true makes pause(true) refuse
+                                // (the strip is already a pause) - and this
+                                // check is about SHAKE, not drafts. The fauna
+                                // lean re-rolled the XP timing dice here.
+                                window.__g.drainPicks();
+                                window.__g.pause(true); });
     await R.pg.waitForTimeout(150);
     ok("the world is actually frozen for this comparison",
        await R.pg.evaluate(() => window.__g.isPaused()) === true);
@@ -2867,6 +2874,39 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and cannot be damaged while it is",
        r.hpWhileBuried === r.hp0, `${r.hp0} -> ${r.hpWhileBuried}`);
     ok("and it finishes arriving", r.after === 0, `rise=${r.after}`);
+  }
+
+  console.log("\n=== 22v. THE BOSS ARRIVES THROUGH THE SHOVE ===");
+  {
+    // Enemies take weapon knockback; bosses take .22 of it (elites .6). The
+    // R166 combat film showed why: under a maxed kit the Matriarch was pushed
+    // from 26m out to 33m while dying - the fight the run builds to could
+    // never reach the player. EARTHQUAKE is the shove-heaviest single card
+    // (kb 22 every .85s vs the Matriarch's 2.9m/s walk), so if she can arrive
+    // through THAT, mass is doing its job; without mass she is juggled at
+    // range forever and this stays red.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      g.setShake(0); g.clearEnemies(); g.place(0, 0);
+      g.give("pulse", 6);                  // l=5: the EARTHQUAKE row
+      g.boss(0);
+      const s0 = g.state(), b0 = g.bossAt();
+      const d0 = Math.hypot(b0.x - s0.x, b0.z - s0.z);
+      let dMin = 1e9;
+      for(let i = 0; i < 15 * 60; i++){
+        g.step(1, 1/60);
+        const b = g.bossAt(); if(!b) break;
+        const s = g.state();
+        dMin = Math.min(dMin, Math.hypot(b.x - s.x, b.z - s.z));
+      }
+      return { d0: +d0.toFixed(1), dMin: +dMin.toFixed(1),
+               alive: !!g.bossAt() };
+    });
+    ok("the Matriarch reaches arm's length through EARTHQUAKE",
+       r.alive && r.dMin < 4.5,
+       `closed from ${r.d0}m to ${r.dMin}m in 15s (alive=${r.alive})`);
   }
 
   console.log("\n=== 22p. THERE IS SOMETHING AFTER THE FIRST CLEAR ===");
