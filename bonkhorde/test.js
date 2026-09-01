@@ -4033,6 +4033,26 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        gate.off === "none" && gate.on === "flex", JSON.stringify(gate));
   }
 
+  console.log("\n=== 24a. THE SIM PAYS ITS WAY AT PEAK DENSITY ===");
+  {
+    // Measured under a full bot run: 174 live enemies three minutes into
+    // sudden death cost ~2ms of sim on this runner (renderMs is SwiftShader
+    // noise and transfers to nothing). The bound is 5x that measurement - not
+    // a benchmark, a tripwire for an accidental O(n^2): a missing grid
+    // rebuild, a per-enemy scan of enemies, a hazard loop gone quadratic.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeAll(); g.start("intern"); g.god(); g.freezeSpawns(true);
+      g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.place(0, 0);
+      for (let i = 0; i < 200; i++)
+        g.spawnAt("shambler", Math.cos(i) * 20 + (i % 7), Math.sin(i) * 20 + (i % 5));
+      g.step(60, 1/60);                       // let the field settle
+      return g.perf(60);
+    });
+    ok("200 enemies simulate inside the frame", r.simMs < 10 && r.enemies > 150,
+       `${r.simMs}ms sim for ${r.enemies} enemies (ceiling ${r.simFpsCeiling}fps)`);
+  }
+
   console.log("\n=== 24b. A LEVEL-UP DOES NOT COST YOU THE CHAIN ===");
   {
     // The chain punishes you for taking your hands off the keys, and a draft
