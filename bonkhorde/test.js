@@ -616,6 +616,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   console.log("\n=== 11b. DRAW BUDGET UNDER A LIVE FRAME ===");
   const budget = await page.evaluate(() => {
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+    // neutral ground, pinned: the fauna lean means the START cell's biome now
+    // changes the mix - a bog start sends boxier brutes and fewer raptorlings,
+    // and this check measures LOD cost, not composition
+    window.__g.forceBiome("grass");
     window.__g.skipTo(1140); window.__g.boss(3);
     for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
       window.__g.give(w, 4);
@@ -635,6 +639,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   const hordeOnly = await page.evaluate(async () => {
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
+    window.__g.forceBiome("grass");        // same pin as the boss frame above
     window.__g.skipTo(1140);
     for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
       window.__g.give(w, 4);
@@ -3979,6 +3984,52 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and open ground grows nothing",
        !r.err && r.far === 0,
        r.err || `${r.far} gems appeared 70m from every lake`);
+  }
+
+  console.log("\n=== 23i. THE GROUND CHOOSES ITS ANIMALS ===");
+  {
+    // Biomes used to change the rate and the stats but never WHO arrives -
+    // the WARRENS and the GLACIER sent the same mix. fauna weights lean on
+    // the phase table per biome. Counted from the director's own output:
+    // ~500 standing bodies per ground at a phase where all five kinds exist.
+    // Skitters arrive five at a time in every biome alike, so shares compare
+    // across biomes even though the pack mechanism inflates them everywhere.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      g.skipTo(400);                       // phase t=360: all five kinds live
+      const share = biome => {
+        g.forceBiome(biome);
+        const tally = {};
+        for(let round = 0; round < 2; round++){
+          g.clearEnemies();
+          for(let i = 0; i < 4000 && g.state().enemies < 250; i++) g.step(1, 1/60);
+          const c = g.comp();
+          for(const k in c) tally[k] = (tally[k] || 0) + c[k];
+        }
+        const tot = Object.values(tally).reduce((a, b) => a + b, 0) || 1;
+        const s = {}; for(const k in tally) s[k] = tally[k] / tot;
+        return s;
+      };
+      const ferns = share("grass"), warren = share("warren"), ice = share("ice");
+      return { ferns, warren, ice };
+    });
+    // ODDS, not shares: skitter bodies are ~two-thirds of every field because
+    // packs arrive six at a time, so a share near its ceiling can never clear
+    // a x1.25 bar however hard the biome leans. Odds ratios stay linear.
+    const pct = v => `${Math.round((v || 0) * 100)}%`;
+    const odds = v => (v || 0) / Math.max(1e-9, 1 - (v || 0));
+    ok("the warrens pour raptorlings",
+       odds(r.warren.skitter) > odds(r.ferns.skitter) * 1.35,
+       `skitter ${pct(r.warren.skitter)} (odds ${odds(r.warren.skitter).toFixed(2)}) in the warrens vs ` +
+       `${pct(r.ferns.skitter)} (odds ${odds(r.ferns.skitter).toFixed(2)}) on ferns`);
+    ok("the glacier belongs to the divers",
+       odds(r.ice.runner) > odds(r.ferns.runner) * 1.2,
+       `runner ${pct(r.ice.runner)} on ice vs ${pct(r.ferns.runner)} on ferns`);
+    ok("and heavy things stay off the ice",
+       odds(r.ice.brute) < odds(r.ferns.brute) * 0.75,
+       `brute ${pct(r.ice.brute)} on ice vs ${pct(r.ferns.brute)} on ferns`);
   }
 
   console.log("\n=== 24. THE DEV PANEL IS WIRED TO SOMETHING ===");

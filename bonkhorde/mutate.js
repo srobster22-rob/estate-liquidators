@@ -231,7 +231,7 @@ const MUTANTS = [
   { id:"warren-swarm-ignored", must:"23d",
     why:"THE WARRENS stops speeding up the director, so the region does " +
         "nothing but change colour",
-    from:"nextSpawn = 1/(ph.rate * (biomeAt(P.x, P.z).mod.swarm || 1)",
+    from:"nextSpawn = 1/(ph.rate * (bio.mod.swarm || 1)",
     to:  "nextSpawn = 1/(ph.rate * 1" },
   { id:"spring-regen-ignored", must:"23e",
     why:"THE HOTSPRINGS stops multiplying regeneration, so the tenth region " +
@@ -277,6 +277,11 @@ const MUTANTS = [
         "ember advertises a fight that never shows up",
     from:"    if(m.angry){\n      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;\n      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;\n      e.hp = e.maxhp = e.maxhp * ELITE.hp;\n    }\n    else e.hp = e.maxhp = e.maxhp * 1.25;",
     to:  "    e.hp = e.maxhp = e.maxhp * 1.25;" },
+  { id:"fauna-deaf", must:"23i",
+    why:"the director stops hearing the ground's preferences - the warrens " +
+        "and the glacier send the same mix again",
+    from:"      let tot=0; for(const k of keysM) tot += ph.mix[k] * (fa[k] || 1);\n      let r = R()*tot, chosen = keysM[0];\n      for(const k of keysM){ r -= ph.mix[k] * (fa[k] || 1); if(r<=0){ chosen=k; break; } }",
+    to:  "      let tot=0; for(const k of keysM) tot += ph.mix[k];\n      let r = R()*tot, chosen = keysM[0];\n      for(const k of keysM){ r -= ph.mix[k]; if(r<=0){ chosen=k; break; } }" },
   { id:"wipe-unarmed", must:"24",
     why:"WIPE SAVE goes back to firing on the first click - hours of unlocks " +
         "one stray tap from gone",

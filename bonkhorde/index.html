@@ -872,28 +872,28 @@ const BIOMES = [
     a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mod:{} },
   { id:"ash",   nm:"THE CINDERFLATS", ds:"the ground is still warm  -  +12% damage taken",
     story:"A caldera floor. It has not finished cooling and it is not going to.",
-    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 } },
+    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 }, fauna:{ runner:1.5 } },
   // Murkier and more olive than it started. The original teal-green sat at
   // dE 7.7 from THE LIEN's elite tint under tritanopia - a blue enemy vanishing
   // into a blue-green floor - and the search found this inside the same hue
   // family at 15.2. It still reads as sludge; it just stopped being teal.
   { id:"bog",   nm:"THE TARPITS",   ds:"it holds on to your feet  -  -14% move speed",
     story:"Older animals than you are still standing in it, exactly where they stopped.",
-    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mod:{ spd:0.86 } },
+    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mod:{ spd:0.86 }, fauna:{ brute:1.7, skitter:.6 } },
   { id:"ice",   nm:"THE GLACIER",   ds:"nothing here has any grip  -  you slide",
     story:"It froze mid-flood and kept whatever was swimming in it.",
-    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 } },
+    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 }, fauna:{ runner:1.6, brute:.5 } },
   { id:"sand",  nm:"THE DUSTSEA",   ds:"you can see what you dropped  -  +40% pickup radius",
     story:"The wind took the topsoil an age ago. Nothing hides out here, including you.",
-    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 } },
+    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 }, fauna:{ skitter:1.5 } },
   { id:"bone",  nm:"THE BONEFIELD", ds:"more of them, and more to take  -  +22% XP",
     story:"A migration died here, all at once, a very long time ago.",
-    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 } },
+    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 }, fauna:{ spitter:1.5, skitter:1.3 } },
   // Weathered rather than deep. The original brown was dE 7.1 from APPRAISER's
   // yellow under tritanopia; this clears at 14.2 and is still visibly rust.
   { id:"rust",  nm:"THE SPINEROCK", ds:"something here sharpens what you carry  -  +12% damage",
     story:"Iron in the soil and something enormous fossilised in the ridge.",
-    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 } },
+    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 }, fauna:{ spitter:1.6 } },
   // EIGHTH BIOME, and the first that touches a WEAPON STAT rather than a
   // player stat. Every mod so far has been move speed, damage in or out, pickup
   // radius or XP - all read once at the point of use. Reach is different: it is
@@ -902,7 +902,7 @@ const BIOMES = [
   // dependent factor slots in there rather than needing new plumbing.
   { id:"bramble", nm:"THE THICKET", ds:"everything is closer than it looks  -  -18% weapon reach",
     story:"Waist-high bramble, close-packed and springy. It closes back in before you have finished the swing.",
-    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mod:{ reach:0.82 } },
+    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mod:{ reach:0.82 }, fauna:{ skitter:1.7, runner:.6 } },
   // NINTH BIOME, and the first that touches the DIRECTOR rather than a stat on
   // either side of a hit. Every mod so far changes how hard something hits,
   // how fast it moves or what it drops; this one changes how many of them
@@ -912,7 +912,7 @@ const BIOMES = [
   // going, which is what a region modifier is for.
   { id:"warren", nm:"THE WARRENS", ds:"they keep coming out of the ground  -  +35% spawn rate",
     story:"The soil is more tunnel than soil. Stand anywhere long enough and something answers.",
-    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mod:{ swarm:1.35 } },
+    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mod:{ swarm:1.35 }, fauna:{ skitter:1.8, shambler:1.2 } },
   // TENTH REGION, and the first that touches REGENERATION - the one player
   // stat no ground has ever moved. Every heal in the game trickles through
   // P.regen at exactly one line in step(), so the mod reads there, the same
@@ -922,7 +922,7 @@ const BIOMES = [
   // positional decision, which is the only kind this game deals in.
   { id:"spring", nm:"THE HOTSPRINGS", ds:"the water remembers how you were  -  regeneration x2.5",
     story:"Warm pools stepped in pale stone. Things come here to mend. Other things know that.",
-    a:[.72,.60,.55], b:[.62,.51,.47], amp:0.35, lift:-0.3, mod:{ regen:2.5 } },
+    a:[.72,.60,.55], b:[.62,.51,.47], amp:0.35, lift:-0.3, mod:{ regen:2.5 }, fauna:{ shambler:1.6 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 
@@ -7368,13 +7368,20 @@ function step(dt){
     // THE WARRENS reads the PLAYER's ground, not the spawn point's: the
     // question the region asks is "how dangerous is standing here", and the
     // spawn ring is off-screen where no one can see what it is standing on.
-    nextSpawn = 1/(ph.rate * (biomeAt(P.x, P.z).mod.swarm || 1)
+    const bio = biomeAt(P.x, P.z);
+    nextSpawn = 1/(ph.rate * (bio.mod.swarm || 1)
                            * (sudden ? 1 + Math.min(2.5,(T-RUN_LEN)/40) : 1));
     if(enemies.length < MAXE){
+      // THE GROUND CHOOSES ITS ANIMALS. The phase table says WHEN each kind
+      // exists; the biome leans on WHO shows up - divers over the ice, raptor
+      // packs out of the warrens, big things standing in the tar. Weights
+      // multiply, kinds never appear before their phase, and it is still one
+      // R() draw per spawn, so pinned runs stay pinned.
+      const fa = bio.fauna || {};
       const keysM = Object.keys(ph.mix);
-      let tot=0; for(const k of keysM) tot += ph.mix[k];
+      let tot=0; for(const k of keysM) tot += ph.mix[k] * (fa[k] || 1);
       let r = R()*tot, chosen = keysM[0];
-      for(const k of keysM){ r -= ph.mix[k]; if(r<=0){ chosen=k; break; } }
+      for(const k of keysM){ r -= ph.mix[k] * (fa[k] || 1); if(r<=0){ chosen=k; break; } }
       spawnEnemy(chosen);
       // Skitters arrive as a pack or they are just bad shamblers - but a pack
       // has to COST what it delivers. Spawning eight for one slot made them
