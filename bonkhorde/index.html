@@ -1537,11 +1537,19 @@ const PROPS = (()=>{
       p.push({x:Math.cos(th)*(RIM+1.5), z:Math.sin(th)*(RIM+1.5), t:4,
               s:rnd(1.0,1.4), h:rnd(9,13), c:[.25,.26,.33], r:th});
   }
-  // backdrop, well behind the wall and mostly eaten by fog. Purely silhouette.
+  // backdrop, well behind the wall and mostly eaten by fog. Purely silhouette -
+  // and TAPERED silhouette, because eighty flat-topped uniform rectangles on
+  // the horizon read as an office skyline (the R167 film called it exactly
+  // that), not a ridge of old rock. Fangs now: bimodal heights so the ring
+  // has stubs between the tall ones, a lean per spire, and a touch of colour
+  // jitter so no two repeat.
   for(let a=0;a<80;a++){
     const th=a/80*TAU + rnd(-.02,.02), rr=RIM+rnd(3.5,7.5);
-    p.push({x:Math.cos(th)*rr, z:Math.sin(th)*rr, t:4,
-            s:rnd(1.6,3.0), h:rnd(9,17), c:[.21,.22,.29], r:rnd(0,TAU)});
+    const tall = a % 3 !== 0, j = rnd(-.03,.03);
+    p.push({x:Math.cos(th)*rr, z:Math.sin(th)*rr, t:6,
+            s:rnd(1.4,2.6), h: tall ? rnd(11,19) : rnd(5,9),
+            c:[.21+j,.22+j,.29+j], c2:[.24+j,.25+j,.32+j],
+            lr:rnd(0,TAU), r:rnd(0,TAU)});
   }
   return p;
 })();
@@ -9003,6 +9011,12 @@ function render(){
     else if(p.t===4) box(p.x, y+p.h*.5, p.z, p.s,p.h*.5,p.s, p.c, 0, p.r);
     else if(p.t===5){ box(p.x, y+p.h*.5, p.z, p.s,p.h*.5,.55, p.c, 0, p.r);
                       box(p.x, y+p.h+.16, p.z, p.s,.16,.72, [.20,.21,.27], 0, p.r); }
+    else if(p.t===6){                    // backdrop fang: tapered, leaning rock
+      const lx = Math.cos(p.lr)*p.h*.10, lz = Math.sin(p.lr)*p.h*.10;
+      box(p.x, y+p.h*.26, p.z, p.s, p.h*.28, p.s*.88, p.c, 0, p.r);
+      box(p.x+lx*.5, y+p.h*.62, p.z+lz*.5, p.s*.66, p.h*.24, p.s*.60, p.c2, 0, p.r);
+      box(p.x+lx, y+p.h*.92, p.z+lz, p.s*.34, p.h*.16, p.s*.30, p.c, 0, p.r);
+    }
     else box(p.x, y+p.h*.5, p.z, p.s*.5,p.h*.5,p.s*.32, p.c, 0, p.r);
   }
   // LANDMARKS. Non-colliding on purpose: a horde game whose floor has walls in
