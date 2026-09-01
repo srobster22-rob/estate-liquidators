@@ -9585,10 +9585,14 @@ function render(){
   // reads as random rather than as something you chose to go and get.
   for(const e of events){
     const d = EV[e.kind];
+    const dx = e.x-P.x, dz = e.z-P.z;
+    // standing inside the event, the ring around you IS the marker - the anchor
+    // point projects above a close camera, so without this the "off-screen"
+    // label draws mid-screen for a thing you are literally in
+    if(Math.hypot(dx,dz) < d.r + 4) continue;
     const p = project(e.x, groundY(e.x,e.z)+4.2, e.z);   // [x,y] in pixels, or null
     const onScreen = !!p && p[0] > 40 && p[0] < w-40 && p[1] > 40 && p[1] < h-90;
     if(onScreen) continue;
-    const dx = e.x-P.x, dz = e.z-P.z;
     // screen-space direction, from the camera's yaw rather than world axes
     const rx =  Math.cos(camYaw)*dx - Math.sin(camYaw)*dz;
     const rz =  Math.sin(camYaw)*dx + Math.cos(camYaw)*dz;
