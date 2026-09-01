@@ -2635,10 +2635,16 @@ skysplitter(e, face, W, H, c, glow, lod, y0){
   for(let i=0;i<4;i++)                                                          // crest
     eb(e, face, 0, W*.34 - i*W*.09, y0 + H*1.10 + Math.sin(T*6+i)*H*.02,
        W*.05, H*.13 - i*.012, W*.05, beak, .55, face);
+  // DIHEDRAL, because the fight view is SIDE-ON: it marks a lane and charges
+  // past, and flat wing slabs are edge-on invisible from there - the horizon
+  // read was a brown totem pole. Each segment steps up (H*.10 against half-
+  // heights of H*.065, so tiers OVERLAP - the first cut stepped exactly the
+  // sum of halves and the connectivity check tore the wing into five parts),
+  // so the side shows an ascending wing wedge and the top keeps the spread.
   for(const sg of [-1,1]) for(let k=0;k<4;k++)                                  // swept wings
     etp(e, face, sg*(W*.44 + k*W*.34), -k*W*.22 + flap*W*.06,
-        y0 + H*.66 + flap*H*.05 + k*H*.05, sg*.10, -.06, .02, 2,
-        W*.30 - k*W*.05, H*.045, W*.34 - k*W*.06,
+        y0 + H*.66 + flap*H*.05 + k*H*.10, sg*.10, -.06, .02, 2,
+        W*.30 - k*W*.05, H*.065, W*.34 - k*W*.06,
         k%2 ? lit : c, glow + .06 + k*.04);
   if(lod < 2) return;
   for(const sg of [-1,1])                                                       // stride legs
