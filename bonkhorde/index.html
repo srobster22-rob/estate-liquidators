@@ -6171,7 +6171,8 @@ function wakeDen(m){
   }
   if(!m.alive){ m.woke = false; return; }
   denStats.woke++;
-  alert2((m.angry ? "ANGRY " : "") + K.nm + " - " + K.ds,
+  // "ANGRY THE TUSKS" is not English - the article yields to the adjective
+  alert2((m.angry ? "ANGRY " + K.nm.replace(/^THE /, "") : K.nm) + " - " + K.ds,
          m.angry ? "#ff5c4d" : "#ffb45c");
   shake = Math.max(shake, m.angry ? .7 : .5);
   if(m.angry) SFX.denWakeAngry(); else SFX.denWake();
@@ -10003,6 +10004,7 @@ window.__g = {
                 regen:+P.regen.toFixed(3), armor:+P.armor.toFixed(2),
                 cd:+P.cd.toFixed(4), mag:+P.mag.toFixed(3), spd:+P.spd.toFixed(3) }),
   evolveTo:(i)=>evolveTo(i),
+  alerts:()=>alerts.map(a=>a.text),
   dens: ()=>marks.filter(m=>m.den).map(m=>({ x:+m.x.toFixed(1), z:+m.z.toFixed(1),
           k:m.k.id, sp:m.k.den, woke:!!m.woke, cleared:!!m.cleared,
           angry:!!m.angry,

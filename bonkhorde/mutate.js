@@ -277,6 +277,11 @@ const MUTANTS = [
         "ember advertises a fight that never shows up",
     from:"    if(m.angry){\n      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;\n      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;\n      e.hp = e.maxhp = e.maxhp * ELITE.hp;\n    }\n    else e.hp = e.maxhp = e.maxhp * 1.25;",
     to:  "    e.hp = e.maxhp = e.maxhp * 1.25;" },
+  { id:"angry-article-kept", must:"23f",
+    why:"the angry wake headline goes back to ANGRY THE TUSKS - the copy " +
+        "defect in the run's loudest moment",
+    from:"  alert2((m.angry ? \"ANGRY \" + K.nm.replace(/^THE /, \"\") : K.nm) + \" - \" + K.ds,",
+    to:  "  alert2((m.angry ? \"ANGRY \" : \"\") + K.nm + \" - \" + K.ds," },
   { id:"shop-button-blind", must:"15",
     why:"the end screen's SHOP button opens the menu at the top again, the " +
         "shop somewhere below nine monster cards",

@@ -3885,15 +3885,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       let d = null;
       for(let seed = 500; seed < 560 && !d; seed++){
         g.reroll(seed);
-        d = g.dens().find(m => m.angry);
+        // a THE-named kind (everything but crater), so the headline check
+        // below cannot pass vacuously on "ANGRY CRATER"
+        d = g.dens().find(m => m.angry && m.k !== "crater");
       }
-      if(!d) return { err: "no angry den in 60 seeds" };
+      if(!d) return { err: "no angry non-crater den in 60 seeds" };
       g.skipTo(90);                                 // past the wake grace
       g.place(d.x + 6, d.z); g.step(2, 1/60);
       const woke = g.dens().find(m => m.x === d.x && m.z === d.z);
       const el = g.elites();
       return { woke: !!(woke && woke.woke), alive: woke ? woke.alive : 0,
-               elites: el.n, mult: el.mult };
+               elites: el.n, mult: el.mult,
+               alert: g.alerts().slice(-1)[0] || "" };
     });
     // elites() reports the HP multiplier against species base; an angry pack
     // carries ELITE.hp (3.2) on top of hpScale(90s) ~1.26, so ~4 - while a
@@ -3903,6 +3906,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("an angry den rolls, wakes, and the pack comes up elite",
        !r.err && r.woke && r.alive >= 3 && r.elites >= r.alive && r.mult > 2.8,
        r.err || `${r.alive} awake, ${r.elites} wearing crowns at x${r.mult} toughness`);
+    // "ANGRY THE TUSKS" is not English; the article yields to the adjective
+    ok("and the wake headline reads as English",
+       !r.err && /^ANGRY [A-Z]/.test(r.alert) && !r.alert.startsWith("ANGRY THE "),
+       r.err || JSON.stringify(r.alert));
   }
 
   console.log("\n=== 23g. THE UPWELLING RAINS GEMS AND ROCK ===");
