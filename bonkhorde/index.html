@@ -7938,14 +7938,21 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // shards thrown outward, both driven off the same curve as the swell so the
   // whole moment reads as one event rather than three effects.
   if(evoFx > 0){
+    // THE LIGHT KNOWS THE LINE. One cream pillar for nine lines meant the
+    // tide serpent evolved under a fire-coloured shaft (the R184 film's one
+    // wrinkle). The column and its motes lean halfway toward the line's own
+    // accent now - still light, but THIS creature's light.
+    const acc = (MTYPE[curMon().type] || MTYPE.plain).acc;
+    const pc = [lerp(1,acc[0],.45), lerp(.95,acc[1],.45), lerp(.78,acc[2],.45)];
+    const mc = [lerp(1,acc[0],.55), lerp(.90,acc[1],.55), lerp(.55,acc[2],.55)];
     const gy2 = groundY(P.x, P.z), up = 1 - ef;
     for(let i=0;i<9;i++)
       box(P.x, gy2 + .3 + i*1.5 + up*5, P.z,
-          .30 - i*.02, .95, .30 - i*.02, [1, .95, .78], ef*.95);
+          .30 - i*.02, .95, .30 - i*.02, pc, ef*.95);
     for(let i=0;i<12;i++){
       const a2 = i*(TAU/12) + T*2.2, rr = 1.4 + (1-ef)*7.5;
       box(P.x + Math.cos(a2)*rr, gy2 + .5 + (1-ef)*3.2, P.z + Math.sin(a2)*rr,
-          .22, .22, .22, [1, .90, .55], ef);
+          .22, .22, .22, mc, ef);
     }
   }
   // A menu portrait has a plinth of its own and no horde to be lost in, so it
