@@ -3081,7 +3081,7 @@ if(save.dev) unlockAll();
 // screen too, before any run exists.
 let P = null;
 // Cumulative counters for the test surface: array lengths cannot answer "did
-// a zap fire during that window" because arcs live 160ms. One counter per
+// a zap fire during that window" because arcs live 300ms. One counter per
 // push site the apex tests watch, reset only by startRun.
 let statArcs=0, statRings=0, statZones=0, statShells=0, statBolts=0;
 let pets=[];
@@ -5759,7 +5759,9 @@ function fireZap(w,s){
     d *= s.fall;
     cur = threatTarget(cur.x, cur.z, s.rng*.7, seen);
   }
-  arcs.push({ pts, life:.16, evo:w.evo }); statArcs++;
+  // .30, not .16: at 160ms the weapon eye pass caught the chain in ZERO of
+  // two frames - the verb of the weapon was invisible at its own cadence
+  arcs.push({ pts, life:.30, evo:w.evo }); statArcs++;
   SFX.zap();
 }
 function fireCaltrops(w,s){
@@ -9554,13 +9556,13 @@ function render(){
       box(rx, groundY(rx,rz)+.1, rz, .14,.03,.14, [1,.4,.2], .5*t); }
   }
   for(const a of arcs){
-    const al = a.life/.16;
+    const al = a.life/.30;
     for(let i=0;i<a.pts.length-1;i++){
-      const p0=a.pts[i], p1=a.pts[i+1], n=7;
+      const p0=a.pts[i], p1=a.pts[i+1], n=9;
       for(let k=0;k<n;k++){
         const t=k/n;
         box(lerp(p0[0],p1[0],t)+rnd(-.22,.22), lerp(p0[1],p1[1],t)+rnd(-.22,.22),
-            lerp(p0[2],p1[2],t)+rnd(-.22,.22), .13,.13,.13,
+            lerp(p0[2],p1[2],t)+rnd(-.22,.22), .18,.18,.18,
             a.evo?[.7,.9,1]:[.85,.95,1], al);
       }
     }
