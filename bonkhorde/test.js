@@ -4038,6 +4038,23 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("the pause cheat strip hides until DEV MODE is on",
        gate.off === "none" && gate.on === "flex", JSON.stringify(gate));
+
+    // WIPE SAVE is irreversible, so one click must not do it: the first click
+    // arms the button, the second wipes. dev(true) fills the save so a wipe
+    // is visible as coins going 99999 -> 0.
+    const arm = await page.evaluate(() => {
+      const g = window.__g;
+      g.dev(true);
+      const el = document.getElementById("dvWipe");
+      el.click();
+      const after1 = g.saveState().coins;
+      el.click();
+      const after2 = g.saveState().coins;
+      g.wipeAll();
+      return { after1, after2 };
+    });
+    ok("WIPE SAVE arms on the first click and wipes on the second",
+       arm.after1 >= 99999 && arm.after2 === 0, JSON.stringify(arm));
   }
 
   console.log("\n=== 24a. THE SIM PAYS ITS WAY AT PEAK DENSITY ===");

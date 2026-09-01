@@ -277,6 +277,11 @@ const MUTANTS = [
         "ember advertises a fight that never shows up",
     from:"    if(m.angry){\n      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;\n      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;\n      e.hp = e.maxhp = e.maxhp * ELITE.hp;\n    }\n    else e.hp = e.maxhp = e.maxhp * 1.25;",
     to:  "    e.hp = e.maxhp = e.maxhp * 1.25;" },
+  { id:"wipe-unarmed", must:"24",
+    why:"WIPE SAVE goes back to firing on the first click - hours of unlocks " +
+        "one stray tap from gone",
+    from:"    if(dvW.dataset.armed){ wipeAll(); openMenu(); return; }",
+    to:  "    { wipeAll(); openMenu(); return; }" },
   { id:"angry-article-kept", must:"23f",
     why:"the angry wake headline goes back to ANGRY THE TUSKS - the copy " +
         "defect in the run's loudest moment",

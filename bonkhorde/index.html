@@ -7655,7 +7655,16 @@ function openMenu(){
   const dvA = document.getElementById("dvAll");
   if(dvA) dvA.onclick = ()=>{ unlockAll(); SFX.buy(); openMenu(); };
   const dvW = document.getElementById("dvWipe");
-  if(dvW) dvW.onclick = ()=>{ wipeAll(); openMenu(); };
+  // an irreversible button does not fire on its first click: arm, then act,
+  // and disarm on its own so a stray tap cannot lie in wait for the next one
+  if(dvW) dvW.onclick = ()=>{
+    if(dvW.dataset.armed){ wipeAll(); openMenu(); return; }
+    dvW.dataset.armed = "1"; dvW.textContent = "SURE? CLICK AGAIN";
+    dvW.classList.add("on");
+    setTimeout(()=>{ if(!document.body.contains(dvW)) return;
+                     dvW.dataset.armed = ""; dvW.textContent = "WIPE SAVE";
+                     dvW.classList.remove("on"); }, 2600);
+  };
   const sh = document.getElementById("shop");
   for(const u of SHOP){
     if(u.lock && !save.unlocked[u.lock]) continue;      // not earned yet
