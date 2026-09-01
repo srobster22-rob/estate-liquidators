@@ -2520,6 +2520,17 @@ matriarch(e, face, W, H, c, glow, lod, y0){
   // forward is inside all of it. A boss you cannot make eye contact with is the
   // one animal in the game a player stares at for a whole minute.
   eey(e, face, 0, W*.80, y0 + H*.50, W*.44, W*.10, [1,.82,.26], .80);
+  // THE FRONT IS THE FIGHT. She walks at you, so head-on is the view - and
+  // head-on the side eyes vanish behind the skull, the jaw merges into the
+  // chest, and the turntable read her as a headless arch. Two forward eyes
+  // proud of the skull's front face, and a row of teeth hanging from the jaw,
+  // so the view the player actually gets has a face in it.
+  for(const sg of [-1,1])
+    eb(e, face, sg*W*.17, W*1.00, y0 + H*.45, W*.065, W*.055, W*.05,
+       [1,.84,.30], .85);
+  for(let i=0;i<4;i++)
+    eb(e, face, (i-1.5)*W*.075, W*1.06, y0 + H*.195, W*.04, H*.05, W*.035,
+       [.94,.90,.82], .30);
   if(lod < 1) return;
   for(const sg of [-1,1])                                                       // brow horns
     etp(e, face, sg*W*.30, W*.72, y0 + H*.56, sg*.03,.02,.06, 4, W*.09,H*.05,W*.09,
@@ -2576,6 +2587,22 @@ thornback(e, face, W, H, c, glow, lod, y0){
   // Same fault, same fix: the blunt head is W*.36 to each side and the eyes sat
   // at W*.20, wholly inside it.
   eey(e, face, 0, W*.76, y0 + H*.55, W*.36, W*.085, [.50,1,.90], .75);
+  // THE FRONT IS THE FIGHT, and this one's whole identity - the thorn wall -
+  // faces backwards. Head-on the turntable read a featureless slab: no eyes
+  // (side-mounted slivers), no mouth, not one spine in silhouette. Forward
+  // glints, a dark mouth slit, and a rim of thorns hooked over the shell's
+  // leading edge so the crown shows in the view the player actually fights.
+  for(const sg of [-1,1])
+    eb(e, face, sg*W*.145, W*1.05, y0 + H*.46, W*.055, W*.05, W*.045,
+       [.55,1,.92], .85);
+  eb(e, face, 0, W*1.075, y0 + H*.375, W*.155, H*.028, W*.025, [.05,.07,.10], 0);
+  // rooted at W*.26, inside both the slab (front edge .31) and the shell -
+  // a rim spike that roots past the edge is a floater the moment it exists.
+  // etp steps are WORLD units: .55/segment is what it takes to crest the
+  // shell line on a 7.8-unit body - the first cut used .09 and vanished.
+  for(let i=0;i<4;i++)
+    etp(e, face, (i-1.5)*W*.26, W*.26, y0 + H*.68, (i-1.5)*.06, .55, .18, 3,
+        W*.06, H*.05, W*.06, spine, .40 + pulse*.25);
   if(lod < 1) return;
   for(let ring=0; ring<4; ring++)                                              // the thorns
     for(let i=0;i<6;i++){
