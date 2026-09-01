@@ -903,6 +903,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("the pause button exists and works on touch", paused === true, `result=${paused}`);
 
+    // while the pause screen is up: the copy speaks touch, and the cheats hide
+    // (fresh save, so DEV MODE is off - the strip must not exist visually)
+    const pcopy = await mp.evaluate(() => ({
+      sub: document.querySelector("#paused .sub").textContent,
+      dev: getComputedStyle(document.getElementById("dev")).display }));
+    ok("the pause headline speaks touch, not mouse", pcopy.sub === "tap to resume",
+       JSON.stringify(pcopy.sub));
+    ok("no cheat strip on a fresh player's pause screen", pcopy.dev === "none",
+       `display=${pcopy.dev}`);
+
     // a thumb still held when the run ends must not steer the next one
     await drag(90, 600, 90, 470, 7);
     const carried = await mp.evaluate(() => {
@@ -3993,6 +4003,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("DEV MODE is a real switch", r.devOn === true && r.wasOn === true);
     ok("and WIPE SAVE actually wipes",
        r.afterWipe.coins === 0 && r.afterWipe.dev === false, JSON.stringify(r.afterWipe));
+
+    // The pause DEV strip stays in the DOM (wiring is checked above) but must
+    // only SHOW for someone who turned DEV MODE on - it carries GODMODE.
+    const gate = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeAll(); g.start("intern"); g.god(); g.drainPicks(true);
+      g.pause(true);
+      const off = getComputedStyle(document.getElementById("dev")).display;
+      g.pause(false); g.dev(true); g.pause(true);
+      const on = getComputedStyle(document.getElementById("dev")).display;
+      g.pause(false); g.wipeAll();
+      return { off, on };
+    });
+    ok("the pause cheat strip hides until DEV MODE is on",
+       gate.off === "none" && gate.on === "flex", JSON.stringify(gate));
   }
 
   console.log("\n=== 24b. A LEVEL-UP DOES NOT COST YOU THE CHAIN ===");

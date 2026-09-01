@@ -277,6 +277,11 @@ const MUTANTS = [
         "ember advertises a fight that never shows up",
     from:"    if(m.angry){\n      e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;\n      e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;\n      e.hp = e.maxhp = e.maxhp * ELITE.hp;\n    }\n    else e.hp = e.maxhp = e.maxhp * 1.25;",
     to:  "    e.hp = e.maxhp = e.maxhp * 1.25;" },
+  { id:"pause-cheats-ungated", must:"24",
+    why:"the pause screen's DEV strip shows for every player again - GODMODE " +
+        "one accidental tap away on a phone",
+    from:"  if(v) document.getElementById(\"dev\").classList.toggle(\"on\", !!save.dev);",
+    to:  "  if(v) document.getElementById(\"dev\").classList.add(\"on\");" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

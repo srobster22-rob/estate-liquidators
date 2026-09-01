@@ -317,6 +317,10 @@
   #dev b,.devrow b{font-size:9px;letter-spacing:.24em;color:#5c6470;margin-right:4px}
   .dv{font-size:9px;padding:6px 10px;letter-spacing:.1em}
   .dv.on{border-color:var(--gold);color:var(--gold)}
+  /* the pause DEV strip exists for everyone (the suite checks its wiring) but
+     SHOWS only in dev mode - a cheat you can trip over by accident is a bug */
+  #dev{display:none}
+  #dev.on{display:flex}
   .devon{display:inline-block;margin:0 auto 14px;padding:5px 12px;font-size:10px;
     letter-spacing:.22em;color:#0d1116;background:var(--gold);font-weight:700}
   .deep{margin:6px 0 10px;font-size:10px;letter-spacing:.16em;color:#8e8878}
@@ -5117,6 +5121,9 @@ if(HAS_TOUCH && !HAS_MOUSE) addEventListener("DOMContentLoaded", ()=>{
   if(h) h.innerHTML = "<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> camera " +
                       "&nbsp; <kbd>TAP RIGHT</kbd> jump<br>" +
                       "weapons fire themselves. your only job is to not be there.";
+  // the hint got the touch words but the headline still said "click"
+  const s = document.querySelector("#paused .sub");
+  if(s) s.textContent = "tap to resume";
 });
 let stick = null;                 // {id, ox, oy, x, y}
 let look  = null;                 // {id, x, y, moved, t0}
@@ -5260,6 +5267,8 @@ function togglePause(v){
   if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
   document.getElementById("paused").classList.toggle("on", v);
+  // the DEV strip rides the pause screen but only for someone who turned it on
+  if(v) document.getElementById("dev").classList.toggle("on", !!save.dev);
   if(v) document.exitPointerLock?.(); else lockPointer();
 }
 // requestPointerLock returns a rejecting promise if the pointer is already
