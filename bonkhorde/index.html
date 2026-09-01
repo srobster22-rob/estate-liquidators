@@ -2148,10 +2148,27 @@ function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
   // then the half-extents in (x, z, y) order - so one connectivity pass reads
   // both without a second convention to keep straight.
   if(ebCap) ebCap.push(r, f, y, hx, hz, hy);
+  // THE POSE. A squash about the feet and a shear in proportion to height -
+  // the lean into a run, the stagger off a shove, the bite, the flinch -
+  // resolved once per body in the draw (e.sq, e.lf, e.lr, pivot e.py) and
+  // applied here, so all eleven plans carry weight without one of them
+  // knowing what a bat is.
+  // The capture above stays UNTRANSFORMED, same as the player's bodyCap: the
+  // mesh checks compare shapes, not moments.
+  const sq = e.sq;
+  if(sq !== 1 || e.lf || e.lr){
+    const h = y - e.py, si = 1 / Math.sqrt(sq);
+    y = e.py + h*sq; hy *= sq; hx *= si; hz *= si;
+    r += h*e.lr; f += h*e.lf;
+  }
   box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
       e.z - Math.sin(face)*r + Math.cos(face)*f,
       hx, hy, hz, col, em||0, rot===undefined ? face : rot);
 }
+// A stride term: the plan's own frequency on gait time, scaled by how much of
+// a stride the body is actually taking. Signed -1..1, same shape every plan
+// already read off the clock.
+function stride(e, f){ return Math.sin(e.gt*f + e.bob) * e.amp; }
 // The same vocabulary the player monsters got, because the reason the horde
 // looked like boxes is that it WAS boxes: chamfered volumes, tapered limbs and
 // eyes with a pupil in them. Chamfering costs 3x, so it is spent at LOD 2 only
@@ -2233,9 +2250,10 @@ terrapin(e, face, W, H, c, glow, lod, y0){
   for(let i=0;i<2;i++)                                     // shell seams
     eb(e, face, 0, -W*.10 + i*W*.34, y0 + W*.20, W*.005, W*.10, W*.46,
        [c[0]*.5,c[1]*.5,c[2]*.55], 0);
-  for(const sg of [-1,1]) for(const fs of [-1,1])           // four stubby legs
-    eb(e, face, sg*W*.40, fs*W*.30,
-       y0 + W*.06 + Math.max(0, Math.sin(T*3 + (sg*fs>0?0:2)))*W*.03*bob,
+  // four stubby legs, diagonal pairs lifting in turn - and only when it walks
+  for(const sg of [-1,1]) for(const fs of [-1,1])
+    eb(e, face, sg*W*.40, fs*W*.30 + stride(e, 4)*(sg*fs>0?1:-1)*W*.06,
+       y0 + W*.06 + Math.max(0, Math.sin(e.gt*4 + e.bob + (sg*fs>0?0:Math.PI)))*W*.05*e.amp,
        W*.10, W*.09, W*.10, [c[0]*.72,c[1]*.72,c[2]*.76], 0);
   eb(e, face, 0, -W*.42, y0 + W*.12, W*.06, W*.06, W*.14, c, glow*.5);  // tail
 },
@@ -2324,7 +2342,7 @@ pterling(e, face, W, H, c, glow, lod, y0){
 // and in the dark tone that separates it from the body in front of it.
 ceratop(e, face, W, H, c, glow, lod, y0){
   const B = lod>=2 ? ebl : eb;
-  const st = Math.sin(T*6 + e.bob);
+  const st = stride(e, 5.5);                                 // a heavy animal's walk
   const dk = [c[0]*.52+.03, c[1]*.52+.03, c[2]*.58+.04];
   const bone = [.93,.91,.83];
   // WIDER THAN IT IS TALL, and BEHIND the head rather than in front of it: a
@@ -2356,8 +2374,8 @@ ceratop(e, face, W, H, c, glow, lod, y0){
     etp(e, face, sg*W*.26, W*.86, y0 + H*.60, sg*.012,.06,.05, 3,
         W*.08,H*.05,W*.08, bone, .18);
   for(const sg of [-1,1]) for(const fs of [-1,1])                        // four columns
-    eb(e, face, sg*W*.36, W*.14 + fs*W*.30,
-       y0 + H*.13 + Math.max(0, st*sg*fs)*H*.05, W*.13, H*.14, W*.13, dk, 0);
+    eb(e, face, sg*W*.36, W*.14 + fs*W*.30 + st*sg*fs*W*.08,
+       y0 + H*.13 + Math.max(0, st*sg*fs)*H*.06, W*.13, H*.14, W*.13, dk, 0);
   if(lod < 2) return;
   // scallops on the OUTER EDGE, not across the top: four bright nubs in a row
   // above a dark plate read as a set of teeth, which is not what a frill is.
@@ -2380,7 +2398,7 @@ ceratop(e, face, W, H, c, glow, lod, y0){
 // throat still inflates before it spits, because that tell was the good part
 // of the toad.
 dilopho(e, face, W, H, c, glow, lod, y0){
-  const puff = (Math.sin(T*2.4 + e.bob)*.5 + .5);
+  const puff = (Math.sin(T*2.4 + e.bob)*.5 + .5), st = stride(e, 7);
   const B = lod>=2 ? ebl : eb;
   const lt = [Math.min(1,c[0]*1.25+.06), Math.min(1,c[1]*1.18+.05), c[2]*.82];
   const dk = [c[0]*.54, c[1]*.54, c[2]*.50];
@@ -2396,10 +2414,22 @@ dilopho(e, face, W, H, c, glow, lod, y0){
   eb(e, face, 0, W*.46, y0 + H*.62, W*.15*(1+puff*.55), H*.10*(1+puff*.65), W*.12,
      [Math.min(1,c[0]*1.1), c[1]*.88, c[2]*.40], glow + puff*.35);   // throat sac
   etp(e, face, 0, -W*.34, y0 + H*.44, 0,-.20,-.03, 4, W*.11,H*.095,W*.17, c, glow);
+  // the legs never moved at all before the gait round - a spitter stood on
+  // two posts and slid. Each side swings against the other and lifts on the
+  // forward half of its stride.
+  // THE SHINS ARE IN THE MIDDLE TIER. They were LOD 2 only, and a spitter holds
+  // a thirteen-metre band - two metres past where LOD 2 ends - so the one
+  // range this animal is ever actually seen from drew it with no legs at all:
+  // hips two-thirds of a metre off the grass, a shadow underneath, nothing
+  // between. The model-sheet camera caught it the first time it looked.
+  for(const sg of [-1,1]){
+    const sw = st*sg, lift = Math.max(0, sw)*H*.05;
+    eb(e, face, sg*W*.20, W*.02 + sw*W*.14, y0 + H*.22 + lift, W*.10, H*.21, W*.11, dk, 0);    // shins
+  }
   if(lod < 2) return;
   for(const sg of [-1,1]){
-    eb(e, face, sg*W*.20, W*.02, y0 + H*.22, W*.10, H*.21, W*.11, dk, 0);    // shins
-    eb(e, face, sg*W*.20, W*.16, y0 + H*.04, W*.09, H*.045, W*.15, dk, 0);   // feet
+    const sw = st*sg, lift = Math.max(0, sw)*H*.05;
+    eb(e, face, sg*W*.20, W*.16 + sw*W*.14, y0 + H*.04 + lift, W*.09, H*.045, W*.15, dk, 0);   // feet
     etp(e, face, sg*W*.26, W*.28, y0 + H*.50, sg*.02,.05,-.05, 2,
         W*.055,H*.055,W*.055, dk, 0);                                        // arms
   }
@@ -2412,7 +2442,7 @@ dilopho(e, face, W, H, c, glow, lod, y0){
 // and the killing toe is carried clear of the ground. Individually nothing.
 // Never individually.
 raptor(e, face, W, H, c, glow, lod, y0){
-  const st = Math.sin(T*15 + e.bob);
+  const st = stride(e, 15);                                  // a hatchling's scurry
   const B = lod>=2 ? ebl : eb;
   const lt = [c[0]*1.7+.18, c[1]*1.5+.14, c[2]*1.5+.14];
   const dk = [c[0]*.55+.06, c[1]*.55+.06, c[2]*.60+.07];
@@ -2460,7 +2490,7 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
     box(e.x, gy + 2.4 + i*1.5 + Math.sin(T*2+i)*.20, e.z,
         .10, .55, .10, [1,.92,.52], .95);
   drawnMarks++;
-  const stride = Math.sin(T*13 + e.bob), bob = Math.abs(Math.sin(T*6.5 + e.bob))*H*.05;
+  const st = stride(e, 13), bob = Math.abs(Math.sin(e.gt*6.5 + e.bob))*H*.05*e.amp;
   const B = lod>=2 ? ebl : eb;
   B(e, face, 0, -W*.06, y0 + H*.44 + bob, W*.52, H*.24, W*.46, c, glow);      // barrel body
   eb(e, face, 0, W*.20, y0 + H*.70 + bob, W*.16, H*.20, W*.16, c, glow);      // neck
@@ -2488,7 +2518,7 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
     eb(e, face, sg*W*.50, W*.02, y0 + H*.50 + bob, W*.10, H*.16, W*.32,
        [c[0]*1.2+.08,c[1]*1.2+.08,c[2]*1.25+.10], glow+.05, face + sg*.16);
   for(const sg of [-1,1])                                                     // long running legs
-    etp(e, face, sg*W*.18, stride*sg*W*.22, y0 + H*.24, 0,0,-.10, 3,
+    etp(e, face, sg*W*.18, st*sg*W*.22, y0 + H*.24, 0,0,-.10, 3,
         W*.055,H*.09,W*.055, [1,.82,.24], .20);
   // The sparks orbit clear of the animal on purpose, so they are FX and go out
   // through box() like the ring and the beam above rather than through eb() -
@@ -2515,7 +2545,7 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
 // enormous forelimbs and brings them down, so the body reads front-loaded and
 // low, with a brood of young riding the spine behind her.
 matriarch(e, face, W, H, c, glow, lod, y0){
-  const br = Math.sin(T*2.2 + e.bob), st = Math.sin(T*3.4 + e.bob);
+  const br = Math.sin(T*2.2 + e.bob), st = stride(e, 3.4);
   const lit = [c[0]*1.3+.10, c[1]*1.1+.05, c[2]*1.1+.05];
   ebl(e, face, 0, -W*.16, y0 + H*.42, W*.56, H*.24, W*.54, c, glow);          // haunches
   ebl(e, face, 0, W*.24, y0 + H*.54 + br*H*.012, W*.78, H*.26, W*.46, c, glow); // shoulders
@@ -2619,9 +2649,12 @@ thornback(e, face, W, H, c, glow, lod, y0){
           Math.sin(a)*.05, -.02, .09, 3, W*.075, H*.06, W*.075, spine, .35 + pulse*.30);
     }
   if(lod < 2) return;
-  for(const sg of [-1,1]) for(const fs of [-1,1])                              // squat legs
-    eb(e, face, sg*W*.56, fs*W*.34, y0 + H*.16, W*.14, H*.16, W*.16,
-       [c[0]*.62,c[1]*.62,c[2]*.70], 0);
+  // squat legs, a slow diagonal walk - they were four fixed posts before the
+  // gait round, and a wall that slides is not a wall that walks at you
+  for(const sg of [-1,1]) for(const fs of [-1,1]){
+    const sw = stride(e, 3.0)*sg*fs;
+    eb(e, face, sg*W*.56, fs*W*.34 + sw*W*.07, y0 + H*.16 + Math.max(0, sw)*H*.04,
+       W*.14, H*.16, W*.16, [c[0]*.62,c[1]*.62,c[2]*.70], 0); }
   for(let i=0;i<3;i++)                                                          // tail club
     eb(e, face, 0, -W*.78 - i*W*.22, y0 + H*.36, W*.13+i*.02, H*.11+i*.02, W*.18,
        i===2 ? spine : c, i===2 ? .45 : glow);
@@ -2631,7 +2664,7 @@ thornback(e, face, W, H, c, glow, lod, y0){
 // built like something that only ever goes forwards: swept wings, a beak, and
 // legs that are mostly stride.
 skysplitter(e, face, W, H, c, glow, lod, y0){
-  const flap = Math.sin(T*4.2 + e.bob), st = Math.sin(T*5.0 + e.bob);
+  const flap = Math.sin(T*4.2 + e.bob), st = stride(e, 5.0);
   const lit = [c[0]*1.15+.08, c[1]*1.15+.08, c[2]*1.4+.14];
   const beak = [1,.86,.28];
   ebl(e, face, 0, W*.04, y0 + H*.46, W*.44, H*.26, W*.52, c, glow);            // deep chest
@@ -3090,6 +3123,11 @@ let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62, camZoom=1;
 let camEye=[0,0,0];                     // last rendered eye, so a test can see it
+// THE MODEL-SHEET CAMERA. QA only: a fixed eye and target, so a harness can
+// film one animal from any angle at any range without the player standing in
+// the shot - the game's own camera orbits the player, and a horde body two
+// metres past the player is a horde body behind the player's head.
+let camLock=null;                      // [ex,ey,ez, tx,ty,tz] or null
 // ======================================================= MONSTER BODY PLANS
 // One mesh recoloured seven ways is one monster with seven paint jobs, and it
 // read exactly like that: seven horses. Each species gets its own body plan
@@ -5436,6 +5474,14 @@ function hurt(e, amount, kx, kz, crit){
   if(e.boss) dmgBoss += eff;
   e.hp -= amount;
   if(e.flash <= -.06) e.flash = .09;   // refractory, or it never turns off
+  // THE FLINCH. The hit used to be a 25% width pop for as long as the flash
+  // lasted - on, then off, a sprite frame. It is a squash now, sized to how
+  // much of the animal the hit took (a chip dips it an eighth, a hit that
+  // matters a third) and recovered over a few frames by walk(); a boss barely
+  // dips, for the same reason it barely moves.
+  const dip = Math.min(.32, .12 + amount / Math.max(1, e.maxhp) * .5)
+            * (e.boss ? .25 : e.elite ? .6 : 1);
+  e.sq = Math.min(e.sq, 1 - dip);
   // MASS. A shove stops a grunt; a boss leans into it and keeps coming, and
   // an elite splits the difference - without this a maxed kit juggled the
   // finale, and the fight the whole run builds to never reached you.
@@ -5788,7 +5834,7 @@ function updateBrood(dt){
   // that still parses as a pack.
   const s = wStat(w), n = Math.min(6, s.n + dupeN());
   while(pets.length < n)
-    pets.push({ x:P.x, z:P.z, y:P.y, face:P.face, cool:0, bob:R()*TAU, step:0 });
+    pets.push({ x:P.x, z:P.z, y:P.y, face:P.face, cool:0, bob:R()*TAU, step:0, amp:0 });
   if(pets.length > n) pets.length = n;
   const spd = P.spd * 1.18;                 // a shade faster than you, or it lags
   for(let i=0;i<pets.length;i++){
@@ -5826,13 +5872,18 @@ function updateBrood(dt){
     }
     const dx = tx - p2.x, dz = tz - p2.z, d = Math.hypot(dx,dz) || 1;
     // a pet that has somehow been left behind rejoins rather than trails
+    let moving = false;
     if(Math.hypot(p2.x-P.x, p2.z-P.z) > s.rng + 12){ p2.x = P.x; p2.z = P.z; }
     else if(d > .35){
       const k = Math.min(1, spd*dt/d);
       p2.x += dx*k; p2.z += dz*k;
       p2.face = Math.atan2(dx, dz);
       p2.step += spd*dt;
+      moving = true;
     }
+    // how much of a stride it is taking - the draw scales the legs by it, so
+    // a hatchling that has arrived stands rather than running on the spot
+    p2.amp = (p2.amp || 0) + ((moving ? 1 : 0) - (p2.amp || 0)) * Math.min(1, dt*9);
     // and they do not stand inside each other on the way there. The ring above
     // handles the common case; this is the backstop for the moments it cannot -
     // two pets arriving at one slot, or a pack that has just spawned on top of
@@ -5974,6 +6025,7 @@ function spawnEnemy(type, atX, atZ){
     maxhp: def.hp*hpScale(T)*em.hp,
     dmg:   def.dmg*dmgScale(T)*em.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:R()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
+    gt:0, amp:0, bk:0, lg:0, sq:1,               // the gait and the pose, see walk()
     dead:false, boss:false };
   enemies.push(made);
   return made;                                  // the hunt event needs a handle
@@ -5990,6 +6042,7 @@ function spawnBoss(b){
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
+    gt:0, amp:0, bk:0, lg:0, sq:1,
     // THE ARRIVAL. A boss used to appear: one frame it was not there, the next
     // it was, twenty-six metres away, and a line of text said so. Something
     // five times your size should not be able to arrive quietly. It comes up
@@ -6408,6 +6461,9 @@ function updateEnemies(dt){
     // knockback decays hard - it should read as a shove, not a launch
     e.x += e.kx*dt; e.z += e.kz*dt;
     e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
+    // where the animal stood AFTER the shove and BEFORE it chose to move: the
+    // gait reads the difference at the end of the frame, see walk()
+    const lx = e.x, lz = e.z;
 
     const dx = P.x-e.x, dz = P.z-e.z, d = Math.hypot(dx,dz)||1;
     // Water drags the horde exactly as it drags a wading player, so a lake is
@@ -6472,7 +6528,7 @@ function updateEnemies(dt){
       // where you kill it.
       e.rest = (e.rest === undefined) ? 3.0 : e.rest - dt;
       if(e.rest <= -1.3) e.rest = 3.0;
-      if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); continue; }
+      if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); walk(e, lx, lz, dt); continue; }
       // away from the player, and away from the walls it would otherwise pin
       // itself against - a quarry that corners itself is not a chase either
       let fx = -dx/d, fz = -dz/d;
@@ -6481,6 +6537,7 @@ function updateEnemies(dt){
       const fl = Math.hypot(fx,fz)||1;
       [e.x, e.z] = confine(e.x + fx/fl*spd*dt, e.z + fz/fl*spd*dt, 3);
       e.y = groundY(e.x,e.z);
+      walk(e, lx, lz, dt);
       continue;
     }
 
@@ -6542,7 +6599,7 @@ function updateEnemies(dt){
 
     [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
-    e.bob += dt * (4 + e.def.spd);
+    walk(e, lx, lz, dt);
 
     // contact damage. A landed dive hits for more, because a dive you failed to
     // turn out of should read as a mistake rather than as a tick of chip.
@@ -6560,8 +6617,66 @@ function updateEnemies(dt){
     if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0 && !(aloft() && e.dvT <= 0)){
       playerHurt(e.dvT > 0 ? e.dmg * DIVE_DMG : e.dmg);
       if(e.dvT > 0){ e.dvT = 0; e.dv = DIVE_REST; }
+      e.lg = 1;                                     // the bite, see walk()
     }
   }
+}
+
+// ============================================================ THE HORDE'S GAIT
+// Every enemy animated off the wall clock - Math.sin(T*15 + e.bob) - the same
+// stride at the same tempo whether it was sprinting, wading, slowed to 45%,
+// sliding backwards off a bat, winding up a dive, planted for a slam, or
+// standing in a spitter's firing band going nowhere. The player got a stride
+// driven by distance covered in the animation round; the four hundred things
+// chasing it never did, and that is most of why the horde still read as a
+// crowd of wind-up toys next to it.
+//
+// gt is GAIT TIME. It advances one second per second of running at the
+// species' own nominal speed and not at all while the animal is still, so
+// every plan's tuned frequency - sin(gt*15) for a raptorling, sin(gt*3.4) for
+// THE MATRIARCH - keeps exactly the look it had at full stride, and slows,
+// stops and sprints with the body for free: a slowed animal strides slowly, a
+// wading one wades, SKYSPLITTER's charge is a blur of legs. amp eases toward
+// the fraction of nominal speed actually covered and the plans scale their
+// stride terms by it, so stopping SETTLES the legs instead of freezing them
+// mid-swing. They are the same two terms as ANIM.ph and ANIM.amp, for the same
+// reason. Knockback is applied before lx/lz are read, so a shove is not a walk:
+// an animal sliding backwards off a bat does not stride, it staggers - that is
+// the pose term in the draw, read off e.kx/e.kz directly.
+function walk(e, lx, lz, dt){
+  if(!(dt > 0)) return;
+  const mx = e.x - lx, mz = e.z - lz, mv = Math.hypot(mx, mz);
+  const nom = Math.max(.8, e.def.spd * e.spdMul);
+  e.gt += mv / nom;
+  const v = mv / dt;
+  e.amp += (clamp(v / nom, 0, 1) - e.amp) * Math.min(1, dt * 9);
+  // HEADING. It used to be atan2(player - enemy), snapped, every frame: a
+  // spitter backing out of its band walked backwards, a bonked animal kept
+  // staring at you as it flew, and a wave jostled sideways by its own
+  // separation faced you while it crab-walked. The body faces where it is
+  // GOING now, blended toward you as it slows - so whatever stands still turns
+  // to look at you and everything else points the way it moves - through a
+  // finite turn rate, because an animal that pivots inside a frame is a sprite.
+  const px = P.x - e.x, pz = P.z - e.z, pl = Math.hypot(px, pz) || 1;
+  let tx = px / pl, tz = pz / pl;
+  if(mv > 0){
+    const k = clamp((v / nom - .18) / .40, 0, 1);
+    tx = tx * (1 - k) + mx / mv * k;
+    tz = tz * (1 - k) + mz / mv * k;
+  }
+  if(e.hd === undefined) e.hd = Math.atan2(px, pz);
+  const want = (tx || tz) ? Math.atan2(tx, tz) : e.hd;
+  let d = want - e.hd;
+  while(d >  Math.PI) d -= TAU;
+  while(d < -Math.PI) d += TAU;
+  const turn = d * Math.min(1, dt * 7);
+  e.hd += turn;
+  // banking into the turn, the bite going out and back, the hit squash
+  // recovering - all eased, because the reason a pose reads as cheap is never
+  // the pose, it is that it snapped
+  e.bk += (clamp(turn / dt * .05, -.25, .25) - e.bk) * Math.min(1, dt * 8);
+  e.lg = Math.max(0, e.lg - dt * 3.2);
+  e.sq += (1 - e.sq) * Math.min(1, dt * 13);
 }
 // tiny per-enemy speed variance so a wave arrives as a smear, not a wall
 function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
@@ -8976,6 +9091,7 @@ function render(){
   // aim where you are going, not where the stick is pointed
   const at  = [ px + Math.sin(camYaw)*2.2 + pvx*.20, py+1.4,
                 pz + Math.cos(camYaw)*2.2 + pvz*.20 ];
+  if(camLock){ for(let q=0;q<3;q++){ eye[q] = camLock[q]; at[q] = camLock[3+q]; } camEye = eye; }
   // the lens widens with the animal, not just the sprint: up to ~7 degrees
   // on the largest bodies, zero on a hatchling - distance does most of the
   // work, FOV buys the margin that keeps the horde in frame beside a big body
@@ -9373,9 +9489,12 @@ function render(){
       for(let i=0;i<7;i++){ const a2 = i*(TAU/7) + T*1.5;
         box(p2.x + Math.sin(a2)*.85, gy + .07, p2.z + Math.cos(a2)*.85,
             .11, .04, .11, pa, .85); }
-      const gait = Math.sin(p2.step*2.1 + p2.bob);
-      EBODY.raptor({ x:p2.x, z:p2.z, y:gy, bob:p2.bob + gait*.4 },
-                   p2.face, .46, 1.05, pc, .10, 2, gy);
+      // the hatchling carries the same gait fields the horde does - the plan
+      // reads them through stride() and eb() - fed off its own step counter
+      const gait = Math.sin(p2.step*2.1 + p2.bob) * p2.amp;
+      EBODY.raptor({ x:p2.x, z:p2.z, y:gy, py:gy, bob:p2.bob, gt:p2.step/5,
+                     amp:p2.amp, sq:1, lf:p2.amp*.08, lr:0 },
+                   p2.face, .46, 1.05, pc, .10, 2, gy + Math.abs(gait)*.10);
     }
   }
   for(const e of enemies){
@@ -9395,10 +9514,30 @@ function render(){
     // the horde is mostly out there - so the cheap single quad is the default
     // and the round one is the LOD tier, same as the bodies above it.
     const sd2 = Math.hypot(e.x-P.x, e.z-P.z);
+    // THE HEADING is the animal's own now, smoothed and blended toward its
+    // travel in walk(); it used to be snapped at the player every frame, so a
+    // shoved brute slid backwards staring at you and a kited one strafed.
+    const face = e.hd === undefined ? Math.atan2(P.x-e.x, P.z-e.z) : e.hd;
     shadow(e.x, groundY(e.x,e.z), e.z, W*.62, e.y - groundY(e.x,e.z),
-           Math.atan2(P.x-e.x, P.z-e.z), sd2 > 22 ? .18 : 0);
-    const hop = Math.abs(Math.sin(e.bob))*(e.boss?.10:.20);
-    const sq = e.flash>0 ? 1.25 : 1;
+           face, sd2 > 22 ? .18 : 0);
+    // THE GAIT. The hop rides gait time and is scaled by how much of a stride
+    // the body is taking, so a rooted enemy STANDS instead of jogging on the
+    // spot - it was |sin(bob)| off a clock that ran whether it moved or not.
+    // Fliers keep their own wingbeat hop inside the plan.
+    const fly = D.flier;
+    const hop = fly ? 0 : Math.abs(Math.sin(e.gt*(e.boss ? 3.4 : 2 + D.spd) + e.bob))
+                        * e.amp * (e.boss ? .08 : .16);
+    // THE POSE, resolved once per body and applied inside eb(): a lean into the
+    // run, a stagger along the knockback still on it, the bite pitching the
+    // whole animal forward on contact, the bank out of a turn, and the flinch
+    // squash hurt() set. The old hit tell was a 25% width pop while flash>0 -
+    // a binary shape change with no weight in it. The flash stays; the pop is
+    // now the squash, which has a size and a recovery.
+    const kf = e.kx*Math.sin(face) + e.kz*Math.cos(face),
+          kr = e.kx*Math.cos(face) - e.kz*Math.sin(face);
+    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + Math.sin(e.lg*Math.PI)*.35;
+    e.lr = clamp(kr*.04, -.40, .40) + e.bk;
+    const sq = 1;
     // elites keep their species colour but run hot, so you can still tell a
     // CHONK from a SKITTER while knowing which one is the problem
     const base = e.elite ? [lerp(D.c[0],1,ELITE_TINT), lerp(D.c[1],.42,ELITE_TINT),
@@ -9423,7 +9562,6 @@ function render(){
         c = [lerp(c[0], .74, u), lerp(c[1], .76, u), lerp(c[2], .80, u)];
       }
     }
-    const face = Math.atan2(P.x-e.x, P.z-e.z);
     // Detail by distance. A body plan you cannot resolve is boxes you paid for
     // and did not get: full build inside 16m, reduced to 32m, silhouette past
     // that. Bosses are always full - there is only ever one.
@@ -9444,7 +9582,8 @@ function render(){
     // terrain hide it is the whole trick - the mesh is unchanged, it is just
     // lower, so nothing about the body plan has to know this exists.
     const rise = e.rise > 0 ? e.rise / BOSS_RISE : 0;
-    plan(e, face, W*sq, H, c, glow, lod, e.y + hop - rise*H*1.15);
+    e.py = e.y + hop - rise*H*1.15;                  // the pose pivots at the feet
+    plan(e, face, W*sq, H, c, glow, lod, e.py);
     if(rise > 0){
       const gy2 = groundY(e.x, e.z), up = 1 - rise;
       for(let i=0;i<16;i++){                       // earth thrown off it
@@ -10205,6 +10344,21 @@ window.__g = {
   nearestEnemy:()=>{ const e = nearest(P.x, P.z, 999);
                      return e ? { x:+e.x.toFixed(3), z:+e.z.toFixed(3),
                                   slowT:+(e.slowT||0).toFixed(3) } : null; },
+  // hit one enemy by index, with an optional shove; slow them all for t seconds
+  hurtAt:(i, n, kx=0, kz=0)=>{ const e = enemies[i]; if(e) hurt(e, n, kx, kz); },
+  slowAll:(t=5)=>{ for(const e of enemies) e.slowT = t; },
+  // Put every body at one point in its stride, mid-run. The connectivity pass
+  // spawns each animal fresh and so only ever saw gt 0 at amp 0 - the standing
+  // pose - and a leg that comes apart at full swing is a leg that comes apart.
+  setGait:(gt=0, amp=1)=>{ for(const e of enemies){ e.gt = gt; e.amp = amp; } },
+  // the locomotion state walk() keeps per body, for every enemy on the field
+  // in spawn order - gait time, stride amplitude, heading, bank, bite, squash
+  gait:  ()=>enemies.map(e=>({ type:e.type, x:+e.x.toFixed(3), y:+e.y.toFixed(3), z:+e.z.toFixed(3),
+                               gt:+e.gt.toFixed(4), amp:+e.amp.toFixed(4),
+                               hd:e.hd === undefined ? null : +e.hd.toFixed(4),
+                               bk:+e.bk.toFixed(4), lg:+e.lg.toFixed(4),
+                               sq:+e.sq.toFixed(4), kx:+e.kx.toFixed(3),
+                               kz:+e.kz.toFixed(3), boss:!!e.boss })),
   // A hazard exactly where the test wants one, already live, so a check on
   // what can and cannot reach the player does not have to wait for a boss.
   hazardAt:(x,z,r=3,dmg=40)=>{ hazards.push(mkHaz(x,z,r,0,6,dmg));
@@ -10377,6 +10531,9 @@ window.__g = {
   // Point the camera without turning the animal - the drag-look decoupling,
   // scriptable. Every turntable and play-camera audit needs it, and the scratch
   // harnesses that used to fake it with synthetic drags die with the container.
+  // the model-sheet camera above: eye and target in world units; no
+  // arguments releases it
+  camLock:(ex,ey,ez,tx,ty,tz)=>{ camLock = ex === undefined ? null : [ex,ey,ez,tx,ty,tz]; },
   setCam: (yaw, pitch, zoom)=>{ camYaw = yaw;
     if(pitch !== undefined) camPitch = clamp(pitch, .18, 1.32);
     if(zoom  !== undefined) camZoom  = clamp(zoom, .5, 4); },

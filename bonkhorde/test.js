@@ -4797,6 +4797,147 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `closest a pet came to a ${r.bossRad}m boss centre: ${r.nearestToBoss}m`);
   }
 
+  console.log("\n=== 31. THE HORDE WALKS, IT DOES NOT JOG ON THE SPOT ===");
+  {
+    // Every enemy animated off the wall clock: the same stride at the same
+    // tempo whether it was sprinting, slowed, sliding off a bat or standing in
+    // a spitter's firing band going nowhere, and every one of them snapped to
+    // face the player each frame, so a shoved brute slid backwards staring at
+    // you. The gait rides distance covered now, the way the player's does, and
+    // the heading is the animal's own. These read the locomotion state walk()
+    // keeps, through the same hook the draw reads it from.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const boot = () => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.disarm();
+        g.place(0,0); g.aim(0); g.step(20, 1/60); g.clearEnemies();
+      };
+      const out = {};
+      // 1. A spitter holding its band stands. Spawned exactly on the band it
+      //    wants (13m), it never moves, so its gait time must not advance and
+      //    its stride amplitude must settle to nothing - and a shambler walking
+      //    in from thirty metres covers ground, so its gait runs.
+      boot();
+      g.spawnAt("spitter", 0, 13); g.spawnAt("shambler", 0, 30);
+      g.step(30, 1/60);
+      const a0 = g.gait();
+      g.step(60, 1/60);
+      const a1 = g.gait();
+      out.stand = { dgt: +(a1[0].gt - a0[0].gt).toFixed(4), amp: a1[0].amp,
+                    moved: +Math.hypot(a1[0].x - a0[0].x, a1[0].z - a0[0].z).toFixed(3) };
+      out.walkr = { dgt: +(a1[1].gt - a0[1].gt).toFixed(4), amp: a1[1].amp,
+                    moved: +Math.hypot(a1[1].x - a0[1].x, a1[1].z - a0[1].z).toFixed(3) };
+      // 2. Gait time is in seconds of the SPECIES' own running, so a skitter
+      //    at 5.0 and a shambler at 2.5 both bank about one second of gait per
+      //    second at full stride - the plans' tuned frequencies keep their look.
+      boot();
+      g.spawnAt("skitter", 0, 40); g.spawnAt("shambler", 0, 30);
+      g.step(30, 1/60);
+      const b0 = g.gait(); g.step(60, 1/60); const b1 = g.gait();
+      out.norm = { skitter: +(b1[0].gt - b0[0].gt).toFixed(3),
+                   shambler: +(b1[1].gt - b0[1].gt).toFixed(3) };
+      // 3. and a slowed animal strides slowly: the same shambler under the 45%
+      //    slow banks 45% of the gait, not the same stride at the same tempo.
+      g.slowAll(10);
+      g.step(30, 1/60);
+      const c0 = g.gait(); g.step(60, 1/60); const c1 = g.gait();
+      out.slow = { ratio: +((c1[1].gt - c0[1].gt) / out.norm.shambler).toFixed(3),
+                   amp: c1[1].amp };
+      // 4. The heading is where the animal is GOING. A spitter spawned inside
+      //    its band backs out of it, and while it backs away it faces AWAY from
+      //    you; a shambler walking in faces you. Both are a finite turn, so a
+      //    freshly spawned body is read after it has had time to come round.
+      boot();
+      g.spawnAt("spitter", 0, 6); g.spawnAt("shambler", 0, 30);
+      g.step(45, 1/60);
+      const d1 = g.gait();
+      const away = Math.atan2(0 - d1[0].x, 0 - d1[0].z);      // toward the player
+      const wrap = a => { while(a > Math.PI) a -= 2*Math.PI; while(a < -Math.PI) a += 2*Math.PI; return a; };
+      out.head = { spitterOff: +Math.abs(wrap(d1[0].hd - away)).toFixed(3),
+                   shamblerOff: +Math.abs(wrap(d1[1].hd - Math.atan2(0 - d1[1].x, 0 - d1[1].z))).toFixed(3) };
+      // 5. and it comes round at a rate, not in a frame. A chaser that has
+      //    settled facing you is asked to turn a right angle - the player
+      //    jumps a quarter-circle round it - and the heading swings over
+      //    several frames rather than arriving in one.
+      boot();
+      g.spawnAt("shambler", 0, 30); g.step(45, 1/60);
+      const e0 = g.gait()[0].hd;
+      g.place(30, 30); g.step(1, 1/60);
+      const e1 = g.gait()[0].hd;
+      g.step(20, 1/60);
+      const e2 = g.gait()[0].hd;
+      out.turn = { oneFrame: +Math.abs(wrap(e1 - e0)).toFixed(3),
+                   later: +Math.abs(wrap(e2 - e0)).toFixed(3) };
+      // 5b. A shove is not a walk. Knocked ten metres sideways, the animal
+      //     slides - it does not stride ten metres' worth of gait in half a
+      //     second, and it keeps facing the way it is walking, not the way it
+      //     is flying.
+      boot();
+      g.spawnAt("shambler", 0, 30); g.step(45, 1/60);
+      const s0 = g.gait()[0];
+      g.hurtAt(0, 1, 40, 0); g.step(30, 1/60);
+      const s1 = g.gait()[0];
+      out.shove = { slid: +Math.abs(s1.x - s0.x).toFixed(2), dgt: +(s1.gt - s0.gt).toFixed(3),
+                    turned: +Math.abs(wrap(s1.hd - s0.hd)).toFixed(3) };
+      // 6. The flinch. A hit that takes a third of the animal squashes it and
+      //    the squash recovers in a few frames; a chip barely dips it.
+      boot();
+      g.spawnAt("brute", 0, 30); g.spawnAt("brute", 4, 30); g.step(30, 1/60);
+      g.hurtAt(0, 60); g.hurtAt(1, 1);
+      const f0 = g.gait();
+      g.step(45, 1/60);
+      const f1 = g.gait();
+      out.flinch = { big: f0[0].sq, chip: f0[1].sq, after: f1[0].sq };
+      // 7. The bite. Contact with the player pitches the animal forward -
+      //    lg goes to 1 on the touch and decays over the next third of a second.
+      boot();
+      g.spawnAt("shambler", 0, 1.2);
+      let peak = 0, low = 1;
+      for(let i=0;i<60;i++){ g.step(1, 1/60); const v = g.gait()[0].lg; peak = Math.max(peak, v); }
+      g.hitMe(0); // reset iframe so the next touch lands; then let it decay
+      for(let i=0;i<40;i++){ g.step(1, 1/60); low = Math.min(low, g.gait()[0].lg); }
+      out.bite = { peak: +peak.toFixed(3), low: +low.toFixed(3) };
+      // 8. and none of it produces a number that is not a number: a full
+      //    minute of a real mixed wave leaves every field finite.
+      boot(); g.freezeSpawns(false); g.skipTo(300); g.step(60*20, 1/60);
+      const all = g.gait();
+      out.finite = { n: all.length,
+                     bad: all.filter(e => [e.gt,e.amp,e.hd,e.bk,e.lg,e.sq].some(v => v === null || !isFinite(v))).length };
+      return out;
+    });
+    ok("a spitter holding its band stands, its gait frozen and its stride settled",
+       r.stand.moved < .05 && r.stand.dgt < .01 && r.stand.amp < .05,
+       `moved ${r.stand.moved}m in a second, gait +${r.stand.dgt}, amp ${r.stand.amp}`);
+    ok("and a shambler walking in runs its gait at full stride",
+       r.walkr.moved > 1.5 && r.walkr.dgt > .7 && r.walkr.amp > .8,
+       `moved ${r.walkr.moved}m, gait +${r.walkr.dgt}, amp ${r.walkr.amp}`);
+    ok("gait time is in seconds of the species' own running",
+       Math.abs(r.norm.skitter - 1) < .16 && Math.abs(r.norm.shambler - 1) < .16,
+       `per second at full stride: skitter +${r.norm.skitter}, shambler +${r.norm.shambler}`);
+    ok("and a slowed animal strides slowly",
+       r.slow.ratio > .35 && r.slow.ratio < .55 && r.slow.amp < .6,
+       `slowed gait runs at ${r.slow.ratio} of the free rate, amp ${r.slow.amp}`);
+    ok("the heading is where the animal is going, not where you are",
+       r.head.spitterOff > 2.6 && r.head.shamblerOff < .3,
+       `a backing spitter faces ${r.head.spitterOff} rad off you, a chaser ${r.head.shamblerOff}`);
+    ok("and it comes round at a rate, not in a frame",
+       r.turn.oneFrame < .5 && r.turn.later > r.turn.oneFrame + .3,
+       `a right-angle turn: ${r.turn.oneFrame} rad in one frame, ${r.turn.later} after twenty`);
+    ok("a shove is a slide, not a stride",
+       r.shove.slid > 3 && r.shove.dgt < .6 && r.shove.turned < .6,
+       `knocked ${r.shove.slid}m sideways in half a second: gait +${r.shove.dgt}, turned ${r.shove.turned} rad`);
+    ok("a hit squashes the animal in proportion, and it recovers",
+       r.flinch.big < .75 && r.flinch.chip > r.flinch.big + .1 && r.flinch.after > .97,
+       `a big hit squashed to ${r.flinch.big}, a chip to ${r.flinch.chip}, back to ${r.flinch.after}`);
+    ok("and contact is a bite that goes out and comes back",
+       r.bite.peak > .9 && r.bite.low < .1,
+       `bite peaked at ${r.bite.peak} and fell to ${r.bite.low}`);
+    ok("and a minute of a real wave leaves every gait field finite",
+       r.finite.n > 20 && r.finite.bad === 0,
+       `${r.finite.n} bodies, ${r.finite.bad} with a bad field`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

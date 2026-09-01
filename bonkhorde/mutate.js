@@ -84,7 +84,8 @@ const MUTANTS = [
     from:"    if(e.def.flee){", to:"    if(false){" },
   { id:"collector-never-rests", must:"18",
     why:"it never pauses, which is a treadmill rather than a chase",
-    from:"      if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); continue; }", to:"" },
+    from:"      if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); walk(e, lx, lz, dt); continue; }",
+    to:  "" },
   { id:"hop-window-open", must:"19",
     why:"any jump chains, so the timing window is not a window",
     from:"      if(P.hopWin > 0){            // landed and jumped again inside the window",
@@ -171,8 +172,8 @@ const MUTANTS = [
     to:  "const lod = e.boss ? (2)" },
   { id:"fowl-marker-only", must:"22",
     why:"GLIMMERFOWL draws its ring and beam and then no bird",
-    from:"  drawnMarks++;\n  const stride",
-    to:  "  drawnMarks++;\n  if(W) return;\n  const stride" },
+    from:"  drawnMarks++;\n  const st = stride(e, 13)",
+    to:  "  drawnMarks++;\n  if(W) return;\n  const st = stride(e, 13)" },
   { id:"rank-runs-past-three", must:"22b",
     why:"a rank can be pushed past three again, so the ceiling is not a ceiling",
     from:"for(let i=0;i<n && P.kit[k].l<WMAX-1;i++)",
@@ -307,6 +308,34 @@ const MUTANTS = [
         "one accidental tap away on a phone",
     from:"  if(v) document.getElementById(\"dev\").classList.toggle(\"on\", !!save.dev);",
     to:  "  if(v) document.getElementById(\"dev\").classList.add(\"on\");" },
+  { id:"gait-on-the-clock", must:"31",
+    why:"gait time runs off the wall clock again, so a rooted spitter jogs on " +
+        "the spot and a slowed animal strides at full tempo",
+    from:"  e.gt += mv / nom;", to:"  e.gt += dt;" },
+  { id:"stride-never-settles", must:"31",
+    why:"stride amplitude is pinned at full, so stopping freezes the legs " +
+        "mid-swing instead of settling them",
+    from:"  e.amp += (clamp(v / nom, 0, 1) - e.amp) * Math.min(1, dt * 9);",
+    to:  "  e.amp = 1;" },
+  { id:"faces-you-always", must:"31",
+    why:"the heading snaps back to the player every frame, so a backing " +
+        "spitter walks backwards and a turn happens inside one frame",
+    from:"  const turn = d * Math.min(1, dt * 7);\n  e.hd += turn;",
+    to:  "  const turn = d;\n  e.hd = Math.atan2(px, pz);" },
+  { id:"shove-is-a-walk", must:"31",
+    why:"knockback is read as travel, so a bonked animal strides ten metres " +
+        "of gait while it slides and turns to face the way it is flying",
+    from:"    const lx = e.x, lz = e.z;\n\n    const dx = P.x-e.x",
+    to:  "    let lx = e.x, lz = e.z;\n    lx -= e.kx*dt; lz -= e.kz*dt;\n\n    const dx = P.x-e.x" },
+  { id:"no-flinch", must:"31",
+    why:"a hit no longer squashes the animal, which is the binary width pop " +
+        "with the pop removed - no hit tell in the body at all",
+    from:"  e.sq = Math.min(e.sq, 1 - dip);", to:"" },
+  { id:"no-bite", must:"31",
+    why:"contact stops pitching the animal forward, so the horde's one " +
+        "attack has no animation",
+    from:"      e.lg = 1;                                     // the bite, see walk()",
+    to:  "" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

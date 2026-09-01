@@ -109,6 +109,13 @@ const MIN = +(process.argv[2] || 0);
         g.step(40, 1/60);
         spawn();
         g.step(3, 1/60);
+        // ...AND MID-STRIDE. Since the gait round the legs move on the body's
+        // own gait time, not the clock, and a fresh spawn is always standing
+        // still - so the six clock phases above would all catch the same
+        // standing pose. Each sample is also put at a different point of a
+        // full stride, so a leg that swings loose at the end of its arc is
+        // found here and not on the field.
+        g.setGait(ph*.53, 1);
         g.resume(); g.captureEnemy();
         await frame(); await frame();
         const bx = g.enemyPos();
