@@ -471,6 +471,13 @@ const MUTANTS = [
         "two more coats",
     from:"  if(st >= 3){\n    const G = gr;\n    if(st === 3){\n      // THE MAELSTROM.",
     to:  "  if(false){\n    const G = gr;\n    if(st === 3){\n      // THE MAELSTROM." },
+  // ---- R204: the volt line's top two are a wolf and a walking storm ------
+  { id:"supercell-is-the-tyrant", must:"37",
+    why:"the raiju-and-thunderhead branch is skipped and stages 3 and 4 fall " +
+        "through to the tyrant plan - the top of the volt line is the " +
+        "STORMTYRANT in two more coats",
+    from:"  if(st >= 3){\n    const G = gr;\n    if(st === 3){\n      // THE SUPERCELL.",
+    to:  "  if(false){\n    const G = gr;\n    if(st === 3){\n      // THE SUPERCELL." },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",

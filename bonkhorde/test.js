@@ -5660,7 +5660,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       return out;
     });
-    const DONE = ["intern", "scrap"];                 // one more line each round
+    const DONE = ["intern", "scrap", "spark"];        // one more line each round
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => ({ a: row[i], b: row[j], d: dist(row[i], row[j]) }));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ")

@@ -4057,17 +4057,174 @@ scrap(D){
 // is the widest thing on it, arms that never grow, and a tail that gets longer
 // and more level every stage until it is a counterweight.
 // FACE: a narrow forward predator eye under a straight brow, and a lipless
-// mouth with every tooth on show.
+// mouth with every tooth on show. And then the tyrant goes: stages 3 and 4
+// are a thunder-beast and a walking storm (below), the way the palette round
+// made them other colours.
 volt(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
           eyeCold, mawRow, idle, sway, twitch, drag,
-          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          mb, c, dk, lt, bel, acc, glo, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   const gr = 1 + st*.20;
   const hov = Math.sin(t*2.2)*.02*idle*gr;
   const lk = look*.16, lkf = -Math.abs(look)*.05;
   const roar = twitch(.4, 4.6 + st);
   const gape = roar*(.10 + st*.05)*gr;
+  // ---- THE TOP OF THE LINE IS TWO OTHER THINGS. Three stages grow a tyrant
+  // - chick, raptor, tyrannosaur, the one number `up` tipping it forward -
+  // and then the tyrant is done with. Same rule the palette round set and the
+  // EMBER and TIDE lines follow: an evolution is a new design, not the old
+  // one with more parts. The storm goes down on all fours, and then the storm
+  // is not an animal at all.
+  if(st >= 3){
+    const G = gr;
+    if(st === 3){
+      // THE SUPERCELL. THE TYRANT WENT DOWN ON ALL FOURS. A raiju - the
+      // thunder-beast of the old stories, a wolf wreathed in lightning: long,
+      // low and fast where the STORMTYRANT was upright and heavy. A mane of
+      // plasma quills from the crown to the withers carrying the travelling
+      // charge, a brush tail with the conductor fork still on the end of it,
+      // the bolt brands still on the haunches - the badges the line earned
+      // stay; the animal wearing them is a new one.
+      const SH = .56*G + hov, HP = .51*G + hov;               // withers, hips - LOW
+      // THE BODY. Deep at the chest, tucked at the waist, sloping to the rump.
+      chain([[sway, -.48*G, HP + .02*G], [sway, -.06*G, SH + .06*G], [sway, .40*G, SH + .02*G]],
+            .17*G, .21*G, c, em+.08, [1, .95, 1]);
+      mb(sway, .04*G, SH - .17*G, .15*G, .09*G, .36*G, bel, em+.08);       // belly
+      blob(sway, .44*G, SH + .02*G, .23*G, .22*G, .18*G, c, em+.08);       // chest
+      // THE NECK AND THE SKULL. A wolf's: narrow, long in the muzzle, ears up.
+      const nx = sway + lk, hx = nx + lk*.5;
+      const hf = .86*G + lkf, hy = SH + .24*G;
+      chain([[sway, .46*G, SH + .08*G], [nx, .70*G, SH + .22*G], [hx, hf - .06*G, hy - .02*G]],
+            .13*G, .12*G, c, em+.06);
+      blob(hx, hf, hy, .14*G, .13*G, .14*G, c, em+.10);
+      chain([[hx, hf + .10*G, hy - .02*G], [hx, hf + .36*G, hy - .06*G]],
+            .095*G, .075*G, c, em+.08, [1, .82, 1]);                          // muzzle
+      chain([[hx, hf + .10*G, hy - .13*G - gape], [hx, hf + .32*G, hy - .15*G - gape]],
+            .080*G, .050*G, c, em+.06, [1, .55, 1]);                          // lower jaw
+      mb(hx, hf + .38*G, hy - .04*G, .045*G, .04*G, .04*G, dk, .08);         // nose
+      for(const rs of [-1,1]){
+        mb(hx + rs*.055*G, hf + .28*G, hy - .12*G - gape*.5, .015*G, .045*G, .015*G, [.96,.95,.88], .22);   // fangs
+        mb(hx + rs*.09*G, hf - .06*G, hy + .16*G, .035*G, .09*G, .045*G, c, em+.06, rs*.3);                 // ears
+        mb(hx + rs*.09*G, hf - .04*G, hy + .18*G, .018*G, .06*G, .025*G, bel, em+.06, rs*.3);               // ear lining
+        horn(hx + rs*.13*G, hf + .02*G, hy + .06*G, rs*.035*G, -.030*G, .050*G, 3, .036*G, acc, .70);      // the line's horns
+      }
+      eyeCold(hx, hf + .06*G, hy + .05*G, .13*G, .055*G, glo);
+      // THE MANE. Plasma quills from the crown down the neck to the withers,
+      // leaning back, each one burning a beat after the one ahead of it as
+      // the charge runs down the animal.
+      const crown = [hx, hf - .04*G, hy + .10*G], wth = [sway, -.02*G, SH + .16*G];
+      for(let i=0;i<7;i++){
+        const u = i/6, chg = .55 + Math.sin(t*9 - i*.9)*.45;
+        horn(crown[0] + (wth[0]-crown[0])*u, crown[1] + (wth[1]-crown[1])*u, crown[2] + (wth[2]-crown[2])*u,
+             0, -.035*G, (.062 - u*.012)*G, 3, (.040 - u*.006)*G, glo, .35 + chg*.55);
+      }
+      for(const rs of [-1,1]) for(let k=0;k<2;k++){   // the ruff at the withers
+        const chg = .55 + Math.sin(t*9 - 5 - k)*.45;
+        horn(sway + rs*(.12 + k*.07)*G, (-.02 - k*.10)*G, SH + .12*G,
+             rs*.030*G, -.030*G, .050*G, 2, .036*G, glo, .35 + chg*.55);
+      }
+      // FOUR LEGS. Diagonal pairs step together, the way a trot works. The
+      // hind pair is thicker - that is where a running animal's engine is -
+      // and wears the bolt brands the tyrant earned.
+      for(const rs of [-1,1]){
+        const pf = rs > 0 ? gait : -gait;
+        leg(sway + rs*.21*G, .34*G, SH, SH - .03*G, pf, rs, .095*G, c, em+.04, dk);
+        const LX = sway + rs*.22*G, LF = -.40*G, LY = HP, LL = HP - .03*G, TH = .11*G;
+        leg(LX, LF, LY, LL, -pf, rs, TH, c, em+.04, dk);
+        const knee = [LX + rs*TH*.42, LF + LL*.34 - pf*LL*.30, LY - LL*.40];
+        for(const [d, fj] of [[.06, -.045],[.18, .045],[.30, -.045]])
+          mb(LX + (knee[0]-LX)*d + rs*TH*(1.12 - .52*d), LF + (knee[1]-LF)*d + fj*G, LY + (knee[2]-LY)*d,
+             .030*G, .055*G, .050*G, acc, .50 + Math.sin(t*6 + rs)*.12);
+      }
+      // THE BRUSH. Carried up and curling, a fringe of plasma along the top,
+      // and the conductor fork on the end of it.
+      const tail = [[sway, -.52*G, HP + .04*G]];
+      for(let i=0;i<5;i++){
+        const lag = drag(.5 + i*.4)*.03*(i+1)*G + Math.sin(t*1.1 - i*.5)*.010*idle*(i+1)*G;
+        tail.push([sway + lag, (-.68 - i*.19)*G, HP + (.08 + i*.08 - i*i*.012)*G]);
+      }
+      chain(tail, .11*G, .06*G, c, em+.06, [1, .90, 1]);
+      for(let i=1;i<5;i++){ const chg = .55 + Math.sin(t*9 - 7 - i*.9)*.45;
+        mb(tail[i][0], tail[i][1], tail[i][2] + .10*G, .030*G, .075*G, .060*G, glo, .30 + chg*.50); }
+      const tp = tail[5], fk = .40 + Math.sin(t*7.5)*.42 + Math.sin(t*23)*.18;
+      for(const rs of [-1,1])
+        chain([[tp[0], tp[1] + .02*G, tp[2]], [tp[0] + rs*.13*G, tp[1] - .19*G, tp[2] + .14*G]],
+              .045*G, .024*G, [.96,.94,.86], .30);
+      mb(tp[0], tp[1] - .06*G, tp[2] + .05*G, .055*G, .055*G, .055*G, acc, .30 + Math.max(0, fk)*.65);
+      // static off the mane
+      for(let i=0;i<7;i++){ const a = t*2.5 + i/7*TAU;
+        fx(sway + Math.sin(a)*.12*G, .30*G + Math.cos(a)*.22*G, SH + .30*G + Math.sin(t*5+i)*.06*G,
+           .030*G,.030*G,.030*G, glo, 1.0); }
+    } else {
+      // THE TEMPEST. THE STORM ITSELF WALKS. No beast at all now: a thunderhead
+      // - a white anvil of cloud, dark on its underside - carried two body
+      // heights off the ground on four legs of standing lightning, the
+      // tyrant's face looking out of the front of it, magenta fire guttering
+      // under the cloud-base. The conductor fork trails behind on a streamer
+      // of cloud, which is the one thing left of the tail.
+      const CY = 1.28*G + hov;                                 // the cloud-base
+      const arc = .45 + Math.sin(t*11)*.40;
+      // THE CLOUD. One wide body, five billows on top of it, the anvil plate
+      // of dark beneath.
+      blob(sway, .00*G, CY + .18*G, .56*G, .20*G, .46*G, c, em+.06);
+      blob(sway + .26*G, .08*G, CY + .40*G, .27*G, .21*G, .26*G, c, em+.06);
+      blob(sway - .30*G, -.06*G, CY + .38*G, .25*G, .19*G, .24*G, c, em+.06);
+      blob(sway, -.32*G, CY + .42*G, .28*G, .23*G, .26*G, c, em+.06);
+      blob(sway + .04*G, .30*G, CY + .38*G, .24*G, .17*G, .22*G, c, em+.06);
+      blob(sway - .04*G, -.04*G, CY + .62*G, .22*G, .17*G, .20*G, c, em+.06);   // the crown
+      mb(sway, .00*G, CY - .02*G, .50*G, .06*G, .42*G, dk, .02);
+      for(let i=0;i<4;i++){ const a = i*(TAU/4) + t*.7, on = Math.max(0, Math.sin(t*13 + i*2.4));
+        fx(sway + Math.cos(a)*.30*G, Math.sin(a)*.26*G, CY - .16*G, .020*G, .09*G, .020*G, glo, .30 + on*.70); }
+      // THE FACE. The eye of the storm: a dark plate on the front of the cloud
+      // with the tyrant's cold eyes in it, the line's horns over them, and a
+      // grin that is one bar of arc with teeth of light hanging off it.
+      const hx = sway + lk*.6, hf = .44*G + lkf, hy = CY + .16*G;
+      mb(hx, hf, hy, .30*G, .17*G, .07*G, dk, .04);
+      // the eyes start INSIDE the plate - at +.03 G the sclera's back face sat
+      // a hair ahead of the plate's front and one eye floated off in analyze
+      eyeCold(hx, hf - .01*G, hy + .04*G, .17*G, .075*G, acc);
+      mb(hx, hf + .04*G, hy - .09*G, .20*G, .028*G, .03*G, glo, .45 + arc*.45);
+      for(const rs of [-1,1]){
+        horn(hx + rs*.22*G, hf - .02*G, hy + .11*G, rs*.045*G, .040*G, .075*G, 3, .050*G, acc, .75);
+        for(let k=0;k<3;k++)
+          mb(hx + rs*(.05 + k*.06)*G, hf + .05*G, hy - .13*G, .012*G, .03*G, .012*G, bel, .30);
+      }
+      // THE LEGS. Four standing bolts, each a zigzag from the cloud-base to
+      // the floor, burning brighter as the charge reaches it, planted and
+      // lifted on the trot the same way a beast's would be - it walks.
+      for(const rs of [-1,1]) for(const fs of [-1,1]){
+        const pf = (rs*fs > 0 ? gait : -gait)*.08*G;
+        const lift = Math.max(0, rs*fs > 0 ? gait2 : -gait2)*.10*G*amp;
+        const chg = .50 + Math.sin(t*9 - rs*.7 - fs*1.9)*.40;
+        const r0 = rs*.34*G, f0 = fs*.26*G;
+        chain([[sway + r0, f0, CY - .02*G],
+               [sway + r0 + rs*.20*G, f0 + fs*.14*G + pf*.4, CY*.66],
+               [sway + r0 + rs*.10*G, f0 + fs*.08*G + pf*.8, CY*.34 + lift*.5],
+               [sway + r0 + rs*.26*G, f0 + fs*.20*G + pf, .02*G + lift]],
+              .044*G, .030*G, glo, .35 + chg*.50);   // thin - a bolt, not a tentacle
+        mb(sway + r0 + rs*.26*G, f0 + fs*.20*G + pf, .03*G + lift, .08*G, .03*G, .08*G, bel, .30 + chg*.40);
+      }
+      // THE STREAMER. The tail, as cloud: three shrinking billows trailing
+      // back and lagging the turn, the fork on the last of them.
+      const tail = [[sway, -.50*G, CY + .10*G]];
+      for(let i=0;i<3;i++){
+        const lag = drag(.6 + i*.45)*.04*(i+1)*G + Math.sin(t*1.0 - i*.6)*.012*idle*(i+1)*G;
+        tail.push([sway + lag, (-.76 - i*.26)*G, CY + (.08 - i*.05)*G]);
+      }
+      chain(tail, .20*G, .09*G, c, em+.04, [1, .80, 1]);
+      const tp = tail[3], fk = .40 + Math.sin(t*7.5)*.42 + Math.sin(t*23)*.18;
+      for(const rs of [-1,1])
+        chain([[tp[0], tp[1] + .02*G, tp[2]], [tp[0] + rs*.15*G, tp[1] - .22*G, tp[2] + .16*G]],
+              .050*G, .026*G, [.96,.94,.86], .30);
+      mb(tp[0], tp[1] - .07*G, tp[2] + .06*G, .06*G, .06*G, .06*G, acc, .30 + Math.max(0, fk)*.65);
+      // and the storm's own weather: sparks orbiting the crown
+      for(let i=0;i<8;i++){ const a = t*2.2 + i/8*TAU;
+        fx(sway + Math.sin(a)*.62*G, Math.cos(a)*.52*G, CY + (.30 + i%3*.14)*G + Math.sin(t*5+i)*.05*G,
+           .034*G,.034*G,.034*G, glo, .90); }
+    }
+    return;
+  }
   // How upright it is. A chick stands almost vertical on oversized feet; the
   // adult carries its spine level over the hips. That single number is most of
   // what makes the three read as one animal growing up.
@@ -4083,37 +4240,9 @@ volt(D){
      (.16+st*.04)*gr, .09*gr, (.24+st*.05)*gr, bel, em+.10);
   ridge(bodyF - .30*gr, chestF + .22*gr, HIP + hov + (.30 + st*.06)*gr,
         4 + st, (.11 + st*.025)*gr, acc, .72);
-  // ---- THE SUPERCELL. The dorsal ridge grows LIGHTNING RODS: four tall thin
-  // spires that carry a travelling charge, so the whole back reads as the
-  // leading edge of a storm. This is the apex silhouette element - a tyrant
-  // with a fence of light down its spine is not a bigger STORMTYRANT.
-  // ONE BOX PER ROD. Each rod was a vertical chain that split into six-plus
-  // stacked slivers fighting each other's faces - the buried scan showed
-  // three consecutive boxes per rod with no volume of their own. A rod is
-  // the one shape a single box already is.
-  if(st >= 3) for(let i=0;i<4;i++){
-    const rf = bodyF - .26*gr + i*(.18*gr);
-    const tall = (.72 + (i===1||i===2 ? .16 : 0))*gr;
-    const chg = .55 + Math.sin(t*9 - i*1.6)*.45;          // the charge travels
-    const z0 = HIP + hov + .28*gr, z1 = HIP + hov + tall;
-    mb(sway + Math.sin(t*2+i)*.010*gr, rf - .015*gr, (z0+z1)/2,
-       .042*gr, (z1-z0)/2, .042*gr, [1,.95,.55], .30 + chg*.55);
-    mb(sway, rf - .03*gr, z1 + .05*gr,
-       .052*gr, .055*gr, .052*gr, [1,1,.82], .95*chg);
-  }
-  // ---- THE TEMPEST. The fence closes: an arc lives between each pair of
-  // rod tips, flickering on the same travelling charge. Spanning boxes, not
-  // floaters - each one touches the tip orb at both of its ends.
-  if(st >= 4) for(let i=0;i<3;i++){
-    const rf0 = bodyF - .26*gr + i*(.18*gr), rf1 = rf0 + .18*gr;
-    const t0 = (.72 + (i===1||i===2 ? .16 : 0))*gr;
-    const t1 = (.72 + (i+1===1||i+1===2 ? .16 : 0))*gr;
-    const za = HIP + hov + t0 + .05*gr, zb = HIP + hov + t1 + .05*gr;
-    const arcF = .45 + Math.sin(t*11 - i*2.1)*.40;
-    mb(sway, (rf0+rf1)/2 - .03*gr, (za+zb)/2,
-       .020*gr, Math.abs(za-zb)/2 + .035*gr, .105*gr,
-       [1,1,.88], .40 + arcF*.55);
-  }
+  // (the old SUPERCELL's lightning rods and the old TEMPEST's arcs between
+  // them are gone: from here down is the tyrant, stages 0 to 2, and stages
+  // 3 and 4 returned above)
   // NECK -> SKULL. An S in the young animal, short and thick in the adult.
   const nx = sway + lk, nf = chestF + (.14 + st*.10)*gr, ny = HIP + hov + (.30 + st*.10)*gr;
   const hx = nx + lk*.6, hf = nf + (.22 + st*.16)*gr + lkf, hy = ny + (.22*up + .06)*gr;
@@ -4174,10 +4303,6 @@ volt(D){
     // .74 of its half-width put the first segment of the horn out in the air.
     horn(hx + rs*SK*.58, hf + SK*.08, hy + SK*.30, rs*.045*gr, -.034*gr, .065*gr,
          3, .046*gr, acc, .70);
-    // the apex crown: a second, forward-hooked pair over the brow
-    if(st >= 3)
-      horn(hx + rs*SK*.40, hf + SK*.30, hy + SK*.56, rs*.040*gr, .068*gr, .080*gr,
-           2, .058*gr, [1,.95,.55], .80);
     mb(hx + rs*SK*.86, hf + SK*.40, hy - SK*.10, SK*.22, SK*.34, SK*.46, acc, .30);
   }
   // ARMS. They never grow. On the chick they are almost as long as the legs;
