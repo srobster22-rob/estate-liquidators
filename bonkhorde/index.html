@@ -2169,6 +2169,52 @@ function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
 // a stride the body is actually taking. Signed -1..1, same shape every plan
 // already read off the clock.
 function stride(e, f){ return Math.sin(e.gt*f + e.bob) * e.amp; }
+// The stride's OTHER half: where the foot is in its swing. stride() is the
+// foot's fore-aft position; this is its velocity, positive exactly while the
+// foot is travelling forward - which is the half of the cycle a real foot
+// spends in the air. Lift rides on this and not on the position, otherwise a
+// foot is highest when it is furthest forward, which is the moment it should
+// be landing.
+function strideV(e, f){ return Math.cos(e.gt*f + e.bob) * e.amp; }
+// A HORDE LEG, AT HORDE PRICES. The player's leg() is a dozen blocks - three
+// chained runs, a knee, three toes, three claws - and there can be four hundred
+// of these on the field, so this is the same zigzag in two: a thigh from hip
+// to knee, driven forward, and a shin from knee to hock, driven back. A box in
+// this game only turns about the vertical, so a slanted limb is the bounding
+// block of its own diagonal: as thick as the leg across its short sides,
+// reaching from one joint to the other along the long ones. Each block carries
+// a margin past both of its joints, so thigh and shin share real volume at the
+// knee instead of kissing there - the six-phase connectivity pass would find a
+// kiss - and the thigh's top sits inside whatever hip it was hung from.
+// The foot goes on at LOD 2 only, from the hock forward to the toe.
+// The shin is a shade lighter than the thigh, for the reason the player's
+// leg() gives: the knee has to be a place where something changes. Two dark
+// blocks stacked read as one dark column; a dark block over a lighter one
+// reads as a joint, and that is most of what "articulated" means at forty
+// pixels tall.
+// `sw` is this leg's stride, -1..1, forward positive; `lift` is how far the
+// foot is off the ground this frame; `kn` is how far forward the knee reaches
+// as a fraction of the leg - a hind leg tucks it, a foreleg throws it out;
+// `ns` splits the shin into that many stair-stepped blocks, for a leg long
+// and thin enough that one bounding block of its slant would be a boot.
+function eleg(e, face, r, f, y, len, sw, lift, th, col, lod, kn, em, ns){
+  const k  = kn === undefined ? .22 : kn;
+  const kf = f + len*k + sw*len*.26,          ky = y - len*.42;
+  const af = f + len*(k - .18) + sw*len*.44,  ay = y - len*.84 + lift*.6;
+  const lt = [col[0]*1.3+.04, col[1]*1.3+.04, col[2]*1.3+.04];
+  const seg = (f0, y0, f1, y1, t, cc, n)=>{
+    n = n || 1;
+    for(let i=0;i<n;i++){
+      const u = (i + .5)/n;
+      eb(e, face, r, f0 + (f1-f0)*u, y0 + (y1-y0)*u, t,
+         Math.abs(y1-y0)/(2*n) + t*.55, Math.abs(f1-f0)/(2*n) + t*.65, cc, em||0);
+    }
+  };
+  seg(f, y, kf, ky, th, col);                                     // thigh
+  seg(kf, ky, af, ay, th*.78, lt, ns);                            // shin
+  if(lod < 2) return;
+  seg(af, ay, af + len*.30, y - len + lift + th*.30, th*.62, col); // foot
+}
 // The same vocabulary the player monsters got, because the reason the horde
 // looked like boxes is that it WAS boxes: chamfered volumes, tapered limbs and
 // eyes with a pupil in them. Chamfering costs 3x, so it is spent at LOD 2 only
@@ -2237,25 +2283,33 @@ terrapin(e, face, W, H, c, glow, lod, y0){
   // step. Fixed by decoupling height from H almost entirely and sizing every
   // box off W instead, the way an actual turtle's proportions do not care
   // how tall its species name used to stand.
+  // THE SHELL IS OFF THE GROUND. It sat with its rim six hundredths of a
+  // width BELOW the feet, and the four legs - a tenth of a width across at
+  // four tenths out, under a rim five and a half tenths wide - were enclosed
+  // by it on every axis: drawn at LOD 2, and drawn for nobody. A tenth of a
+  // width of daylight under the rim now, and the legs sprawl out PAST it,
+  // where a turtle's are and where the camera can see them.
   const n = lod>=2 ? 3 : lod>=1 ? 2 : 1;
   for(let i=0;i<n;i++){ const k = 1 - i*.30;
-    B(e, face, 0, -W*.05*i, y0 + W*.10 + i*W*.09,
+    B(e, face, 0, -W*.05*i, y0 + W*.20 + i*W*.09,
       W*.55*k, W*.16, W*.50*k, i%2 ? [c[0]*.86,c[1]*.86,c[2]*.90] : c, glow); }
   if(lod < 1) return;
   // the head, on a short neck poking out from under the shell's front rim
-  eb(e, face, 0, W*.62, y0 + W*.14, W*.16, W*.13, W*.17, c, glow);
-  eey(e, face, 0, W*.78, y0 + W*.18, W*.15, W*.08, [.12,.16,.20]);
-  eb(e, face, 0, W*.84, y0 + W*.08, W*.09, W*.06, W*.08, [.90,.88,.80], .10);  // beak
+  eb(e, face, 0, W*.62, y0 + W*.24, W*.16, W*.13, W*.17, c, glow);
+  eey(e, face, 0, W*.78, y0 + W*.28, W*.15, W*.08, [.12,.16,.20]);
+  eb(e, face, 0, W*.84, y0 + W*.18, W*.09, W*.06, W*.08, [.90,.88,.80], .10);  // beak
+  // four sprawled legs in the MIDDLE tier, diagonal pairs lifting in turn -
+  // and only when it walks. Wider than they are tall, elbows out, each one
+  // reaching a tenth of a width past the rim it used to hide under.
+  for(const sg of [-1,1]) for(const fs of [-1,1])
+    eb(e, face, sg*W*.54, fs*W*.28 + stride(e, 4)*(sg*fs>0?1:-1)*W*.07,
+       y0 + W*.09 + Math.max(0, strideV(e, 4)*(sg*fs>0?1:-1))*W*.05,
+       W*.14, W*.09, W*.11, [c[0]*.72,c[1]*.72,c[2]*.76], 0);
   if(lod < 2) return;
   for(let i=0;i<2;i++)                                     // shell seams
-    eb(e, face, 0, -W*.10 + i*W*.34, y0 + W*.20, W*.005, W*.10, W*.46,
+    eb(e, face, 0, -W*.10 + i*W*.34, y0 + W*.30, W*.005, W*.10, W*.46,
        [c[0]*.5,c[1]*.5,c[2]*.55], 0);
-  // four stubby legs, diagonal pairs lifting in turn - and only when it walks
-  for(const sg of [-1,1]) for(const fs of [-1,1])
-    eb(e, face, sg*W*.40, fs*W*.30 + stride(e, 4)*(sg*fs>0?1:-1)*W*.06,
-       y0 + W*.06 + Math.max(0, Math.sin(e.gt*4 + e.bob + (sg*fs>0?0:Math.PI)))*W*.05*e.amp,
-       W*.10, W*.09, W*.10, [c[0]*.72,c[1]*.72,c[2]*.76], 0);
-  eb(e, face, 0, -W*.42, y0 + W*.12, W*.06, W*.06, W*.14, c, glow*.5);  // tail
+  eb(e, face, 0, -W*.42, y0 + W*.22, W*.06, W*.06, W*.14, c, glow*.5);  // tail
 },
 
 // PTERLING - a small pterosaur. It used to be a FLITTER, a songbird with
@@ -2351,12 +2405,18 @@ ceratop(e, face, W, H, c, glow, lod, y0){
   // The camera in this game looks DOWN at the field, so a frill standing
   // upright behind the skull hides it: this one is a wide low band that the
   // head sits clearly in front of and below.
-  eb(e, face, 0, W*.34, y0 + H*.56, W*.80, H*.13, W*.09, dk, glow*.5);   // frill
-  eb(e, face, 0, W*.40, y0 + H*.55, W*.62, H*.085, W*.13, c, glow);      // its face
-  B(e, face, 0, -W*.20, y0 + H*.30, W*.52, H*.19, W*.48, c, glow);       // haunches
-  B(e, face, 0,  W*.18, y0 + H*.34, W*.58, H*.21, W*.40, c, glow);       // shoulders
-  eb(e, face, 0, W*.78, y0 + H*.38, W*.40, H*.21, W*.32, c, glow);       // skull
-  eb(e, face, 0, W*1.12, y0 + H*.31, W*.24, H*.12, W*.22, dk, glow);     // beak
+  // THE BODY IS CARRIED, not dragged. The first build hung the belly eleven
+  // hundredths of the height off the grass over four columns that were mostly
+  // inside it - two tenths of a unit of leg showed under a body a unit and a
+  // half wide, and the animal read as a slab that slid. Belly at a quarter of
+  // the height now, and the legs under it are jointed. Everything above the
+  // shoulders - frill, face, skull, horns - rode up with it.
+  eb(e, face, 0, W*.34, y0 + H*.60, W*.80, H*.13, W*.09, dk, glow*.5);   // frill
+  eb(e, face, 0, W*.40, y0 + H*.59, W*.62, H*.085, W*.13, c, glow);      // its face
+  B(e, face, 0, -W*.20, y0 + H*.40, W*.52, H*.16, W*.48, c, glow);       // haunches
+  B(e, face, 0,  W*.18, y0 + H*.43, W*.58, H*.18, W*.40, c, glow);       // shoulders
+  eb(e, face, 0, W*.78, y0 + H*.42, W*.40, H*.21, W*.32, c, glow);       // skull
+  eb(e, face, 0, W*1.12, y0 + H*.35, W*.24, H*.12, W*.22, dk, glow);     // beak
   if(lod < 1) return;
   // ON THE FLANK, where a ceratopsian's eyes are - and where they can be SEEN.
   // At a lateral offset of .28 the whole eye sat .537 out against a skull half
@@ -2364,18 +2424,22 @@ ceratop(e, face, W, H, c, glow, lod, y0){
   // to 1.53: enclosed on every axis, invisible from every angle, four boxes a
   // body drawn for nobody. The first horde-wide buried-volume pass found it -
   // the same tool that had only ever been pointed at the player.
-  eey(e, face, 0, W*.86, y0 + H*.47, W*.40, W*.078, [.98,.76,.26], .40);
-  eb(e, face, 0, W*1.08, y0 + H*.48, W*.07, H*.12, W*.09, bone, .18);    // nose horn
+  eey(e, face, 0, W*.86, y0 + H*.51, W*.40, W*.078, [.98,.76,.26], .40);
+  eb(e, face, 0, W*1.08, y0 + H*.52, W*.07, H*.12, W*.09, bone, .18);    // nose horn
   // ABOVE the skull, not inside it. The brow pair sat at .888 of a skull whose
   // top face is at 1.09, so all six boxes of them - both horns, every segment -
   // were enclosed and drawn for nobody. A ceratopsian's brow horns are the
   // second thing you name it by after the frill; they have to clear the head.
   for(const sg of [-1,1])                                                // brow horns
-    etp(e, face, sg*W*.26, W*.86, y0 + H*.60, sg*.012,.06,.05, 3,
+    etp(e, face, sg*W*.26, W*.86, y0 + H*.64, sg*.012,.06,.05, 3,
         W*.08,H*.05,W*.08, bone, .18);
-  for(const sg of [-1,1]) for(const fs of [-1,1])                        // four columns
-    eb(e, face, sg*W*.36, W*.14 + fs*W*.30 + st*sg*fs*W*.08,
-       y0 + H*.13 + Math.max(0, st*sg*fs)*H*.06, W*.13, H*.14, W*.13, dk, 0);
+  // FOUR LEGS, jointed, in diagonal pairs: the forelegs throw the knee out,
+  // the hind legs tuck it. No feet at any range - they would be four boxes
+  // under the widest belly on the roster, and the budget line below is what
+  // pays for the knees.
+  for(const sg of [-1,1]) for(const fs of [-1,1])
+    eleg(e, face, sg*W*.36, fs > 0 ? W*.42 : -W*.30, y0 + H*.36, H*.36, st*sg*fs,
+         Math.max(0, strideV(e, 5.5)*sg*fs)*H*.05, W*.10, dk, 1, fs > 0 ? .20 : .08);
   if(lod < 2) return;
   // scallops on the OUTER EDGE, not across the top: four bright nubs in a row
   // above a dark plate read as a set of teeth, which is not what a frill is.
@@ -2386,9 +2450,9 @@ ceratop(e, face, W, H, c, glow, lod, y0){
   // their own width, so each still overlaps the one inboard of it and the row
   // stays part of the animal.
   for(const sg of [-1,1]) for(let i=0;i<2;i++)
-    eb(e, face, sg*W*(.82 + i*.09), W*.34, y0 + H*(.60 - i*.10),
+    eb(e, face, sg*W*(.82 + i*.09), W*.34, y0 + H*(.64 - i*.10),
        W*.09, H*.06, W*.09, bone, .16);
-  etp(e, face, 0, -W*.46, y0 + H*.30, 0,-.15,-.025, 3, W*.15,H*.11,W*.17, c, glow);
+  etp(e, face, 0, -W*.46, y0 + H*.36, 0,-.15,-.025, 3, W*.15,H*.11,W*.17, c, glow);
 },
 
 // DILOPHO - a crested spitter. It used to be a TOAD, squat and warty, which is
@@ -2402,7 +2466,11 @@ dilopho(e, face, W, H, c, glow, lod, y0){
   const B = lod>=2 ? ebl : eb;
   const lt = [Math.min(1,c[0]*1.25+.06), Math.min(1,c[1]*1.18+.05), c[2]*.82];
   const dk = [c[0]*.54, c[1]*.54, c[2]*.50];
-  B(e, face, 0, -W*.12, y0 + H*.44, W*.34, H*.21, W*.40, c, glow);   // hips
+  // The hips sit HIGHER and shallower than they did - .47 of the height and
+  // .17 deep, against .44 and .21 - because the legs under them are jointed
+  // now and a knee that bends inside the pelvis is a knee nobody sees. The
+  // barrel loses a tenth of its depth and the animal gains a visible thigh.
+  B(e, face, 0, -W*.12, y0 + H*.47, W*.34, H*.17, W*.40, c, glow);   // hips
   B(e, face, 0,  W*.20, y0 + H*.54, W*.32, H*.19, W*.32, c, glow);   // chest
   eb(e, face, 0, W*.38, y0 + H*.70, W*.15, H*.13, W*.18, c, glow);   // neck
   eb(e, face, 0, W*.58, y0 + H*.78, W*.18, H*.12, W*.26, c, glow);   // skull
@@ -2417,22 +2485,20 @@ dilopho(e, face, W, H, c, glow, lod, y0){
   // the legs never moved at all before the gait round - a spitter stood on
   // two posts and slid. Each side swings against the other and lifts on the
   // forward half of its stride.
-  // THE SHINS ARE IN THE MIDDLE TIER. They were LOD 2 only, and a spitter holds
+  // THE LEGS ARE IN THE MIDDLE TIER. They were LOD 2 only, and a spitter holds
   // a thirteen-metre band - two metres past where LOD 2 ends - so the one
   // range this animal is ever actually seen from drew it with no legs at all:
   // hips two-thirds of a metre off the grass, a shadow underneath, nothing
   // between. The model-sheet camera caught it the first time it looked.
-  for(const sg of [-1,1]){
-    const sw = st*sg, lift = Math.max(0, sw)*H*.05;
-    eb(e, face, sg*W*.20, W*.02 + sw*W*.14, y0 + H*.22 + lift, W*.10, H*.21, W*.11, dk, 0);    // shins
-  }
+  // And they are LEGS now, not posts: a theropod's thigh thrown forward and
+  // shin swept back, hung from the hips, the foot on at close range.
+  for(const sg of [-1,1])
+    eleg(e, face, sg*W*.20, -W*.06, y0 + H*.38, H*.38, st*sg,
+         Math.max(0, strideV(e, 7)*sg)*H*.06, W*.085, dk, lod);
   if(lod < 2) return;
-  for(const sg of [-1,1]){
-    const sw = st*sg, lift = Math.max(0, sw)*H*.05;
-    eb(e, face, sg*W*.20, W*.16 + sw*W*.14, y0 + H*.04 + lift, W*.09, H*.045, W*.15, dk, 0);   // feet
+  for(const sg of [-1,1])
     etp(e, face, sg*W*.26, W*.28, y0 + H*.50, sg*.02,.05,-.05, 2,
         W*.055,H*.055,W*.055, dk, 0);                                        // arms
-  }
 },
 
 // RAPTORLING - a hatchling dromaeosaur. It used to be a RAT, with round ears
@@ -2446,7 +2512,10 @@ raptor(e, face, W, H, c, glow, lod, y0){
   const B = lod>=2 ? ebl : eb;
   const lt = [c[0]*1.7+.18, c[1]*1.5+.14, c[2]*1.5+.14];
   const dk = [c[0]*.55+.06, c[1]*.55+.06, c[2]*.60+.07];
-  B(e, face, 0, -W*.16, y0 + H*.46, W*.34, H*.23, W*.44, c, glow);   // hips
+  // Shallower hips than the first build - .19 deep at .49, not .23 at .46 -
+  // for the same reason DILOPHO's went up: the leg under them has a knee now
+  // and it has to bend somewhere the camera can see.
+  B(e, face, 0, -W*.16, y0 + H*.49, W*.34, H*.19, W*.44, c, glow);   // hips
   B(e, face, 0,  W*.26, y0 + H*.52, W*.32, H*.21, W*.34, c, glow);   // chest
   eb(e, face, 0, W*.54, y0 + H*.60, W*.15, H*.12, W*.20, c, glow);   // neck
   eb(e, face, 0, W*.76, y0 + H*.62, W*.19, H*.14, W*.25, c, glow);   // skull
@@ -2454,15 +2523,18 @@ raptor(e, face, W, H, c, glow, lod, y0){
   if(lod < 1) return;
   eey(e, face, 0, W*.82, y0 + H*.70, W*.16, W*.072, [1,.80,.22], .55);
   etp(e, face, 0, -W*.44, y0 + H*.46, 0,-.24,-.02, 4, W*.11,H*.10,W*.21, lt, glow+.05);
-  for(const sg of [-1,1])                                            // two legs
-    eb(e, face, sg*W*.24, W*.04 + Math.max(0, st*sg)*W*.20,
-       y0 + H*.22, W*.09, H*.20, W*.10, dk, 0);
+  // two legs, jointed: the scurry is mostly shin, the knee tucked up under
+  // the hip the way a hatchling's is
+  for(const sg of [-1,1])
+    eleg(e, face, sg*W*.24, -W*.04, y0 + H*.40, H*.40, st*sg,
+         Math.max(0, strideV(e, 15)*sg)*H*.07, W*.09, dk, lod, .16);
   if(lod < 2) return;
   for(const sg of [-1,1]){
-    eb(e, face, sg*W*.24, W*.18 + Math.max(0, st*sg)*W*.20, y0 + H*.05,
-       W*.08, H*.05, W*.13, dk, 0);                                   // foot
-    eb(e, face, sg*W*.24, W*.30 + Math.max(0, st*sg)*W*.20, y0 + H*.13,
-       W*.04, H*.07, W*.05, [.95,.93,.86], .30, face + sg*.2);        // the sickle
+    // the sickle rides the toe: eleg's foot runs from the hock forward by
+    // .30 of the leg, and the claw stands on the end of it
+    const sw = st*sg, lift = Math.max(0, strideV(e, 15)*sg)*H*.07;
+    eb(e, face, sg*W*.24, -W*.04 + H*.40*(.16 + sw*.44),
+       y0 + lift + H*.08, W*.04, H*.07, W*.05, [.95,.93,.86], .30, face + sg*.2);
   }
   for(let i=0;i<3;i++)                                               // dorsal quills
     eb(e, face, 0, W*.30 - i*W*.26, y0 + H*.70 - i*H*.015, W*.03, H*.075, W*.05,
@@ -2489,8 +2561,12 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
   for(let i=0;i<5;i++)
     box(e.x, gy + 2.4 + i*1.5 + Math.sin(T*2+i)*.20, e.z,
         .10, .55, .10, [1,.92,.52], .95);
+  // `bob` is how high the whole body rides over its first build: eight
+  // hundredths of the height standing - the bird is on LONGER legs since they
+  // were jointed, and everything from the barrel up moved with it - plus the
+  // running bounce on top.
   drawnMarks++;
-  const st = stride(e, 13), bob = Math.abs(Math.sin(e.gt*6.5 + e.bob))*H*.05*e.amp;
+  const st = stride(e, 13), bob = H*.08 + Math.abs(Math.sin(e.gt*6.5 + e.bob))*H*.05*e.amp;
   const B = lod>=2 ? ebl : eb;
   B(e, face, 0, -W*.06, y0 + H*.44 + bob, W*.52, H*.24, W*.46, c, glow);      // barrel body
   eb(e, face, 0, W*.20, y0 + H*.70 + bob, W*.16, H*.20, W*.16, c, glow);      // neck
@@ -2513,13 +2589,20 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
     eb(e, face, Math.sin(sp)*W*.62, -W*.52 - Math.cos(sp)*W*.30,
        y0 + H*.62 + bob + (k%2)*H*.02, W*.145, H*.03, W*.34,
        k%2 ? [.42,.94,.86] : [1,.86,.30], .55, face + sp); }
+  // THE LEGS ARE IN THE MIDDLE TIER. They were LOD 2 only, on a bird whose
+  // whole job is to run AWAY from the player - so the one range it is ever
+  // seen from, fleeing at fifteen metres, drew a body hovering two thirds of a
+  // unit above its own shadow. The same fault DILOPHO had, found by the same
+  // camera. Jointed now: a tucked knee and a long shin, the hock high the way
+  // a running bird's is, and the leg stretches with the bob so the foot stays
+  // on the grass while the body rises.
+  for(const sg of [-1,1])
+    eleg(e, face, sg*W*.18, -W*.06, y0 + H*.36 + bob, H*.36 + bob, st*sg,
+         Math.max(0, strideV(e, 13)*sg)*H*.06, W*.06, [1,.82,.24], lod, .12, .20, lod < 2 ? 1 : 3);
   if(lod < 2) return;
   for(const sg of [-1,1])                                                     // tucked wings
     eb(e, face, sg*W*.50, W*.02, y0 + H*.50 + bob, W*.10, H*.16, W*.32,
        [c[0]*1.2+.08,c[1]*1.2+.08,c[2]*1.25+.10], glow+.05, face + sg*.16);
-  for(const sg of [-1,1])                                                     // long running legs
-    etp(e, face, sg*W*.18, st*sg*W*.22, y0 + H*.24, 0,0,-.10, 3,
-        W*.055,H*.09,W*.055, [1,.82,.24], .20);
   // The sparks orbit clear of the animal on purpose, so they are FX and go out
   // through box() like the ring and the beam above rather than through eb() -
   // the same rule the player's plans keep with fx(), and for the same reason:

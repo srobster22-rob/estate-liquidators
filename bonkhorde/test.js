@@ -4651,6 +4651,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
           g.step(40, 1/60);
           spawn();
           g.step(3, 1/60);
+          // and the STRIDE is walked round too, now that the legs bend with
+          // it: a knee that only comes off the hip at full swing is a break
+          // the standing frame never shows. .53 apart over six samples steps
+          // through more than a full cycle of every leg frequency in use.
+          g.setGait(ph*.53, 1);
           g.resume(); g.captureEnemy();
           await frame(); await frame();
           const bx = g.enemyPos();
@@ -4936,6 +4941,121 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and a minute of a real wave leaves every gait field finite",
        r.finite.n > 20 && r.finite.bad === 0,
        `${r.finite.n} bodies, ${r.finite.bad} with a bad field`);
+  }
+
+  console.log("\n=== 32. THE HORDE HAS KNEES ===");
+  {
+    // Every walking body on the roster had legs that were one box each, slid
+    // fore and aft as a unit, and on two of the five species did not exist at
+    // all in the middle detail tier - which is the tier a spitter holding its
+    // thirteen-metre band and a collector running from you are actually seen
+    // at. The legs are jointed now (thigh, shin, foot), the swinging foot
+    // lifts, and every walker has them at LOD 1. These read the captured box
+    // list the way section 29 does - face-local (r, f, y, hx, hz, hy).
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const boot = () => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.disarm();
+        g.place(0,0); g.aim(0); g.step(20, 1/60); g.clearEnemies();
+      };
+      // Capture the body on the field at a stride phase. The sim is PAUSED for
+      // the capture - the draw loop keeps drawing a frozen field, the way the
+      // film harnesses rely on - so the phase set here is the phase drawn, and
+      // the same animal is re-shot phase after phase: each spawn rolls its own
+      // stride offset, so respawning per phase would sample random phases.
+      const recap = async (gt, amp) => {
+        g.setGait(gt, amp); g.pause(true); g.captureEnemy();
+        await frame(); await frame();
+        const bx = g.enemyPos(); if(!bx) return null;
+        const out = [];
+        for(let i=0;i<bx.length;i+=6)
+          out.push({ r:bx[i], f:bx[i+1], y:bx[i+2], hx:bx[i+3], hz:bx[i+4], hy:bx[i+5] });
+        return out;
+      };
+      const shoot = async (k, dist, gt, amp) => {
+        g.clearEnemies(); g.step(2, 1/60);
+        g.place(0,0); g.spawnAt(k, 0, dist); g.step(2, 1/60);
+        return recap(gt, amp);
+      };
+      const W = { shambler:.55, brute:1.5, spitter:.62, skitter:.34, collector:.82 };
+      // a LEG box: narrow in plan (a body slab is not), off the centre line
+      // (a tail is not), and in the lower half of the animal (an arm is not)
+      const legs = (bx, k) => {
+        const top = Math.max(...bx.map(b => b.y + b.hy)), bot = Math.min(...bx.map(b => b.y - b.hy));
+        const mid = (top + bot) / 2, w = W[k];
+        return bx.filter(b => b.hx < w*.2 && b.hz < w*.24 && Math.abs(b.r) > w*.08 && b.y < mid);
+      };
+      // FEET: the lowest leg box on each side
+      const feet = (lg) => {
+        const side = s => lg.filter(b => Math.sign(b.r) === s).sort((a,b) => (a.y-a.hy) - (b.y-b.hy))[0];
+        return [side(-1), side(1)];
+      };
+      boot();
+      const out = { tier:{}, joint:{} };
+      // 1. legs in BOTH tiers, standing (amp 0 - nothing lifted), touching the
+      //    ground: at least two leg boxes a side stacked at LOD 1, three at
+      //    LOD 2 for the bipeds; the quadrupeds four and four
+      for(const k of ["shambler","brute","spitter","skitter","collector"]){
+        const near = await shoot(k, 7, 0, 0), gy = (g.gait()[0] || {}).y;
+        const far = await shoot(k, 18.5, 0, 0), gyf = (g.gait()[0] || {}).y;
+        if(!near || !far){ out.tier[k] = null; continue; }
+        const ln = legs(near, k), lf = legs(far, k);
+        const perSide = (lg) => [-1, 1].map(s => lg.filter(b => Math.sign(b.r) === s).length);
+        const low = (bx) => Math.min(...bx.map(b => b.y - b.hy));
+        out.tier[k] = { near: perSide(ln), far: perSide(lf), nearN: near.length, farN: far.length,
+                        // and the middle tier stands on the same ground the near tier
+                        // does - each measured against its own patch of terrain
+                        drop: +((low(far) - gyf) - (low(near) - gy)).toFixed(3),
+                        ground: +(low(near) - gy).toFixed(3) };
+      }
+      // 2. the stride: the same animal walked round more than a full cycle at
+      //    full amplitude, twelve phases .075 apart. The two feet come apart
+      //    fore-and-aft and go back together, the swinging one comes up off
+      //    the planted one, and the planted one is the lowest thing on the
+      //    animal at every phase - the body stands on it.
+      for(const k of ["spitter","skitter","collector"]){
+        let spread = [], lift = [], planted = [];
+        for(let ph=0; ph<12; ph++){
+          const bx = ph ? await recap(ph*.075, 1) : await shoot(k, 7, 0, 1);
+          if(!bx){ spread = null; break; }
+          const [a, b] = feet(legs(bx, k));
+          if(!a || !b){ spread = null; break; }
+          const ba = a.y - a.hy, bb = b.y - b.hy;
+          spread.push(Math.abs(a.f - b.f));
+          lift.push(Math.abs(ba - bb));
+          planted.push(Math.min(ba, bb) - Math.min(...bx.map(x => x.y - x.hy)));
+        }
+        out.joint[k] = spread ? { apart: +Math.max(...spread).toFixed(3), together: +Math.min(...spread).toFixed(3),
+                                  lift: +Math.max(...lift).toFixed(3), planted: +Math.max(...planted).toFixed(3) }
+                              : null;
+      }
+      g.resume();
+      return out;
+    });
+    const T = r.tier, J = r.joint;
+    const stacked = (k, n) => T[k] && T[k].near[0] >= n && T[k].near[1] >= n;
+    ok("every walker has a jointed leg on each side at full detail",
+       stacked("spitter", 3) && stacked("skitter", 3) && stacked("collector", 3) &&
+       stacked("brute", 4) && stacked("shambler", 2),
+       Object.keys(T).map(k => `${k} ${T[k] ? T[k].near.join("/") : "-"}`).join(", "));
+    const farOk = (k, n) => T[k] && T[k].far[0] >= n && T[k].far[1] >= n;
+    ok("and legs in the MIDDLE tier too - the one a spitter and a collector are seen at",
+       farOk("spitter", 2) && farOk("skitter", 2) && farOk("collector", 2) &&
+       farOk("brute", 4) && farOk("shambler", 2),
+       Object.keys(T).map(k => `${k} ${T[k] ? T[k].far.join("/") : "-"}`).join(", "));
+    ok("both tiers stand on the ground, not on a body with the legs left off",
+       Object.values(T).every(t => t && Math.abs(t.drop) < .18 && Math.abs(t.ground) < .12),
+       Object.keys(T).map(k => `${k} tier drop ${T[k] ? T[k].drop : "-"} / ground ${T[k] ? T[k].ground : "-"}`).join(", "));
+    const strides = (k, apart) => J[k] && J[k].apart > apart && J[k].together < J[k].apart*.45;
+    ok("the feet come apart along the stride and go back together",
+       strides("spitter", .25) && strides("skitter", .12) && strides("collector", .30),
+       Object.keys(J).map(k => J[k] ? `${k} apart ${J[k].apart} together ${J[k].together}` : `${k} -`).join(", "));
+    const lifts = (k, lift) => J[k] && J[k].lift > lift && J[k].planted < .01;
+    ok("and the swinging foot comes up off the planted one, which the body stands on",
+       lifts("spitter", .03) && lifts("skitter", .02) && lifts("collector", .04),
+       Object.keys(J).map(k => J[k] ? `${k} lift ${J[k].lift} planted ${J[k].planted}` : `${k} -`).join(", "));
   }
 
   console.log("\n" + "=".repeat(58));

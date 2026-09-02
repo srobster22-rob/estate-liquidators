@@ -336,6 +336,21 @@ const MUTANTS = [
         "attack has no animation",
     from:"      e.lg = 1;                                     // the bite, see walk()",
     to:  "" },
+  { id:"spitter-legs-near-only", must:"32",
+    why:"DILOPHO's legs go back behind the close-range gate, so the one range " +
+        "a spitter is ever seen from draws it with no legs again",
+    from:"  for(const sg of [-1,1])\n    eleg(e, face, sg*W*.20, -W*.06, y0 + H*.38, H*.38, st*sg,\n" +
+         "         Math.max(0, strideV(e, 7)*sg)*H*.06, W*.085, dk, lod);\n  if(lod < 2) return;",
+    to:  "  if(lod < 2) return;\n  for(const sg of [-1,1])\n    eleg(e, face, sg*W*.20, -W*.06, y0 + H*.38, H*.38, st*sg,\n" +
+         "         Math.max(0, strideV(e, 7)*sg)*H*.06, W*.085, dk, lod);" },
+  { id:"feet-glued", must:"32",
+    why:"the shin and foot no longer swing with the stride - only the thigh " +
+        "does - so the feet stay together and the animal shuffles on the spot",
+    from:"  const af = f + len*(k - .18) + sw*len*.44,", to:"  const af = f + len*(k - .18)," },
+  { id:"foot-never-lifts", must:"32",
+    why:"the swinging foot is dragged along the grass instead of lifted",
+    from:"  seg(af, ay, af + len*.30, y - len + lift + th*.30, th*.62, col);",
+    to:  "  seg(af, ay, af + len*.30, y - len + th*.30, th*.62, col);" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run
