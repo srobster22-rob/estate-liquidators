@@ -4105,9 +4105,14 @@ scrap(D){
   // hull stayed the same blue barrel at three zooms - the audit's "torso
   // never evolves". The serpent earns a row of dark flank scutes at the
   // waterline; the LEVIATHAN grows barnacle patches on the old dark back.
-  if(st) for(const rs of [-1,1]) for(let i=0;i<3;i++)
-    mb(sway + rs*.295*gr, (-.26 + i*.22)*gr, (.46+bob)*gr,
-       .035*gr, .075*gr, .10*gr, dk, .12);
+  // FIVE a side, small, staggered up and down the waterline and a shade off
+  // the hull rather than the dark tone: three big dark rectangles evenly
+  // spaced along the flank read, from the play camera's oblique, as the
+  // windows of a bus (R218 sheet).
+  if(st) for(const rs of [-1,1]) for(let i=0;i<5;i++)
+    mb(sway + rs*.295*gr, (-.30 + i*.13)*gr, (.44 + (i%2)*.07 + bob)*gr,
+       .030*gr, (.038 + (i%3)*.006)*gr, (.048 + (i%2)*.008)*gr,
+       [c[0]*.60, c[1]*.62, c[2]*.74], .10, rs*.1);
   if(st >= 2) for(const rs of [-1,1]) for(let i=0;i<3;i++)
     mb(sway + rs*(.16 + i*.07)*gr, (.10 - i*.16)*gr, (.78 + bob - i*.02)*gr,
        .05*gr, .06*gr, .035*gr, [.86,.90,.92], .18);
@@ -6775,6 +6780,16 @@ surge(D){
        (st >= 3 ? .065 : .045)*gr, (y1-y0)/2, .088*gr,
        [ lerp(c[0], 1, glow*.85), lerp(c[1], .86, glow*.6), lerp(c[2], .30, glow*.5) ],
        .10 + glow*.85);
+    // THE SPINE wears its blood: a dark root where each spine enters the back
+    // and a red tip on the end of it, so a bone sail on a bone animal reads
+    // as rays rather than as one pale pile from behind (R218 sheet). The
+    // FLOOD and DELUGE above have their own crests and skip this.
+    if(st === 2){
+      mb(sway + Math.sin(t*1.2 - u*2)*.010*gr, ff - h*.06, y0 + .05*gr,
+         .052*gr, .050*gr, .094*gr, dk, .08);
+      mb(sway + Math.sin(t*1.2 - u*2)*.010*gr, ff - h*.06, y1 - .02*gr,
+         .050*gr, (.040 + (i%2)*.010)*gr, .092*gr, acc, .26 + glow*.5);
+    }
     // ---- THE DELUGE. The sail crests white, spine by spine - a standing
     // wave the length of the animal's back. Each cap overlaps its own spine's
     // top face, so the crest is part of the sail, not weather beside it -
@@ -6841,6 +6856,11 @@ surge(D){
   // thing an adult grows into, and it gives the second evolution a second
   // tell beyond "the sail finished"
   const tBnd = [c[0]*.62, c[1]*.52, c[2]*.60];
+  // and the banding runs up onto the barrel at the same stage: three rings
+  // of the joint colour round the hull, proud of it, where before the body
+  // was one bone slab between a banded tail and a bone sail
+  if(st === 2) for(let i=0;i<3;i++)
+    mb(sway, (-.18 + i*.20)*gr, HIP + .03*gr, (.235 + i*.01)*gr, (.24 + i*.005)*gr, .028*gr, tBnd, em+.04);
   const tR = i => (.155+st*.02)*gr + ((.05*gr) - (.155+st*.02)*gr) * (i/TN);
   for(let i=0;i<tail.length-1;i++)
     chain([tail[i], tail[i+1]], tR(i), tR(i+1),
