@@ -3953,6 +3953,129 @@ scrap(D){
     }
     return;
   }
+  // ---- AND THE TWO BELOW IT WERE THE SAME PLESIOSAUR AT TWO SMALLER SCALES.
+  // Growing the neck, the flippers, the ridge and the horns a stage at a time
+  // was the right idea and it still measured .07 and .08 of shape change:
+  // every one of those is a PART, and parts do not change a silhouette. The
+  // hatchling is not a small plesiosaur - it is not out of the egg yet - and
+  // the thing that comes out of it is not one either.
+  if(st <= 1){
+    const G = gr;
+    if(st === 0){
+      // SPAWNLING. A CLUTCH. The name was always this animal: a cluster of
+      // seven eggs bound in jelly, rolling itself along the ground, and only
+      // ONE of them has hatched - a single head out of the biggest, still
+      // trailing the two membrane threads it came out on. The rest of the
+      // clutch answers when it moves: the whole cluster wobbles. Round and
+      // squat, where the eel above it is a ribbon and the LEVIATHAN is a hull.
+      const roll = Math.sin(t*1.9 + ph*1.4)*.05*G + gait*.18;
+      const CY = (.32 + bob*.5)*G;
+      // the jelly the clutch is bound in, and the clutch: one big egg with the
+      // head in it, six smaller round it, each on its own beat
+      // THE JELLY IS A PAD THE CLUTCH SITS IN, not a bag around it: a bag the
+      // size of the clutch swallows every egg in it, and the first render of
+      // this animal was one blue box with a head on the front.
+      const JEL = [lt[0]*.92, lt[1]*.96, lt[2]*.98];
+      blob(sway + roll*.3, -.02*G, CY - .18*G, .44*G, .11*G, .42*G, JEL, em*.5);
+      mb  (sway + roll*.3, -.02*G, CY - .18*G, .38*G, .10*G, .48*G, JEL, em*.5, .62);
+      // bubbles caught in the jelly, round the rim
+      for(let i=0;i<6;i++){ const a = i/6*TAU + .5, rr = (.32 + (i%3)*.05)*G;
+        mb(sway + roll*.3 + Math.sin(a)*rr, Math.cos(a)*rr, CY - (.14 - (i%2)*.06)*G,
+           (.032 + (i%3)*.008)*G, (.030 + (i%2)*.008)*G, (.032 + (i%3)*.006)*G, bel, .34, a); }
+      // SEVEN EGGS: six in a ring and one in the middle, each on its own beat,
+      // and each with the yolk-dark eye of a sibling that has not hatched
+      for(let i=0;i<7;i++){
+        const ring = i > 0, a = (i-1)/6*TAU + .35;
+        const ex = ring ? Math.sin(a)*.26 : 0, ef = ring ? Math.cos(a)*.26 : -.02;
+        const er = ring ? (.175 + (i%3)*.018) : .21;
+        const w = Math.sin(t*2.2 + i*1.7)*.02*G, ey = ring ? (i%2)*.05 : .10;
+        blob(sway + roll*(.3 + i*.05) + ex*G + w, ef*G, CY + ey*G + w*.5,
+             er*G, er*(.94 + (i%3)*.05)*G, er*(1.02 - (i%2)*.06)*G,
+             i%3 === 0 ? c : i%3 === 1 ? lt : bel, em+.06);   // three tones, so seven eggs
+                                                              // do not merge into one blue lump
+        mb(sway + roll*(.3 + i*.05) + ex*G + w, (ef + er*.72)*G, CY + ey*G + w*.5,
+           er*.34*G, er*.30*G, er*.22*G, dk, .10, i*.4);
+      }
+      // THE ONE THAT HATCHED: a head out of the top of the front egg, on a
+      // neck two segments long - all the neck this line starts with
+      const hx = sway + roll + lk*.5, hf = .40*G + lkf, hy = CY + .34*G;
+      chain([[sway + roll*.6, .10*G, CY + .14*G], [hx, .28*G, hy - .04*G]],
+            .10*G, .085*G, c, em+.06, [1, .90, 1]);
+      blob(hx, hf, hy, .15*G, .13*G, .14*G, c, em+.08);
+      jawLong(hx, hf + .10*G, hy - .05*G, .075*G, .16*G, 3, c, flick*.02*G);
+      eyeDeep(hx, hf + .04*G, hy + .05*G, .16*G, .062*G, glo);
+      // the two membrane threads it came out on, still stuck to the shell
+      for(const rs of [-1,1]){
+        const wv = Math.sin(t*2.6 + rs*1.4)*.05*G;
+        chain([[hx + rs*.06*G, hf - .12*G, hy - .02*G],
+               [hx + rs*(.16)*G + wv, (.10 + rs*.04)*G, CY + .34*G + wv*.4],
+               [hx + rs*(.20)*G + wv*1.4, -.14*G, CY + .30*G]],
+              .026*G, .012*G, acc, .30, true);
+      }
+      // the wet it rolls through
+      for(let i=0;i<6;i++){ const uu = (t*1.2 + i*.17) % 1, rs = i%2 ? 1 : -1;
+        fx(sway + rs*(.16 + uu*.28)*G, (-.24 - uu*.50)*G, .025*G, (.10 - uu*.05)*G, .010*G,
+           (.06 + uu*.03)*G, acc, .26*(1-uu), i); }
+    } else {
+      // TIDESERPENT. A RIBBON. What comes out of the clutch has no shoulders,
+      // no flippers and no barrel: a single eel three body-lengths long,
+      // flattened side to side, running a full standing wave down its own
+      // length from nose to tail, a fin membrane along the whole top edge and
+      // another along the bottom, and a head barely wider than the neck. The
+      // ONE thing it shares with the LEVIATHAN it becomes is the countershade.
+      // Long and thin where the clutch was round and the hull is broad.
+      const CY = (.20 + bob*.6)*G;
+      const N = 11;
+      const pt = k => {                                  // the standing wave
+        const u = k/(N-1);
+        return [sway + Math.sin(t*2.6 - u*5.2 + ph*1.2)*(.10 + u*.22)*G,
+                (.52 - u*1.62)*G,
+                CY + Math.sin(t*2.2 - u*4.4)*(.03 + u*.05)*G];
+      };
+      const body = [];
+      for(let k=0;k<N;k++) body.push(pt(k));
+      // the eel itself: flattened, so it is a ribbon rather than a rope
+      chain(body, .105*G, .045*G, c, em+.08, [.52, 1.30, 1]);
+      // countershade: a pale strip along the belly of every other station
+      for(let k=1;k<N-1;k+=2){
+        const p = body[k], w = (.100 - k*.005)*G;
+        mb(p[0], p[1], p[2] - w*1.10, w*.60, .022*G, .085*G, bel, em*.9);
+        mb(p[0], p[1], p[2] + w*1.05, w*.55, .020*G, .080*G,
+           [c[0]*.74, c[1]*.74, c[2]*.80], em*.7);       // and the dark back
+      }
+      // the fin: a membrane along the top edge and a shorter one underneath,
+      // both of them rippling a beat behind the body
+      for(let k=1;k<N-1;k++){
+        const p = body[k], u = k/(N-1), w = (.100 - k*.005)*G;
+        const rp = Math.sin(t*2.2 - u*4.4 - .8)*.02*G;
+        mb(p[0] + rp, p[1], p[2] + w*1.05 + (.055 + (1-u)*.075)*G*.5,
+           .020*G, (.055 + (1-u)*.075)*G*.5, (.110 + (k%2)*.010)*G, acc, .26 + (k%2)*.06);
+        if(k < N-3)
+          mb(p[0] + rp*.6, p[1], p[2] - w*1.10 - .035*G,
+             .018*G, .035*G, (.100 + (k%2)*.010)*G, acc, .22);
+      }
+      // THE HEAD: barely wider than the neck, and it leads the wave
+      const h0 = body[0];
+      const hx = h0[0] + lk*.4, hf = h0[1] + .20*G + lkf, hy = h0[2] + .03*G;
+      blob(hx, hf, hy, .115*G, .105*G, .150*G, c, em+.08);
+      jawLong(hx, hf + .12*G, hy - .04*G, .070*G, .22*G, 4, c, flick*.03*G);
+      eyeDeep(hx, hf + .02*G, hy + .05*G, .13*G, .050*G, glo);
+      for(const rs of [-1,1])                            // two trailing feelers
+        chain([[hx + rs*.08*G, hf - .04*G, hy + .04*G],
+               [hx + rs*.15*G + Math.sin(t*2.4 + rs)*.05*G, (hf - .34)*G, hy + .10*G]],
+              .022*G, .011*G, acc, .28, true);
+      // and a vane on the end of the tail
+      const tl = body[N-1];
+      for(let i=0;i<3;i++)
+        mb(tl[0], tl[1] - (.04 + i*.05)*G, tl[2] + (i - 1)*.06*G,
+           .018*G, (.10 - i*.02)*G, (.055 + i*.012)*G, acc, .26);
+      // the wake it swims through
+      for(let i=0;i<6;i++){ const uu = (t*1.1 + i*.17) % 1, rs = i%2 ? 1 : -1;
+        fx(sway + rs*(.12 + uu*.26)*G, (-.60 - uu*.60)*G, .025*G, (.09 - uu*.04)*G, .010*G,
+           (.06 + uu*.03)*G, acc, .24*(1-uu), i); }
+    }
+    return;
+  }
   // the barrel, as a run from tail root to shoulder. SHOULDER-heavy: the
   // first version put the .40 radius at the TAIL end, so the rear view was a
   // flat wall the size of the whole animal with a tail poking over it (the

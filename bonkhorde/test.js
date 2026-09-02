@@ -3587,13 +3587,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.place(d.x, d.z); g.step(1, 1/60);
       const grace = find(), graceT = g.state().t;
       g.skipTo(90);
-      g.place(d.x + 60, d.z); g.step(1, 1/60);   const far = find();
-      g.place(d.x + 6,  d.z); g.step(1, 1/60);   const near = find();
-      // 150m TOWARD the centre, not +200 on x - the arena confines a position,
-      // so a den out near the rim clamps straight back inside the retire radius
-      // and the check reads "still awake" for a reason that is not the game.
+      // TOWARD THE CENTRE, at every distance. The arena confines a position, so
+      // stepping +60 or +200 on x from a den that rolled near the rim clamps
+      // straight back inside the wake radius and the check reads "still awake"
+      // for a reason that is not the game. The retire case was fixed this way
+      // and the 60m case was left on +x; it came back woke=true in a suite run
+      // where den[0] happened to roll out east. Walking d -> d - d/|d| * r is
+      // exactly r metres from the den and never further out than the den is.
       const L = Math.hypot(d.x, d.z) || 1;
-      g.place(d.x - d.x / L * 150, d.z - d.z / L * 150); g.step(1, 1/60);
+      const away = r => g.place(d.x - d.x / L * r, d.z - d.z / L * r);
+      away(60); g.step(1, 1/60);                 const far = find();
+      g.place(d.x + 6,  d.z); g.step(1, 1/60);   const near = find();
+      away(150); g.step(1, 1/60);
       const left = find();
       g.place(d.x + 6,  d.z); g.step(1, 1/60);   const again = find();
       g.step(60 * 45, 1/60);                      const done = find();
@@ -5741,7 +5746,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       return out;
     });
-    const EARLY = ["ox", "surge", "accnt", "twin"];   // one more line each round
+    const EARLY = ["ox", "surge", "accnt", "twin", "scrap"];   // and that is all nine
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => dist(row[i], row[j]));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ") + `  d ${pairs(r[id]).join("/")}`;
@@ -5766,6 +5771,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the echo line hatches as a grub and grows its necks before its body: HYDRALING is the flattest thing in the line and TRIHYDRA stands nearly as tall as it is long, and both are wider for their length than THE HYDRA",
        w0 && w0.HL <= .48 && w1 && w1.HL >= .90 && w2 && w0.WL > w2.WL && w1.WL > w2.WL,
        w0 && `H/L ${w0.HL} > ${w1.HL} > ${w2.HL}, W/L ${w0.WL} > ${w1.WL} > ${w2.WL}`);
+    const c0 = r.scrap && r.scrap[0], c1 = r.scrap && r.scrap[1], c2 = r.scrap && r.scrap[2];
+    ok("the tide line is not out of the egg yet, and what comes out is a ribbon: SPAWNLING is a clutch as wide as it is long, TIDESERPENT is the flattest thing in the game at under .25 of its own length, and the LEVIATHAN is neither",
+       c0 && c0.WL >= .65 && c1 && c1.HL <= .25 && c1.WL <= .30 && c2 && c2.WL > .45 && c2.HL > .40,
+       c0 && `H/L ${c0.HL} > ${c1.HL} > ${c2.HL}, W/L ${c0.WL} > ${c1.WL} > ${c2.WL}`);
     const left = Object.keys(r).filter(id => !EARLY.includes(id) && pairs(r[id]).some(d => d < .12));
     if (left.length) console.log("   still one plan at three scales below the third stage: "
       + left.map(id => `${id} d ${pairs(r[id]).join("/")}`).join(", "));

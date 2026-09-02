@@ -517,6 +517,12 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"clutch-is-the-plesiosaur", must:"38",
+    why:"the clutch-and-ribbon branch is skipped and stages 0 and 1 fall " +
+        "through to the plesiosaur plan - the tide line is the LEVIATHAN at two " +
+        "smaller scales with less neck, which is where it started",
+    from:"  if(st <= 1){\n    const G = gr;\n    if(st === 0){\n      // SPAWNLING.",
+    to:  "  if(false){\n    const G = gr;\n    if(st === 0){\n      // SPAWNLING." },
   { id:"grub-is-the-hydra", must:"38",
     why:"the grub-and-necks branch is skipped and stages 0 and 1 fall through " +
         "to the hydra plan - the echo line is one four-legged serpent three " +
