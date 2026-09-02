@@ -351,6 +351,26 @@ const MUTANTS = [
     why:"the swinging foot is dragged along the grass instead of lifted",
     from:"  seg(af, ay, af + len*.30, y - len + lift + th*.30, th*.62, col);",
     to:  "  seg(af, ay, af + len*.30, y - len + th*.30, th*.62, col);" },
+  { id:"flinch-not-directional", must:"33",
+    why:"the stagger no longer knows which side the blow came from - every " +
+        "hit is the same crouch, so the body tells you nothing about where " +
+        "the danger is",
+    from:"                 + ANIM.hitR * hit * .34\n", to:"                 + 0 * hit * .34\n" },
+  { id:"death-no-collapse", must:"33",
+    why:"the legs never go - the dead animal stands at full height and only " +
+        "shears, which reads as a glitch, not a fall",
+    from:"  ANIM.sq += ((1 - settle * .56 + bounce) - ANIM.sq) * k;",
+    to:  "  ANIM.sq += ((1 - settle * 0 + bounce) - ANIM.sq) * k;" },
+  { id:"death-topple-toward-blow", must:"33",
+    why:"the body falls INTO the blow instead of away from it - the fall " +
+        "contradicts the hit it came from",
+    from:"  ANIM.bank += (deathR * fall * .70 - ANIM.bank) * k;",
+    to:  "  ANIM.bank += (-deathR * fall * .70 - ANIM.bank) * k;" },
+  { id:"receipt-not-gated", must:"33",
+    why:"the receipt is solid from the first frame of the beat again - the " +
+        "fall happens behind a table nobody can see through",
+    from:"  endFade(deathFx > 0 ? clamp((t - .66) / .48, 0, 1).toFixed(3) : \"\");",
+    to:  "  endFade(deathFx > 0 ? \"1\" : \"\");" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

@@ -116,6 +116,11 @@
   .ov{position:fixed;inset:0;background:var(--panel);display:none;
     align-items:center;justify-content:center;z-index:9;backdrop-filter:blur(3px)}
   .ov.on{display:flex}
+  /* the receipt fades in rather than slamming; after a death it waits for
+     the animal to finish going down first (the death beat, in the loop) */
+  @keyframes endIn{from{opacity:0}to{opacity:1}}
+  #end.on{animation:endIn .5s ease-out both}
+  #end.on.died{animation:none}   /* stepDeath() drives this one, in step with the fall */
   .wrap{width:min(880px,94vw);max-height:94vh;overflow:auto;text-align:center;padding:8px}
   h1{font-size:52px;letter-spacing:.1em;margin:0 0 2px;font-weight:800;
     text-shadow:0 5px 0 #000,0 0 40px #f0b42955}
@@ -5042,9 +5047,22 @@ const ANIM = {
   lunge: 0,   // a brief shove forward when a weapon fires
   look: 0,    // head yaw toward the nearest thing worth looking at
   land: 0,    // decays after a landing, drives the crouch
+  // THE FLINCH. A hit used to be a white flicker and a backwards shove, the
+  // same shove from every direction - so a bite from the left, a spit from
+  // behind and a burn from underfoot all read as the one animation. hit is a
+  // 1 -> 0 pulse; hitR/hitF is where the blow PUSHED, in the body's own
+  // frame, and the crouch, the stagger and the head snap all read off it.
+  hit: 0, hitR: 0, hitF: -1,
+  br: 0,      // breath phase - the one idle clock that is not T, because the
+              // in-game animal did not breathe at all (the menu portraits did)
+  dead: 0,    // 0 -> 1 across the death beat; the eyes, the glow and the ring
+              // fade on it, and the collapse is driven off it in stepDeath()
 };
 function resetAnim(){ ANIM.ph = 0; ANIM.amp = 0; ANIM.lean = 0; ANIM.bank = 0;
-                      ANIM.sq = 1; ANIM.lunge = 0; ANIM.look = 0; ANIM.land = 0; }
+                      ANIM.sq = 1; ANIM.lunge = 0; ANIM.look = 0; ANIM.land = 0;
+                      ANIM.hit = 0; ANIM.hitR = 0; ANIM.hitF = -1; ANIM.br = 0;
+                      ANIM.dead = 0; deathFx = 0; endFade(""); }
+const endFade = v => { const e = document.getElementById("end"); if(e) e.style.opacity = v; };
 let animPrevV = 0, animPrevFace = 0, animWasAir = false;
 function stepAnim(dt){
   if(!P || dt <= 0) return;
@@ -5063,8 +5081,21 @@ function stepAnim(dt){
   while(dface >  Math.PI) dface -= TAU;
   while(dface < -Math.PI) dface += TAU;
   animPrevFace = P.face;
+  // The flinch pulse. Fast out (a third of a second) so the recovery is the
+  // part you see; the hit itself is one frame of crouch.
+  ANIM.hit = Math.max(0, ANIM.hit - dt * 3.0);
+  const hit = ANIM.hit * ANIM.hit;
+  // How still the animal is - the breath, the weight shift and the glance
+  // around all fade in on it, so stopping settles into life rather than into
+  // a freeze frame.
+  const idle = P.air ? 0 : 1 - Math.min(1, ANIM.amp * 1.4);
+  ANIM.br += dt * 3.3;
   const wantLean = clamp(dv * .012, -.22, .30) + clamp(v * .022, 0, .16);
-  const wantBank = clamp(-(dface / Math.max(dt, .0001)) * .045, -.30, .30);
+  // The stagger: shoved sideways by the blow, in proportion to how much of
+  // the blow was sideways. A slow weight shift underneath it while standing.
+  const wantBank = clamp(-(dface / Math.max(dt, .0001)) * .045, -.30, .30)
+                 + ANIM.hitR * hit * .34
+                 + idle * Math.sin(ANIM.br * .31) * .020;
   ANIM.lean += (wantLean - ANIM.lean) * Math.min(1, dt * 8);
   ANIM.bank += (wantBank - ANIM.bank) * Math.min(1, dt * 9);
 
@@ -5075,8 +5106,15 @@ function stepAnim(dt){
   animWasAir = P.air;
   ANIM.land = Math.max(0, ANIM.land - dt * 4.6);
   const stretch = P.air ? clamp(P.vy * .020, -.10, .16) : 0;
+  // The breath is the smallest term here and the one that matters most when
+  // nothing else is happening: 1.4% of height, half a hertz, the volume held
+  // by the inverse on X and Z in mb() - so the flanks swell as the back
+  // drops. The hit crouches it a quarter of its height, and hard: the pulse is
+  // squared so the crouch is over before the recovery has started.
   const wantSq = 1 + stretch - ANIM.land * ANIM.land * .26
-                 + (ANIM.amp * Math.sin(ANIM.ph * 2) * .035);
+                 + (ANIM.amp * Math.sin(ANIM.ph * 2) * .035)
+                 + idle * Math.sin(ANIM.br) * .014
+                 - hit * .26;
   ANIM.sq += (wantSq - ANIM.sq) * Math.min(1, dt * 18);
 
   // lunge runs negative for a recoil, so decay toward zero from either side
@@ -5105,7 +5143,52 @@ function stepAnim(dt){
     // does. What it cannot do is crane round at something directly astern.
     if(Math.abs(a) < 1.90) wantLook = clamp(a, -.75, .75);
   }
+  // Nothing within eighteen metres and the animal is standing: it looks
+  // about. Eight degrees either way on a five-second wander, which is an
+  // animal that is awake and not one that is watching the lens - the moment
+  // anything is in range the wander gives way to the tracking above, and if
+  // that thing is astern the head comes back to the body's own heading.
+  else wantLook = idle * Math.sin(ANIM.br * .19 + .8) * .14;
   ANIM.look += (wantLook - ANIM.look) * Math.min(1, dt * 5);
+}
+// ============================================================ THE DEATH BEAT
+// Dying was a function call: hp went below zero and the receipt was on screen
+// in the same frame, over a world that had stopped. The animal you spent
+// twenty minutes raising did not fall over - it was replaced by a table.
+//
+// This is the beat. It lives in the real-time loop with hitstop, and not in
+// step(), for the same reason hitstop does: finish() still runs in the frame
+// of the blow, so every bench and every check that asks "is the run over"
+// gets the same answer it always got. What changes is the SCREEN: the run is
+// over, the world holds, and for a second and a half the animal goes down on
+// it before the receipt fades in on top.
+let deathFx = 0, deathR = 0, deathF = -1;
+const DEATH_FX = 1.6;
+function stepDeath(dt){
+  deathFx = Math.max(0, deathFx - dt);
+  const t = 1 - deathFx / DEATH_FX, k = Math.min(1, dt * 14);
+  // The legs go first, and all at once: down to under half its height in the
+  // first quarter second, a small rebound as the weight lands, then the
+  // settle. The stride it was in the middle of eases out underneath it.
+  const drop = Math.min(1, t / .22), settle = drop * drop * (3 - 2 * drop);
+  const bounce = t > .22 && t < .58 ? Math.sin((t - .22) / .36 * Math.PI) * .07 : 0;
+  ANIM.sq += ((1 - settle * .56 + bounce) - ANIM.sq) * k;
+  ANIM.amp += (0 - ANIM.amp) * Math.min(1, dt * 6);
+  // Then the body goes over - after the legs, not with them - away from the
+  // blow, the way it was pushed. A shear of .7 of its height at the top is a
+  // creature on its side; more than that and the boxes read as a pile.
+  const f0 = clamp((t - .12) / .62, 0, 1), fall = f0 * f0 * (3 - 2 * f0);
+  ANIM.lean += (deathF * fall * .70 - ANIM.lean) * k;
+  ANIM.bank += (deathR * fall * .70 - ANIM.bank) * k;
+  ANIM.lunge += (0 - ANIM.lunge) * k;
+  ANIM.look  += (0 - ANIM.look) * Math.min(1, dt * 5);
+  ANIM.hit = 0;
+  // and the life goes out of it: eyes, glow, the marker ring - see drawMonBody
+  ANIM.dead = t;
+  // The receipt comes up under the last third of the fall and is solid as
+  // the beat ends. Driven from here and not from a CSS delay so that a slow
+  // machine, where the beat runs behind the clock, still shows the fall.
+  endFade(deathFx > 0 ? clamp((t - .66) / .48, 0, 1).toFixed(3) : "");
 }
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
@@ -6524,7 +6607,7 @@ function updateHazards(dt){
     if(h.tel > 0){ h.tel -= dt; continue; }
     h.live -= dt;
     if(P.iframe <= 0 && !aloft() && Math.hypot(P.x-h.x, P.z-h.z) < h.r){
-      hurtSrc = "hazard"; playerHurt(h.dmg); hurtSrc = "contact"; }
+      hurtSrc = "hazard"; playerHurt(h.dmg, h.x, h.z); hurtSrc = "contact"; }
     if(h.live <= 0) hazards.splice(i,1);
   }
 }
@@ -6698,7 +6781,7 @@ function updateEnemies(dt){
     // A diving enemy is coming from ABOVE, so it can still reach you up there;
     // everything else has to walk into you, and cannot.
     if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0 && !(aloft() && e.dvT <= 0)){
-      playerHurt(e.dvT > 0 ? e.dmg * DIVE_DMG : e.dmg);
+      playerHurt(e.dvT > 0 ? e.dmg * DIVE_DMG : e.dmg, e.x, e.z);
       if(e.dvT > 0){ e.dvT = 0; e.dv = DIVE_REST; }
       e.lg = 1;                                     // the bite, see walk()
     }
@@ -6774,7 +6857,7 @@ let hurtSrc = "contact";
 function resetHurt(){ for(const k of ["contact","spit","hazard"]){
                         hurtLog[k] = 0; hurtLog.n[k] = 0; } }
 
-function playerHurt(raw){
+function playerHurt(raw, sx, sz){
   let d = raw * P.tough * (biomeAt(P.x,P.z).mod.tough || 1);
   if(affNow() < 0) d *= AFF_TOUGH;              // the wrong ground for what you are
   d = Math.max(1, d - P.armor - prank(P.kit.plating)*1.6);
@@ -6784,7 +6867,25 @@ function playerHurt(raw){
   // answers. A free TREMOR on every hit taken, on the iframe's own rhythm -
   // playerHurt only lands while iframe <= 0, so this cannot machine-gun.
   if(apexIs("stone") && P.kit.pulse) firePulse(P.kit.pulse, wStat(P.kit.pulse));
-  ANIM.lunge = -1;                     // recoil: the lunge, backwards
+  // THE FLINCH. The blow has a direction: from where it came, the body is
+  // pushed the other way, in its own frame - hitR is across the shoulders,
+  // hitF is along the spine. A hit from the front knocks the animal back onto
+  // its heels (lunge < 0, the old recoil); a hit from behind shoves it forward
+  // onto its face; a hit from the side kicks the bank and snaps the head
+  // TOWARD the blow, which is what anything alive does when it is struck.
+  // With no source (a self-inflicted test hit, a curse) it is a frontal blow.
+  let hitR = 0, hitF = -1;
+  if(sx !== undefined){
+    const dx = P.x - sx, dz = P.z - sz, dl = Math.hypot(dx, dz);
+    if(dl > 1e-4){
+      const c = Math.cos(P.face), s = Math.sin(P.face);
+      hitR = (dx * c - dz * s) / dl; hitF = (dx * s + dz * c) / dl;
+    }
+  }
+  ANIM.hit = 1; ANIM.hitR = hitR; ANIM.hitF = hitF;
+  ANIM.lunge = hitF;                             // recoil: the lunge, away from the blow
+  ANIM.bank += hitR * .30;                       // the kick, instantly, then stepAnim eases it home
+  ANIM.look = clamp(ANIM.look - hitR * .55, -.75, .75); // the head snaps toward it
   P.hp -= d; P.iframe = .68; flash = .5; shake = Math.max(shake, .28);
   // Taking a hit knocks the chain out of you. Without this the hop is a pure
   // gift - you go faster and nothing about the fight asks anything back - and
@@ -6831,7 +6932,14 @@ function playerHurt(raw){
       usedRevive = true; P.hp = P.maxhp*.5; P.iframe = 2.4;
       damageArea(P.x, P.z, 16, 400, 24);
       alert2("SECOND WIND", "#6ddba0"); shake = 1.0; SFX.levelup();
-    } else finish("DEAD", false);
+    } else {
+      // The death beat: it falls the way this last blow pushed it. The iframe
+      // comes off so the corpse does not strobe white, and the pulse is
+      // cleared so the beat owns the body from here.
+      deathFx = DEATH_FX; deathR = ANIM.hitR; deathF = ANIM.hitF;
+      P.iframe = 0; ANIM.dead = 0; ANIM.hit = 0; endFade("0");
+      finish("DEAD", false);
+    }
   }
 }
 
@@ -6875,7 +6983,9 @@ function updateProjectiles(dt){
     s.x += Math.sin(s.a)*s.spd*dt; s.z += Math.cos(s.a)*s.spd*dt;
     s.y = groundY(s.x,s.z)+1.1; s.life -= dt;
     if(Math.hypot(s.x-P.x, s.z-P.z) < 1.0 && P.iframe<=0){
-      hurtSrc = "spit"; playerHurt(s.d); hurtSrc = "contact";
+      // the blow comes from the way the spit was flying, not from where it
+      // happened to be when it landed - that is inside the hit radius
+      hurtSrc = "spit"; playerHurt(s.d, P.x - Math.sin(s.a), P.z - Math.cos(s.a)); hurtSrc = "contact";
       spits.splice(i,1); continue; }
     if(s.life<=0 || Math.abs(s.x)>ARENA || Math.abs(s.z)>ARENA) spits.splice(i,1);
   }
@@ -7787,6 +7897,8 @@ function finish(why, won){
     ${nextUp()}
     <button class="btn" id="againBtn">RUN AGAIN &nbsp;<kbd>ENTER</kbd></button>
     <button class="btn gh" id="shopBtn">SHOP</button>`;
+  // toggled every time, so a win after a death does not inherit the delay
+  document.getElementById("end").classList.toggle("died", !won && why === "DEAD");
   show("end");
   {
     const epv = document.querySelector("#endBody .endpv");
@@ -7982,7 +8094,14 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // are both answerable without looking at the HUD.
   let mLo = 1e9, mHi = -1e9, mFa = 1e9, mFb = -1e9, mRa = 1e9, mRb = -1e9;
   const mTy = MTYPE[mCh.type] || MTYPE.plain;
-  let mTc = P.iframe>0 && (Math.floor(T*22)%2) ? [1,1,1] : mTy.c;
+  // The invincibility strobe, eleven times a second. It used to blank the
+  // animal to a flat white silhouette on every other frame, which was half
+  // the frames of the flinch - the one moment the pose is the information.
+  // A wash toward white keeps the shading, so the strobe still says
+  // "untouchable" and the body still says which way it was hit.
+  const strobe = P.iframe>0 && (Math.floor(T*22)%2);
+  const wash = c => strobe ? [lerp(c[0],1,.62), lerp(c[1],1,.62), lerp(c[2],1,.62)] : c;
+  let mTc = wash(mTy.c);
   if(evoFx > 0){                        // washing out toward the new form
     const k = Math.min(1, evoFx / EVO_FX * 1.3);
     mTc = [lerp(mTc[0],1,k), lerp(mTc[1],1,k), lerp(mTc[2],1,k)];
@@ -8014,7 +8133,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const mScB = 2.05 * (P.mscale || 1) * (1 + stage*.06);
   const mSc = mScB * (1 + Math.max(0, P.hopFx)*.20) * (1 + swell);
   const mCf = Math.cos(P.face), mSf = Math.sin(P.face);
-  const mEm = Math.max(P.iframe>0 ? .55 : .20, ef * .95);
+  // dead is the death beat, 0 -> 1: the glow goes out of it and the eyes
+  // close as it goes down. Nothing else in the plans needs to know.
+  const dead = ANIM.dead || 0, hitQ = ANIM.hit || 0;
+  const mEm = Math.max(strobe ? .42 : .20, ef * .95) * (1 - dead * .9);
   // The whole animal is sheared and squashed here rather than in the plans.
   // A lean is a shear - offset forward in proportion to height - and squash
   // and stretch is a scale on Y with the inverse on X and Z so the volume
@@ -8124,9 +8246,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   };
   const mLt = [Math.min(1,mTc[0]*1.22+.03), Math.min(1,mTc[1]*1.22+.03),
                Math.min(1,mTc[2]*1.22+.03)];
-  const flash = P.iframe>0 && (Math.floor(T*22)%2);
-  const mBl = flash ? [1,1,1] : (mTy.bel || mLt);
-  const mAc = flash ? [1,1,1] : (mTy.acc || mDk);
+  const mBl = wash(mTy.bel || mLt);
+  const mAc = wash(mTy.acc || mDk);
   // Eleven mutually-distinguishable colours (5 enemies + 5 elite tints + you)
   // under four vision types is not achievable - the best player colour tested
   // still sat at dE 7.5 from something. So the player is marked by SHAPE
@@ -8169,10 +8290,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // once the monster was drawn at a size worth looking at they were the two
   // brightest objects on screen with the character hiding between them. One
   // ring does the job the second was only repeating.
-  if(!P.portrait) for(let i=0;i<14;i++){
+  // The ring goes out with the animal: it is the marker of a thing you are
+  // driving, and there is nothing to drive.
+  if(!P.portrait && dead < 1) for(let i=0;i<14;i++){
     const a = i*(TAU/14) + T*.7;
     box(P.x+Math.sin(a)*1.28, P.y+.07, P.z+Math.cos(a)*1.28,
-        .10,.05,.10, [1,1,1], 1.0);
+        .10,.05,.10, [1,1,1], 1.0 - dead);
   }
   // The plans all read `gait` as a signed -1..1 leg swing. It is the same
   // shape as before and now it means something: phase from distance covered,
@@ -8237,7 +8360,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   };
   // A blink is 90ms out of every 2.7 seconds. Long enough to see, short
   // enough that you notice it happened rather than that it is happening.
-  const blk = ((T*0.37) % 1) > .966 ? .16 : 1;
+  // The hit squints them - squared, so it is the frame of the blow and not
+  // the recovery - and the death beat closes them and does not open them.
+  const blk = dead > 0 ? Math.max(.10, 1 - dead * 1.15)
+            : (((T*0.37) % 1) > .966 ? .16 : 1) * (1 - hitQ * hitQ * .55);
   // EYES USED TO Z-FIGHT, AND THAT IS WHAT "THE FIRE DOG EYES GLITCH" WAS.
   // Three flat plates - sclera, pupil, glint - at f, f+.035 and f+.05 with
   // half-depths of .05, .04 and .03. Their front faces landed within
@@ -8898,7 +9024,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
               idle, sway, twitch, drag,
               c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
               gait, gait2, look, amp:ANIM.amp, land:ANIM.land, air:!!P.air,
-              ph:ANIM.ph,
+              ph:ANIM.ph, hit:hitQ, dead,
               st:stage, t:T,
               // Solids, for the same reason. A .04-deep plate on a curved face
               // is either invisible or fighting the surface behind it.
@@ -9122,8 +9248,12 @@ function render(){
   const bigF = clamp((bodyLen - 6.4) * .62, 0, 9.0)
              + clamp((bodyTop - 7.0) * .95, 0, 4.0),
         bigH = clamp((bodyTop - 4.2) * .55, 0, 5.5);
-  const dist = (8.9 + bigF + spdFrac*2.1) * camZoom,
-        hgt  = 4.1 + bigH + camPitch*4.7 + spdFrac*.8;
+  // The death beat pushes in: a quarter of the boom and a third of the
+  // height over the second and a half the animal takes to go down, so the
+  // last thing on screen before the receipt is the animal and not the field.
+  const dd = ANIM.dead || 0;
+  const dist = (8.9 + bigF + spdFrac*2.1) * camZoom * (1 - dd*.28),
+        hgt  = (4.1 + bigH + camPitch*4.7 + spdFrac*.8) * (1 - dd*.30);
   const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
   // edge puts it out among the boundary spires (radius 74-79, height 7-15) at an
@@ -9172,8 +9302,9 @@ function render(){
   if(er > CAM_R){ const f = CAM_R/er; eye[0] *= f; eye[2] *= f; }
   camEye = eye;
   // aim where you are going, not where the stick is pointed
-  const at  = [ px + Math.sin(camYaw)*2.2 + pvx*.20, py+1.4,
-                pz + Math.cos(camYaw)*2.2 + pvz*.20 ];
+  // - and on the body itself as it dies, not two metres ahead of it
+  const at  = [ px + (Math.sin(camYaw)*2.2 + pvx*.20) * (1 - dd), py + 1.4 - dd*.6,
+                pz + (Math.cos(camYaw)*2.2 + pvz*.20) * (1 - dd) ];
   if(camLock){ for(let q=0;q<3;q++){ eye[q] = camLock[q]; at[q] = camLock[3+q]; } camEye = eye; }
   // the lens widens with the animal, not just the sprint: up to ~7 degrees
   // on the largest bodies, zero on a hatchling - distance does most of the
@@ -10152,6 +10283,10 @@ function frame(now){
   dt = Math.min(.042, (now-last)/1000); last = now;
   if(hitstop > 0) hitstop -= dt;
   else if(running && !over && !paused) step(dt);
+  // The death beat runs on the wall clock, through the hitstop of the blow
+  // that caused it and past the end of the run: the world holds, the animal
+  // does not.
+  if(deathFx > 0) stepDeath(dt);
   pulse(dt);
   if(evoT > 0) evoT -= dt;
   if(devAuto && P && running && !over && stage < (curMon().st||[]).length-1 && evoT <= 0)
@@ -10171,7 +10306,7 @@ requestAnimationFrame(frame);
 // Same pattern as proto3d: a scripted handle so runs can be driven headlessly.
 window.__g = {
   state: ()=>({ t:+T?.toFixed(1), lvl:P?.lvl, hp:+P?.hp.toFixed(1), maxhp:P?.maxhp,
-                x:+P?.x.toFixed(1), z:+P?.z.toFixed(1),
+                x:+P?.x.toFixed(1), z:+P?.z.toFixed(1), y:+(P?.y||0).toFixed(2),
                 kills, enemies:enemies?.length, gems:gems?.length, boxes:drawnBoxes,
                 dps:+(P?.dmg).toFixed(2), spd:+(P?.spd).toFixed(2), cd:+(P?.cd).toFixed(3),
                 over, won:runWon, why:runWhy, sudden, picking, coins:save.coins,
@@ -10352,6 +10487,9 @@ window.__g = {
   // Deal one exact hit and report what it actually cost, iframes bypassed.
   hitMe: (raw)=>{ P.iframe = 0; const before = P.hp; playerHurt(raw);
                   return +(before - P.hp).toFixed(3); },
+  // the same blow with a source, so a test can hit the animal from a side
+  hurtFrom: (raw, x, z)=>{ P.iframe = 0; const before = P.hp; playerHurt(raw, x, z);
+                           return +(before - P.hp).toFixed(3); },
   unlockAll:()=>unlockAll(),
   wipeAll:()=>{ wipeAll(); openMenu(); },
   dev:   (on)=>setDev(on===undefined ? true : !!on),
@@ -10459,7 +10597,13 @@ window.__g = {
   anim: ()=>({ ph:+ANIM.ph.toFixed(3), amp:+ANIM.amp.toFixed(3),
                lean:+ANIM.lean.toFixed(3), bank:+ANIM.bank.toFixed(3),
                sq:+ANIM.sq.toFixed(3), lunge:+ANIM.lunge.toFixed(3),
-               look:+ANIM.look.toFixed(3), land:+ANIM.land.toFixed(3) }),
+               look:+ANIM.look.toFixed(3), land:+ANIM.land.toFixed(3),
+               hit:+ANIM.hit.toFixed(3), hitR:+ANIM.hitR.toFixed(3), hitF:+ANIM.hitF.toFixed(3),
+               br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3) }),
+  deathFx: ()=>+deathFx.toFixed(3),
+  // the beat by hand, like step(): a headless renderer at four frames a
+  // second cannot be asked to play a second and a half on the clock
+  deathStep: (n, dt)=>{ for(let i=0;i<(n||1);i++) if(deathFx > 0) stepDeath(dt||1/60); },
   evoFx: ()=>+evoFx.toFixed(3),
   // What the evolution banner is currently saying. Reading it off the DOM only
   // works if a frame has been rendered since, which a stepped test has not.

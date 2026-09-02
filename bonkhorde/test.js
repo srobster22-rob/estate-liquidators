@@ -5058,6 +5058,103 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Object.keys(J).map(k => J[k] ? `${k} lift ${J[k].lift} planted ${J[k].planted}` : `${k} -`).join(", "));
   }
 
+  console.log("\n=== 33. THE ANIMAL FLINCHES, AND IT DIES ON SCREEN ===");
+  {
+    // Getting hit was a white strobe and a screen shake; the body itself did
+    // not react. Standing still, it was a statue. Dying was a table appearing
+    // over a body that was still standing there. Now a blow from the right
+    // leans the body left, snaps the head toward it and drops it into a
+    // crouch that eases back out; a standing animal breathes; and death is a
+    // beat on the clock - the legs go, then the body goes over away from the
+    // blow, and the receipt comes up over the fall, not before it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const endEl = () => document.getElementById("end");
+      const boot = () => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.disarm();
+        g.place(0,0); g.aim(0); g.step(20, 1/60); g.clearEnemies();
+      };
+      const out = {};
+      boot();
+      g.step(90, 1/60);
+      // 1. the breath: two seconds standing, watching the squash and the clock
+      const still = g.anim();
+      let mn = 9, mx = -9;
+      for(let i=0;i<120;i++){ g.step(1, 1/60); const a = g.anim(); mn = Math.min(mn, a.sq); mx = Math.max(mx, a.sq); }
+      out.still = { amp: still.amp, br0: still.br, br1: g.anim().br, span: +(mx - mn).toFixed(4) };
+      // 2. a blow from the +x side, facing +z. aim() right before it: an idle
+      //    animal turns to face the camera between frames.
+      g.aim(0); g.place(0,0); g.step(2, 1/60);
+      g.hurtFrom(5, 4, 0);
+      out.hit = g.anim();
+      let low = 9;
+      for(let i=0;i<6;i++){ g.step(1, 1/60); low = Math.min(low, g.anim().sq); }
+      out.crouch = low; out.hold = g.anim();
+      g.step(34, 1/60); out.after = g.anim();
+      // 3. from behind: shoved forward. No source at all: knocked back.
+      g.step(60, 1/60); g.aim(0);
+      g.hurtFrom(5, 0, -3); g.step(1, 1/60); out.behind = g.anim();
+      g.step(60, 1/60); g.aim(0);
+      g.hitMe(5); g.step(1, 1/60); out.noSrc = g.anim();
+      // 4. the death, stepped by hand so the shape is the shape at any frame
+      //    rate: over at once, the receipt held clear, then the drop, then
+      //    the topple away from the blow, then the receipt.
+      g.step(60, 1/60); g.aim(0);
+      g.hurtFrom(1e12, 4, 0);
+      const op = () => getComputedStyle(endEl()).opacity;
+      out.dead0 = { over: g.state().over, dfx: g.deathFx(), died: endEl().classList.contains("died"),
+                    on: endEl().classList.contains("on"), op: op(), an: g.anim() };
+      g.deathStep(24, 1/60);
+      out.dead1 = { dfx: g.deathFx(), op: op(), an: g.anim() };
+      g.deathStep(200, 1/60);
+      out.dead2 = { dfx: g.deathFx(), op: op(), an: g.anim() };
+      // 5. a new run stands the animal back up
+      g.start("ox"); g.step(2, 1/60);
+      out.again = { dfx: g.deathFx(), an: g.anim(), style: endEl().style.opacity,
+                    died: endEl().classList.contains("died"), on: endEl().classList.contains("on") };
+      // 6. and the real loop drives the beat, past over, without step()
+      boot(); g.step(30, 1/60); g.aim(0); g.pause(false);
+      g.hurtFrom(1e12, 4, 0);
+      const d0 = g.deathFx(), a0 = g.anim().dead;
+      for(let i=0;i<4;i++) await frame();
+      out.clock = { d0, d1: g.deathFx(), a0, a1: g.anim().dead, over: g.state().over };
+      g.start("ox"); g.step(2, 1/60);
+      return out;
+    });
+    ok("a standing animal breathes: no stride, but the body rises and falls and the clock runs",
+       r.still.amp < .03 && r.still.span > .01 && r.still.br1 > r.still.br0 + 3,
+       `amp ${r.still.amp}, sq span ${r.still.span} over 2 s, br ${r.still.br0} -> ${r.still.br1}`);
+    ok("a blow from the right leans the body left and snaps the head toward it",
+       r.hit.bank < -.1 && r.hit.look > .2 && r.hit.hitR < -.9,
+       `bank ${r.hit.bank}, look ${r.hit.look}, hitR ${r.hit.hitR} hitF ${r.hit.hitF}`);
+    ok("and it stays staggered that way while the crouch plays, not just on the hit frame",
+       r.hold.bank < -.18 && r.hold.hit > .3,
+       `six frames on: bank ${r.hold.bank}, pulse ${r.hold.hit}`);
+    ok("it drops into a crouch and is back up two thirds of a second later",
+       r.crouch < .92 && r.after.sq > .97 && Math.abs(r.after.bank) < .08 && r.after.hit === 0,
+       `sq low ${r.crouch}, at +40 frames sq ${r.after.sq} bank ${r.after.bank} hit ${r.after.hit}`);
+    ok("a blow from behind shoves it forward; a blow from nowhere knocks it back",
+       r.behind.lunge > .3 && r.noSrc.lunge < -.3,
+       `behind lunge ${r.behind.lunge}, no-source lunge ${r.noSrc.lunge}`);
+    ok("the fatal blow ends the run at once, and holds the receipt clear",
+       r.dead0.over === true && r.dead0.dfx > 1 && r.dead0.died && r.dead0.on && r.dead0.op === "0" && r.dead0.an.dead === 0,
+       `over ${r.dead0.over}, beat ${r.dead0.dfx}, died ${r.dead0.died}, receipt opacity ${r.dead0.op}`);
+    ok("the legs go first: under half its height inside the first half second",
+       r.dead1.an.dead > .2 && r.dead1.an.sq < .7 && r.dead1.op === "0" && Math.abs(r.dead1.an.bank) < .2,
+       `dead ${r.dead1.an.dead} sq ${r.dead1.an.sq} bank ${r.dead1.an.bank}, receipt still ${r.dead1.op}`);
+    ok("then the body goes over, away from the blow, and the receipt comes up as the beat ends",
+       r.dead2.dfx === 0 && r.dead2.an.dead >= .99 && r.dead2.an.bank < -.6 && r.dead2.an.sq < .5 && r.dead2.an.amp < .01 && r.dead2.op === "1",
+       `beat ${r.dead2.dfx}, dead ${r.dead2.an.dead}, bank ${r.dead2.an.bank} sq ${r.dead2.an.sq} amp ${r.dead2.an.amp}, receipt ${r.dead2.op}`);
+    ok("a new run stands it back up with nothing of the fall left on it",
+       r.again.dfx === 0 && r.again.an.dead === 0 && Math.abs(r.again.an.sq - 1) < .05 && Math.abs(r.again.an.bank) < .05 && r.again.style === "" && !r.again.on,
+       `beat ${r.again.dfx}, dead ${r.again.an.dead}, sq ${r.again.an.sq}, bank ${r.again.an.bank}, style "${r.again.style}", end on ${r.again.on}`);
+    ok("and the real frame loop plays the beat after the run is over",
+       r.clock.over === true && r.clock.d1 < r.clock.d0 && r.clock.a1 > r.clock.a0,
+       `beat ${r.clock.d0} -> ${r.clock.d1}, dead ${r.clock.a0} -> ${r.clock.a1} over four frames`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
