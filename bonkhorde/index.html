@@ -5949,6 +5949,115 @@ echo(D){
     }
     return;
   }
+  // ---- AND THE TWO BELOW IT WERE THE SAME SERPENT WITH A HEAD LESS EACH.
+  // Section 38 measured .08 of shape change from HYDRALING to TRIHYDRA: the
+  // count went up, a row of plates arrived, and the animal carrying them was
+  // the same low four-legged serpent all three times. A hydra starts as a
+  // POLYP and its heads are the last thing it grows, so the hatchling is a
+  // legless grub with two heads on it and no body plan at all, and the
+  // juvenile is the opposite - a small body that is nearly all neck.
+  if(st <= 1){
+    const G = gr;
+    const HD = (st ? .135 : .180)*G;                    // skull half-width
+    // one head, drawn wherever a neck ends: the line's face at any count
+    const hed = (hx, hf, hy, col, sd) => {
+      blob(hx, hf, hy, HD, HD*.94, HD, col, em+.06);
+      chain([[hx, hf + HD*.4, hy - HD*.2], [hx, hf + HD*1.5, hy - HD*.45]],
+            HD*.66, HD*.44, bel, em*.8);
+      grin(hx, hf + HD*.9, hy - HD*.62, HD*.60, HD*.20, 4);
+      eyes(hx, hf + HD*.5, hy + HD*.36, HD*.52, HD*.42, [.30,.10,.44]);
+      for(const rs of [-1,1])
+        horn(hx + rs*HD*.60, hf - HD*.2, hy + HD*.70, rs*.045*G, -.038*G, .075*G,
+             2, .040*G, acc, .45);
+      fx(hx - sd*.7, hf - .10*G, hy, HD*.75, HD*.69, HD*.75, acc, .10);
+    };
+    if(st === 0){
+      // HYDRALING. A GRUB WITH TWO HEADS. No legs, no spine, no plates: a fat
+      // ringed larva lying along the ground, pale underneath, hauling itself
+      // forward in a wave that runs nose to tail, with two short necks off the
+      // front of it and a head on each that never stops weaving. Wide, flat
+      // and squat, where the juvenile above it is nearly all neck and THE
+      // HYDRA is a serpent on four legs.
+      const BY = (.30 + coil*.4)*G;
+      // the ripple that hauls it along: a wave running back to front
+      const rip = k => Math.sin(t*3.4 - k*2.2 + ph*1.4)*.035*G;
+      // SEVEN RINGS, widest at the third - a grub is fattest a third of the
+      // way down and tapers both ways, which is what stops a row of boxes
+      // reading as a caterpillar toy
+      for(let i=0;i<7;i++){
+        const u = i/6, w = (.60 - Math.pow(u - .30, 2)*.95)*G;
+        const f2 = (.24 - u*.80)*G, y2 = BY + rip(i) + (u < .2 ? .02*G : 0);
+        mb(Math.sin(t*1.2 - u*2)*.03*G, f2, y2, w, (w*.48 + .02*G), (.078 + (i%2)*.012)*G,
+           i%2 ? c : lt, em + .04);
+        mb(Math.sin(t*1.2 - u*2)*.03*G, f2, y2 - w*.40, w*.72, .030*G, (.064 + (i%2)*.010)*G,
+           bel, em*.8);                                            // the pale underside
+        if(i%2 === 0 && i < 6)                                     // spiracles down the flanks
+          for(const rs of [-1,1])
+            mb(rs*w*.94, f2, y2 + w*.08, .022*G, .028*G, .032*G, acc, .34, rs*.3);
+      }
+      // a stub of a tail, and it drags
+      chain([[0, -.58*G, BY + rip(7)], [Math.sin(t*1.6)*.06*G, -.74*G, BY - .05*G]],
+            .13*G, .055*G, c, em+.04, [1, .60, 1]);
+      // TWO NECKS off the front, short and thick, and the heads weave
+      for(let i=0;i<2;i++){
+        const rs = i ? 1 : -1, ps = i*2.39;
+        const sd = Math.sin(t*1.9 + ps)*.05*G, bob = Math.sin(t*1.5 + ps*1.3)*.045*G;
+        const bx = rs*.18*G, hx = rs*.34*G + sd, hf = (.50 + (i ? .05 : 0))*G, hy = BY + (.13 + (i ? .05 : 0))*G + bob;
+        chain([[bx, .24*G, BY + .02*G], [bx + (hx-bx)*.55, .38*G, BY + .10*G + bob*.5], [hx, hf - HD*.5, hy]],
+              .105*G, .080*G, i ? lt : c, em+.04);
+        hed(hx, hf, hy, i ? lt : c, sd);
+      }
+      // the trail it hauls itself through
+      for(let i=0;i<6;i++){ const uu = (t*1.1 + i*.17) % 1, rs = i%2 ? 1 : -1;
+        fx(rs*(.10 + uu*.26)*G, (-.30 - uu*.55)*G, .025*G, (.10 - uu*.05)*G, .010*G, (.07 + uu*.03)*G,
+           acc, .22*(1-uu), i); }
+    } else {
+      // TRIHYDRA. ALL NECK. The grub's body barely grew; what grew is what
+      // comes out of it - three necks twice the length of the animal carrying
+      // them, rising to three different heights and crossing over each other,
+      // with the dorsal plates arriving up the NECKS rather than down the back
+      // because that is where this stage put its growth. Tall and narrow where
+      // the grub was flat and THE HYDRA is long.
+      const BY = (.34 + coil*.5)*G;
+      // the body: small, round, and it squats
+      blob(0, -.06*G, BY, .27*G, .19*G, .34*G, c, em+.04);
+      blob(0,  .20*G, BY + .04*G, .24*G, .17*G, .22*G, c, em+.04);
+      mb(0, -.02*G, BY - .17*G, .20*G, .05*G, .26*G, bel, em*.8);
+      chain([[0, -.34*G, BY - .02*G], [Math.sin(t*1.5)*.08*G, -.62*G, BY - .06*G],
+             [Math.sin(t*1.5 - .8)*.12*G, -.86*G, BY - .10*G]], .12*G, .045*G, c, em+.04, [1, .84, 1]);
+      // four short legs, tucked under - it has them, it just is not about them
+      for(const rs of [-1,1]) for(const fs of [-1,1])
+        leg(rs*.19*G, (fs*.17 - .06)*G, BY - .10*G, .26*G,
+            (rs*fs > 0) ? gait : -gait, rs, .062*G, c, em, dk);
+      // THREE NECKS, at three heights, crossing
+      const RISE = [1.12, .58, .86], YAW = [-1.5, .10, 1.5], REACH = [.40, .58, .48];
+      for(let i=0;i<3;i++){
+        const ps = i*2.39;
+        const sd = Math.sin(t*1.8 + ps)*.05*G + Math.sin(ph*.9 + ps)*amp*.07*G;
+        const bob = Math.sin(t*1.35 + ps*1.3)*.055*G;
+        const rise = RISE[i]*G, yaw = YAW[i];
+        const bx = yaw*.13*G, hx = yaw*.30*G + sd;
+        const hf = REACH[i]*G, hy = BY + rise + bob;
+        const P0 = [bx, .18*G, BY + .12*G];
+        const P1 = [bx + (hx-bx)*.30 + sd*.3, (.30 + i*.02)*G, BY + rise*.42 + bob*.3];
+        const P2 = [bx + (hx-bx)*.70 + sd*.7, (.40 - i*.03)*G, BY + rise*.80 + bob*.7];
+        const P3 = [hx, hf - HD*.5, hy];
+        chain([P0, P1, P2, P3], .085*G, .066*G, i%2 ? lt : c, em+.04);
+        // the plates arrive UP THE NECK: one to a segment, sunk into the back
+        // of the neck and standing off it. Sampled off the neck's OWN points -
+        // placed on a straight line from socket to skull they hung in the air
+        // behind an S-curve (analyze: three loose parts).
+        const SEG = [[P0, P1], [P1, P2], [P2, P3]];
+        for(let k=0;k<3;k++){
+          const [A, B] = SEG[k];
+          mb(A[0] + (B[0]-A[0])*.55, A[1] + (B[1]-A[1])*.55 - .085*G, A[2] + (B[2]-A[2])*.55,
+             (.030 + k*.006)*G, (.060 + k*.010)*G, .050*G, acc, .32);
+        }
+        hed(hx, hf, hy, i%2 ? lt : c, sd);
+      }
+    }
+    return;
+  }
   // the body: a low serpentine mass, thickest under the necks
   const spine = [];
   for(let i=0;i<6;i++){

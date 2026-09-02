@@ -517,6 +517,12 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"grub-is-the-hydra", must:"38",
+    why:"the grub-and-necks branch is skipped and stages 0 and 1 fall through " +
+        "to the hydra plan - the echo line is one four-legged serpent three " +
+        "times with a head less each, which is where it started",
+    from:"  if(st <= 1){\n    const G = gr;\n    const HD = ",
+    to:  "  if(false){\n    const G = gr;\n    const HD = " },
   { id:"kite-is-the-roc", must:"38",
     why:"the kite-and-fledgling branch is skipped and stages 0 and 1 fall " +
         "through to the wyvern plan - the gale line is THE ROC at two smaller " +

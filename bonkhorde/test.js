@@ -3047,8 +3047,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true);
                            g.freezeEvents(true); g.drainPicks(true); g.place(0, 0);
                            g.setOpt("sound", 1); g.sfxReset(); };
-      boot(); g.spawn("runner", 6, 7);
-      for (let i = 0; i < 200; i++) { g.step(1, 1/60); g.place(0, 0); }
+      // THREE BIRDS, AND THE PLAYER PUTS THE BAT DOWN. One bird spawned nine
+      // units out and given three and a third seconds to start its wind-up is
+      // a race against the player's own auto-attack, not a check: it passed
+      // alone three times for three and four chirps and came back 0 inside a
+      // full suite run. Longer made it WORSE - two chirps, then one - because
+      // the extra seconds are seconds the bat spends killing the bird before
+      // it can wind up. What this section claims is that a wind-up makes a
+      // noise, so: disarm the player, and give it three birds close enough to
+      // reach him.
+      boot(); g.disarm();
+      for (const [bx, bz] of [[4, 4], [-4, 4], [4, -4]]) g.spawn("runner", bx, bz);
+      for (let i = 0; i < 600; i++) { g.step(1, 1/60); g.place(0, 0); }
       const dive = g.sfx().dive || 0;
 
       // a den waking and a den taken. An ORDINARY den, deliberately: dens
@@ -5731,7 +5741,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       return out;
     });
-    const EARLY = ["ox", "surge", "accnt"];        // one more line each round
+    const EARLY = ["ox", "surge", "accnt", "twin"];   // one more line each round
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => dist(row[i], row[j]));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ") + `  d ${pairs(r[id]).join("/")}`;
@@ -5752,6 +5762,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the gale line hatches straight into the air and then cannot use it: WYVERNET hangs a quarter of a unit clear of the ground the rest of the line stands on, and SKYREND is the one stage of the line standing taller than it is long",
        a0 && a0.lo >= .25 && a1 && a1.lo < .06 && a2 && a2.lo < .06 && a1.HL > 1 && a0.HL < 1 && a2.HL < 1,
        a0 && `lowest box ${a0.lo} > ${a1.lo} > ${a2.lo}, H/L ${a0.HL} > ${a1.HL} > ${a2.HL}`);
+    const w0 = r.twin && r.twin[0], w1 = r.twin && r.twin[1], w2 = r.twin && r.twin[2];
+    ok("the echo line hatches as a grub and grows its necks before its body: HYDRALING is the flattest thing in the line and TRIHYDRA stands nearly as tall as it is long, and both are wider for their length than THE HYDRA",
+       w0 && w0.HL <= .48 && w1 && w1.HL >= .90 && w2 && w0.WL > w2.WL && w1.WL > w2.WL,
+       w0 && `H/L ${w0.HL} > ${w1.HL} > ${w2.HL}, W/L ${w0.WL} > ${w1.WL} > ${w2.WL}`);
     const left = Object.keys(r).filter(id => !EARLY.includes(id) && pairs(r[id]).some(d => d < .12));
     if (left.length) console.log("   still one plan at three scales below the third stage: "
       + left.map(id => `${id} d ${pairs(r[id]).join("/")}`).join(", "));
