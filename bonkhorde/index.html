@@ -11447,17 +11447,28 @@ function drawPortraits(){
     // for the boom that just contains it.
     const F = p.fit;
     const fov = .80, ta = Math.tan(fov/2), asp = S/H;
+    const elev = .21;                            // the boom looks DOWN this far
     let dist = 6.3, cx = 0, cy = 1.12, cz = 0;
     if(F){
       const cf = Math.cos(face), sf = Math.sin(face);
       // widest the silhouette gets anywhere in the sweep, not just right now,
       // so the boom is a constant and the portrait never pumps in and out
       const wide = Math.max(F.radX, F.radX*Math.cos(.86) + F.radF*Math.sin(.86));
-      dist = Math.max(F.halfH * 1.06 / ta, wide * 1.06 / (ta * asp)) + F.radF * .34;
+      // A CAMERA THAT LOOKS DOWN SEES A TALL THING AS TALLER. Framing on
+      // halfH alone ignores the boom's own elevation, so the vertical extent
+      // it solved for was up to a tenth short of the one it drew, and the
+      // tallest form in the roster - a chick that is two thirds again as tall
+      // as it is long - had its crest cut off by the top of its own card.
+      // AND THE POSE IT MEASURED IS NOT THE POSE IT DRAWS. The fit is taken
+      // from the first frame and the portrait then breathes, scans and beats
+      // its wings for as long as the menu is open, so six percent of margin is
+      // six percent against a pose that has already moved. Sixteen up, ten
+      // across, which is still a card the animal fills a fifth to a third of.
+      const tall = F.halfH * Math.cos(elev) + F.radF * Math.sin(elev);
+      dist = Math.max(tall * 1.16 / ta, wide * 1.10 / (ta * asp)) + F.radF * .34;
       // the animal's own centre, carried around by the sweep
       cx = (cf*F.rc + sf*F.fc); cz = (-sf*F.rc + cf*F.fc); cy = F.cy;
     }
-    const elev = .21;
     const eye = [cx, cy + dist*Math.sin(elev), cz + dist*Math.cos(elev)];
     gl.uniformMatrix4fv(U.uProj, false, M4.persp(fov, asp, .2, 90));
     gl.uniformMatrix4fv(U.uView, false, M4.look(eye, [cx, cy, cz], [0,1,0]));
@@ -11498,8 +11509,15 @@ function drawPortraits(){
     if(!F && bodyPos && bodyPos.length >= 6){
       let rMin=1e9, rMax=-1e9, fMin=1e9, fMax=-1e9, yMin=1e9, yMax=-1e9;
       for(let i=0;i<bodyPos.length;i+=6){
+        // THE ORDER IS (lateral, fore-aft, vertical), and this read it as
+        // (lateral, vertical, fore-aft) - the exact swap mb() carries a comment
+        // about, still live in the one consumer nothing tests numerically. So
+        // every portrait in the game has been framed on an animal's DEPTH where
+        // it wanted its HEIGHT and the other way about: survivable while a body
+        // is roughly as deep as it is tall, and a clipped head the moment it is
+        // not, which is what the new hatchlings are.
         const r=bodyPos[i], f=bodyPos[i+1], y=bodyPos[i+2],
-              hx=bodyPos[i+3], hy=bodyPos[i+4], hz=bodyPos[i+5];
+              hx=bodyPos[i+3], hz=bodyPos[i+4], hy=bodyPos[i+5];
         if(r-hx<rMin) rMin=r-hx; if(r+hx>rMax) rMax=r+hx;
         if(f-hz<fMin) fMin=f-hz; if(f+hz>fMax) fMax=f+hz;
         if(y-hy<yMin) yMin=y-hy; if(y+hy>yMax) yMax=y+hy;
@@ -13221,6 +13239,11 @@ window.__g = {
   portraitAt:(canvas, id, st, face)=>{ const c = CHARS.find(x=>x.id===id);
         if(c) addPortrait(canvas, c, st|0, 1, face); return PORTRAITS.length; },
   clearPortraits:()=>{ clearPortraits(); },
+  // what each live portrait solved its camera against, so a test can ask
+  // whether the framing measured the axis it meant to
+  portraitFits:()=>PORTRAITS.filter(p=>p.fit).map(p=>({ id:p.ch.id, st:p.stage,
+                    halfH:+p.fit.halfH.toFixed(3), radX:+p.fit.radX.toFixed(3),
+                    radF:+p.fit.radF.toFixed(3) })),
   menuUp:  ()=>menuUp,
 
   weapons: ()=>Object.keys(WEAPONS),

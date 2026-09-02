@@ -517,6 +517,17 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"portrait-axes-swapped", must:"39",
+    why:"the card camera reads the box capture as (lateral, vertical, fore-aft) " +
+        "again, so every portrait is framed on the animal's depth where it " +
+        "wants its height and the tall ones lose their heads off the top",
+    from:"              hx=bodyPos[i+3], hz=bodyPos[i+4], hy=bodyPos[i+5];",
+    to:  "              hx=bodyPos[i+3], hy=bodyPos[i+4], hz=bodyPos[i+5];" },
+  { id:"portrait-frames-flat", must:"39",
+    why:"the card camera solves its boom as if it were level with the animal, " +
+        "ignoring its own elevation, so a tall form is framed a tenth short",
+    from:"      const tall = F.halfH * Math.cos(elev) + F.radF * Math.sin(elev);",
+    to:  "      const tall = F.halfH;" },
   { id:"clutch-is-the-plesiosaur", must:"38",
     why:"the clutch-and-ribbon branch is skipped and stages 0 and 1 fall " +
         "through to the plesiosaur plan - the tide line is the LEVIATHAN at two " +

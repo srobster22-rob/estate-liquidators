@@ -5780,6 +5780,104 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       + left.map(id => `${id} d ${pairs(r[id]).join("/")}`).join(", "));
   }
 
+  console.log("\n=== 39. THE PORTRAIT FITS IN ITS CARD ===");
+  {
+    // The card portraits solve their own camera off the first frame's box
+    // capture, and nothing has ever checked the answer - the section above
+    // asks whether a portrait was painted, not whether the animal is INSIDE
+    // it. The capture is (lateral, fore-aft, vertical) and the framing read it
+    // as (lateral, vertical, fore-aft), so every camera in the roster was
+    // solved against an animal's depth where it wanted its height. That is
+    // survivable while a body is about as deep as it is tall and it clips the
+    // head off the moment it is not, which is what a clutch of eggs with one
+    // head out of the top of it is. Measure the painted pixels: the animal has
+    // to clear the frame edge, and it still has to fill the card.
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(async () => {
+      window.__g.unlockAll(); window.__g.menu();
+      await new Promise(res => { let n = 0;
+        const tick = () => (++n > 40 ? res() : requestAnimationFrame(tick));
+        requestAnimationFrame(tick); });
+      const out = [];
+      for (const c of [...document.querySelectorAll(".ch")]) {
+        const cv = c.querySelector("canvas.pv"); if (!cv) continue;
+        const W = cv.width, H = cv.height;
+        const d = cv.getContext("2d").getImageData(0, 0, W, H).data;
+        let x0 = W, x1 = -1, y0 = H, y1 = -1, lit = 0, top = 0, side = 0;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          const i = (y*W + x)*4;
+          // the clear colour is (11, 12, 14) and the ground splash under the
+          // animal is only a little above it; 150 across the three channels is
+          // the animal's own darkest lit face and nothing else
+          if (d[i] + d[i+1] + d[i+2] > 150) {
+            lit++;
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+            // HOW MUCH of the edge is lit, not whether any of it is: this line
+            // throws sparks, and a lit pixel on the top row is a spark leaving
+            // the frame far more often than it is a head being cut off. The
+            // ambient effects are drawn outside the body capture on purpose, so
+            // the camera does not and should not frame for them.
+            if (y < 2) top++;
+            if (x < 2 || x > W - 3) side++;
+          }
+        }
+        out.push({ nm: (c.querySelector(".nm") || {}).textContent?.trim() || "?",
+                   W, H, x0, x1, y0, y1, top, side, fill: +(lit/(W*H)).toFixed(3) });
+      }
+      return out;
+    });
+    // the BOTTOM edge is where the animal stands - a card is framed so the
+    // feet are at the floor of it, and a clutch of eggs lying on the ground
+    // touches that floor by construction. Top and sides are the ones that mean
+    // something was cut off.
+    // and the bar is a BAND of edge, not a pixel of it: a head cut off by the
+    // top of a card lights a tenth of that row, a spark lights three pixels.
+    const edge = r.filter(p => p.x1 < 0 || p.top > p.W * .04 || p.side > p.H * .04);
+    ok("no card portrait is clipped by its own frame: every one of them clears the top and both sides",
+       r.length >= 9 && edge.length === 0,
+       edge.length ? edge.map(p => `${p.nm} ${p.top} lit on the top row, ${p.side} down the sides, of ${p.W}x${p.H}`).join(", ")
+                   : `${r.length} portraits, worst edge ${Math.max(...r.map(p => Math.max(p.top, p.side)))} lit pixels`);
+    ok("...and none of them is a speck in the middle of it either",
+       r.length >= 9 && r.every(p => p.fill >= .06),
+       r.map(p => `${p.nm} ${p.fill}`).join(", "));
+    // AND THE NUMBERS IT SOLVED AGAINST ARE THE RIGHT ONES. Pixels alone let a
+    // framing that measures the wrong axis pass on margin: widen the lip and a
+    // camera solved against an animal's DEPTH still fits its height by luck.
+    // So ask the solver what it measured and check it against the same box
+    // capture the shape sections use.
+    const fit = await page.evaluate(async () => {
+      const g = window.__g;
+      const fits = g.portraitFits(), out = [];
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      for (const f of fits) {
+        g.wipeSave(); g.start(f.id); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.place(0, 0); g.aim(0);
+        if (f.st) g.evolveTo(f.st);
+        g.resume(); g.capturePos();
+        await frame(); await frame();
+        const b = g.posOut(); if (!b) continue;
+        let mn = [1e9,1e9,1e9], mx = [-1e9,-1e9,-1e9];
+        for (let i = 0; i < b.length; i += 6) {
+          const c = [b[i], b[i+1], b[i+2]], h = [b[i+3], b[i+4], b[i+5]];
+          for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], c[k]-h[k]); mx[k] = Math.max(mx[k], c[k]+h[k]); }
+        }
+        const S0 = 2.05;                     // the model scale the fit carries
+        out.push({ id: f.id, halfH: f.halfH, wantH: +((mx[2]-mn[2])/2*S0).toFixed(3),
+                   radF: f.radF, wantF: +((mx[1]-mn[1])/2*S0).toFixed(3) });
+      }
+      return out;
+    });
+    const off = fit.filter(p => Math.abs(p.halfH - p.wantH) > p.wantH * .25
+                             || Math.abs(p.radF - p.wantF) > p.wantF * .25);
+    ok("and the camera solved against the animal's height and depth, not against them the other way round",
+       fit.length >= 9 && off.length === 0,
+       off.length ? off.map(p => `${p.id} framed halfH ${p.halfH} for a body ${p.wantH} tall, radF ${p.radF} for ${p.wantF} deep`).join(", ")
+                  : `${fit.length} cameras, worst error ${Math.max(...fit.map(p =>
+                      Math.max(Math.abs(p.halfH-p.wantH)/p.wantH, Math.abs(p.radF-p.wantF)/p.wantF))).toFixed(3)}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
