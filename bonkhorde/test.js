@@ -5725,13 +5725,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
             for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], c[k]-h[k]); mx[k] = Math.max(mx[k], c[k]+h[k]); }
           }
           const W = mx[0]-mn[0], L = mx[1]-mn[1], H = mx[2]-mn[2];
-          row.push({ st, nm: g.stageNm(), n, HL: +(H/L).toFixed(2), WL: +(W/L).toFixed(2) });
+          row.push({ st, nm: g.stageNm(), n, HL: +(H/L).toFixed(2), WL: +(W/L).toFixed(2), lo: +mn[2].toFixed(2) });
         }
         out[id] = row;
       }
       return out;
     });
-    const EARLY = ["ox", "surge"];                 // one more line each round
+    const EARLY = ["ox", "surge", "accnt"];        // one more line each round
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => dist(row[i], row[j]));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ") + `  d ${pairs(r[id]).join("/")}`;
@@ -5748,6 +5748,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the surge line is a fry, then a fish that walks on its fins, then a predator: RIVERKING is the only stage of the line standing taller than .7 of its own length, and both juveniles are half again as wide for their length as THE SPINE",
        g1 && g1.HL >= .70 && g0 && g0.HL < .70 && g2 && g2.HL < .70 && g0.WL >= .45 && g1.WL >= .45 && g2.WL <= .30,
        g0 && `H/L ${g0.HL} > ${g1.HL} > ${g2.HL}, W/L ${g0.WL} > ${g1.WL} > ${g2.WL}`);
+    const a0 = r.accnt && r.accnt[0], a1 = r.accnt && r.accnt[1], a2 = r.accnt && r.accnt[2];
+    ok("the gale line hatches straight into the air and then cannot use it: WYVERNET hangs a quarter of a unit clear of the ground the rest of the line stands on, and SKYREND is the one stage of the line standing taller than it is long",
+       a0 && a0.lo >= .25 && a1 && a1.lo < .06 && a2 && a2.lo < .06 && a1.HL > 1 && a0.HL < 1 && a2.HL < 1,
+       a0 && `lowest box ${a0.lo} > ${a1.lo} > ${a2.lo}, H/L ${a0.HL} > ${a1.HL} > ${a2.HL}`);
     const left = Object.keys(r).filter(id => !EARLY.includes(id) && pairs(r[id]).some(d => d < .12));
     if (left.length) console.log("   still one plan at three scales below the third stage: "
       + left.map(id => `${id} d ${pairs(r[id]).join("/")}`).join(", "));

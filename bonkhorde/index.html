@@ -5548,6 +5548,94 @@ tally(D){
     }
     return;
   }
+  // ---- AND THE TWO BELOW IT WERE THE SAME BIRD AT TWO SMALLER SCALES.
+  // Section 38 measured this line at .61 of height-over-length at stage 0,
+  // stage 1 AND stage 2 - identical, three times - because the only thing an
+  // evolution changed was the span. A flier's life has three shapes in it and
+  // none of them is "the same bird, smaller": it hatches into the air, it
+  // spends its adolescence unable to use it, and then it owns it.
+  if(st <= 1){
+    const G = gr;
+    if(st === 0){
+      // WYVERNET. A WIND-KITE. It has not landed and it will not: a teardrop
+      // of a body hanging in the air on two pairs of narrow wings that never
+      // stop, two ribbon streamers trailing behind to steer with, a face that
+      // is mostly eye, and a spiral of motes turning underneath where its feet
+      // would be. Flat and trailing where SKYREND stands and THE ROC spreads.
+      const HOVER = (.62 + Math.sin(t*2.4)*.05 + (air ? .30 : 0))*G;
+      const bt = t*7.4 + ph*.6;                    // it beats fast
+      const tilt = Math.sin(t*1.3)*.04*G;
+      chain([[sway, .16*G, HOVER + .02*G], [sway, -.06*G, HOVER],
+             [sway + tilt, -.34*G, HOVER - .03*G]], .14*G, .05*G, c, em, [1, .90, 1]);
+      mb(sway, -.02*G, HOVER - .09*G, .10*G, .05*G, .14*G, bel, em*.85);
+      // FOUR WINGS, the fore pair and the aft pair out of phase - a
+      // dragonfly's beat, not a bird's
+      for(const rs of [-1,1]){
+        wing(rs, sway + rs*.08*G,  .08*G, HOVER + .03*G, .40*G, lt, acc, bt);
+        wing(rs, sway + rs*.06*G, -.20*G, HOVER - .01*G, .32*G, lt, acc, bt + Math.PI*.8);
+      }
+      const hx = sway + lk*.6, hf = .30*G + lkf, hy = HOVER + .05*G;
+      blob(hx, hf, hy, .13*G, .12*G, .11*G, c, em);
+      hookJaw(hx, hf + .09*G, hy - .03*G, .050*G, .10*G, 2, acc, screech*.012*G);
+      eyeBird(hx, hf + .03*G, hy + .04*G, .15*G, .062*G, glo);
+      // two ribbon streamers, the tail it steers with
+      for(const rs of [-1,1]){
+        const pts = [[sway + tilt, -.40*G, HOVER - .03*G]];
+        for(let i=0;i<4;i++)
+          pts.push([sway + rs*(.09 + i*.055)*G + Math.sin(t*3.4 - i*.9 + rs)*.05*G,
+                    (-.56 - i*.20)*G, HOVER - (.05 + i*.035)*G]);
+        chain(pts, .045*G, .016*G, c, em, [1, 1, 1], true);
+        mb(pts[4][0], pts[4][1] - .07*G, pts[4][2] - .015*G, .045*G, .020*G, .060*G, acc, .30);
+      }
+      // two curled talons tucked up under it - all the feet it has
+      for(const rs of [-1,1])
+        chain([[sway + rs*.07*G, -.02*G, HOVER - .10*G],
+               [sway + rs*.10*G,  .04*G, HOVER - .19*G]], .035*G, .022*G, dk, em, [1, .80, 1], true);
+      // and the air it is standing on
+      for(let i=0;i<7;i++){ const a = t*2.2 + i/7*TAU, rr = (.16 + (i%3)*.09)*G;
+        fx(sway + Math.sin(a)*rr, Math.cos(a)*rr - .04*G, HOVER - (.24 + (i%4)*.09)*G,
+           .035*G, .010*G, .035*G, lt, .22, a); }
+    } else {
+      // SKYREND. A FLEDGLING: ALL LEGS AND BEAK. The old audit note on this
+      // stage was "a near-clone of WYVERNET - evolution adds nothing
+      // nameable", and adding a chest blaze and a thumb-claw did not answer
+      // it. This is the awkward middle of a flier's life instead: stilt legs
+      // it has not grown into, a head and a gold beak too big for the neck
+      // holding them up, a scruff of down at the throat that an adult does not
+      // have, and half-grown wings held half open because they do not fold
+      // properly yet. It STANDS, tall and unsteady, where the kite hovered.
+      const bal = Math.sin(t*1.6)*.05*G*idle + Math.sin(ph*.9)*amp*.10*G;   // it wobbles
+      const KY = (1.02 + hov)*G;                                            // shoulders, held high
+      chain([[sway + bal*.4, -.16*G, KY - .22*G], [sway + bal, .04*G, KY],
+             [sway + bal*1.2, .20*G, KY + .16*G]], .19*G, .16*G, c, em, [1, 1, .88]);
+      mb(sway + bal, .16*G, KY + .02*G, .13*G, .15*G, .11*G, bel, em*.85);  // the keel
+      // the down: the one thing a fledgling has that an adult does not
+      for(let i=0;i<7;i++){ const a = i/7*TAU;
+        mb(sway + bal + Math.sin(a)*.17*G, (.10 + Math.cos(a)*.09)*G, KY + .20*G,
+           (.055 + (i%3)*.010)*G, (.050 + (i%2)*.012)*G, (.050 + (i%3)*.008)*G, lt, em+.14, a); }
+      for(const rs of [-1,1])
+        wing(rs, sway + bal + rs*.14*G, -.02*G, KY + .04*G, .34*G, c, lt, beat*.6 + rs*.3);
+      // THE HEAD: too big for it, and the beak is most of the head
+      const hx = sway + bal*1.4 + lk*.7, hf = .34*G + lkf, hy = KY + .40*G;
+      chain([[sway + bal*1.2, .18*G, KY + .18*G], [hx, .28*G, hy - .10*G]], .10*G, .085*G, c, em, [1, 1, .9]);
+      blob(hx, hf, hy, .17*G, .16*G, .15*G, c, em);
+      hookJaw(hx, hf + .13*G, hy - .02*G, .085*G, .26*G, 3, acc, screech*.02*G);
+      eyeBird(hx, hf + .04*G, hy + .06*G, .19*G, .072*G, glo);
+      // THE STILTS, and it stands on the toes of them
+      for(const rs of [-1,1]){
+        const p2 = (rs > 0 ? gait : -gait);
+        leg(sway + bal*.6 + rs*.13*G, -.02*G, KY - .26*G, .74*G, p2, rs, .058*G, c, em, acc);
+        for(let k=0;k<3;k++)
+          claw(sway + rs*.13*G + (k-1)*.055*G, (.06 + p2*.30 + (k === 1 ? .05 : 0))*G,
+               .035*G, rs, .040*G, acc);
+      }
+      // a short fan of a tail, five feathers and no more
+      for(let i=0;i<5;i++){ const u2 = (i-2)/2;
+        mb(sway + bal*.3 + u2*.09*G, (-.32 - Math.abs(u2)*.03)*G, KY - (.22 + Math.abs(u2)*.02)*G,
+           .042*G, (.030 + (i%2)*.008)*G, (.16 - Math.abs(u2)*.03)*G, i%2 ? lt : c, em+.06, u2*.3); }
+    }
+    return;
+  }
   // TORSO: a deep keeled chest over narrow hips - a flyer's body.
   chain([[sway, -.24*gr, HIP - .02*gr],
          [sway, -.02*gr, HIP + .14*gr*perch],

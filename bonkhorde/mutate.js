@@ -517,6 +517,12 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"kite-is-the-roc", must:"38",
+    why:"the kite-and-fledgling branch is skipped and stages 0 and 1 fall " +
+        "through to the wyvern plan - the gale line is THE ROC at two smaller " +
+        "spans, which measured .61 of height over length at all three stages",
+    from:"  if(st <= 1){\n    const G = gr;\n    if(st === 0){\n      // WYVERNET.",
+    to:  "  if(false){\n    const G = gr;\n    if(st === 0){\n      // WYVERNET." },
   { id:"fry-is-the-spinosaur", must:"38",
     why:"the fry-and-koi branch is skipped and stages 0 and 1 fall through to " +
         "the spinosaur plan - the surge line is THE SPINE at two smaller scales " +
