@@ -5659,13 +5659,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
           }
           const W = mx[0]-mn[0], L = mx[1]-mn[1], H = mx[2]-mn[2];
           row.push({ st, nm: g.stageNm(), n, HL: +(H/L).toFixed(2), WL: +(W/L).toFixed(2),
-                     massY: +((cy/n - mn[2]) / H).toFixed(2) });
+                     massY: +((cy/n - mn[2]) / H).toFixed(2), lo: +mn[2].toFixed(2) });
         }
         out[id] = row;
       }
       return out;
     });
-    const DONE = ["intern", "scrap", "spark", "ox", "ghoul", "accnt", "pyre", "surge"];  // one more line each round
+    // one more line each round, R202 to R210 - and now it is all nine
+    const DONE = ["intern", "scrap", "spark", "ox", "ghoul", "accnt", "pyre", "surge", "twin"];
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => ({ a: row[i], b: row[j], d: dist(row[i], row[j]) }));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ")
@@ -5679,8 +5680,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("...and it is a rear, a sprawl or a coil, not a tweak: the redesigned lines move the mass by .05 of the height or better somewhere across those stages",
        DONE.every(id => r[id] && Math.max(...r[id].map(s => s.massY)) - Math.min(...r[id].map(s => s.massY)) >= .05),
        DONE.map(id => `${id} massY ${r[id].map(s => s.massY).join(">")}`).join(", "));
-    console.log("   still one plan at three scales: " + Object.keys(r).filter(id => !DONE.includes(id)
-      && pairs(r[id]).some(p => p.d < .12)).map(id => `${id} d ${pairs(r[id]).map(p => p.d).join("/")}`).join(", "));
+    // the echo line is the one the numbers alone do not hold: a hydra with a
+    // head more at each of two more scales happens to clear .12 and .05 both.
+    // What the redesign did is not a matter of degree - THE LEGION is a wall on
+    // legs, lower for its length than the rearing HYDRA, and THE MYRIAD is a
+    // medusa, hanging in the air where every other stage of the line stands on
+    // the ground - so ask for the wall and the hover by name
+    const tw = r.twin;
+    ok("the echo line rears, then walls, then floats: THE LEGION is lower for its length than THE HYDRA by .08 of H/L, and THE MYRIAD's lowest box hangs .08 or more above the ground the other four stand on",
+       tw && tw[1].HL <= tw[0].HL - .08 && tw[2].lo >= .08 && tw[0].lo < .04 && tw[1].lo < .04,
+       tw && `H/L ${tw[0].HL} > ${tw[1].HL} > ${tw[2].HL}, lowest box ${tw.map(s => s.lo).join(" > ")}`);
+    const left = Object.keys(r).filter(id => !DONE.includes(id) && pairs(r[id]).some(p => p.d < .12));
+    if (left.length) console.log("   still one plan at three scales: " + left.map(id => `${id} d ${pairs(r[id]).map(p => p.d).join("/")}`).join(", "));
   }
 
   console.log("\n" + "=".repeat(58));

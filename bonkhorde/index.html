@@ -5590,10 +5590,165 @@ tally(D){
 echo(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx, grin, eyes,
           idle, sway, twitch, drag,
-          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          mb, c, dk, lt, bel, acc, glo, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   const n = 2 + st, gr = 1 + st*.18;
   const coil = Math.sin(t*1.8)*.06;
+  // ---- THE APEX IS A NEW SHAPE. THE LEGION and THE MYRIAD used to be the
+  // hydra at two more scales with one more head each and a plate or a crown
+  // added - the line's own "26% zoom" failure, the one every other line has
+  // now been pulled out of. The heads still count (five, then six - that IS
+  // the line), but what carries them is a different animal each time.
+  if(st >= 3){
+    const G = gr;
+    const mix = (a, b, u) => [lerp(a[0],b[0],u), lerp(a[1],b[1],u), lerp(a[2],b[2],u)];
+    const HD = .12*G;
+    // one head, the line's face: the round wet hatchling eyes it has always
+    // kept, the four-tooth grin, the two little horns, and the after-image
+    const head = (hx, hf, hy, col, iris, sd) => {
+      blob(hx, hf, hy, HD, HD*.94, HD, col, em+.06);
+      chain([[hx, hf + HD*.4, hy - HD*.2], [hx, hf + HD*1.5, hy - HD*.45]], HD*.66, HD*.44, bel, em*.8);
+      grin(hx, hf + HD*.9, hy - HD*.62, HD*.60, HD*.20, 4);
+      eyes(hx, hf + HD*.5, hy + HD*.36, HD*.52, HD*.42, iris);
+      for(const rs of [-1,1])
+        horn(hx + rs*HD*.60, hf - HD*.2, hy + HD*.70, rs*.045*G, -.038*G, .075*G, 2, .040*G, acc, .45);
+      fx(hx - sd*.7, hf - .10*G, hy, HD*.75, HD*.69, HD*.75, acc, .12);
+    };
+    if(st === 3){
+      // THE LEGION. A SHIELD WALL THAT WALKS. Not a hydra in armour: the
+      // armour is the animal - a broad, low testudo of overlapping wine-dark
+      // scuta, rimmed acid, arched across and notched at the edges, on six
+      // marching legs, a rank of acid pikes standing up off the crest and a
+      // ram of a tail behind. The five heads come out from UNDER the front
+      // edge of the wall in a wedge, low and level, like the front rank
+      // looking over their shields. Wide and flat where THE HYDRA was a
+      // rearing fan of necks.
+      const march = Math.sin(ph*2)*.02*G;
+      // the beast under the shields, and the wall itself: six ranks of
+      // plates, five across then four, staggered like brick, no two the
+      // same size, each rank a little higher than the one behind it and the
+      // whole thing arched down to the flanks
+      mb(0, -.15*G, (.40 + coil*.5)*G, .60*G, .20*G, .78*G, dk, .04);
+      const arch = x => .62 - .10*(x/.75)*(x/.75);
+      for(let j=0;j<6;j++){
+        const f = (.50 - j*.26)*G, np = j%2 ? 4 : 5, dome = .04*Math.sin((j+.5)/6*Math.PI);
+        for(let k=0;k<np;k++){
+          const x = (k - (np-1)/2)*.30, v = 1 + .06*Math.sin(j*2.1 + k*1.3);
+          const y = (arch(x) + dome + coil*.5)*G + march*(j%2 ? 1 : -1)*.3;
+          mb(x*G, f, y, .17*v*G, .035*G, .15*(2 - v)*G, (j+k)%2 ? c : mix(c, dk, .5), em + .02);
+          if((j+k)%2)                                       // the acid rim, on the wine plates
+            mb(x*G, f + .12*G, y + .03*G, .15*v*G, .014*G, .022*G, acc, .38);
+        }
+      }
+      // the pikes, a rank of five slanting forward off the crest, one to a
+      // rank of plates and rooted in it: five joints, so they stand three
+      // quarters of the wall's own height above it, and lean into the march
+      for(let i=0;i<5;i++){ const f = (.50 - i*.26)*G, py = (arch(0) + .04*Math.sin((i+.5)/6*Math.PI) + coil*.5)*G - .03*G;
+        horn(0, f, py, 0, .03*G, .14*G, 5, .034*G, acc, .40);
+        mb(0, f + .18*G, py + .48*G, .022*G, .050*G, .022*G, bel, .55); }
+      // THE HEADS, out from under the front edge in a wedge: the centre head
+      // leads, the flanks fall back, all five low and level - a rank
+      for(let i=0;i<n;i++){
+        const u = i - (n-1)/2, ps = i*2.39;
+        const sd = Math.sin(t*1.9 + ps)*.030*G + Math.sin(ph*.9 + ps)*amp*.05*G;
+        const bob = Math.sin(t*1.45 + ps*1.3)*.030*G;
+        const reach = Math.sin(t*.62 + ps*2.1)*.05*G + Math.sin(ph*.9 + ps*1.4)*amp*.08*G;
+        const bx = u*.22*G, hx = u*.31*G + sd;
+        const hf = (.96 - Math.abs(u)*.13)*G + reach, hy = (.40 + (i%2 ? .05 : -.03))*G + bob;
+        const col = i%2 ? lt : c;
+        chain([[bx, .50*G, .42*G], [bx + (hx-bx)*.5, (.72 - Math.abs(u)*.06)*G + reach*.5, .44*G + bob*.5], [hx, hf - HD*.5, hy]],
+              .075*G, .062*G, col, em+.04);
+        head(hx, hf, hy, col, glo, sd);
+      }
+      // SIX LEGS, marching. The pairs alternate - front and back with the
+      // middle against them - so the wall walks like an insect, not a dog
+      for(const rs of [-1,1]) for(let i=0;i<3;i++){
+        const sw = (i%2 ? -gait : gait)*(rs > 0 ? 1 : -1);
+        leg(rs*.56*G, (.30 - i*.42)*G, .38*G, .36*G, sw, rs, .070*G, c, em, dk);
+      }
+      // THE RAM: a short thick tail carried UP and swung with the march,
+      // ending in a blunt studded head held above the back rank
+      const rsw = Math.sin(ph*.9)*.10*G + sway*.4;
+      chain([[0, -.88*G, (.44 + coil*.5)*G], [rsw*.4, -1.14*G, .50*G], [rsw, -1.38*G, .58*G]], .13*G, .10*G, c, em+.02);
+      blob(rsw*1.1, -1.50*G, .60*G, .17*G, .16*G, .16*G, dk, .04);
+      for(let i=0;i<4;i++){ const a = i/4*TAU + .4;
+        mb(rsw*1.1 + Math.sin(a)*.09*G, -1.55*G, .60*G + Math.cos(a)*.09*G, .035*G, .035*G, .05*G, acc, .35); }
+      // dust off twelve feet - low, ground-coloured, right at the toes - and
+      // the acid light of the eyes on the ground under the front rank
+      for(let i=0;i<8;i++){ const uu = ((t*1.2 + i*.125) % 1), rs = i%2 ? 1 : -1;
+        fx(rs*(.58 + uu*.16)*G, (.30 - (i>>1)*.42)*G - uu*.14*G, (.02 + uu*.06)*G, .06*G*(1-uu*.5), .012*G, .05*G, [.80,.76,.62], .22*(1-uu), i); }
+      fx(0, .90*G, .03*G, .70*G, .012*G, .30*G, glo, .16);
+    } else {
+      // THE MYRIAD. THE HYDRA THAT IS A MEDUSA. The animal the line was named
+      // for is a polyp, and a polyp's other life is a jellyfish - so the
+      // apex is one: a great pale-pink bell floating a body-height up,
+      // banded, spotted in ink, its rim scalloped, four frilled oral arms
+      // hanging from its middle and a dozen filaments drifting off the rim -
+      // and the six heads hang UNDER it on six thick tentacles, each one
+      // crowned, the front four low and forward, the back two high and
+      // behind, all of them looking the same way. Nothing touches the
+      // ground; the ground gets the drips. Tall, round and hollow
+      // underneath where THE LEGION was a wall on legs.
+      const hov = 1.05*G + Math.sin(t*1.1)*.06*G;
+      const RB = [.82, .80, .75, .66, .54, .38, .18];
+      const INK = acc, MAUVE = dk;
+      // the bell, rim to crown, pulsing - each tier a beat behind the one
+      // below, so the pulse runs UP the bell the way a real one does. Banded
+      // in threes, pink / pale / mauve, so it is striped from the side and a
+      // target from above
+      for(let i=0;i<RB.length;i++){
+        const pul = 1 + Math.sin(t*2.2 - i*.5)*.04*(1 - i/7), r = RB[i]*pul*G;
+        mb(0, 0, hov + (.10 + i*.13)*G, r, .075*G, r*.94, i%3 === 0 ? c : i%3 === 1 ? bel : MAUVE, em + .06 + i*.01);
+      }
+      // ink: five spots on the bell, and six radial canals running from the
+      // crown down every tier to the rim - the star a real medusa wears on
+      // its back, and what the bell reads as from straight above, where the
+      // camera lives
+      for(let i=0;i<5;i++){ const a = i*1.257 + .6, ti = 1 + (i%3), r = RB[ti]*.68*G;
+        mb(Math.sin(a)*r, Math.cos(a)*r*.94, hov + (.10 + ti*.13 + .07)*G, (.07 + (i%2)*.02)*G, .012*G, (.06 + (i%3)*.012)*G, INK, .10); }
+      for(let i=0;i<6;i++){ const a = i/6*TAU + .3;
+        for(let ti=1;ti<6;ti++){ const r = (RB[ti] + RB[ti+1])*.5*G*.98;
+          mb(Math.sin(a)*r, Math.cos(a)*r*.94, hov + (.10 + ti*.13 + .07)*G, (.026 + (ti%2)*.006)*G, .012*G, ((RB[ti] - RB[ti+1])*.5 + .012*(i%3))*G, INK, .10, a); } }
+      // the scalloped rim: eight lobes hanging off the lowest tier
+      for(let i=0;i<8;i++){ const a = i/8*TAU + .2, r = RB[0]*.90*G, v = 1 + .10*Math.sin(i*2.3);
+        mb(Math.sin(a)*r, Math.cos(a)*r*.94, hov + .04*G, .13*v*G, .05*G, .13*(2-v)*G, bel, em + .06); }
+      // four oral arms, frilled ribbons hanging from the middle, ink at the tips
+      for(let i=0;i<4;i++){ const a = i/4*TAU + .785, w = Math.sin(t*1.4 + i*1.7)*.05*G;
+        const ax = Math.sin(a)*.14*G, af = Math.cos(a)*.14*G;
+        chain([[ax, af, hov + .06*G], [ax*1.6 + w*.4, af*1.6, hov - .18*G], [ax*2.0 + w, af*2.0 + w*.5, hov - .42*G], [ax*1.8 + w*1.3, af*2.2 + w, hov - .62*G]],
+              .07*G, .035*G, MAUVE, em + .02);
+        mb(ax*1.8 + w*1.3, af*2.2 + w, hov - .66*G, .04*G, .03*G, .06*G, INK, .12);
+      }
+      // THE SIX HEADS, hung under the rim on tentacles thick as necks
+      // [angle round the rim, how far below the rim the head hangs]: the
+      // front pair lowest, the back pair highest, so the six do not stack
+      const HANG = [[-.30, .66], [.30, .66], [-.85, .58], [.85, .58], [-2.30, .40], [2.30, .40]];
+      for(let i=0;i<n;i++){
+        const [a, drop] = HANG[i], ps = i*2.39;
+        const sd = Math.sin(t*1.9 + ps)*.040*G, bob = Math.sin(t*1.45 + ps*1.3)*.040*G;
+        const rx = Math.sin(a)*RB[0]*.84*G, rf = Math.cos(a)*RB[0]*.84*G*.94;
+        const hx = rx*1.05 + sd, hf = rf*1.10 + .10*G, hy = hov - drop*G + bob;
+        const col = i%2 ? bel : c;
+        chain([[rx, rf, hov + .08*G], [rx*1.12 + sd*.4, rf*1.06, hov - .16*G], [rx*1.10 + sd*.8, rf*1.10 + .04*G, hov - drop*.62*G + bob*.5], [hx, hf - HD*.5, hy]],
+              .075*G, .060*G, col, em+.04);
+        head(hx, hf, hy, col, INK, sd);
+        mb(hx, hf - HD*.25, hy + HD*1.02, HD*.40, HD*.20, HD*.36, [1,.84,.30], .55);   // the crown
+      }
+      // twelve filaments trailing off the rim between the heads
+      for(let i=0;i<12;i++){ const a = (i + .5)/12*TAU, w = Math.sin(t*1.6 + i*1.1)*.05*G;
+        const rx = Math.sin(a)*RB[0]*.86*G, rf = Math.cos(a)*RB[0]*.86*G*.94;
+        chain([[rx, rf, hov + .07*G], [rx*1.06 + w*.3, rf*1.06, hov - .26*G], [rx*1.08 + w*.7, rf*1.10 + w*.3, hov - .58*G], [rx*1.04 + w, rf*1.12 + w*.5, hov - .86*G]],
+              .030*G, .013*G, i%3 ? bel : MAUVE, em + .02);
+      }
+      // the ground gets the drips - pink off the filaments, ink off the arms
+      for(let i=0;i<10;i++){ const uu = ((t*1.1 + i*.1) % 1), a = i/10*TAU + .3;
+        const r = RB[0]*(.92 + (i%2)*.14)*G;
+        fx(Math.sin(a)*r, Math.cos(a)*r*.94, (hov - .86*G)*(1-uu) + .05*G, .025*G, .05*G*(1+uu*.5), .025*G, i%3 ? bel : INK, .40*(1-uu*.5)); }
+      for(let i=0;i<6;i++){ const a = t*.8 + i/6*TAU;
+        fx(Math.sin(a)*.55*G, Math.cos(a)*.55*G, .03*G, .10*G, .012*G, .08*G, i%2 ? bel : c, .16, a); }
+    }
+    return;
+  }
   // the body: a low serpentine mass, thickest under the necks
   const spine = [];
   for(let i=0;i<6;i++){
@@ -5605,19 +5760,6 @@ echo(D){
   // is deeper than it is wide at the shoulder and the tail tapers to a point
   // rather than to a flat edge.
   chain(spine, .30*gr, .075*gr, c, em, [.92, .82, 1]);  // thick at the shoulders
-  // ---- THE LEGION. Five heads arrive through n = 2 + st; what the BODY adds
-  // is armour - a dark chest plate across the shoulders where the five necks
-  // root, and a second, offset row of dorsal plates - so the apex reads as a
-  // war-beast carrying its heads, not a hydra that kept sprouting.
-  if(st >= 3){
-    mb(0, .10*gr, (.40 + coil)*gr, .34*gr, .16*gr, .13*gr, dk, .06);
-    mb(0, .22*gr, (.46 + coil)*gr, .28*gr, .13*gr, .10*gr, dk, .06);
-    for(let i=1;i<spine.length-2;i+=2){
-      const rs = (i>>1)&1 ? 1 : -1;
-      mb(spine[i][0] + rs*.11*gr, spine[i][1] - .04*gr, spine[i][2] + .12*gr,
-         .048*gr, .15*gr, .07*gr, acc, .26);
-    }
-  }
   // dorsal plates: PLATES. At .11 deep against .055 wide these read as a row
   // of cubes sitting on the tail rather than as a crest standing out of it.
   // They ARRIVE at TRIHYDRA: a hatchling is a smooth grub with two heads, and
@@ -5713,10 +5855,6 @@ echo(D){
     // signature made visible rather than a head nobody can count.
     if(st >= 2)
       fx(hx - sd*.7, hf - .10*gr, hy, HD*.75, HD*.69, HD*.75, acc, .12);
-    // ---- THE MYRIAD is CROWNED, every head: the sixth head is the count,
-    // the six gold circlets are the title.
-    if(st >= 4)
-      mb(hx, hf - HD*.25, hy + HD*1.02, HD*.40, HD*.20, HD*.36, [1,.84,.30], .55);
   }
 },
 // ------------------------------------------------------------------- SURGE
