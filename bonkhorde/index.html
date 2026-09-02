@@ -2977,13 +2977,81 @@ const MTYPE = {
   volt: { nm:"VOLT",  c:[.34,.80,1.00], bel:[.82,.96,1.00], acc:[1,.92,.34] },
   stone:{ nm:"STONE", c:[.72,.57,.34], bel:[.89,.79,.59], acc:[.36,.82,.70] },
   rot:  { nm:"ROT",   c:[.47,.79,.35], bel:[.80,.93,.58], acc:[.88,.40,.74] },
-  tally:{ nm:"GALE",  c:[.86,.88,.96], bel:[1,1,1], acc:[.42,.62,.92] },
+  // the one pale hatchling carries its own dark: half of cloud-white is grey
+  tally:{ nm:"GALE",  c:[.86,.88,.96], bel:[1,1,1], acc:[.42,.62,.92], dk:[.40,.48,.66] },
   echo: { nm:"ECHO",  c:[.71,.49,.98], bel:[.91,.82,1.00], acc:[.44,1,.88] },
   // Two more, and the hues were chosen against the seven above rather than for
   // themselves: crimson and gold were the only ones nothing else held.
   surge:{ nm:"SURGE", c:[.86,.20,.30], bel:[1,.66,.54], acc:[1,.84,.26] },
   pyre: { nm:"PYRE",  c:[1,.74,.14],  bel:[1,.95,.70], acc:[1,.30,.08] },
 };
+// EVERY STAGE WEARS ITS OWN COAT. The standard is the one the pocket-monster
+// games set: the orange lizard becomes a RED one, the red fish becomes a BLUE
+// serpent, and nobody is afraid to hand an evolution a hue its line never
+// held. One palette per LINE - which is what MTYPE was - meant five stages in
+// the same paint, and the roster sheet said so: an evolution read as the same
+// animal with more parts glued on. From the first evolution up, every stage
+// has its own body, belly and accent, and every line makes at least one hard
+// turn - a hue from the far side of the wheel - at the apex or the final.
+// `glo` is the colour the form's fire, plasma or light burns in, for plans
+// that want it apart from the accent; `dk` overrides the derived dark where a
+// pale coat would otherwise stand on grey legs. Stage 0 is MTYPE itself: the
+// hatchling on the card is the hatchling in the game.
+const STAGEPAL = {
+  plain:[ null,                                                            // CINDERWHELP - ember orange
+    { c:[.80,.16,.14], bel:[1,.70,.36], acc:[1,.86,.20] },                 // FLAREDRAKE - it went red
+    { c:[.60,.13,.13], bel:[1,.58,.28], acc:[.28,.88,.90] },               // PYRAETHON - blood red, teal wings
+    { c:[.20,.13,.15], bel:[.50,.20,.12], acc:[1,.46,.10], glo:[1,.44,.10] },        // THE CINDERSTAR - obsidian, lava seams
+    { c:[.97,.93,.86], bel:[1,1,1], acc:[.36,.62,1], glo:[.50,.78,1], dk:[.56,.64,.86] } ], // THE SUPERNOVA - white, blue fire
+  scrap:[ null,                                                            // SPAWNLING - shallow blue
+    { c:[.16,.68,.66], bel:[.80,.98,.92], acc:[1,.58,.34] },               // TIDESERPENT - sea green, coral
+    { c:[.14,.28,.62], bel:[.62,.82,.96], acc:[.40,1,.86] },               // LEVIATHAN - deep navy, lit aqua
+    { c:[.32,.46,.54], bel:[.72,.84,.90], acc:[.92,.97,1] },               // THE MAELSTROM - storm steel, white spray
+    { c:[.10,.06,.20], bel:[.30,.18,.50], acc:[.30,1,.72], glo:[.30,1,.72] } ],       // THE ABYSS - black, anglerfish green
+  volt:[ null,                                                             // SPARKLET - sky blue, yellow
+    { c:[1,.86,.22], bel:[1,.97,.72], acc:[.20,.50,1] },                   // STORMCLAW - the colours swap: yellow, blue
+    { c:[.36,.44,.62], bel:[.80,.86,.96], acc:[1,.92,.20] },               // STORMTYRANT - storm grey, lightning
+    { c:[.24,.16,.40], bel:[.60,.50,.80], acc:[.64,1,1], glo:[.64,1,1] },  // THE SUPERCELL - violet dark, cyan plasma
+    { c:[.82,.96,1], bel:[1,1,1], acc:[1,.40,.90], glo:[1,.50,.94], dk:[.46,.60,.80] } ],  // THE TEMPEST - plasma white, magenta
+  stone:[ null,                                                            // SHALEBACK - sandstone
+    { c:[.50,.54,.58], bel:[.84,.84,.80], acc:[.96,.62,.22] },             // ANKYLOS - slate, amber crystal
+    { c:[.58,.30,.20], bel:[.86,.72,.56], acc:[.36,.86,.74] },             // TITANHIDE - iron rust, turquoise veins
+    { c:[.34,.34,.38], bel:[.66,.70,.66], acc:[.60,.86,.44] },             // THE MOUNTAIN - granite, moss
+    { c:[.30,.42,.24], bel:[.72,.80,.56], acc:[.40,.72,1] } ],             // THE CONTINENT - green earth, blue water
+  rot:[ null,                                                              // MIRELING - bog green, pink
+    { c:[.40,.48,.20], bel:[.80,.82,.48], acc:[1,.56,.20] },               // SWAMPJAW - murk olive, orange
+    { c:[.72,.82,.20], bel:[.94,.96,.62], acc:[.24,.10,.34] },             // BASILISK - viper yellow, black-violet marks
+    { c:[.42,.18,.50], bel:[.78,.58,.86], acc:[.50,1,.30], glo:[.50,1,.30] },        // THE GORGON - bruise purple, toxic green
+    { c:[.90,.88,.78], bel:[1,1,.96], acc:[.10,.72,.36], dk:[.52,.54,.44] } ],       // THE OUROBOROS - bone ivory, jade
+  tally:[ null,                                                            // WYVERNET - cloud white, blue
+    { c:[.56,.72,.92], bel:[.94,.97,1], acc:[1,.78,.24] },                 // SKYREND - sky blue, gold beak
+    { c:[.70,.48,.22], bel:[.96,.90,.72], acc:[.90,.20,.16] },             // THE ROC - eagle brown, red crest
+    { c:[.46,.48,.58], bel:[.82,.84,.90], acc:[.36,.86,1], glo:[.60,.92,1] },        // THE HURRICANE - storm grey, lightning
+    { c:[.05,.32,.40], bel:[.40,.72,.74], acc:[1,.90,.40], glo:[1,.90,.40] } ],      // THE MONSOON - deep teal, gold
+  echo:[ null,                                                             // HYDRALING - violet, aqua
+    { c:[.88,.36,.70], bel:[1,.82,.92], acc:[.40,1,.86] },                 // TRIHYDRA - magenta
+    { c:[.32,.28,.78], bel:[.74,.72,1], acc:[1,.60,.20] },                 // THE HYDRA - indigo, orange
+    { c:[.38,.10,.28], bel:[.72,.40,.60], acc:[.60,1,.40], glo:[.60,1,.40] },        // THE LEGION - dark wine, acid eyes
+    { c:[1,.72,.90], bel:[1,.94,1], acc:[.20,.20,.50], dk:[.66,.40,.62] } ],         // THE MYRIAD - pale pink, ink
+  surge:[ null,                                                            // SAILFIN - crimson, gold
+    { c:[.98,.58,.16], bel:[1,.92,.70], acc:[.86,.14,.24] },               // RIVERKING - koi orange, red marks
+    { c:[.82,.80,.74], bel:[.96,.96,.92], acc:[.86,.16,.26], dk:[.56,.42,.40] },     // THE SPINE - bone, red gills, blood in the joints
+    { c:[.16,.36,.60], bel:[.66,.86,.92], acc:[1,.84,.26] },               // THE FLOOD - the red fish went blue
+    { c:[.08,.20,.18], bel:[.30,.56,.50], acc:[1,.36,.30], glo:[1,.40,.30] } ],      // THE DELUGE - black water, red-orange
+  pyre:[ null,                                                             // SUNCHICK - gold, red
+    { c:[.92,.30,.10], bel:[1,.80,.40], acc:[1,.94,.30] },                 // PYREWING - flame red, gold
+    { c:[.80,.12,.36], bel:[1,.70,.50], acc:[.40,.90,1], glo:[.50,.90,1] },          // THE PHOENIX - magenta crimson, blue flame
+    { c:[.44,.16,.70], bel:[.86,.66,1], acc:[1,.80,.20], glo:[1,.84,.30] },          // THE ETERNAL - royal violet, gold
+    { c:[1,.90,.30], bel:[1,1,.86], acc:[1,.30,.60], glo:[1,.50,.70], dk:[.80,.52,.20] } ], // THE SECOND SUN - sun yellow, pink corona
+};
+// The palette a form is drawn in: its stage's own coat, or the line's MTYPE
+// where the stage has none (the hatchling; a type with no table).
+function monPal(type, st){
+  const base = MTYPE[type] || MTYPE.plain, sp = (STAGEPAL[type] || [])[st|0];
+  if(!sp) return { nm:base.nm, c:base.c, bel:base.bel, acc:base.acc, glo:base.acc, dk:base.dk || null };
+  return { nm:base.nm, c:sp.c, bel:sp.bel || base.bel, acc:sp.acc || base.acc,
+           glo:sp.glo || sp.acc || base.acc, dk:sp.dk || null };
+}
 // Level 7 lands in the first three minutes of a FIRST run, which is the whole
 // point - a mechanic the median run never reaches is a mechanic that does not
 // exist. Level 20 is the reward for a run that is going well; the median first
@@ -3328,8 +3396,12 @@ const BODY = {
 plain(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
           eyeSlit, eyeGlow, fangs, idle, sway, twitch, drag,
-          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          mb, c, dk, lt, bel, acc, glo, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
+  // the fire's own colour, and the white-hot heart of it. Lava on the
+  // CINDERSTAR, blue on the SUPERNOVA - both come from the stage's coat, so
+  // the apex tier's seams, membranes and eyes burn in whatever the star is.
+  const gh = [lerp(glo[0],1,.55), lerp(glo[1],1,.55), lerp(glo[2],1,.55)];
   const br = Math.sin(t*2.1)*.02*(1-amp*.8);
   const lk = look*.16, lkf = -Math.abs(look)*.05;
   // Fire FLICKERS, it does not wave, and it is not part of the animal - it
@@ -3442,7 +3514,7 @@ plain(D){
     // the CINDERSTAR's comb catches fire: taller, and it glows - so the apex
     // reads as a different animal from the back, which is where the camera is
     ridge(-.56, .34, 1.25+hov, 5, st >= 3 ? .23 : .17,
-          st >= 3 ? [1,.44,.10] : [.88,.42,.12], st >= 3 ? .55 : .22);
+          st >= 3 ? glo : [.88,.42,.12], st >= 3 ? .55 : .22);
     // THE NECK, arched forward and up
     const neck = [[sway, .18, 1.02+hov]];
     let nx = sway, nf = .22, ny = 1.14+hov;
@@ -3470,8 +3542,7 @@ plain(D){
     // dog on a form whose banner says the fire outgrew the dragon. The
     // CINDERSTAR burns ember-orange; the SUPERNOVA's slots go the
     // white-gold of its core.
-    if(st >= 3) eyeGlow(nx, nf+.22, ny+.09, .12, .10,
-                        st >= 4 ? [1,.86,.44] : [1,.56,.12]);
+    if(st >= 3) eyeGlow(nx, nf+.22, ny+.09, .12, .10, st >= 4 ? gh : glo);
     else eyeSlit(nx, nf+.22, ny+.09, .12, .10, [1,.76,.16]);
     for(const rs of [-1,1]){
       horn(nx+rs*.14, nf+.02, ny+.12, rs*.055,-.075,.075, 3, .082, acc, .40);
@@ -3479,7 +3550,7 @@ plain(D){
     for(let i=0;i<3;i++) fl(nx+(i-1)*.07, nf+.24, ny-.24, .55, 2);
     const fold = 1 - idle*.42;
     // THE CINDERSTAR spreads a fifth more wing, and the membrane burns.
-    const wspan = st >= 3 ? 1.20 : 1.00, wmemb = st >= 3 ? [1,.42,.10] : acc;
+    const wspan = st >= 3 ? 1.20 : 1.00, wmemb = st >= 3 ? glo : acc;
     for(const rs of [-1,1]) wing(rs, sway + rs*.24, .06, 1.02+hov, wspan*fold,
                                  wmemb, acc, beat + (rs>0?0:.5));
     // ---- THE CINDERSTAR. LAVA SEAMS: the hide has cracked open along the
@@ -3493,10 +3564,10 @@ plain(D){
       for(const rs of [-1,1]) for(let i=0;i<2;i++){
         const sf = -.28 + i*.34, pulse = .55 + Math.sin(t*2.6 + i*2.1 + (rs>0?0:1.3))*.30;
         mb(sway + rs*.262, sf, .80 + hov + i*.07, .045, .052, .150,
-           [1,.44,.10], .45*pulse);
+           glo, .45*pulse);
       }
       for(const rs of [-1,1])
-        horn(nx+rs*.09, nf-.06, ny+.16, rs*.030, -.045, .085, 2, .060, [1,.62,.16], .70);
+        horn(nx+rs*.09, nf-.06, ny+.16, rs*.030, -.045, .085, 2, .060, glo, .70);
       fl(sway, -.02, 1.30+hov, .8, 3);
     }
     // ---- THE SUPERNOVA. The star it swallowed shows through the chest: one
@@ -3510,9 +3581,9 @@ plain(D){
       // one surface that camera always owns is the spine - which is where
       // the volt line's rods and every dorsal ridge in the roster already
       // live, for the same reason.
-      mb(sway, .12, 1.26 + hov, .11, .10, .11, [1,.94,.74], .65 + core*.35);
+      mb(sway, .12, 1.26 + hov, .11, .10, .11, gh, .65 + core*.35);
       for(const rs of [-1,1])                    // and a third seam pair, high
-        mb(sway + rs*.262, .02, 1.02 + hov, .045, .05, .11, [1,.60,.16], .40*core);
+        mb(sway + rs*.262, .02, 1.02 + hov, .045, .05, .11, glo, .40*core);
     }
     for(const rs of [-1,1]){                              // heavy hind legs
       const p2 = rs > 0 ? gait : -gait;
@@ -3531,7 +3602,7 @@ plain(D){
       const tp2 = tail[tail.length-1];
       for(const rs of [-1,1])
         mb(tp2[0] + rs*.10, tp2[1] - .06, tp2[2] + .04,
-           .045, .16, .14, [1,.52,.12], .55, rs*.5);
+           .045, .16, .14, glo, .55, rs*.5);
     }
     chain(tail, .16, .055, c, em, [.92, .88, 1]);
     for(let i=3;i<tail.length;i++)
@@ -5052,6 +5123,9 @@ pyre(D){
 // emits, so a test can ask whether two forms are actually the same mesh.
 let bodyCap = null, bodyCapOut = null;
 let bodyPos = null, bodyPosOut = null;
+// [body, dark] the last drawMonBody actually painted with - so a test can ask
+// what colour the animal IS rather than what colour a table says it should be.
+let lastMonTint = null;
 // Draw index within a body, reset each time the creature is drawn so the
 // nudge is stable frame to frame rather than crawling.
 let boxSeq = 0;
@@ -8274,7 +8348,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // pair of horns at every evolution, so "what am I" and "how far along am I"
   // are both answerable without looking at the HUD.
   let mLo = 1e9, mHi = -1e9, mFa = 1e9, mFb = -1e9, mRa = 1e9, mRb = -1e9;
-  const mTy = MTYPE[mCh.type] || MTYPE.plain;
+  // THIS STAGE's coat, not the line's: see STAGEPAL. A FLAREDRAKE is red and
+  // a CINDERWHELP is orange, and the same table is what the tests read.
+  const mTy = monPal(mCh.type, stage);
   // The invincibility strobe, eleven times a second. It used to blank the
   // animal to a flat white silhouette on every other frame, which was half
   // the frames of the flinch - the one moment the pose is the information.
@@ -8287,12 +8363,13 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     const k = Math.min(1, evoFx / EVO_FX * 1.3);
     mTc = [lerp(mTc[0],1,k), lerp(mTc[1],1,k), lerp(mTc[2],1,k)];
   }
-  // THE APEX WEARS A DEEPER COAT. Every stage-3 form drops its body tone by
-  // 18% and leans it toward its own dark - one rule, all nine lines - so a
-  // mega reads as a different ANIMAL before you can name the new parts. The
-  // accents stay full strength, which is what makes them start to burn.
-  if(stage >= 3) mTc = [mTc[0]*.82, mTc[1]*.82, mTc[2]*.86];
-  const mDk = [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];
+  // The apex used to drop its body tone by 18% - one rule, all nine lines, and
+  // the only colour an evolution ever changed. STAGEPAL carries that now, per
+  // stage and per line, and it carries the hue with it.
+  // The dark: the derived half-tone, unless the stage's coat is pale enough
+  // that half of it is grey - a white dragon on grey legs is a stone one.
+  const mDk = mTy.dk ? wash(mTy.dk) : [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];
+  lastMonTint = [mTc, mDk];
   // 1.34 because the first pass built a monster the same HEIGHT as the person
   // it replaced - and a quadruped that tall is half the silhouette, so from a
   // camera 13m up it read as a lump. It is a head taller than the old player
@@ -8429,6 +8506,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
                Math.min(1,mTc[2]*1.22+.03)];
   const mBl = wash(mTy.bel || mLt);
   const mAc = wash(mTy.acc || mDk);
+  const mGl = wash(mTy.glo || mTy.acc || mDk);
   // Eleven mutually-distinguishable colours (5 enemies + 5 elite tints + you)
   // under four vision types is not achievable - the best player colour tested
   // still sat at dE 7.5 from something. So the player is marked by SHAPE
@@ -8442,7 +8520,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // tide serpent evolved under a fire-coloured shaft (the R184 film's one
     // wrinkle). The column and its motes lean halfway toward the line's own
     // accent now - still light, but THIS creature's light.
-    const acc = (MTYPE[curMon().type] || MTYPE.plain).acc;
+    const acc = monPal(curMon().type, stage).acc;   // the coat it is becoming
     const pc = [lerp(1,acc[0],.45), lerp(.95,acc[1],.45), lerp(.78,acc[2],.45)];
     const mc = [lerp(1,acc[0],.55), lerp(.90,acc[1],.55), lerp(.55,acc[2],.55)];
     const gy2 = groundY(P.x, P.z), up = 1 - ef;
@@ -9203,7 +9281,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
               jawLong, beakHook, hookJaw, rostrum, fangs, mawRow, viperJaw, fx,
               eyeRidge, eyeSolar, plume, gharJaw, surge:(P.surgeT>0?1:0)+((P.surge)||0),
               idle, sway, twitch, drag,
-              c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, em:mEm,
+              c:mTc, dk:mDk, lt:mLt, bel:mBl, acc:mAc, glo:mGl, em:mEm,
               gait, gait2, look, amp:ANIM.amp, land:ANIM.land, air:!!P.air,
               ph:ANIM.ph, hit:hitQ, dead,
               st:stage, t:T,
@@ -10803,6 +10881,12 @@ window.__g = {
   // the same mesh produce byte-identical strings.
   captureBody:()=>{ bodyCap = []; bodyCapOut = null; },
   stageNm:    ()=>stageNm(),
+  // the coat a form is drawn in (table) and the one the last frame actually
+  // painted (draw) - the distance between them is a plan ignoring its stage
+  stagePal:   (ty, st)=>monPal(ty, st),
+  typePal:    (ty)=>MTYPE[ty] || MTYPE.plain,     // the line's own, as the card shows it
+  monTint:    ()=>lastMonTint,
+  curType:    ()=>curMon().type,
   capturePos: ()=>{ bodyPos = []; bodyPosOut = null; },
   posOut:     ()=>bodyPosOut ? bodyPosOut.slice() : null,
   captureEnemy:()=>{ ebCap = []; ebCapOut = null; },

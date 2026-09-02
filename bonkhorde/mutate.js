@@ -439,6 +439,25 @@ const MUTANTS = [
         "head metres back as it begins to fall",
     from:"    e.amp -= e.amp*Math.min(1, dt*6);",
     to:  "    e.amp -= e.amp*Math.min(1, dt*6); e.lg = Math.max(0, e.lg - dt*3.2);" },
+  // ---- R201: every stage wears its own coat -----------------------------
+  { id:"one-coat-per-line", must:"36",
+    why:"the draw reads the hatchling's coat at every stage - five evolutions in " +
+        "one paint again, the exact complaint the stage palettes answer",
+    from:"  const mTy = monPal(mCh.type, stage);", to:"  const mTy = monPal(mCh.type, 0);" },
+  { id:"table-ignored", must:"36",
+    why:"monPal returns the line's palette whatever the stage - the table exists, " +
+        "nothing is painted from it",
+    from:"  const base = MTYPE[type] || MTYPE.plain, sp = (STAGEPAL[type] || [])[st|0];",
+    to:  "  const base = MTYPE[type] || MTYPE.plain, sp = null;" },
+  { id:"grey-legs-on-white", must:"36",
+    why:"the pale-coat dark override is dropped - the SUPERNOVA, TEMPEST and the " +
+        "bone fish stand on the same neutral grey, half of white",
+    from:"  const mDk = mTy.dk ? wash(mTy.dk) : [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];",
+    to:  "  const mDk = [mTc[0]*.52, mTc[1]*.52, mTc[2]*.52];" },
+  { id:"stage-off-by-one", must:"36",
+    why:"the coat lags the evolution by a stage - the FLAREDRAKE is still orange " +
+        "and the final form wears the apex's paint",
+    from:"  const mTy = monPal(mCh.type, stage);", to:"  const mTy = monPal(mCh.type, Math.max(0, stage-1));" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

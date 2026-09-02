@@ -5528,6 +5528,90 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `over ${La.over} won ${La.won}, corpse t ${La.t0} -> ${La.t1} across fourteen frames with the world stopped`);
   }
 
+  console.log("\n=== 36. EVERY STAGE WEARS ITS OWN COAT ===");
+  {
+    // The roster sheet at R200 was nine rows of one colour each: MTYPE held a
+    // single palette per LINE, the only stage rule was "the apex is 18%
+    // darker", and five evolutions read as one animal with more parts glued
+    // on. The standard the player named is the pocket-monster one - the
+    // orange lizard turns red, the red fish turns into a blue serpent - so
+    // STAGEPAL gives every stage from the first evolution up its own body,
+    // belly and accent, and every line one hard turn. This reads the table
+    // AND the colour the last frame was actually painted in, per form, so a
+    // plan that quietly kept reading the line's palette would fail here.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const lab = c => { const f = v => v<=.04045 ? v/12.92 : Math.pow((v+.055)/1.055,2.4);
+        const [R,G,B] = c.map(v => f(Math.max(0,Math.min(1,v))));
+        let X=(R*.4124+G*.3576+B*.1805)/.95047, Y=(R*.2126+G*.7152+B*.0722),
+            Z=(R*.0193+G*.1192+B*.9505)/1.08883;
+        const k = t => t>.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+        X=k(X);Y=k(Y);Z=k(Z); return [116*Y-16, 500*(X-Y), 200*(Y-Z)]; };
+      const dE = (a,b) => { const A=lab(a), B=lab(b);
+        return Math.hypot(A[0]-B[0], A[1]-B[1], A[2]-B[2]); };
+      const hue = c => { const L = lab(c); return { h:(Math.atan2(L[2],L[1])*180/Math.PI+360)%360, C:Math.hypot(L[1],L[2]) }; };
+      const dh = (a,b) => { const d = Math.abs(a-b)%360; return d > 180 ? 360-d : d; };
+      const lum = c => .2126*c[0] + .7152*c[1] + .0722*c[2];
+      const IDS = ["intern","scrap","spark","ox","ghoul","accnt","twin","surge","pyre"];
+      const out = {};
+      for(const id of IDS){
+        g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.disarm(); g.place(0,0); g.aim(0);
+        const ty = g.curType(), row = { ty, st:[] };
+        for(let s=0; s<=4; s++){
+          if(s) g.evolveTo(s);
+          g.step(300, 1/60);                    // the evolution wash is long gone
+          await frame(); await frame();
+          const tab = g.stagePal(ty, s), drawn = g.monTint();
+          row.st.push({ nm:g.stageNm(), c:tab.c, acc:tab.acc, bel:tab.bel,
+                        drawn:drawn && drawn[0], dk:drawn && drawn[1],
+                        match: drawn ? +dE(tab.c, drawn[0]).toFixed(2) : 99 });
+        }
+        // the roster numbers: nearest pair of stages, nearest neighbours, the
+        // hardest turn (hue, where both coats have a hue; else lightness)
+        let minPair = 1e9, minCons = 1e9, turn = 0, minAcc = 1e9, darkOk = true;
+        for(let i=0;i<5;i++){
+          for(let j=i+1;j<5;j++){ const d = dE(row.st[i].c, row.st[j].c); minPair = Math.min(minPair, d); if(j === i+1) minCons = Math.min(minCons, d); }
+          minAcc = Math.min(minAcc, dE(row.st[i].c, row.st[i].acc));
+          // and on a PALE coat the dark has to be a colour, not a grey: half of
+          // white is the same grey on the star dragon and the bone fish
+          if(!row.st[i].dk || !(lum(row.st[i].dk) < lum(row.st[i].drawn) * .75)
+             || (lum(row.st[i].drawn) > .7 && hue(row.st[i].dk).C < 10)) darkOk = false;
+          if(i){ const a = hue(row.st[i-1].c), b = hue(row.st[i].c), d = dE(row.st[i-1].c, row.st[i].c);
+                 turn = Math.max(turn, (a.C > 12 && b.C > 12) ? dh(a.h, b.h) : 0, d >= 45 ? 60 : 0); }
+        }
+        row.minPair = +minPair.toFixed(1); row.minCons = +minCons.toFixed(1);
+        row.turn = Math.round(turn); row.minAcc = +minAcc.toFixed(1); row.darkOk = darkOk;
+        row.maxMatch = Math.max(...row.st.map(s => s.match));
+        row.hatch = g.typePal(ty).c;
+        out[id] = row;
+      }
+      return out;
+    });
+    const rows = Object.keys(r), R = k => r[k];
+    const names = rows.map(k => R(k).st.map(s => s.nm));
+    ok("nine lines, five named stages each, forty-five forms on the sheet",
+       rows.length === 9 && names.every(n => n.length === 5 && new Set(n).size === 5),
+       names.map(n => n.join(">")).join(" | ").slice(0, 200));
+    ok("every stage of every line is drawn in a coat of its own: no two stages of one line are within dE 12 of each other",
+       rows.every(k => R(k).minPair >= 12), rows.map(k => `${k} ${R(k).minPair}`).join(", "));
+    ok("...and each evolution is a visible change of colour, not a shade: consecutive stages sit dE 18 or more apart",
+       rows.every(k => R(k).minCons >= 18), rows.map(k => `${k} ${R(k).minCons}`).join(", "));
+    ok("every line makes one hard turn - a hue swing of 60 degrees or better, or a coat that goes from dark to light (dE 45+) - somewhere up the line",
+       rows.every(k => R(k).turn >= 60), rows.map(k => `${k} ${R(k).turn}`).join(", "));
+    ok("the animal is painted in the table's colour, at every one of the forty-five forms - a plan is not quietly reading the line's palette",
+       rows.every(k => R(k).maxMatch < .5), rows.map(k => `${k} ${R(k).maxMatch}`).join(", "));
+    ok("the accent is never the body: dE 30 or better apart at every stage, so the markings still read on every coat",
+       rows.every(k => R(k).minAcc >= 30), rows.map(k => `${k} ${R(k).minAcc}`).join(", "));
+    ok("the dark is at most three quarters of the coat's luminance on every form, and on a pale coat it is a colour (chroma 10+) - a white dragon does not stand on grey legs",
+       rows.every(k => R(k).darkOk), rows.filter(k => !R(k).darkOk).join(", ") || "all 45");
+    // the card and the game agree about what hatches
+    const hatchSame = rows.every(k => R(k).st[0].c.every((v, i) => v === R(k).hatch[i]));
+    ok("the hatchling on the card is the hatchling in the game: stage 0 IS the line's palette",
+       hatchSame, rows.map(k => `${k} ${R(k).st[0].c.join("/")}`).join(", ").slice(0, 160));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
