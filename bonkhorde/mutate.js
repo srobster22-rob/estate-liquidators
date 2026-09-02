@@ -505,6 +505,12 @@ const MUTANTS = [
         "scales with the same wings and legs",
     from:"  if(st >= 3){\n    const G = 1 + st*.18;\n    if(st === 3){\n      // THE ETERNAL.",
     to:  "  if(false){\n    const G = 1 + st*.18;\n    if(st === 3){\n      // THE ETERNAL." },
+  { id:"flood-is-the-spine", must:"37",
+    why:"the wave-and-serpent branch is skipped and stages 3 and 4 fall through " +
+        "to the spinosaur plan - the top of the surge line is THE SPINE at two " +
+        "more scales with a taller sail",
+    from:"  if(st >= 3){\n    const G = 1 + st*.20;\n    const mix = ",
+    to:  "  if(false){\n    const G = 1 + st*.20;\n    const mix = " },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",

@@ -2209,6 +2209,16 @@ function stride(e, f){ return Math.sin(e.gt*f + e.bob) * e.amp; }
 // foot is highest when it is furthest forward, which is the moment it should
 // be landing.
 function strideV(e, f){ return Math.cos(e.gt*f + e.bob) * e.amp; }
+// THE HOP: how far the whole body rides up off the ground this frame. Off the
+// same clock and the same phase as the stride, scaled by how much of a stride
+// is being taken, so a rooted enemy stands. Read here by the draw and by the
+// gait probe, so a test can take the hop back off a measured height - a body
+// sampled at one frame is up to .16 taller at the crest than in the trough,
+// and which one it is caught at is the random phase it spawned with.
+function hopOf(e){
+  return e.def.flier ? 0 : Math.abs(Math.sin(e.gt*(e.boss ? 3.4 : 2 + e.def.spd) + e.bob))
+                          * e.amp * (e.boss ? .08 : .16);
+}
 // A HORDE LEG, AT HORDE PRICES. The player's leg() is a dozen blocks - three
 // chained runs, a knee, three toes, three claws - and there can be four hundred
 // of these on the field, so this is the same zigzag in two: a thigh from hip
@@ -5718,8 +5728,8 @@ echo(D){
 // across the arena without reading the HUD.
 surge(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
-          eyeRidge, gharJaw, idle, sway, twitch, drag,
-          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          eyeRidge, eyeDeep, gharJaw, idle, sway, twitch, drag,
+          mb, c, dk, lt, bel, acc, glo, em, gait, gait2, look, amp, land, air, ph,
           st, t, surge } = D;
   const gr = 1 + st*.22;
   const hov = Math.sin(t*2.0)*.018*idle*gr;
@@ -5729,6 +5739,255 @@ surge(D){
   const chestF = (.24 + st*.06)*gr;
   // charge 0..2: 0..1 is the meter filling, above 1 the surge is up
   const ch = Math.min(2, surge || 0), lit = ch > 1 ? 1 : ch;
+  // And then the animal stops being an animal. Stages 3 and 4 return from
+  // here: the palette round made them river-blue and black water, and this
+  // round makes them the water itself - a wave, and what comes up out of it.
+  if(st >= 3){
+    const G = 1 + st*.20;
+    const mix = (a, b, u) => [lerp(a[0],b[0],u), lerp(a[1],b[1],u), lerp(a[2],b[2],u)];
+    if(st === 3){
+      // THE FLOOD. THE WAVE IS THE ANIMAL. Not a bigger spinosaur with more
+      // sail: the river has stood up. A breaking wave three bodies wide - a
+      // long back slope steepening into a sheer face, a crest, a lip curling
+      // over into a barrel - and the gharial skull has burst up through the
+      // middle of the crest, jaws open, the lip broken either side of it; the
+      // two hooked hands reach out of the face below, the sail crests the back
+      // slope where the rest of the animal is, under the water, and logs
+      // tumble in the face. It is WIDE AND LOW where THE SPINE was long and
+      // narrow.
+      //
+      // Built as a HEIGHT FIELD - rows of standing columns whose tops trace
+      // the swell - and not as courses of slabs. Courses read as masonry from
+      // the play camera however they are phased: every step is a horizontal
+      // line running the width of the thing. Columns leave only vertical
+      // seams, and a row of tops that rises in a curve reads as a slope.
+      const lean = amp*.06*G;
+      const FOAM = [.90,.96,1];
+      // rows from the tail of the swell to the crest: where each sits, how
+      // deep it is, how high the swell is there - cut finer as it steepens
+      const RF = [-1.36, -1.08, -.84, -.64, -.48, -.34, -.22, -.10];
+      const RD = [ .15,  .13,  .11,  .09,  .08,  .07,  .065, .065];
+      const RH = [ .10,  .20,  .33,  .49,  .68,  .90, 1.15, 1.42];
+      // seven columns across, no two the same width, mirror pairs different
+      const CW = [.38,.44,.40,.48,.40,.46,.36], NC = CW.length;
+      const TOTW = CW.reduce((a,b)=>a+b, 0);
+      const cx = k => { let x = -TOTW/2; for(let j=0;j<k;j++) x += CW[j]; return x + CW[k]/2; };
+      // the crest is rounded across, and peels: higher on one shoulder than
+      // the other, the one asymmetry that most says "water" and not "building"
+      const lat = xr => 1 - .30*(xr/1.22)*(xr/1.22) + .08*(xr/1.22);
+      // and bows forward in plan - the middle of a wave is ahead of its ends
+      const bow = xr => .12*(1 - (xr/1.22)*(xr/1.22));
+      const rowF = (j, k) => RF[j] + bow(cx(k));
+      const colH = (j, k) => RH[j]*lat(cx(k))*(1 + Math.sin(j*1.7 + k*2.3)*.07);
+      for(let j=0;j<RF.length;j++){
+        const p = j > 5 ? Math.sin(t*2.4 - j*.7)*.02 : 0;                  // ripple along the crest
+        const col = j < 2 ? dk : j < 5 ? c : j < 7 ? mix(c, bel, .35) : mix(c, bel, .55);
+        for(let k=0;k<NC;k++){
+          const h = colH(j, k) + p;
+          mb(sway + cx(k)*G, rowF(j, k)*G, h*G/2 + hov, CW[k]*.52*G, h*G/2, RD[j]*1.06*G, col, em + .03 + j*.012);
+        }
+      }
+      // whitewater patches down the back slope - the one texture a swell has
+      const PATCH = [[2,1],[3,5],[4,2],[5,4],[6,0],[6,6],[5,1],[4,5],[3,3],[7,1],[7,5]];
+      for(let i=0;i<PATCH.length;i++){ const [j, k] = PATCH[i];
+        const top = colH(j, k);
+        mb(sway + cx(k)*G + Math.sin(i*2.7)*.06*G, rowF(j, k)*G + Math.cos(i*1.9)*.02*G, (top - .015)*G + hov,
+           CW[k]*(.22 + (i%3)*.05)*G, .025*G, RD[j]*(.45 + (i%2)*.2)*G, FOAM, .22);
+      }
+      // THE LIP, curling forward off the crest and back under itself - the
+      // hook of the barrel. Broken over the skull column.
+      const LIP = [[-.10, .56, -.05, .10], [.32, .70, -.22, .10], [.40, .68, -.38, .08]];
+      for(let k=0;k<NC;k++){
+        if(k === 3) continue;
+        const top = colH(7, k), p = Math.sin(t*2.4 - k*.9)*.03, f7 = rowF(7, k);
+        for(let j=0;j<LIP.length;j++){ const [b, f0, dy, hh] = LIP[j];
+          const fb = (f7 + b)*G + lean, ff = (f7 + f0)*G + lean - Math.abs(k-3)*.05*G;
+          mb(sway + cx(k)*G, (fb + ff)/2, (top + dy + p)*G + hov, CW[k]*(.50 - j*.03)*G, hh*G, (ff - fb)/2,
+             j ? FOAM : mix(c, bel, .75), em + .12 + j*.05);
+        }
+      }
+      // THE SAIL, cresting the back slope. The animal is under there, and the
+      // sail still lights with the meter - the rule this line carries on its
+      // body, at the one place a player behind the wave can see it.
+      for(let j=2;j<8;j++){
+        const u = (j-2)/5, top = colH(j, 3);
+        const sh = (.22 + Math.sin(u*Math.PI)*.30)*G;
+        const glow = lit * (.55 + Math.sin(t*7 - u*3.4)*.25*(ch>1?1:.4));
+        // brass when the meter is down, gold when it is up: a blue sail on a
+        // blue wave was a ridge of slightly paler columns, not a fin
+        const gl = Math.min(1, glow*1.6);
+        mb(sway + Math.sin(t*1.2 - u*2)*.008*G, rowF(j, 3)*G, top*G - .04*G + sh/2 + hov, .07*G, sh/2, RD[j]*.8*G,
+           [ lerp(.52, 1, gl), lerp(.44, .84, gl), lerp(.18, .26, gl) ],
+           .14 + gl*.80);
+      }
+      // THE SKULL, up through the crest. The line's gharial jaws a size up and
+      // open, the eyes high on the ridge, gold, and the crest horns above the
+      // water line so the head reads from behind as well as in front.
+      const top3 = colH(7, 3), f73 = rowF(7, 3);
+      const hx = sway + lk, hf = (f73 + .44)*G + lkf + lean, hy = (top3 + .08)*G + hov;
+      chain([[sway, (f73 - .02)*G, (top3 - .30)*G + hov], [sway + lk*.5, (f73 + .20)*G + lean, (top3 - .04)*G + hov], [hx, hf - .12*G, hy]],
+            .22*G, .20*G, c, em+.06);
+      blob(hx, hf, hy, .24*G, .22*G, .23*G, c, em+.06);
+      gharJaw(hx, hf + .12*G, hy - .04*G, .15*G, .78*G, 9, c, .06*G + snap*.06*G);
+      eyeRidge(hx, hf - .02*G, hy + .15*G, .16*G, .09*G, [1,.88,.34]);
+      for(const rs of [-1,1])
+        horn(hx + rs*.10*G, hf - .08*G, hy + .15*G, rs*.04*G, -.10*G, .08*G, 2, .055*G, acc, .34);
+      // THE HANDS. Three fingers and a hooked thumb, reaching out of the face
+      // of the wave either side, a body-height under the skull.
+      const armC = [c[0]*.62, c[1]*.62, c[2]*.66];
+      for(const rs of [-1,1]){
+        const p2 = rs > 0 ? -gait*.6 : gait*.6, al = .46*G;
+        const f7 = rowF(7, rs > 0 ? 4 : 2);
+        const shd = [sway + rs*.55*G, (f7 - .02)*G, .95*G + hov];
+        const elb = [sway + rs*.72*G, (f7 + .16)*G + p2*al*.2, .70*G + hov];
+        const hnd = [sway + rs*.62*G, (f7 + .44)*G + p2*al*.4, .42*G + hov];
+        chain([shd, elb], .10*G, .075*G, armC, em+.04);
+        chain([elb, hnd], .075*G, .058*G, armC, em+.04);
+        blob(elb[0], elb[1], elb[2], .085*G, .085*G, .085*G, armC, em+.04);
+        for(let k=-1;k<=1;k++)
+          chain([hnd, [hnd[0] + k*.05*G, hnd[1] + al*(k===-1?.55:.38), hnd[2] - al*.20]],
+                .036*G, .018*G, [.94,.92,.86], .22, null, true);
+      }
+      // and what the flood carries: two logs and a door tumbling in the face,
+      // a third log riding up the back slope
+      const WOOD = [.42,.28,.14];
+      for(const rs of [-1,1]){ const p = Math.sin(t*2.4 - (rs > 0 ? 3 : 1)*.9);
+        mb(sway + rs*.95*G, (rowF(7, rs > 0 ? 5 : 1) + .08)*G + p*.03*G, (.80 + p*.06)*G + hov, .30*G, .07*G, .07*G,
+           WOOD, .02, rs*.35 + p*.2); }
+      mb(sway - .30*G, (rowF(7, 2) + .07)*G, 1.05*G + hov, .16*G, .20*G, .04*G, [.60,.46,.28], .02, .5);
+      mb(sway + cx(5)*G, rowF(4, 5)*G, (colH(4, 5) + .04)*G + hov, .07*G, .07*G, .26*G, WOOD, .02, .3);
+      // FEATHERING. The wind takes the top off a breaking wave and blows it
+      // back over the swell - the plume is what a player behind it sees of the
+      // break. Then the lip's spray falls into the barrel, and the toe runs
+      // whitewater along the ground ahead - flat, low and moving forward, the
+      // grammar every wake in the game uses.
+      for(let i=0;i<14;i++){
+        const u = ((t*.8 + i*.0714) % 1), k = i%NC, x = sway + cx(k)*G + ((i*.618)%1 - .5)*CW[k]*G;
+        fx(x, rowF(7, k)*G - u*1.1*G, (colH(7, k) + .04 + u*.40)*G + hov,
+           .07*G*(1-u*.4), .05*G*(1-u*.4), .09*G*(1-u*.3), FOAM, .32*(1-u*.8));
+      }
+      for(let k=0;k<NC;k++){
+        if(k === 3) continue;
+        const x = sway + cx(k)*G;
+        for(let j=0;j<2;j++){
+          const u = ((t*1.5 + k*.23 + j*.5) % 1);
+          fx(x + (j ? .12 : -.12)*G, (rowF(7, k) + .70 + u*.20)*G + lean, (colH(7, k) - .45 - u*(colH(7, k) - .55))*G + hov,
+             .07*G*(1-u*.4), .05*G*(1-u*.4), .07*G*(1-u*.4), FOAM, .30 + (1-u)*.30);
+        }
+      }
+      for(let i=0;i<9;i++){
+        const u = ((t*1.1 + i*.111) % 1), xr = ((i*.618) % 1 - .5)*2.6;
+        fx(sway + xr*G, (bow(xr) + .10 + u*.70)*G + lean, .04*G, .10*G*(1-u*.5), .018*G, .08*G,
+           i%2 ? FOAM : lt, .45*(1-u*.7), i);
+      }
+      // and while the surge is up the whole toe of the wave runs gold
+      if(ch > 1) for(let i=0;i<8;i++){ const a = t*3.2 + i/8*TAU;
+        fx(sway + Math.sin(a)*1.30*G, Math.cos(a)*.40*G + .30*G, (.05 + Math.abs(Math.sin(t*6+i))*.07)*G,
+           .09*G,.02*G,.08*G, acc, .85, a); }
+    } else {
+      // THE DELUGE. WHAT LIVES IN BLACK WATER. The flood went down and left a
+      // pool the colour of nothing, and this comes up out of it: the whole
+      // animal at last, a leviathan - no legs, no arms, a serpent's body
+      // rising in an S out of the water to three body-heights, banded black
+      // and drowned teal, the sail become a serrated fin down the length of
+      // the spine and lit red-orange by the meter, the gharial jaws open on a
+      // gullet lit the same, catfish barbels off the snout, a second coil
+      // breaking the surface behind it and the tail paddle standing out of
+      // the water like a fin. Rings spread on the pool. It is TALL AND NARROW
+      // where THE FLOOD was wide and THE SPINE was long.
+      const POOL = [c[0]*.5, c[1]*.5, c[2]*.55], BAND = mix(c, bel, .38), DRIP = [.55,.80,.76];
+      const weave = y => Math.sin(t*1.1 + y*1.6)*.05*G + sway*(.4 + y*.2);
+      const PF = -.30*G;                                          // the pool's centre
+      // the pool: five slats of black water, widest in the middle, so it is a
+      // round thing on the ground and not a doormat
+      for(let i=0;i<5;i++){ const w = [.55,.85,.95,.85,.55][i];
+        mb(sway*.3, PF + (i-2)*.56*G, .03*G, w*G, .03*G, .30*G, POOL, .02); }
+      // THE BODY. Up out of the water in an S - back, then the chest thrown
+      // forward, then back again under the skull; a cobra's rear, thick as the
+      // pool is deep. Nothing about it is a column.
+      const S = [[-.55, .00, .34], [-.80, .38, .33], [-.75, .80, .31], [-.35, 1.20, .29],
+                 [ .25, 1.55, .27], [ .50, 1.95, .24], [ .30, 2.35, .21], [-.05, 2.65, .19], [ .15, 2.90, .17]];
+      const pts = S.map(([f, y, r]) => [weave(y), f*G + amp*.06*G*y, y*G + hov, r*G]);
+      for(let i=0;i<pts.length-1;i++)
+        chain([pts[i].slice(0,3), pts[i+1].slice(0,3)], pts[i][3], pts[i+1][3],
+              i%2 ? BAND : c, em+.04, [1.08, 1, 1]);
+      // THE FIN down the back of the S and THE BELLY up its front: on the
+      // outside of every bend two teal spines that go red-orange with the
+      // meter, on the inside a ventral plate - the serpent's scales, the read
+      // every sea-serpent has had since the maps.
+      for(let i=1;i<pts.length;i++){
+        const a = pts[i-1], b = pts[i];
+        const df = b[1]-a[1], dy = b[2]-a[2], L2 = Math.hypot(df, dy);
+        const nf = -dy/L2, ny = df/L2;                          // the back-facing normal
+        for(let s=0;s<2;s++){
+          const u = (s+.5)/2, r = a[3] + (b[3]-a[3])*u;
+          const x = a[0] + (b[0]-a[0])*u, f = a[1] + df*u, y = a[2] + dy*u;
+          const h = (.30 + Math.sin((i - 1 + u)/(pts.length-1)*Math.PI)*.34)*G;
+          const glow = lit * (.55 + Math.sin(t*7 - i*.9)*.25*(ch>1?1:.4));
+          const col = mix(mix(c, bel, .55), glo, glow);
+          const cf = f + nf*(r*.5 + h*.5), cy = y + ny*(r*.5 + h*.5);
+          if(Math.abs(nf) > Math.abs(ny)) mb(x, cf, cy, .055*G, .075*G, h/2 + r*.25, col, .10 + glow*.85);
+          else                            mb(x, cf, cy, .055*G, h/2 + r*.25, .075*G, col, .10 + glow*.85);
+          if(i < pts.length-1)
+            mb(x, f - nf*(r + .02*G), y - ny*(r + .02*G), r*.55, Math.abs(ny) > .5 ? .06*G : r*.42, Math.abs(ny) > .5 ? r*.42 : .06*G,
+               mix(bel, c, .25), em + .06);
+        }
+      }
+      // THE SKULL. The line's gharial jaws, open on a gullet lit red-orange,
+      // the eyes black with a bright rim - something from deep water - four
+      // barbels trailing off the snout, and the crest gone to three spines.
+      const top = pts[pts.length-1];
+      const hx = top[0] + lk, hf = top[1] + .30*G + lkf, hy = top[2] + .06*G;
+      chain([top.slice(0,3), [hx, hf - .12*G, hy]], .17*G, .17*G, c, em+.04);
+      blob(hx, hf, hy, .25*G, .21*G, .25*G, c, em+.06);
+      const gape = .12*G + snap*.08*G;
+      gharJaw(hx, hf + .12*G, hy - .05*G, .16*G, .92*G, 10, c, gape);
+      mb(hx, hf + .34*G, hy - .12*G - gape*.4, .10*G, .05*G + gape*.4, .24*G, glo, .70 + lit*.30);   // the gullet
+      eyeDeep(hx, hf - .02*G, hy + .15*G, .18*G, .10*G, glo);
+      for(let i=0;i<3;i++){ const a2 = (i-1)*.55;
+        horn(hx + Math.sin(a2)*.16*G, hf - .16*G - Math.abs(a2)*.04*G, hy + .16*G,
+             Math.sin(a2)*.05*G, -.08*G, .12*G, 3, .050*G, acc, .55); }
+      // (four points a barbel and a gentle drift: a thin chain that steps
+      // sideways faster than its own width comes apart into beads)
+      for(const rs of [-1,1]) for(let j=0;j<2;j++){
+        const w = Math.sin(t*2.1 + rs + j*1.4)*.06*G, bf = hf + (.62 + j*.22)*G;
+        chain([[hx + rs*.10*G,                    bf,         hy - .10*G],
+               [hx + rs*.16*G + w*.3,             bf - .06*G, hy - .32*G],
+               [hx + rs*(.22 + j*.04)*G + w*.7,   bf - .14*G, hy - .56*G],
+               [hx + rs*(.26 + j*.08)*G + w,      bf - .22*G, hy - .78*G]],
+              .034*G, .016*G, bel, .20);
+      }
+      // THE SECOND COIL, breaking the surface behind, and the paddle standing
+      // out of the water beside it like a fin.
+      const c2 = [[-.95, .00], [-1.08, .34], [-1.32, .40], [-1.52, .12]]
+        .map(([f, y]) => [sway*.3 - .10*G, f*G, y*G]);
+      for(let i=0;i<c2.length-1;i++)
+        chain([c2[i], c2[i+1]], .22*G, .22*G, i%2 ? c : BAND, em+.04, [1.05, 1, 1]);
+      const tf = -1.20*G, tx = sway*.3 + .45*G;
+      for(let i=0;i<4;i++)
+        mb(tx, tf - i*.13*G, (.25 - i*.04)*G, .05*G, (.24 - i*.04)*G, .08*G,
+           mix(c, glo, lit*.6), em + .10 + lit*.5);
+      // WATER. Rings spreading on the pool, spray where the body comes up
+      // through it, the pool running off the flanks back into itself, and
+      // while the surge is up, red sparks round the skull.
+      for(let j=0;j<3;j++){ const u = ((t*.45 + j/3) % 1), RR = .35 + u*.75;
+        for(let k=0;k<12;k++){ const a = k/12*TAU + j;
+          fx(sway*.3 + Math.sin(a)*RR*.95*G, PF + Math.cos(a)*RR*1.40*G, .075*G,
+             .13*G, .012*G, .06*G, bel, .30*(1-u), a); } }
+      for(let i=0;i<8;i++){ const a = t*2.2 + i/8*TAU;
+        fx(pts[0][0] + Math.sin(a)*.48*G, pts[0][1] + Math.cos(a)*.48*G, (.06 + Math.abs(Math.sin(t*5+i))*.10)*G,
+           .08*G, .02*G, .07*G, i%2 ? bel : DRIP, .45, a); }
+      for(let i=0;i<6;i++){
+        const u = ((t*1.3 + i*.167) % 1), src = pts[2 + (i%3)];
+        const ox = (i%2 ? 1 : -1)*(src[3] + .04*G);
+        fx(src[0] + ox, src[1] - .05*G, src[2]*(1-u) + .06*G, .028*G, .06*G*(1+u), .028*G, DRIP, .40*(1-u*.6));
+      }
+      if(ch > 1) for(let i=0;i<8;i++){ const a = t*3.2 + i/8*TAU;
+        fx(hx + Math.sin(a)*.50*G, hf + .10*G + Math.cos(a)*.40*G, hy + Math.sin(a*2 + t)*.20*G,
+           .05*G, .05*G, .05*G, glo, .90, a); }
+    }
+    return;
+  }
   // spine: hips through chest, held level - this is a runner, not a rearer
   chain([[sway, -.24*gr, HIP], [sway, .02*gr, HIP + .06*gr], [sway, chestF, HIP + .08*gr]],
         (.21 + st*.04)*gr, (.20 + st*.045)*gr, c, em+.06, [1, .94, 1]);
@@ -9901,12 +10160,16 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     chain([[r, f, y - w*.54 - g], [r, f + len*.92, y - w*.56 - len*.09 - g]],
           w*.80, w*.34, col, .05, [1, .50, 1]);
     mb(r, f + len*1.02, y - len*.09, w*.64, w*.50, w*.44, col, .06);   // the bulb
+    // the teeth ride their own jaw: down its slope, and in with its taper. A
+    // row set level and at one width along a jaw that drops a tenth of its
+    // length and narrows to a third floats clear of it at the tip, and the
+    // wider the mouth hangs the sooner.
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, fx2 = f + len*t2, sc = 1 - t2*.30;
       for(const sg of [-1,1]){
-        mb(r + sg*w*.64, fx2, y - w*.26, w*.20*sc, w*.13*sc, w*.11*sc,
+        mb(r + sg*w*(.70 - .30*t2), fx2, y - w*.26 - len*.10*t2, w*.20*sc, w*.13*sc, w*.11*sc,
            [.96,.95,.88], .20);
-        mb(r + sg*w*.58, fx2 + len/n*.5, y - w*.32 - g, w*.17*sc, w*.12*sc, w*.10*sc,
+        mb(r + sg*w*(.66 - .28*t2), f + len*.92*(t2 + .5/n), y - w*.32 - g - (w*.02 + len*.09)*t2, w*.17*sc, w*.12*sc, w*.10*sc,
            [.96,.95,.88], .20);
       }
     }
@@ -11104,8 +11367,7 @@ function render(){
     // spot - it was |sin(bob)| off a clock that ran whether it moved or not.
     // Fliers keep their own wingbeat hop inside the plan.
     const fly = D.flier;
-    const hop = fly ? 0 : Math.abs(Math.sin(e.gt*(e.boss ? 3.4 : 2 + D.spd) + e.bob))
-                        * e.amp * (e.boss ? .08 : .16);
+    const hop = hopOf(e);
     // THE POSE, resolved once per body and applied inside eb(): a lean into the
     // run, a stagger along the knockback still on it, the bite pitching the
     // whole animal forward on contact, the bank out of a turn, and the flinch
@@ -12090,7 +12352,7 @@ window.__g = {
   // the locomotion state walk() keeps per body, for every enemy on the field
   // in spawn order - gait time, stride amplitude, heading, bank, bite, squash
   gait:  ()=>enemies.map(e=>({ type:e.type, x:+e.x.toFixed(3), y:+e.y.toFixed(3), z:+e.z.toFixed(3),
-                               gt:+e.gt.toFixed(4), amp:+e.amp.toFixed(4),
+                               gt:+e.gt.toFixed(4), amp:+e.amp.toFixed(4), hop:+hopOf(e).toFixed(4),
                                hd:e.hd === undefined ? null : +e.hd.toFixed(4),
                                bk:+e.bk.toFixed(4), lg:+e.lg.toFixed(4),
                                sq:+e.sq.toFixed(4), kx:+e.kx.toFixed(3),

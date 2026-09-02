@@ -5343,7 +5343,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.captureEnemy(); await frame(); await frame();
         const bx = g.enemyPos(); let top = -1e9, bot = 1e9;
         for(let i=0;i<bx.length/6;i++){ top = Math.max(top, bx[i*6+2] + bx[i*6+5]); bot = Math.min(bot, bx[i*6+2] - bx[i*6+5]); }
-        return { n:bx.length/6, top:+(top - gs.y).toFixed(3), bot:+(bot - gs.y).toFixed(3), gs };
+        return { n:bx.length/6, top:+(top - gs.y).toFixed(3), bot:+(bot - gs.y).toFixed(3), hop:gs.hop, gs };
       };
       // step the first corpse to normalised time u and read its drawn box
       const at = async (u) => {
@@ -5422,7 +5422,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.hurtAt(0, 1e9, kind.startsWith("boss") ? 30 : 7, 0); g.clearFx(); g.clearGems();
         const c = g.corpses()[0];
         if(!c){ out.fall[kind] = { err:"no corpse", enemies:g.state().enemies }; continue; }
-        const f = { type:c.type, boss:c.boss, elite:c.elite, dur:c.dur, fx:c.fx, fz:c.fz, nAlive:st.n, topAlive:st.top, botAlive:st.bot,
+        const f = { type:c.type, boss:c.boss, elite:c.elite, dur:c.dur, fx:c.fx, fz:c.fz, nAlive:st.n, topAlive:st.top, botAlive:st.bot, hopAlive:st.hop,
                     u0:await at(0), u4:await at(.4), u5:await at(.55), u97:await at(.97) };
         f.expired = g.corpseStep(4, 1/60);
         out.fall[kind] = f;
@@ -5526,10 +5526,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the world-space FX go with the kill: crumpled, the runner and the collector draw exactly their standing box count, and the collector's beacon is out",
        has("runner","collector") && ["runner","collector"].every(k => F[k].u4.n === F[k].nAlive) && F.collector.u4.marks === 0 && F.collector.u0.n > F.collector.nAlive,
        ["runner","collector"].map(k => F[k] && F[k].u4 ? `${k} ${F[k].u0.n}->${F[k].u4.n} (alive ${F[k].nAlive})` : `${k} missing`).join(", ") + `, beacon ${F.collector.u4 && F.collector.u4.marks}`);
+    // the size is read with the hop taken back off: each body is caught at one
+    // frame of a hop whose phase is the random one it spawned with, and a brute
+    // at the crest against an elite in the trough is 1.52 against 1.77 - a
+    // 1.38x animal measuring 1.16x, and a check that went red one run in many
+    const grounded = k => +(F[k].topAlive - F[k].hopAlive).toFixed(3);
     ok("an elite takes .85 s to go down and a boss 1.6, and the elite is drawn at its size",
        has("elite","brute","boss0","boss2") && F.elite.elite && F.elite.dur === .85 && F.boss0.boss && F.boss0.dur === 1.6 && F.boss2.dur === 1.6 &&
-       F.elite.topAlive > F.brute.topAlive*1.25,
-       `elite ${F.elite && F.elite.dur} (${F.elite && F.elite.topAlive} vs brute ${F.brute && F.brute.topAlive}), bosses ${F.boss0 && F.boss0.dur} ${F.boss2 && F.boss2.dur}`);
+       grounded("elite") > grounded("brute")*1.30 && grounded("elite") < grounded("brute")*1.46,
+       `elite ${F.elite && F.elite.dur} (${has("elite","brute") ? `${grounded("elite")} vs brute ${grounded("brute")} with the hops ${F.elite.hopAlive}/${F.brute.hopAlive} off, x${(grounded("elite")/grounded("brute")).toFixed(3)}` : "missing"}), bosses ${F.boss0 && F.boss0.dur} ${F.boss2 && F.boss2.dur}`);
     const La = r.last || {};
     ok("the last boss ends the run and still falls: the world is stopped and the corpse clock ran on the frame",
        La.over === true && La.won === true && La.t0 === 0 && La.t1 > La.t0 && La.nm === "boss",
@@ -5660,7 +5665,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       return out;
     });
-    const DONE = ["intern", "scrap", "spark", "ox", "ghoul", "accnt", "pyre"];  // one more line each round
+    const DONE = ["intern", "scrap", "spark", "ox", "ghoul", "accnt", "pyre", "surge"];  // one more line each round
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => ({ a: row[i], b: row[j], d: dist(row[i], row[j]) }));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ")
