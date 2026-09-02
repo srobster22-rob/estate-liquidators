@@ -485,6 +485,12 @@ const MUTANTS = [
         "TITANHIDE with a bigger frill",
     from:"  if(st >= 3){\n    const G = gr;\n    if(st === 3){\n      // THE MOUNTAIN.",
     to:  "  if(false){\n    const G = gr;\n    if(st === 3){\n      // THE MOUNTAIN." },
+  { id:"gorgon-is-the-basilisk", must:"37",
+    why:"the head-and-ring branch is skipped and stages 3 and 4 fall through " +
+        "to the serpent plan - the top of the rot line is BASILISK at two " +
+        "more scales, which is the complaint this arc exists to close",
+    from:"  if(st >= 3){\n    const G = 1 + st*.16;\n    const AMBER = [1,.72,.16];\n    if(st === 3){",
+    to:  "  if(false){\n    const G = 1 + st*.16;\n    const AMBER = [1,.72,.16];\n    if(st === 3){" },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",

@@ -4757,7 +4757,11 @@ stone(D){
 },
 // -------------------------------------------------------------------- ROT
 // A BASILISK. No legs, at any stage - that is the whole silhouette, and it is
-// the one thing none of the other lines can be mistaken for.
+// the one thing none of the other lines can be mistaken for. Three stages of
+// serpent, then a HEAD (the gorgon: a domed skull on a coiled basket with a
+// corona of snakes for hair) and then a RING (the ouroboros: the serpent
+// closed on its own tail, hanging in the air, its bands scrolling through the
+// jaws).
 // FACE: no white in the eye at all, just a lit slot in the skull, over a
 // lipless mouth with two hollow fangs that hinge down out of the roof of it.
 rot(D){
@@ -4782,6 +4786,192 @@ rot(D){
   const lk = look*.15, lkf = -Math.abs(look)*.045;
   const flick = twitch(0, 3.1);                    // the tongue
   const hiss  = twitch(1.7, 5.6);                  // the jaw
+  // And then the serpent stops being a serpent. Stages 3 and 4 return from
+  // here: the palette round made them bruise-and-venom and bone-and-jade, and
+  // this round makes them a head and a ring.
+  if(st >= 3){
+    const G = 1 + st*.16;
+    const AMBER = [1,.72,.16];
+    if(st === 3){
+      // THE GORGON. THE HEAD IS THE ANIMAL. The legend is a head - a face
+      // that turns you to stone under a crown of living snakes - so the apex
+      // is one: a great domed skull with the line's amber slots and hollow
+      // fangs in the front of it, sitting on its own body wound flat beneath
+      // it like a basket, and out of the crown, in place of the crest, a
+      // corona of nine small serpents with venom-lit heads, writhing. It is
+      // TALL AND ROUND where BASILISK was long and reared.
+      const bnd = [c[0]*.58, c[1]*.72, c[2]*.50];
+      const HW = .32*G;
+      const hx = lk, hf = .08*G + lkf, hy = .88*G;
+      // THE BASKET. Two turns of body wound flat on the ground, the tail out
+      // the back and the neck rising out of the middle - one continuous run,
+      // banded a segment at a time, points spaced by body length so the
+      // inner turn is not a pile of coincident boxes.
+      const lag = drag(.8)*.06*G + Math.sin(t*1.3)*.02*idle*G;
+      const coil = [[lag, -.88*G, .09*G]];
+      let th = 0;
+      for(let k=0;k<40 && th < 4*Math.PI + .5;k++){
+        const R = Math.max(.14, .62 - th/(4*Math.PI)*.48)*G;
+        coil.push([Math.sin(th)*R, -Math.cos(th)*R, .12*G + Math.sin(th*1.7 + t*1.4)*.008*idle*G]);
+        th += .26*G/R;
+      }
+      const NC = coil.length;
+      const rC = k => k === 0 ? .045*G : (.06 + .07*Math.sin(Math.PI*k/(NC-1)))*G;
+      for(let k=0;k<NC-1;k++)
+        chain([coil[k], coil[k+1]], rC(k), rC(k+1), k%2 ? c : bnd, em+.06, [1, .92, 1]);
+      // venom scutes down the top of the body, the toxic green on the purple
+      for(let k=2;k<NC;k+=2){ const p = coil[k], r = rC(k);
+        mb(p[0], p[1], p[2] + r*.80, .05*G, .045*G, .05*G, acc, .30); }
+      // THE NECK, out of the middle of the basket and up under the skull
+      const ce = coil[NC-1];
+      chain([ce, [ce[0]*.5, ce[1]*.5 + .02*G, .32*G], [lk*.4, .02*G, .60*G], [hx, hf - .10*G, hy - .08*G]],
+            .075*G, .14*G, c, em+.06, [1, 1, 1]);
+      // THE SKULL. The line's wedge, a size up, with a CRANIUM over it - the
+      // dome is what makes this a head and not a snake's head - and a lilac
+      // mask down each cheek.
+      blob(hx, hf - .12*G, hy + .16*G, .40*G, .24*G, .34*G, c, em);
+      chain([[hx, hf - .16*G, hy - .01*G], [hx, hf + .10*G, hy]], HW*.80, HW, c, em+.08, [1.18, .70, 1]);
+      chain([[hx, hf + .10*G, hy], [hx, hf + .32*G, hy - .03*G]], HW, HW*.60, c, em+.08, [1.10, .66, 1]);
+      for(const rs of [-1,1])                                 // the mask: a lilac streak down
+        chain([[hx + rs*HW*.92, hf + .14*G, hy + HW*.02], [hx + rs*HW*1.02, hf + .02*G, hy - HW*.60]],   // each cheek
+              .075*G, .045*G, bel, em*.9, [.60, 1, 1]);
+      // the eyes are LARGE for the head - the stare is the whole legend
+      eyeGlow(hx, hf + .16*G, hy + HW*.20, HW*.74, HW*.50, AMBER);
+      viperJaw(hx, hf + .22*G, hy - HW*.22, HW*.68, .36*G, c, hiss*.10*G);
+      if(flick > .02) for(let i=0;i<2;i++)
+        fx(hx + (i?.05:-.05)*G, hf + (.60 + flick*.22)*G, hy - HW*.36,
+           .018*G, .015*G, .08*G*flick, [.90,.30,.44], .35);
+      // THE HAIR. Nine serpents out of the crown - none over the face - each
+      // rooted deep in the dome and rising out and up, writhing on its own
+      // phase, a lilac head on the end of it with a venom-lit snout. The
+      // crest of spines this line wore is gone: these are the crest now.
+      for(let i=0;i<9;i++){
+        const a  = .62 + i*(2*Math.PI - 1.24)/8;
+        const ox = Math.sin(a), of = Math.cos(a), px = Math.cos(a), pf = -Math.sin(a);
+        const w1 = Math.sin(t*2.3 + i*1.37)*.08*G, w2 = Math.sin(t*2.3 + i*1.37 + 1.2)*.11*G;
+        const rx = hx + ox*.24*G, rf = hf - .12*G + of*.20*G, ry = hy + .28*G;
+        const pts = [[rx, rf, ry],
+                     [rx + ox*.16*G + px*w1*.5, rf + of*.16*G + pf*w1*.5, ry + .19*G],
+                     [rx + ox*.34*G + px*w1,    rf + of*.34*G + pf*w1,    ry + .34*G],
+                     [rx + ox*.52*G + px*w2*.8, rf + of*.52*G + pf*w2*.8, ry + .42*G],
+                     [rx + ox*.66*G + px*w2,    rf + of*.66*G + pf*w2,    ry + .40*G - Math.abs(w2)*.4]];
+        chain(pts, .058*G, .034*G, i%2 ? c : bnd, em+.06, [1, 1, 1]);
+        const tp = pts[4];
+        mb(tp[0] + ox*.03*G, tp[1] + of*.03*G, tp[2], .055*G, .045*G, .055*G, bel, em*.9);
+        mb(tp[0] + ox*.08*G, tp[1] + of*.08*G, tp[2] + .01*G, .030*G, .024*G, .030*G, acc, .75);
+      }
+      // THE STARE - the beam off the eyes - and what it did: grey flecks of
+      // whatever last met it, drifting round the basket
+      for(let i=0;i<4;i++){
+        const u = ((t*1.1 + i*.25) % 1);
+        fx(hx, hf + (.44 + u*.85)*G, hy + HW*.20 - u*.06*G,
+           .034*G*(1-u*.55), .034*G*(1-u*.55), .056*G*(1-u*.4), [1,.76,.16], .70*(1-u*.8));
+      }
+      for(let i=0;i<5;i++){ const a = t*.5 + i/5*TAU;
+        fx(Math.sin(a)*.84*G, Math.cos(a)*.80*G, (.10 + Math.sin(t*1.7 + i*2)*.05)*G,
+           .028*G, .028*G, .028*G, [.55,.55,.58], .06, a); }
+    } else {
+      // THE OUROBOROS. THE LOOP ITSELF. Not a serpent with a skull on its
+      // tail: the serpent CLOSED - a thin halo of banded ivory hanging clear of
+      // the ground, canted up at the front so the camera behind it sees the
+      // whole ring and the camera in front sees the skull REARED up out of it
+      // like a cobra out of a basket, the jaws shut on its own tail, which
+      // climbs up into them from the right. The bands and the jade scutes
+      // SCROLL round the ring, so the body forever flows through the mouth
+      // that is eating it. Jade lines the inside of the ring, and a jade orb
+      // hangs at the centre of it, held there since before there was anything
+      // else to hold. It is a WHEEL where the gorgon was a dome and BASILISK
+      // was a rearing coil.
+      const R = .80*G, bob = Math.sin(t*1.2)*.03*idle*G;
+      const CY = .76*G + bob;
+      const tiltF = .46 + amp*.08 + Math.sin(t*.55)*.03;      // the front rides high, and nods
+      const tiltS = Math.sin(t*.8)*.06;                        // and it rocks a little
+      const at = th => [Math.sin(th)*R, Math.cos(th)*R,
+                        CY + Math.cos(th)*tiltF*R + Math.sin(th)*tiltS*R];
+      const hx = lk*.6, hf = R + .06*G + lkf, hy = CY + tiltF*R + .28*G;
+      const HW = .22*G;
+      // THE BODY. Not a tube: VERTEBRAE. A serpent of bone is a string of
+      // them, so the ring is a run of ivory beads, each one a cube set square
+      // to the world and lapping the next - which is also the one way a ring
+      // of boxes reads as a ring from a camera thirty-five degrees up rather
+      // than as a heap (a chain of axis-aligned tubes round a circle is a heap
+      // of slabs; a bead-ring is a pixel circle, and everyone can read one of
+      // those). From the neck at the front-left, the long way round, to the
+      // tail at the front-right, then up and into the jaws from the front.
+      const TH0 = -.55, SPAN = 2*Math.PI - 1.17, path = [];
+      for(let i=0;i<=48;i++) path.push(at(TH0 - i*SPAN/48));
+      path.push([.22*R, R + .06*G, hy - HW*.75]);
+      path.push([hx + .02*G, hf + .40*G, hy - HW*.30]);
+      path.push([hx, hf + .30*G, hy - HW*.30]);
+      const segL = [], cum = [0];
+      for(let i=1;i<path.length;i++){
+        const a = path[i-1], b = path[i];
+        segL.push(Math.hypot(b[0]-a[0], b[1]-a[1], b[2]-a[2])); cum.push(cum[i-1] + segL[i-1]);
+      }
+      const LT = cum[cum.length-1];
+      const ptAt = d => {                                       // the point d along the path
+        let i = 1; while(i < cum.length-1 && cum[i] < d) i++;
+        const u = segL[i-1] > 0 ? (d - cum[i-1])/segL[i-1] : 0, a = path[i-1], b = path[i];
+        return [a[0] + (b[0]-a[0])*u, a[1] + (b[1]-a[1])*u, a[2] + (b[2]-a[2])*u];
+      };
+      const rB = u => G*(.085 + .045*Math.sin(Math.PI*u))*(u > .76 ? 1 - (u-.76)/.24*.55 : 1);
+      const roll = Math.floor(t*4);                            // the bands go round
+      const beads = [];
+      for(let d = 0, k = 0; d <= LT + .001; k++){
+        const u = d/LT, r = rB(u), p = ptAt(d);
+        beads.push([p, r, k]);
+        d += Math.max(1.15*r, .02*G);
+      }
+      const NBD = beads.length;
+      for(const [p, r, k] of beads)
+        mb(p[0], p[1], p[2], r, r*.92, r, (((k + roll) >> 1) & 1) ? c : dk, em+.04);
+      for(let k=2;k<NBD-4;k++){
+        const [p, r] = beads[k];
+        const rl = Math.hypot(p[0], p[1]) || 1, ox = p[0]/rl, of = p[1]/rl;
+        if(((k + roll) % 4) === 0)                             // a jade scute on the back of every fourth bead
+          mb(p[0], p[1], p[2] + r*.85, .050*G, .040*G, .050*G, acc, .40);
+        if(((k + roll) % 4) === 2)                             // and jade lining the inside of the ring
+          mb(p[0] - ox*r*.90, p[1] - of*r*.90, p[2], .055*G, .055*G, .055*G, acc, .30);
+      }
+      // THE SKULL, reared up out of the front of the ring on a neck of the
+      // same vertebrae, each a size up on the last, facing the way it goes:
+      // the line's wedge, the amber slots, the hollow fangs shut on the tail,
+      // and three jade spines for the crown.
+      { const n0 = path[0], n1 = [-.26*R, .94*R, CY + tiltF*R + .12*G], n2 = [hx, hf - .12*G, hy - .05*G];
+        const L1 = Math.hypot(n1[0]-n0[0], n1[1]-n0[1], n1[2]-n0[2]), L2 = Math.hypot(n2[0]-n1[0], n2[1]-n1[1], n2[2]-n1[2]);
+        for(let d = 0, k = 1; d <= L1 + L2 + .001; k++){
+          const u = d/(L1 + L2), r = rB(0) + (HW*.62 - rB(0))*u;
+          const p = d < L1 ? [n0[0] + (n1[0]-n0[0])*d/L1, n0[1] + (n1[1]-n0[1])*d/L1, n0[2] + (n1[2]-n0[2])*d/L1]
+                           : [n1[0] + (n2[0]-n1[0])*(d-L1)/L2, n1[1] + (n2[1]-n1[1])*(d-L1)/L2, n1[2] + (n2[2]-n1[2])*(d-L1)/L2];
+          mb(p[0], p[1], p[2], r, r*.92, r, (((roll - k) >> 1) & 1) ? c : dk, em+.04);
+          d += 1.15*r;
+        } }
+      chain([[hx, hf - .14*G, hy - .01*G], [hx, hf + .10*G, hy]], HW*.78, HW, c, em+.08, [1.18, .70, 1]);
+      chain([[hx, hf + .10*G, hy], [hx, hf + .30*G, hy - .03*G]], HW, HW*.60, c, em+.08, [1.10, .66, 1]);
+      eyeGlow(hx, hf + .16*G, hy + HW*.20, HW*.74, HW*.50, AMBER);
+      viperJaw(hx, hf + .22*G, hy - HW*.22, HW*.68, .34*G, c, hiss*.05*G);
+      for(let i=0;i<3;i++){ const a2 = (i-1)*.6;
+        horn(hx + Math.sin(a2)*HW*.70, hf - .08*G - Math.abs(a2)*.03*G, hy + HW*.50,
+             Math.sin(a2)*.03*G, -.024*G, .07*G, 2, .040*G, acc, .45); }
+      if(flick > .02) for(let i=0;i<2;i++)
+        fx(hx + (i?.04:-.04)*G, hf + (.56 + flick*.20)*G, hy - HW*.36,
+           .015*G, .013*G, .07*G*flick, [.90,.30,.44], .35);
+      for(let i=0;i<4;i++){
+        const u = ((t*1.1 + i*.25) % 1);
+        fx(hx, hf + (.42 + u*.80)*G, hy + HW*.20 - u*.06*G,
+           .030*G*(1-u*.55), .030*G*(1-u*.55), .050*G*(1-u*.4), [1,.76,.16], .70*(1-u*.8));
+      }
+      // THE ORB. Jade, lit from inside, turning slowly at the centre of the
+      // ring, with four motes going round it.
+      const spin = t*1.6;
+      fx(0, 0, CY + .02*G, .12*G, .12*G, .12*G, acc, .50, spin*.3);
+      fx(0, 0, CY + .02*G, .07*G, .07*G, .07*G, [.70,1,.78], .90, -spin*.5);
+      for(let i=0;i<4;i++){ const a = spin + i/4*TAU;
+        fx(Math.sin(a)*.30*G, Math.cos(a)*.30*G, CY + .02*G + Math.sin(a*2)*.08*G,
+           .028*G, .028*G, .028*G, [.70,1,.78], .70, a); }
+    }
+    return;
+  }
   // HOW LONG IS TOO LONG. Measured every form's world footprint against the
   // camera boom, which sits 8.9 behind the animal: at eight segments plus four
   // per stage, spaced a third of a unit, BASILISK came out NINETEEN AND A HALF
