@@ -517,6 +517,12 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"fry-is-the-spinosaur", must:"38",
+    why:"the fry-and-koi branch is skipped and stages 0 and 1 fall through to " +
+        "the spinosaur plan - the surge line is THE SPINE at two smaller scales " +
+        "with less sail, which is where it started",
+    from:"  if(st <= 1){\n    const G = gr;\n    const fin = ",
+    to:  "  if(false){\n    const G = gr;\n    const fin = " },
   { id:"pebble-is-the-tank", must:"38",
     why:"the hatchling-and-juvenile branch is skipped and stages 0 and 1 fall " +
         "through to the ceratopsian plan - the stone line starts life as " +

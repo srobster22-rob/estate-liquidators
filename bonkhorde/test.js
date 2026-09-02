@@ -5731,7 +5731,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       }
       return out;
     });
-    const EARLY = ["ox"];                          // one more line each round
+    const EARLY = ["ox", "surge"];                 // one more line each round
     const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
     const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => dist(row[i], row[j]));
     const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ") + `  d ${pairs(r[id]).join("/")}`;
@@ -5744,6 +5744,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the stone line hatches as a pebble and grows its weapon first: SHALEBACK is nearly as wide as it is long, ANKYLOS is four times longer than it is wide, and TITANHIDE is neither",
        s0 && s0.WL >= .65 && s1 && s1.WL <= .30 && s2 && s2.WL > .45 && s2.WL < .70,
        s0 && `W/L ${s0.WL} > ${s1.WL} > ${s2.WL}, H/L ${s0.HL} > ${s1.HL} > ${s2.HL}`);
+    const g0 = r.surge && r.surge[0], g1 = r.surge && r.surge[1], g2 = r.surge && r.surge[2];
+    ok("the surge line is a fry, then a fish that walks on its fins, then a predator: RIVERKING is the only stage of the line standing taller than .7 of its own length, and both juveniles are half again as wide for their length as THE SPINE",
+       g1 && g1.HL >= .70 && g0 && g0.HL < .70 && g2 && g2.HL < .70 && g0.WL >= .45 && g1.WL >= .45 && g2.WL <= .30,
+       g0 && `H/L ${g0.HL} > ${g1.HL} > ${g2.HL}, W/L ${g0.WL} > ${g1.WL} > ${g2.WL}`);
     const left = Object.keys(r).filter(id => !EARLY.includes(id) && pairs(r[id]).some(d => d < .12));
     if (left.length) console.log("   still one plan at three scales below the third stage: "
       + left.map(id => `${id} d ${pairs(r[id]).join("/")}`).join(", "));

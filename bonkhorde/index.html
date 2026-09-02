@@ -6238,6 +6238,149 @@ surge(D){
     }
     return;
   }
+  // ---- AND THE TWO BELOW IT ARE NOT SMALL SPINOSAURS EITHER. Section 38's
+  // measure caught this line at .06 and .07 of shape change across stages 0,
+  // 1 and 2: the sail grew in three steps and the animal under it did not
+  // change at all. It is a RIVER line, so the two juveniles are the two
+  // things a river animal is before it is a predator - a FRY and a FISH.
+  if(st <= 1){
+    const G = gr;
+    const fin = [lerp(acc[0], 1, lit*.5), lerp(acc[1], .90, lit*.45), lerp(acc[2], .55, lit*.4)];
+    if(st === 0){
+      // SAILFIN. A FRY. One round body with a face on the front of it, a
+      // yolk-pale belly it has not finished eating, two eyes too big for it,
+      // three fin-buds standing off its back where the sail is going to be,
+      // two paddle stubs, and a tail that is nearly all fin - a deep vane it
+      // flicks to move, so this thing SWIMS along the ground rather than
+      // walking it. Short, round and deep-tailed where THE SPINE is long and
+      // narrow.
+      const swim = Math.sin(t*3.2 + ph*1.6)*.10 + gait*.30;       // the tail flicks
+      const BY = (.34 + hov)*G + Math.abs(gait)*.03*G;
+      // the body: one mass, deepest just behind the eyes, tapering back
+      chain([[sway, -.28*G, BY - .02*G], [sway + swim*.06*G, -.02*G, BY],
+             [sway, .24*G, BY - .01*G]], .19*G, .25*G, c, em+.06, [.90, 1.05, 1]);
+      blob(sway, .04*G, BY + .01*G, .21*G, .21*G, .20*G, c, em+.06);       // the shoulder mass
+      mb(sway, -.02*G, BY - .16*G, .16*G, .075*G, .23*G, bel, em+.10);     // the yolk
+      mb(sway, -.20*G, BY - .10*G, .12*G, .06*G, .12*G, bel, em+.08);
+      // fry freckles, four a side
+      for(const rs of [-1,1]) for(let i=0;i<4;i++)
+        mb(sway + rs*.20*G, (.12 - i*.11)*G, BY + (.06 - (i%2)*.09)*G,
+           .022*G, (.035 + (i%3)*.008)*G, (.035 + (i%2)*.008)*G, dk, .08, rs*.2);
+      // three fin-buds: the whole sail it has, and they light with the meter
+      for(let i=0;i<3;i++)
+        mb(sway, (-.18 + i*.19)*G, BY + (.23 + (i===1 ? .05 : 0))*G,
+           .036*G, (.11 + (i===1 ? .04 : 0))*G, (.075 + i*.006)*G, fin, .28 + lit*.4);
+      // gill slits, three a side, and they light too
+      for(const rs of [-1,1]) for(let i=0;i<3;i++)
+        mb(sway + rs*.20*G, (.14 - i*.055)*G, BY + (.02 - i*.012)*G,
+           .028*G, (.060 + i*.006)*G, .018*G, fin, .22 + lit*.5, rs*.2);
+      // THE FACE: a stub of a snout on a head that is a third of the animal
+      const hx = sway + lk*.5, hf = .34*G + lkf, hy = BY + .05*G;
+      blob(hx, hf, hy, .20*G, .17*G, .17*G, c, em+.06);
+      gharJaw(hx, hf + .11*G, hy - .06*G, .085*G, .21*G, 3, c, snap*.02*G);
+      eyeDeep(hx, hf + .05*G, hy + .07*G, .21*G, .085*G, glo);             // too big for it
+      for(const rs of [-1,1])                                              // cheek flecks
+        mb(hx + rs*.17*G, hf + .02*G, hy - .05*G, .030*G, .045*G, .045*G, fin, .20 + lit*.3, rs*.3);
+      // two paddle stubs where the arms will be, and they reach the ground
+      for(const rs of [-1,1]){
+        const fl = Math.sin(t*3.0 + rs)*.06*G;
+        chain([[sway + rs*.14*G, .10*G, BY - .10*G],
+               [sway + rs*.28*G, (.08 + fl*.4)*G, BY - .26*G]], .055*G, .070*G, c, em+.04, [1, .55, 1]);
+        for(let k=0;k<3;k++)
+          mb(sway + rs*(.30 + k*.015)*G, (.06 + fl + (k-1)*.070)*G, BY - .30*G + k*.004*G,
+             .070*G, (.030 - k*.004)*G, (.045 + k*.008)*G, fin, .24 + lit*.3, rs*.4);
+      }
+      // THE TAIL: two short segments and then a vane deeper than the fry is
+      chain([[sway, -.32*G, BY - .02*G], [sway + swim*.10*G, -.50*G, BY - .03*G]],
+            .13*G, .075*G, c, em+.06, [.80, 1, 1]);
+      for(let i=0;i<5;i++){
+        const u2 = i/4, vy = BY - .03*G + (u2 - .42)*.40*G;
+        mb(sway + swim*(.12 + u2*.06)*G, (-.60 - u2*.06)*G, vy,
+           .024*G, (.12 - u2*.014)*G, (.085 + u2*.035)*G, fin, .26 + lit*.35);
+      }
+      // and the water it drags, because it is swimming, not walking
+      for(let i=0;i<5;i++){ const uu = (t*1.3 + i*.2) % 1;
+        fx(sway + Math.sin(i*2.2)*.30*G, (-.10 - uu*.55)*G, (.04 + uu*.10)*G,
+           (.09 - uu*.05)*G, .012*G, (.05 + uu*.03)*G, fin, .30*(1-uu), i); }
+    } else {
+      // RIVERKING. A KOI, AND IT WALKS ON ITS FINS. The palette round made
+      // this stage koi orange with red marks and left a spinosaur wearing
+      // them; this is the fish that colour was painted for. A deep body
+      // squeezed flat side to side and carried upright, scale plates down the
+      // flank, a dorsal fin standing off the whole back - the rear half of the
+      // sail, which is what this stage was always for - a great forked tail
+      // held high, four barbels off a blunt mouth, and it walks on two
+      // muscled pectoral fins like a mudskipper. Tall and thin where the fry
+      // was round and THE SPINE is long.
+      const flop = Math.sin(ph*.9)*amp;
+      const lean = Math.sin(t*1.4)*.03*idle*G;
+      const BY = (.92 + hov)*G;                       // it is carried high
+      chain([[sway + lean*.4, -.40*G, BY - .10*G], [sway + lean, -.04*G, BY],
+             [sway + lean*.6, .32*G, BY - .04*G]], .30*G, .30*G, c, em+.06, [.44, 1.28, 1]);
+      mb(sway + lean, -.02*G, BY - .40*G, .085*G, .10*G, .26*G, bel, em+.10);   // pale UNDER, not on the flank
+      // the scales: two courses of overlapping plates down each flank, and
+      // the red marks the palette promised on top of them
+      for(const rs of [-1,1]) for(let i=0;i<5;i++){
+        const f2 = (.20 - i*.15)*G, dep = (.26 - Math.abs(i-2)*.03)*G;
+        mb(sway + lean + rs*.125*G, f2, BY - .02*G, .022*G, dep, (.075 + (i%2)*.008)*G, lt, em+.04, rs*.15);
+        mb(sway + lean + rs*.130*G, f2 - .02*G, BY + (.12 - (i%2)*.20)*G,
+           .020*G, (.075 + (i%3)*.010)*G, (.055 + (i%2)*.010)*G, i%2 ? acc : dk, .14 + lit*.3, rs*.15);
+      }
+      // THE DORSAL: the rear half of the sail, and on a fish it is a fan
+      for(let i=0;i<8;i++){
+        const u2 = i/7, hgt = (.32 - u2*.17)*G;
+        mb(sway + lean*1.1, (.12 - u2*.54)*G, BY + .26*G + hgt*.5 - .04*G,
+           .028*G, hgt*.5, (.066 + i*.004)*G, fin, .26 + lit*.45);
+      }
+      // THE HEAD: blunt, mouthing, with four barbels
+      const hx = sway + lean + lk*.5, hf = .62*G + lkf, hy = BY + .04*G;
+      blob(hx, hf, hy, .15*G, .19*G, .18*G, c, em+.06);
+      mb(hx, hf + .15*G, hy - .06*G + snap*.010*G, .105*G, .080*G, .075*G, dk, em+.04);   // the mouth
+      mb(hx, hf + .13*G, hy + .04*G, .12*G, .045*G, .060*G, lt, em+.06);                  // the lip
+      eyeDeep(hx, hf + .02*G, hy + .06*G, .17*G, .072*G, glo);
+      for(const rs of [-1,1]) for(let i=0;i<3;i++)                                        // gill plate
+        mb(hx + rs*.13*G, (hf - .16 - i*.055)*G, hy - (.02 + i*.02)*G,
+           .026*G, (.090 + i*.008)*G, .020*G, fin, .22 + lit*.4, rs*.2);
+      for(const rs of [-1,1]) for(let k=0;k<2;k++){
+        const wv = Math.sin(t*2.2 + rs + k*1.7)*.05*G;
+        chain([[hx + rs*.07*G, hf + .12*G, hy - (.05 + k*.05)*G],
+               [hx + rs*(.19 + k*.05)*G + wv, (hf + .40 - k*.09)*G, hy - (.24 + k*.10)*G + wv*.3]],
+              .032*G, .016*G, dk, .12, true);
+      }
+      // THE PECTORALS IT WALKS ON: a muscled root, an elbow, and a fanned
+      // blade planted on the ground
+      for(const rs of [-1,1]){
+        const p2 = (rs > 0 ? gait : -gait), dn = .08*G*(1 - Math.abs(p2)*.5);
+        chain([[sway + lean + rs*.14*G, .18*G, BY - .22*G],
+               [sway + rs*.32*G, (.22 + p2*.30)*G, BY - .68*G - dn]], .090*G, .060*G, c, em+.04, [1, .70, 1]);
+        for(let k=0;k<4;k++)
+          mb(sway + rs*(.34 + k*.015)*G, (.24 + p2*.34 + (k-1.5)*.085)*G, BY - .74*G - dn + k*.005*G,
+             .080*G, (.070 - k*.008)*G, (.050 + k*.008)*G, fin, .24 + lit*.3, rs*.3);
+      }
+      // a pair of pelvic stubs under the hips, so it is not balancing on two
+      // fins alone
+      for(const rs of [-1,1]){
+        chain([[sway + lean*.5 + rs*.10*G, -.28*G, BY - .24*G],
+               [sway + rs*.17*G, (-.34 + flop*.10)*G, BY - .66*G]], .060*G, .045*G, c, em+.04, [1, .70, 1]);
+        for(let k=0;k<2;k++)
+          mb(sway + rs*(.18 + k*.012)*G, (-.36 + flop*.10 + (k-.5)*.070)*G, BY - .70*G + k*.004*G,
+             .055*G, (.050 - k*.008)*G, (.040 + k*.008)*G, fin, .22 + lit*.3, rs*.3);
+      }
+      // THE TAIL: a short peduncle and then a forked vane held high
+      chain([[sway + lean*.3, -.46*G, BY - .10*G], [sway, -.64*G, BY + .02*G]],
+            .14*G, .085*G, c, em+.06, [.60, 1, 1]);
+      for(const vs of [-1,1]) for(let i=0;i<5;i++){
+        const u2 = i/4;
+        mb(sway + flop*.06*G, (-.74 - u2*.14)*G, BY + .04*G + vs*(.09 + u2*.27)*G,
+           .026*G, (.125 + u2*.035)*G, (.10 - u2*.016)*G, fin, .26 + lit*.4);
+      }
+      // the water it kicks up walking
+      for(let i=0;i<5;i++){ const uu = (t*1.2 + i*.2) % 1, rs = i%2 ? 1 : -1;
+        fx(sway + rs*(.34 + uu*.18)*G, (.16 - uu*.40)*G, (.04 + uu*.12)*G,
+           (.08 - uu*.04)*G, .012*G, (.05 + uu*.02)*G, fin, .28*(1-uu), i); }
+    }
+    return;
+  }
   // spine: hips through chest, held level - this is a runner, not a rearer
   chain([[sway, -.24*gr, HIP], [sway, .02*gr, HIP + .06*gr], [sway, chestF, HIP + .08*gr]],
         (.21 + st*.04)*gr, (.20 + st*.045)*gr, c, em+.06, [1, .94, 1]);
