@@ -5237,7 +5237,7 @@ rot(D){
 tally(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
           eyeBird, hookJaw, idle, sway, twitch, drag,
-          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          mb, c, dk, lt, bel, acc, glo, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   const gr = 1 + st*.24;
   const hov = (air ? .26 : 0) + Math.sin(t*1.9)*.03*idle;
@@ -5249,6 +5249,183 @@ tally(D){
   // on its haunches with the wings folded, which is the wyvern pose.
   const perch = air ? .25 : (.70 + idle*.20);
   const HIP = (.60 + st*.16) * gr + hov;
+  // And then the wyvern stops being an animal. Stages 3 and 4 return from
+  // here: the palette round made them storm grey and monsoon teal, and this
+  // round makes them the storm and the season.
+  if(st >= 3){
+    const G = 1 + st*.16;
+    if(st === 3){
+      // THE HURRICANE. THE STORM STOOD ON ITS TAIL. No legs and no perch: the
+      // bird is a FUNNEL now - a column of turning cloud, a tier at a time,
+      // narrow where it touches the ground and wide at the top, where the
+      // animal still is: the ROC's hooked skull looking out of the front of
+      // the anvil, all four wings spread off the top of it, the tail vane
+      // streaming off the back. Lightning forks down the funnel between the
+      // tiers. It is TALL where the ROC was a hunched perch, and it TURNS -
+      // every tier on its own rate.
+      const spin = t*1.4;
+      const TOP  = 1.36*G + hov;                          // the anvil's floor
+      const NT   = 9, tier = [];
+      for(let i=0;i<NT;i++){
+        const u = i/(NT-1);
+        const rr = (.10 + .42*Math.pow(u, 2.2))*G;         // a stem, then a flare - not a cone
+        const ww = (1-u)*(1-u);                            // the tip wanders, the top does not
+        tier.push([sway*.5*ww + Math.sin(spin*.8 + i*1.1)*.035*G*ww*(1 + amp),
+                   Math.cos(spin*.8 + i*1.1)*.030*G*ww,
+                   .06*G + hov + u*(TOP - .06*G - hov), rr]);
+      }
+      for(let i=0;i<NT;i++){
+        const [x, f, y, rr] = tier[i], u = i/(NT-1), a0 = spin*(1.7 - u) + i*.7;
+        blob(x, f, y, rr, .095*G, rr*.90, i%2 ? c : dk, em+.02, a0);
+        // ragged: two tufts on the rim of every tier, riding round with it
+        for(const k of [0, 1]){ const a = a0 + k*Math.PI + u;
+          mb(x + Math.sin(a)*rr*.84, f + Math.cos(a)*rr*.84, y + .02*G,
+             rr*.28 + .03*G, .065*G, rr*.28 + .03*G, k ? bel : c, em+.02, a); }
+      }
+      // THE ANVIL. The top of the storm, flat and wide, the pale cap on it.
+      const ax = tier[NT-1][0], af = tier[NT-1][1];
+      blob(ax, af, TOP + .06*G, .60*G, .095*G, .54*G, c, em, spin*.4);
+      blob(ax, af - .02*G, TOP + .19*G, .46*G, .075*G, .42*G, bel, em+.04, -spin*.3);
+      // THE WINGS. Four, off the anvil, and spread - on the ground too; a
+      // storm does not fold.
+      const SP = (air ? 1.05 : .84 + idle*.06)*G;
+      for(const rs of [-1,1]){
+        wing(rs, ax + rs*.18*G, af + .10*G, TOP + .20*G, SP*1.30, c, acc, beat + (rs>0?0:.55));
+        wing(rs, ax + rs*.20*G, af - .32*G, TOP + .12*G, SP*.80, dk, acc, beat + 1.6 + (rs>0?0:.6));
+      }
+      // THE HEAD, out of the front of the anvil on a short neck: the line's
+      // skull, the hooked beak, the hawk's eye lit in the storm's own light,
+      // the ruff and the six crest horns swept back over the cloud.
+      const hx = ax + lk*.7, hf = af + .62*G + lkf, hy = TOP + .30*G;
+      chain([[ax, af + .30*G, TOP + .14*G], [hx, hf - .10*G, hy - .02*G]], .16*G, .12*G, c, em);
+      blob(hx, hf, hy, .19*G, .165*G, .19*G, c, em+.04);
+      for(let k=-1;k<=1;k++)
+        mb(hx + k*.13*G, hf - .17*G, hy + (.04 - Math.abs(k)*.05)*G,
+           .060*G, .115*G, .048*G, bel, em+.10, k*.38);
+      hookJaw(hx, hf + .10*G, hy - .03*G, .125*G, .40*G, 5, c, screech*.07*G);
+      eyeBird(hx, hf + .06*G, hy + .10*G, .125*G, .074*G, glo);
+      for(let i=0;i<6;i++){
+        const a = (i - 2.5)*.62;
+        horn(hx + Math.sin(a)*.20*G, hf - .10*G - Math.abs(a)*.02*G, hy + .07*G,
+             Math.sin(a)*.24*G, -.34*G, .12*G, 3, .052*G, acc, .80);
+      }
+      for(const rs of [-1,1])
+        horn(hx + rs*.13*G, hf + .06*G, hy - .04*G, rs*.070*G, .024*G, -.03*G, 2, .034*G, acc, .32);
+      // THE TAIL. A streamer of cloud off the back of the anvil with the
+      // line's vane on the end of it, lagging the turn.
+      const lag = drag(.8)*.10*G + Math.sin(t*1.1)*.04*idle*G;
+      const tl = [[ax, af - .40*G, TOP + .08*G], [ax + lag*.5, af - .78*G, TOP + .02*G],
+                  [ax + lag, af - 1.10*G, TOP - .06*G]];
+      chain(tl, .11*G, .045*G, c, em+.04, [1, 1, .92]);
+      const tp = tl[2];
+      for(let i=0;i<3;i++)
+        mb(tp[0], tp[1] - .04*G - i*.10*G, tp[2] - i*.03*G,
+           (.055 + i*.02)*G, (.13 - i*.035)*G, (.09 + i*.05)*G, lt, em+.20);
+      // THE LIGHTNING. Two bolts at a time forking down the outside of the
+      // funnel, each one alive for a few frames and then somewhere else.
+      for(let k=0;k<2;k++){
+        const life = (t*2.4 + k*.5) % 1;
+        if(life > .45) continue;
+        const seed = Math.floor(t*2.4 + k*.5), a = seed*2.4 + k*3.1;
+        const i0 = 3 + (seed*5 + k*3) % 4;                  // the tier it leaves
+        let p = tier[i0], px = p[0] + Math.sin(a)*p[3], pf = p[1] + Math.cos(a)*p[3], py = p[2];
+        for(let s=0;s<4;s++){
+          const q = tier[Math.max(0, i0 - s - 1)];
+          const nx2 = q[0] + Math.sin(a + (s%2 ? .5 : -.4))*q[3]*1.15, nf2 = q[1] + Math.cos(a + (s%2 ? .5 : -.4))*q[3]*1.15, ny2 = q[2];
+          fx((px+nx2)/2, (pf+nf2)/2, (py+ny2)/2, .020*G + Math.abs(nx2-px)/2, Math.abs(ny2-py)/2 + .02*G, .020*G + Math.abs(nf2-pf)/2, glo, .95);
+          px = nx2; pf = nf2; py = ny2;
+        }
+      }
+      // and what the tip is doing to the ground: dust, thrown out in a ring
+      for(let i=0;i<7;i++){ const a = t*2.6 + i/7*TAU;
+        fx(tier[0][0] + Math.sin(a)*(.44+(i%2)*.16)*G, tier[0][1] + Math.cos(a)*(.40+(i%2)*.14)*G,
+           (.04 + Math.abs(Math.sin(t*2.2+i))*.05)*G, .10*G, .020*G, .08*G, i%2 ? bel : dk, .06, a); }
+    } else {
+      // THE MONSOON. A SEASON, NOT AN ANIMAL - the table's own words - and the
+      // season that arrives as a dragon: the rain-bringer of the east, a long
+      // wingless serpent-dragon swimming through the air a body-height off the
+      // ground in a slow travelling wave. Teal scales and a pale belly, gold
+      // ANTLERS where the crest was, a mane of storm-feathers where the ruff
+      // was, the line's hooked beak for a snout with two whiskers trailing
+      // off it, four small clawed legs tucked under, a gold fin down the
+      // spine and the tail vane for a tail fan. The rain comes with it: a
+      // sheet of it falls off the whole length of the body. LONG AND LEVEL
+      // where the HURRICANE was a column and the ROC a perch.
+      const wave = t*2.0 + ph*.35;
+      const CY = .92*G + hov;
+      const NS = 11, spine = [];
+      for(let i=0;i<NS;i++){
+        const u = i/(NS-1);
+        spine.push([sway*(1-u) + Math.sin(wave - u*4.4)*.09*G*(.4 + u*.6) + drag(.6 + u*.9)*.12*u*G,
+                    (.58 - u*2.20)*G,
+                    CY + Math.sin(wave - u*4.4 + 1.3)*.15*G - u*.05*G]);
+      }
+      const rS = u => G*(.13 + .09*Math.sin(Math.PI*Math.min(1, u*1.35 + .12)) - u*.06);
+      const lc = [c[0]*.62, c[1]*.62, c[2]*.66];
+      // the body, in two runs so it is thickest at the shoulder and not the snout
+      chain(spine.slice(0, 4), rS(0), rS(.3), c, em, [1, .94, 1]);
+      chain(spine.slice(3),    rS(.3), rS(1), c, em, [1, .94, 1]);
+      for(let i=1;i<NS-1;i++){ const p = spine[i], r = rS(i/(NS-1));
+        // the belly scutes - pale bands under the body, every segment
+        mb(p[0], p[1], p[2] - r*.60, r*.78, r*.28, .10*G, bel, em*.85);
+        // and the fin down the spine - gold, sunk a plate-height into the back
+        if(i < NS-2) mb(p[0], p[1], p[2] + r*.90, .030*G, .075*G + r*.30, .075*G, acc, .32);
+      }
+      // FOUR LEGS, small, tucked under and trailing - a dragon of the air
+      // does not stand on them
+      for(const [si, sw2] of [[2, gait], [6, -gait]]) for(const rs of [-1,1]){
+        const p = spine[si], r = rS(si/(NS-1)), ph2 = rs > 0 ? sw2 : -sw2;
+        const kn = [p[0] + rs*(r*.9), p[1] - .06*G + ph2*.04*G, p[2] - r*.55 - .10*G];
+        const ft = [p[0] + rs*(r*1.1), p[1] - .16*G + ph2*.06*G, p[2] - r*.55 - .28*G];
+        chain([[p[0] + rs*r*.5, p[1], p[2] - r*.30], kn, ft], .065*G, .045*G, lc, em);
+        claw(ft[0], ft[1] + .02*G, ft[2] - .02*G, rs, .055*G, lc);
+      }
+      // THE HEAD, on a short neck off the front of the body: the skull, the
+      // beak as a snout, the hawk's eye gone gold, the antlers, the mane.
+      const s0 = spine[0];
+      const hx = s0[0] + lk*.7, hf = s0[1] + .28*G + lkf, hy = s0[2] + .06*G;
+      chain([s0, [hx, hf - .10*G, hy - .02*G]], rS(0)*.95, .13*G, c, em);
+      blob(hx, hf, hy, .20*G, .17*G, .20*G, c, em+.04);
+      hookJaw(hx, hf + .10*G, hy - .03*G, .13*G, .42*G, 5, c, screech*.07*G);
+      eyeBird(hx, hf + .06*G, hy + .10*G, .13*G, .074*G, glo);
+      for(const rs of [-1,1]){
+        // the antlers: a thin beam back and up off the brow, a tine forward off
+        // the middle of it, a tine outward off the base - branches, not a clump
+        horn(hx + rs*.09*G, hf - .04*G, hy + .15*G, rs*.050*G, -.070*G, .10*G, 4, .034*G, acc, .45);
+        horn(hx + rs*.21*G, hf - .20*G, hy + .34*G, rs*.020*G,  .055*G, .09*G, 3, .026*G, acc, .45);
+        horn(hx + rs*.14*G, hf - .11*G, hy + .25*G, rs*.060*G,  .010*G, .07*G, 2, .026*G, acc, .45);
+        // the whiskers, off the sides of the snout, trailing and waving
+        chain([[hx + rs*.10*G, hf + .28*G, hy - .04*G],
+               [hx + rs*.26*G, hf + .16*G, hy - .02*G + Math.sin(t*2.6 + rs)*.03*G],
+               [hx + rs*.40*G, hf - .04*G, hy + .04*G + Math.sin(t*2.6 + rs + 1.1)*.05*G]],
+              .026*G, .014*G, acc, .30, null, true);
+      }
+      for(let k=-2;k<=2;k++){                                   // the mane
+        const a = k*.36;
+        mb(hx + Math.sin(a)*.17*G, hf - .19*G - Math.abs(k)*.02*G, hy + (.10 - Math.abs(k)*.06)*G,
+           .055*G, .13*G, .050*G, bel, em+.10, a);
+        mb(hx + Math.sin(a)*.20*G, hf - .32*G - Math.abs(k)*.03*G, hy + (.06 - Math.abs(k)*.06)*G,
+           .045*G, .10*G, .050*G, bel, em+.10, a);
+      }
+      // THE TAIL FAN. The line's vane, in gold, off the last bone of the spine.
+      const tp = spine[NS-1];
+      for(let i=0;i<3;i++)
+        mb(tp[0], tp[1] - .04*G - i*.11*G, tp[2] - i*.02*G,
+           (.06 + i*.03)*G, (.14 - i*.03)*G, (.10 + i*.05)*G, i%2 ? acc : bel, em+.16);
+      // THE RAIN. It falls off the whole length of the animal - a sheet of
+      // pale streaks under the body, each one a short life, and the splash
+      // where they land.
+      for(let i=0;i<14;i++){
+        const u = (i + .5)/14, life = (t*2.4 + i*.37) % 1;
+        const p = spine[Math.min(NS-1, Math.floor(u*NS))];
+        const rx = p[0] + Math.sin(i*2.3)*.16*G, rf = p[1] + Math.cos(i*1.7)*.08*G;
+        const ry = p[2] - .12*G - life*(p[2] - .14*G);
+        fx(rx, rf, ry, .012*G, .07*G, .012*G, [.70,.88,.92], .35);
+        if(life > .86) fx(rx, rf, .03*G, .05*G*(life-.86)*7, .006*G, .05*G*(life-.86)*7, [.80,.94,.96], .30);
+      }
+    }
+    return;
+  }
   // TORSO: a deep keeled chest over narrow hips - a flyer's body.
   chain([[sway, -.24*gr, HIP - .02*gr],
          [sway, -.02*gr, HIP + .14*gr*perch],

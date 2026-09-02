@@ -491,6 +491,13 @@ const MUTANTS = [
         "more scales, which is the complaint this arc exists to close",
     from:"  if(st >= 3){\n    const G = 1 + st*.16;\n    const AMBER = [1,.72,.16];\n    if(st === 3){",
     to:  "  if(false){\n    const G = 1 + st*.16;\n    const AMBER = [1,.72,.16];\n    if(st === 3){" },
+  // ---- R207: the gale line's top two are a funnel and a rain dragon ------
+  { id:"hurricane-is-the-roc", must:"37",
+    why:"the funnel-and-dragon branch is skipped and stages 3 and 4 fall through " +
+        "to the wyvern plan - the top of the gale line is THE ROC at two more " +
+        "scales with the same four wings",
+    from:"  if(st >= 3){\n    const G = 1 + st*.16;\n    if(st === 3){\n      // THE HURRICANE.",
+    to:  "  if(false){\n    const G = 1 + st*.16;\n    if(st === 3){\n      // THE HURRICANE." },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",
