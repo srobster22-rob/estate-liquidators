@@ -458,6 +458,17 @@ const MUTANTS = [
     why:"the coat lags the evolution by a stage - the FLAREDRAKE is still orange " +
         "and the final form wears the apex's paint",
     from:"  const mTy = monPal(mCh.type, stage);", to:"  const mTy = monPal(mCh.type, Math.max(0, stage-1));" },
+  // ---- R202: the apex is a new shape ------------------------------------
+  { id:"cinderstar-is-the-serpent", must:"37",
+    why:"the CINDERSTAR branch is skipped and stage 3 falls through to the SUPERNOVA " +
+        "plan - two of the intern's three top stages are one animal in two coats",
+    from:"  } else if(st === 3){\n    // THE CINDERSTAR. THE VOLCANO STOOD UP.",
+    to:  "  } else if(false){\n    // THE CINDERSTAR. THE VOLCANO STOOD UP." },
+  { id:"horde-count-reads-zero", must:"11b",
+    why:"the horde's box counter is never set, so the per-enemy budget divides " +
+        "nothing by the horde and every ceiling on it passes",
+    from:"  hordeBoxes = drawnBoxes + nbox - hb0;",
+    to:  "  hordeBoxes = 0;" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

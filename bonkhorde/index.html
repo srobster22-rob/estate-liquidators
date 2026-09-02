@@ -629,6 +629,10 @@ const BOXV = (()=>{                      // 36 verts of a unit cube, pos+nrm
 const MAXBOX = 3600;
 const VB = new Float32Array(MAXBOX*36*FLOATS);
 let vn=0, nbox=0, drawnBoxes=0, drawnShadows=0, drawnMarks=0, drawnChunks=0;
+// the horde's own share of the frame, and the fallen's - what the per-enemy
+// budget is a budget OF, counted where it is drawn rather than inferred from
+// the whole frame less a frame with no horde in it
+let hordeBoxes=0, corpseBoxes=0;
 let dynBuf;
 function buildDynBuf(){
   dynBuf = gl.createBuffer();
@@ -3406,12 +3410,16 @@ plain(D){
   const lk = look*.16, lkf = -Math.abs(look)*.05;
   // Fire FLICKERS, it does not wave, and it is not part of the animal - it
   // goes through fx() so the mesh checks do not have to treat a shower of
-  // embers as a limb that came off.
+  // embers as a limb that came off. The bright tongues are the hide's light
+  // tone on the red stages - pink-white off a red animal reads as flame - and
+  // the fire's own white heat on the apex tier, because the light tone of an
+  // obsidian coat is ash grey, and a volcano breathing grey boxes is smoking.
+  const ft = st >= 3 ? gh : lt;
   const fl = (r,f,y,sc,n)=>{ for(let i=0;i<n;i++){
     const w  = Math.sin(t*3.1 + i*1.3)*.012*sc;
     const lit = .55 + i*.10 + Math.sin(t*7.3 + i*2.1)*.22;
     fx(r+w, f, y + i*.15*sc, (.11-i*.016)*sc, (.10-i*.012)*sc, (.11-i*.016)*sc,
-       i%2 ? acc : lt, lit); } };
+       i%2 ? acc : ft, lit); } };
   if(st === 0){
     // CINDERWHELP. Hatchling: all skull and feet, with the horns already in.
     const flick = twitch(0, 3.9), sniff = twitch(1.3, 5.2);
@@ -3496,10 +3504,11 @@ plain(D){
     }
     chain(tail, .145, .06, c, em, [.92, .86, 1]);
     fl(drag(2.65)*.10 + Math.sin(t*.85 - 2.3)*.05*idle, -1.44, .44, 1.0, 4);
-  } else {
+  } else if(st === 2){
     // PYRAETHON. A western DRAGON: heavy hind legs, folded forelimbs, a long
     // neck carrying a horned skull, and a wingspan that is the widest thing on
-    // the field short of a boss.
+    // the field short of a boss. The last quadruped in the line - the two
+    // stages after it are different animals, not this one with more parts.
     const beat = t*(air ? 4.6 : 1.5) + ph*.4;
     const hov = Math.sin(t*1.6)*.03*idle;
     // haunches to chest, as one arched spine
@@ -3511,10 +3520,7 @@ plain(D){
     // tail plates merging into "one yellow pile" from the play camera - three
     // different parts wearing the same accent. The wings keep the gold; the
     // ridge runs a hot dark orange that reads as its own material.
-    // the CINDERSTAR's comb catches fire: taller, and it glows - so the apex
-    // reads as a different animal from the back, which is where the camera is
-    ridge(-.56, .34, 1.25+hov, 5, st >= 3 ? .23 : .17,
-          st >= 3 ? glo : [.88,.42,.12], st >= 3 ? .55 : .22);
+    ridge(-.56, .34, 1.25+hov, 5, .17, [.88,.42,.12], .22);
     // THE NECK, arched forward and up
     const neck = [[sway, .18, 1.02+hov]];
     let nx = sway, nf = .22, ny = 1.14+hov;
@@ -3537,54 +3543,14 @@ plain(D){
     mb(nx, nf+.38, ny-.155, .125, .115, .055, bel, em*.6);       // the jaw
     mb(nx, nf+.48, ny-.03, .075,.055,.065, dk, .12);
     fangs(nx, nf+.34, ny-.14, .135, .05, c);
-    // and the apex tier's eyes are LIT: no sclera, a slot in the skull with
-    // fire showing through - white circles with pupils read as a friendly
-    // dog on a form whose banner says the fire outgrew the dragon. The
-    // CINDERSTAR burns ember-orange; the SUPERNOVA's slots go the
-    // white-gold of its core.
-    if(st >= 3) eyeGlow(nx, nf+.22, ny+.09, .12, .10, st >= 4 ? gh : glo);
-    else eyeSlit(nx, nf+.22, ny+.09, .12, .10, [1,.76,.16]);
+    eyeSlit(nx, nf+.22, ny+.09, .12, .10, [1,.76,.16]);
     for(const rs of [-1,1]){
       horn(nx+rs*.14, nf+.02, ny+.12, rs*.055,-.075,.075, 3, .082, acc, .40);
       horn(nx+rs*.17, nf+.12, ny-.02, rs*.05,.02,-.02, 2, .054, acc, .32); }
     for(let i=0;i<3;i++) fl(nx+(i-1)*.07, nf+.24, ny-.24, .55, 2);
     const fold = 1 - idle*.42;
-    // THE CINDERSTAR spreads a fifth more wing, and the membrane burns.
-    const wspan = st >= 3 ? 1.20 : 1.00, wmemb = st >= 3 ? glo : acc;
-    for(const rs of [-1,1]) wing(rs, sway + rs*.24, .06, 1.02+hov, wspan*fold,
-                                 wmemb, acc, beat + (rs>0?0:.5));
-    // ---- THE CINDERSTAR. LAVA SEAMS: the hide has cracked open along the
-    // flank and the fire inside is showing through - three emissive bands a
-    // side, pulsing slowly out of phase, plus a crown pair over the brow and
-    // a burning vane at the end of each wing's reach. The apex is the animal
-    // the fire finally got out of.
-    if(st >= 3){
-      // two long seams a side, sunk INTO the flank so they read as cracks in
-      // the hide rather than stripes hovering beside it
-      for(const rs of [-1,1]) for(let i=0;i<2;i++){
-        const sf = -.28 + i*.34, pulse = .55 + Math.sin(t*2.6 + i*2.1 + (rs>0?0:1.3))*.30;
-        mb(sway + rs*.262, sf, .80 + hov + i*.07, .045, .052, .150,
-           glo, .45*pulse);
-      }
-      for(const rs of [-1,1])
-        horn(nx+rs*.09, nf-.06, ny+.16, rs*.030, -.045, .085, 2, .060, glo, .70);
-      fl(sway, -.02, 1.30+hov, .8, 3);
-    }
-    // ---- THE SUPERNOVA. The star it swallowed shows through the chest: one
-    // white-hot core burning between the seams, pulsing on its own slow clock.
-    // One box - the final form is a presence, not another layer of parts.
-    if(st >= 4){
-      const core = .70 + Math.sin(t*1.4)*.25;
-      // ON THE BACK, between the wing roots. Two chest placements probed and
-      // both were real boxes nobody saw: the play camera sits high, so the
-      // head shadows everything on the front of an animal this shape. The
-      // one surface that camera always owns is the spine - which is where
-      // the volt line's rods and every dorsal ridge in the roster already
-      // live, for the same reason.
-      mb(sway, .12, 1.26 + hov, .11, .10, .11, gh, .65 + core*.35);
-      for(const rs of [-1,1])                    // and a third seam pair, high
-        mb(sway + rs*.262, .02, 1.02 + hov, .045, .05, .11, glo, .40*core);
-    }
+    for(const rs of [-1,1]) wing(rs, sway + rs*.24, .06, 1.02+hov, fold,
+                                 acc, acc, beat + (rs>0?0:.5));
     for(const rs of [-1,1]){                              // heavy hind legs
       const p2 = rs > 0 ? gait : -gait;
       leg(sway + rs*.25, -.30, .68+hov, .64, p2, rs, .125, c, em, dk);
@@ -3598,12 +3564,6 @@ plain(D){
       const lag = drag(.55 + i*.40)*.022*(i+1) + Math.sin(t*.8 - i*.4)*.012*idle*(i+1);
       tail.push([sway + lag, -.62 - i*.26, .64 - i*.05]);
     }
-    if(st >= 3){
-      const tp2 = tail[tail.length-1];
-      for(const rs of [-1,1])
-        mb(tp2[0] + rs*.10, tp2[1] - .06, tp2[2] + .04,
-           .045, .16, .14, glo, .55, rs*.5);
-    }
     chain(tail, .16, .055, c, em, [.92, .88, 1]);
     for(let i=3;i<tail.length;i++)
       mb(tail[i][0], tail[i][1], tail[i][2] + .09, .036,.11,.10, acc, .34);
@@ -3611,6 +3571,183 @@ plain(D){
     for(let i=0;i<3;i++)
       mb(tp[0], tp[1] - .06 - i*.09, tp[2] - i*.04, .05, .14 - i*.03, .17 - i*.035,
          acc, .40);
+  } else if(st === 3){
+    // THE CINDERSTAR. THE VOLCANO STOOD UP. Three quadruped stages and then
+    // an animal on two legs: the torso is a leaning column of three masses
+    // off heavy haunches, the forelimbs are free arms ending in claws, a
+    // thick tail rests on the ground behind as the counterweight and carries
+    // a molten club, and the skull wears a five-spike crown instead of the
+    // dragon's two horns. Same rule the palette round set - an evolution is
+    // a new design, not the old one with more parts - applied to the
+    // SILHOUETTE: from the play camera this is a tall thing where PYRAETHON
+    // was a long one.
+    const beat = t*(air ? 4.6 : 1.3) + ph*.4;
+    const hov = Math.sin(t*1.5)*.025*idle;
+    const lean = amp*.10;                            // leans into the run
+    const lc = [c[0]*.62, c[1]*.62, c[2]*.66];       // limb shade, as leg() does
+    // HAUNCH, BELLY, CHEST: three masses stepping forward as they rise, each
+    // sunk into the one below. Blobs rather than one chain, because a chain
+    // walking a diagonal lays fat square blocks and the plates on the back
+    // and the furnace on the front would both drown inside them.
+    const hF = -.12, hY = .80 + hov;
+    blob(sway, hF,            hY,      .34, .26, .32, c, em);
+    blob(sway, hF+.14+lean,   hY+.28,  .31, .24, .28, c, em);
+    blob(sway, hF+.26+lean*2, hY+.54,  .29, .22, .26, c, em);
+    const shF = hF+.26+lean*2, shY = hY+.54;         // the shoulder mass
+    // THE FURNACE. A breastplate in the belly tone on the front of the
+    // column, and the fire inside showing through two seams a side of it.
+    mb(sway, shF+.22, hY+.44, .22, .30, .10, bel, em*.8);
+    for(const rs of [-1,1]) for(let i=0;i<2;i++){
+      const pulse = .55 + Math.sin(t*2.6 + i*2.1 + (rs>0?0:1.3))*.30;
+      mb(sway + rs*.09, shF+.30, hY+.32+i*.24, .035, .09, .045, glo, .55*pulse);
+    }
+    // lava seams on the flanks, sunk into the hide, and a burning comb of
+    // plates up the back - the two surfaces the play camera owns
+    for(const rs of [-1,1]){
+      const p1 = .55 + Math.sin(t*2.6 + (rs>0?1.3:0))*.30, p2 = .55 + Math.sin(t*2.6 + 1.9 + (rs>0?1.3:0))*.30;
+      mb(sway + rs*.325, hF+.14+lean, hY+.28, .045, .14, .05, glo, .45*p1);
+      mb(sway + rs*.305, shF-.02,     shY+.02, .045, .12, .05, glo, .45*p2);
+    }
+    for(let i=0;i<4;i++){
+      const u = i/3, hh = .10 + Math.sin(.4 + i*.8)*.08;
+      const bf = lerp(hF-.38, shF-.16, u), by = lerp(hY+.02, shY+.20, u);
+      mb(sway, bf, by, .055, hh, .09, glo, .50);
+    }
+    // THE NECK, short, up and forward off the shoulders, into the skull
+    const nx = lk*.5, nf = shF + .20 + lkf*.5, ny = shY + .38;
+    chain([[sway, shF, shY+.06], [nx, nf, ny]], .20, .17, c, em+.04);
+    blob(nx, nf+.10, ny+.06, .22,.19,.23, c, em+.06);
+    chain([[nx, nf+.20, ny+.02], [nx, nf+.44, ny-.02]], .16, .11, c, em+.04);
+    mb(nx, nf+.38, ny-.13, .13, .11, .06, bel, em*.6);                 // the jaw
+    mb(nx, nf+.48, ny+.01, .075,.055,.065, dk, .12);
+    fangs(nx, nf+.34, ny-.11, .14, .05, c);
+    eyeGlow(nx, nf+.20, ny+.13, .12, .10, glo);
+    // THE CROWN: five obsidian spikes fanned back off the skull, the centre
+    // one burning - the apex's own head shape, not the dragon's two horns
+    for(let i=-2;i<=2;i++){
+      const a = i*.55, k = Math.abs(i);
+      horn(nx + Math.sin(a)*.14, nf+.02 - k*.03, ny+.16,
+           Math.sin(a)*.06, -.075 + k*.01, .085 - k*.012, 3, .075 - k*.008,
+           i === 0 ? glo : acc, i === 0 ? .70 : .40);
+    }
+    for(let i=0;i<3;i++) fl(nx+(i-1)*.07, nf+.30, ny-.22, .55, 2);
+    // ARMS. Free forelimbs off the shoulders, elbows back, claws hanging in
+    // front of the chest, swinging against the stride.
+    for(const rs of [-1,1]){
+      const sw2 = (rs > 0 ? -gait : gait)*.25;
+      const sh = [sway + rs*.26, shF - .02, shY - .04];
+      const el = [sway + rs*.42, shF + .10 + sw2, shY - .34];
+      const wr = [sway + rs*.36, shF + .30 + sw2*1.6, shY - .52];
+      chain([sh, el, wr], .085, .065, lc, em);
+      claw(wr[0], wr[1]+.04, wr[2]-.03, rs, .075, dk);
+    }
+    // WINGS, high off the back of an upright torso: obsidian bone, lava sheet
+    const fold = 1 - idle*.30;
+    for(const rs of [-1,1]) wing(rs, sway + rs*.22, shF - .20, shY + .10, 1.15*fold,
+                                 c, glo, beat + (rs>0?0:.5));
+    // heavy digitigrade hind legs, the whole animal's weight on them
+    for(const rs of [-1,1]){
+      const p2 = rs > 0 ? gait : -gait;
+      leg(sway + rs*.24, hF + .02, hY - .02, .72, p2, rs, .135, c, em, dk);
+    }
+    // THE TAIL, thick, down to the ground behind, ending in a molten club:
+    // a lava core with obsidian crust chunks on it
+    const tail = [[sway, hF, hY - .02]];
+    for(let i=0;i<6;i++){
+      const lag = drag(.55 + i*.40)*.024*(i+1) + Math.sin(t*.8 - i*.4)*.012*idle*(i+1);
+      tail.push([sway + lag, hF - .30 - i*.27, hY - .12 - i*.10]);
+    }
+    chain(tail, .18, .09, c, em, [.92, .88, 1]);
+    const tp = tail[tail.length-1];
+    const club = [tp[0], tp[1] - .16, tp[2] + .03];
+    mb(club[0], club[1], club[2], .16, .15, .16, glo, .60);
+    for(const [a,b,q] of [[-1,0,.3],[1,0,.3],[0,-1,.2],[0,.2,1]])
+      mb(club[0] + a*.15, club[1] + b*.15 - .02, club[2] + q*.14, .095, .085, .09, dk, .02);
+    fl(club[0], club[1] - .04, club[2] + .12, .8, 3);
+  } else {
+    // THE SUPERNOVA. THE STAR THE DRAGON SWALLOWED. No legs at all: the final
+    // form is a celestial serpent, reared cobra-fashion off a coil that lies
+    // along the ground behind it, with three pairs of blade wings down the
+    // reared half, a seven-ray corona fanned round the back of the skull, a
+    // halo of light turning behind the head and the star itself burning in
+    // the chest. White with blue fault lines, where the CINDERSTAR was black
+    // with lava - the coat turned, and now so has the animal.
+    const beat = t*(air ? 4.8 : 1.6) + ph*.4;
+    const hov = Math.sin(t*1.3)*.03;                 // it floats; the bob never stops
+    const und = (i)=> Math.sin(ph*.9 - i*.85)*.07*amp;   // the coil slithers when it moves
+    const core = .70 + Math.sin(t*1.4)*.25;
+    // ONE SPINE, throat to tail tip. Reared over the front third, then down
+    // and back along the ground in a wide S - wide, because the play camera
+    // is high and behind, and from there a snake is its lateral curve or it
+    // is a log. The steps between points stay short so chain() lays a run of
+    // slim boxes round the bend rather than one fat square block per corner.
+    const sp = [
+      [sway + lk*.4, .62 + lkf*.4, 1.46 + hov],
+      [sway,          .40, 1.30 + hov*.9],
+      [sway,          .10, 1.06 + hov*.7],
+      [sway,         -.18,  .80 + hov*.5],
+      [sway + .06 + und(0)*.5, -.46, .56 + hov*.3],
+      [sway + .22 + und(1), -.72, .40],
+      [sway + .30 + und(2), -.98, .34],
+      [sway + .14 + und(3), -1.24, .31],
+      [sway - .06 + und(4), -1.46, .29],
+      [sway - .24 + und(5), -1.68, .28],
+      [sway - .24 + und(6), -1.92, .27],
+      [sway - .06 + und(7), -2.12, .27] ];
+    chain(sp, .28, .09, c, em, [1, .96, 1]);
+    const rad = i => .28 + (.09-.28)*(i/11);         // the spine's radius at a point
+    // THE STAR, in the chest, proud of the hide, on its own slow clock
+    mb(sway, .60, .98 + hov*.8, .11, .11, .08, gh, .65 + core*.35);
+    // fault lines: blue light through the hide on both flanks of the reared
+    // half, and a dorsal line of it the length of the coil so the S reads
+    // from behind. The deep blue, not the pale one - pale blue under the sun
+    // on a white animal is white.
+    for(const rs of [-1,1]) for(let i=1;i<4;i++){
+      const s = sp[i], pulse = .55 + Math.sin(t*2.2 + i*1.7 + (rs>0?0:1.3))*.30;
+      mb(s[0] + rs*(rad(i)+.015), s[1] - .04, s[2] + .02, .04, .12, .06, acc, .45*pulse);
+    }
+    for(let i=4;i<12;i++){
+      const s = sp[i];
+      mb(s[0], s[1], s[2] + rad(i)*.85, .05, .085 + (11-i)*.006, .09, acc, .40);
+    }
+    // THE HEAD
+    const hx = sp[0][0], hf = sp[0][1], hy = sp[0][2];
+    blob(hx, hf+.12, hy+.08, .20,.18,.24, c, em+.06);
+    chain([[hx, hf+.24, hy+.02], [hx, hf+.50, hy-.02]], .15, .10, c, em+.04);
+    mb(hx, hf+.42, hy-.13, .12, .10, .06, bel, em*.6);                 // the jaw
+    mb(hx, hf+.54, hy+.01, .07,.05,.06, dk, .12);
+    fangs(hx, hf+.38, hy-.11, .13, .045, c);
+    eyeGlow(hx, hf+.24, hy+.14, .12, .10, gh);
+    // THE CORONA: seven rays fanned round the back of the skull, white and
+    // blue alternating - the head shape is a star now, not a horned dragon
+    for(let i=-3;i<=3;i++){
+      const a = i*.42, k = Math.abs(i);
+      horn(hx + Math.sin(a)*.12, hf+.02, hy+.10 + Math.cos(a)*.10,
+           Math.sin(a)*.085, -.06, Math.cos(a)*.095, 3, .075 - k*.007,
+           i%2 ? acc : gh, .75);
+    }
+    // THE HALO. Twelve motes turning on a ring behind the head - light, not
+    // body, so it goes through fx() and clears the animal by design
+    for(let i=0;i<12;i++){
+      const a = i*(TAU/12) + t*.6;
+      fx(hx + Math.cos(a)*.42, hf - .12, hy + .16 + Math.sin(a)*.42,
+         .045, .045, .025, i%3 ? gh : glo, .85);
+    }
+    // THREE PAIRS OF WINGS the length of the animal - shoulder, mid-coil,
+    // tail - each smaller than the one before it and a beat behind it, and
+    // BLUE, bone and sheet both: the arm is most of a wing's area from above,
+    // and a white arm on a white animal was more white. Spaced down the
+    // spine, not stacked on the reared part: three pairs a hand apart were
+    // one white shelf from the side.
+    for(const [i, span] of [[1, 1.10], [4, .75], [7, .50]]) for(const rs of [-1,1])
+      wing(rs, sp[i][0] + rs*rad(i)*.7, sp[i][1] - .02, sp[i][2] + .04, span,
+           acc, glo, beat + i*.5 + (rs>0?0:.5));
+    // the tail tip trails light: three vanes and a shower of it
+    const tp = sp[sp.length-1];
+    for(let i=0;i<3;i++)
+      mb(tp[0], tp[1] - .08 - i*.10, tp[2] + .01 - i*.02,
+         .05 - i*.01, .12 - i*.03, .12 - i*.02, glo, .50);
+    fl(tp[0], tp[1] - .34, tp[2] - .04, .7, 3);
   }
 },
 // ------------------------------------------------------------------- TIDE
@@ -9970,6 +10107,7 @@ function render(){
                    p2.face, .46, 1.05, pc, .10, 2, gy + Math.abs(gait)*.10);
     }
   }
+  const hb0 = drawnBoxes + nbox;         // the count so far, flushed or not
   for(const e of enemies){
     if(e.dead) continue;                 // on the corpse list now, drawn below
     // THE BEAT. A boss winding up used to be a 22% size pop and nothing on
@@ -10099,6 +10237,7 @@ function render(){
             i/14 < f ? [1,.25,.2] : [.16,.16,.18], i/14<f?.9:0);
     }
   }
+  hordeBoxes = drawnBoxes + nbox - hb0;
   // THE FALLEN. Same plans, same pose path, drawn after the living so a body
   // that has just dropped lies under the one stepping over it. The mesh
   // capture is closed around them: a corpse is a live body's boxes at another
@@ -10160,6 +10299,7 @@ function render(){
     e.sq = sq0;
   }
   ebCap = cap0;
+  corpseBoxes = drawnBoxes + nbox - hb0 - hordeBoxes;
 
   // Twenty-one faces are worth building and you spend the whole run looking at
   // the back of one. Standing still, the monster turns and looks at you - which
@@ -10644,6 +10784,7 @@ window.__g = {
   state: ()=>({ t:+T?.toFixed(1), lvl:P?.lvl, hp:+P?.hp.toFixed(1), maxhp:P?.maxhp,
                 x:+P?.x.toFixed(1), z:+P?.z.toFixed(1), y:+(P?.y||0).toFixed(2),
                 kills, enemies:enemies?.length, gems:gems?.length, boxes:drawnBoxes,
+                horde:hordeBoxes, corpses:corpseBoxes,
                 dps:+(P?.dmg).toFixed(2), spd:+(P?.spd).toFixed(2), cd:+(P?.cd).toFixed(3),
                 over, won:runWon, why:runWhy, sudden, picking, coins:save.coins,
                 pending:pendingLevels, stage, face:+(P?.face || 0).toFixed(4),

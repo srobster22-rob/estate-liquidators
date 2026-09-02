@@ -658,21 +658,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   // 109, 125 on identical builds - so a fixed ceiling on the total is measuring
   // the dice. The cost PER enemy is what the LOD tiers control and it holds
   // still: 30.0 and 29.8 across runs whose totals were 456 boxes apart.
-  // Subtract the frame that has no horde in it. The creature rebuild took the
-  // player from about ninety boxes to two hundred, and dividing the WHOLE frame
-  // by the enemy count charged every one of those to the horde - the metric
-  // moved because the player got better looking, which is not what it measures.
-  const bare = await page.evaluate(async () => {
-    window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
-    window.__g.freezeSpawns(true); window.__g.freezeEvents(true);
-    // the same ground as the frame it is subtracted from: props are per biome,
-    // and an unpinned start measured 327 in one run and 448 in another
-    window.__g.forceBiome("grass");
-    window.__g.step(30); window.__g.clearGems(); window.__g.resume();
-    await new Promise(r => setTimeout(r, 400));
-    return window.__g.state().boxes;
-  });
-  const per = (hordeOnly.boxes - bare) / hordeOnly.enemies;
+  // And the horde's OWN boxes, counted round the enemy loop in render() and
+  // read back as state().horde - not the whole frame less a frame with no horde
+  // in it. That subtraction charged the horde with everything the bare frame
+  // did not have: a stage-four player at two hundred-odd boxes against a
+  // stage-zero one, eight weapons at level four, and the fallen - which alone
+  // swung 158 to 586 boxes between runs of this frame. It read 25.6 one round
+  // and 29.3 the next on a change to a PLAYER body plan, and the horde had not
+  // moved: measured at the loop it was 18.7 to 21.5 across eleven such runs.
+  const per = hordeOnly.horde / hordeOnly.enemies;
   // SAY WHICH HALF FAILED. This is a ratio, and a ratio has a precondition: it
   // needs a horde to divide by. The enemies > 40 guard was already here and
   // already right, but it was folded into the same assertion as the bound, so
@@ -685,15 +679,23 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("there is enough horde standing to measure a per-enemy cost",
      hordeOnly.enemies > 40,
      `${hordeOnly.enemies} enemies standing after 25s at minute 19`);
-  // 27, down from 33: the 30-ish figures the old bound was set around were
-  // two or three bosses' worth of boxes spread over the horde (above). With
-  // the schedule skipped the trash horde alone measures 21.3 to 23.1 across
-  // four runs of 89 to 105 enemies, so 33 was a bound a 40% blow-up in the
-  // trash bodies would have walked under.
+  // 24, down from 27, down from 33: each figure was set around what the metric
+  // of the day charged to the horde, and each was a bound a 40% blow-up in
+  // the trash bodies would have walked under. Counted at the loop the trash
+  // horde is 18.7 to 21.5 a head across eleven runs of 78 to 113 - the spread
+  // is the mix, a CERATOP-heavy roll costing more than a skitter-heavy one -
+  // so 24 sits a box and a half over the worst roll seen and a fifth more
+  // boxes on the trash bodies fails it on any roll.
   ok("the horde's cost per enemy stays bounded",
-     per <= 27,
+     per <= 24,
      `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies ` +
-     `(${hordeOnly.boxes} total, ${bare} of it not the horde)`);
+     `(${hordeOnly.horde} of ${hordeOnly.boxes} in the frame are the horde's, ` +
+     `${hordeOnly.corpses} the fallen's)`);
+  // and a ceiling on a counter that reads zero is no ceiling: the cheapest
+  // trash body at the far LOD is still several boxes, so a per-enemy figure
+  // under eight means the loop is not being counted, not that it got cheap
+  ok("and the count is the horde's own - a standing enemy is never under eight boxes",
+     per >= 8, `${per.toFixed(1)} a head`);
   ok("and the frame still fits two flushes without a boss",
      hordeOnly.boxes > 0 && hordeOnly.boxes <= 7200, `${hordeOnly.boxes} boxes`);
 
@@ -3585,7 +3587,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const left = find();
       g.place(d.x + 6,  d.z); g.step(1, 1/60);   const again = find();
       g.step(60 * 45, 1/60);                      const done = find();
-      return { total: all.length, stats: g.denStats(), species: d.sp,
+      // The pack a den wakes is the pack it ADVERTISES - the HUD label reads
+      // "N CERATOP" off these same two fields - so that is the number held to.
+      // An ANGRY den sends the elite fraction, floored at three: the first den
+      // of an unpinned arena has rolled "3 brute" and failed a ">3" here that
+      // only ever meant "more than a straggler".
+      const want = d.angry ? Math.max(3, Math.ceil(d.n * .55)) : d.n;
+      return { total: all.length, stats: g.denStats(), species: d.sp, angry: d.angry, want,
                grace, graceT, far, near, left, again, done, boons: g.boons() };
     });
     ok("the arena rolls dens into its landmarks",
@@ -3596,14 +3604,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.grace ? `woke=${r.grace.woke} standing on it at T=${r.graceT}s` : "no den");
     ok("a den is asleep until you go to it",
        r.far && !r.far.woke, r.far ? `woke=${r.far.woke} at 60m` : "no den");
-    ok("and it wakes with a pack of what lives there",
-       r.near && r.near.woke && r.near.alive > 3,
-       r.near ? `${r.near.alive} ${r.species} awake at 6m` : "no den");
+    ok("and it wakes with the pack it advertises, of what lives there",
+       r.near && r.near.woke && r.near.alive >= 3 && r.near.alive === r.want,
+       r.near ? `${r.near.alive} ${r.angry ? "elite " : ""}${r.species} awake at 6m, ${r.want} promised` : "no den");
     ok("walking away puts it back to sleep - the fight is not a leash",
        r.left && !r.left.woke && r.left.alive === 0,
        r.left ? `woke=${r.left.woke} alive=${r.left.alive} at 200m` : "no den");
-    ok("and it can be taken later instead",
-       r.again && r.again.woke && r.again.alive > 3,
+    ok("and it can be taken later instead - the full pack again, not the survivors",
+       r.again && r.again.woke && r.again.alive === r.want,
        r.again ? `${r.again.alive} awake on the second visit` : "no den");
     // A reward you only learn after the fight is a surprise. A den advertises a
     // SPECIFIC boon from sixty metres, so going to one is a plan.
@@ -5610,6 +5618,64 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const hatchSame = rows.every(k => R(k).st[0].c.every((v, i) => v === R(k).hatch[i]));
     ok("the hatchling on the card is the hatchling in the game: stage 0 IS the line's palette",
        hatchSame, rows.map(k => `${k} ${R(k).st[0].c.join("/")}`).join(", ").slice(0, 160));
+  }
+
+  console.log("\n=== 37. THE APEX IS A NEW SHAPE ===");
+  {
+    // Section 36 turned the coats. This is the other half of the same
+    // complaint - "no creativity between forms" - because a red dragon and a
+    // black dragon and a white dragon in the same pose are still one dragon.
+    // The measure is the drawn body's box: height over length, width over
+    // length, and where the mass sits. Scaling a plan up and adding parts
+    // leaves those numbers where they were (the sheet at R201 had every line
+    // within .03 across stages 2, 3 and 4); a new animal moves them. The
+    // list of lines held to it grows by one a round, and the rest are
+    // printed so the log carries the state of the complaint.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const out = {};
+      for (const id of g.chars()) {
+        const row = [];
+        for (const st of [2, 3, 4]) {
+          g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+          g.drainPicks(true); g.setShake(0); g.place(0, 0); g.aim(0);
+          g.evolveTo(st); g.step(300, 1/60);         // the evolution wash is long gone
+          g.resume(); g.capturePos();
+          await frame(); await frame();
+          const b = g.posOut();
+          if (!b) { row.push({ st, nm: g.stageNm(), n: 0 }); continue; }
+          const n = b.length / 6;
+          let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9], cy = 0;
+          for (let i = 0; i < n; i++) {                 // r f y hx hz hy
+            const c = [b[i*6], b[i*6+1], b[i*6+2]], h = [b[i*6+3], b[i*6+4], b[i*6+5]];
+            for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], c[k]-h[k]); mx[k] = Math.max(mx[k], c[k]+h[k]); }
+            cy += c[2];
+          }
+          const W = mx[0]-mn[0], L = mx[1]-mn[1], H = mx[2]-mn[2];
+          row.push({ st, nm: g.stageNm(), n, HL: +(H/L).toFixed(2), WL: +(W/L).toFixed(2),
+                     massY: +((cy/n - mn[2]) / H).toFixed(2) });
+        }
+        out[id] = row;
+      }
+      return out;
+    });
+    const DONE = ["intern"];                          // one more line each round
+    const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
+    const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => ({ a: row[i], b: row[j], d: dist(row[i], row[j]) }));
+    const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ")
+                     + `  d ${pairs(r[id]).map(p => p.d).join("/")}`;
+    ok("the body is captured at all twenty-seven forms from the third stage up, and every one is more than a handful of boxes",
+       Object.values(r).every(row => row.length === 3 && row.every(s => s.n >= 40)),
+       Object.keys(r).map(id => `${id} ${r[id].map(s => s.n).join("/")}`).join(", "));
+    ok(`the redesigned lines (${DONE.join(", ")}) change shape at every evolution from the third stage up: |dH/L| + |dW/L| of .12 or better between each pair of stages 2, 3 and 4`,
+       DONE.every(id => r[id] && pairs(r[id]).every(p => p.d >= .12)),
+       DONE.map(id => `${id}: ${line(id)}`).join(" | "));
+    ok("...and it is a rear, a sprawl or a coil, not a tweak: the redesigned lines move the mass by .05 of the height or better somewhere across those stages",
+       DONE.every(id => r[id] && Math.max(...r[id].map(s => s.massY)) - Math.min(...r[id].map(s => s.massY)) >= .05),
+       DONE.map(id => `${id} massY ${r[id].map(s => s.massY).join(">")}`).join(", "));
+    console.log("   still one plan at three scales: " + Object.keys(r).filter(id => !DONE.includes(id)
+      && pairs(r[id]).some(p => p.d < .12)).map(id => `${id} d ${pairs(r[id]).map(p => p.d).join("/")}`).join(", "));
   }
 
   console.log("\n" + "=".repeat(58));
