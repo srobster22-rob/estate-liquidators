@@ -478,6 +478,13 @@ const MUTANTS = [
         "STORMTYRANT in two more coats",
     from:"  if(st >= 3){\n    const G = gr;\n    if(st === 3){\n      // THE SUPERCELL.",
     to:  "  if(false){\n    const G = gr;\n    if(st === 3){\n      // THE SUPERCELL." },
+  // ---- R205: the stone line's top two are a tortoise and an island ------
+  { id:"mountain-is-the-titanhide", must:"37",
+    why:"the tortoise-and-island branch is skipped and stages 3 and 4 fall " +
+        "through to the ceratopsian plan - the top of the stone line is " +
+        "TITANHIDE with a bigger frill",
+    from:"  if(st >= 3){\n    const G = gr;\n    if(st === 3){\n      // THE MOUNTAIN.",
+    to:  "  if(false){\n    const G = gr;\n    if(st === 3){\n      // THE MOUNTAIN." },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",

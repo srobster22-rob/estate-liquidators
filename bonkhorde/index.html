@@ -4424,7 +4424,9 @@ volt(D){
 // A CERATOPSIAN. The silhouette is the FRILL: a wall of bone behind the head,
 // wider than the animal, with horns in front of it. Low, broad and slow.
 // FACE: a small eye at the bottom of a bone socket under a heavy shelf, and a
-// parrot beak with no teeth on show at all.
+// parrot beak with no teeth on show at all. And then the ceratopsian stops:
+// stages 3 and 4 are a tortoise with a massif on its back and the land
+// itself, adrift (see the branch below the stride).
 stone(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
           eyeSunk, rostrum, idle, sway, twitch, drag,
@@ -4441,6 +4443,154 @@ stone(D){
   const roll  = gait*.10;
   const swing = Math.sin(ph*.9)*amp;               // the whole body, one beat
   const snort = twitch(.9, 4.6);
+  // Stages 3 and 4 return from here: the way the palette round made them
+  // granite and green earth, this round makes them other things entirely.
+  if(st >= 3){
+    const G = gr;
+    if(st === 3){
+      // THE MOUNTAIN. THE SHIELD BECAME THE SHELL. No frill, no club: a
+      // tortoise with a massif on its back - three tiers of granite stepping
+      // in to a crag with snow on it, moss lying on the slopes in slabs, a
+      // tree line up the north face - on four wide-set pillar legs, the
+      // beaked skull carried low and forward on a short neck where a
+      // tortoise carries its head. It is TALL AND ROUND where TITANHIDE was
+      // long and low.
+      const SY = (.34 + heave)*G;                          // the shell floor
+      for(const rs of [-1,1]) for(const fs of [-1,1]){
+        const p2 = (rs*fs > 0) ? gait : -gait;
+        leg(sway + rs*.40*G, fs*.28*G, SY + .04*G, .34*G, p2, rs, .125*G, c, em, dk);
+      }
+      mb(sway, .00*G, SY - .01*G, .46*G, .07*G, .48*G, bel, em*.7);      // the plastron
+      // THE SHELL. Three tiers of granite, each set back a little from the
+      // one under it, and a summit crag of the lighter stone.
+      // Each tier is turned a little against the one under it and two
+      // boulders of the lighter stone stand out of the terraces - square
+      // tiers, square on, read as a ziggurat (first render), not a mountain.
+      blob(sway, .00*G, SY + .14*G, .58*G, .17*G, .56*G, c, em);
+      blob(sway + .02*G, -.04*G, SY + .40*G, .46*G, .15*G, .44*G, c, em, .30);
+      blob(sway - .02*G, -.08*G, SY + .63*G, .33*G, .13*G, .32*G, c, em, -.36);
+      mb(sway + .32*G, -.26*G, SY + .36*G, .15*G, .13*G, .13*G, lt, em+.02, .6);
+      mb(sway - .36*G, .12*G, SY + .32*G, .13*G, .11*G, .12*G, lt, em+.02, -.4);
+      chain([[sway, -.10*G, SY + .70*G], [sway + .02*G, -.13*G, SY + 1.00*G]],
+            .21*G, .09*G, lt, em+.04, [1, 1, 1]);
+      mb(sway + .02*G, -.13*G, SY + 1.04*G, .12*G, .05*G, .12*G, [.95,.96,.98], .30);   // snow
+      mb(sway + .02*G, -.13*G, SY + 1.11*G, .06*G, .04*G, .06*G, [.95,.96,.98], .30);
+      // the moss: the accent lies on the slopes in slabs, proud of the stone
+      const MOSS = [[ .40, .22, .30, .16, .12], [-.38, -.10, .30, .14, .11], [ .10, -.44, .32, .18, .10],
+                    [ .30, -.14, .55, .13, .10], [-.26,  .20, .54, .12, .09], [-.16, -.26, .76, .11, .08],
+                    [ .14,  .10, .76, .10, .08]];
+      for(const [mr, mf, my, mw, md] of MOSS)
+        mb(sway + mr*G, mf*G, SY + my*G, mw*G, .035*G, md*G, acc, .12, mr*.4);
+      // the tree line: four pines up the shell, a trunk and two tiers of canopy
+      // (on the exposed shelves - the first four stood inside the tier above
+      // and the render had no trees)
+      const PINE = [[-.52, -.12, .31], [ .52, .22, .31], [-.40, -.34, .55], [ .42, -.20, .55], [ .26, .12, .76]];
+      for(const [pr, pf, py] of PINE){
+        mb(sway + pr*G, pf*G, SY + (py + .08)*G, .022*G, .09*G, .022*G, [.34,.25,.16], .02);
+        mb(sway + pr*G, pf*G, SY + (py + .16)*G, .070*G, .05*G, .070*G, dk, .06);
+        mb(sway + pr*G, pf*G, SY + (py + .24)*G, .045*G, .05*G, .045*G, dk, .06);
+      }
+      // THE HEAD. Out the front and low, on a short thick neck: the same
+      // beaked skull the hatchling had, brow horns and nose horn included,
+      // carried where a tortoise carries its head.
+      const hx = sway + lk*.6, hf = .86*G + lkf, hy = SY + .06*G;
+      chain([[sway + lk*.2, .50*G, SY + .16*G], [hx, .72*G, hy + .02*G]],
+            .17*G, .14*G, c, em, [1, .90, 1]);
+      blob(hx, hf, hy, .22*G, .18*G, .22*G, c, em);
+      rostrum(hx, hf + .14*G, hy - .03*G + snort*.008*G, .13*G, .24*G, c);
+      eyeSunk(hx, hf + .08*G, hy + .09*G, .21*G, .066*G, [.95,.74,.28]);
+      for(const rs of [-1,1])
+        horn(hx + rs*.13*G, hf + .04*G, hy + .14*G, rs*.012*G, .06*G, .03*G, 3, .050*G, [.91,.88,.79], .16);
+      horn(hx, hf + .22*G, hy + .04*G, 0, .028*G, .036*G, 3, .040*G, [.91,.88,.79], .16);
+      // a tortoise's stub of a tail
+      const lag = drag(.8)*.03*G + Math.sin(ph*.9 - .6)*(.008 + amp*.030)*G;
+      chain([[sway, -.54*G, SY + .08*G], [sway + lag, -.74*G, SY + .02*G]], .12*G, .06*G, c, em, [1, .90, 1]);
+      // and the ground it walked over, dragged along
+      for(let i=0;i<6;i++){ const a = t*.7 + i/6*TAU;
+        fx(Math.sin(a)*(.92+(i%2)*.14)*G, Math.cos(a)*(.80+(i%2)*.12)*G,
+           .035*G, .11*G,.020*G,.10*G, i%3?dk:acc, i%3?.04:.24, a); }
+    } else {
+      // THE CONTINENT. THE LAND ITSELF, ADRIFT. No animal now: a wide slab of
+      // green earth on a keel of bedrock, hanging clear of the ground and
+      // drifting - a pale cliff round its rim, a mountain with snow on it,
+      // pines up the slopes, a lake, two falls off the edge into spray - and
+      // the line's face is the headland at the front of it, the sunk eyes
+      // under a brow of stone and the beak as the nose of the cliff. Behind it
+      // a reef of islets trails in its wake, lagging the turn, which is the
+      // one thing left of the tail.
+      const bob  = Math.sin(t*1.1)*.025*idle*G + Math.abs(gait)*.03*G;
+      const CY   = .72*G + bob;                              // the top of the land
+      const CL   = bel;                                      // the cliff stone
+      const ROCK = [.50,.52,.56], SNOW = [.95,.96,.98], BARK = [.34,.25,.16];
+      // THE KEEL. Bedrock hanging under the land, tapering to a point.
+      chain([[sway, .02*G, CY - .10*G], [sway, -.02*G, CY - .32*G], [sway, -.06*G, CY - .56*G]],
+            .40*G, .09*G, dk, .02, [1, .60, .90]);
+      for(let i=0;i<3;i++){ const a = i/3*TAU + .8;
+        horn(sway + Math.sin(a)*.26*G, Math.cos(a)*.24*G - .02*G, CY - .24*G,
+             Math.sin(a)*.012*G, Math.cos(a)*.010*G, -.06*G, 3, .045*G, dk, .02); }
+      // THE LAND. A cliff of pale stone round the rim, the green earth on top
+      // of it in a slab and two terraces, and a peak of grey rock over the
+      // higher of them.
+      mb(sway, .00*G, CY - .09*G, .86*G, .09*G, .66*G, CL, em*.7);
+      mb(sway, .00*G, CY + .01*G, .83*G, .045*G, .63*G, c, em);
+      blob(sway - .18*G, -.12*G, CY + .12*G, .36*G, .09*G, .32*G, c, em);       // the upland
+      blob(sway + .26*G, .16*G, CY + .09*G, .26*G, .07*G, .24*G, c, em);
+      chain([[sway - .22*G, -.14*G, CY + .16*G], [sway - .24*G, -.16*G, CY + .44*G]],
+            .19*G, .08*G, ROCK, .04, [1, 1, 1]);
+      mb(sway - .24*G, -.16*G, CY + .48*G, .10*G, .045*G, .10*G, SNOW, .30);
+      // THE WATER. A lake on the low ground east of the upland, flush with
+      // the grass (on the upland it was inside the upland - the first render
+      // had no lake), a stream from it to the rim, and a fall off the rim each
+      // side, a thin sheet down the cliff into spray.
+      mb(sway + .44*G, -.26*G, CY + .06*G, .22*G, .014*G, .17*G, acc, .40);
+      mb(sway + .72*G, -.30*G, CY + .06*G, .12*G, .012*G, .04*G, acc, .40);
+      for(const rs of [-1,1]){
+        const ff = rs > 0 ? -.30*G : .06*G, sh2 = .35 + Math.sin(t*9 + rs*2)*.15;
+        mb(sway + rs*.85*G, ff, CY - .04*G, .030*G, .04*G, .09*G, acc, sh2);   // the lip
+        mb(sway + rs*.88*G, ff, CY - .18*G, .022*G, .12*G, .07*G, acc, sh2);   // the sheet
+        fx(sway + rs*.92*G, ff, CY - .36*G, .07*G, .025*G, .09*G, [.85,.95,1], .5 + sh2*.4);
+        fx(sway + rs*.96*G, ff + .06*G, CY - .44*G, .05*G, .02*G, .06*G, [.85,.95,1], .3 + sh2*.4);
+      }
+      // THE FOREST. Six pines up the slopes.
+      const PINE = [[-.48, -.36, .10], [-.56,  .06, .05], [ .06, -.40, .06], [ .48, -.02, .05],
+                    [-.02,  .28, .05], [ .30,  .38, .13]];
+      for(const [pr, pf, py] of PINE){
+        mb(sway + pr*G, pf*G, CY + (py + .06)*G, .022*G, .08*G, .022*G, BARK, .02);
+        mb(sway + pr*G, pf*G, CY + (py + .14)*G, .070*G, .05*G, .070*G, dk, .06);
+        mb(sway + pr*G, pf*G, CY + (py + .22)*G, .045*G, .05*G, .045*G, dk, .06);
+      }
+      // THE FACE. The headland at the front of the land: a promontory of
+      // cliff with the line's sunk eyes in it under a brow of stone, the
+      // ceratopsian beak as the nose of the cliff, and the nose horn a crag.
+      const hx = sway + lk*.4, hf = .60*G + lkf, hy = CY - .06*G;
+      mb(hx, hf, hy, .30*G, .13*G, .14*G, CL, em*.7);
+      mb(hx, hf + .02*G, hy + .10*G, .26*G, .04*G, .10*G, c, em);              // grass over the brow
+      eyeSunk(hx, hf + .06*G, hy + .03*G, .22*G, .070*G, [.95,.74,.28]);
+      rostrum(hx, hf + .10*G, hy - .03*G, .13*G, .24*G, CL);
+      horn(hx, hf + .16*G, hy + .05*G, 0, .028*G, .040*G, 3, .042*G, ROCK, .10);
+      // THE WAKE. A reef of stone trailing off the back rim, three islets on
+      // it, each smaller, lagging the turn.
+      const reef = [[sway, -.60*G, CY - .08*G]];
+      for(let i=0;i<3;i++){
+        const lag = drag(.8 + i*.5)*.05*(i+1)*G + Math.sin(t*1.0 - i*.7)*.010*idle*(i+1)*G;
+        reef.push([sway + lag, (-.84 - i*.27)*G, CY - (.10 + i*.03)*G]);
+      }
+      chain(reef, .10*G, .05*G, CL, em*.7, [1, .70, 1]);
+      for(let i=1;i<4;i++){ const s = 1 - (i-1)*.24, p = reef[i];
+        // stacked off the islet's own scale - at fixed rises the smallest
+        // islet's turf floated .008 G over its rock (analyze)
+        mb(p[0], p[1], p[2] + .04*G, .15*G*s, .05*G*s, .12*G*s, CL, em*.7);
+        mb(p[0], p[1], p[2] + (.04 + .05*s)*G, .13*G*s, .03*G*s, .10*G*s, c, em);
+        if(i < 3) mb(p[0], p[1], p[2] + (.04 + .10*s)*G, .05*G*s, .06*G*s, .05*G*s, dk, .06);   // a tree on it
+      }
+      // and its own weather: dust falling off the keel, and gulls - three
+      // pale flecks circling the peak
+      for(let i=0;i<3;i++){ const a = t*1.4 + i/3*TAU;
+        fx(sway - .24*G + Math.sin(a)*.30*G, -.16*G + Math.cos(a)*.26*G, CY + (.40 + i*.06)*G + Math.sin(t*3+i)*.03*G,
+           .030*G, .008*G, .012*G, SNOW, .40, a); }
+    }
+    return;
+  }
   // THE FRILL IS THE EVOLUTION. It grew .09 a stage from a base of .40, so
   // SHALEBACK already wore most of a TITANHIDE's shield and the three forms
   // were one animal at three zooms. A juvenile ceratopsian has a bony SHELF,
