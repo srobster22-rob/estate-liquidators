@@ -498,6 +498,13 @@ const MUTANTS = [
         "scales with the same four wings",
     from:"  if(st >= 3){\n    const G = 1 + st*.16;\n    if(st === 3){\n      // THE HURRICANE.",
     to:  "  if(false){\n    const G = 1 + st*.16;\n    if(st === 3){\n      // THE HURRICANE." },
+  // ---- R208: the pyre line's top two are an egg and a sun -----------------
+  { id:"eternal-is-the-phoenix", must:"37",
+    why:"the egg-and-sun branch is skipped and stages 3 and 4 fall through to " +
+        "the bird plan - the top of the pyre line is THE PHOENIX at two more " +
+        "scales with the same wings and legs",
+    from:"  if(st >= 3){\n    const G = 1 + st*.18;\n    if(st === 3){\n      // THE ETERNAL.",
+    to:  "  if(false){\n    const G = 1 + st*.18;\n    if(st === 3){\n      // THE ETERNAL." },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",
