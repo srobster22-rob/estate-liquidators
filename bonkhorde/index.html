@@ -1933,6 +1933,27 @@ const BOSS_KIT = {
   charge: ["charge", "slam", "charge"],
   all:    ["slam", "spokes", "sinkhole", "charge", "evict"],  // the finale uses everything
 };
+// THE WIND-UP ON THE BODY. The contract above is a wind-up you can see, and
+// for four rounds "see" meant the ring on the floor and a 22% size pop - the
+// boss inflating like a balloon and then, at the moment of the hit, nothing.
+// The same squash-and-shear the pose already applies to every body carries
+// the ability now: a tell builds it over the wind-up (u squared - slow to
+// start, all at the end, the way a weight is lifted), the act SNAPS to the
+// release pose, and the rest lets it out over half a second. Per kind, at
+// full tell and at the act: a slam rears up and back then comes down flat
+// and forward; a sinkhole rears higher; a charge crouches and gathers, then
+// throws the whole body at the lane; the spokes swell before the burst; an
+// evict hunkers and then heaves. Body-level, so all four plans have a beat,
+// and the plans that can read it add the limb that does the work.
+const BEAT = {
+  slam:     { tsq: .16, tlf:-.18, asq:-.28, alf: .26 },
+  sinkhole: { tsq: .22, tlf:-.22, asq:-.34, alf: .12 },
+  charge:   { tsq:-.14, tlf:-.14, asq:-.05, alf: .30 },
+  spokes:   { tsq: .10, tlf:  0,  asq:-.10, alf:  0  },
+  evict:    { tsq:-.12, tlf:-.06, asq: .10, alf: .08 },
+};
+const BEAT_REST = .55;                         // how long the release takes to let out
+const BT0 = { kind:null, u:0, act:0, sq:1, lf:0 };
 
 // spawn director: rate is enemies/sec, mix is a weight table
 // ------------------------------------------------------- time of day
@@ -2635,10 +2656,16 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
 matriarch(e, face, W, H, c, glow, lod, y0){
   const br = Math.sin(T*2.2 + e.bob), st = stride(e, 3.4);
   const lit = [c[0]*1.3+.10, c[1]*1.1+.05, c[2]*1.1+.05];
+  // THE ARMS DO THE SLAM. The body rears through the tell (bossBeat); the
+  // forelimbs come up with it - upper arm a little, forearm and claws a lot,
+  // and forward, so from the side she is standing over you with both raised -
+  // and the act drops them to the floor in one frame. That is the stomp, and
+  // it is the frame the ring on the ground goes off on.
+  const bt = e.bt || BT0, arm = bt.u * bt.u;
   ebl(e, face, 0, -W*.16, y0 + H*.42, W*.56, H*.24, W*.54, c, glow);          // haunches
   ebl(e, face, 0, W*.24, y0 + H*.54 + br*H*.012, W*.78, H*.26, W*.46, c, glow); // shoulders
   eb(e, face, 0, W*.66, y0 + H*.38, W*.44, H*.19, W*.34, lit, glow);           // low head
-  eb(e, face, 0, W*.98, y0 + H*.33, W*.32, H*.11, W*.20, lit, glow+.04);       // jaw
+  eb(e, face, 0, W*.98, y0 + H*.33 - bt.act*H*.05, W*.32, H*.11, W*.20, lit, glow+.04); // jaw, open on the stomp
   // ON THE SIDE OF THE SKULL, not in it. The buried-volume pass found both
   // eyes and both pupils with no volume of their own on this boss and on
   // THORNBACK, which is the CERATOP fault again: the skull box spans W*.32 to
@@ -2655,19 +2682,20 @@ matriarch(e, face, W, H, c, glow, lod, y0){
     eb(e, face, sg*W*.17, W*1.00, y0 + H*.45, W*.065, W*.055, W*.05,
        [1,.84,.30], .85);
   for(let i=0;i<4;i++)
-    eb(e, face, (i-1.5)*W*.075, W*1.06, y0 + H*.195, W*.04, H*.05, W*.035,
+    eb(e, face, (i-1.5)*W*.075, W*1.06, y0 + H*.195 - bt.act*H*.05, W*.04, H*.05, W*.035,
        [.94,.90,.82], .30);
   if(lod < 1) return;
   for(const sg of [-1,1])                                                       // brow horns
     etp(e, face, sg*W*.30, W*.72, y0 + H*.56, sg*.03,.02,.06, 4, W*.09,H*.05,W*.09,
         [.94,.90,.82], .20);
   for(const sg of [-1,1]){                                                      // slam forelimbs
-    eb(e, face, sg*W*.62, W*.34, y0 + H*.42, W*.18, H*.20, W*.18, c, glow);
-    eb(e, face, sg*W*.66, W*.40, y0 + H*.14 + Math.max(0, st*sg)*H*.05,
+    eb(e, face, sg*W*.62, W*.34 + arm*W*.04, y0 + H*.42 + arm*H*.12,
+       W*.18, H*.20, W*.18, c, glow);
+    eb(e, face, sg*W*.66, W*.40 + arm*W*.08, y0 + H*.14 + Math.max(0, st*sg)*H*.05 + arm*H*.30,
        W*.20, H*.14, W*.24, lit, glow);
     for(let i=0;i<3;i++)                                                        // claws
-      eb(e, face, sg*W*.66 + (i-1)*W*.11, W*.62, y0 + H*.06, W*.05, H*.05, W*.10,
-         [.94,.90,.82], .25);
+      eb(e, face, sg*W*.66 + (i-1)*W*.11, W*.62 + arm*W*.08, y0 + H*.06 + arm*H*.30,
+         W*.05, H*.05, W*.10, [.94,.90,.82], .25);
   }
   for(const sg of [-1,1])                                                       // hind legs
     eb(e, face, sg*W*.46, -W*.28, y0 + H*.20, W*.15, H*.20, W*.15,
@@ -2706,6 +2734,13 @@ thornback(e, face, W, H, c, glow, lod, y0){
   const pulse = (Math.sin(T*1.8 + e.bob)+1)*.5;
   const lit = [c[0]*1.1+.06, c[1]*1.2+.10, c[2]*1.3+.14];
   const spine = [.86,.90,1.00];
+  // THE THORNS BRISTLE. An evict is the wall shedding its spines onto the
+  // arena, so the wind-up is the whole crown rising and lighting, and the act
+  // throws it back - every thorn splays rearward on the heave and the light
+  // goes to full. The slam in its kit reads the same way, which is right: a
+  // wall does not have a different face for each thing it does.
+  const bt = e.bt || BT0, bristle = bt.u*bt.u, heave = bt.act;
+  const thornEm = bristle*.35 + heave*.45;
   ebl(e, face, 0, -W*.04, y0 + H*.40, W*.66, H*.26, W*.70, c, glow);          // slab body
   ebl(e, face, 0, 0, y0 + H*.64, W*.58, H*.12, W*.62, lit, glow + pulse*.20);  // shell
   eb(e, face, 0, W*.62, y0 + H*.44, W*.36, H*.17, W*.30, lit, glow);           // blunt head
@@ -2727,14 +2762,18 @@ thornback(e, face, W, H, c, glow, lod, y0){
   // etp steps are WORLD units: .55/segment is what it takes to crest the
   // shell line on a 7.8-unit body - the first cut used .09 and vanished.
   for(let i=0;i<4;i++)
-    etp(e, face, (i-1.5)*W*.26, W*.26, y0 + H*.68, (i-1.5)*.06, .55, .18, 3,
-        W*.06, H*.05, W*.06, spine, .40 + pulse*.25);
+    etp(e, face, (i-1.5)*W*.26, W*.26, y0 + H*.68 + bristle*H*.05, (i-1.5)*.06,
+        .55 - heave*.20, .18 + bristle*.08, 3,
+        W*.06, H*.05, W*.06, spine, .40 + pulse*.25 + thornEm);
   if(lod < 1) return;
   for(let ring=0; ring<4; ring++)                                              // the thorns
     for(let i=0;i<6;i++){
       const a = -1.3 + i*(2.6/5), lift = Math.max(0, Math.sin(T*1.8 + ring*.9)) * H*.05;
-      etp(e, face, Math.sin(a)*W*.50, W*.28 - ring*W*.30, y0 + H*.70 + lift,
-          Math.sin(a)*.05, -.02, .09, 3, W*.075, H*.06, W*.075, spine, .35 + pulse*.30);
+      // .04 of the height and no more: the root sits on a shell whose top is
+      // at .76, and a thorn that rises off it is a thorn that came off
+      etp(e, face, Math.sin(a)*W*.50, W*.28 - ring*W*.30, y0 + H*.70 + lift + bristle*H*.04,
+          Math.sin(a)*.05, -.02 - heave*.22, .09 + bristle*.10 - heave*.03, 3,
+          W*.075, H*.06, W*.075, spine, .35 + pulse*.30 + thornEm);
     }
   if(lod < 2) return;
   // squat legs, a slow diagonal walk - they were four fixed posts before the
@@ -2752,17 +2791,25 @@ thornback(e, face, W, H, c, glow, lod, y0){
 // built like something that only ever goes forwards: swept wings, a beak, and
 // legs that are mostly stride.
 skysplitter(e, face, W, H, c, glow, lod, y0){
-  const flap = Math.sin(T*4.2 + e.bob), st = stride(e, 5.0);
+  // THE WINGS GATHER. A charge is the whole animal thrown down a lane, so the
+  // tell is the wings sweeping back and up as it crouches (the body beat) and
+  // the head coming down level - and the act flares them forward, beating
+  // twice as hard, with the head and beak lowered into the run. The head
+  // carries its crest and eyes with it, or the crest is left hanging in the
+  // air where the head was.
+  const bt = e.bt || BT0, gather = bt.u*bt.u, run = bt.act;
+  const flap = Math.sin(T*4.2 + e.bob) * (1 + run*.8), st = stride(e, 5.0);
   const lit = [c[0]*1.15+.08, c[1]*1.15+.08, c[2]*1.4+.14];
   const beak = [1,.86,.28];
+  const hd = -(gather*.04 + run*.08)*H;                                         // the head drop
   ebl(e, face, 0, W*.04, y0 + H*.46, W*.44, H*.26, W*.52, c, glow);            // deep chest
-  eb(e, face, 0, W*.30, y0 + H*.72, W*.20, H*.18, W*.20, c, glow);             // neck
-  eb(e, face, 0, W*.44, y0 + H*.92, W*.22, H*.16, W*.22, lit, glow+.05);       // head
-  eb(e, face, 0, W*.76, y0 + H*.88, W*.12, H*.09, W*.26, beak, .45);           // beak
-  eey(e, face, 0, W*.58, y0 + H*.98, W*.17, W*.085, [.10,.10,.14], .30);
+  eb(e, face, 0, W*.30, y0 + H*.72 + hd*.5, W*.20, H*.18, W*.20, c, glow);     // neck
+  eb(e, face, 0, W*.44 + run*W*.06, y0 + H*.92 + hd, W*.22, H*.16, W*.22, lit, glow+.05); // head
+  eb(e, face, 0, W*.76 + run*W*.06, y0 + H*.88 + hd, W*.12, H*.09, W*.26, beak, .45);     // beak
+  eey(e, face, 0, W*.58 + run*W*.06, y0 + H*.98 + hd, W*.17, W*.085, [.10,.10,.14], .30);
   if(lod < 1) return;
   for(let i=0;i<4;i++)                                                          // crest
-    eb(e, face, 0, W*.34 - i*W*.09, y0 + H*1.10 + Math.sin(T*6+i)*H*.02,
+    eb(e, face, 0, W*.34 - i*W*.09 + run*W*.06, y0 + H*1.10 + hd + Math.sin(T*6+i)*H*.02,
        W*.05, H*.13 - i*.012, W*.05, beak, .55, face);
   // DIHEDRAL, because the fight view is SIDE-ON: it marks a lane and charges
   // past, and flat wing slabs are edge-on invisible from there - the horizon
@@ -2770,11 +2817,17 @@ skysplitter(e, face, W, H, c, glow, lod, y0){
   // heights of H*.065, so tiers OVERLAP - the first cut stepped exactly the
   // sum of halves and the connectivity check tore the wing into five parts),
   // so the side shows an ascending wing wedge and the top keeps the spread.
+  // The sweep is per tier, more at the tip than the root (k), so the wing
+  // FOLDS back rather than sliding back whole - the root stays inside the
+  // chest at every point of the beat. The lift is NOT per tier: the tiers
+  // are stacked .10 apart on half-heights of .065, and another .05 a tier
+  // would open every one of those joints at full gather.
   for(const sg of [-1,1]) for(let k=0;k<4;k++)                                  // swept wings
-    etp(e, face, sg*(W*.44 + k*W*.34), -k*W*.22 + flap*W*.06,
-        y0 + H*.66 + flap*H*.05 + k*H*.10, sg*.10, -.06, .02, 2,
+    etp(e, face, sg*(W*.44 + k*W*.34), -k*W*.22 + flap*W*.06
+          - gather*W*(.08 + k*.09) + run*W*(.06 + k*.03),
+        y0 + H*.66 + flap*H*.05 + k*H*.10 + gather*H*.03, sg*.10, -.06, .02, 2,
         W*.30 - k*W*.05, H*.065, W*.34 - k*W*.06,
-        k%2 ? lit : c, glow + .06 + k*.04);
+        k%2 ? lit : c, glow + .06 + k*.04 + run*.10);
   if(lod < 2) return;
   for(const sg of [-1,1])                                                       // stride legs
     etp(e, face, sg*W*.20, st*sg*W*.26, y0 + H*.30, 0,0,-.11, 4,
@@ -2789,7 +2842,15 @@ skysplitter(e, face, W, H, c, glow, lod, y0){
 // segments dragging out of the ground behind, seams still lit from below.
 terravore(e, face, W, H, c, glow, lod, y0){
   const gy = groundY(e.x, e.z);
-  const chew = (Math.sin(T*3.1 + e.bob)+1)*.5, heat = (Math.sin(T*1.4)+1)*.5;
+  // THE MOUTH IS THE TELL. It has five abilities and one face, so every
+  // wind-up is the same read: the chew stops and the gape opens fully and
+  // HOLDS - a mouth that is not chewing is a mouth about to do something -
+  // and the act flares the ring of teeth and reaches the mandibles forward.
+  // The gape itself is capped at the chew's own maximum, because the mandible
+  // root was sized against that frame (below) and a wider one takes them off.
+  const bt = e.bt || BT0, cue = Math.max(bt.u*bt.u, bt.act);
+  const chew = Math.max((Math.sin(T*3.1 + e.bob)+1)*.5, cue), heat = (Math.sin(T*1.4)+1)*.5;
+  const seamEm = cue*.30;
   const plate = [c[0]*.52, c[1]*.46, c[2]*.48];
   const seam  = [1, .52 + heat*.30, .12];
   for(let i=0;i<12;i++){ const a = i*(TAU/12) + T*.5;      // the ground gives up around it
@@ -2828,14 +2889,14 @@ terravore(e, face, W, H, c, glow, lod, y0){
     // clean off the animal. The connectivity report caught it; sizing against
     // the widest frame of the animation rather than the still one is the rule.
     etp(e, face, sg*(W*.70 + chew*W*.10), W*.78, y0 + H*.44,
-        -sg*.06, .16, .02, 5, W*.11, H*.09, W*.11, [.96,.92,.86], .25);
+        -sg*.06, .16 + bt.act*.06, .02, 5, W*.11, H*.09, W*.11, [.96,.92,.86], .25 + seamEm);
     eb(e, face, sg*W*.46, W*.62, y0 + H*.74, W*.10, H*.16, W*.10, [.96,.92,.86], .30);
   }
   if(lod < 1) return;
   for(let i=0;i<7;i++){                                                         // the ring of teeth
-    const a = i*(TAU/7) + T*.9, rr = W*.26 + chew*W*.06;
+    const a = i*(TAU/7) + T*.9, rr = W*.26 + chew*W*.06 + bt.act*W*.08;
     eb(e, face, Math.sin(a)*rr, W*.72, y0 + H*.46 + Math.cos(a)*rr,
-       W*.07, H*.06, W*.12, [.96,.92,.86], .35, face + a);
+       W*.07, H*.06, W*.12, [.96,.92,.86], .35 + seamEm, face + a);
   }
   eb(e, face, 0, W*.74, y0 + H*.46, W*.22 - chew*W*.04, H*.18, W*.22 - chew*W*.04,
      [.20,.03,.02], .0);                                                        // the throat
@@ -6316,6 +6377,29 @@ function bossExecute(e, A){
   else if(A.kind === "sinkhole"){ shake = Math.max(shake,.85); SFX.boom(); }
 }
 
+// The beat, read off the ability state and nothing else - stateless, so a
+// boss that is paused, stepped by a test, or drawn twice in a frame gets the
+// same pose for the same moment. u is the wind-up 0..1 (raw); act is 1
+// through the act and eases out over the first BEAT_REST of the rest. sq and
+// lf are what the body applies on top of its walk.
+function bossBeat(e){
+  const A = e.ab;
+  if(!A || !A.kind) return BT0;
+  const B = BEAT[A.kind], ab = ABILITIES[A.kind];
+  if(!B) return BT0;
+  let u = 0, act = 0;
+  if(A.phase === "tell") u = clamp(1 - A.t / ab.tell, 0, 1);
+  else if(A.phase === "act") act = 1;
+  else {
+    const k = clamp(1 - (ab.rest - A.t) / BEAT_REST, 0, 1);
+    act = k*k*(3 - 2*k);
+  }
+  const ue = u*u;
+  return { kind:A.kind, u, act,
+           sq: 1 + B.tsq*ue + B.asq*act,
+           lf: B.tlf*ue + B.alf*act };
+}
+
 // ======================================================= SIDE EVENTS
 // The whole design is "you do not control the weapons, you control where you
 // are". So the optional content has to be positional too, or it is a different
@@ -9712,8 +9796,13 @@ function render(){
     }
   }
   for(const e of enemies){
-    const wind = (e.ab && e.ab.phase === "tell")
-      ? 1 + .22*(1 - e.ab.t/ABILITIES[e.ab.kind].tell) : 1;
+    // THE BEAT. A boss winding up used to be a 22% size pop and nothing on
+    // the hit; the pose carries it now (bossBeat), and what is left of the
+    // pop is a swell small enough to read as breath drawn rather than a
+    // balloon. e.bt is left on the body for the plan to read.
+    const bt = e.boss ? bossBeat(e) : BT0;
+    e.bt = bt;
+    const wind = 1 + .08*bt.u*bt.u;
     const D = e.def, S = e.sz*wind, W = D.w*S, H = D.h*S;
     // Contact shadow. This is a graphics fix and an accessibility fix and they
     // are the same fix: once there is a day cycle, hue alone cannot keep every
@@ -9749,9 +9838,14 @@ function render(){
     // now the squash, which has a size and a recovery.
     const kf = e.kx*Math.sin(face) + e.kz*Math.cos(face),
           kr = e.kx*Math.cos(face) - e.kz*Math.sin(face);
-    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + Math.sin(e.lg*Math.PI)*.35;
+    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + Math.sin(e.lg*Math.PI)*.35 + bt.lf;
     e.lr = clamp(kr*.04, -.40, .40) + e.bk;
     const sq = 1;
+    // the beat's squash rides the walk's for the length of the draw and is put
+    // back after - e.sq is walk()'s state and the beat is not allowed to leave
+    // anything in it
+    const sq0 = e.sq;
+    e.sq = sq0 * bt.sq;
     // elites keep their species colour but run hot, so you can still tell a
     // CHONK from a SKITTER while knowing which one is the problem
     const base = e.elite ? [lerp(D.c[0],1,ELITE_TINT), lerp(D.c[1],.42,ELITE_TINT),
@@ -9798,6 +9892,7 @@ function render(){
     const rise = e.rise > 0 ? e.rise / BOSS_RISE : 0;
     e.py = e.y + hop - rise*H*1.15;                  // the pose pivots at the feet
     plan(e, face, W*sq, H, c, glow, lod, e.py);
+    e.sq = sq0;
     if(rise > 0){
       const gy2 = groundY(e.x, e.z), up = 1 - rise;
       for(let i=0;i<16;i++){                       // earth thrown off it
@@ -10362,7 +10457,27 @@ window.__g = {
   // gap to it instead of chasing a target that walks toward the player.
   bossAt:()=>{ const b=enemies.find(e=>e.boss && !e.dead);
                return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad, nm:b.def.nm, body:b.def.body,
-                           rise:+(b.rise||0).toFixed(3)} : null; },
+                           rise:+(b.rise||0).toFixed(3),
+                           ab:b.ab ? { phase:b.ab.phase, kind:b.ab.kind, t:+b.ab.t.toFixed(3) } : null } : null; },
+  // Put the live boss at an exact moment of an ability - phase and seconds
+  // left in it - so the pose at that moment can be drawn and measured without
+  // waiting for the AI to arrive there. The AI picks up from wherever this
+  // leaves it; the telegraph/execute side effects are NOT fired.
+  bossCue:(kind, phase="tell", t)=>{ const b=enemies.find(e=>e.boss && !e.dead);
+               if(!b) return null;
+               b.rise = 0;
+               b.ab = { phase, kind, dir:b.ab ? b.ab.dir : 0, n:b.ab ? b.ab.n : 1,
+                        t: t === undefined ? (phase === "tell" ? ABILITIES[kind].tell
+                                            : phase === "act" ? ABILITIES[kind].act
+                                            : ABILITIES[kind].rest) : +t };
+               return window.__g.beat(); },
+  // the beat as the draw will read it, plus the walk state under it
+  beat:()=>{ const b=enemies.find(e=>e.boss && !e.dead); if(!b) return null;
+             const bt = bossBeat(b);
+             return { kind:bt.kind, u:+bt.u.toFixed(4), act:+bt.act.toFixed(4),
+                      sq:+bt.sq.toFixed(4), lf:+bt.lf.toFixed(4),
+                      wsq:+b.sq.toFixed(4), phase:b.ab ? b.ab.phase : null,
+                      t:b.ab ? +b.ab.t.toFixed(3) : null }; },
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },
   // split frame cost into simulation vs rendering. Software GL exaggerates the
   // render half enormously, so only the sim number transfers to real hardware.
@@ -10849,7 +10964,12 @@ window.__g = {
                         mean: ds.length ? ds.reduce((a,b)=>a+b,0)/ds.length : -1,
                         medHP: hs[hs.length>>1]??0, dmg: P.dmg*100 }; },
   comp:  ()=>enemies.reduce((a,e)=>{ a[e.type]=(a[e.type]||0)+1; return a; }, {}),
-  skipTo:s=>{ T=s; },
+  // past=true also walks the boss schedule up to that minute WITHOUT spawning
+  // it. A plain skipTo(1140) is followed by three overdue bosses coming out of
+  // the ground on the next three ticks, which is right for a frame that wants
+  // the fight and wrong for one measuring the horde on its own.
+  skipTo:(s, past=false)=>{ T=s;
+    if(past) while(bossIdx < BOSSES.length && BOSSES[bossIdx].t <= s) bossIdx++; },
   // Writes a fresh save rather than REMOVING one, and writes dev:0 into it.
   // Removing the key means the next page load finds no preference, defaults
   // DEV MODE back on and unlocks everything again - which is how "TALLY is

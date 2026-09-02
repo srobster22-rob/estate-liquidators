@@ -371,6 +371,31 @@ const MUTANTS = [
         "fall happens behind a table nobody can see through",
     from:"  endFade(deathFx > 0 ? clamp((t - .66) / .48, 0, 1).toFixed(3) : \"\");",
     to:  "  endFade(deathFx > 0 ? \"1\" : \"\");" },
+  { id:"beat-no-rearup", must:"34",
+    why:"the slam's wind-up no longer stands the boss up - the tell is a lean " +
+        "with no height in it, so the biggest hit in the game has the smallest " +
+        "warning",
+    from:"  slam:     { tsq: .16, tlf:-.18,", to:"  slam:     { tsq: 0, tlf:-.18," },
+  { id:"beat-no-snap", must:"34",
+    why:"the slam lands at full height - the wind-up releases into nothing, so " +
+        "the hit has no weight and the hazard ring is once again the only thing " +
+        "that moved",
+    from:"  slam:     { tsq: .16, tlf:-.18, asq:-.28, alf: .26 },",
+    to:  "  slam:     { tsq: .16, tlf:-.18, asq: 0, alf: .26 }," },
+  { id:"arms-never-raise", must:"34",
+    why:"THE MATRIARCH's forelimbs stay planted through the whole slam - the " +
+        "body rears but the arms it is meant to come down on never leave the ground",
+    from:"  const bt = e.bt || BT0, arm = bt.u * bt.u;", to:"  const bt = e.bt || BT0, arm = 0 * bt.u;" },
+  { id:"beat-never-recovers", must:"34",
+    why:"the ease-out never runs - the boss stays flattened in its landing pose " +
+        "for the whole rest and walks at you that way",
+    from:"    const k = clamp(1 - (ab.rest - A.t) / BEAT_REST, 0, 1);",
+    to:  "    const k = clamp(1 - (ab.rest - A.t) / 1e9, 0, 1);" },
+  { id:"beat-left-in-body", must:"34",
+    why:"the draw no longer puts walk()'s squash back after the plan - the " +
+        "beat compounds frame over frame and a paused boss shrinks into the ground",
+    from:"    plan(e, face, W*sq, H, c, glow, lod, e.py);\n    e.sq = sq0;",
+    to:  "    plan(e, face, W*sq, H, c, glow, lod, e.py);\n    e.sq = e.sq;" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

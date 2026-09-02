@@ -640,7 +640,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   const hordeOnly = await page.evaluate(async () => {
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
     window.__g.forceBiome("grass");        // same pin as the boss frame above
-    window.__g.skipTo(1140);
+    // PAST the schedule, not just to minute 19. skipTo(1140) alone had THE
+    // MATRIARCH, THORNBACK and SKYSPLITTER all come out of the ground on the
+    // next three ticks, and 25 s later two or three of them were still
+    // standing depending on which the kit had got to - each one a hundred-odd
+    // boxes at full detail, divided over the horde as if it were the horde's.
+    // A run with three alive read 34.6 a box-plan change had not touched;
+    // the same frame with two read 31. "Horde only" now means it.
+    window.__g.skipTo(1140, true);
     for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
       window.__g.give(w, 4);
     window.__g.step(60 * 25); window.__g.clearGems(); window.__g.resume();
@@ -658,6 +665,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   const bare = await page.evaluate(async () => {
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
     window.__g.freezeSpawns(true); window.__g.freezeEvents(true);
+    // the same ground as the frame it is subtracted from: props are per biome,
+    // and an unpinned start measured 327 in one run and 448 in another
+    window.__g.forceBiome("grass");
     window.__g.step(30); window.__g.clearGems(); window.__g.resume();
     await new Promise(r => setTimeout(r, 400));
     return window.__g.state().boxes;
@@ -675,8 +685,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("there is enough horde standing to measure a per-enemy cost",
      hordeOnly.enemies > 40,
      `${hordeOnly.enemies} enemies standing after 25s at minute 19`);
+  // 27, down from 33: the 30-ish figures the old bound was set around were
+  // two or three bosses' worth of boxes spread over the horde (above). With
+  // the schedule skipped the trash horde alone measures 21.3 to 23.1 across
+  // four runs of 89 to 105 enemies, so 33 was a bound a 40% blow-up in the
+  // trash bodies would have walked under.
   ok("the horde's cost per enemy stays bounded",
-     per <= 33,
+     per <= 27,
      `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies ` +
      `(${hordeOnly.boxes} total, ${bare} of it not the horde)`);
   ok("and the frame still fits two flushes without a boss",
@@ -5153,6 +5168,145 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the real frame loop plays the beat after the run is over",
        r.clock.over === true && r.clock.d1 < r.clock.d0 && r.clock.a1 > r.clock.a0,
        `beat ${r.clock.d0} -> ${r.clock.d1}, dead ${r.clock.a0} -> ${r.clock.a1} over four frames`);
+  }
+
+  console.log("\n=== 34. THE BOSS WINDS UP, AND THEN IT HITS ===");
+  {
+    // A boss ability was a hazard ring on the ground and a 22% size pop. The
+    // body did nothing: the tell was a shape standing there for a second and
+    // the act was the same shape standing there for a shorter one. Now every
+    // ability is a beat in the body - a wind-up that gathers through the
+    // tell, a snap into the act, an ease back out over the first half second
+    // of the rest - and the plans hang their own limbs on it: THE MATRIARCH
+    // rears up and drops onto its forelimbs, THORNBACK bristles and heaves,
+    // SKYSPLITTER gathers its wings and throws them, TERRAVORE gapes and
+    // flares its tooth ring. bossCue() puts the live boss at an exact moment
+    // of an ability so the pose there can be read without waiting for it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const boot = (bi) => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.disarm(); g.place(0,0); g.aim(0);
+        g.step(20, 1/60); g.clearEnemies();
+        g.boss(bi); g.step(1, 1/60);
+        const b = g.bossAt(); g.place(b.x - 9, b.z); g.aim(0);
+        g.bossCue("slam", "move", 2.0); g.step(60, 1/60);   // up out of the ground, standing, rest long over
+        return g.bossAt();
+      };
+      const out = { kinds:{} };
+      // 1. every ability, read at the start, middle and top of its tell, in
+      //    its act, and at three points of the rest. TERRAVORE carries all five.
+      boot(3);
+      for(const k of ["slam","sinkhole","charge","spokes","evict"]){
+        const t0   = g.bossCue(k, "tell");
+        const half = g.bossCue(k, "tell", t0.t*.5);
+        const top  = g.bossCue(k, "tell", .0001);
+        const act  = g.bossCue(k, "act");
+        const r0   = g.bossCue(k, "move");                 // first instant of the rest
+        const r3   = g.bossCue(k, "move", r0.t - .3);
+        const r9   = g.bossCue(k, "move", r0.t - .9);      // past the ease-out
+        out.kinds[k] = { t0, half, top, act, r0, r3, r9 };
+      }
+      // 2. the real AI on THE MATRIARCH: rest runs out, tell, slam, rest -
+      //    sampled every frame with nothing cued
+      boot(0);
+      g.bossCue("slam", "move", .2);
+      const trace = [];
+      // .2 s of rest left, 1.15 tell, .30 act, then 2.27 s of the 2.5 s rest
+      for(let i=0;i<235;i++){ g.step(1, 1/60); const b = g.beat(); trace.push({ ph:b.phase, u:b.u, act:b.act, sq:b.sq }); }
+      const tell = trace.filter(s=>s.ph==="tell"), act = trace.filter(s=>s.ph==="act");
+      let climbs = true;
+      for(let i=1;i<tell.length;i++) if(tell[i].u < tell[i-1].u - 1e-6) climbs = false;
+      const snaps = [];
+      for(let i=1;i<trace.length;i++) if(Math.abs(trace[i].sq - trace[i-1].sq) > .3) snaps.push(trace[i-1].ph + ">" + trace[i].ph);
+      const firstMove = trace.findIndex((s,i)=> i > 0 && s.ph==="move" && trace[i-1].ph==="act");
+      out.cycle = { tellN: tell.length, actN: act.length, u0: tell[0] && tell[0].u, uTop: tell.length ? tell[tell.length-1].u : null,
+                    climbs, snaps, actSqMax: act.length ? Math.max(...act.map(s=>s.sq)) : null,
+                    moveAct: firstMove > 0 ? trace[firstMove].act : null,
+                    end: trace[trace.length-1] };
+      // 3. the limbs, off the captured boxes: neutral, top of the tell, act.
+      //    Every plan is drawn paused, so the walk cannot touch e.sq between
+      //    frames - which is also how the draw is caught leaving the beat in it.
+      const cap = async (kind, phase, t) => {
+        g.bossCue(kind, phase, t); g.captureEnemy();
+        await frame(); await frame(); await frame();
+        return g.enemyPos();
+      };
+      const diff = (A, B) => {
+        const n = Math.min(A.length, B.length)/6, d = { n, dr:[], df:[], dy:[] };
+        for(let i=0;i<n;i++){ d.dr.push(B[i*6]-A[i*6]); d.df.push(B[i*6+1]-A[i*6+1]); d.dy.push(B[i*6+2]-A[i*6+2]); }
+        const sum = arr => ({ max:+Math.max(...arr).toFixed(3), min:+Math.min(...arr).toFixed(3),
+                              up:arr.filter(v=>v>.25).length, dn:arr.filter(v=>v<-.25).length,
+                              up1:arr.filter(v=>v>1).length, moved:arr.filter(v=>Math.abs(v)>.1).length });
+        return { n, r:sum(d.dr), f:sum(d.df), y:sum(d.dy) };
+      };
+      out.limbs = {};
+      for(const [bi, kind] of [[0,"slam"],[1,"slam"],[2,"charge"],[3,"slam"]]){
+        const b = boot(bi);
+        g.pause(true);
+        const neutral = await cap("slam", "move", .5);
+        const top = await cap(kind, "tell", .0001);
+        const act = await cap(kind, "act");
+        const wsq = g.gait().find(e=>e.boss).sq;
+        g.pause(false);
+        out.limbs[b.body] = neutral && top && act
+          ? { n:neutral.length/6, tell:diff(neutral, top), act:diff(neutral, act), wsq }
+          : { n:0, missing:[!neutral, !top, !act] };
+      }
+      g.start("ox"); g.step(2, 1/60);
+      return out;
+    });
+    const K = r.kinds;
+    const at = (o, f) => `${f} sq ${o[f].sq} lf ${o[f].lf}`;
+    ok("nothing is cued at the start of a tell; every ability is fully wound at the top of it",
+       Object.values(K).every(o => o.t0.u === 0 && o.t0.sq === 1 && o.t0.lf === 0 && o.top.u > .99 && o.top.act === 0),
+       Object.entries(K).map(([k,o]) => `${k} u ${o.t0.u}->${o.top.u}`).join(", "));
+    ok("the slam and the sinkhole rear up - taller and leaning back - and the charge and the evict crouch",
+       K.slam.top.sq > 1.1 && K.slam.top.lf < -.1 && K.sinkhole.top.sq > 1.15 && K.sinkhole.top.lf < -.15 &&
+       K.charge.top.sq < .9 && K.charge.top.lf < -.1 && K.evict.top.sq < .95 && K.spokes.top.sq > 1.05,
+       Object.entries(K).map(([k,o]) => `${k} ${at(o,"top")}`).join("; "));
+    ok("the wind-up gathers: halfway through the tell it is a quarter of the way into the pose, not half",
+       Object.values(K).every(o => { const a = Math.abs(o.half.sq - 1), b = Math.abs(o.top.sq - 1); return a > b*.15 && a < b*.35; }),
+       Object.entries(K).map(([k,o]) => `${k} half ${(Math.abs(o.half.sq-1)/Math.abs(o.top.sq-1)).toFixed(2)}`).join(", "));
+    ok("the act snaps the other way: the slam and sinkhole flatten and lunge, the charge throws itself forward",
+       K.slam.act.act === 1 && K.slam.act.sq < .8 && K.slam.act.lf > .15 && K.sinkhole.act.sq < .7 &&
+       K.charge.act.lf > .2 && K.evict.act.sq > 1.05 && Object.values(K).every(o => o.act.u === 0),
+       Object.entries(K).map(([k,o]) => `${k} ${at(o,"act")}`).join("; "));
+    ok("the rest starts where the act left it and is back to neutral inside the first second",
+       Object.values(K).every(o => o.r0.act > .99 && o.r0.sq === o.act.sq && o.r3.act > .2 && o.r3.act < .7 &&
+                                    o.r9.act === 0 && o.r9.sq === 1 && o.r9.lf === 0),
+       Object.entries(K).map(([k,o]) => `${k} act ${o.r0.act} > ${o.r3.act} > ${o.r9.act}`).join(", "));
+    const C = r.cycle;
+    ok("THE MATRIARCH's own AI drives it: the wind-up climbs through the whole tell, from nothing to full",
+       C.tellN > 60 && C.u0 < .05 && C.uTop > .95 && C.climbs,
+       `${C.tellN} tell frames, u ${C.u0} -> ${C.uTop}, monotonic ${C.climbs}`);
+    ok("one snap in the whole cycle, at the moment the tell becomes the act; the act stays flat; the rest eases home",
+       C.snaps.length === 1 && C.snaps[0] === "tell>act" && C.actN > 10 && C.actSqMax < .8 &&
+       C.moveAct > .95 && C.end.ph === "move" && Math.abs(C.end.sq - 1) < .01 && C.end.act < .02,
+       `snaps [${C.snaps.join(" ")}], ${C.actN} act frames sq<=${C.actSqMax}, first rest frame act ${C.moveAct}, end ${C.end.ph} sq ${C.end.sq}`);
+    const L = r.limbs;
+    const j = (o) => JSON.stringify(o);
+    ok("THE MATRIARCH's forelimbs come up off the ground for the slam - a fifth of its height or more",
+       L.matriarch && L.matriarch.n > 40 && L.matriarch.tell.y.up1 >= 8 && L.matriarch.tell.y.max > 1.8,
+       L.matriarch ? `${L.matriarch.n} boxes, tell dy ${j(L.matriarch.tell.y)}` : "no capture");
+    ok("and they are down on it again the instant the slam lands, the jaw dropped and nothing else moved",
+       L.matriarch && L.matriarch.act.y.max < .05 && L.matriarch.act.y.min < -.2 && L.matriarch.act.y.up === 0 &&
+       L.matriarch.act.f.moved === 0 && L.matriarch.act.r.moved === 0,
+       L.matriarch ? `act dy ${j(L.matriarch.act.y)} df moved ${L.matriarch.act.f.moved} dr moved ${L.matriarch.act.r.moved}` : "no capture");
+    ok("THORNBACK's thorns rise in the tell and lie back along the shell in the heave",
+       L.thornback && L.thornback.tell.y.max > .8 && L.thornback.act.f.dn >= 16 && L.thornback.act.y.max < .2,
+       L.thornback ? `tell dy max ${L.thornback.tell.y.max}; act df ${j(L.thornback.act.f)} dy max ${L.thornback.act.y.max}` : "no capture");
+    ok("SKYSPLITTER pulls its wings back for the charge and throws them forward with its head as it goes",
+       L.skysplitter && L.skysplitter.tell.f.min < -1.2 && L.skysplitter.tell.f.dn >= 12 &&
+       L.skysplitter.act.f.up >= 16 && L.skysplitter.act.y.min < -.5,
+       L.skysplitter ? `tell df ${j(L.skysplitter.tell.f)}; act df ${j(L.skysplitter.act.f)} dy min ${L.skysplitter.act.y.min}` : "no capture");
+    ok("TERRAVORE's tooth ring flares open and its mandibles step forward when the slam lands",
+       L.terravore && (L.terravore.act.r.moved + L.terravore.act.y.moved) >= 12 && L.terravore.act.f.max > .15,
+       L.terravore ? `act dr ${j(L.terravore.act.r)} dy moved ${L.terravore.act.y.moved} df max ${L.terravore.act.f.max}` : "no capture");
+    ok("the draw leaves nothing of the beat in the body: e.sq is walk()'s again after every drawn frame",
+       Object.values(L).every(o => o.wsq !== undefined && Math.abs(o.wsq - 1) < .01),
+       Object.entries(L).map(([k,o]) => `${k} sq ${o.wsq}`).join(", "));
   }
 
   console.log("\n" + "=".repeat(58));

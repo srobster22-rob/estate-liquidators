@@ -102,9 +102,17 @@ const MIN = +(process.argv[2] || 0);
     // their own cycle. The clock is advanced with the field EMPTY and the body
     // respawned for each sample, because running the enemy for 240 frames walks
     // it out of full detail or lets the player's own weapon kill it.
-    const worstOf = async (spawn) => {
+    // ...AND FOR A BOSS, EVERY BEAT. The ability beat moves limbs the gait
+    // never touches - THE MATRIARCH's forelimbs come up a third of its height
+    // for the slam, SKYSPLITTER's wings sweep back for the charge - so a boss
+    // is also captured at the top of every tell and in every act. All five
+    // kinds, not just its kit: the plan has to hold together under any beat
+    // the table can hand it, and a kit is one line to change.
+    const CUES = [];
+    for(const k of ["slam","sinkhole","charge","spokes","evict"]) CUES.push([k,"tell",.0001], [k,"act"]);
+    const worstOf = async (spawn, cues = [null]) => {
       let out = null;
-      for(let ph=0; ph<6; ph++){
+      for(const cue of cues) for(let ph=0; ph<6; ph++){
         g.clearEnemies();
         g.step(40, 1/60);
         spawn();
@@ -116,12 +124,18 @@ const MIN = +(process.argv[2] || 0);
         // full stride, so a leg that swings loose at the end of its arc is
         // found here and not on the field.
         g.setGait(ph*.53, 1);
-        g.resume(); g.captureEnemy();
+        // a cued beat is drawn PAUSED: the draw runs on, the AI does not, so
+        // a tell cued at its top is captured at its top and not one sim step
+        // later in the act
+        if(cue){ g.bossCue(...cue); g.pause(true); } else g.resume();
+        g.captureEnemy();
         await frame(); await frame();
         const bx = g.enemyPos();
-        if(!bx) return { n:0, comps:-1, stray:[], weak:0 };
+        if(cue) g.pause(false);
+        if(!bx) return { n:0, comps:-1, stray:[], weak:0, cue };
         const a = analyse(bx);
-        if(!out || a.comps > out.comps) out = a;
+        a.cue = cue ? cue[0] + " " + cue[1] : "walk";
+        if(!out || a.comps > out.comps || (a.comps === out.comps && a.weak > out.weak)) out = a;
       }
       return out;
     };
@@ -145,7 +159,7 @@ const MIN = +(process.argv[2] || 0);
         g.boss(bi); g.step(1/60);
         const b = g.bossAt();
         if(b){ nm = b.nm; g.place(b.x - 9, b.z); g.step(120, 1/60); }
-      });
+      }, [null, ...CUES]);
       hordeRes.push(Object.assign({ ch:"boss"+bi, st:"", nm }, r2));
     }
     return { res, hordeRes };
@@ -158,9 +172,11 @@ const MIN = +(process.argv[2] || 0);
     for(const r of rows){
       if(r.comps > 1 || r.comps === -1) bad++;
       const flag = r.comps > 1 ? "  <-- " + (r.stray||[]).join(" ") : "";
+      // a boss row is the worst of 66 poses; say which one it was
+      const pose = r.cue && r.cue !== "walk" ? `  (worst at ${r.cue})` : "";
       console.log(`  ${(r.ch+" "+r.st).padEnd(12)}${(r.nm||"").padEnd(14)}` +
                   `${String(r.n).padStart(4)}${String(r.comps).padStart(7)}` +
-                  `${String(r.comps-1).padStart(7)}${String(r.weak).padStart(8)}${flag}`);
+                  `${String(r.comps-1).padStart(7)}${String(r.weak).padStart(8)}${flag}${pose}`);
     }
     console.log(`\n  ${bad} of ${rows.length} are not a single connected object`);
     return bad;
