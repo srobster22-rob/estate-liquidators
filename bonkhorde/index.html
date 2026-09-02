@@ -640,6 +640,7 @@ buildDynBuf();
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
   nbox++;                              // flush is free correctness insurance
+  if(wCap) wCap.push(x, y, z, sx, sy, sz);
 
   const e = emit||0, co = Math.cos(yaw||0), si = Math.sin(yaw||0), rot = !!yaw;
   for(let i=0;i<36;i++){
@@ -1839,8 +1840,10 @@ const ENEMIES = {
 shambler:{ nm:"TERRAPIN",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
            body:"terrapin" },
 // A small pterosaur. First to arrive, every time, and never on purpose.
+// `flier`: no stride hop from the draw loop - the plan carries its own
+// wingbeat - and it falls out of the air when it dies rather than lying on it.
 runner:  { nm:"PTERLING",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
-           body:"pterling", dive:true },
+           body:"pterling", dive:true, flier:true },
 // A young ceratopsian. All frill and shoulder, and it does not intend to stop.
 // LOW AND BROAD, not tall. h and w are visual only - the hitbox is r and reach
 // is measured to rad - and at 2.6 by 1.15 this animal was a cube, which is why
@@ -1891,7 +1894,7 @@ collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 const BOSSES = [
 { t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch" },
 { t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback" },
-{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter" },
+{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter", flier:true },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
@@ -2348,16 +2351,25 @@ pterling(e, face, W, H, c, glow, lod, y0){
   // The dive has to be legible or it is an unfair hit. Winding up, it rears and
   // its wings snap back and go white-hot; crossing, it flattens into a line and
   // trails. Two silhouettes nothing else on the field makes.
-  const wind = e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0;
-  const div  = e.dvT > 0 ? 1 : 0;
-  const flap = Math.sin(T*(13 + wind*36) + e.bob) * (1 - div*.85),
-        hop  = Math.abs(Math.sin(T*7 + e.bob))*H*.10 + wind*H*.30 - div*H*.16;
-  if(wind > .15){
+  // THE ONE PLAN WITH ITS OWN CLOCK. Every other body moves on gait time,
+  // which stops when the animal does; the wingbeat and the flight bob run on
+  // T, so a dead pterosaur kept flapping on the ground. `life` runs them out
+  // over the first third of the fall and lets the wings droop - and it runs
+  // the dive posture out with them, rather than dropping it on the kill
+  // frame: a diver shot mid-dive was popping a sixth of its height back up
+  // as it died, because its dive state was being cleared with the kill.
+  const life = e.dead ? Math.max(0, 1 - e.ft / (e.fd*.30)) : 1;
+  const wind = (e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0) * life;
+  const div  = (e.dvT > 0 ? 1 : 0) * life;
+  const flap = Math.sin(T*(13 + wind*36) + e.bob) * (1 - div*.85) * life,
+        hop  = (Math.abs(Math.sin(T*7 + e.bob))*H*.10 + wind*H*.30 - div*H*.16) * life;
+  // the warning and the streak are world-space FX, and go with the kill
+  if(wind > .15 && !e.dead){
     const gy2 = groundY(e.x, e.z);
     for(let i=0;i<3;i++)                                        // a warning above it
       box(e.x, gy2 + H*1.5 + i*.42, e.z, .09, .16, .09, [1,.86,.30], .55 + wind*.45);
   }
-  if(div) for(let i=1;i<=4;i++)                                 // the streak behind
+  if(div && !e.dead) for(let i=1;i<=4;i++)                      // the streak behind
     box(e.x - Math.sin(face)*i*.55, e.y + H*.42, e.z - Math.cos(face)*i*.55,
         W*.20 - i*.02, H*.03, W*.20 - i*.02, [1,.92,.72], .70 - i*.13, face);
   c = wind > .15 ? [Math.min(1,c[0]+wind*.5), Math.min(1,c[1]+wind*.35),
@@ -2389,7 +2401,7 @@ pterling(e, face, W, H, c, glow, lod, y0){
     // connectivity report that only ever looked at the player. Each panel is
     // centred on the midpoint of a finger span now and cut wider than the
     // step, so it always bridges the two joints it hangs between.
-    const STEP = .62, BACK = -.07, RISE = .06 + flap*.06;
+    const STEP = .62, BACK = -.07, RISE = .06 + flap*.06 - (1 - life)*.14;  // dead: the tips drop
     const jr = i => sg*(W*.34 + STEP*i);
     const jf = i => W*.12 + flap*W*.10 + BACK*i;
     const jy = i => y0 + H*.50 + hop + RISE*i;
@@ -2581,17 +2593,25 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
   // draws, and a beam you can find from across the arena. The exemption in the
   // contrast check is paid for here, and asserted.
   const gy = groundY(e.x, e.z);
-  for(let i=0;i<10;i++){ const a = i*(TAU/10) + T*1.1;
-    box(e.x+Math.sin(a)*W*1.5, gy+.10, e.z+Math.cos(a)*W*1.5,
-        W*.16, .06, W*.16, [1,.86,.30], 1.0); }
-  for(let i=0;i<5;i++)
-    box(e.x, gy + 2.4 + i*1.5 + Math.sin(T*2+i)*.20, e.z,
-        .10, .55, .10, [1,.92,.52], .95);
+  // THE MARKER GOES OUT WITH THE BIRD. Ring, beam and sparks are world-space
+  // FX on the clock, not limbs, so the fall's squash never reaches them - left
+  // alone they would burn over a corpse for the whole of it. They close in
+  // the first third of the fall instead: the ring draws in, the beam drops
+  // into the body, then all of it is gone.
+  const mk = e.dead ? Math.max(0, 1 - e.ft / (e.fd*.35)) : 1;
+  if(mk > 0){
+    for(let i=0;i<10;i++){ const a = i*(TAU/10) + T*1.1;
+      box(e.x+Math.sin(a)*W*1.5*mk, gy+.10, e.z+Math.cos(a)*W*1.5*mk,
+          W*.16*mk, .06, W*.16*mk, [1,.86,.30], 1.0); }
+    for(let i=0;i<5;i++)
+      box(e.x, gy + (2.4 + i*1.5 + Math.sin(T*2+i)*.20)*mk, e.z,
+          .10, .55*mk, .10, [1,.92,.52], .95);
+    drawnMarks++;
+  }
   // `bob` is how high the whole body rides over its first build: eight
   // hundredths of the height standing - the bird is on LONGER legs since they
   // were jointed, and everything from the barrel up moved with it - plus the
   // running bounce on top.
-  drawnMarks++;
   const st = stride(e, 13), bob = H*.08 + Math.abs(Math.sin(e.gt*6.5 + e.bob))*H*.05*e.amp;
   const B = lod>=2 ? ebl : eb;
   B(e, face, 0, -W*.06, y0 + H*.44 + bob, W*.52, H*.24, W*.46, c, glow);      // barrel body
@@ -2634,8 +2654,9 @@ glimmerfowl(e, face, W, H, c, glow, lod, y0){
   // the same rule the player's plans keep with fx(), and for the same reason:
   // a shower of sparks is not a limb that came off, and the mesh census should
   // not have to argue about it.
+  if(mk <= 0) return;
   for(let i=0;i<4;i++){ const a = i*(TAU/4) + T*1.3;                          // it sheds sparks
-    box(e.x + Math.sin(a)*W*.72, y0 + H*1.02, e.z + Math.cos(a)*W*.64,
+    box(e.x + Math.sin(a)*W*.72*mk, y0 + H*1.02*mk, e.z + Math.cos(a)*W*.64*mk,
         W*.045, W*.045, W*.045, [1,.95,.62], .95); }
 },
 
@@ -2853,9 +2874,13 @@ terravore(e, face, W, H, c, glow, lod, y0){
   const seamEm = cue*.30;
   const plate = [c[0]*.52, c[1]*.46, c[2]*.48];
   const seam  = [1, .52 + heat*.30, .12];
-  for(let i=0;i<12;i++){ const a = i*(TAU/12) + T*.5;      // the ground gives up around it
-    box(e.x+Math.sin(a)*W*1.35, gy+.12, e.z+Math.cos(a)*W*1.35,
-        W*.16, .07, W*.16, seam, .85 + heat*.15); }
+  // ...and closes back over it once it is dead: the ring is world-space FX,
+  // so the fall's squash cannot take it down with the body - it draws in
+  // over the first third of the fall and goes out.
+  const mk = e.dead ? Math.max(0, 1 - e.ft / (e.fd*.35)) : 1;
+  for(let i=0;i<12 && mk > 0;i++){ const a = i*(TAU/12) + T*.5;      // the ground gives up around it
+    box(e.x+Math.sin(a)*W*1.35*mk, gy+.12, e.z+Math.cos(a)*W*1.35*mk,
+        W*.16*mk, .07, W*.16*mk, seam, .85 + heat*.15); }
   const segs = lod >= 2 ? 5 : lod >= 1 ? 3 : 2;
   for(let s=0; s<segs; s++){                                // plated segments
     const k = 1 - s*.12, sw = Math.sin(T*1.7 - s*.6)*W*.10;
@@ -5035,6 +5060,17 @@ let boxSeq = 0;
 // whole mesh without touching twelve plans. Direct box() calls are markers
 // (GLIMMERFOWL's ring, TERRAVORE's scorched ground), not mesh, and stay out.
 let ebCap = null, ebCapOut = null;
+// THE FALLEN. A body whose hp crossed zero used to be drawn once more and
+// spliced out on the next tick - a burst of six squares where an animal had
+// been. It goes onto this list now and is drawn a moment longer: it crumples,
+// topples the way it was hit and goes into the ground. Nothing else reads the
+// list - not the grid, the weapons, the AI or the hit tests - so a corpse
+// cannot be hit, targeted, walked through or counted. See fell()/deathPose().
+let corpses = [];
+const CORPSE_MAX = 48;
+// world-space capture of one drawn corpse (test hook): eb()'s capture records
+// the plan before the pose, and the whole point of a corpse is the pose
+let wCap = null, wCapOut = null, wCapWant = false;
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 // ===================================================== THE TWO RULE-CHARACTERS
@@ -5305,7 +5341,7 @@ function startRun(id){
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
 
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[]; pets=[];
-  arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[];
+  arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[]; corpses=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
   // THE OPENING. The director spawns at 1.2 a second on an off-screen ring and
   // the first thing to arrive walks at 2.5 m/s, so the first ten seconds of
@@ -5724,6 +5760,7 @@ function hurt(e, amount, kx, kz, crit){
 function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++;
+  fell(e);
   if(e.denRef) denLost(e.denRef);
   const n = e.boss ? 30 : e.elite ? 16 : e.rad>1 ? 11 : 6;
   for(let i=0;i<n;i++) if(pops.length<340)
@@ -5740,6 +5777,65 @@ function killEnemy(e){
     if(R() < .012) coinsRun += 5;
     if(e.elite){ hold("elite"); shake = Math.max(shake, .3); }
     SFX.pop();
+  }
+}
+// THE FALL. The body keeps its own record - def, size, elite, the gait state
+// the plan reads - and gets a direction, a clock and a length. The direction
+// is the shove that was on it when it died, and straight back from the player
+// when there was none, because a thing drops away from what hit it. The
+// heading is frozen where it was: walk() no longer runs on a corpse, and a
+// body that kept turning to face you after it died would be the wrong kind
+// of unsettling.
+const FALL_DUR = { trash:.55, elite:.85, boss:1.6 };
+function fell(e){
+  let fx = e.kx, fz = e.kz, fl = Math.hypot(fx, fz);
+  if(fl < .5){ fx = e.x - P.x; fz = e.z - P.z; fl = Math.hypot(fx, fz) || 1; }
+  e.fx = fx/fl; e.fz = fz/fl;
+  e.ft = 0;
+  e.fd = e.boss ? FALL_DUR.boss : e.elite ? FALL_DUR.elite : FALL_DUR.trash;
+  e.fhd = e.hd === undefined ? Math.atan2(P.x-e.x, P.z-e.z) : e.hd;
+  e.flash = -1;
+  if(corpses.length >= CORPSE_MAX) corpses.shift();
+  corpses.push(e);
+}
+// THE FALL, AS A POSE. Normalised time in, four numbers out, and the draw hands
+// them to the squash and shear eb() already applies to every body, so all
+// eleven plans fall without one of them knowing how:
+//   drop   0 -> .40  the legs go - squash 1 -> .42 on an ease-in - while the
+//                    whole body shears the way it was hit, top first; one
+//                    small rebound past the bottom, because a weight that
+//                    stops dead is a sprite frame
+//   still .40 -> .70 it lies there
+//   sink  .70 -> 1   it goes into the ground - the pivot drops 1.15 H, the
+//                    boss rise in reverse, and the terrain hides the rest
+// fade climbs across the whole of it: colour toward the dirt, no glow.
+function deathPose(u){
+  const s3 = k => k*k*(3 - 2*k);
+  const d = s3(clamp(u/.40, 0, 1));
+  const bounce = Math.sin(Math.PI*clamp((u - .36)/.26, 0, 1)) * .07;
+  return { sq:   1 - .58*d + bounce,
+           drop: d,                                  // a flier's height, given up
+           lean: .62*s3(clamp(u/.46, 0, 1)),
+           sink: s3(clamp((u - .70)/.30, 0, 1)),
+           fade: clamp(u*1.5, 0, 1) };
+}
+function stepCorpses(dt){
+  for(let i=corpses.length-1; i>=0; i--){
+    const e = corpses[i];
+    e.ft += dt;
+    if(e.ft >= e.fd){ corpses.splice(i, 1); continue; }
+    // the shove carries on into the fall and dies out the way it does on a
+    // live body, so a bonked animal skids as it goes down
+    e.x += e.kx*dt; e.z += e.kz*dt;
+    e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
+    e.y = groundY(e.x, e.z);
+    // the legs stop. The bank and the bite stay where death caught them: a
+    // live body pulls its head back out of a bite at 3.2/s, and a corpse
+    // doing that on an eleven-metre shear arm swung SKYSPLITTER's crest three
+    // metres back in a quarter of a second as it began to fall. A dead thing
+    // does not pull its head back or level its wings - it goes down in the
+    // pose it had, head first if it was biting.
+    e.amp -= e.amp*Math.min(1, dt*6);
   }
 }
 const mkGem = (x,z,v)=>({ x, z, y:groundY(x,z)+.45, v, bob:R()*TAU, pulled:false });
@@ -6263,7 +6359,7 @@ function spawnBoss(b){
   // was added to the four boss entries and silently did not arrive, so all four
   // rendered the five-box fallback while the table said otherwise.
   const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
-                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body };
+                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier };
   const a = R()*TAU;
   const [x, z] = confine(P.x+Math.cos(a)*26, P.z+Math.sin(a)*26, 5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
@@ -7793,6 +7889,7 @@ function step(dt){
   updateOrbiters(dt);
   updateBrood(dt);
   updateEnemies(dt);
+  stepCorpses(dt);
   updateProjectiles(dt);
   updateHazards(dt);
   updateEvents(dt);
@@ -9796,6 +9893,7 @@ function render(){
     }
   }
   for(const e of enemies){
+    if(e.dead) continue;                 // on the corpse list now, drawn below
     // THE BEAT. A boss winding up used to be a 22% size pop and nothing on
     // the hit; the pose carries it now (bossBeat), and what is left of the
     // pop is a swell small enough to read as breath drawn rather than a
@@ -9923,6 +10021,67 @@ function render(){
             i/14 < f ? [1,.25,.2] : [.16,.16,.18], i/14<f?.9:0);
     }
   }
+  // THE FALLEN. Same plans, same pose path, drawn after the living so a body
+  // that has just dropped lies under the one stepping over it. The mesh
+  // capture is closed around them: a corpse is a live body's boxes at another
+  // pose, and every harness that asks whether the animal is one object is
+  // asking about the living one. No crown, no hp bar, no beat.
+  const cap0 = ebCap; ebCap = null;
+  for(const e of corpses){
+    const D = e.def, S = e.sz, W = D.w*S, H = D.h*S;
+    const dp = deathPose(e.ft / e.fd);
+    const dc = P ? Math.hypot(e.x-P.x, e.z-P.z) : 0;
+    const lod = e.boss ? (dc < 45 ? 2 : dc < 90 ? 1 : 0)
+                       : dc < 11 ? 2 : dc < 26 ? 1 : 0;
+    const face = e.fhd;
+    // THE POSE IT DIED IN carries over and decays - the hop of the stride it
+    // was mid-way through, the lean into the run, the bite, the bank, the
+    // stagger off the shove still on it - all fed by the same amp/lg/bk/kx the
+    // live draw reads; stepCorpses() runs the stride and the shove down and
+    // leaves the bite and the bank where they were. Without this the kill frame
+    // dropped a running brute a sixth of a metre and stood it bolt upright
+    // before it began to fall, which is a cut, not a death.
+    const hop = D.flier ? 0 : Math.abs(Math.sin(e.gt*(e.boss ? 3.4 : 2 + D.spd) + e.bob))
+                             * e.amp * (e.boss ? .08 : .16);
+    const kf = e.kx*Math.sin(face) + e.kz*Math.cos(face),
+          kr = e.kx*Math.cos(face) - e.kz*Math.sin(face);
+    // ...and the fall direction in the body's own frame: forward and right
+    const tf = e.fx*Math.sin(face) + e.fz*Math.cos(face),
+          tr = e.fx*Math.cos(face) - e.fz*Math.sin(face);
+    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + Math.sin(e.lg*Math.PI)*.35 + tf*dp.lean;
+    e.lr = clamp(kr*.04, -.40, .40) + e.bk + tr*dp.lean;
+    e.bt = BT0;
+    const sq0 = e.sq; e.sq = dp.sq;
+    const base = e.elite ? [lerp(D.c[0],1,ELITE_TINT), lerp(D.c[1],.42,ELITE_TINT),
+                            lerp(D.c[2],.10,ELITE_TINT)]
+                         : D.c;
+    const c = [lerp(base[0], .27, dp.fade), lerp(base[1], .25, dp.fade), lerp(base[2], .26, dp.fade)];
+    const gy = groundY(e.x, e.z);
+    // the shadow stays while it lies there and closes with the ground as the
+    // body goes in - the footprint shrinks, it does not pop lighter
+    if(dp.sink < 1) shadow(e.x, gy, e.z, W*.62*(1 - dp.sink*.85), 0, face, dc > 22 ? .18 : 0);
+    // A FLIER FALLS OUT OF THE AIR. Its plan hangs the body over the pivot -
+    // SKYSPLITTER's feet dangle a fifth of its height above the grass - and a
+    // squash about that pivot only shrinks the gap, so it died hovering. The
+    // gap is measured off the plan's own boxes on the first frame, when
+    // nothing has moved yet, and the drop closes it with the crumple - what
+    // is left of it after the squash, so the feet land ON the ground and
+    // not the gap's depth under it.
+    e.py = e.y + hop - dp.sink*H*1.15 - dp.drop*dp.sq*(e.fgap || 0);
+    const plan = EBODY[D.body] || EBODY.generic;
+    const take = wCapWant && !wCapOut, first = e.fgap === undefined;
+    if(take || first) wCap = [];
+    plan(e, face, W, H, c, 0, lod, e.py);
+    if(first){
+      let lo = 1e9;
+      for(let i=1; i<wCap.length; i+=6) lo = Math.min(lo, wCap[i] - wCap[i+4]);
+      e.fgap = D.flier && lo < 1e9 ? Math.max(0, lo - gy) : 0;
+    }
+    if(take){ wCapOut = wCap; wCapWant = false; }
+    wCap = null;
+    e.sq = sq0;
+  }
+  ebCap = cap0;
 
   // Twenty-one faces are worth building and you spend the whole run looking at
   // the back of one. Standing still, the monster turns and looks at you - which
@@ -10378,6 +10537,10 @@ function frame(now){
   dt = Math.min(.042, (now-last)/1000); last = now;
   if(hitstop > 0) hitstop -= dt;
   else if(running && !over && !paused) step(dt);
+  // The horde's fall is on the world clock - it holds through the hitstop of
+  // the blow, which IS the impact frame - but a run's end stops the world,
+  // and the last boss should still hit the floor under the VICTORY banner.
+  else if(over) stepCorpses(dt);
   // The death beat runs on the wall clock, through the hitstop of the blow
   // that caused it and past the end of the run: the world holds, the animal
   // does not.
@@ -10451,7 +10614,7 @@ window.__g = {
     } return enemies.length; },
   // A head-tracking check has to start from an empty field, or whatever the
   // director left lying around is the nearest thing worth looking at.
-  clearEnemies:()=>{ enemies.length = 0; rebuildGrid(); return enemies.length; },
+  clearEnemies:()=>{ enemies.length = 0; corpses.length = 0; rebuildGrid(); return enemies.length; },
   boss:  i=>spawnBoss(BOSSES[i||0]),
   // position/HP/body of the boss on the field, so a test can hold an exact
   // gap to it instead of chasing a target that walks toward the player.
@@ -10514,6 +10677,9 @@ window.__g = {
   // varies run to run - which turned a metric that held to a tenth of a box
   // into one that swung a box and a half. Sweep them before measuring.
   clearGems:()=>{ const n = gems.length; gems.length = 0; return n; },
+  // the burst and the numbers off a kill, for a film of the body underneath
+  // them: paused, the pops hang where they spawned, inside the corpse
+  clearFx:()=>{ pops.length = 0; nums.length = 0; },
   // exact placement, because "spawn one within nine metres" puts the thing at
   // a random angle and a test that measures WHICH WAY the head turned cannot
   // use a random angle
@@ -10648,6 +10814,47 @@ window.__g = {
                                                .map(v=>v.toFixed(3)).join(","));
                  return n + "|" + sz.sort().join(" "); },
   enemyPos:()=>ebCapOut ? ebCapOut.slice() : null,
+  // THE FALLEN: the list, the pose table, and a world-space capture of the
+  // first corpse drawn on the next frame - eb()'s capture is the plan before
+  // the pose, and a death check has to see the pose.
+  corpses:()=>corpses.map(e=>({ type:e.type, boss:!!e.boss, elite:!!e.elite,
+                                t:+e.ft.toFixed(4), dur:e.fd, u:+(e.ft/e.fd).toFixed(4),
+                                x:+e.x.toFixed(3), z:+e.z.toFixed(3), y:+e.y.toFixed(3),
+                                fx:+e.fx.toFixed(3), fz:+e.fz.toFixed(3),
+                                hd:+e.fhd.toFixed(4), amp:+e.amp.toFixed(4),
+                                lg:+e.lg.toFixed(4), bk:+e.bk.toFixed(4) })),
+  deathPose:u=>deathPose(u),
+  // the fall by hand, PAUSED, same reason as deathStep: a headless renderer at
+  // four frames a second drifts a wall-clock beat by a quarter of its length
+  // between "step to the mark" and "capture the frame"
+  corpseStep:(n, dt)=>{ for(let i=0;i<(n||1);i++) stepCorpses(dt||1/60); return corpses.length; },
+  captureCorpse:()=>{ wCapWant = true; wCapOut = null; },
+  // the drawn boxes of that corpse, world space: count, extent and the ground
+  // under its origin, so a check can say how tall it draws and where its top is
+  corpseBox:(at)=>{ if(!wCapOut) return null;
+                  const b = wCapOut, n = b.length/6;
+                  let minY=1e9, maxY=-1e9, minX=1e9, maxX=-1e9, minZ=1e9, maxZ=-1e9, tx=0, tz=0, ty=-1e9, hi=-1;
+                  for(let i=0;i<n;i++){
+                    const x=b[i*6], y=b[i*6+1], z=b[i*6+2], sx=b[i*6+3], sy=b[i*6+4], sz=b[i*6+5];
+                    minY=Math.min(minY,y-sy); maxY=Math.max(maxY,y+sy);
+                    minX=Math.min(minX,x-sx); maxX=Math.max(maxX,x+sx);
+                    minZ=Math.min(minZ,z-sz); maxZ=Math.max(maxZ,z+sz);
+                    // the centre of the highest box: the shear carries it the
+                    // whole squashed height, and the widening of a squashed
+                    // box moves its extents but never its centre, so this is
+                    // where the lean reads clean on a body the AABB blurs
+                    if(y > ty){ ty = y; tx = x; tz = z; hi = i; }
+                  }
+                  const e = corpses[0];
+                  const o = { n, minY:+minY.toFixed(3), maxY:+maxY.toFixed(3),
+                              minX:+minX.toFixed(3), maxX:+maxX.toFixed(3),
+                              minZ:+minZ.toFixed(3), maxZ:+maxZ.toFixed(3),
+                              tx:+tx.toFixed(3), tz:+tz.toFixed(3), hi,
+                              gy: e ? +groundY(e.x, e.z).toFixed(3) : null };
+                  // ...and a box by its draw index, so a caller can follow ONE
+                  // box across the fall when the highest one changes identity
+                  if(at != null && at >= 0 && at < n){ o.ax = +b[at*6].toFixed(3); o.ay = +b[at*6+1].toFixed(3); o.az = +b[at*6+2].toFixed(3); }
+                  return o; },
   bodySig:()=>{ if(!bodyCapOut) return null;
                 const n = bodyCapOut.length/3, sz = [];
                 for(let i=0;i<n;i++) sz.push(bodyCapOut.slice(i*3,i*3+3)
@@ -10682,6 +10889,12 @@ window.__g = {
                                   slowT:+(e.slowT||0).toFixed(3) } : null; },
   // hit one enemy by index, with an optional shove; slow them all for t seconds
   hurtAt:(i, n, kx=0, kz=0)=>{ const e = enemies[i]; if(e) hurt(e, n, kx, kz); },
+  // promote enemy i the way an angry den does, so an elite can be put on the
+  // field on demand instead of waiting for the minute and the dice
+  elite:(i=0)=>{ const e = enemies[i]; if(!e || e.elite || e.boss) return false;
+                 e.elite = true; e.sz *= ELITE.sz; e.rad *= ELITE.sz;
+                 e.xp *= ELITE.xp; e.spdMul *= ELITE.spd; e.dmg *= ELITE.dmg;
+                 e.hp = e.maxhp = e.maxhp * ELITE.hp; return true; },
   slowAll:(t=5)=>{ for(const e of enemies) e.slowT = t; },
   // Put every body at one point in its stride, mid-run. The connectivity pass
   // spawns each animal fresh and so only ever saw gt 0 at amp 0 - the standing

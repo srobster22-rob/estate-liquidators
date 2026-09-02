@@ -5309,6 +5309,225 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Object.entries(L).map(([k,o]) => `${k} sq ${o.wsq}`).join(", "));
   }
 
+  console.log("\n=== 35. THE HORDE FALLS DOWN ===");
+  {
+    // A kill was a splice. The body was on the field one frame and a burst of
+    // particles the next, and eleven body plans' worth of animal vanished the
+    // way a sprite is unset. Now it FALLS: killEnemy() hands the body to a
+    // corpse list with the direction it was hit from, and the draw runs the
+    // same plan down the same squash-and-shear pose path with deathPose(u) -
+    // the legs go and the body shears the way it was hit, it lies there, it
+    // goes into the ground. A flier drops out of the air first. World-space
+    // FX a plan hangs on a live body - the collector's beacon, the pterling's
+    // warning and streak, the terravore's seam - go with the kill. Everything
+    // here runs PAUSED and steps the fall by hand, same as 34.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const boot = () => {
+        g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.disarm(); g.place(0,0); g.aim(0);
+        g.step(20, 1/60); g.clearEnemies(); g.clearGems();
+      };
+      // the standing body's drawn top, eb() capture, height over its own ground
+      const standing = async () => {
+        const gs = g.gait()[0];
+        g.captureEnemy(); await frame(); await frame();
+        const bx = g.enemyPos(); let top = -1e9, bot = 1e9;
+        for(let i=0;i<bx.length/6;i++){ top = Math.max(top, bx[i*6+2] + bx[i*6+5]); bot = Math.min(bot, bx[i*6+2] - bx[i*6+5]); }
+        return { n:bx.length/6, top:+(top - gs.y).toFixed(3), bot:+(bot - gs.y).toFixed(3), gs };
+      };
+      // step the first corpse to normalised time u and read its drawn box
+      const at = async (u) => {
+        const c0 = g.corpses()[0]; if(!c0) return null;
+        const n = Math.round(Math.max(0, u*c0.dur - c0.t)*60);
+        if(n > 0) g.corpseStep(n, 1/60);
+        const c = g.corpses()[0]; if(!c) return null;
+        g.captureCorpse(); await frame(); await frame();
+        const b = g.corpseBox(); if(!b) return null;
+        return { u:c.u, n:b.n, top:+(b.maxY - b.gy).toFixed(3), bot:+(b.minY - b.gy).toFixed(3),
+                 cx:+((b.minX + b.maxX)/2 - c.x).toFixed(3), cz:+((b.minZ + b.maxZ)/2 - c.z).toFixed(3),
+                 tx:+(b.tx - c.x).toFixed(3), tz:+(b.tz - c.z).toFixed(3),
+                 marks:g.fowlMarks(), amp:c.amp, lg:c.lg, bk:c.bk };
+      };
+      const out = {};
+      // 1. THE LIST. The kill puts the body on it at once, with the shove it
+      //    died under as its direction; the next world step takes it off the
+      //    field; the fall runs its length and the body is gone.
+      boot();
+      g.spawnAt("shambler", 0, 6); g.step(40, 1/60); g.pause(true);
+      g.hurtAt(0, 1e9, 7, 0);
+      const c0 = g.corpses()[0], onField = g.state().enemies;
+      // the frame's box count at the kill, while the dead body is still in the
+      // enemy list, against the frame one step later when it is only a corpse:
+      // the live pass has to skip it, or the kill frame draws it twice
+      g.clearFx(); g.clearGems(); await frame(); await frame();
+      const bxKill = g.state().boxes;
+      g.step(1, 1/60); g.pause(true);
+      const c1 = g.corpses()[0];
+      g.clearFx(); g.clearGems(); await frame(); await frame();
+      const bxNext = g.state().boxes;
+      out.list = { c0, onField, enemies:g.state().enemies, c1, bxKill, bxNext,
+                   late:g.corpseStep(31, 1/60), gone:g.corpseStep(2, 1/60) };
+      // with no shove on it, it drops away from the player
+      g.spawnAt("shambler", 0, -6); g.step(2, 1/60); g.pause(true);
+      g.hurtAt(0, 1e9, 0, 0);
+      out.away = g.corpses()[0];
+      // 2. THE CAP, and the two ways the list is emptied
+      boot();
+      for(let i=0;i<60;i++){ const a = i*(Math.PI*2/60); g.spawnAt("shambler", Math.sin(a)*5, Math.cos(a)*5); }
+      g.step(1, 1/60); g.pause(true);
+      const n0 = g.state().enemies;
+      for(let i=0;i<n0;i++) g.hurtAt(i, 1e9, 1, 0);
+      out.cap = { n0, corpses:g.corpses().length, cleared:g.clearEnemies() + g.corpses().length };
+      g.spawnAt("shambler", 0, 5); g.step(1, 1/60); g.pause(true); g.hurtAt(0, 1e9, 1, 0);
+      const had = g.corpses().length;
+      g.start("ox"); out.cap.restart = { had, now:g.corpses().length };
+      // 3. THE POSE TABLE, straight from the function
+      out.pose = {};
+      for(const u of [0, .15, .3, .36, .4, .49, .55, .7, .85, 1]) out.pose[u] = g.deathPose(u);
+      let mono = true;
+      for(let u = 0; u < .36; u += .01) if(g.deathPose(u + .01).sq > g.deathPose(u).sq + 1e-9) mono = false;
+      out.pose.sqFalls = mono;
+      // 4. THE DRAWN BODY. Six kinds and two bosses, killed with a shove
+      //    across +x, read standing, at the kill frame, crumpled, lying and
+      //    almost gone. The elite is a brute promoted the way a den does it.
+      out.fall = {};
+      const kinds = ["shambler","brute","spitter","skitter","runner","collector","elite","boss0","boss2"];
+      for(const kind of kinds){
+        boot();
+        if(kind.startsWith("boss")){
+          g.boss(+kind.slice(4)); g.step(1, 1/60);
+          const b = g.bossAt(); g.place(b.x, b.z - 9); g.step(180, 1/60);
+        } else {
+          g.spawnAt(kind === "elite" ? "brute" : kind, 0, 6);
+          if(kind === "elite") g.elite(0);
+          g.step(40, 1/60);
+        }
+        g.pause(true);
+        const gs = g.gait()[0];
+        if(!gs){ out.fall[kind] = { err:"no subject" }; continue; }
+        // the observer well clear of the shot but inside full detail (11 m):
+        // a runner has dived onto the player by now
+        if(!kind.startsWith("boss")) g.place(gs.x - 6, gs.z + 6);
+        const st = await standing();
+        g.hurtAt(0, 1e9, kind.startsWith("boss") ? 30 : 7, 0); g.clearFx(); g.clearGems();
+        const c = g.corpses()[0];
+        if(!c){ out.fall[kind] = { err:"no corpse", enemies:g.state().enemies }; continue; }
+        const f = { type:c.type, boss:c.boss, elite:c.elite, dur:c.dur, fx:c.fx, fz:c.fz, nAlive:st.n, topAlive:st.top, botAlive:st.bot,
+                    u0:await at(0), u4:await at(.4), u5:await at(.55), u97:await at(.97) };
+        f.expired = g.corpseStep(4, 1/60);
+        out.fall[kind] = f;
+      }
+      // 5. THE OTHER WAY. A shove along -z: the lean follows the blow, not the lens.
+      boot();
+      g.spawnAt("brute", 0, 6); g.step(40, 1/60); g.pause(true);
+      { const gs = g.gait()[0]; g.place(gs.x - 6, gs.z + 6); }
+      g.hurtAt(0, 1e9, 0, -7); g.clearFx(); g.clearGems();
+      out.back = { c:g.corpses()[0], u0:await at(0), u4:await at(.4) };
+      // 6. THE LAST BOSS. Its death ends the run, the run's end stops the
+      //    world, and the body still has to reach the floor under the banner:
+      //    frame() steps the fallen on the wall clock once the run is over.
+      boot();
+      g.boss(3); g.step(1, 1/60);
+      { const b = g.bossAt(); g.place(b.x, b.z - 9); g.step(180, 1/60); }
+      g.pause(true);
+      g.hurtAt(0, 1e9, 30, 0);
+      const st0 = g.state(), t0 = g.corpses()[0] ? g.corpses()[0].t : null;
+      for(let i=0;i<14;i++) await frame();     // through the .2 s boss hitstop and out the other side
+      out.last = { over:st0.over, won:st0.won, enemies:st0.enemies, t0, t1:g.corpses()[0] ? g.corpses()[0].t : null,
+                   nm:g.corpses()[0] && g.corpses()[0].type };
+      g.start("ox"); g.step(2, 1/60);
+      return out;
+    });
+    const L = r.list;
+    ok("a kill puts the body on the corpse list at once, facing where it faced, headed the way it was shoved",
+       L.c0 && L.c0.type === "shambler" && L.c0.t === 0 && L.c0.dur === .55 && L.c0.fx === 1 && L.c0.fz === 0 &&
+       Math.abs(L.c0.hd - Math.PI) < .05 && L.onField === 1,
+       L.c0 ? `t ${L.c0.t} dur ${L.c0.dur} dir ${L.c0.fx},${L.c0.fz} hd ${L.c0.hd}, ${L.onField} on the field` : "no corpse");
+    ok("the next world step takes it off the field and the fall has begun; a body with no shove on it drops away from the player",
+       L.enemies === 0 && L.c1 && L.c1.t > .016 && L.c1.t < .018 && r.away && r.away.fz < -.99,
+       `enemies ${L.enemies}, t ${L.c1 && L.c1.t}, unshoved dir ${r.away && r.away.fx},${r.away && r.away.fz}`);
+    ok("the kill frame draws the body once: the dead body still in the enemy list is left to the corpse pass, so the frame holds the same boxes as the one after it",
+       L.bxKill > 0 && L.bxKill === L.bxNext, `boxes at the kill ${L.bxKill}, one step on ${L.bxNext}`);
+    ok("the fall runs .55 s for trash and the body is gone at the end of it, not before",
+       L.late === 1 && L.gone === 0, `at .533 s ${L.late}, at .567 s ${L.gone}`);
+    ok("the list holds 48: the oldest go first, and clearEnemies() and a new run both empty it",
+       r.cap.n0 === 60 && r.cap.corpses === 48 && r.cap.cleared === 0 && r.cap.restart.had === 1 && r.cap.restart.now === 0,
+       `${r.cap.n0} killed -> ${r.cap.corpses}, cleared ${r.cap.cleared}, restart ${r.cap.restart.had} -> ${r.cap.restart.now}`);
+    const Pz = r.pose, p = u => Pz[u];
+    ok("deathPose: neutral at the kill frame - squash 1, no lean, no drop, no sink, no fade",
+       p(0).sq === 1 && p(0).lean === 0 && p(0).drop === 0 && p(0).sink === 0 && p(0).fade === 0,
+       JSON.stringify(p(0)));
+    ok("the legs go over the first 40%: the squash falls without a rise to below half, the lean reaches .6, the drop is whole",
+       Pz.sqFalls && p(.15).sq > .75 && p(.3).sq < .6 && p(.4).sq < .5 && p(.4).drop === 1 && p(.4).lean > .55 && p(.4).sink === 0,
+       `sq ${p(.15).sq.toFixed(3)} ${p(.3).sq.toFixed(3)} ${p(.4).sq.toFixed(3)} monotonic ${Pz.sqFalls}; lean ${p(.4).lean.toFixed(3)} drop ${p(.4).drop}`);
+    ok("one small rebound past the bottom, then it lies flat: sq .49 at the top of the bounce, .42 by .7 and no sink yet",
+       p(.49).sq > p(.4).sq + .02 && p(.49).sq < .5 && Math.abs(p(.7).sq - .42) < .001 && p(.7).sink === 0 && p(.7).lean > .6,
+       `sq at .4 ${p(.4).sq.toFixed(3)} .49 ${p(.49).sq.toFixed(3)} .7 ${p(.7).sq.toFixed(3)}; sink at .7 ${p(.7).sink}`);
+    ok("the sink is the last 30% and complete at the end; the fade climbs across the first two thirds",
+       p(.85).sink > .4 && p(.85).sink < .6 && p(1).sink === 1 && p(.3).fade > .4 && p(.3).fade < .5 && p(.7).fade === 1,
+       `sink .85 ${p(.85).sink.toFixed(3)} 1 ${p(1).sink}; fade .3 ${p(.3).fade.toFixed(3)} .7 ${p(.7).fade}`);
+    const F = r.fall, K = Object.keys(F), fine = K.filter(k => !F[k].err && F[k].u0 && F[k].u4 && F[k].u5 && F[k].u97);
+    // a kind the game failed to fell is a red row below, not a harness crash
+    const has = (...ks) => ks.every(k => fine.includes(k));
+    const row = (k, f) => `${k} ${f.u0.top}>${f.u4.top}>${f.u97.top}`;
+    ok("every kind was killed and captured standing, at the kill frame, crumpled, lying and near the end",
+       fine.length === K.length, K.filter(k => !fine.includes(k)).map(k => `${k}: ${JSON.stringify(F[k]).slice(0, 80)}`).join("; ") || `${K.length} kinds`);
+    // the collector's kill frame is read at 40% instead: its corpse capture
+    // is world-space and holds the beacon column - nine metres of it - that
+    // eb()'s live capture never sees, and the beacon is out by 35%
+    const cut = fine.filter(k => k !== "collector");
+    ok("the kill frame is not a cut: the corpse draws to the same top as the standing body did",
+       cut.every(k => Math.abs(F[k].u0.top - F[k].topAlive) < .06) && has("collector") && F.collector.u0.top > F.collector.topAlive*3,
+       cut.map(k => `${k} ${F[k].topAlive}->${F[k].u0.top}`).join(", ") + (has("collector") ? `; collector ${F.collector.topAlive}->${F.collector.u0.top} with its beacon` : "; collector missing"));
+    ok("crumpled at 40%, every body draws to under 60% of its standing height and is still on the ground",
+       fine.every(k => F[k].u4.top < F[k].u0.top*.60 && F[k].u4.bot > -.15 && F[k].u4.bot < .25),
+       fine.map(k => `${k} ${(F[k].u4.top/F[k].u0.top).toFixed(2)} bot ${F[k].u4.bot}`).join(", "));
+    // the lean is read off the highest box's centre, kill frame to crumple: a
+    // body's own shape - a tail a metre behind its origin - is not a lean, and
+    // the AABB centre of an asymmetric body drifts as its boxes widen under
+    // the squash; a box centre does neither. What is left along the other
+    // axis is the dying pose easing out (the bite, the lean into the run) and
+    // has to stay well under the fall - and the bite does not ease out of a
+    // corpse at all: SKYSPLITTER is killed mid-bite here, its crest is the
+    // highest box at both marks (draw index 10, the same box), and a bite
+    // pulled back on an eleven-metre shear arm swung it three metres along z
+    // against three and a half along the shove.
+    const dtx = k => +(F[k].u4.tx - F[k].u0.tx).toFixed(3), dtz = k => +(F[k].u4.tz - F[k].u0.tz).toFixed(3);
+    ok("it fell the way it was hit: shoved across +x, every body's top moves to +x as it crumples, and at least twice what it moves along z",
+       fine.every(k => F[k].fx === 1 && dtx(k) > .05 && Math.abs(dtz(k)) < dtx(k)*.5),
+       fine.map(k => `${k} ${dtx(k)},${dtz(k)}`).join(", "));
+    const bk = r.back.u4 && { x:+(r.back.u4.tx - r.back.u0.tx).toFixed(3), z:+(r.back.u4.tz - r.back.u0.tz).toFixed(3) };
+    ok("...and shoved along -z, the brute's top moves to -z as it crumples, and at least twice what it moves along x",
+       r.back.c && r.back.c.fz === -1 && bk && bk.z < -.05 && Math.abs(bk.x) < -bk.z*.5,
+       bk ? `dir ${r.back.c.fx},${r.back.c.fz} top moved ${bk.x},${bk.z}` : "no capture");
+    ok("near the end every body is under the ground, whole, and it is gone at the end",
+       fine.every(k => F[k].u97.top < 0 && F[k].expired === 0),
+       fine.map(k => `${k} top ${F[k].u97.top}`).join(", "));
+    ok("the stride dies with it: the gait amplitude is under a fifth of a stride by the time it lies",
+       fine.every(k => F[k].u5.amp < .2), fine.map(k => `${k} amp ${F[k].u5.amp}`).join(", "));
+    // the charge boss reaches the ox and bites inside the three seconds it is
+    // given, so it is the body that dies mid-bite here
+    ok("...but the bite does not: SKYSPLITTER died mid-bite and lies with the bite still on it, the same as at the kill frame - it went down head first",
+       has("boss2") && F.boss2.u0.lg > .2 && F.boss2.u5.lg === F.boss2.u0.lg && fine.every(k => F[k].u5.lg === F[k].u0.lg && F[k].u5.bk === F[k].u0.bk),
+       (has("boss2") ? `boss2 lg ${F.boss2.u0.lg} -> ${F.boss2.u5.lg}; ` : "boss2 missing; ") + fine.map(k => `${k} lg ${F[k].u0.lg} bk ${F[k].u0.bk}`).join(", "));
+    ok("the fliers fall out of the air: SKYSPLITTER hung well over a metre up alive, and it and the runner lie ON the ground - not hovering, not under it",
+       F.boss2 && F.boss2.botAlive > 1 && ["runner","boss2"].every(k => F[k] && F[k].u4 && Math.abs(F[k].u4.bot) < .12 && Math.abs(F[k].u5.bot) < .12),
+       ["runner","boss2"].map(k => F[k] && F[k].u4 ? `${k} alive bot ${F[k].botAlive} -> lying ${F[k].u4.bot} / ${F[k].u5.bot}` : `${k} missing`).join(", "));
+    ok("the world-space FX go with the kill: crumpled, the runner and the collector draw exactly their standing box count, and the collector's beacon is out",
+       has("runner","collector") && ["runner","collector"].every(k => F[k].u4.n === F[k].nAlive) && F.collector.u4.marks === 0 && F.collector.u0.n > F.collector.nAlive,
+       ["runner","collector"].map(k => F[k] && F[k].u4 ? `${k} ${F[k].u0.n}->${F[k].u4.n} (alive ${F[k].nAlive})` : `${k} missing`).join(", ") + `, beacon ${F.collector.u4 && F.collector.u4.marks}`);
+    ok("an elite takes .85 s to go down and a boss 1.6, and the elite is drawn at its size",
+       has("elite","brute","boss0","boss2") && F.elite.elite && F.elite.dur === .85 && F.boss0.boss && F.boss0.dur === 1.6 && F.boss2.dur === 1.6 &&
+       F.elite.topAlive > F.brute.topAlive*1.25,
+       `elite ${F.elite && F.elite.dur} (${F.elite && F.elite.topAlive} vs brute ${F.brute && F.brute.topAlive}), bosses ${F.boss0 && F.boss0.dur} ${F.boss2 && F.boss2.dur}`);
+    const La = r.last || {};
+    ok("the last boss ends the run and still falls: the world is stopped and the corpse clock ran on the frame",
+       La.over === true && La.won === true && La.t0 === 0 && La.t1 > La.t0 && La.nm === "boss",
+       `over ${La.over} won ${La.won}, corpse t ${La.t0} -> ${La.t1} across fourteen frames with the world stopped`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

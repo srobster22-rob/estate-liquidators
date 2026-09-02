@@ -164,16 +164,16 @@ const MUTANTS = [
     to:  "const monHp  = id => 1;" },
   { id:"boss-body-dropped", must:"22",
     why:"spawnBoss stops carrying the body key, so all four render the fallback",
-    from:"c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body };",
-    to:  "c:b.c, h:b.h, w:b.w, ai:b.ai };" },
+    from:"c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier };",
+    to:  "c:b.c, h:b.h, w:b.w, ai:b.ai, flier:!!b.flier };" },
   { id:"boss-lod-pinned", must:"22",
     why:"a boss is drawn at full detail from any distance again",
     from:"const lod = e.boss ? (dp < 45 ? 2 : dp < 90 ? 1 : 0)",
     to:  "const lod = e.boss ? (2)" },
   { id:"fowl-marker-only", must:"22",
     why:"GLIMMERFOWL draws its ring and beam and then no bird",
-    from:"  drawnMarks++;\n  const st = stride(e, 13)",
-    to:  "  drawnMarks++;\n  if(W) return;\n  const st = stride(e, 13)" },
+    from:"    drawnMarks++;\n  }\n",
+    to:  "    drawnMarks++;\n  }\n  if(W) return;\n" },
   { id:"rank-runs-past-three", must:"22b",
     why:"a rank can be pushed past three again, so the ceiling is not a ceiling",
     from:"for(let i=0;i<n && P.kit[k].l<WMAX-1;i++)",
@@ -396,6 +396,49 @@ const MUTANTS = [
         "beat compounds frame over frame and a paused boss shrinks into the ground",
     from:"    plan(e, face, W*sq, H, c, glow, lod, e.py);\n    e.sq = sq0;",
     to:  "    plan(e, face, W*sq, H, c, glow, lod, e.py);\n    e.sq = e.sq;" },
+  // ---- R200: the horde falls down --------------------------------------
+  { id:"no-corpse", must:"35",
+    why:"a kill no longer puts the body on the corpse list - the horde is back " +
+        "to vanishing on the frame it dies, a cut and not a death",
+    from:"  e.dead = true; kills++;\n  fell(e);", to:"  e.dead = true; kills++;\n  0;" },
+  { id:"corpse-drawn-twice", must:"35",
+    why:"the live loop no longer skips the dead - a corpse is drawn standing by " +
+        "the live pass AND falling by the corpse pass, two bodies for one kill",
+    from:"    if(e.dead) continue;                 // on the corpse list now, drawn below",
+    to:  "    if(false) continue;                  // on the corpse list now, drawn below" },
+  { id:"corpse-never-goes", must:"35",
+    why:"the fall never ends - the corpse list fills to the cap and stays full, " +
+        "every body lying there forever",
+    from:"    if(e.ft >= e.fd){ corpses.splice(i, 1); continue; }",
+    to:  "    if(e.ft >= 1e9){ corpses.splice(i, 1); continue; }" },
+  { id:"no-crumple", must:"35",
+    why:"the squash is gone from the fall - the body leans, fades and sinks at " +
+        "full height, a totem pole tipping into the ground",
+    from:"  return { sq:   1 - .58*d + bounce,", to:"  return { sq:   1 - 0*d + bounce," },
+  { id:"no-sink", must:"35",
+    why:"the pivot never drops - the body lies on the grass in full view until " +
+        "the list splices it, and then it vanishes in one frame",
+    from:"    e.py = e.y + hop - dp.sink*H*1.15 - dp.drop*dp.sq*(e.fgap || 0);",
+    to:  "    e.py = e.y + hop - dp.sink*H*0 - dp.drop*dp.sq*(e.fgap || 0);" },
+  { id:"flier-dies-hovering", must:"35",
+    why:"a flier keeps its hover through the fall - SKYSPLITTER crumples in the " +
+        "air a metre and a half up and never touches the ground it is meant to hit",
+    from:"    e.py = e.y + hop - dp.sink*H*1.15 - dp.drop*dp.sq*(e.fgap || 0);",
+    to:  "    e.py = e.y + hop - dp.sink*H*1.15 - 0*dp.sq*(e.fgap || 0);" },
+  { id:"boss-not-a-flier", must:"35",
+    why:"the boss spawn drops the flier flag - SKYSPLITTER hops on a stride and " +
+        "its corpse is not given the flier's drop out of the air",
+    from:"                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier };",
+    to:  "                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:false };" },
+  { id:"last-boss-freezes", must:"35",
+    why:"the world stops on the final kill and the corpse clock stops with it - " +
+        "the last boss hangs at its kill frame over the end screen instead of falling",
+    from:"  else if(over) stepCorpses(dt);", to:"  else if(false) stepCorpses(dt);" },
+  { id:"corpse-pulls-back", must:"35",
+    why:"the bite eases out of a corpse again - a boss killed mid-bite swings its " +
+        "head metres back as it begins to fall",
+    from:"    e.amp -= e.amp*Math.min(1, dt*6);",
+    to:  "    e.amp -= e.amp*Math.min(1, dt*6); e.lg = Math.max(0, e.lg - dt*3.2);" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run
