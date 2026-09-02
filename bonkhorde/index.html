@@ -3759,7 +3759,7 @@ plain(D){
 scrap(D){
   const { blob, chain, leg, taper, horn, ridge, wing, claw, fx,
           eyeDeep, jawLong, idle, sway, twitch, drag,
-          mb, c, dk, lt, bel, acc, em, gait, gait2, look, amp, land, air, ph,
+          mb, c, dk, lt, bel, acc, glo, em, gait, gait2, look, amp, land, air, ph,
           st, t } = D;
   const bob = Math.sin(t*1.7)*.035*idle + Math.sin(ph*.5)*.02*amp;
   const lk = look*.20, lkf = -Math.abs(look)*.06;
@@ -3773,12 +3773,176 @@ scrap(D){
   // has is its neck, so it starts with almost none and finishes with all of
   // it. Same for the flippers, the dorsal ridge and the horns: a hatchling has
   // paddles, no crest and no horns; the LEVIATHAN has oars, a full ridge and a
-  // horned skull.
-  // the final form grows through scale and signature, not footprint - the
-  // camera-boom budget the comments above set is a budget for st4 too
+  // horned skull. And then the neck goes: stages 3 and 4 are other animals
+  // entirely (below), the way the palette round made them other colours.
   const NECK = 2 + Math.min(st,3)*2;
   const FLIP = .62 + st*.24;
   const flick = twitch(.6, 4.3);
+  // ---- THE TOP OF THE LINE IS TWO OTHER ANIMALS. Three stages grow the
+  // neck, because the neck is what this line has - and then the neck goes.
+  // Same rule the palette round set, applied to the silhouette: an evolution
+  // is a new design, not the old one with more parts. The storm is a ray and
+  // the deep is an anglerfish, and neither has a neck at all.
+  if(st >= 3){
+    const G = gr;
+    if(st === 3){
+      // THE MAELSTROM. THE NECK WENT, THE WINGS CAME. A broad flat disc of a
+      // body, two great pectoral wings that beat slow and roll the water off
+      // their tips, a shark's dorsal standing off the shoulder, the head
+      // pulled in short with two cephalic horns curling forward off it, and
+      // a whip tail with a barb. From the play camera this is a WIDE thing
+      // where the LEVIATHAN was a long one. The spiral still turns round it:
+      // the whirlpool is the one thing every stage of the line carries.
+      const flap = Math.sin(ph*.8) * (.30 + amp*.50) + Math.sin(t*1.1)*.10*idle;
+      const y0 = (.36 + bob)*G;
+      // THE DISC. A chain along the length with its lateral scale doubled and
+      // its height cut, so it lays wide flat blocks rather than a barrel.
+      chain([[sway, -.46*G, y0 - .02*G], [sway, -.10*G, y0 + .04*G],
+             [sway, .26*G, y0 + .04*G], [sway, .54*G, y0 - .02*G]],
+            .26*G, .28*G, c, em+.08, [2.0, .46, 1.0]);
+      // the pale underside reaches the floor - it rests on its belly like the
+      // rest of the line - and the dark back is the surface the camera owns
+      mb(sway, .04*G, (.20+bob)*G, .58*G, .19*G, .48*G, bel, em*.9);
+      mb(sway, .00*G, y0 + .15*G, .48*G, .06*G, .40*G,
+         [c[0]*.74, c[1]*.74, c[2]*.78], em*.6);
+      // THE WINGS. Four plates a side stepping outward and back, each shorter
+      // than the last so the edge sweeps into a point, the outermost pale.
+      // The beat lifts the tip most and the root least, and the far wing runs
+      // a fraction behind the near one so they never read as one hinge.
+      for(const rs of [-1,1]){
+        const fl2 = flap * (rs > 0 ? 1 : .90);
+        for(let k=0;k<4;k++){
+          const w = .16*G, px = (.52 + .26*k)*G, pf = (-.02 - .06*k)*G;
+          const py = y0 + .03*G + fl2*(.05 + .05*k)*G;
+          mb(sway + rs*px, pf, py, w, (.075 - k*.013)*G, (.50 - k*.10)*G,
+             k === 3 ? lt : c, em + .06 + k*.02, rs*(.035 + fl2*.03)*k);
+        }
+        // spray off the wing tip, thrown up on the downbeat
+        const tipx = (.52 + .26*3 + .16)*G, tipy = y0 + .03*G + fl2*.20*G;
+        for(let i=0;i<3;i++)
+          fx(sway + rs*(tipx + i*.07*G), (-.20 - i*.12)*G, tipy + (.06 + i*.05)*G + Math.abs(fl2)*.10*G,
+             .045*G, .018*G, .06*G, acc, .55 - i*.12);
+      }
+      // THE DORSAL. Tall, raked back, the storm's one vertical. And a second,
+      // small, at the root of the tail.
+      chain([[sway, .10*G, y0 + .12*G], [sway, -.10*G, y0 + .58*G], [sway, -.30*G, y0 + .74*G]],
+            .14*G, .045*G, dk, em+.10, [.30, 1, 1]);
+      chain([[sway, -.50*G, y0 + .06*G], [sway, -.66*G, y0 + .26*G]],
+            .07*G, .03*G, dk, em+.08, [.30, 1, 1]);
+      // THE HEAD, short and broad, standing PROUD of the disc's front edge:
+      // the disc runs to .82 and the head sits at .92, so a third of it is
+      // clear of the body (the first cut had it at .70, buried to the eyes in
+      // the disc it was meant to lead). A wide mouth slot underneath, the
+      // eyes out on the corners, and two cephalic horns curling forward and
+      // in off the front corners - the line's horns, doing a ray's job.
+      const hx = sway + lk*.3, hf = .90*G + lkf, hy = y0 + .01*G;
+      blob(hx, hf, hy, .27*G, .11*G, .23*G, c, em+.10);
+      mb(hx, hf + .18*G, hy - .06*G, .19*G, .028*G, .05*G, dk, .02);
+      mb(hx, hf + .04*G, hy - .11*G, .23*G, .05*G, .18*G, bel, em*.8);
+      eyeDeep(hx, hf + .08*G, hy + .05*G, .25*G, .065*G, [.20,.86,1]);
+      for(const rs of [-1,1])
+        horn(hx + rs*.27*G, hf + .14*G, hy + .02*G, -rs*.022*G, .048*G, .012*G,
+             4, .042*G, lt, .35 + st*.12);
+      // THE WHIP. Long, thin, lagging the body, a barb on the end.
+      const tail = [[sway, -.50*G, y0 - .02*G]];
+      for(let i=0;i<6;i++){
+        const lag = drag(.6 + i*.45)*.026*(i+1)*G
+                  + Math.sin(ph*.9 - i*.5)*(.008 + amp*.026)*(i+1)*G;
+        tail.push([sway + lag, (-.66 - i*.19)*G, y0 - (.03 + i*.028)*G]);
+      }
+      chain(tail, .075*G, .022*G, c, em+.08);
+      const tp = tail[tail.length-1];
+      horn(tp[0], tp[1], tp[2], 0, -.03*G, .028*G, 3, .028*G, lt, .30);
+      // the whirlpool, as sheets of water peeling upward round the animal
+      for(let i=0;i<7;i++){ const a2 = t*1.1 + i/7*TAU;
+        fx(Math.sin(a2)*.92*G, Math.cos(a2)*.80*G,
+           (.14 + i*.075)*G, .105*G,.020*G,.085*G, lt, .45, a2 + 1.2); }
+    } else {
+      // THE ABYSS. THE DEEP ANSWERED BACK. An anglerfish: a skull that is most
+      // of the animal, tipped up so the play camera looks into a mouth full
+      // of needle teeth with light behind them; a lure on a stalk arched over
+      // it, the lamp burning green; two pectoral fins it squats on, the way a
+      // frogfish walks the bottom; a short body, a round tail fan, and the
+      // lamp-spots down the flanks - the only light down there is the light
+      // it brought.
+      const lum = .55 + Math.sin(t*2.2)*.25;
+      const gape = (.03 + twitch(.3, 5.1)*.06 + amp*.03)*G;
+      const hf = .06*G, hy = (.60 + bob)*G;
+      const lc = [c[0]*.62, c[1]*.62, c[2]*.66];
+      // THE SKULL: the braincase at the back, and a thick upper lip thrust
+      // forward off it, HIGH - its underside is the roof of the mouth, and
+      // the mouth is the animal.
+      blob(sway, hf - .04*G, hy + .04*G, .38*G, .38*G, .34*G, c, em+.06);
+      blob(sway, hf + .30*G, hy + .02*G, .30*G, .16*G, .24*G, c, em+.06);
+      // THE MAW. The lower jaw is a scoop slung a fifth of a unit below the
+      // lip and thrust a hand past it - an underbite - so from the side there
+      // is a dark gap with a violet floor and a green light at the back of
+      // it, and from the play camera the pale rim of the jaw shows all round
+      // the snout with the front fangs standing up out of it. The first cut
+      // hung the jaw flush under a low snout, same colour, no gap, and the
+      // render was a lump with a lure.
+      chain([[sway, hf - .02*G, hy - .44*G - gape], [sway, hf + .68*G, hy - .32*G - gape]],
+            .22*G, .17*G, c, em+.04, [1.55, .40, 1]);
+      mb(sway, hf + .34*G, hy - .30*G - gape, .29*G, .045*G, .32*G, bel, em*.7);    // the floor of the mouth
+      mb(sway, hf + .30*G, hy - .15*G, .26*G, .03*G, .24*G, bel, em*.5);             // and its roof
+      mb(sway, hf + .04*G, hy - .23*G, .20*G, .11*G, .06*G, glo, .35 + lum*.40);     // the light in the throat
+      // needle teeth: the upper row hanging off the lip, the lower rising off
+      // the jaw rim, longest at the front where the underbite carries them
+      // up past the lip - the way the deep does it
+      const TOOTH = [.86,.96,.90];
+      for(const sg of [-1,1]) for(let i=0;i<5;i++){
+        const u = (i + .5)/5, tf = hf + (.16 + u*.40)*G, sc = .6 + u*.6;
+        mb(sway + sg*(.26 - u*.04)*G, tf, hy - .14*G - .07*G*sc, .014*G, .09*G*sc, .014*G, TOOTH, .22);
+        mb(sway + sg*(.30 - u*.05)*G, tf + .05*G, hy - .30*G - gape + .08*G*sc, .013*G, .10*G*sc, .013*G, TOOTH, .22);
+      }
+      // small eyes, high and wide, on the top of the lip where it meets the
+      // braincase, lit the lure's green
+      eyeDeep(sway, hf + .22*G, hy + .14*G, .30*G, .055*G, glo);
+      // THE LURE. A stalk off the top of the skull, arched out over the
+      // mouth, swaying with the animal, and the lamp on the end of it.
+      const lsw = lk*.4 + Math.sin(t*.9)*.03*G + drag(.4)*.05*G;
+      const lure = [[sway, hf + .06*G, hy + .38*G], [sway + lsw*.4, hf + .26*G, hy + .68*G],
+                    [sway + lsw*.8, hf + .54*G, hy + .76*G], [sway + lsw, hf + .74*G, hy + .62*G]];
+      chain(lure, .035*G, .022*G, dk, .10);
+      const lp = lure[3];
+      mb(lp[0], lp[1] + .02*G, lp[2] - .08*G, .075*G, .075*G, .075*G, glo, .60 + lum*.40);
+      for(let i=0;i<6;i++){ const a = i*(TAU/6) + t*1.3;
+        fx(lp[0] + Math.cos(a)*.15*G, lp[1] + .02*G, lp[2] - .08*G + Math.sin(a)*.15*G,
+           .028*G, .028*G, .018*G, glo, .70); }
+      // THE BODY. Short and tapering off the back of the skull, into a round
+      // tail fan that sculls side to side.
+      const wag = Math.sin(ph*.9 - 1.2)*(.02 + amp*.06)*G + Math.sin(t*1.1)*.012*G*idle;
+      chain([[sway, hf - .30*G, hy - .04*G], [sway + wag*.3, hf - .66*G, hy - .10*G],
+             [sway + wag*.7, hf - .98*G, hy - .14*G]],
+            .30*G, .11*G, c, em+.06, [1, .90, 1]);
+      mb(sway + wag, hf - 1.10*G, hy - .12*G, .03*G, .24*G, .15*G, bel, em*.8);
+      // a fringe of three small spines down the back, and the lamp-spots
+      for(let i=0;i<3;i++)
+        mb(sway, hf - (.36 + i*.22)*G, hy + (.20 - i*.07)*G, .035*G, .09*G, .05*G, bel, em*.7);
+      for(const rs of [-1,1]) for(let i=0;i<4;i++)
+        mb(sway + rs*(.32 - i*.06)*G, hf - (.24 + i*.22)*G, hy - .06*G,
+           .035*G, .045*G, .045*G, glo, (.35 + lum*.45)*(i%2 ? .8 : 1.1));
+      for(const rs of [-1,1]) for(let i=0;i<3;i++)
+        mb(sway + rs*.38*G, hf + (.20 - i*.20)*G, hy + (.06 - i*.10)*G,
+           .03*G, .04*G, .04*G, glo, (.35 + lum*.45)*(i%2 ? 1.1 : .8));
+      // THE FINS IT WALKS ON. Two thick pectorals angled down and out to flat
+      // fan feet, shuffling against each other on the stride, and a smaller
+      // pelvic pair behind.
+      for(const rs of [-1,1]){
+        const p2 = (rs > 0 ? gait : -gait)*.10*G;
+        const lift = Math.max(0, rs > 0 ? gait2 : -gait2)*.05*G*amp;
+        chain([[sway + rs*.30*G, hf + .02*G, hy - .28*G],
+               [sway + rs*.50*G, hf + .04*G + p2, hy - .52*G + lift]],
+              .11*G, .075*G, lc, em);
+        mb(sway + rs*.56*G, hf + .06*G + p2, (.05 + bob)*G + lift, .13*G, .045*G, .16*G, bel, em*.7);
+        chain([[sway + rs*.22*G, hf - .60*G, hy - .12*G],
+               [sway + rs*.34*G, hf - .64*G - p2*.5, hy - .40*G]],
+              .06*G, .04*G, lc, em);
+        mb(sway + rs*.36*G, hf - .66*G - p2*.5, hy - .44*G, .07*G, .03*G, .10*G, bel, em*.7);
+      }
+    }
+    return;
+  }
   // the barrel, as a run from tail root to shoulder. SHOULDER-heavy: the
   // first version put the .40 radius at the TAIL end, so the rear view was a
   // flat wall the size of the whole animal with a tail poking over it (the
@@ -3810,39 +3974,9 @@ scrap(D){
   if(st >= 2) for(const rs of [-1,1]) for(let i=0;i<3;i++)
     mb(sway + rs*(.16 + i*.07)*gr, (.10 - i*.16)*gr, (.78 + bob - i*.02)*gr,
        .05*gr, .06*gr, .035*gr, [.86,.90,.92], .18);
-  // ---- THE MAELSTROM. Six flippers, not four - the extra midship pair rows
-  // on its own beat - a tall dorsal fin at the shoulder, and a slow spiral of
-  // water always turning around the animal: the whirlpool made flesh.
-  if(st >= 3){
-    const beatM = Math.sin(ph*.8 + 1.6) * (.35 + amp*.55);
-    for(const rs of [-1,1]){
-      const y = (.38 + beatM*.10)*gr + bob*gr;
-      chain([[sway + rs*.24*gr, 0, y],
-             [sway + rs*(.24 + .34*FLIP)*gr, -.05*gr + beatM*.06*gr, y - .06*gr],
-             [sway + rs*(.24 + .66*FLIP)*gr, -.14*gr*FLIP + beatM*.10*gr, y - .14*gr]],
-            .15*gr, .09*gr, c, em+.10, [1, .30, 1.6]);
-      mb(sway + rs*(.24 + .48*FLIP)*gr, -.08*gr*FLIP + beatM*.08*gr, y - .10*gr,
-         .24*gr*FLIP, .04*gr, .24*gr*FLIP, lt, em+.12, rs*(.55 + beatM*.30));
-    }
-    chain([[sway, .16*gr, (.72+bob)*gr], [sway, .06*gr, (1.02+bob)*gr]],
-          .11*gr, .05*gr, dk, em+.10, [.30, 1, 1]);
-    // The whirlpool, as water rather than as sticks. Seven rods .6 long and
-    // .04 thick spiralling up around the animal is the same shape the audit
-    // called debris everywhere else it appears; a vortex is sheets of water
-    // peeling upward, so these are flat plates on the same spiral.
-    for(let i=0;i<7;i++){ const a2 = t*1.1 + i/7*TAU;
-      fx(Math.sin(a2)*.88*gr, Math.cos(a2)*.76*gr,
-         (.14 + i*.075)*gr, .105*gr,.020*gr,.085*gr, lt, .45, a2 + 1.2); }
-  }
-  // ---- THE ABYSS. The deep answered back: a row of lamp-spots down each
-  // flank at the waterline, pulsing on the animal's own slow clock - the
-  // only light down there is the light it brought.
-  if(st >= 4){
-    const lum = .55 + Math.sin(t*2.2)*.25;
-    for(const rs of [-1,1]) for(let i=0;i<4;i++)
-      mb(sway + rs*.30*gr, (-.34 + i*.20)*gr, (.58+bob)*gr,
-         .035*gr, .045*gr, .045*gr, [.45,.95,1], (.35 + lum*.45)*(i%2 ? .8 : 1.1));
-  }
+  // (the old MAELSTROM - the LEVIATHAN with six flippers and a dorsal - and
+  // the old ABYSS - the same again with lamp-spots - are gone: from here down
+  // is the plesiosaur, stages 0 to 2, and stages 3 and 4 returned above)
   // FLIPPERS. Four of them, rowing - front and back on opposite beats.
   // Rear pair FORWARD of the tail root: the audit found the tail fluke slicing
   // through the rear blades - both claimed the volume behind the hips. The

@@ -464,6 +464,13 @@ const MUTANTS = [
         "plan - two of the intern's three top stages are one animal in two coats",
     from:"  } else if(st === 3){\n    // THE CINDERSTAR. THE VOLCANO STOOD UP.",
     to:  "  } else if(false){\n    // THE CINDERSTAR. THE VOLCANO STOOD UP." },
+  // ---- R203: the tide's top two are other animals ------------------------
+  { id:"maelstrom-is-the-leviathan", must:"37",
+    why:"the ray-and-anglerfish branch is skipped and stages 3 and 4 fall through " +
+        "to the plesiosaur plan - the top of the tide line is the LEVIATHAN in " +
+        "two more coats",
+    from:"  if(st >= 3){\n    const G = gr;\n    if(st === 3){\n      // THE MAELSTROM.",
+    to:  "  if(false){\n    const G = gr;\n    if(st === 3){\n      // THE MAELSTROM." },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",
