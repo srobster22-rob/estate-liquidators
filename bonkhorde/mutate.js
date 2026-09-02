@@ -517,6 +517,12 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"pebble-is-the-tank", must:"38",
+    why:"the hatchling-and-juvenile branch is skipped and stages 0 and 1 fall " +
+        "through to the ceratopsian plan - the stone line starts life as " +
+        "TITANHIDE at two smaller scales, which is where it started",
+    from:"  if(st <= 1){\n    const G = gr;",
+    to:  "  if(false){\n    const G = gr;" },
   { id:"horde-count-reads-zero", must:"11b",
     why:"the horde's box counter is never set, so the per-enemy budget divides " +
         "nothing by the horde and every ceiling on it passes",

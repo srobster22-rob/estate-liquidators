@@ -5694,6 +5694,61 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     if (left.length) console.log("   still one plan at three scales: " + left.map(id => `${id} d ${pairs(r[id]).map(p => p.d).join("/")}`).join(", "));
   }
 
+  console.log("\n=== 38. THE HATCHLING IS NOT A SMALL ADULT ===");
+  {
+    // Section 37 holds the TOP of a line to a new shape. This is the bottom of
+    // the same complaint, and it is the half the player actually starts every
+    // run in: a hatchling that is its adult at a smaller scale is no more of
+    // an evolution than an apex that is its adult at a larger one. Measured
+    // the same way, on stages 0, 1 and 2. The stone line was the worst of the
+    // nine - .02 of shape change from SHALEBACK to ANKYLOS, one ceratopsian at
+    // three zooms - and the list grows by a line a round the way 37's did.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const out = {};
+      for (const id of g.chars()) {
+        const row = [];
+        for (const st of [0, 1, 2]) {
+          g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+          g.drainPicks(true); g.setShake(0); g.place(0, 0); g.aim(0);
+          if (st) g.evolveTo(st);
+          g.step(300, 1/60);
+          g.resume(); g.capturePos();
+          await frame(); await frame();
+          const b = g.posOut();
+          if (!b) { row.push({ st, nm: g.stageNm(), n: 0 }); continue; }
+          const n = b.length / 6;
+          let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+          for (let i = 0; i < n; i++) {                 // r f y hx hz hy
+            const c = [b[i*6], b[i*6+1], b[i*6+2]], h = [b[i*6+3], b[i*6+4], b[i*6+5]];
+            for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], c[k]-h[k]); mx[k] = Math.max(mx[k], c[k]+h[k]); }
+          }
+          const W = mx[0]-mn[0], L = mx[1]-mn[1], H = mx[2]-mn[2];
+          row.push({ st, nm: g.stageNm(), n, HL: +(H/L).toFixed(2), WL: +(W/L).toFixed(2) });
+        }
+        out[id] = row;
+      }
+      return out;
+    });
+    const EARLY = ["ox"];                          // one more line each round
+    const dist = (a, b) => +(Math.abs(a.HL - b.HL) + Math.abs(a.WL - b.WL)).toFixed(2);
+    const pairs = row => [[0,1],[1,2],[0,2]].map(([i,j]) => dist(row[i], row[j]));
+    const line = id => r[id].map(s => `${s.nm} ${s.HL}/${s.WL}`).join(" > ") + `  d ${pairs(r[id]).join("/")}`;
+    ok(`the redesigned lines (${EARLY.join(", ")}) are three different animals before they are grown, not one at three scales: |dH/L| + |dW/L| of .12 or better between each pair of stages 0, 1 and 2`,
+       EARLY.every(id => r[id] && r[id].length === 3 && pairs(r[id]).every(d => d >= .12)),
+       EARLY.map(id => `${id}: ${line(id)}`).join(" | "));
+    // and by name, because "different numbers" is not the same claim as "a
+    // pebble, then a tail with legs on it, then a tank"
+    const s0 = r.ox && r.ox[0], s1 = r.ox && r.ox[1], s2 = r.ox && r.ox[2];
+    ok("the stone line hatches as a pebble and grows its weapon first: SHALEBACK is nearly as wide as it is long, ANKYLOS is four times longer than it is wide, and TITANHIDE is neither",
+       s0 && s0.WL >= .65 && s1 && s1.WL <= .30 && s2 && s2.WL > .45 && s2.WL < .70,
+       s0 && `W/L ${s0.WL} > ${s1.WL} > ${s2.WL}, H/L ${s0.HL} > ${s1.HL} > ${s2.HL}`);
+    const left = Object.keys(r).filter(id => !EARLY.includes(id) && pairs(r[id]).some(d => d < .12));
+    if (left.length) console.log("   still one plan at three scales below the third stage: "
+      + left.map(id => `${id} d ${pairs(r[id]).join("/")}`).join(", "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

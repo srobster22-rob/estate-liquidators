@@ -4601,6 +4601,122 @@ stone(D){
     }
     return;
   }
+  // ---- THE JUVENILES ARE NOT SMALL ADULTS. The three low stages of this line
+  // measured .02 apart in shape from the hatchling to the juvenile: one
+  // ceratopsian at three zooms, which is the same complaint the apexes had.
+  // A line should surprise you twice before it is finished, so this one now
+  // starts as a PEBBLE and grows its WEAPON before it grows its face -
+  // SHALEBACK is a boulder with a head on it, ANKYLOS is a lanky thing that is
+  // mostly club, and TITANHIDE (below) is the broad frilled tank they arrive
+  // at. Three silhouettes: round, long, wide.
+  if(st <= 1){
+    const G = gr;
+    if(st === 0){
+      // SHALEBACK. A PEBBLE WITH A FACE. All a hatchling has is head and
+      // shell: a domed stack of sandstone slabs banded like strata with
+      // lichen lying in the seams, a plastron under it, four stubs it can
+      // barely see over, no tail at all, and a skull a third of the whole
+      // animal with the eyes of something two weeks old. It WADDLES, because
+      // a body that round on legs that short cannot do anything else.
+      const wob = Math.sin(ph*1.8)*amp*.10 + Math.sin(t*1.5)*.020*idle;   // side to side
+      const nod = Math.sin(t*1.7)*.018*idle + Math.abs(gait)*.030;        // the head is too heavy
+      const BY  = (.30 + heave)*G;
+      // THE SHELL: three courses of slab, and each course is TWO boxes with
+      // the second turned a third of a right angle against the first, so the
+      // footprint is an octagon. Square boxes stacked square-on read as a
+      // cake, which is what the first render of this animal was.
+      const SHELL = [[ .00, .00, .44, .13, .34,  .62, c],
+                     [-.03, .16, .37, .11, .29, -.55, c],
+                     [-.05, .30, .25, .09, .20,  .70, lt]];
+      for(let i=0;i<3;i++){
+        const [sf, sy, sw2, sh2, sd, sr, sc] = SHELL[i], wo = sway + wob*(1 + i*.2), e2 = em + i*.01;
+        blob(wo, sf*G, BY + sy*G, sw2*G, sh2*G, sd*G, sc, e2);
+        mb  (wo, sf*G, BY + sy*G, sd*.86*G, sh2*.96*G, sw2*.94*G, sc, e2, sr);
+        mb  (wo, sf*G, BY + (sy + sh2*.56)*G, sw2*(.99 - i*.02)*G, .020*G, sd*.99*G, dk, .05);  // the seam
+      }
+      mb(sway + wob*.8,  -.02*G, BY - .12*G, .34*G, .05*G, .28*G, bel, em*.7);   // the plastron
+      // lichen: the moss THE MOUNTAIN wears, four patches of it, on a pebble
+      const LICH = [[ .30,  .16, .10, .10, .08], [-.26, -.14, .12, .09, .07],
+                    [ .08, -.26, .26, .08, .07], [-.14,  .12, .28, .07, .06]];
+      for(const [lr, lf, ly, lw, ld] of LICH)
+        mb(sway + wob + lr*G, lf*G, BY + ly*G, lw*G, .030*G, ld*G, acc, .14, lr*.5);
+      // THE HEAD, a third of the animal, carried out front and low
+      const hx = sway + wob*1.6 + lk*.5, hf = .40*G + lkf, hy = BY + .04*G + nod;
+      mb(hx, .26*G, BY + .02*G, .17*G, .12*G, .10*G, c, em);                     // the nape
+      blob(hx, hf, hy, .21*G, .17*G, .19*G, c, em);
+      rostrum(hx, hf + .13*G, hy - .04*G + snort*.008*G, .10*G, .13*G, c);
+      eyeSunk(hx, hf + .10*G, hy + .07*G, .20*G, .080*G, [.95,.74,.28]);         // and eyes to match
+      for(const rs of [-1,1])
+        horn(hx + rs*.11*G, hf + .05*G, hy + .12*G, rs*.008*G, .016*G, .014*G, 2, .030*G, [.91,.88,.79], .16);
+      // the whole frill it has: one collar plate over the neck, and the rim
+      // nub that will one day be a fan of them
+      mb(hx, .22*G, BY + .12*G, .30*G, .050*G, .07*G, lt,  em+.06);
+      mb(hx, .18*G, BY + .18*G, .23*G, .035*G, .05*G, acc, .22);
+      // four stubs, splayed wide, paddling rather than striding
+      for(const rs of [-1,1]) for(const fs of [-1,1]){
+        const p2 = (rs*fs > 0) ? gait : -gait;
+        leg(sway + wob + rs*.34*G, fs*.19*G, BY - .06*G, .20*G, p2*1.4, rs, .078*G, c, em, dk);
+      }
+    } else {
+      // ANKYLOS. THE CLUB CAME FIRST. A juvenile grows one thing at a time and
+      // this one grew its weapon: a narrow, long-legged, straight-barrelled
+      // animal with a small blunt head, no frill yet - two flat shelf plates
+      // where the fan will root - a double row of amber crystal coming up
+      // through the hide over the hips, and a tail-club so big it hangs a
+      // finger off the ground and drags a line in the dirt behind it.
+      const BY = (.46 + heave)*G;
+      chain([[sway + roll*.3, -.44*G, BY - .02*G], [sway + roll*.4, -.08*G, BY],
+             [sway + roll*.5,  .26*G, BY + .02*G]], .20*G, .23*G, c, em, [1, .74, 1.05]);
+      mb(sway, -.08*G, BY - .16*G, .16*G, .06*G, .26*G, bel, em*.7);
+      // the crystal comes up through the hide, biggest over the hips - which
+      // is where an animal that swings a club needs the muscle
+      for(let i=0;i<5;i++){
+        const f2 = (.20 - i*.16)*G, k = .7 + i*.14;
+        for(const rs of [-1,1])
+          horn(sway + rs*.07*G, f2, BY + .13*G, rs*.010*G, -.006*G, .030*G*k, 3, .030*G*k, acc, .30);
+        mb(sway, f2 - .02*G, BY + .12*G, .06*G, .05*G*k, .05*G, lt, em+.04);
+      }
+      // THE HEAD: small, blunt, low, and on the end of a neck it has not
+      // grown into either
+      const hx = sway + lk*.6, hf = .82*G + lkf, hy = BY - .02*G + Math.sin(t*1.5)*.012*G*idle;
+      chain([[sway + roll*.5, .30*G, BY + .02*G], [hx, .62*G, hy + .02*G]], .14*G, .11*G, c, em, [1, .92, 1]);
+      blob(hx, hf, hy, .16*G, .13*G, .17*G, c, em);
+      rostrum(hx, hf + .14*G, hy - .04*G + snort*.008*G, .085*G, .16*G, c);
+      eyeSunk(hx, hf + .08*G, hy + .06*G, .15*G, .055*G, [.95,.74,.28]);
+      mb(hx, .58*G, hy + .10*G, .17*G, .09*G, .07*G, c, em);                    // the nape
+      for(const rs of [-1,1])
+        mb(hx + rs*.12*G, .54*G, hy + .16*G, .09*G, .045*G, .08*G, lt, em+.06, rs*.3);
+      mb(hx, .50*G, hy + .19*G, .13*G, .035*G, .05*G, acc, .22);
+      for(const rs of [-1,1])
+        horn(hx + rs*.10*G, hf + .04*G, hy + .10*G, rs*.010*G, .022*G, .012*G, 2, .032*G, [.91,.88,.79], .16);
+      // four long legs, and it is all knee
+      for(const rs of [-1,1]) for(const fs of [-1,1]){
+        const p2 = (rs*fs > 0) ? gait : -gait;
+        leg(sway + rs*.22*G, fs*.28*G, BY - .06*G, .40*G, p2, rs, .075*G, c, em, dk);
+      }
+      // THE CLUB, and the tail sagging under it
+      const tail = [[sway, -.48*G, BY - .04*G]];
+      for(let i=0;i<4;i++){
+        const lag = drag(.6 + i*.45)*.020*(i+1)*G + Math.sin(ph*.9 - i*.55)*(.010 + amp*.045)*(i+1)*G;
+        tail.push([sway + lag, (-.72 - i*.26)*G, BY - (.11 + i*.045)*G]);
+      }
+      chain(tail, .105*G, .070*G, c, em, [1, .90, 1]);
+      const cl = tail[tail.length-1];
+      blob(cl[0], cl[1] - .22*G, cl[2] + .01*G, .30*G, .19*G, .24*G, c, em);
+      mb(cl[0], cl[1] - .05*G, cl[2], .11*G, .10*G, .06*G, dk, em*.6);           // the graft ring
+      // the spikes ring the club THE WAY THE CAMERA SEES IT - laid out flat,
+      // pointing out sideways and back. Ringed in the vertical plane and
+      // rooted at .19 they were inside a club .30 wide: six spikes nobody
+      // could see, on the one part of this animal that is the point of it.
+      for(let k=0;k<6;k++){ const a2 = k/6*TAU + .3, sx = Math.sin(a2), sf = Math.cos(a2);
+        horn(cl[0] + sx*.26*G, cl[1] - .22*G + sf*.20*G, cl[2] + .02*G,
+             sx*.075*G, sf*.060*G, .008*G, 2, (.046 + k*.003)*G, acc, .34); }
+      // the line it drags
+      for(let i=0;i<5;i++){ const uu = (t*.9 + i*.2) % 1;
+        fx(cl[0]*(1-uu*.3), cl[1] - (.30 + uu*.55)*G, .03*G, (.10 - uu*.05)*G, .014*G, .07*G, [.72,.68,.58], .20*(1-uu)); }
+    }
+    return;
+  }
   // THE FRILL IS THE EVOLUTION. It grew .09 a stage from a base of .40, so
   // SHALEBACK already wore most of a TITANHIDE's shield and the three forms
   // were one animal at three zooms. A juvenile ceratopsian has a bony SHELF,
@@ -4641,11 +4757,7 @@ stone(D){
   // plate fighting the plate next to it and none of them visible. The first
   // form gets one wide low plate that clears the skull instead, and the fan
   // arrives with the frill that can carry it.
-  if(st === 0){
-    mb(fx0, ff - .20*gr, fy + .12*gr, FR*1.30, .085*gr, .10*gr, lt, em+.06);
-    mb(fx0, ff - .26*gr, fy + .20*gr, FR*1.05, .060*gr, .07*gr, acc, .22);
-  }
-  else for(let i=0;i<FN;i++){
+  for(let i=0;i<FN;i++){
     const a = (i - (FN-1)/2) / ((FN-1)/2);            // -1..1 across the fan
     const h = (1 - a*a*.42);
     chain([[fx0 + a*FR*.30, ff - .02*gr, fy + .02*gr],
