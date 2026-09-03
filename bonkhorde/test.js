@@ -6024,6 +6024,72 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Object.entries(r).map(([k, v]) => `${k} ${v.n0}/${v.n62}`).join(", "));
   }
 
+  console.log("\n=== 43. THE GROUND KNOWS WHO IS AIRBORNE ===");
+  {
+    // The third movement factor. The tarpits slow the ground 14% and the
+    // glacier takes the grip off it, and before this round they did it to a
+    // hovering kite and a storm funnel as readily as to a walker. Stages
+    // flagged air:true - and a dragon with its wings out - are not on the
+    // ground: the tar cannot drag them, the ice cannot slip under them, and
+    // the fledgling SKYREND is the one stage of the gale line still caught.
+    // Every start rolls a new arena, so the cell is looked up after each boot.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
+      const boot = (id, st) => { g.wipeSave(); g.start(id); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.aim(0); if (st) g.evolveTo(st); g.step(30, 1/60); };
+      const at = kind => g.world().cells.find(c => c.id === kind);
+      // TWO LEGS OF 45 FRAMES FROM THE CELL'S CENTRE, not one of 90: a second
+      // and a half of walking is ten units, which walks straight out of a small
+      // cell into whatever is next to it (one run in three read THE INTERN at
+      // 4.4 on "bog" after crossing water). Each leg starts at the centre, and a
+      // cell either leg leaves is thrown away for the next cell of its kind.
+      const pace = (id, st, kind) => { boot(id, st);
+        for (const c of g.world().cells.filter(c => c.id === kind).slice(0, 4)) {
+          let d = 0, stayed = true;
+          for (let leg = 0; leg < 2; leg++) {
+            g.place(c.x, c.z); g.step(20, 1/60); g.place(c.x, c.z);
+            key("keydown", "KeyW"); g.step(30, 1/60); const a = g.state(); g.step(22, 1/60); const m = g.state(); g.step(23, 1/60); const b = g.state(); key("keyup", "KeyW");
+            d += Math.hypot(b.x - a.x, b.z - a.z);
+            // and no water on the way: THE TARPITS can hold a pool, and tar times
+            // water is x.64, which read as a walker dragged twice (one run in four)
+            for (const q of [a, m, b]) if (g.biomeAt(q.x, q.z).id !== kind || g.inWater(q.x, q.z)) stayed = false;
+          }
+          if (stayed) return { ups: +(d / 1.5).toFixed(2), on: kind };
+        }
+        return null; };
+      // how far it carries on after the key comes up: grip
+      const coast = (id, st, kind) => { boot(id, st); const c = at(kind); if (!c) return null;
+        g.place(c.x, c.z); g.step(20, 1/60); g.place(c.x, c.z);
+        key("keydown", "KeyW"); g.step(30, 1/60); key("keyup", "KeyW"); const a = g.state(); g.step(40, 1/60); const b = g.state();
+        return +Math.hypot(b.x - a.x, b.z - a.z).toFixed(2); };
+      // the announcement, on the first step in
+      const said = (id, st, kind) => { boot(id, st); const c = at(kind); if (!c) return null;
+        const g0 = at("grass"); g.place(g0.x, g0.z); g.step(5, 1/60); g.place(c.x, c.z); g.step(5, 1/60);
+        return g.alerts().filter(a => /TARPITS|GLACIER/.test(a)); };
+      const forms = { intern: ["intern", 0], skyrend: ["accnt", 1], kite: ["accnt", 0], roc: ["accnt", 2], hurricane: ["accnt", 3],
+                      myriad: ["twin", 4], supernova: ["intern", 4], continent: ["ox", 4] };
+      const out = {};
+      for (const [k, [id, st]] of Object.entries(forms)) out[k] = { grass: pace(id, st, "grass"), bog: pace(id, st, "bog") };
+      return { out, coastIntern: [coast("intern", 0, "grass"), coast("intern", 0, "ice")], coastKite: [coast("accnt", 0, "grass"), coast("accnt", 0, "ice")],
+               saidWalker: said("intern", 0, "bog"), saidKite: said("accnt", 0, "bog"), saidIce: said("intern", 0, "ice") };
+    });
+    const ratio = k => r.out[k].bog && r.out[k].grass ? +(r.out[k].bog.ups / r.out[k].grass.ups).toFixed(3) : null;
+    const line = k => `${k} ${r.out[k].grass && r.out[k].grass.ups}->${r.out[k].bog && r.out[k].bog.ups} (x${ratio(k)}, on ${r.out[k].bog && r.out[k].bog.on})`;
+    ok("the tar still drags a walker, and the fledgling with it: THE INTERN and SKYREND lose about a seventh of their pace in THE TARPITS",
+       ratio("intern") !== null && ratio("intern") >= .80 && ratio("intern") <= .92 && ratio("skyrend") >= .80 && ratio("skyrend") <= .92,
+       [line("intern"), line("skyrend")].join(", "));
+    const AIR = ["kite", "roc", "hurricane", "myriad", "supernova", "continent"];
+    ok("...and it cannot reach what is not on it: the kite, the ROC, the HURRICANE, the MYRIAD, the SUPERNOVA and the CONTINENT cross the tar at their grass pace",
+       AIR.every(k => ratio(k) !== null && ratio(k) >= .96 && ratio(k) <= 1.04),
+       AIR.map(line).join(", "));
+    ok("the glacier takes a walker's grip and not a flier's: THE INTERN coasts three times as far on ice after the key comes up, the kite does not",
+       r.coastIntern[1] >= r.coastIntern[0] * 3 && r.coastKite[1] <= r.coastKite[0] * 1.5,
+       `intern ${r.coastIntern[0]} -> ${r.coastIntern[1]} on ice, kite ${r.coastKite[0]} -> ${r.coastKite[1]}`);
+    ok("and the ground is announced, the way the water was: the first step into the tar says what it does, in one line for a walker and another for a flier, and the ice too",
+       r.saidWalker && r.saidWalker.some(a => /DRAGS/.test(a)) && r.saidKite && r.saidKite.some(a => /ABOVE/.test(a)) && r.saidIce && r.saidIce.some(a => /GLACIER/.test(a)),
+       `walker: ${JSON.stringify(r.saidWalker)}, kite: ${JSON.stringify(r.saidKite)}, ice: ${JSON.stringify(r.saidIce)}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

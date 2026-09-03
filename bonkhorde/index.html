@@ -2471,7 +2471,7 @@ pterling(e, face, W, H, c, glow, lod, y0){
   // every plan's do in eleg(); a pterling's are a taper, so the splay is here
   const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;
   for(const sg of [-1,1])
-    etp(e, face, sg*W*(.16 + dsp*.12), 0, y0 + H*.28 + hop, sg*.05*dsp, .02*dsp, -.07*(1 - dsp*.45), 3,
+    etp(e, face, sg*W*(.16 + dsp*.12), 0, y0 + H*.28 + hop, sg*.05*dsp, .02*dsp, -.07, 3,   // full length: shortened, a dead runner hovered 12 cm (section 35)
         W*.06,H*.06,W*.06, lt, .15);
   for(let i=0;i<3;i++)                                                    // rudder tail
     eb(e, face, 0, -W*.42 - i*W*.20, y0 + H*.42 + hop, W*.055, H*.028, W*.13,
@@ -3159,7 +3159,7 @@ const LINES = {
       // ---- THE FINAL FORM. One per line, at level 48. It keeps apex:true
       // because every apex power tests stageDef().apex - the final grew out
       // of that animal and did not trade its power away.
-      { nm:"THE SUPERNOVA", mods:{ spd:1.10, hp:2.05, dmg:1.72, reach:1.50 }, fly:true,
+      { nm:"THE SUPERNOVA", air:true, mods:{ spd:1.10, hp:2.05, dmg:1.72, reach:1.50 }, fly:true,
         apex:true, final:true, sig:"STARFIRE",
         sigDs:"the fire that outgrew its dragon" } ]},
   scrap:{ type:"scrap",
@@ -3198,7 +3198,7 @@ const LINES = {
       { nm:"THE MOUNTAIN", mods:{ spd:0.88, hp:1.90, dmg:1.42, armorFlat:9 },
         apex:true, sig:"UPHEAVAL",
         sigDs:"taking a hit answers with a free TREMOR" },
-      { nm:"THE CONTINENT", mods:{ spd:0.82, hp:2.30, dmg:1.68, armorFlat:14 },
+      { nm:"THE CONTINENT", air:true, mods:{ spd:0.82, hp:2.30, dmg:1.68, armorFlat:14 },
         apex:true, final:true, sig:"UPHEAVAL",
         sigDs:"too big to argue with" } ]},
   ghoul:{ type:"rot",
@@ -3217,14 +3217,14 @@ const LINES = {
   accnt:{ type:"tally",
     move:{ key:"mortar", nm:"GALEDIVE", ds:"it comes down out of the sky" },
     st:[
-      { nm:"WYVERNET", mods:{ spd:1.12 } },
+      { nm:"WYVERNET", air:true, mods:{ spd:1.12 } },
       { nm:"SKYREND",    mods:{ spd:0.90, hp:1.16, dmg:1.09, xp:1.07 } },
-      { nm:"THE ROC", mods:{ spd:1.10, hp:1.38, dmg:1.20, xp:1.15 },
+      { nm:"THE ROC", air:true, mods:{ spd:1.10, hp:1.38, dmg:1.20, xp:1.15 },
         sig:"UPDRAFT", sigDs:"+15% XP from everything" },
-      { nm:"THE HURRICANE", mods:{ spd:1.16, hp:1.70, dmg:1.42, xp:1.30 },
+      { nm:"THE HURRICANE", air:true, mods:{ spd:1.16, hp:1.70, dmg:1.42, xp:1.30 },
         apex:true, sig:"EYEWALL",
         sigDs:"GALEDIVE falls twice as often" },
-      { nm:"THE MONSOON", mods:{ spd:1.02, hp:2.05, dmg:1.68, xp:1.45 },
+      { nm:"THE MONSOON", air:true, mods:{ spd:1.02, hp:2.05, dmg:1.68, xp:1.45 },
         apex:true, final:true, sig:"EYEWALL",
         sigDs:"a season, not an animal" } ]},
   twin:{ type:"echo",
@@ -3237,7 +3237,7 @@ const LINES = {
       { nm:"THE LEGION", mods:{ spd:0.90, hp:1.80, dmg:1.55 },
         apex:true, sig:"WARCHOIR",
         sigDs:"five heads, and every volley carries one bolt more" },
-      { nm:"THE MYRIAD", mods:{ spd:1.06, hp:2.15, dmg:1.85 },
+      { nm:"THE MYRIAD", air:true, mods:{ spd:1.06, hp:2.15, dmg:1.85 },
         apex:true, final:true, sig:"WARCHOIR",
         sigDs:"six heads, one appetite" } ]},
 };
@@ -7350,6 +7350,15 @@ const SURGE_FILL = 1/30;        // metres of travel for a full meter
 const SURGE_DRAIN = .09;        // per second, standing still
 const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
 const SURGE_SPD = 1.30;         // and it is a burst of pace: the line's rule is MOVING
+// ---- THE GROUND KNOWS WHO IS AIRBORNE. Stages flagged air:true (the kite
+// that never lands, the gale line's fliers, the celestial serpent, the medusa,
+// the drifting continent) and a dragon with its wings out (P.fly) are not
+// standing on the ground, so the tar does not drag them and the ice does not
+// slip under them - and neither do they get the swimmer's water. Measured
+// before this: the tarpits slowed a hovering WYVERNET and THE HURRICANE by the
+// same 14% they slow a walker. The fledgling SKYREND is left grounded on
+// purpose: it is the one stage of the gale line the ground can hold.
+const airborne = ()=> !!(P && (P.fly || (stageDef().air)));
 // ---- RUSH. Kills feed pace, for every line. Each kill fills a meter that
 // bleeds away over a couple of seconds, and the meter is speed: a full one is
 // +22% on the ground. So cutting THROUGH a pack keeps you fast and circling
@@ -9967,7 +9976,8 @@ function step(dt){
   // Everyone else wades at three quarters speed, and a flyer over water is
   // just flying. The rule is felt through the controls and announced once at
   // the first shoreline, the same contract the biomes keep.
-  const wet = !P.fly && !P.air && inWater(P.x, P.z);
+  const up = airborne();
+  const wet = !up && !P.air && inWater(P.x, P.z);
   const AQUA = (curMon().type === "scrap" || curMon().type === "surge");
   if(wet !== lastWet){ lastWet = wet;
     if(wet && running && !over)
@@ -9985,7 +9995,20 @@ function step(dt){
   const sureFootWater = sureFoot && !AQUA;
   const wmul = wet ? (AQUA ? 1.30 : (sureFootWater ? 1 : .74)) : 1;
   const ACCELW = wet && !AQUA && !sureFootWater ? ACCEL*.6 : ACCEL;
-  const groundSpd = sureFoot ? 1 : (bmod.spd || 1);
+  const groundSpd = (sureFoot || up) ? 1 : (bmod.spd || 1);
+  // and the ground is ANNOUNCED, the way the water already was: on the first
+  // step into the tar or onto the ice, one line saying what it does to you -
+  // or that it cannot reach you
+  const bId = biomeAt(P.x, P.z).id;
+  if(bId !== P.lastBId){
+    const known = P.lastBId !== undefined; P.lastBId = bId;
+    if(known && running && !over){
+      if(bId === "bog") alert2(up ? "TARPITS - YOU ARE ABOVE THEM" : sureFoot ? "TARPITS - SURE FOOT" : "TARPITS - IT DRAGS AT YOU",
+                               up ? "#8fd3ff" : "#c9b48a");
+      if(bId === "ice") alert2(up ? "GLACIER - NOTHING TO SLIP ON UP HERE" : sureFoot ? "GLACIER - SURE FOOT" : "GLACIER - NO GRIP",
+                               up ? "#8fd3ff" : "#bfe6f2");
+    }
+  }
   const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul * (surgeUp() ? SURGE_SPD : 1) * rushMul();
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
@@ -9994,7 +10017,7 @@ function step(dt){
   // of dumping it. On the ground both are unchanged from before.
   // THE GLASS has no grip: you keep almost everything you had, which is exactly
   // the surface a hop chain wants and exactly the surface a dodge does not.
-  const grip = bmod.slide && !sureFoot ? .30 : 1;
+  const grip = bmod.slide && !sureFoot && !up ? .30 : 1;
   const rate = (dx||dz) ? (P.air ? ACCEL*.16 : ACCELW*grip)
                         : (P.air ? BRAKE*.10 : BRAKE*grip);
   const step_ = rate*dt;
@@ -10454,7 +10477,9 @@ function openMenu(){
              <s>&#9660;&#8201;${aff.weakNm}</s></i></div>` : ""}
            <div class="rw"><b>PACE</b><i>${c.st.map(x =>
                (((c.mods||{}).spd||1)*((x.mods||{}).spd||1)).toFixed(2)).join(" &#8594; ")}
-             <s>stage by stage, in strides of THE INTERN's</s></i></div>
+             <s>stage by stage, in strides of THE INTERN's${c.st.some(x => x.air)
+               ? ` &#183; airborne at ${c.st.map((x, i) => x.air ? "LV" + (i ? EVO_AT[i] : 1) : null).filter(Boolean).join("/")}: tar and ice do not touch it`
+               : ""}</s></i></div>
          </div>
          <div class="ml">LV ${ml}<div class="mb"><i style="width:${
            ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${
