@@ -86,7 +86,7 @@
     transition:width .07s linear}
   #hop b{font-size:13px;font-weight:900;color:#8affd0;min-width:46px;text-align:left;
     text-shadow:0 2px 0 #000;font-variant-numeric:tabular-nums}
-  #hop em{font-style:normal;font-size:9px;letter-spacing:.16em;color:#5c6470}
+  #hop em{font-style:normal;font-size:9px;text-shadow:0 1px 2px #000;letter-spacing:.16em;color:#b8b2a4}
   #hop.max .hb i{background:linear-gradient(90deg,#f0b429,#ffe08a);box-shadow:0 0 11px #f0b429cc}
   /* RUSH sits just above the chain: same bar, warm where the chain is cold */
   #rush{position:absolute;bottom:108px;left:50%;transform:translateX(-50%);
@@ -99,7 +99,7 @@
     transition:width .07s linear}
   #rush b{font-size:13px;font-weight:900;color:#ffd36b;min-width:46px;text-align:left;
     text-shadow:0 2px 0 #000;font-variant-numeric:tabular-nums}
-  #rush em{font-style:normal;font-size:9px;letter-spacing:.16em;color:#5c6470}
+  #rush em{font-style:normal;font-size:9px;text-shadow:0 1px 2px #000;letter-spacing:.16em;color:#b8b2a4}
   #hop.max b{color:#ffe08a}
   #stats{position:absolute;top:12px;right:14px;text-align:right;line-height:1.7;
     color:var(--dim)}
@@ -222,7 +222,7 @@
   #rule .hb{display:block;width:150px;height:7px;background:#0d1116;border:1px solid #000}
   #rule .hb i{display:block;height:100%;width:0%;background:#ff5c4d;transition:width .06s linear}
   #rule b{color:#ff8a6a;min-width:36px}
-  #rule em{color:#5c6470;font-style:normal}
+  #rule em{color:#b8b2a4;font-style:normal}
   #rule.hot .hb i{background:#ffd166}
   #rule.hot b{color:#ffd166}
   #rule.cold .hb i{background:#5c6470}
@@ -504,7 +504,8 @@
     &nbsp; <kbd>M</kbd> mute<br>
     hit <kbd>SPACE</kbd> again the moment you land to chain a hop &mdash; it never
     stops paying: +12% on the first, +40% by five, +55% by twelve. One hit takes it all.<br>
-    weapons fire themselves. your only job is to not be there.
+    weapons fire themselves. your only job is to not be there.<br>
+    green cards are <b>RULES</b> - they change how a run plays, not how hard it hits. two a run.
   </div>
   <div id="opts">
     <button class="btn gh opt" id="sndBtn">SOUND: ON</button>
@@ -1882,7 +1883,9 @@ dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:["+1 SHOT","+2 SH
 // next fifteen minutes, not what a number says. One line each, taken once,
 // and only two a run (RSLOTS), so which two is a decision. They do not take a
 // passive slot: a rule is a way of playing, not a stat.
-momentum:   { name:"MOMENTUM",    ic:"spd",        kind:"r", max:1, eff:"CHAIN = DAMAGE",
+// RHYTHM, not MOMENTUM: THE COURIER's rule meter already says MOMENTUM on
+// the HUD, and one word cannot name two rules. The key stays.
+momentum:   { name:"RHYTHM",      ic:"spd",        kind:"r", max:1, eff:"CHAIN = DAMAGE",
               ds:"Your hop chain bonus multiplies damage too. Keep hopping." },
 stomp:      { name:"STOMP",       ic:"earthquake", kind:"r", max:1, eff:"LANDINGS HIT",
               ds:"Every landing is a 7m shockwave that throws them back." },
@@ -12919,7 +12922,8 @@ function hud(){
   hopEl.firstElementChild.firstElementChild.style.width =
     Math.min(100, (hopMul()-1)/HOP_TOP*100).toFixed(1)+"%";
   hopEl.children[1].textContent = pct > 0 ? "+"+pct+"%" : "";
-  hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) : "";
+  // with RHYTHM the same bar is paying twice, and the label says so
+  hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) + (hasRule("momentum") ? " · PACE & DMG" : "") : "";
   // RUSH reads the same way and only exists while there is one
   const rushEl = $("rush"), rpct = Math.round((rushMul()-1)*100);
   rushEl.classList.toggle("on", P.rush > 0);

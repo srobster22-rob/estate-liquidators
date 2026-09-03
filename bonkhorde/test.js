@@ -6161,7 +6161,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   console.log("\n=== 45. THE RULES ===");
   {
     // The fun half of the upgrade report. Four cards that change how a run
-    // plays: MOMENTUM makes the hop chain pay in damage, STOMP makes every
+    // plays: RHYTHM (key momentum) makes the hop chain pay in damage, STOMP makes every
     // landing a blast, BLOODTHIRST makes kills heal, HUNTER makes bosses and
     // elites take half again. Each is measured through the real pipeline
     // with the rule off and then on, on the same field.
@@ -6170,7 +6170,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
         g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.step(5, 1/60); };
       const out = {};
-      // MOMENTUM
+      // RHYTHM
       boot(); g.setHop(8); out.momOff = g.dmgOut(100); g.give("momentum", 1); out.momOn = g.dmgOut(100);
       g.setHop(0); out.momIdle = g.dmgOut(100);
       // HUNTER: a grunt and an elite, same hit
@@ -6217,12 +6217,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const capped = []; for (let i = 0; i < 30; i++) capped.push(...deal(2500));
       out.earlyHands = early.length; out.early = early.filter(c => c.rule).length; out.later = later.filter(c => c.rule);
       out.capped = capped.filter(c => c.rule).length; out.lvl = g.state().lvl;
+      g.setHop(5);                                        // a live chain, with RHYTHM held
       await new Promise(res => setTimeout(res, 250));      // the kit bar redraws on the frame loop
       out.slot = !!document.querySelector("#kit .slot.r"); out.rules = g.rules();
+      out.hopLabel = document.querySelector("#hop em").textContent;
       out.pCount = g.kit().length;
       return out;
     });
-    ok("MOMENTUM: an eight-link chain multiplies a hit by the chain's own bonus, and does nothing on the ground",
+    ok("RHYTHM: an eight-link chain multiplies a hit by the chain's own bonus, and does nothing on the ground",
        Math.abs(r.momOn / r.momOff - (1 + .60 * (1 - Math.pow(.80, 8)))) < .01 && Math.abs(r.momIdle - r.momOff) < .01,
        `x${(r.momOn / r.momOff).toFixed(3)} at eight links, x${(r.momIdle / r.momOff).toFixed(3)} idle`);
     ok("HUNTER: the elite takes half again, the grunt beside it takes what it took before",
@@ -6242,6 +6244,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.early} of ${r.earlyHands} cards before level 4, ${r.later.length} after (${[...new Set(r.later.map(c => c.nm))].join(" ")}), level ${r.lvl}`);
     ok("two rules a run: with two taken the draft offers no third, and a rule sits in the kit bar in its own colour",
        r.capped === 0 && r.slot && r.rules.length === 4, `${r.capped} offered past the cap, slot ${r.slot}`);
+    ok("and the chain readout says the chain is paying twice while RHYTHM is held",
+       /x\d/.test(r.hopLabel) && /PACE & DMG/.test(r.hopLabel), JSON.stringify(r.hopLabel));
   }
 
   console.log("\n" + "=".repeat(58));
