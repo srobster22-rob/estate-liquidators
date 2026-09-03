@@ -349,8 +349,9 @@ const MUTANTS = [
     from:"  const af = f + len*(k - .18) + sw*len*.44,", to:"  const af = f + len*(k - .18)," },
   { id:"foot-never-lifts", must:"32",
     why:"the swinging foot is dragged along the grass instead of lifted",
-    from:"  seg(af, ay, af + len*.30, y - len + lift + th*.30, th*.62, col);",
-    to:  "  seg(af, ay, af + len*.30, y - len + th*.30, th*.62, col);" },
+    // re-pointed by R222: the foot segment carries its lateral splay now
+    from:"  seg(r + out, af, ay, r + out, af + len*.30, y - len + lift + th*.30, th*.62, col);  // foot",
+    to:  "  seg(r + out, af, ay, r + out, af + len*.30, y - len + th*.30, th*.62, col);  // foot" },
   { id:"flinch-not-directional", must:"33",
     why:"the stagger no longer knows which side the blow came from - every " +
         "hit is the same crouch, so the body tells you nothing about where " +
@@ -518,6 +519,21 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"legs-do-not-go", must:"42",
+    why:"a corpse's legs stay straight under it - the fall is back to a squash " +
+        "with four stiff legs, a toy knocked over",
+    from:"    splay = deathPose(e.ft / e.fd).drop;             // 0 -> 1 over the first 40%",
+    to:  "    splay = 0;" },
+  { id:"stubs-do-not-go", must:"42",
+    why:"the terrapin's leg stubs stay under it - the shambler, the most common " +
+        "body in the game, dies a toy again",
+    from:"  const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;\n  for(const sg of [-1,1]) for(const fs of [-1,1])",
+    to:  "  const dsp = 0;\n  for(const sg of [-1,1]) for(const fs of [-1,1])" },
+  { id:"taper-does-not-go", must:"42",
+    why:"the pterling's legs stay tucked - a runner dies with its legs still " +
+        "folded under a belly on the ground",
+    from:"  const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;\n  for(const sg of [-1,1])\n    etp(",
+    to:  "  const dsp = 0;\n  for(const sg of [-1,1])\n    etp(" },
   { id:"rush-never-fills", must:"41",
     why:"a kill no longer feeds the meter, so there is no rush at all",
     from:"  if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));",

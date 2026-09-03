@@ -2254,22 +2254,41 @@ function hopOf(e){
 // `ns` splits the shin into that many stair-stepped blocks, for a leg long
 // and thin enough that one bounding block of its slant would be a boot.
 function eleg(e, face, r, f, y, len, sw, lift, th, col, lod, kn, em, ns){
+  // THE LEGS GO WITH IT. A corpse's legs used to fold only as far as the
+  // whole-body squash folded everything, so the animal shrank onto its feet
+  // and lay there with its legs still straight under it - a toy knocked over,
+  // not a body going down. When a body goes down its knees buckle forward,
+  // its feet slide out from under it and drop flat, and the legs splay to the
+  // side they are on. All of it lives here, driven by the same deathPose()
+  // the squash reads, so every plan's legs die the same way without one of
+  // the eleven knowing how. A live body (no fall clock) is untouched.
+  let splay = 0;
+  if(e.dead && e.ft !== undefined){
+    splay = deathPose(e.ft / e.fd).drop;             // 0 -> 1 over the first 40%
+    kn = (kn === undefined ? .22 : kn) + splay*.30;  // the knee buckles forward
+    sw = sw*(1 - splay) + splay*.55;                 // the foot slides out ahead
+    lift = lift*(1 - splay);                         // and drops flat
+  }
   const k  = kn === undefined ? .22 : kn;
+  const out = splay*len*.50*(r < 0 ? -1 : 1);       // and out to its own side
   const kf = f + len*k + sw*len*.26,          ky = y - len*.42;
   const af = f + len*(k - .18) + sw*len*.44,  ay = y - len*.84 + lift*.6;
   const lt = [col[0]*1.3+.04, col[1]*1.3+.04, col[2]*1.3+.04];
-  const seg = (f0, y0, f1, y1, t, cc, n)=>{
+  const seg = (r0, f0, y0, r1, f1, y1, t, cc, n)=>{
     n = n || 1;
     for(let i=0;i<n;i++){
       const u = (i + .5)/n;
-      eb(e, face, r, f0 + (f1-f0)*u, y0 + (y1-y0)*u, t,
+      // the lateral half-extent grows with the lateral travel the same way
+      // the other two do, so a splayed shin is still one piece with its thigh
+      eb(e, face, r0 + (r1-r0)*u, f0 + (f1-f0)*u, y0 + (y1-y0)*u,
+         Math.abs(r1-r0)/(2*n) + t,
          Math.abs(y1-y0)/(2*n) + t*.55, Math.abs(f1-f0)/(2*n) + t*.65, cc, em||0);
     }
   };
-  seg(f, y, kf, ky, th, col);                                     // thigh
-  seg(kf, ky, af, ay, th*.78, lt, ns);                            // shin
+  seg(r, f, y, r + out*.45, kf, ky, th, col);                          // thigh
+  seg(r + out*.45, kf, ky, r + out, af, ay, th*.78, lt, ns);           // shin
   if(lod < 2) return;
-  seg(af, ay, af + len*.30, y - len + lift + th*.30, th*.62, col); // foot
+  seg(r + out, af, ay, r + out, af + len*.30, y - len + lift + th*.30, th*.62, col);  // foot
 }
 // The same vocabulary the player monsters got, because the reason the horde
 // looked like boxes is that it WAS boxes: chamfered volumes, tapered limbs and
@@ -2357,10 +2376,13 @@ terrapin(e, face, W, H, c, glow, lod, y0){
   // four sprawled legs in the MIDDLE tier, diagonal pairs lifting in turn -
   // and only when it walks. Wider than they are tall, elbows out, each one
   // reaching a tenth of a width past the rim it used to hide under.
+  // and when it dies they go out from under it the way every other plan's do
+  // in eleg(): a terrapin's legs are single stubs, so the splay is here
+  const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;
   for(const sg of [-1,1]) for(const fs of [-1,1])
-    eb(e, face, sg*W*.54, fs*W*.28 + stride(e, 4)*(sg*fs>0?1:-1)*W*.07,
-       y0 + W*.09 + Math.max(0, strideV(e, 4)*(sg*fs>0?1:-1))*W*.05,
-       W*.14, W*.09, W*.11, [c[0]*.72,c[1]*.72,c[2]*.76], 0);
+    eb(e, face, sg*W*(.54 + dsp*.22), fs*W*(.28 + dsp*.10) + stride(e, 4)*(sg*fs>0?1:-1)*W*.07*(1-dsp),
+       y0 + W*.09*(1-dsp*.6) + Math.max(0, strideV(e, 4)*(sg*fs>0?1:-1))*W*.05*(1-dsp),
+       W*(.14 + dsp*.06), W*.09*(1-dsp*.3), W*.11, [c[0]*.72,c[1]*.72,c[2]*.76], 0);
   if(lod < 2) return;
   for(let i=0;i<2;i++)                                     // shell seams
     eb(e, face, 0, -W*.10 + i*W*.34, y0 + W*.30, W*.005, W*.10, W*.46,
@@ -2445,8 +2467,11 @@ pterling(e, face, W, H, c, glow, lod, y0){
   // the dive TELEGRAPH, where hop triples, both legs came off the bird
   // entirely. They carry the full hop now and sit a little higher into the
   // belly, so the gap between leg and body is a constant no animation can open.
-  for(const sg of [-1,1])                                                 // legs
-    etp(e, face, sg*W*.16, 0, y0 + H*.28 + hop, 0,0,-.07, 3,
+  // legs - and when it dies they go out and up to its own side, the way
+  // every plan's do in eleg(); a pterling's are a taper, so the splay is here
+  const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;
+  for(const sg of [-1,1])
+    etp(e, face, sg*W*(.16 + dsp*.12), 0, y0 + H*.28 + hop, sg*.05*dsp, .02*dsp, -.07*(1 - dsp*.45), 3,
         W*.06,H*.06,W*.06, lt, .15);
   for(let i=0;i<3;i++)                                                    // rudder tail
     eb(e, face, 0, -W*.42 - i*W*.20, y0 + H*.42 + hop, W*.055, H*.028, W*.13,

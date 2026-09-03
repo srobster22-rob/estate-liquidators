@@ -5976,6 +5976,54 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("an elite is worth two kills", r.elite.rush >= .27 && r.elite.rush <= .29, `elite ${r.elite.rush}`);
   }
 
+  console.log("\n=== 42. THE LEGS GO WITH IT ===");
+  {
+    // R200 made the horde fall: squash, shear the way it was hit, lie, sink.
+    // What it did not do is anything to the legs - the whole-body squash
+    // folded them exactly as far as it folded the head, so a dead brute lay
+    // there with four straight legs still under it, a toy knocked over. The
+    // shared leg helper now reads the same fall clock the squash does: the
+    // knee buckles forward, the foot slides out ahead and drops flat, and the
+    // legs splay to their own side.
+    // MEASURED ON THE LEG BOXES' CENTRES, not on the footprint. The first
+    // version of this read the whole corpse's width and passed with the splay
+    // switched off, because the squash widens every box about its centre and
+    // a brute's legs never reach past its own frill anyway. A squash moves an
+    // extent and never a centre; only the splay moves a leg's centre sideways.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const out = {};
+      for (const kind of ["brute", "shambler", "runner"]) {
+        g.wipeSave(); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.place(0, 0); g.aim(0); g.clearEnemies();
+        g.spawnAt(kind, 0, 6); g.step(2, 1/60);            // it faces the player: lateral is x
+        g.slay(1); g.pause();
+        const cap = async u => { while ((g.corpses()[0] || { u: 9 }).u < u) g.corpseStep(1, 1/60);
+          g.captureCorpse(); g.resume(); await frame(); await frame(); g.pause();
+          const c = g.corpseBox(), boxes = [];
+          for (let i = 0; i < c.n; i++) { const o = g.corpseBox(i); boxes.push({ x: o.ax, y: o.ay }); }
+          return { u: g.corpses()[0].u, c, boxes }; };
+        const a = await cap(0);
+        // the legs: whatever sat in the lowest third of the standing body
+        const lim = a.c.minY + (a.c.maxY - a.c.minY) * .33;
+        const legs = a.boxes.map((b, i) => b.y < lim ? i : -1).filter(i => i >= 0);
+        const spread = s => { const xs = legs.map(i => s.boxes[i].x); return +(Math.max(...xs) - Math.min(...xs)).toFixed(3); };
+        const s0 = spread(a);
+        const b = await cap(.62);
+        out[kind] = { legs: legs.length, s0, s62: spread(b), ratio: +(spread(b) / s0).toFixed(3), n0: a.c.n, n62: b.c.n };
+      }
+      return out;
+    });
+    ok("a dead brute's legs go out from under it: the centres of its leg boxes spread a quarter wider across the facing between the kill frame and the end of the crumple, and a shambler's too",
+       r.brute.legs >= 4 && r.brute.ratio >= 1.25 && r.shambler.legs >= 4 && r.shambler.ratio >= 1.25,
+       `brute ${r.brute.legs} leg boxes ${r.brute.s0} -> ${r.brute.s62} (x${r.brute.ratio}), shambler ${r.shambler.legs} boxes ${r.shambler.s0} -> ${r.shambler.s62} (x${r.shambler.ratio})`);
+    ok("...and a runner's, by a fifth at least", r.runner.legs >= 4 && r.runner.ratio >= 1.20,
+       `runner ${r.runner.legs} leg boxes ${r.runner.s0} -> ${r.runner.s62} (x${r.runner.ratio})`);
+    ok("the splay adds no boxes and loses none: the corpse is the same count of parts at the end of the crumple as on the kill frame",
+       Object.values(r).every(k => k.n0 === k.n62 && k.n0 > 10),
+       Object.entries(r).map(([k, v]) => `${k} ${v.n0}/${v.n62}`).join(", "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
