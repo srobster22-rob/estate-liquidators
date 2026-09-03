@@ -88,6 +88,18 @@
     text-shadow:0 2px 0 #000;font-variant-numeric:tabular-nums}
   #hop em{font-style:normal;font-size:9px;letter-spacing:.16em;color:#5c6470}
   #hop.max .hb i{background:linear-gradient(90deg,#f0b429,#ffe08a);box-shadow:0 0 11px #f0b429cc}
+  /* RUSH sits just above the chain: same bar, warm where the chain is cold */
+  #rush{position:absolute;bottom:108px;left:50%;transform:translateX(-50%);
+    display:flex;gap:4px;align-items:center;opacity:0;transition:opacity .18s}
+  #rush.on{opacity:1}
+  #rush .hb{display:block;width:118px;height:6px;background:#141920;border:1px solid #000;
+    box-shadow:0 1px 0 rgba(0,0,0,.6)}
+  #rush .hb i{display:block;height:100%;width:0;
+    background:linear-gradient(90deg,#ff7a3d,#ffd36b);box-shadow:0 0 9px #ff7a3daa;
+    transition:width .07s linear}
+  #rush b{font-size:13px;font-weight:900;color:#ffd36b;min-width:46px;text-align:left;
+    text-shadow:0 2px 0 #000;font-variant-numeric:tabular-nums}
+  #rush em{font-style:normal;font-size:9px;letter-spacing:.16em;color:#5c6470}
   #hop.max b{color:#ffe08a}
   #stats{position:absolute;top:12px;right:14px;text-align:right;line-height:1.7;
     color:var(--dim)}
@@ -432,6 +444,7 @@
   <div id="phase"></div>
   <div id="stats"></div>
   <div id="hop"><span class="hb"><i></i></span><b></b><em></em></div>
+  <div id="rush"><span class="hb"><i></i></span><b></b><em></em></div>
   <!-- One readout, two rule-characters. THE COURIER fills it by moving and
        spends it all at once; THE TEMP empties it by dying and waits for it to
        come back. Neither rule is legible without a bar, and a rule the player
@@ -7312,6 +7325,16 @@ const SURGE_FILL = 1/30;        // metres of travel for a full meter
 const SURGE_DRAIN = .09;        // per second, standing still
 const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
 const SURGE_SPD = 1.30;         // and it is a burst of pace: the line's rule is MOVING
+// ---- RUSH. Kills feed pace, for every line. Each kill fills a meter that
+// bleeds away over a couple of seconds, and the meter is speed: a full one is
+// +22% on the ground. So cutting THROUGH a pack keeps you fast and circling
+// its edge does not, and speed becomes something a fight hands you rather
+// than a number on the card. The second half of the movement report: the
+// first half gave every line a pace of its own; this makes pace a REWARD.
+const RUSH_TOP = .22,           // +22% at a full meter
+      RUSH_KILL = .14,          // a kill; an elite is worth two, a boss fills it
+      RUSH_DRAIN = .42;         // per second, so a full meter is gone in ~2.4 s
+const rushMul = ()=> 1 + RUSH_TOP * (P ? Math.min(1, P.rush||0) : 0);
 // REBIRTH. THE TEMP detonates instead of dying, comes back at 45%, and the
 // rebirth goes on a cooldown that grows every time it is used - so it is a
 // resource with a floor, not a second health bar.
@@ -7537,7 +7560,7 @@ function startRun(id){
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
         hop:0, hopWin:0, hopGrace:0, hopFx:0, hopHold:undefined, idle:1,
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0,
-        surge:0, surgeT:0, rebirths:0, rebirthCd:0, grown:0, hp0:s.maxhp };
+        surge:0, surgeT:0, rush:0, rebirths:0, rebirthCd:0, grown:0, hp0:s.maxhp };
   jumpBuf = 0;
   stage = 0; evoT = 0; evoFx = 0; noEvo = false;
   // the hatchling's own stage mods start applied - evolveTo() only ever
@@ -7979,6 +8002,7 @@ function hurt(e, amount, kx, kz, crit){
 function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++;
+  if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));
   fell(e);
   if(e.denRef) denLost(e.denRef);
   const n = e.boss ? 30 : e.elite ? 16 : e.rad>1 ? 11 : 6;
@@ -9937,7 +9961,7 @@ function step(dt){
   const wmul = wet ? (AQUA ? 1.30 : (sureFootWater ? 1 : .74)) : 1;
   const ACCELW = wet && !AQUA && !sureFootWater ? ACCEL*.6 : ACCEL;
   const groundSpd = sureFoot ? 1 : (bmod.spd || 1);
-  const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul * (surgeUp() ? SURGE_SPD : 1);
+  const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul * (surgeUp() ? SURGE_SPD : 1) * rushMul();
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
   // braking. That asymmetry IS the mechanic: a chain you steer through is a
@@ -9997,6 +10021,7 @@ function step(dt){
     }
   }
   if(P.rebirthCd > 0) P.rebirthCd = Math.max(0, P.rebirthCd - dt);
+  if(P.rush > 0) P.rush = Math.max(0, P.rush - RUSH_DRAIN*dt);   // rush bleeds, kills or no kills
   if(dx || dz){ P.face = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
 
   // ---- jump / bunnyhop
@@ -12684,6 +12709,12 @@ function hud(){
     Math.min(100, (hopMul()-1)/HOP_TOP*100).toFixed(1)+"%";
   hopEl.children[1].textContent = pct > 0 ? "+"+pct+"%" : "";
   hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) : "";
+  // RUSH reads the same way and only exists while there is one
+  const rushEl = $("rush"), rpct = Math.round((rushMul()-1)*100);
+  rushEl.classList.toggle("on", P.rush > 0);
+  rushEl.firstElementChild.firstElementChild.style.width = (Math.min(1, P.rush)*100).toFixed(1)+"%";
+  rushEl.children[1].textContent = rpct > 0 ? "+"+rpct+"%" : "";
+  rushEl.children[2].textContent = P.rush > 0 ? "RUSH" : "";
 
   // THE RULE METER. Only one character in a run can have a rule, so one bar
   // serves both - it just means opposite things. Filling and red is momentum
@@ -12910,12 +12941,15 @@ window.__g = {
   // screenshot helper: point the camera and the creature the same way
   aim: (a)=>{ camYaw = a; if(P) P.face = a; return camYaw; },
   hitBoss: (n)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b) hurt(b, n||1, 0, 0); },
+  slay: (n=1)=>{ const live=enemies.filter(e=>!e.dead).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z));
+                 live.slice(0,n).forEach(killEnemy); return live.length; },
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
                   return window.__g.state(); },
   bot:   (on=true)=>botDrive=on,
   // The two rule-characters, exposed so the suite can press on the rules
   // rather than on the stat block - which is the whole reason they exist.
   rule:  ()=>({ surge:+(P.surge||0).toFixed(4), surgeT:+(P.surgeT||0).toFixed(3),
+                rush:+(P.rush||0).toFixed(4), rushMul:+rushMul().toFixed(4),
                 rebirths:P.rebirths|0, rebirthCd:+(P.rebirthCd||0).toFixed(2),
                 dist:+runDist.toFixed(1), isSurge:isSurge(), isPyre:isPyre() }),
   // damage straight through the funnel, crit removed so the number is stable

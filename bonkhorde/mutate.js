@@ -400,7 +400,8 @@ const MUTANTS = [
   { id:"no-corpse", must:"35",
     why:"a kill no longer puts the body on the corpse list - the horde is back " +
         "to vanishing on the frame it dies, a cut and not a death",
-    from:"  e.dead = true; kills++;\n  fell(e);", to:"  e.dead = true; kills++;\n  0;" },
+    // re-pointed by R221: the rush line now sits between kills++ and fell()
+    from:"  fell(e);\n  if(e.denRef) denLost(e.denRef);", to:"  0;\n  if(e.denRef) denLost(e.denRef);" },
   { id:"corpse-drawn-twice", must:"35",
     why:"the live loop no longer skips the dead - a corpse is drawn standing by " +
         "the live pass AND falling by the corpse pass, two bodies for one kill",
@@ -517,6 +518,18 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"rush-never-fills", must:"41",
+    why:"a kill no longer feeds the meter, so there is no rush at all",
+    from:"  if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));",
+    to:  "" },
+  { id:"rush-never-drains", must:"41",
+    why:"the meter never bleeds, so the first three kills of a run are +22% forever",
+    from:"  if(P.rush > 0) P.rush = Math.max(0, P.rush - RUSH_DRAIN*dt);   // rush bleeds, kills or no kills",
+    to:  "" },
+  { id:"rush-is-not-speed", must:"41",
+    why:"the meter fills and bleeds and buys nothing on the ground",
+    from:"* (surgeUp() ? SURGE_SPD : 1) * rushMul();",
+    to:  "* (surgeUp() ? SURGE_SPD : 1);" },
   { id:"evolution-keeps-pace", must:"40",
     why:"evolving no longer rescales speed, so every line runs at one pace from " +
         "hatchling to final - which is exactly the report this section answers",
@@ -529,8 +542,8 @@ const MUTANTS = [
     to:  "  monMul = { spd:1, cd:1, mag:1 };" },
   { id:"surge-is-not-speed", must:"40",
     why:"the courier's surge goes back to being damage only",
-    from:"* wmul * (surgeUp() ? SURGE_SPD : 1);",
-    to:  "* wmul;" },
+    from:"* wmul * (surgeUp() ? SURGE_SPD : 1) * rushMul();",
+    to:  "* wmul * rushMul();" },
   { id:"portrait-axes-swapped", must:"39",
     why:"the card camera reads the box capture as (lateral, vertical, fore-aft) " +
         "again, so every portrait is framed on the animal's depth where it " +

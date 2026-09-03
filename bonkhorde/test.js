@@ -5934,6 +5934,48 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.down} u/s down, ${r.up} up, x${(r.up/r.down).toFixed(3)}`);
   }
 
+  console.log("\n=== 41. KILLS FEED PACE ===");
+  {
+    // The second half of the movement report. Section 40 gave every line a
+    // pace of its own; this makes pace something a fight hands you. Each kill
+    // fills a meter that bleeds away in a couple of seconds, and the meter is
+    // speed - so cutting through a pack keeps you fast and circling it does
+    // not. Held here on the ground covered, not on the number.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const key = (t, code) => dispatchEvent(new KeyboardEvent(t, { code }));
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+                           g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.place(0, 0); g.aim(0); };
+      const pace = () => { g.place(0, 0); key("keydown", "KeyW"); g.step(20, 1/60);
+                           const a = g.state(); g.step(60, 1/60); const b = g.state();
+                           key("keyup", "KeyW"); return +(Math.hypot(b.x-a.x, b.z-a.z)).toFixed(2); };
+      boot(); g.step(30, 1/60);
+      const cold = g.rule().rush, coldPace = pace();
+      // three kills, read at once
+      boot(); g.spawn("runner", 3, 8); g.step(1, 1/60);
+      const slain = g.slay(3); const afterKills = g.rule();
+      // a fourth: does the meter keep climbing, and does it cap
+      g.spawn("runner", 12, 8); g.step(1, 1/60); g.slay(12); const capped = g.rule();
+      const hotPace = pace();
+      // and it bleeds: no kills for three seconds
+      g.step(180, 1/60); const later = g.rule();
+      // an elite is worth two kills (a brute is a SPECIES; an elite is the
+      // promotion an angry den hands out, and the hook promotes on demand)
+      boot(); g.spawn("runner", 1, 8); g.step(1, 1/60); g.elite(0); g.slay(1); const elite = g.rule();
+      return { cold, coldPace, slain, afterKills, capped, hotPace, later, elite };
+    });
+    ok("a run starts with no rush and a kill gives you some", r.cold === 0 && r.slain >= 3 && r.afterKills.rush > .30,
+       `cold ${r.cold}, after three kills ${r.afterKills.rush} (x${r.afterKills.rushMul})`);
+    ok("...and it caps: a dozen more kills take the meter to full and no further", r.capped.rush <= 1 && r.capped.rush >= .95,
+       `after fifteen ${r.capped.rush} (x${r.capped.rushMul})`);
+    ok("a full rush is pace on the ground: a fifth again the distance in the same second",
+       r.hotPace / r.coldPace >= 1.10 && r.hotPace / r.coldPace <= 1.24,
+       `${r.coldPace} cold, ${r.hotPace} hot, x${(r.hotPace/r.coldPace).toFixed(3)} (the meter bled during the read)`);
+    ok("and it bleeds away: three seconds without a kill and it is gone", r.later.rush === 0 && r.later.rushMul === 1,
+       `${r.later.rush} after 3 s`);
+    ok("an elite is worth two kills", r.elite.rush >= .27 && r.elite.rush <= .29, `elite ${r.elite.rush}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
