@@ -1885,7 +1885,7 @@ dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:["+1 SHOT","+2 SH
 momentum:   { name:"MOMENTUM",    ic:"spd",        kind:"r", max:1, eff:"CHAIN = DAMAGE",
               ds:"Your hop chain bonus multiplies damage too. Keep hopping." },
 stomp:      { name:"STOMP",       ic:"earthquake", kind:"r", max:1, eff:"LANDINGS HIT",
-              ds:"Every landing blasts everything within 3m." },
+              ds:"Every landing is a 7m shockwave that throws them back." },
 bloodthirst:{ name:"BLOODTHIRST", ic:"heal",       kind:"r", max:1, eff:"KILLS HEAL",
               ds:"+1 HP a kill, +5 an elite, +25 a boss." },
 hunter:     { name:"HUNTER",      ic:"dmg",        kind:"r", max:1, eff:"+50% VS BIG GAME",
@@ -1895,7 +1895,17 @@ const isRule = k => !!(PASSIVES[k] && PASSIVES[k].kind === "r");
 const hasRule = k => !!(P && P.kit[k]);
 const HUNTER_MUL = 1.5, RULE_FROM = 4;                 // no rule before level 4
 const BLOOD_HEAL = e => e.boss ? 25 : e.elite ? 5 : 1;
-const STOMP_R = 3.0, STOMP_DMG = 24;                    // base, rolled like a weapon
+// A SHOCKWAVE, not a stamp. Benched at 3m and again at 4.5m the autopilot -
+// which kites at weapon range, as a player should - landed near an enemy on
+// one landing in twenty and the card dealt a tenth of a percent of the run's
+// damage: it promised a blast every landing and rewarded standing where the
+// game spends twenty minutes teaching you not to stand. Seven metres, scaled
+// by reach, with a shove: the animals chasing you are inside it, and a chain
+// of landings is a chain of crowds thrown back. Less per hit than the stamp
+// was, because it now lands on something.
+const STOMP_R = 7.0, STOMP_DMG = 18, STOMP_KB = 30;    // base, rolled like a weapon; the shove is the point
+let statStomps = 0, statStompHits = 0;
+let noRules = false, dmgStomp = 0;                       // bench: the control arm drafts no rules
 
 // ================================================================ THE STORY
 // You are a hatchling. Something very large woke up under the world and started
@@ -8365,8 +8375,12 @@ function fireBolt(w,s){
 // weapon so HARDER, crits and MOMENTUM all count, and a hop chain with this
 // card is a drumbeat of blasts - which is the point of it.
 function stomp(){
-  rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:STOMP_R, life:.28, mx:.28 });
-  damageArea(P.x, P.z, STOMP_R, STOMP_DMG, 7);
+  const r = STOMP_R * P.reach;
+  rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:r, life:.28, mx:.28 });
+  const d0 = dmgDealt;
+  statStomps++;
+  if(damageArea(P.x, P.z, r, STOMP_DMG, STOMP_KB) > 0) statStompHits++;
+  dmgStomp += dmgDealt - d0;
   shake = Math.max(shake, .10);
   SFX.boom();
 }
@@ -9670,7 +9684,7 @@ function offers(){
   for(const k in PASSIVES){
     const p = have[k], P2 = PASSIVES[k];
     if(isRule(k)){
-      if(!p && rCount < RSLOTS && P.lvl >= RULE_FROM)
+      if(!p && !noRules && rCount < RSLOTS && P.lvl >= RULE_FROM)
         pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
       continue;
     }
@@ -13644,6 +13658,9 @@ window.__g = {
   upgrades: ()=>Object.keys(PASSIVES).filter(k=>!isRule(k)).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff, max:PASSIVES[k].max })),
   rules: ()=>Object.keys(PASSIVES).filter(isRule).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff })),
   setHop: (n)=>{ P.hop = n; return P.hop; },
+  noRules: (on=true)=>noRules=!!on,
+  stompDmg: ()=>{ const d = dmgStomp, n = statStomps, h = statStompHits; dmgStomp = 0; statStomps = 0; statStompHits = 0;
+                  return { dmg:Math.round(d), landings:n, hit:h }; },
   hordeHp: ()=>+enemies.filter(e=>!e.dead).reduce((a,e)=>a+Math.max(0,e.hp),0).toFixed(1),
   wDelta: (k,l)=>wDelta(k,l),
   peekOffers: (n=60)=>{ const seen={};

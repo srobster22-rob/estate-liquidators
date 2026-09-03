@@ -6187,6 +6187,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         return { landed, lost: +(hp0 - g.hordeHp()).toFixed(1) }; };
       boot(); g.spawn("shambler", 8, 2); g.step(3, 1/60); out.stompOff = hop();
       boot(); g.spawn("shambler", 8, 2); g.step(3, 1/60); g.give("stomp", 1); out.stompOn = hop();
+      // and what the shove is FOR: twenty seconds hopping in place inside a ring
+      // of forty, weapons off, with the card and without. Benched with the
+      // autopilot STOMP was a tenth of a percent of a run, because the autopilot
+      // kites at weapon range and nothing was ever inside seven metres of a
+      // landing; a player with the horde on their heels is the case that counts.
+      const brawl = (rule) => { g.wipeSave(); g.pin(7); g.pinRun(7); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.step(5, 1/60);
+        if (rule) g.give(rule, 1); g.spawn("shambler", 30, 6); g.spawn("runner", 10, 8); g.step(10, 1/60);
+        const hp0 = g.state().hp;
+        for (let i = 0; i < 20 * 60; i++) { if (!g.state().air) { key("keydown", "Space"); g.step(1, 1/60); key("keyup", "Space"); } else g.step(1, 1/60); }
+        const s = g.stompDmg(); return { lost: Math.round(hp0 - g.state().hp), hits: s.hit, left: g.hordeHp() }; };
+      out.brawlOff = brawl(null); out.brawlOn = brawl("stomp");
       // the draft: rules arrive at level 4 as their own kind of card, and two is the cap
       // each hand is tagged with the level it was dealt AT - a 600 xp step is
       // one level early on and several later, so the level is read, not counted
@@ -6221,6 +6233,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("STOMP: one landing in a ring of grubs costs them health, and a bare landing costs nothing",
        r.stompOff.landed && r.stompOn.landed && r.stompOff.lost === 0 && r.stompOn.lost > 30,
        `without ${JSON.stringify(r.stompOff)}, with ${JSON.stringify(r.stompOn)}`);
+    ok("and the shove is what it is for: twenty seconds hopping inside a ring of forty costs real health bare, and next to nothing with the card",
+       r.brawlOff.lost > 60 && r.brawlOn.lost < r.brawlOff.lost * .25 && r.brawlOn.hits >= 3,
+       `bare: lost ${r.brawlOff.lost}, ${r.brawlOff.left} HP of horde left; STOMP: lost ${r.brawlOn.lost}, ${r.brawlOn.hits} landings connected, ${r.brawlOn.left} HP left`);
     ok("the draft deals rules as their own kind of card from level 4, all four of them, none before",
        r.earlyHands >= 4 && r.early === 0 && r.later.length >= 4 && new Set(r.later.map(c => c.key)).size === 4 &&
        r.later.every(c => c.lv === "RULE" && c.rule),
