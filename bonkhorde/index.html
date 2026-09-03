@@ -200,6 +200,12 @@
   .card .lv .pips s.n{background:#fff;box-shadow:0 0 6px #fff9}
   .card .pt{font-size:9px;color:var(--evo);letter-spacing:.08em;margin-top:6px;font-weight:700}
   .card.evo .eff{color:#ffd0b0}
+  /* a rule is a way of playing, not a stat: cold green where a stat is white */
+  .card.rule{border-color:#3ad0a0;background:#0f1a17}
+  .card.rule:hover{border-color:#8affd0}
+  .card.rule .eff{color:#8affd0}
+  .card.rule .lv{color:#3ad0a0}
+  .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
   /* menu */
   .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
@@ -1869,7 +1875,27 @@ clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
            ds:"Crits hit for 2.3x." },
 dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:["+1 SHOT","+2 SHOTS","+2 SHOTS"],
            ds:"BOLT · SKULLS · MORTAR · ZAP · BROOD. Copies hit for 55%." },
+// THE RULES. The eight adjectives answer "easy to read"; these answer "more
+// fun to play". A rule changes how a run PLAYS rather than how hard it hits,
+// and each one is tied to a verb the game already teaches - the hop chain,
+// the landing, the kill, the boss - so taking one changes what you DO for the
+// next fifteen minutes, not what a number says. One line each, taken once,
+// and only two a run (RSLOTS), so which two is a decision. They do not take a
+// passive slot: a rule is a way of playing, not a stat.
+momentum:   { name:"MOMENTUM",    ic:"spd",        kind:"r", max:1, eff:"CHAIN = DAMAGE",
+              ds:"Your hop chain bonus multiplies damage too. Keep hopping." },
+stomp:      { name:"STOMP",       ic:"earthquake", kind:"r", max:1, eff:"LANDINGS HIT",
+              ds:"Every landing blasts everything within 3m." },
+bloodthirst:{ name:"BLOODTHIRST", ic:"heal",       kind:"r", max:1, eff:"KILLS HEAL",
+              ds:"+1 HP a kill, +5 an elite, +25 a boss." },
+hunter:     { name:"HUNTER",      ic:"dmg",        kind:"r", max:1, eff:"+50% VS BIG GAME",
+              ds:"Bosses and elites take half again." },
 };
+const isRule = k => !!(PASSIVES[k] && PASSIVES[k].kind === "r");
+const hasRule = k => !!(P && P.kit[k]);
+const HUNTER_MUL = 1.5, RULE_FROM = 4;                 // no rule before level 4
+const BLOOD_HEAL = e => e.boss ? 25 : e.elite ? 5 : 1;
+const STOMP_R = 3.0, STOMP_DMG = 24;                    // base, rolled like a weapon
 
 // ================================================================ THE STORY
 // You are a hatchling. Something very large woke up under the world and started
@@ -8028,6 +8054,7 @@ function isPyre(){  return (curMon().type || "plain") === "pyre"; }
 function surgeUp(){ return !!(P && P.surgeT > 0); }
 function dmgOut(base){
   let d = base * P.dmg * (surgeUp() ? SURGE_DMG : 1);
+  if(hasRule("momentum")) d *= hopMul();               // the chain pays twice
   const crit = R() < P.crit;
   if(crit) d *= 2.3;
   return { d: d, crit };
@@ -8044,6 +8071,7 @@ function hurt(e, amount, kx, kz, crit){
     // the boons were already bitten by exactly that.
     const af = affNow();
     if(af > 0) amount *= AFF_DMG;
+    if((e.boss || e.elite) && hasRule("hunter")) amount *= HUNTER_MUL;
   }
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
@@ -8074,6 +8102,7 @@ function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++;
   if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));
+  if(hasRule("bloodthirst")) P.hp = Math.min(P.maxhp, P.hp + BLOOD_HEAL(e));
   fell(e);
   if(e.denRef) denLost(e.denRef);
   const n = e.boss ? 30 : e.elite ? 16 : e.rad>1 ? 11 : 6;
@@ -8205,7 +8234,7 @@ function damageArea(x, z, r, base, kb, srcName){
 // every weapon in the game by two ranks and called it a UI change.
 const WMAX = 3;
 // Carry slots. See offers() for why these are 4 and 5 rather than 6 and 6.
-const WSLOTS = 4, PSLOTS = 5;
+const WSLOTS = 4, PSLOTS = 5, RSLOTS = 2;
 const RANKMAP = [0, 2, 4];
 // Passives get the same treatment and the same guarantee. Their effects are all
 // written as (rank x coefficient), so three ranks would silently be a two-rank
@@ -8331,6 +8360,15 @@ function fireBolt(w,s){
                  pierce:s.pierce, hit:new Set(), life:1.6, evo:w.evo });
   }
   SFX.zap();
+}
+// STOMP, the rule: a landing is a small PULSE. Rolled through dmgOut like a
+// weapon so HARDER, crits and MOMENTUM all count, and a hop chain with this
+// card is a drumbeat of blasts - which is the point of it.
+function stomp(){
+  rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:STOMP_R, life:.28, mx:.28 });
+  damageArea(P.x, P.z, STOMP_R, STOMP_DMG, 7);
+  shake = Math.max(shake, .10);
+  SFX.boom();
 }
 function firePulse(w,s){
   statRings++;
@@ -9617,7 +9655,8 @@ function offers(){
   // it would mean the creature you picked eats a quarter of the build you were
   // going to make.
   const wCount = Object.keys(have).filter(k=>WEAPONS[k] && !have[k].fromEvo).length;
-  const pCount = Object.keys(have).filter(k=>PASSIVES[k]).length;
+  const pCount = Object.keys(have).filter(k=>PASSIVES[k] && !isRule(k)).length;
+  const rCount = Object.keys(have).filter(k=>isRule(k)).length;
   for(const k in WEAPONS){
     const w = have[k];
     if(w){ if(w.evo || w.l >= WMAX-1) continue;
@@ -9630,6 +9669,11 @@ function offers(){
   }
   for(const k in PASSIVES){
     const p = have[k], P2 = PASSIVES[k];
+    if(isRule(k)){
+      if(!p && rCount < RSLOTS && P.lvl >= RULE_FROM)
+        pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
+      continue;
+    }
     // never hand someone a passive that provably does nothing for their kit
     if(k === "dupe" && !DUPE_WEAPONS.some(x => have[x])) continue;
     if(p){ if(p.l+1 >= P2.max) continue;
@@ -9739,6 +9783,7 @@ function cardDress(o){
     const need = W.evo.need, pn = PASSIVES[need], pw = P && P.kit[need];
     pt = `${W.evo.name} · WITH ${pn.name}${pw ? " "+(pw.l+1)+"/"+pn.max : ""}`;
   }
+  else if(Pa && Pa.kind === "r"){ eff = Pa.eff; }           // one line, taken once, no pips
   else if(Pa){
     max = Pa.max; have = w ? w.l+1 : 0; after = have+1;
     eff = Array.isArray(Pa.eff) ? Pa.eff[clamp(have, 0, Pa.eff.length-1)] : Pa.eff;
@@ -9774,7 +9819,7 @@ function showPick(hand){
   const box = document.getElementById("pkCards"); box.innerHTML="";
   (hand || offers()).forEach((o,i)=>{
     const el = document.createElement("div");
-    el.className = "card" + (o.type==="evo" ? " evo" : "");
+    el.className = "card" + (o.type==="evo" ? " evo" : "") + (isRule(o.key) ? " rule" : "");
     const d = cardDress(o);
     el.innerHTML = `<div class="key">${i+1}</div><div class="ic">${icon(o.ic)}</div>`+
       `<div class="nm">${o.nm}</div><div class="lv">${d.pips}<span>${o.lv}</span></div>`+
@@ -10251,6 +10296,7 @@ function step(dt){
       P.vy -= 30*dt; P.y += P.vy*dt;
       if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false;
                      P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;
+                     if(hasRule("stomp")) stomp();
                      // STORMCALL, THE SUPERCELL's apex power: the storm keeps
                      // the beat. Every landing calls down the line's own move,
                      // free - the hop chain the whole game teaches becomes a
@@ -12843,8 +12889,9 @@ function hud(){
     const maxL = W ? WMAX : Pa.max;
     const cls = w.evo ? "ev" : (w.l+1>=maxL ? "mx" : "");
     const shown = w.mvNm && !w.evo ? w.mvNm : (W&&w.evo) ? W.evo.name : D.name;
-    html += `<div class="slot ${Pa?"p":""} ${cls} ${w.mvNm?"mv":""}" title="${shown}">${
-      icon(ic)}<i>${w.evo?"★":w.l+1}</i></div>`;
+    const isR = Pa && Pa.kind === "r";
+    html += `<div class="slot ${Pa?(isR?"r":"p"):""} ${cls} ${w.mvNm?"mv":""}" title="${shown}">${
+      icon(ic)}<i>${w.evo?"★":isR?"":w.l+1}</i></div>`;
   }
   $("kit").innerHTML = html;
 
@@ -13194,7 +13241,8 @@ window.__g = {
   slots: ()=>({ w:WSLOTS, p:PSLOTS,
                 carried: Object.keys(P.kit).filter(k=>WEAPONS[k] && !P.kit[k].fromEvo).length,
                 granted: Object.keys(P.kit).filter(k=>WEAPONS[k] && P.kit[k].fromEvo).length,
-                passives: Object.keys(P.kit).filter(k=>PASSIVES[k]).length }),
+                passives: Object.keys(P.kit).filter(k=>PASSIVES[k] && !isRule(k)).length,
+                rules: Object.keys(P.kit).filter(isRule).length }),
   wNames: ()=>Object.keys(P.kit).map(k=>wName(k)),
   kitRaw:()=>{ const out={}; for(const k in P.kit){ const w=P.kit[k];
                  out[k]={ l:w.l, evo:!!w.evo, mv:w.mvNm||null }; } return out; },
@@ -13593,7 +13641,10 @@ window.__g = {
   // sample the level-up roller without taking anything - offers() is pure
   // the face of the draft: the universal upgrade table and the rank-delta
   // describer, so a check can read them without dealing a hand
-  upgrades: ()=>Object.keys(PASSIVES).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff, max:PASSIVES[k].max })),
+  upgrades: ()=>Object.keys(PASSIVES).filter(k=>!isRule(k)).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff, max:PASSIVES[k].max })),
+  rules: ()=>Object.keys(PASSIVES).filter(isRule).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff })),
+  setHop: (n)=>{ P.hop = n; return P.hop; },
+  hordeHp: ()=>+enemies.filter(e=>!e.dead).reduce((a,e)=>a+Math.max(0,e.hp),0).toFixed(1),
   wDelta: (k,l)=>wDelta(k,l),
   peekOffers: (n=60)=>{ const seen={};
     for(let i=0;i<n;i++) for(const o of offers()) seen[o.nm] = (seen[o.nm]||0)+1;
@@ -13654,7 +13705,7 @@ function autoPick(){
   const cards = [...document.getElementById("pkCards").children];
   if(!cards.length) return;
   const nW = Object.keys(P.kit).filter(k=>WEAPONS[k]).length;
-  const nP = Object.keys(P.kit).filter(k=>PASSIVES[k]).length;
+  const nP = Object.keys(P.kit).filter(k=>PASSIVES[k] && !isRule(k)).length;
   // Spreading upgrades evenly across six weapons reaches rank 3 on everything
   // and rank 5 on nothing, so no run ever evolves. Commit: push whichever
   // weapon is already furthest along, and prioritise ITS partner passive.

@@ -2243,7 +2243,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.wipeSave(); g.start("intern"); g.freezeSpawns(true); g.freezeEvents(true);
       // max everything the draft could ever offer
       for (const k of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops",
-                       "spinach","boots","tempo","magnet","plating","heart","dupe","clover"])
+                       "spinach","boots","tempo","magnet","plating","heart","dupe","clover",
+                       "momentum","stomp","bloodthirst","hunter"])
         g.give(k, 3);
       // and evolve every weapon, or the eight EVOLUTION cards are still real
       // choices sitting in the pool - which they should be.
@@ -6105,6 +6106,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const r = await page.evaluate(async () => {
       const g = window.__g;
       const deal = () => { g.drainPicks(false); g.xp(600); g.step(1, 1/60);
+        if (!g.state().picking) return [];                // no level, no hand
         const cards = [...document.querySelectorAll("#pkCards .card")].map(c => ({
           nm: c.querySelector(".nm").textContent, lv: c.querySelector(".lv span").textContent,
           eff: c.querySelector(".eff").textContent, ds: c.querySelector(".ds").textContent,
@@ -6132,8 +6134,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.ups.map(u => `${u.nm}=${[].concat(u.eff)[0]}`).join(" "));
     ok("every card dealt has a headline and three pips, with the rank you would gain lit",
        all.length >= 30 && all.every(c => c.eff.length > 0) &&
-       all.filter(c => c.type !== "heal").every(c => c.pips === 3 && (c.type === "evo" ? c.filled === 3 : c.next === 1)),
-       `${all.length} cards, blank headlines ${all.filter(c => !c.eff).length}, pipless ${all.filter(c => c.type !== "heal" && c.pips !== 3).length}`);
+       all.filter(c => c.type !== "heal" && c.lv !== "RULE").every(c => c.pips === 3 && (c.type === "evo" ? c.filled === 3 : c.next === 1)),
+       `${all.length} cards, blank headlines ${all.filter(c => !c.eff).length}, pipless ${all.filter(c => c.type !== "heal" && c.lv !== "RULE" && c.pips !== 3).length}`);
     const rank = r.mid.filter(c => c.type === "up" && EVO[c.key]);
     ok("a weapon rank-up says what the next rank changes, in numbers, and does not repeat the weapon's blurb",
        rank.length >= 3 && rank.every(c => /^\+\d+% DMG/.test(c.eff) && c.ds === "" && c.filled >= 1),
@@ -6154,6 +6156,77 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        /\+\d+% DMG/.test(r.delta.bat) && /BIGGER/.test(r.delta.bat) && /FASTER/.test(r.delta.bat) &&
        /JUMP/.test(r.delta.zap) && /PIERCE/.test(r.delta.bolt) && /SKULL/.test(r.delta.skulls) && r.delta.max === "MAXED",
        JSON.stringify(r.delta));
+  }
+
+  console.log("\n=== 45. THE RULES ===");
+  {
+    // The fun half of the upgrade report. Four cards that change how a run
+    // plays: MOMENTUM makes the hop chain pay in damage, STOMP makes every
+    // landing a blast, BLOODTHIRST makes kills heal, HUNTER makes bosses and
+    // elites take half again. Each is measured through the real pipeline
+    // with the rule off and then on, on the same field.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.step(5, 1/60); };
+      const out = {};
+      // MOMENTUM
+      boot(); g.setHop(8); out.momOff = g.dmgOut(100); g.give("momentum", 1); out.momOn = g.dmgOut(100);
+      g.setHop(0); out.momIdle = g.dmgOut(100);
+      // HUNTER: a grunt and an elite, same hit
+      const lost = (i, n) => { const h0 = g.hordeHp(); g.hurtAt(i, n); return +(h0 - g.hordeHp()).toFixed(2); };
+      boot(); g.spawn("brute", 2, 3); g.elite(1);
+      out.huntOff = [lost(0, 50), lost(1, 50)];
+      g.give("hunter", 1); out.huntOn = [lost(0, 50), lost(1, 50)];
+      // BLOODTHIRST
+      boot(); g.spawn("shambler", 10, 3); g.setHp(40); g.slay(10); out.bloodOff = g.state().hp;
+      boot(); g.spawn("shambler", 10, 3); g.setHp(40); g.give("bloodthirst", 1); g.slay(10); out.bloodOn = g.state().hp;
+      // STOMP: jump once over a ring of grubs, land, and count what it cost them
+      const hop = () => { const hp0 = g.hordeHp(); key("keydown", "Space"); g.step(2, 1/60); key("keyup", "Space");
+        let landed = false; for (let i = 0; i < 90 && !landed; i++) { g.step(1, 1/60); landed = !g.state().air; }
+        return { landed, lost: +(hp0 - g.hordeHp()).toFixed(1) }; };
+      boot(); g.spawn("shambler", 8, 2); g.step(3, 1/60); out.stompOff = hop();
+      boot(); g.spawn("shambler", 8, 2); g.step(3, 1/60); g.give("stomp", 1); out.stompOn = hop();
+      // the draft: rules arrive at level 4 as their own kind of card, and two is the cap
+      // each hand is tagged with the level it was dealt AT - a 600 xp step is
+      // one level early on and several later, so the level is read, not counted
+      const deal = (xp = 600) => { g.drainPicks(false); g.xp(xp); g.step(1, 1/60); const st = g.state(), lvl = st.lvl;
+        // past level sixty a 600 xp step does not always level: an unopened
+        // draft leaves the previous hand in the DOM, hidden, and it must not count
+        if (!st.picking) return [];
+        const c = [...document.querySelectorAll("#pkCards .card")].map(e => ({ nm: e.querySelector(".nm").textContent,
+          lv: e.querySelector(".lv span").textContent, rule: e.classList.contains("rule"), key: e.dataset.okey, lvl }));
+        g.drainPicks(true); return c; };
+      boot(); for (const k of ["bolt", "zap", "skulls", "dupe", "spinach", "tempo", "clover", "magnet"]) g.give(k, 1);
+      const hands = []; for (let i = 0; i < 12; i++) hands.push(...deal(40));     // one level at a time
+      for (let i = 0; i < 40; i++) hands.push(...deal());
+      const early = hands.filter(c => c.lvl < 4), later = hands.filter(c => c.lvl >= 4);
+      g.give("momentum", 1); g.give("hunter", 1);
+      const capped = []; for (let i = 0; i < 30; i++) capped.push(...deal(2500));
+      out.earlyHands = early.length; out.early = early.filter(c => c.rule).length; out.later = later.filter(c => c.rule);
+      out.capped = capped.filter(c => c.rule).length; out.lvl = g.state().lvl;
+      await new Promise(res => setTimeout(res, 250));      // the kit bar redraws on the frame loop
+      out.slot = !!document.querySelector("#kit .slot.r"); out.rules = g.rules();
+      out.pCount = g.kit().length;
+      return out;
+    });
+    ok("MOMENTUM: an eight-link chain multiplies a hit by the chain's own bonus, and does nothing on the ground",
+       Math.abs(r.momOn / r.momOff - (1 + .60 * (1 - Math.pow(.80, 8)))) < .01 && Math.abs(r.momIdle - r.momOff) < .01,
+       `x${(r.momOn / r.momOff).toFixed(3)} at eight links, x${(r.momIdle / r.momOff).toFixed(3)} idle`);
+    ok("HUNTER: the elite takes half again, the grunt beside it takes what it took before",
+       Math.abs(r.huntOn[1] / r.huntOff[1] - 1.5) < .02 && Math.abs(r.huntOn[0] - r.huntOff[0]) < .01,
+       `grunt ${r.huntOff[0]} -> ${r.huntOn[0]}, elite ${r.huntOff[1]} -> ${r.huntOn[1]}`);
+    ok("BLOODTHIRST: ten kills are ten health, and none without it",
+       r.bloodOff === 40 && r.bloodOn === 50, `${r.bloodOff} without, ${r.bloodOn} with`);
+    ok("STOMP: one landing in a ring of grubs costs them health, and a bare landing costs nothing",
+       r.stompOff.landed && r.stompOn.landed && r.stompOff.lost === 0 && r.stompOn.lost > 30,
+       `without ${JSON.stringify(r.stompOff)}, with ${JSON.stringify(r.stompOn)}`);
+    ok("the draft deals rules as their own kind of card from level 4, all four of them, none before",
+       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 4 && new Set(r.later.map(c => c.key)).size === 4 &&
+       r.later.every(c => c.lv === "RULE" && c.rule),
+       `${r.early} of ${r.earlyHands} cards before level 4, ${r.later.length} after (${[...new Set(r.later.map(c => c.nm))].join(" ")}), level ${r.lvl}`);
+    ok("two rules a run: with two taken the draft offers no third, and a rule sits in the kit bar in its own colour",
+       r.capped === 0 && r.slot && r.rules.length === 4, `${r.capped} offered past the cap, slot ${r.slot}`);
   }
 
   console.log("\n" + "=".repeat(58));
