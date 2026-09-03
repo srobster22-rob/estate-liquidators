@@ -338,12 +338,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     };
     return { canUse: peek(["bolt"]), cannot: peek(["pulse", "aura"]) };
   });
-  ok("DUPLICATOR offered when a weapon can use it",
-     (offers.canUse["DUPLICATOR"] || 0) > 0,
-     `${offers.canUse["DUPLICATOR"] || 0} times in 80 rolls`);
-  ok("DUPLICATOR never offered to a kit that cannot",
-     (offers.cannot["DUPLICATOR"] || 0) === 0,
-     `${offers.cannot["DUPLICATOR"] || 0} times in 80 rolls`);
+  ok("MORE offered when a weapon can use it",
+     (offers.canUse["MORE"] || 0) > 0,
+     `${offers.canUse["MORE"] || 0} times in 80 rolls`);
+  ok("MORE never offered to a kit that cannot",
+     (offers.cannot["MORE"] || 0) === 0,
+     `${offers.cannot["MORE"] || 0} times in 80 rolls`);
 
   const retal = await page.evaluate(() => {
     // 30 shamblers reads 660 damage either way - that is exactly their combined
@@ -6088,6 +6088,72 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the ground is announced, the way the water was: the first step into the tar says what it does, in one line for a walker and another for a flier, and the ice too",
        r.saidWalker && r.saidWalker.some(a => /DRAGS/.test(a)) && r.saidKite && r.saidKite.some(a => /ABOVE/.test(a)) && r.saidIce && r.saidIce.some(a => /GLACIER/.test(a)),
        `walker: ${JSON.stringify(r.saidWalker)}, kite: ${JSON.stringify(r.saidKite)}, ice: ${JSON.stringify(r.saidIce)}`);
+  }
+
+  console.log("\n=== 44. THE DRAFT READS IN ONE GLANCE ===");
+  {
+    // The upgrade remodel. The report was that the upgrades were boring and
+    // unreadable: eight passives written as stat soup at nine pixels, and a
+    // rank-up card that carried the same blurb as the card you took at rank
+    // one. Now every upgrade is one adjective and one headline number, every
+    // card carries its rank as pips, a weapon rank-up says what the next rank
+    // changes (read off its own table, not written), and the evolution rule -
+    // which partner a weapon needs - is printed on both halves of the pair.
+    const EVO = { bat:"MEGABONK", skulls:"CAROUSEL", bolt:"BOLTSTORM", pulse:"EARTHQUAKE",
+                  mortar:"SKYFALL", zap:"THUNDERHEAD", aura:"PLAGUE", gore:"STAMPEDE",
+                  caltrops:"SCORCHED EARTH", brood:"THE PACK" };
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const deal = () => { g.drainPicks(false); g.xp(600); g.step(1, 1/60);
+        const cards = [...document.querySelectorAll("#pkCards .card")].map(c => ({
+          nm: c.querySelector(".nm").textContent, lv: c.querySelector(".lv span").textContent,
+          eff: c.querySelector(".eff").textContent, ds: c.querySelector(".ds").textContent,
+          pt: (c.querySelector(".pt") || {}).textContent || "",
+          pips: c.querySelectorAll(".pips s").length, filled: c.querySelectorAll(".pips s.f").length,
+          next: c.querySelectorAll(".pips s.n").length, type: c.dataset.otype, key: c.dataset.okey }));
+        g.drainPicks(true); return cards; };
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
+      const fresh = []; for (let i = 0; i < 6; i++) fresh.push(...deal());
+      // a full kit, so the pool is nothing but rank-ups and every one of them
+      // is dealt inside forty hands - ten hands with new cards in the pool
+      // left MORE undealt one run in five
+      for (const k of ["bolt", "zap", "skulls", "dupe", "spinach", "tempo", "clover", "magnet"]) g.give(k, 1);
+      const mid = []; for (let i = 0; i < 40; i++) mid.push(...deal());
+      g.give("bat", 3); g.give("spinach", 3);
+      const evo = deal();
+      return { fresh, mid, evo, ups: g.upgrades(), kit: g.kit(),
+               delta: { bat: g.wDelta("bat", 0), zap: g.wDelta("zap", 0), bolt: g.wDelta("bolt", 1),
+                        skulls: g.wDelta("skulls", 0), max: g.wDelta("bat", 2) } };
+    });
+    const all = [...r.fresh, ...r.mid, ...r.evo];
+    ok("every upgrade is one word and one headline: eight of them, no spaces in a name, a signed number or a count on the face",
+       r.ups.length === 8 && r.ups.every(u => /^[A-Z]+$/.test(u.nm)) &&
+       r.ups.every(u => [].concat(u.eff).every(e => /^[+-]\d/.test(e))),
+       r.ups.map(u => `${u.nm}=${[].concat(u.eff)[0]}`).join(" "));
+    ok("every card dealt has a headline and three pips, with the rank you would gain lit",
+       all.length >= 30 && all.every(c => c.eff.length > 0) &&
+       all.filter(c => c.type !== "heal").every(c => c.pips === 3 && (c.type === "evo" ? c.filled === 3 : c.next === 1)),
+       `${all.length} cards, blank headlines ${all.filter(c => !c.eff).length}, pipless ${all.filter(c => c.type !== "heal" && c.pips !== 3).length}`);
+    const rank = r.mid.filter(c => c.type === "up" && EVO[c.key]);
+    ok("a weapon rank-up says what the next rank changes, in numbers, and does not repeat the weapon's blurb",
+       rank.length >= 3 && rank.every(c => /^\+\d+% DMG/.test(c.eff) && c.ds === "" && c.filled >= 1),
+       rank.slice(0, 4).map(c => `${c.nm}: ${c.eff}`).join(" | "));
+    const wcards = all.filter(c => EVO[c.key] && c.type !== "evo");
+    ok("every weapon card names the evolution it is walking toward and the partner it needs",
+       wcards.length >= 10 && wcards.every(c => c.pt.startsWith(EVO[c.key] + " · WITH ")),
+       wcards.filter(c => !c.pt.startsWith(EVO[c.key] + " · WITH ")).map(c => `${c.nm}: ${c.pt}`).join(" | ") || "all named");
+    const more = r.mid.filter(c => c.key === "dupe");
+    ok("and the partner's card names what it unlocks: MORE, in a kit with BOLT, says BOLTSTORM",
+       more.length >= 1 && more.every(c => /UNLOCKS .*BOLTSTORM/.test(c.pt)),
+       more.map(c => c.pt).join(" | ") || "MORE never dealt");
+    const mega = r.evo.find(c => c.type === "evo");
+    ok("the evolution card reads EVOLVED with the bar full",
+       mega && mega.nm === "MEGABONK" && mega.eff === "EVOLVED" && mega.filled === 3,
+       mega ? `${mega.nm} ${mega.eff} ${mega.filled}/3` : "no evolution dealt");
+    ok("the delta is read off the table: BONK BAT's next rank is more damage, bigger and faster; ZAP gains jumps; BOLT gains pierce; a maxed weapon says so",
+       /\+\d+% DMG/.test(r.delta.bat) && /BIGGER/.test(r.delta.bat) && /FASTER/.test(r.delta.bat) &&
+       /JUMP/.test(r.delta.zap) && /PIERCE/.test(r.delta.bolt) && /SKULL/.test(r.delta.skulls) && r.delta.max === "MAXED",
+       JSON.stringify(r.delta));
   }
 
   console.log("\n" + "=".repeat(58));

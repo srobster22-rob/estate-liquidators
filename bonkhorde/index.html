@@ -167,7 +167,9 @@
     background:#12161df2;border-bottom-width:3px;min-width:0}
   #pick .card .ic{font-size:17px;margin-bottom:2px}
   #pick .card .nm{font-size:11px}
-  #pick .card .lv{font-size:9px}
+  #pick .card .lv{font-size:9px;margin-bottom:4px}
+  #pick .card .eff{font-size:13px;margin:0 0 3px}
+  #pick .card .pt{font-size:8px;margin-top:4px;line-height:1.3}
   /* clamp, not crop: a description cut at "Homing shot at the" reads as a
      rendering bug - the ellipsis says the rest exists and was elided */
   #pick .card .ds{font-size:9px;line-height:1.35;max-height:2.7em;overflow:hidden;
@@ -188,6 +190,16 @@
   .card.evo .lv{color:var(--evo)}
   .card .ds{font-size:11px;color:#a8a396;line-height:1.6}
   .card .key{position:absolute;top:7px;right:9px;font-size:10px;color:#555c66}
+  /* the headline: the one number the card is about, and the biggest text on it */
+  .card .eff{font-size:15px;font-weight:800;color:#fff;letter-spacing:.03em;margin:0 0 5px;
+    text-shadow:0 1px 0 #000}
+  .card .lv{display:flex;align-items:center;gap:6px}
+  .card .lv .pips{display:inline-flex;gap:2px;margin:0}
+  .card .lv .pips s{width:13px;height:4px;background:#2c333d;display:block}
+  .card .lv .pips s.f{background:var(--gold)}
+  .card .lv .pips s.n{background:#fff;box-shadow:0 0 6px #fff9}
+  .card .pt{font-size:9px;color:var(--evo);letter-spacing:.08em;margin-top:6px;font-weight:700}
+  .card.evo .eff{color:#ffd0b0}
 
   /* menu */
   .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
@@ -371,6 +383,11 @@
     #biome b{font-size:10px;letter-spacing:.14em}
     #biome span{max-width:52vw}
     #stats{font-size:9px}
+    /* an 82px card carries the pips, the headline and the evolution line; the
+       NEW WEAPON label ran into the pips and the blurb was three words a row.
+       Down here because #pick .card .ds sets its own display further up. */
+    #pick .card .lv span,#pick .card .ds{display:none}
+    #pick .card .eff{font-size:11px}
   }
 </style>
 </head>
@@ -1823,15 +1840,35 @@ brood:{ name:"BROOD", ic:"brood", kind:"w",
       {d:95,cd:0.85,n:4,rng:24}] },
 };
 
+// THE UNIVERSAL UPGRADES. Eight of them, one adjective each, and every one
+// of them applies to the whole kit - there is no card here that helps one
+// weapon and not another, except MORE, which says on its face which weapons
+// it counts for. The old cards were a stat soup read at nine pixels while the
+// horde closed in: "+22% damage." next to "-2.7 flat and -8% damage taken,
+// and being hit blasts them off you." A card you cannot read in one glance is
+// a card you take at random, and a random draft is a boring one.
+//
+// `eff` is the HEADLINE - the one number the card is about, set big. `ds` is
+// the second clause, small. The internal keys are unchanged (spinach, tempo,
+// boots...) so every bench, every mutant and every save still means what it
+// said; only the face of the thing is new.
 const PASSIVES = {
-spinach: { name:"SPINACH",   ic:"spinach", kind:"p", max:3, ds:"+22% damage." },
-boots:   { name:"BOOTS",     ic:"boots", kind:"p", max:3, ds:"+15% move speed, +10% damage. Momentum." },
-tempo:   { name:"METRONOME", ic:"tempo", kind:"p", max:3, ds:"-13% weapon cooldowns." },
-magnet:  { name:"MAGNET",    ic:"magnet", kind:"p", max:3, ds:"+58% pickup radius, and it drags the horde into a pile." },
-plating: { name:"PLATING",   ic:"plating", kind:"p", max:3, ds:"-2.7 flat and -8% damage taken, and being hit blasts them off you." },
-heart:   { name:"BIG HEART", ic:"heart",    kind:"p", max:3, ds:"+37 max HP, +8% damage. Pumps harder." },
-dupe:    { name:"DUPLICATOR",ic:"dupe", kind:"p", max:3, ds:"More shots for BOLT, SKULLS, MORTAR, ZAP - 1, 3, 5. Copies hit for 55%." },
-clover:  { name:"CLOVER",    ic:"clover", kind:"p", max:3, ds:"+12% crit. Crits hit for 2.3x." },
+spinach: { name:"HARDER",   ic:"spinach", kind:"p", max:3, eff:"+22% DAMAGE",
+           ds:"Every weapon you carry." },
+tempo:   { name:"FASTER",   ic:"tempo",   kind:"p", max:3, eff:"-13% COOLDOWN",
+           ds:"Every weapon you carry." },
+boots:   { name:"QUICKER",  ic:"boots",   kind:"p", max:3, eff:"+15% MOVE SPEED",
+           ds:"And +10% damage: momentum." },
+heart:   { name:"BEEFIER",  ic:"heart",   kind:"p", max:3, eff:"+37 MAX HP",
+           ds:"And +8% damage. Pumps harder." },
+plating: { name:"TOUGHER",  ic:"plating", kind:"p", max:3, eff:"-8% DAMAGE TAKEN",
+           ds:"Minus 2.7 flat, and a hit blasts them off you." },
+magnet:  { name:"HUNGRIER", ic:"magnet",  kind:"p", max:3, eff:"+58% PICKUP RANGE",
+           ds:"And it drags the horde into a pile." },
+clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
+           ds:"Crits hit for 2.3x." },
+dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:["+1 SHOT","+2 SHOTS","+2 SHOTS"],
+           ds:"BOLT · SKULLS · MORTAR · ZAP · BROOD. Copies hit for 55%." },
 };
 
 // ================================================================ THE STORY
@@ -9659,6 +9696,66 @@ let pickGap = 0;
 // something to choose here" test and then render a single ROAST CHICKEN,
 // which is exactly the dead modal the growth path exists to remove. The hand
 // is dealt once and handed over.
+// WHAT THE NEXT RANK ACTUALLY DOES. A rank-up card used to carry the weapon's
+// own blurb - "Homing shot at the nearest target" - under LV 3, which tells you
+// nothing you did not know at LV 1, so every rank-up read as the same card as
+// the one before it. This reads the two rows of the weapon's own table and
+// says what moved: damage, count, reach, cadence. Derived, not written, so it
+// cannot drift from the numbers the way prose does.
+const WTAG = { bat:"MELEE SWING", skulls:"ORBIT", bolt:"HOMING SHOT", pulse:"SHOCKWAVE",
+               mortar:"ARTILLERY", zap:"CHAIN LIGHTNING", aura:"DAMAGE CLOUD",
+               gore:"CHARGE LANE", caltrops:"HAZARD TRAIL", brood:"COMPANION" };
+const WNOUN = { skulls:"SKULL", mortar:"SHELL", brood:"PUP", zap:"JUMP" };
+function wDelta(k, l){
+  const W = WEAPONS[k]; if(!W) return "";
+  const a = W.lv[RANKMAP[clamp(l, 0, WMAX-1)]], b = W.lv[RANKMAP[clamp(l+1, 0, WMAX-1)]];
+  if(a === b) return "MAXED";
+  const out = [];
+  const dmg = (b.d || b.dps) / (a.d || a.dps);
+  if(dmg > 1.01) out.push(`+${Math.round((dmg-1)*100)}% DMG`);
+  const cf = ["n","jumps"].find(f => (b[f]||0) > (a[f]||0));
+  if(cf){ const n = b[cf]-a[cf], noun = WNOUN[k] || "SHOT";
+          out.push(`+${n} ${noun}${n>1 ? "S" : ""}`); }
+  if((b.pierce||0) > (a.pierce||0)) out.push(`PIERCE ${b.pierce}`);
+  if(["rad","rng","arc","w"].some(f => (b[f]||0) > (a[f]||0)*1.02)) out.push("BIGGER");
+  if(b.cd && a.cd && b.cd < a.cd*.98) out.push("FASTER");
+  if((b.life||0) > (a.life||0)) out.push("LASTS LONGER");
+  return out.slice(0, 3).join(" · ");
+}
+// The three things a card has to answer in one glance: what is it, how much,
+// and where does it lead. `eff` is the how much, `pips` the how far along,
+// `pt` the where - the evolution this weapon is walking toward and the
+// partner it needs, or, on a partner's card, the evolution it unlocks. The
+// partner rule used to be invisible: the draft asked you to guess that
+// MEGABONK wanted SPINACH.
+function cardDress(o){
+  const k = o.key, w = P && P.kit[k], W = WEAPONS[k], Pa = PASSIVES[k];
+  let eff = "", pt = "", max = 0, have = 0, after = 0;
+  if(o.type === "heal"){ eff = "+40 HP"; }
+  else if(o.type === "evo"){ eff = "EVOLVED"; max = WMAX; have = WMAX; after = WMAX; }
+  else if(W){
+    max = WMAX; have = w ? w.l+1 : 0; after = have+1;
+    eff = w ? wDelta(k, w.l) : (WTAG[k] || "WEAPON");
+    const need = W.evo.need, pn = PASSIVES[need], pw = P && P.kit[need];
+    pt = `${W.evo.name} · WITH ${pn.name}${pw ? " "+(pw.l+1)+"/"+pn.max : ""}`;
+  }
+  else if(Pa){
+    max = Pa.max; have = w ? w.l+1 : 0; after = have+1;
+    eff = Array.isArray(Pa.eff) ? Pa.eff[clamp(have, 0, Pa.eff.length-1)] : Pa.eff;
+    const leads = [];
+    for(const wk in P.kit){ const WW = WEAPONS[wk];
+      if(WW && !P.kit[wk].evo && WW.evo.need === k) leads.push(WW.evo.name); }
+    if(leads.length) pt = "UNLOCKS " + leads.join(" · ");
+  }
+  // a rank-up does not repeat the blurb you read when you took the weapon -
+  // the headline IS the description now, and the card gets shorter for it
+  const ds = (W && o.type === "up") ? "" : o.ds;
+  let pips = "";
+  if(max){ pips = '<i class="pips">';
+    for(let j=0;j<max;j++) pips += `<s class="${j<have ? "f" : j<after ? "n" : ""}"></s>`;
+    pips += "</i>"; }
+  return { eff, pt, pips, ds };
+}
 function showPick(hand){
   // A take() with levels still queued schedules the next hand on a 90ms
   // timeout, and a run can END inside that 90ms - so the draft strip was
@@ -9678,8 +9775,11 @@ function showPick(hand){
   (hand || offers()).forEach((o,i)=>{
     const el = document.createElement("div");
     el.className = "card" + (o.type==="evo" ? " evo" : "");
+    const d = cardDress(o);
     el.innerHTML = `<div class="key">${i+1}</div><div class="ic">${icon(o.ic)}</div>`+
-      `<div class="nm">${o.nm}</div><div class="lv">${o.lv}</div><div class="ds">${o.ds}</div>`;
+      `<div class="nm">${o.nm}</div><div class="lv">${d.pips}<span>${o.lv}</span></div>`+
+      `<div class="eff">${d.eff}</div><div class="ds">${d.ds}</div>`+
+      (d.pt ? `<div class="pt">${d.pt}</div>` : "");
     el.dataset.otype = o.type; el.dataset.okey = o.key||"";
     el.onclick = ()=>take(o);
     box.appendChild(el);
@@ -13491,6 +13591,10 @@ window.__g = {
              lightGround: hours[0].lightGround };
   },
   // sample the level-up roller without taking anything - offers() is pure
+  // the face of the draft: the universal upgrade table and the rank-delta
+  // describer, so a check can read them without dealing a hand
+  upgrades: ()=>Object.keys(PASSIVES).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff, max:PASSIVES[k].max })),
+  wDelta: (k,l)=>wDelta(k,l),
   peekOffers: (n=60)=>{ const seen={};
     for(let i=0;i<n;i++) for(const o of offers()) seen[o.nm] = (seen[o.nm]||0)+1;
     return seen; },
