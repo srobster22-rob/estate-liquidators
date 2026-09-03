@@ -3096,101 +3096,110 @@ const LINES = {
     move:{ key:"caltrops", nm:"CINDERTRAIL", ds:"it burns where you have been" },
     st:[
       { nm:"CINDERWHELP" },
-      { nm:"FLAREDRAKE", mods:{ hp:1.16, dmg:1.09 } },
-      // FLIGHT, at the top of this line only. Every other creature in the
+      { nm:"FLAREDRAKE", mods:{ spd:1.04, hp:1.16, dmg:1.09 } },
+      // PACE. Every stage of every line carries a spd multiplier now (the
+    // surge line always did; the other eight ran at one speed from hatchling
+    // to final). Reported: "they seem to all be the same speed". Measured:
+    // six of nine lines at 6.6 u/s at all five stages. The numbers follow the
+    // bodies - a grub, a pebble and a clutch of eggs are slow; a kite, a raptor
+    // and a fledgling's parents are quick; the apexes that stood up or turned
+    // into a wall lose a step and the ones that took to the air gain one - so
+    // an evolution is felt in the hands, not only seen. The roster now spans
+    // 4.7 to 8.7 u/s and every line changes pace at least twice on the way.
+    // FLIGHT, at the top of this line only. Every other creature in the
       // game is stuck to the floor; a fire drake that has grown into a wyrm
       // should not be, and it is the one thing an evolution can give you that
       // changes how you MOVE rather than how hard you hit.
-      { nm:"PYRAETHON", mods:{ hp:1.38, dmg:1.20, reach:1.20 }, fly:true,
+      { nm:"PYRAETHON", mods:{ spd:1.06, hp:1.38, dmg:1.20, reach:1.20 }, fly:true,
         sig:"WILDFIRE",
         sigDs:"+20% reach, and hold JUMP to fly - the ground cannot touch you" },
       // ---- THE APEX. One per line, at level 34: a transformation, not a
       // bigger number. Each apex power bends the line's own rule.
-      { nm:"THE CINDERSTAR", mods:{ hp:1.72, dmg:1.45, reach:1.35 }, fly:true,
+      { nm:"THE CINDERSTAR", mods:{ spd:0.92, hp:1.72, dmg:1.45, reach:1.35 }, fly:true,
         apex:true, sig:"STARFIRE",
         sigDs:"flight leaves burning ground behind you" },
       // ---- THE FINAL FORM. One per line, at level 48. It keeps apex:true
       // because every apex power tests stageDef().apex - the final grew out
       // of that animal and did not trade its power away.
-      { nm:"THE SUPERNOVA", mods:{ hp:2.05, dmg:1.72, reach:1.50 }, fly:true,
+      { nm:"THE SUPERNOVA", mods:{ spd:1.10, hp:2.05, dmg:1.72, reach:1.50 }, fly:true,
         apex:true, final:true, sig:"STARFIRE",
         sigDs:"the fire that outgrew its dragon" } ]},
   scrap:{ type:"scrap",
     move:{ key:"skulls", nm:"UNDERTOW", ds:"water circles you, and it pulls" },
     st:[
-      { nm:"SPAWNLING" },
-      { nm:"TIDESERPENT", mods:{ hp:1.16, dmg:1.09, mag:1.25 } },
-      { nm:"LEVIATHAN",mods:{ hp:1.38, dmg:1.20, mag:1.60 },
+      { nm:"SPAWNLING", mods:{ spd:0.84 } },
+      { nm:"TIDESERPENT", mods:{ spd:1.02, hp:1.16, dmg:1.09, mag:1.25 } },
+      { nm:"LEVIATHAN",mods:{ spd:0.96, hp:1.38, dmg:1.20, mag:1.60 },
         sig:"UNDERCURRENT", sigDs:"+60% pickup radius" },
-      { nm:"THE MAELSTROM", mods:{ hp:1.72, dmg:1.42, mag:2.10 },
+      { nm:"THE MAELSTROM", mods:{ spd:1.06, hp:1.72, dmg:1.42, mag:2.10 },
         apex:true, sig:"RIPTIDE",
         sigDs:"enemies in your pickup radius are dragged toward you" },
-      { nm:"THE ABYSS", mods:{ hp:2.05, dmg:1.68, mag:2.60 },
+      { nm:"THE ABYSS", mods:{ spd:0.90, hp:2.05, dmg:1.68, mag:2.60 },
         apex:true, final:true, sig:"RIPTIDE",
         sigDs:"the sea stopped having a bottom" } ]},
   spark:{ type:"volt",
     move:{ key:"zap", nm:"ARCLASH", ds:"it jumps, and keeps jumping" },
     st:[
-      { nm:"SPARKLET" },
-      { nm:"STORMCLAW", mods:{ hp:1.18, dmg:1.09, cd:.95 } },
-      { nm:"STORMTYRANT", mods:{ hp:1.42, dmg:1.20, cd:.87 },
+      { nm:"SPARKLET", mods:{ spd:1.06 } },
+      { nm:"STORMCLAW", mods:{ spd:1.12, hp:1.18, dmg:1.09, cd:.95 } },
+      { nm:"STORMTYRANT", mods:{ spd:1.08, hp:1.42, dmg:1.20, cd:.87 },
         sig:"OVERCLOCK", sigDs:"-13% cooldowns" },
-      { nm:"THE SUPERCELL", mods:{ hp:1.75, dmg:1.45, cd:.78 },
+      { nm:"THE SUPERCELL", mods:{ spd:1.18, hp:1.75, dmg:1.45, cd:.78 },
         apex:true, sig:"STORMCALL",
         sigDs:"every hop landing calls down a free ZAP" },
-      { nm:"THE TEMPEST", mods:{ hp:2.10, dmg:1.72, cd:.70 },
+      { nm:"THE TEMPEST", mods:{ spd:1.12, hp:2.10, dmg:1.72, cd:.70 },
         apex:true, final:true, sig:"STORMCALL",
         sigDs:"the storm no longer needs a sky" } ]},
   ox:{ type:"stone",
     move:{ key:"pulse", nm:"TREMOR", ds:"the ground answers you" },
     st:[
-      { nm:"SHALEBACK" },
-      { nm:"ANKYLOS",  mods:{ hp:1.20, dmg:1.09, armorFlat:2 } },
+      { nm:"SHALEBACK", mods:{ spd:0.96 } },
+      { nm:"ANKYLOS",  mods:{ spd:1.06, hp:1.20, dmg:1.09, armorFlat:2 } },
       { nm:"TITANHIDE", mods:{ hp:1.46, dmg:1.20, armorFlat:5 },
         sig:"BEDROCK", sigDs:"+5 flat armour" },
-      { nm:"THE MOUNTAIN", mods:{ hp:1.90, dmg:1.42, armorFlat:9 },
+      { nm:"THE MOUNTAIN", mods:{ spd:0.88, hp:1.90, dmg:1.42, armorFlat:9 },
         apex:true, sig:"UPHEAVAL",
         sigDs:"taking a hit answers with a free TREMOR" },
-      { nm:"THE CONTINENT", mods:{ hp:2.30, dmg:1.68, armorFlat:14 },
+      { nm:"THE CONTINENT", mods:{ spd:0.82, hp:2.30, dmg:1.68, armorFlat:14 },
         apex:true, final:true, sig:"UPHEAVAL",
         sigDs:"too big to argue with" } ]},
   ghoul:{ type:"rot",
     move:{ key:"aura", nm:"SPORECLOUD", ds:"you are difficult to be near" },
     st:[
-      { nm:"MIRELING" },
-      { nm:"SWAMPJAW",  mods:{ hp:1.16, dmg:1.09, regen:1.5 } },
-      { nm:"BASILISK", mods:{ hp:1.38, dmg:1.20, regen:2.4 },
+      { nm:"MIRELING", mods:{ spd:0.94 } },
+      { nm:"SWAMPJAW",  mods:{ spd:0.96, hp:1.16, dmg:1.09, regen:1.5 } },
+      { nm:"BASILISK", mods:{ spd:1.02, hp:1.38, dmg:1.20, regen:2.4 },
         sig:"BLOOM", sigDs:"regeneration x2.4" },
-      { nm:"THE GORGON", mods:{ hp:1.70, dmg:1.44, regen:3.4 },
+      { nm:"THE GORGON", mods:{ spd:0.86, hp:1.70, dmg:1.44, regen:3.4 },
         apex:true, sig:"PETRIFY",
         sigDs:"everything in your sporecloud is slowed to half speed" },
-      { nm:"THE OUROBOROS", mods:{ hp:2.05, dmg:1.70, regen:4.6 },
+      { nm:"THE OUROBOROS", mods:{ spd:1.04, hp:2.05, dmg:1.70, regen:4.6 },
         apex:true, final:true, sig:"PETRIFY",
         sigDs:"the rot that outlived everything it touched" } ]},
   accnt:{ type:"tally",
     move:{ key:"mortar", nm:"GALEDIVE", ds:"it comes down out of the sky" },
     st:[
-      { nm:"WYVERNET" },
-      { nm:"SKYREND",    mods:{ hp:1.16, dmg:1.09, xp:1.07 } },
-      { nm:"THE ROC", mods:{ hp:1.38, dmg:1.20, xp:1.15 },
+      { nm:"WYVERNET", mods:{ spd:1.12 } },
+      { nm:"SKYREND",    mods:{ spd:0.90, hp:1.16, dmg:1.09, xp:1.07 } },
+      { nm:"THE ROC", mods:{ spd:1.10, hp:1.38, dmg:1.20, xp:1.15 },
         sig:"UPDRAFT", sigDs:"+15% XP from everything" },
-      { nm:"THE HURRICANE", mods:{ hp:1.70, dmg:1.42, xp:1.30 },
+      { nm:"THE HURRICANE", mods:{ spd:1.16, hp:1.70, dmg:1.42, xp:1.30 },
         apex:true, sig:"EYEWALL",
         sigDs:"GALEDIVE falls twice as often" },
-      { nm:"THE MONSOON", mods:{ hp:2.05, dmg:1.68, xp:1.45 },
+      { nm:"THE MONSOON", mods:{ spd:1.02, hp:2.05, dmg:1.68, xp:1.45 },
         apex:true, final:true, sig:"EYEWALL",
         sigDs:"a season, not an animal" } ]},
   twin:{ type:"echo",
     move:{ key:"bolt", nm:"MIRRORBOLT", ds:"whatever you throw, there is another" },
     st:[
-      { nm:"HYDRALING" },
-      { nm:"TRIHYDRA", mods:{ hp:1.20, dmg:1.10 } },
-      { nm:"THE HYDRA",mods:{ hp:1.44, dmg:1.28 },
+      { nm:"HYDRALING", mods:{ spd:0.84 } },
+      { nm:"TRIHYDRA", mods:{ spd:0.98, hp:1.20, dmg:1.10 } },
+      { nm:"THE HYDRA",mods:{ spd:1.02, hp:1.44, dmg:1.28 },
         sig:"CHORUS", sigDs:"+28% damage - three of everything" },
-      { nm:"THE LEGION", mods:{ hp:1.80, dmg:1.55 },
+      { nm:"THE LEGION", mods:{ spd:0.90, hp:1.80, dmg:1.55 },
         apex:true, sig:"WARCHOIR",
         sigDs:"five heads, and every volley carries one bolt more" },
-      { nm:"THE MYRIAD", mods:{ hp:2.15, dmg:1.85 },
+      { nm:"THE MYRIAD", mods:{ spd:1.06, hp:2.15, dmg:1.85 },
         apex:true, final:true, sig:"WARCHOIR",
         sigDs:"six heads, one appetite" } ]},
 };
@@ -3200,27 +3209,27 @@ const LINES = {
 LINES.surge = { type:"surge",
   move:{ key:"gore", nm:"RIVERRUN", ds:"everything in front of you, while you move" },
   st:[
-    { nm:"SAILFIN" },
-    { nm:"RIVERKING", mods:{ hp:1.16, dmg:1.09, spd:1.04 } },
-    { nm:"THE SPINE", mods:{ hp:1.34, dmg:1.18, spd:1.08 },
+    { nm:"SAILFIN", mods:{ spd:0.94 } },
+    { nm:"RIVERKING", mods:{ spd:1.02, hp:1.16, dmg:1.09 } },
+    { nm:"THE SPINE", mods:{ spd:1.08, hp:1.34, dmg:1.18 },
       sig:"WHITEWATER", sigDs:"momentum builds twice as fast" },
-    { nm:"THE FLOOD", mods:{ hp:1.66, dmg:1.45, spd:1.12 },
+    { nm:"THE FLOOD", mods:{ spd:1.16, hp:1.66, dmg:1.45 },
       apex:true, sig:"BREAKWATER",
       sigDs:"the surge lasts longer, and running keeps it burning" },
-    { nm:"THE DELUGE", mods:{ hp:2.00, dmg:1.72, spd:1.16 },
+    { nm:"THE DELUGE", mods:{ spd:1.18, hp:2.00, dmg:1.72 },
       apex:true, final:true, sig:"BREAKWATER",
       sigDs:"the river won" } ]};
 LINES.pyre = { type:"pyre",
   move:{ key:"bat", nm:"WINGBEAT", ds:"a wide burning sweep, both sides" },
   st:[
-    { nm:"SUNCHICK" },
-    { nm:"PYREWING", mods:{ hp:1.22, dmg:1.10 } },
-    { nm:"THE PHOENIX", mods:{ hp:1.48, dmg:1.24 },
+    { nm:"SUNCHICK", mods:{ spd:0.94 } },
+    { nm:"PYREWING", mods:{ spd:1.08, hp:1.22, dmg:1.10 } },
+    { nm:"THE PHOENIX", mods:{ spd:1.10, hp:1.48, dmg:1.24 },
       sig:"EVERBURNING", sigDs:"the rebirth returns twice as fast" },
-    { nm:"THE ETERNAL", mods:{ hp:1.80, dmg:1.50 },
+    { nm:"THE ETERNAL", mods:{ spd:0.96, hp:1.80, dmg:1.50 },
       apex:true, sig:"SUNDIAL",
       sigDs:"the rebirth cooldown stops growing" },
-    { nm:"THE SECOND SUN", mods:{ hp:2.15, dmg:1.78 },
+    { nm:"THE SECOND SUN", mods:{ spd:1.06, hp:2.15, dmg:1.78 },
       apex:true, final:true, sig:"SUNDIAL",
       sigDs:"it rises on its own schedule" } ]};
 for(const c of CHARS){
@@ -7302,6 +7311,7 @@ const FLY_H = 3.1,        // hover height above the ground
 const SURGE_FILL = 1/30;        // metres of travel for a full meter
 const SURGE_DRAIN = .09;        // per second, standing still
 const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
+const SURGE_SPD = 1.30;         // and it is a burst of pace: the line's rule is MOVING
 // REBIRTH. THE TEMP detonates instead of dying, comes back at 45%, and the
 // rebirth goes on a cooldown that grows every time it is used - so it is a
 // resource with a floor, not a second health bar.
@@ -7529,7 +7539,13 @@ function startRun(id){
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0,
         surge:0, surgeT:0, rebirths:0, rebirthCd:0, grown:0, hp0:s.maxhp };
   jumpBuf = 0;
-  stage = 0; monMul = { spd:1, cd:1, mag:1 }; evoT = 0; evoFx = 0; noEvo = false;
+  stage = 0; evoT = 0; evoFx = 0; noEvo = false;
+  // the hatchling's own stage mods start applied - evolveTo() only ever
+  // rescales by the RATIO between stages, so a pace on stage 0 that was not
+  // baked in here would be silently skipped for the whole first stage
+  const st0 = ((ch.st||[])[0]||{}).mods||{};
+  monMul = { spd:st0.spd||1, cd:st0.cd||1, mag:st0.mag||1 };
+  P.spd *= monMul.spd; P.cd *= monMul.cd; P.mag *= monMul.mag;
   // Seed the run stream BEFORE anything rolls, including the world - the arena
   // has its own stream but everything after it comes out of this one.
   // The layer is fixed for the whole run: changing it mid-run would rescale
@@ -9921,7 +9937,7 @@ function step(dt){
   const wmul = wet ? (AQUA ? 1.30 : (sureFootWater ? 1 : .74)) : 1;
   const ACCELW = wet && !AQUA && !sureFootWater ? ACCEL*.6 : ACCEL;
   const groundSpd = sureFoot ? 1 : (bmod.spd || 1);
-  const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul;
+  const hm = hopMul() * groundSpd * (P.fly ? FLY_SPD : 1) * wmul * (surgeUp() ? SURGE_SPD : 1);
   const wx = dx*P.spd*hm*analog, wz = dz*P.spd*hm*analog;
   // In the air you get a third of the acceleration and almost none of the
   // braking. That asymmetry IS the mechanic: a chain you steer through is a
@@ -10386,6 +10402,9 @@ function openMenu(){
              <s>${c.st[4].sigDs}</s></i></div>` : ""}
            ${aff ? `<div class="rw"><b>GROUND</b><i>&#9650;&#8201;${aff.nm}
              <s>&#9660;&#8201;${aff.weakNm}</s></i></div>` : ""}
+           <div class="rw"><b>PACE</b><i>${c.st.map(x =>
+               (((c.mods||{}).spd||1)*((x.mods||{}).spd||1)).toFixed(2)).join(" &#8594; ")}
+             <s>stage by stage, in strides of THE INTERN's</s></i></div>
          </div>
          <div class="ml">LV ${ml}<div class="mb"><i style="width:${
            ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${
@@ -12679,7 +12698,7 @@ function hud(){
     ruleEl.firstElementChild.firstElementChild.style.width =
       (Math.min(1, f)*100).toFixed(1)+"%";
     ruleEl.children[1].textContent = up ? "SURGE" : Math.round(P.surge*100)+"%";
-    ruleEl.children[2].textContent = up ? `x${SURGE_DMG.toFixed(2)} DAMAGE` : "MOMENTUM";
+    ruleEl.children[2].textContent = up ? `x${SURGE_DMG.toFixed(2)} DMG  x${SURGE_SPD.toFixed(2)} PACE` : "MOMENTUM";
   } else if(isPyre()){
     const ready = P.rebirthCd <= 0;
     const full = (REBIRTH_CD + P.rebirths*REBIRTH_STEP) * (stage >= 2 ? .5 : 1);

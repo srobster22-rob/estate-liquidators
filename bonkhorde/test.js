@@ -5878,6 +5878,62 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                       Math.max(Math.abs(p.halfH-p.wantH)/p.wantH, Math.abs(p.radF-p.wantF)/p.wantF))).toFixed(3)}`);
   }
 
+  console.log("\n=== 40. EVERY LINE MOVES AT ITS OWN PACE ===");
+  {
+    // Reported: "they seem to all be the same speed, there has to be factors
+    // that encourage fun gameplay with movement speed". Measured before the
+    // round: six of nine lines at 6.6 u/s at all five stages, the ox at 5.7
+    // flat, the tide line at 7.25 flat, only the courier changing at an
+    // evolution. This drives the animal itself - a held W on flat grass, no
+    // hop chain, no boon, no water - and reads the ground it covers, so what
+    // is held here is the speed the player feels and not a stat.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, out = {};
+      const key = (t, code) => dispatchEvent(new KeyboardEvent(t, { code }));
+      const run = (id, st, prep) => {
+        g.wipeSave(); g.start(id); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.place(0, 0); g.aim(0);
+        if (st) g.evolveTo(st);
+        if (prep) prep();
+        g.step(30, 1/60); g.place(0, 0);
+        key("keydown", "KeyW"); g.step(30, 1/60);
+        const a = g.state(); g.step(90, 1/60); const b = g.state();
+        key("keyup", "KeyW");
+        return +(Math.hypot(b.x - a.x, b.z - a.z) / 1.5).toFixed(2);
+      };
+      for (const id of g.chars()) out[id] = [0,1,2,3,4].map(st => run(id, st));
+      // the courier's surge, up against down, on the same body
+      const up = run("surge", 2, () => { g.fillSurge(); g.step(2, 1/60); });
+      const down = run("surge", 2);
+      return { pace: out, up, down };
+    });
+    const all = Object.values(r.pace).flat();
+    const line = id => `${id} ${r.pace[id].join("/")}`;
+    ok("the roster spans a real range: the fastest form covers at least half again the ground of the slowest",
+       Math.max(...all) / Math.min(...all) >= 1.55,
+       `${Math.min(...all)} to ${Math.max(...all)} u/s, x${(Math.max(...all)/Math.min(...all)).toFixed(2)}`);
+    const steps = id => r.pace[id].slice(1).map((v, i) => v / r.pace[id][i]);
+    ok("every line changes pace at two or more of its four evolutions, by five percent or better",
+       Object.keys(r.pace).every(id => steps(id).filter(k => Math.abs(k - 1) >= .05).length >= 2),
+       Object.keys(r.pace).map(line).join(" | "));
+    // A QUARTER is the bar, not a fifth: the fledgling becoming THE ROC is a
+    // +22% step and that is the point of it - the moment the line becomes a
+    // real flier should be felt in the hands. A step over a quarter would be
+    // the thing that feels like a bug.
+    ok("...and no single evolution is a jump: no step moves pace by more than a quarter",
+       Object.keys(r.pace).every(id => steps(id).every(k => Math.abs(k - 1) <= .25)),
+       Object.keys(r.pace).map(id => `${id} ${steps(id).map(k => ((k-1)*100).toFixed(0)+"%").join("/")}`).join(" | "));
+    // the hatchling's own pace is applied from the first frame: three numbers
+    // the design table says, read off the ground
+    const near = (v, w) => Math.abs(v - w) <= w * .03;
+    ok("the hatchling's own pace applies from the first frame of a run: THE INTERN 6.60, THE OX's pebble 5.45, THE TWIN's grub 5.54",
+       near(r.pace.intern[0], 6.60) && near(r.pace.ox[0], 5.45) && near(r.pace.twin[0], 5.54),
+       `intern ${r.pace.intern[0]}, ox ${r.pace.ox[0]}, twin ${r.pace.twin[0]}`);
+    ok("the courier's surge is a burst of pace: x1.30 on the ground while it is up",
+       r.up / r.down >= 1.24 && r.up / r.down <= 1.36,
+       `${r.down} u/s down, ${r.up} up, x${(r.up/r.down).toFixed(3)}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

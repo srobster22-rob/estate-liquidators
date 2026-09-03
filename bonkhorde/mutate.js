@@ -517,6 +517,20 @@ const MUTANTS = [
         "more scales with a head more each",
     from:"  if(st >= 3){\n    const G = gr;\n    const mix = ",
     to:  "  if(false){\n    const G = gr;\n    const mix = " },
+  { id:"evolution-keeps-pace", must:"40",
+    why:"evolving no longer rescales speed, so every line runs at one pace from " +
+        "hatchling to final - which is exactly the report this section answers",
+    from:"  monMul.spd *= r(\"spd\"); monMul.cd *= r(\"cd\"); monMul.mag *= r(\"mag\");",
+    to:  "  monMul.spd *= 1; monMul.cd *= r(\"cd\"); monMul.mag *= r(\"mag\");" },
+  { id:"hatchling-pace-skipped", must:"40",
+    why:"the run starts with the multipliers at one again, so a pace on stage 0 " +
+        "is silently skipped for the whole first stage",
+    from:"  monMul = { spd:st0.spd||1, cd:st0.cd||1, mag:st0.mag||1 };\n  P.spd *= monMul.spd; P.cd *= monMul.cd; P.mag *= monMul.mag;",
+    to:  "  monMul = { spd:1, cd:1, mag:1 };" },
+  { id:"surge-is-not-speed", must:"40",
+    why:"the courier's surge goes back to being damage only",
+    from:"* wmul * (surgeUp() ? SURGE_SPD : 1);",
+    to:  "* wmul;" },
   { id:"portrait-axes-swapped", must:"39",
     why:"the card camera reads the box capture as (lateral, vertical, fore-aft) " +
         "again, so every portrait is framed on the animal's depth where it " +
