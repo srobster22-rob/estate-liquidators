@@ -322,13 +322,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       for (const [k, n] of mods) window.__g.give(k, n);
       return window.__g.state().dps;
     };
+    const reachWith = mods => {
+      window.__g.start("intern"); window.__g.drainPicks(true);
+      for (const [k, n] of mods) window.__g.give(k, n);
+      return window.__g.mon().reach;
+    };
     return { none: dmgWith([]), boots: dmgWith([["boots", 2]]),
-             heart: dmgWith([["heart", 2]]), spinach: dmgWith([["spinach", 2]]) };
+             reach0: reachWith([]), reach: reachWith([["heart", 2]]), spinach: dmgWith([["spinach", 2]]) };
   });
   ok("BOOTS contributes damage",  riders.boots > riders.none * 1.15,
      `x${riders.none} -> x${riders.boots}`);
-  ok("BIG HEART contributes damage", riders.heart > riders.none * 1.10,
-     `x${riders.none} -> x${riders.heart}`);
+  ok("BIGGER contributes reach (PLAGUE's partner - it is the cloud that grows)", riders.reach > riders.reach0 * 1.18,
+     `x${riders.reach0} -> x${riders.reach}`);
 
   const offers = await page.evaluate(() => {
     const peek = (kit) => {

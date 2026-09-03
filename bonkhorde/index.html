@@ -1866,10 +1866,15 @@ tempo:   { name:"FASTER",   ic:"tempo",   kind:"p", max:3, eff:"-13% COOLDOWN",
            ds:"Every weapon you carry." },
 boots:   { name:"QUICKER",  ic:"boots",   kind:"p", max:3, eff:"+15% MOVE SPEED",
            ds:"And +10% damage: momentum." },
-heart:   { name:"BEEFIER",  ic:"heart",   kind:"p", max:3, eff:"+37 MAX HP",
-           ds:"And +8% damage. Pumps harder." },
+// BIGGER is the one upgrade you can SEE. Of the eight, damage, cooldown,
+// crit and health all change a number; reach changes the picture - every
+// cloud, ring, arc, lane and orbit on screen grows with it. It took the
+// health card's key (the tests, benches and saves know it as `heart`), and
+// TOUGHER absorbed the health.
+heart:   { name:"BIGGER",   ic:"pulse",   kind:"p", max:3, eff:"+10% REACH",
+           ds:"Every weapon reaches further and covers more ground." },
 plating: { name:"TOUGHER",  ic:"plating", kind:"p", max:3, eff:"-8% DAMAGE TAKEN",
-           ds:"Minus 2.7 flat, and a hit blasts them off you." },
+           ds:"And +25 max HP. A hit blasts them off you." },
 magnet:  { name:"HUNGRIER", ic:"magnet",  kind:"p", max:3, eff:"+58% PICKUP RANGE",
            ds:"And it drags the horde into a pile." },
 clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
@@ -1894,6 +1899,7 @@ bloodthirst:{ name:"BLOODTHIRST", ic:"heal",       kind:"r", max:1, eff:"KILLS H
 hunter:     { name:"HUNTER",      ic:"dmg",        kind:"r", max:1, eff:"+50% VS BIG GAME",
               ds:"Bosses and elites take half again." },
 };
+const BIG_MUL = 1.105;                                  // BIGGER, per pick: x1.35 at three
 const isRule = k => !!(PASSIVES[k] && PASSIVES[k].kind === "r");
 const hasRule = k => !!(P && P.kit[k]);
 const HUNTER_MUL = 1.5, RULE_FROM = 4;                 // no rule before level 4
@@ -9875,10 +9881,12 @@ function applyPassive(k){
     // of 5. CLOVER recomputes from the rank so it just reads prank; BIG HEART
     // accumulates per pick, so its per-pick value is what has to scale.
     case "clover":  P.crit  = rank("crit")*.04 + prank(P.kit.clover)*.07; break;
-    case "heart":   { const add = Math.round(22*PSCALE);
-                      P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp+add);
-                      P.regen += .30*PSCALE; P.dmg = recalcDmg(); } break;
-    case "plating": break;                                // read directly in playerHurt
+    // BIGGER rides P.reach the way LONG ARMS and the stage bonuses do: it is
+    // a multiplicative running value, not a recalc, so evolving (which
+    // rescales it by the stage ratio) keeps the picks
+    case "heart":   P.reach *= BIG_MUL; break;
+    case "plating": { const add = Math.round(15*PSCALE);   // the health BIG HEART used to carry
+                      P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp+add); } break;
     case "dupe":    break;                                // read directly by weapons
   }
 }
@@ -9890,8 +9898,7 @@ function recalcDmg(){
   return Math.pow(1 + LVL_DMG, Math.min(LVL_CAP, (P && P.grown) || 0))
        * (1 + rank("dmg")*.06)
        * (1 + prank(P.kit.spinach)*.13)
-       * (1 + prank(P.kit.boots)*.08)                       // momentum
-       * (1 + prank(P.kit.heart)*.05); }
+       * (1 + prank(P.kit.boots)*.08); }                    // momentum
 // Altar boons multiply in HERE rather than being written onto P, because every
 // one of these recomputes its stat from scratch the next time you take a
 // passive - a boon assigned directly to P.cd survives exactly until your next
