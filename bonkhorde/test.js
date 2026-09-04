@@ -6080,7 +6080,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // Every start rolls a new arena, so the cell is looked up after each boot.
     const r = await page.evaluate(async () => {
       const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
-      const boot = (id, st) => { g.wipeSave(); g.start(id); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+      // PINNED. Unpinned, the arena was rolled fresh for every boot, and one
+      // run in thirty had no bog cell among the first four whose walk stayed
+      // in bog and out of water - THE INTERN read null on "bog" (R277's suite
+      // run). One world, every time, and every cell of the kind is tried.
+      const boot = (id, st) => { g.wipeSave(); g.pin(43); g.pinRun(43); g.start(id); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
         g.drainPicks(true); g.setShake(0); g.aim(0); if (st) g.evolveTo(st); g.step(30, 1/60); };
       const at = kind => g.world().cells.find(c => c.id === kind);
       // TWO LEGS OF 45 FRAMES FROM THE CELL'S CENTRE, not one of 90: a second
@@ -6089,7 +6093,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // 4.4 on "bog" after crossing water). Each leg starts at the centre, and a
       // cell either leg leaves is thrown away for the next cell of its kind.
       const pace = (id, st, kind) => { boot(id, st);
-        for (const c of g.world().cells.filter(c => c.id === kind).slice(0, 4)) {
+        for (const c of g.world().cells.filter(c => c.id === kind)) {
           let d = 0, stayed = true;
           for (let leg = 0; leg < 2; leg++) {
             g.place(c.x, c.z); g.step(20, 1/60); g.place(c.x, c.z);
