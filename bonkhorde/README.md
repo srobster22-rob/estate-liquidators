@@ -238,7 +238,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 686 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
+node test.js              # 689 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -273,12 +273,13 @@ node film/menufilm.js             # the front end at desktop and phone: PLAY fre
 node film/pausefilm.js [seed]     # the pause menu (run, stats, kit) and the results screen at desktop and phone, eight minutes into the seed's bot run
 node film/thunderfilm.js          # THUNDERHEAD's discharge: the chain and the return stroke on an elite in a crowd, and the same elite alone
 node film/fanfilm.js              # a BOLTSTORM volley mid-flight: the finale boss ahead, a crowd aside, and where the seven bolts go
+node film/cachefilm.js            # a CACHE opened with an evolution ready: the panel under its CACHE banner, desktop and phone
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **686 passing** as of R279, with 209 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **689 passing** as of R280, with 212 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -679,6 +680,13 @@ which is how it looked the first time. The assertion is the equality, not an ine
 
 An evolution also queues a level-up pick of its own, on top of the level that triggered it —
 the moment should hand you a decision, not just a bigger number.
+
+**A CACHE is the evolution you were ready for (R280).** In Vampire Survivors a chest is the moment a
+weapon evolves. Ours handed out a level. If an evolution is ready when a cache opens - a weapon at its
+last rank with its partner growth finished - the cache is that evolution, dealt alone on the level-up
+panel under a CACHE banner with reroll and banish greyed; with nothing ready it is the level it always
+was, and the draft's evolution card remains the other way there. Taking a cache's card is not taking a
+level, so the levels its own gems queue on the frame it opens are all still dealt afterwards.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

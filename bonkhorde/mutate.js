@@ -951,6 +951,19 @@ const MUTANTS = [
     why:"the phone's portrait is full width again, pushing everything under it down",
     from:"    .detail canvas.pv,.detail .lockbox{height:150px;width:200px;margin:0 auto}",
     to:  "    .detail canvas.pv,.detail .lockbox{margin:0 auto}" },
+  // ---- R280: a cache is the evolution you were ready for (section 72)
+  { id:"cache-is-just-a-level", must:"72",
+    why:"a cache hands out a level again, evolution ready or not",
+    from:"        if(ev.length && !noLevels && !picking){ showPick([ev[0]], cacheDealer); evStats.cacheEvos = (evStats.cacheEvos||0) + 1; }",
+    to:  "        if(false){ }" },
+  { id:"cache-wears-no-banner", must:"72",
+    why:"the cache's card comes up under LEVEL UP like any other hand",
+    from:"  document.getElementById(\"pkTitle\").textContent = curDealer === cacheDealer ? \"CACHE\" : \"LEVEL UP\";",
+    to:  "  document.getElementById(\"pkTitle\").textContent = \"LEVEL UP\";" },
+  { id:"cache-eats-a-level", must:"72",
+    why:"taking a cache's evolution counts as taking a level, and one the gems queued is lost",
+    from:"  if(wasLevel) pendingLevels = Math.max(0, pendingLevels - 1);",
+    to:  "  pendingLevels = Math.max(0, pendingLevels - 1);" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

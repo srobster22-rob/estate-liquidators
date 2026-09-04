@@ -155,6 +155,10 @@
   #pick h1 .lvl span{color:#ffe08a}
   #pick .sub{font-size:10px;margin:0;color:var(--gold);letter-spacing:.16em;text-align:right;
     white-space:nowrap}
+  /* a CACHE is treasure, not a level: more gold on the banner, no level chip */
+  #pick.cache .pkHead{background:linear-gradient(180deg,#f0b42948,#f0b42912);border-bottom-color:#f0b429}
+  #pick.cache .lvl{display:none}
+  #pick.cache .wrap{border-color:#ffd36b}
   /* the rows */
   #pick .cards{display:flex;flex-direction:column;gap:6px;margin:0;padding:8px 10px 6px;flex-wrap:nowrap}
   #pick .card{--ac:var(--gold);--acbg:#f0b4292a;--acglow:#f0b42966;
@@ -702,7 +706,7 @@
 
 <div class="ov on" id="menu"><div class="wrap" id="menuBody"></div></div>
 <div class="ov" id="pick"><div class="wrap">
-  <div class="pkHead"><h1>LEVEL UP<span class="lvl">LV <span id="pkLv">2</span></span></h1>
+  <div class="pkHead"><h1><span id="pkTitle">LEVEL UP</span><span class="lvl">LV <span id="pkLv">2</span></span></h1>
     <div class="sub" id="pkSub">PICK ONE</div></div>
   <div class="cards" id="pkCards"></div>
   <div class="tools" id="pkTools"></div>
@@ -9752,10 +9756,21 @@ function updateEvents(dt){
     if(e.kind === "cache"){
       if(near){
         events.splice(i,1);
-        queueLevel(); coinsRun += 40;
+        coinsRun += 40;
         for(let k=0;k<9;k++) pushGem(e.x+rnd(-2,2), e.z+rnd(-2,2), 4);
         evStats.caches++;
-        alert2("CACHE OPENED", "#f0b429"); shake = Math.max(shake,.5); SFX.levelup();
+        // THE CHEST. In Vampire Survivors a chest is the moment a weapon
+        // evolves: the game stops, the lid comes up, and the thing you had
+        // been building toward is in your hands. Ours handed out a level - a
+        // draft like any other. If an evolution is READY when a cache opens,
+        // the cache is that evolution, revealed on the level-up panel under a
+        // CACHE banner with nothing else on it; otherwise it is the level it
+        // always was. The evolution card in the draft is still the other way
+        // to get there.
+        const ev = evoReady();
+        if(ev.length && !noLevels && !picking){ showPick([ev[0]], cacheDealer); evStats.cacheEvos = (evStats.cacheEvos||0) + 1; }
+        else queueLevel();
+        alert2(ev.length ? "CACHE  ·  EVOLUTION" : "CACHE OPENED", "#f0b429"); shake = Math.max(shake,.5); SFX.levelup();
         continue;
       }
     } else {
@@ -10362,6 +10377,22 @@ function nextUp(){
 }
 
 // ------------------------------------------------------------ offer roller
+// the evolutions the kit is ready for: a weapon at its last rank whose
+// partner growth is finished. The draft deals these first; a CACHE grants one.
+function evoReady(){
+  const out = [];
+  for(const k in P.kit){
+    const w = P.kit[k], W = WEAPONS[k];
+    if(!W || w.evo || w.l < WMAX-1) continue;
+    const need = P.kit[W.evo.need];
+    if(need && need.l >= 2)
+      out.push({ type:"evo", key:k, ic:W.evo.ic, nm:W.evo.name, lv:"EVOLUTION", ds:W.evo.ds, weight:999 });
+  }
+  return out;
+}
+// the dealer a cache hands its one card through: no reroll, no banish, a
+// CACHE banner instead of LEVEL UP
+const cacheDealer = () => [];
 // `excl` is a set of keys a reroll or a banish wants kept out of THIS deal;
 // P.banned is the run's own list, and is kept out of every deal
 function offers(excl){
@@ -10576,6 +10607,8 @@ function showPick(hand, dealer){
   document.exitPointerLock?.();       // the mouse is a mouse again: the rows are clicked, or numbered
   document.getElementById("pkLv").textContent = P.lvl;
   curHand = hand || offers(); curDealer = dealer || offers;
+  document.getElementById("pkTitle").textContent = curDealer === cacheDealer ? "CACHE" : "LEVEL UP";
+  document.getElementById("pick").classList.toggle("cache", curDealer === cacheDealer);
   banMode = false; selRow = TOUCH ? -1 : 0;
   renderHand();
   show("pick");
@@ -10591,6 +10624,7 @@ function renderHand(){
   document.getElementById("pkSub").textContent =
     (TOUCH ? "TAP ONE" : cards.length > 1 ? `PRESS 1-${cards.length}` : "PRESS 1") +
     (pendingLevels > 1 ? `  ·  ${pendingLevels-1} MORE QUEUED` : "");
+  if(curDealer === cacheDealer) document.getElementById("pkSub").textContent = TOUCH ? "TAP IT  ·  IT IS YOURS" : "PRESS 1  ·  IT IS YOURS";
   const box = document.getElementById("pkCards"); box.innerHTML="";
   cards.forEach((o,i)=>{
     const el = document.createElement("div");
@@ -10742,7 +10776,9 @@ function take(o){
   else { P.kit[o.key].l++; applyPassive(o.key); }
   // Clamped, because a scripted driver's own pick and a click can both land
   // on the same open hand, and two takes for one level drove the counter negative.
-  pendingLevels = Math.max(0, pendingLevels - 1);
+  // A CACHE's hand is not a level: taking it must not eat one its own gems queued.
+  const wasLevel = curDealer !== cacheDealer;
+  if(wasLevel) pendingLevels = Math.max(0, pendingLevels - 1);
   hide("pick"); picking=false; banMode=false; curHand=null;
   document.getElementById("pick").classList.remove("ban");
   // THE NEXT HAND, NOW. A queue of three is three screens back to back, the
@@ -14355,7 +14391,8 @@ window.__g = {
   banishRow:  (i=0)=>{ if(!banMode) armBanish(); doBanish(i|0); return P ? { left:P.banishes, banned:Object.keys(P.banned) } : null; },
   hand:   ()=>curHand ? curHand.map(o=>({ type:o.type, key:o.key||"", nm:o.nm, lv:o.lv })) : [],
   draft:  ()=>({ rerolls:P?P.rerolls:0, banishes:P?P.banishes:0, banned:P?Object.keys(P.banned):[], banMode, sel:selRow,
-                 mastery: curDealer === masteryHand }),
+                 mastery: curDealer === masteryHand, cache: curDealer === cacheDealer,
+                 title: (document.getElementById("pkTitle")||{}).textContent }),
   // screenshot helper: point the camera and the creature the same way
   aim: (a)=>{ camYaw = a; if(P){ P.face = a; P.faceWant = a; } return camYaw; },
   hitBoss: (n)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b) hurt(b, n||1, 0, 0); },

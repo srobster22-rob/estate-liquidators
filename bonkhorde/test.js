@@ -7342,11 +7342,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const tiles = [...document.querySelectorAll("#chars .ch")].map(t => { const b = t.getBoundingClientRect(); return { t: Math.round(b.top), r: Math.round(b.right) }; });
       const tabs = document.querySelector(".tabs").getBoundingClientRect(), det = document.getElementById("detail").getBoundingClientRect();
       const wrap = document.querySelector("#menu .wrap");
-      const sb = document.getElementById("startBtn"); sb.scrollIntoView({ block: "center" }); const sbr = sb.getBoundingClientRect();
+      // START rides the bar along the bottom on a phone (R279): read that button, on the first screen, unscrolled
+      const sb = document.getElementById("goBtn"); wrap.scrollTop = 0; const sbr = sb.getBoundingClientRect();
       return { n: tiles.length, row1: tiles.filter(q => q.t === tiles[0].t).length, inside: tiles.every(q => q.r <= innerWidth), tabsH: Math.round(tabs.height), detTop: Math.round(det.top), lastTile: Math.max(...tiles.map(q => q.t)),
                scrollW: wrap.scrollWidth, clientW: wrap.clientWidth, vw: innerWidth, sbW: Math.round(sbr.width), sbVis: sbr.top >= 0 && sbr.bottom <= innerHeight }; });
-    ok("on a phone the roster is three tiles a row above the panel, the tabs are one row, nothing scrolls sideways, and START is a full-width button",
-       ph.n === 9 && ph.row1 === 3 && ph.inside && ph.tabsH < 60 && ph.detTop > ph.lastTile && ph.scrollW <= ph.clientW + 1 && ph.sbVis && ph.sbW > ph.vw * .7,
+    ok("on a phone the roster is three tiles a row above the panel, the tabs are one row, nothing scrolls sideways, and START rides a bar on the first screen",
+       ph.n === 9 && ph.row1 === 3 && ph.inside && ph.tabsH < 60 && ph.detTop > ph.lastTile && ph.scrollW <= ph.clientW + 1 && ph.sbVis && ph.sbW > ph.vw * .3,
        `${ph.n} tiles, ${ph.row1} on row one, tabs ${ph.tabsH}px tall, panel at ${ph.detTop} under the last tile row at ${ph.lastTile}, scroll ${ph.scrollW}/${ph.clientW}, START ${ph.sbW}px wide, visible ${ph.sbVis}`);
     await pctx.close();
   }
@@ -7558,6 +7559,45 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const gb = document.getElementById("goBar"), sb = document.getElementById("startBtn");
       return { bar: gb ? getComputedStyle(gb).display : "missing", start: sb ? getComputedStyle(sb).display : "missing" }; });
     ok("the desktop keeps its button in the panel and never shows the bar", dk.bar === "none" && dk.start !== "none", JSON.stringify(dk));
+  }
+
+  console.log("\n=== 72. A CACHE IS THE EVOLUTION YOU WERE READY FOR ===");
+  {
+    // In VS a chest is the moment a weapon evolves. Ours handed out a level.
+    // If an evolution is ready when a cache opens, the cache IS that
+    // evolution, on the level-up panel under a CACHE banner with nothing else
+    // on it and no reroll or banish; with nothing ready it is the level it
+    // always was.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const open = (ready) => {
+        g.drainPicks(true); g.wipeSave(); g.setSave({ up:{ reroll:2 } }); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.clearEnemies();
+        if (ready) { g.give("bat", 3); g.give("spinach", 3); }          // MEGABONK is ready
+        // raw frames: g.step() auto-picks any hand it finds open, which is the hand this is reading
+        g.drainPicks(false); g.place(0, 0); g.spawnEvent("cache", 0, 0); for (let i = 0; i < 3; i++) g.stepRaw(1/60);
+        const s = g.state(), d = g.draft();
+        const rows = [...document.querySelectorAll("#pkCards .card")].map(e => ({ nm: e.querySelector(".nm").textContent, fam: e.querySelector(".fam").textContent }));
+        const tb = [...document.querySelectorAll("#pkTools .tb")];
+        const out = { picking: s.picking, pending: s.pending, rows, title: d.title, cache: d.cache, tools: tb.length, live: tb.filter(b => !b.classList.contains("off")).length,
+                      sub: document.getElementById("pkSub").textContent, banner: document.getElementById("pick").classList.contains("cache"), lvlChip: getComputedStyle(document.querySelector("#pick .lvl")).display };
+        if (s.picking) g.pick(0);
+        // the cache's nine gems queue levels of their own on the frame it opens; taking the cache must not eat one
+        const s2 = g.state();
+        out.after = { kit: g.kit().join(" "), picking: s2.picking, pending: s2.pending, lvl: s2.lvl, title: g.draft().title, alerts: g.alerts().filter(a => /CACHE/.test(a)) };
+        return out;
+      };
+      return { ready: open(true), plain: open(false) };
+    });
+    ok("with MEGABONK ready, opening a cache deals MEGABONK alone under a CACHE banner, reroll greyed out, no level chip",
+       r.ready.picking && r.ready.cache && r.ready.title === "CACHE" && r.ready.banner && r.ready.rows.length === 1 && r.ready.rows[0].nm === "MEGABONK" && r.ready.rows[0].fam === "EVOLUTION" && r.ready.live === 0 && r.ready.lvlChip === "none" && /YOURS/.test(r.ready.sub),
+       `${r.ready.rows.map(x => x.nm).join("|")} under "${r.ready.title}", ${r.ready.live} live buttons of ${r.ready.tools}, "${r.ready.sub}"`);
+    ok("taking it evolves the bat, and every level the cache's own gems queued is still there, dealt as LEVEL UP",
+       // pending counts the open hand too (the caption says "N-1 MORE QUEUED"), so it should equal the levels gained
+       /bat:EVO/.test(r.ready.after.kit) && r.ready.after.lvl >= 2 && r.ready.after.pending === r.ready.after.lvl - 1 && r.ready.after.picking && r.ready.after.title === "LEVEL UP" && r.ready.after.alerts.some(a => /EVOLUTION/.test(a)),
+       `${r.ready.after.kit}; level ${r.ready.after.lvl}, ${r.ready.after.pending} pending (one open) under "${r.ready.after.title}"; ${r.ready.after.alerts.join(" / ")}`);
+    ok("with nothing ready a cache is the level it always was, under LEVEL UP",
+       r.plain.picking && !r.plain.cache && r.plain.title === "LEVEL UP" && !r.plain.banner && r.plain.rows.length >= 2 && r.plain.live >= 1,
+       `${r.plain.rows.length} cards under "${r.plain.title}", ${r.plain.live} live buttons`);
   }
 
   console.log("\n" + "=".repeat(58));
