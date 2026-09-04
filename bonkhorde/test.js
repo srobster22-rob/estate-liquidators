@@ -6791,6 +6791,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and you hear it: a whiff clicks, a landed bite does not, and six whiffing at once are one click",
        r.whiff.clicks >= 1 && r.landClicks === 0 && r.pileClicks >= 1 && r.pileClicks <= 2,
        `walk-out ${r.whiff.clicks}, landed ${r.landClicks}, pile of six ${r.pileClicks}`);
+    const hint = await page.evaluate(() => (document.getElementById("pauseHint") || {}).textContent || "");
+    ok("and the pause screen says so: a bite has a wind-up, and stepping out of it is the answer",
+       /wind-up/i.test(hint) && /rears back/i.test(hint) && /step out/i.test(hint), hint.replace(/\s+/g, " ").slice(0, 160));
     ok("a spitter telegraphs the lob: quiet a second before, rearing through the last .3 s, and the spit is a snap",
        r.spit.snaps.length >= 2 && r.spit.quiet < .05 && r.spit.pre18 < .15 && r.spit.pre1 > .7 && r.spit.ptBefore < -.15 && r.spit.ptPeak > .3,
        `spits at ${r.spit.snaps.join(" ")}; pre -1s ${r.spit.quiet}, -.3s ${r.spit.pre18}, -1f ${r.spit.pre1}; pitch ${r.spit.ptBefore} -> ${r.spit.ptPeak}`);
