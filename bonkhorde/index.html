@@ -1060,6 +1060,14 @@ function affNow(){
 // glance and the crossing is short enough that a turn beats it.
 const DIVE_R = 9.5, DIVE_TELL = .42, DIVE_TIME = .45,
       DIVE_REST = 2.6, DIVE_SPD = 4.0, DIVE_DMG = 2.2;
+// THE BITE HAS A WIND-UP. Contact damage used to land the frame an enemy
+// reached you, and the only animation of it was a lean applied after the fact.
+// A melee enemy in reach now WINDS UP for BITE_WIND before it bites - rears
+// back, crouches - and the bite lands only if you are still there, so a hop
+// out of a wind-up is a bite that snaps at air. The rest after a landed bite is
+// shorter by the same amount, so a pile of them still costs what it cost.
+// Spitters telegraph the lob the same way, off the timer they already run.
+const BITE_WIND = .18, BITE_REST = .47, SPIT_TELL = .30;
 const MARK_KINDS = [
   { id:"ring",   nm:"THE RIBCAGE", r:7.5, den:"brute",    pack:[5,8],   ds:"a horned herd, and they were here first" },
   { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid a clutch in the pit" },
@@ -2368,6 +2376,14 @@ function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
     const h = y - e.py, si = 1 / Math.sqrt(sq);
     y = e.py + h*sq; hy *= sq; hx *= si; hz *= si;
     r += h*e.lr; f += h*e.lf;
+  }
+  // the strike (see the draw): a pitch about the hips - positive is nose
+  // down - and a reach of everything forward of them
+  if(e.pt || e.rc){
+    const pv = e.py + (e.pH || 1) * .42, dy = y - pv;
+    if(e.rc && f > 0) f += f * e.rc;
+    if(e.pt){ const c = Math.cos(e.pt), s = Math.sin(e.pt);
+              const f2 = f*c + dy*s; y = pv - f*s + dy*c; f = f2; }
   }
   box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
       e.z - Math.sin(face)*r + Math.cos(face)*f,
@@ -7484,6 +7500,7 @@ const CORPSE_MAX = 48;
 // world-space capture of one drawn corpse (test hook): eb()'s capture records
 // the plan before the pose, and the whole point of a corpse is the pose
 let wCap = null, wCapOut = null, wCapWant = false;
+let ewCapWant = false, ewCapOut = null;   // the same world-space capture, of the first LIVE body drawn
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
 // ===================================================== THE TWO RULE-CHARACTERS
@@ -8978,6 +8995,7 @@ function spawnEnemy(type, atX, atZ){
     dmg:   def.dmg*dmgScale(T)*em.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:R()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
     gt:0, amp:0, bk:0, lg:0, sq:1,               // the gait and the pose, see walk()
+    wu:0, wuT:BITE_WIND, pre:0, pt:0, rc:0,      // the wind-up and the strike, see the contact code
     dead:false, boss:false };
   enemies.push(made);
   return made;                                  // the hunt event needs a handle
@@ -9050,6 +9068,7 @@ function spawnBoss(b){
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
     gt:0, amp:0, bk:0, lg:0, sq:1,
+    wu:0, wuT:BITE_WIND, pre:0, pt:0, rc:0,
     // THE ARRIVAL. A boss used to appear: one frame it was not there, the next
     // it was, twenty-six metres away, and a line of text said so. Something
     // five times your size should not be able to arrive quietly. It comes up
@@ -9577,8 +9596,12 @@ function updateEnemies(dt){
       const want = 13;
       const dir = d > want+2 ? 1 : d < want-2 ? -1 : 0;
       e.x += dx/d*spd*dir*dt; e.z += dz/d*spd*dir*dt;
+      // the lob's tell rides the timer it already runs: the last SPIT_TELL
+      // seconds before a spit rear the animal back
+      e.spitTell = (e.atk < SPIT_TELL && d < e.def.ranged.r + 3) ? 1 - Math.max(0, e.atk) / SPIT_TELL : 0;
       if(e.atk<=0 && d < e.def.ranged.r){
         e.atk = e.def.ranged.cd;
+        e.lg = 1;                                   // the spit is a snap forward too
         spits.push({ x:e.x, y:e.y+e.def.h*.7, z:e.z, a:Math.atan2(dx,dz),
                      spd:e.def.ranged.spd, d:e.dmg, life:2.4 });
       }
@@ -9644,10 +9667,26 @@ function updateEnemies(dt){
     }
     // A diving enemy is coming from ABOVE, so it can still reach you up there;
     // everything else has to walk into you, and cannot.
-    if(!e.def.ranged && d < e.rad + .75 && P.iframe<=0 && !(aloft() && e.dvT <= 0)){
-      playerHurt(e.dvT > 0 ? e.dmg * DIVE_DMG : e.dmg, e.x, e.z);
-      if(e.dvT > 0){ e.dvT = 0; e.dv = DIVE_REST; }
-      e.lg = 1;                                     // the bite, see walk()
+    if(!e.def.ranged){
+      const reach = d < e.rad + .75 && !(aloft() && e.dvT <= 0);
+      if(e.dvT > 0){
+        // a landed dive is its own telegraph - it hits the moment it lands
+        if(reach && P.iframe <= 0){ playerHurt(e.dmg * DIVE_DMG, e.x, e.z); e.dvT = 0; e.dv = DIVE_REST; e.lg = 1; }
+      } else if(e.wu > 0){
+        // winding up: the bite lands when the wind-up runs out, IF you are
+        // still there; otherwise it snaps at air, which is the whole point
+        e.wu -= dt;
+        if(e.wu <= 0){
+          e.wu = 0;
+          if(reach && P.iframe <= 0){ playerHurt(e.dmg, e.x, e.z); P.iframe = BITE_REST; }
+          e.lg = 1;                                 // the snap, see walk() and eb()
+        }
+      } else if(reach && P.iframe <= 0 && e.lg <= 0){
+        // in reach and you are hittable: rear back. A touch of per-animal
+        // variance so a pile does not snap as one
+        e.wuT = BITE_WIND * rndSeed(e);
+        e.wu = e.wuT;
+      }
     }
   }
 }
@@ -9707,6 +9746,20 @@ function walk(e, lx, lz, dt){
   e.bk += (clamp(turn / dt * .05, -.25, .25) - e.bk) * Math.min(1, dt * 8);
   e.lg = Math.max(0, e.lg - dt * 3.2);
   e.sq += (1 - e.sq) * Math.min(1, dt * 13);
+  // the wind-up, eased in and let go fast: a melee animal's runs on its bite
+  // clock, a spitter's on its lob timer
+  const pre = e.wu > 0 ? 1 - e.wu / (e.wuT || BITE_WIND) : (e.spitTell || 0);
+  e.pre = (e.pre || 0) + (pre - (e.pre || 0)) * Math.min(1, dt * (pre > (e.pre || 0) ? 24 : 22));
+  // THE STRIKE, resolved here and applied to every box in eb(): the wind-up
+  // rears the animal back and crouches it, the snap pitches it forward about
+  // the hips and reaches the whole front out over 60 ms, and it recovers over
+  // the next quarter second. The bite used to be a lean - sin(lg*pi)*.35 -
+  // the same one-shove construction the player's attacks had before R252.
+  const tb = e.lg > 0 ? (1 - e.lg) / 3.2 : 9;                // seconds since the snap
+  e.snap = tb < .06 ? tb / .06 : Math.max(0, 1 - (tb - .06) / .25);
+  e.pt = -.24*e.pre + e.snap*.46;
+  e.rc = e.snap*.30;
+  e.stq = 1 - e.pre*.11 + e.snap*.07;                        // the crouch, then the stretch
 }
 // tiny per-enemy speed variance so a wave arrives as a smear, not a wall
 function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
@@ -12897,14 +12950,19 @@ function render(){
     // now the squash, which has a size and a recovery.
     const kf = e.kx*Math.sin(face) + e.kz*Math.cos(face),
           kr = e.kx*Math.cos(face) - e.kz*Math.sin(face);
-    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + Math.sin(e.lg*Math.PI)*.35 + bt.lf;
+    // THE STRIKE (walk() resolves it: e.pre, e.snap, e.pt, e.rc; eb() applies
+    // the pitch and the reach to every box, so all eleven plans bite without
+    // one of them knowing what a bite is). Here: the lean and the squash.
+    const snap = e.snap || 0, pre = e.pre || 0;
+    e.pH = H;
+    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + snap*.10 + bt.lf;
     e.lr = clamp(kr*.04, -.40, .40) + e.bk;
     const sq = 1;
     // the beat's squash rides the walk's for the length of the draw and is put
     // back after - e.sq is walk()'s state and the beat is not allowed to leave
-    // anything in it
+    // anything in it. The wind-up crouches it; the snap stretches it.
     const sq0 = e.sq;
-    e.sq = sq0 * bt.sq;
+    e.sq = sq0 * bt.sq * (e.stq || 1);
     // elites keep their species colour but run hot, so you can still tell a
     // CHONK from a SKITTER while knowing which one is the problem
     const base = e.elite ? [lerp(D.c[0],1,ELITE_TINT), lerp(D.c[1],.42,ELITE_TINT),
@@ -12950,7 +13008,13 @@ function render(){
     // lower, so nothing about the body plan has to know this exists.
     const rise = e.rise > 0 ? e.rise / BOSS_RISE : 0;
     e.py = e.y + hop - rise*H*1.15;                  // the pose pivots at the feet
+    // a test may want the drawn body in world space - the pose included -
+    // the way the corpse pass already offers it, so a standing body and its
+    // corpse are measured the same way
+    const takeW = ewCapWant && !ewCapOut;
+    if(takeW) wCap = [];
     plan(e, face, W*sq, H, c, glow, lod, e.py);
+    if(takeW){ ewCapOut = wCap; wCap = null; ewCapWant = false; }
     e.sq = sq0;
     if(rise > 0){
       const gy2 = groundY(e.x, e.z), up = 1 - rise;
@@ -13010,10 +13074,13 @@ function render(){
     // ...and the fall direction in the body's own frame: forward and right
     const tf = e.fx*Math.sin(face) + e.fz*Math.cos(face),
           tr = e.fx*Math.cos(face) - e.fz*Math.sin(face);
-    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + Math.sin(e.lg*Math.PI)*.35 + tf*dp.lean;
+    // the strike it died in stays on it - lean, crouch, pitch and reach are
+    // the frozen values walk() last resolved, the same terms the live draw
+    // uses, so the kill frame is not a cut
+    e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + (e.snap || 0)*.10 + tf*dp.lean;
     e.lr = clamp(kr*.04, -.40, .40) + e.bk + tr*dp.lean;
     e.bt = BT0;
-    const sq0 = e.sq; e.sq = dp.sq;
+    const sq0 = e.sq; e.sq = dp.sq * (e.stq || 1);
     const base = e.elite ? [lerp(D.c[0],1,ELITE_TINT), lerp(D.c[1],.42,ELITE_TINT),
                             lerp(D.c[2],.10,ELITE_TINT)]
                          : D.c;
@@ -13840,6 +13907,12 @@ window.__g = {
   // between "step to the mark" and "capture the frame"
   corpseStep:(n, dt)=>{ for(let i=0;i<(n||1);i++) stepCorpses(dt||1/60); return corpses.length; },
   captureCorpse:()=>{ wCapWant = true; wCapOut = null; },
+  captureEnemyWorld:()=>{ ewCapWant = true; ewCapOut = null; },
+  enemyBox:()=>{ if(!ewCapOut) return null;
+                 const b = ewCapOut, n = b.length/6; let minY=1e9, maxY=-1e9;
+                 for(let i=0;i<n;i++){ minY = Math.min(minY, b[i*6+1] - b[i*6+4]); maxY = Math.max(maxY, b[i*6+1] + b[i*6+4]); }
+                 const e = enemies.find(q => !q.dead);
+                 return { n, minY:+minY.toFixed(3), maxY:+maxY.toFixed(3), gy: e ? +groundY(e.x, e.z).toFixed(3) : null }; },
   // the drawn boxes of that corpse, world space: count, extent and the ground
   // under its origin, so a check can say how tall it draws and where its top is
   corpseBox:(at)=>{ if(!wCapOut) return null;
@@ -13918,6 +13991,8 @@ window.__g = {
                                gt:+e.gt.toFixed(4), amp:+e.amp.toFixed(4), hop:+hopOf(e).toFixed(4),
                                hd:e.hd === undefined ? null : +e.hd.toFixed(4),
                                bk:+e.bk.toFixed(4), lg:+e.lg.toFixed(4),
+                               pre:+(e.pre||0).toFixed(4), pt:+(e.pt||0).toFixed(4), rc:+(e.rc||0).toFixed(4), wu:+(e.wu||0).toFixed(4),
+                               btu:+((e.bt && e.bt.u) || 0).toFixed(3),
                                sq:+e.sq.toFixed(4), kx:+e.kx.toFixed(3),
                                kz:+e.kz.toFixed(3), boss:!!e.boss })),
   // A hazard exactly where the test wants one, already live, so a check on

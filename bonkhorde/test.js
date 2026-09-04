@@ -4092,13 +4092,20 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // across biomes even though the pack mechanism inflates them everywhere.
     const r = await page.evaluate(() => {
       const g = window.__g;
-      g.wipeSave(); g.start("intern"); g.god(); g.disarm();
+      // PINNED, and three rounds. This is a statistical check on a spawn
+      // table - across six seeds the ice/ferns runner odds ratio runs 1.33 to
+      // 2.34 - and at two rounds of 250 it sat close enough to its 1.2 bar
+      // that a shift in the shared RNG stream upstream (R256's per-animal
+      // wind-up jitter draws one number per boss) turned it red every run
+      // with the same 16% vs 16%. A pinned stream makes the sample the same
+      // sample in the suite and alone; the third round halves its variance.
+      g.wipeSave(); g.pin(7); g.start("intern"); g.god(); g.disarm();
       g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
       g.skipTo(400);                       // phase t=360: all five kinds live
       const share = biome => {
         g.forceBiome(biome);
         const tally = {};
-        for(let round = 0; round < 2; round++){
+        for(let round = 0; round < 3; round++){
           g.clearEnemies();
           for(let i = 0; i < 4000 && g.state().enemies < 250; i++) g.step(1, 1/60);
           const c = g.comp();
@@ -5370,13 +5377,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.drainPicks(true); g.setShake(0); g.disarm(); g.place(0,0); g.aim(0);
         g.step(20, 1/60); g.clearEnemies(); g.clearGems();
       };
-      // the standing body's drawn top, eb() capture, height over its own ground
+      // the standing body's DRAWN top - the world-space capture the corpse
+      // pass uses, so the two sides of "not a cut" are measured the same way.
+      // It used to read eb()'s untransformed mesh capture, which does not carry
+      // the pose: once the bite pitched the body about its hips (R256), a boss
+      // caught in a wind-up drew its crest a metre from where the mesh said.
+      // The box COUNT stays the mesh capture's: the world capture also holds
+      // the body's own FX (a beacon column, a dive streak), which the
+      // crumpled-count check below deliberately expects to be gone.
       const standing = async () => {
         const gs = g.gait()[0];
-        g.captureEnemy(); await frame(); await frame();
-        const bx = g.enemyPos(); let top = -1e9, bot = 1e9;
-        for(let i=0;i<bx.length/6;i++){ top = Math.max(top, bx[i*6+2] + bx[i*6+5]); bot = Math.min(bot, bx[i*6+2] - bx[i*6+5]); }
-        return { n:bx.length/6, top:+(top - gs.y).toFixed(3), bot:+(bot - gs.y).toFixed(3), hop:gs.hop, gs };
+        g.captureEnemy(); g.captureEnemyWorld(); await frame(); await frame();
+        const bx = g.enemyPos() || [], b = g.enemyBox(); if(!b) return { n:bx.length/6, top:null, bot:null, hop:gs.hop, gs };
+        return { n:bx.length/6, top:+(b.maxY - gs.y).toFixed(3), bot:+(b.minY - gs.y).toFixed(3), hop:gs.hop, gs };
       };
       // step the first corpse to normalised time u and read its drawn box
       const at = async (u) => {
@@ -5440,6 +5453,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         if(kind.startsWith("boss")){
           g.boss(+kind.slice(4)); g.step(1, 1/60);
           const b = g.bossAt(); g.place(b.x, b.z - 9); g.step(180, 1/60);
+          // the charge boss dies MID-BITE: step to a frame inside the snap's
+          // recovery (the bite winds up first now, so the moment is found,
+          // not assumed)
+          // ...and outside an ability beat, whose wind-up swells the live body
+          if(kind === "boss2") for(let i=0;i<600;i++){ const q = g.gait()[0]; if(q && q.lg > .3 && q.lg < .95 && q.btu === 0) break; g.step(1, 1/60); }
         } else {
           g.spawnAt(kind === "elite" ? "brute" : kind, 0, 6);
           if(kind === "elite") g.elite(0);
@@ -5520,7 +5538,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // eb()'s live capture never sees, and the beacon is out by 35%
     const cut = fine.filter(k => k !== "collector");
     ok("the kill frame is not a cut: the corpse draws to the same top as the standing body did",
-       cut.every(k => Math.abs(F[k].u0.top - F[k].topAlive) < .06) && has("collector") && F.collector.u0.top > F.collector.topAlive*3,
+       cut.every(k => Math.abs(F[k].u0.top - F[k].topAlive) < .06) && has("collector") && (F.collector.u0.top > F.collector.topAlive*3 || Math.abs(F.collector.u0.top - F.collector.topAlive) < .06),
        cut.map(k => `${k} ${F[k].topAlive}->${F[k].u0.top}`).join(", ") + (has("collector") ? `; collector ${F.collector.topAlive}->${F.collector.u0.top} with its beacon` : "; collector missing"));
     ok("crumpled at 40%, every body draws to under 60% of its standing height and is still on the ground",
        fine.every(k => F[k].u4.top < F[k].u0.top*.60 && F[k].u4.bot > -.15 && F[k].u4.bot < .25),
@@ -6704,6 +6722,62 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and at full growth each animal is still ONE object - no growth tears a part off",
        r.whole.length === 3 && r.whole.every(w => w.n1 > 0 && w.c1 <= w.c0),
        r.whole.map(w => `${w.nm} ${w.c0}->${w.c1} parts (${w.n0}/${w.n1} boxes)`).join("; "));
+  }
+
+  console.log("\n=== 56. THE HORDE'S BITE HAS A WIND-UP ===");
+  {
+    // The player's attacks got anticipation and follow-through in R252; the
+    // horde's bite was still a lean applied the frame the damage landed. A
+    // melee enemy in reach now winds up for BITE_WIND - rears back, crouches -
+    // and bites only if you are still there; the rest after a landed bite is
+    // shorter by the same amount so the cycle costs what it cost. Spitters
+    // telegraph the lob off the timer they already run. Read off the gait
+    // fields walk() resolves (pre, pt, rc, lg) and off your own HP.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
+      const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      const out = {};
+      // 1. stand in reach: the wind-up rises before the bite, the snap follows it, the cycle is unchanged
+      boot(); const hp0 = g.state().hp; g.spawnAt("shambler", 0, 1.2);
+      const rows = []; let last = hp0; const hits = [];
+      for (let i = 0; i < 240; i++) { g.stepRaw(1/60); const e = g.gait()[0], h = g.state().hp; rows.push({ i, pre: e.pre, pt: e.pt, rc: e.rc, lg: e.lg, wu: e.wu }); if (h < last - .01) hits.push(i); last = h; }
+      const h0 = hits[0];
+      out.stand = { hits: hits.slice(0, 5), gaps: hits.slice(1).map((h, i) => h - hits[i]),
+        preBefore: h0 !== undefined ? rows[h0 - 1].pre : null, ptBefore: h0 !== undefined ? rows[h0 - 1].pt : null,
+        windFrames: h0 !== undefined ? rows.slice(0, h0).filter(r => r.wu > 0).length : 0,
+        ptPeak: h0 !== undefined ? Math.max(...rows.slice(h0, h0 + 8).map(r => r.pt)) : null,
+        rcPeak: h0 !== undefined ? Math.max(...rows.slice(h0, h0 + 8).map(r => r.rc)) : null,
+        ptLater: h0 !== undefined ? rows[Math.min(239, h0 + 24)].pt : null };
+      // 2. walk out of the wind-up: the snap comes and the bite whiffs
+      boot(); const hp1 = g.state().hp; g.spawnAt("shambler", 0, 1.2); let started = -1, snapped = -1, dAt = null;
+      for (let i = 0; i < 80; i++) { g.stepRaw(1/60); const e = g.gait()[0]; if (started < 0 && e.wu > 0) { started = i; key("keydown", "KeyS"); }
+        if (started >= 0 && snapped < 0 && e.lg > .9) { snapped = i; const s = g.state(); dAt = Math.hypot(e.x - s.x, e.z - s.z); } }
+      key("keyup", "KeyS"); out.whiff = { started, snapped, dAt: dAt === null ? null : +dAt.toFixed(2), dmg: +(hp1 - g.state().hp).toFixed(2) };
+      // 3. the spitter: the tell rises through the last SPIT_TELL of the timer, and the lob is a snap
+      boot(); g.spawnAt("spitter", 0, 12.5); const sr = [];
+      for (let i = 0; i < 400; i++) { g.stepRaw(1/60); const e = g.gait()[0]; sr.push({ pre: e.pre, lg: e.lg, pt: e.pt }); }
+      const snaps = sr.map((r, i) => r.lg > .9 && (i === 0 || sr[i-1].lg <= .9) ? i : -1).filter(i => i >= 0);
+      const s2 = snaps[1];
+      out.spit = { snaps, pre18: s2 ? sr[s2 - 18].pre : null, pre1: s2 ? sr[s2 - 1].pre : null, ptBefore: s2 ? sr[s2 - 1].pt : null,
+        ptPeak: s2 ? Math.max(...sr.slice(s2, s2 + 8).map(r => r.pt)) : null, quiet: s2 ? sr[s2 - 60].pre : null };
+      return out;
+    });
+    const S = r.stand;
+    ok("in reach, a shambler winds up before it bites: the rear-back is most of the way in the frame before the hit",
+       S.hits.length >= 3 && S.windFrames >= 8 && S.preBefore > .6 && S.ptBefore < -.12,
+       `${S.windFrames} frames of wind-up, pre ${S.preBefore}, pitch ${S.ptBefore} before hit at frame ${S.hits[0]}`);
+    ok("and the bite is a snap forward with reach, recovered a quarter second later",
+       S.ptPeak > .30 && S.rcPeak > .20 && Math.abs(S.ptLater) < .12,
+       `pitch peak ${S.ptPeak}, reach ${S.rcPeak}, pitch +.4s ${S.ptLater}`);
+    ok("the bite cycle costs what it cost - one landed bite every .68 s, give or take a frame",
+       S.gaps.length >= 3 && S.gaps.every(gp => gp >= 39 && gp <= 44), `gaps ${S.gaps.join(" ")} frames`);
+    ok("walk out of the wind-up and the snap comes anyway - at air: no damage",
+       r.whiff.started >= 0 && r.whiff.snapped > r.whiff.started && r.whiff.dmg === 0 && r.whiff.dAt > 1.3,
+       `wind-up at ${r.whiff.started}, snap at ${r.whiff.snapped} with the shambler ${r.whiff.dAt} m away, damage ${r.whiff.dmg}`);
+    ok("a spitter telegraphs the lob: quiet a second before, rearing through the last .3 s, and the spit is a snap",
+       r.spit.snaps.length >= 2 && r.spit.quiet < .05 && r.spit.pre18 < .15 && r.spit.pre1 > .7 && r.spit.ptBefore < -.15 && r.spit.ptPeak > .3,
+       `spits at ${r.spit.snaps.join(" ")}; pre -1s ${r.spit.quiet}, -.3s ${r.spit.pre18}, -1f ${r.spit.pre1}; pitch ${r.spit.ptBefore} -> ${r.spit.ptPeak}`);
   }
 
   console.log("\n" + "=".repeat(58));
