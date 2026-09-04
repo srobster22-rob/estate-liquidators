@@ -7071,6 +7071,35 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and it comes back down the moment the boss is gone", !r.after.up && r.after.mid > .34, `mid ${r.after.mid}`);
   }
 
+  console.log("\n=== 63. THE GILDWING GLOATS ===");
+  {
+    // The collector runs for three seconds and pauses for one and a bit, and
+    // the pause is the window you kill it in - signalled by a flash and
+    // nothing in the body. It rears up and stretches tall through the pause
+    // now, through the same pitch channel the bite uses, and drops it the
+    // moment it bolts again.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60);
+      g.spawnAt("collector", 0, 9); const rows = [];
+      for (let i = 0; i < 420; i++) { g.stepRaw(1/60); const e = g.gait()[0]; if (!e) break; rows.push({ i, rest: e.rest, pt: e.pt, stq: e.stq, taunt: e.taunt, amp: e.amp }); }
+      // "running" leaves out the third of a second after a bolt, while the gloat's pose is still letting go
+      const running = rows.filter(q => q.rest !== null && q.rest > .3 && q.rest < 2.5), gloat = rows.filter(q => q.rest !== null && q.rest < -.25 && q.rest > -1.2);
+      const bolt = rows.find((q, i) => i > 0 && rows[i-1].rest !== null && rows[i-1].rest < -1.2 && q.rest > 2.5);
+      const after = bolt ? rows.slice(bolt.i, bolt.i + 12) : [];
+      return { n: rows.length, runPt: running.length ? Math.max(...running.map(q => Math.abs(q.pt))) : null, runN: running.length,
+        gloatPt: gloat.length ? Math.max(...gloat.map(q => q.pt)) : null, gloatStq: gloat.length ? Math.min(...gloat.map(q => q.stq)) : null, gloatN: gloat.length,
+        dropped: after.length ? after[after.length - 1].taunt : null, boltAt: bolt ? bolt.i : null };
+    });
+    ok("while it runs the body is level: no pitch to speak of over three seconds of flight",
+       r.runN > 120 && r.runPt !== null && r.runPt < .06, `${r.runN} frames running, |pitch| peak ${r.runPt}`);
+    ok("and through the gloat it is reared back and stretched tall - the window has a shape",
+       r.gloatN > 40 && r.gloatPt !== null && r.gloatPt < -.28 && r.gloatStq > 1.07, `${r.gloatN} frames gloating, pitch ${r.gloatPt}, stretch ${r.gloatStq}`);
+    ok("and it drops the pose within a fifth of a second of bolting again",
+       r.boltAt !== null && r.dropped !== null && r.dropped < .2, `bolt at frame ${r.boltAt}, taunt 12 frames later ${r.dropped}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

@@ -9641,6 +9641,11 @@ function updateEnemies(dt){
       // where you kill it.
       e.rest = (e.rest === undefined) ? 3.0 : e.rest - dt;
       if(e.rest <= -1.3) e.rest = 3.0;
+      // THE GLOAT IS A TAUNT. The pause was signalled by a flash and nothing
+      // in the body: it rears up and stretches now (e.taunt, through the
+      // bite's pitch channel in walk()), so the one window you can kill it in
+      // looks like an animal showing off rather than one that stalled.
+      e.taunt = e.rest <= 0 ? 1 : 0;
       if(e.rest <= 0){ e.flash = Math.max(e.flash, .08); walk(e, lx, lz, dt); continue; }
       // away from the player, and away from the walls it would otherwise pin
       // itself against - a quarry that corners itself is not a chase either
@@ -9854,9 +9859,12 @@ function walk(e, lx, lz, dt){
   const dv = e.dvT > 0 ? Math.min(1, (DIVE_TIME - e.dvT) / .12) : 0;
   e.dvE = (e.dvE || 0) + (dv - (e.dvE || 0)) * Math.min(1, dt * (dv > (e.dvE || 0) ? 18 : 9));
   const bA = .85 + .15*((e.def && e.def.bite) || 1);          // the heavy bite is the bigger motion
-  e.pt = (-.24*e.pre - .16*dwind)*bA + e.snap*.46*bA*(1 - e.dvE*.5) + e.dvE*.40;
+  // the GILDWING's gloat (e.taunt): reared right up and stretched tall,
+  // eased in over a tenth of a second and let go as fast when it bolts
+  e.tauntE = (e.tauntE || 0) + ((e.taunt || 0) - (e.tauntE || 0)) * Math.min(1, dt * 12);
+  e.pt = (-.24*e.pre - .16*dwind)*bA + e.snap*.46*bA*(1 - e.dvE*.5) + e.dvE*.40 - .34*e.tauntE;
   e.rc = e.snap*.30*bA;
-  e.stq = 1 - e.pre*.11 + e.snap*.07;                        // the crouch, then the stretch
+  e.stq = 1 - e.pre*.11 + e.snap*.07 + .10*e.tauntE;         // the crouch, then the stretch; the gloat stands tall
 }
 // tiny per-enemy speed variance so a wave arrives as a smear, not a wall
 function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
@@ -14142,6 +14150,7 @@ window.__g = {
                                pre:+(e.pre||0).toFixed(4), pt:+(e.pt||0).toFixed(4), rc:+(e.rc||0).toFixed(4), wu:+(e.wu||0).toFixed(4),
                                btu:+((e.bt && e.bt.u) || 0).toFixed(3),
                                dvW:+(e.dvW || 0).toFixed(3), dvT:+(e.dvT || 0).toFixed(3), dvE:+(e.dvE || 0).toFixed(3),
+                               rest:e.rest === undefined ? null : +e.rest.toFixed(3), taunt:+(e.tauntE || 0).toFixed(3), stq:+(e.stq || 1).toFixed(3),
                                sq:+e.sq.toFixed(4), kx:+e.kx.toFixed(3),
                                kz:+e.kz.toFixed(3), boss:!!e.boss })),
   // A hazard exactly where the test wants one, already live, so a check on
