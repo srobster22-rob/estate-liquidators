@@ -6593,6 +6593,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a pulse is a stomp: the body stretches up in the wind-up and squashes down on the strike",
        Math.max(...sqs) > 1.04 && Math.min(...sqs) < .88 && sqs.indexOf(Math.max(...sqs)) < sqs.indexOf(Math.min(...sqs)),
        `stretch ${Math.max(...sqs)}, squash ${Math.min(...sqs)}`);
+    ok("the jaw opens on a swing and stays shut on a stomp", peak(r.bat, "bite").bite > .6 && Math.max(...r.pulse.map(f => f.bite)) === 0,
+       `swing bite ${peak(r.bat, "bite").bite}, stomp bite ${Math.max(...r.pulse.map(f => f.bite))}`);
     const mid = r.turn[5], end = r.turn[r.turn.length - 1];
     ok("the turn eases: a tenth of a second into a quarter turn the animal is between the two headings, and it is there by four tenths",
        mid < -.15 && mid > -1.45 && Math.abs(end + Math.PI / 2) < .02,

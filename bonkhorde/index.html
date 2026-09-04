@@ -7577,15 +7577,17 @@ const ANIM = {
 };
 // per weapon: how much of each channel a strike uses. A swing is mostly
 // twist; a shot is a thrust of the head; a stomp is squash; a lob rears up.
+// `bite` is how far the jaw opens on the strike, through the shared jaw
+// helpers - a swing and a charge bite, a shot spits, a stomp keeps it shut.
 const ATK = {
-  bat:      { tw:.62, pitch:.10, reach:.14, lean:.22, sq:.06 },
-  gore:     { tw:.25, pitch:.14, reach:.18, lean:.30, sq:.05 },
-  bolt:     { tw:.12, pitch:.16, reach:.30, lean:.08, sq:.04 },
-  zap:      { tw:.10, pitch:.12, reach:.20, lean:.06, sq:.04 },
-  brood:    { tw:.10, pitch:.10, reach:.12, lean:.06, sq:.03 },
-  mortar:   { tw:0,   pitch:-.24, reach:0,  lean:-.14, sq:.08 },
-  pulse:    { tw:0,   pitch:.04, reach:0,   lean:0,    sq:.18, stomp:true },
-  caltrops: { tw:.22, pitch:-.06, reach:0,  lean:-.12, sq:.04 },
+  bat:      { tw:.62, pitch:.10, reach:.14, lean:.22, sq:.06, bite:1 },
+  gore:     { tw:.25, pitch:.14, reach:.18, lean:.30, sq:.05, bite:1 },
+  bolt:     { tw:.12, pitch:.16, reach:.30, lean:.08, sq:.04, bite:.8 },
+  zap:      { tw:.10, pitch:.12, reach:.20, lean:.06, sq:.04, bite:.6 },
+  brood:    { tw:.10, pitch:.10, reach:.12, lean:.06, sq:.03, bite:.5 },
+  mortar:   { tw:0,   pitch:-.24, reach:0,  lean:-.14, sq:.08, bite:.5 },
+  pulse:    { tw:0,   pitch:.04, reach:0,   lean:0,    sq:.18, stomp:true, bite:0 },
+  caltrops: { tw:.22, pitch:-.06, reach:0,  lean:-.12, sq:.04, bite:0 },
 };
 // -0.45 of wind-up over 90 ms, the strike to 1 by 190 ms, back to rest by 400
 function atkEnv(t){
@@ -7596,14 +7598,14 @@ function atkEnv(t){
 }
 function atkPose(){
   const k = ATK[ANIM.atkKind], a = k ? atkEnv(ANIM.atkT) * (ANIM.atkAmp || 1) : 0;
-  if(!a) return { on:false, tw:0, pitch:0, reach:0, lean:0, sq:1, a:0 };
+  if(!a) return { on:false, tw:0, pitch:0, reach:0, lean:0, sq:1, a:0, bite:0 };
   // a swing goes THROUGH the target: wind up away from it and strike past it;
   // with nothing to aim at, alternate sides so two swings never look alike
   const dir = ANIM.atkDir, side = Math.abs(dir) > .2 ? Math.sign(dir) : ANIM.atkSide;
   const sq = k.stomp ? 1 - k.sq * a                          // stretch up, then stomp down
                      : 1 + k.sq * (a > 0 ? a * .5 : a * .9); // crouch, then a little stretch
   return { on:true, tw:k.tw * side * a, pitch:k.pitch * a, reach:Math.max(0, k.reach * a),
-           lean:k.lean * a, sq, a };
+           lean:k.lean * a, sq, a, bite:Math.max(0, a) * (k.bite || 0) };
 }
 function strike(k, echo){
   if(!ATK[k]) return;
@@ -11114,15 +11116,20 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // distinct meshes" check has to compare shapes, and if the signature moved
   // with the animation it would compare moments in time instead.
   // the strike, resolved once a frame and applied to every part below
-  const AP = P.portrait ? { on:false, tw:0, pitch:0, reach:0, lean:0, sq:1 } : atkPose();
+  const AP = P.portrait ? { on:false, tw:0, pitch:0, reach:0, lean:0, sq:1, bite:0 } : atkPose();
+  const aBite = AP.bite || 0;                           // the jaw, through the helpers below
   const aTw = AP.tw, cTw = Math.cos(aTw), sTw = Math.sin(aTw),
         aPc = AP.pitch, cPc = Math.cos(aPc), sPc = Math.sin(aPc), aRe = AP.reach,
         aAtk = AP.on, ATK_PIVOT = .45;                  // the pitch turns about the chest
   // pitch about the chest, reach the front forward, twist the whole animal
+  // about its HIPS - a swing pivots on the hind legs, so the head travels and
+  // the tail stays, which is what reads as a swing on a long low body (the
+  // ANKYLOS twisted about its centre and barely seemed to move, R253)
+  const ATK_HIP = -.28;
   const atkXf = (rr, ff, yy)=>{
     if(aPc){ const dy = yy - ATK_PIVOT; yy = ATK_PIVOT + dy*cPc - ff*sPc; ff = ff*cPc + dy*sPc; }
     if(aRe && ff > 0) ff += ff * aRe;
-    if(aTw){ const r2 = rr*cTw + ff*sTw; ff = ff*cTw - rr*sTw; rr = r2; }
+    if(aTw){ const fh = ff - ATK_HIP, r2 = rr*cTw + fh*sTw; ff = ATK_HIP + fh*cTw - rr*sTw; rr = r2; }
     return [rr, ff, yy];
   };
   const aSq = ANIM.sq * AP.sq, aInv = 1 / Math.sqrt(Math.max(.35, aSq));
@@ -11519,7 +11526,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // and teeth that stick out sideways rather than down - a fish-catcher, and
   // nothing else in the game has a head this shape.
   const gharJaw = (r,f,y, w, len, n, col, gape)=>{
-    const g = gape || 0;
+    const g = (gape || 0) + aBite*w*1.1;
     chain([[r, f, y], [r, f + len*.55, y - len*.05], [r, f + len, y - len*.10]],
           w*1.0, w*.42, col, .05, [1, .74, 1]);
     chain([[r, f, y - w*.54 - g], [r, f + len*.92, y - w*.56 - len*.09 - g]],
@@ -11872,7 +11879,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // bottom interleaved, which is the single detail that says "this thing does
   // not chew, it holds".
   const jawLong = (r,f,y, w, len, n, col, gape)=>{
-    const g = (gape||0);
+    const g = (gape||0) + aBite*w*1.1;
     chain([[r, f, y], [r, f+len, y - len*.10]], w, w*.62, col, .04, [1,.72,1]);
     chain([[r, f, y-w*.60-g], [r, f+len*.92, y-w*.62-len*.08-g]],
           w*.80, w*.52, col, .04, [1,.52,1]);
@@ -11888,9 +11895,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   };
   // beakHook - a raptor's bill. No teeth anywhere, a hooked tip, and a cere.
   const beakHook = (r,f,y, w, len, col, gape)=>{
+    const g = (gape||0) + aBite*w*.9;
     chain([[r, f, y], [r, f+len*.78, y - len*.14], [r, f+len, y - len*.46]],
           w, w*.30, col, .10, [1,.86,1]);
-    chain([[r, f, y - w*.62 - (gape||0)], [r, f+len*.62, y - w*.72 - (gape||0)]],
+    chain([[r, f, y - w*.62 - g], [r, f+len*.62, y - w*.72 - g]],
           w*.72, w*.34, col, .08, [1,.60,1]);
     mb(r, f + len*.16, y + w*.42, w*1.06, w*.34, w*.70, [.16,.16,.20], .05);  // cere
     for(const sg of [-1,1])
@@ -11922,7 +11930,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // - with teeth in it, which is the difference between a dragon's head and a
   // bird's and the whole reason this line stopped reading as a seagull.
   const hookJaw = (r,f,y, w, len, n, col, gape)=>{
-    const g = gape || 0;
+    const g = (gape || 0) + aBite*w*1.1;
     chain([[r, f, y], [r, f+len*.72, y - len*.10], [r, f+len, y - len*.40]],
           w*1.05, w*.34, col, .06, [1, .92, 1]);
     chain([[r, f, y - w*.56 - g], [r, f+len*.70, y - w*.66 - len*.14 - g]],
@@ -11944,7 +11952,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // down out of the roof of the mouth. Nothing else in the game has a face
   // whose main feature is two teeth.
   const viperJaw = (r,f,y, w, len, col, gape)=>{
-    const g = gape || 0;
+    const g = (gape || 0) + aBite*w*1.2;
     chain([[r, f, y], [r, f+len, y - len*.16]], w*1.05, w*.66, col, .05, [1,.62,1]);
     chain([[r, f, y - w*.52 - g], [r, f+len*.86, y - w*.60 - len*.12 - g]],
           w*.88, w*.50, col, .05, [1,.44,1]);
@@ -11960,7 +11968,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   };
   // mawRow - a tyrant's mouth. Lipless, every tooth on show, biggest at the
   // front, and the whole lower jaw drops with `gape`.
-  const mawRow = (r,f,y, w, len, n, gape)=>{
+  const mawRow = (r,f,y, w, len, n, gape0)=>{
+    const gape = (gape0 || 0) + aBite*w*1.0;
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, sc = 1.15 - t2*.55, fx = f + len*t2;
       // ROOTED IN THE JAW. Teeth hung .16 and .30 of the jaw's width below its
@@ -13809,7 +13818,7 @@ window.__g = {
                hit:+ANIM.hit.toFixed(3), hitR:+ANIM.hitR.toFixed(3), hitF:+ANIM.hitF.toFixed(3),
                br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3),
                atkT:+ANIM.atkT.toFixed(3), atkKind:ANIM.atkKind, atkDir:+ANIM.atkDir.toFixed(3) }),
-  pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3) }; },
+  pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3), bite:+(p.bite||0).toFixed(3) }; },
   deathFx: ()=>+deathFx.toFixed(3),
   // the beat by hand, like step(): a headless renderer at four frames a
   // second cannot be asked to play a second and a half on the clock
