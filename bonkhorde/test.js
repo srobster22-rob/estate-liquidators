@@ -7344,6 +7344,68 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await pctx.close();
   }
 
+  console.log("\n=== 67. THE PAUSE AND THE RESULTS SHOW THE RUN ===");
+  {
+    // Vampire Survivors' pause is a stat sheet and the inventory; its results
+    // screen shows the build as icons with levels. Ours were a wall of tips and
+    // a run-on line of names. The pause now carries THE RUN, ten live STATS
+    // coloured against the run's start, and the kit strip; the results carry
+    // the same strip.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      // no god mode here: it raises max HP, and the sheet would rightly colour HEALTH for it
+      g.drainPicks(true); g.wipeSave(); g.setSave({ up:{ reroll:1 } }); g.start("intern"); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.step(120, 1/60);
+      // the strip on the level-up panel, for the same kit
+      g.drainPicks(false); g.xp(60); g.step(1, 1/60);
+      const pickBoxes = document.querySelectorAll("#pkKit .ks").length; g.drainPicks(true);
+      const read = () => ({
+        rows: [...document.querySelectorAll("#psheet .st .row")].map(e => ({ k: e.querySelector("b").dataset.k, v: e.querySelector("b").textContent.trim(), cls: e.querySelector("b").className })),
+        run: (document.querySelector("#psheet .run") || {}).textContent || "",
+        boxes: document.querySelectorAll("#psheet .kit .ks").length, empties: document.querySelectorAll("#psheet .kit .ks.e").length,
+        cons: (document.querySelector("#psheet .cons") || {}).textContent || "",
+        hint: document.getElementById("pauseHint").textContent });
+      g.pause(true); const a = read(); const s = g.state();
+      g.pause(false);
+      g.give("spinach", 1); g.give("boots", 1);          // damage and speed move
+      g.pause(true); const b = read(); const s2 = g.state(); g.pause(false);
+      return { pickBoxes, a, b, hp: Math.ceil(s.hp), max: Math.round(s.maxhp), lvl: s.lvl, spd: s2.spd, dmg: s2.dmg };
+    });
+    const row = (o, k) => o.rows.find(x => x.k === k) || {};
+    ok("the pause carries the run: clock, level and stage, kills, coins, and what is on the field",
+       /\d\d:\d\d/.test(r.a.run) && new RegExp("LV " + r.lvl).test(r.a.run) && /KILLS/.test(r.a.run) && /COINS/.test(r.a.run) && /ON THE FIELD/.test(r.a.run),
+       r.a.run.replace(/\s+/g, " ").slice(0, 120));
+    ok("and ten live stats, HEALTH reading the real hit points",
+       r.a.rows.length === 10 && row(r.a, "maxhp").v === `${r.hp} / ${r.max}` && ["dmg","spd","cd","reach","mag","crit","regen","tough","xpMul"].every(k => row(r.a, k).v.length > 0),
+       r.a.rows.map(x => `${x.k}=${x.v}`).join(" "));
+    ok("a pick colours what it moved: BIGGER TEETH and LONGER LEGS turn DAMAGE and SPEED green, and nothing was green before",
+       r.a.rows.every(x => x.cls === "") && row(r.b, "dmg").cls === "g" && row(r.b, "spd").cls === "g" && row(r.b, "dmg").v !== row(r.a, "dmg").v,
+       `damage ${row(r.a, "dmg").v} -> ${row(r.b, "dmg").v} (${row(r.b, "dmg").cls || "plain"}), speed ${row(r.a, "spd").v} -> ${row(r.b, "spd").v} (${row(r.b, "spd").cls || "plain"})`);
+    ok("the kit strip is the level-up panel's strip - same boxes, empty slots included - and grows with the kit",
+       r.a.boxes === r.pickBoxes && r.a.empties >= 5 && r.b.boxes === r.a.boxes && r.b.empties === r.a.empties - 2,
+       `${r.a.boxes} boxes (${r.a.empties} empty) vs ${r.pickBoxes} on the panel; ${r.b.empties} empty after two growths`);
+    ok("the consumables and the tips are still there", /REROLL/.test(r.a.cons) && /wind-up/i.test(r.a.hint), r.a.cons.replace(/\s+/g, " ").trim());
+
+    // the results screen carries the strip too
+    const e = await page.evaluate(() => { const g = window.__g; g.pause(true); const before = document.querySelectorAll("#psheet .kit .ks").length; g.pause(false);
+      g.hitMe(1e12); g.step(2, 1/60);
+      return { over: g.state().over, before, after: document.querySelectorAll("#endBody .kit .ks").length, prose: /lv\d/.test(document.getElementById("endBody").textContent) }; });
+    ok("the results screen shows the build as the same strip, not a line of names",
+       e.over && e.after > 0 && e.after === e.before && !e.prose, `${e.after} boxes vs ${e.before} on the pause; prose ${e.prose}`);
+
+    // and on a phone the sheet stacks and fits
+    const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pp = await pctx.newPage(); await pp.goto(FILE, { waitUntil: "load" }); await pp.waitForTimeout(500);
+    const ph = await pp.evaluate(() => { const g = window.__g; g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.step(60, 1/60); g.pause(true);
+      const w = document.querySelector("#paused .wrap").getBoundingClientRect(), run = document.querySelector("#psheet .run").getBoundingClientRect(), st = document.querySelector("#psheet .st").getBoundingClientRect();
+      const q = document.getElementById("quitBtn").getBoundingClientRect();
+      return { l: Math.round(w.left), r: Math.round(w.right), vw: innerWidth, stacked: st.top >= run.bottom, quit: Math.round(q.bottom), vh: innerHeight, sub: document.querySelector("#paused .sub").textContent, scrollW: document.documentElement.scrollWidth }; });
+    ok("on a phone the sheet stacks into one column, fits the width, and ABANDON RUN is reachable",
+       ph.l >= 0 && ph.r <= ph.vw && ph.stacked && ph.scrollW <= ph.vw && ph.sub === "tap to resume",
+       `panel ${ph.l}-${ph.r} of ${ph.vw}, stacked ${ph.stacked}, quit bottom ${ph.quit} of ${ph.vh}, "${ph.sub}"`);
+    await pctx.close();
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

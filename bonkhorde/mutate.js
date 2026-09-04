@@ -910,6 +910,19 @@ const MUTANTS = [
     why:"the stat table prints every difference in the same grey as no difference",
     from:"  return `<b class=\"${good ? \"g\" : \"r\"}\">${pct > 0 ? \"+\" : \"\"}${pct}%</b>`;",
     to:  "  return `<b class=\"n\">${pct > 0 ? \"+\" : \"\"}${pct}%</b>`;" },
+  // ---- R275: the pause and the results show the run (section 67)
+  { id:"pause-hides-the-kit", must:"67",
+    why:"the pause sheet drops the kit strip - the inventory the genre keeps in view",
+    from:"    <div class=\"pb kitbox\"><b class=\"h\">KIT</b><div class=\"kit\">${kitStrip()}</div></div>",
+    to:  "    <div class=\"pb kitbox\"><b class=\"h\">KIT</b><div class=\"kit\"></div></div>" },
+  { id:"pause-stats-are-stale", must:"67",
+    why:"the sheet stops colouring what the run moved - every stat reads as it started",
+    from:"    const d = lessIsMore ? o - v : v - o; return d > 1e-6 ? \"g\" : d < -1e-6 ? \"r\" : \"\"; };",
+    to:  "    return \"\"; };" },
+  { id:"results-build-is-prose", must:"67",
+    why:"the results screen goes back to a run-on line of names",
+    from:"      <tr><td>Build</td><td style=\"font-weight:400\"><div class=\"kit end\">${kitStrip()}</div></td></tr>",
+    to:  "      <tr><td>Build</td><td style=\"font-weight:400;font-size:10px\">${Object.keys(P.kit).map(k=>k+\" lv\"+(P.kit[k].l+1)).join(\" · \")}</td></tr>" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

@@ -212,25 +212,70 @@
   #pick .tools .tb.off:hover{border-color:#39414d}
   #pick .tools .tb.on{border-color:#ff5c4d;color:#ff8a6a;background:#2a1412}
   #pick .tools .tsub{margin-left:auto;font-size:9px;color:var(--dim);letter-spacing:.1em}
-  #pick .kit{display:flex;gap:12px;padding:8px 10px 10px;border-top:1px solid #1f2530;
+  /* THE KIT STRIP: what you carry, as the genre shows it - a square per thing
+     with its rank in pips, and the EMPTY squares drawn too, so the room a
+     build has left is visible. One component, three screens: the level-up
+     panel, the pause menu, the results. */
+  .kit{display:flex;gap:12px;padding:8px 10px 10px;border-top:1px solid #1f2530;
     background:#0a0d12;flex-wrap:wrap;align-items:flex-start}
-  #pick .kit .kg{display:flex;flex-direction:column;gap:4px}
-  #pick .kit .kg b{font-size:7.5px;letter-spacing:.22em;color:#5c6470;font-weight:800}
-  #pick .kit .kr{display:flex;gap:4px}
-  #pick .kit .ks{width:30px;height:36px;display:flex;align-items:flex-start;justify-content:center;
+  .kit .kg{display:flex;flex-direction:column;gap:4px}
+  .kit .kg b{font-size:7.5px;letter-spacing:.22em;color:#5c6470;font-weight:800}
+  .kit .kr{display:flex;gap:4px}
+  .kit .ks{width:30px;height:36px;display:flex;align-items:flex-start;justify-content:center;
     padding-top:5px;background:#141922;border:1px solid #2a313c;font-size:15px;color:#cfc9bb;
     position:relative}
-  #pick .kit .ks.p{background:#191521}
-  #pick .kit .ks.r{background:#0f1a17;border-color:#3ad0a0}
-  #pick .kit .ks.mx{border-color:var(--gold)}
-  #pick .kit .ks.ev{border-color:var(--evo);color:#ffb08a}
-  #pick .kit .ks.mv{border-color:#8affd0}
-  #pick .kit .ks.e{border-style:dashed;border-color:#2a313c;background:#0d1015}
-  #pick .kit .ks .kp{display:flex;gap:1px;position:absolute;bottom:3px}
-  #pick .kit .ks .kp s{width:5px;height:3px;background:#2c333d;display:block}
-  #pick .kit .ks .kp s.f{background:var(--gold)}
-  #pick .kit .ks.r .kp s.f{background:#3ad0a0}
-  #pick .kit .ks.ev .kp s.f{background:var(--evo)}
+  .kit .ks.p{background:#191521}
+  .kit .ks.r{background:#0f1a17;border-color:#3ad0a0}
+  .kit .ks.mx{border-color:var(--gold)}
+  .kit .ks.ev{border-color:var(--evo);color:#ffb08a}
+  .kit .ks.mv{border-color:#8affd0}
+  .kit .ks.e{border-style:dashed;border-color:#2a313c;background:#0d1015}
+  .kit .ks .kp{display:flex;gap:1px;position:absolute;bottom:3px}
+  .kit .ks .kp s{width:5px;height:3px;background:#2c333d;display:block}
+  .kit .ks .kp s.f{background:var(--gold)}
+  .kit .ks.r .kp s.f{background:#3ad0a0}
+  .kit .ks.ev .kp s.f{background:var(--evo)}
+  /* ------------------------------------------------------------ THE PAUSE */
+  /* Vampire Survivors' pause is a stat sheet and the inventory; ours was a
+     headline over a wall of tips. The tips stay, small, under the two things
+     a paused player actually looks up: what the run is doing to the numbers,
+     and what the kit holds. */
+  #paused{background:rgba(6,8,12,.62);backdrop-filter:none}
+  #paused .wrap{width:min(720px,96vw);max-height:96vh;overflow:auto;padding:0 0 12px;text-align:left;
+    border:2px solid #39414d;border-bottom-width:5px;background:#0d1118f5;box-shadow:0 12px 40px #000c}
+  #paused .pkHead{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 9px;
+    background:linear-gradient(180deg,#ffffff10,#ffffff04);border-bottom:1px solid #2a313c}
+  #paused h1{font-size:22px;letter-spacing:.14em;margin:0;text-shadow:0 2px 0 #000}
+  #paused .sub{font-size:10px;margin:0;letter-spacing:.16em;color:var(--gold)}
+  .psheet{display:grid;grid-template-columns:222px 1fr;gap:10px;padding:10px 12px 4px}
+  .psheet .pb{background:#0a0d12;border:1px solid #1f2530;padding:8px 10px}
+  .psheet .pb b.h{display:block;font-size:7.5px;letter-spacing:.22em;color:#5c6470;margin-bottom:6px}
+  .psheet .run .big{font-size:26px;font-weight:800;letter-spacing:.06em;font-variant-numeric:tabular-nums;
+    text-shadow:0 2px 0 #000}
+  .psheet .run .lv{font-size:9.5px;color:#8affd0;letter-spacing:.1em;margin:2px 0 8px;white-space:nowrap}
+  .psheet .run .row{display:flex;justify-content:space-between;font-size:10px;color:#a8a396;padding:3px 0;
+    border-top:1px solid #161b22;letter-spacing:.06em}
+  .psheet .run .row b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .psheet .st{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}
+  .psheet .st .row{display:flex;justify-content:space-between;font-size:10px;color:#8e8878;letter-spacing:.08em;
+    padding:4px 0;border-top:1px solid #161b22}
+  .psheet .st .row b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+  .psheet .st .row b.g{color:#6ddba0} .psheet .st .row b.r{color:#e2695a}
+  .psheet .st .row b i{font-style:normal;font-size:8px;color:#5c6470;margin-left:3px;font-weight:400}
+  .psheet .kitbox{grid-column:1/3;padding:0}
+  .psheet .kitbox b.h{padding:8px 10px 0;margin:0}
+  .psheet .kitbox .kit{border-top:none;background:none}
+  .psheet .cons{grid-column:1/3;font-size:9px;color:#8e8878;letter-spacing:.1em;padding:0 2px}
+  #paused .hint{font-size:10px;line-height:1.8;padding:0 14px;margin-top:8px;text-align:center}
+  #paused #opts{margin:10px 0 2px}
+  #paused #quitBtn{display:block;margin:10px auto 0}
+  /* the results: the same strip, right-aligned in its table row */
+  .kit.end{justify-content:flex-end;border-top:none;background:none;padding:2px 0}
+  @media (max-width:560px){
+    .psheet{grid-template-columns:1fr;padding:8px 8px 4px}
+    .psheet .kitbox,.psheet .cons{grid-column:1}
+    .psheet .st{column-gap:10px}
+  }
   /* the phone: the panel is the screen */
   @media (max-width:520px){
     #pick h1{font-size:16px;gap:7px}
@@ -239,8 +284,8 @@
     #pick .card .key{width:18px;height:18px;font-size:11px}
     #pick .card .ic{width:38px;height:38px;font-size:20px}
     #pick .card .nm{font-size:12px}
-    #pick .kit{gap:8px}
-    #pick .kit .ks{width:26px;height:32px;font-size:13px}
+    .kit{gap:8px}
+    .kit .ks{width:26px;height:32px;font-size:13px}
   }
   .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
@@ -651,8 +696,8 @@
 </div></div>
 <div class="ov" id="end"><div class="wrap" id="endBody"></div></div>
 <div class="ov" id="paused"><div class="wrap">
-  <h1 style="font-size:34px">PAUSED</h1>
-  <div class="sub">click to resume</div>
+  <div class="pkHead"><h1>PAUSED</h1><div class="sub">click to resume</div></div>
+  <div class="psheet" id="psheet"></div>
   <div class="hint" id="pauseHint">
     <kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> camera &nbsp; <kbd>SPACE</kbd> jump
     &nbsp; <kbd>M</kbd> mute<br>
@@ -8023,6 +8068,10 @@ function startRun(id){
   const st0 = ((ch.st||[])[0]||{}).mods||{};
   monMul = { spd:st0.spd||1, cd:st0.cd||1, mag:st0.mag||1 };
   P.spd *= monMul.spd; P.cd *= monMul.cd; P.mag *= monMul.mag;
+  // the numbers the run started with: the pause sheet colours what the run
+  // has moved against these, so a pick or an evolution shows as green
+  P.base = { maxhp:P.maxhp, dmg:P.dmg, spd:P.spd, cd:P.cd, mag:P.mag, crit:P.crit, reach:P.reach,
+             regen:P.regen, tough:P.tough, armor:P.armor, xpMul:P.xpMul };
   // Seed the run stream BEFORE anything rolls, including the world - the arena
   // has its own stream but everything after it comes out of this one.
   // The layer is fixed for the whole run: changing it mid-run would rescale
@@ -8326,6 +8375,7 @@ function togglePause(v){
   if(v) hopFreeze(); else hopThaw();
   if(v && picking) return;              // the level-up screen is already a pause
   paused=v;
+  if(v) paintPause();
   document.getElementById("paused").classList.toggle("on", v);
   // the DEV strip rides the pause screen but only for someone who turned it on
   if(v) document.getElementById("dev").classList.toggle("on", !!save.dev);
@@ -10557,6 +10607,47 @@ function kitStrip(){
        + `<div class="kg"><b>GROWTH ${G.length}/${PSLOTS}</b><div class="kr">${G.map(box).join("")}${empty(PSLOTS - G.length)}</div></div>`
        + `<div class="kg"><b>RULES ${Rl.length}/${rs}</b><div class="kr">${Rl.map(box).join("")}${empty(rs - Rl.length)}</div></div>`;
 }
+// THE PAUSE SHEET. The run in numbers - clock, level, stage and the next
+// evolution, kills, coins, what is on the field - the ten stats a creature
+// runs on, coloured against what it started the run with, the kit strip, and
+// the draft consumables left. Painted on every pause, so it is never stale.
+function paintPause(){
+  const el = document.getElementById("psheet");
+  if(!el || !P){ if(el) el.innerHTML = ""; return; }
+  const b = P.base || {};
+  const better = (k, v, lessIsMore) => { const o = b[k]; if(o === undefined) return "";
+    const d = lessIsMore ? o - v : v - o; return d > 1e-6 ? "g" : d < -1e-6 ? "r" : ""; };
+  const cell = (label, k, v, txt, lessIsMore) =>
+    `<div class="row"><span>${label}</span><b class="${better(k, v, lessIsMore)}" data-k="${k}">${txt}</b></div>`;
+  const mon = curMon(), nStage = (mon.st||[]).length, cdp = Math.round((1 - P.cd)*100);
+  const banned = Object.keys(P.banned || {});
+  el.innerHTML = `
+    <div class="pb run"><b class="h">THE RUN</b>
+      <div class="big">${fmt(T)}</div>
+      <div class="lv">LV ${P.lvl} &nbsp;·&nbsp; ${stageNm()}${stage < nStage-1
+        ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</div>
+      <div class="row"><span>KILLS</span><b>${kills.toLocaleString()}</b></div>
+      <div class="row"><span>COINS</span><b>${Math.floor(coinsRun + kills/9 + T/6)}</b></div>
+      <div class="row"><span>ON THE FIELD</span><b>${enemies.length}</b></div>
+      ${deepAt ? `<div class="row"><span>THE DEEP</span><b style="color:#ff8a6a">LAYER ${deepAt}</b></div>` : ""}
+    </div>
+    <div class="pb"><b class="h">STATS</b><div class="st">
+      ${cell("HEALTH",    "maxhp", P.maxhp, `${Math.max(0, Math.ceil(P.hp))} / ${Math.round(P.maxhp)}`)}
+      ${cell("REGEN",     "regen", P.regen, `${(P.regen||0).toFixed(2)}<i>HP/S</i>`)}
+      ${cell("DAMAGE",    "dmg",   P.dmg,   `x${P.dmg.toFixed(2)}`)}
+      ${cell("CRIT",      "crit",  P.crit,  `${Math.round((P.crit||0)*100)}%`)}
+      ${cell("SPEED",     "spd",   P.spd,   `${P.spd.toFixed(1)}<i>U/S</i>`)}
+      ${cell("COOLDOWN",  "cd",    P.cd,    cdp > 0 ? `-${cdp}%` : cdp < 0 ? `+${-cdp}%` : "0%", true)}
+      ${cell("REACH",     "reach", P.reach, `x${P.reach.toFixed(2)}`)}
+      ${cell("PICKUP",    "mag",   P.mag,   `${P.mag.toFixed(1)}<i>M</i>`)}
+      ${cell("TOUGHNESS", "tough", P.tough, `x${(P.tough||1).toFixed(2)}`)}
+      ${cell("XP",        "xpMul", P.xpMul, `x${(P.xpMul||1).toFixed(2)}`)}
+    </div></div>
+    <div class="pb kitbox"><b class="h">KIT</b><div class="kit">${kitStrip()}</div></div>
+    ${(rank("reroll") || rank("banish") || banned.length) ? `<div class="cons">${icon("reroll")} REROLL &times;${P.rerolls|0}
+      &nbsp; ${icon("banish")} BANISH &times;${P.banishes|0}${banned.length
+        ? ` &nbsp;&middot;&nbsp; BANISHED: ${banned.map(k => (WEAPONS[k]||PASSIVES[k]||{}).name || k).join(", ")}` : ""}</div>` : ""}`;
+}
 // A REROLL deals the hand again. It prefers a hand with none of the cards you
 // just refused on it - a reroll that hands you the same four is a reroll that
 // did nothing - and falls back to the plain deal when the pool is too small to
@@ -11281,11 +11372,6 @@ function finish(why, won){
   writeSave();
   won ? SFX.win() : SFX.die();
 
-  const kit = Object.keys(P.kit).map(k=>{
-    const w = P.kit[k], D = WEAPONS[k]||PASSIVES[k];
-    const nm = wName(k, w);
-    return `${icon(D.ic)} ${nm} ${w.evo?"★":isRule(k)?"RULE":"lv"+(w.l+1)}`;
-  }).join(" &nbsp;·&nbsp; ");
 
   const flavor = won ? "The world is quiet. Whatever you are now, you are the biggest thing in it."
     : why==="ABANDONED" ? "You simply left. That is allowed."
@@ -11314,7 +11400,7 @@ function finish(why, won){
       <tr><td>${curMon().line[0]}</td><td>${stageNm()} &nbsp;<span class="dim2">stage ${stage+1}/${(curMon().st||[]).length}</span>
         &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
         <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>
-      <tr><td>Build</td><td style="font-weight:400;font-size:10px">${kit}</td></tr>
+      <tr><td>Build</td><td style="font-weight:400"><div class="kit end">${kitStrip()}</div></td></tr>
       <tr><td>Explored</td><td>${[
           denStats.cleared ? `${denStats.cleared} den${denStats.cleared>1?"s":""} cleared`
             : denStats.woke ? `${denStats.woke} woken, none cleared` : "",
