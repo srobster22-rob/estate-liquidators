@@ -923,6 +923,15 @@ const MUTANTS = [
     why:"the results screen goes back to a run-on line of names",
     from:"      <tr><td>Build</td><td style=\"font-weight:400\"><div class=\"kit end\">${kitStrip()}</div></td></tr>",
     to:  "      <tr><td>Build</td><td style=\"font-weight:400;font-size:10px\">${Object.keys(P.kit).map(k=>k+\" lv\"+(P.kit[k].l+1)).join(\" · \")}</td></tr>" },
+  // ---- R276: the stat table prints the numbers (section 68)
+  { id:"table-prints-dashes", must:"68",
+    why:"the baseline creature's table is nine dashes again",
+    from:"  if(!pct) return `<b class=\"n\">${txt}</b>`;",
+    to:  "  if(!pct) return `<b class=\"n\">&mdash;</b>`;" },
+  { id:"table-forgets-the-shop", must:"68",
+    why:"the table prints the creature's raw numbers, not the ones the run will start with",
+    from:"  const s = baseStats(c), s0 = baseStats(CHARS[0]), f = STATKEY[k], v = s[f], v0 = s0[f];",
+    to:  "  const up0 = save.up; save.up = {}; const s = baseStats(c), s0 = baseStats(CHARS[0]); save.up = up0; const f = STATKEY[k], v = s[f], v0 = s0[f];" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

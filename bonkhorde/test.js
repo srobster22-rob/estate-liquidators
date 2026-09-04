@@ -7406,6 +7406,38 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await pctx.close();
   }
 
+  console.log("\n=== 68. THE STAT TABLE PRINTS THE NUMBERS ===");
+  {
+    // THE INTERN's table was nine dashes - the modifier alone, and the
+    // baseline has none. VS prints the number with the modifier beside it,
+    // and the number comes from the same call the run starts from, so the
+    // shop is in it.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      // a fresh save: unlockAll() would sit every monster at its level cap and inflate the numbers
+      g.drainPicks(true); g.wipeSave(); g.menu("play");
+      const read = id => { g.pickMon(id); return [...document.querySelectorAll("#pane .detail .st")].map(e => ({
+        nm: e.firstChild.textContent.trim(), v: e.querySelector("b").textContent.trim(), cls: e.querySelector("b").className,
+        d: (e.querySelector("b i.d") || {}).textContent || "" })); };
+      const intern = read("intern"), ox = read("ox"), scrap = read("scrap"), spark = read("spark");
+      g.setSave({ up:{ hp:2 } }); g.menu("play"); const bones = read("intern");
+      g.wipeSave();
+      return { intern, ox, scrap, spark, bones };
+    });
+    const row = (t, nm) => t.find(x => x.nm === nm) || {};
+    ok("THE INTERN's nine rows print numbers, none of them a dash, none coloured",
+       r.intern.length === 9 && r.intern.every(x => /\d/.test(x.v) && !/—/.test(x.v) && x.cls === "n") && row(r.intern, "HEALTH").v === "115" && /^6\.6/.test(row(r.intern, "SPEED").v),
+       r.intern.map(x => `${x.nm} ${x.v}`).join(", "));
+    ok("THE OX prints its 185 health with +61% beside it in green, and its speed in red",
+       row(r.ox, "HEALTH").v.startsWith("185") && row(r.ox, "HEALTH").d === "+61%" && row(r.ox, "HEALTH").cls === "g" && row(r.ox, "SPEED").cls === "r" && /^-1[0-9]%$/.test(row(r.ox, "SPEED").d),
+       `health "${row(r.ox, "HEALTH").v}" (${row(r.ox, "HEALTH").cls}), speed "${row(r.ox, "SPEED").v}" (${row(r.ox, "SPEED").cls})`);
+    ok("cooldown reads the right way round: THE SPARK's shorter cooldown is green, and THE SCRAPPER's thin skin red beside its long reach",
+       row(r.spark, "COOLDOWN").cls === "g" && /^-\d+%$/.test(row(r.spark, "COOLDOWN").d) && row(r.scrap, "REACH").cls === "g" && row(r.scrap, "HEALTH").cls === "r",
+       `spark cooldown ${row(r.spark, "COOLDOWN").v} (${row(r.spark, "COOLDOWN").cls}); scrapper reach ${row(r.scrap, "REACH").v} (${row(r.scrap, "REACH").cls}), health ${row(r.scrap, "HEALTH").v} (${row(r.scrap, "HEALTH").cls})`);
+    ok("and the shop is in the number: two ranks of STOUTER BONES print 147 health on THE INTERN",
+       row(r.bones, "HEALTH").v === "147", `health "${row(r.bones, "HEALTH").v}"`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

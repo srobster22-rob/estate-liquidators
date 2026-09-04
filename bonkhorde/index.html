@@ -387,8 +387,10 @@
   .detail .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin:10px 14px 0 0}
   .detail .st{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:8.5px;
     letter-spacing:.1em;color:#5c6470;border-bottom:1px solid #1b2028;padding:3px 0}
-  .detail .st b{font-size:10px;font-variant-numeric:tabular-nums;color:#39414d;font-weight:700}
-  .detail .st b.g{color:#6ddba0} .detail .st b.r{color:#e2695a} .detail .st b.n{color:#5c6470}
+  .detail .st b{font-size:10px;font-variant-numeric:tabular-nums;color:#cfc9bb;font-weight:700;white-space:nowrap}
+  .detail .st b.g{color:#6ddba0} .detail .st b.r{color:#e2695a} .detail .st b.n{color:#cfc9bb}
+  .detail .st b u{text-decoration:none;font-size:7px;color:#5c6470;margin-left:2px;font-weight:400}
+  .detail .st b i.d{font-style:normal;font-size:8px;margin-left:4px;opacity:.9}
   .detail .rw{display:grid;grid-template-columns:52px 1fr;gap:2px 8px;font-size:9.5px;line-height:1.45;
     margin:8px 14px 0 0}
   .detail .rw b{color:#5c6470;font-weight:800;letter-spacing:.12em;font-size:8px;padding-top:2px}
@@ -11444,12 +11446,20 @@ const menuSel = () => (save.sel && CHARS.find(c => c.id === save.sel)) ? save.se
 // the one where less is more.
 const STATROWS = [["hp","HEALTH"],["dmg","DAMAGE"],["spd","SPEED"],["cd","COOLDOWN"],["reach","REACH"],
                   ["mag","PICKUP"],["xp","XP"],["regen","REGEN"],["tough","TOUGHNESS"]];
+// THE NUMBER, NOT A DASH. The table used to print the modifier alone, so THE
+// INTERN - the creature a new player is looking at - showed nine dashes and
+// taught nothing. VS prints Max Health 120 with the +20% beside it; so does
+// this. The numbers are baseStats', the same call the run starts from, so the
+// shop's ranks and the monster's own level are in them.
+const STATKEY = { hp:"maxhp", dmg:"dmg", spd:"spd", cd:"cd", reach:"reach", mag:"mag", xp:"xpMul", regen:"regen", tough:"tough" };
 function statCell(c, k){
-  const m = c.mods || {}, v = m[k];
-  if(k === "hp" && m.hpFlat && v === undefined) return `<b class="g">+${m.hpFlat} HP</b>`;
-  if(v === undefined || Math.abs(v-1) < .005) return `<b class="n">&mdash;</b>`;
-  const good = k === "cd" ? v < 1 : v > 1, pct = Math.round((v-1)*100);
-  return `<b class="${good ? "g" : "r"}">${pct > 0 ? "+" : ""}${pct}%</b>`;
+  const s = baseStats(c), s0 = baseStats(CHARS[0]), f = STATKEY[k], v = s[f], v0 = s0[f];
+  const txt = k === "hp" ? `${v}` : k === "spd" ? `${v.toFixed(1)}<u>U/S</u>` : k === "mag" ? `${v.toFixed(1)}<u>M</u>`
+            : k === "regen" ? `${v.toFixed(2)}<u>HP/S</u>` : `x${v.toFixed(2)}`;
+  const pct = v0 ? Math.round((v/v0 - 1)*100) : 0;
+  if(!pct) return `<b class="n">${txt}</b>`;
+  const good = k === "cd" ? pct < 0 : pct > 0;
+  return `<b class="${good ? "g" : "r"}">${txt}<i class="d">${pct > 0 ? "+" : ""}${pct}%</i></b>`;
 }
 const TABS = [["play","PLAY"],["shop","POWER UP"],["coll","COLLECTION"],["locks","UNLOCKS"]];
 function openMenu(tab){
@@ -14732,7 +14742,8 @@ window.__g = {
   checkUnlocks: (r=null)=>{ const g = checkUnlocks(r); writeSave(); return g; },
   saveState: ()=>JSON.parse(JSON.stringify(save)),
   setSave: (patch)=>{ Object.assign(save, patch); writeSave(); },
-  menu:    ()=>openMenu(),
+  menu:    (tab)=>openMenu(tab),
+  pickMon: (id)=>{ if(CHARS.some(c => c.id === id)){ save.sel = id; writeSave(); } openMenu("play"); return menuSel(); },
   menuTab: (t)=>{ openMenu(t); return menuTab; },
   menuPick:(id)=>{ save.sel = id; openMenu("play"); return menuSel(); },
   menuState:()=>({ tab: menuTab, sel: menuSel(), up: menuUp }),
