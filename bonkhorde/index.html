@@ -2009,7 +2009,16 @@ const BOSSES = [
 // constraint; hpScale's quadratic went 2.5 -> 3.6 and carries the rest.
 // Latest A/B at THIS value: 13/24 veteran with events live, 7/24 frozen. The
 // intent is that twenty minutes is reachable BECAUSE you went and got them.
-{ t:1140, nm:"TERRAVORE",hp:520000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore" },
+//
+// RECALIBRATED. Every one of those benches ran with an autopilot that FLED
+// the finale - sampled every ten seconds of sudden death it sat 74 to 382
+// metres from a boss that walks at 3.4 - so a "clear" was the boss happening
+// to catch it, and 520k was tuned against that. Made to engage at weapon
+// range (R235) the same autopilot killed 520k in 12 to 60 seconds of a
+// four-minute timer, on every seed, dealing 8 to 16k a second to it. The
+// finale is the run's one real fight; at 1.2M it lasts about a third of the
+// timer at the ceiling and leaves a human, who is not the ceiling, the rest.
+{ t:1140, nm:"TERRAVORE",hp:1200000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore" },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -10086,10 +10095,17 @@ function botVector(){
   const goreLane = gw ? wStat(gw).rng * P.reach : 0;
   _bx.length = _bz.length = _bd.length = 0;
   near(P.x, P.z, 26, (e,d)=>{ _bx.push(e.x-P.x); _bz.push(e.z-P.z); _bd.push(Math.max(.5,d)); });
+  // THE FINALE IS A FIGHT. Every form outruns TERRAVORE, and the bot ran:
+  // sampled every ten seconds of sudden death on the benched seeds it was 74
+  // to 382 metres from the boss, so the bench measured the flight and not the
+  // fight, and every loss read OVERRUN. Close to weapon range and hold it.
+  const fin = sudden ? enemies.find(e => e.final && !e.dead) : null;
   let bestA = 0, best = -1e9;
   for(let i=0;i<BOT_DIRS;i++){
     const a = i/BOT_DIRS*TAU, dx = Math.sin(a), dz = Math.cos(a);
     let s = 0;
+    if(fin){ const fx = fin.x-P.x, fz = fin.z-P.z, fd = Math.hypot(fx,fz) || 1, proj = (fx*dx + fz*dz)/fd;
+             if(fd > 14) s += proj*40; else if(fd < 8) s -= proj*40; }
     for(let k=0;k<_bd.length;k++){
       const d = _bd[k], proj = (_bx[k]*dx + _bz[k]*dz)/d;
       if(proj <= 0) continue;
