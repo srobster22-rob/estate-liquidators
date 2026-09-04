@@ -621,9 +621,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   ok("offers 2-4 cards", cards.length >= 2 && cards.length <= 4, cards.length + "");
   console.log("  offered:", cards.join(" | "));
   await page.screenshot({ path: "shot-levelup.png" });
-  // The strip does not release the pointer any more - the mouse is still the
-  // camera and the fight is still running - so a card is taken the way a
-  // player takes one, with a number key.
+  // a row is taken the way a player takes one, with a number key
   await page.evaluate(() => window.__g.pick(0));
   await page.waitForTimeout(200);
 
@@ -4491,38 +4489,41 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.one.rebirthCd}s then ${r.two.rebirthCd}s`);
   }
 
-  console.log("\n=== 27. LEVELLING UP DOES NOT STOP THE GAME ===");
+  console.log("\n=== 27. LEVELLING UP STOPS THE GAME, AS THE GENRE DOES ===");
   {
-    // The draft used to be a full-screen modal: pointer released, camera
-    // parked, simulation halted. A long run levels forty times, so the back
-    // half of every run was a slideshow - and the thing the game is about,
-    // positioning, was switched off for all of it.
+    // For a while the draft was a strip along the bottom with the world still
+    // turning under it (R50-R272), and this section asserted that. Reported
+    // as the thing that made the upgrades feel wrong, and Vampire Survivors -
+    // the game the report named - stops the world for every level-up. So it
+    // stops: the clock and the horde hold while a hand is open, the world is
+    // dimmed but not blurred away (you can still see where you are standing),
+    // and an ignored hand waits for you rather than picking itself.
     const r = await page.evaluate(async () => {
       const g = window.__g;
       g.wipeSave(); g.unlockAll(); g.start("intern"); g.god();
       g.freezeEvents(true);
+      g.step(120);                                // two seconds: a horde on the field
       g.xp(500);                                  // a fistful of levels
       g.step(1);                                  // one tick queues and shows
       const open = document.getElementById("pick").classList.contains("on");
-      const t0 = g.state().t, n0 = g.state().enemies;
-      // the world keeps turning while the cards are on screen
+      const t0 = g.state().t, n0 = g.state().enemies, p0 = g.state().pending, e0 = JSON.stringify(g.enemiesPos());
+      // the world holds while the rows are on screen
       for (let i = 0; i < 120; i++) g.stepRaw(1/60);
-      const t1 = g.state().t;
+      const t1 = g.state().t, n1 = g.state().enemies, e1 = JSON.stringify(g.enemiesPos());
       const stillOpen = document.getElementById("pick").classList.contains("on");
-      // and an ignored draft eventually resolves itself rather than sitting
-      // there for the rest of the run
+      // and an ignored hand is still there fourteen seconds later, untaken
       for (let i = 0; i < 60 * 14; i++) g.stepRaw(1/60);
-      const resolved = !document.getElementById("pick").classList.contains("on")
-                    || g.state().pending < 500;
-      return { open, t0, t1, n0, stillOpen, resolved,
-               modal: getComputedStyle(document.getElementById("pick")).backdropFilter };
+      const waited = document.getElementById("pick").classList.contains("on") && g.state().pending === p0 && g.state().t === t0;
+      const cs = getComputedStyle(document.getElementById("pick"));
+      return { open, t0, t1, n0, n1, moved: e0 !== e1, stillOpen, waited, p0,
+               modal: cs.backdropFilter, bg: cs.backgroundColor };
     });
     ok("the draft opens on a level", r.open === true, `open ${r.open}`);
-    ok("and the clock keeps running underneath it",
-       r.t1 - r.t0 > 1.5, `${r.t0}s -> ${r.t1}s with cards on screen`);
-    ok("it is not a modal any more",
-       r.modal === "none" || r.modal === "" , `backdrop-filter: ${r.modal}`);
-    ok("an ignored draft resolves itself", r.resolved === true, `${r.resolved}`);
+    ok("and the clock and the horde hold underneath it",
+       r.stillOpen && r.t1 === r.t0 && r.n1 === r.n0 && !r.moved, `${r.t0}s -> ${r.t1}s over 120 frames, ${r.n0} -> ${r.n1} enemies, moved ${r.moved}`);
+    ok("the world is dimmed, not blurred away",
+       (r.modal === "none" || r.modal === "") && /rgba\(/.test(r.bg), `backdrop-filter: ${r.modal}, ground ${r.bg}`);
+    ok("an ignored hand waits for you", r.waited === true, `${r.waited} (${r.p0} queued throughout)`);
   }
 
   console.log("\n=== 27b. A LEVEL WITH NOTHING TO CHOOSE IS STILL WORTH SOMETHING ===");
@@ -7102,31 +7103,138 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   console.log("\n=== 64. A SHORT HAND IS STILL A CHOICE ===");
   {
-    // Seed 41's bot run reaches 8:00 with one legal card (QUICKER HEART, a
-    // rank short, everything else maxed or waiting on a partner) and dealt a
-    // hand of one under PRESS 1-4 (R272's run film). The snack joins a hand
-    // of one now and the caption counts the cards; an EMPTY pool is still
-    // not a draft at all - the level is taken silently, as the mastery count
-    // requires.
+    // A kit one rank short of complete deals a hand of ONE - the snack joins
+    // it, so the last rank is weighed against 40 HP, and the caption counts
+    // the cards. An EMPTY pool is still not a draft at all: the level is
+    // taken silently, as the mastery count requires. First found on seed 41's
+    // bot run at 8:00 (R272's film); built by hand since the draft's cadence
+    // moved that run (R273). Every weapon evolved, so no evolution is
+    // waiting; every growth finished but QUICKER HEART, one short; both rule
+    // slots full; and two levels queued from level 1, below the line's first
+    // evolution and the third rule slot, so nothing else can join the pool.
     const r = await page.evaluate(async () => {
       const g = window.__g;
-      g.wipeSave(); g.pin(41); g.pinRun(41); g.start("intern"); g.bot(true); g.botHop(true); g.setShake(0); g.runOut(480);
-      g.bot(false); g.freezeSpawns(true); g.freezeEvents(true); g.god(); g.clearEnemies();
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.freezeEvo(true); g.setShake(0);
+      for (const k of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops","gore","brood"]) { g.give(k, 3); g.evolve(k); }
+      for (const k of ["spinach","boots","magnet","plating","heart","clover","dupe"]) g.give(k, 3);
+      g.give("tempo", 1);                             // give() starts at rank 1 and adds: this is rank 2 of 3
+      for (const k of ["momentum","stomp"]) g.give(k, 1);
       const read = () => ({ picking: g.state().picking, lvl: g.state().lvl, pending: g.state().pending, max: g.state().maxhp,
         cards: [...document.querySelectorAll("#pkCards .card")].map(e => ({ nm: (e.querySelector(".nm") || {}).textContent, fam: (e.querySelector(".fam") || {}).textContent })),
         sub: document.getElementById("pkSub").textContent });
-      g.drainPicks(false); const lv0 = g.state().lvl; g.xp(400); g.step(1, 1/60); const a = read();
-      // take the growth; the rules are held out so the next level's pool is genuinely
-      // empty, and the queued level waits out the gap between drafts before it is dealt
-      g.noRules(true); g.pick(0); g.step(90, 1/60); const b = read();
-      g.drainPicks(true); g.noRules(false);
-      return { lv0, a, b, kit: g.kit().join(" ") };
+      g.drainPicks(false); g.levelUp(); g.levelUp(); g.step(1, 1/60); const a = read();
+      // take the growth: the queued level behind it has a genuinely empty pool
+      g.pick(0); const b = read();
+      g.drainPicks(true);
+      return { a, b, kit: g.kit().join(" ") };
     });
     ok("one legal growth left: the hand is that growth and the snack, and the caption says PRESS 1-2",
        r.a.picking && r.a.cards.length === 2 && r.a.cards[0].nm === "QUICKER HEART" && r.a.cards[1].fam === "SNACK" && /PRESS 1-2/.test(r.a.sub),
        `${r.a.cards.map(c => c.nm).join(" | ")} - "${r.a.sub}" (level ${r.a.lvl}, kit ${r.kit})`);
     ok("and with nothing left the queued level is not a draft at all: no screen, taken as growth (max HP rises)",
-       !r.b.picking && r.b.pending === 0 && r.b.max > r.a.max, `picking ${r.b.picking}, pending ${r.a.pending} -> ${r.b.pending}, max HP ${r.a.max} -> ${r.b.max}`);
+       !r.b.picking && r.b.pending === 0 && r.a.pending === 2 && r.b.max > r.a.max, `picking ${r.b.picking}, pending ${r.a.pending} -> ${r.b.pending}, max HP ${r.a.max} -> ${r.b.max}`);
+  }
+
+  console.log("\n=== 65. THE LEVEL-UP SCREEN IS THE GENRE'S ===");
+  {
+    // Reported: "the upgrades still suck - look at Vampire Survivors and copy
+    // it". Copied: the world stops for a hand; the hand is a panel of rows in
+    // the middle of the screen, not a strip of cards along the bottom; queued
+    // hands deal back to back with no frame of the world between them; the
+    // kit sits under the rows with its empty slots showing; and the shop sells
+    // the two things the genre lets you do to a hand you do not like.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.setSave({ up:{ reroll:2, banish:1 } }); g.pin(7); g.pinRun(7); g.start("intern"); g.setShake(0);
+      g.step(180, 1/60);                                  // three seconds: a horde on the field
+      g.drainPicks(false);
+      const t0 = g.state().t;
+      g.xp(60); g.stepRaw(1/60);                          // this frame deals the hand
+      const open = g.state().picking, t1 = g.state().t, e1 = JSON.stringify(g.enemiesPos());
+      for (let i = 0; i < 30; i++) g.stepRaw(1/60);      // half a second of frames with the hand up
+      const t2 = g.state().t, e2 = JSON.stringify(g.enemiesPos()), stillOpen = g.state().picking;
+      const rows = [...document.querySelectorAll("#pkCards .card")].map(e => { const b = e.getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; });
+      const panel = document.querySelector("#pick .wrap").getBoundingClientRect();
+      const geo = { rows, panel: { l: Math.round(panel.left), t: Math.round(panel.top), r: Math.round(panel.right), b: Math.round(panel.bottom) }, vw: innerWidth, vh: innerHeight,
+                    paused: document.getElementById("paused").classList.contains("on") };
+      const kit = [...document.querySelectorAll("#pkKit .kg")].map(gp => ({ label: gp.querySelector("b").textContent, boxes: gp.querySelectorAll(".ks").length, empty: gp.querySelectorAll(".ks.e").length }));
+      // reroll: a different hand, one fewer, and nothing at all once they are spent
+      const reroll = { before: g.hand().map(o => o.key), n0: g.draft().rerolls };
+      document.getElementById("pkReroll").click();
+      reroll.after = g.hand().map(o => o.key); reroll.n1 = g.draft().rerolls; reroll.btn = document.getElementById("pkReroll").textContent.trim();
+      g.rerollHand(); reroll.n2 = g.draft().rerolls; const spent = g.hand().map(o => o.key);
+      g.rerollHand(); reroll.n3 = g.draft().rerolls; reroll.stuck = JSON.stringify(spent) === JSON.stringify(g.hand().map(o => o.key));
+      // banish: row 2 struck, its place filled, never dealt again
+      const victim = g.hand()[1];
+      const ban = { victim: victim.key, n0: g.draft().banishes };
+      g.banishRow(1);
+      ban.after = g.hand().map(o => o.key); ban.n1 = g.draft().banishes; ban.banned = g.draft().banned; ban.size = g.hand().length;
+      // a queue of hands deals back to back, with no frame of the world between
+      const q0 = { pending: g.state().pending, t: g.state().t };
+      g.pick(0);
+      const q1 = { picking: g.state().picking, pending: g.state().pending, t: g.state().t };
+      // and thirty more hands never show the banished card
+      let seen = 0, hands = 0;
+      g.drainPicks(true); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      for (let i = 0; i < 30; i++) { g.drainPicks(false); g.xp(9999); g.step(1, 1/60); if (!g.state().picking) break; hands++; seen += g.hand().filter(o => o.key === victim.key).length; g.pick(0); g.drainPicks(true); }
+      return { t0, t1, t2, open, stillOpen, moved: e1 !== e2, geo, kit, reroll, ban, q0, q1, seen, hands };
+    });
+    ok("the world stops while a hand is on the table: thirty frames move neither the clock nor the horde",
+       r.open && r.stillOpen && r.t2 === r.t1 && !r.moved, `t ${r.t0} -> ${r.t1} -> ${r.t2} over 30 frames, horde moved ${r.moved}`);
+    ok("the hand is a panel of rows in the middle of the screen, not a strip of cards along the bottom",
+       r.geo.rows.length >= 3 && r.geo.rows.every(q => q.w > q.h * 3) && r.geo.rows.every((q, i) => i === 0 || (q.t > r.geo.rows[i-1].t && q.l === r.geo.rows[0].l))
+       && r.geo.panel.t > 40 && r.geo.panel.b < r.geo.vh - 40 && r.geo.panel.l > 100 && !r.geo.paused,
+       `${r.geo.rows.length} rows ${r.geo.rows.map(q => q.w + "x" + q.h).join(" ")}, panel y ${r.geo.panel.t}-${r.geo.panel.b} of ${r.geo.vh}, pause screen ${r.geo.paused}`);
+    ok("the kit sits under the rows with its empty slots showing: four weapon boxes, five growth, two rule",
+       r.kit.length === 3 && r.kit[0].boxes === 4 && r.kit[0].empty === 3 && r.kit[1].boxes === 5 && r.kit[1].empty === 5 && r.kit[2].boxes === 2 && r.kit[2].empty === 2,
+       r.kit.map(k => `${k.label}: ${k.boxes} boxes, ${k.empty} empty`).join(" | "));
+    ok("REROLL deals a different hand and spends one; with none left it does nothing",
+       r.reroll.n0 === 2 && r.reroll.n1 === 1 && r.reroll.n2 === 0 && r.reroll.n3 === 0 && r.reroll.stuck && JSON.stringify(r.reroll.before) !== JSON.stringify(r.reroll.after) && /1/.test(r.reroll.btn),
+       `${r.reroll.before.join(",")} -> ${r.reroll.after.join(",")}; ${r.reroll.n0} -> ${r.reroll.n1} -> ${r.reroll.n2} -> ${r.reroll.n3}; button "${r.reroll.btn}"`);
+    ok("BANISH strikes a card from the run: its row is filled, the hand stays four, and it is not dealt again in thirty hands",
+       r.ban.n0 === 1 && r.ban.n1 === 0 && r.ban.banned.includes(r.ban.victim) && !r.ban.after.includes(r.ban.victim) && r.ban.size === 4 && r.hands >= 10 && r.seen === 0,
+       `${r.ban.victim} banned; hand ${r.ban.after.join(",")}; seen ${r.seen} times in ${r.hands} hands`);
+    ok("queued hands deal back to back: taking one opens the next on the same frame of the world",
+       r.q0.pending >= 2 && r.q1.picking && r.q1.pending === r.q0.pending - 1 && r.q1.t === r.q0.t,
+       `pending ${r.q0.pending} -> ${r.q1.pending}, picking ${r.q1.picking}, t ${r.q0.t} -> ${r.q1.t}`);
+
+    // the genre's other controls: ESC does not open the pause screen over a hand, arrows walk the rows, ENTER takes the lit one
+    const before = await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.wipeSave(); g.start("intern"); g.freezeSpawns(true); g.freezeEvents(true); g.god(); g.setShake(0); g.drainPicks(false); g.xp(60); g.step(1, 1/60); return g.kitRaw(); });
+    await page.keyboard.press("Escape"); await page.waitForTimeout(50);
+    const esc = await page.evaluate(() => ({ picking: window.__g.state().picking, paused: document.getElementById("paused").classList.contains("on") }));
+    await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown");
+    const nav = await page.evaluate(() => ({ sel: window.__g.draft().sel, lit: [...document.querySelectorAll("#pkCards .card")].findIndex(e => e.classList.contains("sel")), key: window.__g.hand()[2].key }));
+    await page.keyboard.press("Enter"); await page.waitForTimeout(50);
+    const after = await page.evaluate(() => window.__g.kitRaw());
+    ok("ESC over a hand does not open the pause screen - the hand is the pause", esc.picking && !esc.paused, `picking ${esc.picking}, pause screen ${esc.paused}`);
+    ok("the arrow keys walk the rows and ENTER takes the lit one",
+       nav.sel === 2 && nav.lit === 2 && !!after[nav.key] && after[nav.key].l > (before[nav.key] ? before[nav.key].l : -1),
+       `lit row ${nav.lit}; ${nav.key} rank ${before[nav.key] ? before[nav.key].l + 1 : 0} -> ${after[nav.key] ? after[nav.key].l + 1 : 0}`);
+
+    // a MASTERY hand is not a deal, and the shop sells the two consumables
+    const m = await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.wipeSave(); g.setSave({ up:{ reroll:2, banish:1 } }); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
+      for (const k of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops","gore","brood"]) { g.give(k, 3); g.evolve(k); }
+      for (const k of ["spinach","boots","tempo","magnet","plating","heart","clover","dupe"]) g.give(k, 3);
+      for (const k of ["momentum","stomp","hunter"]) g.give(k, 1);
+      g.drainPicks(false); g.xp(9000); g.step(1, 1/60);
+      const d = g.draft(), btns = [...document.querySelectorAll("#pkTools .tb")], h0 = g.hand().map(o => o.key); g.rerollHand(); const h1 = g.hand().map(o => o.key);
+      const left = g.draft().rerolls; g.drainPicks(true);
+      g.menu(); const shop = [...document.querySelectorAll("#shop .n")].map(e => e.textContent);
+      return { picking: d.mastery, btns: btns.length, off: btns.filter(b => b.classList.contains("off")).length, same: JSON.stringify(h0) === JSON.stringify(h1), rerolls: left, shop }; });
+    ok("a MASTERY hand greys out reroll and banish and R does nothing - it is not a deal", m.picking && m.btns === 2 && m.off === 2 && m.same && m.rerolls === 2, `mastery ${m.picking}, ${m.off}/${m.btns} buttons off, rerolls left ${m.rerolls}`);
+    ok("the shop sells REROLL and BANISH", m.shop.includes("REROLL") && m.shop.includes("BANISH"), m.shop.join(", "));
+
+    // and on a phone
+    const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pp = await pctx.newPage(); await pp.goto(FILE, { waitUntil: "load" }); await pp.waitForTimeout(500);
+    const ph = await pp.evaluate(() => { const g = window.__g; g.wipeSave(); g.setSave({ up:{ reroll:1, banish:1 } }); g.start("intern"); g.freezeSpawns(true); g.freezeEvents(true); g.god(); g.setShake(0); g.drainPicks(false); g.xp(60); g.step(1, 1/60);
+      const rows = [...document.querySelectorAll("#pkCards .card")].map(e => { const b = e.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), h: Math.round(b.height), ds: (e.querySelector(".ds") || {}).offsetHeight || 0 }; });
+      const panel = document.querySelector("#pick .wrap").getBoundingClientRect(), kit = document.getElementById("pkKit").getBoundingClientRect();
+      return { picking: g.state().picking, rows, panel: { l: Math.round(panel.left), r: Math.round(panel.right), t: Math.round(panel.top), b: Math.round(panel.bottom) }, kit: Math.round(kit.bottom), vw: innerWidth, vh: innerHeight, sub: document.getElementById("pkSub").textContent, tools: document.getElementById("pkTools").children.length }; });
+    ok("on a phone the whole panel - rows, buttons, kit - fits the screen, every row is a full-width tap target with its line of text, and the caption says TAP",
+       ph.picking && ph.panel.l >= 0 && ph.panel.r <= ph.vw && ph.panel.t >= 0 && ph.panel.b <= ph.vh && ph.kit <= ph.vh && ph.rows.every(q => q.h >= 44 && q.r - q.l > ph.vw * .8) && ph.rows.some(q => q.ds > 0) && ph.tools >= 2 && /TAP/.test(ph.sub),
+       `panel ${ph.panel.l}-${ph.panel.r} x ${ph.panel.t}-${ph.panel.b} of ${ph.vw}x${ph.vh}; rows ${ph.rows.map(q => q.h).join("/")}px tall; ${ph.tools} buttons; "${ph.sub}"`);
+    await pctx.close();
   }
 
   console.log("\n" + "=".repeat(58));

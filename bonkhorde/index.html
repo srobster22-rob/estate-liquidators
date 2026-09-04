@@ -129,77 +129,119 @@
   kbd{background:#1b2028;border:1px solid #2e3540;border-bottom-width:2px;
     padding:1px 6px;font-size:10px;border-radius:3px}
 
-  /* cards */
-  /* THE DRAFT STRIP. #pick keeps its markup and stops being a modal: no
-     backdrop, no blur, no pointer capture, parked along the bottom of the
-     screen with only the cards themselves clickable. */
-  #pick{position:fixed;inset:auto 0 86px 0;top:auto;background:none;backdrop-filter:none;
-    align-items:flex-end;justify-content:center;padding:0;pointer-events:none;z-index:8}
-  #pick .wrap{width:min(880px,98vw);max-height:none;overflow:visible;padding:0;
-    pointer-events:none}
-  /* the header needs its own ground: over THE GLACIER it was pale text on a
-     pale world and disappeared entirely */
-  #pick .wrap > h1, #pick .wrap > .sub{background:#0a0c10e6;border:1px solid #2a313c;
-    padding:3px 9px}
-  #pick h1{font-size:13px;letter-spacing:.18em;margin:0 -1px 5px 0;text-shadow:0 2px 0 #000;
-    display:inline-block;vertical-align:middle;border-right:none}
-  #pick .sub{font-size:10px;margin:0 0 5px;display:inline-block;vertical-align:middle;
-    color:var(--gold);border-left:none}
-  #pick .hint{display:none}
-  /* One row, always. Four cards on a second row ran off the bottom of the
-     screen and buried the health bar, which is a worse interruption than the
-     modal this replaced. */
-  #pick .cards{flex-wrap:nowrap;gap:7px;margin:0}
-  #pick .card{pointer-events:auto;padding:6px 9px 7px;width:min(21vw,178px);
-    border-bottom-width:3px;min-width:0;animation:cardIn .26s ease-out both}
+  /* ------------------------------------------------------------ THE DRAFT */
+  /* THE LEVEL-UP SCREEN, THE WAY THE GENRE DRAWS IT. Vampire Survivors stops
+     the world, dims it, and puts one panel in the middle: a banner, three or
+     four ROWS - icon, name, a NEW!/LEVEL tag, one line of what this rank does
+     - with the reroll and banish buttons under them and the kit in view. This
+     is that panel. The strip of four cards along the bottom that it replaces
+     kept the horde biting while you read, which made every draft a thing to
+     get over with rather than a decision. A paused list of rows is read in a
+     second and taken with one key. Ids and classes are the strip's, so the
+     suite and the mutants keep their anchors. */
+  #pick{background:rgba(6,8,12,.58);backdrop-filter:none;z-index:8;padding:0 8px}
+  #pick .wrap{width:min(560px,96vw);max-height:96vh;overflow:auto;padding:0;
+    border:2px solid #f0b42999;border-bottom-width:5px;background:#0d1118f5;
+    box-shadow:0 12px 40px #000c,0 0 0 1px #000;text-align:left;
+    animation:pickIn .22s ease-out both}
+  @keyframes pickIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+  #pick .pkHead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 14px 9px;background:linear-gradient(180deg,#f0b42926,#f0b42908);
+    border-bottom:1px solid #f0b42955}
+  #pick h1{font-size:22px;letter-spacing:.14em;margin:0;text-shadow:0 2px 0 #000;
+    color:#ffe08a;display:flex;align-items:center;gap:10px}
+  #pick h1 .lvl{font-size:11px;color:var(--ink);letter-spacing:.12em;font-weight:700;
+    padding:3px 7px;border:1px solid #f0b42966;background:#0a0c10;text-shadow:none}
+  #pick h1 .lvl span{color:#ffe08a}
+  #pick .sub{font-size:10px;margin:0;color:var(--gold);letter-spacing:.16em;text-align:right;
+    white-space:nowrap}
+  /* the rows */
+  #pick .cards{display:flex;flex-direction:column;gap:6px;margin:0;padding:8px 10px 6px;flex-wrap:nowrap}
+  #pick .card{--ac:var(--gold);--acbg:#f0b4292a;--acglow:#f0b42966;
+    pointer-events:auto;width:auto;min-height:62px;padding:8px 10px;
+    display:grid;grid-template-columns:22px 44px 1fr auto;column-gap:10px;row-gap:2px;
+    align-items:center;cursor:pointer;text-align:left;
+    border:1px solid #2a313c;border-left:4px solid var(--ac);
+    background:linear-gradient(90deg,var(--acbg),#12161d 62%);position:relative;overflow:hidden;
+    transition:.08s;animation:cardIn .22s ease-out both}
   #pick .card:nth-child(2){animation-delay:.05s} #pick .card:nth-child(3){animation-delay:.10s}
   #pick .card:nth-child(4){animation-delay:.15s}
-  @keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-  #pick .card .ic{width:26px;height:26px;font-size:15px;margin:9px 0 3px}
-  #pick .card .fam{top:6px;left:12px}
-  #pick .card .nm{font-size:11px}
-  #pick .card .lv{font-size:9px;margin-bottom:4px}
-  #pick .card .eff{font-size:13px;margin:0 0 3px}
-  #pick .card .pt{font-size:8px;margin-top:4px;line-height:1.3}
-  /* clamp, not crop: a description cut at "Homing shot at the" reads as a
-     rendering bug - the ellipsis says the rest exists and was elided */
-  #pick .card .ds{font-size:9px;line-height:1.35;max-height:2.7em;overflow:hidden;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  /* the number is the control now, so it is the biggest thing on the card */
-  #pick .card .key{top:5px;right:7px;font-size:13px;width:22px;height:22px}
-  #pick .card:hover .key{color:#fff;border-color:#fff}
-  .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-  .card{--ac:var(--gold);--acbg:#f0b4292a;--acglow:#f0b42966;
-    width:196px;border:2px solid #2a313c;border-bottom-width:4px;border-left:4px solid var(--ac);
-    background:linear-gradient(160deg,var(--acbg),#12161d 58%);
-    padding:16px 13px;cursor:pointer;text-align:left;transition:.09s;position:relative;overflow:hidden}
-  .card::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--ac)}
-  .card:hover{border-color:var(--ac);transform:translateY(-4px);box-shadow:0 0 18px var(--acglow)}
-  .card .fam{position:absolute;top:7px;left:11px;font-size:8px;letter-spacing:.24em;font-weight:800;
-    color:var(--ac);text-shadow:0 1px 0 #000}
-  .card.evo{border-color:var(--evo);background:#1d1410}
-  .card.evo:hover{border-color:#ffa070}
-  .card .ic{width:38px;height:38px;border-radius:50%;background:var(--acbg);border:1px solid var(--ac);
-    display:flex;align-items:center;justify-content:center;color:var(--ac);font-size:22px;line-height:1;
-    margin:12px 0 8px;box-shadow:inset 0 0 10px #0008}
-  .card .nm{font-size:13px;font-weight:700;letter-spacing:.05em;margin-bottom:3px}
-  .card .lv{font-size:9px;color:var(--ac);letter-spacing:.14em;margin-bottom:9px}
-  .card.evo .lv{color:var(--evo)}
-  .card .ds{font-size:11px;color:#a8a396;line-height:1.6}
-  .card .key{position:absolute;top:7px;right:9px;font-size:10px;color:var(--gold);
-    width:20px;height:20px;border:1px solid var(--gold);border-radius:4px;background:#1b1608;
+  @keyframes cardIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+  #pick .card:hover,#pick .card.sel{border-color:var(--ac);
+    background:linear-gradient(90deg,var(--acbg),#1a2029 62%);
+    transform:translateX(3px);box-shadow:0 0 16px var(--acglow),inset 0 0 0 1px var(--ac)}
+  /* the number is the control on a keyboard, so it leads the row */
+  #pick .card .key{grid-row:1/3;grid-column:1;width:22px;height:22px;font-size:12px;
+    color:var(--gold);border:1px solid var(--gold);border-radius:4px;background:#1b1608;
     display:flex;align-items:center;justify-content:center;font-weight:800}
-  /* the headline: the one number the card is about, and the biggest text on it */
-  .card .eff{font-size:15px;font-weight:800;color:var(--ac);letter-spacing:.03em;margin:0 0 5px;
-    text-shadow:0 1px 0 #000}
-  .card .lv{display:flex;align-items:center;gap:6px}
-  .card .lv .pips{display:inline-flex;gap:2px;margin:0}
-  .card .lv .pips s{width:13px;height:4px;background:#2c333d;display:block}
-  .card .lv .pips s.f{background:var(--ac)}
-  .card .lv .pips s.n{background:#fff;box-shadow:0 0 6px #fff9}
-  .card .pt{font-size:9px;color:var(--evo);letter-spacing:.08em;margin-top:6px;font-weight:700}
-  .card.evo{border-color:#5a2e1c}
-  .card.rule{border-color:#1f3d33}
+  #pick .card:hover .key,#pick .card.sel .key{color:#fff;border-color:#fff}
+  #pick .card .ic{grid-row:1/3;grid-column:2;width:44px;height:44px;border-radius:6px;
+    background:var(--acbg);border:1px solid var(--ac);color:var(--ac);font-size:24px;line-height:1;
+    display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 12px #0008}
+  #pick .card .fam{grid-row:1;grid-column:4;justify-self:end;font-size:8px;
+    letter-spacing:.22em;font-weight:800;color:var(--ac);text-shadow:0 1px 0 #000}
+  #pick .card .nm{grid-row:1;grid-column:3;font-size:13px;font-weight:800;letter-spacing:.05em}
+  #pick .card .lv{grid-row:2;grid-column:4;justify-self:end;display:flex;align-items:center;gap:5px;
+    font-size:9px;color:var(--ac);letter-spacing:.12em;white-space:nowrap}
+  #pick .card .lv .pips{display:inline-flex;gap:2px}
+  #pick .card .lv .pips s{width:11px;height:4px;background:#2c333d;display:block}
+  #pick .card .lv .pips s.f{background:var(--ac)}
+  #pick .card .lv .pips s.n{background:#fff;box-shadow:0 0 6px #fff9}
+  /* the headline: the one number the row is about */
+  #pick .card .eff{grid-row:2;grid-column:3;font-size:12px;font-weight:800;color:var(--ac);
+    letter-spacing:.03em;text-shadow:0 1px 0 #000}
+  #pick .card .ds{grid-row:3;grid-column:3/5;font-size:9.5px;color:#a8a396;line-height:1.4;
+    margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #pick .card .ds:empty{display:none}
+  #pick .card .pt{grid-row:4;grid-column:3/5;font-size:8.5px;color:var(--evo);letter-spacing:.08em;
+    margin-top:2px;font-weight:700}
+  #pick .card.evo{border-color:#5a2e1c}
+  #pick .card.rule{border-color:#1f3d33}
+  /* banish mode: the hand is about to lose one, and the rows say which can go */
+  #pick.ban .card:hover{box-shadow:0 0 16px #ff5c4d88,inset 0 0 0 1px #ff5c4d;border-color:#ff5c4d}
+  #pick.ban .card.nob{opacity:.35;cursor:not-allowed}
+  /* the buttons under the rows, then the kit */
+  #pick .tools{display:flex;gap:6px;padding:2px 10px 8px;align-items:center;flex-wrap:wrap}
+  #pick .tools:empty{display:none}
+  #pick .tools .tb{font:800 10px/1 ui-monospace,monospace;letter-spacing:.14em;color:var(--ink);
+    background:#161b24;border:1px solid #39414d;border-bottom-width:3px;padding:8px 12px;
+    cursor:pointer;display:flex;align-items:center;gap:6px}
+  #pick .tools .tb b{color:var(--gold)}
+  #pick .tools .tb:hover{border-color:var(--gold)}
+  #pick .tools .tb.off{opacity:.4;cursor:not-allowed}
+  #pick .tools .tb.off:hover{border-color:#39414d}
+  #pick .tools .tb.on{border-color:#ff5c4d;color:#ff8a6a;background:#2a1412}
+  #pick .tools .tsub{margin-left:auto;font-size:9px;color:var(--dim);letter-spacing:.1em}
+  #pick .kit{display:flex;gap:12px;padding:8px 10px 10px;border-top:1px solid #1f2530;
+    background:#0a0d12;flex-wrap:wrap;align-items:flex-start}
+  #pick .kit .kg{display:flex;flex-direction:column;gap:4px}
+  #pick .kit .kg b{font-size:7.5px;letter-spacing:.22em;color:#5c6470;font-weight:800}
+  #pick .kit .kr{display:flex;gap:4px}
+  #pick .kit .ks{width:30px;height:36px;display:flex;align-items:flex-start;justify-content:center;
+    padding-top:5px;background:#141922;border:1px solid #2a313c;font-size:15px;color:#cfc9bb;
+    position:relative}
+  #pick .kit .ks.p{background:#191521}
+  #pick .kit .ks.r{background:#0f1a17;border-color:#3ad0a0}
+  #pick .kit .ks.mx{border-color:var(--gold)}
+  #pick .kit .ks.ev{border-color:var(--evo);color:#ffb08a}
+  #pick .kit .ks.mv{border-color:#8affd0}
+  #pick .kit .ks.e{border-style:dashed;border-color:#2a313c;background:#0d1015}
+  #pick .kit .ks .kp{display:flex;gap:1px;position:absolute;bottom:3px}
+  #pick .kit .ks .kp s{width:5px;height:3px;background:#2c333d;display:block}
+  #pick .kit .ks .kp s.f{background:var(--gold)}
+  #pick .kit .ks.r .kp s.f{background:#3ad0a0}
+  #pick .kit .ks.ev .kp s.f{background:var(--evo)}
+  /* the phone: the panel is the screen */
+  @media (max-width:520px){
+    #pick h1{font-size:16px;gap:7px}
+    #pick .sub{font-size:9px}
+    #pick .card{grid-template-columns:18px 38px 1fr auto;column-gap:8px;padding:7px 8px;min-height:58px}
+    #pick .card .key{width:18px;height:18px;font-size:11px}
+    #pick .card .ic{width:38px;height:38px;font-size:20px}
+    #pick .card .nm{font-size:12px}
+    #pick .kit{gap:8px}
+    #pick .kit .ks{width:26px;height:32px;font-size:13px}
+  }
   .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
   /* menu */
@@ -383,8 +425,6 @@
 
     #stats{font-size:10px}
     h1{font-size:32px} .sub{font-size:10px;margin-bottom:14px}
-    .card{width:min(44vw,196px);padding:11px 9px}
-    .card .ic{font-size:24px} .card .ds{font-size:10px}
     .ch{width:min(44vw,158px)}
     .shop{grid-template-columns:1fr 1fr}
     .wrap{padding:6px}
@@ -420,13 +460,6 @@
     #biome b{font-size:10px;letter-spacing:.14em}
     #biome span{max-width:52vw}
     #stats{font-size:9px}
-    /* an 82px card carries the pips, the headline and the evolution line; the
-       NEW WEAPON label ran into the pips and the blurb was three words a row.
-       Down here because #pick .card .ds sets its own display further up. */
-    #pick .card .lv span,#pick .card .ds{display:none}
-    #pick .card .eff{font-size:11px}
-    #pick .card .ic{width:24px;height:24px;font-size:13px;margin:10px 0 3px}
-    #pick .card .fam{font-size:7px}
   }
   /* Also last, for the same reason. */
 </style>
@@ -494,6 +527,8 @@
 <symbol id="i-claws" viewBox="0 0 24 24"><path d="M3.4 3.2C7.2 5.6 9.4 9.6 10 15.8l-2.6-.8C7 10.6 5.6 7.4 3.4 3.2z" class="fa"/><path d="M9.2 2.6c3.8 2.4 6 6.4 6.6 12.6l-2.6-.8c-.4-4.4-1.8-7.6-4-11.8z" class="fa"/><path d="M15 3.2c3.8 2.4 6 6.4 6.6 12.6l-2.6-.8c-.4-4.4-1.8-7.6-4-11.8z" class="fa"/><path d="M4 21h16" class="s"/></symbol>
 <symbol id="i-twohead" viewBox="0 0 24 24"><circle cx="7.6" cy="8.4" r="4.2" class="f"/><circle cx="16.4" cy="8.4" r="4.2" class="fa"/><path d="M4.4 21c1-5 3.6-7.4 7.6-7.4s6.6 2.4 7.6 7.4z" class="f"/><circle cx="6.4" cy="7.8" r="1.05" class="k"/><circle cx="15.2" cy="7.8" r="1.05" class="k"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
+<symbol id="i-reroll" viewBox="0 0 24 24"><path d="M19.2 9.4A7.6 7.6 0 0 0 5.9 7.4M4.8 14.6a7.6 7.6 0 0 0 13.3 2" class="s"/><path d="M19.6 4.6v4.8h-4.8M4.4 19.4v-4.8h4.8" class="a"/></symbol>
+<symbol id="i-banish" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" class="s"/><path d="M8.2 8.2l7.6 7.6M15.8 8.2l-7.6 7.6" class="a"/></symbol>
 </defs></svg>
 
 <canvas id="gl"></canvas>
@@ -530,9 +565,11 @@
 
 <div class="ov on" id="menu"><div class="wrap" id="menuBody"></div></div>
 <div class="ov" id="pick"><div class="wrap">
-  <h1>LEVEL <span id="pkLv">2</span></h1><div class="sub" id="pkSub">PICK ONE</div>
+  <div class="pkHead"><h1>LEVEL UP<span class="lvl">LV <span id="pkLv">2</span></span></h1>
+    <div class="sub" id="pkSub">PICK ONE</div></div>
   <div class="cards" id="pkCards"></div>
-  <div class="hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> or click</div>
+  <div class="tools" id="pkTools"></div>
+  <div class="kit" id="pkKit"></div>
 </div></div>
 <div class="ov" id="end"><div class="wrap" id="endBody"></div></div>
 <div class="ov" id="paused"><div class="wrap">
@@ -546,7 +583,8 @@
     weapons fire themselves. your only job is to not be there.<br>
     every bite has a wind-up: an animal that rears back is about to snap. step out of it and it snaps at air.<br>
     green cards are <b>RULES</b> - they change how a run plays, not how hard it hits. two a run, a third at level 30.<br>
-    past a full kit, every fifth level is a <b>MASTERY</b>: one thing you finished goes a rank further.
+    past a full kit, every fifth level is a <b>MASTERY</b>: one thing you finished goes a rank further.<br>
+    the world waits while you pick. <kbd>R</kbd> deals the hand again, <kbd>B</kbd> strikes a card from the run - once the shop has sold you them.
   </div>
   <div id="opts">
     <button class="btn gh opt" id="sndBtn">SOUND: ON</button>
@@ -2374,6 +2412,12 @@ const SHOP = [
 { id:"rev",   ic:"rev", n:"SECOND WIND",  d:"revive once at 50% HP", max:2, cost:r=>400+r*500 },
 { id:"tally", ic:"tally",n:"TALLY",        d:"+8% XP from every gem", max:4, cost:r=>140+r*130,
   lock:"tally" },
+// The genre's two draft consumables, bought here and spent in the level-up
+// screen, the way Vampire Survivors sells them as PowerUps: a REROLL deals the
+// hand again, a BANISH strikes a card from the run so it is never dealt
+// again. Per run, not per hand.
+{ id:"reroll", ic:"reroll", n:"REROLL", d:"+1 a run: deal the level-up hand again", max:3, cost:r=>160+r*160 },
+{ id:"banish", ic:"banish", n:"BANISH", d:"+1 a run: strike a card from the run for good", max:2, cost:r=>200+r*220 },
 ];
 
 // ======================================================= ENEMY BODY PLANS
@@ -7890,6 +7934,7 @@ function startRun(id){
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
         hop:0, hopWin:0, hopGrace:0, hopFx:0, hopHold:undefined, idle:1,
+        rerolls:rank("reroll"), banishes:rank("banish"), banned:{},
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0,
         surge:0, surgeT:0, rush:0, rebirths:0, rebirthCd:0, grown:0, hp0:s.maxhp };
   jumpBuf = 0;
@@ -7937,13 +7982,7 @@ function startRun(id){
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
   camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
   runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
-  // pickT is how long the live draft has been ignored, and it was the one
-  // thing the new strip left behind between runs. Carried in above the
-  // eleven-second threshold, the first draft of a fresh run resolved itself on
-  // frame one and took whatever card happened to be in slot 1 - which is how a
-  // fully pinned trial stopped being reproducible in the suite while being
-  // perfectly reproducible on its own.
-  pickT = 0; pickGap = 0;
+  curHand = null; banMode = false;
   // AND THE SPATIAL GRID, which is the one that actually mattered. near() and
   // hitNear() read a grid that step() rebuilds in its world section - AFTER the
   // input and movement block that the autopilot steers from - so every frame
@@ -8100,11 +8139,24 @@ if(TOUCH){
 addEventListener("keydown", e=>{
   // e.repeat is the whole reason this is an edge: holding space fires keydown
   // at the OS repeat rate, which would auto-hop about as well as a human can.
-  if(e.code==="Space" && !e.repeat && running && !paused) jumpPressed();
+  if(e.code==="Space" && !e.repeat && running && !paused && !picking) jumpPressed();
   keys[e.code]=true;
-  if(picking && /^Digit[1-4]$/.test(e.code)){
-    const i=+e.code.slice(5)-1; const c=document.getElementById("pkCards").children[i];
-    if(c) c.click();
+  if(picking){
+    const rows = document.getElementById("pkCards").children;
+    if(/^Digit[1-4]$/.test(e.code)){
+      const i=+e.code.slice(5)-1; const c=rows[i];
+      if(c) c.click();
+    }
+    // the genre's other controls: arrows walk the rows, enter takes the lit one
+    else if((e.code==="ArrowDown" || e.code==="ArrowUp") && rows.length){
+      const d = e.code==="ArrowDown" ? 1 : -1;
+      selRow = ((selRow < 0 ? (d > 0 ? -1 : 0) : selRow) + d + rows.length) % rows.length;
+      paintSel(); e.preventDefault();
+    }
+    else if(e.code==="Enter" || e.code==="NumpadEnter"){ const c=rows[Math.max(0, selRow)]; if(c) c.click(); }
+    else if(e.code==="KeyR") doReroll();
+    else if(e.code==="KeyB") armBanish();
+    else if(e.code==="Escape" && banMode){ banMode = false; renderHand(); }
   }
   if(e.code==="Escape" && running && !over) togglePause(true);
   if(e.code==="KeyP"  && running && !over) togglePause(!paused);
@@ -10123,8 +10175,11 @@ function nextUp(){
 }
 
 // ------------------------------------------------------------ offer roller
-function offers(){
-  const out=[], have=P.kit;
+// `excl` is a set of keys a reroll or a banish wants kept out of THIS deal;
+// P.banned is the run's own list, and is kept out of every deal
+function offers(excl){
+  const out=[], have=P.kit, ban = P.banned || {};
+  const shut = k => ban[k] || (excl && excl.has(k));
   // 1. evolutions first, and they are never crowded out
   for(const k in have){
     const w = have[k], W = WEAPONS[k];
@@ -10150,6 +10205,7 @@ function offers(){
   const rCount = Object.keys(have).filter(k=>isRule(k)).length;
   for(const k in WEAPONS){
     const w = have[k];
+    if(shut(k)) continue;
     if(w){ if(w.evo || w.l >= WMAX-1) continue;
       pool.push({ type:"up", key:k, ic:WEAPONS[k].ic, nm:wName(k, w),
                   lv:"LV "+(w.l+2), ds:WEAPONS[k].ds, weight:10 }); }
@@ -10160,6 +10216,7 @@ function offers(){
   }
   for(const k in PASSIVES){
     const p = have[k], P2 = PASSIVES[k];
+    if(shut(k)) continue;
     if(isRule(k)){
       if(!p && !noRules && rCount < ruleSlots() && P.lvl >= RULE_FROM)
         pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
@@ -10204,33 +10261,26 @@ function hopThaw(){
   P.hop = P.hopHold; P.hopHold = undefined;
   P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE + .8;
 }
-// THE DRAFT DOES NOT STOP THE GAME ANY MORE. It used to: full-screen overlay,
-// pointer released, camera parked, hop chain frozen, simulation halted. A long
-// run levels forty times, so the back half of every run was a slideshow of
-// modals - and the thing the game is actually about, positioning, was switched
-// off for all of it. The cards are a strip along the bottom now. The horde
-// keeps coming while you read them, which is the correct amount of pressure to
-// put on a decision that is supposed to matter.
-const PICK_HOLD = 11;             // seconds before an ignored draft resolves itself
-let pickT = 0;
-// THE BEAT BETWEEN TWO HANDS, ON THE SIM CLOCK. It used to be
-// `setTimeout(showPick, 90)` - ninety milliseconds of REAL time - and that one
-// line is the state leak this project has carried since R50 and gone looking
-// for four times. Inside a stepped run the timer cannot fire, because step()
-// never unwinds the stack; it fires once the evaluate returns, which is after
-// the run has ENDED. So a run that finished with levels still queued left a
-// live showPick() waiting, and it opened a draft belonging to the dead run
-// inside the NEXT one - a different build, a different result, from the same
-// seed. That is why a pinned trial needed a warm-up, why the warm-up drifted
-// from one trial to two, and why adding a tenth weapon flipped it into a
-// perfect A-B-A-B alternation: it changed how often a run ends mid-queue.
-// Sim time is the only clock a deterministic run may use.
+// THE DRAFT STOPS THE GAME, AGAIN - because that is how the genre does it,
+// and the reported complaint was that ours did not feel like the genre. For
+// a while the hand was a strip along the bottom with the horde still biting,
+// on the theory that a decision under pressure is a better decision; what it
+// made was a decision nobody read. Vampire Survivors freezes the world for
+// every level-up, forty times a run, and nobody minds, because the screen is
+// read in a second and dismissed with one key. So: step() does not advance
+// while a hand is open, the pointer is released so the rows can be clicked,
+// and the next queued hand is dealt the moment the last one is taken - no
+// timer, no gap, no frame of the world between them. Sim time is still the
+// only clock a deterministic run may use; there is simply nothing left here
+// that needs one.
 // How much harder a brood bites a boss than it bites trash. See updateBrood.
 const BROOD_BOSS = 2.9;
 // How far apart a pack's own animals stay. Roughly two hatchling widths.
 const PET_SEP = 1.1;
-const PICK_GAP = .09;
-let pickGap = 0;
+// the hand on the table, who dealt it (offers or masteryHand), and the two
+// things a player can do to it besides take a row
+let curHand = null, curDealer = null, banMode = false, selRow = -1;
+const SNACK = ds => ({ type:"heal", ic:"heal", nm:"ROAST CHICKEN", lv:"REFRESHMENT", ds, weight:1 });
 // ROLLED ONCE. The step loop asks offers() whether this level has a real
 // choice on it, and showPick() used to ask AGAIN to decide what to draw - two
 // independent rolls of a random draft. So a level could pass the "there is
@@ -10325,19 +10375,27 @@ function cardDress(o){
         ac = (fam === "u" && Pa && Pa.col) ? Pa.col : (fam === "w" && WCOL[k]) ? WCOL[k] : FAM[fam].ac;
   return { eff, pt, pips, ds, fam, word:FAM[fam].word, ac };
 }
-function showPick(hand){
+function showPick(hand, dealer){
   // A take() with levels still queued schedules the next hand on a 90ms
   // timeout, and a run can END inside that 90ms - so the draft strip was
   // reappearing on top of the death screen, under the RUN AGAIN button.
   if(over || !running){ pendingLevels = 0; picking = false; hide("pick"); return; }
-  picking = true; pickT = 0;
+  picking = true;
+  hopFreeze();                        // the hand is a pause; the chain waits with it
+  document.exitPointerLock?.();       // the mouse is a mouse again: the rows are clicked, or numbered
   document.getElementById("pkLv").textContent = P.lvl;
-  // KEYS, NOT CLICKS. The draft no longer releases the pointer - it cannot,
-  // because the mouse is the camera and the fight is still happening - so on
-  // desktop the cards are chosen with the number keys and the number is the
-  // loudest thing on the card. Touch still taps them; there is no pointer lock
-  // on a phone.
-  const cards = hand || offers();
+  curHand = hand || offers(); curDealer = dealer || offers;
+  banMode = false; selRow = TOUCH ? -1 : 0;
+  renderHand();
+  show("pick");
+  SFX.levelup();
+}
+// Draws the hand on the table: the rows, the two buttons, the kit. Called by
+// showPick and again by a reroll or a banish, which change the hand and not
+// the level. On a keyboard the number is the control, so it leads the row;
+// on a phone the rows are tapped and there is no number.
+function renderHand(){
+  const cards = curHand;
   // the caption counts the cards it is captioning: a hand of two says 1-2
   document.getElementById("pkSub").textContent =
     (TOUCH ? "TAP ONE" : cards.length > 1 ? `PRESS 1-${cards.length}` : "PRESS 1") +
@@ -10346,7 +10404,8 @@ function showPick(hand){
   cards.forEach((o,i)=>{
     const el = document.createElement("div");
     const d = cardDress(o);
-    el.className = "card " + d.fam + (o.type==="evo" ? " evo" : "") + (isRule(o.key) ? " rule" : "");
+    el.className = "card " + d.fam + (o.type==="evo" ? " evo" : "") + (isRule(o.key) ? " rule" : "")
+                 + (i === selRow ? " sel" : "") + (banMode && !banishable(o) ? " nob" : "");
     // the accent as a custom property, so the border, the disc, the pips and
     // the headline all take it from one place
     el.style.setProperty("--ac", d.ac);
@@ -10357,23 +10416,107 @@ function showPick(hand){
       `<div class="eff">${d.eff}</div><div class="ds">${d.ds}</div>`+
       (d.pt ? `<div class="pt">${d.pt}</div>` : "");
     el.dataset.otype = o.type; el.dataset.okey = o.key||"";
-    el.onclick = ()=>take(o);
+    el.onclick = ()=>{ if(banMode) doBanish(i); else take(o); };
+    el.onmouseenter = ()=>{ if(selRow !== i){ selRow = i; paintSel(); } };
     box.appendChild(el);
   });
-  show("pick");
-  SFX.levelup();
+  // the buttons exist once the shop has sold one; a fresh save is not shown
+  // two dead controls. A MASTERY hand is not rerolled or banished - it is not
+  // a deal, it is a choice of which finished thing goes further.
+  const tl = document.getElementById("pkTools");
+  const dealt = curDealer === offers, nR = P.rerolls|0, nB = P.banishes|0;
+  const hasR = nR > 0 || rank("reroll") > 0, hasB = nB > 0 || rank("banish") > 0;
+  tl.innerHTML = (hasR || hasB) ? (hasR
+      ? `<div class="tb ${nR > 0 && dealt ? "" : "off"}" id="pkReroll">${icon("reroll")} REROLL <b>&times;${nR}</b></div>` : "")
+    + (hasB
+      ? `<div class="tb ${banMode ? "on" : ""} ${nB > 0 && dealt ? "" : "off"}" id="pkBanish">${icon("banish")} ${
+          banMode ? "BANISH WHICH?" : "BANISH"} <b>&times;${nB}</b></div>` : "")
+    + `<div class="tsub">${banMode ? "PICK THE CARD TO STRIKE FROM THIS RUN" : TOUCH ? "" :
+          [hasR ? "<kbd>R</kbd> REROLL" : "", hasB ? "<kbd>B</kbd> BANISH" : ""].filter(Boolean).join(" &nbsp; ")}</div>`
+    : "";
+  const rb = document.getElementById("pkReroll"); if(rb) rb.onclick = doReroll;
+  const bb = document.getElementById("pkBanish"); if(bb) bb.onclick = armBanish;
+  document.getElementById("pick").classList.toggle("ban", banMode);
+  document.getElementById("pkKit").innerHTML = kitStrip();
+}
+function paintSel(){
+  [...document.getElementById("pkCards").children].forEach((c, i) => c.classList.toggle("sel", i === selRow));
+}
+// THE KIT, UNDER THE HAND, WITH ITS EMPTY SLOTS. Vampire Survivors keeps the
+// inventory on screen through every level-up as two rows of squares, and the
+// empty squares are the point: they say how much room a build has left before
+// you decide whether to spend a slot. Four weapon boxes, five growth boxes,
+// the rule boxes, each thing carried with its rank as pips; the line's own
+// move sits in the weapon row but does not fill one of the four.
+function kitStrip(){
+  const W=[], G=[], Rl=[];
+  for(const k in P.kit){ if(WEAPONS[k]) W.push(k); else if(isRule(k)) Rl.push(k); else if(PASSIVES[k]) G.push(k); }
+  const box = k => {
+    const w = P.kit[k], Wd = WEAPONS[k], Pa = PASSIVES[k], D = Wd || Pa;
+    const ic = (Wd && w.evo) ? Wd.evo.ic : D.ic, isR = Pa && Pa.kind === "r";
+    const maxL = Wd ? WMAX : Math.max(Pa.max, w.l+1);
+    const cls = (Wd ? "" : isR ? "r" : "p") + (w.evo ? " ev" : (w.l+1 >= maxL ? " mx" : "")) + (w.mvNm || w.fromEvo ? " mv" : "");
+    const nm = w.mvNm && !w.evo ? w.mvNm : (Wd && w.evo) ? Wd.evo.name : D.name;
+    let pips = "";
+    if(!isR) for(let j=0;j<maxL;j++) pips += `<s class="${j < w.l+1 || w.evo ? "f" : ""}"></s>`;
+    return `<div class="ks ${cls}" title="${nm}">${icon(ic)}<i class="kp">${pips}</i></div>`;
+  };
+  const empty = n => Array.from({ length:Math.max(0, n) }, () => `<div class="ks e"></div>`).join("");
+  const wOwn = W.filter(k => !P.kit[k].fromEvo).length, rs = ruleSlots();
+  return `<div class="kg"><b>WEAPONS ${wOwn}/${WSLOTS}</b><div class="kr">${W.map(box).join("")}${empty(WSLOTS - wOwn)}</div></div>`
+       + `<div class="kg"><b>GROWTH ${G.length}/${PSLOTS}</b><div class="kr">${G.map(box).join("")}${empty(PSLOTS - G.length)}</div></div>`
+       + `<div class="kg"><b>RULES ${Rl.length}/${rs}</b><div class="kr">${Rl.map(box).join("")}${empty(rs - Rl.length)}</div></div>`;
+}
+// A REROLL deals the hand again. It prefers a hand with none of the cards you
+// just refused on it - a reroll that hands you the same four is a reroll that
+// did nothing - and falls back to the plain deal when the pool is too small to
+// manage that. An evolution is dealt first regardless, as it always is: a
+// reroll cannot lose you one.
+function doReroll(){
+  if(!picking || !curHand || curDealer !== offers || (P.rerolls|0) <= 0) return;
+  P.rerolls--; banMode = false; selRow = TOUCH ? -1 : 0;
+  const ex = new Set(curHand.map(o => o.key).filter(Boolean));
+  let h = offers(ex);
+  if(h.length === 1 && h[0].type === "heal") h = offers();
+  curHand = h; renderHand(); SFX.buy();
+}
+// A BANISH strikes one card from the run: never dealt again, and its row is
+// filled from the rest of the pool so the hand stays a hand. Evolutions,
+// snacks and masteries are not cards you can refuse forever.
+const banishable = o => !!o.key && o.type !== "evo" && o.type !== "heal" && o.lv !== "MASTERY";
+function armBanish(){
+  if(!picking || !curHand || curDealer !== offers || (P.banishes|0) <= 0) return;
+  banMode = !banMode; renderHand();
+}
+function doBanish(i){
+  const o = curHand && curHand[i];
+  if(!banMode || !o || !banishable(o) || (P.banishes|0) <= 0) return;
+  P.banishes--; P.banned[o.key] = 1; banMode = false;
+  const keep = curHand.filter(x => x !== o);
+  const ex = new Set(keep.map(x => x.key).filter(Boolean));
+  const fresh = offers(ex).find(c => c.type !== "heal" && !ex.has(c.key) && c.key !== o.key);
+  if(fresh) keep.splice(i, 0, fresh);
+  if(!keep.length) curHand = offers();
+  else { if(keep.length === 1 && keep[0].type !== "heal") keep.push(SNACK("Heal 40 HP, instead."));
+         curHand = keep; }
+  selRow = TOUCH ? -1 : Math.min(i, curHand.length-1);
+  renderHand(); SFX.buy();
+  alert2(`${o.nm} BANISHED`, "#ff8a6a");
 }
 function take(o){
   if(o.type==="heal") P.hp = Math.min(P.maxhp, P.hp+40);
   else if(o.type==="evo"){ P.kit[o.key].evo = true; P.kit[o.key].l = WMAX-1; shake=.7; }
   else if(o.type==="new"){ P.kit[o.key] = { key:o.key, l:0, t:0, evo:false }; applyPassive(o.key); }
   else { P.kit[o.key].l++; applyPassive(o.key); }
-  // Clamped, because the strip is now live: the eleven-second auto-resolve and
-  // a scripted driver's own pick can both land on the same open hand, and two
-  // takes for one level drove the counter negative.
+  // Clamped, because a scripted driver's own pick and a click can both land
+  // on the same open hand, and two takes for one level drove the counter negative.
   pendingLevels = Math.max(0, pendingLevels - 1);
-  hide("pick"); picking=false;
-  if(pendingLevels > 0) pickGap = PICK_GAP;
+  hide("pick"); picking=false; banMode=false; curHand=null;
+  document.getElementById("pick").classList.remove("ban");
+  // THE NEXT HAND, NOW. A queue of three is three screens back to back, the
+  // way the genre does it, with no frame of the world between them.
+  if(pendingLevels > 0) dealLevels();
+  if(!picking){ hopThaw(); lockPointer(); }
 }
 function applyPassive(k){
   if(!PASSIVES[k]) return;
@@ -10637,6 +10780,7 @@ function botVector(){
 
 // ==================================================================== STEP
 function step(dt){
+  if(picking) return;                 // a hand on the table is a paused world
   T += dt;
   // THE FINAL BONK arrives at 19:00 and the clock used to hand you the win at
   // 20:00 whether it was alive or not - so the climax was skippable by running
@@ -10971,9 +11115,14 @@ function step(dt){
   // Past about level fifty every weapon and passive is maxed, so the back half
   // of a long run was twenty-odd full-screen interruptions - pointer unlocked,
   // chain frozen, camera stopped - to press ROAST CHICKEN. Take it and say so.
+  dealLevels();
+}
+// The level queue. Every queued level either opens a hand or is taken
+// silently as growth, and the silent ones are batched into one toast. Called
+// from step(), and from take() so a queue of hands deals back to back.
+function dealLevels(){
   let autoLv = 0, autoHp = 0;
-  if(pickGap > 0) pickGap -= dt;
-  while(pendingLevels>0 && !picking && !noLevels && pickGap <= 0){
+  while(pendingLevels>0 && !picking && !noLevels){
     const only = offers();
     if(only.length === 1 && only[0].type === "heal"){
       // A level with nothing to choose used to hand out forty hit points and a
@@ -10985,7 +11134,7 @@ function step(dt){
       // ...except every fifth of them, which is a MASTERY (see masteryHand)
       if(++silentLv % MASTERY_EVERY === 0){
         const mh = masteryHand();
-        if(mh.length){ showPick(mh); break; }
+        if(mh.length){ showPick(mh, masteryHand); break; }
       }
       pendingLevels--;
       const was = P.hp;
@@ -10993,17 +11142,7 @@ function step(dt){
       autoLv++; autoHp += P.hp - was;
       continue;
     }
-    showPick(only);
-  }
-  // An ignored draft resolves itself. The strip no longer stops the game, so
-  // it CAN be ignored - and a card that sits on screen for the rest of the run
-  // is a worse interruption than the modal it replaced.
-  if(picking){
-    pickT += dt;
-    if(pickT > PICK_HOLD){
-      const c = document.getElementById("pkCards").children[0];
-      if(c) c.click(); else { pendingLevels = Math.max(0, pendingLevels-1); picking = false; }
-    }
+    showPick(only, offers);
   }
   // Batched, because a big XP pickup can drain a dozen of these in one frame and
   // a dozen level-up chimes on top of each other is not a reward, it is a fault
@@ -13886,7 +14025,13 @@ window.__g = {
              simFpsCeiling:Math.round(1000/(sim/n)) };
   },
   drainPicks: (suppress)=>{ pendingLevels=0; picking=false; hide("pick"); hopThaw();
+                            banMode=false; curHand=null;
                             if(suppress!==undefined) noLevels=!!suppress; },
+  rerollHand: ()=>{ doReroll(); return P ? P.rerolls : 0; },
+  banishRow:  (i=0)=>{ if(!banMode) armBanish(); doBanish(i|0); return P ? { left:P.banishes, banned:Object.keys(P.banned) } : null; },
+  hand:   ()=>curHand ? curHand.map(o=>({ type:o.type, key:o.key||"", nm:o.nm, lv:o.lv })) : [],
+  draft:  ()=>({ rerolls:P?P.rerolls:0, banishes:P?P.banishes:0, banned:P?Object.keys(P.banned):[], banMode, sel:selRow,
+                 mastery: curDealer === masteryHand }),
   // screenshot helper: point the camera and the creature the same way
   aim: (a)=>{ camYaw = a; if(P){ P.face = a; P.faceWant = a; } return camYaw; },
   hitBoss: (n)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b) hurt(b, n||1, 0, 0); },
@@ -13926,7 +14071,7 @@ window.__g = {
   snapshot:()=>({ noSpawn, noEvents, noLevels, devAuto, botDrive, botHop,
                   pinSeed, pinRun, deepAt, XP_NEED, HP_QUAD, HP_LIN, DMG_DIV,
                   DMG_FROM, startBank, startBankT: +startBankT.toFixed(2),
-                  nextEvent: +nextEvent.toFixed(2), pickT: +pickT.toFixed(2),
+                  nextEvent: +nextEvent.toFixed(2),
                   pendingLevels, picking, stage, evoT: +evoT.toFixed(2),
                   hitstop: +hitstop.toFixed(3), MAXE, RUN_LEN,
                   keys: Object.keys(keys).filter(k=>keys[k]).join(","),
