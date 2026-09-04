@@ -7459,6 +7459,7 @@ pyre(D){
 };
 // QA: when this is an array, the next frame records every box the monster body
 // emits, so a test can ask whether two forms are actually the same mesh.
+let holdFace = false;          // test/film hook: a still shot that keeps its heading
 let bodyCap = null, bodyCapOut = null;
 let bodyPos = null, bodyPosOut = null;
 // [body, dark] the last drawMonBody actually painted with - so a test can ask
@@ -7644,7 +7645,9 @@ function stepAnim(dt){
   const v = Math.hypot(P.vx, P.vz);
   // Stride length, not stride rate: a metre covered is a step taken, which is
   // what stops a sprint and a shuffle from sharing a frequency.
-  ANIM.ph += (v * dt) * 2.35;
+  // LONGER LEGS take longer strides: fewer footfalls per metre, and the leg
+  // itself swings further because its swing is a fraction of its length.
+  ANIM.ph += (v * dt) * 2.35 / growOf(P).legs;
   const want = P.air ? 0 : clamp(v / 5.2, 0, 1);
   ANIM.amp += (want - ANIM.amp) * Math.min(1, dt * 11);
 
@@ -8437,6 +8440,31 @@ const RANKMAP = [0, 2, 4];
 // every number in the passive bench still means what it said.
 const PSCALE = 5 / WMAX;
 const prank = w => w ? (w.l + 1) * PSCALE : 0;
+// ---- WHAT YOU GREW, ON THE ANIMAL. The eight growths are named for parts of
+// the creature - BIGGER TEETH, LONGER LEGS, LONGER NECK, SHARPER CLAWS,
+// THICKER HIDE - and a card that promises a bigger tooth owes you a bigger
+// tooth. Five of them are geometry now, applied where every body plan already
+// meets: the teeth grow in the shared jaw helpers, the legs in leg() (and the
+// whole animal is lifted by what its legs gained, so the feet stay on the
+// ground), the neck is a stretch of everything forward of the chest in mb(),
+// the claws in leg() and claw(), and the hide is bulk on the chamfered masses
+// in blob(). Per rank, capped at the card's own max so a MASTERY keeps paying
+// in numbers without turning the animal into a caricature.
+const GROW_TEETH = .22, GROW_LEGS = .12, GROW_NECK = .07, GROW_CLAWS = .25,
+      GROW_HIDE = .06, GROW_FROM = .22, HIDE_MIN = .10;
+const growRank = (p, k) => { const u = p && p.kit && p.kit[k];
+                             return u ? Math.min(u.l + 1, PASSIVES[k].max) : 0; };
+function growOf(p){
+  return { teeth: 1 + GROW_TEETH * growRank(p, "spinach"),
+           legs:  1 + GROW_LEGS  * growRank(p, "boots"),
+           neck:      GROW_NECK  * growRank(p, "heart"),
+           claws: 1 + GROW_CLAWS * growRank(p, "clover"),
+           hide:      GROW_HIDE  * growRank(p, "plating"),
+           // how far the body stands above where it stood: the leg region
+           // (hip to ankle, learned from leg() last frame) times what the
+           // legs gained
+           lift: (p && p.legSpan) ? (p.legSpan[1] - p.legSpan[0]) * GROW_LEGS * growRank(p, "boots") : 0 };
+}
 // What to call a weapon on screen. A line's evolution announces "LEARNED
 // CINDERTRAIL" and then every surface in the game went on saying CALTROPS - the
 // game named a thing and never used the name again. The move name wins wherever
@@ -11195,7 +11223,32 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // bob runs on |sin| inverted; it ROCKS onto whichever leg is carrying it,
   // which is a lateral shear on the stride itself; and it PITCHES on the
   // off-beat, twice a stride, with the squash that ANIM.sq already carries.
-  const aBob  = ANIM.amp * (.42 - Math.abs(Math.sin(ANIM.ph))) * .10;
+  // what you grew, resolved once a frame (see GROW_*). LONGER LEGS is a
+  // vertical stretch of the LEG REGION - hip to ankle, learned from the plan's
+  // leg() calls last frame - so everything above the hips stands higher by
+  // what the legs gained, the feet, toes and any paw a plan draws by hand at
+  // ground level stay on the ground, and the leg between is longer. One
+  // transform, no plan touched, and nothing left hanging at knee height
+  // (which is what lifting the whole animal did to the SKYREND's paws).
+  const GR = growOf(P), gTeeth = GR.teeth, gLegs = GR.legs, gNeck = GR.neck,
+        gClaws = GR.claws, gHide = GR.hide, gLift = GR.lift,
+        legB = P.legSpan ? P.legSpan[0] : 0, legT = P.legSpan ? P.legSpan[1] : 1;
+  let legTopSeen = -1e9, legBotSeen = 1e9;
+  // Both growths are CONTINUOUS MAPS of an axis, applied to a box's two EDGES
+  // rather than to its centre: a part that touched its neighbour before the
+  // stretch still touches it after, because the same point maps to the same
+  // place whichever box it belongs to. Mapping centres and scaling extents
+  // was almost that, and "almost" was a scute floating .035 off the front of a
+  // body slab whose centre sat behind the chest line (THE MYRIAD, rank 3).
+  const neckMap = v => v > GROW_FROM ? v + (v - GROW_FROM) * gNeck : v;
+  const legMap  = v => v + Math.max(0, Math.min(1, (v - legB) / Math.max(.01, legT - legB))) * gLift;
+  const growXf = (f, y, hz, hy)=>{
+    if(gNeck){ const a = neckMap(f - hz), b = neckMap(f + hz); f = (a + b) * .5; hz = (b - a) * .5; }
+    if(gLift){ const a = legMap(y - hy),  b = legMap(y + hy);  y = (a + b) * .5; hy = (b - a) * .5; }
+    return [f, y, hz, hy];
+  };
+  // a longer-legged animal bounds more
+  const aBob  = ANIM.amp * (.42 - Math.abs(Math.sin(ANIM.ph))) * .10 * gLegs;
   const aLean = ANIM.lean + ANIM.lunge * .26 + AP.lean
               + ANIM.amp * Math.sin(ANIM.ph * 2) * .022;
   const aBank = ANIM.bank + ANIM.amp * Math.sin(ANIM.ph) * .075;
@@ -11239,6 +11292,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     r += ((q % 5) - 2) * nud;
     f += (((q * 3) % 7) - 3) * nud;
     y += (((q * 4) % 9) - 4) * nud;
+    // LONGER NECK: everything forward of the chest reaches further forward,
+    // in proportion to how far forward of it it already is - the strike's
+    // reach, made permanent. LONGER LEGS: the leg region is stretched and
+    // everything above it stands higher. Geometry, not animation, so it lands
+    // before the capture below and the mesh checks see it (growXf).
+    if(gNeck || gLift) [f, y, hz, hy] = growXf(f, y, hz, hy);
     // Extents AND the monster-frame position. Extents alone answer "are these
     // two forms the same mesh"; positions are what let a check ask whether two
     // parts of ONE mesh are sitting on top of each other.
@@ -11277,6 +11336,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // the mesh capture - otherwise every connectivity and distinct-mesh check has
   // to reason about a cloud of loose particles that is meant to be loose.
   const fx = (r,f,y,hx,hy,hz,col,em2,rot)=>{
+    if(gNeck || gLift) [f, y, hz, hy] = growXf(f, y, hz, hy);
     let yy = y * aSq, rr = r * aInv + yy * aBank, ff = f * aInv + yy * aLean;
     if(aAtk) [rr, ff, yy] = atkXf(rr, ff, yy);
     box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
@@ -11388,6 +11448,11 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     [.87, 1, .64,  1, .71, .79,  .62, .68, 1],
   ];
   const blob = (r,f,y,hx,hy,hz,col,em2,rot)=>{
+    // THICKER HIDE: the masses get wider, and a little deeper and taller. Only
+    // the masses - a fatter eye is not a thicker hide - and the bar is below
+    // the chamfer's, because a hatchling's whole torso sits under that one.
+    // Limbs go through chain(), not here, so the legs stay legs.
+    if(gHide && Math.min(hx,hy,hz) >= HIDE_MIN){ hx *= 1 + gHide; hy *= 1 + gHide*.5; hz *= 1 + gHide*.5; }
     if(Math.min(hx,hy,hz) < CHAMFER) return mb(r,f,y,hx,hy,hz,col,em2,rot);
     const F = BLOBF[boxSeq & 3];
     mb(r,f,y, hx*F[0], hy*F[1], hz*F[2], col, em2, rot);
@@ -11590,9 +11655,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, fx2 = f + len*t2, sc = 1 - t2*.30;
       for(const sg of [-1,1]){
-        mb(r + sg*w*(.70 - .30*t2), fx2, y - w*.26 - len*.10*t2, w*.20*sc, w*.13*sc, w*.11*sc,
+        mb(r + sg*w*(.70 - .30*t2), fx2, y - w*.26 - len*.10*t2, w*.20*sc*gTeeth, w*.13*sc*gTeeth, w*.11*sc*gTeeth,
            [.96,.95,.88], .20);
-        mb(r + sg*w*(.66 - .28*t2), f + len*.92*(t2 + .5/n), y - w*.32 - g - (w*.02 + len*.09)*t2, w*.17*sc, w*.12*sc, w*.10*sc,
+        mb(r + sg*w*(.66 - .28*t2), f + len*.92*(t2 + .5/n), y - w*.32 - g - (w*.02 + len*.09)*t2, w*.17*sc*gTeeth, w*.12*sc*gTeeth, w*.10*sc*gTeeth,
            [.96,.95,.88], .20);
       }
     }
@@ -11602,10 +11667,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // toe-length off the front of it.
   const claw = (r,f,y, rs, sz, col)=>{
     mb(r, f, y, sz*1.1, sz*.5, sz*1.3, col, 0);
-    for(let i=-1;i<=1;i++)
+    for(let i=-1;i<=1;i++)                                         // SHARPER CLAWS: longer
       chain([[r + i*sz*.55, f + sz*.30, y - sz*.06],
-             [r + i*sz*.80, f + sz*1.25, y - sz*.20]],
-            sz*.34, sz*.22, [.94,.92,.86], .16, null, true);
+             [r + i*sz*.80, f + sz*(.30 + .95*gClaws), y - sz*.20]],
+            sz*.34*Math.sqrt(gClaws), sz*.22, [.94,.92,.86], .16, null, true);
     mb(r, f - sz*.95, y + sz*.10, sz*.24, sz*.30, sz*.40, col, 0);   // heel
   };
   // ---- CONNECTIVE TISSUE. Reported as "a lot of the objects in the models
@@ -11732,6 +11797,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // it reads as digitigrade, and the toes SUNK into the foot pad rather than
   // stuck on the front of it. `sw` is the stride, -1..1.
   const leg = (r,f,y, len, sw, rs, thick, col, em2, toeCol)=>{
+    // LONGER LEGS happen in legXf(), a stretch of the region between the
+    // highest hip and the lowest ankle any leg reports here (read next frame).
+    if(y > legTopSeen) legTopSeen = y;
+    if(y - len < legBotSeen) legBotSeen = y - len;
     // DARKER THAN THE BODY, ALWAYS. Reported as "a lot of the models' legs and
     // arms aren't visible", and the first reason is that a limb the same colour
     // as the torso it hangs off has no silhouette against it - from the camera
@@ -11762,9 +11831,11 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
             thick*.44, thick*.30, toeCol || lc, em2, null, true);
     // a claw on every toe, in bone, because the foot is the part of a leg you
     // can actually see from above
+    // SHARPER CLAWS: longer, and rooted where they were - the extra length
+    // runs forward out of the toe.
     for(let i=-1;i<=1;i++)
-      mb(foot[0] + i*thick*.86, foot[1] + thick*1.55, foot[2] - thick*.24,
-         thick*.19, thick*.19, thick*.34, [.94,.92,.86], .20);
+      mb(foot[0] + i*thick*.86, foot[1] + thick*(1.55 + .34*(gClaws-1)), foot[2] - thick*.24,
+         thick*.19*gClaws, thick*.19*gClaws, thick*.34*gClaws, [.94,.92,.86], .20);
   };
   // ---- THE FACE FAMILY. Reported as "they all have the same eyes and mouth".
   // They did: one eyes() and one grin() served every creature in the game, so
@@ -11937,9 +12008,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, fx = f + len*t2, sc = 1 - t2*.35;
       for(const sg of [-1,1]){
-        mb(r + sg*w*.78, fx, y - w*.30, w*.16*sc, w*.30*sc, w*.15*sc,
+        mb(r + sg*w*.78, fx, y - w*.30, w*.16*sc*gTeeth, w*.30*sc*gTeeth, w*.15*sc*gTeeth,
            [.95,.95,.90], .18);                                  // upper, pointing down
-        mb(r + sg*w*.70, fx + len/n*.5, y - w*.34 - g, w*.14*sc, w*.26*sc, w*.13*sc,
+        mb(r + sg*w*.70, fx + len/n*.5, y - w*.34 - g, w*.14*sc*gTeeth, w*.26*sc*gTeeth, w*.13*sc*gTeeth,
            [.95,.95,.90], .18);                                  // lower, pointing up
       }
     }
@@ -11970,9 +12041,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const fangs = (r,f,y, w, h, col)=>{
     mb(r, f, y, w, h*1.10, w*.34, [.07,.05,.05], 0);
     for(const sg of [-1,1]){
-      mb(r + sg*w*.60, f + w*.16, y - h*.90, w*.20, h*1.15, w*.22,
-         [.97,.96,.90], .20);
-      mb(r + sg*w*.28, f + w*.14, y + h*.80, w*.15, h*.70, w*.18,
+      mb(r + sg*w*.60, f + w*.16, y - h*.90, w*.20*gTeeth, h*1.15*gTeeth, w*.22*gTeeth,
+         [.97,.96,.90], .20);                                    // BIGGER TEETH
+      mb(r + sg*w*.28, f + w*.14, y + h*.80, w*.15*gTeeth, h*.70*gTeeth, w*.18*gTeeth,
          [.97,.96,.90], .18);
     }
     mb(r, f + w*.10, y - h*.20, w*.74, h*.42, w*.26, [.42,.16,.20], .05);   // tongue
@@ -11990,8 +12061,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       const t2 = (i+.5)/n, sc = 1 - t2*.42;
       for(const sg of [-1,1]){
         mb(r + sg*w*.74, f + len*t2*.86, y - w*.24 - len*t2*.10,
-           w*.13*sc, w*.28*sc, w*.13*sc, [.96,.95,.88], .20);
-        mb(r + sg*w*.66, f + len*t2*.80, y - w*.34 - g, w*.11*sc, w*.24*sc, w*.11*sc,
+           w*.13*sc*gTeeth, w*.28*sc*gTeeth, w*.13*sc*gTeeth, [.96,.95,.88], .20);
+        mb(r + sg*w*.66, f + len*t2*.80, y - w*.34 - g, w*.11*sc*gTeeth, w*.24*sc*gTeeth, w*.11*sc*gTeeth,
            [.96,.95,.88], .20);
       }
     }
@@ -12010,12 +12081,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     mb(r, f + len*.40, y - w*.28 - g*.5, w*.62, w*.16, len*.42, [.36,.10,.16], .06);
     for(const sg of [-1,1])
       chain([[r + sg*w*.52, f + len*.22, y - w*.10],
-             [r + sg*w*.44, f + len*.46, y - w*.62 - g*.8]],
-            w*.20, w*.09, [.98,.97,.90], .22, null, true);
+             [r + sg*w*.44, f + len*.46, y - w*(.10 + .52*gTeeth) - g*.8]],
+            w*.20*Math.sqrt(gTeeth), w*.09*gTeeth, [.98,.97,.90], .22, null, true);
     for(const sg of [-1,1])                                    // small rear teeth
       for(let i=0;i<3;i++)
         mb(r + sg*w*.70, f + len*(.46 + i*.16), y - w*.26,
-           w*.09, w*.16, w*.10, [.96,.95,.88], .18);
+           w*.09*gTeeth, w*.16*gTeeth, w*.10*gTeeth, [.96,.95,.88], .18);
   };
   // mawRow - a tyrant's mouth. Lipless, every tooth on show, biggest at the
   // front, and the whole lower jaw drops with `gape`.
@@ -12029,9 +12100,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // connectivity report found one of them flying in formation. They start
       // inside the bone and hang out of it, which is also what a tooth does.
       for(const sg of [-1,1]){
-        mb(r + sg*w*.74, fx, y - w*.08, w*.15*sc, w*.40*sc, w*.16*sc,
+        mb(r + sg*w*.74, fx, y - w*.08, w*.15*sc*gTeeth, w*.40*sc*gTeeth, w*.16*sc*gTeeth,
            [.96,.95,.88], .20);
-        mb(r + sg*w*.70, fx + len/n*.5, y - w*.26 - gape, w*.13*sc, w*.34*sc, w*.14*sc,
+        mb(r + sg*w*.70, fx + len/n*.5, y - w*.26 - gape, w*.13*sc*gTeeth, w*.34*sc*gTeeth, w*.14*sc*gTeeth,
            [.96,.95,.88], .20);
       }
     }
@@ -12076,10 +12147,11 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
               // is either invisible or fighting the surface behind it.
               eye:  (r,f,y,s)=>mb(r,f,y, s||.06, (s||.06)*1.15, (s||.06)*.9,
                                   [1,1,1], 1.0),
-              tooth:(r,f,y,s)=>mb(r,f,y, s||.038, (s||.038)*1.6, (s||.038)*1.1,
+              tooth:(r,f,y,s)=>mb(r,f,y, (s||.038)*gTeeth, (s||.038)*1.6*gTeeth, (s||.038)*1.1*gTeeth,
                                   [.96,.96,.92], .15) };
   boxSeq = 0;
   (BODY[mCh.type] || BODY.plain)(D);
+  P.legSpan = legTopSeen > legBotSeen ? [legBotSeen, legTopSeen] : null;   // for next frame
   // The live animal only. A portrait draws through the same code with its own
   // scale, and letting a menu card retune the game camera would be a fine bug.
   if(!P.portrait && mHi > mLo){
@@ -12980,7 +13052,7 @@ function render(){
   // actually looking AT it rather than through it. It lives in render() and not
   // in step() on purpose: step does not run while the game is paused, and the
   // pause screen is exactly where this needs to work.
-  if(P && P.idle && running && !paused){
+  if(P && P.idle && running && !paused && !holdFace){
     const want = camYaw + Math.PI;
     const d2 = ((want - P.face + Math.PI*3) % TAU) - Math.PI;
     P.face += d2 * (1 - Math.pow(.05, Math.min(.05, dt)));
@@ -13731,6 +13803,9 @@ window.__g = {
   // the box COUNT plus every box's half-extents sorted - nothing in a body plan
   // animates a size, so it is stable frame to frame, and two forms built from
   // the same mesh produce byte-identical strings.
+  // a model sheet needs the animal to hold its heading while it stands, and
+  // standing still is exactly when it turns to look at the camera
+  still: (on=true)=>{ holdFace = !!on; return holdFace; },
   captureBody:()=>{ bodyCap = []; bodyCapOut = null; },
   stageNm:    ()=>stageNm(),
   // the coat a form is drawn in (table) and the one the last frame actually
@@ -13869,6 +13944,7 @@ window.__g = {
                hit:+ANIM.hit.toFixed(3), hitR:+ANIM.hitR.toFixed(3), hitF:+ANIM.hitF.toFixed(3),
                br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3),
                atkT:+ANIM.atkT.toFixed(3), atkKind:ANIM.atkKind, atkDir:+ANIM.atkDir.toFixed(3) }),
+  grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), lift:+g.lift.toFixed(4) }; },
   pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3), bite:+(p.bite||0).toFixed(3) }; },
   deathFx: ()=>+deathFx.toFixed(3),
   // the beat by hand, like step(): a headless renderer at four frames a

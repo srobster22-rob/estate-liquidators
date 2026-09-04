@@ -6629,6 +6629,83 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        accents.size >= 6, `${accents.size} accents`);
   }
 
+  console.log("\n=== 55. THE CREATURE SHOWS WHAT YOU GREW ===");
+  {
+    // The eight growths were renamed for parts of the animal (R254) - BIGGER
+    // TEETH, LONGER LEGS, LONGER NECK, SHARPER CLAWS, THICKER HIDE - and a
+    // card that promises a bigger tooth owes you a bigger tooth. Five of them
+    // are geometry now: measured on the captured mesh, rank 0 against rank 3,
+    // the same six numbers per box the connectivity checks read.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
+      const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const boot = (ch, st) => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start(ch); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0);
+        if (st) g.evolveTo(st); g.step(30, 1/60); };
+      // a frame BEFORE the capture is armed: the lift the legs earn is read
+      // the frame after they earn it, and a rank that has just been given has
+      // not been drawn yet
+      const cap = async () => { g.resume(); g.step(2, 1/60); await frame(); g.capturePos(); await frame(); await frame();
+        const b = g.posOut(); if (!b) return []; const bx = []; for (let i = 0; i < b.length / 6; i++) bx.push(b.slice(i*6, i*6+6)); return bx; };
+      // layout (r, f, y, hx, hz, hy)
+      const minY = bx => Math.min(...bx.map(x => x[2] - x[5]));
+      const maxF = bx => Math.max(...bx.map(x => x[1] + x[4]));
+      const meanY = bx => { let s = 0, w = 0; for (const x of bx) { const v = x[3]*x[4]*x[5]; s += x[2]*v; w += v; } return s / w; };
+      const bigHx = bx => bx.slice().sort((a, b) => b[3]*b[4]*b[5] - a[3]*a[4]*a[5])[0][3];
+      // boxes whose extents grew by the same factor k in [lo, hi] - all three
+      // for a tooth; lateral and fore-aft for a claw, because a claw sits at
+      // the bottom edge of the leg region and the LONGER LEGS map stretches
+      // its height a little on its own
+      const grown = (a, b, lo, hi, flat) => { let n = 0; for (let i = 0; i < Math.min(a.length, b.length); i++) {
+        const k = b[i][3] / a[i][3]; if (k > lo && k < hi && Math.abs(b[i][4] / a[i][4] - k) < .02 && (flat || Math.abs(b[i][5] / a[i][5] - k) < .02)) n++; } return n; };
+      const comps = (bx) => { const n = bx.length, ov = (A, B, k) => Math.min(A[k]+A[k+3], B[k]+B[k+3]) - Math.max(A[k]-A[k+3], B[k]-B[k+3]);
+        const par = Array.from({ length: n }, (_, i) => i); const find = a => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+        for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++) if (Math.min(ov(bx[i], bx[j], 0), ov(bx[i], bx[j], 1), ov(bx[i], bx[j], 2)) > 0) { const a = find(i), b = find(j); if (a !== b) par[b] = a; }
+        return new Set(Array.from({ length: n }, (_, i) => find(i))).size; };
+      // phase advanced per metre walked: the stride, independent of speed
+      const stride = () => { g.aim(0); const a0 = g.anim().ph, s0 = g.state(); key("keydown", "KeyW"); for (let i = 0; i < 90; i++) g.stepRaw(1/60); key("keyup", "KeyW");
+        const a1 = g.anim().ph, s1 = g.state(); for (let i = 0; i < 60; i++) g.stepRaw(1/60); return (a1 - a0) / Math.max(.01, Math.hypot(s1.x - s0.x, s1.z - s0.z)); };
+      const out = {};
+      boot("intern", 0);
+      const base = await cap(); out.n0 = base.length; out.grow0 = g.grow();
+      out.stride0 = stride();
+      g.give("spinach", 3); const t = await cap(); out.teeth = { grown: grown(base, t, 1.58, 1.74), mul: g.grow().teeth };
+      g.give("boots", 3); const l = await cap();
+      out.legs = { rise: meanY(l) - meanY(t), feet: minY(l) - minY(base), lift: g.grow().lift, mul: g.grow().legs, stride: stride() };
+      g.give("heart", 3); const nk = await cap(); out.neck = { reach: maxF(nk) / maxF(l), add: g.grow().neck };
+      g.give("clover", 3); const c = await cap(); out.claws = { grown: grown(nk, c, 1.68, 1.82, true), mul: g.grow().claws };
+      g.give("plating", 3); const h = await cap(); out.hide = { wider: bigHx(h) / bigHx(c), add: g.grow().hide };
+      // a jaw built by a shared helper - the WYVERNET's hookJaw
+      boot("accnt", 1); const j0 = await cap(); g.give("spinach", 3); const j1 = await cap(); out.jaw = { grown: grown(j0, j1, 1.58, 1.74), n: j0.length };
+      // and the grown animal is still one object, on three body plans
+      out.whole = [];
+      for (const [ch, st] of [["intern", 0], ["ox", 1], ["accnt", 1]]) {
+        boot(ch, st); const a = await cap(); for (const k of ["spinach", "boots", "heart", "clover", "plating"]) g.give(k, 3);
+        const b = await cap(); out.whole.push({ nm: g.stageNm(), n0: a.length, n1: b.length, c0: comps(a), c1: comps(b) });
+      }
+      return out;
+    });
+    ok("BIGGER TEETH: rank 3 grows the four fangs by the card's factor, all three extents together",
+       r.teeth.grown >= 4 && Math.abs(r.teeth.mul - 1.66) < .01, `${r.teeth.grown} boxes x${r.teeth.mul}`);
+    ok("and a jaw drawn by a shared helper grows every tooth in it",
+       r.jaw.grown >= 8, `${r.jaw.grown} teeth of ${r.jaw.n} boxes on the WYVERNET`);
+    ok("LONGER LEGS: rank 3 lifts the body and the feet stay where the ground is",
+       r.legs.rise > .05 && Math.abs(r.legs.feet) < .02 && r.legs.lift > .05,
+       `body +${r.legs.rise.toFixed(3)}, feet ${r.legs.feet >= 0 ? "+" : ""}${r.legs.feet.toFixed(3)}, lift ${r.legs.lift}`);
+    ok("and it takes longer strides - phase per metre falls by the leg factor",
+       r.stride0 > 2.2 && Math.abs(r.legs.stride * r.legs.mul - r.stride0) < .08,
+       `${r.stride0.toFixed(3)} -> ${r.legs.stride.toFixed(3)} rad/m at x${r.legs.mul}`);
+    ok("LONGER NECK: rank 3 puts the snout at least 8% further forward",
+       r.neck.reach > 1.08 && r.neck.add > .2, `x${r.neck.reach.toFixed(3)} (+${r.neck.add})`);
+    ok("SHARPER CLAWS: rank 3 grows all twelve claws by the card's factor",
+       r.claws.grown >= 12, `${r.claws.grown} claws x${r.claws.mul}`);
+    ok("THICKER HIDE: rank 3 makes the torso at least 8% wider",
+       r.hide.wider > 1.08, `x${r.hide.wider.toFixed(3)} (+${r.hide.add})`);
+    ok("and at full growth each animal is still ONE object - no growth tears a part off",
+       r.whole.length === 3 && r.whole.every(w => w.n1 > 0 && w.c1 <= w.c0),
+       r.whole.map(w => `${w.nm} ${w.c0}->${w.c1} parts (${w.n0}/${w.n1} boxes)`).join("; "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

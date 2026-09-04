@@ -10,7 +10,7 @@
 //      nudge in mb() moves every box by up to .008 on each axis, which is
 //      enough to pull a kissing pair apart on its own.
 //
-// Usage: node analyze.js [minOverlap]
+// Usage: node analyze.js [minOverlap]      GROW=1 node analyze.js  (every form at full growth)
 const fs = require("fs"), path = require("path");
 function loadPlaywright(){
   for(const p of ["playwright", "/opt/node22/lib/node_modules/playwright"]){
@@ -31,7 +31,7 @@ const MIN = +(process.argv[2] || 0);
   const page = await b.newPage({ viewport:{ width:1000, height:700 } });
   page.on("pageerror", e => console.log("PAGEERROR", e.message));
   await page.goto("file://" + path.resolve(__dirname, "index.html"), { waitUntil:"load" });
-  const out = await page.evaluate(async (MIN) => {
+  const out = await page.evaluate(async ({ MIN, GROW }) => {
     const g = window.__g;
     const frame = () => new Promise(r => requestAnimationFrame(() => r()));
     // ONE analysis, two rosters. Player forms and horde bodies capture into the
@@ -78,6 +78,12 @@ const MIN = +(process.argv[2] || 0);
       g.wipeSave(); g.start(ch); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
       g.drainPicks(true); g.place(0,0);
       if(st) g.evolveTo(st);
+      // GROW=1: the same question of the animal at full growth - BIGGER TEETH,
+      // LONGER LEGS, LONGER NECK, SHARPER CLAWS, THICKER HIDE at rank 3 - since
+      // a growth that tears a part off is a growth that has to be retuned. One
+      // frame first: the lift the legs earn is read the frame after.
+      if(GROW){ for(const k of ["spinach","boots","heart","clover","plating"]) g.give(k, 3);
+                g.resume(); g.step(2, 1/60); await frame(); }
       g.resume(); g.capturePos();
       await frame(); await frame();
       const bx = g.posOut();
@@ -163,7 +169,7 @@ const MIN = +(process.argv[2] || 0);
       hordeRes.push(Object.assign({ ch:"boss"+bi, st:"", nm }, r2));
     }
     return { res, hordeRes };
-  }, MIN);
+  }, { MIN, GROW: !!process.env.GROW });
 
   const report = (rows, title) => {
     let bad = 0;
