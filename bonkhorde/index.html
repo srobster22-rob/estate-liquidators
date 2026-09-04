@@ -1879,7 +1879,7 @@ magnet:  { name:"HUNGRIER", ic:"magnet",  kind:"p", max:3, eff:"+58% PICKUP RANG
            ds:"And it drags the horde into a pile." },
 clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
            ds:"Crits hit for 2.3x." },
-dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:"+1 SHOT",
+dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:"+1 OF EVERYTHING",
            ds:"Every weapon fires again. Copies hit for 55%." },
 // THE RULES. The eight adjectives answer "easy to read"; these answer "more
 // fun to play". A rule changes how a run PLAYS rather than how hard it hits,
@@ -10543,7 +10543,7 @@ function finish(why, won){
   const kit = Object.keys(P.kit).map(k=>{
     const w = P.kit[k], D = WEAPONS[k]||PASSIVES[k];
     const nm = wName(k, w);
-    return `${icon(D.ic)} ${nm} ${w.evo?"★":"lv"+(w.l+1)}`;
+    return `${icon(D.ic)} ${nm} ${w.evo?"★":isRule(k)?"RULE":"lv"+(w.l+1)}`;
   }).join(" &nbsp;·&nbsp; ");
 
   const flavor = won ? "The world is quiet. Whatever you are now, you are the biggest thing in it."
