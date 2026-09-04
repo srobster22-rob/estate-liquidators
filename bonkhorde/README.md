@@ -261,6 +261,13 @@ node passives.js 5                # per-passive offence/defence bench, n=5
 node starters.js 8                # one character, every starting weapon, n=8
 node mutate.js                    # break the game on purpose, one thing at a
                                   # time, and check the suite notices
+node film/sec.js 56               # ONE section of test.js on its own, sliced by its banner
+node film/mutsec.js 56            # the mutants that belong to one section, applied and run
+node film/growfilm.js grow intern 1 all    # the same animal at rank 0 and rank 3 (CAM=front|side|close|snout|play, RANKS=0,1,2,3, VW=390 VH=844 for a phone)
+node film/hordefilm.js bite brute # an enemy walking in and biting a standing player, one frame per shot (FOLLOW=1 keeps the camera on it)
+node film/bossfilm.js slam 0 slam # a boss cued into an ability, filmed through the tell and the act (FOLLOW=1)
+node film/divefilm.js dive        # the pterling's dive, spitfilm.js the DILOPHO's lob, atkfilm.js the player's own strike
+python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
