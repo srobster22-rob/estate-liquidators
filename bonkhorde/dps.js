@@ -121,7 +121,7 @@ const REPEATS = +(process.argv[2] || 3);
     for (const r of rows)
       console.log(`${r.w.padEnd(10)} ${Math.round(r.boss).toString().padStart(11)} ` +
                   `${Math.round(r.crowd).toString().padStart(12)} ` +
-                  `${(Math.floor(r.alive/60) + ":" + String(Math.round(r.alive%60)).padStart(2,"0")).padStart(11)} ` +
+                  `${(Math.floor(r.alive/60) + ":" + String(Math.floor(r.alive%60)).padStart(2,"0")).padStart(11)} ` +
                   `${(r.boss/med).toFixed(2).padStart(14)}x`);
     console.log(`${"".padEnd(10)} ${("median " + Math.round(med)).padStart(11)}`);
   }
