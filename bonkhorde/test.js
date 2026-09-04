@@ -4098,23 +4098,31 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // that a shift in the shared RNG stream upstream (R256's per-animal
       // wind-up jitter draws one number per boss) turned it red every run
       // with the same 16% vs 16%. A pinned stream makes the sample the same
-      // sample in the suite and alone; the third round halves its variance.
+      // sample in the suite and alone; eight rounds (R261: the brute is 2-4% of
+      // a field - forty animals in two thousand - and its ice/ferns odds ratio
+      // runs .39 to .77 across six seeds against a true halving, so a short
+      // sample against a .75 bar turned on a dozen brutes) keep both shares
+      // out of the noise, and the bar sits at .8.
       g.wipeSave(); g.pin(7); g.start("intern"); g.god(); g.disarm();
       g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
       g.skipTo(400);                       // phase t=360: all five kinds live
-      const share = biome => {
-        g.forceBiome(biome);
-        const tally = {};
-        for(let round = 0; round < 3; round++){
-          g.clearEnemies();
+      // INTERLEAVED. The mix drifts with the clock - brutes climb through the
+      // phases - and measuring the three grounds one after the other put the
+      // ice a minute later than the ferns, which is where "heavy things stay
+      // off the ice" went to 4% against 4% however long it sampled. One
+      // round of each ground in turn, eight times, and all three see the same
+      // minute.
+      const tallies = { grass:{}, warren:{}, ice:{} };
+      for(let round = 0; round < 8; round++){
+        for(const biome of ["grass", "warren", "ice"]){
+          g.forceBiome(biome); g.clearEnemies();
           for(let i = 0; i < 4000 && g.state().enemies < 250; i++) g.step(1, 1/60);
-          const c = g.comp();
+          const c = g.comp(), tally = tallies[biome];
           for(const k in c) tally[k] = (tally[k] || 0) + c[k];
         }
-        const tot = Object.values(tally).reduce((a, b) => a + b, 0) || 1;
-        const s = {}; for(const k in tally) s[k] = tally[k] / tot;
-        return s;
-      };
+      }
+      const share = biome => { const tally = tallies[biome], tot = Object.values(tally).reduce((a, b) => a + b, 0) || 1;
+        const s = {}; for(const k in tally) s[k] = tally[k] / tot; return s; };
       const ferns = share("grass"), warren = share("warren"), ice = share("ice");
       return { ferns, warren, ice };
     });
@@ -4131,7 +4139,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        odds(r.ice.runner) > odds(r.ferns.runner) * 1.2,
        `runner ${pct(r.ice.runner)} on ice vs ${pct(r.ferns.runner)} on ferns`);
     ok("and heavy things stay off the ice",
-       odds(r.ice.brute) < odds(r.ferns.brute) * 0.75,
+       odds(r.ice.brute) < odds(r.ferns.brute) * 0.8,
        `brute ${pct(r.ice.brute)} on ice vs ${pct(r.ferns.brute)} on ferns`);
   }
 
@@ -6749,11 +6757,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         ptPeak: h0 !== undefined ? Math.max(...rows.slice(h0, h0 + 8).map(r => r.pt)) : null,
         rcPeak: h0 !== undefined ? Math.max(...rows.slice(h0, h0 + 8).map(r => r.rc)) : null,
         ptLater: h0 !== undefined ? rows[Math.min(239, h0 + 24)].pt : null };
-      // 2. walk out of the wind-up: the snap comes and the bite whiffs
-      boot(); const hp1 = g.state().hp; g.spawnAt("shambler", 0, 1.2); let started = -1, snapped = -1, dAt = null;
+      // 2. walk out of the wind-up: the snap comes and the bite whiffs - and you hear it
+      boot(); g.setOpt("sound", 1); g.sfxReset(); const hp1 = g.state().hp; g.spawnAt("shambler", 0, 1.2); let started = -1, snapped = -1, dAt = null;
       for (let i = 0; i < 80; i++) { g.stepRaw(1/60); const e = g.gait()[0]; if (started < 0 && e.wu > 0) { started = i; key("keydown", "KeyS"); }
         if (started >= 0 && snapped < 0 && e.lg > .9) { snapped = i; const s = g.state(); dAt = Math.hypot(e.x - s.x, e.z - s.z); } }
-      key("keyup", "KeyS"); out.whiff = { started, snapped, dAt: dAt === null ? null : +dAt.toFixed(2), dmg: +(hp1 - g.state().hp).toFixed(2) };
+      key("keyup", "KeyS"); out.whiff = { started, snapped, dAt: dAt === null ? null : +dAt.toFixed(2), dmg: +(hp1 - g.state().hp).toFixed(2), clicks: g.sfx().whiff || 0 };
+      // ...and a bite that lands makes no click; a pile that whiffs together makes one
+      boot(); g.setOpt("sound", 1); g.sfxReset(); g.spawnAt("shambler", 0, 1.2); for (let i = 0; i < 60; i++) g.stepRaw(1/60); out.landClicks = g.sfx().whiff || 0;
+      boot(); g.setOpt("sound", 1); g.sfxReset(); for (let k = 0; k < 6; k++) g.spawnAt("shambler", -.5 + k * .2, 1.2); let st2 = -1;
+      for (let i = 0; i < 80; i++) { g.stepRaw(1/60); if (st2 < 0 && g.gait().some(e => e.wu > 0)) { st2 = i; key("keydown", "KeyS"); } }
+      key("keyup", "KeyS"); out.pileClicks = g.sfx().whiff || 0;
       // 3. the spitter: the tell rises through the last SPIT_TELL of the timer, and the lob is a snap
       boot(); g.spawnAt("spitter", 0, 12.5); const sr = [];
       for (let i = 0; i < 400; i++) { g.stepRaw(1/60); const e = g.gait()[0]; sr.push({ pre: e.pre, lg: e.lg, pt: e.pt }); }
@@ -6775,6 +6788,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("walk out of the wind-up and the snap comes anyway - at air: no damage",
        r.whiff.started >= 0 && r.whiff.snapped > r.whiff.started && r.whiff.dmg === 0 && r.whiff.dAt > 1.3,
        `wind-up at ${r.whiff.started}, snap at ${r.whiff.snapped} with the shambler ${r.whiff.dAt} m away, damage ${r.whiff.dmg}`);
+    ok("and you hear it: a whiff clicks, a landed bite does not, and six whiffing at once are one click",
+       r.whiff.clicks >= 1 && r.landClicks === 0 && r.pileClicks >= 1 && r.pileClicks <= 2,
+       `walk-out ${r.whiff.clicks}, landed ${r.landClicks}, pile of six ${r.pileClicks}`);
     ok("a spitter telegraphs the lob: quiet a second before, rearing through the last .3 s, and the spit is a snap",
        r.spit.snaps.length >= 2 && r.spit.quiet < .05 && r.spit.pre18 < .15 && r.spit.pre1 > .7 && r.spit.ptBefore < -.15 && r.spit.ptPeak > .3,
        `spits at ${r.spit.snaps.join(" ")}; pre -1s ${r.spit.quiet}, -.3s ${r.spit.pre18}, -1f ${r.spit.pre1}; pitch ${r.spit.ptBefore} -> ${r.spit.ptPeak}`);

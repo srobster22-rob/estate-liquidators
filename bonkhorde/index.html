@@ -826,13 +826,18 @@ function noiseBurst(dur, vol){
   f.type="lowpass"; f.frequency.value=900;
   s.buffer=b; g.gain.value=vol||.2; s.connect(f); f.connect(g); g.connect(master); s.start();
 }
+// Sounds jitter their pitch off their OWN random source. rnd() is the world's
+// seeded stream, and a sound drawing from it meant whether a bite whiffed
+// near you (R261) moved every spawn roll after it - a pinned bench that
+// depended on what you happened to hear.
+const srnd = (a, b) => a + Math.random() * (b - a);
 const SFX = {
-  bonk:  ()=>blip(rnd(150,190), .07, "square",  .09, .5),
-  zap:   ()=>blip(rnd(700,900), .06, "sawtooth",.05, .3),
-  pop:   ()=>blip(rnd(300,420), .05, "triangle",.06, 2.2),
+  bonk:  ()=>blip(srnd(150,190), .07, "square",  .09, .5),
+  zap:   ()=>blip(srnd(700,900), .06, "sawtooth",.05, .3),
+  pop:   ()=>blip(srnd(300,420), .05, "triangle",.06, 2.2),
   boom:  ()=>{ noiseBurst(.28,.22); blip(70,.3,"sine",.2,.4); },
   // the note climbs a semitone per gem in a streak, capped two octaves up
-  gem:   (n=0)=>blip(rnd(840,900)*Math.pow(1.0595, Math.min(n,24)),
+  gem:   (n=0)=>blip(srnd(840,900)*Math.pow(1.0595, Math.min(n,24)),
                      .045,"sine", .05, 1.6),
   levelup:()=>{ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>blip(f,.14,"triangle",.13),i*62)); },
   hurt:  ()=>{ noiseBurst(.14,.18); blip(120,.16,"sawtooth",.12,.4); },
@@ -860,11 +865,16 @@ const SFX = {
   // A rising two-note chirp: short, bright, and nothing else in the mix climbs
   // in 90ms, so it reads as "behind you" rather than as another pop.
   // GORE: a short bodily thud with a rising tail - a charge, not a swing.
-  gore:  ()=>{ blip(rnd(90,110), .09, "sawtooth", .10, .45);
-               setTimeout(()=>blip(rnd(190,230), .07, "square", .06, 1.5), 40);
+  gore:  ()=>{ blip(srnd(90,110), .09, "sawtooth", .10, .45);
+               setTimeout(()=>blip(srnd(190,230), .07, "square", .06, 1.5), 40);
                noiseBurst(.10, .12); },
   dive:  ()=>{ blip(880, .05, "square", .045, 2.0);
                setTimeout(()=>blip(1320, .06, "square", .05, 2.0), 55); },
+  // A bite that snaps at air (R256's wind-up, stepped out of): a dry click,
+  // shorter and higher than the bonk and with none of the pop's rise - jaws
+  // meeting nothing. Quiet, because a pile of them can whiff together, and
+  // throttled at the caller for the same reason.
+  whiff: ()=>{ blip(srnd(560,620), .025, "square", .035, .7); noiseBurst(.025, .04); },
   // A den waking is the arena telling you it noticed. Low, wide, and long
   // enough to turn around for - a boss horn's smaller cousin.
   denWake:()=>{ blip(96, .55, "sawtooth", .17, .55); noiseBurst(.35, .13);
@@ -1068,6 +1078,14 @@ const DIVE_R = 9.5, DIVE_TELL = .42, DIVE_TIME = .45,
 // shorter by the same amount, so a pile of them still costs what it cost.
 // Spitters telegraph the lob the same way, off the timer they already run.
 const BITE_WIND = .18, BITE_REST = .47, SPIT_TELL = .30;
+// the whiff is heard within WHIFF_R of you and at most once every WHIFF_GAP:
+// a pile that snaps at air together is one click, not a rattle
+const WHIFF_R = 7, WHIFF_GAP = .12;
+let lastWhiff = -9;
+// (the stamp is reset with the run in resetAnim(): a stamp from the last run
+// gagged this one's first whiff when it fell within the gap of the old one's
+// last - the pile-of-six check found it twice, once each way)
+function whiff(d){ if(d < WHIFF_R && T - lastWhiff >= WHIFF_GAP){ lastWhiff = T; SFX.whiff(); } }
 const MARK_KINDS = [
   { id:"ring",   nm:"THE RIBCAGE", r:7.5, den:"brute",    pack:[5,8],   ds:"a horned herd, and they were here first" },
   { id:"crater", nm:"CRATER",      r:8.0, den:"shambler", pack:[10,16], ds:"something laid a clutch in the pit" },
@@ -7672,7 +7690,8 @@ function strike(k, echo){
   ANIM.atkSide = -ANIM.atkSide; ANIM.atkDir = 0;
   ANIM.lunge = Math.min(1, ANIM.lunge + (echo ? .18 : .30));
 }
-function resetAnim(){ ANIM.ph = 0; ANIM.amp = 0; ANIM.lean = 0; ANIM.bank = 0; ANIM.atkT = 9; ANIM.atkKind = "";
+function resetAnim(){ lastWhiff = -9;         // the whiff throttle is per run
+                      ANIM.ph = 0; ANIM.amp = 0; ANIM.lean = 0; ANIM.bank = 0; ANIM.atkT = 9; ANIM.atkKind = "";
                       ANIM.sq = 1; ANIM.lunge = 0; ANIM.look = 0; ANIM.land = 0;
                       ANIM.hit = 0; ANIM.hitR = 0; ANIM.hitF = -1; ANIM.br = 0;
                       ANIM.dead = 0; deathFx = 0; endFade(""); }
@@ -9589,7 +9608,7 @@ function updateEnemies(dt){
         // THE BOTTOM. A dive that runs out without a hit used to just stop -
         // level, at speed, as if nothing had been attempted. It snaps at air
         // now (the same strike the bite uses) and pulls out of it.
-        if(e.dvT <= 0){ e.dvT = 0; e.lg = 1; }
+        if(e.dvT <= 0){ e.dvT = 0; e.lg = 1; whiff(d); }
       } else if(e.dv <= 0 && d < DIVE_R && d > 1.2){
         e.dvW = (e.dvW || 0) + dt;
         if(e.dvW > 0 && !e.dvS){ e.dvS = 1; SFX.dive(); }   // once, on the wind-up
@@ -9730,6 +9749,7 @@ function updateEnemies(dt){
         if(e.wu <= 0){
           e.wu = 0;
           if(reach && P.iframe <= 0){ playerHurt(e.dmg, e.x, e.z); P.iframe = BITE_REST; }
+          else whiff(d);                            // snapped at air: you stepped out of it
           e.lg = 1;                                 // the snap, see walk() and eb()
         }
       } else if(reach && e.lg <= 0 && P.iframe <= Math.max(0, e.lead || 0)){
