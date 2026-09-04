@@ -8399,9 +8399,15 @@ function auraEchoes(w){
   for(let i=1;i<=n;i++){ const p = h[h.length - 1 - i*AURA_ECHO_STEP]; if(p) out.push(p); }
   return out;
 }
+// THE BOSS IS THE TARGET. BONK BAT and BOLT aimed at the NEAREST body, and in
+// sudden death the nearest body is never the finale - it is one of the forty
+// grubs on your heels. Measured on three benched seeds: 1.3 to 2 million
+// damage a minute dealt, 0 to 290k of it on TERRAVORE. ZAP and the BROOD
+// already preferred a boss in reach; the swing and the shot do too now,
+// through the same threatTarget().
 function fireBat(w,s){
   statSwings++;
-  const tgt = nearest(P.x, P.z, s.rng+3);
+  const tgt = threatTarget(P.x, P.z, s.rng+3);
   const ang = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
   swings.push({ x:P.x, z:P.z, y:P.y, ang, arc:s.arc, rng:s.rng, life:.20, max:.20, evo:w.evo });
   const roll = dmgOut(s.d);
@@ -8423,7 +8429,7 @@ function fireBolt(w,s){
   // carries one bolt more than the build says it should.
   const n = s.n + dupeN() + (apexIs("echo") ? 1 : 0);
   statBolts += n;
-  const tgt = nearest(P.x, P.z, 40);
+  const tgt = threatTarget(P.x, P.z, 40);
   const base = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
   for(let i=0;i<n;i++){
     const spread = w.evo ? (i-(n-1)/2)*0.17 : (i-(n-1)/2)*0.09;
@@ -9560,8 +9566,9 @@ function playerHurt(raw, sx, sz){
 function updateProjectiles(dt){
   for(let i=bolts.length-1;i>=0;i--){
     const b = bolts[i];
-    // gentle homing - enough to feel smart, not enough to be a guarantee
-    const t = nearest(b.x, b.z, 16, b.hit);
+    // gentle homing - enough to feel smart, not enough to be a guarantee -
+    // and toward the boss when one is in reach, like the shot was aimed
+    const t = threatTarget(b.x, b.z, 16, b.hit);
     if(t){
       let want = Math.atan2(t.x-b.x, t.z-b.z), da = want-b.a;
       while(da> Math.PI) da-=TAU; while(da<-Math.PI) da+=TAU;
@@ -13743,6 +13750,11 @@ window.__g = {
   rules: ()=>Object.keys(PASSIVES).filter(isRule).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff })),
   setHop: (n)=>{ P.hop = n; return P.hop; },
   noRules: (on=true)=>noRules=!!on,
+  // where the last swing and the last shot were aimed, for the targeting checks
+  bossTo: (x,z)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b){ b.x=x; b.z=z; rebuildGrid(); } return !!b; },
+  clearShots: ()=>{ swings.length = 0; bolts.length = 0; },
+  lastSwing: ()=>swings.length ? +swings[swings.length-1].ang.toFixed(3) : null,
+  lastBolt:  ()=>bolts.length ? +bolts[bolts.length-1].a.toFixed(3) : null,
   stompDmg: ()=>{ const d = dmgStomp, n = statStomps, h = statStompHits; dmgStomp = 0; statStomps = 0; statStompHits = 0;
                   return { dmg:Math.round(d), landings:n, hit:h }; },
   hordeHp: ()=>+enemies.filter(e=>!e.dead).reduce((a,e)=>a+Math.max(0,e.hp),0).toFixed(1),

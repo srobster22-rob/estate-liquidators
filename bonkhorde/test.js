@@ -6322,6 +6322,35 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        JSON.stringify(r.more));
   }
 
+  console.log("\n=== 47. THE BOSS IS THE TARGET ===");
+  {
+    // BONK BAT and BOLT aimed at the nearest body. With a grub two metres south
+    // and TERRAVORE seven metres north, the swing and the shot went south. ZAP
+    // already weighed a boss in reach above everything; the swing and the shot
+    // read the same threatTarget() now. A north-facing aim is angle 0.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+      const aim = (w) => { g.wipeSave(); g.pin(8); g.pinRun(8); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.aim(0); g.give(w, 1);
+        g.boss(3); g.step(150, 1/60);                                        // let it rise
+        g.bossTo(0, 7); g.clearShots();                                       // forget the swings before the move
+        g.spawnAt("brute", 0, -2); g.step(2, 1/60);                           // the decoy arrives last, so it is alive
+        const b = g.bossAt(); const st = g.state();
+        const bossAng = b ? wrap(Math.atan2(b.x - st.x, b.z - st.z)) : null;
+        const grubAng = Math.PI;
+        // wait out the first cooldown and read where the next fire went
+        for (let i = 0; i < 120; i++) { g.step(1, 1/60); const a = w === "bat" ? g.lastSwing() : g.lastBolt(); if (a !== null) return { w, aimed: wrap(a), bossAng, grubAng, bossDist: b ? Math.round(Math.hypot(b.x - st.x, b.z - st.z)) : null }; }
+        return { w, aimed: null, bossAng, grubAng };
+      };
+      return { bat: aim("bat"), bolt: aim("bolt") };
+    });
+    const toward = (a, target) => a !== null && target !== null && Math.abs(Math.atan2(Math.sin(a - target), Math.cos(a - target))) < .5;
+    ok("BONK BAT swings at the boss in reach, not at the grub at its feet",
+       toward(r.bat.aimed, r.bat.bossAng) && !toward(r.bat.aimed, r.bat.grubAng), JSON.stringify(r.bat));
+    ok("BOLT is loosed at the boss in reach, not at the grub at its feet",
+       toward(r.bolt.aimed, r.bolt.bossAng) && !toward(r.bolt.aimed, r.bolt.grubAng), JSON.stringify(r.bolt));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
