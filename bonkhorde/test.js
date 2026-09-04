@@ -6351,6 +6351,32 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        toward(r.bolt.aimed, r.bolt.bossAng) && !toward(r.bolt.aimed, r.bolt.grubAng), JSON.stringify(r.bolt));
   }
 
+  console.log("\n=== 48. BOSSES ARE FIGHTS ===");
+  {
+    // The three mid-run bosses died in five to twenty-five seconds against the
+    // benched veteran, twenty-six metres out. They rise fifteen metres away now
+    // and carry health that grows with your level, capped at three times; the
+    // finale, recalibrated against the ceiling on its own, does not grow.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const at = (lvl, i) => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies();
+        for (let k = 0; k < 40000 && g.state().lvl < lvl; k++) g.xp(20);            // climb to the level, exactly
+        g.drainPicks(true); g.boss(i); g.step(1, 1/60); const b = g.bossAt(), st = g.state();
+        return { lvl: st.lvl, hp: b.hp, dist: +Math.hypot(b.x - st.x, b.z - st.z).toFixed(1), nm: b.nm }; };
+      return { m1: at(1, 0), m10: at(10, 0), m25: at(25, 0), m60: at(60, 0), t1: at(1, 1), t60: at(3, 1), f1: at(1, 3), f60: at(60, 3) };
+    });
+    ok("THE MATRIARCH is the table's 3,800 for a hatchling at level 1", r.m1.hp === 3800 && r.m1.lvl === 1, `${r.m1.hp} at level ${r.m1.lvl}`);
+    ok("and grows with the level you reached: about x1.45 at ten, x2.2 at twenty-five, and no more than x3 ever",
+       r.m10.lvl >= 10 && Math.abs(r.m10.hp / 3800 - (1 + .05 * (r.m10.lvl - 1))) < .02 &&
+       Math.abs(r.m25.hp / 3800 - (1 + .05 * (r.m25.lvl - 1))) < .02 && r.m60.hp === 3800 * 3,
+       `lv${r.m10.lvl} ${r.m10.hp}, lv${r.m25.lvl} ${r.m25.hp}, lv${r.m60.lvl} ${r.m60.hp}`);
+    ok("the finale does not grow - it was calibrated against the ceiling on its own", r.f1.hp === 1200000 && r.f60.hp === 1200000,
+       `${r.f1.hp} at level ${r.f1.lvl}, ${r.f60.hp} at level ${r.f60.lvl}`);
+    ok("every boss rises inside weapon range, fifteen metres out, not on the horizon",
+       [r.m1, r.t1, r.f1].every(b => b.dist >= 12 && b.dist <= 16.5), [r.m1, r.t1, r.f1].map(b => `${b.nm} ${b.dist}m`).join(", "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

@@ -8801,15 +8801,27 @@ function spawnEnemy(type, atX, atZ){
   enemies.push(made);
   return made;                                  // the hunt event needs a handle
 }
+const BOSS_AT = 15, BOSS_GROW = .05, BOSS_GROW_CAP = 3;
 function spawnBoss(b){
   // Hand-copied, not spread, so every field a boss carries has to be listed
   // here on purpose. That is the point of it and it is also the trap: `body`
   // was added to the four boss entries and silently did not arrive, so all four
   // rendered the five-box fallback while the table said otherwise.
-  const def = { nm:b.nm, hp:b.hp, spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
+  // AT WHATEVER SIZE YOU REACHED. The three mid-run bosses carried flat health
+  // and died in five to twenty-five seconds against a benched veteran, most of
+  // them twenty-six metres out before they had finished rising: a walk past,
+  // not a fight. Their health scales with your level now - x1.45 at ten,
+  // x2.2 at twenty-five, capped at x3 - so a hatchling's first MATRIARCH is
+  // the same animal it was and a veteran's is a fight. The finale is exempt:
+  // it was recalibrated against the ceiling directly (R235).
+  const final = b.t === 1140;
+  const grow = final ? 1 : Math.min(BOSS_GROW_CAP, 1 + BOSS_GROW * Math.max(0, (P ? P.lvl : 1) - 1));
+  const def = { nm:b.nm, hp:Math.round(b.hp * grow), spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
                 c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier };
   const a = R()*TAU;
-  const [x, z] = confine(P.x+Math.cos(a)*26, P.z+Math.sin(a)*26, 5);
+  // and it comes up inside weapon range, not on the horizon - BOSS_RISE
+  // seconds of ground breaking fifteen metres from you is the arrival
+  const [x, z] = confine(P.x+Math.cos(a)*BOSS_AT, P.z+Math.sin(a)*BOSS_AT, 5);
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
@@ -8820,7 +8832,7 @@ function spawnBoss(b){
     // OUT OF THE GROUND over BOSS_RISE seconds - buried at the start, shoving
     // the ground up around it, and it cannot act or be hit until it is out.
     rise: BOSS_RISE,
-    final: b.t===1140 });
+    final });
   shake = 1.6; SFX.boss(); alert2(b.nm, "#ff5c4d");
   for(let i=0;i<20;i++){                       // the ground breaking around it
     const a2 = i*(TAU/20);
