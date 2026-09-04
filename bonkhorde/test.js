@@ -7479,11 +7479,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   console.log("\n=== 70. THE FAN IS AIMED AT THE CROWD ===");
   {
-    // Since threatTarget learned to want the boss, the fan was aimed at it:
-    // BOLTSTORM's boss damage went 1313 -> 3060 on the same seeds against the
-    // build that set its numbers, crowd damage fell, and it dominated three
-    // cards. The fan is aimed at the nearest thing again; a boss takes what
-    // crosses it, and the whole fan when it is all there is.
+    // Since threatTarget learned to want the boss, the fan was aimed at it
+    // from forty metres: BOLTSTORM's boss damage went 1313 -> 3060 on the same
+    // seeds against the build that set its numbers, crowd damage fell, and it
+    // dominated three cards. A boss inside BOSS_NEAR (section 47's seven
+    // metres) is still the target; beyond it the fan is aimed at the nearest
+    // thing, a boss takes what crosses it, and the whole fan when it is all
+    // there is. The boss here stands at twelve metres.
     const r = await page.evaluate(() => {
       const g = window.__g;
       const volley = (crowd) => {
@@ -7491,7 +7493,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.skipTo(1140); g.boss(3);                                   // TERRAVORE, fifteen metres out
         for (let i = 0; i < 240; i++) g.stepRaw(1/60);               // a boss rises out of the ground first, and cannot be hurt until it has
         const b = g.bossAt(), s0 = g.state(), ang = Math.atan2(b.z - s0.z, b.x - s0.x);
-        g.place(b.x - Math.cos(ang) * 9, b.z - Math.sin(ang) * 9);   // nine metres from it
+        g.place(b.x - Math.cos(ang) * 12, b.z - Math.sin(ang) * 12); // twelve metres from it: outside BOSS_NEAR
         const p = g.state();
         // the crowd on a quarter-ring at a right angle to the boss: the fan's aim
         // and the boss disagree, and the bolts stay inside homing range of the
@@ -7500,10 +7502,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         // before it reaches one - long enough for a bolt that wanted the boss to turn
         if (crowd) for (let i = 0; i < 10; i++) { const a = ang + Math.PI / 2 + ((i + .5) / 10 - .5) * Math.PI / 2, d = 12 + (i % 2) * 2; g.spawnAt("shambler", p.x + Math.cos(a) * d, p.z + Math.sin(a) * d); }
         g.give("bolt", 3); g.evolve("bolt");
-        g.dmg();                                                     // zero the meters
+        g.dmg(); const b0 = g.fxCounts().bolts;                      // zero the meters; the bolt count runs across runs, so read the delta
         g.setWT("bolt", 0); g.stepRaw(1/60); g.setWT("bolt", 99);    // one volley, no second
-        for (let i = 0; i < 45; i++) g.stepRaw(1/60);                // 38 u/s covers nine metres in a quarter of that
-        const d = g.dmg(); return { boss: Math.round(d.boss), all: Math.round(d.all), share: +(d.boss / Math.max(1, d.all)).toFixed(2), bolts: g.fxCounts().bolts };
+        for (let i = 0; i < 45; i++) g.stepRaw(1/60);                // 38 u/s covers twelve metres in a third of that
+        const d = g.dmg(); return { boss: Math.round(d.boss), all: Math.round(d.all), share: +(d.boss / Math.max(1, d.all)).toFixed(2), bolts: g.fxCounts().bolts - b0 };
       };
       return { fan: volley(true), lone: volley(false) };
     });

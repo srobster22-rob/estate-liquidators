@@ -8887,15 +8887,16 @@ function fireBolt(w,s){
   // carries one bolt more than the build says it should.
   const n = s.n + dupeN() + (apexIs("echo") ? 1 : 0);
   statBolts += n;
-  // AIMED AT THE CROWD. Since the horde learned to want the boss
-  // (threatTarget's +400), the fan was aimed at it and every bolt went there:
-  // BOLTSTORM's boss damage more than doubled against the build that set its
-  // numbers (1313 -> 3060 on the same seeds, R278) while its crowd damage
-  // fell - seven bolts and twenty-eight bodies of pierce on one animal. The
-  // fan is aimed at the nearest thing again, as it was; a boss takes what
-  // crosses it, and the whole fan when it is all there is. Per-bolt homing
-  // cannot do more than that either way - at 38 u/s and 4.2 rad/s a bolt's
-  // turning circle is nine metres, so a bolt launched across a boss orbits it.
+  // AIMED AT THE CROWD, UNLESS THE BOSS IS CLOSE. Since the horde learned to
+  // want the boss (threatTarget's +400), the fan was aimed at it from forty
+  // metres and every bolt went there: BOLTSTORM's boss damage more than
+  // doubled against the build that set its numbers (1313 -> 3060 on the same
+  // seeds, R278) while its crowd damage fell - seven bolts and twenty-eight
+  // bodies of pierce on one animal. A boss inside BOSS_NEAR is still the
+  // target; beyond it the fan is aimed at the nearest thing, as it was, and
+  // a boss takes what crosses it. Per-bolt homing cannot do more either way -
+  // at 38 u/s and 4.2 rad/s a bolt's turning circle is nine metres, so a
+  // bolt launched across a boss orbits it.
   const tgt = threatTarget(P.x, P.z, 40, null, true);
   const base = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
   if(tgt) ANIM.atkDir = wrapAng(base - P.face);         // the head thrusts at it
@@ -9003,8 +9004,13 @@ function fireMortar(w,s){
 // of 55, which is not a weak weapon, it is a weapon that does not participate.
 // Its fantasy is arcing to the dangerous thing, so make the FIRST link seek
 // threat and let the chain spread from there.
-// `crowd`: this shot is one of a fan and not its leader - it hunts the horde
-// and leaves the boss to the bolt that leads, unless the boss is all there is
+// `crowd`: a fan of shots, not a single one. A boss IN REACH - inside
+// BOSS_NEAR - is still the target (section 47: a grub at your feet does not
+// steal the volley from TERRAVORE seven metres off); a boss further out is
+// left to the crowd's odds, or the fan's whole pierce budget goes to it from
+// forty metres (R278). The flee weight stays either way: THE COLLECTOR is
+// wanted at any range.
+const BOSS_NEAR = 10;
 function threatTarget(x, z, r, skip, crowd){
   let best = null, bs = -1e9;
   hitNear(x, z, r, (e,d)=>{
@@ -9013,7 +9019,7 @@ function threatTarget(x, z, r, skip, crowd){
     // where you do not aim that made it functionally immune - zero killed
     // across six full runs. Auto-targeting has to WANT it, or the hunt is a
     // marker on a thing you cannot touch.
-    const w = (e.boss ? (crowd ? -50 : 400) : e.def.flee ? 120 : e.elite ? 40 : 0) - d;
+    const w = (e.boss ? (crowd && d > BOSS_NEAR ? -50 : 400) : e.def.flee ? 120 : e.elite ? 40 : 0) - d;
     if(w > bs){ bs = w; best = e; }
   });
   return best;
