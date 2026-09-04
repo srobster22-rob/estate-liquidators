@@ -147,9 +147,13 @@
      screen and buried the health bar, which is a worse interruption than the
      modal this replaced. */
   #pick .cards{flex-wrap:nowrap;gap:7px;margin:0}
-  #pick .card{pointer-events:auto;padding:7px 9px;width:min(21vw,178px);
-    background:#12161df2;border-bottom-width:3px;min-width:0}
-  #pick .card .ic{font-size:17px;margin-bottom:2px}
+  #pick .card{pointer-events:auto;padding:6px 9px 7px;width:min(21vw,178px);
+    border-bottom-width:3px;min-width:0;animation:cardIn .26s ease-out both}
+  #pick .card:nth-child(2){animation-delay:.05s} #pick .card:nth-child(3){animation-delay:.10s}
+  #pick .card:nth-child(4){animation-delay:.15s}
+  @keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  #pick .card .ic{width:26px;height:26px;font-size:15px;margin:9px 0 3px}
+  #pick .card .fam{top:6px;left:12px}
   #pick .card .nm{font-size:11px}
   #pick .card .lv{font-size:9px;margin-bottom:4px}
   #pick .card .eff{font-size:13px;margin:0 0 3px}
@@ -159,36 +163,40 @@
   #pick .card .ds{font-size:9px;line-height:1.35;max-height:2.7em;overflow:hidden;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   /* the number is the control now, so it is the biggest thing on the card */
-  #pick .card .key{top:5px;right:7px;font-size:15px;font-weight:800;color:var(--gold);
-    opacity:.95}
-  #pick .card:hover .key{color:#fff}
+  #pick .card .key{top:5px;right:7px;font-size:13px;width:22px;height:22px}
+  #pick .card:hover .key{color:#fff;border-color:#fff}
   .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-  .card{width:196px;background:#12161d;border:2px solid #2a313c;border-bottom-width:4px;
-    padding:16px 13px;cursor:pointer;text-align:left;transition:.09s;position:relative}
-  .card:hover{border-color:var(--gold);transform:translateY(-4px);background:#171c25}
+  .card{--ac:var(--gold);--acbg:#f0b4292a;--acglow:#f0b42966;
+    width:196px;border:2px solid #2a313c;border-bottom-width:4px;border-left:4px solid var(--ac);
+    background:linear-gradient(160deg,var(--acbg),#12161d 58%);
+    padding:16px 13px;cursor:pointer;text-align:left;transition:.09s;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--ac)}
+  .card:hover{border-color:var(--ac);transform:translateY(-4px);box-shadow:0 0 18px var(--acglow)}
+  .card .fam{position:absolute;top:7px;left:11px;font-size:8px;letter-spacing:.24em;font-weight:800;
+    color:var(--ac);text-shadow:0 1px 0 #000}
   .card.evo{border-color:var(--evo);background:#1d1410}
   .card.evo:hover{border-color:#ffa070}
-  .card .ic{font-size:30px;line-height:1;margin-bottom:9px}
+  .card .ic{width:38px;height:38px;border-radius:50%;background:var(--acbg);border:1px solid var(--ac);
+    display:flex;align-items:center;justify-content:center;color:var(--ac);font-size:22px;line-height:1;
+    margin:12px 0 8px;box-shadow:inset 0 0 10px #0008}
   .card .nm{font-size:13px;font-weight:700;letter-spacing:.05em;margin-bottom:3px}
-  .card .lv{font-size:9px;color:var(--gold);letter-spacing:.14em;margin-bottom:9px}
+  .card .lv{font-size:9px;color:var(--ac);letter-spacing:.14em;margin-bottom:9px}
   .card.evo .lv{color:var(--evo)}
   .card .ds{font-size:11px;color:#a8a396;line-height:1.6}
-  .card .key{position:absolute;top:7px;right:9px;font-size:10px;color:#555c66}
+  .card .key{position:absolute;top:7px;right:9px;font-size:10px;color:var(--gold);
+    width:20px;height:20px;border:1px solid var(--gold);border-radius:4px;background:#1b1608;
+    display:flex;align-items:center;justify-content:center;font-weight:800}
   /* the headline: the one number the card is about, and the biggest text on it */
-  .card .eff{font-size:15px;font-weight:800;color:#fff;letter-spacing:.03em;margin:0 0 5px;
+  .card .eff{font-size:15px;font-weight:800;color:var(--ac);letter-spacing:.03em;margin:0 0 5px;
     text-shadow:0 1px 0 #000}
   .card .lv{display:flex;align-items:center;gap:6px}
   .card .lv .pips{display:inline-flex;gap:2px;margin:0}
   .card .lv .pips s{width:13px;height:4px;background:#2c333d;display:block}
-  .card .lv .pips s.f{background:var(--gold)}
+  .card .lv .pips s.f{background:var(--ac)}
   .card .lv .pips s.n{background:#fff;box-shadow:0 0 6px #fff9}
   .card .pt{font-size:9px;color:var(--evo);letter-spacing:.08em;margin-top:6px;font-weight:700}
-  .card.evo .eff{color:#ffd0b0}
-  /* a rule is a way of playing, not a stat: cold green where a stat is white */
-  .card.rule{border-color:#3ad0a0;background:#0f1a17}
-  .card.rule:hover{border-color:#8affd0}
-  .card.rule .eff{color:#8affd0}
-  .card.rule .lv{color:#3ad0a0}
+  .card.evo{border-color:#5a2e1c}
+  .card.rule{border-color:#1f3d33}
   .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
   /* menu */
@@ -414,6 +422,8 @@
        Down here because #pick .card .ds sets its own display further up. */
     #pick .card .lv span,#pick .card .ds{display:none}
     #pick .card .eff{font-size:11px}
+    #pick .card .ic{width:24px;height:24px;font-size:13px;margin:10px 0 3px}
+    #pick .card .fam{font-size:7px}
   }
   /* Also last, for the same reason. */
 </style>
@@ -475,6 +485,11 @@
 <symbol id="i-surge" viewBox="0 0 24 24"><path d="M3.4 17.6c3.4 0 5.4-1.6 8.6-1.6s5.2 1.6 8.6 1.6" class="a"/><path d="M4.2 13.4c1.4-6.2 4-9.4 7.8-9.4s6.4 3.2 7.8 9.4z" class="f"/><path d="M9 13.4c.6-4.4 1.6-6.8 3-6.8s2.4 2.4 3 6.8z" class="ka"/><path d="M2 21h20" class="a"/></symbol>
 <symbol id="i-pyre" viewBox="0 0 24 24"><path d="M12 1.8c3.6 4.4 5.2 7.4 5.2 10.2A5.2 5.2 0 0 1 12 17.2a5.2 5.2 0 0 1-5.2-5.2c0-2.8 1.6-5.8 5.2-10.2z" class="f"/><path d="M12 9.6c1.5 2 2.2 3.3 2.2 4.4a2.2 2.2 0 0 1-4.4 0c0-1.1.7-2.4 2.2-4.4z" class="ka"/><path d="M4.4 14.6l-2.6 5.8 5.4-2.4M19.6 14.6l2.6 5.8-5.4-2.4" class="fa"/></symbol>
 <symbol id="i-tally" viewBox="0 0 24 24"><path d="M5 5.4v13.2M9.4 5.4v13.2M13.8 5.4v13.2M18.2 5.4v13.2"/><path d="M2.8 16.6L20.4 7" class="a"/></symbol>
+<symbol id="i-teeth" viewBox="0 0 24 24"><path d="M3.2 8.6c3.4-3.2 14.2-3.2 17.6 0v3.2l-1.8 6-1.7-4.6-1.8 4.6-1.7-4.6L12 17.8l-1.8-4.6-1.7 4.6-1.8-4.6L5 17.8l-1.8-6z" class="f"/><path d="M3.2 8.6c3.4-3.2 14.2-3.2 17.6 0" class="a"/></symbol>
+<symbol id="i-neck" viewBox="0 0 24 24"><path d="M3.6 21c0-6.4 2.8-9.6 8-11.8L13.4 4h4.4l1.4 3.6-3.4 1.6C12.2 10.8 9 13.6 9 21z" class="f"/><circle cx="16.4" cy="6.4" r="1" class="k"/><path d="M13.6 21h5" class="a"/></symbol>
+<symbol id="i-nose" viewBox="0 0 24 24"><path d="M4.8 14.2c0-5.2 3.2-8.4 7.2-8.4s7.2 3.2 7.2 8.4c0 2.8-1.8 4.8-4.2 4.8-1.4 0-2.2-.6-3-.6s-1.6.6-3 .6c-2.4 0-4.2-2-4.2-4.8z" class="f"/><circle cx="9.3" cy="14.4" r="1.35" class="k"/><circle cx="14.7" cy="14.4" r="1.35" class="k"/><path d="M12 5.8V2.6M8.4 4l1 2.4M15.6 4l-1 2.4" class="a"/></symbol>
+<symbol id="i-claws" viewBox="0 0 24 24"><path d="M3.4 3.2C7.2 5.6 9.4 9.6 10 15.8l-2.6-.8C7 10.6 5.6 7.4 3.4 3.2z" class="fa"/><path d="M9.2 2.6c3.8 2.4 6 6.4 6.6 12.6l-2.6-.8c-.4-4.4-1.8-7.6-4-11.8z" class="fa"/><path d="M15 3.2c3.8 2.4 6 6.4 6.6 12.6l-2.6-.8c-.4-4.4-1.8-7.6-4-11.8z" class="fa"/><path d="M4 21h16" class="s"/></symbol>
+<symbol id="i-twohead" viewBox="0 0 24 24"><circle cx="7.6" cy="8.4" r="4.2" class="f"/><circle cx="16.4" cy="8.4" r="4.2" class="fa"/><path d="M4.4 21c1-5 3.6-7.4 7.6-7.4s6.6 2.4 7.6 7.4z" class="f"/><circle cx="6.4" cy="7.8" r="1.05" class="k"/><circle cx="15.2" cy="7.8" r="1.05" class="k"/></symbol>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.4" width="15.2" height="10.4" rx="1.8" class="f"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/><circle cx="12" cy="15.6" r="1.5" class="k"/></symbol>
 </defs></svg>
 
@@ -1882,27 +1897,32 @@ brood:{ name:"BROOD", ic:"brood", kind:"w",
 // the second clause, small. The internal keys are unchanged (spinach, tempo,
 // boots...) so every bench, every mutant and every save still means what it
 // said; only the face of the thing is new.
+// PARTS OF THE ANIMAL. Reported twice: the upgrades did not fit the game.
+// HARDER, FASTER, QUICKER were legible and could have belonged to any game.
+// This is a game about a creature you grow, so the eight are the eight things
+// that grow on it - teeth, heart, legs, neck, hide, nose, claws, and a second
+// head - each with its own colour (col), which the card wears.
 const PASSIVES = {
-spinach: { name:"HARDER",   ic:"spinach", kind:"p", max:3, eff:"+22% DAMAGE",
-           ds:"Every weapon you carry." },
-tempo:   { name:"FASTER",   ic:"tempo",   kind:"p", max:3, eff:"-13% COOLDOWN",
-           ds:"Every weapon you carry." },
-boots:   { name:"QUICKER",  ic:"boots",   kind:"p", max:3, eff:"+15% MOVE SPEED",
+spinach: { name:"BIGGER TEETH",  ic:"teeth",   kind:"p", max:3, eff:"+22% DAMAGE",  col:"#ff5c4d",
+           ds:"Every weapon you carry bites harder." },
+tempo:   { name:"QUICKER HEART", ic:"heart",   kind:"p", max:3, eff:"-13% COOLDOWN", col:"#3ad0ff",
+           ds:"Every weapon you carry fires sooner." },
+boots:   { name:"LONGER LEGS",   ic:"boots",   kind:"p", max:3, eff:"+15% MOVE SPEED", col:"#8affd0",
            ds:"And +10% damage: momentum." },
 // BIGGER is the one upgrade you can SEE. Of the eight, damage, cooldown,
 // crit and health all change a number; reach changes the picture - every
 // cloud, ring, arc, lane and orbit on screen grows with it. It took the
 // health card's key (the tests, benches and saves know it as `heart`), and
 // TOUGHER absorbed the health.
-heart:   { name:"BIGGER",   ic:"pulse",   kind:"p", max:3, eff:"+10% REACH",
+heart:   { name:"LONGER NECK",   ic:"neck",    kind:"p", max:3, eff:"+10% REACH",   col:"#ff9a3d",
            ds:"Every weapon reaches further and covers more ground." },
-plating: { name:"TOUGHER",  ic:"plating", kind:"p", max:3, eff:"-8% DAMAGE TAKEN",
+plating: { name:"THICKER HIDE",  ic:"plating", kind:"p", max:3, eff:"-8% DAMAGE TAKEN", col:"#9fb4c8",
            ds:"And +25 max HP. A hit blasts them off you." },
-magnet:  { name:"HUNGRIER", ic:"magnet",  kind:"p", max:3, eff:"+58% PICKUP RANGE",
+magnet:  { name:"KEENER NOSE",   ic:"nose",    kind:"p", max:3, eff:"+58% PICKUP RANGE", col:"#c58bff",
            ds:"And it drags the horde into a pile." },
-clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
+clover:  { name:"SHARPER CLAWS", ic:"claws",   kind:"p", max:3, eff:"+12% CRIT",    col:"#6ddba0",
            ds:"Crits hit for 2.3x." },
-dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:"+1 OF EVERYTHING",
+dupe:    { name:"SECOND HEAD",   ic:"twohead", kind:"p", max:3, eff:"+1 OF EVERYTHING", col:"#ff6bd6",
            ds:"Every weapon fires again. Copies hit for 55%." },
 // THE RULES. The eight adjectives answer "easy to read"; these answer "more
 // fun to play". A rule changes how a run PLAYS rather than how hard it hits,
@@ -2302,13 +2322,13 @@ const CHARS = [
 // same eight adjectives, small and forever. The ids and the numbers are
 // untouched; saves and benches know nothing happened.
 const SHOP = [
-{ id:"hp",    ic:"hp",  n:"BEEFIER",      d:"+16 starting HP",       max:6, cost:r=>60+r*55 },
-{ id:"dmg",   ic:"dmg", n:"HARDER",       d:"+6% damage",            max:6, cost:r=>75+r*70 },
-{ id:"spd",   ic:"spd", n:"QUICKER",      d:"+4% move speed",        max:5, cost:r=>70+r*60 },
-{ id:"mag",   ic:"mag", n:"HUNGRIER",     d:"+18% pickup radius",    max:5, cost:r=>50+r*40 },
-{ id:"cd",    ic:"cd",  n:"FASTER",       d:"-3.5% cooldowns",       max:5, cost:r=>90+r*85 },
-{ id:"crit",  ic:"crit",n:"LUCKIER",      d:"+4% crit chance",       max:5, cost:r=>80+r*70 },
-{ id:"armor", ic:"armor",n:"TOUGHER",      d:"-0.8 flat damage taken",max:5, cost:r=>85+r*75 },
+{ id:"hp",    ic:"hp",     n:"STOUTER BONES", d:"+16 starting HP",       max:6, cost:r=>60+r*55 },
+{ id:"dmg",   ic:"teeth",  n:"BIGGER TEETH",  d:"+6% damage",            max:6, cost:r=>75+r*70 },
+{ id:"spd",   ic:"boots",  n:"LONGER LEGS",   d:"+4% move speed",        max:5, cost:r=>70+r*60 },
+{ id:"mag",   ic:"nose",   n:"KEENER NOSE",   d:"+18% pickup radius",    max:5, cost:r=>50+r*40 },
+{ id:"cd",    ic:"heart",  n:"QUICKER HEART", d:"-3.5% cooldowns",       max:5, cost:r=>90+r*85 },
+{ id:"crit",  ic:"claws",  n:"SHARPER CLAWS", d:"+4% crit chance",       max:5, cost:r=>80+r*70 },
+{ id:"armor", ic:"plating",n:"THICKER HIDE",  d:"-0.8 flat damage taken",max:5, cost:r=>85+r*75 },
 { id:"start", ic:"start",n:"HEAD START",   d:"a free level, once a run is under way",max:3, cost:r=>200+r*220 },
 { id:"rev",   ic:"rev", n:"SECOND WIND",  d:"revive once at 50% HP", max:2, cost:r=>400+r*500 },
 { id:"tally", ic:"tally",n:"TALLY",        d:"+8% XP from every gem", max:4, cost:r=>140+r*130,
@@ -10033,6 +10053,9 @@ const WTAG = { bat:"MELEE SWING", skulls:"ORBIT", bolt:"HOMING SHOT", pulse:"SHO
                mortar:"ARTILLERY", zap:"CHAIN LIGHTNING", aura:"DAMAGE CLOUD",
                gore:"CHARGE LANE", caltrops:"HAZARD TRAIL", brood:"COMPANION" };
 const WNOUN = { skulls:"SKULL", mortar:"SHELL", brood:"PUP", zap:"JUMP" };
+// and a colour each, so a hand of four weapons is four colours, not four golds
+const WCOL = { bat:"#f0b429", gore:"#ff5c4d", bolt:"#ffd36b", mortar:"#f28c5c", zap:"#fff06a",
+               pulse:"#ff9a3d", aura:"#9ad35c", caltrops:"#ff7a3d", skulls:"#e8e2c8", brood:"#f2a6c2" };
 function wDelta(k, l){
   const W = WEAPONS[k]; if(!W) return "";
   const a = W.lv[RANKMAP[clamp(l, 0, WMAX-1)]], b = W.lv[RANKMAP[clamp(l+1, 0, WMAX-1)]];
@@ -10055,6 +10078,27 @@ function wDelta(k, l){
 // partner it needs, or, on a partner's card, the evolution it unlocks. The
 // partner rule used to be invisible: the draft asked you to guess that
 // MEGABONK wanted SPINACH.
+// Every card wears a FAMILY and an ACCENT. Reported as "four grey boxes":
+// the strip drew a weapon, a rule, a growth and an evolution in the same
+// grey with the same gold, and the only thing that said which was which was
+// the small print. Weapons are gold, evolutions ember, rules the cold green
+// the kit bar already uses for them, masteries pale gold, and each of the
+// eight growths its own colour - the same colour its pips and headline take.
+const FAM = {
+  w:    { word:"WEAPON",    ac:"#f0b429" },
+  u:    { word:"GROWTH",    ac:"#f0b429" },
+  rule: { word:"RULE",      ac:"#3ad0a0" },
+  evo:  { word:"EVOLUTION", ac:"#ff7a3d" },
+  mast: { word:"MASTERY",   ac:"#ffe08a" },
+  heal: { word:"SNACK",     ac:"#6ddba0" },
+};
+function cardFamily(o){
+  if(o.type === "heal") return "heal";
+  if(o.type === "evo") return "evo";
+  if(isRule(o.key)) return "rule";
+  if(o.lv === "MASTERY") return "mast";
+  return WEAPONS[o.key] ? "w" : "u";
+}
 function cardDress(o){
   const k = o.key, w = P && P.kit[k], W = WEAPONS[k], Pa = PASSIVES[k];
   let eff = "", pt = "", max = 0, have = 0, after = 0;
@@ -10083,7 +10127,9 @@ function cardDress(o){
   if(max){ pips = '<i class="pips">';
     for(let j=0;j<max;j++) pips += `<s class="${j<have ? "f" : j<after ? "n" : ""}"></s>`;
     pips += "</i>"; }
-  return { eff, pt, pips, ds };
+  const fam = cardFamily(o),
+        ac = (fam === "u" && Pa && Pa.col) ? Pa.col : (fam === "w" && WCOL[k]) ? WCOL[k] : FAM[fam].ac;
+  return { eff, pt, pips, ds, fam, word:FAM[fam].word, ac };
 }
 function showPick(hand){
   // A take() with levels still queued schedules the next hand on a 90ms
@@ -10103,9 +10149,14 @@ function showPick(hand){
   const box = document.getElementById("pkCards"); box.innerHTML="";
   (hand || offers()).forEach((o,i)=>{
     const el = document.createElement("div");
-    el.className = "card" + (o.type==="evo" ? " evo" : "") + (isRule(o.key) ? " rule" : "");
     const d = cardDress(o);
-    el.innerHTML = `<div class="key">${i+1}</div><div class="ic">${icon(o.ic)}</div>`+
+    el.className = "card " + d.fam + (o.type==="evo" ? " evo" : "") + (isRule(o.key) ? " rule" : "");
+    // the accent as a custom property, so the border, the disc, the pips and
+    // the headline all take it from one place
+    el.style.setProperty("--ac", d.ac);
+    el.style.setProperty("--acbg", d.ac + "2a");
+    el.style.setProperty("--acglow", d.ac + "66");
+    el.innerHTML = `<div class="key">${i+1}</div><div class="fam">${d.word}</div><div class="ic">${icon(o.ic)}</div>`+
       `<div class="nm">${o.nm}</div><div class="lv">${d.pips}<span>${o.lv}</span></div>`+
       `<div class="eff">${d.eff}</div><div class="ds">${d.ds}</div>`+
       (d.pt ? `<div class="pt">${d.pt}</div>` : "");
@@ -14043,7 +14094,7 @@ window.__g = {
   // sample the level-up roller without taking anything - offers() is pure
   // the face of the draft: the universal upgrade table and the rank-delta
   // describer, so a check can read them without dealing a hand
-  upgrades: ()=>Object.keys(PASSIVES).filter(k=>!isRule(k)).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff, max:PASSIVES[k].max })),
+  upgrades: ()=>Object.keys(PASSIVES).filter(k=>!isRule(k)).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff, max:PASSIVES[k].max, col:PASSIVES[k].col })),
   rules: ()=>Object.keys(PASSIVES).filter(isRule).map(k=>({ key:k, nm:PASSIVES[k].name, eff:PASSIVES[k].eff })),
   setHop: (n)=>{ P.hop = n; return P.hop; },
   noRules: (on=true)=>noRules=!!on,

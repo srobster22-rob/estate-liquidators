@@ -343,12 +343,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     };
     return { canUse: peek(["bolt"]), cannot: peek(["pulse", "aura"]) };
   });
-  ok("MORE offered to a kit of shots",
-     (offers.canUse["MORE"] || 0) > 0,
-     `${offers.canUse["MORE"] || 0} times in 80 rolls`);
-  ok("and to a kit of clouds and rings - MORE is for every weapon now",
-     (offers.cannot["MORE"] || 0) > 0,
-     `${offers.cannot["MORE"] || 0} times in 80 rolls`);
+  ok("SECOND HEAD offered to a kit of shots",
+     (offers.canUse["SECOND HEAD"] || 0) > 0,
+     `${offers.canUse["SECOND HEAD"] || 0} times in 80 rolls`);
+  ok("and to a kit of clouds and rings - SECOND HEAD is for every weapon now",
+     (offers.cannot["SECOND HEAD"] || 0) > 0,
+     `${offers.cannot["SECOND HEAD"] || 0} times in 80 rolls`);
 
   const retal = await page.evaluate(() => {
     // 30 shamblers reads 660 damage either way - that is exactly their combined
@@ -6145,8 +6145,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                         skulls: g.wDelta("skulls", 0), max: g.wDelta("bat", 2) } };
     });
     const all = [...r.fresh, ...r.mid, ...r.evo];
-    ok("every upgrade is one word and one headline: eight of them, no spaces in a name, a signed number or a count on the face",
-       r.ups.length === 8 && r.ups.every(u => /^[A-Z]+$/.test(u.nm)) &&
+    ok("every upgrade is a part of the animal and one headline: eight of them, two words each, a signed number or a count on the face",
+       r.ups.length === 8 && r.ups.every(u => /^[A-Z]+ [A-Z]+$/.test(u.nm)) &&
        r.ups.every(u => [].concat(u.eff).every(e => /^[+-]\d/.test(e))),
        r.ups.map(u => `${u.nm}=${[].concat(u.eff)[0]}`).join(" "));
     ok("every card dealt has a headline and three pips, with the rank you would gain lit",
@@ -6321,7 +6321,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("BROOD's copy pups bite at copy damage: four pups on a boss, over three seeds, do more than one pup and well short of four full ones",
        r.pack[0] > 0 && r.pack[1] > r.pack[0] * 1.3 && r.pack[1] < r.pack[0] * 2.1,
        `${r.pack[0]} -> ${r.pack[1]} boss damage over three seeds (x${(r.pack[1] / Math.max(1, r.pack[0])).toFixed(2)})`);
-    ok("and the card says so, without a weapon list", r.more && !/BOLT/.test(String(r.more.eff)) && r.more.nm === "MORE",
+    ok("and the card says so, without a weapon list", r.more && !/BOLT/.test(String(r.more.eff)) && r.more.nm === "SECOND HEAD",
        JSON.stringify(r.more));
   }
 
@@ -6599,6 +6599,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the turn eases: a tenth of a second into a quarter turn the animal is between the two headings, and it is there by four tenths",
        mid < -.15 && mid > -1.45 && Math.abs(end + Math.PI / 2) < .02,
        `face ${r.turn[0]} -> ${mid} at 0.1s -> ${end} at 0.4s`);
+  }
+
+  console.log("\n=== 54. THE CARDS ARE NOT FOUR GREY BOXES ===");
+  {
+    // Reported: "just four grey boxes on your screen". Every card wears a
+    // family word and an accent now - weapons a colour each, the eight
+    // growths their own, rules green, evolutions ember, masteries pale gold -
+    // and the border, the icon disc, the pips and the headline all take it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      const deal = () => { g.drainPicks(false); g.xp(600); g.step(1, 1/60); if (!g.state().picking) return [];
+        const c = [...document.querySelectorAll("#pkCards .card")].map(e => ({ fam: (e.querySelector(".fam") || {}).textContent || "",
+          ac: e.style.getPropertyValue("--ac"), border: getComputedStyle(e).borderLeftColor, eff: getComputedStyle(e.querySelector(".eff")).color,
+          key: e.dataset.okey, cls: e.className }));
+        g.drainPicks(true); return c; };
+      const hands = []; for (let i = 0; i < 10; i++) hands.push(...deal());
+      return { hands, ups: g.upgrades() };
+    });
+    const cols = new Set(r.ups.map(u => u.col));
+    ok("the eight growths carry eight different colours", r.ups.every(u => /^#[0-9a-f]{6}$/i.test(u.col || "")) && cols.size === 8,
+       [...cols].join(" "));
+    ok("every card dealt wears a family word and an accent, and the border and the headline take the accent",
+       r.hands.length >= 20 && r.hands.every(c => c.fam.length > 0 && /^#/.test(c.ac) && c.border !== "rgb(42, 49, 60)" && c.eff !== "rgb(255, 255, 255)"),
+       `${r.hands.length} cards; families ${[...new Set(r.hands.map(c => c.fam))].join(" ")}; blank accents ${r.hands.filter(c => !/^#/.test(c.ac)).length}`);
+    const accents = new Set(r.hands.map(c => c.ac));
+    ok("and across ten hands the strip shows at least six different accents - it is not one colour with different words",
+       accents.size >= 6, `${accents.size} accents`);
   }
 
   console.log("\n" + "=".repeat(58));
