@@ -82,7 +82,7 @@ const MIN = +(process.argv[2] || 0);
       // LONGER LEGS, LONGER NECK, SHARPER CLAWS, THICKER HIDE at rank 3 - since
       // a growth that tears a part off is a growth that has to be retuned. One
       // frame first: the lift the legs earn is read the frame after.
-      if(GROW){ for(const k of ["spinach","boots","heart","clover","plating"]) g.give(k, 3);
+      if(GROW){ for(const k of ["spinach","boots","heart","clover","plating","dupe"]) g.give(k, 3);
                 g.resume(); g.step(2, 1/60); await frame(); }
       g.resume(); g.capturePos();
       await frame(); await frame();

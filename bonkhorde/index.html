@@ -8490,6 +8490,19 @@ const prank = w => w ? (w.l + 1) * PSCALE : 0;
 // in numbers without turning the animal into a caricature.
 const GROW_TEETH = .22, GROW_LEGS = .12, GROW_NECK = .07, GROW_CLAWS = .25,
       GROW_HIDE = .06, GROW_FROM = .22, HIDE_MIN = .10;
+// SECOND HEAD is a second head. Everything forward of HEAD_AT of the body's
+// length (the neck and head, learned from last frame's extents) is drawn
+// twice, each copy turned about the shoulders by +/- HEAD_SPLAY - two necks
+// splaying from one chest to two heads. A RIGID turn, not a lateral shift:
+// three cuts at shifting the copies sideways all tore something - a hard cut
+// took the horns off, a ramp on f opened every hairline joint between a
+// whisker and its jaw, and a ramp over the neck alone left a bird whose head
+// sits on its body with two heads floating beside the neck. A turned copy
+// keeps every joint it had, and at the pivot the copies and the trunk are the
+// same place. TWO heads at any rank: three, overlapped, read as one wide face
+// with six eyes. The card says +1 OF EVERYTHING; on the animal that is the one
+// thing you could not miss.
+const HEAD_AT = .66, HEAD_MAX = 2, HEAD_SPLAY_MIN = .20, HEAD_SPLAY_MAX = .42;
 const growRank = (p, k) => { const u = p && p.kit && p.kit[k];
                              return u ? Math.min(u.l + 1, PASSIVES[k].max) : 0; };
 function growOf(p){
@@ -8498,6 +8511,7 @@ function growOf(p){
            neck:      GROW_NECK  * growRank(p, "heart"),
            claws: 1 + GROW_CLAWS * growRank(p, "clover"),
            hide:      GROW_HIDE  * growRank(p, "plating"),
+           heads: Math.min(HEAD_MAX, 1 + growRank(p, "dupe")),
            // how far the body stands above where it stood: the leg region
            // (hip to ankle, learned from leg() last frame) times what the
            // legs gained
@@ -11339,6 +11353,19 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
         gClaws = GR.claws, gHide = GR.hide, gLift = GR.lift,
         legB = P.legSpan ? P.legSpan[0] : 0, legT = P.legSpan ? P.legSpan[1] : 1;
   let legTopSeen = -1e9, legBotSeen = 1e9;
+  // the heads: where the head starts (fore-aft) and how wide it is, both from
+  // last frame, and the lateral step between copies
+  // the splay: enough that the snouts end up a head's width apart, within
+  // bounds; the region's length and the head's half-width are last frame's
+  const gHeads = GR.heads, headF = (gHeads > 1 && P.headSpan) ? P.headSpan[0] : null,
+        headSplay = P.headSpan ? Math.max(HEAD_SPLAY_MIN, Math.min(HEAD_SPLAY_MAX,
+                      Math.asin(Math.min(.95, P.headSpan[1] * .9 / Math.max(.05, P.headSpan[2] * (1 - HEAD_AT)))))) : HEAD_SPLAY_MIN,
+        // and not the FEET: a front paw's claws sit inside the head's fore-aft
+        // band, so on a legged plan only boxes above the hips' lower half count
+        headY = P.legSpan ? P.legSpan[0] + (P.legSpan[1] - P.legSpan[0]) * .55 : -1e9,
+        hsC = Math.cos(headSplay), hsS = Math.sin(headSplay);
+  let headHxSeen = 0, headBoxes = 0;
+  P.headSplay = headF !== null ? headSplay : 0;   // for the tests
   // Both growths are CONTINUOUS MAPS of an axis, applied to a box's two EDGES
   // rather than to its centre: a part that touched its neighbour before the
   // stretch still touches it after, because the same point maps to the same
@@ -11403,10 +11430,23 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // everything above it stands higher. Geometry, not animation, so it lands
     // before the capture below and the mesh checks see it (growXf).
     if(gNeck || gLift) [f, y, hz, hy] = growXf(f, y, hz, hy);
+    // SECOND HEAD: a box in the head region is emitted once per head, each
+    // copy turned about the shoulders. The mesh capture below records the
+    // UNTURNED box once: a turned copy is a rigid image of a connected part,
+    // attached where it pivots, so the one-object question is answered by the
+    // base mesh, and the heads are counted by the draw (headBoxes).
+    const inHead = headF !== null && f > headF && y > headY;
+    if(P.headSpan && f > P.headSpan[0] && y > headY && hx > headHxSeen) headHxSeen = hx;
+    const nH = inHead ? gHeads : 1, r0 = r, f0 = f;
+    if(inHead) headBoxes += nH;
+    for(let k=0;k<nH;k++){
+    let rotK = 0;
+    if(nH > 1){ const sg = k === 0 ? -1 : 1, df = f0 - headF;
+                r = r0*hsC - sg*df*hsS; f = headF + sg*r0*hsS + df*hsC; rotK = sg*headSplay; }
     // Extents AND the monster-frame position. Extents alone answer "are these
     // two forms the same mesh"; positions are what let a check ask whether two
     // parts of ONE mesh are sitting on top of each other.
-    if(bodyCap) bodyCap.push(hx, hy, hz);
+    if(k === 0 && bodyCap) bodyCap.push(hx, hy, hz);
     // ORDER MATTERS, AND IT WAS WRONG. Positions are (lateral, fore-aft,
     // vertical) and mb's extents are (lateral, VERTICAL, fore-aft) - so every
     // consumer that paired index k with index k+3, which is all of them, was
@@ -11414,7 +11454,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // "no part fights another part" check has been running on a scrambled axis
     // mapping since it was written. Push the extents in the same order as the
     // positions and the pairing is right by construction.
-    if(bodyPos) bodyPos.push(r, f, y, hx, hz, hy);
+    if(k === 0 && bodyPos) bodyPos.push(r0, f0, y, hx, hz, hy);
     if(y + hy > mHi) mHi = y + hy;                 // for the camera, see bodyTop
     if(y - hy < mLo) mLo = y - hy;
     if(f + hz > mFb) mFb = f + hz;
@@ -11433,7 +11473,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // was allowed to sit at an angle to the animal carrying it.
     box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
         P.z - mSf*rr*mSc + mCf*ff*mSc,
-        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em||0, P.face + (rot||0) + aTw);
+        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em||0, P.face + (rot||0) + aTw + rotK);
+    }
   };
   // AMBIENT, NOT ANATOMY. Sparks, embers, orbiting storm motes, trailing water,
   // after-images: things a creature is surrounded BY rather than made of. They
@@ -11442,11 +11483,17 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // to reason about a cloud of loose particles that is meant to be loose.
   const fx = (r,f,y,hx,hy,hz,col,em2,rot)=>{
     if(gNeck || gLift) [f, y, hz, hy] = growXf(f, y, hz, hy);
-    let yy = y * aSq, rr = r * aInv + yy * aBank, ff = f * aInv + yy * aLean;
-    if(aAtk) [rr, ff, yy] = atkXf(rr, ff, yy);
-    box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
-        P.z - mSf*rr*mSc + mCf*ff*mSc,
-        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em2||0, P.face + (rot||0) + aTw);
+    const inHead = headF !== null && f > headF && y > headY, nH = inHead ? gHeads : 1, r0 = r, f0 = f;
+    for(let k=0;k<nH;k++){
+      let rotK = 0;
+      if(nH > 1){ const sg = k === 0 ? -1 : 1, df = f0 - headF;
+                  r = r0*hsC - sg*df*hsS; f = headF + sg*r0*hsS + df*hsC; rotK = sg*headSplay; }
+      let yy = y * aSq, rr = r * aInv + yy * aBank, ff = f * aInv + yy * aLean;
+      if(aAtk) [rr, ff, yy] = atkXf(rr, ff, yy);
+      box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
+          P.z - mSf*rr*mSc + mCf*ff*mSc,
+          hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em2||0, P.face + (rot||0) + aTw + rotK);
+    }
   };
   const mLt = [Math.min(1,mTc[0]*1.22+.03), Math.min(1,mTc[1]*1.22+.03),
                Math.min(1,mTc[2]*1.22+.03)];
@@ -12257,6 +12304,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   boxSeq = 0;
   (BODY[mCh.type] || BODY.plain)(D);
   P.legSpan = legTopSeen > legBotSeen ? [legBotSeen, legTopSeen] : null;   // for next frame
+  // the head region for next frame: where it starts, and its half-width (the
+  // widest box in it)
+  P.headSpan = mFb > mFa ? [mFa + (mFb - mFa) * HEAD_AT, headHxSeen || .10, mFb - mFa] : null;
+  P.headBoxes = headBoxes;                        // boxes drawn in the head region, copies included
   // The live animal only. A portrait draws through the same code with its own
   // scale, and letting a menu card retune the game camera would be a fine bug.
   if(!P.portrait && mHi > mLo){
@@ -14073,7 +14124,7 @@ window.__g = {
                hit:+ANIM.hit.toFixed(3), hitR:+ANIM.hitR.toFixed(3), hitF:+ANIM.hitF.toFixed(3),
                br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3),
                atkT:+ANIM.atkT.toFixed(3), atkKind:ANIM.atkKind, atkDir:+ANIM.atkDir.toFixed(3) }),
-  grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), lift:+g.lift.toFixed(4) }; },
+  grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), lift:+g.lift.toFixed(4), heads:g.heads, headFrom: P.headSpan ? +P.headSpan[0].toFixed(3) : null, headHx: P.headSpan ? +P.headSpan[1].toFixed(3) : null, headBoxes: P.headBoxes || 0, splay:+(P.headSplay || 0).toFixed(3) }; },
   pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3), bite:+(p.bite||0).toFixed(3) }; },
   deathFx: ()=>+deathFx.toFixed(3),
   // the beat by hand, like step(): a headless renderer at four frames a

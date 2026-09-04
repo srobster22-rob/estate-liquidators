@@ -6937,6 +6937,45 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.brute.ptPeak > r.skitter.ptPeak + .05 && r.brute.ptPeak > r.shambler.ptPeak, K.map(k => `${k} ${r[k].ptPeak}`).join(", "));
   }
 
+  console.log("\n=== 60. SECOND HEAD IS A SECOND HEAD ===");
+  {
+    // The card says +1 OF EVERYTHING and the animal showed nothing. Everything
+    // forward of two thirds of the body's length is drawn twice now, each
+    // copy turned about the shoulders - two necks splaying from one chest to
+    // two heads. A rigid turn, so every joint a head had it keeps; the mesh
+    // capture records the unturned box once, so the one-object question is
+    // still answered by the base mesh and the heads are counted by the draw.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const boot = (ch, st) => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start(ch); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); if (st) g.evolveTo(st); g.step(30, 1/60); };
+      const cap = async () => { g.resume(); g.step(2, 1/60); await frame(); g.capturePos(); await frame(); await frame();
+        const b = g.posOut(); if (!b) return []; const bx = []; for (let i = 0; i < b.length / 6; i++) bx.push(b.slice(i*6, i*6+6)); return bx; };
+      const comps = (bx) => { const n = bx.length, ov = (A, B, k) => Math.min(A[k]+A[k+3], B[k]+B[k+3]) - Math.max(A[k]-A[k+3], B[k]-B[k+3]);
+        const par = Array.from({ length: n }, (_, i) => i); const find = a => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+        for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++) if (Math.min(ov(bx[i], bx[j], 0), ov(bx[i], bx[j], 1), ov(bx[i], bx[j], 2)) > 0) { const a = find(i), b = find(j); if (a !== b) par[b] = a; }
+        return new Set(Array.from({ length: n }, (_, i) => find(i))).size; };
+      const out = { plans: [] };
+      for (const [ch, st] of [["intern", 1], ["ox", 1], ["accnt", 1], ["pyre", 1], ["scrap", 0]]) {
+        boot(ch, st); const a = await cap(); const g0 = g.grow();
+        g.give("dupe", 1); const b = await cap(); const g1 = g.grow();
+        g.give("dupe", 2); await cap(); const g3 = g.grow();
+        out.plans.push({ nm: g.stageNm(), n0: a.length, n1: b.length, c0: comps(a), c1: comps(b), hb0: g0.headBoxes, hb1: g1.headBoxes, hb3: g3.headBoxes, heads1: g1.heads, heads3: g3.heads, splay: g1.splay });
+      }
+      return out;
+    });
+    const Pl = r.plans;
+    ok("at rank 1 the head region is drawn twice: the draw counts an even number of head boxes, at least a sixth of the body, where rank 0 counted none",
+       Pl.every(p => p.hb0 === 0 && p.hb1 > 0 && p.hb1 % 2 === 0 && p.hb1 / 2 >= p.n0 * .16 && p.heads1 === 2),
+       Pl.map(p => `${p.nm} ${p.hb1 / 2}x2 of ${p.n0}`).join(", "));
+    ok("and never more than two, whatever the rank: rank 3 draws what rank 1 drew",
+       Pl.every(p => p.heads3 === 2 && p.hb3 === p.hb1), Pl.map(p => `${p.nm} ${p.hb1}->${p.hb3}`).join(", "));
+    ok("the copies are turned apart by at least .2 rad about the shoulders", Pl.every(p => p.splay >= .2 && p.splay <= .42), Pl.map(p => `${p.nm} ${p.splay}`).join(", "));
+    ok("the base mesh the checks read is unchanged and still one object on five plans - a turned copy is a rigid image of a connected part",
+       Pl.every(p => p.n1 === p.n0 && p.c1 === p.c0 && p.c1 === 1), Pl.map(p => `${p.nm} ${p.n0}/${p.n1} boxes, ${p.c0}->${p.c1} parts`).join("; "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
