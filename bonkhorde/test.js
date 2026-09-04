@@ -6534,7 +6534,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const slots = [...k.children].map(s => s.getBoundingClientRect());
       const rows = new Set(slots.map(s => Math.round(s.top))).size, kitTop = Math.min(...slots.map(s => s.top));
       const hop = document.getElementById("hop").getBoundingClientRect();
-      return { n: slots.length, rows, slotW: slots[0].width, hopBottom: hop.bottom, kitTop, cam: g.camInfo(), kitW: k.getBoundingClientRect().width };
+      // and the boss alert against the region caption in the top-left corner
+      g.boss(0); g.step(2, 1/60);
+      let box = null; for (let i = 0; i < 40 && !box; i++) { await new Promise(res => setTimeout(res, 50)); box = g.alertBox(); }
+      box = box || [0, 0, ""]; const biome = document.getElementById("biome").getBoundingClientRect();
+      return { n: slots.length, rows, slotW: slots[0].width, hopBottom: hop.bottom, kitTop, cam: g.camInfo(), kitW: k.getBoundingClientRect().width,
+               warn: [box[0], box[1]], biome: [Math.round(biome.top), Math.round(biome.bottom)], warnText: box[2] };
     });
     await ctx.close();
     const land = await page.evaluate(async () => { const g = window.__g; g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.freezeSpawns(true);
@@ -6544,6 +6549,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.n} slots of ${r.slotW}px in ${r.rows} rows, kit ${Math.round(r.kitW)}px wide`);
     ok("and the chain bar sits above the kit, not through it", r.hopBottom <= r.kitTop + 1,
        `bar bottom ${Math.round(r.hopBottom)}, kit top ${Math.round(r.kitTop)}`);
+    ok("the boss alert prints below the region caption on a phone, not through it",
+       /MATRIARCH/.test(r.warnText) && r.warn[0] >= r.biome[1],
+       `alert ${r.warn.join("-")} "${r.warnText}", caption ${r.biome.join("-")}`);
     ok("the portrait camera opens its lens and backs the boom off: wider than landscape and further away",
        r.cam.fov > land.fov + .12 && r.cam.dist > land.dist * 1.12,
        `portrait fov ${r.cam.fov} dist ${r.cam.dist}; landscape fov ${land.fov} dist ${land.dist}`);

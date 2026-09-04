@@ -10232,6 +10232,7 @@ const BOT_DIRS = 20, BOT_BACKOFF = .35;
 // before it lands.
 let botClumsy = false, botHeld = [0, 0], botHeldT = 0;
 let camFov = 1.02, camDist = 8.9;                       // what the last frame used, for the checks
+let lastAlertBox = null;                                // the newest toast's [top, bottom, text], for the checks
 const BOT_LAG = .35, BOT_HOP_ODDS = .65, BOT_REACT = .55;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
@@ -13018,7 +13019,7 @@ function render(){
   // landscape - two pieces of text in the same place, at the exact moment the
   // game most wants to tell you something. Floor it below the HUD header and
   // scale the type to the screen it is actually on.
-  const asz = Math.max(19, Math.min(30, h*0.042));
+  const asz = Math.max(19, Math.min(30, h*0.042)) * (w < 720 ? .8 : 1);
   // ONE LANE EACH. Five text systems were landing in the same two hundred
   // pixels over the player: the toast stack, the evolution banner, its
   // signature line, the world-space landmark labels and the damage numbers.
@@ -13029,8 +13030,14 @@ function render(){
   // the landmark labels fade out entirely while the banner is up, because
   // nothing else needs to be legible during the three seconds the game is
   // telling you what you just became.
-  let ay = Math.max(h*0.155, 78);
+  // On a phone the region caption sits lower (the phase line is stacked
+  // under the clock there), and the toast lane at 15.5% landed on it: THE
+  // MATRIARCH printed through THE FERNLANDS (R249). The lane drops under the
+  // caption on narrow screens.
+  let ay = Math.max(h*0.155, 78) + (w < 720 ? 70 : 0);
+  lastAlertBox = null;
   for(const al of alerts.slice(-2)){
+    if(!lastAlertBox) lastAlertBox = [Math.round(ay - asz*.86), Math.round(ay + asz*.34), al.text];
     g2.globalAlpha = clamp(al.life/2.6,0,1);
     g2.font = `800 ${asz.toFixed(0)}px ui-monospace,Menlo,monospace`;
     // a plate, because a coloured word on a sunlit field is not readable and
@@ -13712,6 +13719,7 @@ window.__g = {
   botHop:(on=true)=>botHop=on,
   clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
   camInfo:()=>({ fov:+camFov.toFixed(3), dist:+camDist.toFixed(2) }),
+  alertBox:()=>lastAlertBox,
   rim:   ()=>RIM,
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
