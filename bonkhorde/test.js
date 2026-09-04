@@ -2269,14 +2269,17 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.xp(9000);                         // several levels, nothing left to learn
       g.step(1, 1/60);                    // the drain runs in the loop, not in gainXP
       const after = g.state();
-      return { picking: after.picking, pending: after.pending,
+      // the one screen a silent level may open is a MASTERY (every fifth)
+      const lv = [...document.querySelectorAll("#pkCards .card .lv span")].map(e => e.textContent);
+      const masteryOpen = after.picking && lv.length > 0 && lv.every(x => x === "MASTERY");
+      return { picking: after.picking, pending: after.pending, masteryOpen,
                gained: after.lvl - before.lvl, healed: after.hp > before.hp,
                kit: g.kit().length };
     });
     ok("a full kit still levels", r.gained > 3, `+${r.gained} levels, ${r.kit} things carried`);
-    ok("and none of those levels opened a screen",
-       r.picking === false && r.pending === 0,
-       `picking=${r.picking}, ${r.pending} queued`);
+    ok("and none of those levels opened a screen, other than a MASTERY",
+       (r.picking === false && r.pending === 0) || r.masteryOpen,
+       `picking=${r.picking}, ${r.pending} queued, mastery=${r.masteryOpen}`);
     ok("the refreshment is taken for you instead", r.healed, "healed on the way past");
 
     // and the opposite: a level-up that DOES have a choice still stops the game.
@@ -6227,7 +6230,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const hands = []; for (let i = 0; i < 12; i++) hands.push(...deal(40));     // one level at a time
       for (let i = 0; i < 40; i++) hands.push(...deal());
       const early = hands.filter(c => c.lvl < 4), later = hands.filter(c => c.lvl >= 4);
-      g.give("momentum", 1); g.give("hunter", 1);
+      g.give("momentum", 1); g.give("hunter", 1); g.give("stomp", 1);       // three: the level is past 30 by now
       const capped = []; for (let i = 0; i < 30; i++) capped.push(...deal(2500));
       out.earlyHands = early.length; out.early = early.filter(c => c.rule).length; out.later = later.filter(c => c.rule);
       out.capped = capped.filter(c => c.rule).length; out.lvl = g.state().lvl;
@@ -6252,12 +6255,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the shove is what it is for: twenty seconds hopping inside a ring of forty costs real health bare, and next to nothing with the card",
        r.brawlOff.lost > 60 && r.brawlOn.lost < r.brawlOff.lost * .25 && r.brawlOn.hits >= 3,
        `bare: lost ${r.brawlOff.lost}, ${r.brawlOff.left} HP of horde left; STOMP: lost ${r.brawlOn.lost}, ${r.brawlOn.hits} landings connected, ${r.brawlOn.left} HP left`);
-    ok("the draft deals rules as their own kind of card from level 4, all four of them, none before",
-       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 4 && new Set(r.later.map(c => c.key)).size === 4 &&
+    ok("the draft deals rules as their own kind of card from level 4, all six of them, none before",
+       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 6 && new Set(r.later.map(c => c.key)).size === 6 &&
        r.later.every(c => c.lv === "RULE" && c.rule),
        `${r.early} of ${r.earlyHands} cards before level 4, ${r.later.length} after (${[...new Set(r.later.map(c => c.nm))].join(" ")}), level ${r.lvl}`);
-    ok("two rules a run: with two taken the draft offers no third, and a rule sits in the kit bar in its own colour",
-       r.capped === 0 && r.slot && r.rules.length === 4, `${r.capped} offered past the cap, slot ${r.slot}`);
+    ok("the slots cap the rules: with three taken past level 30 the draft offers no fourth, and a rule sits in the kit bar in its own colour",
+       r.capped === 0 && r.slot && r.rules.length === 6 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}`);
     ok("and the chain readout says the chain is paying twice while RHYTHM is held",
        /x\d/.test(r.hopLabel) && /PACE & DMG/.test(r.hopLabel), JSON.stringify(r.hopLabel));
   }
@@ -6371,10 +6374,135 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.m10.lvl >= 10 && Math.abs(r.m10.hp / 3800 - (1 + .05 * (r.m10.lvl - 1))) < .02 &&
        Math.abs(r.m25.hp / 3800 - (1 + .05 * (r.m25.lvl - 1))) < .02 && r.m60.hp === 3800 * 3,
        `lv${r.m10.lvl} ${r.m10.hp}, lv${r.m25.lvl} ${r.m25.hp}, lv${r.m60.lvl} ${r.m60.hp}`);
-    ok("the finale does not grow - it was calibrated against the ceiling on its own", r.f1.hp === 1200000 && r.f60.hp === 1200000,
+    ok("the finale does not grow with LEVEL - an empty kit meets its 520,000 floor at level 1 and at level 60 alike (it grows with the kit, section 49)",
+       r.f1.hp === 520000 && r.f60.hp === 520000,
        `${r.f1.hp} at level ${r.f1.lvl}, ${r.f60.hp} at level ${r.f60.lvl}`);
     ok("every boss rises inside weapon range, fifteen metres out, not on the horizon",
        [r.m1, r.t1, r.f1].every(b => b.dist >= 12 && b.dist <= 16.5), [r.m1, r.t1, r.f1].map(b => `${b.nm} ${b.dist}m`).join(", "));
+  }
+
+  console.log("\n=== 49. A BOSS IS SECONDS OF YOU ===");
+  {
+    // The mid-run bosses are sized in seconds of what your kit would do to one
+    // body - twenty for THE MATRIARCH, thirty for THORNBACK, forty for
+    // SKYSPLITTER - never below the table times your level growth and never
+    // above twelve times the table. The finale is sixty seconds of the last boss's rate, floored at 520,000.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.step(3, 1/60); };
+      const hpOf = (i, kit) => { boot(); for (const [k, n] of kit) g.give(k, n); const kd = g.kitDps(); g.boss(i);
+        const b = g.bossAt(); const hp = b ? Math.round(b.hp) : null; g.clearEnemies(); return { hp, kd }; };
+      const small = [["bat", 0]], big = [["bolt", 3], ["zap", 3], ["mortar", 3], ["spinach", 3], ["dupe", 3], ["clover", 3]];
+      const huge = [...big, ["skulls", 3], ["tempo", 3], ["boots", 3], ["brood", 3], ["aura", 3], ["caltrops", 3]];
+      // the finale reads what you did to the LAST boss: kill SKYSPLITTER a
+      // second after it is up and the rate is its whole health a second
+      const finalAfterKill = () => { boot(); for (const [k, n] of huge) g.give(k, n); g.boss(2); g.step(150, 1/60);
+        const b2 = g.bossAt(); g.hitBoss(1e9); g.step(2, 1/60); const rate = g.bossRate(); g.boss(3);
+        const b = g.bossAt(); const hp = b ? Math.round(b.hp) : null; g.clearEnemies(); return { hp, rate, sky: b2 ? Math.round(b2.hp) : null }; };
+      return { fresh: [hpOf(0, []), hpOf(1, []), hpOf(2, [])], small: hpOf(0, small),
+               big: [hpOf(0, big), hpOf(1, big), hpOf(2, big)], final: [hpOf(3, []), hpOf(3, huge)], finalKill: finalAfterKill() };
+    });
+    ok("an empty kit meets the table: 3,800 / 15,000 / 55,000",
+       r.fresh.every(x => x.kd === 0) && r.fresh[0].hp === 3800 && r.fresh[1].hp === 15000 && r.fresh[2].hp === 55000,
+       r.fresh.map(x => x.hp).join(" / "));
+    ok("a bare BONK BAT is under forty a second and its MATRIARCH is still the table", r.small.kd > 20 && r.small.kd < 60 && r.small.hp === 3800,
+       `${r.small.kd}/s -> ${r.small.hp}`);
+    // the hook rounds the rate to a whole number, so the product is matched to a tenth of a percent
+    const want = (i, kd, table) => Math.max(table, Math.min(table * 12, kd * [20, 30, 40][i]));
+    const near = (hp, w) => Math.abs(hp - w) <= w * .001 + 1;
+    ok("a big kit meets a boss sized in seconds of it, capped at twelve tables",
+       r.big.every(x => x.kd > 500) && near(r.big[0].hp, want(0, r.big[0].kd, 3800)) &&
+       near(r.big[1].hp, want(1, r.big[1].kd, 15000)) && near(r.big[2].hp, want(2, r.big[2].kd, 55000)),
+       r.big.map((x, i) => `${x.kd}/s -> ${x.hp}`).join(" / "));
+    ok("and it is bigger than the table by a lot", r.big[1].hp >= 15000 * 4 && r.big[2].hp >= 55000 * 2,
+       `THORNBACK x${(r.big[1].hp / 15000).toFixed(1)}, SKYSPLITTER x${(r.big[2].hp / 55000).toFixed(1)}`);
+    ok("the finale with no boss killed: never under 520,000, and a third of the estimate at most (the estimate is a ceiling)",
+       r.final[0].hp === 520000 && near(r.final[1].hp, Math.max(520000, r.final[1].kd * 60 / 3)),
+       `${r.final[0].hp} / ${r.final[1].kd}/s -> ${r.final[1].hp}`);
+    ok("and after a boss kill it is sixty seconds of what you did to that boss: SKYSPLITTER killed in a second sizes it at its rate x60, capped",
+       r.finalKill.rate > 0 && Math.abs(r.finalKill.rate / r.finalKill.sky - 1) < .15 && near(r.finalKill.hp, Math.min(1200000 * 12, r.finalKill.rate * 60)),
+       `SKYSPLITTER ${r.finalKill.sky} in a second -> rate ${r.finalKill.rate}/s -> TERRAVORE ${r.finalKill.hp}`);
+  }
+
+  console.log("\n=== 50. THE THIRD RULE ===");
+  {
+    // A run film found the kit complete by 8:00 and identical at 20:00. A
+    // third rule slot opens at level 30, and two more rules exist to fill it:
+    // AFTERBURN (rush fades at a third of the rate) and GLASS (+40% damage,
+    // -40% max HP). Each is measured off then on; the slot is counted below
+    // and above level 30 with two rules already held.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.step(3, 1/60); };
+      const fade = (rule) => { boot(); if (rule) g.give(rule, 1); g.spawn("shambler", 4, 3); g.slay(4); const r0 = g.rule().rush;
+        g.step(60, 1/60); return { r0: +r0.toFixed(3), r1: +g.rule().rush.toFixed(3) }; };
+      const out = { fadeOff: fade(null), fadeOn: fade("afterburn") };
+      g.wipeSave(); g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      const s0 = g.state(); const d0 = s0.dps; g.give("glass", 1); const s1 = g.state();
+      out.glass = { hp0: s0.maxhp, hp1: s1.maxhp, d0, d1: s1.dps };
+      // the third slot: two rules held, deal below 30 and above
+      const dealRules = (n, xp) => { let seen = 0; for (let i = 0; i < n; i++) { g.drainPicks(false); g.xp(xp); g.step(1, 1/60);
+        if (g.state().picking) seen += document.querySelectorAll("#pkCards .card.rule").length; g.drainPicks(true); } return seen; };
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      for (const k of ["bolt", "zap", "skulls", "dupe", "spinach", "tempo", "clover", "magnet", "momentum", "hunter"]) g.give(k, 1);
+      out.below = dealRules(12, 40); out.lvlBelow = g.state().lvl;             // small steps: stays well under 30
+      while (g.state().lvl < 30) { g.drainPicks(false); g.xp(600); g.step(1, 1/60); g.drainPicks(true); }
+      out.above = dealRules(30, 600); out.lvlAbove = g.state().lvl; out.rules = g.rules().map(x => x.nm);
+      return out;
+    });
+    ok("AFTERBURN: a second after four kills the rush has faded to about half bare, and barely at all with the card",
+       r.fadeOff.r0 > .5 && r.fadeOff.r1 < r.fadeOff.r0 * .6 && r.fadeOn.r1 > r.fadeOn.r0 * .7,
+       `bare ${r.fadeOff.r0} -> ${r.fadeOff.r1}, AFTERBURN ${r.fadeOn.r0} -> ${r.fadeOn.r1}`);
+    ok("GLASS: +40% damage and -40% max HP the moment it is taken",
+       Math.abs(r.glass.d1 / r.glass.d0 - 1.4) < .01 && Math.abs(r.glass.hp1 / r.glass.hp0 - .6) < .02,
+       `dmg x${(r.glass.d1 / r.glass.d0).toFixed(2)}, hp ${r.glass.hp0} -> ${r.glass.hp1}`);
+    ok("the third slot opens at level 30: with two rules held nothing green is dealt below it and rules are dealt above",
+       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 6,
+       `level ${r.lvlBelow}: ${r.below} rule cards; level ${r.lvlAbove}: ${r.above}; ${r.rules.join(" ")}`);
+  }
+
+  console.log("\n=== 51. MASTERY ===");
+  {
+    // Past a full kit every fifth silent level deals three of the upgrades
+    // you finished; the one you take goes a rank further, to five at most.
+    // MORE never appears in one (its copies are one a rank by design).
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      for (const k of ["bat","skulls","bolt","pulse","spinach","boots","tempo","magnet","plating","heart","dupe","clover","momentum","hunter","stomp"]) g.give(k, 3);
+      for (const k of ["bat","skulls","bolt","pulse"]) g.evolve(k);
+      g.drainPicks(false);
+      const hands = [], gaps = []; let silentAt = g.mastery().silent, guard = 0;
+      const ranksBefore = g.kit().join(" ");
+      while (hands.length < 6 && guard++ < 400) {
+        g.xp(60); g.step(1, 1/60);
+        if (g.state().picking) {
+          const cards = [...document.querySelectorAll("#pkCards .card")].map(c => ({ key: c.dataset.okey, lv: c.querySelector(".lv span").textContent,
+            pips: c.querySelectorAll(".pips s").length, lit: c.querySelectorAll(".pips s.n").length, filled: c.querySelectorAll(".pips s.f").length }));
+          // the line's own move arrives with an evolution and is a real draft, not a mastery: take it and carry on
+          if (cards.every(c => c.lv === "MASTERY")) { hands.push(cards); gaps.push(g.mastery().silent - silentAt); silentAt = g.mastery().silent; }
+          g.pick(0);                                         // take the first
+        }
+      }
+      return { hands, gaps, kit: g.kit(), ranksBefore, dps: g.state().dps, hp: g.state().maxhp };
+    });
+    const all = r.hands.flat();
+    ok("six MASTERY hands arrive, each five silent levels after the last, three cards each",
+       r.hands.length === 6 && r.gaps.every(x => x === 5) && r.hands.every(h => h.length === 3),
+       `${r.hands.length} hands, gaps ${r.gaps.join(",")}, sizes ${r.hands.map(h => h.length).join(",")}`);
+    ok("every card is a MASTERY of a finished upgrade, never MORE and never a rule",
+       all.every(c => c.lv === "MASTERY") && !all.some(c => c.key === "dupe") &&
+       all.every(c => ["spinach","boots","tempo","magnet","plating","heart","clover"].includes(c.key)),
+       [...new Set(all.map(c => c.key))].join(" "));
+    ok("the card shows the pip you would gain past three: four pips with the fourth lit, or five",
+       all.every(c => (c.pips === 4 || c.pips === 5) && c.lit === 1 && c.filled === c.pips - 1),
+       `${all.map(c => `${c.pips}/${c.filled}+${c.lit}`).slice(0, 6).join(" ")}`);
+    const ranks = Object.fromEntries(r.kit.map(x => x.split(":")));
+    ok("six taken: the kit now holds ranks four and five, none past five",
+       Object.values(ranks).some(v => v === "4" || v === "5") && !Object.values(ranks).some(v => +v > 5),
+       `${r.kit.filter(x => /:[45]$/.test(x)).join(" ")}`);
   }
 
   console.log("\n" + "=".repeat(58));

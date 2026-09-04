@@ -25,6 +25,7 @@
     #hpwrap{width:min(62vw,300px);bottom:12px}
     .slot{width:30px;height:30px;font-size:15px}
     #kit{bottom:34px;gap:4px;max-width:92vw}
+
     #stats{font-size:10px}
     h1{font-size:32px} .sub{font-size:10px;margin-bottom:14px}
     .card{width:min(44vw,196px);padding:11px 9px}
@@ -398,6 +399,13 @@
     #pick .card .lv span,#pick .card .ds{display:none}
     #pick .card .eff{font-size:11px}
   }
+  /* Also last, for the same reason. */
+  @media (max-width:720px), (pointer:coarse){
+    /* a kit of seven wraps to two rows on a phone; the chain and rush bars
+       sat at the height of the second row and were drawn through it */
+    #hop{bottom:132px} #rush{bottom:148px}
+    #phase.final{font-size:10px}
+  }
 </style>
 </head>
 <body>
@@ -508,7 +516,8 @@
     hit <kbd>SPACE</kbd> again the moment you land to chain a hop &mdash; it never
     stops paying: +12% on the first, +40% by five, +55% by twelve. One hit takes it all.<br>
     weapons fire themselves. your only job is to not be there.<br>
-    green cards are <b>RULES</b> - they change how a run plays, not how hard it hits. two a run.
+    green cards are <b>RULES</b> - they change how a run plays, not how hard it hits. two a run, a third at level 30.<br>
+    past a full kit, every fifth level is a <b>MASTERY</b>: one thing you finished goes a rank further.
   </div>
   <div id="opts">
     <button class="btn gh opt" id="sndBtn">SOUND: ON</button>
@@ -1889,7 +1898,7 @@ dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:"+1 OF EVERYTHING
 // and each one is tied to a verb the game already teaches - the hop chain,
 // the landing, the kill, the boss - so taking one changes what you DO for the
 // next fifteen minutes, not what a number says. One line each, taken once,
-// and only two a run (RSLOTS), so which two is a decision. They do not take a
+// and only two a run (RSLOTS; a third at RULE_THIRD), so which is a decision. They do not take a
 // passive slot: a rule is a way of playing, not a stat.
 // RHYTHM, not MOMENTUM: THE COURIER's rule meter already says MOMENTUM on
 // the HUD, and one word cannot name two rules. The key stays.
@@ -1901,7 +1910,16 @@ bloodthirst:{ name:"BLOODTHIRST", ic:"heal",       kind:"r", max:1, eff:"KILLS H
               ds:"+1 HP a kill, +5 an elite, +25 a boss." },
 hunter:     { name:"HUNTER",      ic:"dmg",        kind:"r", max:1, eff:"+50% VS BIG GAME",
               ds:"Bosses and elites take half again." },
+// Two more, for the third slot. A run film (R240) found the kit complete by
+// 8:00 and identical at 20:00 - twelve minutes with nothing to choose - so a
+// third rule opens at level RULE_THIRD, and there are six to choose it from.
+afterburn:  { name:"AFTERBURN",   ic:"surge",      kind:"r", max:1, eff:"RUSH LASTS 3X",
+              ds:"The speed a kill gives you takes three times as long to fade." },
+glass:      { name:"GLASS",       ic:"crit",       kind:"r", max:1, eff:"+40% DMG · -40% HP",
+              ds:"Hit harder. Do not get hit." },
 };
+const RULE_THIRD = 30;                                  // a third rule slot opens here
+const GLASS_DMG = 1.4, GLASS_HP = .6, AFTERBURN_DRAIN = 1/3;
 const BIG_MUL = 1.105;                                  // BIGGER, per pick: x1.35 at three
 const isRule = k => !!(PASSIVES[k] && PASSIVES[k].kind === "r");
 const hasRule = k => !!(P && P.kit[k]);
@@ -7668,6 +7686,27 @@ let sudden=false;                       // past 20:00 with THE FINAL BONK still 
 let noLevels=false;                     // test-only: hold back the level-up screen
 let noSpawn=false;                      // test-only: isolate a boss fight
 let bossCasts={}, dmgDealt=0, dmgBoss=0;
+// WHAT THE KIT WOULD DO TO ONE BODY. The size of you, in damage a second
+// against a single target standing in everything you carry, read off the
+// weapon tables: rank, evolution, copies, HARDER, crit. Effective damage on
+// trash was tried first and undershoots this by three to five times at the
+// ceiling, because trash dies before a hit lands whole; a boss takes the
+// whole hit, so a boss is sized by the whole hit.
+function kitDps(){
+  if(!P) return 0;
+  let s = 0;
+  for(const k in P.kit){
+    const W = WEAPONS[k]; if(!W) continue;
+    const st = wStat(P.kit[k]);
+    // SKULLS: a body is hit at most once a cooldown however many skulls pass
+    // over it (updateOrbiters keeps a per-enemy cool), so its rate against one
+    // body is d/cd, and copies add coverage rather than hits
+    if(k === "skulls"){ s += st.d / (st.cd || .4); continue; }
+    const per = st.dps ? st.dps : st.d * (st.n || 1) / ((st.cd || 1) * P.cd);
+    s += per * (1 + dupeN() * DUPE_DMG);
+  }
+  return s * P.dmg * (1 + P.crit * 1.3);
+}
 let runWon=false, runWhy="";
 
 function baseStats(ch){
@@ -7696,6 +7735,7 @@ function baseStats(ch){
 
 function startRun(id){
   charId = id;
+  silentLv = 0; lastBossRate = 0;
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
@@ -8155,6 +8195,8 @@ function killEnemy(e){
                 life:rnd(.35,.8), c:e.def.c, s:e.boss?.46:.26 });
   // XP: bosses shatter into a payday, everything else drops one gem
   if(e.boss){
+    // what you did to it, per second it was up - the finale is sized from this
+    if(!e.final && e.born !== undefined) lastBossRate = e.maxhp / Math.max(1, T - e.born - BOSS_RISE);
     for(let i=0;i<16;i++) pushGem(e.x+rnd(-3,3), e.z+rnd(-3,3), Math.ceil(e.xp/16));
     coinsRun += 90; shake = Math.max(shake, 1.4); SFX.boom(); hold("boss");
     alert2(e.def.nm+" DOWN", "#6ddba0");
@@ -8279,6 +8321,28 @@ function damageArea(x, z, r, base, kb, srcName){
 const WMAX = 3;
 // Carry slots. See offers() for why these are 4 and 5 rather than 6 and 6.
 const WSLOTS = 4, PSLOTS = 5, RSLOTS = 2;
+// MASTERY. The kit is complete by minute nine at the ceiling and thirteen at
+// the floor (R241's drought probe), and every level after that was silent
+// growth - seven to ten minutes of a twenty-minute run with nothing to
+// choose. Every fifth silent level now deals three of the upgrades you have
+// finished, and the one you take goes a rank further, to a fifth at most,
+// worth exactly what a rank was worth. MORE sits this out: its copies are
+// one a rank by design (R230) and a fourth would re-open that.
+const MASTERY_EVERY = 5, PMAX_MASTERY = 5;
+let silentLv = 0;
+function masteryHand(){
+  const pool = [];
+  for(const k in PASSIVES){
+    const P2 = PASSIVES[k], p = P.kit[k];
+    if(!p || isRule(k) || k === "dupe") continue;
+    if(p.l + 1 < P2.max || p.l + 1 >= PMAX_MASTERY) continue;
+    pool.push({ type:"up", key:k, ic:P2.ic, nm:P2.name, lv:"MASTERY", ds:P2.ds, weight:1 });
+  }
+  const out = [];
+  while(out.length < 3 && pool.length) out.push(pool.splice((R()*pool.length)|0, 1)[0]);
+  return out;
+}
+const ruleSlots = () => (P && P.lvl >= RULE_THIRD) ? RSLOTS + 1 : RSLOTS;
 const RANKMAP = [0, 2, 4];
 // Passives get the same treatment and the same guarantee. Their effects are all
 // written as (rank x coefficient), so three ranks would silently be a two-rank
@@ -8802,6 +8866,42 @@ function spawnEnemy(type, atX, atZ){
   return made;                                  // the hunt event needs a handle
 }
 const BOSS_AT = 15, BOSS_GROW = .05, BOSS_GROW_CAP = 3;
+// SECONDS OF YOU. Level growth alone could not make a mid-run boss a fight:
+// at the same level the benched ceiling deals about five times the floor's
+// damage, so any flat number is a walk past for one and a wall for the other.
+// A mid boss is worth at least this many seconds of what your kit does to one
+// body (kitDps) - twenty for THE MATRIARCH, thirty for THORNBACK, forty for
+// SKYSPLITTER - capped at eight times the table so an estimate cannot build a
+// monster. The finale is exempt (R235).
+// Twelve tables, not eight: at eight THORNBACK's 120,000 bound for any kit
+// past 4,000 a second, which the benched ceiling passes by 10:00, and its
+// second boss stayed a 10-20 s fight. The cap only ever touches kits that
+// strong; a floor kit at 10:00 is well under it either way.
+// The finale too, at ninety seconds of you and never under its old 520,000
+// (R242). R235's flat 1.2M was right for the ceiling of that week; with
+// MASTERY in play the same ceiling killed it 25 seconds into sudden death,
+// while a floor kit at 5,000 a second faces 1.2M for the whole four minutes.
+// Ninety seconds against a boss that uses all five abilities is the fight;
+// surviving to 20:00 was the power check.
+const BOSS_SECS = { 300:20, 600:30, 900:40, 1140:60 }, BOSS_SIZE_CAP = 12, FINALE_FLOOR = 520000;
+// MEASURED, for the finale. kitDps() is a ceiling - everything it counts
+// lands whole - and against a boss a real kit lands about a third of it, so
+// ninety seconds of the estimate benched as a 3-7M finale that killed the
+// veteran at +45 s (R243). What you actually did to the LAST boss is the
+// honest number: its health over the seconds it took once it was up,
+// recorded when it dies. The finale is sixty seconds of that; a run that
+// never killed a boss falls back to a third of the estimate. Sixty, not
+// ninety, and no growth allowance: at ninety with x1.3 the ceiling's finale
+// was 3.2M and a two-minute fight, and two minutes of all five abilities
+// killed the veteran at +45 s on two seeds in six (R244). Sixty seconds of
+// the 15:00 rate is about the 1.2M that fought 45-131 s and won 6/6 in R235.
+const FINALE_GROW = 1.0;
+let lastBossRate = 0;
+function finaleSize(){
+  const secs = BOSS_SECS[1140];
+  const est = lastBossRate > 0 ? lastBossRate * FINALE_GROW * secs : kitDps() * secs / 3;
+  return Math.min(1200000 * BOSS_SIZE_CAP, est);
+}
 function spawnBoss(b){
   // Hand-copied, not spread, so every field a boss carries has to be listed
   // here on purpose. That is the point of it and it is also the trap: `body`
@@ -8816,7 +8916,9 @@ function spawnBoss(b){
   // it was recalibrated against the ceiling directly (R235).
   const final = b.t === 1140;
   const grow = final ? 1 : Math.min(BOSS_GROW_CAP, 1 + BOSS_GROW * Math.max(0, (P ? P.lvl : 1) - 1));
-  const def = { nm:b.nm, hp:Math.round(b.hp * grow), spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
+  const ofYou = final ? finaleSize() : Math.min(b.hp * BOSS_SIZE_CAP, kitDps() * (BOSS_SECS[b.t] || 0));
+  const floorHp = final ? FINALE_FLOOR : b.hp * grow;
+  const def = { nm:b.nm, hp:Math.round(Math.max(floorHp, ofYou)), spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
                 c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier };
   const a = R()*TAU;
   // and it comes up inside weapon range, not on the horizon - BOSS_RISE
@@ -8831,7 +8933,7 @@ function spawnBoss(b){
     // five times your size should not be able to arrive quietly. It comes up
     // OUT OF THE GROUND over BOSS_RISE seconds - buried at the start, shoving
     // the ground up around it, and it cannot act or be hit until it is out.
-    rise: BOSS_RISE,
+    rise: BOSS_RISE, born: T,
     final });
   shake = 1.6; SFX.boss(); alert2(b.nm, "#ff5c4d");
   for(let i=0;i<20;i++){                       // the ground breaking around it
@@ -9779,7 +9881,7 @@ function offers(){
   for(const k in PASSIVES){
     const p = have[k], P2 = PASSIVES[k];
     if(isRule(k)){
-      if(!p && !noRules && rCount < RSLOTS && P.lvl >= RULE_FROM)
+      if(!p && !noRules && rCount < ruleSlots() && P.lvl >= RULE_FROM)
         pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
       continue;
     }
@@ -9892,7 +9994,8 @@ function cardDress(o){
   }
   else if(Pa && Pa.kind === "r"){ eff = Pa.eff; }           // one line, taken once, no pips
   else if(Pa){
-    max = Pa.max; have = w ? w.l+1 : 0; after = have+1;
+    have = w ? w.l+1 : 0; after = have+1;
+    max = Math.max(Pa.max, Math.min(PMAX_MASTERY, after));    // a MASTERY shows its fourth, fifth pip
     eff = Array.isArray(Pa.eff) ? Pa.eff[clamp(have, 0, Pa.eff.length-1)] : Pa.eff;
     const leads = [];
     for(const wk in P.kit){ const WW = WEAPONS[wk];
@@ -9969,6 +10072,8 @@ function applyPassive(k){
     // a multiplicative running value, not a recalc, so evolving (which
     // rescales it by the stage ratio) keeps the picks
     case "heart":   P.reach *= BIG_MUL; break;
+    case "glass":   { P.maxhp = Math.max(1, Math.round(P.maxhp * GLASS_HP)); P.hp = Math.min(P.hp, P.maxhp);
+                      P.dmg = recalcDmg(); } break;
     case "plating": { const add = Math.round(15*PSCALE);   // the health BIG HEART used to carry
                       P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp+add); } break;
     case "dupe":    break;                                // read directly by weapons
@@ -9982,7 +10087,8 @@ function recalcDmg(){
   return Math.pow(1 + LVL_DMG, Math.min(LVL_CAP, (P && P.grown) || 0))
        * (1 + rank("dmg")*.06)
        * (1 + prank(P.kit.spinach)*.13)
-       * (1 + prank(P.kit.boots)*.08); }                    // momentum
+       * (1 + prank(P.kit.boots)*.08)                       // momentum
+       * (P && P.kit.glass ? GLASS_DMG : 1); }               // GLASS, the rule
 // Altar boons multiply in HERE rather than being written onto P, because every
 // one of these recomputes its stat from scratch the next time you take a
 // passive - a boon assigned directly to P.cd survives exactly until your next
@@ -10100,7 +10206,7 @@ let botDrive = false;
 // the frame it lands, i.e. perfectly, which is the ceiling and not the median;
 // botHop(false) benches the floor.
 let botHop = true;
-const BOT_DIRS = 20;
+const BOT_DIRS = 20, BOT_BACKOFF = .35;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
   const gw = P && P.kit.gore;
@@ -10111,7 +10217,16 @@ function botVector(){
   // sampled every ten seconds of sudden death on the benched seeds it was 74
   // to 382 metres from the boss, so the bench measured the flight and not the
   // fight, and every loss read OVERRUN. Close to weapon range and hold it.
-  const fin = sudden ? enemies.find(e => e.final && !e.dead) : null;
+  // Every boss, not only the finale: R236 found the mid-run bosses dying on
+  // the spawn ring because the bot never let them arrive, which is not how a
+  // player meets a boss. The finale still waits for sudden death, where R235
+  // calibrated it.
+  // ...and not on its last legs: seed 33's rules-off run sat at a tenth of
+  // its health for twelve seconds at fourteen metres and died to a slam it
+  // had a second's warning of (R245). A player backs off to recover; the
+  // bot did not know how. Under BOT_BACKOFF it stops closing and the older
+  // kiting terms take over.
+  const fin = (P.hp > P.maxhp * BOT_BACKOFF) ? (enemies.find(e => e.boss && !e.dead && (!e.final || sudden)) || null) : null;
   let bestA = 0, best = -1e9;
   for(let i=0;i<BOT_DIRS;i++){
     const a = i/BOT_DIRS*TAU, dx = Math.sin(a), dz = Math.cos(a);
@@ -10329,7 +10444,7 @@ function step(dt){
     }
   }
   if(P.rebirthCd > 0) P.rebirthCd = Math.max(0, P.rebirthCd - dt);
-  if(P.rush > 0) P.rush = Math.max(0, P.rush - RUSH_DRAIN*dt);   // rush bleeds, kills or no kills
+  if(P.rush > 0) P.rush = Math.max(0, P.rush - RUSH_DRAIN*dt*(hasRule("afterburn") ? AFTERBURN_DRAIN : 1));   // rush bleeds, kills or no kills
   if(dx || dz){ P.face = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
 
   // ---- jump / bunnyhop
@@ -10513,6 +10628,11 @@ function step(dt){
       // only content was a snack. It is permanent GROWTH now - the number on
       // the HUD means something on its own, and the reward for outliving your
       // own build compounds instead of evaporating.
+      // ...except every fifth of them, which is a MASTERY (see masteryHand)
+      if(++silentLv % MASTERY_EVERY === 0){
+        const mh = masteryHand();
+        if(mh.length){ showPick(mh); break; }
+      }
       pendingLevels--;
       const was = P.hp;
       levelGrowth();
@@ -12988,9 +13108,13 @@ function hud(){
   // comes up - and the clock used to stop saying so the moment it started.
   // Six seeds in six lost exactly there. The clock counts the four minutes
   // down, in red, and the finale reads as a percentage before the raw number.
-  $("clock").textContent = sudden ? "SUDDEN DEATH  " + fmt(Math.max(0, RUN_LEN + 240 - T))
+  // on a phone the words do not fit beside the pause button; the red and
+  // the KILL IT line underneath carry them
+  const narrow = innerWidth < 720;
+  $("clock").textContent = sudden ? (narrow ? "" : "SUDDEN DEATH  ") + fmt(Math.max(0, RUN_LEN + 240 - T))
                                   : fmt(Math.max(0, RUN_LEN - T));
   $("clock").style.color = sudden ? "#ff5c4d" : deepAt ? "#ff8a6a" : "";
+  $("clock").classList.toggle("sd", !!sudden);
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   const nb = BOSSES[bossIdx];
   const fb = sudden ? enemies.find(e => e.final && !e.dead) : null;
@@ -13037,7 +13161,7 @@ function hud(){
     Math.min(100, (hopMul()-1)/HOP_TOP*100).toFixed(1)+"%";
   hopEl.children[1].textContent = pct > 0 ? "+"+pct+"%" : "";
   // with RHYTHM the same bar is paying twice, and the label says so
-  hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) + (hasRule("momentum") ? " · PACE & DMG" : "") : "";
+  hopEl.children[2].textContent = P.hop >= 1 ? "x"+Math.floor(P.hop) + (hasRule("momentum") ? (innerWidth < 720 ? " · DMG" : " · PACE & DMG") : "") : "";
   // RUSH reads the same way and only exists while there is one
   const rushEl = $("rush"), rpct = Math.round((rushMul()-1)*100);
   rushEl.classList.toggle("on", P.rush > 0);
@@ -13780,6 +13904,10 @@ window.__g = {
   noRules: (on=true)=>noRules=!!on,
   // where the last swing and the last shot were aimed, for the targeting checks
   bossTo: (x,z)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b){ b.x=x; b.z=z; rebuildGrid(); } return !!b; },
+  kitDps: ()=>Math.round(kitDps()),
+  bossRate: ()=>Math.round(lastBossRate),
+  setBossRate: (v)=>{ lastBossRate = v; return lastBossRate; },
+  mastery: ()=>({ silent:silentLv, hand:masteryHand().map(o=>o.key) }),
   clearShots: ()=>{ swings.length = 0; bolts.length = 0; },
   lastSwing: ()=>swings.length ? +swings[swings.length-1].ang.toFixed(3) : null,
   lastBolt:  ()=>bolts.length ? +bolts[bolts.length-1].a.toFixed(3) : null,
