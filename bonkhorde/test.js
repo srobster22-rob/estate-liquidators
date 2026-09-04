@@ -7519,6 +7519,47 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.lone.share === 1 && r.lone.boss >= 5 * 90, `${r.lone.boss} on the boss, share ${r.lone.share}`);
   }
 
+  console.log("\n=== 71. ON A PHONE, START IS ON THE FIRST SCREEN ===");
+  {
+    // The PLAY tab on a phone opened with a full-width portrait and START RUN
+    // a screen and a half below the fold. The portrait is capped and a bar
+    // along the bottom carries the button; the desktop keeps its button in
+    // the panel and never shows the bar.
+    const probe = async (w, h) => {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+      const pg = await ctx.newPage(); await pg.goto(FILE, { waitUntil: "load" }); await pg.waitForTimeout(500);
+      const r = await pg.evaluate(() => {
+        const g = window.__g; g.wipeSave(); g.menu("play");
+        const wrap = document.querySelector("#menu .wrap"); wrap.scrollTop = 0;
+        // the bar's display, not the button's: a button inside a hidden bar still says inline-block, with a zero-height rect
+        const rect = id => { const e = document.getElementById(id); if (!e) return null; const b = e.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom), l: Math.round(b.left), r: Math.round(b.right), h: Math.round(b.height), disp: getComputedStyle(id === "goBtn" ? e.parentElement : e).display, txt: e.textContent.trim(), dis: !!e.disabled }; };
+        const pv = document.querySelector("#detail canvas.pv"); const pvb = pv ? pv.getBoundingClientRect() : null;
+        const tiles = [...document.querySelectorAll("#chars .ch")].map(t => Math.round(t.getBoundingClientRect().top));
+        const open = { go: rect("goBtn"), start: rect("startBtn"), pv: pvb ? { h: Math.round(pvb.height), w: Math.round(pvb.width) } : null, rows: new Set(tiles).size, vw: innerWidth, vh: innerHeight, scrollW: document.documentElement.scrollWidth };
+        g.pickMon("ghoul");                                           // locked on a fresh save
+        const locked = { go: rect("goBtn") };
+        g.pickMon("scrap");
+        document.getElementById("goBtn").click();
+        const started = { menuOn: document.getElementById("menu").classList.contains("on"), running: !g.state().over && g.state().t >= 0, mon: g.moveOf().nm, want: g.moveOf("scrap").nm };
+        return { open, locked, started };
+      });
+      await ctx.close(); return r;
+    };
+    const ph = await probe(390, 844), sm = await probe(360, 640);
+    ok("at 390x844 the START bar sits inside the first screen, the panel's own button is hidden, and the portrait is capped",
+       ph.open.go && ph.open.go.h >= 30 && ph.open.go.t >= 0 && ph.open.go.b <= ph.open.vh && ph.open.go.disp === "flex" && /START/.test(ph.open.go.txt)
+       && ph.open.start && ph.open.start.disp === "none" && ph.open.pv && ph.open.pv.h <= 160 && ph.open.pv.w < ph.open.vw * .7 && ph.open.scrollW <= ph.open.vw && ph.open.rows === 3,
+       `bar ${ph.open.go && ph.open.go.t}-${ph.open.go && ph.open.go.b} of ${ph.open.vh}, panel button ${ph.open.start && ph.open.start.disp}, portrait ${ph.open.pv && ph.open.pv.w}x${ph.open.pv && ph.open.pv.h}, ${ph.open.rows} rows of tiles`);
+    ok("and at 360x640 too", sm.open.go && sm.open.go.h >= 30 && sm.open.go.t >= 0 && sm.open.go.b <= sm.open.vh && sm.open.go.disp === "flex" && sm.open.scrollW <= sm.open.vw,
+       `bar ${sm.open.go && sm.open.go.t}-${sm.open.go && sm.open.go.b} of ${sm.open.vh}`);
+    ok("a locked pick puts LOCKED on the bar, disabled", ph.locked.go && ph.locked.go.dis && /LOCKED/.test(ph.locked.go.txt), ph.locked.go && ph.locked.go.txt);
+    ok("and the bar's button starts the picked creature", !ph.started.menuOn && ph.started.running && ph.started.mon === ph.started.want, `${ph.started.mon} vs ${ph.started.want}, menu ${ph.started.menuOn}`);
+    const dk = await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.wipeSave(); g.menu("play");
+      const gb = document.getElementById("goBar"), sb = document.getElementById("startBtn");
+      return { bar: gb ? getComputedStyle(gb).display : "missing", start: sb ? getComputedStyle(sb).display : "missing" }; });
+    ok("the desktop keeps its button in the panel and never shows the bar", dk.bar === "none" && dk.start !== "none", JSON.stringify(dk));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

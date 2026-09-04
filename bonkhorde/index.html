@@ -414,6 +414,15 @@
   .detail .foot .ml s{text-decoration:none;color:#5c6470;font-size:8px;letter-spacing:.04em;flex-basis:100%}
   .detail .foot .btn{margin:0;padding:12px 30px;font-size:13px}
   .detail .foot .btn.gh{cursor:not-allowed}
+  /* THE START BUTTON IS ON THE FIRST SCREEN. On a phone the panel opened with
+     a full-width portrait and START RUN a screen and a half below the fold; a
+     player had to go looking for it. Under 520px the portrait is capped and
+     this bar carries the button along the bottom of the PLAY tab. */
+  .gobar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:3;align-items:center;gap:10px;
+    padding:8px 10px;background:#0d1118f5;border-top:2px solid #f0b42999;box-shadow:0 -8px 24px #000a}
+  .gobar b{flex:1;font-size:11px;letter-spacing:.1em;color:#cfc9bb;min-width:0;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;text-align:left}
+  .gobar .btn{margin:0;padding:12px 22px;font-size:13px;white-space:nowrap}
   .detail .foot .btn kbd{margin-left:8px;background:#0000;border-color:#a87a12;color:#4d3606}
   .detail .deep{margin:0;flex-basis:100%}
   /* POWER UP: a grid of tiles */
@@ -469,7 +478,10 @@
     .detail .ds,.detail .stats,.detail .rw,.detail .chain{margin-right:10px;margin-left:10px}
     .detail .stats{grid-template-columns:repeat(2,1fr)}
     .detail .foot{grid-column:1/2;padding:10px 10px 0}
-    .detail .foot .btn{width:100%;text-align:center}
+    .detail .foot .btn{display:none}
+    .detail canvas.pv,.detail .lockbox{height:150px;width:200px;margin:0 auto}
+    .gobar{display:flex}
+    #menu .wrap{padding-bottom:72px}
     .col{grid-template-columns:1fr}
   }
   .btn{display:inline-block;margin-top:20px;padding:13px 40px;background:var(--gold);
@@ -11567,7 +11579,7 @@ function openMenu(tab){
 // far along you are.
 function menuPlay(pane, sel){
   pane.innerHTML = `<div class="play"><div class="roster" id="chars"><h3>CHOOSE YOUR CREATURE</h3></div>
-    <div class="detail" id="detail"></div></div>`;
+    <div class="detail" id="detail"></div></div><div class="gobar" id="goBar"></div>`;
   const cr = document.getElementById("chars");
   for(const c of CHARS){
     const locked = c.lock && !save.unlocked[c.id];
@@ -11644,6 +11656,15 @@ function menuPlay(pane, sel){
   if(big) addPortrait(big, c, 0, c.pvz || 1);
   const sb = document.getElementById("startBtn");
   if(sb && !locked) sb.onclick = ()=>{ audioInit(); startRun(c.id); };
+  // the phone's bar carries the same button, for the same creature
+  const gb = document.getElementById("goBar");
+  if(gb){
+    gb.innerHTML = locked
+      ? `<b>${u ? u.what : "???"} &nbsp;&middot;&nbsp; ${u ? u.ds : ""}</b><button class="btn gh" id="goBtn" disabled>LOCKED</button>`
+      : `<b>${c.nm}</b><button class="btn" id="goBtn">START RUN</button>`;
+    const gbtn = document.getElementById("goBtn");
+    if(gbtn && !locked) gbtn.onclick = ()=>{ audioInit(); startRun(c.id); };
+  }
   const dr = document.getElementById("deeprow");
   if(dr) for(const el of dr.querySelectorAll("i"))
     el.onclick = ()=>{ save.deepSel = +el.dataset.d; writeSave(); SFX.buy(); openMenu(); };

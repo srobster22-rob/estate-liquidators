@@ -942,6 +942,15 @@ const MUTANTS = [
     why:"the volley is aimed at the boss again, so the crowd is only hit on the way",
     from:"  const tgt = threatTarget(P.x, P.z, 40, null, true);",
     to:  "  const tgt = threatTarget(P.x, P.z, 40);" },
+  // ---- R279: on a phone, START is on the first screen (section 71)
+  { id:"phone-start-below-the-fold", must:"71",
+    why:"the phone's START bar never shows, and the button is a screen and a half down again",
+    from:"    .gobar{display:flex}",
+    to:  "    .gobar{display:none}" },
+  { id:"phone-portrait-full-width", must:"71",
+    why:"the phone's portrait is full width again, pushing everything under it down",
+    from:"    .detail canvas.pv,.detail .lockbox{height:150px;width:200px;margin:0 auto}",
+    to:  "    .detail canvas.pv,.detail .lockbox{margin:0 auto}" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run
