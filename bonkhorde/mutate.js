@@ -908,8 +908,8 @@ const MUTANTS = [
     to:  "      </div>`; });" },
   { id:"stats-in-grey", must:"66",
     why:"the stat table prints every difference in the same grey as no difference",
-    from:"  return `<b class=\"${good ? \"g\" : \"r\"}\">${pct > 0 ? \"+\" : \"\"}${pct}%</b>`;",
-    to:  "  return `<b class=\"n\">${pct > 0 ? \"+\" : \"\"}${pct}%</b>`;" },
+    from:"  return `<b class=\"${good ? \"g\" : \"r\"}\">${txt}<i class=\"d\">${pct > 0 ? \"+\" : \"\"}${pct}%</i></b>`;",
+    to:  "  return `<b class=\"n\">${txt}<i class=\"d\">${pct > 0 ? \"+\" : \"\"}${pct}%</i></b>`;" },
   // ---- R275: the pause and the results show the run (section 67)
   { id:"pause-hides-the-kit", must:"67",
     why:"the pause sheet drops the kit strip - the inventory the genre keeps in view",
@@ -932,6 +932,15 @@ const MUTANTS = [
     why:"the table prints the creature's raw numbers, not the ones the run will start with",
     from:"  const s = baseStats(c), s0 = baseStats(CHARS[0]), f = STATKEY[k], v = s[f], v0 = s0[f];",
     to:  "  const up0 = save.up; save.up = {}; const s = baseStats(c), s0 = baseStats(CHARS[0]); save.up = up0; const f = STATKEY[k], v = s[f], v0 = s0[f];" },
+  // ---- R277: THUNDERHEAD discharges (section 69)
+  { id:"thunderhead-does-not-discharge", must:"69",
+    why:"the chain is twelve links and nothing more - the ceiling the bench measured",
+    from:"  if(w.evo && chain.length > 1){",
+    to:  "  if(false){" },
+  { id:"discharge-hits-anything", must:"69",
+    why:"the stroke lands on the last link instead of the biggest thing touched",
+    from:"    let big = chain[0]; for(const e of chain) if(rank(e) > rank(big)) big = e;",
+    to:  "    let big = chain[chain.length - 1];" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

@@ -7438,6 +7438,41 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        row(r.bones, "HEALTH").v === "147", `health "${row(r.bones, "HEALTH").v}"`);
   }
 
+  console.log("\n=== 69. THUNDERHEAD DISCHARGES INTO THE BIGGEST THING IT TOUCHED ===");
+  {
+    // The one evolution the bench could not tune: twelve links at 118 was its
+    // ceiling and CAROUSEL beat it on every axis. Every link charges the chain
+    // now and the charge returns into the biggest thing it touched - a boss
+    // over an elite over the fattest animal. Measured on an elite in a crowd
+    // of eleven, on the same elite alone, and under rank-3 ZAP, which has no
+    // discharge. The elite is tracked by identity: the stroke kills it, and a
+    // dead enemy is spliced from the list.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const trial = (evo, crowd) => {
+        g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.clearEnemies(); g.disarm();
+        g.skipTo(900);                                          // fifteen minutes in: a link kills no trash
+        const s = g.state();
+        g.spawnAt("shambler", s.x + 3, s.z); g.elite(0);        // the big one, nearest, so it is the first link
+        const id = g.enemyList()[0].id, before = g.enemyList()[0];
+        if (crowd) for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2 + .3, d = 5 + (i % 3); g.spawnAt("shambler", s.x + Math.cos(a) * d, s.z + Math.sin(a) * d); }
+        g.give("zap", 3); if (evo) g.evolve("zap");
+        g.setWT("zap", 0); g.stepRaw(1/60);                     // the timer counts down: zero fires now
+        const e = g.enemyList().find(x => x.id === id), arcs = g.arcsNow();
+        return { dmg: +(before.hp - (e ? e.hp : 0)).toFixed(1), max: before.max, elite: before.elite, gone: !e,
+                 links: ((arcs.find(a => !a.fat) || {}).n || 1) - 1, stroke: arcs.some(a => a.fat) };
+      };
+      return { crowd: trial(true, true), alone: trial(true, false), rank: trial(false, true) };
+    });
+    ok("an elite in a crowd of eleven takes the whole chain's charge - here, its whole 548 hit points, at least four times what it takes alone",
+       r.crowd.elite && r.crowd.links >= 8 && r.crowd.dmg >= r.alone.dmg * 4 && r.crowd.stroke,
+       `${r.crowd.dmg} of ${r.crowd.max} through ${r.crowd.links} links (stroke ${r.crowd.stroke}, killed ${r.crowd.gone}) vs ${r.alone.dmg} alone`);
+    ok("alone it takes one link and there is no stroke: a boss standing by itself is not a lightning rod",
+       r.alone.links === 1 && r.alone.dmg > 90 && r.alone.dmg < 150 && !r.alone.stroke && !r.alone.gone, `${r.alone.dmg}, ${r.alone.links} link, stroke ${r.alone.stroke}`);
+    ok("and rank-3 ZAP has no discharge: the same crowd, one link's worth on the elite",
+       r.rank.links >= 5 && r.rank.dmg < 130 && !r.rank.stroke && !r.rank.gone, `${r.rank.dmg} through ${r.rank.links} links, stroke ${r.rank.stroke}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

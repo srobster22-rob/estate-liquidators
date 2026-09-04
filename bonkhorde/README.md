@@ -238,7 +238,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 676 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
+node test.js              # 679 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -271,12 +271,13 @@ node film/runfilm.js 41           # a whole bot run photographed at seven marks,
 node film/draftfilm.js            # the level-up screen at desktop and phone: a fresh hand with reroll and banish, banish armed, rerolled, an evolution, a MASTERY
 node film/menufilm.js             # the front end at desktop and phone: PLAY fresh, PLAY with a locked creature picked, a veteran's PLAY, POWER UP, COLLECTION, UNLOCKS
 node film/pausefilm.js [seed]     # the pause menu (run, stats, kit) and the results screen at desktop and phone, eight minutes into the seed's bot run
+node film/thunderfilm.js          # THUNDERHEAD's discharge: the chain and the return stroke on an elite in a crowd, and the same elite alone
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **676 passing** as of R276, with 205 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **679 passing** as of R277, with 207 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -359,6 +360,15 @@ structural ceiling — twelve jumps at 118 damage every 0.85s is ~1666 theoretic
 rather than a bigger number. PLAGUE loses to MEGABONK by 37 boss, 7 crowd and 55 seconds, margins
 smaller than the documented noise of a four-trial survival measure; "fixing" that would be tuning
 to the instrument.
+
+**THUNDERHEAD got the design change instead (R277).** Every link now charges the chain and the
+whole charge returns down it into the biggest thing it touched - a boss over an elite over the
+fattest animal - at 0.6 of the base hit per link behind it, so twelve links land a 6.6x stroke.
+Paired bench, seeds 20260821..24, n=4 dps and 3 survival: THUNDERHEAD 683 boss / 1488 crowd / 15:48
+before, **1504 / 1543 / 17:19** after, against CAROUSEL's 1820 / 4649 / 14:08 on the same seeds.
+It now leads the tier on survival and is no longer dominated; the crowd axis barely moved, which is
+the point - the stroke is a reason to stand where the crowd connects you to the boss, not more
+crowd damage.
 
 **A caution about reading this table too finely.** AURA, PULSE, SKULLS, GORE and MORTAR have
 converged on roughly one point — 200–260 boss, 1900–2200 crowd, 560–650 survival. At that spacing

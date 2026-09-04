@@ -1950,7 +1950,7 @@ mortar:{ name:"MORTAR", ic:"mortar", kind:"w",
 zap:{ name:"ZAP", ic:"zap", kind:"w",
   ds:"Chain lightning. Loses bite with every jump.",
   evo:{ name:"THUNDERHEAD", need:"magnet", ic:"tesla",
-        ds:"Twelve jumps, no falloff. Conduct yourself accordingly." },
+        ds:"Twelve jumps, no falloff, then the whole chain discharges into the biggest thing it touched." },
   lv:[{d:26,cd:1.5,jumps:3,fall:.78,rng:9},
       {d:35,cd:1.4,jumps:4,fall:.80,rng:10},
       {d:47,cd:1.3,jumps:5,fall:.82,rng:11},
@@ -9014,8 +9014,9 @@ function fireZap(w,s){
   const seen = new Set(); const pts = [[P.x, P.y+1.2, P.z]];
   let d = s.d;
   const jumps = s.jumps + dupeN();
+  const chain = [];
   for(let j=0;j<jumps && cur;j++){
-    seen.add(cur);
+    seen.add(cur); chain.push(cur);
     pts.push([cur.x, cur.y + cur.def.h*.6, cur.z]);
     const roll = dmgOut(d);
     hurt(cur, roll.d, 0, 0, roll.crit);
@@ -9025,6 +9026,22 @@ function fireZap(w,s){
   // .30, not .16: at 160ms the weapon eye pass caught the chain in ZERO of
   // two frames - the verb of the weapon was invisible at its own cadence
   arcs.push({ pts, life:.30, evo:w.evo }); statArcs++;
+  // THE DISCHARGE. THUNDERHEAD was the one evolution whose ceiling was
+  // structural: twelve targets at 118 apiece, and the bench had it at 88% of
+  // that with CAROUSEL ahead on every axis. Numbers could not fix it, so it
+  // does something else now - every link charges the chain, and the whole
+  // charge returns down it into the biggest thing it touched (a boss over an
+  // elite over the fattest animal). A boss standing in its own horde takes
+  // the horde's worth of lightning; a boss standing alone takes one link.
+  // That is a reason to stand where the crowd connects you to the boss,
+  // which is a positioning reason, which is the only kind this game has.
+  if(w.evo && chain.length > 1){
+    const rank = e => e.boss ? 3e9 : e.elite ? 2e9 : e.maxhp;
+    let big = chain[0]; for(const e of chain) if(rank(e) > rank(big)) big = e;
+    const roll = dmgOut(s.d * THUNDER_CHARGE * (chain.length - 1));
+    hurt(big, roll.d, 0, 0, roll.crit);
+    arcs.push({ pts:[pts[pts.length-1], [big.x, big.y + big.def.h*.6, big.z]], life:.42, evo:true, fat:true });
+  }
   SFX.zap();
 }
 function fireCaltrops(w,s){
@@ -10419,6 +10436,10 @@ function hopThaw(){
 const BROOD_BOSS = 2.9;
 // How far apart a pack's own animals stay. Roughly two hatchling widths.
 const PET_SEP = 1.1;
+// THUNDERHEAD's discharge: every link past the first adds this much of the
+// base hit to the return stroke. Eleven links behind it, the stroke lands at
+// 6.6x - a boss standing in a crowd takes the crowd's worth of lightning.
+const THUNDER_CHARGE = .6;
 // the hand on the table, who dealt it (offers or masteryHand), and the two
 // things a player can do to it besides take a row
 let curHand = null, curDealer = null, banMode = false, selRow = -1;
@@ -13767,14 +13788,15 @@ function render(){
       box(rx, groundY(rx,rz)+.1, rz, .14,.03,.14, [1,.4,.2], .5*t); }
   }
   for(const a of arcs){
-    const al = a.life/.30;
+    // the return stroke is the fat one: thicker, whiter, and it outlives the chain
+    const al = a.life/(a.fat ? .42 : .30), sz = a.fat ? .34 : .18;
     for(let i=0;i<a.pts.length-1;i++){
-      const p0=a.pts[i], p1=a.pts[i+1], n=9;
+      const p0=a.pts[i], p1=a.pts[i+1], n=a.fat ? 14 : 9;
       for(let k=0;k<n;k++){
         const t=k/n;
         box(lerp(p0[0],p1[0],t)+rnd(-.22,.22), lerp(p0[1],p1[1],t)+rnd(-.22,.22),
-            lerp(p0[2],p1[2],t)+rnd(-.22,.22), .18,.18,.18,
-            a.evo?[.7,.9,1]:[.85,.95,1], al);
+            lerp(p0[2],p1[2],t)+rnd(-.22,.22), sz,sz,sz,
+            a.fat?[1,1,1]:a.evo?[.7,.9,1]:[.85,.95,1], al);
       }
     }
   }
@@ -14545,6 +14567,9 @@ window.__g = {
   clearBolts:()=>{ statBolts = 0; },
   boltsPeak:()=>statBolts,
   enemiesPos:()=>enemies.filter(e=>!e.dead).map(e=>({ x:+e.x.toFixed(3), z:+e.z.toFixed(3) })),
+  // by identity, not index: a dead enemy is spliced away, and index 0 becomes someone else
+  enemyList:()=>enemies.map(e=>({ id:+e.bob.toFixed(7), hp:+e.hp.toFixed(1), max:+e.maxhp.toFixed(1), dead:!!e.dead, elite:!!e.elite })),
+  arcsNow:()=>arcs.map(a=>({ n:a.pts.length, fat:!!a.fat, evo:!!a.evo })),
   nearestEnemy:()=>{ const e = nearest(P.x, P.z, 999);
                      return e ? { x:+e.x.toFixed(3), z:+e.z.toFixed(3),
                                   slowT:+(e.slowT||0).toFixed(3) } : null; },
