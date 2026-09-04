@@ -7014,6 +7014,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${noop.length} no-ops${noop.length ? ` (${noop.join(", ")})` : ""}, ${dupIds.length} duplicate ids${dupIds.length ? ` (${dupIds.join(", ")})` : ""}`);
   }
 
+  console.log("\n=== 62. THE BANNER CLEARS THE BOSS ===");
+  {
+    // The evolution banner sat at 40% of the screen, which is where the boss
+    // is when there is one - the run film caught FLAREDRAKE and PYRAETHON
+    // announcing themselves across THE MATRIARCH and THORNBACK. With a boss
+    // alive it steps up into the band between the clock and the boss bar.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      // the banner's clock runs on RENDER frames, not sim steps, and it fades
+      // in over its first third of a second: render until it has
+      const where = async () => { await frame(); for (let k = 0; k < 60 && g.evoTxt().t > 2.95; k++) await frame(); const ev = document.getElementById("evo"), b = ev.getBoundingClientRect();
+        return { top: +(b.top / innerHeight).toFixed(3), mid: +((b.top + b.height / 2) / innerHeight).toFixed(3), up: ev.classList.contains("up"), op: +getComputedStyle(ev).opacity, txt: ev.firstElementChild.textContent }; };
+      const out = {};
+      boot(); g.evolveTo(1); out.alone = await where();
+      boot(); g.boss(1); g.step(2, 1/60); const bs = g.bossAt(); g.place(bs.x, bs.z - 12); g.step(60, 1/60); g.evolveTo(1); out.boss = await where();
+      g.clearEnemies(); out.after = await where();
+      return out;
+    });
+    ok("with no boss on the field the banner sits where it always did, in the upper-middle of the screen, visible",
+       !r.alone.up && r.alone.op > .5 && r.alone.mid > .34 && r.alone.mid < .46 && r.alone.txt.length > 0, `mid ${r.alone.mid}, opacity ${r.alone.op}, "${r.alone.txt}"`);
+    ok("with a boss alive it steps up out of the fight's third: its centre is above 30% of the screen, still visible",
+       r.boss.up && r.boss.op > .5 && r.boss.mid < .30, `mid ${r.boss.mid}, opacity ${r.boss.op}`);
+    ok("and it comes back down the moment the boss is gone", !r.after.up && r.after.mid > .34, `mid ${r.after.mid}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
