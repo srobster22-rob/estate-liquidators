@@ -10179,8 +10179,16 @@ function offers(){
     for(let j=0;j<pool.length;j++){ r-=pool[j].weight; if(r<=0){hitIdx=j;break;} }
     out.push(pool.splice(hitIdx,1)[0]);
   }
+  // A SHORT HAND IS STILL A CHOICE. With everything but one rank taken the
+  // roller dealt a hand of one, under a caption that said PRESS 1-4 (seed 41,
+  // level 29: QUICKER HEART alone, R272's film). One card is not a draft; the
+  // snack joins it, so the last rank is weighed against 40 HP now. An EMPTY
+  // pool still deals the snack alone - that is the heal-only level the
+  // MASTERY count runs on (see the level loop), and it must stay one card.
   if(!out.length) out.push({ type:"heal", ic:"heal", nm:"ROAST CHICKEN",
                              lv:"REFRESHMENT", ds:"Heal 40 HP. Nothing left to learn.", weight:1 });
+  else if(out.length === 1 && out[0].type !== "heal")
+    out.push({ type:"heal", ic:"heal", nm:"ROAST CHICKEN", lv:"REFRESHMENT", ds:"Heal 40 HP, instead.", weight:1 });
   return out;
 }
 // A level-up is not a mistake. The chain is the one thing in this game that
@@ -10329,11 +10337,13 @@ function showPick(hand){
   // desktop the cards are chosen with the number keys and the number is the
   // loudest thing on the card. Touch still taps them; there is no pointer lock
   // on a phone.
+  const cards = hand || offers();
+  // the caption counts the cards it is captioning: a hand of two says 1-2
   document.getElementById("pkSub").textContent =
-    (TOUCH ? "TAP ONE" : "PRESS 1-4") +
+    (TOUCH ? "TAP ONE" : cards.length > 1 ? `PRESS 1-${cards.length}` : "PRESS 1") +
     (pendingLevels > 1 ? `  ·  ${pendingLevels-1} MORE QUEUED` : "");
   const box = document.getElementById("pkCards"); box.innerHTML="";
-  (hand || offers()).forEach((o,i)=>{
+  cards.forEach((o,i)=>{
     const el = document.createElement("div");
     const d = cardDress(o);
     el.className = "card " + d.fam + (o.type==="evo" ? " evo" : "") + (isRule(o.key) ? " rule" : "");

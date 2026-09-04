@@ -7100,6 +7100,35 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.boltAt !== null && r.dropped !== null && r.dropped < .2, `bolt at frame ${r.boltAt}, taunt 12 frames later ${r.dropped}`);
   }
 
+  console.log("\n=== 64. A SHORT HAND IS STILL A CHOICE ===");
+  {
+    // Seed 41's bot run reaches 8:00 with one legal card (QUICKER HEART, a
+    // rank short, everything else maxed or waiting on a partner) and dealt a
+    // hand of one under PRESS 1-4 (R272's run film). The snack joins a hand
+    // of one now and the caption counts the cards; an EMPTY pool is still
+    // not a draft at all - the level is taken silently, as the mastery count
+    // requires.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.pin(41); g.pinRun(41); g.start("intern"); g.bot(true); g.botHop(true); g.setShake(0); g.runOut(480);
+      g.bot(false); g.freezeSpawns(true); g.freezeEvents(true); g.god(); g.clearEnemies();
+      const read = () => ({ picking: g.state().picking, lvl: g.state().lvl, pending: g.state().pending, max: g.state().maxhp,
+        cards: [...document.querySelectorAll("#pkCards .card")].map(e => ({ nm: (e.querySelector(".nm") || {}).textContent, fam: (e.querySelector(".fam") || {}).textContent })),
+        sub: document.getElementById("pkSub").textContent });
+      g.drainPicks(false); const lv0 = g.state().lvl; g.xp(400); g.step(1, 1/60); const a = read();
+      // take the growth; the rules are held out so the next level's pool is genuinely
+      // empty, and the queued level waits out the gap between drafts before it is dealt
+      g.noRules(true); g.pick(0); g.step(90, 1/60); const b = read();
+      g.drainPicks(true); g.noRules(false);
+      return { lv0, a, b, kit: g.kit().join(" ") };
+    });
+    ok("one legal growth left: the hand is that growth and the snack, and the caption says PRESS 1-2",
+       r.a.picking && r.a.cards.length === 2 && r.a.cards[0].nm === "QUICKER HEART" && r.a.cards[1].fam === "SNACK" && /PRESS 1-2/.test(r.a.sub),
+       `${r.a.cards.map(c => c.nm).join(" | ")} - "${r.a.sub}" (level ${r.a.lvl}, kit ${r.kit})`);
+    ok("and with nothing left the queued level is not a draft at all: no screen, taken as growth (max HP rises)",
+       !r.b.picking && r.b.pending === 0 && r.b.max > r.a.max, `picking ${r.b.picking}, pending ${r.a.pending} -> ${r.b.pending}, max HP ${r.a.max} -> ${r.b.max}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
