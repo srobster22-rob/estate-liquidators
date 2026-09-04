@@ -6780,6 +6780,67 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `spits at ${r.spit.snaps.join(" ")}; pre -1s ${r.spit.quiet}, -.3s ${r.spit.pre18}, -1f ${r.spit.pre1}; pitch ${r.spit.ptBefore} -> ${r.spit.ptPeak}`);
   }
 
+  console.log("\n=== 57. THE DIVE HAS A BOTTOM ===");
+  {
+    // The pterling's dive had a telegraph (rear, wings back, white-hot) and a
+    // streak, and then a straight line in that ended the frame its timer did:
+    // level flight, at speed, and the bird popped a sixth of its height back
+    // up. The dive now pitches nose-down through the same channel the bite
+    // uses, snaps at the bottom - on the hit or at air - and pulls out over a
+    // quarter second.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      // 1. the numbers, one frame at a time, from spawn through the first dive and out of it
+      boot(); const hp0 = g.state().hp; g.spawnAt("runner", 0, 7.5); const rows = [];
+      for (let i = 0; i < 300; i++) { g.stepRaw(1/60); const e = g.gait()[0]; if (!e) break;
+        rows.push({ i, dvW: e.dvW, dvT: e.dvT, dvE: e.dvE, pt: e.pt, lg: e.lg, dmg: +(hp0 - g.state().hp).toFixed(1) }); }
+      const windRows = rows.filter(q => q.dvW > .2 && q.dvT === 0);
+      const commit = rows.findIndex(q => q.dvT > 0);
+      const end = rows.findIndex((q, i) => i > commit && commit >= 0 && q.dvT === 0);
+      const inDive = commit >= 0 ? rows.slice(commit, end > 0 ? end : commit + 27) : [];
+      const after = end > 0 ? rows.slice(end, end + 30) : [];
+      const out = { commit, end, windPt: windRows.length ? Math.min(...windRows.map(q => q.pt)) : null,
+        ptIn: inDive.length > 9 ? inDive[9].pt : null, ptPeak: inDive.length ? Math.max(...inDive.map(q => q.pt)) : null,
+        snapAtBottom: after.length ? Math.max(...after.slice(0, 3).map(q => q.lg)) : null,
+        dmgAtEnd: after.length ? after[0].dmg : null,
+        easeOut: after.map(q => q.dvE), framesToLow: after.findIndex(q => q.dvE < .3),
+        monotone: after.every((q, i) => i === 0 || q.dvE <= after[i-1].dvE + 1e-6) };
+      // 2. the drawn bird does not pop at the bottom: world-space top, frame by frame, across the dive's end
+      boot(); g.spawnAt("runner", 0, 7.5); let n = 0; while (n++ < 300) { g.stepRaw(1/60); const e = g.gait()[0]; if (e && e.dvT > 0 && e.dvT < .08) break; }
+      const tops = [];
+      for (let i = 0; i < 16; i++) { g.pause(true); g.captureEnemyWorld(); await frame(); await frame(); const b = g.enemyBox(); const e = g.gait()[0];
+        tops.push({ top: b ? +(b.maxY - b.gy).toFixed(3) : null, dvT: e.dvT, dvE: e.dvE }); g.stepRaw(1/60); }
+      out.tops = tops; out.maxJump = Math.max(...tops.slice(1).map((q, i) => Math.abs(q.top - tops[i].top)));
+      // 3. a dive that MISSES - you step aside once it has committed - still
+      //    snaps at air when its timer runs out, for no damage
+      boot(); const hp2 = g.state().hp; g.spawnAt("runner", 0, 7.5); const key = (tp, c) => dispatchEvent(new KeyboardEvent(tp, { code: c }));
+      let cm = -1, endLg = null, endDmg = null; n = 0;
+      while (n++ < 400) { g.stepRaw(1/60); const e = g.gait()[0]; if (!e) break;
+        if (cm < 0 && e.dvT > 0) { cm = n; key("keydown", "KeyA"); }
+        // the hook rounds dvT to 3 places, so "0" can be a frame early: read
+        // the snap across this frame and the next
+        if (cm > 0 && e.dvT === 0 && endLg === null) { g.stepRaw(1/60); const e2 = g.gait()[0]; endLg = Math.max(e.lg, e2 ? e2.lg : 0); endDmg = +(hp2 - g.state().hp).toFixed(1); break; } }
+      key("keyup", "KeyA"); out.miss = { committed: cm, endLg, endDmg };
+      return out;
+    });
+    ok("the wind-up rears the bird: pitch goes negative while it hangs and flares",
+       r.commit > 0 && r.windPt !== null && r.windPt < -.08, `commit at frame ${r.commit}, wind-up pitch ${r.windPt}`);
+    ok("committed, it goes in nose-down within 150 ms and holds it",
+       r.ptIn !== null && r.ptIn > .30 && r.ptPeak > .30, `pitch at +9 frames ${r.ptIn}, peak ${r.ptPeak}`);
+    ok("the bottom is a snap - on the hit, or at air when the timer runs out",
+       r.end > 0 && r.snapAtBottom > .85, `dive ended at frame ${r.end}, lg ${r.snapAtBottom}, damage by then ${r.dmgAtEnd}`);
+    ok("and it pulls out over a quarter second instead of cutting to level flight",
+       r.framesToLow >= 4 && r.framesToLow <= 20 && r.monotone, `dvE after the end: ${r.easeOut.slice(0, 10).join(" ")} (below .3 after ${r.framesToLow} frames)`);
+    ok("the drawn bird does not pop at the dive's end: no frame moves its top more than 12 cm",
+       r.tops.every(q => q.top !== null) && r.maxJump < .12, `tops ${r.tops.map(q => q.top).join(" ")} (max step ${r.maxJump && r.maxJump.toFixed(3)})`);
+    ok("a dive you step out of still snaps at air when it runs out - and for nothing",
+       r.miss.committed > 0 && r.miss.endLg !== null && r.miss.endLg > .85 && r.miss.endDmg === 0,
+       `committed at ${r.miss.committed}, lg at the end ${r.miss.endLg}, damage ${r.miss.endDmg}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

@@ -2588,8 +2588,13 @@ pterling(e, face, W, H, c, glow, lod, y0){
   const life = e.dead ? Math.max(0, 1 - e.ft / (e.fd*.30)) : 1;
   const wind = (e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0) * life;
   const div  = (e.dvT > 0 ? 1 : 0) * life;
-  const flap = Math.sin(T*(13 + wind*36) + e.bob) * (1 - div*.85) * life,
-        hop  = (Math.abs(Math.sin(T*7 + e.bob))*H*.10 + wind*H*.30 - div*H*.16) * life;
+  // the posture rides the EASED dive (walk() e.dvE): flat wings and the drop
+  // come in over 120 ms and go out over a quarter second - the pull-up -
+  // where the binary flag popped the bird a sixth of its height back up on
+  // the frame the dive ended
+  const dvs  = (e.dvE || 0) * life;
+  const flap = Math.sin(T*(13 + wind*36) + e.bob) * (1 - dvs*.85) * life,
+        hop  = (Math.abs(Math.sin(T*7 + e.bob))*H*.10 + wind*H*.30 - dvs*H*.16) * life;
   // the warning and the streak are world-space FX, and go with the kill
   if(wind > .15 && !e.dead){
     const gy2 = groundY(e.x, e.z);
@@ -9549,6 +9554,10 @@ function updateEnemies(dt){
       if(e.dvT > 0){                                   // committed, mid-dive
         e.dvT -= dt;
         spd *= DIVE_SPD;
+        // THE BOTTOM. A dive that runs out without a hit used to just stop -
+        // level, at speed, as if nothing had been attempted. It snaps at air
+        // now (the same strike the bite uses) and pulls out of it.
+        if(e.dvT <= 0){ e.dvT = 0; e.lg = 1; }
       } else if(e.dv <= 0 && d < DIVE_R && d > 1.2){
         e.dvW = (e.dvW || 0) + dt;
         if(e.dvW > 0 && !e.dvS){ e.dvS = 1; SFX.dive(); }   // once, on the wind-up
@@ -9757,7 +9766,15 @@ function walk(e, lx, lz, dt){
   // the same one-shove construction the player's attacks had before R252.
   const tb = e.lg > 0 ? (1 - e.lg) / 3.2 : 9;                // seconds since the snap
   e.snap = tb < .06 ? tb / .06 : Math.max(0, 1 - (tb - .06) / .25);
-  e.pt = -.24*e.pre + e.snap*.46;
+  // THE DIVE, in the same channels: the wind-up rears the bird (the plan
+  // already lifts and flares it - this is the pitch it lacked), the dive
+  // itself is nose-down, eased in over 120 ms and OUT over a quarter second
+  // - the pull-up - instead of the level flight the old binary flag cut to
+  // the frame the dive ended
+  const dwind = e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0;
+  const dv = e.dvT > 0 ? Math.min(1, (DIVE_TIME - e.dvT) / .12) : 0;
+  e.dvE = (e.dvE || 0) + (dv - (e.dvE || 0)) * Math.min(1, dt * (dv > (e.dvE || 0) ? 18 : 9));
+  e.pt = -.24*e.pre - .16*dwind + e.snap*.46*(1 - e.dvE*.5) + e.dvE*.40;
   e.rc = e.snap*.30;
   e.stq = 1 - e.pre*.11 + e.snap*.07;                        // the crouch, then the stretch
 }
@@ -13993,6 +14010,7 @@ window.__g = {
                                bk:+e.bk.toFixed(4), lg:+e.lg.toFixed(4),
                                pre:+(e.pre||0).toFixed(4), pt:+(e.pt||0).toFixed(4), rc:+(e.rc||0).toFixed(4), wu:+(e.wu||0).toFixed(4),
                                btu:+((e.bt && e.bt.u) || 0).toFixed(3),
+                               dvW:+(e.dvW || 0).toFixed(3), dvT:+(e.dvT || 0).toFixed(3), dvE:+(e.dvE || 0).toFixed(3),
                                sq:+e.sq.toFixed(4), kx:+e.kx.toFixed(3),
                                kz:+e.kz.toFixed(3), boss:!!e.boss })),
   // A hazard exactly where the test wants one, already live, so a check on
