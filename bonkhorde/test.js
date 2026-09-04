@@ -6992,6 +6992,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Pl.every(p => p.n1 === p.n0 && p.c1 === p.c0 && p.c1 === 1), Pl.map(p => `${p.nm} ${p.n0}/${p.n1} boxes, ${p.c0}->${p.c1} parts`).join("; "));
   }
 
+  console.log("\n=== 61. EVERY MUTANT STILL ANCHORS ===");
+  {
+    // A mutant whose `from` no longer appears in the game is a mutant that
+    // never applies, and a mutant that never applies is a hole in the
+    // suite nobody sees: eleven of them had rotted that way by R261, three
+    // of them written that same week. Read straight off the files, no
+    // browser: every mutant's anchor must occur in index.html exactly once,
+    // and its replacement must actually change something.
+    const src = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+    const mu = fs.readFileSync(path.join(__dirname, "mutate.js"), "utf8");
+    const m0 = mu.indexOf("const MUTANTS = ["), m1 = mu.indexOf("\n];", m0) + 3;
+    const MUTANTS = new Function(mu.slice(m0, m1) + "; return MUTANTS;")();
+    const count = (s, f) => s.split(f).length - 1;
+    const stale = MUTANTS.filter(m => count(src, m.from) !== 1).map(m => `${m.id} x${count(src, m.from)}`);
+    const noop = MUTANTS.filter(m => m.from === m.to).map(m => m.id);
+    const ids = MUTANTS.map(m => m.id), dupIds = ids.filter((id, i) => ids.indexOf(id) !== i);
+    ok("every mutant's anchor occurs in the game exactly once", MUTANTS.length > 150 && stale.length === 0,
+       stale.length ? `stale: ${stale.join(", ")}` : `${MUTANTS.length} mutants anchored`);
+    ok("and every mutant changes something, under a name of its own", noop.length === 0 && dupIds.length === 0,
+       `${noop.length} no-ops${noop.length ? ` (${noop.join(", ")})` : ""}, ${dupIds.length} duplicate ids${dupIds.length ? ` (${dupIds.join(", ")})` : ""}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
