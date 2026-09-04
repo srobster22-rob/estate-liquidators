@@ -6358,10 +6358,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   console.log("\n=== 47. THE BOSS IS THE TARGET ===");
   {
-    // BONK BAT and BOLT aimed at the nearest body. With a grub two metres south
-    // and TERRAVORE seven metres north, the swing and the shot went south. ZAP
-    // already weighed a boss in reach above everything; the swing and the shot
-    // read the same threatTarget() now. A north-facing aim is angle 0.
+    // BONK BAT aimed at the nearest body. With a grub two metres south and
+    // TERRAVORE seven metres north, the swing went south. ZAP already weighed a
+    // boss in reach above everything; the swing reads the same threatTarget()
+    // now. BOLT did too for a while, and the bench (R278) found the fan's
+    // whole pierce budget going to the boss from forty metres - so the volley
+    // is aimed at the nearest thing again, and the boss takes what crosses it
+    // (section 70). A north-facing aim is angle 0.
     const r = await page.evaluate(async () => {
       const g = window.__g, wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
       const aim = (w) => { g.wipeSave(); g.pin(8); g.pinRun(8); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
@@ -6381,8 +6384,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const toward = (a, target) => a !== null && target !== null && Math.abs(Math.atan2(Math.sin(a - target), Math.cos(a - target))) < .5;
     ok("BONK BAT swings at the boss in reach, not at the grub at its feet",
        toward(r.bat.aimed, r.bat.bossAng) && !toward(r.bat.aimed, r.bat.grubAng), JSON.stringify(r.bat));
-    ok("BOLT is loosed at the boss in reach, not at the grub at its feet",
-       toward(r.bolt.aimed, r.bolt.bossAng) && !toward(r.bolt.aimed, r.bolt.grubAng), JSON.stringify(r.bolt));
+    ok("BOLT's fan is loosed at the grub at its feet, not turned on the boss: a fan is a crowd weapon",
+       toward(r.bolt.aimed, r.bolt.grubAng) && !toward(r.bolt.aimed, r.bolt.bossAng), JSON.stringify(r.bolt));
   }
 
   console.log("\n=== 48. BOSSES ARE FIGHTS ===");
@@ -7479,13 +7482,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
 
   console.log("\n=== 70. THE FAN IS AIMED AT THE CROWD ===");
   {
-    // Since threatTarget learned to want the boss, the fan was aimed at it
-    // from forty metres: BOLTSTORM's boss damage went 1313 -> 3060 on the same
-    // seeds against the build that set its numbers, crowd damage fell, and it
-    // dominated three cards. A boss inside BOSS_NEAR (section 47's seven
-    // metres) is still the target; beyond it the fan is aimed at the nearest
-    // thing, a boss takes what crosses it, and the whole fan when it is all
-    // there is. The boss here stands at twelve metres.
+    // Since threatTarget learned to want the boss, the fan was aimed at it:
+    // BOLTSTORM's boss damage went 1313 -> 3060 on the same seeds against the
+    // build that set its numbers, crowd damage fell, and it dominated three
+    // cards. The fan is aimed at the nearest thing again; a boss takes what
+    // crosses it, and the whole fan when it is all there is. (A "boss inside
+    // ten metres" exception was tried and benched at 2975: in a finale the
+    // boss's centre is inside ten metres nearly always.)
     const r = await page.evaluate(() => {
       const g = window.__g;
       const volley = (crowd) => {
@@ -7493,7 +7496,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.skipTo(1140); g.boss(3);                                   // TERRAVORE, fifteen metres out
         for (let i = 0; i < 240; i++) g.stepRaw(1/60);               // a boss rises out of the ground first, and cannot be hurt until it has
         const b = g.bossAt(), s0 = g.state(), ang = Math.atan2(b.z - s0.z, b.x - s0.x);
-        g.place(b.x - Math.cos(ang) * 12, b.z - Math.sin(ang) * 12); // twelve metres from it: outside BOSS_NEAR
+        g.place(b.x - Math.cos(ang) * 12, b.z - Math.sin(ang) * 12); // twelve metres from it
         const p = g.state();
         // the crowd on a quarter-ring at a right angle to the boss: the fan's aim
         // and the boss disagree, and the bolts stay inside homing range of the

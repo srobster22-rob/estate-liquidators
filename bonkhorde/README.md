@@ -278,7 +278,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **681 passing** as of R278, with 208 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **681 passing** as of R278, with 207 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -381,7 +381,10 @@ twenty-eight bodies of pierce went to one animal. The fan is aimed at the neares
 whole fan when it is all there is. Same seeds after: **1135 / 4027 / 19:44** - back inside the
 range it was tuned to, top of the tier on survival, below the median on boss. Per-bolt homing
 could not have done this either way: at 38 u/s and 4.2 rad/s a bolt's turning circle is nine
-metres, so a bolt launched across a boss orbits it.
+metres, so a bolt launched across a boss orbits it. Section 47 had asked the shot to prefer a boss seven
+metres off over a grub at your feet, by analogy with the swing; the swing keeps that preference,
+the fan does not, and a "boss inside ten metres" exception was tried and benched straight back at
+2975 - in a finale the boss's centre is inside ten metres nearly always.
 
 **A caution about reading this table too finely.** AURA, PULSE, SKULLS, GORE and MORTAR have
 converged on roughly one point — 200–260 boss, 1900–2200 crowd, 560–650 survival. At that spacing
