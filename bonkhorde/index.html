@@ -9752,7 +9752,14 @@ function updateEnemies(dt){
         e.wu -= dt;
         if(e.wu <= 0){
           e.wu = 0;
-          if(reach && P.iframe <= 0){ playerHurt(e.dmg, e.x, e.z); P.iframe = BITE_REST; }
+          if(reach && P.iframe <= 0){
+            playerHurt(e.dmg, e.x, e.z); P.iframe = BITE_REST;
+            // THE FIRST BITE TEACHES. Once, ever: the one moment a new player
+            // has just watched an animal rear back and then felt it land is the
+            // moment to say the rear was the warning. The pause screen has the
+            // long form; nobody reads a pause screen before their first bite.
+            if(!save.tipBite && !botDrive){ save.tipBite = 1; writeSave(); alert2("IT REARED BACK FIRST - STEP OUT", "#8affd0"); }
+          }
           else whiff(d);                            // snapped at air: you stepped out of it
           e.lg = 1;                                 // the snap, see walk() and eb()
         }
@@ -13447,7 +13454,15 @@ function render(){
     g2.font = `800 ${asz.toFixed(0)}px ui-monospace,Menlo,monospace`;
     // a plate, because a coloured word on a sunlit field is not readable and
     // an outline alone only half fixes it
-    const tw = g2.measureText(al.text).width;
+    let tw = g2.measureText(al.text).width;
+    // FIT THE SCREEN. A 31-character toast at 24 px is 480 px wide, and a
+    // phone is 390: "IT REARED BACK FIRST - STEP OUT" printed as "REARED BACK
+    // FIRST - STEP O" (R268), and the water and glacier captions had been
+    // doing the same. The type shrinks until the plate fits inside 94% of
+    // the width; the lane's height does not change.
+    if(tw + 28 > w*.94){ const fit = (w*.94 - 28) / tw;
+      g2.font = `800 ${(asz*fit).toFixed(1)}px ui-monospace,Menlo,monospace`; tw = g2.measureText(al.text).width; }
+    if(lastAlertBox && lastAlertBox.length === 3) lastAlertBox.push(Math.round(tw + 28));
     g2.globalAlpha *= .68;
     g2.fillStyle = "#080a0e";
     g2.fillRect(w/2 - tw/2 - 14, ay - asz*.86, tw + 28, asz*1.20);

@@ -6791,6 +6791,32 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and you hear it: a whiff clicks, a landed bite does not, and six whiffing at once are one click",
        r.whiff.clicks >= 1 && r.landClicks === 0 && r.pileClicks >= 1 && r.pileClicks <= 2,
        `walk-out ${r.whiff.clicks}, landed ${r.landClicks}, pile of six ${r.pileClicks}`);
+    // the first landed bite of a fresh save says it, once, ever
+    const tip = await page.evaluate(() => {
+      const g = window.__g; const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      const bite = () => { g.clearEnemies(); g.spawnAt("shambler", 0, 1.2); for (let i = 0; i < 30; i++) g.stepRaw(1/60); };
+      const seen = () => g.alerts().some(a => /STEP OUT/.test(a));
+      boot(); bite(); const first = seen(); for (let i = 0; i < 200; i++) g.stepRaw(1/60); bite(); const second = seen();
+      g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.clearEnemies(); g.place(0, 0); g.step(30, 1/60); bite(); const nextRun = seen();
+      return { first, second, nextRun };
+    });
+    ok("the first bite of a fresh save says the rear was the warning - once, not on the second, not in the next run",
+       tip.first && !tip.second && !tip.nextRun, JSON.stringify(tip));
+    // and on a phone the toast fits the screen: a 31-character plate at the
+    // lane's size is wider than 390 px unless the type gives
+    const phone = await (async () => {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+      const mp = await ctx.newPage(); await mp.goto(FILE, { waitUntil: "load" }); await mp.waitForTimeout(300);   // FILE, not index.html: a mutant runs against a copy
+      const r = await mp.evaluate(async () => { const g = window.__g; g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); g.spawnAt("shambler", 0, 1.2); for (let i = 0; i < 20; i++) g.stepRaw(1/60);
+        let box = null; for (let i = 0; i < 40 && !(box && box.length > 3); i++) { await new Promise(res => requestAnimationFrame(res)); box = g.alertBox(); }
+        return { box, w: innerWidth, alerts: g.alerts() }; });
+      await ctx.close(); return r;
+    })();
+    ok("and on a 390 px phone the toast's plate fits inside the screen",
+       phone.box && phone.box.length > 3 && /STEP OUT/.test(phone.box[2]) && phone.box[3] <= phone.w * .95,
+       phone.box ? `plate ${phone.box[3]} px of ${phone.w}, "${phone.box[2]}"` : `no toast (${JSON.stringify(phone.alerts)})`);
     const hint = await page.evaluate(() => (document.getElementById("pauseHint") || {}).textContent || "");
     ok("and the pause screen says so: a bite has a wind-up, and stepping out of it is the answer",
        /wind-up/i.test(hint) && /rears back/i.test(hint) && /step out/i.test(hint), hint.replace(/\s+/g, " ").slice(0, 160));

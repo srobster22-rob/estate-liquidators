@@ -25,8 +25,9 @@ const ok = (n, c, extra="") => { c ? passes++ : fails++; console.log(`  ${c ? "P
   await page.goto("file://" + path.join(DIR, process.env.BONKHORDE_TARGET || "index.html"), { waitUntil: "load" });
   await page.waitForTimeout(700);
   const t0 = Date.now();
-  const fn = new Function("page", "ok", "errors", "fs", "require", "browser", "L", "path", "__dirname", `return (async () => { ${body} })();`);
-  await fn(page, ok, errors, fs, require, browser, L, path, DIR);
+  const FILE = "file://" + path.join(DIR, process.env.BONKHORDE_TARGET || "index.html");
+  const fn = new Function("page", "ok", "errors", "fs", "require", "browser", "L", "path", "__dirname", "FILE", `return (async () => { ${body} })();`);
+  await fn(page, ok, errors, fs, require, browser, L, path, DIR, FILE);
   console.log(`\nsection ${N}: ${passes} passed, ${fails} failed in ${((Date.now()-t0)/1000).toFixed(0)} s`);
   if(errors.length) console.log("ERRORS:", [...new Set(errors)].slice(0, 6).join(" | "));
   await browser.close();
