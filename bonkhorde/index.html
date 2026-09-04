@@ -14,26 +14,6 @@
     font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     -webkit-user-select:none;user-select:none}
   canvas{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
-  /* phones: the HUD is sized for a 1280px window and has to come down a lot */
-  @media (max-width:720px), (pointer:coarse){
-    #clock{font-size:22px} #phase{font-size:9px;top:34px}
-    /* Under about 560px the centred phase line runs straight through the
-       level readout in the top-left - "CINDERPUP - LV 7" and "MATRIARCH IN 14"
-       printed over each other. Stack them instead: the phase drops below the
-       clock's own column and the left block keeps the corner to itself. */
-    #lvl em{font-size:9px;letter-spacing:.08em}
-    #hpwrap{width:min(62vw,300px);bottom:12px}
-    .slot{width:30px;height:30px;font-size:15px}
-    #kit{bottom:34px;gap:4px;max-width:92vw}
-
-    #stats{font-size:10px}
-    h1{font-size:32px} .sub{font-size:10px;margin-bottom:14px}
-    .card{width:min(44vw,196px);padding:11px 9px}
-    .card .ic{font-size:24px} .card .ds{font-size:10px}
-    .ch{width:min(44vw,158px)}
-    .shop{grid-template-columns:1fr 1fr}
-    .wrap{padding:6px}
-  }
   #ui{pointer-events:none}
 
   /* ---------------------------------------------------------------- HUD */
@@ -373,6 +353,42 @@
   .deep i.on{background:#ff8a6a;border-color:#ff8a6a;color:#12151b;font-weight:700}
   .deep s{display:block;text-decoration:none;font-size:9px;color:#5c6470;margin-top:5px}
   .opt{font-size:11px;letter-spacing:.12em;padding:7px 13px}
+  /* PHONES, ALL OF IT, AFTER THE BASE RULES - and before the two narrower
+     blocks below, which refine it. This block began the sheet, which meant every
+     rule in it that had a base rule declared later - the slots, the kit, the
+     clock, the stats - was silently beaten by it; R248 found 38px slots on a
+     390px screen with the 30px rule sitting right there. Same specificity
+     wins by source order, so phone overrides live at the end or not at all. */
+  @media (max-width:720px), (pointer:coarse){
+    #clock{font-size:22px} #phase{font-size:9px;top:34px}
+    /* Under about 560px the centred phase line runs straight through the
+       level readout in the top-left - "CINDERPUP - LV 7" and "MATRIARCH IN 14"
+       printed over each other. Stack them instead: the phase drops below the
+       clock's own column and the left block keeps the corner to itself. */
+    #lvl em{font-size:9px;letter-spacing:.08em}
+    #hpwrap{width:min(62vw,300px);bottom:12px}
+    .slot{width:30px;height:30px;font-size:15px}
+    #kit{bottom:34px;gap:4px;max-width:92vw}
+
+    #stats{font-size:10px}
+    h1{font-size:32px} .sub{font-size:10px;margin-bottom:14px}
+    .card{width:min(44vw,196px);padding:11px 9px}
+    .card .ic{font-size:24px} .card .ds{font-size:10px}
+    .ch{width:min(44vw,158px)}
+    .shop{grid-template-columns:1fr 1fr}
+    .wrap{padding:6px}
+  
+    /* THE KIT COULD NEVER BE WIDER THAN HALF THE SCREEN. Absolutely
+       positioned at left:50% with no width, it shrink-wrapped to the space
+       left of it - 195px on a phone - and wrapped a kit of nine into three
+       rows of four under the chain bars. max-content sizes it to its slots,
+       and 92vw caps that. */
+    #kit{width:max-content}
+    /* a kit of nine wraps to two rows on a phone; the chain and rush bars
+       sat at the height of the second row and were drawn through it */
+    #hop{bottom:112px} #rush{bottom:128px}
+    #phase.final{font-size:10px}
+  }
   /* LAST in the sheet on purpose. These are overrides at the same
      specificity as the base rules they override, so they only win by
      source order - sitting them above the defaults, which is where they
@@ -400,12 +416,6 @@
     #pick .card .eff{font-size:11px}
   }
   /* Also last, for the same reason. */
-  @media (max-width:720px), (pointer:coarse){
-    /* a kit of seven wraps to two rows on a phone; the chain and rush bars
-       sat at the height of the second row and were drawn through it */
-    #hop{bottom:132px} #rush{bottom:148px}
-    #phase.final{font-size:10px}
-  }
 </style>
 </head>
 <body>
@@ -10221,6 +10231,7 @@ const BOT_DIRS = 20, BOT_BACKOFF = .35;
 // trying again, and it does not see a telegraph until BOT_REACT seconds
 // before it lands.
 let botClumsy = false, botHeld = [0, 0], botHeldT = 0;
+let camFov = 1.02, camDist = 8.9;                       // what the last frame used, for the checks
 const BOT_LAG = .35, BOT_HOP_ODDS = .65, BOT_REACT = .55;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
@@ -12166,8 +12177,13 @@ function render(){
   // height over the second and a half the animal takes to go down, so the
   // last thing on screen before the receipt is the animal and not the field.
   const dd = ANIM.dead || 0;
-  const dist = (8.9 + bigF + spdFrac*2.1) * camZoom * (1 - dd*.28),
-        hgt  = (4.1 + bigH + camPitch*4.7 + spdFrac*.8) * (1 - dd*.30);
+  // PORTRAIT. A phone held upright is 2.2 times taller than it is wide,
+  // and a vertical lens of 58 degrees leaves 28 degrees across: the animal
+  // filled half the screen and the horde was dots at the edges (R248's phone
+  // film). The lens opens and the boom backs off as the screen narrows.
+  const port = h > w ? clamp((h/w - 1) * .6, 0, .6) : 0;
+  const dist = (8.9 + bigF + spdFrac*2.1) * camZoom * (1 - dd*.28) * (1 + port*.35),
+        hgt  = (4.1 + bigH + camPitch*4.7 + spdFrac*.8) * (1 - dd*.30) * (1 + port*.25);
   const sk = shake*.6*shakeMul();
   // The chase camera sits 17 units behind with no bound, which near the arena
   // edge puts it out among the boundary spires (radius 74-79, height 7-15) at an
@@ -12223,8 +12239,9 @@ function render(){
   // the lens widens with the animal, not just the sprint: up to ~7 degrees
   // on the largest bodies, zero on a hatchling - distance does most of the
   // work, FOV buys the margin that keeps the horde in frame beside a big body
-  const proj = M4.persp(1.02 + spdFrac*.085 + clamp((bodyTop - 4.2)*.022, 0, .13),
-                        w/h, .2, 260);
+  camFov = 1.02 + spdFrac*.085 + clamp((bodyTop - 4.2)*.022, 0, .13) + port*.35;
+  camDist = dist;
+  const proj = M4.persp(camFov, w/h, .2, 260);
   const view = M4.look(eye, at, [0,1,0]);
   gl.uniformMatrix4fv(U.uProj,false,proj);
   gl.uniformMatrix4fv(U.uView,false,view);
@@ -13694,6 +13711,7 @@ window.__g = {
                 air:!!P.air }),
   botHop:(on=true)=>botHop=on,
   clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
+  camInfo:()=>({ fov:+camFov.toFixed(3), dist:+camDist.toFixed(2) }),
   rim:   ()=>RIM,
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },

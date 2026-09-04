@@ -6514,6 +6514,41 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.kit.filter(x => /:[45]$/.test(x)).join(" ")}`);
   }
 
+  console.log("\n=== 52. THE PHONE KIT AND CAMERA ===");
+  {
+    // The phone film (R248) found a kit of nine in three rows of four under the
+    // chain bars, and the animal filling half the screen. The kit was absolutely
+    // positioned at 50% with no width and could never exceed half the screen;
+    // the phone media block began the sheet and lost to every base rule after
+    // it; and a fixed vertical lens left 28 degrees across in portrait.
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const pg = await ctx.newPage();
+    await pg.goto(page.url(), { waitUntil: "load" }); await pg.waitForTimeout(500);
+    const r = await pg.evaluate(async () => {
+      const g = window.__g; g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.freezeSpawns(true); g.setShake(0); g.drainPicks(true);
+      for (const k of ["bolt","zap","skulls","dupe","spinach","tempo","clover","momentum","hunter"]) g.give(k, 1);
+      g.step(5, 1/60); g.resume();
+      // the kit bar is drawn on the frame loop; wait for it rather than for a clock
+      const k = document.getElementById("kit");
+      for (let i = 0; i < 40 && k.children.length < 10; i++) await new Promise(res => setTimeout(res, 50));
+      const slots = [...k.children].map(s => s.getBoundingClientRect());
+      const rows = new Set(slots.map(s => Math.round(s.top))).size, kitTop = Math.min(...slots.map(s => s.top));
+      const hop = document.getElementById("hop").getBoundingClientRect();
+      return { n: slots.length, rows, slotW: slots[0].width, hopBottom: hop.bottom, kitTop, cam: g.camInfo(), kitW: k.getBoundingClientRect().width };
+    });
+    await ctx.close();
+    const land = await page.evaluate(async () => { const g = window.__g; g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.freezeSpawns(true);
+      g.drainPicks(true); g.step(5, 1/60); g.resume(); await new Promise(res => setTimeout(res, 200)); return g.camInfo(); });
+    ok("ten things in the kit sit in at most two rows of thirty-pixel slots on a 390px phone, not three rows of four",
+       r.n === 10 && r.rows <= 2 && Math.abs(r.slotW - 30) < 1 && r.kitW > 200,
+       `${r.n} slots of ${r.slotW}px in ${r.rows} rows, kit ${Math.round(r.kitW)}px wide`);
+    ok("and the chain bar sits above the kit, not through it", r.hopBottom <= r.kitTop + 1,
+       `bar bottom ${Math.round(r.hopBottom)}, kit top ${Math.round(r.kitTop)}`);
+    ok("the portrait camera opens its lens and backs the boom off: wider than landscape and further away",
+       r.cam.fov > land.fov + .12 && r.cam.dist > land.dist * 1.12,
+       `portrait fov ${r.cam.fov} dist ${r.cam.dist}; landscape fov ${land.fov} dist ${land.dist}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
