@@ -7735,7 +7735,7 @@ function baseStats(ch){
 
 function startRun(id){
   charId = id;
-  silentLv = 0; lastBossRate = 0;
+  silentLv = 0; lastBossRate = 0; lastBossKit = 0;
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
   P = { x:0, z:0, y:groundY(0,0), vx:0, vz:0, vy:0, air:false, face:0,
@@ -8196,7 +8196,7 @@ function killEnemy(e){
   // XP: bosses shatter into a payday, everything else drops one gem
   if(e.boss){
     // what you did to it, per second it was up - the finale is sized from this
-    if(!e.final && e.born !== undefined) lastBossRate = e.maxhp / Math.max(1, T - e.born - BOSS_RISE);
+    if(!e.final && e.born !== undefined){ lastBossRate = e.maxhp / Math.max(1, T - e.born - BOSS_RISE); lastBossKit = kitDps(); }
     for(let i=0;i<16;i++) pushGem(e.x+rnd(-3,3), e.z+rnd(-3,3), Math.ceil(e.xp/16));
     coinsRun += 90; shake = Math.max(shake, 1.4); SFX.boom(); hold("boss");
     alert2(e.def.nm+" DOWN", "#6ddba0");
@@ -8895,11 +8895,16 @@ const BOSS_SECS = { 300:20, 600:30, 900:40, 1140:60 }, BOSS_SIZE_CAP = 12, FINAL
 // was 3.2M and a two-minute fight, and two minutes of all five abilities
 // killed the veteran at +45 s on two seeds in six (R244). Sixty seconds of
 // the 15:00 rate is about the 1.2M that fought 45-131 s and won 6/6 in R235.
-const FINALE_GROW = 1.0;
-let lastBossRate = 0;
+// GROWN SINCE. The rate is read at 15:00 and the kit keeps growing to 20:00
+// - masteries, levels, the third rule - so a flat sixty seconds of it came
+// out as twenty (R247: even the clumsy bot killed the finale 3-41 s in).
+// The estimate is a ceiling, but its RATIO now-to-then is honest, so the
+// recorded rate is scaled by kitDps() now over kitDps() at the kill.
+let lastBossRate = 0, lastBossKit = 0;
 function finaleSize(){
   const secs = BOSS_SECS[1140];
-  const est = lastBossRate > 0 ? lastBossRate * FINALE_GROW * secs : kitDps() * secs / 3;
+  const grown = lastBossKit > 0 ? Math.max(1, kitDps() / lastBossKit) : 1;
+  const est = lastBossRate > 0 ? lastBossRate * grown * secs : kitDps() * secs / 3;
   return Math.min(1200000 * BOSS_SIZE_CAP, est);
 }
 function spawnBoss(b){
@@ -10207,6 +10212,16 @@ let botDrive = false;
 // botHop(false) benches the floor.
 let botHop = true;
 const BOT_DIRS = 20, BOT_BACKOFF = .35;
+// THE CLUMSY BOT. The autopilot steers every frame, hops on the landing
+// frame every time and reads a telegraph the instant it appears - a ceiling,
+// and every difficulty number benched against it is a ceiling number. Clumsy
+// mode is the nearest thing to a player this harness has: it re-decides its
+// heading every BOT_LAG seconds and holds it between, it makes the landing
+// window BOT_HOP_ODDS of the time and otherwise stands half a second before
+// trying again, and it does not see a telegraph until BOT_REACT seconds
+// before it lands.
+let botClumsy = false, botHeld = [0, 0], botHeldT = 0;
+const BOT_LAG = .35, BOT_HOP_ODDS = .65, BOT_REACT = .55;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
   const gw = P && P.kit.gore;
@@ -10266,6 +10281,7 @@ function botVector(){
       s += ((gx*dx + gz*dz)/d) * (1.1 - d/26) * 0.9;
     }
     for(const h of hazards){                              // read the telegraphs
+      if(botClumsy && h.tel > BOT_REACT) continue;        // ...late, if clumsy
       const hx = h.x-P.x, hz = h.z-P.z, hd = Math.hypot(hx,hz);
       if(hd > h.r + 18) continue;
       const after = Math.hypot(dx*P.spd - hx, dz*P.spd - hz);  // one second of running
@@ -10317,8 +10333,21 @@ function step(dt){
 
   // ---- player
   let dx=0, dz=0, analog=1;
-  if(botDrive){ const v = botVector(); dx=v[0]; dz=v[1];
-                if(botHop && !P.air && (dx||dz)) jumpPressed(); }
+  if(botDrive){
+    let v;
+    if(botClumsy){ if((botHeldT -= dt) <= 0){ botHeld = botVector(); botHeldT = BOT_LAG; } v = botHeld; }
+    else v = botVector();
+    dx=v[0]; dz=v[1];
+    if(P.air) P.hopDecided = false;
+    if(botHop && !P.air && (dx||dz)){
+      if(!botClumsy) jumpPressed();
+      else {
+        if(!P.hopDecided){ P.hopDecided = true; P.hopGo = R() < BOT_HOP_ODDS; P.hopWait = .5; }
+        if(P.hopGo) jumpPressed();
+        else if((P.hopWait -= dt) <= 0) P.hopDecided = false;   // missed it; try again in a moment
+      }
+    }
+  }
   else {
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
     let mx = (keys.KeyD?1:0)-(keys.KeyA?1:0);
@@ -13664,6 +13693,7 @@ window.__g = {
                 alt:+(P.y - groundY(P.x,P.z)).toFixed(2), aloft:aloft(),
                 air:!!P.air }),
   botHop:(on=true)=>botHop=on,
+  clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
   rim:   ()=>RIM,
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
@@ -13907,6 +13937,7 @@ window.__g = {
   kitDps: ()=>Math.round(kitDps()),
   bossRate: ()=>Math.round(lastBossRate),
   setBossRate: (v)=>{ lastBossRate = v; return lastBossRate; },
+  setBossKit: (v)=>{ lastBossKit = v; return lastBossKit; },
   mastery: ()=>({ silent:silentLv, hand:masteryHand().map(o=>o.key) }),
   clearShots: ()=>{ swings.length = 0; bolts.length = 0; },
   lastSwing: ()=>swings.length ? +swings[swings.length-1].ang.toFixed(3) : null,

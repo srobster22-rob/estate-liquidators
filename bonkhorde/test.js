@@ -6399,7 +6399,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // second after it is up and the rate is its whole health a second
       const finalAfterKill = () => { boot(); for (const [k, n] of huge) g.give(k, n); g.boss(2); g.step(150, 1/60);
         const b2 = g.bossAt(); g.hitBoss(1e9); g.step(2, 1/60); const rate = g.bossRate(); g.boss(3);
-        const b = g.bossAt(); const hp = b ? Math.round(b.hp) : null; g.clearEnemies(); return { hp, rate, sky: b2 ? Math.round(b2.hp) : null }; };
+        const b = g.bossAt(); const hp = b ? Math.round(b.hp) : null; g.clearEnemies();
+        // and grown since, at a rate the cap does not hide: ten thousand a
+        // second recorded, once with the kit as it is and once as if it had
+        // been half the size at the kill
+        g.setBossRate(10000); g.setBossKit(g.kitDps()); g.boss(3); const b3 = g.bossAt(); const hpSame = b3 ? Math.round(b3.hp) : null; g.clearEnemies();
+        g.setBossKit(g.kitDps() / 2); g.boss(3); const b4 = g.bossAt(); const hpGrown = b4 ? Math.round(b4.hp) : null; g.clearEnemies();
+        return { hp, hpSame, hpGrown, rate, sky: b2 ? Math.round(b2.hp) : null }; };
       return { fresh: [hpOf(0, []), hpOf(1, []), hpOf(2, [])], small: hpOf(0, small),
                big: [hpOf(0, big), hpOf(1, big), hpOf(2, big)], final: [hpOf(3, []), hpOf(3, huge)], finalKill: finalAfterKill() };
     });
@@ -6423,6 +6429,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and after a boss kill it is sixty seconds of what you did to that boss: SKYSPLITTER killed in a second sizes it at its rate x60, capped",
        r.finalKill.rate > 0 && Math.abs(r.finalKill.rate / r.finalKill.sky - 1) < .15 && near(r.finalKill.hp, Math.min(1200000 * 12, r.finalKill.rate * 60)),
        `SKYSPLITTER ${r.finalKill.sky} in a second -> rate ${r.finalKill.rate}/s -> TERRAVORE ${r.finalKill.hp}`);
+    ok("and scaled by how much the kit grew since the kill: ten thousand a second is 600,000 as it was and 1,200,000 for a kit twice the size",
+       r.finalKill.hpSame === 600000 && near(r.finalKill.hpGrown, 1200000),
+       `${r.finalKill.hpSame} same kit, ${r.finalKill.hpGrown} at twice the kit`);
   }
 
   console.log("\n=== 50. THE THIRD RULE ===");
