@@ -1879,7 +1879,7 @@ magnet:  { name:"HUNGRIER", ic:"magnet",  kind:"p", max:3, eff:"+58% PICKUP RANG
            ds:"And it drags the horde into a pile." },
 clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
            ds:"Crits hit for 2.3x." },
-dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:["+1 SHOT","+2 SHOTS","+2 SHOTS"],
+dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:"+1 SHOT",
            ds:"Every weapon fires again. Copies hit for 55%." },
 // THE RULES. The eight adjectives answer "easy to read"; these answer "more
 // fun to play". A rule changes how a run PLAYS rather than how hard it hits,
@@ -2144,7 +2144,12 @@ let statEchoes = 0, statSwings = 0, statLanes = 0;
 // at rank 3 you watched five skulls orbit and exactly three of them hit.
 // Floored, not rounded: floor(1.67, 3.33, 5) is 1, 3, 5, which keeps the first
 // rank worth one shot and the last worth five. Rounding would hand rank 1 two.
-const dupeN = () => P.kit.dupe ? Math.floor(prank(P.kit.dupe)) : 0;
+// ONE COPY A RANK. The 1/3/5 curve was benched in R229 against a ring that
+// never ran out: at rank 3 MORE was x3.7 to x9.7 on most weapons where HARDER
+// was x1.3 to x2.5, on the same seed - the must-pick, on every kit, which is
+// no decision at all. One, two, three copies at 55% is +55/+110/+165%: still
+// the loudest card in the draft, no longer the only one.
+const dupeN = () => P.kit.dupe ? P.kit.dupe.l + 1 : 0;
 
 const RUN_LEN = 1200;                    // 20:00
 // Player power grows MULTIPLICATIVELY - evolutions roughly double a weapon, then
@@ -8379,13 +8384,16 @@ function fireEcho(k, w, s){
   }
   statEchoes++;
 }
-// STINK's copies: one cloud per MORE copy, each half a second further back
+// STINK's copies: one cloud per MORE copy, each a full second further back
 // along where you walked. Read by the tick and by the renderer, so the ring
-// you see is the ring that bites.
-const AURA_ECHO_R = .75;
+// you see is the ring that bites. A second, not half: at half a second the
+// copies sat inside each other and inside the main cloud at walking pace,
+// and the per-pick bench read MORE on STINK at x6.6 where every other weapon
+// read x2-3. A second apart they are a trail of clouds, which is the picture.
+const AURA_ECHO_R = .60, AURA_ECHO_STEP = 4;               // copy radius, ticks between copies
 function auraEchoes(w){
   const n = dupeN(), h = w.hist || [], out = [];
-  for(let i=1;i<=n;i++){ const p = h[h.length - 1 - i*2]; if(p) out.push(p); }
+  for(let i=1;i<=n;i++){ const p = h[h.length - 1 - i*AURA_ECHO_STEP]; if(p) out.push(p); }
   return out;
 }
 function fireBat(w,s){
