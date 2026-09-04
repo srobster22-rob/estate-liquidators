@@ -2116,15 +2116,26 @@ const BOSS_KIT = {
 // throws the whole body at the lane; the spokes swell before the burst; an
 // evict hunkers and then heaves. Body-level, so all four plans have a beat,
 // and the plans that can read it add the limb that does the work.
+// tsq/tlf: the tell's squash and lean, on u^2; asq/alf: the act's. tpt/apt:
+// the PITCH about the hips (R258) - negative rears the head up through the
+// tell, positive drives it down on the act - and arc the reach of the front on
+// the act: the same channels the horde's bite and the player's strike use,
+// applied in eb(), so a boss winding up a stomp rears like an animal rather
+// than shearing like a card.
+// The act's pitch is SMALL on purpose: a stomp is a return from the rear to
+// the ground, not a dive under it - at .30 the MATRIARCH's jaw and forelegs
+// went three quarters of a metre into the terrain (a 7 m body pitched .3 rad
+// about its hips puts everything 2.5 m ahead of them .74 m down). The rear is
+// where the anticipation lives; the act's weight is the squash and the reach.
 const BEAT = {
-  slam:     { tsq: .16, tlf:-.18, asq:-.28, alf: .26 },
-  sinkhole: { tsq: .22, tlf:-.22, asq:-.34, alf: .12 },
-  charge:   { tsq:-.14, tlf:-.14, asq:-.05, alf: .30 },
-  spokes:   { tsq: .10, tlf:  0,  asq:-.10, alf:  0  },
-  evict:    { tsq:-.12, tlf:-.06, asq: .10, alf: .08 },
+  slam:     { tsq: .16, tlf:-.18, asq:-.28, alf: .26, tpt:-.24, apt: .06, arc: .14 },
+  sinkhole: { tsq: .22, tlf:-.22, asq:-.34, alf: .12, tpt:-.28, apt: .08, arc: .08 },
+  charge:   { tsq:-.14, tlf:-.14, asq:-.05, alf: .30, tpt:-.16, apt: .10, arc: .22 },
+  spokes:   { tsq: .10, tlf:  0,  asq:-.10, alf:  0,  tpt:-.08, apt: .04, arc: 0   },
+  evict:    { tsq:-.12, tlf:-.06, asq: .10, alf: .08, tpt:-.14, apt: .10, arc: .10 },
 };
 const BEAT_REST = .55;                         // how long the release takes to let out
-const BT0 = { kind:null, u:0, act:0, sq:1, lf:0 };
+const BT0 = { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 };
 
 // spawn director: rate is enemies/sec, mix is a weight table
 // ------------------------------------------------------- time of day
@@ -2379,11 +2390,12 @@ function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
   }
   // the strike (see the draw): a pitch about the hips - positive is nose
   // down - and a reach of everything forward of them
-  if(e.pt || e.rc){
+  const pt = (e.pt || 0) + (e.pt2 || 0), rc = (e.rc || 0) + (e.rc2 || 0);
+  if(pt || rc){
     const pv = e.py + (e.pH || 1) * .42, dy = y - pv;
-    if(e.rc && f > 0) f += f * e.rc;
-    if(e.pt){ const c = Math.cos(e.pt), s = Math.sin(e.pt);
-              const f2 = f*c + dy*s; y = pv - f*s + dy*c; f = f2; }
+    if(rc && f > 0) f += f * rc;
+    if(pt){ const c = Math.cos(pt), s = Math.sin(pt);
+            const f2 = f*c + dy*s; y = pv - f*s + dy*c; f = f2; }
   }
   box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
       e.z - Math.sin(face)*r + Math.cos(face)*f,
@@ -9201,7 +9213,9 @@ function bossBeat(e){
   const ue = u*u;
   return { kind:A.kind, u, act,
            sq: 1 + B.tsq*ue + B.asq*act,
-           lf: B.tlf*ue + B.alf*act };
+           lf: B.tlf*ue + B.alf*act,
+           pt: (B.tpt || 0)*ue + (B.apt || 0)*act,
+           rc: (B.arc || 0)*act };
 }
 
 // ======================================================= SIDE EVENTS
@@ -9678,7 +9692,14 @@ function updateEnemies(dt){
     // everything else has to walk into you, and cannot.
     if(!e.def.ranged){
       const reach = d < e.rad + .75 && !(aloft() && e.dvT <= 0);
-      if(e.dvT > 0){
+      const inBeat = e.boss && e.ab && (e.ab.phase === "tell" || e.ab.phase === "act");
+      if(inBeat){
+        // a boss winding up or landing an ability owns its pose: contact
+        // damage lands the way it always did and the bite's wind-up and snap
+        // stay out of it (they were chomping through the slam's tell, R258)
+        e.wu = 0;
+        if(reach && P.iframe <= 0) playerHurt(e.dmg, e.x, e.z);
+      } else if(e.dvT > 0){
         // a landed dive is its own telegraph - it hits the moment it lands
         if(reach && P.iframe <= 0){ playerHurt(e.dmg * DIVE_DMG, e.x, e.z); e.dvT = 0; e.dv = DIVE_REST; e.lg = 1; }
       } else if(e.wu > 0){
@@ -12972,6 +12993,7 @@ function render(){
     // one of them knowing what a bite is). Here: the lean and the squash.
     const snap = e.snap || 0, pre = e.pre || 0;
     e.pH = H;
+    e.pt2 = bt.pt || 0; e.rc2 = bt.rc || 0;           // the beat's pitch and reach (bosses)
     e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + snap*.10 + bt.lf;
     e.lr = clamp(kr*.04, -.40, .40) + e.bk;
     const sq = 1;
@@ -13720,7 +13742,7 @@ window.__g = {
   beat:()=>{ const b=enemies.find(e=>e.boss && !e.dead); if(!b) return null;
              const bt = bossBeat(b);
              return { kind:bt.kind, u:+bt.u.toFixed(4), act:+bt.act.toFixed(4),
-                      sq:+bt.sq.toFixed(4), lf:+bt.lf.toFixed(4),
+                      sq:+bt.sq.toFixed(4), lf:+bt.lf.toFixed(4), pt:+(bt.pt||0).toFixed(4), rc:+(bt.rc||0).toFixed(4),
                       wsq:+b.sq.toFixed(4), phase:b.ab ? b.ab.phase : null,
                       t:b.ab ? +b.ab.t.toFixed(3) : null }; },
   god:   ()=>{ P.maxhp=1e9; P.hp=1e9; },

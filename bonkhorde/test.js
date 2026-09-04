@@ -6841,6 +6841,63 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `committed at ${r.miss.committed}, lg at the end ${r.miss.endLg}, damage ${r.miss.endDmg}`);
   }
 
+  console.log("\n=== 58. THE BOSS BEATS PITCH ===");
+  {
+    // bossBeat carried a squash and a lean per phase - a shear, the same
+    // construction the horde's bite had. Each beat now also carries a pitch
+    // about the hips (the tell rears the head, the act drives it down) and a
+    // reach on the act, through the channel eb() already applies for the
+    // bite. And a boss inside a beat does not chomp: the R256 wind-up was
+    // running through the slam's tell, so contact damage there lands as it
+    // always did and the beat owns the pose.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      const out = { beats: {} };
+      boot(); g.god(); g.boss(0); g.step(1, 1/60);
+      for (const kind of ["slam", "sinkhole", "charge", "spokes", "evict"]) {
+        const A = { tell: 0, act: 0 };
+        g.bossCue(kind, "tell", 0.001); const tell = g.beat();           // the end of the tell: u ~ 1
+        g.bossCue(kind, "act"); const act = g.beat();                    // act = 1
+        out.beats[kind] = { tellPt: tell.pt, actPt: act.pt, actRc: act.rc, tellRc: tell.rc };
+      }
+      // the drawn MATRIARCH: reared at the end of the slam's tell, down on the act
+      // cued and drawn without a step in between: a step would run the beat
+      // on into its next phase (a tell cued at .001 s is an act one frame on)
+      const boxAt = async () => { g.pause(true); g.captureEnemyWorld(); await frame(); await frame(); const b = g.enemyBox(); return b ? { top: +(b.maxY - b.gy).toFixed(3), bot: +(b.minY - b.gy).toFixed(3) } : null; };
+      g.bossCue("slam", "tell", 0.12); out.tellBox = await boxAt();
+      g.bossCue("slam", "act", 0.30); out.actBox = await boxAt();
+      g.bossCue("slam", "move", 2.0); g.step(90, 1/60); out.restBox = await boxAt();
+      // in contact through a tell: no wind-up, no snap, and the damage still lands
+      boot(); g.boss(0); g.step(1, 1/60); const b0 = g.bossAt(); g.place(b0.x, b0.z - (b0.rad + .4)); g.step(2, 1/60);
+      g.bossCue("slam", "tell", 1.15); const hp0 = g.state().hp; let wuMax = 0, lgMax = 0, hits = 0, last = hp0;
+      for (let i = 0; i < 60; i++) { g.stepRaw(1/60); const e = g.gait()[0]; wuMax = Math.max(wuMax, e.wu); lgMax = Math.max(lgMax, e.lg); const h = g.state().hp; if (h < last - .01) hits++; last = h; }
+      out.tellContact = { wuMax, lgMax, hits, dmg: +(hp0 - last).toFixed(1), phase: g.beat().phase };
+      // ...and outside a beat the bite is back
+      g.bossCue("slam", "move", 3.0); let wuSeen = 0; for (let i = 0; i < 90; i++) { g.stepRaw(1/60); wuSeen = Math.max(wuSeen, g.gait()[0].wu); }
+      out.restWu = wuSeen;
+      return out;
+    });
+    const B = r.beats, K = Object.keys(B);
+    ok("every beat rears through its tell: pitch negative at the end of the tell for all five kinds",
+       K.length === 5 && K.every(k => B[k].tellPt < -.04), K.map(k => `${k} ${B[k].tellPt}`).join(", "));
+    ok("and comes down on the act - a small pitch, a return from the rear rather than a dive under the ground - with the reach where the act goes forward",
+       K.every(k => B[k].actPt >= .04 && B[k].actPt <= .12) && ["slam", "sinkhole", "charge", "evict"].every(k => B[k].actRc > .05) && B.spokes.actRc === 0 && K.every(k => B[k].tellRc === 0),
+       K.map(k => `${k} pt ${B[k].actPt} rc ${B[k].actRc}`).join(", "));
+    const TB = r.tellBox, AB = r.actBox, RB = r.restBox;
+    ok("the drawn MATRIARCH reads it: taller and reared at the end of the slam's tell than at rest, and down on the stomp",
+       TB && AB && RB && TB.top > RB.top + .3 && AB.top < RB.top - .8,
+       `top: tell ${TB && TB.top}, act ${AB && AB.top}, rest ${RB && RB.top}`);
+    ok("and the stomp keeps its feet on the ground - nothing of it is driven more than 25 cm under",
+       AB && AB.bot > -.25 && TB && TB.bot > -.25, `lowest point: tell ${TB && TB.bot}, act ${AB && AB.bot}, rest ${RB && RB.bot}`);
+    ok("a boss in a tell does not chomp - no wind-up, no snap - and the contact damage still lands",
+       r.tellContact.wuMax === 0 && r.tellContact.lgMax === 0 && r.tellContact.hits >= 1 && r.tellContact.dmg > 0,
+       `wu ${r.tellContact.wuMax}, lg ${r.tellContact.lgMax}, ${r.tellContact.hits} hits for ${r.tellContact.dmg} in a second of tell (${r.tellContact.phase})`);
+    ok("and outside a beat the bite winds up again", r.restWu > 0, `wu seen ${r.restWu}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
