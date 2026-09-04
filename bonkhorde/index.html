@@ -1880,7 +1880,7 @@ magnet:  { name:"HUNGRIER", ic:"magnet",  kind:"p", max:3, eff:"+58% PICKUP RANG
 clover:  { name:"LUCKIER",  ic:"clover",  kind:"p", max:3, eff:"+12% CRIT",
            ds:"Crits hit for 2.3x." },
 dupe:    { name:"MORE",     ic:"dupe",    kind:"p", max:3, eff:["+1 SHOT","+2 SHOTS","+2 SHOTS"],
-           ds:"BOLT · SKULLS · MORTAR · ZAP · BROOD. Copies hit for 55%." },
+           ds:"Every weapon fires again. Copies hit for 55%." },
 // THE RULES. The eight adjectives answer "easy to read"; these answer "more
 // fun to play". A rule changes how a run PLAYS rather than how hard it hits,
 // and each one is tied to a verb the game already teaches - the hop chain,
@@ -2127,8 +2127,16 @@ const eliteChance = t => Math.min(.20, (t - ELITE_FROM) / 3600);
 // touches four weapons instead of two, the copies are echoes rather than full
 // instances (so adding one to a 3-shell mortar is not the same as +100%), and
 // the draft will not offer it to a kit that cannot use it at all.
-const DUPE_WEAPONS = ["bolt", "skulls", "mortar", "zap", "brood"];
-const DUPE_DMG = 0.55;
+// UNIVERSAL NOW. Five weapons carry a shot count and read dupeN() straight;
+// the other five had no count to add to, so MORE was the one card of the
+// eight that helped some kits and not others - and said so in nine-pixel
+// type. The weapons without a count get ECHOES instead: the same fire again,
+// ECHO_GAP later, at copy damage, once per copy. A flurry of swings, a
+// second and third ring, a denser trail, another lane. STINK, which never
+// fires, leaves copies of its cloud where you were half a second ago.
+const DUPE_DMG = 0.55, ECHO_GAP = .16;
+const ECHO_WEAPONS = new Set(["bat", "pulse", "gore", "caltrops"]);
+let statEchoes = 0, statSwings = 0, statLanes = 0;
 // One source of truth for the copy count, and it reads the EFFECTIVE rank.
 // Two bugs lived in the gap: the raw index made DUPLICATOR max at +3 shots
 // after the remap instead of the +5 it is documented and benched at, and the
@@ -8303,6 +8311,13 @@ function fireWeapons(dt){
     if(k === "aura"){ // continuous, no cooldown
       if((w.t -= dt) <= 0){
         w.t = .25;                                        // tick 4x/sec
+        // where you have been, one entry a tick, for MORE's trailing clouds
+        (w.hist || (w.hist = [])).push({ x:P.x, z:P.z });
+        if(w.hist.length > 24) w.hist.shift();
+        for(const p of auraEchoes(w)) hitNear(p.x, p.z, s.rad*AURA_ECHO_R, (e)=>{
+          const roll = dmgOut(s.dps*.25*DUPE_DMG);
+          hurt(e, roll.d, 0, 0, roll.crit);
+        });
         hitNear(P.x, P.z, s.rad, (e,d)=>{
           let mul = 1;
           // PLAGUE gets worse the longer you breathe it. Flat aura damage is
@@ -8329,6 +8344,8 @@ function fireWeapons(dt){
       }
       continue;
     }
+    // MORE's echoes, for the weapons that have no shot count to add to
+    if(w.echo > 0 && (w.echoT -= dt) <= 0){ w.echo--; w.echoT = ECHO_GAP; fireEcho(k, w, s); }
     w.t -= dt;
     if(w.t > 0) continue;
     // EYEWALL, THE HURRICANE's apex power: the storm never runs out of sky.
@@ -8345,9 +8362,34 @@ function fireWeapons(dt){
       case "gore":     fireGore(w,s); break;
       case "caltrops": fireCaltrops(w,s); break;
     }
+    if(ECHO_WEAPONS.has(k) && dupeN() > 0){ w.echo = dupeN(); w.echoT = ECHO_GAP; }
   }
 }
+// One copy of the last fire, at copy damage. `s` is the stat row (or wStat's
+// reach-scaled copy of it), so it is copied again before the damage is cut.
+function fireEcho(k, w, s){
+  const se = Object.assign({}, s);
+  if(se.d)   se.d   *= DUPE_DMG;
+  if(se.dps) se.dps *= DUPE_DMG;
+  switch(k){
+    case "bat":      fireBat(w,se); break;
+    case "pulse":    firePulse(w,se); break;
+    case "gore":     fireGore(w,se); break;
+    case "caltrops": fireCaltrops(w,se); break;
+  }
+  statEchoes++;
+}
+// STINK's copies: one cloud per MORE copy, each half a second further back
+// along where you walked. Read by the tick and by the renderer, so the ring
+// you see is the ring that bites.
+const AURA_ECHO_R = .75;
+function auraEchoes(w){
+  const n = dupeN(), h = w.hist || [], out = [];
+  for(let i=1;i<=n;i++){ const p = h[h.length - 1 - i*2]; if(p) out.push(p); }
+  return out;
+}
 function fireBat(w,s){
+  statSwings++;
   const tgt = nearest(P.x, P.z, s.rng+3);
   const ang = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
   swings.push({ x:P.x, z:P.z, y:P.y, ang, arc:s.arc, rng:s.rng, life:.20, max:.20, evo:w.evo });
@@ -8423,6 +8465,7 @@ function fireGore(w,s){
   }
   swings.push({ x:P.x, z:P.z, y:P.y, ang:P.face, rng, gw:half, life:.22, max:.22,
                 gore:true, evo:!!w.evo });
+  statLanes++;
   shake = Math.max(shake, w.evo ? .22 : .10);
   SFX.gore();
 }
@@ -9697,8 +9740,6 @@ function offers(){
         pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
       continue;
     }
-    // never hand someone a passive that provably does nothing for their kit
-    if(k === "dupe" && !DUPE_WEAPONS.some(x => have[x])) continue;
     if(p){ if(p.l+1 >= P2.max) continue;
       pool.push({ type:"up", key:k, ic:P2.ic, nm:P2.name, lv:"LV "+(p.l+2),
                   ds:P2.ds, weight:9 }); }
@@ -12631,6 +12672,16 @@ function render(){
         box(x, groundY(x,z)+.3+Math.sin(T*3+i)*.12, z, .17,.17,.17,
             aw.evo?[.55,.95,.35]:[.62,.82,.45], .55);
       }
+      // MORE's trailing clouds: smaller rings, dimmer, where you were
+      for(const p of auraEchoes(aw)){
+        const r2 = s.rad*AURA_ECHO_R, seg2 = Math.max(18, Math.min(60, Math.round(TAU*r2/1.2)));
+        for(let i=0;i<seg2;i++){
+          const th = i/seg2*TAU - T*.5;
+          const x = p.x+Math.sin(th)*r2, z = p.z+Math.cos(th)*r2;
+          box(x, groundY(x,z)+.26+Math.sin(T*3+i)*.1, z, .14,.14,.14,
+              aw.evo?[.50,.85,.32]:[.56,.74,.42], .38);
+        }
+      }
     }
     // orbiting skulls
     const sw = P.kit.skulls;
@@ -13392,7 +13443,8 @@ window.__g = {
   setSurge:(v)=>{ if(P) P.surge = +v; },
   setRebirthCd:(v)=>{ if(P) P.rebirthCd = +v; },
   fxCounts:()=>({ arcs:statArcs, rings:statRings, zones:statZones,
-                  shells:statShells, bolts:statBolts }),
+                  shells:statShells, bolts:statBolts,
+                  swings:statSwings, lanes:statLanes, echoes:statEchoes }),
   mortarsFired:()=>statShells,
   clearMortars:()=>{ statShells = 0; },
   clearBolts:()=>{ statBolts = 0; },

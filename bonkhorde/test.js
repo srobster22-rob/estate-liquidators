@@ -343,11 +343,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     };
     return { canUse: peek(["bolt"]), cannot: peek(["pulse", "aura"]) };
   });
-  ok("MORE offered when a weapon can use it",
+  ok("MORE offered to a kit of shots",
      (offers.canUse["MORE"] || 0) > 0,
      `${offers.canUse["MORE"] || 0} times in 80 rolls`);
-  ok("MORE never offered to a kit that cannot",
-     (offers.cannot["MORE"] || 0) === 0,
+  ok("and to a kit of clouds and rings - MORE is for every weapon now",
+     (offers.cannot["MORE"] || 0) > 0,
      `${offers.cannot["MORE"] || 0} times in 80 rolls`);
 
   const retal = await page.evaluate(() => {
@@ -6251,6 +6251,50 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.capped === 0 && r.slot && r.rules.length === 4, `${r.capped} offered past the cap, slot ${r.slot}`);
     ok("and the chain readout says the chain is paying twice while RHYTHM is held",
        /x\d/.test(r.hopLabel) && /PACE & DMG/.test(r.hopLabel), JSON.stringify(r.hopLabel));
+  }
+
+  console.log("\n=== 46. MORE IS FOR EVERY WEAPON ===");
+  {
+    // MORE used to touch five weapons and say so in nine-pixel type. The four
+    // weapons with no shot count now ECHO - the same fire again a beat later
+    // at copy damage, once per copy - and STINK leaves copies of its cloud
+    // behind you. Each is counted with the card at rank 3 and without, same
+    // seed, same ring of grubs, walking so that GORE fires and the trail exists.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
+      const count = (w, more, secs, ring, kind = "shambler") => {
+        g.wipeSave(); g.pin(5); g.pinRun(5); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.give(w, 1);
+        if (more) g.give("dupe", 3); g.spawn(kind, 24, ring); g.step(5, 1/60);
+        const c0 = g.fxCounts(), h0 = g.hordeHp();
+        key("keydown", "KeyW"); g.step(secs * 60, 1/60); key("keyup", "KeyW");
+        const c1 = g.fxCounts();
+        return { swings: c1.swings - c0.swings, rings: c1.rings - c0.rings, zones: c1.zones - c0.zones,
+                 lanes: c1.lanes - c0.lanes, echoes: c1.echoes - c0.echoes, lost: Math.round(h0 - g.hordeHp()) };
+      };
+      const pair = (w, secs, ring, kind) => [count(w, false, secs, ring, kind), count(w, true, secs, ring, kind)];
+      // the trail needs animals that outlive the base cloud: a ring of grubs at
+      // five metres is dead inside a second, before there is a trail to walk
+      // them through. Ceratops at four metres are left behind at 1.9 u/s and
+      // spend the next seconds in the copies.
+      return { bat: pair("bat", 4, 4), pulse: pair("pulse", 4, 6), caltrops: pair("caltrops", 4, 6),
+               gore: pair("gore", 4, 6), aura: pair("aura", 6, 4, "brute"), more: g.upgrades().find(u => u.key === "dupe") };
+    });
+    const x = (a, f) => (a[1][f] / Math.max(1, a[0][f])).toFixed(1);
+    ok("BONK BAT swings a flurry: at least three times the swings with MORE 3, the extras counted as echoes",
+       r.bat[1].swings >= r.bat[0].swings * 3 && r.bat[1].echoes > 0 && r.bat[0].echoes === 0,
+       `${r.bat[0].swings} -> ${r.bat[1].swings} swings (x${x(r.bat, "swings")}), ${r.bat[1].echoes} echoes`);
+    ok("PULSE rings again and again", r.pulse[1].rings >= r.pulse[0].rings * 3,
+       `${r.pulse[0].rings} -> ${r.pulse[1].rings} rings (x${x(r.pulse, "rings")})`);
+    ok("CALTROPS drops a denser trail", r.caltrops[1].zones >= r.caltrops[0].zones * 3,
+       `${r.caltrops[0].zones} -> ${r.caltrops[1].zones} zones (x${x(r.caltrops, "zones")})`);
+    ok("GORE cuts more lanes while you move", r.gore[1].lanes >= r.gore[0].lanes * 3 && r.gore[0].lanes > 0,
+       `${r.gore[0].lanes} -> ${r.gore[1].lanes} lanes (x${x(r.gore, "lanes")})`);
+    ok("STINK's trailing clouds bite: walking away from a ring of ceratops costs them more with MORE than without",
+       r.aura[1].lost > r.aura[0].lost * 1.25 && r.aura[0].lost > 0,
+       `${r.aura[0].lost} -> ${r.aura[1].lost} horde HP (x${(r.aura[1].lost / Math.max(1, r.aura[0].lost)).toFixed(2)})`);
+    ok("and the card says so, without a weapon list", r.more && !/BOLT/.test(String(r.more.eff)) && r.more.nm === "MORE",
+       JSON.stringify(r.more));
   }
 
   console.log("\n" + "=".repeat(58));
