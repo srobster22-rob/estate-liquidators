@@ -563,6 +563,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   });
   ok("clock does not hand you the win at 20:00", gate.sudden === true && gate.over === false,
      `t=${gate.t} sudden=${gate.sudden}`);
+  // Sudden death is a four-minute timer, and the HUD has to say so: the clock
+  // counts it down and the finale reads as a percentage, not only a raw number.
+  await page.evaluate(() => window.__g.resume());
+  await page.waitForTimeout(200);
+  const sdHud = await page.evaluate(() => ({ clock: document.getElementById("clock").textContent,
+                                            phase: document.getElementById("phase").textContent }));
+  ok("and the clock counts the four minutes down while the finale reads as a percentage",
+     /SUDDEN DEATH\s+0[0-3]:\d\d/.test(sdHud.clock) && /\d+%/.test(sdHud.phase) && /KILL IT/.test(sdHud.phase),
+     JSON.stringify(sdHud));
   const gate2 = await page.evaluate(() => {
     const b = window.__g.state();
     window.__g.killBoss();

@@ -49,7 +49,10 @@
     font-size:30px;font-weight:700;letter-spacing:.06em;font-variant-numeric:tabular-nums;
     text-shadow:0 3px 0 #000,0 0 22px rgba(0,0,0,.9)}
   #phase{position:absolute;top:44px;left:50%;transform:translateX(-50%);
-    font-size:10px;color:var(--dim);letter-spacing:.22em}
+    font-size:10px;color:var(--dim);letter-spacing:.22em;white-space:nowrap;
+    text-shadow:0 1px 2px #000,0 0 8px #000}
+  /* the finale line is the run's last instruction; it is not dim */
+  #phase.final{color:#ffd0b0;font-size:12px;font-weight:700}
   #xpwrap{position:absolute;top:0;left:0;right:0;height:7px;background:#11151c;
     border-bottom:1px solid #000}
   #xpbar{height:100%;width:0;background:linear-gradient(90deg,#3ad0ff,#8affd0);
@@ -12946,13 +12949,19 @@ function hud(){
   $("hud").style.display = on ? "block" : "none";
   const dh = $("devhud"); if(dh) dh.classList.toggle("on", on && !!save.dev);
   if(!on || !P) return;
-  $("clock").textContent = sudden ? "SUDDEN DEATH" : fmt(Math.max(0, RUN_LEN - T));
-  $("clock").style.color = deepAt ? "#ff8a6a" : "";
+  // Sudden death is a TIMER - four minutes to kill the finale or the sun
+  // comes up - and the clock used to stop saying so the moment it started.
+  // Six seeds in six lost exactly there. The clock counts the four minutes
+  // down, in red, and the finale reads as a percentage before the raw number.
+  $("clock").textContent = sudden ? "SUDDEN DEATH  " + fmt(Math.max(0, RUN_LEN + 240 - T))
+                                  : fmt(Math.max(0, RUN_LEN - T));
+  $("clock").style.color = sudden ? "#ff5c4d" : deepAt ? "#ff8a6a" : "";
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   const nb = BOSSES[bossIdx];
   const fb = sudden ? enemies.find(e => e.final && !e.dead) : null;
+  $("phase").classList.toggle("final", !!fb);
   $("phase").textContent = fb
-    ? `${BOSSES[BOSSES.length-1].nm}  ${Math.max(0,Math.ceil(fb.hp)).toLocaleString()} HP  -  KILL IT`
+    ? `${BOSSES[BOSSES.length-1].nm}  ${Math.max(0, Math.ceil(fb.hp / Math.max(1, fb.maxhp) * 100))}%  ·  ${Math.max(0,Math.ceil(fb.hp)).toLocaleString()} HP  -  KILL IT`
     : nb ? `${nb.nm} IN ${fmt(Math.max(0,nb.t-T))}` : "FINAL STAND";
   $("xpbar").style.width = (P.xp/P.need*100).toFixed(1)+"%";
   // the arrow points at the NEXT evolution for as long as there is one -
