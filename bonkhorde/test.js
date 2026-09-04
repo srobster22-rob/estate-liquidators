@@ -6557,6 +6557,48 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `portrait fov ${r.cam.fov} dist ${r.cam.dist}; landscape fov ${land.fov} dist ${land.dist}`);
   }
 
+  console.log("\n=== 53. ATTACKS HAVE BODIES ===");
+  {
+    // Reported: "models still are clunky, especially attack animations". A
+    // weapon firing shoved the body forward a quarter of a lean and nothing
+    // else. Every fire now runs a strike envelope - wind-up away, strike
+    // through, recovery - resolved into a twist, a pitch, a reach, a lean and
+    // a squash that every body plan gets through one transform; a bat swing
+    // is mostly twist, a bolt mostly a thrust of the head. And the facing
+    // eases into a new heading instead of cutting to it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, key = (t, c) => dispatchEvent(new KeyboardEvent(t, { code: c }));
+      const boot = (w) => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.aim(0); g.give(w, 0);
+        for (let i = 0; i < 5; i++) g.spawnAt("brute", -3 + i * 1.5, 5.5); g.step(20, 1/60); };
+      const film = (w) => { boot(w); const c0 = g.fxCounts(); let n = 0;
+        while (n < 600) { g.stepRaw(1/60); n++; const c = g.fxCounts(); if (c.swings > c0.swings || c.bolts > c0.bolts || c.rings > c0.rings || c.shells > c0.shells) break; }
+        const frames = []; for (let i = 0; i < 30; i++) { frames.push({ t: +g.anim().atkT.toFixed(3), ...g.pose() }); g.stepRaw(1/60); } return frames; };
+      // rest: after the last swing has fully recovered and before the next
+      const rest = (() => { boot("bat"); let n = 0; while (n++ < 200 && !(g.anim().atkT > .45 && g.anim().atkT < .95)) g.stepRaw(1/60); return g.pose(); })();
+      // the turn: a quarter turn, sampled
+      boot("bat"); g.aim(0); key("keydown", "KeyA"); const turn = []; for (let i = 0; i < 24; i++) { g.stepRaw(1/60); turn.push(+g.state().face.toFixed(3)); } key("keyup", "KeyA");
+      return { bat: film("bat"), bolt: film("bolt"), pulse: film("pulse"), rest, turn };
+    });
+    const peak = (fr, f) => fr.reduce((m, x) => Math.abs(x[f]) > Math.abs(m[f]) ? x : m, fr[0]);
+    const early = r.bat.filter(f => f.t < .08), late = r.bat.filter(f => f.t > .42);
+    ok("at rest nothing is on: no twist, no pitch, no reach, squash one", !r.rest.on && r.rest.tw === 0 && r.rest.reach === 0 && r.rest.sq === 1, JSON.stringify(r.rest));
+    ok("a bat swing winds up one way and strikes through the other, more than a third of a radian, and is home within four tenths of a second",
+       early.length > 0 && late.length > 0 && Math.sign(early[0].tw) === -Math.sign(peak(r.bat, "tw").tw) && Math.abs(peak(r.bat, "tw").tw) > .35 && late.every(f => !f.on),
+       `wind-up ${early[0] ? early[0].tw : "none"} at ${early[0] ? early[0].t : "-"}s, peak ${peak(r.bat, "tw").tw} at ${peak(r.bat, "tw").t}s, home by ${late[0] ? late[0].t : "-"}s`);
+    ok("a bolt is a thrust: the front reaches forward and pitches, with little twist",
+       peak(r.bolt, "reach").reach > .15 && peak(r.bolt, "pitch").pitch > .08 && Math.abs(peak(r.bolt, "tw").tw) < .15,
+       `reach ${peak(r.bolt, "reach").reach}, pitch ${peak(r.bolt, "pitch").pitch}, twist ${peak(r.bolt, "tw").tw}`);
+    const sqs = r.pulse.map(f => f.sq);
+    ok("a pulse is a stomp: the body stretches up in the wind-up and squashes down on the strike",
+       Math.max(...sqs) > 1.04 && Math.min(...sqs) < .88 && sqs.indexOf(Math.max(...sqs)) < sqs.indexOf(Math.min(...sqs)),
+       `stretch ${Math.max(...sqs)}, squash ${Math.min(...sqs)}`);
+    const mid = r.turn[5], end = r.turn[r.turn.length - 1];
+    ok("the turn eases: a tenth of a second into a quarter turn the animal is between the two headings, and it is there by four tenths",
+       mid < -.15 && mid > -1.45 && Math.abs(end + Math.PI / 2) < .02,
+       `face ${r.turn[0]} -> ${mid} at 0.1s -> ${end} at 0.4s`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

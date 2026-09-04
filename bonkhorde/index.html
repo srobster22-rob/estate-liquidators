@@ -596,6 +596,7 @@ const hopMul = ()=> 1 + HOP_TOP * (1 - Math.pow(HOP_FALL, P ? P.hop : 0));
 function jumpPressed(){ jumpBuf = HOP_BUF; }
 const clamp = (v,a,b)=>v<a?a:v>b?b:v;
 const lerp  = (a,b,t)=>a+(b-a)*t;
+const wrapAng = a => { while(a >  Math.PI) a -= TAU; while(a < -Math.PI) a += TAU; return a; };
 // THE RUN STREAM. Every roll a run makes comes from here, so a trial is a pure
 // function of (arena seed, run seed, character, build) - which is what turns the
 // balance bench from an instrument with a plus-or-minus-four-in-forty-two band
@@ -7565,8 +7566,52 @@ const ANIM = {
               // in-game animal did not breathe at all (the menu portraits did)
   dead: 0,    // 0 -> 1 across the death beat; the eyes, the glow and the ring
               // fade on it, and the collapse is driven off it in stepDeath()
+  // THE STRIKE. Reported as "the models are clunky, especially attacking":
+  // a weapon firing used to shove the whole body forward by a quarter of a
+  // lean and nothing else - no wind-up, no swing, no reach, no recovery.
+  // atkT is seconds since the last fire, atkKind the weapon, atkDir where the
+  // target was in the body's own frame, atkSide which way the last swing
+  // went; atkPose() turns them into a twist, a pitch, a reach, a lean and a
+  // squash that every body plan gets through the same transform.
+  atkT: 9, atkKind: "", atkDir: 0, atkSide: 1, atkAmp: 1,
 };
-function resetAnim(){ ANIM.ph = 0; ANIM.amp = 0; ANIM.lean = 0; ANIM.bank = 0;
+// per weapon: how much of each channel a strike uses. A swing is mostly
+// twist; a shot is a thrust of the head; a stomp is squash; a lob rears up.
+const ATK = {
+  bat:      { tw:.62, pitch:.10, reach:.14, lean:.22, sq:.06 },
+  gore:     { tw:.25, pitch:.14, reach:.18, lean:.30, sq:.05 },
+  bolt:     { tw:.12, pitch:.16, reach:.30, lean:.08, sq:.04 },
+  zap:      { tw:.10, pitch:.12, reach:.20, lean:.06, sq:.04 },
+  brood:    { tw:.10, pitch:.10, reach:.12, lean:.06, sq:.03 },
+  mortar:   { tw:0,   pitch:-.24, reach:0,  lean:-.14, sq:.08 },
+  pulse:    { tw:0,   pitch:.04, reach:0,   lean:0,    sq:.18, stomp:true },
+  caltrops: { tw:.22, pitch:-.06, reach:0,  lean:-.12, sq:.04 },
+};
+// -0.45 of wind-up over 90 ms, the strike to 1 by 190 ms, back to rest by 400
+function atkEnv(t){
+  if(t >= .40 || t < 0) return 0;
+  if(t < .09) return -.45 * Math.sin(t / .09 * Math.PI / 2);
+  if(t < .19){ const u = (t - .09) / .10; return -.45 + 1.45 * u * u * (3 - 2 * u); }
+  const u = (t - .19) / .21; return 1 - u * u * (3 - 2 * u);
+}
+function atkPose(){
+  const k = ATK[ANIM.atkKind], a = k ? atkEnv(ANIM.atkT) * (ANIM.atkAmp || 1) : 0;
+  if(!a) return { on:false, tw:0, pitch:0, reach:0, lean:0, sq:1, a:0 };
+  // a swing goes THROUGH the target: wind up away from it and strike past it;
+  // with nothing to aim at, alternate sides so two swings never look alike
+  const dir = ANIM.atkDir, side = Math.abs(dir) > .2 ? Math.sign(dir) : ANIM.atkSide;
+  const sq = k.stomp ? 1 - k.sq * a                          // stretch up, then stomp down
+                     : 1 + k.sq * (a > 0 ? a * .5 : a * .9); // crouch, then a little stretch
+  return { on:true, tw:k.tw * side * a, pitch:k.pitch * a, reach:Math.max(0, k.reach * a),
+           lean:k.lean * a, sq, a };
+}
+function strike(k, echo){
+  if(!ATK[k]) return;
+  ANIM.atkT = 0; ANIM.atkKind = k; ANIM.atkAmp = echo ? .55 : 1;
+  ANIM.atkSide = -ANIM.atkSide; ANIM.atkDir = 0;
+  ANIM.lunge = Math.min(1, ANIM.lunge + (echo ? .18 : .30));
+}
+function resetAnim(){ ANIM.ph = 0; ANIM.amp = 0; ANIM.lean = 0; ANIM.bank = 0; ANIM.atkT = 9; ANIM.atkKind = "";
                       ANIM.sq = 1; ANIM.lunge = 0; ANIM.look = 0; ANIM.land = 0;
                       ANIM.hit = 0; ANIM.hitR = 0; ANIM.hitF = -1; ANIM.br = 0;
                       ANIM.dead = 0; deathFx = 0; endFade(""); }
@@ -7627,11 +7672,12 @@ function stepAnim(dt){
 
   // lunge runs negative for a recoil, so decay toward zero from either side
   ANIM.lunge -= Math.sign(ANIM.lunge) * Math.min(Math.abs(ANIM.lunge), dt * 5.2);
+  ANIM.atkT += dt;
 
   // The head turns toward whatever is closest, which is the cheapest thing that
   // makes an animal look like it is aware of the fight it is in.
   const tgt = nearest(P.x, P.z, 18);
-  let wantLook = 0;
+  let wantLook = 0, lookK = 5;
   if(tgt){
     let a = Math.atan2(tgt.x - P.x, tgt.z - P.z) - P.face;
     while(a >  Math.PI) a -= TAU;
@@ -7657,7 +7703,9 @@ function stepAnim(dt){
   // anything is in range the wander gives way to the tracking above, and if
   // that thing is astern the head comes back to the body's own heading.
   else wantLook = idle * Math.sin(ANIM.br * .19 + .8) * .14;
-  ANIM.look += (wantLook - ANIM.look) * Math.min(1, dt * 5);
+  // striking, the head goes to what is being struck first, and fast
+  if(ANIM.atkT < .30 && ANIM.atkDir && Math.abs(ANIM.atkDir) < 1.9){ wantLook = clamp(ANIM.atkDir, -.75, .75); lookK = 16; }
+  ANIM.look += (wantLook - ANIM.look) * Math.min(1, dt * lookK);
 }
 // ============================================================ THE DEATH BEAT
 // Dying was a function call: hp went below zero and the receipt was on screen
@@ -8448,7 +8496,7 @@ function fireWeapons(dt){
     // EYEWALL, THE HURRICANE's apex power: the storm never runs out of sky.
     // GALEDIVE (the line's own mortar) falls twice as often.
     w.t = (s.cd||1) * P.cd * (k === "mortar" && apexIs("tally") ? .5 : 1);
-    if(k !== "skulls") ANIM.lunge = Math.min(1, ANIM.lunge + .55);
+    if(k !== "skulls") strike(k);
     switch(k){
       case "bat":      fireBat(w,s); break;
       case "skulls":   w.t = s.cd*P.cd; break;            // orbiters tick in update
@@ -8465,6 +8513,7 @@ function fireWeapons(dt){
 // One copy of the last fire, at copy damage. `s` is the stat row (or wStat's
 // reach-scaled copy of it), so it is copied again before the damage is cut.
 function fireEcho(k, w, s){
+  strike(k, true);
   const se = Object.assign({}, s);
   if(se.d)   se.d   *= DUPE_DMG;
   if(se.dps) se.dps *= DUPE_DMG;
@@ -8498,6 +8547,7 @@ function fireBat(w,s){
   statSwings++;
   const tgt = threatTarget(P.x, P.z, s.rng+3);
   const ang = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
+  if(tgt) ANIM.atkDir = wrapAng(ang - P.face);          // the swing goes through it
   swings.push({ x:P.x, z:P.z, y:P.y, ang, arc:s.arc, rng:s.rng, life:.20, max:.20, evo:w.evo });
   const roll = dmgOut(s.d);
   hitNear(P.x, P.z, s.rng, (e,d)=>{
@@ -8520,6 +8570,7 @@ function fireBolt(w,s){
   statBolts += n;
   const tgt = threatTarget(P.x, P.z, 40);
   const base = tgt ? Math.atan2(tgt.x-P.x, tgt.z-P.z) : P.face;
+  if(tgt) ANIM.atkDir = wrapAng(base - P.face);         // the head thrusts at it
   for(let i=0;i<n;i++){
     const spread = w.evo ? (i-(n-1)/2)*0.17 : (i-(n-1)/2)*0.09;
     bolts.push({ x:P.x, y:P.y+1.0, z:P.z, a:base+spread, spd:s.spd,
@@ -10492,7 +10543,14 @@ function step(dt){
   }
   if(P.rebirthCd > 0) P.rebirthCd = Math.max(0, P.rebirthCd - dt);
   if(P.rush > 0) P.rush = Math.max(0, P.rush - RUSH_DRAIN*dt*(hasRule("afterburn") ? AFTERBURN_DRAIN : 1));   // rush bleeds, kills or no kills
-  if(dx || dz){ P.face = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
+  // THE TURN. The facing used to snap to the new heading in one frame, so
+  // every change of direction was a cut. It eases now - a quarter turn in
+  // about a fifth of a second - and the bank already answers the rate.
+  if(dx || dz){ P.faceWant = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
+  if(P.faceWant !== undefined){
+    const d = wrapAng(P.faceWant - P.face);
+    P.face = wrapAng(P.face + (Math.abs(d) < .012 ? d : d * (1 - Math.pow(1.7e-5, dt))));   // ~11/s: 95% of a turn in .27 s
+  }
 
   // ---- jump / bunnyhop
   const gy = groundY(P.x, P.z);
@@ -11055,7 +11113,19 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // bodyCap deliberately records the UNTRANSFORMED extents: the "twenty-one
   // distinct meshes" check has to compare shapes, and if the signature moved
   // with the animation it would compare moments in time instead.
-  const aSq = ANIM.sq, aInv = 1 / Math.sqrt(Math.max(.35, aSq));
+  // the strike, resolved once a frame and applied to every part below
+  const AP = P.portrait ? { on:false, tw:0, pitch:0, reach:0, lean:0, sq:1 } : atkPose();
+  const aTw = AP.tw, cTw = Math.cos(aTw), sTw = Math.sin(aTw),
+        aPc = AP.pitch, cPc = Math.cos(aPc), sPc = Math.sin(aPc), aRe = AP.reach,
+        aAtk = AP.on, ATK_PIVOT = .45;                  // the pitch turns about the chest
+  // pitch about the chest, reach the front forward, twist the whole animal
+  const atkXf = (rr, ff, yy)=>{
+    if(aPc){ const dy = yy - ATK_PIVOT; yy = ATK_PIVOT + dy*cPc - ff*sPc; ff = ff*cPc + dy*sPc; }
+    if(aRe && ff > 0) ff += ff * aRe;
+    if(aTw){ const r2 = rr*cTw + ff*sTw; ff = ff*cTw - rr*sTw; rr = r2; }
+    return [rr, ff, yy];
+  };
+  const aSq = ANIM.sq * AP.sq, aInv = 1 / Math.sqrt(Math.max(.35, aSq));
   // WEIGHT, AND WHERE IT IS. Captured the mesh at the two extremes of a stride
   // and measured how far each box moved: the mean was two to nine percent of
   // the animal's own height. The legs swung and the animal did not - a rigid
@@ -11068,7 +11138,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // which is a lateral shear on the stride itself; and it PITCHES on the
   // off-beat, twice a stride, with the squash that ANIM.sq already carries.
   const aBob  = ANIM.amp * (.42 - Math.abs(Math.sin(ANIM.ph))) * .10;
-  const aLean = ANIM.lean + ANIM.lunge * .26
+  const aLean = ANIM.lean + ANIM.lunge * .26 + AP.lean
               + ANIM.amp * Math.sin(ANIM.ph * 2) * .022;
   const aBank = ANIM.bank + ANIM.amp * Math.sin(ANIM.ph) * .075;
   const mb = (r,f,y,hx,hy,hz,col,em,rot)=>{
@@ -11129,9 +11199,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     if(f - hz < mFa) mFa = f - hz;
     if(r + hx > mRb) mRb = r + hx;                 // wings count too, see bodyLen
     if(r - hx < mRa) mRa = r - hx;
-    const yy = y * aSq;
-    const rr = r * aInv + yy * aBank;
-    const ff = f * aInv + yy * aLean;
+    let yy = y * aSq;
+    let rr = r * aInv + yy * aBank;
+    let ff = f * aInv + yy * aLean;
+    if(aAtk) [rr, ff, yy] = atkXf(rr, ff, yy);
     // ROT WAS BEING THROWN AWAY. blob(), wing(), the ceratopsian frill, the
     // plesiosaur's flippers and the basilisk's hood all pass a yaw as the ninth
     // argument and mb() only ever declared eight, so every angled part in the
@@ -11140,7 +11211,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // was allowed to sit at an angle to the animal carrying it.
     box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
         P.z - mSf*rr*mSc + mCf*ff*mSc,
-        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em||0, P.face + (rot||0));
+        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em||0, P.face + (rot||0) + aTw);
   };
   // AMBIENT, NOT ANATOMY. Sparks, embers, orbiting storm motes, trailing water,
   // after-images: things a creature is surrounded BY rather than made of. They
@@ -11148,10 +11219,11 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   // the mesh capture - otherwise every connectivity and distinct-mesh check has
   // to reason about a cloud of loose particles that is meant to be loose.
   const fx = (r,f,y,hx,hy,hz,col,em2,rot)=>{
-    const yy = y * aSq, rr = r * aInv + yy * aBank, ff = f * aInv + yy * aLean;
+    let yy = y * aSq, rr = r * aInv + yy * aBank, ff = f * aInv + yy * aLean;
+    if(aAtk) [rr, ff, yy] = atkXf(rr, ff, yy);
     box(P.x + mCf*rr*mSc + mSf*ff*mSc, P.y + (yy + aBob)*mSc,
         P.z - mSf*rr*mSc + mCf*ff*mSc,
-        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em2||0, P.face + (rot||0));
+        hx*mSc*aInv, hy*mSc*aSq, hz*mSc*aInv, col, em2||0, P.face + (rot||0) + aTw);
   };
   const mLt = [Math.min(1,mTc[0]*1.22+.03), Math.min(1,mTc[1]*1.22+.03),
                Math.min(1,mTc[2]*1.22+.03)];
@@ -13451,7 +13523,7 @@ window.__g = {
   drainPicks: (suppress)=>{ pendingLevels=0; picking=false; hide("pick"); hopThaw();
                             if(suppress!==undefined) noLevels=!!suppress; },
   // screenshot helper: point the camera and the creature the same way
-  aim: (a)=>{ camYaw = a; if(P) P.face = a; return camYaw; },
+  aim: (a)=>{ camYaw = a; if(P){ P.face = a; P.faceWant = a; } return camYaw; },
   hitBoss: (n)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b) hurt(b, n||1, 0, 0); },
   slay: (n=1)=>{ const live=enemies.filter(e=>!e.dead).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z));
                  live.slice(0,n).forEach(killEnemy); return live.length; },
@@ -13735,7 +13807,9 @@ window.__g = {
                sq:+ANIM.sq.toFixed(3), lunge:+ANIM.lunge.toFixed(3),
                look:+ANIM.look.toFixed(3), land:+ANIM.land.toFixed(3),
                hit:+ANIM.hit.toFixed(3), hitR:+ANIM.hitR.toFixed(3), hitF:+ANIM.hitF.toFixed(3),
-               br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3) }),
+               br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3),
+               atkT:+ANIM.atkT.toFixed(3), atkKind:ANIM.atkKind, atkDir:+ANIM.atkDir.toFixed(3) }),
+  pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3) }; },
   deathFx: ()=>+deathFx.toFixed(3),
   // the beat by hand, like step(): a headless renderer at four frames a
   // second cannot be asked to play a second and a half on the clock
