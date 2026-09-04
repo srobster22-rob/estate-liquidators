@@ -8693,7 +8693,11 @@ function updateBrood(dt){
       // catches whatever stands shoulder to shoulder with the target, but
       // those bystanders take the ordinary bite, not the takedown.
       const heavy = biting.boss ? BROOD_BOSS : 1;
-      const roll = dmgOut(s.d * heavy);
+      // a copy pup - one past the weapon's own count - bites at copy damage,
+      // like every other copy MORE makes. It did not, and MORE on BROOD
+      // benched at ten times the bare weapon while the rest read two to four.
+      const copy = i >= s.n ? DUPE_DMG : 1;
+      const roll = dmgOut(s.d * heavy * copy);
       hitNear(p2.x, p2.z, 3.2, (e2)=>{
         const bx = e2.x-p2.x, bz = e2.z-p2.z, bl = Math.hypot(bx,bz)||1;
         hurt(e2, roll.d * (e2.boss ? 1 : 1/heavy), bx/bl*4.0, bz/bl*4.0, roll.crit);

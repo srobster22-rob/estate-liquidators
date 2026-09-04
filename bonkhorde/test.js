@@ -6277,8 +6277,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // five metres is dead inside a second, before there is a trail to walk
       // them through. Ceratops at four metres are left behind at 1.9 u/s and
       // spend the next seconds in the copies.
+      // BROOD's copy pups bite at copy damage like every other copy: one pup
+      // and four on THORNBACK for eight seconds, standing still, no shoving
+      // the target out of reach (a boss barely moves). Full-damage copies
+      // would read x4; at 55% the pack reads about x2.65.
+      // Summed over three seeds, because a pack fight is chaotic: on one seed
+      // two pups did less than one (they jostle for the same flank). The sum
+      // reads x1.8 with copies at 55% and x2.4 with them at full.
+      const pack = (more, seed) => { g.wipeSave(); g.pin(seed); g.pinRun(seed); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true);
+        g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.give("brood", 1);
+        if (more) g.give("dupe", 3); g.boss(1); g.step(90, 1/60); g.dmg(); g.step(8 * 60, 1/60); return Math.round(g.dmg().boss); };
+      let packOff = 0, packOn = 0;
+      for (const seed of [5, 6, 7]) { packOff += pack(false, seed); packOn += pack(true, seed); }
       return { bat: pair("bat", 4, 4), pulse: pair("pulse", 4, 6), caltrops: pair("caltrops", 4, 6),
-               gore: pair("gore", 4, 6), aura: pair("aura", 6, 4, "brute"), more: g.upgrades().find(u => u.key === "dupe") };
+               gore: pair("gore", 4, 6), aura: pair("aura", 6, 4, "brute"), pack: [packOff, packOn],
+               more: g.upgrades().find(u => u.key === "dupe") };
     });
     const x = (a, f) => (a[1][f] / Math.max(1, a[0][f])).toFixed(1);
     ok("BONK BAT swings a flurry: at least three times the swings with MORE 3, the extras counted as echoes",
@@ -6293,6 +6306,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("STINK's trailing clouds bite: walking away from a ring of ceratops costs them more with MORE than without",
        r.aura[1].lost > r.aura[0].lost * 1.25 && r.aura[0].lost > 0,
        `${r.aura[0].lost} -> ${r.aura[1].lost} horde HP (x${(r.aura[1].lost / Math.max(1, r.aura[0].lost)).toFixed(2)})`);
+    ok("BROOD's copy pups bite at copy damage: four pups on a boss, over three seeds, do more than one pup and well short of four full ones",
+       r.pack[0] > 0 && r.pack[1] > r.pack[0] * 1.3 && r.pack[1] < r.pack[0] * 2.1,
+       `${r.pack[0]} -> ${r.pack[1]} boss damage over three seeds (x${(r.pack[1] / Math.max(1, r.pack[0])).toFixed(2)})`);
     ok("and the card says so, without a weapon list", r.more && !/BOLT/.test(String(r.more.eff)) && r.more.nm === "MORE",
        JSON.stringify(r.more));
   }
