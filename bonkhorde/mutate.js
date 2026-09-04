@@ -302,8 +302,8 @@ const MUTANTS = [
   { id:"shop-button-blind", must:"15",
     why:"the end screen's SHOP button opens the menu at the top again, the " +
         "shop somewhere below nine monster cards",
-    from:"    const sh = document.getElementById(\"shop\");\n    if(sh) (sh.previousElementSibling || sh).scrollIntoView({ block:\"start\" });",
-    to:  "" },
+    from:"  document.getElementById(\"shopBtn\").onclick  = ()=>{ hide(\"end\"); openMenu(\"shop\"); };",
+    to:  "  document.getElementById(\"shopBtn\").onclick  = ()=>{ hide(\"end\"); openMenu(); };" },
   { id:"pause-cheats-ungated", must:"24",
     why:"the pause screen's DEV strip shows for every player again - GODMODE " +
         "one accidental tap away on a phone",
@@ -885,6 +885,31 @@ const MUTANTS = [
     why:"the kit strip shows what you carry and not the slots you have left",
     from:"  const empty = n => Array.from({ length:Math.max(0, n) }, () => `<div class=\"ks e\"></div>`).join(\"\");",
     to:  "  const empty = n => \"\";" },
+  // ---- R274: the front end is the genre's (section 66)
+  { id:"tabs-are-decoration", must:"66",
+    why:"the tabs never change the pane, so the shop and the collection are unreachable",
+    from:"  if(tab && TABS.some(t => t[0] === tab)) menuTab = tab;",
+    to:  "  ;" },
+  { id:"start-forgets-the-pick", must:"66",
+    why:"START runs THE INTERN whatever tile is lit",
+    from:"  if(sb && !locked) sb.onclick = ()=>{ audioInit(); startRun(c.id); };",
+    to:  "  if(sb && !locked) sb.onclick = ()=>{ audioInit(); startRun(\"intern\"); };" },
+  { id:"locked-starts-anyway", must:"66",
+    why:"a locked creature's panel offers a live START button",
+    from:"      ${locked ? `<button class=\"btn gh\" id=\"startBtn\" disabled>LOCKED</button>`",
+    to:  "      ${locked ? `<button class=\"btn\" id=\"startBtn\">START RUN</button>`" },
+  { id:"refund-keeps-the-coins", must:"66",
+    why:"REFUND ALL empties the ranks and hands nothing back",
+    from:"  if(rb && spent) rb.onclick = ()=>{ save.coins += spent; for(const u of SHOP) save.up[u.id] = 0;",
+    to:  "  if(rb && spent) rb.onclick = ()=>{ for(const u of SHOP) save.up[u.id] = 0;" },
+  { id:"recipe-off-the-tile", must:"66",
+    why:"the collection lists the weapons and keeps the evolution recipes to itself",
+    from:"      <div class=\"rc\">${icon(W.evo.ic)} ${W.evo.name} <u>= ${W.name} ${WMAX} + ${pn.name} ${pn.max}</u></div></div>`; });",
+    to:  "      </div>`; });" },
+  { id:"stats-in-grey", must:"66",
+    why:"the stat table prints every difference in the same grey as no difference",
+    from:"  return `<b class=\"${good ? \"g\" : \"r\"}\">${pct > 0 ? \"+\" : \"\"}${pct}%</b>`;",
+    to:  "  return `<b class=\"n\">${pct > 0 ? \"+\" : \"\"}${pct}%</b>`;" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

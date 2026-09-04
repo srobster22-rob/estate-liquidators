@@ -966,7 +966,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const g = window.__g;
       g.hitMe(1e12); g.step(2, 1/60);        // die, so the end screen is real
       document.getElementById("shopBtn").click();
-      const r = document.getElementById("shop").getBoundingClientRect();
+      const sh = document.getElementById("shop"), r = sh ? sh.getBoundingClientRect() : { top: -1 };
       return { over: g.state().over, top: Math.round(r.top), vh: innerHeight };
     });
     ok("the end screen's SHOP button lands on the shop",
@@ -1615,10 +1615,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     await up.reload({ waitUntil: "load" });
     await up.waitForTimeout(650);
     const hidden = true;
-    const shopBefore = await up.evaluate(() =>
-      [...document.querySelectorAll("#shop .n")].map(e => e.textContent));
+    const shopBefore = await up.evaluate(() => { window.__g.menuTab("shop");
+      return [...document.querySelectorAll("#shop .n")].map(e => e.textContent); });
     await up.evaluate(() => { window.__g.setSave({ kills: 6000 });
-                              window.__g.checkUnlocks(); window.__g.menu(); });
+                              window.__g.checkUnlocks(); window.__g.menuTab("shop"); });
     await up.waitForTimeout(250);
     const shopAfter = await up.evaluate(() =>
       [...document.querySelectorAll("#shop .n")].map(e => e.textContent));
@@ -7219,7 +7219,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.drainPicks(false); g.xp(9000); g.step(1, 1/60);
       const d = g.draft(), btns = [...document.querySelectorAll("#pkTools .tb")], h0 = g.hand().map(o => o.key); g.rerollHand(); const h1 = g.hand().map(o => o.key);
       const left = g.draft().rerolls; g.drainPicks(true);
-      g.menu(); const shop = [...document.querySelectorAll("#shop .n")].map(e => e.textContent);
+      g.menuTab("shop"); const shop = [...document.querySelectorAll("#shop .n")].map(e => e.textContent);
       return { picking: d.mastery, btns: btns.length, off: btns.filter(b => b.classList.contains("off")).length, same: JSON.stringify(h0) === JSON.stringify(h1), rerolls: left, shop }; });
     ok("a MASTERY hand greys out reroll and banish and R does nothing - it is not a deal", m.picking && m.btns === 2 && m.off === 2 && m.same && m.rerolls === 2, `mastery ${m.picking}, ${m.off}/${m.btns} buttons off, rerolls left ${m.rerolls}`);
     ok("the shop sells REROLL and BANISH", m.shop.includes("REROLL") && m.shop.includes("BANISH"), m.shop.join(", "));
@@ -7234,6 +7234,113 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("on a phone the whole panel - rows, buttons, kit - fits the screen, every row is a full-width tap target with its line of text, and the caption says TAP",
        ph.picking && ph.panel.l >= 0 && ph.panel.r <= ph.vw && ph.panel.t >= 0 && ph.panel.b <= ph.vh && ph.kit <= ph.vh && ph.rows.every(q => q.h >= 44 && q.r - q.l > ph.vw * .8) && ph.rows.some(q => q.ds > 0) && ph.tools >= 2 && /TAP/.test(ph.sub),
        `panel ${ph.panel.l}-${ph.panel.r} x ${ph.panel.t}-${ph.panel.b} of ${ph.vw}x${ph.vh}; rows ${ph.rows.map(q => q.h).join("/")}px tall; ${ph.tools} buttons; "${ph.sub}"`);
+    await pctx.close();
+  }
+
+  console.log("\n=== 66. THE FRONT END IS THE GENRE'S ===");
+  {
+    // Reported with the draft: "the main menu still sucks - look at Vampire
+    // Survivors and copy it". Copied: tabs; a character select that is a grid
+    // of small portraits and ONE detail panel with a stat table in green and
+    // red and a START button; the shop as a power-up grid with a refund; a
+    // collection that prints every evolution recipe; the ladder on its own
+    // tab. Locked creatures can be picked and say what unlocks them.
+    await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.wipeSave(); g.menuTab("play"); });
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const tile = i => [...document.querySelectorAll("#chars .ch")][i];
+      const det = () => document.getElementById("detail");
+      const stats = () => [...det().querySelectorAll(".st")];
+      const coloured = () => stats().filter(e => e.querySelector("b.g, b.r")).length;
+      const tabs = [...document.querySelectorAll("#menu .tab")].map(t => ({ nm: t.textContent.trim(), on: t.classList.contains("on") }));
+      const tiles = [...document.querySelectorAll("#chars .ch")];
+      const rects = tiles.map(t => { const b = t.getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; });
+      const first = { name: det().querySelector(".pvbox .nm").textContent, rows: stats().length, coloured: coloured(), pv: !!det().querySelector("canvas.pv"),
+                      rows2: [...det().querySelectorAll(".rw b")].map(b => b.textContent), chain: det().querySelectorAll(".chain s").length, start: (det().querySelector("#startBtn") || {}).textContent };
+      tile(1).click();
+      const second = { sel: [...document.querySelectorAll("#chars .ch")].findIndex(t => t.classList.contains("sel")), id: g.menuState().sel,
+                       name: det().querySelector(".pvbox .nm").textContent, coloured: coloured(), stats: stats().map(e => e.textContent.replace(/\s+/g, " ").trim()) };
+      const lockedTile = [...document.querySelectorAll("#chars .ch.lock")][0];
+      const lockedTileTxt = lockedTile.textContent.replace(/\s+/g, " ");
+      lockedTile.click();
+      const sb = det().querySelector("#startBtn");
+      const locked = { id: g.menuState().sel, disabled: !!sb && sb.disabled, label: sb && sb.textContent.trim(), bar: !!det().querySelector(".nb i"),
+                       says: /survive|clear|reach|cover|lose/.test(det().textContent), tileSays: /UNLOCK/.test(lockedTileTxt) && lockedTileTxt.length > 20 };
+      tile(1).click();
+      document.getElementById("startBtn").click();
+      const started = { running: !g.state().over && g.state().t >= 0 && !document.getElementById("menu").classList.contains("on"), mv: g.moveOf().nm, want: g.moveOf("scrap").nm, live: g.portraits(), menuOn: document.getElementById("menu").classList.contains("on") };
+      return { tabs, tiles: tiles.length, rects, first, second, locked, started };
+    });
+    ok("four tabs - PLAY, POWER UP, COLLECTION, UNLOCKS - and the menu opens on PLAY",
+       r.tabs.length === 4 && r.tabs[0].nm === "PLAY" && r.tabs[0].on && r.tabs[1].nm === "POWER UP" && r.tabs[2].nm === "COLLECTION" && /^UNLOCKS/.test(r.tabs[3].nm),
+       r.tabs.map(t => t.nm + (t.on ? "*" : "")).join(" | "));
+    ok("the roster is a grid of nine small portrait tiles, three to a row",
+       r.tiles === 9 && r.rects.filter(q => q.t === r.rects[0].t).length === 3 && r.rects.every(q => q.w < 160 && q.w > 60),
+       `${r.tiles} tiles ${r.rects[0].w}x${r.rects[0].h}, ${r.rects.filter(q => q.t === r.rects[0].t).length} on the first row`);
+    ok("one detail panel: the picked creature large, nine stat rows, the start weapon, the line chain, what it learns, and START",
+       r.first.pv && r.first.rows === 9 && r.first.coloured === 0 && r.first.rows2.includes("START") && r.first.rows2.includes("GROUND") && r.first.chain === 5 && /START RUN/.test(r.first.start || ""),
+       `${r.first.name}: ${r.first.rows} stats (${r.first.coloured} coloured), rows ${r.first.rows2.join("/")}, ${r.first.chain} stages, button "${(r.first.start || "").trim()}"`);
+    ok("picking the second tile lights it and fills the panel with THE SCRAPPER, its differences in colour",
+       r.second.sel === 1 && r.second.id === "scrap" && r.second.name !== r.first.name && r.second.coloured >= 3,
+       `${r.second.name}, ${r.second.coloured} coloured: ${r.second.stats.filter(s => !/—/.test(s)).join(", ")}`);
+    ok("a locked creature can be picked: the panel says what unlocks it, with a progress bar, and START is LOCKED",
+       r.locked.disabled && r.locked.label === "LOCKED" && r.locked.bar && r.locked.says && r.locked.tileSays,
+       `${r.locked.id}: button "${r.locked.label}" disabled ${r.locked.disabled}, bar ${r.locked.bar}, condition ${r.locked.says}`);
+    ok("START runs the creature you picked, and the portraits stop",
+       r.started.running && r.started.mv === r.started.want && r.started.live === 0 && !r.started.menuOn,
+       `running ${r.started.running}, move ${r.started.mv} (want ${r.started.want}), ${r.started.live} portraits live`);
+
+    // ENTER from the menu starts the pick, even after a run has ended
+    await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.hitMe(1e12); g.step(2, 1/60); document.getElementById("shopBtn").click(); g.menuPick("ox"); });
+    await page.keyboard.press("Enter"); await page.waitForTimeout(80);
+    const ent = await page.evaluate(() => ({ running: !window.__g.state().over && !document.getElementById("menu").classList.contains("on"), mv: window.__g.moveOf().nm, want: window.__g.moveOf("ox").nm }));
+    ok("ENTER on the menu starts the picked creature, not the last run's", ent.running && ent.mv === ent.want, `running ${ent.running}, move ${ent.mv} (want ${ent.want})`);
+
+    // POWER UP: tiles with prices, a rank per click, and REFUND ALL
+    const sh = await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.wipeSave(); g.setSave({ coins: 500 }); g.menuTab("shop");
+      const tileOf = nm => [...document.querySelectorAll("#shop .up")].find(e => e.querySelector(".n").textContent === nm);
+      const tiles = document.querySelectorAll("#shop .up").length, priced = [...document.querySelectorAll("#shop .up .c")].filter(e => /\d/.test(e.textContent)).length;
+      // a broken tab bar leaves no shop to click: fail, do not crash
+      const click = el => { if (el) el.click(); };
+      click(tileOf("STOUTER BONES")); const c1 = g.saveState().coins, r1 = g.saveState().up.hp;
+      click(tileOf("STOUTER BONES")); const c2 = g.saveState().coins, r2 = g.saveState().up.hp;
+      const rb = document.getElementById("refundBtn"), rtxt = rb ? rb.textContent.trim() : "(no refund button)"; click(rb);
+      const c3 = g.saveState().coins, r3 = g.saveState().up.hp || 0;
+      return { tiles, priced, c1, r1, c2, r2, rtxt, c3, r3, disabled: !!(document.getElementById("refundBtn") || {}).disabled, tab: g.menuState().tab }; });
+    ok("POWER UP is a grid of tiles with the price on each, and a click buys a rank at that price",
+       sh.tab === "shop" && sh.tiles >= 11 && sh.priced >= 11 && sh.c1 === 440 && sh.r1 === 1 && sh.c2 === 325 && sh.r2 === 2,
+       `${sh.tiles} tiles, ${sh.priced} priced; 500 -> ${sh.c1} -> ${sh.c2} coins for ranks ${sh.r1}, ${sh.r2}`);
+    ok("REFUND ALL hands back every coin spent and empties the ranks", /175/.test(sh.rtxt) && sh.c3 === 500 && sh.r3 === 0 && sh.disabled,
+       `"${sh.rtxt}" -> ${sh.c3} coins, rank ${sh.r3}, button disabled ${sh.disabled}`);
+
+    // COLLECTION: every weapon with its recipe, every growth, every rule
+    const col = await page.evaluate(() => { const g = window.__g; g.menuTab("coll");
+      const W = [...document.querySelectorAll("#colW .ce")].map(e => e.textContent.replace(/\s+/g, " ").trim());
+      return { W, g: document.querySelectorAll("#colG .ce").length, r: document.querySelectorAll("#colR .ce").length,
+               unl: [...document.querySelectorAll("#colG .ce .rc")].length }; });
+    ok("COLLECTION prints all ten weapons with the recipe for each evolution on the tile",
+       col.W.length === 10 && col.W.every(t => /= .+ 3 \+ .+ 3/.test(t)) && col.W.some(t => /MEGABONK = BONK BAT 3 \+ BIGGER TEETH 3/.test(t)),
+       col.W.map(t => t.match(/([A-Z ]+ = [A-Z ]+ 3 \+ [A-Z ]+ 3)/)?.[1] || "no recipe").slice(0, 3).join(" | "));
+    ok("and the eight growths (with what each unlocks) and the six rules", col.g === 8 && col.unl === 8 && col.r === 6, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
+
+    // UNLOCKS: the ladder with a bar per rung
+    const lk = await page.evaluate(() => { const g = window.__g; g.menuTab("locks"); return { n: document.querySelectorAll("#locks .lk").length, bars: document.querySelectorAll("#locks .lk .nb i").length, badge: (document.querySelector('.tab[data-tab="locks"]') || {}).textContent || "" }; });
+    ok("UNLOCKS lists every rung still locked with a progress bar, and the tab counts them", lk.n === 6 && lk.bars === 6 && /6/.test(lk.badge), `${lk.n} rungs, ${lk.bars} bars, tab "${lk.badge}"`);
+
+    // and on a phone
+    const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pp = await pctx.newPage(); await pp.goto(FILE, { waitUntil: "load" }); await pp.waitForTimeout(600);
+    const ph = await pp.evaluate(() => { const g = window.__g; g.wipeSave(); g.menuTab("play");
+      const tiles = [...document.querySelectorAll("#chars .ch")].map(t => { const b = t.getBoundingClientRect(); return { t: Math.round(b.top), r: Math.round(b.right) }; });
+      const tabs = document.querySelector(".tabs").getBoundingClientRect(), det = document.getElementById("detail").getBoundingClientRect();
+      const wrap = document.querySelector("#menu .wrap");
+      const sb = document.getElementById("startBtn"); sb.scrollIntoView({ block: "center" }); const sbr = sb.getBoundingClientRect();
+      return { n: tiles.length, row1: tiles.filter(q => q.t === tiles[0].t).length, inside: tiles.every(q => q.r <= innerWidth), tabsH: Math.round(tabs.height), detTop: Math.round(det.top), lastTile: Math.max(...tiles.map(q => q.t)),
+               scrollW: wrap.scrollWidth, clientW: wrap.clientWidth, vw: innerWidth, sbW: Math.round(sbr.width), sbVis: sbr.top >= 0 && sbr.bottom <= innerHeight }; });
+    ok("on a phone the roster is three tiles a row above the panel, the tabs are one row, nothing scrolls sideways, and START is a full-width button",
+       ph.n === 9 && ph.row1 === 3 && ph.inside && ph.tabsH < 60 && ph.detTop > ph.lastTile && ph.scrollW <= ph.clientW + 1 && ph.sbVis && ph.sbW > ph.vw * .7,
+       `${ph.n} tiles, ${ph.row1} on row one, tabs ${ph.tabsH}px tall, panel at ${ph.detTop} under the last tile row at ${ph.lastTile}, scroll ${ph.scrollW}/${ph.clientW}, START ${ph.sbW}px wide, visible ${ph.sbVis}`);
     await pctx.close();
   }
 

@@ -238,7 +238,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 652 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
+node test.js              # 665 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -269,12 +269,13 @@ node film/bossfilm.js slam 0 slam # a boss cued into an ability, filmed through 
 node film/divefilm.js dive        # the pterling's dive, spitfilm.js the DILOPHO's lob, atkfilm.js the player's own strike
 node film/runfilm.js 41           # a whole bot run photographed at seven marks, plus a draft dealt on a separate run of the same seed
 node film/draftfilm.js            # the level-up screen at desktop and phone: a fresh hand with reroll and banish, banish armed, rerolled, an evolution, a MASTERY
+node film/menufilm.js             # the front end at desktop and phone: PLAY fresh, PLAY with a locked creature picked, a veteran's PLAY, POWER UP, COLLECTION, UNLOCKS
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **652 passing** as of R273, with 194 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **665 passing** as of R274, with 200 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the

@@ -244,13 +244,6 @@
   }
   .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
-  /* menu */
-  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
-  .ch{width:158px;background:#12161d;border:2px solid #2a313c;border-bottom-width:4px;
-    padding:13px 11px;cursor:pointer;text-align:left;transition:.09s}
-  .ch:hover{border-color:var(--gold);transform:translateY(-3px)}
-  .ch.lock{opacity:.4;cursor:not-allowed}
-  .ch.lock:hover{border-color:#2a313c;transform:none}
   /* the rule meter - same shape as the hop chain readout, its own colours */
   #rule{position:fixed;left:50%;transform:translateX(-50%);bottom:198px;display:none;
     align-items:center;gap:8px;font:700 11px/1 ui-monospace,monospace;letter-spacing:.14em;
@@ -263,56 +256,6 @@
   #rule.hot .hb i{background:#ffd166}
   #rule.hot b{color:#ffd166}
   #rule.cold .hb i{background:#5c6470}
-  .ch .ic{font-size:26px;margin-bottom:6px}
-  /* the live portrait. Backed at 2x and scaled down, so the box edges stay
-     hard instead of turning into the grey mush a 1x readback gives. */
-  /* the base `canvas` rule pins the two game canvases to the viewport with
-     position:fixed;inset:0 - a card portrait has to opt back out of both */
-  .ch canvas.pv{display:block;position:static;inset:auto;width:100%;height:auto;
-    margin:0;background:#0b0d11;border:0;border-bottom:1px solid #232a34}
-  .ch:hover canvas.pv{border-color:#3d4552}
-  .ch .nm{font-size:12px;font-weight:700;margin-bottom:4px}
-  .ch .ds{font-size:10px;color:#9a9588;line-height:1.55}
-  .ch .pk{font-size:10px;color:var(--gold);margin-top:6px}
-  .story{max-width:560px;margin:0 auto 20px;text-align:center;color:#8e8878;
-    font-size:11px;line-height:1.9}
-  .story p{margin:0 0 9px}
-  .story b{color:var(--ink);font-weight:700}
-  .story .tag{color:var(--gold);letter-spacing:.2em;font-size:10px;font-weight:700;margin:0}
-  /* THE CHARACTER CARD, REBUILT. It was nine stacked rows of nine-pixel text
-     in six colours - line, learns, signature, home, weak, start, level - with
-     the portrait, the only thing on it anybody looks at, getting the least
-     vertical space of anything. Three blocks now: the ANIMAL (full-bleed
-     portrait, name over it), what it BECOMES (three chips and two arrows), and
-     what it DOES (four labelled rows on one grid). Two accent colours, not
-     six: gold for what you gain, dim grey for everything descriptive. */
-  .ch{width:212px;padding:0 0 9px;overflow:hidden}
-  .ch .hd{position:relative}
-  .ch .ty{position:absolute;left:8px;top:8px;font-size:8px;letter-spacing:.16em;
-    font-weight:700;padding:2px 6px;background:#080a0ecc;border:1px solid currentColor}
-  .ch .nm{position:absolute;left:9px;bottom:7px;right:9px;font-size:15px;
-    font-weight:800;letter-spacing:.05em;margin:0;color:#fff;
-    text-shadow:0 2px 0 #000,0 0 14px #000d}
-  .ch .bd{padding:8px 10px 0}
-  .ch .ln{display:flex;align-items:center;gap:3px;flex-wrap:wrap;
-    font-size:8px;color:#5c6470;letter-spacing:.04em;margin:0 0 7px;line-height:1.4}
-  .ch .ln s{text-decoration:none;color:#cfc9bb;background:#0d1116;
-    border:1px solid #262d38;padding:2px 5px;letter-spacing:.06em}
-  .ch .ln s.now{color:#fff;border-color:var(--gold)}
-  .ch .rw{display:grid;grid-template-columns:34px 1fr;gap:2px 6px;font-size:9px;
-    line-height:1.45;margin-bottom:4px}
-  .ch .rw.apx em{color:#f0b429}
-  .ch .rw b{color:#5c6470;font-weight:700;letter-spacing:.1em;font-size:8px;
-    padding-top:1px}
-  .ch .rw i{font-style:normal;color:#cfc9bb}
-  .ch .rw i em{font-style:normal;color:var(--gold)}
-  .ch .rw i s{display:block;text-decoration:none;color:#6f7683;letter-spacing:0;
-    font-size:8px}
-  .ch .ml{display:flex;align-items:center;gap:6px;font-size:9px;color:#8affd0;
-    letter-spacing:.1em;margin:7px 10px 0}
-  .ch .mb{flex:1;height:4px;background:#0d1116;border:1px solid #000}
-  .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
-  .ch .ds{padding:0 10px}
   /* the end screen's portrait: the same renderer as the menu cards, framed */
   .next .nb{position:relative}
   .next .nb u{position:absolute;right:4px;top:50%;transform:translateY(-50%);
@@ -324,28 +267,164 @@
   /* one left edge for every label, and no wrapping on a two-word one */
   #endBody table td:first-child{white-space:nowrap;padding-right:16px;
     vertical-align:top}
-  /* a locked card keeps the portrait's footprint, so the row does not become
-     four tall cards and five short ones with a padlock floating in the middle */
-  .ch .lockbox{display:flex;align-items:center;justify-content:center;
-    aspect-ratio:4/3;background:#0b0d11;border-bottom:1px solid #232a34;
-    font-size:34px;color:#39414d}
 
-  .shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;
-    margin-top:8px;text-align:left}
-  .up{background:#12161d;border:2px solid #232a33;padding:10px 12px;cursor:pointer;
-    display:flex;gap:10px;align-items:center;transition:.09s}
-  .up:hover{border-color:var(--gold);background:#171c25}
-  .up.no{opacity:.42;cursor:not-allowed}
-  .up.no:hover{border-color:#232a33;background:#12161d}
-  .up .ic{font-size:20px}
+
+  /* ------------------------------------------------------------- THE MENU */
+  /* THE FRONT END, THE WAY THE GENRE LAYS IT OUT. Vampire Survivors opens on
+     a short menu with tabs - play, power up, collection, unlocks - and its
+     character select is a GRID of small portraits with ONE detail panel: the
+     picked creature large, a stat table with the numbers in green and red,
+     the starting weapon, and a confirm button. Ours was nine tall cards of
+     nine-point text in a row, with the shop and the ladder somewhere under
+     them, and on a phone the shop was nine cards deep. This is the genre's
+     layout with our furniture in it: the live portraits, the line chain, the
+     ground, the monster level. */
+  #menu .wrap{width:min(1040px,96vw);padding:8px 8px 14px}
+  #menu h1{font-size:44px;margin-bottom:0}
+  #menu .tag{color:var(--dim);font-size:10px;letter-spacing:.22em;margin:2px 0 12px}
+  #menu .tag b{color:var(--gold);font-weight:700}
+  .tabs{display:flex;justify-content:center;gap:4px;margin:0 auto 12px;flex-wrap:wrap}
+  .tab{font:800 11px/1 ui-monospace,monospace;letter-spacing:.18em;color:var(--dim);
+    background:#0f1319;border:1px solid #242a33;border-bottom-width:3px;padding:10px 18px;
+    cursor:pointer;-webkit-user-select:none;user-select:none}
+  .tab:hover{color:var(--ink);border-color:#39414d}
+  .tab.on{color:#120d02;background:var(--gold);border-color:var(--gold);border-bottom-color:#a87a12}
+  .tab i{font-style:normal;font-size:8px;margin-left:6px;opacity:.75;letter-spacing:.1em}
+  .bank{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;
+    font-size:12px;color:var(--gold);font-weight:700;letter-spacing:.08em;margin:0 0 12px}
+  .bank span{color:#8e8878;font-weight:400}
+  .bank .g{color:#6ddba0;font-weight:400}
+  .pane{text-align:left}
+  .pane h3{font-size:9px;letter-spacing:.24em;color:#5c6470;font-weight:800;margin:0 0 7px}
+  /* PLAY: the roster grid and the panel */
+  .play{display:grid;grid-template-columns:minmax(300px,400px) 1fr;gap:14px;align-items:start}
+  .roster{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .roster h3{grid-column:1/-1}
+  .ch{position:relative;background:#12161d;border:2px solid #2a313c;border-bottom-width:4px;
+    cursor:pointer;text-align:left;transition:.09s;overflow:hidden;padding:0 0 5px}
+  .ch:hover{border-color:#5c6470;transform:translateY(-2px)}
+  .ch.sel{border-color:var(--gold);box-shadow:0 0 16px #f0b42955}
+  .ch.lock{opacity:.55}
+  .ch.lock:hover{border-color:#39414d;transform:none}
+  .ch.lock.sel{opacity:.85}
+  /* the live portrait. Backed at 2x and scaled down, so the box edges stay
+     hard instead of turning into the grey mush a 1x readback gives. The base
+     `canvas` rule pins the two game canvases to the viewport - a portrait has
+     to opt back out of both. */
+  .ch canvas.pv,.detail canvas.pv{display:block;position:static;inset:auto;width:100%;height:auto;
+    margin:0;background:#0b0d11;border:0;border-bottom:1px solid #232a34}
+  .ch .ty{position:absolute;left:5px;top:5px;font-size:7px;letter-spacing:.14em;font-weight:700;
+    padding:2px 4px;background:#080a0ecc;border:1px solid currentColor}
+  .ch .nm{font-size:10px;font-weight:800;letter-spacing:.05em;margin:5px 7px 0;color:#fff;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ch .ml{display:flex;align-items:center;gap:5px;font-size:8px;color:#8affd0;letter-spacing:.1em;
+    margin:3px 7px 0}
+  .ch .mb{flex:1;height:3px;background:#0d1116;border:1px solid #000}
+  .ch .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
+  /* a locked tile keeps the portrait's footprint, with the condition under the
+     padlock: a locked box with no condition is just a locked box */
+  .lockbox{display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;
+    background:#0b0d11;border-bottom:1px solid #232a34;font-size:26px;color:#39414d}
+  .ch .lkt{font-size:7.5px;color:#8e8878;letter-spacing:.04em;margin:3px 7px 0;line-height:1.35}
+  .ch .lkt b{color:#a8a396;letter-spacing:.14em;font-size:7px}
+  /* the detail panel */
+  .detail{background:#0f1319;border:2px solid #2a313c;border-bottom-width:4px;padding:0 0 12px;
+    display:grid;grid-template-columns:minmax(200px,250px) 1fr;gap:0 14px;align-items:start}
+  .detail .pvbox{position:relative}
+  .detail .info{min-width:0}
+  .detail .pvbox .lockbox{font-size:44px}
+  .detail .pvbox .ty{position:absolute;left:8px;top:8px;font-size:8px;letter-spacing:.16em;font-weight:700;
+    padding:2px 6px;background:#080a0ecc;border:1px solid currentColor}
+  .detail .pvbox .nm{position:absolute;left:10px;right:10px;bottom:8px;font-size:17px;font-weight:800;
+    letter-spacing:.06em;color:#fff;text-shadow:0 2px 0 #000,0 0 14px #000d}
+  .detail .ds{font-size:11px;color:#cfc9bb;line-height:1.6;margin:12px 14px 0 0}
+  .detail .ds em{font-style:normal;color:#8e8878;font-size:10px;display:block;margin-top:2px}
+  .detail .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin:10px 14px 0 0}
+  .detail .st{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:8.5px;
+    letter-spacing:.1em;color:#5c6470;border-bottom:1px solid #1b2028;padding:3px 0}
+  .detail .st b{font-size:10px;font-variant-numeric:tabular-nums;color:#39414d;font-weight:700}
+  .detail .st b.g{color:#6ddba0} .detail .st b.r{color:#e2695a} .detail .st b.n{color:#5c6470}
+  .detail .rw{display:grid;grid-template-columns:52px 1fr;gap:2px 8px;font-size:9.5px;line-height:1.45;
+    margin:8px 14px 0 0}
+  .detail .rw b{color:#5c6470;font-weight:800;letter-spacing:.12em;font-size:8px;padding-top:2px}
+  .detail .rw i{font-style:normal;color:#cfc9bb}
+  .detail .rw i em{font-style:normal;color:var(--gold)}
+  .detail .rw i s{display:block;text-decoration:none;color:#6f7683;font-size:8.5px}
+  .detail .rw .nb{margin-top:4px;max-width:260px}
+  .detail .chain{display:flex;align-items:center;gap:3px;flex-wrap:wrap;font-size:8px;color:#5c6470;
+    margin:10px 14px 0 0;line-height:1.4}
+  .detail .chain s{text-decoration:none;color:#cfc9bb;background:#0d1116;border:1px solid #262d38;
+    padding:3px 6px;letter-spacing:.06em;display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+  .detail .chain s.now{color:#fff;border-color:var(--gold)}
+  .detail .chain s u{text-decoration:none;font-size:7px;color:#5c6470;letter-spacing:.02em}
+  .detail .chain s u.air{color:#8affd0}
+  .detail .foot{grid-column:1/3;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 14px 0;border-top:1px solid #1b2028;margin-top:12px}
+  .detail .foot .ml{display:flex;align-items:center;gap:6px;font-size:9px;color:#8affd0;letter-spacing:.1em;
+    flex:1;min-width:200px;flex-wrap:wrap}
+  .detail .foot .ml .mb{flex:1;height:5px;background:#0d1116;border:1px solid #000;min-width:80px}
+  .detail .foot .ml .mb i{display:block;height:100%;background:linear-gradient(90deg,#3ad0ff,#8affd0)}
+  .detail .foot .ml s{text-decoration:none;color:#5c6470;font-size:8px;letter-spacing:.04em;flex-basis:100%}
+  .detail .foot .btn{margin:0;padding:12px 30px;font-size:13px}
+  .detail .foot .btn.gh{cursor:not-allowed}
+  .detail .foot .btn kbd{margin-left:8px;background:#0000;border-color:#a87a12;color:#4d3606}
+  .detail .deep{margin:0;flex-basis:100%}
+  /* POWER UP: a grid of tiles */
+  .shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;text-align:left}
+  .up{background:#12161d;border:2px solid #232a33;border-bottom-width:4px;padding:10px 11px 9px;cursor:pointer;
+    display:flex;flex-direction:column;gap:5px;transition:.09s;position:relative}
+  .up:hover{border-color:var(--gold);background:#171c25;transform:translateY(-2px)}
+  .up.no{opacity:.45;cursor:not-allowed}
+  .up.no:hover{border-color:#232a33;background:#12161d;transform:none}
+  .up.mx{border-color:#5a4a1c;opacity:1;cursor:default}
+  .up.mx:hover{border-color:#5a4a1c;transform:none;background:#12161d}
+  .up .ic{font-size:22px;color:var(--gold);width:36px;height:36px;border-radius:6px;background:#f0b4291f;
+    border:1px solid #f0b42955;display:flex;align-items:center;justify-content:center}
   .up .t{flex:1;min-width:0}
-  .up .n{font-size:11px;font-weight:700}
-  .up .d{font-size:9.5px;color:#8e8878;margin-top:2px}
-  .up .c{font-size:11px;color:var(--gold);white-space:nowrap;font-weight:700}
-  .pips{display:flex;gap:2px;margin-top:4px}
+  .up .n{font-size:10.5px;font-weight:800;letter-spacing:.06em}
+  .up .d{font-size:9px;color:#8e8878;margin-top:2px;line-height:1.4}
+  .up .c{position:absolute;top:9px;right:10px;font-size:11px;color:var(--gold);white-space:nowrap;font-weight:800}
+  .up .c.mx{color:#8e8878}
+  .pips{display:flex;gap:2px;margin-top:2px}
   .pips s{width:11px;height:3px;background:#2c333d;display:block}
   .pips s.f{background:var(--gold)}
-
+  .putop{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+  .putop .btn{margin:0;padding:8px 14px;font-size:10px}
+  .putop .btn:disabled{opacity:.4;cursor:not-allowed}
+  .putop .note{font-size:9.5px;color:var(--dim);line-height:1.5;max-width:560px}
+  .putop .note b{color:var(--ink)}
+  /* COLLECTION */
+  .col{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:8px;margin-bottom:14px}
+  .ce{--ac:var(--gold);background:#12161d;border:1px solid #232a33;border-left:4px solid var(--ac);padding:9px 10px;
+    display:grid;grid-template-columns:34px 1fr;gap:1px 9px;align-items:center}
+  .ce .ic{width:34px;height:34px;border-radius:6px;background:#ffffff0a;border:1px solid var(--ac);color:var(--ac);
+    font-size:18px;display:flex;align-items:center;justify-content:center;grid-row:1/3}
+  .ce .n{font-size:10.5px;font-weight:800;letter-spacing:.05em}
+  .ce .e{font-size:9px;color:var(--ac);font-weight:700;letter-spacing:.06em}
+  .ce .d{grid-column:1/3;font-size:8.5px;color:#8e8878;line-height:1.4;margin-top:3px}
+  .ce .rc{grid-column:1/3;display:flex;align-items:center;gap:5px;font-size:8px;letter-spacing:.08em;color:#ff9a6a;
+    font-weight:700;margin-top:5px;padding-top:5px;border-top:1px dashed #262d38;flex-wrap:wrap}
+  .ce .rc .i{width:1.3em;height:1.3em}
+  .ce .rc u{text-decoration:none;color:#6f7683;font-weight:400}
+  /* the ladder, and the footer */
+  .locks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  .allq{color:var(--dim);font-size:11px;padding:12px 0}
+  .foot2{margin-top:18px;border-top:1px solid #1b2028;padding-top:6px}
+  @media (max-width:860px){
+    .play{grid-template-columns:1fr}
+    .detail{grid-template-columns:minmax(150px,42%) 1fr}
+  }
+  @media (max-width:520px){
+    #menu h1{font-size:34px}
+    .tab{padding:9px 10px;font-size:9.5px;letter-spacing:.12em}
+    .tab i{display:none}
+    .detail{grid-template-columns:1fr}
+    .detail .ds,.detail .stats,.detail .rw,.detail .chain{margin-right:10px;margin-left:10px}
+    .detail .stats{grid-template-columns:repeat(2,1fr)}
+    .detail .foot{grid-column:1/2;padding:10px 10px 0}
+    .detail .foot .btn{width:100%;text-align:center}
+    .col{grid-template-columns:1fr}
+  }
   .btn{display:inline-block;margin-top:20px;padding:13px 40px;background:var(--gold);
     color:#120d02;font-weight:800;letter-spacing:.14em;cursor:pointer;font-size:14px;
     border:none;border-bottom:4px solid #a87a12;font-family:inherit}
@@ -425,7 +504,6 @@
 
     #stats{font-size:10px}
     h1{font-size:32px} .sub{font-size:10px;margin-bottom:14px}
-    .ch{width:min(44vw,158px)}
     .shop{grid-template-columns:1fr 1fr}
     .wrap{padding:6px}
   
@@ -7928,7 +8006,7 @@ function baseStats(ch){
 }
 
 function startRun(id){
-  charId = id;
+  charId = id; save.sel = id;
   silentLv = 0; lastBossRate = 0; lastBossKit = 0;
   const ch = CHARS.find(c=>c.id===id) || CHARS[0];
   const s = baseStats(ch);
@@ -8161,8 +8239,20 @@ addEventListener("keydown", e=>{
   if(e.code==="Escape" && running && !over) togglePause(true);
   if(e.code==="KeyP"  && running && !over) togglePause(!paused);
   if(e.code==="KeyM") setOpt("sound", !save.sound);
-  if((e.code==="Enter"||e.code==="NumpadEnter") && over){
+  // the menu on screen takes ENTER before a dead run's RUN AGAIN does: you
+  // may have picked a different creature since
+  const menuOn = menuUp && !running && document.getElementById("menu").classList.contains("on");
+  if((e.code==="Enter"||e.code==="NumpadEnter") && over && !menuOn){
     const a = document.getElementById("againBtn"); if(a) a.click();
+  }
+  // the menu: ENTER starts the picked creature, the arrows move the pick
+  if(menuOn){
+    if(e.code==="Enter"||e.code==="NumpadEnter"){ const sb = document.getElementById("startBtn"); if(sb && !sb.disabled) sb.click(); }
+    else if(menuTab === "play" && /^Arrow(Left|Right|Up|Down)$/.test(e.code)){
+      const i = CHARS.findIndex(c => c.id === menuSel()), n = CHARS.length;
+      const d = e.code === "ArrowRight" ? 1 : e.code === "ArrowLeft" ? -1 : e.code === "ArrowDown" ? 3 : -3;
+      save.sel = CHARS[((i + d) % n + n) % n].id; writeSave(); openMenu(); e.preventDefault();
+    }
   }
   if(e.code==="Space") e.preventDefault();
 });
@@ -11252,54 +11342,46 @@ function finish(why, won){
     if(epv){ clearPortraits(); addPortrait(epv, endMon, endStage); menuUp = true; }
   }
   document.getElementById("againBtn").onclick = ()=>{ hide("end"); startRun(charId); };
-  document.getElementById("shopBtn").onclick  = ()=>{ hide("end"); openMenu();
-    // SHOP has to mean the shop. On a phone the menu opens with nine monster
-    // cards between the top and the upgrades, so land the eye on the section
-    // the button named - the heading right above the grid.
-    const sh = document.getElementById("shop");
-    if(sh) (sh.previousElementSibling || sh).scrollIntoView({ block:"start" });
-  };
+  // SHOP has to mean the shop: the menu opens on the POWER UP tab
+  document.getElementById("shopBtn").onclick  = ()=>{ hide("end"); openMenu("shop"); };
 }
 const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
 // ==================================================================== MENU
-function openMenu(){
+// Which tab is up and which creature is picked. Both survive a re-render -
+// openMenu re-runs on every purchase, tab and pick - and the pick is saved,
+// so the menu opens on the creature you last ran.
+let menuTab = "play";
+const menuSel = () => (save.sel && CHARS.find(c => c.id === save.sel)) ? save.sel : "intern";
+// The stat table: the nine numbers a creature can differ on, against THE
+// INTERN's 1.00, in green and red the way the genre prints them. Cooldown is
+// the one where less is more.
+const STATROWS = [["hp","HEALTH"],["dmg","DAMAGE"],["spd","SPEED"],["cd","COOLDOWN"],["reach","REACH"],
+                  ["mag","PICKUP"],["xp","XP"],["regen","REGEN"],["tough","TOUGHNESS"]];
+function statCell(c, k){
+  const m = c.mods || {}, v = m[k];
+  if(k === "hp" && m.hpFlat && v === undefined) return `<b class="g">+${m.hpFlat} HP</b>`;
+  if(v === undefined || Math.abs(v-1) < .005) return `<b class="n">&mdash;</b>`;
+  const good = k === "cd" ? v < 1 : v > 1, pct = Math.round((v-1)*100);
+  return `<b class="${good ? "g" : "r"}">${pct > 0 ? "+" : ""}${pct}%</b>`;
+}
+const TABS = [["play","PLAY"],["shop","POWER UP"],["coll","COLLECTION"],["locks","UNLOCKS"]];
+function openMenu(tab){
+  if(tab && TABS.some(t => t[0] === tab)) menuTab = tab;
   const b = document.getElementById("menuBody");
+  const sel = menuSel();
+  const nLocked = UNLOCKS.filter(u => !save.unlocked[u.id]).length;
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
-    <div class="sub">RAISE A CREATURE &nbsp;·&nbsp; GROW IT TO ITS FINAL FORM &nbsp;·&nbsp; KILL WHAT COMES AT DAWN</div>
-    <div class="story"><p>Pick one. Keep it alive. It changes four times on the
-      way, and each change teaches it something.</p>
-      <p class="tag">TWENTY MINUTES &nbsp;·&nbsp; THEN TERRAVORE</p></div>
-    ${(save.deep|0) > 0 ? `<div class="deep" id="deeprow"><b>THE DEEP</b>${
-        Array.from({length: Math.min(DEEP_MAX, save.deep|0) + 1}, (_,i)=>
-          `<i data-d="${i}" class="${i === (save.deepSel|0) ? "on" : ""}">${i || "SURFACE"}</i>`
-        ).join("")}<s>+${Math.round(((1 + (save.deepSel|0)*0.34)-1)*100)}% enemy health &nbsp;&#183;&nbsp; +${
-          Math.round(((1 + (save.deepSel|0)*0.16)-1)*100)}% their damage &nbsp;&#183;&nbsp; +${
-          Math.round(((1 + (save.deepSel|0)*0.30)-1)*100)}% coins</s></div>` : ""}
-    <div class="coins">${icon("coin")} ${save.coins.toLocaleString()} COINS${
-      save.best ? ` &nbsp;·&nbsp; <span style="color:#8e8878">BEST ${fmt(save.best)}</span>`:""}${
-      save.wins ? ` &nbsp;·&nbsp; <span style="color:#6ddba0">${save.wins} CLEAR${save.wins>1?"S":""}</span>`:""}</div>
-    ${save.dev ? `<div class="devon">DEV MODE &mdash; EVERYTHING UNLOCKED</div>` : ""}
-    <h2>YOUR MONSTERS</h2>
-    <div class="row" id="chars"></div>
-    <div class="hint" style="margin:-4px 0 10px">Every run banks its XP into the
-      monster that ran it. Each monster level is +2% HP and +1.2% damage, for that
-      monster only, forever.</div>
-    <div class="devrow"><b>DEV</b>
-      <button class="btn gh dv ${save.dev?"on":""}" id="dvMode">DEV MODE: ${save.dev?"ON":"OFF"}</button>
-      <button class="btn gh dv" id="dvAll">UNLOCK EVERYTHING</button>
-      <button class="btn gh dv" id="dvWipe">WIPE SAVE</button>
-      <span style="font-size:9px;color:#5c6470">${save.dev
-        ? `re-applied on every load &mdash; all seven monsters, every upgrade,
-           99,999 coins, monster LV ${MON_CAP}`
-        : "the unlock ladder is live"}</span>
-    </div>
-    <h2>PERMANENT UPGRADES &nbsp;—&nbsp; the draft's words, small and forever, across every run</h2>
-    <div class="shop" id="shop"></div>
-    <h2>STILL LOCKED</h2>
-    <div class="locks" id="locks"></div>
-    <div class="hint">
+    <div class="tag">RAISE A CREATURE &nbsp;·&nbsp; GROW IT TO ITS FINAL FORM &nbsp;·&nbsp; <b>TWENTY MINUTES, THEN TERRAVORE</b></div>
+    <div class="bank">${icon("coin")} ${save.coins.toLocaleString()} COINS${
+      save.best ? ` <span>BEST ${fmt(save.best)}</span>` : ""}${
+      save.wins ? ` <span class="g">${save.wins} CLEAR${save.wins>1?"S":""}</span>` : ""}${
+      save.dev ? ` <span class="devon">DEV MODE &mdash; EVERYTHING UNLOCKED</span>` : ""}</div>
+    <div class="tabs">${TABS.map(([id, nm]) => `<div class="tab ${menuTab === id ? "on" : ""}" data-tab="${id}">${nm}${
+      id === "locks" && nLocked ? `<i>${nLocked} LEFT</i>` : ""}</div>`).join("")}</div>
+    <div class="pane" id="pane"></div>
+    <div class="hint foot2">
       ${TOUCH
         ? `<kbd>LEFT THUMB</kbd> move &nbsp; <kbd>RIGHT THUMB</kbd> turn the camera<br>
            <kbd>TAP RIGHT</kbd> jump &mdash; tap again the instant you land, and keep going`
@@ -11308,64 +11390,23 @@ function openMenu(){
            chain a jump on the frame you land and the speed keeps building &mdash;
            +12% on the first link, +40% by five, +55% by twelve. One hit resets it.`}<br>
       Weapons fire on their own. Positioning is the entire game.
+    </div>
+    <div class="devrow"><b>DEV</b>
+      <button class="btn gh dv ${save.dev?"on":""}" id="dvMode">DEV MODE: ${save.dev?"ON":"OFF"}</button>
+      <button class="btn gh dv" id="dvAll">UNLOCK EVERYTHING</button>
+      <button class="btn gh dv" id="dvWipe">WIPE SAVE</button>
+      <span style="font-size:9px;color:#5c6470">${save.dev
+        ? `re-applied on every load &mdash; all seven monsters, every upgrade,
+           99,999 coins, monster LV ${MON_CAP}`
+        : "the unlock ladder is live"}</span>
     </div>`;
-  const cr = document.getElementById("chars");
+  for(const t of b.querySelectorAll(".tab")) t.onclick = ()=>{ SFX.buy(); openMenu(t.dataset.tab); };
   clearPortraits();                 // openMenu re-runs on every purchase
-  for(const c of CHARS){
-    const locked = c.lock && !save.unlocked[c.id];
-    const el = document.createElement("div");
-    el.className = "ch" + (locked?" lock":"");
-    const ty = MTYPE[c.type] || MTYPE.plain;
-    const tcss = `rgb(${ty.c.map(v=>Math.round(v*255)).join(",")})`;
-    const ml = monLvl(c.id), [pxp, pneed] = monProg(c.id);
-    const top = monTop(c);
-    // The glyph stays for a locked card - there is nothing to show yet - but an
-    // unlocked one gets the animal itself, rendered live. The prose that used
-    // to sit under the name is gone with it: a paragraph describing a monster
-    // is what you write when you cannot show the monster.
-    const aff = AFFINITY[c.type];
-    el.innerHTML = locked
-      ? `<div class="hd"><div class="ic lockbox">${icon("lock")}</div>
-         <div class="ty" style="color:${tcss}">???</div>
-         <div class="nm">???</div></div>
-         <div class="bd"><div class="rw"><b>UNLOCK</b><i>${c.lock}</i></div></div>`
-      : `<div class="hd">
-           <canvas class="pv" width="${PV_W}" height="${PV_H}"></canvas>
-           <div class="ty" style="color:${tcss}">${ty.nm}</div>
-           <div class="nm">${c.nm}</div>
-         </div>
-         <div class="bd">
-           <div class="ln">${c.line.map((x,i)=>
-               (i ? `<span>&#8594;&#8202;LV${EVO_AT[i]}</span>` : "") +
-               `<s class="${i?"":"now"}">${x}</s>`).join("")}</div>
-           <div class="rw"><b>START</b><i>${WEAPONS[c.w].name}</i></div>
-           <div class="rw"><b>LV${EVO_AT[1]}</b><i><em>${c.move.nm}</em>
-             <s>${c.move.ds}</s></i></div>
-           <div class="rw"><b>LV${EVO_AT[2]}</b><i><em>${(c.st[2]||{}).sig}</em>
-             <s>${(c.st[2]||{}).sigDs}</s></i></div>
-           ${(c.st[3]||{}).apex ? `<div class="rw apx"><b>LV${EVO_AT[3]}</b><i><em>${c.st[3].sig}</em>
-             <s>${c.st[3].sigDs}</s></i></div>` : ""}
-           ${(c.st[4]||{}).final ? `<div class="rw apx"><b>LV${EVO_AT[4]}</b><i><em>${c.st[4].nm}</em>
-             <s>${c.st[4].sigDs}</s></i></div>` : ""}
-           ${aff ? `<div class="rw"><b>GROUND</b><i>&#9650;&#8201;${aff.nm}
-             <s>&#9660;&#8201;${aff.weakNm}</s></i></div>` : ""}
-           <div class="rw"><b>PACE</b><i>${c.st.map(x =>
-               (((c.mods||{}).spd||1)*((x.mods||{}).spd||1)).toFixed(2)).join(" &#8594; ")}
-             <s>stage by stage, in strides of THE INTERN's${c.st.some(x => x.air)
-               ? ` &#183; airborne at ${c.st.map((x, i) => x.air ? "LV" + (i ? EVO_AT[i] : 1) : null).filter(Boolean).join("/")}: tar and ice do not touch it`
-               : ""}</s></i></div>
-         </div>
-         <div class="ml">LV ${ml}<div class="mb"><i style="width:${
-           ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${
-           ml>=MON_CAP?"MAX":""}</div>`;
-    if(!locked) el.onclick = ()=>{ audioInit(); startRun(c.id); };
-    cr.appendChild(el);
-    const pv = el.querySelector("canvas.pv");
-    if(pv) addPortrait(pv, c, 0, c.pvz || 1);
-  }
-  const dr = document.getElementById("deeprow");
-  if(dr) for(const el of dr.querySelectorAll("i"))
-    el.onclick = ()=>{ save.deepSel = +el.dataset.d; writeSave(); SFX.buy(); openMenu(); };
+  const pane = document.getElementById("pane");
+  if(menuTab === "play")       menuPlay(pane, sel);
+  else if(menuTab === "shop")  menuShop(pane);
+  else if(menuTab === "coll")  menuCollection(pane);
+  else                         menuLocks(pane);
   const dvM = document.getElementById("dvMode");
   if(dvM) dvM.onclick = ()=>{ setDev(!save.dev); SFX.buy(); openMenu(); };
   const dvA = document.getElementById("dvAll");
@@ -11381,22 +11422,152 @@ function openMenu(){
                      dvW.dataset.armed = ""; dvW.textContent = "WIPE SAVE";
                      dvW.classList.remove("on"); }, 2600);
   };
+  menuUp = true;
+  show("menu");
+}
+// PLAY. The roster is a grid of small live portraits; the one you have picked
+// is drawn large in the panel beside it with everything that used to be
+// crammed onto nine cards: the blurb, the stat table, the starting weapon,
+// the line it grows through (with the pace of each stage), what it learns at
+// each change, the ground it likes, its monster level - and the START button.
+// A locked creature can be picked too: the panel says what unlocks it and how
+// far along you are.
+function menuPlay(pane, sel){
+  pane.innerHTML = `<div class="play"><div class="roster" id="chars"><h3>CHOOSE YOUR CREATURE</h3></div>
+    <div class="detail" id="detail"></div></div>`;
+  const cr = document.getElementById("chars");
+  for(const c of CHARS){
+    const locked = c.lock && !save.unlocked[c.id];
+    const el = document.createElement("div");
+    el.className = "ch" + (locked ? " lock" : "") + (c.id === sel ? " sel" : "");
+    el.dataset.id = c.id;
+    const ty = MTYPE[c.type] || MTYPE.plain;
+    const tcss = `rgb(${ty.c.map(v=>Math.round(v*255)).join(",")})`;
+    const ml = monLvl(c.id), [pxp, pneed] = monProg(c.id);
+    el.innerHTML = locked
+      ? `<div class="lockbox">${icon("lock")}</div>
+         <div class="ty" style="color:${tcss}">???</div>
+         <div class="nm">???</div><div class="lkt"><b>UNLOCK</b> ${c.lock}</div>`
+      : `<canvas class="pv" width="${PV_W}" height="${PV_H}"></canvas>
+         <div class="ty" style="color:${tcss}">${ty.nm}</div>
+         <div class="nm">${c.nm}</div>
+         <div class="ml">LV ${ml}<div class="mb"><i style="width:${
+           ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div></div>`;
+    // a click picks; a click on the one already picked starts, the way a
+    // double tap does everywhere else
+    el.onclick = ()=>{
+      if(c.id === sel){ if(!locked){ audioInit(); startRun(c.id); } return; }
+      save.sel = c.id; writeSave(); SFX.buy(); openMenu();
+    };
+    cr.appendChild(el);
+    const pv = el.querySelector("canvas.pv");
+    if(pv) addPortrait(pv, c, 0, c.pvz || 1);
+  }
+  const c = CHARS.find(x => x.id === sel), locked = c.lock && !save.unlocked[c.id];
+  const ty = MTYPE[c.type] || MTYPE.plain, tcss = `rgb(${ty.c.map(v=>Math.round(v*255)).join(",")})`;
+  const aff = AFFINITY[c.type], u = UNLOCKS.find(x => x.id === c.id);
+  const ml = monLvl(c.id), [pxp, pneed] = monProg(c.id);
+  const W = WEAPONS[c.w];
+  const pace = i => (((c.mods||{}).spd||1)*(((c.st[i]||{}).mods||{}).spd||1)).toFixed(2);
+  const have = u ? u.now(save, null) : 0, pct = u ? Math.min(100, Math.round(have/u.at*100)) : 0;
+  const d = document.getElementById("detail");
+  d.innerHTML = `
+    <div class="pvbox">${locked ? `<div class="lockbox">${icon("lock")}</div>`
+                                : `<canvas class="pv" width="${PV_W}" height="${PV_H}"></canvas>`}
+      <div class="ty" style="color:${tcss}">${locked ? "???" : ty.nm}</div>
+      <div class="nm">${locked ? (u ? u.what : "???") : c.nm}</div></div>
+    <div class="info">${locked
+      ? `<div class="ds">Not yet. <em>${c.lock}</em></div>
+         <div class="rw"><b>SO FAR</b><i>${have >= 1000 ? Math.floor(have).toLocaleString() : Math.floor(have)} / ${
+             u ? u.at.toLocaleString() : "?"} &nbsp;<em>${pct}%</em>
+           <div class="nb"><i style="width:${pct}%"></i></div></i></div>
+         <div class="rw"><b>LINE</b><i>${c.line.join(" &#8594; ")}</i></div>
+         <div class="rw"><b>START</b><i>${icon(W.ic)} <em>${W.name}</em> <s>${WTAG[c.w] || "WEAPON"} · ${W.ds}</s></i></div>`
+      : `<div class="ds">${c.ds}${c.gift ? `<em>Starts holding ${PASSIVES[c.gift].name}.</em>` : ""}</div>
+         <div class="stats">${STATROWS.map(([k, nm]) => `<div class="st">${nm}${statCell(c, k)}</div>`).join("")}</div>
+         <div class="rw"><b>START</b><i>${icon(W.ic)} <em>${W.name}</em> <s>${WTAG[c.w] || "WEAPON"} · ${W.ds}</s></i></div>
+         <div class="chain">${c.line.map((x, i) =>
+             (i ? `<span>&#8594;&#8202;LV${EVO_AT[i]}</span>` : "") +
+             `<s class="${i ? "" : "now"}">${x}<u class="${(c.st[i]||{}).air ? "air" : ""}">&times;${pace(i)}${
+               (c.st[i]||{}).air ? " · AIR" : ""}</u></s>`).join("")}</div>
+         <div class="rw"><b>LV${EVO_AT[1]}</b><i><em>${c.move.nm}</em><s>${c.move.ds}</s></i></div>
+         <div class="rw"><b>LV${EVO_AT[2]}</b><i><em>${(c.st[2]||{}).sig}</em><s>${(c.st[2]||{}).sigDs}</s></i></div>
+         ${(c.st[3]||{}).apex ? `<div class="rw apx"><b>LV${EVO_AT[3]}</b><i><em>${c.st[3].sig}</em><s>${c.st[3].sigDs}</s></i></div>` : ""}
+         ${(c.st[4]||{}).final ? `<div class="rw apx"><b>LV${EVO_AT[4]}</b><i><em>${c.st[4].nm}</em><s>${c.st[4].sigDs}</s></i></div>` : ""}
+         ${aff ? `<div class="rw"><b>GROUND</b><i>&#9650;&#8201;${aff.nm} <s>&#9660;&#8201;${aff.weakNm}</s></i></div>` : ""}`}</div>
+    <div class="foot">
+      <div class="ml">LV ${ml}<div class="mb"><i style="width:${ml>=MON_CAP?100:Math.round(pxp/pneed*100)}%"></i></div>${
+        ml>=MON_CAP ? "MAX" : `${pxp}/${pneed}`}<s>every run banks its XP here: +2% HP and +1.2% damage a level, this monster only, forever</s></div>
+      ${(save.deep|0) > 0 ? `<div class="deep" id="deeprow"><b>THE DEEP</b>${
+          Array.from({length: Math.min(DEEP_MAX, save.deep|0) + 1}, (_,i)=>
+            `<i data-d="${i}" class="${i === (save.deepSel|0) ? "on" : ""}">${i || "SURFACE"}</i>`
+          ).join("")}<s>+${Math.round(((1 + (save.deepSel|0)*0.34)-1)*100)}% enemy health &nbsp;&#183;&nbsp; +${
+            Math.round(((1 + (save.deepSel|0)*0.16)-1)*100)}% their damage &nbsp;&#183;&nbsp; +${
+            Math.round(((1 + (save.deepSel|0)*0.30)-1)*100)}% coins</s></div>` : ""}
+      ${locked ? `<button class="btn gh" id="startBtn" disabled>LOCKED</button>`
+               : `<button class="btn" id="startBtn">START RUN${TOUCH ? "" : "<kbd>ENTER</kbd>"}</button>`}
+    </div>`;
+  const big = d.querySelector("canvas.pv");
+  if(big) addPortrait(big, c, 0, c.pvz || 1);
+  const sb = document.getElementById("startBtn");
+  if(sb && !locked) sb.onclick = ()=>{ audioInit(); startRun(c.id); };
+  const dr = document.getElementById("deeprow");
+  if(dr) for(const el of dr.querySelectorAll("i"))
+    el.onclick = ()=>{ save.deepSel = +el.dataset.d; writeSave(); SFX.buy(); openMenu(); };
+}
+// POWER UP. The genre's grid: one tile a stat, its rank in pips, its price on
+// the tile, and a REFUND that hands every coin back so a plan can change.
+function menuShop(pane){
+  const spent = SHOP.reduce((a, u)=>{ let t = 0; for(let r=0;r<rank(u.id);r++) t += u.cost(r); return a + t; }, 0);
+  pane.innerHTML = `<div class="putop"><div class="note"><b>POWER UP.</b> The draft's words, small and forever,
+      across every run. A tile is one rank; the price climbs with each. REFUND hands back every coin
+      spent here, so a plan can change.</div>
+    <button class="btn gh" id="refundBtn" ${spent ? "" : "disabled"}>REFUND ALL &nbsp;${icon("coin")} ${spent.toLocaleString()}</button></div>
+    <div class="shop" id="shop"></div>`;
   const sh = document.getElementById("shop");
   for(const u of SHOP){
     if(u.lock && !save.unlocked[u.lock]) continue;      // not earned yet
     const r = rank(u.id), maxed = r>=u.max, cost = u.cost(r);
     const afford = !maxed && save.coins >= cost;
     const el = document.createElement("div");
-    el.className = "up" + (afford?"":" no");
+    el.className = "up" + (maxed ? " mx" : afford ? "" : " no");
     el.innerHTML = `<div class="ic">${icon(u.ic)}</div>
       <div class="t"><div class="n">${u.n}</div><div class="d">${u.d}</div>
       <div class="pips">${Array.from({length:u.max},(_,i)=>
         `<s class="${i<r?"f":""}"></s>`).join("")}</div></div>
-      <div class="c">${maxed?"MAX":cost}</div>`;
+      <div class="c ${maxed ? "mx" : ""}">${maxed ? "MAX" : `${icon("coin")} ${cost}`}</div>`;
     if(afford) el.onclick = ()=>{ save.coins -= cost; save.up[u.id]=r+1; writeSave();
                                   SFX.buy(); openMenu(); };
     sh.appendChild(el);
   }
+  const rb = document.getElementById("refundBtn");
+  if(rb && spent) rb.onclick = ()=>{ save.coins += spent; for(const u of SHOP) save.up[u.id] = 0;
+                                     writeSave(); SFX.buy(); openMenu(); };
+}
+// COLLECTION. Every weapon with the recipe for its evolution on the tile -
+// the thing every player of the genre ends up looking up - every growth with
+// the evolutions it unlocks, and the six rules.
+function menuCollection(pane){
+  const w = Object.keys(WEAPONS).map(k => { const W = WEAPONS[k], pn = PASSIVES[W.evo.need];
+    return `<div class="ce" style="--ac:${WCOL[k] || "#f0b429"}"><div class="ic">${icon(W.ic)}</div>
+      <div class="n">${W.name}</div><div class="e">${WTAG[k] || "WEAPON"}</div><div class="d">${W.ds}</div>
+      <div class="rc">${icon(W.evo.ic)} ${W.evo.name} <u>= ${W.name} ${WMAX} + ${pn.name} ${pn.max}</u></div></div>`; });
+  const g = [], r = [];
+  for(const k in PASSIVES){ const Pa = PASSIVES[k];
+    if(Pa.kind === "r") r.push(`<div class="ce" style="--ac:#3ad0a0"><div class="ic">${icon(Pa.ic)}</div>
+        <div class="n">${Pa.name}</div><div class="e">${Pa.eff}</div><div class="d">${Pa.ds}</div></div>`);
+    else { const leads = Object.keys(WEAPONS).filter(wk => WEAPONS[wk].evo.need === k).map(wk => WEAPONS[wk].evo.name);
+      g.push(`<div class="ce" style="--ac:${Pa.col || "#f0b429"}"><div class="ic">${icon(Pa.ic)}</div>
+        <div class="n">${Pa.name}</div><div class="e">${Array.isArray(Pa.eff) ? Pa.eff[0] : Pa.eff} A RANK</div><div class="d">${Pa.ds}</div>
+        ${leads.length ? `<div class="rc">UNLOCKS <u>${leads.join(" · ")}</u></div>` : ""}</div>`); } }
+  pane.innerHTML = `<h3>WEAPONS · ${w.length} · four to a run, and your line's own move rides free · evolve at rank ${WMAX} with the partner finished</h3><div class="col" id="colW">${w.join("")}</div>
+    <h3>GROWTH · ${g.length} · five to a run, three ranks each, and every fifth empty level a MASTERY</h3><div class="col" id="colG">${g.join("")}</div>
+    <h3>RULES · ${r.length} · two to a run, a third at level ${RULE_THIRD}, taken once</h3><div class="col" id="colR">${r.join("")}</div>`;
+}
+// UNLOCKS. The ladder: what is still locked, its condition, and how far along
+// you are - because a locked box with no progress bar is just a locked box.
+function menuLocks(pane){
+  pane.innerHTML = `<h3>THE LADDER</h3>${nextUp()}<div class="locks" id="locks"></div>`;
   const lk = document.getElementById("locks");
   const left = UNLOCKS.filter(u=>!save.unlocked[u.id]);
   if(!left.length) lk.innerHTML = `<div class="allq">Everything is unlocked. Go and win it again.</div>`;
@@ -11411,8 +11582,6 @@ function openMenu(){
         / ${u.at.toLocaleString()}</div>`;
     lk.appendChild(el);
   }
-  menuUp = true;
-  show("menu");
 }
 
 // ================================================================== RENDER
@@ -14478,6 +14647,9 @@ window.__g = {
   saveState: ()=>JSON.parse(JSON.stringify(save)),
   setSave: (patch)=>{ Object.assign(save, patch); writeSave(); },
   menu:    ()=>openMenu(),
+  menuTab: (t)=>{ openMenu(t); return menuTab; },
+  menuPick:(id)=>{ save.sel = id; openMenu("play"); return menuSel(); },
+  menuState:()=>({ tab: menuTab, sel: menuSel(), up: menuUp }),
   camAnchor: ()=>camAnchor && camAnchor.slice(),
   // beats per minute the pressure pulse is currently running at
   xpBanked:()=>xpBanked,
