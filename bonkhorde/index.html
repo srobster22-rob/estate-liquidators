@@ -2008,13 +2008,13 @@ runner:  { nm:"PTERLING",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09
 // is measured to rad - and at 2.6 by 1.15 this animal was a cube, which is why
 // it read as a blue slab whatever was drawn inside it. A ceratopsian is a
 // coffee table with a shield on the front.
-brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:1.85, w:1.5,
+brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:1.85, w:1.5, bite:1.7,
            body:"ceratop" },
 // A crested spitter. Hangs back and puts something caustic across the field.
 spitter: { nm:"DILOPHO", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
            ranged:{cd:2.6, spd:15, r:22}, body:"dilopho" },
 // A hatchling raptor. Individually nothing. Never individually.
-skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
+skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34, bite:.6,
            body:"raptor" },
 // Everything else in this game walks at you. This one walks away, which makes
 // it the only thing in twenty minutes that asks whether you can bring your
@@ -2382,20 +2382,24 @@ function eb(e, face, r, f, y, hx, hy, hz, col, em, rot){
   // knowing what a bat is.
   // The capture above stays UNTRANSFORMED, same as the player's bodyCap: the
   // mesh checks compare shapes, not moments.
-  const sq = e.sq;
-  if(sq !== 1 || e.lf || e.lr){
-    const h = y - e.py, si = 1 / Math.sqrt(sq);
-    y = e.py + h*sq; hy *= sq; hx *= si; hz *= si;
-    r += h*e.lr; f += h*e.lf;
-  }
   // the strike (see the draw): a pitch about the hips - positive is nose
-  // down - and a reach of everything forward of them
+  // down - and a reach of everything forward of them. BEFORE the squash: a
+  // pitched body that is then folded about its feet folds in place, where a
+  // folded body that is then pitched slides along its own axis as it folds -
+  // the rotation's vertical term shrinks with the squash - which is what made
+  // a PTERLING killed nose-down crawl a third of a metre along z as it fell.
   const pt = (e.pt || 0) + (e.pt2 || 0), rc = (e.rc || 0) + (e.rc2 || 0);
   if(pt || rc){
     const pv = e.py + (e.pH || 1) * .42, dy = y - pv;
     if(rc && f > 0) f += f * rc;
     if(pt){ const c = Math.cos(pt), s = Math.sin(pt);
             const f2 = f*c + dy*s; y = pv - f*s + dy*c; f = f2; }
+  }
+  const sq = e.sq;
+  if(sq !== 1 || e.lf || e.lr){
+    const h = y - e.py, si = 1 / Math.sqrt(sq);
+    y = e.py + h*sq; hy *= sq; hx *= si; hz *= si;
+    r += h*e.lr; f += h*e.lf;
   }
   box(e.x + Math.cos(face)*r + Math.sin(face)*f, y,
       e.z - Math.sin(face)*r + Math.cos(face)*f,
@@ -9012,7 +9016,7 @@ function spawnEnemy(type, atX, atZ){
     dmg:   def.dmg*dmgScale(T)*em.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:R()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
     gt:0, amp:0, bk:0, lg:0, sq:1,               // the gait and the pose, see walk()
-    wu:0, wuT:BITE_WIND, pre:0, pt:0, rc:0,      // the wind-up and the strike, see the contact code
+    wu:0, wuT:BITE_WIND, wd:0, lead:0, pre:0, pt:0, rc:0,   // the wind-up and the strike, see the contact code
     dead:false, boss:false };
   enemies.push(made);
   return made;                                  // the hunt event needs a handle
@@ -9085,7 +9089,7 @@ function spawnBoss(b){
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
     gt:0, amp:0, bk:0, lg:0, sq:1,
-    wu:0, wuT:BITE_WIND, pre:0, pt:0, rc:0,
+    wu:0, wuT:BITE_WIND, wd:0, lead:0, pre:0, pt:0, rc:0,
     // THE ARRIVAL. A boss used to appear: one frame it was not there, the next
     // it was, twenty-six metres away, and a line of text said so. Something
     // five times your size should not be able to arrive quietly. It comes up
@@ -9702,6 +9706,9 @@ function updateEnemies(dt){
       } else if(e.dvT > 0){
         // a landed dive is its own telegraph - it hits the moment it lands
         if(reach && P.iframe <= 0){ playerHurt(e.dmg * DIVE_DMG, e.x, e.z); e.dvT = 0; e.dv = DIVE_REST; e.lg = 1; }
+      } else if(e.wd > 0){
+        e.wd -= dt;                                 // a quick biter waits its share first
+        if(e.wd <= 0){ e.wd = 0; e.wu = e.wuT; }
       } else if(e.wu > 0){
         // winding up: the bite lands when the wind-up runs out, IF you are
         // still there; otherwise it snaps at air, which is the whole point
@@ -9711,11 +9718,17 @@ function updateEnemies(dt){
           if(reach && P.iframe <= 0){ playerHurt(e.dmg, e.x, e.z); P.iframe = BITE_REST; }
           e.lg = 1;                                 // the snap, see walk() and eb()
         }
-      } else if(reach && P.iframe <= 0 && e.lg <= 0){
-        // in reach and you are hittable: rear back. A touch of per-animal
-        // variance so a pile does not snap as one
-        e.wuT = BITE_WIND * rndSeed(e);
-        e.wu = e.wuT;
+      } else if(reach && e.lg <= 0 && P.iframe <= Math.max(0, e.lead || 0)){
+        // in reach and you are (about to be) hittable: rear back. THE SPECIES:
+        // a CERATOP's wind-up is long (bite 1.7) and a RAPTORLING's is a nip
+        // (.6), and every kind lands the same moment after the rest ends - the
+        // slow ones start early, while you are still invulnerable, and the
+        // quick ones wait - so a pile bites at the pace it always did whatever
+        // it is made of, and which animal lands is still the jitter's pick.
+        const j = rndSeed(e), b = e.def.bite || 1;
+        e.wuT = BITE_WIND * b * j;
+        e.lead = BITE_WIND * (b - 1) * j;           // early by this (negative: waits this long)
+        if(e.lead >= 0) e.wu = e.wuT; else e.wd = -e.lead;
       }
     }
   }
@@ -9795,8 +9808,9 @@ function walk(e, lx, lz, dt){
   const dwind = e.dvW > 0 ? Math.min(1, e.dvW / DIVE_TELL) : 0;
   const dv = e.dvT > 0 ? Math.min(1, (DIVE_TIME - e.dvT) / .12) : 0;
   e.dvE = (e.dvE || 0) + (dv - (e.dvE || 0)) * Math.min(1, dt * (dv > (e.dvE || 0) ? 18 : 9));
-  e.pt = -.24*e.pre - .16*dwind + e.snap*.46*(1 - e.dvE*.5) + e.dvE*.40;
-  e.rc = e.snap*.30;
+  const bA = .85 + .15*((e.def && e.def.bite) || 1);          // the heavy bite is the bigger motion
+  e.pt = (-.24*e.pre - .16*dwind)*bA + e.snap*.46*bA*(1 - e.dvE*.5) + e.dvE*.40;
+  e.rc = e.snap*.30*bA;
   e.stq = 1 - e.pre*.11 + e.snap*.07;                        // the crouch, then the stretch
 }
 // tiny per-enemy speed variance so a wave arrives as a smear, not a wall
@@ -13666,7 +13680,7 @@ requestAnimationFrame(frame);
 // ------------------------------------------------------------------ QA hook
 // Same pattern as proto3d: a scripted handle so runs can be driven headlessly.
 window.__g = {
-  state: ()=>({ t:+T?.toFixed(1), lvl:P?.lvl, hp:+P?.hp.toFixed(1), maxhp:P?.maxhp,
+  state: ()=>({ t:+T?.toFixed(1), lvl:P?.lvl, hp:+P?.hp.toFixed(1), maxhp:P?.maxhp, iframe:+(P?.iframe || 0).toFixed(3),
                 x:+P?.x.toFixed(1), z:+P?.z.toFixed(1), y:+(P?.y||0).toFixed(2),
                 kills, enemies:enemies?.length, gems:gems?.length, boxes:drawnBoxes,
                 horde:hordeBoxes, corpses:corpseBoxes,

@@ -6898,6 +6898,45 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and outside a beat the bite winds up again", r.restWu > 0, `wu seen ${r.restWu}`);
   }
 
+  console.log("\n=== 59. THE BITE HAS A SPECIES ===");
+  {
+    // One wind-up for every animal made a CERATOP nip like a RAPTORLING. The
+    // wind-up is per kind now - long on the brute, a nip on the skitter - and
+    // the slow ones start early while the quick ones wait, so every kind
+    // lands the same beat after the rest ends and a pile bites at the pace it
+    // always did whatever it is made of.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+      const run = (kind, extra) => {
+        boot(); const hp0 = g.state().hp; g.spawnAt(kind, 0, 1.2); for (const k of (extra || [])) g.spawnAt(k, .6, 1.2);
+        const hits = [], wind = []; let last = hp0, ifr0 = -1, ptPeak = 0;
+        for (let i = 0; i < 260; i++) { g.stepRaw(1/60); const s = g.state(), e = g.gait().find(q => q.type === kind);
+          if (e && e.wu > 0) wind.push(i);
+          if (hits.length === 1 && ifr0 < 0 && s.iframe <= 0) ifr0 = i;
+          if (s.hp < last - .01) hits.push(i); last = s.hp;
+          if (e && hits.length && i < hits[0] + 12) ptPeak = Math.max(ptPeak, e.pt); }
+        return { w1: wind.filter(i => i < (hits[0] === undefined ? 999 : hits[0])).length, hits: hits.slice(0, 5),
+                 gaps: hits.slice(1).map((h, i) => h - hits[i]), delay: ifr0 >= 0 && hits[1] !== undefined ? hits[1] - ifr0 : null, ptPeak: +ptPeak.toFixed(3) };
+      };
+      return { shambler: run("shambler"), brute: run("brute"), skitter: run("skitter"), pile: run("shambler", ["brute", "skitter"]) };
+    });
+    const K = ["shambler", "brute", "skitter"];
+    ok("the CERATOP winds up longest and the RAPTORLING nips: frames of wind-up before the first bite",
+       r.brute.w1 >= 15 && r.skitter.w1 <= 9 && r.shambler.w1 >= 9 && r.shambler.w1 <= 14 && r.brute.w1 > r.shambler.w1 && r.shambler.w1 > r.skitter.w1,
+       K.map(k => `${k} ${r[k].w1}`).join(", "));
+    ok("and every kind lands the same beat after the rest ends - the slow start early, the quick wait",
+       K.every(k => r[k].delay !== null) && Math.abs(r.brute.delay - r.shambler.delay) <= 3 && Math.abs(r.skitter.delay - r.shambler.delay) <= 3,
+       K.map(k => `${k} +${r[k].delay} frames`).join(", "));
+    ok("so each kind's own cycle is the .68 s it was",
+       K.every(k => r[k].gaps.length >= 3 && r[k].gaps.every(gp => gp >= 39 && gp <= 44)), K.map(k => `${k} ${r[k].gaps.join(" ")}`).join("; "));
+    ok("and a pile of all three bites at the same pace",
+       r.pile.gaps.length >= 3 && r.pile.gaps.every(gp => gp >= 39 && gp <= 44), `pile ${r.pile.gaps.join(" ")}`);
+    ok("the heavy bite is the bigger motion: the CERATOP's snap pitches further than the RAPTORLING's",
+       r.brute.ptPeak > r.skitter.ptPeak + .05 && r.brute.ptPeak > r.shambler.ptPeak, K.map(k => `${k} ${r[k].ptPeak}`).join(", "));
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
