@@ -267,6 +267,7 @@ node film/growfilm.js grow intern 1 all    # the same animal at rank 0 and rank 
 node film/hordefilm.js bite brute # an enemy walking in and biting a standing player, one frame per shot (FOLLOW=1 keeps the camera on it)
 node film/bossfilm.js slam 0 slam # a boss cued into an ability, filmed through the tell and the act (FOLLOW=1)
 node film/divefilm.js dive        # the pterling's dive, spitfilm.js the DILOPHO's lob, atkfilm.js the player's own strike
+node film/runfilm.js 41           # a whole bot run photographed at seven marks, plus a draft dealt on a separate run of the same seed
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
