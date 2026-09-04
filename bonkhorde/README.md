@@ -238,7 +238,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 679 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
+node test.js              # 681 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -272,12 +272,13 @@ node film/draftfilm.js            # the level-up screen at desktop and phone: a 
 node film/menufilm.js             # the front end at desktop and phone: PLAY fresh, PLAY with a locked creature picked, a veteran's PLAY, POWER UP, COLLECTION, UNLOCKS
 node film/pausefilm.js [seed]     # the pause menu (run, stats, kit) and the results screen at desktop and phone, eight minutes into the seed's bot run
 node film/thunderfilm.js          # THUNDERHEAD's discharge: the chain and the return stroke on an elite in a crowd, and the same elite alone
+node film/fanfilm.js              # a BOLTSTORM volley mid-flight: the finale boss ahead, a crowd aside, and where the seven bolts go
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **679 passing** as of R277, with 207 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **681 passing** as of R278, with 208 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -369,6 +370,18 @@ before, **1504 / 1543 / 17:19** after, against CAROUSEL's 1820 / 4649 / 14:08 on
 It now leads the tier on survival and is no longer dominated; the crowd axis barely moved, which is
 the point - the stroke is a reason to stand where the crowd connects you to the boss, not more
 crowd damage.
+
+**BOLTSTORM had drifted, and the fix was aim, not numbers (R278).** Benched on the same seeds
+against the build that produced the table above, BOLTSTORM's boss DPS had gone from 1313 to 3060
+while its crowd DPS fell from 3823 to 3247, and it dominated three evolved cards. Nothing in its
+table had changed. What had changed was `threatTarget`: when auto-aim learned to want the boss
+(+400, for THE COLLECTOR's sake) the volley started being aimed at the boss, and seven bolts with
+twenty-eight bodies of pierce went to one animal. The fan is aimed at the nearest thing again
+(the flee weight stays, so THE COLLECTOR is still wanted); a boss takes what crosses it and the
+whole fan when it is all there is. Same seeds after: **1135 / 4027 / 19:44** - back inside the
+range it was tuned to, top of the tier on survival, below the median on boss. Per-bolt homing
+could not have done this either way: at 38 u/s and 4.2 rad/s a bolt's turning circle is nine
+metres, so a bolt launched across a boss orbits it.
 
 **A caution about reading this table too finely.** AURA, PULSE, SKULLS, GORE and MORTAR have
 converged on roughly one point — 200–260 boss, 1900–2200 crowd, 560–650 survival. At that spacing
