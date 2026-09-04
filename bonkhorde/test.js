@@ -7477,6 +7477,43 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.rank.links >= 5 && r.rank.dmg < 130 && !r.rank.stroke && !r.rank.gone, `${r.rank.dmg} through ${r.rank.links} links, stroke ${r.rank.stroke}`);
   }
 
+  console.log("\n=== 70. THE FAN IS AIMED AT THE CROWD ===");
+  {
+    // Since threatTarget learned to want the boss, the fan was aimed at it:
+    // BOLTSTORM's boss damage went 1313 -> 3060 on the same seeds against the
+    // build that set its numbers, crowd damage fell, and it dominated three
+    // cards. The fan is aimed at the nearest thing again; a boss takes what
+    // crosses it, and the whole fan when it is all there is.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const volley = (crowd) => {
+        g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.clearEnemies(); g.disarm();
+        g.skipTo(1140); g.boss(3);                                   // TERRAVORE, fifteen metres out
+        for (let i = 0; i < 240; i++) g.stepRaw(1/60);               // a boss rises out of the ground first, and cannot be hurt until it has
+        const b = g.bossAt(), s0 = g.state(), ang = Math.atan2(b.z - s0.z, b.x - s0.x);
+        g.place(b.x - Math.cos(ang) * 9, b.z - Math.sin(ang) * 9);   // nine metres from it
+        const p = g.state();
+        // the crowd on a quarter-ring at a right angle to the boss: the fan's aim
+        // and the boss disagree, and the bolts stay inside homing range of the
+        // boss while they fly - a fan that still wanted the boss would turn for it
+        // twelve to fourteen metres out, so a bolt is in the air for a third of a second
+        // before it reaches one - long enough for a bolt that wanted the boss to turn
+        if (crowd) for (let i = 0; i < 10; i++) { const a = ang + Math.PI / 2 + ((i + .5) / 10 - .5) * Math.PI / 2, d = 12 + (i % 2) * 2; g.spawnAt("shambler", p.x + Math.cos(a) * d, p.z + Math.sin(a) * d); }
+        g.give("bolt", 3); g.evolve("bolt");
+        g.dmg();                                                     // zero the meters
+        g.setWT("bolt", 0); g.stepRaw(1/60); g.setWT("bolt", 99);    // one volley, no second
+        for (let i = 0; i < 45; i++) g.stepRaw(1/60);                // 38 u/s covers nine metres in a quarter of that
+        const d = g.dmg(); return { boss: Math.round(d.boss), all: Math.round(d.all), share: +(d.boss / Math.max(1, d.all)).toFixed(2), bolts: g.fxCounts().bolts };
+      };
+      return { fan: volley(true), lone: volley(false) };
+    });
+    ok("with the crowd off to the side and the boss ahead, a BOLTSTORM volley goes to the crowd, not the boss",
+       r.fan.bolts === 7 && r.fan.share <= .2 && r.fan.boss <= 96 * 1.3 && r.fan.all >= 96 * 6,
+       `${r.fan.boss} of ${r.fan.all} on the boss (${Math.round(r.fan.share * 100)}%), ${r.fan.bolts} bolts`);
+    ok("and with the boss alone the whole fan still comes to it",
+       r.lone.share === 1 && r.lone.boss >= 5 * 90, `${r.lone.boss} on the boss, share ${r.lone.share}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

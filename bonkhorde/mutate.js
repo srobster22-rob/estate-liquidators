@@ -710,7 +710,7 @@ const MUTANTS = [
     to:  "const tgt = nearest(P.x, P.z, s.rng+3);" },
   { id:"shoot-the-nearest", must:"47",
     why:"the shot goes back to the nearest body",
-    from:"const tgt = threatTarget(P.x, P.z, 40);",
+    from:"const tgt = threatTarget(P.x, P.z, 40, null, true);",
     to:  "const tgt = nearest(P.x, P.z, 40);" },
   { id:"sudden-death-is-a-word", must:"8b",
     why:"the clock stops counting the moment the only timer that decides the run starts",
@@ -941,6 +941,11 @@ const MUTANTS = [
     why:"the stroke lands on the last link instead of the biggest thing touched",
     from:"    let big = chain[0]; for(const e of chain) if(rank(e) > rank(big)) big = e;",
     to:  "    let big = chain[chain.length - 1];" },
+  // ---- R278: the fan is aimed at the crowd (section 70)
+  { id:"fan-aims-at-the-boss", must:"70",
+    why:"the volley is aimed at the boss again, so the crowd is only hit on the way",
+    from:"  const tgt = threatTarget(P.x, P.z, 40, null, true);",
+    to:  "  const tgt = threatTarget(P.x, P.z, 40);" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run
