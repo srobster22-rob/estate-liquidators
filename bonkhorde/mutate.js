@@ -974,6 +974,11 @@ const MUTANTS = [
     why:"the caption keeps its one line on a 360px phone, so it runs out of the panel or breaks the banner word",
     from:"    #pick .sub{white-space:normal;text-align:right;line-height:1.4;font-size:8.5px}",
     to:  "    #pick .sub{text-align:right}" },
+  // ---- R284: the hop chain has one name (section 76)
+  { id:"toast-says-tempo", must:"76",
+    why:"the milestone toast goes back to a third name for the chain",
+    from:"          alert2(`CHAIN x${P.hop}`, \"#8affd0\");",
+    to:  "          alert2(`TEMPO x${P.hop}`, \"#8affd0\");" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

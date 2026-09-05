@@ -7656,6 +7656,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.titleLines <= 1 && r.chipOnRow && r.subInside && /MORE QUEUED/.test(r.sub), `title ${r.titleH}px tall (~${r.titleLines} line), chip on the row ${r.chipOnRow}, caption inside ${r.subInside}, "${r.sub}"`);
   }
 
+  console.log("\n=== 76. THE HOP CHAIN HAS ONE NAME ===");
+  {
+    // The hints taught "chain a hop", the readout said x14, and the milestone
+    // toast said TEMPO - three words for the one mechanic a new player is
+    // trying to learn. The toast names the chain, and the menu says hop, not
+    // jump, where it teaches it.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      // a toast lives a few seconds: read them as the run goes, not at the end
+      g.bot(true); g.botHop(true); const al = [];
+      for (let t = 1; t <= 24; t++) { g.runOut(t); for (const a of g.alerts()) if (!al.includes(a)) al.push(a); }
+      g.bot(false);
+      g.menu("play");
+      const hint = (document.querySelector("#menu .foot2") || {}).textContent || "";
+      const pause = (document.getElementById("pauseHint") || {}).textContent || "";
+      return { chain: al.filter(a => /^CHAIN x\d+/.test(a)), tempo: al.filter(a => /TEMPO/.test(a)), hop: g.hop().hop, hint: hint.replace(/\s+/g, " "), pause: pause.replace(/\s+/g, " ") };
+    });
+    ok("the milestone toast says CHAIN xN, and nothing says TEMPO", r.chain.length >= 1 && r.tempo.length === 0, `${r.chain.join(" / ")}${r.tempo.length ? " but also " + r.tempo.join(" / ") : ""} (chain ${r.hop})`);
+    ok("and both places that teach it say \"chain a hop\"", /chain a hop/.test(r.hint) && /chain a hop/.test(r.pause) && !/chain a jump/.test(r.hint), `menu: ${r.hint.match(/chain a \w+/)}, pause: ${r.pause.match(/chain a \w+/)}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

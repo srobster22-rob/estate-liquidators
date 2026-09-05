@@ -11260,7 +11260,10 @@ function step(dt){
           const bonus = Math.max(3, Math.round(P.need * .05));
           coinsRun += 1 + Math.floor(P.hop/5);
           nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:bonus, life:.9, crit:true, vy:3.2 });
-          alert2(`TEMPO x${P.hop}`, "#8affd0");
+          // ONE NAME. The hints teach "chain a hop", the readout says x14, and
+          // this toast said TEMPO - a third word for the one mechanic a new
+          // player is trying to learn (R284). The toast names the chain.
+          alert2(`CHAIN x${P.hop}`, "#8affd0");
           SFX.tempo(P.hop);
           gainXP(bonus);
         }
@@ -11589,7 +11592,7 @@ function openMenu(tab){
            <kbd>TAP RIGHT</kbd> jump &mdash; tap again the instant you land, and keep going`
         : `<kbd>WASD</kbd> move &nbsp; <kbd>MOUSE</kbd> orbit camera &nbsp;
            <kbd>SPACE</kbd> jump &nbsp; <kbd>ESC</kbd> pause<br>
-           chain a jump on the frame you land and the speed keeps building &mdash;
+           chain a hop on the frame you land and the speed keeps building &mdash;
            +12% on the first link, +40% by five, +55% by twelve. One hit resets it.`}<br>
       Weapons fire on their own. Positioning is the entire game.
     </div>
