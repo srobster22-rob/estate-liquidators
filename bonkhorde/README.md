@@ -690,6 +690,11 @@ level, so the levels its own gems queue on the frame it opens are all still deal
 where a level is a silent point of growth, a cache is a MASTERY hand on the spot (R282) - VS's chests
 keep paying after the build is done.
 
+**The COLLECTION remembers (R286).** VS's collection is a completion screen; ours listed the ten
+recipes and forgot every run. An evolution taken - from a hand or a cache, never from the dev hook -
+is counted on the save forever: N/10 on the tab, REACHED (xN) or NOT YET on each weapon's tile, and
+REACHED FOR THE FIRST TIME on the results screen the first time each one happens.
+
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The
 first level costs 250 XP and each one after adds 320, so a two-minute death still visibly moves
