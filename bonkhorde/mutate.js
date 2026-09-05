@@ -900,8 +900,8 @@ const MUTANTS = [
     to:  "  if(rb && spent) rb.onclick = ()=>{ for(const u of SHOP) save.up[u.id] = 0;" },
   { id:"recipe-off-the-tile", must:"66",
     why:"the collection lists the weapons and keeps the evolution recipes to itself",
-    from:"      <div class=\"rc\">${icon(W.evo.ic)} ${W.evo.name} <u>= ${W.name} ${WMAX} + ${pn.name} ${pn.max}</u></div></div>`; });",
-    to:  "      </div>`; });" },
+    from:"      <div class=\"rc\">${icon(W.evo.ic)} ${W.evo.name} <u>= ${W.name} ${WMAX} + ${pn.name} ${pn.max}</u>${",
+    to:  "      <div class=\"rc\" hidden>${" },
   { id:"stats-in-grey", must:"66",
     why:"the stat table prints every difference in the same grey as no difference",
     from:"  return `<b class=\"${good ? \"g\" : \"r\"}\">${txt}<i class=\"d\">${pct > 0 ? \"+\" : \"\"}${pct}%</i></b>`;",
@@ -979,6 +979,15 @@ const MUTANTS = [
     why:"the milestone toast goes back to a third name for the chain",
     from:"          alert2(`CHAIN x${P.hop}`, \"#8affd0\");",
     to:  "          alert2(`TEMPO x${P.hop}`, \"#8affd0\");" },
+  // ---- R286: the collection remembers your evolutions (section 77)
+  { id:"collection-forgets", must:"77",
+    why:"an evolution taken is not written to the save, and the collection is a recipe list again",
+    from:"    save.evos[o.key] = (save.evos[o.key]||0) + 1; writeSave(); }",
+    to:  "    }" },
+  { id:"tab-hides-the-count", must:"77",
+    why:"the COLLECTION tab stops counting what you have reached",
+    from:"      id === \"locks\" && nLocked ? `<i>${nLocked} LEFT</i>` : id === \"coll\" ? `<i>${nEvo}/${nEvoAll}</i>` : \"\"}</div>`).join(\"\")}</div>",
+    to:  "      id === \"locks\" && nLocked ? `<i>${nLocked} LEFT</i>` : \"\"}</div>`).join(\"\")}</div>" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

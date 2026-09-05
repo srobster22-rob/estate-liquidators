@@ -7280,7 +7280,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       return { tabs, tiles: tiles.length, rects, first, second, locked, started };
     });
     ok("four tabs - PLAY, POWER UP, COLLECTION, UNLOCKS - and the menu opens on PLAY",
-       r.tabs.length === 4 && r.tabs[0].nm === "PLAY" && r.tabs[0].on && r.tabs[1].nm === "POWER UP" && r.tabs[2].nm === "COLLECTION" && /^UNLOCKS/.test(r.tabs[3].nm),
+       r.tabs.length === 4 && r.tabs[0].nm === "PLAY" && r.tabs[0].on && r.tabs[1].nm === "POWER UP" && /^COLLECTION/.test(r.tabs[2].nm) && /^UNLOCKS/.test(r.tabs[3].nm),
        r.tabs.map(t => t.nm + (t.on ? "*" : "")).join(" | "));
     ok("the roster is a grid of nine small portrait tiles, three to a row",
        r.tiles === 9 && r.rects.filter(q => q.t === r.rects[0].t).length === 3 && r.rects.every(q => q.w < 160 && q.w > 60),
@@ -7676,6 +7676,39 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("the milestone toast says CHAIN xN, and nothing says TEMPO", r.chain.length >= 1 && r.tempo.length === 0, `${r.chain.join(" / ")}${r.tempo.length ? " but also " + r.tempo.join(" / ") : ""} (chain ${r.hop})`);
     ok("and both places that teach it say \"chain a hop\"", /chain a hop/.test(r.hint) && /chain a hop/.test(r.pause) && !/chain a jump/.test(r.hint), `menu: ${r.hint.match(/chain a \w+/)}, pause: ${r.pause.match(/chain a \w+/)}`);
+  }
+
+  console.log("\n=== 77. THE COLLECTION REMEMBERS YOUR EVOLUTIONS ===");
+  {
+    // VS's collection is a completion screen. Ours listed the ten recipes and
+    // forgot every run. An evolution TAKEN is counted on the save forever, the
+    // tab counts them, the tile says REACHED, and the results say the first
+    // time. The dev hook's evolve() does not count.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.menu("coll");
+      const read = () => ({ badge: (document.querySelector('.tab[data-tab="coll"] i') || {}).textContent || "", got: document.querySelectorAll("#colW .ce.got").length,
+        notYet: document.querySelectorAll("#colW .rc b.no").length, mega: (([...document.querySelectorAll("#colW .ce")].find(e => /MEGABONK/.test(e.textContent)) || {}).textContent || "").replace(/\s+/g, " "),
+        head: (document.querySelector("#pane h3 b") || {}).textContent || "" });
+      const fresh = read();
+      const reach = () => { g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.clearEnemies();
+        g.give("bat", 3); g.give("spinach", 3); g.drainPicks(false); g.xp(60); g.step(1, 1/60);
+        const first = g.hand()[0]; g.pick(0); g.drainPicks(true);
+        g.hitMe(1e12); g.step(2, 1/60);
+        return { first: first && first.nm, kit: g.kit().join(" "), end: document.getElementById("endBody").textContent.replace(/\s+/g, " ") }; };
+      const run1 = reach(); g.menu("coll"); const after1 = read(); const saved1 = JSON.stringify(g.saveState().evos);
+      const run2 = reach(); g.menu("coll"); const after2 = read();
+      g.start("intern"); g.god(); g.drainPicks(true); g.evolve("bolt"); g.hitMe(1e12); g.step(2, 1/60); g.menu("coll"); const dev = read();
+      return { fresh, run1, after1, saved1, run2, after2, dev };
+    });
+    ok("a fresh save: 0/10 on the tab, ten NOT YET tags, nothing reached",
+       r.fresh.badge === "0/10" && r.fresh.got === 0 && r.fresh.notYet === 10 && /0 of 10/.test(r.fresh.head), `badge "${r.fresh.badge}", ${r.fresh.got} reached, ${r.fresh.notYet} not yet, "${r.fresh.head}"`);
+    ok("MEGABONK taken from a hand: 1/10, its tile says REACHED, the save carries it, and the results say FIRST TIME",
+       r.run1.first === "MEGABONK" && /bat:EVO/.test(r.run1.kit) && r.after1.badge === "1/10" && r.after1.got === 1 && /REACHED/.test(r.after1.mega) && /"bat":1/.test(r.saved1) && /MEGABONK REACHED FOR THE FIRST TIME/.test(r.run1.end),
+       `first card ${r.run1.first}; badge "${r.after1.badge}"; save ${r.saved1}; results ${/FIRST TIME/.test(r.run1.end)}`);
+    ok("a second time: still 1/10, the tile counts x2, and the results no longer say FIRST TIME",
+       r.after2.badge === "1/10" && /REACHED ×2/.test(r.after2.mega) && !/FIRST TIME/.test(r.run2.end), `badge "${r.after2.badge}", tile "${r.after2.mega.match(/REACHED[^ ]*( ×\d)?/)}", results first-time ${/FIRST TIME/.test(r.run2.end)}`);
+    ok("and the dev hook's evolve() counts nothing", r.dev.badge === "1/10" && r.dev.got === 1, `badge "${r.dev.badge}"`);
   }
 
   console.log("\n" + "=".repeat(58));

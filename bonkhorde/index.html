@@ -473,6 +473,12 @@
     font-weight:700;margin-top:5px;padding-top:5px;border-top:1px dashed #262d38;flex-wrap:wrap}
   .ce .rc .i{width:1.3em;height:1.3em}
   .ce .rc u{text-decoration:none;color:#6f7683;font-weight:400}
+  /* the collection remembers: a reached evolution wears a gold tag, the rest say NOT YET */
+  .ce .rc b{margin-left:auto;font-size:7.5px;letter-spacing:.14em;color:var(--gold);padding:1px 5px;border:1px solid var(--gold)}
+  .ce .rc b.no{color:#5c6470;border-color:#2a313c;font-weight:400}
+  .ce.got{border-color:#3a3320;border-left-color:var(--gold)}
+  .ce.got .rc{color:#ffd36b;border-top-color:#3a3320}
+  .pane h3 b{color:var(--gold);font-weight:700}
   /* the ladder, and the footer */
   .locks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
   .allq{color:var(--dim);font-size:11px;padding:12px 0}
@@ -3714,7 +3720,7 @@ const monDmg = id => 1 + (monLvl(id)-1)*.012;
 
 // ================================================================= META SAVE
 const SAVEKEY = "bonkhorde.save.v1";
-let save = { coins:0, up:{}, best:0, wins:0, unlocked:{},
+let save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, evos:{},
              kills:0, runs:0, deaths:0, dist:0, bestLvl:0, mon:{}, deep:0, deepSel:0 };
 
 // A survivors-like is a loop you re-enter, and the reason you re-enter is that
@@ -3752,7 +3758,7 @@ function checkUnlocks(runStats){
 function loadSave(){
   try{ const s=JSON.parse(localStorage.getItem(SAVEKEY));
        if(s && typeof s==="object") save = Object.assign(save, s); }catch(e){}
-  save.up = save.up||{}; save.unlocked = save.unlocked||{}; save.mon = save.mon||{};
+  save.up = save.up||{}; save.unlocked = save.unlocked||{}; save.mon = save.mon||{}; save.evos = save.evos||{};
 }
 function writeSave(){ try{ localStorage.setItem(SAVEKEY, JSON.stringify(save)); }catch(e){} }
 
@@ -8133,7 +8139,7 @@ function startRun(id){
   denStats.woke = 0; denStats.cleared = 0;
   boonMul={ spd:1, cd:1, mag:1, dmg:1, reach:1, hopWin:1, sureFoot:false };
   camYaw=0; camPitch=.62; camZoom=1; usedRevive=false; pendingLevels=0; sudden=false;
-  runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={};
+  runWon=false; runWhy=""; noLevels=false; noSpawn=false; bossCasts={}; runNewEvos=[];
   curHand = null; banMode = false;
   // AND THE SPATIAL GRID, which is the one that actually mattered. near() and
   // hitNear() read a grid that step() rebuilds in its world section - AFTER the
@@ -10523,6 +10529,8 @@ const THUNDER_CHARGE = .6;
 // the hand on the table, who dealt it (offers or masteryHand), and the two
 // things a player can do to it besides take a row
 let curHand = null, curDealer = null, banMode = false, selRow = -1;
+// the evolutions this run reached for the first time ever - the results say so
+let runNewEvos = [];
 const SNACK = ds => ({ type:"heal", ic:"heal", nm:"ROAST CHICKEN", lv:"REFRESHMENT", ds, weight:1 });
 // ROLLED ONCE. The step loop asks offers() whether this level has a real
 // choice on it, and showPick() used to ask AGAIN to decide what to draw - two
@@ -10792,7 +10800,14 @@ function doBanish(i){
 }
 function take(o){
   if(o.type==="heal") P.hp = Math.min(P.maxhp, P.hp+40);
-  else if(o.type==="evo"){ P.kit[o.key].evo = true; P.kit[o.key].l = WMAX-1; shake=.7; }
+  else if(o.type==="evo"){ P.kit[o.key].evo = true; P.kit[o.key].l = WMAX-1; shake=.7;
+    // THE COLLECTION REMEMBERS. VS's collection is a completion screen; ours
+    // listed the recipes and forgot every run. An evolution TAKEN - not one
+    // the dev hook writes - is counted on the save, forever, and the first
+    // time is said on the results.
+    if(!save.evos) save.evos = {};                // a wiped save is rebuilt without it
+    if(!save.evos[o.key]) runNewEvos.push(o.key);
+    save.evos[o.key] = (save.evos[o.key]||0) + 1; writeSave(); }
   else if(o.type==="new"){ P.kit[o.key] = { key:o.key, l:0, t:0, evo:false }; applyPassive(o.key); }
   else { P.kit[o.key].l++; applyPassive(o.key); }
   // Clamped, because a scripted driver's own pick and a click can both land
@@ -11526,6 +11541,8 @@ function finish(why, won){
       <tr><td class="gold">Coins earned</td><td class="gold">+${earned}${
         deepAt ? ` <span class="dim2">&nbsp;x${deepPay().toFixed(2)} depth</span>` : ""}</td></tr>
     </table>
+    ${runNewEvos.map(k=>`<p class="g" style="font-size:12px;letter-spacing:.1em">`+
+                 `${icon(WEAPONS[k].evo.ic)} ${WEAPONS[k].evo.name} REACHED FOR THE FIRST TIME</p>`).join("")}
     ${got.map(u=>`<p class="g" style="font-size:12px;letter-spacing:.1em">`+
                  `${icon(u.id==="tally"?"tally":u.id)} ${u.what} UNLOCKED</p>`).join("")}
     ${nextUp()}
@@ -11576,6 +11593,7 @@ function openMenu(tab){
   const b = document.getElementById("menuBody");
   const sel = menuSel();
   const nLocked = UNLOCKS.filter(u => !save.unlocked[u.id]).length;
+  const nEvo = Object.keys(save.evos||{}).filter(k => WEAPONS[k]).length, nEvoAll = Object.keys(WEAPONS).length;
   b.innerHTML = `
     <h1>BONK<span>HORDE</span></h1>
     <div class="tag">RAISE A CREATURE &nbsp;·&nbsp; GROW IT TO ITS FINAL FORM &nbsp;·&nbsp; <b>TWENTY MINUTES, THEN TERRAVORE</b></div>
@@ -11584,7 +11602,7 @@ function openMenu(tab){
       save.wins ? ` <span class="g">${save.wins} CLEAR${save.wins>1?"S":""}</span>` : ""}${
       save.dev ? ` <span class="devon">DEV MODE &mdash; EVERYTHING UNLOCKED</span>` : ""}</div>
     <div class="tabs">${TABS.map(([id, nm]) => `<div class="tab ${menuTab === id ? "on" : ""}" data-tab="${id}">${nm}${
-      id === "locks" && nLocked ? `<i>${nLocked} LEFT</i>` : ""}</div>`).join("")}</div>
+      id === "locks" && nLocked ? `<i>${nLocked} LEFT</i>` : id === "coll" ? `<i>${nEvo}/${nEvoAll}</i>` : ""}</div>`).join("")}</div>
     <div class="pane" id="pane"></div>
     <div class="hint foot2">
       ${TOUCH
@@ -11762,10 +11780,12 @@ function menuShop(pane){
 // the thing every player of the genre ends up looking up - every growth with
 // the evolutions it unlocks, and the six rules.
 function menuCollection(pane){
-  const w = Object.keys(WEAPONS).map(k => { const W = WEAPONS[k], pn = PASSIVES[W.evo.need];
-    return `<div class="ce" style="--ac:${WCOL[k] || "#f0b429"}"><div class="ic">${icon(W.ic)}</div>
+  const nGot = Object.keys(save.evos||{}).filter(k => WEAPONS[k]).length;
+  const w = Object.keys(WEAPONS).map(k => { const W = WEAPONS[k], pn = PASSIVES[W.evo.need], n = (save.evos||{})[k]|0;
+    return `<div class="ce ${n ? "got" : ""}" style="--ac:${WCOL[k] || "#f0b429"}"><div class="ic">${icon(W.ic)}</div>
       <div class="n">${W.name}</div><div class="e">${WTAG[k] || "WEAPON"}</div><div class="d">${W.ds}</div>
-      <div class="rc">${icon(W.evo.ic)} ${W.evo.name} <u>= ${W.name} ${WMAX} + ${pn.name} ${pn.max}</u></div></div>`; });
+      <div class="rc">${icon(W.evo.ic)} ${W.evo.name} <u>= ${W.name} ${WMAX} + ${pn.name} ${pn.max}</u>${
+        n ? `<b>REACHED${n > 1 ? " &times;" + n : ""}</b>` : `<b class="no">NOT YET</b>`}</div></div>`; });
   const g = [], r = [];
   for(const k in PASSIVES){ const Pa = PASSIVES[k];
     if(Pa.kind === "r") r.push(`<div class="ce" style="--ac:#3ad0a0"><div class="ic">${icon(Pa.ic)}</div>
@@ -11774,7 +11794,7 @@ function menuCollection(pane){
       g.push(`<div class="ce" style="--ac:${Pa.col || "#f0b429"}"><div class="ic">${icon(Pa.ic)}</div>
         <div class="n">${Pa.name}</div><div class="e">${Array.isArray(Pa.eff) ? Pa.eff[0] : Pa.eff} A RANK</div><div class="d">${Pa.ds}</div>
         ${leads.length ? `<div class="rc">UNLOCKS <u>${leads.join(" · ")}</u></div>` : ""}</div>`); } }
-  pane.innerHTML = `<h3>WEAPONS · ${w.length} · four to a run, and your line's own move rides free · evolve at rank ${WMAX} with the partner finished</h3><div class="col" id="colW">${w.join("")}</div>
+  pane.innerHTML = `<h3>WEAPONS · ${w.length} · four to a run, and your line's own move rides free · evolve at rank ${WMAX} with the partner finished · <b>${nGot} of ${w.length} evolutions reached</b></h3><div class="col" id="colW">${w.join("")}</div>
     <h3>GROWTH · ${g.length} · five to a run, three ranks each, and every fifth empty level a MASTERY</h3><div class="col" id="colG">${g.join("")}</div>
     <h3>RULES · ${r.length} · two to a run, a third at level ${RULE_THIRD}, taken once</h3><div class="col" id="colR">${r.join("")}</div>`;
 }
