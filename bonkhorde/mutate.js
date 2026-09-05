@@ -383,6 +383,26 @@ const MUTANTS = [
         "the fall in five seconds and a receipt that will not turn solid",
     from:"const beatDt = raw => Math.min(.1, raw);",
     to:  "const beatDt = raw => Math.min(.042, raw);" },
+  { id:"sideways-start-below-the-fold", must:"81",
+    why:"a phone held sideways loses the START bar again - the PLAY tab's " +
+        "button is four screens down a 390px-tall page",
+    from:"    .gobar{display:flex;padding:6px 10px}\n    #menu .wrap{padding-bottom:66px}",
+    to:  "    #menu .wrap{padding-bottom:66px}" },
+  { id:"sideways-hand-stacks", must:"81",
+    why:"the sideways hand goes back to a single column - the tools and the " +
+        "kit sit under the rows, below the fold of a 390px screen",
+    from:"    #pick .wrap{width:min(900px,96vw);display:grid;",
+    to:  "    #pick .wrap{width:min(900px,96vw);display:block;" },
+  { id:"sideways-results-stack", must:"81",
+    why:"the sideways results stack again - RUN AGAIN is 200px below the " +
+        "fold and the receipt has to be scrolled to be finished",
+    from:"    #end .wrap{width:min(940px,96vw);display:grid;",
+    to:  "    #end .wrap{width:min(940px,96vw);display:block;" },
+  { id:"sideways-hints-stay", must:"81",
+    why:"the pause sheet keeps its two lines of hints on a 390px-tall " +
+        "screen, and ABANDON RUN goes below the fold with them",
+    from:"    #pauseHint{display:none}\n",
+    to:  "" },
   { id:"beat-no-rearup", must:"34",
     why:"the slam's wind-up no longer stands the boss up - the tell is a lean " +
         "with no height in it, so the biggest hit in the game has the smallest " +

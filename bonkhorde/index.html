@@ -662,6 +662,66 @@
     .lk .lkd,.lk .lkp{font-size:9px}
     #endBody table td:last-child .dim2,.dim2{font-size:9.5px}
   }
+  /* THE PHONE ON ITS SIDE (R292). A phone held sideways is 844x390: wide
+     and short. Every panel was built down the page, and on that screen every
+     one of them put its button below the fold - START four screens down, RUN
+     AGAIN at 596 of 390, ABANDON at 438, the hand's tools and kit under the
+     rows. Under 520px tall (no phone is taller sideways, no laptop shorter)
+     the panels use the width instead: the hand's tools and kit stand beside
+     the rows, the pause sheet's kit takes a third column and the hints go,
+     the results put the portrait beside the table, and the PLAY tab gets the
+     START bar. Section 81 measures all four. */
+  @media (max-height:520px){
+    #menu h1{font-size:30px}
+    .tabs{margin-bottom:8px}
+    .detail .foot .btn{display:none}
+    .gobar{display:flex;padding:6px 10px}
+    #menu .wrap{padding-bottom:66px}
+    #pauseHint{display:none}
+    #paused .wrap{width:min(940px,96vw)}
+    .psheet{grid-template-columns:190px 1fr 300px;padding:8px 10px 2px}
+    .psheet .kitbox{grid-column:3;grid-row:1}
+    .psheet .kitbox .kit{gap:10px}
+    .psheet .kit .ks{width:26px;height:30px}
+    .psheet .cons{grid-column:1/-1}
+    #paused .btn{margin-top:8px;padding:9px 26px}
+  }
+  @media (max-height:520px) and (min-width:640px){
+    #pick .wrap{width:min(900px,96vw);display:grid;grid-template-columns:1fr 270px;
+      grid-template-rows:auto auto 1fr;grid-template-areas:"head head" "cards tools" "cards kit";
+      align-content:start}
+    #pick .pkHead{grid-area:head}
+    #pick .cards{grid-area:cards}
+    #pick .tools{grid-area:tools;flex-direction:column;align-items:stretch;padding:6px 8px 0 0}
+    #pick .tools .tsub{margin-left:0}
+    #pick .kit{grid-area:kit;border-top:none;border-left:1px solid #1f2530;flex-direction:column;
+      flex-wrap:nowrap;gap:6px;padding:6px 8px 8px}
+    #end .wrap{width:min(940px,96vw);display:grid;grid-template-columns:270px 1fr;column-gap:14px;
+      align-items:center;padding:8px 12px}
+    #end .endL h1{font-size:28px!important}
+    .endpv{width:min(200px,26vw);margin:0 auto 4px}
+    #endBody table{margin:4px auto 0}
+    #endBody td{padding:4px 0}
+    .kit.end{gap:8px} .kit.end .ks{width:26px;height:30px}
+    #endBody .endR p{margin:4px 0}
+    #endBody .next{margin:8px auto 2px}
+    #endBody .btn{margin-top:8px;padding:9px 24px}
+  }
+  /* the short ones sideways - a 360px Galaxy, a 375px iPhone SE: the
+     portrait column narrows and the receipt's rows tighten */
+  @media (max-height:375px) and (min-width:640px){
+    #end .wrap{grid-template-columns:220px 1fr}
+    #end .endL h1{font-size:24px!important}
+    .endpv{width:150px}
+    #endBody table{font-size:11px}
+    #endBody td{padding:3px 0}
+    .kit.end .ks{width:24px;height:28px}
+    #endBody .btn{margin-top:6px;padding:8px 20px}
+  }
+  @media (max-height:375px) and (min-width:640px) and (max-width:700px){
+    #end .wrap{grid-template-columns:170px 1fr}
+    .endpv{width:120px}
+  }
 </style>
 </head>
 <body>
@@ -11579,11 +11639,13 @@ function finish(why, won){
   const took = hurtLog.contact + hurtLog.spit + hurtLog.hazard;
   const tookParts = [["bites", hurtLog.contact, hurtLog.n.contact], ["spit", hurtLog.spit, hurtLog.n.spit], ["ground", hurtLog.hazard, hurtLog.n.hazard]]
     .filter(p => p[1] > 0).sort((a, b) => b[1] - a[1]);
+  // .endL / .endR are plain blocks everywhere but on a phone held sideways,
+  // where the results put the portrait beside the table (R292)
   document.getElementById("endBody").innerHTML = `
-    <canvas class="endpv" width="${PV_W}" height="${PV_H}"></canvas>
+    <div class="endL"><canvas class="endpv" width="${PV_W}" height="${PV_H}"></canvas>
     <h1 class="${won?'g':'r'}" style="font-size:44px">${why}</h1>
-    <div class="sub">${flavor}</div>
-    <table>
+    <div class="sub">${flavor}</div></div>
+    <div class="endR"><table>
       <tr><td>Survived</td><td>${fmt(T)}${T > RUN_LEN ? " (sudden death)" : " / "+fmt(RUN_LEN)}${
         beat ? ` <span class="g">NEW BEST</span>` : prevBest ? ` <span class="dim2">best ${fmt(prevBest)}</span>` : ""}</td></tr>
       <tr><td>Level</td><td>${P.lvl}${
@@ -11615,7 +11677,7 @@ function finish(why, won){
                  `${icon(u.id==="tally"?"tally":u.id)} ${u.what} UNLOCKED</p>`).join("")}
     ${nextUp()}
     <button class="btn" id="againBtn">RUN AGAIN &nbsp;<kbd>ENTER</kbd></button>
-    <button class="btn gh" id="shopBtn">SHOP</button>`;
+    <button class="btn gh" id="shopBtn">SHOP</button></div>`;
   // toggled every time, so a win after a death does not inherit the delay
   document.getElementById("end").classList.toggle("died", !won && why === "DEAD");
   show("end");

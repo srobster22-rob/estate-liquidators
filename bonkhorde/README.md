@@ -280,7 +280,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **708 passing** as of R291, with 224 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **713 passing** as of R292, with 228 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -706,6 +706,13 @@ so a machine drawing six frames a second took thirty-nine frames and five second
 the results screen translucent for most of them. The beat now takes the wall clock down to ten
 frames a second (`beatDt`) and stretches only below that. Its fade also divided by the wrong
 number and stopped at 71% before the style cleared; the receipt is solid on the beat's last frame.
+
+**The phone on its side (R292).** A phone held sideways is 844x390, and every panel was built down
+the page: START was four screens down the PLAY tab, RUN AGAIN sat at 596 of 390, ABANDON at 438,
+and the hand's tools and kit were under the rows. Under 520px tall the panels use the width instead:
+the hand's tools and kit stand beside the rows, the pause sheet's kit takes a third column and the
+hints go, the results put the portrait beside the table, and the PLAY tab gets the START bar. Fits
+without scrolling at 740x360, 667x375, 844x390 and 932x430; section 81 measures it.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

@@ -7816,6 +7816,66 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        all.length === 0, all.length ? all.slice(0, 6).join(" | ") + (all.length > 6 ? ` (+${all.length - 6})` : "") : "smallest text 9px, unit suffixes 8px");
   }
 
+  console.log("\n=== 81. THE PHONE ON ITS SIDE ===");
+  {
+    // A phone held sideways is 844x390: wide and short. Every panel was built
+    // down the page, and on that screen every one of them put its button below
+    // the fold - START four screens down, RUN AGAIN at 596 of 390, ABANDON at
+    // 438, the hand's tools and kit under the rows. Under 520px tall the panels
+    // use the width instead. The desktop keeps its stacked results.
+    const probe = async (w, h, mobile) => {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: mobile, isMobile: mobile, deviceScaleFactor: 1 });
+      const pg = await ctx.newPage(); await pg.goto(FILE, { waitUntil: "load" }); await pg.waitForTimeout(500);
+      const r = await pg.evaluate(() => {
+        const g = window.__g;
+        const rect = el => { if (!el) return null; const b = el.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom), l: Math.round(b.left), r: Math.round(b.right), h: Math.round(b.height) }; };
+        const byId = id => rect(document.getElementById(id));
+        const disp = el => el ? getComputedStyle(el).display : "absent";
+        const scrolls = el => el.scrollHeight > el.clientHeight + 1;
+        g.wipeSave(); g.setSave({ up:{ reroll:1, banish:1 } }); g.menu("play");
+        document.querySelector("#menu .wrap").scrollTop = 0;
+        const menu = { bar: disp(document.getElementById("goBar")), go: byId("goBtn"), start: disp(document.getElementById("startBtn")), vh: innerHeight };
+        // a four-row hand with both tools
+        g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+        g.drainPicks(false); g.xp(90000); g.stepRaw(1/60);
+        const pw = document.querySelector("#pick .wrap"), cards = document.getElementById("pkCards");
+        const hand = { picking: g.state().picking, rows: cards.querySelectorAll(".card").length, tb: document.querySelectorAll("#pkTools .tb").length,
+                       scroll: scrolls(pw), panel: rect(pw), cards: rect(cards), tools: byId("pkTools"), kit: byId("pkKit"), vh: innerHeight };
+        g.drainPicks(true); g.stepRaw(1/60);
+        g.pause(true);
+        const pz = document.querySelector("#paused .wrap");
+        const pause = { scroll: scrolls(pz), quit: byId("quitBtn"), stats: rect(document.querySelector(".psheet .pb:not(.run):not(.kitbox)")),
+                        kit: rect(document.querySelector(".psheet .kitbox")), hint: disp(document.getElementById("pauseHint")), vh: innerHeight };
+        g.pause(false);
+        g.hitMe(1e12); g.step(2, 1/60); g.deathStep(120, 1/60);
+        const eb = document.getElementById("endBody");
+        const end = { over: g.state().over, scroll: scrolls(eb), disp: disp(eb), pv: rect(eb.querySelector(".endpv")), h1: rect(eb.querySelector("h1")),
+                      table: rect(eb.querySelector("table")), again: byId("againBtn"), vh: innerHeight };
+        return { menu, hand, pause, end };
+      });
+      await ctx.close(); return r;
+    };
+    const side = await probe(844, 390, true), desk = await probe(1280, 800, false);
+    const inView = (r, vh) => !!r && r.h > 0 && r.t >= 0 && r.b <= vh;
+    const span = r => r ? `${r.t}-${r.b}` : "none";
+    ok("sideways at 844x390, the PLAY tab carries START in the bar on the first screen and hides the panel's own button",
+       side.menu.bar === "flex" && inView(side.menu.go, side.menu.vh) && side.menu.start === "none",
+       `bar ${side.menu.bar}, START ${span(side.menu.go)} of ${side.menu.vh}, panel button ${side.menu.start}`);
+    ok("sideways, a four-row hand with both tools fits without scrolling: the tools and the kit stand beside the rows",
+       side.hand.picking && side.hand.rows === 4 && side.hand.tb === 2 && !side.hand.scroll && inView(side.hand.kit, side.hand.vh)
+       && side.hand.tools.l >= side.hand.cards.r - 2 && side.hand.kit.l >= side.hand.cards.r - 2,
+       `${side.hand.rows} rows, ${side.hand.tb} tools, scroll ${side.hand.scroll}, cards to x${side.hand.cards && side.hand.cards.r}, tools from x${side.hand.tools && side.hand.tools.l}, kit ${span(side.hand.kit)} of ${side.hand.vh}`);
+    ok("sideways, the pause sheet fits without scrolling: the kit takes a third column, the hints go, ABANDON is on screen",
+       !side.pause.scroll && inView(side.pause.quit, side.pause.vh) && side.pause.hint === "none" && side.pause.kit && side.pause.stats && side.pause.kit.l >= side.pause.stats.r - 2,
+       `scroll ${side.pause.scroll}, ABANDON ${span(side.pause.quit)} of ${side.pause.vh}, hints ${side.pause.hint}, stats to x${side.pause.stats && side.pause.stats.r}, kit from x${side.pause.kit && side.pause.kit.l}`);
+    ok("sideways, the results put the portrait beside the table and RUN AGAIN on screen without scrolling",
+       side.end.over && !side.end.scroll && side.end.disp === "grid" && side.end.table.l >= side.end.pv.r - 2 && inView(side.end.again, side.end.vh),
+       `over ${side.end.over}, scroll ${side.end.scroll}, ${side.end.disp}, portrait to x${side.end.pv && side.end.pv.r}, table from x${side.end.table && side.end.table.l}, RUN AGAIN ${span(side.end.again)} of ${side.end.vh}`);
+    ok("and at 1280x800 nothing moved: the results stack with the table under the title, the START bar stays hidden",
+       desk.end.disp === "block" && desk.end.table.t >= desk.end.h1.b - 1 && inView(desk.end.again, desk.end.vh) && desk.menu.bar === "none" && desk.menu.start !== "none",
+       `results ${desk.end.disp}, title to y${desk.end.h1 && desk.end.h1.b}, table from y${desk.end.table && desk.end.table.t}, RUN AGAIN ${span(desk.end.again)} of ${desk.end.vh}, bar ${desk.menu.bar}, panel button ${desk.menu.start}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
