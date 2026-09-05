@@ -23,7 +23,7 @@ evidence.
 
 The verification tools that already exist:
 
-- `node test.js` — the suite. 358 checks. Never leave it red.
+- `node test.js` — the suite. Seven hundred and some checks; it prints the number. Never leave it red.
 - `node analyze.js` — per-form connectivity: is every creature ONE object?
 - `bonkhorde/shot.js`, and the scratch harnesses for turntables, model sheets,
   biome sweeps and end screens. Rendering a model from six angles costs one
