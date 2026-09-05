@@ -8156,7 +8156,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         if (!s) { outside++; continue; }
         if (s[0] > 120 && s[0] < W - 120 && s[1] > 120 && s[1] < H - 120) inside++;
         else if (s[0] < -300 || s[0] > W + 300 || s[1] < -300 || s[1] > H + 300) outside++; }
-      return { enemies: shown.enemies, shownDrawn: shown.drawn, shownHorde: shown.horde, culled: shown.culled, all, cappedCulled: capped.culled, inside, outside };
+      // 4. the size cull on its own: one body in the middle tier (20 m - at 30 the far tier is already two boxes), squarely on
+      //    screen - the frame builds fewer of its boxes than a capture holds
+      g.clearEnemies(); g.place(0, 0); g.aim(0); g.spawnAt("shambler", 0, 20); g.stepRaw(1/60); g.pause(true);
+      await frame(); await frame();
+      const farShown = g.boxCensus().horde, farOn = !!g.screenOf(0, .5, 20);
+      g.capFrame(); const farAll = g.boxCensus().horde;
+      return { enemies: shown.enemies, shownDrawn: shown.drawn, shownHorde: shown.horde, culled: shown.culled, all, cappedCulled: capped.culled, inside, outside, farShown, farAll, farOn };
     });
     ok("in a two-hundred-body frame some bodies project off the screen and draw nothing - never one that is anywhere near the view",
        r.enemies >= 190 && r.culled >= 5 && r.culled <= r.enemies - r.inside,
@@ -8167,6 +8173,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the frame builds at least a twentieth fewer boxes than it holds, and a capture still sees all of them",
        r.shownDrawn <= r.all * .95 && r.cappedCulled === 0 && r.all > r.shownDrawn,
        `${r.shownDrawn} built for the screen, ${r.all} in the capture (${r.cappedCulled} culled while capturing)`);
+    ok("a single body twenty metres out and squarely on screen is built with fewer boxes than a capture holds - its pupils and teeth are under a pixel and a half",
+       r.farOn && r.farShown < r.farAll && r.farShown >= r.farAll * .5,
+       `${r.farShown} boxes built for the screen, ${r.farAll} in the capture, on screen ${r.farOn}`);
   }
 
   console.log("\n" + "=".repeat(58));
