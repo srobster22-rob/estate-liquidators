@@ -8072,10 +8072,21 @@ function stepDeath(dt){
   // and the life goes out of it: eyes, glow, the marker ring - see drawMonBody
   ANIM.dead = t;
   // The receipt comes up under the last third of the fall and is solid as
-  // the beat ends. Driven from here and not from a CSS delay so that a slow
-  // machine, where the beat runs behind the clock, still shows the fall.
-  endFade(deathFx > 0 ? clamp((t - .66) / .48, 0, 1).toFixed(3) : "");
+  // the beat ends - solid ON the last frame, not after it: the first cut
+  // divided by .48 and so only reached .71 before the style was cleared,
+  // and the table popped in the rest of the way. Driven from here and not
+  // from a CSS delay so that a slow machine, where the beat runs behind the
+  // clock, still shows the fall.
+  endFade(deathFx > 0 ? clamp((t - .66) / .34, 0, 1).toFixed(3) : "");
 }
+// The beat's own clock. The sim clamps a frame to 42 ms so a hitch cannot
+// throw the physics, and the beat used the same dt - so on a machine drawing
+// six frames a second (a software renderer at 1280x800 is one) the 1.6 s
+// fall took thirty-nine frames and five seconds, and the receipt sat
+// translucent for most of them. The beat is cosmetic and eases per frame, so
+// it can keep the wall clock down to ten frames a second; below that it
+// stretches, because a fall in fewer than sixteen frames is not a fall.
+const beatDt = raw => Math.min(.1, raw);
 let sudden=false;                       // past 20:00 with THE FINAL BONK still up
 let noLevels=false;                     // test-only: hold back the level-up screen
 let noSpawn=false;                      // test-only: isolate a boss fight
@@ -14367,7 +14378,7 @@ function pulse(d){
   if(dens > .45) blip(root*4, .05, "triangle", .022 + dens*.02, 1.4);
 }
 function frame(now){
-  dt = Math.min(.042, (now-last)/1000); last = now;
+  const raw = (now-last)/1000; dt = Math.min(.042, raw); last = now;
   if(hitstop > 0) hitstop -= dt;
   else if(running && !over && !paused) step(dt);
   // The horde's fall is on the world clock - it holds through the hitstop of
@@ -14376,8 +14387,8 @@ function frame(now){
   else if(over) stepCorpses(dt);
   // The death beat runs on the wall clock, through the hitstop of the blow
   // that caused it and past the end of the run: the world holds, the animal
-  // does not.
-  if(deathFx > 0) stepDeath(dt);
+  // does not. On its own clock (beatDt), not the sim's clamped one.
+  if(deathFx > 0) stepDeath(beatDt(raw));
   pulse(dt);
   if(evoT > 0) evoT -= dt;
   if(devAuto && P && running && !over && stage < (curMon().st||[]).length-1 && evoT <= 0)
@@ -14803,6 +14814,7 @@ window.__g = {
   grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), lift:+g.lift.toFixed(4), heads:g.heads, headFrom: P.headSpan ? +P.headSpan[0].toFixed(3) : null, headHx: P.headSpan ? +P.headSpan[1].toFixed(3) : null, headBoxes: P.headBoxes || 0, splay:+(P.headSplay || 0).toFixed(3) }; },
   pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3), bite:+(p.bite||0).toFixed(3) }; },
   deathFx: ()=>+deathFx.toFixed(3),
+  beatDt: raw => beatDt(raw),
   // the beat by hand, like step(): a headless renderer at four frames a
   // second cannot be asked to play a second and a half on the clock
   deathStep: (n, dt)=>{ for(let i=0;i<(n||1);i++) if(deathFx > 0) stepDeath(dt||1/60); },

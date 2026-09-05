@@ -280,7 +280,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **706 passing** as of R289, with 222 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **708 passing** as of R291, with 224 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -700,6 +700,12 @@ REACHED FOR THE FIRST TIME on the results screen the first time each one happens
 is printed on the results as a `Took` row: the total, the shares with their hit counts, biggest
 first. A player who died to bites has been told what to step out of. The ledger counts health
 actually lost, so a killing blow logs what was left rather than the whole bite.
+
+**The death beat keeps its own clock (R291).** The 1.6 s fall ran on the sim's frame clamp of 42 ms,
+so a machine drawing six frames a second took thirty-nine frames and five seconds to finish it, with
+the results screen translucent for most of them. The beat now takes the wall clock down to ten
+frames a second (`beatDt`) and stretches only below that. Its fade also divided by the wrong
+number and stopped at 71% before the style cleared; the receipt is solid on the beat's last frame.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

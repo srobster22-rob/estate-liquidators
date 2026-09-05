@@ -5180,8 +5180,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                     on: endEl().classList.contains("on"), op: op(), an: g.anim() };
       g.deathStep(24, 1/60);
       out.dead1 = { dfx: g.deathFx(), op: op(), an: g.anim() };
+      g.deathStep(71, 1/60);                       // frame 95 of 96: the beat's last frame
+      out.dead15 = { dfx: g.deathFx(), op: op() };
       g.deathStep(200, 1/60);
       out.dead2 = { dfx: g.deathFx(), op: op(), an: g.anim() };
+      // the beat's clock: the wall clock, past the sim's 42 ms clamp, to 100 ms
+      out.beatDt = { slow: g.beatDt(.175), sim: g.beatDt(.06), fast: g.beatDt(.02) };
       // 5. a new run stands the animal back up
       g.start("ox"); g.step(2, 1/60);
       out.again = { dfx: g.deathFx(), an: g.anim(), style: endEl().style.opacity,
@@ -5216,6 +5220,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the legs go first: under half its height inside the first half second",
        r.dead1.an.dead > .2 && r.dead1.an.sq < .7 && r.dead1.op === "0" && Math.abs(r.dead1.an.bank) < .2,
        `dead ${r.dead1.an.dead} sq ${r.dead1.an.sq} bank ${r.dead1.an.bank}, receipt still ${r.dead1.op}`);
+    ok("the receipt is all but solid on the beat's last frame, so it does not pop in when the beat ends",
+       r.dead15.dfx > 0 && +r.dead15.op >= .93,
+       `frame 95: beat ${r.dead15.dfx}, receipt ${r.dead15.op}`);
+    ok("the beat keeps the wall clock down to ten frames a second, past the sim's 42 ms clamp",
+       r.beatDt.slow === .1 && r.beatDt.sim === .06 && r.beatDt.fast === .02,
+       `175 ms frame -> ${r.beatDt.slow}, 60 ms -> ${r.beatDt.sim}, 20 ms -> ${r.beatDt.fast}`);
     ok("then the body goes over, away from the blow, and the receipt comes up as the beat ends",
        r.dead2.dfx === 0 && r.dead2.an.dead >= .99 && r.dead2.an.bank < -.6 && r.dead2.an.sq < .5 && r.dead2.an.amp < .01 && r.dead2.op === "1",
        `beat ${r.dead2.dfx}, dead ${r.dead2.an.dead}, bank ${r.dead2.an.bank} sq ${r.dead2.an.sq} amp ${r.dead2.an.amp}, receipt ${r.dead2.op}`);

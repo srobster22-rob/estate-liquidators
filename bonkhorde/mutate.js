@@ -371,8 +371,18 @@ const MUTANTS = [
   { id:"receipt-not-gated", must:"33",
     why:"the receipt is solid from the first frame of the beat again - the " +
         "fall happens behind a table nobody can see through",
-    from:"  endFade(deathFx > 0 ? clamp((t - .66) / .48, 0, 1).toFixed(3) : \"\");",
+    from:"  endFade(deathFx > 0 ? clamp((t - .66) / .34, 0, 1).toFixed(3) : \"\");",
     to:  "  endFade(deathFx > 0 ? \"1\" : \"\");" },
+  { id:"receipt-pops-in", must:"33",
+    why:"the fade divides by .48 again and reaches .71 on the beat's last " +
+        "frame - the receipt jumps the rest of the way when the style clears",
+    from:"  endFade(deathFx > 0 ? clamp((t - .66) / .34, 0, 1).toFixed(3) : \"\");",
+    to:  "  endFade(deathFx > 0 ? clamp((t - .66) / .48, 0, 1).toFixed(3) : \"\");" },
+  { id:"beat-on-the-sim-clock", must:"33",
+    why:"the beat takes the sim's 42 ms clamp again - a slow machine shows " +
+        "the fall in five seconds and a receipt that will not turn solid",
+    from:"const beatDt = raw => Math.min(.1, raw);",
+    to:  "const beatDt = raw => Math.min(.042, raw);" },
   { id:"beat-no-rearup", must:"34",
     why:"the slam's wind-up no longer stands the boss up - the tell is a lean " +
         "with no height in it, so the biggest hit in the game has the smallest " +
