@@ -7898,11 +7898,22 @@ let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, 
 // you are back on the floor. What it costs you is the hop chain - you cannot
 // chain a hop you never land from - so flight and tempo are a real choice
 // rather than a strict upgrade.
+// FLIGHT HAS A RHYTHM (R299, reported: "flying sucks"). Filmed: hover
+// engaged a sixth of a second after the hop, held 3.1 m for 2.9 s, then the
+// meter died and the animal dropped the whole height in a third of a second
+// and sat on the ground for 3.3 s before the key would do anything again -
+// and wings were 12% faster than legs. Now: a spent meter under a held key is
+// a glide, not a drop; a held key on the ground takes off again by itself once
+// the meter is back to sixty percent, so one held key is the whole rhythm -
+// fly, glide down, breathe, lift; and wings are a third faster than legs.
 const FLY_H = 3.1,        // hover height above the ground
-      FLY_DRAIN = .34,    // meter per second in the air
-      FLY_FILL  = .30,    // per second on the ground
+      FLY_DRAIN = .26,    // meter per second in the air (3.8 s of hover)
+      FLY_FILL  = .40,    // per second on the ground (2.5 s to full)
       FLY_SAFE  = 1.6,    // how high is out of reach
-      FLY_SPD   = 1.12;   // wings are faster than legs
+      FLY_SPD   = 1.30,   // wings are faster than legs
+      FLY_GLIDE = 3.2,    // m/s, the most a held glide lets you fall
+      FLY_TAKEOFF = .60;  // the meter a held key needs to lift off again
+let flyHold = 0;          // how long JUMP has been held, for the take-off
 const SURGE_FILL = 1/30;        // metres of travel for a full meter
 const SURGE_DRAIN = .09;        // per second, standing still
 const SURGE_TIME = 4.0, SURGE_DMG = 1.85, SURGE_RATE = 1.35;
@@ -11437,6 +11448,12 @@ function step(dt){
 
   // ---- jump / bunnyhop
   const gy = groundY(P.x, P.z);
+  // HOLD TO FLY (R299): with wings, a key held on the ground for a quarter
+  // second and a meter past sixty percent is a take-off - the flier does not
+  // have to let go and press again between every flight.
+  const canFly = !!stageDef().fly, heldJ = !!keys.Space;
+  flyHold = heldJ ? flyHold + dt : 0;
+  if(!P.air && canFly && heldJ && flyHold > .25 && P.wing >= FLY_TAKEOFF && jumpBuf <= 0) jumpPressed();
   if(jumpBuf > 0) jumpBuf = Math.max(0, jumpBuf - dt);
   if(P.hopWin > 0) P.hopWin -= dt;
   if(!P.air){
@@ -11514,7 +11531,12 @@ function step(dt){
   if(P.air){
     if(P.fly){ P.y += (gy + FLY_H - P.y) * Math.min(1, dt*3.2); P.vy = 0; }
     else {
-      P.vy -= 30*dt; P.y += P.vy*dt;
+      P.vy -= 30*dt;
+      // THE GLIDE (R299): a spent meter under a held key comes down at a
+      // walking pace, wings out, and lands where you were steering it; let
+      // go and it is the fall it always was.
+      if(canFly && heldJ && !P.fly) P.vy = Math.max(P.vy, -FLY_GLIDE);
+      P.y += P.vy*dt;
       if(P.y <= gy){ P.y = gy; P.vy = 0; P.air = false;
                      P.hopWin = HOP_WIN * (boonMul.hopWin || 1); P.hopGrace = HOP_GRACE;
                      if(hasRule("stomp")) stomp();
@@ -14508,8 +14530,9 @@ function hud(){
     ruleEl.classList.toggle("hot", !!P.fly);
     ruleEl.classList.toggle("cold", !P.fly && f < .12);
     ruleEl.firstElementChild.firstElementChild.style.width = (f*100).toFixed(1)+"%";
-    ruleEl.children[1].textContent = P.fly ? "FLYING" : Math.round(f*100)+"%";
-    ruleEl.children[2].textContent = P.fly ? "HOLD JUMP" : "WINGS";
+    const gliding = !P.fly && P.air && !!keys.Space;
+    ruleEl.children[1].textContent = P.fly ? "FLYING" : gliding ? "GLIDING" : Math.round(f*100)+"%";
+    ruleEl.children[2].textContent = P.fly ? "HOLD JUMP" : gliding ? "KEEP HOLDING" : "WINGS";
   } else ruleEl.classList.remove("on");
 
   // The evolution banner. It scales in over ~0.2s and holds, because the one
@@ -15006,6 +15029,8 @@ window.__g = {
   capFrame:()=>{ fxCap = []; render(); const o = []; for(let i=0;i<fxCap.length;i+=7) o.push(fxCap.slice(i,i+7)); fxCap = null; return o; },
   popCount:()=>pops.length + cpops.length,
   setCrit:(v)=>{ P.crit = v; return P.crit; },
+  flyConsts:()=>({ h:FLY_H, drain:FLY_DRAIN, fill:FLY_FILL, spd:FLY_SPD, glide:FLY_GLIDE, takeoff:FLY_TAKEOFF }),
+  vy:()=>+P.vy.toFixed(3),
   // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
   fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,
                 shell: mortars[0] ? { t:+mortars[0].t.toFixed(3), dur:+mortars[0].dur.toFixed(3), tx:+mortars[0].tx.toFixed(2), tz:+mortars[0].tz.toFixed(2), rad:+mortars[0].rad.toFixed(2) } : null }),

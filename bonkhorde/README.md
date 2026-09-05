@@ -275,13 +275,14 @@ node film/thunderfilm.js          # THUNDERHEAD's discharge: the chain and the r
 node film/fanfilm.js              # a BOLTSTORM volley mid-flight: the finale boss ahead, a crowd aside, and where the seven bolts go
 node film/cachefilm.js            # a CACHE opened with an evolution ready: the panel under its CACHE banner, desktop and phone
 node film/weaponsheet.js bolt,pulse # every weapon in action, three moments each, close camera (EVO=1 for the evolved form)
+node film/flyfilm.js              # flight, driven: PYRAETHON hops, holds JUMP, hovers dry, glides down, lifts again; a trace every 10 frames
 node film/sweep.js [seedBase]     # every creature, one seed each, a whole autopilot run: outcome, kit, evolutions, and every page error
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **729 passing** as of R298, with 240 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **733 passing** as of R299, with 243 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -741,6 +742,15 @@ crossed blades on dark feet, on the rim and scattered inside the field. Section 
 Slice three (R298): the spark moved into `hurt()`, so EVERY hit throws two white motes from the body it
 hit - bat, skull, wave, cloud tick, hatchling, shell - and a crit throws a golden burst of six. The bolt
 and the zap lost their private sparks for the shared one. Section 84.
+
+**Flight has a rhythm (R299, reported: "flying sucks").** Filmed: hover engaged a sixth of a second after
+the hop, held 3.1 m for 2.9 s, then the meter died and the animal dropped the whole height in a third
+of a second and sat on the ground for 3.3 s before the key did anything again; wings were 12% faster
+than legs. Now a spent meter under a held key is a glide (3.2 m/s at most, about a second from hover
+height), a key held on the ground lifts off again by itself once the meter is back to sixty percent, and
+wings are a third faster than legs; the meter lasts 3.8 s and refills in 2.5. One held key is the whole
+rhythm: fly, glide down, breathe, lift. Let go and it is the fall it always was. `film/flyfilm.js`
+traces it; section 85 drives it.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

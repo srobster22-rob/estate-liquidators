@@ -8055,6 +8055,51 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a cloud's tick sparks the body it burns, with no projectile in the world", r.cloud >= 2 && r.cloud0 === 0, `peak ${r.cloud} sparks inside the stink, ${r.cloud0} left a third of a second after the field and the body are gone`);
   }
 
+  console.log("\n=== 85. FLIGHT HAS A RHYTHM ===");
+  {
+    // Reported: "flying sucks". Filmed (R299): hover for 2.9 s, then a drop
+    // of the whole height in a third of a second and 3.3 s on the ground
+    // before the key did anything again. A spent meter under a held key is a
+    // glide now; a held key on the ground takes off again once the meter is
+    // back; wings are a third faster than legs.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true);
+      let n = 0; while (!g.wings().can && n < 6) { document.getElementById("dvEvo").click(); n++; g.step(30, 1/60); }
+      g.clearEnemies(); g.place(0, 0); g.aim(0);
+      const form = g.stageNm(), can = g.wings().can, k = g.flyConsts();
+      // 1. hop, hold, fly the meter dry
+      g.jump(); for (let i = 0; i < 5; i++) g.stepRaw(1/60); g.holdJump(true);
+      let i = 0; while (i < 400 && !(g.wings().fly === false && g.wings().air && g.wings().wing < .1)) { g.stepRaw(1/60); i++; }
+      const spentAt = { frame: i, alt: g.wings().alt, wing: g.wings().wing };
+      // 2. the glide: still held, how long to the ground and how fast it came down
+      let glide = 0, fastest = 0; while (glide < 200 && g.wings().air) { g.stepRaw(1/60); glide++; fastest = Math.max(fastest, -g.vy()); }
+      const landed = !g.wings().air;
+      // 3. still held: does it lift off again by itself, and with what in the meter
+      let wait = 0, lift = null; while (wait < 300 && !g.wings().air) { g.stepRaw(1/60); wait++; }
+      if (g.wings().air) lift = { frame: wait, wing: g.wings().wing };
+      for (let j = 0; j < 30; j++) g.stepRaw(1/60);
+      const flyingAgain = g.wings().fly;
+      g.holdJump(false);
+      // 4. let go up there: the fall it always was
+      let fall = 0; while (fall < 120 && g.wings().air) { g.stepRaw(1/60); fall++; }
+      return { form, can, k, spentAt, glide, fastest, landed, lift, flyingAgain, fall };
+    });
+    ok("PYRAETHON flies the meter dry at 3.1 m in under four seconds",
+       r.can && r.spentAt.frame > 120 && r.spentAt.frame < 260 && r.spentAt.alt > 2.6,
+       `${r.form}: spent at frame ${r.spentAt.frame}, ${r.spentAt.alt} m up`);
+    ok("and comes down as a glide under the held key: most of a second, never faster than a walk",
+       r.landed && r.glide >= 40 && r.fastest <= r.k.glide + .05,
+       `${r.glide} frames to the ground, fastest ${r.fastest} m/s (glide cap ${r.k.glide})`);
+    ok("still held on the ground, it lifts off again by itself once the meter is back to sixty percent",
+       !!r.lift && r.lift.wing >= r.k.takeoff - .02 && r.lift.frame < 200 && r.flyingAgain,
+       r.lift ? `lifted at frame ${r.lift.frame} with ${r.lift.wing} in the meter, flying ${r.flyingAgain}` : "never lifted");
+    ok("let go and it is the fall it always was, and wings are a third faster than legs",
+       r.fall < 45 && r.k.spd >= 1.3 && r.k.drain <= .26 && r.k.fill >= .4,
+       `fell in ${r.fall} frames; speed x${r.k.spd}, drain ${r.k.drain}/s, fill ${r.k.fill}/s`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
