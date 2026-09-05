@@ -294,7 +294,7 @@ still asking the question.
 
 ### Every weapon, on the two axes that decide a run
 
-`dps.js` benches all ten weapons at rank 5 and evolved, inside the actual
+`dps.js` benches all ten weapons at their top rank and evolved, inside the actual
 sudden-death fight — horde present, gems pulling you back in, autopilot kiting —
 and attributes boss damage separately from crowd damage. Boss DPS decides whether
 you can *close* a run; crowd DPS decides whether you survive to try.
@@ -302,18 +302,18 @@ you can *close* a run; crowd DPS decides whether you survive to try.
 ```
                 TOP RANK                              EVOLVED
 weapon        boss  crowd  survived      name        boss  crowd  survived
-bat            265   2157     5:05    MEGABONK       1262   3776    15:17
-skulls         213   1990     9:28    CAROUSEL       1456   4102    14:57
-bolt           125   1202    15:43    BOLTSTORM      1256   3863    20:54
-pulse          220   2076    10:47    EARTHQUAKE      918   3917    15:41
-mortar         259   2027     9:23    SKYFALL         880   3948    15:17
-zap            224    860     9:21    THUNDERHEAD     606   1466    14:26
-aura           231   2174    10:39    PLAGUE         1225   3769    14:22
-gore           204   1932     6:51    STAMPEDE        674   4223    19:31
-caltrops       382   2044     4:06    SCORCHED EARTH 1479   3991     9:23
-brood          368   1076     6:30    THE PACK       1578   1961     9:48
-        median 231                            median 1256
-                              (dps n=3, survival n=4, paired seeds 20260821..)
+bat           377   2383     4:38    MEGABONK         1427   3873    12:21
+skulls        349   2310     8:28    CAROUSEL         1757   4640    12:45
+bolt          191   1395    11:19    BOLTSTORM        1101   4039    19:48
+pulse         208   2128    10:00    EARTHQUAKE        866   4017    16:06
+mortar        317   2257     8:10    SKYFALL          1051   4004    14:12
+zap           289    873     8:41    THUNDERHEAD      1486   1497    17:07
+aura          247   2252    10:39    PLAGUE           1236   3871    14:39
+gore          202   1858     6:12    STAMPEDE         1448   4141    14:58
+caltrops      377   2129     4:18    SCORCHED EARTH   1521   4395     9:08
+brood         499   1182     6:50    THE PACK         1647   1771     8:15
+        median 317                           median 1448
+          (dps n=8, survival n=5, paired seeds 20260821..20260828, as of R285)
 ```
 
 **This bench is paired.** The weapons were each measured on a different arena with a different
