@@ -678,19 +678,29 @@
     .gobar{display:flex;padding:6px 10px}
     #menu .wrap{padding-bottom:66px}
     #pauseHint{display:none}
+    .pfoot{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+    #paused #opts{margin:0}
+    #paused .opt{margin-top:0}
     #paused .wrap{width:min(940px,96vw)}
     .psheet{grid-template-columns:190px 1fr 300px;padding:8px 10px 2px}
     .psheet .kitbox{grid-column:3;grid-row:1}
     .psheet .kitbox .kit{gap:10px}
     .psheet .kit .ks{width:26px;height:30px}
     .psheet .cons{grid-column:1/-1}
-    #paused .btn{margin-top:8px;padding:9px 26px}
+    #paused #quitBtn{margin:0;padding:8px 22px}
     /* in play, the chain and rush bars sat 112px up the middle of the screen,
        which on 390px is across the animal's feet; they stand in the
        bottom-left corner instead, stacked, where nothing else is */
     #hop{left:14px;transform:none;bottom:40px}
     #rush{left:14px;transform:none;bottom:60px}
     #rule{left:14px;transform:none;bottom:80px}
+  }
+  /* A touch player learns the controls on the pause sheet and nowhere else,
+     and R292 hid the sheet's hints sideways to make the height. The two touch
+     lines stay, tightened; the footer's buttons share a row to pay for them.
+     A short desktop window keeps its seven mouse lines hidden. */
+  @media (max-height:520px) and (pointer:coarse){
+    #pauseHint{display:block;margin-top:6px;line-height:1.45;font-size:10px}
   }
   @media (max-height:520px) and (min-width:640px){
     #pick .wrap{width:min(900px,96vw);display:grid;grid-template-columns:1fr 270px;
@@ -723,10 +733,13 @@
     #endBody td{padding:3px 0}
     .kit.end .ks{width:24px;height:28px}
     #endBody .btn{margin-top:6px;padding:8px 20px}
+    #endBody .endR p{margin:2px 0}
+    #endBody .next{margin:4px auto 0}
   }
-  @media (max-height:375px) and (min-width:640px) and (max-width:700px){
+  @media (max-height:375px) and (min-width:640px) and (max-width:760px){
     #end .wrap{grid-template-columns:170px 1fr}
     .endpv{width:120px}
+    .kit.end{gap:6px} .kit.end .ks{width:21px;height:26px;font-size:11px}
   }
 </style>
 </head>
@@ -852,6 +865,7 @@
     past a full kit, every fifth level is a <b>MASTERY</b>: one thing you finished goes a rank further.<br>
     the world waits while you pick. <kbd>R</kbd> deals the hand again, <kbd>B</kbd> strikes a card from the run - once the shop has sold you them.
   </div>
+  <div class="pfoot">
   <div id="opts">
     <button class="btn gh opt" id="sndBtn">SOUND: ON</button>
     <button class="btn gh opt" id="mtnBtn">SCREEN SHAKE: ON</button>
@@ -863,6 +877,7 @@
     <button class="btn gh dv" id="dvGod">GODMODE</button>
   </div>
   <button class="btn gh" id="quitBtn">ABANDON RUN</button>
+  </div>
 </div></div>
 
 <script>

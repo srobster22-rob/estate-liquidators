@@ -7847,8 +7847,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.drainPicks(true); g.stepRaw(1/60);
         g.pause(true);
         const pz = document.querySelector("#paused .wrap");
-        const pause = { scroll: scrolls(pz), quit: byId("quitBtn"), stats: rect(document.querySelector(".psheet .pb:not(.run):not(.kitbox)")),
-                        kit: rect(document.querySelector(".psheet .kitbox")), hint: disp(document.getElementById("pauseHint")), vh: innerHeight };
+        const pause = { scroll: scrolls(pz), quit: byId("quitBtn"), opts: byId("opts"), stats: rect(document.querySelector(".psheet .pb:not(.run):not(.kitbox)")),
+                        kit: rect(document.querySelector(".psheet .kitbox")), hint: disp(document.getElementById("pauseHint")), hintR: byId("pauseHint"),
+                        hintLines: (document.getElementById("pauseHint").innerHTML.match(/<br/g) || []).length + 1, vh: innerHeight };
         g.pause(false);
         g.hitMe(1e12); g.step(2, 1/60); g.deathStep(120, 1/60);
         const eb = document.getElementById("endBody");
@@ -7858,7 +7859,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       });
       await ctx.close(); return r;
     };
-    const side = await probe(844, 390, true), desk = await probe(1280, 800, false);
+    const side = await probe(844, 390, true), small = await probe(740, 360, true), desk = await probe(1280, 800, false);
     // the animal's box on screen, generously: 70px either side of its feet, 130px up, 12px down
     const onFeet = (r, f) => !!r && !!f && r.r >= f[0] - 70 && r.l <= f[0] + 70 && r.b >= f[1] - 130 && r.t <= f[1] + 12;
     const centred = (r, vw) => !!r && Math.abs((r.l + r.r) / 2 - vw / 2) < 4;
@@ -7875,15 +7876,22 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        side.hand.picking && side.hand.rows === 4 && side.hand.tb === 2 && !side.hand.scroll && inView(side.hand.kit, side.hand.vh)
        && side.hand.tools.l >= side.hand.cards.r - 2 && side.hand.kit.l >= side.hand.cards.r - 2,
        `${side.hand.rows} rows, ${side.hand.tb} tools, scroll ${side.hand.scroll}, cards to x${side.hand.cards && side.hand.cards.r}, tools from x${side.hand.tools && side.hand.tools.l}, kit ${span(side.hand.kit)} of ${side.hand.vh}`);
-    ok("sideways, the pause sheet fits without scrolling: the kit takes a third column, the hints go, ABANDON is on screen",
-       !side.pause.scroll && inView(side.pause.quit, side.pause.vh) && side.pause.hint === "none" && side.pause.kit && side.pause.stats && side.pause.kit.l >= side.pause.stats.r - 2,
-       `scroll ${side.pause.scroll}, ABANDON ${span(side.pause.quit)} of ${side.pause.vh}, hints ${side.pause.hint}, stats to x${side.pause.stats && side.pause.stats.r}, kit from x${side.pause.kit && side.pause.kit.l}`);
+    ok("sideways, the pause sheet fits without scrolling: the kit takes a third column, the two touch hint lines stay, ABANDON shares a row with the options",
+       !side.pause.scroll && inView(side.pause.quit, side.pause.vh) && side.pause.kit && side.pause.stats && side.pause.kit.l >= side.pause.stats.r - 2
+       && side.pause.hint === "block" && side.pause.hintLines === 2 && side.pause.hintR.h > 0 && side.pause.hintR.h <= 40
+       && side.pause.opts && side.pause.quit.t < side.pause.opts.b && side.pause.quit.b > side.pause.opts.t,
+       `scroll ${side.pause.scroll}, ABANDON ${span(side.pause.quit)} of ${side.pause.vh}, options ${span(side.pause.opts)}, hints ${side.pause.hint} ${side.pause.hintLines} lines ${side.pause.hintR && side.pause.hintR.h}px tall, stats to x${side.pause.stats && side.pause.stats.r}, kit from x${side.pause.kit && side.pause.kit.l}`);
+    ok("and at 740x360, a Galaxy sideways, the hand, the sheet with its hints and the results still fit with every button on screen",
+       small.hand.picking && small.hand.rows === 4 && !small.hand.scroll && inView(small.hand.kit, small.hand.vh)
+       && !small.pause.scroll && small.pause.hint === "block" && inView(small.pause.quit, small.pause.vh)
+       && small.end.over && !small.end.scroll && inView(small.end.again, small.end.vh),
+       `hand scroll ${small.hand.scroll} kit ${span(small.hand.kit)}; sheet scroll ${small.pause.scroll} hints ${small.pause.hint} ABANDON ${span(small.pause.quit)}; results scroll ${small.end.scroll} RUN AGAIN ${span(small.end.again)} of ${small.end.vh}`);
     ok("sideways, the results put the portrait beside the table and RUN AGAIN on screen without scrolling",
        side.end.over && !side.end.scroll && side.end.disp === "grid" && side.end.table.l >= side.end.pv.r - 2 && inView(side.end.again, side.end.vh),
        `over ${side.end.over}, scroll ${side.end.scroll}, ${side.end.disp}, portrait to x${side.end.pv && side.end.pv.r}, table from x${side.end.table && side.end.table.l}, RUN AGAIN ${span(side.end.again)} of ${side.end.vh}`);
-    ok("and at 1280x800 nothing moved: the results stack with the table under the title, the START bar stays hidden, the chain bar is centred",
+    ok("and at 1280x800 nothing moved: the results stack with the table under the title, the START bar stays hidden, the chain bar is centred, ABANDON sits under the options",
        desk.end.disp === "block" && desk.end.table.t >= desk.end.h1.b - 1 && inView(desk.end.again, desk.end.vh) && desk.menu.bar === "none" && desk.menu.start !== "none"
-       && centred(desk.play.hop, desk.play.vw),
+       && centred(desk.play.hop, desk.play.vw) && desk.pause.hint === "block" && desk.pause.quit.t >= desk.pause.opts.b,
        `results ${desk.end.disp}, title to y${desk.end.h1 && desk.end.h1.b}, table from y${desk.end.table && desk.end.table.t}, RUN AGAIN ${span(desk.end.again)} of ${desk.end.vh}, bar ${desk.menu.bar}, panel button ${desk.menu.start}, hop x${desk.play.hop && desk.play.hop.l}-${desk.play.hop && desk.play.hop.r} of ${desk.play.vw}`);
   }
 

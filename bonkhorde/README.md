@@ -280,7 +280,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **714 passing** as of R293, with 229 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **715 passing** as of R294, with 230 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -716,6 +716,9 @@ without scrolling at 740x360, 667x375, 844x390 and 932x430; section 81 measures 
 same screen the hop chain and rush bars, 112px up the middle, were drawn across the animal's feet;
 under 520px tall they stand stacked in the bottom-left corner instead (R293). `g.playerScreen()` and
 `g.screenOf(x,y,z)` project a world point to CSS pixels off the last rendered frame, for checks like it.
+The sheet's touch hints came back sideways (R294): they are the only place a touch player is told how
+to move, look and jump, and R292 had hidden them for the height. The footer's options and ABANDON
+share a row to pay for the two lines; a short desktop window keeps its seven mouse lines hidden.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

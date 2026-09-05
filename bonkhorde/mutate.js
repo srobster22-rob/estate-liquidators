@@ -398,10 +398,15 @@ const MUTANTS = [
         "fold and the receipt has to be scrolled to be finished",
     from:"    #end .wrap{width:min(940px,96vw);display:grid;",
     to:  "    #end .wrap{width:min(940px,96vw);display:block;" },
-  { id:"sideways-hints-stay", must:"81",
-    why:"the pause sheet keeps its two lines of hints on a 390px-tall " +
-        "screen, and ABANDON RUN goes below the fold with them",
-    from:"    #pauseHint{display:none}\n",
+  { id:"sideways-hints-go", must:"81",
+    why:"the pause sheet hides its hints on a phone held sideways again - " +
+        "the only place a touch player is told how to move, look and jump",
+    from:"    #pauseHint{display:block;margin-top:6px;line-height:1.45;font-size:10px}\n",
+    to:  "" },
+  { id:"sideways-footer-stacks", must:"81",
+    why:"the sheet's options and ABANDON stack again sideways, and with the " +
+        "hints back a 360px Galaxy has to scroll for the button",
+    from:"    .pfoot{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}\n",
     to:  "" },
   { id:"sideways-chain-on-the-feet", must:"81",
     why:"the hop chain bar goes back to the middle of a phone held sideways - " +
