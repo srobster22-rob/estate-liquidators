@@ -403,6 +403,11 @@ const MUTANTS = [
         "screen, and ABANDON RUN goes below the fold with them",
     from:"    #pauseHint{display:none}\n",
     to:  "" },
+  { id:"sideways-chain-on-the-feet", must:"81",
+    why:"the hop chain bar goes back to the middle of a phone held sideways - " +
+        "112px up a 390px screen is across the animal's feet",
+    from:"    #hop{left:14px;transform:none;bottom:40px}\n",
+    to:  "" },
   { id:"beat-no-rearup", must:"34",
     why:"the slam's wind-up no longer stands the boss up - the tell is a lean " +
         "with no height in it, so the biggest hit in the game has the smallest " +

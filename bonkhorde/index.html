@@ -685,6 +685,12 @@
     .psheet .kit .ks{width:26px;height:30px}
     .psheet .cons{grid-column:1/-1}
     #paused .btn{margin-top:8px;padding:9px 26px}
+    /* in play, the chain and rush bars sat 112px up the middle of the screen,
+       which on 390px is across the animal's feet; they stand in the
+       bottom-left corner instead, stacked, where nothing else is */
+    #hop{left:14px;transform:none;bottom:40px}
+    #rush{left:14px;transform:none;bottom:60px}
+    #rule{left:14px;transform:none;bottom:80px}
   }
   @media (max-height:520px) and (min-width:640px){
     #pick .wrap{width:min(900px,96vw);display:grid;grid-template-columns:1fr 270px;
@@ -14861,6 +14867,9 @@ window.__g = {
   botHop:(on=true)=>botHop=on,
   clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
   camInfo:()=>({ fov:+camFov.toFixed(3), dist:+camDist.toFixed(2) }),
+  // where a world point lands on the screen, in CSS px, off the last rendered frame
+  screenOf:(x,y,z)=>{ const s = VPM ? project(x,y,z) : null; return s ? [Math.round(s[0]), Math.round(s[1])] : null; },
+  playerScreen:()=>{ const s = P && VPM ? project(P.x,P.y,P.z) : null; return s ? [Math.round(s[0]), Math.round(s[1])] : null; },
   alertBox:()=>lastAlertBox,
   rim:   ()=>RIM,
   sfx:      ()=>Object.assign({}, sfxCount),

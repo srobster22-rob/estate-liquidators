@@ -7826,7 +7826,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const probe = async (w, h, mobile) => {
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: mobile, isMobile: mobile, deviceScaleFactor: 1 });
       const pg = await ctx.newPage(); await pg.goto(FILE, { waitUntil: "load" }); await pg.waitForTimeout(500);
-      const r = await pg.evaluate(() => {
+      const r = await pg.evaluate(async () => {
         const g = window.__g;
         const rect = el => { if (!el) return null; const b = el.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom), l: Math.round(b.left), r: Math.round(b.right), h: Math.round(b.height) }; };
         const byId = id => rect(document.getElementById(id));
@@ -7837,6 +7837,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const menu = { bar: disp(document.getElementById("goBar")), go: byId("goBtn"), start: disp(document.getElementById("startBtn")), vh: innerHeight };
         // a four-row hand with both tools
         g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+        // in play: where the chain bar stands against where the animal stands (a rendered frame first, so the projection is live)
+        await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+        const play = { hop: byId("hop"), rush: byId("rush"), feet: g.playerScreen(), vw: innerWidth, vh: innerHeight };
         g.drainPicks(false); g.xp(90000); g.stepRaw(1/60);
         const pw = document.querySelector("#pick .wrap"), cards = document.getElementById("pkCards");
         const hand = { picking: g.state().picking, rows: cards.querySelectorAll(".card").length, tb: document.querySelectorAll("#pkTools .tb").length,
@@ -7851,16 +7854,23 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const eb = document.getElementById("endBody");
         const end = { over: g.state().over, scroll: scrolls(eb), disp: disp(eb), pv: rect(eb.querySelector(".endpv")), h1: rect(eb.querySelector("h1")),
                       table: rect(eb.querySelector("table")), again: byId("againBtn"), vh: innerHeight };
-        return { menu, hand, pause, end };
+        return { menu, play, hand, pause, end };
       });
       await ctx.close(); return r;
     };
     const side = await probe(844, 390, true), desk = await probe(1280, 800, false);
+    // the animal's box on screen, generously: 70px either side of its feet, 130px up, 12px down
+    const onFeet = (r, f) => !!r && !!f && r.r >= f[0] - 70 && r.l <= f[0] + 70 && r.b >= f[1] - 130 && r.t <= f[1] + 12;
+    const centred = (r, vw) => !!r && Math.abs((r.l + r.r) / 2 - vw / 2) < 4;
     const inView = (r, vh) => !!r && r.h > 0 && r.t >= 0 && r.b <= vh;
     const span = r => r ? `${r.t}-${r.b}` : "none";
     ok("sideways at 844x390, the PLAY tab carries START in the bar on the first screen and hides the panel's own button",
        side.menu.bar === "flex" && inView(side.menu.go, side.menu.vh) && side.menu.start === "none",
        `bar ${side.menu.bar}, START ${span(side.menu.go)} of ${side.menu.vh}, panel button ${side.menu.start}`);
+    ok("sideways in play, the hop chain and rush bars stand clear of the animal, on screen, and stacked in the bottom-left corner",
+       side.play.feet && !onFeet(side.play.hop, side.play.feet) && !onFeet(side.play.rush, side.play.feet) && side.play.hop.l < 40
+       && side.play.hop.t >= 0 && side.play.hop.b <= side.play.vh && side.play.rush.b <= side.play.hop.t,
+       `feet at ${side.play.feet && side.play.feet.join(",")}; hop x${side.play.hop && side.play.hop.l}-${side.play.hop && side.play.hop.r} y${side.play.hop && side.play.hop.t}-${side.play.hop && side.play.hop.b}, rush y${side.play.rush && side.play.rush.t}-${side.play.rush && side.play.rush.b} of ${side.play.vh}`);
     ok("sideways, a four-row hand with both tools fits without scrolling: the tools and the kit stand beside the rows",
        side.hand.picking && side.hand.rows === 4 && side.hand.tb === 2 && !side.hand.scroll && inView(side.hand.kit, side.hand.vh)
        && side.hand.tools.l >= side.hand.cards.r - 2 && side.hand.kit.l >= side.hand.cards.r - 2,
@@ -7871,9 +7881,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("sideways, the results put the portrait beside the table and RUN AGAIN on screen without scrolling",
        side.end.over && !side.end.scroll && side.end.disp === "grid" && side.end.table.l >= side.end.pv.r - 2 && inView(side.end.again, side.end.vh),
        `over ${side.end.over}, scroll ${side.end.scroll}, ${side.end.disp}, portrait to x${side.end.pv && side.end.pv.r}, table from x${side.end.table && side.end.table.l}, RUN AGAIN ${span(side.end.again)} of ${side.end.vh}`);
-    ok("and at 1280x800 nothing moved: the results stack with the table under the title, the START bar stays hidden",
-       desk.end.disp === "block" && desk.end.table.t >= desk.end.h1.b - 1 && inView(desk.end.again, desk.end.vh) && desk.menu.bar === "none" && desk.menu.start !== "none",
-       `results ${desk.end.disp}, title to y${desk.end.h1 && desk.end.h1.b}, table from y${desk.end.table && desk.end.table.t}, RUN AGAIN ${span(desk.end.again)} of ${desk.end.vh}, bar ${desk.menu.bar}, panel button ${desk.menu.start}`);
+    ok("and at 1280x800 nothing moved: the results stack with the table under the title, the START bar stays hidden, the chain bar is centred",
+       desk.end.disp === "block" && desk.end.table.t >= desk.end.h1.b - 1 && inView(desk.end.again, desk.end.vh) && desk.menu.bar === "none" && desk.menu.start !== "none"
+       && centred(desk.play.hop, desk.play.vw),
+       `results ${desk.end.disp}, title to y${desk.end.h1 && desk.end.h1.b}, table from y${desk.end.table && desk.end.table.t}, RUN AGAIN ${span(desk.end.again)} of ${desk.end.vh}, bar ${desk.menu.bar}, panel button ${desk.menu.start}, hop x${desk.play.hop && desk.play.hop.l}-${desk.play.hop && desk.play.hop.r} of ${desk.play.vw}`);
   }
 
   console.log("\n" + "=".repeat(58));
