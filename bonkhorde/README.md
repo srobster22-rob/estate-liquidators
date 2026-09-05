@@ -282,7 +282,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **733 passing** as of R299, with 243 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **737 passing** as of R300, with 244 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -751,6 +751,14 @@ height), a key held on the ground lifts off again by itself once the meter is ba
 wings are a third faster than legs; the meter lasts 3.8 s and refills in 2.5. One held key is the whole
 rhythm: fly, glide down, breathe, lift. Let go and it is the fall it always was. `film/flyfilm.js`
 traces it; section 85 drives it.
+
+**The world keeps time on a slow machine (R300, the last of "the game feels slow to play").** The
+world took one step per frame, of the frame's length clamped at 42 ms, so a machine drawing twenty
+frames a second played the game at 84% speed and one drawing ten at 42%; on such a machine "slow"
+was literally true whatever the weapons looked like. A frame longer than 42 ms is now paid out in
+equal steps of at most 42 ms, up to six: real time down to four frames a second, and below that the
+world slows rather than the frame spiralling. A frame under 42 ms takes the one step it always took.
+`g.tick(nowMs)` hands the loop a frame at a chosen time; section 86 hands it slow ones.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

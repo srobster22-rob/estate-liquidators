@@ -6054,7 +6054,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.spawnAt(kind, 0, 6); g.step(2, 1/60);            // it faces the player: lateral is x
         g.slay(1); g.pause();
         const cap = async u => { while ((g.corpses()[0] || { u: 9 }).u < u) g.corpseStep(1, 1/60);
-          g.captureCorpse(); g.resume(); await frame(); await frame(); g.pause();
+          // rendered frames, PAUSED: the corpse pass draws (and captures) while paused, and since R300 a
+          // slow headless frame would pay out up to a quarter second of world and finish the fall
+          g.captureCorpse(); await frame(); await frame();
           const c = g.corpseBox(), boxes = [];
           for (let i = 0; i < c.n; i++) { const o = g.corpseBox(i); boxes.push({ x: o.ax, y: o.ay }); }
           return { u: g.corpses()[0].u, c, boxes }; };
@@ -6692,7 +6694,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // a frame BEFORE the capture is armed: the lift the legs earn is read
       // the frame after they earn it, and a rank that has just been given has
       // not been drawn yet
-      const cap = async () => { g.resume(); g.step(2, 1/60); await frame(); g.capturePos(); await frame(); await frame();
+      const cap = async () => { g.stepRaw(1/60); g.stepRaw(1/60); g.pause(true); /* captured PAUSED (R300): a slow headless frame now pays out up to a quarter second of world, which moved the wings between reads */ await frame(); g.capturePos(); await frame(); await frame();
         const b = g.posOut(); if (!b) return []; const bx = []; for (let i = 0; i < b.length / 6; i++) bx.push(b.slice(i*6, i*6+6)); return bx; };
       // layout (r, f, y, hx, hz, hy)
       const minY = bx => Math.min(...bx.map(x => x[2] - x[5]));
@@ -7016,7 +7018,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
       const boot = (ch, st) => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start(ch); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
         g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); if (st) g.evolveTo(st); g.step(30, 1/60); };
-      const cap = async () => { g.resume(); g.step(2, 1/60); await frame(); g.capturePos(); await frame(); await frame();
+      const cap = async () => { g.stepRaw(1/60); g.stepRaw(1/60); g.pause(true); /* captured PAUSED (R300): a slow headless frame now pays out up to a quarter second of world, which moved the wings between reads */ await frame(); g.capturePos(); await frame(); await frame();
         const b = g.posOut(); if (!b) return []; const bx = []; for (let i = 0; i < b.length / 6; i++) bx.push(b.slice(i*6, i*6+6)); return bx; };
       const comps = (bx) => { const n = bx.length, ov = (A, B, k) => Math.min(A[k]+A[k+3], B[k]+B[k+3]) - Math.max(A[k]-A[k+3], B[k]-B[k+3]);
         const par = Array.from({ length: n }, (_, i) => i); const find = a => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
@@ -8098,6 +8100,38 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("let go and it is the fall it always was, and wings are a third faster than legs",
        r.fall < 45 && r.k.spd >= 1.3 && r.k.drain <= .26 && r.k.fill >= .4,
        `fell in ${r.fall} frames; speed x${r.k.spd}, drain ${r.k.drain}/s, fill ${r.k.fill}/s`);
+  }
+
+  console.log("\n=== 86. THE WORLD KEEPS TIME ON A SLOW MACHINE ===");
+  {
+    // The last of "the game feels slow to play" (R300). The world took one
+    // step per frame, clamped at 42 ms, so a machine drawing twenty frames a
+    // second played at 84% speed and one drawing ten at 42%. A long frame is
+    // paid out in equal steps of at most 42 ms now, up to six; a short frame
+    // takes the one step it always took.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true); g.clearEnemies();
+      // fake wall-clock frames, all in the past so the real loop's next frame is an ordinary one
+      let now = performance.now() - 2000;
+      const frameOf = ms => { const t0 = g.tick(now); now += ms; const t1 = g.tick(now); return +(t1 - t0).toFixed(4); };
+      const fast = frameOf(16), normal = frameOf(40), slow = frameOf(100), crawl = frameOf(200), hidden = frameOf(1000);
+      g.pause(true); const paused = frameOf(100); g.pause(false);
+      const plan = { f16: g.simSteps(.016), f100: g.simSteps(.1), f300: g.simSteps(.3) };
+      return { fast, normal, slow, crawl, hidden, paused, plan };
+    });
+    const close = (a, b) => Math.abs(a - b) < .003;
+    ok("a 16 ms frame and a 40 ms frame each take the one step they always took",
+       close(r.fast, .016) && close(r.normal, .040) && r.plan.f16.n === 1,
+       `16 ms -> ${r.fast} s, 40 ms -> ${r.normal} s (${r.plan.f16.n} step)`);
+    ok("a 100 ms frame moves the world 100 ms, in three steps of a third - real time at ten frames a second",
+       close(r.slow, .100) && r.plan.f100.n === 3 && close(r.plan.f100.d, 1/30),
+       `100 ms -> ${r.slow} s in ${r.plan.f100.n} steps of ${r.plan.f100.d}`);
+    ok("a 200 ms frame moves it 200 ms; past 252 ms the world slows rather than the frame spiralling",
+       close(r.crawl, .200) && r.plan.f300.n === 6 && close(r.plan.f300.d * r.plan.f300.n, .252) && close(r.hidden, .252),
+       `200 ms -> ${r.crawl} s; 300 ms planned as ${r.plan.f300.n} x ${r.plan.f300.d}; a second away -> ${r.hidden} s`);
+    ok("and a paused frame moves nothing, however long it was", r.paused === 0, `paused 100 ms -> ${r.paused} s`);
   }
 
   console.log("\n" + "=".repeat(58));

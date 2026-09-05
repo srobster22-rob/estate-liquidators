@@ -14603,10 +14603,25 @@ function pulse(d){
   blip(root, .17, "sine", .10 + dens*.05, .55);
   if(dens > .45) blip(root*4, .05, "triangle", .022 + dens*.02, 1.4);
 }
-function frame(now){
-  const raw = (now-last)/1000; dt = Math.min(.042, raw); last = now;
+// THE WORLD KEEPS TIME ON A SLOW MACHINE (R300, the last of "the game feels
+// slow to play"). The world took ONE step per frame, of the frame's length
+// clamped at 42 ms - so a machine drawing twenty frames a second played the
+// game at 84% speed, one drawing ten at 42%, and on such a machine "slow" was
+// literally true, whatever the weapons looked like. A frame longer than 42 ms
+// is now paid out in equal steps of at most 42 ms, up to six of them: real
+// time down to four frames a second, and below that the world slows rather
+// than the frame spiralling. A frame under 42 ms takes the one step it always
+// took, so nothing changes where nothing was wrong.
+const SIM_MAX_DT = .042, SIM_MAX_STEPS = 6;
+function simSteps(raw){                 // how the frame's time is paid out
+  if(raw <= SIM_MAX_DT) return { n:1, d:raw };
+  const n = Math.min(SIM_MAX_STEPS, Math.ceil(raw / SIM_MAX_DT));
+  return { n, d: Math.min(raw, SIM_MAX_STEPS*SIM_MAX_DT) / n };
+}
+function tick(now){
+  const raw = clamp((now-last)/1000, 0, .25); dt = Math.min(SIM_MAX_DT, raw); last = now;
   if(hitstop > 0) hitstop -= dt;
-  else if(running && !over && !paused) step(dt);
+  else if(running && !over && !paused){ const s = simSteps(raw); for(let i=0;i<s.n;i++) step(s.d); }
   // The horde's fall is on the world clock - it holds through the hitstop of
   // the blow, which IS the impact frame - but a run's end stops the world,
   // and the last boss should still hit the floor under the VICTORY banner.
@@ -14625,8 +14640,8 @@ function frame(now){
   // scratch viewport can never show through a menu that is not fully opaque.
   if(menuUp) drawPortraits();
   render(); hud();
-  requestAnimationFrame(frame);
 }
+function frame(now){ tick(now); requestAnimationFrame(frame); }
 openMenu();
 requestAnimationFrame(frame);
 
@@ -15030,6 +15045,9 @@ window.__g = {
   popCount:()=>pops.length + cpops.length,
   setCrit:(v)=>{ P.crit = v; return P.crit; },
   flyConsts:()=>({ h:FLY_H, drain:FLY_DRAIN, fill:FLY_FILL, spd:FLY_SPD, glide:FLY_GLIDE, takeoff:FLY_TAKEOFF }),
+  // one frame of the real loop at a chosen wall-clock time (ms), for the suite to hand it slow frames
+  tick:(nowMs)=>{ tick(nowMs); return +T.toFixed(4); },
+  simSteps:(raw)=>simSteps(raw),
   vy:()=>+P.vy.toFixed(3),
   // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
   fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,
