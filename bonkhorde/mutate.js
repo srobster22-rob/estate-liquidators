@@ -969,6 +969,11 @@ const MUTANTS = [
     why:"a cache with nothing left to deal hands out a silent level again",
     from:"            if(mh.length){ showPick(mh, cacheDealer); evStats.cacheMast = (evStats.cacheMast||0) + 1; gave = \"MASTERY\"; }",
     to:  "            if(false){ }" },
+  // ---- R283: the panels fit a small phone (section 75)
+  { id:"caption-will-not-wrap", must:"75",
+    why:"the caption keeps its one line on a 360px phone, so it runs out of the panel or breaks the banner word",
+    from:"    #pick .sub{white-space:normal;text-align:right;line-height:1.4;font-size:8.5px}",
+    to:  "    #pick .sub{text-align:right}" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

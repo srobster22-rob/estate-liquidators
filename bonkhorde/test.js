@@ -7629,6 +7629,33 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and taking one carries a finished growth a rank further", r.rankBefore === 3 && r.rankAfter === 4, `${r.first}: rank ${r.rankBefore} -> ${r.rankAfter}`);
   }
 
+  console.log("\n=== 75. THE PANELS FIT A SMALL PHONE ===");
+  {
+    // 360x640, the small Android: the level-up panel must fit without
+    // scrolling with four rows, two buttons and the kit, and its banner word
+    // must stay on one line - it broke into "LEVEL / UP" when the word, the
+    // level chip and a long caption shared the row.
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pg = await ctx.newPage(); await pg.goto(FILE, { waitUntil: "load" }); await pg.waitForTimeout(500);
+    const r = await pg.evaluate(() => {
+      const g = window.__g; g.wipeSave(); g.setSave({ up:{ reroll:1, banish:1 } }); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(false); g.xp(2000); g.step(1, 1/60);                 // a queue, so the caption carries "MORE QUEUED"
+      const wrap = document.querySelector("#pick .wrap"), h1 = document.querySelector("#pick h1"), title = document.getElementById("pkTitle");
+      const w = wrap.getBoundingClientRect(), t = title.getBoundingClientRect(), lv = document.querySelector("#pick .lvl").getBoundingClientRect();
+      const sub = document.getElementById("pkSub").getBoundingClientRect();
+      return { picking: g.state().picking, rows: document.querySelectorAll("#pkCards .card").length, tools: document.querySelectorAll("#pkTools .tb").length,
+               top: Math.round(w.top), bottom: Math.round(w.bottom), vh: innerHeight, scroll: wrap.scrollHeight > wrap.clientHeight + 1,
+               titleH: Math.round(t.height), titleLines: Math.round(t.height / parseFloat(getComputedStyle(h1).fontSize)), sub: document.getElementById("pkSub").textContent,
+               chipOnRow: Math.abs((lv.top + lv.bottom) / 2 - (t.top + t.bottom) / 2) < 8,
+               subInside: sub.right <= w.right + 1 && sub.left >= lv.right - 1 };
+    });
+    await ctx.close();
+    ok("at 360x640 a four-row hand with both buttons and the kit fits without scrolling",
+       r.picking && r.rows === 4 && r.tools === 2 && r.top >= 0 && r.bottom <= r.vh && !r.scroll, `panel ${r.top}-${r.bottom} of ${r.vh}, ${r.rows} rows, ${r.tools} buttons, scroll ${r.scroll}`);
+    ok("and LEVEL UP stays on one line with its level chip beside it, the caption wrapping inside the panel instead",
+       r.titleLines <= 1 && r.chipOnRow && r.subInside && /MORE QUEUED/.test(r.sub), `title ${r.titleH}px tall (~${r.titleLines} line), chip on the row ${r.chipOnRow}, caption inside ${r.subInside}, "${r.sub}"`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

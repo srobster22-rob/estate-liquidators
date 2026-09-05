@@ -291,6 +291,13 @@
     .kit{gap:8px}
     .kit .ks{width:26px;height:32px;font-size:13px}
   }
+  /* a 360px phone: the banner's three parts - the word, the level chip, the
+     caption - shared one row and the word broke in two ("LEVEL / UP"). The
+     word stays whole and the caption is the part that wraps. */
+  @media (max-width:400px){
+    #pick h1{font-size:14px;letter-spacing:.1em;white-space:nowrap;flex:none}
+    #pick .sub{white-space:normal;text-align:right;line-height:1.4;font-size:8.5px}
+  }
   .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
   /* the rule meter - same shape as the hop chain readout, its own colours */
