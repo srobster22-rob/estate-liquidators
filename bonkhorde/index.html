@@ -1050,6 +1050,7 @@ function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
   nbox++;                              // flush is free correctness insurance
   if(wCap) wCap.push(x, y, z, sx, sy, sz);
+  if(fxCap) fxCap.push(x, y, z, sx, sy, sz, emit||0);
 
   const e = emit||0, co = Math.cos(yaw||0), si = Math.sin(yaw||0), rot = !!yaw;
   for(let i=0;i<36;i++){
@@ -3975,7 +3976,7 @@ let P = null;
 let statArcs=0, statRings=0, statZones=0, statShells=0, statBolts=0;
 let pets=[];
 let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
-    arcs=[], pops=[], nums=[], spits=[], alerts=[], hazards=[], events=[];
+    arcs=[], pops=[], cpops=[], nums=[], spits=[], alerts=[], hazards=[], events=[];
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62, camZoom=1;
 let camEye=[0,0,0];                     // last rendered eye, so a test can see it
@@ -7875,6 +7876,7 @@ const CORPSE_MAX = 48;
 // world-space capture of one drawn corpse (test hook): eb()'s capture records
 // the plan before the pose, and the whole point of a corpse is the pose
 let wCap = null, wCapOut = null, wCapWant = false;
+let fxCap = null;                        // capFrame(): every box of one frame, x y z sx sy sz emit
 let ewCapWant = false, ewCapOut = null;   // the same world-space capture, of the first LIVE body drawn
 
 let bossIdx=0, nextSpawn=0, charId="intern", usedRevive=false, pendingLevels=0, dt=0;
@@ -8262,7 +8264,7 @@ function startRun(id){
   if(ch.gift) P.kit[ch.gift] = { key:ch.gift, l:0, t:0, evo:false };
 
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[]; pets=[];
-  arcs=[]; pops=[]; nums=[]; spits=[]; alerts=[]; hazards=[]; corpses=[];
+  arcs=[]; pops=[]; cpops=[]; nums=[]; spits=[]; alerts=[]; hazards=[]; corpses=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
   // THE OPENING. The director spawns at 1.2 a second on an off-screen ring and
   // the first thing to arrive walks at 2.5 m/s, so the first ten seconds of
@@ -9055,6 +9057,25 @@ function fireBat(w,s){
   });
   SFX.bonk();
   if(w.evo) shake = Math.max(shake, .5);
+}
+// A SPARK IS A HIT YOU CAN SEE. Reported (R296): "the upgrades are just blocks
+// and look bad to play with" - a bolt was one box, a ring a dotted line, a
+// shell a cube, and a hit was a number. The weapons draw as shapes now, with
+// trails and bursts, and this is the burst: a few bright, fast, short-lived
+// motes out of the pop pool, at the point of the hit.
+// COSMETIC RANDOMNESS IS NOT THE SIM'S, AND NEITHER IS ITS POOL. rnd() is the
+// seeded stream every pinned run replays; a spark that drew from it moved
+// every seeded run that fired a bolt (section 79's seed 41 stopped getting
+// bitten). And the pop pool's fullness gates seeded draws (a death's debris
+// is "if there is room, roll"), so a cosmetic spark in THAT pool made three
+// pinned trials disagree at the kill (section 56). Sparks roll unseeded and
+// live in their own pool, cpops, stepped and drawn beside the sim's.
+const crnd = (a,b) => a + Math.random()*(b-a);
+function spark(x,y,z,c,n,sp){
+  sp = sp || 5;
+  for(let k=0;k<(n||3) && cpops.length<400;k++)
+    cpops.push({ x,y,z, vx:crnd(-sp,sp), vy:crnd(1,sp), vz:crnd(-sp,sp),
+                 life:crnd(.14,.26), c, s:crnd(.08,.14), e:1 });
 }
 function fireBolt(w,s){
   // WARCHOIR, THE LEGION's apex power: five heads, five voices - every volley
@@ -10405,6 +10426,8 @@ function updateProjectiles(dt){
       while(da> Math.PI) da-=TAU; while(da<-Math.PI) da+=TAU;
       b.a += clamp(da, -4.2*dt, 4.2*dt);
     }
+    // the comet's tail: the last six places it was, newest first (drawn in render)
+    (b.tr || (b.tr = [])).unshift([b.x, b.y, b.z]); if(b.tr.length > 6) b.tr.length = 6;
     b.x += Math.sin(b.a)*b.spd*dt; b.z += Math.cos(b.a)*b.spd*dt;
     b.y = groundY(b.x,b.z)+1.0;
     b.life -= dt;
@@ -10413,6 +10436,7 @@ function updateProjectiles(dt){
       b.hit.add(e); b.pierce--;
       const roll = dmgOut(b.d);
       hurt(e, roll.d, Math.sin(b.a)*4, Math.cos(b.a)*4, roll.crit);
+      spark(b.x, b.y, b.z, b.evo ? [1,.8,.45] : [.85,1,1], 3, 5);
     });
     if(b.life<=0 || b.pierce<=0 || Math.abs(b.x)>ARENA || Math.abs(b.z)>ARENA)
       bolts.splice(i,1);
@@ -10422,9 +10446,15 @@ function updateProjectiles(dt){
     if(m.t >= m.dur){
       damageArea(m.tx, m.tz, m.rad, m.d, 9);
       rings.push({ x:m.tx, z:m.tz, y:groundY(m.tx,m.tz), r:0, max:m.rad, life:.3, mx:.3, hot:true });
+      // the eight embers it always threw, off the seeded stream exactly as before
       for(let k=0;k<8;k++) if(pops.length<340)
         pops.push({ x:m.tx, y:groundY(m.tx,m.tz)+.4, z:m.tz, vx:rnd(-7,7), vy:rnd(3,10),
-                    vz:rnd(-7,7), life:rnd(.3,.6), c:[1,.6,.2], s:.24 });
+                    vz:rnd(-7,7), life:rnd(.3,.6), c:[1,.6,.2], s:.24, e:.5 });
+      // and the rest of the burst, cosmetic: six more in two sizes, dark smoke among them, and sparks
+      for(let k=0;k<6;k++) if(cpops.length<400)
+        cpops.push({ x:m.tx, y:groundY(m.tx,m.tz)+.4, z:m.tz, vx:crnd(-8,8), vy:crnd(3,11),
+                    vz:crnd(-8,8), life:crnd(.3,.65), c:k%2 ? [1,.6,.2] : [.35,.3,.28], s:k%2 ? crnd(.18,.30) : crnd(.3,.42), e:k%2 ? .5 : .05 });
+      spark(m.tx, groundY(m.tx,m.tz)+.6, m.tz, [1,.9,.6], 6, 9);
       shake = Math.max(shake,.22); SFX.boom();
       mortars.splice(i,1);
     }
@@ -10470,6 +10500,11 @@ function updateProjectiles(dt){
     const p=pops[i]; p.life-=dt; p.vy-=26*dt;
     p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt;
     if(p.life<=0) pops.splice(i,1);
+  }
+  for(let i=cpops.length-1;i>=0;i--){
+    const p=cpops[i]; p.life-=dt; p.vy-=26*dt;
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt;
+    if(p.life<=0) cpops.splice(i,1);
   }
   for(let i=nums.length-1;i>=0;i--){
     const n=nums[i]; n.life-=dt; n.y += n.vy*dt; n.vy -= 4*dt;
@@ -13667,12 +13702,16 @@ function render(){
     // is what the eye reads, so hold the spacing and let the count follow the
     // radius, with a floor so a small ring still closes and a ceiling so it
     // cannot run away with the draw budget.
-    const a = clamp(r.life/r.mx,0,1);
+    // A WAVE FRONT, NOT A DOTTED LINE (R296): each tile is as long as the
+    // spacing, laid along the tangent, so the ring closes into a band; a dimmer
+    // echo runs just inside it, the way a shockwave has thickness.
+    const a = clamp(r.life/r.mx,0,1), col = r.hot?[1,.55,.18]:[.55,.85,1];
     const seg = Math.max(18, Math.min(64, Math.round(TAU*r.r / 1.6)));
     for(let i=0;i<seg;i++){
-      const th = i/seg*TAU, x = r.x+Math.sin(th)*r.r, z = r.z+Math.cos(th)*r.r;
-      box(x, groundY(x,z)+.07, z, .34,.07,.34,
-          r.hot?[1,.55,.18]:[.55,.85,1], .95*a, th);
+      const th = i/seg*TAU, x = r.x+Math.sin(th)*r.r, z = r.z+Math.cos(th)*r.r, gy = groundY(x,z);
+      box(x, gy+.07, z, 1.75,.09,.30, col, .95*a, th);
+      const r2 = r.r*.84, x2 = r.x+Math.sin(th)*r2, z2 = r.z+Math.cos(th)*r2;
+      box(x2, groundY(x2,z2)+.05, z2, .95,.05,.16, col, .5*a, th);
     }
   }
   for(const s of swings){
@@ -14050,7 +14089,20 @@ function render(){
     }
   }
 
-  for(const b of bolts) box(b.x,b.y,b.z, .16,.16,.55, b.evo?[1,.6,.25]:[.7,.95,1], .95, b.a);
+  // A BOLT IS A DART: a white-hot core, a cross of fins at the tail, and a
+  // comet's tail of the last six frames, shrinking and dimming behind it.
+  for(const b of bolts){
+    const c = b.evo ? [1,.62,.22] : [.55,.90,1], core = b.evo ? [1,.92,.72] : [.94,1,1];
+    const rx = b.x - Math.sin(b.a)*.26, rz = b.z - Math.cos(b.a)*.26;
+    box(b.x,b.y,b.z, .15,.15,.78, core, 1, b.a);
+    box(rx,b.y,rz, .46,.05,.20, c, .8, b.a);
+    box(rx,b.y,rz, .05,.46,.20, c, .8, b.a);
+    const tr = b.tr || [];
+    for(let i=0;i<tr.length;i++){
+      const k = 1 - (i+1)/(tr.length+1), q = tr[i];
+      box(q[0], q[1], q[2], .13*k+.03, .13*k+.03, .30*k+.06, [c[0]*k, c[1]*k, c[2]*k], .9*k, b.a);
+    }
+  }
   for(const s of spits)
     box(s.x,s.y,s.z, s.big?.38:.22, s.big?.38:.22, s.big?.38:.22,
         s.big?[1,.42,.14]:[.9,.85,.3], .9, s.a);
@@ -14058,12 +14110,23 @@ function render(){
     const t = m.t/m.dur;
     const x = lerp(m.x0,m.tx,t), z = lerp(m.z0,m.tz,t);
     const y = lerp(m.y0, groundY(m.tx,m.tz), t) + Math.sin(t*Math.PI)*11;
-    box(x,y,z,.30,.30,.30,[.95,.45,.15],.8, t*9);
-    // target reticle so the shell reads as telegraphed rather than random
-    const seg=14;
-    for(let i=0;i<seg;i++){ const th=i/seg*TAU;
-      const rx=m.tx+Math.sin(th)*m.rad, rz=m.tz+Math.cos(th)*m.rad;
-      box(rx, groundY(rx,rz)+.1, rz, .14,.03,.14, [1,.4,.2], .5*t); }
+    // A SHELL, NOT A CUBE (R296): a body pointed down its arc with a lit nose,
+    // and four puffs of smoke behind it along the arc it has flown.
+    const yaw = Math.atan2(m.tx-m.x0, m.tz-m.z0);
+    box(x,y,z,.24,.24,.50,[.95,.45,.15],.6, yaw);
+    box(x+Math.sin(yaw)*.22, y, z+Math.cos(yaw)*.22, .16,.16,.16, [1,.85,.5], 1, yaw);
+    for(let k=1;k<=4;k++){
+      const tk = t - k*.045; if(tk <= 0) break;
+      const sx = lerp(m.x0,m.tx,tk), sz = lerp(m.z0,m.tz,tk);
+      const sy = lerp(m.y0, groundY(m.tx,m.tz), tk) + Math.sin(tk*Math.PI)*11;
+      const ps = .16 + k*.06;
+      box(sx, sy, sz, ps, ps, ps, [.5,.48,.5], .08);
+    }
+    // the reticle: a ring of dashes that turns, tightens and brightens as the shell falls
+    const seg=14, rr = m.rad*(1.18 - .18*t);
+    for(let i=0;i<seg;i++){ const th=i/seg*TAU + m.t*1.5;
+      const rx=m.tx+Math.sin(th)*rr, rz=m.tz+Math.cos(th)*rr;
+      box(rx, groundY(rx,rz)+.1, rz, .55,.04,.12, [1,.4,.2], .25+.7*t, th); }
   }
   for(const a of arcs){
     // the return stroke is the fat one: thicker, whiter, and it outlives the chain
@@ -14078,7 +14141,8 @@ function render(){
       }
     }
   }
-  for(const p of pops) box(p.x,p.y,p.z, p.s,p.s,p.s, p.c, .3);
+  for(const p of pops) box(p.x,p.y,p.z, p.s,p.s,p.s, p.c, p.e === undefined ? .3 : p.e);
+  for(const p of cpops) box(p.x,p.y,p.z, p.s,p.s,p.s, p.c, p.e);
   // XP, AS TREASURE. Reported in the audit as reading like litter at density,
   // and it did: every gem was one box of one size, so a floor covered in them
   // was a floor covered in identical cubes. Three tiers with three silhouettes
@@ -14624,7 +14688,7 @@ window.__g = {
   clearGems:()=>{ const n = gems.length; gems.length = 0; return n; },
   // the burst and the numbers off a kill, for a film of the body underneath
   // them: paused, the pops hang where they spawned, inside the corpse
-  clearFx:()=>{ pops.length = 0; nums.length = 0; },
+  clearFx:()=>{ pops.length = 0; cpops.length = 0; nums.length = 0; },
   // exact placement, because "spawn one within nine metres" puts the thing at
   // a random angle and a test that measures WHICH WAY the head turned cannot
   // use a random angle
@@ -14889,6 +14953,12 @@ window.__g = {
   botHop:(on=true)=>botHop=on,
   clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
   camInfo:()=>({ fov:+camFov.toFixed(3), dist:+camDist.toFixed(2) }),
+  // every box of one rendered frame: [x,y,z,sx,sy,sz,emit] each, for the suite to read shapes off
+  capFrame:()=>{ fxCap = []; render(); const o = []; for(let i=0;i<fxCap.length;i+=7) o.push(fxCap.slice(i,i+7)); fxCap = null; return o; },
+  popCount:()=>pops.length + cpops.length,
+  // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
+  fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,
+                shell: mortars[0] ? { t:+mortars[0].t.toFixed(3), dur:+mortars[0].dur.toFixed(3), tx:+mortars[0].tx.toFixed(2), tz:+mortars[0].tz.toFixed(2), rad:+mortars[0].rad.toFixed(2) } : null }),
   // where a world point lands on the screen, in CSS px, off the last rendered frame
   screenOf:(x,y,z)=>{ const s = VPM ? project(x,y,z) : null; return s ? [Math.round(s[0]), Math.round(s[1])] : null; },
   playerScreen:()=>{ const s = P && VPM ? project(P.x,P.y,P.z) : null; return s ? [Math.round(s[0]), Math.round(s[1])] : null; },

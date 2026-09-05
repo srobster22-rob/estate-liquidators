@@ -7907,6 +7907,67 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `results ${desk.end.disp}, title to y${desk.end.h1 && desk.end.h1.b}, table from y${desk.end.table && desk.end.table.t}, RUN AGAIN ${span(desk.end.again)} of ${desk.end.vh}, bar ${desk.menu.bar}, panel button ${desk.menu.start}, hop x${desk.play.hop && desk.play.hop.l}-${desk.play.hop && desk.play.hop.r} of ${desk.play.vw}`);
   }
 
+  console.log("\n=== 82. THE WEAPONS ARE NOT BLOCKS ===");
+  {
+    // Reported (R296): "the upgrades are just blocks and look bad to play
+    // with". They were: a bolt was one 0.16 x 0.55 box, a shockwave a dotted
+    // line of tiles, a shell a cube, a hit a number. A bolt is a dart with a
+    // tail now, a hit is a burst, the wave is a band, the shell has smoke and
+    // a burst of its own. Read off a whole-frame capture of every box drawn.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.clearEnemies(); g.disarm(); g.place(0, 0); g.aim(0);
+      const pp = g.state(); g.spawnAt("shambler", pp.x, pp.z + 7);
+      const near = (a, b) => Math.abs(a - b) < .012;
+      // 1. the bolt in flight: cores, fins, a tail
+      g.give("bolt", 3); g.setWT("bolt", 0); g.stepRaw(1/60); g.setWT("bolt", 99);
+      for (let i = 0; i < 4; i++) g.stepRaw(1/60);
+      let cap = g.capFrame();
+      const cores = cap.filter(b => near(b[3], .15) && near(b[5], .78)).length;
+      const fins  = cap.filter(b => (near(b[3], .46) && near(b[4], .05)) || (near(b[3], .05) && near(b[4], .46))).length;
+      const tail  = cap.filter(b => b[3] < .17 && near(b[3], b[4]) && Math.abs(b[5] - ((b[3] - .03) / .13 * .30 + .06)) < .012).length;
+      const bolts = g.fxLive().bolts;
+      // 2. the hit: sparks out of the pop pool
+      const pops0 = g.fxLive().sparks;                 // the cosmetic pool: a death's debris cannot inflate it
+      let peak = pops0;                                 // a spark lives a fifth of a second, so read the peak, not the end
+      for (let i = 0; i < 14 && g.fxLive().bolts > 0; i++) { g.stepRaw(1/60); peak = Math.max(peak, g.fxLive().sparks); }
+      const pops1 = peak;
+      // 3. the shockwave: a band of long tiles and its echo
+      g.disarm(); g.give("pulse", 3); g.setWT("pulse", 0); g.stepRaw(1/60); g.setWT("pulse", 99); g.stepRaw(1/60);
+      cap = g.capFrame();
+      const band = cap.filter(b => near(b[3], 1.75) && near(b[4], .09)).length;
+      const echo = cap.filter(b => near(b[3], .95) && near(b[4], .05)).length;
+      const rings = g.fxLive().rings;
+      // 4. the shell: a pointed body, a lit nose, smoke behind, and a burst when it lands
+      g.disarm(); g.give("mortar", 3); g.spawnAt("shambler", pp.x, pp.z + 7); g.setWT("mortar", 0);   // the bolts killed the first one, and a shell needs a target g.stepRaw(1/60); g.setWT("mortar", 99);
+      for (let i = 0; i < 14; i++) g.stepRaw(1/60);
+      cap = g.capFrame();
+      const shells = cap.filter(b => near(b[3], .24) && near(b[5], .50)).length;
+      const noses  = cap.filter(b => near(b[3], .16) && near(b[5], .16) && b[6] >= .99).length;
+      const smoke  = cap.filter(b => b[6] < .1 && near(b[3], b[4]) && near(b[4], b[5]) && b[3] >= .21 && b[3] <= .41).length;
+      const dashes = cap.filter(b => near(b[3], .55) && near(b[4], .04)).length;
+      const inAir = g.fxLive().shells;
+      const pops2 = g.popCount(), sparks2 = g.fxLive().sparks;
+      for (let i = 0; i < 240 && g.fxLive().shells > 0; i++) g.stepRaw(1/60);
+      const pops3 = g.popCount(), sparks3 = g.fxLive().sparks, landed = g.fxLive().shells === 0;
+      return { bolts, cores, fins, tail, pops0, pops1, rings, band, echo, inAir, shells, noses, smoke, dashes, pops2, pops3, sparks2, sparks3, landed, boxes: g.state().boxes };
+    });
+    ok("a bolt in flight is a dart: one bright core and two fins per bolt, and a tail of shrinking boxes behind each",
+       r.bolts >= 1 && r.cores === r.bolts && r.fins === 2 * r.bolts && r.tail >= 4 * r.bolts,
+       `${r.bolts} bolts: ${r.cores} cores, ${r.fins} fins, ${r.tail} tail boxes`);
+    ok("a bolt that lands throws sparks, out of the cosmetic pool", r.pops1 >= r.pops0 + 3, `sparks ${r.pops0} -> ${r.pops1}`);
+    ok("a shockwave is a band: every tile as long as its spacing, with an echo ring inside it",
+       r.rings >= 1 && r.band >= 18 * r.rings && r.echo >= 18 * r.rings,
+       `${r.rings} ring(s): ${r.band} band tiles, ${r.echo} echo tiles`);
+    ok("a shell in the air is a pointed body with a lit nose and smoke behind it, over a ring of dashes",
+       r.inAir >= 1 && r.shells === r.inAir && r.noses >= r.inAir && r.smoke >= 3 * r.inAir && r.dashes >= 14 * r.inAir,
+       `${r.inAir} shell(s): ${r.shells} bodies, ${r.noses} noses, ${r.smoke} smoke puffs, ${r.dashes} dashes`);
+    ok("and it lands as a burst: eight seeded embers, six cosmetic ones and six sparks per shell",
+       r.landed && r.pops3 >= r.pops2 + 18 && r.sparks3 >= r.sparks2 + 10 && r.boxes <= 7200,
+       `landed ${r.landed}, pops ${r.pops2} -> ${r.pops3}, sparks ${r.sparks2} -> ${r.sparks3}, ${r.boxes} boxes drawn`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

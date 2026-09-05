@@ -274,13 +274,14 @@ node film/pausefilm.js [seed]     # the pause menu (run, stats, kit) and the res
 node film/thunderfilm.js          # THUNDERHEAD's discharge: the chain and the return stroke on an elite in a crowd, and the same elite alone
 node film/fanfilm.js              # a BOLTSTORM volley mid-flight: the finale boss ahead, a crowd aside, and where the seven bolts go
 node film/cachefilm.js            # a CACHE opened with an evolution ready: the panel under its CACHE banner, desktop and phone
+node film/weaponsheet.js bolt,pulse # every weapon in action, three moments each, close camera (EVO=1 for the evolved form)
 node film/sweep.js [seedBase]     # every creature, one seed each, a whole autopilot run: outcome, kit, evolutions, and every page error
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **717 passing** as of R295, with 231 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **722 passing** as of R296, with 235 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -724,6 +725,15 @@ share a row to pay for the two lines; a short desktop window keeps its seven mou
 portrait tablet (768x1024, 820x1180) the panel's START button was 160-270px below the fold. The bar
 the phone got in R279 now carries START on every one-column screen; a landscape tablet (1024x768)
 is two columns and keeps its button. Section 71 probes all three.
+
+**The weapons are not blocks (R296, reported: "the upgrades are just blocks and look bad to play
+with").** They were: a bolt was one 0.16x0.55 box, a shockwave a dotted line of square tiles, a shell
+a cube, a hit a number. A bolt is a dart now - a white-hot core, a cross of fins, a comet's tail of
+its last six frames - and a hit throws sparks; the shockwave is a continuous band with an echo ring
+inside it; the shell is a pointed body with a lit nose and four puffs of smoke behind it, over a
+reticle of dashes that turns, tightens and brightens as it falls, and it lands as fourteen embers and
+six sparks. `film/weaponsheet.js` photographs every weapon; section 82 reads the shapes off a
+whole-frame capture (`g.capFrame()`). The other seven weapons follow, one round at a time.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The
