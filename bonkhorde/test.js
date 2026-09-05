@@ -7968,6 +7968,60 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `landed ${r.landed}, pops ${r.pops2} -> ${r.pops3}, sparks ${r.sparks2} -> ${r.sparks3}, ${r.boxes} boxes drawn`);
   }
 
+  console.log("\n=== 83. NOR ARE THE SKULLS, THE STINK, THE ZAP OR THE CALTROPS ===");
+  {
+    // R296's report, the second slice: SKULLS were two cubes, STINK a necklace
+    // of cubes, ZAP a trail of jittered dice, CALTROPS flat tiles. A skull has
+    // a cranium, a jaw, two sockets and a wake; the stink is a cloud inside
+    // its rim; a zap has a white spine down every segment and sparks where it
+    // lands; a caltrop is two crossed blades on a dark foot.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.clearEnemies(); g.disarm(); g.place(0, 0); g.aim(0);
+      const pp = g.state();
+      const near = (a, b) => Math.abs(a - b) < .012;
+      // 1. skulls
+      g.give("skulls", 3); g.stepRaw(1/60);
+      // the orbit's own ring of the capture: clear of the animal's body (radius ~1) and inside its reach
+      const inOrbit = b => { const d = Math.hypot(b[0] - pp.x, b[2] - pp.z); return d > 1.3 && d < 12; };
+      let cap = g.capFrame().filter(inOrbit);
+      const crania = cap.filter(b => near(b[3], .30) && near(b[4], .26) && near(b[5], .30)).length;
+      const jaws   = cap.filter(b => near(b[3], .22) && near(b[4], .09) && near(b[5], .22)).length;
+      const eyes   = cap.filter(b => near(b[3], .075) && near(b[4], .075) && b[6] === 0).length;
+      const wake   = cap.filter(b => ((near(b[3], .155) && near(b[6], .21)) || (near(b[3], .11) && near(b[6], .14)) || (near(b[3], .065) && near(b[6], .07))) && near(b[3], b[4]) && near(b[4], b[5])).length;
+      // 2. the stink: rim markers and cloud puffs
+      g.disarm(); g.give("aura", 3); g.stepRaw(1/60);
+      cap = g.capFrame();
+      const rim   = cap.filter(b => near(b[3], .22) && near(b[4], .22) && near(b[5], .22) && near(b[6], .45)).length;
+      const cloud = cap.filter(b => b[3] >= .25 && b[3] <= .53 && near(b[4], b[3] * .42) && near(b[5], b[3]) && b[6] >= .09 && b[6] <= .23).length;
+      // 3. the zap: spines and sparks
+      g.disarm(); for (let i = 0; i < 3; i++) g.spawnAt("shambler", pp.x + (i - 1) * 2.5, pp.z + 5);
+      g.give("zap", 3); const pops0 = g.popCount(); g.setWT("zap", 0); g.stepRaw(1/60); g.setWT("zap", 99);
+      const pops1 = g.popCount(), arcs = g.fxLive().arcs;
+      cap = g.capFrame();
+      const spines = cap.filter(b => near(b[3], .08) && near(b[4], .08) && b[5] > .5).length;
+      // 4. caltrops
+      g.disarm(); g.give("caltrops", 3); g.setWT("caltrops", 0); g.stepRaw(1/60); g.setWT("caltrops", 99);
+      const zones = g.fxLive ? (g.fxCounts().zones > 0 ? 1 : 0) : 1;
+      cap = g.capFrame();
+      const blades = cap.filter(b => near(b[3], .06) && near(b[4], .36) && near(b[5], .06)).length;
+      const feet   = cap.filter(b => near(b[3], .16) && near(b[4], .04) && near(b[5], .16) && b[6] === 0).length;
+      const inner  = cap.filter(b => near(b[3], .05) && near(b[4], .30) && near(b[5], .05)).length;
+      return { crania, jaws, eyes, wake, rim, cloud, arcs, spines, pops0, pops1, zones, blades, feet, inner, boxes: g.state().boxes };
+    });
+    ok("a skull is a cranium over a jaw with two dark sockets and a wake of three ghosts, for every skull in the orbit",
+       r.crania >= 2 && r.jaws === r.crania && r.eyes === 2 * r.crania && r.wake === 3 * r.crania,
+       `${r.crania} crania, ${r.jaws} jaws, ${r.eyes} sockets, ${r.wake} ghosts`);
+    ok("the stink keeps its rim and fills it with a cloud", r.rim >= 30 && r.cloud >= 15, `${r.rim} rim markers, ${r.cloud} puffs`);
+    ok("a zap has a white spine down every segment and throws sparks where it lands",
+       r.arcs >= 1 && r.spines >= 2 && r.pops1 >= r.pops0 + 3,
+       `${r.arcs} arc(s), ${r.spines} spines, pops ${r.pops0} -> ${r.pops1}`);
+    ok("a caltrop field is crossed blades on dark feet, on the rim and scattered inside it",
+       r.blades >= 8 && r.feet >= 8 && r.inner >= 8 && r.boxes <= 7200,
+       `${r.blades} blades, ${r.feet} feet, ${r.inner} inner blades, ${r.boxes} boxes drawn`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

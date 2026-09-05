@@ -9231,6 +9231,7 @@ function fireZap(w,s){
     pts.push([cur.x, cur.y + cur.def.h*.6, cur.z]);
     const roll = dmgOut(d);
     hurt(cur, roll.d, 0, 0, roll.crit);
+    spark(cur.x, cur.y + cur.def.h*.6, cur.z, w.evo ? [.8,.95,1] : [1,1,1], 3, 4);
     d *= s.fall;
     cur = threatTarget(cur.x, cur.z, s.rng*.7, seen);
   }
@@ -9262,7 +9263,7 @@ function fireCaltrops(w,s){
                // brightest thing on screen and it is the FLOOR - the animal the
                // game is about was reading as the second most important object
                // inside its own hazard.
-               c:w.evo?[1,.34,.08]:[.80,.24,.10], tick:0, evo:w.evo });
+               c:w.evo?[1,.34,.08]:[.80,.24,.10], tick:0, evo:w.evo, spiky:true });
 }
 // THE BROOD. Kept deliberately dumb: pick the nearest thing to the PLAYER,
 // run at it, bite on your own cooldown. The leash is measured from the player
@@ -13593,9 +13594,23 @@ function render(){
     for(let i=0;i<seg;i++){
       const th = i/seg*TAU + z.life*.7;
       const x = z.x+Math.sin(th)*z.r, zz = z.z+Math.cos(th)*z.r;
+      if(z.spiky){
+        // CALTROPS ARE SPIKES (R297): two thin blades crossed and leaning,
+        // a dark foot under them, scattered inside the field and not only on
+        // its rim - a tile could have been anything; a thorn is a thorn.
+        const gy = groundY(x,zz);
+        box(x, gy+.20, zz, .06,.36,.06, col, .75*a, th);
+        box(x, gy+.20, zz, .30,.06,.06, col, .6*a, th+.7);
+        box(x, gy+.04, zz, .16,.04,.16, [.16,.08,.05], 0, th);
+        const r2 = z.r*(.35 + ((i*7919)%1000)/1000*.5), th2 = th*1.7 + 1.3;
+        const x2 = z.x+Math.sin(th2)*r2, z2 = z.z+Math.cos(th2)*r2, g2 = groundY(x2,z2);
+        box(x2, g2+.16, z2, .05,.30,.05, col, .6*a, th2);
+        box(x2, g2+.16, z2, .24,.05,.05, col, .5*a, th2+.9);
+        continue;
+      }
       box(x, groundY(x,zz)+.16, zz, .21,.10,.21, col, .75*a);
     }
-    box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, col, .75*a);
+    if(!z.spiky) box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, col, .75*a);
   }
 
   // ---- side events. A reward you cannot find is not a reward, so each one
@@ -14055,11 +14070,25 @@ function render(){
       // exactly as the field got bigger. Fixed spacing instead, so the ring
       // looks the same at every rank and the count follows the radius.
       const s = wStat(aw), seg = Math.max(30, Math.min(96, Math.round(TAU*s.rad/.9)));
+      const gc = aw.evo?[.55,.95,.35]:[.62,.82,.45];
       for(let i=0;i<seg;i++){
         const th = i/seg*TAU + T*.6;
         const x = P.x+Math.sin(th)*s.rad, z = P.z+Math.cos(th)*s.rad;
-        box(x, groundY(x,z)+.3+Math.sin(T*3+i)*.12, z, .17,.17,.17,
-            aw.evo?[.55,.95,.35]:[.62,.82,.45], .55);
+        box(x, groundY(x,z)+.3+Math.sin(T*3+i)*.12, z, .22,.22,.22, gc, .45);
+      }
+      // A CLOUD, NOT A NECKLACE (R297). The edge stays - it is the one thing
+      // about this weapon a player has to read - but the field inside it is
+      // gas now: puffs of three sizes at three heights, each on its own slow
+      // drift, dim, so the ring is the rim of something and not a fence.
+      const nc = Math.round(seg*.5);
+      for(let i=0;i<nc;i++){
+        const f = (i*7919 % 1000)/1000, h = (i*104729 % 1000)/1000;
+        const th = i/nc*TAU + T*(.18 + f*.22) * (i%2 ? 1 : -1);
+        const rr = s.rad*(.35 + f*.58);
+        const x = P.x+Math.sin(th)*rr, z = P.z+Math.cos(th)*rr;
+        const ps = .26 + h*.26;
+        box(x, groundY(x,z)+.2+h*.5+Math.sin(T*1.7+i)*.06, z, ps, ps*.42, ps,
+            [gc[0]*.5, gc[1]*.55, gc[2]*.45], .1 + f*.12);
       }
       // MORE's trailing clouds: smaller rings, dimmer, where you were
       for(const p of auraEchoes(aw)){
@@ -14083,8 +14112,20 @@ function render(){
         const rad = s.rad*(ring?.58:1);
         const x = P.x+Math.sin(a)*rad, z = P.z+Math.cos(a)*rad;
         const y = P.y+1.1+Math.sin(T*4+i)*.18;
-        box(x,y,z, .28,.28,.28, [.94,.93,.86], .35, a);
-        box(x,y+.06,z+.001, .30,.09,.30, [.1,.1,.12], .1, a);
+        // A SKULL, NOT A CUBE (R297): a cranium, a narrower jaw under it, two
+        // dark sockets on the face it flies with, and a wake of three ghosts
+        // behind it along the orbit, shrinking and dimming.
+        const dir = ring ? -1 : 1, tx = Math.cos(a)*dir, tz = -Math.sin(a)*dir;   // the way it is going
+        const nx = Math.sin(a), nz = Math.cos(a);                                   // out from the animal
+        box(x,y,z, .30,.26,.30, [.94,.93,.86], .35, a);
+        box(x,y-.17,z, .22,.09,.22, [.86,.84,.76], .25, a);
+        box(x+tx*.14+nx*.07, y+.03, z+tz*.14+nz*.07, .075,.075,.075, [.08,.06,.1], 0, a);
+        box(x+tx*.14-nx*.07, y+.03, z+tz*.14-nz*.07, .075,.075,.075, [.08,.06,.1], 0, a);
+        for(let k=1;k<=3;k++){
+          const ak = a - dir*k*.13, gx = P.x+Math.sin(ak)*rad, gz = P.z+Math.cos(ak)*rad;
+          const gs = .20 - k*.045;
+          box(gx, y - k*.02, gz, gs, gs, gs, [.70,.66,.82], .28 - k*.07, ak);
+        }
       }
     }
   }
@@ -14133,6 +14174,11 @@ function render(){
     const al = a.life/(a.fat ? .42 : .30), sz = a.fat ? .34 : .18;
     for(let i=0;i<a.pts.length-1;i++){
       const p0=a.pts[i], p1=a.pts[i+1], n=a.fat ? 14 : 9;
+      // A BOLT HAS A SPINE (R297): a straight white core down each segment,
+      // the jittered corona around it - lightning, not a trail of dice.
+      const dx=p1[0]-p0[0], dz=p1[2]-p0[2], len=Math.hypot(dx,dz);
+      if(len > .2) box((p0[0]+p1[0])/2, (p0[1]+p1[1])/2, (p0[2]+p1[2])/2,
+                       a.fat ? .12 : .08, a.fat ? .12 : .08, len, [1,1,1], al, Math.atan2(dx,dz));
       for(let k=0;k<n;k++){
         const t=k/n;
         box(lerp(p0[0],p1[0],t)+rnd(-.22,.22), lerp(p0[1],p1[1],t)+rnd(-.22,.22),
