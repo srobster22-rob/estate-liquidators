@@ -1046,7 +1046,9 @@ function buildDynBuf(){
 }
 buildDynBuf();
 
+let boxPx = 0, culledN = 0;   // pixels per world unit at the body being drawn (0 = no size cull); bodies not drawn this frame
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
+  if(boxPx && (sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz)) * boxPx < 1.5) return;   // under a pixel and a half: not built (R302)
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
   nbox++;                              // flush is free correctness insurance
   if(wCap) wCap.push(x, y, z, sx, sy, sz);
@@ -13297,7 +13299,7 @@ function render(){
   const SC = skyAt(T);                 // horizon matches the fog it fades into
   gl.clearColor(SC.fog[0], SC.fog[1], SC.fog[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0;
+  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0;
 
   // ---- camera: chase, with real lag and a lot of shake
   // It used to sit 17m back and 12.8m up, recomputed from the player's exact
@@ -13840,9 +13842,32 @@ function render(){
                    p2.face, .46, 1.05, pc, .10, 2, gy + Math.abs(gait)*.10);
     }
   }
+  // WHAT IS ON SCREEN (R302). A crowded frame built 9,300 boxes for 300
+  // bodies and 12,400 for 400 - 24 ms of CPU before a pixel was drawn - and
+  // one body in seven of them projected outside the viewport, while the most
+  // common box in the frame was a centimetre-scale pupil or tooth. A body
+  // whose footprint (its own size as the margin) lands outside the view draws
+  // nothing; inside it, no box under a pixel and a half on screen is built.
+  // Bosses always draw. Off while any capture is open - every harness that
+  // reads boxes reads all of them, and a turntable is not a viewport.
+  const capturing = !!(wCap || fxCap || wCapWant || ewCapWant);
+  const onScreen = (x,y,z,H) => {      // null = not on screen; else pixels per world unit there
+    if(!VPM || capturing) return 0;
+    const v = xf(VPM.view, x,y,z), depth = -v[2];
+    if(depth <= .1) return depth < -H*2 ? null : 0;
+    const sx = (VPM.proj[0]*v[0]/depth*.5+.5)*VPM.w, sy = (-VPM.proj[5]*v[1]/depth*.5+.5)*VPM.h;
+    const ppu = VPM.proj[5]*VPM.h*.5/depth, m = 40 + H*ppu*1.3;
+    return (sx < -m || sx > VPM.w+m || sy < -m || sy > VPM.h+m) ? null : ppu;
+  };
   const hb0 = drawnBoxes + nbox;         // the count so far, flushed or not
   for(const e of enemies){
     if(e.dead) continue;                 // on the corpse list now, drawn below
+    boxPx = 0;
+    if(!e.boss){
+      const ppu = onScreen(e.x, e.y + e.def.h*e.sz*.5, e.z, e.def.h*e.sz);
+      if(ppu === null){ culledN++; continue; }
+      boxPx = ppu;
+    }
     // THE BEAT. A boss winding up used to be a 22% size pop and nothing on
     // the hit; the pose carries it now (bossBeat), and what is left of the
     // pop is a swell small enough to read as breath drawn rather than a
@@ -13951,6 +13976,7 @@ function render(){
     plan(e, face, W*sq, H, c, glow, lod, e.py);
     if(takeW){ ewCapOut = wCap; wCap = null; ewCapWant = false; }
     e.sq = sq0;
+    boxPx = 0;                            // the size cull is the body's, not the bar's or the crown's
     if(rise > 0){
       const gy2 = groundY(e.x, e.z), up = 1 - rise;
       for(let i=0;i<16;i++){                       // earth thrown off it
@@ -13988,8 +14014,10 @@ function render(){
   // pose, and every harness that asks whether the animal is one object is
   // asking about the living one. No crown, no hp bar, no beat.
   const cap0 = ebCap; ebCap = null;
+  boxPx = 0;
   for(const e of corpses){
     const D = e.def, S = e.sz, W = D.w*S, H = D.h*S;
+    if(!e.boss && onScreen(e.x, e.y + H*.5, e.z, H) === null){ culledN++; continue; }
     const dp = deathPose(e.ft / e.fd);
     const dc = P ? Math.hypot(e.x-P.x, e.z-P.z) : 0;
     const lod = e.boss ? (dc < 45 ? 2 : dc < 90 ? 1 : 0)
@@ -14998,7 +15026,8 @@ window.__g = {
   boltsPeak:()=>statBolts,
   enemiesPos:()=>enemies.filter(e=>!e.dead).map(e=>({ x:+e.x.toFixed(3), z:+e.z.toFixed(3) })),
   // by identity, not index: a dead enemy is spliced away, and index 0 becomes someone else
-  enemyList:()=>enemies.map(e=>({ id:+e.bob.toFixed(7), hp:+e.hp.toFixed(1), max:+e.maxhp.toFixed(1), dead:!!e.dead, elite:!!e.elite })),
+  enemyList:()=>enemies.map(e=>({ id:+e.bob.toFixed(7), hp:+e.hp.toFixed(1), max:+e.maxhp.toFixed(1), dead:!!e.dead, elite:!!e.elite, boss:!!e.boss,
+                                  x:+e.x.toFixed(2), y:+e.y.toFixed(2), z:+e.z.toFixed(2), h:+(e.def.h*e.sz).toFixed(2) })),
   arcsNow:()=>arcs.map(a=>({ n:a.pts.length, fat:!!a.fat, evo:!!a.evo })),
   nearestEnemy:()=>{ const e = nearest(P.x, P.z, 999);
                      return e ? { x:+e.x.toFixed(3), z:+e.z.toFixed(3),
@@ -15048,6 +15077,9 @@ window.__g = {
   // one frame of the real loop at a chosen wall-clock time (ms), for the suite to hand it slow frames
   tick:(nowMs)=>{ tick(nowMs); return +T.toFixed(4); },
   simSteps:(raw)=>simSteps(raw),
+  // where a frame's boxes went: the horde, the corpses, and everything else (terrain, player, fx, gems)
+  boxCensus:()=>({ drawn:drawnBoxes, horde:hordeBoxes, corpses:corpseBoxes, rest:drawnBoxes - hordeBoxes - corpseBoxes,
+                   enemies:enemies.length, corpseN:corpses.length, culled:culledN }),
   vy:()=>+P.vy.toFixed(3),
   // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
   fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,

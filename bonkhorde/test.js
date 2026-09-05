@@ -295,25 +295,25 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     window.__g.freezeEvents(true); window.__g.freezeSpawns(true);
     window.__g.spawn("collector", 3, 14); window.__g.step(1/60);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const withThem = window.__g.fowlMarks();
+    const withThem = window.__g.fowlMarks(), culled = window.__g.boxCensus().culled;   // a fowl that spawned behind the camera draws nothing, marker included (R302)
     window.__g.start("intern"); window.__g.freezeSpawns(true); window.__g.step(1/60);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    return { withThem, without: window.__g.fowlMarks() };
+    return { withThem, culled, without: window.__g.fowlMarks() };
   });
   ok("and the one that is exempt is marked instead",
-     mark.withThem === 3 && mark.without === 0,
-     `${mark.withThem} markers for 3 fowl, ${mark.without} with none on the field`);
+     mark.withThem === 3 - mark.culled && mark.without === 0,
+     `${mark.withThem} markers for 3 fowl (${mark.culled} off the screen), ${mark.without} with none on the field`);
   const shad = await page.evaluate(async () => {
     window.__g.wipeSave(); window.__g.start("intern"); window.__g.god();
     window.__g.freezeEvents(true); window.__g.spawn("shambler", 40);
     window.__g.spawn("brute", 6); window.__g.step(10); window.__g.resume();
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    return { shadows: window.__g.shadows(), enemies: window.__g.state().enemies };
+    return { shadows: window.__g.shadows(), enemies: window.__g.state().enemies, culled: window.__g.boxCensus().culled };   // a body off the screen draws nothing, shadow included (R302)
   });
   // enemies plus one: the player casts a real shadow now too
-  ok("and every body on the field is drawn with one",
-     shad.shadows === shad.enemies + 1 && shad.enemies > 30,
-     `${shad.shadows} shadows for ${shad.enemies} enemies and one player`);
+  ok("and every body drawn is drawn with one",
+     shad.shadows === shad.enemies - shad.culled + 1 && shad.enemies > 30,
+     `${shad.shadows} shadows for ${shad.enemies} enemies (${shad.culled} off the screen, not drawn) and one player`);
 
   console.log("\n=== 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===");
   const riders = await page.evaluate(() => {
@@ -8132,6 +8132,41 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        close(r.crawl, .200) && r.plan.f300.n === 6 && close(r.plan.f300.d * r.plan.f300.n, .252) && close(r.hidden, .252),
        `200 ms -> ${r.crawl} s; 300 ms planned as ${r.plan.f300.n} x ${r.plan.f300.d}; a second away -> ${r.hidden} s`);
     ok("and a paused frame moves nothing, however long it was", r.paused === 0, `paused 100 ms -> ${r.paused} s`);
+  }
+
+  console.log("\n=== 87. A FRAME DRAWS WHAT IS ON SCREEN ===");
+  {
+    // R302. A crowded frame built 9,300 boxes for 300 bodies, one in seven of
+    // them off the screen and the commonest of them a centimetre pupil. A body
+    // whose footprint projects outside the viewport draws nothing; inside it
+    // no box under a pixel and a half is built; a capture sees everything.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.drainPicks(true); g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true); g.skipTo(600);
+      let i = 0; while (i < 6000 && g.state().enemies < 200) { g.stepRaw(1/60); i++; }
+      g.pause(true); await frame(); await frame();
+      const shown = g.boxCensus();                          // an ordinary frame, culls on
+      const all = g.capFrame().length, capped = g.boxCensus();   // a capture frame, culls off
+      // where every body projects, by the game's own projection (the last rendered frame's matrices)
+      const W = innerWidth, H = innerHeight;
+      let inside = 0, outside = 0;
+      for (const e of g.enemyList()) { if (e.dead || e.boss) continue;
+        const s = g.screenOf(e.x, e.y + e.h * .5, e.z);
+        if (!s) { outside++; continue; }
+        if (s[0] > 120 && s[0] < W - 120 && s[1] > 120 && s[1] < H - 120) inside++;
+        else if (s[0] < -300 || s[0] > W + 300 || s[1] < -300 || s[1] > H + 300) outside++; }
+      return { enemies: shown.enemies, shownDrawn: shown.drawn, shownHorde: shown.horde, culled: shown.culled, all, cappedCulled: capped.culled, inside, outside };
+    });
+    ok("in a two-hundred-body frame some bodies project off the screen and draw nothing - never one that is anywhere near the view",
+       r.enemies >= 190 && r.culled >= 5 && r.culled <= r.enemies - r.inside,
+       `${r.enemies} bodies, ${r.culled} not drawn, ${r.outside} clearly off screen by projection, ${r.inside} well inside`);
+    ok("every body well inside the view is drawn",
+       r.enemies - r.culled >= r.inside,
+       `${r.enemies - r.culled} drawn, ${r.inside} well inside the view`);
+    ok("the frame builds at least a twentieth fewer boxes than it holds, and a capture still sees all of them",
+       r.shownDrawn <= r.all * .95 && r.cappedCulled === 0 && r.all > r.shownDrawn,
+       `${r.shownDrawn} built for the screen, ${r.all} in the capture (${r.cappedCulled} culled while capturing)`);
   }
 
   console.log("\n" + "=".repeat(58));
