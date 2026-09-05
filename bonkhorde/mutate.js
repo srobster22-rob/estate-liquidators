@@ -970,9 +970,9 @@ const MUTANTS = [
     from:"            if(mh.length){ showPick(mh, cacheDealer); evStats.cacheMast = (evStats.cacheMast||0) + 1; gave = \"MASTERY\"; }",
     to:  "            if(false){ }" },
   // ---- R283: the panels fit a small phone (section 75)
-  { id:"caption-will-not-wrap", must:"75",
-    why:"the caption keeps its one line on a 360px phone, so it runs out of the panel or breaks the banner word",
-    from:"    #pick .sub{white-space:normal;text-align:right;line-height:1.4;font-size:8.5px}",
+  { id:"banner-breaks-in-two", must:"75",
+    why:"the 360px banner rules are gone: the word shares its row with a no-wrap caption again and breaks into LEVEL / UP",
+    from:"    #pick h1{font-size:14px;letter-spacing:.1em;white-space:nowrap;flex:none}\n    #pick .sub{white-space:normal;text-align:right;line-height:1.4;font-size:8.5px}",
     to:  "    #pick .sub{text-align:right}" },
   // ---- R284: the hop chain has one name (section 76)
   { id:"toast-says-tempo", must:"76",
@@ -997,6 +997,16 @@ const MUTANTS = [
     why:"a half-second run prints BEST 00:00 on the menu",
     from:"      save.best >= 1 ? ` <span>BEST ${fmt(save.best)}</span>` : \"\"}${",
     to:  "      save.best ? ` <span>BEST ${fmt(save.best)}</span>` : \"\"}${" },
+  // ---- R287b: the panel keeps headroom on a 640px screen (section 75)
+  { id:"panel-has-no-headroom", must:"75",
+    why:"on a 640px-tall screen the descriptions keep two lines and a long hand scrolls again",
+    from:"    #pick .card .ds{-webkit-line-clamp:1}",
+    to:  "    #pick .card .ds{-webkit-line-clamp:2}" },
+  // ---- R288: the results say what hurt you (section 79)
+  { id:"results-forget-the-damage", must:"79",
+    why:"the results stop saying what hurt you - the ledger is kept and never shown",
+    from:"      <tr><td>Took</td><td>${Math.round(took)}${tookParts.length",
+    to:  "      <tr><td>Took</td><td>${\"\"}${!tookParts.length" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

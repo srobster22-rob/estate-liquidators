@@ -298,6 +298,20 @@
     #pick h1{font-size:14px;letter-spacing:.1em;white-space:nowrap;flex:none}
     #pick .sub{white-space:normal;text-align:right;line-height:1.4;font-size:8.5px}
   }
+  /* a 640px-tall screen: with a long hand the panel was 602px of the 614
+     available and scrolled one deal in four (R287b). Descriptions clamp to
+     one line and the rows, the buttons and the kit tighten - ninety pixels
+     of headroom for the tallest hand. */
+  @media (max-height:700px){
+    #pick .pkHead{padding:7px 12px 6px}
+    #pick .cards{gap:4px;padding:6px 8px 4px}
+    #pick .card{min-height:50px;padding:5px 8px}
+    #pick .card .ds{-webkit-line-clamp:1}
+    #pick .tools{padding:0 8px 6px}
+    #pick .tools .tb{padding:6px 10px}
+    #pick .kit{padding:6px 8px 8px;gap:8px}
+    #pick .kit .ks{height:30px}
+  }
   .slot.r{background:#0f1a17;border-color:#3ad0a0}
 
   /* the rule meter - same shape as the hop chain readout, its own colours */
@@ -10173,7 +10187,9 @@ function playerHurt(raw, sx, sz){
   if(affNow() < 0) d *= AFF_TOUGH;              // the wrong ground for what you are
   d = Math.max(1, d - P.armor - prank(P.kit.plating)*1.6);
   if(P.kit.plating) d *= (1 - prank(P.kit.plating)*.05);
-  hurtLog[hurtSrc] += d; hurtLog.n[hurtSrc]++;
+  // the ledger counts what you actually lost: a killing blow logs the health
+  // that was left, not the whole bite (the results print this, R288)
+  hurtLog[hurtSrc] += Math.min(d, Math.max(0, P.hp)); hurtLog.n[hurtSrc]++;
   // UPHEAVAL, THE MOUNTAIN's apex power: hit the mountain and the ground
   // answers. A free TREMOR on every hit taken, on the iframe's own rhythm -
   // playerHurt only lands while iframe <= 0, so this cannot machine-gun.
@@ -11521,6 +11537,13 @@ function finish(why, won){
   // cards was sitting right there. It is the same call, at the stage the run
   // actually reached.
   const endMon = curMon(), endStage = stage;
+  // WHAT HURT YOU. The ledger the benches read (hurtLog) says how much of the
+  // run's damage was bites, spit and ground - so the results can say it, with
+  // the count of hits, and a player who died to bites has been told what to
+  // step out of next time (R288).
+  const took = hurtLog.contact + hurtLog.spit + hurtLog.hazard;
+  const tookParts = [["bites", hurtLog.contact, hurtLog.n.contact], ["spit", hurtLog.spit, hurtLog.n.spit], ["ground", hurtLog.hazard, hurtLog.n.hazard]]
+    .filter(p => p[1] > 0).sort((a, b) => b[1] - a[1]);
   document.getElementById("endBody").innerHTML = `
     <canvas class="endpv" width="${PV_W}" height="${PV_H}"></canvas>
     <h1 class="${won?'g':'r'}" style="font-size:44px">${why}</h1>
@@ -11531,6 +11554,8 @@ function finish(why, won){
       <tr><td>Level</td><td>${P.lvl}${
         P.lvl > prevLvl ? ` <span class="g">NEW BEST</span>` : prevLvl ? ` <span class="dim2">best ${prevLvl}</span>` : ""}</td></tr>
       <tr><td>Kills</td><td>${kills.toLocaleString()}</td></tr>
+      <tr><td>Took</td><td>${Math.round(took)}${tookParts.length
+        ? ` <span class="dim2">&nbsp;${tookParts.map(p => `${Math.round(p[1]/took*100)}% ${p[0]} (${p[2]})`).join(" &middot; ")}</span>` : ""}</td></tr>
       <tr><td>${curMon().line[0]}</td><td>${stageNm()} &nbsp;<span class="dim2">stage ${stage+1}/${(curMon().st||[]).length}</span>
         &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
         <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>

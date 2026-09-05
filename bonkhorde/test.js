@@ -7639,21 +7639,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const pg = await ctx.newPage(); await pg.goto(FILE, { waitUntil: "load" }); await pg.waitForTimeout(500);
     const r = await pg.evaluate(() => {
       const g = window.__g; g.wipeSave(); g.setSave({ up:{ reroll:1, banish:1 } }); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
-      g.drainPicks(false); g.xp(2000); g.step(1, 1/60);                 // a queue, so the caption carries "MORE QUEUED"
+      // eight hands, because a long hand was 602px of 614 and scrolled one deal in four: every one must fit
+      const fits = [];
+      for (let i = 0; i < 8; i++) { g.drainPicks(false); g.xp(2000); g.step(1, 1/60); const w0 = document.querySelector("#pick .wrap");
+        fits.push({ h: Math.round(w0.getBoundingClientRect().height), scroll: w0.scrollHeight > w0.clientHeight + 1 }); g.drainPicks(true); }
+      // and the hand that is measured for its banner carries a long caption: a queue in the tens
+      g.drainPicks(false); g.xp(90000); g.step(1, 1/60);
+      const clamp = getComputedStyle(document.querySelector("#pkCards .card .ds")).webkitLineClamp;
       const wrap = document.querySelector("#pick .wrap"), h1 = document.querySelector("#pick h1"), title = document.getElementById("pkTitle");
       const w = wrap.getBoundingClientRect(), t = title.getBoundingClientRect(), lv = document.querySelector("#pick .lvl").getBoundingClientRect();
       const sub = document.getElementById("pkSub").getBoundingClientRect();
       return { picking: g.state().picking, rows: document.querySelectorAll("#pkCards .card").length, tools: document.querySelectorAll("#pkTools .tb").length,
-               top: Math.round(w.top), bottom: Math.round(w.bottom), vh: innerHeight, scroll: wrap.scrollHeight > wrap.clientHeight + 1,
+               top: Math.round(w.top), bottom: Math.round(w.bottom), vh: innerHeight, scroll: wrap.scrollHeight > wrap.clientHeight + 1, fits, clamp,
                titleH: Math.round(t.height), titleLines: Math.round(t.height / parseFloat(getComputedStyle(h1).fontSize)), sub: document.getElementById("pkSub").textContent,
                chipOnRow: Math.abs((lv.top + lv.bottom) / 2 - (t.top + t.bottom) / 2) < 8,
                subInside: sub.right <= w.right + 1 && sub.left >= lv.right - 1 };
     });
     await ctx.close();
-    ok("at 360x640 a four-row hand with both buttons and the kit fits without scrolling",
-       r.picking && r.rows === 4 && r.tools === 2 && r.top >= 0 && r.bottom <= r.vh && !r.scroll, `panel ${r.top}-${r.bottom} of ${r.vh}, ${r.rows} rows, ${r.tools} buttons, scroll ${r.scroll}`);
+    ok("at 360x640 eight four-row hands with both buttons and the kit all fit without scrolling, descriptions clamped to one line",
+       r.picking && r.rows === 4 && r.tools === 2 && r.top >= 0 && r.bottom <= r.vh && !r.scroll && r.fits.every(f => !f.scroll && f.h <= r.vh - 40) && r.clamp === "1",
+       `panel ${r.top}-${r.bottom} of ${r.vh}; hands ${r.fits.map(f => f.h + (f.scroll ? "!" : "")).join("/")}px; clamp ${r.clamp}`);
     ok("and LEVEL UP stays on one line with its level chip beside it, the caption wrapping inside the panel instead",
-       r.titleLines <= 1 && r.chipOnRow && r.subInside && /MORE QUEUED/.test(r.sub), `title ${r.titleH}px tall (~${r.titleLines} line), chip on the row ${r.chipOnRow}, caption inside ${r.subInside}, "${r.sub}"`);
+       r.titleLines <= 1 && r.chipOnRow && r.subInside && /\d\d+ MORE QUEUED/.test(r.sub), `title ${r.titleH}px tall (~${r.titleLines} line), chip on the row ${r.chipOnRow}, caption inside ${r.subInside}, "${r.sub}"`);
   }
 
   console.log("\n=== 76. THE HOP CHAIN HAS ONE NAME ===");
@@ -7740,6 +7747,32 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("clicking DEV unfolds them, and DEV MODE on opens the row by default", r.opened.mode && r.opened.wipe && r.devOn.mode && r.devOn.open, JSON.stringify({ opened: r.opened, devOn: { mode: r.devOn.mode, open: r.devOn.open } }));
     ok("and the row counts the monsters it unlocks from the roster, not from memory", new RegExp("all " + r.devOn.monsters + " monsters").test(r.devOn.note) && r.devOn.monsters === 9, `"${r.devOn.note.replace(/\s+/g, " ").trim().slice(0, 60)}" (${r.devOn.monsters} in the roster)`);
     ok("a half-second run leaves no BEST on the bank line; a real best prints", r.best0 > 0 && r.best0 < 1 && !/BEST/.test(r.bank0) && /BEST 01:30/.test(r.bank1), `best ${r.best0}: "${r.bank0}" then "${r.bank1}"`);
+  }
+
+  console.log("\n=== 79. THE RESULTS SAY WHAT HURT YOU ===");
+  {
+    // The damage ledger the benches read says how much of a run's damage was
+    // bites, spit and ground. The results print it - total, shares, hit
+    // counts - so a player who died to bites has been told what to step out
+    // of. An untouched run prints a plain zero.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      const row = () => { const tr = [...document.querySelectorAll("#endBody tr")].find(t => /^Took/.test(t.textContent.trim())); return tr ? [...tr.children].map(td => td.textContent.replace(/\s+/g, " ").trim()).join(" ") : ""; };
+      // the runs end by ABANDON, not by a scripted hit: a hit is a bite in the ledger
+      const abandon = () => { g.pause(true); document.getElementById("quitBtn").click(); g.step(2, 1/60); };
+      g.drainPicks(true); g.wipeSave(); g.pin(41); g.pinRun(41); g.start("intern"); g.bot(true); g.botHop(true); g.setShake(0); g.runOut(90); g.bot(false);
+      const by = g.hurtBy(); abandon();
+      const hurt = { by, row: row(), over: g.state().over };
+      g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.clearEnemies(); g.step(30, 1/60); abandon();
+      const clean = { by: g.hurtBy(), row: row() };
+      return { hurt, clean };
+    });
+    const top = Object.entries({ bites: r.hurt.by.contact, spit: r.hurt.by.spit, ground: r.hurt.by.hazard }).sort((a, b) => b[1] - a[1])[0];
+    const pct = Math.round(top[1] / r.hurt.by.total * 100);
+    ok("a run that was bitten prints the total it took, and the biggest share first with its hit count",
+       r.hurt.over && r.hurt.by.total > 0 && new RegExp("^Took " + Math.round(r.hurt.by.total) + " " + pct + "% " + top[0] + " \\(" + r.hurt.by.hits[top[0] === "bites" ? "contact" : top[0] === "spit" ? "spit" : "hazard"] + "\\)").test(r.hurt.row),
+       `"${r.hurt.row}" vs ledger ${JSON.stringify(r.hurt.by)}`);
+    ok("an untouched run prints Took 0 and nothing else", r.clean.by.total === 0 && /^Took 0$/.test(r.clean.row), `"${r.clean.row}"`);
   }
 
   console.log("\n" + "=".repeat(58));

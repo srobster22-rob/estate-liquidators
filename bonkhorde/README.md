@@ -238,7 +238,7 @@ same pattern as `proto3d/` in the parent repository.
 ```bash
 npm i playwright && npx playwright install chromium
 
-node test.js              # 703 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
+node test.js              # 705 checks (the number grows most rounds; the suite prints it): boot, every weapon, every evolution, every
                          # enemy, elites, boss abilities, evolution partners,
                          # draft rules, colour-vision contrast, edge camera,
                          # every character, a full run, the sudden-death gate,
@@ -279,7 +279,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **703 passing** as of R287, with 219 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **705 passing** as of R288, with 221 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -694,6 +694,11 @@ keep paying after the build is done.
 recipes and forgot every run. An evolution taken - from a hand or a cache, never from the dev hook -
 is counted on the save forever: N/10 on the tab, REACHED (xN) or NOT YET on each weapon's tile, and
 REACHED FOR THE FIRST TIME on the results screen the first time each one happens.
+
+**The results say what hurt you (R288).** The damage ledger the benches read - bites, spit, ground -
+is printed on the results as a `Took` row: the total, the shares with their hit counts, biggest
+first. A player who died to bites has been told what to step out of. The ledger counts health
+actually lost, so a killing blow logs what was left rather than the whole bite.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The
