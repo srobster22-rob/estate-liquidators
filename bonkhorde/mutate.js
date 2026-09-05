@@ -1007,6 +1007,11 @@ const MUTANTS = [
     why:"the results stop saying what hurt you - the ledger is kept and never shown",
     from:"      <tr><td>Took</td><td>${Math.round(took)}${tookParts.length",
     to:  "      <tr><td>Took</td><td>${\"\"}${!tookParts.length" },
+  // ---- R289: the phone text floor (section 80)
+  { id:"phone-text-shrinks-again", must:"80",
+    why:"the kit labels and the pause headers go back to 7.5px on a phone",
+    from:"    .kit .kg b{font-size:9px}\n    .psheet .pb b.h{font-size:9px}",
+    to:  "    .psheet .pb b.h{font-size:9px}" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

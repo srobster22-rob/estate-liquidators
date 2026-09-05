@@ -7775,6 +7775,37 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("an untouched run prints Took 0 and nothing else", r.clean.by.total === 0 && /^Took 0$/.test(r.clean.row), `"${r.clean.row}"`);
   }
 
+  console.log("\n=== 80. THE PHONE TEXT FLOOR ===");
+  {
+    // A phone is read at arm's length. On a 390x844 phone no visible text
+    // that carries information on the menu, the level-up panel, the pause
+    // sheet or the results is smaller than 9px; a unit suffix may be 8.
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pg = await ctx.newPage(); await pg.goto(FILE, { waitUntil: "load" }); await pg.waitForTimeout(500);
+    const r = await pg.evaluate(() => {
+      const g = window.__g;
+      const small = (root, floor) => { const out = []; for (const el of root.querySelectorAll("*")) {
+          if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+          const cs = getComputedStyle(el); if (cs.display === "none" || cs.visibility === "hidden") continue;
+          if (el.offsetParent === null && cs.position !== "fixed") continue;
+          const fs = parseFloat(cs.fontSize), unit = el.tagName === "U" || (el.tagName === "I" && el.closest(".psheet"));
+          if (fs < (unit ? 8 : floor)) out.push(`${fs}px ${el.tagName.toLowerCase()}.${[...el.classList].join(".")} "${el.textContent.trim().slice(0, 18)}"`); }
+        return [...new Set(out)]; };
+      g.drainPicks(true); g.wipeSave(); g.setSave({ up:{ reroll:1, banish:1 } }); g.menu("play"); const menu = small(document.getElementById("menu"), 9);
+      g.menu("coll"); const coll = small(document.getElementById("menu"), 9);
+      g.menu("locks"); const locks = small(document.getElementById("menu"), 9);
+      g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.give("bat", 2); g.give("spinach", 1);
+      g.drainPicks(false); g.xp(60); g.step(1, 1/60); const pick = small(document.getElementById("pick"), 9); g.drainPicks(true);
+      g.pause(true); const pause = small(document.getElementById("paused"), 9); g.pause(false);
+      g.hitMe(1e12); g.step(2, 1/60); const end = small(document.getElementById("end"), 9);
+      return { menu, coll, locks, pick, pause, end };
+    });
+    await ctx.close();
+    const all = Object.entries(r).flatMap(([k, v]) => v.map(x => k + ": " + x));
+    ok("on a 390px phone nothing that carries information is under 9px on the menu's three tabs, the level-up panel, the pause sheet or the results",
+       all.length === 0, all.length ? all.slice(0, 6).join(" | ") + (all.length > 6 ? ` (+${all.length - 6})` : "") : "smallest text 9px, unit suffixes 8px");
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

@@ -638,6 +638,30 @@
     #stats{font-size:9px}
   }
   /* Also last, for the same reason. */
+  /* THE PHONE TEXT FLOOR (R289). A phone is read at arm's length, and the
+     panels carried type chips at 7px, kit labels at 7.5px, stat rows at
+     8.5px. Under 520px nothing that carries information is smaller than 9px;
+     a unit suffix (U/S, HP/S) may be 8. Section 80 scans every visible text
+     node on the four phone screens to keep it so. */
+  @media (max-width:520px){
+    .ch .ty,.detail .pvbox .ty{font-size:9px}
+    .ch .ml{font-size:9px}
+    .detail .rw b{font-size:9px} .ch .rw b{font-size:9px}
+    .ch .lkt{font-size:9px} .ch .lkt b{font-size:9px}
+    .detail .st{font-size:9.5px} .detail .st b{font-size:10.5px} .detail .st b u{font-size:8px}
+    .detail .rw{font-size:10px} .detail .rw i s{font-size:9px}
+    .detail .chain span{font-size:9px} .detail .chain s{font-size:9px} .detail .chain s u{font-size:8px}
+    .detail .foot .ml{font-size:9.5px} .detail .foot .ml s{font-size:9px}
+    #pick .card .fam{font-size:9px} #pick .card .pt{font-size:9px} #pick .card .lv{font-size:9px}
+    #pick .sub{font-size:9px}
+    .kit .kg b{font-size:9px}
+    .psheet .pb b.h{font-size:9px} .psheet .st .row b i{font-size:8px} .psheet .run .lv{font-size:9.5px}
+    .next .nb u{font-size:9px}
+    .tab i{font-size:9px}
+    .ce .e,.ce .d,.ce .rc{font-size:9px} .ce .rc b{font-size:9px}
+    .lk .lkd,.lk .lkp{font-size:9px}
+    #endBody table td:last-child .dim2,.dim2{font-size:9.5px}
+  }
 </style>
 </head>
 <body>
