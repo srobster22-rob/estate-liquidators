@@ -9768,9 +9768,23 @@ function updateEvents(dt){
         // always was. The evolution card in the draft is still the other way
         // to get there.
         const ev = evoReady();
-        if(ev.length && !noLevels && !picking){ showPick([ev[0]], cacheDealer); evStats.cacheEvos = (evStats.cacheEvos||0) + 1; }
+        let gave = "";
+        if(ev.length && !noLevels && !picking){ showPick([ev[0]], cacheDealer); evStats.cacheEvos = (evStats.cacheEvos||0) + 1; gave = "EVOLUTION"; }
+        else if(!noLevels && !picking){
+          // A FULL KIT'S CACHE IS A MASTERY. Past a full kit a level is a
+          // silent point of growth, and a cache that hands out one of those is
+          // a chest with a crumb in it. VS's chests keep paying after the
+          // build is done; so a cache with nothing left to deal is a MASTERY
+          // hand, on the spot, not one silent level in five.
+          const only = offers();
+          if(only.length === 1 && only[0].type === "heal"){
+            const mh = masteryHand();
+            if(mh.length){ showPick(mh, cacheDealer); evStats.cacheMast = (evStats.cacheMast||0) + 1; gave = "MASTERY"; }
+            else queueLevel();
+          } else queueLevel();
+        }
         else queueLevel();
-        alert2(ev.length ? "CACHE  ·  EVOLUTION" : "CACHE OPENED", "#f0b429"); shake = Math.max(shake,.5); SFX.levelup();
+        alert2(gave ? "CACHE  ·  " + gave : "CACHE OPENED", "#f0b429"); shake = Math.max(shake,.5); SFX.levelup();
         continue;
       }
     } else {

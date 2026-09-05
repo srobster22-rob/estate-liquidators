@@ -7600,6 +7600,35 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${r.plain.rows.length} cards under "${r.plain.title}", ${r.plain.live} live buttons`);
   }
 
+  console.log("\n=== 74. A FULL KIT'S CACHE IS A MASTERY ===");
+  {
+    // Past a full kit a level is a silent point of growth, and a cache that
+    // handed out one of those was a chest with a crumb in it. A cache with
+    // nothing left to deal is a MASTERY hand on the spot, under the CACHE
+    // banner; a kit with room still gets the level it always did.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.freezeEvo(true); g.setShake(0); g.clearEnemies();
+      for (const k of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops","gore","brood"]) { g.give(k, 3); g.evolve(k); }
+      for (const k of ["spinach","boots","tempo","magnet","plating","heart","clover","dupe"]) g.give(k, 3);
+      for (const k of ["momentum","stomp"]) g.give(k, 1);
+      const before = g.kitRaw();
+      g.drainPicks(false); g.place(0, 0); g.spawnEvent("cache", 0, 0); for (let i = 0; i < 3; i++) g.stepRaw(1/60);
+      const s = g.state(), d = g.draft();
+      const rows = [...document.querySelectorAll("#pkCards .card")].map(e => ({ nm: e.querySelector(".nm").textContent, lv: e.querySelector(".lv span").textContent, key: e.dataset.okey }));
+      const live = [...document.querySelectorAll("#pkTools .tb")].filter(b => !b.classList.contains("off")).length;
+      const first = rows[0] && rows[0].key;
+      if (s.picking) g.pick(0);
+      const after = g.kitRaw();
+      return { picking: s.picking, cache: d.cache, title: d.title, rows, live, first, rankBefore: first ? before[first].l + 1 : null, rankAfter: first ? after[first].l + 1 : null,
+               alerts: g.alerts().filter(a => /CACHE/.test(a)), pendingAfter: g.state().pending };
+    });
+    ok("with nothing left to deal, a cache opens a MASTERY hand under the CACHE banner, no live buttons",
+       r.picking && r.cache && r.title === "CACHE" && r.rows.length >= 1 && r.rows.length <= 3 && r.rows.every(x => x.lv === "MASTERY") && r.live === 0 && r.alerts.some(a => /MASTERY/.test(a)),
+       `${r.rows.map(x => x.nm).join("|")} under "${r.title}" (${r.rows.map(x => x.lv).join("/")}), ${r.live} live buttons; ${r.alerts.join(" / ")}`);
+    ok("and taking one carries a finished growth a rank further", r.rankBefore === 3 && r.rankAfter === 4, `${r.first}: rank ${r.rankBefore} -> ${r.rankAfter}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

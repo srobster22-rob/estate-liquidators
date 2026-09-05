@@ -954,7 +954,7 @@ const MUTANTS = [
   // ---- R280: a cache is the evolution you were ready for (section 72)
   { id:"cache-is-just-a-level", must:"72",
     why:"a cache hands out a level again, evolution ready or not",
-    from:"        if(ev.length && !noLevels && !picking){ showPick([ev[0]], cacheDealer); evStats.cacheEvos = (evStats.cacheEvos||0) + 1; }",
+    from:"        if(ev.length && !noLevels && !picking){ showPick([ev[0]], cacheDealer); evStats.cacheEvos = (evStats.cacheEvos||0) + 1; gave = \"EVOLUTION\"; }",
     to:  "        if(false){ }" },
   { id:"cache-wears-no-banner", must:"72",
     why:"the cache's card comes up under LEVEL UP like any other hand",
@@ -964,6 +964,11 @@ const MUTANTS = [
     why:"taking a cache's evolution counts as taking a level, and one the gems queued is lost",
     from:"  if(wasLevel) pendingLevels = Math.max(0, pendingLevels - 1);",
     to:  "  pendingLevels = Math.max(0, pendingLevels - 1);" },
+  // ---- R282: a full kit's cache is a mastery (section 74)
+  { id:"full-cache-is-a-crumb", must:"74",
+    why:"a cache with nothing left to deal hands out a silent level again",
+    from:"            if(mh.length){ showPick(mh, cacheDealer); evStats.cacheMast = (evStats.cacheMast||0) + 1; gave = \"MASTERY\"; }",
+    to:  "            if(false){ }" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run
