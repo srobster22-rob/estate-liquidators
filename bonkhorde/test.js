@@ -6587,7 +6587,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     await ctx.close();
     const land = await page.evaluate(async () => { const g = window.__g; g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.freezeSpawns(true);
-      g.drainPicks(true); g.step(5, 1/60); g.resume(); await new Promise(res => setTimeout(res, 200)); return g.camInfo(); });
+      g.drainPicks(true); g.step(5, 1/60); g.resume();
+      // twelve RENDERED frames, not 200 ms: the boom eases in render(), and under load 200 ms can hold no frame at all
+      await new Promise(res => { let n = 0; const tick = () => (++n >= 12 ? res() : requestAnimationFrame(tick)); requestAnimationFrame(tick); });
+      return g.camInfo(); });
     ok("ten things in the kit sit in at most two rows of thirty-pixel slots on a 390px phone, not three rows of four",
        r.n === 10 && r.rows <= 2 && Math.abs(r.slotW - 30) < 1 && r.kitW > 200,
        `${r.n} slots of ${r.slotW}px in ${r.rows} rows, kit ${Math.round(r.kitW)}px wide`);
@@ -7563,6 +7566,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `bar ${ph.open.go && ph.open.go.t}-${ph.open.go && ph.open.go.b} of ${ph.open.vh}, panel button ${ph.open.start && ph.open.start.disp}, portrait ${ph.open.pv && ph.open.pv.w}x${ph.open.pv && ph.open.pv.h}, ${ph.open.rows} rows of tiles`);
     ok("and at 360x640 too", sm.open.go && sm.open.go.h >= 30 && sm.open.go.t >= 0 && sm.open.go.b <= sm.open.vh && sm.open.go.disp === "flex" && sm.open.scrollW <= sm.open.vw,
        `bar ${sm.open.go && sm.open.go.t}-${sm.open.go && sm.open.go.b} of ${sm.open.vh}`);
+    // a tablet on end is one column too, and its START was 160-270px below the fold (R295)
+    const tp = await probe(768, 1024), ta = await probe(820, 1180), tl = await probe(1024, 768);
+    const barUp = r => r.open.go && r.open.go.h >= 30 && r.open.go.t >= 0 && r.open.go.b <= r.open.vh && r.open.go.disp === "flex" && r.open.start && r.open.start.disp === "none";
+    ok("on a portrait tablet, 768x1024 and 820x1180, START rides the bar on the first screen and the panel's own button is hidden",
+       barUp(tp) && barUp(ta),
+       `768x1024 bar ${tp.open.go && tp.open.go.t}-${tp.open.go && tp.open.go.b} of ${tp.open.vh} (${tp.open.go && tp.open.go.disp}), panel button ${tp.open.start && tp.open.start.disp}; 820x1180 bar ${ta.open.go && ta.open.go.t}-${ta.open.go && ta.open.go.b} of ${ta.open.vh} (${ta.open.go && ta.open.go.disp}), panel button ${ta.open.start && ta.open.start.disp}`);
+    ok("a landscape tablet, 1024x768, is two columns: the panel's button is on the first screen and the bar stays hidden",
+       tl.open.go && tl.open.go.disp === "none" && tl.open.start && tl.open.start.disp !== "none" && tl.open.start.t >= 0 && tl.open.start.b <= tl.open.vh,
+       `bar ${tl.open.go && tl.open.go.disp}, panel button ${tl.open.start && tl.open.start.disp} at ${tl.open.start && tl.open.start.t}-${tl.open.start && tl.open.start.b} of ${tl.open.vh}`);
     ok("a locked pick puts LOCKED on the bar, disabled", ph.locked.go && ph.locked.go.dis && /LOCKED/.test(ph.locked.go.txt), ph.locked.go && ph.locked.go.txt);
     ok("and the bar's button starts the picked creature", !ph.started.menuOn && ph.started.running && ph.started.mon === ph.started.want, `${ph.started.mon} vs ${ph.started.want}, menu ${ph.started.menuOn}`);
     const dk = await page.evaluate(() => { const g = window.__g; g.drainPicks(true); g.wipeSave(); g.menu("play");

@@ -509,11 +509,18 @@
     .detail .ds,.detail .stats,.detail .rw,.detail .chain{margin-right:10px;margin-left:10px}
     .detail .stats{grid-template-columns:repeat(2,1fr)}
     .detail .foot{grid-column:1/2;padding:10px 10px 0}
-    .detail .foot .btn{display:none}
     .detail canvas.pv,.detail .lockbox{height:150px;width:200px;margin:0 auto}
+    .col{grid-template-columns:1fr}
+  }
+  /* THE START BUTTON IS ON THE FIRST SCREEN, on a tablet too. Under 860px the
+     PLAY tab is one column, roster over panel, and on a portrait tablet the
+     panel's own button was 160-270px below the fold (R295: 768x1024 and
+     820x1180). The bar the phone got in R279 carries START on every
+     one-column screen; a landscape tablet is two columns and keeps its button. */
+  @media (max-width:860px){
     .gobar{display:flex}
     #menu .wrap{padding-bottom:72px}
-    .col{grid-template-columns:1fr}
+    .detail .foot .btn{display:none}
   }
   .btn{display:inline-block;margin-top:20px;padding:13px 40px;background:var(--gold);
     color:#120d02;font-weight:800;letter-spacing:.14em;cursor:pointer;font-size:14px;

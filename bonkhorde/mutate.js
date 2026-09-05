@@ -983,6 +983,11 @@ const MUTANTS = [
     from:"  const tgt = threatTarget(P.x, P.z, 40, null, true);",
     to:  "  const tgt = threatTarget(P.x, P.z, 40);" },
   // ---- R279: on a phone, START is on the first screen (section 71)
+  { id:"tablet-start-below-the-fold", must:"71",
+    why:"the START bar is a phone thing again - on a tablet held upright the " +
+        "PLAY tab is one column and its button is 160-270px below the fold",
+    from:"  @media (max-width:860px){\n    .gobar{display:flex}",
+    to:  "  @media (max-width:520px){\n    .gobar{display:flex}" },
   { id:"phone-start-below-the-fold", must:"71",
     why:"the phone's START bar never shows, and the button is a screen and a half down again",
     from:"    .gobar{display:flex}",
