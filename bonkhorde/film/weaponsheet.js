@@ -13,7 +13,7 @@ const FRAMES=(process.env.FRAMES||"2,10,26").split(",").map(Number);
   let last=0;
   for(const f of FRAMES){
     const r=await p.evaluate(([key,f,evo])=>{ const g=window.__g;
-      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.clearEnemies(); g.disarm();
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0); g.drainPicks(true); g.clearEnemies(); g.disarm();
       g.place(0,0); const pp=g.state();
       for(let i=0;i<10;i++){ const a=(i/10)*Math.PI*2, d=5.5+(i%2)*2.5; g.spawnAt("shambler", pp.x+Math.sin(a)*d, pp.z+Math.cos(a)*d); }
       g.give(key,3); if(evo){ try{ g.evolve(key); }catch(e){} }

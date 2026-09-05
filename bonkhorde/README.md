@@ -281,7 +281,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **726 passing** as of R297, with 239 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **729 passing** as of R298, with 240 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -738,6 +738,9 @@ Slice two (R297): a SKULL is a cranium over a jaw with two dark sockets on the f
 a wake of three ghosts along the orbit; STINK keeps its readable rim and fills it with a cloud of
 drifting puffs; a ZAP has a white spine down every segment and sparks where it lands; CALTROPS are
 crossed blades on dark feet, on the rim and scattered inside the field. Section 83.
+Slice three (R298): the spark moved into `hurt()`, so EVERY hit throws two white motes from the body it
+hit - bat, skull, wave, cloud tick, hatchling, shell - and a crit throws a golden burst of six. The bolt
+and the zap lost their private sparks for the shared one. Section 84.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

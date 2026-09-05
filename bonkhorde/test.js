@@ -7917,6 +7917,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const r = await page.evaluate(() => {
       const g = window.__g;
       g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true);                               // AFTER start(): a kill that levels would open a hand and freeze the world
       g.clearEnemies(); g.disarm(); g.place(0, 0); g.aim(0);
       const pp = g.state(); g.spawnAt("shambler", pp.x, pp.z + 7);
       const near = (a, b) => Math.abs(a - b) < .012;
@@ -7956,7 +7957,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a bolt in flight is a dart: one bright core and two fins per bolt, and a tail of shrinking boxes behind each",
        r.bolts >= 1 && r.cores === r.bolts && r.fins === 2 * r.bolts && r.tail >= 4 * r.bolts,
        `${r.bolts} bolts: ${r.cores} cores, ${r.fins} fins, ${r.tail} tail boxes`);
-    ok("a bolt that lands throws sparks, out of the cosmetic pool", r.pops1 >= r.pops0 + 3, `sparks ${r.pops0} -> ${r.pops1}`);
+    ok("a bolt that lands throws sparks, out of the cosmetic pool", r.pops1 >= r.pops0 + 2, `sparks ${r.pops0} -> ${r.pops1}`);
     ok("a shockwave is a band: every tile as long as its spacing, with an echo ring inside it",
        r.rings >= 1 && r.band >= 18 * r.rings && r.echo >= 18 * r.rings,
        `${r.rings} ring(s): ${r.band} band tiles, ${r.echo} echo tiles`);
@@ -7978,6 +7979,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const r = await page.evaluate(() => {
       const g = window.__g;
       g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true);                               // AFTER start(): a kill that levels would open a hand and freeze the world
       g.clearEnemies(); g.disarm(); g.place(0, 0); g.aim(0);
       const pp = g.state();
       const near = (a, b) => Math.abs(a - b) < .012;
@@ -8020,6 +8022,37 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a caltrop field is crossed blades on dark feet, on the rim and scattered inside it",
        r.blades >= 8 && r.feet >= 8 && r.inner >= 8 && r.boxes <= 7200,
        `${r.blades} blades, ${r.feet} feet, ${r.inner} inner blades, ${r.boxes} boxes drawn`);
+  }
+
+  console.log("\n=== 84. EVERY HIT IS A SPARK ===");
+  {
+    // R296's report, the third slice: the bolt and the zap threw sparks and
+    // nothing else did. The spark lives in hurt() now, so a bat, a skull, a
+    // wave, a cloud tick or a hatchling's bite all throw two white motes from
+    // the body they hit, and a crit throws a golden six. Out of the cosmetic
+    // pool, unseeded, so the sim does not know.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true);                               // AFTER start(): a kill that levels would open a hand and freeze the world
+      g.clearEnemies(); g.disarm(); g.place(0, 0); g.aim(0);
+      const pp = g.state();
+      const peakOver = n => { let pk = 0; for (let i = 0; i < n; i++) { g.stepRaw(1/60); pk = Math.max(pk, g.fxLive().sparks); } return pk; };
+      const drain = () => { for (let i = 0; i < 24; i++) g.stepRaw(1/60); return g.fxLive().sparks; };
+      // 1. a bat swing lands
+      g.spawnAt("shambler", pp.x, pp.z + 2.4); g.give("bat", 3); g.setCrit(0);
+      g.setWT("bat", 0); const bat = peakOver(12); g.setWT("bat", 99); const bat0 = drain();
+      // 2. a crit is a golden six
+      g.clearEnemies(); g.spawnAt("shambler", pp.x, pp.z + 2.4); g.setCrit(1);
+      g.setWT("bat", 0); const crit = peakOver(12); g.setWT("bat", 99); g.setCrit(0); const crit0 = drain();
+      // 3. a cloud tick, with no projectile anywhere
+      g.disarm(); g.clearEnemies(); g.spawnAt("shambler", pp.x, pp.z + 1.6); g.give("aura", 3);
+      const cloud = peakOver(40); g.disarm(); g.clearEnemies(); const cloud0 = drain();   // nothing left to burn, so the pool must empty
+      return { bat, bat0, crit, crit0, cloud, cloud0 };
+    });
+    ok("a bat swing that lands throws sparks", r.bat >= 2 && r.bat0 === 0, `peak ${r.bat} sparks, ${r.bat0} left a third of a second later`);
+    ok("a crit throws a burst three times the size", r.crit >= 6 && r.crit >= r.bat + 3 && r.crit0 === 0, `crit peak ${r.crit} vs ${r.bat} on a plain hit`);
+    ok("a cloud's tick sparks the body it burns, with no projectile in the world", r.cloud >= 2 && r.cloud0 === 0, `peak ${r.cloud} sparks inside the stink, ${r.cloud0} left a third of a second after the field and the body are gone`);
   }
 
   console.log("\n" + "=".repeat(58));
