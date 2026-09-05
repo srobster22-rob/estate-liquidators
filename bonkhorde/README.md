@@ -274,6 +274,7 @@ node film/pausefilm.js [seed]     # the pause menu (run, stats, kit) and the res
 node film/thunderfilm.js          # THUNDERHEAD's discharge: the chain and the return stroke on an elite in a crowd, and the same elite alone
 node film/fanfilm.js              # a BOLTSTORM volley mid-flight: the finale boss ahead, a crowd aside, and where the seven bolts go
 node film/cachefilm.js            # a CACHE opened with an evolution ready: the panel under its CACHE banner, desktop and phone
+node film/sweep.js [seedBase]     # every creature, one seed each, a whole autopilot run: outcome, kit, evolutions, and every page error
 python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1 for native size); crop.py out.png in.png x y w h
 ```
 
