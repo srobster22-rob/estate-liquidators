@@ -988,6 +988,15 @@ const MUTANTS = [
     why:"the COLLECTION tab stops counting what you have reached",
     from:"      id === \"locks\" && nLocked ? `<i>${nLocked} LEFT</i>` : id === \"coll\" ? `<i>${nEvo}/${nEvoAll}</i>` : \"\"}</div>`).join(\"\")}</div>",
     to:  "      id === \"locks\" && nLocked ? `<i>${nLocked} LEFT</i>` : \"\"}</div>`).join(\"\")}</div>" },
+  // ---- R287: the menu does not lead with its cheats (section 78)
+  { id:"dev-row-always-open", must:"78",
+    why:"the cheats sit open at the foot of every player's menu again",
+    from:"  .devrow:not(.open) > :not(.devtog){display:none}",
+    to:  "  .devrow:not(.open) > :not(.devtog){display:inline-block}" },
+  { id:"best-of-nothing", must:"78",
+    why:"a half-second run prints BEST 00:00 on the menu",
+    from:"      save.best >= 1 ? ` <span>BEST ${fmt(save.best)}</span>` : \"\"}${",
+    to:  "      save.best ? ` <span>BEST ${fmt(save.best)}</span>` : \"\"}${" },
 ];
 
 // A stale anchor is a hole in the audit that reads as a pass, and the full run

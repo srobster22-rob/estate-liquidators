@@ -545,6 +545,14 @@
     flex-wrap:wrap;margin:14px auto 4px;padding:9px 12px;max-width:640px;
     border:1px dashed #3a4250;background:#0f1319}
   #dev b,.devrow b{font-size:9px;letter-spacing:.24em;color:#5c6470;margin-right:4px}
+  /* THE DEV ROW IS FOLDED. A shipped menu does not lead with its cheats: only
+     the word shows until it is clicked (or DEV MODE is already on). The
+     buttons stay in the DOM, where the suite reaches them by id. */
+  .devrow .devtog{font:800 9px/1 ui-monospace,monospace;letter-spacing:.24em;color:#5c6470;background:none;
+    border:none;cursor:pointer;padding:4px 6px;font-family:inherit}
+  .devrow .devtog:hover{color:var(--ink)}
+  .devrow:not(.open) > :not(.devtog){display:none}
+  .devrow:not(.open){border-color:transparent;background:none;padding:2px;margin-top:6px}
   .dv{font-size:9px;padding:6px 10px;letter-spacing:.1em}
   .dv.on{border-color:var(--gold);color:var(--gold)}
   /* the pause DEV strip exists for everyone (the suite checks its wiring) but
@@ -11598,7 +11606,7 @@ function openMenu(tab){
     <h1>BONK<span>HORDE</span></h1>
     <div class="tag">RAISE A CREATURE &nbsp;·&nbsp; GROW IT TO ITS FINAL FORM &nbsp;·&nbsp; <b>TWENTY MINUTES, THEN TERRAVORE</b></div>
     <div class="bank">${icon("coin")} ${save.coins.toLocaleString()} COINS${
-      save.best ? ` <span>BEST ${fmt(save.best)}</span>` : ""}${
+      save.best >= 1 ? ` <span>BEST ${fmt(save.best)}</span>` : ""}${
       save.wins ? ` <span class="g">${save.wins} CLEAR${save.wins>1?"S":""}</span>` : ""}${
       save.dev ? ` <span class="devon">DEV MODE &mdash; EVERYTHING UNLOCKED</span>` : ""}</div>
     <div class="tabs">${TABS.map(([id, nm]) => `<div class="tab ${menuTab === id ? "on" : ""}" data-tab="${id}">${nm}${
@@ -11614,12 +11622,12 @@ function openMenu(tab){
            +12% on the first link, +40% by five, +55% by twelve. One hit resets it.`}<br>
       Weapons fire on their own. Positioning is the entire game.
     </div>
-    <div class="devrow"><b>DEV</b>
+    <div class="devrow ${save.dev ? "open" : ""}" id="devrow"><button class="devtog" id="dvTog">DEV ${save.dev ? "&#9662;" : "&#9656;"}</button>
       <button class="btn gh dv ${save.dev?"on":""}" id="dvMode">DEV MODE: ${save.dev?"ON":"OFF"}</button>
       <button class="btn gh dv" id="dvAll">UNLOCK EVERYTHING</button>
       <button class="btn gh dv" id="dvWipe">WIPE SAVE</button>
       <span style="font-size:9px;color:#5c6470">${save.dev
-        ? `re-applied on every load &mdash; all seven monsters, every upgrade,
+        ? `re-applied on every load &mdash; all ${CHARS.length} monsters, every upgrade,
            99,999 coins, monster LV ${MON_CAP}`
         : "the unlock ladder is live"}</span>
     </div>`;
@@ -11630,6 +11638,9 @@ function openMenu(tab){
   else if(menuTab === "shop")  menuShop(pane);
   else if(menuTab === "coll")  menuCollection(pane);
   else                         menuLocks(pane);
+  const dvT = document.getElementById("dvTog");
+  if(dvT) dvT.onclick = ()=>{ const row = document.getElementById("devrow"); row.classList.toggle("open");
+                              dvT.innerHTML = "DEV " + (row.classList.contains("open") ? "&#9662;" : "&#9656;"); };
   const dvM = document.getElementById("dvMode");
   if(dvM) dvM.onclick = ()=>{ setDev(!save.dev); SFX.buy(); openMenu(); };
   const dvA = document.getElementById("dvAll");

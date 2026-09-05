@@ -7711,6 +7711,37 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the dev hook's evolve() counts nothing", r.dev.badge === "1/10" && r.dev.got === 1, `badge "${r.dev.badge}"`);
   }
 
+  console.log("\n=== 78. THE MENU DOES NOT LEAD WITH ITS CHEATS ===");
+  {
+    // The DEV row - DEV MODE, UNLOCK EVERYTHING, WIPE SAVE - sat open at the
+    // foot of every player's menu. It is folded to the word DEV until clicked,
+    // open by default only when DEV MODE is already on; the buttons stay in
+    // the DOM for the suite. And a half-second run no longer prints BEST 00:00.
+    const r = await page.evaluate(() => {
+      const g = window.__g;
+      g.drainPicks(true); g.wipeAll(); g.menu("play");
+      const vis = id => { const e = document.getElementById(id); return e ? getComputedStyle(e).display !== "none" && e.offsetParent !== null : null; };
+      const folded = { mode: vis("dvMode"), all: vis("dvAll"), wipe: vis("dvWipe"), tog: vis("dvTog"), inDom: !!document.getElementById("dvWipe") };
+      document.getElementById("dvTog").click();
+      const opened = { mode: vis("dvMode"), wipe: vis("dvWipe") };
+      g.dev(true); g.menu("play"); const devOn = { mode: vis("dvMode"), open: document.getElementById("devrow").classList.contains("open"),
+        note: (document.querySelector("#devrow span") || {}).textContent || "", monsters: g.chars().length };
+      g.wipeAll();
+      // a half-second run: dead at 0.5 s, and no BEST on the bank line
+      g.start("intern"); g.step(30, 1/60); g.hitMe(1e12); g.step(2, 1/60); g.menu("play");
+      const bank0 = (document.querySelector("#menu .bank") || {}).textContent || "", best0 = g.saveState().best;
+      g.setSave({ best: 90 }); g.menu("play");
+      const bank1 = (document.querySelector("#menu .bank") || {}).textContent || "";
+      g.wipeAll(); g.menu("play");
+      return { folded, opened, devOn, best0, bank0: bank0.replace(/\s+/g, " "), bank1: bank1.replace(/\s+/g, " ") };
+    });
+    ok("on a fresh menu the DEV buttons are in the DOM but folded away behind the word DEV",
+       r.folded.inDom && r.folded.mode === false && r.folded.all === false && r.folded.wipe === false && r.folded.tog === true, JSON.stringify(r.folded));
+    ok("clicking DEV unfolds them, and DEV MODE on opens the row by default", r.opened.mode && r.opened.wipe && r.devOn.mode && r.devOn.open, JSON.stringify({ opened: r.opened, devOn: { mode: r.devOn.mode, open: r.devOn.open } }));
+    ok("and the row counts the monsters it unlocks from the roster, not from memory", new RegExp("all " + r.devOn.monsters + " monsters").test(r.devOn.note) && r.devOn.monsters === 9, `"${r.devOn.note.replace(/\s+/g, " ").trim().slice(0, 60)}" (${r.devOn.monsters} in the roster)`);
+    ok("a half-second run leaves no BEST on the bank line; a real best prints", r.best0 > 0 && r.best0 < 1 && !/BEST/.test(r.bank0) && /BEST 01:30/.test(r.bank1), `best ${r.best0}: "${r.bank0}" then "${r.bank1}"`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
