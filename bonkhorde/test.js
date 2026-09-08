@@ -341,14 +341,22 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       for (const w of kit) window.__g.give(w, 1);
       return window.__g.peekOffers(80);
     };
-    return { canUse: peek(["bolt"]), cannot: peek(["pulse", "aura"]) };
+    // peekOffers keys its tally by the card's DISPLAY NAME, and that name is
+    // not a constant: L13 renamed this card from SECOND HEAD to THE SPLIT and
+    // three checks that had the old string typed into them went red while the
+    // behaviour they assert never moved. The claim here is about the card the
+    // KEY `dupe` names - "it is offered whatever the kit is" - so the name is
+    // read off the live table and used as the lookup, and the next rename
+    // cannot break it either.
+    return { canUse: peek(["bolt"]), cannot: peek(["pulse", "aura"]),
+             nm: (window.__g.upgrades().find(u => u.key === "dupe") || {}).nm };
   });
-  ok("SECOND HEAD offered to a kit of shots",
-     (offers.canUse["SECOND HEAD"] || 0) > 0,
-     `${offers.canUse["SECOND HEAD"] || 0} times in 80 rolls`);
-  ok("and to a kit of clouds and rings - SECOND HEAD is for every weapon now",
-     (offers.cannot["SECOND HEAD"] || 0) > 0,
-     `${offers.cannot["SECOND HEAD"] || 0} times in 80 rolls`);
+  ok(`${offers.nm} offered to a kit of shots`,
+     (offers.canUse[offers.nm] || 0) > 0,
+     `${offers.canUse[offers.nm] || 0} times in 80 rolls`);
+  ok(`and to a kit of clouds and rings - ${offers.nm} is for every weapon now`,
+     (offers.cannot[offers.nm] || 0) > 0,
+     `${offers.cannot[offers.nm] || 0} times in 80 rolls`);
 
   const retal = await page.evaluate(() => {
     // 30 shamblers reads 660 damage either way - that is exactly their combined
@@ -410,7 +418,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   const allKinds = await page.evaluate(() => {
     window.__g.start("intern"); window.__g.god(); window.__g.drainPicks(true);
     window.__g.freezeSpawns(true); window.__g.skipTo(1140); window.__g.boss(3);
-    window.__g.step(60 * 60);
+    // L7: the finale's kit GROWS WITH ITS PHASES - THE HUNGER casts two of the
+    // five, and the whole kit only comes out once it has been opened up. So the
+    // claim "it uses its whole kit" is a claim about the whole FIGHT: walk it
+    // down its own health gates (bossHp, added for exactly this) and take the
+    // union of what it cast on the way.
+    window.__g.step(60 * 25);
+    for(const frac of [0.60, 0.28]){ window.__g.bossHp(frac); window.__g.step(60 * 25); }
     return window.__g.casts();
   });
   ok("THE FINAL BONK uses its whole kit",
@@ -425,6 +439,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const g = window.__g;
     g.wipeSave(); g.start("intern"); g.god(); g.drainPicks(true);
     g.freezeSpawns(true); g.freezeEvents(true); g.skipTo(1140); g.boss(3);
+    // SINKHOLE arrives with THE OPENING (L7) - phase one casts slam and charge
+    // only - so open the boss up before waiting for the ring.
+    g.step(60); g.bossHp(0.50); g.step(180);
     const b0 = g.bossAt();
     // step until the ring appears: 13 telegraphing hazards all at one radius
     let ring = null, bx = b0.x, bz = b0.z;
@@ -468,6 +485,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const g = window.__g;
     g.wipeSave(); g.start("intern"); g.god(); g.drainPicks(true);
     g.freezeSpawns(true); g.freezeEvents(true); g.skipTo(1140); g.boss(3);
+    g.step(60); g.bossHp(0.50); g.step(180);      // into THE OPENING, where SINKHOLE lives
     const R = g.rim();
     let casts = 0, worstToBoss = 1e9, farthestBoss = 0;
     for(let k=0; k<60*120; k++){
@@ -518,8 +536,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.pin(seed); g.pinRun(seed);
       g.start("ox"); g.god(); g.drainPicks(true); g.freezeSpawns(true);
       g.skipTo(900); g.bot(false); g.boss(2);      // MR. TEETH, charge+slam
-      const hp0 = g.hp();                          // godmode: nobody dies,
-      let tel = 0;                                 // so this compares damage
+      // Read the LEDGER, not the health bar. hurtLog counts what the ground
+      // took off you and is reset by g.start(), so it cannot be paid back:
+      // L9's vigil hands you 10% of your health for walking within 15 m of a
+      // monument, and the boss's arena has one, so an HP delta scored 129 of a
+      // measured 476 and quietly turned this check into a test of the heal.
+      let tel = 0;                                 // (godmode: nobody dies)
       for(let k = 0; k < 60 * 30; k++){
         const bs = g.bossAt();
         let px = bs ? bs.x + 34 : 34, pz = bs ? bs.z : 0;   // home, out of reach
@@ -543,16 +565,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         }
         g.place(px, pz); g.step(1);
       }
-      return { dmg: hp0 - g.hp(), tel };
+      const hb = g.hurtBy();
+      return { dmg: hb.hazard, tel, bites: hb.contact + hb.spit };
     };
     const a = trial(false, 20260821), b = trial(true, 20260821);
     g.pin(null); g.pinRun(null);
-    return { still: a.dmg, moving: b.dmg, tel: a.tel };
+    return { still: a.dmg, moving: b.dmg, tel: a.tel, bites: a.bites + b.bites };
   });
   ok("boss telegraphs are dodgeable",
-     dodge.tel > 100 && dodge.still > 200 && dodge.moving < dodge.still * 0.15,
+     dodge.tel > 100 && dodge.still > 200 && dodge.moving < dodge.still * 0.15 && dodge.bites === 0,
      `${dodge.tel} frames under a marked circle: standing in them lost ` +
-     `${Math.round(dodge.still)} HP, standing beside them lost ${Math.round(dodge.moving)}`);
+     `${Math.round(dodge.still)} HP to the ground, standing beside them lost ` +
+     `${Math.round(dodge.moving)} - and ${Math.round(dodge.bites)} to anything else, in either arm`);
 
   console.log("\n=== 8b. SUDDEN DEATH GATE ===");
   const gate = await page.evaluate(() => {
@@ -664,7 +688,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       window.__g.give(w, 4);
     window.__g.step(60 * 25); window.__g.clearGems(); window.__g.resume();
     await new Promise(r => setTimeout(r, 700));
-    return window.__g.state();
+    // and the census, for how many of those enemies the frame actually built
+    const c = window.__g.boxCensus();
+    return { ...window.__g.state(), culled: c.culled, seen: c.enemies - c.culled };
   });
   // Per enemy, not total. The director's standing horde varies run to run - 104,
   // 109, 125 on identical builds - so a fixed ceiling on the total is measuring
@@ -678,7 +704,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   // swung 158 to 586 boxes between runs of this frame. It read 25.6 one round
   // and 29.3 the next on a change to a PLAYER body plan, and the horde had not
   // moved: measured at the loop it was 18.7 to 21.5 across eleven such runs.
-  const per = hordeOnly.horde / hordeOnly.enemies;
+  // PER ENEMY THE FRAME ACTUALLY BUILT. R302 gave the bodies a frustum test and
+  // R305-R306 gave it to everything else, so an enemy behind the camera now
+  // costs nothing at all - and dividing the horde's boxes by every enemy ALIVE
+  // divides by the camera's facing as much as by the LOD tiers. The figure fell
+  // from the 18.7-21.5 this bound was written against to 7.7-11.2 on the same
+  // build, straddling the floor: L4's suite run failed on 7.7 and five reruns
+  // of the same build read 8.2 to 11.1. Divide by the ones that were built.
+  const per = hordeOnly.horde / Math.max(1, hordeOnly.seen);
   // SAY WHICH HALF FAILED. This is a ratio, and a ratio has a precondition: it
   // needs a horde to divide by. The enemies > 40 guard was already here and
   // already right, but it was folded into the same assertion as the bound, so
@@ -698,16 +731,20 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   // is the mix, a CERATOP-heavy roll costing more than a skitter-heavy one -
   // so 24 sits a box and a half over the worst roll seen and a fifth more
   // boxes on the trash bodies fails it on any roll.
+  // 28, from 24: per BUILT enemy the same frames read 21.2 to 24.0 (the built
+  // ones are the near ones, which carry the top LOD tier), where per enemy
+  // alive they read 7.7 to 11.2. 28 is a sixth over the worst roll seen and a
+  // quarter more boxes on the trash bodies still fails it on any roll.
   ok("the horde's cost per enemy stays bounded",
-     per <= 24,
-     `${per.toFixed(1)} boxes each across ${hordeOnly.enemies} enemies ` +
+     per <= 28,
+     `${per.toFixed(1)} boxes each across ${hordeOnly.seen} of ${hordeOnly.enemies} enemies built ` +
      `(${hordeOnly.horde} of ${hordeOnly.boxes} in the frame are the horde's, ` +
-     `${hordeOnly.corpses} the fallen's)`);
+     `${hordeOnly.corpses} the fallen's, ${hordeOnly.culled} bodies not drawn)`);
   // and a ceiling on a counter that reads zero is no ceiling: the cheapest
   // trash body at the far LOD is still several boxes, so a per-enemy figure
   // under eight means the loop is not being counted, not that it got cheap
-  ok("and the count is the horde's own - a standing enemy is never under eight boxes",
-     per >= 8, `${per.toFixed(1)} a head`);
+  ok("and the count is the horde's own - an enemy the frame built is never under eight boxes",
+     per >= 8 && hordeOnly.seen > 10, `${per.toFixed(1)} a head across ${hordeOnly.seen} built`);
   ok("and the frame still fits two flushes without a boss",
      hordeOnly.boxes > 0 && hordeOnly.boxes <= 7200, `${hordeOnly.boxes} boxes`);
 
@@ -6195,9 +6232,17 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                         skulls: g.wDelta("skulls", 0), max: g.wDelta("bat", 2) } };
     });
     const all = [...r.fresh, ...r.mid, ...r.evo];
+    // "A SIGNED NUMBER OR A COUNT" - and the regex only ever allowed the
+    // first. That was fine while all eight headlines were percentages, and it
+    // went red the moment one of them stopped being arithmetic: L13 turned
+    // this card from a second HEAD (+1 OF EVERYTHING) into a second CREATURE,
+    // and "+A SECOND CREATURE" is a count spelled out. The rule the title
+    // states is a signed magnitude on the face; a signed digit or a signed
+    // "A <thing>" both satisfy it, and neither lets a headline through
+    // without one.
     ok("every upgrade is a part of the animal and one headline: eight of them, two words each, a signed number or a count on the face",
        r.ups.length === 8 && r.ups.every(u => /^[A-Z]+ [A-Z]+$/.test(u.nm)) &&
-       r.ups.every(u => [].concat(u.eff).every(e => /^[+-]\d/.test(e))),
+       r.ups.every(u => [].concat(u.eff).every(e => /^[+-](\d|A )/.test(e))),
        r.ups.map(u => `${u.nm}=${[].concat(u.eff)[0]}`).join(" "));
     ok("every card dealt has a headline and three pips, with the rank you would gain lit",
        all.length >= 30 && all.every(c => c.eff.length > 0) &&
@@ -6305,12 +6350,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the shove is what it is for: twenty seconds hopping inside a ring of forty costs real health bare, and next to nothing with the card",
        r.brawlOff.lost > 60 && r.brawlOn.lost < r.brawlOff.lost * .25 && r.brawlOn.hits >= 3,
        `bare: lost ${r.brawlOff.lost}, ${r.brawlOff.left} HP of horde left; STOMP: lost ${r.brawlOn.lost}, ${r.brawlOn.hits} landings connected, ${r.brawlOn.left} HP left`);
-    ok("the draft deals rules as their own kind of card from level 4, all six of them, none before",
-       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 6 && new Set(r.later.map(c => c.key)).size === 6 &&
+    ok("the draft deals rules as their own kind of card from level 4, all seven of them, none before",
+       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 7 && new Set(r.later.map(c => c.key)).size === 7 &&
        r.later.every(c => c.lv === "RULE" && c.rule),
        `${r.early} of ${r.earlyHands} cards before level 4, ${r.later.length} after (${[...new Set(r.later.map(c => c.nm))].join(" ")}), level ${r.lvl}`);
     ok("the slots cap the rules: with three taken past level 30 the draft offers no fourth, and a rule sits in the kit bar in its own colour",
-       r.capped === 0 && r.slot && r.rules.length === 6 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}`);
+       r.capped === 0 && r.slot && r.rules.length === 7 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}`);
     ok("and the chain readout says the chain is paying twice while RHYTHM is held",
        /x\d/.test(r.hopLabel) && /PACE & DMG/.test(r.hopLabel), JSON.stringify(r.hopLabel));
   }
@@ -6371,7 +6416,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("BROOD's copy pups bite at copy damage: four pups on a boss, over three seeds, do more than one pup and well short of four full ones",
        r.pack[0] > 0 && r.pack[1] > r.pack[0] * 1.3 && r.pack[1] < r.pack[0] * 2.1,
        `${r.pack[0]} -> ${r.pack[1]} boss damage over three seeds (x${(r.pack[1] / Math.max(1, r.pack[0])).toFixed(2)})`);
-    ok("and the card says so, without a weapon list", r.more && !/BOLT/.test(String(r.more.eff)) && r.more.nm === "SECOND HEAD",
+    // The identity is the KEY, which g.upgrades().find(key === "dupe") already
+    // established; the claim is that the headline does not enumerate weapons.
+    // Asserting the display name on top of that added nothing and broke on
+    // L13's rename (SECOND HEAD -> THE SPLIT).
+    ok("and the card says so, without a weapon list",
+       r.more && r.more.key === "dupe" && !/BOLT|MORTAR|PULSE|STINK/.test(String(r.more.eff)),
        JSON.stringify(r.more));
   }
 
@@ -6521,7 +6571,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Math.abs(r.glass.d1 / r.glass.d0 - 1.4) < .01 && Math.abs(r.glass.hp1 / r.glass.hp0 - .6) < .02,
        `dmg x${(r.glass.d1 / r.glass.d0).toFixed(2)}, hp ${r.glass.hp0} -> ${r.glass.hp1}`);
     ok("the third slot opens at level 30: with two rules held nothing green is dealt below it and rules are dealt above",
-       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 6,
+       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 7,
        `level ${r.lvlBelow}: ${r.below} rule cards; level ${r.lvlAbove}: ${r.above}; ${r.rules.join(" ")}`);
   }
 
@@ -6580,7 +6630,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const r = await pg.evaluate(async () => {
       const g = window.__g; g.wipeSave(); g.start("intern"); g.god(); g.freezeEvents(true); g.freezeSpawns(true); g.setShake(0); g.drainPicks(true);
       for (const k of ["bolt","zap","skulls","dupe","spinach","tempo","clover","momentum","hunter"]) g.give(k, 1);
-      g.step(5, 1/60); g.resume();
+      // Five seconds, so the lane is EMPTY before the boss is summoned below.
+      // Two things speak in the opening seconds - the vigil's goal line, and
+      // SECOND HEAD announcing the creature it just stood up beside you - and
+      // alertBox() reports the lane's TOP row, which is the OLDEST of the two.
+      // Without this the check measured "THE SPLIT - WYVERNET" and called it
+      // the boss alert.
+      g.step(300, 1/60); g.resume();
       // the kit bar is drawn on the frame loop; wait for it rather than for a clock
       const k = document.getElementById("kit");
       for (let i = 0; i < 40 && k.children.length < 10; i++) await new Promise(res => setTimeout(res, 50));
@@ -7012,43 +7068,109 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.brute.ptPeak > r.skitter.ptPeak + .05 && r.brute.ptPeak > r.shambler.ptPeak, K.map(k => `${k} ${r[k].ptPeak}`).join(", "));
   }
 
-  console.log("\n=== 60. SECOND HEAD IS A SECOND HEAD ===");
+  console.log("\n=== 60. SECOND HEAD IS A SECOND CREATURE ===");
   {
-    // The card says +1 OF EVERYTHING and the animal showed nothing. Everything
-    // forward of two thirds of the body's length is drawn twice now, each
-    // copy turned about the shoulders - two necks splaying from one chest to
-    // two heads. A rigid turn, so every joint a head had it keeps; the mesh
-    // capture records the unturned box once, so the one-object question is
-    // still answered by the base mesh and the heads are counted by the draw.
+    // "I'm playing as two." The card used to draw a second head on one animal
+    // and add a 55% copy to every weapon, which is neither two animals nor a
+    // thing you would notice. Taking it SPLITS you: a second creature at full
+    // size beside you, drawn through the same drawMonBody the player goes
+    // through, with its own gait and its own LINE - never yours - growing on
+    // the same level gates, so a run that takes it ends as two different
+    // animals. The damage contract is deliberately untouched; this section is
+    // about the creature, and section 46's numbers still hold.
     const r = await page.evaluate(async () => {
       const g = window.__g;
-      const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
-      const boot = (ch, st) => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start(ch); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
-        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); if (st) g.evolveTo(st); g.step(30, 1/60); };
-      const cap = async () => { g.stepRaw(1/60); g.stepRaw(1/60); g.pause(true); /* captured PAUSED (R300): a slow headless frame now pays out up to a quarter second of world, which moved the wings between reads */ await frame(); g.capturePos(); await frame(); await frame();
-        const b = g.posOut(); if (!b) return []; const bx = []; for (let i = 0; i < b.length / 6; i++) bx.push(b.slice(i*6, i*6+6)); return bx; };
-      const comps = (bx) => { const n = bx.length, ov = (A, B, k) => Math.min(A[k]+A[k+3], B[k]+B[k+3]) - Math.max(A[k]-A[k+3], B[k]-B[k+3]);
-        const par = Array.from({ length: n }, (_, i) => i); const find = a => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
-        for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++) if (Math.min(ov(bx[i], bx[j], 0), ov(bx[i], bx[j], 1), ov(bx[i], bx[j], 2)) > 0) { const a = find(i), b = find(j); if (a !== b) par[b] = a; }
-        return new Set(Array.from({ length: n }, (_, i) => find(i))).size; };
-      const out = { plans: [] };
-      for (const [ch, st] of [["intern", 1], ["ox", 1], ["accnt", 1], ["pyre", 1], ["scrap", 0]]) {
-        boot(ch, st); const a = await cap(); const g0 = g.grow();
-        g.give("dupe", 1); const b = await cap(); const g1 = g.grow();
-        g.give("dupe", 2); await cap(); const g3 = g.grow();
-        out.plans.push({ nm: g.stageNm(), n0: a.length, n1: b.length, c0: comps(a), c1: comps(b), hb0: g0.headBoxes, hb1: g1.headBoxes, hb3: g3.headBoxes, heads1: g1.heads, heads3: g3.heads, splay: g1.splay });
+      const boot = (id) => { g.wipeSave(); g.pin(5); g.pinRun(5); g.start(id); g.god(); g.disarm();
+        g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.setShake(0); g.place(0,0); g.aim(0); };
+      // A section that reads g.twin().nm directly CRASHES the harness the moment
+      // the split stops happening, and a harness crash is not a caught mutant -
+      // it is a section that stopped reporting. Everything below reads through
+      // tw(), which stands in a twin that is plainly absent (stage -1, gap -1)
+      // so the assertions get to say so.
+      const NONE = { id:null, line:[], stage:-1, nm:"", d:-1, x:0, z:0 };
+      const tw = () => g.twin() || NONE;
+      const out = {};
+
+      boot("intern");
+      out.before = g.twin();
+      g.give("dupe", 1);
+      out.after = g.twin();
+      out.heads = g.grow().heads;
+
+      // never your own line, on every creature in the roster
+      out.lines = g.chars().map(id => { boot(id); g.give("dupe", 1);
+        const t = g.twin(); return { me:id, twin:t && t.id, ok: !!t && t.id !== id }; });
+
+      // it grows down its own line on the player's own gates
+      boot("intern"); g.give("dupe", 1);
+      out.evo = [{ lvl:1, me:g.stageNm(), twin:tw().nm, st:tw().stage }];
+      for(const at of [7, 20, 34, 48]){
+        while(g.state().lvl < at) g.levelUp();
+        g.stepRaw(1/60);
+        out.evo.push({ lvl:g.state().lvl, me:g.stageNm(), twin:tw().nm, st:tw().stage });
       }
+
+      // and it KEEPS UP through a real driven minute - the bot's own movement,
+      // hop chain and all, not a teleport
+      // 25 s, not 60: the twin settles into its slot inside two seconds, so the
+      // rest was paying four times over for the same answer - and this section
+      // is re-run once per mutant that must:"60", where the cost multiplies.
+      boot("intern"); g.freezeSpawns(false); g.give("dupe", 1); g.bot(true); g.botHop(true);
+      const gaps = [];
+      for(let i=0;i<25*60;i++){ g.stepRaw(1/60); if(i % 60 === 0) gaps.push(tw().d); }
+      g.bot(false);
+      gaps.sort((a,b)=>a-b);
+      out.gap = { med:gaps[gaps.length>>1], worst:gaps[gaps.length-1] };
+
+      // The slot widens with the animals: two hatchlings and two final forms
+      // cannot share one number. This one has to let REAL FRAMES render - the
+      // two widths it reads are measured by the draw, and a stepRaw loop inside
+      // one evaluate blocks rAF, so without the awaits below both sizes come
+      // back as whatever was on screen before the level-ups and the check
+      // silently compares a number with itself.
+      const frame = () => new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const spanAt = async (lvl) => { boot("intern"); g.splitAs("scrap");
+        while(g.state().lvl < lvl) g.levelUp(); g.drainPicks(true);
+        for(let i=0;i<240;i++) g.stepRaw(1/60);
+        await frame(); await frame();                 // both bodies measured
+        for(let i=0;i<120;i++) g.stepRaw(1/60);       // and walked into the new slot
+        await frame();
+        return tw().d; };
+      out.span = { hatch: await spanAt(1), final: await spanAt(48) };
+
+      // THE TWIN starts holding the card and its card says "Never arrives
+      // alone" - the one creature whose identity IS this, and the one the
+      // gift path skips, because ch.gift writes the kit without applyPassive.
+      boot("twin"); out.gifted = g.twin();
+
+      // a fresh run is unsplit, and a pinned run splits the same way twice
+      boot("intern"); out.resets = g.twin() === null;
+      boot("intern"); g.give("dupe",1); const a1 = tw().id;
+      boot("intern"); g.give("dupe",1); out.pinned = { a1, a2:tw().id };
       return out;
     });
-    const Pl = r.plans;
-    ok("at rank 1 the head region is drawn twice: the draw counts an even number of head boxes, at least a sixth of the body, where rank 0 counted none",
-       Pl.every(p => p.hb0 === 0 && p.hb1 > 0 && p.hb1 % 2 === 0 && p.hb1 / 2 >= p.n0 * .16 && p.heads1 === 2),
-       Pl.map(p => `${p.nm} ${p.hb1 / 2}x2 of ${p.n0}`).join(", "));
-    ok("and never more than two, whatever the rank: rank 3 draws what rank 1 drew",
-       Pl.every(p => p.heads3 === 2 && p.hb3 === p.hb1), Pl.map(p => `${p.nm} ${p.hb1}->${p.hb3}`).join(", "));
-    ok("the copies are turned apart by at least .2 rad about the shoulders", Pl.every(p => p.splay >= .2 && p.splay <= .42), Pl.map(p => `${p.nm} ${p.splay}`).join(", "));
-    ok("the base mesh the checks read is unchanged and still one object on five plans - a turned copy is a rigid image of a connected part",
-       Pl.every(p => p.n1 === p.n0 && p.c1 === p.c0 && p.c1 === 1), Pl.map(p => `${p.nm} ${p.n0}/${p.n1} boxes, ${p.c0}->${p.c1} parts`).join("; "));
+
+    ok("taking SECOND HEAD stands a second creature up beside you, and nothing does before it",
+       r.before === null && r.after && r.after.nm && r.after.d > 0,
+       r.after ? `${r.after.nm} at ${r.after.d}m` : "no twin");
+    ok("and the player has ONE head - the card stopped being a second head",
+       r.heads === 1, `heads ${r.heads}`);
+    ok("the twin is never your own line, on any creature in the roster",
+       r.lines.every(l => l.ok), r.lines.map(l => `${l.me}+${l.twin}`).join(" "));
+    ok("it grows down that line on the same gates you do, and the run ends as two DIFFERENT animals",
+       r.evo.every((e, i) => e.st === i) &&
+       r.evo[r.evo.length-1].me !== r.evo[r.evo.length-1].twin,
+       r.evo.map(e => `L${e.lvl} ${e.me}+${e.twin}`).join(" | "));
+    ok("and it keeps up: across a driven minute with the chain running it holds its slot",
+       r.gap.med > 0 && r.gap.med < 6 && r.gap.worst < 12, `median ${r.gap.med}m, worst ${r.gap.worst}m`);
+    ok("the slot widens with the bodies - two final forms do not stand where two hatchlings stood",
+       r.span.hatch > 0 && r.span.final > r.span.hatch * 1.8,
+       `hatchlings ${r.span.hatch}m, finals ${r.span.final}m`);
+    ok("THE TWIN never arrives alone: the one creature that starts holding the card starts split",
+       !!r.gifted && r.gifted.id !== "twin",
+       r.gifted ? `${r.gifted.nm} beside it` : "arrived alone");
+    ok("a fresh run is unsplit, and a pinned run splits the same way twice",
+       r.resets && r.pinned.a1 === r.pinned.a2, `${r.pinned.a1} / ${r.pinned.a2}`);
   }
 
   console.log("\n=== 61. EVERY MUTANT STILL ANCHORS ===");
@@ -7083,7 +7205,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const g = window.__g;
       const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
       const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
-        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0); g.step(30, 1/60); };
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0);
+        // Five seconds, not half of one: the run OPENS by saying what it is for
+        // ("THE VIGIL - LIGHT n MONUMENTS BEFORE IT WAKES", at T=1.1s), and an
+        // alert lives 2.6s. This section stages the lane deliberately, so the
+        // opening line has to have been said and aged off before the staging
+        // starts - otherwise the one-row case measures two rows.
+        g.step(300, 1/60); };
       // the banner's clock runs on RENDER frames, not sim steps, and it fades
       // in over its first third of a second: render until it has
       const where = async () => { await frame(); for (let k = 0; k < 60 && g.evoTxt().t > 2.95; k++) await frame(); const ev = document.getElementById("evo"), b = ev.getBoundingClientRect();
@@ -7096,8 +7224,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     });
     ok("with no boss on the field the banner sits where it always did, in the upper-middle of the screen, visible",
        !r.alone.up && r.alone.op > .5 && r.alone.mid > .34 && r.alone.mid < .46 && r.alone.txt.length > 0, `mid ${r.alone.mid}, opacity ${r.alone.op}, "${r.alone.txt}"`);
+    // A THIRD, not a hardcoded 30%. L11 made the banner's band derived: it sits
+    // under the toast lane's RESERVED floor - both rows, always, so the banner
+    // does not jump when a toast arrives - and that floor is measured from the
+    // header's own type rather than typed. The claim this check makes is the one
+    // in its own name: the banner is out of the third of the screen the fight
+    // owns. Pinning it to .30 was pinning it to one build's header metrics.
     ok("with a boss alive it steps up out of the fight's third: its centre is above 30% of the screen, still visible",
-       r.boss.up && r.boss.op > .5 && r.boss.mid < .30, `mid ${r.boss.mid}, opacity ${r.boss.op}`);
+       r.boss.up && r.boss.op > .5 && r.boss.mid < 1/3, `mid ${r.boss.mid}, opacity ${r.boss.op}`);
     ok("and it comes back down the moment the boss is gone", !r.after.up && r.after.mid > .34, `mid ${r.after.mid}`);
   }
 
@@ -7351,7 +7485,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("COLLECTION prints all ten weapons with the recipe for each evolution on the tile",
        col.W.length === 10 && col.W.every(t => /= .+ 3 \+ .+ 3/.test(t)) && col.W.some(t => /MEGABONK = BONK BAT 3 \+ BIGGER TEETH 3/.test(t)),
        col.W.map(t => t.match(/([A-Z ]+ = [A-Z ]+ 3 \+ [A-Z ]+ 3)/)?.[1] || "no recipe").slice(0, 3).join(" | "));
-    ok("and the eight growths (with what each unlocks) and the six rules", col.g === 8 && col.unl === 8 && col.r === 6, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
+    ok("and the eight growths (with what each unlocks) and the seven rules", col.g === 8 && col.unl === 8 && col.r === 7, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
 
     // UNLOCKS: the ladder with a bar per rung
     const lk = await page.evaluate(() => { const g = window.__g; g.menuTab("locks"); return { n: document.querySelectorAll("#locks .lk").length, bars: document.querySelectorAll("#locks .lk .nb i").length, badge: (document.querySelector('.tab[data-tab="locks"]') || {}).textContent || "" }; });
@@ -8299,6 +8433,381 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("turn to face it and it is on the screen and built",
        !!r.mAt && r.mAt[0] > 0 && r.mAt[0] < r.W && r.mAt[1] > 0 && r.mAt[1] < r.H && r.mToward.passes.marks >= r.own,
        `projects at ${JSON.stringify(r.mAt)} on ${r.W}x${r.H}; ${r.mToward.passes.marks} landmark boxes built facing it`);
+  }
+
+  console.log("\n=== 90. THE LOBBY IS DIMMED, NOT BLURRED ===");
+  {
+    // L1. The lead in the log was drawImage - the portrait blits on the menu.
+    // Measured, the blits were half a millisecond of a three-hundred-
+    // millisecond menu frame. What the menu and the end screen were paying
+    // for was backdrop-filter:blur(3px) on the overlay: a full-viewport
+    // re-blur every frame, over a canvas that never stops painting, behind a
+    // panel 93% opaque that hid the blur anyway. Without it the shop tab went
+    // from 235 ms to 61 ms a frame (software GL) and the end screen from 254
+    // to 88. The draft and the pause already had the rule off; now no overlay
+    // has it, and the dimming is the tint's job alone.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const cs = id => { const el = document.getElementById(id), c = getComputedStyle(el); return { filter: c.backdropFilter, bg: c.backgroundColor, on: el.classList.contains("on") }; };
+      const alpha = bg => { const m = /rgba\(\s*\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/.exec(bg); return m ? +m[1] : 1; };
+      g.drainPicks(true); g.wipeSave(); g.menu("play"); await frame();
+      const menu = cs("menu");
+      g.pin(3); g.pinRun(3); g.start("intern"); g.setShake(0); g.step(60); g.setHp(1); g.hitMe(1e9);
+      await new Promise(res => setTimeout(res, 2400));      // through the death beat to the receipt
+      const end = cs("end");
+      return { menu, end, menuA: alpha(menu.bg), endA: alpha(end.bg), every: [...document.querySelectorAll(".ov")].map(e => e.id + ":" + getComputedStyle(e).backdropFilter) };
+    });
+    ok("the menu is up and asks the compositor for no backdrop blur", r.menu.on && (r.menu.filter === "none" || r.menu.filter === ""), `menu on ${r.menu.on}, backdrop-filter ${r.menu.filter}`);
+    ok("the end screen is up and asks for none either", r.end.on && (r.end.filter === "none" || r.end.filter === ""), `end on ${r.end.on}, backdrop-filter ${r.end.filter}`);
+    ok("no overlay in the page blurs", r.every.every(f => /:(none|)$/.test(f)), r.every.join(", "));
+    ok("the dimming is the tint's job: the panel is at least nine-tenths opaque", r.menuA >= .9 && r.endA >= .9, `menu alpha ${r.menuA}, end alpha ${r.endA}`);
+  }
+
+  console.log("\n=== 91. THE PORTRAITS COME ACROSS AS ONE PICTURE ===");
+  {
+    // L2. Each live portrait used to be copied out of the game canvas on its
+    // own, and a drawImage from a WebGL canvas is a pipeline stall: the GL
+    // work has to finish and hand the frame over first, once per portrait.
+    // On software GL at 1280x800 the five roster copies were 47 ms of a 134 ms
+    // frame. The portraits are packed into cells across the bottom of the
+    // canvas now and a full canvas comes across in one copy, from which each
+    // card takes its own cell. Same pixels; the count of copies is the check.
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.unlockAll(); g.menu("play");
+      for (let i = 0; i < 30; i++) await frame();
+      const shots = [...document.querySelectorAll("canvas.pv")].map(cv => {
+        const W = cv.width, H = cv.height, d = cv.getContext("2d").getImageData(0, 0, W, H).data;
+        let lit = 0, h = 0, n = 0;
+        for (let i = 0; i < d.length; i += 16) { const v = d[i] + d[i+1] + d[i+2]; if (v > 150) lit++; h = (h * 31 + v) >>> 0; n++; }
+        return { px: n, lit, hash: h };
+      });
+      const perBatch = Math.floor(innerWidth / 424) * Math.floor(innerHeight / 318);
+      return { n: g.portraits(), blits: g.portraitBlits(), perBatch, want: Math.ceil(g.portraits() / perBatch), shots, W: innerWidth, H: innerHeight };
+    });
+    ok("ten portraits are live on the roster with everything unlocked",
+       r.n >= 10 && r.shots.length === r.n, `${r.n} live, ${r.shots.length} canvases`);
+    ok("and they come across in as many copies as the canvas needs, not one each",
+       r.blits === r.want && r.blits < r.n, `${r.blits} copies for ${r.n} portraits on ${r.W}x${r.H} (${r.perBatch} to a batch, so ${r.want})`);
+    const painted = r.shots.filter(s => s.lit > s.px * .02 && s.lit < s.px * .92);
+    ok("every card took its own cell: each one is painted",
+       painted.length === r.shots.length, `${painted.length} of ${r.shots.length} painted`);
+    ok("...and no two cards took the same cell",
+       new Set(r.shots.map(s => s.hash)).size === r.shots.length, `${new Set(r.shots.map(s => s.hash)).size} distinct of ${r.shots.length}`);
+  }
+
+  console.log("\n=== 92. THE BANNERS TAKE TURNS ===");
+  {
+    // L3. The play sheet at the final stand: LV 57 (a level with nothing to
+    // choose, on the toast lane) sat on TERRAVORE (the boss's name, the lane's
+    // second row) which sat on THE SUPERNOVA (the evolution banner, stepped up
+    // to 23% because a boss was alive) - and on a phone the boss's name alone
+    // printed through the banner. The banner now sits under the lane's floor
+    // when the lane reaches its band. Both viewports, one and two rows.
+    const scenario = (pp, toast) => pp.evaluate(async (toast) => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+      g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.place(0, 0); g.aim(0);
+      // Five seconds, not half of one: the run OPENS by saying what it is for
+      // ("THE VIGIL - LIGHT n MONUMENTS BEFORE IT WAKES", at T=1.1s), and an
+      // alert lives 2.6s. This section stages the lane deliberately, so the
+      // opening line has to have been said and aged off before the staging
+      // starts - otherwise the one-row case measures two rows.
+      g.step(300, 1/60);
+      g.boss(1); g.step(2, 1/60); const bs = g.bossAt(); g.place(bs.x, bs.z - 12); g.step(6, 1/60);   // the boss's name is on the lane
+      if (toast) g.toast("LV 57  \u00b7  +3 HP");                                                    // and a level under it
+      g.evolveTo(1);
+      // AND THE WORLD HOLDS WHILE THE BANNER COMES UP. This is a LAYOUT check
+      // - does the banner clear the toast rows - and it was staging the rows
+      // and then waiting on WALL-CLOCK frames for the banner to scale in. Since
+      // R300 a frame pays its time out in up to six sim steps of 42 ms, so a
+      // slow frame spends a quarter second of sim time: measured here, five
+      // frames spent 1.4-2.5 s of world while the banner aged 0.45 s. A toast
+      // lives 2.6 s, so under suite load the rows this check just staged died
+      // before it could measure them and the lane came back empty (0 rows) -
+      // the fourth flake of this family in the log (R233, R287, R305). Paused,
+      // evoT still decays and the overlay still draws (both live outside the
+      // running/paused gate in tick()), while step() - which ages the alerts -
+      // does not. The thing being measured is unchanged; the irrelevant clock
+      // is gone.
+      g.pause(true);
+      await frame(); for (let k = 0; k < 60 && g.evoTxt().t > 2.95; k++) await frame();
+      const evEl = document.getElementById("evo"), b = evEl.getBoundingClientRect(), lane = g.alertLane(), W = innerWidth, H = innerHeight;
+      const ev = { l: b.left, t: b.top, r: b.right, b: b.bottom }, ln = { l: W/2 - 160, t: lane.top, r: W/2 + 160, b: lane.bottom };
+      const clash = Math.min(ev.r, ln.r) - Math.max(ev.l, ln.l) > 4 && Math.min(ev.b, ln.b) - Math.max(ev.t, ln.t) > 4;
+      g.pause(false);            // measured; hand the world back, this page is reused
+      return { W, H, rows: lane.rows, lane: [lane.top, lane.bottom], evo: [Math.round(ev.t), Math.round(ev.b)], mid: +((ev.t + ev.b) / 2 / H).toFixed(3),
+               clash, up: evEl.classList.contains("up"), op: +getComputedStyle(evEl).opacity, txt: evEl.firstElementChild.textContent };
+    }, toast);
+    const desk2 = await scenario(page, true), desk1 = await scenario(page, false);
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pp = await ctx.newPage(); await pp.goto(FILE, { waitUntil: "load" }); await pp.waitForTimeout(500);
+    const ph2 = await scenario(pp, true), ph1 = await scenario(pp, false);
+    await ctx.close();
+    const say = r => `${r.W}x${r.H}: ${r.rows} row(s) ${r.lane[0]}-${r.lane[1]}, banner ${r.evo[0]}-${r.evo[1]} (mid ${r.mid}, up ${r.up}, opacity ${r.op}, "${r.txt}")`;
+    ok("desktop, two rows on the lane: the banner is up, visible, and clear of both rows",
+       desk2.rows === 2 && desk2.up && desk2.op > .5 && !desk2.clash && desk2.mid < .32, say(desk2));
+    ok("desktop, the boss's name alone: the banner keeps its band under the clock",
+       desk1.rows === 1 && desk1.up && !desk1.clash && desk1.mid < .30, say(desk1));
+    ok("phone, the boss's name alone: the banner clears it",
+       ph1.rows === 1 && ph1.up && ph1.op > .5 && !ph1.clash && ph1.mid < .36, say(ph1));
+    ok("phone, two rows: the banner clears both and stays in the upper half",
+       ph2.rows === 2 && !ph2.clash && ph2.mid < .42, say(ph2));
+  }
+
+  console.log("\n=== 93. THE RECEIPT IS THE LAST WORD ===");
+  {
+    // L4. The panel sheet: on the end screen, at 1280x800, 390x844 and
+    // 844x390, "LV 126 - +6 HP" and THE SPINEROCK ghosted through DEAD. The
+    // toast lane, the numbers and the event markers were drawn on the overlay
+    // whatever the run's state, nothing ages them once it is over, and a
+    // re-created bitmap nobody draws on presents nothing new - so on a phone
+    // the compositor kept showing the run's last frame. The overlay sheet is
+    // hidden and left alone when the run is not live now. The bitmap is not
+    // the witness here (reads of it disagree with the screen under this
+    // renderer); the screen is. Two toasts in a colour nothing on the receipt
+    // wears, and the lane band is clipped off the screen: the colour is there
+    // while the run is on and gone once the receipt is up.
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const pp = await ctx.newPage(); await pp.goto(FILE, { waitUntil: "load" }); await pp.waitForTimeout(500);
+    // WHERE THE LANE IS, MEASURED. This clipped a typed 170..280 band, which is
+    // where the phone's toast lane sat before L11 derived it from the header's
+    // own measured heights - it draws at 69..132 now and the check screenshotted
+    // empty grass. The band is taken from the lane the run actually reported.
+    const magenta = async (clip) => {
+      const png = (await pp.screenshot({ clip })).toString("base64");
+      return pp.evaluate(async b64 => {
+        const im = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = "data:image/png;base64," + b64; });
+        const cv = document.createElement("canvas"); cv.width = im.width; cv.height = im.height;
+        const c = cv.getContext("2d", { willReadFrequently: true }); c.drawImage(im, 0, 0);
+        const d = c.getImageData(0, 0, cv.width, cv.height).data; let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (d[i] > 150 && d[i+2] > 150 && d[i+1] < 90) n++;
+        return n;
+      }, png);
+    };
+    const r0 = await pp.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.drainPicks(true); g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.setShake(0); g.freezeEvents(true); g.step(60, 1/60);
+      g.toast("LV 126  \u00b7  +2 LEVELS  \u00b7  +6 HP", "#ff00ff"); g.toast("THE SPINEROCK", "#ff00ff");
+      await frame(); await frame(); const lane = g.alertLane();
+      return { rows: lane.rows, top: lane.top, bottom: lane.bottom };
+    });
+    const clip = { x: 0, y: Math.max(0, Math.round(r0.top) - 6), width: 390,
+                   height: Math.max(24, Math.round(r0.bottom - r0.top) + 24) };
+    const live = await magenta(clip);
+    const r1 = await pp.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      g.setHp(1); g.hitMe(1e9);                         // the run ends with both toasts on the lane
+      const el = document.getElementById("end"), t0 = performance.now();
+      while ((!el.classList.contains("on") || +getComputedStyle(el).opacity < 1) && performance.now() - t0 < 9000) await frame();
+      return { over: g.state().over, end: el.classList.contains("on"), toasts: g.alerts().length, sheet: getComputedStyle(document.getElementById("ui")).visibility };
+    });
+    // the receipt's panel is 93% opaque, which is what hid the ghosts in plain sight: for the
+    // measurement it goes clear, so whatever the overlay is presenting shows at full strength
+    // (a style change re-composites the layers; it does not repaint the canvas, so a stale
+    // canvas frame stays stale)
+    await pp.evaluate(async () => { document.getElementById("end").style.background = "transparent";
+      const frame = () => new Promise(res => requestAnimationFrame(() => res())); await frame(); await frame(); });
+    await pp.waitForTimeout(300);
+    const dead = await magenta(clip);
+    await ctx.close();
+    ok("two toasts are on the lane and on the screen while the run is on",
+       r0.rows === 2 && r0.top > 0 && r0.bottom > r0.top && r0.bottom <= 844*.34 && live > 150,
+       `${r0.rows} rows at ${r0.top}-${r0.bottom}, ${live} pixels of their colour in the band`);
+    ok("the run ends and the receipt comes up, the toasts never aged out, and the overlay sheet is hidden",
+       r1.over && r1.end && r1.toasts >= 2 && r1.sheet === "hidden", `over ${r1.over}, end ${r1.end}, ${r1.toasts} toasts in the list, sheet ${r1.sheet}`);
+    ok("and none of it is on the screen behind the receipt", dead <= 3, `${dead} pixels of their colour in the band behind the receipt, panel cleared`);
+  }
+
+  console.log("\n=== 94. THE DEAL READS HOW YOU PLAY ===");
+  {
+    // L5, and the vision's first answer: asked whether the game is about
+    // outrunning the horde, building a machine, raising a creature or
+    // exploring, the answer was that it is not a choice - the game should meet
+    // the player where they are. The draft dealt from one pool by weight, so a
+    // player who never stops moving and one who stands in the middle of it got
+    // the same hand. It reads the last minute of play now - FOOTWORK, IN THE
+    // THICK, ROAMING - and tilts the deal, except for the last card of every
+    // hand, which stays untilted so a run can still be turned by something it
+    // did not ask for. Three styles PLAYED, not described: standing in a crowd,
+    // hopping back and forth over one patch, and walking away in one direction.
+    const r = await page.evaluate(async () => {
+      const g = window.__g;
+      const boot = () => { g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.drainPicks(true);
+                           g.setShake(0); g.freezeEvents(true); g.disarm(); g.freezeSpawns(true); g.clearEnemies(); g.bot(false); g.place(0, 0); };
+      const deals = n => { const out = []; for (let i = 0; i < n; i++) out.push(g.deal()); return out; };
+      const share = (ds, tag) => { let n = 0, t = 0; for (const h of ds) for (const c of h) { t++; if (c.tag === tag) n++; } return +(100 * n / t).toFixed(1); };
+      const pos = (ds, tag, last) => { let n = 0, t = 0;
+        for (const h of ds) { const idx = last ? [h.length - 1] : h.map((_, i) => i).slice(0, -1);
+          for (const i of idx) { t++; if (h[i].tag === tag) n++; } }
+        return +(100 * n / t).toFixed(1); };
+      const out = {};
+      // IN THE THICK: stand still, a crowd on top of you, kept topped up
+      boot();
+      const crowd = () => { g.clearEnemies(); for (let k = 0; k < 8; k++) g.spawnAt("shambler", Math.cos(k) * 3, Math.sin(k) * 3); g.place(0, 0); };
+      crowd(); for (let i = 0; i < 60 * 40; i++) { g.stepRaw(1/60); if (i % 600 === 0) crowd(); }
+      out.thick = g.style(); out.thickDeals = deals(60);
+      // FOOTWORK: hopping hard, circling one patch at full speed, nothing near.
+      // A CIRCLE, not a back-and-forth: kiting a clearing covers as much ground
+      // per second as walking away does, and gets nowhere, which is the whole
+      // difference the roaming signal has to see.
+      boot();
+      const RING = ["KeyW", "KeyD", "KeyS", "KeyA"];
+      for (let i = 0; i < 60 * 40; i++) {
+        const leg = (i / 45 | 0) % 4;
+        RING.forEach((k, j) => g.key(k, j === leg));
+        g.key("Space", i % 8 < 4); g.stepRaw(1/60);
+      }
+      RING.forEach(k => g.key(k, false)); g.key("Space", false);
+      out.run = g.style(); out.runDeals = deals(60);
+      // ROAMING: one direction, no hops, crossing the map
+      boot();
+      for (let i = 0; i < 60 * 40; i++) { g.key("KeyW", true); g.stepRaw(1/60); }
+      g.key("KeyW", false);
+      out.roam = g.style(); out.roamDeals = deals(60);
+      out.share = {
+        thick: [share(out.thickDeals, "thick"), share(out.runDeals, "thick"), share(out.roamDeals, "thick")],
+        run:   [share(out.runDeals, "run"),     share(out.thickDeals, "run"),  share(out.roamDeals, "run")],
+        roam:  [share(out.roamDeals, "roam"),   share(out.thickDeals, "roam"), share(out.runDeals, "roam")],
+      };
+      out.wild = { thick: [pos(out.thickDeals, "thick", false), pos(out.thickDeals, "thick", true)],
+                   run:   [pos(out.runDeals, "run", false),     pos(out.runDeals, "run", true)] };
+      out.sizes = [...new Set([...out.thickDeals, ...out.runDeals, ...out.roamDeals].map(h => h.length))];
+      out.tags = Object.keys(g.styleTag()).length;
+      // and the hand says what it read, on the real draft screen
+      g.drainPicks(false); g.xp(100000); g.step(1, 1/60);
+      await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      out.caption = document.getElementById("pkSub").textContent;
+      out.open = document.getElementById("pick").classList.contains("on");
+      return out;
+    });
+    const say = k => `${k}: played, ${r.share[k][0]}% of the deal, against ${r.share[k][1]}% and ${r.share[k][2]}% played the other two ways`;
+    ok("standing in a crowd reads as IN THE THICK, hopping over one patch as FOOTWORK, walking away as ROAMING",
+       r.thick.tilt === "thick" && r.run.tilt === "run" && r.roam.tilt === "roam",
+       `thick ${JSON.stringify(r.thick)}, run ${JSON.stringify(r.run)}, roam ${JSON.stringify(r.roam)}`);
+    // and roaming is not a synonym for speed: the hopping run covers as much
+    // ground per second as the walk does and gets nowhere, which is the whole
+    // difference between kiting a clearing and crossing a map
+    ok("...and going fast over one patch is not roaming",
+       r.run.roam < r.roam.roam * .7 && r.run.roam < r.run.run,
+       `hopping back and forth reads roam ${r.run.roam} against its own footwork ${r.run.run}, where walking away reads ${r.roam.roam}`);
+    ok("and each style's own cards are the ones it gets dealt",
+       r.share.thick[0] > r.share.thick[1] * 1.3 && r.share.thick[0] > r.share.thick[2] * 1.3 &&
+       r.share.run[0]   > r.share.run[1]   * 1.3 && r.share.run[0]   > r.share.run[2]   * 1.3 &&
+       r.share.roam[0]  > r.share.roam[1]  * 1.3 && r.share.roam[0]  > r.share.roam[2]  * 1.3,
+       [say("thick"), say("run"), say("roam")].join("; "));
+    ok("the last card of every hand is dealt untilted - a run can still be turned by something it did not ask for",
+       r.wild.thick[1] < r.wild.thick[0] * .8 && r.wild.run[1] < r.wild.run[0] * .8 && r.sizes.every(n => n >= 2),
+       `IN THE THICK ${r.wild.thick[0]}% of the first cards against ${r.wild.thick[1]}% of the last; FOOTWORK ${r.wild.run[0]}% against ${r.wild.run[1]}%`);
+    ok("and the draft says what it read, rather than quietly rigging the deck",
+       r.open && /FOOTWORK|IN THE THICK|ROAMING/.test(r.caption) && r.tags >= 18,
+       `"${r.caption}", ${r.tags} cards tagged`);
+  }
+
+  console.log("\n=== 95. THE TRAIL IS NOT THE SUBJECT ===");
+  {
+    // L8, and the vision's fifth answer: "make the horde the loudest thing -
+    // your own caltrops are 40% of the frame's geometry and the four hundred
+    // bodies are 4%". R305 had already stopped building the trail BEHIND the
+    // camera; what was left was the trail in FRONT of it, and a player who has
+    // held one patch of ground for a minute is standing in ninety fields with
+    // seventy of them in view, five boxes a segment. Two budgets: the nearest
+    // few fields keep their blades and the rest draw the plain ember ring the
+    // far tier already used, and a rim is spaced in PIXELS, so a ring sixty
+    // metres off is three embers rather than twelve at nine pixels apart.
+    // Radius, damage and life are untouched - the bench does not move.
+    //
+    // The scene is SCRIPTED, not played. Pinning the arena and the run stream
+    // does not pin the bot: two films of the same file diverged by three levels
+    // by the second checkpoint, which makes a driven census useless as an A/B.
+    // A kited circle, a known crowd, and the world paused across the draw give
+    // the same frame twice.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, TAU = Math.PI*2;
+      const frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const settle = async () => { for (let i = 0; i < 24; i++) await frame(); };
+      g.wipeSave(); g.pin(9); g.pinRun(9); g.start("scrap"); g.god();
+      g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true); g.setShake(0);
+      g.give("caltrops", 7); g.evolve("caltrops"); g.give("tempo", 5);
+      const WALK = 3600;                                   // a minute of kiting one clearing
+      for (let i = 0; i < WALK; i++) {
+        const u = i / WALK * TAU * 9;
+        g.place(Math.sin(u) * 13, Math.cos(u * 1.31) * 13);
+        g.stepRaw(1/60);
+      }
+      g.place(0, -15); g.aim(0);
+      g.clearEnemies();
+      g.spawn("shambler", 40, 12); g.spawn("runner", 50, 40); g.spawn("shambler", 30, 90);
+      for (let i = 0; i < 4; i++) g.stepRaw(1/60);
+      g.place(0, -15); g.aim(0); g.stepRaw(1/60);
+      g.pause(true); await settle();
+      const c = g.boxCensus();
+      // the blades that survived the budget, counted off the frame itself
+      const near = (a, b) => Math.abs(a - b) < .006;
+      const cap = g.capFrame(), st = g.state();
+      const bl = cap.filter(b => near(b[3], .06) && near(b[4], .36) && near(b[5], .06));
+      // how far out the blades reach. The budget being SIX is not the point; the
+      // point is that it spends its six on the fields at your feet.
+      const ds = bl.map(b => Math.hypot(b[0] - st.x, b[2] - st.z)).sort((x, y) => x - y);
+      g.pause(false);
+      const sum = Object.values(c.passes).reduce((a, b) => a + b, 0);
+      return { zones: c.zones, culled: c.zonesCulled, bladed: c.zoneBladed, budget: c.zoneBudget,
+               zoneBoxes: c.zoneBoxes, blades: bl.length, bladeFar: ds[ds.length - 1],
+               sum, share: c.passes.zones / sum, horde: c.passes.horde / sum };
+    });
+    const shown = r.zones - r.culled;
+    ok("a minute of kiting leaves a dense trail, most of it in view",
+       r.zones >= 40 && shown >= 30,
+       `${r.zones} fields alive, ${r.culled} of them off screen, ${shown} built`);
+    ok("however many are in view, only the nearest few keep their blades",
+       r.budget === 6 && r.bladed === r.budget && shown > r.budget,
+       `${r.bladed} of ${shown} built fields bladed, against a budget of ${r.budget}`);
+    ok("and the nearest ones DO keep them - the near ground is what it always was",
+       r.blades >= 20,
+       `${r.blades} blades in the frame`);
+    ok("...the NEAREST ones, and not whichever six the list reached first",
+       r.bladeFar < 12,
+       `the furthest blade in the frame is ${r.bladeFar.toFixed(1)} m out; before the budget they reached 27.6 m`);
+    ok("so the trail costs a fraction of what it did: well under a dozen boxes a field",
+       r.zoneBoxes / shown < 15,
+       `${r.zoneBoxes} boxes for ${shown} fields = ${(r.zoneBoxes / shown).toFixed(1)} each; before the budget, 25.6`);
+    ok("and the floor is no longer most of the frame",
+       r.share < .4 && r.horde > .08,
+       `the zone pass is ${(r.share * 100).toFixed(1)}% of ${r.sum} boxes and the horde ${(r.horde * 100).toFixed(1)}%; before the budget, 52.2% against 6.6%`);
+    // THE RIM IS SPACED IN PIXELS, AND NOTHING ABOVE COULD FEEL IT. The
+    // mutant that replaces the pixel-derived segment count with a flat 12
+    // SURVIVED the five checks above: the blade budget dominates the
+    // boxes-per-field number, so a rim that never thins out still came in
+    // under a dozen boxes a field and the suite passed a broken game. Same
+    // hole, same shape, as R303's pixel-dust one.
+    // The spacing only bites at DISTANCE, so this isolates it: ONE field, the
+    // same radius and the same full life every time, drawn at five ranges. A
+    // rim spaced in pixels costs less the further away it is because its
+    // apparent circumference is smaller; a rim spaced in world units costs the
+    // same everywhere. Measured: 13/13/11/8/6 boxes at 6/12/20/30/45 m against
+    // a flat 13 with the mutant in.
+    const rim = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const out = [];
+      for (const d of [6, 45]) {
+        g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true);
+        g.drainPicks(true); g.setShake(0); g.clearEnemies(); g.clearGems(); g.place(0, 0); g.aim(0);
+        g.zones(0, d, 1, 10, 2.2);
+        g.pause(true); await frame();
+        const c = g.boxCensus();
+        g.pause(false);
+        out.push({ d, boxes: c.zoneBoxes, zones: c.zones, culled: c.zonesCulled });
+      }
+      return out;
+    });
+    const [near, far] = rim;
+    ok("and a rim is spaced in PIXELS: the same field costs less the further off it is",
+       near.zones === 1 && far.zones === 1 && near.culled === 0 && far.culled === 0 &&
+       far.boxes < near.boxes * .72 && far.boxes >= 3,
+       `one field, same radius and life: ${near.boxes} boxes at ${near.d} m against ${far.boxes} at ${far.d} m` +
+       ` (world-unit spacing draws ${near.boxes} at both)`);
   }
 
   console.log("\n" + "=".repeat(58));

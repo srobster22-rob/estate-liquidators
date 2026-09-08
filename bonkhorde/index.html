@@ -34,6 +34,15 @@
     text-shadow:0 1px 2px #000,0 0 8px #000}
   /* the finale line is the run's last instruction; it is not dim */
   #phase.final{color:#ffd0b0;font-size:12px;font-weight:700}
+  /* THE VIGIL (L9). The run's stated goal, directly under the schedule line
+     that used to be the only forward-looking thing on the screen. Gold,
+     because it is the one line that reports something the PLAYER did. */
+  #goal{position:absolute;top:60px;left:50%;transform:translateX(-50%);
+    font-size:11px;font-weight:700;color:#f0b429;letter-spacing:.16em;
+    white-space:nowrap;text-shadow:0 1px 2px #000,0 0 10px #000;display:none}
+  #goal.on{display:block}
+  #goal i{font-style:normal;color:#8e8878;font-weight:400}
+  #goal.done{color:#8affd0}
   #xpwrap{position:absolute;top:0;left:0;right:0;height:7px;background:#11151c;
     border-bottom:1px solid #000}
   #xpbar{height:100%;width:0;background:linear-gradient(90deg,#3ad0ff,#8affd0);
@@ -112,8 +121,12 @@
     text-shadow:0 0 30px #ff2d1a,0 4px 0 #000}
 
   /* ------------------------------------------------------------ overlays */
+  /* no backdrop blur on any overlay. The panel is 93% opaque, so the blur was
+     invisible - and it made the compositor re-blur the whole viewport every
+     frame over a canvas that never stops painting. The menu and the end
+     screen cost three to four run frames each until L1 measured it. */
   .ov{position:fixed;inset:0;background:var(--panel);display:none;
-    align-items:center;justify-content:center;z-index:9;backdrop-filter:blur(3px)}
+    align-items:center;justify-content:center;z-index:9}
   .ov.on{display:flex}
   /* the receipt fades in rather than slamming; after a death it waits for
      the animal to finish going down first (the death beat, in the loop) */
@@ -139,7 +152,7 @@
      get over with rather than a decision. A paused list of rows is read in a
      second and taken with one key. Ids and classes are the strip's, so the
      suite and the mutants keep their anchors. */
-  #pick{background:rgba(6,8,12,.58);backdrop-filter:none;z-index:8;padding:0 8px}
+  #pick{background:rgba(6,8,12,.58);z-index:8;padding:0 8px}
   #pick .wrap{width:min(560px,96vw);max-height:96vh;overflow:auto;padding:0;
     border:2px solid #f0b42999;border-bottom-width:5px;background:#0d1118f5;
     box-shadow:0 12px 40px #000c,0 0 0 1px #000;text-align:left;
@@ -244,7 +257,7 @@
      headline over a wall of tips. The tips stay, small, under the two things
      a paused player actually looks up: what the run is doing to the numbers,
      and what the kit holds. */
-  #paused{background:rgba(6,8,12,.62);backdrop-filter:none}
+  #paused{background:rgba(6,8,12,.62)}
   #paused .wrap{width:min(720px,96vw);max-height:96vh;overflow:auto;padding:0 0 12px;text-align:left;
     border:2px solid #39414d;border-bottom-width:5px;background:#0d1118f5;box-shadow:0 12px 40px #000c}
   #paused .pkHead{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 9px;
@@ -597,7 +610,12 @@
      390px screen with the 30px rule sitting right there. Same specificity
      wins by source order, so phone overrides live at the end or not at all. */
   @media (max-width:720px), (pointer:coarse){
-    #clock{font-size:22px} #phase{font-size:9px;top:34px}
+    /* L11: the typed `top` here (and at 560px, and on #goal) is GONE. The
+       header is a derived stack now - stackHeader() lays clock, phase and goal
+       out from their own measured heights - so a font-size change here moves
+       the lines below it automatically instead of needing a second number
+       hand-tuned to match. Font sizes stay; positions are computed. */
+    #clock{font-size:22px} #phase{font-size:9px}
     /* Under about 560px the centred phase line runs straight through the
        level readout in the top-left - "CINDERPUP - LV 7" and "MATRIARCH IN 14"
        printed over each other. Stack them instead: the phase drops below the
@@ -622,6 +640,10 @@
        sat at the height of the second row and were drawn through it */
     #hop{bottom:112px} #rush{bottom:128px}
     #phase.final{font-size:10px}
+    /* the goal line has to clear the phase line at the smaller size, and it
+       must not run under the pause button at the right edge */
+    #goal{font-size:9px;letter-spacing:.10em;max-width:86vw;overflow:hidden;
+      text-overflow:ellipsis}
   }
   /* LAST in the sheet on purpose. These are overrides at the same
      specificity as the base rules they override, so they only win by
@@ -634,12 +656,15 @@
   }
   @media (max-width:560px){
     #lvl{max-width:44vw}
-    #phase{top:58px;font-size:8px;letter-spacing:.14em;
+    #phase{font-size:8px;letter-spacing:.14em;
            max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     /* The region names got longer with the retheme - THE CINDERFLATS against
        THE ASHES - and at 360px the block grew into the phase line above it.
-       Caught by the overlap guard, which is what it is for. */
-    #biome{margin-top:96px;max-width:52vw}
+       Caught by the overlap guard, which is what it is for. L11: the 96px that
+       used to sit here was the same guess as the 44px base rule, made twice;
+       stackHeader() now sets this block's top from #lvl's MEASURED bottom, so
+       a taller level readout moves it and nothing has to be re-guessed. */
+    #biome{max-width:52vw}
     #biome b{font-size:10px;letter-spacing:.14em}
     #biome span{max-width:52vw}
     #stats{font-size:9px}
@@ -825,6 +850,7 @@
   <div id="lvl">LV <b>1</b><em></em></div>
   <div id="clock">00:00</div>
   <div id="phase"></div>
+  <div id="goal"></div>
   <div id="stats"></div>
   <div id="hop"><span class="hb"><i></i></span><b></b><em></em></div>
   <div id="rush"><span class="hb"><i></i></span><b></b><em></em></div>
@@ -1048,8 +1074,22 @@ buildDynBuf();
 
 let boxPx = 0, culledN = 0;   // pixels per world unit at the body being drawn (0 = no size cull); bodies not drawn this frame
 const ZONE_FAR = 24;          // past this a caltrop field draws as a plain hazard ring does (R305)
-let zonesCulled = 0, propsCulled = 0, propsNear = 0, zoneBoxes = 0;
+// THE TRAIL IS NOT THE SUBJECT (L8). Measured across a driven run: the player's
+// own hazard zones were 26.2% of the frame's geometry and the four hundred
+// bodies the game is about were 2.7%. SCORCHED EARTH drops a field every .22 s
+// and burns for fourteen, so sixty-odd are live at once - and R305's tiering
+// bounds how FAR the blades reach, never how MANY of them there are, so every
+// field inside ZONE_FAR drew five boxes a segment however many that was. A
+// budget bounds the count: the nearest few keep their blades, the rest draw
+// the plain ember ring the far tier already uses. The ground you are standing
+// in still reads as thorns; the ground behind you stops being the loudest
+// thing on screen. Radius, damage and life are untouched - the bench does not
+// move, and BURN_STACK still caps what the overlap can do.
+const ZONE_BLADES = 6;        // fields that keep their blades, nearest first
+const zoneNear = new Float64Array(ZONE_BLADES);   // scratch: no per-frame allocation
+let zonesCulled = 0, propsCulled = 0, propsNear = 0, zoneBoxes = 0, zoneBladed = 0;
 let marksCulled = 0, shotsCulled = 0;   // landmarks and shots outside the view this frame (R306)
+let monsCulled = 0, monsDrawn = 0;      // region monuments off-screen / built this frame (L8)
 let lastPasses = {};           // where the last frame's boxes went, pass by pass (R306)   // hazard zones and scenery props not drawn this frame, props in reach, and what the zones cost (R305)
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(boxPx && (sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz)) * boxPx < 1.5) return;   // under a pixel and a half: not built (R302)
@@ -1301,31 +1341,31 @@ function confine(x, z, pad){
 const BIOMES = [
   { id:"grass", nm:"THE FERNLANDS", ds:"nothing in particular",
     story:"Ferns to the horizon. Every hatchling starts here.",
-    a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mod:{} },
+    a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mon:{ nm:"THE FIRST GATE", sh:"gate" }, mod:{} },
   { id:"ash",   nm:"THE CINDERFLATS", ds:"the ground is still warm  -  +12% damage taken",
     story:"A caldera floor. It has not finished cooling and it is not going to.",
-    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mod:{ tough:1.12 }, fauna:{ runner:1.5 } },
+    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mon:{ nm:"THE CHIMNEY", sh:"spire" }, mod:{ tough:1.12 }, fauna:{ runner:1.5 } },
   // Murkier and more olive than it started. The original teal-green sat at
   // dE 7.7 from THE LIEN's elite tint under tritanopia - a blue enemy vanishing
   // into a blue-green floor - and the search found this inside the same hue
   // family at 15.2. It still reads as sludge; it just stopped being teal.
   { id:"bog",   nm:"THE TARPITS",   ds:"it holds on to your feet  -  -14% move speed",
     story:"Older animals than you are still standing in it, exactly where they stopped.",
-    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mod:{ spd:0.86 }, fauna:{ brute:1.7, skitter:.6 } },
+    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mon:{ nm:"THE WADERS", sh:"ribs" }, mod:{ spd:0.86 }, fauna:{ brute:1.7, skitter:.6 } },
   { id:"ice",   nm:"THE GLACIER",   ds:"nothing here has any grip  -  you slide",
     story:"It froze mid-flood and kept whatever was swimming in it.",
-    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mod:{ slide:1 }, fauna:{ runner:1.6, brute:.5 } },
+    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mon:{ nm:"THE CAUGHT SWIMMER", sh:"ribs" }, mod:{ slide:1 }, fauna:{ runner:1.6, brute:.5 } },
   { id:"sand",  nm:"THE DUSTSEA",   ds:"you can see what you dropped  -  +40% pickup radius",
     story:"The wind took the topsoil an age ago. Nothing hides out here, including you.",
-    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mod:{ mag:1.40 }, fauna:{ skitter:1.5 } },
+    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mon:{ nm:"THE LAST STEP", sh:"stack" }, mod:{ mag:1.40 }, fauna:{ skitter:1.5 } },
   { id:"bone",  nm:"THE BONEFIELD", ds:"more of them, and more to take  -  +22% XP",
     story:"A migration died here, all at once, a very long time ago.",
-    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mod:{ xp:1.22 }, fauna:{ spitter:1.5, skitter:1.3 } },
+    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mon:{ nm:"THE MIGRATION CAIRN", sh:"stack" }, mod:{ xp:1.22 }, fauna:{ spitter:1.5, skitter:1.3 } },
   // Weathered rather than deep. The original brown was dE 7.1 from APPRAISER's
   // yellow under tritanopia; this clears at 14.2 and is still visibly rust.
   { id:"rust",  nm:"THE SPINEROCK", ds:"something here sharpens what you carry  -  +12% damage",
     story:"Iron in the soil and something enormous fossilised in the ridge.",
-    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mod:{ dmg:1.12 }, fauna:{ spitter:1.6 } },
+    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mon:{ nm:"THE SPINE", sh:"spire" }, mod:{ dmg:1.12 }, fauna:{ spitter:1.6 } },
   // EIGHTH BIOME, and the first that touches a WEAPON STAT rather than a
   // player stat. Every mod so far has been move speed, damage in or out, pickup
   // radius or XP - all read once at the point of use. Reach is different: it is
@@ -1334,7 +1374,7 @@ const BIOMES = [
   // dependent factor slots in there rather than needing new plumbing.
   { id:"bramble", nm:"THE THICKET", ds:"everything is closer than it looks  -  -18% weapon reach",
     story:"Waist-high bramble, close-packed and springy. It closes back in before you have finished the swing.",
-    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mod:{ reach:0.82 }, fauna:{ skitter:1.7, runner:.6 } },
+    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mon:{ nm:"THE SWALLOWED GATE", sh:"gate" }, mod:{ reach:0.82 }, fauna:{ skitter:1.7, runner:.6 } },
   // NINTH BIOME, and the first that touches the DIRECTOR rather than a stat on
   // either side of a hit. Every mod so far changes how hard something hits,
   // how fast it moves or what it drops; this one changes how many of them
@@ -1344,7 +1384,7 @@ const BIOMES = [
   // going, which is what a region modifier is for.
   { id:"warren", nm:"THE WARRENS", ds:"they keep coming out of the ground  -  +35% spawn rate",
     story:"The soil is more tunnel than soil. Stand anywhere long enough and something answers.",
-    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mod:{ swarm:1.35 }, fauna:{ skitter:1.8, shambler:1.2 } },
+    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mon:{ nm:"THE THROAT", sh:"vent" }, mod:{ swarm:1.35 }, fauna:{ skitter:1.8, shambler:1.2 } },
   // TENTH REGION, and the first that touches REGENERATION - the one player
   // stat no ground has ever moved. Every heal in the game trickles through
   // P.regen at exactly one line in step(), so the mod reads there, the same
@@ -1354,9 +1394,15 @@ const BIOMES = [
   // positional decision, which is the only kind this game deals in.
   { id:"spring", nm:"THE HOTSPRINGS", ds:"the water remembers how you were  -  regeneration x2.5",
     story:"Warm pools stepped in pale stone. Things come here to mend. Other things know that.",
-    a:[.72,.60,.55], b:[.62,.51,.47], amp:0.35, lift:-0.3, mod:{ regen:2.5 }, fauna:{ shambler:1.6 } },
+    a:[.72,.60,.55], b:[.62,.51,.47], amp:0.35, lift:-0.3, mon:{ nm:"THE MENDING STONE", sh:"vent" }, mod:{ regen:2.5 }, fauna:{ shambler:1.6 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
+// A region without a monument is a region with nothing of its own in it, which
+// is the exact defect L8 measured. Fail at load rather than roll a world with a
+// hole in it - the monument list lives inside BIOMES precisely so this can be
+// checked from the one place the regions are declared.
+{ const noMon = BIOMES.filter(b => !b.mon || !b.mon.nm || !b.mon.sh).map(b => b.id);
+  if(noMon.length) throw new Error("BIOME WITHOUT A MONUMENT: " + noMon.join(",")); }
 
 // TYPE AND GROUND. Seven creature types and seven regions, and until now the
 // type was a colour: two lines with the same stat mods played identically no
@@ -1378,13 +1424,23 @@ const AFFINITY = {
   echo: { home:"grass", nm:"THE FERNLANDS",    weak:"bone",  weakNm:"THE BONEFIELD" },
   surge:{ home:"bog",   nm:"THE TARPITS",      weak:"ice",   weakNm:"THE GLACIER" },
   pyre: { home:"ash",   nm:"THE CINDERFLATS",  weak:"ice",   weakNm:"THE GLACIER" },
+  // not a line: the TIDEBORN rule (L5) - pyre's row, inverted
+  tide: { home:"ice",   nm:"THE GLACIER",      weak:"ash",   weakNm:"THE CINDERFLATS" },
 };
 const AFF_DMG = 1.20, AFF_TOUGH = 1.15;
+// The line's type answers "what am I" everywhere - coat, water, ground - until
+// TIDEBORN says otherwise. These four are the only places that question is
+// asked, so the rule lives here and nowhere else.
+const lineAqua = ()=>{ const t = curMon().type; return t === "scrap" || t === "surge"; };
+const isTide   = ()=> !!(P && P.kit.tide);
+const isAqua   = ()=> lineAqua() || isTide();
+const affOf    = ()=> isTide() ? AFFINITY.tide : AFFINITY[curMon().type];
+const palType  = ()=> isTide() ? "scrap" : curMon().type;
 // Which way the ground under you is leaning. Read by damage and by the HUD, so
 // the number you are told is the number you are getting.
 function affNow(){
   if(!P) return 0;
-  const a = AFFINITY[curMon().type];
+  const a = affOf();
   if(!a) return 0;
   const here = biomeAt(P.x, P.z).id;
   return here === a.home ? 1 : here === a.weak ? -1 : 0;
@@ -1446,7 +1502,19 @@ const DEN_CHANCE = .55;      // not every landmark has something in it.
 // grace is short enough that it is a head start, not a safe period.
 const DEN_GRACE = 45;
 
-let cells = [], marks = [], worldSeed = 0;
+let cells = [], marks = [], monuments = [], worldSeed = 0;
+// ---- THE VIGIL (L9). Until now the only forward-looking thing a run ever said
+// was a schedule - "TERRAVORE IN 12:04" - which arrives on its own whether you
+// do anything or not. A schedule is not a goal. L8 put ten colossal region
+// monuments on the horizon and left them as scenery; this makes them the run's
+// stated objective and the only thing in the game that changes the finale.
+// Reaching one lights it. Every lit monument is a BRAND, and the brand is spent
+// on TERRAVORE and nothing else - it is worth zero against every other enemy in
+// the game, on purpose, so the goal reads as "prepare for the end monster"
+// rather than as a general power-up you happen to pick up by walking.
+const VIGIL_R    = 15;    // metres from the monument's base that count as reaching it
+const VIGIL_DMG  = 0.08;  // extra damage the FINAL boss takes, per brand
+let vigil = { lit:0, total:0, said:false, doneT:0 };
 const BLEND = 9;                    // metres over which two regions cross-fade
 
 // The spawn region is ALWAYS the neutral one. A run that opens with you stuck
@@ -1613,6 +1681,52 @@ function rollWorld(seed){
                  n: Math.round(wrnd(k.pack[0], k.pack[1])) });
     i++;
   }
+  // ---- MONUMENTS. Until L8 a region was two ground tones, an amp/lift and one
+  // stat mod: nothing in a region BELONGED to it, because a landmark's kind is
+  // rolled independently of the ground it lands on. And nothing at all was drawn
+  // past 120 m (the marks loop's own cull) on a map 532 m across, so the far
+  // three quarters of every sightline was empty ground running to the boundary
+  // wall. One monument per rolled cell fixes both at once: it is the first
+  // geometry a region owns, and it is the first thing in the interior you can
+  // see from the other side of the map and steer by.
+  //
+  // Declared INSIDE the biome record (`mon`), not in a parallel table keyed by
+  // biome id - a second list is a list that drifts, and the assertion below
+  // makes a biome without a monument a load-time failure rather than a hole in
+  // the world. Every other property of the monument is DERIVED: its height from
+  // the region's own terrain amplitude, its colour from the region's own tones.
+  monuments = [];
+  for(const c of cells){
+    if(!c.b.mon) continue;
+    // Sited at the cell seed - the point the region is nearest to everywhere,
+    // so walking toward the monument is walking deeper into its region. Nudged
+    // out of a lake or off a landmark; a monument standing in water reads as a
+    // bug and one growing through a ribcage reads as a mistake.
+    let x = c.x, z = c.z;
+    for(let t=0;t<24;t++){
+      const clashLake = lakes.some(L => Math.hypot(L.x-x, L.z-z) < L.r + 7);
+      const clashMark = marks.some(m => Math.hypot(m.x-x, m.z-z) < m.k.r + 9);
+      const clashRim  = Math.hypot(x,z) > RIM - 16;
+      // KEEP SPAWN CLEAR - the same rule the prop scatter keeps (L1961). The
+      // grass cell's seed IS the origin, so without this the first thing every
+      // run does is spawn you inside a 39 m gate leg: it filled the left third
+      // of the opening frame as one black slab. 34 m puts it in front of you.
+      const clashSpawn = Math.hypot(x,z) < 34;
+      if(!clashLake && !clashMark && !clashRim && !clashSpawn) break;
+      const a = t*2.399;                                  // golden-angle walk out
+      x = c.x + Math.cos(a)*(6 + t*1.9); z = c.z + Math.sin(a)*(6 + t*1.9);
+    }
+    // 30 m plus the region's own relief. THE CINDERFLATS is a flat caldera
+    // (amp .45) and gets the squattest monument; THE SPINEROCK is the ridge
+    // (amp 1.60) and gets the tallest. Nothing here is a typed number per
+    // region, so a retuned biome retunes its monument with it.
+    const h = 30 + c.b.amp*9 + Math.max(0, c.b.lift)*2;
+    monuments.push({ x, z, b:c.b, h, rot: wr()*TAU, lit:false, litT:0 });   // rolled LAST, so every pinned arena that existed before L8 still rolls identical ground
+  }
+  // The vigil's total is DERIVED from the world that was just rolled, never
+  // typed: a map that rolls 7 cells asks for 7, one that rolls 14 asks for 14.
+  // rollWorld() runs inside startRun(), so this is also the per-run reset.
+  vigil = { lit:0, total:monuments.length, said:false, doneT:0 };
 }
 // Each den is dealt a SPECIFIC boon, and says so before you commit. A reward you
 // only learn after the fight is a surprise; a reward you can read from sixty
@@ -1703,6 +1817,12 @@ function vnoise(x, y){
               lerp(vhash(xi,yi+1), vhash(xi+1,yi+1), u), v);
 }
 let terBuf, terCount = 0, terData = null, terChunks = [];
+// L12 ground-cover census. Recorded while the terrain bakes so the check can
+// assert the tier EXISTS and that it never leaves the ground - the constraint
+// that keeps FLOOR_CLUTTER's stated reason honoured (nothing on the floor may
+// stand up into the band an enemy body occupies).
+let coverN = 0, coverLift = 0;
+const COVER_LIFT = .06;      // how far a ground-cover patch floats. see the gate.
 // The whole map used to go up as one draw call, which was fine at 184m across
 // and is 41,000 triangles at 584m - all of it submitted every frame, nearly all
 // of it beyond the fog. It is built as a grid of contiguous chunks in one
@@ -1730,6 +1850,7 @@ const BOXV_F = (()=>{
 })();
 function makeTerrain(){
   const CS = ARENA*2/TER_CH, S = CS/TER_Q, out=[];
+  coverN = 0; coverLift = 0;
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
   terChunks = [];
   for(let ci=0;ci<TER_CH;ci++) for(let cj=0;cj<TER_CH;cj++){
@@ -1772,9 +1893,59 @@ function makeTerrain(){
       // the checkerboard just delivered it on a grid. So: a per-quad hash,
       // quantised to three tones and biased by a broad patch field. Irregular,
       // so it is not a chessboard - discrete and high-frequency, so it moves.
-      const patch = vnoise(gi2*.13, gj2*.13);          // broad, ~8 quads across
-      const step  = Math.floor(clamp(patch*.45 + vhash(gi2, gj2)*.55, 0, .999) * 3);
-      const mix   = step / 2;
+      // L12: AND IT WAS STILL A CHESSBOARD. Measured on yaw 0, where world X
+      // and Z map to screen X and Y: 71.7% of the ground's colour edges lay
+      // within 15 degrees of the world axes, against 33.3% for chance. The
+      // reason is structural and no amount of noise fixes it - the tone was
+      // chosen ONCE PER QUAD, and a quad is a 4.05 m world-axis SQUARE, so
+      // every colour boundary in the world ran either north-south or east-west
+      // however irregular the field feeding it was. Two changes, no vertices
+      // added: the tone is picked per TRIANGLE (the two triangles of a quad are
+      // diagonal halves, so a boundary can now run at 45 degrees), off a
+      // DOMAIN-WARPED field (the sample point is pushed around by a second
+      // noise before it is hashed, so a run of same-tone triangles wanders
+      // instead of squaring off). Four values instead of three, still strictly
+      // between the region's two tones so the contrast harness still brackets
+      // everything.
+      const toneAt = (gx3, gy3)=>{
+        const wx3 = gx3 + (vnoise(gx3*.21+11.3, gy3*.21+ 4.7)-.5)*2.6;
+        const wy3 = gy3 + (vnoise(gx3*.21+31.7, gy3*.21+19.1)-.5)*2.6;
+        // THREE SCALES, and the weights matter more than the frequencies. The
+        // first build of this weighted the per-triangle grain at .55 and came
+        // out as uniform shattered glass - every facet a different value, no
+        // shape bigger than a triangle anywhere. Ground has a hierarchy: broad
+        // sweeps you cross, patches inside them, grain inside those. So the
+        // broad field biases and the GRAIN still carries it. That balance was
+        // found the hard way: a build that weighted the broad octave at .48
+        // and the grain at .22 measured better on paper and looked visibly
+        // WORSE - a flat field with a few faint facets - because averaging
+        // octaves piles the sum around 0.5 and the quantiser stops returning
+        // anything but the middle value. High-frequency contrast between
+        // neighbours is what reads as ground and as speed; the broad octave's
+        // job is only to stop that contrast being uniform everywhere.
+        const broad = vnoise(wx3*.055, wy3*.055);      // ~18 quads, 74 m
+        const patch = vnoise(wx3*.20,  wy3*.20);       // ~5 quads, 20 m
+        const grain = vhash(Math.floor(wx3*1.35), Math.floor(wy3*1.35));
+        // AND THEN EXPANDED, which is not cosmetic. Averaging three octaves
+        // piles the sum up around 0.5 - the quantiser then almost never
+        // returns the region's dark tone, the ground comes out uniformly
+        // mid, and L6's pickup check felt it: the share of chip pixels
+        // clearing 3:1 at six metres fell 24.9% -> 20.2% with the cover tier
+        // switched OFF, so it was this line and not the patches. Isolating it
+        // that way was the whole point of being able to switch them off. The
+        // expansion puts the dark end back, which the picture wanted anyway.
+        const v3 = clamp(.5 + (broad*.20 + patch*.28 + grain*.52 - .5)*1.15, 0, .999);
+        // AND THE TOP OF THE RANGE IS RESERVED. Four steps, all four kept -
+        // the boundaries between them are the detail - but they run 0 .. 0.75
+        // of the way to the region's bright tone instead of all the way to it.
+        // The reason is L6 and OWNER.md, not taste: the XP chip is near-white
+        // by owner decision, so every patch of floor allowed to reach full
+        // brightness is a patch the chip cannot be read against. Reserving the
+        // top quarter costs nothing visible and hands the pickup its contrast
+        // back - measured, six metres, 20.5% of chip pixels over 3:1 without
+        // this line and 26%+ with it.
+        return Math.floor(v3 * 4) / 3 * .75;
+      };
       const h   = (P[0][1]+P[2][1])/4 + .5;
       // COLOUR CROSS-FADES THE WAY THE HEIGHT ALREADY DID. groundY() blends the
       // amplitude and the lift of two regions over BLEND metres so a border is
@@ -1787,10 +1958,12 @@ function makeTerrain(){
       const bm2 = cells.length ? cells[nc[1]].b : bm;
       const eg  = clamp((nc[3] - nc[2]) / BLEND, 0, 1);   // 1 well inside a region
       const w2  = (1 - eg) * .5;                          // at most half-and-half
-      const tone = (k)=> lerp(lerp(bm.b[k], bm.a[k], mix),
-                              lerp(bm2.b[k], bm2.a[k], mix), w2);
-      const base = [tone(0), tone(1), tone(2)];
-      let c = [base[0]+h*TERRAIN_H[0], base[1]+h*TERRAIN_H[1], base[2]+h*TERRAIN_H[2]];
+      const tone = (k, mix)=> lerp(lerp(bm.b[k], bm.a[k], mix),
+                                   lerp(bm2.b[k], bm2.a[k], mix), w2);
+      const landC = (mix)=> [tone(0,mix)+h*TERRAIN_H[0],
+                             tone(1,mix)+h*TERRAIN_H[1],
+                             tone(2,mix)+h*TERRAIN_H[2]];
+      let c = landC(toneAt(gi2+.5, gj2+.5));
       // water colour: deeper = darker, with the same per-quad grain the land
       // has so the surface still gives a sense of motion when crossed
       if(wet === 4){
@@ -1807,9 +1980,15 @@ function makeTerrain(){
         c = [c[0]*.62+.05, c[1]*.66+.06, c[2]*.72+.08];
       }
       // wind counter-clockwise seen from above, or CULL_FACE eats the whole map
-      for(const [a,b,d] of [[0,2,1],[0,3,2]]){
-        const n = nrm(cross(sub(P[b],P[a]), sub(P[d],P[a])));
-        push(P[a],n,c); push(P[b],n,c); push(P[d],n,c);
+      // The two triangles sample the field at their OWN centroids (corner
+      // offsets 0,2,1 -> 2/3,1/3 and 0,3,2 -> 1/3,2/3), which is what lets a
+      // colour boundary fall on the diagonal. Water and shore stay per-quad:
+      // a lake surface is one sheet and must not be dappled.
+      const TRI = [[[0,2,1], gi2+.667, gj2+.333], [[0,3,2], gi2+.333, gj2+.667]];
+      for(const [[a,b,d], cx3, cz3] of TRI){
+        const n  = nrm(cross(sub(P[b],P[a]), sub(P[d],P[a])));
+        const ct = wet > 0 ? c : landC(toneAt(cx3, cz3));
+        push(P[a],n,ct); push(P[b],n,ct); push(P[d],n,ct);
       }
     }
     // ---- SCATTER. Reported in the audit as "the terrain has no small detail
@@ -1828,6 +2007,73 @@ function makeTerrain(){
             push([px+v[0]*hx, py+v[1]*hy, pz+v[2]*hz], n, col);
         }
       };
+      // L12: GROUND COVER, the tier under the clumps. FLOOR_CLUTTER (L2047)
+      // is off for a reason written where it is declared - 270 STANDING props
+      // in the 1-5.2 m band are 270 silhouettes your eye has to rule out
+      // before it can read an enemy - and that reason still holds. So this is
+      // the half of the idea that is safe: flat, ROTATED patches lying on the
+      // ground at 6 cm, well under any body and under every pickup, whose only
+      // job is to break the plane up. Rotated on purpose: an axis-aligned box
+      // here would put back the very grid the tone fix just took out, so each
+      // patch is one quad with its own yaw, built corner by corner off
+      // groundY() so it follows a slope instead of hovering over it. Six verts
+      // each against a box's thirty-six.
+      const NC = 64;
+      for(let s=0;s<NC;s++){
+        const hx2 = vhash(ci*211 + s*29, cj*173 + s*19);
+        const hz2 = vhash(cj*307 + s*23, ci*131 + s*37);
+        const px2 = -ARENA + ci*CS + hx2*CS, pz2 = -ARENA + cj*CS + hz2*CS;
+        if(Math.hypot(px2,pz2) > RIM - 3) continue;
+        if(waterSurfY(px2,pz2) < 1e9) continue;          // not on a lake or its bank
+        const bm3 = biomeAt(px2, pz2);
+        const r4  = vhash(s*524287 + ci*7, s*131071 + cj*11);
+        const r5  = vhash(s*8191 + cj*5,   s*32749  + ci*3);
+        // TWO SIZES, not one. A single size band gives an evenly-speckled field;
+        // ground has big worn sweeps with small marks inside them. Every third
+        // patch is a broad one, the rest are close underfoot.
+        const bigOne = (s % 3) === 0;
+        const rot = r4*TAU,
+              rx = bigOne ? 1.10 + r5*2.30 : .34 + r5*.72,
+              rz = bigOne ?  .90 + r4*2.10 : .28 + r4*.66;
+        const ca = Math.cos(rot), sa = Math.sin(rot);
+        // Pulled toward the region's DARK tone, never past it, so the patch
+        // reads as damp or worn ground rather than as a new colour - and so it
+        // stays inside the pair of tones the contrast harness already brackets.
+        // DARK ONLY, and that is a readability decision, not a taste one. L6
+        // bought the XP chip its contrast against the floor and OWNER.md fixes
+        // it near-white; a patch BRIGHTER than the ground would spend that
+        // contrast straight back. Every patch is darker than the ground it lies
+        // on, so the chip can only gain.
+        // AND THERE IS A FLOOR UNDER HOW DARK IT MAY GO, found by measuring
+        // rather than by taste. The first build pulled a patch to b*0.66, and
+        // L6's pickup check fell from 51.9% of chip pixels clearing 3:1 at six
+        // metres to 36.6% - because L6's fix is a DARK CONTACT SHADOW under the
+        // chip, and a floor patch as dark as that shadow erases it. The patch
+        // is held well above the shadow's value: it darkens the ground, it
+        // never competes with what is drawn on it.
+        const k4 = .42 + r5*.46;
+        const cc = [lerp(bm3.a[0], bm3.b[0]*.74, k4),
+                    lerp(bm3.a[1], bm3.b[1]*.74, k4),
+                    lerp(bm3.a[2], bm3.b[2]*.78, k4)];
+        coverN++;
+        const CN = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v],ki)=>{
+          // A ROTATED RECTANGLE STILL READS AS A RECTANGLE - the first build
+          // of this put clean dark quads on the grass and they looked like
+          // holes cut in it. Each corner is pulled in by its own hashed
+          // factor, so every patch is an irregular four-sided blot.
+          const j4 = .52 + vhash(s*97 + ki*8191 + ci*13, ki*524287 + cj*7)*.48;
+          const ox = (u*rx*ca - v*rz*sa)*j4, oz = (u*rx*sa + v*rz*ca)*j4;
+          const wx4 = px2+ox, wz4 = pz2+oz;
+          return [wx4, groundY(wx4,wz4)+COVER_LIFT, wz4];
+        });
+        // Recorded off the BUILT geometry, not off the constant - a gate that
+        // reads back the literal it was given cannot fail.
+        for(const q of CN) coverLift = Math.max(coverLift, q[1] - groundY(q[0], q[2]));
+        for(const [a,b,d] of [[0,2,1],[0,3,2]]){
+          const n = nrm(cross(sub(CN[b],CN[a]), sub(CN[d],CN[a])));
+          push(CN[a],n,cc); push(CN[b],n,cc); push(CN[d],n,cc);
+        }
+      }
       // Eleven per chunk, which on a 48-metre chunk is roughly one every
       // fourteen metres - enough that there is always something near you to
       // measure your own speed against, few enough that the buffer stays
@@ -2285,8 +2531,16 @@ magnet:  { name:"KEENER NOSE",   ic:"nose",    kind:"p", max:3, eff:"+58% PICKUP
            ds:"And it drags the horde into a pile." },
 clover:  { name:"SHARPER CLAWS", ic:"claws",   kind:"p", max:3, eff:"+12% CRIT",    col:"#6ddba0",
            ds:"Crits hit for 2.3x." },
-dupe:    { name:"SECOND HEAD",   ic:"twohead", kind:"p", max:3, eff:"+1 OF EVERYTHING", col:"#ff6bd6",
-           ds:"Every weapon fires again. Copies hit for 55%." },
+// THE CARD SAYS WHAT IT DOES NOW (L13). The feature under this key stopped
+// being a second head and became a second CREATURE (see THE SPLIT), but the
+// card never heard about it: it still read SECOND HEAD / "+1 OF EVERYTHING" /
+// "Every weapon fires again", which describes only the arithmetic half and
+// never mentions the animal that stands up beside you. The best thing in the
+// draft was the one thing the draft would not advertise. The key stays `dupe`
+// - saves, benches, dupeN() and every evolution `need:"dupe"` are untouched -
+// and the icon moves to the two-creature glyph that was already in the sheet.
+dupe:    { name:"THE SPLIT",     ic:"twin",    kind:"p", max:3, eff:"+A SECOND CREATURE", col:"#ff6bd6",
+           ds:"A second animal stands up beside you and grows its own line. Every weapon fires again; copies hit for 55%." },
 // THE RULES. The eight adjectives answer "easy to read"; these answer "more
 // fun to play". A rule changes how a run PLAYS rather than how hard it hits,
 // and each one is tied to a verb the game already teaches - the hop chain,
@@ -2311,6 +2565,19 @@ afterburn:  { name:"AFTERBURN",   ic:"surge",      kind:"r", max:1, eff:"RUSH LA
               ds:"The speed a kill gives you takes three times as long to fade." },
 glass:      { name:"GLASS",       ic:"crit",       kind:"r", max:1, eff:"+40% DMG · -40% HP",
               ds:"Hit harder. Do not get hit." },
+// THE ELEMENT SWAP (L5). The owner's own example of a meaningful pick: "turning
+// the fire guy into water mid-run". (The arrow on the card is a JS escape: the
+// body is served locally with no charset, and a raw UTF-8 arrow read as three
+// letters of mojibake on the real page.) Every rule above changes what you DO; this
+// one changes what you ARE. The coat goes tide-blue, the ground swaps under you
+// - THE GLACIER becomes home and THE CINDERFLATS start hurting - and every lake
+// becomes a lane: you swim at 1.30x while the horde wades at .74. It rides the
+// AQUA path the TIDE and SURGE lines already use, so those two never see the
+// card (`bar` below); the rebirth is untouched - THE TEMP still spends deaths,
+// it just does it wet.
+tide:       { name:"TIDEBORN",    ic:"scrap",      kind:"r", max:1, eff:"FIRE \u2192 WATER",
+              ds:"Your coat turns to tide. Lakes are yours; THE GLACIER is home, THE CINDERFLATS burn.",
+              bar: ()=>lineAqua() },
 };
 const RULE_THIRD = 30;                                  // a third rule slot opens here
 const GLASS_DMG = 1.4, GLASS_HP = .6, AFTERBURN_DRAIN = 1/3;
@@ -2453,6 +2720,48 @@ const ABILITIES = {
   // demand this fight did not have.
   sinkhole:{ tell:1.10, act:0.30, rest:3.0 },
 };
+// ------------------------------------------- THE FINALE'S THREE PHASES
+// MEASURED FIRST (L7). Driven on the real page for five straight minutes, the
+// finale cast slam 15, spokes 15, sinkhole 15, charge 15, evict 15 - exactly
+// fifteen of each, strict round-robin - and its HP fell in a flat line, -15.2k
+// every ten seconds from 520k to 207k. `bossAI` did not read `e.hp` anywhere.
+// The boss at 99% and the boss at 40% were the same boss doing the same five
+// things at the same cadence. It could kill you (a level-1 idler dies to it in
+// 15.6s) but it could not SHAPE a fight, which is the owner's "no real boss".
+//
+// So the finale now has three phases gated on its own health, and crossing a
+// gate is an EVENT, not a stat change: the carapace slams shut (it takes no
+// damage for BOSS_BREAK seconds - you cannot burst through a break, you have to
+// live through it), every hazard on the floor is wiped, and a ring erupts
+// outward from it that you have to be somewhere else for. Then it comes back
+// with more of its kit and less time between casts.
+//
+// The story is told at the gates because that is where the player is looking.
+// TERRAVORE is the thing that ate the world; the run is the twenty minutes
+// before it finishes. Phase 1 it is still eating the ground. Phase 2 you have
+// hurt it enough that it opens - and what is inside is the rest of the world,
+// still burning. Phase 3 it gives up on the world and comes for you.
+const BOSS_BREAK = 1.7;
+const BOSS_PHASES = [
+  { at:1.00, nm:"THE HUNGER",       kit:["slam","charge"],
+    rest:1.00, dmg:1.00,
+    line:"IT COMES UP CHEWING. THE GROUND IS STILL IN ITS MOUTH." },
+  { at:0.66, nm:"THE OPENING",      kit:["sinkhole","slam","spokes","charge"],
+    rest:0.76, dmg:1.15,
+    line:"THE SHELL SPLITS. EVERYTHING IT ATE IS STILL BURNING IN THERE." },
+  { at:0.33, nm:"THE LAST MOUTHFUL", kit:["spokes","sinkhole","charge","evict","slam"],
+    rest:0.52, dmg:1.35,
+    line:"IT STOPS EATING THE WORLD. YOU ARE CLOSER." },
+];
+// which phase a health fraction belongs to (0,1,2) - derived, never stored twice
+function bossPhaseOf(frac){
+  let i = 0;
+  for(let k=0;k<BOSS_PHASES.length;k++) if(frac <= BOSS_PHASES[k].at) i = k;
+  return i;
+}
+const bossPhase = e => BOSS_PHASES[(e && e.ph) || 0];
+const bossDmgMul = e => (e && e.final) ? bossPhase(e).dmg : 1;
+
 const BOSS_KIT = {
   slam:   ["slam"],                            // the teaching boss: one lesson
   evict:  ["evict", "slam"],
@@ -8255,7 +8564,7 @@ function startRun(id){
         rerolls:rank("reroll"), banishes:rank("banish"), banned:{},
         ...s, lvl:1, xp:0, need:6, kit:{}, iframe:0, hitCd:0,
         surge:0, surgeT:0, rush:0, rebirths:0, rebirthCd:0, grown:0, hp0:s.maxhp };
-  jumpBuf = 0;
+  jumpBuf = 0; resetStyle();
   stage = 0; evoT = 0; evoFx = 0; noEvo = false;
   // the hatchling's own stage mods start applied - evolveTo() only ever
   // rescales by the RATIO between stages, so a pace on stage 0 that was not
@@ -8292,7 +8601,19 @@ function startRun(id){
   // gems are on the ground inside pickup range so the first thing that
   // happens is a pickup rather than a wait.
   gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
-  runDist=0; runPearls=0;
+  runDist=0; runPearls=0; twin=null;
+  // Both widths below are MEASURED BY THE DRAW, so they belong to whatever was
+  // last on screen: a run started straight after dying as THE ABYSS would hold
+  // its twin eight metres off the shoulder until the first frame re-measured
+  // two hatchlings. Back to the hatchling default with everything else.
+  bodyWide = 3; twinWide = 3;
+  // THE TWIN's card says "Never arrives alone", and it is the one creature in
+  // the roster whose whole identity is this card: it starts holding SECOND HEAD
+  // through ch.gift, which is written straight into the kit above and never
+  // goes through applyPassive - and the reset on the line above runs after it.
+  // So this is the only place the two can meet. Quiet, because the player
+  // picked this character on purpose and the roster panel already said so.
+  if(P.kit.dupe) splitTwin(true);
   events=[]; boons=[]; nextEvent=rnd(24,32); pearlT=16; pearlSeen=false;
   evStats.spawned=evStats.caches=evStats.altars=evStats.hunts=evStats.storms=evStats.expired=0;
   // PER-RUN, like everything else on the end screen. denStats was a module
@@ -8682,6 +9003,9 @@ function dmgOut(base){
 }
 function hurt(e, amount, kx, kz, crit){
   if(e.rise > 0) return;             // still coming out of the ground
+  // A phase break is not a damage window. Bursting through it would delete the
+  // one moment of the fight that is purely positional, so the shell is shut.
+  if(e.ab && e.ab.phase === "break") return;
   if(crit && (e.boss || e.elite)) hold("crit");
   // THE SCRAPYARD sharpens what you carry. Keyed off where the PLAYER is
   // standing, not the target - you are the one who walked in there.
@@ -8694,6 +9018,9 @@ function hurt(e, amount, kx, kz, crit){
     if(af > 0) amount *= AFF_DMG;
     if((e.boss || e.elite) && hasRule("hunter")) amount *= HUNTER_MUL;
   }
+  // THE VIGIL's brands (L9). Applied here for the same reason home ground is:
+  // every recalc rebuilds P.dmg out of the kit and would silently drop it.
+  amount *= vigilMul(e);
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
   if(e.boss) dmgBoss += eff;
@@ -8905,19 +9232,23 @@ const prank = w => w ? (w.l + 1) * PSCALE : 0;
 // in numbers without turning the animal into a caricature.
 const GROW_TEETH = .22, GROW_LEGS = .12, GROW_NECK = .07, GROW_CLAWS = .25,
       GROW_HIDE = .06, GROW_FROM = .22, HIDE_MIN = .10;
-// SECOND HEAD is a second head. Everything forward of HEAD_AT of the body's
-// length (the neck and head, learned from last frame's extents) is drawn
-// twice, each copy turned about the shoulders by +/- HEAD_SPLAY - two necks
-// splaying from one chest to two heads. A RIGID turn, not a lateral shift:
+// TWO HEADS ON ONE ANIMAL - the draw, kept as a switch rather than deleted.
+// Everything forward of HEAD_AT of the body's length (the neck and head,
+// learned from last frame's extents) can be drawn twice, each copy turned
+// about the shoulders by +/- HEAD_SPLAY. A RIGID turn, not a lateral shift:
 // three cuts at shifting the copies sideways all tore something - a hard cut
 // took the horns off, a ramp on f opened every hairline joint between a
 // whisker and its jaw, and a ramp over the neck alone left a bird whose head
 // sits on its body with two heads floating beside the neck. A turned copy
 // keeps every joint it had, and at the pivot the copies and the trunk are the
-// same place. TWO heads at any rank: three, overlapped, read as one wide face
-// with six eyes. The card says +1 OF EVERYTHING; on the animal that is the one
-// thing you could not miss.
-const HEAD_AT = .66, HEAD_MAX = 2, HEAD_SPLAY_MIN = .20, HEAD_SPLAY_MAX = .42;
+// same place.
+//
+// HEAD_MAX IS 1, so nothing uses it today. SECOND HEAD used to, and the owner's
+// own words for what that card is meant to be were "I'm playing as two" - which
+// a second head on one animal is not. It puts a whole second CREATURE beside you
+// now: see THE SPLIT. The turn is left here because it is the only tool in this
+// renderer that can rigidly copy part of a body, and the ECHO line is a hydra.
+const HEAD_AT = .66, HEAD_MAX = 1, HEAD_SPLAY_MIN = .20, HEAD_SPLAY_MAX = .42;
 const growRank = (p, k) => { const u = p && p.kit && p.kit[k];
                              return u ? Math.min(u.l + 1, PASSIVES[k].max) : 0; };
 function growOf(p){
@@ -8931,6 +9262,117 @@ function growOf(p){
            // (hip to ankle, learned from leg() last frame) times what the
            // legs gained
            lift: (p && p.legSpan) ? (p.legSpan[1] - p.legSpan[0]) * GROW_LEGS * growRank(p, "boots") : 0 };
+}
+// ==================================================================== THE SPLIT
+// "I'm playing as two." That is the owner's own line about the card the game
+// called SECOND HEAD, and what the card did was draw a second head on one animal
+// and add a 55% copy to every weapon. Neither of those is two.
+//
+// Taking it SPLITS you. A second creature stands up beside you: full size, drawn
+// through the same drawMonBody the player and the menu portraits go through, with
+// its own gait, its own breath and its own lean - and, the part that matters, its
+// own LINE. It is never your line, so it evolves into something else on the same
+// level gates you do, and a run that takes the card ends as two different animals.
+//
+// What it deliberately does NOT change is the damage contract. Every copy still
+// costs DUPE_DMG and still resolves from the player, so the whole weapon bench,
+// every evolution number and every mutant that reads dupeN() means exactly what
+// it meant before. The card's IDENTITY changed; its arithmetic did not. Moving
+// the copies' firing origin onto the twin is a real balance change and belongs
+// to its own round with its own bench.
+const TWIN_R = 3.4,          // how far off your shoulder the slot sits
+      TWIN_F = -1.1,         // and how far behind it
+      TWIN_SPD = 1.28,       // a shade faster than you, or it never closes
+      TWIN_HOME = 26;        // further than this and it rejoins rather than trails
+let twin = null;
+// A LINE OF ITS OWN, dealt off the RUN stream so a pinned run splits the same
+// way twice. Never your own line - the whole point is two different animals -
+// and never a line without stages to grow through.
+function twinLine(){
+  const pool = CHARS.filter(c => c.id !== charId && c.st && c.st.length);
+  return pool.length ? pool[(R()*pool.length)|0] : null;
+}
+function splitTwin(quiet){
+  if(twin || !P) return null;
+  const ch = twinLine();
+  if(!ch) return null;
+  const x = P.x + Math.cos(P.face)*TWIN_R, z = P.z - Math.sin(P.face)*TWIN_R;
+  twin = {
+    ch, stage:0, x, z, y:groundY(x,z), face:P.face, evoFx:EVO_FX,
+    // its own animation state: sharing the player's would put two animals in
+    // perfect unison, which is the one thing that would give it away as a copy
+    an: { ph:0, amp:0, lean:0, bank:0, sq:1, lunge:0, look:0, land:0,
+          hit:0, hitR:0, hitF:-1, br:R()*6.28, dead:0,
+          atkT:9, atkKind:"", atkDir:0, atkSide:1, atkAmp:1 },
+    // the P-like object drawMonBody reads and WRITES (legSpan, headSpan). It
+    // shares the run's kit - the growths are yours, and they are on both of you
+    // - and it is marked `portrait` so the twin cannot retune the game camera
+    // or steal the player's marker ring. Its shadow is drawn by hand instead.
+    P: { x, y:groundY(x,z), z, face:P.face, iframe:0, hopFx:0, air:false,
+         kit:P.kit, mscale:1, portrait:true, twinOf:true, surge:0, surgeT:0,
+         legSpan:null, headSpan:null }
+  };
+  twinEvolve(true);                       // taken at level 40: it arrives grown
+  if(!quiet){
+    alert2("THE SPLIT  ·  " + ((twin.ch.st[twin.stage]||{}).nm || ""), "#ff6bd6");
+    shake = Math.max(shake, .9); flash = Math.max(flash, .45); SFX.evolve();
+  }
+  return twin;
+}
+// The same gates the player's own line uses, so the two of you change together.
+// `quiet` is the catch-up at the moment of the split, which should not announce
+// four evolutions the player never watched happen.
+function twinEvolve(quiet){
+  if(!twin || !P) return;
+  const line = twin.ch.st || [];
+  let want = 0;
+  for(let i=0;i<line.length;i++) if(P.lvl >= (EVO_AT[i]||1e9)) want = i;
+  if(want <= twin.stage) return;
+  twin.stage = want;
+  if(quiet) return;
+  twin.evoFx = EVO_FX;
+  alert2((line[want]||{}).nm || "", "#ff6bd6");
+  SFX.evolve();
+}
+function stepTwin(dt){
+  if(!twin || !P || dt <= 0) return;
+  const t = twin;
+  if(t.evoFx > 0) t.evoFx = Math.max(0, t.evoFx - dt);
+  // THE SLOT, in the player's own frame: right is (cos face, -sin face) and
+  // forward is (sin face, cos face), the same basis every body plan draws in.
+  // half of each body plus a metre and a bit of daylight, floored at TWIN_R:
+  // two CINDERWHELPs want 3.4 m and THE SUPERNOVA beside THE ABYSS wants
+  // fourteen, and a fixed gap cannot be both.
+  const gap = Math.max(TWIN_R, (bodyWide + twinWide)*.5 + 1.2);
+  const sx = P.x + Math.cos(P.face)*gap + Math.sin(P.face)*TWIN_F;
+  const sz = P.z - Math.sin(P.face)*gap + Math.cos(P.face)*TWIN_F;
+  const dx = sx - t.x, dz = sz - t.z, d = Math.hypot(dx, dz);
+  let moved = 0;
+  if(d > TWIN_HOME){ t.x = sx; t.z = sz; }        // a blink or a rebirth: rejoin
+  else if(d > .12){
+    // paced off what you are ACTUALLY doing, not off your base speed: a hop
+    // chain is +55%, RUSH another +22% and a surge +30% on top, and a twin
+    // paced at 1.28x of BASE simply falls off the back of a chained run.
+    const k = Math.min(1, Math.max(P.spd, Math.hypot(P.vx, P.vz))*TWIN_SPD*dt/d);
+    t.x += dx*k; t.z += dz*k; moved = d*k;
+  }
+  [t.x, t.z] = confine(t.x, t.z, 1.5);
+  t.y = groundY(t.x, t.z);
+  // it faces where it is GOING while it moves and settles to your heading when
+  // it arrives - the same rule walk() gives the horde, and the reason a twin
+  // standing beside you does not read as a cardboard cutout
+  const want = moved > .002 ? Math.atan2(dx, dz) : P.face;
+  t.face += wrapAng(want - t.face) * Math.min(1, dt*8);
+  // and its own gait, off distance covered, exactly as stepAnim drives yours
+  const an = t.an, v = moved/dt;
+  an.ph += moved * 2.35 / growOf(t.P).legs;
+  an.amp += (clamp(v/5.2, 0, 1) - an.amp) * Math.min(1, dt*11);
+  an.br += dt*3.3;
+  const idle = 1 - Math.min(1, an.amp*1.4);
+  an.lean += (clamp(v*.022, 0, .16) - an.lean) * Math.min(1, dt*8);
+  an.bank += ((idle*Math.sin(an.br*.31)*.020) - an.bank) * Math.min(1, dt*9);
+  an.sq   += ((1 + idle*Math.sin(an.br)*.014 + an.amp*Math.sin(an.ph*2)*.035) - an.sq) * Math.min(1, dt*18);
+  an.look += ((idle*Math.sin(an.br*.19 + .8)*.14) - an.look) * Math.min(1, dt*5);
 }
 // What to call a weapon on screen. A line's evolution announces "LEARNED
 // CINDERTRAIL" and then every surface in the game went on saying CALTROPS - the
@@ -9577,7 +10019,7 @@ function spawnBoss(b){
     // OUT OF THE GROUND over BOSS_RISE seconds - buried at the start, shoving
     // the ground up around it, and it cannot act or be hit until it is out.
     rise: BOSS_RISE, born: T,
-    final });
+    ph:0, final });
   shake = 1.6; SFX.boss(); alert2(b.nm, "#ff5c4d");
   for(let i=0;i<20;i++){                       // the ground breaking around it
     const a2 = i*(TAU/20);
@@ -9597,10 +10039,21 @@ const mkHaz = (x,z,r,tel,live,dmg)=>
 function bossAI(e, dt){
   if(!e.ab) e.ab = { phase:"move", t:2.6, kind:null, dir:0, n:0 };
   const A = e.ab;
+  // PHASE GATE, checked before anything else so a killing blow that crosses a
+  // threshold interrupts whatever it was doing. Only the finale has phases.
+  if(e.final){
+    const want = bossPhaseOf(e.hp / Math.max(1, e.maxhp));
+    if(want > (e.ph || 0)){ e.ph = want; bossBreak(e, A); }
+  }
   A.t -= dt;
+  if(A.phase === "break"){
+    if(A.t > 0) return false;                  // rooted, armoured, screaming
+    A.phase = "move"; A.t = 1.1; A.n = 0;
+    return false;
+  }
   if(A.phase === "move"){
     if(A.t > 0) return true;
-    const kit = BOSS_KIT[e.def.ai] || ["slam"];
+    const kit = (e.final ? bossPhase(e).kit : BOSS_KIT[e.def.ai]) || ["slam"];
     A.kind = kit[(A.n++) % kit.length];
     if(A.kind === "sinkhole") A.dir = R()*TAU;   // never the same seam twice
     A.phase = "tell"; A.t = ABILITIES[A.kind].tell;
@@ -9618,12 +10071,39 @@ function bossAI(e, dt){
     const sp = e.def.spd * 4.4;
     [e.x, e.z] = confine(e.x + Math.sin(A.dir)*sp*dt, e.z + Math.cos(A.dir)*sp*dt, 2);
   }
-  if(A.t <= 0){ A.phase = "move"; A.t = ABILITIES[A.kind].rest; }
+  if(A.t <= 0){ A.phase = "move";
+                A.t = ABILITIES[A.kind].rest * (e.final ? bossPhase(e).rest : 1); }
   return false;
 }
 
+// THE BREAK. Crossing a health gate is the one moment in the fight that is not
+// about damage: it cannot be skipped by dealing more (hurt() refuses while
+// A.phase is "break"), the floor is wiped clean of everything that was already
+// telegraphed, and a closed ring erupts OUT of the boss - the same in-or-out
+// decision the sinkhole asks, but this time you did not choose when it comes.
+function bossBreak(e, A){
+  const p = BOSS_PHASES[e.ph];
+  A.phase = "break"; A.t = BOSS_BREAK; A.kind = A.kind || "slam";
+  hazards.length = 0;
+  const s = dmgScale(T) * p.dmg;
+  const a0 = R()*TAU;
+  for(let i=0;i<18;i++){
+    const a = a0 + i*(TAU/18);
+    const hx = e.x + Math.cos(a)*8.5, hz = e.z + Math.sin(a)*8.5;
+    if(Math.hypot(hx, hz) > RIM - 2) continue;
+    hazards.push(mkHaz(hx, hz, 3.2, BOSS_BREAK*.72, .9, 44*s));
+  }
+  for(let i=0;i<24;i++){                       // the shell coming apart
+    const a2 = i*(TAU/24);
+    rings.push({ x:e.x+Math.cos(a2)*e.rad, z:e.z+Math.sin(a2)*e.rad, y:e.y,
+                 r:0, max:e.def.w*(1.6+Math.random()), life:.9+Math.random()*.6, mx:1.4 });
+  }
+  shake = 1.7; SFX.boss(); SFX.boom();
+  alert2(p.nm, "#ff5c4d"); alert2(p.line, "#ffb08a");
+}
+
 function bossTelegraph(e, A){
-  const s = dmgScale(T);
+  const s = dmgScale(T) * bossDmgMul(e);       // later phases hit harder
   if(A.kind === "slam"){
     // 7.0m radius against a 1.05s tell was escapable by -0.07m at full speed:
     // literally impossible to dodge, which makes it a damage tax wearing a
@@ -9671,7 +10151,7 @@ function bossExecute(e, A){
   if(A.kind === "spokes"){
     for(let i=0;i<14;i++)
       spits.push({ x:e.x, y:e.y+e.def.h*.55, z:e.z, a:A.dir + i*(TAU/14),
-                   spd:17, d:17*dmgScale(T), life:3.2, big:true });
+                   spd:17, d:17*dmgScale(T)*bossDmgMul(e), life:3.2, big:true });
     SFX.boom();
   } else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
   else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
@@ -9689,6 +10169,12 @@ function bossBeat(e){
   const B = BEAT[A.kind], ab = ABILITIES[A.kind];
   if(!B) return BT0;
   let u = 0, act = 0;
+  // A break is a held rear: fully wound up for the whole of it, then let out
+  // by the "move" that follows. Reuses the sinkhole beat, the tallest one.
+  if(A.phase === "break")
+    return { kind:A.kind, u:1, act:0,
+             sq: 1 + BEAT.sinkhole.tsq, lf: BEAT.sinkhole.tlf,
+             pt: BEAT.sinkhole.tpt, rc: 0 };
   if(A.phase === "tell") u = clamp(1 - A.t / ab.tell, 0, 1);
   else if(A.phase === "act") act = 1;
   else {
@@ -10606,6 +11092,70 @@ function nextUp(){
     <div class="nt">${left.u.what} &nbsp;·&nbsp; ${left.u.ds}</div></div>`;
 }
 
+// -------------------------------------------------------- the style reader
+// THE OFFER DEPENDS ON HOW YOU PLAY (L5, the vision's first answer). Asked
+// whether BONKHORDE is about outrunning the horde, building a machine, raising
+// a creature or exploring, the answer was that it is not a choice: the game
+// should meet the player where they are. The draft is the game's main offer
+// and it dealt from one pool by weight, so a player who never stops moving and
+// one who stands in the middle of it got the same hand.
+//
+// This reads the last minute of play, in the play's own terms - three decayed
+// averages, no counters to reset, no thresholds to cross:
+//   FOOTWORK    how much of your top speed you use, and how much of it airborne
+//   IN THE THICK how often something is close enough to bite you
+//   ROAMING     how far out in front of your own centre of gravity you are -
+//               crossing the map, rather than kiting one clearing fast
+// The leader has to lead by a margin or the read is BALANCED and nothing tilts.
+const STYLE_TAU = 45;                  // seconds of memory (a decay, not a window)
+const STYLE_LEAD = 1.25;               // how far in front the leader has to be
+const STYLE_HOME = 30;                 // seconds of lag in the centre roaming is measured from
+let styleV = { move:0, air:0, close:0, roam:0 }, styleHome = null;
+function resetStyle(){ styleV = { move:0, air:0, close:0, roam:0 }; styleHome = null; }
+function sampleStyle(dt){
+  if(!P || dt <= 0) return;
+  const k = Math.exp(-dt / STYLE_TAU), j = 1 - k;
+  const top = Math.max(1, P.spd);
+  styleV.move  = styleV.move  * k + j * Math.min(1.2, Math.hypot(P.vx, P.vz) / top);
+  styleV.air   = styleV.air   * k + j * ((P.air ? .6 : 0) + Math.min(.4, P.hop * .05));
+  let near = 1e9;
+  for(const e of enemies){ if(e.dead) continue;
+    const d = Math.hypot(e.x - P.x, e.z - P.z); if(d < near) near = d; }
+  styleV.close = styleV.close * k + j * (near < 5 ? 1 : near < 9 ? .35 : 0);
+  // ROAMING is not speed. A player who kites the same clearing for a minute is
+  // fast and going nowhere; a player who is crossing the map is out in front of
+  // their own centre of gravity. So: how far you are from where this run has
+  // been spending its time - a lagging average of your own position - measured
+  // in seconds of running. Twelve seconds out in front reads as fully roaming.
+  if(styleHome === null){ styleHome = { x:P.x, z:P.z }; }
+  const hk = Math.exp(-dt / STYLE_HOME);
+  styleHome.x = styleHome.x * hk + P.x * (1 - hk);
+  styleHome.z = styleHome.z * hk + P.z * (1 - hk);
+  const out = Math.hypot(P.x - styleHome.x, P.z - styleHome.z) / (top * 12);
+  styleV.roam = styleV.roam * k + j * Math.min(1.2, out);
+}
+// the read: three shares and, if one of them leads, what to tilt the deal toward
+function styleRead(){
+  const run = styleV.move * .55 + styleV.air * .45, thick = styleV.close, roam = styleV.roam;
+  const all = [["run", run], ["thick", thick], ["roam", roam]].sort((a,b)=>b[1]-a[1]);
+  const tilt = all[0][1] > .18 && all[0][1] > all[1][1] * STYLE_LEAD ? all[0][0] : null;
+  return { run:+run.toFixed(3), thick:+thick.toFixed(3), roam:+roam.toFixed(3), tilt };
+}
+// What each card is FOR. A tag is a claim about how a card is played, not how
+// strong it is: LONGER LEGS and RHYTHM pay a player who keeps moving, STINK and
+// THICKER HIDE pay one who stands in it, MORTAR and KEENER NOSE pay one who
+// covers ground. Four are deliberately untagged - QUICKER HEART, SHARPER CLAWS,
+// SECOND HEAD, GLASS - because they pay everybody, and a pool where every card
+// belongs to somebody has no neutral ground left in it.
+const STYLE_TAG = {
+  boots:"run", momentum:"run", afterburn:"run", stomp:"run", caltrops:"run", gore:"run",
+  bat:"thick", pulse:"thick", aura:"thick", skulls:"thick", zap:"thick",
+  plating:"thick", bloodthirst:"thick", spinach:"thick",
+  bolt:"roam", mortar:"roam", magnet:"roam", heart:"roam", hunter:"roam", brood:"roam",
+};
+const STYLE_NM = { run:"FOOTWORK", thick:"IN THE THICK", roam:"ROAMING" };
+const STYLE_TILT = 2.2;                // how much a matching card's weight grows
+
 // ------------------------------------------------------------ offer roller
 // the evolutions the kit is ready for: a weapon at its last rank whose
 // partner growth is finished. The draft deals these first; a CACHE grants one.
@@ -10625,6 +11175,7 @@ function evoReady(){
 const cacheDealer = () => [];
 // `excl` is a set of keys a reroll or a banish wants kept out of THIS deal;
 // P.banned is the run's own list, and is kept out of every deal
+let lastTilt = null;                   // what the last deal was tilted toward, for the caption and the checks
 function offers(excl){
   const out=[], have=P.kit, ban = P.banned || {};
   const shut = k => ban[k] || (excl && excl.has(k));
@@ -10666,7 +11217,7 @@ function offers(excl){
     const p = have[k], P2 = PASSIVES[k];
     if(shut(k)) continue;
     if(isRule(k)){
-      if(!p && !noRules && rCount < ruleSlots() && P.lvl >= RULE_FROM)
+      if(!p && !noRules && rCount < ruleSlots() && P.lvl >= RULE_FROM && !(P2.bar && P2.bar()))
         pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
       continue;
     }
@@ -10676,12 +11227,19 @@ function offers(excl){
     else if(pCount < PSLOTS)
       pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"NEW", ds:P2.ds, weight:13 });
   }
-  // weighted sample without replacement
+  // weighted sample without replacement, TILTED toward the way the run is being
+  // played (L5) - except the last card of the hand, which is dealt from the
+  // plain pool on purpose. A hand that only ever answers what you already do
+  // is a hand that can never suggest anything, and the thing that turns a run
+  // is usually the card you were not looking for.
+  const tilt = lastTilt = styleRead().tilt;
   const n = Math.min(4 - out.length, pool.length);
   for(let i=0;i<n;i++){
-    let tot=0; for(const o of pool) tot+=o.weight;
+    const wild = i === n-1;            // the wildcard: no tilt on the last one
+    const wt = o => o.weight * (!wild && tilt && STYLE_TAG[o.key] === tilt ? STYLE_TILT : 1);
+    let tot=0; for(const o of pool) tot+=wt(o);
     let r = R()*tot, hitIdx=0;
-    for(let j=0;j<pool.length;j++){ r-=pool[j].weight; if(r<=0){hitIdx=j;break;} }
+    for(let j=0;j<pool.length;j++){ r-=wt(pool[j]); if(r<=0){hitIdx=j;break;} }
     out.push(pool.splice(hitIdx,1)[0]);
   }
   // A SHORT HAND IS STILL A CHOICE. With everything but one rank taken the
@@ -10853,8 +11411,12 @@ function showPick(hand, dealer){
 function renderHand(){
   const cards = curHand;
   // the caption counts the cards it is captioning: a hand of two says 1-2
+  // and it says what it read you as, when it read you as anything: an offer
+  // that quietly depends on how you play is a rigged deck; one that says so is
+  // the game answering you.
   document.getElementById("pkSub").textContent =
     (TOUCH ? "TAP ONE" : cards.length > 1 ? `PRESS 1-${cards.length}` : "PRESS 1") +
+    (lastTilt && curDealer === offers ? `  ·  ${STYLE_NM[lastTilt]}` : "") +
     (pendingLevels > 1 ? `  ·  ${pendingLevels-1} MORE QUEUED` : "");
   if(curDealer === cacheDealer) document.getElementById("pkSub").textContent = TOUCH ? "TAP IT  ·  IT IS YOURS" : "PRESS 1  ·  IT IS YOURS";
   const box = document.getElementById("pkCards"); box.innerHTML="";
@@ -11047,7 +11609,14 @@ function applyPassive(k){
                       P.dmg = recalcDmg(); } break;
     case "plating": { const add = Math.round(15*PSCALE);   // the health BIG HEART used to carry
                       P.maxhp += add; P.hp = Math.min(P.maxhp, P.hp+add); } break;
-    case "dupe":    break;                                // read directly by weapons
+    // THE SPLIT: the first rank stands a second creature up beside you. The
+    // copies themselves are still read straight off dupeN() by the weapons.
+    case "dupe":    if(!twin) splitTwin(); break;
+    // TIDEBORN is read live through isTide(); here it only announces itself,
+    // and drops the water/affinity latches so the next lake and the next
+    // region re-announce under the new element.
+    case "tide":    { alert2("TIDEBORN \u00b7 THE FIRE GOES OUT", "#5ec8e8"); flash = .5;
+                      lastWet = null; lastAff = null; } break;
   }
 }
 // recompute from base each time so ranks never compound into nonsense
@@ -11146,6 +11715,7 @@ function evolveTo(i){
 }
 let noEvo = false;                       // bench-only: hold the line at stage 1
 function checkEvolve(){
+  twinEvolve();                          // the twin grows on the same gates you do
   if(noEvo) return;
   const line = curMon().st||[];
   let want = 0;
@@ -11189,6 +11759,118 @@ const BOT_DIRS = 20, BOT_BACKOFF = .35;
 let botClumsy = false, botHeld = [0, 0], botHeldT = 0;
 let camFov = 1.02, camDist = 8.9;                       // what the last frame used, for the checks
 let lastAlertBox = null;                                // the newest toast's [top, bottom, text], for the checks
+let alertsBottom = 0;                                   // the toast lane's floor this frame, in px (L3)
+
+// ==================================================== HUD LANES (L11)
+// THE HEADER WAS THREE COPIES OF ONE GUESS. Before this round the top of the
+// screen was positioned by hand in four unrelated places:
+//   - #clock/#phase/#goal each carried a typed `top` in CSS, re-typed again in
+//     two media queries. At 844x390 that put #goal at 60..73;
+//   - the toast lane's baseline was the literal `max(h*.155,78)+(w<720?70:0)`,
+//     which at 844x390 is 78 and draws a plate from 61.7 to 84.5 - straight
+//     through that #goal line, which is exactly the picture the owner sent;
+//   - the monument label clamped itself with THE SAME LITERAL PLUS 34, a
+//     hand-copied duplicate that (a) drifts the moment the toast lane moves and
+//     (b) measured the toast lane's BASELINE rather than its floor, and assumed
+//     ONE row when the lane draws TWO. At 1280x720 that put the label's plate
+//     at 133.6..162.6 inside a second toast row occupying 128.4..164.4, which
+//     is the region title printing through the banner.
+// Nudging any one of those numbers moves a collision somewhere else, which is
+// how it got to four numbers. So: ONE cursor, derived, consumed in order.
+//   1. stackHeader() lays #clock -> #phase -> #goal out from their own measured
+//      heights and puts #biome under #lvl's measured bottom. Nothing typed.
+//   2. hudPersist() caches the real rects of everything permanent up there.
+//   3. hudClearRect() pushes a candidate box down until it clears every
+//      persistent box it HORIZONTALLY overlaps - so a narrow toast is not
+//      shoved down by a caption it never touches.
+//   4. The toast lane starts at hudClearRect() for a full-width plate; the
+//      monument and den labels clamp under the toast lane's RESERVED floor
+//      (both rows, always) so a transient can never print on a persistent and
+//      the labels do not jump when a toast appears.
+// A TRANSIENT MAY NOT PRINT OVER A PERSISTENT is the rule; __g.hudOverlaps()
+// is the gate that enforces it, and it enumerates the lanes rather than
+// checking the one pair somebody remembered.
+const HUD_GAP = 6;                    // the only spacing number, used everywhere
+const HUD_HEAD = ["clock", "phase", "goal"];        // the centre column, in order
+const HUD_PERSIST = ["clock", "phase", "goal", "lvl", "biome", "stats"];
+let hudSig = "", hudPersistBoxes = [], hudHeadBottom = 0, hudToastFloor = 0;
+// Every text box the overlay drew this frame, named, in real screen pixels.
+// Recorded always (it is four array pushes) so a check never has to ask for a
+// debug mode that the shipped build then behaves differently under.
+let hudBoxes = [];
+function hudRect(el){ const r = el.getBoundingClientRect();
+                      return { n:el.id, x0:r.left, y0:r.top, x1:r.right, y1:r.bottom }; }
+function hudVisible(el){ return !!el && el.offsetParent !== null && el.offsetWidth > 0 &&
+                                el.offsetHeight > 0 && +getComputedStyle(el).opacity > .02; }
+// Recompute only when something that could move a lane changed - the viewport,
+// or the text/visibility of any persistent line. A frame that changes nothing
+// costs one string compare instead of six forced reflows.
+function stackHeader(){
+  // The viewport size is in here because the media queries key off it, and the
+  // clock's measured height because the TYPE can change without the viewport
+  // doing so (a late-loading font, a zoom, an injected override). Signing only
+  // on width let a synthetic narrow-type check reuse a stale stack.
+  const ck0 = $("clock");
+  const sig = innerWidth + "x" + innerHeight + "|" + (ck0 ? ck0.offsetHeight : 0) + "|" +
+              HUD_PERSIST.map(id => { const e = $(id);
+                return e ? (hudVisible(e) ? 1 : 0) + e.textContent : ""; }).join("|");
+  if(sig === hudSig) return;
+  hudSig = sig;
+  // 1. the centre column: each line sits under the measured bottom of the last
+  //    VISIBLE line above it. An empty #phase claims no lane at all.
+  const ck = $("clock");
+  let y = ck.offsetTop + ck.offsetHeight;
+  for(const id of HUD_HEAD.slice(1)){
+    const el = $(id);
+    if(!el) continue;
+    if(!hudVisible(el) || !el.textContent.trim()){ el.style.top = ""; continue; }
+    y += HUD_GAP;
+    el.style.top = Math.round(y) + "px";
+    y += el.offsetHeight;
+  }
+  hudHeadBottom = Math.round(y);
+  // 2. the left column: the region caption under the level readout, measured.
+  //    Two typed margin-tops (44px and 96px on phones) used to do this.
+  const lv = $("lvl"), bi = $("biome");
+  if(lv && bi){ bi.style.marginTop = "0px";
+                bi.style.top = Math.round(lv.getBoundingClientRect().bottom + HUD_GAP) + "px"; }
+  // 3. cache what everything else has to clear
+  hudPersistBoxes = HUD_PERSIST.map($).filter(hudVisible).map(hudRect);
+}
+// Push [y0, y0+h] down until it clears every persistent box whose x-range this
+// one actually meets. Returns the new top.
+// The world labels (monuments, dens) that get pushed INTO the header lane have
+// to clear each other too, or the fix trades a toast-on-title collision for a
+// title-on-title one - which is exactly what the first cut of L11 measured at
+// 844x390 (THE SHELL and THE THICKET, 23.7 x 29 px of shared ink). A label at
+// its natural world height is left alone: it is pointing at something. A label
+// parked in the lane obeys the lane.
+let hudLaneRows = [];
+function hudParkLabel(x0, x1, top, h){
+  let y = top, moved = true, guard = 0;
+  while(moved && guard++ < 12){
+    moved = false;
+    for(const b of hudLaneRows){
+      if(b.x1 <= x0 || b.x0 >= x1) continue;
+      if(y >= b.y1 || y + h <= b.y0) continue;
+      y = b.y1 + HUD_GAP; moved = true;
+    }
+  }
+  hudLaneRows.push({ x0, y0:y, x1, y1:y + h });
+  return y;
+}
+function hudClearRect(x0, x1, y0, h){
+  let top = y0, moved = true, guard = 0;
+  while(moved && guard++ < 12){
+    moved = false;
+    for(const b of hudPersistBoxes){
+      if(b.x1 <= x0 || b.x0 >= x1) continue;          // no horizontal overlap: not our lane
+      if(top >= b.y1 || top + h <= b.y0) continue;    // already clear
+      top = b.y1 + HUD_GAP; moved = true;
+    }
+  }
+  return top;
+}
 const BOT_LAG = .35, BOT_HOP_ODDS = .65, BOT_REACT = .55;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
@@ -11286,6 +11968,47 @@ function botVector(){
 }
 
 // ==================================================================== STEP
+// ---- THE VIGIL, stepped (L9). Fourteen distance checks a frame at the very
+// most - there are never more monuments than Voronoi cells - so this is not a
+// pass that needs a grid or a cull.
+function stepVigil(dt){
+  if(!running || over || !P) return;
+  // Say what the run is FOR, once, in the first seconds. Before this the
+  // opening thirty seconds of every run stated only a countdown.
+  if(!vigil.said && T > 1.1 && vigil.total > 0){
+    vigil.said = true;
+    alert2(`THE VIGIL  \u00b7  LIGHT ${vigil.total} MONUMENTS BEFORE IT WAKES`, "#f0b429");
+  }
+  if(vigil.doneT > 0) vigil.doneT = Math.max(0, vigil.doneT - dt);
+  for(const M of monuments){
+    if(M.lit){ M.litT = Math.min(1, M.litT + dt*.8); continue; }
+    // The base, not the top: a 44 m monument measured to its centre would light
+    // from further away on the tall regions than on the flat ones, and the
+    // whole point is that every region costs the same walk.
+    if(Math.hypot(M.x - P.x, M.z - P.z) > VIGIL_R) continue;
+    M.lit = true; M.litT = 0; vigil.lit++;
+    // Reaching one is a walk across open ground with the horde behind you, so
+    // it pays something you can feel on arrival as well as something you spend
+    // at the end. The heal is the arrival; the brand is the goal.
+    P.hp = Math.min(P.maxhp, P.hp + P.maxhp*.10);
+    alert2(`${M.b.mon.nm} IS LIT  \u00b7  ${vigil.lit}/${vigil.total}  \u00b7  BRAND x${vigil.lit}`, "#f0b429");
+    shake = Math.max(shake, .55); SFX.denDone();
+    if(vigil.lit >= vigil.total && vigil.total > 0){
+      vigil.doneT = 6;
+      // The full vigil is the only thing in the run that hands out a boon for
+      // going somewhere rather than for killing something. Same one-of-each
+      // pool the dens and altars draw from, so it cannot compound a repeat.
+      const pool = BOONS.filter(x => !boons.includes(x.nm));
+      if(pool.length){ const b = pick(pool); boons.push(b.nm); b.fn();
+                       alert2(`THE VIGIL IS COMPLETE  \u00b7  ${b.nm}`, "#8affd0"); }
+      else alert2("THE VIGIL IS COMPLETE", "#8affd0");
+      SFX.win();
+    }
+  }
+}
+// What a brand is worth. Zero against everything that is not the finale - the
+// goal is "prepare for the end monster", not "walk around for free damage".
+const vigilMul = e => (e && e.final) ? 1 + VIGIL_DMG*vigil.lit : 1;
 function step(dt){
   if(picking) return;                 // a hand on the table is a paused world
   T += dt;
@@ -11342,6 +12065,7 @@ function step(dt){
   const bm = biomeAt(P.x, P.z), bmod = bm.mod;
   if(bm !== lastBiome){ lastBiome = bm; biomeT = 4.6;
                         if(running && !over) alert2(bm.nm, "#c9c2ae"); }
+  stepVigil(dt);
   const ACCEL = 62, BRAKE = 46;
   // ---- WATER. Requested: "create water areas that enable dinosaurs that are
   // aquatic". The two water animals - the TIDE plesiosaur and the SURGE
@@ -11351,7 +12075,7 @@ function step(dt){
   // the first shoreline, the same contract the biomes keep.
   const up = airborne();
   const wet = !up && !P.air && inWater(P.x, P.z);
-  const AQUA = (curMon().type === "scrap" || curMon().type === "surge");
+  const AQUA = isAqua();                 // the two water lines, or TIDEBORN
   if(wet !== lastWet){ lastWet = wet;
     if(wet && running && !over)
       alert2(AQUA ? "WATER - YOU WERE BUILT FOR THIS" : "WATER - IT DRAGS AT YOU",
@@ -11621,6 +12345,7 @@ function step(dt){
 
   if(evoFx > 0) evoFx = Math.max(0, evoFx - dt);
   stepAnim(dt);
+  stepTwin(dt);
   denPatrol();
   if(startBank > 0){
     startBankT -= dt;
@@ -11630,6 +12355,7 @@ function step(dt){
       alert2("HEAD START", "#f0b429");
     }
   }
+  sampleStyle(dt);                    // how this run is being played, for the draft (L5)
   if(shake>0) shake = Math.max(0, shake - dt*2.2);
   if(flash>0) flash = Math.max(0, flash - dt*2.6);
   // A draft with one card and no choice on it is not a decision, it is a modal.
@@ -11752,6 +12478,10 @@ function finish(why, won){
         &nbsp; LV ${monAfter}${monGain ? ` <span class="g">+${monGain}</span>` : ""}
         <span class="dim2">&nbsp;+${Math.round(xpBanked).toLocaleString()} banked</span></td></tr>
       <tr><td>Build</td><td style="font-weight:400"><div class="kit end">${kitStrip()}</div></td></tr>
+      <tr><td>The Vigil</td><td>${vigil.total
+        ? `<span class="${vigil.lit >= vigil.total ? "g" : vigil.lit ? "gold" : "dim2"}">${vigil.lit} / ${vigil.total} monuments lit</span>${
+            vigil.lit ? ` <span class="dim2">&nbsp;brand &times;${vigil.lit} &middot; +${Math.round(VIGIL_DMG*vigil.lit*100)}% vs ${BOSSES[BOSSES.length-1].nm}</span>` : ""}`
+        : `<span class="dim2">no monuments</span>`}</td></tr>
       <tr><td>Explored</td><td>${[
           denStats.cleared ? `${denStats.cleared} den${denStats.cleared>1?"s":""} cleared`
             : denStats.woke ? `${denStats.woke} woken, none cleared` : "",
@@ -12050,6 +12780,7 @@ function menuLocks(pane){
 const ui = document.getElementById("ui");
 const g2 = ui.getContext("2d");
 let VPM = null;
+let uiLive = null;                     // whether the overlay sheet is shown: the run's, hidden between runs (L4)
 let camAnchor = null;              // lagged chase point, see render()
 // HOW BIG IS THE ANIMAL, IN WORLD UNITS. Filled by the player's own body draw
 // and read by the camera on the next frame. The forms are not one size: the
@@ -12059,6 +12790,12 @@ let camAnchor = null;              // lagged chase point, see render()
 // comparisons per box - and it means every form, including any form added
 // later, is framed by what it actually is rather than by a constant.
 let bodyLen = 4, bodyTop = 2.4;
+// How WIDE each of the two animals draws, in world units, measured from the
+// draw itself rather than guessed from the stage: THE SPLIT stands the twin
+// off your shoulder, and a gap that suits two hatchlings puts a final form
+// inside its partner's wing. Side by side is a LATERAL question, so it is the
+// lateral extent that is measured, not the boom's max-of-two.
+let bodyWide = 3, twinWide = 3;
 
 // ------------------------------------------------------- ONE MONSTER, DRAWN
 // Lifted out of render() so the MENU can draw the same twenty-one bodies as a
@@ -12078,7 +12815,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   let mLo = 1e9, mHi = -1e9, mFa = 1e9, mFb = -1e9, mRa = 1e9, mRb = -1e9;
   // THIS STAGE's coat, not the line's: see STAGEPAL. A FLAREDRAKE is red and
   // a CINDERWHELP is orange, and the same table is what the tests read.
-  const mTy = monPal(mCh.type, stage);
+  // TIDEBORN repaints the body that HOLDS the rule: the live player carries a
+  // kit, the menu sheet's body does not, so the sheet keeps the line's coat.
+  const mTy = monPal(P && P.kit && P.kit.tide ? "scrap" : mCh.type, stage);
   // The invincibility strobe, eleven times a second. It used to blank the
   // animal to a flat white silhouette on every other frame, which was half
   // the frames of the flinch - the one moment the pose is the information.
@@ -12332,7 +13071,7 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // tide serpent evolved under a fire-coloured shaft (the R184 film's one
     // wrinkle). The column and its motes lean halfway toward the line's own
     // accent now - still light, but THIS creature's light.
-    const acc = monPal(curMon().type, stage).acc;   // the coat it is becoming
+    const acc = monPal(palType(), stage).acc;   // the coat it is becoming
     const pc = [lerp(1,acc[0],.45), lerp(.95,acc[1],.45), lerp(.78,acc[2],.45)];
     const mc = [lerp(1,acc[0],.55), lerp(.90,acc[1],.55), lerp(.55,acc[2],.55)];
     const gy2 = groundY(P.x, P.z), up = 1 - ef;
@@ -13129,8 +13868,10 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   P.headBoxes = headBoxes;                        // boxes drawn in the head region, copies included
   // The live animal only. A portrait draws through the same code with its own
   // scale, and letting a menu card retune the game camera would be a fine bug.
+  if(mHi > mLo && P.twinOf) twinWide = (mRb - mRa) * mScB;
   if(!P.portrait && mHi > mLo){
     bodyTop = (mHi - Math.min(0, mLo)) * mScB;
+    bodyWide = (mRb - mRa) * mScB;
     // The WIDER of the two, because a phoenix in flight is three times wider
     // than it is long and the boom has no idea: measuring only fore-aft, the
     // camera framed a bird whose wings ran off both edges of the screen.
@@ -13169,11 +13910,52 @@ function addPortrait(canvas, ch, stage, mscale, faceFix){
   });
 }
 
+// THE PORTRAITS ARE READ BACK AS ONE PICTURE (L2). Each portrait used to be
+// drawn in the corner of the game canvas and copied out of it on its own, and
+// that copy is the expensive half: a drawImage from a WebGL canvas makes the
+// GL pipeline finish and hand the frame over before a pixel can move, once
+// PER PORTRAIT - five stalls a frame on the roster, ten with everything
+// unlocked, on top of the world's own. Measured on software GL at 1280x800
+// the five copies were 47 ms of a 134 ms roster frame and the five draws
+// 25. Now the portraits are packed into cells across the bottom of the game
+// canvas, shelf by shelf, and when the canvas is full (or the roster is
+// done) that whole region comes across in ONE copy into a scratch 2D canvas,
+// from which each card takes its own cell - a 2D-to-2D copy, which is cheap.
+// Same pixels, one stall per batch: six portraits a batch at 1280x800, two
+// on a 390-wide phone.
+let portStrip = null;                  // the scratch 2D canvas the batch lands in
+let portBlits = 0;                     // GL-to-2D copies the last portrait pass made
 function drawPortraits(){
   if(ctxLost || !PORTRAITS.length || !PORTRAITS[0].cx) return;
+  // ZERO-SIZE SCRATCH (L0's lead, closed in L6). The portraits borrow a corner
+  // of the GAME canvas as scratch and blit it out again, and portStrip is sized
+  // FROM that canvas - so on the first frames of a load, before cv has been laid
+  // out, portStrip is 0x0 and both drawImage calls in readBack() have a 0-size
+  // SOURCE, which is an InvalidStateError. That is the one console error this
+  // page has thrown on every load since L0. It was read as the hidden-pane trap
+  // and it is not: it reported "at frame" only because the console truncates the
+  // inner frames, and drawPortraits is called from frame(). A canvas with no
+  // pixels has nothing to read back - skip until it has been sized.
+  if(!cv.width || !cv.height) return;
   portT += dt;
   // A test may have a body capture armed; a portrait must not eat it.
   const capC = bodyCap, capP = bodyPos; bodyCap = null; bodyPos = null;
+  if(!portStrip){ portStrip = document.createElement("canvas"); portStrip.cx = portStrip.getContext("2d"); }
+  if(portStrip.width !== cv.width || portStrip.height !== cv.height){ portStrip.width = cv.width; portStrip.height = cv.height; }
+  portBlits = 0;
+  // the batch: cells packed left to right along a shelf, then up a shelf;
+  // GL's origin is bottom-left, so the shelves climb from the bottom edge
+  let batch = [], bx = 0, by = 0, shelfH = 0, usedW = 0;
+  const readBack = () => {
+    if(!batch.length) return;
+    const usedH = by + shelfH;
+    portStrip.cx.drawImage(cv, 0, cv.height - usedH, usedW, usedH, 0, 0, usedW, usedH); portBlits++;
+    for(const q of batch){
+      const c2 = q.p.cx.canvas;
+      q.p.cx.drawImage(portStrip, q.x, usedH - (q.y + q.H), q.S, q.H, 0, 0, c2.width, c2.height);
+    }
+    batch = []; bx = 0; by = 0; shelfH = 0; usedW = 0;
+  };
   gl.enable(gl.SCISSOR_TEST);
   for(const p of PORTRAITS){
     const c2 = p.cx.canvas;
@@ -13185,6 +13967,12 @@ function drawPortraits(){
     const k = Math.min(1, cv.width / S, cv.height / H);
     if(k < 1){ S = Math.max(8, S*k|0); H = Math.max(8, H*k|0); }
     if(S < 8 || H < 8) continue;
+    // a cell for it: along the shelf, up a shelf, or a fresh canvas once this
+    // one is full - the batch so far is read back first
+    if(bx + S > cv.width){ bx = 0; by += shelfH; shelfH = 0; }
+    if(by + H > cv.height) readBack();
+    const x = bx, y = by;
+    bx += S; shelfH = Math.max(shelfH, H); usedW = Math.max(usedW, bx);
     const t = portT + p.off;
     // Face the camera, and sweep rather than spin. A full turntable has to be
     // framed for its widest angle, which leaves a long animal tiny for the
@@ -13193,9 +13981,7 @@ function drawPortraits(){
     // teeth pointed at you and lets the camera sit twice as close.
     const face = p.faceFix !== undefined ? p.faceFix
                                         : .34 + Math.sin(t * .42) * .52;
-    // GL's origin is bottom-left, so the scratch viewport lives in the corner
-    // that costs the least to find again when the pixels are read back.
-    gl.viewport(0, 0, S, H); gl.scissor(0, 0, S, H);
+    gl.viewport(x, y, S, H); gl.scissor(x, y, S, H);
     gl.clearColor(.043, .047, .056, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // AUTO-FRAMING. Twenty-one hand-built forms range from a knee-high whelp to
@@ -13289,21 +14075,22 @@ function drawPortraits(){
     }
     bodyPos = null;
     flush();
-    p.cx.drawImage(cv, 0, cv.height - H, S, H, 0, 0, c2.width, c2.height);
+    batch.push({ p, x, y, S, H });
   }
+  readBack();
   gl.disable(gl.SCISSOR_TEST);
   bodyCap = capC; bodyPos = capP;
 }
 
 function render(){
   if(ctxLost) return;                          // every GL call would silently no-op
-  const w = cv.width = ui.width = innerWidth;
-  const h = cv.height = ui.height = innerHeight;
+  const w = cv.width = innerWidth;
+  const h = cv.height = innerHeight;
   gl.viewport(0,0,w,h);
   const SC = skyAt(T);                 // horizon matches the fog it fades into
   gl.clearColor(SC.fog[0], SC.fog[1], SC.fog[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0; zonesCulled = 0; propsCulled = 0; propsNear = 0; marksCulled = 0; shotsCulled = 0;
+  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0; zonesCulled = 0; zoneBladed = 0; propsCulled = 0; propsNear = 0; marksCulled = 0; shotsCulled = 0; monsCulled = 0; monsDrawn = 0;
   // the frame's boxes, pass by pass - a census can say WHERE a frame went, not only how big it was (R306)
   const passAt = {}; let passPrev = drawnBoxes + nbox;
   const passEnd = k => { const n = drawnBoxes + nbox; passAt[k] = n - passPrev; passPrev = n; };
@@ -13504,6 +14291,207 @@ function render(){
     else box(p.x, y+p.h*.5, p.z, p.s*.5,p.h*.5,p.s*.32, p.c, 0, p.r);
   }
   passEnd("props");
+
+  // ---- MONUMENTS (L8). The one pass in this renderer with NO distance cull.
+  // Everything else in the interior stops at 120 m (see the marks loop below),
+  // which on a 532 m map left the far three quarters of every sightline as empty
+  // ground running to the boundary wall - measured at 9.85% horizon detail. A
+  // monument is meant to be the thing you see from the OTHER side of the map, so
+  // the only test it takes is the frustum one, and the cost of that is paid back
+  // by an LOD that collapses a far monument to its silhouette.
+  for(const M of monuments){
+    const my = groundY(M.x, M.z), md = Math.hypot(M.x-px, M.z-pz);
+    // Same onScreen contract every other pass keeps (R306), sized for the whole
+    // structure rather than its base - a 46 m tower anchored at the ground is
+    // culled by its own feet as you walk up to it.
+    if(onScreen(M.x, my + M.h*.5, M.z, M.h*1.1) === null){ monsCulled++; continue; }
+    const bm = M.b;
+    // Lit from the region's OWN two tones, brightened, so a monument always
+    // reads as made of the ground it stands in - and so a retuned biome
+    // retunes its monument without a second palette to keep in step.
+    // MATERIAL (L10). Until now a monument was the region's own ground tone
+    // brightened - `a*1.35+.16` against a ground of `a` - which is why THE
+    // FIRST GATE read as a green croquet hoop standing on green grass: same
+    // hue, same chroma, only lighter. A built thing has to read as a DIFFERENT
+    // MATERIAL from the dirt under it, so the tone is pulled 55% of the way to
+    // its own luminance: worked stone that REMEMBERS the region's colour
+    // instead of repeating it. Still fully derived - a retuned biome still
+    // retunes its monument, which was the whole point of L8's palette rule.
+    // And it comes out in THREE values, not two. Two tones can only make a
+    // checker; the third is what lets a course project and cast an edge.
+    const stone = (c, k) => { const l = c[0]*.30 + c[1]*.59 + c[2]*.11;
+      return [ Math.min(1, (c[0]*.45 + l*.55)*k + .05),
+               Math.min(1, (c[1]*.45 + l*.55)*k + .05),
+               Math.min(1, (c[2]*.45 + l*.55)*k + .06) ]; };
+    const lt = stone(bm.a, 1.30);     // the sunlit course
+    // .50 of an already deliberately mid-value ground tone lands near black
+    // under the overhead light: the first build put a 39 m unreadable black
+    // slab across the opening frame. .62 of the DESATURATED tone keeps a real
+    // value gap under the light course with no face going to a hole.
+    let dk = stone(bm.b, 0.62);       // the shadowed course
+    let ed = stone(bm.a, 0.92);       // the third value the flat faces never had
+    // LIT (L9). A monument you have reached has to be readable as reached from
+    // the other side of the map, or the goal line is the only place the run's
+    // progress exists. Two changes, both visible at silhouette distance: the
+    // stone warms toward the brand's gold, and a beacon stands on top of it -
+    // the one emissive thing in the interior of the world, so a lit skyline
+    // reads at a glance as how far through the vigil you are.
+    if(M.lit){
+      const k = M.litT;                                  // grows in over ~1.2 s
+      lt[0] = Math.min(1, lt[0] + .34*k); lt[1] = Math.min(1, lt[1] + .22*k); lt[2] = Math.max(0, lt[2] - .06*k);
+      dk = [Math.min(1, dk[0] + .20*k), Math.min(1, dk[1] + .12*k), dk[2]];
+      ed = [Math.min(1, ed[0] + .27*k), Math.min(1, ed[1] + .17*k), Math.max(0, ed[2] - .04*k)];
+      const bh = M.h*(.16 + .10*k), bs = M.h*.045;
+      box(M.x, my + M.h*1.02 + bh*.5, M.z, bs, bh, bs, [1,.78,.28], .85*k + .15, M.rot);
+      // A wider, dimmer collar under it so the beacon still has width at the
+      // 400 m band where the column itself is under a pixel across.
+      box(M.x, my + M.h*1.00, M.z, bs*2.6, M.h*.030, bs*2.6, [1,.70,.26], .55*k + .10, M.rot);
+    }
+    // LOD: three bands. Near, the full structure; past 90 m the detail courses
+    // go; past 200 m only the mass that makes the silhouette. A monument at
+    // 400 m is eight pixels wide and every box past the first four is invisible.
+    const lod = md < 90 ? 2 : md < 200 ? 1 : 0;
+    const H = M.h, r = M.rot;
+    monsDrawn++;
+    if(bm.mon.sh === "gate"){
+      // A COLOSSAL DOORWAY, rebuilt in L10. It used to be two prismatic legs,
+      // a cap each, a lintel slab and five identical teeth - eleven boxes,
+      // correct as a DIAGRAM of a gate, and at 39 m it read as terrain
+      // geometry rather than as something anybody built. Four things make a
+      // thing read as built, and none of them were here: it stands on a BASE,
+      // its legs BATTER (narrow as they climb) instead of being prisms, the
+      // shaft is COURSED with joints that project far enough to throw their
+      // own shadow line, and the top is a RUIN rather than a comb. A fifth is
+      // the reason it is the spawn region's shape: the wall stubs say the gate
+      // was once part of something bigger, which is a story told in
+      // silhouette and legible from 300 m. Every dimension is still a fraction
+      // of H, so a 32 m monument and a 46 m one are the same building.
+      const span = H*.30, W0 = H*.086, tp = .62, top = H*.80;
+      for(const sg of [-1,1]){
+        const lx = M.x + Math.cos(r+1.57)*sg*span, lz = M.z + Math.sin(r+1.57)*sg*span;
+        const lg = groundY(lx, lz);
+        // PLINTH. A leg that meets the ground at its own width looks planted
+        // IN it; a leg on a base looks stood ON it.
+        box(lx, lg + H*.030, lz, W0*1.62, H*.030, W0*1.62, dk, .02, r);
+        if(lod >= 1) box(lx, lg + H*.072, lz, W0*1.34, H*.020, W0*1.34, ed, .03, r);
+        // THE SHAFT, in battered courses. Alternating value alone only makes a
+        // stripe; the projecting string course between them is what makes a
+        // joint, because it casts.
+        const nC = lod >= 1 ? 4 : 2, y0 = H*.09;
+        for(let k=0;k<nC;k++){
+          const t0 = k/nC, t1 = (k+1)/nC, wd = W0*(1 - (1-tp)*(t0+t1)*.5);
+          box(lx, lg + y0 + (top-y0)*(t0+t1)*.5, lz, wd, (top-y0)/nC*.5, wd,
+              k%2 ? lt : dk, .02, r);
+          if(lod >= 2 && k < nC-1)
+            box(lx, lg + y0 + (top-y0)*t1, lz, wd*1.20, H*.014, wd*1.20, ed, .04, r);
+        }
+        // CORBELS, stepping INWARD under the lintel: the detail that reads as
+        // weight being carried, at any distance it survives to.
+        if(lod >= 1) for(let k=0;k<2;k++)
+          box(lx - Math.cos(r+1.57)*sg*W0*(.5+k*.5), lg + top + H*.028 + k*H*.030,
+              lz - Math.sin(r+1.57)*sg*W0*(.5+k*.5), W0*(.72+k*.20), H*.016, W0*.86,
+              k ? lt : ed, .04, r);
+        // THE RUIN: a stepping-down stub of wall running OUTWARD from each leg
+        // and stopping short. Biggest single change to the silhouette, and it
+        // survives to the silhouette LOD on purpose.
+        for(let k=0;k<(lod ? 3 : 2);k++){
+          // Starts clear of the PLINTH, which is W0*1.62 half-wide - the first
+          // build buried the near stub inside the base and it read as rubble
+          // dropped against the leg rather than as a wall running out of it.
+          const out = W0*1.62 + span*.20 + k*span*.40, hh = H*(.30 - k*.085);
+          const wx = lx + Math.cos(r+1.57)*sg*out, wz = lz + Math.sin(r+1.57)*sg*out;
+          box(wx, groundY(wx, wz) + hh*.5, wz, span*.20, hh*.5, W0*.72, k%2 ? dk : ed, .02, r);
+        }
+      }
+      // THE LINTEL in three courses, so the beam has a PROFILE instead of being
+      // a slab: an under-beam narrower than the span, the main beam overhanging
+      // both legs, a cap over it, and a keystone standing proud of the middle.
+      if(lod >= 1) box(M.x, my + H*.845, M.z, span*.92, H*.024, W0*1.05, ed, .03, r);
+      box(M.x, my + H*.90, M.z, span + H*.13, H*.048, W0*1.22, lt, .05, r);
+      if(lod >= 1) box(M.x, my + H*.952, M.z, span*1.02, H*.020, W0*1.34, dk, .02, r);
+      if(lod >= 2) box(M.x, my + H*.925, M.z, W0*.86, H*.075, W0*1.46, ed, .06, r);
+      // A BROKEN CROWN. Five merlons of five different heights with one of them
+      // MISSING, so the top edge is a ruin. The old five identical teeth in a
+      // row read as a fence, which is the one thing a monument must not be.
+      if(lod >= 1){
+        const cr = [.68, 1.00, 0, .84, .52];
+        for(let i=0;i<5;i++){ if(!cr[i]) continue;
+          const ch = H*.052*cr[i] + H*.014;
+          box(M.x + Math.cos(r+1.57)*(i-2)*span*.42, my + H*.972 + ch,
+              M.z + Math.sin(r+1.57)*(i-2)*span*.42,
+              H*.032, ch, H*.040, i%2 ? lt : ed, .04, r);
+        }
+      }
+    } else if(bm.mon.sh === "spire"){
+      // A leaning needle. It tapers AND drifts off vertical as it climbs, so
+      // the silhouette is never the flat-topped rectangle the backdrop ridge
+      // was called out for being.
+      const seg = lod ? 9 : 4;
+      let x = M.x, z = M.z;
+      for(let k=0;k<seg;k++){
+        const t = k/seg, wdt = H*(.105 - t*.078), yy = my + H*(t + .5/seg)*1.02;
+        box(x, yy, z, wdt, H*.55/seg, wdt, k > seg*.6 ? lt : dk, .02, r + t*.5);
+        x += Math.cos(r)*H*.0085; z += Math.sin(r)*H*.0085;
+      }
+      if(lod >= 2) for(let i=0;i<4;i++){ const a = r + i*1.57;
+        box(M.x + Math.cos(a)*H*.16, my + H*.09, M.z + Math.sin(a)*H*.16,
+            H*.055, H*.09, H*.055, dk, .02, a); }
+    } else if(bm.mon.sh === "ribs"){
+      // Something enormous that stopped where it stood. Ribs in two facing
+      // arcs, leaning inward, with a spine along the ground between them - the
+      // landmark ribcage's idea at fifteen times the size, which is what makes
+      // it a monument rather than a den.
+      const nR = lod ? 7 : 3;
+      for(const sg of [-1,1]) for(let i=0;i<nR;i++){
+        const t = i/(nR-1), sp = (t-.5)*H*.60;
+        const bx = M.x + Math.cos(r)*sp + Math.cos(r+1.57)*sg*H*.20;
+        const bz = M.z + Math.sin(r)*sp + Math.sin(r+1.57)*sg*H*.20;
+        const rh = H*(.44 + Math.sin(t*Math.PI)*.36);
+        const bg = groundY(bx, bz);
+        box(bx - Math.cos(r+1.57)*sg*H*.06, bg + rh*.55, bz - Math.sin(r+1.57)*sg*H*.06,
+            H*.030, rh*.55, H*.055, i%2 ? lt : dk, .02, r + sg*.16);
+        if(lod >= 2) box(bx - Math.cos(r+1.57)*sg*H*.12, bg + rh*1.05, bz - Math.sin(r+1.57)*sg*H*.12,
+            H*.026, H*.055, H*.048, lt, .04, r + sg*.5);
+      }
+      for(let i=0;i<(lod?6:2);i++){
+        const sp = (i/((lod?6:2)-1 || 1) - .5)*H*.66;
+        const bx = M.x + Math.cos(r)*sp, bz = M.z + Math.sin(r)*sp;
+        box(bx, groundY(bx,bz) + H*.07, bz, H*.055, H*.055, H*.075, dk, .02, r);
+      }
+    } else if(bm.mon.sh === "stack"){
+      // A stepped mass, each course rotated off the one under it. Terraced
+      // rather than pyramidal so the profile has notches in it at every height,
+      // and so the top course is a plate you could stand on.
+      const nS = lod ? 7 : 3;
+      for(let k=0;k<nS;k++){
+        const t = k/nS, wdt = H*(.34 - t*.26);
+        box(M.x, my + H*(t + .5/nS)*.98, M.z, wdt, H*.49/nS, wdt,
+            k%2 ? lt : dk, .02, r + k*.22);
+      }
+      if(lod >= 1) box(M.x, my + H*1.03, M.z, H*.11, H*.045, H*.11, lt, .06, r);
+      if(lod >= 2) for(let i=0;i<6;i++){ const a = r + i*1.047;
+        box(M.x + Math.cos(a)*H*.40, my + H*.05, M.z + Math.sin(a)*H*.40,
+            H*.075, H*.05, H*.075, dk, .02, a); }
+    } else {
+      // "vent" - a broad cone with a mouth, and a plume standing over it. The
+      // one monument shape that moves: the plume drifts on the clock, so a
+      // region you can see from 300 m away is still alive at that distance.
+      const nC = lod ? 6 : 3;
+      for(let k=0;k<nC;k++){
+        const t = k/nC, wdt = H*(.38 - t*.235);
+        box(M.x, my + H*(t + .5/nC)*.62, M.z, wdt, H*.31/nC, wdt,
+            k%2 ? dk : lt, .02, r + k*.31);
+      }
+      box(M.x, my + H*.63, M.z, H*.115, H*.035, H*.115, [.05,.045,.04], .01, r);
+      for(let k=0;k<(lod ? 7 : 3);k++){
+        const t = k/7, ph = T*.35 + k*.9;
+        box(M.x + Math.sin(ph)*H*(.05 + t*.16), my + H*(.70 + t*.42),
+            M.z + Math.cos(ph*.7)*H*(.05 + t*.16),
+            H*(.055 + t*.045), H*.055, H*(.055 + t*.045), lt, .10 + t*.10, ph);
+      }
+    }
+  }
+  passEnd("monuments");
   // LANDMARKS. Non-colliding on purpose: a horde game whose floor has walls in
   // it is a horde game where four hundred bodies stack behind one of them. They
   // are silhouette, orientation and somewhere to go - side events prefer to
@@ -13653,10 +14641,39 @@ function render(){
   // than all of it.
   const CHAR = [.20,.10,.07];
   const zb0 = drawnBoxes + nbox;
+  // Nearest-first selection into a fixed six-slot array: at most a few dozen
+  // live fields against a six-long array, so this is a handful of compares and
+  // no allocation. bladeCut is the sixth-nearest distance; the counter below
+  // is what makes the cap exact when two fields tie.
+  let bladeCut = Infinity;
+  if(P){
+    for(let i=0;i<ZONE_BLADES;i++) zoneNear[i] = Infinity;
+    let n = 0;
+    for(const z of zones){
+      if(!z.spiky) continue;
+      const d = Math.hypot(z.x-P.x, z.z-P.z);
+      if(d > ZONE_FAR) continue;
+      n++;
+      if(d >= zoneNear[ZONE_BLADES-1]) continue;
+      let k = ZONE_BLADES - 1;
+      while(k > 0 && zoneNear[k-1] > d){ zoneNear[k] = zoneNear[k-1]; k--; }
+      zoneNear[k] = d;
+    }
+    if(n > ZONE_BLADES) bladeCut = zoneNear[ZONE_BLADES-1];
+  }
   for(const z of zones){
-    if(onScreen(z.x, groundY(z.x,z.z)+.2, z.z, z.r) === null){ zonesCulled++; continue; }   // the trail behind you is not built (R305)
+    const zppu = onScreen(z.x, groundY(z.x,z.z)+.2, z.z, z.r);
+    if(zppu === null){ zonesCulled++; continue; }   // the trail behind you is not built (R305)
     const a = clamp(z.life/z.max,0,1);
-    const seg = Math.max(3, Math.round(12*a));
+    // A RIM IS SPACED IN PIXELS, NOT IN WORLD UNITS (L8). Twelve embers round a
+    // three-metre ring is one every forty-odd pixels when the ring is at your
+    // feet and one every NINE when it is sixty metres off, where each ember is
+    // itself a pixel and a half. Past the near ground the count falls with the
+    // rim's apparent circumference, so a distant field is three embers and a
+    // near one is exactly what it always was. zppu is 0 while capturing a
+    // turntable, and 0 keeps the old count.
+    const segPx = zppu ? Math.round(TAU*z.r*zppu/34) : 12;
+    const seg = Math.max(3, Math.min(Math.round(12*a), segPx));
     const col = [z.c[0]*a + CHAR[0]*(1-a),
                  z.c[1]*a + CHAR[1]*(1-a),
                  z.c[2]*a + CHAR[2]*(1-a)];
@@ -13667,7 +14684,13 @@ function render(){
     // boxes of slivers at minute seven. Past ZONE_FAR a field draws the way a
     // plain hazard ring already does - one ember block a segment - and the
     // blades come back as you approach it, the same tiering the bodies get.
-    const farZ = z.spiky && P && Math.hypot(z.x-P.x, z.z-P.z) > ZONE_FAR;
+    const zd = (z.spiky && P) ? Math.hypot(z.x-P.x, z.z-P.z) : 0;
+    // FAR, or simply not one of the nearest few. Both come out here so the draw
+    // below is unchanged and the two reasons a field loses its blades are read
+    // in one place.
+    const blades = z.spiky && P && zd <= ZONE_FAR && zd <= bladeCut && zoneBladed < ZONE_BLADES;
+    if(blades) zoneBladed++;
+    const farZ = z.spiky && !blades;
     for(let i=0;i<seg;i++){
       const th = i/seg*TAU + z.life*.7;
       const x = z.x+Math.sin(th)*z.r, zz = z.z+Math.cos(th)*z.r;
@@ -13883,7 +14906,7 @@ function render(){
   // and the player itself already make, and the only reason a new creature can
   // exist at all now the enemy palette is full.
   if(pets.length){
-    const mty = MTYPE[curMon().type] || MTYPE.plain;
+    const mty = MTYPE[palType()] || MTYPE.plain;   // the brood wears your coat, tide included
     const pc = mty.c, pa = mty.acc;
     for(const p2 of pets){
       const gy = groundY(p2.x, p2.z);
@@ -14000,8 +15023,15 @@ function render(){
     // ninety-eight, and a hundred boxes of mandible taper at sixty metres is the
     // same waste as a chamfer at sixteen. Its radius is just far more generous
     // than the horde's, because it is the thing you are looking at.
+    // 40, not 26 (L8). The mid band is what a body at the range you make
+    // decisions from is drawn with - legs, eyes, wings - and everything past it
+    // is a silhouette. The census says the horde is 2.7% of the frame while
+    // your own trail is 26.2%, so the budget the trail just gave back is spent
+    // here: bodies from 26 to 40 m stop being silhouettes. The size cull still
+    // owns the floor - nothing under a pixel and a half is built at any tier -
+    // so this cannot spend boxes on detail that is not there to see.
     const lod = e.boss ? (dp < 45 ? 2 : dp < 90 ? 1 : 0)
-                       : dp < 11 ? 2 : dp < 26 ? 1 : 0;
+                       : dp < 11 ? 2 : dp < 40 ? 1 : 0;
     const plan = EBODY[e.def.body] || EBODY.generic;
     // Coming up out of the ground. Drawing it below the floor and letting the
     // terrain hide it is the whole trick - the mesh is unchanged, it is just
@@ -14129,6 +15159,23 @@ function render(){
     const d2 = ((want - P.face + Math.PI*3) % TAU) - Math.PI;
     P.face += d2 * (1 - Math.pow(.05, Math.min(.05, dt)));
   }
+  // THE TWIN, drawn BEFORE the player so that where the two overlap the animal
+  // you are driving is the one in front. Its P is flagged `portrait`, which is
+  // what keeps it from retuning the camera boom or drawing a second marker ring
+  // - there is one white ring in this game and it is the one under YOU - so the
+  // contact shadow every other body gets is drawn here by hand.
+  if(twin && P){
+    const tw = twin;
+    tw.P.x = tw.x; tw.P.y = tw.y; tw.P.z = tw.z; tw.P.face = tw.face;
+    const tgy = groundY(tw.x, tw.z);
+    shadow(tw.x, tgy, tw.z, .62, tw.y - tgy, tw.face);
+    // a test may have a capture armed for the PLAYER's mesh; the twin must not
+    // eat it, the same rule the menu portraits keep
+    const cC = bodyCap, cP = bodyPos; bodyCap = null; bodyPos = null;
+    drawMonBody(tw.ch, tw.P, tw.an, tw.stage, tw.evoFx, T);
+    bodyCap = cC; bodyPos = cP;
+  }
+  passEnd("twin");
   // player: body, head, hat, and a shadow-ish base so you never lose yourself
   if(P){
     drawMonBody(curMon(), P, ANIM, stage, evoFx, T);
@@ -14310,7 +15357,7 @@ function render(){
     const big = g.v >= 20, mid = !big && g.v >= 5, small = !big && !mid;
     const v = big ? [1,.72,.2] : mid ? [.62,.44,1] : [.34,.92,.70];
     const core = big ? [1,.95,.66] : mid ? [.86,.78,1] : [.74,1,.94];
-    const yaw = T*3 + g.bob, s = big ? .25 : mid ? .19 : .15;
+    const yaw = T*3 + g.bob, s = big ? .25 : mid ? .19 : .185;
     // A gem that fell in a lake floats: the surface is opaque, so a drop on
     // the lakebed is loot the player cannot see and does not know to collect.
     let gy = groundY(g.x, g.z);
@@ -14318,8 +15365,27 @@ function render(){
     if(gwy < 1e9) gy = Math.max(gy, gwy - .02);
     // and only near enough to see: past twenty metres a gem's contact patch is
     // two pixels of slightly darker grass
-    if(!small && Math.abs(g.x-px) < 20 && Math.abs(g.z-pz) < 20)
-      shadow(g.x, gy, g.z, s*.80, g.y - gy, yaw, .55);
+    // THE ANCHOR (L6). Owner report: "the floor is covering the pickups". It was
+    // not draw order and it was not the floor pattern - both were measured off
+    // the real framebuffer and cleared (the floor's local luminance step is
+    // p90 0.000 across 16k samples). It was that the SMALL chip - the tier there
+    // are hundreds of - was the one tier DENIED a contact shadow, drawn 0.03 m
+    // INTO the mesh and lit like the ground it lay on, so nothing anywhere on it
+    // was a dark edge: measured WCAG 1.25-1.53 against the floor behind it.
+    // Brightness alone cannot fix that. Against a floor at luminance 0.40 even a
+    // pure white chip tops out at (1.00+.05)/(0.40+.05) = 2.33, short of the 3.0
+    // a graphical object wants - so the readable edge has to be DARK, and it has
+    // to belong to the pickup rather than to the biome, or it only works on the
+    // one floor it was tuned against. Hence: every tier gets the shadow, and the
+    // shadow gets dark enough to read (soft .55 -> .02 is m .763 -> .620; .55 was
+    // set to stop a field of loot reading as a field of holes, but that was with
+    // the shadow at CREATURE width - at s*.80 of a 0.19 m gem it is a contact
+    // patch, not a hole). The small tier's shadow is gated to 16 m, not 20: the
+    // budget note below is real, and one extra box only within the radius where
+    // a chip is more than a few pixels keeps a floor of two hundred of them at
+    // one box each everywhere it matters.
+    const near = Math.abs(g.x-px) < (small ? 16 : 20) && Math.abs(g.z-pz) < (small ? 16 : 20);
+    if(near) shadow(g.x, gy, g.z, s*.80, g.y - gy, yaw, .02);
     if(big){
       // a standing crystal: a wide base, a tall body, a bright point
       box(g.x, g.y - s*.55, g.z, s*1.05, s*.34, s*1.05, v, .55, yaw);
@@ -14336,7 +15402,14 @@ function render(){
       // stay cheap: a hundred and twenty enemies each leaving a three-box gem
       // put the horde's per-enemy draw cost seven boxes over its ceiling. Low,
       // wide, and lying at an angle so a field of them is not a grid.
-      box(g.x, g.y - s*.20, g.z, s*.95, s*.40, s*.70, v, .95, yaw);
+      // Still ONE box - but out of the mesh instead of 0.03 m into it, and tall
+      // enough to present a vertical face. A box lying flat shows the camera
+      // only its TOP, which takes the same overhead light the ground does and
+      // therefore lands on the same luminance; a face with some height catches
+      // the light at a different angle and is what separates it from the plane.
+      // The colour is the lit core the other two tiers reserve for their inner
+      // box: the chip has no inner box to put it in, so the chip IS the core.
+      box(g.x, g.y - s*.02, g.z, s*.95, s*.62, s*.70, core, 1.0, yaw);
     }
   }
 
@@ -14344,8 +15417,22 @@ function render(){
   flush();
 
   // ---- 2D overlay: damage numbers, alerts, vignette
-  g2.clearRect(0,0,w,h);
+  // THE OVERLAY IS THE RUN'S (L4). The den labels, the stick and the map
+  // already stopped at the end of the run; the numbers, the toast lane and the
+  // event markers did not, and with the sim stopped nothing aged them, so they
+  // hung behind the receipt at their last alpha - "LV 126 - +6 HP" through
+  // DEAD at every size the panel sheet looked at. Gating the draws was not
+  // enough either: a 2D canvas that is re-created every frame and then drawn
+  // on by nobody presents nothing new, and on a phone the compositor kept the
+  // frame before it. So the sheet is the run's: while the run is live it is
+  // re-created, cleared and drawn as it always was; when the run is not live
+  // it is hidden and left alone - a hidden layer cannot show a stale frame.
+  const live = running && !over;
+  if(live !== uiLive){ ui.style.visibility = live ? "" : "hidden"; uiLive = live; }
   VPM = { proj, view, w, h };
+  if(!live) return;
+  ui.width = w; ui.height = h;
+  g2.clearRect(0,0,w,h);
   g2.textAlign="center"; g2.font="700 15px ui-monospace,Menlo,monospace";
   // DAMAGE NUMBERS YOU CAN ACTUALLY READ. They were cream text with a black
   // copy offset a pixel and a half behind it, faded on a curve that started
@@ -14387,8 +15474,19 @@ function render(){
   // under the clock there), and the toast lane at 15.5% landed on it: THE
   // MATRIARCH printed through THE FERNLANDS (R249). The lane drops under the
   // caption on narrow screens.
-  let ay = Math.max(h*0.155, 78) + (w < 720 ? 70 : 0);
-  lastAlertBox = null;
+  // L11: the lane is DERIVED. stackHeader() has just laid the header out and
+  // cached its real rects; the first toast row starts wherever a full-width
+  // plate stops touching them, and the RESERVED floor (both rows, whether or
+  // not a second toast exists) is what the world labels below clamp to, so
+  // they do not jump when a toast arrives. The literal that used to live here
+  // - max(h*.155,78)+(w<720?70:0) - is gone from both of its two copies.
+  stackHeader();
+  const arowH = asz*1.20, astep = asz*1.42;
+  const alaneTop = hudClearRect(0, w, 0, arowH);
+  hudToastFloor = Math.round(alaneTop + astep + arowH);   // two rows, always reserved
+  let ay = alaneTop + asz*.86;
+  hudBoxes.length = 0; hudLaneRows.length = 0;
+  lastAlertBox = null; alertsBottom = 0;
   for(const al of alerts.slice(-2)){
     if(!lastAlertBox) lastAlertBox = [Math.round(ay - asz*.86), Math.round(ay + asz*.34), al.text];
     g2.globalAlpha = clamp(al.life/2.6,0,1);
@@ -14410,7 +15508,10 @@ function render(){
     g2.globalAlpha = clamp(al.life/2.6,0,1);
     g2.lineWidth = 6; g2.strokeStyle = "#000"; g2.strokeText(al.text, w/2, ay);
     g2.fillStyle = al.col; g2.fillText(al.text, w/2, ay);
-    ay += asz*1.42;
+    hudBoxes.push({ n:"toast:" + al.text, x0:w/2 - tw/2 - 14, y0:ay - asz*.86,
+                    x1:w/2 + tw/2 + 14, y1:ay + asz*.34, kind:"transient" });
+    alertsBottom = Math.round(ay + asz*.34);          // this row's plate bottom
+    ay += astep;
   }
   // Off-screen events get an edge marker with a distance. Without one you only
   // ever find the ones that happen to spawn in front of you, and the feature
@@ -14484,13 +15585,79 @@ function render(){
     g2.font = "800 13px ui-monospace,Menlo,monospace";
     const nw = g2.measureText(m.k.nm).width;
     const pw = Math.max(sw, nw) + 18;
+    // L11: the den label had NO clamp at all - the monument label got one in L8
+    // and its sibling sixty lines up was never given the same treatment, so a
+    // den on a rise at close range projected its plate straight through the
+    // goal line and the stats block (both measured, 1280x720). Same lane, same
+    // floor, same arithmetic; its plate runs sp[1]-13 .. sp[1]+19.
+    if(sp[1] - 13 < hudToastFloor + HUD_GAP)
+      sp[1] = hudParkLabel(sp[0] - pw/2, sp[0] + pw/2, hudToastFloor + HUD_GAP, 32) + 13;
     g2.globalAlpha = a2 * .62;
     g2.fillStyle = "#080a0e";
     g2.fillRect(sp[0] - pw/2, sp[1] - 13, pw, 32);
+    hudBoxes.push({ n:"den:" + m.k.nm, x0:sp[0] - pw/2, y0:sp[1] - 13,
+                    x1:sp[0] + pw/2, y1:sp[1] + 19, kind:"world" });
     g2.globalAlpha = a2;
     g2.fillStyle = "#ffb45c"; g2.fillText(m.k.nm, sp[0], sp[1]);
     g2.font = "700 11px ui-monospace,Menlo,monospace";
     g2.fillStyle = "#f2ece0"; g2.fillText(sub, sp[0], sp[1]+14);
+  }
+  g2.globalAlpha = 1;
+  // ---- monument labels (L8). The map's story was told in ONE place: a
+  // three-second caption in the corner that then reverted to the mechanical
+  // line ("-14% move speed"). Nothing was ever written in the world itself, so
+  // the answer to "where am I and what is over there" was a colour.
+  // Each monument names its region and itself, at the top of the structure,
+  // where the player is already looking when they look at the horizon. Only the
+  // four nearest, so the horizon is a skyline and not a menu.
+  if(running && !over && P){
+    const near = monuments
+      .map(M => ({ M, d: Math.hypot(M.x - P.x, M.z - P.z) }))
+      .sort((a,b) => a.d - b.d).slice(0, 4);
+    for(const { M, d } of near){
+      const sp = project(M.x, groundY(M.x, M.z) + M.h*1.16, M.z);
+      if(!sp) continue;
+      if(sp[0] < -60 || sp[0] > w + 60 || sp[1] > h - 100) continue;
+      // ONE LANE EACH, the rule the toast/banner/den labels were rebuilt around.
+      // A 46 m monument at 60 m projects its top ABOVE the screen, so an
+      // unclamped label lands in the header - THE GLACIER printed into the kit
+      // strip in the first build. Clamped under the toast lane instead of
+      // dropped, because the whole point of the label is that it is readable
+      // from far away, and "far away" is exactly when it rides the top edge.
+      // Hands over to the #biome caption when you are standing in the region:
+      // inside 55 m the corner already names the place and two labels for one
+      // fact is the collision the alert lanes were rebuilt to stop.
+      const a2 = clamp((d - 34) / 26, 0, 1) * (evoT > 0 ? .18 : 1)
+               * clamp((520 - d) / 90, 0, 1) * .92;
+      if(a2 <= .02) continue;
+      g2.textAlign = "center";
+      g2.font = "700 10px ui-monospace,Menlo,monospace";
+      const sw = g2.measureText(M.b.mon.nm).width;
+      g2.font = "800 12px ui-monospace,Menlo,monospace";
+      const nw = g2.measureText(M.b.nm).width;
+      const pw = Math.max(sw, nw) + 16;
+      // L11: was `max(h*.155,78) + (w<720?70:0) + 34` - a hand-copied duplicate
+      // of the toast lane's own literal, measuring its BASELINE and assuming
+      // ONE row. It sat this plate inside the second toast row, which is the
+      // banner printing through the region title the owner photographed. The
+      // plate runs sp[1]-12 .. sp[1]+17, so the arithmetic is the PLATE's now:
+      // park its top on the toast lane's reserved floor, behind anything
+      // already parked there.
+      if(sp[1] - 12 < hudToastFloor + HUD_GAP)
+        sp[1] = hudParkLabel(sp[0] - pw/2, sp[0] + pw/2, hudToastFloor + HUD_GAP, 29) + 12;
+      g2.globalAlpha = a2 * .55;
+      g2.fillStyle = "#080a0e";
+      g2.fillRect(sp[0] - pw/2, sp[1] - 12, pw, 29);
+      hudBoxes.push({ n:"monument:" + M.b.nm, x0:sp[0] - pw/2, y0:sp[1] - 12,
+                      x1:sp[0] + pw/2, y1:sp[1] + 17, kind:"world" });
+      g2.globalAlpha = a2;
+      // A lit monument says so in its own label too (L9), so the skyline
+      // answers "have I been there" as well as "what is that".
+      g2.fillStyle = M.lit ? "#ffd88a" : "#d9d2be"; g2.fillText(M.b.nm, sp[0], sp[1]);
+      g2.font = "700 10px ui-monospace,Menlo,monospace";
+      g2.fillStyle = M.lit ? "#f0b429" : "#8f9aa6";
+      g2.fillText(M.lit ? M.b.mon.nm + "  \u2713" : M.b.mon.nm, sp[0], sp[1] + 13);
+    }
   }
   g2.globalAlpha = 1;
 
@@ -14534,15 +15701,50 @@ function hud(){
   const fb = sudden ? enemies.find(e => e.final && !e.dead) : null;
   $("phase").classList.toggle("final", !!fb);
   $("phase").textContent = fb
-    ? `${BOSSES[BOSSES.length-1].nm}  ${Math.max(0, Math.ceil(fb.hp / Math.max(1, fb.maxhp) * 100))}%  ·  ${Math.max(0,Math.ceil(fb.hp)).toLocaleString()} HP  -  KILL IT`
+    ? `${BOSSES[BOSSES.length-1].nm}  ${Math.max(0, Math.ceil(fb.hp / Math.max(1, fb.maxhp) * 100))}%  ·  ${
+        fb.ab && fb.ab.phase === "break" ? "ARMOURED" : BOSS_PHASES[fb.ph|0].nm}  -  KILL IT`
     : nb ? `${nb.nm} IN ${fmt(Math.max(0,nb.t-T))}` : "FINAL STAND";
+  // THE GOAL LINE (L9). Under the schedule, because it is the half of the
+  // sentence the schedule never had: the clock says when it comes, this says
+  // what you have done about it. While the finale is on the field it stops
+  // counting monuments and reports what the brands are worth against the thing
+  // in front of you - the number is only ever spent there.
+  const gl = $("goal");
+  gl.classList.toggle("on", vigil.total > 0);
+  gl.classList.toggle("done", vigil.lit >= vigil.total && vigil.total > 0);
+  if(vigil.total > 0){
+    if(fb){
+      gl.innerHTML = vigil.lit
+        ? `BRAND &times;${vigil.lit} <i>&middot; +${Math.round(VIGIL_DMG*vigil.lit*100)}% DAMAGE TO IT</i>`
+        : `<i>NO BRANDS &middot; NOTHING WEAKENED IT</i>`;
+    } else if(vigil.lit >= vigil.total){
+      gl.innerHTML = `THE VIGIL COMPLETE <i>&middot; +${Math.round(VIGIL_DMG*vigil.lit*100)}% VS ${BOSSES[BOSSES.length-1].nm}</i>`;
+    } else {
+      // The nearest UNLIT one, by name and distance, so the goal is also the
+      // direction: "where do I go next" is answered without opening the map.
+      let bestM = null, bestD = 1e9;
+      for(const M of monuments){ if(M.lit) continue;
+        const d = Math.hypot(M.x - P.x, M.z - P.z); if(d < bestD){ bestD = d; bestM = M; } }
+      gl.innerHTML = `THE VIGIL ${vigil.lit}/${vigil.total}` + (bestM
+        ? ` <i>&middot; ${bestM.b.mon.nm} ${Math.round(bestD)}m</i>` : "");
+    }
+  }
   $("xpbar").style.width = (P.xp/P.need*100).toFixed(1)+"%";
   // the arrow points at the NEXT evolution for as long as there is one -
   // it used to stop at stage 2, so the apex and the final both arrived
   // unannounced
+  // THE SPLIT, NAMED (L13). The twin is the one body on screen the HUD never
+  // named: after the 2-second banner faded, the game knew it was a SKYREND and
+  // the player did not - and THE TWIN character, which starts split, never got
+  // even the banner. One line under your own stage name, in the card's own
+  // pink, so "I'm playing as two" can be read as two NAMES rather than guessed
+  // from two silhouettes. Only present while a twin is, so it costs a run
+  // without the card nothing.
+  const twNm = twin ? ((twin.ch.st[twin.stage]||{}).nm || "") : "";
   $("lvl").innerHTML = `LV <b>${P.lvl}</b><em>${stageNm()}${
     stage < (curMon().st||[]).length-1
-      ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</em>`;
+      ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</em>`
+    + (twNm ? `<em style="color:#ff6bd6">&amp; ${twNm}</em>` : "");
   const hp = clamp(P.hp/P.maxhp,0,1);
   $("hpbar").style.width = (hp*100).toFixed(1)+"%";
   $("hptxt").textContent = `${Math.max(0,Math.ceil(P.hp))} / ${Math.round(P.maxhp)}`;
@@ -14654,10 +15856,59 @@ function hud(){
   if(biomeT > 0) biomeT -= dt;
 
   const wr = $("warn");
-  if(nb && nb.t-T < 5 && nb.t-T > 0){
+  const incoming = !!(nb && nb.t-T < 5 && nb.t-T > 0);
+  if(incoming){
     wr.style.opacity = (Math.sin(T*10)*.5+.5).toFixed(2);
     wr.textContent = "INCOMING";
   } else wr.style.opacity = 0;
+  // AND HERE, not only in render(). tick() runs render() BEFORE hud(), so a
+  // stackHeader() called only from render() lays the header out from LAST
+  // frame's text - and on the first frame of a run, when #phase and #goal are
+  // still empty, it concludes neither claims a lane and clears their inline
+  // tops, dropping both back onto the typed CSS values this round removed.
+  // The gate caught it: clock/phase 91x2 and goal/toast 259x13 on a build that
+  // measured clean two ticks later. Stacking again once the text is FINAL costs
+  // one string compare on a frame where nothing changed.
+  stackHeader();
+}
+// THE BANNERS TAKE TURNS (L3) - and this half runs AFTER render(), on purpose
+// (L11). The dependency here is a cycle: the header's lanes come from the DOM
+// text hud() writes, the toast lane comes from the header, and these two
+// banners come from the toast lane. render()-then-hud() left one of the three a
+// frame behind - which the L11 gate caught as goal/toast 259 x 13 px on a build
+// that measured clean two ticks later. Split it instead: hud() writes the text
+// and stacks the header, render() draws the toast lane under it, this places
+// the banners under that. No stale frame in any of the three.
+function hudBanners(){
+  if(!P || !running) return;
+  const ev = $("evo"), wr = $("warn");
+  const nb = BOSSES.find(b => b.t > T && !b.done);
+  const incoming = !!(nb && nb.t-T < 5 && nb.t-T > 0);
+  // THE BANNERS TAKE TURNS (L3). Three things claim the top-centre of the
+  // screen: the toast lane (a boss's name, a chain, a level with nothing to
+  // choose - two rows when they coincide), INCOMING at 27%, and the evolution
+  // banner, which steps up to 23% while a boss is alive. Each had its own
+  // height and none knew about the others, so at the final stand LV 57 sat
+  // on TERRAVORE which sat on THE SUPERNOVA, and on a phone the boss's name
+  // alone printed through the banner (the play sheet, both viewports). A
+  // cursor runs down from the toast lane's floor now (render() drew the lane
+  // this frame): each visible banner sits at the height it wants or under
+  // whatever is already there, whichever is lower, lowest band first.
+  // L11: seeded from the toast lane's RESERVED floor, not from what happens to
+  // be on screen this instant. Seeding it from the live alertsBottom meant the
+  // banner sat high while the lane was empty and a toast fired a moment later
+  // printed on top of it - the transient-over-persistent rule, in the one place
+  // that already had a cursor.
+  let laneY = Math.max(alertsBottom, hudToastFloor);
+  const lane = (el, band) => {
+    const hh = el.offsetHeight / 2, top = Math.max(band, laneY ? laneY + 12 + hh : 0);
+    el.style.top = top.toFixed(0) + "px"; laneY = top + hh;
+  };
+  const claims = [];
+  if(evoT > 0) claims.push([ev, (ev.classList.contains("up") ? .23 : .40) * innerHeight]);
+  if(incoming) claims.push([wr, .27 * innerHeight]);
+  claims.sort((a, b) => a[1] - b[1]);
+  for(const [el, band] of claims) lane(el, band);
 }
 
 // ==================================================================== LOOP
@@ -14723,7 +15974,12 @@ function tick(now){
   // first means render() then paints over every pixel they touched, so the
   // scratch viewport can never show through a menu that is not fully opaque.
   if(menuUp) drawPortraits();
-  render(); hud();
+  // L11: hud() FIRST. It writes every persistent line and stacks the header;
+  // render() then derives the toast lane from THAT header rather than from last
+  // frame's; hudBanners() places the evolution/INCOMING banners under the toast
+  // lane render() just drew. Three consumers of one cursor, in the order the
+  // cursor is built.
+  hud(); render(); hudBanners();
 }
 function frame(now){ tick(now); requestAnimationFrame(frame); }
 openMenu();
@@ -14789,8 +16045,10 @@ window.__g = {
   // position/HP/body of the boss on the field, so a test can hold an exact
   // gap to it instead of chasing a target that walks toward the player.
   bossAt:()=>{ const b=enemies.find(e=>e.boss && !e.dead);
-               return b ? {x:b.x, z:b.z, hp:b.hp, rad:b.rad, nm:b.def.nm, body:b.def.body,
+               return b ? {x:b.x, z:b.z, hp:b.hp, maxhp:b.maxhp, rad:b.rad, nm:b.def.nm, body:b.def.body,
                            rise:+(b.rise||0).toFixed(3),
+                           ph:b.ph|0, phNm:b.final?BOSS_PHASES[b.ph|0].nm:"",
+                           frac:+(b.hp/Math.max(1,b.maxhp)).toFixed(4),
                            ab:b.ab ? { phase:b.ab.phase, kind:b.ab.kind, t:+b.ab.t.toFixed(3) } : null } : null; },
   // Put the live boss at an exact moment of an ability - phase and seconds
   // left in it - so the pose at that moment can be drawn and measured without
@@ -14830,6 +16088,14 @@ window.__g = {
   rerollHand: ()=>{ doReroll(); return P ? P.rerolls : 0; },
   banishRow:  (i=0)=>{ if(!banMode) armBanish(); doBanish(i|0); return P ? { left:P.banishes, banned:Object.keys(P.banned) } : null; },
   hand:   ()=>curHand ? curHand.map(o=>({ type:o.type, key:o.key||"", nm:o.nm, lv:o.lv })) : [],
+  // how the run is being played, what the last deal was tilted toward, and a
+  // deal on demand (it rolls a hand without showing one) - L5
+  style:  ()=>({ ...styleRead(), last:lastTilt }),
+  // hold or release a key from a bench, so a check can play a style rather
+  // than describe one: g.key("KeyW", true), g.key("Space", false)
+  key:    (code, down=true)=>{ keys[code] = !!down; if(code === "Space" && down) jumpPressed(); return !!keys[code]; },
+  styleTag:()=>({ ...STYLE_TAG }),
+  deal:   ()=>offers().map(o=>({ type:o.type, key:o.key||"", nm:o.nm, tag:STYLE_TAG[o.key] || "" })),
   draft:  ()=>({ rerolls:P?P.rerolls:0, banishes:P?P.banishes:0, banned:P?Object.keys(P.banned):[], banMode, sel:selRow,
                  mastery: curDealer === masteryHand, cache: curDealer === cacheDealer,
                  title: (document.getElementById("pkTitle")||{}).textContent }),
@@ -14933,7 +16199,20 @@ window.__g = {
   hurtBy: ()=>({ contact:+hurtLog.contact.toFixed(1), spit:+hurtLog.spit.toFixed(1),
                  hazard:+hurtLog.hazard.toFixed(1), hits:Object.assign({}, hurtLog.n),
                  total:+(hurtLog.contact+hurtLog.spit+hurtLog.hazard).toFixed(1) }),
-  aff:   ()=>{ const a = AFFINITY[curMon().type];
+  // TIDEBORN, as the sim reads it: element, coat name, ground, and the swim
+  // multiplier the movement code will apply where the player stands now.
+  elem:  ()=>({ tide:isTide(), aqua:isAqua(), coat:monPal(palType(), stage).nm,
+                home:affOf().home, weak:affOf().weak,
+                wet:!!(P && inWater(P.x, P.z)),
+                wmul: (P && inWater(P.x, P.z)) ? (isAqua() ? 1.30 : .74) : 1 }),
+  // drop the player in the nearest lake (or at x,z) so a swim can be measured
+  wade:  (x,z)=>{ if(x===undefined){ let best=null, bd=1e9;
+                    for(let i=0;i<4000 && !best;i++){ const a=R()*TAU, r=R()*RIM;
+                      const px=Math.cos(a)*r, pz=Math.sin(a)*r;
+                      if(waterDepth(px,pz) > .3){ best=[px,pz]; } }
+                    if(!best) return null; x=best[0]; z=best[1]; }
+                  P.x=x; P.z=z; P.vx=0; P.vz=0; return { x:+P.x.toFixed(1), z:+P.z.toFixed(1), depth:+waterDepth(P.x,P.z).toFixed(3) }; },
+  aff:   ()=>{ const a = affOf();
                return { type:curMon().type, home:a.home, weak:a.weak,
                         here:biomeAt(P.x,P.z).id, now:affNow() }; },
   slots: ()=>({ w:WSLOTS, p:PSLOTS,
@@ -15136,7 +16415,7 @@ window.__g = {
   // where a frame's boxes went: the horde, the corpses, and everything else (terrain, player, fx, gems)
   boxCensus:()=>({ drawn:drawnBoxes, horde:hordeBoxes, corpses:corpseBoxes, rest:drawnBoxes - hordeBoxes - corpseBoxes,
                    enemies:enemies.length, corpseN:corpses.length, culled:culledN,
-                   zones:zones.length, zonesCulled, zoneBoxes, props:PROPS.length, propsNear, propsCulled, marksCulled, shotsCulled, passes:Object.assign({}, lastPasses) }),
+                   zones:zones.length, zonesCulled, zoneBoxes, zoneBladed, zoneBudget:ZONE_BLADES, props:PROPS.length, propsNear, propsCulled, marksCulled, shotsCulled, monsDrawn, monsCulled, monuments:monuments.length, passes:Object.assign({}, lastPasses) }),
   vy:()=>+P.vy.toFixed(3),
   // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
   fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,
@@ -15145,6 +16424,55 @@ window.__g = {
   screenOf:(x,y,z)=>{ const s = VPM ? project(x,y,z) : null; return s ? [Math.round(s[0]), Math.round(s[1])] : null; },
   playerScreen:()=>{ const s = P && VPM ? project(P.x,P.y,P.z) : null; return s ? [Math.round(s[0]), Math.round(s[1])] : null; },
   alertBox:()=>lastAlertBox,
+  // the toast lane as a band: its top, its floor and how many rows are up; and a toast on demand (L3)
+  alertLane:()=>({ top: lastAlertBox ? lastAlertBox[0] : 0, bottom: alertsBottom, rows: Math.min(2, alerts.length) }),
+  // ---- THE HUD OVERLAP GATE (L11) ---------------------------------------
+  // The CSS already spoke of an "overlap guard" (the #biome/#phase note at
+  // 560px), but there was no guard in the file - only a comment describing a
+  // fix someone had made by eye. This is the guard, and it is a gate: it
+  // ENUMERATES every text lane the HUD can show at once and fails on any pair
+  // that meets, rather than checking the one pair that was last reported.
+  //   - DOM lanes are read as real getBoundingClientRect()s;
+  //   - canvas lanes are the plate rects render() actually drew this frame
+  //     (hudBoxes), not a recomputation of what it ought to have drawn.
+  // Damage numbers and off-screen event pips are deliberately OUT: they are
+  // world-space, sub-second, and overlapping each other is what they do.
+  hudRects: ()=>{
+    const out = [];
+    for(const id of HUD_PERSIST.concat(["warn", "evo"])){
+      const el = $(id);
+      if(!hudVisible(el) || !el.textContent.trim()) continue;
+      const r = hudRect(el);
+      r.kind = (id === "warn" || id === "evo") ? "transient" : "persistent";
+      out.push(r);
+    }
+    for(const b of hudBoxes) out.push({ ...b });
+    return out.map(r => ({ n:r.n, kind:r.kind,
+                           x0:+r.x0.toFixed(1), y0:+r.y0.toFixed(1),
+                           x1:+r.x1.toFixed(1), y1:+r.y1.toFixed(1) }));
+  },
+  hudOverlaps: ()=>{
+    const rs = window.__g.hudRects(), bad = [];
+    for(let i = 0; i < rs.length; i++) for(let j = i + 1; j < rs.length; j++){
+      const a = rs[i], b = rs[j];
+      const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      // a pixel of touching is not a collision; two pixels of shared ink is
+      if(ox > 1 && oy > 1) bad.push({ a:a.n, b:b.n, w:+ox.toFixed(1), h:+oy.toFixed(1),
+                                      kinds:a.kind + "/" + b.kind });
+    }
+    return { n:bad.length, pairs:bad, lanes:rs.length,
+             headBottom:hudHeadBottom, toastFloor:hudToastFloor };
+  },
+  // Force every lane on at once, which is the only state worth measuring: a
+  // HUD that never shows two things together cannot be proved not to collide.
+  hudShowAll: ()=>{ alert2("THE HOTSPRINGS", "#c9c2ae");
+                    alert2(`THE VIGIL  \u00b7  LIGHT ${vigil.total} MONUMENTS BEFORE IT WAKES`, "#f0b429");
+                    evoT = 3.4; evoNm = evoNm || "THE KILN"; evoSub = evoSub || "APEX - SUPERNOVA";
+                    return alerts.length; },
+  hudLanes: ()=>({ head:hudHeadBottom, toastFloor:hudToastFloor,
+                   persist:hudPersistBoxes.map(b=>b.n + ":" + Math.round(b.y1)) }),
+  toast:(text, col)=>{ alert2(String(text), col || "#6ddba0"); return alerts.length; },
   rim:   ()=>RIM,
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
@@ -15157,6 +16485,44 @@ window.__g = {
                br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3),
                atkT:+ANIM.atkT.toFixed(3), atkKind:ANIM.atkKind, atkDir:+ANIM.atkDir.toFixed(3) }),
   grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), lift:+g.lift.toFixed(4), heads:g.heads, headFrom: P.headSpan ? +P.headSpan[0].toFixed(3) : null, headHx: P.headSpan ? +P.headSpan[1].toFixed(3) : null, headBoxes: P.headBoxes || 0, splay:+(P.headSplay || 0).toFixed(3) }; },
+  // THE SPLIT: which animal is running beside you, how far along its own line
+  // it is, and where it is standing relative to you.
+  twin:  ()=> twin ? { id:twin.ch.id, line:twin.ch.line.slice(), stage:twin.stage,
+                       nm:(twin.ch.st[twin.stage]||{}).nm || "",
+                       type:twin.ch.type,
+                       x:+twin.x.toFixed(2), z:+twin.z.toFixed(2), y:+twin.y.toFixed(2),
+                       d:+Math.hypot(twin.x-P.x, twin.z-P.z).toFixed(2),
+                       face:+twin.face.toFixed(3), amp:+twin.an.amp.toFixed(3),
+                       ph:+twin.an.ph.toFixed(3), evoFx:+twin.evoFx.toFixed(3) } : null,
+  // THE SPLIT GATE (L13). Everything here is read back off the BUILT artefact -
+  // the rendered HUD string and the live PASSIVES entry - never off the literal
+  // the round typed, because a gate that re-reads its own constant cannot fail.
+  // Three claims: the card NAMES the creature (not just the arithmetic), the
+  // card's icon EXISTS in the sheet, and the HUD carries the twin's current
+  // stage name while a twin is up and carries nothing while one is not.
+  splitGate:()=>{
+    const bad = [], d = PASSIVES.dupe;
+    const txt = (d.name + " " + d.eff + " " + d.ds).toUpperCase();
+    if(!/CREATURE|ANIMAL/.test(txt))
+      bad.push("THE SPLIT CARD DOES NOT MENTION THE SECOND CREATURE: " + d.name + " / " + d.eff);
+    if(!document.getElementById("i-" + d.ic))
+      bad.push("THE SPLIT CARD POINTS AT A MISSING ICON: i-" + d.ic);
+    const el = document.getElementById("lvl");
+    const had = !!twin, nm = twin ? ((twin.ch.st[twin.stage]||{}).nm || "") : "";
+    if(P) hud();                      // rebuild the HUD so `shown` is this frame's
+    const shown = el ? el.textContent : "";
+    if(had && nm && shown.indexOf(nm) < 0)
+      bad.push("HUD DOES NOT NAME THE TWIN: expected \"" + nm + "\" in \"" + shown + "\"");
+    if(!had && /&/.test(shown) && shown.indexOf("&") >= 0 && shown.trim().endsWith("&"))
+      bad.push("HUD SHOWS A TWIN LINE WITH NO TWIN: \"" + shown + "\"");
+    return { ok: bad.length === 0, bad, card:{ name:d.name, eff:d.eff, ic:d.ic },
+             twin: had ? nm : null, hud: shown };
+  },
+  // force one, for a check that wants a named line rather than the roll
+  splitAs:(id)=>{ if(twin) return null; const c = CHARS.find(x=>x.id===id);
+                  if(!c || !c.st) return null;
+                  splitTwin(); if(twin){ twin.ch = c; twin.stage = 0; twinEvolve(true); }
+                  return window.__g.twin(); },
   pose: ()=>{ const p = atkPose(); return { on:p.on, tw:+p.tw.toFixed(3), pitch:+p.pitch.toFixed(3), reach:+p.reach.toFixed(3), lean:+p.lean.toFixed(3), sq:+p.sq.toFixed(3), bite:+(p.bite||0).toFixed(3) }; },
   deathFx: ()=>+deathFx.toFixed(3),
   beatDt: raw => beatDt(raw),
@@ -15200,6 +16566,20 @@ window.__g = {
   pinRun: (seed)=>{ pinRun = (seed === undefined || seed === null) ? null : seed>>>0;
                     return pinRun; },
   seeds: ()=>({ world:worldSeed, run:runSeed, pinned:pinSeed, pinnedRun:pinRun }),
+  // L12. THE GROUND GATE. Three things it asserts, and each one is a rule an
+  // edit here could quietly break: the ground-cover tier has to EXIST (a
+  // generator that silently skips every patch still renders a perfectly valid
+  // empty field), it has to stay flat on the ground (lift <= 0.20 m - above
+  // that it is a standing prop, which is the exact thing FLOOR_CLUTTER is off
+  // to prevent), and the terrain buffer has to stay within budget.
+  ground:()=>({ cover: coverN, lift: +coverLift.toFixed(3),
+                verts: terCount, chunks: terChunks.length,
+                mb: +(terData.length*4/1048576).toFixed(2) }),
+  groundGate:()=>{ const G = window.__g.ground(), bad = [];
+    if(G.cover < 1200)  bad.push(`GROUND COVER MISSING: ${G.cover} patches, expected >= 1200`);
+    if(G.lift  > .20)   bad.push(`GROUND COVER IS STANDING UP: lift ${G.lift} m > 0.20 m`);
+    if(G.mb    > 26)    bad.push(`TERRAIN BUFFER OVER BUDGET: ${G.mb} MB > 26 MB`);
+    return { ok: !bad.length, bad, ...G }; },
   terHash:()=>{ let h = 0; for(let i=6;i<terData.length;i+=997)
                   h = (h*31 + Math.round(terData[i]*1000)) | 0; return h; },
   eye:   ()=>camEye.slice(),
@@ -15212,6 +16592,12 @@ window.__g = {
                         seg: w.map(p=>({ x:p.x, z:p.z, L:p.s,
                                          ux:Math.cos(p.r), uz:-Math.sin(p.r) })) }; },
   propsOut:()=>PROPS.filter(p=>p.t<4 && Math.hypot(p.x,p.z) > RIM).length,
+  // hud() only runs inside the rAF frame, and a hidden browser pane never fires
+  // one - so every HUD claim was unverifiable from a headless check. This is
+  // the same call frame() makes, nothing else.
+  hudTick: ()=>{ hud(); return { phase:$("phase").textContent,
+                                 phaseCls:$("phase").className,
+                                 clock:$("clock").textContent }; },
   isPaused: ()=>paused,
   camYaw: ()=>camYaw,
   place: (x,z)=>{ [P.x, P.z] = confine(x, z, 1.5); P.y=groundY(P.x,P.z); },
@@ -15229,8 +16615,25 @@ window.__g = {
   // where they actually are, so a shaped telegraph can be checked for the
   // shape it claims rather than just for existing
   hazAt: ()=>hazards.map(h=>({ x:+h.x.toFixed(2), z:+h.z.toFixed(2),
-                               r:h.r, tel:+h.tel.toFixed(2) })),
+                               r:h.r, tel:+h.tel.toFixed(2),
+                               // the damage it will do, so a phase ramp can be
+                               // measured off the hazard instead of off a player
+                               // whose overlap with it depends on where it walks
+                               dmg:+h.dmg.toFixed(2) })),
   casts: ()=>Object.assign({}, bossCasts),
+  // the finale's phase table plus where the live boss sits in it, so a check
+  // can assert the gate fired at the fraction the table names
+  bossPhases: ()=>({ table: BOSS_PHASES.map(p2=>({ at:p2.at, nm:p2.nm, kit:p2.kit.slice(),
+                                                   rest:p2.rest, dmg:p2.dmg })),
+                     brk: BOSS_BREAK,
+                     live: (()=>{ const b=enemies.find(e=>e.boss&&!e.dead);
+                       return b ? { final:!!b.final, ph:b.ph|0,
+                                    frac:+(b.hp/Math.max(1,b.maxhp)).toFixed(4),
+                                    phase:b.ab?b.ab.phase:null, kind:b.ab?b.ab.kind:null } : null; })() }),
+  // drop the live boss straight onto a health fraction, so a phase gate can be
+  // crossed in a test without spending five minutes of DPS getting there
+  bossHp: (frac)=>{ const b=enemies.find(e=>e.boss&&!e.dead);
+                    if(b) b.hp = Math.max(1, b.maxhp*frac); return b?b.hp:null; },
   pets:  ()=>pets.map(p2=>({ x:+p2.x.toFixed(2), z:+p2.z.toFixed(2),
                              d:+Math.hypot(p2.x-P.x, p2.z-P.z).toFixed(2) })),
   // Freezing spawns now also SWEEPS the field. Every run opens with six
@@ -15285,6 +16688,9 @@ window.__g = {
   // the menu's live card portraits: how many are running, and whether the
   // menu still thinks it is up
   portraits:()=>PORTRAITS.length,
+  // how many GL-to-2D copies the last portrait pass made: one per batch, not
+  // one per portrait (L2)
+  portraitBlits:()=>portBlits,
   // model sheet: drop any canvas in and it becomes a live portrait of any
   // line at any stage. Used to look at all twenty-one forms at once.
   portraitAt:(canvas, id, st, face)=>{ const c = CHARS.find(x=>x.id===id);
@@ -15323,6 +16729,24 @@ window.__g = {
   forceBiome: (id)=>{ if(!BIOME_BY[id]) return false;
     for(const c of cells) c.b = BIOME_BY[id]; return true; },
   biomeIdAt: (x,z)=> biomeAt(x,z).id,
+  monuments: ()=> monuments.map(M => ({ x:+M.x.toFixed(2), z:+M.z.toFixed(2), h:+M.h.toFixed(2),
+                                        b:M.b.id, nm:M.b.mon.nm, sh:M.b.mon.sh, rgn:M.b.nm,
+                                        lit:!!M.lit, litT:+M.litT.toFixed(3) })),
+  // THE VIGIL (L9): the run's stated goal, and what it is worth. `brand` is the
+  // multiplier the FINAL boss takes; `other` is what everything else takes, and
+  // it must stay 1 - that is the whole design of the reward.
+  vigil: ()=>({ lit:vigil.lit, total:vigil.total, said:vigil.said,
+                r:VIGIL_R, per:VIGIL_DMG,
+                brand:+vigilMul({ final:true }).toFixed(4),
+                other:+vigilMul({ boss:true }).toFixed(4),
+                goal:$("goal") ? $("goal").textContent : null,
+                goalOn:$("goal") ? $("goal").classList.contains("on") : null,
+                unlit:monuments.filter(M=>!M.lit).map(M=>M.b.mon.nm) }),
+  // walk to one, the way a player does - no teleport, so the claim is proven
+  // by the same distance test the run uses
+  vigilLight:(i)=>{ const M = monuments[i|0]; if(!M) return null;
+                    window.__g.place(M.x + VIGIL_R*.5, M.z); stepVigil(1/60);
+                    return window.__g.vigil(); },
   // Point the camera without turning the animal - the drag-look decoupling,
   // scriptable. Every turntable and play-camera audit needs it, and the scratch
   // harnesses that used to fake it with synthetic drags die with the container.

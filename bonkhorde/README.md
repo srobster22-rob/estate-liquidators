@@ -282,7 +282,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **751 passing** as of R306, with 251 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **782 passing** as of L8, with 263 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -785,6 +785,70 @@ the view as often as not - then the player's own animal and kit, the brood, the 
 landmarks within 120 m built in every direction. A shot whose flight projects outside the view is not
 built and one in it takes the bodies' size cull; a landmark outside the view is not built, a woken
 den's column allowed for. Minute five 2,114 -> 1,935 boxes, minute ten 2,060 -> 1,823; section 89.
+
+**The lobby is dimmed, not blurred (L1).** The lead was drawImage: the menu blits every live
+portrait onto its card each frame, and the menu felt like the heaviest screen in the game. Counted and
+timed, the blits were half a millisecond of a three-hundred-millisecond menu frame. The frame was
+going to `backdrop-filter:blur(3px)` on the overlay - a full-viewport re-blur every frame over a canvas
+that never stops painting, behind a panel 93% opaque that hid the result. The draft and the pause
+screen had already turned it off; now no overlay has it. Software GL at 1280x800: the shop tab
+235 -> 61 ms a frame, the roster 320 -> 142, the end screen 254 -> 88; on a 390x844 phone viewport
+84 -> 22, 128 -> 69 and 96 -> 39. Before-and-after screenshots of all three are indistinguishable.
+What is left of the roster's frame is the portraits themselves, five live re-renders at 424x318;
+section 90.
+
+**The portraits come across as one picture (L2).** With the blur gone, the roster's frame over the
+shop tab's was the portraits, and the split was measured by making the copy a no-op: of five portraits'
+72 ms (software GL, 1280x800), 47 ms was the five copies out of the game canvas and 25 the five draws.
+A drawImage from a WebGL canvas is a pipeline stall - the GL work has to finish and hand the frame
+over - and it happened once per portrait. The portraits are packed into cells across the bottom of the
+game canvas now, shelf by shelf, and a full canvas comes across in one copy into a scratch 2D canvas
+that each card takes its cell from. Same pixels: sections 25 and 39 pass unchanged on the result.
+Ten portraits are two copies at 1280x800 instead of ten, five on a 390-wide phone. The roster frame
+134 -> 114 ms on software GL at 1280x800; on the phone viewport, two to a batch, it did not move -
+software GL pays per pixel copied, and this halves the stalls, not the pixels; section 91.
+
+**The banners take turns (L3).** Three perf leads measured negative first and are on record in the
+loop log: the per-frame canvas resize (no consistent cost), JS hitches in a real bot-driven run (median
+2-5 ms a frame, nothing over 20 ms but the first frame), and a leaner box writer (no change: the frame
+is not math-bound). The play sheet found the defect instead. Three things claim the top-centre of the
+screen - the toast lane (a boss's name, a chain, a level with nothing to choose; two rows when they
+coincide), INCOMING, and the evolution banner, which steps up to 23% while a boss is alive - and none
+knew about the others. At the final stand LV 57 sat on TERRAVORE which sat on THE SUPERNOVA, and on a
+phone the boss's name alone was hidden under the banner. A cursor now runs down from the toast lane's
+floor and each visible banner sits at its own height or under whatever is already there. Screenshots of
+the boss-name-plus-toast-plus-banner case at 1280x800 and 390x844, before and after; section 92
+measures the rectangles at both sizes, one row and two, and section 62's bands still hold.
+
+**The receipt is the last word (L4).** The panel sheet again, this time the draft, the pause sheet and
+the receipt with a full late-run kit at 1280x800, 390x844 and 844x390: on every end screen the run's
+last toasts ("LV 126 - +6 HP", THE SPINEROCK) and damage numbers ghosted through DEAD. The overlay
+sheet drew the toast lane, the numbers and the event markers whatever the run's state, and once the
+run is over nothing ages them. Gating the draws was not enough: a 2D canvas that is re-created every
+frame and then drawn on by nobody presents nothing new, and on the phone the compositor kept showing
+the run's last frame - the bitmap read clear while the screen showed toasts. So the sheet is the
+run's: live, it is re-created, cleared and drawn as it always was; not live, it is hidden and left
+alone, and a hidden layer cannot show a stale frame. Section 93 puts two toasts in a colour nothing on
+the receipt wears and clips the lane band off the screen on a phone: the colour is there while the run
+is on, the sheet is hidden once the receipt is up, and with the receipt's panel cleared for the
+measurement not a pixel of it remains. Before-and-after shots of all three panels at all three sizes.
+
+**The deal reads how you play (L5).** The first answer of the vision interview: asked whether
+BONKHORDE is about outrunning the horde, building a machine, raising a creature or exploring, the
+answer was that it is not a choice - the game should meet the player where they are. The draft dealt
+from one pool by weight, so a player who never stops moving and one who stands in the middle of it got
+the same hand. It reads the last minute of play now, as three decayed averages with no counters and no
+thresholds: FOOTWORK (how much of your top speed you use, and how much of it airborne), IN THE THICK
+(how often something is close enough to bite), ROAMING (how far out in front of your own centre of
+gravity you are, so kiting one clearing fast is not mistaken for crossing a map). The leader has to
+lead by a quarter or the read is nothing and the deal is untouched. Twenty cards carry a tag saying who
+they are for; four - QUICKER HEART, SHARPER CLAWS, SECOND HEAD, GLASS - carry none, because they pay
+everybody. Played three ways for forty seconds each and dealt sixty hands: standing in a crowd takes
+52.9% IN THE THICK cards against 33.8% and 34.2%, circling one patch takes 27.9% FOOTWORK cards against
+13.8% and 16.3%, walking away takes 40.8% ROAMING cards against 24.6% and 29.2%. The last card of every
+hand is dealt untilted on purpose - 57.2% of the first cards carry the tilt against 40% of the last -
+so a run can still be turned by something it did not ask for, and the draft's caption says which read
+it made rather than quietly rigging the deck. Section 94.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The
