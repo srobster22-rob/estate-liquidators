@@ -42,3 +42,15 @@ bonkhorde/_altarprobe.html
 # directory because it resolves index.html and test.js relative to itself
 bonkhorde/mutate[0-9].js
 bonkhorde/mutate-results.txt
+# The backup taken beside a file before a round edits it, and before a merge
+# with the other session's live artifact. The standing rule is that nothing
+# substantial is overwritten without a copy beside it; these are those copies,
+# a megabyte each, and they are near-duplicates of index.html. Git is the
+# thing that remembers old versions - the copies only have to survive the
+# session that made them.
+bonkhorde/index.pre-*.html
+bonkhorde/index.prev.html
+bonkhorde/index.l5-mine.html
+bonkhorde/test.pre-*.js
+bonkhorde/mutate.pre-*.js
+bonkhorde/film/*.pre-*.js
