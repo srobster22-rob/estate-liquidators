@@ -282,7 +282,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **746 passing** as of R305, with 249 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **751 passing** as of R306, with 251 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -777,6 +777,14 @@ prop; past 24 m a caltrop field draws the way a plain hazard ring already does, 
 segment, because a six-centimetre blade is a pixel wide out there; every capture still sees all of
 it. The same frame builds 2,447 boxes. `g.boxCensus()` now also reports the zones and props in
 reach, culled and built; section 88.
+
+**The shots and the landmarks take the same test (R306).** `g.boxCensus().passes` says where a
+frame's boxes went, pass by pass. On the same real frames it put the trail first (still), the shots
+second - BOLTSTORM's forty to sixty darts at nine boxes each, flying away from the player and out of
+the view as often as not - then the player's own animal and kit, the brood, the scenery and the
+landmarks within 120 m built in every direction. A shot whose flight projects outside the view is not
+built and one in it takes the bodies' size cull; a landmark outside the view is not built, a woken
+den's column allowed for. Minute five 2,114 -> 1,935 boxes, minute ten 2,060 -> 1,823; section 89.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

@@ -1048,7 +1048,9 @@ buildDynBuf();
 
 let boxPx = 0, culledN = 0;   // pixels per world unit at the body being drawn (0 = no size cull); bodies not drawn this frame
 const ZONE_FAR = 24;          // past this a caltrop field draws as a plain hazard ring does (R305)
-let zonesCulled = 0, propsCulled = 0, propsNear = 0, zoneBoxes = 0;   // hazard zones and scenery props not drawn this frame, props in reach, and what the zones cost (R305)
+let zonesCulled = 0, propsCulled = 0, propsNear = 0, zoneBoxes = 0;
+let marksCulled = 0, shotsCulled = 0;   // landmarks and shots outside the view this frame (R306)
+let lastPasses = {};           // where the last frame's boxes went, pass by pass (R306)   // hazard zones and scenery props not drawn this frame, props in reach, and what the zones cost (R305)
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(boxPx && (sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz)) * boxPx < 1.5) return;   // under a pixel and a half: not built (R302)
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
@@ -13301,7 +13303,11 @@ function render(){
   const SC = skyAt(T);                 // horizon matches the fog it fades into
   gl.clearColor(SC.fog[0], SC.fog[1], SC.fog[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0; zonesCulled = 0; propsCulled = 0; propsNear = 0;
+  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0; zonesCulled = 0; propsCulled = 0; propsNear = 0; marksCulled = 0; shotsCulled = 0;
+  // the frame's boxes, pass by pass - a census can say WHERE a frame went, not only how big it was (R306)
+  const passAt = {}; let passPrev = drawnBoxes + nbox;
+  const passEnd = k => { const n = drawnBoxes + nbox; passAt[k] = n - passPrev; passPrev = n; };
+  lastPasses = passAt;
 
   // ---- camera: chase, with real lag and a lot of shake
   // It used to sit 17m back and 12.8m up, recomputed from the player's exact
@@ -13497,6 +13503,7 @@ function render(){
     }
     else box(p.x, y+p.h*.5, p.z, p.s*.5,p.h*.5,p.s*.32, p.c, 0, p.r);
   }
+  passEnd("props");
   // LANDMARKS. Non-colliding on purpose: a horde game whose floor has walls in
   // it is a horde game where four hundred bodies stack behind one of them. They
   // are silhouette, orientation and somewhere to go - side events prefer to
@@ -13504,6 +13511,12 @@ function render(){
   for(const m of marks){
     const md = Math.hypot(m.x-px, m.z-pz);
     if(md > 120) continue;
+    // THE SAME TEST THE BODIES TAKE (R306). Twenty-five dens across the arena
+    // and every one within 120 m was built whichever way the camera faced -
+    // a ribcage is 47 boxes, a shell 50. A woken den's column is the tallest
+    // thing in the game short of a boss, and the margin allows for it.
+    const mH = m.woke ? 24 : Math.max(9, m.k.r*1.3);
+    if(onScreen(m.x, groundY(m.x, m.z) + mH*.45, m.z, mH) === null){ marksCulled++; continue; }   // a landmark outside the view is not built (R306)
     const bm = biomeAt(m.x, m.z);
     const lt = [Math.min(1,bm.a[0]*1.5+.10), Math.min(1,bm.a[1]*1.5+.10),
                 Math.min(1,bm.a[2]*1.5+.10)];
@@ -13620,6 +13633,7 @@ function render(){
     }
   }
 
+  passEnd("marks");
   // ground decals first so bodies read on top of them
   // Hazard zones are drawn as a terrain-following ring, not a flat slab - a
   // single big quad half-buried in a hillside reads as a rendering fault.
@@ -13676,6 +13690,7 @@ function render(){
     if(!z.spiky) box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, col, .75*a);
   }
   zoneBoxes = drawnBoxes + nbox - zb0;
+  passEnd("zones");
 
   // ---- side events. A reward you cannot find is not a reward, so each one
   // stands under a beam tall enough to clear the horde and read from the far
@@ -13723,6 +13738,7 @@ function render(){
       }
     }
   }
+  passEnd("events");
   // Boss telegraphs. The outer ring says WHERE, the ring closing inward says
   // WHEN - so the read is "that circle, that soon" without reading a number.
   for(const h of hazards){
@@ -13769,6 +13785,7 @@ function render(){
       }
     }
   }
+  passEnd("hazards");
   // A SHOCKWAVE IS A WAVE, not a fence. Twenty-six cubes standing a fifth of a
   // unit up made a ring of ice blocks around the player - the same fault the
   // telegraph and the burning ground had. Flat plates, laid along the ring, and
@@ -13793,6 +13810,7 @@ function render(){
       box(x2, groundY(x2,z2)+.05, z2, .95,.05,.16, col, .5*a, th);
     }
   }
+  passEnd("rings");
   for(const s of swings){
     const a = s.life/s.max;
     // GORE is a lane, so it draws as one: a swathe down the direction you were
@@ -13857,6 +13875,7 @@ function render(){
     }
   }
 
+  passEnd("swings");
   // enemies
   // THE BROOD, drawn before the horde so a hatchling never hides a threat.
   // It borrows a raptor body in the PLAYER's own species colour and stands on a
@@ -13879,6 +13898,7 @@ function render(){
                    p2.face, .46, 1.05, pc, .10, 2, gy + Math.abs(gait)*.10);
     }
   }
+  passEnd("pets");
   const hb0 = drawnBoxes + nbox;         // the count so far, flushed or not
   for(const e of enemies){
     if(e.dead) continue;                 // on the corpse list now, drawn below
@@ -14028,6 +14048,7 @@ function render(){
     }
   }
   hordeBoxes = drawnBoxes + nbox - hb0;
+  passEnd("horde");
   // THE FALLEN. Same plans, same pose path, drawn after the living so a body
   // that has just dropped lies under the one stepping over it. The mesh
   // capture is closed around them: a corpse is a live body's boxes at another
@@ -14095,6 +14116,7 @@ function render(){
   }
   ebCap = cap0;
   corpseBoxes = drawnBoxes + nbox - hb0 - hordeBoxes;
+  passEnd("corpses");
 
   // Twenty-one faces are worth building and you spend the whole run looking at
   // the back of one. Standing still, the monster turns and looks at you - which
@@ -14203,9 +14225,17 @@ function render(){
     }
   }
 
+  passEnd("player");
   // A BOLT IS A DART: a white-hot core, a cross of fins at the tail, and a
   // comet's tail of the last six frames, shrinking and dimming behind it.
+  // ...AND SO DO THE SHOTS (R306). BOLTSTORM keeps forty to sixty darts in
+  // the air, nine boxes each, and a dart flies AWAY from the player - out of
+  // the view as often as not. A shot whose flight (trail included) projects
+  // outside the view is not built; one in it takes the bodies' size cull.
   for(const b of bolts){
+    const ppu = onScreen(b.x, b.y, b.z, 4);
+    if(ppu === null){ shotsCulled++; continue; }   // a shot out of the view is not built (R306)
+    boxPx = ppu;
     const c = b.evo ? [1,.62,.22] : [.55,.90,1], core = b.evo ? [1,.92,.72] : [.94,1,1];
     const rx = b.x - Math.sin(b.a)*.26, rz = b.z - Math.cos(b.a)*.26;
     box(b.x,b.y,b.z, .15,.15,.78, core, 1, b.a);
@@ -14217,9 +14247,12 @@ function render(){
       box(q[0], q[1], q[2], .13*k+.03, .13*k+.03, .30*k+.06, [c[0]*k, c[1]*k, c[2]*k], .9*k, b.a);
     }
   }
-  for(const s of spits)
+  boxPx = 0;
+  for(const s of spits){
+    if(onScreen(s.x, s.y, s.z, 1) === null){ shotsCulled++; continue; }
     box(s.x,s.y,s.z, s.big?.38:.22, s.big?.38:.22, s.big?.38:.22,
         s.big?[1,.42,.14]:[.9,.85,.3], .9, s.a);
+  }
   for(const m of mortars){
     const t = m.t/m.dur;
     const x = lerp(m.x0,m.tx,t), z = lerp(m.z0,m.tz,t);
@@ -14260,8 +14293,10 @@ function render(){
       }
     }
   }
+  passEnd("shots");
   for(const p of pops) box(p.x,p.y,p.z, p.s,p.s,p.s, p.c, p.e === undefined ? .3 : p.e);
   for(const p of cpops) box(p.x,p.y,p.z, p.s,p.s,p.s, p.c, p.e);
+  passEnd("pops");
   // XP, AS TREASURE. Reported in the audit as reading like litter at density,
   // and it did: every gem was one box of one size, so a floor covered in them
   // was a floor covered in identical cubes. Three tiers with three silhouettes
@@ -14305,6 +14340,7 @@ function render(){
     }
   }
 
+  passEnd("gems");
   flush();
 
   // ---- 2D overlay: damage numbers, alerts, vignette
@@ -15100,7 +15136,7 @@ window.__g = {
   // where a frame's boxes went: the horde, the corpses, and everything else (terrain, player, fx, gems)
   boxCensus:()=>({ drawn:drawnBoxes, horde:hordeBoxes, corpses:corpseBoxes, rest:drawnBoxes - hordeBoxes - corpseBoxes,
                    enemies:enemies.length, corpseN:corpses.length, culled:culledN,
-                   zones:zones.length, zonesCulled, zoneBoxes, props:PROPS.length, propsNear, propsCulled }),
+                   zones:zones.length, zonesCulled, zoneBoxes, props:PROPS.length, propsNear, propsCulled, marksCulled, shotsCulled, passes:Object.assign({}, lastPasses) }),
   vy:()=>+P.vy.toFixed(3),
   // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
   fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,

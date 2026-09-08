@@ -8247,6 +8247,60 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `standing at z=${r.at}: ${r.facingIn.propsCulled} of ${r.facingIn.propsNear} props in reach not built facing in, ${r.facingOut.propsCulled} of ${r.facingOut.propsNear} facing out, ${r.capturedOut.propsCulled} while capturing`);
   }
 
+  console.log("\n=== 89. THE SHOTS AND THE LANDMARKS TAKE THE SAME TEST ===");
+  {
+    // R306. With the trail culled, a pass census of the same real frames (the
+    // census hook now says where every box went) put the shots second:
+    // BOLTSTORM's forty to sixty darts at nine boxes each, flying away from the
+    // player and out of the view as often as not - and the landmarks within
+    // 120 m built in every direction, a ribcage at 47 boxes and a shell at 50.
+    // Both take the test the bodies, the trail and the scenery already take.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const settle = async () => { for (let i = 0; i < 24; i++) await frame(); };
+      const near = (a, b) => Math.abs(a - b) < .006;
+      g.drainPicks(true); g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true); g.clearEnemies(); g.place(0, 0); g.aim(0);
+      // 1. four bolts, fired at a target forty metres up the z axis, and left to fly for fifty frames
+      g.give("bolt", 3); g.spawnAt("shambler", 0, 40); g.setWT("bolt", 0); g.stepRaw(1/60); g.setWT("bolt", 99);
+      for (let i = 0; i < 50; i++) g.stepRaw(1/60);
+      const live = g.fxLive().bolts;
+      g.pause(true); await settle();
+      const toward = g.boxCensus();                       // facing them
+      g.pause(false); g.aim(Math.PI); g.stepRaw(1/60); g.setWT("bolt", 99); g.pause(true); await settle();
+      const away = g.boxCensus();                         // facing away: they are well behind the camera
+      const capB = g.capFrame(); const capturedB = g.boxCensus();
+      const darts = capB.filter(b => near(b[3], .15) && near(b[4], .15) && near(b[5], .78) && b[6] === 1).length;
+      g.pause(false); g.clearShots();
+      // 2. a landmark: the nearest ring, crater, tusks, shell or ossuary to the origin, sixteen metres behind the player
+      const marks = g.world().marks.filter(m => m.k !== "arch").map(m => ({ ...m, d: Math.hypot(m.x, m.z) })).sort((a, b) => a.d - b.d);
+      const m = marks[0];
+      g.place(m.x, m.z + 16); g.aim(0); g.stepRaw(1/60); g.pause(true); await settle();
+      const mAway = g.boxCensus();
+      const capM = g.capFrame(); const capturedM = g.boxCensus();
+      const own = capM.filter(b => Math.hypot(b[0] - m.x, b[2] - m.z) < 10).length;   // the mark's own boxes, seen by the capture
+      g.pause(false); g.aim(Math.PI); g.stepRaw(1/60); g.pause(true); await settle();
+      const mToward = g.boxCensus(), mAt = g.screenOf(m.x, 1, m.z);
+      g.pause(false);
+      return { live, toward, away, capturedB, darts, mark: m, own, mAway, capturedM, mToward, mAt, W: innerWidth, H: innerHeight };
+    });
+    ok("four bolts twenty-seven metres out are alive and, with the camera turned away from them, build nothing",
+       r.live >= 4 && r.away.passes.shots === 0 && r.away.shotsCulled >= 4,
+       `${r.live} bolts live, ${r.away.passes.shots} shot boxes built facing away, ${r.away.shotsCulled} shots not drawn`);
+    ok("faced, the same bolts are built as darts with fins and trails",
+       r.toward.shotsCulled === 0 && r.toward.passes.shots >= r.live * 3,
+       `${r.toward.passes.shots} shot boxes built facing them, ${r.toward.shotsCulled} not drawn`);
+    ok("a capture from behind sees every dart",
+       r.darts >= r.live && r.capturedB.shotsCulled === 0,
+       `${r.darts} dart cores in the capture, ${r.capturedB.shotsCulled} culled while capturing`);
+    ok("a landmark sixteen metres behind the player is not built - the frame's landmark boxes are short by at least its own count",
+       r.own >= 12 && r.mAway.marksCulled >= 1 && r.mAway.passes.marks <= r.capturedM.passes.marks - r.own && r.capturedM.marksCulled === 0,
+       `${r.mark.k} at (${r.mark.x}, ${r.mark.z}): ${r.own} boxes of its own in the capture; ${r.mAway.passes.marks} landmark boxes built facing away against ${r.capturedM.passes.marks} in the capture, ${r.mAway.marksCulled} landmark(s) not drawn`);
+    ok("turn to face it and it is on the screen and built",
+       !!r.mAt && r.mAt[0] > 0 && r.mAt[0] < r.W && r.mAt[1] > 0 && r.mAt[1] < r.H && r.mToward.passes.marks >= r.own,
+       `projects at ${JSON.stringify(r.mAt)} on ${r.W}x${r.H}; ${r.mToward.passes.marks} landmark boxes built facing it`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");
