@@ -282,7 +282,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **741 passing** as of R303, with 246 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **746 passing** as of R305, with 249 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -766,6 +766,17 @@ the viewport and the commonest box in the frame a centimetre pupil or tooth. A b
 lands outside the view (its own size as the margin) draws nothing; inside it, no box under a pixel and
 a half on screen is built; bosses always draw; every capture still sees everything. At two hundred
 bodies a frame builds 13% fewer boxes. `g.boxCensus()` says where a frame's boxes went; section 87.
+
+**The trail behind you is not built (R305).** Every perf round to R302 measured the horde, and a
+census of a real run - the sweep's own bot, minute five, not one enemy alive - found a 6,386-box
+frame anyway: 4,880 of them SCORCHED EARTH's blades, 976 live segments at five boxes each, and
+4,571 of the frame's boxes thirty metres and more from the player. The burning trail left behind as
+you run, built every frame; the zone pass ran before `onScreen()` was even defined. Three things,
+all presentation: a zone whose disc projects outside the view draws nothing, and so does a scenery
+prop; past 24 m a caltrop field draws the way a plain hazard ring already does, one ember block a
+segment, because a six-centimetre blade is a pixel wide out there; every capture still sees all of
+it. The same frame builds 2,447 boxes. `g.boxCensus()` now also reports the zones and props in
+reach, culled and built; section 88.
 
 **Per-creature levels** are the between-runs half. Every run banks its gross XP into whichever
 creature ran it, and a creature level is +2% HP and +1.2% damage *for that creature alone*. The

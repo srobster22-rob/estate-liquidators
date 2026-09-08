@@ -1258,7 +1258,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the world is actually frozen for this comparison",
        await R.pg.evaluate(() => window.__g.isPaused()) === true);
     await R.pg.evaluate(() => { window.__g.setOpt("motion", 0); window.__g.setShake(1.4); });
-    await R.pg.waitForTimeout(200);
+    // The chase camera lerps toward the player at ~11/s on the frame clock,
+    // paused or not, and the twenty seconds just stepped were never rendered -
+    // so if a shove moved the player on one of them, the camera is still
+    // closing that gap here, and a whole-page diff 350 ms in reads it as
+    // shake. Flaked exactly that way under suite load in R233, R287 and R305,
+    // and passed alone every time. A second and a half closes any gap to
+    // nothing; then the only thing that can move the frame is the shake.
+    await R.pg.waitForTimeout(1500);
     const stillOff = await shot2(R.pg);
     await R.pg.evaluate(() => { window.__g.setOpt("motion", 1); window.__g.setShake(1.4); });
     await R.pg.waitForTimeout(200);
@@ -8176,6 +8183,68 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("a single body twenty metres out and squarely on screen is built with fewer boxes than a capture holds - its pupils and teeth are under a pixel and a half",
        r.farOn && r.farShown < r.farAll && r.farShown >= r.farAll * .5,
        `${r.farShown} boxes built for the screen, ${r.farAll} in the capture, on screen ${r.farOn}`);
+  }
+
+  console.log("\n=== 88. THE TRAIL BEHIND YOU IS NOT BUILT ===");
+  {
+    // R305. Every perf round so far measured the horde, and a census of a REAL
+    // run (the sweep's own bot, minute five, not one enemy alive) found a
+    // 6,386-box frame anyway: 4,880 of them SCORCHED EARTH's blades - 976 live
+    // segments at five boxes each - and 4,571 of the frame's boxes thirty
+    // metres and more from the player. The burning trail left BEHIND as you
+    // run, built every frame, with nothing culling it: the zone pass ran before
+    // onScreen() was even defined. A zone whose disc projects outside the view
+    // draws nothing now, and so does a scenery prop; a capture still sees all
+    // of it.
+    const r = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => res()));
+      const settle = async () => { for (let i = 0; i < 24; i++) await frame(); };   // the chase camera lags on purpose
+      g.drainPicks(true); g.wipeSave(); g.pin(3); g.pinRun(3); g.start("intern"); g.god(); g.disarm(); g.freezeSpawns(true); g.freezeEvents(true); g.setShake(0);
+      g.drainPicks(true); g.clearEnemies(); g.place(0, 0); g.aim(0);
+      g.give("caltrops", 3); g.setWT("caltrops", 0); g.stepRaw(1/60); g.setWT("caltrops", 99);   // one field, dropped at the origin
+      g.disarm();                                                                                // and no more of them
+      // 1. twenty metres past it, looking away: the field is behind the camera
+      g.place(0, 20); g.aim(0); g.stepRaw(1/60); g.pause(true); await settle();
+      const behind = g.boxCensus(), behindAt = g.screenOf(0, .2, 0);
+      // 2. a capture from the same spot sees every blade of it
+      const cap = g.capFrame(); const captured = g.boxCensus();
+      const near = (a, b) => Math.abs(a - b) < .006;
+      const blades = cap.filter(b => near(b[3], .06) && near(b[4], .36) && near(b[5], .06)).length;
+      // 3. six metres short of it, looking at it: built
+      g.pause(false); g.place(0, -6); g.aim(0); g.stepRaw(1/60); g.pause(true); await settle();
+      const ahead = g.boxCensus(), aheadAt = g.screenOf(0, .2, 0);
+      // 3b. thirty metres short of it, in view: the far tier - one ember block a segment, no blades
+      g.pause(false); g.place(0, -30); g.aim(0); g.stepRaw(1/60); g.pause(true); await settle();
+      const far = g.boxCensus(), farAt = g.screenOf(0, .2, 0);
+      const capFar = g.capFrame();
+      const farBlades = capFar.filter(b => near(b[3], .06) && near(b[4], .36) && near(b[5], .06)).length;
+      const farBlocks = capFar.filter(b => near(b[3], .21) && near(b[4], .10) && near(b[5], .21)).length;
+      // 4. the scenery is the arena's rim, two hundred and fifty metres out - so the same test is taken standing
+      //    thirty metres inside it: facing the arena the wall behind you is not built; facing the wall it is
+      g.pause(false); g.place(0, 236); g.aim(Math.PI); g.stepRaw(1/60); g.pause(true); await settle();
+      const facingIn = g.boxCensus(), at = g.state().z;
+      g.pause(false); g.aim(0); g.stepRaw(1/60); g.pause(true); await settle();
+      const facingOut = g.boxCensus();
+      g.capFrame(); const capturedOut = g.boxCensus();
+      g.pause(false);
+      return { behind, behindAt, blades, captured, ahead, aheadAt, far, farAt, farBlades, farBlocks, facingIn, facingOut, capturedOut, at };
+    });
+    ok("a field twenty metres behind the player, out of the view, is alive and builds nothing",
+       r.behind.zones >= 1 && r.behind.zonesCulled === r.behind.zones && r.behind.zoneBoxes === 0,
+       `${r.behind.zones} zone(s), ${r.behind.zonesCulled} not drawn, ${r.behind.zoneBoxes} zone boxes built; the field projects at ${JSON.stringify(r.behindAt)}`);
+    ok("a capture from the same spot sees every blade of it",
+       r.blades >= 8 && r.captured.zonesCulled === 0 && r.captured.zoneBoxes >= 40,
+       `${r.blades} blades in the capture, ${r.captured.zonesCulled} culled while capturing, ${r.captured.zoneBoxes} zone boxes`);
+    ok("six metres ahead and in view, the same field is built in full",
+       r.ahead.zones >= 1 && r.ahead.zonesCulled === 0 && r.ahead.zoneBoxes >= 40,
+       `${r.ahead.zones} zone(s), ${r.ahead.zonesCulled} not drawn, ${r.ahead.zoneBoxes} zone boxes built; projects at ${JSON.stringify(r.aheadAt)}`);
+    ok("thirty metres short of it and in view, the field is built as a plain ring of ember blocks, one a segment, and not one blade",
+       r.far.zonesCulled === 0 && r.far.zoneBoxes >= 10 && r.far.zoneBoxes <= 13 && r.farBlades === 0 && r.farBlocks >= 10,
+       `${r.far.zoneBoxes} zone boxes built, ${r.farBlocks} ember blocks and ${r.farBlades} blades in the capture; projects at ${JSON.stringify(r.farAt)}`);
+    ok("the scenery takes the same test: thirty metres inside the rim and facing the arena, most of the wall in reach is behind you and not built; turn to face it and it is",
+       r.facingIn.propsNear >= 20 && r.facingIn.propsCulled >= r.facingIn.propsNear * .5 &&
+       r.facingOut.propsNear - r.facingOut.propsCulled >= 20 && r.facingOut.propsCulled < r.facingIn.propsCulled && r.capturedOut.propsCulled === 0,
+       `standing at z=${r.at}: ${r.facingIn.propsCulled} of ${r.facingIn.propsNear} props in reach not built facing in, ${r.facingOut.propsCulled} of ${r.facingOut.propsNear} facing out, ${r.capturedOut.propsCulled} while capturing`);
   }
 
   console.log("\n" + "=".repeat(58));

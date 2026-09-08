@@ -1047,6 +1047,8 @@ function buildDynBuf(){
 buildDynBuf();
 
 let boxPx = 0, culledN = 0;   // pixels per world unit at the body being drawn (0 = no size cull); bodies not drawn this frame
+const ZONE_FAR = 24;          // past this a caltrop field draws as a plain hazard ring does (R305)
+let zonesCulled = 0, propsCulled = 0, propsNear = 0, zoneBoxes = 0;   // hazard zones and scenery props not drawn this frame, props in reach, and what the zones cost (R305)
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(boxPx && (sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz)) * boxPx < 1.5) return;   // under a pixel and a half: not built (R302)
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
@@ -13299,7 +13301,7 @@ function render(){
   const SC = skyAt(T);                 // horizon matches the fog it fades into
   gl.clearColor(SC.fog[0], SC.fog[1], SC.fog[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0;
+  drawnBoxes = 0; drawnShadows = 0; drawnMarks = 0; culledN = 0; boxPx = 0; zonesCulled = 0; propsCulled = 0; propsNear = 0;
 
   // ---- camera: chase, with real lag and a lot of shake
   // It used to sit 17m back and 12.8m up, recomputed from the player's exact
@@ -13453,11 +13455,35 @@ function render(){
     drawnChunks++;
   }
 
+  // WHAT IS ON SCREEN (R302). A crowded frame built 9,300 boxes for 300
+  // bodies and 12,400 for 400 - 24 ms of CPU before a pixel was drawn - and
+  // one body in seven of them projected outside the viewport, while the most
+  // common box in the frame was a centimetre-scale pupil or tooth. A body
+  // whose footprint (its own size as the margin) lands outside the view draws
+  // nothing; inside it, no box under a pixel and a half on screen is built.
+  // Bosses always draw. Off while any capture is open - every harness that
+  // reads boxes reads all of them, and a turntable is not a viewport.
+  // Defined ahead of every world-space pass since R305, when a census of a
+  // real run found the frame was not the horde at all: 4,880 of a 6,386-box
+  // frame were SCORCHED EARTH's blades, most of them the trail thirty metres
+  // BEHIND the player, built every frame with nothing culling them. The
+  // hazard zones and the scenery props take the same test the bodies do.
+  const capturing = !!(wCap || fxCap || wCapWant || ewCapWant);
+  const onScreen = (x,y,z,H) => {      // null = not on screen; else pixels per world unit there
+    if(!VPM || capturing) return 0;
+    const v = xf(VPM.view, x,y,z), depth = -v[2];
+    if(depth <= .1) return depth < -H*2 ? null : 0;
+    const sx = (VPM.proj[0]*v[0]/depth*.5+.5)*VPM.w, sy = (-VPM.proj[5]*v[1]/depth*.5+.5)*VPM.h;
+    const ppu = VPM.proj[5]*VPM.h*.5/depth, m = 40 + H*ppu*1.3;
+    return (sx < -m || sx > VPM.w+m || sy < -m || sy > VPM.h+m) ? null : ppu;
+  };
   // ---- everything dynamic, batched
   for(const p of PROPS){
     const d = Math.hypot(p.x-px, p.z-pz);
     if(d > 190) continue;
+    propsNear++;
     const y = groundY(p.x,p.z);
+    if(onScreen(p.x, y+p.h*.5, p.z, Math.max(p.h, p.s)) === null){ propsCulled++; continue; }   // scenery outside the view is not built (R305)
     if(p.t===1){ box(p.x, y+p.h*.5, p.z, .22,p.h*.5,.22, [.36,.25,.16], 0, p.r);
                  box(p.x, y+p.h, p.z, p.s,p.s*.8,p.s, [.27,.50,.27], 0, p.r); }
     else if(p.t===4) box(p.x, y+p.h*.5, p.z, p.s,p.h*.5,p.s, p.c, 0, p.r);
@@ -13612,16 +13638,26 @@ function render(){
   // they did, and the brightest orange on screen is the newest ground rather
   // than all of it.
   const CHAR = [.20,.10,.07];
+  const zb0 = drawnBoxes + nbox;
   for(const z of zones){
+    if(onScreen(z.x, groundY(z.x,z.z)+.2, z.z, z.r) === null){ zonesCulled++; continue; }   // the trail behind you is not built (R305)
     const a = clamp(z.life/z.max,0,1);
     const seg = Math.max(3, Math.round(12*a));
     const col = [z.c[0]*a + CHAR[0]*(1-a),
                  z.c[1]*a + CHAR[1]*(1-a),
                  z.c[2]*a + CHAR[2]*(1-a)];
+    // THE FAR TRAIL (R305). A blade is six centimetres wide, which is a pixel
+    // at thirty metres, and a caltrop segment is five of them and two terrain
+    // reads. The census that found the trail behind the player also found it
+    // in FRONT: a bot that turns round has a hundred fields in view, 4,315
+    // boxes of slivers at minute seven. Past ZONE_FAR a field draws the way a
+    // plain hazard ring already does - one ember block a segment - and the
+    // blades come back as you approach it, the same tiering the bodies get.
+    const farZ = z.spiky && P && Math.hypot(z.x-P.x, z.z-P.z) > ZONE_FAR;
     for(let i=0;i<seg;i++){
       const th = i/seg*TAU + z.life*.7;
       const x = z.x+Math.sin(th)*z.r, zz = z.z+Math.cos(th)*z.r;
-      if(z.spiky){
+      if(z.spiky && !farZ){
         // CALTROPS ARE SPIKES (R297): two thin blades crossed and leaning,
         // a dark foot under them, scattered inside the field and not only on
         // its rim - a tile could have been anything; a thorn is a thorn.
@@ -13639,6 +13675,7 @@ function render(){
     }
     if(!z.spiky) box(z.x, groundY(z.x,z.z)+.14, z.z, .26,.08,.26, col, .75*a);
   }
+  zoneBoxes = drawnBoxes + nbox - zb0;
 
   // ---- side events. A reward you cannot find is not a reward, so each one
   // stands under a beam tall enough to clear the horde and read from the far
@@ -13842,23 +13879,6 @@ function render(){
                    p2.face, .46, 1.05, pc, .10, 2, gy + Math.abs(gait)*.10);
     }
   }
-  // WHAT IS ON SCREEN (R302). A crowded frame built 9,300 boxes for 300
-  // bodies and 12,400 for 400 - 24 ms of CPU before a pixel was drawn - and
-  // one body in seven of them projected outside the viewport, while the most
-  // common box in the frame was a centimetre-scale pupil or tooth. A body
-  // whose footprint (its own size as the margin) lands outside the view draws
-  // nothing; inside it, no box under a pixel and a half on screen is built.
-  // Bosses always draw. Off while any capture is open - every harness that
-  // reads boxes reads all of them, and a turntable is not a viewport.
-  const capturing = !!(wCap || fxCap || wCapWant || ewCapWant);
-  const onScreen = (x,y,z,H) => {      // null = not on screen; else pixels per world unit there
-    if(!VPM || capturing) return 0;
-    const v = xf(VPM.view, x,y,z), depth = -v[2];
-    if(depth <= .1) return depth < -H*2 ? null : 0;
-    const sx = (VPM.proj[0]*v[0]/depth*.5+.5)*VPM.w, sy = (-VPM.proj[5]*v[1]/depth*.5+.5)*VPM.h;
-    const ppu = VPM.proj[5]*VPM.h*.5/depth, m = 40 + H*ppu*1.3;
-    return (sx < -m || sx > VPM.w+m || sy < -m || sy > VPM.h+m) ? null : ppu;
-  };
   const hb0 = drawnBoxes + nbox;         // the count so far, flushed or not
   for(const e of enemies){
     if(e.dead) continue;                 // on the corpse list now, drawn below
@@ -15079,7 +15099,8 @@ window.__g = {
   simSteps:(raw)=>simSteps(raw),
   // where a frame's boxes went: the horde, the corpses, and everything else (terrain, player, fx, gems)
   boxCensus:()=>({ drawn:drawnBoxes, horde:hordeBoxes, corpses:corpseBoxes, rest:drawnBoxes - hordeBoxes - corpseBoxes,
-                   enemies:enemies.length, corpseN:corpses.length, culled:culledN }),
+                   enemies:enemies.length, corpseN:corpses.length, culled:culledN,
+                   zones:zones.length, zonesCulled, zoneBoxes, props:PROPS.length, propsNear, propsCulled }),
   vy:()=>+P.vy.toFixed(3),
   // what is in the air RIGHT NOW (fxCounts() is the run's running totals)
   fxLive:()=>({ bolts:bolts.length, rings:rings.length, shells:mortars.length, arcs:arcs.length, swings:swings.length, pops:pops.length, sparks:cpops.length,
