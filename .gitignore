@@ -54,3 +54,4 @@ bonkhorde/index.l5-mine.html
 bonkhorde/test.pre-*.js
 bonkhorde/mutate.pre-*.js
 bonkhorde/film/*.pre-*.js
+build-artifact.pre-*.js

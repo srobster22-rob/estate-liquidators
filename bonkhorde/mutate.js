@@ -1098,6 +1098,27 @@ const MUTANTS = [
     from:"{ t:270,  rate:7.2,", to:"{ t:270,  rate:4.0," },
   { id:"the-late-crowd-is-thin-again", must:"96",
     from:"{ t:780,  rate:17.3,", to:"{ t:780,  rate:9.6," },
+  // L11. The two ways the population cap can be made not to hold: remove the
+  // test, or set the share so wide it never binds. Both put the field back to a
+  // third wardens, which is where the round started.
+  // L12. Section 97 runs three gates it did not run before - L17's rout, L18's
+  // dig-in, L19's stoop - and a gate that is merely CALLED is not yet a check.
+  // One mutation each, aimed at a clause the gate words itself, so the three
+  // new assertions are proven load-bearing rather than assumed to be.
+  { id:"the-rout-runs-straight-away", must:"97",
+    why:"a broken pack flees along the player's own bearing and leaves the field",
+    from:"let ROUT_LAT     = 1;", to:"let ROUT_LAT     = 0;" },
+  { id:"the-dig-in-has-no-minimum-range", must:"97",
+    why:"a body already arriving goes to ground instead of fighting",
+    from:"const DIGIN_MIN = 12;", to:"const DIGIN_MIN = 0;" },
+  { id:"the-stoop-comes-down-out-of-reach", must:"97",
+    why:"the climb re-enters outside DIVE_R, which is the no-op it exists to fix",
+    from:"const STOOP_AT  = [6.0, 8.6];", to:"const STOOP_AT  = [16.0, 18.6];" },
+  { id:"the-ward-has-no-population-cap", must:"98",
+    from:"const wardRoom = wardensNow < Math.max(WARD_FLOOR",
+    to:  "const wardRoom = -1 < Math.max(WARD_FLOOR" },
+  { id:"the-ward-cap-never-binds", must:"98",
+    from:"const WARD_SHARE = .06;", to:"const WARD_SHARE = .90;" },
   { id:"the-rim-is-spaced-in-world-units", must:"95",
     why:"a ring sixty metres off draws twelve embers nine pixels apart again, " +
         "each of them a pixel and a half wide",

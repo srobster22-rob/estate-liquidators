@@ -8858,7 +8858,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         let f = g.hordeFlow();
         g.pause(true); await frame(); let c = g.boxCensus(); g.pause(false);
         const row = { seed, early: { alive: f.alive, drawn: c.enemies - c.culled,
-                                     boxes: c.drawn, horde: +(c.horde / c.drawn).toFixed(3) } };
+                                     boxes: c.drawn, hordeBoxes: c.horde,
+                                     horde: +(c.horde / c.drawn).toFixed(3) } };
         // the late leg on ONE seed only: it is another nine minutes of world
         // per seed, and one is enough to see a late phase go missing
         if (seed === seeds[0]) {
@@ -8866,6 +8867,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
           f = g.hordeFlow();
           g.pause(true); await frame(); c = g.boxCensus(); g.pause(false);
           row.late = { alive: f.alive, drawn: c.enemies - c.culled, boxes: c.drawn,
+                       hordeBoxes: c.horde,
                        asked: f.asked, killed: f.killed, culled: f.culled, capped: f.capped };
         }
         out.push(row);
@@ -8918,13 +8920,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // The absolute figures stay as a backstop against an unbounded population:
     // R302 measured a pre-cull crowded frame at 9,300 boxes for 300 bodies, and
     // that is the territory the culls exist to keep the frame out of.
-    const perBody = f => f.drawn ? f.boxes / f.drawn : 0;
+    // ...and it is the HORDE's boxes that are divided, not the frame's, which is
+    // what the first version of this got wrong (L11). A frame carries a fixed
+    // cost that has nothing to do with the crowd - terrain chunks, the player,
+    // the gems, the monuments - so dividing the WHOLE frame by the drawn bodies
+    // measures "how few bodies are there" as much as "what does a body cost".
+    // L11 capped the warden population, the crowd thinned, and the seed-3 mark
+    // read 59.2 against a bound of 60 with nothing about a body having changed.
+    // c.horde is the census's own count for the horde pass and is the number
+    // this bound was always about.
+    const perBody = f => f.drawn ? f.hordeBoxes / f.drawn : 0;
     const cost = [...early, late];
-    ok("and the frame still affords it - per body, and in total",
-       cost.every(f => perBody(f) < 60) && early.every(e => e.boxes < 4000) && late.boxes < 9000,
-       cost.map(f => `${f.boxes}/${f.drawn} = ${perBody(f).toFixed(1)}`).join(", ") +
-       " boxes per drawn body" +
-       "  (L9 alone 41.4, L15-L16 alone 36.1, both 38.2)");
+    ok("and the frame still affords it - per body of horde, and in total",
+       cost.every(f => perBody(f) < 40) && early.every(e => e.boxes < 4000) && late.boxes < 9000,
+       cost.map(f => `${f.hordeBoxes}/${f.drawn} = ${perBody(f).toFixed(1)}`).join(", ") +
+       " horde boxes per drawn body, frames " + cost.map(f => f.boxes).join("/"));
   }
 
   // ==========================================================================
@@ -8959,6 +8969,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // the HUD gate wants every lane up at once, and a rendered frame under it
       g.hudShowAll(); await frame();
       out.hud = g.hudOverlaps();
+      // L17 and L18 arrived by the same route with two more of them, and they
+      // go here rather than in the block above because routGate ends by
+      // clearing the field and the HUD gate wants bodies on it.
+      out.rout  = g.routGate();
+      out.digin = g.diginGate();
+      out.stoop = g.stoopGate();
       out.reset = g.burrowResetGate();
       return out;
     });
@@ -8977,6 +8993,140 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        gates.hud.n === 0,
        gates.hud.n ? gates.hud.pairs.map(p => `${p.a} x ${p.b} ${p.w}x${p.h}px (${p.kinds})`).join(" | ")
                    : `${gates.hud.lanes} lanes, head ${gates.hud.headBottom}, toast floor ${gates.hud.toastFloor}`);
+    // L17 and L18. The merge that brought them in re-opened the exact gap this
+    // section was written to close: two more gates the page carries and nothing
+    // here called. routGate is the six-clause statement of THE STAMPEDE - what
+    // a body feels, how wide it runs, that it cannot bite while it runs, and
+    // that a wind-up already in the air is cancelled rather than frozen.
+    // diginGate is THE DIG-IN's ten, including the one that found a real
+    // defect: a burrowed DILOPHO was armed with a wind-up that only the melee
+    // branch counts down, so it sat frozen forever.
+    ok("L17's rout gate: what it feels, how wide it runs, and that it cannot bite while it does",
+       gates.rout.ok, say(gates.rout));
+    ok("L18's dig-in gate: who goes down, when, and that nothing comes up holding a frozen bite",
+       gates.digin.ok, say(gates.digin) + `  (surfaced at ${gates.digin.surfacedAt} m)`);
+    ok("L19's stoop gate: it climbs, it comes back inside DIVE_R, and the arrival delivers the dive",
+       gates.stoop.ok, say(gates.stoop) +
+       `  (peak ${gates.stoop.peak} m, re-entered at ${gates.stoop.cameInAt} m, aimed ${gates.stoop.aimedAt})`);
+  }
+
+  // ==========================================================================
+  console.log("\n=== 98. THE WARD IS A SQUAD, NOT A WALL ===");
+  {
+    // WARD_N caps what ONE warden holds. Nothing capped how many wardens the
+    // FIELD carries, and that is the number that decided the late game.
+    //
+    // THE FIELD IS ARRIVAL RATE TIMES LIFETIME. Measured over four minutes of
+    // world from 10:00 on two seeds, ~3,500 distinct bodies tracked by the
+    // serial number L14 added: a RAPTORLING lives a median 5.5 s and a warden
+    // 86.7 s, so a body that is 4% of ARRIVALS was 28-42% of the standing
+    // crowd, and 50-70% of everything on the field was warded. The ward rides
+    // DILOPHO, which holds at 13 m (17 for a warden) and is the one species
+    // built never to enter the kill radius - so the thing that survives is the
+    // thing that never fights, and it multiplies.
+    //
+    // That takes the ward's own point with it. L15's note: "the answer is to
+    // find it and kill it, which is a different verb from keep firing at the
+    // nearest body". There is no `it` to find when a third of the field is
+    // wardens. The cap holds their share of the FIELD near their share of
+    // ARRIVALS, which is what the roll already declares.
+    //
+    // Two marks, because before/after separate most at 10:00 (42.3% -> 9.1%)
+    // and the late game is what the round is about. Bars are set well clear of
+    // both arms: 12% sits 2.4x over the worst measurement after (9.1%) and
+    // 2.4x under the best before (28.5%).
+    const ward = await page.evaluate(async (seed) => {
+      const g = window.__g, rows = [];
+      g.wipeSave(); g.dev(true); g.pin(seed); g.pinRun(seed);
+      g.start("intern"); g.god(); g.bot(true); g.drainPicks(true);
+      let at = 0;
+      for(const m of [600, 900]){
+        g.step((m - at)*60, 1/60); at = m;
+        const w = g.wardens(), n = g.state().enemies;
+        rows.push({ t:m, alive:n, live:w.live, room:w.room, warded:w.warded,
+                    killed:w.killed, cap:w.cap,
+                    field:+(n ? w.live/n : 0).toFixed(3),
+                    dShare:+(n ? w.warded/n : 0).toFixed(3),
+                    // the biggest squad any one warden is actually holding
+                    biggest: w.each.reduce((a,e)=>Math.max(a, e.holds.length), 0) });
+      }
+      return rows;
+    }, 9);
+    const say = ward.map(r => `${r.t/60|0}:00 ${r.live}/${r.alive} wardens = ` +
+      `${(r.field*100).toFixed(1)}% (room ${r.room}), ${r.warded} warded = ${(r.dShare*100).toFixed(0)}%`).join(" | ");
+    ok("the warden population is a minority of the field, not a third of it",
+       ward.every(r => r.field < .12), say + "  (uncapped: 42.3% at 10:00, 28.5% at 19:00)");
+    // ...and the refusal is tested WHERE IT HAPPENS, which took three tries and
+    // is the round's own lesson written down. `live <= room` is an invariant
+    // this design does not hold: the cap gates a NEW warden, it does not delete
+    // a standing one, so a field that thins after they spawned leaves live
+    // above room until they die (measured, 8 against a room of 5.3), and
+    // deleting a live body because the crowd moved on would be a worse game.
+    // Sampling "the count never grows while full" every two seconds does not
+    // hold either - `room` RISES with the field between two samples, so a
+    // warden added with room to spare looks like one added at the ceiling
+    // (1 of 450 samples). The gate is a spawn-time decision, so it is driven
+    // at spawn time: a field held still, the ceiling filled, and two hundred
+    // spitters put through the real spawnEnemy path.
+    const gate = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+      g.start("intern"); g.god(); g.drainPicks(true); g.freezeEvents(true);
+      g.freezeSpawns(true);                  // sweeps the field and stops the director
+      g.skipTo(700);                         // past WARD_FROM, so the roll is live
+      // A. the ceiling filled: a small field, wardens up to its share
+      g.spawn("shambler", 40);
+      for(let i=0;i<4;i++) g.spawnWarden(g.state().x + 20 + i, g.state().z);
+      g.step(1, 1/60);                       // one wardPass, so wardensNow is current
+      const before = g.wardens();
+      g.spawn("spitter", 200);               // through the real path, roll and all
+      g.step(1, 1/60);
+      const shut = g.wardens();
+      // B. and the same two hundred against an empty ceiling
+      g.clearEnemies(); g.step(1, 1/60);
+      g.spawn("spitter", 200);
+      g.step(1, 1/60);
+      const open = g.wardens();
+      return { beforeN:before.live, beforeRoom:before.room,
+               shutN:shut.live, shutRoom:shut.room,
+               openN:open.live, openRoom:open.room };
+    });
+    // Two hundred spitters cannot outrun the ceiling. Note the ceiling MOVES as
+    // they arrive - every body is one more body of field, and the share is a
+    // share of the field - so the claim is not "none are added", it is that the
+    // population tracks its own room. That is what the live count buys, and it
+    // is what caught the defect: before the count was made live, these two
+    // bursts produced 69 against a room of 14.6 and 67 against a room of 12.
+    ok("...and it is the CAP that holds them: a burst of two hundred cannot outrun the ceiling",
+       gate.shutN <= Math.ceil(gate.shutRoom) && gate.openN <= Math.ceil(gate.openRoom),
+       `${gate.beforeN} standing, room ${gate.beforeRoom}; after 200 spitters ${gate.shutN} of ${gate.shutRoom}; ` +
+       `on an empty field ${gate.openN} of ${gate.openRoom}  (stale count: 69 and 67)`);
+    ok("...and it is a CAP and not an off switch: with room, the roll still fires",
+       gate.openN > 1,
+       `${gate.openN} wardens from 200 spitters with room for ${gate.openRoom}`);
+    ok("so the warded share is bounded by the squads that exist",
+       ward.every(r => r.warded <= r.live * r.cap), say + `  (cap ${ward[0].cap} a warden)`);
+    // Measured, not expected - the third bar in this section I had to go back and
+    // set from the run rather than from the number I assumed: 1 killed by 10:00
+    // and 10 by 15:00. Capped, wardens are RARER and each lasts longer, so they
+    // die at about one every ninety seconds in the late game, which is the
+    // cadence a targeting decision wants. The claim is that they keep being
+    // found, so what is asserted is that the count keeps climbing.
+    ok("but they still exist, and they keep being found and killed",
+       ward.every(r => r.live > 0) &&
+       ward[ward.length-1].killed >= 5 &&
+       ward[ward.length-1].killed > ward[0].killed,
+       ward.map(r => `${r.t/60|0}:00 ${r.live} standing, ${r.killed} killed`).join(", "));
+    ok("and the cap does not touch the squad a single warden holds",
+       ward.every(r => r.biggest <= r.cap) && ward.some(r => r.biggest > 1),
+       ward.map(r => `${r.t/60|0}:00 biggest squad ${r.biggest}`).join(", ") + ` of ${ward[0].cap}`);
+    // The crowd is the thing the last round bought and this one must not spend:
+    // capping the wardens removes the bodies they were keeping alive, so the
+    // standing count has to be checked, not assumed. Measured 164-169 at 15:00
+    // against L8's ~95 before any of this.
+    ok("and the crowd is still a crowd - this is not a quiet nerf to the horde",
+       ward[ward.length-1].alive >= 110,
+       `${ward[ward.length-1].alive} alive at 15:00 (L8 held ~95, uncapped 212-239)`);
   }
 
   console.log("\n" + "=".repeat(58));

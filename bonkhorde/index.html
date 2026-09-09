@@ -2930,6 +2930,27 @@ const WARD_CUT   = .30;      // warded bodies take this share of your damage
 const WARD_HP    = 14.0;     // it is meant to be found and killed, not stumbled into
 const WARD_SZ    = 1.22;
 const WARD_HOLD  = 17;       // metres it wants between itself and you (DILOPHO wants 13)
+// HOW MANY OF THEM THERE MAY BE (L11). WARD_N caps what ONE warden holds, and
+// nothing capped how many wardens the field carries - which is a different
+// question, and the measurement says it is the one that mattered. THE FIELD IS
+// ARRIVAL RATE TIMES LIFETIME, and the warden rides the one species built never
+// to enter the kill radius: over four minutes of world from 10:00, two seeds,
+// ~3,500 bodies, a RAPTORLING lives a median 5.5 s and a warden 86.7 s. So a
+// body that is 4% of ARRIVALS becomes a quarter of the standing crowd, and at
+// 19:00 288 of 419 bodies were warded. That is not the squad this round's own
+// note describes - "the crowd around a warden reads as some-of-them-are-tough
+// rather than as a wall" - and it takes the ward's whole point with it: the
+// answer to a warden is to FIND IT AND KILL IT, and there is no `it` to find
+// when there are a hundred of them.
+// Derived, not chosen: the warden's share of ARRIVALS is what the roll already
+// says it is - WARD_CHANCE of DILOPHO spawns, which at the late table's weights
+// (spitter 6 of 38 draws, and the skitter pack turning 12 of 38 draws into six
+// bodies each) is 2.1% of bodies, measured at 3.6%. This holds the share of the
+// FIELD to roughly three times that, so a warden is still a common enough sight
+// to learn, and the floor keeps them from vanishing on a thin early field.
+const WARD_SHARE = .06;      // most of the live field that may be wardens
+const WARD_FLOOR = 3;        // ...but never fewer than this, or they never appear
+let wardensNow = 0;          // live count, refreshed by wardPass each frame
 const WARD_COL   = [.86,.96,1];   // the tether and the crest: near-white, like the XP chip
 let wardedNow = 0, wardKills = 0;  // live census, for the QA hook and the bench
 
@@ -2993,6 +3014,204 @@ let BURROW_SHARE = .22;      // share of eligible spawns that arrive underground
 const BURROW_AT    = [2.5, 4.5];// metres out it surfaces - where a bite is live
 const BURROW_RISE  = .9;     // seconds of mound before it is out: the tell, and the wind-up
 let killR = 0, killRN = 0, burrowN = 0;   // measured kill radius, and the run's tally
+
+// THE STAMPEDE (L17). L16 changed where a FIFTH of the horde arrives. The other
+// four fifths were re-measured on the shipped build before this round picked
+// anything: with the burrow switched off, 48,909 body-frames over minutes 6-16
+// contain a behaviour other than walking 0.613% of the time, at a mean distance
+// of 41.7 metres. Every verb this game owns triggers at contact (the bite), at
+// DIVE_R 9.5 m (the dive) or at 22 m (the spit). The horde's entire vocabulary
+// lives inside a radius the horde no longer reaches, so the walkers have no
+// available behaviour at the range they actually exist at, and no amount of
+// tuning the existing three changes that.
+//
+// SO THE TRIGGER IS THE ONE THING THAT RELIABLY HAPPENS AT 25-45 METRES: DYING.
+// When a body's pack-mates are deleted around it, it BREAKS. It stops walking
+// at you, turns, and runs; then it re-forms and comes back on a new bearing.
+// THE GAME ALREADY WROTE THIS AND NEVER CODED IT. From the bestiary header,
+// older than this round: "the bestiary is WILDLIFE, not an army - it is not
+// attacking the world, it is fleeing across it, and you are in the way." All
+// six types then walk straight at you. GILDWING is the only exception in
+// twenty minutes, and its own comment says why that matters: "Everything else
+// in this game walks at you. This one walks away, which makes it the only
+// thing in twenty minutes that asks whether you can bring your damage
+// somewhere rather than wait for it to arrive."
+//
+// IT CANNOT ADD DIFFICULTY, AND THAT IS STRUCTURAL RATHER THAN TUNED. A routing
+// body cannot bite: the rout clears the wind-up and the contact branch is
+// skipped outright while it runs. The mechanic can only ever REMOVE damage from
+// the player's ledger. That was a rule set before building, because L16 raised
+// contact damage 22% and the owner has not yet ruled on it, and this round is
+// not allowed to stack a second difficulty change on an unanswered one.
+//
+// AND IT ARMS OFF THE SAME MEASURED QUANTITY THE BURROW ARMS OFF - killR, the
+// running distance at which bodies actually die - not off a clock. L15's own
+// numbers say the first three minutes are fought at 4-8 m; at that kill radius
+// this never fires, so the early game is untouched by construction rather than
+// by a threshold somebody guessed. Reusing the gate rather than inventing a
+// second one is the point: there is one definition of "the horde has stopped
+// arriving" in this file and both mechanics read it.
+const ROUT_R     = 9.0;   // metres: how far a death is felt by its pack-mates
+const ROUT_TRIG  = 3;     // deaths felt before a body breaks
+const ROUT_TIME  = [1.5, 2.4]; // seconds it runs before it re-forms
+const ROUT_SPD   = 1.55;  // panic is faster than a walk - it is the tell at distance
+const ROUT_FADE  = 2.2;   // seconds of quiet that clears accumulated alarm
+// A routing body swings WIDE rather than straight away: a herd that ran along
+// the player's own bearing would just leave, get culled at 80 m, and read as
+// the horde giving up. A lateral bearing keeps it on the field, and the
+// re-form then brings it back from a side it was not on - which is the part a
+// player standing still mowing one firing line actually sees.
+let ROUT_LAT     = 1;     // 0 = straight away from you, 1 = pure sideways
+// `let`, reachable from the QA hook, for the same reason BURROW_SHARE is: the
+// difficulty effect of a round is an opinion unless a sweep can measure the
+// game with the mechanic at zero and at its shipped value in one sitting.
+// routShare(0) is the A/B control.
+let ROUT_SHARE = 1;       // share of eligible bodies that can break at all
+let routN = 0;            // the run's tally, for the census and the bench
+// A UNIFORM [0,1) PER BODY, AND NOT R(). rndSeed(e) is the file's existing
+// per-body jitter but it is rnd(.88, 1.12) - a multiplier, not a roll - so
+// comparing it to a share would have made ROUT_SHARE 1 mean "about half".
+// This hashes the body's own id instead: stable for the life of the body,
+// uniform, and it consumes nothing from the seeded stream, so no bench in this
+// file is desynchronised by a body deciding whether it can panic.
+function routRoll(e){ return e._rr === undefined
+  ? (e._rr = ((Math.imul(e.eid|0, 2654435761) >>> 0) / 4294967296)) : e._rr; }
+
+// THE DIG-IN (L18). L17 ended by saying, in its own words, that if the owner's
+// read of L15 is "the CODED behaviours must fire", that is still open - the
+// rout moved the pooled share but the three verbs that existed before it did
+// not budge. This round measured those three SEPARATELY, per verb, on the
+// shipped build, over 345,239 body-frames pooled from six runs across four
+// characters, minutes 6-16:
+//
+//     verb   trigger radius   share of body-frames
+//     spit        22.0 m            0.801%
+//     dive         9.5 m            0.001%
+//     bite       contact            0.005%   (16 frames of 345,239)
+//
+// against a MEASURED MEDIAN DEATH DISTANCE OF 20.1 m (p10 11.4, p90 32.8).
+// That table is the whole defect in three lines, and it is not a coincidence:
+// THE ONLY CODED VERB THAT FIRES IS THE ONE WHOSE TRIGGER RADIUS SITS OUTSIDE
+// THE RADIUS AT WHICH BODIES DIE. The spit reaches 22 m, bodies die at 20 m,
+// and the spit is the one verb with a healthy rate. The dive needs 9.5 m and
+// the bite needs contact; both sit deep inside the kill radius, and both are
+// dead letters. PTERLING - the diver - is not even missing from the late mix:
+// it contributes 34,002 body-frames and dives about four times in sixteen
+// minutes. The behaviours are coded, correct, and unreachable.
+//
+// SO THE JOB IS THE LAST TWENTY METRES, and nothing else. Three routes were
+// weighed before this one was picked:
+//   - COVER AND FLANKING (the burrow's idea generalised). Loses on cost and on
+//     ground truth: there is no cover system and no pathfinding in this file,
+//     and the only interior geometry is ten monuments on a 532 m map, so
+//     "arrive behind something" has almost nothing to arrive behind. It is a
+//     navigation subsystem to buy a verb.
+//   - A SHORTER SPAWN RING FOR WALKERS ONLY. Loses because it is L16 with
+//     worse ergonomics: it adds no new arrival route, it is the same fifth of
+//     the horde arriving nearer with no tell of its own, and it raises contact
+//     damage the same way L16 did - and L16's difficulty question is still the
+//     owner's unanswered call.
+//   - MORE HEALTH. Already falsified by L16 with numbers: 685x the health it
+//     has buys an arrival, and nothing less does.
+//
+// WHAT THIS IS: a walker's approach becomes INTERRUPTIBLE BUT RESUMABLE. A
+// body that is being cut down out at range does not simply cease - it goes to
+// ground. It drops out of the world where it stood, travels unseen, and comes
+// up in its own behaviour band with the ordinary bite wind-up already armed.
+// The walk is interrupted by your fire and RESUMED underground, which is the
+// one thing that lets a walker that started at 30 m be somewhere other than
+// dead at 20 m.
+//
+// IT REUSES L16 WHOLE rather than inventing a second arrival. The surfacing,
+// the untargetable guard in hurt(), the mound, the 0.9 s tell and the armed
+// wind-up are all THE BURROW's, applied to a body that already exists instead
+// of to a new spawn - so there is one definition of "coming up out of the
+// ground" in this file and both mechanics read it. It arms off killR, the same
+// measured quantity the burrow and the rout arm off, so it is off by
+// construction in the early game where bodies are still arriving on foot.
+//
+// AND IT IS SIZED NOT TO ADD DIFFICULTY, which was a rule set before building
+// because L16 raised contact damage 22% and L17 correctly held it flat. Only a
+// BADLY HURT body digs - below DIGIN_HP of its health - so what comes up at
+// your feet is a nearly dead animal that gets one telegraphed bite attempt and
+// then dies to the next thing that touches it. It is the horde's last act, not
+// a reinforcement. Once per body, share-gated, and DIGIN_SHARE(0) is the A/B
+// control for exactly the reason BURROW_SHARE and ROUT_SHARE are.
+// .15, and DELIBERATELY SMALLER THAN THE BURROW'S .22, because of what the
+// difficulty measurement did. Three arms of six runs each - share 0, .15 and
+// .5 - said contact damage per minute went 15.03, 18.27, 24.66, which reads
+// like a clean dose-response. It is not one. A fourth arm at share .08 - LESS
+// of the mechanic than the .5 arm - died in all six runs and took 47.07 contact
+// damage a minute, which is structurally impossible if this mechanic were the
+// thing driving those numbers. The bot's run-to-run outcome variance is simply
+// larger than the effect, so NONE of the three tidy numbers above is
+// trustworthy and this round does not claim lethality is flat. What can be
+// stated as a bound instead, because it is a count rather than an outcome: at
+// this share the horde goes to ground about EIGHT TIMES A MINUTE (548 dig-ins
+// over 66 minutes of run), each arrival is worth AT MOST ONE bite, and a bite
+// can still be stepped out of. That ceiling is the honest difficulty statement.
+let DIGIN_SHARE = .15;     // share of eligible bodies that can go to ground at all
+const DIGIN_HP  = .35;     // it digs only below this share of its own health
+const DIGIN_MIN = 12;      // metres: nearer than this it is already arriving, leave it
+const DIGIN_DOWN= .45;     // seconds it spends going down WHERE IT STOOD, before it moves
+let diginN = 0;            // the run's tally, for the census and the bench
+// A SECOND, INDEPENDENT ROLL. routRoll's hash reused verbatim would make "can
+// panic" and "can go to ground" the same body every time, so the two mechanics
+// would be measuring each other. A different multiplier decorrelates them and
+// costs nothing, and it is stable per body for the same reason routRoll is.
+// The constant is large and odd for the same reason routRoll's is: a SMALL
+// multiplier leaves the low ids clustered near zero after the shift, which
+// would have made DIGIN_SHARE .5 mean "every body in the first minute".
+function digRoll(e){ return e._dr === undefined
+  ? (e._dr = ((Math.imul(e.eid|0, 2246822519) >>> 0) / 4294967296)) : e._dr; }
+
+// THE STOOP (L19). The dig-in's air half, and it exists for a defect L18
+// measured rather than for a design idea. Per verb, on the shipped build:
+//     the spit   triggers at 22 m       0.801% of body-frames
+//     the dive   triggers at 9.5 m      0.001%
+//     the bite   triggers at contact    0.005%
+// against a median death distance of 20 m. The only verb that fires is the one
+// whose trigger sits OUTSIDE the radius your fire kills at. L18 fixed the bite
+// by DELIVERING a walker to contact range; it could not fix the dive, because
+// its route is a hole in the ground and a PTERLING coming up out of the ground
+// is not the same animal. So the flier gets the same idea in its own medium:
+// being cut down, it does the one thing a bird can do that a lizard cannot -
+// IT GOES UP. It climbs out of your fire where it stood (untargetable for
+// STOOP_UP, wings beating, which is the tell), crosses unseen at height, and
+// comes back down inside DIVE_R with its dive rest cleared, so the very next
+// thing it does is the wind-up you already know. Nothing about the dive is
+// written twice: DIVE_TELL, DIVE_TIME, DIVE_SPD and the lead are untouched, and
+// the arrival is only a way of standing a flier where its own verb is legal.
+//
+// WHY NOT THE TWO OBVIOUS ALTERNATIVES:
+// - MOVE DIVE_R OUT TO 22 m, where the spit lives and bodies are still alive.
+//   It is geometrically impossible, not merely undesirable: a dive lasts
+//   DIVE_TIME .45 s at DIVE_SPD 4x a PTERLING's 4.3 m/s, which is 7.7 metres of
+//   travel. A trigger at 22 m would wind up, commit, and stop dead two thirds of
+//   the way to you, every time. Stretching DIVE_TIME to cover it instead makes
+//   the crossing long enough that a turn no longer beats it, which is the one
+//   property the dive was tuned for and the reason it is fair.
+// - EXEMPT FLIERS FROM DAMAGE AT RANGE. It buys the verb by making the animal
+//   unkillable on approach, and this project has already learned once (L17's
+//   spawn-arc note) that a horde you cannot shoot on the way in reads as armour
+//   rather than as wildlife. It also puts an unmeasurable amount of survivability
+//   into the game, which is the owner's open question and not mine to answer.
+// SIZED THE SAME WAY THE DIG-IN WAS, and for the same reason: only a body under
+// STOOP_HP of its health climbs, once ever, share-gated, armed off the measured
+// killR so it cannot fire in an early game. What comes down is a nearly dead
+// bird that gets ONE telegraphed dive, and a turn still beats that dive.
+let STOOP_SHARE = .12;     // share of eligible fliers that can climb out at all
+const STOOP_HP  = .35;     // it climbs only below this share of its own health
+const STOOP_MIN = 14;      // metres: inside this it can already reach DIVE_R alive
+const STOOP_UP  = .50;     // seconds spent climbing, where it stood, before it moves
+const STOOP_H   = 9;       // metres of altitude it gains going up and gives back coming down
+const STOOP_AT  = [6.0, 8.6];  // where it re-enters, INSIDE DIVE_R 9.5 by construction
+let stoopN = 0;            // the run's tally, for the census and the bench
+// A THIRD independent roll, for the reason digRoll is a second one: sharing a
+// hash would make "can panic", "can go to ground" and "can climb out" the same
+// body every time, and the three mechanics would be measuring each other.
+function stoopRoll(e){ return e._sr === undefined
+  ? (e._sr = ((Math.imul(e.eid|0, 3266489917) >>> 0) / 4294967296)) : e._sr; }
 
 // DUPLICATOR benched at +52% dps on a BOLT kit and -9% on one without: the best
 // passive in the game or a dead pick, decided by which weapons you happened to
@@ -8727,7 +8946,7 @@ function startRun(id){
   // one's radius and burrows from second zero - which is exactly the early game
   // this mechanic is built not to touch. Caught by the round's own A/B bench,
   // where the burrow tally carried over between runs.
-  killR = 0; killRN = 0; burrowN = 0;
+  killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0;
   // THE OPENING. The director spawns at 1.2 a second on an off-screen ring and
   // the first thing to arrive walks at 2.5 m/s, so the first ten seconds of
   // every run were one animal alone on an empty lawn - which is the worst
@@ -9138,7 +9357,9 @@ function dmgOut(base){
   return { d: d, crit };
 }
 function hurt(e, amount, kx, kz, crit){
-  if(e.rise > 0) return;             // still coming out of the ground
+  // still coming out of, or going into, the ground - or climbing out of your
+  // fire, which is the air's version of the same beat (L19)
+  if(e.rise > 0 || e.dig > 0 || e.stoop > 0) return;
   // A phase break is not a damage window. Bursting through it would delete the
   // one moment of the fight that is purely positional, so the shell is shut.
   if(e.ab && e.ab.phase === "break") return;
@@ -9196,6 +9417,41 @@ function hurt(e, amount, kx, kz, crit){
   if(nums.length < 30 || crit)
     nums.push({ x:e.x+rnd(-.5,.5), y:e.y+e.def.h*.9, z:e.z+rnd(-.5,.5),
                 v:Math.round(amount), life:.62, crit:!!crit, vy:rnd(2.4,3.6) });
+  // THE DIG-IN (L18). Here, at the funnel, and on the frame a body SURVIVED a
+  // hit - the trigger has to be "your fire is killing this thing out at range",
+  // and this is the only line in the file that knows a hit landed and the body
+  // is still up. Gated on the same measured killR the burrow and the rout are
+  // gated on, so it cannot fire in an early game where the horde still walks in.
+  if(!e.dead && e.hp > 0 && P && !e.boss && !e.burrow && !e.dig && !e.dug
+     && !e.def.flier && !e.def.flee && !e.denRef
+     && killRN > 20 && killR > BURROW_KILLR
+     && e.hp <= e.maxhp * DIGIN_HP
+     && Math.hypot(e.x-P.x, e.z-P.z) > DIGIN_MIN
+     && digRoll(e) < DIGIN_SHARE){
+    e.dug = 1;                    // once per body, ever
+    e.dig = DIGIN_DOWN;           // going down where it stood
+    e.rout = 0; e.taunt = 0;      // it stops panicking to do this
+    e.wu = 0; e.wd = 0;
+  }
+  // THE STOOP (L19). Same funnel, same frame - a body that SURVIVED a hit while
+  // your fire was killing its line out at range - and the same gates, read
+  // against the air instead of the ground. A diver only: the arrival exists to
+  // deliver the dive, so handing it to something with no dive would be an
+  // arrival with nothing on the end of it. GILDWING flees and is excluded here
+  // for the reason it is excluded from the burrow: it would climb out only to
+  // run away, which is a retreat dressed as a mechanic.
+  if(!e.dead && e.hp > 0 && P && !e.boss && !e.burrow && !e.dig && !e.stoop && !e.stooped
+     && e.def.flier && e.def.dive && !e.def.flee && !e.denRef
+     && killRN > 20 && killR > BURROW_KILLR
+     && e.hp <= e.maxhp * STOOP_HP
+     && Math.hypot(e.x-P.x, e.z-P.z) > STOOP_MIN
+     && stoopRoll(e) < STOOP_SHARE){
+    e.stooped = 1;                // once per body, ever
+    e.stoop = STOOP_UP;           // going up where it stood
+    e.stoopY = 0;
+    e.dvT = 0; e.dvW = 0; e.dvS = 0;   // whatever it was part-way through, it is climbing now
+    e.rout = 0; e.taunt = 0;
+  }
   if(e.hp <= 0) killEnemy(e);
 }
 function killEnemy(e){
@@ -9214,6 +9470,17 @@ function killEnemy(e){
     killR = killRN ? killR + (dk - killR)*.02 : dk;    // EMA, ~50 bodies of memory
     killRN++;
   }
+  // THE STAMPEDE (L17): a death is FELT by the pack around it. This is the only
+  // event in the late run that reliably happens where the horde actually is, so
+  // it is the trigger. It rides the spatial grid that already exists and only
+  // ever touches bodies within ROUT_R, so it costs one near() per kill and
+  // nothing per frame. Alarm accumulates and DECAYS (see the AI), so it is
+  // three deaths close together that breaks a body, not three deaths a minute
+  // apart - a pack being cut down, rather than attrition.
+  if(P && !e.boss) near(e.x, e.z, ROUT_R, (o)=>{
+    if(o === e || o.dead || o.boss || o.burrow || o.def.flee) return;
+    o.alarm = (o.alarm || 0) + 1; o.alarmT = ROUT_FADE;
+  });
   if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));
   if(hasRule("bloodthirst")) P.hp = Math.min(P.maxhp, P.hp + BLOOD_HEAL(e));
   fell(e);
@@ -10142,7 +10409,13 @@ function spawnEnemy(type, atX, atZ){
   const elite = type !== "collector" && T > ELITE_FROM && R() < eliteChance(T);
   // THE WARDEN rides DILOPHO and never a boss, a collector or an elite - an
   // elite warden would be two overlays on one body and neither would read.
-  const warden = type === "spitter" && !elite && T > WARD_FROM && R() < WARD_CHANCE;
+  // L11: ...and only while the field is not already carrying its share of them.
+  // Read off last frame's pass rather than counted here: wardPass walks every
+  // body once a frame anyway, and one frame of lag on a population cap is
+  // nothing next to an O(n) scan on every one of twenty-five spawns a second.
+  const wardRoom = wardensNow < Math.max(WARD_FLOOR, enemies.length * WARD_SHARE);
+  const warden = type === "spitter" && !elite && T > WARD_FROM && wardRoom
+              && R() < WARD_CHANCE;
   const em = elite ? ELITE : NORMAL;
   const wm = warden ? WARD_SZ : 1;
   const made = { x, z, y:groundY(x,z), def, type, elite, warden,
@@ -10158,8 +10431,20 @@ function spawnEnemy(type, atX, atZ){
     // is the `rise` guard hurt() has always had - it was never boss-only, it
     // was only ever normalised by a boss-only constant.
     burrow, rise: burrow ? BURROW_RISE : 0, riseMax: BURROW_RISE,
+    dig:0, dug:0,                               // THE DIG-IN (L18): going down, and whether it ever has
+    stoop:0, stooped:0,                         // THE STOOP (L19): climbing out, and whether it ever has
     dead:false, boss:false, eid:++EID };
   enemies.push(made); hordeFlow.spawned++;
+  // L11: counted the moment it is MADE, not next frame. wardPass refreshes
+  // wardensNow once a frame and enemies.length is live, so the cap's numerator
+  // lagged its own denominator - and a burst of spawns inside one frame grew
+  // the room while the count stood still. A real run only ever spawns about
+  // 0.4 bodies a frame, so the cap held in every A/B measured; the section-98
+  // gate put two hundred spitters through in one frame and got 69 wardens
+  // against a ceiling of 3. Correct by the pace of the director is not
+  // correct. wardPass still recounts every frame, so deaths and culls put it
+  // right and this can only ever be too cautious for one frame, never too lax.
+  if(warden) wardensNow++;
   return made;                                  // the hunt event needs a handle
 }
 const BOSS_AT = 15, BOSS_GROW = .05, BOSS_GROW_CAP = 3;
@@ -10742,10 +11027,11 @@ function updateHazards(dt){
 // wall. Nearest first, so the ward is the front rank - the bodies actually
 // reaching you - and not six stragglers behind it.
 function wardPass(){
-  wardedNow = 0;
+  wardedNow = 0; wardensNow = 0;
   for(const e of enemies) if(e.ward) e.ward = null;
   for(const w of enemies){
     if(!w.warden || w.dead) continue;
+    wardensNow++;
     const found = [];
     near(w.x, w.z, WARD_R, (o, od)=>{
       if(o === w || o.dead || o.boss || o.warden || o.ward) return;
@@ -10830,6 +11116,74 @@ function updateEnemies(dt){
       } else { e.dvW = 0; e.dvS = 0; }
     }
 
+    // THE DIG-IN (L18): it is going down where it stood. Untargetable (the
+    // guard in hurt() covers dig for the same reason it covers rise) and no AI,
+    // so the body neither walks nor bites while it is dropping out of the
+    // world. It goes down HERE, at the spot your fire found it, rather than
+    // vanishing and instantly re-appearing at your feet: without this beat the
+    // mechanic is a teleport, and a teleport is indistinguishable from the
+    // death it replaces. When it runs out the body is RELOCATED and handed to
+    // THE BURROW's own arrival - same surfacing, same 0.9 s mound, same armed
+    // wind-up - so nothing about "coming up out of the ground" is written twice.
+    if(e.dig > 0){
+      e.dig = Math.max(0, e.dig - dt);
+      if(e.dig <= 0){
+        const a = R()*TAU, r = rnd(BURROW_AT[0], BURROW_AT[1]);
+        [e.x, e.z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
+        e.y = groundY(e.x, e.z);
+        e.kx = e.kz = 0;                 // it does not arrive still sliding off the bat that hit it
+        e.burrow = true; e.rise = BURROW_RISE; e.riseMax = BURROW_RISE;
+        diginN++;
+      }
+      continue;                          // buried: no AI, no contact, no hits
+    }
+    // THE STOOP (L19), the dig-in's beat in the air. It climbs WHERE IT STOOD -
+    // not out of the world and instantly back, because a teleport is
+    // indistinguishable from the death it replaces, which is the thing L18
+    // learned building the ground half. Untargetable while it climbs (the guard
+    // in hurt() covers stoop for the same reason it covers dig) and no AI, so it
+    // neither closes nor attacks on the way up. When it tops out it re-enters
+    // INSIDE DIVE_R with its dive rest cleared, and the dive block below - the
+    // same wind-up, the same tell, the same lead - does the rest.
+    if(e.stoop > 0){
+      e.stoop = Math.max(0, e.stoop - dt);
+      const k = 1 - e.stoop/STOOP_UP;          // 0 at the ground, 1 at the top
+      // A CLIMBING BIRD BEATS HARDEST. walk() derives the gait from ground
+      // travel, and this body is not travelling on the ground, so the wings
+      // would hang still for half a second in mid-air - a dead bird, at the one
+      // moment the mechanic needs to read as effort. Driven here instead.
+      e.gt += dt * 9; e.amp = 1;
+      e.y = groundY(e.x, e.z) + STOOP_H * k*k*(3 - 2*k);   // eased, so it leans into it
+      if(e.stoop <= 0){
+        const a = R()*TAU, r = rnd(STOOP_AT[0], STOOP_AT[1]);
+        [e.x, e.z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
+        e.kx = e.kz = 0;                 // it does not arrive still sliding off the bat that hit it
+        e.hd = Math.atan2(P.x-e.x, P.z-e.z);   // it comes in facing you
+        // THE ARRIVAL DELIVERS THE DIVE, and this is the correction that made
+        // the round work rather than a flourish. The first build put the flier
+        // down at 7 m with its rest cleared and let the ordinary dive block
+        // wind up from there. Measured at share 1: 205 arrivals in ten minutes,
+        // 230 wind-ups armed - and TWO committed dives. NOTHING SURVIVES
+        // DIVE_TELL AT SEVEN METRES. That is the same defect one ring further
+        // in: the wind-up is a legal move the animal is not alive long enough to
+        // finish, exactly as the dive itself was at 9.5 m. So the climb IS the
+        // wind-up. It is the same trade THE BURROW makes - a burrower surfaces
+        // with its bite already armed because a body with 0.2 s to live cannot
+        // start one - and the telegraph is not lost, it is MOVED: half a second
+        // of a bird climbing nine metres out of your fire, in the open, is a
+        // longer and more visible tell than the 0.42 s rear-back it replaces.
+        // The dive itself is untouched and still fair on its own terms: it
+        // commits to a LED POINT (dvX/dvZ), not to you, so a turn beats it -
+        // which is the property the dive was tuned for and the only reason it
+        // is allowed to arrive already committed.
+        e.dvW = 0; e.dvS = 0; e.dvT = DIVE_TIME; e.dv = DIVE_REST;
+        const lead = DIVE_TIME * .55;
+        e.dvX = P.x + P.vx*lead; e.dvZ = P.z + P.vz*lead;
+        e.flash = Math.max(e.flash, .18); SFX.dive();
+        stoopN++;
+      }
+      continue;                          // aloft: no AI, no contact, no hits
+    }
     if(e.rise > 0){
       e.rise = Math.max(0, e.rise - dt);
       // A BOSS shakes the screen coming up. A grunt does NOT - late in a run
@@ -10843,11 +11197,78 @@ function updateEnemies(dt){
       // new: e.wu is the same wind-up every melee body uses, wuT the same
       // per-species timing, and the bite still only LANDS if you are in reach
       // when it runs out - step out and it snaps at air like any other.
-      if(e.burrow && e.rise <= 0 && !e.def.flee){
+      // NOT A RANGED BODY, and this was a real defect found by measuring L18's
+      // bite rate rather than by reading. The contact block that counts a
+      // wind-up DOWN is inside `if(!e.def.ranged)`, so arming one on a DILOPHO
+      // armed a timer nothing ever decrements: it stayed set for the rest of
+      // that body's life. Two burrowed spitters were caught sitting at 72 m
+      // with a bite wind-up held for all 3,000 frames they were watched, and
+      // walk() reads the same field for the rear-back pose - so they were also
+      // DRAWN permanently reared to bite something a hundred feet away. It also
+      // made the bite look like it fires: those frozen frames were 7,939 of the
+      // 7,955 "bite" frames in the whole before-measurement, which is 99.8% of
+      // a number this round exists to move. A spitter's arrival is its spit.
+      if(e.burrow && e.rise <= 0 && !e.def.flee && !e.def.ranged){
         e.wuT = BITE_WIND * (e.def.bite || 1);
         e.wu = e.wuT; e.lg = 0;
       }
       continue;                                 // buried: no AI, no contact, no hits
+    }
+    // THE STAMPEDE (L17). Alarm decays first: it is three deaths CLOSE TOGETHER
+    // that breaks a body, not three deaths a minute apart, so a pack being cut
+    // down routs and steady attrition does not.
+    if(e.alarmT > 0){ e.alarmT -= dt; if(e.alarmT <= 0){ e.alarm = 0; e.alarmT = 0; } }
+    if(e.rout > 0 && (e.rout -= dt) <= 0){ e.rout = 0; e.taunt = 0; }  // re-formed: back to the normal AI, on a new bearing
+    if(e.rout > 0){
+      // IT CANNOT BITE WHILE IT RUNS, and the guard is here rather than in the
+      // contact branch so it is impossible to reach that branch at all: the
+      // continue below skips pursuit, separation and contact together. This is
+      // the rule that makes the mechanic incapable of adding difficulty.
+      e.wu = 0; e.wd = 0; e.lead = 0;
+      // the alarm rear, through the channel GILDWING's gloat already uses - the
+      // first third of a rout is an animal throwing its head up, not a body
+      // that changed direction
+      e.taunt = e.rout > (e.routT || 0) * .66 ? 1 : 0;
+      // WIDE, NOT AWAY. A herd running along the player's own bearing would
+      // simply leave, be culled at 80 m, and read as the horde giving up. The
+      // lateral blend keeps it on the field, and the re-form then walks it back
+      // in from a side it was not on - which is the part a player standing
+      // still mowing one firing line actually sees.
+      const ax = -dx/d, az = -dz/d;
+      const rx =  dz/d * e.routS, rz = -dx/d * e.routS;
+      let fx = ax*(1-ROUT_LAT) + rx*ROUT_LAT, fz = az*(1-ROUT_LAT) + rz*ROUT_LAT;
+      const er = Math.hypot(e.x, e.z);
+      if(er > RIM-14 && er > 0){ fx += -e.x/er*1.8; fz += -e.z/er*1.8; }
+      const fl = Math.hypot(fx,fz)||1;
+      const rs = spd * ROUT_SPD;
+      [e.x, e.z] = confine(e.x + fx/fl*rs*dt, e.z + fz/fl*rs*dt, 3);
+      e.y = groundY(e.x,e.z);
+      walk(e, lx, lz, dt);
+      continue;
+    }
+    // BREAKING. Eligibility is decided from a per-body seeded value and never
+    // from R(): a roll taken in a hot path would move every spawn roll after it
+    // and desynchronise every seeded bench in this file. Same reason rndSeed(e)
+    // carries the bite jitter and the speed jitter.
+    // Armed off the SAME measured killR the burrow arms off - there is one
+    // definition of "the horde has stopped arriving" in this file and both
+    // mechanics read it - so at L15's early-game kill radius of 4-8 m this
+    // never fires and the fought part of the run is untouched by construction.
+    if(!e.boss && !e.burrow && !e.def.flee && (e.alarm || 0) >= ROUT_TRIG
+       && killRN > 20 && killR > BURROW_KILLR && routRoll(e) < ROUT_SHARE){
+      e.alarm = 0; e.alarmT = 0;
+      const j = routRoll(e);
+      e.routT = e.rout = ROUT_TIME[0] + (ROUT_TIME[1]-ROUT_TIME[0]) * j;
+      e.routS = (e.eid & 1) ? 1 : -1;               // which way it swings, stable per body
+      // CANCEL ON THE BREAK FRAME, not on the next one. Clearing this only
+      // inside the running branch left a bite in the air for one tick, and a
+      // frozen wind-up resolves the moment the body re-forms - a bite with no
+      // rear-back in front of it. Caught by routGate clause 5b, which exists
+      // because planting the bug in the running branch did not fail anything.
+      e.wu = 0; e.wd = 0; e.lead = 0;
+      e.flash = Math.max(e.flash, .12);
+      routN++;
+      continue;
     }
     const pursue = e.boss ? bossAI(e, dt) : true;
 
@@ -16670,13 +17091,46 @@ window.__g = {
       spd:+(e.def.spd*e.spdMul).toFixed(2), amp:+(e.amp||0).toFixed(3),
       // the four behaviours a body can be IN, as the AI sets them
       wu:+(e.wu||0).toFixed(3), dvT:+(e.dvT||0).toFixed(3),
-      spit:+(e.spitTell||0).toFixed(3), atk:+(e.atk||0).toFixed(2) })),
+      spit:+(e.spitTell||0).toFixed(3), atk:+(e.atk||0).toFixed(2),
+      // L17. Reported SEPARATELY from the three above on purpose: the round's
+      // headline has to be readable both counting only the behaviours that
+      // existed before it and counting the rout, or it is a number that moved
+      // itself. burrow rides along because a bench measuring "the walkers" has
+      // to be able to exclude the fifth of the horde L16 changed.
+      rout:+(e.rout||0).toFixed(3), alarm:e.alarm|0, burrow:!!e.burrow,
+      // L18. `dig` is the going-down beat and `dug` says the body has spent its
+      // one dig-in ever. Reported separately from burrow for the same reason
+      // rout is reported separately from the three older verbs: a bench has to
+      // be able to tell a body that ARRIVED underground from one that RETREATED
+      // underground, or the round's own headline is a number that moved itself.
+      dig:+(e.dig||0).toFixed(3), dug:!!e.dug, rise:+(e.rise||0).toFixed(3),
+      // L19. `stoop` is the climbing-out beat and `stooped` says the body has
+      // spent its one climb ever, reported separately from dig for the reason
+      // dig is reported separately from burrow: a bench has to be able to tell
+      // a flier that ARRIVED overhead from one that flew in, or this round's
+      // headline is a number that moved itself. dvW is the dive's WIND-UP,
+      // which was never reported at all - the dive was only ever visible as
+      // dvT, the committed crossing, so a wind-up that never got to commit was
+      // invisible to every measurement taken before this one.
+      stoop:+(e.stoop||0).toFixed(3), stooped:!!e.stooped, dvW:+(e.dvW||0).toFixed(3),
+      // WHICH WAY THE BODY IS POINTING, and how far that is off the bearing to
+      // the player. "It turns and runs" is the whole visual claim of L17 and it
+      // was previously only checkable by eye: walk() derives the heading from
+      // the direction actually travelled, so off is the number that says a
+      // routing animal is showing you its flank instead of its face.
+      off:+(Math.abs(((e.hd||0) - Math.atan2(P.x-e.x, P.z-e.z) + Math.PI*3) % (Math.PI*2) - Math.PI) * 180/Math.PI).toFixed(1) })),
   // THE WARDENS on the field, what each is holding, and the run's tally. The
   // ward is rebuilt every frame from live wardens, so this is the truth of the
   // current tick and not a cached claim about an earlier one.
   wardens:()=>({ n:enemies.filter(e=>e.warden && !e.dead).length,
                  warded:wardedNow, killed:wardKills,
                  cut:WARD_CUT, r:WARD_R, cap:WARD_N,
+                 // L11: the population cap, what it currently allows, and what
+                 // share of the live field is actually warden and warded
+                 live:wardensNow, room:+Math.max(WARD_FLOOR, enemies.length*WARD_SHARE).toFixed(1),
+                 share:WARD_SHARE, floor:WARD_FLOOR,
+                 fieldShare:+(enemies.length ? wardensNow/enemies.length : 0).toFixed(3),
+                 wardedShare:+(enemies.length ? wardedNow/enemies.length : 0).toFixed(3),
                  each:enemies.filter(e=>e.warden && !e.dead).map(w=>({
                    id:w.eid, hp:+w.hp.toFixed(0), maxhp:+w.maxhp.toFixed(0),
                    d:+Math.hypot(w.x-P.x, w.z-P.z).toFixed(2),
@@ -17151,6 +17605,204 @@ window.__g = {
                        if(e){ e.burrow = true; e.rise = BURROW_RISE; e.riseMax = BURROW_RISE; }
                        return e ? e.eid : null; },
   burrowShare:(v)=>{ if(v!==undefined) BURROW_SHARE = +v; return BURROW_SHARE; },
+
+  // THE STAMPEDE's census (L17): whether it is armed (it reads the same killR
+  // gate the burrow reads), the run's tally, and every body currently running
+  // or carrying alarm.
+  routs:()=>({ armed: killRN > 20 && killR > BURROW_KILLR, killR:+killR.toFixed(2),
+               need:BURROW_KILLR, share:ROUT_SHARE, trig:ROUT_TRIG, r:ROUT_R,
+               n:routN, running:enemies.filter(e=>e.rout > 0 && !e.dead).length,
+               alarmed:enemies.filter(e=>(e.alarm||0) > 0 && !e.dead).length,
+               each:enemies.filter(e=>e.rout > 0 && !e.dead).map(e=>({
+                 id:e.eid, t:e.type, d:+Math.hypot(e.x-P.x,e.z-P.z).toFixed(2),
+                 left:+e.rout.toFixed(2), side:e.routS })) }),
+  routShare:(v)=>{ if(v!==undefined) ROUT_SHARE = +v; return ROUT_SHARE; },
+  // THE DIG-IN's census (L18): the gate it shares with the burrow and the rout,
+  // its own knobs, the run's tally, and what is underground right now.
+  digins:()=>({ armed: killRN > 20 && killR > BURROW_KILLR, killR:+killR.toFixed(2),
+                need:BURROW_KILLR, share:DIGIN_SHARE, hp:DIGIN_HP, min:DIGIN_MIN,
+                down:DIGIN_DOWN, n:diginN,
+                going:enemies.filter(e=>e.dig > 0 && !e.dead).length,
+                coming:enemies.filter(e=>e.dug && e.rise > 0 && !e.dead).length,
+                spent:enemies.filter(e=>e.dug && !e.dead).length }),
+  diginShare:(v)=>{ if(v!==undefined) DIGIN_SHARE = +v; return DIGIN_SHARE; },
+  // THE STOOP (L19), reported the same way the dig-in is.
+  stoops:()=>({ armed: killRN > 20 && killR > BURROW_KILLR, killR:+killR.toFixed(2),
+                need:BURROW_KILLR, share:STOOP_SHARE, hp:STOOP_HP, min:STOOP_MIN,
+                up:STOOP_UP, h:STOOP_H, at:STOOP_AT.slice(), diveR:DIVE_R, n:stoopN,
+                climbing:enemies.filter(e=>e.stoop > 0 && !e.dead).length,
+                spent:enemies.filter(e=>e.stooped && !e.dead).length }),
+  stoopShare:(v)=>{ if(v!==undefined) STOOP_SHARE = +v; return STOOP_SHARE; },
+  // force one named flier to climb out now, so a check does not have to wait out
+  // the kill-radius gate and a hit that leaves it under STOOP_HP
+  stoop:(id)=>{ const e = enemies.find(x=>x.eid===id && !x.dead); if(!e) return null;
+                e.stooped = 1; e.stoop = STOOP_UP; e.dvT = 0; e.dvW = 0; e.rout = 0;
+                return { id, stoop:+e.stoop.toFixed(3) }; },
+  // THE HORDE'S VOCABULARY, COUNTED IN ONE PLACE. Every measurement before this
+  // round was taken by pulling roster() across the bridge frame by frame, which
+  // is why the per-verb numbers cost six runs of wall clock and why nobody had
+  // measured the DEATH DISTANCE distribution the verbs have to be read against.
+  // Counted in here it is a few multiplications a sampled frame. It samples
+  // rather than counting every frame on purpose: the quantity wanted is a SHARE
+  // of body-frames, and a share is unbiased under sampling.
+  // `keep` is the answer to the thing that made L18's difficulty arms
+  // untrustworthy. The bot dies before minute six in a large share of runs, and
+  // a dead bot samples NOTHING - so the horde measurement was being taken over
+  // whichever runs happened to survive, which is a selection effect on top of
+  // outcome variance. With keep on, the player's health is restored every frame
+  // AFTER the drop has been counted: the ten-minute window is always sampled in
+  // full, and damage taken is still measured exactly - it becomes a RATE the
+  // arms can be compared on instead of an outcome that terminates the sample.
+  // It does not touch the horde: killR, the verbs and the arrival gates all read
+  // the same quantities they would have.
+  verbRun:(char, from=360, to=960, every=3, keep=false)=>{
+    startRun(char || "intern"); botDrive = true;
+    const S = { char:char||"intern", bf:0, pter:0, dive:0, dvW:0, bite:0, spit:0,
+                dives:0, deaths:[], stoopN:0, diginN:0, ended:0 };
+    const last = new Map(); let prev = new Map(), f = 0, guard = 0;
+    // What the run COSTS, as well as what it does: every frame-to-frame DROP in
+    // the player's health, summed. Not contact damage specifically - hazards and
+    // spits are in it too - which is why it is reported as a total and why the
+    // arms have to be read against each other rather than in absolute terms.
+    let hpWas = P.hp, hurtT = 0;
+    while(!over && T < to && guard++ < 400000){
+      if(picking) autoPick();
+      step(1/60); f++;
+      if(P.hp < hpWas && T >= from) hurtT += hpWas - P.hp;
+      if(keep && P.hp < P.maxhp) P.hp = P.maxhp;
+      hpWas = P.hp;
+      if(T < from || (f % every)) continue;
+      const seen = new Set();
+      for(const e of enemies){
+        if(e.dead || e.boss) continue;
+        seen.add(e.eid); S.bf++;
+        if(e.def.dive) S.pter++;
+        if(e.dvT > 0){ S.dive++; if(!(prev.get(e.eid) > 0)) S.dives++; }
+        if(e.dvW > 0) S.dvW++;
+        if(e.wu > 0 && !e.def.ranged) S.bite++;
+        if(e.spitTell > 0) S.spit++;
+        last.set(e.eid, Math.hypot(e.x-P.x, e.z-P.z));
+      }
+      // a body that was on the field and is not now: where it was last seen.
+      // Past 70 m it left by the cull ring rather than by dying, and counting
+      // that as a death would drag every percentile outward.
+      for(const [id,d] of last) if(!seen.has(id)){ if(d < 70) S.deaths.push(+d.toFixed(1)); last.delete(id); }
+      prev = new Map(); for(const e of enemies) if(!e.dead) prev.set(e.eid, e.dvT);
+    }
+    S.ended = +T.toFixed(1); S.over = !!over; S.stoopN = stoopN; S.diginN = diginN;
+    S.hurt = +hurtT.toFixed(0); S.keep = !!keep;
+    S.hurtPerMin = +(hurtT / Math.max(1/60, (Math.min(T, to) - from) / 60)).toFixed(2);
+    S.deaths.sort((a,b)=>a-b);
+    const q = (p)=> S.deaths.length ? S.deaths[Math.min(S.deaths.length-1, Math.floor(S.deaths.length*p))] : null;
+    S.med = q(.5); S.p10 = q(.1); S.p90 = q(.9); S.nd = S.deaths.length;
+    delete S.deaths;
+    return S;
+  },
+  // force one named body to go to ground now, so a check does not have to wait
+  // out the kill-radius gate and a hit that leaves it under DIGIN_HP
+  digin:(id)=>{ const e = enemies.find(x=>x.eid===id && !x.dead); if(!e) return null;
+                e.dug = 1; e.dig = DIGIN_DOWN; e.rout = 0; e.wu = 0; e.wd = 0;
+                return { id, dig:+e.dig.toFixed(3) }; },
+  // force one body to break at a known moment, so a check does not have to wait
+  // out three deaths and the kill-radius gate to press on the rule
+  rout:(id)=>{ const e = enemies.find(x=>x.eid===id && !x.dead); if(!e) return null;
+               e.alarm = ROUT_TRIG; e.alarmT = ROUT_FADE; return e.eid; },
+  // THE GATE. Six clauses, and clause 5 is the one that matters: the round's
+  // whole claim to being difficulty-neutral is that a routing body cannot bite.
+  routGate:()=>{
+    const bad = [], keepR = killR, keepN = killRN, keepShare = ROUT_SHARE;
+    killR = 30; killRN = 500; ROUT_SHARE = 1;            // arm it deterministically
+    // THE SUBJECT HAS TO SURVIVE THE CLAUSE. Run at minute five against a grown
+    // kit, clause 4 read "0.09 m against a walker's 1.14 m" - not because the
+    // rout is slow but because the body being timed had been DELETED halfway
+    // through the window, so its position stopped changing. Same family as the
+    // disarm() hook's own comment: a check about the horde should not depend on
+    // how hard the player's weapons happen to hit this month. Fattening the
+    // test bodies is the non-destructive version - disarm() would eat the
+    // caller's run.
+    const mk = (t, x, z)=>{ const e = spawnEnemy(t, x, z);
+                            if(e){ e.hp = e.maxhp = 1e9; } return e; };
+    window.__g.clearEnemies();
+    const e0 = mk("skitter", P.x + 24, P.z);
+    // 1. ALARM ACCUMULATES FROM DEATHS NEARBY, AND ONLY FROM NEARBY ONES.
+    // near() reads the spatial grid, which step() rebuilds once a frame, so a
+    // body spawned and killed inside the same tick is invisible to it. In a
+    // real run a body has existed for hundreds of frames by the time it dies;
+    // the gate has to rebuild explicitly or it measures the grid, not the rule.
+    const far = mk("skitter", P.x + 24 + ROUT_R + 6, P.z);
+    rebuildGrid(); killEnemy(far);
+    if((e0.alarm||0) !== 0)
+      bad.push(`ROUT FEELS A DEATH OUTSIDE ROUT_R: alarm ${e0.alarm} after a kill ${(ROUT_R+6).toFixed(0)} m away, R is ${ROUT_R}`);
+    for(let i=0;i<ROUT_TRIG;i++){ const n = mk("skitter", e0.x + 1.5, e0.z); rebuildGrid(); killEnemy(n); }
+    if((e0.alarm||0) < ROUT_TRIG)
+      bad.push(`ROUT DOES NOT FEEL NEARBY DEATHS: alarm ${e0.alarm||0} after ${ROUT_TRIG} kills inside ${ROUT_R} m`);
+    // 2. IT BREAKS ON THE NEXT TICK, AND THE TALLY COUNTS IT.
+    const n0 = routN; step(1/60);
+    if(!(e0.rout > 0)) bad.push(`ROUT DOES NOT FIRE: alarm reached ${ROUT_TRIG} and rout is ${(e0.rout||0).toFixed(3)}`);
+    if(routN !== n0 + 1) bad.push(`ROUT TALLY DID NOT COUNT: routN ${n0} -> ${routN}`);
+    // 3. IT RUNS, AND IT RUNS WIDE RATHER THAN STRAIGHT AWAY.
+    const bx = e0.x, bz = e0.z, b4 = Math.hypot(e0.x-P.x, e0.z-P.z);
+    for(let i=0;i<30;i++) step(1/60);
+    const mvx = e0.x-bx, mvz = e0.z-bz, mv = Math.hypot(mvx,mvz);
+    if(!(mv > .3)) bad.push(`ROUT DOES NOT MOVE: travelled ${mv.toFixed(2)} m in half a second`);
+    const awayx = (bx-P.x)/b4, awayz = (bz-P.z)/b4;
+    const along = mv > 0 ? (mvx*awayx + mvz*awayz)/mv : 1;
+    if(along > .8) bad.push(`ROUT RUNS STRAIGHT AWAY INSTEAD OF WIDE: ${along.toFixed(2)} of its travel is along the player bearing, ROUT_LAT is ${ROUT_LAT}`);
+    // 4. IT IS FASTER THAN A WALK - the panic is the tell at distance.
+    //    MEASURED AGAINST THE SPECIES' OWN NOMINAL WALK, not against a second
+    //    body. The first version raced the routing body against a live walker
+    //    and read "5.06 m against a walker's 17.29 m" - 34 m/s, which is no
+    //    walk at all: MAGNET and RIPTIDE drag ordinary bodies toward the player
+    //    and a routing body `continue`s past both, so the control arm was being
+    //    accelerated by the player's own kit. A baseline that the thing under
+    //    test is exempt from is not a baseline.
+    const ex = e0.x, ez = e0.z, sec = .5;
+    for(let i=0;i<30;i++) step(1/60);
+    const em = Math.hypot(e0.x-ex, e0.z-ez), nominal = e0.def.spd * sec;
+    if(!(em > nominal * 1.15))
+      bad.push(`ROUT IS NOT FASTER THAN A WALK: ${em.toFixed(2)} m in ${sec} s against a nominal walk of ${nominal.toFixed(2)} m, ROUT_SPD is ${ROUT_SPD}`);
+    // 5. IT CANNOT BITE WHILE IT RUNS. This is the round's difficulty claim and
+    //    it is the clause to break first if you doubt any of them.
+    window.__g.clearEnemies();
+    const b = mk("skitter", P.x + .3, P.z);      // inside contact reach
+    b.alarm = ROUT_TRIG; b.alarmT = ROUT_FADE;
+    const hp0 = P.hp; P.iframe = 0;
+    for(let i=0;i<40;i++){ if(b.dead) break; b.x = P.x + .3; b.z = P.z; P.iframe = 0; step(1/60); }
+    if(P.hp < hp0)
+      bad.push(`A ROUTING BODY BIT: player lost ${(hp0-P.hp).toFixed(1)} HP while rout ${(b.rout||0).toFixed(2)} > 0 held it at contact range`);
+    if((b.wu||0) > 0)
+      bad.push(`A ROUTING BODY ARMED A WIND-UP: wu ${(b.wu||0).toFixed(3)} while routing`);
+    // 5b. A WIND-UP ALREADY IN THE AIR IS CANCELLED BY THE BREAK. Found by
+    //     planting the bug: 5a passes with the cancel deleted, because the
+    //     `continue` alone already keeps a routing body out of the contact
+    //     branch. What the cancel is actually for is the body that is MID-BITE
+    //     when its pack breaks - without it that wind-up is merely FROZEN, and
+    //     resolves the instant the body re-forms two seconds later, at whatever
+    //     range it has run to. That is a bite with no rear-back in front of it,
+    //     which is the one thing every melee body in this game promises not to
+    //     do. This is the clause that fails when the cancel is removed.
+    window.__g.clearEnemies();
+    const c = mk("skitter", P.x + .3, P.z);
+    c.wuT = BITE_WIND; c.wu = BITE_WIND; c.lg = 0;   // mid-bite
+    c.alarm = ROUT_TRIG; c.alarmT = ROUT_FADE;
+    step(1/60);
+    if(!(c.rout > 0))
+      bad.push(`ROUT DID NOT BREAK A BODY THAT WAS MID-BITE: rout ${(c.rout||0).toFixed(3)}`);
+    else if((c.wu||0) > 0)
+      bad.push(`A BREAK LEFT A BITE IN THE AIR: wu ${(c.wu).toFixed(3)} frozen on a body that routed mid-wind-up, and it will land when it re-forms`);
+    // 6. IT IS OFF WHEN THE HORDE IS STILL ARRIVING - the early game is
+    //    untouched by construction, off the same measured gate the burrow uses.
+    killR = 6; killRN = 500;
+    window.__g.clearEnemies();
+    const early = mk("skitter", P.x + 20, P.z);
+    early.alarm = ROUT_TRIG + 3; early.alarmT = ROUT_FADE;
+    for(let i=0;i<10;i++) step(1/60);
+    if(early.rout > 0)
+      bad.push(`ROUT FIRES IN THE EARLY GAME: it broke at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
+    killR = keepR; killRN = keepN; ROUT_SHARE = keepShare;
+    window.__g.clearEnemies();
+    return { ok: !bad.length, bad };
+  },
   // THE KILL RADIUS DIES WITH THE RUN. Left standing, a second run in the same
   // session inherits the last one's radius and burrows from second zero - the
   // early game this mechanic exists not to touch. Its own hook rather than a
@@ -17237,6 +17889,145 @@ window.__g = {
     for(const e of kc) corpses.push(e);
     rebuildGrid(); wardPass();
     return { ok: !bad.length, bad, at:+d0.toFixed(1), share:+share.toFixed(3), riseS:+t.toFixed(2) }; },
+  // THE DIG-IN's gate (L18). Every clause is a claim the round makes out loud,
+  // and each one is written so the OBVIOUS wrong build fails it by name.
+  diginGate:()=>{
+    const bad = [], keep = enemies.slice(), kc = corpses.slice();
+    const kr0 = killR, krn0 = killRN, sh0 = DIGIN_SHARE;
+    enemies.length = 0; corpses.length = 0; rebuildGrid();
+    killR = 30; killRN = 500; DIGIN_SHARE = 1;         // arm it deterministically
+    const far = () => { const e = spawnEnemy("shambler", P.x + 26, P.z);
+                        e.hp = e.maxhp; return e; };
+    // 1. A HEALTHY BODY DOES NOT DIG. The mechanic is the horde's last act; if
+    //    a full-health body goes to ground this is a retreat button, not that.
+    const a = far(); hurt(a, a.maxhp * .10, 0, 0);
+    if(a.dig > 0) bad.push(`A HEALTHY BODY DUG IN: hp ${(a.hp/a.maxhp).toFixed(2)} of max, over DIGIN_HP ${DIGIN_HP}`);
+    // 2. A BADLY HURT BODY AT RANGE DOES.
+    const b = far(); hurt(b, b.maxhp * .80, 0, 0);
+    if(!(b.dig > 0)) bad.push(`A BADLY HURT BODY DID NOT DIG IN: hp ${(b.hp/b.maxhp).toFixed(2)} of max, under DIGIN_HP ${DIGIN_HP}, dig ${(b.dig||0).toFixed(3)}`);
+    // 3. IT CANNOT BE HIT WHILE IT IS GOING DOWN. Same guard the burrow has,
+    //    and the reason the mechanic is not simply "it dies a moment later".
+    const hp0 = b.hp; hurt(b, 1e6, 0, 0);
+    if(b.hp !== hp0) bad.push(`A DIGGING BODY IS HITTABLE: took ${(hp0-b.hp).toFixed(0)} while dig ${(b.dig||0).toFixed(2)} > 0`);
+    // 4. IT COMES UP INSIDE THE BAND ITS OWN VERB LIVES IN - the entire point.
+    //    A build that let it surface where it stood would pass 1-3 and buy
+    //    nothing, which is exactly the no-op L16 caught itself shipping.
+    for(let i=0;i<200 && b.dig > 0;i++) step(1/60);
+    const dS = Math.hypot(b.x-P.x, b.z-P.z);
+    if(dS > BURROW_AT[1] + .6)
+      bad.push(`DIG-IN SURFACES TOO FAR OUT: came up at ${dS.toFixed(1)} m, past BURROW_AT ${BURROW_AT[1]} m`);
+    if(!(b.rise > 0)) bad.push(`DIG-IN DID NOT HAND OFF TO THE BURROW: rise ${(b.rise||0).toFixed(3)} after the dig ran out`);
+    // 5. AND IT COMES UP REARING BACK, so the verb is DELIVERED by the arrival.
+    for(let i=0;i<200 && b.rise > 0;i++) step(1/60);
+    if(!(b.wu > 0)) bad.push(`DIG-IN SURFACES WITHOUT A WIND-UP: wu ${(b.wu||0).toFixed(3)} on the frame it came up`);
+    // 6. ONCE PER BODY, EVER. Without this a body ping-pongs underground and
+    //    the horde becomes unkillable rather than arriving.
+    b.hp = b.maxhp * .05; b.rise = 0; b.dig = 0;
+    b.x = P.x + 26; b.z = P.z; hurt(b, 1, 0, 0);
+    if(b.dig > 0) bad.push(`A BODY DUG IN TWICE: dug ${b.dug}, dig ${(b.dig).toFixed(3)}`);
+    // 7. NOT INSIDE DIGIN_MIN: a body already arriving does not need the route,
+    //    and letting it dig would delete a fight that was about to happen.
+    enemies.length = 0; rebuildGrid();
+    const c = spawnEnemy("shambler", P.x + DIGIN_MIN * .5, P.z);
+    hurt(c, c.maxhp * .90, 0, 0);
+    if(c.dig > 0) bad.push(`A BODY INSIDE DIGIN_MIN DUG IN: it was at ${(DIGIN_MIN*.5).toFixed(1)} m, under DIGIN_MIN ${DIGIN_MIN}`);
+    // 8. FLIERS ARE EXEMPT, for the reason the burrow exempts them.
+    enemies.length = 0; rebuildGrid();
+    const f = spawnEnemy("runner", P.x + 26, P.z); hurt(f, f.maxhp * .90, 0, 0);
+    if(f.dig > 0) bad.push(`DIG-IN APPLIES TO A FLIER: a PTERLING went underground`);
+    // 9. IT IS OFF IN THE EARLY GAME BY CONSTRUCTION, not by a clock. Same
+    //    killR gate the burrow and the rout read.
+    enemies.length = 0; rebuildGrid(); killR = 6; killRN = 500;
+    const e9 = spawnEnemy("shambler", P.x + 26, P.z); hurt(e9, e9.maxhp * .90, 0, 0);
+    if(e9.dig > 0) bad.push(`DIG-IN FIRES IN THE EARLY GAME: it dug at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
+    // 10. THE FROZEN WIND-UP, which is what measuring L18's bite rate found: a
+    //     RANGED body's wind-up is counted down inside `if(!e.def.ranged)`, so
+    //     arming one on a burrowed DILOPHO set a timer nothing ever cleared.
+    enemies.length = 0; rebuildGrid(); killR = 30; killRN = 500;
+    const s = spawnEnemy("spitter", P.x + 3, P.z);
+    s.burrow = true; s.rise = BURROW_RISE; s.riseMax = BURROW_RISE;
+    for(let i=0;i<400 && s.rise > 0;i++) step(1/60);
+    for(let i=0;i<120;i++) step(1/60);
+    if(s.wu > 0) bad.push(`A BURROWED SPITTER HOLDS A WIND-UP NOTHING COUNTS DOWN: wu ${s.wu.toFixed(3)} two seconds after it surfaced`);
+    killR = kr0; killRN = krn0; DIGIN_SHARE = sh0;
+    enemies.length = 0; corpses.length = 0;
+    for(const e of keep) enemies.push(e);
+    for(const e of kc) corpses.push(e);
+    rebuildGrid(); wardPass();
+    return { ok: !bad.length, bad, surfacedAt:+dS.toFixed(1) }; },
+  // THE L19 GATE. Ten clauses, and clause 5 is the one the round lives or dies
+  // on: the arrival has to put the flier INSIDE DIVE_R with the dive available,
+  // because an arrival that lands it at 12 m is the same no-op the dive already
+  // was. Clause 6 presses on the verb itself actually firing afterwards.
+  stoopGate:()=>{
+    const bad = [], keep = enemies.slice(), kc = corpses.slice();
+    const kr0 = killR, krn0 = killRN, sh0 = STOOP_SHARE;
+    enemies.length = 0; corpses.length = 0; rebuildGrid();
+    killR = 30; killRN = 500; STOOP_SHARE = 1;         // arm it deterministically
+    const far = () => { const e = spawnEnemy("runner", P.x + 26, P.z);
+                        e.hp = e.maxhp; return e; };
+    // 1. A HEALTHY FLIER DOES NOT CLIMB OUT. Same rule the dig-in has: this is
+    //    the horde's last act, not an escape button on a full-health body.
+    const a = far(); hurt(a, a.maxhp * .10, 0, 0);
+    if(a.stoop > 0) bad.push(`A HEALTHY FLIER CLIMBED OUT: hp ${(a.hp/a.maxhp).toFixed(2)} of max, over STOOP_HP ${STOOP_HP}`);
+    // 2. A BADLY HURT ONE AT RANGE DOES.
+    const b = far(); hurt(b, b.maxhp * .80, 0, 0);
+    if(!(b.stoop > 0)) bad.push(`A BADLY HURT FLIER DID NOT CLIMB OUT: hp ${(b.hp/b.maxhp).toFixed(2)} of max, under STOOP_HP ${STOOP_HP}, stoop ${(b.stoop||0).toFixed(3)}`);
+    // 3. IT CANNOT BE HIT WHILE IT IS CLIMBING, which is the whole reason the
+    //    mechanic is not just "it dies half a second later".
+    const hp0 = b.hp; hurt(b, 1e6, 0, 0);
+    if(b.hp !== hp0) bad.push(`A CLIMBING FLIER IS HITTABLE: took ${(hp0-b.hp).toFixed(0)} while stoop ${(b.stoop||0).toFixed(2)} > 0`);
+    // 4. IT ACTUALLY GAINS ALTITUDE, and it gains it WHERE IT STOOD. A build
+    //    that skipped the climb would pass 1-3 and be a teleport.
+    const x0 = b.x, z0 = b.z; let peak = 0;
+    for(let i=0;i<200 && b.stoop > 0;i++){ step(1/60); peak = Math.max(peak, b.y - groundY(b.x, b.z)); }
+    if(peak < STOOP_H * .7) bad.push(`THE CLIMB DOES NOT LEAVE THE GROUND: peaked ${peak.toFixed(1)} m against STOOP_H ${STOOP_H} m`);
+    // 5. IT RE-ENTERS INSIDE DIVE_R. The defect this round exists for: the dive
+    //    triggers at 9.5 m and bodies die at a median of 20 m, so an arrival
+    //    that does not clear that band buys nothing at all.
+    const dS = Math.hypot(b.x-P.x, b.z-P.z);
+    if(dS > DIVE_R) bad.push(`THE STOOP RE-ENTERS OUTSIDE DIVE_R: came in at ${dS.toFixed(1)} m, past DIVE_R ${DIVE_R} m`);
+    if(Math.hypot(x0-P.x, z0-P.z) < STOOP_MIN) bad.push(`THE CLIMB DID NOT START OUT AT RANGE: it went up at ${Math.hypot(x0-P.x, z0-P.z).toFixed(1)} m`);
+    // 6. AND THE ARRIVAL DELIVERS THE DIVE, on the frame it comes in. Clause 5
+    //    is geometry; this is the verb. Not "it may wind one up": measured at
+    //    share 1, letting it wind up from 7 m produced 205 arrivals and two
+    //    dives, because nothing lives through DIVE_TELL that close.
+    const dove = b.dvT > 0;
+    if(!dove) bad.push(`THE STOOP DOES NOT DELIVER A DIVE: dvT ${(b.dvT||0).toFixed(3)} on the frame it came in`);
+    // 6b. AND THE DIVE IS STILL DODGEABLE - it commits to a LED POINT, not to
+    //     the player. This is the whole reason it is allowed to arrive already
+    //     committed, so it is a clause and not a comment.
+    const aimed = Math.hypot((b.dvX||0) - P.x, (b.dvZ||0) - P.z);
+    if(!(b.dvX !== undefined && b.dvZ !== undefined))
+      bad.push(`THE STOOP'S DIVE HAS NO AIM POINT: it would track the player instead of committing`);
+    let wound = 0;
+    for(let i=0;i<180;i++){ step(1/60); if(b.dead) break; if(b.dvW > 0) wound = 1; }
+    // 7. ONCE PER BODY, EVER, or a flier ping-pongs overhead and is unkillable.
+    b.dead = false; b.hp = b.maxhp * .05; b.stoop = 0;
+    b.x = P.x + 26; b.z = P.z; hurt(b, 1, 0, 0);
+    if(b.stoop > 0) bad.push(`A FLIER CLIMBED OUT TWICE: stooped ${b.stooped}, stoop ${(b.stoop).toFixed(3)}`);
+    // 8. NOT INSIDE STOOP_MIN: a flier that close can already reach DIVE_R
+    //    alive, so routing it would replace a fight that was about to happen.
+    enemies.length = 0; rebuildGrid();
+    const c = spawnEnemy("runner", P.x + STOOP_MIN * .5, P.z);
+    hurt(c, c.maxhp * .90, 0, 0);
+    if(c.stoop > 0) bad.push(`A FLIER INSIDE STOOP_MIN CLIMBED OUT: it was at ${(STOOP_MIN*.5).toFixed(1)} m, under STOOP_MIN ${STOOP_MIN}`);
+    // 9. WALKERS ARE EXEMPT - they have the dig-in, and a shambler that climbs
+    //    nine metres into the air is not the same animal.
+    enemies.length = 0; rebuildGrid();
+    const w = spawnEnemy("shambler", P.x + 26, P.z); hurt(w, w.maxhp * .90, 0, 0);
+    if(w.stoop > 0) bad.push(`THE STOOP APPLIES TO A WALKER: a SHAMBLER climbed out`);
+    // 10. OFF IN THE EARLY GAME BY CONSTRUCTION, on the same measured killR the
+    //     burrow, the rout and the dig-in read - not on a clock.
+    enemies.length = 0; rebuildGrid(); killR = 6; killRN = 500;
+    const e9 = spawnEnemy("runner", P.x + 26, P.z); hurt(e9, e9.maxhp * .90, 0, 0);
+    if(e9.stoop > 0) bad.push(`THE STOOP FIRES IN THE EARLY GAME: it climbed at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
+    killR = kr0; killRN = krn0; STOOP_SHARE = sh0;
+    enemies.length = 0; corpses.length = 0;
+    for(const e of keep) enemies.push(e);
+    for(const e of kc) corpses.push(e);
+    rebuildGrid(); wardPass();
+    return { ok: !bad.length, bad, cameInAt:+dS.toFixed(1), peak:+peak.toFixed(1), aimedAt:+aimed.toFixed(2), dove:!!dove }; },
   groundGate:()=>{ const G = window.__g.ground(), bad = [];
     if(G.cover < 1200)  bad.push(`GROUND COVER MISSING: ${G.cover} patches, expected >= 1200`);
     if(G.lift  > .20)   bad.push(`GROUND COVER IS STANDING UP: lift ${G.lift} m > 0.20 m`);
