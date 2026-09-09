@@ -17707,7 +17707,10 @@ window.__g = {
     const S = { char:char||"intern", bf:0, pter:0, dive:0, dvW:0, bite:0, spit:0,
                 dives:0, deaths:[], stoopN:0, diginN:0, ended:0, rout:0, nw:0, nwr:0 };
     return { S, from, to, every, keep, last:new Map(), prev:new Map(), f:0,
-             guard:0, hpWas:P.hp, hurtT:0, done:false };
+             // dipN counts frames that END below full health. With keep on it
+             // is zero BY CONSTRUCTION, which is what makes it a check: see
+             // censusGate clause 5.
+             guard:0, hpWas:P.hp, hurtT:0, dipN:0, done:false };
   },
   // one slice. Returns true while there is more to do; `frames` bounds the WALL
   // CLOCK of a single call, not the measurement window, so it can never change
@@ -17719,6 +17722,8 @@ window.__g = {
       step(1/60); R.f++;
       if(P.hp < R.hpWas && T >= R.from) R.hurtT += R.hpWas - P.hp;
       if(R.keep && P.hp < P.maxhp) P.hp = P.maxhp;
+      // AFTER the restore, so this is the frame's OUTCOME and not its damage.
+      if(P.hp < P.maxhp) R.dipN++;
       R.hpWas = P.hp;
       if(T < R.from || (R.f % R.every)) continue;
       const seen = new Set();
@@ -17755,7 +17760,7 @@ window.__g = {
   verbEnd:(R)=>{
     const S = R.S;
     S.ended = +T.toFixed(1); S.over = !!over; S.stoopN = stoopN; S.diginN = diginN;
-    S.hurt = +R.hurtT.toFixed(0); S.keep = !!R.keep;
+    S.hurt = +R.hurtT.toFixed(0); S.keep = !!R.keep; S.dipN = R.dipN;
     S.hurtPerMin = +(R.hurtT / Math.max(1/60, (Math.min(T, R.to) - R.from) / 60)).toFixed(2);
     S.deaths.sort((a,b)=>a-b);
     const q = (p)=> S.deaths.length ? S.deaths[Math.min(S.deaths.length-1, Math.floor(S.deaths.length*p))] : null;
@@ -18004,10 +18009,19 @@ window.__g = {
     if(b.dig > 0) bad.push(`A BODY DUG IN TWICE: dug ${b.dug}, dig ${(b.dig).toFixed(3)}`);
     // 7. NOT INSIDE DIGIN_MIN: a body already arriving does not need the route,
     //    and letting it dig would delete a fight that was about to happen.
+    //    AND THE DISTANCE IS A LITERAL, NOT A FRACTION OF THE CONSTANT UNDER
+    //    TEST. This spawned at DIGIN_MIN*.5, so setting DIGIN_MIN to 0 put the
+    //    body at 0 m, where `> DIGIN_MIN` is false for the same reason it is
+    //    false at 12 - the clause passed a game with the minimum range deleted
+    //    outright, and the mutant said so. Same fault the ground gate's own
+    //    note names: a gate that reads back the literal it was given cannot
+    //    fail. 6 m is inside the shipped 12 and inside the band where a body is
+    //    already arriving on foot, so it is the distance the clause is about.
     enemies.length = 0; rebuildGrid();
-    const c = spawnEnemy("shambler", P.x + DIGIN_MIN * .5, P.z);
+    const NEAR = 6;
+    const c = spawnEnemy("shambler", P.x + NEAR, P.z);
     hurt(c, c.maxhp * .90, 0, 0);
-    if(c.dig > 0) bad.push(`A BODY INSIDE DIGIN_MIN DUG IN: it was at ${(DIGIN_MIN*.5).toFixed(1)} m, under DIGIN_MIN ${DIGIN_MIN}`);
+    if(c.dig > 0) bad.push(`A BODY INSIDE DIGIN_MIN DUG IN: it was at ${NEAR} m and went to ground, against DIGIN_MIN ${DIGIN_MIN}`);
     // 8. FLIERS ARE EXEMPT, for the reason the burrow exempts them.
     enemies.length = 0; rebuildGrid();
     const f = spawnEnemy("runner", P.x + 26, P.z); hurt(f, f.maxhp * .90, 0, 0);
@@ -18071,6 +18085,18 @@ window.__g = {
     // defect L19 found in every earlier round's sampling, stated as a gate.
     if(r.over || r.ended < 599)
       bad.push(`THE BENCH STILL DIES INSIDE ITS OWN WINDOW: over ${r.over}, ended ${r.ended.toFixed(1)} s short of 600 s with keep on - the sample is truncated and the arms are taken over survivors`);
+    // 5b. AND KEEP IS THE REASON, not luck. The clause above is an OUTCOME, and
+    // an outcome cannot prove a mechanism: the bot does not die in every run, so
+    // deleting the restore outright left the whole gate green - the mutant
+    // `the-bench-does-not-keep-its-subject-alive` survived it. dipN is the
+    // mechanism itself, counted: frames that END below full health, which with
+    // keep on is zero by construction and with the restore gone is one per frame
+    // after the first bite. Guarded on hurt, because a window nothing touched
+    // the player in would be honestly zero either way.
+    if(r.hurt > 0 && r.dipN > 0)
+      bad.push(`KEEP IS NOT KEEPING: ${r.dipN} frames ended below full health across a window that took ${r.hurt} damage - the restore is not running, so the sample is again taken over survivors`);
+    if(!(r.hurt > 0))
+      bad.push(`THE WINDOW TOOK NO DAMAGE AT ALL: hurt ${r.hurt} - clause 5b cannot say anything about keep, and a horde that never lands a hit is its own finding`);
     // 6. AND DAMAGE IS STILL MEASURED WHILE IT IS KEPT ALIVE, or `keep` would buy
     // the sample by destroying the survivability number the same arms carry.
     if(!(r.hurt >= 0) || r.hurtPerMin === undefined)
