@@ -282,7 +282,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **804 passing** as of L12, with 270 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **804 passing** as of L12, with 271 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the

@@ -1105,6 +1105,12 @@ const MUTANTS = [
   // dig-in, L19's stoop - and a gate that is merely CALLED is not yet a check.
   // One mutation each, aimed at a clause the gate words itself, so the three
   // new assertions are proven load-bearing rather than assumed to be.
+  // L12b. The body serial stopped being a label when L17 hashed it, and it
+  // leaked across runs for three rounds. Put the leak back and 22h has to see
+  // a pinned trial stop being reproducible.
+  { id:"the-body-serial-leaks-between-runs", must:"22h",
+    why:"routRoll, digRoll and stoopRoll hash an id that carries over, so a second run of one seed is a different run",
+    from:"  EID = 0;\n", to:"" },
   { id:"the-rout-runs-straight-away", must:"97",
     why:"a broken pack flees along the player's own bearing and leaves the field",
     from:"let ROUT_LAT     = 1;", to:"let ROUT_LAT     = 0;" },

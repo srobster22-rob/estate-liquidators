@@ -8947,6 +8947,19 @@ function startRun(id){
   // this mechanic is built not to touch. Caught by the round's own A/B bench,
   // where the burrow tally carried over between runs.
   killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0;
+  // AND THE BODY SERIAL, which stopped being a label the moment L17 hashed it.
+  // routRoll, digRoll and stoopRoll are all deterministic functions of e.eid -
+  // that is the whole reason they exist, so that deciding "can this body panic"
+  // consumes nothing from the seeded stream - and EID was a module counter that
+  // no run ever reset. So the SAME body in a second run of the same pinned seed
+  // carried a different id, hashed to a different answer, and a different set
+  // of bodies broke, went to ground and climbed out. Three trials of one pinned
+  // seed came out 1242.6 / 1247.2 / 1227.6 s, and the further into a run the
+  // wider the gap, which is exactly the shape of a divergence that starts small
+  // and compounds. e.routS reads (eid & 1) for the same reason and had the same
+  // problem. A pinned run is only a pure function of its seed if everything the
+  // simulation reads starts where the last one started.
+  EID = 0;
   // THE OPENING. The director spawns at 1.2 a second on an off-screen ring and
   // the first thing to arrive walks at 2.5 m/s, so the first ten seconds of
   // every run were one animal alone on an empty lawn - which is the worst
@@ -17045,6 +17058,10 @@ window.__g = {
   // because "what state does a run start from" is a question worth being able
   // to ask at any time.
   snapshot:()=>({ noSpawn, noEvents, noLevels, devAuto, botDrive, botHop,
+                  // EID is in here because it turned out to be simulation state
+                  // and not a label: three share-gates hash it, and it leaked
+                  // across runs for three rounds without anything asking
+                  EID,
                   pinSeed, pinRun, deepAt, XP_NEED, HP_QUAD, HP_LIN, DMG_DIV,
                   DMG_FROM, startBank, startBankT: +startBankT.toFixed(2),
                   nextEvent: +nextEvent.toFixed(2),
