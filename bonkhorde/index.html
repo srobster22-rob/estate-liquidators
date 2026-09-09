@@ -999,6 +999,13 @@ precision mediump float;
 varying vec3 vN, vW, vC; varying float vE;
 uniform vec3 uSun, uSunC, uSky, uGnd, uFog, uEye;
 uniform float uNear, uFar, uFlash;
+// 1 while the SKY pass is drawing, 0 for the world. The sky is not lit by the
+// sun, is not fogged into the distance and does not flash red when you are hit
+// - it is the thing all three of those are measured against - so one flag at
+// the very end of the shader takes it out of all of them at once. Without it a
+// sky box at 180 m under a fog that closes at 84 is mixed to exactly uFog,
+// which is exactly the clear colour it was drawn to replace.
+uniform float uUnlit;
 void main(){
   vec3 n = normalize(vN);
   float d   = max(dot(n, uSun), 0.0);
@@ -1014,6 +1021,7 @@ void main(){
   float f = clamp((length(uEye - vW) - uNear) / (uFar - uNear), 0.0, 1.0);
   c = mix(c, uFog, f * f);
   c += uFlash;                                       // full-screen damage flash
+  c = mix(c, vC, uUnlit);                            // the sky: the colour IS the colour
   gl_FragColor = vec4(c, 1.0);
 }`;
 
@@ -1036,7 +1044,8 @@ function buildProgram(){
   A = { pos:gl.getAttribLocation(prog,"aPos"), nrm:gl.getAttribLocation(prog,"aNrm"),
         col:gl.getAttribLocation(prog,"aCol"), emit:gl.getAttribLocation(prog,"aEmit") };
   U = {}; for(const n of ["uProj","uView","uSun","uSunC","uSky","uGnd","uFog","uEye",
-    "uNear","uFar","uFlash"]) U[n] = gl.getUniformLocation(prog, n);
+    "uNear","uFar","uFlash","uUnlit"]) U[n] = gl.getUniformLocation(prog, n);
+  gl.uniform1f(U.uUnlit, 0);                    // the world, until the sky says otherwise
   gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
 }
 buildProgram();
@@ -4644,6 +4653,7 @@ let enemies=[], gems=[], bolts=[], mortars=[], zones=[], rings=[], swings=[],
 let T=0, kills=0, coinsRun=0, running=false, over=false, paused=false, picking=false;
 let shake=0, flash=0, camYaw=0, camPitch=.62, camZoom=1;
 let camEye=[0,0,0];                     // last rendered eye, so a test can see it
+let camAim=[0,0,-1];                    // ...and where it looked, for the same reason
 // THE MODEL-SHEET CAMERA. QA only: a fixed eye and target, so a harness can
 // film one animal from any angle at any range without the player standing in
 // the shot - the game's own camera orbits the player, and a horde body two
@@ -14799,6 +14809,177 @@ function drawPortraits(){
   bodyCap = capC; bodyPos = capP;
 }
 
+// ===================================================================== THE SKY
+// Q4 of the vision was answered by DRIVING the map rather than by guessing, and
+// its evidence ranks this first of six failings in the owner's own words: "the
+// sky is a flat colour field ... the single largest area on screen and it is
+// the emptiest thing in the game." It was one gl.clearColor - the fog tone,
+// painted flat over everything above the horizon, at every hour of a run that
+// already has a colour story nobody could see.
+//
+// THE STORY WAS ALREADY THERE. skyAt() walks six keyframes from an afternoon
+// through gold, dusk, night and a red sudden death, and the whole world is lit
+// by it: the ambient, the key light and the fog all move together. What was
+// missing is that the sky itself never showed any of it. So nothing here
+// re-tunes a single keyframe - this draws what skyAt() has always said.
+//
+// THREE RULES, and the first is the load-bearing one.
+//  1. THE HORIZON BAND IS EXACTLY uFog. Every piece of geometry in the game
+//     dissolves into the fog at distance, so any other colour down there is a
+//     visible seam running right round the world at the radius the terrain
+//     fades out. The gradient starts AT the fog and climbs from it.
+//  2. IT IS CAMERA-CENTRED. The arena is 532 m across and the far plane is 260,
+//     so a dome anchored to the origin is one the player walks out of.
+//  3. IT IS DERIVED, NOT TYPED. The zenith is the horizon's own colour deepened
+//     and leaned toward the hue the ambient already lights the world with - the
+//     same rule the monuments' stone() keeps - so a re-tuned keyframe re-tunes
+//     the sky with it and no hour needs a number of its own.
+const SKY_R = 180;                      // dome radius, well inside the 260 far plane
+// PACKED LOW, BECAUSE THAT IS ALL THE PLAYER EVER SEES. This was first worked
+// out from the boom maths - eye at hgt = 4.1 + camPitch*4.7 above a target 1.4
+// up, dist 8.9 back - which said the frame spanned elevation -51 to +7.5. Then
+// it was MEASURED off a real driven frame, and the derivation was wrong in the
+// direction that matters: the camera pitches 27.9 degrees DOWN and the frame
+// runs -57.2 to +1.3 on desktop, -63.6 to +6.9 on a phone. So the sky is 2.6%
+// of a desktop frame and 11.8% of a phone one, and the whole of it lives in the
+// first one to seven degrees above the horizon.
+//
+// A gradient spread evenly over ninety degrees is therefore a gradient nobody
+// ever sees - the flat sky complaint restated, not fixed. The colour reaches
+// the zenith by u = .24, about twenty-two degrees, smoothstepped so it eases in
+// at the horizon rather than kinking - which also keeps the first few degrees
+// close to the fog, so the backdrop ridge stays blended into it instead of
+// being outlined by a sky that has already moved away.
+const SKY_RAMP = .24;
+// THE BAND EDGES ARE PLACED BY COLOUR, NOT BY ANGLE. The first attempt spread
+// them by eye - .00 .05 .11 .19 .30 .50 - and the framebuffer said what that
+// costs: sampled by elevation up a real frame the luminance went 0.509, 0.484,
+// 0.416, 0.320, so consecutive bands differed by as much as 0.096, rgb
+// 90,109,135 to 67,84,109 across a hard line. A gradient delivered in three
+// visible steps is banding, not a gradient. So the edges are the INVERSE of the
+// ramp: SKY_STEPS bands each one step of the way from the horizon colour to the
+// zenith, which makes every join the same small size - about a seventh of the
+// range, eight levels in eight-bit - by construction rather than by luck.
+const SKY_STEPS = 7;
+const SKY_SEG   = 8;   // boxes per ring; 8 overlaps by 15% at the seams (see sx)
+// two more edges above the ramp, where the colour no longer changes and the
+// bands exist only to carry the geometry up to the cap
+const SKY_ABOVE = [.36, .52];
+// [how far up the dome (0 horizon .. 1 zenith), how many boxes that ring needs]
+const SKY_BANDS = (()=>{
+  const inv = t => .5 - Math.sin(Math.asin(1 - 2*t)/3);   // undoes q*q*(3-2q)
+  const u = [];
+  for(let k=0;k<SKY_STEPS;k++) u.push(inv(k/SKY_STEPS)*SKY_RAMP);
+  return u.concat([SKY_RAMP], SKY_ABOVE).map(v => [+v.toFixed(4), SKY_SEG]);
+})();
+const SKY_STARS = 48;
+let skyBoxes = 0, skyStarK = 0, skyHorizon = null, skyZenith = null, skyBandC = [];
+function drawSky(eye, S){
+  const b0 = drawnBoxes + nbox;
+  // THE HOUR'S OWN DARKNESS, read off the colour the world is already fogged
+  // into rather than off the clock - so an edited keyframe moves this too.
+  const lumF = S.fog[0]*.30 + S.fog[1]*.59 + S.fog[2]*.11;
+  // THE ZENITH: THE HORIZON, DEEPENED AND SATURATED. A sky is one colour family
+  // - light and scattered near the ground, deeper and more saturated overhead -
+  // so the zenith is derived from the fog alone and the channel that already
+  // dominates the hour loses the least. Nothing per-hour is typed.
+  //
+  // The first cut mixed the AMBIENT into it (fog*.42 + sky*.22) and the gate
+  // caught what that costs: at t=960 - dusk, the exact hour the owner's
+  // evidence describes as "one unbroken purple" - the two terms happened to
+  // reproduce the fog and the gradient collapsed to 0.0455, a hair over the
+  // bar. A formula that can coincide with the thing it is meant to differ from
+  // is not a gradient, it is a coincidence. This one separates at every hour of
+  // the arc by construction: measured 0.371 / 0.318 / 0.404 / 0.190 / 0.106 /
+  // 0.116 across the six keyframes, and the darkest hour is still the widest
+  // margin over flat that this round needs.
+  const mxF = Math.max(S.fog[0], S.fog[1], S.fog[2]) || 1e-6;
+  const zen = [0,1,2].map(i => clamp(S.fog[i] * (.34 + .30 * (S.fog[i]/mxF)), 0, 1));
+  // STARS COME OUT AS THE SKY GOES DOWN, on that same measured luminance.
+  const starK = clamp((.30 - lumF) / .22, 0, 1);
+  skyStarK = +starK.toFixed(3);
+  const HALF = Math.PI/2;
+  // EVERY BAND'S COLOUR, RECORDED AS IT IS DRAWN. skyGate reads this rather
+  // than recomputing the ramp: a gate that re-derives the formula it is
+  // checking agrees with itself no matter what the frame did.
+  skyBandC.length = 0;
+  for(let k=0;k<SKY_BANDS.length;k++){
+    const u = SKY_BANDS[k][0], n = SKY_BANDS[k][1];
+    const uN = k+1 < SKY_BANDS.length ? SKY_BANDS[k+1][0] : 1;
+    const e = u*HALF, eN = uN*HALF;
+    const rr = Math.cos((e+eN)/2)*SKY_R;
+    // THE BAND'S LOWER EDGE, not its midpoint: it is what makes band zero come
+    // out at exactly the fog, which is rule 1 and the only clause here that a
+    // player would see fail as a hard line round the horizon.
+    const q = Math.min(1, u/SKY_RAMP), tC = q*q*(3-2*q);
+    const c = [0,1,2].map(i => lerp(S.fog[i], zen[i], tC));
+    skyBandC.push(c.slice());
+    if(k === 0) skyHorizon = c.slice();
+    // THE HEIGHT IS AN ARC LENGTH, NOT A PROJECTED ONE. This took its vertical
+    // extent from sin(eN)-sin(e) - the band's height as PROJECTED onto the
+    // vertical axis - which is the true arc times cos(elevation), so every band
+    // came out short by that factor and the shortfall grew as the dome climbed.
+    // The framebuffer said so before the eye did: sampled straight up the
+    // middle of a real frame, the luminance went 0.509, 0.406, 0.406, 0.509 -
+    // bright at every band JOIN, because the joins were gaps and what showed
+    // through them was the clear colour. R*dElev is the arc the band actually
+    // has to cover, and 1.6 is the overlap that closes the last seam at the
+    // top, where a flat slab approximates a spherical cap worst.
+    const sx = (Math.PI*rr/n)*1.12, sy = SKY_R*(eN-e)*.5*1.6;
+    const yc = Math.sin((e+eN)/2)*SKY_R;
+    for(let i=0;i<n;i++){
+      const a = i/n*TAU;
+      box(eye[0]+Math.cos(a)*rr, eye[1]+yc, eye[2]+Math.sin(a)*rr,
+          sx, sy, 2.2, c, 0, -(a + HALF));
+    }
+  }
+  // THE CAP. Everything above about sixty degrees, as one plate - the top of a
+  // dome is where a ring of flat slabs approximates a sphere worst, and it is
+  // also the part the play camera never frames. One box, generous enough to
+  // overlap the top band by ten degrees.
+  skyZenith = zen.slice();
+  box(eye[0], eye[1]+SKY_R*.94, eye[2], 95, 5, 95, zen, 0);
+  // STARS, from a deterministic hash so they do not shimmer frame to frame and
+  // a pinned run gets the same sky twice - the same reason the terrain scatter
+  // is hashed rather than rolled.
+  if(starK > .02) for(let i=0;i<SKY_STARS;i++){
+    const h1 = vhash(i*7919 + 13, i*104729 + 7), h2 = vhash(i*31337 + 3, i*15485863 + 11);
+    const e2 = (.06 + h2*.86) * HALF, a2 = h1 * TAU;
+    const rr2 = Math.cos(e2)*SKY_R*.98, yy = Math.sin(e2)*SKY_R*.98;
+    // it twinkles, slowly and out of step with itself
+    const v = starK * (.70 + .30*Math.sin(T*1.6 + i*2.39));
+    // SMALL. At .55-1.40 across, 180 m out through a 1.02 rad lens, a star was
+    // twelve to thirty-one pixels - a row of white boxes hanging in the sky
+    // rather than a starfield. A tenth of that is three to eight pixels, which
+    // is what a star is, and the count went up to pay for the size going down.
+    const sz2 = .14 + h1*.22;
+    box(eye[0]+Math.cos(a2)*rr2, eye[1]+yy, eye[2]+Math.sin(a2)*rr2,
+        sz2, sz2, sz2, [v*.94, v*.96, v], 0, a2);
+  }
+  // THE LIGHT HAS A BODY. uSun is a direction and the entire world is shaded by
+  // it, and until now nothing on screen said where it was. Putting a disc there
+  // means the shading and the sky finally agree - and because its colour is the
+  // key light's own, the same body reads as a sun in the afternoon, a pale moon
+  // at night and a blood sun in sudden death without a second table.
+  const sd = nrm(S.sun);
+  if(sd[1] > -.04){
+    const px2 = eye[0]+sd[0]*SKY_R*.94, py2 = eye[1]+sd[1]*SKY_R*.94, pz2 = eye[2]+sd[2]*SKY_R*.94;
+    const disc = [Math.min(1,S.sunC[0]*1.18+.12), Math.min(1,S.sunC[1]*1.14+.09),
+                  Math.min(1,S.sunC[2]*1.10+.07)];
+    // the sky immediately around it, so the corona fades into its own hour
+    const tS = clamp(Math.asin(clamp(sd[1],-1,1))/HALF, 0, 1);
+    const near2 = [0,1,2].map(i => lerp(S.fog[i], zen[i], tS));
+    // outer shells first, brightest last: the depth test is off for this pass,
+    // so what is drawn last is what is seen
+    for(let i=3;i>=1;i--){
+      const k2 = i/3, w = 7 + i*5.2;
+      box(px2, py2, pz2, w, w, w,
+          [0,1,2].map(q => lerp(disc[q], near2[q], k2*.80)), 0, i*.39);
+    }
+    box(px2, py2, pz2, 7, 7, 7, disc, 0, .19);
+  }
+  skyBoxes = drawnBoxes + nbox - b0;
+}
 function render(){
   if(ctxLost) return;                          // every GL call would silently no-op
   const w = cv.width = innerWidth;
@@ -14930,6 +15111,7 @@ function render(){
   const at  = [ px + (Math.sin(camYaw)*2.2 + pvx*.20) * (1 - dd), py + 1.4 - dd*.6,
                 pz + (Math.cos(camYaw)*2.2 + pvz*.20) * (1 - dd) ];
   if(camLock){ for(let q=0;q<3;q++){ eye[q] = camLock[q]; at[q] = camLock[3+q]; } camEye = eye; }
+  camAim = [at[0]-eye[0], at[1]-eye[1], at[2]-eye[2]];
   // the lens widens with the animal, not just the sprint: up to ~7 degrees
   // on the largest bodies, zero on a hatchling - distance does most of the
   // work, FOV buys the margin that keeps the horde in frame beside a big body
@@ -14948,6 +15130,23 @@ function render(){
   gl.uniform3fv(U.uEye,  eye);
   gl.uniform1f(U.uNear, S.near); gl.uniform1f(U.uFar, S.far);
   gl.uniform1f(U.uFlash, flash*.30*flashMul());
+
+  // ---- THE SKY, first and behind everything. Three pieces of GL state, and
+  // each one is here for a reason the sky is the only pass to have: DEPTH TEST
+  // off so a dome at 180 m can never occlude a prop at 250 (and is never
+  // occluded by one); CULL_FACE off because the dome is seen from INSIDE and
+  // every face the camera meets is a back face, which the world's own winding
+  // would throw away; and uUnlit so neither the key light, the fog nor the
+  // damage flash touches the thing all three are measured against. Flushed
+  // before the terrain rebinds the buffer, or the sky's boxes would be drawn
+  // later, with the world's state back on.
+  gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.depthMask(false);
+  gl.uniform1f(U.uUnlit, 1);
+  drawSky(eye, S);
+  flush();
+  gl.uniform1f(U.uUnlit, 0);
+  gl.depthMask(true); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+  passEnd("sky");
 
   // terrain (static buffer, its own draw)
   gl.bindBuffer(gl.ARRAY_BUFFER, terBuf); bindAttribs();
@@ -17399,7 +17598,15 @@ window.__g = {
                 air:!!P.air }),
   botHop:(on=true)=>botHop=on,
   clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
-  camInfo:()=>({ fov:+camFov.toFixed(3), dist:+camDist.toFixed(2) }),
+  // pitch is the ONE number that says how much sky the player gets, and it
+  // was derived from the boom maths for a whole round before it was read off
+  // a frame. top/bot are the elevations of the frame's edges, in degrees.
+  camInfo:()=>{ const l = Math.hypot(camAim[0],camAim[1],camAim[2]) || 1e-6;
+    const pitch = Math.asin(camAim[1]/l), half = camFov/2;
+    const D = 180/Math.PI;
+    return { fov:+camFov.toFixed(3), dist:+camDist.toFixed(2),
+             pitch:+(pitch*D).toFixed(2), top:+((pitch+half)*D).toFixed(2),
+             bot:+((pitch-half)*D).toFixed(2) }; },
   // every box of one rendered frame: [x,y,z,sx,sy,sz,emit] each, for the suite to read shapes off
   capFrame:()=>{ fxCap = []; render(); const o = []; for(let i=0;i<fxCap.length;i+=7) o.push(fxCap.slice(i,i+7)); fxCap = null; return o; },
   popCount:()=>pops.length + cpops.length,
@@ -18172,6 +18379,82 @@ window.__g = {
     for(const e of kc) corpses.push(e);
     rebuildGrid(); wardPass();
     return { ok: !bad.length, bad, cameInAt:+dS.toFixed(1), peak:+peak.toFixed(1), aimedAt:+aimed.toFixed(2), dove:!!dove }; },
+  // THE SKY (L14), as the frame ACTUALLY drew it: the two colours the gradient
+  // runs between are read back off the arrays handed to box(), never off the
+  // literals this round typed - a gate that re-reads its own constant cannot
+  // fail, which is the lesson L13b paid for twice in one batch.
+  sky: ()=>({ horizon: skyHorizon ? skyHorizon.map(v=>+v.toFixed(4)) : null,
+              zenith:  skyZenith  ? skyZenith.map(v=>+v.toFixed(4)) : null,
+              spread: (skyHorizon && skyZenith) ? +Math.hypot(
+                        skyHorizon[0]-skyZenith[0], skyHorizon[1]-skyZenith[1],
+                        skyHorizon[2]-skyZenith[2]).toFixed(4) : null,
+              stars: skyStarK, boxes: skyBoxes, r: SKY_R,
+              fog: skyAt(T).fog.map(v=>+v.toFixed(4)),
+              bandC: skyBandC.map(c => c.map(v => +v.toFixed(4))),
+              bands: SKY_BANDS.length }),
+  // THE SKY GATE (L14). Q4's driven evidence ranks the flat sky first of six map
+  // failings; these are the five things that have to hold for it to be FIXED
+  // rather than merely different, checked at every hour of the run's own arc.
+  skyGate:()=>{
+    const bad = [], t0 = T, seen = [];
+    for(const t of [0, 300, 660, 960, 1140, 1320]){
+      T = t; render();
+      const q = window.__g.sky();
+      // the luminance of every band the frame actually drew, bottom to top -
+      // the same weights the hour's own darkness is read with, so a step here
+      // is a step a player's eye gets.
+      const L = q.bandC.map(c => c[0]*.30 + c[1]*.59 + c[2]*.11);
+      let step = 0, rise = 0;
+      for(let i=1;i<L.length;i++){
+        step = Math.max(step, Math.abs(L[i] - L[i-1]));
+        rise = Math.max(rise, L[i] - L[i-1]);
+      }
+      seen.push({ t, spread:q.spread, stars:q.stars, boxes:q.boxes,
+                  step:+step.toFixed(4), bands:L.length });
+      // 1. THE HORIZON BAND IS THE FOG, EXACTLY. Everything in the game fades
+      // into uFog at distance; any other colour there is a hard line round the
+      // whole world at the radius the terrain disappears.
+      for(let i=0;i<3;i++) if(Math.abs(q.horizon[i] - q.fog[i]) > 1e-4){
+        bad.push(`THE SKY'S HORIZON IS NOT THE FOG at t=${t}: [${q.horizon}] against [${q.fog}] - the world fades into a seam`);
+        break;
+      }
+      // 2. AND THERE IS ACTUALLY A GRADIENT, which is the complaint itself:
+      // "one unbroken purple over the top 40% of the frame".
+      if(!(q.spread > .08))
+        bad.push(`THE SKY IS FLAT at t=${t}: horizon and zenith are ${q.spread} apart`);
+      // 3. IT STAYS INSIDE ITS BUDGET. Q5 settled that the map is a BUDGET
+      // problem before it is a content problem, and a sky is the easiest place
+      // in this renderer to spend a frame without noticing.
+      if(q.boxes > 140)
+        bad.push(`THE SKY IS OVER BUDGET at t=${t}: ${q.boxes} boxes in the pass`);
+      // 4. AND IT ARRIVES AS A GRADIENT AND NOT AS STEPS. A dome of flat slabs
+      // can only change colour at a join, so the whole question is how big the
+      // joins are: the first band table's biggest was .096 of luminance - a
+      // visible line across the sky at about eleven degrees, which is inside
+      // the only part of it the player ever frames. SKY_BANDS places its edges
+      // by the inverse of the ramp to hold every join to a seventh of the
+      // range; this reads the colours the frame DREW and checks it did.
+      if(step > .045)
+        bad.push(`THE SKY IS BANDED at t=${t}: the biggest join between bands is ${step.toFixed(4)} of luminance, which reads as a line and not a gradient`);
+      // and it only ever darkens going up - a band that gets BRIGHTER with
+      // height is the ramp inverted or a band drawn out of order, neither of
+      // which the spread in clause 2 can see.
+      if(rise > 1e-6)
+        bad.push(`THE SKY BRIGHTENS UPWARD at t=${t}: a band is ${rise.toFixed(4)} lighter than the one below it`);
+      if(q.bandC.length !== q.bands)
+        bad.push(`THE SKY DREW ${q.bandC.length} BANDS, NOT ${q.bands} at t=${t} - the table and the frame disagree`);
+    }
+    // 5. THE STARS ANSWER THE HOUR, off the measured luminance and not a clock.
+    if(seen[0].stars > .02) bad.push(`STARS IN THE AFTERNOON: ${seen[0].stars} at t=0`);
+    if(seen[4].stars < .5)  bad.push(`NO STARS AT NIGHT: ${seen[4].stars} at t=1140`);
+    // ...and the coefficient is not the stars. starK is set whether or not a
+    // single star is drawn, so on its own it is a gate reading back a number it
+    // was handed; the night pass has to be BIGGER than the day one, by the
+    // bodies the stars actually put in it.
+    if(!(seen[4].boxes >= seen[0].boxes + 20))
+      bad.push(`THE STARS ARE A NUMBER AND NOT A SKY: the night pass drew ${seen[4].boxes} boxes against the afternoon's ${seen[0].boxes} - starK says ${seen[4].stars} but nothing was put in the frame`);
+    T = t0;
+    return { ok: !bad.length, bad, seen }; },
   groundGate:()=>{ const G = window.__g.ground(), bad = [];
     if(G.cover < 1200)  bad.push(`GROUND COVER MISSING: ${G.cover} patches, expected >= 1200`);
     if(G.lift  > .20)   bad.push(`GROUND COVER IS STANDING UP: lift ${G.lift} m > 0.20 m`);

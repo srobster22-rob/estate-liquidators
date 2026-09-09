@@ -129,3 +129,36 @@ BUDGET problem before it is a content problem. The instrument is the per-pass
 box census (`__g.boxCensus().passes`), and a map round is judged by where the
 frame's geometry went, not by how much of it there is.
 
+### Q5 re-measured, at the end of L14: the sky is 2.6% of the frame
+
+L14 built the sky, and the first thing it had to do was find out how much of a
+frame the sky actually is. The answer was not the one Q4's prose implies, and it
+is worth writing down because it reorders the six failings.
+
+Derived from the boom maths, the play camera looked like it framed elevation
+-51 to +7.5 degrees. Measured off a real driven frame it pitches **27.9 degrees
+down** and frames **-57.2 to +1.3** on desktop, **-63.6 to +6.9** on a phone. So
+sky - anything above the horizon - is **2.6% of a desktop frame** and **11.8% of
+a phone one**.
+
+Q4's "one unbroken purple over the top 40% of the frame" is therefore not the
+sky. Measured as the longest run of rows whose luminance holds within 0.012,
+across three hours and six columns of a real frame, the flattest thing on screen
+is **the ground: 47-56% of the frame**, rows from the middle down, elevation -24
+to -57 degrees, constant for four hundred rows. That is failing #2, "the ground
+is a plane", and it is an order of magnitude larger than failing #1.
+
+Two more things the same frames show, neither of them the sky:
+
+- **The ground does not take the hour.** At midnight the sky reads 0.115 of
+  luminance and the ground reads 0.44 - a daylight-green field under a night
+  sky. The hemisphere term uses skyAt()'s `gnd`, which is 0.33-0.36 at every
+  hour of the arc while `fog` travels from 0.63 to 0.09.
+- **The fully-fogged band is thin.** Fog closes at 84-145 m, which from an eye
+  6 m up is elevation -2.4 degrees: only about 6% of the frame is saturated fog.
+  Aerial perspective is not what is flattening the picture.
+
+**What this settles for the map round after L14:** the ground, and its light,
+before anything else above the horizon. Q5's instrument still stands - a map
+round is judged by where the frame's geometry went - but this adds a second one:
+the frame's own luminance profile by elevation, which is what found this.

@@ -8595,8 +8595,20 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const im = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = "data:image/png;base64," + b64; });
         const cv = document.createElement("canvas"); cv.width = im.width; cv.height = im.height;
         const c = cv.getContext("2d", { willReadFrequently: true }); c.drawImage(im, 0, 0);
+        // A HUE, NOT A BRIGHTNESS. This counted d[0] > 150 && d[2] > 150, which
+        // assumes the toast is at full opacity - and it is not: alpha is
+        // life/2.6 and the life decays in WALL CLOCK, so by the time the
+        // screenshot round-trip and the evaluate have run, the plate is
+        // somewhere between .55 and .75 and its peak channel lands 137 to 168.
+        // The bar sat inside that range, so the check was a coin flip: measured
+        // five trials at 0, 0, 1318, 1197, 0 - and it had been passing by luck.
+        // What it means to assert is that the toast's COLOUR is on the screen,
+        // and magenta is magenta at any alpha: red and blue both well clear of
+        // green. Same five trials, 1476 / 1472 / 1520 / 1483 / 1476, and the
+        // receipt case it is paired with still reads 0.
         const d = c.getImageData(0, 0, cv.width, cv.height).data; let n = 0;
-        for (let i = 0; i < d.length; i += 4) if (d[i] > 150 && d[i+2] > 150 && d[i+1] < 90) n++;
+        for (let i = 0; i < d.length; i += 4)
+          if (d[i] > 90 && d[i+2] > 90 && d[i] - d[i+1] > 45 && d[i+2] - d[i+1] > 45) n++;
         return n;
       }, png);
     };
@@ -9146,6 +9158,122 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the crowd is still a crowd - this is not a quiet nerf to the horde",
        ward[ward.length-1].alive >= 110,
        `${ward[ward.length-1].alive} alive at 15:00 (L8 held ~95, uncapped 212-239)`);
+  }
+
+  console.log("\n=== 99. THE SKY IS A SKY ===");
+  {
+    // Q4's driven evidence ranks the flat sky first of six map failings: "one
+    // unbroken purple over the top 40% of the frame - no gradient, no stars, no
+    // moon, nothing. It is the single largest area on screen and it is the
+    // emptiest thing in the game." Until this round the sky was one
+    // gl.clearColor. It is now a dome of unlit bands, and these are the things
+    // that have to hold for that to be a fix rather than a different flat.
+    const sky = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+      g.start("intern"); g.god(); g.drainPicks(true); g.freezeEvents(true); g.freezeSpawns(true);
+      g.step(120, 1/60); g.still(true);
+      const out = { gate: g.skyGate(), hours: [] };
+      const st = g.state(), yE = st.y + 2.5;
+      // THE FRAMEBUFFER, NOT THE FORMULA. Everything above reads numbers the
+      // page computed; this reads the pixels it drew. It is the only instrument
+      // that can see a GAP - and it found one: the bands took their height from
+      // sin(eN)-sin(e), the PROJECTED height rather than the arc, so every join
+      // was short by cos(elevation) and the clear colour showed through. Up the
+      // middle of a real frame the luminance went 0.509, 0.406, 0.406, 0.509 -
+      // bright at every join, which no in-page gate could ever have noticed.
+      for (const t of [0, 660, 1140]) {
+        g.skipTo(t, true);
+        // level, so the frame's top half is exactly the elevations the ramp
+        // lives in and the horizon is the middle row
+        g.camLock(st.x, yE, st.z, st.x + 60 * Math.sin(4.2), yE, st.z + 60 * Math.cos(4.2));
+        await frame();
+        const cam = g.camInfo(), cv = document.getElementById("gl");
+        const c2 = document.createElement("canvas"); c2.width = cv.width; c2.height = cv.height;
+        c2.getContext("2d").drawImage(cv, 0, 0);
+        const x2 = c2.getContext("2d"), th = Math.tan(cam.fov / 2), rows = [];
+        for (const e of [1, 2, 4, 6, 8, 11, 14, 18, 22, 26]) {
+          const fy = (1 - Math.tan(e * Math.PI / 180) / th) / 2;
+          const d = x2.getImageData(Math.round(cv.width * .5), Math.round(cv.height * fy), 1, 1).data;
+          rows.push({ e, lum: +((d[0] * .30 + d[1] * .59 + d[2] * .11) / 255).toFixed(4) });
+        }
+        out.hours.push({ t, rows, band: g.sky().bandC.map(c => +(c[0] * .30 + c[1] * .59 + c[2] * .11).toFixed(4)) });
+      }
+      g.camLock();
+      return out;
+    });
+
+    ok("the sky's own gate passes at every hour of the arc",
+       sky.gate.ok, sky.gate.ok ? sky.gate.seen.map(s => `${s.t}: spread ${s.spread} step ${s.step}`).join(", ")
+                                : sky.gate.bad.join(" | "));
+
+    // 1. IT DARKENS UPWARD, in the pixels, at every hour.
+    const climb = sky.hours.map(h => {
+      let rise = 0;
+      for (let i = 1; i < h.rows.length; i++) rise = Math.max(rise, h.rows[i].lum - h.rows[i - 1].lum);
+      return { t: h.t, rise, range: +(h.rows[0].lum - h.rows[h.rows.length - 1].lum).toFixed(4) };
+    });
+    ok("the drawn sky darkens with height and never brightens",
+       climb.every(c => c.rise <= .002),
+       climb.map(c => `${c.t}: worst rise ${c.rise.toFixed(4)}`).join(", "));
+    // 2. AND THERE IS SOMETHING TO DARKEN. A dome that is a gradient of nothing
+    // is the complaint restated. Night is a tenth of the daytime range and
+    // still has to clear the bar it can clear.
+    ok("and it covers real ground between the horizon and 26 degrees",
+       climb[0].range > .15 && climb[1].range > .15 && climb[2].range > .04,
+       climb.map(c => `${c.t}: ${c.range}`).join(", "));
+
+    // 3. NO JOIN IS A LINE. A dome of flat slabs can only change colour at a
+    // join, so the whole question is how big the joins are. The first band
+    // table was spaced by eye and its biggest join was .096 of luminance - a
+    // visible edge at about eleven degrees, inside the only part of the sky the
+    // player ever frames. SKY_BANDS now places its edges by the INVERSE of the
+    // colour ramp, and this is what says that mattered.
+    const worst = sky.hours.map(h => {
+      let m = 0;
+      for (let i = 1; i < h.band.length; i++) m = Math.max(m, Math.abs(h.band[i] - h.band[i - 1]));
+      return { t: h.t, m };
+    });
+    ok("no two bands differ by enough to read as a line",
+       worst.every(w => w.m <= .045),
+       worst.map(w => `${w.t}: biggest join ${w.m.toFixed(4)}`).join(", "));
+    // 4. AND THE JOINS ARE ALL THE SAME SIZE, which is the only thing that
+    // distinguishes a table derived from the ramp from a table of nice-looking
+    // numbers that happens to pass check 3 today.
+    const even = sky.hours.map(h => {
+      const j = [];
+      for (let i = 1; i < h.band.length; i++) if (h.band[i - 1] - h.band[i] > 1e-4) j.push(h.band[i - 1] - h.band[i]);
+      return { t: h.t, n: j.length, spread: j.length ? Math.max(...j) / Math.min(...j) : 0 };
+    });
+    ok("and every join is the same size - the edges come from the ramp, not from taste",
+       even.every(e => e.n >= 6 && e.spread < 1.05),
+       even.map(e => `${e.t}: ${e.n} joins, largest/smallest ${e.spread.toFixed(3)}`).join(", "));
+
+    // 5. THE PLAYER CAN ACTUALLY SEE IT. This round derived the camera's sky
+    // window from the boom maths and got +7.5 degrees; measured off a real
+    // frame it is +1.29 on desktop and +6.88 on a phone, because the play
+    // camera pitches 27.9 degrees DOWN. So the sky is 2.6% of a desktop frame
+    // and 11.8% of a phone one - which is worth knowing and worth pinning,
+    // because a dome nobody can see is not a fix, and a camera change that
+    // quietly took the last of it away would otherwise pass every check above.
+    const shape = [];
+    for (const vp of [{ w: 1280, h: 760, nm: "desktop" }, { w: 414, h: 896, nm: "phone" }]) {
+      const q = await browser.newPage({ viewport: { width: vp.w, height: vp.h } });
+      await q.goto(FILE);
+      await q.waitForFunction(() => window.__g && window.__g.camInfo, null, { timeout: 60000 });
+      shape.push(Object.assign({ nm: vp.nm }, await q.evaluate(async () => {
+        const g = window.__g;
+        g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+        g.start("intern"); g.god(); g.drainPicks(true); g.freezeEvents(true); g.freezeSpawns(true);
+        g.step(600, 1/60);
+        await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+        return g.camInfo();
+      })));
+      await q.close();
+    }
+    ok("the play camera still frames some sky, on both shapes",
+       shape.every(s => s.top > 0.5) && shape[1].top > shape[0].top,
+       shape.map(s => `${s.nm} pitch ${s.pitch}, frame ${s.bot}..${s.top} deg`).join("; "));
   }
 
   console.log("\n" + "=".repeat(58));
