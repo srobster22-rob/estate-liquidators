@@ -9386,7 +9386,18 @@ function hurt(e, amount, kx, kz, crit){
   // way the player can find out why the thing in front of them is not dying.
   if(e.ward && !e.ward.dead){
     amount *= WARD_CUT;
-    if(cpops.length < 300 && R() < .5)
+    // THE ROLL COMES FIRST, ALWAYS, AND THE POOL DECIDES ONLY WHETHER TO DRAW.
+    // `cpops.length < 300 && R() < .5` short-circuits: when the cosmetic pool is
+    // full the seeded draw is SKIPPED - and cpops drains on crnd() lifetimes,
+    // which come from Math.random and not from the run stream. So whether this
+    // hit consumed a number from the seeded stream depended on unseeded
+    // particle timing, and every draw after it in the run was shifted. That is
+    // the whole of "a fully pinned trial is reproducible to the kill" failing
+    // at 1233.5 / 1239.7 / 1233.9 s on one pinned seed: not a big divergence,
+    // just three runs that stopped being the same run. A warded hit now costs
+    // exactly one draw whatever the pool is doing.
+    const showSpark = R() < .5;
+    if(showSpark && cpops.length < 300)
       spark(e.x, e.y + e.def.h*.8, e.z, WARD_COL, 1, 2.6);
   }
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
@@ -10431,6 +10442,16 @@ function spawnEnemy(type, atX, atZ){
     // is the `rise` guard hurt() has always had - it was never boss-only, it
     // was only ever normalised by a boss-only constant.
     burrow, rise: burrow ? BURROW_RISE : 0, riseMax: BURROW_RISE,
+    // A HEADING FROM THE FRAME IT EXISTS. walk() sets e.hd on its first call
+    // with exactly this formula - but dig, stoop and rise all `continue` BEFORE
+    // walk(), so a body that spawns underground, or is sampled inside one of
+    // those beats, has never been given one. gait() then reports hd:null, which
+    // is what "a minute of a real wave leaves every gait field finite" caught -
+    // intermittently, because whether any of ~140 bodies is mid-beat on the
+    // sampled frame is luck. Latent since the burrow (L16); L19's climb is the
+    // third such state and is what made it likely enough to see. Same value
+    // walk() would compute, so nothing about the sim moves.
+    hd: P ? Math.atan2(P.x - x, P.z - z) : 0,
     dig:0, dug:0,                               // THE DIG-IN (L18): going down, and whether it ever has
     stoop:0, stooped:0,                         // THE STOOP (L19): climbing out, and whether it ever has
     dead:false, boss:false, eid:++EID };
