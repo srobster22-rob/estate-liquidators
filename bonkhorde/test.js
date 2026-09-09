@@ -8976,6 +8976,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.digin = g.diginGate();
       out.stoop = g.stoopGate();
       out.reset = g.burrowResetGate();
+      // AND L20 ARRIVED THE SAME WAY WITH A TENTH, one round after this section
+      // was written to close exactly that gap. It goes after burrowResetGate
+      // because verbInit() calls startRun() itself and wants no run up, and it
+      // costs about ten seconds of wall clock to sample a ten-minute window.
+      out.census = g.censusGate();
       return out;
     });
     const say = r => (r && r.bad && r.bad.length) ? r.bad.join(" | ") : "clean";
@@ -9008,6 +9013,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L19's stoop gate: it climbs, it comes back inside DIVE_R, and the arrival delivers the dive",
        gates.stoop.ok, say(gates.stoop) +
        `  (peak ${gates.stoop.peak} m, re-entered at ${gates.stoop.cameInAt} m, aimed ${gates.stoop.aimedAt})`);
+    // L20's is the one gate here that checks an INSTRUMENT rather than a
+    // mechanic: its fifth clause asserts the bench survives its own sampling
+    // window, which is the selection effect every horde share in L15-L18 was
+    // quietly computed under. A number measured only over the runs that lived
+    // long enough to be measured is not the number it is reported as.
+    ok("L20's census gate: the bench samples its whole window, and its pooled shares are a real union",
+       gates.census.ok, say(gates.census) +
+       `  (${gates.census.bf} body-frames over ${gates.census.ended} s, non-walk ${gates.census.nw}, +rout ${gates.census.nwr}, ${gates.census.hurtPerMin} hp/min)`);
   }
 
   // ==========================================================================

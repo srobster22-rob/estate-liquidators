@@ -17693,48 +17693,87 @@ window.__g = {
   // arms can be compared on instead of an outcome that terminates the sample.
   // It does not touch the horde: killR, the verbs and the arrival gates all read
   // the same quantities they would have.
-  verbRun:(char, from=360, to=960, every=3, keep=false)=>{
+  // SPLIT INTO init / chunk / finish (L20) so the SAME census can be driven two
+  // ways: verbRun() blocks and returns, exactly as L19 wrote it, and verbTick()
+  // advances one slice and yields. The reason is not tidiness - it is that a
+  // heavy character cannot be measured at all otherwise. `ox` costs 10.8 s of
+  // wall clock per 60 sim-seconds, so its ten-minute window is ~110 s and every
+  // attempt to run it died on the QA bridge's timeout. Measuring only the
+  // characters that happen to fit inside a timeout is the SAME selection effect
+  // L19 found in the runs that happened to survive, one level up: it would have
+  // quietly made every arm in this round a light-character arm.
+  verbInit:(char, from=360, to=960, every=3, keep=false)=>{
     startRun(char || "intern"); botDrive = true;
     const S = { char:char||"intern", bf:0, pter:0, dive:0, dvW:0, bite:0, spit:0,
-                dives:0, deaths:[], stoopN:0, diginN:0, ended:0 };
-    const last = new Map(); let prev = new Map(), f = 0, guard = 0;
-    // What the run COSTS, as well as what it does: every frame-to-frame DROP in
-    // the player's health, summed. Not contact damage specifically - hazards and
-    // spits are in it too - which is why it is reported as a total and why the
-    // arms have to be read against each other rather than in absolute terms.
-    let hpWas = P.hp, hurtT = 0;
-    while(!over && T < to && guard++ < 400000){
+                dives:0, deaths:[], stoopN:0, diginN:0, ended:0, rout:0, nw:0, nwr:0 };
+    return { S, from, to, every, keep, last:new Map(), prev:new Map(), f:0,
+             guard:0, hpWas:P.hp, hurtT:0, done:false };
+  },
+  // one slice. Returns true while there is more to do; `frames` bounds the WALL
+  // CLOCK of a single call, not the measurement window, so it can never change
+  // what is measured - only how many calls it takes to get there.
+  verbTick:(R, frames=3000)=>{
+    const S = R.S; let n = 0;
+    while(!over && T < R.to && R.guard++ < 400000 && n++ < frames){
       if(picking) autoPick();
-      step(1/60); f++;
-      if(P.hp < hpWas && T >= from) hurtT += hpWas - P.hp;
-      if(keep && P.hp < P.maxhp) P.hp = P.maxhp;
-      hpWas = P.hp;
-      if(T < from || (f % every)) continue;
+      step(1/60); R.f++;
+      if(P.hp < R.hpWas && T >= R.from) R.hurtT += R.hpWas - P.hp;
+      if(R.keep && P.hp < P.maxhp) P.hp = P.maxhp;
+      R.hpWas = P.hp;
+      if(T < R.from || (R.f % R.every)) continue;
       const seen = new Set();
       for(const e of enemies){
         if(e.dead || e.boss) continue;
         seen.add(e.eid); S.bf++;
         if(e.def.dive) S.pter++;
-        if(e.dvT > 0){ S.dive++; if(!(prev.get(e.eid) > 0)) S.dives++; }
+        if(e.dvT > 0){ S.dive++; if(!(R.prev.get(e.eid) > 0)) S.dives++; }
         if(e.dvW > 0) S.dvW++;
         if(e.wu > 0 && !e.def.ranged) S.bite++;
         if(e.spitTell > 0) S.spit++;
-        last.set(e.eid, Math.hypot(e.x-P.x, e.z-P.z));
+        // THE POOLED SHARES, so this bench can re-measure the claims L16 and
+        // L17 made on the OLD instrument rather than only the per-verb ones L18
+        // and L19 made. `nw` is their definition VERBATIM - roster()'s own three
+        // flags, wu || dvT || spitTell, with no !ranged filter, because that is
+        // the population those two headlines were computed over and a re-measure
+        // that quietly changes the definition audits nothing. `nwr` adds the
+        // rout, which is the only thing L17 counted on top of it.
+        const nw = e.wu > 0 || e.dvT > 0 || e.spitTell > 0;
+        if(nw) S.nw++;
+        if(e.rout > 0) S.rout++;
+        if(nw || e.rout > 0) S.nwr++;
+        R.last.set(e.eid, Math.hypot(e.x-P.x, e.z-P.z));
       }
       // a body that was on the field and is not now: where it was last seen.
       // Past 70 m it left by the cull ring rather than by dying, and counting
       // that as a death would drag every percentile outward.
-      for(const [id,d] of last) if(!seen.has(id)){ if(d < 70) S.deaths.push(+d.toFixed(1)); last.delete(id); }
-      prev = new Map(); for(const e of enemies) if(!e.dead) prev.set(e.eid, e.dvT);
+      for(const [id,d] of R.last) if(!seen.has(id)){ if(d < 70) S.deaths.push(+d.toFixed(1)); R.last.delete(id); }
+      R.prev = new Map(); for(const e of enemies) if(!e.dead) R.prev.set(e.eid, e.dvT);
     }
+    R.done = !(!over && T < R.to && R.guard < 400000);
+    return !R.done;
+  },
+  verbEnd:(R)=>{
+    const S = R.S;
     S.ended = +T.toFixed(1); S.over = !!over; S.stoopN = stoopN; S.diginN = diginN;
-    S.hurt = +hurtT.toFixed(0); S.keep = !!keep;
-    S.hurtPerMin = +(hurtT / Math.max(1/60, (Math.min(T, to) - from) / 60)).toFixed(2);
+    S.hurt = +R.hurtT.toFixed(0); S.keep = !!R.keep;
+    S.hurtPerMin = +(R.hurtT / Math.max(1/60, (Math.min(T, R.to) - R.from) / 60)).toFixed(2);
     S.deaths.sort((a,b)=>a-b);
     const q = (p)=> S.deaths.length ? S.deaths[Math.min(S.deaths.length-1, Math.floor(S.deaths.length*p))] : null;
     S.med = q(.5); S.p10 = q(.1); S.p90 = q(.9); S.nd = S.deaths.length;
     delete S.deaths;
+    // Shares, as percentages of body-frames, because every claim in L15-L19 is
+    // stated as one. Pooling arms means summing bf and the counters, never
+    // averaging these - a per-run share weights a 900-frame run like a
+    // 90,000-frame one, which is the other half of how L18's arms went wrong.
+    const pc = (n)=> S.bf ? +(100*n/S.bf).toFixed(4) : null;
+    S.nwPct = pc(S.nw); S.nwrPct = pc(S.nwr); S.routPct = pc(S.rout);
+    S.bitePct = pc(S.bite); S.divePct = pc(S.dive); S.spitPct = pc(S.spit);
     return S;
+  },
+  verbRun:(char, from=360, to=960, every=3, keep=false)=>{
+    const R = window.__g.verbInit(char, from, to, every, keep);
+    while(window.__g.verbTick(R, 1e9));
+    return window.__g.verbEnd(R);
   },
   // force one named body to go to ground now, so a check does not have to wait
   // out the kill-radius gate and a hit that leaves it under DIGIN_HP
@@ -17997,6 +18036,47 @@ window.__g = {
   // on: the arrival has to put the flier INSIDE DIVE_R with the dive available,
   // because an arrival that lands it at 12 m is the same no-op the dive already
   // was. Clause 6 presses on the verb itself actually firing afterwards.
+  // THE BENCH'S OWN GATE (L20). This round re-measures three earlier rounds'
+  // headline numbers, so the instrument doing the re-measuring is the thing most
+  // worth pressing on: an audit run on a broken bench is worse than no audit.
+  // Clause 5 is the one that matters and it is the reason this gate exists at
+  // all - it is the SELECTION EFFECT itself, asserted rather than trusted. Every
+  // horde number in L15-L18 was taken over whichever runs happened to live to
+  // minute six; `keep` is the fix, and a fix nothing checks is a comment.
+  censusGate:()=>{
+    const bad = [];
+    // THE WINDOW HAS TO BE THE ONE THE VERBS FIRE IN. This gate first sampled
+    // minutes 5-7 and passed every plant put into it, including the bite being
+    // deleted from the pooled union outright - because the arrival mechanics are
+    // armed off the measured kill radius and are still OFF that early, so there
+    // were no bite frames for the clause to catch. A gate whose window contains
+    // none of the population it checks is green for the wrong reason.
+    const r = window.__g.verbRun("intern", 360, 600, 3, true);
+    // 1. IT SAMPLED ANYTHING AT ALL.
+    if(!(r.bf > 0)) bad.push(`CENSUS SAMPLED NO BODY-FRAMES: bf ${r.bf} over ${r.ended.toFixed(1)} s`);
+    // 2. THE UNION DOMINATES EVERY COMPONENT. A pooled counter smaller than one
+    // of the things it pools is the classic mis-wire and it is invisible in a
+    // percentage.
+    for(const [k,v] of [["bite",r.bite],["dive",r.dive],["spit",r.spit]])
+      if(r.nw < v) bad.push(`POOLED NON-WALK IS SMALLER THAN ITS OWN ${k.toUpperCase()} COMPONENT: nw ${r.nw} < ${k} ${v}`);
+    // 3. AND IT IS NO LARGER THAN THE SUM - a body doing two things at once must
+    // be counted ONCE, or every pooled share in L16/L17 is inflated by overlap.
+    if(r.nw > r.bite + r.dive + r.spit)
+      bad.push(`POOLED NON-WALK DOUBLE-COUNTS: nw ${r.nw} > bite+dive+spit ${r.bite + r.dive + r.spit}`);
+    // 4. THE ROUT IS ADDED, NOT MIXED IN. nwr must be exactly the union of the
+    // two, which pins L17's two columns to each other.
+    if(r.nwr < r.nw || r.nwr < r.rout || r.nwr > r.nw + r.rout)
+      bad.push(`ROUT IS NOT A CLEAN UNION WITH NON-WALK: nwr ${r.nwr} against nw ${r.nw} and rout ${r.rout}`);
+    // 5. KEEP KEEPS THE BOT ALIVE, SO THE WINDOW IS SAMPLED IN FULL. This is the
+    // defect L19 found in every earlier round's sampling, stated as a gate.
+    if(r.over || r.ended < 599)
+      bad.push(`THE BENCH STILL DIES INSIDE ITS OWN WINDOW: over ${r.over}, ended ${r.ended.toFixed(1)} s short of 600 s with keep on - the sample is truncated and the arms are taken over survivors`);
+    // 6. AND DAMAGE IS STILL MEASURED WHILE IT IS KEPT ALIVE, or `keep` would buy
+    // the sample by destroying the survivability number the same arms carry.
+    if(!(r.hurt >= 0) || r.hurtPerMin === undefined)
+      bad.push(`KEEP DESTROYED THE DAMAGE MEASURE: hurt ${r.hurt}, hurtPerMin ${r.hurtPerMin}`);
+    return { ok: !bad.length, bad, bf:r.bf, nw:r.nw, nwr:r.nwr, rout:r.rout,
+             ended:r.ended, over:r.over, hurtPerMin:r.hurtPerMin }; },
   stoopGate:()=>{
     const bad = [], keep = enemies.slice(), kc = corpses.slice();
     const kr0 = killR, krn0 = killRN, sh0 = STOOP_SHARE;

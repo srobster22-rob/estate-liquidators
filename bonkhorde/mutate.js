@@ -1120,6 +1120,14 @@ const MUTANTS = [
   { id:"the-stoop-comes-down-out-of-reach", must:"97",
     why:"the climb re-enters outside DIVE_R, which is the no-op it exists to fix",
     from:"const STOOP_AT  = [6.0, 8.6];", to:"const STOOP_AT  = [16.0, 18.6];" },
+  // L20's census gate, which measures the instrument rather than the game. Its
+  // fifth clause is the whole point of the round, so that is the one to break.
+  { id:"the-bench-does-not-keep-its-subject-alive", must:"97",
+    why:"without keep the bot dies inside the window and every share is taken over survivors - the selection effect L20 exists to state",
+    from:"      if(R.keep && P.hp < P.maxhp) P.hp = P.maxhp;\n", to:"" },
+  { id:"the-pooled-non-walk-double-counts", must:"97",
+    why:"a union counted twice inflates every share L16 and L17 reported, and it is invisible in a percentage",
+    from:"        if(nw) S.nw++;", to:"        if(nw) S.nw += 2;" },
   { id:"the-ward-has-no-population-cap", must:"98",
     from:"const wardRoom = wardensNow < Math.max(WARD_FLOOR",
     to:  "const wardRoom = -1 < Math.max(WARD_FLOOR" },
