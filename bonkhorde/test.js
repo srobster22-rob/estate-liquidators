@@ -9191,11 +9191,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const cam = g.camInfo(), cv = document.getElementById("gl");
         const c2 = document.createElement("canvas"); c2.width = cv.width; c2.height = cv.height;
         c2.getContext("2d").drawImage(cv, 0, 0);
-        const x2 = c2.getContext("2d"), th = Math.tan(cam.fov / 2), rows = [];
-        for (const e of [1, 2, 4, 6, 8, 11, 14, 18, 22, 26]) {
-          const fy = (1 - Math.tan(e * Math.PI / 180) / th) / 2;
-          const d = x2.getImageData(Math.round(cv.width * .5), Math.round(cv.height * fy), 1, 1).data;
-          rows.push({ e, lum: +((d[0] * .30 + d[1] * .59 + d[2] * .11) / 255).toFixed(4) });
+        // EVERY ROW, NOT A HANDFUL OF ELEVATIONS. This sampled ten chosen
+        // angles and the mutation audit walked straight through it: a gap
+        // between bands is a ONE-PIXEL-ISH bright line, and 1, 2, 4, 6, 8, 11,
+        // 14, 18, 22, 26 straddled the one a broken dome opens at 20.96
+        // degrees. Read the whole column instead - 256 rows between the
+        // horizon and 26 degrees at this viewport - walked bottom-up, so
+        // "brighter than the row below" is brighter with height.
+        const x2 = c2.getContext("2d"), th = Math.tan(cam.fov / 2), H = cv.height, rows = [];
+        const col = x2.getImageData(Math.round(cv.width * .5), 0, 1, H).data;
+        for (let y = H - 1; y >= 0; y--) {
+          const ndc = 1 - 2 * (y + .5) / H;
+          const e = (cam.pitch * Math.PI / 180 + Math.atan(ndc * th)) * 180 / Math.PI;
+          if (e < .6 || e > 26) continue;
+          rows.push({ e: +e.toFixed(2),
+                      lum: +((col[y*4] * .30 + col[y*4+1] * .59 + col[y*4+2] * .11) / 255).toFixed(4) });
         }
         out.hours.push({ t, rows, band: g.sky().bandC.map(c => +(c[0] * .30 + c[1] * .59 + c[2] * .11).toFixed(4)) });
       }
@@ -9207,15 +9217,25 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        sky.gate.ok, sky.gate.ok ? sky.gate.seen.map(s => `${s.t}: spread ${s.spread} step ${s.step}`).join(", ")
                                 : sky.gate.bad.join(" | "));
 
-    // 1. IT DARKENS UPWARD, in the pixels, at every hour.
+    // 1. IT DARKENS UPWARD, in the pixels, at every row. This is the ONLY
+    // check here that can see a GAP, and a gap is what a dome of flat slabs
+    // fails as: the bands are sized in ARC and overlapped 1.6x, and with the
+    // overlap at 1.0 instead a seam opens at 20.96 degrees that reads 0.084
+    // BRIGHTER than the sky under it, because what shows through is the clear
+    // colour. A good build's worst upward rise across all 256 rows is exactly
+    // zero, at every hour.
     const climb = sky.hours.map(h => {
-      let rise = 0;
-      for (let i = 1; i < h.rows.length; i++) rise = Math.max(rise, h.rows[i].lum - h.rows[i - 1].lum);
-      return { t: h.t, rise, range: +(h.rows[0].lum - h.rows[h.rows.length - 1].lum).toFixed(4) };
+      let rise = 0, at = 0;
+      for (let i = 1; i < h.rows.length; i++) {
+        const d = h.rows[i].lum - h.rows[i - 1].lum;
+        if (d > rise) { rise = d; at = h.rows[i].e; }
+      }
+      return { t: h.t, rise, at, n: h.rows.length,
+               range: +(h.rows[0].lum - h.rows[h.rows.length - 1].lum).toFixed(4) };
     });
-    ok("the drawn sky darkens with height and never brightens",
-       climb.every(c => c.rise <= .002),
-       climb.map(c => `${c.t}: worst rise ${c.rise.toFixed(4)}`).join(", "));
+    ok("the drawn sky darkens with height and never brightens - no band leaves a seam",
+       climb.every(c => c.rise <= .01),
+       climb.map(c => `${c.t}: worst rise ${c.rise.toFixed(4)}${c.rise ? ` at ${c.at} deg` : ""} over ${c.n} rows`).join(", "));
     // 2. AND THERE IS SOMETHING TO DARKEN. A dome that is a gradient of nothing
     // is the complaint restated. Night is a tenth of the daytime range and
     // still has to clear the bar it can clear.

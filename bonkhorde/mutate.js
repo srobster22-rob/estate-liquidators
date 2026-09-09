@@ -1139,9 +1139,18 @@ const MUTANTS = [
   { id:"the-band-edges-are-spaced-by-angle", must:"99",
     why:"the first band table did exactly this and its biggest join was .096 of luminance - a line across the sky at eleven degrees, inside the only part of it the player frames",
     from:"u.push(inv(k/SKY_STEPS)*SKY_RAMP)", to:"u.push(k/SKY_STEPS*SKY_RAMP)" },
-  { id:"the-sky-bands-are-projected-not-arc", must:"99",
-    why:"the band height goes back to sin(eN)-sin(e) and every join opens a gap to the clear colour; nothing but the framebuffer can see it",
-    from:"sy = SKY_R*(eN-e)*.5*1.6", to:"sy = (Math.sin(eN)-Math.sin(e))*SKY_R*.5*1.6" },
+  // NOT the projected-vs-arc height, which is what opened the original gaps and
+  // is the obvious mutation to write here. It was written, it SURVIVED, and the
+  // framebuffer says why: sin(eN)-sin(e) is the arc times cos(elevation), and
+  // with the bands packed into the first twenty-two degrees that factor is
+  // 0.98-1.00, so the shortfall is smaller than the overlap and the dense scan
+  // of a mutated build is IDENTICAL to a good one, row for row, at every hour.
+  // The arc-length sizing stays because it is correct and because a future band
+  // table may climb again - but it is the OVERLAP that seals this dome, so that
+  // is what the mutant has to take away.
+  { id:"the-sky-bands-do-not-overlap", must:"99",
+    why:"at 1.0 the slabs abut in arc terms and a seam opens at 20.96 degrees reading 0.084 brighter than the sky above it - the clear colour, showing through",
+    from:"sy = SKY_R*(eN-e)*.5*1.6", to:"sy = SKY_R*(eN-e)*.5*1.0" },
   { id:"the-stars-never-come-out", must:"99",
     why:"starK still says 0.84 at midnight and every number-reading clause still passes - only the size of the night pass says the sky is empty",
     from:"  if(starK > .02) for(let i=0;i<SKY_STARS;i++){", to:"  if(false) for(let i=0;i<SKY_STARS;i++){" },

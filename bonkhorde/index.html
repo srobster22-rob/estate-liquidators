@@ -14915,16 +14915,25 @@ function drawSky(eye, S){
     const c = [0,1,2].map(i => lerp(S.fog[i], zen[i], tC));
     skyBandC.push(c.slice());
     if(k === 0) skyHorizon = c.slice();
-    // THE HEIGHT IS AN ARC LENGTH, NOT A PROJECTED ONE. This took its vertical
-    // extent from sin(eN)-sin(e) - the band's height as PROJECTED onto the
-    // vertical axis - which is the true arc times cos(elevation), so every band
-    // came out short by that factor and the shortfall grew as the dome climbed.
-    // The framebuffer said so before the eye did: sampled straight up the
-    // middle of a real frame, the luminance went 0.509, 0.406, 0.406, 0.509 -
-    // bright at every band JOIN, because the joins were gaps and what showed
-    // through them was the clear colour. R*dElev is the arc the band actually
-    // has to cover, and 1.6 is the overlap that closes the last seam at the
-    // top, where a flat slab approximates a spherical cap worst.
+    // THE HEIGHT IS AN ARC LENGTH, NOT A PROJECTED ONE - and 1.6 IS WHAT
+    // ACTUALLY SEALS THE DOME. Both halves of that were measured, and the
+    // second one corrected the first.
+    //
+    // The band's extent used to come from sin(eN)-sin(e), the height PROJECTED
+    // onto the vertical axis, which is the true arc times cos(elevation). With
+    // the old hand-spaced table climbing to 45 degrees that cost real gaps:
+    // sampled up the middle of a real frame the luminance went 0.509, 0.406,
+    // 0.406, 0.509 - bright at every JOIN, because the joins were holes and
+    // what showed through was the clear colour.
+    //
+    // With the bands packed into the first twenty-two degrees it costs nothing:
+    // cos is 0.98-1.00 there, and a mutation putting the projected height back
+    // produces a framebuffer IDENTICAL to a good build, row for row, at every
+    // hour - it was written as a mutant and it survived. R*dElev stays because
+    // it is the right quantity and a future table may climb again. What holds
+    // the seams shut now is the 1.6: at 1.0 the slabs abut in arc terms and a
+    // seam opens at 20.96 degrees reading 0.084 brighter than the sky above it.
+    // That is the mutant, and section 99 scans every row to catch it.
     const sx = (Math.PI*rr/n)*1.12, sy = SKY_R*(eN-e)*.5*1.6;
     const yc = Math.sin((e+eN)/2)*SKY_R;
     for(let i=0;i<n;i++){
