@@ -2198,9 +2198,22 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const settle = async () => { await frame(); await frame(); return g.state().boxes; };
       g.wipeSave(); g.start("ox"); g.god(); g.freezeSpawns(true); g.freezeEvents(true);
       g.drainPicks(true); g.setShake(0); g.place(0, 0);
+      // AND THE BIRD HOLDS STILL TO BE COUNTED. This measures a RENDERED frame
+      // and then waits on wall-clock frames to get one - and since R300 a frame
+      // pays its time out in up to six 42 ms sim steps, so a slow frame spends
+      // a quarter second of world. GLIMMERFOWL is the one enemy that RUNS AWAY
+      // (4.6 m/s), and the body tiers at 11 m: under load it fled out of the
+      // near band before it could be counted and the check read 16.0 boxes a
+      // bird against 33.7-37.0 alone. Third of this family after the two banner
+      // lanes; a check that measures a frame should not also be running the
+      // world. render() draws while paused, step() does not, so the count is
+      // the same one and the bird stays where it was put.
+      g.pause(true);
       const bare = await settle();
       g.spawn("collector", 3, 8); g.step(1/60);
-      return { bare, withFowl: await settle() };
+      const withFowl = await settle();
+      g.pause(false);
+      return { bare, withFowl };
     });
     const per = (fowl.withFowl - fowl.bare) / 3;
     ok("and GLIMMERFOWL is a bird, not fifteen marker boxes",
@@ -8808,6 +8821,83 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        far.boxes < near.boxes * .72 && far.boxes >= 3,
        `one field, same radius and life: ${near.boxes} boxes at ${near.d} m against ${far.boxes} at ${far.d} m` +
        ` (world-unit spacing draws ${near.boxes} at both)`);
+  }
+
+  console.log("\n=== 96. THE HORDE ARRIVES ===");
+  {
+    // Q5's answer was "make the crowd read as the crowd". L8 stopped the trail
+    // hiding it; this asks whether there is one to hide. Runs simulate every
+    // frame - not skipTo, which sets the clock without ever running the
+    // director - on two seeds, because the bot's route decides how much of the
+    // field ends up behind it.
+    //
+    // TWO CHECKPOINTS, AND THE FIRST DRAFT HAD ONE. The phase table is eleven
+    // rows and a single mark can only see the rows that are live at it: both
+    // mutants written against the first version survived, one because it
+    // reverted a phase that does not START until 8:00 (measured at 6:00, its
+    // effect was exactly zero) and one because its 70 seconds were diluted by
+    // four later phases. Worse, the population is COUPLED TO PLAYER POWER
+    // through XP - reverting an EARLY phase leaves MORE bodies standing at
+    // 15:00 (187 against 115), because a thinner early game levels you slower,
+    // and a weaker kit kills less. So an early floor and a late floor catch
+    // different faults and neither substitutes for the other.
+    //
+    // The floors are set from measured reverts, not from taste: at 6:00 the
+    // shipped table holds 83/59 and draws 44/31 where a reverted t:270 holds
+    // 37/30 and draws 14/11; at 15:00 the shipped table holds 115 and draws
+    // 115 where a reverted t:780 holds 66 and draws 66.
+    const crowd = await page.evaluate(async (seeds) => {
+      const g = window.__g, out = [];
+      const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const look = () => { const f = g.hordeFlow(); return { f };
+      };
+      for (const seed of seeds) {
+        g.wipeSave(); g.dev(true); g.pin(seed); g.pinRun(seed);
+        g.start("intern"); g.god(); g.bot(true); g.drainPicks(true);
+        g.step(360 * 60, 1/60);
+        let f = g.hordeFlow();
+        g.pause(true); await frame(); let c = g.boxCensus(); g.pause(false);
+        const row = { seed, early: { alive: f.alive, drawn: c.enemies - c.culled,
+                                     boxes: c.drawn, horde: +(c.horde / c.drawn).toFixed(3) } };
+        // the late leg on ONE seed only: it is another nine minutes of world
+        // per seed, and one is enough to see a late phase go missing
+        if (seed === seeds[0]) {
+          g.step(540 * 60, 1/60);
+          f = g.hordeFlow();
+          g.pause(true); await frame(); c = g.boxCensus(); g.pause(false);
+          row.late = { alive: f.alive, drawn: c.enemies - c.culled, boxes: c.drawn,
+                       asked: f.asked, killed: f.killed, culled: f.culled, capped: f.capped };
+        }
+        out.push(row);
+      }
+      return out;
+    }, [9, 3]);
+    const early = crowd.map(c => c.early);
+    const late = crowd.find(c => c.late).late;
+    const sayE = crowd.map(c => `seed ${c.seed}: ${c.early.alive} alive, ${c.early.drawn} drawn, ${(c.early.horde*100).toFixed(0)}% of ${c.early.boxes} boxes`).join(" | ");
+    const sayL = `${late.alive} alive, ${late.drawn} drawn, ${late.boxes} boxes`;
+    ok("six minutes in, the field holds a crowd",
+       early.every(e => e.alive >= 50), sayE + "  (a reverted t:270 holds 30-37)");
+    ok("and you can SEE it - the drawn count is a crowd, not a rumour",
+       early.every(e => e.drawn >= 25), sayE + "  (a reverted t:270 draws 11-14)");
+    ok("and the horde is the biggest thing in the frame, not the floor",
+       early.every(e => e.horde >= .32), sayE);
+    ok("fifteen minutes in, the LATE table is still sending them",
+       late.alive >= 90 && late.drawn >= 85,
+       sayL + "  (a reverted t:780 holds 66 and draws 66)");
+    // The flow has to balance, or the counters are decorative: everything asked
+    // for either arrived, was refused by the cap, or left by one of two doors.
+    ok("the population balances: asked = alive + killed + culled + capped",
+       Math.abs(late.asked - (late.alive + late.killed + late.culled + late.capped)) <= 2,
+       `${late.asked} asked = ${late.alive} alive + ${late.killed} killed + ${late.culled} culled + ${late.capped} capped`);
+    // And the frame is what pays for it. R302-R306 and L8 took a real frame
+    // from 6,400 boxes to ~2,200; this round spends some of that back, and the
+    // bound stops a future retune spending all of it. 3,400 and not 2,600: the
+    // shipped table draws 2,516-2,575 at 15:00 and a bound a percent above the
+    // measurement is a tripwire, not a budget.
+    ok("and the frame still affords it",
+       early.every(e => e.boxes < 2600) && late.boxes < 3400,
+       early.map(e => e.boxes).join(", ") + " boxes at 6:00; " + late.boxes + " at 15:00");
   }
 
   console.log("\n" + "=".repeat(58));

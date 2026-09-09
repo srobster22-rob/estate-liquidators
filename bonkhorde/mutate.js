@@ -1089,6 +1089,15 @@ const MUTANTS = [
         "so the ones at your feet draw flat and something behind a rock keeps its spikes",
     from:"    if(n > ZONE_BLADES) bladeCut = zoneNear[ZONE_BLADES-1];",
     to:  "    if(n > ZONE_BLADES) bladeCut = Infinity;" },
+  // L9. The director's rate is what decides whether a crowd exists at all -
+  // the kit decides how many survive, the cap was never reached and the cull
+  // took 0-3 bodies in four full runs. Reverting the first thickened phase is
+  // the honest attack: the population is an integral, so one phase moves the
+  // whole curve after it.
+  { id:"the-director-sends-a-thin-crowd", must:"96",
+    from:"{ t:270,  rate:7.2,", to:"{ t:270,  rate:4.0," },
+  { id:"the-late-crowd-is-thin-again", must:"96",
+    from:"{ t:780,  rate:17.3,", to:"{ t:780,  rate:9.6," },
   { id:"the-rim-is-spaced-in-world-units", must:"95",
     why:"a ring sixty metres off draws twelve embers nine pixels apart again, " +
         "each of them a pixel and a half wide",

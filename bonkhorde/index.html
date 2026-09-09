@@ -2842,18 +2842,36 @@ const skyAt = (t)=>{
            near:lerp(a.near,b.near,k), far:lerp(a.far,b.far,k) };
 };
 
+// THE DIRECTOR SENDS A CROWD FROM MINUTE TWO. Measured with a run that
+// simulates every frame to 17:00 and a control that freezes evolution as well
+// as the kit (the old control re-armed itself at level 7, when a line grants
+// its own move): armed, the field held 94 bodies at 17:00 and 46 at 10:00
+// against a control of ~420, which is the MAXE cap - so the arena can hold
+// four hundred and the run was showing you a tenth of that for two thirds of
+// its length. The cull was not the reason (0-3 bodies culled across four full
+// runs) and neither was the cap (never reached). It is simply that the rate
+// and the kill rate ran level, so the standing crowd never grew.
+//
+// From t:120 on the table is x1.8. Swept at 1.0 / 1.8 / 2.6 over two seeds:
+// 1.8 puts 98 drawn bodies on screen at 10:00 against 42, and 196 at 17:00
+// against 82, for a frame of ~4,000 boxes against ~2,200. 2.6 costs 5,159
+// boxes - pre-R302 weight - and DRAWS FEWER than 1.8 (178) because the extra
+// bodies arrive outside the view: paying for a crowd you cannot see. The
+// first two phases are untouched; the opening is staged deliberately (six
+// walking in from the front, three gems on the ground) and does not want a
+// wave on top of it.
 const PHASES = [
 { t:0,    rate:1.2,  mix:{shambler:10} },
 { t:55,   rate:1.8,  mix:{shambler:10, runner:4} },
-{ t:120,  rate:2.4,  mix:{shambler:9,  runner:6, skitter:3} },
-{ t:190,  rate:3.2,  mix:{shambler:8,  runner:6, skitter:4, spitter:3} },
-{ t:270,  rate:4.0,  mix:{shambler:7,  runner:6, skitter:5, spitter:3, brute:1} },
-{ t:360,  rate:4.9,  mix:{shambler:6,  runner:7, skitter:6, spitter:4, brute:2} },
-{ t:480,  rate:5.9,  mix:{shambler:5,  runner:7, skitter:8, spitter:4, brute:3} },
-{ t:620,  rate:7.8,  mix:{runner:8,    skitter:9, spitter:5, brute:4} },
-{ t:780,  rate:9.6, mix:{runner:8,    skitter:10,spitter:5, brute:6} },
-{ t:960,  rate:11.6, mix:{runner:9,    skitter:11,spitter:6, brute:8} },
-{ t:1100, rate:14.0, mix:{runner:10,   skitter:12,spitter:6, brute:10} },
+{ t:120,  rate:4.3,  mix:{shambler:9,  runner:6, skitter:3} },
+{ t:190,  rate:5.8,  mix:{shambler:8,  runner:6, skitter:4, spitter:3} },
+{ t:270,  rate:7.2,  mix:{shambler:7,  runner:6, skitter:5, spitter:3, brute:1} },
+{ t:360,  rate:8.8,  mix:{shambler:6,  runner:7, skitter:6, spitter:4, brute:2} },
+{ t:480,  rate:10.6,  mix:{shambler:5,  runner:7, skitter:8, spitter:4, brute:3} },
+{ t:620,  rate:14.0,  mix:{runner:8,    skitter:9, spitter:5, brute:4} },
+{ t:780,  rate:17.3, mix:{runner:8,    skitter:10,spitter:5, brute:6} },
+{ t:960,  rate:20.9, mix:{runner:9,    skitter:11,spitter:6, brute:8} },
+{ t:1100, rate:25.2, mix:{runner:10,   skitter:12,spitter:6, brute:10} },
 ];
 // Elite variants. Rare at first sight, ~1 in 5 by the end.
 const NORMAL     = { hp:1,   dmg:1,   spd:1,    sz:1,    xp:1 };
@@ -2930,6 +2948,7 @@ const hpScale  = t => (1 + t/HP_LIN + Math.pow(Math.max(0, t-360)/420, 2) * HP_Q
 let DMG_FROM = 300;
 const dmgScale = t => (1 + Math.max(0, t-DMG_FROM)/DMG_DIV) * deepDmg();
 const MAXE = 420;
+let rateMul = 1;                        // what spawnRate() last scaled the table by
 
 const CHARS = [
 { id:"intern", nm:"THE INTERN", ic:"intern", w:"bat",
@@ -8600,7 +8619,7 @@ function startRun(id){
   // ninety-degree arc so they read as a wave rather than a ring, and three
   // gems are on the ground inside pickup range so the first thing that
   // happens is a pickup rather than a wait.
-  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); lastAff=0; resetAnim();
+  gemStreak=0; gemStreakT=0; beatT=0; xpBanked=0; resetHurt(); resetHordeFlow(); lastAff=0; resetAnim();
   runDist=0; runPearls=0; twin=null;
   // Both widths below are MEASURED BY THE DRAW, so they belong to whatever was
   // last on screen: a run started straight after dying as THE ABYSS would hold
@@ -9053,7 +9072,7 @@ function hurt(e, amount, kx, kz, crit){
 }
 function killEnemy(e){
   if(e.dead) return;
-  e.dead = true; kills++;
+  e.dead = true; kills++; hordeFlow.killed++;
   if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));
   if(hasRule("bloodthirst")) P.hp = Math.min(P.maxhp, P.hp + BLOOD_HEAL(e));
   fell(e);
@@ -9888,8 +9907,22 @@ function updateOrbiters(dt){
 }
 
 // ================================================================= ENEMIES
+// WHERE THE HORDE GOES. Q5's answer was "make the crowd read as the crowd",
+// and after the trail stopped hiding it the crowd turned out not to be there:
+// at 17:00 a real run holds FOURTEEN bodies against 367 with the weapons
+// switched off. That is a population, and a population is a FLOW - things
+// arrive, and they leave by one of three doors - so before any constant is
+// touched, the doors are counted. Every enemy that is asked for, refused by
+// the cap, killed, or culled for being too far behind you is tallied here,
+// per run, and hordeFlow() reports it beside the standing count. The project
+// has been confidently wrong about an instrument three times (the elite HP
+// median, the driven census, the rim's own mutant); this one is four counters
+// on the four lines that actually move the number.
+const hordeFlow = { asked:0, capped:0, spawned:0, killed:0, culled:0 };
+function resetHordeFlow(){ for(const k in hordeFlow) hordeFlow[k] = 0; }
 function spawnEnemy(type, atX, atZ){
-  if(enemies.length >= MAXE) return;
+  hordeFlow.asked++;
+  if(enemies.length >= MAXE){ hordeFlow.capped++; return; }
   const def = ENEMIES[type];
   let x=atX, z=atZ;
   if(x===undefined){
@@ -9941,7 +9974,7 @@ function spawnEnemy(type, atX, atZ){
     gt:0, amp:0, bk:0, lg:0, sq:1,               // the gait and the pose, see walk()
     wu:0, wuT:BITE_WIND, wd:0, lead:0, pre:0, pt:0, rc:0,   // the wind-up and the strike, see the contact code
     dead:false, boss:false };
-  enemies.push(made);
+  enemies.push(made); hordeFlow.spawned++;
   return made;                                  // the hunt event needs a handle
 }
 const BOSS_AT = 15, BOSS_GROW = .05, BOSS_GROW_CAP = 3;
@@ -10672,7 +10705,7 @@ function updateEnemies(dt){
     // you decided to take, and culling them at 80m means walking a wide circle
     // deletes the fight you started. denPatrol() retires them instead.
     if(e.dead && e.denRef === null && !e.boss){ enemies.splice(i,1); continue; }
-    if(!e.boss && !e.denRef && d > 80){ enemies.splice(i,1); continue; }
+    if(!e.boss && !e.denRef && d > 80){ hordeFlow.culled++; enemies.splice(i,1); continue; }
 
     [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
@@ -16196,6 +16229,14 @@ window.__g = {
                    .map(e=>({ d:+Math.hypot(e.x-P.x,e.z-P.z).toFixed(1),
                               wind:+(e.dvW||0).toFixed(2), diving:(e.dvT||0)>0,
                               rest:+(e.dv||0).toFixed(2) })),
+  // THE HORDE AS A FLOW: what was asked for, what the cap refused, what
+  // arrived, and the two doors it leaves by. `alive` is the standing count the
+  // complaint is actually about; `rate` is the phase table's nominal spawns a
+  // second at this moment, so asked-vs-rate says whether the director is even
+  // trying.
+  hordeFlow: ()=>{ const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
+                   return { ...hordeFlow, alive:enemies.filter(e=>!e.dead).length,
+                            cap:MAXE, rate:ph.rate, t:+T.toFixed(1) }; },
   hurtBy: ()=>({ contact:+hurtLog.contact.toFixed(1), spit:+hurtLog.spit.toFixed(1),
                  hazard:+hurtLog.hazard.toFixed(1), hits:Object.assign({}, hurtLog.n),
                  total:+(hurtLog.contact+hurtLog.spit+hurtLog.hazard).toFixed(1) }),
@@ -16541,6 +16582,16 @@ window.__g = {
            for(let i=0;i<d.length;i+=4) if(d[i+3] > 0){ n++;
              tones.add(((d[i]>>4)<<8) | ((d[i+1]>>4)<<4) | (d[i+2]>>4)); }
            return { opaque:n, tones:tones.size }; })() } : null,
+  // THE DIRECTOR'S RATE, scaled, so the standing crowd can be swept the way
+  // the HP curve already can. The phase table is the only thing that decides
+  // how many bodies exist; the kit decides how many survive. Scaling here
+  // rather than editing eleven numbers means a sweep is a parameter and the
+  // shipped table stays readable. No argument reads the multiplier back.
+  spawnRate: (k)=>{ if(k !== undefined){
+                      if(!PHASES[0]._r) for(const p of PHASES) p._r = p.rate;
+                      for(const p of PHASES) p.rate = p._r * k;
+                      rateMul = k; }
+                    return { mul:rateMul, table:PHASES.map(p=>+p.rate.toFixed(2)) }; },
   // Read or set the difficulty curve. No argument reads it, which is what the
   // suite uses to assert the shipped values did not drift during a sweep.
   curve: (q, d, l, x, f)=>{ if(q!==undefined) HP_QUAD  = q;
