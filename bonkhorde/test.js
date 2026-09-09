@@ -8890,14 +8890,93 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the population balances: asked = alive + killed + culled + capped",
        Math.abs(late.asked - (late.alive + late.killed + late.culled + late.capped)) <= 2,
        `${late.asked} asked = ${late.alive} alive + ${late.killed} killed + ${late.culled} culled + ${late.capped} capped`);
-    // And the frame is what pays for it. R302-R306 and L8 took a real frame
-    // from 6,400 boxes to ~2,200; this round spends some of that back, and the
-    // bound stops a future retune spending all of it. 3,400 and not 2,600: the
-    // shipped table draws 2,516-2,575 at 15:00 and a bound a percent above the
-    // measurement is a tripwire, not a budget.
-    ok("and the frame still affords it",
-       early.every(e => e.boxes < 2600) && late.boxes < 3400,
-       early.map(e => e.boxes).join(", ") + " boxes at 6:00; " + late.boxes + " at 15:00");
+    // And the frame is what pays for it - PER BODY, which is the only form of
+    // this bound that survives the population changing.
+    //
+    // The first version was two absolute numbers (2,600 and 3,400) measured off
+    // one build, and the merge with the other session's L14-L17 broke the late
+    // one immediately. Decomposed on seed 9 at 15:00, same bot, same route:
+    //
+    //   L9's rate table alone      163 alive   72 drawn   2,981 boxes   41.4/body
+    //   L15-L16 alone (WARDEN,     267 alive  180 drawn   6,497 boxes   36.1/body
+    //     BURROW; old rate table)
+    //   both                       212 alive  122 drawn   4,658 boxes   38.2/body
+    //
+    // So the extra boxes are not this round's: THE WARD makes bodies last and
+    // THE BURROW lands them at 2.5-4.5 m, inside the LOD 2 band, which is both
+    // rounds working as designed. (The rate table LOWERS the standing count
+    // against theirs - 212 against 267 - through the same XP coupling the note
+    // above records: a denser early game levels you faster and a stronger kit
+    // kills more.) An absolute bound fires on any of that, which makes it a
+    // tripwire on the number of bodies rather than a budget on what a body
+    // costs.
+    //
+    // Boxes per DRAWN body is what R302-R306 actually bought, and it holds flat
+    // across all three builds and both checkpoints: 36-47. The bound is 60 -
+    // ~28% over the worst measurement - so a retune that puts the detail back
+    // on every body fails, and a director that sends more of them does not.
+    // The absolute figures stay as a backstop against an unbounded population:
+    // R302 measured a pre-cull crowded frame at 9,300 boxes for 300 bodies, and
+    // that is the territory the culls exist to keep the frame out of.
+    const perBody = f => f.drawn ? f.boxes / f.drawn : 0;
+    const cost = [...early, late];
+    ok("and the frame still affords it - per body, and in total",
+       cost.every(f => perBody(f) < 60) && early.every(e => e.boxes < 4000) && late.boxes < 9000,
+       cost.map(f => `${f.boxes}/${f.drawn} = ${perBody(f).toFixed(1)}`).join(", ") +
+       " boxes per drawn body" +
+       "  (L9 alone 41.4, L15-L16 alone 36.1, both 38.2)");
+  }
+
+  // ==========================================================================
+  console.log("\n=== 97. THE OTHER SESSION'S OWN GATES ===");
+  {
+    // L14-L17 arrived in this tree by a merge with the other session's live
+    // artifact, and they arrived with SIX gates built into the page - wardGate,
+    // burrowGate, burrowResetGate, groundGate, splitGate and hudOverlaps - that
+    // nothing in this suite ever called. A gate nobody runs is a comment.
+    //
+    // These are not new assertions. Each one is the round's own statement of
+    // what it built, written by the round that built it, and every one returns
+    // { ok, bad[] } with the failures already worded. Running them here is the
+    // cheapest honest way to stop merged work being work this harness has never
+    // measured; if one fails, it fails in the words of the round that owns it.
+    //
+    // Order matters at the end: burrowResetGate starts two fresh runs to prove
+    // the kill radius does not survive a restart, so it goes last and nothing
+    // after it may depend on the run that was up.
+    const gates = await page.evaluate(async () => {
+      const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const out = {};
+      g.wipeSave(); g.dev(true); g.pin(11); g.pinRun(11);
+      g.start("intern"); g.god(); g.drainPicks(true); g.freezeEvents(true);
+      g.step(60, 1/60);
+      out.ground = g.groundGate();
+      out.ward   = g.wardGate();
+      out.burrow = g.burrowGate();
+      // THE SPLIT needs a twin to be able to say the HUD names one
+      g.give("dupe", 1);
+      out.split  = g.splitGate();
+      // the HUD gate wants every lane up at once, and a rendered frame under it
+      g.hudShowAll(); await frame();
+      out.hud = g.hudOverlaps();
+      out.reset = g.burrowResetGate();
+      return out;
+    });
+    const say = r => (r && r.bad && r.bad.length) ? r.bad.join(" | ") : "clean";
+    ok("L12's ground gate: the cover tier exists, lies flat, and fits the buffer",
+       gates.ground.ok, say(gates.ground) + `  (cover ${gates.ground.cover}, lift ${gates.ground.lift} m, ${gates.ground.mb} MB)`);
+    ok("L15's ward gate: the cut, the reach, the cap, and the release on death",
+       gates.ward.ok, say(gates.ward) + `  (cut ${gates.ward.cut}, holds ${gates.ward.held} of ${gates.ward.r} m)`);
+    ok("L16's burrow gate: where it arrives, when it can be hit, and who is exempt",
+       gates.burrow.ok, say(gates.burrow) + `  (at ${gates.burrow.at} m, share ${gates.burrow.share}, rise ${gates.burrow.riseS}s)`);
+    ok("L16's kill radius dies with the run",
+       gates.reset.ok, say(gates.reset) + `  (grown to ${gates.reset.grown} m before the restart)`);
+    ok("L13's split gate: the card names the creature and the HUD names the twin",
+       gates.split.ok, say(gates.split) + `  (card "${gates.split.card.name}", twin ${gates.split.twin})`);
+    ok("L11's HUD gate: no two lanes share ink with every lane up at once",
+       gates.hud.n === 0,
+       gates.hud.n ? gates.hud.pairs.map(p => `${p.a} x ${p.b} ${p.w}x${p.h}px (${p.kinds})`).join(" | ")
+                   : `${gates.hud.lanes} lanes, head ${gates.hud.headBottom}, toast floor ${gates.hud.toastFloor}`);
   }
 
   console.log("\n" + "=".repeat(58));

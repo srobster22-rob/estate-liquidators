@@ -2883,6 +2883,117 @@ const ELITE_TINT = 0.12;
 const ELITE_FROM = 360;                  // none before minute 6
 const eliteChance = t => Math.min(.20, (t - ELITE_FROM) / 3600);
 
+// ================================================================ THE WARDEN
+// MEASURED FIRST (L15). Over a 600 s run, 2,252 bodies: four of the six enemy
+// types have a MEDIAN LIFE OF 0.6 SECONDS and a median closest approach of 23
+// metres, and 99.9% of RAPTORLINGs never come within six metres of you. Across
+// 129,392 body-frames, the number in which a body was doing anything other
+// than walking at the player - the bite wind-up, the dive, the spit - was 924.
+// 0.71%. The horde's behaviours are all coded and all real; they almost never
+// fire, because nothing in the roster survives long enough to reach the range
+// where its own behaviour would trigger. That is what "filler" is: not a badly
+// designed animal, an animal deleted before it can do anything.
+//
+// So the role the horde lacks is not another attacker. It is something that
+// makes the OTHER bodies last. THE WARDEN holds a ward over the horde around
+// it: warded bodies take WARD_CUT of the damage you deal them, so the crowd
+// stops evaporating at range and starts arriving. It cannot be out-damaged
+// through the thing it protects - the answer is to find it and kill it, which
+// is a different verb from "keep firing at the nearest body", and the only
+// targeting decision the horde has ever asked for.
+//
+// IT IS A ROLE OVERLAY, NOT A SEVENTH SPECIES, and that was decided before it
+// was built. The enemy palette is saturated primaries picked against ten
+// grounds, and the file already records that ten of the eleven hues it needs
+// were spoken for; a new species means a new hue through the section-7f dE
+// gate. ELITE is the precedent - a crown, a size and a 0.12 tint, no new
+// colour - and this follows it. It rides DILOPHO, which already holds behind
+// the line at 13 m, so a supporter is standing where a supporter should.
+//
+// AND IT IS READ BY ITS TETHERS, not by its colour. L12's constraint is that
+// the player must be able to read moving bodies against the ground; a hue the
+// eye has to learn would spend against that. A line in the air between two
+// bodies is a shape nothing else in this game has, it points at both ends -
+// at the warden and at what it is keeping alive - and it is drawn above the
+// horde's own height band so it never sits in the silhouette of a body.
+const WARD_FROM  = 200;      // none in the first three and a bit minutes
+const WARD_CHANCE= .34;      // of DILOPHO spawns after that
+const WARD_R     = 14;       // metres it reaches
+const WARD_N     = 6;        // bodies it can hold at once - a cap, or a pack is invincible
+const WARD_CUT   = .30;      // warded bodies take this share of your damage
+// MEASURED, NOT GUESSED. At 4.0 the warden's own median life in a real run was
+// 2.3 seconds - better than a plain DILOPHO's 1.4, and still nowhere near long
+// enough to be a decision. A body you never get to choose about is the exact
+// defect this round set out to fix, so the first build failed its own gate. At
+// 14 a warden carries about the health of an ELITE CERATOP, which is the
+// durability tier the game already uses for "this one is the problem".
+const WARD_HP    = 14.0;     // it is meant to be found and killed, not stumbled into
+const WARD_SZ    = 1.22;
+const WARD_HOLD  = 17;       // metres it wants between itself and you (DILOPHO wants 13)
+const WARD_COL   = [.86,.96,1];   // the tether and the crest: near-white, like the XP chip
+let wardedNow = 0, wardKills = 0;  // live census, for the QA hook and the bench
+
+// THE BURROW (L16). L15 proved the horde is filler and that the cause is
+// lifetime, not design. L16 measured WHY the lifetime collapses, per minute,
+// and it is not health - it is RANGE.
+//   min  player dps   enemy hp   on field   median life   median closest
+//    0        89          42        13         8.4 s          5.0 m
+//    4      1749          51        27         4.8 s         10.6 m
+//    6      7112          55         6         0.4 s         23.7 m
+//   12     22058         150         6         0.2 s         28.1 m
+//   19     36294         682        18         0.6 s         31.3 m
+// Player damage grows x408 over the run. Enemy health grows x16 - hpScale is
+// doing its job and it is nowhere near enough. But the number that actually
+// explains the collapse is the last column: bodies spawn on a ring at 30-38 m
+// and by minute 6 they are DYING AT 24 m, having walked two metres. The kill
+// radius grew past the spawn ring, and the ring became a firing line.
+// So health is the wrong lever, and that was measured rather than assumed: at
+// the minute-12 kit a single body needs about 63,000 HP - 685x the 92 it
+// actually has - to walk from 34 m to 6 m. Nothing you can do to hpScale buys
+// an arrival; it only buys a longer death at 28 m. ELITE is already the
+// "tougher minority" answer at 3.2x on 20% of late spawns and it demonstrably
+// fails the same way.
+// THE GAME ALREADY SOLVED THIS, for the only body it could not afford to lose:
+// a boss does not walk in from the horizon, it comes up out of the ground
+// INSIDE weapon range, because arriving on the horizon meant never arriving.
+// This is that answer applied to the horde. A burrower spawns underground at
+// BURROW_AT metres, is untargetable while it surfaces (the `rise` guard in
+// hurt() already does this, and it was always generic), and erupts inside the
+// band where its own coded behaviour can fire - DIVE_R is 9.5 m and a bite is
+// contact. It costs NOTHING in enemy health, so every upgrade still deletes
+// exactly as hard as it did; it changes WHERE the horde appears, not how tough
+// it is or how hard you hit.
+// AND IT IS DERIVED, NOT TYPED. It arms off the measured kill radius - the
+// running distance at which bodies actually die - so it switches itself on
+// exactly when the defect appears and stays off while the horde is still
+// arriving on foot. L15's own numbers say the first three minutes are fought
+// at 4-8 m; at that kill radius this never fires, so the early game is
+// untouched by construction rather than by a clock somebody guessed.
+const BURROW_KILLR = 14;     // metres: the kill radius past which walking in stopped working
+// `let`, and reachable from the QA hook, for the same reason HP_QUAD and
+// DMG_DIV are: a sweep has to be able to measure the game with this at zero
+// and at its shipped value in one sitting, or the difficulty effect of the
+// round is an opinion. burrowShare(0) is the A/B control.
+let BURROW_SHARE = .22;      // share of eligible spawns that arrive underground
+// MEASURED, AND THE FIRST BUILD FAILED IT. At [7,12] m the burrow worked
+// exactly as drawn - burrowed bodies had a median closest approach of 8-10 m
+// against a walker's 25-29 m - and it bought NOTHING: within the same run,
+// burrowed bodies fired FEWER behaviours than walkers, 0.61% of their frames
+// against 0.94%. The reason is that 7-12 m is not the behaviour band. A
+// RAPTORLING or a CERATOP bites at CONTACT, so a body surfacing at 9 m still
+// has to walk 9 m through the fire, which is the same defect at a shorter
+// distance. It came up inside the kill radius and was deleted before a 0.18 s
+// wind-up could finish. An arrival that only shortens the walk is a no-op.
+// So it surfaces where the bite is live, and THE MOUND IS THE TELL: the 0.9 s
+// it spends coming up is a visible, stationary warning at a readable distance,
+// and it comes up already rearing back, so the strike is a thing the burrow
+// DELIVERS rather than a thing it hopes the body survives long enough to try.
+// A turn still beats it - which is the verb this game says it is about, and
+// the same trade the dive already makes.
+const BURROW_AT    = [2.5, 4.5];// metres out it surfaces - where a bite is live
+const BURROW_RISE  = .9;     // seconds of mound before it is out: the tell, and the wind-up
+let killR = 0, killRN = 0, burrowN = 0;   // measured kill radius, and the run's tally
+
 // DUPLICATOR benched at +52% dps on a BOLT kit and -9% on one without: the best
 // passive in the game or a dead pick, decided by which weapons you happened to
 // be offered, with a card that reads the same either way. Three changes: it now
@@ -8611,6 +8722,12 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[]; pets=[];
   arcs=[]; pops=[]; cpops=[]; nums=[]; spits=[]; alerts=[]; hazards=[]; corpses=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
+  // L16: the measured kill radius is a fact about THIS run's kit and has to die
+  // with it. Left standing, a second run in the same session inherits the last
+  // one's radius and burrows from second zero - which is exactly the early game
+  // this mechanic is built not to touch. Caught by the round's own A/B bench,
+  // where the burrow tally carried over between runs.
+  killR = 0; killRN = 0; burrowN = 0;
   // THE OPENING. The director spawns at 1.2 a second on an off-screen ring and
   // the first thing to arrive walks at 2.5 m/s, so the first ten seconds of
   // every run were one animal alone on an empty lawn - which is the worst
@@ -9040,6 +9157,17 @@ function hurt(e, amount, kx, kz, crit){
   // THE VIGIL's brands (L9). Applied here for the same reason home ground is:
   // every recalc rebuilds P.dmg out of the kit and would silently drop it.
   amount *= vigilMul(e);
+  // THE WARD. Applied here, at the funnel, for exactly the reason the brands
+  // and home ground are: there are ten weapons and every one of them would
+  // otherwise need to remember. A warded body takes WARD_CUT of it and throws
+  // the ward's own near-white spark instead of the usual white, so a hit that
+  // is being eaten LOOKS different from a hit that landed - which is the only
+  // way the player can find out why the thing in front of them is not dying.
+  if(e.ward && !e.ward.dead){
+    amount *= WARD_CUT;
+    if(cpops.length < 300 && R() < .5)
+      spark(e.x, e.y + e.def.h*.8, e.z, WARD_COL, 1, 2.6);
+  }
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
   if(e.boss) dmgBoss += eff;
@@ -9073,6 +9201,19 @@ function hurt(e, amount, kx, kz, crit){
 function killEnemy(e){
   if(e.dead) return;
   e.dead = true; kills++; hordeFlow.killed++;
+  // THE KILL RADIUS (L16). Where the horde actually dies, as a fact rather than
+  // an estimate of the kit - reach, pierce, projectile speed and what the crowd
+  // eats are all already folded in by the time a body is on this line. It is
+  // what arms THE BURROW, so the arrival route answers to the measured defect
+  // and not to a clock. Bosses and burrowers are excluded: a boss is one body
+  // that spawns at 15 m and would drag the average down, and a burrower's own
+  // death distance is a consequence of the mechanic, which would make this a
+  // feedback loop that talks to itself.
+  if(P && !e.boss && !e.burrow){
+    const dk = Math.hypot(e.x-P.x, e.z-P.z);
+    killR = killRN ? killR + (dk - killR)*.02 : dk;    // EMA, ~50 bodies of memory
+    killRN++;
+  }
   if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));
   if(hasRule("bloodthirst")) P.hp = Math.min(P.maxhp, P.hp + BLOOD_HEAL(e));
   fell(e);
@@ -9093,6 +9234,22 @@ function killEnemy(e){
     pushGem(e.x, e.z, e.xp);
     if(R() < .012) coinsRun += 5;
     if(e.elite){ hold("elite"); shake = Math.max(shake, .3); }
+    // THE WARD SNAPS. Killing a warden has to be legible as the thing that
+    // just happened to the six bodies around it, or the player never learns
+    // that finding it was the point: every tether lets go at once in its own
+    // colour, and each freed body throws the same spark from its own position,
+    // so the release is drawn where the effect lands rather than only at the
+    // corpse. The bodies are NOT cleared here - wardPass rebuilds from live
+    // wardens every frame, so a dead one holds nothing on the very next tick.
+    if(e.warden){
+      wardKills++;
+      hold("elite"); shake = Math.max(shake, .22); SFX.pop();
+      for(const o of (e.wards || [])) if(o && !o.dead && cpops.length < 300)
+        spark(o.x, o.y + o.def.h*.8, o.z, WARD_COL, 4, 5.0);
+      for(let i=0;i<10;i++) if(pops.length<340)
+        pops.push({ x:e.x, y:e.y+e.def.h*.7, z:e.z, vx:rnd(-6,6), vy:rnd(4,10), vz:rnd(-6,6),
+                    life:rnd(.3,.7), c:WARD_COL, s:.22 });
+    }
     SFX.pop();
   }
 }
@@ -9920,11 +10077,30 @@ function updateOrbiters(dt){
 // on the four lines that actually move the number.
 const hordeFlow = { asked:0, capped:0, spawned:0, killed:0, culled:0 };
 function resetHordeFlow(){ for(const k in hordeFlow) hordeFlow[k] = 0; }
+// A serial number per body. The horde has never been countable from outside:
+// every QA hook reports enemies.length, so "how many CERATOPs did that run
+// actually put in front of you, and how long was each one on screen" had no
+// answer. An id makes a body trackable across frames by a bench that only sees
+// snapshots (window.__g.roster()).
+let EID = 0;
 function spawnEnemy(type, atX, atZ){
   hordeFlow.asked++;
   if(enemies.length >= MAXE){ hordeFlow.capped++; return; }
   const def = ENEMIES[type];
   let x=atX, z=atZ;
+  // THE BURROW (L16). Decided before the ring, because a burrower does not use
+  // the ring - that is the entire point of it. Fliers are exempt (a PTERLING
+  // coming up out of the ground is not the same animal) and so is GILDWING,
+  // which flees and would surface next to you only to run away. It arms off the
+  // MEASURED kill radius, so on a weak kit - or in the first minutes, where the
+  // horde still walks in and is fought - this branch never runs.
+  const burrow = x===undefined && !def.flier && type !== "collector"
+              && killRN > 20 && killR > BURROW_KILLR && R() < BURROW_SHARE;
+  if(burrow){
+    const a = R()*TAU, r = rnd(BURROW_AT[0], BURROW_AT[1]);
+    [x, z] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
+    burrowN++;
+  }
   if(x===undefined){
     // Spawn on a ring just past the far edge of the screen - but NOT uniformly
     // around it. On a 22,000 square-metre arena the wall did the work of making
@@ -9964,16 +10140,25 @@ function spawnEnemy(type, atX, atZ){
   // reads as "my weapons got worse", not "these are tougher". Elites give the
   // curve a face: a readable, prioritisable target that is visibly the reason.
   const elite = type !== "collector" && T > ELITE_FROM && R() < eliteChance(T);
+  // THE WARDEN rides DILOPHO and never a boss, a collector or an elite - an
+  // elite warden would be two overlays on one body and neither would read.
+  const warden = type === "spitter" && !elite && T > WARD_FROM && R() < WARD_CHANCE;
   const em = elite ? ELITE : NORMAL;
-  const made = { x, z, y:groundY(x,z), def, type, elite,
-    rad: def.r*em.sz, sz: em.sz, xp: def.xp*em.xp, spdMul: em.spd,
-    hp:    def.hp*hpScale(T)*em.hp,
-    maxhp: def.hp*hpScale(T)*em.hp,
+  const wm = warden ? WARD_SZ : 1;
+  const made = { x, z, y:groundY(x,z), def, type, elite, warden,
+    ward:null, wards:warden ? [] : null,    // who is holding me up / who I hold up
+    rad: def.r*em.sz*wm, sz: em.sz*wm, xp: def.xp*em.xp*(warden?4:1), spdMul: em.spd,
+    hp:    def.hp*hpScale(T)*em.hp*(warden?WARD_HP:1),
+    maxhp: def.hp*hpScale(T)*em.hp*(warden?WARD_HP:1),
     dmg:   def.dmg*dmgScale(T)*em.dmg,
     kx:0, kz:0, flash:-1, atk:0, bob:R()*TAU, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0,
     gt:0, amp:0, bk:0, lg:0, sq:1,               // the gait and the pose, see walk()
     wu:0, wuT:BITE_WIND, wd:0, lead:0, pre:0, pt:0, rc:0,   // the wind-up and the strike, see the contact code
-    dead:false, boss:false };
+    // L16: a burrower arrives buried and cannot be hit until it is out, which
+    // is the `rise` guard hurt() has always had - it was never boss-only, it
+    // was only ever normalised by a boss-only constant.
+    burrow, rise: burrow ? BURROW_RISE : 0, riseMax: BURROW_RISE,
+    dead:false, boss:false, eid:++EID };
   enemies.push(made); hordeFlow.spawned++;
   return made;                                  // the hunt event needs a handle
 }
@@ -10051,7 +10236,7 @@ function spawnBoss(b){
     // five times your size should not be able to arrive quietly. It comes up
     // OUT OF THE GROUND over BOSS_RISE seconds - buried at the start, shoving
     // the ground up around it, and it cannot act or be hit until it is out.
-    rise: BOSS_RISE, born: T,
+    rise: BOSS_RISE, riseMax: BOSS_RISE, born: T,
     ph:0, final });
   shake = 1.6; SFX.boss(); alert2(b.nm, "#ff5c4d");
   for(let i=0;i<20;i++){                       // the ground breaking around it
@@ -10543,7 +10728,38 @@ function updateHazards(dt){
   }
 }
 
+// THE WARD, rebuilt every frame rather than stored on the bodies and kept in
+// sync. A ward is a fact about two positions, and positions change every frame;
+// the moment it is cached it can outlive the geometry that justified it - which
+// is how you get a body still shielded from a warden that walked off or died.
+// Cheap enough to be honest: wardens are a third of DILOPHO spawns and DILOPHO
+// is 6% of the horde, so this is single digits of bodies each asking near() for
+// its own neighbours once.
+// The cap matters. Uncapped, a warden that walks into a RAPTORLING swarm holds
+// forty bodies and the pack is simply unkillable; at WARD_N the ward is a
+// squad, and the bodies outside it still die at the rate they always did, so
+// the crowd around a warden reads as some-of-them-are-tough rather than as a
+// wall. Nearest first, so the ward is the front rank - the bodies actually
+// reaching you - and not six stragglers behind it.
+function wardPass(){
+  wardedNow = 0;
+  for(const e of enemies) if(e.ward) e.ward = null;
+  for(const w of enemies){
+    if(!w.warden || w.dead) continue;
+    const found = [];
+    near(w.x, w.z, WARD_R, (o, od)=>{
+      if(o === w || o.dead || o.boss || o.warden || o.ward) return;
+      found.push([od, o]);
+    });
+    found.sort((a,b)=>a[0]-b[0]);
+    w.wards = [];
+    for(let i=0;i<found.length && w.wards.length<WARD_N;i++){
+      found[i][1].ward = w; w.wards.push(found[i][1]); wardedNow++;
+    }
+  }
+}
 function updateEnemies(dt){
+  wardPass();
   // precomputed once per frame rather than per enemy
   const magPull = 0.50*prank(P.kit.magnet);
   const magR    = P.mag * 1.6;
@@ -10616,8 +10832,21 @@ function updateEnemies(dt){
 
     if(e.rise > 0){
       e.rise = Math.max(0, e.rise - dt);
-      shake = Math.max(shake, .35*(e.rise/BOSS_RISE));
+      // A BOSS shakes the screen coming up. A grunt does NOT - late in a run
+      // several burrowers surface at once and the same line would put the
+      // camera in a permanent tremor, which is the opposite of readable.
+      if(e.boss) shake = Math.max(shake, .35*(e.rise/(e.riseMax||BOSS_RISE)));
       if(!(T % .18 < dt)) { /* dust is emitted below, in the draw */ }
+      // IT COMES UP REARING BACK. On the one frame a burrower surfaces it arms
+      // the ordinary bite wind-up, so the strike is delivered by the arrival
+      // instead of being attempted by a body that has 0.2 s to live. Nothing
+      // new: e.wu is the same wind-up every melee body uses, wuT the same
+      // per-species timing, and the bite still only LANDS if you are in reach
+      // when it runs out - step out and it snaps at air like any other.
+      if(e.burrow && e.rise <= 0 && !e.def.flee){
+        e.wuT = BITE_WIND * (e.def.bite || 1);
+        e.wu = e.wuT; e.lg = 0;
+      }
       continue;                                 // buried: no AI, no contact, no hits
     }
     const pursue = e.boss ? bossAI(e, dt) : true;
@@ -10650,7 +10879,7 @@ function updateEnemies(dt){
     if(e.def.ranged){
       // spitters hold at range and lob
       e.atk -= dt;
-      const want = 13;
+      const want = e.warden ? WARD_HOLD : 13;
       const dir = d > want+2 ? 1 : d < want-2 ? -1 : 0;
       e.x += dx/d*spd*dir*dt; e.z += dz/d*spd*dir*dt;
       // the lob's tell rides the timer it already runs: the last SPIT_TELL
@@ -14352,17 +14581,31 @@ function render(){
     // retunes its monument, which was the whole point of L8's palette rule.
     // And it comes out in THREE values, not two. Two tones can only make a
     // checker; the third is what lets a course project and cast an edge.
+    const gy2 = Math.max(0, .30 - (bm.b[0]*.30 + bm.b[1]*.59 + bm.b[2]*.11));
     const stone = (c, k) => { const l = c[0]*.30 + c[1]*.59 + c[2]*.11;
-      return [ Math.min(1, (c[0]*.45 + l*.55)*k + .05),
-               Math.min(1, (c[1]*.45 + l*.55)*k + .05),
-               Math.min(1, (c[2]*.45 + l*.55)*k + .06) ]; };
-    const lt = stone(bm.a, 1.30);     // the sunlit course
+      const mx = .38 - gy2*1.5, mn = .62 + gy2*1.5;
+      return [ Math.min(1, (c[0]*mx + l*mn)*k + .05),
+               Math.min(1, (c[1]*mx + l*mn)*k + .05),
+               Math.min(1, (c[2]*mx + l*mn)*k + .055) ]; };
+    // A FLOOR UNDER THE DERIVED TONE (L14). L10's rule - nothing typed per
+    // region - is right, and it has one failure mode: a region whose own ground
+    // is already dark hands the monument a tone that the overhead light then
+    // takes to nothing. THE CINDERFLATS is that region. Every face sampled on
+    // THE CHIMNEY off the real framebuffer read 0.100 luminance, so a 34 m
+    // monument was a black cut-out with no interior at all - it measured a
+    // course value gap of 0.115 against the gate's 0.435. So the dark course's
+    // factor now RISES as the region's own shadow tone falls: still derived,
+    // still zero numbers typed per region, and a bright region is untouched
+    // because the lift is clamped at zero.
+    const lumB = bm.b[0]*.30 + bm.b[1]*.59 + bm.b[2]*.11;
+    const lift = Math.max(0, .30 - lumB);
+    const lt = stone(bm.a, 1.30 + lift*2.0);   // the sunlit course
     // .50 of an already deliberately mid-value ground tone lands near black
     // under the overhead light: the first build put a 39 m unreadable black
     // slab across the opening frame. .62 of the DESATURATED tone keeps a real
     // value gap under the light course with no face going to a hole.
-    let dk = stone(bm.b, 0.62);       // the shadowed course
-    let ed = stone(bm.a, 0.92);       // the third value the flat faces never had
+    let dk = stone(bm.b, 0.62 + lift*1.7);     // the shadowed course
+    let ed = stone(bm.a, 0.92 + lift*1.8);     // the third value the flat faces never had
     // LIT (L9). A monument you have reached has to be readable as reached from
     // the other side of the map, or the goal line is the only place the run's
     // progress exists. Two changes, both visible at silhouette distance: the
@@ -14456,69 +14699,199 @@ function render(){
         }
       }
     } else if(bm.mon.sh === "spire"){
-      // A leaning needle. It tapers AND drifts off vertical as it climbs, so
-      // the silhouette is never the flat-topped rectangle the backdrop ridge
-      // was called out for being.
-      const seg = lod ? 9 : 4;
+      // A BROKEN CHIMNEY (L14). It used to be described as a leaning needle
+      // that "tapers AND drifts off vertical", and both halves were true in the
+      // source and cancelled in the render: the drift carried each narrowing
+      // box off the axis at almost exactly the rate the taper shrank it, so the
+      // measured silhouette read 0.105, 0.105, 0.105 ... FLAT TO A THOUSANDTH
+      // for eleven of twelve height bins. Nine boxes and a perfectly constant
+      // outline is not a monument, it is a column. Three things make it a ruin
+      // instead, and none of them is more boxes: the drift is cut to a third of
+      // the taper rate so the outline actually narrows, the top is SNAPPED
+      // rather than pointed, and the piece that snapped off is lying on the
+      // ground on the side it fell.
+      const seg = lod ? 6 : 3;
       let x = M.x, z = M.z;
+      // A SPOIL SKIRT. A chimney stands in the heap of its own fallen brick,
+      // and it is also what gives this family a base - it met the ground at
+      // exactly its own width before, footprint/shaft 1.003.
+      box(M.x, my + H*.055, M.z, H*.215, H*.055, H*.215, dk, .02, r);
+      if(lod >= 1) box(M.x, my + H*.128, M.z, H*.152, H*.022, H*.152, ed, .03, r + .40);
       for(let k=0;k<seg;k++){
-        const t = k/seg, wdt = H*(.105 - t*.078), yy = my + H*(t + .5/seg)*1.02;
-        box(x, yy, z, wdt, H*.55/seg, wdt, k > seg*.6 ? lt : dk, .02, r + t*.5);
-        x += Math.cos(r)*H*.0085; z += Math.sin(r)*H*.0085;
+        const t = k/seg, wdt = H*(.098 - t*.052), yy = my + H*.150 + H*(t + .5/seg)*.74;
+        box(x, yy, z, wdt, H*.37/seg, wdt, k%2 ? lt : dk, .02, r + t*.5);
+        // A projecting band at every second joint. The gate's lesson in this
+        // family's own rhythm: alternating value alone is a stripe, and it is
+        // the course that STANDS PROUD that throws a shadow line and reads as
+        // a joint. Not on every course - a chimney is banded, not coursed.
+        if(lod >= 2 && k%2 === 1 && k < seg-1)
+          box(x, yy + H*.37/seg, z, wdt*1.30, H*.011, wdt*1.30, ed, .04, r + t*.5);
+        x += Math.cos(r)*H*.0045; z += Math.sin(r)*H*.0045;
+      }
+      // THE SNAP. Two torn stubs of unequal height where the last course was.
+      // A shaft that tapers to a neat point reads as a spire somebody finished.
+      if(lod >= 1) for(let k=0;k<2;k++)
+        box(x + Math.cos(r + k*2.1)*H*.032, my + H*.895 + H*(k ? .028 : .056),
+            z + Math.sin(r + k*2.1)*H*.032,
+            H*.030, H*(k ? .028 : .056), H*.026, k ? dk : lt, .03, r + k*.9);
+      // THE FALL: the missing top, on the ground, in one line running away from
+      // the shaft and getting smaller - so the eye reads a direction it went.
+      for(let k=0;k<(lod ? 4 : 2);k++){
+        const a = r + .50, d = H*(.235 + k*.115);
+        const fx = M.x + Math.cos(a)*d, fz = M.z + Math.sin(a)*d;
+        box(fx, groundY(fx,fz) + H*(.040 - k*.007), fz,
+            H*(.070 - k*.012), H*(.040 - k*.007), H*(.055 - k*.008),
+            k%2 ? ed : dk, .02, a + k*.7);
       }
       if(lod >= 2) for(let i=0;i<4;i++){ const a = r + i*1.57;
-        box(M.x + Math.cos(a)*H*.16, my + H*.09, M.z + Math.sin(a)*H*.16,
-            H*.055, H*.09, H*.055, dk, .02, a); }
+        box(M.x + Math.cos(a)*H*.175, my + H*.075, M.z + Math.sin(a)*H*.175,
+            H*.050, H*.075, H*.050, dk, .02, a); }
     } else if(bm.mon.sh === "ribs"){
       // Something enormous that stopped where it stood. Ribs in two facing
       // arcs, leaning inward, with a spine along the ground between them - the
       // landmark ribcage's idea at fifteen times the size, which is what makes
       // it a monument rather than a den.
+      // A CARCASS (L14). Verified on the real page and it did not read as ribs
+      // at all: two dark towers with pale blocks apparently FLOATING in the gap
+      // between them. The bug is exact - each rib stood at H*.06 inboard of its
+      // arc and its own cap was placed at H*.12, twice as far in, on a rib only
+      // H*.030 half-wide. The cap was therefore never over its rib, and the
+      // last argument to box() is a YAW, not a tilt, so no amount of "lean"
+      // ever carried the rib out to meet it. Three fixes: the cap goes back ON
+      // its rib, every rib rises out of a SOCKET set in the ground, and ONE RIB
+      // IS DOWN. A skeleton with every rib standing is a fence.
       const nR = lod ? 7 : 3;
       for(const sg of [-1,1]) for(let i=0;i<nR;i++){
-        const t = i/(nR-1), sp = (t-.5)*H*.60;
-        const bx = M.x + Math.cos(r)*sp + Math.cos(r+1.57)*sg*H*.20;
-        const bz = M.z + Math.sin(r)*sp + Math.sin(r+1.57)*sg*H*.20;
-        const rh = H*(.44 + Math.sin(t*Math.PI)*.36);
+        const t = i/(nR-1), sp = (t-.5)*H*1.20;
+        const bx = M.x + Math.cos(r)*sp + Math.cos(r+1.57)*sg*H*.42;
+        const bz = M.z + Math.sin(r)*sp + Math.sin(r+1.57)*sg*H*.42;
         const bg = groundY(bx, bz);
-        box(bx - Math.cos(r+1.57)*sg*H*.06, bg + rh*.55, bz - Math.sin(r+1.57)*sg*H*.06,
+        // SOCKET. Every rib now comes out of a block bedded in the ground, so
+        // it is attached to something instead of stuck into a lawn - and it is
+        // what finally gives this family a base (footprint/shaft was 1.000).
+        box(bx, bg + H*.036, bz, H*.058, H*.036, H*.080, dk, .02, r + sg*.16);
+        // THE ONE THAT FELL, out of its own socket and into the mud beside it.
+        if(sg > 0 && i === 2){
+          for(let k=0;k<(lod ? 3 : 1);k++){
+            const fd = H*(.105 + k*.100);
+            const fx = bx + Math.cos(r+1.57)*sg*fd, fz = bz + Math.sin(r+1.57)*sg*fd;
+            box(fx, groundY(fx,fz) + H*.027, fz, H*.030, H*.027, H*(.058 - k*.009),
+                k%2 ? ed : lt, .02, r + sg*(.16 + k*.35));
+          }
+          continue;
+        }
+        const rh = H*(.30 + Math.sin(t*Math.PI)*.30);
+        const off = H*.06;
+        box(bx - Math.cos(r+1.57)*sg*off, bg + rh*.55, bz - Math.sin(r+1.57)*sg*off,
             H*.030, rh*.55, H*.055, i%2 ? lt : dk, .02, r + sg*.16);
-        if(lod >= 2) box(bx - Math.cos(r+1.57)*sg*H*.12, bg + rh*1.05, bz - Math.sin(r+1.57)*sg*H*.12,
-            H*.026, H*.055, H*.048, lt, .04, r + sg*.5);
+        // THE CAP SITS ON ITS OWN RIB - same offset, same axis, directly above.
+        if(lod >= 2) box(bx - Math.cos(r+1.57)*sg*off, bg + rh*1.09, bz - Math.sin(r+1.57)*sg*off,
+            H*.028, H*.055, H*.050, lt, .04, r + sg*.42);
       }
-      for(let i=0;i<(lod?6:2);i++){
-        const sp = (i/((lod?6:2)-1 || 1) - .5)*H*.66;
+      // THE SPINE, thickening toward one end, because a symmetrical row of
+      // identical blocks is a path and one heavy end is an animal.
+      const nSp = lod ? 6 : 2;
+      for(let i=0;i<nSp;i++){
+        const u = i/((nSp-1) || 1), sp = (u-.5)*H*1.30;
         const bx = M.x + Math.cos(r)*sp, bz = M.z + Math.sin(r)*sp;
-        box(bx, groundY(bx,bz) + H*.07, bz, H*.055, H*.055, H*.075, dk, .02, r);
+        const w = H*(.030 + (1-u)*.022);
+        box(bx, groundY(bx,bz) + H*.07, bz, w, H*.055, w*1.35, dk, .02, r);
+      }
+      // AND THE HEAD, off the heavy end and turned out of line with the spine,
+      // so the thing has a direction and stopped facing somewhere.
+      { const sp = -H*.86, bx = M.x + Math.cos(r)*sp, bz = M.z + Math.sin(r)*sp, bg = groundY(bx,bz);
+        box(bx, bg + H*.075, bz, H*.088, H*.075, H*.120, lt, .02, r + .18);
+        if(lod >= 1) box(bx + Math.cos(r+.18)*H*.140, bg + H*.052, bz + Math.sin(r+.18)*H*.140,
+            H*.068, H*.052, H*.080, ed, .03, r + .18);
+        if(lod >= 2) for(const s2 of [-1,1])
+          box(bx + Math.cos(r+1.75)*s2*H*.072, bg + H*.155, bz + Math.sin(r+1.75)*s2*H*.072,
+              H*.026, H*.070, H*.026, ed, .04, r + .18);
       }
     } else if(bm.mon.sh === "stack"){
       // A stepped mass, each course rotated off the one under it. Terraced
       // rather than pyramidal so the profile has notches in it at every height,
       // and so the top course is a plate you could stand on.
-      const nS = lod ? 7 : 3;
+      // A STEPPED TOMB THAT WAS CLIMBED (L14). Measured against the vent, this
+      // family and that one were THE SAME MONUMENT: both a wedding cake of
+      // alternating slabs each rotated a little off the one under it, and the
+      // closest pair in the whole five-family silhouette matrix at 0.155. Two
+      // of five shapes being one shape is the reason the map reads repetitive,
+      // so this family commits to being ARCHITECTURE - somebody built it to be
+      // walked up - and the vent commits to being geology.
+      const nS = lod ? 4 : 2;
       for(let k=0;k<nS;k++){
-        const t = k/nS, wdt = H*(.34 - t*.26);
-        box(M.x, my + H*(t + .5/nS)*.98, M.z, wdt, H*.49/nS, wdt,
-            k%2 ? lt : dk, .02, r + k*.22);
+        const t = k/nS, wdt = H*(.56 - t*.44);
+        // The courses no longer screw round by a constant .22 each. They
+        // alternate a small yaw either side of the axis, so the terrace corners
+        // LINE UP into a stair instead of spiralling.
+        const yaw = r + (k%2 ? .10 : -.06);
+        box(M.x, my + H*(t + .5/nS)*.70, M.z, wdt, H*.35/nS, wdt, k%2 ? lt : dk, .02, yaw);
+        // The tread: a thin lip proud of each course. What turns a pile of
+        // slabs into a building is that its joints cast.
+        if(lod >= 2 && k < nS-1)
+          box(M.x, my + H*(t + 1/nS)*.70, M.z, wdt*1.075, H*.012, wdt*1.075, ed, .04, yaw);
       }
-      if(lod >= 1) box(M.x, my + H*1.03, M.z, H*.11, H*.045, H*.11, lt, .06, r);
+      // THE STAIR, running up one face from the ground to the terrace.
+      if(lod >= 1){ const sa = r + .78, nT = lod >= 2 ? 11 : 5;
+        for(let k=0;k<nT;k++){ const t = k/nT, out = H*(.470 - t*.300);
+          box(M.x + Math.cos(sa)*out, my + H*.020 + t*H*.46 + H*(.120/nT),
+              M.z + Math.sin(sa)*out, H*.058, H*(.23/nT), H*.028, k%2 ? ed : lt, .03, sa); } }
+      // A BROAD TERRACE two thirds up, wide enough to stand on, so the profile
+      // has one deliberate ledge in it instead of an even taper.
+      if(lod >= 1) box(M.x, my + H*.480, M.z, H*.285, H*.016, H*.285, ed, .04, r + .10);
+      // THE TOP COURSE HAS SLID. The before build's topmost box measured 0.000
+      // shafts off the axis - dead centre - and a ruin's top is the one part
+      // that is never symmetrical.
+      box(M.x + Math.cos(r+2.0)*H*.075, my + H*.720, M.z + Math.sin(r+2.0)*H*.075,
+          H*.100, H*.040, H*.082, lt, .06, r + 1.05);
+      // AND THE PIECE THAT CAME OFF IT, on the ground below, on the same side
+      // it slid - two blocks, so the eye can follow where it went.
+      for(let k=0;k<(lod ? 2 : 1);k++){ const a = r + 2.0, d = H*(.46 + k*.130);
+        const fx = M.x + Math.cos(a)*d, fz = M.z + Math.sin(a)*d;
+        box(fx, groundY(fx,fz) + H*(.038 - k*.010), fz,
+            H*(.085 - k*.020), H*(.038 - k*.010), H*(.065 - k*.014), k ? dk : ed, .02, a + k*.8); }
       if(lod >= 2) for(let i=0;i<6;i++){ const a = r + i*1.047;
-        box(M.x + Math.cos(a)*H*.40, my + H*.05, M.z + Math.sin(a)*H*.40,
+        box(M.x + Math.cos(a)*H*.38, my + H*.05, M.z + Math.sin(a)*H*.38,
             H*.075, H*.05, H*.075, dk, .02, a); }
     } else {
       // "vent" - a broad cone with a mouth, and a plume standing over it. The
       // one monument shape that moves: the plume drifts on the clock, so a
       // region you can see from 300 m away is still alive at that distance.
-      const nC = lod ? 6 : 3;
+      // A CRATER, NOT A CAKE (L14). It was the stack's twin - the closest pair
+      // of all five families at 0.155 apart - because both were the same
+      // narrowing tower of rotated slabs. The stack has taken architecture, so
+      // this one takes GEOLOGY, and the difference is stated in the outline
+      // rather than the palette: the widest thing here is the RIM AT THE TOP,
+      // the flanks slump outward under it, and the mouth is a broken ring
+      // instead of a lid. A cake narrows as it rises; a crater flares.
+      const nC = lod ? 5 : 3;
       for(let k=0;k<nC;k++){
-        const t = k/nC, wdt = H*(.38 - t*.235);
-        box(M.x, my + H*(t + .5/nC)*.62, M.z, wdt, H*.31/nC, wdt,
-            k%2 ? dk : lt, .02, r + k*.31);
+        const t = k/nC, wdt = H*(.42 - t*.140);
+        box(M.x, my + H*(t + .5/nC)*.38, M.z, wdt, H*.19/nC, wdt,
+            k%2 ? dk : lt, .02, r + k*.11);
       }
-      box(M.x, my + H*.63, M.z, H*.115, H*.035, H*.115, [.05,.045,.04], .01, r);
+      // THE SPILL: lobes of debris run off the flanks at unequal distances and
+      // unequal sizes, so the base is a slump and not a circle. Seven of them
+      // on a 2.243 rad step, which never closes into a ring.
+      for(let k=0;k<(lod ? 7 : 3);k++){
+        const a = r + k*2.243, d = H*(.66 + (k%3)*.160), s = H*(.105 + (k%2)*.065);
+        const fx = M.x + Math.cos(a)*d, fz = M.z + Math.sin(a)*d;
+        box(fx, groundY(fx,fz) + H*.030, fz, s, H*.030, s*.75, k%2 ? ed : dk, .02, a);
+      }
+      // THE RIM, BROKEN. Eight teeth of unequal height with two of them gone,
+      // standing OUTSIDE the throat so the rim overhangs what is under it. The
+      // old five-slab top was a lid; this is a mouth.
+      if(lod >= 1){ const rim = [.90, 1.00, 0, .62, .85, 0, 1.00, .55];
+        for(let i=0;i<8;i++){ if(!rim[i]) continue;
+          const a = r + i*.785, th = H*(.040 + .090*rim[i]);
+          box(M.x + Math.cos(a)*H*.400, my + H*.380 + th, M.z + Math.sin(a)*H*.400,
+              H*.105, th, H*.080, i%2 ? lt : ed, .04, a); } }
+      // The throat sits just BELOW the rim, so from anywhere but straight
+      // overhead you are looking into a hole rather than at a black plate.
+      box(M.x, my + H*.370, M.z, H*.300, H*.020, H*.300, [.05,.045,.04], .01, r);
       for(let k=0;k<(lod ? 7 : 3);k++){
         const t = k/7, ph = T*.35 + k*.9;
-        box(M.x + Math.sin(ph)*H*(.05 + t*.16), my + H*(.70 + t*.42),
+        box(M.x + Math.sin(ph)*H*(.05 + t*.16), my + H*(.60 + t*.42),
             M.z + Math.cos(ph*.7)*H*(.05 + t*.16),
             H*(.055 + t*.045), H*.055, H*(.055 + t*.045), lt, .10 + t*.10, ph);
       }
@@ -15069,7 +15442,7 @@ function render(){
     // Coming up out of the ground. Drawing it below the floor and letting the
     // terrain hide it is the whole trick - the mesh is unchanged, it is just
     // lower, so nothing about the body plan has to know this exists.
-    const rise = e.rise > 0 ? e.rise / BOSS_RISE : 0;
+    const rise = e.rise > 0 ? e.rise / (e.riseMax || BOSS_RISE) : 0;
     e.py = e.y + hop - rise*H*1.15;                  // the pose pivots at the feet
     // a test may want the drawn body in world space - the pose included -
     // the way the corpse pass already offers it, so a standing body and its
@@ -15082,12 +15455,17 @@ function render(){
     boxPx = 0;                            // the size cull is the body's, not the bar's or the crown's
     if(rise > 0){
       const gy2 = groundY(e.x, e.z), up = 1 - rise;
-      for(let i=0;i<16;i++){                       // earth thrown off it
-        const a2 = i*(TAU/16) + T*1.6, rr = W*(.9 + up*1.5);
+      // A boss gets the full ring and column - it is one body and it is the
+      // event. A burrower is one of many and has to cost a horde budget, so it
+      // gets a third of the ring and no dust column; the mound and the earth
+      // ARE the tell, and they read at 7-12 m without a boss's dust.
+      const ring = e.boss ? 16 : 6;
+      for(let i=0;i<ring;i++){                      // earth thrown off it
+        const a2 = i*(TAU/ring) + T*1.6, rr = W*(.9 + up*1.5);
         box(e.x+Math.cos(a2)*rr, gy2 + .3 + Math.sin(T*4+i)*.5*up, e.z+Math.sin(a2)*rr,
             W*.11, W*.09, W*.11, [.34,.27,.22], .05);
       }
-      for(let i=0;i<7;i++)                         // and a column of dust over it
+      if(e.boss) for(let i=0;i<7;i++)              // and a column of dust over it
         box(e.x, gy2 + 1 + i*H*.30, e.z, W*(.5-i*.05), H*.16, W*(.5-i*.05),
             [.52,.44,.36], .10*rise);
     }
@@ -15103,6 +15481,21 @@ function render(){
             W*.10, H*.11, W*.10, [1,.74,.16], .95, a);
       }
     }
+    // THE WARDEN'S CREST. The elite's crown is a spinning ring of four teeth;
+    // this is deliberately NOT that shape, because the two overlays have to be
+    // told apart at a glance and both of them live over the head. A crown says
+    // "harder"; a crest that stands STILL and points UP says "it is doing
+    // something", and it is the anchor the tethers come off, so the eye that
+    // followed a line arrives at the thing to kill. Near-white for the same
+    // reason the XP chip is: brightness reads against ten grounds where a hue
+    // does not, and this is the one enemy marking that must never be missed.
+    if(e.warden){
+      const cy = hy + H*.16, pulse = .74 + .26*Math.sin(T*4 + e.bob);
+      for(let i=0;i<3;i++)                          // three blades, tallest centre
+        box(e.x + Math.sin(face+Math.PI/2)*(i-1)*W*.34, cy + (i===1 ? H*.10 : 0),
+            e.z + Math.cos(face+Math.PI/2)*(i-1)*W*.34,
+            W*.09, H*(i===1 ? .30 : .20), W*.09, WARD_COL, pulse, face);
+    }
     if(e.boss){
       const f = e.hp/e.maxhp;
       for(let i=0;i<14;i++)
@@ -15112,6 +15505,41 @@ function render(){
   }
   hordeBoxes = drawnBoxes + nbox - hb0;
   passEnd("horde");
+  // THE TETHERS, drawn after hordeBoxes is taken on purpose: the per-enemy draw
+  // budget is a measure of BODIES, and a line between two of them is not one -
+  // the gem pass learned this same lesson and is exempted for the same reason.
+  //
+  // A tether is a run of small cubes from the warden's crest to the crown of
+  // the body it is holding, drawn ABOVE both height bands rather than through
+  // them, so it never sits inside a silhouette the player is trying to read
+  // (L12's constraint, which is the whole reason this role is identified by a
+  // shape and not by a hue). It travels: the beads slide along the line, from
+  // the warded body toward the warden, so which end is the source is readable
+  // from the motion alone without a word of UI. And it fades with distance
+  // along its own length, brightest at the crest, so a screen with four wardens
+  // on it is four bright points with lines feeding them rather than a net.
+  if(wardedNow > 0){
+    for(const w of enemies){
+      if(!w.warden || w.dead || !w.wards || !w.wards.length) continue;
+      const wy = w.y + w.def.h*w.sz*1.05;
+      if(onScreen(w.x, wy, w.z, 3) === null) continue;
+      for(const o of w.wards){
+        if(!o || o.dead) continue;
+        const oy = o.y + o.def.h*o.sz*1.05;
+        const seg = 7;
+        for(let i=1;i<=seg;i++){
+          // t slides with the clock: the beads run toward the warden
+          const t = ((i/seg) + T*.55) % 1;
+          const bx = lerp(o.x, w.x, t), bz = lerp(o.z, w.z, t),
+                by = lerp(oy, wy, t) + Math.sin(t*Math.PI)*.30;   // a slack sag
+          const a = .16 + .40*t;                       // brightest at the crest
+          const s = .055 + .045*t;
+          box(bx, by, bz, s, s, s, WARD_COL, a);
+        }
+      }
+    }
+  }
+  passEnd("wards");
   // THE FALLEN. Same plans, same pose path, drawn after the living so a body
   // that has just dropped lies under the one stepping over it. The mesh
   // capture is closed around them: a corpse is a live body's boxes at another
@@ -16135,6 +16563,12 @@ window.__g = {
   // screenshot helper: point the camera and the creature the same way
   aim: (a)=>{ camYaw = a; if(P){ P.face = a; P.faceWant = a; } return camYaw; },
   hitBoss: (n)=>{ const b=enemies.find(e=>e.boss&&!e.dead); if(b) hurt(b, n||1, 0, 0); },
+  // one named body, one hit, through the real funnel - what actually came off
+  // its health. The ward is applied in hurt() beside the brands and home
+  // ground, so this is the only honest way to read what it is worth.
+  hitId: (id, n)=>{ const e=enemies.find(x=>x.eid===id && !x.dead); if(!e) return null;
+                    const b4=e.hp; hurt(e, n||1, 0, 0);
+                    return { id, raw:n||1, took:+(b4-e.hp).toFixed(4), warded:!!(e.ward && !e.ward.dead) }; },
   slay: (n=1)=>{ const live=enemies.filter(e=>!e.dead).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z));
                  live.slice(0,n).forEach(killEnemy); return live.length; },
   killBoss: ()=>{ const b=enemies.find(e=>e.final&&!e.dead); if(b) killEnemy(b);
@@ -16225,6 +16659,35 @@ window.__g = {
   // A/B control for the dive. Same forty-two worlds, one line of behaviour
   // different, which is the only way to say what it was worth.
   noDive:(off)=>{ ENEMIES.runner.dive = !off; return !!ENEMIES.runner.dive; },
+  // THE HORDE, BODY BY BODY. What each thing on the field is, where it is and
+  // what it is doing this frame - so a bench can measure the horde the way L7
+  // measured the boss, instead of reading a count.
+  roster:()=>enemies.filter(e=>!e.boss).map(e=>({
+      id:e.eid, t:e.type, elite:!!e.elite, dead:!!e.dead,
+      warden:!!e.warden, warded:!!(e.ward && !e.ward.dead),
+      d:+Math.hypot(e.x-P.x, e.z-P.z).toFixed(2),
+      hp:+e.hp.toFixed(1), maxhp:+e.maxhp.toFixed(1),
+      spd:+(e.def.spd*e.spdMul).toFixed(2), amp:+(e.amp||0).toFixed(3),
+      // the four behaviours a body can be IN, as the AI sets them
+      wu:+(e.wu||0).toFixed(3), dvT:+(e.dvT||0).toFixed(3),
+      spit:+(e.spitTell||0).toFixed(3), atk:+(e.atk||0).toFixed(2) })),
+  // THE WARDENS on the field, what each is holding, and the run's tally. The
+  // ward is rebuilt every frame from live wardens, so this is the truth of the
+  // current tick and not a cached claim about an earlier one.
+  wardens:()=>({ n:enemies.filter(e=>e.warden && !e.dead).length,
+                 warded:wardedNow, killed:wardKills,
+                 cut:WARD_CUT, r:WARD_R, cap:WARD_N,
+                 each:enemies.filter(e=>e.warden && !e.dead).map(w=>({
+                   id:w.eid, hp:+w.hp.toFixed(0), maxhp:+w.maxhp.toFixed(0),
+                   d:+Math.hypot(w.x-P.x, w.z-P.z).toFixed(2),
+                   holds:(w.wards||[]).filter(o=>o && !o.dead).map(o=>o.type) })) }),
+  // force one onto the field at a known spot, so a check does not have to wait
+  // out WARD_FROM and a 34% roll to press on the rule
+  spawnWarden:(x,z)=>{ const e = spawnEnemy("spitter", x===undefined?P.x+16:x, z===undefined?P.z:z);
+                       if(e){ e.warden = true; e.wards = []; e.ward = null;
+                              e.hp *= WARD_HP; e.maxhp *= WARD_HP;
+                              e.sz *= WARD_SZ; e.rad *= WARD_SZ; }
+                       return e ? e.eid : null; },
   dives: ()=>enemies.filter(e=>e.def.dive && !e.dead)
                    .map(e=>({ d:+Math.hypot(e.x-P.x,e.z-P.z).toFixed(1),
                               wind:+(e.dvW||0).toFixed(2), diving:(e.dvT||0)>0,
@@ -16626,6 +17089,154 @@ window.__g = {
   ground:()=>({ cover: coverN, lift: +coverLift.toFixed(3),
                 verts: terCount, chunks: terChunks.length,
                 mb: +(terData.length*4/1048576).toFixed(2) }),
+  // THE WARD GATE (L15). Every claim this round makes, pressed on the live
+  // page from a clean field: the cut is exactly WARD_CUT and only inside
+  // WARD_R, the cap holds, the ward LETS GO the tick its warden dies, and the
+  // tether is actually drawn. Written as a gate rather than as a bench script
+  // because the ward is applied in hurt(), beside the brands and home ground -
+  // three multipliers in one funnel that no weapon knows about - and the next
+  // person to add a fourth needs something that fails by name.
+  wardGate:()=>{
+    const bad = [], keep = enemies.slice(), kc = corpses.slice();
+    const px = P.x, pz = P.z;
+    enemies.length = 0; corpses.length = 0; rebuildGrid();
+    const mk = (x,z)=>{ const e = spawnEnemy("brute", x, z); e.hp = e.maxhp = 1e7; return e; };
+    const w = spawnEnemy("spitter", px+4, pz);
+    w.warden = true; w.wards = []; w.hp = w.maxhp = 1e7;
+    const inR = mk(px+6, pz), outR = mk(px + WARD_R + 12, pz);
+    // near() reads the spatial grid, which step() rebuilds immediately before
+    // updateEnemies every frame - so wardPass is always correct in production
+    // and was silently wrong HERE, where bodies are spawned outside the frame.
+    // The gate's first run caught it: reach, cut and cap all failed at once
+    // because the warden's neighbour query saw an empty cell.
+    rebuildGrid(); wardPass();
+    if(!inR.ward)  bad.push(`WARD DOES NOT REACH: a body ${(6-4).toFixed(1)} m from the warden is unwarded inside WARD_R ${WARD_R} m`);
+    if(outR.ward)  bad.push(`WARD OVERREACHES: a body ${WARD_R + 8} m out is warded, past WARD_R ${WARD_R} m`);
+    const cut = (e)=>{ const b = e.hp; hurt(e, 1000, 0, 0); const t = b - e.hp; e.hp = b; return t; };
+    const tIn = cut(inR), tOut = cut(outR);
+    const ratio = tOut > 0 ? tIn / tOut : 0;
+    if(Math.abs(ratio - WARD_CUT) > .005)
+      bad.push(`WARD CUT IS WRONG: warded body took ${ratio.toFixed(3)} of an unwarded body's damage, expected WARD_CUT ${WARD_CUT}`);
+    // the cap
+    for(let i=0;i<WARD_N+6;i++) mk(px+4+Math.cos(i)*2, pz+Math.sin(i)*2);
+    rebuildGrid(); wardPass();
+    const held = enemies.filter(e=>e.ward === w).length;
+    if(held !== WARD_N) bad.push(`WARD CAP BROKEN: warden holds ${held} bodies against WARD_N ${WARD_N}`);
+    // the release
+    w.dead = true; wardPass();
+    const still = enemies.filter(e=>e.ward).length;
+    if(still) bad.push(`WARD OUTLIVES ITS WARDEN: ${still} bodies still warded the tick after it died`);
+    const after = cut(inR);
+    if(Math.abs(after - tOut) > .01)
+      bad.push(`WARD STILL EATING DAMAGE AFTER DEATH: freed body took ${after.toFixed(1)}, an unwarded one takes ${tOut.toFixed(1)}`);
+    enemies.length = 0; corpses.length = 0;
+    for(const e of keep) enemies.push(e);
+    for(const e of kc) corpses.push(e);
+    rebuildGrid(); wardPass();
+    return { ok: !bad.length, bad, cut:+ratio.toFixed(3), held, r:WARD_R }; },
+  // THE BURROW's census: the measured kill radius that arms it, whether it is
+  // armed, and who is currently underground.
+  burrows:()=>({ killR:+killR.toFixed(2), killRN, armed: killRN > 20 && killR > BURROW_KILLR,
+                 need:BURROW_KILLR, share:BURROW_SHARE, n:burrowN,
+                 rising:enemies.filter(e=>e.burrow && e.rise > 0 && !e.dead).length,
+                 up:enemies.filter(e=>e.burrow && !(e.rise > 0) && !e.dead).length,
+                 each:enemies.filter(e=>e.burrow && !e.dead).map(e=>({
+                   id:e.eid, t:e.type, rise:+(e.rise||0).toFixed(2),
+                   d:+Math.hypot(e.x-P.x, e.z-P.z).toFixed(2) })) }),
+  // Force one up at a known spot, so a check does not have to wait out a kill
+  // radius and a 22% roll to press on the rule.
+  spawnBurrow:(x,z)=>{ const s=P; const e = spawnEnemy("shambler",
+                         x===undefined ? s.x+rnd(BURROW_AT[0],BURROW_AT[1]) : x,
+                         z===undefined ? s.z : z);
+                       if(e){ e.burrow = true; e.rise = BURROW_RISE; e.riseMax = BURROW_RISE; }
+                       return e ? e.eid : null; },
+  burrowShare:(v)=>{ if(v!==undefined) BURROW_SHARE = +v; return BURROW_SHARE; },
+  // THE KILL RADIUS DIES WITH THE RUN. Left standing, a second run in the same
+  // session inherits the last one's radius and burrows from second zero - the
+  // early game this mechanic exists not to touch. Its own hook rather than a
+  // burrowGate clause because the only honest way to check it is to start a
+  // real second run, which would destroy the state burrowGate's caller is in.
+  burrowResetGate:()=>{
+    const bad = [];
+    // Set the radius rather than growing it in a bot run: a run's radius depends
+    // on how well the bot happens to play (the same bench read 24.4 m and 9.7 m
+    // on two seeds), and the claim under test is not "a run grows a radius", it
+    // is "startRun clears whatever radius it finds". Deterministic on purpose.
+    startRun("intern");
+    killR = 28; killRN = 500; burrowN = 99;
+    const grown = killR, grownN = killRN;
+    startRun("intern");                       // the restart under test
+    if(killR !== 0 || killRN !== 0 || burrowN !== 0)
+      bad.push(`KILL RADIUS SURVIVES A RESTART: killR ${killR.toFixed(1)} killRN ${killRN} burrowN ${burrowN} at the top of a new run, after ${grown.toFixed(1)} m / ${grownN} bodies in the last one`);
+    return { ok: !bad.length, bad, grown:+grown.toFixed(1) }; },
+  burrowGate:()=>{
+    const bad = [], keep = enemies.slice(), kc = corpses.slice();
+    const px = P.x, pz = P.z, kr0 = killR, krn0 = killRN;
+    enemies.length = 0; corpses.length = 0; rebuildGrid();
+    const id = window.__g.spawnBurrow();
+    const b0 = enemies.find(e=>e.eid===id);
+    // 1. IT ARRIVES INSIDE THE KILL RADIUS, which is the whole claim.
+    const d0 = Math.hypot(b0.x-px, b0.z-pz);
+    if(d0 > BURROW_AT[1] + .6)
+      bad.push(`BURROW ARRIVES TOO FAR OUT: surfaced at ${d0.toFixed(1)} m, past BURROW_AT ${BURROW_AT[1]} m`);
+    // 2. IT CANNOT BE HIT WHILE IT IS UNDERGROUND.
+    const hp0 = b0.hp; hurt(b0, 1e6, 0, 0);
+    if(b0.hp !== hp0)
+      bad.push(`BURROW IS HITTABLE UNDERGROUND: took ${(hp0-b0.hp).toFixed(0)} while rise ${b0.rise.toFixed(2)} > 0`);
+    // 3. AND IT IS HITTABLE THE MOMENT IT IS OUT.
+    b0.rise = 0; const hp1 = b0.hp; hurt(b0, 5, 0, 0);
+    if(b0.hp >= hp1)
+      bad.push(`BURROW STAYS INVULNERABLE AFTER SURFACING: took nothing with rise 0`);
+    // 4. IT SURFACES IN BURROW_RISE SECONDS, not a boss's BOSS_RISE.
+    const id2 = window.__g.spawnBurrow();
+    const b1 = enemies.find(e=>e.eid===id2);
+    if(Math.abs(b1.riseMax - BURROW_RISE) > 1e-6)
+      bad.push(`BURROW USES THE WRONG CLOCK: riseMax ${b1.riseMax} against BURROW_RISE ${BURROW_RISE}`);
+    let t = 0; while(b1.rise > 0 && t < 5){ b1.rise = Math.max(0, b1.rise - 1/60); t += 1/60; }
+    if(Math.abs(t - BURROW_RISE) > .05)
+      bad.push(`BURROW SURFACE TIME IS WRONG: ${t.toFixed(2)} s against BURROW_RISE ${BURROW_RISE}`);
+    // 4b. IT COMES UP REARING BACK - the strike is delivered, not attempted.
+    const id3 = window.__g.spawnBurrow();
+    const b2 = enemies.find(e=>e.eid===id3);
+    if(b2.wu > 0) bad.push(`BURROW REARS BACK UNDERGROUND: wu ${b2.wu.toFixed(3)} while still buried`);
+    let t2 = 0; while(b2.rise > 0 && t2 < 5){ updateEnemies(1/60); t2 += 1/60; }
+    if(!(b2.wu > 0))
+      bad.push(`BURROW SURFACES WITHOUT A WIND-UP: wu ${(b2.wu||0).toFixed(3)} on the frame it came up, expected wuT ${(BITE_WIND*(b2.def.bite||1)).toFixed(3)}`);
+    // 5. IT NEVER ARMS ON A WEAK KIT - the early game must be untouched.
+    killR = 4; killRN = 500;
+    let close = 0; for(let i=0;i<300;i++){ const e = spawnEnemy("shambler"); if(e && e.burrow) close++; }
+    if(close) bad.push(`BURROW ARMS ON A SHORT KILL RADIUS: ${close} of 300 spawns burrowed with killR 4 m under BURROW_KILLR ${BURROW_KILLR}`);
+    // 6. AND IT DOES ARM ON A LONG ONE, at about the share it claims.
+    enemies.length = 0; rebuildGrid();
+    killR = 28; killRN = 500;
+    let far = 0, n = 0; for(let i=0;i<400;i++){ const e = spawnEnemy("shambler"); if(e){ n++; if(e.burrow) far++; } enemies.length = 0; }
+    const share = n ? far/n : 0;
+    if(Math.abs(share - BURROW_SHARE) > .06)
+      bad.push(`BURROW SHARE IS WRONG: ${share.toFixed(3)} of spawns burrowed against BURROW_SHARE ${BURROW_SHARE}`);
+    // 6c. THE PRODUCTION ARRIVAL DISTANCE. Clause 1 measures spawnBurrow, which
+    // takes explicit coordinates and never touches the ring code - so on its own
+    // it proves nothing about where the DIRECTOR puts a burrower. Planting
+    // rnd(30,38) in place of BURROW_AT passed the whole gate until this clause
+    // existed. Measured off spawnEnemy with no coordinates, which is the path
+    // the run actually uses.
+    enemies.length = 0; rebuildGrid();
+    killR = 28; killRN = 500;
+    const ds = [];
+    for(let i=0;i<600;i++){ const e = spawnEnemy("shambler");
+      if(e && e.burrow) ds.push(Math.hypot(e.x-P.x, e.z-P.z));
+      enemies.length = 0; }
+    const outside = ds.filter(d=>d > BURROW_AT[1] + .6).length;
+    if(!ds.length) bad.push(`NO BURROWER CAME OUT OF THE DIRECTOR: 600 spawns at killR 28 m produced none`);
+    else if(outside) bad.push(`DIRECTOR PUTS BURROWERS OUTSIDE BURROW_AT: ${outside} of ${ds.length} surfaced past ${BURROW_AT[1]} m (max ${Math.max(...ds).toFixed(1)} m)`);
+    // 7. FLIERS AND GILDWING ARE EXEMPT.
+    let fl = 0; for(let i=0;i<200;i++){ const e = spawnEnemy("runner"); if(e && e.burrow) fl++; enemies.length = 0; }
+    if(fl) bad.push(`BURROW APPLIES TO A FLIER: ${fl} of 200 PTERLING spawns burrowed`);
+    killR = kr0; killRN = krn0;
+    enemies.length = 0; corpses.length = 0;
+    for(const e of keep) enemies.push(e);
+    for(const e of kc) corpses.push(e);
+    rebuildGrid(); wardPass();
+    return { ok: !bad.length, bad, at:+d0.toFixed(1), share:+share.toFixed(3), riseS:+t.toFixed(2) }; },
   groundGate:()=>{ const G = window.__g.ground(), bad = [];
     if(G.cover < 1200)  bad.push(`GROUND COVER MISSING: ${G.cover} patches, expected >= 1200`);
     if(G.lift  > .20)   bad.push(`GROUND COVER IS STANDING UP: lift ${G.lift} m > 0.20 m`);
