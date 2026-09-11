@@ -9015,6 +9015,29 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.ground = g.groundGate();
       out.ward   = g.wardGate();
       out.burrow = g.burrowGate();
+      // L30's THE SILHOUETTE and L33's rimDayGate, arriving the same way every
+      // one of this section's gates has: built into the page by a round this
+      // suite never called. Both re-derive the world on a pinned BEZEL_SEED
+      // (onBezelSeed saves and restores cells/lakes/marks/monuments/the
+      // player's position around the call) so the verdict is a property of
+      // the build rather than of whatever region this run's own seed rolled -
+      // and both need a FRESH body: the reach table was measured on a
+      // hatchling's camera framing, so they run here, before anything below
+      // has a chance to level the player past stage 0 (censusGate's 600
+      // sim-seconds of play, three sections down, certainly would).
+      // silhouetteGate: exactly the SIL_COUNT regions the chip's own shadow
+      // (L29) could not buy get a bezel, the render only draws it on those,
+      // the reach it ships is not longer than what this screen measures, and
+      // the rim sits under the chip's core rather than over it (so it cannot
+      // do to the white chip what it exists to protect).
+      out.silhouette = g.silhouetteGate ? g.silhouetteGate()
+                                        : { ok:false, bad:["g.silhouetteGate is missing"] };
+      // rimDayGate: the same claim, at every hour skyAt() carries - the reach
+      // is a function of the sky (a dark hour can read on its own without any
+      // rim's help), so a battery that runs the clock to night must not find
+      // a stale table.
+      out.rimDay = g.rimDayGate ? g.rimDayGate()
+                                : { ok:false, bad:["g.rimDayGate is missing"] };
       // THE SPLIT needs a twin to be able to say the HUD names one
       g.give("dupe", 1);
       out.split  = g.splitGate();
@@ -9166,6 +9189,17 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        gates.chipShadow.length
          ? `worst ${worstS.toFixed(3)} (${gates.chipShadow.find(r => r.contrast === worstS).nm})`
          : "g.chipShadowContrast() returned nothing");
+    // L30's silhouette gate: the three regions L29's shadow could not buy (THE
+    // GLACIER, THE DUSTSEA, THE THICKET, on this map) get a bezel instead, the
+    // render only draws it there, and the rim's own shape cannot cover the
+    // chip it is meant to protect.
+    ok("L30's silhouette gate: exactly the regions the chip's shadow could not buy get a bezel, drawn only there, under the chip's core",
+       gates.silhouette.ok, say(gates.silhouette) +
+       `  (${gates.silhouette.count} selected: ${gates.silhouette.selected.join(", ")})`);
+    // L33's rim-day gate: the same claim, across every hour skyAt() carries.
+    ok("L33's rim-day gate: the bezel's reach tracks the sky across the day, and the render obeys it at every hour",
+       gates.rimDay.ok, say(gates.rimDay) +
+       `  (${(gates.rimDay.hours || []).length} hours, ${gates.rimDay.tested || 0} render checks)`);
   }
 
   // ==========================================================================

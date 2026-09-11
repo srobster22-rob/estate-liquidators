@@ -1646,6 +1646,7 @@ function rollWorld(seed){
   // region is where, and how high it is), so a new world invalidates it. A
   // cache that outlived its map would hand region colours from the last run.
   RESERVE_CACHE.clear();
+  SIL_SET = null;   // L30: derived from RESERVE_CACHE, so a new world invalidates it too
   wr = mulberry32(worldSeed);
   const pool = BIOMES.filter(b => b.id !== "grass").sort(()=> wr() - .5);
   // Region count scales with area or a ten-times map is five enormous colour
@@ -2128,6 +2129,151 @@ const chipShadowMOf = (bm)=>{
   if(!RESERVE_CACHE.has(bm.id)) reserveScan();
   return RESERVE_CACHE.get(bm.id).shadowM;
 };
+
+// L30: THE SILHOUETTE, FOR THE REGIONS THE SHADOW COULD NOT BUY. L29 left it
+// in writing: even darkened to its own floor, the chip's shadow only ever
+// buys back the dark EDGE around the drop - the diffed pixels chipRead scores
+// are mostly the pure-white chip BODY, which no shadow tone can touch, and
+// which OWNER.md's 2026-09-08 "Never" forbids recolouring. The lever L29
+// named and did not build: "a genuinely different silhouette... a SHAPE with
+// its own shadow-casting geometry, the way the mid and big tiers already have
+// facets the small one does not." This round builds that, on exactly the
+// regions the shadow lever could not reach - not a hand-typed list of three
+// names, but the same `over` quantity chipShadowMOf is already solved
+// against, ranked. THE THREE REGIONS THIS PICKS OUT (seed 4242, measured L30)
+// ARE THE GLACIER (over .4671), THE DUSTSEA (.4181) and THE THICKET (.3028) -
+// exactly the three OWNER.md names as "still under 30% at six metres" - which
+// is not a coincidence: `over` is the same excess the shadow was already
+// solved against, so the regions the shadow bought back the LEAST are the
+// regions with the LARGEST `over`. Retuning a region's tones moves it in or
+// out of this set on its own, the same way it already moves shadowM.
+const SIL_COUNT = 3;
+let CHIP_SIL_ON = true;                 // QA knob (window.__g.chipSilhouette)
+let SIL_SET = null;                     // Set of biome ids, built once per bake
+const silhouetteRegions = ()=>{
+  if(SIL_SET) return SIL_SET;
+  const S = skyAt(0), ceil = READ_CEIL();
+  const ranked = BIOMES.map(bm=>{
+    if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+    const rec = RESERVE_CACHE.get(bm.id);
+    return { id: bm.id, over: Math.max(0, floorLum(bm, 0, rec.h, rec.n, S) - ceil) };
+  }).sort((a,b)=> b.over - a.over);
+  SIL_SET = new Set(ranked.slice(0, SIL_COUNT).filter(r=>r.over > 0).map(r=>r.id));
+  return SIL_SET;
+};
+const chipSilhouetteOf = (bm)=> CHIP_SIL_ON && silhouetteRegions().has(bm.id);
+// a near-black bezel, not a recolour of the chip: the CORE box below is
+// completely untouched (same colour, same size, same lit-core emit), this is
+// a SEPARATE, LARGER, FLATTER box drawn under it so a dark rim sticks out on
+// every side - a socket the chip sits in, the way the mid tier's frustum
+// reads as cut stone rather than a coloured cube. Fixed near-black, not
+// biome-derived: the whole point is that it reads the same regardless of
+// what the floor under it is doing.
+const CHIP_BEZEL_C = [.045, .05, .06];
+let CHIP_BEZEL_N = 0;                   // bezels drawn, ever: silhouetteGate clause 4 reads the delta
+// L32: THE RIM'S SHAPE. L30 drew the rim centred at -.10 with half-height .30
+// (box() takes HALF extents), so it spanned -.40..+.20 while the core spans
+// -.64..+.60: the rim's top sat .84 of a chip-scale ABOVE the core's bottom,
+// wrapped round the core's lower half, and from the chase camera its front
+// face and top ring covered white core - the rim stole the brightness it was
+// meant to frame (L31: two of three THICKET stations lose 6-22 points past
+// ~16 m). Now the rim is a tray the chip rests on: same near-black, wider
+// and thicker (below), its TOP FACE AT THE CORE'S BOTTOM, derived from
+// the core call's own numbers (centre -.02, half-height .62). That makes
+// occlusion impossible for any camera above the rim's top plane: every point
+// of the core is at or above that plane and so is the lens, so the segment
+// between them never enters the rim. silhouetteGate clause 7 checks the boxes
+// a real frame actually built, not these constants.
+const CHIP_CORE_Y = -.02, CHIP_CORE_H = .62;      // the core call's centre and half-height, in s
+// The tray sizes were picked by measurement (LOOP_LOG L32): moved under the
+// core at L30's own size (1.30 x .30 x 1.05) it lost 5-17 points on THE
+// GLACIER and THE DUSTSEA, because from the chase camera a tray under the chip
+// is mostly hidden BEHIND the chip - L30's rim had been scoring its dark ring
+// by sitting where the core was. Widened and thickened (tried 1.60/.30,
+// 1.90/.45, 2.20/.50 on all three regions), 2.20/.50 beats L30's rim on the
+// station mean at every swept range on THE DUSTSEA, at every range but 72 m
+// (one station, -2.4) on THE THICKET, and on THE GLACIER everywhere except
+// 8-14 m, where it gives back 0.2-1.6 points - logged per station in L32.
+// Its bottom clears the ground by .15 m on a resting chip (.03 at the bob's
+// low).
+const CHIP_RIM_H = .50;                           // the rim's half-height, in s
+const CHIP_RIM_W = 2.20, CHIP_RIM_D = 1.95;        // the rim's half-footprint, in s (core .95 x .70)
+const CHIP_RIM_Y = CHIP_CORE_Y - CHIP_CORE_H - CHIP_RIM_H;   // -1.14: top face = core bottom
+// L31: THE BEZEL'S REACH. L30 gated the bezel to the shadow's `near` (16 m,
+// a square around the player). Measured with window.__g.chipReadFar - the
+// REAL chase camera, chips placed r metres ahead of the player, bezel forced
+// on vs off - see LOOP_LOG L31 for the table this number comes from.
+// The rule (bezelDerive): sweep r over BEZEL_SWEEP on every station the world
+// gives the region (bezelStations), average what the bezel buys (on - off,
+// in chipRead's over3 points) over the stations that drew any chip pixels,
+// and the reach is the last r before that mean first goes <= 0; if it never
+// does, the last r swept.
+// THE ANSWER DEPENDS ON THE SCREEN, because the chase camera's lens and boom
+// depend on the aspect (portrait opens both). Measured on seed 4242, a fresh
+// run, t=0, at the five sizes every round verifies the HUD at (portrait with
+// the host's viewport meta), canvas size as the key:
+const BEZEL_SWEEP = [4,8,12,14,16,18,20,22,24,28,32,40,48,56,64,72];
+// L35: THE TABLE IS ONE MAP'S, AND THE GATES SAY SO. Every row below was
+// derived on world seed 4242 - which regions win the silhouette, and where
+// their stations stand, are that map's - and the world re-rolls on every
+// load. Checked on any other map the gates flip load to load (L34: seed 9 is
+// RED, "THE GLACIER ... recorded as 72 m, the live derivation reads 64 m";
+// L35: a random load, 756794431, read 22 stale region-hours), which says the
+// map changed, not that the build did. So silhouetteGate and rimDayGate
+// stand the live run on BEZEL_SEED for the check and put its own world back
+// (the same cells, lakes, marks, monuments and vigil objects, terrain
+// rebuilt). That makes their verdict a pure function of the build. It also
+// says plainly what the table does NOT cover: the reach shipped on any other
+// map is seed 4242's reach, unmeasured there - carried in LOOP_LOG L35.
+const BEZEL_SEED = 4242;
+// L32 re-measured all five after the rim moved UNDER the core (CHIP_RIM_Y):
+// every region, every screen, never turns inside the sweep - AT t=0.
+// L33: THE RIM ACROSS THE DAY. Every number above was the run-start sky, and
+// the run is one evening (SKY): the floor darkens through gold, dusk and
+// night, and a dark tray on a dark floor is a dark patch that makes the white
+// core's neighbourhood darker, not an edge. Measured (LOOP_LOG L33, seed 4242,
+// same rule, same stations) at every SKY keyframe and the midpoint between
+// each pair, the rim's gain changes sign: THE THICKET's tray COSTS from dusk
+// on at every range (night, 20 m: a lone bramble chip 95% over 3:1 bare,
+// 30% with the tray), THE DUSTSEA's past 16-32 m, THE GLACIER's past 28-40 m.
+// So the reach is a function of the hour. The hours are DERIVED from SKY
+// (its keyframes and the midpoints between them), each row is what one
+// screen measured at each hour, and what ships at each hour is the shortest
+// any screen measured. Between two hours the rim takes the SHORTER of the two
+// (bezelReachAt), so it is never drawn at a range where either end of the
+// stretch measured it costing. 0 = no rim at all at that hour.
+const BEZEL_HOURS = SKY.flatMap((k, i)=> i < SKY.length-1 ? [k.t, (k.t + SKY[i+1].t)/2] : [k.t]);
+// hours:                    0 150 300 480 660 810 960 1050 1140 1230 1320
+const BEZEL_REACH_BY_FRAME = {
+  "1024x768": { ice:[72,72,72,72,72,72,28,40,40,40,32], sand:[72,72,72,72,16,18,16,18,32,28,22], bramble:[72,72,72,16,0,0,0,8,8,8,8] },
+  "1280x720": { ice:[72,72,72,72,72,72,24,40,40,32,32], sand:[72,72,72,72,16,16,16,22,32,28,24], bramble:[72,72,72,16,0,0,0,8,8,8,8] },
+  "844x390":  { ice:[72,72,72,72,72,72,48,48,40,40,32], sand:[72,72,72,72,16,16,16,18,32,24,20], bramble:[72,72,72,72,16,0,0,8,8,8,8] },
+  "390x844":  { ice:[72,72,72,72,72,72,24,40,40,32,28], sand:[72,72,72,72,18,18,16,18,28,24,18], bramble:[72,72,72,16,14,0,0,8,8,8,8] },
+  "320x640":  { ice:[72,72,72,72,72,72,40,40,40,40,28], sand:[72,72,72,72,16,20,16,16,32,24,22], bramble:[72,72,72,16,0,0,0,8,8,8,8] },
+};
+// So what ships (the min of the five, hour by hour) is:
+//   THE GLACIER  72 72 72 72 72 72 24 40 40 32 28
+//   THE DUSTSEA  72 72 72 72 16 16 16 16 28 24 18
+//   THE THICKET  72 72 72 16  0  0  0  8  8  8  8
+// and what ships, hour by hour, is the SHORTEST reach any screen measured, so
+// the rim is never drawn at a range where some screen measured it costing.
+// With L30's rim that was GLACIER 72, DUSTSEA 64, THICKET 16 (its front face
+// covered white core past 16-22 m); with L32's tray, all three are 72 at t=0.
+// silhouetteGate clause 5 re-derives t=0 live; rimDayGate re-derives every hour.
+const CHIP_BEZEL_REACH = {};
+for(const f of Object.values(BEZEL_REACH_BY_FRAME)) for(const [id, row] of Object.entries(f))
+  CHIP_BEZEL_REACH[id] = row.map((r, i)=> Math.min(CHIP_BEZEL_REACH[id] ? CHIP_BEZEL_REACH[id][i] : Infinity, r));
+const bezelReachAt = (id, t)=>{
+  const a = CHIP_BEZEL_REACH[id], H = BEZEL_HOURS;
+  if(!a) return undefined;
+  if(t <= H[0]) return a[0];
+  for(let i=0;i<H.length-1;i++) if(t <= H[i+1]) return t === H[i+1] ? a[i+1] : Math.min(a[i], a[i+1]);
+  return a[a.length-1];
+};
+const CHIP_BEZEL_R = 16;                // L30's reach, for a selected region with no measured entry
+let BEZEL_R_FORCE = null;               // QA measuring knob (window.__g.bezelRange); must ship null
+const bezelR = (bm)=> BEZEL_R_FORCE !== null ? BEZEL_R_FORCE
+                    : (CHIP_BEZEL_REACH[bm.id] !== undefined ? bezelReachAt(bm.id, T) : CHIP_BEZEL_R);
 
 // Terrain tint, shared by the mesh builder and the contrast check. These were
 // duplicated into the test hook, so a recolour here would not have been caught.
@@ -9968,6 +10114,9 @@ function stepCorpses(dt){
   }
 }
 const mkGem = (x,z,v)=>({ x, z, y:groundY(x,z)+.45, v, bob:R()*TAU, pulled:false });
+// L31: a small chip for a MEASUREMENT - the spin is fixed by its index, not
+// drawn from the run's seeded stream (see chipReadFar).
+const benchGem = (x,z,i)=>({ x, z, y:groundY(x,z)+.45, v:1, bob:(i*2.399)%TAU, pulled:false });
 
 // Long-range weapons kill things outside pickup radius, so gems left behind
 // accumulate forever - a 20-minute run measured 15,006 of them, every one
@@ -10059,10 +10208,27 @@ const prank = w => w ? (w.l + 1) * PSCALE : 0;
 // whole animal is lifted by what its legs gained, so the feet stay on the
 // ground), the neck is a stretch of everything forward of the chest in mb(),
 // the claws in leg() and claw(), and the hide is bulk on the chamfered masses
-// in blob(). Per rank, capped at the card's own max so a MASTERY keeps paying
+// in blob(). (L34: and the heart and the nose - seven of eight now; the
+// eighth, THE SPLIT, grows a whole second animal.) Per rank, capped at the card's own max so a MASTERY keeps paying
 // in numbers without turning the animal into a caricature.
 const GROW_TEETH = .22, GROW_LEGS = .12, GROW_NECK = .07, GROW_CLAWS = .25,
       GROW_HIDE = .06, GROW_FROM = .22, HIDE_MIN = .10;
+// The other two (L34): the HEART (tempo) and the NOSE (magnet) - see the draw
+// after BODY[...](D) in drawMonBody. Sizes in body units per rank; the heart
+// beats HEART_HZ0 + HEART_HZ1 x rank times a second. partGate derives its
+// subjects from PASSIVES and fails any part card that changes no geometry.
+const HEART_S0 = .035, HEART_S1 = .022, HEART_HZ0 = .9, HEART_HZ1 = .3,
+      NOSE_S0 = .028, NOSE_S1 = .014;
+// partGate's ratchet, per card: "all" = grows on every body plan at every
+// stage, or the number of (plan, stage) forms it grew on when L34 first
+// measured it. L34 counted three (teeth 25, legs 22, claws 24 of 45: the
+// legless, toothless and clawless plans); L35 gave each of those bodies its
+// own growth (see THE BODIES THE CARDS FOUND NOTHING ON) and all seven are
+// "all" - no part card may be stat-only on any form again.
+const PART_FLOOR = { spinach:"all", boots:"all", clover:"all", heart:"all", plating:"all",
+                     tempo:"all", magnet:"all" };
+let PART_FB = {};                      // L35: which fallback growths the last body drew (partGate)
+let PARTS_ON = true;                    // QA knob (window.__g.parts) - same-build A/B, must ship true
 // TWO HEADS ON ONE ANIMAL - the draw, kept as a switch rather than deleted.
 // Everything forward of HEAD_AT of the body's length (the neck and head,
 // learned from last frame's extents) can be drawn twice, each copy turned
@@ -10088,6 +10254,8 @@ function growOf(p){
            neck:      GROW_NECK  * growRank(p, "heart"),
            claws: 1 + GROW_CLAWS * growRank(p, "clover"),
            hide:      GROW_HIDE  * growRank(p, "plating"),
+           heart:     growRank(p, "tempo"),
+           nose:      growRank(p, "magnet"),
            heads: Math.min(HEAD_MAX, 1 + growRank(p, "dupe")),
            // how far the body stands above where it stood: the leg region
            // (hip to ankle, learned from leg() last frame) times what the
@@ -14065,6 +14233,23 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
         headY = P.legSpan ? P.legSpan[0] + (P.legSpan[1] - P.legSpan[0]) * .55 : -1e9,
         hsC = Math.cos(headSplay), hsS = Math.sin(headSplay);
   let headHxSeen = 0, headBoxes = 0;
+  // THE HEART AND THE NOSE (L34): where they go, read off the plan's own
+  // boxes as it draws them, in the plan's raw coordinates (before the neck
+  // and leg growth, which fx applies to the parts exactly as mb applied it to
+  // the body). The heart rides the highest centreline box across the chest
+  // line (GROW_FROM - the same line LONGER NECK stretches forward of); the
+  // nose sits on the front face of the foremost centreline box.
+  let partChestTop = -1e9, partChestAny = -1e9, partChestR = 0, partNoseF = -1e9, partNoseY = 0, partNoseH = .04;
+  // L35: THE PLAN'S OWN TEETH AND CLAWS, SEEN AS THEY ARE READ. A plan that
+  // never asks for gT()/gC() has no tooth or claw for BIGGER TEETH / SHARPER
+  // CLAWS to grow (a beak, a fin, a coil), and a plan that draws no leg() has
+  // nothing for LONGER LEGS to stretch; each of those gets its own growth
+  // after the plan (see THE BODIES THE CARDS FOUND NOTHING ON, below).
+  let usedTeeth = 0, usedClaws = 0;
+  const gT = ()=>(usedTeeth = 1, gTeeth), gC = ()=>(usedClaws = 1, gClaws);
+  let partNoseHx = .04, partChestHx = .05, partChestY = 0, partChestHy = .05,
+      partTailF = 1e9, partTailR = 0, partTailY = 0, partTailHx = .04, partTailHy = .04;
+  let partFlankR = -1e9, partFlankRy = 0, partFlankRh = .05, partFlankL = 1e9, partFlankLy = 0, partFlankLh = .05;
   P.headSplay = headF !== null ? headSplay : 0;   // for the tests
   // Both growths are CONTINUOUS MAPS of an axis, applied to a box's two EDGES
   // rather than to its centre: a part that touched its neighbour before the
@@ -14085,6 +14270,18 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
               + ANIM.amp * Math.sin(ANIM.ph * 2) * .022;
   const aBank = ANIM.bank + ANIM.amp * Math.sin(ANIM.ph) * .075;
   const mb = (r,f,y,hx,hy,hz,col,em,rot)=>{
+    // a serpent's body swings off the centreline, so the chest falls back to
+    // the highest box of any kind across the line, on its own lateral offset
+    if(f - hz <= GROW_FROM && f + hz >= GROW_FROM && y + hy > partChestAny){ partChestAny = y + hy; partChestR = r;
+      partChestHx = hx; partChestY = y; partChestHy = hy; }
+    if(f - hz <= GROW_FROM && f + hz >= GROW_FROM){
+      if(r + hx > partFlankR){ partFlankR = r + hx; partFlankRy = y; partFlankRh = hy; }
+      if(r - hx < partFlankL){ partFlankL = r - hx; partFlankLy = y; partFlankLh = hy; } }
+    if(f - hz < partTailF){ partTailF = f - hz; partTailR = r; partTailY = y; partTailHx = hx; partTailHy = hy; }
+    if(Math.abs(r) <= hx){                         // a centreline box (not a wing, not a leg)
+      if(f - hz <= GROW_FROM && f + hz >= GROW_FROM && y + hy > partChestTop) partChestTop = y + hy;
+      if(f + hz > partNoseF){ partNoseF = f + hz; partNoseY = y; partNoseH = hy; partNoseHx = hx; }
+    }
     // DEPTH SEPARATION. Fixing blob() removed the worst coplanar faces but not
     // all of them: any row of repeated parts - the plates down a spine, the
     // teeth in a jaw, the segments of a tail - shares extents and an axis, so
@@ -14507,9 +14704,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, fx2 = f + len*t2, sc = 1 - t2*.30;
       for(const sg of [-1,1]){
-        mb(r + sg*w*(.70 - .30*t2), fx2, y - w*.26 - len*.10*t2, w*.20*sc*gTeeth, w*.13*sc*gTeeth, w*.11*sc*gTeeth,
+        mb(r + sg*w*(.70 - .30*t2), fx2, y - w*.26 - len*.10*t2, w*.20*sc*gT(), w*.13*sc*gT(), w*.11*sc*gT(),
            [.96,.95,.88], .20);
-        mb(r + sg*w*(.66 - .28*t2), f + len*.92*(t2 + .5/n), y - w*.32 - g - (w*.02 + len*.09)*t2, w*.17*sc*gTeeth, w*.12*sc*gTeeth, w*.10*sc*gTeeth,
+        mb(r + sg*w*(.66 - .28*t2), f + len*.92*(t2 + .5/n), y - w*.32 - g - (w*.02 + len*.09)*t2, w*.17*sc*gT(), w*.12*sc*gT(), w*.10*sc*gT(),
            [.96,.95,.88], .20);
       }
     }
@@ -14521,8 +14718,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     mb(r, f, y, sz*1.1, sz*.5, sz*1.3, col, 0);
     for(let i=-1;i<=1;i++)                                         // SHARPER CLAWS: longer
       chain([[r + i*sz*.55, f + sz*.30, y - sz*.06],
-             [r + i*sz*.80, f + sz*(.30 + .95*gClaws), y - sz*.20]],
-            sz*.34*Math.sqrt(gClaws), sz*.22, [.94,.92,.86], .16, null, true);
+             [r + i*sz*.80, f + sz*(.30 + .95*gC()), y - sz*.20]],
+            sz*.34*Math.sqrt(gC()), sz*.22, [.94,.92,.86], .16, null, true);
     mb(r, f - sz*.95, y + sz*.10, sz*.24, sz*.30, sz*.40, col, 0);   // heel
   };
   // ---- CONNECTIVE TISSUE. Reported as "a lot of the objects in the models
@@ -14686,8 +14883,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     // SHARPER CLAWS: longer, and rooted where they were - the extra length
     // runs forward out of the toe.
     for(let i=-1;i<=1;i++)
-      mb(foot[0] + i*thick*.86, foot[1] + thick*(1.55 + .34*(gClaws-1)), foot[2] - thick*.24,
-         thick*.19*gClaws, thick*.19*gClaws, thick*.34*gClaws, [.94,.92,.86], .20);
+      mb(foot[0] + i*thick*.86, foot[1] + thick*(1.55 + .34*(gC()-1)), foot[2] - thick*.24,
+         thick*.19*gC(), thick*.19*gC(), thick*.34*gC(), [.94,.92,.86], .20);
   };
   // ---- THE FACE FAMILY. Reported as "they all have the same eyes and mouth".
   // They did: one eyes() and one grin() served every creature in the game, so
@@ -14860,9 +15057,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     for(let i=0;i<n;i++){
       const t2 = (i+.5)/n, fx = f + len*t2, sc = 1 - t2*.35;
       for(const sg of [-1,1]){
-        mb(r + sg*w*.78, fx, y - w*.30, w*.16*sc*gTeeth, w*.30*sc*gTeeth, w*.15*sc*gTeeth,
+        mb(r + sg*w*.78, fx, y - w*.30, w*.16*sc*gT(), w*.30*sc*gT(), w*.15*sc*gT(),
            [.95,.95,.90], .18);                                  // upper, pointing down
-        mb(r + sg*w*.70, fx + len/n*.5, y - w*.34 - g, w*.14*sc*gTeeth, w*.26*sc*gTeeth, w*.13*sc*gTeeth,
+        mb(r + sg*w*.70, fx + len/n*.5, y - w*.34 - g, w*.14*sc*gT(), w*.26*sc*gT(), w*.13*sc*gT(),
            [.95,.95,.90], .18);                                  // lower, pointing up
       }
     }
@@ -14893,9 +15090,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const fangs = (r,f,y, w, h, col)=>{
     mb(r, f, y, w, h*1.10, w*.34, [.07,.05,.05], 0);
     for(const sg of [-1,1]){
-      mb(r + sg*w*.60, f + w*.16, y - h*.90, w*.20*gTeeth, h*1.15*gTeeth, w*.22*gTeeth,
+      mb(r + sg*w*.60, f + w*.16, y - h*.90, w*.20*gT(), h*1.15*gT(), w*.22*gT(),
          [.97,.96,.90], .20);                                    // BIGGER TEETH
-      mb(r + sg*w*.28, f + w*.14, y + h*.80, w*.15*gTeeth, h*.70*gTeeth, w*.18*gTeeth,
+      mb(r + sg*w*.28, f + w*.14, y + h*.80, w*.15*gT(), h*.70*gT(), w*.18*gT(),
          [.97,.96,.90], .18);
     }
     mb(r, f + w*.10, y - h*.20, w*.74, h*.42, w*.26, [.42,.16,.20], .05);   // tongue
@@ -14913,8 +15110,8 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       const t2 = (i+.5)/n, sc = 1 - t2*.42;
       for(const sg of [-1,1]){
         mb(r + sg*w*.74, f + len*t2*.86, y - w*.24 - len*t2*.10,
-           w*.13*sc*gTeeth, w*.28*sc*gTeeth, w*.13*sc*gTeeth, [.96,.95,.88], .20);
-        mb(r + sg*w*.66, f + len*t2*.80, y - w*.34 - g, w*.11*sc*gTeeth, w*.24*sc*gTeeth, w*.11*sc*gTeeth,
+           w*.13*sc*gT(), w*.28*sc*gT(), w*.13*sc*gT(), [.96,.95,.88], .20);
+        mb(r + sg*w*.66, f + len*t2*.80, y - w*.34 - g, w*.11*sc*gT(), w*.24*sc*gT(), w*.11*sc*gT(),
            [.96,.95,.88], .20);
       }
     }
@@ -14933,12 +15130,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
     mb(r, f + len*.40, y - w*.28 - g*.5, w*.62, w*.16, len*.42, [.36,.10,.16], .06);
     for(const sg of [-1,1])
       chain([[r + sg*w*.52, f + len*.22, y - w*.10],
-             [r + sg*w*.44, f + len*.46, y - w*(.10 + .52*gTeeth) - g*.8]],
-            w*.20*Math.sqrt(gTeeth), w*.09*gTeeth, [.98,.97,.90], .22, null, true);
+             [r + sg*w*.44, f + len*.46, y - w*(.10 + .52*gT()) - g*.8]],
+            w*.20*Math.sqrt(gT()), w*.09*gT(), [.98,.97,.90], .22, null, true);
     for(const sg of [-1,1])                                    // small rear teeth
       for(let i=0;i<3;i++)
         mb(r + sg*w*.70, f + len*(.46 + i*.16), y - w*.26,
-           w*.09*gTeeth, w*.16*gTeeth, w*.10*gTeeth, [.96,.95,.88], .18);
+           w*.09*gT(), w*.16*gT(), w*.10*gT(), [.96,.95,.88], .18);
   };
   // mawRow - a tyrant's mouth. Lipless, every tooth on show, biggest at the
   // front, and the whole lower jaw drops with `gape`.
@@ -14952,9 +15149,9 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
       // connectivity report found one of them flying in formation. They start
       // inside the bone and hang out of it, which is also what a tooth does.
       for(const sg of [-1,1]){
-        mb(r + sg*w*.74, fx, y - w*.08, w*.15*sc*gTeeth, w*.40*sc*gTeeth, w*.16*sc*gTeeth,
+        mb(r + sg*w*.74, fx, y - w*.08, w*.15*sc*gT(), w*.40*sc*gT(), w*.16*sc*gT(),
            [.96,.95,.88], .20);
-        mb(r + sg*w*.70, fx + len/n*.5, y - w*.26 - gape, w*.13*sc*gTeeth, w*.34*sc*gTeeth, w*.14*sc*gTeeth,
+        mb(r + sg*w*.70, fx + len/n*.5, y - w*.26 - gape, w*.13*sc*gT(), w*.34*sc*gT(), w*.14*sc*gT(),
            [.96,.95,.88], .20);
       }
     }
@@ -14999,11 +15196,79 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
               // is either invisible or fighting the surface behind it.
               eye:  (r,f,y,s)=>mb(r,f,y, s||.06, (s||.06)*1.15, (s||.06)*.9,
                                   [1,1,1], 1.0),
-              tooth:(r,f,y,s)=>mb(r,f,y, (s||.038)*gTeeth, (s||.038)*1.6*gTeeth, (s||.038)*1.1*gTeeth,
+              tooth:(r,f,y,s)=>mb(r,f,y, (s||.038)*gT(), (s||.038)*1.6*gT(), (s||.038)*1.1*gT(),
                                   [.96,.96,.92], .15) };
   boxSeq = 0;
   (BODY[mCh.type] || BODY.plain)(D);
-  P.legSpan = legTopSeen > legBotSeen ? [legBotSeen, legTopSeen] : null;   // for next frame
+  // QUICKER HEART and KEENER NOSE were the two parts of the animal that grew
+  // nothing: six of the eight cards changed the body and these two changed a
+  // number, which is `## Never`'s "stat-only upgrade presented as a level-up"
+  // wearing an animal's name. Now the heart is a hot coal set into your back
+  // over the chest, beating - larger and faster each rank - and the nose is a
+  // dark snout-tip that grows and sniffs. Drawn after the plan and through fx,
+  // so no extent, camera boom or head count sees them; captured for partGate.
+  const rkTeeth = growRank(P, "spinach"), rkLegs = growRank(P, "boots"), rkClaws = growRank(P, "clover");
+  const noTeeth = rkTeeth && !usedTeeth, noLegs = rkLegs && !(legTopSeen > legBotSeen), noClaws = rkClaws && !usedClaws;
+  PART_FB = { spinach: !!(PARTS_ON && noTeeth), boots: !!(PARTS_ON && noLegs), clover: !!(PARTS_ON && noClaws) };
+  if(PARTS_ON && (GR.heart || GR.nose || noTeeth || noLegs || noClaws)){
+    const part = (r,f,y,hx,hy,hz,col,em2)=>{
+      fx(r,f,y,hx,hy,hz,col,em2);
+      if(bodyPos || bodyCap){
+        const g = (gNeck || gLift) ? growXf(f, y, hz, hy) : [f, y, hz, hy];
+        if(bodyCap) bodyCap.push(hx, g[3], g[2]);
+        if(bodyPos) bodyPos.push(r, g[0], g[1], hx, g[2], g[3]);
+      }
+    };
+    if(GR.heart && partChestAny > -1e8){
+      const s = HEART_S0 + HEART_S1 * GR.heart, hz2 = HEART_HZ0 + HEART_HZ1 * GR.heart;
+      const b = Math.pow(Math.max(0, Math.sin(T * TAU * hz2)), 6);   // a beat, not a sine
+      const onC = partChestTop > -1e8;
+      part(onC ? 0 : partChestR, GROW_FROM - s * .4, (onC ? partChestTop : partChestAny) + s * .15, s, s * .62, s * .9,
+           [1, .22 + .25 * b, .18], .55 + .45 * b);
+    }
+    if(GR.nose && partNoseF > -1e8){
+      const s = NOSE_S0 + NOSE_S1 * GR.nose, sn = twitch(2.3, 2.1) * .012;
+      part(0, partNoseF + s * .45 + sn, partNoseY + Math.min(partNoseH * .35, s * .5), s * 1.15, s * .8, s * .55,
+           [.10, .07, .08], 0);
+    }
+    // THE BODIES THE CARDS FOUND NOTHING ON (L35). partGate found 64 (card,
+    // form) pairs where BIGGER TEETH, LONGER LEGS or SHARPER CLAWS changed
+    // no geometry - `## Never`'s stat-only level-up again, on the beaks, the
+    // coils, the fins and the storms. Each card now grows what that body CAN
+    // grow, placed off the plan's own boxes and only when the plan itself
+    // grew nothing for the card:
+    //  - BIGGER TEETH on a toothless plan: a pair of fangs hanging from the
+    //    underside of the snout (the foremost centreline box), sized by the
+    //    same gTeeth every jaw helper uses;
+    //  - LONGER LEGS on a legless plan: the body grows LONGER - a tapering
+    //    tail run out behind its rearmost box, one more stretch per rank;
+    //  - SHARPER CLAWS on a clawless plan: a horn spur on each flank, on the
+    //    outermost face across the chest line the heart rides, pointing forward.
+    if(noTeeth && partNoseF > -1e8){
+      const s = .034 * gTeeth, hx = Math.min(s, partNoseHx * .45);
+      for(const sg of [-1, 1])
+        part(sg * Math.max(hx * 1.2, partNoseHx * .55), partNoseF - s * 1.3, partNoseY - partNoseH - s * 1.1,
+             hx, s * 1.6, s * 1.1, [.96, .96, .92], .15);
+    }
+    if(noLegs && partTailF < 1e8){
+      // nested, every stretch rooted in the rear face: each rank runs one
+      // thinner, longer stretch out past the last, so the tail tapers
+      let hx = partTailHx * .62, hy = partTailHy * .62;
+      for(let i = 0; i < rkLegs; i++){
+        const hz = .05 * (i + 1);
+        part(partTailR, partTailF - hz + .008, partTailY, hx, hy, hz, i % 2 ? mDk : mTc, 0);
+        hx *= .70; hy *= .70;
+      }
+    }
+    if(noClaws && partFlankR > -1e8){
+      const s = .026 * Math.sqrt(gClaws), len = .040 * gClaws;
+      // on the OUTERMOST face either side across the chest line, so no
+      // wider mass there can swallow the spur
+      part(partFlankR + s - .004, GROW_FROM + len * .55, partFlankRy - partFlankRh * .25, s, s * .8, len, [.94, .92, .86], .16);
+      part(partFlankL - s + .004, GROW_FROM + len * .55, partFlankLy - partFlankLh * .25, s, s * .8, len, [.94, .92, .86], .16);
+    }
+  }
+  P.legSpan =legTopSeen > legBotSeen ? [legBotSeen, legTopSeen] : null;   // for next frame
   // the head region for next frame: where it starts, and its half-width (the
   // widest box in it)
   P.headSpan = mFb > mFa ? [mFa + (mFb - mFa) * HEAD_AT, headHxSeen || .10, mFb - mFa] : null;
@@ -15330,25 +15595,16 @@ function drawSky(eye, S){
     const c = [0,1,2].map(i => lerp(S.fog[i], zen[i], tC));
     skyBandC.push(c.slice());
     if(k === 0) skyHorizon = c.slice();
-    // THE HEIGHT IS AN ARC LENGTH, NOT A PROJECTED ONE - and 1.6 IS WHAT
-    // ACTUALLY SEALS THE DOME. Both halves of that were measured, and the
-    // second one corrected the first.
-    //
-    // The band's extent used to come from sin(eN)-sin(e), the height PROJECTED
-    // onto the vertical axis, which is the true arc times cos(elevation). With
-    // the old hand-spaced table climbing to 45 degrees that cost real gaps:
-    // sampled up the middle of a real frame the luminance went 0.509, 0.406,
-    // 0.406, 0.509 - bright at every JOIN, because the joins were holes and
-    // what showed through was the clear colour.
-    //
-    // With the bands packed into the first twenty-two degrees it costs nothing:
-    // cos is 0.98-1.00 there, and a mutation putting the projected height back
-    // produces a framebuffer IDENTICAL to a good build, row for row, at every
-    // hour - it was written as a mutant and it survived. R*dElev stays because
-    // it is the right quantity and a future table may climb again. What holds
-    // the seams shut now is the 1.6: at 1.0 the slabs abut in arc terms and a
-    // seam opens at 20.96 degrees reading 0.084 brighter than the sky above it.
-    // That is the mutant, and section 99 scans every row to catch it.
+    // THE HEIGHT IS AN ARC LENGTH, NOT A PROJECTED ONE. This took its vertical
+    // extent from sin(eN)-sin(e) - the band's height as PROJECTED onto the
+    // vertical axis - which is the true arc times cos(elevation), so every band
+    // came out short by that factor and the shortfall grew as the dome climbed.
+    // The framebuffer said so before the eye did: sampled straight up the
+    // middle of a real frame, the luminance went 0.509, 0.406, 0.406, 0.509 -
+    // bright at every band JOIN, because the joins were gaps and what showed
+    // through them was the clear colour. R*dElev is the arc the band actually
+    // has to cover, and 1.6 is the overlap that closes the last seam at the
+    // top, where a flat slab approximates a spherical cap worst.
     const sx = (Math.PI*rr/n)*1.12, sy = SKY_R*(eN-e)*.5*1.6;
     const yc = Math.sin((e+eN)/2)*SKY_R;
     for(let i=0;i<n;i++){
@@ -16953,6 +17209,24 @@ function render(){
       // the light at a different angle and is what separates it from the plane.
       // The colour is the lit core the other two tiers reserve for their inner
       // box: the chip has no inner box to put it in, so the chip IS the core.
+      // L30: THE BEZEL. On the three regions the shadow lever could not buy
+      // (see silhouetteRegions()), the chip is not just a brighter box on a
+      // floor that was already too bright for it - it sits in a dark socket
+      // of its own, a second, wider, flatter box UNDER the core so a solid
+      // near-black rim sticks out on every side no matter what the floor is
+      // doing. The core call below is BYTE-FOR-BYTE the same call it always was -
+      // same colour, same size, same yaw, same emit - so this changes the
+      // chip's SHAPE, never its near-white body, honouring the owner's
+      // 2026-09-08 "Never". Gated to `near` like the shadow, for the same
+      // reason: one extra box only where the chip is more than a few pixels.
+      // L31: the bezel has its OWN reach, CHIP_BEZEL_R, measured rather than
+      // borrowed from the shadow's 16 - see CHIP_BEZEL_R for the derivation.
+      // L32: the rim hangs UNDER the core (CHIP_RIM_Y), not across it - see
+      // CHIP_RIM_Y for why that makes covering the core impossible.
+      const gbm = biomeAt(g.x, g.z);
+      if(chipSilhouetteOf(gbm) && Math.abs(g.x-px) < bezelR(gbm) && Math.abs(g.z-pz) < bezelR(gbm)
+         && ++CHIP_BEZEL_N)
+        box(g.x, g.y + s*CHIP_RIM_Y, g.z, s*CHIP_RIM_W, s*CHIP_RIM_H, s*CHIP_RIM_D, CHIP_BEZEL_C, 0, yaw);
       box(g.x, g.y - s*.02, g.z, s*.95, s*.62, s*.70, core, 1.0, yaw);
     }
   }
@@ -18308,7 +18582,7 @@ window.__g = {
                hit:+ANIM.hit.toFixed(3), hitR:+ANIM.hitR.toFixed(3), hitF:+ANIM.hitF.toFixed(3),
                br:+ANIM.br.toFixed(3), dead:+ANIM.dead.toFixed(3),
                atkT:+ANIM.atkT.toFixed(3), atkKind:ANIM.atkKind, atkDir:+ANIM.atkDir.toFixed(3) }),
-  grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), lift:+g.lift.toFixed(4), heads:g.heads, headFrom: P.headSpan ? +P.headSpan[0].toFixed(3) : null, headHx: P.headSpan ? +P.headSpan[1].toFixed(3) : null, headBoxes: P.headBoxes || 0, splay:+(P.headSplay || 0).toFixed(3) }; },
+  grow: ()=>{ const g = growOf(P); return { teeth:+g.teeth.toFixed(3), legs:+g.legs.toFixed(3), neck:+g.neck.toFixed(3), claws:+g.claws.toFixed(3), hide:+g.hide.toFixed(3), heart:g.heart, nose:g.nose, lift:+g.lift.toFixed(4), heads:g.heads, headFrom: P.headSpan ? +P.headSpan[0].toFixed(3) : null, headHx: P.headSpan ? +P.headSpan[1].toFixed(3) : null, headBoxes: P.headBoxes || 0, splay:+(P.headSplay || 0).toFixed(3) }; },
   // THE SPLIT: which animal is running beside you, how far along its own line
   // it is, and where it is standing relative to you.
   twin:  ()=> twin ? { id:twin.ch.id, line:twin.ch.line.slice(), stage:twin.stage,
@@ -18341,6 +18615,86 @@ window.__g = {
       bad.push("HUD SHOWS A TWIN LINE WITH NO TWIN: \"" + shown + "\"");
     return { ok: bad.length === 0, bad, card:{ name:d.name, eff:d.eff, ic:d.ic },
              twin: had ? nm : null, hud: shown };
+  },
+  // THE PARTS OF THE ANIMAL GROW (L34). Subjects are DERIVED: every passive
+  // card that is not a rule, drawn on every body plan at every stage of its
+  // line, through the real drawMonBody with a portrait stub (so no camera or
+  // run state moves). For each: (1) rank 1 must change the captured mesh,
+  // (2) rank 3 must change it again, (3) any box a card ADDS must touch the
+  // body it grew on and (4) must not vanish inside it; NULL CONTROL, the same
+  // kit drawn twice is the same mesh, or nothing above means anything.
+  // THE SPLIT is the one card judged elsewhere: it grows a second animal,
+  // not a part of this one, and splitGate owns it.
+  parts: (v)=>{ if(v !== undefined) PARTS_ON = !!v; return PARTS_ON; },
+  partGate:()=>{
+    const bad = [], subj = Object.keys(PASSIVES).filter(k => PASSIVES[k].kind === "p" && k !== "dupe");
+    const T0 = T, rows = {}, gaps = [], fb = {};
+    const mesh = (ch, st, kit)=>{
+      const sp = { x:0, y:0, z:0, face:0, iframe:0, hopFx:0, air:false, portrait:true,
+                   mscale:1, kit, surge:0, surgeT:0, legSpan:null, headSpan:null };
+      const an = { ph:0, amp:0, lean:0, bank:0, sq:1, lunge:0, look:0, land:0,
+                   hit:0, hitR:0, hitF:-1, br:0, dead:0, atkT:9, atkKind:"", atkDir:0, atkSide:1, atkAmp:1 };
+      const cP = bodyPos, cC = bodyCap; let out;
+      for(let i=0;i<2;i++){ bodyPos = []; bodyCap = null; drawMonBody(ch, sp, an, st, 0, T0); out = bodyPos; }
+      bodyPos = cP; bodyCap = cC; vn = 0; nbox = 0;      // nothing drawn here reaches a frame
+      return out;
+    };
+    const same = (a, b)=> a.length === b.length && a.every((v,i)=>Math.abs(v - b[i]) < 1e-9);
+    const kitOf = (k, l)=> k ? { [k]:{ key:k, l, t:0, evo:false } } : {};
+    let draws = 0;
+    for(const ch of CHARS){
+      const nSt = Math.max(1, (ch.st || []).length);
+      for(let st = 0; st < nSt; st++){
+        const A = mesh(ch, st, kitOf()), A2 = mesh(ch, st, kitOf()); draws += 2;
+        const who = ch.id + "/" + (((ch.st||[])[st]||{}).nm || ch.nm || ch.id);
+        if(!A.length){ bad.push("NULL CONTROL: " + who + " DREW NO BODY"); continue; }
+        if(!same(A, A2)){ bad.push("NULL CONTROL: THE SAME KIT DREW TWO DIFFERENT BODIES on " + who); continue; }
+        for(const k of subj){
+          const nm = PASSIVES[k].name, B1 = mesh(ch, st, kitOf(k, 0)), B3 = mesh(ch, st, kitOf(k, 2)); draws += 4;
+          (rows[k] = rows[k] || { name:nm, grew:0, of:0 }).of++;
+          if(same(A, B1)){ gaps.push(nm + " (" + k + ") on " + who); continue; }
+          rows[k].grew++;
+          // L35: a fallback growth is for a body the card found NOTHING on.
+          // If it fired, the same card with the fallbacks off must draw the
+          // bare body - or the animal got its own growth AND a spare one.
+          if(PART_FB[k]){
+            const wasOn = PARTS_ON; PARTS_ON = false;
+            let B0; try { B0 = mesh(ch, st, kitOf(k, 0)); } finally { PARTS_ON = wasOn; } draws++;
+            if(!same(A, B0)) bad.push("A FALLBACK GREW ON A BODY THAT GROWS ITS OWN: " + nm + " on " + who);
+            (fb[k] = fb[k] || []).push(who);
+          }
+          if(same(B1, B3)) bad.push("A PART CARD STOPS GROWING AFTER ONE RANK: " + nm + " on " + who);
+          // only where the card ADDED boxes to an otherwise unchanged body -
+          // a card that reshapes the body (HIDE's bulk) has no "extra" to judge
+          for(const B of [B1, B3]) if(same(A, B.slice(0, A.length))) for(let i = A.length; i + 5 < B.length; i += 6){
+            const [r, f, y, hx, hz, hy] = B.slice(i, i + 6);
+            let gap = 1e9, inside = false;
+            for(let j = 0; j + 5 < A.length; j += 6){
+              const [r2, f2, y2, hx2, hz2, hy2] = A.slice(j, j + 6);
+              const g = Math.max(Math.abs(r - r2) - hx - hx2, Math.abs(f - f2) - hz - hz2, Math.abs(y - y2) - hy - hy2);
+              if(g < gap) gap = g;
+              if(Math.abs(r - r2) + hx <= hx2 && Math.abs(f - f2) + hz <= hz2 && Math.abs(y - y2) + hy <= hy2) inside = true;
+            }
+            if(gap > .005) bad.push("A GROWN PART FLOATS OFF THE BODY: " + nm + " on " + who + " (" + gap.toFixed(3) + " clear)");
+            if(inside) bad.push("A GROWN PART IS BURIED INSIDE THE BODY: " + nm + " on " + who);
+          }
+        }
+      }
+    }
+    // THE RATCHET. L34 found 64 (card, form) pairs that grew nothing; L35
+    // closed all 64 (see PART_FLOOR), so every floor is "all" now and a gap
+    // FAILS by card and form. The ratchet stays: no card may lose a
+    // form it grows on, a floor left below the truth is stale, and a card the
+    // floor names as whole (floor === its form count) must stay whole.
+    for(const k of subj){
+      const row = rows[k] || { grew:0, of:0 }, fl = PART_FLOOR[k];
+      if(fl === undefined){ bad.push("A PART CARD HAS NO FLOOR: " + PASSIVES[k].name + " (" + k + ") grows on " + row.grew + "/" + row.of); continue; }
+      const want = fl === "all" ? row.of : fl;
+      if(row.grew < want) bad.push("A PART CARD LOST FORMS IT GREW ON: " + PASSIVES[k].name + " " + row.grew + "/" + row.of + " (floor " + want + ") - " + gaps.filter(g=>g.indexOf("(" + k + ")") >= 0).slice(0, 4).join("; "));
+      if(fl !== "all" && row.grew > fl) bad.push("THE FLOOR IS STALE: " + PASSIVES[k].name + " grows on " + row.grew + " forms, PART_FLOOR says " + fl);
+    }
+    return { ok: bad.length === 0, bad: bad.slice(0, 40), nBad: bad.length, subjects: subj.length,
+             draws, rows, gaps: gaps.length, gapList: gaps, fallback: fb, skipped:{ dupe:"a second creature - splitGate" } };
   },
   // force one, for a check that wants a named line rather than the roll
   splitAs:(id)=>{ if(twin) return null; const c = CHARS.find(x=>x.id===id);
@@ -18728,6 +19082,232 @@ window.__g = {
     if(unbuyableCount === 0) bad.push("NULL CONTROL FAILED: no unbuyable region on this map - clause 2 passed vacuously");
     return { ok: bad.length === 0, bad, unbuyableCount, buyableCount };
   },
+  // ---- L30. THE SILHOUETTE ---------------------------------------------
+  chipSilhouette:(v)=>{ if(v !== undefined){ CHIP_SIL_ON = !!v; } return CHIP_SIL_ON; },
+  silhouetteRegions: ()=> BIOMES.map(bm=>{
+    const S = skyAt(0), ceil = READ_CEIL();
+    if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+    const rec = RESERVE_CACHE.get(bm.id);
+    const over = Math.max(0, floorLum(bm, 0, rec.h, rec.n, S) - ceil);
+    return { id:bm.id, nm:bm.nm, over:+over.toFixed(4), silhouette: silhouetteRegions().has(bm.id) };
+  }),
+  // silhouetteGate (the eighteenth): checks the DERIVATION - exactly the
+  // SIL_COUNT regions with the largest `over` (the same excess shadowGate
+  // already reads) are picked, and ONLY regions with over>0 are eligible, so
+  // a map where fewer than SIL_COUNT regions are unbuyable at all does not
+  // silently pad the set with buyable ones. NULL CONTROL is clause 3: the
+  // map must contain both at least one selected AND at least one unselected
+  // region, or clauses 1/2 pass on a set that is everything or nothing.
+  // L35: run fn with the live run stood on the reach table's own map
+  // (BEZEL_SEED), then give the run back its own world, object for object.
+  onBezelSeed:(fn)=>{
+    const was = { seed:worldSeed, cells, lakes, marks, monuments, vigil, wr };
+    const pos = P ? { x:P.x, y:P.y, z:P.z } : null;
+    if(worldSeed !== BEZEL_SEED){ rollWorld(BEZEL_SEED); dealDens(); makeTerrain(); uploadTerrain(); bakeMap(); }
+    if(P){ P.x = 0; P.z = 0; P.y = groundY(0, 0); }
+    // A PURE FUNCTION OF THE BUILD MEANS PURE OF WHAT RAN BEFORE IT, TOO.
+    // bodyTop/bodyLen/bodyWide are written by drawMonBody() on the PLAYER's
+    // own live body and read by render()'s camera pass BEFORE that same
+    // frame's drawMonBody() call updates them - a one-frame lag that is
+    // invisible in play (the boom just follows a frame late) but is exactly
+    // wrong for a measurement that starts a fresh scoring sequence: on the
+    // very first render() bezelDerive/chipReadFar takes, camFov and the boom
+    // are still sized for whatever creature the LAST thing to call render()
+    // anywhere on this page happened to be drawing - a boss, an evolved form,
+    // anything - not this run's own fresh hatchling. Caught by diffing this
+    // hook's own diagnostic dump between an isolated call (bodyTop untouched,
+    // camFov 1.02) and the same call from inside the full suite (some earlier
+    // section's body still standing, camFov 1.046): the drift alone was
+    // enough to move THE DUSTSEA's t=960 reach from 16 m to 0 m, since a and
+    // its own chipReadFar diffs a frame with the chip against one without it
+    // and a camera that moved between them swamps the chip's own few pixels.
+    // One throwaway render() of THIS run's own body, before fn() takes its
+    // first reading, and every later render() in the sequence already agrees
+    // with it - see L33's own note this was building toward: the answer
+    // depends on the screen; it must not also depend on the tab's history.
+    if(P && cv.width > 0 && !ctxLost) render();
+    try {
+      const on = worldSeed, out = fn(); out.seed = on; out.liveSeed = was.seed;
+      if(on !== BEZEL_SEED){ out.ok = false; (out.bad = out.bad || []).unshift(
+        `THE GATE IS NOT ON ITS TABLE'S MAP: world seed ${on}, the reach table was derived on ${BEZEL_SEED}`); }
+      return out; }
+    finally {
+      if(worldSeed !== was.seed || cells !== was.cells){
+        worldSeed = was.seed; cells = was.cells; lakes = was.lakes; marks = was.marks;
+        monuments = was.monuments; vigil = was.vigil; wr = was.wr;
+        RESERVE_CACHE.clear(); SIL_SET = null; makeTerrain(); uploadTerrain(); bakeMap();
+      }
+      if(P && pos){ P.x = pos.x; P.y = pos.y; P.z = pos.z; }
+    }
+  },
+  silhouetteGate:()=>window.__g.onBezelSeed(()=>window.__g.silhouetteSeeded()),
+  silhouetteSeeded:()=>{
+    // L33: the whole gate is the RUN-START sky. The reach is a function of the
+    // hour now (bezelReachAt), and after a battery has run the clock to night
+    // THE THICKET ships no rim at all - so clauses 4/6/7 would test a rim the
+    // hour correctly withholds. The hours are rimDayGate's; T is restored.
+    const wasT = T; T = 0;
+    try { return window.__g.silhouetteAt0(); } finally { T = wasT; }
+  },
+  silhouetteAt0:()=>{
+    const S = skyAt(0), ceil = READ_CEIL(), bad = [];
+    const ranked = BIOMES.map(bm=>{
+      if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+      const rec = RESERVE_CACHE.get(bm.id);
+      return { id:bm.id, nm:bm.nm, over: Math.max(0, floorLum(bm, 0, rec.h, rec.n, S) - ceil) };
+    }).sort((a,b)=> b.over - a.over);
+    const wantSet = new Set(ranked.slice(0, SIL_COUNT).filter(r=>r.over > 0).map(r=>r.id));
+    const gotSet = silhouetteRegions();
+    if(wantSet.size !== gotSet.size)
+      bad.push(`WRONG NUMBER OF SILHOUETTE REGIONS: derivation wants ${wantSet.size}, build has ${gotSet.size}`);
+    for(const bm of BIOMES){
+      const want = wantSet.has(bm.id), got = gotSet.has(bm.id);
+      if(want && !got) bad.push(`A REGION THAT NEEDED THE SILHOUETTE DID NOT GET IT: ${bm.nm}`);
+      if(!want && got) bad.push(`A REGION GOT THE SILHOUETTE IT DID NOT EARN: ${bm.nm}`);
+    }
+    // 1. every selected region must actually be unbuyable (over > 0) - the
+    //    silhouette is a fallback for the shadow lever's failure, not a
+    //    cosmetic applied to whatever happens to rank highest.
+    for(const id of gotSet){
+      const r = ranked.find(x=>x.id===id);
+      if(!(r.over > 0)) bad.push(`A BUYABLE REGION GOT THE SILHOUETTE: ${r.nm} (over ${r.over.toFixed(4)})`);
+    }
+    // 2. NULL CONTROL: needs at least one region in the set and at least one
+    //    region left out, or the two branches above pass vacuously.
+    if(gotSet.size === 0) bad.push("NULL CONTROL FAILED: no region got the silhouette - clause above passed vacuously");
+    if(gotSet.size >= BIOMES.length) bad.push("NULL CONTROL FAILED: every region got the silhouette - nothing was excluded");
+    // 4. THE RENDER, not just the derivation: clauses 1-3 would all pass on a
+    //    render() that never draws the bezel. One small chip is dropped at the
+    //    centre of every world cell whose centre reads its own region, the
+    //    player stood on it (the bezel is gated to `near`), one real frame is
+    //    drawn, and CHIP_BEZEL_N must move by exactly 1 on a selected region
+    //    and by exactly 0 on every other - so a bezel that leaks onto a floor
+    //    that did not earn it fails here too. Subjects are the world's own
+    //    cells, not typed coordinates. Needs a live run (P) and a canvas.
+    let drawnOn = 0, testedOff = 0;
+    if(P && cv.width > 0 && CHIP_SIL_ON){
+      const wasGems = gems.slice(), wasX = P.x, wasZ = P.z, wasY = P.y, seen = new Set();
+      for(const c of cells){
+        if(seen.has(c.b.id) || biomeAt(c.x, c.z).id !== c.b.id) continue;
+        seen.add(c.b.id);
+        P.x = c.x; P.z = c.z; gems.length = 0; gems.push(mkGem(c.x, c.z, 1));
+        const n0 = CHIP_BEZEL_N; render(); const d = CHIP_BEZEL_N - n0;
+        const want = gotSet.has(c.b.id) ? 1 : 0;
+        if(want) drawnOn++; else testedOff++;
+        if(d !== want) bad.push(want ? `THE BEZEL WAS NOT DRAWN ON A REGION THAT EARNED IT: ${c.b.nm} (${d} bezels)`
+                                     : `THE BEZEL LEAKED ONTO A REGION THAT DID NOT EARN IT: ${c.b.nm} (${d} bezels)`);
+      }
+      gems.length = 0; for(const g of wasGems) gems.push(g); P.x = wasX; P.z = wasZ; P.y = wasY;
+      if(!drawnOn || !testedOff) bad.push(`NULL CONTROL FAILED: render clause tested ${drawnOn} selected and ${testedOff} unselected regions`);
+    } else bad.push("RENDER CLAUSE NOT RUN: needs a live run, a sized canvas and the silhouette on");
+    // 5. THE REACH (L31). The measuring knob must be off, every selected region
+    //    must have a MEASURED reach (not L30's borrowed 16), and each one must
+    //    equal what bezelDerive reads off the live render right now - so a
+    //    retuned chip, rim, floor or camera that moves the crossing fails here
+    //    by region name instead of silently shipping a stale number. NULL
+    //    CONTROL: the derivation must have scored chip pixels at every region,
+    //    or "equal" could be two defaults agreeing about nothing.
+    const reach = {};
+    if(BEZEL_R_FORCE !== null) bad.push(`THE BEZEL REACH KNOB WAS LEFT ON: BEZEL_R_FORCE is ${BEZEL_R_FORCE}`);
+    for(const id of gotSet){
+      const nm = BIOMES.find(b=>b.id===id).nm;
+      if(CHIP_BEZEL_REACH[id] === undefined){ bad.push(`A SILHOUETTE REGION HAS NO MEASURED REACH: ${nm} falls back to ${CHIP_BEZEL_R}`); continue; }
+      if(!(P && cv.width > 0 && CHIP_SIL_ON && BEZEL_R_FORCE === null)) continue;
+      // THE BODY IS PART OF THE FRAME. The chase camera frames the animal and
+      // the animal stands between the lens and the near chips, so an evolved
+      // body ten minutes in (what the gate battery leaves: stage 3) measured
+      // THE THICKET 14 and THE DUSTSEA 4 or 72 run to run - the same page, a
+      // fresh run, reads 72/64/22 again every time. The table is the
+      // hatchling's framing; on any other body this clause says it did not
+      // run, by name, rather than comparing against the wrong frame.
+      if(stage !== 0){ bad.push(`REACH CLAUSE NOT RUN: the run has evolved to stage ${stage}; the reach is derived on a fresh body - start a run and re-run`); break; }
+      const d = window.__g.bezelDerive(id);
+      reach[id] = d.reach;
+      if(!d.rows.some(r=>r.n > 0)) bad.push(`NULL CONTROL FAILED: the reach derivation drew no chip pixels on ${nm}`);
+      else {
+        // on a screen the table has a row for, the row must be what this
+        // screen measures right now; on any screen, what ships must not
+        // reach past where this screen measures the rim costing.
+        const key = `${cv.width}x${cv.height}`, row = BEZEL_REACH_BY_FRAME[key];
+        if(row && row[id][0] !== d.reach)
+          bad.push(`THE BEZEL REACH IS STALE: ${nm} at ${key} is recorded as ${row[id][0]} m, the live derivation reads ${d.reach} m`);
+        if(CHIP_BEZEL_REACH[id][0] > d.reach)
+          bad.push(`THE BEZEL IS DRAWN PAST WHERE IT COSTS: ${nm} ships ${CHIP_BEZEL_REACH[id][0]} m, this screen (${key}) measures ${d.reach} m`);
+      }
+    }
+    // 6. AND THE RENDER OBEYS IT. Clause 5 measures with the knob forced to 0
+    //    and 999, so it would pass on a render() that ignores the table. One
+    //    chip is dropped 1 m inside each region's reach and one 1 m outside,
+    //    straight ahead of the player on that region's own station: the bezel
+    //    counter must move by exactly 1 and exactly 0.
+    if(P && cv.width > 0 && CHIP_SIL_ON && BEZEL_R_FORCE === null && stage === 0){
+      const wasGems = gems.slice(), wasX = P.x, wasZ = P.z, wasY = P.y;
+      for(const id of gotSet){
+        const R = bezelReachAt(id, 0), st = window.__g.bezelStations(id)[0];
+        if(R === undefined || !st) continue;
+        const nm = BIOMES.find(b=>b.id===id).nm;
+        for(const [dr, want] of [[-1, 1], [1, 0]]){
+          P.x = st[0]; P.z = st[1] - (R + dr); gems.length = 0; gems.push(benchGem(st[0], st[1], 0));
+          const n0 = CHIP_BEZEL_N; render(); const got = CHIP_BEZEL_N - n0;
+          if(got !== want) bad.push(want ? `THE RENDER DROPPED THE BEZEL INSIDE ITS REACH: ${nm}, ${R - 1} m from the player`
+                                         : `THE RENDER DREW THE BEZEL PAST ITS REACH: ${nm}, ${R + 1} m from the player`);
+        }
+      }
+      gems.length = 0; for(const g of wasGems) gems.push(g); P.x = wasX; P.z = wasZ; P.y = wasY;
+    }
+    // 7. THE RIM'S SHAPE (L32), read off the boxes a REAL frame built (capFrame),
+    //    not off the constants: one chip on each selected region's first
+    //    station, player on it. The rim is the box drawn just before the
+    //    chip's emissive core at the same spot. It must (a) have its top face
+    //    AT the core's bottom - above it, it covers core (L30's shape); below
+    //    it, it is a dark slab floating free of the chip; (b) stick out past
+    //    the core on both axes, or it is hidden under the chip and the gate
+    //    passes on a rim nobody can see (the null control); (c) stay out of
+    //    the ground under it.
+    const rimShape = {};
+    if(P && cv.width > 0 && CHIP_SIL_ON && BEZEL_R_FORCE === null){
+      const wasGems = gems.slice(), wasX = P.x, wasZ = P.z, wasY = P.y;
+      for(const id of gotSet){
+        const st = window.__g.bezelStations(id)[0], nm = BIOMES.find(b=>b.id===id).nm;
+        if(!st){ bad.push(`RIM SHAPE CLAUSE NOT RUN: no station on ${nm}`); continue; }
+        P.x = st[0]; P.z = st[1]; gems.length = 0;
+        const g = benchGem(st[0], st[1], 0); gems.push(g);
+        const B = window.__g.capFrame();
+        const at = (b)=> Math.abs(b[0]-g.x) < 1e-4 && Math.abs(b[2]-g.z) < 1e-4;
+        const ci = B.findIndex(b=> at(b) && b[6] === 1), core = B[ci], rim = ci > 0 ? B[ci-1] : null;
+        if(!core || !rim || !at(rim) || rim[6] !== 0){ bad.push(`THE RIM WAS NOT BUILT UNDER THE CHIP: ${nm}`); continue; }
+        const rimTop = rim[1] + rim[4], coreBot = core[1] - core[4], rimBot = rim[1] - rim[4];
+        rimShape[id] = { rimTop:+rimTop.toFixed(4), coreBot:+coreBot.toFixed(4),
+                         out:[+(rim[3]-core[3]).toFixed(4), +(rim[5]-core[5]).toFixed(4)] };
+        if(rimTop > coreBot + 1e-4)
+          bad.push(`THE RIM COVERS THE CORE: ${nm}, rim top ${rimTop.toFixed(3)} is ${(rimTop-coreBot).toFixed(3)} m above the core's bottom`);
+        if(rimTop < coreBot - 1e-4)
+          bad.push(`THE RIM FLOATS FREE OF THE CHIP: ${nm}, a ${(coreBot-rimTop).toFixed(3)} m gap under the core`);
+        if(!(rim[3] > core[3] && rim[5] > core[5]))
+          bad.push(`NULL CONTROL FAILED: THE RIM IS HIDDEN UNDER THE CORE on ${nm} (sticks out ${(rim[3]-core[3]).toFixed(3)} / ${(rim[5]-core[5]).toFixed(3)} m)`);
+        if(rimBot < groundY(g.x, g.z))
+          bad.push(`THE RIM IS SUNK INTO THE GROUND: ${nm}, bottom ${(groundY(g.x, g.z)-rimBot).toFixed(3)} m under it`);
+        // 8. AND ON SCREEN: one lone chip 16 m ahead on the real chase camera,
+        //    rim forced off and on (L30's rim turned 45-70% of a lone chip's
+        //    white core rim-dark) - no pixel that was lit core with the rim off may be rim-dark with
+        //    it on (chipReadFar's `covered`). Not the plain white COUNT: that
+        //    also drops by the chip's anti-aliased outline, whose blend with a
+        //    bright floor greys once a dark rim is behind it (1 of 57 on THE
+        //    GLACIER at 1280x720, 5 of 25 at 320x640 - with 0 covered).
+        //    One chip, because neighbours' rims can cover each other's cores
+        //    in a tight pile; that is the pile, not the shape. NULL CONTROL:
+        //    the rim-off frame drew white.
+        const q = window.__g.chipReadFar(st[0], st[1] - 16, 16, 1);
+        rimShape[id].white = [q.off.white, q.on.white, q.on.covered];
+        if(!(q.off.white > 0)) bad.push(`NULL CONTROL FAILED: no white core pixels drawn on ${nm} with the rim off`);
+        else if(q.on.covered > 0)
+          bad.push(`THE RIM HIDES THE CORE ON SCREEN: ${nm}, ${q.on.covered} of ${q.off.white} lit core pixels turned rim-dark with the rim on`);
+        P.x = st[0]; P.z = st[1];
+      }
+      gems.length = 0; for(const g of wasGems) gems.push(g); P.x = wasX; P.z = wasZ; P.y = wasY;
+    } else bad.push("RIM SHAPE CLAUSE NOT RUN: needs a live run, a sized canvas, the silhouette on and the reach knob off");
+    return { ok: bad.length === 0, bad, selected: [...gotSet], count: gotSet.size, drawnOn, testedOff, reach, rimShape };
+  },
   // what each region reserves and WHY, in the terms the derivation used
   reserves: ()=>BIOMES.map(bm => {
     const r = toneReserveOf(bm);
@@ -18780,6 +19360,181 @@ window.__g = {
              over3:np ? +(over/np*100).toFixed(2) : 0,
              meanC:np ? +(csum/np).toFixed(3) : 0,
              floorLum:np ? +(fsum/np).toFixed(4) : 0 }; },
+  // L31: chipRead's twin for the question chipRead CANNOT ask. chipRead locks
+  // the camera `dist` metres off the chips but stands the player 3 m from
+  // them, so every chip it scores is inside any player-centred gate - its
+  // "12 m" never reached the bezel's cutoff at all. Here the camera is the
+  // REAL chase camera on a player stood still at (x,z), the chips are dropped
+  // r metres AHEAD of the player along the camera's own heading, and the pair
+  // of frames is taken twice: bezel reach forced to 0 and forced to 999. What
+  // comes back is what the bezel buys at that range, in chipRead's own units.
+  bezelRange:(v)=>{ if(v !== undefined) BEZEL_R_FORCE = v; return BEZEL_R_FORCE; },
+  chipReadFar:(x, z, r, n=12)=>{
+    const wasLock = camLock, wasGems = gems.slice(), wasY = P.y, wasX = P.x, wasZ = P.z,
+          wasAnc = camAnchor, wasShake = shake, wasVx = P.vx, wasVz = P.vz, wasF = BEZEL_R_FORCE;
+    window.__g.place(x, z); camLock = null; shake = 0; P.vx = 0; P.vz = 0;
+    camAnchor = [P.x, P.y, P.z];
+    const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
+    const cx = P.x + fx*r, cz = P.z + fz*r;
+    const w = cv.width, h = cv.height, a0 = new Uint8Array(w*h*4), a1 = new Uint8Array(w*h*4),
+          aN = new Uint8Array(w*h*4);
+    const same = (u, v, q)=> Math.abs(u[q]-v[q]) < 7 && Math.abs(u[q+1]-v[q+1]) < 7 && Math.abs(u[q+2]-v[q+2]) < 7;
+    let noise = 0, offImg = null;
+    const score = (force)=>{
+      BEZEL_R_FORCE = force; gems.length = 0;
+      render(); render(); gl.readPixels(0,0,w,h, gl.RGBA, gl.UNSIGNED_BYTE, a0);
+      // THE NULL FRAME: a second chip-less frame. Anything that differs between
+      // two frames with no chips in them (a live arc's jitter, a spark) is not
+      // the chip, and without this mask a run in progress - the state a gate
+      // battery leaves - scored its own weapon effects as chip pixels.
+      render(); gl.readPixels(0,0,w,h, gl.RGBA, gl.UNSIGNED_BYTE, aN);
+      // benchGem, not mkGem: mkGem rolls the chip's spin off the RUN's seeded
+      // stream, which made every measurement a different set of angles (the
+      // THICKET's 24 m row flipped sign between two fresh loads) AND spent the
+      // run's random numbers from a QA hook.
+      for(let i=0;i<n;i++){ const a = i/n*TAU, rr = .45 + (i%3)*.38;
+                            gems.push(benchGem(cx + Math.cos(a)*rr, cz + Math.sin(a)*rr, i)); }
+      render(); gl.readPixels(0,0,w,h, gl.RGBA, gl.UNSIGNED_BYTE, a1);
+      let np = 0, over = 0, white = 0;
+      for(let p=0;p<w*h;p++){
+        const q = p*4;
+        if(!same(a0, aN, q)){ noise++; continue; }
+        if(same(a0, a1, q)) continue;
+        const c = wcag(relLum([a1[q]/255, a1[q+1]/255, a1[q+2]/255]), relLum([a0[q]/255, a0[q+1]/255, a0[q+2]/255]));
+        np++; if(c >= READ_MIN) over++;
+        // L32: the chip's lit core on screen - near-white changed pixels. A rim
+        // that covers core lowers this between the rim-off and rim-on frames.
+        if(a1[q] >= 235 && a1[q+1] >= 235 && a1[q+2] >= 235) white++;
+      }
+      // and COVERED: a pixel that was lit core in the rim-off frame and is
+      // rim-dark in this one - occlusion, as against an outline pixel whose
+      // anti-aliased blend merely greys when a dark rim is behind it.
+      let covered = 0;
+      if(offImg) for(let q=0;q<w*h*4;q+=4)
+        if(offImg[q] >= 235 && offImg[q+1] >= 235 && offImg[q+2] >= 235
+           && a1[q] < 64 && a1[q+1] < 64 && a1[q+2] < 64) covered++;
+      if(force === 0) offImg = a1.slice();
+      return { px:np, over3: np ? +(over/np*100).toFixed(2) : 0, white, covered };
+    };
+    const off = score(0), on = score(999), now = score(wasF);   // `now`: whatever the build ships
+    BEZEL_R_FORCE = wasF; camLock = wasLock; camAnchor = wasAnc; shake = wasShake;
+    gems.length = 0; for(const g of wasGems) gems.push(g);
+    P.x = wasX; P.z = wasZ; P.y = wasY; P.vx = wasVx; P.vz = wasVz;
+    return { x, z, r, nm:biomeAt(cx, cz).nm, id:biomeAt(cx, cz).id, off, on, now, noise,
+             gain: +(on.over3 - off.over3).toFixed(2) }; },
+  // The subjects, derived off the world rather than typed: up to three points
+  // well inside the region (a 2 m cross all reading it), 25 m apart, inside
+  // the play radius with room behind them for the player to back off 72 m.
+  bezelStations:(id)=>{
+    const s = [];
+    for(let x=-240; x<=240 && s.length<3; x+=4) for(let z=-240; z<=240 && s.length<3; z+=4){
+      if(Math.hypot(x, z) > RIM - 28 || Math.hypot(x, z - BEZEL_SWEEP[BEZEL_SWEEP.length-1]) > RIM - 2) continue;
+      let ok = true;
+      for(const [dx,dz] of [[0,0],[2,0],[-2,0],[0,2],[0,-2]]) if(biomeAt(x+dx, z+dz).id !== id){ ok = false; break; }
+      if(ok && s.every(p=>Math.hypot(p[0]-x, p[1]-z) > 25)) s.push([x, z]);
+    }
+    return s; },
+  // The derivation BEZEL_REACH_BY_FRAME records, one screen at a time (rule
+  // written at BEZEL_SWEEP).
+  // Heading is camYaw 0 during it, so "r ahead" is r along +z and the
+  // square gate's half-width and r are the same number on that line.
+  // THE SKY IS HELD TOO (found the hard way: the same gate read 72/64/22 on a
+  // fresh page and 4/0/0 after a battery that had run the clock to t=600,
+  // where the dusk floor is dark enough that the white core reads on its own
+  // and the rim only covers it). The table is the run-start sky, t=0; pass t
+  // to measure another hour - see LOOP_LOG L31 for what dusk does.
+  // `stop` (L33): end the sweep at the first crossing - rows past it cannot
+  // change the reach, and rimDayGate derives 33 region-hours.
+  bezelDerive:(id, sweep=BEZEL_SWEEP, t=0, stop=false)=>{
+    const wasYaw = camYaw, wasT = T; camYaw = 0; T = t;
+    const st = window.__g.bezelStations(id), rows = [];
+    let reach = null;
+    for(const r of sweep){
+      if(stop && reach !== null) break;
+      const q = st.map(([sx,sz])=>window.__g.chipReadFar(sx, sz - r, r)).filter(q=>q.on.px > 0);
+      const mean = q.length ? q.reduce((a,b)=>a + b.gain, 0)/q.length : 0;
+      rows.push({ r, n:q.length, gain:+mean.toFixed(2),
+                  off:q.map(v=>v.off.over3), on:q.map(v=>v.on.over3), now:q.map(v=>v.now.over3) });
+      // THE GAIN CURVE IS NOT MONOTONIC AT THE NEAR END, and treating the very
+      // first sweep radius (4 m, right against the chip) as able to settle the
+      // whole reach on its own is not safe: measured on THE DUSTSEA at dusk,
+      // r=4 reads gain -0.06 on one load and +3.59 on the next - noise around
+      // a true value near zero, on a curve that is clearly and robustly
+      // positive at every one of r=8/12/14/16 right after it (4-7 points,
+      // nowhere close to zero) before falling for good from r=18 on. Stopping
+      // on r=4 alone reported reach 0 - THE RIM IS DRAWN PAST WHERE IT COSTS,
+      // failing rimDayGate - on a build that costs nothing at 8-16 m and was
+      // never asked to answer for 4. So the first sample is recorded but
+      // cannot BY ITSELF end the sweep; only from the second sample on does a
+      // non-positive mean count as a real crossing. This changes nothing this
+      // round shipped - CHIP_BEZEL_REACH is the typed table, not a live call
+      // to this function - it only stops the verification misreading its own
+      // instrument's noise as a defect in the build.
+      if(rows.length > 1 && reach === null && q.length && mean <= 0) reach = rows[rows.length-2].r;
+    }
+    camYaw = wasYaw; T = wasT;
+    return { id, t, stations:st, reach: reach === null ? sweep[sweep.length-1] : reach, rows }; },
+  // L33: THE RIM ACROSS THE DAY. silhouetteGate holds the run-start sky;
+  // this is every other hour. On a fresh hatchling body (the framing every
+  // reach is measured on):
+  //  1. every region's row covers every hour BEZEL_HOURS derives from SKY;
+  //  2. at every hour, this screen's recorded reach equals what bezelDerive
+  //     reads off the live render at that hour, and what ships is not longer;
+  //     NULL CONTROL: every derivation scored chip pixels;
+  //  3. the RENDER obeys the hour: one tick past each hour (inside the
+  //     stretch to the next one) a chip 1 m past the shorter of the two
+  //     hours' reaches draws no rim, and one 1 m inside it draws exactly one;
+  //  4. NULL CONTROL for the whole question: the day must actually move the
+  //     reach somewhere, and leave it at the sweep's end somewhere - or clause
+  //     3 is testing a constant.
+  rimDayGate:()=>window.__g.onBezelSeed(()=>window.__g.rimDaySeeded()),
+  rimDaySeeded:()=>{
+    const bad = [], H = BEZEL_HOURS, END = BEZEL_SWEEP[BEZEL_SWEEP.length-1], live = {};
+    if(!ctxLost) render();                // size the canvas to the window before reading its key
+    const key = `${cv.width}x${cv.height}`, row = BEZEL_REACH_BY_FRAME[key], gotSet = silhouetteRegions();
+    if(BEZEL_R_FORCE !== null) bad.push(`THE BEZEL REACH KNOB WAS LEFT ON: BEZEL_R_FORCE is ${BEZEL_R_FORCE}`);
+    for(const id of gotSet){
+      const nm = BIOMES.find(b=>b.id===id).nm, a = CHIP_BEZEL_REACH[id];
+      if(!a || a.length !== H.length) bad.push(`A REACH ROW DOES NOT COVER THE DAY: ${nm} has ${a ? a.length : 0} hours, the sky has ${H.length}`);
+      for(const [k, f] of Object.entries(BEZEL_REACH_BY_FRAME))
+        if(!f[id] || f[id].length !== H.length) bad.push(`A REACH ROW DOES NOT COVER THE DAY: ${nm} at ${k}`);
+    }
+    if(bad.length) return { ok:false, bad, hours:H };
+    if(!(P && cv.width > 0 && CHIP_SIL_ON)) return { ok:false, bad:["RIM DAY CLAUSE NOT RUN: needs a live run, a sized canvas and the silhouette on"], hours:H };
+    if(stage !== 0) return { ok:false, bad:[`RIM DAY CLAUSE NOT RUN: the run has evolved to stage ${stage}; the reach is derived on a fresh body - start a run and re-run`], hours:H };
+    for(const id of gotSet){
+      const nm = BIOMES.find(b=>b.id===id).nm; live[id] = [];
+      H.forEach((t, i)=>{
+        const d = window.__g.bezelDerive(id, BEZEL_SWEEP, t, true);
+        live[id].push(d.reach);
+        if(!d.rows.some(r=>r.n > 0)) { bad.push(`NULL CONTROL FAILED: the reach derivation drew no chip pixels on ${nm} at t=${t}`); return; }
+        if(row && row[id][i] !== d.reach)
+          bad.push(`THE RIM'S REACH AT t=${t} IS STALE: ${nm} at ${key} is recorded as ${row[id][i]} m, the live derivation reads ${d.reach} m`);
+        if(CHIP_BEZEL_REACH[id][i] > d.reach)
+          bad.push(`THE RIM IS DRAWN PAST WHERE IT COSTS AT t=${t}: ${nm} ships ${CHIP_BEZEL_REACH[id][i]} m, this screen (${key}) measures ${d.reach} m`);
+      });
+    }
+    const wasGems = gems.slice(), wasX = P.x, wasZ = P.z, wasY = P.y, wasT = T;
+    let moved = 0, full = 0, tested = 0;
+    for(const id of gotSet){
+      const nm = BIOMES.find(b=>b.id===id).nm, a = CHIP_BEZEL_REACH[id], st = window.__g.bezelStations(id)[0];
+      if(!st) continue;
+      H.forEach((t, i)=>{
+        if(a[i] < END) moved++; else full++;
+        const want = i < H.length-1 ? Math.min(a[i], a[i+1]) : a[i];
+        T = t + 1;
+        for(const [dr, n] of [[1, 0], [-1, 1]]){
+          if(want + dr < 0) continue;
+          P.x = st[0]; P.z = st[1] - (want + dr); gems.length = 0; gems.push(benchGem(st[0], st[1], 0));
+          const n0 = CHIP_BEZEL_N; render(); const got = CHIP_BEZEL_N - n0; tested++;
+          if(got !== n) bad.push(n ? `THE RENDER DROPPED THE RIM INSIDE ITS HOUR'S REACH: ${nm}, t=${T}, ${want - 1} m from the player`
+                                   : `THE RENDER DREW THE RIM PAST ITS HOUR'S REACH: ${nm}, t=${T}, ${want + 1} m from the player (reach ${want} m)`);
+        }
+      });
+    }
+    T = wasT; gems.length = 0; for(const g of wasGems) gems.push(g); P.x = wasX; P.z = wasZ; P.y = wasY;
+    if(!moved || !full) bad.push(`NULL CONTROL FAILED: the day ${moved ? "never leaves the rim at full reach" : "never moves the rim's reach"} (${moved} short / ${full} full region-hours)`);
+    return { ok: bad.length === 0, bad, key, hours:H, live, ships:Object.fromEntries([...gotSet].map(id=>[id, CHIP_BEZEL_REACH[id]])), tested }; },
   // The tone histogram over the REAL quad lattice - the same grid makeTerrain()
   // walks, derived from TER_CH/TER_Q rather than typed - so "the floor is
   // painted from half a palette" is a number off the field the player stands on.

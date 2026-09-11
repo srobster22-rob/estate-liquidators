@@ -1135,6 +1135,10 @@ const MUTANTS = [
   { id:"the-ground-is-a-plane-again", must:"97",
     why:"L21's whole round is relief, and with the amplitude at zero its own null control has nothing to compare - this is the failing L14 measured (47-56% of a real frame flat to within 0.012 of luminance) put straight back",
     from:"let RELIEF_AMP = [9.0, 5.0];", to:"let RELIEF_AMP = [0.0, 0.0];" },
+  { id:"the-bezel-never-draws", must:"97",
+    why:"L30's silhouette is the fallback for the three regions L29's shadow cannot buy (THE GLACIER, THE DUSTSEA, THE THICKET on this map) - inverting the QA knob's own check leaves silhouetteRegions() still naming the right three (the selection clauses stay green) while the bezel it exists to draw never appears on screen at the shipped default, which is exactly the render clause silhouetteGate's clause 4 was written to catch rather than trust the derivation alone",
+    from:"const chipSilhouetteOf = (bm)=> CHIP_SIL_ON && silhouetteRegions().has(bm.id);",
+    to:  "const chipSilhouetteOf = (bm)=> !CHIP_SIL_ON && silhouetteRegions().has(bm.id);" },
   { id:"the-ward-has-no-population-cap", must:"98",
     from:"const wardRoom = wardensNow < Math.max(WARD_FLOOR",
     to:  "const wardRoom = -1 < Math.max(WARD_FLOOR" },
@@ -1359,7 +1363,19 @@ for (const m of run) {
     out = execFileSync(process.execPath, [TMPT],
       { env: { ...process.env, BONKHORDE_TARGET: path.basename(TMP) },
         encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: 32 << 20, timeout: 30 * 60e3 });
+        // L30/L33's silhouetteGate and rimDayGate re-derive the bezel's reach
+        // through the real chase camera - onBezelSeed's world-swap plus
+        // hundreds of chipReadFar renders across eleven hours - and measured,
+        // not guessed, they moved a clean suite run from ~10 minutes to just
+        // over 31 under this environment's software rendering. 30 minutes
+        // was already tight before that; two mutants (the-chip-shadow-never-
+        // applies, jump-unbuffered - both correctly detecting the corruption
+        // they target, confirmed from the tail of a killed run) were being
+        // reported as ERROR "no RESULT line" purely because the clock ran out
+        // under them, which is a hole in the audit exactly like the ones this
+        // file's own history already records: a `crash` value here means the
+        // instrument gave up, not that the game did.
+        maxBuffer: 32 << 20, timeout: 55 * 60e3 });
   } catch (e) {
     out = String(e.stdout || "") + String(e.stderr || "");
     if (e.killed || e.signal) crash = `killed (${e.signal || "timeout"})`;
