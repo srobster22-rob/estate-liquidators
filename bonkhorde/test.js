@@ -9071,6 +9071,22 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.noise  = g.noiseGate();
       out.hudG   = g.hudGate();
       out.pair   = g.pairGate();
+      // AND L29's shadowGate, one more of the same route. It is the direct
+      // answer to Q4 failing #5 - "pale chips on a pale floor" - a per-region
+      // shadow that darkens a floor tone only as much as its own excess over
+      // the WCAG floor requires, so a buyable region is untouched and an
+      // unbuyable one is pushed exactly onto the line.
+      out.shadow = g.shadowGate();
+      // ...but shadowGate checks the DERIVATION against READ_CEIL(), which is
+      // itself built from READ_MIN - so a corrupted READ_MIN and a gate that
+      // reads it back agree with each other by construction. Measured: with
+      // READ_MIN dropped from 3 to 2.5 the gate still reports ok:true, 5
+      // buyable and 5 unbuyable (no vacuous null control), while the actual
+      // worst on-screen contrast - g.reserves()'s own cTop, independent of
+      // READ_CEIL - falls to 1.109. This reads that number against the
+      // published WCAG bar itself, 3.0, not against whatever the build
+      // currently believes it is.
+      out.reserves = g.reserves ? g.reserves() : [];
       return out;
     });
     const say = r => (r && r.bad && r.bad.length) ? r.bad.join(" | ") : "clean";
@@ -9127,6 +9143,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L21's pair gate: a queued pair replays as the pair that was queued",
        gates.pair.ok, say(gates.pair) +
        `  (queue ${gates.pair.queue}, replay ${gates.pair.replay}, live ${gates.pair.live})`);
+    ok("L29's shadow gate: a buyable region is untouched and an unbuyable one lands on the line",
+       gates.shadow.ok, say(gates.shadow) +
+       `  (${gates.shadow.buyableCount} buyable, ${gates.shadow.unbuyableCount} unbuyable)`);
+    // THE INDEPENDENT ONE, against the WCAG literal rather than the build's own
+    // READ_MIN - see the comment where this was gathered for the measurement
+    // that says why the gate above cannot be trusted alone.
+    const worstC = gates.reserves.length ? Math.min(...gates.reserves.map(r => r.cTop)) : null;
+    ok("L29's own bar actually holds: no region's brightest allowed floor tone drops the WCAG contrast below 3.0",
+       worstC !== null && worstC >= 3 - 1e-6,
+       gates.reserves.length
+         ? `worst cTop ${worstC.toFixed(3)} (${gates.reserves.find(r => r.cTop === worstC).nm})`
+         : "g.reserves() returned nothing");
   }
 
   // ==========================================================================

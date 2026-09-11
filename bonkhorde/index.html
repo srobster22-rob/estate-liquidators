@@ -1142,7 +1142,7 @@ function bindAttribs(){
 // Two quads at 45 degrees make an octagon for two boxes. The ground tint comes
 // from the biome, which the terrain is already coloured from, so a shadow on
 // the ash reads warm and a shadow on the glacier reads cold.
-function shadow(x, y, z, r, lift, yaw, soft){
+function shadow(x, y, z, r, lift, yaw, soft, mOverride){
   const b = biomeAt(x, z);
   // how far off the ground: fades and spreads, the way a real one does
   const h = Math.max(0, lift || 0);
@@ -1152,7 +1152,12 @@ function shadow(x, y, z, r, lift, yaw, soft){
   // wants a shadow you can read its footprint from; a gem lying on the grass
   // wants a hint, or a field of loot turns into a field of dark holes - which
   // at .54 of the ground colour is exactly what it looked like.
-  const m = soft ? (.62 + soft*.26) : (.30 + (1 - k) * .34);
+  // `mOverride` (L29): the chip's own shadow mix, solved per region against
+  // the SAME ceiling the floor reserve was solved against - used only where
+  // the shipped .02 is not dark enough (see chipShadowMOf). Every other
+  // caller leaves it undefined and gets exactly what it always got.
+  const m = mOverride !== undefined ? mOverride
+          : soft ? (.62 + soft*.26) : (.30 + (1 - k) * .34);
   const col = [ b.a[0]*m, b.a[1]*m, b.a[2]*m*1.04 ];
   box(x, y + .035, z, sp*1.02, .028, sp*1.02, col, 0, yaw || 0);
   // The second quad is what turns a square into an octagon, and it is the one
@@ -1633,6 +1638,10 @@ let runSeed = 0;
 const wrnd = (a, b) => a + wr()*(b - a);
 function rollWorld(seed){
   worldSeed = (seed === undefined ? (Math.random()*1e9)|0 : seed) >>> 0;
+  // L28: the per-region reserve is read off THIS world's own ground (which
+  // region is where, and how high it is), so a new world invalidates it. A
+  // cache that outlived its map would hand region colours from the last run.
+  RESERVE_CACHE.clear();
   wr = mulberry32(worldSeed);
   const pool = BIOMES.filter(b => b.id !== "grass").sort(()=> wr() - .5);
   // Region count scales with area or a ten-times map is five enormous colour
@@ -1665,8 +1674,9 @@ function rollWorld(seed){
     // L25: the lake goes into the array BEFORE its surface is read, and the
     // surface is read as "groundY plus the depth it just carved". That is the
     // uncarved bank exactly as it always was - but taken with THE RELIEF ALREADY
-    // FLATTENED by this lake's own lakeFlat, which is the state the shore will
-    // actually be built in. Reading it first (`const dry = groundY(x,z)` while
+    // FLATTENED by this lake's own shore ramp (L25 wrote lakeFlat here; L27
+    // replaced it with shoreCap and the argument is unchanged), which is the
+    // state the shore will actually be built in. Reading it first (`const dry = groundY(x,z)` while
     // `lakes` was still short this one) would have set the surface from a hill
     // the mesh then removes, and every lake would sit up to three metres off its
     // own water.
@@ -1825,7 +1835,7 @@ const BASE_Y = (x,z)=> Math.sin(x*0.045)*1.7 + Math.cos(z*0.051)*1.5
 // monuments are: THE GLACIER (amp 0.30) stays the flat pan it is described as and
 // THE SPINEROCK (1.60) gets the ridge, and nothing is typed per region.
 let RELIEF_ON = true;                  // QA knob (window.__g.relief) - same-build A/B
-const RELIEF_FADE = 8;                 // metres of ramp outside a lake's rim
+// (L27 deleted RELIEF_FADE, the typed 8 m ramp. See shoreCap() below.)
 // The most THE RELIEF may rise across ONE mesh quad. Nothing in this game can
 // climb, so a step past this is not a hill, it is a wall you walk through. It is
 // asserted rather than clamped, on purpose - a clamp would hide the day somebody
@@ -1834,20 +1844,38 @@ const RELIEF_FADE = 8;                 // metres of ramp outside a lake's rim
 // hills at all: a region seam blends up to 3.5 m of lift across BLEND 9 m, and
 // the shipped build already stepped 2.09 m across a quad with no relief in it.
 const RELIEF_MAXSTEP = 2.60;
-// A lake's surface is set from the UNCARVED ground at its centre, so a bowl with
-// hills in it is a lake with islands in it. The relief is therefore held at zero
-// everywhere inside a lake and eased in over the eight metres beyond the rim -
-// which is exactly the clearance the lake placer already guarantees between one
-// lake's rim and the next lake's centre, so no lake can sit inside another's
-// ramp. Derived from `lakes`, so a lake added later is covered without anybody
+// THE SHORE RAMP (L27). A lake's surface is set from the UNCARVED ground at its
+// centre, so a bowl with hills in it is a lake with islands in it: the relief has
+// to be zero everywhere inside a lake and come back outside it.
+// L25 did that by MULTIPLYING the relief by a fade that ran 0 -> 1 over a typed
+// eight metres, and a fixed-width fade is a WALL wherever the rise it has to
+// swallow is bigger than eight metres of walking can carry. Measured on seed 2
+// before this round: the relief is 0.009 m at one mesh corner and 3.909 m one
+// diagonal quad away, at the rim of a lake sitting under a tall rise, because
+// the fade switched on across that quad. Nothing in this game can climb, so
+// that was a wall you walk through, on 5 of 20 world seeds - and it was there
+// before L26 as well, to the same two decimals.
+// So the ramp is DERIVED FROM THE RISE instead of typed. This returns HOW MUCH
+// RELIEF THE SHORE IS ALLOWED TO HAVE at (x,z): nothing at or inside a rim,
+// growing at RELIEF_RAMP for every metre out from the nearest one. A shore under
+// flat ground therefore needs no ramp at all and is unchanged, and a shore under
+// a 7 m rise takes about fifteen metres to get there instead of eight - the
+// ramp is exactly as wide as the rise makes it. The relief is CLIPPED to it
+// rather than scaled by it, so the ground away from the ramp keeps the shape it
+// had. Note this is what makes the old lake-clearance argument unnecessary:
+// overlapping ramps are just the nearer rim winning, not a fade fighting a fade.
+// Widening RELIEF_MAXSTEP would have been the other way to make the gate pass,
+// and it is the exact move this project keeps recording as the wrong one: it
+// makes the check unable to fail rather than the ground climbable.
+// Derived from `lakes`, so a lake added later is covered without anybody
 // remembering this exists.
-function lakeFlat(x, z){
-  let f = 1;
+function shoreCap(x, z){
+  let d = Infinity;
   for(const L of lakes){
-    const u = clamp((Math.hypot(x - L.x, z - L.z) - L.r) / RELIEF_FADE, 0, 1);
-    f = Math.min(f, u*u*(3 - 2*u));
+    const e = Math.hypot(x - L.x, z - L.z) - L.r;
+    if(e < d) d = e;
   }
-  return f;
+  return d === Infinity ? Infinity : Math.max(0, d) * RELIEF_RAMP;
 }
 // vnoise() WAS ONLY EVER HALF THERE, and L26 fixed it in vhash (see the `>>>`
 // there). While it ran 0 .. 0.5, this expression had to read `v*2 - .5` to get
@@ -1870,10 +1898,17 @@ function lakeFlat(x, z){
 // rise big enough to put a body behind it is a readability cost that belongs in
 // its own round with its own measurement.
 let RELIEF_AMP = [9.0, 5.0];
-const RELIEF = (x, z)=> !RELIEF_ON ? 0 :
-    ((vnoise(x*.0250 + 37.1, z*.0250 + 11.7) - .5) * RELIEF_AMP[0]   // ~40 m, the rises
-   + (vnoise(x*.0525 +  5.3, z*.0525 + 29.9) - .5) * RELIEF_AMP[1])  // ~19 m, the roll
-    * lakeFlat(x, z);
+// The raw field, before any shore is asked about. Split out so the gate can hold
+// the two apart: the clip is the only thing L27 changed, and a clause that could
+// not read the unclipped term could not tell the two apart.
+const RELIEF_RAW = (x, z)=>
+     (vnoise(x*.0250 + 37.1, z*.0250 + 11.7) - .5) * RELIEF_AMP[0]    // ~40 m, the rises
+   + (vnoise(x*.0525 +  5.3, z*.0525 + 29.9) - .5) * RELIEF_AMP[1];   // ~19 m, the roll
+const RELIEF = (x, z)=>{
+  if(!RELIEF_ON) return 0;
+  const v = RELIEF_RAW(x, z), cap = shoreCap(x, z);
+  return v > cap ? cap : v < -cap ? -cap : v;
+};
 const groundY = (x,z)=>{
   if(!cells.length) return BASE_Y(x,z) + RELIEF(x,z);
   const [i1,i2,d1,d2] = nearestCells(x,z);
@@ -1881,6 +1916,213 @@ const groundY = (x,z)=>{
   const A = cells[i1].b, B = cells[i2].b;
   return (BASE_Y(x,z) + RELIEF(x,z)) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w))
        - waterDepth(x,z);          // lakes are carved, not painted
+};
+
+// ------------------------------------------------------- time of day
+// One run is one evening. The bosses already give the twenty minutes a
+// five-act shape and nothing on screen acknowledged it, so the sky does: an
+// afternoon that turns gold at the first boss, dusk by the third, night by the
+// time you are counting seconds, and a red sky the moment sudden death starts.
+// It is also information - you can tell how deep you are from a glance at the
+// horizon, without reading the clock.
+const SKY = [
+  { t:0, sun:[0.42,0.8,0.3], sunC:[1,1,1], sky:[0.74,0.82,0.96],
+    gnd:[0.34,0.29,0.25], fog:[0.44,0.52,0.63], near:52, far:145 },
+  { t:300, sun:[0.52,0.6,0.18], sunC:[1,0.955,0.874], sky:[0.767,0.811,0.924],
+    gnd:[0.358,0.294,0.241], fog:[0.62,0.58,0.56], near:50, far:140 },
+  { t:660, sun:[0.58,0.34,-0.1], sunC:[1,0.874,0.748], sky:[0.803,0.757,0.789],
+    gnd:[0.367,0.276,0.228], fog:[0.76,0.5,0.36], near:44, far:128 },
+  // The drama lives in the FOG and the horizon, not in the ambient. Ambient is
+  // what crushes hue - it is the term every nearby surface is multiplied by -
+  // so it stays close to neutral and the sky the player actually looks at goes
+  // wherever it likes. Pulling the fog in at night tints most of the screen
+  // without touching the twenty metres you are fighting in.
+  { t:960, sun:[0.26,0.34,-0.52], sunC:[0.78,0.73,0.80], sky:[0.58,0.60,0.77],
+    gnd:[0.30,0.27,0.29], fog:[0.26,0.18,0.34], near:34, far:104 },
+  { t:1140, sun:[0.1,0.52,-0.4], sunC:[0.72,0.75,0.84], sky:[0.58,0.63,0.79],
+    gnd:[0.33,0.33,0.36], fog:[0.09,0.11,0.21], near:26, far:84 },
+  { t:1320, sun:[0.18,0.44,-0.46], sunC:[1,0.68,0.64], sky:[0.64,0.62,0.68],
+    gnd:[0.35,0.31,0.30], fog:[0.30,0.045,0.05], near:22, far:74 },
+];
+const skyAt = (t)=>{
+  let a = SKY[0], b = SKY[SKY.length-1];
+  for(let i=0;i<SKY.length-1;i++)
+    if(t >= SKY[i].t && t <= SKY[i+1].t){ a = SKY[i]; b = SKY[i+1]; break; }
+  if(t <= SKY[0].t) { a = b = SKY[0]; }
+  if(t >= b.t && b === SKY[SKY.length-1] && t > b.t) a = b;
+  const span = b.t - a.t;
+  const k = span > 0 ? clamp((t - a.t)/span, 0, 1) : 0;
+  const mix3 = (p,q)=>[lerp(p[0],q[0],k), lerp(p[1],q[1],k), lerp(p[2],q[2],k)];
+  return { sun:mix3(a.sun,b.sun), sunC:mix3(a.sunC,b.sunC), sky:mix3(a.sky,b.sky),
+           gnd:mix3(a.gnd,b.gnd), fog:mix3(a.fog,b.fog),
+           near:lerp(a.near,b.near,k), far:lerp(a.far,b.far,k) };
+};
+
+// ======================================== L28. THE RESERVE, DERIVED PER REGION
+// L12 reserved the TOP QUARTER of the tone range - toneAt ended in `* .75` -
+// so no patch of floor anywhere could reach its region's bright tone, because
+// a near-white XP chip needs something darker to stand against. One number,
+// shared by all ten regions, and L26 measured what that costs: when the full
+// palette landed, THE WARRENS - a DARK region whose floor had been stuck on the
+// low tone steps - went from 60.99% of chip pixels clearing 3:1 at six metres to
+// 17.16%. A region whose floor is already far brighter than the bar (THE
+// GLACIER, THE DUSTSEA, THE HOTSPRINGS) was paying that same quarter and buying
+// nothing with it; a region that was one step away from clearing it was not
+// paying enough. So the reserve is DERIVED, per region, from two things the
+// game already knows: the chip's own screen colour, and the region's own tones
+// under the region's own light.
+//   the small chip is drawn EMISSIVE (em 1.0), and the shader's emissive branch
+//   is `vC * 1.35 + 0.25` clamped - so its screen colour is neither its base
+//   colour nor a lit one, and reading `.74,1,.94` off the draw would be wrong.
+const CHIP_C  = [.74, 1, .94];
+const chipScreen = ()=> CHIP_C.map(v => Math.min(1, v*1.35 + .25));
+const srgbLin = v => v <= .03928 ? v/12.92 : Math.pow((v + .055)/1.055, 2.4);
+const relLum  = c => .2126*srgbLin(clamp(c[0],0,1)) + .7152*srgbLin(clamp(c[1],0,1))
+                   + .0722*srgbLin(clamp(c[2],0,1));
+const wcag    = (a, b)=>{ const hi = Math.max(a,b), lo = Math.min(a,b);
+                          return (hi + .05)/(lo + .05); };
+const READ_MIN = 3;                    // WCAG non-text contrast - L6's own bar
+// THE BRIGHTEST FLOOR A CHIP STILL READS AGAINST. Solved from the bar rather
+// than typed: the chip is the brighter of the pair everywhere on this map.
+const CHIP_LUM  = ()=> relLum(chipScreen());
+const READ_CEIL = ()=> (CHIP_LUM() + .05)/READ_MIN - .05;
+// WHAT A PATCH OF GROUND ACTUALLY COMES OUT AS ON SCREEN. Not palette()'s
+// flat-ground summary: THE SHADER'S OWN EXPRESSION, with the patch's own normal
+// in it. That distinction is the difference between a reserve that works and one
+// that does not - a triangle tilted into the sun is far brighter than the
+// flat-ground number, and the ground THE WARRENS hides pickups on is tilted
+// ground. The light is the RUN'S OPENING keyframe, the one every contrast
+// measurement in this project has ever been taken in.
+const litLum = (c, n, S)=>{
+  const sun = nrm(S.sun), dp = n[0]*sun[0] + n[1]*sun[1] + n[2]*sun[2];
+  const d = Math.max(0, dp), bk = Math.max(0, -dp);
+  return relLum([0,1,2].map(k => c[k]*(lerp(S.gnd[k], S.sky[k], n[1]*.5 + .5)*0.78
+                                     + S.sunC[k]*d*0.92) + c[k]*S.sunC[k]*bk*0.14)); };
+// the colour landC() builds for this region at tone mix `m` and height tint `h`
+const floorCol = (bm, m, h)=> [0,1,2].map(k => lerp(bm.b[k], bm.a[k], m) + h*TERRAIN_H[k]);
+const floorLum = (bm, m, h, n, S)=> litLum(floorCol(bm, m, h), n, S);
+// the ground's own normal at a point, by finite difference over one quad - the
+// same two edges makeTerrain() takes its cross product from
+const groundNrm = (x, z)=>{
+  const y0 = groundY(x, z), yx = groundY(x + TER_S, z), yz = groundY(x, z + TER_S);
+  return nrm([-(yx - y0)*TER_S, TER_S*TER_S, -(yz - y0)*TER_S]); };
+// HOW MUCH OF A REGION HAS TO READ. The one number this round types, and it
+// replaces ten regions sharing L12's one number with ten answers derived from
+// it: three quarters of a region's own ground must be dark enough for the chip
+// to clear READ_MIN on it. Everything else - which tint that is, and therefore
+// how much tone range the region may keep - comes off the map itself.
+const READ_SHARE = .75;
+// THE HEIGHT TINT A REGION ACTUALLY HAS. The bracket (TERRAIN_HRANGE) is what
+// the tint is ALLOWED to be and is nearly useless as a reserve input: charging
+// THE WARRENS the +3.1 its ridges reach would say the bar is unbuyable there
+// and reserve nothing, and charging it the bracket's middle would say it is
+// already free and also reserve nothing. So the tint is READ OFF THE WORLD,
+// once per bake, in one pass for all ten regions at once, and each region is
+// held to its own READ_SHARE quantile.
+const RESERVE_CACHE = new Map();
+let TONE_RESERVE_ON = true;            // QA knob (window.__g.toneReserve) - same-build A/B
+const TONE_RESERVE_LEGACY = .75;       // L12's one-number-for-all-ten, kept as the A/B arm
+// A forced constant reserve, for SWEEPING the knob this round derives - what
+// proves the derived answer sits at the right place on the curve rather than
+// merely being derived from something. null = the derivation.
+let TONE_RESERVE_FORCE = null;
+const reserveScan = ()=>{
+  const S = skyAt(0), ceil = READ_CEIL(), pts = new Map();
+  for(const bm of BIOMES) pts.set(bm.id, []);
+  for(let x=-ARENA; x<=ARENA; x+=6) for(let z=-ARENA; z<=ARENA; z+=6){
+    if(waterSurfY(x, z) < 1e9) continue;            // lakes have their own colour
+    const bm = biomeAt(x, z), a = pts.get(bm.id);
+    if(!a) continue;
+    const n = groundNrm(x, z);
+    // WALKABLE GROUND ONLY, and it is not a nicety: the arena's rim and its
+    // gorge walls are near-vertical, take the sun full on and are the brightest
+    // ground on the map, so a quantile that counts them describes cliff faces
+    // rather than the floor a chip is dropped on - and the check that reads the
+    // baked mesh cannot see them either (a mesh vertex is only ground to it if
+    // its normal is up). Both ends of this round agree on the population.
+    if(n[1] < .9) continue;
+    const h = terrainH(groundY(x, z), groundY(x + TER_S, z + TER_S));
+    a.push({ h, n, top:floorLum(bm, 1, h, n, S) });
+  }
+  for(const bm of BIOMES){
+    const a = pts.get(bm.id);
+    a.sort((p,q)=>p.top - q.top);
+    // THE PATCH OF THIS REGION AT ITS READ_SHARE QUANTILE OF BRIGHTNESS, with
+    // its own tint AND its own tilt: one real piece of this region's ground,
+    // not an average of it and not the bracket it is allowed to reach.
+    const P0 = a.length ? a[Math.min(a.length-1, Math.floor(a.length*READ_SHARE))]
+                        : { h:TERRAIN_HRANGE[1], n:[0,1,0] };
+    let r;
+    // no reserve can buy the bar here (over the ceiling even at the DARK tone):
+    // keep L12's number. Not a surrender - L6's own finding is that on a floor
+    // this bright the chip's readable edge is its dark contact shadow, and a
+    // shadow reads BETTER against a brighter floor.
+    if(floorLum(bm, 0, P0.h, P0.n, S) > ceil)       r = 1;
+    else if(floorLum(bm, 1, P0.h, P0.n, S) <= ceil) r = 1;   // clear already
+    else { let lo = 0, hi = 1;
+           for(let i=0;i<40;i++){ const m = (lo+hi)/2;
+             if(floorLum(bm, m, P0.h, P0.n, S) <= ceil) lo = m; else hi = m; }
+           r = lo; }
+    // AND L12'S NUMBER SURVIVES AS A CAP, not as an answer. The first build of
+    // this let a region that cannot buy the bar at any mix - THE FERNLANDS, THE
+    // BONEFIELD, THE SPINEROCK, all over the ceiling even at their dark tone -
+    // reserve NOTHING and take its full range back, on the shadow argument
+    // above. Measured, three stations a region, two distances: it cost 3.8, 4.9
+    // and 4.8 points of chip pixels clearing the bar. The argument was wrong,
+    // and that measurement is why this line exists: the derivation may reserve
+    // MORE than L12 did, never less.
+    r = Math.min(r, TONE_RESERVE_LEGACY);
+    // THE CHIP'S OWN SHADOW, DERIVED FROM THE SAME EXCESS THE RESERVE USED
+    // (L29). L28 proved a region over the ceiling AT ITS DARK TONE cannot be
+    // bought from the floor side at any reserve - THE GLACIER, THE DUSTSEA,
+    // THE THICKET, THE HOTSPRINGS, THE BONEFIELD, THE SPINEROCK, THE
+    // FERNLANDS - because the chip is drawn EMISSIVE, pure white, and no
+    // floor darkening changes that. The only thing that still reads there is
+    // L6's dark contact shadow, so this round darkens THAT, by exactly how far
+    // over the ceiling the region's dark tone sits (`over`, the same quantity
+    // that forced r=1 above) - not a hand-picked list of seven names, so a
+    // region that gets retuned crosses in or out of this automatically.
+    // MEASURED, not guessed: an analytic bisection of the shadow's own colour
+    // against the ceiling (first build) barely moved chipRead's real over3 -
+    // 14.16% -> 14.37% on THE GLACIER - because the diffed pixels are mostly
+    // the WHITE CHIP BODY, which the shadow's exact tone cannot rescue by
+    // itself. What DOES move it, swept directly against chipRead() on seven
+    // real stations (seed 4242): m=.6252 -> .45 -> .30 -> .15 rose
+    // MONOTONICALLY on all seven, no region went down, 14.16->22.26 (GLACIER),
+    // 53.14->68.47 (DUSTSEA), 14.91->29.48 (THICKET), 11.85->25.68
+    // (HOTSPRINGS), 8.74->19.29 (BONEFIELD), 24.73->32.56 (SPINEROCK),
+    // 62.62->76.01 (FERNLANDS, buyable too - it still improved). So the
+    // formula is direct rather than solved: m = DEF_M - over, floored at
+    // SHADOW_M_MIN - the one number this round types, chosen at the bottom of
+    // that sweep where the gain was still rising and nothing yet read as a
+    // hole in the ground.
+    {
+      const DEF_M = .62 + .02*.26;                    // L6's shipped m, soft=.02
+      const SHADOW_M_MIN = .15;
+      const over = Math.max(0, floorLum(bm, 0, P0.h, P0.n, S) - ceil);
+      const shadowM = over > 0 ? Math.max(SHADOW_M_MIN, DEF_M - over) : DEF_M;
+      RESERVE_CACHE.set(bm.id, { r, h:P0.h, n:P0.n, count:a.length,
+                                  shadowM, shadowDef: over <= 0 });
+    }
+  }
+};
+const toneReserveOf = (bm)=>{
+  if(TONE_RESERVE_FORCE !== null) return TONE_RESERVE_FORCE;
+  if(!TONE_RESERVE_ON) return TONE_RESERVE_LEGACY;
+  if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+  return RESERVE_CACHE.get(bm.id).r;
+};
+// L29's knob, same A/B shape as toneReserve: OFF returns L6's shipped .6252
+// on every region, so the only variable in an A/B is this darkening.
+let CHIP_SHADOW_ON = true;
+// sweep-only knob (window.__g.chipShadowForce), same shape as TONE_RESERVE_FORCE
+let CHIP_SHADOW_FORCE = null;
+const chipShadowMOf = (bm)=>{
+  const DEF_M = .62 + .02*.26;
+  if(CHIP_SHADOW_FORCE !== null) return CHIP_SHADOW_FORCE;
+  if(!CHIP_SHADOW_ON) return DEF_M;
+  if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+  return RESERVE_CACHE.get(bm.id).shadowM;
 };
 
 // Terrain tint, shared by the mesh builder and the contrast check. These were
@@ -2006,16 +2248,17 @@ const toneAt = (gx3, gy3)=>{
   // that way was the whole point of being able to switch them off. The
   // expansion puts the dark end back, which the picture wanted anyway.
   const v3 = clamp(.5 + (broad*.20 + patch*.28 + grain*.52 - .5)*1.15, 0, .999);
-  // AND THE TOP OF THE RANGE IS RESERVED. Four steps, all four kept -
-  // the boundaries between them are the detail - but they run 0 .. 0.75
-  // of the way to the region's bright tone instead of all the way to it.
-  // The reason is L6 and OWNER.md, not taste: the XP chip is near-white
-  // by owner decision, so every patch of floor allowed to reach full
-  // brightness is a patch the chip cannot be read against. Reserving the
-  // top quarter costs nothing visible and hands the pickup its contrast
-  // back - measured, six metres, 20.5% of chip pixels over 3:1 without
-  // this line and 26%+ with it.
-  return Math.floor(v3 * 4) / 3 * .75;
+  // AND THE TOP OF THE RANGE USED TO BE RESERVED HERE, with a `* .75` on
+  // this line: four steps, all four kept, but running only 0 .. 0.75 of
+  // the way to the region's bright tone. The reason was L6 and OWNER.md -
+  // the XP chip is near-white by owner decision, so floor allowed to reach
+  // full brightness is floor the chip cannot be read against. It is still
+  // reserved, but NOT HERE and NOT AS ONE NUMBER: toneAt does not know
+  // which region it is painting, and the right reserve for THE GLACIER is
+  // not the right reserve for THE WARRENS. It returns the raw mix 0 .. 1
+  // now, and toneReserveOf(bm) narrows it per region where the mesh knows
+  // the region. See THE RESERVE, DERIVED PER REGION (L28).
+  return Math.floor(v3 * 4) / 3;
 };
 
 let terBuf, terCount = 0, terData = null, terChunks = [];
@@ -2037,6 +2280,13 @@ const TER_Q  = 12;                      // quads per chunk side
 // is named once, in the same expression order the baker used, and the baker
 // reads it. A typed copy in the gate would be a second number to keep in step.
 const TER_S = ARENA*2/TER_CH/TER_Q;
+// L27. THE STEEPEST A SHORE RAMP MAY CLIMB, in metres of rise per metre walked
+// out from a lake's rim. It is the cliff clause's OWN budget spread over the
+// longest step there is between two mesh corners - the DIAGONAL of a quad, which
+// is the step that clause actually measures - so the ramp alone can never make a
+// step the gate would call a wall. Derived here rather than in the relief block
+// because TER_S is declared here; see shoreCap() for what it is for.
+const RELIEF_RAMP = RELIEF_MAXSTEP / (TER_S * Math.SQRT2);
 // Split in two, because the arena is rolled fresh every run now: makeTerrain()
 // regenerates the vertex data against the current regions, uploadTerrain() puts
 // it on the GPU. A context restore only needs the second half - terData
@@ -2091,8 +2341,12 @@ function makeTerrain(){
       const bm2 = cells.length ? cells[nc[1]].b : bm;
       const eg  = clamp((nc[3] - nc[2]) / BLEND, 0, 1);   // 1 well inside a region
       const w2  = (1 - eg) * .5;                          // at most half-and-half
-      const tone = (k, mix)=> lerp(lerp(bm.b[k], bm.a[k], mix),
-                                   lerp(bm2.b[k], bm2.a[k], mix), w2);
+      // L28: each side of a border narrows the mix by ITS OWN reserve before
+      // the two are blended, so a bright region beside a dark one keeps its
+      // own answer right up to the seam instead of both taking one number.
+      const rv1 = toneReserveOf(bm), rv2 = toneReserveOf(bm2);
+      const tone = (k, mix)=> lerp(lerp(bm.b[k], bm.a[k], mix*rv1),
+                                   lerp(bm2.b[k], bm2.a[k], mix*rv2), w2);
       const landC = (mix)=> [tone(0,mix)+h*TERRAIN_H[0],
                              tone(1,mix)+h*TERRAIN_H[1],
                              tone(2,mix)+h*TERRAIN_H[2]];
@@ -2935,45 +3189,6 @@ const BEAT_REST = .55;                         // how long the release takes to 
 const BT0 = { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 };
 
 // spawn director: rate is enemies/sec, mix is a weight table
-// ------------------------------------------------------- time of day
-// One run is one evening. The bosses already give the twenty minutes a
-// five-act shape and nothing on screen acknowledged it, so the sky does: an
-// afternoon that turns gold at the first boss, dusk by the third, night by the
-// time you are counting seconds, and a red sky the moment sudden death starts.
-// It is also information - you can tell how deep you are from a glance at the
-// horizon, without reading the clock.
-const SKY = [
-  { t:0, sun:[0.42,0.8,0.3], sunC:[1,1,1], sky:[0.74,0.82,0.96],
-    gnd:[0.34,0.29,0.25], fog:[0.44,0.52,0.63], near:52, far:145 },
-  { t:300, sun:[0.52,0.6,0.18], sunC:[1,0.955,0.874], sky:[0.767,0.811,0.924],
-    gnd:[0.358,0.294,0.241], fog:[0.62,0.58,0.56], near:50, far:140 },
-  { t:660, sun:[0.58,0.34,-0.1], sunC:[1,0.874,0.748], sky:[0.803,0.757,0.789],
-    gnd:[0.367,0.276,0.228], fog:[0.76,0.5,0.36], near:44, far:128 },
-  // The drama lives in the FOG and the horizon, not in the ambient. Ambient is
-  // what crushes hue - it is the term every nearby surface is multiplied by -
-  // so it stays close to neutral and the sky the player actually looks at goes
-  // wherever it likes. Pulling the fog in at night tints most of the screen
-  // without touching the twenty metres you are fighting in.
-  { t:960, sun:[0.26,0.34,-0.52], sunC:[0.78,0.73,0.80], sky:[0.58,0.60,0.77],
-    gnd:[0.30,0.27,0.29], fog:[0.26,0.18,0.34], near:34, far:104 },
-  { t:1140, sun:[0.1,0.52,-0.4], sunC:[0.72,0.75,0.84], sky:[0.58,0.63,0.79],
-    gnd:[0.33,0.33,0.36], fog:[0.09,0.11,0.21], near:26, far:84 },
-  { t:1320, sun:[0.18,0.44,-0.46], sunC:[1,0.68,0.64], sky:[0.64,0.62,0.68],
-    gnd:[0.35,0.31,0.30], fog:[0.30,0.045,0.05], near:22, far:74 },
-];
-const skyAt = (t)=>{
-  let a = SKY[0], b = SKY[SKY.length-1];
-  for(let i=0;i<SKY.length-1;i++)
-    if(t >= SKY[i].t && t <= SKY[i+1].t){ a = SKY[i]; b = SKY[i+1]; break; }
-  if(t <= SKY[0].t) { a = b = SKY[0]; }
-  if(t >= b.t && b === SKY[SKY.length-1] && t > b.t) a = b;
-  const span = b.t - a.t;
-  const k = span > 0 ? clamp((t - a.t)/span, 0, 1) : 0;
-  const mix3 = (p,q)=>[lerp(p[0],q[0],k), lerp(p[1],q[1],k), lerp(p[2],q[2],k)];
-  return { sun:mix3(a.sun,b.sun), sunC:mix3(a.sunC,b.sunC), sky:mix3(a.sky,b.sky),
-           gnd:mix3(a.gnd,b.gnd), fog:mix3(a.fog,b.fog),
-           near:lerp(a.near,b.near,k), far:lerp(a.far,b.far,k) };
-};
 
 // THE DIRECTOR SENDS A CROWD FROM MINUTE TWO. Measured with a run that
 // simulates every frame to 17:00 and a control that freezes evolution as well
@@ -16705,7 +16920,12 @@ function render(){
     // a chip is more than a few pixels keeps a floor of two hundred of them at
     // one box each everywhere it matters.
     const near = Math.abs(g.x-px) < (small ? 16 : 20) && Math.abs(g.z-pz) < (small ? 16 : 20);
-    if(near) shadow(g.x, gy, g.z, s*.80, g.y - gy, yaw, .02);
+    // L29: on the seven regions where the floor cannot buy the chip's 3:1 (its
+    // dark tone alone already clears the ceiling), the shadow is the only edge
+    // left, so its mix is darkened per-region to the same bar. Everywhere else
+    // chipShadowMOf returns L6's own .6252, unchanged.
+    if(near) shadow(g.x, gy, g.z, s*.80, g.y - gy, yaw, .02,
+                     small ? chipShadowMOf(biomeAt(g.x, g.z)) : undefined);
     if(big){
       // a standing crystal: a wide base, a tall body, a bright point
       box(g.x, g.y - s*.55, g.z, s*1.05, s*.34, s*1.05, v, .55, yaw);
@@ -18194,6 +18414,14 @@ window.__g = {
                   rollWorld(worldSeed); dealDens(); makeTerrain(); uploadTerrain(); bakeMap();
                   if(P){ P.y = groundY(P.x, P.z); } }
                 return RELIEF_ON; },
+  // L27. One point of the height field, in its parts, read-only and pure. The
+  // round that changed the shore ramp needed to say WHERE the ground moved and
+  // by how much, and every instrument here was an aggregate - so a claim about
+  // the shore had to be inferred from a map-wide mean. `raw` is the relief
+  // before any shore is asked about, `cap` is what the shore allows, `relief`
+  // is what the ground got, and `gy` is the height five other systems read.
+  terrainProbe:(x,z)=>({ gy:groundY(x,z), relief:RELIEF(x,z),
+                         raw:RELIEF_RAW(x,z), cap:shoreCap(x,z) }),
   // How much the ground actually moves, in metres, over the distance a body
   // walks: the mean span inside a 20 m disc and the mean rise across ONE mesh
   // quad. Pure - it reads groundY and nothing else, so it can be taken with the
@@ -18212,7 +18440,7 @@ window.__g = {
     }
     return { span20:+(span/S.length).toFixed(3), step:+(step/S.length).toFixed(3),
              lo:+lo.toFixed(2), hi:+hi.toFixed(2), on:RELIEF_ON, n:S.length }; },
-  // THE RELIEF GATE (the fifteenth). Six clauses and every one of them is a way
+  // THE RELIEF GATE (the fifteenth). Ten clauses and every one of them is a way
   // this round could be wrong rather than a way it could be right, because the
   // height field is the one function in this file that five other systems read.
   // Its subjects are DERIVED: every lake in `lakes`, the mesh step from TER_CH
@@ -18253,7 +18481,7 @@ window.__g = {
     //    it. That tilt is older than this round, it is written up as a finding,
     //    and a gate that demanded it be fixed here would be a gate demanding an
     //    unrelated repair. What this round MUST not do is make it worse - which
-    //    it would, by up to the full amplitude, if lakeFlat were wrong or if the
+    //    it would, by up to the full amplitude, if the shore ramp were wrong or if the
     //    surface were still read before the lake joined `lakes`.
     { const probe = ()=> lakes.map(L=>{
         let isl = -1e9, bank = 0;
@@ -18302,6 +18530,33 @@ window.__g = {
       if(worst > RELIEF_MAXSTEP)
         bad.push(`THE RELIEF HAS A CLIFF IN IT: ${worst.toFixed(2)} m of rise across one ${TER_S.toFixed(2)} m mesh quad at ${at}, past RELIEF_MAXSTEP ${RELIEF_MAXSTEP}`);
     }
+    // 4b. THE SAME QUESTION, OVER THE WHOLE MESH, IN THE UNIT GROUND IS WALKED IN.
+    //     Clause 4 is L25's and is left exactly as it stands, but L27 measured
+    //     two blind spots in it rather than guessing at them. It samples 240
+    //     STATIONS - about 1% of the 21,025 corners the mesh is actually built
+    //     from - and it charges a DIAGONAL neighbour, which is 5.74 m of ground,
+    //     the budget written for one 4.06 m quad. So it is 41% too strict on a
+    //     diagonal and blind on 99% of the map at the same time, and the worst
+    //     ground on this map is not at any of its stations.
+    //     This walks EVERY mesh corner and asks the dimensionally honest
+    //     question: metres of rise per metre of ground, against the same
+    //     RELIEF_MAXSTEP over the quad length it was written for. Nothing is
+    //     loosened - clause 4 still has to pass on its own terms as well.
+    { const budget = RELIEF_MAXSTEP / TER_S;
+      let worst = 0, at = null, N = TER_CH*TER_Q;
+      for(let i=0;i<N;i++) for(let j=1;j<N;j++){
+        const x = -ARENA + i*TER_S, z = -ARENA + j*TER_S, y0 = RELIEF(x,z);
+        for(const [dx,dz] of [[TER_S,0],[0,TER_S],[TER_S,TER_S],[TER_S,-TER_S]]){
+          const s = Math.abs(RELIEF(x+dx,z+dz) - y0) / Math.hypot(dx,dz);
+          if(s > worst){ worst = s; at = [+x.toFixed(1), +z.toFixed(1)]; } } }
+      if(worst > budget)
+        bad.push(`THE MESH HAS A WALL IN IT: the ground climbs ${worst.toFixed(3)} m per metre walked at ${at}, past the ${budget.toFixed(3)} that RELIEF_MAXSTEP ${RELIEF_MAXSTEP} allows over a ${TER_S.toFixed(2)} m quad`);
+      //  the null control for this clause on its own: a flat world would pass it
+      //  with the whole relief deleted, and clause 1 is the map-wide version of
+      //  the same guard.
+      if(!(worst > 0))
+        bad.push(`THE SLOPE SCAN FOUND NO GROUND: the steepest ground on the whole mesh is ${worst}, so clause 4b is asserting over a plane`);
+    }
     // 5. TERRAIN_HRANGE IS NOT A LIE. The floor's colour is tinted by its own
     //    height (`h` in landC), and TERRAIN_HRANGE is the bracket the contrast
     //    harness enumerates every ground colour from. Raise the hills without
@@ -18335,20 +18590,48 @@ window.__g = {
       for(let i=S.length-1;i>=0;i--) if(groundY(S[i][0],S[i][1]) !== first[i]) n++;
       if(n) bad.push(`THE HEIGHT FIELD IS NOT PURE: ${n} of ${S.length} points gave a different answer when read in the opposite order`);
     }
-    // 7. THE FADE IS EXACT AT BOTH ENDS, which is what clauses 2 and 3 rest on.
-    //    A rim reads 9.5e-30 rather than a clean 0 - the smoothstep of a
-    //    float division - so the tolerance is a millimetre of relief and not
-    //    an equality. It is still tight enough to catch a fade of the wrong
-    //    width or the wrong sign, which is the whole point of the clause.
-    for(const L of lakes){
-      const EPS = 1e-6;
-      if(lakeFlat(L.x, L.z) > EPS)
-        bad.push(`THE RELIEF IS NOT FLATTENED AT A LAKE CENTRE: lakeFlat is ${lakeFlat(L.x,L.z)} at (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
-      if(lakeFlat(L.x + L.r, L.z) > EPS)
-        bad.push(`THE RELIEF IS NOT FLATTENED AT A LAKE RIM: lakeFlat is ${lakeFlat(L.x+L.r,L.z)} at the rim of (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
-      const far = lakeFlat(L.x + L.r + RELIEF_FADE + .01, L.z);
-      if(far < 1 - EPS)
-        bad.push(`THE RELIEF DOES NOT COME BACK PAST A LAKE'S RAMP: lakeFlat is ${far} at rim + RELIEF_FADE ${RELIEF_FADE} m from (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
+    // 7, 8 and 9. THE SHORE RAMP IS EXACT AT BOTH ENDS, which is what clauses 2
+    //    and 3 rest on. L25 asserted this of `lakeFlat` and asserted the far end
+    //    at a TYPED distance (rim + RELIEF_FADE), which was itself wrong twice
+    //    over: seed 16 failed it because two lakes' fades legitimately overlapped,
+    //    and it could not have caught the wall, because a fade that arrives too
+    //    FAST is exactly what "it has come back by 8 m" asks for.
+    //    So the three ends of the ramp are asserted separately and every subject
+    //    is derived - the release distance from the raw relief that is actually
+    //    there, at RELIEF_RAMP, rather than from a number somebody typed.
+    { const EPS = 1e-6;
+      //  7. IT STARTS AT ZERO. Nothing at a centre, nothing at a rim.
+      for(const L of lakes){
+        if(Math.abs(RELIEF(L.x, L.z)) > EPS)
+          bad.push(`THE RELIEF IS NOT FLATTENED AT A LAKE CENTRE: the relief is ${RELIEF(L.x,L.z)} m at (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
+        for(let i=0;i<8;i++){
+          const a = i/8*TAU, x = L.x + Math.cos(a)*L.r, z = L.z + Math.sin(a)*L.r;
+          if(Math.abs(RELIEF(x, z)) > EPS)
+            bad.push(`THE RELIEF IS NOT FLATTENED AT A LAKE RIM: the relief is ${RELIEF(x,z)} m at the rim of (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
+        }
+      }
+      //  8. IT LETS GO. Once a point is further from every rim than the raw rise
+      //     there needs at RELIEF_RAMP, the ramp must be out of the way entirely
+      //     and the ground must be the unclipped field. Walked over the whole
+      //     mesh lattice, because the mesh is what gets built. A ramp that never
+      //     released would be a crater round every lake.
+      let held = 0, freed = 0, worstHold = 0, holdAt = null;
+      const N = TER_CH*TER_Q;
+      for(let i=0;i<=N;i+=2) for(let j=0;j<=N;j+=2){
+        const x = -ARENA + i*TER_S, z = -ARENA + j*TER_S;
+        const raw = RELIEF_RAW(x,z), cap = shoreCap(x,z);
+        if(cap >= Math.abs(raw)){
+          const d = Math.abs(RELIEF(x,z) - raw);
+          if(d > EPS){ freed++; if(d > worstHold){ worstHold = d; holdAt = [+x.toFixed(1), +z.toFixed(1)]; } }
+        } else held++;
+      }
+      if(freed)
+        bad.push(`THE SHORE RAMP NEVER LETS GO: ${freed} mesh points are past their own release distance and still clipped, the worst by ${worstHold.toFixed(3)} m at ${holdAt}`);
+      //  9. THE NULL CONTROL FOR 8. The ramp has to be CLIPPING somewhere on this
+      //     map, or clause 8 passes with shoreCap deleted and clause 4 is being
+      //     credited to a ramp that does nothing.
+      if(!held)
+        bad.push(`THE SHORE RAMP IS HOLDING NOTHING: not one mesh point on this map has a raw relief bigger than its own shore allowance, so clauses 4 and 8 would both pass with shoreCap() returning Infinity`);
     }
     RELIEF_ON = was;
     return { ok: !bad.length, bad, lakes: lakes.length, stations: S.length,
@@ -18366,6 +18649,120 @@ window.__g = {
   // between the two arms, which two builds can never be.
   toneHalf:(v)=>{ if(v !== undefined){ TONE_HALF = !!v; makeTerrain(); uploadTerrain(); }
                   return TONE_HALF; },
+  // ---- L28. THE RESERVE ---------------------------------------------------
+  // The second same-build A/B, and for the same reason toneHalf is one: with it
+  // OFF every region takes L12's single .75 again, on the identical terrain,
+  // the identical station and the identical camera, so the only variable is the
+  // reserve. Rebakes, so the picture on screen actually changes.
+  toneReserve:(v)=>{ if(v !== undefined){ TONE_RESERVE_ON = !!v; TONE_RESERVE_FORCE = null;
+                                         makeTerrain(); uploadTerrain(); }
+                     return TONE_RESERVE_ON; },
+  toneReserveForce:(v)=>{ TONE_RESERVE_FORCE = (v === undefined || v === null) ? null : +v;
+                          makeTerrain(); uploadTerrain(); return TONE_RESERVE_FORCE; },
+  // ---- L29. THE CHIP'S OWN SHADOW ------------------------------------------
+  // Same-build A/B, same shape as toneReserve/toneHalf: no rebake needed
+  // (shadows are drawn per-frame, not baked), so flip it and the very next
+  // frame is the other arm on identical terrain, identical station, identical
+  // camera.
+  chipShadow:(v)=>{ if(v !== undefined) CHIP_SHADOW_ON = !!v; return CHIP_SHADOW_ON; },
+  chipShadowForce:(v)=>{ CHIP_SHADOW_FORCE = (v === undefined || v === null) ? null : +v; return CHIP_SHADOW_FORCE; },
+  shadowStats: ()=>BIOMES.map(bm=>{
+    if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+    const rec = RESERVE_CACHE.get(bm.id), S = skyAt(0), ceil = READ_CEIL();
+    const over = Math.max(0, floorLum(bm, 0, rec.h, rec.n, S) - ceil);
+    return { id:bm.id, nm:bm.nm, unbuyable: over > 0, over:+over.toFixed(4),
+             shadowM:+rec.shadowM.toFixed(4), defM:+(.62+.02*.26).toFixed(4),
+             lumDark: +floorLum(bm, 0, rec.h, rec.n, S).toFixed(4) }; }),
+  // shadowGate (the seventeenth): checks the DERIVATION, not a hand-typed list
+  // of seven region names, which would go stale the moment a region's tones
+  // are retuned - "unbuyable" is read straight off the same `over` quantity
+  // that forces the floor reserve to its cap. PURE - reads only BIOMES,
+  // READ_CEIL and floorLum, the same function the reserve itself is solved
+  // against. NULL CONTROL is clause 3: it only fires when this map actually
+  // has at least one region of each kind, so a map that is all one kind
+  // cannot pass clauses 1/2 vacuously.
+  shadowGate:()=>{
+    const ceil = READ_CEIL(), S = skyAt(0), DEF_M = .62 + .02*.26, SHADOW_M_MIN = .15, bad = [];
+    let unbuyableCount = 0, buyableCount = 0;
+    for(const bm of BIOMES){
+      if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+      const rec = RESERVE_CACHE.get(bm.id);
+      const over = Math.max(0, floorLum(bm, 0, rec.h, rec.n, S) - ceil);
+      const unbuyable = over > 0;
+      if(unbuyable) unbuyableCount++; else buyableCount++;
+      // 1. a BUYABLE region must be UNCHANGED - L6's shipped .02/.6252 exactly.
+      if(!unbuyable && Math.abs(rec.shadowM - DEF_M) > 1e-9)
+        bad.push(`A BUYABLE REGION WAS DARKENED: ${bm.nm} did not need it and got shadowM ${rec.shadowM.toFixed(4)} against the shipped ${DEF_M.toFixed(4)}`);
+      // 2. an UNBUYABLE region's shadow must be DARKER than shipped by exactly
+      //    the excess (`over`), floored at SHADOW_M_MIN, never above shipped.
+      if(unbuyable){
+        const want = Math.max(SHADOW_M_MIN, DEF_M - over);
+        if(rec.shadowM >= DEF_M - 1e-9)
+          bad.push(`AN UNBUYABLE REGION WAS NOT DARKENED: ${bm.nm} still reads shadowM ${rec.shadowM.toFixed(4)}`);
+        if(Math.abs(rec.shadowM - want) > 1e-6)
+          bad.push(`THE SHADOW WAS NOT DERIVED FROM THE EXCESS: ${bm.nm} reads shadowM ${rec.shadowM.toFixed(4)}, expected ${want.toFixed(4)} from over=${over.toFixed(4)}`);
+        if(rec.shadowM < SHADOW_M_MIN - 1e-9)
+          bad.push(`A SHADOW WENT PAST ITS OWN FLOOR: ${bm.nm} reads shadowM ${rec.shadowM.toFixed(4)} under SHADOW_M_MIN ${SHADOW_M_MIN}`);
+      }
+    }
+    // 3. NULL CONTROL: this map must contain at least one region of each kind,
+    //    or clauses 1/2 pass on an empty set and prove nothing.
+    if(buyableCount === 0) bad.push("NULL CONTROL FAILED: no buyable region on this map - clause 1 passed vacuously");
+    if(unbuyableCount === 0) bad.push("NULL CONTROL FAILED: no unbuyable region on this map - clause 2 passed vacuously");
+    return { ok: bad.length === 0, bad, unbuyableCount, buyableCount };
+  },
+  // what each region reserves and WHY, in the terms the derivation used
+  reserves: ()=>BIOMES.map(bm => {
+    const r = toneReserveOf(bm);
+    if(!RESERVE_CACHE.has(bm.id)) reserveScan();
+    const rec = RESERVE_CACHE.get(bm.id), S = skyAt(0), h = rec.h, n = rec.n;
+    return { id:bm.id, nm:bm.nm, reserve:r, tint:h, tilt:+n[1].toFixed(3), n:rec.count,
+             lumDark:floorLum(bm, 0, h, n, S),   // that patch at the region's dark tone
+             lumFull:floorLum(bm, 1, h, n, S),   // with no reserve at all
+             lumTop: floorLum(bm, r, h, n, S),   // the brightest it may now paint
+             cDark:+wcag(CHIP_LUM(), floorLum(bm, 0, h, n, S)).toFixed(3),
+             cFull:+wcag(CHIP_LUM(), floorLum(bm, 1, h, n, S)).toFixed(3),
+             cTop: +wcag(CHIP_LUM(), floorLum(bm, r, h, n, S)).toFixed(3) }; }),
+  // THE PICKUP CONTRAST HARNESS, MADE PERMANENT (L6's protocol, L26's method).
+  // Every round that has claimed a pickup number has rebuilt this in the
+  // console and thrown it away, which is why L26's WARRENS loss could only be
+  // reported as one line rather than chased. It lives in the page now.
+  // Chip pixels are defined by DIFFING the framebuffer with and without the
+  // chips - so the subject is exactly what the drop adds, its own contact
+  // shadow included - and every one of them is scored against the floor pixel
+  // it covers, linearised as sRGB the way a WCAG ratio is defined.
+  chipRead:(x, z, dist=6, n=12)=>{
+    const wasLock = camLock, wasGems = gems.slice(), wasY = P.y, wasX = P.x, wasZ = P.z;
+    window.__g.place(x, z);
+    const cx = P.x + 3, cz = P.z, cgy = groundY(cx, cz);
+    camLock = [cx, cgy + 1.55, cz + dist, cx, cgy + .25, cz];
+    const w = cv.width, h = cv.height, px = new Uint8Array(w*h*4), py = new Uint8Array(w*h*4);
+    gems.length = 0;
+    // A WARM-UP FRAME, and it is not superstition: the first render after a
+    // rebake measured 57,469 changed pixels against 18,000 on every later pass
+    // - a whole floor's worth of difference attributed to twelve chips - so the
+    // first frame after an upload is thrown away and the pair is taken from
+    // two frames that are alike in everything but the chips.
+    render();
+    render(); gl.readPixels(0,0,w,h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    for(let i=0;i<n;i++){ const a = i/n*TAU, r = .45 + (i%3)*.38;
+                          gems.push(mkGem(cx + Math.cos(a)*r, cz + Math.sin(a)*r, 1)); }
+    render(); gl.readPixels(0,0,w,h, gl.RGBA, gl.UNSIGNED_BYTE, py);
+    let np = 0, over = 0, csum = 0, fsum = 0;
+    for(let p=0;p<w*h;p++){
+      const q = p*4;
+      if(Math.abs(px[q]-py[q]) < 7 && Math.abs(px[q+1]-py[q+1]) < 7 && Math.abs(px[q+2]-py[q+2]) < 7) continue;
+      const lf = relLum([px[q]/255, px[q+1]/255, px[q+2]/255]);
+      const lc = relLum([py[q]/255, py[q+1]/255, py[q+2]/255]);
+      const c  = wcag(lc, lf);
+      np++; csum += c; fsum += lf; if(c >= READ_MIN) over++;
+    }
+    camLock = wasLock; gems.length = 0; for(const g of wasGems) gems.push(g);
+    P.x = wasX; P.z = wasZ; P.y = wasY;
+    return { x, z, dist, nm:biomeAt(cx, cz).nm, px:np,
+             over3:np ? +(over/np*100).toFixed(2) : 0,
+             meanC:np ? +(csum/np).toFixed(3) : 0,
+             floorLum:np ? +(fsum/np).toFixed(4) : 0 }; },
   // The tone histogram over the REAL quad lattice - the same grid makeTerrain()
   // walks, derived from TER_CH/TER_Q rather than typed - so "the floor is
   // painted from half a palette" is a number off the field the player stands on.
@@ -18443,9 +18840,12 @@ window.__g = {
     // 4. AND IT STAYS INSIDE THE HARNESS'S BRACKET. palette() enumerates every
     //    ground colour in the game as the region's two tones plus the height
     //    tint; the mesh lerps between them by exactly this number, so a tone
-    //    outside [0, .75] is a floor colour the pickup check cannot see.
-    if(St.lo < -1e-9 || St.hi > .75 + 1e-9)
-      bad.push(`THE TONE LEAVES THE BRACKET THE CONTRAST HARNESS WALKS: toneAt runs ${St.lo} .. ${St.hi}, outside [0, 0.75]`);
+    //    outside [0, 1] is a floor colour the pickup check cannot see. L28
+    //    moved the reserve OUT of toneAt and into the mesh, per region, so the
+    //    bracket here is the whole interval again and the reserve has its own
+    //    clauses (7-10) below.
+    if(St.lo < -1e-9 || St.hi > 1 + 1e-9)
+      bad.push(`THE TONE LEAVES THE BRACKET THE CONTRAST HARNESS WALKS: toneAt runs ${St.lo} .. ${St.hi}, outside [0, 1]`);
     // 5. IT IS PURE. The tone is baked once per run, so a stateful hash would
     //    not show up as anything visible - only as a map that changes under a
     //    rebake. Read the same lattice in the opposite order and compare.
@@ -18480,7 +18880,122 @@ window.__g = {
       if(Math.abs(rsum/rn) > budget*.12)
         bad.push(`THE RELIEF IS NOT CENTRED ON ZERO: it means ${(rsum/rn).toFixed(3)} m over ${rn} points, more than 12% of its own +-${budget.toFixed(2)} m budget`);
     }
+    // ---- L28. THE RESERVE. Four clauses, and the subjects are all derived:
+    //     the ceiling from the chip's own screen colour and READ_MIN, each
+    //     region's reserve from its own two tones under its own worst light,
+    //     and clause 10 off the vertices the mesh actually baked.
+    const ceil = READ_CEIL(), RV = window.__g.reserves();
+    // 7. THE A/B KNOB IS OFF. Same rule as clause 0: a knob left on ships
+    //    L12's one-number reserve back and every clause below reads it.
+    if(!TONE_RESERVE_ON)
+      bad.push(`THE RESERVE A/B KNOB WAS LEFT ON: TONE_RESERVE_ON is false, so all ten regions are shipping L12's single ${TONE_RESERVE_LEGACY} reserve again`);
+    if(TONE_RESERVE_FORCE !== null)
+      bad.push(`THE RESERVE SWEEP KNOB WAS LEFT ON: TONE_RESERVE_FORCE is ${TONE_RESERVE_FORCE}, so every region is shipping one forced number instead of its own`);
+    // 8. NULL CONTROL, and it is the whole point of the round: if every region
+    //    comes out with the SAME reserve, the derivation is not reading the
+    //    region and clauses 9 and 10 would pass over one number.
+    //    It can only fire when some region on THIS map could actually have used
+    //    a different answer - a world whose regions are all far over the ceiling
+    //    has one right answer and ten regions at the cap is not a defect there.
+    const rset = new Set(RV.map(r => r.reserve.toFixed(4)));
+    // "usable" is a region that still NEEDS a reserve below the cap: it can be
+    //  brought under the ceiling (its dark tone is under it) and is not under it
+    //  already at the cap. A world where every region is one or the other has
+    //  one right answer, and ten regions at the cap is not a defect there.
+    const usable = RV.filter(r => r.lumDark <= ceil && r.lumTop > ceil);
+    if(rset.size < 2 && usable.length)
+      bad.push(`THE RESERVE IS NOT READING THE REGION: all ${RV.length} regions came out at ${[...rset][0]} although ${usable.map(r=>r.nm).join(", ")} can be brought under the ceiling - that is L12's one-number-for-all-ten by another route`);
+    // 8b. AND IT READ THE WORLD TO DO IT. Clause 8 only sees the ANSWERS, so a
+    //     scan that derived them from a constant - the bracket's own top, say -
+    //     passes it on most seeds while quietly leaving unprotected the one
+    //     region this round exists for. The reserve claims to be solved on a
+    //     REAL PATCH of the region at its READ_SHARE quantile of brightness, so
+    //     that is what is checked, off a different sample from the one the scan
+    //     walks: the baked mesh's own vertices, their own normals, their own
+    //     tints. If the patch the reserve was solved on is not that bright, the
+    //     number did not come off this map.
+    if(terData){
+      const S1 = skyAt(0), fl = new Map();
+      for(const bm of BIOMES) fl.set(bm.id, []);
+      for(let v=0; v<terData.length; v+=10*29){
+        if(terData[v+4] < .9) continue;
+        const x = terData[v], z = terData[v+2];
+        if(waterSurfY(x, z) < 1e9) continue;
+        const bm = biomeAt(x, z), a = fl.get(bm.id);
+        if(!a) continue;
+        const h = terrainH(groundY(x, z), groundY(x + TER_S, z + TER_S));
+        a.push(floorLum(bm, 1, h, [terData[v+3], terData[v+4], terData[v+5]], S1));
+      }
+      for(const r of RV){
+        const a = fl.get(r.id); if(a.length < 40) continue;   // too little ground to judge
+        a.sort((p,q)=>p-q);
+        const q = a[Math.min(a.length-1, Math.floor(a.length*READ_SHARE))];
+        if(Math.abs(q - r.lumFull) > .04)
+          bad.push(`A RESERVE WAS NOT DERIVED FROM THE GROUND: ${r.nm} was solved on a patch reading ${r.lumFull.toFixed(4)} unreserved, but the ${(READ_SHARE*100).toFixed(0)}% mark of its own baked ground is ${q.toFixed(4)}`);
+      }
+    }
+    // 9. EVERY RESERVE IS EARNED, AND NONE OF THEM BRIGHTENS THE FLOOR. Three
+    //    things: a reserve is a share, it never goes above L12's measured cap,
+    //    and a region only sits AT the cap because the cap already clears the
+    //    bar or because nothing could.
+    for(const r of RV){
+      if(!(r.reserve > 0) || r.reserve > TONE_RESERVE_LEGACY + 1e-9)
+        bad.push(`A RESERVE IS OUT OF RANGE: ${r.nm} reserves ${r.reserve.toFixed(4)}, outside (0, ${TONE_RESERVE_LEGACY}] - a reserve above the cap is a floor BRIGHTER than the one L12 measured`);
+      else if(r.reserve < TONE_RESERVE_LEGACY - 1e-9 && r.lumTop > ceil + 1e-4)
+        bad.push(`A RESERVE DOES NOT BUY THE BAR: ${r.nm} reserves ${r.reserve.toFixed(4)} and its ${READ_SHARE*100}% floor still reads ${r.lumTop.toFixed(4)}, over the ${ceil.toFixed(4)} a ${READ_MIN}:1 chip needs`);
+      else if(r.reserve > TONE_RESERVE_LEGACY - 1e-9 && r.lumTop > ceil + 1e-4 && r.lumDark <= ceil)
+        bad.push(`A REGION RESERVED TOO LITTLE: ${r.nm} sits at the cap with its floor at ${r.lumTop.toFixed(4)}, over the ceiling, yet clears it at its dark tone (${r.lumDark.toFixed(4)}) - a smaller reserve would have bought the bar`);
+    }
+    // 10. AND THE MESH PAINTED IT - READ_SHARE stated on the product instead of
+    //     on the formula, and stated so that the DERIVATION CANNOT BE ITS OWN
+    //     JUDGE. The first version of this clause asked whether each region was
+    //     a claimant using the same tint reserveScan had chosen, so a scan that
+    //     picked the wrong tint excused itself: replacing the measured quantile
+    //     with the bracket's top made THE WARRENS "unbuyable", skipped it here,
+    //     and the whole gate stayed green over the exact regression this round
+    //     exists to fix. So both halves are read off the WORLD: every sampled
+    //     ground vertex's own height tint, its region's DARK tone at that tint
+    //     (could this ground ever clear the bar?) and the colour actually baked
+    //     into it (does it?).
+    if(terData){
+      const S0 = skyAt(0), reg = new Map();
+      for(let v=0; v<terData.length; v+=10*3){
+        if(terData[v+4] < .9) continue;                     // normal.y: ground only
+        const x = terData[v], z = terData[v+2];
+        if(waterSurfY(x, z) < 1e9) continue;                // lakes have their own colour
+        const bm = biomeAt(x, z), rec = RV.find(q => q.id === bm.id);
+        if(!rec) continue;
+        let a = reg.get(bm.id);
+        if(!a){ a = { n:0, could:0, does:0, rec }; reg.set(bm.id, a); }
+        const h = terrainH(groundY(x, z), groundY(x + TER_S, z + TER_S));
+        // the vertex's OWN baked normal and colour, through the shader's own
+        // expression - what this piece of ground will actually be on screen
+        const nv  = [terData[v+3], terData[v+4], terData[v+5]];
+        const lum = litLum([terData[v+6], terData[v+7], terData[v+8]], nv, S0);
+        a.n++;
+        if(floorLum(bm, 0, h, nv, S0) <= ceil) a.could++;   // this ground COULD read
+        if(lum <= ceil) a.does++;                           // this ground DOES read
+      }
+      for(const [, a] of reg){
+        if(a.could/a.n >= READ_SHARE && a.does/a.n < READ_SHARE - .02)
+          bad.push(`THE MESH PAINTED PAST A REGION'S RESERVE: only ${(a.does/a.n*100).toFixed(1)}% of ${a.n} baked ground vertices in ${a.rec.nm} are under its ${ceil.toFixed(4)} ceiling, though ${(a.could/a.n*100).toFixed(1)}% of them could be - READ_SHARE asks for ${(READ_SHARE*100).toFixed(0)}%`);
+        // NO CLAUSE 11, AND IT IS RECORDED RATHER THAN FUDGED. The other side
+        // of clause 10 - a reserve applied TWICE, e.g. L12's `* .75` coming
+        // back into toneAt on top of this - is NOT caught here, and the plant
+        // for it passes every clause in this gate. Three attempts and why each
+        // failed: brightest-baked-luminance compares a maximum against a
+        // READ_SHARE quantile (apples to oranges, never fires); the quantile of
+        // baked luminance mixes the tone spread with the tint spread (fires on
+        // every region, always); and solving the tone MIX back out of a baked
+        // colour needs that vertex's height tint, which a quad takes from ONE
+        // of its four corners and hands to all four - so three quarters of the
+        // vertices solve to a mix that is wrong by up to +-0.3, which is bigger
+        // than the defect. It would need the tint stored per vertex.
+      }
+    }
     return { ok: !bad.length, bad,
+             reserve:{ ceil:+ceil.toFixed(4), chip:+CHIP_LUM().toFixed(4),
+                       regions:RV.map(r => `${r.nm} ${r.reserve.toFixed(3)}`) },
              hash:{ lo:+lo.toFixed(4), hi:+hi.toFixed(4), mean:+mean.toFixed(4),
                     topShare:+topShare.toFixed(4), n },
              vn:{ lo:+vlo.toFixed(4), hi:+vhi.toFixed(4), upShare:+(up/m).toFixed(4) },
