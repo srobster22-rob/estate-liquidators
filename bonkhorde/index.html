@@ -1662,11 +1662,20 @@ function rollWorld(seed){
     if(Math.hypot(x,z) < 26 + rad) continue;
     if(Math.hypot(x,z) > RIM - rad - 6) continue;
     if(lakes.some(L => Math.hypot(L.x-x, L.z-z) < L.r + rad + 8)) continue;
-    const dry = groundY(x, z);                 // lakes is still short this one
+    // L25: the lake goes into the array BEFORE its surface is read, and the
+    // surface is read as "groundY plus the depth it just carved". That is the
+    // uncarved bank exactly as it always was - but taken with THE RELIEF ALREADY
+    // FLATTENED by this lake's own lakeFlat, which is the state the shore will
+    // actually be built in. Reading it first (`const dry = groundY(x,z)` while
+    // `lakes` was still short this one) would have set the surface from a hill
+    // the mesh then removes, and every lake would sit up to three metres off its
+    // own water.
     // .55 deep, surface .20 under the bank: waist-deep on a mid-sized form.
     // The first cut was .95 and LEVIATHAN vanished to the neck - a swimmer
     // whose silhouette is gone is a model nobody can see.
-    lakes.push({ x, z, r: rad, dp: .55, y: dry - .20 });
+    const L0 = { x, z, r: rad, dp: .55, y: 0 };
+    lakes.push(L0);
+    L0.y = groundY(x, z) + waterDepth(x, z) - .20;
     i++;
   }
   marks = [];
@@ -1795,12 +1804,82 @@ const inWater = (x, z)=> waterDepth(x, z) > .14;
 // the amplitude and the lift across BLEND metres and the seam becomes a slope.
 const BASE_Y = (x,z)=> Math.sin(x*0.045)*1.7 + Math.cos(z*0.051)*1.5
                      + Math.sin((x+z)*0.027)*2.0;
+
+// ---- THE RELIEF (L25). OWNER item 1's remaining half - "everything feels
+// blocky, especially walking around". L12 named height variation as the honest
+// answer and did not take it because groundY is read by collision, water, the
+// lakes, the monuments and the spawner. This is the first slice of it, and the
+// defect was measured on the shipped bytes before a line was written: BASE_Y is
+// three sines whose SHORTEST wavelength is 123 metres, on a map you walk across
+// in a couple of minutes. Sampled at 400 stations, the ground inside a 40 m disc
+// moved 3.06 m and a single 4.05 m mesh step changed height by 0.222 m. At play
+// distance that is a PLANE - the horizon is a straight line and walking eighteen
+// metres cannot change what is over the next rise, because there is no next rise.
+// The missing term is MID-SCALE, and mid-scale here is bounded at both ends: the
+// mesh quad is 4.05 m, so anything under about five quads (20 m) comes out as
+// shattered facets rather than ground, and anything over about 60 m is the plane
+// we already have. Two octaves at 40 m and 19 m, off the same value noise the
+// ground TONE is already picked from - so this adds no new generator and no new
+// die, and the world stream (which cell, which lake, which monument) is untouched.
+// It is multiplied by the region's own blended amplitude for the same reason the
+// monuments are: THE GLACIER (amp 0.30) stays the flat pan it is described as and
+// THE SPINEROCK (1.60) gets the ridge, and nothing is typed per region.
+let RELIEF_ON = true;                  // QA knob (window.__g.relief) - same-build A/B
+const RELIEF_FADE = 8;                 // metres of ramp outside a lake's rim
+// The most THE RELIEF may rise across ONE mesh quad. Nothing in this game can
+// climb, so a step past this is not a hill, it is a wall you walk through. It is
+// asserted rather than clamped, on purpose - a clamp would hide the day somebody
+// doubles the amplitude. It brackets the relief TERM and not groundY, because
+// groundY's biggest single-quad steps are older than this round and are not
+// hills at all: a region seam blends up to 3.5 m of lift across BLEND 9 m, and
+// the shipped build already stepped 2.09 m across a quad with no relief in it.
+const RELIEF_MAXSTEP = 2.60;
+// A lake's surface is set from the UNCARVED ground at its centre, so a bowl with
+// hills in it is a lake with islands in it. The relief is therefore held at zero
+// everywhere inside a lake and eased in over the eight metres beyond the rim -
+// which is exactly the clearance the lake placer already guarantees between one
+// lake's rim and the next lake's centre, so no lake can sit inside another's
+// ramp. Derived from `lakes`, so a lake added later is covered without anybody
+// remembering this exists.
+function lakeFlat(x, z){
+  let f = 1;
+  for(const L of lakes){
+    const u = clamp((Math.hypot(x - L.x, z - L.z) - L.r) / RELIEF_FADE, 0, 1);
+    f = Math.min(f, u*u*(3 - 2*u));
+  }
+  return f;
+}
+// vnoise() WAS ONLY EVER HALF THERE, and L26 fixed it in vhash (see the `>>>`
+// there). While it ran 0 .. 0.5, this expression had to read `v*2 - .5` to get
+// a term centred on zero. The field is a real 0 .. 1 now, so the SAME term is
+// `v - .5`: the mapping had to be re-derived, not just left alone, because
+// `v*2 - .5` against a full field runs -0.5 .. +1.5 - every hill twice the size
+// it says it is and the whole world lifted half an amplitude off its own zero.
+// noiseGate clause 6 is exactly that mistake, bounded off RELIEF_AMP, with a
+// null control so it cannot pass over a flat world.
+// Peak-to-peak metres of each octave. Two numbers, because the picture is the
+// standard here and these were tuned by looking: the FIRST build of this was
+// 4.6 / 1.7 and measured a real rise (span 3.06 -> 3.59 m) that read on screen
+// as the same flat green dome, because what the eye gets from ground is the
+// SHADING, and shading is slope - a 0.27 m rise across a 4.05 m quad is four
+// degrees, which the sun cannot see.
+// The second build measured a real rise and still looked flat; these were found
+// by looking at the same station at 4.6/1.7, 6.4/3.4, 9/5 and 11/6.5 and taking
+// the first one where the ground reads as a hillside with a lit face and a shaded
+// one. 11/6.5 reads better still and was NOT taken: this is a horde game, and a
+// rise big enough to put a body behind it is a readability cost that belongs in
+// its own round with its own measurement.
+let RELIEF_AMP = [9.0, 5.0];
+const RELIEF = (x, z)=> !RELIEF_ON ? 0 :
+    ((vnoise(x*.0250 + 37.1, z*.0250 + 11.7) - .5) * RELIEF_AMP[0]   // ~40 m, the rises
+   + (vnoise(x*.0525 +  5.3, z*.0525 + 29.9) - .5) * RELIEF_AMP[1])  // ~19 m, the roll
+    * lakeFlat(x, z);
 const groundY = (x,z)=>{
-  if(!cells.length) return BASE_Y(x,z);
+  if(!cells.length) return BASE_Y(x,z) + RELIEF(x,z);
   const [i1,i2,d1,d2] = nearestCells(x,z);
   const w = 0.5 + Math.min(1, (d2-d1)/BLEND)*0.5;
   const A = cells[i1].b, B = cells[i2].b;
-  return BASE_Y(x,z) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w))
+  return (BASE_Y(x,z) + RELIEF(x,z)) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w))
        - waterDepth(x,z);          // lakes are carved, not painted
 };
 
@@ -1808,7 +1887,21 @@ const groundY = (x,z)=>{
 // duplicated into the test hook, so a recolour here would not have been caught.
 const TERRAIN_A = [.38,.52,.31], TERRAIN_B = [.30,.43,.26];
 const TERRAIN_H = [.030,.038,.024];      // per-quad height term
-const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
+const TERRAIN_HRANGE = [-2.1, 3.1];      // the BRACKET the tint is held inside
+// L25: THIS CONSTANT WAS A LIE, AND IT WAS A LIE BEFORE THIS ROUND. It says
+// what the ground's height tint spans, and the contrast harness enumerates
+// EVERY ground colour in the game from it - so if the mesh tints past it, the
+// instrument that guards OWNER item 1's other half (the floor must not hide the
+// pickups) is measuring a floor that does not exist. Measured on the shipped
+// build across the whole 145x145 mesh: the term ran -3.08 .. 4.60, with 2.6% of
+// the map outside the declared bracket. Raising the ground would have taken that
+// to -4.89 .. 6.18 and 8.4%, and it cannot be fixed by widening the number,
+// because the true span depends on the seed: five worlds measured -6.76 .. 8.08
+// between them. So the bracket is ENFORCED instead of asserted. terrainH() is
+// the one place the tint is computed, the mesh builder reads it, and the relief
+// gate reads it - a hill can now be any height it likes and the floor it stands
+// on cannot get brighter than the harness thinks it can.
+const terrainH = (y0, y2)=> clamp((y0 + y2)/4 + .5, TERRAIN_HRANGE[0], TERRAIN_HRANGE[1]);
 
 // Cheap deterministic value noise. Hash the lattice, smooth-interpolate. It has
 // to be a pure function of position or the ground would shimmer every time the
@@ -1816,7 +1909,16 @@ const TERRAIN_HRANGE = [-2.1, 3.1];      // groundY spans about +/-5.2
 function vhash(x, y){
   let h = x*374761393 + y*668265263;
   h = (h ^ (h >> 13)) * 1274126177;
-  return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+  // L26: `>>>`, NOT `>>`, AND THAT ONE CHARACTER IS THE WHOLE ROUND. `>>` sign-
+  // extends, so bit 31 of `h >> 16` is bit 31 of h - and bit 31 of the XOR is
+  // then the sign bit against itself, which is always 0. This function could
+  // therefore never return a number above one half: 20,736 lattice points
+  // measured 0.0000 .. 0.5000, mean 0.2508, with 0.0% of them at or above .5.
+  // Everything downstream that reads it as a 0 .. 1 field - the ground's four
+  // tone steps, the domain warp that keeps the tone off the world grid, and
+  // L25's height octaves - has been reading half a field since it was written.
+  // Guarded by noiseGate clause 1, which fails by name if it comes back.
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
 }
 function vnoise(x, y){
   const xi = Math.floor(x), yi = Math.floor(y);
@@ -1825,6 +1927,97 @@ function vnoise(x, y){
   return lerp(lerp(vhash(xi,yi),   vhash(xi+1,yi),   u),
               lerp(vhash(xi,yi+1), vhash(xi+1,yi+1), u), v);
 }
+// L26: HOISTED OUT OF makeTerrain(), unchanged. It was defined inside the
+// innermost quad loop, so it was rebuilt 20,736 times per bake - and, more to
+// the point, a gate could not read the function the mesh actually paints with.
+// It is pure (position in, tone in, nothing else), so the noise gate now calls
+// THIS, not a copy of it.
+// A CHECKERBOARD is two colours in a grid, and a grid is the one pattern
+// nature never makes - it read as a chessboard because it was one. The
+// structure still has to be there, though: a flat untextured plane makes
+// you feel motionless, which is why the checker existed in the first
+// place. So it is two octaves of value noise instead - broad patches you
+// can see yourself crossing, plus per-quad grain - and both stay strictly
+// BETWEEN the region's two tones, so the contrast harness still brackets
+// every colour that reaches the screen without needing to know about any
+// of this.
+// Weighted toward the GRAIN, and the grain is pushed through a contrast
+// curve. Smooth low-frequency noise looks like ground and gives you no
+// sense of speed at all - which is the exact problem the checkerboard was
+// solving. High-frequency variation between adjacent quads is what your
+// eye reads as motion; it just must not be a grid while it does it.
+// SMOOTH noise between two close tones is a flat plane with extra steps -
+// adjacent quads come out nearly identical and you feel motionless again,
+// which is the exact failure the checkerboard was built to avoid. What
+// your eye reads as speed is high-frequency contrast between neighbours;
+// the checkerboard just delivered it on a grid. So: a per-quad hash,
+// quantised to three tones and biased by a broad patch field. Irregular,
+// so it is not a chessboard - discrete and high-frequency, so it moves.
+// L12: AND IT WAS STILL A CHESSBOARD. Measured on yaw 0, where world X
+// and Z map to screen X and Y: 71.7% of the ground's colour edges lay
+// within 15 degrees of the world axes, against 33.3% for chance. The
+// reason is structural and no amount of noise fixes it - the tone was
+// chosen ONCE PER QUAD, and a quad is a 4.05 m world-axis SQUARE, so
+// every colour boundary in the world ran either north-south or east-west
+// however irregular the field feeding it was. Two changes, no vertices
+// added: the tone is picked per TRIANGLE (the two triangles of a quad are
+// diagonal halves, so a boundary can now run at 45 degrees), off a
+// DOMAIN-WARPED field (the sample point is pushed around by a second
+// noise before it is hashed, so a run of same-tone triangles wanders
+// instead of squaring off). Four values instead of three, still strictly
+// between the region's two tones so the contrast harness still brackets
+// everything.
+// L26 QA KNOB, and it is a SAME-BUILD A/B rather than two builds, for the same
+// reason RELIEF_ON is one: the fix changes the ground's HEIGHT as well as its
+// colour, so comparing two builds compares two different worlds and every
+// station lands on different ground. With this on, toneAt's field is squashed
+// back into the bottom half of its range - the exact condition the broken hash
+// put it in (mean .25, nothing above .5, the quantiser stuck on the low steps)
+// - using the SAME field, so the pattern's shape, the terrain, the camera and
+// the station are all identical and the only variable is the range. It is
+// deliberately NOT a second copy of the old hash: one formula, one place.
+let TONE_HALF = false;
+const toneAt = (gx3, gy3)=>{
+  const HF = TONE_HALF ? .5 : 1;
+  const wx3 = gx3 + (vnoise(gx3*.21+11.3, gy3*.21+ 4.7)*HF-.5)*2.6;
+  const wy3 = gy3 + (vnoise(gx3*.21+31.7, gy3*.21+19.1)*HF-.5)*2.6;
+  // THREE SCALES, and the weights matter more than the frequencies. The
+  // first build of this weighted the per-triangle grain at .55 and came
+  // out as uniform shattered glass - every facet a different value, no
+  // shape bigger than a triangle anywhere. Ground has a hierarchy: broad
+  // sweeps you cross, patches inside them, grain inside those. So the
+  // broad field biases and the GRAIN still carries it. That balance was
+  // found the hard way: a build that weighted the broad octave at .48
+  // and the grain at .22 measured better on paper and looked visibly
+  // WORSE - a flat field with a few faint facets - because averaging
+  // octaves piles the sum around 0.5 and the quantiser stops returning
+  // anything but the middle value. High-frequency contrast between
+  // neighbours is what reads as ground and as speed; the broad octave's
+  // job is only to stop that contrast being uniform everywhere.
+  const broad = vnoise(wx3*.055, wy3*.055)*HF;      // ~18 quads, 74 m
+  const patch = vnoise(wx3*.20,  wy3*.20)*HF;       // ~5 quads, 20 m
+  const grain = vhash(Math.floor(wx3*1.35), Math.floor(wy3*1.35))*HF;
+  // AND THEN EXPANDED, which is not cosmetic. Averaging three octaves
+  // piles the sum up around 0.5 - the quantiser then almost never
+  // returns the region's dark tone, the ground comes out uniformly
+  // mid, and L6's pickup check felt it: the share of chip pixels
+  // clearing 3:1 at six metres fell 24.9% -> 20.2% with the cover tier
+  // switched OFF, so it was this line and not the patches. Isolating it
+  // that way was the whole point of being able to switch them off. The
+  // expansion puts the dark end back, which the picture wanted anyway.
+  const v3 = clamp(.5 + (broad*.20 + patch*.28 + grain*.52 - .5)*1.15, 0, .999);
+  // AND THE TOP OF THE RANGE IS RESERVED. Four steps, all four kept -
+  // the boundaries between them are the detail - but they run 0 .. 0.75
+  // of the way to the region's bright tone instead of all the way to it.
+  // The reason is L6 and OWNER.md, not taste: the XP chip is near-white
+  // by owner decision, so every patch of floor allowed to reach full
+  // brightness is a patch the chip cannot be read against. Reserving the
+  // top quarter costs nothing visible and hands the pickup its contrast
+  // back - measured, six metres, 20.5% of chip pixels over 3:1 without
+  // this line and 26%+ with it.
+  return Math.floor(v3 * 4) / 3 * .75;
+};
+
 let terBuf, terCount = 0, terData = null, terChunks = [];
 // L12 ground-cover census. Recorded while the terrain bakes so the check can
 // assert the tier EXISTS and that it never leaves the ground - the constraint
@@ -1839,6 +2032,11 @@ const COVER_LIFT = .06;      // how far a ground-cover patch floats. see the gat
 // triangle count is a function of view distance rather than of map size.
 const TER_CH = 12;                      // chunks per side
 const TER_Q  = 12;                      // quads per chunk side
+// One quad, in metres. makeTerrain() computed this inline and the L25 relief
+// gate needs the same number to ask "is there a cliff across one quad?" - so it
+// is named once, in the same expression order the baker used, and the baker
+// reads it. A typed copy in the gate would be a second number to keep in step.
+const TER_S = ARENA*2/TER_CH/TER_Q;
 // Split in two, because the arena is rolled fresh every run now: makeTerrain()
 // regenerates the vertex data against the current regions, uploadTerrain() puts
 // it on the GPU. A context restore only needs the second half - terData
@@ -1858,7 +2056,7 @@ const BOXV_F = (()=>{
                      v:[0,1,2,0,2,3].map(k=>f[3+k]) }));
 })();
 function makeTerrain(){
-  const CS = ARENA*2/TER_CH, S = CS/TER_Q, out=[];
+  const CS = ARENA*2/TER_CH, S = TER_S, out=[];
   coverN = 0; coverLift = 0;
   const push=(p,n,c)=>{ out.push(p[0],p[1],p[2], n[0],n[1],n[2], c[0],c[1],c[2], 0); };
   terChunks = [];
@@ -1880,82 +2078,8 @@ function makeTerrain(){
       let wet = 0;
       for(let k2=0;k2<4;k2++)
         if(wsy[k2] < 1e9 && P[k2][1] < wsy[k2]){ P[k2][1] = wsy[k2]; wet++; }
-      // A CHECKERBOARD is two colours in a grid, and a grid is the one pattern
-      // nature never makes - it read as a chessboard because it was one. The
-      // structure still has to be there, though: a flat untextured plane makes
-      // you feel motionless, which is why the checker existed in the first
-      // place. So it is two octaves of value noise instead - broad patches you
-      // can see yourself crossing, plus per-quad grain - and both stay strictly
-      // BETWEEN the region's two tones, so the contrast harness still brackets
-      // every colour that reaches the screen without needing to know about any
-      // of this.
       const gi2 = ci*TER_Q+i, gj2 = cj*TER_Q+j;
-      // Weighted toward the GRAIN, and the grain is pushed through a contrast
-      // curve. Smooth low-frequency noise looks like ground and gives you no
-      // sense of speed at all - which is the exact problem the checkerboard was
-      // solving. High-frequency variation between adjacent quads is what your
-      // eye reads as motion; it just must not be a grid while it does it.
-      // SMOOTH noise between two close tones is a flat plane with extra steps -
-      // adjacent quads come out nearly identical and you feel motionless again,
-      // which is the exact failure the checkerboard was built to avoid. What
-      // your eye reads as speed is high-frequency contrast between neighbours;
-      // the checkerboard just delivered it on a grid. So: a per-quad hash,
-      // quantised to three tones and biased by a broad patch field. Irregular,
-      // so it is not a chessboard - discrete and high-frequency, so it moves.
-      // L12: AND IT WAS STILL A CHESSBOARD. Measured on yaw 0, where world X
-      // and Z map to screen X and Y: 71.7% of the ground's colour edges lay
-      // within 15 degrees of the world axes, against 33.3% for chance. The
-      // reason is structural and no amount of noise fixes it - the tone was
-      // chosen ONCE PER QUAD, and a quad is a 4.05 m world-axis SQUARE, so
-      // every colour boundary in the world ran either north-south or east-west
-      // however irregular the field feeding it was. Two changes, no vertices
-      // added: the tone is picked per TRIANGLE (the two triangles of a quad are
-      // diagonal halves, so a boundary can now run at 45 degrees), off a
-      // DOMAIN-WARPED field (the sample point is pushed around by a second
-      // noise before it is hashed, so a run of same-tone triangles wanders
-      // instead of squaring off). Four values instead of three, still strictly
-      // between the region's two tones so the contrast harness still brackets
-      // everything.
-      const toneAt = (gx3, gy3)=>{
-        const wx3 = gx3 + (vnoise(gx3*.21+11.3, gy3*.21+ 4.7)-.5)*2.6;
-        const wy3 = gy3 + (vnoise(gx3*.21+31.7, gy3*.21+19.1)-.5)*2.6;
-        // THREE SCALES, and the weights matter more than the frequencies. The
-        // first build of this weighted the per-triangle grain at .55 and came
-        // out as uniform shattered glass - every facet a different value, no
-        // shape bigger than a triangle anywhere. Ground has a hierarchy: broad
-        // sweeps you cross, patches inside them, grain inside those. So the
-        // broad field biases and the GRAIN still carries it. That balance was
-        // found the hard way: a build that weighted the broad octave at .48
-        // and the grain at .22 measured better on paper and looked visibly
-        // WORSE - a flat field with a few faint facets - because averaging
-        // octaves piles the sum around 0.5 and the quantiser stops returning
-        // anything but the middle value. High-frequency contrast between
-        // neighbours is what reads as ground and as speed; the broad octave's
-        // job is only to stop that contrast being uniform everywhere.
-        const broad = vnoise(wx3*.055, wy3*.055);      // ~18 quads, 74 m
-        const patch = vnoise(wx3*.20,  wy3*.20);       // ~5 quads, 20 m
-        const grain = vhash(Math.floor(wx3*1.35), Math.floor(wy3*1.35));
-        // AND THEN EXPANDED, which is not cosmetic. Averaging three octaves
-        // piles the sum up around 0.5 - the quantiser then almost never
-        // returns the region's dark tone, the ground comes out uniformly
-        // mid, and L6's pickup check felt it: the share of chip pixels
-        // clearing 3:1 at six metres fell 24.9% -> 20.2% with the cover tier
-        // switched OFF, so it was this line and not the patches. Isolating it
-        // that way was the whole point of being able to switch them off. The
-        // expansion puts the dark end back, which the picture wanted anyway.
-        const v3 = clamp(.5 + (broad*.20 + patch*.28 + grain*.52 - .5)*1.15, 0, .999);
-        // AND THE TOP OF THE RANGE IS RESERVED. Four steps, all four kept -
-        // the boundaries between them are the detail - but they run 0 .. 0.75
-        // of the way to the region's bright tone instead of all the way to it.
-        // The reason is L6 and OWNER.md, not taste: the XP chip is near-white
-        // by owner decision, so every patch of floor allowed to reach full
-        // brightness is a patch the chip cannot be read against. Reserving the
-        // top quarter costs nothing visible and hands the pickup its contrast
-        // back - measured, six metres, 20.5% of chip pixels over 3:1 without
-        // this line and 26%+ with it.
-        return Math.floor(v3 * 4) / 3 * .75;
-      };
-      const h   = (P[0][1]+P[2][1])/4 + .5;
+      const h   = terrainH(P[0][1], P[2][1]);   // held inside TERRAIN_HRANGE - see it
       // COLOUR CROSS-FADES THE WAY THE HEIGHT ALREADY DID. groundY() blends the
       // amplitude and the lift of two regions over BLEND metres so a border is
       // a slope rather than a cliff - but the colour snapped to whichever cell
@@ -3023,6 +3147,14 @@ let BURROW_SHARE = .22;      // share of eligible spawns that arrive underground
 const BURROW_AT    = [2.5, 4.5];// metres out it surfaces - where a bite is live
 const BURROW_RISE  = .9;     // seconds of mound before it is out: the tell, and the wind-up
 let killR = 0, killRN = 0, burrowN = 0;   // measured kill radius, and the run's tally
+// L23: THE ARMING HOLD. killR is a measurement the sim owns and rewrites on every
+// death; a gate that arms it and then drives a live world does not own it for the
+// length of its own clauses. See qaArm() for the whole argument. Null in play, and
+// killEnemy() below is the only place that reads it.
+let qaArmHold = null;
+// L23: set while a gate is driving the clock (qaLive takes it, qaSettle gives it
+// back). False in play. See step()'s first lines and freezeGate.
+let qaDriving = false;
 
 // THE STAMPEDE (L17). L16 changed where a FIFTH of the horde arrives. The other
 // four fifths were re-measured on the shipped build before this round picked
@@ -9499,7 +9631,10 @@ function killEnemy(e){
   // that spawns at 15 m and would drag the average down, and a burrower's own
   // death distance is a consequence of the mechanic, which would make this a
   // feedback loop that talks to itself.
-  if(P && !e.boss && !e.burrow){
+  // L23: qaArmHold is null in play, so this is the same two lines it always was.
+  // While a gate holds the arming, the EMA is frozen at the value that gate armed:
+  // the alternative is a clause whose premise silently drifts out from under it.
+  if(P && !e.boss && !e.burrow && qaArmHold === null){
     const dk = Math.hypot(e.x-P.x, e.z-P.z);
     killR = killRN ? killR + (dk - killR)*.02 : dk;    // EMA, ~50 bodies of memory
     killRN++;
@@ -12521,6 +12656,12 @@ const HUD_GAP = 6;                    // the only spacing number, used everywher
 const HUD_HEAD = ["clock", "phase", "goal"];        // the centre column, in order
 const HUD_PERSIST = ["clock", "phase", "goal", "lvl", "biome", "stats"];
 let hudSig = "", hudPersistBoxes = [], hudHeadBottom = 0, hudToastFloor = 0;
+// QA-only hold on step 4 below (the cross-column resolver). True in play; the
+// gate turns it off to prove its own null control can still see a collision.
+let hudResolveOn = true;
+// which lanes step 3 below actually pushed this layout, for hudGate to check
+// that each one moved by the minimum it needed and no further.
+let hudMoved = [];
 // Every text box the overlay drew this frame, named, in real screen pixels.
 // Recorded always (it is four array pushes) so a check never has to ask for a
 // debug mode that the shipped build then behaves differently under.
@@ -12543,6 +12684,10 @@ function stackHeader(){
                 return e ? (hudVisible(e) ? 1 : 0) + e.textContent : ""; }).join("|");
   if(sig === hudSig) return;
   hudSig = sig;
+  // 0. every lane this function can move goes back to its stylesheet position
+  //    first, or a lane pushed down by step 4 at one viewport stays pushed at
+  //    the next one and the stack drifts downward with every resize.
+  for(const id of HUD_PERSIST){ const e = $(id); if(e) e.style.top = ""; }
   // 1. the centre column: each line sits under the measured bottom of the last
   //    VISIBLE line above it. An empty #phase claims no lane at all.
   const ck = $("clock");
@@ -12561,7 +12706,30 @@ function stackHeader(){
   const lv = $("lvl"), bi = $("biome");
   if(lv && bi){ bi.style.marginTop = "0px";
                 bi.style.top = Math.round(lv.getBoundingClientRect().bottom + HUD_GAP) + "px"; }
-  // 3. cache what everything else has to clear
+  // 3. THE COLUMNS MUST CLEAR EACH OTHER TOO (L24). Steps 1 and 2 lay out the
+  //    centre column and the left column each on its own, and NOTHING has ever
+  //    checked one column against another: the guard's rule was only ever "a
+  //    transient may not print on a persistent". At 390px the goal line grows
+  //    wide enough to reach into the left column and prints through the region
+  //    caption - goal/biome, 11.1 x 7 px of shared ink on the shipped build,
+  //    player-visible and pre-existing. Same rule the transients already obey,
+  //    now applied between persistents: THE LOWER BOX YIELDS, pushed to the
+  //    other's bottom + HUD_GAP, ties broken by id so the outcome does not
+  //    depend on visiting order. The subject list is HUD_PERSIST, so a lane
+  //    added later is covered without anybody remembering this pass exists.
+  hudMoved = [];
+  if(hudResolveOn){
+    const els = HUD_PERSIST.map($).filter(el => hudVisible(el) && el.textContent.trim());
+    const out = hudStack(els.map(hudRect));
+    hudMoved = out.filter(o => o.dy > 0).map(o => o.n);
+    out.forEach((o, i) => { if(o.dy) els[i].style.top = Math.round(els[i].offsetTop + o.dy) + "px"; });
+    // the header's floor is whatever the centre column ended up at, AFTER any
+    // of it was pushed - the toasts park under this number.
+    for(const id of HUD_HEAD){ const e = $(id);
+      if(hudVisible(e) && e.textContent.trim())
+        hudHeadBottom = Math.max(hudHeadBottom, Math.round(hudRect(e).y1)); }
+  }
+  // 4. cache what everything else has to clear
   hudPersistBoxes = HUD_PERSIST.map($).filter(hudVisible).map(hudRect);
 }
 // Push [y0, y0+h] down until it clears every persistent box whose x-range this
@@ -12585,6 +12753,27 @@ function hudParkLabel(x0, x1, top, h){
   }
   hudLaneRows.push({ x0, y0:y, x1, y1:y + h });
   return y;
+}
+// THE CROSS-COLUMN RESOLVER (L24), and it is PURE on purpose: given the named
+// boxes of every persistent lane, return a dy for each so that no two boxes
+// sharing a column share ink. THE LOWER BOX YIELDS, by exactly the gap it
+// needs, ties broken by name so the answer does not depend on visiting order.
+// Kept out of the DOM so hudGate can hand it a collision the live viewport
+// does not happen to be producing, and check the answer arithmetically.
+function hudStack(boxes){
+  const b = boxes.map(r => ({ n:r.n, x0:r.x0, x1:r.x1, y0:r.y0, y1:r.y1, dy:0 }));
+  for(let pass = 0, moved = true; moved && pass < 12; pass++){
+    moved = false;
+    for(let i = 0; i < b.length; i++) for(let j = i + 1; j < b.length; j++){
+      const a = b[i], c = b[j];
+      if(Math.min(a.x1, c.x1) - Math.max(a.x0, c.x0) <= 1) continue;
+      if(Math.min(a.y1, c.y1) - Math.max(a.y0, c.y0) <= 1) continue;
+      const lo = (a.y0 > c.y0 || (a.y0 === c.y0 && a.n > c.n)) ? a : c, hi = lo === a ? c : a;
+      const d = hi.y1 + HUD_GAP - lo.y0;
+      lo.y0 += d; lo.y1 += d; lo.dy += d; moved = true;
+    }
+  }
+  return b;
 }
 function hudClearRect(x0, x1, y0, h){
   let top = y0, moved = true, guard = 0;
@@ -12737,6 +12926,13 @@ function stepVigil(dt){
 // goal is "prepare for the end monster", not "walk around for free damage".
 const vigilMul = e => (e && e.final) ? 1 + VIGIL_DMG*vigil.lit : 1;
 function step(dt){
+  // L23: and a gate that is DRIVING the clock cannot be allowed to pause itself.
+  // qaDriving is false in play, so the line below is the same line it always was.
+  // See qaLive/qaStepGuard: a gate's own kills feed the player XP, and one level
+  // landing mid-gate froze every clause after it - which is the whole of the rout
+  // 5b flake. Draining here covers every step() a gate makes, present and future,
+  // rather than a list of loops somebody has to keep in step with the clauses.
+  if(picking && qaDriving){ pendingLevels = 0; picking = false; hide("pick"); }
   if(picking) return;                 // a hand on the table is a paused world
   T += dt;
   // THE FINAL BONK arrives at 19:00 and the clock used to hand you the win at
@@ -17109,6 +17305,104 @@ function frame(now){ tick(now); requestAnimationFrame(frame); }
 openMenu();
 requestAnimationFrame(frame);
 
+// ---------------------------------------------------- THE FROZEN WORLD (L22)
+// step() returns on its FIRST LINE while `picking` is true - "a hand on the
+// table is a paused world" - so a gate that drives step() to watch a beat
+// happen reads NOTHING AT ALL if a predecessor left a level-up draft open, and
+// then blames the mechanic for not happening. That is the whole of stoopGate's
+// order-dependence, proved on the page: after groundGate..diginGate the state
+// reads `picking:true, pending:1, lvl:2`, and stoopGate's four step()-driven
+// clauses fail ("peaked 0.0 m") while its nine instant clauses pass. Clearing
+// the draft alone makes the identical call pass. It was never about the stoop.
+//
+// THE LEAK'S SOURCE is verbTick's exit condition: it auto-picks INSIDE its
+// loop, but the loop ends the moment T passes the window, so if the frame that
+// crossed it queued a level the draft is still up when the bench returns.
+// diginGate is simply the first gate in the chain whose bench happens to end
+// that way; every gate that runs a bench can do it.
+//
+// FIXED IN TWO HALVES, because either one alone leaves the class open:
+//   - verbEnd drains the draft it opened, so the leak has no source (below);
+//   - and every step-driving gate calls qaLive FIRST, which PROBES that the
+//     clock actually moves rather than checking a hand-written list of pause
+//     flags. A future pause of any kind therefore fails BY NAME, on its own
+//     clause, instead of being silently attributed to the mechanic under test.
+// It heals what it can and still reports it, so the rest of the gate stays
+// meaningful while the leak is named.
+function qaLive(bad, who){
+  qaDriving = true;   // L23: this gate drives the clock; it may not pause itself
+  const probe = ()=>{ const t0 = T; step(1/60); return T > t0; };
+  if(probe()) return true;
+  const why = [];
+  if(picking){ why.push(`a level-up draft was open (pendingLevels ${pendingLevels})`);
+               pendingLevels = 0; picking = false; hide("pick"); }
+  if(over || T >= RUN_LEN){ why.push(`the run had ended (over ${over}, T ${T.toFixed(1)} of RUN_LEN ${RUN_LEN})`);
+                            over = false; sudden = false; running = true; T = Math.min(T, RUN_LEN - 300); }
+  const healed = probe();
+  bad.push(`${who} WAS HANDED A FROZEN WORLD - step() did not advance the clock: ` +
+           `${why.length ? why.join("; ") : "cause unknown"}${healed ? "" : "; and it is STILL frozen"}`);
+  return false;
+}
+// The other half, at the PRODUCER. A gate that drives step() is driving the
+// real sim: bodies die, XP drops, and the draft opens - the gate's own doing,
+// not the next gate's problem. So each one puts it back on the way out, the
+// same way it puts killR and its share back. qaLive stays as the DETECTOR, so
+// a step-driving gate added later that forgets this fails by name instead of
+// quietly poisoning whatever runs after it.
+function qaSettle(){ qaDriving = false;
+  if(picking || pendingLevels){ pendingLevels = 0; picking = false; hide("pick"); } }
+// AND THE SAME CLASS ONE LEVEL DOWN, found while proving the fix (L22). A gate
+// that writes `hurt(e, e.maxhp * .80)` is not setting the body to 20% health:
+// hurt() scales its amount by the biome THE PLAYER IS STANDING IN (THE
+// SCRAPYARD is 1.5x), by home ground and by the vigil's brands. So after a
+// chain of gates has walked the bot across the map, the identical line takes a
+// body to 20% in one place and to MINUS 20% in another - measured, `scrap` at
+// level 37: "A BADLY HURT BODY DID NOT DIG IN: hp -0.20 of max". Same defect as
+// the frozen world: a gate's setup silently changing meaning with state it does
+// not own. So set the health, then land a token hit, because what the clause is
+// actually about is the trigger funnel at the end of hurt() - not the arithmetic
+// in the middle of it.
+function qaHurtTo(e, frac){ e.hp = Math.max(1e-9, e.maxhp * frac); hurt(e, 1e-9, 0, 0); return e; }
+// AND THE THIRD FACE OF THE SAME CLASS (L23), which L22 found and fixed the wrong
+// way round. Every arrival mechanic in this file arms off ONE measured quantity -
+// `killRN > 20 && killR > BURROW_KILLR` - so every gate for those mechanics opens
+// by writing `killR = 30; killRN = 500`, and then drives a live world for a hundred
+// frames. killEnemy() owns killR (`killR += (dk - killR)*.02`, every death), and
+// the director kills bodies during exactly those frames. So the premise DECAYS
+// mid-gate, and once it slips under BURROW_KILLR, every later clause of the form
+// "this one must NOT fire" passes for the wrong reason. A clause that cannot fail
+// is worse than a clause that is wrong: it reports green forever.
+// MEASURED ON THE PAGE, not argued: 240 live frames at minute five moved killR
+// 15.65 -> 17.11 -> 16.64 across 37 deaths, unasked.
+// L22's answer was to RE-ARM before each downstream clause - correct where it was
+// written, and a hand-maintained list: the eleventh clause somebody adds inherits
+// a decayed premise in silence, which is the defect back again. So the fix moves
+// to the PRODUCER, the way qaSettle did. A gate takes the arming and HOLDS it; no
+// death can move it while held; releasing restores what the run had. The gate can
+// no longer be wrong about its own premise, and nothing has to be remembered.
+// qaArm(null) releases. Play never touches it - qaArmHold is null outside a gate.
+function qaArm(r, n){
+  if(r === null){ qaArmHold = null; return null; }
+  killR = r; killRN = (n === undefined ? 500 : n); qaArmHold = { r: killR, n: killRN };
+  return qaArmHold;
+}
+
+// Stations to measure the ground at: an even area-weighted scatter over the
+// play radius, from its OWN generator so it never touches the run stream and
+// never moves between builds. Every L25 ground number is taken on these, and a
+// before/after that changed its sample points would not be a before/after.
+function qaStations(n){
+  let t = 1234 >>> 0;
+  const r = ()=>{ t = (t + 0x6D2B79F5) >>> 0;
+    let v = Math.imul(t ^ (t >>> 15), 1 | t);
+    v = (v + Math.imul(v ^ (v >>> 7), 61 | v)) ^ v;
+    return ((v ^ (v >>> 14)) >>> 0) / 4294967296; };
+  const out = [];
+  for(let i=0;i<n;i++){ const a = r()*TAU, d = Math.sqrt(r())*(RIM*.64);
+    out.push([Math.cos(a)*d, Math.sin(a)*d, r()*TAU]); }
+  return out;
+}
+
 // ------------------------------------------------------------------ QA hook
 // Same pattern as proto3d: a scripted handle so runs can be driven headlessly.
 window.__g = {
@@ -17682,6 +17976,100 @@ window.__g = {
                     alert2(`THE VIGIL  \u00b7  LIGHT ${vigil.total} MONUMENTS BEFORE IT WAKES`, "#f0b429");
                     evoT = 3.4; evoNm = evoNm || "THE KILN"; evoSub = evoSub || "APEX - SUPERNOVA";
                     return alerts.length; },
+  // QA-only: hold step 3 of stackHeader off. hudSig is cleared so the next
+  // layout actually recomputes - the stack is cached on a signature that this
+  // knob is deliberately NOT part of (it must not cost a compare in play).
+  hudResolve: (v)=>{ if(v !== undefined){ hudResolveOn = !!v; hudSig = ""; } return hudResolveOn; },
+  // ---- THE HUD LANE GATE (L24) ------------------------------------------
+  // L11 built the guard and enumerated the lanes, but its RULE was only ever
+  // "a transient may not print on a persistent" - so two PERSISTENT lanes
+  // colliding was outside anything that could fail, and one did, on every
+  // shipped build, at 390x844 (goal/biome, 11.1 x 7 px). This gate asserts the
+  // whole rule, in two halves:
+  //   LIVE  - at the viewport it is run in, with every lane forced on, no two
+  //           lanes of any kind share ink.
+  //   ARITH - the resolver itself, hudStack(), handed a case DERIVED FROM THE
+  //           LIVE GEOMETRY: the real lanes, with the centre column's lowest
+  //           line dropped into the left column's rows so it must collide.
+  //           Nothing here is a typed rectangle.
+  // Clause 2 is the NULL CONTROL: that derived case must actually be colliding
+  // BEFORE hudStack sees it, or "hudStack returns no overlaps" passes over
+  // nothing. Clause 4 is the other half of it - a resolver that shoved every
+  // box a mile down would satisfy clause 3, so the higher box must not move and
+  // the lower one must move by exactly the gap it needed.
+  hudGate: ()=>{
+    const bad = [], lay = ()=>{ const t = performance.now(); tick(t + 16); tick(t + 32); };
+    const hit = (a, b)=>Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 1 &&
+                        Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 1;
+    const pairs = (bs)=>{ const o = []; for(let i=0;i<bs.length;i++) for(let j=i+1;j<bs.length;j++)
+                            if(hit(bs[i], bs[j])) o.push(bs[i].n + "/" + bs[j].n); return o; };
+    // ---- LIVE
+    window.__g.hudShowAll(); lay();
+    const live = window.__g.hudOverlaps();
+    // Any pair with a PERSISTENT lane in it is a failure: that is L11's rule
+    // (no transient on a persistent) plus this round's (no persistent on a
+    // persistent). Two WORLD labels meeting is deliberately out - L11 leaves a
+    // label at its natural height alone because it is pointing at something,
+    // and only labels parked in the lane obey the lane.
+    for(const p of live.pairs.filter(q => /persistent/.test(q.kinds)))
+      bad.push(`TWO HUD LANES SHARE INK: ${p.a}/${p.b}, ${p.w} x ${p.h} px (${p.kinds}) at ${innerWidth}x${innerHeight}`);
+    if(live.lanes < 6)
+      bad.push(`ONLY ${live.lanes} LANES WERE UP: this gate is not measuring the crowded HUD it claims to`);
+    // and the lanes it DID push are pushed by the minimum: put one back up by
+    // more than the gap and it must touch what it was clearing. Without this a
+    // resolver that shoved the header halfway down the screen reads as clean.
+    {
+      const lr = window.__g.hudRects().filter(r => r.kind === "persistent");
+      for(const n of hudMoved){
+        const up = lr.map(r => r.n === n ? { ...r, y0:r.y0 - (HUD_GAP + 2), y1:r.y1 - (HUD_GAP + 2) } : r);
+        if(!pairs(up).length)
+          bad.push(`A LANE IS PUSHED FURTHER DOWN THAN IT NEEDS TO BE: ${n} can go back up ${HUD_GAP + 2} px and still touch nothing at ${innerWidth}x${innerHeight}`);
+      }
+    }
+    // ---- ARITH, on a case derived from those same lanes
+    const lanes = HUD_PERSIST.map($).filter(el => hudVisible(el) && el.textContent.trim()).map(hudRect);
+    const centre = lanes.filter(r => HUD_HEAD.includes(r.n)),
+          side   = lanes.filter(r => !HUD_HEAD.includes(r.n) && r.x0 < innerWidth / 2);
+    if(centre.length < 2 || !side.length){
+      bad.push(`THE DERIVED CASE COULD NOT BE BUILT: ${centre.length} centre lane(s) and ${side.length} left lane(s) are up, so the arithmetic half asserts over nothing`);
+    } else {
+      const drop = centre[centre.length - 1], onto = side[side.length - 1],
+            dy = onto.y0 + 1 - drop.y0;
+      // widen the dropped lane to the left so it certainly shares the column
+      const cse = lanes.map(r => r.n === drop.n
+                    ? { n:r.n, x0:Math.min(r.x0, onto.x0), x1:r.x1, y0:r.y0 + dy, y1:r.y1 + dy }
+                    : { n:r.n, x0:r.x0, x1:r.x1, y0:r.y0, y1:r.y1 });
+      const before = pairs(cse);
+      if(!before.length)
+        bad.push(`THE DERIVED CASE DOES NOT COLLIDE: ${drop.n} dropped onto ${onto.n} shares ink with nothing, so clause 3 means nothing`);
+      const out = hudStack(cse), after = pairs(out);
+      for(const p of after) bad.push(`THE RESOLVER LEFT A COLLISION: ${p}, from the derived case ${before.join(", ")}`);
+      const moved = out.filter(o => o.dy > 0).map(o => o.n);
+      if(before.length && !moved.includes(drop.n))
+        bad.push(`THE RESOLVER MOVED THE WRONG BOX: ${drop.n} is the lower of ${before[0]} and it did not yield (moved: ${moved.join(", ") || "nothing"})`);
+      if(moved.includes(onto.n))
+        bad.push(`THE RESOLVER MOVED THE HIGHER BOX: ${onto.n} yielded to a box below it`);
+      // and it moves NOTHING ELSE. A resolver that pushed the whole stack down
+      // would satisfy every clause above; the lanes would simply be wrong.
+      const involved = new Set(before.join("/").split("/"));
+      for(const n of moved) if(!involved.has(n))
+        bad.push(`THE RESOLVER MOVED A LANE THAT WAS NOT COLLIDING: ${n} was pushed down though it is in none of ${before.join(", ")}`);
+      // and it moves each one by the MINIMUM: put a moved box back up by more
+      // than the gap and it has to collide again. A resolver that pushed the
+      // stack twice as far as it needed would satisfy every clause above and
+      // still leave the HUD sprawling down the screen.
+      for(const o of out.filter(o => o.dy > 0)){
+        const back = out.map(q => q === o ? { n:q.n, x0:q.x0, x1:q.x1,
+                                              y0:q.y0 - (HUD_GAP + 2), y1:q.y1 - (HUD_GAP + 2) } : q);
+        if(!pairs(back).length)
+          bad.push(`THE RESOLVER OVERSHOT: ${o.n} was pushed ${Math.round(o.dy)} px and can go back ${HUD_GAP + 2} px without touching anything`);
+      }
+      const again = hudStack(out);
+      if(again.some(o => o.dy > 0))
+        bad.push(`THE RESOLVER IS NOT IDEMPOTENT: a second pass over its own answer still moves ${again.filter(o=>o.dy>0).map(o=>o.n).join(", ")}`);
+    }
+    return { ok: !bad.length, bad, at:innerWidth + "x" + innerHeight, lanes:live.lanes };
+  },
   hudLanes: ()=>({ head:hudHeadBottom, toastFloor:hudToastFloor,
                    persist:hudPersistBoxes.map(b=>b.n + ":" + Math.round(b.y1)) }),
   toast:(text, col)=>{ alert2(String(text), col || "#6ddba0"); return alerts.length; },
@@ -17797,6 +18185,308 @@ window.__g = {
   ground:()=>({ cover: coverN, lift: +coverLift.toFixed(3),
                 verts: terCount, chunks: terChunks.length,
                 mb: +(terData.length*4/1048576).toFixed(2) }),
+  // ---- THE RELIEF (L25) --------------------------------------------------
+  // The knob is a SAME-BUILD A/B, the way hudResolve is: one build, one seed,
+  // one switch, so "the relief is what changed the picture" is not an argument
+  // between two builds. Off is also the escape hatch if the owner dislikes the
+  // hills - relief(false) is the flat world back, with no rebuild.
+  relief:(v)=>{ if(v !== undefined){ RELIEF_ON = !!v;
+                  rollWorld(worldSeed); dealDens(); makeTerrain(); uploadTerrain(); bakeMap();
+                  if(P){ P.y = groundY(P.x, P.z); } }
+                return RELIEF_ON; },
+  // How much the ground actually moves, in metres, over the distance a body
+  // walks: the mean span inside a 20 m disc and the mean rise across ONE mesh
+  // quad. Pure - it reads groundY and nothing else, so it can be taken with the
+  // world in any state and compared across builds.
+  reliefStats:(n = 400)=>{
+    const S = qaStations(n); let span = 0, step = 0, hi = -1e9, lo = 1e9;
+    for(const [x,z] of S){
+      let a = 1e9, b = -1e9;
+      for(let dx=-20; dx<=20; dx+=5) for(let dz=-20; dz<=20; dz+=5){
+        if(dx*dx + dz*dz > 400) continue;
+        const y = groundY(x+dx, z+dz); if(y<a) a=y; if(y>b) b=y;
+      }
+      span += b - a; if(b>hi) hi=b; if(a<lo) lo=a;
+      const y0 = groundY(x,z);
+      step += (Math.abs(groundY(x+TER_S,z) - y0) + Math.abs(groundY(x,z+TER_S) - y0)) / 2;
+    }
+    return { span20:+(span/S.length).toFixed(3), step:+(step/S.length).toFixed(3),
+             lo:+lo.toFixed(2), hi:+hi.toFixed(2), on:RELIEF_ON, n:S.length }; },
+  // THE RELIEF GATE (the fifteenth). Six clauses and every one of them is a way
+  // this round could be wrong rather than a way it could be right, because the
+  // height field is the one function in this file that five other systems read.
+  // Its subjects are DERIVED: every lake in `lakes`, the mesh step from TER_CH
+  // and TER_Q, the colour bracket from TERRAIN_HRANGE - so a lake, a finer mesh
+  // or a retuned tint is covered without anybody remembering this gate exists.
+  // Clause 1 is the null control: with the relief switched off every other
+  // clause here passes trivially (a plane has no islands, no cliffs and no
+  // out-of-range tint), so the gate first has to prove there is a relief at all.
+  reliefGate:()=>{
+    const bad = [], was = RELIEF_ON, S = qaStations(240);
+    const spanOf = ()=>{ let s = 0;
+      for(const [x,z] of S){ let a=1e9, b=-1e9;
+        for(let dx=-20; dx<=20; dx+=5) for(let dz=-20; dz<=20; dz+=5){
+          if(dx*dx + dz*dz > 400) continue;
+          const y = groundY(x+dx, z+dz); if(y<a) a=y; if(y>b) b=y; }
+        s += b - a; }
+      return s / S.length; };
+    // 1. THE NULL CONTROL. Same build, same stations, the switch the only
+    //    difference. RELIEF_ON is flipped in place: nothing is rebuilt, because
+    //    every clause below reads groundY directly rather than the mesh.
+    RELIEF_ON = false; const flat = spanOf();
+    RELIEF_ON = true;  const hilly = spanOf();
+    //    Stated as METRES ADDED and not as a ratio: the ratio moves with
+    //    whichever regions the world happened to roll (1.64 on seed 9, 1.60 on
+    //    the next world I tried), while the metres the relief adds are the
+    //    amplitude and barely move at all (1.96 and 1.97 on those same two).
+    if(!(hilly - flat >= 1.0))
+      bad.push(`THERE IS NO RELIEF TO TEST: the ground moves ${hilly.toFixed(2)} m inside a 20 m disc with RELIEF_ON and ${flat.toFixed(2)} m without it - only ${(hilly-flat).toFixed(2)} m of that is the relief, so every clause below is asserting over a plane`);
+    // 2 and 3. THE RELIEF DOES NOT REACH INTO A LAKE. A lake's surface is a
+    //    level sheet at L.y and the mesh snaps every corner under it up to it,
+    //    so a bed ABOVE it inside the rim is dry land standing in the water; and
+    //    the surface is derived as "the uncarved bank at the centre, minus .20",
+    //    so the uncarved shore at the rim has to sit on that surface. Both are
+    //    measured with the relief OFF and then ON, and what is asserted is that
+    //    THIS ROUND ADDED NOTHING TO EITHER - not that either is zero. They are
+    //    not zero: BASE_Y tilts across a lake, so the shipped build already
+    //    stands up to 1.63 m of bed above a surface and hangs a shore 1.54 m off
+    //    it. That tilt is older than this round, it is written up as a finding,
+    //    and a gate that demanded it be fixed here would be a gate demanding an
+    //    unrelated repair. What this round MUST not do is make it worse - which
+    //    it would, by up to the full amplitude, if lakeFlat were wrong or if the
+    //    surface were still read before the lake joined `lakes`.
+    { const probe = ()=> lakes.map(L=>{
+        let isl = -1e9, bank = 0;
+        for(let i=0;i<64;i++){
+          const a = i*2.399963, r = Math.sqrt((i+.5)/64) * L.r * .98;
+          const d = groundY(L.x + Math.cos(a)*r, L.z + Math.sin(a)*r) - L.y;
+          if(d > isl) isl = d; }
+        for(let i=0;i<24;i++){
+          const a = i/24*TAU, x = L.x + Math.cos(a)*L.r, z = L.z + Math.sin(a)*L.r;
+          const d = Math.abs(groundY(x,z) + waterDepth(x,z) - (L.y + .20));
+          if(d > bank) bank = d; }
+        return { isl, bank }; });
+      // 3b. AND THE SURFACE WAS READ OFF THE GROUND IT SITS ON, checked
+      //     absolutely rather than as an A/B, because the A/B above cannot see
+      //     this one: L.y is baked when the world is built, so flipping
+      //     RELIEF_ON afterwards moves BOTH arms together and the error
+      //     cancels. It is the exact identity `L0.y = groundY + waterDepth -
+      //     .20` that the lake placer computes, read back at the centre - so
+      //     reading the surface BEFORE the lake joins `lakes` (which is what
+      //     the first build of this round did, and it is the whole reason the
+      //     placer was rewritten) shows up here as the relief's own height.
+      for(const L of lakes){
+        const d = Math.abs((groundY(L.x,L.z) + waterDepth(L.x,L.z)) - (L.y + .20));
+        if(d > 0.01)
+          bad.push(`A LAKE'S SURFACE WAS NOT READ OFF THE GROUND IT SITS ON: the lake at (${L.x.toFixed(0)}, ${L.z.toFixed(0)}) sits ${d.toFixed(2)} m from the uncarved ground at its own centre`);
+      }
+      RELIEF_ON = false; const A = probe();
+      RELIEF_ON = true;  const B = probe();
+      for(let i=0;i<lakes.length;i++){
+        const L = lakes[i], nm = `(${L.x.toFixed(0)}, ${L.z.toFixed(0)}) r ${L.r.toFixed(1)}`;
+        if(B[i].isl - A[i].isl > 0.05)
+          bad.push(`THE RELIEF PUT AN ISLAND IN A LAKE: the highest bed inside ${nm} stands ${B[i].isl.toFixed(2)} m above the surface with the relief on and ${A[i].isl.toFixed(2)} m with it off`);
+        if(B[i].bank - A[i].bank > 0.05)
+          bad.push(`THE RELIEF LIFTED A LAKE OFF ITS BANK: the shore of ${nm} is ${B[i].bank.toFixed(2)} m off its own surface with the relief on and ${A[i].bank.toFixed(2)} m with it off`);
+      }
+    }
+    // 4. NO CLIFFS. One mesh quad is TER_S metres. A rise bigger than RELIEF_MAXSTEP
+    //    across one of them is not a hill, it is a wall - and nothing in this game
+    //    can climb, so it would be a wall you walk through.
+    { let worst = 0, at = null;
+      for(const [x,z] of S){
+        const y0 = RELIEF(x,z);
+        for(const [dx,dz] of [[TER_S,0],[0,TER_S],[TER_S,TER_S],[TER_S,-TER_S]]){
+          const d = Math.abs(RELIEF(x+dx,z+dz) - y0);
+          if(d > worst){ worst = d; at = [+x.toFixed(1), +z.toFixed(1)]; } } }
+      if(worst > RELIEF_MAXSTEP)
+        bad.push(`THE RELIEF HAS A CLIFF IN IT: ${worst.toFixed(2)} m of rise across one ${TER_S.toFixed(2)} m mesh quad at ${at}, past RELIEF_MAXSTEP ${RELIEF_MAXSTEP}`);
+    }
+    // 5. TERRAIN_HRANGE IS NOT A LIE. The floor's colour is tinted by its own
+    //    height (`h` in landC), and TERRAIN_HRANGE is the bracket the contrast
+    //    harness enumerates every ground colour from. Raise the hills without
+    //    widening that bracket and the pickup-readability instrument is
+    //    measuring a floor that no longer exists - which is OWNER item 1's OTHER
+    //    half, so it may not be broken to fix this one.
+    //    Walked over the REAL mesh grid, not the stations, because the mesh is
+    //    what gets coloured. Two clauses: the tint the builder applies must be
+    //    inside the bracket, and - the null control for this pair - the RAW term
+    //    must go outside it somewhere on this map, or the clamp is holding
+    //    nothing and passing means nothing.
+    { let lo = 1e9, hi = -1e9, rawOut = 0, cells2 = 0;
+      for(let i=0;i<=TER_CH*TER_Q;i+=2) for(let j=0;j<=TER_CH*TER_Q;j+=2){
+        const x = -ARENA + i*TER_S, z = -ARENA + j*TER_S;
+        const y0 = groundY(x,z), y2 = groundY(x+TER_S, z+TER_S);
+        const h = terrainH(y0, y2), raw = (y0 + y2)/4 + .5;
+        if(h<lo) lo=h; if(h>hi) hi=h;
+        if(raw < TERRAIN_HRANGE[0] || raw > TERRAIN_HRANGE[1]) rawOut++;
+        cells2++; }
+      if(lo < TERRAIN_HRANGE[0] - 1e-9 || hi > TERRAIN_HRANGE[1] + 1e-9)
+        bad.push(`THE GROUND IS TINTED PAST ITS OWN BRACKET: terrainH runs ${lo.toFixed(2)} .. ${hi.toFixed(2)} against TERRAIN_HRANGE [${TERRAIN_HRANGE}], which is what the contrast harness enumerates every floor colour from`);
+      if(!rawOut)
+        bad.push(`THE TINT CLAMP IS HOLDING NOTHING: not one of ${cells2} mesh points has a raw height term outside TERRAIN_HRANGE, so clause 5 would pass with the clamp deleted`);
+    }
+    // 6. IT IS A PURE FUNCTION OF POSITION. The arena is rebuilt every run and
+    //    read from the mesh baker, the collision, the spawner and five draw
+    //    paths in no fixed order; a height that remembered anything would
+    //    shimmer, and would make every measurement above order-dependent.
+    { const first = S.map(([x,z])=>groundY(x,z));
+      let n = 0;
+      for(let i=S.length-1;i>=0;i--) if(groundY(S[i][0],S[i][1]) !== first[i]) n++;
+      if(n) bad.push(`THE HEIGHT FIELD IS NOT PURE: ${n} of ${S.length} points gave a different answer when read in the opposite order`);
+    }
+    // 7. THE FADE IS EXACT AT BOTH ENDS, which is what clauses 2 and 3 rest on.
+    //    A rim reads 9.5e-30 rather than a clean 0 - the smoothstep of a
+    //    float division - so the tolerance is a millimetre of relief and not
+    //    an equality. It is still tight enough to catch a fade of the wrong
+    //    width or the wrong sign, which is the whole point of the clause.
+    for(const L of lakes){
+      const EPS = 1e-6;
+      if(lakeFlat(L.x, L.z) > EPS)
+        bad.push(`THE RELIEF IS NOT FLATTENED AT A LAKE CENTRE: lakeFlat is ${lakeFlat(L.x,L.z)} at (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
+      if(lakeFlat(L.x + L.r, L.z) > EPS)
+        bad.push(`THE RELIEF IS NOT FLATTENED AT A LAKE RIM: lakeFlat is ${lakeFlat(L.x+L.r,L.z)} at the rim of (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
+      const far = lakeFlat(L.x + L.r + RELIEF_FADE + .01, L.z);
+      if(far < 1 - EPS)
+        bad.push(`THE RELIEF DOES NOT COME BACK PAST A LAKE'S RAMP: lakeFlat is ${far} at rim + RELIEF_FADE ${RELIEF_FADE} m from (${L.x.toFixed(0)}, ${L.z.toFixed(0)})`);
+    }
+    RELIEF_ON = was;
+    return { ok: !bad.length, bad, lakes: lakes.length, stations: S.length,
+             span20:+hilly.toFixed(3), flat20:+flat.toFixed(3) }; },
+
+  // ---- THE NOISE (L26) ---------------------------------------------------
+  // The mesh's own tone function, hoisted so a check reads what the ground is
+  // actually painted with instead of a copy of it. Pure: position in, one of
+  // the four tone steps out.
+  tone: (x, z)=> toneAt(x, z),
+  // The colour A/B. Squashes toneAt's field back into the bottom half - the
+  // condition the broken hash left it in - and REBAKES, so the picture on
+  // screen actually changes. The terrain's HEIGHT is untouched by it on
+  // purpose: that is what makes a station, a camera and a lake identical
+  // between the two arms, which two builds can never be.
+  toneHalf:(v)=>{ if(v !== undefined){ TONE_HALF = !!v; makeTerrain(); uploadTerrain(); }
+                  return TONE_HALF; },
+  // The tone histogram over the REAL quad lattice - the same grid makeTerrain()
+  // walks, derived from TER_CH/TER_Q rather than typed - so "the floor is
+  // painted from half a palette" is a number off the field the player stands on.
+  toneStats: ()=>{
+    const N = TER_CH*TER_Q, h = new Map(); let lo = 9, hi = -9;
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+      const t = toneAt(i+.5, j+.5);
+      if(t<lo) lo=t; if(t>hi) hi=t;
+      h.set(t, (h.get(t)||0)+1);
+    }
+    const steps = [...h.entries()].sort((a,b)=>a[0]-b[0])
+                    .map(([v,k])=>({ v:+v.toFixed(4), share:+(k/(N*N)).toFixed(4) }));
+    return { n:N*N, lo:+lo.toFixed(4), hi:+hi.toFixed(4), steps }; },
+  // THE NOISE GATE (the sixteenth). L25 measured that vhash() could not return
+  // a number above one half - `h ^ (h >> 16)` sign-extends, so bit 31 is the
+  // sign bit XORed with itself and is always zero - and left it alone, because
+  // repainting the floor in the round that RAISED it would have made that
+  // round's before/after unreadable. This gate is what stops it coming back,
+  // and it presses on all three things that one hash feeds: the ground's
+  // COLOUR, the domain warp that keeps the colour off the world grid, and the
+  // height field L25 built on top of it.
+  // Every subject is DERIVED - the lattice from TER_CH/TER_Q, the tone steps
+  // from toneAt itself, the relief budget from RELIEF_AMP - so a finer mesh, a
+  // retuned tone or a retuned hill is covered without anybody remembering this
+  // exists. Clauses 1b and 6a are null controls: a constant hash, or a relief
+  // switched off, must not let the rest pass by having nothing to say.
+  noiseGate:()=>{
+    const bad = [];
+    // 0. THE A/B KNOB IS OFF. toneHalf is a measuring knob, and a knob left on
+    //    ships the defect back. It is checked FIRST because every clause below
+    //    reads toneAt, and half of them would fail for the wrong reason.
+    if(TONE_HALF)
+      bad.push(`THE COLOUR A/B KNOB WAS LEFT ON: TONE_HALF is true, so the floor is shipping the squashed field this round removed`);
+    // 1. THE HASH FILLS ITS OWN INTERVAL, sampled off the real lattice rather
+    //    than a convenient one: the same integer pairs the grain reads.
+    const N = TER_CH*TER_Q; let lo = 9, hi = -9, sum = 0, n = 0, top = 0;
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+      const v = vhash(i, j); if(v<lo) lo=v; if(v>hi) hi=v; sum += v; n++;
+      if(v >= .5) top++;
+    }
+    const mean = sum/n, topShare = top/n;
+    if(hi < .97 || lo > .03)
+      bad.push(`THE HASH ONLY FILLS PART OF ITS RANGE: vhash runs ${lo.toFixed(4)} .. ${hi.toFixed(4)} over ${n} lattice points, not 0 .. 1`);
+    if(Math.abs(mean - .5) > .03)
+      bad.push(`THE HASH IS NOT CENTRED: vhash means ${mean.toFixed(4)} over ${n} lattice points, not 0.5`);
+    if(topShare < .40 || topShare > .60)
+      bad.push(`THE HASH'S TOP BIT IS STUCK: ${(topShare*100).toFixed(1)}% of ${n} samples are >= 0.5, expected about half`);
+    // 1b. NULL CONTROL: a hash with no spread would make every clause below
+    //     pass for the wrong reason, so prove the field varies before reading it.
+    if(hi - lo < .5)
+      bad.push(`THERE IS NO FIELD TO TEST: vhash spans only ${(hi-lo).toFixed(4)} over ${n} points, so every clause below is asserting over a constant`);
+    // 2. THE SMOOTHED FIELD STRADDLES ITS OWN MIDPOINT. vnoise is what the
+    //    domain warp and the two broad tone octaves read, and the warp is
+    //    written as a `(v - .5)` term - a field that never crosses .5 pushes
+    //    every sample point the same way, which is a translation, not a warp.
+    let up = 0, m = 0, vlo = 9, vhi = -9;
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+      const v = vnoise(i*.31 + .17, j*.31 + .29);
+      if(v >= .5) up++; m++; if(v<vlo) vlo=v; if(v>vhi) vhi=v;
+    }
+    if(up/m < .30 || up/m > .70)
+      bad.push(`THE SMOOTHED FIELD IS ONE-SIDED: ${(up/m*100).toFixed(1)}% of ${m} vnoise samples are >= 0.5, so every (v - .5) term in this file has one sign`);
+    if(vhi < .90)
+      bad.push(`THE SMOOTHED FIELD IS CAPPED: vnoise tops out at ${vhi.toFixed(4)} over ${m} samples`);
+    // 3. THE WHOLE PALETTE IS PAINTED. toneAt quantises to four steps, and the
+    //    steps are read out of the function itself rather than typed here. If
+    //    the field feeding it is squashed the quantiser stops returning the
+    //    ends - which is L12's own recorded failure, in its own words.
+    const St = window.__g.toneStats();
+    if(St.steps.length < 4)
+      bad.push(`THE FLOOR IS PAINTED FROM PART OF ITS PALETTE: toneAt returns only ${St.steps.length} of its 4 steps over ${St.n} quads (${St.steps.map(q=>q.v).join(", ")})`);
+    const least = Math.min(...St.steps.map(q=>q.share));
+    if(St.steps.length >= 4 && least < .08)
+      bad.push(`ONE TONE STEP HAS ALL BUT VANISHED: the rarest of toneAt's 4 steps covers ${(least*100).toFixed(2)}% of ${St.n} quads`);
+    // 4. AND IT STAYS INSIDE THE HARNESS'S BRACKET. palette() enumerates every
+    //    ground colour in the game as the region's two tones plus the height
+    //    tint; the mesh lerps between them by exactly this number, so a tone
+    //    outside [0, .75] is a floor colour the pickup check cannot see.
+    if(St.lo < -1e-9 || St.hi > .75 + 1e-9)
+      bad.push(`THE TONE LEAVES THE BRACKET THE CONTRAST HARNESS WALKS: toneAt runs ${St.lo} .. ${St.hi}, outside [0, 0.75]`);
+    // 5. IT IS PURE. The tone is baked once per run, so a stateful hash would
+    //    not show up as anything visible - only as a map that changes under a
+    //    rebake. Read the same lattice in the opposite order and compare.
+    const fwd = [], rev = [];
+    for(let i=0;i<N;i+=7) for(let j=0;j<N;j+=7) fwd.push(toneAt(i+.5, j+.5));
+    for(let i=N-1-((N-1)%7);i>=0;i-=7) for(let j=N-1-((N-1)%7);j>=0;j-=7) rev.push(toneAt(i+.5, j+.5));
+    rev.reverse();
+    let drift = 0;
+    for(let k=0;k<fwd.length;k++) if(fwd[k] !== rev[k]) drift++;
+    if(drift)
+      bad.push(`THE TONE FIELD IS NOT PURE: ${drift} of ${fwd.length} points gave a different answer when read in the opposite order`);
+    // 6. THE RELIEF IS STILL CENTRED AND STILL THE SIZE IT SAYS IT IS. This is
+    //    the clause that guards THIS round's own footgun: RELIEF was written as
+    //    `vnoise*2 - .5` against a field that only ran 0 .. 0.5, so widening the
+    //    hash without re-deriving that mapping DOUBLES every hill and lifts the
+    //    whole world off its own zero. The budget is derived from RELIEF_AMP:
+    //    each octave can contribute at most half its peak-to-peak either way.
+    const budget = (RELIEF_AMP[0] + RELIEF_AMP[1]) / 2;
+    let rlo = 1e9, rhi = -1e9, rsum = 0, rn = 0;
+    for(let i=0;i<N;i+=2) for(let j=0;j<N;j+=2){
+      const x = -ARENA + (i+.5)*TER_S, z = -ARENA + (j+.5)*TER_S;
+      const r = RELIEF(x, z);
+      if(r<rlo) rlo=r; if(r>rhi) rhi=r; rsum += r; rn++;
+    }
+    // 6a. NULL CONTROL: with the relief switched off, or its amplitudes zeroed,
+    //     a bound and a mean of zero are trivially inside anything.
+    if(rhi - rlo < 1)
+      bad.push(`THERE IS NO RELIEF TO BOUND: the height term spans only ${(rhi-rlo).toFixed(3)} m over ${rn} points, so the clauses below pass over a plane`);
+    else {
+      if(rhi > budget + 1e-6 || rlo < -budget - 1e-6)
+        bad.push(`THE RELIEF IS PAST ITS OWN BUDGET: it runs ${rlo.toFixed(2)} .. ${rhi.toFixed(2)} m against RELIEF_AMP [${RELIEF_AMP}], which allows +-${budget.toFixed(2)} m`);
+      if(Math.abs(rsum/rn) > budget*.12)
+        bad.push(`THE RELIEF IS NOT CENTRED ON ZERO: it means ${(rsum/rn).toFixed(3)} m over ${rn} points, more than 12% of its own +-${budget.toFixed(2)} m budget`);
+    }
+    return { ok: !bad.length, bad,
+             hash:{ lo:+lo.toFixed(4), hi:+hi.toFixed(4), mean:+mean.toFixed(4),
+                    topShare:+topShare.toFixed(4), n },
+             vn:{ lo:+vlo.toFixed(4), hi:+vhi.toFixed(4), upShare:+(up/m).toFixed(4) },
+             tone:{ steps:St.steps, lo:St.lo, hi:St.hi, n:St.n },
+             relief:{ lo:+rlo.toFixed(3), hi:+rhi.toFixed(3), mean:+(rsum/rn).toFixed(3),
+                      budget:+budget.toFixed(2), n:rn } }; },
   // THE WARD GATE (L15). Every claim this round makes, pressed on the live
   // page from a clean field: the cut is exactly WARD_CUT and only inside
   // WARD_R, the cap holds, the ward LETS GO the tick its warden dies, and the
@@ -17975,6 +18665,13 @@ window.__g = {
   },
   verbEnd:(R)=>{
     const S = R.S;
+    // THE BENCH HANDS BACK AN UNPAUSED WORLD (L22). verbTick auto-picks inside
+    // its loop, but the loop exits the instant T passes the window - so a level
+    // queued on the crossing frame leaves the draft up, and step() is a no-op
+    // for whatever gate runs next. See qaLive: this is the leak's source, and
+    // it is closed here rather than defended against nine times downstream.
+    // After the measurement, so it cannot move a number.
+    if(picking){ pendingLevels = 0; picking = false; hide("pick"); }
     S.ended = +T.toFixed(1); S.over = !!over; S.stoopN = stoopN; S.diginN = diginN;
     S.hurt = +R.hurtT.toFixed(0); S.keep = !!R.keep; S.dipN = R.dipN;
     S.hurtPerMin = +(R.hurtT / Math.max(1/60, (Math.min(T, R.to) - R.from) / 60)).toFixed(2);
@@ -17996,6 +18693,153 @@ window.__g = {
     while(window.__g.verbTick(R, 1e9));
     return window.__g.verbEnd(R);
   },
+  // ==================================================================== L21
+  // THE PAIRED BENCH. L20 ended by naming the one job standing between this
+  // loop and the owner's difficulty question: replicates PER CHARACTER, paired.
+  // Its six arms were n=1 per character, and across them the burrow's cost
+  // changed SIGN between characters - +59 (intern), +106 (scrap), -72 (spark),
+  // -22 (ox) damage a minute. A pooled number over four different animals
+  // measured once each is not a measurement of the mechanic; it is an average
+  // of four unrelated draws, and no amount of pooling turns it into one.
+  //
+  // WHAT MAKES THIS POSSIBLE NOW, AND IT IS NOT THIS ROUND'S WORK. L21 set out
+  // to build a paired bench and first checked, rather than assumed, whether a
+  // pinned trial replays - because a pair is only worth having if the two
+  // halves share everything except the knob. On the build L21 started from it
+  // did NOT: five runs of `intern` on one pinned seed pair finished at
+  // 1443 / 1570 / 1465 / 1595 / 1545 kills, and two of them already differed in
+  // the PLAYER'S POSITION at t=50 s while kills, level, kit, health and enemy
+  // count were still identical to the digit. Between that measurement and this
+  // one the artifact was republished with the CAUSE found and fixed: EID, the
+  // body serial, was a module counter no run reset, and routRoll / digRoll /
+  // stoopRoll are all deterministic hashes of it - so the same body carried a
+  // different id in a second run and a different set of bodies broke, dug in
+  // and climbed out. Re-measured on the fixed build, the identical five runs
+  // read 1533 / 1533 / 1533 / 1533 / 1533 kills, and a full ten-minute window
+  // repeats to the digit (bf 74139, 40.86 dmg/min, twice). So pinRun's claim
+  // above - that a trial is a pure function of (arena, run, character, build) -
+  // is TRUE, and it is true as of that fix rather than as of always.
+  //
+  // WHICH CHANGES THE DESIGN. Pairing here is exact COMMON RANDOM NUMBERS: the
+  // two halves of a pair share the arena, the opening, the draft and every draw
+  // until the knob first changes the world, so the difference between them is
+  // the mechanic plus what the mechanic causes, and NOTHING else. Two
+  // consequences follow and both are load-bearing:
+  //   - A REPLICATE AT THE SAME SEED IS WORTHLESS. It reproduces to the digit,
+  //     so it carries no information. Replicates must come from different
+  //     SEEDS, which is why `seeds` is the axis and there is no repeat count.
+  //   - THE PAIRED DIFFERENCE IS EXACT, NOT NOISY. What varies across the
+  //     sample is the seed, not the measurement, so the spread of the pair
+  //     differences is real variation in how much the mechanic costs on
+  //     different runs rather than instrument noise.
+  // The pooled figure is still the mean of the PER-CHARACTER means, not of all
+  // pairs, because the character is the unit L20 demonstrated the variance
+  // lives in and characters must not be weighted by how many seeds they got.
+  //
+  // THE ORDER STILL ALTERNATES - OFF-then-ON on even seeds, ON-then-OFF on odd
+  // ones - and L21 found out the hard way that this is not ceremony. Replay is
+  // exact from a CLEAN session, but once the gates have run (they zero
+  // `enemies`, force killR and override the shares) it degrades into a clean
+  // PERIOD-2 ALTERNATION: the same pinned trial repeated five times read
+  // 90538 / 28417 / 90538 / 28417 / 90538 body-frames with the save unchanged
+  // throughout. Something still flips each run and startRun does not reset it -
+  // the same class as EID, not fully swept. A period-2 artefact would alias
+  // perfectly onto an all-OFF-then-all-ON queue and read as a treatment effect;
+  // alternating splits it evenly across the two arms instead, where it cancels.
+  // pairGate clause 6 checks replay directly so the degradation cannot go
+  // unnoticed, and the honest protocol is to run a bench BEFORE any gate.
+  //
+  // WINDOW CONTAINMENT, which is L20's own plant lesson written into the
+  // instrument. Its censusGate passed a planted bug because it sampled minutes
+  // 5-7, and the arrival mechanics arm off the MEASURED kill radius and are
+  // still off that early - so the window held none of the population the clause
+  // was meant to catch, and a gate whose window excludes the phenomenon cannot
+  // fail. Every trial here therefore records `fired`, the burrow tally the run
+  // actually reached. An ON half with fired == 0 is reported as a pair that
+  // CONTAINS NONE OF THE TREATMENT, not as a measured zero effect.
+  pairInit:(o = {})=>{
+    const chars = o.chars || ["intern","scrap","spark","ox"];
+    const seeds = o.seeds || [101,202,303,404,505,606,707,808];
+    const knob  = o.knob  || "burrowShare";
+    const on    = o.on  !== undefined ? o.on  : 0.22;
+    const off   = o.off !== undefined ? o.off : 0;
+    const q = [];
+    for(const c of chars) for(let i=0;i<seeds.length;i++){
+      const ord = (i % 2) ? ["on","off"] : ["off","on"];
+      for(const a of ord) q.push({ char:c, seed:seeds[i], arm:a, first:ord[0] });
+    }
+    return { q, i:0, rows:[], cur:null, knob, on, off,
+             from: o.from  === undefined ? 360 : o.from,
+             to:   o.to    === undefined ? 960 : o.to,
+             every:o.every === undefined ? 3   : o.every,
+             was: window.__g[knob](), done:false };
+  },
+  // one slice, same contract as verbTick: `frames` bounds the WALL CLOCK of a
+  // single call and never the measurement, so chunking cannot change a result.
+  pairTick:(R, frames=3000)=>{
+    if(R.done) return false;
+    if(!R.cur){
+      if(R.i >= R.q.length){ R.done = true; return false; }
+      const t = R.q[R.i];
+      // pinned BEFORE verbInit, because verbInit calls startRun and startRun
+      // seeds the run stream and rolls the world.
+      window.__g.pin(t.seed); window.__g.pinRun((t.seed ^ 0x5f5f) >>> 0);
+      window.__g[R.knob](t.arm === "on" ? R.on : R.off);
+      R.cur = { t, run: window.__g.verbInit(t.char, R.from, R.to, R.every, true) };
+    }
+    if(window.__g.verbTick(R.cur.run, frames)) return true;
+    const S = window.__g.verbEnd(R.cur.run), t = R.cur.t, B = window.__g.burrows();
+    R.rows.push({ char:t.char, seed:t.seed, arm:t.arm, first:t.first,
+                  dmgPerMin:S.hurtPerMin, bf:S.bf, nw:S.nwPct, bite:S.bitePct,
+                  dive:S.divePct, ended:S.ended, over:S.over, dip:S.dipN,
+                  fired:B.n, killR:B.killR });
+    R.cur = null; R.i++;
+    if(R.i >= R.q.length){ R.done = true; return false; }
+    return true;
+  },
+  pairEnd:(R)=>{
+    // restore everything this driver touched, per AGENT_LOOP's review rule
+    window.__g[R.knob](R.was); window.__g.pin(null); window.__g.pinRun(null);
+    const rows = R.rows, pairs = [], bad = [];
+    const key = r => r.char + "#" + r.seed, byKey = new Map();
+    for(const r of rows){ if(!byKey.has(key(r))) byKey.set(key(r), {}); byKey.get(key(r))[r.arm] = r; }
+    for(const [k,p] of byKey){
+      if(!p.on || !p.off){ bad.push(k + " INCOMPLETE PAIR"); continue; }
+      if(!(p.on.fired > 0)) bad.push(k + " ON HALF NEVER FIRED THE MECHANIC (fired=0, killR=" + p.on.killR + ") - the window contains none of the treatment");
+      if(p.off.fired > 0)   bad.push(k + " OFF HALF FIRED ANYWAY (fired=" + p.off.fired + ")");
+      if(p.on.over || p.off.over) bad.push(k + " A RUN ENDED EARLY");
+      // keep must have held, or this pair's damage is an outcome and not a rate
+      if(p.on.dip > 0 || p.off.dip > 0) bad.push(k + " KEEP DID NOT HOLD (dip on " + p.on.dip + ", off " + p.off.dip + ")");
+      pairs.push({ key:k, char:p.on.char, seed:p.on.seed, first:p.on.first,
+                   off:p.off.dmgPerMin, on:p.on.dmgPerMin,
+                   d:+(p.on.dmgPerMin - p.off.dmgPerMin).toFixed(2),
+                   dNw:+(p.on.nw - p.off.nw).toFixed(4) });
+    }
+    // two-sided 95% t critical values by degrees of freedom; a paired mean over
+    // a handful of replicates is not a z.
+    const TC = {1:12.706,2:4.303,3:3.182,4:2.776,5:2.571,6:2.447,7:2.365,8:2.306,9:2.262,10:2.228,
+                11:2.201,12:2.179,13:2.160,14:2.145,15:2.131};
+    const stat = (xs)=>{
+      const n = xs.length; if(!n) return null;
+      const m = xs.reduce((a,b)=>a+b,0)/n;
+      if(n === 1) return { n, mean:+m.toFixed(2), sd:null, se:null, t:null, lo:null, hi:null };
+      const v  = xs.reduce((a,b)=>a+(b-m)*(b-m),0)/(n-1), se = Math.sqrt(v/n);
+      const tc = TC[n-1] || 1.96;
+      return { n, mean:+m.toFixed(2), sd:+Math.sqrt(v).toFixed(2), se:+se.toFixed(2),
+               t: se ? +(m/se).toFixed(2) : null,
+               lo:+(m - tc*se).toFixed(2), hi:+(m + tc*se).toFixed(2) };
+    };
+    const perChar = {};
+    for(const c of new Set(pairs.map(p=>p.char)))
+      perChar[c] = stat(pairs.filter(p=>p.char === c).map(p=>p.d));
+    const pooled = stat(Object.values(perChar).map(s=>s.mean));
+    return { rows, pairs, perChar, pooled, bad, nPairs:pairs.length, ok: bad.length === 0 };
+  },
+  pairRun:(o)=>{
+    const R = window.__g.pairInit(o);
+    while(window.__g.pairTick(R, 1e9));
+    return window.__g.pairEnd(R);
+  },
   // force one named body to go to ground now, so a check does not have to wait
   // out the kill-radius gate and a hit that leaves it under DIGIN_HP
   digin:(id)=>{ const e = enemies.find(x=>x.eid===id && !x.dead); if(!e) return null;
@@ -18009,7 +18853,8 @@ window.__g = {
   // whole claim to being difficulty-neutral is that a routing body cannot bite.
   routGate:()=>{
     const bad = [], keepR = killR, keepN = killRN, keepShare = ROUT_SHARE;
-    killR = 30; killRN = 500; ROUT_SHARE = 1;            // arm it deterministically
+    qaLive(bad, "THE ROUT GATE");             // L22: this gate drives step() too
+    qaArm(30); ROUT_SHARE = 1;            // L23: arm it deterministically AND HOLD it
     // THE SUBJECT HAS TO SURVIVE THE CLAUSE. Run at minute five against a grown
     // kit, clause 4 read "0.09 m against a walker's 1.14 m" - not because the
     // rout is slow but because the body being timed had been DELETED halfway
@@ -18059,6 +18904,20 @@ window.__g = {
     const em = Math.hypot(e0.x-ex, e0.z-ez), nominal = e0.def.spd * sec;
     if(!(em > nominal * 1.15))
       bad.push(`ROUT IS NOT FASTER THAN A WALK: ${em.toFixed(2)} m in ${sec} s against a nominal walk of ${nominal.toFixed(2)} m, ROUT_SPD is ${ROUT_SPD}`);
+    // AND THE THIRD FACE OF IT (L22), the one that makes a clause UNFALSIFIABLE
+    // rather than merely wrong. These gates arm themselves once - `killR = 30;
+    // killRN = 500` - and then drive a LIVE world for a hundred frames. killR is
+    // not theirs to hold: killEnemy() moves it on every death, `killR += (dk -
+    // killR)*.02`, and the bodies the director spawns during those frames die at
+    // the player's feet. So the arming DECAYS mid-gate, and once it slips under
+    // BURROW_KILLR every later clause of the form "this one must NOT fire" passes
+    // for the wrong reason. It cost one flaky failure in 54 gate runs to notice
+    // ("ROUT DID NOT BREAK A BODY THAT WAS MID-BITE: rout 0.000"), and the silent
+    // direction is worse than the loud one. L22 re-armed before every clause that
+    // stands downstream of a step() loop; L23 moved that to the producer instead -
+    // qaArm() at the top HOLDS the arming, killEnemy() cannot move it while held,
+    // and there is no list of re-arm sites left to keep in step with the clauses.
+    // See qaArm(), and armGate, which fails if a death ever moves a held arming.
     // 5. IT CANNOT BITE WHILE IT RUNS. This is the round's difficulty claim and
     //    it is the clause to break first if you doubt any of them.
     window.__g.clearEnemies();
@@ -18090,15 +18949,15 @@ window.__g = {
       bad.push(`A BREAK LEFT A BITE IN THE AIR: wu ${(c.wu).toFixed(3)} frozen on a body that routed mid-wind-up, and it will land when it re-forms`);
     // 6. IT IS OFF WHEN THE HORDE IS STILL ARRIVING - the early game is
     //    untouched by construction, off the same measured gate the burrow uses.
-    killR = 6; killRN = 500;
+    qaArm(6);
     window.__g.clearEnemies();
     const early = mk("skitter", P.x + 20, P.z);
     early.alarm = ROUT_TRIG + 3; early.alarmT = ROUT_FADE;
     for(let i=0;i<10;i++) step(1/60);
     if(early.rout > 0)
       bad.push(`ROUT FIRES IN THE EARLY GAME: it broke at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
-    killR = keepR; killRN = keepN; ROUT_SHARE = keepShare;
-    window.__g.clearEnemies();
+    qaArm(null); killR = keepR; killRN = keepN; ROUT_SHARE = keepShare;
+    window.__g.clearEnemies(); qaSettle();   // L22: hand the next gate a live world
     return { ok: !bad.length, bad };
   },
   // THE KILL RADIUS DIES WITH THE RUN. Left standing, a second run in the same
@@ -18153,12 +19012,12 @@ window.__g = {
     if(!(b2.wu > 0))
       bad.push(`BURROW SURFACES WITHOUT A WIND-UP: wu ${(b2.wu||0).toFixed(3)} on the frame it came up, expected wuT ${(BITE_WIND*(b2.def.bite||1)).toFixed(3)}`);
     // 5. IT NEVER ARMS ON A WEAK KIT - the early game must be untouched.
-    killR = 4; killRN = 500;
+    qaArm(4);
     let close = 0; for(let i=0;i<300;i++){ const e = spawnEnemy("shambler"); if(e && e.burrow) close++; }
     if(close) bad.push(`BURROW ARMS ON A SHORT KILL RADIUS: ${close} of 300 spawns burrowed with killR 4 m under BURROW_KILLR ${BURROW_KILLR}`);
     // 6. AND IT DOES ARM ON A LONG ONE, at about the share it claims.
     enemies.length = 0; rebuildGrid();
-    killR = 28; killRN = 500;
+    qaArm(28);
     let far = 0, n = 0; for(let i=0;i<400;i++){ const e = spawnEnemy("shambler"); if(e){ n++; if(e.burrow) far++; } enemies.length = 0; }
     const share = n ? far/n : 0;
     if(Math.abs(share - BURROW_SHARE) > .06)
@@ -18170,7 +19029,7 @@ window.__g = {
     // existed. Measured off spawnEnemy with no coordinates, which is the path
     // the run actually uses.
     enemies.length = 0; rebuildGrid();
-    killR = 28; killRN = 500;
+    qaArm(28);
     const ds = [];
     for(let i=0;i<600;i++){ const e = spawnEnemy("shambler");
       if(e && e.burrow) ds.push(Math.hypot(e.x-P.x, e.z-P.z));
@@ -18181,7 +19040,7 @@ window.__g = {
     // 7. FLIERS AND GILDWING ARE EXEMPT.
     let fl = 0; for(let i=0;i<200;i++){ const e = spawnEnemy("runner"); if(e && e.burrow) fl++; enemies.length = 0; }
     if(fl) bad.push(`BURROW APPLIES TO A FLIER: ${fl} of 200 PTERLING spawns burrowed`);
-    killR = kr0; killRN = krn0;
+    qaArm(null); killR = kr0; killRN = krn0;
     enemies.length = 0; corpses.length = 0;
     for(const e of keep) enemies.push(e);
     for(const e of kc) corpses.push(e);
@@ -18191,17 +19050,18 @@ window.__g = {
   // and each one is written so the OBVIOUS wrong build fails it by name.
   diginGate:()=>{
     const bad = [], keep = enemies.slice(), kc = corpses.slice();
+    qaLive(bad, "THE DIG-IN GATE");            // L22: this gate drives step() too
     const kr0 = killR, krn0 = killRN, sh0 = DIGIN_SHARE;
     enemies.length = 0; corpses.length = 0; rebuildGrid();
-    killR = 30; killRN = 500; DIGIN_SHARE = 1;         // arm it deterministically
+    qaArm(30); DIGIN_SHARE = 1;         // L23: arm it deterministically AND HOLD it
     const far = () => { const e = spawnEnemy("shambler", P.x + 26, P.z);
                         e.hp = e.maxhp; return e; };
     // 1. A HEALTHY BODY DOES NOT DIG. The mechanic is the horde's last act; if
     //    a full-health body goes to ground this is a retreat button, not that.
-    const a = far(); hurt(a, a.maxhp * .10, 0, 0);
+    const a = far(); qaHurtTo(a, .90);
     if(a.dig > 0) bad.push(`A HEALTHY BODY DUG IN: hp ${(a.hp/a.maxhp).toFixed(2)} of max, over DIGIN_HP ${DIGIN_HP}`);
     // 2. A BADLY HURT BODY AT RANGE DOES.
-    const b = far(); hurt(b, b.maxhp * .80, 0, 0);
+    const b = far(); qaHurtTo(b, .20);
     if(!(b.dig > 0)) bad.push(`A BADLY HURT BODY DID NOT DIG IN: hp ${(b.hp/b.maxhp).toFixed(2)} of max, under DIGIN_HP ${DIGIN_HP}, dig ${(b.dig||0).toFixed(3)}`);
     // 3. IT CANNOT BE HIT WHILE IT IS GOING DOWN. Same guard the burrow has,
     //    and the reason the mechanic is not simply "it dies a moment later".
@@ -18220,6 +19080,7 @@ window.__g = {
     if(!(b.wu > 0)) bad.push(`DIG-IN SURFACES WITHOUT A WIND-UP: wu ${(b.wu||0).toFixed(3)} on the frame it came up`);
     // 6. ONCE PER BODY, EVER. Without this a body ping-pongs underground and
     //    the horde becomes unkillable rather than arriving.
+
     b.hp = b.maxhp * .05; b.rise = 0; b.dig = 0;
     b.x = P.x + 26; b.z = P.z; hurt(b, 1, 0, 0);
     if(b.dig > 0) bad.push(`A BODY DUG IN TWICE: dug ${b.dug}, dig ${(b.dig).toFixed(3)}`);
@@ -18236,31 +19097,31 @@ window.__g = {
     enemies.length = 0; rebuildGrid();
     const NEAR = 6;
     const c = spawnEnemy("shambler", P.x + NEAR, P.z);
-    hurt(c, c.maxhp * .90, 0, 0);
+    qaHurtTo(c, .10);
     if(c.dig > 0) bad.push(`A BODY INSIDE DIGIN_MIN DUG IN: it was at ${NEAR} m and went to ground, against DIGIN_MIN ${DIGIN_MIN}`);
     // 8. FLIERS ARE EXEMPT, for the reason the burrow exempts them.
     enemies.length = 0; rebuildGrid();
-    const f = spawnEnemy("runner", P.x + 26, P.z); hurt(f, f.maxhp * .90, 0, 0);
+    const f = spawnEnemy("runner", P.x + 26, P.z); qaHurtTo(f, .10);
     if(f.dig > 0) bad.push(`DIG-IN APPLIES TO A FLIER: a PTERLING went underground`);
     // 9. IT IS OFF IN THE EARLY GAME BY CONSTRUCTION, not by a clock. Same
     //    killR gate the burrow and the rout read.
-    enemies.length = 0; rebuildGrid(); killR = 6; killRN = 500;
-    const e9 = spawnEnemy("shambler", P.x + 26, P.z); hurt(e9, e9.maxhp * .90, 0, 0);
+    enemies.length = 0; rebuildGrid(); qaArm(6);
+    const e9 = spawnEnemy("shambler", P.x + 26, P.z); qaHurtTo(e9, .10);
     if(e9.dig > 0) bad.push(`DIG-IN FIRES IN THE EARLY GAME: it dug at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
     // 10. THE FROZEN WIND-UP, which is what measuring L18's bite rate found: a
     //     RANGED body's wind-up is counted down inside `if(!e.def.ranged)`, so
     //     arming one on a burrowed DILOPHO set a timer nothing ever cleared.
-    enemies.length = 0; rebuildGrid(); killR = 30; killRN = 500;
+    enemies.length = 0; rebuildGrid(); qaArm(30);
     const s = spawnEnemy("spitter", P.x + 3, P.z);
     s.burrow = true; s.rise = BURROW_RISE; s.riseMax = BURROW_RISE;
     for(let i=0;i<400 && s.rise > 0;i++) step(1/60);
     for(let i=0;i<120;i++) step(1/60);
     if(s.wu > 0) bad.push(`A BURROWED SPITTER HOLDS A WIND-UP NOTHING COUNTS DOWN: wu ${s.wu.toFixed(3)} two seconds after it surfaced`);
-    killR = kr0; killRN = krn0; DIGIN_SHARE = sh0;
+    qaArm(null); killR = kr0; killRN = krn0; DIGIN_SHARE = sh0;
     enemies.length = 0; corpses.length = 0;
     for(const e of keep) enemies.push(e);
     for(const e of kc) corpses.push(e);
-    rebuildGrid(); wardPass();
+    rebuildGrid(); wardPass(); qaSettle();   // L22: hand the next gate a live world
     return { ok: !bad.length, bad, surfacedAt:+dS.toFixed(1) }; },
   // THE L19 GATE. Ten clauses, and clause 5 is the one the round lives or dies
   // on: the arrival has to put the flier INSIDE DIVE_R with the dive available,
@@ -18273,6 +19134,100 @@ window.__g = {
   // all - it is the SELECTION EFFECT itself, asserted rather than trusted. Every
   // horde number in L15-L18 was taken over whichever runs happened to live to
   // minute six; `keep` is the fix, and a fix nothing checks is a comment.
+  // L23 - THE ARMING GATE. The premise every arrival gate rests on, checked as a
+  // thing in itself. Four clauses, and clause 2 is the one that makes clause 1
+  // worth having: a "this must NOT move" clause is only evidence if the same
+  // instrument can be SHOWN to see the movement when it is allowed to happen.
+  // That is the defect this project keeps finding - a clause that cannot fail -
+  // so this gate carries its own null control rather than asserting into the dark.
+  armGate:()=>{
+    const bad = [], kr0 = killR, krn0 = killRN, hold0 = qaArmHold;
+    qaLive(bad, "THE ARMING GATE");            // it drives step() too
+    // A death is the producer. Bodies are killed at 3 m, which is 27 m from the
+    // 30 m arming, so an unheld EMA has somewhere obvious to move to.
+    const churn = (n)=>{ let dead = 0;
+      for(let i=0;i<n;i++){ const e = spawnEnemy("skitter", P.x + 3, P.z);
+                            if(!e) continue; rebuildGrid(); killEnemy(e); dead++; }
+      window.__g.clearEnemies(); return dead; };
+    // 1. A HELD ARMING DOES NOT MOVE, THROUGH DEATHS OR THROUGH A LIVE WORLD.
+    qaArm(30);
+    const d1 = churn(60);
+    for(let i=0;i<60;i++) step(1/60);              // and the sim's own deaths too
+    if(!(d1 > 0))
+      bad.push(`THE HOLD WAS NEVER TESTED: ${d1} bodies died during the held window, so clause 1 asserted over nothing`);
+    if(killR !== 30 || killRN !== 500)
+      bad.push(`A HELD ARMING DECAYED: killR ${killR.toFixed(3)} / killRN ${killRN} after ${d1} deaths, against the 30 m / 500 it was armed to`);
+    // 2. THE CONTROL. Released, the identical drive MUST move it - otherwise
+    //    clause 1 is passing because nothing in this gate can move killR at all.
+    qaArm(null); killR = 30; killRN = 500;
+    const d2 = churn(60);
+    if(!(d2 > 0))
+      bad.push(`THE CONTROL WAS NEVER TESTED: ${d2} bodies died with the hold released`);
+    if(!(Math.abs(killR - 30) > .5))
+      bad.push(`THE CONTROL DID NOT DRIFT: killR ${killR.toFixed(3)} after ${d2} deaths at 3 m with NO hold - this gate cannot see the drift it claims to prevent, so clause 1 means nothing`);
+    // 3. NO GATE LEAVES THE ARMING HELD, DERIVED FROM SOURCE rather than from a
+    //    list somebody has to keep in step. Every exported gate that takes the
+    //    hold has to give it back on the way out, the way qaSettle is given back.
+    for(const k of Object.keys(window.__g)){
+      if(!/Gate$/.test(k)) continue;
+      const src = String(window.__g[k]);
+      if(src.indexOf("qaArm(") < 0) continue;
+      if(src.indexOf("qaArm(null)") < 0)
+        bad.push(`${k} TAKES THE ARMING HOLD AND NEVER RELEASES IT: its source calls qaArm() but never qaArm(null), so every gate after it runs on a frozen kill radius`);
+    }
+    // 4. AND THE WORLD IS HANDED ON UNHELD.
+    qaArm(null); killR = kr0; killRN = krn0;
+    if(qaArmHold !== null)
+      bad.push(`THE ARMING GATE LEFT THE HOLD ENGAGED: qaArmHold ${JSON.stringify(qaArmHold)}`);
+    if(hold0 !== null)
+      bad.push(`THE ARMING GATE WAS HANDED A HELD WORLD: a predecessor left qaArmHold ${JSON.stringify(hold0)} engaged`);
+    // The churn drops sixty gems at the player's feet. Leaving them is exactly
+    // the hazard freezeGate exists to catch, one gate downstream.
+    window.__g.clearGems(); window.__g.clearEnemies(); qaSettle();
+    return { ok: !bad.length, bad };
+  },
+  // L23 - THE FREEZE GATE. The rout's 5b flake, reproduced on demand and then
+  // held down. L22 blamed it on killR decaying mid-gate; that mechanism is real
+  // but it was NOT the cause. The cause is L22's own bug one layer in: a gate
+  // KILLS BODIES, the bodies drop XP, the XP is picked up during the gate's own
+  // step() loops, the level-up draft opens - and step()'s first line is `if
+  // (picking) return`. qaLive probes the clock at the gate's ENTRANCE, so it
+  // never saw a world that froze halfway through. Then the gate's own qaSettle
+  // drained the draft on the way out, so by the time anybody read the state it
+  // was clean again. Reproduced on the shipped L22 build with one line -
+  // `dropGem(P.x+1, P.z+.5, 9999)` before routGate - which reads exactly the
+  // flake's text: "ROUT DID NOT BREAK A BODY THAT WAS MID-BITE: rout 0.000",
+  // plus three more clauses that had been passing for the right reason by luck.
+  // THE FIX IS AT THE PRODUCER (step(), one line, guarded by qaDriving) so it
+  // covers every step() a gate makes rather than the thirteen loops that exist
+  // today. THIS GATE IS THE DETECTOR: it arms a level-up to land inside each
+  // step-driving gate and requires the gate to come out with the same verdict.
+  // The list of gates is DERIVED - any gate whose source drives step() is in it,
+  // so a gate added next round is covered without anybody remembering.
+  freezeGate:()=>{
+    const bad = [], names = [];
+    for(const k of Object.keys(window.__g)){
+      if(!/Gate$/.test(k) || k === "freezeGate" || k === "censusGate" || k === "pairGate") continue;
+      const src = String(window.__g[k]);
+      if(/step\(1\/60\)/.test(src)) names.push(k);
+    }
+    if(names.length < 3)
+      bad.push(`THE FREEZE GATE FOUND NOTHING TO TEST: ${names.length} step-driving gates derived from source, so this gate asserts over nothing`);
+    for(const k of names){
+      window.__g.clearGems(); window.__g.clearEnemies(); qaSettle();
+      const clean = window.__g[k]();
+      window.__g.clearGems(); window.__g.clearEnemies(); qaSettle();
+      window.__g.dropGem(P.x + 1, P.z + .5, 9999);   // a level WILL land mid-gate
+      const armed = window.__g[k]();
+      window.__g.clearGems(); window.__g.clearEnemies(); qaSettle();
+      if(clean.ok && !armed.ok)
+        bad.push(`${k} FROZE ITSELF: it passes on a clean world and fails when a level-up lands during its own step() loops - ${armed.bad.length} clause(s), first "${armed.bad[0]}"`);
+      else if(!clean.ok)
+        bad.push(`${k} DID NOT PASS ON A CLEAN WORLD, so the freeze test could not be run against it: first "${clean.bad[0]}"`);
+    }
+    window.__g.clearGems(); window.__g.clearEnemies(); qaSettle();
+    return { ok: !bad.length, bad, tested: names };
+  },
   censusGate:()=>{
     const bad = [];
     // THE WINDOW HAS TO BE THE ONE THE VERBS FIRE IN. This gate first sampled
@@ -18319,19 +19274,98 @@ window.__g = {
       bad.push(`KEEP DESTROYED THE DAMAGE MEASURE: hurt ${r.hurt}, hurtPerMin ${r.hurtPerMin}`);
     return { ok: !bad.length, bad, bf:r.bf, nw:r.nw, nwr:r.nwr, rout:r.rout,
              ended:r.ended, over:r.over, hurtPerMin:r.hurtPerMin }; },
+  // L21. THE PAIRED GATE. An experiment run on a mis-wired design is worse than
+  // no experiment: it produces a number with a confidence interval around it.
+  pairGate:()=>{
+    const bad = [];
+    // --- STRUCTURE, checked on the queue without running anything ---
+    const Q = window.__g.pairInit({ chars:["intern","scrap"], seeds:[1,2,3] });
+    // 1. THE DESIGN IS BALANCED. Every (character, seed) appears exactly twice,
+    //    once per arm. An unbalanced queue silently turns a paired test into an
+    //    unpaired one, which is the exact defect L20 left behind.
+    const cnt = new Map();
+    for(const t of Q.q) cnt.set(t.char+"#"+t.seed+"#"+t.arm, (cnt.get(t.char+"#"+t.seed+"#"+t.arm)||0)+1);
+    for(const c of ["intern","scrap"]) for(const s of [1,2,3]) for(const a of ["on","off"])
+      if(cnt.get(c+"#"+s+"#"+a) !== 1)
+        bad.push(`DESIGN IS NOT BALANCED: ${c}#${s} arm ${a} appears ${cnt.get(c+"#"+s+"#"+a)||0} times, not once`);
+    // 2. THE ARM ORDER ALTERNATES, which is what keeps the period-2 replay
+    //    degradation described on pairInit from aliasing onto the treatment.
+    const firsts = new Set(Q.q.map(t=>t.first));
+    if(!(firsts.has("on") && firsts.has("off")))
+      bad.push(`ARM ORDER DOES NOT ALTERNATE: every pair starts with ${[...firsts].join("/")}, so run-order drift would be confounded with the arm`);
+    // --- ARITHMETIC, on synthesised rows so it costs no wall clock ---
+    const mk = (char,seed,arm,dpm,fired)=>({ char, seed, arm, first:"off", dmgPerMin:dpm,
+      bf:1000, nw:1, bite:0, dive:0, ended:960, over:false, dip:0, fired, killR:30 });
+    const S1 = window.__g.pairEnd({ knob:"burrowShare", was:window.__g.burrowShare(), rows:[
+      mk("intern",1,"off",10,0), mk("intern",1,"on",30,5),
+      mk("intern",2,"off",20,0), mk("intern",2,"on",30,5),
+      mk("scrap", 1,"off",10,0), mk("scrap", 1,"on",10,5) ] });
+    // 3. THE DIFFERENCE IS ON MINUS OFF, PAIRWISE - not a difference of means.
+    for(const p of S1.pairs) if(Math.abs(p.d - (p.on - p.off)) > 1e-9)
+      bad.push(`PAIR DIFFERENCE IS NOT ON MINUS OFF: ${p.key} d ${p.d} against ${p.on - p.off}`);
+    // 4. POOLING IS OVER CHARACTERS, NOT OVER PAIRS. intern's two pairs are +20
+    //    and +10 (mean 15) and scrap's single pair is 0, so pooling by character
+    //    gives 7.5 where pooling by pair would give 10. L20 showed the variance
+    //    lives between characters, so the character is the unit.
+    if(Math.abs(S1.pooled.mean - 7.5) > 1e-9)
+      bad.push(`POOLED MEAN IS NOT THE MEAN OF PER-CHARACTER MEANS: ${S1.pooled.mean}, expected 7.5 (pooling over pairs would give 10)`);
+    if(!S1.ok || S1.bad.length) bad.push(`CLEAN SYNTHETIC ROWS WERE FLAGGED: ${S1.bad.join("; ")}`);
+    // 5. A PAIR WHOSE ON HALF NEVER FIRED IS REJECTED, NOT AVERAGED IN. L20's
+    //    plant lesson as a clause: its censusGate passed a real planted bug
+    //    because the window held none of the phenomenon, so an ON half that
+    //    never fired must read as a MISSING trial and never as a zero effect.
+    const S2 = window.__g.pairEnd({ knob:"burrowShare", was:window.__g.burrowShare(), rows:[
+      mk("intern",1,"off",10,0), mk("intern",1,"on",10,0) ] });
+    if(S2.ok || !S2.bad.some(s=>/NEVER FIRED THE MECHANIC/.test(s)))
+      bad.push(`A PAIR THAT NEVER FIRED THE MECHANIC WAS ACCEPTED AS A ZERO EFFECT: ok ${S2.ok}, bad ${JSON.stringify(S2.bad)}`);
+    // --- AND THE TWO PROPERTIES THE WHOLE DESIGN RESTS ON, MEASURED LIVE ---
+    // 6. A TRIAL REPLAYS. Pairing is only common random numbers if the same
+    //    (character, seed, arm) gives the same run twice; if it does not, the
+    //    two halves of every pair differ by the mechanic AND by whatever else
+    //    drifted, and the experiment measures both. This is the property the
+    //    EID reset established, and it is the one a future edit is most likely
+    //    to break without noticing, because nothing about PLAYING the game
+    //    depends on it. NOTE: this clause legitimately fails in a session where
+    //    the other gates have already run - see pairInit's period-2 note - so
+    //    a bench is run BEFORE the gates, not after.
+    const rep = ()=>{ window.__g.pin(9); window.__g.pinRun(9 ^ 0x5f5f);
+                      window.__g.burrowShare(0);
+                      const r = window.__g.verbRun("intern", 300, 420, 3, true);
+                      return r.bf + "/" + r.hurtPerMin + "/" + r.nwPct; };
+    const r1 = rep(), r2 = rep();
+    window.__g.burrowShare(0.22); window.__g.pin(null); window.__g.pinRun(null);
+    if(r1 !== r2)
+      bad.push(`A PINNED TRIAL NO LONGER REPLAYS: same character, seed and arm gave ${r1} then ${r2} - pairing is not common random numbers and every paired difference contains the drift as well as the mechanic`);
+    // 7. AND THE WINDOW REALLY DOES CONTAIN THE PHENOMENON, proven by running
+    //    one live pair rather than asserting it. Minutes 6-8, the earliest
+    //    window the burrow is armed in: the ON half must fire and the OFF half
+    //    must not. This is the clause censusGate did not have.
+    const L = window.__g.pairRun({ chars:["intern"], seeds:[7], from:360, to:480 });
+    const on = L.rows.find(r=>r.arm === "on"), off = L.rows.find(r=>r.arm === "off");
+    if(!(on && on.fired > 0))
+      bad.push(`THE LIVE WINDOW CONTAINS NONE OF THE PHENOMENON: the ON half fired ${on ? on.fired : "n/a"} burrows over minutes 6-8, killR ${on ? on.killR : "n/a"} against the arming threshold`);
+    if(!(off && off.fired === 0))
+      bad.push(`THE CONTROL ARM FIRED THE MECHANIC: the OFF half fired ${off ? off.fired : "n/a"} burrows at share 0`);
+    // 8. AND THE DRIVER PUT THE KNOB BACK, or the next measurement in the
+    //    session silently inherits this one's arm.
+    if(window.__g.burrowShare() !== 0.22)
+      bad.push(`THE DRIVER DID NOT RESTORE THE KNOB: burrowShare is ${window.__g.burrowShare()}, not the 0.22 it started at`);
+    return { ok: !bad.length, bad, queue:Q.q.length, replay:r1 === r2,
+             live:L.rows.map(r=>r.arm + ":" + r.fired) }; },
   stoopGate:()=>{
     const bad = [], keep = enemies.slice(), kc = corpses.slice();
+    qaLive(bad, "THE STOOP GATE");            // L22: before anything, or clauses 4-6b read nothing
     const kr0 = killR, krn0 = killRN, sh0 = STOOP_SHARE;
     enemies.length = 0; corpses.length = 0; rebuildGrid();
-    killR = 30; killRN = 500; STOOP_SHARE = 1;         // arm it deterministically
+    qaArm(30); STOOP_SHARE = 1;         // L23: arm it deterministically AND HOLD it
     const far = () => { const e = spawnEnemy("runner", P.x + 26, P.z);
                         e.hp = e.maxhp; return e; };
     // 1. A HEALTHY FLIER DOES NOT CLIMB OUT. Same rule the dig-in has: this is
     //    the horde's last act, not an escape button on a full-health body.
-    const a = far(); hurt(a, a.maxhp * .10, 0, 0);
+    const a = far(); qaHurtTo(a, .90);
     if(a.stoop > 0) bad.push(`A HEALTHY FLIER CLIMBED OUT: hp ${(a.hp/a.maxhp).toFixed(2)} of max, over STOOP_HP ${STOOP_HP}`);
     // 2. A BADLY HURT ONE AT RANGE DOES.
-    const b = far(); hurt(b, b.maxhp * .80, 0, 0);
+    const b = far(); qaHurtTo(b, .20);
     if(!(b.stoop > 0)) bad.push(`A BADLY HURT FLIER DID NOT CLIMB OUT: hp ${(b.hp/b.maxhp).toFixed(2)} of max, under STOOP_HP ${STOOP_HP}, stoop ${(b.stoop||0).toFixed(3)}`);
     // 3. IT CANNOT BE HIT WHILE IT IS CLIMBING, which is the whole reason the
     //    mechanic is not just "it dies half a second later".
@@ -18363,6 +19397,7 @@ window.__g = {
     let wound = 0;
     for(let i=0;i<180;i++){ step(1/60); if(b.dead) break; if(b.dvW > 0) wound = 1; }
     // 7. ONCE PER BODY, EVER, or a flier ping-pongs overhead and is unkillable.
+
     b.dead = false; b.hp = b.maxhp * .05; b.stoop = 0;
     b.x = P.x + 26; b.z = P.z; hurt(b, 1, 0, 0);
     if(b.stoop > 0) bad.push(`A FLIER CLIMBED OUT TWICE: stooped ${b.stooped}, stoop ${(b.stoop).toFixed(3)}`);
@@ -18370,23 +19405,23 @@ window.__g = {
     //    alive, so routing it would replace a fight that was about to happen.
     enemies.length = 0; rebuildGrid();
     const c = spawnEnemy("runner", P.x + STOOP_MIN * .5, P.z);
-    hurt(c, c.maxhp * .90, 0, 0);
+    qaHurtTo(c, .10);
     if(c.stoop > 0) bad.push(`A FLIER INSIDE STOOP_MIN CLIMBED OUT: it was at ${(STOOP_MIN*.5).toFixed(1)} m, under STOOP_MIN ${STOOP_MIN}`);
     // 9. WALKERS ARE EXEMPT - they have the dig-in, and a shambler that climbs
     //    nine metres into the air is not the same animal.
     enemies.length = 0; rebuildGrid();
-    const w = spawnEnemy("shambler", P.x + 26, P.z); hurt(w, w.maxhp * .90, 0, 0);
+    const w = spawnEnemy("shambler", P.x + 26, P.z); qaHurtTo(w, .10);
     if(w.stoop > 0) bad.push(`THE STOOP APPLIES TO A WALKER: a SHAMBLER climbed out`);
     // 10. OFF IN THE EARLY GAME BY CONSTRUCTION, on the same measured killR the
     //     burrow, the rout and the dig-in read - not on a clock.
-    enemies.length = 0; rebuildGrid(); killR = 6; killRN = 500;
-    const e9 = spawnEnemy("runner", P.x + 26, P.z); hurt(e9, e9.maxhp * .90, 0, 0);
+    enemies.length = 0; rebuildGrid(); qaArm(6);
+    const e9 = spawnEnemy("runner", P.x + 26, P.z); qaHurtTo(e9, .10);
     if(e9.stoop > 0) bad.push(`THE STOOP FIRES IN THE EARLY GAME: it climbed at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
-    killR = kr0; killRN = krn0; STOOP_SHARE = sh0;
+    qaArm(null); killR = kr0; killRN = krn0; STOOP_SHARE = sh0;
     enemies.length = 0; corpses.length = 0;
     for(const e of keep) enemies.push(e);
     for(const e of kc) corpses.push(e);
-    rebuildGrid(); wardPass();
+    rebuildGrid(); wardPass(); qaSettle();   // L22: hand the next gate a live world
     return { ok: !bad.length, bad, cameInAt:+dS.toFixed(1), peak:+peak.toFixed(1), aimedAt:+aimed.toFixed(2), dove:!!dove }; },
   // THE SKY (L14), as the frame ACTUALLY drew it: the two colours the gradient
   // runs between are read back off the arrays handed to box(), never off the
