@@ -1142,6 +1142,10 @@ function bindAttribs(){
 // Two quads at 45 degrees make an octagon for two boxes. The ground tint comes
 // from the biome, which the terrain is already coloured from, so a shadow on
 // the ash reads warm and a shadow on the glacier reads cold.
+// THE SHADOW'S OWN COLOUR, pulled out of shadow() so a contrast check can call
+// the exact expression the renderer uses instead of a second copy of it - see
+// the note two screens up about a duplicated formula not catching a recolour.
+const shadowCol = (b, m)=> [ b.a[0]*m, b.a[1]*m, b.a[2]*m*1.04 ];
 function shadow(x, y, z, r, lift, yaw, soft, mOverride){
   const b = biomeAt(x, z);
   // how far off the ground: fades and spreads, the way a real one does
@@ -1158,7 +1162,7 @@ function shadow(x, y, z, r, lift, yaw, soft, mOverride){
   // caller leaves it undefined and gets exactly what it always got.
   const m = mOverride !== undefined ? mOverride
           : soft ? (.62 + soft*.26) : (.30 + (1 - k) * .34);
-  const col = [ b.a[0]*m, b.a[1]*m, b.a[2]*m*1.04 ];
+  const col = shadowCol(b, m);
   box(x, y + .035, z, sp*1.02, .028, sp*1.02, col, 0, yaw || 0);
   // The second quad is what turns a square into an octagon, and it is the one
   // thing here that costs. A creature is worth two boxes; a gem lying on the
@@ -18673,6 +18677,19 @@ window.__g = {
     return { id:bm.id, nm:bm.nm, unbuyable: over > 0, over:+over.toFixed(4),
              shadowM:+rec.shadowM.toFixed(4), defM:+(.62+.02*.26).toFixed(4),
              lumDark: +floorLum(bm, 0, rec.h, rec.n, S).toFixed(4) }; }),
+  // THE CONTRAST A PLAYER ACTUALLY SEES, not the general terrain's own reserve
+  // number. shadowStats and reserves() both describe the AMBIENT floor - the
+  // colour away from any chip - which for a naturally pale region (sand, ice)
+  // stays over ceiling no matter how far the reserve is cut, because even that
+  // region's own darkest natural tone is too bright. The chip's shadow is a
+  // SEPARATE decal drawn at the chip's own position (shadowCol, in shadow()),
+  // and this is what a player is actually looking at when a pickup is on
+  // screen: shadowCol(bm, chipShadowMOf(bm)), lit the same way the world is.
+  chipShadowContrast: ()=>BIOMES.map(bm=>{
+    const m = chipShadowMOf(bm), col = shadowCol(bm, m), S = skyAt(0);
+    const lum = litLum(col, [0,1,0], S);
+    return { id:bm.id, nm:bm.nm, m:+m.toFixed(4), col:col.map(v=>+v.toFixed(4)),
+             lum:+lum.toFixed(4), contrast:+wcag(CHIP_LUM(), lum).toFixed(3) }; }),
   // shadowGate (the seventeenth): checks the DERIVATION, not a hand-typed list
   // of seven region names, which would go stale the moment a region's tones
   // are retuned - "unbuyable" is read straight off the same `over` quantity

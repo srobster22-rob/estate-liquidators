@@ -9077,16 +9077,27 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // the WCAG floor requires, so a buyable region is untouched and an
       // unbuyable one is pushed exactly onto the line.
       out.shadow = g.shadowGate();
-      // ...but shadowGate checks the DERIVATION against READ_CEIL(), which is
-      // itself built from READ_MIN - so a corrupted READ_MIN and a gate that
-      // reads it back agree with each other by construction. Measured: with
-      // READ_MIN dropped from 3 to 2.5 the gate still reports ok:true, 5
-      // buyable and 5 unbuyable (no vacuous null control), while the actual
-      // worst on-screen contrast - g.reserves()'s own cTop, independent of
-      // READ_CEIL - falls to 1.109. This reads that number against the
-      // published WCAG bar itself, 3.0, not against whatever the build
-      // currently believes it is.
-      out.reserves = g.reserves ? g.reserves() : [];
+      // ...but shadowGate reads RESERVE_CACHE - the DERIVATION - and has no
+      // view of the LIVE RENDER PATH, chipShadowMOf(), which is the function
+      // shadow() actually calls. chipShadowContrast replays shadow()'s OWN
+      // colour formula (shadowCol, pulled out of the renderer so this cannot
+      // drift from it) at the value chipShadowMOf() actually returns right
+      // now, lit the same way the world is, and reads the result against the
+      // published WCAG bar - 3.0 - rather than against the cache.
+      //
+      // reserves().cTop was tried here first and it is the WRONG quantity:
+      // it is the general terrain's own brightest allowed AMBIENT tone (the
+      // floor away from any chip), which a naturally pale region - sand, ice
+      // - cannot bring under 3.0 by reserve alone, because even that
+      // region's own darkest natural colour is already over ceiling. That
+      // is exactly what the chip's own shadow decal exists to fix, and cTop
+      // does not include it: measured, DUSTSEA read cTop 1.15 while its
+      // actual shadowCol contrast is 15.6. And the gap this is really for:
+      // breaking chipShadowMOf's own on/off check (CHIP_SHADOW_ON flipped in
+      // the condition, so it returns the unshadowed default while claiming
+      // the shadow is on) leaves shadowGate at ok:true - it never calls the
+      // live function - while THE GLACIER's real contrast falls to 2.777.
+      out.chipShadow = g.chipShadowContrast ? g.chipShadowContrast() : [];
       return out;
     });
     const say = r => (r && r.bad && r.bad.length) ? r.bad.join(" | ") : "clean";
@@ -9147,14 +9158,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        gates.shadow.ok, say(gates.shadow) +
        `  (${gates.shadow.buyableCount} buyable, ${gates.shadow.unbuyableCount} unbuyable)`);
     // THE INDEPENDENT ONE, against the WCAG literal rather than the build's own
-    // READ_MIN - see the comment where this was gathered for the measurement
-    // that says why the gate above cannot be trusted alone.
-    const worstC = gates.reserves.length ? Math.min(...gates.reserves.map(r => r.cTop)) : null;
-    ok("L29's own bar actually holds: no region's brightest allowed floor tone drops the WCAG contrast below 3.0",
-       worstC !== null && worstC >= 3 - 1e-6,
-       gates.reserves.length
-         ? `worst cTop ${worstC.toFixed(3)} (${gates.reserves.find(r => r.cTop === worstC).nm})`
-         : "g.reserves() returned nothing");
+    // READ_MIN - see the comment where this was gathered for what reserves()
+    // gets wrong and why this reads the chip's own shadow decal instead.
+    const worstS = gates.chipShadow.length ? Math.min(...gates.chipShadow.map(r => r.contrast)) : null;
+    ok("L29's own bar actually holds: the chip's own shadow decal keeps every region's contrast at or above 3.0",
+       worstS !== null && worstS >= 3 - 1e-6,
+       gates.chipShadow.length
+         ? `worst ${worstS.toFixed(3)} (${gates.chipShadow.find(r => r.contrast === worstS).nm})`
+         : "g.chipShadowContrast() returned nothing");
   }
 
   // ==========================================================================
