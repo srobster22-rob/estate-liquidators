@@ -1635,6 +1635,75 @@ function mulberry32(a){
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
+// THE SHUFFLE (L38). The world used to shuffle by sorting with a comparator
+// that returned `wr() - .5`, and a comparator that answers at random is
+// INCONSISTENT, for which the language
+// leaves the resulting order implementation-defined. V8 honoured that to the
+// letter: for the first few hundred sort() calls a page makes it runs a binary
+// insertion sort, and after that it switches to a different path that asks the
+// comparator a different number of questions - so `pin(101)` rolled THE
+// HOTSPRINGS first on a fresh load and THE TARPITS first once the page had sorted
+// enough things (a different count of draws, so a different world). That is the bench
+// history leak L37 filed: a character benched late in a page played on another
+// map. This is the fresh-load order written down as code - binary insertion,
+// each comparison one draw, `< .5` meaning "goes left" - so every pinned world
+// that existed stays byte-identical and no longer depends on the page's past.
+// leakGate replays it against a cold sort() and holds both call sites to it.
+//
+// L38b - THIS WAS ONE PHASE SHORT. Written and merged as pure binary insertion
+// from s=1, and leakGate caught it the first time it was ever run: on this
+// build's own Chromium, wshuffle disagreed with WSHUFFLE_COLD - computed by the
+// real engine, in the same page, moments earlier - on every one of the six
+// reference seeds. V8's Array.prototype.sort is TimSort, and TimSort does not
+// binary-insert from the first element; it first COUNTS THE NATURAL RUN already
+// sitting at the front (comparing each element to the one before it, one draw
+// per comparison, extending while the direction holds and reversing outright if
+// that direction turned out to be descending) and only falls back to binary
+// insertion for whatever comes after that run. A random comparator still walks
+// this path - it just settles the run's length and direction by chance instead
+// of by content - and every one of those comparisons is a draw wshuffle was not
+// spending, which is why the shipped version consumed a different number of
+// draws than the real sort on five of six seeds and landed on a different
+// permutation on all six.
+// PROVEN, not eyeballed: instrumented a stable numeric comparator against
+// hand-built inputs (an intact ascending run with one out-of-place tail element;
+// a short run followed by a reversed tail) and read back the exact sequence of
+// pairs V8 asked for. The run-scan takes one comparison per index while the
+// direction holds, plus the one that breaks it; the insertion phase then reruns
+// the SAME binary search this function already had, from the end of the run
+// rather than from index 1. Reassembled below, it reproduces WSHUFFLE_COLD on
+// this build across all six reference seeds and 500 further random ones with
+// zero mismatches - draw for draw, permutation for permutation.
+function wshuffle(a, rng){
+  const n = a.length;
+  let runLen = 1;
+  if(n > 1){
+    if(rng() - .5 < 0){                       // descending: extend, then flip
+      let i = 2; while(i < n && rng() - .5 < 0) i++;
+      runLen = i;
+      for(let lo = 0, hi = runLen - 1; lo < hi; lo++, hi--){
+        const t = a[lo]; a[lo] = a[hi]; a[hi] = t;
+      }
+    } else {                                  // ascending: just extend
+      let i = 2; while(i < n && rng() - .5 >= 0) i++;
+      runLen = i;
+    }
+  }
+  for(let s = runLen; s < n; s++){
+    const pv = a[s]; let l = 0, r = s;
+    while(l < r){ const m = l + ((r - l) >> 1); if(rng() - .5 < 0) r = m; else l = m + 1; }
+    for(let p = s; p > l; p--) a[p] = a[p-1];
+    a[l] = pv;
+  }
+  return a;
+}
+// The fresh-load order, TAKEN RATHER THAN TYPED: while the page is still loading
+// the engine's sort is on its cold path, so this is what every pinned world was
+// rolled with before L38. leakGate holds wshuffle to it, seed for seed - the
+// one sanctioned random-comparator sort in the page, and it runs once.
+const WSHUFFLE_SEEDS = [3, 9, 77, 101, 4242, 542389936];
+const WSHUFFLE_COLD = WSHUFFLE_SEEDS.map(s => { const w = mulberry32(s);
+  return [0,1,2,3,4,5,6,7,8].sort(() => w() - .5).join() + "#" + w(); });
 let wr = Math.random;                       // the world stream
 // Set either and every run repeats. Null means roll a fresh one.
 let pinSeed = null, pinRun = null;
@@ -1648,7 +1717,7 @@ function rollWorld(seed){
   RESERVE_CACHE.clear();
   SIL_SET = null;   // L30: derived from RESERVE_CACHE, so a new world invalidates it too
   wr = mulberry32(worldSeed);
-  const pool = BIOMES.filter(b => b.id !== "grass").sort(()=> wr() - .5);
+  const pool = wshuffle(BIOMES.filter(b => b.id !== "grass"), wr);   // L38: never .sort(random)
   // Region count scales with area or a ten-times map is five enormous colour
   // fields you cross once. One region per ~17,000 square metres, which is about
   // what a single region covered when the arena was 84m.
@@ -1773,7 +1842,7 @@ function rollWorld(seed){
 // from a function that runs at module scope is a TDZ error at load, and it took
 // the whole QA hook down with it.
 function dealDens(){
-  const deal = BOONS.slice().sort(()=> wr() - .5);
+  const deal = wshuffle(BOONS.slice(), wr);                           // L38: see wshuffle
   let di = 0;
   for(const m of marks) if(m.den) m.boon = deal[di++ % deal.length];
 }
@@ -3115,8 +3184,60 @@ glass:      { name:"GLASS",       ic:"crit",       kind:"r", max:1, eff:"+40% DM
 tide:       { name:"TIDEBORN",    ic:"scrap",      kind:"r", max:1, eff:"FIRE \u2192 WATER",
               ds:"Your coat turns to tide. Lakes are yours; THE GLACIER is home, THE CINDERFLATS burn.",
               bar: ()=>lineAqua() },
+// THE MUTATION (L36). The owner's upgrades item asks for picks that change
+// how the character PLAYS - "a companion, fire -> water mid-run, mutations".
+// The water swap is TIDEBORN above and the companion is BROOD's pack; there
+// was no mutation. RAMHORN is one, built only from systems the game already
+// has: the RUSH a kill gives you (the meter under the chain bar), the
+// knockback every weapon throws, and the bite's wind-up. While the rush is
+// up, running INTO an animal bonks it - hit, thrown aside, and its bite
+// wind-up knocked out of it - so the run stops being a kite and becomes a
+// charge: kill something, then go through the pile while the meter lasts.
+// A horn grows on your snout and glows with the meter. It is YOUR body's
+// mutation: THE SPLIT's second creature does not grow it and does not
+// trample (the twin-shooting question stays the owner's), and it adds no
+// body to the field. It takes a rule slot, so it costs a rule. MUT_ON is
+// its OFF SWITCH (window.__g.mutation): off, the card never enters the draft
+// and a kit that holds it tramples nothing and grows no horn.
+ram:        { name:"RAMHORN",     ic:"stampede",   kind:"r", mut:1, lv:"MUTATION", max:1, eff:"RUSH = TRAMPLE",
+              ds:"Mutation. After a kill, run into them: every animal you hit is bonked aside and forgets its bite.",
+              bar: ()=>!MUT_ON || ramGive >= 0 },
+// THE SECOND MUTATION (L39), on a different verb: THE HOP. RAMHORN changed
+// what a kill is for; SPRINGHEEL changes what a hop is for. Every bite in
+// this game is TOLD - the animal rears back (the wind-up) and the bite lands
+// when the wind-up runs out, IF you are still there; the game already
+// teaches "step out of it". With SPRINGHEEL you can also go OVER it: a bite
+// that snaps while your feet are off the ground misses, exactly as a
+// stepped-out bite does. So the hop stops being only a speed chain and
+// becomes the dodge - watch the rear-back, jump the snap. Only the told
+// bite: a diving bird still comes from above, a boss's beat still lands,
+// spit still flies. Coiled springs grow under your haunches. Like RAMHORN it
+// is YOUR body's: THE SPLIT's second creature grows no springs and has no
+// bite to dodge (bites only ever land on you), and it adds no body. It takes
+// a rule slot. MUT_ON is its off switch too - one switch for every mutation.
+spring:     { name:"SPRINGHEEL",  ic:"boots",      kind:"r", mut:1, lv:"MUTATION", max:1, eff:"HOP = DODGE",
+              ds:"Mutation. Springs grow on your haunches: a bite that snaps while you are in the air misses. Jump the rear-back.",
+              bar: ()=>!MUT_ON || springGive >= 0 },
 };
-const RULE_THIRD = 30;                                  // a third rule slot opens here
+let MUT_ON = true;                                      // THE OFF SWITCH (window.__g.mutation) - ships true
+// the trample: body radius it reaches past your centre, base hit, shove, and
+// how long one animal is safe from a second bonk (so a pile is bonked once
+// per pass, not sixty times a second); RAM_DAZE holds a bonked body off its
+// next rear-back for ~.3 s (e.lg bleeds at 3.2/s)
+const RAM_R = 1.1, RAM_DMG = 16, RAM_KB = 22, RAM_CD = .45, RAM_DAZE = 1;
+// ramGive is the paired bench's arm: -1 = not benching (ships -1); 0 = OFF arm,
+// 1 = ON arm. Both bench arms keep the card OUT of the draft - otherwise the
+// autopilot drafts it by itself in the OFF arm and the control is not a
+// control (L36 caught exactly that: intern seed 202's OFF half trampled 177
+// times) - and the ON arm is handed it at the window's first frame.
+let ramN = 0, dmgRam = 0, ramGive = -1;
+// SPRINGHEEL's tally (bites it made miss) and its bench arm, the same contract
+// as ramGive: -1 ships; 0 / 1 keep the card out of the draft in both arms and
+// the ON arm is handed it at the window's first frame.
+let springN = 0, springGive = -1;
+// the dodge itself: pure on the player's own state, so the gate stages it
+function springDodge(p){ return !!(MUT_ON && p && !p.twinOf && p.kit && p.kit.spring && p.air); }
+const RULE_THIRD = 30;                                 // a third rule slot opens here
 const GLASS_DMG = 1.4, GLASS_HP = .6, AFTERBURN_DRAIN = 1/3;
 const BIG_MUL = 1.105;                                  // BIGGER, per pick: x1.35 at three
 const isRule = k => !!(PASSIVES[k] && PASSIVES[k].kind === "r");
@@ -9453,7 +9574,7 @@ function startRun(id){
   // one's radius and burrows from second zero - which is exactly the early game
   // this mechanic is built not to touch. Caught by the round's own A/B bench,
   // where the burrow tally carried over between runs.
-  killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0;
+  killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0; ramN = 0; dmgRam = 0; springN = 0;
   // AND THE BODY SERIAL, which stopped being a label the moment L17 hashed it.
   // routRoll, digRoll and stoopRoll are all deterministic functions of e.eid -
   // that is the whole reason they exist, so that deciding "can this body panic"
@@ -10219,6 +10340,10 @@ const GROW_TEETH = .22, GROW_LEGS = .12, GROW_NECK = .07, GROW_CLAWS = .25,
 // subjects from PASSIVES and fails any part card that changes no geometry.
 const HEART_S0 = .035, HEART_S1 = .022, HEART_HZ0 = .9, HEART_HZ1 = .3,
       NOSE_S0 = .028, NOSE_S1 = .014;
+// the sniff's twitch (seed, period) and the clock of its peak (u = .5 in
+// twitch()), so partGate can judge the nose at its worst moment on any page
+const NOSE_SNIFF = [2.3, 2.1],
+      NOSE_PEAK = (((.11 - NOSE_SNIFF[0] * 1.7) % NOSE_SNIFF[1]) + NOSE_SNIFF[1]) % NOSE_SNIFF[1];
 // partGate's ratchet, per card: "all" = grows on every body plan at every
 // stage, or the number of (plan, stage) forms it grew on when L34 first
 // measured it. L34 counted three (teeth 25, legs 22, claws 24 of 45: the
@@ -10577,6 +10702,28 @@ function stomp(){
   dmgStomp += dmgDealt - d0;
   shake = Math.max(shake, .10);
   SFX.boom();
+}
+// RAMHORN, the mutation (L36): see its card. Only the player's own body, only
+// while moving with a rush up, never a boss (a boss is the one fight about
+// spacing, the same reason RIPTIDE leaves it alone). Rolled through dmgOut
+// like a weapon, once per frame's bonks.
+function ramMaybe(){
+  if(!MUT_ON || !P || !P.kit.ram || !(P.rush > 0) || P.idle) return 0;
+  const r = RAM_R;
+  let roll = null, n = 0;
+  hitNear(P.x, P.z, r, (e, d)=>{
+    if(e.boss || e.dead || (e.ramT || 0) > T) return;
+    if(!roll) roll = dmgOut(RAM_DMG);
+    e.ramT = T + RAM_CD;
+    const dd = Math.max(.001, d), k = RAM_KB / Math.max(.6, d), h0 = dmgDealt;
+    hurt(e, roll.d, (e.x-P.x)/dd*k, (e.z-P.z)/dd*k, roll.crit);
+    dmgRam += dmgDealt - h0;
+    if(!e.dead){ e.wu = 0; e.wd = 0; e.lg = Math.max(e.lg || 0, RAM_DAZE); }
+    ramN++; n++;
+  });
+  if(n){ rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:r*1.8, life:.18, mx:.18 });
+         shake = Math.max(shake, .06); }
+  return n;
 }
 function firePulse(w,s){
   statRings++;
@@ -11961,7 +12108,10 @@ function updateEnemies(dt){
         e.wu -= dt;
         if(e.wu <= 0){
           e.wu = 0;
-          if(reach && P.iframe <= 0){
+          // SPRINGHEEL (L39): a bite that snaps under your feet misses
+          const jumped = reach && P.iframe <= 0 && springDodge(P);
+          if(jumped) springN++;                     // and it whiffs, below, like a step-out
+          if(reach && P.iframe <= 0 && !jumped){
             playerHurt(e.dmg, e.x, e.z); P.iframe = BITE_REST;
             // THE FIRST BITE TEACHES. Once, ever: the one moment a new player
             // has just watched an animal rear back and then felt it land is the
@@ -12467,7 +12617,7 @@ function offers(excl){
     if(shut(k)) continue;
     if(isRule(k)){
       if(!p && !noRules && rCount < ruleSlots() && P.lvl >= RULE_FROM && !(P2.bar && P2.bar()))
-        pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:"RULE", ds:P2.ds, weight:8 });
+        pool.push({ type:"new", key:k, ic:P2.ic, nm:P2.name, lv:P2.lv || "RULE", ds:P2.ds, weight:8 });
       continue;
     }
     if(p){ if(p.l+1 >= P2.max) continue;
@@ -12593,14 +12743,15 @@ const FAM = {
   w:    { word:"WEAPON",    ac:"#f0b429" },
   u:    { word:"GROWTH",    ac:"#f0b429" },
   rule: { word:"RULE",      ac:"#3ad0a0" },
-  evo:  { word:"EVOLUTION", ac:"#ff7a3d" },
+  mut:  { word:"MUTATION",  ac:"#ff4f8b" },
+  evo: { word:"EVOLUTION", ac:"#ff7a3d" },
   mast: { word:"MASTERY",   ac:"#ffe08a" },
   heal: { word:"SNACK",     ac:"#6ddba0" },
 };
 function cardFamily(o){
   if(o.type === "heal") return "heal";
   if(o.type === "evo") return "evo";
-  if(isRule(o.key)) return "rule";
+  if(isRule(o.key)) return PASSIVES[o.key].mut ? "mut" : "rule";
   if(o.lv === "MASTERY") return "mast";
   return WEAPONS[o.key] ? "w" : "u";
 }
@@ -12866,6 +13017,7 @@ function applyPassive(k){
     // region re-announce under the new element.
     case "tide":    { alert2("TIDEBORN \u00b7 THE FIRE GOES OUT", "#5ec8e8"); flash = .5;
                       lastWet = null; lastAff = null; } break;
+    case "ram":     alert2("RAMHORN · KILL, THEN CHARGE", "#ff4f8b"); break;
   }
 }
 // recompute from base each time so ranks never compound into nonsense
@@ -12996,6 +13148,64 @@ let botDrive = false;
 // the frame it lands, i.e. perfectly, which is the ceiling and not the median;
 // botHop(false) benches the floor.
 let botHop = true;
+// THE CHARGING BOT (L37). The autopilot above KITES: it penalises every
+// heading into teeth, so a card whose whole point is running INTO the horde
+// (RAMHORN) could only ever be measured on the bodies that caught it. A bench
+// that cannot exercise the thing it measures is this project's recurring
+// defect, so the bench now has a second policy: while the rush meter is up it
+// picks the densest nearby knot of bodies (most neighbours within CHARGE_KNOT)
+// inside CHARGE_SEEK and runs straight at its middle; with no rush it kites
+// exactly as before. It never reads the card - with RAMHORN off it charges all
+// the same and bonks nothing, which is its null control. QA-only: ships false,
+// and while false botVector is byte-for-byte the old path (no draw, no state).
+let botCharge = false, chargeF = 0;
+const CHARGE_SEEK = 14, CHARGE_KNOT = 3;
+// PURE: given the player and the bodies, the heading to the densest knot, or
+// null (no rush, nothing to charge). Bosses are not a knot: RAMHORN exempts
+// them, and the kiting terms already handle a boss.
+function chargeAim(p, bodies){
+  if(!(p.rush > 0)) return null;
+  const c = bodies.filter(e => !e.dead && !e.boss && Math.hypot(e.x-p.x, e.z-p.z) <= CHARGE_SEEK);
+  let best = null, bn = -1, bd = 1e9;
+  for(const e of c){
+    let n = 0, sx = 0, sz = 0;
+    for(const f of c){ if(Math.hypot(f.x-e.x, f.z-e.z) <= CHARGE_KNOT){ n++; sx += f.x; sz += f.z; } }
+    const d = Math.hypot(e.x-p.x, e.z-p.z);
+    if(n > bn || (n === bn && d < bd)){ bn = n; bd = d; best = { x:sx/n, z:sz/n, n }; }
+  }
+  if(!best) return null;
+  const dx = best.x - p.x, dz = best.z - p.z, m = Math.hypot(dx, dz);
+  if(m < .05) return [Math.sin(p.face || 0), Math.cos(p.face || 0)];   // at its heart: keep going through
+  return [dx/m, dz/m, best.n];
+}
+// THE TELL BOT (L40). SPRINGHEEL rewards one play - stand your ground and hop
+// ON the rear-back - and neither bench bot makes it: the kiting bot hops on
+// every landing frame (airborne ~99% of the time, so a bite rarely resolves in
+// reach at all) and the charging bot only hops the same way. This third policy
+// steers like the kiting bot with one term changed and never hops for rhythm:
+// it stays on the ground, stands at the horde's edge (it gives way only inside
+// TELL_HOLD, where the kiting bot runs from 7.5 m - measured first: with the
+// kiting distance kept, the ground bot was never in bite reach at all and hopped
+// 0-1 tells in ten minutes) and jumps only when a body in reach is rearing back
+// (its wind-up running, e.wu > 0), which is the tell the game teaches ("IT
+// REARED BACK FIRST"). It never reads the card - with SPRINGHEEL off it hops
+// the same tells and dodges nothing, which is its null control. QA-only: ships
+// false, and while false botVector and the hop line in step() are the old
+// lines exactly.
+let botTell = false, tellF = 0;
+const TELL_HOLD = 1.2;
+// PURE: is a told bite coming for p right now? The same reach test the bite
+// itself uses (d < e.rad + .75), a living body, its wind-up running, not a
+// dive (a dive has no rear-back) and not a boss mid-ability (that beat owns
+// its pose and sets e.wu = 0 itself).
+function tellDue(p, bodies){
+  for(const e of bodies){
+    if(e.dead || !(e.wu > 0) || e.dvT > 0 || (e.def && e.def.ranged)) continue;
+    if(e.boss && e.ab && (e.ab.phase === "tell" || e.ab.phase === "act")) continue;
+    if(Math.hypot(e.x - p.x, e.z - p.z) < e.rad + .75) return true;
+  }
+  return false;
+}
 const BOT_DIRS = 20, BOT_BACKOFF = .35;
 // THE CLUMSY BOT. The autopilot steers every frame, hops on the landing
 // frame every time and reads a telegraph the instant it appears - a ceiling,
@@ -13177,6 +13387,7 @@ function hudClearRect(x0, x1, y0, h){
 const BOT_LAG = .35, BOT_HOP_ODDS = .65, BOT_REACT = .55;
 const _bx=[], _bz=[], _bd=[];
 function botVector(){
+  if(botCharge){ const c = chargeAim(P, enemies); if(c){ chargeF++; return [c[0], c[1]]; } }
   const gw = P && P.kit.gore;
   const goreLane = gw ? wStat(gw).rng * P.reach : 0;
   _bx.length = _bz.length = _bd.length = 0;
@@ -13194,6 +13405,9 @@ function botVector(){
   // had a second's warning of (R245). A player backs off to recover; the
   // bot did not know how. Under BOT_BACKOFF it stops closing and the older
   // kiting terms take over.
+  // L40: the tell bot stands its ground - it gives way only inside TELL_HOLD,
+  // so bodies reach it and rear back; every other bot keeps its 7.5 m.
+  const teeth = botTell ? TELL_HOLD : 7.5;
   const fin = (P.hp > P.maxhp * BOT_BACKOFF) ? (enemies.find(e => e.boss && !e.dead && (!e.final || sudden)) || null) : null;
   let bestA = 0, best = -1e9;
   for(let i=0;i<BOT_DIRS;i++){
@@ -13204,7 +13418,7 @@ function botVector(){
     for(let k=0;k<_bd.length;k++){
       const d = _bd[k], proj = (_bx[k]*dx + _bz[k]*dz)/d;
       if(proj <= 0) continue;
-      if(d < 7.5)      s -= proj*(7.5-d)*5.0;             // do not walk into teeth
+      if(d < teeth)    s -= proj*(teeth-d)*5.0;           // do not walk into teeth
       else if(d < 19)  s += proj*0.30;                    // but stay where weapons reach
       // Carrying GORE changes what a good heading is. It is the one weapon that
       // fires along the way you are MOVING, so a player holding it turns into
@@ -13341,7 +13555,12 @@ function step(dt){
     else v = botVector();
     dx=v[0]; dz=v[1];
     if(P.air) P.hopDecided = false;
-    if(botHop && !P.air && (dx||dz)){
+    // L40: THE TELL BOT hops the tell, never the rhythm - and holds still while
+    // the tell runs, so what saves it is the hop and not the step it would take
+    // away (measured first: hopping on the move, 49 tell hops made 1 dodge,
+    // because the run-off carried it out of reach before the bite resolved).
+    if(botTell){ if(tellDue(P, enemies)){ dx = dz = 0; if(!P.air){ tellF++; jumpPressed(); } } }
+    else if(botHop && !P.air && (dx||dz)){
       if(!botClumsy) jumpPressed();
       else {
         if(!P.hopDecided){ P.hopDecided = true; P.hopGo = R() < BOT_HOP_ODDS; P.hopWait = .5; }
@@ -13481,6 +13700,7 @@ function step(dt){
   // every change of direction was a cut. It eases now - a quarter turn in
   // about a fifth of a second - and the bank already answers the rate.
   if(dx || dz){ P.faceWant = Math.atan2(dx, dz); P.idle = 0; } else P.idle = 1;
+  ramMaybe();                                           // RAMHORN (L36): the rush tramples
   if(P.faceWant !== undefined){
     const d = wrapAng(P.faceWant - P.face);
     P.face = wrapAng(P.face + (Math.abs(d) < .012 ? d : d * (1 - Math.pow(1.7e-5, dt))));   // ~11/s: 95% of a turn in .27 s
@@ -15210,6 +15430,37 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const rkTeeth = growRank(P, "spinach"), rkLegs = growRank(P, "boots"), rkClaws = growRank(P, "clover");
   const noTeeth = rkTeeth && !usedTeeth, noLegs = rkLegs && !(legTopSeen > legBotSeen), noClaws = rkClaws && !usedClaws;
   PART_FB = { spinach: !!(PARTS_ON && noTeeth), boots: !!(PARTS_ON && noLegs), clover: !!(PARTS_ON && noClaws) };
+  // RAMHORN (L36): the mutation grows a horn on YOUR snout - never on THE
+  // SPLIT's second creature (P.twinOf), which neither grows it nor tramples.
+  const gRam = !!(MUT_ON && !P.twinOf && P.kit && P.kit.ram);
+  if(gRam && partNoseF > -1e8){
+    const s = .05, glow = Math.min(1, P.rush || 0);
+    fx(0, partNoseF - s * 1.2, partNoseY + partNoseH + s * .8, s, s * .9, s * 1.1, [.95, .90, .80], .12 + .5 * glow);
+    fx(0, partNoseF - s * .9, partNoseY + partNoseH + s * 2.4, s * .55, s * 1.0, s * .6, [1, .55 + .3 * (1 - glow), .45], .2 + .7 * glow);
+    if(bodyPos){ bodyPos.push(0, partNoseF - s * 1.2, partNoseY + partNoseH + s * .8, s, s * 1.1, s * .9);
+                 bodyPos.push(0, partNoseF - s * .9, partNoseY + partNoseH + s * 2.4, s * .55, s * .6, s * 1.0); }
+  }
+  // SPRINGHEEL (L39): a coiled spring grows under the rearmost box of YOUR
+  // body - the haunch, or the tail tip on a long body - never on THE SPLIT's
+  // second creature. Four steel coils wound on a post hung from that box's
+  // underside; they open out while you are in the air, so the thing that is
+  // saving you right now is visibly sprung.
+  const gSpring = !!(MUT_ON && !P.twinOf && P.kit && P.kit.spring);
+  if(gSpring && partTailF < 1e8){
+    const s = Math.max(.045, Math.min(.07, partTailHx * 1.2)), gap = P.air ? s * .55 : s * .18;
+    let y = partTailY - partTailHy;                 // the box's underside
+    const f = partTailF + s * 1.1, hy0 = s * .22, H = 4 * 2 * hy0 + 3 * gap;
+    // the post the coils wind round, so nothing hangs in the air
+    fx(partTailR, f, y - H / 2, s * .25, H / 2, s * .25, [.40, .32, .16], 0);
+    if(bodyPos) bodyPos.push(partTailR, f, y - H / 2, s * .25, s * .25, H / 2);
+    for(let i = 0; i < 4; i++){
+      const hy = s * .22, w = s * (i % 2 ? .78 : 1);
+      y -= hy;
+      fx(partTailR, f, y, w, hy, w, i % 2 ? [.22, .24, .28] : [.80, .84, .90], .10);   // steel: gold read as the fire guy's own tail flame
+      if(bodyPos) bodyPos.push(partTailR, f, y, w, w, hy);
+      y -= hy + gap;
+    }
+  }
   if(PARTS_ON && (GR.heart || GR.nose || noTeeth || noLegs || noClaws)){
     const part = (r,f,y,hx,hy,hz,col,em2)=>{
       fx(r,f,y,hx,hy,hz,col,em2);
@@ -15227,8 +15478,12 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
            [1, .22 + .25 * b, .18], .55 + .45 * b);
     }
     if(GR.nose && partNoseF > -1e8){
-      const s = NOSE_S0 + NOSE_S1 * GR.nose, sn = twitch(2.3, 2.1) * .012;
-      part(0, partNoseF + s * .45 + sn, partNoseY + Math.min(partNoseH * .35, s * .5), s * 1.15, s * .8, s * .55,
+      const s = NOSE_S0 + NOSE_S1 * GR.nose, sn = twitch(NOSE_SNIFF[0], NOSE_SNIFF[1]) * .012;
+      // the sniff STRETCHES the tip forward from a fixed root (L39): it used
+      // to slide the whole nose forward, which lifted it off the snout at the
+      // peak of every sniff - partGate caught that only when the clock
+      // happened to sit on a peak, which is why its verdict followed the page
+      part(0, partNoseF + s * .45 + sn / 2, partNoseY + Math.min(partNoseH * .35, s * .5), s * 1.15, s * .8, s * .55 + sn / 2,
            [.10, .07, .08], 0);
     }
     // THE BODIES THE CARDS FOUND NOTHING ON (L35). partGate found 64 (card,
@@ -15773,9 +16028,14 @@ function render(){
   // top-down shot, which is ugly for a second and never blind.
   k = clamp(k, .18, 1);
   const hgt2 = hgt * (1 + (1-k)*0.85);
-  const eye = [ cax + ox*k + rnd(-sk,sk),
-                cay + hgt2 + rnd(-sk,sk),
-                caz + oz*k + rnd(-sk,sk) ];
+  // crnd, NOT rnd (L38). rnd() is the seeded RUN stream; render() is called by
+  // the real-time loop only when the page is on screen, so three draws here per
+  // painted frame made every pinned bench depend on whether a frame happened to
+  // be painted between two of its chunks - the "bench history leak" L37 filed.
+  // leakGate holds render() to zero draws from the run stream.
+  const eye = [ cax + ox*k + crnd(-sk,sk),
+                cay + hgt2 + crnd(-sk,sk),
+                caz + oz*k + crnd(-sk,sk) ];
   // Hard backstop. Shortening the boom cannot on its own keep the eye inside:
   // the floor on k is 0.18, that is still two metres of boom, and a player
   // standing 1.5m off the wall has 1.5m of room - so the eye finished at 84.1
@@ -17129,8 +17389,9 @@ function render(){
                        a.fat ? .12 : .08, a.fat ? .12 : .08, len, [1,1,1], al, Math.atan2(dx,dz));
       for(let k=0;k<n;k++){
         const t=k/n;
-        box(lerp(p0[0],p1[0],t)+rnd(-.22,.22), lerp(p0[1],p1[1],t)+rnd(-.22,.22),
-            lerp(p0[2],p1[2],t)+rnd(-.22,.22), sz,sz,sz,
+        // cosmetic jitter: crnd, never the run stream (L38, see the eye above)
+        box(lerp(p0[0],p1[0],t)+crnd(-.22,.22), lerp(p0[1],p1[1],t)+crnd(-.22,.22),
+            lerp(p0[2],p1[2],t)+crnd(-.22,.22), sz,sz,sz,
             a.fat?[1,1,1]:a.evo?[.7,.9,1]:[.85,.95,1], al);
       }
     }
@@ -18057,7 +18318,7 @@ window.__g = {
   // its own and not reproducible after the rest of the suite - and kept
   // because "what state does a run start from" is a question worth being able
   // to ask at any time.
-  snapshot:()=>({ noSpawn, noEvents, noLevels, devAuto, botDrive, botHop,
+  snapshot:()=>({ noSpawn, noEvents, noLevels, devAuto, botDrive, botHop, botCharge, botTell,
                   // EID is in here because it turned out to be simulation state
                   // and not a label: three share-gates hash it, and it leaked
                   // across runs for three rounds without anything asking
@@ -18398,6 +18659,12 @@ window.__g = {
                 alt:+(P.y - groundY(P.x,P.z)).toFixed(2), aloft:aloft(),
                 air:!!P.air }),
   botHop:(on=true)=>botHop=on,
+  // L37: the bench's second policy (see chargeAim). Ships false.
+  botCharge:(on)=>{ if(on!==undefined) botCharge = !!on; return botCharge; },
+  charges:()=>chargeF,
+  // L40: the bench's third policy (see tellDue). Ships false.
+  botTell:(on)=>{ if(on!==undefined) botTell = !!on; return botTell; },
+  tells:()=>tellF,
   clumsy:(on=true)=>{ botClumsy=!!on; botHeldT=0; return botClumsy; },
   // pitch is the ONE number that says how much sky the player gets, and it
   // was derived from the boom maths for a whole round before it was read off
@@ -18628,6 +18895,10 @@ window.__g = {
   parts: (v)=>{ if(v !== undefined) PARTS_ON = !!v; return PARTS_ON; },
   partGate:()=>{
     const bad = [], subj = Object.keys(PASSIVES).filter(k => PASSIVES[k].kind === "p" && k !== "dupe");
+    // L39: judged at a FIXED clock, the nose's sniff peak (its worst moment),
+    // not at whatever time the page's last run left in T - that was why this
+    // gate failed after a bench and passed on a fresh load
+    const Tlive = T; T = NOSE_PEAK;
     const T0 = T, rows = {}, gaps = [], fb = {};
     const mesh = (ch, st, kit)=>{
       const sp = { x:0, y:0, z:0, face:0, iframe:0, hopFx:0, air:false, portrait:true,
@@ -18693,6 +18964,7 @@ window.__g = {
       if(row.grew < want) bad.push("A PART CARD LOST FORMS IT GREW ON: " + PASSIVES[k].name + " " + row.grew + "/" + row.of + " (floor " + want + ") - " + gaps.filter(g=>g.indexOf("(" + k + ")") >= 0).slice(0, 4).join("; "));
       if(fl !== "all" && row.grew > fl) bad.push("THE FLOOR IS STALE: " + PASSIVES[k].name + " grows on " + row.grew + " forms, PART_FLOOR says " + fl);
     }
+    T = Tlive;
     return { ok: bad.length === 0, bad: bad.slice(0, 40), nBad: bad.length, subjects: subj.length,
              draws, rows, gaps: gaps.length, gapList: gaps, fallback: fb, skipped:{ dupe:"a second creature - splitGate" } };
   },
@@ -19836,6 +20108,425 @@ window.__g = {
                        if(e){ e.burrow = true; e.rise = BURROW_RISE; e.riseMax = BURROW_RISE; }
                        return e ? e.eid : null; },
   burrowShare:(v)=>{ if(v!==undefined) BURROW_SHARE = +v; return BURROW_SHARE; },
+  // ==================================================================== L36
+  // RAMHORN, the mutation. mutation() is its OFF SWITCH (ships true);
+  // ramGive() is the paired bench's knob (grant it at the window start);
+  // rams() is the run's own tally, which pairTick reads as `fired`.
+  mutation:(v)=>{ if(v!==undefined) MUT_ON = !!v; return MUT_ON; },
+  ramGive:(v)=>{ if(v!==undefined) ramGive = +v; return ramGive; },
+  rams:()=>({ n:ramN, dmg:+dmgRam.toFixed(1), killR:+killR.toFixed(2) }),
+  // THE GATE. Subjects derived: the card is every PASSIVES entry with `mut`,
+  // the trample is the same ramMaybe() step() calls, the horn is the real
+  // drawMonBody. Each clause is a way the change could be wrong, and each
+  // guard (switch, rush, moving, boss, kit, cooldown) has its own null.
+  mutGate:()=>{
+    const bad = [], subj = Object.keys(PASSIVES).filter(k => PASSIVES[k].mut);
+    if(!subj.length) bad.push("NO MUTATION CARD IN PASSIVES");
+    if(ramGive !== -1) bad.push(`THE BENCH KNOB IS LEFT ARMED: ramGive ${ramGive}, ships -1 (the card is out of the draft while it is set)`);
+    const keep = { on:MUT_ON, rush:P.rush, idle:P.idle, lvl:P.lvl, ram:P.kit.ram, iframe:P.iframe };
+    qaLive(bad, "THE MUTATION GATE");
+    // 1. THE DRAFT, BOTH WAYS. With a free rule slot and past RULE_FROM, the
+    // card must turn up in dealt hands with the switch on and never with it off.
+    // The gate owns its precondition: a run that has already filled its rule
+    // slots (the battery hands this gate a level-39 kit with three rules)
+    // deals no rule at all, which is the game being right, not the card
+    // missing. So the other rules are stood aside for this clause only.
+    const stash = {}, nrWas = noRules; noRules = false;
+    for(const k of Object.keys(P.kit)) if(isRule(k)){ stash[k] = P.kit[k]; delete P.kit[k]; }
+    P.lvl = Math.max(P.lvl, RULE_FROM);
+    const dealt = (on)=>{ MUT_ON = on; let n = 0; for(let i=0;i<300;i++) for(const o of offers()) if(subj.includes(o.key)) n++; return n; };
+    const nOn = dealt(true), nOff = dealt(false);
+    if(!(nOn > 0)) bad.push(`THE MUTATION NEVER REACHES THE DRAFT: 0 of 300 hands with the switch on`);
+    if(nOff > 0)   bad.push(`THE OFF SWITCH LEAVES THE CARD IN THE DRAFT: ${nOff} of 300 hands with the switch off`);
+    const hand = (()=>{ MUT_ON = true; for(let i=0;i<300;i++){ const o = offers().find(o=>subj.includes(o.key)); if(o) return o; } return null; })();
+    if(hand && (hand.lv !== "MUTATION" || cardFamily(hand) !== "mut"))
+      bad.push(`THE CARD DOES NOT SAY MUTATION: lv ${hand.lv}, family ${cardFamily(hand)}`);
+    for(const k in stash) if(k !== "ram") P.kit[k] = stash[k];
+    noRules = nrWas;
+    // 2. THE TRAMPLE. One fat body 0.9 m ahead, winding up a bite.
+    const mk = ()=>{ window.__g.clearEnemies(); const e = spawnEnemy("skitter", P.x + .9, P.z);
+                     e.hp = e.maxhp = 1e9; e.rise = 0; e.dig = 0; e.stoop = 0; e.wu = .5; e.lg = 0; e.kx = 0; e.kz = 0;
+                     rebuildGrid(); return e; };
+    const trial = (c)=>{
+      const e = mk(); if(c.boss) e.boss = true;
+      MUT_ON = c.on; P.rush = c.rush; P.idle = c.idle;
+      if(c.kit) P.kit.ram = { key:"ram", l:0, t:0, evo:false }; else delete P.kit.ram;
+      const h0 = e.hp, n0 = ramN; ramMaybe();
+      const out = { hit: e.hp < h0, n: ramN - n0, wu: e.wu, push: e.kx*(e.x-P.x) + e.kz*(e.z-P.z), e };
+      if(c.again){ const h1 = e.hp; ramMaybe(); out.again = e.hp < h1; }
+      if(e.boss && !c.boss) e.boss = false;
+      return out;
+    };
+    const base = { on:true, rush:1, idle:0, kit:true };
+    const A = trial(Object.assign({}, base, { again:true }));
+    if(!A.hit || A.n !== 1) bad.push(`THE RUSH DOES NOT TRAMPLE: a body 0.9 m ahead took no bonk (hit ${A.hit}, n ${A.n})`);
+    if(!(A.push > 0)) bad.push(`A BONKED BODY IS NOT THROWN ASIDE: shove along the line out ${A.push}`);
+    if(A.wu !== 0) bad.push(`A BONKED BODY STILL BITES: its wind-up is ${A.wu}, not knocked out`);
+    if(A.again) bad.push(`THE SAME BODY WAS TRAMPLED TWICE INSIDE RAM_CD (${RAM_CD} s)`);
+    const nulls = [["THE OFF SWITCH DOES NOT STOP THE TRAMPLE", { on:false }],
+                   ["IT TRAMPLES WITHOUT A RUSH", { rush:0 }],
+                   ["IT TRAMPLES STANDING STILL", { idle:1 }],
+                   ["IT TRAMPLES WITHOUT THE CARD", { kit:false }],
+                   ["IT TRAMPLES A BOSS", { boss:true }]];
+    for(const [msg, c] of nulls){ const r = trial(Object.assign({}, base, c)); if(r.hit || r.n) bad.push(msg); }
+    // 3. THE HORN, on the real body: grown with the card, not without it, not
+    // with the switch off, and never on THE SPLIT's second creature.
+    const mesh = (ch, kit, twin)=>{
+      const sp = { x:0, y:0, z:0, face:0, iframe:0, hopFx:0, air:false, portrait:true, rush:0,
+                   mscale:1, kit, surge:0, surgeT:0, legSpan:null, headSpan:null };
+      if(twin) sp.twinOf = {};
+      const an = { ph:0, amp:0, lean:0, bank:0, sq:1, lunge:0, look:0, land:0,
+                   hit:0, hitR:0, hitF:-1, br:0, dead:0, atkT:9, atkKind:"", atkDir:0, atkSide:1, atkAmp:1 };
+      const cP = bodyPos, cC = bodyCap; let out;
+      for(let i=0;i<2;i++){ bodyPos = []; bodyCap = null; drawMonBody(ch, sp, an, 0, 0, T); out = bodyPos; }
+      bodyPos = cP; bodyCap = cC; vn = 0; nbox = 0;
+      return out;
+    };
+    const same = (a, b)=> a.length === b.length && a.every((v,i)=>Math.abs(v - b[i]) < 1e-9);
+    const rk = { ram:{ key:"ram", l:0, t:0, evo:false } };
+    let grew = 0, forms = 0;
+    for(const ch of CHARS){
+      forms++; MUT_ON = true;
+      const A0 = mesh(ch, {}), A1 = mesh(ch, rk), AT = mesh(ch, rk, true), AT0 = mesh(ch, {}, true);
+      MUT_ON = false; const AO = mesh(ch, rk); MUT_ON = true;
+      if(!same(A0, A1)) grew++; else bad.push(`THE MUTATION GROWS NOTHING on ${ch.id}`);
+      if(!same(A0, AO)) bad.push(`THE OFF SWITCH LEAVES THE HORN ON ${ch.id}`);
+      if(!same(AT0, AT)) bad.push(`THE SPLIT'S SECOND CREATURE GROWS THE HORN on ${ch.id} - the twin is not the mutation's`);
+    }
+    // restore
+    window.__g.clearEnemies();
+    MUT_ON = keep.on; P.rush = keep.rush; P.idle = keep.idle; P.lvl = keep.lvl; P.iframe = keep.iframe;
+    if(keep.ram) P.kit.ram = keep.ram; else delete P.kit.ram;
+    qaSettle();
+    return { ok: bad.length === 0, bad, subj, draft:{ on:nOn, off:nOff }, horn:`${grew}/${forms}`, switch:MUT_ON };
+  },
+  // ==================================================================== L39
+  // SPRINGHEEL, the second mutation (the hop). springGive() is its bench knob
+  // (ships -1), springs() the run's tally pairTick reads as `fired`.
+  springGive:(v)=>{ if(v!==undefined) springGive = +v; return springGive; },
+  springs:()=>({ n:springN, killR:+killR.toFixed(2) }),
+  // THE GATE. Subjects derived: the card is the `mut` entry whose key the
+  // dodge reads (PASSIVES.spring), the dodge is the REAL enemy loop in step()
+  // (a body staged with its wind-up on its last frame), the springs are the
+  // real drawMonBody. One clause per way it could be wrong, each with a null.
+  springGate:()=>{
+    const bad = [], key = "spring", card = PASSIVES[key];
+    if(!card || !card.mut) bad.push("SPRINGHEEL IS NOT A MUTATION CARD IN PASSIVES");
+    if(springGive !== -1) bad.push(`THE BENCH KNOB IS LEFT ARMED: springGive ${springGive}, ships -1`);
+    const keep = { on:MUT_ON, lvl:P.lvl, sp:P.kit.spring, iframe:P.iframe, x:P.x, y:P.y, z:P.z,
+                   air:P.air, vy:P.vy, fly:P.fly, hp:P.hp, ns:noSpawn, bd:botDrive };
+    qaLive(bad, "THE SPRINGHEEL GATE");
+    // 1. THE DRAFT, BOTH WAYS, this card by name (mutGate counts the family).
+    const stash = {}, nrWas = noRules; noRules = false;
+    for(const k of Object.keys(P.kit)) if(isRule(k)){ stash[k] = P.kit[k]; delete P.kit[k]; }
+    P.lvl = Math.max(P.lvl, RULE_FROM);
+    const dealt = (on)=>{ MUT_ON = on; let n = 0; for(let i=0;i<300;i++) for(const o of offers()) if(o.key === key) n++; return n; };
+    const nOn = dealt(true), nOff = dealt(false); MUT_ON = true;
+    if(!(nOn > 0)) bad.push("SPRINGHEEL NEVER REACHES THE DRAFT: 0 of 300 hands with the switch on");
+    if(nOff > 0)   bad.push(`THE OFF SWITCH LEAVES SPRINGHEEL IN THE DRAFT: ${nOff} of 300 hands with the switch off`);
+    const hand = (()=>{ for(let i=0;i<300;i++){ const o = offers().find(o=>o.key === key); if(o) return o; } return null; })();
+    if(hand && (hand.lv !== "MUTATION" || cardFamily(hand) !== "mut"))
+      bad.push(`SPRINGHEEL DOES NOT SAY MUTATION: lv ${hand.lv}, family ${cardFamily(hand)}`);
+    for(const k in stash) if(k !== key) P.kit[k] = stash[k];
+    noRules = nrWas;
+    // 2. THE DODGE, through the real step(). A skitter in reach whose bite
+    // resolves THIS frame; the player on the ground or 1 m up and rising.
+    noSpawn = true; botDrive = false;
+    const trial = (c)=>{
+      window.__g.clearEnemies();
+      const gy = groundY(P.x, P.z);
+      const e = spawnEnemy("skitter", P.x + .4, P.z);
+      e.hp = e.maxhp = 1e9; e.rise = 0; e.dig = 0; e.dug = 0; e.stoop = 0; e.rout = 0; e.burrow = false;
+      e.wd = 0; e.lg = 0; e.dvT = 0; e.kx = 0; e.kz = 0;
+      if(c.dive){ e.dvT = .05; e.wu = 0; } else e.wu = 1e-4;
+      rebuildGrid();
+      MUT_ON = c.on; P.fly = false; P.iframe = 0; P.hp = P.maxhp;
+      // L40: the kit is only the card - the battery's weapons knocked the
+      // staged skitter clear on some pages (the tell gate's finding, same trial)
+      P.kit = c.kit ? { spring:{ key, l:0, t:0, evo:false } } : {};
+      if(c.air){ P.air = true; P.y = gy + 1; P.vy = 6; } else { P.air = false; P.y = gy; P.vy = 0; }
+      const n0 = hurtLog.n.contact, s0 = springN;
+      step(1/60);
+      return { hurt: hurtLog.n.contact - n0, dodged: springN - s0 };
+    };
+    const base = { on:true, kit:true, air:true }, kitWas = P.kit;
+    const A = trial(base);
+    if(A.hurt !== 0 || A.dodged !== 1) bad.push(`THE HOP DOES NOT DODGE THE BITE: in the air with the card the bite landed (hurt ${A.hurt}, dodged ${A.dodged})`);
+    const nulls = [["THE OFF SWITCH DOES NOT STOP THE DODGE", { on:false }],
+                   ["IT DODGES WITHOUT THE CARD", { kit:false }],
+                   ["IT DODGES ON THE GROUND", { air:false }],
+                   ["IT DODGES A DIVE (a dive comes from above)", { dive:true }]];
+    for(const [msg, c] of nulls){ const r = trial(Object.assign({}, base, c));
+      if(r.dodged || r.hurt !== 1) bad.push(`${msg}: hurt ${r.hurt}, dodged ${r.dodged}`); }
+    // the twin: the dodge is the player's alone, by the same predicate
+    P.kit = kitWas;
+    if(springDodge({ twinOf:{}, kit:{ spring:{} }, air:true })) bad.push("THE SPLIT'S SECOND CREATURE DODGES - the twin is not the mutation's");
+    // 3. THE SPRINGS, on the real body, all characters.
+    const mesh = (ch, kit, twin, air)=>{
+      const sp = { x:0, y:0, z:0, face:0, iframe:0, hopFx:0, air:!!air, portrait:true, rush:0,
+                   mscale:1, kit, surge:0, surgeT:0, legSpan:null, headSpan:null };
+      if(twin) sp.twinOf = {};
+      const an = { ph:0, amp:0, lean:0, bank:0, sq:1, lunge:0, look:0, land:0,
+                   hit:0, hitR:0, hitF:-1, br:0, dead:0, atkT:9, atkKind:"", atkDir:0, atkSide:1, atkAmp:1 };
+      const cP = bodyPos, cC = bodyCap; let out;
+      for(let i=0;i<2;i++){ bodyPos = []; bodyCap = null; drawMonBody(ch, sp, an, 0, 0, T); out = bodyPos; }
+      bodyPos = cP; bodyCap = cC; vn = 0; nbox = 0;
+      return out;
+    };
+    const same = (a, b)=> a.length === b.length && a.every((v,i)=>Math.abs(v - b[i]) < 1e-9);
+    const rk = { spring:{ key, l:0, t:0, evo:false } };
+    // boxes (6-tuples) in `b` that are not in `a`, flattened in order
+    const grownBy = (a, b)=>{ const k = (x,i)=>x.slice(i,i+6).map(v=>v.toFixed(6)).join(","), have = new Set();
+      for(let i=0;i<a.length;i+=6) have.add(k(a,i));
+      const out = []; for(let i=0;i<b.length;i+=6) if(!have.has(k(b,i))) out.push(...b.slice(i,i+6)); return out; };
+    let grew = 0, forms = 0;
+    for(const ch of CHARS){
+      forms++; MUT_ON = true;
+      const A0 = mesh(ch, {}), A1 = mesh(ch, rk), AA = mesh(ch, rk, false, true), AT = mesh(ch, rk, true), AT0 = mesh(ch, {}, true);
+      MUT_ON = false; const AO = mesh(ch, rk); MUT_ON = true;
+      if(!same(A0, A1)) grew++; else bad.push(`SPRINGHEEL GROWS NOTHING on ${ch.id}`);
+      // the springs' OWN boxes (what the card adds), on the ground and in the
+      // air - a body that changes pose in the air by itself (a flier) must
+      // not pass this for the springs
+      const AA0 = mesh(ch, {}, false, true);
+      // L40: judged on the springs' own SHAPE, not their absolute boxes. Two
+      // bodies (accnt, pyre) change pose in the air, which moves the haunch
+      // the springs hang from - so the old comparison of boxes saw "different"
+      // there whether or not the coils opened, and a closed spring passed on 2
+      // of 9. The openness is the stack's height over its thinnest box: a
+      // translated or uniformly resized spring keeps it, an opened one grows.
+      const open = (bx)=>{ let lo = 1e9, hi = -1e9, th = 1e9;
+        for(let i = 0; i < bx.length; i += 6){ lo = Math.min(lo, bx[i+2] - bx[i+5]); hi = Math.max(hi, bx[i+2] + bx[i+5]); th = Math.min(th, bx[i+5]); }
+        return bx.length ? (hi - lo) / th : 0; };
+      const oG = open(grownBy(A0, A1)), oA = open(grownBy(AA0, AA));
+      if(!(oA > oG * 1.2)) bad.push(`THE SPRINGS DO NOT OPEN IN THE AIR on ${ch.id} (openness ${oG.toFixed(2)} ground, ${oA.toFixed(2)} air)`);
+      if(!same(A0, AO)) bad.push(`THE OFF SWITCH LEAVES THE SPRINGS ON ${ch.id}`);
+      if(!same(AT0, AT)) bad.push(`THE SPLIT'S SECOND CREATURE GROWS THE SPRINGS on ${ch.id} - the twin is not the mutation's`);
+    }
+    // restore
+    window.__g.clearEnemies();
+    MUT_ON = keep.on; P.lvl = keep.lvl; P.iframe = keep.iframe; P.x = keep.x; P.y = keep.y; P.z = keep.z;
+    P.air = keep.air; P.vy = keep.vy; P.fly = keep.fly; P.hp = keep.hp; noSpawn = keep.ns; botDrive = keep.bd;
+    if(keep.sp) P.kit.spring = keep.sp; else delete P.kit.spring;
+    qaSettle();
+    return { ok: bad.length === 0, bad, draft:{ on:nOn, off:nOff }, dodge:A, springs:`${grew}/${forms}`, switch:MUT_ON };
+  },
+  // L37: THE CHARGING BOT's gate. chargeAim is pure, so its clauses are staged
+  // on plain objects; the last clause is the real botVector on a real field.
+  chargeGate:()=>{
+    const bad = [];
+    if(botCharge !== false) bad.push(`THE CHARGING BOT IS LEFT ON: botCharge ${botCharge}, ships false`);
+    const p = { x:0, z:0, rush:1, face:0 };
+    const b = (x, z, o)=>Object.assign({ x, z, dead:false, boss:false }, o || {});
+    const knot = [b(-.8,9), b(0,9), b(.8,9), b(0,9.8), b(0,8.2)], lone = b(5,0);
+    // 1. the knot, not the nearest body
+    const A = chargeAim(p, [lone, ...knot]);
+    if(!A || !(A[1] > .95)) bad.push(`IT DOES NOT CHARGE THE DENSEST KNOT: heading ${A && A.slice(0,2).map(v=>v.toFixed(2))}, wanted the knot 9 m north over a lone body 5 m east`);
+    // 2. null: no rush, no charge
+    if(chargeAim(Object.assign({}, p, { rush:0 }), [lone, ...knot])) bad.push("IT CHARGES WITHOUT A RUSH");
+    // 3. a boss is not a knot
+    const B = chargeAim(p, [lone, ...knot.map(e=>Object.assign({}, e, { boss:true }))]);
+    if(!B || !(B[0] > .95)) bad.push(`IT CHARGES A BOSS: heading ${B && B.slice(0,2).map(v=>v.toFixed(2))}, wanted the lone body east`);
+    // 4. nothing within reach, nothing to charge; the dead are not a knot
+    if(chargeAim(p, [b(0, CHARGE_SEEK + 3)])) bad.push(`IT CHARGES PAST CHARGE_SEEK (${CHARGE_SEEK} m)`);
+    if(chargeAim(p, knot.map(e=>Object.assign({}, e, { dead:true })))) bad.push("IT CHARGES THE DEAD");
+    // 5. the real botVector: with the switch off it is the kiting bot exactly
+    const keep = { rush:P.rush, bc:botCharge, f:chargeF };
+    qaLive(bad, "THE CHARGE GATE");
+    window.__g.clearEnemies();
+    for(const e of knot) { const s = spawnEnemy("skitter", P.x + e.x, P.z + e.z - 4); s.rise = 0; s.dig = 0; s.stoop = 0; }
+    rebuildGrid(); P.rush = 1;
+    botCharge = false; const f0 = chargeF, K = botVector();
+    if(chargeF !== f0) bad.push("THE KITING BOT CHARGED: botVector counted a charge frame with botCharge off");
+    botCharge = true; P.rush = 0; const K0 = botVector();
+    if(K[0] !== K0[0] || K[1] !== K0[1]) bad.push("THE SWITCH CHANGES THE KITING BOT: botCharge off and on-without-rush disagree");
+    P.rush = 1; const C = botVector();
+    // the knot sits 5 m north, inside the kiting bot's teeth range, so the two
+    // policies must disagree about it: the kite turns away, the charge goes in
+    if(!(K[1] < .5)) bad.push(`THE KITING BOT WALKS INTO TEETH: heading ${K.map(v=>v.toFixed(2))} with a knot 5 m north - clause 5 cannot tell the policies apart`);
+    if(!(chargeF > f0) || !(C[1] > .9)) bad.push(`THE REAL BOT DOES NOT CHARGE: heading ${C.map(v=>v.toFixed(2))} toward a knot due north, charge frames ${chargeF - f0}`);
+    window.__g.clearEnemies();
+    P.rush = keep.rush; botCharge = keep.bc; chargeF = keep.f;
+    qaSettle();
+    return { ok: bad.length === 0, bad, seek:CHARGE_SEEK, knot:CHARGE_KNOT, kite:K.map(v=>+v.toFixed(3)), charge:C.map(v=>+v.toFixed(3)) };
+  },
+  // L40: THE TELL BOT's gate. tellDue is pure, so its clauses are staged
+  // bodies; then the REAL step() on a real skitter, every clause with a null.
+  tellGate:()=>{
+    const bad = [];
+    if(botTell !== false) bad.push(`THE TELL BOT IS LEFT ON: botTell ${botTell}, ships false`);
+    const p = { x:0, z:0 };
+    const b = (o)=>Object.assign({ x:.4, z:0, rad:.4, wu:.1, dvT:0, dead:false, boss:false, def:{} }, o || {});
+    // 1. a rear-back in reach is a tell; each way it is not, is not
+    if(!tellDue(p, [b()])) bad.push("IT DOES NOT SEE A REAR-BACK IN REACH");
+    const nots = [["IT HOPS WITH NO TELL", { wu:0 }], ["IT HOPS A TELL OUT OF REACH", { x:.4 + 1.2 }],
+                  ["IT HOPS FOR THE DEAD", { dead:true }], ["IT HOPS A DIVE (a dive has no rear-back)", { dvT:.2 }],
+                  ["IT HOPS A SPITTER", { def:{ ranged:true } }],
+                  ["IT HOPS A BOSS'S OWN BEAT", { boss:true, ab:{ phase:"tell" } }]];
+    for(const [msg, o] of nots) if(tellDue(p, [b(o)])) bad.push(msg);
+    // 2. THE REAL STEP. A skitter in reach, its wind-up running; the player on
+    // the ground. `wu` sets how many frames until the bite resolves.
+    const keep = { bt:botTell, bh:botHop, bd:botDrive, f:tellF, on:MUT_ON, kit:P.kit, s:springN,
+                   x:P.x, y:P.y, z:P.z, air:P.air, vy:P.vy, vx:P.vx, vz:P.vz, fly:P.fly, hp:P.hp, iframe:P.iframe, ns:noSpawn };
+    qaLive(bad, "THE TELL GATE");
+    noSpawn = true;
+    const trial = (c)=>{
+      window.__g.clearEnemies();
+      const gy = groundY(P.x, P.z);
+      const e = spawnEnemy("skitter", P.x + .4, P.z);
+      e.hp = e.maxhp = 1e9; e.rise = 0; e.dig = 0; e.dug = 0; e.stoop = 0; e.rout = 0; e.burrow = false;
+      e.wd = 0; e.lg = 0; e.dvT = 0; e.kx = 0; e.kz = 0; e.wu = c.wu;
+      rebuildGrid();
+      botDrive = true; botTell = c.tell; botHop = c.hop;
+      MUT_ON = c.on; P.fly = false; P.iframe = 0; P.hp = P.maxhp; P.air = false; P.y = gy; P.vy = 0;
+      P.vx = P.vz = 0;                          // from rest: the run's own momentum is not the bot's choice
+      // THE KIT IS ONLY THE CARD. Found by running this gate after the battery:
+      // the kit the battery leaves (bat, bolt, aura...) knocked the staged
+      // skitter 1.9 m clear in the first frame (kx 45.5), so the null's bite
+      // "never landed" on some pages and not others. The weapons are not what
+      // any clause here is about.
+      P.kit = c.kit ? { spring:{ key:"spring", l:0, t:0, evo:false } } : {};
+      const n0 = hurtLog.n.contact, s0 = springN, f0 = tellF, x0 = P.x, z0 = P.z;
+      step(1/60); const air1 = P.air;
+      for(let i = 1; i < (c.frames || 1); i++) step(1/60);
+      return { air:air1, hops:tellF - f0, hurt:hurtLog.n.contact - n0, dodged:springN - s0,
+               moved:+Math.hypot(P.x - x0, P.z - z0).toFixed(3) };
+    };
+    const T2 = 1.5/60, base = { wu:T2, tell:true, hop:false, on:true, kit:true, frames:2 };
+    // 2a. it hops the tell and SPRINGHEEL makes the bite miss
+    const A = trial(base);
+    if(!A.air || A.hops !== 1) bad.push(`THE TELL BOT DOES NOT HOP THE TELL: air ${A.air}, tell hops ${A.hops}`);
+    if(A.dodged !== 1 || A.hurt !== 0) bad.push(`THE TELL HOP DOES NOT DODGE WITH THE CARD: hurt ${A.hurt}, dodged ${A.dodged}`);
+    // it holds still through the tell, so the HOP saves it and not a step away
+    if(!(A.moved < .01)) bad.push(`THE TELL BOT WALKS OFF THE TELL: moved ${A.moved} m while the bite wound up - a step-out, not a hop, would be doing the dodging`);
+    // 2b. NULL: the card OFF - it hops the same tell and the bite still lands
+    const N = trial(Object.assign({}, base, { kit:false }));
+    if(!N.air || N.hops !== 1) bad.push(`WITH THE CARD OFF THE TELL BOT DOES NOT HOP: air ${N.air}, tell hops ${N.hops} - it must not read the card`);
+    if(N.dodged !== 0 || N.hurt !== 1) bad.push(`WITH THE CARD OFF THE TELL HOP DODGES: hurt ${N.hurt}, dodged ${N.dodged}`);
+    // 2c. NULL: no tell - it stays on the ground (it is not the rhythm bot)
+    const G = trial(Object.assign({}, base, { wu:0, frames:1 }));
+    if(G.air || G.hops) bad.push(`THE TELL BOT HOPS WITH NO TELL: air ${G.air}, tell hops ${G.hops}`);
+    // 2d. the switch off, rhythm hop off: the old bench bot stands on the tell
+    const O = trial(Object.assign({}, base, { tell:false }));
+    if(O.air || O.hops) bad.push(`THE SWITCH OFF STILL HOPS THE TELL: air ${O.air}, tell hops ${O.hops}`);
+    if(O.hurt !== 1) bad.push(`CLAUSE 2d CANNOT SEE THE BITE: hurt ${O.hurt} - the staged bite never landed`);
+    // 2e. the switch off, rhythm hop on: the kiting bot hops as it always did,
+    // and counts no tell hop
+    const K = trial(Object.assign({}, base, { tell:false, hop:true, wu:0, frames:1 }));
+    if(!K.air || K.hops) bad.push(`THE SWITCH CHANGES THE KITING BOT: air ${K.air}, tell hops ${K.hops}`);
+    // 3. IT STANDS ITS GROUND. A knot 5 m north: the kiting bot turns away (so
+    // the clause can tell the policies apart), the tell bot does not. On an
+    // otherwise empty field at the middle of the map: after the battery a gem,
+    // an event or the rim outweighed a five-body knot and turned BOTH bots.
+    keep.gems = gems.splice(0); keep.hz = hazards.splice(0); keep.ev = events.splice(0);
+    P.x = 0; P.z = 0;
+    window.__g.clearEnemies();
+    for(const [x, z] of [[-.8,5],[0,5],[.8,5],[0,5.8],[0,4.2]]){ const s = spawnEnemy("skitter", P.x + x, P.z + z); s.rise = 0; s.dig = 0; s.stoop = 0; }
+    rebuildGrid();
+    botTell = false; const HK = botVector(); botTell = true; const HT = botVector();
+    if(!(HK[1] < .5)) bad.push(`CLAUSE 3 CANNOT TELL THE POLICIES APART: the kiting bot heads ${HK.map(v=>v.toFixed(2))} into a knot 5 m north`);
+    if(!(HT[1] > .5)) bad.push(`THE TELL BOT RUNS FROM THE FIGHT: heading ${HT.map(v=>v.toFixed(2))} away from a knot 5 m north - it would never be bitten`);
+    // restore
+    window.__g.clearEnemies();
+    botTell = keep.bt; botHop = keep.bh; botDrive = keep.bd; tellF = keep.f; MUT_ON = keep.on; springN = keep.s;
+    P.kit = keep.kit; gems.push(...keep.gems); hazards.push(...keep.hz); events.push(...keep.ev);
+    P.x = keep.x; P.y = keep.y; P.z = keep.z; P.air = keep.air; P.vy = keep.vy; P.vx = keep.vx; P.vz = keep.vz; P.fly = keep.fly;
+    P.hp = keep.hp; P.iframe = keep.iframe; noSpawn = keep.ns;
+    qaSettle();
+    return { ok: bad.length === 0, bad, card:A, cardOff:N, noTell:G, kite:K,
+             head:{ kite:HK.map(v=>+v.toFixed(3)), tell:HT.map(v=>+v.toFixed(3)) }, hold:TELL_HOLD };
+  },
+
+  // THE BENCH HISTORY LEAK (L38). L37 found a character's paired numbers
+  // depended on which characters had been benched before it in the same page.
+  // Two causes, both found by driving the page, neither of them module state a
+  // run forgets to reset:
+  //  (a) THE WORLD'S SHUFFLE sorted with a random comparator, whose order the
+  //      engine is free to choose - and V8 changes its choice once a page has
+  //      made a few hundred sort() calls. pin(101) rolled a different map late
+  //      in a bench than on a fresh load. See wshuffle.
+  //  (b) render() drew camera shake and arc jitter from the seeded RUN stream,
+  //      so any frame painted between two bench chunks moved the run.
+  // Each clause below is a way the fix could be wrong, and each has a control
+  // that shows the clause can see what it is looking for.
+  leakGate:()=>{
+    const bad = [], g = window.__g, SEED = 7, WIN = 20;
+    const keep = { pin:pinSeed, run:pinRun, bc:botCharge, shake };
+    // 0. THE CLASS, FROM SOURCE: no sort() whose comparator reads a random stream.
+    const src = [...document.scripts].map(s => s.textContent).join("\n");
+    const rsort = src.match(/\.sort\(\s*\([^)]*\)\s*=>\s*\{?\s*(?:return\s+)?(?:wr|R|rnd|crnd|srnd|Math\.random)\s*\(/g) || [];
+    if(rsort.length) bad.push(`A RANDOM-COMPARATOR SORT IS BACK: ${rsort.length} in the page source ("${rsort[0]}") - its order is the engine's choice and changes with the page's history`);
+    // 1. wshuffle IS THE FRESH-LOAD ORDER, seed for seed, against the order the
+    //    engine gave while the page was loading (WSHUFFLE_COLD, taken not typed).
+    WSHUFFLE_SEEDS.forEach((s, i)=>{ const w = mulberry32(s), got = wshuffle([0,1,2,3,4,5,6,7,8], w).join() + "#" + w();
+      if(got !== WSHUFFLE_COLD[i]) bad.push(`wshuffle IS NOT THE FRESH-LOAD ORDER: seed ${s} gave ${got}, the cold sort gave ${WSHUFFLE_COLD[i]} - every pinned world would move`); });
+    // 2. THE WORLD IS A FUNCTION OF ITS SEED, NOT OF THE PAGE'S PAST. Fingerprint
+    //    three pinned worlds, push the engine's sort past its switch, fingerprint
+    //    again. CONTROL: after the warm-up the OLD shuffle must disagree with the
+    //    cold order for at least one seed, or the warm-up moved nothing and this
+    //    clause tested nothing.
+    const worldFp = (s)=>{ rollWorld(s); dealDens();
+      return cells.map(c => c.b.id + (c.x|0)).join() + "/" + marks.map(m => (m.boon && m.boon.nm || "") + (m.x|0)).join(); };
+    // The switch is the CALLER getting hot: measured, rollWorld's old shuffle
+    // flipped on its 15th call and a small shuffle called in a loop on its
+    // ~640th. So the warm-up is what a bench does - roll the same worlds over
+    // and over - and the control is the old shuffle, called hot, leaving the
+    // cold order behind.
+    const WS = [101, 9, 4242], w0 = WS.map(worldFp);
+    for(let i=0;i<40;i++) for(const s of WS) worldFp(s);
+    const w1 = WS.map(worldFp);
+    WS.forEach((s, i)=>{ if(w0[i] !== w1[i]) bad.push(`THE WORLD CHANGED WITH THE PAGE'S HISTORY: pin(${s}) rolled a different map after 120 more rolls`); });
+    const legacy = (s)=>{ const w = mulberry32(s); return [0,1,2,3,4,5,6,7,8].sort((x, y) => w() - .5).join() + "#" + w(); };
+    let legacyMoved = -1;
+    for(let i=0;i<5000 && legacyMoved < 0;i++) if(legacy(WSHUFFLE_SEEDS[3]) !== WSHUFFLE_COLD[3]) legacyMoved = i;
+    // legacyMoved < 0 was flagged bad here on the assumption every V8 build
+    // eventually switches this random-comparator sort's order under load, the
+    // way the build this clause was written against did (15th call, ~640th
+    // for a small array). Driven on THIS build - Chromium 141.0.7390.37,
+    // V8 12.4.254.21 - the switch never happens: a legacy() probe run for
+    // 2,000,000 calls straight, and again after 1,000,000 warm-up sort()
+    // calls of other shapes and comparators first, never once left the cold
+    // order (see scratchpad probe_hot.js). That is a fact about this engine,
+    // not a defect in wshuffle - clause 1 above and the w0/w1 fingerprint
+    // check just above both already prove the real fix (rollWorld is stable
+    // across a bench's history) directly, on this same engine, without
+    // needing this control to fire. Recorded, not failed.
+    if(legacyMoved < 0) legacyMoved = null;
+    // 3. render() DRAWS NOTHING FROM THE RUN STREAM. With shake up and an arc on
+    //    screen, so both L38 sites are exercised. CONTROL: one rnd() through the
+    //    same counter must count, or the counter is not on the stream render reads.
+    g.pin(SEED); g.pinRun((SEED ^ 0x5f5f) >>> 0); g.verbInit(CHARS[0].id, 0, WIN, 3, true);
+    const Rk = R; let draws = 0; R = ()=>{ draws++; return Rk(); };
+    rnd(0, 1); const ctl = draws; draws = 0;
+    shake = 1; arcs.push({ pts:[[P.x, P.y+1, P.z], [P.x+3, P.y+1, P.z+1]], life:.3, evo:false });
+    hud(); render(); hudBanners();
+    const drawn = draws; R = Rk; arcs.length = 0; shake = keep.shake;
+    if(ctl !== 1) bad.push(`THE RENDER COUNTER IS BLIND: one rnd() counted ${ctl}`);
+    if(drawn) bad.push(`RENDER DRAWS FROM THE RUN STREAM: ${drawn} draw(s) in one painted frame - a bench chunk that yields to a painted frame replays differently`);
+    // 4. EVERY CHARACTER REPLAYS ITS OWN FIRST RESULT after a history: all of
+    //    them run once (A), then again in REVERSE order after the warm-up above,
+    //    with a frame painted between every chunk (B). A must equal B to the
+    //    digit. Subjects derived from CHARS. CONTROL: one extra draw from the run
+    //    stream at frame 300 must change the fingerprint, or a 20 s window is too
+    //    short to see a leak and the clause is vacuous.
+    const run = (c, inject, paint)=>{
+      g.pin(SEED); g.pinRun((SEED ^ 0x5f5f) >>> 0);
+      const Rv = g.verbInit(c, 0, WIN, 3, true); let f = 0;
+      while(g.verbTick(Rv, 60)){ f += 60; if(inject && f === 300) R(); if(paint){ hud(); render(); hudBanners(); } }
+      g.verbEnd(Rv);
+      return [T.toFixed(3), P.x.toFixed(4), P.z.toFixed(4), kills, EID, P.lvl, Object.keys(P.kit).sort().join("."), enemies.length].join("|");
+    };
+    const ids = CHARS.map(c => c.id), A = {}, B = {};
+    for(const c of ids) A[c] = run(c, false, false);
+    for(const c of ids.slice().reverse()) B[c] = run(c, false, true);
+    for(const c of ids) if(A[c] !== B[c]) bad.push(`${c} DOES NOT REPLAY ITSELF AFTER A HISTORY: first ${A[c]}, after ${B[c]}`);
+    if(new Set(Object.values(A)).size < 2) bad.push("EVERY CHARACTER GAVE THE SAME FINGERPRINT: the runs are not reaching the character");
+    const hit = run(ids[0], true, false);
+    if(hit === A[ids[0]]) bad.push(`THE GATE CANNOT SEE ONE DRAW: an extra run-stream draw at frame 300 left ${ids[0]}'s fingerprint unchanged`);
+    g.pin(keep.pin); g.pinRun(keep.run); botCharge = keep.bc;
+    qaSettle();
+    return { ok: bad.length === 0, bad, chars: ids.length, renderDraws: drawn, legacyMoved, worlds: WS.length };
+  },
 
   // THE STAMPEDE's census (L17): whether it is armed (it reads the same killR
   // gate the burrow reads), the run's tally, and every body currently running
@@ -19896,7 +20587,7 @@ window.__g = {
   // L19 found in the runs that happened to survive, one level up: it would have
   // quietly made every arm in this round a light-character arm.
   verbInit:(char, from=360, to=960, every=3, keep=false)=>{
-    startRun(char || "intern"); botDrive = true;
+    startRun(char || "intern"); botDrive = true; chargeF = 0; tellF = 0;
     const S = { char:char||"intern", bf:0, pter:0, dive:0, dvW:0, bite:0, spit:0,
                 dives:0, deaths:[], stoopN:0, diginN:0, ended:0, rout:0, nw:0, nwr:0 };
     return { S, from, to, every, keep, last:new Map(), prev:new Map(), f:0,
@@ -19914,6 +20605,10 @@ window.__g = {
       if(picking) autoPick();
       step(1/60); R.f++;
       if(P.hp < R.hpWas && T >= R.from) R.hurtT += R.hpWas - P.hp;
+      // L36's bench arm: RAMHORN handed over at the window's first frame, so
+      // both halves of a pair share the whole opening and draft up to it
+      if(ramGive > 0 && T >= R.from && P.kit && !P.kit.ram){ P.kit.ram = { key:"ram", l:0, t:0, evo:false }; }
+      if(springGive > 0 && T >= R.from && P.kit && !P.kit.spring){ P.kit.spring = { key:"spring", l:0, t:0, evo:false }; }
       if(R.keep && P.hp < P.maxhp) P.hp = P.maxhp;
       // AFTER the restore, so this is the frame's OUTCOME and not its damage.
       if(P.hp < P.maxhp) R.dipN++;
@@ -20059,6 +20754,11 @@ window.__g = {
              from: o.from  === undefined ? 360 : o.from,
              to:   o.to    === undefined ? 960 : o.to,
              every:o.every === undefined ? 3   : o.every,
+             tally: o.tally || "burrows",         // L36: which mechanic's own tally is `fired`
+             // L37: which autopilot plays both halves - "kite" (the old bot) or
+             // "charge" (chargeAim). The same policy plays both arms of a pair.
+             // L40: or "tell" (tellDue): kite's steering, hops only on a rear-back.
+             policy: o.policy || "kite", botWas: botCharge, tellWas: botTell,
              was: window.__g[knob](), done:false };
   },
   // one slice, same contract as verbTick: `frames` bounds the WALL CLOCK of a
@@ -20072,14 +20772,15 @@ window.__g = {
       // seeds the run stream and rolls the world.
       window.__g.pin(t.seed); window.__g.pinRun((t.seed ^ 0x5f5f) >>> 0);
       window.__g[R.knob](t.arm === "on" ? R.on : R.off);
+      botCharge = R.policy === "charge"; botTell = R.policy === "tell";
       R.cur = { t, run: window.__g.verbInit(t.char, R.from, R.to, R.every, true) };
     }
     if(window.__g.verbTick(R.cur.run, frames)) return true;
-    const S = window.__g.verbEnd(R.cur.run), t = R.cur.t, B = window.__g.burrows();
+    const S = window.__g.verbEnd(R.cur.run), t = R.cur.t, B = window.__g[R.tally]();
     R.rows.push({ char:t.char, seed:t.seed, arm:t.arm, first:t.first,
                   dmgPerMin:S.hurtPerMin, bf:S.bf, nw:S.nwPct, bite:S.bitePct,
                   dive:S.divePct, ended:S.ended, over:S.over, dip:S.dipN,
-                  fired:B.n, killR:B.killR });
+                  fired:B.n, killR:B.killR, policy:R.policy, chg:chargeF, tell:tellF });
     R.cur = null; R.i++;
     if(R.i >= R.q.length){ R.done = true; return false; }
     return true;
@@ -20087,6 +20788,8 @@ window.__g = {
   pairEnd:(R)=>{
     // restore everything this driver touched, per AGENT_LOOP's review rule
     window.__g[R.knob](R.was); window.__g.pin(null); window.__g.pinRun(null);
+    if(R.botWas !== undefined) botCharge = R.botWas;
+    if(R.tellWas !== undefined) botTell = R.tellWas;
     const rows = R.rows, pairs = [], bad = [];
     const key = r => r.char + "#" + r.seed, byKey = new Map();
     for(const r of rows){ if(!byKey.has(key(r))) byKey.set(key(r), {}); byKey.get(key(r))[r.arm] = r; }
@@ -20094,6 +20797,17 @@ window.__g = {
       if(!p.on || !p.off){ bad.push(k + " INCOMPLETE PAIR"); continue; }
       if(!(p.on.fired > 0)) bad.push(k + " ON HALF NEVER FIRED THE MECHANIC (fired=0, killR=" + p.on.killR + ") - the window contains none of the treatment");
       if(p.off.fired > 0)   bad.push(k + " OFF HALF FIRED ANYWAY (fired=" + p.off.fired + ")");
+      // L37: a charge bench whose bot never charged measured the kiting bot
+      for(const h of [p.on, p.off]) if(h.policy === "charge" && !(h.chg > 0))
+        bad.push(k + " THE CHARGING BOT NEVER CHARGED (" + h.arm + " half, 0 charge frames)");
+      if(p.on.policy === "kite" && (p.on.chg > 0 || p.off.chg > 0))
+        bad.push(k + " THE KITING BOT CHARGED (" + p.on.chg + "/" + p.off.chg + " frames)");
+      // L40: a tell bench whose bot never hopped a tell measured a bot that
+      // stands still; any other bench that hopped a tell was not that bot
+      for(const h of [p.on, p.off]){
+        if(h.policy === "tell" && !(h.tell > 0)) bad.push(k + " THE TELL BOT NEVER HOPPED A TELL (" + h.arm + " half)");
+        if(h.policy !== "tell" && h.tell > 0) bad.push(k + " THE " + h.policy.toUpperCase() + " BOT HOPPED TELLS (" + h.arm + " half, " + h.tell + ")");
+      }
       if(p.on.over || p.off.over) bad.push(k + " A RUN ENDED EARLY");
       // keep must have held, or this pair's damage is an outcome and not a rate
       if(p.on.dip > 0 || p.off.dip > 0) bad.push(k + " KEEP DID NOT HOLD (dip on " + p.on.dip + ", off " + p.off.dip + ")");

@@ -6256,7 +6256,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
           eff: c.querySelector(".eff").textContent, ds: c.querySelector(".ds").textContent,
           pt: (c.querySelector(".pt") || {}).textContent || "",
           pips: c.querySelectorAll(".pips s").length, filled: c.querySelectorAll(".pips s.f").length,
-          next: c.querySelectorAll(".pips s.n").length, type: c.dataset.otype, key: c.dataset.okey }));
+          next: c.querySelectorAll(".pips s.n").length, type: c.dataset.otype, key: c.dataset.okey,
+          rule: c.classList.contains("rule") }));
         g.drainPicks(true); return cards; };
       g.wipeSave(); g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.drainPicks(true);
       const fresh = []; for (let i = 0; i < 6; i++) fresh.push(...deal());
@@ -6284,10 +6285,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        r.ups.length === 8 && r.ups.every(u => /^[A-Z]+ [A-Z]+$/.test(u.nm)) &&
        r.ups.every(u => [].concat(u.eff).every(e => /^[+-](\d|A )/.test(e))),
        r.ups.map(u => `${u.nm}=${[].concat(u.eff)[0]}`).join(" "));
+    // excludes any card carrying the game's own "rule" class (isRule, kind
+    // "r") rather than the literal lv "RULE" - L36/L39 gave RAMHORN and
+    // SPRINGHEEL their own "MUTATION" lv label while keeping kind "r", so a
+    // check keyed on the string "RULE" alone missed them and read them as
+    // pipless stat cards.
     ok("every card dealt has a headline and three pips, with the rank you would gain lit",
        all.length >= 30 && all.every(c => c.eff.length > 0) &&
-       all.filter(c => c.type !== "heal" && c.lv !== "RULE").every(c => c.pips === 3 && (c.type === "evo" ? c.filled === 3 : c.next === 1)),
-       `${all.length} cards, blank headlines ${all.filter(c => !c.eff).length}, pipless ${all.filter(c => c.type !== "heal" && c.lv !== "RULE" && c.pips !== 3).length}`);
+       all.filter(c => c.type !== "heal" && !c.rule).every(c => c.pips === 3 && (c.type === "evo" ? c.filled === 3 : c.next === 1)),
+       `${all.length} cards, blank headlines ${all.filter(c => !c.eff).length}, pipless ${all.filter(c => c.type !== "heal" && !c.rule && c.pips !== 3).length}`);
     const rank = r.mid.filter(c => c.type === "up" && EVO[c.key]);
     ok("a weapon rank-up says what the next rank changes, in numbers, and does not repeat the weapon's blurb",
        rank.length >= 3 && rank.every(c => /^\+\d+% DMG/.test(c.eff) && c.ds === "" && c.filled >= 1),
@@ -6390,12 +6396,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("and the shove is what it is for: twenty seconds hopping inside a ring of forty costs real health bare, and next to nothing with the card",
        r.brawlOff.lost > 60 && r.brawlOn.lost < r.brawlOff.lost * .25 && r.brawlOn.hits >= 3,
        `bare: lost ${r.brawlOff.lost}, ${r.brawlOff.left} HP of horde left; STOMP: lost ${r.brawlOn.lost}, ${r.brawlOn.hits} landings connected, ${r.brawlOn.left} HP left`);
-    ok("the draft deals rules as their own kind of card from level 4, all seven of them, none before",
-       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 7 && new Set(r.later.map(c => c.key)).size === 7 &&
-       r.later.every(c => c.lv === "RULE" && c.rule),
+    // nine now, not seven: L36's RAMHORN and L39's SPRINGHEEL are rule-kind
+    // (isRule, kind "r") but carry their own "MUTATION" lv label rather than
+    // "RULE", so the label check accepts either - c.rule (the DOM's own
+    // "rule" class, isRule-derived) is what actually stands for membership.
+    ok("the draft deals rules as their own kind of card from level 4, all nine of them, none before",
+       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 9 && new Set(r.later.map(c => c.key)).size === 9 &&
+       r.later.every(c => (c.lv === "RULE" || c.lv === "MUTATION") && c.rule),
        `${r.early} of ${r.earlyHands} cards before level 4, ${r.later.length} after (${[...new Set(r.later.map(c => c.nm))].join(" ")}), level ${r.lvl}`);
     ok("the slots cap the rules: with three taken past level 30 the draft offers no fourth, and a rule sits in the kit bar in its own colour",
-       r.capped === 0 && r.slot && r.rules.length === 7 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}`);
+       r.capped === 0 && r.slot && r.rules.length === 9 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}`);
     ok("and the chain readout says the chain is paying twice while RHYTHM is held",
        /x\d/.test(r.hopLabel) && /PACE & DMG/.test(r.hopLabel), JSON.stringify(r.hopLabel));
   }
@@ -6611,7 +6621,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Math.abs(r.glass.d1 / r.glass.d0 - 1.4) < .01 && Math.abs(r.glass.hp1 / r.glass.hp0 - .6) < .02,
        `dmg x${(r.glass.d1 / r.glass.d0).toFixed(2)}, hp ${r.glass.hp0} -> ${r.glass.hp1}`);
     ok("the third slot opens at level 30: with two rules held nothing green is dealt below it and rules are dealt above",
-       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 7,
+       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 9,
        `level ${r.lvlBelow}: ${r.below} rule cards; level ${r.lvlAbove}: ${r.above}; ${r.rules.join(" ")}`);
   }
 
@@ -7525,7 +7535,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("COLLECTION prints all ten weapons with the recipe for each evolution on the tile",
        col.W.length === 10 && col.W.every(t => /= .+ 3 \+ .+ 3/.test(t)) && col.W.some(t => /MEGABONK = BONK BAT 3 \+ BIGGER TEETH 3/.test(t)),
        col.W.map(t => t.match(/([A-Z ]+ = [A-Z ]+ 3 \+ [A-Z ]+ 3)/)?.[1] || "no recipe").slice(0, 3).join(" | "));
-    ok("and the eight growths (with what each unlocks) and the seven rules", col.g === 8 && col.unl === 8 && col.r === 7, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
+    ok("and the eight growths (with what each unlocks) and the nine rules", col.g === 8 && col.unl === 8 && col.r === 9, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
 
     // UNLOCKS: the ladder with a bar per rung
     const lk = await page.evaluate(() => { const g = window.__g; g.menuTab("locks"); return { n: document.querySelectorAll("#locks .lk").length, bars: document.querySelectorAll("#locks .lk .nb i").length, badge: (document.querySelector('.tab[data-tab="locks"]') || {}).textContent || "" }; });
@@ -7965,7 +7975,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const row = () => { const tr = [...document.querySelectorAll("#endBody tr")].find(t => /^Took/.test(t.textContent.trim())); return tr ? [...tr.children].map(td => td.textContent.replace(/\s+/g, " ").trim()).join(" ") : ""; };
       // the runs end by ABANDON, not by a scripted hit: a hit is a bite in the ledger
       const abandon = () => { g.pause(true); document.getElementById("quitBtn").click(); g.step(2, 1/60); };
-      g.drainPicks(true); g.wipeSave(); g.pin(41); g.pinRun(41); g.start("intern"); g.bot(true); g.botHop(true); g.setShake(0); g.runOut(90); g.bot(false);
+      // L24's wshuffle fix (see the comment on wshuffle itself) corrected the
+      // world roll rollWorld draws from, which moved this section's pinned
+      // seed the way it moved section 96's and 99's - seed 41's bot took one
+      // bite for 11 damage on the old, buggy roll and takes zero on the
+      // correct one (confirmed against both builds directly). Re-pinned to
+      // seed 8, which a sweep of thirty seeds found gives the same one-bite,
+      // 11-damage shape on the corrected build - nothing about what this
+      // section tests changed, only which world the bot is dropped into.
+      g.drainPicks(true); g.wipeSave(); g.pin(8); g.pinRun(8); g.start("intern"); g.bot(true); g.botHop(true); g.setShake(0); g.runOut(90); g.bot(false);
       const by = g.hurtBy(); abandon();
       const hurt = { by, row: row(), over: g.state().over };
       g.start("intern"); g.god(); g.freezeSpawns(true); g.freezeEvents(true); g.clearEnemies(); g.step(30, 1/60); abandon();
@@ -9050,6 +9068,28 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.rout  = g.routGate();
       out.digin = g.diginGate();
       out.stoop = g.stoopGate();
+      // L36's RAMHORN (mutGate) and L37's charging bot (chargeGate) arrive the
+      // same way every gate in this section does: built into the page by a
+      // round this suite never called. mutGate is the mutation's own
+      // statement - the draft, both ways; the trample, and every guard on it
+      // (switch, rush, moving, boss, kit) with its own null; the horn, grown
+      // on the real body and never on THE SPLIT's twin. chargeGate is the
+      // autopilot policy that can exercise it, proven against the kiting bot
+      // it stands beside rather than merely existing. Both belong here, next
+      // to rout/digin/stoop, while the world is still the one they were
+      // built on and before anything below levels the player past stage 0.
+      out.mut    = g.mutGate ? g.mutGate()
+                             : { ok:false, bad:["g.mutGate is missing"] };
+      out.charge = g.chargeGate ? g.chargeGate()
+                                : { ok:false, bad:["g.chargeGate is missing"] };
+      // L39's SPRINGHEEL (springGate) and L40's tell bot (tellGate), the same
+      // pair for the hop: springGate is the mutation's own statement for the
+      // dodge and the springs; tellGate is the autopilot policy that stands
+      // its ground and hops the rear-back rather than the rhythm.
+      out.spring = g.springGate ? g.springGate()
+                                : { ok:false, bad:["g.springGate is missing"] };
+      out.tell   = g.tellGate ? g.tellGate()
+                              : { ok:false, bad:["g.tellGate is missing"] };
       // AND L21 ARRIVED WITH SIX MORE, which is the fourth time this has
       // happened and the reason this section is not allowed to be finished.
       // The round put relief into the terrain - RELIEF_AMP, a tone field, flat
@@ -9094,6 +9134,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.noise  = g.noiseGate();
       out.hudG   = g.hudGate();
       out.pair   = g.pairGate();
+      // L38's leak gate goes here rather than beside its own L36/L37/L39/L40
+      // neighbours above: it starts and ends runs of its own (nine
+      // characters, twice each, with a warm-up between) and hands back
+      // whatever run its last check left standing - the same reason
+      // burrowResetGate and censusGate run only once the young world above is
+      // done with. It is the direct answer to the class this project has hit
+      // repeatedly: a shuffle, or a cosmetic draw, that depends on the page's
+      // own history rather than on the seed alone.
+      out.leak   = g.leakGate ? g.leakGate()
+                              : { ok:false, bad:["g.leakGate is missing"] };
       // AND L29's shadowGate, one more of the same route. It is the direct
       // answer to Q4 failing #5 - "pale chips on a pale floor" - a per-region
       // shadow that darkens a floor tone only as much as its own excess over
@@ -9153,6 +9203,17 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L19's stoop gate: it climbs, it comes back inside DIVE_R, and the arrival delivers the dive",
        gates.stoop.ok, say(gates.stoop) +
        `  (peak ${gates.stoop.peak} m, re-entered at ${gates.stoop.cameInAt} m, aimed ${gates.stoop.aimedAt})`);
+    ok("L36's mutation gate: RAMHORN reaches the draft only with its switch on, tramples only a moving rush and never a boss, and grows its horn on the player alone",
+       gates.mut.ok, say(gates.mut) +
+       `  (draft on ${gates.mut.draft && gates.mut.draft.on}/off ${gates.mut.draft && gates.mut.draft.off}, horn ${gates.mut.horn})`);
+    ok("L37's charge gate: with a rush up the bot runs at the densest knot instead of away from it, and never at a boss",
+       gates.charge.ok, say(gates.charge) +
+       `  (kite ${gates.charge.kite}, charge ${gates.charge.charge})`);
+    ok("L39's springheel gate: the card reaches the draft only with its switch on, the hop dodges a bite in the air alone, and it grows its springs on the player alone",
+       gates.spring.ok, say(gates.spring) +
+       `  (draft on ${gates.spring.draft && gates.spring.draft.on}/off ${gates.spring.draft && gates.spring.draft.off}, springs ${gates.spring.springs})`);
+    ok("L40's tell gate: the bot stands its ground and hops only a rear-back in reach, never the rhythm",
+       gates.tell.ok, say(gates.tell) + `  (hold ${gates.tell.hold} m)`);
     // L20's is the one gate here that checks an INSTRUMENT rather than a
     // mechanic: its fifth clause asserts the bench survives its own sampling
     // window, which is the selection effect every horde share in L15-L18 was
@@ -9177,6 +9238,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L21's pair gate: a queued pair replays as the pair that was queued",
        gates.pair.ok, say(gates.pair) +
        `  (queue ${gates.pair.queue}, replay ${gates.pair.replay}, live ${gates.pair.live})`);
+    ok("L38's leak gate: the world's shuffle and the render's cosmetic draws no longer depend on the page's own history",
+       gates.leak.ok, say(gates.leak) +
+       `  (${gates.leak.chars} characters, ${gates.leak.worlds} worlds, render draws ${gates.leak.renderDraws})`);
     ok("L29's shadow gate: a buyable region is untouched and an unbuyable one lands on the line",
        gates.shadow.ok, say(gates.shadow) +
        `  (${gates.shadow.buyableCount} buyable, ${gates.shadow.unbuyableCount} unbuyable)`);
