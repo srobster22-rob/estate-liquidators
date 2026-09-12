@@ -1604,6 +1604,13 @@ function drawMap(w, h){
   }
   for(const e of events) dot(e.x, e.z, 3.0, e.kind === "cache" ? "#ffd24a" : "#c0a6ff");
   for(const e of enemies) if(e.boss && !e.dead) dot(e.x, e.z, 4.4, "#ff5c4d");
+  if(matNest && !matNest.used){ dot(matNest.x, matNest.z, 5.2 + 1.4*Math.sin(T*6), "rgba(255,92,77,.35)");
+                                dot(matNest.x, matNest.z, 3.0, "#ff5c4d"); }
+  if(thnRing && (!thnRing.used || thnRing.up)) for(let i=0;i<16;i++){       // L42: the enclosure
+    const a = i*(TAU/16);
+    dot(thnRing.x + Math.cos(a)*THN_RING_R, thnRing.z + Math.sin(a)*THN_RING_R,
+        2.2, thnRing.up ? "#4d7dff" : "rgba(77,125,255,.55)");
+  }
   const [pxm, pzm] = at(P.x, P.z);
   g2.fillStyle = "#fff";
   g2.beginPath();
@@ -3331,8 +3338,8 @@ collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 // half units now - five times the player - which is the first time the thing
 // that ate the world has looked like it could.
 const BOSSES = [
-{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch" },
-{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback" },
+{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch", mat:true },
+{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback", thn:true },
 { t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter", flier:true },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
@@ -3377,6 +3384,16 @@ const ABILITIES = {
   // from it, only picking a side and committing, which is the one positional
   // demand this fight did not have.
   sinkhole:{ tell:1.10, act:0.30, rest:3.0 },
+  // THE CALL (L41), THE MATRIARCH's second lesson and only hers. She rears her
+  // head straight up and bellows, and her young come up out of the ground at
+  // your feet - see MAT_ below. No floor ring: the tell is her body and then
+  // their mounds, which is the burrow's own 0.9 s warning.
+  brood:   { tell:1.00, act:0.25, rest:2.5 },
+  // THE HEDGE (L42), THORNBACK's second lesson and only its. It drives its
+  // head DOWN and heaves its back, and a wedge of thorn grows out of IT toward
+  // you and widens as it goes - see THN_ below. The floor ring is a WEDGE from
+  // the boss, not a disc under your feet, so the answer is sideways, not away.
+  hedge:   { tell:1.05, act:0.30, rest:2.8 },
 };
 // ------------------------------------------- THE FINALE'S THREE PHASES
 // MEASURED FIRST (L7). Driven on the real page for five straight minutes, the
@@ -3455,6 +3472,16 @@ const BEAT = {
   charge:   { tsq:-.14, tlf:-.14, asq:-.05, alf: .30, tpt:-.16, apt: .10, arc: .22 },
   spokes:   { tsq: .10, tlf:  0,  asq:-.10, alf:  0,  tpt:-.08, apt: .04, arc: 0   },
   evict:    { tsq:-.12, tlf:-.06, asq: .10, alf: .08, tpt:-.14, apt: .10, arc: .10 },
+  // the call: the tallest rear in the table and the head thrown furthest back
+  // (a bellow is aimed at the sky, not at you), then a squash with NO reach -
+  // nothing lunges, so the one beat that sends nothing at you reads as such
+  brood:    { tsq: .24, tlf:-.08, asq:-.18, alf: .02, tpt:-.36, apt: .02, arc: 0   },
+  // the hedge: the ONLY wind-up in this table that goes DOWN. Every other beat
+  // rears the head up before the blow (tpt negative); this one drives it into
+  // the ground, because what it is winding up is its BACK, and then the act
+  // brings the head up (apt negative) and throws the longest reach in the
+  // table. So the tell cannot be confused with the slam's rear or the call's.
+  hedge:    { tsq: .30, tlf: .10, asq:-.22, alf: .34, tpt: .30, apt:-.10, arc: .26 },
 };
 const BEAT_REST = .55;                         // how long the release takes to let out
 const BT0 = { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 };
@@ -9575,6 +9602,8 @@ function startRun(id){
   // this mechanic is built not to touch. Caught by the round's own A/B bench,
   // where the burrow tally carried over between runs.
   killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0; ramN = 0; dmgRam = 0; springN = 0;
+  matNest = null; for(const k in matStat) matStat[k] = k === "boon" ? null : 0;   // L41
+  thnRing = null; for(const k in thnStat) thnStat[k] = 0;                          // L42
   // AND THE BODY SERIAL, which stopped being a label the moment L17 hashed it.
   // routRoll, digRoll and stoopRoll are all deterministic functions of e.eid -
   // that is the whole reason they exist, so that deciding "can this body panic"
@@ -10041,6 +10070,13 @@ function hurt(e, amount, kx, kz, crit){
     if(showSpark && cpops.length < 300)
       spark(e.x, e.y + e.def.h*.8, e.z, WARD_COL, 1, 2.6);
   }
+  // THE MATRIARCH'S SHIELD (L41): her young hold her up the way a warden holds
+  // its pack - same cut, same near-white spark (cosmetic dice only, so a hit
+  // on her draws nothing from the run stream).
+  if(MAT_ON && e.calves && matShielded(e, enemies)){
+    amount *= WARD_CUT; matStat.shielded++;
+    if(cpops.length < 300) spark(e.x, e.y + e.def.h*.8, e.z, WARD_COL, 1, 2.6);
+  }
   const eff = Math.min(amount, Math.max(0, e.hp));   // effective, not overkill
   dmgDealt += eff;
   if(e.boss) dmgBoss += eff;
@@ -10151,6 +10187,8 @@ function killEnemy(e){
     for(let i=0;i<16;i++) pushGem(e.x+rnd(-3,3), e.z+rnd(-3,3), Math.ceil(e.xp/16));
     coinsRun += 90; shake = Math.max(shake, 1.4); SFX.boom(); hold("boss");
     alert2(e.def.nm+" DOWN", "#6ddba0");
+    if(MAT_ON && e.def.mat) matFall(e);
+    if(THN_ON && e.def.thn) thnFall(e);
     if(e.final){ finish("VICTORY", true); return; }
   } else {
     pushGem(e.x, e.z, e.xp);
@@ -11219,11 +11257,19 @@ function spawnBoss(b){
   const ofYou = final ? finaleSize() : Math.min(b.hp * BOSS_SIZE_CAP, kitDps() * (BOSS_SECS[b.t] || 0));
   const floorHp = final ? FINALE_FLOOR : b.hp * grow;
   const def = { nm:b.nm, hp:Math.round(Math.max(floorHp, ofYou)), spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
-                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier };
+                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier, mat:!!b.mat, thn:!!b.thn };
   const a = R()*TAU;
   // and it comes up inside weapon range, not on the horizon - BOSS_RISE
   // seconds of ground breaking fifteen metres from you is the arrival
-  const [x, z] = confine(P.x+Math.cos(a)*BOSS_AT, P.z+Math.sin(a)*BOSS_AT, 5);
+  let [x, z] = confine(P.x+Math.cos(a)*BOSS_AT, P.z+Math.sin(a)*BOSS_AT, 5);
+  // L41: THE MATRIARCH comes up at HER NEST, the place you were shown for
+  // MAT_WARN seconds - unless you walked away from it, in which case she
+  // tunnels after you and takes the old fifteen-metre ring (matNestUse).
+  const nest = matNestUse(b);
+  if(nest){ x = nest.x; z = nest.z; }
+  // L42: THORNBACK comes up ON its own enclosure - through the fence it grew.
+  const ring = thnRingUse(b);
+  if(ring){ x = ring.x; z = ring.z; }
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
@@ -11245,6 +11291,268 @@ function spawnBoss(b){
 }
 const BOSS_RISE = 1.5;
 function alert2(text, col){ alerts.push({ text, col, life:2.6 }); }
+
+// ================================================= THE MATRIARCH (L41)
+// "The mobs kind of suck and there's no real boss." MEASURED FIRST, on the
+// shipped build, the kiting bot as intern on seed 101: THE MATRIARCH came up
+// at 5:01, cast one thing - a slam - for 24 seconds and fell, and nothing
+// about the run was different afterwards except sixteen gems. THORNBACK and
+// SKYSPLITTER were the same shape (38 s and 44 s, two moves each). They were
+// timed stat blocks with a telegraph, not encounters: no warning of where,
+// one lesson, and no ending. This is the first boss rebuilt as an encounter.
+//
+// THE STORY is the one the bestiary already tells: the horde is WILDLIFE
+// fleeing across the world, and for five minutes you have been killing her
+// young. She is their mother, and she comes up out of the ground for them.
+//
+// ARRIVAL - a time and a place you see coming. MAT_WARN seconds before her
+//   clock the ground starts breaking at HER NEST, MAT_NEST_AT metres from you,
+//   drawn in the world (a widening ring of thrown earth and a dust column)
+//   and on the minimap, with two lines of text. She rises THERE.
+// ATTACK 1 - THE SLAM, unchanged: the ring under your feet, the rear-up.
+// ATTACK 2 - THE CALL: she throws her head straight up (the tallest rear in
+//   BEAT, and the only beat with no lunge) and bellows; MAT_CALVES of her
+//   young burst out of the ground around you on the burrow's own mound - a
+//   second 0.9 s tell - already rearing back to bite. Step out, or jump it
+//   with SPRINGHEEL, exactly like any other told bite.
+// WHAT IT CHANGES - while any calf she called is alive she is SHIELDED: she
+//   takes WARD_CUT of your damage and a tether runs from each calf to her,
+//   the warden's language (L15) reversed, so the fight stops being "stand and
+//   out-damage her" and becomes clear her young at your feet, THEN burst her.
+//   Nothing here reads the character: the calves are sized off HER health,
+//   which is sized off YOUR kit (BOSS_SECS), so every animal meets the same
+//   number of seconds of shield.
+// THE ENDING - she falls and the run changes: every body within MAT_BREAK_R
+//   breaks and scatters (the stampede's rout, L17 - a routing body cannot
+//   bite), you are paid a boon off the den table (HER HIDE), and the text says
+//   who is left: something deeper heard her fall.
+// OFF SWITCH: MAT_ON (window.__g.matriarch). Off, she is the old boss exactly -
+// no nest, no call, no shield, no ending - and the pinned bench is unchanged
+// to the digit. Only she carries `mat`; the other three bosses never read it.
+let MAT_ON = true;                          // THE OFF SWITCH - ships true
+const MAT_WARN     = 18;     // seconds of nest before she rises
+const MAT_NEST_AT  = 20;     // metres from you the nest opens
+const MAT_NEST_REACH = 45;   // walk further than this from it and she tunnels after you instead
+const MAT_CALVES   = 3;      // young per call
+const MAT_CALF_HP  = .06;    // each calf, as a share of HER health (so: of your kit)
+const MAT_TETHER   = 40;     // metres a calf's shield reaches her
+const MAT_BREAK_R  = 40;     // metres her fall is felt
+const MAT_BREAK_T  = 3.0;    // seconds the herd runs
+const MAT_LINE_WARN = ["THE GROUND IS BREAKING", "SHE HEARD HER YOUNG DIE"];
+const MAT_LINE_END  = "HER HERD SCATTERS. SOMETHING DEEPER HEARD HER FALL.";
+let matNest = null;          // { x, z, t0, at, used } - the place, for this run
+const matStat = { warned:0, calls:0, calves:0, shielded:0, falls:0, broke:0, boon:null, tunnelled:0, moved:0 };
+// which kit a boss draws from - PURE; the switch and the table decide it
+function matKit(def, on){ return (on && def && def.mat) ? ["slam", "brood"] : (BOSS_KIT[def && def.ai] || ["slam"]); }
+// PURE: is this boss shielded by a live calf in reach, given the bodies
+function matShielded(e, bodies){
+  if(!e || !e.boss || !e.calves || !e.calves.length) return false;
+  for(const c of e.calves) if(c && !c.dead && c.calfOf === e && Math.hypot(c.x - e.x, c.z - e.z) <= MAT_TETHER) return true;
+  return false;
+}
+// the warning - once, MAT_WARN seconds out, only for the boss that carries it
+function matWarn(b){
+  const a = R()*TAU;
+  const [x, z] = confine(P.x + Math.cos(a)*MAT_NEST_AT, P.z + Math.sin(a)*MAT_NEST_AT, 8);
+  matNest = { x, z, t0:T, at:b.t, used:false };
+  matStat.warned++;
+  alert2(MAT_LINE_WARN[0], "#ff5c4d"); alert2(MAT_LINE_WARN[1], "#ffb08a");
+  shake = Math.max(shake, .45); SFX.boss();
+}
+// the nest re-opens where you are now - the same place, moved, not a new one
+function matMove(){
+  const a = R()*TAU;
+  const [x, z] = confine(P.x + Math.cos(a)*MAT_NEST_AT, P.z + Math.sin(a)*MAT_NEST_AT, 8);
+  matNest.x = x; matNest.z = z; matStat.moved++;
+}
+// where she comes up: the nest if you are still near it, else null (old ring)
+function matNestUse(b){
+  if(!MAT_ON || !b.mat || !matNest || matNest.used) return null;
+  matNest.used = true;
+  if(Math.hypot(P.x - matNest.x, P.z - matNest.z) > MAT_NEST_REACH){ matStat.tunnelled++; return null; }
+  return matNest;
+}
+// THE CALL, executed: her young come up around you on the burrow's arrival
+function matCall(e){
+  if(!e.calves) e.calves = [];
+  matStat.calls++;
+  const a0 = R()*TAU;
+  for(let i=0;i<MAT_CALVES;i++){
+    const a = a0 + i*(TAU/MAT_CALVES), r = BURROW_AT[0] + (BURROW_AT[1]-BURROW_AT[0])*(i/(MAT_CALVES-1 || 1));
+    const [cx, cz] = confine(P.x + Math.cos(a)*r, P.z + Math.sin(a)*r, 2);
+    const c = spawnEnemy("brute", cx, cz);
+    if(!c) continue;
+    c.burrow = true; c.rise = BURROW_RISE; c.riseMax = BURROW_RISE;
+    c.hp = c.maxhp = Math.max(c.maxhp, e.maxhp * MAT_CALF_HP);
+    c.calfOf = e; e.calves.push(c); matStat.calves++;
+  }
+  e.calves = e.calves.filter(c => c && !c.dead);
+  for(let i=0;i<18;i++){                       // the bellow, rolling out of her
+    const a2 = i*(TAU/18);
+    rings.push({ x:e.x+Math.cos(a2)*e.rad, z:e.z+Math.sin(a2)*e.rad, y:e.y,
+                 r:0, max:e.def.w*2.2, life:.9, mx:1.2 });
+  }
+  shake = Math.max(shake, .6); SFX.boss();
+}
+// THE ENDING - her fall breaks the herd and pays you
+function matFall(e){
+  matStat.falls++;
+  let n = 0;
+  for(const o of enemies){
+    if(o === e || o.dead || o.boss || o.rise > 0 || o.dig > 0 || o.stoop > 0 || o.def.flee) continue;
+    if(Math.hypot(o.x - e.x, o.z - e.z) > MAT_BREAK_R) continue;
+    o.routT = o.rout = MAT_BREAK_T; o.routS = (o.eid & 1) ? 1 : -1;
+    o.wu = 0; o.wd = 0; o.lead = 0; o.flash = Math.max(o.flash, .12); n++;
+  }
+  matStat.broke += n;
+  const b = pick(BOONS.filter(x => !boons.includes(x.nm)));
+  if(b){ boons.push(b.nm); b.fn(); matStat.boon = b.nm; alert2("HER HIDE - " + b.nm, "#ffd24a"); }
+  else { coinsRun += 110; matStat.boon = "COINS"; alert2("HER HIDE - 110 COINS", "#ffd24a"); }
+  alert2(MAT_LINE_END, "#ffb08a");
+}
+
+// ================================================= THORNBACK (L42)
+// The second boss, rebuilt as an encounter - and DELIBERATELY NOT HERS. L41
+// ended by saying a THORNBACK that also called young would be THE MATRIARCH in
+// another colour, so every one of the four answers here is a different answer.
+// MEASURED FIRST, on the shipped build: THORNBACK came up at 10:01, cast evict
+// and slam for 38 seconds and fell, and nothing about the run was different
+// afterwards. No warning of where, and no ending.
+//
+// THE STORY: it is the animal that makes the ground uninhabitable. It does not
+// chase you and it does not call anything - it grows a fence and then fights
+// you inside it.
+//
+// ARRIVAL - THE ENCLOSURE. THN_WARN seconds before its clock a ring of thorn
+//   spires starts pushing out of the ground at THN_RING_R metres, CENTRED ON
+//   YOU, rising over the whole warning, drawn in the world and on the minimap.
+//   It does NOT follow you - that is her nest's answer and it is the wrong one
+//   here, because the place is not a point you walk to, it is a circle you are
+//   already standing in. THORNBACK comes up ON the ring itself, through its
+//   own fence, on a side you did not pick.
+// ATTACK 1 - EVICT and THE SLAM, unchanged: its old kit is kept whole.
+// ATTACK 2 - THE HEDGE: it drives its head into the ground (BEAT.hedge, the
+//   only wind-up in the table with a POSITIVE pitch - every other beat rears
+//   up, this one goes down) and heaves its back, and a wedge of thorn grows
+//   out of it toward you, widening as it reaches. Backing away keeps you in
+//   it; the answer is sideways. A different verb from the slam's disc.
+// WHAT IT CHANGES - THE HEDGE IS ONE WAY. While it is up you can walk INTO
+//   the ring for nothing and you cannot walk OUT: the spires lean inward, and
+//   crossing them outward costs THN_WALL_DMG and throws you back inside. So
+//   for the length of the fight the game's dominant verb - back away from
+//   everything - is gone, and you have to circle instead of retreat. It is not
+//   "kill the adds first" and it is not a damage shield: nothing about
+//   THORNBACK's health changes at all.
+// THE ENDING - its back breaks and the fence comes down INTO the arena: the
+//   thorns lie on the ground as THN_LEG_N patches that hurt THE HORDE (zones,
+//   the player's own side of the hazard language) for THN_LEG_T seconds. The
+//   pen you were fighting in becomes a killing floor you own. No boon: hers
+//   pays you, this one pays the FIELD.
+// OFF SWITCH: THN_ON (window.__g.thornback). Off, it is the old boss exactly -
+// no ring, no hedge, no wall, no ending. Only it carries `thn`.
+let THN_ON = true;                          // THE OFF SWITCH - ships true
+const THN_WARN      = 14;    // seconds of hedge rising before it arrives
+const THN_RING_R    = 30;    // metres - the radius of the ring it plants around you
+const THN_SPIRES    = 24;    // spires in the ring; the drawing reads this, not a second number
+// MEASURED, NOT GUESSED. At 24 damage and a 0.85 s cooldown the first build
+// charged the bench's kiting bot - whose entire policy is "walk away", so it
+// leans on the fence for the whole fight - THIRTEEN touches in one encounter,
+// and took its damage per minute from 32.6 to 152.7 over the window. That is
+// not a wall, it is an execution: the fight would have been decided by the one
+// habit the mechanic exists to interrupt rather than by the boss. The SHOVE is
+// what holds the pen; the damage only has to make the thorns read as thorns.
+const THN_WALL_DMG  = 9;     // what pushing through a spire costs, before dmgScale
+const THN_WALL_CD   = 1.25;  // seconds between two touches of the same hedge
+const THN_WALL_PUSH = 2.6;   // metres inside the ring the thorns throw you back to
+const THN_HEDGE_N   = 7;     // rows of thorn in the wedge
+const THN_HEDGE_R   = 21;    // metres the wedge reaches - well inside the ring
+const THN_HEDGE_W   = .46;   // radians - the wedge's half-angle at full reach
+const THN_LEG_T     = 45;    // seconds the broken thorns lie in the field
+const THN_LEG_DPS   = 38;    // what they do to the horde per second, before dmgScale
+const THN_LEG_N     = 14;    // patches of broken thorn its fall leaves
+const THN_LINE_WARN = ["THE GROUND BRISTLES", "SOMETHING IS FENCING YOU IN"];
+const THN_LINE_END  = "ITS BACK BREAKS. THE FIELD IS FULL OF THORNS.";
+let thnRing = null;          // { x, z, t0, at, used, up, inside, cd } - the ring, for this run
+const thnStat = { planted:0, hedges:0, walled:0, out:0, falls:0, left:0 };
+// which kit a boss draws from - PURE; the switch and the table decide it
+function thnKit(def, on){ return (on && def && def.thn) ? ["evict", "hedge", "slam"] : (BOSS_KIT[def && def.ai] || ["slam"]); }
+// one place decides a boss's kit, so a boss that carries neither flag still
+// gets its table entry and no boss can ever be handed another's lesson
+function bossKitOf(def){
+  if(def && def.mat) return matKit(def, MAT_ON);
+  if(def && def.thn) return thnKit(def, THN_ON);
+  return BOSS_KIT[def && def.ai] || ["slam"];
+}
+// PURE: does the hedge stop this step? Only outward, and only from inside -
+// the thorns lean in, so coming back is free and leaving is not.
+function thnBlocks(inside, r, vr){ return !!inside && r >= THN_RING_R && vr > 0; }
+// the warning - once, THN_WARN seconds out, only for the boss that carries it
+function thnPlant(b){
+  thnRing = { x:P.x, z:P.z, t0:T, at:b.t, used:false, up:false, inside:true, cd:0 };
+  thnStat.planted++;
+  alert2(THN_LINE_WARN[0], "#4d7dff"); alert2(THN_LINE_WARN[1], "#9ec1ff");
+  shake = Math.max(shake, .45); SFX.boss();
+}
+// where it comes up: ON its own ring, a side it picked and you did not
+function thnRingUse(b){
+  if(!THN_ON || !b.thn || !thnRing || thnRing.used) return null;
+  thnRing.used = true; thnRing.up = true; thnRing.inside = true;
+  const a = R()*TAU;
+  const [x, z] = confine(thnRing.x + Math.cos(a)*THN_RING_R, thnRing.z + Math.sin(a)*THN_RING_R, 5);
+  return { x, z };
+}
+// THE WALL, stepped. Rebuilt from the two positions every frame rather than
+// stored on the player, the ward's own rule (L15): which side of a circle you
+// are on is a fact about where you are now.
+function thnWall(dt){
+  if(!THN_ON || !thnRing || !thnRing.up || !P) return;
+  thnRing.cd = Math.max(0, (thnRing.cd || 0) - dt);
+  const dx = P.x - thnRing.x, dz = P.z - thnRing.z, r = Math.hypot(dx, dz);
+  const ux = r > 1e-4 ? dx/r : 1, uz = r > 1e-4 ? dz/r : 0;
+  const vr = (P.vx || 0)*ux + (P.vz || 0)*uz;         // speed along the radius, outward positive
+  // A FLIER GOES OVER IT, like every other ground hazard in this game (see
+  // updateHazards' own aloft() test). Said out loud because it is a real out.
+  if(aloft() || !thnBlocks(thnRing.inside, r, vr)){ thnRing.inside = r < THN_RING_R; return; }
+  thnStat.out++;
+  const sx = thnRing.x + ux*THN_RING_R, sz = thnRing.z + uz*THN_RING_R;   // the spire you hit
+  [P.x, P.z] = confine(thnRing.x + ux*(THN_RING_R - THN_WALL_PUSH), thnRing.z + uz*(THN_RING_R - THN_WALL_PUSH), 2);
+  P.y = groundY(P.x, P.z);
+  if(thnRing.cd <= 0 && P.iframe <= 0){
+    thnRing.cd = THN_WALL_CD; thnStat.walled++;
+    // FLAT, and the only damage in this game that is. Every other hazard is
+    // the boss hitting you and scales with the clock, so at minute ten the
+    // fence was charging 24 a touch and OWNED the encounter: split by source,
+    // the whole of spark's 83.7 -> 158.9 was hazard (107.6 -> 241.8), and five
+    // of the ten hazard hits were the fence. The thorns are not an attack -
+    // they are scenery you walked into - and scenery does not get deadlier as
+    // the run goes on. The SHOVE is the mechanic; this is the sting on it.
+    hurtSrc = "hazard"; playerHurt(THN_WALL_DMG, sx, sz); hurtSrc = "contact";
+    shake = Math.max(shake, .35); SFX.zap();
+  }
+}
+// THE ENDING - the fence falls inward and the thorns stay
+function thnFall(e){
+  thnStat.falls++;
+  const s = dmgScale(T);
+  const cx = thnRing ? thnRing.x : e.x, cz = thnRing ? thnRing.z : e.z;
+  let n = 0;
+  for(let i=0;i<THN_LEG_N;i++){
+    const a = i*(TAU/THN_LEG_N), rr = THN_RING_R*(.28 + .62*R());
+    const [zx, zz] = confine(cx + Math.cos(a)*rr, cz + Math.sin(a)*rr, 3);
+    zones.push({ x:zx, z:zz, r:5.2, dps:THN_LEG_DPS*s, life:THN_LEG_T, max:THN_LEG_T,
+                 c:[.30,.52,.80], tick:0, thorn:true });
+    n++;
+  }
+  thnStat.left = n;
+  if(thnRing){ thnRing.up = false; thnRing.fell = T; }
+  for(let i=0;i<22;i++){                       // the fence coming down
+    const a2 = i*(TAU/22);
+    rings.push({ x:cx+Math.cos(a2)*THN_RING_R, z:cz+Math.sin(a2)*THN_RING_R, y:groundY(cx+Math.cos(a2)*THN_RING_R, cz+Math.sin(a2)*THN_RING_R),
+                 r:0, max:3.4, life:.9, mx:1.2 });
+  }
+  shake = Math.max(shake, 1.0);
+  alert2(THN_LINE_END, "#9ec1ff");
+}
 
 // hazards are the enemy mirror of `zones`: they hurt the PLAYER. `tel` counts
 // down as a harmless warning, then `live` counts down doing damage.
@@ -11269,7 +11577,7 @@ function bossAI(e, dt){
   }
   if(A.phase === "move"){
     if(A.t > 0) return true;
-    const kit = (e.final ? bossPhase(e).kit : BOSS_KIT[e.def.ai]) || ["slam"];
+    const kit = (e.final ? bossPhase(e).kit : bossKitOf(e.def)) || ["slam"];
     A.kind = kit[(A.n++) % kit.length];
     if(A.kind === "sinkhole") A.dir = R()*TAU;   // never the same seam twice
     A.phase = "tell"; A.t = ABILITIES[A.kind].tell;
@@ -11338,6 +11646,20 @@ function bossTelegraph(e, A){
       hazards.push(mkHaz(e.x+Math.sin(A.dir)*dd, e.z+Math.cos(A.dir)*dd,
                          2.9, ABILITIES.charge.tell, .55, 27*s));
     }
+  } else if(A.kind === "hedge"){
+    // A WEDGE OUT OF THE BOSS, widening as it reaches - so backing straight
+    // away keeps you inside it and the answer is lateral. Aimed at you when it
+    // winds up and the ground does not follow, exactly as the sinkhole's is.
+    A.dir = Math.atan2(P.x-e.x, P.z-e.z);
+    for(let i=1;i<=THN_HEDGE_N;i++){
+      const dd = i*(THN_HEDGE_R/THN_HEDGE_N), sp = THN_HEDGE_W*(i/THN_HEDGE_N);
+      for(const k of [-1, 0, 1]){
+        const a = A.dir + k*sp;
+        const hx = e.x+Math.sin(a)*dd, hz = e.z+Math.cos(a)*dd;
+        if(Math.hypot(hx, hz) > RIM - 2) continue;
+        hazards.push(mkHaz(hx, hz, 2.4, ABILITIES.hedge.tell, .8, 26*s));
+      }
+    }
   } else if(A.kind === "spokes"){
     A.dir = R()*TAU;
   } else if(A.kind === "sinkhole"){
@@ -11369,7 +11691,9 @@ function bossExecute(e, A){
       spits.push({ x:e.x, y:e.y+e.def.h*.55, z:e.z, a:A.dir + i*(TAU/14),
                    spd:17, d:17*dmgScale(T)*bossDmgMul(e), life:3.2, big:true });
     SFX.boom();
-  } else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
+  } else if(A.kind === "brood"){ if(MAT_ON) matCall(e); }   // the switch, at the act as well as in the kit
+  else if(A.kind === "hedge"){ if(THN_ON) thnStat.hedges++; shake = Math.max(shake,.8); SFX.boom(); }
+  else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
   else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
   else if(A.kind === "sinkhole"){ shake = Math.max(shake,.85); SFX.boom(); }
 }
@@ -13833,6 +14157,7 @@ function step(dt){
   stepCorpses(dt);
   updateProjectiles(dt);
   updateHazards(dt);
+  thnWall(dt);                                   // L42: the one-way hedge
   updateEvents(dt);
   updateGems(dt);
   updatePearls(dt);
@@ -13870,6 +14195,23 @@ function step(dt){
       }
     }
   }
+  // L41: THE MATRIARCH's nest opens MAT_WARN seconds before her clock
+  if(MAT_ON && !noSpawn && !matNest && bossIdx < BOSSES.length && BOSSES[bossIdx].mat
+     && T >= BOSSES[bossIdx].t - MAT_WARN) matWarn(BOSSES[bossIdx]);
+  // ...AND IT FOLLOWS YOU. MEASURED: over eighteen seconds of warning the
+  // bench's own kiting bot walks 90 m, so on 4 of 4 seeds the nest was
+  // abandoned and she fell back to the old fifteen-metre ring - the place
+  // never landed. She is UNDER the ground, so the ground keeps breaking where
+  // you are: walk further than MAT_NEST_REACH from it and the nest re-opens
+  // MAT_NEST_AT metres from you. You can still lead her; you cannot lose her.
+  if(MAT_ON && matNest && !matNest.used && Math.hypot(P.x - matNest.x, P.z - matNest.z) > MAT_NEST_REACH)
+    matMove();
+  // L42: THORNBACK's enclosure is planted THN_WARN seconds before its clock,
+  // around where you stand, and unlike the nest it does NOT follow you: the
+  // place is the circle, and walking out of a circle before it closes is a
+  // decision the player is allowed to make.
+  if(THN_ON && !noSpawn && !thnRing && bossIdx < BOSSES.length && BOSSES[bossIdx].thn
+     && T >= BOSSES[bossIdx].t - THN_WARN) thnPlant(BOSSES[bossIdx]);
   if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
     spawnBoss(BOSSES[bossIdx++]);
 
@@ -17133,6 +17475,59 @@ function render(){
       }
     }
   }
+  // L41: THE MATRIARCH's young hold her up - the warden's tether, reversed:
+  // it runs from each calf's crown to hers and the beads travel toward the
+  // CALF, because the calf is the source (the warden rule: beads run to the
+  // holder). Nothing is drawn with the switch off or with no calf alive.
+  if(MAT_ON) for(const w of enemies){
+    if(!w.boss || w.dead || !w.calves || !w.calves.length) continue;
+    const oy = w.y + w.def.h*.95;
+    for(const c of w.calves){
+      if(!c || c.dead || c.rise > 0 || Math.hypot(c.x - w.x, c.z - w.z) > MAT_TETHER) continue;
+      const cy = c.y + c.def.h*c.sz*1.05, seg = 12;
+      for(let i=1;i<=seg;i++){
+        const t = ((i/seg) + T*.55) % 1;
+        box(lerp(w.x, c.x, t), lerp(oy, cy, t) + Math.sin(t*Math.PI)*.8, lerp(w.z, c.z, t),
+            .06 + .05*t, .06 + .05*t, .06 + .05*t, WARD_COL, .16 + .40*t);
+      }
+    }
+  }
+  // L41: THE NEST - the place she will come up, shown for MAT_WARN seconds.
+  // Earth thrown off a ring that widens as her clock runs down, and a dust
+  // column that grows, so it reads from across a fight and says WHEN as well
+  // as WHERE. The same earth colour as a burrower's mound: it is one language.
+  if(MAT_ON && matNest && !matNest.used){
+    const u = clamp((T - matNest.t0) / MAT_WARN, 0, 1), gy = groundY(matNest.x, matNest.z);
+    if(onScreen(matNest.x, gy + 4, matNest.z, 10) !== null){
+      for(let i=0;i<16;i++){
+        const a2 = i*(TAU/16) + T*(.8 + u*1.6), rr = 1.6 + u*2.6;
+        box(matNest.x + Math.cos(a2)*rr, gy + .3 + Math.abs(Math.sin(T*5 + i))*.6*u, matNest.z + Math.sin(a2)*rr,
+            .34, .26, .34, [.34,.27,.22], .05);
+      }
+      for(let i=0;i<6;i++)
+        box(matNest.x, gy + 1 + i*1.6*u, matNest.z, 1.4 - i*.14, .8*u + .1, 1.4 - i*.14, [.52,.44,.36], .10);
+      box(matNest.x, gy + .08, matNest.z, 1.2 + u*2.4, .06, 1.2 + u*2.4, [.55,.10,.08], .35 + .25*Math.sin(T*6));
+    }
+  }
+  // L42: THE ENCLOSURE - THORNBACK's ring, rising over its warning and then
+  // standing for the fight. Each spire is four stacked segments that LEAN
+  // INWARD as they climb, which is the one-way rule drawn rather than written:
+  // the points are on your side of the fence. THN_SPIRES is the only count.
+  if(THN_ON && thnRing && (!thnRing.used || thnRing.up)){
+    const u = thnRing.up ? 1 : clamp((T - thnRing.t0) / THN_WARN, 0, 1);
+    for(let i=0;i<THN_SPIRES;i++){
+      const a = i*(TAU/THN_SPIRES);
+      const sx = thnRing.x + Math.cos(a)*THN_RING_R, sz = thnRing.z + Math.sin(a)*THN_RING_R;
+      const gy = groundY(sx, sz);
+      if(onScreen(sx, gy + 1.6, sz, 6) === null) continue;
+      for(let k=0;k<4;k++){
+        const lean = k*.26*u;
+        box(sx - Math.cos(a)*lean, gy + .1 + k*.66*u, sz - Math.sin(a)*lean,
+            .30 - k*.06, .34*u + .04, .30 - k*.06, [.30,.52,.80], .12 + .04*k);
+      }
+      box(sx, gy + .06, sz, .7, .05, .7, [.22,.34,.54], .10);
+    }
+  }
   passEnd("wards");
   // THE FALLEN. Same plans, same pose path, drawn after the living so a body
   // that has just dropped lies under the one stepping over it. The mesh
@@ -20113,6 +20508,28 @@ window.__g = {
   // ramGive() is the paired bench's knob (grant it at the window start);
   // rams() is the run's own tally, which pairTick reads as `fired`.
   mutation:(v)=>{ if(v!==undefined) MUT_ON = !!v; return MUT_ON; },
+  // L41: THE MATRIARCH's encounter. matriarch() is its OFF SWITCH (ships true);
+  // mat() is the run's own tally, which pairTick reads as `fired` (the calls
+  // she actually made in the window), and matNestAt() is where the nest is.
+  matriarch:(v)=>{ if(v!==undefined) MAT_ON = !!v; return MAT_ON; },
+  mat:()=>({ n:matStat.calls, killR, on:MAT_ON, nest: matNest ? { x:+matNest.x.toFixed(2), z:+matNest.z.toFixed(2),
+             used:matNest.used, at:matNest.at, t0:+matNest.t0.toFixed(2) } : null,
+             calves:matStat.calves, shielded:matStat.shielded, warned:matStat.warned,
+             falls:matStat.falls, broke:matStat.broke, boon:matStat.boon, tunnelled:matStat.tunnelled, moved:matStat.moved,
+             live:enemies.filter(e=>e.calfOf && !e.dead).length,
+             kit:matKit(BOSSES[0], MAT_ON).join("+") }),
+  // L42: THORNBACK's encounter. thornback() is its OFF SWITCH (ships true);
+  // thn() is the run's own tally, which pairTick reads as `fired` (the hedges
+  // it actually cast in the window).
+  thornback:(v)=>{ if(v!==undefined) THN_ON = !!v; return THN_ON; },
+  thn:()=>({ n:thnStat.hedges, on:THN_ON,
+             ring: thnRing ? { x:+thnRing.x.toFixed(2), z:+thnRing.z.toFixed(2), used:thnRing.used,
+                               up:!!thnRing.up, inside:!!thnRing.inside, at:thnRing.at,
+                               t0:+thnRing.t0.toFixed(2), r:THN_RING_R } : null,
+             planted:thnStat.planted, walled:thnStat.walled, out:thnStat.out,
+             falls:thnStat.falls, left:thnStat.left,
+             thorns:zones.filter(z=>z.thorn).length,
+             kit:thnKit(BOSSES.find(b=>b.thn) || BOSSES[1], THN_ON).join("+") }),
   ramGive:(v)=>{ if(v!==undefined) ramGive = +v; return ramGive; },
   rams:()=>({ n:ramN, dmg:+dmgRam.toFixed(1), killR:+killR.toFixed(2) }),
   // THE GATE. Subjects derived: the card is every PASSIVES entry with `mut`,
@@ -20435,6 +20852,381 @@ window.__g = {
     qaSettle();
     return { ok: bad.length === 0, bad, card:A, cardOff:N, noTell:G, kite:K,
              head:{ kite:HK.map(v=>+v.toFixed(3)), tell:HT.map(v=>+v.toFixed(3)) }, hold:TELL_HOLD };
+  },
+
+  // THE MATRIARCH's encounter (L41). One clause per way this could be wrong,
+  // subjects derived from the tables (BOSSES, BOSS_KIT, BURROW_AT) rather than
+  // typed, and a null control on every one: with the switch off she must be
+  // the boss she has always been, and the other three bosses must never see
+  // any of it whether the switch is on or off.
+  matGate:()=>{
+    const bad = [], g = window.__g;
+    if(MAT_ON !== true) bad.push(`THE MATRIARCH'S ENCOUNTER IS SHIPPED OFF: MAT_ON ${MAT_ON}, ships true`);
+    // 0. PURE - the kit, off the table. Exactly one boss carries `mat`.
+    const carry = BOSSES.filter(b=>b.mat);
+    if(carry.length !== 1) bad.push(`THE ENCOUNTER IS ON ${carry.length} BOSSES: ${carry.map(b=>b.nm)} - it is written for one`);
+    const M = carry[0] || BOSSES[0];
+    // the two tells, as lengths, against the language they extend: the call's
+    // wind-up is at least as long as a burrower's mound, and the nest stands
+    // long enough that a player could walk out to it and back before she rises
+    if(!(ABILITIES.brood.tell >= BURROW_RISE)) bad.push(`THE CALL HAS NO WARNING: ${ABILITIES.brood.tell} s of wind-up against the burrow's own ${BURROW_RISE} s mound`);
+    if(!(MAT_WARN * (P ? P.spd : 0) >= 2*MAT_NEST_AT)) bad.push(`THE NEST GIVES NO TIME: ${MAT_WARN} s at ${P && +P.spd.toFixed(2)} m/s does not cover ${MAT_NEST_AT} m out and back`);
+    if(matKit(M, true).join("+") !== "slam+brood") bad.push(`HER KIT IS NOT THE TWO LESSONS: ${matKit(M, true)}`);
+    if(matKit(M, false).join("+") !== (BOSS_KIT[M.ai]||[]).join("+")) bad.push(`THE SWITCH OFF DOES NOT RESTORE HER OLD KIT: ${matKit(M, false)} vs ${BOSS_KIT[M.ai]}`);
+    for(const b of BOSSES) if(!b.mat && matKit(b, true).join("+") !== (BOSS_KIT[b.ai]||[]).join("+"))
+      bad.push(`${b.nm} WAS GIVEN THE CALL: ${matKit(b, true)}`);
+    // 0b. PURE - the shield, and every way it must not hold
+    const bx = { boss:true, x:0, z:0 }, cf = (o)=>Object.assign({ x:1, z:0, dead:false, calfOf:bx }, o||{});
+    bx.calves = [cf()];
+    if(!matShielded(bx)) bad.push("A LIVE CALF IN REACH DOES NOT SHIELD HER");
+    const nots = [["A DEAD CALF SHIELDS HER", { dead:true }],
+                  ["A CALF PAST ITS TETHER SHIELDS HER", { x:MAT_TETHER + 1 }],
+                  ["ANOTHER BOSS'S CALF SHIELDS HER", { calfOf:{ boss:true } }]];
+    for(const [msg, o] of nots){ bx.calves = [cf(o)]; if(matShielded(bx)) bad.push(msg); }
+    bx.calves = []; if(matShielded(bx)) bad.push("SHE IS SHIELDED WITH NO CALVES");
+    // ---- the live half
+    // AND THE BOONS HER FALL PAYS. Clause 4 kills her twice, and a boon is a
+    // permanent change to the player (HEAVY HANDS is x1.15 damage, LIGHT FEET
+    // x1.07 speed, DEEP LUNGS +28 max HP). Putting the NAME list back is not
+    // putting the EFFECT back: on the first build of this gate that leak made
+    // routGate fail ("ROUT IS NOT FASTER THAN A WALK") when freezeGate re-ran
+    // after the battery, because the player it measured had been paid twice.
+    const keep = { ns:noSpawn, t:T, bi:bossIdx, nest:matNest, on:MAT_ON, hp:P.hp, boons:boons.slice(),
+                   x:P.x, z:P.z, vx:P.vx, vz:P.vz, bd:botDrive, ev:events.splice(0), hz:hazards.splice(0),
+                   bm:Object.assign({}, boonMul), coins:coinsRun,
+                   stat:{ dmg:P.dmg, reach:P.reach, spd:P.spd, cd:P.cd, mag:P.mag,
+                          maxhp:P.maxhp, regen:P.regen } };
+    qaLive(bad, "THE MATRIARCH GATE");
+    noSpawn = true; botDrive = false;
+    const clear = ()=>{ g.clearEnemies(); matNest = null; alerts.length = 0;
+                        matStat.moved = 0; matStat.tunnelled = 0; matStat.warned = 0; };
+    // 1. THE ARRIVAL. Her clock, run from MAT_WARN + a second before it.
+    const arrive = (on)=>{
+      // FROM THE MIDDLE OF THE MAP. Run a second time in one page, this trial
+      // found the player wherever the last one left them - out by the rim - and
+      // the walk below was clamped to nothing, so "the nest does not follow"
+      // fired on a build where it does. A trial's premise may not depend on
+      // where the previous trial stopped.
+      clear(); MAT_ON = on; bossIdx = BOSSES.indexOf(M); T = M.t - MAT_WARN - 1;
+      P.x = 0; P.z = 0; P.y = groundY(0, 0);
+      noSpawn = false;                                  // the schedule is in the spawn block
+      let nest = null;
+      let walked = 0;
+      for(let i=0;i<Math.round((MAT_WARN + 2)*60) && !enemies.some(e=>e.boss); i++){
+        // and the player WALKS - the nest has to survive a player who leaves it
+        if(matNest && !matNest.used && i % 2 === 0 && Math.hypot(P.x, P.z) < RIM - 60){ P.x += .4; walked += .4; }
+        step(1/60);
+        if(matNest && !nest) nest = { x:matNest.x, z:matNest.z, at:+(T).toFixed(2), said:alerts.map(a=>a.text),
+                                      pd:+Math.hypot(matNest.x-P.x, matNest.z-P.z).toFixed(2) };
+      }
+      noSpawn = true;
+      const b = enemies.find(e=>e.boss);
+      const fin = matNest ? { x:matNest.x, z:matNest.z } : null;    // where the nest ENDED UP
+      return { nest, warned:matStat.warned, lines:alerts.map(a=>a.text),
+               moved:matStat.moved, tunnelled:matStat.tunnelled, walked:+walked.toFixed(1),
+               boss: b ? { d: fin ? +Math.hypot(b.x-fin.x, b.z-fin.z).toFixed(2) : null,
+                           pd:+Math.hypot(b.x-P.x, b.z-P.z).toFixed(2), rise:+b.rise.toFixed(2) } : null };
+    };
+    const A1 = arrive(true);
+    if(!A1.nest) bad.push("NO NEST OPENS BEFORE SHE ARRIVES: the arrival has no warning");
+    else {
+      if(!(A1.nest.pd > MAT_NEST_AT - 6 && A1.nest.pd < MAT_NEST_AT + 6)) bad.push(`THE NEST OPENS ${A1.nest.pd} m AWAY, not about ${MAT_NEST_AT}`);
+      if(!(A1.nest.at <= M.t - MAT_WARN + .2)) bad.push(`THE NEST OPENS TOO LATE: t ${A1.nest.at}, her clock ${M.t} less ${MAT_WARN} s of warning`);
+      if(!MAT_LINE_WARN.every(l => A1.nest.said.includes(l))) bad.push(`THE ARRIVAL IS NOT ANNOUNCED: ${JSON.stringify(A1.nest.said)}`);
+    }
+    if(!(A1.moved > 0)) bad.push(`THE NEST DOES NOT FOLLOW: the player walked ${A1.walked} m from it and it re-opened ${A1.moved} times`);
+    if(!(A1.tunnelled === 0)) bad.push(`SHE TUNNELLED AFTER A FOLLOWED NEST: ${A1.tunnelled} - the fallback fired when the nest should have moved`);
+    if(!A1.boss) bad.push("SHE NEVER ARRIVED AT ALL");
+    else {
+      if(!(A1.boss.d !== null && A1.boss.d < 1)) bad.push(`SHE DOES NOT COME UP AT HER NEST: ${A1.boss.d} m from it`);
+      if(!(A1.boss.pd <= MAT_NEST_REACH + 2)) bad.push(`SHE COMES UP ${A1.boss.pd} m AWAY, past the ${MAT_NEST_REACH} m the nest is allowed to fall behind`);
+    }
+    const A0 = arrive(false);
+    if(A0.nest) bad.push(`THE SWITCH OFF STILL OPENS A NEST at ${A0.nest.pd} m`);
+    if(!A0.boss) bad.push("CLAUSE 1 NULL: SHE NEVER ARRIVED WITH THE SWITCH OFF");
+    else if(!(Math.abs(A0.boss.pd - BOSS_AT) < 6)) bad.push(`THE SWITCH OFF MOVED HER ARRIVAL: ${A0.boss.pd} m from the player, the old ring is ${BOSS_AT}`);
+    // 2. THE CALL, through the real bossAI: cue her tell and let it run out.
+    const call = (on, kind)=>{
+      clear(); MAT_ON = on; P.hp = P.maxhp;
+      spawnBoss(M); const b = enemies.find(e=>e.boss); b.rise = 0; b.hp = b.maxhp = 1e9;
+      g.bossCue(kind, "tell", 1/60);
+      const pk = window.__g.beat();
+      g.bossCue(kind, "act", ABILITIES[kind].act); const ak = window.__g.beat();
+      g.bossCue(kind, "tell", 1/60);
+      step(1/60); step(1/60);
+      const calves = enemies.filter(e=>e.calfOf === b && !e.dead);
+      return { b, n:calves.length, peak:pk, act:ak,
+               up:calves.filter(c=>c.burrow && c.rise > 0).length,
+               d:calves.map(c=>+Math.hypot(c.x-P.x, c.z-P.z).toFixed(2)),
+               armed:calves.filter(c=>c.def.bite).length };
+    };
+    const C = call(true, "brood");
+    if(C.n !== MAT_CALVES) bad.push(`THE CALL BRINGS ${C.n} OF HER YOUNG, not ${MAT_CALVES}`);
+    if(C.up !== C.n) bad.push(`HER YOUNG DO NOT COME UP OUT OF THE GROUND: ${C.up} of ${C.n} on a mound`);
+    for(const d of C.d) if(!(d >= BURROW_AT[0] - .6 && d <= BURROW_AT[1] + .6)) bad.push(`A CALF COMES UP ${d} m AWAY, outside the burrow's own ${BURROW_AT[0]}-${BURROW_AT[1]} m`);
+    if(!(C.peak && C.peak.pt <= -.30)) bad.push(`THE CALL HAS NO REAR-BACK: pitch ${C.peak && C.peak.pt} at the top of the tell`);
+    // PURE, off the beat table: the act has no reach. `rc` is zero all through
+    // the tell whatever the table says, so reading the live beat at the top of
+    // the wind-up cannot see this - a planted lunge passed that way.
+    if(!(BEAT.brood && BEAT.brood.arc === 0)) bad.push(`THE CALL LUNGES: act reach ${BEAT.brood && BEAT.brood.arc} - nothing is sent at the player`);
+    if(!(C.act && C.act.rc === 0)) bad.push(`THE CALL LUNGES ON THE ACT: reach ${C.act && C.act.rc}`);
+    const CS = call(true, "slam");
+    if(CS.n !== 0) bad.push(`CLAUSE 2 NULL: A SLAM CALLED ${CS.n} YOUNG`);
+    const CO = call(false, "brood");
+    if(CO.n !== 0) bad.push(`THE SWITCH OFF STILL CALLS: ${CO.n} young`);
+    // 3. THE SHIELD, measured as a ratio of two identical hits on her
+    const hitFor = (on, live)=>{
+      const C2 = call(on, "brood"); const b = C2.b;
+      for(const c of enemies) if(c.calfOf === b && !live) c.dead = true;
+      const h0 = b.hp; hurt(b, 1000, 0, 0); return +(h0 - b.hp).toFixed(2);
+    };
+    const hS = hitFor(true, true), hB = hitFor(true, false), hOff = hitFor(false, true);
+    if(!(hB > 0)) bad.push("CLAUSE 3 CANNOT SEE A HIT ON HER AT ALL");
+    else {
+      if(Math.abs(hS/hB - WARD_CUT) > .01) bad.push(`HER YOUNG DO NOT SHIELD HER: ${hS} of ${hB} = ${(hS/hB).toFixed(3)}, the ward's cut is ${WARD_CUT}`);
+      if(Math.abs(hOff/hB - 1) > .01) bad.push(`THE SWITCH OFF STILL SHIELDS HER: ${hOff} of ${hB}`);
+    }
+    // 4. THE ENDING: her fall breaks the herd, pays a boon and says so
+    const fall = (on)=>{
+      clear(); MAT_ON = on; boons.length = 0;
+      spawnBoss(M); const b = enemies.find(e=>e.boss); b.rise = 0;
+      const near2 = [];
+      for(let i=0;i<6;i++){ const e = spawnEnemy("shambler", b.x + 2 + i, b.z); if(e){ e.rise = 0; e.burrow = false; near2.push(e); } }
+      const far = spawnEnemy("shambler", b.x + MAT_BREAK_R + 12, b.z); if(far){ far.rise = 0; far.burrow = false; }
+      rebuildGrid();
+      const f0 = matStat.falls; b.hp = 1; hurt(b, 1e9, 0, 0);
+      return { fell:matStat.falls - f0, ran:near2.filter(e=>e.rout > 0).length, n:near2.length,
+               far: far ? far.rout > 0 : null, boons:boons.length, lines:alerts.map(a=>a.text) };
+    };
+    const F1 = fall(true);
+    if(F1.fell !== 1) bad.push(`HER FALL IS NOT AN EVENT: matFall ran ${F1.fell} times`);
+    if(F1.ran !== F1.n) bad.push(`THE HERD DOES NOT BREAK WHEN SHE FALLS: ${F1.ran} of ${F1.n} within ${MAT_BREAK_R} m ran`);
+    if(F1.far !== false) bad.push(`A BODY PAST ${MAT_BREAK_R} m BROKE TOO: the fall is felt everywhere`);
+    if(F1.boons !== 1) bad.push(`HER FALL PAYS NOTHING: ${F1.boons} boons`);
+    if(!F1.lines.includes(MAT_LINE_END)) bad.push(`HER FALL IS NOT TOLD: ${JSON.stringify(F1.lines)}`);
+    const F0 = fall(false);
+    if(F0.fell !== 0 || F0.ran !== 0 || F0.boons !== 0)
+      bad.push(`THE SWITCH OFF STILL ENDS THE RUN'S WAY: fell ${F0.fell}, ran ${F0.ran}, boons ${F0.boons}`);
+    // restore everything this gate touched. The arrival trials run the REAL
+    // spawn schedule for nineteen seconds, so they leave a field behind them:
+    // bodies, corpses, and the gems those deaths dropped. Clearing the bodies
+    // and not the gems left the next gate a player standing in a pile of XP.
+    g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
+    MAT_ON = keep.on; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; matNest = keep.nest;
+    boons.length = 0; boons.push(...keep.boons); botDrive = keep.bd;
+    Object.assign(boonMul, keep.bm); Object.assign(P, keep.stat); P.hp = keep.hp; coinsRun = keep.coins;
+    applyBoons();
+    // ...AND THE PLAYER'S MOMENTUM. The arrival trials leave the player standing
+    // still, and spawnEnemy biases its ring toward the way you are MOVING - so a
+    // gate that ran after this one got a uniform ring instead of a directed one
+    // and could stand its test body against the wall (routGate: "ROUT RUNS
+    // STRAIGHT AWAY INSTEAD OF WIDE", the rim push, at the end of a long page).
+    P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; alerts.length = 0;
+    events.push(...keep.ev); hazards.push(...keep.hz);
+    qaSettle();
+    return { ok: bad.length === 0, bad, arrive:{ on:A1, off:A0 },
+             call:{ n:C.n, up:C.up, d:C.d, pt:C.peak && C.peak.pt, rc:C.act && C.act.rc, arc:BEAT.brood.arc, off:CO.n, slam:CS.n },
+             shield:{ on:hS, bare:hB, off:hOff },
+             end:F1, kit:matKit(M, MAT_ON).join("+") };
+  },
+
+  // THORNBACK's encounter (L42). Same shape as matGate and the same rules:
+  // one clause per way this could be wrong, subjects derived from the tables
+  // (BOSSES, BOSS_KIT, ABILITIES, BEAT) rather than typed, and a null control
+  // on every one - with the switch off it must be the boss it has always been,
+  // and no other boss may ever see any of it. Plus the clause this round owes
+  // L41: its four answers must DIFFER from hers, checked against her own
+  // constants rather than against my memory of them.
+  thnGate:()=>{
+    const bad = [], g = window.__g;
+    if(THN_ON !== true) bad.push(`THORNBACK'S ENCOUNTER IS SHIPPED OFF: THN_ON ${THN_ON}, ships true`);
+    // 0. PURE - the kit, off the table. Exactly one boss carries `thn`, and it
+    // is not the one that carries `mat`.
+    const carry = BOSSES.filter(b=>b.thn);
+    if(carry.length !== 1) bad.push(`THE ENCLOSURE IS ON ${carry.length} BOSSES: ${carry.map(b=>b.nm)} - it is written for one`);
+    const B = carry[0] || BOSSES[1];
+    if(B.mat) bad.push(`${B.nm} CARRIES BOTH ENCOUNTERS: it would be THE MATRIARCH in another colour`);
+    if(thnKit(B, true).join("+") !== "evict+hedge+slam") bad.push(`ITS KIT IS NOT ITS OLD ONE PLUS THE HEDGE: ${thnKit(B, true)}`);
+    if(thnKit(B, false).join("+") !== (BOSS_KIT[B.ai]||[]).join("+")) bad.push(`THE SWITCH OFF DOES NOT RESTORE ITS OLD KIT: ${thnKit(B, false)} vs ${BOSS_KIT[B.ai]}`);
+    for(const b of BOSSES) if(!b.thn && bossKitOf(b).join("+") !== (b.mat ? matKit(b, MAT_ON) : (BOSS_KIT[b.ai]||[])).join("+"))
+      bad.push(`${b.nm} WAS GIVEN THE HEDGE: ${bossKitOf(b)}`);
+    if(!(thnKit(B, true).filter(k=>k==="brood").length === 0)) bad.push("THORNBACK WAS GIVEN THE CALL");
+    // 0b. THE FOUR ANSWERS ARE DIFFERENT ANSWERS - L41's own instruction,
+    // measured against her constants, not asserted.
+    if(THN_RING_R === MAT_NEST_AT) bad.push(`THE ARRIVAL IS HER ARRIVAL: both stand ${THN_RING_R} m off`);
+    if(BEAT.hedge.tpt <= 0) bad.push(`THE HEDGE REARS UP LIKE EVERY OTHER BEAT: tpt ${BEAT.hedge.tpt} - it is meant to be the one that goes down`);
+    for(const k in BEAT) if(k !== "hedge" && BEAT[k].tpt > 0) bad.push(`${k} ALSO PITCHES DOWN (${BEAT[k].tpt}) - the hedge's tell is not unique`);
+    if(!(BEAT.hedge.arc > 0)) bad.push(`THE HEDGE SENDS NOTHING: arc ${BEAT.hedge.arc}`);
+    if(!(ABILITIES.hedge && ABILITIES.hedge.tell >= ABILITIES.slam.tell*.8))
+      bad.push(`THE HEDGE HAS NO WARNING: ${ABILITIES.hedge && ABILITIES.hedge.tell} s against the slam's ${ABILITIES.slam.tell}`);
+    if(!(THN_HEDGE_R < THN_RING_R)) bad.push(`THE WEDGE REACHES THE FENCE: ${THN_HEDGE_R} m of ${THN_RING_R} - there would be nowhere to stand`);
+    if(!(THN_WARN * (P ? P.spd : 0) >= THN_RING_R)) bad.push(`THE RING GIVES NO TIME: ${THN_WARN} s at ${P && +P.spd.toFixed(2)} m/s does not cover ${THN_RING_R} m`);
+    // 0c. PURE - the wall, and every way it must NOT catch you
+    if(!thnBlocks(true, THN_RING_R + 1, 1)) bad.push("THE HEDGE DOES NOT STOP YOU LEAVING");
+    const frees = [["THE HEDGE STOPS YOU COMING BACK IN", [true, THN_RING_R + 1, -1]],
+                   ["THE HEDGE CATCHES YOU INSIDE IT", [true, THN_RING_R - 5, 1]],
+                   ["THE HEDGE CATCHES SOMEONE ALREADY OUTSIDE", [false, THN_RING_R + 8, 1]],
+                   ["THE HEDGE CATCHES A PLAYER STANDING STILL", [true, THN_RING_R + 1, 0]]];
+    for(const [msg, a] of frees) if(thnBlocks(a[0], a[1], a[2])) bad.push(msg);
+    // ---- the live half
+    const keep = { ns:noSpawn, t:T, bi:bossIdx, ring:thnRing, on:THN_ON, hp:P.hp,
+                   x:P.x, z:P.z, vx:P.vx, vz:P.vz, bd:botDrive, ev:events.splice(0), hz:hazards.splice(0),
+                   zn:zones.splice(0), mn:matNest, mon:MAT_ON };
+    qaLive(bad, "THE THORNBACK GATE");
+    noSpawn = true; botDrive = false; MAT_ON = false;   // hers is a different gate's subject
+    const clear = ()=>{ g.clearEnemies(); thnRing = null; alerts.length = 0; hazards.length = 0;
+                        zones.length = 0; thnStat.planted = 0; thnStat.walled = 0; thnStat.out = 0; };
+    // 1. THE ARRIVAL. Its clock, run from THN_WARN + a second before it.
+    const arrive = (on)=>{
+      clear(); THN_ON = on; bossIdx = BOSSES.indexOf(B); T = B.t - THN_WARN - 1;
+      P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0;
+      noSpawn = false;
+      let ring = null;
+      for(let i=0;i<Math.round((THN_WARN + 2)*60) && !enemies.some(e=>e.boss); i++){
+        step(1/60);
+        if(thnRing && !ring) ring = { x:thnRing.x, z:thnRing.z, at:+(T).toFixed(2), said:alerts.map(a=>a.text),
+                                      pd:+Math.hypot(thnRing.x-P.x, thnRing.z-P.z).toFixed(2) };
+      }
+      noSpawn = true;
+      const b = enemies.find(e=>e.boss);
+      return { ring, planted:thnStat.planted, lines:alerts.map(a=>a.text),
+               boss: b ? { onRing: thnRing ? +Math.abs(Math.hypot(b.x-thnRing.x, b.z-thnRing.z) - THN_RING_R).toFixed(2) : null,
+                           pd:+Math.hypot(b.x-P.x, b.z-P.z).toFixed(2) } : null };
+    };
+    const A1 = arrive(true);
+    if(!A1.ring) bad.push("NO ENCLOSURE OPENS BEFORE IT ARRIVES: the arrival has no warning");
+    else {
+      if(!(A1.ring.pd < 2)) bad.push(`THE ENCLOSURE IS NOT CENTRED ON YOU: ${A1.ring.pd} m off`);
+      if(!(A1.ring.at <= B.t - THN_WARN + .2)) bad.push(`THE ENCLOSURE OPENS TOO LATE: t ${A1.ring.at}, its clock ${B.t} less ${THN_WARN} s`);
+      if(!THN_LINE_WARN.every(l => A1.ring.said.includes(l))) bad.push(`THE ARRIVAL IS NOT ANNOUNCED: ${JSON.stringify(A1.ring.said)}`);
+    }
+    if(!A1.boss) bad.push("IT NEVER ARRIVED AT ALL");
+    else if(!(A1.boss.onRing !== null && A1.boss.onRing < 6))
+      bad.push(`IT DOES NOT COME UP ON ITS OWN FENCE: ${A1.boss.onRing} m off the ring`);
+    const A0 = arrive(false);
+    if(A0.ring) bad.push(`THE SWITCH OFF STILL PLANTS AN ENCLOSURE at ${A0.ring.pd} m`);
+    if(!A0.boss) bad.push("CLAUSE 1 NULL: IT NEVER ARRIVED WITH THE SWITCH OFF");
+    else if(!(Math.abs(A0.boss.pd - BOSS_AT) < 6)) bad.push(`THE SWITCH OFF MOVED ITS ARRIVAL: ${A0.boss.pd} m, the old ring is ${BOSS_AT}`);
+    // 2. THE HEDGE, through the real bossAI: cue the tell and let it run out.
+    const hedge = (on, kind)=>{
+      clear(); THN_ON = on; P.hp = P.maxhp; P.x = 0; P.z = 0;
+      spawnBoss(B); const b = enemies.find(e=>e.boss); b.rise = 0; b.hp = b.maxhp = 1e9;
+      b.x = P.x - 9; b.z = P.z;                       // a known bearing to read the wedge against
+      // bossCue sets the ability state; it does NOT telegraph, because in the
+      // real loop the floor is laid at the move->tell edge. So the gate calls
+      // the PRODUCT's own bossTelegraph, then lets the tell run out through
+      // step() so bossExecute fires the way it does in a run.
+      g.bossCue(kind, "tell", 1/60);
+      bossTelegraph(b, b.ab);
+      const pk = g.beat();
+      const cast = hazards.length;
+      step(1/60); step(1/60); const ak = g.beat();
+      // the wedge's own geometry, off the hazards actually laid
+      const dir = Math.atan2(P.x-b.x, P.z-b.z);
+      const w = hazards.map(h=>{
+        const d = Math.hypot(h.x-b.x, h.z-b.z);
+        let da = Math.atan2(h.x-b.x, h.z-b.z) - dir;
+        while(da > Math.PI) da -= TAU; while(da < -Math.PI) da += TAU;
+        return { d:+d.toFixed(2), a:+Math.abs(da).toFixed(3) };
+      });
+      const far = w.filter(h=>h.d > THN_HEDGE_R*.7), nearw = w.filter(h=>h.d < THN_HEDGE_R*.35);
+      return { n:hazards.length, cast, peak:pk, act:ak,
+               reach: w.length ? Math.max(...w.map(h=>h.d)) : 0,
+               wide: far.length ? Math.max(...far.map(h=>h.a)) : 0,
+               tight: nearw.length ? Math.max(...nearw.map(h=>h.a)) : 0,
+               hedges:thnStat.hedges };
+    };
+    const H = hedge(true, "hedge");
+    if(!(H.n === THN_HEDGE_N*3)) bad.push(`THE HEDGE IS NOT A WEDGE OF THORN: ${H.n} hazards, ${THN_HEDGE_N} rows of three`);
+    if(!(H.cast > 0)) bad.push("THE HEDGE IS DRAWN ONLY AT THE ACT: there is no telegraph on the floor");
+    if(!(H.reach > THN_HEDGE_R*.8 && H.reach <= THN_HEDGE_R + .1)) bad.push(`THE HEDGE REACHES ${H.reach} m, not about ${THN_HEDGE_R}`);
+    if(!(H.wide > H.tight)) bad.push(`THE HEDGE DOES NOT WIDEN: ${H.tight} rad near, ${H.wide} rad far - backing away would leave it`);
+    if(!(H.peak && H.peak.pt >= .25)) bad.push(`THE HEDGE HAS NO HEAD-DOWN WIND-UP: pitch ${H.peak && H.peak.pt} at the top of the tell`);
+    if(!(H.act && H.act.rc > 0)) bad.push(`THE HEDGE SENDS NOTHING ON THE ACT: reach ${H.act && H.act.rc}`);
+    const HS = hedge(true, "slam");
+    if(HS.n !== 1) bad.push(`CLAUSE 2 NULL: A SLAM LAID ${HS.n} HAZARDS, not the one disc under your feet`);
+    if(HS.peak && HS.peak.pt >= 0) bad.push(`CLAUSE 2 NULL: THE SLAM ALSO PITCHES DOWN: ${HS.peak.pt}`);
+    // 3. THE WALL, live: the player is walked outward through the fence and
+    // then back in, with the switch on and off.
+    const wall = (on, up)=>{
+      clear(); THN_ON = on; P.hp = P.maxhp;
+      P.x = 0; P.z = 0; P.y = groundY(0,0);
+      thnRing = { x:0, z:0, t0:T, at:B.t, used:true, up, inside:true, cd:0 };
+      const h0 = P.hp; let maxR = 0;
+      // 400 frames at 6 m/s is 40 m - past a 30 m ring, or the trial cannot
+      // reach its own subject (the first build walked 20 m and proved nothing)
+      for(let i=0;i<400;i++){                       // walking straight out
+        P.vx = 6; P.vz = 0; P.x += 6/60;
+        maxR = Math.max(maxR, Math.hypot(P.x, P.z));   // what it REACHED, before the shove
+        thnWall(1/60); P.iframe = 0;
+      }
+      const outR = Math.hypot(P.x, P.z), lost = +(h0 - P.hp).toFixed(1);
+      // and back IN, from outside, which must cost nothing
+      thnRing.inside = false; P.x = THN_RING_R + 10; P.z = 0; P.hp = P.maxhp;
+      const h1 = P.hp;
+      for(let i=0;i<400;i++){ P.vx = -6; P.vz = 0; P.x -= 6/60; thnWall(1/60); P.iframe = 0; }
+      return { maxR:+maxR.toFixed(2), outR:+outR.toFixed(2), lost, walled:thnStat.walled,
+               inLost:+(h1 - P.hp).toFixed(1), inR:+Math.hypot(P.x, P.z).toFixed(2) };
+    };
+    const W1 = wall(true, true);
+    if(!(W1.maxR < THN_RING_R + 2)) bad.push(`YOU WALK STRAIGHT OUT OF THE ENCLOSURE: reached ${W1.maxR} m of a ${THN_RING_R} m ring`);
+    // NOT "> 0". playerHurt has a one-damage FLOOR (`Math.max(1, d - armor)`),
+    // so a hedge set to cost nothing still takes 1 a touch and a >0 clause
+    // passes on it - which is exactly what the planted free fence proved. The
+    // cost is asserted against the constant, purely and then live.
+    if(!(THN_WALL_DMG > 0)) bad.push(`THE HEDGE IS FREE TO PUSH THROUGH: THN_WALL_DMG ${THN_WALL_DMG}`);
+    if(!(W1.walled > 0 && W1.lost / W1.walled > 2))
+      bad.push(`PUSHING THROUGH THE HEDGE COSTS NOTHING: ${W1.lost} HP over ${W1.walled} touches is the one-damage floor, not a cost`);
+    if(!(W1.walled > 1)) bad.push(`THE HEDGE BITES ONCE AND STOPS: ${W1.walled} touches in 3.3 s at ${THN_WALL_CD} s apart`);
+    if(!(W1.inLost === 0)) bad.push(`COMING BACK IN COSTS ${W1.inLost} HP - the hedge is meant to be one way`);
+    if(!(W1.inR < THN_RING_R)) bad.push(`YOU CANNOT GET BACK INSIDE: stopped at ${W1.inR} m`);
+    const W0 = wall(false, true), WD = wall(true, false);
+    if(!(W0.lost === 0 && W0.maxR > THN_RING_R + 5)) bad.push(`THE SWITCH OFF STILL FENCES YOU IN: ${W0.lost} HP, reached ${W0.maxR} m`);
+    if(!(WD.lost === 0 && WD.maxR > THN_RING_R + 5)) bad.push(`THE FENCE BITES BEFORE IT ARRIVES: ${WD.lost} HP with the ring still rising, reached ${WD.maxR} m`);
+    // 4. THE ENDING: its fall lays the thorns and says so - and pays NO boon,
+    // because that is hers.
+    const fall = (on)=>{
+      clear(); THN_ON = on; const bo = boons.length;
+      P.x = 0; P.z = 0;
+      thnRing = { x:0, z:0, t0:T, at:B.t, used:true, up:true, inside:true, cd:0 };
+      spawnBoss(B); const b = enemies.find(e=>e.boss); b.rise = 0;
+      const body = spawnEnemy("shambler", 3, 0); if(body){ body.rise = 0; body.burrow = false; }
+      rebuildGrid();
+      const f0 = thnStat.falls; b.hp = 1; hurt(b, 1e9, 0, 0);
+      const th = zones.filter(z=>z.thorn);
+      // stand the body IN a patch - a trial that leaves it three metres from
+      // the centre measures whether the patches happened to land on it
+      if(body && th[0]){ body.x = th[0].x; body.z = th[0].z; rebuildGrid(); }
+      const hp0 = body ? body.hp : 0;
+      for(let i=0;i<40;i++) step(1/60);              // and they hurt the HORDE
+      return { fell:thnStat.falls - f0, n:th.length, up: thnRing ? !!thnRing.up : null,
+               lines:alerts.map(a=>a.text), boons:boons.length - bo,
+               bit: body ? +(hp0 - body.hp).toFixed(1) : null,
+               far: th.length ? +Math.max(...th.map(z=>Math.hypot(z.x, z.z))).toFixed(2) : 0,
+               life: th.length ? th[0].life : 0 };
+    };
+    const F1 = fall(true);
+    if(F1.fell !== 1) bad.push(`ITS FALL IS NOT AN EVENT: thnFall ran ${F1.fell} times`);
+    if(F1.n !== THN_LEG_N) bad.push(`ITS FALL LEAVES ${F1.n} PATCHES OF THORN, not ${THN_LEG_N}`);
+    if(!(F1.far <= THN_RING_R + 3)) bad.push(`THE THORNS LIE OUTSIDE THE PEN: ${F1.far} m of a ${THN_RING_R} m ring`);
+    if(!(F1.bit > 0)) bad.push(`THE THORNS DO NOTHING TO THE HORDE: a body standing in them lost ${F1.bit}`);
+    if(F1.up !== false) bad.push("THE FENCE STAYS UP AFTER IT FALLS");
+    if(F1.boons !== 0) bad.push(`ITS FALL PAYS A BOON (${F1.boons}) - that is THE MATRIARCH's ending, not this one`);
+    if(!F1.lines.includes(THN_LINE_END)) bad.push(`ITS FALL IS NOT TOLD: ${JSON.stringify(F1.lines)}`);
+    const F0 = fall(false);
+    if(F0.fell !== 0 || F0.n !== 0) bad.push(`THE SWITCH OFF STILL ENDS THE RUN'S WAY: fell ${F0.fell}, ${F0.n} patches`);
+    // restore everything this gate touched
+    g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
+    THN_ON = keep.on; MAT_ON = keep.mon; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
+    thnRing = keep.ring; matNest = keep.mn; botDrive = keep.bd;
+    P.hp = keep.hp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z);
+    alerts.length = 0; hazards.length = 0; zones.length = 0;
+    events.push(...keep.ev); hazards.push(...keep.hz); zones.push(...keep.zn);
+    qaSettle();
+    return { ok: bad.length === 0, bad, arrive:{ on:A1, off:A0 },
+             hedge:{ n:H.n, reach:H.reach, tight:H.tight, wide:H.wide, pt:H.peak && H.peak.pt,
+                     rc:H.act && H.act.rc, slam:HS.n },
+             wall:{ on:W1, off:W0, down:WD }, end:F1, kit:thnKit(B, THN_ON).join("+") };
   },
 
   // THE BENCH HISTORY LEAK (L38). L37 found a character's paired numbers

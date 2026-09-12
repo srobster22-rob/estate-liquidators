@@ -656,7 +656,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // changes the mix - a bog start sends boxier brutes and fewer raptorlings,
     // and this check measures LOD cost, not composition
     window.__g.forceBiome("grass");
-    window.__g.skipTo(1140); window.__g.boss(3);
+    // past:true, or the natural schedule races bossIdx from 0 to 4 on the
+    // first few frames below (T is already past every boss's own clock) and
+    // piles THE MATRIARCH and THORNBACK onto the field alongside the forced
+    // TERRAVORE - L41/L42 made that pile-up expensive enough to blow this
+    // budget (7313 boxes) where the four old timed-stat-block bosses never
+    // pushed it close. g.boss(3) still forces TERRAVORE itself; this only
+    // stops the schedule from ALSO spawning the three before it.
+    window.__g.skipTo(1140, true); window.__g.boss(3);
     for (const w of ["bat","skulls","bolt","pulse","mortar","zap","aura","caltrops"])
       window.__g.give(w, 4);
     window.__g.step(60 * 25); window.__g.resume();
@@ -5359,21 +5366,34 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         const r9   = g.bossCue(k, "move", r0.t - .9);      // past the ease-out
         out.kinds[k] = { t0, half, top, act, r0, r3, r9 };
       }
-      // 2. the real AI on THE MATRIARCH: rest runs out, tell, slam, rest -
-      //    sampled every frame with nothing cued
+      // 2. the real AI on THE MATRIARCH: rest runs out, tell, act, rest -
+      //    sampled every frame with nothing cued. L41 gave her a second
+      //    ability (brood) alongside slam, so which one fires here after the
+      //    cued rest ends is HER AI's own pick, not this test's - the trace
+      //    records which kind and the assertions read that kind's own
+      //    tell/act timing off ABILITIES and its own isolated bossCue sample,
+      //    the same one K's per-kind entries above are built from, rather
+      //    than a frame count and a squash bound tuned to slam alone.
       boot(0);
       g.bossCue("slam", "move", .2);
       const trace = [];
-      // .2 s of rest left, 1.15 tell, .30 act, then 2.27 s of the 2.5 s rest
-      for(let i=0;i<235;i++){ g.step(1, 1/60); const b = g.beat(); trace.push({ ph:b.phase, u:b.u, act:b.act, sq:b.sq }); }
+      // .2 s of rest left, then whichever of her kit's abilities the AI picks -
+      // both slam and brood's tell+act fit well inside the 235-frame budget,
+      // leaving well over a second of rest sampled either way
+      for(let i=0;i<235;i++){ g.step(1, 1/60); const b = g.beat(); trace.push({ ph:b.phase, u:b.u, act:b.act, sq:b.sq, kind:b.kind }); }
       const tell = trace.filter(s=>s.ph==="tell"), act = trace.filter(s=>s.ph==="act");
+      const kind2 = (tell[0] || act[0] || {}).kind || null;
+      const refAct = kind2 ? g.bossCue(kind2, "act") : null;   // the same isolated sample K takes
       let climbs = true;
       for(let i=1;i<tell.length;i++) if(tell[i].u < tell[i-1].u - 1e-6) climbs = false;
       const snaps = [];
       for(let i=1;i<trace.length;i++) if(Math.abs(trace[i].sq - trace[i-1].sq) > .3) snaps.push(trace[i-1].ph + ">" + trace[i].ph);
       const firstMove = trace.findIndex((s,i)=> i > 0 && s.ph==="move" && trace[i-1].ph==="act");
-      out.cycle = { tellN: tell.length, actN: act.length, u0: tell[0] && tell[0].u, uTop: tell.length ? tell[tell.length-1].u : null,
+      out.cycle = { kind:kind2, tellExp: kind2 ? Math.round(ABILITIES[kind2].tell*60) : null,
+                    actExp: kind2 ? Math.round(ABILITIES[kind2].act*60) : null,
+                    tellN: tell.length, actN: act.length, u0: tell[0] && tell[0].u, uTop: tell.length ? tell[tell.length-1].u : null,
                     climbs, snaps, actSqMax: act.length ? Math.max(...act.map(s=>s.sq)) : null,
+                    refActSq: refAct ? refAct.sq : null,
                     moveAct: firstMove > 0 ? trace[firstMove].act : null,
                     end: trace[trace.length-1] };
       // 3. the limbs, off the captured boxes: neutral, top of the tell, act.
@@ -5429,13 +5449,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                                     o.r9.act === 0 && o.r9.sq === 1 && o.r9.lf === 0),
        Object.entries(K).map(([k,o]) => `${k} act ${o.r0.act} > ${o.r3.act} > ${o.r9.act}`).join(", "));
     const C = r.cycle;
-    ok("THE MATRIARCH's own AI drives it: the wind-up climbs through the whole tell, from nothing to full",
-       C.tellN > 60 && C.u0 < .05 && C.uTop > .95 && C.climbs,
-       `${C.tellN} tell frames, u ${C.u0} -> ${C.uTop}, monotonic ${C.climbs}`);
-    ok("one snap in the whole cycle, at the moment the tell becomes the act; the act stays flat; the rest eases home",
-       C.snaps.length === 1 && C.snaps[0] === "tell>act" && C.actN > 10 && C.actSqMax < .8 &&
+    ok("THE MATRIARCH's own AI drives it: the wind-up climbs through the whole tell, from nothing to full, in the time its own ability names",
+       C.kind !== null && Math.abs(C.tellN - C.tellExp) <= 2 && C.u0 < .05 && C.uTop > .95 && C.climbs,
+       `${C.kind}: ${C.tellN} tell frames (expected ~${C.tellExp}), u ${C.u0} -> ${C.uTop}, monotonic ${C.climbs}`);
+    ok("one snap in the whole cycle, at the moment the tell becomes the act; the act matches its own isolated sample; the rest eases home",
+       C.snaps.length === 1 && C.snaps[0] === "tell>act" && Math.abs(C.actN - C.actExp) <= 2 &&
+       Math.abs(C.actSqMax - C.refActSq) < .02 &&
        C.moveAct > .95 && C.end.ph === "move" && Math.abs(C.end.sq - 1) < .01 && C.end.act < .02,
-       `snaps [${C.snaps.join(" ")}], ${C.actN} act frames sq<=${C.actSqMax}, first rest frame act ${C.moveAct}, end ${C.end.ph} sq ${C.end.sq}`);
+       `${C.kind}: snaps [${C.snaps.join(" ")}], ${C.actN} act frames (expected ~${C.actExp}), sq ${C.actSqMax} vs isolated ${C.refActSq}, first rest frame act ${C.moveAct}, end ${C.end.ph} sq ${C.end.sq}`);
     const L = r.limbs;
     const j = (o) => JSON.stringify(o);
     ok("THE MATRIARCH's forelimbs come up off the ground for the slam - a fifth of its height or more",
@@ -9090,6 +9111,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                                 : { ok:false, bad:["g.springGate is missing"] };
       out.tell   = g.tellGate ? g.tellGate()
                               : { ok:false, bad:["g.tellGate is missing"] };
+      // L41's THE MATRIARCH (matGate) and L42's THORNBACK (thnGate) arrive the
+      // same way every gate in this section does: built into the page by a
+      // round this suite never called. Both drive the real boss schedule
+      // (bossIdx, spawnBoss, step()) rather than staging a body, so they
+      // belong here, on the young world they were built and tested against,
+      // before censusGate's 600 seconds of play levels the player past stage 0.
+      out.mat = g.matGate ? g.matGate()
+                          : { ok:false, bad:["g.matGate is missing"] };
+      out.thn = g.thnGate ? g.thnGate()
+                          : { ok:false, bad:["g.thnGate is missing"] };
       // AND L21 ARRIVED WITH SIX MORE, which is the fourth time this has
       // happened and the reason this section is not allowed to be finished.
       // The round put relief into the terrain - RELIEF_AMP, a tone field, flat
@@ -9214,6 +9245,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `  (draft on ${gates.spring.draft && gates.spring.draft.on}/off ${gates.spring.draft && gates.spring.draft.off}, springs ${gates.spring.springs})`);
     ok("L40's tell gate: the bot stands its ground and hops only a rear-back in reach, never the rhythm",
        gates.tell.ok, say(gates.tell) + `  (hold ${gates.tell.hold} m)`);
+    ok("L41's THE MATRIARCH gate: the nest warns and follows, her young shield her and arm the moment they surface, and her fall breaks the herd and pays a boon",
+       gates.mat.ok, say(gates.mat) +
+       `  (call ${gates.mat.call && gates.mat.call.n} young, shield ${gates.mat.shield && gates.mat.shield.on}/${gates.mat.shield && gates.mat.shield.bare}, kit ${gates.mat.kit})`);
+    ok("L42's THORNBACK gate: the ring warns and lets you back in but never out, the hedge widens as it reaches, and its fall lays thorns rather than paying her boon",
+       gates.thn.ok, say(gates.thn) +
+       `  (hedge reach ${gates.thn.hedge && gates.thn.hedge.reach}, wall lost ${gates.thn.wall && gates.thn.wall.on && gates.thn.wall.on.lost}, kit ${gates.thn.kit})`);
     // L20's is the one gate here that checks an INSTRUMENT rather than a
     // mechanic: its fifth clause asserts the bench survives its own sampling
     // window, which is the selection effect every horde share in L15-L18 was
