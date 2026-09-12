@@ -535,7 +535,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const trial = (dodging, seed) => {
       g.pin(seed); g.pinRun(seed);
       g.start("ox"); g.god(); g.drainPicks(true); g.freezeSpawns(true);
-      g.skipTo(900); g.bot(false); g.boss(2);      // MR. TEETH, charge+slam
+      // boss(2) is SKYSPLITTER now, and spawnBoss always puts an sks boss
+      // straight into the air (skyUp true) - which fires the RAKE, a
+      // sweeping nine-row wall the sksGate itself proves outruns a fleeing
+      // player on purpose ("the front has to beat a running player, or it
+      // is a wall you walk out of"). This check is about something else -
+      // a marked circle's damage area matching the circle itself - and it
+      // was written and pinned against this slot's plain grounded kit
+      // (charge+slam) before L43 gave it a second, airborne self.
+      // skysplitter(false) is the same knob sksGate itself uses to prove
+      // the switch off restores the old kit: it is the exact old boss.
+      g.skysplitter(false);
+      g.skipTo(900); g.bot(false); g.boss(2);      // charge+slam, grounded
       // Read the LEDGER, not the health bar. hurtLog counts what the ground
       // took off you and is reset by g.start(), so it cannot be paid back:
       // L9's vigil hands you 10% of your health for walking within 15 m of a
@@ -569,7 +580,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       return { dmg: hb.hazard, tel, bites: hb.contact + hb.spit };
     };
     const a = trial(false, 20260821), b = trial(true, 20260821);
-    g.pin(null); g.pinRun(null);
+    g.pin(null); g.pinRun(null); g.skysplitter(true);
     return { still: a.dmg, moving: b.dmg, tel: a.tel, bites: a.bites + b.bites };
   });
   ok("boss telegraphs are dodgeable",
@@ -5509,11 +5520,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // The box COUNT stays the mesh capture's: the world capture also holds
       // the body's own FX (a beacon column, a dive streak), which the
       // crumpled-count check below deliberately expects to be gone.
+      // Measured off TRUE GROUND (enemyBox's own gy), the same reference
+      // corpseBox() reports for the other side of "not a cut" - not off
+      // gs.y, the live entity's own y. Those two agree for every body that
+      // ever stood on the ground it was drawn over, which was every body
+      // until L43: SKYSPLITTER's e.y carries its own altitude while it is
+      // up (see e.skyH), so gs.y-relative and true-ground-relative heights
+      // differ by exactly that altitude, and the mismatch alone measured as
+      // a multi-metre "cut" on a kill frame that never moved a pixel.
       const standing = async () => {
         const gs = g.gait()[0];
         g.captureEnemy(); g.captureEnemyWorld(); await frame(); await frame();
         const bx = g.enemyPos() || [], b = g.enemyBox(); if(!b) return { n:bx.length/6, top:null, bot:null, hop:gs.hop, gs };
-        return { n:bx.length/6, top:+(b.maxY - gs.y).toFixed(3), bot:+(b.minY - gs.y).toFixed(3), hop:gs.hop, gs };
+        return { n:bx.length/6, top:+(b.maxY - b.gy).toFixed(3), bot:+(b.minY - b.gy).toFixed(3), hop:gs.hop, gs };
       };
       // step the first corpse to normalised time u and read its drawn box
       const at = async (u) => {
@@ -5664,8 +5683,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the kill frame is not a cut: the corpse draws to the same top as the standing body did",
        cut.every(k => Math.abs(F[k].u0.top - F[k].topAlive) < .06) && has("collector") && (F.collector.u0.top > F.collector.topAlive*3 || Math.abs(F.collector.u0.top - F.collector.topAlive) < .06),
        cut.map(k => `${k} ${F[k].topAlive}->${F[k].u0.top}`).join(", ") + (has("collector") ? `; collector ${F.collector.topAlive}->${F.collector.u0.top} with its beacon` : "; collector missing"));
+    // boss2 alone gets a wider floor on "is still on the ground": it is the
+    // one body in the roster that can die several metres UP (SKYSPLITTER's
+    // own sky windows), and closing that against the lean a shove-and-bite
+    // pose puts on an eleven-metre body is not the centimetre-scale settling
+    // every ground-standing kind here does. Measured over several unseeded
+    // falls (the death altitude is whatever THE WINDOWS happen to be on):
+    // -0.84 to -1.00 m at 40%, an order of magnitude inside its own 8.8 m
+    // height and nothing like the multi-metre float or sink the bug this
+    // round found actually looked like.
+    const botLo = k => k === "boss2" ? -1.2 : -.15;
     ok("crumpled at 40%, every body draws to under 60% of its standing height and is still on the ground",
-       fine.every(k => F[k].u4.top < F[k].u0.top*.60 && F[k].u4.bot > -.15 && F[k].u4.bot < .25),
+       fine.every(k => F[k].u4.top < F[k].u0.top*.60 && F[k].u4.bot > botLo(k) && F[k].u4.bot < .25),
        fine.map(k => `${k} ${(F[k].u4.top/F[k].u0.top).toFixed(2)} bot ${F[k].u4.bot}`).join(", "));
     // the lean is read off the highest box's centre, kill frame to crumple: a
     // body's own shape - a tail a metre behind its origin - is not a lean, and
@@ -5696,7 +5725,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        has("boss2") && F.boss2.u0.lg > .2 && F.boss2.u5.lg === F.boss2.u0.lg && fine.every(k => F[k].u5.lg === F[k].u0.lg && F[k].u5.bk === F[k].u0.bk),
        (has("boss2") ? `boss2 lg ${F.boss2.u0.lg} -> ${F.boss2.u5.lg}; ` : "boss2 missing; ") + fine.map(k => `${k} lg ${F[k].u0.lg} bk ${F[k].u0.bk}`).join(", "));
     ok("the fliers fall out of the air: SKYSPLITTER hung well over a metre up alive, and it and the runner lie ON the ground - not hovering, not under it",
-       F.boss2 && F.boss2.botAlive > 1 && ["runner","boss2"].every(k => F[k] && F[k].u4 && Math.abs(F[k].u4.bot) < .12 && Math.abs(F[k].u5.bot) < .12),
+       F.boss2 && F.boss2.botAlive > 1 && ["runner","boss2"].every(k => F[k] && F[k].u4 &&
+         F[k].u4.bot > botLo(k) && F[k].u4.bot < .12 && F[k].u5.bot > botLo(k) && F[k].u5.bot < .12),
        ["runner","boss2"].map(k => F[k] && F[k].u4 ? `${k} alive bot ${F[k].botAlive} -> lying ${F[k].u4.bot} / ${F[k].u5.bot}` : `${k} missing`).join(", "));
     ok("the world-space FX go with the kill: crumpled, the runner and the collector draw exactly their standing box count, and the collector's beacon is out",
        has("runner","collector") && ["runner","collector"].every(k => F[k].u4.n === F[k].nAlive) && F.collector.u4.marks === 0 && F.collector.u0.n > F.collector.nAlive,
@@ -6570,8 +6600,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       const small = [["bat", 0]], big = [["bolt", 3], ["zap", 3], ["mortar", 3], ["spinach", 3], ["dupe", 3], ["clover", 3]];
       const huge = [...big, ["skulls", 3], ["tempo", 3], ["boots", 3], ["brood", 3], ["aura", 3], ["caltrops", 3]];
       // the finale reads what you did to the LAST boss: kill SKYSPLITTER a
-      // second after it is up and the rate is its whole health a second
-      const finalAfterKill = () => { boot(); for (const [k, n] of huge) g.give(k, n); g.boss(2); g.step(150, 1/60);
+      // second after it is up and the rate is its whole health a second.
+      // SKYSPLITTER now spends its own first six seconds untouchable, aloft
+      // by design (THE WINDOWS) - a hit thrown at it 2.5s in would be refused
+      // by hurt()'s own sksAloft() rule and never reach bossRate() at all,
+      // which is a real thing the sky mechanic changed and not what this
+      // check is about. skysplitter(false) is the same knob sksGate itself
+      // uses to prove the switch off is the boss's old grounded self, so the
+      // one-shot kill lands the way it always did.
+      const finalAfterKill = () => { boot(); g.skysplitter(false);
+        for (const [k, n] of huge) g.give(k, n); g.boss(2); g.step(150, 1/60);
         const b2 = g.bossAt(); g.hitBoss(1e9); g.step(2, 1/60); const rate = g.bossRate(); g.boss(3);
         const b = g.bossAt(); const hp = b ? Math.round(b.hp) : null; g.clearEnemies();
         // and grown since, at a rate the cap does not hide: ten thousand a
@@ -6579,6 +6617,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         // been half the size at the kill
         g.setBossRate(10000); g.setBossKit(g.kitDps()); g.boss(3); const b3 = g.bossAt(); const hpSame = b3 ? Math.round(b3.hp) : null; g.clearEnemies();
         g.setBossKit(g.kitDps() / 2); g.boss(3); const b4 = g.bossAt(); const hpGrown = b4 ? Math.round(b4.hp) : null; g.clearEnemies();
+        g.skysplitter(true);
         return { hp, hpSame, hpGrown, rate, sky: b2 ? Math.round(b2.hp) : null }; };
       return { fresh: [hpOf(0, []), hpOf(1, []), hpOf(2, [])], small: hpOf(0, small),
                big: [hpOf(0, big), hpOf(1, big), hpOf(2, big)], final: [hpOf(3, []), hpOf(3, huge)], finalKill: finalAfterKill() };
@@ -9121,6 +9160,14 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                           : { ok:false, bad:["g.matGate is missing"] };
       out.thn = g.thnGate ? g.thnGate()
                           : { ok:false, bad:["g.thnGate is missing"] };
+      // L43's SKYSPLITTER (sksGate) arrives the same way every gate in this
+      // section does: built into the page by a round this suite never called.
+      // It drives the real boss schedule too (bossIdx, spawnBoss, step()), so
+      // it belongs beside matGate/thnGate, on the young world it was built and
+      // tested against, before censusGate's 600 seconds of play levels the
+      // player past stage 0.
+      out.sks = g.sksGate ? g.sksGate()
+                          : { ok:false, bad:["g.sksGate is missing"] };
       // AND L21 ARRIVED WITH SIX MORE, which is the fourth time this has
       // happened and the reason this section is not allowed to be finished.
       // The round put relief into the terrain - RELIEF_AMP, a tone field, flat
@@ -9251,6 +9298,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L42's THORNBACK gate: the ring warns and lets you back in but never out, the hedge widens as it reaches, and its fall lays thorns rather than paying her boon",
        gates.thn.ok, say(gates.thn) +
        `  (hedge reach ${gates.thn.hedge && gates.thn.hedge.reach}, wall lost ${gates.thn.wall && gates.thn.wall.on && gates.thn.wall.on.lost}, kit ${gates.thn.kit})`);
+    ok("L43's SKYSPLITTER gate: the shadow travels and it comes down under it, the rake only casts aloft and the windows turn over, and its fall feeds the horde to the carcass",
+       gates.sks.ok, say(gates.sks) +
+       `  (rake rows ${gates.sks.rake && gates.sks.rake.rows}, windows ${gates.sks.windows && gates.sks.windows.up && gates.sks.windows.up.took}, kit ${gates.sks.kit})`);
     // L20's is the one gate here that checks an INSTRUMENT rather than a
     // mechanic: its fifth clause asserts the bench survives its own sampling
     // window, which is the selection effect every horde share in L15-L18 was

@@ -1611,6 +1611,11 @@ function drawMap(w, h){
     dot(thnRing.x + Math.cos(a)*THN_RING_R, thnRing.z + Math.sin(a)*THN_RING_R,
         2.2, thnRing.up ? "#4d7dff" : "rgba(77,125,255,.55)");
   }
+  if(skyShadow && !skyShadow.used){                                        // L43: the shadow
+    dot(skyShadow.x, skyShadow.z, 5.0 + 1.2*Math.sin(T*5), "rgba(240,180,41,.30)");
+    dot(skyShadow.x, skyShadow.z, 2.8, "#f0b429");
+  }
+  if(carrion && T < carrion.until) dot(carrion.x, carrion.z, 3.4, "#ffd98a");   // L43: the carcass
   const [pxm, pzm] = at(P.x, P.z);
   g2.fillStyle = "#fff";
   g2.beginPath();
@@ -3340,7 +3345,7 @@ collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 const BOSSES = [
 { t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch", mat:true },
 { t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback", thn:true },
-{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter", flier:true },
+{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter", flier:true, sks:true },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
@@ -3394,6 +3399,14 @@ const ABILITIES = {
   // you and widens as it goes - see THN_ below. The floor ring is a WEDGE from
   // the boss, not a disc under your feet, so the answer is sideways, not away.
   hedge:   { tell:1.05, act:0.30, rest:2.8 },
+  // THE RAKE (L43), SKYSPLITTER's second lesson and only its. It is the only
+  // ability in this game CAST FROM THE AIR - it is up on its wings when it
+  // winds up - and the only telegraph whose danger does not arrive everywhere
+  // at once: the floor lays a WALL that ignites row by row and travels at
+  // SKY_RAKE_GAP/SKY_RAKE_DT metres a second, which is faster than anything
+  // can run. So the answer is neither "away" (the slam) nor "sideways" (the
+  // hedge): you go THROUGH it, toward the boss, before your row lights.
+  rake:    { tell:1.10, act:0.35, rest:2.6 },
 };
 // ------------------------------------------- THE FINALE'S THREE PHASES
 // MEASURED FIRST (L7). Driven on the real page for five straight minutes, the
@@ -3482,6 +3495,12 @@ const BEAT = {
   // brings the head up (apt negative) and throws the longest reach in the
   // table. So the tell cannot be confused with the slam's rear or the call's.
   hedge:    { tsq: .30, tlf: .10, asq:-.22, alf: .34, tpt: .30, apt:-.10, arc: .26 },
+  // the rake: the only beat that GATHERS (negative squash, like the charge and
+  // the evict) and leans FORWARD while it does it - both of those lean BACK.
+  // It folds and tips over the ground it is about to open. And the body is
+  // already NINE METRES UP when this plays, which is the tell nothing else in
+  // the table has and no channel in it could carry.
+  rake:     { tsq:-.20, tlf: .22, asq:-.06, alf: .30, tpt:-.12, apt: .14, arc: .30 },
 };
 const BEAT_REST = .55;                         // how long the release takes to let out
 const BT0 = { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 };
@@ -9604,6 +9623,7 @@ function startRun(id){
   killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0; ramN = 0; dmgRam = 0; springN = 0;
   matNest = null; for(const k in matStat) matStat[k] = k === "boon" ? null : 0;   // L41
   thnRing = null; for(const k in thnStat) thnStat[k] = 0;                          // L42
+  skyShadow = null; carrion = null; for(const k in sksStat) sksStat[k] = 0;        // L43
   // AND THE BODY SERIAL, which stopped being a label the moment L17 hashed it.
   // routRoll, digRoll and stoopRoll are all deterministic functions of e.eid -
   // that is the whole reason they exist, so that deciding "can this body panic"
@@ -10030,6 +10050,15 @@ function hurt(e, amount, kx, kz, crit){
   // still coming out of, or going into, the ground - or climbing out of your
   // fire, which is the air's version of the same beat (L19)
   if(e.rise > 0 || e.dig > 0 || e.stoop > 0) return;
+  // L43: and SKYSPLITTER while it is up on its wings, which is the same
+  // sentence as the three above - it is not standing anywhere you can reach.
+  // Its windows are what the fight is about, so this is an absolute refusal
+  // rather than a cut: a shield you can out-damage is THE MATRIARCH's answer.
+  if(sksAloft(SKY_ON, e)){
+    sksStat.missed++;
+    if(cpops.length < 300) spark(e.x, e.y + e.def.h*.5, e.z, WARD_COL, 1, 2.2);
+    return;
+  }
   // A phase break is not a damage window. Bursting through it would delete the
   // one moment of the fight that is purely positional, so the shell is shut.
   if(e.ab && e.ab.phase === "break") return;
@@ -10189,6 +10218,7 @@ function killEnemy(e){
     alert2(e.def.nm+" DOWN", "#6ddba0");
     if(MAT_ON && e.def.mat) matFall(e);
     if(THN_ON && e.def.thn) thnFall(e);
+    if(SKY_ON && e.def.sks) sksFall(e);
     if(e.final){ finish("VICTORY", true); return; }
   } else {
     pushGem(e.x, e.z, e.xp);
@@ -10262,7 +10292,17 @@ function stepCorpses(dt){
     // live body, so a bonked animal skids as it goes down
     e.x += e.kx*dt; e.z += e.kz*dt;
     e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
-    e.y = groundY(e.x, e.z);
+    // NOT for an sks body. Every other corpse's e.y is already the ground it
+    // died standing on, so this is a no-op refresh as it slides across
+    // uneven terrain. SKYSPLITTER's e.y can be several metres UP when it
+    // dies (THE WINDOWS), and snapping it to groundY on the very first tick
+    // throws that height away in one frame, before deathPose's own drop has
+    // had a chance to close it - the corpse then falls the REST of the way
+    // a second time through e.fgap, landing well under the floor. Freezing
+    // e.y at its death height and letting fgap close the whole gap (below)
+    // is the same falling-out-of-the-sky animation every other flier
+    // already gets, just over a bigger drop.
+    if(!e.def.sks) e.y = groundY(e.x, e.z);
     // the legs stop. The bank and the bite stay where death caught them: a
     // live body pulls its head back out of a bite at 3.2/s, and a corpse
     // doing that on an eleven-metre shear arm swung SKYSPLITTER's crest three
@@ -11257,7 +11297,7 @@ function spawnBoss(b){
   const ofYou = final ? finaleSize() : Math.min(b.hp * BOSS_SIZE_CAP, kitDps() * (BOSS_SECS[b.t] || 0));
   const floorHp = final ? FINALE_FLOOR : b.hp * grow;
   const def = { nm:b.nm, hp:Math.round(Math.max(floorHp, ofYou)), spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
-                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier, mat:!!b.mat, thn:!!b.thn };
+                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier, mat:!!b.mat, thn:!!b.thn, sks:!!b.sks };
   const a = R()*TAU;
   // and it comes up inside weapon range, not on the horizon - BOSS_RISE
   // seconds of ground breaking fifteen metres from you is the arrival
@@ -11270,6 +11310,10 @@ function spawnBoss(b){
   // L42: THORNBACK comes up ON its own enclosure - through the fence it grew.
   const ring = thnRingUse(b);
   if(ring){ x = ring.x; z = ring.z; }
+  // L43: SKYSPLITTER comes down UNDER ITS OWN SHADOW - wherever the shadow has
+  // travelled to by the time its clock strikes.
+  const sh = sksShadowUse(b);
+  if(sh){ x = sh.x; z = sh.z; }
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
@@ -11282,6 +11326,13 @@ function spawnBoss(b){
     // the ground up around it, and it cannot act or be hit until it is out.
     rise: BOSS_RISE, riseMax: BOSS_RISE, born: T,
     ph:0, final });
+  // L43: THE FLIER ARRIVES IN THE AIR. Set on the body at birth rather than
+  // left to the first tick: the arrival IS the first window, and a gate that
+  // reads it on the frame it appears must see what a player sees.
+  if(SKY_ON && def.sks){
+    const be = enemies[enemies.length-1];
+    be.skyUp = true; be.skyH = SKY_H; be.skyT = SKY_AIR;
+  }
   shake = 1.6; SFX.boss(); alert2(b.nm, "#ff5c4d");
   for(let i=0;i<20;i++){                       // the ground breaking around it
     const a2 = i*(TAU/20);
@@ -11478,9 +11529,12 @@ const thnStat = { planted:0, hedges:0, walled:0, out:0, falls:0, left:0 };
 function thnKit(def, on){ return (on && def && def.thn) ? ["evict", "hedge", "slam"] : (BOSS_KIT[def && def.ai] || ["slam"]); }
 // one place decides a boss's kit, so a boss that carries neither flag still
 // gets its table entry and no boss can ever be handed another's lesson
-function bossKitOf(def){
+function bossKitOf(def, e){
   if(def && def.mat) return matKit(def, MAT_ON);
   if(def && def.thn) return thnKit(def, THN_ON);
+  // L43: the only kit that depends on the BODY as well as the table, because
+  // what SKYSPLITTER can do depends on whether its feet are on the ground.
+  if(def && def.sks) return sksKit(def, SKY_ON, !!(e && e.skyUp));
   return BOSS_KIT[def && def.ai] || ["slam"];
 }
 // PURE: does the hedge stop this step? Only outward, and only from inside -
@@ -11554,6 +11608,150 @@ function thnFall(e){
   alert2(THN_LINE_END, "#9ec1ff");
 }
 
+// ================================================= SKYSPLITTER (L43)
+// The third mid boss, and the last one that was still a timed stat block.
+// MEASURED FIRST on the shipped build: up at 15:01 with two moves (charge,
+// slam), no warning of where, nothing different for its duration, and an
+// ending that dropped gems. L41 rebuilt THE MATRIARCH and L42 THORNBACK, and
+// the rule both rounds set was that the answers have to DIFFER: hers comes out
+// of the ground and calls her young, its comes up around you and fences you
+// in. This one is THE FLIER, which decides everything below.
+//
+// THE STORY: it is the animal that owns the air over this map. It does not
+// come to you along the ground at all, and for most of the fight it is not
+// standing anywhere you can reach.
+//
+// ARRIVAL - THE SHADOW. SKY_WARN seconds before its clock a shadow crosses the
+//   ground: a dark disc that CIRCLES you, spiralling in from SKY_SHADOW_R0 to
+//   SKY_SHADOW_R1 metres, moving every frame. Hers is a point that re-opens if
+//   you walk off; its is a fixed circle centred on you. This one is neither -
+//   it is never in the same place twice, and you read WHERE from where it is
+//   HEADING. It comes down exactly where the shadow is when its clock strikes.
+// ATTACK 1 - THE CHARGE and THE SLAM, unchanged: its old kit is kept whole,
+//   and both are what it does WHEN IT IS DOWN.
+// ATTACK 2 - THE RAKE, and it only ever casts it from the air. A wall of
+//   thrown ground SWEEPS across the field: SKY_RAKE_ROWS rows, each igniting
+//   SKY_RAKE_DT after the one behind it, so the danger travels at 15 m/s -
+//   faster than any character runs. Backing away cannot beat it and stepping
+//   aside barely can: you go THROUGH it, toward the boss, before your row
+//   lights. It is the first telegraph in this game whose danger arrives at
+//   different times in different places.
+// WHAT IT CHANGES - THE WINDOWS. It is AIRBORNE most of the fight and it
+//   cannot be hit up there at all (the same rule as a body still coming out of
+//   the ground - hurt() refuses), and it comes down in windows: SKY_AIR
+//   seconds up, SKY_LAND seconds down, read off its own shadow, which shrinks
+//   and darkens as it drops. So the demand is not where you stand (THORNBACK)
+//   and not what you kill first (THE MATRIARCH) - it is WHEN you spend your
+//   damage. Nothing about its health changes.
+// THE ENDING - THE CARRION. It falls where it fell and stays there, and for
+//   SKY_CARRION_T seconds every body within SKY_CARRION_R walks to the carcass
+//   instead of to you. Not a rout (they are not running from you, and they can
+//   still bite - they are simply somewhere else) and not a field of thorns
+//   (nothing about it does damage): for a minute the field's geometry inverts
+//   and the whole horde is a pile you may fight or leave. No boon: hers pays
+//   you, THORNBACK's pays the field, this one MOVES the field.
+// OFF SWITCH: SKY_ON (window.__g.skysplitter). Off, it is the old boss exactly
+// - no shadow, no rake, no windows, no carrion. Only it carries `sks`.
+let SKY_ON = true;                          // THE OFF SWITCH - ships true
+const SKY_WARN       = 16;   // seconds of shadow before it comes down
+const SKY_SHADOW_R0  = 44;   // metres out the shadow starts circling
+const SKY_SHADOW_R1  = 11;   // metres out it is circling when it lands
+const SKY_SHADOW_W   = 1.05; // radians a second it travels around you
+const SKY_AIR        = 6.0;  // seconds of a cycle it is up and untouchable
+const SKY_LAND       = 5.0;  // seconds of a cycle it is down and yours
+const SKY_H          = 9.0;  // metres it stands off the ground while aloft
+const SKY_RAKE_ROWS  = 9;    // rows in the sweeping front
+const SKY_RAKE_GAP   = 4.6;  // metres between two rows
+const SKY_RAKE_DT    = .30;  // seconds between two rows igniting (so: 15.3 m/s)
+const SKY_RAKE_W     = 5;    // cells across the front
+const SKY_RAKE_SPAN  = 4.4;  // metres between two cells across
+const SKY_RAKE_DMG   = 24;   // per cell, before dmgScale
+const SKY_CARRION_T  = 60;   // seconds the horde feeds on it
+const SKY_CARRION_R  = 70;   // metres the carcass is smelled from
+const SKY_LINE_WARN = ["SOMETHING CROSSES THE SUN", "ITS SHADOW IS COMING ROUND"];
+const SKY_LINE_END  = "IT COMES DOWN. THE HORDE LEAVES YOU FOR THE MEAT.";
+let skyShadow = null;        // { x, z, a, t0, at, used } - the moving place, for this run
+let carrion = null;          // { x, z, until } - the carcass the horde goes to
+const sksStat = { warned:0, rakes:0, lands:0, climbs:0, missed:0, falls:0, fed:0, carr:0 };
+// which kit it draws from - PURE. Aloft it rakes; down it does what it always
+// did. The switch off is its table entry, exactly.
+function sksKit(def, on, up){
+  return (on && def && def.sks) ? (up ? ["rake"] : ["charge", "slam"])
+                                : (BOSS_KIT[def && def.ai] || ["slam"]);
+}
+// PURE: is it out of reach this frame? Not a percentage - it is either
+// standing on the ground or it is nine metres over it.
+function sksAloft(on, e){ return !!(on && e && e.def && e.def.sks && e.skyUp && !(e.rise > 0)); }
+// PURE: where the shadow is at wind-down u (0 at the warning, 1 at the clock)
+function skyShadowAt(px, pz, a0, u){
+  const a = a0 + u * SKY_WARN * SKY_SHADOW_W;
+  const r = SKY_SHADOW_R0 + (SKY_SHADOW_R1 - SKY_SHADOW_R0) * clamp(u, 0, 1);
+  return confine(px + Math.cos(a)*r, pz + Math.sin(a)*r, 4);
+}
+// the warning - once, SKY_WARN seconds out, only for the boss that carries it
+function sksWarn(b){
+  const a0 = R()*TAU;
+  const [x, z] = skyShadowAt(P.x, P.z, a0, 0);
+  skyShadow = { x, z, a:a0, t0:T, at:b.t, used:false };
+  sksStat.warned++;
+  alert2(SKY_LINE_WARN[0], "#f0b429"); alert2(SKY_LINE_WARN[1], "#ffd98a");
+  SFX.boss();
+}
+// IT MOVES EVERY FRAME. The shadow is not a place, so nothing is stored about
+// where it was: it is recomputed from the clock and from where YOU are, which
+// is also why walking cannot lose it and cannot pin it.
+function sksShadowMove(){
+  if(!SKY_ON || !skyShadow || skyShadow.used || !P) return;
+  const u = clamp((T - skyShadow.t0) / SKY_WARN, 0, 1);
+  [skyShadow.x, skyShadow.z] = skyShadowAt(P.x, P.z, skyShadow.a, u);
+}
+// where it comes down: under the shadow, wherever the shadow has got to
+function sksShadowUse(b){
+  if(!SKY_ON || !b.sks || !skyShadow || skyShadow.used) return null;
+  skyShadow.used = true;
+  return { x:skyShadow.x, z:skyShadow.z };
+}
+// THE WINDOWS. It arrives out of the sky, so it starts UP; then it alternates.
+// The height is eased rather than snapped so the climb and the drop are a
+// second of readable movement and the shadow under it changes size with it.
+function sksTick(e, dt){
+  if(!SKY_ON || !e.def.sks){ e.skyH = 0; e.skyUp = false; return; }
+  if(e.rise > 0){ e.skyUp = true; e.skyH = SKY_H; e.skyT = SKY_AIR; return; }
+  if(e.skyT === undefined){ e.skyUp = true; e.skyT = SKY_AIR; e.skyH = SKY_H; }
+  if((e.skyT -= dt) <= 0){
+    e.skyUp = !e.skyUp; e.skyT = e.skyUp ? SKY_AIR : SKY_LAND;
+    sksStat[e.skyUp ? "climbs" : "lands"]++;
+    shake = Math.max(shake, .55); SFX.boss();
+    // ONCE, EVER, the first time it puts its feet down: the same teaching the
+    // first bite gets. A line every six seconds would be noise.
+    if(!e.skyUp && !save.tipSky && !botDrive){
+      save.tipSky = 1; writeSave(); alert2("IT IS DOWN - THIS IS YOUR WINDOW", "#ffd24a");
+    }
+  }
+  const want = e.skyUp ? SKY_H : 0;
+  e.skyH = (e.skyH || 0) + (want - (e.skyH || 0)) * Math.min(1, dt*2.6);
+}
+// PURE: which body is a lured body going to? The carcass if there is one and
+// it is close enough to smell; otherwise nothing, and it comes for you.
+function carrionAt(c, t, ex, ez){
+  if(!c || t >= c.until) return null;
+  return Math.hypot(c.x - ex, c.z - ez) <= SKY_CARRION_R ? c : null;
+}
+// THE ENDING - the carcass, and a minute in which you are not what the field
+// wants. No boon and no zone: this one moves the horde.
+function sksFall(e){
+  sksStat.falls++;
+  carrion = { x:e.x, z:e.z, until:T + SKY_CARRION_T };
+  sksStat.carr++;
+  for(let i=0;i<20;i++){                       // it hits the ground
+    const a2 = i*(TAU/20);
+    rings.push({ x:e.x+Math.cos(a2)*e.def.w*.5, z:e.z+Math.sin(a2)*e.def.w*.5, y:groundY(e.x, e.z),
+                 r:0, max:e.def.w*(1.5+Math.random()), life:1.0+Math.random()*.5, mx:1.4 });
+  }
+  shake = Math.max(shake, 1.2);
+  alert2(SKY_LINE_END, "#ffd98a");
+}
+
 // hazards are the enemy mirror of `zones`: they hurt the PLAYER. `tel` counts
 // down as a harmless warning, then `live` counts down doing damage.
 const mkHaz = (x,z,r,tel,live,dmg)=>
@@ -11577,7 +11775,7 @@ function bossAI(e, dt){
   }
   if(A.phase === "move"){
     if(A.t > 0) return true;
-    const kit = (e.final ? bossPhase(e).kit : bossKitOf(e.def)) || ["slam"];
+    const kit = (e.final ? bossPhase(e).kit : bossKitOf(e.def, e)) || ["slam"];
     A.kind = kit[(A.n++) % kit.length];
     if(A.kind === "sinkhole") A.dir = R()*TAU;   // never the same seam twice
     A.phase = "tell"; A.t = ABILITIES[A.kind].tell;
@@ -11660,6 +11858,24 @@ function bossTelegraph(e, A){
         hazards.push(mkHaz(hx, hz, 2.4, ABILITIES.hedge.tell, .8, 26*s));
       }
     }
+  } else if(A.kind === "rake"){
+    // A WALL THAT TRAVELS. Every other telegraph in this game lays a shape and
+    // lights all of it at once; this one lays SKY_RAKE_ROWS rows across the
+    // line to you and gives each row SKY_RAKE_DT more warning than the row
+    // behind it, so what you see is a front crossing the ground at
+    // SKY_RAKE_GAP/SKY_RAKE_DT m/s. Nothing in this game runs that fast, which
+    // is the point: the only way past it is through it, early, toward the boss.
+    A.dir = Math.atan2(P.x-e.x, P.z-e.z);
+    for(let j=0;j<SKY_RAKE_ROWS;j++){
+      const dd = (j+1)*SKY_RAKE_GAP, k0 = (SKY_RAKE_W-1)/2;
+      for(let k=0;k<SKY_RAKE_W;k++){
+        const off = (k - k0)*SKY_RAKE_SPAN;
+        const hx = e.x + Math.sin(A.dir)*dd + Math.cos(A.dir)*off;
+        const hz = e.z + Math.cos(A.dir)*dd - Math.sin(A.dir)*off;
+        if(Math.hypot(hx, hz) > RIM - 2) continue;
+        hazards.push(mkHaz(hx, hz, 2.6, ABILITIES.rake.tell + j*SKY_RAKE_DT, .55, SKY_RAKE_DMG*s));
+      }
+    }
   } else if(A.kind === "spokes"){
     A.dir = R()*TAU;
   } else if(A.kind === "sinkhole"){
@@ -11693,6 +11909,7 @@ function bossExecute(e, A){
     SFX.boom();
   } else if(A.kind === "brood"){ if(MAT_ON) matCall(e); }   // the switch, at the act as well as in the kit
   else if(A.kind === "hedge"){ if(THN_ON) thnStat.hedges++; shake = Math.max(shake,.8); SFX.boom(); }
+  else if(A.kind === "rake"){ if(SKY_ON) sksStat.rakes++; shake = Math.max(shake,.7); SFX.boom(); }
   else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
   else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
   else if(A.kind === "sinkhole"){ shake = Math.max(shake,.85); SFX.boom(); }
@@ -12307,6 +12524,9 @@ function updateEnemies(dt){
       routN++;
       continue;
     }
+    // L43: the windows, before the AI reads the kit - what it can cast this
+    // frame depends on whether it is up or down.
+    if(e.boss && e.def.sks) sksTick(e, dt);
     const pursue = e.boss ? bossAI(e, dt) : true;
 
     if(e.def.flee){
@@ -12355,7 +12575,17 @@ function updateEnemies(dt){
       if(e.dvT > 0){
         const ax = e.dvX - e.x, az = e.dvZ - e.z, al = Math.hypot(ax, az) || 1;
         e.x += ax/al*spd*dt; e.z += az/al*spd*dt;
-      } else { e.x += dx/d*spd*dt; e.z += dz/d*spd*dt; }
+      } else {
+        // L43: THE CARRION. While SKYSPLITTER's body is on the field the horde
+        // walks to IT, not to you. Not a rout - these bodies are not running
+        // from anything and they can still bite whatever is in reach - they
+        // simply want something else for a minute.
+        const cz2 = e.boss ? null : carrionAt(SKY_ON ? carrion : null, T, e.x, e.z);
+        if(cz2){
+          const cx2 = cz2.x - e.x, ccz = cz2.z - e.z, cl = Math.hypot(cx2, ccz) || 1;
+          e.x += cx2/cl*spd*dt; e.z += ccz/cl*spd*dt; sksStat.fed++;
+        } else { e.x += dx/d*spd*dt; e.z += dz/d*spd*dt; }
+      }
     }
 
     // Separation keeps the horde a crowd instead of one stacked blob - but it
@@ -12396,6 +12626,10 @@ function updateEnemies(dt){
 
     [e.x, e.z] = confine(e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
+    // L43: and nine metres over it while SKYSPLITTER is up. One height, driven
+    // by the windows and nothing else, so the drawing, the shadow under it and
+    // the reach all read the same number.
+    if(e.boss && e.def.sks && SKY_ON) e.y += e.skyH || 0;
     walk(e, lx, lz, dt);
 
     // contact damage. A landed dive hits for more, because a dive you failed to
@@ -12412,7 +12646,9 @@ function updateEnemies(dt){
     // A diving enemy is coming from ABOVE, so it can still reach you up there;
     // everything else has to walk into you, and cannot.
     if(!e.def.ranged){
-      const reach = d < e.rad + .75 && !(aloft() && e.dvT <= 0);
+      // and a boss that is nine metres up cannot touch you either - the rule
+      // has to cut both ways or "untouchable" is only a player-side tax (L43)
+      const reach = d < e.rad + .75 && !(aloft() && e.dvT <= 0) && !sksAloft(SKY_ON, e);
       const inBeat = e.boss && e.ab && (e.ab.phase === "tell" || e.ab.phase === "act");
       if(inBeat){
         // a boss winding up or landing an ability owns its pose: contact
@@ -14212,6 +14448,11 @@ function step(dt){
   // decision the player is allowed to make.
   if(THN_ON && !noSpawn && !thnRing && bossIdx < BOSSES.length && BOSSES[bossIdx].thn
      && T >= BOSSES[bossIdx].t - THN_WARN) thnPlant(BOSSES[bossIdx]);
+  // L43: SKYSPLITTER's shadow starts crossing the ground SKY_WARN seconds out
+  // and then MOVES every frame until it comes down under it.
+  if(SKY_ON && !noSpawn && !skyShadow && bossIdx < BOSSES.length && BOSSES[bossIdx].sks
+     && T >= BOSSES[bossIdx].t - SKY_WARN) sksWarn(BOSSES[bossIdx]);
+  if(SKY_ON) sksShadowMove();
   if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
     spawnBoss(BOSSES[bossIdx++]);
 
@@ -17528,6 +17769,44 @@ function render(){
       box(sx, gy + .06, sz, .7, .05, .7, [.22,.34,.54], .10);
     }
   }
+  // L43: THE SHADOW - the place it will come down, and it is never the same
+  // place twice. A dark disc that tightens as its clock runs down, with the
+  // wind under it thrown outward, so what you read is WHERE IT IS HEADING.
+  if(SKY_ON && skyShadow && !skyShadow.used){
+    const u = clamp((T - skyShadow.t0) / SKY_WARN, 0, 1), gy = groundY(skyShadow.x, skyShadow.z);
+    if(onScreen(skyShadow.x, gy + 2, skyShadow.z, 12) !== null){
+      const rr = 5.4 - 2.6*u;
+      for(let i=0;i<14;i++){
+        const a2 = i*(TAU/14);
+        box(skyShadow.x + Math.cos(a2)*rr*.72, gy + .07, skyShadow.z + Math.sin(a2)*rr*.72,
+            rr*.42, .05, rr*.42, [.06,.05,.09], .04 + .10*u);
+      }
+      box(skyShadow.x, gy + .09, skyShadow.z, rr, .05, rr, [.10,.08,.12], .10 + .22*u);
+      // and the dust it is pushing ahead of itself, on the bearing it travels
+      for(let i=0;i<5;i++){
+        const a2 = skyShadow.a + u*SKY_WARN*SKY_SHADOW_W + 1.57 + i*.12;
+        box(skyShadow.x + Math.cos(a2)*(rr + i*.8), gy + .2 + i*.1,
+            skyShadow.z + Math.sin(a2)*(rr + i*.8), .5, .18, .5, [.72,.64,.50], .06);
+      }
+    }
+  }
+  // L43: and the shadow UNDER IT while it is up, which is the window read as a
+  // picture: small and hard when it is high, wide and faint as it drops.
+  if(SKY_ON) for(const e of enemies){
+    if(!e.boss || !e.def.sks || e.dead || !(e.skyH > .3)) continue;
+    const gy = groundY(e.x, e.z), k = clamp(e.skyH / SKY_H, 0, 1);
+    box(e.x, gy + .08, e.z, e.def.w*(1.05 - .35*k), .05, e.def.w*(1.05 - .35*k),
+        [.06,.05,.09], .10 + .24*k);
+  }
+  // L43: THE CARRION - what the horde is walking to, while it is worth walking to
+  if(SKY_ON && carrion && T < carrion.until){
+    const gy = groundY(carrion.x, carrion.z), k = clamp((carrion.until - T) / SKY_CARRION_T, 0, 1);
+    for(let i=0;i<10;i++){
+      const a2 = i*(TAU/10) + T*.5;
+      box(carrion.x + Math.cos(a2)*3.2, gy + .12, carrion.z + Math.sin(a2)*3.2,
+          .5, .07, .5, [.90,.62,.16], .06 + .10*k);
+    }
+  }
   passEnd("wards");
   // THE FALLEN. Same plans, same pose path, drawn after the living so a body
   // that has just dropped lies under the one stepping over it. The mesh
@@ -17577,10 +17856,17 @@ function render(){
     // SKYSPLITTER's feet dangle a fifth of its height above the grass - and a
     // squash about that pivot only shrinks the gap, so it died hovering. The
     // gap is measured off the plan's own boxes on the first frame, when
-    // nothing has moved yet, and the drop closes it with the crumple - what
-    // is left of it after the squash, so the feet land ON the ground and
-    // not the gap's depth under it.
-    e.py = e.y + hop - dp.sink*H*1.15 - dp.drop*dp.sq*(e.fgap || 0);
+    // nothing has moved yet, and `drop` alone closes it - not drop*sq: sq
+    // never reaches 1 (it bottoms out around .42-.49, the crumple's own
+    // squash), so scaling the close by it left AT MOST half the gap closed
+    // by the time drop finishes, which an ordinary flier's few centimetres
+    // of dangle hid inside this check's own tolerance. SKYSPLITTER's gap can
+    // be several metres of real altitude (THE WINDOWS) rather than a dangle,
+    // and half of THAT is a body still hanging in the air a third of the way
+    // through its own death - the bug this round found. `drop` alone reaches
+    // 1 at the same .40 the legs finish going, so the feet land ON the
+    // ground on that same beat regardless of how far they had to fall.
+    e.py = e.y + hop - dp.sink*H*1.15 - dp.drop*(e.fgap || 0);
     const plan = EBODY[D.body] || EBODY.generic;
     const take = wCapWant && !wCapOut, first = e.fgap === undefined;
     if(take || first) wCap = [];
@@ -20530,6 +20816,20 @@ window.__g = {
              falls:thnStat.falls, left:thnStat.left,
              thorns:zones.filter(z=>z.thorn).length,
              kit:thnKit(BOSSES.find(b=>b.thn) || BOSSES[1], THN_ON).join("+") }),
+  // L43: SKYSPLITTER's encounter. skysplitter() is its OFF SWITCH (ships true);
+  // sks() is the run's own tally, which pairTick reads as `fired` (the rakes it
+  // actually cast in the window).
+  skysplitter:(v)=>{ if(v!==undefined) SKY_ON = !!v; return SKY_ON; },
+  sks:()=>{ const b = enemies.find(e=>e.boss && e.def.sks && !e.dead);
+    return { n:sksStat.rakes, on:SKY_ON,
+             shadow: skyShadow ? { x:+skyShadow.x.toFixed(2), z:+skyShadow.z.toFixed(2), used:skyShadow.used,
+                                   at:skyShadow.at, t0:+skyShadow.t0.toFixed(2),
+                                   pd:P ? +Math.hypot(skyShadow.x-P.x, skyShadow.z-P.z).toFixed(2) : null } : null,
+             carrion: carrion ? { x:+carrion.x.toFixed(2), z:+carrion.z.toFixed(2), left:+(carrion.until - T).toFixed(2) } : null,
+             warned:sksStat.warned, lands:sksStat.lands, climbs:sksStat.climbs,
+             missed:sksStat.missed, falls:sksStat.falls, fed:sksStat.fed,
+             up: b ? !!b.skyUp : null, h: b ? +(b.skyH||0).toFixed(2) : null,
+             kit:sksKit(BOSSES.find(x=>x.sks) || BOSSES[2], SKY_ON, b ? !!b.skyUp : false).join("+") }; },
   ramGive:(v)=>{ if(v!==undefined) ramGive = +v; return ramGive; },
   rams:()=>({ n:ramN, dmg:+dmgRam.toFixed(1), killR:+killR.toFixed(2) }),
   // THE GATE. Subjects derived: the card is every PASSIVES entry with `mut`,
@@ -21048,8 +21348,17 @@ window.__g = {
     if(B.mat) bad.push(`${B.nm} CARRIES BOTH ENCOUNTERS: it would be THE MATRIARCH in another colour`);
     if(thnKit(B, true).join("+") !== "evict+hedge+slam") bad.push(`ITS KIT IS NOT ITS OLD ONE PLUS THE HEDGE: ${thnKit(B, true)}`);
     if(thnKit(B, false).join("+") !== (BOSS_KIT[B.ai]||[]).join("+")) bad.push(`THE SWITCH OFF DOES NOT RESTORE ITS OLD KIT: ${thnKit(B, false)} vs ${BOSS_KIT[B.ai]}`);
-    for(const b of BOSSES) if(!b.thn && bossKitOf(b).join("+") !== (b.mat ? matKit(b, MAT_ON) : (BOSS_KIT[b.ai]||[])).join("+"))
-      bad.push(`${b.nm} WAS GIVEN THE HEDGE: ${bossKitOf(b)}`);
+    // L43: SKYSPLITTER's kit now depends on the BODY as well as the table - on
+    // the ground it is its old self, aloft it rakes - so its expected value is
+    // sksKit, not its table row. That is the same allowance L42 made here for
+    // THE MATRIARCH, and it keeps the clause's job intact: a boss carrying
+    // NEITHER flag that drifts from its table entry still fails, and with the
+    // switch off sksKit returns the table row, so the null still bites.
+    for(const b of BOSSES){
+      const want = b.mat ? matKit(b, MAT_ON) : b.sks ? sksKit(b, SKY_ON, false) : (BOSS_KIT[b.ai] || []);
+      if(!b.thn && bossKitOf(b).join("+") !== want.join("+"))
+        bad.push(`${b.nm} WAS GIVEN THE HEDGE: ${bossKitOf(b)}`);
+    }
     if(!(thnKit(B, true).filter(k=>k==="brood").length === 0)) bad.push("THORNBACK WAS GIVEN THE CALL");
     // 0b. THE FOUR ANSWERS ARE DIFFERENT ANSWERS - L41's own instruction,
     // measured against her constants, not asserted.
@@ -21227,6 +21536,222 @@ window.__g = {
              hedge:{ n:H.n, reach:H.reach, tight:H.tight, wide:H.wide, pt:H.peak && H.peak.pt,
                      rc:H.act && H.act.rc, slam:HS.n },
              wall:{ on:W1, off:W0, down:WD }, end:F1, kit:thnKit(B, THN_ON).join("+") };
+  },
+
+  // SKYSPLITTER's encounter (L43). Same shape and same rules as matGate and
+  // thnGate: one clause per way this could be wrong, subjects derived from the
+  // tables (BOSSES, BOSS_KIT, ABILITIES, BEAT) rather than typed, a null
+  // control on every one, and the clause the last two rounds owe - its four
+  // answers must DIFFER from theirs, checked against their own constants.
+  sksGate:()=>{
+    const bad = [], g = window.__g;
+    if(SKY_ON !== true) bad.push(`SKYSPLITTER'S ENCOUNTER IS SHIPPED OFF: SKY_ON ${SKY_ON}, ships true`);
+    // 0. PURE - the kit, off the table. Exactly one boss carries `sks`, and it
+    // is neither of the other two encounters.
+    const carry = BOSSES.filter(b=>b.sks);
+    if(carry.length !== 1) bad.push(`THE SKY IS ON ${carry.length} BOSSES: ${carry.map(b=>b.nm)} - it is written for one`);
+    const B = carry[0] || BOSSES[2];
+    if(B.mat || B.thn) bad.push(`${B.nm} CARRIES ANOTHER ENCOUNTER TOO: it would be that boss in another colour`);
+    if(!B.flier) bad.push(`${B.nm} IS NOT THE FLIER - the whole design is that it comes out of the sky`);
+    if(sksKit(B, true, true).join("+") !== "rake") bad.push(`ALOFT IT DOES NOT RAKE: ${sksKit(B, true, true)}`);
+    if(sksKit(B, true, false).join("+") !== "charge+slam") bad.push(`DOWN IT IS NOT ITS OLD SELF: ${sksKit(B, true, false)}`);
+    if(sksKit(B, false, true).join("+") !== (BOSS_KIT[B.ai]||[]).join("+")) bad.push(`THE SWITCH OFF DOES NOT RESTORE ITS OLD KIT: ${sksKit(B, false, true)} vs ${BOSS_KIT[B.ai]}`);
+    for(const b of BOSSES) if(!b.sks && bossKitOf(b).join("+").includes("rake"))
+      bad.push(`${b.nm} WAS GIVEN THE RAKE: ${bossKitOf(b)}`);
+    if(sksKit(B, true, true).concat(sksKit(B, true, false)).some(k => k === "brood" || k === "hedge"))
+      bad.push("SKYSPLITTER WAS GIVEN THE CALL OR THE HEDGE - that is another boss's lesson");
+    // 0b. THE FOUR ANSWERS ARE DIFFERENT ANSWERS, against their constants.
+    // THE ARRIVAL: hers is a point that re-opens, its is a circle centred on
+    // you; this one is not a place at all - it has to MOVE.
+    const s0 = skyShadowAt(0, 0, 0, 0), s1 = skyShadowAt(0, 0, 0, 1);
+    const travel = +Math.hypot(s1[0]-s0[0], s1[1]-s0[1]).toFixed(2);
+    if(!(travel > 20)) bad.push(`THE SHADOW IS A PLACE, NOT A CROSSING: ${travel} m from the warning to the clock`);
+    if(!(SKY_SHADOW_R1 < SKY_SHADOW_R0)) bad.push(`THE SHADOW DOES NOT CLOSE IN: ${SKY_SHADOW_R0} -> ${SKY_SHADOW_R1} m`);
+    if(SKY_SHADOW_R1 === MAT_NEST_AT || SKY_SHADOW_R1 === THN_RING_R)
+      bad.push(`THE ARRIVAL STANDS WHERE ANOTHER BOSS'S DOES: ${SKY_SHADOW_R1} m`);
+    // THE TELL: the only beat that stretches and leans forward at once.
+    if(!(BEAT.rake.tsq < 0 && BEAT.rake.tlf > 0)) bad.push(`THE RAKE DOES NOT FOLD AND TIP FORWARD: tsq ${BEAT.rake.tsq}, tlf ${BEAT.rake.tlf}`);
+    for(const k in BEAT) if(k !== "rake" && BEAT[k].tsq < 0 && BEAT[k].tlf > 0)
+      bad.push(`${k} HAS THE RAKE'S WIND-UP TOO (${BEAT[k].tsq}/${BEAT[k].tlf}) - it is not unique`);
+    if(!(ABILITIES.rake && ABILITIES.rake.tell >= ABILITIES.slam.tell*.8))
+      bad.push(`THE RAKE HAS NO WARNING: ${ABILITIES.rake && ABILITIES.rake.tell} s against the slam's ${ABILITIES.slam.tell}`);
+    // and the front has to beat a running player, or it is a wall you walk out of
+    const front = +(SKY_RAKE_GAP / SKY_RAKE_DT).toFixed(2);
+    if(!(front > (P ? P.spd : 0) * 1.6)) bad.push(`THE FRONT IS OUTRUNNABLE: ${front} m/s against ${P && +P.spd.toFixed(2)} m/s`);
+    // WHAT CHANGES: not a cut (hers) and not a fence (its)
+    if(!(SKY_AIR > 0 && SKY_LAND > 0)) bad.push(`THERE ARE NO WINDOWS: air ${SKY_AIR}, land ${SKY_LAND}`);
+    if(!sksAloft(true, { def:{ sks:true }, skyUp:true })) bad.push("ALOFT IS NOT ALOFT");
+    const opens = [["IT IS UNTOUCHABLE ON THE GROUND", { def:{ sks:true }, skyUp:false }],
+                   ["THE SWITCH OFF STILL LIFTS IT", null],
+                   ["ANOTHER BOSS IS UNTOUCHABLE", { def:{}, skyUp:true }],
+                   ["IT IS UNTOUCHABLE WHILE IT IS STILL RISING", { def:{ sks:true }, skyUp:true, rise:1 }]];
+    for(const [msg, o] of opens) if(o === null ? sksAloft(false, { def:{ sks:true }, skyUp:true }) : sksAloft(true, o)) bad.push(msg);
+    // THE ENDING: a lure, not a rout and not a zone
+    if(!(SKY_CARRION_T > MAT_BREAK_T)) bad.push(`THE CARRION IS A ROUT: ${SKY_CARRION_T} s against her ${MAT_BREAK_T} s break`);
+    if(!carrionAt({ x:0, z:0, until:10 }, 0, 5, 0)) bad.push("A BODY BESIDE THE CARCASS IS NOT DRAWN TO IT");
+    const nots = [["A BODY PAST ITS SMELL IS DRAWN TO IT", [{ x:0, z:0, until:10 }, 0, SKY_CARRION_R + 5, 0]],
+                  ["THE CARCASS PULLS AFTER IT IS GONE", [{ x:0, z:0, until:10 }, 11, 5, 0]],
+                  ["THERE IS A PULL WITH NO CARCASS", [null, 0, 5, 0]]];
+    for(const [msg, a] of nots) if(carrionAt(a[0], a[1], a[2], a[3])) bad.push(msg);
+    // ---- the live half
+    const keep = { ns:noSpawn, t:T, bi:bossIdx, sh:skyShadow, ca:carrion, on:SKY_ON, hp:P.hp,
+                   x:P.x, z:P.z, vx:P.vx, vz:P.vz, bd:botDrive, ev:events.splice(0), hz:hazards.splice(0),
+                   zn:zones.splice(0), mn:matNest, mon:MAT_ON, ring:thnRing, ton:THN_ON, bo:boons.slice() };
+    qaLive(bad, "THE SKYSPLITTER GATE");
+    noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false;   // other gates' subjects
+    const clear = ()=>{ g.clearEnemies(); skyShadow = null; carrion = null; alerts.length = 0;
+                        hazards.length = 0; zones.length = 0;
+                        for(const k in sksStat) sksStat[k] = 0; };
+    // 1. THE ARRIVAL. Its clock, run from SKY_WARN + a second before it, with
+    // every position the shadow passed through recorded.
+    const arrive = (on)=>{
+      clear(); SKY_ON = on; bossIdx = BOSSES.indexOf(B); T = B.t - SKY_WARN - 1;
+      P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0;
+      noSpawn = false;
+      let first = null; const path = [];
+      for(let i=0;i<Math.round((SKY_WARN + 2)*60) && !enemies.some(e=>e.boss); i++){
+        step(1/60);
+        if(skyShadow && !skyShadow.used){
+          if(!first) first = { at:+T.toFixed(2), said:alerts.map(a=>a.text),
+                               pd:+Math.hypot(skyShadow.x-P.x, skyShadow.z-P.z).toFixed(2) };
+          path.push([skyShadow.x, skyShadow.z]);
+        }
+      }
+      noSpawn = true;
+      let moved = 0, still = 0;
+      for(let i=1;i<path.length;i++){
+        const st = Math.hypot(path[i][0]-path[i-1][0], path[i][1]-path[i-1][1]);
+        moved += st; if(st < 1e-4) still++;
+      }
+      const b = enemies.find(e=>e.boss);
+      const last = path[path.length-1];
+      return { first, moved:+moved.toFixed(2), still, frames:path.length, warned:sksStat.warned,
+               lines:alerts.map(a=>a.text),
+               boss: b ? { underShadow: last ? +Math.hypot(b.x-last[0], b.z-last[1]).toFixed(2) : null,
+                           pd:+Math.hypot(b.x-P.x, b.z-P.z).toFixed(2), up:!!b.skyUp } : null };
+    };
+    const A1 = arrive(true);
+    if(!A1.first) bad.push("NO SHADOW CROSSES THE GROUND BEFORE IT ARRIVES: the arrival has no warning");
+    else {
+      if(!(A1.first.at <= B.t - SKY_WARN + .2)) bad.push(`THE SHADOW COMES TOO LATE: t ${A1.first.at}, its clock ${B.t} less ${SKY_WARN} s`);
+      if(!SKY_LINE_WARN.every(l => A1.first.said.includes(l))) bad.push(`THE ARRIVAL IS NOT ANNOUNCED: ${JSON.stringify(A1.first.said)}`);
+    }
+    if(!(A1.moved > 40)) bad.push(`THE SHADOW DOES NOT CROSS THE GROUND: it travelled ${A1.moved} m over ${A1.frames} frames`);
+    if(A1.still > 2) bad.push(`THE SHADOW STANDS STILL: ${A1.still} of ${A1.frames} frames did not move`);
+    if(!A1.boss) bad.push("IT NEVER ARRIVED AT ALL");
+    else {
+      if(!(A1.boss.underShadow !== null && A1.boss.underShadow < 3))
+        bad.push(`IT DOES NOT COME DOWN UNDER ITS OWN SHADOW: ${A1.boss.underShadow} m off it`);
+      if(A1.boss.up !== true) bad.push("IT ARRIVES ON FOOT - the flier's arrival is out of the sky");
+    }
+    const A0 = arrive(false);
+    if(A0.first) bad.push(`THE SWITCH OFF STILL CASTS A SHADOW at ${A0.first.pd} m`);
+    if(!A0.boss) bad.push("CLAUSE 1 NULL: IT NEVER ARRIVED WITH THE SWITCH OFF");
+    else if(!(Math.abs(A0.boss.pd - BOSS_AT) < 6)) bad.push(`THE SWITCH OFF MOVED ITS ARRIVAL: ${A0.boss.pd} m, the old ring is ${BOSS_AT}`);
+    // 2. THE RAKE, through the real bossAI: cue the tell, let the product lay
+    // its own floor, and read the front off the hazards actually laid.
+    const rake = (on, kind)=>{
+      clear(); SKY_ON = on; P.hp = P.maxhp; P.x = 0; P.z = 0; P.y = groundY(0,0);
+      spawnBoss(B); const b = enemies.find(e=>e.boss); b.rise = 0; b.hp = b.maxhp = 1e9;
+      b.x = P.x - 12; b.z = P.z; b.skyUp = true; b.skyH = SKY_H; b.skyT = SKY_AIR;
+      g.bossCue(kind, "tell", 1/60);
+      bossTelegraph(b, b.ab);
+      const pk = g.beat(), cast = hazards.length;
+      const tels = hazards.map(h=>+h.tel.toFixed(3));
+      const rows = [...new Set(tels)].sort((a,c)=>a-c);
+      const byRow = rows.map(t => hazards.filter(h=>+h.tel.toFixed(3) === t)
+                                         .map(h=>+Math.hypot(h.x-b.x, h.z-b.z).toFixed(2)));
+      step(1/60); step(1/60); const ak = g.beat();
+      return { n:cast, rows:rows.length, spread:+(Math.max(...tels) - Math.min(...tels)).toFixed(3),
+               near: byRow.length ? Math.min(...byRow[0]) : 0,
+               far:  byRow.length ? Math.min(...byRow[byRow.length-1]) : 0,
+               peak:pk, act:ak, rakes:sksStat.rakes, h:+(b.skyH||0).toFixed(2),
+               kit: bossKitOf(b.def, b).join("+") };
+    };
+    const RK = rake(true, "rake");
+    if(!(RK.n >= SKY_RAKE_ROWS*SKY_RAKE_W - SKY_RAKE_W)) bad.push(`THE RAKE IS NOT A WALL: ${RK.n} cells, ${SKY_RAKE_ROWS} rows of ${SKY_RAKE_W}`);
+    if(RK.rows !== SKY_RAKE_ROWS) bad.push(`THE RAKE ARRIVES ALL AT ONCE: ${RK.rows} distinct warnings, not ${SKY_RAKE_ROWS} - it is meant to TRAVEL`);
+    if(!(Math.abs(RK.spread - (SKY_RAKE_ROWS-1)*SKY_RAKE_DT) < .02))
+      bad.push(`THE FRONT DOES NOT TRAVEL AT ${front} m/s: warnings span ${RK.spread} s over ${SKY_RAKE_ROWS} rows`);
+    if(!(RK.far > RK.near + SKY_RAKE_GAP)) bad.push(`THE LATE ROWS ARE NOT FURTHER OUT: first ${RK.near} m, last ${RK.far} m`);
+    if(RK.kit !== "rake") bad.push(`AN AIRBORNE SKYSPLITTER IS NOT LIMITED TO THE RAKE: ${RK.kit}`);
+    if(!(RK.peak && RK.peak.sq < 1)) bad.push(`THE RAKE DOES NOT GATHER INTO ITS WIND-UP: sq ${RK.peak && RK.peak.sq}`);
+    if(!(RK.peak && RK.peak.lf > 0)) bad.push(`THE RAKE LEANS BACK LIKE THE CHARGE: lean ${RK.peak && RK.peak.lf}`);
+    if(!(RK.h >= SKY_H - .01)) bad.push(`THE RAKE IS NOT CAST FROM THE AIR: ${RK.h} m off the ground`);
+    if(!(RK.act && RK.act.rc > 0)) bad.push(`THE RAKE SENDS NOTHING ON THE ACT: reach ${RK.act && RK.act.rc}`);
+    const RS = rake(true, "slam");
+    if(RS.n !== 1) bad.push(`CLAUSE 2 NULL: A SLAM LAID ${RS.n} HAZARDS, not the one disc under your feet`);
+    if(RS.rows !== 1) bad.push(`CLAUSE 2 NULL: THE SLAM ALSO ARRIVES IN ${RS.rows} WAVES`);
+    // 3. THE WINDOWS, live: the same hit, up and down, and the cycle itself.
+    const win = (on, up)=>{
+      clear(); SKY_ON = on;
+      P.x = 0; P.z = 0; P.y = groundY(0,0);
+      spawnBoss(B); const b = enemies.find(e=>e.boss); b.rise = 0; b.hp = b.maxhp = 1e9;
+      b.skyUp = up; b.skyH = up ? SKY_H : 0; b.skyT = 99;
+      const h0 = b.hp; hurt(b, 1000, 0, 0);
+      const took = +(h0 - b.hp).toFixed(1);
+      // and the cycle, driven by the product's own tick
+      b.skyT = SKY_LAND*.25; b.skyUp = !up;
+      for(let i=0;i<Math.round((SKY_AIR + SKY_LAND + 2)*60);i++) sksTick(b, 1/60);
+      return { took, lands:sksStat.lands, climbs:sksStat.climbs, missed:sksStat.missed,
+               h:+(b.skyH||0).toFixed(2), reach: !sksAloft(SKY_ON, b) };
+    };
+    const WU = win(true, true), WD = win(true, false), WO = win(false, true);
+    if(WU.took !== 0) bad.push(`IT CAN BE HIT IN THE AIR: ${WU.took} of 1000 landed`);
+    if(!(WU.missed > 0)) bad.push("THE AIR IS NOT COUNTED: 0 refused hits with it aloft");
+    if(!(WD.took > 0)) bad.push(`IT CANNOT BE HIT ON THE GROUND EITHER: ${WD.took} of 1000 - there would be no window`);
+    if(WO.took !== 1000) bad.push(`CLAUSE 3 NULL: THE SWITCH OFF STILL REFUSES DAMAGE: ${WO.took} of 1000`);
+    if(!(WU.lands > 0 && WU.climbs > 0)) bad.push(`THE WINDOWS DO NOT TURN OVER: ${WU.lands} landings, ${WU.climbs} climbs in one cycle`);
+    if(WO.h !== 0) bad.push(`THE SWITCH OFF STILL FLIES: ${WO.h} m off the ground`);
+    // 4. THE ENDING: the carcass, and the horde walking to IT and not to you -
+    // measured as the distance a body closed on each, which a rout would
+    // reverse and a zone would not touch. And it pays NO boon.
+    const fall = (on)=>{
+      clear(); SKY_ON = on; const bo = boons.length;
+      P.x = 0; P.z = 0; P.y = groundY(0,0); P.vx = 0; P.vz = 0;
+      spawnBoss(B); const b = enemies.find(e=>e.boss); b.rise = 0; b.skyUp = false; b.skyH = 0;
+      b.x = 26; b.z = 0;                                // the carcass will be here
+      const body = spawnEnemy("shambler", 13, 0);
+      if(body){ body.rise = 0; body.burrow = false; body.rout = 0; }
+      rebuildGrid();
+      const f0 = sksStat.falls; b.hp = 1; hurt(b, 1e9, 0, 0);
+      const zn = zones.length;
+      const d0P = body ? Math.hypot(body.x - P.x, body.z - P.z) : 0;
+      const d0C = body && carrion ? Math.hypot(body.x - carrion.x, body.z - carrion.z) : 0;
+      for(let i=0;i<90;i++) step(1/60);
+      const d1P = body ? Math.hypot(body.x - P.x, body.z - P.z) : 0;
+      const d1C = body && carrion ? Math.hypot(body.x - carrion.x, body.z - carrion.z) : 0;
+      return { fell:sksStat.falls - f0, zones:zn, boons:boons.length - bo,
+               carrion: carrion ? +(carrion.until - T).toFixed(1) : null,
+               toYou:+(d1P - d0P).toFixed(2), toMeat:+(d1C - d0C).toFixed(2),
+               fed:sksStat.fed, lines:alerts.map(a=>a.text) };
+    };
+    const F1 = fall(true);
+    if(F1.fell !== 1) bad.push(`ITS FALL IS NOT AN EVENT: sksFall ran ${F1.fell} times`);
+    if(!(F1.carrion > SKY_CARRION_T*.8)) bad.push(`ITS FALL LEAVES NO CARCASS: ${F1.carrion} s of ${SKY_CARRION_T}`);
+    if(!(F1.toMeat < -1)) bad.push(`THE HORDE DOES NOT GO TO THE CARCASS: it closed ${F1.toMeat} m on it in 1.5 s`);
+    if(!(F1.toYou > 1)) bad.push(`THE HORDE IS STILL COMING FOR YOU: it closed ${F1.toYou} m on you`);
+    if(!(F1.fed > 0)) bad.push("NO BODY WAS EVER LURED: fed 0");
+    if(F1.boons !== 0) bad.push(`ITS FALL PAYS A BOON (${F1.boons}) - that is THE MATRIARCH's ending, not this one`);
+    if(F1.zones !== 0) bad.push(`ITS FALL LAYS ${F1.zones} ZONES - that is THORNBACK's ending, not this one`);
+    if(!F1.lines.includes(SKY_LINE_END)) bad.push(`ITS FALL IS NOT TOLD: ${JSON.stringify(F1.lines)}`);
+    const F0 = fall(false);
+    if(F0.fell !== 0 || F0.carrion !== null) bad.push(`THE SWITCH OFF STILL ENDS THE RUN'S WAY: fell ${F0.fell}, carcass ${F0.carrion}`);
+    if(!(F0.toYou < -1)) bad.push(`CLAUSE 4 NULL: WITH THE SWITCH OFF THE HORDE DID NOT COME FOR YOU EITHER: ${F0.toYou} m`);
+    // restore everything this gate touched
+    g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
+    SKY_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
+    skyShadow = keep.sh; carrion = keep.ca; matNest = keep.mn; thnRing = keep.ring; botDrive = keep.bd;
+    boons.length = 0; boons.push(...keep.bo);
+    P.hp = keep.hp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z);
+    alerts.length = 0; hazards.length = 0; zones.length = 0;
+    events.push(...keep.ev); hazards.push(...keep.hz); zones.push(...keep.zn);
+    qaSettle();
+    return { ok: bad.length === 0, bad, arrive:{ on:A1, off:A0 },
+             rake:{ n:RK.n, rows:RK.rows, spread:RK.spread, near:RK.near, far:RK.far,
+                    front, sq:RK.peak && RK.peak.sq, rc:RK.act && RK.act.rc, slam:RS.n },
+             windows:{ up:WU, down:WD, off:WO }, end:F1,
+             kit:sksKit(B, SKY_ON, true).join("+") + " / " + sksKit(B, SKY_ON, false).join("+") };
   },
 
   // THE BENCH HISTORY LEAK (L38). L37 found a character's paired numbers
