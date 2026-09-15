@@ -1731,6 +1731,29 @@ function wshuffle(a, rng){
 const WSHUFFLE_SEEDS = [3, 9, 77, 101, 4242, 542389936];
 const WSHUFFLE_COLD = WSHUFFLE_SEEDS.map(s => { const w = mulberry32(s);
   return [0,1,2,3,4,5,6,7,8].sort(() => w() - .5).join() + "#" + w(); });
+// L45 - AND THE ANSWER KEY IS WRITTEN DOWN, because "the engine's cold sort" is
+// not one order. The two writers of this file drive two engines and they
+// disagree: on Chromium 141 / V8 12.4 (the cloud session's) the cold sort is the
+// run-scan TimSort above, and on Edge 153 and Chrome 152 (this machine's) it is
+// L38's plain binary insertion from s=1 - all six seeds, measured, and 498 of 500
+// random seeds once the sort is hot are neither. So leakGate clause 1, holding
+// wshuffle to WSHUFFLE_COLD, could only ever pass on ONE of the two engines
+// whatever wshuffle was: L38/L43 passed here and failed there, L38b/L44 passed
+// there and failed here. That was a stale gate, not a history leak - the same
+// character benched first and after eight others reads 122202 / 23.67 both times
+// on the merged build (LOOP_LOG L45). What the world must never do is MOVE, and
+// that is engine-free: wshuffle is a pure function of its generator, so its
+// published output is the reference. These are wshuffle's outputs as published in
+// 1789444820-1e11 - the order every pinned world since L38b/L44 was rolled with.
+// Changing wshuffle means changing this table in the same edit, on purpose,
+// knowing every pinned world and every recorded bench moves with it.
+const WSHUFFLE_ORDER = [
+  "4,2,0,5,8,3,7,6,1#0.831733848201111",     // 3
+  "1,2,7,5,4,0,3,8,6#0.535546236904338",     // 9
+  "8,3,2,7,1,5,0,4,6#0.5065870243124664",    // 77
+  "8,1,0,6,3,7,5,2,4#0.7605496817268431",    // 101
+  "4,0,5,1,2,3,7,8,6#0.6422172551974654",    // 4242
+  "4,0,7,8,5,1,6,2,3#0.9870926092844456" ];  // 542389936
 let wr = Math.random;                       // the world stream
 // Set either and every run repeats. Null means roll a fresh one.
 let pinSeed = null, pinRun = null;
@@ -22494,10 +22517,31 @@ window.__g = {
     const src = [...document.scripts].map(s => s.textContent).join("\n");
     const rsort = src.match(/\.sort\(\s*\([^)]*\)\s*=>\s*\{?\s*(?:return\s+)?(?:wr|R|rnd|crnd|srnd|Math\.random)\s*\(/g) || [];
     if(rsort.length) bad.push(`A RANDOM-COMPARATOR SORT IS BACK: ${rsort.length} in the page source ("${rsort[0]}") - its order is the engine's choice and changes with the page's history`);
-    // 1. wshuffle IS THE FRESH-LOAD ORDER, seed for seed, against the order the
-    //    engine gave while the page was loading (WSHUFFLE_COLD, taken not typed).
-    WSHUFFLE_SEEDS.forEach((s, i)=>{ const w = mulberry32(s), got = wshuffle([0,1,2,3,4,5,6,7,8], w).join() + "#" + w();
-      if(got !== WSHUFFLE_COLD[i]) bad.push(`wshuffle IS NOT THE FRESH-LOAD ORDER: seed ${s} gave ${got}, the cold sort gave ${WSHUFFLE_COLD[i]} - every pinned world would move`); });
+    // 1. wshuffle IS THE PUBLISHED ORDER, seed for seed and draw for draw (the
+    //    "#" field is the generator's next value, so a shuffle that spends one
+    //    draw more or less fails even where it lands on the same permutation).
+    //    L45: against WSHUFFLE_ORDER, not WSHUFFLE_COLD - the engine's cold sort
+    //    is a different order on each writer's engine, so a clause keyed to it
+    //    failed on one machine or the other for every possible wshuffle.
+    const ord = (fn)=>WSHUFFLE_SEEDS.map(s => { const w = mulberry32(s); return fn([0,1,2,3,4,5,6,7,8], w).join() + "#" + w(); });
+    const pub = ord(wshuffle);
+    if(WSHUFFLE_ORDER.length !== WSHUFFLE_SEEDS.length)
+      bad.push(`THE PUBLISHED ORDER DOES NOT COVER ITS SEEDS: WSHUFFLE_ORDER has ${WSHUFFLE_ORDER.length} rows for ${WSHUFFLE_SEEDS.length} seeds`);
+    WSHUFFLE_SEEDS.forEach((s, i)=>{ if(pub[i] !== WSHUFFLE_ORDER[i])
+      bad.push(`wshuffle IS NOT THE PUBLISHED ORDER: seed ${s} gave ${pub[i]}, WSHUFFLE_ORDER records ${WSHUFFLE_ORDER[i]} - every pinned world would move`); });
+    //    1b. NULL CONTROL: the table has to be able to tell two shuffles apart.
+    //    L38's first cut - binary insertion from s=1, one draw a comparison, the
+    //    order this machine's engines give cold - must disagree with it on at
+    //    least one seed, or clause 1 would pass the shuffle it replaced.
+    const bin1 = (a, rng)=>{ for(let s = 1; s < a.length; s++){ const pv = a[s]; let l = 0, r = s;
+        while(l < r){ const m = l + ((r - l) >> 1); if(rng() - .5 < 0) r = m; else l = m + 1; }
+        for(let p = s; p > l; p--) a[p] = a[p-1]; a[l] = pv; } return a; };
+    const alt = ord(bin1), altDiff = alt.filter((v, i) => v !== WSHUFFLE_ORDER[i]).length;
+    if(!altDiff) bad.push(`THE PUBLISHED ORDER CANNOT TELL TWO SHUFFLES APART: L38's binary insertion agrees with WSHUFFLE_ORDER on all ${WSHUFFLE_SEEDS.length} seeds`);
+    //    1c. REPORTED, NOT FAILED: which family this engine's own cold sort is.
+    //    It is a fact about the browser the gate runs in, not about the build.
+    const same = (x)=> x.every((v, i) => v === WSHUFFLE_COLD[i]);
+    const coldSort = same(pub) ? "run-scan (= wshuffle)" : same(alt) ? "binary insertion (L38)" : "neither";
     // 2. THE WORLD IS A FUNCTION OF ITS SEED, NOT OF THE PAGE'S PAST. Fingerprint
     //    three pinned worlds, push the engine's sort past its switch, fingerprint
     //    again. CONTROL: after the warm-up the OLD shuffle must disagree with the
@@ -22563,7 +22607,7 @@ window.__g = {
     if(hit === A[ids[0]]) bad.push(`THE GATE CANNOT SEE ONE DRAW: an extra run-stream draw at frame 300 left ${ids[0]}'s fingerprint unchanged`);
     g.pin(keep.pin); g.pinRun(keep.run); botCharge = keep.bc;
     qaSettle();
-    return { ok: bad.length === 0, bad, chars: ids.length, renderDraws: drawn, legacyMoved, worlds: WS.length };
+    return { ok: bad.length === 0, bad, chars: ids.length, renderDraws: drawn, legacyMoved, worlds: WS.length, coldSort, altDiff };
   },
 
   // THE STAMPEDE's census (L17): whether it is armed (it reads the same killR
