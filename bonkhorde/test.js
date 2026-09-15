@@ -189,8 +189,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     window.__g.step(60 * 300);                          // to 5:00, before ELITE_FROM
     return window.__g.elites();
   });
-  ok("no elites before minute 6", early.n === 0 && early.chance <= 0,
-     `n=${early.n} chance=${early.chance}`);
+  // THE ROLL, NOT THE UNION. eliteChance is negative before ELITE_FROM, so the
+  // ambient roll cannot put an elite out at 5:00 at all - but an ANGRY DEN's
+  // pack takes the full elite treatment whenever it is woken, and the bot
+  // driving this run can wake one. That is the game being right, and it turned
+  // up here as a red check on a build that had not touched either mechanism.
+  // The subject is the roll; a den's own pack is counted and named beside it.
+  ok("no elites before minute 6", early.rolled === 0 && early.chance <= 0,
+     `n=${early.n} chance=${early.chance}` +
+     (early.den ? ` (all ${early.den} of them an angry den's own pack, which is not the roll)` : ""));
   const late = await page.evaluate(() => {
     window.__g.start("intern"); window.__g.god(); window.__g.bot(true);
     window.__g.skipTo(1000); window.__g.step(60 * 60);
@@ -608,12 +615,23 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
      /SUDDEN DEATH\s+0[0-3]:\d\d/.test(sdHud.clock) && /\d+%/.test(sdHud.phase) && /KILL IT/.test(sdHud.phase),
      JSON.stringify(sdHud));
   const gate2 = await page.evaluate(() => {
-    const b = window.__g.state();
-    window.__g.killBoss();
-    return { before: b.over, after: window.__g.state() };
+    const g = window.__g, b = g.state();
+    g.killBoss();
+    // L44 MOVED THIS GROUND, AND THE CHECK HAD TO MOVE WITH IT. The finale's
+    // death no longer cuts to the results on the frame: TERRAVORE goes back
+    // down, the world it swallowed comes back up over TRV_END seconds, and
+    // only then does the run end. The win is still the win - it arrives at the
+    // end of the ending rather than on the blow - so this reads BOTH: that the
+    // kill frame is not the end, and that the end still comes, still a VICTORY.
+    const onKill = g.state().over;
+    let f = 0;
+    while(!g.state().over && f++ < 60*30) g.step(1);
+    return { before: b.over, onKill, frames: f, after: g.state() };
   });
-  ok("killing THE FINAL BONK wins the run",
-     gate2.after.over === true && gate2.after.won === true, "why=" + gate2.after.why);
+  ok("killing THE FINAL BONK wins the run - once its ending has played, not on the frame",
+     gate2.onKill === false && gate2.frames > 1 &&
+     gate2.after.over === true && gate2.after.won === true,
+     `over on the kill frame ${gate2.onKill}, VICTORY ${gate2.frames} frames later; why=` + gate2.after.why);
 
   console.log("\n=== 9. DEATH PATH (no godmode) ===");
   const death = await page.evaluate(() => {
@@ -5627,18 +5645,44 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       { const gs = g.gait()[0]; g.place(gs.x - 6, gs.z + 6); }
       g.hurtAt(0, 1e9, 0, -7); g.clearFx(); g.clearGems();
       out.back = { c:g.corpses()[0], u0:await at(0), u4:await at(.4) };
-      // 6. THE LAST BOSS. Its death ends the run, the run's end stops the
-      //    world, and the body still has to reach the floor under the banner:
-      //    frame() steps the fallen on the wall clock once the run is over.
+      // 6. THE RUN'S END STOPS THE WORLD, AND WHATEVER IS STILL FALLING HAS TO
+      //    REACH THE FLOOR UNDER THE BANNER - tick()'s `else if(over)
+      //    stepCorpses(dt)`, the fallen carried on the wall clock once the sim
+      //    has stopped. This used to be read off the FINALE's own body, because
+      //    its death ended the run on the frame. L44 put THE ENDING between the
+      //    two: TERRAVORE goes back down, the world comes back up over TRV_END
+      //    seconds, and the results come after - by which time the finale's own
+      //    corpse (1.6 s) has long since expired, so it can no longer be the
+      //    body this is read from. The mechanism is unchanged and so is the
+      //    claim; the body is now a shambler killed in the ending's last
+      //    quarter-second, which is still falling when the banner goes up.
       boot();
       g.boss(3); g.step(1, 1/60);
-      { const b = g.bossAt(); g.place(b.x, b.z - 9); g.step(180, 1/60); }
-      g.pause(true);
+      const bp = g.bossAt(); g.place(bp.x, bp.z - 9); g.step(180, 1/60);
       g.hurtAt(0, 1e9, 30, 0);
-      const st0 = g.state(), t0 = g.corpses()[0] ? g.corpses()[0].t : null;
-      for(let i=0;i<14;i++) await frame();     // through the .2 s boss hitstop and out the other side
-      out.last = { over:st0.over, won:st0.won, enemies:st0.enemies, t0, t1:g.corpses()[0] ? g.corpses()[0].t : null,
-                   nm:g.corpses()[0] && g.corpses()[0].type };
+      const onKill = g.state().over;                       // L44: not on the frame
+      const left0 = g.trv && g.trv().end ? g.trv().end.left : null;
+      if(left0 !== null) g.step(Math.max(0, Math.round((left0 - .05)*60)), 1/60);
+      const nAt = g.spawnAt("shambler", bp.x, bp.z - 8);
+      g.hurtAt(nAt - 1, 1e9, 1, 0);
+      for(let i=0;i<120 && !g.state().over;i++) g.step(1, 1/60);
+      g.pause(true);                                        // the world is stopped
+      const fallen = ()=>g.corpses().find(c => c.type === "shambler") || null;
+      const st0 = g.state();
+      // THE FIRST FRAMES GO TO THE FINALE'S OWN HITSTOP, which is why the
+      // fourteen were here. tick() counts `hitstop` down BEFORE it will step a
+      // corpse, g.step() does not touch it at all, and the whole ending above
+      // was driven by g.step - so HOLD.boss's .2 s is still sitting there when
+      // the world stops. At SIM_MAX_DT .042 that is five frames; eight clears
+      // it with margin, and the corpse clock is read over the four after it,
+      // well inside an ordinary body's .55 s fall (traced frame by frame: the
+      // clock sits still to frame 5, moves .042 a frame from 6, expires at 18).
+      for(let i=0;i<8;i++) await frame();
+      const lc0 = fallen(), t0 = lc0 ? lc0.t : null;
+      for(let i=0;i<4;i++) await frame();      // the wall clock, with the world stopped
+      const lc1 = fallen();
+      out.last = { over:st0.over, won:st0.won, onKill, endS:left0, enemies:st0.enemies,
+                   t0, t1:lc1 ? lc1.t : null, nm:lc0 && lc0.type };
       g.start("ox"); g.step(2, 1/60);
       return out;
     });
@@ -5741,9 +5785,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        grounded("elite") > grounded("brute")*1.30 && grounded("elite") < grounded("brute")*1.46,
        `elite ${F.elite && F.elite.dur} (${has("elite","brute") ? `${grounded("elite")} vs brute ${grounded("brute")} with the hops ${F.elite.hopAlive}/${F.brute.hopAlive} off, x${(grounded("elite")/grounded("brute")).toFixed(3)}` : "missing"}), bosses ${F.boss0 && F.boss0.dur} ${F.boss2 && F.boss2.dur}`);
     const La = r.last || {};
-    ok("the last boss ends the run and still falls: the world is stopped and the corpse clock ran on the frame",
-       La.over === true && La.won === true && La.t0 === 0 && La.t1 > La.t0 && La.nm === "boss",
-       `over ${La.over} won ${La.won}, corpse t ${La.t0} -> ${La.t1} across fourteen frames with the world stopped`);
+    ok("the finale's kill does not end the run, its ending does - and what is still falling when the banner goes up reaches the floor under it",
+       La.onKill === false && La.endS > 1 && La.over === true && La.won === true &&
+       La.nm === "shambler" && La.t0 > 0 && La.t1 > La.t0,
+       `over on the kill frame ${La.onKill}, ending ${La.endS}s, then over ${La.over} won ${La.won}; ` +
+       `${La.nm} corpse t ${La.t0} -> ${La.t1} across four frames with the world stopped, ` +
+       `after eight clearing the finale's own hitstop`);
   }
 
   console.log("\n=== 36. EVERY STAGE WEARS ITS OWN COAT ===");
@@ -9168,6 +9215,16 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // player past stage 0.
       out.sks = g.sksGate ? g.sksGate()
                           : { ok:false, bad:["g.sksGate is missing"] };
+      // L44's TERRAVORE (trvGate), the tenth gate to arrive by this route and
+      // the fourth boss encounter in a row to do it. It drives the finale's own
+      // clock (bossIdx, T, spawnBoss, step()) inside the run that is already
+      // up, the same way matGate/thnGate/sksGate do, and it reads the ROLLED
+      // MONUMENTS - what went down into the maw, what stayed up because it was
+      // lit - so it belongs here, on the young world those monuments were
+      // rolled for, before censusGate's 600 seconds of play move the player
+      // and the vigil out from under it.
+      out.trv = g.trvGate ? g.trvGate()
+                          : { ok:false, bad:["g.trvGate is missing"] };
       // AND L21 ARRIVED WITH SIX MORE, which is the fourth time this has
       // happened and the reason this section is not allowed to be finished.
       // The round put relief into the terrain - RELIEF_AMP, a tone field, flat
@@ -9301,6 +9358,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L43's SKYSPLITTER gate: the shadow travels and it comes down under it, the rake only casts aloft and the windows turn over, and its fall feeds the horde to the carcass",
        gates.sks.ok, say(gates.sks) +
        `  (rake rows ${gates.sks.rake && gates.sks.rake.rows}, windows ${gates.sks.windows && gates.sks.windows.up && gates.sks.windows.up.took}, kit ${gates.sks.kit})`);
+    ok("L44's TERRAVORE gate: the map arrives at it - the maw is fixed and does not follow, the unlit monuments go down into it, the inhale pulls you in and can be outrun, and the world comes back up before the results",
+       gates.trv.ok, say(gates.trv) +
+       `  (maw ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.first && gates.trv.arrive.on.first.pd} m, swallowed ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.sunk} of ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.unlit}, kit ${gates.trv.kit})`);
     // L20's is the one gate here that checks an INSTRUMENT rather than a
     // mechanic: its fifth clause asserts the bench survives its own sampling
     // window, which is the selection effect every horde share in L15-L18 was

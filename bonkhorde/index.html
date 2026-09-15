@@ -1099,9 +1099,11 @@ const zoneNear = new Float64Array(ZONE_BLADES);   // scratch: no per-frame alloc
 let zonesCulled = 0, propsCulled = 0, propsNear = 0, zoneBoxes = 0, zoneBladed = 0;
 let outNear = 0, outCulled = 0, outDrawn = 0, outBoxes = 0;   // L27, THE OUTCROPS
 let marksCulled = 0, shotsCulled = 0;   // landmarks and shots outside the view this frame (R306)
-let monsCulled = 0, monsDrawn = 0;      // region monuments off-screen / built this frame (L8)
+let monsCulled = 0, monsDrawn = 0;
+let boxDY = 0;                           // L44: a whole structure's lift, for a monument TERRAVORE is swallowing      // region monuments off-screen / built this frame (L8)
 let lastPasses = {};           // where the last frame's boxes went, pass by pass (R306)   // hazard zones and scenery props not drawn this frame, props in reach, and what the zones cost (R305)
 function box(x,y,z, sx,sy,sz, c, emit, yaw){
+  y += boxDY;
   if(boxPx && (sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz)) * boxPx < 1.5) return;   // under a pixel and a half: not built (R302)
   if(nbox >= MAXBOX) flush();          // same shader and state, so a mid-frame
   nbox++;                              // flush is free correctness insurance
@@ -1617,6 +1619,18 @@ function drawMap(w, h){
     dot(skyShadow.x, skyShadow.z, 2.8, "#f0b429");
   }
   if(carrion && T < carrion.until) dot(carrion.x, carrion.z, 3.4, "#ffd98a");   // L43: the carcass
+  if(TRV_ON && trvMaw && (!trvMaw.used || enemies.some(e => trvAnchored(TRV_ON, e, trvMaw)))){   // L44: the maw
+    if(!trvMaw.used){                                                      // and the world going to it
+      const u = clamp((T - trvMaw.t0) / TRV_WARN, 0, 1);
+      g2.strokeStyle = "rgba(255,122,61,.55)"; g2.lineWidth = Math.max(1, 1.2*ds);
+      for(const M of monuments){
+        const hd = trvFurrowAt(M.x, M.z, trvMaw.x, trvMaw.z, u), a1 = at(M.x, M.z), a2 = at(hd[0], hd[1]);
+        g2.beginPath(); g2.moveTo(a1[0], a1[1]); g2.lineTo(a2[0], a2[1]); g2.stroke();
+      }
+    }
+    dot(trvMaw.x, trvMaw.z, 5.6 + 1.6*Math.sin(T*4), "rgba(255,122,61,.32)");
+    dot(trvMaw.x, trvMaw.z, 3.2, "#ff7a3d");
+  }
   const [pxm, pzm] = at(P.x, P.z);
   g2.fillStyle = "#fff";
   g2.beginPath();
@@ -3445,7 +3459,7 @@ const BOSSES = [
 // four-minute timer, on every seed, dealing 8 to 16k a second to it. The
 // finale is the run's one real fight; at 1.2M it lasts about a third of the
 // timer at the ceiling and leaves a human, who is not the ceiling, the rest.
-{ t:1140, nm:"TERRAVORE",hp:1200000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore" },
+{ t:1140, nm:"TERRAVORE",hp:1200000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore", trv:true },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -3485,6 +3499,11 @@ const ABILITIES = {
   // can run. So the answer is neither "away" (the slam) nor "sideways" (the
   // hedge): you go THROUGH it, toward the boss, before your row lights.
   rake:    { tell:1.10, act:0.35, rest:2.6 },
+  // THE INHALE (L44), TERRAVORE's and only while it is held in its maw. It
+  // stretches up and leans back, a mouth opens on the ground at its feet, and
+  // on the act the ground is drawn IN toward it - see TRV_ below. The only
+  // ability in this game that moves YOU, so the answer is away, against the pull.
+  inhale:  { tell:1.20, act:1.40, rest:2.4 },
 };
 // ------------------------------------------- THE FINALE'S THREE PHASES
 // MEASURED FIRST (L7). Driven on the real page for five straight minutes, the
@@ -3579,6 +3598,10 @@ const BEAT = {
   // already NINE METRES UP when this plays, which is the tell nothing else in
   // the table has and no channel in it could carry.
   rake:     { tsq:-.20, tlf: .22, asq:-.06, alf: .30, tpt:-.12, apt: .14, arc: .30 },
+  // the inhale: the only wind-up that STRETCHES (negative squash, like the
+  // charge, the evict and the rake) and sends NOTHING forward on the act (arc 0,
+  // like the call and the spokes). It leans back and draws in; it does not lunge.
+  inhale:   { tsq:-.24, tlf:-.26, asq: .20, alf:-.06, tpt:-.22, apt:-.02, arc: 0   },
 };
 const BEAT_REST = .55;                         // how long the release takes to let out
 const BT0 = { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 };
@@ -9702,6 +9725,7 @@ function startRun(id){
   matNest = null; for(const k in matStat) matStat[k] = k === "boon" ? null : 0;   // L41
   thnRing = null; for(const k in thnStat) thnStat[k] = 0;                          // L42
   skyShadow = null; carrion = null; for(const k in sksStat) sksStat[k] = 0;        // L43
+  trvMaw = null; trvEnd = null; for(const k in trvStat) trvStat[k] = 0;            // L44
   // AND THE BODY SERIAL, which stopped being a label the moment L17 hashed it.
   // routRoll, digRoll and stoopRoll are all deterministic functions of e.eid -
   // that is the whole reason they exist, so that deciding "can this body panic"
@@ -10297,7 +10321,9 @@ function killEnemy(e){
     if(MAT_ON && e.def.mat) matFall(e);
     if(THN_ON && e.def.thn) thnFall(e);
     if(SKY_ON && e.def.sks) sksFall(e);
-    if(e.final){ finish("VICTORY", true); return; }
+    // L44: the kill no longer cuts to the results on the frame. The ending plays
+    // first (trvFall) and step() ends the run when it has.
+    if(e.final){ if(TRV_ON && e.def.trv){ trvFall(e); return; } finish("VICTORY", true); return; }
   } else {
     pushGem(e.x, e.z, e.xp);
     if(R() < .012) coinsRun += 5;
@@ -11375,7 +11401,7 @@ function spawnBoss(b){
   const ofYou = final ? finaleSize() : Math.min(b.hp * BOSS_SIZE_CAP, kitDps() * (BOSS_SECS[b.t] || 0));
   const floorHp = final ? FINALE_FLOOR : b.hp * grow;
   const def = { nm:b.nm, hp:Math.round(Math.max(floorHp, ofYou)), spd:b.spd, dmg:b.dmg, r:b.r, xp:b.xp,
-                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier, mat:!!b.mat, thn:!!b.thn, sks:!!b.sks };
+                c:b.c, h:b.h, w:b.w, ai:b.ai, body:b.body, flier:!!b.flier, mat:!!b.mat, thn:!!b.thn, sks:!!b.sks, trv:!!b.trv };
   const a = R()*TAU;
   // and it comes up inside weapon range, not on the horizon - BOSS_RISE
   // seconds of ground breaking fifteen metres from you is the arrival
@@ -11392,6 +11418,10 @@ function spawnBoss(b){
   // travelled to by the time its clock strikes.
   const sh = sksShadowUse(b);
   if(sh){ x = sh.x; z = sh.z; }
+  // L44: TERRAVORE comes up out of THE MAW - the one place the whole map was
+  // pulled toward - wherever you have got to since.
+  const mw = trvMawUse(b);
+  if(mw){ x = mw.x; z = mw.z; }
   enemies.push({ x, z, y:groundY(x,z), def, type:"boss", hp:def.hp, maxhp:def.hp,
     dmg:def.dmg, rad:def.r, sz:1, xp:def.xp, spdMul:1, elite:false,
     kx:0, kz:0, flash:-1, atk:0, bob:0, slowT:0, burnCd:0, burnN:0, plague:0, plagueT:0, dead:false, boss:true,
@@ -11830,6 +11860,165 @@ function sksFall(e){
   alert2(SKY_LINE_END, "#ffd98a");
 }
 
+// ================================================= TERRAVORE (L44)
+// The finale, and the last boss in the run that simply APPEARED. It has had a
+// fight since L7 - three phases gated on its own health, a break you cannot
+// burst through, more of its kit and less rest each time - but at 19:00 it
+// came up fifteen metres from you with one line of text, like every boss did
+// before L41. MEASURED FIRST, on the shipped build: no warning of where, it
+// walked at you like every other body in the game, and killing it cut straight
+// to the results table in the same frame.
+//
+// THE THREE MID BOSSES SPENT THREE ANSWERS, and this one takes none of them.
+// THE MATRIARCH comes up at a nest near you that follows you; THORNBACK comes up
+// on a fence it grew around you; SKYSPLITTER comes down under a shadow that
+// circles you. All three put a marker NEAR YOU. L43 filed the untaken one:
+// the finale does not arrive anywhere - the map arrives at IT.
+//
+// THE STORY is the one this file already tells in pieces: TERRAVORE is the
+// thing under the world that has been eating it, the monuments are what is
+// left standing of what it ate, the run is the twenty minutes before it
+// finishes, and THE VIGIL's brands are the only thing that weakens it.
+//
+// ARRIVAL - THE WORLD GOES DOWN. TRV_WARN seconds before its clock a place is
+//   fixed, once, TRV_MAW_AT metres from where you stand, and it does NOT move
+//   again. Nothing is drawn near you. Instead every monument you did NOT light
+//   starts going down into the ground, and a furrow of broken earth runs from
+//   EVERY monument on the map toward that one place, all of them arriving on
+//   the clock - so the skyline you have been steering by for nineteen minutes
+//   tells you where, and how much of the world you failed to claim. It comes up
+//   there, out of THE MAW.
+// ATTACK 1 - its phase kits, unchanged in length and order (L7).
+// ATTACK 2 - THE INHALE, which replaces the charge while it is in the maw. It
+//   stretches up and leans back (BEAT.inhale, the only wind-up that stretches
+//   AND sends nothing forward on the act), a mouth opens on the ground at its
+//   feet, and on the act the ground is DRAWN IN: anything inside TRV_PULL_R is
+//   pulled toward the mouth at TRV_PULL m/s. It is the only attack in the game
+//   that moves you. The rake's answer is toward the boss, the hedge's is
+//   sideways, the slam's is off the spot; this one's is AWAY FROM IT, against
+//   the pull, which a running player can always beat (TRV_PULL < any speed).
+// WHAT IT CHANGES - IT DOES NOT COME TO YOU. Every body in this game walks at
+//   the player. For its first two phases the finale stays in the hole it came
+//   up out of, so the fight is wherever THAT is and you have to go there - and
+//   the clock (SUDDEN DEATH, then OVERRUN) is what says you must. At the last
+//   third, where L7's line already reads "IT STOPS EATING THE WORLD. YOU ARE
+//   CLOSER.", it tears itself out and comes for you with its old kit. Nothing
+//   about its health, its damage or who can hit it changes: no cut (hers), no
+//   fence (THORNBACK's), no refusal (SKYSPLITTER's).
+// THE ENDING - IT ENDS THE RUN. The kill used to cut to the results in the same
+//   frame. Now TRV_END seconds play first: the floor is wiped, the whole horde
+//   goes quiet and scatters, nothing can hurt you, and every monument it
+//   swallowed comes back up out of the ground - and only then do the results
+//   come up, telling the story before the numbers. Not a boon (hers), not a
+//   field of thorns (THORNBACK's), not a minute's lure (SKYSPLITTER's): the
+//   world, for good.
+// OFF SWITCH: TRV_ON (window.__g.terravore). Off, it is the L7 finale exactly -
+// no maw, no inhale, it walks at you, and the kill ends the run on the frame.
+// Only it carries `trv`.
+let TRV_ON = true;                          // THE OFF SWITCH - ships true
+const TRV_WARN      = 30;    // seconds of the world going down before it comes up
+const TRV_MAW_AT    = 36;    // metres from you the maw is fixed, once, at the warning
+const TRV_MAW_R     = 9;     // metres - the hole it comes up out of, as drawn
+const TRV_FREE_PH   = 2;     // the phase (L7's THE LAST MOUTHFUL) at which it tears free
+const TRV_SUNK      = 1.8;   // metres of it still down in the hole while it is held there
+const TRV_PULL_R    = 34;    // metres out the inhale draws the ground in
+const TRV_PULL      = 3.6;   // metres a second it draws you, against a player who runs 4.5-7
+const TRV_MOUTH_R   = 7.5;   // metres - the mouth on the ground it draws you toward
+const TRV_MOUTH_DMG = 36;    // per touch of the mouth, before dmgScale and the phase
+const TRV_END       = 5.0;   // seconds the world takes to come back up before the results
+const TRV_LINE_WARN2 = "THE WORLD IS BEING PULLED TO ONE PLACE";
+const TRV_LINE_END  = ["IT GOES BACK UNDER THE WORLD", "AND THE WORLD COMES BACK UP"];
+let trvMaw = null;           // { x, z, t0, at, used } - the place, for this run; fixed at the warning
+let trvEnd = null;           // { t0, x, z } - the ending, while it plays
+const trvStat = { warned:0, sunk:0, inhales:0, pulled:0, freed:0, falls:0, quiet:0, risen:0 };
+// PURE: the first line of the warning names what it is eating - the brands you
+// did not earn - so the arrival is also the vigil's verdict
+function trvWarnLine(n){
+  return n > 0 ? `IT IS EATING THE ${n} MONUMENT${n > 1 ? "S" : ""} YOU DID NOT LIGHT`
+               : "EVERY MONUMENT YOU LIT IS HOLDING";
+}
+// PURE: which kit the finale draws from in phase ph. While it is held in the
+// maw the charge - the one move that would carry it out - is the inhale;
+// from TRV_FREE_PH on it is the L7 kit, and the switch off is the L7 kit always.
+function trvKit(ph, on){
+  const k = (BOSS_PHASES[ph|0] || BOSS_PHASES[0]).kit;
+  return (on && (ph|0) < TRV_FREE_PH) ? k.map(a => a === "charge" ? "inhale" : a) : k.slice();
+}
+// PURE: is this body held in the maw this frame
+function trvAnchored(on, e, maw){
+  return !!(on && e && e.final && !e.dead && e.def && e.def.trv && maw && maw.used && (e.ph|0) < TRV_FREE_PH);
+}
+// PURE: where the furrow out of a monument has reached at wind-down u
+function trvFurrowAt(mx, mz, wx, wz, u){ const k = clamp(u, 0, 1); return [mx + (wx - mx)*k, mz + (wz - mz)*k]; }
+// PURE: how far down a monument is, 0 standing .. 1 gone - and back up again
+// over the ending
+function trvSinkOf(M, maw, end, t){
+  if(!M || !M.trvSunk || !maw) return 0;
+  const u = clamp((t - maw.t0) / TRV_WARN, 0, 1), s = u*u*(3 - 2*u);
+  return end ? s * (1 - clamp((t - end.t0) / TRV_END, 0, 1)) : s;
+}
+// PURE: how fast the inhale draws in a point d metres from the mouth
+function trvPullAt(d){ return (d > .6 && d < TRV_PULL_R) ? TRV_PULL : 0; }
+// PURE: the results screen's first sentence
+function trvEpilogue(risen, deeper){
+  return (risen > 0 ? `It went back under the world, and the ${risen} monument${risen > 1 ? "s" : ""} it swallowed came back up with the ground.`
+                    : "It went back under the world, and every monument you lit was still standing.")
+       + " Whatever you are now, you are the biggest thing in it."
+       + (deeper ? " Something deeper is still down there." : "");
+}
+// the warning - once, TRV_WARN seconds out. The place is fixed HERE and never
+// again: it does not follow you (her nest does) and it is not centred on you
+// (its fence is).
+function trvWarn(b){
+  const a = R()*TAU;
+  const [x, z] = confine(P.x + Math.cos(a)*TRV_MAW_AT, P.z + Math.sin(a)*TRV_MAW_AT, 12);
+  trvMaw = { x, z, t0:T, at:b.t, used:false };
+  let n = 0;
+  for(const M of monuments) if(!M.lit){ M.trvSunk = true; n++; }
+  trvStat.warned++; trvStat.sunk = n;
+  alert2(trvWarnLine(n), "#ff7a3d"); alert2(TRV_LINE_WARN2, "#ffb08a");
+  shake = Math.max(shake, .6); SFX.boss();
+}
+// where it comes up: the maw, wherever you have gone since
+function trvMawUse(b){
+  if(!TRV_ON || !b.trv || !trvMaw || trvMaw.used) return null;
+  trvMaw.used = true;
+  return { x:trvMaw.x, z:trvMaw.z };
+}
+// THE INHALE, on the act: the ground under you goes toward the mouth. Stepped
+// from bossAI's act branch, the charge's own slot, so it lasts exactly the act.
+function trvPull(e, dt){
+  const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz), v = trvPullAt(d);
+  if(!(v > 0)) return;
+  const k = Math.min(d - .6, v*dt) / d;
+  [P.x, P.z] = confine(P.x + dx*k, P.z + dz*k, 2);
+  trvStat.pulled++;
+}
+// THE ENDING - it goes back down, the world comes back up, and then the run ends
+function trvFall(e){
+  trvStat.falls++;
+  trvEnd = { t0:T, x:e.x, z:e.z, wiped:false };
+  // The floor is NOT wiped here - see step(). This can run from inside the very
+  // loops that walk hazards[] and spits[] (THE OX's tremor answers a hit taken
+  // with a killing blow), and emptying an array under its own loop crashed the
+  // run on the bench (ox, seed 202, both bots).
+  let n = 0;
+  for(const o of enemies){
+    if(o === e || o.dead || o.boss || o.rise > 0 || o.dig > 0 || o.stoop > 0) continue;
+    o.routT = o.rout = TRV_END + 2; o.routS = (o.eid & 1) ? 1 : -1;
+    o.wu = 0; o.wd = 0; o.lead = 0; o.flash = Math.max(o.flash, .12); n++;
+  }
+  trvStat.quiet = n;
+  trvStat.risen = monuments.filter(M => M.trvSunk).length;
+  for(let i=0;i<32;i++){                       // the hole closing over it
+    const a2 = i*(TAU/32), rr = TRV_MAW_R*(.6 + .8*(i % 2));
+    rings.push({ x:e.x+Math.cos(a2)*rr, z:e.z+Math.sin(a2)*rr, y:groundY(e.x, e.z),
+                 r:0, max:e.def.w*(1.2+Math.random()), life:1.2+Math.random()*.6, mx:1.6 });
+  }
+  shake = Math.max(shake, 1.8); SFX.boom();
+  alert2(TRV_LINE_END[0], "#ffb08a"); alert2(TRV_LINE_END[1], "#8affd0");
+}
+
 // hazards are the enemy mirror of `zones`: they hurt the PLAYER. `tel` counts
 // down as a harmless warning, then `live` counts down doing damage.
 const mkHaz = (x,z,r,tel,live,dmg)=>
@@ -11853,7 +12042,9 @@ function bossAI(e, dt){
   }
   if(A.phase === "move"){
     if(A.t > 0) return true;
-    const kit = (e.final ? bossPhase(e).kit : bossKitOf(e.def, e)) || ["slam"];
+    // L44: the finale's kit is its phase's, with the charge held back while it
+    // is in the maw (trvKit - with the switch off it IS bossPhase(e).kit)
+    const kit = (e.final ? trvKit(e.ph, TRV_ON && !!e.def.trv) : bossKitOf(e.def, e)) || ["slam"];
     A.kind = kit[(A.n++) % kit.length];
     if(A.kind === "sinkhole") A.dir = R()*TAU;   // never the same seam twice
     A.phase = "tell"; A.t = ABILITIES[A.kind].tell;
@@ -11867,6 +12058,7 @@ function bossAI(e, dt){
     return false;
   }
   // act
+  if(A.kind === "inhale" && TRV_ON) trvPull(e, dt);   // L44: the charge's slot - it lasts exactly the act
   if(A.kind === "charge"){
     const sp = e.def.spd * 4.4;
     [e.x, e.z] = confine(e.x + Math.sin(A.dir)*sp*dt, e.z + Math.cos(A.dir)*sp*dt, 2);
@@ -11899,6 +12091,8 @@ function bossBreak(e, A){
                  r:0, max:e.def.w*(1.6+Math.random()), life:.9+Math.random()*.6, mx:1.4 });
   }
   shake = 1.7; SFX.boss(); SFX.boom();
+  // L44: the break into TRV_FREE_PH is the one where it tears itself out of the maw
+  if(TRV_ON && e.def.trv && e.ph === TRV_FREE_PH) trvStat.freed++;
   alert2(p.nm, "#ff5c4d"); alert2(p.line, "#ffb08a");
 }
 
@@ -11954,6 +12148,10 @@ function bossTelegraph(e, A){
         hazards.push(mkHaz(hx, hz, 2.6, ABILITIES.rake.tell + j*SKY_RAKE_DT, .55, SKY_RAKE_DMG*s));
       }
     }
+  } else if(A.kind === "inhale"){
+    // THE MOUTH (L44), on the ground at its feet for exactly the act the pull
+    // lasts, so the floor says where the pull is taking you before it starts.
+    hazards.push(mkHaz(e.x, e.z, TRV_MOUTH_R, ABILITIES.inhale.tell, ABILITIES.inhale.act, TRV_MOUTH_DMG*s));
   } else if(A.kind === "spokes"){
     A.dir = R()*TAU;
   } else if(A.kind === "sinkhole"){
@@ -11988,6 +12186,7 @@ function bossExecute(e, A){
   } else if(A.kind === "brood"){ if(MAT_ON) matCall(e); }   // the switch, at the act as well as in the kit
   else if(A.kind === "hedge"){ if(THN_ON) thnStat.hedges++; shake = Math.max(shake,.8); SFX.boom(); }
   else if(A.kind === "rake"){ if(SKY_ON) sksStat.rakes++; shake = Math.max(shake,.7); SFX.boom(); }
+  else if(A.kind === "inhale"){ if(TRV_ON) trvStat.inhales++; shake = Math.max(shake,.9); SFX.boss(); }
   else if(A.kind === "slam"){ shake = Math.max(shake,.95); SFX.boom(); }
   else if(A.kind === "charge"){ shake = Math.max(shake,.5); SFX.boss(); }
   else if(A.kind === "sinkhole"){ shake = Math.max(shake,.85); SFX.boom(); }
@@ -12708,6 +12907,11 @@ function updateEnemies(dt){
     // by the windows and nothing else, so the drawing, the shadow under it and
     // the reach all read the same number.
     if(e.boss && e.def.sks && SKY_ON) e.y += e.skyH || 0;
+    // L44: and TERRAVORE held in its maw. Whatever the walk, the shove or the
+    // crowd did to it this frame, it is still down in the hole it came up from.
+    if(e.boss && trvAnchored(TRV_ON, e, trvMaw)){
+      e.x = trvMaw.x; e.z = trvMaw.z; e.kx = 0; e.kz = 0; e.y = groundY(e.x, e.z) - TRV_SUNK;
+    }
     walk(e, lx, lz, dt);
 
     // contact damage. A landed dive hits for more, because a dive you failed to
@@ -12872,6 +13076,7 @@ function resetHurt(){ for(const k of ["contact","spit","hazard"]){
                         hurtLog[k] = 0; hurtLog.n[k] = 0; } }
 
 function playerHurt(raw, sx, sz){
+  if(trvEnd) return;              // L44: nothing hurts you while the world comes back up
   let d = raw * P.tough * (biomeAt(P.x,P.z).mod.tough || 1);
   if(affNow() < 0) d *= AFF_TOUGH;              // the wrong ground for what you are
   d = Math.max(1, d - P.armor - prank(P.kit.plating)*1.6);
@@ -14140,6 +14345,7 @@ function stepVigil(dt){
     // The base, not the top: a 44 m monument measured to its centre would light
     // from further away on the tall regions than on the flat ones, and the
     // whole point is that every region costs the same walk.
+    if(M.trvSunk) continue;       // L44: what TERRAVORE has swallowed can no longer be lit
     if(Math.hypot(M.x - P.x, M.z - P.z) > VIGIL_R) continue;
     M.lit = true; M.litT = 0; vigil.lit++;
     // Reaching one is a walk across open ground with the horde behind you, so
@@ -14174,11 +14380,17 @@ function step(dt){
   if(picking && qaDriving){ pendingLevels = 0; picking = false; hide("pick"); }
   if(picking) return;                 // a hand on the table is a paused world
   T += dt;
+  // L44: THE ENDING plays out before the results, and nothing else can end the
+  // run while it does - not sudden death's clock, whose boss is already dead.
+  if(trvEnd && T - trvEnd.t0 >= TRV_END){ finish("VICTORY", true); return; }
+  // ...and the floor it left is wiped HERE, at the top of a frame, where nothing
+  // is walking it. Until then playerHurt already refuses every hit.
+  if(trvEnd && !trvEnd.wiped){ hazards.length = 0; spits.length = 0; trvEnd.wiped = true; }
   // THE FINAL BONK arrives at 19:00 and the clock used to hand you the win at
   // 20:00 whether it was alive or not - so the climax was skippable by running
   // away for sixty seconds. Now the timer only ends the run if the thing is
   // dead. Otherwise the clock stops mattering and it is you or it.
-  if(T >= RUN_LEN){
+  if(T >= RUN_LEN && !trvEnd){
     const boss = enemies.find(e => e.final && !e.dead);
     if(!boss){ finish("SURVIVED", true); return; }
     if(!sudden){ sudden = true; alert2("SUDDEN DEATH", "#ff5c4d"); shake = 1.3; SFX.boss(); }
@@ -14479,7 +14691,7 @@ function step(dt){
   // ---- director
   const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
   nextSpawn -= dt;
-  if(nextSpawn <= 0 && !noSpawn){
+  if(nextSpawn <= 0 && !noSpawn && !trvEnd){          // L44: and not while the world comes back up
     // in sudden death the horde keeps thickening for as long as you stall.
     // THE WARRENS reads the PLAYER's ground, not the spawn point's: the
     // question the region asks is "how dangerous is standing here", and the
@@ -14531,6 +14743,10 @@ function step(dt){
   if(SKY_ON && !noSpawn && !skyShadow && bossIdx < BOSSES.length && BOSSES[bossIdx].sks
      && T >= BOSSES[bossIdx].t - SKY_WARN) sksWarn(BOSSES[bossIdx]);
   if(SKY_ON) sksShadowMove();
+  // L44: TERRAVORE's maw is fixed TRV_WARN seconds out, and the world starts
+  // going down toward it
+  if(TRV_ON && !noSpawn && !trvMaw && bossIdx < BOSSES.length && BOSSES[bossIdx].trv
+     && T >= BOSSES[bossIdx].t - TRV_WARN) trvWarn(BOSSES[bossIdx]);
   if(!noSpawn && bossIdx < BOSSES.length && T >= BOSSES[bossIdx].t)
     spawnBoss(BOSSES[bossIdx++]);
 
@@ -14630,7 +14846,8 @@ function finish(why, won){
   won ? SFX.win() : SFX.die();
 
 
-  const flavor = won ? "The world is quiet. Whatever you are now, you are the biggest thing in it."
+  const flavor = won ? (trvEnd ? trvEpilogue(trvStat.risen, save.deep === deepAt + 1)      // L44: the ending, told
+                             : "The world is quiet. Whatever you are now, you are the biggest thing in it.")
     : why==="ABANDONED" ? "You simply left. That is allowed."
     : why==="OVERRUN" ? `The sun came up and ${BOSSES[BOSSES.length-1].nm} was still standing.`
     : pick(["You were, briefly, the centre of attention.",
@@ -16861,6 +17078,13 @@ function render(){
   // the only test it takes is the frustum one, and the cost of that is paid back
   // by an LOD that collapses a far monument to its silhouette.
   for(const M of monuments){
+    // L44: a monument TERRAVORE swallowed goes down over the warning and comes
+    // back up over the ending. The whole structure moves as one through boxDY,
+    // so every leg and course that reads its own groundY goes down with it
+    // instead of being left standing on the surface.
+    const trvSk = TRV_ON ? trvSinkOf(M, trvMaw, trvEnd, T) : 0;
+    boxDY = -M.h * trvSk * 1.02;
+    if(trvSk > .985){ monsCulled++; continue; }
     const my = groundY(M.x, M.z), md = Math.hypot(M.x-px, M.z-pz);
     // Same onScreen contract every other pass keeps (R306), sized for the whole
     // structure rather than its base - a 46 m tower anchored at the ground is
@@ -17196,6 +17420,7 @@ function render(){
       }
     }
   }
+  boxDY = 0;
   passEnd("monuments");
   // LANDMARKS. Non-colliding on purpose: a horde game whose floor has walls in
   // it is a horde game where four hundred bodies stack behind one of them. They
@@ -17929,6 +18154,53 @@ function render(){
           .5, .07, .5, [.90,.62,.16], .06 + .10*k);
     }
   }
+  // L44: THE WORLD GOING DOWN - the furrows and the maw. Nothing about it is
+  // drawn near YOU: a furrow runs from every monument on the map to one fixed
+  // place, all of them arriving on the clock, so the skyline says where. The
+  // maw opens over the warning, holds while it is down in it, and closes over
+  // the ending.
+  if(TRV_ON && trvMaw){
+    const u = clamp((T - trvMaw.t0) / TRV_WARN, 0, 1);
+    const held = enemies.some(e => trvAnchored(TRV_ON, e, trvMaw));
+    const shut = trvEnd ? clamp((T - trvEnd.t0) / TRV_END, 0, 1) : 0;
+    const open = (trvMaw.used ? ((held || trvEnd) ? 1 : 0) : u) * (1 - shut);
+    if(!trvMaw.used) for(const M of monuments){
+      const hd = trvFurrowAt(M.x, M.z, trvMaw.x, trvMaw.z, u);
+      const fl = Math.hypot(trvMaw.x - M.x, trvMaw.z - M.z) || 1, ux = (trvMaw.x - M.x)/fl, uz = (trvMaw.z - M.z)/fl;
+      for(let i=0;i<9;i++){
+        const back = i*3.2; if(back > u*fl) break;
+        const bx = hd[0] - ux*back, bz = hd[1] - uz*back, gy = groundY(bx, bz);
+        if(onScreen(bx, gy + 1, bz, 3) === null) continue;
+        const k = 1 - i/9;
+        box(bx, gy + .12 + .5*k*Math.abs(Math.sin(T*7 + i)), bz, .55 + .35*k, .12 + .3*k, .55 + .35*k,
+            [.40,.32,.26], .03, Math.atan2(ux, uz));
+      }
+    }
+    if(open > .01){
+      const gy = groundY(trvMaw.x, trvMaw.z), R0 = TRV_MAW_R*open;
+      if(onScreen(trvMaw.x, gy + 2, trvMaw.z, R0 + 6) !== null){
+        box(trvMaw.x, gy + .06, trvMaw.z, R0, .05, R0, [.05,.03,.03], 0);
+        box(trvMaw.x, gy + .08, trvMaw.z, R0*.62, .05, R0*.62, [.30,.08,.04], .30 + .20*Math.sin(T*3));
+        for(let i=0;i<20;i++){                 // the rim, going IN: earth sliding toward the hole
+          const f = (T*.45 + i*.37) % 1, a2 = i*(TAU/20) + i*.2, rr = R0*(1.55 - .55*f);
+          box(trvMaw.x + Math.cos(a2)*rr, gy + .25, trvMaw.z + Math.sin(a2)*rr, .5, .3*(1 - f) + .08, .5, [.36,.29,.23], .03);
+        }
+      }
+    }
+  }
+  // L44: THE INHALE, drawn as the ground going in - three rings of dust closing
+  // on the mouth from TRV_PULL_R while it winds up, faster while it draws
+  if(TRV_ON) for(const e of enemies){
+    if(!e.final || e.dead || !e.ab || e.ab.kind !== "inhale" || !(e.ab.phase === "tell" || e.ab.phase === "act")) continue;
+    for(let j=0;j<3;j++){
+      const f = (T*(e.ab.phase === "act" ? 1.6 : .8) + j/3) % 1, rr = TRV_PULL_R*(1 - f) + TRV_MOUTH_R*f;
+      for(let i=0;i<28;i++){
+        const a2 = i*(TAU/28) + j*.3, x2 = e.x + Math.cos(a2)*rr, z2 = e.z + Math.sin(a2)*rr, gy = groundY(x2, z2);
+        if(onScreen(x2, gy + .5, z2, 2) === null) continue;
+        box(x2, gy + .18, z2, .38, .1 + .2*f, .38, [.72,.60,.46], .05 + .10*f, a2);
+      }
+    }
+  }
   passEnd("wards");
   // THE FALLEN. Same plans, same pose path, drawn after the living so a body
   // that has just dropped lies under the one stepping over it. The mesh
@@ -18495,6 +18767,7 @@ function render(){
   if(running && !over && P){
     const near = monuments
       .map(M => ({ M, d: Math.hypot(M.x - P.x, M.z - P.z) }))
+      .filter(o => !(TRV_ON && trvSinkOf(o.M, trvMaw, trvEnd, T) > .15))   // L44: not one that is going down
       .sort((a,b) => a.d - b.d).slice(0, 4);
     for(const { M, d } of near){
       const sp = project(M.x, groundY(M.x, M.z) + M.h*1.16, M.z);
@@ -20953,6 +21226,20 @@ window.__g = {
              missed:sksStat.missed, falls:sksStat.falls, fed:sksStat.fed,
              up: b ? !!b.skyUp : null, h: b ? +(b.skyH||0).toFixed(2) : null,
              kit:sksKit(BOSSES.find(x=>x.sks) || BOSSES[2], SKY_ON, b ? !!b.skyUp : false).join("+") }; },
+  // L44: TERRAVORE's encounter. terravore() is its OFF SWITCH (ships true); trv()
+  // is the run's own tally, which pairTick reads as `fired` (the inhales it cast).
+  terravore:(v)=>{ if(v!==undefined) TRV_ON = !!v; return TRV_ON; },
+  trv:()=>{ const b = enemies.find(e=>e.final && !e.dead);
+    return { n:trvStat.inhales, on:TRV_ON, killR,
+             maw: trvMaw ? { x:+trvMaw.x.toFixed(2), z:+trvMaw.z.toFixed(2), used:trvMaw.used, at:trvMaw.at,
+                             t0:+trvMaw.t0.toFixed(2), pd:P ? +Math.hypot(trvMaw.x-P.x, trvMaw.z-P.z).toFixed(2) : null } : null,
+             end: trvEnd ? { t0:+trvEnd.t0.toFixed(2), left:+(TRV_END - (T - trvEnd.t0)).toFixed(2) } : null,
+             warned:trvStat.warned, sunk:trvStat.sunk, pulled:trvStat.pulled, freed:trvStat.freed,
+             falls:trvStat.falls, quiet:trvStat.quiet, risen:trvStat.risen,
+             up:!!b, ph: b ? b.ph|0 : null, anchored: b ? trvAnchored(TRV_ON, b, trvMaw) : null,
+             hp: b ? +(b.hp / Math.max(1, b.maxhp)).toFixed(4) : null, born: b ? +b.born.toFixed(2) : null,
+             pd: b && P ? +Math.hypot(b.x-P.x, b.z-P.z).toFixed(2) : null,
+             kit:trvKit(b ? b.ph|0 : 0, TRV_ON).join("+") }; },
   ramGive:(v)=>{ if(v!==undefined) ramGive = +v; return ramGive; },
   rams:()=>({ n:ramN, dmg:+dmgRam.toFixed(1), killR:+killR.toFixed(2) }),
   // THE GATE. Subjects derived: the card is every PASSIVES entry with `mut`,
@@ -21875,6 +22162,317 @@ window.__g = {
                     front, sq:RK.peak && RK.peak.sq, rc:RK.act && RK.act.rc, slam:RS.n },
              windows:{ up:WU, down:WD, off:WO }, end:F1,
              kit:sksKit(B, SKY_ON, true).join("+") + " / " + sksKit(B, SKY_ON, false).join("+") };
+  },
+
+  // TERRAVORE's encounter (L44). Same shape and rules as matGate, thnGate and
+  // sksGate: one clause per way this could be wrong, subjects derived from the
+  // tables (BOSSES, BOSS_PHASES, ABILITIES, BEAT, CHARS, the rolled monuments)
+  // rather than typed, a null control on every live clause, and the clause the
+  // last three rounds owe - its four answers must DIFFER from all three mid
+  // bosses', checked against their own constants.
+  trvGate:()=>{
+    const bad = [], g = window.__g;
+    if(TRV_ON !== true) bad.push(`TERRAVORE'S ENCOUNTER IS SHIPPED OFF: TRV_ON ${TRV_ON}, ships true`);
+    // 0. PURE - the carrier and the kit, phase by phase off L7's own table.
+    const carry = BOSSES.filter(b=>b.trv);
+    if(carry.length !== 1) bad.push(`THE FINALE'S ENCOUNTER IS ON ${carry.length} BOSSES: ${carry.map(b=>b.nm)} - it is written for one`);
+    // The subject is THE FINALE, whoever else wrongly carries the flag: taking the
+    // first carrier handed the live half a mid boss that never spawns `final`,
+    // and a planted second carrier crashed the gate instead of failing it.
+    const B = BOSSES[BOSSES.length-1];
+    if(!B.trv) bad.push(`THE ENCOUNTER IS NOT ON THE FINALE: ${carry.map(b=>b.nm)} carry it, ${B.nm} does not`);
+    if(B.mat || B.thn || B.sks || B.flier) bad.push(`${B.nm} CARRIES A MID BOSS'S ENCOUNTER TOO: it would be that boss in another colour`);
+    BOSS_PHASES.forEach((p, ph)=>{
+      const on = trvKit(ph, true), off = trvKit(ph, false);
+      if(off.join("+") !== p.kit.join("+")) bad.push(`THE SWITCH OFF DOES NOT RESTORE ITS OLD KIT in phase ${ph}: ${off} vs ${p.kit}`);
+      if(on.length !== p.kit.length) bad.push(`PHASE ${ph} LOST OR GAINED A MOVE: ${on.length} against L7's ${p.kit.length}`);
+      if(ph < TRV_FREE_PH){
+        if(on.includes("charge")) bad.push(`HELD IN THE MAW IT STILL CHARGES in phase ${ph}: ${on}`);
+        if(p.kit.includes("charge") && !on.includes("inhale")) bad.push(`HELD IN THE MAW IT DOES NOT INHALE in phase ${ph}: ${on}`);
+      } else if(on.join("+") !== p.kit.join("+")) bad.push(`IT DOES NOT TEAR FREE WITH ITS OLD KIT in phase ${ph}: ${on} vs ${p.kit}`);
+      if(on.some(k => k === "brood" || k === "hedge" || k === "rake")) bad.push(`THE FINALE WAS GIVEN A MID BOSS'S LESSON in phase ${ph}: ${on}`);
+    });
+    if(!(TRV_FREE_PH > 0 && TRV_FREE_PH < BOSS_PHASES.length)) bad.push(`IT NEVER TEARS FREE: TRV_FREE_PH ${TRV_FREE_PH} of ${BOSS_PHASES.length} phases`);
+    for(const b of BOSSES) if(!b.trv && bossKitOf(b).includes("inhale")) bad.push(`${b.nm} WAS GIVEN THE INHALE`);
+    const F = { final:true, def:{ trv:true }, ph:0 }, MU = { used:true };
+    if(!trvAnchored(true, F, MU)) bad.push("HELD IS NOT HELD: a phase-0 finale with a used maw is not anchored");
+    const nots = [["IT IS STILL HELD AFTER IT TEARS FREE", [true, Object.assign({}, F, { ph:TRV_FREE_PH }), MU]],
+                  ["THE SWITCH OFF STILL HOLDS IT", [false, F, MU]],
+                  ["IT IS HELD WITH NO MAW", [true, F, null]],
+                  ["IT IS HELD BEFORE IT HAS COME UP", [true, F, { used:false }]],
+                  ["A MID BOSS IS HELD", [true, { final:false, def:{ trv:true }, ph:0 }, MU]],
+                  ["A DEAD FINALE IS HELD", [true, Object.assign({}, F, { dead:true }), MU]]];
+    for(const [msg, a] of nots) if(trvAnchored(...a)) bad.push(msg);
+    // 0b. THE FOUR ANSWERS ARE DIFFERENT ANSWERS, against their constants.
+    // THE ARRIVAL: not a point near you, not a ring on you, not a shadow round you.
+    if([MAT_NEST_AT, THN_RING_R, SKY_SHADOW_R0, SKY_SHADOW_R1].includes(TRV_MAW_AT))
+      bad.push(`THE MAW STANDS WHERE ANOTHER BOSS'S ARRIVAL DOES: ${TRV_MAW_AT} m`);
+    const f0 = trvFurrowAt(100, -40, 5, 7, 0), f1 = trvFurrowAt(100, -40, 5, 7, 1);
+    if(!(Math.hypot(f0[0]-100, f0[1]+40) < 1e-9 && Math.hypot(f1[0]-5, f1[1]-7) < 1e-9))
+      bad.push(`THE FURROWS DO NOT RUN FROM THE MONUMENT TO THE MAW: ${f0} -> ${f1}`);
+    // THE INHALE: a unique wind-up, a warning, no lunge, a pull every character can outrun.
+    if(!(BEAT.inhale && BEAT.inhale.tsq < 0 && BEAT.inhale.arc === 0)) bad.push(`THE INHALE DOES NOT STRETCH WITHOUT A LUNGE: ${JSON.stringify(BEAT.inhale)}`);
+    for(const k in BEAT) if(k !== "inhale" && BEAT[k].tsq < 0 && BEAT[k].arc === 0) bad.push(`${k} HAS THE INHALE'S WIND-UP TOO - it is not unique`);
+    if(!(ABILITIES.inhale && ABILITIES.inhale.tell >= ABILITIES.slam.tell*.8))
+      bad.push(`THE INHALE HAS NO WARNING: ${ABILITIES.inhale && ABILITIES.inhale.tell} s against the slam's ${ABILITIES.slam.tell}`);
+    const slowest = Math.min(...CHARS.map(c => baseStats(c).spd));
+    if(!(TRV_PULL > 0 && TRV_PULL < slowest*.8)) bad.push(`THE PULL CANNOT BE OUTRUN: ${TRV_PULL} m/s against the slowest character's ${slowest.toFixed(2)}`);
+    if(!(TRV_PULL_R > TRV_MOUTH_R*2)) bad.push(`THE PULL DOES NOT REACH PAST ITS OWN MOUTH: ${TRV_PULL_R} m against ${TRV_MOUTH_R}`);
+    if(trvPullAt(TRV_PULL_R + 1) !== 0) bad.push(`THE INHALE PULLS PAST ITS REACH: ${trvPullAt(TRV_PULL_R + 1)} m/s at ${TRV_PULL_R + 1} m`);
+    if(!(trvPullAt(TRV_PULL_R*.5) > 0)) bad.push("THE INHALE PULLS NOTHING INSIDE ITS REACH");
+    // THE ENDING: it ends the run, and says what came back.
+    if(!(TRV_END > 1)) bad.push(`THERE IS NO ENDING: TRV_END ${TRV_END} s`);
+    const ep3 = trvEpilogue(3, true), ep0 = trvEpilogue(0, false);
+    if(!(ep3.includes("3 monuments") && ep3.includes("deeper"))) bad.push(`THE ENDING DOES NOT SAY WHAT CAME BACK: "${ep3}"`);
+    if(ep0.includes("0 monument") || ep0.includes("deeper")) bad.push(`THE ENDING MISCOUNTS A FULL VIGIL: "${ep0}"`);
+    if(!trvWarnLine(4).includes("4") || trvWarnLine(0).includes("0 MONUMENT")) bad.push(`THE WARNING DOES NOT NAME WHAT IT IS EATING: "${trvWarnLine(4)}" / "${trvWarnLine(0)}"`);
+    const SM = { trvSunk:true }, SW = { t0:100 };
+    const sk = [trvSinkOf(SM, SW, null, 100), trvSinkOf(SM, SW, null, 100 + TRV_WARN), trvSinkOf({}, SW, null, 100 + TRV_WARN),
+                trvSinkOf(SM, SW, { t0:200 }, 200 + TRV_END), trvSinkOf(SM, null, null, 150)];
+    if(!(sk[0] === 0 && sk[1] === 1)) bad.push(`THE MONUMENTS DO NOT GO DOWN OVER THE WARNING: ${sk[0]} -> ${sk[1]}`);
+    if(sk[2] !== 0) bad.push(`A MONUMENT IT DID NOT SWALLOW WENT DOWN: ${sk[2]}`);
+    if(sk[3] !== 0) bad.push(`THE WORLD DOES NOT COME BACK UP: a swallowed monument is still ${sk[3]} down after the ending`);
+    if(sk[4] !== 0) bad.push(`A MONUMENT GOES DOWN WITH NO MAW: ${sk[4]}`);
+    // ---- the live half
+    const keepM = monuments.map(M => ({ lit:M.lit, litT:M.litT, s:M.trvSunk }));
+    const keep = { ns:noSpawn, t:T, bi:bossIdx, maw:trvMaw, end:trvEnd, on:TRV_ON, hp:P.hp, mhp:P.maxhp, x:P.x, z:P.z,
+                   vx:P.vx, vz:P.vz, ifr:P.iframe, bd:botDrive, ev:events.splice(0), hz:hazards.splice(0), zn:zones.splice(0),
+                   sp:spits.splice(0), mn:matNest, mon:MAT_ON, ring:thnRing, ton:THN_ON, sh:skyShadow, ca:carrion, son:SKY_ON,
+                   bo:boons.slice(), vl:vigil.lit, sud:sudden, fin:finish, mut:MUT_ON, ram:P.kit.ram, rush:P.rush,
+                   idle:P.idle, coins:coinsRun, kills, ns2:nextSpawn };
+    qaLive(bad, "THE TERRAVORE GATE");
+    noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; SKY_ON = false;   // other gates' subjects
+    let ended = [];
+    // The real finish() writes the save (a win, coins, a layer of THE DEEP). The
+    // gate needs to know WHEN the run would end and with what, not to end it.
+    finish = (why)=>{ ended.push(why); };
+    const clear = ()=>{ g.clearEnemies(); trvMaw = null; trvEnd = null; alerts.length = 0; hazards.length = 0;
+                        zones.length = 0; spits.length = 0; carrion = null; ended = []; sudden = false;
+                        for(const k in trvStat) trvStat[k] = 0;
+                        monuments.forEach((M, i) => { M.lit = keepM[i].lit; M.litT = keepM[i].litT; delete M.trvSunk; }); };
+    // stepVigil only runs inside a live run, and a gate earlier in the battery can
+    // hand this one a world with the run over - found by the battery, where the
+    // switch-off control failed "could not be lit either" on a page that could.
+    // The clause owns its precondition.
+    const vig = (M)=>{ if(!M) return null; const px = P.x, pz = P.z, rw = running, ow = over;
+                       P.x = M.x; P.z = M.z; running = true; over = false; stepVigil(1/60);
+                       const l = M.lit; P.x = px; P.z = pz; running = rw; over = ow; return l; };
+    // 1. THE ARRIVAL, its clock run from TRV_WARN + a second before it, with one
+    // monument lit and the rest not. Twenty seconds in, the player walks 30 m
+    // off: the maw must not follow (hers does).
+    const arrive = (on)=>{
+      clear(); TRV_ON = on; bossIdx = BOSSES.indexOf(B); T = B.t - TRV_WARN - 1;
+      monuments.forEach((M, i) => { M.lit = i === 0; });
+      P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0; P.hp = P.maxhp; P.iframe = 1e9;
+      noSpawn = false;
+      let first = null, drift = 0, walked = 0;
+      for(let i=0;i<Math.round((TRV_WARN + 2)*60) && !enemies.some(e=>e.final); i++){
+        if(i > 20*60 && i <= 23*60){ P.x += .16; P.y = groundY(P.x, P.z); walked += .16; }
+        step(1/60);
+        if(trvMaw && !trvMaw.used){
+          if(!first) first = { at:+T.toFixed(2), said:alerts.map(a=>a.text), x:trvMaw.x, z:trvMaw.z,
+                               pd:+Math.hypot(trvMaw.x-P.x, trvMaw.z-P.z).toFixed(2) };
+          drift = Math.max(drift, Math.hypot(trvMaw.x - first.x, trvMaw.z - first.z));
+        }
+      }
+      noSpawn = true;
+      const b = enemies.find(e=>e.final);
+      const out = { first, drift:+drift.toFixed(4), walked:+walked.toFixed(1), warned:trvStat.warned,
+                    sunk:monuments.filter(M=>M.trvSunk).length, unlit:monuments.filter(M=>!M.lit).length,
+                    litSunk:monuments.filter(M=>M.lit && M.trvSunk).length,
+                    boss: b ? { atMaw: first ? +Math.hypot(b.x-first.x, b.z-first.z).toFixed(2) : null,
+                                pd:+Math.hypot(b.x-P.x, b.z-P.z).toFixed(2), held:trvAnchored(TRV_ON, b, trvMaw) } : null };
+      // a swallowed monument cannot be lit; with the switch off an unlit one still can (the control)
+      out.tried = vig(monuments.find(M=>M.trvSunk && !M.lit) || null);
+      out.ctl = on ? null : vig(monuments.find(M=>!M.lit && !M.trvSunk) || null);
+      return out;
+    };
+    const A1 = arrive(true);
+    if(!A1.first) bad.push("NO WARNING BEFORE IT ARRIVES: no maw was fixed and nothing went down");
+    else {
+      if(!(A1.first.at <= B.t - TRV_WARN + .2)) bad.push(`THE WARNING COMES TOO LATE: t ${A1.first.at}, its clock ${B.t} less ${TRV_WARN} s`);
+      if(![trvWarnLine(A1.unlit), TRV_LINE_WARN2].every(l => A1.first.said.includes(l)))
+        bad.push(`THE ARRIVAL IS NOT ANNOUNCED: ${JSON.stringify(A1.first.said)}`);
+      if(!(Math.abs(A1.first.pd - TRV_MAW_AT) < 1)) bad.push(`THE MAW IS NOT FIXED ${TRV_MAW_AT} m FROM YOU: ${A1.first.pd} m`);
+    }
+    if(A1.drift > 1e-6) bad.push(`THE MAW FOLLOWS YOU: it moved ${A1.drift} m while the player walked ${A1.walked} m`);
+    if(!(A1.walked > 20)) bad.push(`CLAUSE 1 PREMISE: the player walked only ${A1.walked} m during the warning, so "it does not follow" tested nothing`);
+    if(!(A1.unlit > 0) || A1.sunk !== A1.unlit) bad.push(`THE MONUMENTS DO NOT GO DOWN: ${A1.sunk} swallowed of ${A1.unlit} unlit`);
+    if(A1.litSunk > 0) bad.push(`A LIT MONUMENT WENT DOWN: ${A1.litSunk}`);
+    if(A1.tried !== false) bad.push(`A SWALLOWED MONUMENT CAN STILL BE LIT: lit ${A1.tried}`);
+    if(!A1.boss) bad.push("IT NEVER ARRIVED AT ALL");
+    else {
+      if(!(A1.boss.atMaw !== null && A1.boss.atMaw < 1)) bad.push(`IT DOES NOT COME UP AT THE MAW: ${A1.boss.atMaw} m off it`);
+      if(!A1.boss.held) bad.push("IT IS NOT HELD IN THE MAW WHEN IT COMES UP");
+    }
+    const A0 = arrive(false);
+    if(A0.first || A0.sunk) bad.push(`THE SWITCH OFF STILL OPENS A MAW: ${A0.first && A0.first.pd} m, ${A0.sunk} monuments down`);
+    if(A0.ctl !== true) bad.push(`CLAUSE 1 NULL: AN UNLIT MONUMENT COULD NOT BE LIT WITH THE SWITCH OFF EITHER (${A0.ctl}) - the vigil clause sees nothing`);
+    if(!A0.boss) bad.push("CLAUSE 1 NULL: IT NEVER ARRIVED WITH THE SWITCH OFF");
+    else {
+      if(!(Math.abs(A0.boss.pd - BOSS_AT) < 6)) bad.push(`THE SWITCH OFF MOVED ITS ARRIVAL: ${A0.boss.pd} m, the old ring is ${BOSS_AT}`);
+      if(A0.boss.held) bad.push("THE SWITCH OFF STILL HOLDS IT IN A MAW");
+    }
+    // 2. IT DOES NOT COME TO YOU: two and a half seconds with the player 30 m
+    // off, held; then in the phase it tears free; then with the switch off.
+    const hold = (on, ph)=>{
+      clear(); TRV_ON = on; P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0; P.iframe = 1e9;
+      trvMaw = { x:30, z:0, t0:T - TRV_WARN, at:B.t, used:false };
+      spawnBoss(B); const b = enemies.find(e=>e.final); b.rise = 0; b.hp = b.maxhp = 1e12; b.ph = ph;
+      const x0 = b.x, z0 = b.z; let far = 0;
+      for(let i=0;i<150;i++){ step(1/60); P.x = 0; P.z = 0; far = Math.max(far, Math.hypot(b.x - x0, b.z - z0)); }
+      return { far:+far.toFixed(3), closed:+(Math.hypot(x0 - P.x, z0 - P.z) - Math.hypot(b.x - P.x, b.z - P.z)).toFixed(2),
+               sunk:+(groundY(b.x, b.z) - b.y).toFixed(3), held:trvAnchored(TRV_ON, b, trvMaw) };
+    };
+    const H0 = hold(true, 0), H2 = hold(true, TRV_FREE_PH), HO = hold(false, 0);
+    if(!H0.held) bad.push("CLAUSE 2: IT WAS NEVER HELD IN THE MAW");
+    if(H0.far > .01) bad.push(`IT COMES TO YOU WHILE IT IS HELD: it moved ${H0.far} m off the maw in 2.5 s`);
+    if(!(Math.abs(H0.sunk - TRV_SUNK) < .05)) bad.push(`IT IS NOT DOWN IN THE HOLE: ${H0.sunk} m under the ground, not ${TRV_SUNK}`);
+    if(!(H2.closed > 2)) bad.push(`IT NEVER TEARS FREE: in phase ${TRV_FREE_PH} it closed ${H2.closed} m on you in 2.5 s`);
+    if(!(HO.closed > 2)) bad.push(`CLAUSE 2 NULL: WITH THE SWITCH OFF IT DID NOT WALK AT YOU EITHER: ${HO.closed} m`);
+    // 3. THE INHALE, through the real bossAI: cue the tell, let the product lay
+    // its own floor, run the tell out through step() and measure the act.
+    const inhale = (on, dist)=>{
+      clear(); TRV_ON = on; P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0; P.iframe = 1e9;
+      trvMaw = { x:dist, z:0, t0:T - TRV_WARN, at:B.t, used:false };
+      spawnBoss(B); const b = enemies.find(e=>e.final); b.rise = 0; b.hp = b.maxhp = 1e12; b.x = dist; b.z = 0;
+      const pk = g.bossCue("inhale", "tell", .02);
+      g.bossCue("inhale", "tell", ABILITIES.inhale.tell); hazards.length = 0;
+      bossTelegraph(b, b.ab);
+      // read the mouth NOW: the hazard is a live object that step() counts down
+      // and then removes, so reading it after the loop reads tel 0 / live 0
+      const mouths = hazards.filter(h => Math.hypot(h.x - b.x, h.z - b.z) < .01 && Math.abs(h.r - TRV_MOUTH_R) < 1e-9)
+                            .map(h => ({ tel:+h.tel.toFixed(3), live:+h.live.toFixed(3) }));
+      const n0 = trvStat.inhales; let px0 = null, ak = null;
+      for(let i=0;i<Math.round((ABILITIES.inhale.tell + ABILITIES.inhale.act + .3)*60);i++){
+        step(1/60); P.vx = 0; P.vz = 0;
+        if(b.ab && b.ab.kind === "inhale" && b.ab.phase === "act" && px0 === null){ px0 = P.x; ak = g.beat(); }
+      }
+      return { mouths:mouths.length, tel: mouths.length ? +mouths[0].tel.toFixed(3) : null,
+               live: mouths.length ? +mouths[0].live.toFixed(3) : null, peak:pk, act:ak,
+               pulled: px0 === null ? null : +(P.x - px0).toFixed(3), cast:trvStat.inhales - n0 };
+    };
+    const I1 = inhale(true, 16), IF = inhale(true, TRV_PULL_R + 6), IO = inhale(false, 16);
+    if(I1.mouths !== 1) bad.push(`THE INHALE HAS NO FLOOR: ${I1.mouths} mouths laid at its feet`);
+    else {
+      if(Math.abs(I1.tel - ABILITIES.inhale.tell) > .02) bad.push(`THE MOUTH IS NOT TOLD FOR THE WHOLE WIND-UP: tel ${I1.tel} of ${ABILITIES.inhale.tell}`);
+      if(Math.abs(I1.live - ABILITIES.inhale.act) > .02) bad.push(`THE MOUTH IS NOT OPEN FOR THE PULL: live ${I1.live} of ${ABILITIES.inhale.act}`);
+    }
+    if(!(I1.peak && I1.peak.kind === "inhale" && I1.peak.sq < 1 && I1.peak.lf < 0))
+      bad.push(`THE INHALE DOES NOT STRETCH AND LEAN BACK INTO ITS WIND-UP: ${JSON.stringify(I1.peak)}`);
+    if(!(I1.act && I1.act.rc === 0)) bad.push(`THE INHALE LUNGES: act reach ${I1.act && I1.act.rc}`);
+    const want = TRV_PULL * ABILITIES.inhale.act;
+    if(!(I1.pulled !== null && I1.pulled > want*.7)) bad.push(`THE INHALE DOES NOT MOVE YOU: ${I1.pulled} m toward it over the act, ${want.toFixed(2)} expected`);
+    if(I1.pulled !== null && I1.pulled > want*1.3) bad.push(`THE PULL IS STRONGER THAN IT SAYS: ${I1.pulled} m against ${want.toFixed(2)}`);
+    if(I1.cast !== 1) bad.push(`THE INHALE IS NOT COUNTED: ${I1.cast} cast`);
+    if(!(IF.pulled !== null && Math.abs(IF.pulled) < .01)) bad.push(`THE INHALE PULLS PAST ITS REACH: ${IF.pulled} m at ${TRV_PULL_R + 6} m`);
+    if(!(IO.pulled !== null && Math.abs(IO.pulled) < .01)) bad.push(`CLAUSE 3 NULL: THE SWITCH OFF STILL PULLS: ${IO.pulled} m`);
+    if(IO.cast !== 0) bad.push(`THE SWITCH OFF STILL COUNTS AN INHALE: ${IO.cast}`);
+    // 4. THE ENDING, live: the kill, a body standing near, a hit thrown at the
+    // player, the director let loose, and sudden death's clock already run out.
+    const end = (on)=>{
+      clear(); TRV_ON = on; T = B.t + 5; P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0; P.iframe = 0; P.hp = P.maxhp;
+      const bo = boons.length;
+      trvMaw = { x:20, z:0, t0:T - TRV_WARN, at:B.t, used:false };
+      monuments.forEach((M, i) => { M.lit = i === 0; if(on && i > 0) M.trvSunk = true; });
+      spawnBoss(B); const b = enemies.find(e=>e.final); b.rise = 0; b.hp = 1;
+      const body = spawnEnemy("shambler", 6, 0); if(body){ body.rise = 0; body.burrow = false; body.hp = body.maxhp = 1e9; }
+      rebuildGrid();
+      const f0 = trvStat.falls; hurt(b, 1e9, 0, 0);
+      const r = { fell:trvStat.falls - f0, endedAtKill:ended.slice(), dead:!!b.dead, hz:hazards.length,
+                  quiet: body ? body.rout > 0 : null, lines:alerts.map(a=>a.text), boons:boons.length - bo,
+                  zones:zones.length, carrion: carrion ? 1 : 0 };
+      const h0 = P.hp; P.iframe = 0; playerHurt(50, P.x + 1, P.z); r.hurt = +(h0 - P.hp).toFixed(1); P.hp = h0; P.iframe = 1e9;
+      if(on && trvEnd){ T = RUN_LEN + 1; trvEnd.t0 = T; }
+      const e0 = EID; noSpawn = false; nextSpawn = 0;
+      const M1 = monuments.find(M => M.trvSunk) || null; let sinkMid = null, endAt = null;
+      for(let i=0;i<Math.round((TRV_END + .5)*60);i++){
+        step(1/60);
+        if(i === 30 && M1) sinkMid = +trvSinkOf(M1, trvMaw, trvEnd, T).toFixed(3);
+        if(ended.length && endAt === null) endAt = trvEnd ? +(T - trvEnd.t0).toFixed(2) : 0;
+      }
+      noSpawn = true;
+      Object.assign(r, { spawned:EID - e0, ended:ended.slice(0, 3), endAt, sinkMid,
+                         sinkEnd: M1 ? +trvSinkOf(M1, trvMaw, trvEnd, T).toFixed(3) : null, risen:trvStat.risen });
+      return r;
+    };
+    const E1 = end(true);
+    if(E1.fell !== 1) bad.push(`ITS FALL IS NOT AN EVENT: trvFall ran ${E1.fell} times`);
+    if(E1.endedAtKill.length) bad.push(`THE RUN ENDS ON THE KILL - NO ENDING: finish("${E1.endedAtKill[0]}") on the frame it died`);
+    if(E1.ended[0] !== "VICTORY") bad.push(`THE ENDING NEVER ENDS THE RUN: finish was called ${JSON.stringify(E1.ended)}`);
+    else if(!(E1.endAt >= TRV_END - .05 && E1.endAt <= TRV_END + .1)) bad.push(`THE ENDING IS CUT SHORT OR RUNS LONG: the run ended ${E1.endAt} s in, not ${TRV_END}`);
+    if(E1.ended.some(w => w !== "VICTORY")) bad.push(`SUDDEN DEATH'S CLOCK CUTS THE ENDING SHORT: finish ${JSON.stringify(E1.ended)}`);
+    if(E1.hurt > 0) bad.push(`YOU CAN BE HURT DURING THE ENDING: ${E1.hurt} HP`);
+    if(E1.spawned > 0) bad.push(`THE HORDE KEEPS COMING DURING THE ENDING: ${E1.spawned} new bodies`);
+    if(E1.quiet !== true) bad.push("THE HORDE DOES NOT GO QUIET WHEN IT FALLS");
+    if(!(E1.sinkMid > 0 && E1.sinkMid < 1)) bad.push(`THE WORLD DOES NOT COME BACK UP OVER THE ENDING: half a second in, a swallowed monument is ${E1.sinkMid} down`);
+    if(E1.sinkEnd !== 0) bad.push(`THE WORLD DOES NOT COME BACK UP: ${E1.sinkEnd} down when the results come`);
+    if(!(E1.risen > 0)) bad.push(`THE ENDING COUNTS NOTHING COMING BACK: risen ${E1.risen}`);
+    if(!TRV_LINE_END.every(l => E1.lines.includes(l))) bad.push(`ITS FALL IS NOT TOLD: ${JSON.stringify(E1.lines)}`);
+    if(E1.boons !== 0) bad.push(`ITS FALL PAYS A BOON (${E1.boons}) - that is THE MATRIARCH's ending, not this one`);
+    if(E1.zones !== 0) bad.push(`ITS FALL LAYS ${E1.zones} ZONES - that is THORNBACK's ending, not this one`);
+    if(E1.carrion) bad.push("ITS FALL LEAVES A CARCASS - that is SKYSPLITTER's ending, not this one");
+    // the results screen opens with the story when the ending played - read off
+    // the real finish(), which the gate is holding aside
+    if(!/trvEnd\s*\?\s*trvEpilogue\(/.test(keep.fin.toString())) bad.push("THE ENDING IS NOT TOLD: the results screen does not open with trvEpilogue when the ending played");
+    // 4b. THE FALL CAN HAPPEN INSIDE A LOOP THAT IS WALKING THE FLOOR. THE OX's
+    // apex (UPHEAVAL) hits back on every hit it takes, so a spit or a hazard
+    // landing on the player can kill the finale from INSIDE updateProjectiles or
+    // updateHazards - found on the bench (ox, seed 202, both bots), where the
+    // first build's trvFall emptied spits[] under the loop walking it and the run
+    // threw. Reproduced without the apex: playerHurt is wrapped to land the
+    // killing blow from inside those loops, the way the tremor does.
+    const reent = ()=>{
+      clear(); TRV_ON = true; T = B.t + 5; P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0; P.iframe = 0; P.hp = P.maxhp;
+      trvMaw = { x:20, z:0, t0:T - TRV_WARN, at:B.t, used:false };
+      spawnBoss(B); const b = enemies.find(e=>e.final); b.rise = 0; b.hp = 1; b.x = 20; b.z = 0;
+      for(let i=0;i<3;i++) spits.push({ x:P.x, y:P.y + 1, z:P.z, a:0, spd:0, d:5, life:2 });
+      for(let i=0;i<3;i++) hazards.push(mkHaz(P.x, P.z, 3, 0, 1, 5));
+      const orig = playerHurt; let threw = null, calls = 0;
+      playerHurt = (...a)=>{ calls++; if(!b.dead) killEnemy(b); return orig(...a); };
+      try { step(1/60); } catch(err){ threw = String(err && err.message || err); }
+      playerHurt = orig;
+      const dead = !!b.dead, ending = !!trvEnd;
+      try { step(1/60); } catch(err){ threw = threw || String(err && err.message || err); }
+      return { threw, calls, dead, ending, spits:spits.length, hazards:hazards.length };
+    };
+    const RE = reent();
+    if(RE.threw) bad.push(`THE FALL BREAKS THE LOOP IT WAS CALLED FROM: ${RE.threw}`);
+    if(!(RE.calls > 0 && RE.dead && RE.ending)) bad.push(`CLAUSE 4b PREMISE: no killing blow landed from inside the loop (hits ${RE.calls}, dead ${RE.dead}, ending ${RE.ending})`);
+    if(RE.spits || RE.hazards) bad.push(`THE FLOOR IS NOT WIPED WHEN IT FALLS: ${RE.spits} spits and ${RE.hazards} hazards still up a frame later`);
+    const E0 = end(false);
+    if(E0.endedAtKill[0] !== "VICTORY") bad.push(`CLAUSE 4 NULL: WITH THE SWITCH OFF THE KILL DID NOT END THE RUN ON THE FRAME: ${JSON.stringify(E0.endedAtKill)}`);
+    if(E0.fell !== 0) bad.push(`THE SWITCH OFF STILL PLAYS THE ENDING: ${E0.fell}`);
+    if(!(E0.hurt > 0)) bad.push(`CLAUSE 4 NULL: A HIT DID NOT LAND WITH NO ENDING PLAYING EITHER (${E0.hurt}) - the clause sees nothing`);
+    if(!(E0.spawned > 0)) bad.push(`CLAUSE 4 NULL: THE DIRECTOR SPAWNED NOTHING WITH NO ENDING PLAYING (${E0.spawned})`);
+    // 5. BOSSES STAY EXEMPT FROM RAMHORN's trample - the finale too.
+    clear(); TRV_ON = true; P.x = 0; P.z = 0; P.y = groundY(0, 0); MUT_ON = true;
+    P.kit.ram = { key:"ram", l:0, t:0, evo:false }; P.rush = 1; P.idle = 0;
+    trvMaw = { x:.9, z:0, t0:T - TRV_WARN, at:B.t, used:false };
+    spawnBoss(B); const rb = enemies.find(e=>e.final); rb.rise = 0; rb.hp = rb.maxhp = 1e12; rb.x = .9; rb.z = 0; rebuildGrid();
+    const rh0 = rb.hp; ramMaybe(); const ramBoss = rb.hp < rh0;
+    const rc = spawnEnemy("shambler", -.9, 0); if(rc){ rc.rise = 0; rc.burrow = false; rc.hp = rc.maxhp = 1e9; rc.ramT = 0; } rebuildGrid();
+    const rc0 = rc ? rc.hp : 0; ramMaybe(); const ramBody = rc ? rc.hp < rc0 : false;
+    if(ramBoss) bad.push("RAMHORN TRAMPLES THE FINALE - bosses are exempt");
+    if(!ramBody) bad.push("CLAUSE 5 NULL: RAMHORN DID NOT TRAMPLE AN ORDINARY BODY EITHER - the clause sees nothing");
+    // restore everything this gate touched
+    g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
+    finish = keep.fin;
+    monuments.forEach((M, i) => { M.lit = keepM[i].lit; M.litT = keepM[i].litT; if(keepM[i].s) M.trvSunk = true; else delete M.trvSunk; });
+    vigil.lit = keep.vl; TRV_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; SKY_ON = keep.son; MUT_ON = keep.mut;
+    noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; sudden = keep.sud; nextSpawn = keep.ns2; coinsRun = keep.coins; kills = keep.kills;
+    trvMaw = keep.maw; trvEnd = keep.end; matNest = keep.mn; thnRing = keep.ring; skyShadow = keep.sh; carrion = keep.ca; botDrive = keep.bd;
+    boons.length = 0; boons.push(...keep.bo);
+    P.hp = keep.hp; P.maxhp = keep.mhp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z); P.iframe = keep.ifr;
+    if(keep.ram) P.kit.ram = keep.ram; else delete P.kit.ram;
+    P.rush = keep.rush; P.idle = keep.idle;
+    alerts.length = 0; hazards.length = 0; zones.length = 0; spits.length = 0;
+    events.push(...keep.ev); hazards.push(...keep.hz); zones.push(...keep.zn); spits.push(...keep.sp);
+    for(const k in trvStat) trvStat[k] = 0;
+    qaSettle();
+    return { ok: bad.length === 0, bad, arrive:{ on:A1, off:A0 }, hold:{ held:H0, free:H2, off:HO },
+             inhale:{ on:I1, far:IF, off:IO }, end:{ on:E1, off:E0, reentry:RE }, ram:{ boss:ramBoss, body:ramBody },
+             kit:BOSS_PHASES.map((p, ph)=>trvKit(ph, TRV_ON).join("+")) };
   },
 
   // THE BENCH HISTORY LEAK (L38). L37 found a character's paired numbers
@@ -23314,6 +23912,14 @@ window.__g = {
                                   return v.length ? v[v.length>>1] : 0; };
     const E = enemies.filter(e=>e.elite), N = enemies.filter(e=>!e.elite&&!e.boss);
     return { n:E.length, total:enemies.length,
+             // WHERE AN ELITE CAME FROM. The ambient roll is one source and an
+             // ANGRY DEN's own pack is the other, and they do not share a clock:
+             // the roll cannot fire before ELITE_FROM at all (eliteChance is
+             // negative there), while a den that has been angered puts out a
+             // full-elite pack whenever it is woken. A check on the roll has to
+             // be able to tell them apart, and the body already knows - a pack
+             // member carries its den.
+             den:E.filter(e=>e.denRef).length, rolled:E.filter(e=>!e.denRef).length,
              chance:+Math.max(0,eliteChance(T)).toFixed(3),
              mult:     +med(E.map(e=>e.maxhp/e.def.hp)).toFixed(2),
              normMult: +med(N.map(e=>e.maxhp/e.def.hp)).toFixed(2) }; },

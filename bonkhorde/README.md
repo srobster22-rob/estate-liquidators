@@ -107,6 +107,19 @@ says *when*. Dodging halves the damage a boss deals — measured, not asserted.
 | **SKYSPLITTER** 15:00 | `charge` — marks a lane, pauses, then runs it at 4.4× speed. |
 | **TERRAVORE** 19:00 | all of the above plus `spokes`, a radial burst you dodge between. |
 
+**Each of the four now arrives somewhere, and no two the same way.** THE MATRIARCH breaks the
+ground at a nest that follows you; THORNBACK grows a one-way ring of spires around where you
+already stand; SKYSPLITTER's shadow crosses the ground and has to be outrun to a spot rather
+than walked to one. The finale takes none of those: **the map arrives at TERRAVORE**. A place is
+fixed once, some distance from you, and does not move again — nothing is drawn near you at all.
+Instead every monument you did *not* light starts going down into the ground, and a furrow of
+broken earth runs from every monument on the map toward that one place. The skyline you have
+been steering by for nineteen minutes tells you where it is coming up, and how much of the world
+you failed to claim. Held in the maw it trades its charge for **the inhale** — the only attack in
+the game that moves you, and the only one whose answer is *away* from the boss. Killing it no
+longer cuts to the results: it goes back down, the world it swallowed comes back up, and then
+the run ends.
+
 ![Sudden death](screenshot-final.png)
 
 ---
@@ -282,7 +295,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **835 passing** as of L27, with 286 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **836 passing** as of L28, with 288 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
