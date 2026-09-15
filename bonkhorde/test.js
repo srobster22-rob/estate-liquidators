@@ -9614,6 +9614,84 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        shape.map(s => `${s.nm} pitch ${s.pitch}, frame ${s.bot}..${s.top} deg`).join("; "));
   }
 
+  console.log("\n=== 100. THE MIDDLE DISTANCE HAS SOMETHING IN IT (L27) ===");
+  {
+    // Q4's third failing, re-driven: "the middle distance is empty ... between
+    // the animal and the horizon there is usually nothing but ground." The
+    // cause was one line of the game - FLOOR_CLUTTER off, which leaves the rim
+    // wall and the backdrop ridge as the world's ONLY scenery, both of them
+    // standing at RIM 266, past the fog AND past the props pass's own 190 m
+    // cull. Measured on the build before this round: the scenery pass drew
+    // zero boxes at two of Q4's five stations, propsNear 0 at both.
+    //
+    // THE OUTCROPS are the answer, and the claim they have to make here is not
+    // "they exist" - outGate owns that, with its own null controls - it is
+    // that TURNING THEM ON CHANGES THE PICTURE, in the part of the frame the
+    // complaint was about, and does not take the frame off the fight.
+    //
+    // Measured the way chipRead measures a chip: the framebuffer, diffed, with
+    // a NULL FRAME as the floor. One build, one seed, one camera settled
+    // before either arm is taken, the switch the only variable - so the pixels
+    // that move ARE the tier, and the pixels that move with it still OFF are
+    // what this instrument is worth. Without that floor one station read 20%
+    // and the screenshot showed nothing there.
+    const mid = await page.evaluate(async () => {
+      const g = window.__g;
+      g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+      g.start("intern"); g.god(); g.drainPicks(true); g.bot(true);
+      let guard = 0; while(g.state().t < 420 && guard++ < 200000) g.step(30, 1/60);
+      // A JITTERING EYE IS NOT THE TIER. crnd() shakes the camera a fresh
+      // random amount every render, so without holding it the floor below
+      // measures the shake and swamps what it is supposed to be the floor of.
+      g.pause(true); g.setShake(0);
+      let ms = performance.now();
+      for(let i=0;i<50;i++) g.tick(ms += 16);       // the chase camera lerps on every render
+      const cv = [...document.querySelectorAll("canvas")].find(c => c.id !== "ui");
+      const W = cv.width, H = cv.height;
+      const sc = document.createElement("canvas"); sc.width = W; sc.height = H;
+      const sx = sc.getContext("2d", { willReadFrequently:true });
+      const arm = (on)=>{
+        g.outcropsOn(on); g.tick(ms += 16);
+        sx.clearRect(0,0,W,H); sx.drawImage(cv, 0, 0);
+        const c = g.boxCensus();
+        return { px:sx.getImageData(0,0,W,H).data, drawn:c.outDrawn, near:c.outNear,
+                 pass:c.passes.outcrops||0, horde:c.passes.horde||0, boxes:c.drawn,
+                 sum:Object.values(c.passes).reduce((a,b)=>a+b,0) };
+      };
+      const off = arm(false), off2 = arm(false), on = arm(true);
+      g.outcropsOn(true);
+      const diff = (A,B)=>{ let n=0, up=0;
+        for(let i=0,q=0;i<W*H;i++,q+=4){
+          if(Math.abs(A[q]-B[q])<6 && Math.abs(A[q+1]-B[q+1])<6 && Math.abs(A[q+2]-B[q+2])<6) continue;
+          n++; if(((i/W)|0) < H*.5) up++;
+        }
+        return { n, up }; };
+      const real = diff(off2.px, on.px), noise = diff(off.px, off2.px);
+      const gate = g.outGate();
+      g.pause(false);
+      return { gate, paint:+(100*real.n/(W*H)).toFixed(2), floor:+(100*noise.n/(W*H)).toFixed(2),
+               upperShare: real.n ? +(100*real.up/real.n).toFixed(1) : 0,
+               onDrawn:on.drawn, offDrawn:off.drawn, near:on.near,
+               onPass:on.pass, offPass:off.pass, horde:on.horde,
+               share:+(100*on.pass/Math.max(1,on.sum)).toFixed(1),
+               boxes:on.boxes, offBoxes:off.boxes };
+    });
+    ok("L27's outcrop gate: where they stand, that the count is the arena's own, that they do not move a pinned world, and that the switch is what puts them out there",
+       mid.gate.ok, (mid.gate.bad || []).join(" | ") ||
+       `${mid.gate.n} stones on ${mid.gate.sites} sites, ${mid.gate.drawn} built against ${mid.gate.drawnOff} with the switch off`);
+    ok("the tier paints the frame well clear of the instrument's own noise floor",
+       mid.paint > mid.floor * 1.4 && mid.paint > 1.0,
+       `${mid.paint}% of the screen changes when the switch flips, against a ${mid.floor}% floor from two frames that both have it off`);
+    ok("...and it paints it where the complaint was: the upper frame, which at a 26-degree downward pitch is everything past about forty metres",
+       mid.upperShare > 55, `${mid.upperShare}% of the changed pixels are in the top half of the frame`);
+    ok("NULL CONTROL: with the switch off the tier draws nothing at all, and the stones are still there to draw",
+       mid.offDrawn === 0 && mid.offPass === 0 && mid.onDrawn > 0 && mid.near > mid.onDrawn,
+       `${mid.offDrawn} built off / ${mid.onDrawn} built on, of ${mid.near} inside the pass's own 190 m reach`);
+    ok("and it stays scenery: a minority of the frame, and never more of it than the horde",
+       mid.share < 15 && mid.horde > mid.onPass && mid.boxes - mid.offBoxes < 400,
+       `the outcrop pass is ${mid.onPass} boxes (${mid.share}% of the frame) against the horde's ${mid.horde}; the frame went ${mid.offBoxes} -> ${mid.boxes}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

@@ -282,7 +282,7 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **830 passing** as of L26, with 285 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **835 passing** as of L27, with 286 mutations in `mutate.js` that the suite is checked against.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
@@ -511,6 +511,21 @@ neutral one — a run that opens with you stuck in the sludge lies about how the
 hundred bodies stack behind one of them. Two thirds of side events appear at one, which is what
 turns a shape on the horizon into somewhere to go. Asserted across 40 rolls: 200 landmarks, all
 inside the wall, none within 18m of spawn, none within 10m of each other.
+
+**Outcrops** fill the band the landmarks never could. Measured before they were built — every box
+the frame builds, projected, its on-screen extent clipped to the viewport and summed by distance —
+the scenery pass drew *zero* boxes at two of five stations: the rim wall and the backdrop ridge
+both sit at 266 m, past the fog and past the props pass's own 190 m reach, so between the animal
+and the horizon there was nothing but ground. One site per 4600 m² of arena now carries 2–5 stones,
+each a three-block stack leaning on its own axis, 4.6–11 m tall, scaled by the local biome's
+amplitude and coloured from the biome's own base lifted toward its luminance, so a rock reads as
+that ground's stone rather than as a prop dropped on it. Sites reject lakes, landmarks, monuments,
+the spawn's own 26 m and the last 12 m of the wall — all read off the world being rolled, not off
+typed coordinates — and the tier is rolled **last**, because the world PRNG's draw order is what a
+pinned seed actually is. Verified by diffing the framebuffer with the tier on and off against a
+null floor of two frames that both have it off: 1.9% of the screen changes, 94.4% of those pixels
+in the top half of the frame, which at the play camera's 26° downward pitch is everything past
+about forty metres. Cost: 23–46 boxes a frame, against a horde pass five to sixty times larger.
 
 ### The colour space ran out
 
