@@ -9163,6 +9163,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // a stale table.
       out.rimDay = g.rimDayGate ? g.rimDayGate()
                                 : { ok:false, bad:["g.rimDayGate is missing"] };
+      // farReadGate: the same set, at range - the rim must buy readability
+      // 24 m out on every region it is given to, and what ships there must be
+      // the rim's reading. Same fresh body, same reason.
+      out.farRead = g.farReadGate ? g.farReadGate()
+                                  : { ok:false, bad:["g.farReadGate is missing"] };
       // THE SPLIT needs a twin to be able to say the HUD names one
       g.give("dupe", 1);
       out.split  = g.splitGate();
@@ -9225,6 +9230,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // and the vigil out from under it.
       out.trv = g.trvGate ? g.trvGate()
                           : { ok:false, bad:["g.trvGate is missing"] };
+      // L46's THE HEADLONG (hdlGate), one more by the same route: CERATOP's
+      // charge, in nineteen clauses of the round's own words - the wind-up
+      // (rooted, head down, HDL_TELL long), the lane painted at you and never
+      // re-aimed, the run down it at HDL_SPD with one hit, the rest, the
+      // sidestep that saves you, the carcass that slides on and still hits,
+      // the cap, the bots reading the lane, the switch, no draw from the run
+      // stream, and the first landed charge taught once. It stages bodies on
+      // the LIVE run (it names a run that has ended, by name), drives step()
+      // for its trials and puts the field, the player, the camera and the
+      // hurt ledger back, so it sits with the other enemy-behaviour gates on
+      // the young world, before censusGate's 600 seconds of play.
+      out.hdl = g.hdlGate ? g.hdlGate()
+                          : { ok:false, bad:["g.hdlGate is missing"] };
       // AND L21 ARRIVED WITH SIX MORE, which is the fourth time this has
       // happened and the reason this section is not allowed to be finished.
       // The round put relief into the terrain - RELIEF_AMP, a tone field, flat
@@ -9361,6 +9379,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L44's TERRAVORE gate: the map arrives at it - the maw is fixed and does not follow, the unlit monuments go down into it, the inhale pulls you in and can be outrun, and the world comes back up before the results",
        gates.trv.ok, say(gates.trv) +
        `  (maw ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.first && gates.trv.arrive.on.first.pd} m, swallowed ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.sunk} of ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.unlit}, kit ${gates.trv.kit})`);
+    ok("L46's THE HEADLONG gate: a CERATOP in range lowers its horns and lays a lane that does not follow you, runs it at speed and hits once, a sidestep saves you, and its carcass slides on",
+       gates.hdl.ok, say(gates.hdl) +
+       `  (${(gates.hdl.species || []).join(",")}; leave the widest lane in ${gates.hdl.tOut} s at ${gates.hdl.slowest} m/s; ran ${gates.hdl.travelled} m in 0.5 s, hits ${gates.hdl.hitsIn}, slid ${gates.hdl.slid} m, ${gates.hdl.capLive} lanes live at the cap; tell heading ${gates.hdl.hdOff} rad off the lane, ${gates.hdl.movedPlates} plates moved mid-run, carcass ${gates.hdl.drag && gates.hdl.drag.slide} m vs run ${gates.hdl.drag && gates.hdl.drag.live} m on the bog)`);
     // L20's is the one gate here that checks an INSTRUMENT rather than a
     // mechanic: its fifth clause asserts the bench survives its own sampling
     // window, which is the selection effect every horde share in L15-L18 was
@@ -9400,10 +9421,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        gates.chipShadow.length
          ? `worst ${worstS.toFixed(3)} (${gates.chipShadow.find(r => r.contrast === worstS).nm})`
          : "g.chipShadowContrast() returned nothing");
-    // L30's silhouette gate: the three regions L29's shadow could not buy (THE
-    // GLACIER, THE DUSTSEA, THE THICKET, on this map) get a bezel instead, the
-    // render only draws it there, and the rim's own shape cannot cover the
-    // chip it is meant to protect.
+    // L30's silhouette gate: the SIL_COUNT regions L29's shadow could not buy
+    // get a bezel instead (three when L30 measured it - THE GLACIER, THE DUSTSEA,
+    // THE THICKET on this map; four since the far-field sweep found THE
+    // HOTSPRINGS, rank 4 by the same `over` and 0.003 behind THE THICKET, reading
+    // 0% of its chip pixels over 3:1 from 16 m out), the render only draws it
+    // there, and the rim's own shape cannot cover the chip it is meant to protect.
     ok("L30's silhouette gate: exactly the regions the chip's shadow could not buy get a bezel, drawn only there, under the chip's core",
        gates.silhouette.ok, say(gates.silhouette) +
        `  (${gates.silhouette.count} selected: ${gates.silhouette.selected.join(", ")})`);
@@ -9411,6 +9434,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L33's rim-day gate: the bezel's reach tracks the sky across the day, and the render obeys it at every hour",
        gates.rimDay.ok, say(gates.rimDay) +
        `  (${(gates.rimDay.hours || []).length} hours, ${gates.rimDay.tested || 0} render checks)`);
+    // L30 (this log): the far-read gate, and the count it earned. The count is
+    // a decision and it is pinned with its reason, so a drift back to three is
+    // a failed test with the evidence in its name rather than a quiet loss of
+    // THE HOTSPRINGS' rim - nothing else in the suite would notice: every gate
+    // above adapts to whatever SIL_COUNT says.
+    const fr = gates.farRead || {}, frRows = fr.rows || [];
+    const spring = frRows.find(r => r.id === "spring") || {};
+    ok("L30's far-read gate: 24 m out, the rim buys readability on every region it is given to, and what ships there is the rim's reading",
+       fr.ok, say(fr) + `  (${frRows.filter(r => r.inSet && r.station).map(r => `${r.nm} ${r.bare}->${r.rim}%`).join(", ")}; dark without a rim: ${(fr.dark || []).map(d => d.nm).join(", ") || "none"})`);
+    ok("the silhouette budget is FOUR: THE HOTSPRINGS is rank 4 by the shadow's own `over` (three thousandths behind THE THICKET) and read 0% of a chip over 3:1 from 16 m out, bare, at every station that drew",
+       gates.silhouette.count === 4 && spring.inSet === true && spring.bare === 0 && spring.rim > 0,
+       `count ${gates.silhouette.count}; THE HOTSPRINGS in set: ${spring.inSet}, bare ${spring.bare}% -> rim ${spring.rim}% at ${fr.r} m`);
   }
 
   // ==========================================================================

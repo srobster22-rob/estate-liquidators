@@ -2333,14 +2333,32 @@ const chipShadowMOf = (bm)=>{
 // facets the small one does not." This round builds that, on exactly the
 // regions the shadow lever could not reach - not a hand-typed list of three
 // names, but the same `over` quantity chipShadowMOf is already solved
-// against, ranked. THE THREE REGIONS THIS PICKS OUT (seed 4242, measured L30)
-// ARE THE GLACIER (over .4671), THE DUSTSEA (.4181) and THE THICKET (.3028) -
-// exactly the three OWNER.md names as "still under 30% at six metres" - which
-// is not a coincidence: `over` is the same excess the shadow was already
-// solved against, so the regions the shadow bought back the LEAST are the
-// regions with the LARGEST `over`. Retuning a region's tones moves it in or
-// out of this set on its own, the same way it already moves shadowM.
-const SIL_COUNT = 3;
+// against, ranked. THE THREE REGIONS THIS PICKED OUT when L30 measured it (seed
+// 4242) WERE THE GLACIER (over .4671), THE DUSTSEA (.4181) and THE THICKET
+// (.3028) - exactly the three OWNER.md names as "still under 30% at six
+// metres" - which is not a coincidence: `over` is the same excess the shadow
+// was already solved against, so the regions the shadow bought back the LEAST
+// are the regions with the LARGEST `over`. Today the ranking reads GLACIER
+// .4517, DUSTSEA .4181, THICKET .2921, HOTSPRINGS .2888, BONEFIELD .2128,
+// SPINEROCK .115, FERNLANDS .0499 and three at 0, and the cut is at four (see
+// below). Retuning a region's tones moves it in or out of this set on its own,
+// the same way it already moves shadowM.
+// FOUR, NOT THREE (L30 of this log). Three was the count OWNER.md's six-metre
+// reading named, and the rank it cut at is the closest cut in the table: THE
+// THICKET ranks third at over .2921 and THE HOTSPRINGS fourth at .2888. The
+// far-field sweep (chipReadFar, one chip, clean field, seed 4242, t=0, every
+// region at 8-72 m) found the fourth failing exactly the way the first three
+// would without their rims: at every station that drew, THE HOTSPRINGS' chip
+// read 0% of its pixels over 3:1 from 16 m out - a near-white core (86 of 98 px
+// at 16 m) on a floor too bright for it, the same signature THE GLACIER gives
+// with its rim forced off. The bezel is one box per chip inside its reach
+// (measured: 12 chips, +12 boxes, +2.07% of a 580-box frame at its station,
+// nothing else in the frame moving), so the fourth is cheap; what it is NOT is
+// free of the day - its reach row below was derived per hour like the others.
+// Below rank 4 the far field is patchy rather than dark: THE BONEFIELD (.2128)
+// and THE FERNLANDS (.0499) each have one station reading 0% at 24 m and one
+// reading 60-77%, so the next bump is a measurement, not a number.
+const SIL_COUNT = 4;
 let CHIP_SIL_ON = true;                 // QA knob (window.__g.chipSilhouette)
 let SIL_SET = null;                     // Set of biome ids, built once per bake
 const silhouetteRegions = ()=>{
@@ -2438,21 +2456,46 @@ const BEZEL_SEED = 4242;
 const BEZEL_HOURS = SKY.flatMap((k, i)=> i < SKY.length-1 ? [k.t, (k.t + SKY[i+1].t)/2] : [k.t]);
 // hours:                    0 150 300 480 660 810 960 1050 1140 1230 1320
 const BEZEL_REACH_BY_FRAME = {
-  "1024x768": { ice:[72,72,72,72,72,72,28,40,40,40,32], sand:[72,72,72,72,16,18,16,18,32,28,22], bramble:[72,72,72,16,0,0,0,8,8,8,8] },
-  "1280x720": { ice:[72,72,72,72,72,72,24,40,40,32,32], sand:[72,72,72,72,16,16,16,22,32,28,24], bramble:[72,72,72,16,0,0,0,8,8,8,8] },
-  "844x390":  { ice:[72,72,72,72,72,72,48,48,40,40,32], sand:[72,72,72,72,16,16,16,18,32,24,20], bramble:[72,72,72,72,16,0,0,8,8,8,8] },
-  "390x844":  { ice:[72,72,72,72,72,72,24,40,40,32,28], sand:[72,72,72,72,18,18,16,18,28,24,18], bramble:[72,72,72,16,14,0,0,8,8,8,8] },
-  "320x640":  { ice:[72,72,72,72,72,72,40,40,40,40,28], sand:[72,72,72,72,16,20,16,16,32,24,22], bramble:[72,72,72,16,0,0,0,8,8,8,8] },
+  "1024x768": { ice:[72,72,72,72,72,72,28,40,40,40,32], sand:[72,72,72,72,16,18,16,18,32,28,22], bramble:[72,72,72,16,0,0,0,8,8,8,8], spring:[72,72,72,72,72,72,48,48,40,40,32] },
+  "1280x720": { ice:[72,72,72,72,72,72,24,40,40,32,32], sand:[72,72,72,72,16,16,16,22,32,28,24], bramble:[72,72,72,16,0,0,0,8,8,8,8], spring:[72,72,72,72,72,72,48,48,40,40,32] },
+  "844x390":  { ice:[72,72,72,72,72,72,48,48,40,40,32], sand:[72,72,72,72,16,16,16,18,32,24,20], bramble:[72,72,72,72,16,0,0,8,8,8,8], spring:[72,72,72,72,72,72,48,48,40,40,32] },
+  "390x844":  { ice:[72,72,72,72,72,72,24,40,40,32,28], sand:[72,72,72,72,18,18,16,18,28,24,18], bramble:[72,72,72,16,14,0,0,8,8,8,8], spring:[72,72,72,72,72,72,48,48,40,40,32] },
+  "320x640":  { ice:[72,72,72,72,72,72,40,40,40,40,28], sand:[72,72,72,72,16,20,16,16,32,24,22], bramble:[72,72,72,16,0,0,0,8,8,8,8], spring:[72,72,72,72,72,64,48,48,40,40,32] },
 };
 // So what ships (the min of the five, hour by hour) is:
 //   THE GLACIER  72 72 72 72 72 72 24 40 40 32 28
 //   THE DUSTSEA  72 72 72 72 16 16 16 16 28 24 18
 //   THE THICKET  72 72 72 16  0  0  0  8  8  8  8
+//   THE HOTSPRINGS 72 72 72 72 72 64 48 48 40 40 32
 // and what ships, hour by hour, is the SHORTEST reach any screen measured, so
 // the rim is never drawn at a range where some screen measured it costing.
 // With L30's rim that was GLACIER 72, DUSTSEA 64, THICKET 16 (its front face
 // covered white core past 16-22 m); with L32's tray, all three are 72 at t=0.
 // silhouetteGate clause 5 re-derives t=0 live; rimDayGate re-derives every hour.
+// THE FOURTH ROW (L30 of this log) was derived the same way - bezelDerive, a
+// fresh stage-0 run on BEZEL_SEED via onBezelSeed, every hour, every screen,
+// stop at the first crossing - but NOT ON THE SAME ENGINE, and that is written
+// down here because the row clause below turned out to depend on it. The three
+// rows above are the other writer's browser's (Edge). On this one
+// (HeadlessChrome/swiftshader) the same derivation at 1280x720 reads THE
+// THICKET 72,72,72,72,18,16,14,14,16,14,12 against the 72,72,72,16,0,0,0,8,8,8,8
+// typed above, and THE GLACIER 72,72,72,72,72,72,56,48,48,40,40 against
+// 24,40,40,32,32 from dusk - and it reads those SAME numbers on the L35 build
+// the rows were typed from (with its original stop rule), on the L23 merge and
+// on today's build, so it is not drift and not L23's stop-rule fix: two
+// rasterisers disagree about where a dark tray on a darkening floor stops
+// helping a white chip clear 3:1, and this one says it helps further. THE
+// HOTSPRINGS' row is this engine's, then, and at hours 6-10 it may be longer
+// than Edge would read; the "ships is not longer than this screen reads"
+// clause on the other writer's suite is what would say so, by name. (Its row
+// is the same under either stop rule - its first sample is never non-positive
+// at any hour, checked from the full gain curves.) And THE CLAUSE: "the row
+// must equal what this screen reads" had never run in either writer's suite -
+// neither runs at a table screen - and would fail on every row at every table
+// screen on this engine; it now says what a row can promise across engines,
+// that it is not LONGER than the screen reads, and what ships stays the
+// shortest any screen measured. This suite's own 1280x760 read 72,72,72,72,72,72,48,48,40,40,32 for THE
+// HOTSPRINGS, for the record.
 const CHIP_BEZEL_REACH = {};
 for(const f of Object.values(BEZEL_REACH_BY_FRAME)) for(const [id, row] of Object.entries(f))
   CHIP_BEZEL_REACH[id] = row.map((r, i)=> Math.min(CHIP_BEZEL_REACH[id] ? CHIP_BEZEL_REACH[id][i] : Infinity, r));
@@ -2464,6 +2507,7 @@ const bezelReachAt = (id, t)=>{
   return a[a.length-1];
 };
 const CHIP_BEZEL_R = 16;                // L30's reach, for a selected region with no measured entry
+const FAR_READ_R = 24;                  // farReadGate's range: where the far-field sweep read the cliff
 let BEZEL_R_FORCE = null;               // QA measuring knob (window.__g.bezelRange); must ship null
 const bezelR = (bm)=> BEZEL_R_FORCE !== null ? BEZEL_R_FORCE
                     : (CHIP_BEZEL_REACH[bm.id] !== undefined ? bezelReachAt(bm.id, T) : CHIP_BEZEL_R);
@@ -3416,7 +3460,7 @@ runner:  { nm:"PTERLING",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09
 // it read as a blue slab whatever was drawn inside it. A ceratopsian is a
 // coffee table with a shield on the front.
 brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:1.85, w:1.5, bite:1.7,
-           body:"ceratop" },
+           body:"ceratop", hdl:true },   // hdl: THE HEADLONG (L46), see HDL_ below
 // A crested spitter. Hangs back and puts something caustic across the field.
 spitter: { nm:"DILOPHO", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
            ranged:{cd:2.6, spd:15, r:22}, body:"dilopho" },
@@ -4009,6 +4053,126 @@ let stoopN = 0;            // the run's tally, for the census and the bench
 // body every time, and the three mechanics would be measuring each other.
 function stoopRoll(e){ return e._sr === undefined
   ? (e._sr = ((Math.imul(e.eid|0, 3266489917) >>> 0) / 4294967296)) : e._sr; }
+
+// THE HEADLONG (L46). The first build for the regular mobs, and it is built on
+// L45's measurement rather than on a wish list. After minute five the walking
+// horde does not reach you: a regular body's bite is 0-0.2% of the damage taken
+// from 5:00 to the end, and four of the six species have no verb that lands at
+// all. The reason is still L18's sentence - every verb a walker owns fires at
+// contact, and walkers die 20-30 m out - so a verb that can connect has to
+// TRIGGER WHERE THE ANIMAL IS. CERATOP is the one late walker that lives long
+// enough to use one (a median 1.4-2.3 s after 5:00, 4-7% of every late screen),
+// so it is the species that gets it.
+//
+// WHAT IT DOES. A ceratop between HDL_MIN and HDL_MAX metres out STOPS and drops
+// its head - the bite rears BACK, so this is the opposite silhouette - and a LANE
+// is painted on the ground from it to where you stood, in the telegraph's own
+// plates: red edges say where, a gold fill running out from the animal says
+// when. The lane is fixed the moment it is painted; it does not follow you. When
+// the fill reaches the far end it RUNS THE LANE at HDL_SPD, faster than anything
+// else on foot, hits you once for HDL_DMG bites if you are in it, and does not
+// stop at you.
+// WHAT THE PLAYER MUST DO: get out of the lane, sideways - backing straight away
+// keeps you in it. And the lesson no other animal in the game teaches: ONCE IT
+// HAS COMMITTED, KILLING IT DOES NOT STOP IT. A ceratop killed mid-run keeps its
+// momentum and the carcass slides the rest of the lane (stepCorpses), still able
+// to hit. Killed while it is still winding up, it simply dies. So the answer to
+// this animal is a step, not more damage - which is the only reason it can be a
+// threat at all against a kit that deletes everything at range.
+// HOW IT STAYS FAIR: the lane reaches e.rad + .75 either side of its line (the
+// bite's own reach), and the slowest character leaves that from the centre line
+// well inside HDL_TELL (hdlGate checks the arithmetic); armed off the SAME
+// measured kill radius the burrow, the rout, the dig-in and the stoop read, so the
+// early game where the horde still walks in never sees it; den herds and THE
+// MATRIARCH's calves exempt (a den is a fight you chose, her encounter is hers, and
+// both were sized without this); at most HDL_CAP lanes at once.
+// The roll is a per-body hash, like routRoll/digRoll/stoopRoll, so deciding "can
+// this one charge" draws nothing from the run stream.
+// THIS IS A DIFFICULTY CHANGE and a design the owner can reject: __g.headlong(false)
+// turns it off without a rebuild. It does not answer the owner's open question
+// about whether bites should land more often.
+let HDL_ON    = true;
+let HDL_SHARE = .5;        // share of ceratops that can charge at all (a per-body hash)
+const HDL_MIN  = 7;        // metres: nearer than this it is in bite range, and bites
+const HDL_MAX  = 30;       // metres: where late ceratops actually live and die (L45)
+const HDL_TELL = .85;      // seconds rooted, head down, while the lane fills
+const HDL_SPD  = 16;       // m/s down the lane
+const HDL_OVER = 6;        // metres it carries on past where you stood
+const HDL_LEN  = 36;       // metres: the longest lane
+const HDL_REST = 4;        // seconds before the same animal can charge again
+const HDL_CAP  = 2;        // lanes live at once, so a late screen is a read and not a wall
+const HDL_DMG  = 1.5;      // a landed charge is this many of its own bites
+const HDL_PLATE = 1.3;     // metres between the lane's painted plates
+const hdlStat = { tells:0, runs:0, hits:0, carcass:0, killedTelling:0 };
+let hdlLive = 0, hdlCarcassHit = false;
+// A FOURTH independent roll, for the reason stoopRoll is a third.
+function hdlRoll(e){ return e._hr === undefined
+  ? (e._hr = ((Math.imul(e.eid|0, 668265263) >>> 0) / 4294967296)) : e._hr; }
+// PURE. The lane from where the animal stands to where the player stands, carried
+// HDL_OVER past it and capped at HDL_LEN. A unit direction and a length: nothing
+// about it moves after this.
+function hdlLane(ex, ez, px, pz){
+  const dx = px - ex, dz = pz - ez, d = Math.hypot(dx, dz) || 1;
+  return { x:ex, z:ez, dx:dx/d, dz:dz/d, len:Math.min(HDL_LEN, d + HDL_OVER) };
+}
+// PURE. Is (x,z) inside lane L at half-width w? The one test the hit, the bot and
+// the gate all read, so what is painted, what hurts and what the bench dodges
+// cannot disagree.
+function hdlInLane(L, x, z, w){
+  const rx = x - L.x, rz = z - L.z, a = rx*L.dx + rz*L.dz;
+  if(a < -w || a > L.len + w) return false;
+  return Math.abs(rx*L.dz - rz*L.dx) < w;
+}
+// PURE. May this body start a charge this frame? Never a den's herd, and never one
+// of THE MATRIARCH's calves: they are spawned as CERATOPs, and her encounter (L41) is
+// young that come up at your feet and hold her shield inside MAT_TETHER - a calf
+// that ran a lane would carry the shield off with it.
+function hdlCan(on, e, d, armed, live){
+  return !!on && !!e.def.hdl && !e.boss && !e.dead && !e.denRef && !e.calfOf
+      && !(e.rout > 0) && !(e.dig > 0) && !(e.rise > 0) && !(e.stoop > 0)
+      && !(e.hdlW > 0) && !(e.hdlT > 0) && !(e.hdlR > 0)
+      && !!armed && d >= HDL_MIN && d <= HDL_MAX && live < HDL_CAP
+      && hdlRoll(e) < HDL_SHARE;
+}
+// A landed charge - the live animal or its carcass - and the one-time lesson,
+// the way the first bite teaches the rear-back.
+function hdlLand(e, carcass){
+  if(carcass) hdlCarcassHit = true;
+  playerHurt(e.dmg * HDL_DMG, e.x, e.z);
+  hdlCarcassHit = false;
+  e.hdlHit = 1; hdlStat.hits++; if(carcass) hdlStat.carcass++;
+  if(!save.tipHdl && !botDrive){ save.tipHdl = 1; writeSave(); alert2("IT LOWERED ITS HORNS - GET OUT OF ITS LANE", "#8affd0"); }
+}
+// The lane, drawn in the telegraph's own plates: red along both edges and across
+// the far end from `from` metres out, and the gold window (`fill` 0..1, or -1
+// for none) running out from the animal along the middle.
+function hdlDraw(L, w, fill, from){
+  const yaw = Math.atan2(L.dx, L.dz), px = L.dz, pz = -L.dx;
+  // THE PLATES ARE THE LANE'S, NOT THE BODY'S (L30, second half). `from` used to
+  // be the grid's ORIGIN, so once the animal ran, every red edge plate ahead of
+  // it was re-laid at from + k*HDL_PLATE - a dashed edge sliding down the lane
+  // at 16 m/s beside the body while the end cap stayed put. The grid is fixed
+  // on the lane by index; `from` only clips what the body has already passed.
+  for(let i = Math.ceil(Math.max(0, from) / HDL_PLATE - 1e-9), a = i*HDL_PLATE; a <= L.len; a = ++i*HDL_PLATE){
+    for(const k of [-1, 1]){
+      const x = L.x + L.dx*a + px*w*k, z = L.z + L.dz*a + pz*w*k;
+      box(x, groundY(x, z) + .05, z, .46, .05, .46, [1,.12,.06], .90, yaw);
+    }
+    if(fill >= 0 && a <= L.len * fill){
+      const x = L.x + L.dx*a, z = L.z + L.dz*a;
+      box(x, groundY(x, z) + .09, z, .34, .05, .34, [1,.78,.14], 1.0, yaw);
+    }
+  }
+  // ...and the cap reaches BOTH corners: spread evenly from -w to +w, so the
+  // last plate lands on +w instead of wherever a .8-plate step ran out (it
+  // stopped .8-.9 m short of the same corner on every lane).
+  const nk = Math.max(1, Math.round(2*w / (HDL_PLATE * .8)));
+  for(let i = 0; i <= nk; i++){
+    const k = -w + 2*w*i/nk;
+    const x = L.x + L.dx*L.len + px*k, z = L.z + L.dz*L.len + pz*k;
+    box(x, groundY(x, z) + .05, z, .46, .05, .46, [1,.12,.06], .90, yaw);
+  }
+}
 
 // DUPLICATOR benched at +52% dps on a BOLT kit and -9% on one without: the best
 // passive in the game or a dead pick, decided by which weapons you happened to
@@ -9749,6 +9913,7 @@ function startRun(id){
   thnRing = null; for(const k in thnStat) thnStat[k] = 0;                          // L42
   skyShadow = null; carrion = null; for(const k in sksStat) sksStat[k] = 0;        // L43
   trvMaw = null; trvEnd = null; for(const k in trvStat) trvStat[k] = 0;            // L44
+  for(const k in hdlStat) hdlStat[k] = 0; hdlLive = 0;                               // L46
   // AND THE BODY SERIAL, which stopped being a label the moment L17 hashed it.
   // routRoll, digRoll and stoopRoll are all deterministic functions of e.eid -
   // that is the whole reason they exist, so that deciding "can this body panic"
@@ -10247,7 +10412,8 @@ function hurt(e, amount, kx, kz, crit){
   // MASS. A shove stops a grunt; a boss leans into it and keeps coming, and
   // an elite splits the difference - without this a maxed kit juggled the
   // finale, and the fight the whole run builds to never reached you.
-  if(kx||kz){ const mass = e.boss ? .22 : e.elite ? .6 : 1;
+  // L46: and a charging ceratop is not shoved off its lane at all
+  if(kx||kz){ const mass = e.boss ? .22 : (e.hdlW > 0 || e.hdlT > 0) ? 0 : e.elite ? .6 : 1;
               e.kx += kx*mass; e.kz += kz*mass; }
   // EVERY HIT IS A SPARK (R298). Whatever landed it - bat, skull, wave, cloud
   // tick, hatchling, shell - a hit throws two white motes from the body it hit,
@@ -10265,7 +10431,7 @@ function hurt(e, amount, kx, kz, crit){
   // is still up. Gated on the same measured killR the burrow and the rout are
   // gated on, so it cannot fire in an early game where the horde still walks in.
   if(!e.dead && e.hp > 0 && P && !e.boss && !e.burrow && !e.dig && !e.dug
-     && !e.def.flier && !e.def.flee && !e.denRef
+     && !e.def.flier && !e.def.flee && !e.denRef && !(e.hdlW > 0) && !(e.hdlT > 0)   // L46: a charge is its last act
      && killRN > 20 && killR > BURROW_KILLR
      && e.hp <= e.maxhp * DIGIN_HP
      && Math.hypot(e.x-P.x, e.z-P.z) > DIGIN_MIN
@@ -10386,7 +10552,13 @@ function fell(e){
   e.fd = e.boss ? FALL_DUR.boss : e.elite ? FALL_DUR.elite : FALL_DUR.trash;
   e.fhd = e.hd === undefined ? Math.atan2(P.x-e.x, P.z-e.z) : e.hd;
   e.flash = -1;
-  if(corpses.length >= CORPSE_MAX) corpses.shift();
+  // L46: A COMMITTED CHARGE KEEPS ITS MOMENTUM. Killed on its lane, the carcass
+  // slides the rest of it (stepCorpses) and goes down the way it was running.
+  if(e.hdlT > 0 && e.hdl){ e.hdlSlide = e.hdlT; e.fx = e.hdl.dx; e.fz = e.hdl.dz; }
+  else if(e.hdlW > 0) hdlStat.killedTelling++;
+  // ...and the cap evicts the oldest corpse that is NOT still sliding - with no
+  // charge anywhere that is index 0, exactly the shift() it always was
+  if(corpses.length >= CORPSE_MAX){ const k = corpses.findIndex(c => !(c.hdlSlide > 0)); corpses.splice(k < 0 ? 0 : k, 1); }
   corpses.push(e);
 }
 // THE FALL, AS A POSE. Normalised time in, four numbers out, and the draw hands
@@ -10419,6 +10591,20 @@ function stepCorpses(dt){
     // live body, so a bonked animal skids as it goes down
     e.x += e.kx*dt; e.z += e.kz*dt;
     e.kx *= Math.pow(.02, dt); e.kz *= Math.pow(.02, dt);
+    // L46: the carcass of a committed charge carries on down its lane, held
+    // mid-drop while it slides, and can still land its one hit.
+    if(e.hdlSlide > 0 && e.hdl){
+      // at the speed the live run had HERE - the same water and ground drag
+      // updateEnemies applies (L30, second half): killed in a lake it slid on
+      // at the dry-land 16 m/s, a third faster than it had been running
+      const drag = (inWater(e.x, e.z) ? .74 : 1) * (biomeAt(e.x, e.z).mod.spd || 1);
+      const s = Math.min(e.hdlSlide, HDL_SPD * drag * dt);
+      e.x += e.hdl.dx*s; e.z += e.hdl.dz*s; e.hdlSlide -= s; e.kx = 0; e.kz = 0;
+      [e.x, e.z] = confine(e.x, e.z, 1);
+      e.ft = Math.min(e.ft, e.fd * .30);
+      if(!over && P && !e.hdlHit && P.iframe <= 0 && !aloft() && Math.hypot(P.x-e.x, P.z-e.z) < e.rad + .75) hdlLand(e, true);
+      if(e.hdlSlide <= 0){ e.hdlSlide = 0; e.hdl = null; }
+    }
     // NOT for an sks body. Every other corpse's e.y is already the ground it
     // died standing on, so this is a no-op refresh as it slides across
     // uneven terrain. SKYSPLITTER's e.y can be several metres UP when it
@@ -12600,6 +12786,14 @@ function wardPass(){
 }
 function updateEnemies(dt){
   wardPass();
+  // L46: how many lanes are live, counted once a frame - the cap reads it
+  hdlLive = 0;
+  if(HDL_ON){
+    for(const e of enemies) if(!e.dead && (e.hdlW > 0 || e.hdlT > 0)) hdlLive++;
+    // a carcass still sliding its lane is a lane on the screen and a hit that
+    // can still land (L30, second half): HDL_CAP is "lanes at once", so it counts
+    for(const c of corpses) if(c.hdlSlide > 0) hdlLive++;
+  }
   // precomputed once per frame rather than per enemy
   const magPull = 0.50*prank(P.kit.magnet);
   const magR    = P.mag * 1.6;
@@ -12772,6 +12966,36 @@ function updateEnemies(dt){
     // that breaks a body, not three deaths a minute apart, so a pack being cut
     // down routs and steady attrition does not.
     if(e.alarmT > 0){ e.alarmT -= dt; if(e.alarmT <= 0){ e.alarm = 0; e.alarmT = 0; } }
+    // THE HEADLONG (L46), the wind-up and the run. Ahead of the rout on purpose:
+    // an animal with its head down is not panicking, and a committed charge is not
+    // something a death nearby can turn - it goes where it was aimed.
+    if(e.hdl && !HDL_ON){ e.hdl = null; e.hdlW = 0; e.hdlT = 0; }
+    if(e.hdlW > 0){
+      // rooted, head down, the lane filling (see walk() and the hazards pass)
+      e.hdlW -= dt; e.kx = 0; e.kz = 0; e.wu = 0; e.wd = 0; e.lead = 0;
+      if(e.hdlW <= 0){
+        e.hdlW = 0; e.hdlT = e.hdl.len; e.hdlHit = 0; hdlStat.runs++;
+        e.flash = Math.max(e.flash, .18); SFX.gore();
+      }
+      walk(e, lx, lz, dt);
+      // ...FACING ITS LANE (L30, second half). walk() with no travel aims the
+      // heading at the player's LIVE position, so a player who stepped aside was
+      // watched by horns that swung back onto the lane on the first run frame -
+      // the body said "you" while the paint said "there". Same turn rate as walk's.
+      if(e.hdl) e.hd += wrapAng(Math.atan2(e.hdl.dx, e.hdl.dz) - e.hd) * Math.min(1, dt*7);
+      continue;
+    }
+    if(e.hdlT > 0){
+      const L = e.hdl, s = Math.min(e.hdlT, HDL_SPD * wading * ground * dt);
+      e.x += L.dx*s; e.z += L.dz*s; e.hdlT -= s; e.kx = 0; e.kz = 0;
+      [e.x, e.z] = confine(e.x, e.z, 1);
+      e.y = groundY(e.x, e.z);
+      // ONE hit a charge, at the bite's own reach, and it does not stop at you
+      if(!e.hdlHit && P.iframe <= 0 && !aloft() && Math.hypot(P.x-e.x, P.z-e.z) < e.rad + .75) hdlLand(e, false);
+      if(e.hdlT <= 0){ e.hdlT = 0; e.hdl = null; e.hdlR = HDL_REST; e.lg = 1; }
+      walk(e, lx, lz, dt);
+      continue;
+    }
     if(e.rout > 0 && (e.rout -= dt) <= 0){ e.rout = 0; e.taunt = 0; }  // re-formed: back to the normal AI, on a new bearing
     if(e.rout > 0){
       // IT CANNOT BITE WHILE IT RUNS, and the guard is here rather than in the
@@ -12822,6 +13046,16 @@ function updateEnemies(dt){
       e.wu = 0; e.wd = 0; e.lead = 0;
       e.flash = Math.max(e.flash, .12);
       routN++;
+      continue;
+    }
+    // L46: THE HEADLONG starts here - past the rout that could have broken it,
+    // before the walk. The rest runs down on the animal's own clock.
+    if(e.hdlR > 0) e.hdlR -= dt;
+    if(hdlCan(HDL_ON, e, d, killRN > 20 && killR > BURROW_KILLR, hdlLive)){
+      e.hdl = hdlLane(e.x, e.z, P.x, P.z); e.hdlW = HDL_TELL;
+      e.wu = 0; e.wd = 0; e.lead = 0; hdlLive++; hdlStat.tells++;
+      SFX.zap();
+      walk(e, lx, lz, dt);
       continue;
     }
     // L43: the windows, before the AI reads the kit - what it can cast this
@@ -13081,9 +13315,13 @@ function walk(e, lx, lz, dt){
   // the GILDWING's gloat (e.taunt): reared right up and stretched tall,
   // eased in over a tenth of a second and let go as fast when it bolts
   e.tauntE = (e.tauntE || 0) + ((e.taunt || 0) - (e.tauntE || 0)) * Math.min(1, dt * 12);
-  e.pt = (-.24*e.pre - .16*dwind)*bA + e.snap*.46*bA*(1 - e.dvE*.5) + e.dvE*.40 - .34*e.tauntE;
+  // L46: THE HEADLONG's wind-up - the head goes DOWN and the body sinks onto its
+  // shoulders, the opposite of the bite's rear-back, and stays down for the run
+  const hdlU = e.hdlW > 0 ? 1 - e.hdlW / HDL_TELL : e.hdlT > 0 ? 1 : 0;
+  e.hdlE = (e.hdlE || 0) + (hdlU - (e.hdlE || 0)) * Math.min(1, dt * 14);
+  e.pt = (-.24*e.pre - .16*dwind)*bA + e.snap*.46*bA*(1 - e.dvE*.5) + e.dvE*.40 - .34*e.tauntE + .36*e.hdlE;
   e.rc = e.snap*.30*bA;
-  e.stq = 1 - e.pre*.11 + e.snap*.07 + .10*e.tauntE;         // the crouch, then the stretch; the gloat stands tall
+  e.stq = 1 - e.pre*.11 + e.snap*.07 + .10*e.tauntE - .12*e.hdlE;         // the crouch, then the stretch; the gloat stands tall
 }
 // tiny per-enemy speed variance so a wave arrives as a smear, not a wall
 function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
@@ -14276,6 +14514,11 @@ function botVector(){
   const teeth = botTell ? TELL_HOLD : 7.5;
   const fin = (P.hp > P.maxhp * BOT_BACKOFF) ? (enemies.find(e => e.boss && !e.dead && (!e.final || sudden)) || null) : null;
   let bestA = 0, best = -1e9;
+  // L46: THE HEADLONG's lanes are telegraphs too, read the way the hazards are
+  // below (and late, if clumsy). With no charge on the field this list is empty.
+  const hdlLanes = [];
+  for(const e of enemies) if(!e.dead && e.hdl && (e.hdlW > 0 || e.hdlT > 0) && !(botClumsy && e.hdlW > BOT_REACT)) hdlLanes.push([e.hdl, e.rad + .75]);
+  for(const e of corpses) if(e.hdlSlide > 0 && e.hdl) hdlLanes.push([e.hdl, e.rad + .75]);
   for(let i=0;i<BOT_DIRS;i++){
     const a = i/BOT_DIRS*TAU, dx = Math.sin(a), dz = Math.cos(a);
     let s = 0;
@@ -14320,6 +14563,10 @@ function botVector(){
       const after = Math.hypot(dx*P.spd - hx, dz*P.spd - hz);  // one second of running
       if(after < h.r + 1.6) s -= 55;                      // straight into it
       else if(hd < h.r + 1.0) s += 30;                    // and we are standing in one
+    }
+    for(const [L, w] of hdlLanes){
+      if(hdlInLane(L, P.x + dx*P.spd, P.z + dz*P.spd, w + 1.6)) s -= 55;   // one second of running ends in it
+      else if(hdlInLane(L, P.x, P.z, w + 1.0)) s += 30;                     // and we are standing in one
     }
     // Side events, or the bench measures a player who does not know they exist.
     // Weaker than the gem pull per metre, so it never overrides the survival
@@ -17761,6 +18008,12 @@ function render(){
       }
     }
   }
+  // L46: THE HEADLONG's lanes (hdlDraw). Once it runs, the red edges ahead of it
+  // stay down so you can still see where it - or its carcass - is going.
+  for(const e of enemies) if(!e.dead && e.hdl && (e.hdlW > 0 || e.hdlT > 0))
+    hdlDraw(e.hdl, e.rad + .75, e.hdlW > 0 ? 1 - e.hdlW / HDL_TELL : -1, e.hdlW > 0 ? 0 : e.hdl.len - e.hdlT);
+  for(const e of corpses) if(e.hdlSlide > 0 && e.hdl)
+    hdlDraw(e.hdl, e.rad + .75, -1, e.hdl.len - e.hdlSlide);
   passEnd("hazards");
   // A SHOCKWAVE IS A WAVE, not a fence. Twenty-six cubes standing a fifth of a
   // unit up made a ring of ice blocks around the player - the same fault the
@@ -18568,8 +18821,10 @@ function render(){
       // the light at a different angle and is what separates it from the plane.
       // The colour is the lit core the other two tiers reserve for their inner
       // box: the chip has no inner box to put it in, so the chip IS the core.
-      // L30: THE BEZEL. On the three regions the shadow lever could not buy
-      // (see silhouetteRegions()), the chip is not just a brighter box on a
+      // L30: THE BEZEL. On the SIL_COUNT regions the shadow lever could not buy
+      // (three when L30 measured it at six metres; four since the far-field
+      // sweep found THE HOTSPRINGS dark at range - see silhouetteRegions()),
+      // the chip is not just a brighter box on a
       // floor that was already too bright for it - it sits in a dark socket
       // of its own, a second, wider, flatter box UNDER the core so a solid
       // near-black rim sticks out on every side no matter what the floor is
@@ -20597,12 +20852,17 @@ window.__g = {
       reach[id] = d.reach;
       if(!d.rows.some(r=>r.n > 0)) bad.push(`NULL CONTROL FAILED: the reach derivation drew no chip pixels on ${nm}`);
       else {
-        // on a screen the table has a row for, the row must be what this
-        // screen measures right now; on any screen, what ships must not
-        // reach past where this screen measures the rim costing.
+        // on a screen the table has a row for, the row must not be LONGER
+        // than what this screen reads right now (the rows are one engine's
+        // and another reads longer at dusk on the same build - see THE FOURTH
+        // ROW at BEZEL_REACH_BY_FRAME - and this clause had never run in
+        // either writer's suite, whose screen is 1280x760); on any screen,
+        // what ships must not reach past where this screen measures the rim
+        // costing.
         const key = `${cv.width}x${cv.height}`, row = BEZEL_REACH_BY_FRAME[key];
-        if(row && row[id][0] !== d.reach)
-          bad.push(`THE BEZEL REACH IS STALE: ${nm} at ${key} is recorded as ${row[id][0]} m, the live derivation reads ${d.reach} m`);
+        if(row && !row[id]) bad.push(`A SCREEN ROW HAS NO ENTRY FOR A SILHOUETTE REGION: ${nm} at ${key}`);
+        else if(row && row[id][0] > d.reach)
+          bad.push(`THE BEZEL REACH ROW IS LONGER THAN THIS SCREEN READS: ${nm} at ${key} is recorded as ${row[id][0]} m, the live derivation reads ${d.reach} m`);
         if(CHIP_BEZEL_REACH[id][0] > d.reach)
           bad.push(`THE BEZEL IS DRAWN PAST WHERE IT COSTS: ${nm} ships ${CHIP_BEZEL_REACH[id][0]} m, this screen (${key}) measures ${d.reach} m`);
       }
@@ -20743,7 +21003,21 @@ window.__g = {
   bezelRange:(v)=>{ if(v !== undefined) BEZEL_R_FORCE = v; return BEZEL_R_FORCE; },
   chipReadFar:(x, z, r, n=12)=>{
     const wasLock = camLock, wasGems = gems.slice(), wasY = P.y, wasX = P.x, wasZ = P.z,
-          wasAnc = camAnchor, wasShake = shake, wasVx = P.vx, wasVz = P.vz, wasF = BEZEL_R_FORCE;
+          wasAnc = camAnchor, wasShake = shake, wasVx = P.vx, wasVz = P.vz, wasF = BEZEL_R_FORCE,
+          wasHold = holdFace;
+    // THE ANIMAL HOLDS STILL (L30, second half). render() turns an idle player a
+    // little toward the camera every frame it paints, and this reads the frame
+    // PAIR: two renders apart the body's own pixels had moved - slowly enough
+    // that the noise mask (one render apart) let most of them through. The
+    // many-station sweep saw it as a null read of 1,194 chip pixels with NO chip
+    // on THE BONEFIELD's first station, decaying station by station as the turn
+    // converged, and every 0% that region had been credited with came from the
+    // dirty stations. Held, the null reads 0 px at every station of four regions
+    // and every row repeats to the digit. The rows this instrument derived before
+    // today were taken after the turn had settled (the gates read the rimmed
+    // regions first and at length) - farReadGate's own null, below, is what
+    // would have said otherwise, and now does.
+    holdFace = true;
     window.__g.place(x, z); camLock = null; shake = 0; P.vx = 0; P.vz = 0;
     camAnchor = [P.x, P.y, P.z];
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
@@ -20789,7 +21063,7 @@ window.__g = {
       return { px:np, over3: np ? +(over/np*100).toFixed(2) : 0, white, covered };
     };
     const off = score(0), on = score(999), now = score(wasF);   // `now`: whatever the build ships
-    BEZEL_R_FORCE = wasF; camLock = wasLock; camAnchor = wasAnc; shake = wasShake;
+    BEZEL_R_FORCE = wasF; camLock = wasLock; camAnchor = wasAnc; shake = wasShake; holdFace = wasHold;
     gems.length = 0; for(const g of wasGems) gems.push(g);
     P.x = wasX; P.z = wasZ; P.y = wasY; P.vx = wasVx; P.vz = wasVz;
     return { x, z, r, nm:biomeAt(cx, cz).nm, id:biomeAt(cx, cz).id, off, on, now, noise,
@@ -20816,7 +21090,7 @@ window.__g = {
   // and the rim only covers it). The table is the run-start sky, t=0; pass t
   // to measure another hour - see LOOP_LOG L31 for what dusk does.
   // `stop` (L33): end the sweep at the first crossing - rows past it cannot
-  // change the reach, and rimDayGate derives 33 region-hours.
+  // change the reach, and rimDayGate derives SIL_COUNT x 11 region-hours (44 at four).
   bezelDerive:(id, sweep=BEZEL_SWEEP, t=0, stop=false)=>{
     const wasYaw = camYaw, wasT = T; camYaw = 0; T = t;
     const st = window.__g.bezelStations(id), rows = [];
@@ -20860,6 +21134,59 @@ window.__g = {
   //     reach somewhere, and leave it at the sweep's end somewhere - or clause
   //     3 is testing a constant.
   rimDayGate:()=>window.__g.onBezelSeed(()=>window.__g.rimDaySeeded()),
+  // farReadGate (L30 of this log): AT RANGE, not at six metres. silhouetteGate
+  // proves the set is derived and drawn; this proves the rim earns its box
+  // where the sweep found the cliff, FAR_READ_R out, on the run-start sky, on
+  // BEZEL_SEED's map, one chip, the first station that draws:
+  //  1. on every silhouette region the rim BUYS readability - more of the
+  //     chip's pixels over 3:1 with it than bare (a sign, not a number, so it
+  //     holds on either writer's engine);
+  //  2. and what SHIPS there is the rim's reading, not the bare one (the reach
+  //     table covers FAR_READ_R at t=0 on every row) - so a row that quietly
+  //     went to 0 at hour 0 fails here by name;
+  //  3. NULL CONTROLS: some selected region reads 0% bare (clause 1 is not two
+  //     healthy numbers agreeing), some unselected one reads above 0 bare (a
+  //     dark reading is the floor's, not the instrument's), and both kinds
+  //     exist. Regions WITHOUT a rim that read 0% bare are REPORTED (`dark`),
+  //     not failed: that list is the next bump's measurement, and THE
+  //     BONEFIELD is on it today by one of its two stations.
+  farReadGate:()=>window.__g.onBezelSeed(()=>window.__g.farReadSeeded()),
+  farReadSeeded:()=>{
+    const bad = [], R = FAR_READ_R, rows = [], dark = [], nulls = [];
+    if(BEZEL_R_FORCE !== null) return { ok:false, bad:[`THE BEZEL REACH KNOB WAS LEFT ON: BEZEL_R_FORCE is ${BEZEL_R_FORCE}`], r:R };
+    if(!(P && cv.width > 0 && CHIP_SIL_ON)) return { ok:false, bad:["FAR READ CLAUSE NOT RUN: needs a live run, a sized canvas and the silhouette on"], r:R };
+    if(stage !== 0) return { ok:false, bad:[`FAR READ CLAUSE NOT RUN: the run has evolved to stage ${stage}; the sweep was read on a fresh body - start a run and re-run`], r:R };
+    const wasYaw = camYaw, wasT = T, gotSet = silhouetteRegions();
+    camYaw = 0; T = 0;                       // bezelDerive's own heading and hour
+    try {
+      for(const bm of BIOMES){
+        let q = null;
+        for(const [sx, sz] of window.__g.bezelStations(bm.id)){
+          // THE INSTRUMENT'S OWN NULL FIRST (L30, second half): the same read
+          // with no chip placed must report no chip pixels, or nothing this
+          // station says is evidence - see chipReadFar for the leak this found.
+          const z = window.__g.chipReadFar(sx, sz - R, R, 0);
+          if(z.now.px > 0){ nulls.push({ id:bm.id, nm:bm.nm, station:[sx, sz], px:z.now.px }); continue; }
+          const v = window.__g.chipReadFar(sx, sz - R, R, 1);
+          if(v.on.px > 0){ q = v; break; }
+        }
+        if(!q){ rows.push({ id:bm.id, nm:bm.nm, inSet:gotSet.has(bm.id), station:null }); continue; }
+        const inSet = gotSet.has(bm.id);
+        rows.push({ id:bm.id, nm:bm.nm, inSet, station:[q.x, q.z], px:q.on.px, bare:q.off.over3, rim:q.on.over3, ships:q.now.over3 });
+        if(inSet){
+          if(!(q.on.over3 > q.off.over3))
+            bad.push(`THE RIM BUYS NOTHING AT ${R} M: ${bm.nm} reads ${q.off.over3}% of the chip over 3:1 bare and ${q.on.over3}% with the rim`);
+          if(q.now.over3 !== q.on.over3)
+            bad.push(`WHAT SHIPS AT ${R} M IS NOT THE RIM: ${bm.nm} ships ${q.now.over3}%, the rim reads ${q.on.over3}%`);
+        } else if(q.off.over3 === 0) dark.push({ id:bm.id, nm:bm.nm, px:q.on.px, station:[q.x, q.z] });
+      }
+      if(nulls.length) bad.push(`THE INSTRUMENT IS DIRTY: ${nulls.length} station(s) read chip pixels with no chip placed - ${nulls.slice(0, 4).map(n=>`${n.nm} at ${n.station} ${n.px} px`).join(", ")}`);
+      const sel = rows.filter(r=>r.station && r.inSet), uns = rows.filter(r=>r.station && !r.inSet);
+      if(!sel.length || !uns.length) bad.push(`NULL CONTROL FAILED: ${sel.length} selected and ${uns.length} unselected regions drew a chip at ${R} m`);
+      if(!sel.some(r=>r.bare === 0)) bad.push(`NULL CONTROL FAILED: no silhouette region reads 0% bare at ${R} m - clause 1 compared two healthy numbers`);
+      if(!uns.some(r=>r.bare > 0)) bad.push(`NULL CONTROL FAILED: every region without a rim reads 0% at ${R} m - that is the instrument, not the floor`);
+    } finally { camYaw = wasYaw; T = wasT; }
+    return { ok: bad.length === 0, bad, r:R, rows, dark, nulls }; },
   rimDaySeeded:()=>{
     const bad = [], H = BEZEL_HOURS, END = BEZEL_SWEEP[BEZEL_SWEEP.length-1], live = {};
     if(!ctxLost) render();                // size the canvas to the window before reading its key
@@ -20880,8 +21207,8 @@ window.__g = {
         const d = window.__g.bezelDerive(id, BEZEL_SWEEP, t, true);
         live[id].push(d.reach);
         if(!d.rows.some(r=>r.n > 0)) { bad.push(`NULL CONTROL FAILED: the reach derivation drew no chip pixels on ${nm} at t=${t}`); return; }
-        if(row && row[id][i] !== d.reach)
-          bad.push(`THE RIM'S REACH AT t=${t} IS STALE: ${nm} at ${key} is recorded as ${row[id][i]} m, the live derivation reads ${d.reach} m`);
+        if(row && row[id][i] > d.reach)     // a row is one engine's, and not longer than any reads - see THE FOURTH ROW at BEZEL_REACH_BY_FRAME
+          bad.push(`THE RIM'S REACH ROW AT t=${t} IS LONGER THAN THIS SCREEN READS: ${nm} at ${key} is recorded as ${row[id][i]} m, the live derivation reads ${d.reach} m`);
         if(CHIP_BEZEL_REACH[id][i] > d.reach)
           bad.push(`THE RIM IS DRAWN PAST WHERE IT COSTS AT t=${t}: ${nm} ships ${CHIP_BEZEL_REACH[id][i]} m, this screen (${key}) measures ${d.reach} m`);
       });
@@ -21630,7 +21957,9 @@ window.__g = {
                    stat:{ dmg:P.dmg, reach:P.reach, spd:P.spd, cd:P.cd, mag:P.mag,
                           maxhp:P.maxhp, regen:P.regen } };
     qaLive(bad, "THE MATRIARCH GATE");
-    noSpawn = true; botDrive = false;
+    // L46: THE HEADLONG is another gate's subject, and her arrival trial runs the real spawn
+    // schedule - a late CERATOP charging it is not her encounter
+    const hdlK = HDL_ON; noSpawn = true; botDrive = false; HDL_ON = false;
     const clear = ()=>{ g.clearEnemies(); matNest = null; alerts.length = 0;
                         matStat.moved = 0; matStat.tunnelled = 0; matStat.warned = 0; };
     // 1. THE ARRIVAL. Her clock, run from MAT_WARN + a second before it.
@@ -21745,7 +22074,7 @@ window.__g = {
     // bodies, corpses, and the gems those deaths dropped. Clearing the bodies
     // and not the gems left the next gate a player standing in a pile of XP.
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
-    MAT_ON = keep.on; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; matNest = keep.nest;
+    MAT_ON = keep.on; HDL_ON = hdlK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; matNest = keep.nest;
     boons.length = 0; boons.push(...keep.boons); botDrive = keep.bd;
     Object.assign(boonMul, keep.bm); Object.assign(P, keep.stat); P.hp = keep.hp; coinsRun = keep.coins;
     applyBoons();
@@ -21815,7 +22144,8 @@ window.__g = {
                    x:P.x, z:P.z, vx:P.vx, vz:P.vz, bd:botDrive, ev:events.splice(0), hz:hazards.splice(0),
                    zn:zones.splice(0), mn:matNest, mon:MAT_ON };
     qaLive(bad, "THE THORNBACK GATE");
-    noSpawn = true; botDrive = false; MAT_ON = false;   // hers is a different gate's subject
+    // L46: and THE HEADLONG's - found when a battery's arrival trial was killed by charging carcasses
+    const hdlK = HDL_ON; noSpawn = true; botDrive = false; MAT_ON = false; HDL_ON = false;   // hers is a different gate's subject
     const clear = ()=>{ g.clearEnemies(); thnRing = null; alerts.length = 0; hazards.length = 0;
                         zones.length = 0; thnStat.planted = 0; thnStat.walled = 0; thnStat.out = 0; };
     // 1. THE ARRIVAL. Its clock, run from THN_WARN + a second before it.
@@ -21959,7 +22289,7 @@ window.__g = {
     if(F0.fell !== 0 || F0.n !== 0) bad.push(`THE SWITCH OFF STILL ENDS THE RUN'S WAY: fell ${F0.fell}, ${F0.n} patches`);
     // restore everything this gate touched
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
-    THN_ON = keep.on; MAT_ON = keep.mon; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
+    THN_ON = keep.on; MAT_ON = keep.mon; HDL_ON = hdlK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
     thnRing = keep.ring; matNest = keep.mn; botDrive = keep.bd;
     P.hp = keep.hp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z);
     alerts.length = 0; hazards.length = 0; zones.length = 0;
@@ -22031,7 +22361,9 @@ window.__g = {
                    x:P.x, z:P.z, vx:P.vx, vz:P.vz, bd:botDrive, ev:events.splice(0), hz:hazards.splice(0),
                    zn:zones.splice(0), mn:matNest, mon:MAT_ON, ring:thnRing, ton:THN_ON, bo:boons.slice() };
     qaLive(bad, "THE SKYSPLITTER GATE");
-    noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false;   // other gates' subjects
+    // L46: THE HEADLONG too. This trial is where a battery lost its player to charging carcasses
+    // (twice, inside freezeGate), and every gate after it then ran on a run that had ended.
+    const hdlK = HDL_ON; noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; HDL_ON = false;   // other gates' subjects
     const clear = ()=>{ g.clearEnemies(); skyShadow = null; carrion = null; alerts.length = 0;
                         hazards.length = 0; zones.length = 0;
                         for(const k in sksStat) sksStat[k] = 0; };
@@ -22173,7 +22505,7 @@ window.__g = {
     if(!(F0.toYou < -1)) bad.push(`CLAUSE 4 NULL: WITH THE SWITCH OFF THE HORDE DID NOT COME FOR YOU EITHER: ${F0.toYou} m`);
     // restore everything this gate touched
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
-    SKY_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
+    SKY_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; HDL_ON = hdlK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
     skyShadow = keep.sh; carrion = keep.ca; matNest = keep.mn; thnRing = keep.ring; botDrive = keep.bd;
     boons.length = 0; boons.push(...keep.bo);
     P.hp = keep.hp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z);
@@ -22264,7 +22596,7 @@ window.__g = {
                    bo:boons.slice(), vl:vigil.lit, sud:sudden, fin:finish, mut:MUT_ON, ram:P.kit.ram, rush:P.rush,
                    idle:P.idle, coins:coinsRun, kills, ns2:nextSpawn };
     qaLive(bad, "THE TERRAVORE GATE");
-    noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; SKY_ON = false;   // other gates' subjects
+    const hdlK = HDL_ON; noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; SKY_ON = false; HDL_ON = false;   // other gates' subjects (L46: and THE HEADLONG)
     let ended = [];
     // The real finish() writes the save (a win, coins, a layer of THE DEEP). The
     // gate needs to know WHEN the run would end and with what, not to end it.
@@ -22482,7 +22814,7 @@ window.__g = {
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
     finish = keep.fin;
     monuments.forEach((M, i) => { M.lit = keepM[i].lit; M.litT = keepM[i].litT; if(keepM[i].s) M.trvSunk = true; else delete M.trvSunk; });
-    vigil.lit = keep.vl; TRV_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; SKY_ON = keep.son; MUT_ON = keep.mut;
+    vigil.lit = keep.vl; TRV_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; SKY_ON = keep.son; MUT_ON = keep.mut; HDL_ON = hdlK;
     noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; sudden = keep.sud; nextSpawn = keep.ns2; coinsRun = keep.coins; kills = keep.kills;
     trvMaw = keep.maw; trvEnd = keep.end; matNest = keep.mn; thnRing = keep.ring; skyShadow = keep.sh; carrion = keep.ca; botDrive = keep.bd;
     boons.length = 0; boons.push(...keep.bo);
@@ -22639,6 +22971,303 @@ window.__g = {
   stoopShare:(v)=>{ if(v!==undefined) STOOP_SHARE = +v; return STOOP_SHARE; },
   // force one named flier to climb out now, so a check does not have to wait out
   // the kill-radius gate and a hit that leaves it under STOOP_HP
+  // L46: THE HEADLONG - the switch, its share, and its census (the paired bench's
+  // `fired` is n, the committed runs), with every lane live right now.
+  headlong:(v)=>{ if(v!==undefined) HDL_ON = !!v; return HDL_ON; },
+  headlongShare:(v)=>{ if(v!==undefined) HDL_SHARE = +v; return HDL_SHARE; },
+  hdl:()=>({ on:HDL_ON, armed: killRN > 20 && killR > BURROW_KILLR, killR:+killR.toFixed(2),
+             n:hdlStat.runs, tells:hdlStat.tells, hits:hdlStat.hits, carcass:hdlStat.carcass,
+             killedTelling:hdlStat.killedTelling, live:hdlLive, share:HDL_SHARE, cap:HDL_CAP,
+             min:HDL_MIN, max:HDL_MAX, tell:HDL_TELL, spd:HDL_SPD, dmg:HDL_DMG,
+             species:Object.keys(ENEMIES).filter(k => ENEMIES[k].hdl),
+             lanes:enemies.filter(e => !e.dead && e.hdl && (e.hdlW > 0 || e.hdlT > 0)).map(e => ({
+               id:e.eid, d:+Math.hypot(e.x-P.x, e.z-P.z).toFixed(2), w:+(e.hdlW||0).toFixed(3),
+               t:+(e.hdlT||0).toFixed(2), len:+e.hdl.len.toFixed(2) })) }),
+  // THE HEADLONG GATE (L46). Every sentence of HDL_'s comment, pressed on the live
+  // page from a clean field, each failing by name. The subject is DERIVED - the
+  // species carrying `hdl` in ENEMIES - and the fairness clause reads the roster's
+  // own slowest character, so neither can drift from a list typed here.
+  hdlGate:()=>{
+    const bad = [];
+    const keep = enemies.slice(), kc = corpses.slice(), kh = hazards.slice(), kp = pets.slice();
+    qaLive(bad, "THE HEADLONG GATE");
+    const on0 = HDL_ON, sh0 = HDL_SHARE, ns0 = noSpawn, bd0 = botDrive, kr0 = killR, krn0 = killRN;
+    const pl0 = { x:P.x, z:P.z, vx:P.vx, vz:P.vz, iframe:P.iframe, hp:P.hp, maxhp:P.maxhp, kit:P.kit, fly:P.fly };
+    const st0 = Object.assign({}, hdlStat), al0 = new Set(alerts), tip0 = save.tipHdl, R0 = R;
+    // ...and what the trials leave on the PAGE, put back at the end: the camera's chase
+    // point (capFrame renders with the player at the staging spot, so the boom lerps
+    // there), the shake and flash a landed hit sets, the hop chain it knocks out, and
+    // the run's damage ledger. Found in a battery: outGate, run after this gate, counts
+    // boxes off two renders and failed while this gate was the only thing added.
+    const cam0 = camAnchor ? camAnchor.slice() : null, shk0 = shake, fl0 = flash, hop0 = [P.hop, P.hopWin], hl0 = JSON.stringify(hurtLog);
+    const subj = Object.keys(ENEMIES).filter(k => ENEMIES[k].hdl);
+    let hdOff = null, capSeen = 0, live05 = null, slid05 = null, movedPlates = null, capCorners = null;
+    const redPlates = ()=> window.__g.capFrame().filter(b => Math.abs(b[4] - .05) < 1e-6 && Math.abs(b[6] - .90) < 1e-6 && Math.abs(b[3] - .46) < 1e-6);
+    // 1. SHIPPED, and on exactly the species this round built it for
+    if(!on0) bad.push(`THE HEADLONG IS SHIPPED OFF: HDL_ON ${on0}`);
+    if(subj.length !== 1 || subj[0] !== "brute") bad.push(`THE HEADLONG IS ON ${subj.length} SPECIES: ${subj.join(",")} - it was built for CERATOP alone`);
+    // 2. FAIR BY ARITHMETIC: the widest lane (an elite ceratop) is left from its
+    //    centre line by the slowest character inside the wind-up, with a quarter
+    //    second to react; and the run is faster than any character's base speed,
+    //    so the answer is sideways and not away
+    const slowest = Math.min(...CHARS.map(c => baseStats(c).spd)), fastest = Math.max(...CHARS.map(c => baseStats(c).spd));
+    const wMax = ENEMIES.brute.r * ELITE.sz + .75, tOut = wMax / slowest;
+    if(!(tOut < HDL_TELL - .25)) bad.push(`THE LANE CANNOT BE LEFT IN TIME: ${wMax.toFixed(2)} m at the slowest character's ${slowest.toFixed(2)} m/s is ${tOut.toFixed(2)} s against a ${HDL_TELL} s wind-up`);
+    if(!(HDL_SPD > fastest)) bad.push(`THE CHARGE CAN BE OUTRUN DOWN ITS LANE: ${HDL_SPD} m/s against ${fastest.toFixed(2)} m/s`);
+    if(!(HDL_MIN > 0 && HDL_MIN < HDL_MAX)) bad.push(`THE HEADLONG'S RANGE IS EMPTY: ${HDL_MIN}-${HDL_MAX} m`);
+    // THE GATE OWNS ITS PREMISE: A LIVE RUN. step() still advances the clock on a run that has
+    // ended, so qaLive's probe passes one - and a sliding carcass rightly refuses to hit a finished
+    // run, which read as "THE CARCASS DOES NOT HIT" in a re-pinned battery where an earlier gate's
+    // arrival trial had killed the player. Named here, run live, and put back below.
+    const ov0 = over, rn0 = running;
+    if(over) bad.push(`THE HEADLONG GATE WAS HANDED A RUN THAT HAS ENDED (over ${over}, running ${running}): an earlier gate ended it - its trials were run on a live one`);
+    over = false; running = true;
+    // the staging: no weapons, no director, no bot, the middle of the map
+    P.kit = {}; pets.length = 0; noSpawn = true; botDrive = false; HDL_SHARE = 1; HDL_ON = true;
+    // the kit and the pets are cleared by EVERY trial, not once: freezeGate lands a
+    // level-up inside this gate, and a weapon drafted mid-gate would fire on the next one
+    const clear = ()=>{ enemies.length = 0; corpses.length = 0; hazards.length = 0; pets.length = 0; P.kit = {}; rebuildGrid(); };
+    const home = ()=>{ P.x = 0; P.z = 0; P.vx = 0; P.vz = 0; P.fly = false; P.iframe = 0; P.maxhp = P.hp = 1e7; };
+    const put = (t, x, z)=>{ const e = spawnEnemy(t, x, z); e.hp = e.maxhp = 1e7; return e; };
+    const fr = (n, fn)=>{ for(let i=0;i<n;i++){ P.iframe = Math.min(P.iframe, 0); step(1/60); if(fn && fn(i) === false) break; } };
+    // 2b. hdlCan IS PURE, and every beat that already owns a body keeps it: a body
+    //     routing, going to ground, coming up out of it or climbing out of your fire
+    //     cannot start a charge. (In play the rout, dig, rise and stoop branches run
+    //     first and skip the AI, so these are also guarded structurally - which is
+    //     exactly why they are checked here on the pure function, where a regression
+    //     cannot hide behind the branch order.) With a null control: the same body
+    //     with none of those set may charge, or the clause proves nothing.
+    {
+      const probe = (patch)=>Object.assign({ def:ENEMIES.brute, boss:false, dead:false, eid:1, _hr:0 }, patch);
+      if(!hdlCan(true, probe({}), 20, true, 0)) bad.push(`hdlCan REFUSES A PLAIN CERATOP IN RANGE - the clauses below prove nothing`);
+      for(const [k, why] of [["rout","A ROUTING CERATOP CHARGES"], ["dig","A CERATOP GOING TO GROUND CHARGES"],
+                             ["rise","A CERATOP STILL COMING UP CHARGES"], ["stoop","A CLIMBING BODY CHARGES"]])
+        if(hdlCan(true, probe({ [k]:.5 }), 20, true, 0)) bad.push(`${why} (hdlCan with ${k} > 0)`);
+      // and one of THE MATRIARCH's calves, which is a CERATOP by construction
+      if(hdlCan(true, probe({ calfOf:{ boss:true } }), 20, true, 0)) bad.push(`A CALF OF THE MATRIARCH CHARGES (hdlCan with calfOf) - her encounter was built without it`);
+    }
+    // 3. OFF IN THE EARLY GAME, on the measured kill radius every arrival mechanic reads
+    clear(); home(); qaArm(6);
+    let e = put("brute", 20, 0); fr(3);
+    if(e.hdlW > 0 || e.hdlT > 0) bad.push(`THE HEADLONG FIRES IN THE EARLY GAME: it lowered its head at a measured kill radius of 6 m, against a gate of ${BURROW_KILLR} m`);
+    // 4. ARMED, IN RANGE: it stops and drops its head, and a lane is laid at you
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); const tells0 = hdlStat.tells; fr(2);
+    if(!(e.hdlW > 0)) bad.push(`A CERATOP IN RANGE DOES NOT LOWER ITS HEAD: 20 m out, armed, hdlW ${e.hdlW}`);
+    const L = e.hdl;
+    if(!L) bad.push(`A CERATOP IN RANGE LAYS NO LANE`);
+    else {
+      const ax = (P.x - L.x), az = (P.z - L.z), ad = Math.hypot(ax, az) || 1;
+      if((ax*L.dx + az*L.dz)/ad < .999) bad.push(`THE LANE IS NOT AIMED AT YOU: cos ${((ax*L.dx + az*L.dz)/ad).toFixed(3)}`);
+      if(Math.abs(L.len - Math.min(HDL_LEN, ad + HDL_OVER)) > .05) bad.push(`THE LANE STOPS SHORT: ${L.len.toFixed(2)} m against ${Math.min(HDL_LEN, ad + HDL_OVER).toFixed(2)} (to you and HDL_OVER past)`);
+    }
+    if(hdlStat.tells !== tells0 + 1) bad.push(`THE WIND-UP IS NOT COUNTED: tells ${tells0} -> ${hdlStat.tells}`);
+    // 5. IT IS PAINTED: red plates along both edges, and the gold window FILLS
+    const plates = (Lx, w)=>{ const f = window.__g.capFrame(); let red = 0, gold = 0;
+      for(const b of f){ if(Math.abs(b[4] - .05) > 1e-6) continue;
+        const onLine = hdlInLane(Lx, b[0], b[2], w + .35), inner = hdlInLane(Lx, b[0], b[2], w - .35);
+        if(Math.abs(b[6] - .90) < 1e-6 && Math.abs(b[3] - .46) < 1e-6 && onLine && !inner) red++;
+        if(Math.abs(b[6] - 1.0) < 1e-6 && Math.abs(b[3] - .34) < 1e-6 && hdlInLane(Lx, b[0], b[2], .4)) gold++; }
+      return { red, gold }; };
+    let early = { red:0, gold:0 }, late = { red:0, gold:0 };
+    if(L){
+      const w = e.rad + .75, need = 2 * Math.floor(L.len / HDL_PLATE);
+      early = plates(L, w);
+      if(early.red < need) bad.push(`THE LANE IS NOT PAINTED: ${early.red} red plates along its edges, ${need} expected`);
+      // 6. ROOTED, AND THE LANE DOES NOT FOLLOW: the player steps five metres aside
+      const x0 = e.x, z0 = e.z, L0 = JSON.stringify(L); P.x += 5;
+      let tTell = 2/60, ptMax = -9;
+      fr(120, ()=>{ if(!(e.hdlW > 0)) return false; tTell += 1/60; ptMax = Math.max(ptMax, e.pt);
+                    if(Math.abs(tTell - HDL_TELL*.75) < .5/60) late = plates(L, w); });
+      if(Math.hypot(e.x - x0, e.z - z0) > .05) bad.push(`IT MOVES WHILE IT WINDS UP: ${Math.hypot(e.x - x0, e.z - z0).toFixed(2)} m`);
+      if(e.hdl && JSON.stringify(e.hdl) !== L0) bad.push(`THE LANE FOLLOWS YOU: it was re-aimed after the player stepped aside`);
+      // 6b. AND NEITHER DOES THE BODY (L30, second half): at the end of the wind-up
+      //     the horns point down the lane, not at the player five metres aside.
+      hdOff = +Math.abs(wrapAng(e.hd - Math.atan2(L.dx, L.dz))).toFixed(4);
+      if(hdOff > .06) bad.push(`IT WATCHES YOU INSTEAD OF ITS LANE: heading ${(hdOff*180/Math.PI).toFixed(1)} deg off the lane at the end of the wind-up, the player 5 m aside`);
+      // 5c. THE CAP REACHES BOTH CORNERS: a red plate within .6 m of each far corner
+      {
+        const rp = redPlates(), corner = (sg)=>[L.x + L.dx*L.len + L.dz*w*sg, L.z + L.dz*L.len - L.dx*w*sg];
+        capCorners = [1, -1].map(sg => { const [cx, cz] = corner(sg); return rp.some(b => Math.hypot(b[0]-cx, b[2]-cz) < .6); });
+        if(!(capCorners[0] && capCorners[1])) bad.push(`THE END CAP MISSES A CORNER: plate within .6 m of +w ${capCorners[0]}, of -w ${capCorners[1]}`);
+      }
+      if(Math.abs(tTell - HDL_TELL) > 3/60) bad.push(`THE WIND-UP IS ${tTell.toFixed(2)} s, NOT HDL_TELL ${HDL_TELL}`);
+      if(!(late.gold > early.gold)) bad.push(`THE LANE DOES NOT FILL: ${early.gold} gold plates at the start of the wind-up, ${late.gold} three quarters in`);
+      // 7. THE SILHOUETTE IS THE OPPOSITE OF THE BITE: head down, not reared back
+      if(!(ptMax > .2)) bad.push(`IT DOES NOT LOWER ITS HEAD: pitch peaked ${ptMax.toFixed(3)}`);
+    }
+    // null: a ceratop walking in, nothing wound up, has its head level
+    clear(); home(); qaArm(6);
+    const walker = put("brute", 24, 0); fr(20);
+    if(walker.pt > .05) bad.push(`A WALKING CERATOP ALREADY HAS ITS HEAD DOWN: pitch ${walker.pt.toFixed(3)} - the tell cannot be told apart`);
+    // 8. IT RUNS THE LANE, AT SPEED, AND HITS A PLAYER STANDING IN IT ONCE
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); fr(2);
+    const Lr = e.hdl; const hits0 = hdlStat.hits, hpA = P.hp;
+    let runStart = null, travelled = 0, off = 0, shoved = false, dug = false;
+    const dg0 = DIGIN_SHARE; DIGIN_SHARE = 1;
+    let redA = null, redB = null;
+    fr(200, ()=>{ if(e.hdlT > 0 && !runStart) runStart = { x:e.x, z:e.z, t:T };
+                  // 8b. THE PAINT STAYS DOWN WHILE IT RUNS (L30, second half): two
+                  //     consecutive run frames, and no red plate is anywhere it was
+                  //     not the frame before - the body passes plates, it does not carry them
+                  if(runStart && e.hdlT > 0 && !redA && T - runStart.t >= .1) redA = new Set(redPlates().map(b => b[0].toFixed(2) + "," + b[2].toFixed(2)));
+                  else if(redA && !redB && e.hdlT > 0) redB = new Set(redPlates().map(b => b[0].toFixed(2) + "," + b[2].toFixed(2)));
+                  // a bat's shove across the lane, and a hit that would send any
+                  // other walker to ground: neither may take it off its line
+                  if(runStart && !shoved && T - runStart.t >= .15){ shoved = true; hurt(e, 1, 0, 40);
+                    const hp1 = e.hp; qaHurtTo(e, .10); dug = e.dig > 0; e.hp = hp1; }
+                  if(runStart && Lr){ const rx = e.x - Lr.x, rz = e.z - Lr.z; off = Math.max(off, Math.abs(rx*Lr.dz - rz*Lr.dx)); }
+                  if(runStart && T - runStart.t >= .5 && !travelled) travelled = Math.hypot(e.x - runStart.x, e.z - runStart.z);
+                  if(runStart && !(e.hdlT > 0)) return false; });
+    if(!runStart) bad.push(`IT NEVER RUNS: the wind-up ended and hdlT stayed ${e.hdlT}`);
+    else if(!(travelled >= HDL_SPD * .5 * .6)) bad.push(`IT DOES NOT RUN ITS LANE AT SPEED: ${travelled.toFixed(2)} m in 0.5 s against HDL_SPD ${HDL_SPD}`);
+    // (distinct positions on both sides: a lane whose length is a multiple of
+    //  HDL_PLATE lays its last edge plates exactly on the cap's corners)
+    if(!redA || !redB) bad.push(`CLAUSE 8b NEVER READ TWO RUN FRAMES: ${redA ? redA.size : "no"} plates, then ${redB ? redB.size : "none"}`);
+    else { movedPlates = [...redB].filter(p => !redA.has(p)).length;
+           if(movedPlates) bad.push(`THE LANE'S EDGES RUN WITH THE BODY: ${movedPlates} of ${redB.size} red plates were somewhere else the frame before`);
+           if(!(redB.size > 0 && redB.size <= redA.size)) bad.push(`THE PAINT DOES NOT SHORTEN BEHIND THE RUNNER: ${redA.size} plates, then ${redB.size}`); }
+    DIGIN_SHARE = dg0;
+    if(off > .1) bad.push(`IT LEAVES ITS LANE: ${off.toFixed(2)} m off the line${shoved ? " after a shove across it" : ""}`);
+    if(dug) bad.push(`A CHARGING CERATOP DIGS IN: badly hurt mid-run it went to ground instead of finishing the charge`);
+    const hitsIn = hdlStat.hits - hits0;
+    if(hitsIn < 1) bad.push(`A PLAYER STANDING IN THE LANE IS NOT HIT: 0 hits, ${(hpA - P.hp).toFixed(1)} HP`);
+    if(hitsIn > 1) bad.push(`IT HITS MORE THAN ONCE A CHARGE: ${hitsIn} hits with the player's iframes held at zero`);
+    if(!(Math.hypot(e.x - P.x, e.z - P.z) > e.rad + .75)) bad.push(`IT STOPS AT YOU: it ended ${Math.hypot(e.x - P.x, e.z - P.z).toFixed(2)} m from the player`);
+    // 9. THE REST: the same animal cannot wind up again straight away
+    const t9 = hdlStat.tells; P.x = e.x + 18; P.z = e.z; fr(Math.floor(HDL_REST * .5 * 60));
+    if(hdlStat.tells !== t9) bad.push(`IT CHARGES AGAIN WITHOUT A REST: a new wind-up inside HDL_REST ${HDL_REST} s`);
+    // 10. STEP OUT SIDEWAYS AND IT MISSES
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); fr(2);
+    const h10 = hdlStat.hits; P.z = e.rad + .75 + 1.2;
+    fr(200, ()=>{ if(!(e.hdlW > 0) && !(e.hdlT > 0)) return false; });
+    if(hdlStat.hits !== h10) bad.push(`STEPPING OUT OF THE LANE DOES NOT SAVE YOU: hit ${hdlStat.hits - h10} times ${(e.rad + .75 + 1.2).toFixed(2)} m off its line`);
+    // 11. KILLING IT DOES NOT STOP IT, once it has committed: the carcass slides on and hits
+    clear(); home(); qaArm(30);
+    e = put("brute", 28, 0); fr(2);
+    P.x = 0; const c11 = hdlStat.carcass, h11 = hdlStat.hits; let killedAt = null, slid = 0;
+    let evicted = false;
+    fr(200, ()=>{ if(e.hdlT > 0 && !killedAt && e.hdl.len - e.hdlT > 1){ killedAt = { x:e.x, z:e.z }; killEnemy(e);
+                    // a late screen: the corpse cap fills while it slides
+                    for(let i=0;i<CORPSE_MAX + 4;i++){ const o = spawnEnemy("shambler", -30 + i*.1, -30); if(o) killEnemy(o); }
+                    evicted = !corpses.includes(e); }
+                  // 11b. A SLIDING CARCASS IS A LANE TO THE CAP (L30, second half)
+                  if(killedAt && e.hdlSlide > 0) capSeen = Math.max(capSeen, hdlLive);
+                  if(killedAt){ slid = Math.max(slid, Math.hypot(e.x - killedAt.x, e.z - killedAt.z)); if(!(e.hdlSlide > 0) && hdlStat.hits > h11) return false; } });
+    if(!killedAt) bad.push(`THE MOMENTUM TRIAL NEVER COMMITTED`);
+    else {
+      if(evicted) bad.push(`THE CORPSE CAP DELETES A SLIDING CARCASS: ${CORPSE_MAX + 4} deaths behind it and it was gone`);
+      if(slid < 10) bad.push(`A KILLED CHARGE STOPS DEAD: the carcass slid ${slid.toFixed(2)} m of the lane`);
+      if(hdlStat.carcass - c11 !== 1) bad.push(`THE CARCASS DOES NOT HIT: ${hdlStat.carcass - c11} carcass hits on a player standing in its lane`);
+      if(capSeen < 1) bad.push(`A SLIDING CARCASS IS NOT COUNTED AGAINST THE CAP: hdlLive stayed ${capSeen} while it slid - a late screen could paint HDL_CAP lanes plus every carcass`);
+    }
+    // 11c. THE CARCASS KEEPS THE SPEED THE RUN HAD HERE (L30, second half). The whole
+    //      map forced onto THE TARPITS (mod.spd .86): the live run's half second and
+    //      the slide's half second cover the same ground, and less than dry land's.
+    { const kb = cells.map(c => c.b); window.__g.forceBiome("bog");
+      clear(); home(); qaArm(30);
+      const eb = put("brute", 28, 0); fr(2); P.x = 0;
+      let runAt = null, k0 = null;
+      fr(240, ()=>{ if(eb.hdlT > 0 && !runAt) runAt = { x:eb.x, z:eb.z, t:T };
+                    if(runAt && live05 === null && T - runAt.t >= .5 - 1e-6) live05 = +Math.hypot(eb.x - runAt.x, eb.z - runAt.z).toFixed(3);
+                    if(live05 !== null && !k0 && eb.hdlT > 0){ killEnemy(eb); k0 = { x:eb.x, z:eb.z, t:T }; }
+                    if(k0 && slid05 === null && T - k0.t >= .5 - 1e-6){ slid05 = +Math.hypot(eb.x - k0.x, eb.z - k0.z).toFixed(3); return false; } });
+      cells.forEach((c, i)=>{ c.b = kb[i]; });
+      if(live05 === null || slid05 === null) bad.push(`THE DRAG TRIAL NEVER COMPLETED: run ${live05}, slide ${slid05}`);
+      else {
+        if(!(live05 < HDL_SPD * .5 * .95)) bad.push(`THE RUN IGNORES THE GROUND: ${live05} m in 0.5 s on THE TARPITS, dry land is ${(HDL_SPD*.5).toFixed(2)}`);
+        if(Math.abs(slid05 - live05) > .3) bad.push(`THE CARCASS DOES NOT KEEP THE RUN'S SPEED: it slid ${slid05} m in 0.5 s where the live run covered ${live05}`);
+      }
+    }
+    // 12. KILLED WHILE IT IS STILL WINDING UP, IT SIMPLY DIES
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); fr(10);
+    const h12 = hdlStat.hits; const x12 = e.x; killEnemy(e); fr(120);
+    if(hdlStat.hits !== h12) bad.push(`A CERATOP KILLED WINDING UP STILL CHARGES: ${hdlStat.hits - h12} hits`);
+    if(Math.abs(e.x - x12) > .5) bad.push(`A CERATOP KILLED WINDING UP STILL SLIDES: ${Math.abs(e.x - x12).toFixed(2)} m`);
+    // 13. THE CAP
+    clear(); home(); qaArm(30);
+    for(let i=0;i<6;i++) put("brute", Math.cos(i)*18, Math.sin(i)*18);
+    fr(3);
+    const liveN = enemies.filter(b => b.hdlW > 0 || b.hdlT > 0).length;
+    if(liveN > HDL_CAP) bad.push(`MORE THAN HDL_CAP LANES AT ONCE: ${liveN} of ${HDL_CAP}`);
+    if(liveN < Math.min(HDL_CAP, 6)) bad.push(`THE CAP IS NOT REACHED: ${liveN} lanes from six ceratops in range`);
+    // 14. OUTSIDE ITS BAND, AND NOT A ROUTING, DEN OR OTHER BODY
+    clear(); home(); qaArm(30);
+    const near = put("brute", HDL_MIN * .5, 0), far = put("brute", HDL_MAX + 8, 0);
+    const rt = put("brute", 0, 20); rt.rout = 5; rt.routT = 5; rt.routS = 1;
+    const den = put("brute", -20, 0); den.denRef = { den:true };
+    const other = put("skitter", 0, -20);
+    fr(2);
+    if(near.hdlW > 0) bad.push(`A CERATOP IN BITE RANGE CHARGES INSTEAD OF BITING: ${(HDL_MIN*.5).toFixed(1)} m`);
+    if(far.hdlW > 0) bad.push(`A CERATOP PAST HDL_MAX CHARGES: ${HDL_MAX + 8} m`);
+    if(rt.hdlW > 0) bad.push(`A ROUTING CERATOP CHARGES`);
+    if(den.hdlW > 0) bad.push(`A DEN CERATOP CHARGES - dens were sized without it`);
+    if(other.hdlW > 0) bad.push(`A RAPTORLING CHARGES`);
+    den.denRef = null;
+    // 15. A NEARBY DEATH DOES NOT TURN A COMMITTED CHARGE
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); fr(2); e.alarm = ROUT_TRIG + 2; e.alarmT = ROUT_FADE; fr(3);
+    if(e.rout > 0) bad.push(`A NEARBY DEATH BROKE A CHARGE: rout ${e.rout.toFixed(2)} while its head was down`);
+    // 16. NO DRAW FROM THE RUN STREAM, in the wind-up, the run or the slide
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); fr(1);
+    // (the kill itself is made with the real stream: killEnemy drops a gem and
+    // rolls its coin, which is the death's draw and not the charge's)
+    let draws = 0; const Rc = ()=>{ draws++; return R0(); };
+    try {
+      for(let i=0;i<90;i++){
+        P.iframe = 0; R = Rc; updateEnemies(1/60); stepCorpses(1/60); R = R0;
+        if(e.hdlT > 0 && e.hdl.len - e.hdlT > 3 && !e.dead) killEnemy(e);
+      }
+    } finally { R = R0; }
+    if(draws) bad.push(`THE HEADLONG DRAWS FROM THE RUN STREAM: ${draws} draws over its wind-up, run and slide`);
+    // 17. THE BOTS READ THE LANE: a lane through the player, and the heading it picks leaves it
+    clear(); home(); qaArm(30);
+    e = put("brute", 20, 0); fr(2); P.spd = P.spd || 6.6;
+    const bv = botVector();
+    if(e.hdl && hdlInLane(e.hdl, P.x + bv[0]*P.spd, P.z + bv[1]*P.spd, e.rad + .75))
+      bad.push(`THE BENCH BOTS CANNOT SEE THE LANE: the heading it picked keeps it in a lane that is filling`);
+    // 18. THE SWITCH OFF: nothing winds up, and a lane already up comes down
+    HDL_ON = false; fr(2);
+    if(e.hdlW > 0 || e.hdlT > 0 || e.hdl) bad.push(`THE SWITCH OFF LEAVES A LANE UP`);
+    clear(); home(); qaArm(30);
+    const offT = hdlStat.tells, offB = put("brute", 20, 0); fr(60);
+    if(hdlStat.tells !== offT || offB.hdlW > 0) bad.push(`THE SWITCH OFF STILL CHARGES: ${hdlStat.tells - offT} wind-ups`);
+    HDL_ON = true;
+    // 19. THE FIRST CHARGE THAT LANDS IS TAUGHT, once
+    // by IDENTITY, not by index: alerts expire and splice out while the trial runs, so an
+    // index taken before it points past the new line whenever an older one ran out
+    // first - which is what a battery, or a level-up's own toast, leaves behind
+    clear(); home(); qaArm(30); save.tipHdl = 0; const a19 = new Set(alerts);
+    e = put("brute", 20, 0);
+    fr(200, ()=>{ if(!(e.hdlW > 0) && !(e.hdlT > 0) && hdlStat.hits) return false; });
+    const taught = alerts.some(a => !a19.has(a) && /LOWERED ITS HORNS/.test(a.text));
+    if(!taught) bad.push(`THE FIRST CHARGE IS NOT TAUGHT: no line after a landed charge`);
+    // put it all back
+    // the trial's landed hit PERSISTED tipHdl=1 through hdlLand's writeSave - the
+    // save on disk goes back too, or a page reloaded after this gate never shows
+    // the lesson (L30, second half)
+    save.tipHdl = tip0; writeSave();
+    for(let i=alerts.length-1;i>=0;i--) if(!al0.has(alerts[i])) alerts.splice(i,1);
+    camAnchor = cam0; shake = shk0; flash = fl0; P.hop = hop0[0]; P.hopWin = hop0[1];
+    { const h = JSON.parse(hl0); for(const k in h) hurtLog[k] = h[k]; }
+    HDL_ON = on0; HDL_SHARE = sh0; noSpawn = ns0; botDrive = bd0; over = ov0; running = rn0;
+    qaArm(null); killR = kr0; killRN = krn0;
+    Object.assign(P, pl0);
+    for(const k in st0) hdlStat[k] = st0[k];
+    enemies.length = 0; corpses.length = 0; hazards.length = 0; pets.length = 0;
+    for(const x of keep) enemies.push(x);
+    for(const x of kc) corpses.push(x);
+    for(const x of kh) hazards.push(x);
+    for(const x of kp) pets.push(x);
+    rebuildGrid(); wardPass(); qaSettle();
+    return { ok: !bad.length, bad, species: subj, tOut:+tOut.toFixed(3), slowest:+slowest.toFixed(2),
+             plates:{ red:early.red, goldEarly:early.gold, goldLate:late.gold }, travelled:+travelled.toFixed(2),
+             hitsIn, slid:+slid.toFixed(2), capLive:liveN, draws,
+             hdOff, movedPlates, capCorners, capSeen, drag:{ live:live05, slide:slid05 } }; },
   stoop:(id)=>{ const e = enemies.find(x=>x.eid===id && !x.dead); if(!e) return null;
                 e.stooped = 1; e.stoop = STOOP_UP; e.dvT = 0; e.dvW = 0; e.rout = 0;
                 return { id, stoop:+e.stoop.toFixed(3) }; },
