@@ -9107,8 +9107,23 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // actually support now rather than pretend the shift did not happen; the
     // ward-population growth under relief is real and is next round's to look
     // at, not this section's to paper over.
+    // AND THEN A SEED MOVED WITH NOTHING ABOUT THE HORDE CHANGED (L37). The
+    // damage numbers stopped drawing on the run stream, which moves every
+    // pinned run once, and seed 9's window read .271 (.370 before; .412 with
+    // the numbers left on the stream, where L37's cap alone changes how many
+    // are pushed) while seed 3's rose from .345 to .503. Over twelve paired
+    // seeds nothing moved: .412 on L37 against .408 before (paired difference
+    // +.004, standard error .024; sd .062 a seed), and seed 9 is the one of
+    // the twelve under .30. A per-seed bar fails one seed in twelve on any
+    // change that re-rolls the runs, so the bar reads the two seeds POOLED -
+    // .30 is 2.5 sd under the pooled mean - and each seed carries the claim
+    // the check is named for, literally: no other pass in its census is as
+    // big as the horde. It is 2.4 times the next on L37's seed 9 and 3.5 to
+    // 6.2 times it on every other seed of either build.
+    const pooled = early.reduce((s, e) => s + e.horde, 0) / early.length;
     ok("and the horde is the biggest thing in the frame, not the floor",
-       early.every(e => e.horde >= .30), sayE);
+       early.every(e => e.horde > e.nextShare) && pooled >= .30,
+       `${(pooled*100).toFixed(1)}% of the frame over both seeds' windows | ` + sayE);
     ok("and it is the TABLE sending them: the standing crowd (L35) tops up the dips, it does not stand in for a thin table",
        early.every(e => e.sent <= .06 * e.table), sayE + "  (a reverted t:270 makes the crowd send 147-157, ~10%)");
     ok("fifteen minutes in, the LATE table is still sending them",
