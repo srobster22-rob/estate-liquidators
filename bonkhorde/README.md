@@ -131,7 +131,7 @@ the run ends.
 | **10 weapons, 4 slots** | melee arc, orbiters, homing bolts, shockwave, mortar, chain lightning, damage aura, a forward charge, ground hazards, and a hunting pack that runs with you — you carry four of them, plus your line's own move for free |
 | **10 evolutions** | each weapon maxed + a specific passive at rank 3 unlocks a replacement form |
 | **8 passives** | every one contributes to output, not just the four with "damage" in the text — PLATING blasts attackers off you, MAGNET drags the horde into a pile |
-| **6 wildlife types + 4 bosses** | TERRAPIN, PTERLING, CERATOP, DILOPHO, RAPTORLING and the GILDWING that runs off with your gold, against THE MATRIARCH, THORNBACK, SKYSPLITTER and TERRAVORE — with a spawn director that reweights the mix over 11 phases |
+| **6 wildlife types + 4 bosses** | TERRAPIN, PTERLING, CERATOP, DILOPHO, RAPTORLING and the GILDWING that runs off with your gold, against THE MATRIARCH, THORNBACK, SKYSPLITTER and TERRAVORE — with a spawn director that reweights the mix over 11 phases and holds a standing crowd the kit cannot clear |
 | **~25 dens** | half the landmarks keep a pack of what lives there — optional, repayable, worth a boon |
 | **elite variants** | from minute 6, rising to ~1 in 5 — crowned, larger, 3.2× HP, 5× XP |
 | **5 boss abilities** | slam, evict, charge, spokes and a sinkhole ring that leaves the caster's own ground safe — telegraphed, dodgeable, worth dodging |
@@ -1870,6 +1870,61 @@ repulsion vectors, which cancel to zero when you are ringed, so it stood perfect
 the middle of the horde and died. v3 samples 20 headings and commits to the best one. A
 measuring instrument that produces confident numbers is not the same as a correct one — and
 the same trap caught the clears metric later, for the same reason.
+
+### The kit cleared the screen, so the director keeps a crowd standing
+
+The game describes a horde, and the census said there wasn't one. With a levelling
+player, 8 to 20 bodies were alive at any moment from minute six on. Tripling their HP
+changed nothing, because a level-70 kit kills a body within about a second of it
+arriving, whatever its health. Sending them faster did not help either: more bodies is
+more XP, which is a stronger kit, which leaves the same empty field.
+
+So the director now holds a **floor**. It sets how many ordinary bodies should be
+standing at a given time: 20 at 2:00, rising to 105 at 13:00 and 135 at 18:20. When the
+field is under that count, it tops it up from the usual spawn ring at up to 200 a
+second, which is faster than any kit clears. Three rules keep that from being a
+different game:
+
+- **Walkers only.** The first version drew from the phase mix. Six spitters in a ring of
+  eighty make a firing line, and early deaths went from 1 in 36 runs to 7.
+- **Paid for once.** Crowd bodies carrying XP are capped at a tenth of the table's own
+  sends. Every other crowd body drops no gem, no coins and no heal. The level at 10:00
+  holds at 48 to 49 against 47 to 48 without the crowd.
+- **Off while a boss is up, and off before 2:00.**
+
+```
+minutes 6-16, levels on, seed 9     mean alive   peak   level at 10:00   kills
+intern      no crowd / crowd         8.3 / 87.1   27 / 125   48 / 48    9.5k / 84k
+scrap                               12.8 / 73.7   38 / 120   47 / 48    9.3k / 105k
+spark                               19.5 / 84.7   53 / 120   48 / 49    8.8k / 28k
+ox                                  18.8 / 91.6   41 / 129   47 / 48    9.2k / 31k
+```
+
+Bodies still die a median of about 20 m out. What changed is that about ninety of them
+are standing there at any moment. It costs something:
+
+```
+FIRST TIER, 36 runs a side       dead <10:00   clears   contact   spit   hazard
+no crowd                             1/36       29/36     3302    2722    4035
+crowd, walkers only                  1/36       25/36     4945    2093    3048
+VETERAN, 36 runs a side
+no crowd                             0/36       36/36     2316    2113    4204
+crowd                                0/36       30/36     7531    3460    4072
+```
+
+**The melee horde is now the largest source of damage**: about half of everything the
+autopilot takes at the first tier, against a third on the same seeds without it, and
+three times the contact at veteran. Early deaths do not move at either tier. The crowd costs
+four clears in thirty-six at the first tier and six at veteran, where the bench without it
+cleared every run. Spit rises by 60% at veteran although the crowd sends no spitters, which
+presumably means the crowd is taking away the room the autopilot used to dodge the table's.
+
+The frames are in `evidence/l35-crowd`: ten shots from one seeded run, with the crowd on
+and off. At 7:00 and 17:00 the crowd reads as a crowd. **At 12:00 it does not.** The
+census says 105 bodies are on screen, but in the frame they are a band on the horizon
+behind a wall of damage numbers, because the kit still kills them twenty metres out.
+Making the crowd *press in*, rather than only stand there, is the next question. It
+depends on what the kit is allowed to reach, not on the director.
 
 ---
 

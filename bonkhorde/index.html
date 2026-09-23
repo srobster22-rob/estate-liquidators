@@ -3706,6 +3706,59 @@ const PHASES = [
 { t:960,  rate:20.9, mix:{runner:9,    skitter:11,spitter:6, brute:8} },
 { t:1100, rate:25.2, mix:{runner:10,   skitter:12,spitter:6, brute:10} },
 ];
+// THE CROWD (L35 of this log). The table above says how many bodies are SENT;
+// nothing said how many STAND, and measured under play the answer was almost
+// none. The census bench on the shipped build, levels on, four characters,
+// minutes 6-16: the kit kills a body about a second after it arrives (median
+// death 19-23 m out, on a 30-38 m ring), so the standing field was the rate
+// times one second - a mean of 8 to 20 bodies - while the same director with
+// the player held at the starting kit stands 102 at 6:00 and 234 at 15:00.
+// Neither knob on the table could move it: the rate at x2-x4 levelled the kit
+// in step (more bodies, more XP, the same empty field) and the HP curve at x3
+// changed nothing (the kit overkills). So the director now also holds a
+// CROWD: while fewer than crowdWant(T) bodies stand, it keeps sending, up to
+// CROWD_RATE a second, out of the same mix onto the same ring - bodies
+// arriving faster than the kit clears them, by construction, whatever the kit
+// is. [t, bodies], interpolated; nothing before the first row, so the staged
+// opening stays staged; suspended while a boss is up, because a boss fight is
+// the one part of a run that is about one body.
+let CROWD_ON = true;
+let CROWD_AT = [[120, 20], [270, 45], [480, 75], [780, 105], [1100, 135]];
+const CROWD_AT0 = CROWD_AT.map(r => r.slice());
+let CROWD_RATE = 200;                    // most bodies a second the crowd may add
+const CROWD_BURST = .25;                 // seconds of that rate it may bank
+// PAID FOR ONCE. A crowd body the table did not ask for is an extra kill, and a
+// kill pays: a gem, a coin roll, a bloodthirst heal, a ninth of a coin at the
+// end. Paid in full, holding the crowd would multiply the run's XP and level
+// the kit into the next empty field - the exact loop the rate sweep ran into.
+// A fixed "one in N" cannot hold it either: how many bodies the crowd must
+// send is a property of the kit (measured: one in four still doubled the XP
+// of the characters that clear fastest). So the crowd is paid out of the
+// TABLE's budget: at most CROWD_SHARE of a paid body for every body the table
+// itself sent, and every other crowd body pays nothing at all.
+let CROWD_SHARE = .10;
+// THE CROWD WALKS IN. Measured on the first build of this round (balance.js,
+// first-run tier, 36 paired runs): early deaths 1 -> 7 and clears 29 -> 21,
+// and the damage ledger said which: spit damage up two to nine times (THE
+// INTERN 217 -> 1,921) while contact barely moved. DILOPHO is the one kind
+// that stops at 22 m and fires, and a crowd held at a hundred bodies holds a
+// firing line of them at the edge of their range - five times the spitters
+// the table ever sends. The crowd is the horde that walks at you and melts at
+// the edge of the kit; the kinds that hang back stay the table's alone.
+let CROWD_WALK = true;
+const CROWD_RATE0 = CROWD_RATE, CROWD_SHARE0 = CROWD_SHARE, CROWD_WALK0 = CROWD_WALK;
+const crowdWant = (t)=>{
+  const A = CROWD_AT; if(!A.length || t < A[0][0]) return 0;
+  for(let i = 1; i < A.length; i++) if(t < A[i][0])
+    return A[i-1][1] + (A[i][1] - A[i-1][1]) * (t - A[i-1][0]) / (A[i][0] - A[i-1][0]);
+  return A[A.length-1][1];
+};
+let crowdBank = 0, crowdFree = 0;
+const crowdStat = { sent:0, free:0, paid:0, held:0, table:0 };
+// the run's coins so far, counting PAID kills only - the pause sheet, the HUD
+// and the payout all read this one line, so the crowd cannot be paid in one of
+// them and not the others
+const coinTally = ()=> coinsRun + (kills - crowdFree)/9 + T/6;
 // Elite variants. Rare at first sight, ~1 in 5 by the end.
 const NORMAL     = { hp:1,   dmg:1,   spd:1,    sz:1,    xp:1 };
 const ELITE      = { hp:3.2, dmg:1.3, spd:1.10, sz:1.38, xp:5 };
@@ -9903,6 +9956,7 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[]; pets=[];
   arcs=[]; pops=[]; cpops=[]; nums=[]; spits=[]; alerts=[]; hazards=[]; corpses=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
+  crowdBank = 0; crowdFree = 0; for(const k in crowdStat) crowdStat[k] = 0;   // L35
   // L16: the measured kill radius is a fact about THIS run's kit and has to die
   // with it. Left standing, a second run in the same session inherits the last
   // one's radius and burrows from second zero - which is exactly the early game
@@ -10493,7 +10547,10 @@ function killEnemy(e){
     o.alarm = (o.alarm || 0) + 1; o.alarmT = ROUT_FADE;
   });
   if(P) P.rush = Math.min(1, (P.rush||0) + (e.boss ? 1 : e.elite ? RUSH_KILL*2 : RUSH_KILL));
-  if(hasRule("bloodthirst")) P.hp = Math.min(P.maxhp, P.hp + BLOOD_HEAL(e));
+  // L35: an unpaid crowd body (CROWD_SHARE) pays nothing a kill pays - no heal
+  const unpaid = !!(e.crowd && !e.xp);
+  if(unpaid){ crowdFree++; crowdStat.free++; }
+  if(hasRule("bloodthirst") && !unpaid) P.hp = Math.min(P.maxhp, P.hp + BLOOD_HEAL(e));
   fell(e);
   if(e.denRef) denLost(e.denRef);
   const n = e.boss ? 30 : e.elite ? 16 : e.rad>1 ? 11 : 6;
@@ -10513,7 +10570,7 @@ function killEnemy(e){
     // L44: the kill no longer cuts to the results on the frame. The ending plays
     // first (trvFall) and step() ends the run when it has.
     if(e.final){ if(TRV_ON && e.def.trv){ trvFall(e); return; } finish("VICTORY", true); return; }
-  } else {
+  } else if(!unpaid){
     pushGem(e.x, e.z, e.xp);
     if(R() < .012) coinsRun += 5;
     if(e.elite){ hold("elite"); shake = Math.max(shake, .3); }
@@ -11444,6 +11501,17 @@ function resetHordeFlow(){ for(const k in hordeFlow) hordeFlow[k] = 0; }
 // answer. An id makes a body trackable across frames by a bench that only sees
 // snapshots (window.__g.roster()).
 let EID = 0;
+// THE GROUND CHOOSES ITS ANIMALS (see the director) - one R() draw per body,
+// shared by the table and the crowd so both send the same mix. `walk` leaves
+// out the kinds that hang back and fire (L35: see CROWD_WALK).
+function mixPick(ph, bio, walk){
+  const fa = bio.fauna || {};
+  const keysM = Object.keys(ph.mix).filter(k => !(walk && ENEMIES[k].ranged));
+  let tot=0; for(const k of keysM) tot += ph.mix[k] * (fa[k] || 1);
+  let r = R()*tot, chosen = keysM[0];
+  for(const k of keysM){ r -= ph.mix[k] * (fa[k] || 1); if(r<=0){ chosen=k; break; } }
+  return chosen;
+}
 function spawnEnemy(type, atX, atZ){
   hordeFlow.asked++;
   if(enemies.length >= MAXE){ hordeFlow.capped++; return; }
@@ -14010,7 +14078,7 @@ function paintPause(){
       <div class="lv">LV ${P.lvl} &nbsp;·&nbsp; ${stageNm()}${stage < nStage-1
         ? ` <span style="color:#5c6470">&#8594; LV ${EVO_AT[stage+1]}</span>` : " &#9733;"}</div>
       <div class="row"><span>KILLS</span><b>${kills.toLocaleString()}</b></div>
-      <div class="row"><span>COINS</span><b>${Math.floor(coinsRun + kills/9 + T/6)}</b></div>
+      <div class="row"><span>COINS</span><b>${Math.floor(coinTally())}</b></div>
       <div class="row"><span>ON THE FIELD</span><b>${enemies.length}</b></div>
       ${deepAt ? `<div class="row"><span>THE DEEP</span><b style="color:#ff8a6a">LAYER ${deepAt}</b></div>` : ""}
     </div>
@@ -14975,19 +15043,38 @@ function step(dt){
       // packs out of the warrens, big things standing in the tar. Weights
       // multiply, kinds never appear before their phase, and it is still one
       // R() draw per spawn, so pinned runs stay pinned.
-      const fa = bio.fauna || {};
-      const keysM = Object.keys(ph.mix);
-      let tot=0; for(const k of keysM) tot += ph.mix[k] * (fa[k] || 1);
-      let r = R()*tot, chosen = keysM[0];
-      for(const k of keysM){ r -= ph.mix[k] * (fa[k] || 1); if(r<=0){ chosen=k; break; } }
-      spawnEnemy(chosen);
+      const chosen = mixPick(ph, bio);
+      spawnEnemy(chosen); crowdStat.table++;
       // Skitters arrive as a pack or they are just bad shamblers - but a pack
       // has to COST what it delivers. Spawning eight for one slot made them
       // 52-74% of the standing horde against a nominal weight of ~15%, and
       // every mix number in the table above was a fiction because of it.
       if(chosen==="skitter"){
         for(let i=0;i<5;i++) spawnEnemy("skitter");
-        nextSpawn *= 6;
+        nextSpawn *= 6; crowdStat.table += 5;
+      }
+    }
+  }
+  // ---- THE CROWD (L35 of this log): see CROWD_AT. The table above keeps its
+  // pace; this only ever ADDS, and only while the field stands short.
+  if(CROWD_ON && !noSpawn && !trvEnd){
+    crowdBank = Math.min(CROWD_RATE * CROWD_BURST, crowdBank + CROWD_RATE * dt);
+    const want = crowdWant(T);
+    if(want > 0 && crowdBank >= 1){
+      let live = 0, boss = false;
+      for(const e of enemies){ if(e.dead) continue; if(e.boss) boss = true; else live++; }
+      if(!boss){
+        const bio = biomeAt(P.x, P.z);
+        while(crowdBank >= 1 && live < want && enemies.length < MAXE){
+          const k = mixPick(ph, bio, CROWD_WALK), n = k === "skitter" ? 6 : 1;   // a pack costs what it delivers, as above
+          for(let i = 0; i < n; i++){
+            const e = spawnEnemy(k); if(!e) continue;
+            e.crowd = 1; crowdStat.sent++;
+            if(crowdStat.paid < CROWD_SHARE * crowdStat.table) crowdStat.paid++; else e.xp = 0;
+          }
+          crowdBank -= n; live += n;
+        }
+        if(live >= want) crowdStat.held++;
       }
     }
   }
@@ -15086,7 +15173,7 @@ function finish(why, won){
   over = true; running = false; picking = false; runWon = !!won; runWhy = why;
   document.exitPointerLock?.();
   hide("pick"); hide("paused");
-  const earned = Math.floor((coinsRun + kills/9 + T/6 + (won?250:0)) * deepPay());
+  const earned = Math.floor((coinTally() + (won?250:0)) * deepPay());   // L35: paid kills
   save.coins += earned;
   save.best = Math.max(save.best||0, T);
   if(won){
@@ -19183,7 +19270,7 @@ function hud(){
   $("hptxt").textContent = `${Math.max(0,Math.ceil(P.hp))} / ${Math.round(P.maxhp)}`;
   $("stats").innerHTML =
     `<b>${kills.toLocaleString()}</b> kills<br>`+
-    `<span style="color:#f0b429">${icon("coin")} ${Math.floor(coinsRun + kills/9 + T/6)}</span><br>`+
+    `<span style="color:#f0b429">${icon("coin")} ${Math.floor(coinTally())}</span><br>`+
     `<span style="color:#5c6470">${enemies.length} on screen</span>`;
 
   let html = "";
@@ -19804,6 +19891,112 @@ window.__g = {
   // complaint is actually about; `rate` is the phase table's nominal spawns a
   // second at this moment, so asked-vs-rate says whether the director is even
   // trying.
+  // L35: THE CROWD. crowd() is the switch (ships true, the same-build A/B);
+  // crowdTable(k) scales the shipped [t, bodies] rows by k, or takes rows, and
+  // crowdTable() puts the shipped rows back; crowdStat() is the run's tally.
+  crowd:(v)=>{ if(v !== undefined) CROWD_ON = !!v; return CROWD_ON; },
+  crowdTable:(k)=>{ CROWD_AT = k === undefined || k === null ? CROWD_AT0.map(r => r.slice())
+                             : Array.isArray(k) ? k.map(r => r.slice()) : CROWD_AT0.map(r => [r[0], r[1]*k]);
+                    return CROWD_AT.map(r => r.slice()); },
+  crowdRate:(v)=>{ if(v !== undefined) CROWD_RATE = +v; return CROWD_RATE; },
+  crowdShare:(v)=>{ if(v !== undefined) CROWD_SHARE = Math.max(0, +v); return CROWD_SHARE; },
+  crowdWalk:(v)=>{ if(v !== undefined) CROWD_WALK = !!v; return CROWD_WALK; },
+  crowdStat:()=>({ ...crowdStat, want:+crowdWant(T).toFixed(1), on:CROWD_ON, rate:CROWD_RATE, share:CROWD_SHARE,
+                   live:enemies.filter(e => !e.dead && !e.boss).length, crowd:enemies.filter(e => !e.dead && e.crowd).length }),
+  // THE CROWD GATE (L35 of this log). Every claim CROWD_AT's comment makes,
+  // pressed on the live page and put back, each failing by name. Subjects
+  // derived: the rows from CROWD_AT0, the mix from PHASES, the kit from the
+  // weapons' own evolved forms, the boss from BOSSES.
+  crowdGate:()=>{
+    const bad = [], A = CROWD_AT0, same = (a, b)=> JSON.stringify(a) === JSON.stringify(b);
+    // 0. SHIPPED, and no knob left moved
+    if(CROWD_ON !== true) bad.push(`THE CROWD IS SHIPPED OFF: CROWD_ON ${CROWD_ON}`);
+    if(!same(CROWD_AT, A)) bad.push(`THE CROWD TABLE WAS LEFT MOVED: ${JSON.stringify(CROWD_AT)} against the shipped ${JSON.stringify(A)}`);
+    if(CROWD_RATE !== CROWD_RATE0 || CROWD_SHARE !== CROWD_SHARE0 || CROWD_WALK !== CROWD_WALK0)
+      bad.push(`A CROWD KNOB WAS LEFT MOVED: rate ${CROWD_RATE} (ships ${CROWD_RATE0}), share ${CROWD_SHARE} (ships ${CROWD_SHARE0}), walk ${CROWD_WALK} (ships ${CROWD_WALK0})`);
+    // 1. PURE: nothing before the first row (the staged opening), each row at its
+    //    own time, between two rows between them, the last row held after it
+    if(crowdWant(A[0][0] - 1) !== 0) bad.push(`THE CROWD STANDS BEFORE ITS FIRST ROW: ${crowdWant(A[0][0] - 1)} at t=${A[0][0] - 1}`);
+    for(const [t, n] of A) if(Math.abs(crowdWant(t) - n) > 1e-9) bad.push(`THE CROWD MISSES ITS OWN ROW: ${crowdWant(t)} at t=${t}, the row says ${n}`);
+    for(let i = 1; i < A.length; i++){ const m = crowdWant((A[i-1][0] + A[i][0]) / 2);
+      if(!(m >= Math.min(A[i-1][1], A[i][1]) - 1e-9 && m <= Math.max(A[i-1][1], A[i][1]) + 1e-9)) bad.push(`THE CROWD LEAVES ITS ROWS BETWEEN t=${A[i-1][0]} AND t=${A[i][0]}: ${m}`); }
+    if(crowdWant(1e6) !== A[A.length-1][1]) bad.push(`THE LAST ROW IS NOT HELD: ${crowdWant(1e6)}`);
+    // ---- the live half, staged and put back
+    const arrs = { enemies, corpses, gems, hazards, pets, zones, spits, bolts, mortars, rings, swings, arcs, pops, cpops, nums };
+    const kArr = {}; for(const k in arrs) kArr[k] = arrs[k].slice();
+    const kp = { x:P.x, z:P.z, y:P.y, vx:P.vx, vz:P.vz, hp:P.hp, maxhp:P.maxhp, iframe:P.iframe, kit:P.kit, dmg:P.dmg, reach:P.reach, mag:P.mag, rush:P.rush };
+    const ks = { T, bossIdx, noSpawn, botDrive, kills, coinsRun, nextSpawn, on:CROWD_ON, bank:crowdBank, free:crowdFree,
+                 stat:{ ...crowdStat }, flow:{ ...hordeFlow }, cam:camAnchor ? camAnchor.slice() : null, shake, flash, hl:JSON.stringify(hurtLog) };
+    qaLive(bad, "THE CROWD GATE");
+    qaArm(killR, killRN);                                  // no death in here moves the kill radius
+    const ev0 = events.splice(0);
+    const clear = ()=>{ for(const k of ["enemies","corpses","gems","hazards","pets","zones","spits","bolts","mortars","rings","swings","arcs"]) arrs[k].length = 0; rebuildGrid(); };
+    // the premise: a late kit, every weapon at its evolved form, the reach and the
+    // damage of a run's second half - a kit that clears the table as it arrives
+    const lateKit = ()=>{ P.kit = {}; for(const k of ["bat","aura","zap","mortar"]) if(WEAPONS[k]) P.kit[k] = { key:k, l:WMAX-1, t:0, evo:true };
+                          P.reach = 2.8; P.dmg = 400; P.mag = 0; P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0;
+                          P.maxhp = P.hp = 1e9; P.iframe = 1e9; };
+    const TL = A[A.length-2][0] + 30, want = crowdWant(TL);
+    // 2. THE CLAIM: a crowd stands against a kit that clears the table; with the
+    //    switch off (the null) the same kit clears the same table to a thin field
+    const arm = (on)=>{ clear(); lateKit(); CROWD_ON = on; T = TL; bossIdx = BOSSES.length; noSpawn = false; botDrive = false;
+      crowdBank = 0; nextSpawn = 0; const s0 = crowdStat.sent, k0 = kills, t0 = T; let sum = 0, n = 0, peak = 0, ranged = 0;
+      for(let i = 0; i < 360; i++){ step(1/60);
+        for(const e of enemies) if(e.crowd && !e.seenR){ e.seenR = 1; if(e.def.ranged) ranged++; }
+        const live = enemies.filter(e => !e.dead && !e.boss).length; peak = Math.max(peak, live);
+        if(i >= 120){ sum += live; n++; } }
+      return { mean:+(sum/n).toFixed(1), peak, sent:crowdStat.sent - s0, kills:kills - k0, secs:+(T - t0).toFixed(2), ranged }; };
+    const ON = arm(true), OFF = arm(false);
+    if(!(OFF.kills > 0 && OFF.mean < want * .5)) bad.push(`THE PREMISE FAILED - THE KIT DOES NOT CLEAR THE TABLE: with the crowd off ${OFF.mean} stand against a want of ${want.toFixed(0)} (${OFF.kills} kills), so clause 2 cannot say the crowd is what holds the field`);
+    if(!(ON.mean >= want * .8)) bad.push(`THE CROWD DOES NOT STAND: ${ON.mean} bodies on average against a want of ${want.toFixed(0)} at t=${TL}, with the kit clearing ${ON.kills} in ${ON.secs} s`);
+    if(!(ON.kills > want)) bad.push(`THE CROWD IS NOT BEING CLEARED - IT IS JUST STANDING: ${ON.kills} kills in ${ON.secs} s against a crowd of ${want.toFixed(0)}, so nothing arrived faster than anything cleared`);
+    //  ...and never faster than it says: CROWD_RATE a second plus what it may bank
+    const cap = CROWD_RATE * ON.secs + CROWD_RATE * CROWD_BURST + 6;
+    if(ON.sent > cap) bad.push(`THE CROWD ARRIVES FASTER THAN CROWD_RATE: ${ON.sent} sent in ${ON.secs} s against ${cap.toFixed(0)}`);
+    if(OFF.sent !== 0) bad.push(`THE SWITCH OFF STILL SENDS A CROWD: ${OFF.sent}`);
+    //  ...and the crowd walks in: the kinds that hang back and fire are the table's alone
+    if(ON.ranged > 0) bad.push(`THE CROWD SENDS A FIRING LINE: ${ON.ranged} ranged bodies among ${ON.sent} crowd arrivals`);
+    //  NULL for that: the phase this clause reads has a ranged kind in its mix, or it proves nothing
+    { const ph = PHASES.reduce((a, p)=> TL >= p.t ? p : a, PHASES[0]);
+      if(!Object.keys(ph.mix).some(k => ENEMIES[k].ranged)) bad.push(`CLAUSE 2 NULL: the mix at t=${TL} has no ranged kind, so "the crowd sends none" is vacuous`); }
+    // 3. THE OPENING IS STAGED: nothing before the first row
+    clear(); lateKit(); CROWD_ON = true; T = A[0][0] - 8; noSpawn = false; crowdBank = 0;
+    { const s0 = crowdStat.sent; for(let i = 0; i < 240; i++) step(1/60);
+      if(crowdStat.sent !== s0) bad.push(`THE CROWD ARRIVES IN THE OPENING: ${crowdStat.sent - s0} sent before t=${A[0][0]}`); }
+    // 4. A BOSS FIGHT IS ABOUT ONE BODY: nothing while a boss is up
+    clear(); lateKit(); CROWD_ON = true; T = TL; noSpawn = false; crowdBank = 0;
+    { spawnBoss(BOSSES[1]); const b = enemies.find(e => e.boss); if(b){ b.rise = 0; b.hp = b.maxhp = 1e12; }
+      const s0 = crowdStat.sent; for(let i = 0; i < 120; i++) step(1/60);
+      if(!b) bad.push(`CLAUSE 4 PREMISE: no boss could be staged`);
+      else if(crowdStat.sent !== s0) bad.push(`THE CROWD FIGHTS THE BOSS: ${crowdStat.sent - s0} sent while ${b.def.nm} was up`); }
+    // 5. NEVER PAST MAXE
+    clear(); lateKit(); CROWD_ON = true; T = TL; noSpawn = true; crowdBank = CROWD_RATE * CROWD_BURST;
+    { for(let i = 0; enemies.length < MAXE - 2 && i < MAXE; i++){ const e = spawnEnemy("shambler", 60 + (i % 20), 60 + Math.floor(i / 20)); if(e){ e.hp = e.maxhp = 1e9; } }
+      P.dmg = 0; noSpawn = false; for(let i = 0; i < 30; i++) step(1/60);
+      if(enemies.length > MAXE) bad.push(`THE CROWD PUSHES THE FIELD PAST MAXE: ${enemies.length} of ${MAXE}`); }
+    // 6. PAID FOR ONCE: out of the table's budget, and an unpaid body pays nothing a kill pays
+    if(ON.sent > 0 && crowdStat.paid > CROWD_SHARE * crowdStat.table + 1)
+      bad.push(`THE CROWD IS PAID PAST ITS SHARE: ${crowdStat.paid} paid against ${CROWD_SHARE} x ${crowdStat.table} table bodies`);
+    clear(); lateKit(); noSpawn = true; CROWD_ON = true;
+    { P.kit.bloodthirst = { key:"bloodthirst", l:0, t:0, evo:false }; P.maxhp = 1e6; P.hp = 5e5;
+      const kill = (paid)=>{ const e = spawnEnemy("shambler", 20, 0); e.crowd = 1; if(!paid) e.xp = 0;
+        const g0 = gems.length, c0 = coinTally(), h0 = P.hp, f0 = crowdFree; killEnemy(e);
+        return { gems:gems.length - g0, coins:+(coinTally() - c0).toFixed(4), heal:P.hp - h0, free:crowdFree - f0 }; };
+      const U = kill(false), Pd = kill(true);
+      if(U.gems !== 0 || U.coins !== 0 || U.heal !== 0) bad.push(`AN UNPAID CROWD BODY PAYS: gems ${U.gems}, coins ${U.coins}, heal ${U.heal}`);
+      if(U.free !== 1) bad.push(`AN UNPAID KILL IS NOT COUNTED FREE: ${U.free}`);
+      if(!(Pd.gems === 1 && Pd.coins >= 1/9 - 1e-3 && Pd.heal > 0 && Pd.free === 0))
+        bad.push(`CLAUSE 6 NULL: A PAID CROWD BODY DOES NOT PAY EITHER (gems ${Pd.gems}, coins ${Pd.coins}, heal ${Pd.heal}) - the clause above sees nothing`); }
+    // put it all back
+    for(const k in arrs){ arrs[k].length = 0; for(const x of kArr[k]) arrs[k].push(x); }
+    events.push(...ev0);
+    Object.assign(P, kp);
+    T = ks.T; bossIdx = ks.bossIdx; noSpawn = ks.noSpawn; botDrive = ks.botDrive; kills = ks.kills; coinsRun = ks.coinsRun;
+    nextSpawn = ks.nextSpawn; CROWD_ON = ks.on; crowdBank = ks.bank; crowdFree = ks.free;
+    for(const k in crowdStat) crowdStat[k] = ks.stat[k]; for(const k in hordeFlow) hordeFlow[k] = ks.flow[k];
+    camAnchor = ks.cam; shake = ks.shake; flash = ks.flash; { const h = JSON.parse(ks.hl); for(const k in h) hurtLog[k] = h[k]; }
+    qaArm(null); rebuildGrid(); wardPass(); qaSettle();
+    return { ok: !bad.length, bad, want:+want.toFixed(1), t:TL, on:ON, off:OFF, rate:CROWD_RATE, share:CROWD_SHARE }; },
   hordeFlow: ()=>{ const ph = PHASES.reduce((a,p)=> T>=p.t ? p : a, PHASES[0]);
                    return { ...hordeFlow, alive:enemies.filter(e=>!e.dead).length,
                             cap:MAXE, rate:ph.rate, t:+T.toFixed(1) }; },
@@ -21959,7 +22152,7 @@ window.__g = {
     qaLive(bad, "THE MATRIARCH GATE");
     // L46: THE HEADLONG is another gate's subject, and her arrival trial runs the real spawn
     // schedule - a late CERATOP charging it is not her encounter
-    const hdlK = HDL_ON; noSpawn = true; botDrive = false; HDL_ON = false;
+    const hdlK = HDL_ON, crK = CROWD_ON; noSpawn = true; botDrive = false; HDL_ON = false; CROWD_ON = false;   // L35: and THE CROWD - her arrival trial runs the real director
     const clear = ()=>{ g.clearEnemies(); matNest = null; alerts.length = 0;
                         matStat.moved = 0; matStat.tunnelled = 0; matStat.warned = 0; };
     // 1. THE ARRIVAL. Her clock, run from MAT_WARN + a second before it.
@@ -22074,7 +22267,7 @@ window.__g = {
     // bodies, corpses, and the gems those deaths dropped. Clearing the bodies
     // and not the gems left the next gate a player standing in a pile of XP.
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
-    MAT_ON = keep.on; HDL_ON = hdlK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; matNest = keep.nest;
+    MAT_ON = keep.on; HDL_ON = hdlK; CROWD_ON = crK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; matNest = keep.nest;
     boons.length = 0; boons.push(...keep.boons); botDrive = keep.bd;
     Object.assign(boonMul, keep.bm); Object.assign(P, keep.stat); P.hp = keep.hp; coinsRun = keep.coins;
     applyBoons();
@@ -22145,7 +22338,7 @@ window.__g = {
                    zn:zones.splice(0), mn:matNest, mon:MAT_ON };
     qaLive(bad, "THE THORNBACK GATE");
     // L46: and THE HEADLONG's - found when a battery's arrival trial was killed by charging carcasses
-    const hdlK = HDL_ON; noSpawn = true; botDrive = false; MAT_ON = false; HDL_ON = false;   // hers is a different gate's subject
+    const hdlK = HDL_ON, crK = CROWD_ON; noSpawn = true; botDrive = false; MAT_ON = false; HDL_ON = false; CROWD_ON = false;   // hers is a different gate's subject (L35: and the crowd)
     const clear = ()=>{ g.clearEnemies(); thnRing = null; alerts.length = 0; hazards.length = 0;
                         zones.length = 0; thnStat.planted = 0; thnStat.walled = 0; thnStat.out = 0; };
     // 1. THE ARRIVAL. Its clock, run from THN_WARN + a second before it.
@@ -22289,7 +22482,7 @@ window.__g = {
     if(F0.fell !== 0 || F0.n !== 0) bad.push(`THE SWITCH OFF STILL ENDS THE RUN'S WAY: fell ${F0.fell}, ${F0.n} patches`);
     // restore everything this gate touched
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
-    THN_ON = keep.on; MAT_ON = keep.mon; HDL_ON = hdlK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
+    THN_ON = keep.on; MAT_ON = keep.mon; HDL_ON = hdlK; CROWD_ON = crK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
     thnRing = keep.ring; matNest = keep.mn; botDrive = keep.bd;
     P.hp = keep.hp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z);
     alerts.length = 0; hazards.length = 0; zones.length = 0;
@@ -22363,7 +22556,7 @@ window.__g = {
     qaLive(bad, "THE SKYSPLITTER GATE");
     // L46: THE HEADLONG too. This trial is where a battery lost its player to charging carcasses
     // (twice, inside freezeGate), and every gate after it then ran on a run that had ended.
-    const hdlK = HDL_ON; noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; HDL_ON = false;   // other gates' subjects
+    const hdlK = HDL_ON, crK = CROWD_ON; noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; HDL_ON = false; CROWD_ON = false;   // other gates' subjects (L35: and the crowd)
     const clear = ()=>{ g.clearEnemies(); skyShadow = null; carrion = null; alerts.length = 0;
                         hazards.length = 0; zones.length = 0;
                         for(const k in sksStat) sksStat[k] = 0; };
@@ -22505,7 +22698,7 @@ window.__g = {
     if(!(F0.toYou < -1)) bad.push(`CLAUSE 4 NULL: WITH THE SWITCH OFF THE HORDE DID NOT COME FOR YOU EITHER: ${F0.toYou} m`);
     // restore everything this gate touched
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
-    SKY_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; HDL_ON = hdlK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
+    SKY_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; HDL_ON = hdlK; CROWD_ON = crK; noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi;
     skyShadow = keep.sh; carrion = keep.ca; matNest = keep.mn; thnRing = keep.ring; botDrive = keep.bd;
     boons.length = 0; boons.push(...keep.bo);
     P.hp = keep.hp; P.x = keep.x; P.z = keep.z; P.vx = keep.vx; P.vz = keep.vz; P.y = groundY(P.x, P.z);
@@ -22596,7 +22789,7 @@ window.__g = {
                    bo:boons.slice(), vl:vigil.lit, sud:sudden, fin:finish, mut:MUT_ON, ram:P.kit.ram, rush:P.rush,
                    idle:P.idle, coins:coinsRun, kills, ns2:nextSpawn };
     qaLive(bad, "THE TERRAVORE GATE");
-    const hdlK = HDL_ON; noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; SKY_ON = false; HDL_ON = false;   // other gates' subjects (L46: and THE HEADLONG)
+    const hdlK = HDL_ON, crK = CROWD_ON; noSpawn = true; botDrive = false; MAT_ON = false; THN_ON = false; SKY_ON = false; HDL_ON = false; CROWD_ON = false;   // other gates' subjects (L46: and THE HEADLONG; L35: and the crowd)
     let ended = [];
     // The real finish() writes the save (a win, coins, a layer of THE DEEP). The
     // gate needs to know WHEN the run would end and with what, not to end it.
@@ -22814,7 +23007,7 @@ window.__g = {
     g.clearEnemies(); if(g.clearGems) g.clearGems(); rebuildGrid();
     finish = keep.fin;
     monuments.forEach((M, i) => { M.lit = keepM[i].lit; M.litT = keepM[i].litT; if(keepM[i].s) M.trvSunk = true; else delete M.trvSunk; });
-    vigil.lit = keep.vl; TRV_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; SKY_ON = keep.son; MUT_ON = keep.mut; HDL_ON = hdlK;
+    vigil.lit = keep.vl; TRV_ON = keep.on; MAT_ON = keep.mon; THN_ON = keep.ton; SKY_ON = keep.son; MUT_ON = keep.mut; HDL_ON = hdlK; CROWD_ON = crK;
     noSpawn = keep.ns; T = keep.t; bossIdx = keep.bi; sudden = keep.sud; nextSpawn = keep.ns2; coinsRun = keep.coins; kills = keep.kills;
     trvMaw = keep.maw; trvEnd = keep.end; matNest = keep.mn; thnRing = keep.ring; skyShadow = keep.sh; carrion = keep.ca; botDrive = keep.bd;
     boons.length = 0; boons.push(...keep.bo);

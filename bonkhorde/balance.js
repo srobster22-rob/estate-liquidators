@@ -64,6 +64,10 @@ const SEED_BASE = process.env.BONKHORDE_SEED !== undefined
                 ? +process.env.BONKHORDE_SEED : 20260821;
 const CURVE  = process.env.BONKHORDE_CURVE
              ? process.env.BONKHORDE_CURVE.split(",").map(Number) : null;
+// BONKHORDE_CROWD=off|<k> (L35 of this log): THE CROWD's switch, or its shipped
+// [t, bodies] rows scaled by k - the same-build A/B for the standing field.
+// Printed in the header for the same reason the curve is.
+const CROWD  = process.env.BONKHORDE_CROWD;
 // Hardcoded here, this list silently excluded THE ACCOUNTANT and THE TWIN the
 // moment they shipped - a bench that quietly stops covering new content is
 // worse than no bench, because the gap looks like a clean sweep. Read from the
@@ -81,8 +85,11 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed, noDive]) => {
+  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed, noDive, crowd]) => {
     window.__g.wipeSave();
+    if (crowd !== undefined && window.__g.crowd) {
+      if (crowd === "off") window.__g.crowd(false);
+      else { window.__g.crowd(true); window.__g.crowdTable(+crowd); } }
     if (curve) window.__g.curve(curve[0], curve[1], curve[2], curve[3], curve[4]);
     window.__g.noDive(noDive);
     window.__g.pin(seed);          // null unpins, which is what SEED_BASE=0 gives
@@ -101,7 +108,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
              evos: window.__g.kit().filter(k => k.includes("EVO")).length,
              hContact: h.contact, hSpit: h.spit, hHaz: h.hazard, hTotal: h.total,
              hHits: h.hits.contact + h.hits.spit + h.hits.hazard };
-  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed, NODIVE]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed, NODIVE, CROWD]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {
@@ -109,6 +116,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     console.log(shopped ? "VETERAN  (all permanent upgrades bought)"
                         : "FIRST RUN  (no permanent upgrades)");
     if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]} dmgFrom=${CURVE[4]}`);
+    if (CROWD !== undefined) console.log(`crowd: ${CROWD === "off" ? "OFF" : "shipped rows x" + CROWD}`);
     console.log(SEED_BASE ? `paired seeds ${SEED_BASE}..${SEED_BASE + TRIALS - 1}`
                           : `unpaired - fresh world every trial`);
     console.log("=".repeat(66));

@@ -8462,9 +8462,13 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         if (!s) { outside++; continue; }
         if (s[0] > 120 && s[0] < W - 120 && s[1] > 120 && s[1] < H - 120) inside++;
         else if (s[0] < -300 || s[0] > W + 300 || s[1] < -300 || s[1] > H + 300) outside++; }
-      // 4. the size cull on its own: one body in the middle tier (20 m - at 30 the far tier is already two boxes), squarely on
-      //    screen - the frame builds fewer of its boxes than a capture holds
-      g.clearEnemies(); g.place(0, 0); g.aim(0); g.spawnAt("shambler", 0, 20); g.stepRaw(1/60); g.pause(true);
+      // 4. the size cull on its own: one body in the middle tier (20 m - the far tier starts past 40), squarely on
+      //    screen - the frame builds fewer of its boxes than a capture holds.
+      //    ONE body, so the director is frozen first (L35 of this log). skipTo(600) stands THE MATRIARCH and
+      //    THORNBACK up for the whole fill above, which suspends THE CROWD while its bank fills to a quarter
+      //    second (50 bodies); clearEnemies takes the bosses away, and the one step below spent that bank - 51
+      //    bodies measured as "a single body", 194 built of 972.
+      g.clearEnemies(); g.freezeSpawns(true); g.place(0, 0); g.aim(0); g.spawnAt("shambler", 0, 20); g.stepRaw(1/60); g.pause(true);
       await frame(); await frame();
       const farShown = g.boxCensus().horde, farOn = !!g.screenOf(0, .5, 20);
       g.capFrame(); const farAll = g.boxCensus().horde;
@@ -9010,28 +9014,61 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // shipped table holds 83/59 and draws 44/31 where a reverted t:270 holds
     // 37/30 and draws 14/11; at 15:00 the shipped table holds 115 and draws
     // 115 where a reverted t:780 holds 66 and draws 66.
+    //
+    // THE CROWD (L35 of this log) CHANGED WHAT THESE FLOORS CAN SEE. The
+    // director now also holds a standing field (crowdWant), so a thinned table
+    // is back-filled: measured with the crowd on, a reverted t:270 holds 62-63
+    // at 6:00 and a reverted t:780 holds 123 at 15:00 - both over the floors
+    // below, both mutants alive. What gives a thin table away now is how hard
+    // the crowd has to work to cover for it: by 6:00 the shipped table leaves
+    // the crowd 0-49 bodies to send on 13 seeds (at most 3.1% of what the table
+    // itself sent), the reverted t:270 makes it send 147-157; by 15:00 the
+    // shipped seed-9 run has it send 4.8% of the table, the reverted t:780
+    // 11.4%. So each leg also bounds the crowd's share of the arrivals.
+    // AND THE SHARE IS READ OVER A WINDOW. The crowd's own draws make seed 9 a
+    // different run from 2:20 on, and a single 6:00 frame of it reads .298;
+    // the same run reads .285 to .405 inside 40 s, and across 13 paired seeds
+    // the crowd RAISES the mean share (.424 on, .401 off). One frame against a
+    // .30 bar was inside the noise of one run, so the bar is unchanged and it
+    // is measured as the mean of seven frames from 4:30 to 6:00, each with the
+    // chase camera settled on the player first (it only moves when a frame is
+    // rendered, and g.step renders nothing).
     const crowd = await page.evaluate(async (seeds) => {
       const g = window.__g, out = [];
       const frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
       const look = () => { const f = g.hordeFlow(); return { f };
       };
+      // a paused frame with the chase camera settled on the player: fifty renders
+      // at 16 ms, synchronous, so the page's own loop cannot step the sim between
+      const settled = () => { g.pause(true); let ms = performance.now();
+                              for (let i = 0; i < 50; i++) g.tick(ms += 16);
+                              const c = g.boxCensus(); g.pause(false); return c; };
       for (const seed of seeds) {
         g.wipeSave(); g.dev(true); g.pin(seed); g.pinRun(seed);
         g.start("intern"); g.god(); g.bot(true); g.drainPicks(true);
-        g.step(360 * 60, 1/60);
-        let f = g.hordeFlow();
-        g.pause(true); await frame(); let c = g.boxCensus(); g.pause(false);
+        g.step(270 * 60, 1/60);
+        const shares = []; let c = null;
+        for (let k = 0; k < 7; k++) {
+          if (k) g.step(15 * 60, 1/60);
+          c = settled(); shares.push(c.horde / c.drawn);
+        }
+        let f = g.hordeFlow(), cs = g.crowdStat();
         const row = { seed, early: { alive: f.alive, drawn: c.enemies - c.culled,
                                      boxes: c.drawn, hordeBoxes: c.horde,
-                                     horde: +(c.horde / c.drawn).toFixed(3) } };
+                                     at6: +(c.horde / c.drawn).toFixed(3),
+                                     sent: cs.sent, table: cs.table,
+                                     horde: +(shares.reduce((a, b) => a + b, 0) / shares.length).toFixed(3) } };
         // the late leg on ONE seed only: it is another nine minutes of world
         // per seed, and one is enough to see a late phase go missing
         if (seed === seeds[0]) {
           g.step(540 * 60, 1/60);
-          f = g.hordeFlow();
+          f = g.hordeFlow(); cs = g.crowdStat();
+          // NOT settled(): the late floors were calibrated on this exact read, a
+          // camera left where the 6:00 frame put it (g.step renders nothing) -
+          // settling it is a re-measurement of its own, with its own floors
           g.pause(true); await frame(); c = g.boxCensus(); g.pause(false);
           row.late = { alive: f.alive, drawn: c.enemies - c.culled, boxes: c.drawn,
-                       hordeBoxes: c.horde,
+                       hordeBoxes: c.horde, sent: cs.sent, table: cs.table,
                        asked: f.asked, killed: f.killed, culled: f.culled, capped: f.capped };
         }
         out.push(row);
@@ -9040,8 +9077,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     }, [9, 3]);
     const early = crowd.map(c => c.early);
     const late = crowd.find(c => c.late).late;
-    const sayE = crowd.map(c => `seed ${c.seed}: ${c.early.alive} alive, ${c.early.drawn} drawn, ${(c.early.horde*100).toFixed(0)}% of ${c.early.boxes} boxes`).join(" | ");
-    const sayL = `${late.alive} alive, ${late.drawn} drawn, ${late.boxes} boxes`;
+    const sayE = crowd.map(c => `seed ${c.seed}: ${c.early.alive} alive, ${c.early.drawn} drawn, ${(c.early.horde*100).toFixed(0)}% of the frame over 4:30-6:00 (${(c.early.at6*100).toFixed(0)}% of ${c.early.boxes} boxes at 6:00), the crowd sent ${c.early.sent} against the table's ${c.early.table}`).join(" | ");
+    const sayL = `${late.alive} alive, ${late.drawn} drawn, ${late.boxes} boxes, the crowd sent ${late.sent} against the table's ${late.table}`;
     ok("six minutes in, the field holds a crowd",
        early.every(e => e.alive >= 50), sayE + "  (a reverted t:270 holds 30-37)");
     ok("and you can SEE it - the drawn count is a crowd, not a rumour",
@@ -9061,9 +9098,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // at, not this section's to paper over.
     ok("and the horde is the biggest thing in the frame, not the floor",
        early.every(e => e.horde >= .30), sayE);
+    ok("and it is the TABLE sending them: the standing crowd (L35) tops up the dips, it does not stand in for a thin table",
+       early.every(e => e.sent <= .06 * e.table), sayE + "  (a reverted t:270 makes the crowd send 147-157, ~10%)");
     ok("fifteen minutes in, the LATE table is still sending them",
-       late.alive >= 90 && late.drawn >= 85,
-       sayL + "  (a reverted t:780 holds 66 and draws 66)");
+       late.alive >= 90 && late.drawn >= 85 && late.sent <= .08 * late.table,
+       sayL + "  (a reverted t:780 holds 66 and draws 66 without the crowd; with it, 123 and 113 - and the crowd sends 11.4% of the table)");
     // The flow has to balance, or the counters are decorative: everything asked
     // for either arrived, was refused by the cap, or left by one of two doors.
     ok("the population balances: asked = alive + killed + culled + capped",
@@ -9243,6 +9282,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // the young world, before censusGate's 600 seconds of play.
       out.hdl = g.hdlGate ? g.hdlGate()
                           : { ok:false, bad:["g.hdlGate is missing"] };
+      // L35 (this log): THE CROWD - the director holds a standing field,
+      // arriving faster than the kit clears. crowdGate stages a late kit at
+      // the second-last row's clock, drives step() both ways (the switch is
+      // the null) and puts the field, the clock and the player back.
+      out.crowd = g.crowdGate ? g.crowdGate()
+                              : { ok:false, bad:["g.crowdGate is missing"] };
       // AND L21 ARRIVED WITH SIX MORE, which is the fourth time this has
       // happened and the reason this section is not allowed to be finished.
       // The round put relief into the terrain - RELIEF_AMP, a tone field, flat
@@ -9379,6 +9424,9 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L44's TERRAVORE gate: the map arrives at it - the maw is fixed and does not follow, the unlit monuments go down into it, the inhale pulls you in and can be outrun, and the world comes back up before the results",
        gates.trv.ok, say(gates.trv) +
        `  (maw ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.first && gates.trv.arrive.on.first.pd} m, swallowed ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.sunk} of ${gates.trv.arrive && gates.trv.arrive.on && gates.trv.arrive.on.unlit}, kit ${gates.trv.kit})`);
+    ok("L35's crowd gate: against a kit that clears the table, the director holds the standing crowd its rows ask for, never faster than CROWD_RATE, not in the opening, not in a boss fight, and paid for once",
+       gates.crowd.ok, say(gates.crowd) +
+       `  (t=${gates.crowd.t}: want ${gates.crowd.want}, stood ${gates.crowd.on && gates.crowd.on.mean} with the crowd (${gates.crowd.on && gates.crowd.on.kills} cleared, ${gates.crowd.on && gates.crowd.on.sent} sent) against ${gates.crowd.off && gates.crowd.off.mean} without)`);
     ok("L46's THE HEADLONG gate: a CERATOP in range lowers its horns and lays a lane that does not follow you, runs it at speed and hits once, a sidestep saves you, and its carcass slides on",
        gates.hdl.ok, say(gates.hdl) +
        `  (${(gates.hdl.species || []).join(",")}; leave the widest lane in ${gates.hdl.tOut} s at ${gates.hdl.slowest} m/s; ran ${gates.hdl.travelled} m in 0.5 s, hits ${gates.hdl.hitsIn}, slid ${gates.hdl.slid} m, ${gates.hdl.capLive} lanes live at the cap; tell heading ${gates.hdl.hdOff} rad off the lane, ${gates.hdl.movedPlates} plates moved mid-run, carcass ${gates.hdl.drag && gates.hdl.drag.slide} m vs run ${gates.hdl.drag && gates.hdl.drag.live} m on the bog)`);
@@ -9739,6 +9787,25 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // random amount every render, so without holding it the floor below
       // measures the shake and swamps what it is supposed to be the floor of.
       g.pause(true); g.setShake(0);
+      // THE LENS LOOKS WHERE THE COMPLAINT WAS: ground, not a monument (L35 of
+      // this log). Nothing in this run turns camYaw (start() sets 0; the bot
+      // steers the body, not the camera), so the frame looked along +z from
+      // wherever seed 9 stood at 7:00 - and THE CROWD's own draws moved that
+      // station 83 m, to 45 m in front of THE LAST STEP: every outcrop in view
+      // behind it, 0 px changed. A view a monument fills is not an empty middle
+      // distance, and one unchosen heading was always luck (4 of 8 headings from
+      // the pre-crowd station would fail too). So the heading is the one
+      // farthest in angle from every monument close enough to hide a stone
+      // (outcrops are built inside S.far + 8, never past 153 m). Open ground
+      // alone does not make the claim pass: it still needs stones in the view.
+      { const S = g.state();
+        const brg = g.monuments().filter(m => Math.hypot(m.x - S.x, m.z - S.z) < 200)
+                     .map(m => Math.atan2(m.x - S.x, m.z - S.z) * 180 / Math.PI);
+        let yaw = 0, best = -1;
+        for (let a = 0; a < 360; a += 5) {
+          const c = brg.length ? Math.min(...brg.map(b => Math.abs((((a - b) % 360) + 540) % 360 - 180))) : 180;
+          if (c > best) { best = c; yaw = a; } }
+        g.setCam(yaw * Math.PI / 180); }
       let ms = performance.now();
       for(let i=0;i<50;i++) g.tick(ms += 16);       // the chase camera lerps on every render
       const cv = [...document.querySelectorAll("canvas")].find(c => c.id !== "ui");
@@ -9763,7 +9830,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         return { n, up }; };
       const real = diff(off2.px, on.px), noise = diff(off.px, off2.px);
       const gate = g.outGate();
-      g.pause(false);
+      g.setCam(0); g.pause(false);
       return { gate, paint:+(100*real.n/(W*H)).toFixed(2), floor:+(100*noise.n/(W*H)).toFixed(2),
                upperShare: real.n ? +(100*real.up/real.n).toFixed(1) : 0,
                onDrawn:on.drawn, offDrawn:off.drawn, near:on.near,
