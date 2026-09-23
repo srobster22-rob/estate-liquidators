@@ -6498,12 +6498,18 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // (isRule, kind "r") but carry their own "MUTATION" lv label rather than
     // "RULE", so the label check accepts either - c.rule (the DOM's own
     // "rule" class, isRule-derived) is what actually stands for membership.
-    ok("the draft deals rules as their own kind of card from level 4, all nine of them, none before",
-       r.earlyHands >= 4 && r.early === 0 && r.later.length >= 9 && new Set(r.later.map(c => c.key)).size === 9 &&
+    // TEN since L36 of this log (the merge of the other session's WHIPTAIL, the
+    // third mutation, rule-kind the same way). "All of them" is now read off the
+    // page's own catalogue (g.rules(), every isRule entry) so the next card
+    // cannot fail this by being added - and the catalogue is pinned at ten, so
+    // one cannot leave it without this noticing either.
+    ok("the draft deals rules as their own kind of card from level 4, all ten of them, none before",
+       r.earlyHands >= 4 && r.early === 0 && r.rules.length === 10 && r.later.length >= r.rules.length &&
+       new Set(r.later.map(c => c.key)).size === r.rules.length &&
        r.later.every(c => (c.lv === "RULE" || c.lv === "MUTATION") && c.rule),
        `${r.early} of ${r.earlyHands} cards before level 4, ${r.later.length} after (${[...new Set(r.later.map(c => c.nm))].join(" ")}), level ${r.lvl}`);
     ok("the slots cap the rules: with three taken past level 30 the draft offers no fourth, and a rule sits in the kit bar in its own colour",
-       r.capped === 0 && r.slot && r.rules.length === 9 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}`);
+       r.capped === 0 && r.slot && r.rules.length === 10 && r.lvl >= 30, `${r.capped} offered past the cap, slot ${r.slot}, level ${r.lvl}, ${r.rules.length} rules in the catalogue`);
     ok("and the chain readout says the chain is paying twice while RHYTHM is held",
        /x\d/.test(r.hopLabel) && /PACE & DMG/.test(r.hopLabel), JSON.stringify(r.hopLabel));
   }
@@ -6728,7 +6734,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        Math.abs(r.glass.d1 / r.glass.d0 - 1.4) < .01 && Math.abs(r.glass.hp1 / r.glass.hp0 - .6) < .02,
        `dmg x${(r.glass.d1 / r.glass.d0).toFixed(2)}, hp ${r.glass.hp0} -> ${r.glass.hp1}`);
     ok("the third slot opens at level 30: with two rules held nothing green is dealt below it and rules are dealt above",
-       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 9,
+       r.lvlBelow < 30 && r.below === 0 && r.lvlAbove >= 30 && r.above > 0 && r.rules.length === 10,   // ten since L36 (WHIPTAIL)
        `level ${r.lvlBelow}: ${r.below} rule cards; level ${r.lvlAbove}: ${r.above}; ${r.rules.join(" ")}`);
   }
 
@@ -7642,7 +7648,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("COLLECTION prints all ten weapons with the recipe for each evolution on the tile",
        col.W.length === 10 && col.W.every(t => /= .+ 3 \+ .+ 3/.test(t)) && col.W.some(t => /MEGABONK = BONK BAT 3 \+ BIGGER TEETH 3/.test(t)),
        col.W.map(t => t.match(/([A-Z ]+ = [A-Z ]+ 3 \+ [A-Z ]+ 3)/)?.[1] || "no recipe").slice(0, 3).join(" | "));
-    ok("and the eight growths (with what each unlocks) and the nine rules", col.g === 8 && col.unl === 8 && col.r === 9, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
+    // ten rules since L36 of this log (the merge of the other session's WHIPTAIL)
+    ok("and the eight growths (with what each unlocks) and the ten rules", col.g === 8 && col.unl === 8 && col.r === 10, `${col.g} growths, ${col.unl} with an UNLOCKS line, ${col.r} rules`);
 
     // UNLOCKS: the ladder with a bar per rung
     const lk = await page.evaluate(() => { const g = window.__g; g.menuTab("locks"); return { n: document.querySelectorAll("#locks .lk").length, bars: document.querySelectorAll("#locks .lk .nb i").length, badge: (document.querySelector('.tab[data-tab="locks"]') || {}).textContent || "" }; });
@@ -9170,10 +9177,66 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // Order matters at the end: burrowResetGate starts two fresh runs to prove
     // the kill radius does not survive a restart, so it goes last and nothing
     // after it may depend on the run that was up.
-    const gates = await page.evaluate(async () => {
+    // L36 (this log): the mutation family's gates are TEST-ONLY now - the
+    // other session moved them out of the page (see tools/qa/mutations.js for
+    // why and how) - so the section carries them in: one expression, read from
+    // disk here and evaluated INSIDE the page, where the page's own top-level
+    // bindings are in scope exactly as they were when the gates lived there.
+    const QA_SRC = fs.readFileSync(path.join(__dirname, "tools", "qa", "mutations.js"), "utf8");
+    // L49's THE CLEAR SIGHTLINE (sightGate), the other session's own statement
+    // of it: a monument on the sightline is seen through, the boom lifts over a
+    // hollow and stops at its cap, a clear frame is untouched, and camLock
+    // stands the fix down. It runs in A RUN OF ITS OWN, pinned 9, and not in the
+    // block below, because its null controls are properties of the WORLD: each
+    // stage first has to FIND a monument that walls the lens and a hollow that
+    // cuts the sightline, and it fails when the world has none. Measured on the
+    // other session's own build, byte-identical to the merged one on every seed
+    // tried: seeds 9 and 4242 pass; seed 11 - the block below's - has no hollow
+    // that cuts the fix-off sightline at any of 1,280 station-headings (best
+    // 0.43 m), and seed 3 has none either and opens its monument by 0.498
+    // against the gate's 0.50. Inside the block, after ground/ward/burrow, it
+    // also chose a different monument (THE FIRST GATE) and thinned 0 boxes of
+    // it. So: a fresh hatchling, on the world where both premises hold with the
+    // most room (the view opens 0.921; the hollow cuts 2.25 m), before
+    // anything else in the section has touched the camera or the field.
+    // Synchronous: it renders its own frames and never calls step().
+    const sightG = await page.evaluate(() => {
+      const g = window.__g;
+      g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+      g.start("intern"); g.god(); g.drainPicks(true); g.freezeEvents(true);
+      g.step(60, 1/60);
+      return g.sightGate ? g.sightGate() : { ok:false, bad:["g.sightGate is missing"] };
+    });
+    const gates = await page.evaluate(async (QA) => {
       const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
       const out = {};
-      g.wipeSave(); g.dev(true); g.pin(11); g.pinRun(11);
+      let qa = {};
+      try { qa = (0, eval)(QA); } catch(e){ out.qaErr = String(e && e.message || e); }
+      const miss = k => ({ ok:false, bad:[`tools/qa/mutations.js has no ${k}${out.qaErr ? " (" + out.qaErr + ")" : ""}`] });
+      // ...and they go back on THIS page's hook for the length of the section,
+      // because two of the page's own gates find the others BY SCANNING IT:
+      // freezeGate re-runs every *Gate whose source drives step(1/60) with a
+      // level-up landing mid-gate, and armGate checks every *Gate that takes the
+      // arming hold gives it back. Off the hook, springGate had silently dropped
+      // out of freezeGate's sweep and whipGate would never have entered it.
+      for(const k of Object.keys(qa)) if(!(k in g)) g[k] = qa[k];
+      g.wipeSave();
+      // L49's unlockNameGate (the other session's own statement, arriving the
+      // way every gate in this section has): every creature on the ladder is
+      // called by its own line's first form, and the UNLOCKS tab prints that
+      // name. Its tab clause reads the menu ONLY while the menu is already up,
+      // and the tab lists ONLY what is still locked - so it is called HERE,
+      // between wipeSave() (which opens the menu on a save with nothing
+      // unlocked) and dev(true) (which unlocks everything), and before start()
+      // takes the menu down. Anywhere below, it passes with that clause skipped
+      // (tabRead false) or checking nothing (every creature already unlocked).
+      // `locked` is how many names the clause had to find, off the page's own
+      // bindings. It is synchronous and touches no run state.
+      const unlockLocked = (0, eval)("UNLOCKS.filter(u => LINES[u.id] && !save.unlocked[u.id]).length");
+      out.unlockName = g.unlockNameGate ? g.unlockNameGate()
+                                        : { ok:false, bad:["g.unlockNameGate is missing"] };
+      out.unlockName.locked = unlockLocked;
+      g.dev(true); g.pin(11); g.pinRun(11);
       g.start("intern"); g.god(); g.drainPicks(true); g.freezeEvents(true);
       g.step(60, 1/60);
       out.ground = g.groundGate();
@@ -9229,16 +9292,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // it stands beside rather than merely existing. Both belong here, next
       // to rout/digin/stoop, while the world is still the one they were
       // built on and before anything below levels the player past stage 0.
-      out.mut    = g.mutGate ? g.mutGate()
-                             : { ok:false, bad:["g.mutGate is missing"] };
+      out.mut    = qa.mutGate ? qa.mutGate() : miss("mutGate");
       out.charge = g.chargeGate ? g.chargeGate()
                                 : { ok:false, bad:["g.chargeGate is missing"] };
       // L39's SPRINGHEEL (springGate) and L40's tell bot (tellGate), the same
       // pair for the hop: springGate is the mutation's own statement for the
       // dodge and the springs; tellGate is the autopilot policy that stands
       // its ground and hops the rear-back rather than the rhythm.
-      out.spring = g.springGate ? g.springGate()
-                                : { ok:false, bad:["g.springGate is missing"] };
+      out.spring = qa.springGate ? qa.springGate() : miss("springGate");
+      // L36 (this log): WHIPTAIL, the other session's third mutation, with the
+      // gate this repository wrote for it (tools/qa/mutations.js) - the draft,
+      // the arc, the lash and every guard on it with its own null, the boss,
+      // the cooldown at the controls, and the club on the real body.
+      out.whip   = qa.whipGate ? qa.whipGate() : miss("whipGate");
       out.tell   = g.tellGate ? g.tellGate()
                               : { ok:false, bad:["g.tellGate is missing"] };
       // L41's THE MATRIARCH (matGate) and L42's THORNBACK (thnGate) arrive the
@@ -9370,7 +9436,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // live function - while THE GLACIER's real contrast falls to 2.777.
       out.chipShadow = g.chipShadowContrast ? g.chipShadowContrast() : [];
       return out;
-    });
+    }, QA_SRC);
     const say = r => (r && r.bad && r.bad.length) ? r.bad.join(" | ") : "clean";
     ok("L12's ground gate: the cover tier exists, lies flat, and fits the buffer",
        gates.ground.ok, say(gates.ground) + `  (cover ${gates.ground.cover}, lift ${gates.ground.lift} m, ${gates.ground.mb} MB)`);
@@ -9378,6 +9444,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        gates.ward.ok, say(gates.ward) + `  (cut ${gates.ward.cut}, holds ${gates.ward.held} of ${gates.ward.r} m)`);
     ok("L16's burrow gate: where it arrives, when it can be hit, and who is exempt",
        gates.burrow.ok, say(gates.burrow) + `  (at ${gates.burrow.at} m, share ${gates.burrow.share}, rise ${gates.burrow.riseS}s)`);
+    const un = gates.unlockName || {};
+    ok("L49's unlock-name gate: every creature on the ladder is called by its own line's first form, and the UNLOCKS tab prints that name",
+       un.ok === true && un.tabRead === true && un.locked > 0 && (un.names || []).length > 0,
+       (un.tabRead === true ? "" : "THE TAB CLAUSE NEVER RAN: the menu was not up when the gate was called | ") +
+       (un.locked > 0 ? "" : "THE TAB CLAUSE HAD NOTHING TO FIND: every creature was already unlocked | ") +
+       say(un) + `  (${(un.names || []).join(", ")}; tab read ${un.tabRead}, ${un.locked} locked)`);
+    const sg = sightG || {}, sgS = sg.structure || {}, sgT = sg.terrain || {}, sgL = sg.locked || {};
+    const sgAll = !!(sg.structure && sg.terrain && sg.clear && sg.locked);
+    ok("L49's sight gate: a monument on the sightline is seen through, the boom lifts over a hollow and never past its cap, a clear frame is untouched, and camLock stands it all down",
+       sg.ok === true && sgAll,
+       (sgAll ? "" : "A STAGE DID NOT REPORT | ") + say(sg) +
+       `  (${sgS.mon || "no monument stage"}: one colour ${sgS.off} -> ${sgS.on}, ${sgS.opened} of the middle opened, ${sgS.ghosts} boxes thinned; ` +
+       `hollow cuts ${sgT.offNeed} m, lift ${sgT.lift} m, ${sgT.left} m short after; clear-frame eye moved ${sg.clear && sg.clear.eyeDelta} m; locked ${sgL.ghosts} boxes, lift ${sgL.lift})`);
     ok("L16's kill radius dies with the run",
        gates.reset.ok, say(gates.reset) + `  (grown to ${gates.reset.grown} m before the restart)`);
     ok("L13's split gate: the card names the creature and the HUD names the twin",
@@ -9410,6 +9489,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L39's springheel gate: the card reaches the draft only with its switch on, the hop dodges a bite in the air alone, and it grows its springs on the player alone",
        gates.spring.ok, say(gates.spring) +
        `  (draft on ${gates.spring.draft && gates.spring.draft.on}/off ${gates.spring.draft && gates.spring.draft.off}, springs ${gates.spring.springs})`);
+    const wg = gates.whip || {};
+    ok("L36's WHIPTAIL gate: the card reaches the draft only with both switches on, a hard turn while moving lashes the arc behind you out to its reach and nothing else, never a boss, once per turn and once per cooldown, and the club grows on the player alone",
+       wg.ok === true, say(wg) +
+       `  (draft ${wg.draft && JSON.stringify(wg.draft)}; nulls ${wg.nulls && JSON.stringify(wg.nulls)}; cooldown ${wg.cd && JSON.stringify(wg.cd)}; club ${wg.club && JSON.stringify(wg.club)}; at the controls ${wg.controls && JSON.stringify(wg.controls)})`.slice(0, 900));
     ok("L40's tell gate: the bot stands its ground and hops only a rear-back in reach, never the rhythm",
        gates.tell.ok, say(gates.tell) + `  (hold ${gates.tell.hold} m)`);
     ok("L41's THE MATRIARCH gate: the nest warns and follows, her young shield her and arm the moment they surface, and her fall breaks the herd and pays a boon",
@@ -9448,6 +9531,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("L21's noise gate: hash, value noise, tone and relief are each the field they claim to be",
        gates.noise.ok, say(gates.noise));
     ok("L21's freeze gate", gates.freeze.ok, say(gates.freeze) + `  (${gates.freeze.tested} tested)`);
+    // L36: and it still sweeps the family's step-driving gates now that they
+    // are test-only - the sweep is derived from the hook, so this is the check
+    // that the graft above put them where it looks.
+    ok("L36: freezeGate's derived sweep still covers the test-only mutation gates that drive step()",
+       ["springGate", "whipGate"].every(k => (gates.freeze.tested || []).includes(k)), String(gates.freeze.tested));
     ok("L21's arm gate",    gates.arm.ok,    say(gates.arm));
     ok("L21's HUD gate: the stack lands where it says it does",
        gates.hudG.ok, say(gates.hudG) + `  (${gates.hudG.lanes} lanes)`);

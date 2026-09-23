@@ -799,6 +799,7 @@
 <symbol id="i-plague" viewBox="0 0 24 24"><path d="M6.8 16.6a4 4 0 0 1 .5-7.9 5.2 5.2 0 0 1 10.1-.6 3.9 3.9 0 0 1 .4 7.7z" class="f"/><circle cx="10" cy="11.4" r="1.15" class="k"/><circle cx="14.4" cy="11.4" r="1.15" class="k"/><path d="M10 14.4h4.4" class="k"/><circle cx="8.6" cy="20.2" r="1.05" class="a"/><circle cx="13" cy="21.2" r=".9" class="a"/><circle cx="17.2" cy="19.8" r="1.05" class="a"/></symbol>
 <symbol id="i-gore" viewBox="0 0 24 24"><path d="M4 12h9" class="a"/><path d="M20 12l-6-4v8z" class="f"/><path d="M4.5 8.5h5M4.5 15.5h5" class="a"/></symbol>
 <symbol id="i-stampede" viewBox="0 0 24 24"><path d="M22 12l-6-4.5v9z" class="f"/><path d="M3 7.5h9M2 12h11M3 16.5h9" class="a"/></symbol>
+<symbol id="i-tail" viewBox="0 0 24 24"><path d="M2.6 20.4c5.4-.4 8.6-3.2 10.2-7.6 1-2.8 2.6-4.6 4.8-5.2" class="a"/><circle cx="18.2" cy="7.2" r="3.1" class="f"/><path d="M18.2 1.6v2.2M22.6 3l-1.6 1.6M23.4 7.4h-2.2M21.6 11.4l-1.4-1.4" class="s"/></symbol>
 <symbol id="i-brood" viewBox="0 0 24 24"><path d="M4.6 15.2c0-3.1 2.4-5.4 5.6-5.4 3.4 0 5.8 2 6.6 4.6l2.6 1.2-2.4 1.2-.6 2.6-2-1.8H9.4z" class="f"/><circle cx="8.4" cy="13.4" r="1.1" class="ka"/><path d="M12.6 9.4l1.6-4 1.6 4z" class="fa"/></symbol>
 <symbol id="i-pack" viewBox="0 0 24 24"><path d="M2.4 13.6c0-2.4 1.8-4.2 4.4-4.2 2.6 0 4.4 1.6 5 3.6l1.8.9-1.7.9-.4 2-1.5-1.4H6z" class="f"/><path d="M11.6 18.2c0-2.4 1.8-4.2 4.4-4.2 2.6 0 4.4 1.6 5 3.6l1.8.9-1.7.9-.4 2-1.5-1.4h-3.7z" class="fa"/><circle cx="5.4" cy="12.2" r=".9" class="ka"/></symbol>
 <symbol id="i-caltrops" viewBox="0 0 24 24"><path d="M12 3.4l4.4 7.6h-8.8z" class="f"/><path d="M6.6 13.6l3.4 5.8h-6.8z" class="fa"/><path d="M17.4 13.6l3.4 5.8h-6.8z" class="fa"/></symbol>
@@ -1007,6 +1008,12 @@ uniform float uNear, uFar, uFlash;
 // which is exactly the clear colour it was drawn to replace.
 uniform float uUnlit;
 void main(){
+  // THE CLEAR SIGHTLINE (L49): an emit under -0.5 marks a structure box standing
+  // between the eye and the animal. Three pixels in four are dropped so what is
+  // behind it shows through, and -1 - e is the box's own emit.
+  float gh = step(vE, -0.5);
+  if(gh > 0.5 && mod(floor(gl_FragCoord.x), 2.0) + mod(floor(gl_FragCoord.y), 2.0) > 0.5) discard;
+  float em = mix(vE, -1.0 - vE, gh);
   vec3 n = normalize(vN);
   float d   = max(dot(n, uSun), 0.0);
   vec3 hemi = mix(uGnd, uSky, n.y * 0.5 + 0.5);
@@ -1017,7 +1024,7 @@ void main(){
   vec3 lit  = vC * (hemi * 0.78 + uSunC * d * 0.92);
   // back-light so silhouettes never go fully black against the fog
   lit += vC * uSunC * max(dot(n, -uSun), 0.0) * 0.14;
-  vec3 c = mix(lit, vC * 1.35 + 0.25, vE);          // emissive things ignore light
+  vec3 c = mix(lit, vC * 1.35 + 0.25, em);          // emissive things ignore light
   float f = clamp((length(uEye - vW) - uNear) / (uFar - uNear), 0.0, 1.0);
   c = mix(c, uFog, f * f);
   c += uFlash;                                       // full-screen damage flash
@@ -1110,7 +1117,11 @@ function box(x,y,z, sx,sy,sz, c, emit, yaw){
   if(wCap) wCap.push(x, y, z, sx, sy, sz);
   if(fxCap) fxCap.push(x, y, z, sx, sy, sz, emit||0);
 
-  const e = emit||0, co = Math.cos(yaw||0), si = Math.sin(yaw||0), rot = !!yaw;
+  let e = emit||0;
+  // L49: a structure box across the sightline carries its emit as -1 - e,
+  // which the shader reads as "draw me as a stipple" (THE CLEAR SIGHTLINE)
+  if(sightSeg && inSight(x, y, z, sx, sy, sz, yaw)){ e = -1 - e; ghostN++; }
+  const co = Math.cos(yaw||0), si = Math.sin(yaw||0), rot = !!yaw;
   for(let i=0;i<36;i++){
     const o=i*6;
     let px=BOXV[o]*sx, py=BOXV[o+1]*sy, pz=BOXV[o+2]*sz;
@@ -1207,9 +1218,11 @@ function audioInit(){
        master.connect(AC.destination); }
   catch(e){ AC=null; }
 }
-function blip(freq, dur, type, vol, slide){
+// `at` starts the note that many seconds later on the audio clock, so a pause
+// or a hidden tab cannot tear a two-note sound in half the way a setTimeout can
+function blip(freq, dur, type, vol, slide, at){
   if(!AC || AC.state==="suspended") return;
-  const o=AC.createOscillator(), g=AC.createGain(), t=AC.currentTime;
+  const o=AC.createOscillator(), g=AC.createGain(), t=AC.currentTime + (at || 0);
   o.type=type||"square"; o.frequency.setValueAtTime(freq,t);
   if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*slide), t+dur);
   g.gain.setValueAtTime(vol==null?.18:vol, t);
@@ -1273,6 +1286,9 @@ const SFX = {
   // meeting nothing. Quiet, because a pile of them can whiff together, and
   // throttled at the caller for the same reason.
   whiff: ()=>{ blip(srnd(560,620), .025, "square", .035, .7); noiseBurst(.025, .04); },
+  // WHIPTAIL's lash: a crack, then the thud of the club arriving
+  lash:  ()=>{ noiseBurst(.035, .15); blip(srnd(1250,1400), .045, "sawtooth", .06, .22);
+               blip(srnd(150,175), .10, "triangle", .09, .55, .035); },
   // A den waking is the arena telling you it noticed. Low, wide, and long
   // enough to turn around for - a boss horn's smaller cousin.
   denWake:()=>{ blip(96, .55, "sawtooth", .17, .55); noiseBurst(.35, .13);
@@ -3389,6 +3405,14 @@ ram:        { name:"RAMHORN",     ic:"stampede",   kind:"r", mut:1, lv:"MUTATION
 spring:     { name:"SPRINGHEEL",  ic:"boots",      kind:"r", mut:1, lv:"MUTATION", max:1, eff:"HOP = DODGE",
               ds:"Mutation. Springs grow on your haunches: a bite that snaps while you are in the air misses. Jump the rear-back.",
               bar: ()=>!MUT_ON || springGive >= 0 },
+// WHIPTAIL, the third mutation, on THE TURN: cut back hard while moving and a
+// spiked club on your tail swings through what it passes on the way round - hit,
+// thrown clear, its bite knocked out - so "turn now, through them" is a choice.
+// YOUR body only, never a boss, and it takes a rule slot. MUT_ON switches the
+// family off, WHIP_ON this card alone (DECISIONS D3).
+tail:       { name:"WHIPTAIL",    ic:"tail",       kind:"r", mut:1, lv:"MUTATION", max:1, eff:"TURN = LASH",
+              ds:"Mutation. A spiked club grows on your tail: turn hard and it swings through whatever is behind you.",
+              bar: ()=>!MUT_ON || !WHIP_ON || whipGive >= 0 },
 };
 let MUT_ON = true;                                      // THE OFF SWITCH (window.__g.mutation) - ships true
 // the trample: body radius it reaches past your centre, base hit, shove, and
@@ -3408,6 +3432,37 @@ let ramN = 0, dmgRam = 0, ramGive = -1;
 let springN = 0, springGive = -1;
 // the dodge itself: pure on the player's own state, so the gate stages it
 function springDodge(p){ return !!(MUT_ON && p && !p.twinOf && p.kit && p.kit.spring && p.air); }
+// A lash fires when your HEADING (faceWant, the way you steer - never the facing,
+// which render() turns toward the camera while you stand or a draft is open) has
+// come round by WHIP_TURN inside the last WHIP_WIN seconds of moving, at most once
+// every WHIP_CD. It hits the arc the tail sweeps, out to whipReach(stage): 3.4 m on
+// a hatchling, 8.6 m on a final form. WHIP_ON is the card's own off switch
+// (window.__g.whiptail, ships true): a lash knocks bites out, so the card pushes
+// the owner's bite question the other way (DECISIONS D3).
+let WHIP_ON = true;
+const WHIP_TURN = 2.09, WHIP_WIN = .35, WHIP_CD = 1.2, WHIP_MOVE = .5;
+const WHIP_R0 = 3.4, WHIP_R_STAGE = 1.3, WHIP_DMG = 30, WHIP_KB = 26, WHIP_DAZE = 1;
+// the sweep: slop past each end of its arc (rad, hit and drawn alike), life (s)
+// and shake when it hits; drawn: speed round (x its life), plate spacing (m), band
+// radii and colour; the club's spikes stay lit WHIP_FLASH s after a lash
+const WHIP_SLOP = .15, WHIP_LIFE = .26, WHIP_SHAKE = .10, WHIP_FLASH = .3;
+const WHIP_DRAW = 1.6, WHIP_PLATE = .9, WHIP_BANDS = [.45, .72, 1], WHIP_BONE = [.95, .92, .84];
+// the tally (lashes, and bodies they hit) and the bench arm, the same contract
+// as ramGive and springGive
+let whipN = 0, whipHit = 0, dmgWhip = 0, whipGive = -1;
+// every mutation's bench arm, in one place: verbTick hands the ON arm its card
+// at the window's first frame
+const MUT_BENCH = [["ram", ()=>ramGive], ["spring", ()=>springGive], ["tail", ()=>whipGive]];
+// PURE: the reach of the lash for a creature at stage st
+const whipReach = st => WHIP_R0 + WHIP_R_STAGE * (st|0);
+// PURE: is a body at bearing b (atan2 dx,dz from you) inside the arc a tail
+// swept turning from facing f0 to facing f1 (the short way round)? The tail
+// points at facing + PI, so it sweeps from f0 + PI toward f1 + PI.
+function whipSwept(f0, f1, b){
+  const turn = wrapAng(f1 - f0), from = f0 + Math.PI;
+  const u = wrapAng(b - from) * Math.sign(turn || 1);
+  return u >= -WHIP_SLOP && u <= Math.abs(turn) + WHIP_SLOP;
+}
 const RULE_THIRD = 30;                                 // a third rule slot opens here
 const GLASS_DMG = 1.4, GLASS_HP = .6, AFTERBURN_DRAIN = 1/3;
 const BIG_MUL = 1.105;                                  // BIGGER, per pick: x1.35 at three
@@ -5542,23 +5597,31 @@ let save = { coins:0, up:{}, best:0, wins:0, unlocked:{}, evos:{},
 // Every entry states its own condition against lifetime numbers the save now
 // keeps, and the menu shows how close you are to each, because a locked box
 // with no progress bar is just a locked box.
+// A creature's unlock has no typed name: it is read off the creature's own line
+// below (L49), so the ladder and the roster cannot disagree about what you won.
 const UNLOCKS = [
-  { id:"ghoul",  what:"MOULDLING",      ds:"survive 10:00 in one run",
+  { id:"ghoul",  ds:"survive 10:00 in one run",
     at:600,   now:(sv,r)=>Math.max(sv.best, r?r.t:0) },
-  { id:"twin",   what:"SPLITKIN",       ds:"clear a run",
+  { id:"twin",   ds:"clear a run",
     at:1,     now:(sv)=>sv.wins },
-  { id:"accnt",  what:"TALLYMITE",      ds:"reach level 30 in one run",
+  { id:"accnt",  ds:"reach level 30 in one run",
     at:30,    now:(sv,r)=>Math.max(sv.bestLvl, r?r.lvl:0) },
   { id:"tally",  what:"TALLY (shop)",  ds:"6,000 lifetime kills",
     at:6000,  now:(sv)=>sv.kills },
   // Two unlocks on axes nothing else uses. A ladder made entirely of "kill
   // more" and "survive longer" only ever rewards the same play; one of these
   // rewards walking and the other rewards losing.
-  { id:"surge",  what:"SAILFIN",        ds:"cover 12,000m across all runs",
+  { id:"surge",  ds:"cover 12,000m across all runs",
     at:12000, now:(sv)=>sv.dist||0 },
-  { id:"pyre",   what:"SUNCHICK",       ds:"lose 25 runs",
+  { id:"pyre",   ds:"lose 25 runs",
     at:25,    now:(sv)=>sv.deaths },
 ];
+// THE LADDER SAYS THE ROSTER'S NAMES (L49). The creature unlocks were typed
+// with the names the lines had before the retheme - MOULDLING, SPLITKIN,
+// TALLYMITE - and the lines became MIRELING, HYDRALING and WYVERNET without the
+// ladder hearing about it, so the end screen and the UNLOCKS tab announced
+// three creatures the roster had never heard of (PT47). Derived here, once.
+for(const u of UNLOCKS) if(LINES[u.id]) u.what = LINES[u.id].st[0].nm;
 // returns the ids unlocked BY this call, so the end screen can call them out
 function checkUnlocks(runStats){
   const got = [];
@@ -9956,6 +10019,10 @@ function startRun(id){
   enemies=[]; gems=[]; bolts=[]; mortars=[]; zones=[]; rings=[]; swings=[]; pets=[];
   arcs=[]; pops=[]; cpops=[]; nums=[]; spits=[]; alerts=[]; hazards=[]; corpses=[];
   T=0; kills=0; coinsRun=0; bossIdx=0; nextSpawn=0; shake=0; flash=0; camAnchor=null;
+  // L36 (this log's merge of THE CLEAR SIGHTLINE): the boom's lift is part of the
+  // chase camera the line above snaps, so it goes with it - left alone, a run that
+  // ended in a hollow started the next one lifted and sank for about a second.
+  camLift = 0;
   crowdBank = 0; crowdFree = 0; for(const k in crowdStat) crowdStat[k] = 0;   // L35
   // L16: the measured kill radius is a fact about THIS run's kit and has to die
   // with it. Left standing, a second run in the same session inherits the last
@@ -9963,6 +10030,7 @@ function startRun(id){
   // this mechanic is built not to touch. Caught by the round's own A/B bench,
   // where the burrow tally carried over between runs.
   killR = 0; killRN = 0; burrowN = 0; routN = 0; diginN = 0; stoopN = 0; ramN = 0; dmgRam = 0; springN = 0;
+  whipN = 0; whipHit = 0; dmgWhip = 0;                  // WHIPTAIL's tally
   matNest = null; for(const k in matStat) matStat[k] = k === "boon" ? null : 0;   // L41
   thnRing = null; for(const k in thnStat) thnStat[k] = 0;                          // L42
   skyShadow = null; carrion = null; for(const k in sksStat) sksStat[k] = 0;        // L43
@@ -11151,6 +11219,14 @@ function stomp(){
   shake = Math.max(shake, .10);
   SFX.boom();
 }
+// One body bonked by a mutation (RAMHORN's trample, WHIPTAIL's lash): hit on the
+// pass's one roll, thrown clear of you, its bite knocked out. Returns the damage.
+function mutBonk(e, d, roll, kb, daze){
+  const dd = Math.max(.001, d), k = kb / Math.max(.6, d), h0 = dmgDealt;
+  hurt(e, roll.d, (e.x-P.x)/dd*k, (e.z-P.z)/dd*k, roll.crit);
+  if(!e.dead){ e.wu = 0; e.wd = 0; e.lg = Math.max(e.lg || 0, daze); }
+  return dmgDealt - h0;
+}
 // RAMHORN, the mutation (L36): see its card. Only the player's own body, only
 // while moving with a rush up, never a boss (a boss is the one fight about
 // spacing, the same reason RIPTIDE leaves it alone). Rolled through dmgOut
@@ -11163,15 +11239,60 @@ function ramMaybe(){
     if(e.boss || e.dead || (e.ramT || 0) > T) return;
     if(!roll) roll = dmgOut(RAM_DMG);
     e.ramT = T + RAM_CD;
-    const dd = Math.max(.001, d), k = RAM_KB / Math.max(.6, d), h0 = dmgDealt;
-    hurt(e, roll.d, (e.x-P.x)/dd*k, (e.z-P.z)/dd*k, roll.crit);
-    dmgRam += dmgDealt - h0;
-    if(!e.dead){ e.wu = 0; e.wd = 0; e.lg = Math.max(e.lg || 0, RAM_DAZE); }
+    dmgRam += mutBonk(e, d, roll, RAM_KB, RAM_DAZE);
     ramN++; n++;
   });
   if(n){ rings.push({ x:P.x, z:P.z, y:P.y, r:0, max:r*1.8, life:.18, mx:.18 });
          shake = Math.max(shake, .06); }
   return n;
+}
+// WHIPTAIL: see WHIP_TURN. Keeps the last WHIP_WIN seconds of heading while you
+// steer - standing still records nothing, so a start from rest is not a turn -
+// and lashes when it has come round far enough; the history restarts at every
+// lash, so one turn is one lash.
+function whipMaybe(dt){
+  if(!MUT_ON || !WHIP_ON || !P || !P.kit.tail) return 0;
+  const H = P.whipH || (P.whipH = []);
+  if(!P.idle) H.push([T, P.faceWant]);
+  while(H.length && T - H[0][0] > WHIP_WIN) H.shift();
+  if(P.whipCd > 0) P.whipCd -= dt;
+  if(H.length < 2 || P.whipCd > 0 || Math.hypot(P.vx, P.vz) < P.spd * WHIP_MOVE) return 0;
+  const f0 = H[0][1], f1 = H[H.length - 1][1];
+  return Math.abs(wrapAng(f1 - f0)) >= WHIP_TURN ? whipLash(f0, f1) : 0;
+}
+// The lash: everything but a boss inside the swept arc and the reach is bonked
+// once, on one dmgOut roll for the whole sweep. The sweep rides the swings list
+// (tail:true) and drawLash paints it.
+function whipLash(f0, f1){
+  const r = whipReach(stage), turn = wrapAng(f1 - f0);
+  let roll = null, n = 0;
+  hitNear(P.x, P.z, r, (e, d)=>{
+    if(e.boss || e.dead || !whipSwept(f0, f1, Math.atan2(e.x - P.x, e.z - P.z))) return;
+    if(!roll) roll = dmgOut(WHIP_DMG);
+    dmgWhip += mutBonk(e, d, roll, WHIP_KB, WHIP_DAZE);
+    n++;
+  });
+  whipN++; whipHit += n; P.whipCd = WHIP_CD; P.whipH = [[T, f1]];
+  swings.push({ x:P.x, z:P.z, ang:f0 + Math.PI + turn/2, arc:Math.abs(turn) + 2 * WHIP_SLOP, rng:r,
+                life:WHIP_LIFE, max:WHIP_LIFE, dir:Math.sign(turn) || 1, tail:true });
+  if(n) shake = Math.max(shake, WHIP_SHAKE);
+  SFX.lash();
+  return n;
+}
+// The lash, drawn FLAT: the tail sweeps behind the animal, where the chase camera
+// stands, so drawn at swing height it walled the lens. Three bands of plates on
+// the ground sweep round from where the tail started, brightest at the tip.
+function drawLash(s){
+  const a = clamp(s.life / s.max, 0, 1), sd = s.dir || 1;
+  const from = s.ang - sd * s.arc / 2, reach = s.arc * Math.min(1, (1 - a) * WHIP_DRAW);
+  const n = Math.max(6, Math.round(s.arc * s.rng / WHIP_PLATE));
+  for(let i = 0; i <= n; i++){
+    const k = i / n, th = from + sd * reach * k;
+    for(const f of WHIP_BANDS){
+      const rr = s.rng * f, x = s.x + Math.sin(th) * rr, z = s.z + Math.cos(th) * rr, h = .10 + .22 * f;
+      box(x, groundY(x, z) + .06, z, h, .04, h, WHIP_BONE.map(c => lerp(c, 1, .35 + .4 * k)), (.25 + .6 * k) * a, th);
+    }
+  }
 }
 function firePulse(w,s){
   statRings++;
@@ -14893,6 +15014,7 @@ function step(dt){
     const d = wrapAng(P.faceWant - P.face);
     P.face = wrapAng(P.face + (Math.abs(d) < .012 ? d : d * (1 - Math.pow(1.7e-5, dt))));   // ~11/s: 95% of a turn in .27 s
   }
+  whipMaybe(dt);                                        // WHIPTAIL: a hard turn lashes
 
   // ---- jump / bunnyhop
   const gy = groundY(P.x, P.z);
@@ -15562,6 +15684,62 @@ let bodyLen = 4, bodyTop = 2.4;
 // lateral extent that is measured, not the boom's max-of-two.
 let bodyWide = 3, twinWide = 3;
 
+// ------------------------------------------------ THE MUTATIONS' PARTS
+// Every mutation grows a part you can see: one entry per card, drawn by
+// drawMonBody on YOUR body only (never THE SPLIT's second creature, never with
+// MUT_ON off). An entry places its boxes off the plan's anchors - q.nose, the
+// foremost centreline box's front face; q.tail, the rearmost box - through q.fx,
+// and pushes them into bodyPos so the gates can check they touch the body.
+const MUT_PARTS = {
+  // RAMHORN (L36): a horn on YOUR snout, glowing with the rush
+  ram: (q)=>{
+    const { fx, P } = q, n = q.nose;
+    if(!(n.f > -1e8)) return;
+    const s = .05, glow = Math.min(1, P.rush || 0);
+    fx(0, n.f - s * 1.2, n.y + n.h + s * .8, s, s * .9, s * 1.1, [.95, .90, .80], .12 + .5 * glow);
+    fx(0, n.f - s * .9, n.y + n.h + s * 2.4, s * .55, s * 1.0, s * .6, [1, .55 + .3 * (1 - glow), .45], .2 + .7 * glow);
+    if(bodyPos){ bodyPos.push(0, n.f - s * 1.2, n.y + n.h + s * .8, s, s * 1.1, s * .9);
+                 bodyPos.push(0, n.f - s * .9, n.y + n.h + s * 2.4, s * .55, s * .6, s * 1.0); }
+  },
+  // SPRINGHEEL (L39): a coiled spring under the rearmost box - the haunch, or
+  // the tail tip on a long body. Four steel coils wound on a post hung from
+  // that box's underside; they open out while you are in the air, so the thing
+  // that is saving you right now is visibly sprung.
+  spring: (q)=>{
+    const { fx, P } = q, t = q.tail;
+    if(!(t.f < 1e8)) return;
+    const s = Math.max(.045, Math.min(.07, t.hx * 1.2)), gap = P.air ? s * .55 : s * .18;
+    let y = t.y - t.hy;                             // the box's underside
+    const f = t.f + s * 1.1, hy0 = s * .22, H = 4 * 2 * hy0 + 3 * gap;
+    // the post the coils wind round, so nothing hangs in the air
+    fx(t.r, f, y - H / 2, s * .25, H / 2, s * .25, [.40, .32, .16], 0);
+    if(bodyPos) bodyPos.push(t.r, f, y - H / 2, s * .25, s * .25, H / 2);
+    for(let i = 0; i < 4; i++){
+      const hy = s * .22, w = s * (i % 2 ? .78 : 1);
+      y -= hy;
+      fx(t.r, f, y, w, hy, w, i % 2 ? [.22, .24, .28] : [.80, .84, .90], .10);   // steel: gold read as the fire guy's own tail flame
+      if(bodyPos) bodyPos.push(t.r, f, y, w, w, hy);
+      y -= hy + gap;
+    }
+  },
+  // WHIPTAIL: a spiked club off the rearmost box - a horn-dark knob sunk a
+  // little into the body, four bone spikes rooted in it (to each side, up and
+  // back) that stay lit WHIP_FLASH s after a lash
+  tail: (q)=>{
+    const { fx, P } = q, t = q.tail;
+    if(!WHIP_ON || !(t.f < 1e8)) return;
+    const s = Math.max(.07, Math.min(.13, t.hx * 2.0)), L = s * 1.9, w = s * .22;
+    const hot = Math.max(0, (P.whipCd || 0) - (WHIP_CD - WHIP_FLASH)) / WHIP_FLASH;
+    const f = t.f - s * .85, y = t.y;               // the knob's front face sits .15 s inside the body
+    const bone = WHIP_BONE, em = .12 + .6 * hot;
+    const box = (r, ff, yy, hx, hy, hz, col, e)=>{ fx(r, ff, yy, hx, hy, hz, col, e);
+                                                   if(bodyPos) bodyPos.push(r, ff, yy, hx, hz, hy); };
+    box(t.r, f, y, s, s * .8, s, [.36, .30, .24], .04);
+    for(const sg of [-1, 1]) box(t.r + sg * (s + L / 2 - s * .25), f, y, L / 2, w, w, bone, em);
+    box(t.r, f, y + s * .8 + L / 2 - s * .25, w, L / 2, w, bone, em);
+    box(t.r, f - (s + L / 2 - s * .25), y, w, w, L / 2, bone, em);
+  },
+};
 // ------------------------------------------------------- ONE MONSTER, DRAWN
 // Lifted out of render() so the MENU can draw the same twenty-one bodies as a
 // live portrait without a run in progress. The parameters deliberately shadow
@@ -16665,36 +16843,11 @@ function drawMonBody(mCh, P, ANIM, stage, evoFx, T){
   const rkTeeth = growRank(P, "spinach"), rkLegs = growRank(P, "boots"), rkClaws = growRank(P, "clover");
   const noTeeth = rkTeeth && !usedTeeth, noLegs = rkLegs && !(legTopSeen > legBotSeen), noClaws = rkClaws && !usedClaws;
   PART_FB = { spinach: !!(PARTS_ON && noTeeth), boots: !!(PARTS_ON && noLegs), clover: !!(PARTS_ON && noClaws) };
-  // RAMHORN (L36): the mutation grows a horn on YOUR snout - never on THE
-  // SPLIT's second creature (P.twinOf), which neither grows it nor tramples.
-  const gRam = !!(MUT_ON && !P.twinOf && P.kit && P.kit.ram);
-  if(gRam && partNoseF > -1e8){
-    const s = .05, glow = Math.min(1, P.rush || 0);
-    fx(0, partNoseF - s * 1.2, partNoseY + partNoseH + s * .8, s, s * .9, s * 1.1, [.95, .90, .80], .12 + .5 * glow);
-    fx(0, partNoseF - s * .9, partNoseY + partNoseH + s * 2.4, s * .55, s * 1.0, s * .6, [1, .55 + .3 * (1 - glow), .45], .2 + .7 * glow);
-    if(bodyPos){ bodyPos.push(0, partNoseF - s * 1.2, partNoseY + partNoseH + s * .8, s, s * 1.1, s * .9);
-                 bodyPos.push(0, partNoseF - s * .9, partNoseY + partNoseH + s * 2.4, s * .55, s * .6, s * 1.0); }
-  }
-  // SPRINGHEEL (L39): a coiled spring grows under the rearmost box of YOUR
-  // body - the haunch, or the tail tip on a long body - never on THE SPLIT's
-  // second creature. Four steel coils wound on a post hung from that box's
-  // underside; they open out while you are in the air, so the thing that is
-  // saving you right now is visibly sprung.
-  const gSpring = !!(MUT_ON && !P.twinOf && P.kit && P.kit.spring);
-  if(gSpring && partTailF < 1e8){
-    const s = Math.max(.045, Math.min(.07, partTailHx * 1.2)), gap = P.air ? s * .55 : s * .18;
-    let y = partTailY - partTailHy;                 // the box's underside
-    const f = partTailF + s * 1.1, hy0 = s * .22, H = 4 * 2 * hy0 + 3 * gap;
-    // the post the coils wind round, so nothing hangs in the air
-    fx(partTailR, f, y - H / 2, s * .25, H / 2, s * .25, [.40, .32, .16], 0);
-    if(bodyPos) bodyPos.push(partTailR, f, y - H / 2, s * .25, s * .25, H / 2);
-    for(let i = 0; i < 4; i++){
-      const hy = s * .22, w = s * (i % 2 ? .78 : 1);
-      y -= hy;
-      fx(partTailR, f, y, w, hy, w, i % 2 ? [.22, .24, .28] : [.80, .84, .90], .10);   // steel: gold read as the fire guy's own tail flame
-      if(bodyPos) bodyPos.push(partTailR, f, y, w, w, hy);
-      y -= hy + gap;
-    }
+  // THE MUTATIONS' OWN PARTS (MUT_PARTS): YOUR body only, never with the switch off
+  if(MUT_ON && !P.twinOf && P.kit){
+    const q = { fx, P, nose:{ f:partNoseF, y:partNoseY, h:partNoseH },
+                tail:{ f:partTailF, r:partTailR, y:partTailY, hx:partTailHx, hy:partTailHy } };
+    for(const k in MUT_PARTS) if(P.kit[k]) MUT_PARTS[k](q);
   }
   if(PARTS_ON && (GR.heart || GR.nose || noTeeth || noLegs || noClaws)){
     const part = (r,f,y,hx,hy,hz,col,em2)=>{
@@ -17150,6 +17303,81 @@ function drawSky(eye, S){
   }
   skyBoxes = drawnBoxes + nbox - b0;
 }
+// ================================================= THE CLEAR SIGHTLINE (L49)
+// PT47 caught the chase camera blind: in pinned runs 5-8% of sampled frames had
+// more than 45% of the middle of the screen covered by ONE flat colour, because
+// nothing between the eye and the animal was ever asked whether it was in the
+// way. Two different things were. The RELIEF (L25 gave the ground height, and
+// a player in a hollow put a hillside between the lens and the fight), and the
+// STRUCTURES: monuments, outcrops, landmarks and props do not collide (see
+// "Landmarks") so the boom swings straight into a thirty-metre cairn - and at a
+// monument, the one place THE VIGIL sends you, the whole screen was its face.
+// One answer per cause:
+//  - THE BOOM LIFTS OVER THE GROUND. The segment from the animal's body to the
+//    eye is sampled CAM_LOS_N times; wherever it passes within CAM_GROUND_CLR of
+//    the terrain the eye rises until it does not. It climbs in about a tenth of
+//    a second, so you are never blind for longer, settles back over about a
+//    second, so it never bobs, and it is capped, so a cliff is framed from
+//    above, not from orbit.
+//  - STRUCTURES IN THE WAY ARE SEEN THROUGH. A structure box the sightline
+//    passes within CAM_SIGHT_R of is drawn as a quarter-coverage stipple - the
+//    shader drops three pixels in four - so the stone stays on screen as a
+//    lattice and the animal and the horde behind it show through. Only the four
+//    structure passes arm the test; bodies, bosses, gems and hazards are never
+//    thinned.
+// Both stand down under camLock: every pixel-reading gate (chipRead, farReadGate,
+// rimDayGate) frames its own station with a locked camera, and their tables
+// must not move. CAM_CLEAR_ON is the QA knob (__g.camClear), not a setting.
+let CAM_CLEAR_ON = true;
+const CAM_LOS_N = 8;                        // samples along the sightline, animal to eye
+const CAM_GROUND_CLR = 1.1;                 // metres the sightline keeps above the ground
+const CAM_LIFT_MAX = 14;                    // metres: past this a hollow is framed from above
+const CAM_LIFT_UP = 1e-10, CAM_LIFT_DOWN = .1;    // share of the gap left after 1 s: up closes 90% in 0.1 s, down in 1 s
+const CAM_SIGHT_R = .6;                     // metres a structure box must keep off the sightline
+let camLift = 0;                            // the eased lift the last frame used
+let sightSeg = null;                        // [ex,ey,ez, tx,ty,tz] while the structure passes draw
+let lastSight = null;                       // the last frame's sightline, for the checks
+let ghostN = 0;                             // structure boxes thinned in the last frame
+// How far the eye must rise for the segment animal -> eye to clear the ground.
+function sightLift(tx, ty, tz, ex, ey, ez){
+  let need = 0;
+  for(let i = 1; i <= CAM_LOS_N; i++){
+    const u = i / CAM_LOS_N;
+    const floor = groundY(tx + (ex - tx)*u, tz + (ez - tz)*u) + CAM_GROUND_CLR;
+    if(ty + (ey - ty)*u < floor) need = Math.max(need, (floor - ty)/u - (ey - ty));
+  }
+  return Math.min(CAM_LIFT_MAX, need);
+}
+// L36 (the other log): an instrument that stands the player on a station and
+// compares frames (chipReadFar) wants the lift the station SETTLES to, not a lift
+// still easing in from wherever the last frame was - set, the ease is skipped.
+let camLiftSnap = false;
+function easeLift(want, d){
+  if(camLiftSnap) return camLift = want;
+  const k = 1 - Math.pow(want > camLift ? CAM_LIFT_UP : CAM_LIFT_DOWN, Math.min(d, .05));
+  camLift += (want - camLift) * k;
+  return camLift;
+}
+// Does a box (centre, half-extents, yaw about y, as box() takes them) come
+// within CAM_SIGHT_R of this frame's sightline? The segment is turned into the
+// box's own frame - the inverse of box()'s turn - and clipped against the slabs.
+function inSight(x, y, z, sx, sy, sz, yaw){
+  const s = sightSeg, co = Math.cos(yaw || 0), si = Math.sin(yaw || 0);
+  const ax = s[0] - x, az = s[2] - z, bx = s[3] - x, bz = s[5] - z;
+  const a = [ax*co - az*si, s[1] - y, az*co + ax*si], b = [bx*co - bz*si, s[4] - y, bz*co + bx*si];
+  const hx = [sx + CAM_SIGHT_R, sy + CAM_SIGHT_R, sz + CAM_SIGHT_R];
+  let t0 = 0, t1 = 1;
+  for(let q = 0; q < 3; q++){
+    const dq = b[q] - a[q];
+    if(Math.abs(dq) < 1e-9){ if(a[q] < -hx[q] || a[q] > hx[q]) return false; continue; }
+    let u0 = (-hx[q] - a[q]) / dq, u1 = (hx[q] - a[q]) / dq;
+    if(u0 > u1){ const t = u0; u0 = u1; u1 = t; }
+    if(u0 > t0) t0 = u0;
+    if(u1 < t1) t1 = u1;
+    if(t0 > t1) return false;
+  }
+  return true;
+}
 function render(){
   if(ctxLost) return;                          // every GL call would silently no-op
   const w = cv.width = innerWidth;
@@ -17280,6 +17508,10 @@ function render(){
   // It slides along the inside of the wall instead of climbing into it.
   const er = Math.hypot(eye[0], eye[2]);
   if(er > CAM_R){ const f = CAM_R/er; eye[0] *= f; eye[2] *= f; }
+  // L49: and over any ground that stands between it and the animal
+  const sightOn = CAM_CLEAR_ON && !camLock && !!P, sightY = py + bodyTop*.5;
+  if(sightOn) eye[1] += easeLift(sightLift(px, sightY, pz, eye[0], eye[1], eye[2]), dt);
+  else camLift = 0;
   camEye = eye;
   // aim where you are going, not where the stick is pointed
   // - and on the body itself as it dies, not two metres ahead of it
@@ -17362,6 +17594,11 @@ function render(){
     return (sx < -m || sx > VPM.w+m || sy < -m || sy > VPM.h+m) ? null : ppu;
   };
   // ---- everything dynamic, batched
+  // L49: the four structure passes (props, outcrops, monuments, marks) thin
+  // whatever stands on the sightline - armed here, disarmed after "marks"
+  ghostN = 0;
+  sightSeg = sightOn ? [eye[0], eye[1], eye[2], px, sightY, pz] : null;
+  lastSight = sightSeg && sightSeg.slice();
   for(const p of PROPS){
     const d = Math.hypot(p.x-px, p.z-pz);
     if(d > 190) continue;
@@ -17909,6 +18146,7 @@ function render(){
   }
 
   passEnd("marks");
+  sightSeg = null;
   // ground decals first so bodies read on top of them
   // Hazard zones are drawn as a terrain-following ring, not a flat slab - a
   // single big quad half-buried in a hillside reads as a rendering fault.
@@ -18129,6 +18367,7 @@ function render(){
   passEnd("rings");
   for(const s of swings){
     const a = s.life/s.max;
+    if(s.tail){ drawLash(s); continue; }   // WHIPTAIL's lash, flat on the ground
     // GORE is a lane, so it draws as one: a swathe down the direction you were
     // moving, widening as it fades, with the far end brightest. Nothing else on
     // the field is a straight line, which is the whole point of the weapon.
@@ -19601,6 +19840,146 @@ function qaStations(n){
   for(let i=0;i<n;i++){ const a = r()*TAU, d = Math.sqrt(r())*(RIM*.64);
     out.push([Math.cos(a)*d, Math.sin(a)*d, r()*TAU]); }
   return out;
+}
+
+// ===================================================== QA: L49's two fixes
+// sightGate - THE CLEAR SIGHTLINE on the live page. Each stage first proves it
+// is really blocked with the fix OFF (its null control), then that the fix
+// clears it:
+//  1. shipped on;
+//  2. STRUCTURE: a monument between the eye and the animal - off, the middle
+//     of the frame is one flat colour; on, its boxes are thinned and at least
+//     half of that middle changes (the view opened);
+//  3. TERRAIN: a hollow where the ground cuts the sightline - off, the line
+//     from the eye to the animal passes under the surface; on, the eye has
+//     lifted until it clears the ground at every sample, and the lift is capped;
+//  4. A CLEAR FRAME IS UNTOUCHED: on open ground nothing is thinned - not even
+//     the animal the sightline ends in - and the eye is the fix-off eye;
+//  5. camLock stands the fix down, so the pixel-reading gates keep their tables.
+// Hands the player, the camera and the knob back as it found them.
+const SIGHT_BLIND = .60;      // share of the frame's middle in ONE flat colour that is a wall, not a view
+const SIGHT_OPEN = .50;       // share of that middle the fix must change to have opened the view
+function sightMiddle(){       // the middle 60% of the frame, off the real framebuffer, at 96x54
+  const k = document.createElement("canvas"); k.width = 160; k.height = 90;
+  const g2 = k.getContext("2d"); g2.drawImage(cv, 0, 0, 160, 90);
+  const d = g2.getImageData(32, 18, 96, 54).data, seen = new Map();
+  let best = 0;
+  for(let i = 0; i < d.length; i += 4){
+    const q = (d[i] >> 4) << 8 | (d[i+1] >> 4) << 4 | (d[i+2] >> 4), n = (seen.get(q) || 0) + 1;
+    seen.set(q, n); if(n > best) best = n;
+  }
+  return { share:+(best / (96*54)).toFixed(3), px:d };
+}
+function sightChanged(a, b){  // share of the middle's pixels that moved by more than a tenth of a channel
+  let n = 0;
+  for(let i = 0; i < a.length; i += 4)
+    if(Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i+1] - b[i+1]), Math.abs(a[i+2] - b[i+2])) > 24) n++;
+  return +(n / (a.length/4)).toFixed(3);
+}
+function sightFrame(x, z, yaw, on, n){       // stand there, look that way, draw n frames
+  CAM_CLEAR_ON = on; P.x = x; P.z = z; P.y = groundY(x, z); P.vx = 0; P.vz = 0;
+  camYaw = yaw; camAnchor = [P.x, P.y, P.z]; camLift = 0; shake = 0; dt = 1/60;
+  for(let i = 0; i < n; i++) render();
+  const m = sightMiddle();
+  return { ghosts:ghostN, share:m.share, px:m.px, lift:+camLift.toFixed(3), eye:camEye.slice() };
+}
+function sightGate(){
+  if(!P || over) return { ok:false, bad:["THE SIGHT GATE WAS NOT RUN: it needs a live run"] };
+  const bad = [], out = {};
+  if(!CAM_CLEAR_ON) bad.push("THE CLEAR SIGHTLINE IS SHIPPED OFF");
+  const was = { x:P.x, y:P.y, z:P.z, vx:P.vx, vz:P.vz, yaw:camYaw, anc:camAnchor ? camAnchor.slice() : null,
+                lock:camLock, on:CAM_CLEAR_ON, lift:camLift, dt, shake };
+  camLock = null;
+  const ty = ()=> P.y + bodyTop*.5;
+  try{
+    // 2. STRUCTURE - the monument and heading the fix-off frame is most blind at
+    let st = null;
+    for(const M of monuments){
+      for(let i = 0; i < 8; i++){
+        const yaw = i/8*TAU, bx = -Math.sin(yaw), bz = -Math.cos(yaw);
+        const f = sightFrame(M.x - bx*3, M.z - bz*3, yaw, false, 2);
+        if(!st || f.share > st.off.share) st = { M, yaw, x:M.x - bx*3, z:M.z - bz*3, off:f };
+      }
+      if(st && st.off.share >= SIGHT_BLIND) break;
+    }
+    if(!st || st.off.share < SIGHT_BLIND)
+      bad.push(`NULL CONTROL FAILED: no monument stage blinds the fix-off frame (best ${st ? st.off.share : "none"})`);
+    else {
+      const on = sightFrame(st.x, st.z, st.yaw, true, 12), opened = sightChanged(st.off.px, on.px);
+      out.structure = { mon:st.M.b.mon.nm, at:[+st.x.toFixed(2), +st.z.toFixed(2)], yaw:+st.yaw.toFixed(4),
+                        off:st.off.share, on:on.share, opened, ghosts:on.ghosts };
+      if(!(on.ghosts > 0)) bad.push(`A MONUMENT ON THE SIGHTLINE WAS NOT THINNED: ${st.M.b.mon.nm}, 0 boxes`);
+      if(!(opened >= SIGHT_OPEN)) bad.push(`THE FRAME IS STILL BLIND AT ${st.M.b.mon.nm}: the fix changed ${opened} of the middle (a wall of ${st.off.share} one colour with it off)`);
+      // 5. camLock stands the fix down
+      const e = st.off.eye;
+      camLock = [e[0], e[1], e[2], st.x, ty(), st.z];
+      const lk = sightFrame(st.x, st.z, st.yaw, true, 2);
+      camLock = null;
+      out.locked = { ghosts:lk.ghosts, lift:lk.lift };
+      if(lk.ghosts !== 0 || lk.lift !== 0) bad.push(`camLock DOES NOT STAND THE FIX DOWN: ${lk.ghosts} boxes thinned, lift ${lk.lift}`);
+    }
+    // 3. TERRAIN - the hollow whose ground cuts the fix-off sightline deepest (and under the cap)
+    const b0 = sightFrame(0, 0, 0, false, 2), bh = b0.eye[1] - P.y, bd = Math.hypot(b0.eye[0], b0.eye[2]);
+    let tr = null;
+    for(const [x, z] of qaStations(160)) for(let i = 0; i < 8; i++){
+      const yaw = i/8*TAU, gy = groundY(x, z);
+      const need = sightLift(x, gy + bodyTop*.5, z, x - Math.sin(yaw)*bd, gy + bh, z - Math.cos(yaw)*bd);
+      if(need < CAM_LIFT_MAX*.8 && (!tr || need > tr.need)) tr = { x, z, yaw, need };
+    }
+    // and the cap, asked directly: an eye sixty metres under the ground
+    const deep = sightLift(0, groundY(0, 0) + 1, 0, 8, groundY(0, 0) - 60, 8);
+    if(!(deep <= CAM_LIFT_MAX + 1e-9)) bad.push(`THE LIFT HAS NO CAP: a sightline 60 m under the ground asks for ${deep.toFixed(1)} m against ${CAM_LIFT_MAX}`);
+    const off = tr && sightFrame(tr.x, tr.z, tr.yaw, false, 2);
+    const offNeed = off ? sightLift(tr.x, ty(), tr.z, off.eye[0], off.eye[1], off.eye[2]) : 0;
+    if(!(offNeed > 1)) bad.push(`NULL CONTROL FAILED: no hollow on ${160*8} station-headings cuts the fix-off sightline (best ${offNeed.toFixed(2)} m)`);
+    else {
+      const on = sightFrame(tr.x, tr.z, tr.yaw, true, 12);
+      const left = sightLift(tr.x, ty(), tr.z, on.eye[0], on.eye[1], on.eye[2]);
+      out.terrain = { at:[+tr.x.toFixed(2), +tr.z.toFixed(2)], yaw:+tr.yaw.toFixed(4), offNeed:+offNeed.toFixed(2),
+                      lift:on.lift, left:+left.toFixed(3) };
+      if(!(on.lift > 0)) bad.push(`THE BOOM DID NOT LIFT OVER THE HOLLOW: the ground cuts the sightline by ${offNeed.toFixed(2)} m and the lift is ${on.lift}`);
+      if(left > .05) bad.push(`THE SIGHTLINE STILL GOES UNDER THE GROUND: ${left.toFixed(2)} m short after the lift (${on.lift})`);
+      if(on.lift > CAM_LIFT_MAX + 1e-9) bad.push(`THE LIFT PASSED ITS CAP: ${on.lift} m against ${CAM_LIFT_MAX}`);
+    }
+    // 4. A CLEAR FRAME IS UNTOUCHED
+    let clear = null;
+    for(const [x, z, yaw] of qaStations(40)){
+      const on = sightFrame(x, z, yaw, true, 3);
+      if(on.lift === 0 && on.ghosts === 0){ clear = { x, z, yaw, on }; break; }
+    }
+    if(!clear) bad.push("NO CLEAR FRAME: every open-ground station thinned or lifted something - the animal itself is being thinned");
+    else {
+      const off2 = sightFrame(clear.x, clear.z, clear.yaw, false, 3);
+      const dv = Math.max(...off2.eye.map((v, q)=>Math.abs(v - clear.on.eye[q])));
+      out.clear = { eyeDelta:+dv.toExponential(2) };
+      if(dv > 1e-6) bad.push(`A CLEAR FRAME MOVED: the eye is ${dv.toFixed(4)} m off the fix-off eye`);
+    }
+  } finally {
+    CAM_CLEAR_ON = was.on; camLift = was.lift; camLock = was.lock; dt = was.dt; shake = was.shake; camYaw = was.yaw;
+    P.x = was.x; P.y = was.y; P.z = was.z; P.vx = was.vx; P.vz = was.vz; camAnchor = was.anc;
+  }
+  return { ok:!bad.length, bad, ...out };
+}
+// unlockNameGate - THE LADDER SAYS THE ROSTER'S NAMES: every creature unlock
+// names its line's first form, and the UNLOCKS tab and the locked tile print it.
+function unlockNameGate(){
+  const bad = [], seen = [];
+  for(const u of UNLOCKS){
+    if(!u.what) bad.push(`AN UNLOCK HAS NO NAME: ${u.id}`);
+    const L = LINES[u.id];
+    if(L){ seen.push(u.what);
+           if(u.what !== L.st[0].nm) bad.push(`THE LADDER NAMES A CREATURE THE ROSTER DOES NOT HAVE: ${u.what} (${u.id}'s line is ${L.st[0].nm})`); }
+  }
+  if(!UNLOCKS.some(u => !LINES[u.id] && u.what)) bad.push("NULL CONTROL FAILED: no unlock outside the roster kept its own name");
+  // the ladder as the menu prints it (it lists what is still locked) - read
+  // only while the menu is already up
+  let tab = null;
+  if(menuUp){ const wasTab = menuTab; openMenu("locks");
+    tab = document.getElementById("menuBody").innerText;
+    for(const u of UNLOCKS) if(LINES[u.id] && !save.unlocked[u.id] && !tab.includes(u.what))
+      bad.push(`THE UNLOCKS TAB DOES NOT SAY ${u.what}`);
+    openMenu(wasTab); }
+  return { ok:!bad.length, bad, names:seen, tabRead:tab !== null };
 }
 
 // ------------------------------------------------------------------ QA hook
@@ -21197,7 +21576,17 @@ window.__g = {
   chipReadFar:(x, z, r, n=12)=>{
     const wasLock = camLock, wasGems = gems.slice(), wasY = P.y, wasX = P.x, wasZ = P.z,
           wasAnc = camAnchor, wasShake = shake, wasVx = P.vx, wasVz = P.vz, wasF = BEZEL_R_FORCE,
-          wasHold = holdFace;
+          wasHold = holdFace, wasSnap = camLiftSnap;
+    // AND SO DOES THE LENS (L36). THE CLEAR SIGHTLINE (the other session's L49)
+    // lifts the real chase camera over a hollow, and eases the lift - down over
+    // about a second. This reads frame PAIRS on that camera at station after
+    // station, so a lift still easing in from the previous station (or from
+    // whatever the gate battery rendered last) moved every frame a little, and
+    // the null read it as chip: 17 stations dirty in the merged suite, THE
+    // FERNLANDS' first at 21,364 px, decaying station by station exactly as the
+    // L30 turn did; forced (camLift = 3 at entry) the same 27. The lift a player
+    // stood still at the station sees is the settled one, so that is the one read.
+    camLiftSnap = true;
     // THE ANIMAL HOLDS STILL (L30, second half). render() turns an idle player a
     // little toward the camera every frame it paints, and this reads the frame
     // PAIR: two renders apart the body's own pixels had moved - slowly enough
@@ -21256,7 +21645,7 @@ window.__g = {
       return { px:np, over3: np ? +(over/np*100).toFixed(2) : 0, white, covered };
     };
     const off = score(0), on = score(999), now = score(wasF);   // `now`: whatever the build ships
-    BEZEL_R_FORCE = wasF; camLock = wasLock; camAnchor = wasAnc; shake = wasShake; holdFace = wasHold;
+    BEZEL_R_FORCE = wasF; camLock = wasLock; camAnchor = wasAnc; shake = wasShake; holdFace = wasHold; camLiftSnap = wasSnap;
     gems.length = 0; for(const g of wasGems) gems.push(g);
     P.x = wasX; P.z = wasZ; P.y = wasY; P.vx = wasVx; P.vz = wasVz;
     return { x, z, r, nm:biomeAt(cx, cz).nm, id:biomeAt(cx, cz).id, off, on, now, noise,
@@ -21785,202 +22174,18 @@ window.__g = {
              kit:trvKit(b ? b.ph|0 : 0, TRV_ON).join("+") }; },
   ramGive:(v)=>{ if(v!==undefined) ramGive = +v; return ramGive; },
   rams:()=>({ n:ramN, dmg:+dmgRam.toFixed(1), killR:+killR.toFixed(2) }),
-  // THE GATE. Subjects derived: the card is every PASSIVES entry with `mut`,
-  // the trample is the same ramMaybe() step() calls, the horn is the real
-  // drawMonBody. Each clause is a way the change could be wrong, and each
-  // guard (switch, rush, moving, boss, kit, cooldown) has its own null.
-  mutGate:()=>{
-    const bad = [], subj = Object.keys(PASSIVES).filter(k => PASSIVES[k].mut);
-    if(!subj.length) bad.push("NO MUTATION CARD IN PASSIVES");
-    if(ramGive !== -1) bad.push(`THE BENCH KNOB IS LEFT ARMED: ramGive ${ramGive}, ships -1 (the card is out of the draft while it is set)`);
-    const keep = { on:MUT_ON, rush:P.rush, idle:P.idle, lvl:P.lvl, ram:P.kit.ram, iframe:P.iframe };
-    qaLive(bad, "THE MUTATION GATE");
-    // 1. THE DRAFT, BOTH WAYS. With a free rule slot and past RULE_FROM, the
-    // card must turn up in dealt hands with the switch on and never with it off.
-    // The gate owns its precondition: a run that has already filled its rule
-    // slots (the battery hands this gate a level-39 kit with three rules)
-    // deals no rule at all, which is the game being right, not the card
-    // missing. So the other rules are stood aside for this clause only.
-    const stash = {}, nrWas = noRules; noRules = false;
-    for(const k of Object.keys(P.kit)) if(isRule(k)){ stash[k] = P.kit[k]; delete P.kit[k]; }
-    P.lvl = Math.max(P.lvl, RULE_FROM);
-    const dealt = (on)=>{ MUT_ON = on; let n = 0; for(let i=0;i<300;i++) for(const o of offers()) if(subj.includes(o.key)) n++; return n; };
-    const nOn = dealt(true), nOff = dealt(false);
-    if(!(nOn > 0)) bad.push(`THE MUTATION NEVER REACHES THE DRAFT: 0 of 300 hands with the switch on`);
-    if(nOff > 0)   bad.push(`THE OFF SWITCH LEAVES THE CARD IN THE DRAFT: ${nOff} of 300 hands with the switch off`);
-    const hand = (()=>{ MUT_ON = true; for(let i=0;i<300;i++){ const o = offers().find(o=>subj.includes(o.key)); if(o) return o; } return null; })();
-    if(hand && (hand.lv !== "MUTATION" || cardFamily(hand) !== "mut"))
-      bad.push(`THE CARD DOES NOT SAY MUTATION: lv ${hand.lv}, family ${cardFamily(hand)}`);
-    for(const k in stash) if(k !== "ram") P.kit[k] = stash[k];
-    noRules = nrWas;
-    // 2. THE TRAMPLE. One fat body 0.9 m ahead, winding up a bite.
-    const mk = ()=>{ window.__g.clearEnemies(); const e = spawnEnemy("skitter", P.x + .9, P.z);
-                     e.hp = e.maxhp = 1e9; e.rise = 0; e.dig = 0; e.stoop = 0; e.wu = .5; e.lg = 0; e.kx = 0; e.kz = 0;
-                     rebuildGrid(); return e; };
-    const trial = (c)=>{
-      const e = mk(); if(c.boss) e.boss = true;
-      MUT_ON = c.on; P.rush = c.rush; P.idle = c.idle;
-      if(c.kit) P.kit.ram = { key:"ram", l:0, t:0, evo:false }; else delete P.kit.ram;
-      const h0 = e.hp, n0 = ramN; ramMaybe();
-      const out = { hit: e.hp < h0, n: ramN - n0, wu: e.wu, push: e.kx*(e.x-P.x) + e.kz*(e.z-P.z), e };
-      if(c.again){ const h1 = e.hp; ramMaybe(); out.again = e.hp < h1; }
-      if(e.boss && !c.boss) e.boss = false;
-      return out;
-    };
-    const base = { on:true, rush:1, idle:0, kit:true };
-    const A = trial(Object.assign({}, base, { again:true }));
-    if(!A.hit || A.n !== 1) bad.push(`THE RUSH DOES NOT TRAMPLE: a body 0.9 m ahead took no bonk (hit ${A.hit}, n ${A.n})`);
-    if(!(A.push > 0)) bad.push(`A BONKED BODY IS NOT THROWN ASIDE: shove along the line out ${A.push}`);
-    if(A.wu !== 0) bad.push(`A BONKED BODY STILL BITES: its wind-up is ${A.wu}, not knocked out`);
-    if(A.again) bad.push(`THE SAME BODY WAS TRAMPLED TWICE INSIDE RAM_CD (${RAM_CD} s)`);
-    const nulls = [["THE OFF SWITCH DOES NOT STOP THE TRAMPLE", { on:false }],
-                   ["IT TRAMPLES WITHOUT A RUSH", { rush:0 }],
-                   ["IT TRAMPLES STANDING STILL", { idle:1 }],
-                   ["IT TRAMPLES WITHOUT THE CARD", { kit:false }],
-                   ["IT TRAMPLES A BOSS", { boss:true }]];
-    for(const [msg, c] of nulls){ const r = trial(Object.assign({}, base, c)); if(r.hit || r.n) bad.push(msg); }
-    // 3. THE HORN, on the real body: grown with the card, not without it, not
-    // with the switch off, and never on THE SPLIT's second creature.
-    const mesh = (ch, kit, twin)=>{
-      const sp = { x:0, y:0, z:0, face:0, iframe:0, hopFx:0, air:false, portrait:true, rush:0,
-                   mscale:1, kit, surge:0, surgeT:0, legSpan:null, headSpan:null };
-      if(twin) sp.twinOf = {};
-      const an = { ph:0, amp:0, lean:0, bank:0, sq:1, lunge:0, look:0, land:0,
-                   hit:0, hitR:0, hitF:-1, br:0, dead:0, atkT:9, atkKind:"", atkDir:0, atkSide:1, atkAmp:1 };
-      const cP = bodyPos, cC = bodyCap; let out;
-      for(let i=0;i<2;i++){ bodyPos = []; bodyCap = null; drawMonBody(ch, sp, an, 0, 0, T); out = bodyPos; }
-      bodyPos = cP; bodyCap = cC; vn = 0; nbox = 0;
-      return out;
-    };
-    const same = (a, b)=> a.length === b.length && a.every((v,i)=>Math.abs(v - b[i]) < 1e-9);
-    const rk = { ram:{ key:"ram", l:0, t:0, evo:false } };
-    let grew = 0, forms = 0;
-    for(const ch of CHARS){
-      forms++; MUT_ON = true;
-      const A0 = mesh(ch, {}), A1 = mesh(ch, rk), AT = mesh(ch, rk, true), AT0 = mesh(ch, {}, true);
-      MUT_ON = false; const AO = mesh(ch, rk); MUT_ON = true;
-      if(!same(A0, A1)) grew++; else bad.push(`THE MUTATION GROWS NOTHING on ${ch.id}`);
-      if(!same(A0, AO)) bad.push(`THE OFF SWITCH LEAVES THE HORN ON ${ch.id}`);
-      if(!same(AT0, AT)) bad.push(`THE SPLIT'S SECOND CREATURE GROWS THE HORN on ${ch.id} - the twin is not the mutation's`);
-    }
-    // restore
-    window.__g.clearEnemies();
-    MUT_ON = keep.on; P.rush = keep.rush; P.idle = keep.idle; P.lvl = keep.lvl; P.iframe = keep.iframe;
-    if(keep.ram) P.kit.ram = keep.ram; else delete P.kit.ram;
-    qaSettle();
-    return { ok: bad.length === 0, bad, subj, draft:{ on:nOn, off:nOff }, horn:`${grew}/${forms}`, switch:MUT_ON };
-  },
+  // (the mutation family's gates - mutGate, springGate, whipGate - are test-only: tools/qa/mutations.js)
   // ==================================================================== L39
   // SPRINGHEEL, the second mutation (the hop). springGive() is its bench knob
   // (ships -1), springs() the run's tally pairTick reads as `fired`.
   springGive:(v)=>{ if(v!==undefined) springGive = +v; return springGive; },
   springs:()=>({ n:springN, killR:+killR.toFixed(2) }),
-  // THE GATE. Subjects derived: the card is the `mut` entry whose key the
-  // dodge reads (PASSIVES.spring), the dodge is the REAL enemy loop in step()
-  // (a body staged with its wind-up on its last frame), the springs are the
-  // real drawMonBody. One clause per way it could be wrong, each with a null.
-  springGate:()=>{
-    const bad = [], key = "spring", card = PASSIVES[key];
-    if(!card || !card.mut) bad.push("SPRINGHEEL IS NOT A MUTATION CARD IN PASSIVES");
-    if(springGive !== -1) bad.push(`THE BENCH KNOB IS LEFT ARMED: springGive ${springGive}, ships -1`);
-    const keep = { on:MUT_ON, lvl:P.lvl, sp:P.kit.spring, iframe:P.iframe, x:P.x, y:P.y, z:P.z,
-                   air:P.air, vy:P.vy, fly:P.fly, hp:P.hp, ns:noSpawn, bd:botDrive };
-    qaLive(bad, "THE SPRINGHEEL GATE");
-    // 1. THE DRAFT, BOTH WAYS, this card by name (mutGate counts the family).
-    const stash = {}, nrWas = noRules; noRules = false;
-    for(const k of Object.keys(P.kit)) if(isRule(k)){ stash[k] = P.kit[k]; delete P.kit[k]; }
-    P.lvl = Math.max(P.lvl, RULE_FROM);
-    const dealt = (on)=>{ MUT_ON = on; let n = 0; for(let i=0;i<300;i++) for(const o of offers()) if(o.key === key) n++; return n; };
-    const nOn = dealt(true), nOff = dealt(false); MUT_ON = true;
-    if(!(nOn > 0)) bad.push("SPRINGHEEL NEVER REACHES THE DRAFT: 0 of 300 hands with the switch on");
-    if(nOff > 0)   bad.push(`THE OFF SWITCH LEAVES SPRINGHEEL IN THE DRAFT: ${nOff} of 300 hands with the switch off`);
-    const hand = (()=>{ for(let i=0;i<300;i++){ const o = offers().find(o=>o.key === key); if(o) return o; } return null; })();
-    if(hand && (hand.lv !== "MUTATION" || cardFamily(hand) !== "mut"))
-      bad.push(`SPRINGHEEL DOES NOT SAY MUTATION: lv ${hand.lv}, family ${cardFamily(hand)}`);
-    for(const k in stash) if(k !== key) P.kit[k] = stash[k];
-    noRules = nrWas;
-    // 2. THE DODGE, through the real step(). A skitter in reach whose bite
-    // resolves THIS frame; the player on the ground or 1 m up and rising.
-    noSpawn = true; botDrive = false;
-    const trial = (c)=>{
-      window.__g.clearEnemies();
-      const gy = groundY(P.x, P.z);
-      const e = spawnEnemy("skitter", P.x + .4, P.z);
-      e.hp = e.maxhp = 1e9; e.rise = 0; e.dig = 0; e.dug = 0; e.stoop = 0; e.rout = 0; e.burrow = false;
-      e.wd = 0; e.lg = 0; e.dvT = 0; e.kx = 0; e.kz = 0;
-      if(c.dive){ e.dvT = .05; e.wu = 0; } else e.wu = 1e-4;
-      rebuildGrid();
-      MUT_ON = c.on; P.fly = false; P.iframe = 0; P.hp = P.maxhp;
-      // L40: the kit is only the card - the battery's weapons knocked the
-      // staged skitter clear on some pages (the tell gate's finding, same trial)
-      P.kit = c.kit ? { spring:{ key, l:0, t:0, evo:false } } : {};
-      if(c.air){ P.air = true; P.y = gy + 1; P.vy = 6; } else { P.air = false; P.y = gy; P.vy = 0; }
-      const n0 = hurtLog.n.contact, s0 = springN;
-      step(1/60);
-      return { hurt: hurtLog.n.contact - n0, dodged: springN - s0 };
-    };
-    const base = { on:true, kit:true, air:true }, kitWas = P.kit;
-    const A = trial(base);
-    if(A.hurt !== 0 || A.dodged !== 1) bad.push(`THE HOP DOES NOT DODGE THE BITE: in the air with the card the bite landed (hurt ${A.hurt}, dodged ${A.dodged})`);
-    const nulls = [["THE OFF SWITCH DOES NOT STOP THE DODGE", { on:false }],
-                   ["IT DODGES WITHOUT THE CARD", { kit:false }],
-                   ["IT DODGES ON THE GROUND", { air:false }],
-                   ["IT DODGES A DIVE (a dive comes from above)", { dive:true }]];
-    for(const [msg, c] of nulls){ const r = trial(Object.assign({}, base, c));
-      if(r.dodged || r.hurt !== 1) bad.push(`${msg}: hurt ${r.hurt}, dodged ${r.dodged}`); }
-    // the twin: the dodge is the player's alone, by the same predicate
-    P.kit = kitWas;
-    if(springDodge({ twinOf:{}, kit:{ spring:{} }, air:true })) bad.push("THE SPLIT'S SECOND CREATURE DODGES - the twin is not the mutation's");
-    // 3. THE SPRINGS, on the real body, all characters.
-    const mesh = (ch, kit, twin, air)=>{
-      const sp = { x:0, y:0, z:0, face:0, iframe:0, hopFx:0, air:!!air, portrait:true, rush:0,
-                   mscale:1, kit, surge:0, surgeT:0, legSpan:null, headSpan:null };
-      if(twin) sp.twinOf = {};
-      const an = { ph:0, amp:0, lean:0, bank:0, sq:1, lunge:0, look:0, land:0,
-                   hit:0, hitR:0, hitF:-1, br:0, dead:0, atkT:9, atkKind:"", atkDir:0, atkSide:1, atkAmp:1 };
-      const cP = bodyPos, cC = bodyCap; let out;
-      for(let i=0;i<2;i++){ bodyPos = []; bodyCap = null; drawMonBody(ch, sp, an, 0, 0, T); out = bodyPos; }
-      bodyPos = cP; bodyCap = cC; vn = 0; nbox = 0;
-      return out;
-    };
-    const same = (a, b)=> a.length === b.length && a.every((v,i)=>Math.abs(v - b[i]) < 1e-9);
-    const rk = { spring:{ key, l:0, t:0, evo:false } };
-    // boxes (6-tuples) in `b` that are not in `a`, flattened in order
-    const grownBy = (a, b)=>{ const k = (x,i)=>x.slice(i,i+6).map(v=>v.toFixed(6)).join(","), have = new Set();
-      for(let i=0;i<a.length;i+=6) have.add(k(a,i));
-      const out = []; for(let i=0;i<b.length;i+=6) if(!have.has(k(b,i))) out.push(...b.slice(i,i+6)); return out; };
-    let grew = 0, forms = 0;
-    for(const ch of CHARS){
-      forms++; MUT_ON = true;
-      const A0 = mesh(ch, {}), A1 = mesh(ch, rk), AA = mesh(ch, rk, false, true), AT = mesh(ch, rk, true), AT0 = mesh(ch, {}, true);
-      MUT_ON = false; const AO = mesh(ch, rk); MUT_ON = true;
-      if(!same(A0, A1)) grew++; else bad.push(`SPRINGHEEL GROWS NOTHING on ${ch.id}`);
-      // the springs' OWN boxes (what the card adds), on the ground and in the
-      // air - a body that changes pose in the air by itself (a flier) must
-      // not pass this for the springs
-      const AA0 = mesh(ch, {}, false, true);
-      // L40: judged on the springs' own SHAPE, not their absolute boxes. Two
-      // bodies (accnt, pyre) change pose in the air, which moves the haunch
-      // the springs hang from - so the old comparison of boxes saw "different"
-      // there whether or not the coils opened, and a closed spring passed on 2
-      // of 9. The openness is the stack's height over its thinnest box: a
-      // translated or uniformly resized spring keeps it, an opened one grows.
-      const open = (bx)=>{ let lo = 1e9, hi = -1e9, th = 1e9;
-        for(let i = 0; i < bx.length; i += 6){ lo = Math.min(lo, bx[i+2] - bx[i+5]); hi = Math.max(hi, bx[i+2] + bx[i+5]); th = Math.min(th, bx[i+5]); }
-        return bx.length ? (hi - lo) / th : 0; };
-      const oG = open(grownBy(A0, A1)), oA = open(grownBy(AA0, AA));
-      if(!(oA > oG * 1.2)) bad.push(`THE SPRINGS DO NOT OPEN IN THE AIR on ${ch.id} (openness ${oG.toFixed(2)} ground, ${oA.toFixed(2)} air)`);
-      if(!same(A0, AO)) bad.push(`THE OFF SWITCH LEAVES THE SPRINGS ON ${ch.id}`);
-      if(!same(AT0, AT)) bad.push(`THE SPLIT'S SECOND CREATURE GROWS THE SPRINGS on ${ch.id} - the twin is not the mutation's`);
-    }
-    // restore
-    window.__g.clearEnemies();
-    MUT_ON = keep.on; P.lvl = keep.lvl; P.iframe = keep.iframe; P.x = keep.x; P.y = keep.y; P.z = keep.z;
-    P.air = keep.air; P.vy = keep.vy; P.fly = keep.fly; P.hp = keep.hp; noSpawn = keep.ns; botDrive = keep.bd;
-    if(keep.sp) P.kit.spring = keep.sp; else delete P.kit.spring;
-    qaSettle();
-    return { ok: bad.length === 0, bad, draft:{ on:nOn, off:nOff }, dodge:A, springs:`${grew}/${forms}`, switch:MUT_ON };
-  },
+  // ============================================================== WHIPTAIL
+  // WHIPTAIL, the third mutation (THE TURN). whipGive is its bench arm (ships
+  // -1); whips() is the run's tally, which pairTick reads as `fired` (lashes).
+  whiptail:(v)=>{ if(v!==undefined) WHIP_ON = !!v; return WHIP_ON; },
+  whipGive:(v)=>{ if(v!==undefined) whipGive = +v; return whipGive; },
+  whips:()=>({ n:whipN, hit:whipHit, dmg:+dmgWhip.toFixed(1), killR:+killR.toFixed(2) }),
   // L37: THE CHARGING BOT's gate. chargeAim is pure, so its clauses are staged
   // on plain objects; the last clause is the real botVector on a real field.
   chargeGate:()=>{
@@ -23509,10 +23714,9 @@ window.__g = {
       if(picking) autoPick();
       step(1/60); R.f++;
       if(P.hp < R.hpWas && T >= R.from) R.hurtT += R.hpWas - P.hp;
-      // L36's bench arm: RAMHORN handed over at the window's first frame, so
-      // both halves of a pair share the whole opening and draft up to it
-      if(ramGive > 0 && T >= R.from && P.kit && !P.kit.ram){ P.kit.ram = { key:"ram", l:0, t:0, evo:false }; }
-      if(springGive > 0 && T >= R.from && P.kit && !P.kit.spring){ P.kit.spring = { key:"spring", l:0, t:0, evo:false }; }
+      // every mutation's bench arm (MUT_BENCH): its card handed over at the
+      // window's first frame, so both halves of a pair share the whole opening
+      for(const [k, give] of MUT_BENCH) if(give() > 0 && T >= R.from && P.kit && !P.kit[k]) P.kit[k] = { key:k, l:0, t:0, evo:false };
       if(R.keep && P.hp < P.maxhp) P.hp = P.maxhp;
       // AFTER the restore, so this is the frame's OUTCOME and not its damage.
       if(P.hp < P.maxhp) R.dipN++;
@@ -24682,6 +24886,16 @@ window.__g = {
   setCam: (yaw, pitch, zoom)=>{ camYaw = yaw;
     if(pitch !== undefined) camPitch = clamp(pitch, .18, 1.32);
     if(zoom  !== undefined) camZoom  = clamp(zoom, .5, 4); },
+  // THE CLEAR SIGHTLINE (L49): the knob (a QA switch, shipped on), what the
+  // last frame did with it, and its gate; and the unlock-name gate
+  camClear: (v)=>{ if(v !== undefined){ CAM_CLEAR_ON = !!v; if(!CAM_CLEAR_ON) camLift = 0; } return CAM_CLEAR_ON; },
+  sight: ()=>({ on:CAM_CLEAR_ON, lift:+camLift.toFixed(3), ghosts:ghostN,
+                seg:lastSight ? lastSight.map(v=>+v.toFixed(3)) : null, eye:camEye.map(v=>+v.toFixed(3)) }),
+  sightGate: ()=>sightGate(),
+  // stage one of its frames for a picture: MOVES the player there and leaves it
+  sightStage: (x, z, yaw, on, n = 12)=>{ const f = sightFrame(x, z, yaw, !!on, n);
+    return { ghosts:f.ghosts, share:f.share, lift:f.lift, eye:f.eye.map(v=>+v.toFixed(3)) }; },
+  unlockNameGate: ()=>unlockNameGate(),
   // scale the ambient term of the last two keyframes, to find how dark the
   // night can get before the palette stops being readable
   setSkyAmbient: (k)=>{ for(const f of SKY.slice(-2)){

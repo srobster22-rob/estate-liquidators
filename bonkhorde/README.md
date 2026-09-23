@@ -295,7 +295,14 @@ python3 film/tile.py sheet.png a.png b.png   # tile frames into a strip (SCALE=1
 
 `test.js` covers each of the 10 weapons and all 10 evolutions individually, spawns every enemy
 type and boss, plays a complete run to the 20:00 victory, verifies the player can actually
-die, and checks that `localStorage` survives a reload. **836 passing** as of L28, with 288 mutations in `mutate.js` that the suite is checked against.
+die, and checks that `localStorage` survives a reload. **845 passing** as of L36, with 301 mutations in `mutate.js` that the suite is checked against.
+
+Some gates live outside the page. This game is built by two sessions that merge through the published
+page, and the other one moved the mutation family's gates (RAMHORN, SPRINGHEEL, WHIPTAIL) into a
+test-only file of its own that never reaches this repository. `tools/qa/mutations.js` is this
+repository's copy: one expression that section 97 reads from disk and evaluates *inside* the page, so
+the gates still see the game's own bindings and still run against whatever build a mutant hands the
+suite.
 
 **"Telegraphed, dodgeable" is measured, not asserted.** The check that makes that claim used to
 compare a stationary player against the autopilot, and the autopilot's closest approach to the
