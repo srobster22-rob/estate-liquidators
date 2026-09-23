@@ -9054,17 +9054,21 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
         g.wipeSave(); g.dev(true); g.pin(seed); g.pinRun(seed);
         g.start("intern"); g.god(); g.bot(true); g.drainPicks(true);
         g.step(270 * 60, 1/60);
-        const shares = []; let c = null;
+        const shares = [], pass = {}; let c = null;
         for (let k = 0; k < 7; k++) {
           if (k) g.step(15 * 60, 1/60);
           c = settled(); shares.push(c.horde / c.drawn);
+          for (const p in c.passes) pass[p] = (pass[p] || 0) + c.passes[p] / c.drawn / 7;
         }
+        // the largest thing in the frame that is not the horde, over the same window
+        const next = Object.entries(pass).filter(([p]) => p !== "horde").sort((a, b) => b[1] - a[1])[0] || ["nothing", 0];
         let f = g.hordeFlow(), cs = g.crowdStat();
         const row = { seed, early: { alive: f.alive, drawn: c.enemies - c.culled,
                                      boxes: c.drawn, hordeBoxes: c.horde,
                                      at6: +(c.horde / c.drawn).toFixed(3),
                                      sent: cs.sent, table: cs.table,
-                                     horde: +(shares.reduce((a, b) => a + b, 0) / shares.length).toFixed(3) } };
+                                     horde: +(shares.reduce((a, b) => a + b, 0) / shares.length).toFixed(3),
+                                     next: next[0], nextShare: +next[1].toFixed(3) } };
         // the late leg on ONE seed only: it is another nine minutes of world
         // per seed, and one is enough to see a late phase go missing
         if (seed === seeds[0]) {
@@ -9084,7 +9088,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     }, [9, 3]);
     const early = crowd.map(c => c.early);
     const late = crowd.find(c => c.late).late;
-    const sayE = crowd.map(c => `seed ${c.seed}: ${c.early.alive} alive, ${c.early.drawn} drawn, ${(c.early.horde*100).toFixed(0)}% of the frame over 4:30-6:00 (${(c.early.at6*100).toFixed(0)}% of ${c.early.boxes} boxes at 6:00), the crowd sent ${c.early.sent} against the table's ${c.early.table}`).join(" | ");
+    const sayE = crowd.map(c => `seed ${c.seed}: ${c.early.alive} alive, ${c.early.drawn} drawn, ${(c.early.horde*100).toFixed(0)}% of the frame over 4:30-6:00 (${(c.early.at6*100).toFixed(0)}% of ${c.early.boxes} boxes at 6:00; next largest ${c.early.next} ${(c.early.nextShare*100).toFixed(0)}%), the crowd sent ${c.early.sent} against the table's ${c.early.table}`).join(" | ");
     const sayL = `${late.alive} alive, ${late.drawn} drawn, ${late.boxes} boxes, the crowd sent ${late.sent} against the table's ${late.table}`;
     ok("six minutes in, the field holds a crowd",
        early.every(e => e.alive >= 50), sayE + "  (a reverted t:270 holds 30-37)");
@@ -9890,27 +9894,27 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // random amount every render, so without holding it the floor below
       // measures the shake and swamps what it is supposed to be the floor of.
       g.pause(true); g.setShake(0);
-      // THE LENS LOOKS WHERE THE COMPLAINT WAS: ground, not a monument (L35 of
-      // this log). Nothing in this run turns camYaw (start() sets 0; the bot
-      // steers the body, not the camera), so the frame looked along +z from
-      // wherever seed 9 stood at 7:00 - and THE CROWD's own draws moved that
-      // station 83 m, to 45 m in front of THE LAST STEP: every outcrop in view
-      // behind it, 0 px changed. A view a monument fills is not an empty middle
-      // distance, and one unchosen heading was always luck (4 of 8 headings from
-      // the pre-crowd station would fail too). So the heading is the one
-      // farthest in angle from every monument close enough to hide a stone
-      // (outcrops are built inside S.far + 8, never past 153 m). Open ground
-      // alone does not make the claim pass: it still needs stones in the view.
-      { const S = g.state();
-        const brg = g.monuments().filter(m => Math.hypot(m.x - S.x, m.z - S.z) < 200)
-                     .map(m => Math.atan2(m.x - S.x, m.z - S.z) * 180 / Math.PI);
-        let yaw = 0, best = -1;
-        for (let a = 0; a < 360; a += 5) {
-          const c = brg.length ? Math.min(...brg.map(b => Math.abs((((a - b) % 360) + 540) % 360 - 180))) : 180;
-          if (c > best) { best = c; yaw = a; } }
-        g.setCam(yaw * Math.PI / 180); }
+      // THE LENS TURNS A FULL CIRCLE (L37). Nothing in this run turns camYaw
+      // (start() sets 0; the bot steers the body, not the camera), so the frame
+      // looked along +z from wherever seed 9 stood at 7:00 - and THE CROWD's own
+      // draws (L35) moved that station 83 m, to 45 m in front of THE LAST STEP:
+      // every outcrop in view behind it, 0 px changed. L35 answered with ONE
+      // CHOSEN HEADING, the one farthest in angle from every monument close
+      // enough to hide a stone, and that was luck a second time: L37 took the
+      // damage numbers off the run stream, which moves every pinned run once,
+      // and the chosen heading painted 0.6% where it had painted 2.22% - and
+      // with the numbers left on the stream (L37's cap alone changing how many
+      // are pushed) 0.23%, from a station one metre from the old one. Measured
+      // over a full turn at 6:00, 7:00 and 8:00 on all three builds, what does
+      // not move is this: the tier's best heading paints 1.31-2.45% of the
+      // screen, and it shows at five to eight of eight headings (the rest face
+      // a monument close enough to hide every stone, or open ground with none
+      // in reach). So the lens turns: eight headings, each settled and each
+      // against its own null frame, and the claim is read off the turn - clear
+      // of the floor at its best, and there at half the headings or more, so
+      // one open view cannot carry it. Open ground alone still does not make it
+      // pass: it needs stones in the view.
       let ms = performance.now();
-      for(let i=0;i<50;i++) g.tick(ms += 16);       // the chase camera lerps on every render
       const cv = [...document.querySelectorAll("canvas")].find(c => c.id !== "ui");
       const W = cv.width, H = cv.height;
       const sc = document.createElement("canvas"); sc.width = W; sc.height = H;
@@ -9923,38 +9927,49 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
                  pass:c.passes.outcrops||0, horde:c.passes.horde||0, boxes:c.drawn,
                  sum:Object.values(c.passes).reduce((a,b)=>a+b,0) };
       };
-      const off = arm(false), off2 = arm(false), on = arm(true);
-      g.outcropsOn(true);
       const diff = (A,B)=>{ let n=0, up=0;
         for(let i=0,q=0;i<W*H;i++,q+=4){
           if(Math.abs(A[q]-B[q])<6 && Math.abs(A[q+1]-B[q+1])<6 && Math.abs(A[q+2]-B[q+2])<6) continue;
           n++; if(((i/W)|0) < H*.5) up++;
         }
         return { n, up }; };
-      const real = diff(off2.px, on.px), noise = diff(off.px, off2.px);
+      const turn = [];
+      for (let a = 0; a < 360; a += 45) {
+        g.outcropsOn(true); g.setCam(a * Math.PI / 180);
+        for(let i=0;i<50;i++) g.tick(ms += 16);     // the chase camera lerps on every render
+        const off = arm(false), off2 = arm(false), on = arm(true);
+        const real = diff(off2.px, on.px), noise = diff(off.px, off2.px);
+        turn.push({ a, paint:+(100*real.n/(W*H)).toFixed(2), floor:+(100*noise.n/(W*H)).toFixed(2), n:real.n, up:real.up,
+                    onDrawn:on.drawn, offDrawn:off.drawn, near:on.near, onPass:on.pass, offPass:off.pass, horde:on.horde,
+                    share:+(100*on.pass/Math.max(1,on.sum)).toFixed(1), boxes:on.boxes, offBoxes:off.boxes });
+      }
+      g.outcropsOn(true);
       const gate = g.outGate();
       g.setCam(0); g.pause(false);
-      return { gate, paint:+(100*real.n/(W*H)).toFixed(2), floor:+(100*noise.n/(W*H)).toFixed(2),
-               upperShare: real.n ? +(100*real.up/real.n).toFixed(1) : 0,
-               onDrawn:on.drawn, offDrawn:off.drawn, near:on.near,
-               onPass:on.pass, offPass:off.pass, horde:on.horde,
-               share:+(100*on.pass/Math.max(1,on.sum)).toFixed(1),
-               boxes:on.boxes, offBoxes:off.boxes };
+      const best = turn.reduce((b, r) => r.paint > b.paint ? r : b, turn[0]);
+      const n = turn.reduce((s, r) => s + r.n, 0), up = turn.reduce((s, r) => s + r.up, 0);
+      return { gate, turn, best, floor:Math.max(...turn.map(r => r.floor)),
+               shows:turn.filter(r => r.paint > .1).length,
+               upperShare: n ? +(100*up/n).toFixed(1) : 0,
+               offDrawn:Math.max(...turn.map(r => r.offDrawn)), offPass:Math.max(...turn.map(r => r.offPass)),
+               maxShare:Math.max(...turn.map(r => r.share)), maxAdd:Math.max(...turn.map(r => r.boxes - r.offBoxes)),
+               hordeUnder:turn.filter(r => !(r.horde > r.onPass)).map(r => r.a) };
     });
+    const turnSay = mid.turn.map(r => `${r.a}:${r.paint}%`).join(" ");
     ok("L27's outcrop gate: where they stand, that the count is the arena's own, that they do not move a pinned world, and that the switch is what puts them out there",
        mid.gate.ok, (mid.gate.bad || []).join(" | ") ||
        `${mid.gate.n} stones on ${mid.gate.sites} sites, ${mid.gate.drawn} built against ${mid.gate.drawnOff} with the switch off`);
-    ok("the tier paints the frame well clear of the instrument's own noise floor",
-       mid.paint > mid.floor * 1.4 && mid.paint > 1.0,
-       `${mid.paint}% of the screen changes when the switch flips, against a ${mid.floor}% floor from two frames that both have it off`);
+    ok("the tier paints the frame well clear of the instrument's own noise floor - at its best heading of a full turn, and at half the turn or more",
+       mid.best.paint > mid.floor * 1.4 && mid.best.paint > 1.0 && mid.shows >= 4,
+       `${mid.best.paint}% of the screen changes when the switch flips at ${mid.best.a} deg, against a ${mid.floor}% floor from two frames that both have it off; it shows (over 0.1%) at ${mid.shows} of 8 headings  (${turnSay})`);
     ok("...and it paints it where the complaint was: the upper frame, which at a 26-degree downward pitch is everything past about forty metres",
-       mid.upperShare > 55, `${mid.upperShare}% of the changed pixels are in the top half of the frame`);
+       mid.upperShare > 55, `${mid.upperShare}% of the pixels it changed over the turn are in the top half of the frame`);
     ok("NULL CONTROL: with the switch off the tier draws nothing at all, and the stones are still there to draw",
-       mid.offDrawn === 0 && mid.offPass === 0 && mid.onDrawn > 0 && mid.near > mid.onDrawn,
-       `${mid.offDrawn} built off / ${mid.onDrawn} built on, of ${mid.near} inside the pass's own 190 m reach`);
+       mid.offDrawn === 0 && mid.offPass === 0 && mid.best.onDrawn > 0 && mid.best.near > mid.best.onDrawn,
+       `${mid.offDrawn} built off at any heading / ${mid.best.onDrawn} built on at ${mid.best.a} deg, of ${mid.best.near} inside the pass's own 190 m reach`);
     ok("and it stays scenery: a minority of the frame, and never more of it than the horde",
-       mid.share < 15 && mid.horde > mid.onPass && mid.boxes - mid.offBoxes < 400,
-       `the outcrop pass is ${mid.onPass} boxes (${mid.share}% of the frame) against the horde's ${mid.horde}; the frame went ${mid.offBoxes} -> ${mid.boxes}`);
+       mid.maxShare < 15 && !mid.hordeUnder.length && mid.maxAdd < 400,
+       `at most ${mid.maxShare}% of the frame at any heading, the horde's pass larger at ${8 - mid.hordeUnder.length} of 8 (${mid.hordeUnder.length ? "not at " + mid.hordeUnder.join(", ") + " deg" : "every one"}); at most ${mid.maxAdd} boxes added; at its best heading ${mid.best.onPass} boxes against the horde's ${mid.best.horde}`);
   }
 
   console.log("\n" + "=".repeat(58));

@@ -10577,8 +10577,8 @@ function hurt(e, amount, kx, kz, crit){
   // and a crit a golden burst of six. Cosmetic pool, unseeded, capped, so the
   // sim and its replays do not know it is there.
   if(cpops.length < 300) spark(e.x, e.y + e.def.h*.55, e.z, crit ? [1,.82,.35] : [1,1,1], crit ? 6 : 2, crit ? 6 : 3.5);
-  // An AoE hit can land on fifty bodies in one tick. Past ~30 on screen the
-  // numbers stop being information and start being a wall, so cap and jitter.
+  // An AoE hit can land on fifty bodies in one tick, and past a few dozen on
+  // screen the numbers stop being information and start being a wall.
   // THE WALL OF NUMBERS (L37). The cap let a crit through whatever it said, and
   // a late kit crits on most hits (the L37 probe: 55% at 3:00, 78% at 17:00) -
   // and an area weapon rolls ONCE for every body it reaches, so one crit pulse
@@ -10588,10 +10588,11 @@ function hurt(e, amount, kx, kz, crit){
   // more than a third under another number, and 55% of the bodies on screen
   // standing behind one; 80% at 17:00. So the cap is a cap - NUM_CAP for every
   // number, and a crit that finds it full takes the place of the oldest white
-  // one or none at all (numRoom). Which of them is DRAWN is render()'s call
-  // (numPlace). The jitter is cosmetic and rolls off the cosmetic stream: it
-  // spent three draws of the seeded run per number, so any change to how many
-  // numbers there are moved every pinned run after the first hit.
+  // one nobody is looking at, or none at all (numRoom). Which of them is
+  // DRAWN is render()'s call (numPlace). The jitter is cosmetic and rolls off
+  // the cosmetic stream: it spent three draws of the seeded run per number, so
+  // any change to how many numbers there are moved every pinned run after the
+  // first hit.
   if(nums.length < (NUM_JUMP ? 30 : NUM_CAP) || (crit && (NUM_JUMP || numRoom())))
     nums.push({ x:e.x+crnd(-.5,.5), y:e.y+e.def.h*.9, z:e.z+crnd(-.5,.5),
                 v:Math.round(amount), life:.62, crit:!!crit, vy:crnd(2.4,3.6) });
