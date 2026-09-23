@@ -10458,6 +10458,41 @@ function dmgOut(base){
   if(crit) d *= 2.3;
   return { d: d, crit };
 }
+// ------------------------------------------------ THE WALL OF NUMBERS (L37)
+// See the note at the push in hurt() for the measurement. Four numbers, one
+// rule each: NUM_CAP numbers exist at once, crits included; a number within
+// NUM_NEAR metres of the eye draws at full size and one further off shrinks
+// with its distance, never below NUM_FAR_K of it; and two numbers on screen
+// keep NUM_GAP pixels between them (numPlace). NUM_SORT_ON and NUM_DEPTH_ON
+// are QA knobs (__g.numSort, __g.numDepth), the same-build A/B - both ship on;
+// NUM_JUMP (__g.numJump, ships false) is the other half of that A/B: crits jump
+// the cap again, so with all three flipped the numbers are the pre-L37 wall
+// drawn over the very same sim (the numbers roll nothing from it).
+const NUM_CAP = 48, NUM_NEAR = 12, NUM_FAR_K = .6, NUM_GAP = 2;
+let NUM_SORT_ON = true, NUM_DEPTH_ON = true, NUM_JUMP = false;
+// what the last frame put on screen, for the checks: the placed numbers with
+// their boxes, and how many it turned away
+let numLast = [], numHidden = 0, numDrift = 0;
+// A crit at a full pool: the oldest PLAIN number nobody is looking at yet gives
+// up its place. The player's own numbers (the chain's payout and a level's heal,
+// `me`), the other crits and every number already ON SCREEN keep theirs - a
+// crit takes a drawn number's place only the way numPlace allows, by landing on
+// it - so a pool of crits and drawn numbers turns the next crit away.
+function numRoom(){
+  let k = -1;
+  for(let i = 0; i < nums.length; i++){ const n = nums[i];
+    if(n.crit || n.me || n.vis === 1) continue;
+    if(k < 0 || n.life < nums[k].life) k = i; }
+  if(k < 0) return false;
+  nums.splice(k, 1); return true;
+}
+// The player's own numbers - the chain's payout and a level's heal - made in one
+// place, so the tag that ranks them over the horde's (numRank) cannot be left off
+// one of them, and numGate makes its own through the same door.
+function numMe(v, o){
+  const n = Object.assign({ x:P.x, y:P.y+2.4, z:P.z, v, life:.9, vy:3.2, me:1 }, o);
+  nums.push(n); return n;
+}
 function hurt(e, amount, kx, kz, crit){
   // still coming out of, or going into, the ground - or climbing out of your
   // fire, which is the air's version of the same beat (L19)
@@ -10544,9 +10579,22 @@ function hurt(e, amount, kx, kz, crit){
   if(cpops.length < 300) spark(e.x, e.y + e.def.h*.55, e.z, crit ? [1,.82,.35] : [1,1,1], crit ? 6 : 2, crit ? 6 : 3.5);
   // An AoE hit can land on fifty bodies in one tick. Past ~30 on screen the
   // numbers stop being information and start being a wall, so cap and jitter.
-  if(nums.length < 30 || crit)
-    nums.push({ x:e.x+rnd(-.5,.5), y:e.y+e.def.h*.9, z:e.z+rnd(-.5,.5),
-                v:Math.round(amount), life:.62, crit:!!crit, vy:rnd(2.4,3.6) });
+  // THE WALL OF NUMBERS (L37). The cap let a crit through whatever it said, and
+  // a late kit crits on most hits (the L37 probe: 55% at 3:00, 78% at 17:00) -
+  // and an area weapon rolls ONCE for every body it reaches, so one crit pulse
+  // through the crowd put fifty identical gold numbers on it in one frame. With
+  // the crowd up, 12:00 was 146 numbers a second and every one of them a crit
+  // (a white one never got under the cap again), 115 on screen, 99% of them
+  // more than a third under another number, and 55% of the bodies on screen
+  // standing behind one; 80% at 17:00. So the cap is a cap - NUM_CAP for every
+  // number, and a crit that finds it full takes the place of the oldest white
+  // one or none at all (numRoom). Which of them is DRAWN is render()'s call
+  // (numPlace). The jitter is cosmetic and rolls off the cosmetic stream: it
+  // spent three draws of the seeded run per number, so any change to how many
+  // numbers there are moved every pinned run after the first hit.
+  if(nums.length < (NUM_JUMP ? 30 : NUM_CAP) || (crit && (NUM_JUMP || numRoom())))
+    nums.push({ x:e.x+crnd(-.5,.5), y:e.y+e.def.h*.9, z:e.z+crnd(-.5,.5),
+                v:Math.round(amount), life:.62, crit:!!crit, vy:crnd(2.4,3.6) });
   // THE DIG-IN (L18). Here, at the funnel, and on the frame a body SURVIVED a
   // hit - the trigger has to be "your fire is killing this thing out at range",
   // and this is the only line in the file that knows a hit landed and the body
@@ -15047,7 +15095,7 @@ function step(dt){
         if(P.hop % 5 === 0){
           const bonus = Math.max(3, Math.round(P.need * .05));
           coinsRun += 1 + Math.floor(P.hop/5);
-          nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:bonus, life:.9, crit:true, vy:3.2 });
+          numMe(bonus, { crit:true });
           // ONE NAME. The hints teach "chain a hop", the readout says x14, and
           // this toast said TEMPO - a third word for the one mechanic a new
           // player is trying to learn (R284). The toast names the chain.
@@ -15284,7 +15332,7 @@ function dealLevels(){
     alert2(autoLv > 1 ? `LV ${P.lvl}  ·  +${autoLv} LEVELS  ·  +${Math.round(autoHp)} HP`
                       : `LV ${P.lvl}  ·  +${Math.round(autoHp)} HP`, "#6ddba0");
     if(autoHp > 0)
-      nums.push({ x:P.x, y:P.y+2.4, z:P.z, v:Math.round(autoHp), life:.9, heal:true, vy:3.2 });
+      numMe(Math.round(autoHp), { heal:true });
     SFX.levelup();
   }
 }
@@ -19199,18 +19247,17 @@ function render(){
   // them. An outline all the way round instead of a drop copy, full opacity
   // for most of the life and the fade at the end, and the number gets bigger
   // the harder the hit so the big ones read from further away.
-  for(const n of nums){
-    const s = project(n.x,n.y,n.z);
-    if(!s) continue;
+  // L37: numPlace decides which of them are drawn and how big; this only
+  // paints what it placed.
+  for(const L of numPlace()){
+    const n = L.n;
     g2.globalAlpha = clamp(n.life/.34, 0, 1);
-    const heft = n.crit ? 22 : Math.min(20, 13 + Math.log10(Math.max(1, +n.v)) * 3.4);
-    g2.font = `${n.crit ? 800 : 700} ${heft.toFixed(0)}px ui-monospace,Menlo,monospace`;
-    g2.lineWidth = n.crit ? 5 : 4; g2.lineJoin = "round";
+    g2.font = L.font;
+    g2.lineWidth = L.lw; g2.lineJoin = "round";
     g2.strokeStyle = n.heal ? "#04301c" : n.crit ? "#3d1c00" : "#12100a";
-    const txt = n.heal ? "+" + n.v : n.v;
-    g2.strokeText(txt, s[0], s[1]);
+    g2.strokeText(L.txt, L.s[0], L.s[1]);
     g2.fillStyle = n.heal ? "#7dfab4" : n.crit ? "#ffd24a" : "#fffbf0";
-    g2.fillText(txt, s[0], s[1]);
+    g2.fillText(L.txt, L.s[0], L.s[1]);
   }
   g2.globalAlpha = 1;
   // 19% of the height puts these on top of the phase line on a phone in
@@ -19428,6 +19475,82 @@ function render(){
     gr.addColorStop(1,`rgba(150,10,10,${.22+p*.42+Math.sin(T*7)*.05})`);
     g2.fillStyle=gr; g2.fillRect(0,0,w,h);
   }
+}
+// THE WALL OF NUMBERS, DRAWN (L37). Each number is PLACED ONCE, the first frame
+// it is drawn, and only where it touches nothing already on screen - so what is
+// drawn is legible by construction, and a number never jumps or pops in
+// half-way up its rise. The incumbents keep their places; a newcomer that lands
+// on one is turned away (and dropped from the pool, so a hidden number never
+// holds a place a visible one could use) - unless it outranks everything it
+// lands on (numRank: the player's own numbers over crits over plain ones), in
+// which case it takes the place and they go. And a number is sized by its
+// distance from the eye: the crowd's band stands 20-38 m out, and at one size
+// for every depth its numbers were wider than the gaps between its bodies.
+const numRank = n => n.me ? 2 : n.crit ? 1 : 0;
+const numMeet = (a, b) => a[0] < b[2] + NUM_GAP && b[0] < a[2] + NUM_GAP &&
+                          a[1] < b[3] + NUM_GAP && b[1] < a[3] + NUM_GAP;
+const numInk  = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+function numLay(n){
+  const s = project(n.x, n.y, n.z); if(!s) return null;
+  if(n.dy) s[1] -= n.dy;                                      // stacked over another of yours (numStack)
+  const d = Math.hypot(n.x - camEye[0], n.y - camEye[1], n.z - camEye[2]);
+  const k = NUM_DEPTH_ON ? clamp(NUM_NEAR / Math.max(1e-3, d), NUM_FAR_K, 1) : 1;
+  const heft = (n.crit ? 22 : Math.min(20, 13 + Math.log10(Math.max(1, +n.v)) * 3.4)) * k;
+  const lw = (n.crit ? 5 : 4) * k, txt = n.heal ? "+" + n.v : String(n.v);
+  const font = `${n.crit ? 800 : 700} ${heft.toFixed(NUM_DEPTH_ON ? 1 : 0)}px ui-monospace,Menlo,monospace`;
+  g2.font = font;
+  const w = g2.measureText(txt).width + lw;
+  return { n, s, k, heft, lw, txt, font,
+           box:[s[0] - w/2, s[1] - heft*.80 - lw/2, s[0] + w/2, s[1] + heft*.14 + lw/2] };
+}
+// THE PLAYER'S OWN NUMBERS STACK rather than turn each other away: the chain's
+// payout feeds XP, the XP can land a level, and a level with nothing to choose
+// is a heal number - two numbers about YOU on one frame at one spot. The later
+// one climbs a box at a time (three at most) until it is clear of everything it
+// does not outrank, and keeps that climb (n.dy) for the rest of its rise.
+function numStack(L, placed){
+  const h = L.box[3] - L.box[1] + NUM_GAP;
+  for(let t = 1; t <= 3; t++){
+    const box = [L.box[0], L.box[1] - h*t, L.box[2], L.box[3] - h*t];
+    const hit = placed.filter(q => numMeet(q.box, box));
+    if(!hit.every(q => numRank(q.n) < numRank(L.n))) continue;
+    for(const q of hit){ q.n.vis = 0; placed.splice(placed.indexOf(q), 1); }
+    L.n.dy = h*t; L.box = box; L.s = [L.s[0], L.s[1] - h*t];
+    return true;
+  }
+  return false;
+}
+function numPlace(){
+  const lays = [], placed = [];
+  numDrift = 0;
+  for(const n of nums){
+    if(n.vis === 0) continue;
+    const L = numLay(n), b = L && L.box;
+    // behind the eye, or wholly off the canvas: it takes no place and holds none
+    if(!L || b[2] < 0 || b[0] > VPM.w || b[3] < 0 || b[1] > VPM.h){ if(NUM_SORT_ON) n.vis = 0; continue; }
+    lays.push(L);
+  }
+  // THE INCUMBENTS FIRST, AND RE-CHECKED (the L37 review). A number rises at its
+  // own pace and the camera moves, so two numbers placed apart can drift onto
+  // each other - checked only when placed, "legible by construction" held for
+  // one frame. Where their ink meets now, the higher rank, then the older, keeps
+  // its place and the other goes (numDrift counts them). Ink, not NUM_GAP: a
+  // drift into the gap costs nothing, a drift into the other number does.
+  const inc = lays.filter(L => L.n.vis === 1).sort((a, b) => numRank(b.n) - numRank(a.n) || a.n.life - b.n.life);
+  for(const L of inc){ if(NUM_SORT_ON && placed.some(q => numInk(q.box, L.box))){ L.n.vis = 0; numDrift++; continue; } placed.push(L); }
+  for(const L of lays){
+    if(L.n.vis !== undefined) continue;
+    const hit = NUM_SORT_ON ? placed.filter(q => numMeet(q.box, L.box)) : [];
+    if(hit.length && !hit.every(q => numRank(q.n) < numRank(L.n))){
+      if(!(L.n.me && numStack(L, placed))){ L.n.vis = 0; continue; }
+      L.n.vis = 1; placed.push(L); continue; }
+    for(const q of hit){ q.n.vis = 0; placed.splice(placed.indexOf(q), 1); }
+    L.n.vis = 1; placed.push(L);
+  }
+  numHidden = 0;
+  for(let i = nums.length - 1; i >= 0; i--) if(nums[i].vis === 0){ nums.splice(i, 1); numHidden++; }
+  numLast = placed;
+  return placed;
 }
 function project(x,y,z){
   const v = xf(VPM.view, x,y,z);
@@ -19980,6 +20103,288 @@ function unlockNameGate(){
       bad.push(`THE UNLOCKS TAB DOES NOT SAY ${u.what}`);
     openMenu(wasTab); }
   return { ok:!bad.length, bad, names:seen, tabRead:tab !== null };
+}
+
+// ===================================================== QA: L37's number wall
+// numGate - THE WALL OF NUMBERS on the live page. The frame the L37 probe found
+// at 12:00, built on demand: a crit-certain kit fires ONE pulse through a band
+// of bodies 18-34 m ahead of the chase camera. Every clause that says the fix
+// works carries the null that says the staging reproduces the wall without it.
+//  1. the pool holds NUM_CAP whatever a crit says - and the pulse hit more;
+//  2. no two numbers on screen share ink, on the pulse's frame AND through the
+//     rest of their rise; the pulse still says it landed; what is turned away leaves the pool (NULL:
+//     something was turned away); and every number placed is PAINTED, in its
+//     own size at its own spot;
+//  3. the crowd shows through: fewer bodies under a number, and a third of the
+//     screen under them at most, against the pre-L37 numbers on the same frame
+//     (NULL: that frame is a wall - most of its numbers touch another);
+//  4. a far number is drawn smaller than a near one - the font and the box, not
+//     only the factor - never below NUM_FAR_K (NULL: depth off is full size);
+//  5. rank: a crit takes a plain number's place, a plain one does not take a
+//     crit's, the player's own (made through numMe, so the tag is under test)
+//     takes a crit's; two of yours on one spot both show, the later stacked
+//     above on that frame AND the next; the climb takes a plain number's place
+//     and a third of yours climbs over both;
+//  6. placed once: a number on screen stays there while newcomers land on it -
+//     and re-checked: of two placed apart that drift onto each other only the
+//     older stays, and no frame draws them sharing ink (NULL: their boxes did
+//     meet - staged, a lower number rising into one placed just above it);
+//  7. a lone hit on an empty field is drawn;
+//  8. the number rolls nothing from the run stream (NULL: the counter counts);
+//  9. a crit at a full pool of plain numbers gets in and the OLDEST unseen plain
+//     one goes; your own and the ones on screen are spared; at a pool of crits
+//     it does not get in;
+// 10. a number behind the eye or wholly off the canvas leaves the pool (NULL:
+//     one in view stays).
+// The pulse runs NUM_PULSES times, each on a SEEDED cosmetic stream, and the
+// crowd clause (3) is read off their sum. A number's jitter is crnd, and which
+// fifteen of 117 numbers a pulse places - so which bodies they stand over -
+// moves with it: unseeded, forty clean runs put the bodies-under ratio anywhere
+// from .19 to .49 and a forty-first at .57, against a bound of .5, so the clause
+// would have failed a clean build now and then. Seeded, the verdict is the same
+// every run; summed over three seeds, a change to how many cosmetic draws a hit
+// makes cannot carry it across the bound by landing on one unlucky sample.
+// Hands the field, the player, the camera, the pool, the knobs and Math.random back.
+const NUM_STAGE = [9, 13], NUM_PULSES = 3;     // rows x columns of the staged crowd; pulses summed
+function numGate(seedBase = 1000){
+  if(!P || over || !(cv.width > 0) || ctxLost)
+    return { ok:false, bad:["THE NUMBER GATE WAS NOT RUN: it needs a live run and a sized canvas"] };
+  const bad = [], out = {};
+  if(!NUM_SORT_ON) bad.push("THE NUMBER PLACEMENT IS SHIPPED OFF");
+  if(!NUM_DEPTH_ON) bad.push("THE NUMBER DEPTH SCALE IS SHIPPED OFF");
+  if(NUM_JUMP) bad.push("THE CRITS ARE SHIPPED JUMPING THE NUMBER CAP (NUM_JUMP is on)");
+  const was = { en:enemies.slice(), co:corpses.slice(), nums:nums.slice(), crit:P.crit, x:P.x, y:P.y, z:P.z,
+                vx:P.vx, vz:P.vz, face:P.face, yaw:camYaw, anc:camAnchor ? camAnchor.slice() : null, lock:camLock,
+                shake, flash, hold:holdFace, sort:NUM_SORT_ON, depth:NUM_DEPTH_ON, jump:NUM_JUMP,
+                dealt:dmgDealt, boss:dmgBoss, R };
+  NUM_JUMP = false; holdFace = true;                // the idle animal does not turn to the gate's camera
+  const home = ()=>{ enemies.length = 0; corpses.length = 0; nums.length = 0;
+                     P.x = 0; P.z = 0; P.y = groundY(0, 0); P.vx = 0; P.vz = 0; camYaw = 0; camLock = null;
+                     camAnchor = [P.x, P.y, P.z]; shake = 0; flash = 0; };
+  const body = (x, z)=>{ const e = spawnEnemy("shambler", x, z);
+                         if(e){ e.hp = e.maxhp = 1e12; e.rise = 0; e.burrow = false; } return e; };
+  // one real frame, and what it PAINTED: every number placed must be painted
+  // with its own text, at its own spot, in its own size
+  let painted = 0, paintMiss = 0;
+  const frame = ()=>{ const ft = g2.fillText, rec = [];
+    g2.fillText = function(t, x, y){ rec.push({ t:String(t), x, y, f:this.font }); return ft.apply(this, arguments); };
+    try { render(); } finally { g2.fillText = ft; }
+    for(const L of numLast){ g2.font = L.font; const f = g2.font; painted++;
+      if(!rec.some(r => r.t === L.txt && r.x === L.s[0] && r.y === L.s[1] && r.f === f)) paintMiss++; }
+    return numLast.map(L => ({ n:L.n, box:L.box.slice(), k:L.k })); };
+  const meets = (a, b)=> Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > 0 && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > 0;
+  const pairs = (L)=>{ let n = 0; for(let i = 0; i < L.length; i++) for(let j = i + 1; j < L.length; j++) if(meets(L[i].box, L[j].box)) n++; return n; };
+  // the screen area the numbers cover, their union on a 2 px grid
+  const ink = (L)=>{ const C = 2, gw = Math.ceil(cv.width/C), gh = Math.ceil(cv.height/C), g = new Uint8Array(gw*gh);
+    for(const q of L){ const b = q.box;
+      for(let y = Math.max(0, b[1]/C|0); y <= Math.min(gh-1, b[3]/C|0); y++)
+        for(let x = Math.max(0, b[0]/C|0); x <= Math.min(gw-1, b[2]/C|0); x++) g[y*gw + x] = 1; }
+    let n = 0; for(const v of g) n += v; return n*C*C; };
+  // how many of them meet at least one other - the share a player cannot read
+  const crowded = (L)=> L.filter((q, i) => L.some((o, j) => j !== i && meets(q.box, o.box))).length;
+  const under = (L)=>{ let n = 0, of = 0;
+    for(const e of enemies){ if(e.dead) continue; const s = project(e.x, e.y + e.def.h*e.sz*.5, e.z);
+      if(!s || s[0] < 0 || s[0] > cv.width || s[1] < 0 || s[1] > cv.height) continue; of++;
+      if(L.some(q => s[0] >= q.box[0] && s[0] <= q.box[2] && s[1] >= q.box[1] && s[1] <= q.box[3])) n++; }
+    return { n, of }; };
+  const mrnd = Math.random; let sd = 0;
+  const seed = (k)=>{ sd = k >>> 0; };
+  try {
+    Math.random = ()=>{ sd = (sd + 0x6D2B79F5) >>> 0; let t = sd;                     // mulberry32
+      t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    // ---- 1-3: the pulse through the crowd, with the fix and with the numbers
+    // as they were. `fixed` false is the pre-L37 numbers exactly: crits jump the
+    // cap, nothing is placed, and every number is full size at any depth.
+    const pulse = (fixed)=>{
+      home(); NUM_SORT_ON = fixed; NUM_DEPTH_ON = fixed; NUM_JUMP = !fixed;
+      for(let i = 0; i < NUM_STAGE[0]*NUM_STAGE[1]; i++)
+        body(P.x + (i % NUM_STAGE[1] - (NUM_STAGE[1]-1)/2) * 1.6, P.z + 18 + (i / NUM_STAGE[1] | 0) * 2);
+      rebuildGrid(); render(); render();                         // settle the boom on the staging
+      P.crit = 1;
+      const hits = damageArea(P.x, P.z + 26, 12, 10, 0), pooled = nums.length;
+      P.crit = was.crit;
+      const L = frame();
+      const r = { hits, pooled, after:nums.length, shown:L.length, pairs:pairs(L), crowded:crowded(L), under:under(L), ink:ink(L) };
+      // THE REST OF THEIR RISE: each number moved the way step() moves it, a
+      // painted frame every tenth of a second
+      r.risePairs = 0; r.drifted = 0;
+      if(fixed) for(let t = 0; t < 5; t++){
+        for(const n of nums){ n.life -= .1; n.y += n.vy*.1; n.vy -= 4*.1; }
+        for(let i = nums.length - 1; i >= 0; i--) if(nums[i].life <= 0) nums.splice(i, 1);
+        r.risePairs += pairs(frame()); r.drifted += numDrift;
+      }
+      return r;
+    };
+    // the fixed arm and the old numbers on one seed: the same bodies, the same jitter
+    const As = [], Bs = [];
+    for(let k = 0; k < NUM_PULSES; k++){ seed(seedBase + k); As.push(pulse(true)); seed(seedBase + k); Bs.push(pulse(false)); }
+    NUM_SORT_ON = true; NUM_DEPTH_ON = true; NUM_JUMP = false;   // every clause below is about the fix itself
+    const sum = (L, f)=> L.reduce((t, r)=> t + f(r), 0);
+    const tot = { aU:sum(As, r => r.under.n), aOf:sum(As, r => r.under.of), bU:sum(Bs, r => r.under.n), bOf:sum(Bs, r => r.under.of),
+                  aI:sum(As, r => r.ink), bI:sum(Bs, r => r.ink) };
+    out.pulse = { pulses:NUM_PULSES, hits:As[0].hits, pooled:As[0].pooled, after:As[0].after, shown:As[0].shown, pairs:sum(As, r => r.pairs),
+                  risePairs:sum(As, r => r.risePairs), drifted:sum(As, r => r.drifted), under:{ n:tot.aU, of:tot.aOf }, ink:tot.aI,
+                  off:{ pooled:Bs[0].pooled, shown:Bs[0].shown, pairs:sum(Bs, r => r.pairs), crowded:sum(Bs, r => r.crowded),
+                        under:{ n:tot.bU, of:tot.bOf }, ink:tot.bI } };
+    // every pulse on its own for the clauses that hold frame by frame, each said once
+    const said = new Set(), once = (key, m)=>{ if(!said.has(key)){ said.add(key); bad.push(m); } };
+    As.forEach((A, p)=>{ const B = Bs[p], at = ` (pulse ${p + 1} of ${NUM_PULSES})`;
+      if(!(A.hits > NUM_CAP)) once("hits", `NULL CONTROL FAILED: the staged pulse hit ${A.hits} bodies, not more than NUM_CAP ${NUM_CAP} - the pool clause asserts over nothing${at}`);
+      if(A.pooled > NUM_CAP) once("cap", `THE CRITS JUMPED THE CAP: ${A.pooled} numbers in the pool after one crit pulse through ${A.hits} bodies, NUM_CAP is ${NUM_CAP}${at}`);
+      if(A.pairs) once("pairs", `NUMBERS ON SCREEN SHARE INK: ${A.pairs} overlapping pair(s) among ${A.shown} drawn after the pulse${at}`);
+      if(A.risePairs) once("rise", `NUMBERS DRIFT INTO EACH OTHER AS THEY RISE: ${A.risePairs} overlapping pair(s) across the next half second of frames - apart only on the frame they were placed${at}`);
+      if(!(A.shown < A.pooled)) once("turned", `NULL CONTROL FAILED: the pulse frame turned no number away (${A.pooled} pooled, ${A.shown} drawn) - the pool clause below asserts over nothing${at}`);
+      if(A.after !== A.shown) once("after", `A NUMBER TURNED AWAY STILL HOLDS A PLACE IN THE POOL: ${A.after} in the pool after the frame, ${A.shown} of them drawn - the pool fills with numbers nobody sees and the next hits are dropped${at}`);
+      if(!(A.shown >= 5)) once("landed", `THE PULSE DOES NOT SAY IT LANDED: ${A.shown} numbers drawn after it hit ${A.hits} bodies${at}`);
+      if(!(B.crowded * 2 > B.shown)) once("wall", `NULL CONTROL FAILED: with the old numbers only ${B.crowded} of the ${B.shown} the pulse drew touch another - the staging is not a wall${at}`);
+    });
+    if(!(tot.aI * 3 <= tot.bI)) bad.push(`THE NUMBERS STILL COVER THE CROWD: ${tot.aI} px of screen under them over ${NUM_PULSES} pulses against the old wall's ${tot.bI} - more than a third of it`);
+    if(!(tot.bU > 0)) bad.push(`NULL CONTROL FAILED: with the old numbers no body stands under one (${tot.bOf} on screen over ${NUM_PULSES} pulses) - clause 3 asserts over nothing`);
+    else if(!(tot.aU * 2 <= tot.bU)) bad.push(`THE CROWD DOES NOT SHOW THROUGH: ${tot.aU} of ${tot.aOf} bodies under a number over ${NUM_PULSES} pulses, ${tot.bU} of ${tot.bOf} under the old wall`);
+    // ---- 4: depth, on the camera's own ray - the size drawn, not only the factor
+    home(); render();
+    const ray = (d)=>{ const a = camAim, l = Math.hypot(a[0], a[1], a[2]) || 1;
+      return { x:camEye[0] + a[0]/l*d, y:camEye[1] + a[1]/l*d, z:camEye[2] + a[2]/l*d, v:1234, crit:true, life:.62 }; };
+    const px = L => L ? parseFloat(/([\d.]+)px/.exec(L.font)[1]) : NaN;
+    const hgt = L => L ? L.box[3] - L.box[1] : NaN;
+    const Ln = numLay(ray(8)), Lf = numLay(ray(60));
+    const kNear = (Ln || {}).k, kFar = (Lf || {}).k;
+    NUM_DEPTH_ON = false; const Lo = numLay(ray(60)), kOff = (Lo || {}).k; NUM_DEPTH_ON = true;
+    out.depth = { near:kNear, far:kFar, off:kOff, font:[px(Ln), px(Lf)], box:[+hgt(Ln).toFixed(2), +hgt(Lf).toFixed(2)] };
+    if(!(kNear === 1)) bad.push(`A NEAR NUMBER IS NOT FULL SIZE: k ${kNear} at 8 m`);
+    if(!(kFar < kNear && Math.abs(kFar - NUM_FAR_K) < 1e-9)) bad.push(`A FAR NUMBER IS NOT SHRUNK TO ITS FLOOR: k ${kFar} at 60 m, NUM_FAR_K ${NUM_FAR_K}`);
+    if(!(Math.abs(px(Lf)/px(Ln) - NUM_FAR_K) < .01 && Math.abs(hgt(Lf)/hgt(Ln) - NUM_FAR_K) < .01))
+      bad.push(`A FAR NUMBER IS NOT DRAWN SMALLER: font ${px(Lf)} px and box ${hgt(Lf).toFixed(1)} px at 60 m, against ${px(Ln)} / ${hgt(Ln).toFixed(1)} at 8 m`);
+    if(!(kOff === 1 && Math.abs(px(Lo) - px(Ln)) < .6)) bad.push(`NULL CONTROL FAILED: with the depth scale off a far number is k ${kOff}, font ${px(Lo)} px, not full size`);
+    // ---- 5 and 6: rank and incumbency, one spot on an empty field
+    const at = (n)=> Object.assign(n, { x:0, y:groundY(0, 14) + 1.5, z:14, vy:0 });
+    const spot = (o)=>{ const p = at(Object.assign({ v:88, life:.62 }, o)); nums.push(p); return p; };
+    const mine = (o)=> at(numMe(o.v || 88, o));      // the player's own, through the one door the game uses
+    const seen = (n)=> numLast.some(L => L.n === n);
+    const apart = (F, lo, hi)=>{ const p = F.find(q => q.n === lo), r = F.find(q => q.n === hi);
+      return !!(p && r) && !meets(p.box, r.box) && r.box[3] <= p.box[1] + 1e-6; };
+    home();
+    let a = spot({}); frame(); let c = spot({ crit:true }); frame();
+    const critTakes = seen(c) && !seen(a);
+    home();
+    a = spot({ crit:true }); frame(); c = spot({}); frame();
+    const plainWaits = seen(a) && !seen(c);
+    home();
+    a = spot({ crit:true }); frame(); c = mine({ heal:true }); frame();
+    const meTakes = seen(c) && !seen(a);
+    home();
+    a = mine({ heal:true }); frame(); c = mine({ crit:true, v:12 });
+    const L2 = frame(), L3 = frame();
+    const meStack = apart(L2, a, c), meStackNext = apart(L3, a, c);
+    // the climb: a plain number standing where the second of yours climbs to gives
+    // up its place, and a third of yours climbs over both
+    const hC = c.dy || 0;
+    home();
+    a = mine({ heal:true }); const pl = spot({ v:1, dy:hC }); frame();
+    const climbSet = seen(a) && seen(pl);
+    const d2 = mine({ crit:true, v:12 }); frame();
+    const e3 = mine({ crit:true, v:13 }); const L4 = frame();
+    const climb = climbSet && !seen(pl) && apart(L4, a, d2) && apart(L4, d2, e3);
+    home();
+    a = spot({}); frame(); c = spot({}); frame(); const stays = seen(a) && !seen(c); frame();
+    const stillThere = seen(a);
+    // the drift: the pulse's numbers are few and far apart, so the re-check is
+    // staged where it must fire - a plain number placed 4 px above another, and
+    // the lower one rising into it a frame at a time
+    home(); render();
+    const lo = spot({ life:.5 }), hi = spot({ life:.62 }), b0 = numLay(lo).box;
+    hi.dy = (b0[3] - b0[1]) + 4;
+    frame();
+    const driftSet = seen(lo) && seen(hi);
+    let met = false, drawnPairs = 0, drifted = 0;
+    for(let t = 0; t < 40 && driftSet; t++){
+      lo.y += .05;
+      const pL = numLay(lo), pH = numLay(hi);
+      if(pL && pH && numInk(pL.box, pH.box)) met = true;
+      drawnPairs += pairs(frame()); drifted += numDrift;
+      if(drifted) break;
+    }
+    const olderKept = seen(lo) && !seen(hi);
+    out.drift = { driftSet, met, drawnPairs, drifted, olderKept };
+    out.rank = { critTakes, plainWaits, meTakes, meStack, meStackNext, climbSet, climb, stays, stillThere };
+    if(!critTakes) bad.push("A CRIT DOES NOT TAKE A PLAIN NUMBER'S PLACE: the crit landing on it was not drawn, or both were");
+    if(!plainWaits) bad.push("A PLAIN NUMBER TAKES A CRIT'S PLACE: it was drawn over the crit it landed on");
+    if(!meTakes) bad.push("THE PLAYER'S OWN NUMBER DOES NOT TAKE A CRIT'S PLACE");
+    if(!meStack) bad.push("TWO OF THE PLAYER'S OWN NUMBERS ON ONE FRAME DO NOT BOTH SHOW: the second is not stacked clear above the first");
+    if(meStack && !meStackNext) bad.push("A STACKED NUMBER OF YOURS FALLS BACK ONTO THE ONE UNDER IT the frame after it climbed");
+    if(!climbSet) bad.push("CLAUSE 5 PREMISE: the plain number above yours was not placed, so the climb has nothing to take");
+    else if(!climb) bad.push("THE CLIMB DOES NOT HOLD: a number of yours climbing onto a plain one did not take its place, or a third did not climb over both");
+    if(!(stays && stillThere)) bad.push(`A PLACED NUMBER IS NOT KEPT: first ${stays ? "kept" : "lost"} its place to a newcomer, then ${stillThere ? "kept" : "lost"} it a frame later`);
+    if(!driftSet) bad.push("CLAUSE 6 PREMISE: the two numbers staged 4 px apart were not both placed, so nothing can drift");
+    else if(!met) bad.push("NULL CONTROL FAILED: the lower number rose 2 m and never reached the one above it - the drift clause asserts over nothing");
+    else {
+      if(drawnPairs) bad.push(`NUMBERS DRIFT INTO EACH OTHER AS THEY RISE: ${drawnPairs} frame(s) drew two numbers sharing ink after they were placed apart - legible only on the frame they were placed`);
+      if(!(drifted > 0 && olderKept)) bad.push(`TWO NUMBERS THAT DRIFTED TOGETHER ARE NOT SETTLED: ${drifted} re-check(s) fired, and ${olderKept ? "the older" : "not the older one alone"} kept its place`);
+    }
+    // ---- 7: a lone hit
+    home(); const lone = body(1, 12); rebuildGrid(); render();
+    hurt(lone, 50, 0, 0, false); const lonely = frame().length;
+    out.lone = lonely;
+    if(lonely !== 1) bad.push(`A LONE HIT IS NOT DRAWN: ${lonely} numbers on screen after one hit on the only body`);
+    // ---- 8: the run stream
+    home(); const b8 = body(1, 12); rebuildGrid();
+    let draws = 0; R = ()=>{ draws++; return was.R(); };
+    rnd(0, 1); const ctl = draws; draws = 0;
+    const n8 = nums.length; hurt(b8, 50, 0, 0, false); const pushed = nums.length - n8, spent = draws;
+    R = was.R;
+    out.stream = { ctl, pushed, spent };
+    if(ctl !== 1) bad.push(`THE STREAM COUNTER IS BLIND: one rnd() counted ${ctl}`);
+    if(pushed !== 1) bad.push(`CLAUSE 8 PREMISE: the hit pushed ${pushed} numbers, not one`);
+    if(spent) bad.push(`A DAMAGE NUMBER ROLLS THE RUN STREAM: ${spent} draw(s) for one hit - its jitter moves every pinned run`);
+    // ---- 9: a crit at a full pool
+    home(); const b9 = body(1, 12); rebuildGrid();
+    for(let i = 0; i < NUM_CAP; i++) spot({ life:.62 - i*.001 });          // the last pushed is the oldest
+    let oldest = nums[NUM_CAP - 1], before = new Set(nums);
+    hurt(b9, 50, 0, 0, true);
+    const inPlain = nums.length === NUM_CAP && nums.some(n => !before.has(n) && n.crit);
+    const oldestGoes = !nums.includes(oldest) && [...before].every(n => n === oldest || nums.includes(n));
+    nums.length = 0;
+    const yoursOld = spot({ me:1, heal:true, life:.01 });                  // older than every plain number
+    const shownOld = spot({ life:.02 }); shownOld.vis = 1;                 // on screen, and older too
+    for(let i = 2; i < NUM_CAP; i++) spot({ life:.62 - i*.001 });
+    oldest = nums[NUM_CAP - 1]; before = new Set(nums);
+    hurt(b9, 50, 0, 0, true);
+    const spares = nums.includes(yoursOld) && nums.includes(shownOld) && !nums.includes(oldest) && nums.some(n => !before.has(n) && n.crit);
+    nums.length = 0; for(let i = 0; i < NUM_CAP; i++) spot({ crit:true });
+    before = new Set(nums);
+    hurt(b9, 50, 0, 0, true); const inCrits = nums.length === NUM_CAP && nums.every(n => before.has(n));
+    out.full = { inPlain, oldestGoes, spares, inCrits };
+    if(!inPlain) bad.push("A CRIT CANNOT GET INTO A POOL FULL OF PLAIN NUMBERS");
+    else if(!oldestGoes) bad.push("A CRIT AT A FULL POOL DID NOT TAKE THE OLDEST PLAIN NUMBER'S PLACE - it took a newer one's, or more than one");
+    if(!spares) bad.push("A CRIT AT A FULL POOL TOOK THE PLACE OF THE PLAYER'S OWN NUMBER OR OF ONE ON SCREEN, not the oldest unseen plain one");
+    if(!inCrits) bad.push("A CRIT GOT INTO A POOL FULL OF CRITS - the pool is past its cap, or a crit took another crit's place");
+    // ---- 10: behind the eye, or off the canvas
+    home(); render();
+    const sideL = Math.hypot(camAim[0], camAim[2]) || 1, sx = camAim[2]/sideL, sz = -camAim[0]/sideL;
+    const offC = Object.assign(ray(20), { v:77 }); offC.x += sx*60; offC.z += sz*60;
+    const back = Object.assign(ray(-6), { v:78 }), inView = Object.assign(ray(20), { v:79 });
+    nums.push(offC, back, inView); frame();
+    const offGone = !nums.includes(offC) && !nums.includes(back), viewKept = nums.includes(inView) && seen(inView);
+    out.offscreen = { offGone, viewKept };
+    if(!viewKept) bad.push("NULL CONTROL FAILED: a number in plain view was not kept - the off-canvas clause asserts over nothing");
+    if(!offGone) bad.push("A NUMBER BEHIND THE EYE OR OFF THE CANVAS STILL HOLDS A PLACE IN THE POOL");
+    out.paint = { painted, miss:paintMiss };
+    if(!(painted > 0)) bad.push("NULL CONTROL FAILED: no placed number was checked against the paint");
+    if(paintMiss) bad.push(`A PLACED NUMBER IS NOT PAINTED AS PLACED: ${paintMiss} of ${painted} were not painted with their own text, spot and size`);
+  } finally {
+    Math.random = mrnd;
+    R = was.R; P.crit = was.crit; NUM_SORT_ON = was.sort; NUM_DEPTH_ON = was.depth; NUM_JUMP = was.jump;
+    enemies.length = 0; corpses.length = 0; nums.length = 0;
+    for(const e of was.en) enemies.push(e);
+    for(const e of was.co) corpses.push(e);
+    for(const n of was.nums) nums.push(n);
+    P.x = was.x; P.y = was.y; P.z = was.z; P.vx = was.vx; P.vz = was.vz; P.face = was.face; holdFace = was.hold;
+    camYaw = was.yaw; camAnchor = was.anc; camLock = was.lock; shake = was.shake; flash = was.flash;
+    dmgDealt = was.dealt; dmgBoss = was.boss;
+    rebuildGrid(); wardPass();
+  }
+  return { ok:!bad.length, bad, ...out };
 }
 
 // ------------------------------------------------------------------ QA hook
@@ -24896,6 +25301,16 @@ window.__g = {
   sightStage: (x, z, yaw, on, n = 12)=>{ const f = sightFrame(x, z, yaw, !!on, n);
     return { ghosts:f.ghosts, share:f.share, lift:f.lift, eye:f.eye.map(v=>+v.toFixed(3)) }; },
   unlockNameGate: ()=>unlockNameGate(),
+  // THE WALL OF NUMBERS (L37): the two knobs (QA A/B switches, shipped on), what
+  // the last frame placed, and its gate
+  numSort:  (v)=>{ if(v !== undefined) NUM_SORT_ON = !!v; return NUM_SORT_ON; },
+  numDepth: (v)=>{ if(v !== undefined) NUM_DEPTH_ON = !!v; return NUM_DEPTH_ON; },
+  numJump:  (v)=>{ if(v !== undefined) NUM_JUMP = !!v; return NUM_JUMP; },
+  numbers:  ()=>({ pool:nums.length, cap:NUM_CAP, shown:numLast.length, hidden:numHidden,
+                   crits:numLast.filter(L => L.n.crit).length,
+                   laid:numLast.map(L => ({ v:L.n.v, crit:!!L.n.crit, me:!!L.n.me, k:+L.k.toFixed(3),
+                                            box:L.box.map(v => +v.toFixed(1)) })) }),
+  numGate: (b)=>numGate(b),
   // scale the ambient term of the last two keyframes, to find how dark the
   // night can get before the palette stops being readable
   setSkyAmbient: (k)=>{ for(const f of SKY.slice(-2)){

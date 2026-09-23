@@ -9242,6 +9242,12 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       out.ground = g.groundGate();
       out.ward   = g.wardGate();
       out.burrow = g.burrowGate();
+      // L37's THE WALL OF NUMBERS (numGate): the crowd's 12:00 frame built on
+      // demand - one crit pulse through a band of bodies ahead of the chase
+      // camera - read off the frame render() actually placed. Synchronous: it
+      // renders its own frames, never calls step(), and hands the field, the
+      // player, the camera, the number pool and its knobs back as it found them.
+      out.num = g.numGate ? g.numGate() : { ok:false, bad:["g.numGate is missing"] };
       // L30's THE SILHOUETTE and L33's rimDayGate, arriving the same way every
       // one of this section's gates has: built into the page by a round this
       // suite never called. Both re-derive the world on a pinned BEZEL_SEED
@@ -9457,6 +9463,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        (sgAll ? "" : "A STAGE DID NOT REPORT | ") + say(sg) +
        `  (${sgS.mon || "no monument stage"}: one colour ${sgS.off} -> ${sgS.on}, ${sgS.opened} of the middle opened, ${sgS.ghosts} boxes thinned; ` +
        `hollow cuts ${sgT.offNeed} m, lift ${sgT.lift} m, ${sgT.left} m short after; clear-frame eye moved ${sg.clear && sg.clear.eyeDelta} m; locked ${sgL.ghosts} boxes, lift ${sgL.lift})`);
+    const ng = gates.num || {}, ngP = ng.pulse || {}, ngO = ngP.off || {}, ngD = ng.depth || {};
+    const ngAll = !!(ng.pulse && ng.depth && ng.rank && ng.drift && ng.stream && ng.full && ng.offscreen && ng.paint);
+    ok("L37's number gate: the pool holds its cap whatever a crit says, no two numbers on screen share ink as they rise, the crowd shows through, a far number is smaller, a crit outranks a plain number, a placed one keeps its place, one off the screen holds none, and a number rolls nothing from the run",
+       ng.ok === true && ngAll,
+       (ngAll ? "" : "A CLAUSE DID NOT REPORT | ") + say(ng) +
+       `  (${ngP.pulses} seeded crit pulses through ${ngP.hits} bodies: pooled ${ngP.pooled}, drew ${ngP.shown} with ${ngP.pairs} overlapping pairs, ${ngP.under && ngP.under.n} of ${ngP.under && ngP.under.of} bodies under them, ` +
+       `${ngP.ink} px of screen; the old wall drew ${ngO.shown} with ${ngO.pairs}, ${ngO.under && ngO.under.n} under, ${ngO.ink} px; depth k ${ngD.near} near / ${ngD.far} far; ` +
+       `drift ${JSON.stringify(ng.drift)}; ${ng.paint && ng.paint.painted} placed numbers checked against the paint, ${ng.paint && ng.paint.miss} missed; ` +
+       `${ng.stream && ng.stream.spent} run-stream draws for a number)`);
     ok("L16's kill radius dies with the run",
        gates.reset.ok, say(gates.reset) + `  (grown to ${gates.reset.grown} m before the restart)`);
     ok("L13's split gate: the card names the creature and the HUD names the twin",
