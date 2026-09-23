@@ -1933,6 +1933,84 @@ behind a wall of damage numbers, because the kit still kills them twenty metres 
 Making the crowd *press in*, rather than only stand there, is the next question. It
 depends on what the kit is allowed to reach, not on the director.
 
+### The crowd was hidden behind its own damage numbers
+
+L35's 12:00 frame had a hundred bodies in it and a player could see none of them: a solid
+bar of gold numbers stood in front of the crowd. Measured on that build (seed 9, the god
+bot, crowd on), the numbers were not a cosmetic problem:
+
+```
+pre-L37 numbers              3:00    7:00   12:00   17:00
+numbers pushed a second         5      62     146     215
+  of them crits               50%     77%    100%    100%
+on screen at once               3      49     115     122
+  more than a third covered   67%     88%     99%    100%
+bodies under a number          8%     16%     55%     80%
+crowd off, pushed a second      4      12      15      24
+```
+
+Two things compounded. **A crit ignored the cap:** the old rule was
+`nums.length < 30 || crit`, and a late kit crits on most hits, so from 12:00 on every number
+pushed was a crit and no white number ever got in. **An area weapon rolls once:** one crit
+pulse through the crowd hands the same roll to every body it reaches, so it put fifty identical
+gold numbers on fifty neighbouring bodies in one frame, all at full size whatever their distance.
+
+The numbers are now **placed**, not just pushed:
+
+- **One cap for everything.** 48 numbers, crits included. A crit that finds the pool full takes
+  the place of the oldest white number that isn't on screen and isn't yours, or it gets no place.
+- **Only where nothing is.** The first frame a number is drawn, it goes on screen only if its box
+  touches no number already there. A number keeps its place for its whole rise, and numbers are
+  re-checked every frame, because they rise at different speeds under a moving camera. A newcomer
+  that lands on another is turned away and leaves the pool, unless it outranks everything it lands
+  on. Your own numbers (the chain payout, a level's heal) outrank crits, and crits outrank white
+  hits. Two of yours on one frame stack instead of hiding each other.
+- **Smaller with distance.** A number is full size within 12 m of the eye and shrinks with
+  distance to at most 60%. The crowd stands 20-38 m out, and at one size its numbers were wider
+  than the gaps between its bodies.
+- **Off the run stream.** A number's jitter used to come from the seeded run stream, so every
+  number moved every pinned run after it. It uses the cosmetic stream now. Pinned runs shift once
+  with this change, and changes to the numbers can't move them again.
+
+The same frame both ways, staged on the live page (one crit pulse through 117 bodies, 18-34 m
+ahead, the same seed for both arms):
+
+```
+                        old numbers        L37
+numbers drawn                 117           14
+overlapping pairs             837            0
+bodies under a number     76 of 117     28 of 117
+screen under numbers      24,576 px     5,160 px
+```
+
+And in play, same seed and same sim, with the old numbers switched back on over the identical
+run (120 painted frames a station, the camera easing to the heading as a player's would):
+
+```
+old numbers / L37              3:00         7:00        12:00        17:00
+bodies on screen               17.2         43.0         27.5         65.4
+numbers drawn             3.6 / 3.4  12.8 / 13.4  10.2 /  6.8  27.8 / 11.2
+  illegible                6% / 0%     54% / 0%     37% / 0%     75% / 0%
+bodies under a number    3.3 / 0.0%   8.1 / 3.9%  24.4 / 6.3%  43.3 / 14.3%
+```
+
+At 17:00 the old numbers put 43-47% of the bodies on screen under a number (three takes; the
+jitter is cosmetic and unseeded), and three in four of its numbers are more than a third covered
+by another. L37 puts 8-14% under one, and not one number in any L37 frame of any take was more
+than a third covered (by construction no two share ink at all, which the suite checks). The 7:00 frame
+shows the old cap failing the other way too: the pool sat at 30 holding numbers that were off
+the screen, so the hits in view got no number at all. That frame drew one number with the old
+rules and nine with L37.
+
+Two checks in the suite broke on this round, and neither was about the numbers. Each read one
+moment of a pinned seeded run, and taking the numbers off the run stream moves every pinned run
+once. Section 96's frame share now reads its two seeds pooled: over twelve paired seeds the
+horde's share of the frame is .412 with L37 against .408 without. Section 100's outcrop paint is
+now read over a full turn of the camera instead of one chosen heading. The suite stands at
+846 passed, 0 failed.
+
+The frames and the probe are in `evidence/l37-numbers`.
+
 ---
 
 ## Not done

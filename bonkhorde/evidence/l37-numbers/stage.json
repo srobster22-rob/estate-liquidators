@@ -1,0 +1,18 @@
+{
+ "on": {
+  "pooled": 48,
+  "drawn": 14,
+  "pairs": 0,
+  "ink": 5160,
+  "under": 28,
+  "of": 117
+ },
+ "off": {
+  "pooled": 117,
+  "drawn": 117,
+  "pairs": 837,
+  "ink": 24576,
+  "under": 76,
+  "of": 117
+ }
+}
