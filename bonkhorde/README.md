@@ -2013,6 +2013,37 @@ The frames and the probe are in `evidence/l37-numbers`.
 
 ---
 
+### The plausible player's table
+
+Every number above is the bench bot's, and the bench bot is the ceiling: it kites perfectly and
+hops on the frame it lands. `balance.js` now benches a second player with `BONKHORDE_CLUMSY=1` -
+the same clumsy autopilot the suite's telegraph benches use: it re-decides its heading every
+0.35 s and holds it between, makes the landing window 65% of the time, and does not see a
+telegraph until half a second before it lands. Both players, one build, the same 36 paired worlds
+a side (`evidence/l45-players`):
+
+```
+                          dead <10:00   clears   level at end   contact   spit   hazard
+FIRST TIER   bench bot        4/36      17/36        69           5134    2121    2878
+             clumsy player    9/36      20/36        62           6151    2920    5048
+VETERAN      bench bot        0/36      29/36        85
+             clumsy player    1/36      27/36        78
+```
+
+Early deaths are the plausible player's number - one run in four at first tier, none at
+veteran - and clears do not separate the two players: the clumsy one pays for the late read in
+hazard damage and in levels, and clears about as often. THE SCRAPPER is 0/8 first-tier clears
+across both players; THE TEMP, half health, clears 3/4 and 4/4.
+
+One number in this table looks like a regression and is not: the bench bot's 17/36 first-tier
+clears against the 25/36 the crowd's table above records on the same paired seeds. The L35 build
+run again prints its 25/36 to the run; the L37 build prints today's 17/36 row for row, because
+L37 took a damage number's jitter off the seeded run stream and re-rolled every pinned run once,
+so "the same seeds" across L37 are two different sets of worlds. On a second seed base this
+build reads 24/36 and the L35 build 22/36; pooled over every table the two builds sit at 62% and
+65% clears and 5.6% early deaths each. The +/-10-point band this section warns about, read from
+its low end.
+
 ## Not done
 
 - **Nobody has played this with hands.** Every number above is the autopilot's opinion, and it
