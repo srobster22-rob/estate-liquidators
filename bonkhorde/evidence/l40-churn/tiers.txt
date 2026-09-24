@@ -1,0 +1,30 @@
+UA Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36
+natives syntax: true
+settled at t=300.0
+function          after settling                                              after 600 more steps
+updateEnemies     1 IsFunction                                                16897 IsFunction|MarkedForConcurrentOptimization|MarkedForDeoptimization
+walk              41 IsFunction|MaybeDeopted|Maglevved                        25 IsFunction|MaybeDeopted|Optimized
+groundY           25 IsFunction|MaybeDeopted|Optimized                        41 IsFunction|MaybeDeopted|Maglevved
+botVector         16385 IsFunction|MarkedForDeoptimization                    25 IsFunction|MaybeDeopted|Optimized
+updateGems        41 IsFunction|MaybeDeopted|Maglevved                        25 IsFunction|MaybeDeopted|Optimized
+updateBrood       16385 IsFunction|MarkedForDeoptimization                    16385 IsFunction|MarkedForDeoptimization
+stepCorpses       41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+near              41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+hitNear           41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+step              16385 IsFunction|MarkedForDeoptimization                    25 IsFunction|MaybeDeopted|Optimized
+nearestCells      41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+confine           41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+confineIn         25 IsFunction|MaybeDeopted|Optimized                        25 IsFunction|MaybeDeopted|Optimized
+RELIEF            25 IsFunction|MaybeDeopted|Optimized                        25 IsFunction|MaybeDeopted|Optimized
+RELIEF_RAW        41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+BASE_Y            25 IsFunction|MaybeDeopted|Optimized                        25 IsFunction|MaybeDeopted|Optimized
+waterDepth        41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+wardPass          41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+updateProjectiles 41 IsFunction|MaybeDeopted|Maglevved                        25 IsFunction|MaybeDeopted|Optimized
+sampleStyle       41 IsFunction|MaybeDeopted|Maglevved                        25 IsFunction|MaybeDeopted|Optimized
+vnoise            41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+shoreCap          41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+biomeAt           41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+hdlInLane         131073 IsFunction|TopmostFrameIsBaseline                    131073 IsFunction|TopmostFrameIsBaseline
+inWater           41 IsFunction|MaybeDeopted|Maglevved                        41 IsFunction|MaybeDeopted|Maglevved
+ERRS 0 

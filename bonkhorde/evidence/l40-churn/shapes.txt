@@ -1,0 +1,19 @@
+status calibration: lazy=1  once=1  baseline=1  turbofan=1  maglev=1  deoptimized=1
+t=300.0
+  enemies     53 objects,  10 maps,  10 key signatures, key counts 42/55/56/57/58/59/60; 21x[55 keys] 8x[58 keys] 7x[56 keys]
+  gems        44 objects,   3 maps,   3 key signatures, key counts 6/7; 41x[6 keys] 2x[7 keys] 1x[7 keys]
+  corpses      2 objects,   2 maps,   2 key signatures, key counts 62/63; 1x[62 keys] 1x[63 keys]
+  pets         0 objects,   0 maps,   0 key signatures, key counts ; 
+  hazards      0 objects,   0 maps,   0 key signatures, key counts ; 
+  events       0 objects,   0 maps,   0 key signatures, key counts ; 
+  zones        7 objects,   1 maps,   1 key signatures, key counts 10; 7x[10 keys]
+  spits        5 objects,   1 maps,   1 key signatures, key counts 7; 5x[7 keys]
+  bolts        0 objects,   0 maps,   0 key signatures, key counts ; 
+  mortars      0 objects,   0 maps,   0 key signatures, key counts ; 
+  rings       21 objects,   1 maps,   1 key signatures, key counts 7; 21x[7 keys]
+  swings       0 objects,   0 maps,   0 key signatures, key counts ; 
+  arcs         0 objects,   0 maps,   0 key signatures, key counts ; 
+  nums         3 objects,   1 maps,   1 key signatures, key counts 7; 3x[7 keys]
+  marks       51 objects,   3 maps,   3 key signatures, key counts 11/12/13; 26x[12 keys] 21x[11 keys] 4x[13 keys]
+enemy kinds: spitter:15 brute:4 shambler:8 skitter:17 runner:8 boss:1
+enemy keys not on every body (key:count of 53): born:1 ph:1 final:1 crowd:4 dv:8 dvW:8 dvS:8 spitTell:15 alarm:17 alarmT:17 warden:52 ward:52 wards:52 burrow:52 hd:52 dig:52 dug:52 stoop:52 stooped:52 eid:52 _s:52 snap:52 dvE:52 tauntE:52 hdlE:52 stq:52

@@ -1,0 +1,52 @@
+### verify3: edit3 11:56:47
+edit3 applied
+index.html and test.js parse
+  OK   323 mutations, every anchor present
+### verify3 start 11:56:47 work copy ae6c9ddd
+--- section 101, clean
+  PASS  L40's step: nearestCells answers in one shared array - over 600 settled steps it allocates nothing  0.0 KB sampled under nearestCells (2,340 KB before L40)
+  PASS  the clamp onto a body allocates nothing: confineIn samples nothing, and confine - the spawns and arrivals only - under 64 KB  confineIn 0.0 KB, confine 0.0 KB (1,522 KB before)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: nothing sampled as iterator results beneath botVector  0.0 KB of iterator results under botVector (9,606 KB before L40)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  250.0 KB a step over 600 steps from t=300 to 310.5 (75 bodies, 44 gems); the largest: walk 33532.3, updateEnemies 26633.8, botVector 16919.5, groundY 15109.7, hypot 12484.8
+clean: 4 passed, 0 failed in 8 s
+--- section 101, mutant the-cells-are-answered-fresh
+  FAIL  L40's step: nearestCells answers in one shared array - over 600 settled steps it allocates nothing  1105.9 KB sampled under nearestCells (2,340 KB before L40)
+  PASS  the clamp onto a body allocates nothing: confineIn samples nothing, and confine - the spawns and arrivals only - under 64 KB  confineIn 0.0 KB, confine 16.0 KB (1,522 KB before)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: nothing sampled as iterator results beneath botVector  0.0 KB of iterator results under botVector (9,606 KB before L40)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  264.1 KB a step over 600 steps from t=300 to 310.7 (76 bodies, 38 gems); the largest: walk 33164.2, updateEnemies 29067.0, botVector 18759.6, groundY 17158.7, hypot 10971.5
+the-cells-are-answered-fresh: 3 passed, 1 failed in 8 s
+--- section 101, mutant the-clamp-still-makes-a-pair
+  PASS  L40's step: nearestCells answers in one shared array - over 600 settled steps it allocates nothing  0.0 KB sampled under nearestCells (2,340 KB before L40)
+  FAIL  the clamp onto a body allocates nothing: confineIn samples nothing, and confine - the spawns and arrivals only - under 64 KB  confineIn 512.5 KB, confine 1185.4 KB (1,522 KB before)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: nothing sampled as iterator results beneath botVector  0.0 KB of iterator results under botVector (9,606 KB before L40)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  227.5 KB a step over 600 steps from t=300 to 310.6 (72 bodies, 43 gems); the largest: walk 30059.0, updateEnemies 23784.7, groundY 15063.9, botVector 10709.5, hypot 10323.8
+the-clamp-still-makes-a-pair: 3 passed, 1 failed in 8 s
+--- section 101, mutant the-bot-reads-the-field-through-an-iterator
+  PASS  L40's step: nearestCells answers in one shared array - over 600 settled steps it allocates nothing  0.0 KB sampled under nearestCells (2,340 KB before L40)
+  PASS  the clamp onto a body allocates nothing: confineIn samples nothing, and confine - the spawns and arrivals only - under 64 KB  confineIn 0.0 KB, confine 16.0 KB (1,522 KB before)
+  FAIL  the autopilot measures the field once a step and walks its arrays by index: nothing sampled as iterator results beneath botVector  608.4 KB of iterator results under botVector (9,606 KB before L40)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  229.0 KB a step over 600 steps from t=300 to 310.5 (75 bodies, 44 gems); the largest: walk 32043.7, updateEnemies 24264.9, groundY 14885.7, botVector 12726.9, hypot 11108.1
+the-bot-reads-the-field-through-an-iterator: 3 passed, 1 failed in 6 s
+--- clean trial (expect 585.00/37/19418)
+clean: AC state running -> running, 44100 Hz, save.sound undefined; trial 585.00/37/19418; sfx: pop 4170 asked / 1736 played, boom 3018 asked / 1006 played, gem 2976 asked / 1977 played, bonk 2240 asked / 2240 played, hop 726 asked / 726 played, dive 233 asked / 203 played, zap 202 asked / 197 played, whiff 181 asked / 181 played
+--- mutant trial crowd-pays-in-full (expect 1258.70/158/95854)
+crowd-pays-in-full: AC state running -> running, 44100 Hz, save.sound undefined; trial 1258.70/158/95854; sfx: pop 96119 asked / 9380 played, gem 42278 asked / 11513 played, boom 12607 asked / 2753 played, bonk 6796 asked / 6486 played, hop 1575 asked / 1575 played, zap 1037 asked / 985 played, whiff 495 asked / 495 played, dive 458 asked / 397 played
+--- step allocation, final work copy
+clean @m40/work/bonkhorde: settled at t=300 (lvl 27, 1159 kills, 53 bodies, 44 gems, 0 hazards, 0 events) in 6 s; 600 steps to t=310.5 in 0.7 s: 134.1 MB sampled = 228.8 KB/step
+  touched: nearestCells 0.0 KB, confine 16.0 KB, confineIn 0.0 KB, botVector 11416.1 KB, updateEnemies 24681.1 KB, updateGems 1056.4 KB, groundY 14901.6 KB, walk 31195.4 KB, hypot 11505.7 KB, next 3538.1 KB
+  by function:
+      31195.4 KB   22.7%  walk
+--- whole-trial churn, final work copy (12.2 GB before L40)
+clean: trial 585.00/37/19418 in 23 s, js heap 64 MB, sampled allocated (churn) 7474.4 MB
+  by allocating function:
+     1791.9 MB  groundY:2167
+     1094.6 MB  hypot:0
+      976.6 MB  updateEnemies:13072
+      915.6 MB  walk:13546
+      430.9 MB  botVector:14781
+      297.7 MB  updateBrood:11542
+      265.0 MB  updateGems:13819
+      216.9 MB  near:10428
+--- trace-gc, final work copy, 6000 steps from t=300
+window: 47 scavenges, 0 mark-compacts, scavenge pause 37.1 ms total, max 6.15 ms
+### verify3 done 11:59:39
