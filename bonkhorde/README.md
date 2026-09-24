@@ -2019,12 +2019,16 @@ The frames and the probe are in `evidence/l37-numbers`.
   is a plausible player rather than a good one — a human reads incoming waves and plans routes
   across the whole arena, which it cannot. Expect the real curve to sit longer than the table
   says, and expect the veteran tier to look too easy once someone competent tries it.
-- **The early game cannot be lost, and no constant fixes it.** Six exact sweeps (see the balance
-  section) say the same thing: neither the cost of a level nor the growth of contact damage moves
-  early deaths by more than one run in forty-two. The autopilot is not losing to enemy stats, it
-  is not being hit — movement dominates the first ten minutes. Whatever fixes this is a mechanic
-  that makes running cost something, not a number. Dens are the first one; there is room for
-  more.
+- **The early game can be lost - by a worse player than the bench bot, which is who the six
+  constant sweeps were run with.** L43 (`evidence/l43-early`) ran every character on three paired
+  seeds to 10:00, first tier, no god: the bench bot dies before 10:00 in 2 of 27 runs, the clumsy
+  bot (it re-decides every 0.35 s, misses the hop a third of the time, reads a telegraph half a
+  second late) in 7 of 27, the clumsy bot without the hop in 8 of 27. Eleven of the seventeen
+  deaths fall in the ninety seconds after the first boss at 5:00, on top of the phase that adds
+  spitters and brutes; minute six deals 100 to 260 damage to a player with 100 to 200 hp. Movement
+  still dominates the first ten minutes for the ceiling player; it does not for a plausible one,
+  and the sweeps that moved early deaths by one run in forty-two were measuring the ceiling. What
+  is left of this item is per-character: THE TEMP without the hop dies in every run before 6:00.
 - **THE SCRAPPER is still the weakest character.** Its HP penalty was isolated and cleared
   (patching `hp` back to 1.0 changes nothing — identical clears, identical median), and the
   partner rework has lifted it further, but it remains the least reliable closer. What is
