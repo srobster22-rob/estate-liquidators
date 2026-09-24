@@ -9202,6 +9202,15 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // disk here and evaluated INSIDE the page, where the page's own top-level
     // bindings are in scope exactly as they were when the gates lived there.
     const QA_SRC = fs.readFileSync(path.join(__dirname, "tools", "qa", "mutations.js"), "utf8");
+    // BONKHORDE_SKIP_BEZEL (L36b): mutate.js's quick mode. The three bezel
+    // gates below (silhouetteGate, rimDayGate, farReadGate) are hundreds of
+    // chipReadFar renders and three-quarters of a run's clock on software GL -
+    // and on this container after a restart, rendering at 4.3 fps against 10,
+    // they alone passed the audit's 55-minute limit. A mutant that touches
+    // nothing they read is judged without them, and the run SAYS SO: the
+    // three checks and the budget check print SKIP, not PASS, and count as
+    // neither. Never set for a real run of the suite.
+    const SKIP_BEZEL = process.env.BONKHORDE_SKIP_BEZEL === "1";
     // L49's THE CLEAR SIGHTLINE (sightGate), the other session's own statement
     // of it: a monument on the sightline is seen through, the boom lifts over a
     // hollow and stops at its cap, a clear frame is untouched, and camLock
@@ -9226,7 +9235,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       g.step(60, 1/60);
       return g.sightGate ? g.sightGate() : { ok:false, bad:["g.sightGate is missing"] };
     });
-    const gates = await page.evaluate(async (QA) => {
+    const gates = await page.evaluate(async ({ QA, SKIP_BEZEL }) => {
       const g = window.__g, frame = () => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
       const out = {};
       let qa = {};
@@ -9282,18 +9291,19 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // the reach it ships is not longer than what this screen measures, and
       // the rim sits under the chip's core rather than over it (so it cannot
       // do to the white chip what it exists to protect).
-      out.silhouette = g.silhouetteGate ? g.silhouetteGate()
+      const skipped = { skipped:true, ok:false, bad:["SKIPPED (BONKHORDE_SKIP_BEZEL)"] };
+      out.silhouette = SKIP_BEZEL ? skipped : g.silhouetteGate ? g.silhouetteGate()
                                         : { ok:false, bad:["g.silhouetteGate is missing"] };
       // rimDayGate: the same claim, at every hour skyAt() carries - the reach
       // is a function of the sky (a dark hour can read on its own without any
       // rim's help), so a battery that runs the clock to night must not find
       // a stale table.
-      out.rimDay = g.rimDayGate ? g.rimDayGate()
+      out.rimDay = SKIP_BEZEL ? skipped : g.rimDayGate ? g.rimDayGate()
                                 : { ok:false, bad:["g.rimDayGate is missing"] };
       // farReadGate: the same set, at range - the rim must buy readability
       // 24 m out on every region it is given to, and what ships there must be
       // the rim's reading. Same fresh body, same reason.
-      out.farRead = g.farReadGate ? g.farReadGate()
+      out.farRead = SKIP_BEZEL ? skipped : g.farReadGate ? g.farReadGate()
                                   : { ok:false, bad:["g.farReadGate is missing"] };
       // THE SPLIT needs a twin to be able to say the HUD names one
       g.give("dupe", 1);
@@ -9461,7 +9471,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // live function - while THE GLACIER's real contrast falls to 2.777.
       out.chipShadow = g.chipShadowContrast ? g.chipShadowContrast() : [];
       return out;
-    }, QA_SRC);
+    }, { QA:QA_SRC, SKIP_BEZEL });
     const say = r => (r && r.bad && r.bad.length) ? r.bad.join(" | ") : "clean";
     ok("L12's ground gate: the cover tier exists, lies flat, and fits the buffer",
        gates.ground.ok, say(gates.ground) + `  (cover ${gates.ground.cover}, lift ${gates.ground.lift} m, ${gates.ground.mb} MB)`);
@@ -9597,6 +9607,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // HOTSPRINGS, rank 4 by the same `over` and 0.003 behind THE THICKET, reading
     // 0% of its chip pixels over 3:1 from 16 m out), the render only draws it
     // there, and the rim's own shape cannot cover the chip it is meant to protect.
+    if(gates.silhouette.skipped){
+      console.log("  SKIP  L30's silhouette gate, L33's rim-day gate, L30's far-read gate and the silhouette budget check: " +
+                  "BONKHORDE_SKIP_BEZEL is set (mutate.js quick mode) - NOT JUDGED this run, counted as neither pass nor fail");
+    } else {
     ok("L30's silhouette gate: exactly the regions the chip's shadow could not buy get a bezel, drawn only there, under the chip's core",
        gates.silhouette.ok, say(gates.silhouette) +
        `  (${gates.silhouette.count} selected: ${gates.silhouette.selected.join(", ")})`);
@@ -9616,6 +9630,7 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     ok("the silhouette budget is FOUR: THE HOTSPRINGS is rank 4 by the shadow's own `over` (three thousandths behind THE THICKET) and read 0% of a chip over 3:1 from 16 m out, bare, at every station that drew",
        gates.silhouette.count === 4 && spring.inSet === true && spring.bare === 0 && spring.rim > 0,
        `count ${gates.silhouette.count}; THE HOTSPRINGS in set: ${spring.inSet}, bare ${spring.bare}% -> rim ${spring.rim}% at ${fr.r} m`);
+    }
   }
 
   // ==========================================================================

@@ -1128,14 +1128,14 @@ const MUTANTS = [
   { id:"the-pooled-non-walk-double-counts", must:"97",
     why:"a union counted twice inflates every share L16 and L17 reported, and it is invisible in a percentage",
     from:"        if(nw) S.nw++;", to:"        if(nw) S.nw += 2;" },
-  { id:"the-chip-shadow-never-applies", must:"97",
+  { id:"the-chip-shadow-never-applies", must:"97", bezel:true,
     why:"shadowGate reads RESERVE_CACHE, the DERIVATION - it has no view of the live render path (chipShadowMOf, called from shadow()), so this leaves shadowGate reporting ok:true while the ACTUAL colour a chip renders against on THE GLACIER drops to contrast 2.777, under the 3.0 bar the whole feature exists to hold. Found by hand before shadowGate's own independent check existed: the first version of that check read reserves().cTop, the general terrain's ambient tone, and missed this entirely",
     from:"  if(!CHIP_SHADOW_ON) return DEF_M;",
     to:  "  if(CHIP_SHADOW_ON) return DEF_M;" },
   { id:"the-ground-is-a-plane-again", must:"97",
     why:"L21's whole round is relief, and with the amplitude at zero its own null control has nothing to compare - this is the failing L14 measured (47-56% of a real frame flat to within 0.012 of luminance) put straight back",
     from:"let RELIEF_AMP = [9.0, 5.0];", to:"let RELIEF_AMP = [0.0, 0.0];" },
-  { id:"the-bezel-never-draws", must:"97",
+  { id:"the-bezel-never-draws", must:"97", bezel:true,
     why:"L30's silhouette is the fallback for the regions L29's shadow cannot buy (three when L30 measured it - THE GLACIER, THE DUSTSEA, THE THICKET on this map - four since L30 of this log added THE HOTSPRINGS) - inverting the QA knob's own check leaves silhouetteRegions() still naming the right set (the selection clauses stay green) while the bezel it exists to draw never appears on screen at the shipped default, which is exactly the render clause silhouetteGate's clause 4 was written to catch rather than trust the derivation alone",
     from:"const chipSilhouetteOf = (bm)=> CHIP_SIL_ON && silhouetteRegions().has(bm.id);",
     to:  "const chipSilhouetteOf = (bm)=> !CHIP_SIL_ON && silhouetteRegions().has(bm.id);" },
@@ -1181,7 +1181,7 @@ const MUTANTS = [
   { id:"the-ladder-forgets-the-names", must:"97",
     why:"the creature unlocks go back to the names typed before the retheme (MOULDLING, SPLITKIN, TALLYMITE) because nothing derives them from the lines - the end screen and the UNLOCKS tab name creatures the roster has never heard of",
     from:"for(const u of UNLOCKS) if(LINES[u.id]) u.what = LINES[u.id].st[0].nm;", to:"" },
-  { id:"the-far-read-lens-drifts", must:"97",
+  { id:"the-far-read-lens-drifts", must:"97", bezel:true,
     why:"chipReadFar stops snapping THE CLEAR SIGHTLINE's lift, so at every station the lens eases in from the last frame's lift while the instrument compares frames - the merged suite read 17 dirty stations exactly this way before the snap existed, and only farReadGate's own null is built to see it",
     from:"    camLiftSnap = true;\n    // THE ANIMAL HOLDS STILL (L30, second half).",
     to:  "    // THE ANIMAL HOLDS STILL (L30, second half)." },
@@ -1477,12 +1477,30 @@ const TMP  = path.resolve(__dirname, `_mutant.${process.pid}.html`);
 // halves, so an audit measures the pair it started with.
 const TMPT = path.resolve(__dirname, `_mutant.${process.pid}.test.js`);
 fs.writeFileSync(TMPT, fs.readFileSync(path.resolve(__dirname, "test.js"), "utf8"));
-let survived = 0;
+let survived = 0, notJudged = 0;
+// THE HOST'S CLOCK: minutes a child may run before it is a timeout (see the
+// note at the call). BONKHORDE_MUTANT_MIN, default 55; a chain sets it from a
+// clean run's own time on the machine it is about to use.
+const MUT_MIN = +(process.env.BONKHORDE_MUTANT_MIN || 55);
+// QUICK MODE (L36b): BONKHORDE_QUICK=1 has each child skip section 97's three
+// bezel gates (silhouetteGate, rimDayGate, farReadGate: the suite's own
+// BONKHORDE_SKIP_BEZEL), which are three-quarters of a run's clock on software
+// rendering and touch nothing the other mutants break. Every row it produces
+// says [quick], and a mutant that TARGETS a bezel gate (`bezel:true`) is not
+// judged in it at all: the skipped gates are the only ones that could catch it,
+// and "SURVIVED" from an instrument that never looked would be the hole this
+// file exists to close.
+const QUICK = process.env.BONKHORDE_QUICK === "1";
+if (QUICK) console.log(`quick mode: the bezel gates are skipped in every child; bezel mutants are not judged. Timeout ${MUT_MIN} min.`);
 
 for (const m of run) {
   if (!src.includes(m.from)) {
     console.log(`SKIP  ${m.id.padEnd(22)} anchor no longer in index.html`);
     survived++; continue;
+  }
+  if (QUICK && m.bezel) {
+    console.log(`NOT JUDGED ${m.id.padEnd(22)} a bezel mutant: quick mode skips the gates that catch it - run it without BONKHORDE_QUICK`);
+    notJudged++; continue;
   }
   fs.writeFileSync(TMP, src.replace(m.from, m.to));
   // The child writes its verdict to stdout and exits 1 on failure, so the
@@ -1494,7 +1512,8 @@ for (const m of run) {
   let out = "", crash = null;
   try {
     out = execFileSync(process.execPath, [TMPT],
-      { env: { ...process.env, BONKHORDE_TARGET: path.basename(TMP) },
+      { env: { ...process.env, BONKHORDE_TARGET: path.basename(TMP),
+               ...(QUICK ? { BONKHORDE_SKIP_BEZEL: "1" } : {}) },
         encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
         // L30/L33's silhouetteGate and rimDayGate re-derive the bezel's reach
         // through the real chase camera - onBezelSeed's world-swap plus
@@ -1508,16 +1527,22 @@ for (const m of run) {
         // under them, which is a hole in the audit exactly like the ones this
         // file's own history already records: a `crash` value here means the
         // instrument gave up, not that the game did.
-        maxBuffer: 32 << 20, timeout: 55 * 60e3 });
+        // AND THE CLOCK IS THE HOST'S, NOT A CONSTANT (L36b). The 55 minutes
+        // were measured on one container; after a restart the same container
+        // ran the same suite's heavy frame at 4.3 fps against 10 (section 12's
+        // own number), the bezel gates alone passed 55 minutes, and the first
+        // two mutants of a chain came back ERROR with nothing wrong in them.
+        // The chain measures a clean run first and sets this from it.
+        maxBuffer: 32 << 20, timeout: MUT_MIN * 60e3 });
   } catch (e) {
     out = String(e.stdout || "") + String(e.stderr || "");
     // ETIMEDOUT as well as the kill flags: the child is Playwright's, which
     // catches the SIGTERM this timeout sends, closes its browser and exits
-    // with a status of its own - so a 55-minute hang came back with no signal
-    // and read "the suite did not finish", the wording for a crash. It was a
-    // hang (whiptail-lashes-a-boss, L36's verdicts), and the row must say so.
+    // with a status of its own - so a timed-out run came back with no signal
+    // and read "the suite did not finish", the wording for a crash. Two did
+    // (L36b), and the row must say which it was.
     if (e.killed || e.signal || e.code === "ETIMEDOUT")
-      crash = `killed (${e.code === "ETIMEDOUT" ? "timeout, 55 min" : e.signal})`;
+      crash = `killed (${e.code === "ETIMEDOUT" ? `timeout, ${MUT_MIN} min` : e.signal})`;
   }
   // The suite's own RESULT line is the verdict. Its absence means the run died
   // before finishing, which is neither caught nor survived - it is no data.
@@ -1561,7 +1586,7 @@ for (const m of run) {
               `${caught ? `${nFail} assertion(s), first in ${first}` +
                           (byOwner ? (first === m.must ? "" : ` and ${m.must} also caught it`)
                                    : ` - ${m.must} did NOT`)
-                        : "the suite passed a broken game"}`;
+                        : "the suite passed a broken game"}` + (QUICK ? " [quick: bezel gates skipped]" : "");
   console.log(row);
   // Append the moment it is known, not at the end: a run that dies has still
   // banked everything it measured.
@@ -1572,5 +1597,6 @@ for (const m of run) {
 }
 fs.existsSync(TMP) && fs.unlinkSync(TMP);
 fs.existsSync(TMPT) && fs.unlinkSync(TMPT);
-console.log(`\n${run.length - survived}/${run.length} mutations caught`);
+console.log(`\n${run.length - survived - notJudged}/${run.length - notJudged} mutations caught` +
+            (notJudged ? ` (${notJudged} bezel mutant(s) not judged in quick mode)` : ""));
 process.exit(survived ? 1 : 0);
