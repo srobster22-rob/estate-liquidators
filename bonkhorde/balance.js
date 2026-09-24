@@ -38,6 +38,12 @@ const NOEV   = !!process.env.BONKHORDE_NOEVENTS;
 // both ways is the only way to read what the hop is actually worth, and it is
 // how the six-link version was caught doubling the first-run median.
 const NOHOP  = !!process.env.BONKHORDE_NOHOP;
+// BONKHORDE_CLUMSY=1 benches the PLAUSIBLE player instead of the ceiling one
+// (L43 of the log): the autopilot re-decides its heading every 0.35 s and
+// holds it between, makes the landing window 65% of the time, and reads a
+// telegraph half a second late. The ceiling bot dies before 10:00 in one run
+// of fourteen; this one in one of four. Early deaths are that player's number.
+const CLUMSY = !!process.env.BONKHORDE_CLUMSY;
 // BONKHORDE_NOEVO=1 holds the monster at the bottom of its line, so the
 // evolution stat block can be read apart from everything that shipped with it.
 const NOEVO  = !!process.env.BONKHORDE_NOEVO;
@@ -85,7 +91,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 
-  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed, noDive, crowd]) => {
+  const runOne = (ch, shopped, seed) => p.evaluate(([ch, shopped, noEv, noHop, noEvo, curve, seed, noDive, crowd, clumsy]) => {
     window.__g.wipeSave();
     if (crowd !== undefined && window.__g.crowd) {
       if (crowd === "off") window.__g.crowd(false);
@@ -99,6 +105,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
     window.__g.start(ch);
     if (noEv) window.__g.freezeEvents(true);   // startRun resets the timer
     window.__g.botHop(!noHop);
+    window.__g.clumsy(!!clumsy);
     if (noEvo) window.__g.freezeEvo(true);
     window.__g.bot(true);
     const st = window.__g.runOut();
@@ -108,7 +115,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
              evos: window.__g.kit().filter(k => k.includes("EVO")).length,
              hContact: h.contact, hSpit: h.spit, hHaz: h.hazard, hTotal: h.total,
              hHits: h.hits.contact + h.hits.spit + h.hits.hazard };
-  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed, NODIVE, CROWD]);
+  }, [ch, shopped, NOEV, NOHOP, NOEVO, CURVE, seed, NODIVE, CROWD, CLUMSY]);
 
   const tiers = TIER === "first" ? [false] : TIER === "vet" ? [true] : [false, true];
   for (const shopped of tiers) {
@@ -117,6 +124,7 @@ let CHARS = process.argv[4] ? process.argv[4].split(",") : null;
                         : "FIRST RUN  (no permanent upgrades)");
     if (CURVE) console.log(`curve: hpQuad=${CURVE[0]} dmgDiv=${CURVE[1]} hpLin=${CURVE[2]} xpNeed=${CURVE[3]} dmgFrom=${CURVE[4]}`);
     if (CROWD !== undefined) console.log(`crowd: ${CROWD === "off" ? "OFF" : "shipped rows x" + CROWD}`);
+    console.log(`player: ${CLUMSY ? "CLUMSY (re-decides every .35 s, hops 65% of the time, reads a telegraph .55 s late)" : "the bench bot (the ceiling: perfect kiting, the hop on the frame it lands)"}${NOHOP ? ", hop off" : ""}`);
     console.log(SEED_BASE ? `paired seeds ${SEED_BASE}..${SEED_BASE + TRIALS - 1}`
                           : `unpaired - fresh world every trial`);
     console.log("=".repeat(66));
