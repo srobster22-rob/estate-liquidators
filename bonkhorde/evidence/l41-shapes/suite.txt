@@ -1,0 +1,1197 @@
+### suite start 14:00:20 on b0654d66
+     2s 
+     2s === 1. BOOT ===
+     2s   PASS  no errors on load
+     2s   PASS  WebGL context live
+     2s   PASS  QA hook exposed
+     2s   PASS  menu visible
+     2s   PASS  terrain built
+     3s 
+     3s === 2. START A RUN ===
+     4s   PASS  run is live  {"t":0.6,"lvl":1,"hp":115,"maxhp":115,"iframe":0,"x":0,"z":0,"y":1.6,"kills":0,"enemies":7,"gems":0,"boxes":428,"horde":69,"corpses":0,"dps":1,"spd":6.6,"cd":1,"over":false,"won":false,"why":"","sudden":false,"picking":false,"coins":0,"pending":0,"stage":0,"face":-0.9877,"air":false}
+     4s   PASS  starting HP is 115  got 115
+     4s   PASS  starts with one weapon
+     4s 
+     4s === 3. SIMULATE 60s ===
+     5s   PASS  clock advanced ~60s  t=60.6
+     5s   PASS  the director spawns enemies  17 alive + 66 killed
+     5s   PASS  kills happening  kills=66
+     5s   PASS  player levelled  lvl=3
+     5s   PASS  no runtime errors
+     5s 
+     5s === 4. EVERY WEAPON FIRES WITHOUT THROWING ===
+     5s   PASS  bat       kills things  kills 0->47
+     6s   PASS  skulls    kills things  kills 0->46
+     6s   PASS  bolt      kills things  kills 0->54
+     7s   PASS  pulse     kills things  kills 0->46
+     8s   PASS  mortar    kills things  kills 0->54
+     8s   PASS  zap       kills things  kills 0->47
+     9s   PASS  aura      kills things  kills 0->50
+     9s   PASS  caltrops  kills things  kills 0->46
+     9s   PASS  brood     kills things  kills 0->49
+     9s 
+     9s === 5. EVERY EVOLUTION ===
+    10s   PASS  bat       -> evolved  kills 0->46
+    10s   PASS  skulls    -> evolved  kills 0->46
+    11s   PASS  bolt      -> evolved  kills 0->53
+    11s   PASS  pulse     -> evolved  kills 0->46
+    12s   PASS  mortar    -> evolved  kills 0->53
+    12s   PASS  zap       -> evolved  kills 0->46
+    13s   PASS  aura      -> evolved  kills 0->46
+    13s   PASS  caltrops  -> evolved  kills 0->46
+    13s   PASS  brood     -> evolved  kills 0->52
+    13s 
+    13s === 6. EVERY ENEMY TYPE + BOSSES ===
+    14s   PASS  shambler  behaves  n=34
+    14s   PASS  runner    behaves  n=34
+    15s   PASS  brute     behaves  n=35
+    15s   PASS  spitter   behaves  n=34
+    16s   PASS  skitter   behaves  n=24
+    16s   PASS  boss 0 spawns/fights  enemies=13
+    16s   PASS  boss 1 spawns/fights  enemies=11
+    17s   PASS  boss 2 spawns/fights  enemies=13
+    17s   PASS  boss 3 spawns/fights  enemies=13
+    17s 
+    17s === 7. EVERY CHARACTER ===
+    17s   PASS  the roster is the one the test covers  intern,scrap,spark,ox,ghoul,accnt,twin,surge,pyre
+    18s   PASS  intern  playable  hp 115/115 spd 6.6 cd 1
+    18s   PASS  scrap   playable  hp 98/98 spd 6.1 cd 1
+    19s   PASS  spark   playable  hp 83/83 spd 7 cd 0.82
+    19s   PASS  ox      playable  hp 185/185 spd 5.45 cd 1
+    20s   PASS  ghoul   playable  hp 115/115 spd 6.2 cd 1
+    20s   PASS  accnt   playable  hp 44/115 spd 7.39 cd 1
+    21s   PASS  twin    playable  hp 76/76 spd 5.54 cd 1
+    21s   PASS  surge   playable  hp 88/99 spd 6.95 cd 1
+    22s   PASS  pyre    playable  hp 60/60 spd 6.2 cd 1
+    22s 
+    22s === 8. FULL 20-MINUTE RUN (godmode, auto-picking) ===
+   113s   min  lvl   kills   alive  boxes
+   113s     1    3      62     19  802
+   113s     2    5     168     19  802
+   113s     3    7     425     33  802
+   113s     4    8     748     52  802
+   113s     5   11    1100     77  802
+   113s     6   18    1545     72  802
+   113s     7   18    2042     94  802
+   113s     8   18    2553    105  802
+   113s     9   19    3170    113  802
+   113s    10   19    3775    135  802
+   113s    11   23    4526    125  802
+   113s    12   32    6115    110  802
+   113s    13   37    7225    113  802
+   113s    14   43    8386    115  802
+   113s    15   48    9624    123  802
+   113s    16   51   10504    233  802
+   113s    17   55   11504    418  802
+   113s    18   59   12665    375  802
+   113s    19   64   14084    261  802
+   113s    20   68   15142    417  802
+   113s    21   71   16064    420  802
+   113s    22   75   17000    376  802
+   113s    23   75   17002    374  802
+   113s   final build: bat:EVO brood:EVO spinach:5 skulls:EVO caltrops:3 spring:1 dupe:3 bloodthirst:1 plating:5 clover:5 gore:3 tempo:5 stomp:1
+   113s   PASS  run reaches a definite outcome  why=VICTORY won=true
+   113s   PASS  survived to the end  reached min 23
+   113s   PASS  enemy count stays capped  max 420
+   113s   PASS  build filled out  13 items
+   113s   PASS  coins awarded on finish  coins=4209
+   113s   PASS  no errors across full run
+   113s 
+   113s === 7b. ELITES ===
+   119s   PASS  no elites before minute 6  n=0 chance=0
+   124s   PASS  elites appear late  27/115 alive, roll=0.194
+   124s   PASS  elites are the tougher thing  x47.05 vs x14.71 = 3.20x
+   124s   PASS  elite share stays a minority  23%
+   124s 
+   124s === 7f. COLOUR-VISION CONTRAST ===
+   125s   comparing 12 enemy variants (normal + elite) x 60 terrain shades x 4 vision types x 12 lighting conditions (6 times of day, lit and shaded faces)
+   125s   (the player is excluded on purpose - 11 distinguishable hues under CVD
+   125s    is not achievable, so the player is marked by a ring instead)
+   125s   PASS  every enemy type stays distinct from every other  worst runner*/collector* dE=15.2 (deuteranopia, 22min shaded)
+   125s   PASS  every enemy keeps usable hue separation from the ground  worst spitter dE=9.5 (tritanopia, 22min shaded)
+   126s   PASS  and the one that is exempt is marked instead  3 markers for 3 fowl (0 off the screen), 0 with none on the field
+   126s   PASS  and every body drawn is drawn with one  22 shadows for 53 enemies (32 off the screen, not drawn) and one player
+   126s 
+   126s === 7d. EVOLUTION PARTNERS ALL CONTRIBUTE ===
+   128s   PASS  BOOTS contributes damage  x1 -> x1.4
+   128s   PASS  BIGGER contributes reach (PLAGUE's partner - it is the cloud that grows)  x1 -> x1.221
+   129s   PASS  THE SPLIT offered to a kit of shots  16 times in 80 rolls
+   129s   PASS  and to a kit of clouds and rings - THE SPLIT is for every weapon now  14 times in 80 rolls
+   130s   PASS  PLATING retaliates when hit  144 -> 774 damage
+   134s   PASS  MAGNET drags the horde in  mean distance 3.8m -> 2.4m
+   134s 
+   134s === 7c. BOSS MECHANICS ===
+   134s   PASS  GRAVELORD/slam   telegraphs  1 hazards peak, cast {"slam":3,"brood":2}
+   135s   PASS  LANDLORD/evict   telegraphs  26 hazards peak, cast {"evict":2,"hedge":2,"slam":1}
+   135s   PASS  MR.TEETH/charge  telegraphs  45 hazards peak, cast {"rake":2,"slam":1,"charge":2}
+   136s   PASS  FINAL/all        telegraphs  1 hazards peak, cast {"slam":2,"inhale":2}
+   136s   PASS  THE FINAL BONK uses its whole kit  {"slam":6,"inhale":3,"sinkhole":4,"spokes":4,"charge":2,"evict":1}
+   137s   PASS  SINKHOLE opens a ring, not a blob  13 circles at a mean 11.0m
+   137s   PASS  and it leaves the ground under the boss safe  every circle of the ring clears the boss's own footing
+   137s   PASS  and the ring actually closes - there is no seam to walk through  widest arc gap 5.32m against a 6m span
+   138s   PASS  SINKHOLE keeps the boss's own ground safe even against the wall  10 casts with the boss out to 247m of a 266m rim; closest circle cleared its feet by 7.99m
+   139s   PASS  boss telegraphs are dodgeable  624 frames under a marked circle: standing in them lost 476 HP to the ground, standing beside them lost 0 - and 0 to anything else, in either arm
+   139s 
+   139s === 8b. SUDDEN DEATH GATE ===
+   144s   PASS  clock does not hand you the win at 20:00  t=1205 sudden=true
+   145s   PASS  and the clock counts the four minutes down while the finale reads as a percentage  {"clock":"SUDDEN DEATH  03:55","phase":"TERRAVORE  100%  ·  THE HUNGER  -  KILL IT"}
+   145s   PASS  killing THE FINAL BONK wins the run - once its ending has played, not on the frame  over on the kill frame false, VICTORY 302 frames later; why=VICTORY
+   145s 
+   145s === 9. DEATH PATH (no godmode) ===
+   146s   PASS  player can actually die  hp=-41.1
+   146s   PASS  end screen shown
+   146s 
+   146s === 10. META PROGRESSION PERSISTS ===
+   146s   PASS  coins saved to localStorage  coins=1137
+   146s   PASS  best time saved  best=1210s
+   148s   PASS  save survives reload
+   148s   PASS  ghoul unlocked by 10:00 run
+   148s 
+   148s === 11. LEVEL-UP UI ===
+   149s   PASS  level-up overlay opens
+   149s   PASS  offers 2-4 cards  4
+   149s   offered: PULSE / NEW WEAPON | SHARPER CLAWS / NEW | GLASS / RULE | THICKER HIDE / NEW
+   150s 
+   150s === 11b. DRAW BUDGET UNDER A LIVE FRAME ===
+   153s   PASS  draw budget holds with the final boss in frame  4837 boxes with 200 enemies and TERRAVORE
+   156s   PASS  there is enough horde standing to measure a per-enemy cost  190 enemies standing after 25s at minute 19
+   156s   PASS  the horde's cost per enemy stays bounded  24.6 boxes each across 98 of 190 enemies built (2408 of 4018 in the frame are the horde's, 452 the fallen's, 92 bodies not drawn)
+   156s   PASS  and the count is the horde's own - an enemy the frame built is never under eight boxes  24.6 a head across 98 built
+   156s   PASS  and the frame still fits two flushes without a boss  4018 boxes
+   156s 
+   156s === 12. RENDER + PERFORMANCE UNDER LOAD ===
+   160s   PASS  renders a heavy frame  enemies=376
+   160s   ~4.5 fps with 376 enemies, 3177 boxes (software GL - real GPU is far higher)
+   161s 
+   161s === 12b. CAMERA AT THE ARENA EDGE ===
+   163s   PASS  the camera is not buried at the centre  190 distinct tones below the horizon, 66 apart from the sky
+   165s   PASS  the camera is not buried at the edge  187 distinct tones below the horizon, 329 apart from the sky
+   166s   PASS  the camera is not buried at the corner  167 distinct tones below the horizon, 193 apart from the sky
+   173s   PASS  and the eye never reaches the wall from any bearing  worst eye radius 264.6 against RIM 266
+   173s 
+   173s === 13. NON-BLANK RENDER CHECK ===
+   173s   PASS  frame is a real rendered scene  429 distinct colours sampled
+   173s 
+   173s === 14. INPUT SMOKE TEST ===
+   175s   PASS  keyboard input does not throw
+   175s 
+   175s === 15. TOUCH CONTROLS (phone-sized, touch-enabled context) ===
+   179s   PASS  detects a touch device
+   179s   PASS  mobile boot is clean
+   180s   PASS  touch start does not leave the game paused
+   180s   PASS  left-thumb stick moves the player  moved 12.9m in 2 simulated seconds
+   180s   PASS  the stick is analog, not on/off  6.3m at part deflection vs 12.9m at full
+   180s   PASS  releasing the stick stops the player  drifted 0.00m
+   180s   PASS  right-thumb drag turns the camera  yaw 0.00 -> 0.72
+   180s   PASS  a tap on the right arms a jump  buf armed=true
+   180s   PASS  a tap on the right jumps  airborne=true
+   180s   PASS  the pause button exists and works on touch  result=true
+   180s   PASS  the pause headline speaks touch, not mouse  "tap to resume"
+   180s   PASS  no cheat strip on a fresh player's pause screen  display=none
+   181s   PASS  a held thumb does not steer the next run  drifted 0.00m after restart
+   181s   PASS  the end screen's SHOP button lands on the shop  over=true, shop top at 273px of 844
+   182s   PASS  no errors from touch handling
+   182s 
+   182s === 15b. INPUT PATHS DO NOT EXCLUDE EACH OTHER ===
+   187s   PASS  a device that never gets pointer lock is not auto-paused  paused=false then false
+   187s   PASS  and it knows it never held the lock
+   187s   PASS  no errors in the both-inputs case
+   188s 
+   188s === 7g. WEAPONS REACH THE BODY, NOT THE CENTRE ===
+   195s   PASS  the two bosses really are different sizes  4m vs 2.6m
+   195s   PASS  a bigger body is reached from further out, by exactly its extra radius  boundaries 13.4m and 12.0m differ by 1.4m, radii differ by 1.4m
+   196s   PASS  a body inside the ring takes damage though its centre is outside  centre 12.4m out, body only 4m thick
+   196s   PASS  a body clear of the ring takes none  nothing at 15.4m
+   197s   PASS  and reach is not simply infinite
+   197s 
+   197s === 7i. THE SCRAPPER'S REACH IS A REAL STAT ===
+   204s   PASS  THE SCRAPPER reaches further than everyone else  intern 13.4m, scrapper 16.7m
+   204s   PASS  and the extra distance is exactly the +35% reach stat  radius 9.4m + boss 4.0m -> expected 16.7m, measured 16.7m
+   204s   PASS  and reach is a boundary, not an absence of one  nothing lands 19.7m out
+   205s   PASS  and both connect well inside it
+   205s 
+   205s === 7h. OVERLAPPING HAZARDS STACK, BUT NOT WITHOUT LIMIT ===
+   206s   PASS  the cap is the three this test is written against  cap=3
+   206s   PASS  one zone burns  200 HP
+   206s   PASS  three zones do three times one  200 -> 600 HP
+   206s   PASS  twelve zones do no more than three  600 vs 600 HP
+   206s   PASS  and the boss survived all three probes, so nothing is clamped
+   206s 
+   206s === 12c. THE GPU CAN BE TAKEN AWAY AND GIVEN BACK ===
+   219s   PASS  losing the context is noticed, not ignored
+   219s   PASS  and it pauses instead of playing on behind a black screen
+   219s   PASS  nothing renders while the context is gone
+   219s   PASS  restore clears the lost flag
+   219s   PASS  a live frame draws after restore  653 boxes before, parked at -1, 590 after
+   219s   PASS  the restored frame is not a blank screen  142 samples
+   219s   PASS  and it is a NEW frame, not the buffer left behind
+   219s   PASS  nothing threw across loss and restore
+   220s 
+   220s === 16. COMFORT: SHAKE AND SOUND CAN BE TURNED OFF ===
+   232s   PASS  prefers-reduced-motion picks the default  {"sound":1,"motion":0}
+   233s   PASS  the world is actually frozen for this comparison
+   238s   PASS  shake off holds the camera perfectly still
+   238s   PASS  shake on moves it
+   238s   PASS  muting takes the master gain to zero  on=0.3199999928474426 off=0
+   244s   PASS  both choices survive a reload  {"sound":0,"motion":1}
+   257s   PASS  no preference leaves shake on  {"sound":1,"motion":1}
+   257s 
+   257s === 12d. THE CAMERA CHASES, IT IS NOT WELDED ===
+   269s   PASS  the anchor starts on the player  x=0.00
+   269s   PASS  it does not teleport with them  x=20.77 of 30 after three frames
+   269s   PASS  but it does get there  x=29.51
+   270s 
+   270s === 18. SIDE EVENTS ===
+   270s   PASS  a cache can be placed
+   270s   PASS  a cache six metres away stays shut
+   270s   PASS  walking into it opens it
+   270s   PASS  and it pays out a level-up  picking=false +2 levels +39 XP
+   271s   PASS  an altar does not charge from six metres away  0
+   271s   PASS  standing in it charges it  1.5s
+   271s   PASS  stepping out bleeds progress rather than resetting it  1.5 -> 1.18
+   271s   PASS  holding it out grants a boon  DEEP LUNGS
+   272s   PASS  the passive pick really does recompute the stat  1 -> 0.659 with METRONOME 3
+   272s   PASS  QUICK HANDS cuts cooldowns  1 -> 0.93
+   272s   PASS  and it survives that recompute, multiplying through it  0.659 x0.93 = 0.613, got 0.613
+   272s   PASS  LIGHT FEET multiplies through it too  9.57 x1.07 = 10.24, got 10.24
+   274s   PASS  MOSSHIDE adds 1.1 of regeneration  0.55/s -> 1.65/s
+   274s   PASS  THERMALS holds the landing window open half again longer  a 0.16s window -> 0.24s with THERMALS
+   274s   PASS  the collector runs away rather than at you  8m -> 31.2m in six seconds
+   274s   PASS  and it stops often enough to be caught  longest unbroken pause 78 frames (128 stationary frames of 360 in total, which is the number that could not tell a rest from jitter)
+   274s   PASS  an armed player kills it  {"got":1,"coins":120,"left":0}
+   274s   PASS  and it pays in coins, which cannot destabilise the run it happened in  +120
+   275s   PASS  an event you ignore expires
+   275s 
+   275s === 16b. THE MIX TRACKS THE PRESSURE ===
+   276s   PASS  an empty first minute is slow  78.0
+   276s   PASS  a full arena at nineteen minutes is not  156.9
+   276s   PASS  and it is a curve, not a switch  78 -> 157 bpm
+   276s 
+   276s === 17. THE UNLOCK LADDER ===
+   280s   PASS  nothing pays out one unit short  []
+   280s   PASS  10:00 unlocks THE GHOUL  ["ghoul"]
+   280s   PASS  a clear unlocks THE TWIN  ["twin"]
+   280s   PASS  level 30 unlocks THE ACCOUNTANT  ["accnt"]
+   280s   PASS  6,000 kills unlocks TALLY  ["tally"]
+   280s   PASS  a rung pays out once, not every run  {"a":["ghoul"],"b":[]}
+   285s   PASS  TALLY is absent from the shop until it is earned  11 lines -> 12
+   285s   PASS  THE TWIN starts holding DUPLICATOR  bolt:1 dupe:1
+   286s   PASS  THE ACCOUNTANT banks more from the same gems  100 vs 118 XP from the same 100
+   286s 
+   286s === 15c. THE CAMERA TURNS WITHOUT POINTER LOCK ===
+   291s   PASS  drag turns the camera with no lock held  locked=false idle=0.000 dragged=-0.156
+   291s   PASS  mousedown on the canvas starts a drag
+   291s   PASS  a loose mouse does not steer  0.0000 -> 0.0000
+   291s   PASS  mouseup ends the drag  dragging=false yaw -0.1560 -> -0.1560
+   291s 
+   291s === 19. BUNNYHOPPING ===
+   292s   PASS  standing still, there is no chain  n=0
+   292s   PASS  a cold jump starts the chain at zero  n=0
+   292s   PASS  jumping on the landing frame links the chain  chain 1,2,3,4,5,6,7,8,9,10,11,12,13,14
+   292s   PASS  the chain keeps counting past where it used to stop  chain reached 14
+   292s   PASS  every link still pays, and later ones pay less  +12% / +40% / +56% at links 1/5/12
+   292s   PASS  and it converges instead of running away  x1.574 at link 14
+   292s   PASS  a full chain is measurably faster than walking  6.60 -> 10.39 m/s  (x1.57)
+   292s   PASS  landing and standing bleeds the chain rather than snapping it  14 -> 11.34 after half a second
+   292s   PASS  and it is gone a few seconds after you stop  n=0
+   292s   PASS  speed comes back down with it  10.39 -> 6.60 vs base 6.60
+   292s   PASS  a HELD spacebar does not auto-hop  buf=0
+   292s   PASS  and none of that was measured against a wall
+   292s 
+   292s === 19c. KEEPING TEMPO PAYS ===
+   292s   PASS  every fifth link pays out  links that paid: 5,10
+   292s   PASS  and the links between them do not  2 payouts in 11 links
+   292s   PASS  the payout scales with the level it happens at  +3 XP at link 5
+   292s   PASS  coins too  0 -> 2
+   292s 
+   292s === 19b. THE JUMP INPUT IS BUFFERED ===
+   294s   PASS  the jump's arc is the same jump twice, so a frame count can be aimed at  38 then 38 frames airborne
+   294s   PASS  a press made in mid-air is stored  pressed at frame 32 of 38, falling at -5.5 m/s
+   294s   PASS  and it links the chain on touchdown without a second press  n=1
+   294s   PASS  a buffer nobody spends expires  buf=0
+   294s 
+   294s === 20. THE WALL IS THE EDGE OF THE MAP ===
+   294s   PASS  there is a continuous wall, not a picket fence  577 segments at rim 266
+   294s   PASS  every segment sits at exactly the play radius  RIM 266, segments 266..266
+   294s   PASS  and the ring actually closes - no gap anywhere on it  widest gap 0.004m at 180 degrees
+   294s   PASS  teleporting outside puts you back inside  264.46 vs rim 266
+   294s   PASS  walking into it for twenty seconds does not get through  furthest 131.70 of 266
+   294s   PASS  no side event spawns outside the wall  45150 sampled, 0 outside, furthest 258.8 of 266
+   316s   PASS  and the camera stays inside it too  eye reached 264.6 of 266
+   316s   PASS  no scenery is stranded out there either  0 props
+   316s 
+   316s === 21. MONSTERS EVOLVE MID-RUN ===
+   322s   PASS  every monster is a five-stage line, capped by its final form  CINDERWHELP>FLAREDRAKE>PYRAETHON>THE CINDERSTAR>THE SUPERNOVA  SPAWNLING>TIDESERPENT>LEVIATHAN>THE MAELSTROM>THE ABYSS  SPARKLET>STORMCLAW>STORMTYRANT>THE SUPERCELL>THE TEMPEST  SHALEBACK>ANKYLOS>TITANHIDE>THE MOUNTAIN>THE CONTINENT  MIRELING>SWAMPJAW>BASILISK>THE GORGON>THE OUROBOROS  WYVERNET>SKYREND>THE ROC>THE HURRICANE>THE MONSOON  HYDRALING>TRIHYDRA>THE HYDRA>THE LEGION>THE MYRIAD  SAILFIN>RIVERKING>THE SPINE>THE FLOOD>THE DELUGE  SUNCHICK>PYREWING>THE PHOENIX>THE ETERNAL>THE SECOND SUN
+   322s   PASS  you start at the bottom of your line  CINDERWHELP stage 0
+   322s   PASS  level 7 evolves you  CINDERWHELP -> FLAREDRAKE
+   322s   PASS  and it is a real stat block, not a rename  maxhp x1.160
+   322s   PASS  level 20 reaches the signature stage  FLAREDRAKE -> PYRAETHON
+   322s   PASS  MOPMAW's signature is live at stage 3  reach 1.2
+   322s   PASS  evolving heals exactly the HP it added, and no more  hp +18.0, maxhp +18.0
+   322s   PASS  an evolution is worth a level-up pick of its own  0 -> 1 queued
+   322s   PASS  banking XP raises that monster's level  1 -> 16
+   322s   PASS  and it raises its starting HP with it  115 -> 150
+   322s   PASS  a level on one monster is not a level on another  scrap is LV 1
+   322s 
+   322s === 21b. TWENTY-ONE FORMS, NOT ONE MESH IN SEVEN COLOURS ===
+   334s   PASS  every form actually rendered a body  all 21 captured
+   334s   PASS  twenty-one forms, twenty-one distinct meshes  21 distinct of 21
+   334s   PASS  each line's three forms are three different animals  intern 96/157/184  scrap 57/74/114  spark 119/136/160  ox 110/152/159  ghoul 44/60/101  accnt 164/189/217  twin 89/165/192
+   334s   PASS  and the stage the test asked for is the stage it got  CINDERWHELP:0 FLAREDRAKE:1 PYRAETHON:2 SPAWNLING:0 TIDESERPENT:1 LEVIATHAN:2 SPARKLET:0 STORMCLAW:1 STORMTYRANT:2 SHALEBACK:0 ANKYLOS:1 TITANHIDE:2 MIRELING:0 SWAMPJAW:1 BASILISK:2 WYVERNET:0 SKYREND:1 THE ROC:2 HYDRALING:0 TRIHYDRA:1 THE HYDRA:2
+   334s 
+   334s === 22. THE HORDE IS NOT FIVE COLOURED BOXES ===
+   336s   PASS  every species has a body plan of its own  shambler:terrapin runner:pterling brute:ceratop spitter:dilopho skitter:raptor collector:glimmerfowl
+   336s   PASS  and no two species share one  6 distinct plans for 6 species
+   336s   PASS  distance buys the box budget back  1908 boxes near -> 627 far
+   337s   PASS  and GLIMMERFOWL is a bird, not fifteen marker boxes  65.0 boxes each, 15 of which are the marker
+   338s   PASS  every boss rendered a body  THE MATRIARCH:ok THORNBACK:ok SKYSPLITTER:ok TERRAVORE:ok
+   338s   PASS  four bosses, four different animals  4 distinct of 4
+   338s   PASS  and none of them is the five-box fallback  THE MATRIARCH 67  THORNBACK 106  SKYSPLITTER 42  TERRAVORE 98
+   339s   PASS  and distance thins a boss out too  TERRAVORE 98 boxes at 10m -> 36 at 110m
+   339s 
+   339s === 22b. THREE RANKS, AND THE CEILING DID NOT MOVE ===
+   340s   PASS  three ranks is the ceiling, however hard you push  rank index 2 at nine picks, spd 9.57 vs 9.57
+   340s   PASS  and three ranks is worth what five used to be  6.6 -> 9.57 m/s, x1.450 (five ranks of +9% was x1.45)
+   340s 
+   340s === 22c. A LEVEL-UP WITH NOTHING ON IT IS NOT A SCREEN ===
+   340s   PASS  a full kit still levels  +40 levels, 20 things carried
+   340s   PASS  and none of those levels opened a screen, other than a MASTERY  picking=true, 39 queued, mastery=true
+   340s   PASS  the refreshment is taken for you instead  healed on the way past
+   341s   PASS  a level-up with a real choice still opens one  picking=true
+   341s 
+   341s === 22s. NO PART OF A CREATURE FIGHTS ANOTHER PART ===
+   362s   PASS  every form was captured  45 forms
+   362s   PASS  no two concentric parts share a face plane - the always-visible case  0 concentric fighting pairs across 21 forms
+   362s   PASS  no rows of IDENTICAL parts share a face plane  10 same-size fighting pairs across 45 forms (ceiling 18)
+   362s   PASS  and incidental coplanar pairs stay near one per box  978 pairs / 6681 boxes = 0.15 per box; worst: SKYREND 92/189, THE SUPERNOVA 46/235, WYVERNET 45/166
+   362s 
+   362s === 22m. THE WORLD HAS WATER, AND THE WATER KNOWS WHO IS AQUATIC ===
+   363s   PASS  the world rolls three to five lakes  5 lakes
+   363s   PASS  a lake centre is wet and the spawn is dry  wet@lake=true dry@spawn=true
+   363s   PASS  no den stands in a lake  checked every den
+   364s   PASS  a plesiosaur swims faster than it walks, allowing for the lake's biome  7.5m through water vs 5.8m over land
+   365s   PASS  and the horde wades too - a lake is terrain, not a player tax  a shambler covered 2.7m through the lake vs 3.9m on land
+   365s   PASS  and water helps a swimmer far more than a wader  wet/dry 1.29 for the plesiosaur vs 0.72 for the ceratopsian
+   366s   PASS  SURE FOOT buys off the water tax rather than shrinking it  dry 5.3m, wet 3.8m, wet+SURE FOOT 5.3m
+   366s 
+   366s === 22n. THE APEX IS A FOURTH ANIMAL, AND ITS POWER IS REAL ===
+   373s   PASS  all nine lines grow a fourth, differently named form  intern:THE CINDERSTAR scrap:THE MAELSTROM spark:THE SUPERCELL ox:THE MOUNTAIN ghoul:THE GORGON accnt:THE HURRICANE twin:THE LEGION surge:THE FLOOD pyre:THE ETERNAL
+   373s   PASS  and a fifth above it - the final form, its own name again  intern:THE SUPERNOVA scrap:THE ABYSS spark:THE TEMPEST ox:THE CONTINENT ghoul:THE OUROBOROS accnt:THE MONSOON twin:THE MYRIAD surge:THE DELUGE pyre:THE SECOND SUN
+   373s   PASS  and the final form is a different mesh, not the apex renamed  all 9 differ
+   373s   PASS  and the apex arrives through the level system at 34  level 41 -> stage 3
+   373s   PASS  and the final form arrives through the level system at 48  level 56 -> stage 4
+   379s   PASS  STORMCALL: a hop landing calls down a zap  1 arc(s) from one landing
+   379s   PASS  RIPTIDE: the pickup radius drags enemies in  same enemy after .75s: 4.31 away at stage 2, 1.8 at the apex
+   379s   PASS  PETRIFY: the sporecloud slows what stands in it  slowT set by the cloud
+   379s   PASS  WARCHOIR: the apex volley carries one bolt more  5 bolts at stage 2 -> 6 at the apex
+   379s   PASS  BREAKWATER: the apex surge lasts longer  4s -> 6.4s
+   379s   PASS  SUNDIAL: the rebirth cooldown stops growing  cooldowns 35, 35, 35
+   379s   PASS  UPHEAVAL: taking a hit answers with a tremor  1 ring(s) from one hit
+   379s   PASS  EYEWALL: the mortar falls twice as often  4 shells in 6s -> 8
+   379s   PASS  STARFIRE: flight writes burning ground  6 zones from one flight
+   379s 
+   379s === 22o. PYRAETHON FLIES ===
+   381s   PASS  CINDERWHELP cannot fly  can=false fly=false
+   381s   PASS  nor can FLAREDRAKE  can=false fly=false
+   381s   PASS  PYRAETHON leaves the ground when you hold jump  alt 2.06 with 0.913 of meter left
+   381s   PASS  and holds a hover rather than climbing forever  alt 3.1
+   381s   PASS  the meter runs out and puts it back on the floor  fly=false alt=0
+   381s   PASS  and refills on the ground  wing 1
+   381s   PASS  and the evolution that grants it says so  banner read "YOU CAN FLY - HOLD JUMP"
+   381s   PASS  up there the burning ground cannot reach it  79.5 damage on the floor, 0.0 in the air
+   381s 
+   381s === 22p. THE ANIMAL KEEPS ITS OWN HEADING ===
+   382s   PASS  walking left points the animal left, not at the camera  face -1.5708 with the camera at 0
+   382s   PASS  standing still does not turn it  -1.5708 walking -> -1.5708 idle
+   382s   PASS  and neither does pausing  -1.5708 idle -> -1.5708 paused
+   383s   PASS  the head tracks something in front of it  look 0.369 with a target dead ahead
+   383s   PASS  and does not crane round at something behind it  look 0.001 with the same target astern
+   383s 
+   383s === 22r. THE ANIMATION IS DRIVEN BY WHAT YOU DID ===
+   385s   PASS  standing still has no gait  amp=0
+   385s   PASS  walking builds one  amp=1
+   385s   PASS  the stride is measured in distance, not seconds  phase moved 0 across a second of standing still
+   385s   PASS  moving leans the animal  lean=0.146
+   385s   PASS  landing crouches it  sq=0.86, land=0.923
+   385s   PASS  a hit recoils it  lunge=-0.913
+   385s   PASS  and it looks at what is next to it  look=0.742
+   385s 
+   385s === 22q. A BOSS ARRIVES ===
+   385s   PASS  a boss starts buried  rise=1.483
+   385s   PASS  and cannot be damaged while it is  520000 -> 520000
+   385s   PASS  and it finishes arriving  rise=0
+   385s 
+   385s === 22v. THE BOSS ARRIVES THROUGH THE SHOVE ===
+   386s   PASS  the Matriarch reaches arm's length through EARTHQUAKE  closed from 15m to 0m in 15s (alive=true)
+   386s 
+   386s === 22p. THERE IS SOMETHING AFTER THE FIRST CLEAR ===
+   387s   PASS  a fresh save has only the surface  {"at":0,"unlocked":0,"sel":0,"max":9,"hp":1,"dmg":1,"pay":1}
+   387s   PASS  and cannot pick a layer it has not opened  picked 0
+   387s   PASS  a layer makes the run harder and pays more  layer 2: hp x1.68, dmg x1.32, coins x1.6
+   387s   PASS  and the surface is still the surface  {"hp":1,"dmg":1}
+   387s   PASS  the ladder has a top  9 of 9
+   387s   PASS  clearing a layer opens the next  {"at":1,"unlocked":1,"sel":1,"max":9,"hp":1.34,"dmg":1.16,"pay":1.3}
+   387s 
+   387s === 22o. EVOLVING IS A MOMENT, NOT A STAT CHANGE ===
+   388s   PASS  evolving starts a transformation  0 -> 1.05
+   388s   PASS  and it puts light on the screen while it runs  491 boxes -> 682 mid-transformation
+   388s   PASS  then it ends and takes its light with it  fx 0, 682 boxes mid-burst -> 627 after (491 before)
+   388s 
+   388s === 22n. THE GAME USES THE NAME IT GAVE YOU ===
+   388s   PASS  the move you were taught is what the game calls it  learned CINDERTRAIL; kit went [BONK BAT] -> [BONK BAT,CINDERTRAIL]
+   388s   PASS  and a line that never learned it still sees the generic name  [STINK,CALTROPS]
+   388s 
+   388s === 22m. THE NEW THINGS MAKE A NOISE ===
+   390s   PASS  a bird winding up on you is audible  3 chirps
+   390s   PASS  a den waking says so  1
+   390s   PASS  and a den taken says so differently  1
+   390s   PASS  crossing onto your own ground is audible  in 1, out 1
+   390s   PASS  every sound in the game is its own sound  25 sounds, duplicates: none
+   392s   PASS  a pearl breaking the surface is audible  1 plips
+   392s   PASS  an angry den sounds angrier than a den  1
+   392s   PASS  and the upwelling rumbles when it opens  1
+   393s   PASS  a new run starts its den ledger at zero  run one woke 1; run two opened at 0
+   394s   PASS  a pearl taken lands on the run's receipt  1 taken; a new run opens at 0
+   394s 
+   394s === 22l. THE HUD FITS ON A PHONE ===
+   414s   PASS  nothing on the HUD overlaps anything else, at any size  phone:ok  small:ok  tall:ok  desktop:ok
+   414s   PASS  the minimap is a proportion of the screen, not 148 pixels  phone 84px (22%)  small 84px (23%)  tall 87px (21%)  desktop 148px (19%)
+   414s   PASS  and it never sits on the bottom HUD strip  phone map ends 740, strip at 726  small map ends 536, strip at 522  tall map ends 811, strip at 797  desktop map ends 742, strip at 662
+   414s 
+   414s === 22k. THE HORDE CAN REACH YOU NOW ===
+   416s   PASS  nothing winds up from across the arena  0 birds beyond 14m winding up
+   416s   PASS  a bird close to you winds up  125 wind-up frames
+   416s   PASS  and then commits to a dive  128 diving frames
+   416s   PASS  the dive is a short crossing, not a charge across the map  furthest frame of a dive: 5.2m
+   416s   PASS  standing in front of one costs you  66 contact damage standing still
+   416s 
+   416s === 22j. THE DAMAGE LEDGER SAYS WHO HIT YOU ===
+   417s   PASS  a fresh run has taken nothing  {"contact":0,"spit":0,"hazard":0}
+   417s   PASS  a body on you is filed as contact  contact 45, spit 0, hazard 0
+   417s   PASS  a projectile is filed as a spit  contact 0, spit 24, hazard 0
+   417s   PASS  and a boss's ground is filed as a hazard  contact 79.7, spit 0, hazard 37
+   417s 
+   417s === 22i. A TYPE IS SOMEWHERE YOU BELONG ===
+   420s   PASS  every line has a home and a weakness on the map  9 of 9 lines measured
+   420s   PASS  home ground reads as home for every one of them  intern:1/-1 scrap:1/-1 spark:1/-1 ox:1/-1 ghoul:1/-1 accnt:1/-1 twin:1/-1 surge:1/-1 pyre:1/-1
+   420s   PASS  the wrong ground costs you, and home ground does not  intern 40.0->46.0  scrap 40.0->46.0  spark 40.0->46.0  ox 40.0->46.0  ghoul 47.2->54.3  accnt 40.0->46.0  twin 40.0->46.0  surge 40.0->46.0  pyre 40.0->46.0
+   421s   PASS  home ground hits harder  541 damage on neutral ground -> 649 at home
+   421s 
+   421s === 22h. THE ARENA CAN BE REPLAYED ===
+   423s   PASS  the same seed builds the same ground  -2036701855 / -2036701855 / -2036701855
+   423s   PASS  and the same regions in the same places  10 regions, identical: true
+   423s   PASS  and the same dens holding the same boons  24 dens, identical: true
+   423s   PASS  a different seed builds a different arena  -2036701855 vs -405997334
+   423s   PASS  and unpinned still rolls a fresh one every run  -1300991076 vs 2060978510
+   581s   PASS  a fully pinned trial is reproducible to the kill  585.00/37/19418 / 585.00/37/19418 / 585.00/37/19418
+   581s   PASS  a different run seed on the same arena is a different run  585.00/37/19418 vs 338.60/22/1573
+   581s   PASS  and unpinned play is still random  1244.10/84/94039 vs 1217.50/83/70251
+   581s 
+   581s === 22g. YOU CAN SEE WHERE YOU ARE ===
+   585s   PASS  the run bakes a map of its own arena  148px, 17191 painted pixels
+   585s   PASS  and it is a map, not one flat colour  14 distinct tones
+   585s   PASS  a new arena rebakes it  terrain 966123608 -> -947009109, 17191 painted
+   586s   PASS  the map is being drawn every frame  8 draws across the captures
+   586s   PASS  and it is drawn on the screen, not just in memory  168 distinct tones in the corner it occupies
+   586s 
+   586s === 22f. THE LANDMARKS HAVE SOMETHING IN THEM ===
+   587s   PASS  the arena rolls dens into its landmarks  23 dens across 51 landmarks
+   587s   PASS  nothing wakes in the opening seconds  woke=false standing on it at T=0s
+   587s   PASS  a den is asleep until you go to it  woke=false at 60m
+   587s   PASS  and it wakes with the pack it advertises, of what lives there  7 elite runner awake at 6m, 7 promised
+   587s   PASS  walking away puts it back to sleep - the fight is not a leash  woke=false alive=0 at 200m
+   587s   PASS  and it can be taken later instead - the full pack again, not the survivors  7 awake on the second visit
+   588s   PASS  every den names a boon and a pack size before you commit  23 dens, all named: true
+   588s   PASS  and a run's dens are not six of the same offer  9 distinct boons across 23 dens
+   588s   PASS  clearing one pays the boon it advertised  advertised QUICK HANDS, got QUICK HANDS
+   588s   PASS  clearing one pays a boon  cleared=true, boons: HEAVY HANDS
+   589s   PASS  a boon can be taken once, however many dens you clear  9 boons, 9 distinct, after forty awards
+   589s   PASS  so run power cannot compound off them  damage x1.15 with every boon in the game
+   589s 
+   589s === 22e. BREADTH COSTS SLOTS ===
+   589s   PASS  a run cannot carry more than four chosen weapons  4 carried against a limit of 4
+   589s   PASS  nor more than five passives  5 carried against a limit of 5
+   589s   PASS  and it fills them - the cap is a choice, not a shortage  4w 5p
+   589s   PASS  the line's own move rides free on top  4 chosen + 1 granted
+   589s 
+   589s === 22d. A RUN BEGINS AT ZERO ===
+   590s   PASS  a maxed shop does not open the run on a draft screen  picking=false, 0 queued at t=0
+   590s   PASS  and the run starts at level 1  level 1
+   590s   PASS  the head start still arrives, during play  level 1 -> 5 after forty seconds
+   590s 
+   590s === 23. THE ARENA IS ROLLED, NOT REMEMBERED ===
+   626s   PASS  no two runs get the same layout  3 distinct layouts of 3
+   626s   PASS  and the ground mesh is actually rebuilt for it  terrain hashes -155760128, 1532078153, -2039638055
+   626s   PASS  the landmarks move too
+   626s   PASS  every point in the arena belongs to a region  0 unresolved of 900
+   626s   PASS  and more than one region is on the map  ash:38 rust:155 warren:111 ice:130 sand:51 bog:109 bramble:69 bone:141 spring:63 grass:33
+   626s   PASS  you never open a run standing in one of the bad ones  0 of 60 rolls put you somewhere else
+   626s   PASS  landmarks stay inside the wall  0 of 2040 outside
+   626s   PASS  and off the spawn point  0 of 2040 within 18m
+   626s   PASS  and off each other  0 overlapping pairs
+   626s 
+   626s === 23b. STANDING SOMEWHERE HAS TO MEAN SOMETHING ===
+   627s   PASS  the tarpits are slower than the fernlands  6.60 m/s on THE FERNLANDS -> 5.68 in THE TARPITS
+   627s   PASS  and it is the tarpits you were standing in  bog
+   627s   PASS  and neither reading was taken mid-hop-chain  deepest chain during the measurement: 0
+   627s   PASS  the cinderflats cost you more for the same hit  40.0 damage on THE FERNLANDS -> 44.8 in THE CINDERFLATS
+   627s 
+   627s === 23c. THE THICKET SHORTENS YOUR REACH ===
+   659s   PASS  a ring reaches less far in THE THICKET  14.5m in THE FERNLANDS -> 13m in THE THICKET
+   659s 
+   659s === 23d. THE WARRENS SPAWN MORE OF THEM ===
+   661s   PASS  the horde arrives faster in THE WARRENS  48 arrivals in 40s on THE FERNLANDS -> 64 in THE WARRENS
+   661s 
+   661s === 23e. THE HOTSPRINGS MEND YOU FASTER ===
+   662s   PASS  standing in THE HOTSPRINGS heals two and a half times as fast  +11 HP in 20s on THE FERNLANDS -> +27.5 in THE HOTSPRINGS
+   662s 
+   662s === 23f. AN ANGRY DEN WAKES ELITE ===
+   662s   PASS  an angry den rolls, wakes, and the pack comes up elite  6 awake, 6 wearing crowns at x4.05 toughness
+   662s   PASS  and the wake headline reads as English  "ANGRY SHELL - something is living under the old one"
+   662s 
+   662s === 23g. THE UPWELLING RAINS GEMS AND ROCK ===
+   663s   PASS  the upwelling drops gems and telegraphed rock while it lives  +12 gems on the ground and 1 hazards after 10s
+   663s   PASS  and it subsides instead of raining forever  gone after its 26 seconds
+   663s 
+   663s === 23h. THE LAKES GROW PEARLS ===
+   664s   PASS  a lake beside you grows a pearl  1 pearl(s) surfaced in 30s beside the lake
+   664s   PASS  and open ground grows nothing  0 gems appeared 70m from every lake
+   664s 
+   664s === 23i. THE GROUND CHOOSES ITS ANIMALS ===
+   695s   PASS  the warrens pour raptorlings  skitter 83% (odds 4.72) in the warrens vs 73% (odds 2.76) on ferns
+   695s   PASS  the glacier belongs to the divers  runner 20% on ice vs 11% on ferns
+   695s   PASS  and heavy things stay off the ice  brute 2% on ice vs 5% on ferns
+   695s 
+   695s === 24. THE DEV PANEL IS WIRED TO SOMETHING ===
+   696s   PASS  every DEV control exists in the DOM  all 7
+   696s   PASS  and every one of them is wired to a handler  all wired
+   696s   PASS  UNLOCK EVERYTHING unlocks everything  6 unlocks, 99999 coins, monster LV 20, 51 shop ranks
+   696s   PASS  DEV MODE is a real switch
+   696s   PASS  and WIPE SAVE actually wipes  {"coins":0,"dev":false}
+   696s   PASS  the pause cheat strip hides until DEV MODE is on  {"off":"none","on":"flex"}
+   696s   PASS  WIPE SAVE arms on the first click and wipes on the second  {"after1":99999,"after2":0}
+   696s 
+   696s === 24a. THE SIM PAYS ITS WAY AT PEAK DENSITY ===
+   698s   PASS  200 enemies simulate inside the frame  1.53ms sim for 200 enemies (ceiling 653fps)
+   698s 
+   698s === 24b. A LEVEL-UP DOES NOT COST YOU THE CHAIN ===
+   698s   PASS  a chain survives the screen that interrupted it  6 -> 6
+   698s   PASS  and you come back with a landing window open  win=0.16
+   698s   PASS  so the next jump continues the chain instead of restarting it  6 -> 7
+   698s 
+   698s === 21c. EVOLVING IS WHERE ABILITIES COME FROM ===
+   707s   PASS  every line grants its move on the first evolution  intern:CINDERTRAIL scrap:UNDERTOW spark:ARCLASH ox:TREMOR ghoul:SPORECLOUD accnt:GALEDIVE twin:MIRRORBOLT surge:RIVERRUN pyre:WINGBEAT
+   707s   PASS  and the second evolution sharpens it  intern 1->2  scrap 1->2  spark 1->2  ox 1->2  ghoul 1->2  accnt 1->2  twin 1->2  surge 1->2  pyre 1->2
+   707s   PASS  no two lines learn the same move  9 moves for 9 lines
+   707s   PASS  a move you already own is ranked up, not duplicated  rank 1 -> 2, 1 kit slots
+   707s 
+   707s === 25. THE MENU SHOWS YOU THE ANIMAL ===
+   714s   PASS  every unlocked card carries a live portrait  4 portraits / 4 unlocked
+   714s   PASS  and no unlocked card carries a description any more  0 prose blocks on 4 open cards
+   714s   PASS  a locked card still says what unlocks it  5 of 5 locked cards explain themselves
+   714s   PASS  something is actually drawn into each one  CINDERWHELP 30%  SPAWNLING 32%  SPARKLET 19%  SHALEBACK 32%
+   714s   PASS  and no two monsters produce the same picture  4 distinct of 4
+   714s   PASS  starting a run stops the portraits rendering  0 live, menuUp false
+   714s 
+   714s === 26. THE COURIER CHARGES BY MOVING ===
+   715s   PASS  the line knows it has a rule  isSurge true
+   715s   PASS  covering ground fills the meter  30% after 14m
+   715s   PASS  and standing still bleeds it back out  30% -> 0% after five seconds still
+   715s   PASS  a full meter spends itself all at once  surge 3.63s, meter back to 0%
+   715s   PASS  and while it is up the damage funnel pays out  167.0 -> 309.0 = x1.85
+   715s   PASS  nobody else gets it  THE INTERN 100.0 for a base of 100
+   715s 
+   715s === 26b. THE TEMP SPENDS DEATHS ===
+   716s   PASS  the line knows it has a rule  isPyre true
+   716s   PASS  a lethal hit does not end the run the first time  over false, 68 HP left
+   716s   PASS  it comes back at 45%  68 of 151 = 45%
+   716s   PASS  and the rebirth goes on a cooldown  70s
+   716s   PASS  the character's rule fires before the shop's revive  rebirth, then SECOND WIND (over false), then dead (over true)
+   716s   PASS  the cooldown runs down  0s left after waiting it out
+   716s   PASS  and the second rebirth costs more than the first  70s then 92s
+   716s 
+   716s === 27. LEVELLING UP STOPS THE GAME, AS THE GENRE DOES ===
+   717s   PASS  the draft opens on a level  open true
+   717s   PASS  and the clock and the horde hold underneath it  2s -> 2s over 120 frames, 9 -> 9 enemies, moved false
+   717s   PASS  the world is dimmed, not blurred away  backdrop-filter: none, ground rgba(6, 8, 12, 0.58)
+   717s   PASS  an ignored hand waits for you  true (12 queued throughout)
+   717s 
+   717s === 27b. A LEVEL WITH NOTHING TO CHOOSE IS STILL WORTH SOMETHING ===
+   717s   PASS  empty levels raise max HP  341 -> 700 by LV 89
+   717s   PASS  and they raise damage  3.14 -> 5.4
+   717s   PASS  and the growth survives the next recalc  5.4 -> 5.4 after another passive
+   717s 
+   717s === 28. THE GROUND HOLDS THE HORDE TOO ===
+   718s   PASS  a bog cell exists to test against  world rolled with no THE TARPITS in range
+   718s   PASS  and the horde bogs down too - the ground is terrain, not a player tax  a shambler covered 3.2m through THE TARPITS vs 3.9m on THE FERNLANDS
+   719s   PASS  and SURE FOOT buys the player back out of the same mud  4.6m plain vs 5.3m with SURE FOOT
+   719s   PASS  and it still helps a swimmer standing on dry mud  5.1m plain vs 5.9m with SURE FOOT, on "scrap"
+   719s 
+   719s === 29. THE HORDE IS ONE OBJECT EACH, TOO ===
+   736s   PASS  every trash body and every boss is a single connected object  10 bodies, all in one piece
+   736s   PASS  and each one actually drew something to check  shambler 22 runner 33 brute 36 spitter 30 skitter 28 collector 30 THE MATRIARCH 67 THORNBACK 106 SKYSPLITTER 42 TERRAVORE 98
+   736s 
+   736s === 30. THE BROOD IS A BODY, NOT A BULLET ===
+   740s   PASS  a brood actually puts something on the field  1 hatchling at rank 1
+   740s   PASS  and the pack grows with the rank  rank1 1 -> rank5 3 -> evolved 6
+   740s   PASS  it hunts on its own, with the owner standing still  12 killed while the player never moved
+   740s   PASS  and it cannot be baited off the map  furthest a hatchling strayed from its owner: 2.4m
+   740s   PASS  and standing next to your own brood is free  owner lost 0 HP alone with it
+   740s   PASS  and a pack of six is six animals, not one  closest any two came: 1.09m, and 0% of frames had a pair inside a body radius
+   740s   PASS  and none of them stands inside what it is biting  closest a pet came to a 2.6m boss centre: 2.94m
+   740s 
+   740s === 31. THE HORDE WALKS, IT DOES NOT JOG ON THE SPOT ===
+   744s   PASS  a spitter holding its band stands, its gait frozen and its stride settled  moved 0m in a second, gait +0, amp 0
+   744s   PASS  and a shambler walking in runs its gait at full stride  moved 2.621m, gait +1.0485, amp 1
+   744s   PASS  gait time is in seconds of the species' own running  per second at full stride: skitter +0.893, shambler +0.907
+   744s   PASS  and a slowed animal strides slowly  slowed gait runs at 0.45 of the free rate, amp 0.4084
+   744s   PASS  the heading is where the animal is going, not where you are  a backing spitter faces 3.13 rad off you, a chaser 0
+   744s   PASS  and it comes round at a rate, not in a frame  a right-angle turn: 0.19 rad in one frame, 1.507 after twenty
+   744s   PASS  a shove is a slide, not a stride  knocked 8.81m sideways in half a second: gait +0.49, turned 0.272 rad
+   744s   PASS  a hit squashes the animal in proportion, and it recovers  a big hit squashed to 0.6802, a chip to 0.8767, back to 1
+   744s   PASS  and contact is a bite that goes out and comes back  bite peaked at 1 and fell to 0
+   744s   PASS  and a minute of a real wave leaves every gait field finite  155 bodies, 0 with a bad field
+   744s 
+   744s === 32. THE HORDE HAS KNEES ===
+   757s   PASS  every walker has a jointed leg on each side at full detail  shambler 2/2, brute 4/4, spitter 5/5, skitter 4/4, collector 5/5
+   757s   PASS  and legs in the MIDDLE tier too - the one a spitter and a collector are seen at  shambler 2/2, brute 4/4, spitter 2/2, skitter 2/2, collector 2/2
+   757s   PASS  both tiers stand on the ground, not on a body with the legs left off  shambler tier drop 0 / ground 0, brute tier drop 0 / ground 0.043, spitter tier drop 0.071 / ground -0.002, skitter tier drop 0.034 / ground -0.001, collector tier drop 0.122 / ground -0.002
+   757s   PASS  the feet come apart along the stride and go back together  spitter apart 0.501 together 0.015, skitter apart 0.253 together 0.009, collector apart 0.83 together 0.045
+   757s   PASS  and the swinging foot comes up off the planted one, which the body stands on  spitter lift 0.09 planted 0, skitter lift 0.05 planted 0, collector lift 0.12 planted 0
+   757s 
+   757s === 33. THE ANIMAL FLINCHES, AND IT DIES ON SCREEN ===
+   758s   PASS  a standing animal breathes: no stride, but the body rises and falls and the clock runs  amp 0, sq span 0.028 over 2 s, br 6.05 -> 12.65
+   758s   PASS  a blow from the right leans the body left and snaps the head toward it  bank -0.313, look 0.554, hitR -1 hitF 0
+   758s   PASS  and it stays staggered that way while the crouch plays, not just on the hit frame  six frames on: bank -0.265, pulse 0.7
+   758s   PASS  it drops into a crouch and is back up two thirds of a second later  sq low 0.859, at +40 frames sq 1.011 bank -0.021 hit 0
+   758s   PASS  a blow from behind shoves it forward; a blow from nowhere knocks it back  behind lunge 0.913, no-source lunge -0.913
+   758s   PASS  the fatal blow ends the run at once, and holds the receipt clear  over true, beat 1.6, died true, receipt opacity 0
+   759s   PASS  the legs go first: under half its height inside the first half second  dead 0.25 sq 0.475 bank -0.051, receipt still 0
+   759s   PASS  the receipt is all but solid on the beat's last frame, so it does not pop in when the beat ends  frame 95: beat 0.017, receipt 0.969
+   759s   PASS  the beat keeps the wall clock down to ten frames a second, past the sim's 42 ms clamp  175 ms frame -> 0.1, 60 ms -> 0.06, 20 ms -> 0.02
+   759s   PASS  then the body goes over, away from the blow, and the receipt comes up as the beat ends  beat 0, dead 1, bank -0.7 sq 0.44 amp 0, receipt 1
+   759s   PASS  a new run stands it back up with nothing of the fall left on it  beat 0, dead 0, sq 1.001, bank 0, style "", end on false
+   759s   PASS  and the real frame loop plays the beat after the run is over  beat 1.6 -> 1.2, dead 0 -> 0.25 over four frames
+   759s 
+   759s === 34. THE BOSS WINDS UP, AND THEN IT HITS ===
+   768s   PASS  nothing is cued at the start of a tell; every ability is fully wound at the top of it  slam u 0->0.9999, sinkhole u 0->0.9999, charge u 0->0.9999, spokes u 0->0.9999, evict u 0->0.9999
+   768s   PASS  the slam and the sinkhole rear up - taller and leaning back - and the charge and the evict crouch  slam top sq 1.16 lf -0.18; sinkhole top sq 1.22 lf -0.22; charge top sq 0.86 lf -0.14; spokes top sq 1.1 lf 0; evict top sq 0.88 lf -0.06
+   768s   PASS  the wind-up gathers: halfway through the tell it is a quarter of the way into the pose, not half  slam half 0.25, sinkhole half 0.25, charge half 0.25, spokes half 0.25, evict half 0.25
+   768s   PASS  the act snaps the other way: the slam and sinkhole flatten and lunge, the charge throws itself forward  slam act sq 0.72 lf 0.26; sinkhole act sq 0.66 lf 0.12; charge act sq 0.95 lf 0.3; spokes act sq 0.9 lf 0; evict act sq 1.1 lf 0.08
+   768s   PASS  the rest starts where the act left it and is back to neutral inside the first second  slam act 1 > 0.432 > 0, sinkhole act 1 > 0.432 > 0, charge act 1 > 0.432 > 0, spokes act 1 > 0.432 > 0, evict act 1 > 0.432 > 0
+   768s   PASS  THE MATRIARCH's own AI drives it: the wind-up climbs through the whole tell, from nothing to full, in the time its own ability names  brood: 60 tell frames (expected ~60), u 0 -> 0.9833, monotonic true
+   768s   PASS  one snap in the whole cycle, at the moment the tell becomes the act; the act matches its own isolated sample; the rest eases home  brood: snaps [tell>act], 16 act frames (expected ~15), sq 0.82 vs isolated 0.82, first rest frame act 1, end move sq 1
+   768s   PASS  THE MATRIARCH's forelimbs come up off the ground for the slam - a fifth of its height or more  67 boxes, tell dy {"max":2.286,"min":0.106,"up":50,"dn":0,"up1":10,"moved":67}
+   768s   PASS  and they are down on it again the instant the slam lands, the jaw dropped and nothing else moved  act dy {"max":0,"min":-0.34,"up":0,"dn":5,"up1":0,"moved":5} df moved 0 dr moved 0
+   768s   PASS  THORNBACK's thorns rise in the tell and lie back along the shell in the heave  tell dy max 0.994; act df {"max":0,"min":-0.44,"up":0,"dn":24,"up1":0,"moved":48} dy max 0.118
+   768s   PASS  SKYSPLITTER pulls its wings back for the charge and throws them forward with its head as it goes  tell df {"max":0.267,"min":-1.907,"up":1,"dn":18,"up1":0,"moved":28}; act df {"max":0.538,"min":0,"up":22,"dn":0,"up1":0,"moved":26} dy min -0.704
+   768s   PASS  TERRAVORE's tooth ring flares open and its mandibles step forward when the slam lands  act dr {"max":0.841,"min":-0.893,"up":8,"dn":8,"up1":0,"moved":17} dy moved 6 df max 0.24
+   768s   PASS  the draw leaves nothing of the beat in the body: e.sq is walk()'s again after every drawn frame  matriarch sq 1, thornback sq 1, skysplitter sq 1, terravore sq 1
+   768s 
+   768s === 35. THE HORDE FALLS DOWN ===
+   789s   PASS  a kill puts the body on the corpse list at once, facing where it faced, headed the way it was shoved  t 0 dur 0.55 dir 1,0 hd 3.1416, 1 on the field
+   789s   PASS  the next world step takes it off the field and the fall has begun; a body with no shove on it drops away from the player  enemies 0, t 0.0167, unshoved dir 0,-1
+   789s   PASS  the kill frame draws the body once: the dead body still in the enemy list is left to the corpse pass, so the frame holds the same boxes as the one after it  boxes at the kill 560, one step on 560
+   789s   PASS  the fall runs .55 s for trash and the body is gone at the end of it, not before  at .533 s 1, at .567 s 0
+   789s   PASS  the list holds 48: the oldest go first, and clearEnemies() and a new run both empty it  60 killed -> 48, cleared 0, restart 1 -> 0
+   789s   PASS  deathPose: neutral at the kill frame - squash 1, no lean, no drop, no sink, no fade  {"sq":1,"drop":0,"lean":0,"sink":0,"fade":0}
+   789s   PASS  the legs go over the first 40%: the squash falls without a rise to below half, the lean reaches .6, the drop is whole  sq 0.816 0.511 0.453 monotonic true; lean 0.591 drop 1
+   789s   PASS  one small rebound past the bottom, then it lies flat: sq .49 at the top of the bounce, .42 by .7 and no sink yet  sq at .4 0.453 .49 0.490 .7 0.420; sink at .7 0
+   789s   PASS  the sink is the last 30% and complete at the end; the fade climbs across the first two thirds  sink .85 0.500 1 1; fade .3 0.450 .7 1
+   789s   PASS  every kind was killed and captured standing, at the kill frame, crumpled, lying and near the end  9 kinds
+   789s   PASS  the kill frame is not a cut: the corpse draws to the same top as the standing body did  shambler 0.31->0.31, brute 1.417->1.417, spitter 1.763->1.763, skitter 0.644->0.644, runner 1.27->1.27, elite 1.976->1.976, boss0 5.586->5.586, boss2 15.358->15.358; collector 8.894->8.894 with its beacon
+   789s   PASS  crumpled at 40%, every body draws to under 60% of its standing height and is still on the ground  shambler 0.44 bot -0.003, brute 0.44 bot 0.036, spitter 0.44 bot 0.016, skitter 0.42 bot 0.022, runner 0.27 bot -0.115, collector 0.12 bot 0.016, elite 0.43 bot 0.04, boss0 0.44 bot 0.001, boss2 0.20 bot -0.964
+   789s   PASS  it fell the way it was hit: shoved across +x, every body's top moves to +x as it crumples, and at least twice what it moves along z  shambler 0.089,0.014, brute 0.546,0.087, spitter 0.617,-0.089, skitter 0.214,0.031, runner 0.546,0.033, collector 1.454,0.298, elite 0.8,0.131, boss0 1.734,0.444, boss2 2.534,0.084
+   789s   PASS  ...and shoved along -z, the brute's top moves to -z as it crumples, and at least twice what it moves along x  dir 0,-1 top moved 0,-0.46
+   789s   PASS  near the end every body is under the ground, whole, and it is gone at the end  shambler top -1.55, brute top -1.497, spitter top -0.962, skitter top -0.567, runner top -1.588, collector top -1.21, elite top -2.015, boss0 top -5.268, boss2 top -7.097
+   789s   PASS  the stride dies with it: the gait amplitude is under a fifth of a stride by the time it lies  shambler amp 0.1499, brute amp 0.1499, spitter amp 0.1367, skitter amp 0.1385, runner amp 0.1403, collector amp 0.1405, elite amp 0.0502, boss0 amp 0.0038, boss2 amp 0.0038
+   789s   PASS  ...but the bite does not: SKYSPLITTER died mid-bite and lies with the bite still on it, the same as at the kill frame - it went down head first  boss2 lg 0.9467 -> 0.9467; shambler lg 0 bk 0, brute lg 0 bk 0, spitter lg 0 bk -0.0292, skitter lg 0 bk 0, runner lg 0 bk 0, collector lg 0 bk -0.0292, elite lg 0 bk 0, boss0 lg 0 bk 0, boss2 lg 0.9467 bk 0.0179
+   789s   PASS  the fliers fall out of the air: SKYSPLITTER hung well over a metre up alive, and it and the runner lie ON the ground - not hovering, not under it  runner alive bot 0.205 -> lying -0.115 / -0.105, boss2 alive bot 6.444 -> lying -0.964 / -0.94
+   789s   PASS  the world-space FX go with the kill: crumpled, the runner and the collector draw exactly their standing box count, and the collector's beacon is out  runner 33->33 (alive 33), collector 49->30 (alive 30), beacon 0
+   789s   PASS  an elite takes .85 s to go down and a boss 1.6, and the elite is drawn at its size  elite 0.85 (1.864 vs brute 1.351 with the hops 0.1123/0.0664 off, x1.380), bosses 1.6 1.6
+   789s   PASS  the finale's kill does not end the run, its ending does - and what is still falling when the banner goes up reaches the floor under it  over on the kill frame false, ending 5s, then over true won true; shambler corpse t 0.1086 -> 0.268 across four frames with the world stopped, after eight clearing the finale's own hitstop
+   789s 
+   789s === 36. EVERY STAGE WEARS ITS OWN COAT ===
+   803s   PASS  nine lines, five named stages each, forty-five forms on the sheet  CINDERWHELP>FLAREDRAKE>PYRAETHON>THE CINDERSTAR>THE SUPERNOVA | SPAWNLING>TIDESERPENT>LEVIATHAN>THE MAELSTROM>THE ABYSS | SPARKLET>STORMCLAW>STORMTYRANT>THE SUPERCELL>THE TEMPEST | SHALEBACK>ANKYLOS>T
+   803s   PASS  every stage of every line is drawn in a coat of its own: no two stages of one line are within dE 12 of each other  intern 21.5, scrap 33.6, spark 32, ox 20, ghoul 31.2, accnt 25.3, twin 26.9, surge 46.4, pyre 22.2
+   803s   PASS  ...and each evolution is a visible change of colour, not a shade: consecutive stages sit dE 18 or more apart  intern 21.5, scrap 46.7, spark 32.8, ox 36.5, ghoul 31.2, accnt 25.3, twin 37.5, surge 46.4, pyre 50.1
+   803s   PASS  every line makes one hard turn - a hue swing of 60 degrees or better, or a coat that goes from dark to light (dE 45+) - somewhere up the line  intern 60, scrap 99, spark 172, ox 60, ghoul 152, accnt 163, twin 60, surge 96, pyre 143
+   803s   PASS  the animal is painted in the table's colour, at every one of the forty-five forms - a plan is not quietly reading the line's palette  intern 0, scrap 0, spark 0, ox 0, ghoul 0, accnt 0, twin 0, surge 0, pyre 0
+   803s   PASS  the accent is never the body: dE 30 or better apart at every stage, so the markings still read on every coat  intern 62.2, scrap 50.3, spark 90.4, ox 58.6, ghoul 64.6, accnt 41.5, twin 65.2, surge 54.8, pyre 59
+   803s   PASS  the dark is at most three quarters of the coat's luminance on every form, and on a pale coat it is a colour (chroma 10+) - a white dragon does not stand on grey legs  all 45
+   803s   PASS  the hatchling on the card is the hatchling in the game: stage 0 IS the line's palette  intern 0.96/0.44/0.18, scrap 0.26/0.6/0.9, spark 0.34/0.8/1, ox 0.72/0.57/0.34, ghoul 0.26/0.64/0.46, accnt 0.86/0.88/0.96, twin 0.71/0.49/0.98, surge 0.86/0.2/
+   803s 
+   803s === 37. THE APEX IS A NEW SHAPE ===
+   816s   PASS  the body is captured at all twenty-seven forms from the third stage up, and every one is more than a handful of boxes  intern 184/175/235, scrap 114/58/88, spark 160/153/99, ox 159/129/84, ghoul 101/162/106, accnt 217/232/180, twin 192/336/373, surge 169/194/188, pyre 171/172/208
+   816s   PASS  the redesigned lines (intern, scrap, spark, ox, ghoul, accnt, pyre, surge, twin) change shape at every evolution from the third stage up: |dH/L| + |dW/L| of .12 or better between each pair of stages 2, 3 and 4  intern: PYRAETHON 0.51/0.58 > THE CINDERSTAR 0.67/0.89 > THE SUPERNOVA 0.49/0.95  d 0.47/0.24/0.39 | scrap: LEVIATHAN 0.54/0.61 > THE MAELSTROM 0.39/0.99 > THE ABYSS 0.67/0.66  d 0.53/0.61/0.18 | spark: STORMTYRANT 0.52/0.25 > THE SUPERCELL 0.36/0.26 > THE TEMPEST 0.97/0.64  d 0.17/0.99/0.84 | ox: TITANHIDE 0.45/0.56 > THE MOUNTAIN 0.74/0.58 > THE CONTINENT 0.47/0.75  d 0.31/0.44/0.21 | ghoul: BASILISK 0.56/0.4 > THE GORGON 0.93/1.11 > THE OUROBOROS 0.56/0.76  d 1.08/0.72/0.36 | accnt: THE ROC 0.6/0.64 > THE HURRICANE 0.82/1.37 > THE MONSOON 0.31/0.24  d 0.95/1.64/0.69 | pyre: THE PHOENIX 0.63/0.71 > THE ETERNAL 1.52/1.64 > THE SECOND SUN 1.12/2.21  d 1.82/0.97/1.99 | surge: THE SPINE 0.52/0.24 > THE FLOOD 0.59/0.99 > THE DELUGE 1.07/0.57  d 0.82/0.9/0.88 | twin: THE HYDRA 0.55/0.5 > THE LEGION 0.41/0.54 > THE MYRIAD 1.01/0.94  d 0.18/1/0.9
+   816s   PASS  ...and it is a rear, a sprawl or a coil, not a tweak: the redesigned lines move the mass by .05 of the height or better somewhere across those stages  intern massY 0.5>0.57>0.49, scrap massY 0.56>0.34>0.4, spark massY 0.59>0.49>0.54, ox massY 0.36>0.3>0.52, ghoul massY 0.58>0.64>0.58, accnt massY 0.61>0.73>0.48, pyre massY 0.46>0.55>0.48, surge massY 0.48>0.48>0.66, twin massY 0.44>0.37>0.3
+   816s   PASS  the echo line rears, then walls, then floats: THE LEGION is lower for its length than THE HYDRA by .08 of H/L, and THE MYRIAD's lowest box hangs .08 or more above the ground the other four stand on  H/L 0.55 > 0.41 > 1.01, lowest box -0.02 > -0.01 > 0.25
+   816s 
+   816s === 38. THE HATCHLING IS NOT A SMALL ADULT ===
+   828s   PASS  the redesigned lines (ox, surge, accnt, twin, scrap) are three different animals before they are grown, not one at three scales: |dH/L| + |dW/L| of .12 or better between each pair of stages 0, 1 and 2  ox: SHALEBACK 0.66/0.81 > ANKYLOS 0.22/0.28 > TITANHIDE 0.45/0.56  d 0.97/0.51/0.46 | surge: SAILFIN 0.52/0.54 > RIVERKING 0.8/0.52 > THE SPINE 0.52/0.24  d 0.3/0.56/0.3 | accnt: WYVERNET 0.27/0.72 > SKYREND 1.25/1 > THE ROC 0.6/0.64  d 1.26/1.01/0.41 | twin: HYDRALING 0.45/0.71 > TRIHYDRA 1/0.83 > THE HYDRA 0.55/0.5  d 0.67/0.78/0.31 | scrap: SPAWNLING 0.65/0.85 > TIDESERPENT 0.17/0.23 > LEVIATHAN 0.54/0.61  d 1.1/0.75/0.35
+   828s   PASS  the stone line hatches as a pebble and grows its weapon first: SHALEBACK is nearly as wide as it is long, ANKYLOS is four times longer than it is wide, and TITANHIDE is neither  W/L 0.81 > 0.28 > 0.56, H/L 0.66 > 0.22 > 0.45
+   828s   PASS  the surge line is a fry, then a fish that walks on its fins, then a predator: RIVERKING is the only stage of the line standing taller than .7 of its own length, and both juveniles are half again as wide for their length as THE SPINE  H/L 0.52 > 0.8 > 0.52, W/L 0.54 > 0.52 > 0.24
+   828s   PASS  the gale line hatches straight into the air and then cannot use it: WYVERNET hangs a quarter of a unit clear of the ground the rest of the line stands on, and SKYREND is the one stage of the line standing taller than it is long  lowest box 0.42 > -0.01 > -0.05, H/L 0.27 > 1.25 > 0.6
+   828s   PASS  the echo line hatches as a grub and grows its necks before its body: HYDRALING is the flattest thing in the line and TRIHYDRA stands nearly as tall as it is long, and both are wider for their length than THE HYDRA  H/L 0.45 > 1 > 0.55, W/L 0.71 > 0.83 > 0.5
+   828s   PASS  the tide line is not out of the egg yet, and what comes out is a ribbon: SPAWNLING is a clutch as wide as it is long, TIDESERPENT is the flattest thing in the game at under .25 of its own length, and the LEVIATHAN is neither  H/L 0.65 > 0.17 > 0.54, W/L 0.85 > 0.23 > 0.61
+   828s    still one plan at three scales below the third stage: ghoul d 0.11/0.19/0.3
+   828s 
+   828s === 39. THE PORTRAIT FITS IN ITS CARD ===
+   842s   PASS  no card portrait is clipped by its own frame: every one of them clears the top and both sides  9 portraits, worst edge 0 lit pixels
+   842s   PASS  ...and none of them is a speck in the middle of it either  CINDERWHELP 0.281, SPAWNLING 0.335, SPARKLET 0.189, SHALEBACK 0.314, MIRELING 0.097, WYVERNET 0.07, HYDRALING 0.199, SAILFIN 0.157, SUNCHICK 0.105
+   846s   PASS  and the camera solved against the animal's height and depth, not against them the other way round  10 cameras, worst error 0.035
+   846s 
+   846s === 40. EVERY LINE MOVES AT ITS OWN PACE ===
+   864s   PASS  the roster spans a real range: the fastest form covers at least half again the ground of the slowest  4.67 to 8.73 u/s, x1.87
+   864s   PASS  every line changes pace at two or more of its four evolutions, by five percent or better  intern 6.6/6.87/7/6.07/7.27 | scrap 6.07/7.4/7/7.73/6.53 | spark 7/7.4/7.13/7.73/7.4 | ox 5.47/6/5.67/5/4.67 | ghoul 6.2/6.33/6.73/5.67/6.87 | accnt 7.4/5.93/7.27/7.67/6.73 | twin 5.53/6.53/6.73/5.93/7 | surge 7/7.53/8/8.53/8.73 | pyre 6.2/7.13/7.27/6.33/7
+   864s   PASS  ...and no single evolution is a jump: no step moves pace by more than a quarter  intern 4%/2%/-13%/20% | scrap 22%/-5%/10%/-16% | spark 6%/-4%/8%/-4% | ox 10%/-6%/-12%/-7% | ghoul 2%/6%/-16%/21% | accnt -20%/23%/6%/-12% | twin 18%/3%/-12%/18% | surge 8%/6%/7%/2% | pyre 15%/2%/-13%/11%
+   864s   PASS  the hatchling's own pace applies from the first frame of a run: THE INTERN 6.60, THE OX's pebble 5.45, THE TWIN's grub 5.54  intern 6.6, ox 5.47, twin 5.53
+   864s   PASS  the courier's surge is a burst of pace: x1.30 on the ground while it is up  8 u/s down, 10.33 up, x1.291
+   864s 
+   864s === 41. KILLS FEED PACE ===
+   865s   PASS  a run starts with no rush and a kill gives you some  cold 0, after three kills 0.42 (x1.0924)
+   865s   PASS  ...and it caps: a dozen more kills take the meter to full and no further  after fifteen 1 (x1.22)
+   865s   PASS  a full rush is pace on the ground: a fifth again the distance in the same second  6.6 cold, 7.5 hot, x1.136 (the meter bled during the read)
+   865s   PASS  and it bleeds away: three seconds without a kill and it is gone  0 after 3 s
+   865s   PASS  an elite is worth two kills  elite 0.28
+   865s 
+   865s === 42. THE LEGS GO WITH IT ===
+   867s   PASS  a dead brute's legs go out from under it: the centres of its leg boxes spread a quarter wider across the facing between the kill frame and the end of the crumple, and a shambler's too  brute 4 leg boxes 1.08 -> 1.562 (x1.446), shambler 4 boxes 0.594 -> 0.836 (x1.407)
+   867s   PASS  ...and a runner's, by a fifth at least  runner 6 leg boxes 0.128 -> 0.358 (x2.797)
+   867s   PASS  the splay adds no boxes and loses none: the corpse is the same count of parts at the end of the crumple as on the kill frame  brute 36/36, shambler 22/22, runner 33/33
+   867s 
+   867s === 43. THE GROUND KNOWS WHO IS AIRBORNE ===
+   876s   PASS  the tar still drags a walker, and the fledgling with it: THE INTERN and SKYREND lose about a seventh of their pace in THE TARPITS  intern 6.67->5.6 (x0.84, on bog), skyrend 6->5.07 (x0.845, on bog)
+   876s   PASS  ...and it cannot reach what is not on it: the kite, the ROC, the HURRICANE, the MYRIAD, the SUPERNOVA and the CONTINENT cross the tar at their grass pace  kite 7.47->7.47 (x1, on bog), roc 7.2->7.2 (x1, on bog), hurricane 7.73->7.73 (x1, on bog), myriad 6.93->6.93 (x1, on bog), supernova 7.2->7.2 (x1, on bog), continent 4.67->4.67 (x1, on bog)
+   876s   PASS  the glacier takes a walker's grip and not a flier's: THE INTERN coasts three times as far on ice after the key comes up, the kite does not  intern 0.4 -> 1.5 on ice, kite 0.5 -> 0.6
+   876s   PASS  and the ground is announced, the way the water was: the first step into the tar says what it does, in one line for a walker and another for a flier, and the ice too  walker: ["THE TARPITS","TARPITS - IT DRAGS AT YOU"], kite: ["THE TARPITS","TARPITS - YOU ARE ABOVE THEM"], ice: ["THE GLACIER","GLACIER - NO GRIP"]
+   876s 
+   876s === 44. THE DRAFT READS IN ONE GLANCE ===
+   876s   PASS  every upgrade is a part of the animal and one headline: eight of them, two words each, a signed number or a count on the face  BIGGER TEETH=+22% DAMAGE QUICKER HEART=-13% COOLDOWN LONGER LEGS=+15% MOVE SPEED LONGER NECK=+10% REACH THICKER HIDE=-8% DAMAGE TAKEN KEENER NOSE=+58% PICKUP RANGE SHARPER CLAWS=+12% CRIT THE SPLIT=+A SECOND CREATURE
+   876s   PASS  every card dealt has a headline and three pips, with the rank you would gain lit  164 cards, blank headlines 0, pipless 0
+   876s   PASS  a weapon rank-up says what the next rank changes, in numbers, and does not repeat the weapon's blurb  ZAP: +74% DMG · +2 JUMPS · BIGGER | BONK BAT: +86% DMG · BIGGER · FASTER | BOLT: +72% DMG · +2 SHOTS · PIERCE 3 | SKULLS: +77% DMG · +7 SKULLS · BIGGER
+   876s   PASS  every weapon card names the evolution it is walking toward and the partner it needs  all named
+   876s   PASS  and the partner's card names what it unlocks: MORE, in a kit with BOLT, says BOLTSTORM  UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM | UNLOCKS BOLTSTORM
+   876s   PASS  the evolution card reads EVOLVED with the bar full  MEGABONK EVOLVED 3/3
+   876s   PASS  the delta is read off the table: BONK BAT's next rank is more damage, bigger and faster; ZAP gains jumps; BOLT gains pierce; a maxed weapon says so  {"bat":"+86% DMG · BIGGER · FASTER","zap":"+81% DMG · +2 JUMPS · BIGGER","bolt":"+72% DMG · +2 SHOTS · PIERCE 3","skulls":"+88% DMG · +3 SKULLS · BIGGER","max":"MAXED"}
+   876s 
+   876s === 45. THE RULES ===
+   881s   PASS  RHYTHM: an eight-link chain multiplies a hit by the chain's own bonus, and does nothing on the ground  x1.499 at eight links, x1.000 idle
+   881s   PASS  HUNTER: the elite takes half again, the grunt beside it takes what it took before  grunt 50 -> 50, elite 50 -> 75
+   881s   PASS  BLOODTHIRST: ten kills are ten health, and none without it  40 without, 50 with
+   881s   PASS  STOMP: one landing in a ring of grubs costs them health, and a bare landing costs nothing  without {"landed":true,"lost":0}, with {"landed":true,"lost":144}
+   881s   PASS  and the shove is what it is for: twenty seconds hopping inside a ring of forty costs real health bare, and next to nothing with the card  bare: lost 151, 800.2 HP of horde left; STOMP: lost 6, 5 landings connected, 0 HP left
+   881s   PASS  the draft deals rules as their own kind of card from level 4, all ten of them, none before  0 of 4 cards before level 4, 60 after (WHIPTAIL GLASS HUNTER RAMHORN SPRINGHEEL TIDEBORN AFTERBURN RHYTHM BLOODTHIRST STOMP), level 117
+   881s   PASS  the slots cap the rules: with three taken past level 30 the draft offers no fourth, and a rule sits in the kit bar in its own colour  0 offered past the cap, slot true, level 117, 10 rules in the catalogue
+   881s   PASS  and the chain readout says the chain is paying twice while RHYTHM is held  "x5 · PACE & DMG"
+   881s 
+   881s === 46. MORE IS FOR EVERY WEAPON ===
+   888s   PASS  BONK BAT swings a flurry: at least three times the swings with MORE 3, the extras counted as echoes  4 -> 16 swings (x4.0), 12 echoes
+   888s   PASS  PULSE rings again and again  2 -> 11 rings (x5.5)
+   888s   PASS  CALTROPS drops a denser trail  3 -> 13 zones (x4.3)
+   888s   PASS  GORE cuts more lanes while you move  5 -> 19 lanes (x3.8)
+   888s   PASS  STINK's trailing clouds bite: walking away from a ring of ceratops costs them more with MORE than without  1910 -> 3207 horde HP (x1.68)
+   888s   PASS  BROOD's copy pups bite at copy damage: four pups on a boss, over three seeds, do more than one pup and well short of four full ones  2877 -> 4742 boss damage over three seeds (x1.65)
+   888s   PASS  and the card says so, without a weapon list  {"key":"dupe","nm":"THE SPLIT","eff":"+A SECOND CREATURE","max":3,"col":"#ff6bd6"}
+   888s 
+   888s === 47. THE BOSS IS THE TARGET ===
+   888s   PASS  BONK BAT swings at the boss in reach, not at the grub at its feet  {"w":"bat","aimed":0,"bossAng":0,"grubAng":3.141592653589793,"bossDist":7}
+   888s   PASS  BOLT's fan is loosed at the grub at its feet, not turned on the boss: a fan is a crowd weapon  {"w":"bolt","aimed":-3.1411853071795868,"bossAng":-0.007653885664856477,"grubAng":3.141592653589793,"bossDist":7}
+   888s 
+   888s === 48. BOSSES ARE FIGHTS ===
+   891s   PASS  THE MATRIARCH is the table's 3,800 for a hatchling at level 1  3800 at level 1
+   891s   PASS  and grows with the level you reached: about x1.45 at ten, x2.2 at twenty-five, and no more than x3 ever  lv10 5510, lv25 8360, lv60 11400
+   891s   PASS  the finale does not grow with LEVEL - an empty kit meets its 520,000 floor at level 1 and at level 60 alike (it grows with the kit, section 49)  520000 at level 1, 520000 at level 60
+   891s   PASS  every boss rises inside weapon range, fifteen metres out, not on the horizon  THE MATRIARCH 15m, THORNBACK 15m, TERRAVORE 15m
+   891s 
+   891s === 49. A BOSS IS SECONDS OF YOU ===
+   895s   PASS  an empty kit meets the table: 3,800 / 15,000 / 55,000  3800 / 15000 / 55000
+   895s   PASS  a bare BONK BAT is under forty a second and its MATRIARCH is still the table  38/s -> 3800
+   895s   PASS  a big kit meets a boss sized in seconds of it, capped at twelve tables  4650/s -> 45600 / 4650/s -> 139496 / 4650/s -> 185994
+   895s   PASS  and it is bigger than the table by a lot  THORNBACK x9.3, SKYSPLITTER x3.4
+   895s   PASS  the finale with no boss killed: never under 520,000, and a third of the estimate at most (the estimate is a ceiling)  520000 / 13653/s -> 520000
+   895s   PASS  and after a boss kill it is sixty seconds of what you did to that boss: SKYSPLITTER killed in a second sizes it at its rate x60, capped  SKYSPLITTER 540064 in a second -> rate 546111/s -> TERRAVORE 14400000
+   895s   PASS  and scaled by how much the kit grew since the kill: ten thousand a second is 600,000 as it was and 1,200,000 for a kit twice the size  600000 same kit, 1199979 at twice the kit
+   895s 
+   895s === 50. THE THIRD RULE ===
+   896s   PASS  AFTERBURN: a second after four kills the rush has faded to about half bare, and barely at all with the card  bare 0.56 -> 0.14, AFTERBURN 0.56 -> 0.42
+   896s   PASS  GLASS: +40% damage and -40% max HP the moment it is taken  dmg x1.40, hp 115 -> 69
+   896s   PASS  the third slot opens at level 30: with two rules held nothing green is dealt below it and rules are dealt above  level 11: 0 rule cards; level 62: 47; RHYTHM STOMP BLOODTHIRST HUNTER AFTERBURN GLASS TIDEBORN RAMHORN SPRINGHEEL WHIPTAIL
+   896s 
+   896s === 51. MASTERY ===
+   896s   PASS  six MASTERY hands arrive, each five silent levels after the last, three cards each  6 hands, gaps 5,5,5,5,5,5, sizes 3,3,3,3,3,3
+   896s   PASS  every card is a MASTERY of a finished upgrade, never MORE and never a rule  plating tempo magnet boots heart spinach clover
+   896s   PASS  the card shows the pip you would gain past three: four pips with the fourth lit, or five  4/3+1 4/3+1 4/3+1 4/3+1 4/3+1 5/4+1
+   896s   PASS  six taken: the kit now holds ranks four and five, none past five  spinach:4 magnet:4 plating:5 heart:5
+   896s 
+   896s === 52. THE PHONE KIT AND CAMERA ===
+   906s   PASS  ten things in the kit sit in at most two rows of thirty-pixel slots on a 390px phone, not three rows of four  10 slots of 30px in 1 rows, kit 336px wide
+   906s   PASS  and the chain bar sits above the kit, not through it  bar bottom 732, kit top 780
+   906s   PASS  the boss alert prints below the region caption on a phone, not through it  alert 86-115 "THE MATRIARCH", caption 69-80
+   906s   PASS  the portrait camera opens its lens and backs the boom off: wider than landscape and further away  portrait fov 1.23 dist 10.77; landscape fov 1.02 dist 8.9
+   906s 
+   906s === 53. ATTACKS HAVE BODIES ===
+   908s   PASS  at rest nothing is on: no twist, no pitch, no reach, squash one  {"on":false,"tw":0,"pitch":0,"reach":0,"lean":0,"sq":1,"bite":0}
+   908s   PASS  a bat swing winds up one way and strikes through the other, more than a third of a radian, and is home within four tenths of a second  wind-up -0.08 at 0.017s, peak 0.616 at 0.2s, home by 0.433s
+   908s   PASS  a bolt is a thrust: the front reaches forward and pitches, with little twist  reach 0.298, pitch 0.159, twist -0.119
+   908s   PASS  a pulse is a stomp: the body stretches up in the wind-up and squashes down on the strike  stretch 1.08, squash 0.821
+   908s   PASS  the jaw opens on a swing and stays shut on a stomp  swing bite 0.993, stomp bite 0
+   908s   PASS  the turn eases: a tenth of a second into a quarter turn the animal is between the two headings, and it is there by four tenths  face -0.263 -> -1.047 at 0.1s -> -1.551 at 0.4s
+   908s 
+   908s === 54. THE CARDS ARE NOT FOUR GREY BOXES ===
+   908s   PASS  the eight growths carry eight different colours  #ff5c4d #3ad0ff #8affd0 #ff9a3d #9fb4c8 #c58bff #6ddba0 #ff6bd6
+   908s   PASS  every card dealt wears a family word and an accent, and the border and the headline take the accent  40 cards; families WEAPON GROWTH RULE; blank accents 0
+   908s   PASS  and across ten hands the strip shows at least six different accents - it is not one colour with different words  16 accents
+   908s 
+   908s === 55. THE CREATURE SHOWS WHAT YOU GREW ===
+   924s   PASS  BIGGER TEETH: rank 3 grows the four fangs by the card's factor, all three extents together  4 boxes x1.66
+   924s   PASS  and a jaw drawn by a shared helper grows every tooth in it  12 teeth of 189 boxes on the WYVERNET
+   924s   PASS  LONGER LEGS: rank 3 lifts the body and the feet stay where the ground is  body +0.071, feet -0.000, lift 0.108
+   924s   PASS  and it takes longer strides - phase per metre falls by the leg factor  2.350 -> 1.727 rad/m at x1.36
+   924s   PASS  LONGER NECK: rank 3 puts the snout at least 8% further forward  x1.094 (+0.21)
+   924s   PASS  SHARPER CLAWS: rank 3 grows all twelve claws by the card's factor  12 claws x1.75
+   924s   PASS  THICKER HIDE: rank 3 makes the torso at least 8% wider  x1.147 (+0.18)
+   924s   PASS  and at full growth each animal is still ONE object - no growth tears a part off  CINDERWHELP 1->1 parts (96/100 boxes); ANKYLOS 1->1 parts (152/154 boxes); SKYREND 1->1 parts (189/191 boxes)
+   924s 
+   924s === 56. THE HORDE'S BITE HAS A WIND-UP ===
+   926s   PASS  in reach, a shambler winds up before it bites: the rear-back is most of the way in the frame before the hit  10 frames of wind-up, pre 0.6713, pitch -0.1611 before hit at frame 10
+   926s   PASS  and the bite is a snap forward with reach, recovered a quarter second later  pitch peak 0.4179, reach 0.292, pitch +.4s 0
+   926s   PASS  the bite cycle costs what it cost - one landed bite every .68 s, give or take a frame  gaps 39 39 39 39 39 frames
+   926s   PASS  walk out of the wind-up and the snap comes anyway - at air: no damage  wind-up at 0, snap at 10 with the shambler 1.59 m away, damage 0
+   926s   PASS  and you hear it: a whiff clicks, a landed bite does not, and six whiffing at once are one click  walk-out 1, landed 0, pile of six 1
+   927s   PASS  the first bite of a fresh save says the rear was the warning - once, not on the second, not in the next run  {"first":true,"second":false,"nextRun":false}
+   931s   PASS  and on a 390 px phone the toast's plate fits inside the screen  plate 366 px of 390, "IT REARED BACK FIRST - STEP OUT"
+   931s   PASS  and the pause screen says so: a bite has a wind-up, and stepping out of it is the answer   WASD move MOUSE camera SPACE jump M mute hit SPACE again the moment you land to chain a hop — it never stops paying: +12% on the first, +40% by five, +55% by t
+   931s   PASS  a spitter telegraphs the lob: quiet a second before, rearing through the last .3 s, and the spit is a snap  spits at 0 157 314; pre -1s 0, -.3s 0.0222, -1f 0.9167; pitch -0.22 -> 0.3898
+   931s 
+   931s === 57. THE DIVE HAS A BOTTOM ===
+   937s   PASS  the wind-up rears the bird: pitch goes negative while it hangs and flares  commit at frame 25, wind-up pitch -0.1587
+   937s   PASS  committed, it goes in nose-down within 150 ms and holds it  pitch at +9 frames 0.3363, peak 0.3996
+   937s   PASS  the bottom is a snap - on the hit, or at air when the timer runs out  dive ended at frame 49, lg 1, damage by then 11
+   937s   PASS  and it pulls out over a quarter second instead of cutting to level flight  dvE after the end: 0.999 0.849 0.722 0.614 0.522 0.443 0.377 0.32 0.272 0.231 (below .3 after 8 frames)
+   937s   PASS  the drawn bird does not pop at the dive's end: no frame moves its top more than 12 cm  tops 1.238 1.247 1.313 1.368 1.409 1.437 1.46 1.478 1.49 1.498 1.5 1.498 1.492 1.482 1.469 1.454 (max step 0.066)
+   937s   PASS  a dive you step out of still snaps at air when it runs out - and for nothing  committed at 26, lg at the end 0.9467, damage 0
+   937s 
+   937s === 58. THE BOSS BEATS PITCH ===
+   938s   PASS  every beat rears through its tell: pitch negative at the end of the tell for all five kinds  slam -0.2396, sinkhole -0.2795, charge -0.1597, spokes -0.0798, evict -0.1397
+   938s   PASS  and comes down on the act - a small pitch, a return from the rear rather than a dive under the ground - with the reach where the act goes forward  slam pt 0.06 rc 0.14, sinkhole pt 0.08 rc 0.08, charge pt 0.1 rc 0.22, spokes pt 0.04 rc 0, evict pt 0.1 rc 0.1
+   938s   PASS  the drawn MATRIARCH reads it: taller and reared at the end of the slam's tell than at rest, and down on the stomp  top: tell 6.789, act 3.949, rest 5.449
+   938s   PASS  and the stomp keeps its feet on the ground - nothing of it is driven more than 25 cm under  lowest point: tell -0.185, act -0.064, rest 0.074
+   938s   PASS  a boss in a tell does not chomp - no wind-up, no snap - and the contact damage still lands  wu 0, lg 0, 2 hits for 67.5 in a second of tell (tell)
+   938s   PASS  and outside a beat the bite winds up again  wu seen 0.162
+   938s 
+   938s === 59. THE BITE HAS A SPECIES ===
+   940s   PASS  the CERATOP winds up longest and the RAPTORLING nips: frames of wind-up before the first bite  shambler 10, brute 17, skitter 6
+   940s   PASS  and every kind lands the same beat after the rest ends - the slow start early, the quick wait  shambler +10 frames, brute +10 frames, skitter +10 frames
+   940s   PASS  so each kind's own cycle is the .68 s it was  shambler 39 39 39 39 39 39; brute 39 39 39 39 39 39; skitter 39 39 39 39 39 39
+   940s   PASS  and a pile of all three bites at the same pace  pile 41 41 41 41 41 41
+   940s   PASS  the heavy bite is the bigger motion: the CERATOP's snap pitches further than the RAPTORLING's  shambler 0.418, brute 0.457, skitter 0.398
+   940s 
+   940s === 60. SECOND HEAD IS A SECOND CREATURE ===
+   948s   PASS  taking SECOND HEAD stands a second creature up beside you, and nothing does before it  SAILFIN at 3.4m
+   948s   PASS  and the player has ONE head - the card stopped being a second head  heads 1
+   948s   PASS  the twin is never your own line, on any creature in the roster  intern+surge scrap+surge spark+surge ox+surge ghoul+surge accnt+surge twin+accnt surge+twin pyre+twin
+   948s   PASS  it grows down that line on the same gates you do, and the run ends as two DIFFERENT animals  L1 CINDERWHELP+SAILFIN | L7 FLAREDRAKE+RIVERKING | L20 PYRAETHON+THE SPINE | L34 THE CINDERSTAR+THE FLOOD | L48 THE SUPERNOVA+THE DELUGE
+   948s   PASS  and it keeps up: across a driven minute with the chain running it holds its slot  median 4.35m, worst 5.02m
+   948s   PASS  the slot widens with the bodies - two final forms do not stand where two hatchlings stood  hatchlings 3.57m, finals 8.73m
+   948s   PASS  THE TWIN never arrives alone: the one creature that starts holding the card starts split  WYVERNET beside it
+   948s   PASS  a fresh run is unsplit, and a pinned run splits the same way twice  surge / surge
+   948s 
+   948s === 61. EVERY MUTANT STILL ANCHORS ===
+   949s   PASS  every mutant's anchor occurs in the game exactly once  325 mutants anchored
+   949s   PASS  and every mutant changes something, under a name of its own  0 no-ops, 0 duplicate ids
+   949s 
+   949s === 62. THE BANNER CLEARS THE BOSS ===
+   953s   PASS  with no boss on the field the banner sits where it always did, in the upper-middle of the screen, visible  mid 0.4, opacity 1, "FLAREDRAKE"
+   953s   PASS  with a boss alive it steps up out of the fight's third: its centre is above 30% of the screen, still visible  mid 0.307, opacity 1
+   953s   PASS  and it comes back down the moment the boss is gone  mid 0.4
+   953s 
+   953s === 63. THE GILDWING GLOATS ===
+   954s   PASS  while it runs the body is level: no pitch to speak of over three seconds of flight  261 frames running, |pitch| peak 0.0003
+   954s   PASS  and through the gloat it is reared back and stretched tall - the window has a shape  56 frames gloating, pitch -0.3304, stretch 1.097
+   954s   PASS  and it drops the pose within a fifth of a second of bolting again  bolt at frame 259, taunt 12 frames later 0.069
+   954s 
+   954s === 64. A SHORT HAND IS STILL A CHOICE ===
+   954s   PASS  one legal growth left: the hand is that growth and the snack, and the caption says PRESS 1-2  QUICKER HEART | ROAST CHICKEN - "PRESS 1-2  ·  1 MORE QUEUED" (level 3, kit bat:EVO skulls:EVO bolt:EVO pulse:EVO mortar:EVO zap:EVO aura:EVO caltrops:EVO gore:EVO brood:EVO spinach:3 boots:3 magnet:3 plating:3 heart:3 clover:3 dupe:3 tempo:3 momentum:2 stomp:2)
+   954s   PASS  and with nothing left the queued level is not a draft at all: no screen, taken as growth (max HP rises)  picking false, pending 2 -> 0, max HP 1000000050 -> 1000000052
+   954s 
+   954s === 65. THE LEVEL-UP SCREEN IS THE GENRE'S ===
+   955s   PASS  the world stops while a hand is on the table: thirty frames move neither the clock nor the horde  t 3 -> 3 -> 3 over 30 frames, horde moved false
+   955s   PASS  the hand is a panel of rows in the middle of the screen, not a strip of cards along the bottom  4 rows 525x90 525x90 525x76 525x90, panel y 124-660 of 760, pause screen false
+   955s   PASS  the kit sits under the rows with its empty slots showing: four weapon boxes, five growth, two rule  WEAPONS 1/4: 4 boxes, 3 empty | GROWTH 0/5: 5 boxes, 5 empty | RULES 0/2: 2 boxes, 2 empty
+   955s   PASS  REROLL deals a different hand and spends one; with none left it does nothing  zap,gore,bat,bolt -> dupe,caltrops,brood,spinach; 2 -> 1 -> 0 -> 0; button "REROLL ×1"
+   955s   PASS  BANISH strikes a card from the run: its row is filled, the hand stays four, and it is not dealt again in thirty hands  heart banned; hand ram,aura,boots,mortar; seen 0 times in 30 hands
+   955s   PASS  queued hands deal back to back: taking one opens the next on the same frame of the world  pending 3 -> 2, picking true, t 3 -> 3
+   955s   PASS  ESC over a hand does not open the pause screen - the hand is the pause  picking true, pause screen false
+   955s   PASS  the arrow keys walk the rows and ENTER takes the lit one  lit row 2; caltrops rank 0 -> 1
+   956s   PASS  a MASTERY hand greys out reroll and banish and R does nothing - it is not a deal  mastery true, 2/2 buttons off, rerolls left 2
+   956s   PASS  the shop sells REROLL and BANISH  STOUTER BONES, BIGGER TEETH, LONGER LEGS, KEENER NOSE, QUICKER HEART, SHARPER CLAWS, THICKER HIDE, HEAD START, SECOND WIND, REROLL, BANISH
+   963s   PASS  on a phone the whole panel - rows, buttons, kit - fits the screen, every row is a full-width tap target with its line of text, and the caption says TAP  panel 12-378 x 158-710 of 390x844; rows 96/96/83/96px tall; 3 buttons; "TAP ONE  ·  2 MORE QUEUED"
+   964s 
+   964s === 66. THE FRONT END IS THE GENRE'S ===
+   965s   PASS  four tabs - PLAY, POWER UP, COLLECTION, UNLOCKS - and the menu opens on PLAY  PLAY* | POWER UP | COLLECTION0/10 | UNLOCKS6 LEFT
+   965s   PASS  the roster is a grid of nine small portrait tiles, three to a row  9 tiles 129x134, 3 on the first row
+   965s   PASS  one detail panel: the picked creature large, nine stat rows, the start weapon, the line chain, what it learns, and START  CINDERWHELP: 9 stats (0 coloured), rows START/LV7/LV20/LV34/LV48/GROUND, 5 stages, button "START RUNENTER"
+   965s   PASS  picking the second tile lights it and fills the panel with THE SCRAPPER, its differences in colour  SPAWNLING, 4 coloured: HEALTH98-15%, DAMAGEx1.00, SPEED7.3U/S+10%, COOLDOWNx1.00, REACHx1.35+35%, PICKUP7.1M+70%, XPx1.00, REGEN0.55HP/S, TOUGHNESSx1.00
+   965s   PASS  a locked creature can be picked: the panel says what unlocks it, with a progress bar, and START is LOCKED  ghoul: button "LOCKED" disabled true, bar true, condition true
+   965s   PASS  START runs the creature you picked, and the portraits stop  running true, move UNDERTOW (want UNDERTOW), 0 portraits live
+   966s   PASS  ENTER on the menu starts the picked creature, not the last run's  running true, move TREMOR (want TREMOR)
+   966s   PASS  POWER UP is a grid of tiles with the price on each, and a click buys a rank at that price  11 tiles, 11 priced; 500 -> 440 -> 325 coins for ranks 1, 2
+   966s   PASS  REFUND ALL hands back every coin spent and empties the ranks  "REFUND ALL   175" -> 500 coins, rank 0, button disabled true
+   966s   PASS  COLLECTION prints all ten weapons with the recipe for each evolution on the tile   MEGABONK = BONK BAT 3 + BIGGER TEETH 3 |  CAROUSEL = SKULLS 3 + SHARPER CLAWS 3 |  BOLTSTORM = BOLT 3 + THE SPLIT 3
+   966s   PASS  and the eight growths (with what each unlocks) and the ten rules  8 growths, 8 with an UNLOCKS line, 10 rules
+   966s   PASS  UNLOCKS lists every rung still locked with a progress bar, and the tab counts them  6 rungs, 6 bars, tab "UNLOCKS6 LEFT"
+   970s   PASS  on a phone the roster is three tiles a row above the panel, the tabs are one row, nothing scrolls sideways, and START rides a bar on the first screen  9 tiles, 3 on row one, tabs 32px tall, panel at 654 under the last tile row at 490, scroll 374/374, START 131px wide, visible true
+   971s 
+   971s === 67. THE PAUSE AND THE RESULTS SHOW THE RUN ===
+   971s   PASS  the pause carries the run: clock, level and stage, kills, coins, and what is on the field  THE RUN 00:02 LV 4 · CINDERWHELP → LV 7 KILLS0 COINS0 ON THE FIELD0 
+   971s   PASS  and ten live stats, HEALTH reading the real hit points  maxhp=115 / 115 regen=0.55HP/S dmg=x1.00 crit=0% spd=6.6U/S cd=0% reach=x1.00 mag=4.2M tough=x1.00 xpMul=x1.00
+   971s   PASS  a pick colours what it moved: BIGGER TEETH and LONGER LEGS turn DAMAGE and SPEED green, and nothing was green before  damage x1.00 -> x1.82 (g), speed 6.6U/S -> 8.6U/S (g)
+   971s   PASS  the kit strip is the level-up panel's strip - same boxes, empty slots included - and grows with the kit  11 boxes (10 empty) vs 11 on the panel; 8 empty after two growths
+   971s   PASS  the consumables and the tips are still there  REROLL ×1 BANISH ×0
+   971s   PASS  the results screen shows the build as the same strip, not a line of names  11 boxes vs 11 on the pause; prose false
+   976s   PASS  on a phone the sheet stacks into one column, fits the width, and ABANDON RUN is reachable  panel 8-382 of 390, stacked true, quit bottom 757 of 844, "tap to resume"
+   976s 
+   976s === 68. THE STAT TABLE PRINTS THE NUMBERS ===
+   976s   PASS  THE INTERN's nine rows print numbers, none of them a dash, none coloured  HEALTH 115, DAMAGE x1.00, SPEED 6.6U/S, COOLDOWN x1.00, REACH x1.00, PICKUP 4.2M, XP x1.00, REGEN 0.55HP/S, TOUGHNESS x1.00
+   976s   PASS  THE OX prints its 185 health with +61% beside it in green, and its speed in red  health "185+61%" (g), speed "5.7U/S-14%" (r)
+   976s   PASS  cooldown reads the right way round: THE SPARK's shorter cooldown is green, and THE SCRAPPER's thin skin red beside its long reach  spark cooldown x0.82-18% (g); scrapper reach x1.35+35% (g), health 98-15% (r)
+   976s   PASS  and the shop is in the number: two ranks of STOUTER BONES print 147 health on THE INTERN  health "147"
+   976s 
+   976s === 69. THUNDERHEAD DISCHARGES INTO THE BIGGEST THING IT TOUCHED ===
+   977s   PASS  an elite in a crowd of eleven takes the whole chain's charge - here, its whole 548 hit points, at least four times what it takes alone  547.7 of 547.7 through 12 links (stroke true, killed true) vs 118 alone
+   977s   PASS  alone it takes one link and there is no stroke: a boss standing by itself is not a lightning rod  118, 1 link, stroke false
+   977s   PASS  and rank-3 ZAP has no discharge: the same crowd, one link's worth on the elite  82 through 7 links, stroke false
+   977s 
+   977s === 70. THE FAN IS AIMED AT THE CROWD ===
+   978s   PASS  with the crowd off to the side and the boss ahead, a BOLTSTORM volley goes to the crowd, not the boss  0 of 960 on the boss (0%), 7 bolts
+   978s   PASS  and with the boss alone the whole fan still comes to it  672 on the boss, share 1
+   978s 
+   978s === 71. ON A PHONE, START IS ON THE FIRST SCREEN ===
+   989s   PASS  at 390x844 the START bar sits inside the first screen, the panel's own button is hidden, and the portrait is capped  bar 793-836 of 844, panel button none, portrait 200x150, 3 rows of tiles
+   989s   PASS  and at 360x640 too  bar 589-632 of 640
+  1011s   PASS  on a portrait tablet, 768x1024 and 820x1180, START rides the bar on the first screen and the panel's own button is hidden  768x1024 bar 973-1016 of 1024 (flex), panel button none; 820x1180 bar 1129-1172 of 1180 (flex), panel button none
+  1011s   PASS  a landscape tablet, 1024x768, is two columns: the panel's button is on the first screen and the bar stays hidden  bar none, panel button block at 621-664 of 768
+  1011s   PASS  a locked pick puts LOCKED on the bar, disabled  LOCKED
+  1011s   PASS  and the bar's button starts the picked creature  UNDERTOW vs UNDERTOW, menu false
+  1011s   PASS  the desktop keeps its button in the panel and never shows the bar  {"bar":"none","start":"block"}
+  1011s 
+  1011s === 72. A CACHE IS THE EVOLUTION YOU WERE READY FOR ===
+  1012s   PASS  with MEGABONK ready, opening a cache deals MEGABONK alone under a CACHE banner, reroll greyed out, no level chip  MEGABONK under "CACHE", 0 live buttons of 1, "PRESS 1  ·  IT IS YOURS"
+  1012s   PASS  taking it evolves the bat, and every level the cache's own gems queued is still there, dealt as LEVEL UP  bat:EVO spinach:3; level 2, 1 pending (one open) under "LEVEL UP"; CACHE NEARBY / CACHE  ·  EVOLUTION
+  1012s   PASS  with nothing ready a cache is the level it always was, under LEVEL UP  4 cards under "LEVEL UP", 1 live buttons
+  1012s 
+  1012s === 74. A FULL KIT'S CACHE IS A MASTERY ===
+  1013s   PASS  with nothing left to deal, a cache opens a MASTERY hand under the CACHE banner, no live buttons  THICKER HIDE|LONGER LEGS|BIGGER TEETH under "CACHE" (MASTERY/MASTERY/MASTERY), 0 live buttons; CACHE NEARBY / CACHE  ·  MASTERY
+  1013s   PASS  and taking one carries a finished growth a rank further  plating: rank 3 -> 4
+  1013s 
+  1013s === 75. THE PANELS FIT A SMALL PHONE ===
+  1020s   PASS  at 360x640 eight four-row hands with both buttons and the kit all fit without scrolling, descriptions clamped to one line  panel 85-579 of 640; hands 504/504/504/491/463/504/491/477px; clamp 1
+  1020s   PASS  and LEVEL UP stays on one line with its level chip beside it, the caption wrapping inside the panel instead  title 16px tall (~1 line), chip on the row true, caption inside true, "TAP ONE  ·  66 MORE QUEUED"
+  1020s 
+  1020s === 76. THE HOP CHAIN HAS ONE NAME ===
+  1021s   PASS  the milestone toast says CHAIN xN, and nothing says TEMPO  CHAIN x5 / CHAIN x10 / CHAIN x15 / CHAIN x20 (chain undefined)
+  1021s   PASS  and both places that teach it say "chain a hop"  menu: chain a hop, pause: chain a hop
+  1021s 
+  1021s === 77. THE COLLECTION REMEMBERS YOUR EVOLUTIONS ===
+  1022s   PASS  a fresh save: 0/10 on the tab, ten NOT YET tags, nothing reached  badge "0/10", 0 reached, 10 not yet, "0 of 10 evolutions reached"
+  1022s   PASS  MEGABONK taken from a hand: 1/10, its tile says REACHED, the save carries it, and the results say FIRST TIME  first card MEGABONK; badge "1/10"; save {"bat":1}; results true
+  1022s   PASS  a second time: still 1/10, the tile counts x2, and the results no longer say FIRST TIME  badge "1/10", tile "REACHED ×2, ×2", results first-time false
+  1022s   PASS  and the dev hook's evolve() counts nothing  badge "1/10"
+  1022s 
+  1022s === 78. THE MENU DOES NOT LEAD WITH ITS CHEATS ===
+  1022s   PASS  on a fresh menu the DEV buttons are in the DOM but folded away behind the word DEV  {"mode":false,"all":false,"wipe":false,"tog":true,"inDom":true}
+  1022s   PASS  clicking DEV unfolds them, and DEV MODE on opens the row by default  {"opened":{"mode":true,"wipe":true},"devOn":{"mode":true,"open":true}}
+  1022s   PASS  and the row counts the monsters it unlocks from the roster, not from memory  "re-applied on every load — all 9 monsters, every upgrade, 99" (9 in the roster)
+  1022s   PASS  a half-second run leaves no BEST on the bank line; a real best prints  best 0.49999999999999994: " 0 COINS" then " 0 COINS BEST 01:30"
+  1022s 
+  1022s === 79. THE RESULTS SAY WHAT HURT YOU ===
+  1024s   PASS  a run that was bitten prints the total it took, and the biggest share first with its hit count  "Took 39 72% ground (2) · 28% bites (1)" vs ledger {"contact":11,"spit":0,"hazard":28,"hits":{"contact":1,"spit":0,"hazard":2},"total":39}
+  1024s   PASS  an untouched run prints Took 0 and nothing else  "Took 0"
+  1024s 
+  1024s === 80. THE PHONE TEXT FLOOR ===
+  1030s   PASS  on a 390px phone nothing that carries information is under 9px on the menu's three tabs, the level-up panel, the pause sheet or the results  smallest text 9px, unit suffixes 8px
+  1030s 
+  1030s === 81. THE PHONE ON ITS SIDE ===
+  1047s   PASS  sideways at 844x390, the PLAY tab carries START in the bar on the first screen and hides the panel's own button  bar flex, START 341-384 of 390, panel button none
+  1047s   PASS  sideways in play, the hop chain and rush bars stand clear of the animal, on screen, and stacked in the bottom-left corner  feet at 422,269; hop x14-186 y344-350, rush y324-330 of 390
+  1047s   PASS  sideways, a four-row hand with both tools fits without scrolling: the tools and the kit stand beside the rows  4 rows, 2 tools, scroll false, cards to x552, tools from x552, kit 133-386 of 390
+  1047s   PASS  sideways, the pause sheet fits without scrolling: the kit takes a third column, the two touch hint lines stay, ABANDON shares a row with the options  scroll false, ABANDON 301-337 of 390, options 304-335, hints block 2 lines 36px tall, stats to x552, kit from x562
+  1047s   PASS  and at 740x360, a Galaxy sideways, the hand, the sheet with its hints and the results still fit with every button on screen  hand scroll false kit 133-356; sheet scroll false hints block ABANDON 286-322; results scroll false RUN AGAIN 293-329 of 360
+  1047s   PASS  sideways, the results put the portrait beside the table and RUN AGAIN on screen without scrolling  over true, scroll false, grid, portrait to x264, table from x313, RUN AGAIN 327-365 of 390
+  1047s   PASS  and at 1280x800 nothing moved: the results stack with the table under the title, the START bar stays hidden, the chain bar is centred, ABANDON sits under the options  results block, title to y307, table from y345, RUN AGAIN 697-743 of 800, bar none, panel button block, hop x554-726 of 1280
+  1047s 
+  1047s === 82. THE WEAPONS ARE NOT BLOCKS ===
+  1048s   PASS  a bolt in flight is a dart: one bright core and two fins per bolt, and a tail of shrinking boxes behind each  4 bolts: 4 cores, 8 fins, 35 tail boxes
+  1048s   PASS  a bolt that lands throws sparks, out of the cosmetic pool  sparks 0 -> 2
+  1048s   PASS  a shockwave is a band: every tile as long as its spacing, with an echo ring inside it  1 ring(s): 18 band tiles, 18 echo tiles
+  1048s   PASS  a shell in the air is a pointed body with a lit nose and smoke behind it, over a ring of dashes  3 shell(s): 3 bodies, 3 noses, 12 smoke puffs, 42 dashes
+  1048s   PASS  and it lands as a burst: eight seeded embers, six cosmetic ones and six sparks per shell  landed true, pops 5 -> 68, sparks 0 -> 38, 887 boxes drawn
+  1048s 
+  1048s === 83. NOR ARE THE SKULLS, THE STINK, THE ZAP OR THE CALTROPS ===
+  1048s   PASS  a skull is a cranium over a jaw with two dark sockets and a wake of three ghosts, for every skull in the orbit  13 crania, 13 jaws, 26 sockets, 39 ghosts
+  1048s   PASS  the stink keeps its rim and fills it with a cloud  66 rim markers, 33 puffs
+  1048s   PASS  a zap has a white spine down every segment and throws sparks where it lands  1 arc(s), 3 spines, pops 0 -> 24
+  1048s   PASS  a caltrop field is crossed blades on dark feet, on the rim and scattered inside it  12 blades, 12 feet, 12 inner blades, 882 boxes drawn
+  1048s 
+  1049s === 84. EVERY HIT IS A SPARK ===
+  1049s   PASS  a bat swing that lands throws sparks  peak 2 sparks, 0 left a third of a second later
+  1049s   PASS  a crit throws a burst three times the size  crit peak 6 vs 2 on a plain hit
+  1049s   PASS  a cloud's tick sparks the body it burns, with no projectile in the world  peak 2 sparks inside the stink, 0 left a third of a second after the field and the body are gone
+  1049s 
+  1049s === 85. FLIGHT HAS A RHYTHM ===
+  1050s   PASS  PYRAETHON flies the meter dry at 3.1 m in under four seconds  PYRAETHON: spent at frame 232, 3.09 m up
+  1050s   PASS  and comes down as a glide under the held key: most of a second, never faster than a walk  60 frames to the ground, fastest 3.2 m/s (glide cap 3.2)
+  1050s   PASS  still held on the ground, it lifts off again by itself once the meter is back to sixty percent  lifted at frame 81 with 0.602 in the meter, flying true
+  1050s   PASS  let go and it is the fall it always was, and wings are a third faster than legs  fell in 25 frames; speed x1.3, drain 0.26/s, fill 0.4/s
+  1050s 
+  1050s === 86. THE WORLD KEEPS TIME ON A SLOW MACHINE ===
+  1050s   PASS  a 16 ms frame and a 40 ms frame each take the one step they always took  16 ms -> 0.016 s, 40 ms -> 0.04 s (1 step)
+  1050s   PASS  a 100 ms frame moves the world 100 ms, in three steps of a third - real time at ten frames a second  100 ms -> 0.1 s in 3 steps of 0.03333333333333333
+  1050s   PASS  a 200 ms frame moves it 200 ms; past 252 ms the world slows rather than the frame spiralling  200 ms -> 0.2 s; 300 ms planned as 6 x 0.042; a second away -> 0.25 s
+  1050s   PASS  and a paused frame moves nothing, however long it was  paused 100 ms -> 0 s
+  1050s 
+  1050s === 87. A FRAME DRAWS WHAT IS ON SCREEN ===
+  1052s   PASS  in a two-hundred-body frame some bodies project off the screen and draw nothing - never one that is anywhere near the view  200 bodies, 34 not drawn, 34 clearly off screen by projection, 150 well inside
+  1052s   PASS  every body well inside the view is drawn  166 drawn, 150 well inside the view
+  1052s   PASS  the frame builds at least a twentieth fewer boxes than it holds, and a capture still sees all of them  6096 built for the screen, 7682 in the capture (0 culled while capturing)
+  1052s   PASS  a single body twenty metres out and squarely on screen is built with fewer boxes than a capture holds - its pupils and teeth are under a pixel and a half  9 boxes built for the screen, 14 in the capture, on screen true
+  1052s 
+  1052s === 88. THE TRAIL BEHIND YOU IS NOT BUILT ===
+  1069s   PASS  a field twenty metres behind the player, out of the view, is alive and builds nothing  1 zone(s), 1 not drawn, 0 zone boxes built; the field projects at null
+  1069s   PASS  a capture from the same spot sees every blade of it  12 blades in the capture, 0 culled while capturing, 60 zone boxes
+  1069s   PASS  six metres ahead and in view, the same field is built in full  1 zone(s), 0 not drawn, 60 zone boxes built; projects at [640,358]
+  1069s   PASS  thirty metres short of it and in view, the field is built as a plain ring of ember blocks, one a segment, and not one blade  11 zone boxes built, 12 ember blocks and 0 blades in the capture; projects at [640,75]
+  1069s   PASS  the scenery takes the same test: thirty metres inside the rim and facing the arena, most of the wall in reach is behind you and not built; turn to face it and it is  standing at z=236: 129 of 188 props in reach not built facing in, 121 of 188 facing out, 0 while capturing
+  1069s 
+  1069s === 89. THE SHOTS AND THE LANDMARKS TAKE THE SAME TEST ===
+  1083s   PASS  four bolts twenty-seven metres out are alive and, with the camera turned away from them, build nothing  4 bolts live, 0 shot boxes built facing away, 4 shots not drawn
+  1083s   PASS  faced, the same bolts are built as darts with fins and trails  36 shot boxes built facing them, 0 not drawn
+  1083s   PASS  a capture from behind sees every dart  4 dart cores in the capture, 0 culled while capturing
+  1083s   PASS  a landmark sixteen metres behind the player is not built - the frame's landmark boxes are short by at least its own count  ring at (19.43, 40.99): 48 boxes of its own in the capture; 130 landmark boxes built facing away against 307 in the capture, 6 landmark(s) not drawn
+  1083s   PASS  turn to face it and it is on the screen and built  projects at [640,256] on 1280x760; 154 landmark boxes built facing it
+  1083s 
+  1084s === 90. THE LOBBY IS DIMMED, NOT BLURRED ===
+  1087s   PASS  the menu is up and asks the compositor for no backdrop blur  menu on true, backdrop-filter none
+  1087s   PASS  the end screen is up and asks for none either  end on true, backdrop-filter none
+  1087s   PASS  no overlay in the page blurs  menu:none, pick:none, end:none, paused:none
+  1087s   PASS  the dimming is the tint's job: the panel is at least nine-tenths opaque  menu alpha 0.93, end alpha 0.93
+  1087s 
+  1087s === 91. THE PORTRAITS COME ACROSS AS ONE PICTURE ===
+  1098s   PASS  ten portraits are live on the roster with everything unlocked  10 live, 10 canvases
+  1098s   PASS  and they come across in as many copies as the canvas needs, not one each  2 copies for 10 portraits on 1280x760 (6 to a batch, so 2)
+  1098s   PASS  every card took its own cell: each one is painted  10 of 10 painted
+  1098s   PASS  ...and no two cards took the same cell  10 distinct of 10
+  1098s 
+  1098s === 92. THE BANNERS TAKE TURNS ===
+  1115s   PASS  desktop, two rows on the lane: the banner is up, visible, and clear of both rows  1280x760: 2 row(s) 87-166, banner 179-268 (mid 0.293, up true, opacity 1, "FLAREDRAKE")
+  1115s   PASS  desktop, the boss's name alone: the banner keeps its band under the clock  1280x760: 1 row(s) 87-123, banner 179-268 (mid 0.293, up true, opacity 1, "FLAREDRAKE")
+  1115s   PASS  phone, the boss's name alone: the banner clears it  390x844: 1 row(s) 81-110, banner 157-246 (mid 0.238, up true, opacity 1, "FLAREDRAKE")
+  1115s   PASS  phone, two rows: the banner clears both and stays in the upper half  390x844: 2 row(s) 81-144, banner 157-246 (mid 0.238, up true, opacity 1, "FLAREDRAKE")
+  1115s 
+  1115s === 93. THE RECEIPT IS THE LAST WORD ===
+  1128s   PASS  two toasts are on the lane and on the screen while the run is on  2 rows at 81-144, 1480 pixels of their colour in the band
+  1128s   PASS  the run ends and the receipt comes up, the toasts never aged out, and the overlay sheet is hidden  over true, end true, 3 toasts in the list, sheet hidden
+  1129s   PASS  and none of it is on the screen behind the receipt  0 pixels of their colour in the band behind the receipt, panel cleared
+  1129s 
+  1129s === 94. THE DEAL READS HOW YOU PLAY ===
+  1131s   PASS  standing in a crowd reads as IN THE THICK, hopping over one patch as FOOTWORK, walking away as ROAMING  thick {"run":0,"thick":0.589,"roam":0,"tilt":"thick","last":null}, run {"run":0.489,"thick":0,"roam":0.027,"tilt":"run","last":"thick"}, roam {"run":0.324,"thick":0,"roam":0.596,"tilt":"roam","last":"run"}
+  1131s   PASS  ...and going fast over one patch is not roaming  hopping back and forth reads roam 0.027 against its own footwork 0.489, where walking away reads 0.596
+  1131s   PASS  and each style's own cards are the ones it gets dealt  thick: played, 52.9% of the deal, against 33.8% and 34.2% played the other two ways; run: played, 27.9% of the deal, against 13.8% and 16.3% played the other two ways; roam: played, 40.8% of the deal, against 24.6% and 29.2% played the other two ways
+  1131s   PASS  the last card of every hand is dealt untilted - a run can still be turned by something it did not ask for  IN THE THICK 57.2% of the first cards against 40% of the last; FOOTWORK 31.7% against 16.7%
+  1131s   PASS  and the draft says what it read, rather than quietly rigging the deck  "PRESS 1-4  ·  ROAMING  ·  119 MORE QUEUED", 20 cards tagged
+  1131s 
+  1131s === 95. THE TRAIL IS NOT THE SUBJECT ===
+  1136s   PASS  a minute of kiting leaves a dense trail, most of it in view  93 fields alive, 0 of them off screen, 93 built
+  1136s   PASS  however many are in view, only the nearest few keep their blades  6 of 93 built fields bladed, against a budget of 6
+  1136s   PASS  and the nearest ones DO keep them - the near ground is what it always was  43 blades in the frame
+  1136s   PASS  ...the NEAREST ones, and not whichever six the list reached first  the furthest blade in the frame is 9.4 m out; before the budget they reached 27.6 m
+  1136s   PASS  so the trail costs a fraction of what it did: well under a dozen boxes a field  765 boxes for 93 fields = 8.2 each; before the budget, 25.6
+  1136s   PASS  and the floor is no longer most of the frame  the zone pass is 24.0% of 3181 boxes and the horde 11.7%; before the budget, 52.2% against 6.6%
+  1138s   PASS  and a rim is spaced in PIXELS: the same field costs less the further off it is  one field, same radius and life: 13 boxes at 6 m against 7 at 45 m (world-unit spacing draws 13 at both)
+  1138s 
+  1138s === 96. THE HORDE ARRIVES ===
+  1272s   PASS  six minutes in, the field holds a crowd  seed 9: 64 alive, 40 drawn, 27% of the frame over 4:30-6:00 (31% of 1966 boxes at 6:00; next largest props 11%), the crowd sent 59 against the table's 1559 | seed 3: 98 alive, 57 drawn, 50% of the frame over 4:30-6:00 (53% of 2370 boxes at 6:00; next largest wards 8%), the crowd sent 7 against the table's 1562  (a reverted t:270 holds 30-37)
+  1272s   PASS  and you can SEE it - the drawn count is a crowd, not a rumour  seed 9: 64 alive, 40 drawn, 27% of the frame over 4:30-6:00 (31% of 1966 boxes at 6:00; next largest props 11%), the crowd sent 59 against the table's 1559 | seed 3: 98 alive, 57 drawn, 50% of the frame over 4:30-6:00 (53% of 2370 boxes at 6:00; next largest wards 8%), the crowd sent 7 against the table's 1562  (a reverted t:270 draws 11-14)
+  1272s   PASS  and the horde is the biggest thing in the frame, not the floor  38.7% of the frame over both seeds' windows | seed 9: 64 alive, 40 drawn, 27% of the frame over 4:30-6:00 (31% of 1966 boxes at 6:00; next largest props 11%), the crowd sent 59 against the table's 1559 | seed 3: 98 alive, 57 drawn, 50% of the frame over 4:30-6:00 (53% of 2370 boxes at 6:00; next largest wards 8%), the crowd sent 7 against the table's 1562
+  1272s   PASS  and it is the TABLE sending them: the standing crowd (L35) tops up the dips, it does not stand in for a thin table  seed 9: 64 alive, 40 drawn, 27% of the frame over 4:30-6:00 (31% of 1966 boxes at 6:00; next largest props 11%), the crowd sent 59 against the table's 1559 | seed 3: 98 alive, 57 drawn, 50% of the frame over 4:30-6:00 (53% of 2370 boxes at 6:00; next largest wards 8%), the crowd sent 7 against the table's 1562  (a reverted t:270 makes the crowd send 147-157, ~10%)
+  1272s   PASS  fifteen minutes in, the LATE table is still sending them  139 alive, 139 drawn, 3068 boxes, the crowd sent 542 against the table's 8218  (a reverted t:780 holds 66 and draws 66 without the crowd; with it, 123 and 113 - and the crowd sends 11.4% of the table)
+  1272s   PASS  the population balances: asked = alive + killed + culled + capped  8827 asked = 139 alive + 8661 killed + 29 culled + 0 capped
+  1272s   PASS  and the frame still affords it - per body of horde, and in total  612/40 = 15.3, 1262/57 = 22.1, 1055/139 = 7.6 horde boxes per drawn body, frames 1966/2370/3068
+  1272s 
+  1272s === 97. THE OTHER SESSION'S OWN GATES ===
+  3844s   PASS  L12's ground gate: the cover tier exists, lies flat, and fits the buffer  clean  (cover 5849, lift 0.06 m, 9.38 MB)
+  3844s   PASS  L15's ward gate: the cut, the reach, the cap, and the release on death  clean  (cut 0.3, holds 6 of 14 m)
+  3844s   PASS  L16's burrow gate: where it arrives, when it can be hit, and who is exempt  clean  (at 2.6 m, share 0.198, rise 0.9s)
+  3844s   PASS  L49's unlock-name gate: every creature on the ladder is called by its own line's first form, and the UNLOCKS tab prints that name  clean  (MIRELING, HYDRALING, WYVERNET, SAILFIN, SUNCHICK; tab read true, 5 locked)
+  3844s   PASS  L49's sight gate: a monument on the sightline is seen through, the boom lifts over a hollow and never past its cap, a clear frame is untouched, and camLock stands it all down  clean  (THE THROAT: one colour 1 -> 0.358, 0.921 of the middle opened, 3 boxes thinned; hollow cuts 2.25 m, lift 2.23 m, 0.023 m short after; clear-frame eye moved 0 m; locked 0 boxes, lift 0)
+  3844s   PASS  L37's number gate: the pool holds its cap whatever a crit says, no two numbers on screen share ink as they rise, the crowd shows through, a far number is smaller, a crit outranks a plain number, a placed one keeps its place, one off the screen holds none, and a number rolls nothing from the run  clean  (3 seeded crit pulses through 117 bodies: pooled 48, drew 14 with 0 overlapping pairs, 84 of 351 bodies under them, 16092 px of screen; the old wall drew 117 with 2348, 218 under, 77080 px; depth k 1 near / 0.6 far; drift {"driftSet":true,"met":true,"drawnPairs":0,"drifted":1,"olderKept":true}; 651 placed numbers checked against the paint, 0 missed; 0 run-stream draws for a number)
+  3844s   PASS  L39's voice gate: a frequent sound starts once a frame and once more after SFX_GAP, every call is counted, an always-play sound always plays, two noise bursts share one buffer, and a new run is not silenced  clean  (100 pops in one frame -> 1 start(s), 100 counted; after the gap 2, inside it 2; null with no gap 100; boss horns 3/3; buffers made across two bursts 1 (shared true; null 2); a fresh run's first pop played 1; audio true)
+  3844s   PASS  L16's kill radius dies with the run  clean  (grown to 28 m before the restart)
+  3844s   PASS  L13's split gate: the card names the creature and the HUD names the twin  clean  (card "THE SPLIT", twin HYDRALING)
+  3844s   PASS  L11's HUD gate: no two lanes share ink with every lane up at once  12 lanes, head 81, toast floor 166
+  3844s   PASS  L17's rout gate: what it feels, how wide it runs, and that it cannot bite while it does  clean
+  3844s   PASS  L18's dig-in gate: who goes down, when, and that nothing comes up holding a frozen bite  clean  (surfaced at 3.8 m)
+  3844s   PASS  L19's stoop gate: it climbs, it comes back inside DIVE_R, and the arrival delivers the dive  clean  (peak 9.1 m, re-entered at 8.4 m, aimed 1.49)
+  3844s   PASS  L36's mutation gate: RAMHORN reaches the draft only with its switch on, tramples only a moving rush and never a boss, and grows its horn on the player alone  clean  (draft on 52/off 0, horn 9/9)
+  3844s   PASS  L37's charge gate: with a rush up the bot runs at the densest knot instead of away from it, and never at a boss  clean  (kite 0.951,-0.309, charge 0,1)
+  3844s   PASS  L39's springheel gate: the card reaches the draft only with its switch on, the hop dodges a bite in the air alone, and it grows its springs on the player alone  clean  (draft on 18/off 0, springs 9/9)
+  3844s   PASS  L36's WHIPTAIL gate: the card reaches the draft only with both switches on, a hard turn while moving lashes the arc behind you out to its reach and nothing else, never a boss, once per turn and once per cooldown, and the club grows on the player alone  clean  (draft {"on":18,"mutOff":0,"whipOff":0,"give0":0,"give1":0,"kinWhipOff":36}; nulls "9/9"; cooldown {"held":1.15,"early":0,"lashedAt":1.2,"twice":0,"back":1}; club "45/45"; at the controls {"on":{"lashes":1,"hits":1,"cd1":1.2,"cd2":1.1833333333333333,"turn":2.4,"v":0.81},"off":{"lashes":0,"hits":0,"cd1":0,"cd2":0,"turn":2.4,"v":0.81}})
+  3844s   PASS  L40's tell gate: the bot stands its ground and hops only a rear-back in reach, never the rhythm  clean  (hold 1.2 m)
+  3844s   PASS  L41's THE MATRIARCH gate: the nest warns and follows, her young shield her and arm the moment they surface, and her fall breaks the herd and pays a boon  clean  (call 3 young, shield 300/1000, kit slam+brood)
+  3844s   PASS  L42's THORNBACK gate: the ring warns and lets you back in but never out, the hedge widens as it reaches, and its fall lays thorns rather than paying her boon  clean  (hedge reach 21, wall lost 10, kit evict+hedge+slam)
+  3844s   PASS  L43's SKYSPLITTER gate: the shadow travels and it comes down under it, the rake only casts aloft and the windows turn over, and its fall feeds the horde to the carcass  clean  (rake rows 9, windows 0, kit rake / charge+slam)
+  3844s   PASS  L44's TERRAVORE gate: the map arrives at it - the maw is fixed and does not follow, the unlit monuments go down into it, the inhale pulls you in and can be outrun, and the world comes back up before the results  clean  (maw 36 m, swallowed 13 of 13, kit slam+inhale,sinkhole+slam+spokes+inhale,spokes+sinkhole+charge+evict+slam)
+  3844s   PASS  L35's crowd gate: against a kit that clears the table, the director holds the standing crowd its rows ask for, never faster than CROWD_RATE, not in the opening, not in a boss fight, and paid for once  clean  (t=810: want 107.8, stood 106.7 with the crowd (869 cleared, 879 sent) against 7.1 without)
+  3844s   PASS  L46's THE HEADLONG gate: a CERATOP in range lowers its horns and lays a lane that does not follow you, runs it at speed and hits once, a sidestep saves you, and its carcass slides on  clean  (brute; leave the widest lane in 0.363 s at 6.81 m/s; ran 8 m in 0.5 s, hits 1, slid 32.93 m, 2 lanes live at the cap; tell heading 0 rad off the lane, 0 plates moved mid-run, carcass 6.88 m vs run 6.88 m on the bog)
+  3844s   PASS  L20's census gate: the bench samples its whole window, and its pooled shares are a real union  clean  (369062 body-frames over 600 s, non-walk 4702, +rout 62452, 13.25 hp/min)
+  3844s   PASS  L21's relief gate: the ground has span, and the lakes still lie flat in it  clean  (span20 4.508, flat20 2.926, 4 lakes, 240 stations)
+  3844s   PASS  L21's noise gate: hash, value noise, tone and relief are each the field they claim to be  clean
+  3844s   PASS  L21's freeze gate  clean  (crowdGate,tellGate,matGate,thnGate,sksGate,trvGate,hdlGate,routGate,diginGate,armGate,stoopGate,springGate,whipGate tested)
+  3844s   PASS  L36: freezeGate's derived sweep still covers the test-only mutation gates that drive step()  crowdGate,tellGate,matGate,thnGate,sksGate,trvGate,hdlGate,routGate,diginGate,armGate,stoopGate,springGate,whipGate
+  3844s   PASS  L21's arm gate  clean
+  3844s   PASS  L21's HUD gate: the stack lands where it says it does  clean  (8 lanes)
+  3844s   PASS  L21's pair gate: a queued pair replays as the pair that was queued  clean  (queue 12, replay true, live off:0,on:4382)
+  3844s   PASS  L38's leak gate: the world's shuffle and the render's cosmetic draws no longer depend on the page's own history  clean  (9 characters, 3 worlds, render draws 0)
+  3844s   PASS  L29's shadow gate: a buyable region is untouched and an unbuyable one lands on the line  clean  (3 buyable, 7 unbuyable)
+  3844s   PASS  L29's own bar actually holds: the chip's own shadow decal keeps every region's contrast at or above 3.0  worst 6.010 (THE TARPITS)
+  3844s   PASS  L30's silhouette gate: exactly the regions the chip's shadow could not buy get a bezel, drawn only there, under the chip's core  clean  (4 selected: ice, sand, bramble, spring)
+  3844s   PASS  L33's rim-day gate: the bezel's reach tracks the sky across the day, and the render obeys it at every hour  clean  (11 hours, 84 render checks)
+  3844s   PASS  L30's far-read gate: 24 m out, the rim buys readability on every region it is given to, and what ships there is the rim's reading  clean  (THE GLACIER 0->61.36%, THE DUSTSEA 0->66.06%, THE THICKET 55.56->69.94%, THE HOTSPRINGS 0->55.25%; dark without a rim: THE BONEFIELD)
+  3844s   PASS  the silhouette budget is FOUR: THE HOTSPRINGS is rank 4 by the shadow's own `over` (three thousandths behind THE THICKET) and read 0% of a chip over 3:1 from 16 m out, bare, at every station that drew  count 4; THE HOTSPRINGS in set: true, bare 0% -> rim 55.25% at 24 m
+  3844s 
+  3844s === 98. THE WARD IS A SQUAD, NOT A WALL ===
+  3876s   PASS  the warden population is a minority of the field, not a third of it  10:00 7/98 wardens = 7.1% (room 5.9), 24 warded = 25% | 15:00 9/139 wardens = 6.5% (room 8.3), 46 warded = 33%  (uncapped: 42.3% at 10:00, 28.5% at 19:00)
+  3877s   PASS  ...and it is the CAP that holds them: a burst of two hundred cannot outrun the ceiling  4 standing, room 3; after 200 spitters 15 of 14.6; on an empty field 12 of 12  (stale count: 69 and 67)
+  3877s   PASS  ...and it is a CAP and not an off switch: with room, the roll still fires  12 wardens from 200 spitters with room for 12
+  3877s   PASS  so the warded share is bounded by the squads that exist  10:00 7/98 wardens = 7.1% (room 5.9), 24 warded = 25% | 15:00 9/139 wardens = 6.5% (room 8.3), 46 warded = 33%  (cap 6 a warden)
+  3877s   PASS  but they still exist, and they are still found and killed  10:00 7 standing, 298 killed, 15:00 9 standing, 312 killed  (across runs: 1 then 10, and 1 then 1 - rare by design, and noisy at n=1)
+  3877s   PASS  and the cap does not touch the squad a single warden holds  10:00 biggest squad 6, 15:00 biggest squad 6 of 6
+  3877s   PASS  and the crowd is still a crowd - this is not a quiet nerf to the horde  139 alive at 15:00 (L8 held ~95, uncapped 212-239)
+  3877s 
+  3877s === 99. THE SKY IS A SKY ===
+  3881s   PASS  the sky's own gate passes at every hour of the arc  0: spread 0.3697 step 0.0302, 300: spread 0.3817 step 0.0317, 660: spread 0.4039 step 0.0342, 960: spread 0.1888 step 0.0144, 1140: spread 0.1052 step 0.0079, 1320: spread 0.1156 step 0.0075
+  3881s   PASS  the drawn sky darkens with height and never brightens - no band leaves a seam  0: worst rise 0.0000 over 286 rows, 660: worst rise 0.0000 over 286 rows, 1140: worst rise 0.0000 over 286 rows
+  3881s   PASS  and it covers real ground between the horizon and 26 degrees  0: 0.2111, 660: 0.2396, 1140: 0.0551
+  3881s   PASS  no two bands differ by enough to read as a line  0: biggest join 0.0302, 660: biggest join 0.0342, 1140: biggest join 0.0079
+  3881s   PASS  and every join is the same size - the edges come from the ramp, not from taste  0: 7 joins, largest/smallest 1.003, 660: 7 joins, largest/smallest 1.003, 1140: 7 joins, largest/smallest 1.000
+  3893s   PASS  the play camera still frames some sky, on both shapes  desktop pitch -27.93, frame -57.16..1.29 deg; phone pitch -28.36, frame -63.6..6.88 deg
+  3893s 
+  3893s === 100. THE MIDDLE DISTANCE HAS SOMETHING IN IT (L27) ===
+  3959s   PASS  L27's outcrop gate: where they stand, that the count is the arena's own, that they do not move a pinned world, and that the switch is what puts them out there  147 stones on 48 sites, 67 built against 0 with the switch off
+  3959s   PASS  the tier paints the frame well clear of the instrument's own noise floor - at its best heading of a full turn, and at half the turn or more  2.37% of the screen changes when the switch flips at 135 deg, against a 0% floor from two frames that both have it off; it shows (over 0.1%) at 7 of 8 headings  (0:0% 45:0.75% 90:0.47% 135:2.37% 180:2.19% 225:2.34% 270:0.92% 315:1.67%)
+  3959s   PASS  ...and it paints it where the complaint was: the upper frame, which at a 26-degree downward pitch is everything past about forty metres  100% of the pixels it changed over the turn are in the top half of the frame
+  3959s   PASS  NULL CONTROL: with the switch off the tier draws nothing at all, and the stones are still there to draw  0 built off at any heading / 24 built on at 135 deg, of 43 inside the pass's own 190 m reach
+  3959s   PASS  and it stays scenery: a minority of the frame, and never more of it than the horde  at most 2.5% of the frame at any heading, the horde's pass larger at 8 of 8 (every one); at most 46 boxes added; at its best heading 46 boxes against the horde's 580
+  3959s 
+  3959s === 101. THE STEP DOES NOT LEAVE A HEAP BEHIND (L40) ===
+  3965s   PASS  L40's step: nearestCells answers in one shared array - under 64 KB sampled under it over 600 settled steps  0.0 KB sampled under nearestCells (2,340 KB before L40)
+  3965s   PASS  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together  confineIn 0.0 KB, confine 0.0 KB (1,522 KB before; 1,666 KB with the pair put back)
+  3965s   PASS  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector  0.0 KB of iterator results under botVector (9,606 KB before L40)
+  3965s   PASS  and the whole step allocates under 400 KB (301 KB before L40)  189.3 KB a step over 600 steps from t=300 to 310.3 (80 bodies, 42 gems); the largest: updateEnemies 32156.4, walk 26409.7, groundY 13989.1, hypot 11236.1, wardPass 4820.9
+  3965s   PASS  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  82 bodies (1 boss): 1 signature(s) among the field [81], 1 key set(s) overall, 105 keys a body (10 signatures, 42 to 60 keys, before L41)
+  3965s         (boxed doubles, not asserted: walk 26409.7 KB, updateEnemies 32156.4 KB, groundY 13989.1 KB over the 600 steps)
+  3965s 
+  3965s ==========================================================
+  3965s RESULT: 852 passed, 0 failed
+### suite end 15:06:25, 3965 s
