@@ -10011,6 +10011,54 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `at most ${mid.maxShare}% of the frame at any heading, the horde's pass larger at ${8 - mid.hordeUnder.length} of 8 (${mid.hordeUnder.length ? "not at " + mid.hordeUnder.join(", ") + " deg" : "every one"}); at most ${mid.maxAdd} boxes added; at its best heading ${mid.best.onPass} boxes against the horde's ${mid.best.horde}`);
   }
 
+  console.log("\n=== 101. THE STEP DOES NOT LEAVE A HEAP BEHIND (L40) ===");
+  {
+    // L39 found the audio graph; the same trial's JS-heap CHURN - what the
+    // step allocates and the collector takes back - was 12.2 GB over one
+    // ten-minute bench run, 350 KB a frame: nearestCells handing a fresh
+    // four-element array to every groundY() (1.9 GB), `[e.x, e.z] =
+    // confine()` making a pair per body per step, the autopilot measuring
+    // every gem, hazard and event again for each of its twenty headings, a
+    // closure built per body for the separation pass. Each is now written
+    // onto scratch that is reused, arithmetic unchanged - the pinned trials
+    // reproduce to the kill - and this is the instrument that keeps them that
+    // way: V8's own sampling heap profiler, collected objects included, around
+    // 600 steps of a settled pinned run, aggregated by the allocating function
+    // (inlined frames are attributed to their own function). A site that
+    // allocates nothing samples nothing; a site that allocates megabytes
+    // cannot hide - 2.3 MB at a 16 KB sampling interval is ~140 samples, and
+    // the odds of drawing none are e^-140. The whole-step number is tier-
+    // dependent (a function that has just deoptimized boxes every double), so
+    // its bound is loose and the sites carry the claim.
+    await page.evaluate(() => { const g = window.__g; g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+      g.start("intern"); g.god(); g.drainPicks(true); g.bot(true);
+      let guard = 0; while(g.state().t < 300 && guard++ < 200000) g.step(30, 1/60); });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("HeapProfiler.enable");
+    await cdp.send("HeapProfiler.startSampling", { samplingInterval:16384, includeObjectsCollectedByMajorGC:true, includeObjectsCollectedByMinorGC:true });
+    const st = await page.evaluate(() => { const g = window.__g; g.step(600, 1/60); const s = g.state();
+      return { t:+s.t.toFixed(1), bodies:(0,eval)("enemies.length"), gems:(0,eval)("gems.length") }; });
+    const { profile } = await cdp.send("HeapProfiler.stopSampling");
+    await cdp.detach();
+    const self = new Map(), under = new Map(); let total = 0;
+    const walk = (node, parent) => { const f = node.callFrame.functionName || "(anon)";
+      if(node.selfSize){ total += node.selfSize; self.set(f, (self.get(f) || 0) + node.selfSize);
+        const k = parent + " < " + f; under.set(k, (under.get(k) || 0) + node.selfSize); }
+      for(const c of node.children || []) walk(c, f); };
+    walk(profile.head, "");
+    const KB = x => (x / 1024).toFixed(1), at = n => self.get(n) || 0, botNext = under.get("botVector < next") || 0;
+    const perStep = total / 600;
+    const top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${KB(v)}`).join(", ");
+    ok("L40's step: nearestCells answers in one shared array - over 600 settled steps it allocates nothing",
+       at("nearestCells") === 0, `${KB(at("nearestCells"))} KB sampled under nearestCells (2,340 KB before L40)`);
+    ok("the clamp onto a body allocates nothing: confineIn samples nothing, and confine - the spawns and arrivals only - under 64 KB",
+       at("confineIn") === 0 && at("confine") < 64 * 1024, `confineIn ${KB(at("confineIn"))} KB, confine ${KB(at("confine"))} KB (1,522 KB before)`);
+    ok("the autopilot measures the field once a step and walks its arrays by index: nothing sampled as iterator results beneath botVector",
+       botNext === 0, `${KB(botNext)} KB of iterator results under botVector (9,606 KB before L40)`);
+    ok("and the whole step allocates under 400 KB (301 KB before L40)",
+       perStep < 400 * 1024, `${KB(perStep)} KB a step over 600 steps from t=300 to ${st.t} (${st.bodies} bodies, ${st.gems} gems); the largest: ${top}`);
+  }
+
   console.log("\n" + "=".repeat(58));
   if (errors.length) {
     console.log("ERRORS CAPTURED:");

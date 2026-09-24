@@ -1,0 +1,60 @@
+# Deopts under --trace-deopt (tiers.js), the L40 build, seed 9
+
+## The settle (t=0..300, 18,000 steps) and 600 more: 927 deopts
+
+by function:
+    727 rebuildGrid
+     39 updateEnemies
+     24 
+     20 makeTerrain
+     15 walk
+      9 botVector
+      8 hdlCan
+      7 step
+      6 wardPass
+      6 rndSeed
+      6 hitNear
+      5 stepCorpses
+
+by reason:
+    850 reason: wrong map)
+     17 reason: exit from OSR'd inner loop)
+     11 reason: Insufficient type feedback for generic named access)
+      9 reason: Insufficient type feedback for binary operation)
+      9 reason: (unknown)
+      6 reason: Smi)
+      5 reason: Insufficient type feedback for compare operation)
+      4 reason: not a Smi)
+      4 reason: Insufficient type feedback for generic global access)
+      4 reason: Insufficient type feedback for call)
+
+rebuildGrid's, per wall-second of the settle (a burst, not a rate):
+  11:46:47  350
+  11:46:48  1003
+  at bytecode offset 112 (GetNamedProperty .done on its for-of's iterator result) 444 of them
+
+## Steady state: 6,000 steps from t=300 (t=300..400): 92 deopts
+
+by function:
+      8 updateEnemies
+      7 
+      4 walk
+      3 step
+      2 updateEvents
+      2 rndSeed
+      2 box
+      2 botVector
+      1 wStat
+      1 updateProjectiles
+      1 updateHazards
+      1 updateGems
+
+by reason:
+     30 reason: wrong map)
+      5 reason: Insufficient type feedback for generic named access)
+      3 reason: (unknown)
+      2 reason: not a Smi)
+      2 reason: Insufficient type feedback for compare operation)
+      2 reason: Insufficient type feedback for binary operation)
+      1 reason: Insufficient type feedback for generic keyed access)
+      1 reason: Insufficient type feedback for call)

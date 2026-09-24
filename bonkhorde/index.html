@@ -1382,6 +1382,16 @@ function confine(x, z, pad){
   const s = lim / Math.sqrt(d2);
   return [x*s, z*s];
 }
+// L40: the same clamp written straight onto a body. `[e.x, e.z] = confine(...)`
+// made an array per body per step - the destructuring does not save it - and
+// the enemy update was the third-largest allocator in the step for it. The
+// arithmetic is confine()'s, operation for operation, so nothing moves.
+function confineIn(o, x, z, pad){
+  const lim = RIM - pad, d2 = x*x + z*z;
+  if(d2 <= lim*lim){ o.x = x; o.z = z; return; }
+  const s = lim / Math.sqrt(d2);
+  o.x = x*s; o.z = z*s;
+}
 // ================================================================== THE MAP
 // One green disc for twenty minutes, every run, is a backdrop rather than a
 // place. The arena is rolled fresh each run instead: five or six regions with
@@ -2013,6 +2023,12 @@ function dealDens(){
 
 // Nearest two seeds, and how decisively the nearest one wins. Everything about
 // the ground - its colour, its height, its rule - comes out of this one call.
+// L40: the answer comes back in ONE array, reused - every groundY() is a call
+// here, every body and every gem asks groundY() every step, and a fresh
+// four-element array per call was 1.9 GB of garbage over one ten-minute run
+// (the allocation profile in evidence/l40-churn). Read it before the next call;
+// a caller that keeps it takes a copy (the terrain build does).
+const NC4 = [0, 0, 0, 0];
 function nearestCells(x, z){
   let i1=0, d1=1e9, i2=0, d2=1e9;
   for(let i=0;i<cells.length;i++){
@@ -2020,7 +2036,8 @@ function nearestCells(x, z){
     if(d < d1){ d2=d1; i2=i1; d1=d; i1=i; }
     else if(d < d2){ d2=d; i2=i; }
   }
-  return [i1, i2, Math.sqrt(d1), Math.sqrt(d2)];
+  NC4[0] = i1; NC4[1] = i2; NC4[2] = Math.sqrt(d1); NC4[3] = Math.sqrt(d2);
+  return NC4;
 }
 const biomeAt = (x,z)=> cells.length ? cells[nearestCells(x,z)[0]].b : BIOME_BY.grass;
 
@@ -2763,7 +2780,7 @@ function makeTerrain(){
       // was nearest, so every seam in the world was a hard jagged line drawn
       // across a smooth hill. Same two cells, same nine metres, same curve.
       const mx0 = x0+S*.5, mz0 = z0+S*.5;
-      const nc  = nearestCells(mx0, mz0);
+      const nc  = nearestCells(mx0, mz0).slice();       // its own copy: the scratch is shared (L40)
       const bm  = cells.length ? cells[nc[0]].b : BIOME_BY.grass;
       const bm2 = cells.length ? cells[nc[1]].b : bm;
       const eg  = clamp((nc[3] - nc[2]) / BLEND, 0, 1);   // 1 well inside a region
@@ -10798,7 +10815,7 @@ function stepCorpses(dt){
       const drag = (inWater(e.x, e.z) ? .74 : 1) * (biomeAt(e.x, e.z).mod.spd || 1);
       const s = Math.min(e.hdlSlide, HDL_SPD * drag * dt);
       e.x += e.hdl.dx*s; e.z += e.hdl.dz*s; e.hdlSlide -= s; e.kx = 0; e.kz = 0;
-      [e.x, e.z] = confine(e.x, e.z, 1);
+      confineIn(e, e.x, e.z, 1);
       e.ft = Math.min(e.ft, e.fd * .30);
       if(!over && P && !e.hdlHit && P.iframe <= 0 && !aloft() && Math.hypot(P.x-e.x, P.z-e.z) < e.rad + .75) hdlLand(e, true);
       if(e.hdlSlide <= 0){ e.hdlSlide = 0; e.hdl = null; }
@@ -13046,6 +13063,12 @@ function wardPass(){
     }
   }
 }
+let sepE = null, sepX = 0, sepZ = 0;
+function sepAcc(o, od){
+  if(o===sepE || od<.0001) return;
+  const f = (sepE.rad+o.rad - od);
+  if(f>0){ sepX += (sepE.x-o.x)/od*f; sepZ += (sepE.z-o.z)/od*f; }
+}
 function updateEnemies(dt){
   wardPass();
   // L46: how many lanes are live, counted once a frame - the cap reads it
@@ -13250,7 +13273,7 @@ function updateEnemies(dt){
     if(e.hdlT > 0){
       const L = e.hdl, s = Math.min(e.hdlT, HDL_SPD * wading * ground * dt);
       e.x += L.dx*s; e.z += L.dz*s; e.hdlT -= s; e.kx = 0; e.kz = 0;
-      [e.x, e.z] = confine(e.x, e.z, 1);
+      confineIn(e, e.x, e.z, 1);
       e.y = groundY(e.x, e.z);
       // ONE hit a charge, at the bite's own reach, and it does not stop at you
       if(!e.hdlHit && P.iframe <= 0 && !aloft() && Math.hypot(P.x-e.x, P.z-e.z) < e.rad + .75) hdlLand(e, false);
@@ -13281,7 +13304,7 @@ function updateEnemies(dt){
       if(er > RIM-14 && er > 0){ fx += -e.x/er*1.8; fz += -e.z/er*1.8; }
       const fl = Math.hypot(fx,fz)||1;
       const rs = spd * ROUT_SPD;
-      [e.x, e.z] = confine(e.x + fx/fl*rs*dt, e.z + fz/fl*rs*dt, 3);
+      confineIn(e, e.x + fx/fl*rs*dt, e.z + fz/fl*rs*dt, 3);
       e.y = groundY(e.x,e.z);
       walk(e, lx, lz, dt);
       continue;
@@ -13344,7 +13367,7 @@ function updateEnemies(dt){
       const er = Math.hypot(e.x, e.z);
       if(er > RIM-14 && er > 0){ fx += -e.x/er*1.8; fz += -e.z/er*1.8; }
       const fl = Math.hypot(fx,fz)||1;
-      [e.x, e.z] = confine(e.x + fx/fl*spd*dt, e.z + fz/fl*spd*dt, 3);
+      confineIn(e, e.x + fx/fl*spd*dt, e.z + fz/fl*spd*dt, 3);
       e.y = groundY(e.x,e.z);
       walk(e, lx, lz, dt);
       continue;
@@ -13390,12 +13413,12 @@ function updateEnemies(dt){
     // simply could not close: nothing within 8m of the player, ever, and
     // standing still became SAFER the bigger the horde got. Clamp it well under
     // the slowest enemy's speed so the front rank always arrives.
-    let sx=0, sz=0;
-    near(e.x, e.z, e.rad*1.9, (o,od)=>{
-      if(o===e || od<.0001) return;
-      const f = (e.rad+o.rad - od);
-      if(f>0){ sx += (e.x-o.x)/od*f; sz += (e.z-o.z)/od*f; }
-    });
+    // L40: the callback is ONE function, not a closure made for every body on
+    // every step (a closure and its context per body, thirty-odd kilobytes a
+    // frame on a full field). Same reads, same sums, in the same order.
+    sepE = e; sepX = 0; sepZ = 0;
+    near(e.x, e.z, e.rad*1.9, sepAcc);
+    const sx = sepX, sz = sepZ;
     const sl = Math.hypot(sx,sz);
     if(sl > .0001){
       const cap = Math.min(sl, 1.5) / sl;
@@ -13420,7 +13443,7 @@ function updateEnemies(dt){
     if(e.dead && e.denRef === null && !e.boss){ enemies.splice(i,1); continue; }
     if(!e.boss && !e.denRef && d > 80){ hordeFlow.culled++; enemies.splice(i,1); continue; }
 
-    [e.x, e.z] = confine(e.x, e.z, 1);
+    confineIn(e, e.x, e.z, 1);
     e.y = groundY(e.x, e.z);
     // L43: and nine metres over it while SKYSPLITTER is up. One height, driven
     // by the windows and nothing else, so the drawing, the shadow under it and
@@ -13794,12 +13817,13 @@ function updateProjectiles(dt){
 // seconds should sound like collecting twenty gems in two seconds.
 let gemStreak = 0, gemStreakT = 0;
 function updateGems(dt){
-  const R = P.mag;
+  // L40: the ground under YOU is one question a step, not one per gem
+  const R = P.mag * (biomeAt(P.x,P.z).mod.mag || 1);
   if(gemStreakT > 0 && (gemStreakT -= dt) <= 0) gemStreak = 0;
   for(let i=gems.length-1;i>=0;i--){
     const g = gems[i];
     const dx = P.x-g.x, dz = P.z-g.z, d = Math.hypot(dx,dz);
-    if(d < R * (biomeAt(P.x,P.z).mod.mag || 1)) g.pulled = true;
+    if(d < R) g.pulled = true;
     if(g.pulled){
       g.s = Math.min(44, (g.s || 7) + 78*dt);           // snap, do not drift
       g.x += dx/(d||1)*g.s*dt; g.z += dz/(d||1)*g.s*dt;
@@ -14752,6 +14776,8 @@ function hudClearRect(x0, x1, y0, h){
 }
 const BOT_LAG = .35, BOT_HOP_ODDS = .65, BOT_REACT = .55;
 const _bx=[], _bz=[], _bd=[];
+// L40: the same scratch for the gems, the hazards and the events the bot reads
+const _gx=[], _gz=[], _gd=[], _hx=[], _hz=[], _hd=[], _hr=[], _ex=[], _ez=[], _ed=[], _ev=[];
 function botVector(){
   if(botCharge){ const c = chargeAim(P, enemies); if(c){ chargeF++; return [c[0], c[1]]; } }
   const gw = P && P.kit.gore;
@@ -14779,13 +14805,33 @@ function botVector(){
   // L46: THE HEADLONG's lanes are telegraphs too, read the way the hazards are
   // below (and late, if clumsy). With no charge on the field this list is empty.
   const hdlLanes = [];
-  for(const e of enemies) if(!e.dead && e.hdl && (e.hdlW > 0 || e.hdlT > 0) && !(botClumsy && e.hdlW > BOT_REACT)) hdlLanes.push([e.hdl, e.rad + .75]);
-  for(const e of corpses) if(e.hdlSlide > 0 && e.hdl) hdlLanes.push([e.hdl, e.rad + .75]);
+  // L40: by index - a for-of over the field made a result object per body per step
+  for(let k=0;k<enemies.length;k++){ const e = enemies[k]; if(!e.dead && e.hdl && (e.hdlW > 0 || e.hdlT > 0) && !(botClumsy && e.hdlW > BOT_REACT)) hdlLanes.push([e.hdl, e.rad + .75]); }
+  for(let k=0;k<corpses.length;k++){ const e = corpses[k]; if(e.hdlSlide > 0 && e.hdl) hdlLanes.push([e.hdl, e.rad + .75]); }
+  // L40: WHAT DOES NOT CHANGE WITH THE HEADING IS MEASURED ONCE A STEP. The
+  // gems', the hazards' and the events' offsets and ranges, and the boss's,
+  // were measured again inside every one of the BOT_DIRS headings - twenty
+  // headings over three hundred gems is six thousand Math.hypot() calls a
+  // frame, each of which allocates, and this function was the largest
+  // allocator in the step (2.9 GB over one ten-minute run). Same numbers, in
+  // the same order, read from scratch arrays the headings share.
+  const fx0 = fin ? fin.x-P.x : 0, fz0 = fin ? fin.z-P.z : 0, fd0 = fin ? (Math.hypot(fx0,fz0) || 1) : 1;
+  _gx.length = _gz.length = _gd.length = 0;
+  for(let k=0;k<gems.length;k++){ const g = gems[k], gx=g.x-P.x, gz=g.z-P.z, d=Math.hypot(gx,gz);
+    if(d > 26 || d < .6) continue; _gx.push(gx); _gz.push(gz); _gd.push(d); }
+  _hx.length = _hz.length = _hd.length = _hr.length = 0;
+  for(let k=0;k<hazards.length;k++){ const h = hazards[k];
+    if(botClumsy && h.tel > BOT_REACT) continue;        // ...late, if clumsy
+    const hx = h.x-P.x, hz = h.z-P.z, hd = Math.hypot(hx,hz);
+    if(hd > h.r + 18) continue; _hx.push(hx); _hz.push(hz); _hd.push(hd); _hr.push(h.r); }
+  _ex.length = _ez.length = _ed.length = _ev.length = 0;
+  for(let k=0;k<events.length;k++){ const ev = events[k], ex = ev.x-P.x, ez = ev.z-P.z, ed = Math.hypot(ex,ez);
+    if(ed > 44 || ed < .4) continue; _ex.push(ex); _ez.push(ez); _ed.push(ed); _ev.push(ev); }
   for(let i=0;i<BOT_DIRS;i++){
     const a = i/BOT_DIRS*TAU, dx = Math.sin(a), dz = Math.cos(a);
     let s = 0;
-    if(fin){ const fx = fin.x-P.x, fz = fin.z-P.z, fd = Math.hypot(fx,fz) || 1, proj = (fx*dx + fz*dz)/fd;
-             if(fd > 14) s += proj*40; else if(fd < 8) s -= proj*40; }
+    if(fin){ const proj = (fx0*dx + fz0*dz)/fd0;
+             if(fd0 > 14) s += proj*40; else if(fd0 < 8) s -= proj*40; }
     for(let k=0;k<_bd.length;k++){
       const d = _bd[k], proj = (_bx[k]*dx + _bz[k]*dz)/d;
       if(proj <= 0) continue;
@@ -14813,20 +14859,16 @@ function botVector(){
       // this whole term is inert, so no other weapon's bench moves.
       if(goreLane && d >= 4.5 && d < goreLane) s += proj*2.80;
     }
-    for(const g of gems){
-      const gx=g.x-P.x, gz=g.z-P.z, d=Math.hypot(gx,gz);
-      if(d > 26 || d < .6) continue;
-      s += ((gx*dx + gz*dz)/d) * (1.1 - d/26) * 0.9;
+    for(let k=0;k<_gd.length;k++){ const d = _gd[k];
+      s += ((_gx[k]*dx + _gz[k]*dz)/d) * (1.1 - d/26) * 0.9;
     }
-    for(const h of hazards){                              // read the telegraphs
-      if(botClumsy && h.tel > BOT_REACT) continue;        // ...late, if clumsy
-      const hx = h.x-P.x, hz = h.z-P.z, hd = Math.hypot(hx,hz);
-      if(hd > h.r + 18) continue;
+    for(let k=0;k<_hd.length;k++){                        // read the telegraphs
+      const hx = _hx[k], hz = _hz[k], hd = _hd[k], hr = _hr[k];
       const after = Math.hypot(dx*P.spd - hx, dz*P.spd - hz);  // one second of running
-      if(after < h.r + 1.6) s -= 55;                      // straight into it
-      else if(hd < h.r + 1.0) s += 30;                    // and we are standing in one
+      if(after < hr + 1.6) s -= 55;                       // straight into it
+      else if(hd < hr + 1.0) s += 30;                     // and we are standing in one
     }
-    for(const [L, w] of hdlLanes){
+    for(let k=0;k<hdlLanes.length;k++){ const L = hdlLanes[k][0], w = hdlLanes[k][1];
       if(hdlInLane(L, P.x + dx*P.spd, P.z + dz*P.spd, w + 1.6)) s -= 55;   // one second of running ends in it
       else if(hdlInLane(L, P.x, P.z, w + 1.0)) s += 30;                     // and we are standing in one
     }
@@ -14835,9 +14877,8 @@ function botVector(){
     // term - a plausible player detours for a cache, they do not walk into a
     // brute for one. The altar pull is stronger inside its ring, because the
     // whole point of an altar is that leaving costs you.
-    for(const ev of events){
-      const ex = ev.x-P.x, ez = ev.z-P.z, ed = Math.hypot(ex,ez);
-      if(ed > 44 || ed < .4) continue;
+    for(let k=0;k<_ed.length;k++){
+      const ev = _ev[k], ex = _ex[k], ez = _ez[k], ed = _ed[k];
       const proj = (ex*dx + ez*dz)/ed;
       const urgency = ev.life < 14 ? 1.8 : 1;
       if(ev.kind === "altar" && ed < EV.altar.r){
