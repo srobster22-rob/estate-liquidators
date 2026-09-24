@@ -15,7 +15,7 @@ let src = src0;
 if(MUT){
   const t = fs.readFileSync(path.join(REPO, "mutate.js"), "utf8");
   const i = t.indexOf(`id:"${MUT}"`); if(i < 0){ console.error("no mutant", MUT); process.exit(2); }
-  const blk = t.slice(t.lastIndexOf("{", i), t.indexOf("}", t.indexOf("to:", i)) + 1);
+  const end = t.indexOf("\n  { id:", i), blk = t.slice(t.lastIndexOf("{", i), t.lastIndexOf("}", end < 0 ? t.length : end) + 1);
   const m = (0, eval)("(" + blk + ")");
   if(src.split(m.from).length !== 2){ console.error("anchor count", src.split(m.from).length - 1); process.exit(2); }
   src = src.replace(m.from, m.to);

@@ -9276,6 +9276,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // renders its own frames, never calls step(), and hands the field, the
       // player, the camera, the number pool and its knobs back as it found them.
       out.num = g.numGate ? g.numGate() : { ok:false, bad:["g.numGate is missing"] };
+      // L39's voiceGate: a frequent sound starts once a frame, a noise burst
+      // builds no buffer of its own. Synchronous, touches no run state but the
+      // clock and hands it back.
+      out.voice = g.voiceGate ? g.voiceGate() : { ok:false, bad:["g.voiceGate is missing"] };
       // L30's THE SILHOUETTE and L33's rimDayGate, arriving the same way every
       // one of this section's gates has: built into the page by a round this
       // suite never called. Both re-derive the world on a pinned BEZEL_SEED
@@ -9501,6 +9505,11 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
        `${ngP.ink} px of screen; the old wall drew ${ngO.shown} with ${ngO.pairs}, ${ngO.under && ngO.under.n} under, ${ngO.ink} px; depth k ${ngD.near} near / ${ngD.far} far; ` +
        `drift ${JSON.stringify(ng.drift)}; ${ng.paint && ng.paint.painted} placed numbers checked against the paint, ${ng.paint && ng.paint.miss} missed; ` +
        `${ng.stream && ng.stream.spent} run-stream draws for a number)`);
+    const vg = gates.voice || {};
+    ok("L39's voice gate: a frequent sound starts once a frame and once more after SFX_GAP, every call is counted, an always-play sound always plays, two noise bursts share one buffer, and a new run is not silenced",
+       vg.ok === true,
+       say(vg) + `  (100 pops in one frame -> ${vg.once} start(s), ${vg.counted} counted; after the gap ${vg.again}, inside it ${vg.notYet}; null with no gap ${vg.nullAll}; ` +
+       `boss horns ${vg.always}/3; buffers made across two bursts ${vg.made} (shared ${vg.shared}; null ${vg.madeNull}); a fresh run's first pop played ${vg.fresh}; audio ${vg.audio})`);
     ok("L16's kill radius dies with the run",
        gates.reset.ok, say(gates.reset) + `  (grown to ${gates.reset.grown} m before the restart)`);
     ok("L13's split gate: the card names the creature and the HUD names the twin",

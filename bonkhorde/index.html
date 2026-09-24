@@ -1229,13 +1229,23 @@ function blip(freq, dur, type, vol, slide, at){
   g.gain.exponentialRampToValueAtTime(.0001, t+dur);
   o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+.02);
 }
+// ONE SECOND OF NOISE, MADE ONCE (L39). Every burst used to build its own
+// AudioBuffer - a 0.28 s boom is 12,348 samples, each a Math.random() call,
+// 49 KB - and a late crowded field booms ten times a second. Measured on the
+// bench: one run of a crowd that paid in full played 12,607 booms, 604 MB of
+// buffers under the audio nodes, memory a synchronous twenty-minute run never
+// gives back, and the renderer was killed at 13.6 GB (L36b, the audit). A
+// burst now plays a slice of one shared buffer from a random offset, with the
+// fade the fill used to carry (1 - i/n) on its gain - the same sound.
+let noiseBuf = null;
 function noiseBurst(dur, vol){
-  if(!AC) return;
-  const n=AC.sampleRate*dur|0, b=AC.createBuffer(1,n,AC.sampleRate), d=b.getChannelData(0);
-  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
-  const s=AC.createBufferSource(), g=AC.createGain(), f=AC.createBiquadFilter();
+  if(!AC || AC.state==="suspended") return;
+  if(!noiseBuf){ noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+                 const d = noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1; }
+  const s=AC.createBufferSource(), g=AC.createGain(), f=AC.createBiquadFilter(), t=AC.currentTime;
   f.type="lowpass"; f.frequency.value=900;
-  s.buffer=b; g.gain.value=vol||.2; s.connect(f); f.connect(g); g.connect(master); s.start();
+  s.buffer=noiseBuf; g.gain.setValueAtTime(vol||.2, t); g.gain.linearRampToValueAtTime(0, t+dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()*Math.max(0, 1-dur), dur);
 }
 // Sounds jitter their pitch off their OWN random source. rnd() is the world's
 // seeded stream, and a sound drawing from it meant whether a bite whiffed
@@ -1322,11 +1332,25 @@ const SFX = {
 // silent and nobody noticed until someone went looking. Fingerprinted because
 // the other failure mode is a "new" sound that is a copy of an old one, which
 // is worse than silence: it teaches the player the wrong thing.
-const SFX_SRC = {}, sfxCount = {};
+const SFX_SRC = {}, sfxCount = {}, sfxPlayed = {}, sfxLast = {};
+// THE VOICE LIMIT (L39). A sound is two or three audio nodes that live until it
+// ends, and a busy field asked for them faster than the ear can tell apart: one
+// bench run played 96,119 pops, 42,278 gem chimes and 6,796 bonks - seventy-six
+// pops a second - and a quarter of a million nodes' worth of memory sat in the
+// graph. No frequent sound starts twice inside SFX_GAP of sim time now (two pops
+// forty milliseconds apart are one pop); the long, rare, one-shot sounds - a
+// level, an evolution, a boss, the end of a run, a den - always play. Every call
+// is still COUNTED (sfxCount, what the suite reads to ask whether a thing made a
+// noise) and what actually started is counted beside it (sfxPlayed).
+let SFX_GAP = .04;                      // let: voiceGate's null sets it to 0 for one clause
+const SFX_ALWAYS = new Set(["levelup","tempo","evolve","die","win","buy","boss","denWake","denDone",
+                            "denWakeAngry","upwell","affIn","affOut","pearl"]);
 for(const k in SFX){
   SFX_SRC[k] = SFX[k].toString().replace(/\s+/g, " ");
   const f = SFX[k];
-  SFX[k] = (...a)=>{ sfxCount[k] = (sfxCount[k]||0) + 1; return f(...a); };
+  SFX[k] = (...a)=>{ sfxCount[k] = (sfxCount[k]||0) + 1;
+    if(!SFX_ALWAYS.has(k)){ const l = sfxLast[k]; if(l !== undefined && T >= l && T - l < SFX_GAP) return; sfxLast[k] = T; }
+    sfxPlayed[k] = (sfxPlayed[k]||0) + 1; return f(...a); };
 }
 
 // ---------------------------------------------------------------- terrain
@@ -20388,6 +20412,68 @@ function numGate(seedBase = 1000){
   return { ok:!bad.length, bad, ...out };
 }
 
+// ===================================================== QA: L39's voices
+// voiceGate - the sound of a crowd stays a sound, and stays in memory only as
+// long as it plays. Synchronous; touches the clock, the voice ledgers and the
+// shared noise buffer, and hands every one of them back.
+//  1. a frequent sound asked for a hundred times in one frame starts ONCE, once
+//     more after SFX_GAP of sim time, and not again inside the next gap
+//     (NULL: with SFX_GAP 0 the same hundred calls all start);
+//  2. every one of those calls is COUNTED whatever the limit did - sfxCount is
+//     what the suite reads to ask whether a thing made a noise;
+//  3. an always-play sound asked for three times in one frame plays three;
+//  4. two noise bursts build ONE AudioBuffer between them, the second playing
+//     the first's (NULL: with the shared buffer forgotten between them, two);
+//  5. a new run does not inherit the old one's silence: the clock starts again
+//     below the last start and the first sound plays.
+function voiceGate(){
+  const bad = [];
+  if(!AC) audioInit();
+  const was = { T, gap:SFX_GAP, buf:noiseBuf, last:Object.assign({}, sfxLast), played:Object.assign({}, sfxPlayed),
+                count:Object.assign({}, sfxCount) };
+  const played = k => sfxPlayed[k] || 0, count = k => sfxCount[k] || 0;
+  let made = 0;
+  if(AC) AC.createBuffer = function(){ made++; return AudioContext.prototype.createBuffer.apply(AC, arguments); };
+  const out = { audio:!!AC };
+  try {
+    // 1 and 2
+    T = 100; delete sfxLast.pop;
+    const p0 = played("pop"), c0 = count("pop");
+    for(let i = 0; i < 100; i++) SFX.pop();
+    out.once = played("pop") - p0; out.counted = count("pop") - c0;
+    T = 100 + SFX_GAP; SFX.pop(); out.again = played("pop") - p0;
+    T = 100 + SFX_GAP * 1.5; SFX.pop(); out.notYet = played("pop") - p0;
+    SFX_GAP = 0; T = 200; delete sfxLast.pop; const n0 = played("pop");
+    for(let i = 0; i < 100; i++) SFX.pop();
+    out.nullAll = played("pop") - n0; SFX_GAP = was.gap;
+    if(out.once !== 1) bad.push(`A FREQUENT SOUND IS NOT LIMITED TO ONE START A FRAME: 100 pops in one frame started ${out.once}`);
+    if(out.counted !== 100) bad.push(`THE CALLS ARE NOT ALL COUNTED: 100 pops counted ${out.counted} - the suite's own noise checks read this`);
+    if(out.again !== 2) bad.push(`A SOUND DOES NOT START AGAIN AFTER SFX_GAP: ${out.again} start(s) after ${SFX_GAP} s`);
+    if(out.notYet !== 2) bad.push(`A SOUND STARTS AGAIN INSIDE THE GAP: ${out.notYet} start(s) half a gap later`);
+    if(out.nullAll !== 100) bad.push(`NULL CONTROL FAILED: with SFX_GAP 0 the hundred pops started ${out.nullAll} times - the limit is not what clause 1 measured`);
+    // 3
+    T = 300; const a0 = played("boss"); SFX.boss(); SFX.boss(); SFX.boss(); out.always = played("boss") - a0;
+    if(out.always !== 3) bad.push(`AN ALWAYS-PLAY SOUND WAS LIMITED: three boss horns in one frame played ${out.always}`);
+    // 4
+    if(AC){
+      noiseBuf = null; made = 0; noiseBurst(.05, .1); const first = noiseBuf; noiseBurst(.05, .1);
+      out.made = made; out.shared = noiseBuf === first && !!first;
+      noiseBuf = null; made = 0; noiseBurst(.05, .1); noiseBuf = null; noiseBurst(.05, .1); out.madeNull = made;
+      if(!(out.made === 1 && out.shared)) bad.push(`A NOISE BURST BUILDS ITS OWN BUFFER: two bursts made ${out.made} AudioBuffer(s)${out.shared ? "" : ", and the second did not play the first's"}`);
+      if(out.madeNull !== 2) bad.push(`NULL CONTROL FAILED: with the shared buffer forgotten between two bursts ${out.madeNull} were made, not 2`);
+    }
+    // 5
+    sfxLast.pop = 500; T = 3; const f0 = played("pop"); SFX.pop(); out.fresh = played("pop") - f0;
+    if(out.fresh !== 1) bad.push("A NEW RUN INHERITS THE OLD RUN'S SILENCE: the first pop of a run whose clock is below the last start did not play");
+  } finally {
+    T = was.T; SFX_GAP = was.gap; noiseBuf = was.buf;
+    if(AC) delete AC.createBuffer;
+    for(const o of [sfxLast, sfxPlayed, sfxCount]) for(const k in o) delete o[k];
+    Object.assign(sfxLast, was.last); Object.assign(sfxPlayed, was.played); Object.assign(sfxCount, was.count);
+  }
+  return { ok:!bad.length, bad, ...out };
+}
+
 // ------------------------------------------------------------------ QA hook
 // Same pattern as proto3d: a scripted handle so runs can be driven headlessly.
 window.__g = {
@@ -21175,6 +21261,8 @@ window.__g = {
   sfx:      ()=>Object.assign({}, sfxCount),
   sfxReset: ()=>{ for(const k in sfxCount) delete sfxCount[k]; },
   sfxSrc:   ()=>Object.assign({}, SFX_SRC),
+  sfxPlayed:()=>Object.assign({}, sfxPlayed),          // L39: what actually started, beside what was asked for
+  voiceGate:()=>voiceGate(),
   anim: ()=>({ ph:+ANIM.ph.toFixed(3), amp:+ANIM.amp.toFixed(3),
                lean:+ANIM.lean.toFixed(3), bank:+ANIM.bank.toFixed(3),
                sq:+ANIM.sq.toFixed(3), lunge:+ANIM.lunge.toFixed(3),
