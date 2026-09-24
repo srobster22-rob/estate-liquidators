@@ -55,3 +55,8 @@ bonkhorde/test.pre-*.js
 bonkhorde/mutate.pre-*.js
 bonkhorde/film/*.pre-*.js
 build-artifact.pre-*.js
+# the hang locator's mutated copy of the game (scratch m36/hang/hang.js) and
+# gatemut's per-mutant copies: generated, a megabyte and a half each, deleted
+# by the scripts that make them unless they are killed first
+bonkhorde/_hang.*
+bonkhorde/_gm_*.html
