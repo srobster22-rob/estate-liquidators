@@ -10050,14 +10050,44 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const KB = x => (x / 1024).toFixed(1), at = n => self.get(n) || 0, botNext = under.get("botVector < next") || 0;
     const perStep = total / 600;
     const top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${KB(v)}`).join(", ");
-    ok("L40's step: nearestCells answers in one shared array - over 600 settled steps it allocates nothing",
-       at("nearestCells") === 0, `${KB(at("nearestCells"))} KB sampled under nearestCells (2,340 KB before L40)`);
-    ok("the clamp onto a body allocates nothing: confineIn samples nothing, and confine - the spawns and arrivals only - under 64 KB",
-       at("confineIn") === 0 && at("confine") < 64 * 1024, `confineIn ${KB(at("confineIn"))} KB, confine ${KB(at("confine"))} KB (1,522 KB before)`);
-    ok("the autopilot measures the field once a step and walks its arrays by index: nothing sampled as iterator results beneath botVector",
-       botNext === 0, `${KB(botNext)} KB of iterator results under botVector (9,606 KB before L40)`);
+    // The bounds leave room for the one thing these sites still allocate in
+    // a lower tier: a function that has just deoptimized boxes the doubles it
+    // computes (confineIn read 128-176 KB in a fifth of the runs, from the
+    // steps updateEnemies spent in the baseline tier after a deopt). The
+    // objects the mutants put back are megabytes in every tier.
+    ok("L40's step: nearestCells answers in one shared array - under 64 KB sampled under it over 600 settled steps",
+       at("nearestCells") < 64 * 1024, `${KB(at("nearestCells"))} KB sampled under nearestCells (2,340 KB before L40)`);
+    ok("the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together",
+       at("confineIn") + at("confine") < 512 * 1024, `confineIn ${KB(at("confineIn"))} KB, confine ${KB(at("confine"))} KB (1,522 KB before; 1,666 KB with the pair put back)`);
+    ok("the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector",
+       botNext < 128 * 1024, `${KB(botNext)} KB of iterator results under botVector (9,606 KB before L40)`);
     ok("and the whole step allocates under 400 KB (301 KB before L40)",
        perStep < 400 * 1024, `${KB(perStep)} KB a step over 600 steps from t=300 to ${st.t} (${st.bodies} bodies, ${st.gems} gems); the largest: ${top}`);
+    // ONE SHAPE (L41). What was left after L40 was boxed doubles: the bodies
+    // carried ten hidden classes at once (every system added its own keys on
+    // first use, in whatever order the run reached them), so walk()'s and
+    // updateEnemies()' property sites were megamorphic and every double they
+    // touched went through the generic path in a sixteen-byte box. Every key a
+    // body will ever have is in the spawn literal now, so a body's key
+    // signature - the keys in insertion order, which is what its hidden class
+    // is made of - is one for the whole field, the boss's the same set in its
+    // own order, and the bytes those three functions allocate fall by an order
+    // of magnitude. Read on the same settled field, bodies and corpses alike.
+    const sh = await page.evaluate(() => { const E = (0, eval), en = E("enemies"), co = E("corpses");
+      const all = en.concat(co), sig = o => Object.keys(o).join(","), sorted = o => Object.keys(o).sort().join(",");
+      const fieldSigs = new Map(), sets = new Map(); let bosses = 0;
+      for(const e of all){ if(e.boss){ bosses++; } else fieldSigs.set(sig(e), (fieldSigs.get(sig(e)) || 0) + 1); sets.set(sorted(e), (sets.get(sorted(e)) || 0) + 1); }
+      return { n:all.length, bosses, fieldSigs:[...fieldSigs.values()], sets:[...sets.values()], keys:all.length ? Object.keys(all[0]).length : 0 }; });
+    ok("L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set",
+       sh.n > 40 && sh.fieldSigs.length === 1 && sh.sets.length === 1,
+       `${sh.n} bodies (${sh.bosses} boss): ${sh.fieldSigs.length} signature(s) among the field ${JSON.stringify(sh.fieldSigs)}, ${sh.sets.length} key set(s) overall, ${sh.keys} keys a body (10 signatures, 42 to 60 keys, before L41)`);
+    // What the shapes did NOT buy is reported, not asserted: walk, updateEnemies
+    // and groundY still allocate boxed doubles by the tens of megabytes over
+    // these 600 steps (71 MB on the L40 build, 57-60 on this one, a 15% swing
+    // between runs), because what boxes them is the TIER they run in after a
+    // deoptimization, not the shape of the body - the L41 evidence has the
+    // measurement, and the tier residency is a later round's.
+    console.log(`        (boxed doubles, not asserted: walk ${KB(at("walk"))} KB, updateEnemies ${KB(at("updateEnemies"))} KB, groundY ${KB(at("groundY"))} KB over the 600 steps)`);
   }
 
   console.log("\n" + "=".repeat(58));

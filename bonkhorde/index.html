@@ -1412,31 +1412,31 @@ function confineIn(o, x, z, pad){
 const BIOMES = [
   { id:"grass", nm:"THE FERNLANDS", ds:"nothing in particular",
     story:"Ferns to the horizon. Every hatchling starts here.",
-    a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mon:{ nm:"THE FIRST GATE", sh:"gate" }, mod:{} },
+    a:[.38,.52,.31], b:[.30,.43,.26], amp:1.00, lift: 0.0, mon:{ nm:"THE FIRST GATE", sh:"gate" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:undefined, xp:undefined, dmg:undefined, reach:undefined, swarm:undefined, regen:undefined }, fauna:undefined },
   { id:"ash",   nm:"THE CINDERFLATS", ds:"the ground is still warm  -  +12% damage taken",
     story:"A caldera floor. It has not finished cooling and it is not going to.",
-    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mon:{ nm:"THE CHIMNEY", sh:"spire" }, mod:{ tough:1.12 }, fauna:{ runner:1.5 } },
+    a:[.33,.31,.32], b:[.26,.24,.26], amp:0.45, lift:-1.2, mon:{ nm:"THE CHIMNEY", sh:"spire" }, mod:{ tough:1.12, spd:undefined, slide:undefined, mag:undefined, xp:undefined, dmg:undefined, reach:undefined, swarm:undefined, regen:undefined }, fauna:{ runner:1.5 } },
   // Murkier and more olive than it started. The original teal-green sat at
   // dE 7.7 from THE LIEN's elite tint under tritanopia - a blue enemy vanishing
   // into a blue-green floor - and the search found this inside the same hue
   // family at 15.2. It still reads as sludge; it just stopped being teal.
   { id:"bog",   nm:"THE TARPITS",   ds:"it holds on to your feet  -  -14% move speed",
     story:"Older animals than you are still standing in it, exactly where they stopped.",
-    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mon:{ nm:"THE WADERS", sh:"ribs" }, mod:{ spd:0.86 }, fauna:{ brute:1.7, skitter:.6 } },
+    a:[.40,.46,.34], b:[.32,.37,.27], amp:0.35, lift:-2.4, mon:{ nm:"THE WADERS", sh:"ribs" }, mod:{ tough:undefined, spd:0.86, slide:undefined, mag:undefined, xp:undefined, dmg:undefined, reach:undefined, swarm:undefined, regen:undefined }, fauna:{ brute:1.7, skitter:.6 } },
   { id:"ice",   nm:"THE GLACIER",   ds:"nothing here has any grip  -  you slide",
     story:"It froze mid-flood and kept whatever was swimming in it.",
-    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mon:{ nm:"THE CAUGHT SWIMMER", sh:"ribs" }, mod:{ slide:1 }, fauna:{ runner:1.6, brute:.5 } },
+    a:[.60,.70,.76], b:[.52,.63,.71], amp:0.30, lift:-0.6, mon:{ nm:"THE CAUGHT SWIMMER", sh:"ribs" }, mod:{ tough:undefined, spd:undefined, slide:1, mag:undefined, xp:undefined, dmg:undefined, reach:undefined, swarm:undefined, regen:undefined }, fauna:{ runner:1.6, brute:.5 } },
   { id:"sand",  nm:"THE DUSTSEA",   ds:"you can see what you dropped  -  +40% pickup radius",
     story:"The wind took the topsoil an age ago. Nothing hides out here, including you.",
-    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mon:{ nm:"THE LAST STEP", sh:"stack" }, mod:{ mag:1.40 }, fauna:{ skitter:1.5 } },
+    a:[.70,.64,.45], b:[.63,.57,.40], amp:0.70, lift: 0.4, mon:{ nm:"THE LAST STEP", sh:"stack" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:1.40, xp:undefined, dmg:undefined, reach:undefined, swarm:undefined, regen:undefined }, fauna:{ skitter:1.5 } },
   { id:"bone",  nm:"THE BONEFIELD", ds:"more of them, and more to take  -  +22% XP",
     story:"A migration died here, all at once, a very long time ago.",
-    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mon:{ nm:"THE MIGRATION CAIRN", sh:"stack" }, mod:{ xp:1.22 }, fauna:{ spitter:1.5, skitter:1.3 } },
+    a:[.56,.54,.47], b:[.48,.46,.40], amp:1.35, lift: 1.1, mon:{ nm:"THE MIGRATION CAIRN", sh:"stack" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:undefined, xp:1.22, dmg:undefined, reach:undefined, swarm:undefined, regen:undefined }, fauna:{ spitter:1.5, skitter:1.3 } },
   // Weathered rather than deep. The original brown was dE 7.1 from APPRAISER's
   // yellow under tritanopia; this clears at 14.2 and is still visibly rust.
   { id:"rust",  nm:"THE SPINEROCK", ds:"something here sharpens what you carry  -  +12% damage",
     story:"Iron in the soil and something enormous fossilised in the ridge.",
-    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mon:{ nm:"THE SPINE", sh:"spire" }, mod:{ dmg:1.12 }, fauna:{ spitter:1.6 } },
+    a:[.58,.46,.40], b:[.46,.37,.32], amp:1.60, lift: 0.8, mon:{ nm:"THE SPINE", sh:"spire" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:undefined, xp:undefined, dmg:1.12, reach:undefined, swarm:undefined, regen:undefined }, fauna:{ spitter:1.6 } },
   // EIGHTH BIOME, and the first that touches a WEAPON STAT rather than a
   // player stat. Every mod so far has been move speed, damage in or out, pickup
   // radius or XP - all read once at the point of use. Reach is different: it is
@@ -1445,7 +1445,7 @@ const BIOMES = [
   // dependent factor slots in there rather than needing new plumbing.
   { id:"bramble", nm:"THE THICKET", ds:"everything is closer than it looks  -  -18% weapon reach",
     story:"Waist-high bramble, close-packed and springy. It closes back in before you have finished the swing.",
-    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mon:{ nm:"THE SWALLOWED GATE", sh:"gate" }, mod:{ reach:0.82 }, fauna:{ skitter:1.7, runner:.6 } },
+    a:[.52,.66,.38], b:[.43,.55,.30], amp:0.85, lift: 0.3, mon:{ nm:"THE SWALLOWED GATE", sh:"gate" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:undefined, xp:undefined, dmg:undefined, reach:0.82, swarm:undefined, regen:undefined }, fauna:{ skitter:1.7, runner:.6 } },
   // NINTH BIOME, and the first that touches the DIRECTOR rather than a stat on
   // either side of a hit. Every mod so far changes how hard something hits,
   // how fast it moves or what it drops; this one changes how many of them
@@ -1455,7 +1455,7 @@ const BIOMES = [
   // going, which is what a region modifier is for.
   { id:"warren", nm:"THE WARRENS", ds:"they keep coming out of the ground  -  +35% spawn rate",
     story:"The soil is more tunnel than soil. Stand anywhere long enough and something answers.",
-    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mon:{ nm:"THE THROAT", sh:"vent" }, mod:{ swarm:1.35 }, fauna:{ skitter:1.8, shambler:1.2 } },
+    a:[.46,.38,.24], b:[.37,.30,.19], amp:0.90, lift: 0.2, mon:{ nm:"THE THROAT", sh:"vent" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:undefined, xp:undefined, dmg:undefined, reach:undefined, swarm:1.35, regen:undefined }, fauna:{ skitter:1.8, shambler:1.2 } },
   // TENTH REGION, and the first that touches REGENERATION - the one player
   // stat no ground has ever moved. Every heal in the game trickles through
   // P.regen at exactly one line in step(), so the mod reads there, the same
@@ -1465,7 +1465,7 @@ const BIOMES = [
   // positional decision, which is the only kind this game deals in.
   { id:"spring", nm:"THE HOTSPRINGS", ds:"the water remembers how you were  -  regeneration x2.5",
     story:"Warm pools stepped in pale stone. Things come here to mend. Other things know that.",
-    a:[.72,.60,.55], b:[.62,.51,.47], amp:0.35, lift:-0.3, mon:{ nm:"THE MENDING STONE", sh:"vent" }, mod:{ regen:2.5 }, fauna:{ shambler:1.6 } },
+    a:[.72,.60,.55], b:[.62,.51,.47], amp:0.35, lift:-0.3, mon:{ nm:"THE MENDING STONE", sh:"vent" }, mod:{ tough:undefined, spd:undefined, slide:undefined, mag:undefined, xp:undefined, dmg:undefined, reach:undefined, swarm:undefined, regen:2.5 }, fauna:{ shambler:1.6 } },
 ];
 const BIOME_BY = {}; for(const b of BIOMES) BIOME_BY[b.id] = b;
 // A region without a monument is a region with nothing of its own in it, which
@@ -2167,7 +2167,11 @@ const RELIEF = (x, z)=>{
 };
 const groundY = (x,z)=>{
   if(!cells.length) return BASE_Y(x,z) + RELIEF(x,z);
-  const [i1,i2,d1,d2] = nearestCells(x,z);
+  // L41: read by index. Destructuring the answer runs the iterator protocol,
+  // and in every tier but the top one that is a result object and a boxed
+  // number per element, per call - fifteen megabytes over 600 steps of a
+  // settled field. The same four numbers, from the same array.
+  const nc = nearestCells(x,z), i1 = nc[0], i2 = nc[1], d1 = nc[2], d2 = nc[3];
   const w = 0.5 + Math.min(1, (d2-d1)/BLEND)*0.5;
   const A = cells[i1].b, B = cells[i2].b;
   return (BASE_Y(x,z) + RELIEF(x,z)) * (A.amp*w + B.amp*(1-w)) + (A.lift*w + B.lift*(1-w))
@@ -3545,25 +3549,25 @@ let noRules = false, dmgStomp = 0;                       // bench: the control a
 const ENEMIES = {
 // A fat grub the size of a dog. No idea what is happening, and it never stops.
 shambler:{ nm:"TERRAPIN",  hp:22,  spd:2.5, dmg:6,  r:.62, xp:1,  c:[.14,1,1], h:1.5, w:.55,
-           body:"terrapin" },
+           body:"terrapin", bite:undefined, dive:undefined, flier:undefined, hdl:undefined, ranged:undefined, flee:undefined },
 // A small pterosaur. First to arrive, every time, and never on purpose.
 // `flier`: no stride hop from the draw loop - the plan carries its own
 // wingbeat - and it falls out of the air when it dies rather than lying on it.
 runner:  { nm:"PTERLING",  hp:14,  spd:4.3, dmg:5,  r:.52, xp:1,  c:[.86,.02,.09], h:1.7, w:.40,
-           body:"pterling", dive:true, flier:true },
+           body:"pterling", bite:undefined, dive:true, flier:true, hdl:undefined, ranged:undefined, flee:undefined },
 // A young ceratopsian. All frill and shoulder, and it does not intend to stop.
 // LOW AND BROAD, not tall. h and w are visual only - the hitbox is r and reach
 // is measured to rad - and at 2.6 by 1.15 this animal was a cube, which is why
 // it read as a blue slab whatever was drawn inside it. A ceratopsian is a
 // coffee table with a shield on the front.
-brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:1.85, w:1.5, bite:1.7,
-           body:"ceratop", hdl:true },   // hdl: THE HEADLONG (L46), see HDL_ below
+brute:   { nm:"CERATOP", hp:150, spd:1.9, dmg:15, r:1.25,xp:6,  c:[.02,.02,.88], h:1.85, w:1.5,
+           body:"ceratop", bite:1.7, dive:undefined, flier:undefined, hdl:true, ranged:undefined, flee:undefined },   // hdl: THE HEADLONG (L46), see HDL_ below
 // A crested spitter. Hangs back and puts something caustic across the field.
 spitter: { nm:"DILOPHO", hp:34,  spd:2.0, dmg:8,  r:.65, xp:3,  c:[1,.99,.02], h:1.5, w:.62,
-           ranged:{cd:2.6, spd:15, r:22}, body:"dilopho" },
+           body:"dilopho", bite:undefined, dive:undefined, flier:undefined, hdl:undefined, ranged:{cd:2.6, spd:15, r:22}, flee:undefined },
 // A hatchling raptor. Individually nothing. Never individually.
-skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34, bite:.6,
-           body:"raptor" },
+skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.04], h:.72,w:.34,
+           body:"raptor", bite:.6, dive:undefined, flier:undefined, hdl:undefined, ranged:undefined, flee:undefined },
 // Everything else in this game walks at you. This one walks away, which makes
 // it the only thing in twenty minutes that asks whether you can bring your
 // damage somewhere rather than wait for it to arrive.
@@ -3582,7 +3586,7 @@ skitter: { nm:"RAPTORLING",  hp:8,  spd:5.0, dmg:3,  r:.36, xp:1,  c:[.02,.02,.0
 // of a grid search scored by the suite's own CIELAB maths rather than by eye -
 // worst pair 18.5, worst against any terrain shade 17.6.
 collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
-            c:[.82,.94,.36], h:2.0, w:.82, flee:true, body:"glimmerfowl" },
+            c:[.82,.94,.36], h:2.0, w:.82, body:"glimmerfowl", bite:undefined, dive:undefined, flier:undefined, hdl:undefined, ranged:undefined, flee:true },
 };
 
 // HP is scaled to body size on purpose. Weapons used to measure reach to an
@@ -3599,9 +3603,9 @@ collector:{ nm:"GILDWING", hp:900, spd:4.6, dmg:0, r:.9, xp:30,
 // half units now - five times the player - which is the first time the thing
 // that ate the world has looked like it could.
 const BOSSES = [
-{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch", mat:true },
-{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback", thn:true },
-{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter", flier:true, sks:true },
+{ t:300,  nm:"THE MATRIARCH", hp:3800,  spd:2.9, dmg:34, r:2.6, xp:120, c:[.72,.24,.30], h:6.8, w:3.4, ai:"slam" , body:"matriarch", flier:undefined, mat:true, thn:undefined, sks:undefined, trv:undefined },
+{ t:600,  nm:"THORNBACK",     hp:15000,  spd:3.2, dmg:42, r:3.0, xp:260, c:[.30,.52,.80], h:7.8, w:4.0, ai:"evict" , body:"thornback", flier:undefined, mat:undefined, thn:true, sks:undefined, trv:undefined },
+{ t:900,  nm:"SKYSPLITTER",   hp:55000, spd:3.6, dmg:52, r:3.2, xp:480, c:[.90,.62,.16], h:8.8, w:4.4, ai:"charge" , body:"skysplitter", flier:true, mat:undefined, thn:undefined, sks:true, trv:undefined },
 // The finale is the gate: veteran medians sit at 20-23 minutes, so nearly every
 // veteran run reaches sudden death and is decided there. Its HP is therefore
 // the one lever that moves the clear rate without making the other nineteen
@@ -3623,7 +3627,7 @@ const BOSSES = [
 // four-minute timer, on every seed, dealing 8 to 16k a second to it. The
 // finale is the run's one real fight; at 1.2M it lasts about a third of the
 // timer at the ceiling and leaves a human, who is not the ceiling, the rest.
-{ t:1140, nm:"TERRAVORE",hp:1200000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore", trv:true },
+{ t:1140, nm:"TERRAVORE",hp:1200000, spd:3.4, dmg:64, r:4.0, xp:900, c:[.94,.34,.12], h:13.5, w:6.6, ai:"all" , body:"terravore", flier:undefined, mat:undefined, thn:undefined, sks:undefined, trv:true },
 ];
 
 // Bosses used to walk at you and nothing else, which left the sudden-death
@@ -11792,6 +11796,7 @@ function spawnEnemy(type, atX, atZ){
               && R() < WARD_CHANCE;
   const em = elite ? ELITE : NORMAL;
   const wm = warden ? WARD_SZ : 1;
+  const eid = ++EID;
   const made = { x, z, y:groundY(x,z), def, type, elite, warden,
     ward:null, wards:warden ? [] : null,    // who is holding me up / who I hold up
     rad: def.r*em.sz*wm, sz: em.sz*wm, xp: def.xp*em.xp*(warden?4:1), spdMul: em.spd,
@@ -11817,7 +11822,32 @@ function spawnEnemy(type, atX, atZ){
     hd: P ? Math.atan2(P.x - x, P.z - z) : 0,
     dig:0, dug:0,                               // THE DIG-IN (L18): going down, and whether it ever has
     stoop:0, stooped:0,                         // THE STOOP (L19): climbing out, and whether it ever has
-    dead:false, boss:false, eid:++EID };
+    dead:false, boss:false, eid,
+    // ONE SHAPE (L41). Everything below used to be added to the body by the
+    // first system that needed it - the rout, the dive, the headlong, the
+    // spit tell, the draw pass, the death - in whatever order the run
+    // happened to reach them, so the field carried ten hidden classes at
+    // once and every property site in walk() and updateEnemies() went
+    // megamorphic: a double loaded or stored through the generic path is a
+    // boxed number, sixteen bytes a field a body a step. Every key is here
+    // from birth, in one order, and nothing reads any different: NaN is what
+    // an absent number already was to every comparison, `|| 0` and sum in
+    // this file (and it keeps the field a double); the keys a read tests
+    // with `=== undefined` (ft, fgap, rest, the RNG-timed _s, the boss's
+    // skyT) and the ones this kind of body never writes stay undefined; the
+    // four hash rolls are the same pure function of the eid they were
+    // computed with on first use. evidence/l41-shapes has the audit.
+    alarm:NaN, alarmT:NaN, rout:NaN, routS:NaN, routT:NaN, taunt:NaN, ramT:NaN, crowd:NaN,
+    dv:NaN, dvW:NaN, dvS:NaN, dvT:NaN, dvX:undefined, dvZ:undefined,
+    hdl:null, hdlW:NaN, hdlT:NaN, hdlR:NaN, hdlHit:NaN, hdlSlide:NaN,
+    spitTell:NaN, stoopY:NaN, snap:NaN, stq:NaN, dvE:NaN, tauntE:NaN, hdlE:NaN,
+    bt:null, lf:NaN, lr:NaN, pH:NaN, pt2:NaN, rc2:NaN, py:NaN, fgap:undefined,
+    ft:undefined, fd:undefined, fhd:undefined, fx:undefined, fz:undefined,
+    denRef:undefined, calfOf:null, calves:undefined, ab:undefined, rest:undefined,
+    born:undefined, ph:undefined, final:undefined, skyUp:undefined, skyH:undefined, skyT:undefined,
+    _s:undefined,
+    _rr:((Math.imul(eid|0, 2654435761) >>> 0) / 4294967296), _dr:((Math.imul(eid|0, 2246822519) >>> 0) / 4294967296),
+    _sr:((Math.imul(eid|0, 3266489917) >>> 0) / 4294967296), _hr:((Math.imul(eid|0,  668265263) >>> 0) / 4294967296) };
   enemies.push(made); hordeFlow.spawned++;
   // L11: counted the moment it is MADE, not next frame. wardPass refreshes
   // wardensNow once a frame and enemies.length is live, so the cap's numerator
@@ -11922,7 +11952,21 @@ function spawnBoss(b){
     // OUT OF THE GROUND over BOSS_RISE seconds - buried at the start, shoving
     // the ground up around it, and it cannot act or be hit until it is out.
     rise: BOSS_RISE, riseMax: BOSS_RISE, born: T,
-    ph:0, final });
+    ph:0, final,
+    // ONE SHAPE (L41): the same keys as spawnEnemy's body, from birth. A boss
+    // never writes most of them, so those stay undefined; hd stays the
+    // sentinel walk() reads (there is no eid, as before).
+    warden:false, ward:null, wards:null, burrow:false, hd:undefined, dig:undefined, dug:undefined,
+    stoop:undefined, stooped:undefined, eid:undefined,
+    alarm:undefined, alarmT:undefined, rout:NaN, routS:NaN, routT:NaN, taunt:NaN, ramT:undefined, crowd:undefined,
+    dv:undefined, dvW:undefined, dvS:undefined, dvT:undefined, dvX:undefined, dvZ:undefined,
+    hdl:undefined, hdlW:undefined, hdlT:undefined, hdlR:undefined, hdlHit:undefined, hdlSlide:undefined,
+    spitTell:undefined, stoopY:undefined, snap:NaN, stq:NaN, dvE:NaN, tauntE:NaN, hdlE:NaN,
+    bt:null, lf:NaN, lr:NaN, pH:NaN, pt2:NaN, rc2:NaN, py:NaN, fgap:undefined,
+    ft:undefined, fd:undefined, fhd:undefined, fx:undefined, fz:undefined,
+    denRef:undefined, calfOf:undefined, calves:undefined, ab:undefined, rest:undefined,
+    skyUp:undefined, skyH:undefined, skyT:undefined,
+    _s:undefined, _rr:0, _dr:0, _sr:0, _hr:0 });
   // L43: THE FLIER ARRIVES IN THE AIR. Set on the body at birth rather than
   // left to the first tick: the arrival IS the first window, and a gate that
   // reads it on the frame it appears must see what a player sees.
