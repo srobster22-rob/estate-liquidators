@@ -10015,9 +10015,10 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
   {
     // L39 found the audio graph; the same trial's JS-heap CHURN - what the
     // step allocates and the collector takes back - was 12.2 GB over one
-    // ten-minute bench run, 350 KB a frame: nearestCells handing a fresh
-    // four-element array to every groundY() (1.9 GB), `[e.x, e.z] =
-    // confine()` making a pair per body per step, the autopilot measuring
+    // ten-minute bench run, 350 KB a frame, and the sites the source could
+    // answer for: nearestCells handing a fresh four-element array to every
+    // groundY() of every body and gem, `[e.x, e.z] = confine()` making a
+    // pair per body per step, the autopilot measuring
     // every gem, hazard and event again for each of its twenty headings, a
     // closure built per body for the separation pass. Each is now written
     // onto scratch that is reused, arithmetic unchanged - the pinned trials
