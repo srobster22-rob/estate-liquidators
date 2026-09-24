@@ -1,0 +1,30 @@
+
+kite t=720..740  ledger over the window: {"contact":105.60000000000002,"spit":77.90000000000009,"hazard":0,"total":183.5}
+  kind              alive  dist p10/p50/p90      <=8m  <=20m  at contact  died  death p50/p90
+  skitter            62.4  9.6/22.3/33.6           7%    41%        0.05   216  6.4/21.9
+  spitter            29.2  14.3/27.5/50.1          0%    27%           0     1  25.9/25.9
+  brute              16.2  14.2/33.7/54.3          4%    20%           0     5  7.1/17.2
+  runner             12.5  9.9/22.2/33.6           4%    43%        0.12    40  5.9/18.6
+  collector             1  55.3/90.2/114.2         0%     0%           0     0  null/null
+
+stand t=720..740  ledger over the window: {"contact":0,"spit":293.60000000000036,"hazard":0,"total":293.60000000000036}
+  kind              alive  dist p10/p50/p90      <=8m  <=20m  at contact  died  death p50/p90
+  skitter            62.1  7.7/19.6/31.2          11%    52%           0   211  4.3/7.7
+  spitter            28.3  14.1/18.8/34.2          0%    61%           0     1  23/23
+  brute              16.1  9.2/25.2/46             8%    38%        0.02    10  4/6.5
+  runner             12.2  9.4/19.6/31.3           4%    51%        0.01    43  4/8.1
+  collector             1  42.3/72.6/100           0%     0%           0     0  null/null
+
+kite t=1020..1040  ledger over the window: {"contact":268.2999999999997,"spit":134.19999999999982,"hazard":51.5,"total":454}
+  kind              alive  dist p10/p50/p90      <=8m  <=20m  at contact  died  death p50/p90
+  skitter            88.3  9.4/22.8/35.4           8%    41%        0.34   292  7.3/21.6
+  spitter            76.3  10.3/18.6/33.6          4%    57%        0.01    18  19.9/26.8
+  brute              55.1  9/21.5/38.7             8%    45%        0.21    42  9/18.1
+  runner             18.3  8.6/21.5/36.7           9%    45%        0.31    54  4.1/15.4
+
+stand t=1020..1040  ledger over the window: {"contact":54.19999999999982,"spit":492.89999999999964,"hazard":0,"total":547}
+  kind              alive  dist p10/p50/p90      <=8m  <=20m  at contact  died  death p50/p90
+  skitter            92.3  8/20.4/32.5            10%    49%           0   292  4.6/8.3
+  spitter            71.4  11.8/15.9/29.7          0%    69%           0     5  11.6/22.1
+  brute              62.4  7.7/20.2/36.3          11%    50%        1.32    42  2.9/5.1
+  runner               21  9.4/19.7/31.3           4%    52%        0.05    60  4.3/9.1
