@@ -1582,8 +1582,10 @@ for (const m of run) {
   const caught = nFail > 0;
   const byOwner = failedIn.has(m.must);
   const tag = !caught ? "SURVIVED" : byOwner ? "CAUGHT  " : "elsewhere";
+  // the child's own count travels with the row: 846 checks in a full run, 842
+  // in quick mode, so a row says by itself which instrument judged it
   const row = `${tag.padEnd(9)} ${m.id.padEnd(22)} expected ${m.must.padEnd(4)} ` +
-              `${caught ? `${nFail} assertion(s), first in ${first}` +
+              `${caught ? `${nFail} of ${+verdict[1] + nFail} assertion(s), first in ${first}` +
                           (byOwner ? (first === m.must ? "" : ` and ${m.must} also caught it`)
                                    : ` - ${m.must} did NOT`)
                         : "the suite passed a broken game"}` + (QUICK ? " [quick: bezel gates skipped]" : "");
