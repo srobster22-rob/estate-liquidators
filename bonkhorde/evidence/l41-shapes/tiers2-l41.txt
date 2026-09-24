@@ -1,0 +1,29 @@
+2026-09-24T13:43:31.315Z warm-up
+2026-09-24T13:43:36.506Z window start
+2026-09-24T13:43:56.526Z window end
+m41/work/bonkhorde: 1143 paced steps in 20.0 s (57/s; sim advanced 19.1 s = 1146 steps, so the page's own loop ALSO STEPPED): 245.3 MB sampled = 219.7 KB a step
+tier residency over the window (share of 250 ms samples):
+  step           Baseline 63%, Maglev 37%                       allocates    1.2 KB a step   raw 16385 25
+  updateEnemies  Maglev 74%, TF 21%, Baseline 5%                allocates   40.4 KB a step   raw 25 16897 16385 537 41
+  walk           Maglev 68%, TF 27%, Baseline 5%                allocates   49.3 KB a step   raw 25 16385 41
+  groundY        TF 100%                                        allocates   26.5 KB a step   raw 41
+  botVector      TF 49%, Maglev 46%, Baseline 5%                allocates   11.3 KB a step   raw 25 16385 16897 4210689 41
+  near           TF 96%, Maglev 4%                              allocates   13.8 KB a step   raw 41 25
+  wardPass       TF 56%, Maglev 42%, Baseline 1%                allocates    8.8 KB a step   raw 25 16897 41
+  updateGems     TF 63%, Maglev 37%                             allocates    1.9 KB a step   raw 25 41
+  hitNear        TF 54%, Maglev 45%, Baseline 1%                allocates    2.0 KB a step   raw 25 41 16385
+  nearestCells   TF 100%                                        allocates    0.0 KB a step   raw 41
+  confineIn      Maglev 100%                                    allocates    0.0 KB a step   raw 25
+  sepAcc         Maglev 88%, TF 12%                             allocates    0.0 KB a step   raw 25 41
+  RELIEF         Maglev 100%                                    allocates    0.0 KB a step   raw 25
+  BASE_Y         Maglev 100%                                    allocates    0.0 KB a step   raw 25
+  waterDepth     TF 100%                                        allocates    5.5 KB a step   raw 41
+  by function (top 8):
+       49.3 KB/step  walk
+       40.4 KB/step  updateEnemies
+       26.5 KB/step  groundY
+       20.9 KB/step  hypot
+       13.8 KB/step  near
+       11.3 KB/step  botVector
+        8.8 KB/step  wardPass
+        6.3 KB/step  next

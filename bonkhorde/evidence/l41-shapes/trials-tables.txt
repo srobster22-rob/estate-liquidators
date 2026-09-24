@@ -1,0 +1,6 @@
+### trials 13:18:18 on ea41ea1e
+--- clean (expect 585.00/37/19418)
+clean: AC state running -> running, 44100 Hz, save.sound undefined; trial 585.00/37/19418; sfx: pop 4170 asked / 1736 played, boom 3018 asked / 1006 played, gem 2976 asked / 1977 played, bonk 2240 ask
+--- crowd-pays-in-full (expect 1258.70/158/95854)
+crowd-pays-in-full: AC state running -> running, 44100 Hz, save.sound undefined; trial 1258.70/158/95854; sfx: pop 96119 asked / 9380 played, gem 42278 asked / 11513 played, boom 12607 asked / 2753 pl
+### trials done 13:19:58

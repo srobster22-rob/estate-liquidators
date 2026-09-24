@@ -1,0 +1,98 @@
+clean: trial 585.00/37/19418 in 98 s; enemies array same across start: false, across the run: true, 6 bodies there at the hook; 19545 bodies wrapped; at the end 91/91 enemies and 48/48 corpses are wrapped
+own-keys walks over a body: none
+
+key        set on  types                  first set from                                             read unset  read-unset from
+_dr           469  number                 digRoll:4157 x469                                                 469  digRoll:4156 x40
+_hr           398  number                 hdlRoll:4260 x398                                                 398  hdlRoll:4259 x40
+_rr          5422  number                 routRoll:4069 x5422                                              5422  routRoll:4068 x40
+_s          19435  number                 rndSeed:13613 x19435                                            19435  rndSeed:13613 x40
+_sr            31  number                 stoopRoll:4205 x31                                                 31  stoopRoll:4204 x31
+ab              1  object                 bossAI:12518 x1                                                 23723  hurt:10553 x40
+alarm       14220  number                 ?:10706 x14220                                                 973416  updateEnemies:13321 x40
+alarmT      14220  number                 ?:10706 x14220                                                 988420  updateEnemies:13254 x40
+amp         19545  number                 literal x19545                                                      0  
+atk         19545  number                 literal x19545                                                      0  
+bk          19545  number                 literal x19545                                                      0  
+bob         19545  number                 literal x19545                                                      0  
+born            1  number                 literal x1                                                          0  
+boss        19545  boolean                literal x19545                                                      0  
+burnCd      19545  number                 literal x19545                                                      0  
+burnN       19545  number                 literal x19545                                                      0  
+burrow      19544  boolean                literal x19544                                                     91  updateEnemies:13245 x40
+calfOf          0                                                                                         60529  hdlCan:4281 x40
+calves          1  array                  matCall:12025 x1                                                23807  hurt:10594 x40
+crowd           0                                                                                          3732  killEnemy:10710 x40
+dead        19545  boolean                literal x19545                                                      0  
+def         19545  object                 literal x19545                                                      0  
+denRef          0                                                                                       1374267  updateEnemies:13445 x40
+dig         19544  number                 literal x19544                                                    987  updateEnemies:13162 x40
+dmg         19545  number                 literal x19545                                                      0  
+dug         19544  number                 literal x19544                                                      0  
+dv           2790  number                 updateEnemies:13132 x2790                                        2790  updateEnemies:13132 x40
+dvE         18833  number                 walk:13599 x18833                                               56499  walk:13599 x40
+dvS          2790  number                 updateEnemies:13150 x2710; updateEnemies:13142 x80                 80  updateEnemies:13142 x40
+dvT            55  number                 updateEnemies:13144 x49; hurt:10673 x6                        7750982  updateEnemies:13110 x8; updateEnemies:13116 x8; updateEnemies:13395 x8
+dvW          2790  number                 updateEnemies:13150 x2710; updateEnemies:13141 x80            1309190  walk:13597 x40
+dvX            55  number                 updateEnemies:13147 x49; updateEnemies:13215 x6                     0  
+dvZ            55  number                 updateEnemies:13147 x49; updateEnemies:13215 x6                     0  
+eid         19544  number                 literal x19544                                                      0  
+elite       19545  boolean                literal x19545                                                      0  
+fd          19418  number                 fell:10768 x19418                                                   0  
+fhd         19418  number                 fell:10769 x19418                                                   0  
+final           1  boolean                literal x1                                                      23722  vigilMul:14946 x40
+flash       19545  number                 literal x19545                                                      0  
+ft          19418  number                 fell:10767 x19418                                                   0  
+fx          19418  number                 fell:10766 x19418                                                   0  
+fz          19418  number                 fell:10766 x19418                                                   0  
+gt          19545  number                 literal x19545                                                      0  
+hd          19545  number                 literal x19544; walk:13568 x1                                       1  walk:13568 x1
+hdl           199  object/null            updateEnemies:13341 x199                                      3258715  botVector:14810 x20; updateEnemies:13258 x20  | type change: object->null
+hdlE        18833  number                 walk:13607 x18833                                               37666  walk:13607 x40
+hdlHit        101  number                 updateEnemies:13263 x101                                            0  
+hdlR            2  number                 updateEnemies:13281 x2                                        1354437  updateEnemies:13339 x40
+hdlSlide       99  number                 fell:10773 x99                                                1493594  updateEnemies:13081 x15; stepCorpses:10812 x13; botVector:14811 x12
+hdlT          101  number                 updateEnemies:13263 x101                                      4872445  updateEnemies:13078 x14; updateEnemies:13274 x13; walk:13606 x13
+hdlW          199  number                 updateEnemies:13341 x199                                      4872347  updateEnemies:13078 x14; updateEnemies:13259 x13; walk:13606 x13
+hp          19545  number                 literal x19545                                                      0  
+kx          19545  number                 literal x19545                                                      0  
+kz          19545  number                 literal x19545                                                      0  
+lead        19545  number                 literal x19545                                                      0  
+lg          19545  number                 literal x19545                                                      0  
+maxhp       19545  number                 literal x19545                                                      0  
+ph              1  number                 literal x1                                                          0  
+plague      19545  number                 literal x19545                                                      0  
+plagueT     19545  number                 literal x19545                                                      0  
+pre         19545  number                 literal x19545                                                      0  
+pt          19545  number                 literal x19545                                                      0  
+rad         19545  number                 literal x19545                                                      0  
+rc          19545  number                 literal x19545                                                      0  
+rest            3  number                 updateEnemies:13357 x3                                              3  updateEnemies:13357 x3
+rise        19545  number                 literal x19545                                                      0  
+riseMax     19545  number                 literal x19545                                                      0  
+rout         5484  number                 updateEnemies:13325 x5417; hurt:10654 x46; matFall:12052 x    2532642  updateEnemies:13285 x20; updateEnemies:13286 x20
+routS        5437  number                 updateEnemies:13326 x5418; matFall:12052 x19                        0  
+routT        5437  number                 updateEnemies:13325 x5418; matFall:12052 x19                        0  
+slowT       19545  number                 literal x19545                                                      0  
+snap        18833  number                 walk:13591 x18833                                                   0  
+spdMul      19545  number                 literal x19545                                                      0  
+spitTell      231  number                 updateEnemies:13385 x231                                      1483311  walk:13583 x40
+sq          19545  number                 literal x19545                                                      0  
+stoop       19544  number                 literal x19544                                                    987  updateEnemies:13182 x40
+stoopY          6  number                 hurt:10672 x6                                                       0  
+stooped     19544  number                 literal x19544                                                      0  
+stq         18833  number                 walk:13610 x18833                                                   0  
+sz          19545  number                 literal x19545                                                      0  
+taunt        5380  number                 updateEnemies:13295 x5328; hurt:10654 x47; updateEnemies:1    1240904  walk:13603 x40
+tauntE      18833  number                 walk:13603 x18833                                               37666  walk:13603 x40
+type        19545  string                 literal x19545                                                      0  
+ward        19544  null/object            literal x19544                                                    988  wardPass:13051 x40  | type change: null->object,object->null
+warden      19544  boolean                literal x19544                                                    850  wardPass:13053 x40
+wards       19544  null/array             literal x19544                                                      0  
+wd          19545  number                 literal x19545                                                      0  
+wu          19545  number                 literal x19545                                                      0  
+wuT         19545  number                 literal x19545                                                      0  
+x           19545  number                 literal x19545                                                      0  
+xp          19545  number                 literal x19545                                                      0  
+y           19545  number                 literal x19545                                                      0  
+z           19545  number                 literal x19545                                                      0  
+ERRS 0 

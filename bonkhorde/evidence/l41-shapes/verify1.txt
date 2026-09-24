@@ -1,0 +1,38 @@
+### verify1 13:34:01 on 6585f07c
+--- clean trial (expect 585.00/37/19418)
+clean: AC state running -> running, 44100 Hz, save.sound undefined; trial 585.00/37/19418; sfx: pop 4170 asked / 1736 played, boom 3018 asked / 1006 played, gem 2976 asked / 1977 played, bonk 2240 asked / 2240 played, hop 726 asked / 726 played, dive 233 asked / 203 played, zap 202 asked / 197 played, whiff 181 asked / 181 playe
+--- crowd-pays-in-full (expect 1258.70/158/95854)
+crowd-pays-in-full: AC state running -> running, 44100 Hz, save.sound undefined; trial 1258.70/158/95854; sfx: pop 96119 asked / 9380 played, gem 42278 asked / 11513 played, boom 12607 asked / 2753 played, bonk 6796 asked / 6486 played, hop 1575 asked / 1575 played, zap 1037 asked / 985 played, whiff 495 asked / 495 played, dive
+--- maps census at t=300
+t=300.0
+  enemies     53 objects,   2 maps,   2 key signatures, key counts 105; 52x[105 keys] 1x[105 keys]
+  gems        44 objects,   3 maps,   3 key signatures, key counts 6/7; 41x[6 keys] 2x[7 keys] 1x[7 keys]
+  corpses      2 objects,   1 maps,   1 key signatures, key counts 105; 2x[105 keys]
+  pets         0 objects,   0 maps,   0 key signatures, key counts ; 
+  hazards      0 objects,   0 maps,   0 key signatures, key counts ; 
+  events       0 objects,   0 maps,   0 key signatures, key counts ; 
+  zones        7 objects,   1 maps,   1 key signatures, key counts 10; 7x[10 keys]
+  spits        5 objects,   1 maps,   1 key signatures, key counts 7; 5x[7 keys]
+  bolts        0 objects,   0 maps,   0 key signatures, key counts ; 
+  mortars      0 objects,   0 maps,   0 key signatures, key counts ; 
+  rings       21 objects,   1 maps,   1 key signatures, key counts 7; 21x[7 keys]
+  swings       0 objects,   0 maps,   0 key signatures, key counts ; 
+  arcs         0 objects,   0 maps,   0 key signatures, key counts ; 
+  nums         3 objects,   1 maps,   1 key signatures, key counts 7; 3x[7 keys]
+  marks       51 objects,   3 maps,   3 key signatures, key counts 11/12/13; 26x[12 keys] 21x[11 keys] 4x[13 keys]
+enemy kinds: spitter:15 brute:4 shambler:8 skitter:17 runner:8 boss:1
+enemy keys not on every body (key:count of 53): 
+--- step allocation at t=300 (L40 build: 229 KB/step; walk 31 MB, updateEnemies 25, groundY 15)
+clean @m41/work/bonkhorde: settled at t=300 (lvl 27, 1159 kills, 53 bodies, 44 gems, 0 hazards, 0 events) in 5 s; 600 steps to t=310.5 in 0.9 s: 117.8 MB sampled = 201.1 KB/step
+  touched: nearestCells 0.0 KB, confine 48.0 KB, confineIn 64.0 KB, botVector 15607.1 KB, updateEnemies 23800.7 KB, updateGems 1328.5 KB, groundY 15237.8 KB, walk 18006.6 KB, hypot 10903.5 KB, next 4530.8 KB
+  by function:
+      23800.7 KB   19.7%  updateEnemies
+      18006.6 KB   14.9%  walk
+      15607.1 KB   12.9%  botVector
+      15237.8 KB   12.6%  groundY
+      10903.5 KB    9.0%  hypot
+       4530.8 KB    3.8%  next
+       3809.4 KB    3.2%  min
+       3329.3 KB    2.8%  updateProjectiles
+       2814.0 KB    2.3%  (anon)
+### verify1 done 13:35:41

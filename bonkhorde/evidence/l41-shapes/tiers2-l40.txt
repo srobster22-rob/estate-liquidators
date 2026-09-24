@@ -1,0 +1,29 @@
+2026-09-24T13:42:58.157Z warm-up
+2026-09-24T13:43:03.270Z window start
+2026-09-24T13:43:23.297Z window end
+/home/user/estate-liquidators/bonkhorde: 1154 paced steps in 20.0 s (58/s; sim advanced 19.2 s = 1152 steps, so the page's own loop did not step): 251.2 MB sampled = 222.9 KB a step
+tier residency over the window (share of 250 ms samples):
+  step           Maglev 87%, Baseline 13%                       allocates    0.8 KB a step   raw 16385 25
+  updateEnemies  Maglev 51%, TF 42%, Baseline 5%, none 1%       allocates   43.1 KB a step   raw 25 16385 1 537 41
+  walk           TF 74%, Maglev 24%, Baseline 1%                allocates   48.5 KB a step   raw 25 41 16385
+  groundY        TF 100%                                        allocates   31.9 KB a step   raw 41
+  botVector      TF 59%, Maglev 40%, Baseline 1%                allocates   10.7 KB a step   raw 25 16385 41
+  near           TF 100%                                        allocates   12.2 KB a step   raw 41
+  wardPass       TF 100%                                        allocates   12.7 KB a step   raw 41
+  updateGems     TF 65%, Maglev 35%                             allocates    2.4 KB a step   raw 25 281 41
+  hitNear        TF 100%                                        allocates    2.4 KB a step   raw 41
+  nearestCells   TF 100%                                        allocates    0.0 KB a step   raw 41
+  confineIn      TF 100%                                        allocates    0.0 KB a step   raw 41
+  sepAcc         TF 100%                                        allocates    0.4 KB a step   raw 41
+  RELIEF         Maglev 100%                                    allocates    0.0 KB a step   raw 25
+  BASE_Y         Maglev 100%                                    allocates    0.0 KB a step   raw 25
+  waterDepth     TF 100%                                        allocates    3.4 KB a step   raw 41
+  by function (top 8):
+       48.5 KB/step  walk
+       43.1 KB/step  updateEnemies
+       31.9 KB/step  groundY
+       22.7 KB/step  hypot
+       12.7 KB/step  wardPass
+       12.2 KB/step  near
+       10.7 KB/step  botVector
+        4.5 KB/step  push

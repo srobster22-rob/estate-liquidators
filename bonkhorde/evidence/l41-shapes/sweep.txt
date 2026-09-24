@@ -1,0 +1,414 @@
+# Every property written on a body, and every read that would notice a default
+
+Five readers over five line ranges of index.html (the L40 build), union; 507 writes over 99 keys. The spawn literal already held 49 of them.
+
+## Keys a body grew after birth (write sites: line, body kind, the statement)
+
+### _dr   [enemy] number
+    4157  enemy  e._dr === undefined ? (e._dr = ((Math.imul(e.eid|0, 2246822519) >>> 0) / 4294967296)) : e._dr
+
+### _hr   [enemy] number
+    4260  enemy  e._hr === undefined ? (e._hr = ((Math.imul(e.eid|0, 668265263) >>> 0) / 4294967296)) : e._hr
+
+### _rr   [enemy] number
+    4069  enemy  e._rr === undefined ? (e._rr = ((Math.imul(e.eid|0, 2654435761) >>> 0) / 4294967296)) : e._rr
+
+### _s   [enemy] number
+    13613  enemy  function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
+
+### _sr   [enemy] number
+    4205  enemy  e._sr === undefined ? (e._sr = ((Math.imul(e.eid|0, 3266489917) >>> 0) / 4294967296)) : e._sr
+
+### ab   [boss/qa] object
+    12518  boss   if(!e.ab) e.ab = { phase:"move", t:2.6, kind:null, dir:0, n:0 };
+    20591  qa     b.ab = { phase, kind, dir:b.ab ? b.ab.dir : 0, n:b.ab ? b.ab.n : 1, t: ... };
+
+### alarm   [enemy/qa] number
+    10706  enemy  o.alarm = (o.alarm || 0) + 1;
+    13254  enemy  e.alarm = 0;
+    13323  enemy  e.alarm = 0; e.alarmT = 0;
+    24146  qa     e = put("brute", 20, 0); fr(2); e.alarm = ROUT_TRIG + 2; e.alarmT = ROUT_FADE; fr(3);
+    24496  qa     e.alarm = ROUT_TRIG; e.alarmT = ROUT_FADE; return e.eid;
+    24570  qa     b.alarm = ROUT_TRIG; b.alarmT = ROUT_FADE;
+    24589  qa     c.alarm = ROUT_TRIG; c.alarmT = ROUT_FADE;
+    24600  qa     early.alarm = ROUT_TRIG + 3; early.alarmT = ROUT_FADE;
+
+### alarmT   [enemy/qa] number
+    10706  enemy  o.alarmT = ROUT_FADE;
+    13254  enemy  if(e.alarmT > 0){ e.alarmT -= dt; if(e.alarmT <= 0){ e.alarm = 0; e.alarmT = 0; } }
+    13323  enemy  e.alarmT = 0;
+    24146  qa     e.alarmT = ROUT_FADE;
+    24496  qa     e.alarmT = ROUT_FADE;
+    24570  qa     b.alarmT = ROUT_FADE;
+    24589  qa     c.alarmT = ROUT_FADE;
+    24600  qa     early.alarmT = ROUT_FADE;
+
+### bt   [enemy/corpse] object
+    18586  enemy  e.bt = bt;   // bt = e.boss ? bossBeat(e) : BT0 ; BT0 = { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 }
+    18956  corpse e.bt = BT0;
+
+### calfOf   [calf] object
+    12035  calf   c.calfOf = e; e.calves.push(c); matStat.calves++;
+
+### calves   [boss/qa] array
+    12025  boss   if(!e.calves) e.calves = [];
+    12037  boss   e.calves = e.calves.filter(c => c && !c.dead);
+    22874  qa     bx.calves = [cf()];  (bx is a plain stand-in { boss:true, x:0, z:0 } fed to matShielded, not a spawned body)
+    22879  qa     for(const [msg, o] of nots){ bx.calves = [cf(o)]; if(matShielded(bx)) bad.push(msg); }  (stand-in)
+    22880  qa     bx.calves = []; if(matShielded(bx)) bad.push(...)  (stand-in)
+
+### crowd   [crowd/qa] number
+    15309  crowd  e.crowd = 1;
+    20895  qa     const e = spawnEnemy("shambler", 20, 0); e.crowd = 1; if(!paid) e.xp = 0;
+
+### denRef   [den/qa] object/null
+    12822  den    e.denRef = m; m.alive++; m.pack.push(e);
+    12876  den    for(const e of m.pack) if(!e.dead){ e.denRef = null; e.dead = true; }
+    24135  qa     const den = put("brute", -20, 0); den.denRef = { den:true };
+    24143  qa     den.denRef = null;
+
+### dv   [enemy] number
+    13132  enemy  e.dv = (e.dv || 0) - dt;
+    13144  enemy  e.dv = DIVE_REST;
+    13213  enemy  e.dv = DIVE_REST;
+    13486  enemy  e.dv = DIVE_REST;
+
+### dvE   [enemy] number
+    13599  enemy  e.dvE = (e.dvE || 0) + (dv - (e.dvE || 0)) * Math.min(1, dt * (dv > (e.dvE || 0) ? 18 : 9));
+
+### dvS   [enemy] number
+    10673  enemy  e.dvS = 0;
+    13142  enemy  if(e.dvW > 0 && !e.dvS){ e.dvS = 1; SFX.dive(); }
+    13144  enemy  e.dvS = 0;
+    13150  enemy  e.dvS = 0;
+    13213  enemy  e.dvS = 0;
+
+### dvT   [enemy/qa] number
+    10673  enemy  e.dvT = 0;
+    13134  enemy  e.dvT -= dt;
+    13139  enemy  if(e.dvT <= 0){ e.dvT = 0; e.lg = 1; whiff(d); }
+    13144  enemy  e.dvT = DIVE_TIME;
+    13213  enemy  e.dvT = DIVE_TIME;
+    13486  enemy  if(reach && P.iframe <= 0){ playerHurt(e.dmg * DIVE_DMG, e.x, e.z); e.dvT = 0; e.dv = DIVE_REST; e.lg = 1; }
+    22789  qa     e.dvT = 0;
+    24206  qa     e.dvT = 0;
+
+### dvW   [enemy/qa] number
+    10673  enemy  e.dvW = 0;
+    13141  enemy  e.dvW = (e.dvW || 0) + dt;
+    13144  enemy  e.dvW = 0; e.dvS = 0; e.dvT = DIVE_TIME; e.dv = DIVE_REST;
+    13150  enemy  } else { e.dvW = 0; e.dvS = 0; }
+    13213  enemy  e.dvW = 0; e.dvS = 0; e.dvT = DIVE_TIME; e.dv = DIVE_REST;
+    24206  qa     e.dvW = 0;
+
+### dvX   [enemy] number
+    13147  enemy  e.dvX = P.x + P.vx*lead; e.dvZ = P.z + P.vz*lead;
+    13215  enemy  e.dvX = P.x + P.vx*lead; e.dvZ = P.z + P.vz*lead;
+
+### dvZ   [enemy] number
+    13147  enemy  e.dvZ = P.z + P.vz*lead;
+    13215  enemy  e.dvZ = P.z + P.vz*lead;
+
+### fd   [corpse] number
+    10768  corpse e.fd = e.boss ? FALL_DUR.boss : e.elite ? FALL_DUR.elite : FALL_DUR.trash;
+
+### fgap   [corpse] number
+    18988  corpse e.fgap = D.flier && lo < 1e9 ? Math.max(0, lo - gy) : 0;
+
+### fhd   [corpse] number
+    10769  corpse e.fhd = e.hd === undefined ? Math.atan2(P.x-e.x, P.z-e.z) : e.hd;
+
+### ft   [corpse] number
+    10767  corpse e.ft = 0;
+    10804  corpse e.ft += dt;
+    10820  corpse e.ft = Math.min(e.ft, e.fd * .30);
+
+### fx   [corpse] number
+    10766  corpse e.fx = fx/fl;
+    10773  corpse e.fx = e.hdl.dx;
+
+### fz   [corpse] number
+    10766  corpse e.fz = fz/fl;
+    10773  corpse e.fz = e.hdl.dz;
+
+### hdl   [corpse/enemy] null/object
+    10822  corpse e.hdl = null;
+    13258  enemy  if(e.hdl && !HDL_ON){ e.hdl = null; e.hdlW = 0; e.hdlT = 0; }
+    13281  enemy  e.hdl = null;
+    13341  enemy  e.hdl = hdlLane(e.x, e.z, P.x, P.z); e.hdlW = HDL_TELL;   // hdlLane returns {x,z,dx,dz,len}
+
+### hdlE   [enemy] number
+    13607  enemy  e.hdlE = (e.hdlE || 0) + (hdlU - (e.hdlE || 0)) * Math.min(1, dt * 14);
+
+### hdlHit   [enemy] number
+    4293  enemy  e.hdlHit = 1; hdlStat.hits++; if(carcass) hdlStat.carcass++;
+    13263  enemy  e.hdlHit = 0;
+
+### hdlR   [enemy] number
+    13281  enemy  e.hdlR = HDL_REST;
+    13339  enemy  if(e.hdlR > 0) e.hdlR -= dt;
+
+### hdlSlide   [corpse] number
+    10773  corpse if(e.hdlT > 0 && e.hdl){ e.hdlSlide = e.hdlT; e.fx = e.hdl.dx; e.fz = e.hdl.dz; }
+    10818  corpse e.hdlSlide -= s;
+    10822  corpse if(e.hdlSlide <= 0){ e.hdlSlide = 0; e.hdl = null; }
+
+### hdlT   [enemy] number
+    13258  enemy  e.hdlT = 0;
+    13263  enemy  e.hdlT = e.hdl.len;
+    13276  enemy  e.hdlT -= s;
+    13281  enemy  if(e.hdlT <= 0){ e.hdlT = 0; e.hdl = null; e.hdlR = HDL_REST; e.lg = 1; }
+
+### hdlW   [enemy] number
+    13258  enemy  e.hdlW = 0;
+    13261  enemy  e.hdlW -= dt; e.kx = 0; e.kz = 0; e.wu = 0; e.wd = 0; e.lead = 0;
+    13263  enemy  e.hdlW = 0; e.hdlT = e.hdl.len; e.hdlHit = 0; hdlStat.runs++;
+    13341  enemy  e.hdlW = HDL_TELL;
+
+### lf   [enemy/corpse] number
+    18628  enemy  e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + snap*.10 + bt.lf;
+    18954  corpse e.lf = clamp(kf*.04, -.40, .40) + e.amp*.09 + (e.snap || 0)*.10 + tf*dp.lean;
+
+### lr   [enemy/corpse] number
+    18629  enemy  e.lr = clamp(kr*.04, -.40, .40) + e.bk;
+    18955  corpse e.lr = clamp(kr*.04, -.40, .40) + e.bk + tr*dp.lean;
+
+### pH   [enemy] number
+    18626  enemy  e.pH = H;
+
+### ph   [boss/qa] number
+    12524  boss   if(want > (e.ph || 0)){ e.ph = want; bossBreak(e, A); }
+    23610  qa     b.ph = ph;
+
+### pt2   [enemy] number
+    18627  enemy  e.pt2 = bt.pt || 0;
+
+### py   [enemy/corpse] number
+    18687  enemy  e.py = e.y + hop - rise*H*1.15;
+    18980  corpse e.py = e.y + hop - dp.sink*H*1.15 - dp.drop*(e.fgap || 0);
+
+### ramT   [enemy/qa] number
+    11332  enemy  e.ramT = T + RAM_CD;
+    23743  qa     rc.ramT = 0;
+
+### rc2   [enemy] number
+    18627  enemy  e.rc2 = bt.rc || 0;
+
+### rest   [enemy] number
+    13357  enemy  e.rest = (e.rest === undefined) ? 3.0 : e.rest - dt;
+    13358  enemy  if(e.rest <= -1.3) e.rest = 3.0;
+
+### rout   [enemy/qa] number
+    10654  enemy  e.rout = 0;
+    10674  enemy  e.rout = 0;
+    12052  enemy  o.routT = o.rout = MAT_BREAK_T;
+    12497  enemy  o.routT = o.rout = TRV_END + 2;
+    13285  enemy  if(e.rout > 0 && (e.rout -= dt) <= 0){ e.rout = 0; e.taunt = 0; }
+    13325  enemy  e.routT = e.rout = ROUT_TIME[0] + (ROUT_TIME[1]-ROUT_TIME[0]) * j;
+    22788  qa     e.rout = 0;
+    23414  qa     body.rout = 0;
+    24134  qa     const rt = put("brute", 0, 20); rt.rout = 5; rt.routT = 5; rt.routS = 1;
+    24206  qa     e.rout = 0;
+    24491  qa     e.rout = 0;
+
+### routS   [enemy/qa] number
+    12052  enemy  o.routS = (o.eid & 1) ? 1 : -1;
+    12497  enemy  o.routS = (o.eid & 1) ? 1 : -1;
+    13326  enemy  e.routS = (e.eid & 1) ? 1 : -1;
+    24134  qa     rt.routS = 1;
+
+### routT   [enemy/qa] number
+    12052  enemy  o.routT = o.rout = MAT_BREAK_T; o.routS = (o.eid & 1) ? 1 : -1;
+    12497  enemy  o.routT = o.rout = TRV_END + 2; o.routS = (o.eid & 1) ? 1 : -1;
+    13325  enemy  e.routT = e.rout = ROUT_TIME[0] + (ROUT_TIME[1]-ROUT_TIME[0]) * j;
+    24134  qa     rt.routT = 5;
+
+### seenR   [qa] number
+    20858  qa     for(const e of enemies) if(e.crowd && !e.seenR){ e.seenR = 1; if(e.def.ranged) ranged++; }
+
+### skyH   [boss/qa] number
+    11931  boss   be.skyH = SKY_H;
+    12315  boss   if(!SKY_ON || !e.def.sks){ e.skyH = 0; e.skyUp = false; return; }
+    12316  boss   e.skyH = SKY_H;
+    12317  boss   e.skyH = SKY_H;
+    12329  boss   e.skyH = (e.skyH || 0) + (want - (e.skyH || 0)) * Math.min(1, dt*2.6);
+    23355  qa     b.skyH = SKY_H;
+    23389  qa     b.skyH = up ? SKY_H : 0;
+    23411  qa     b.skyH = 0;
+
+### skyT   [boss/qa] number
+    11931  boss   be.skyT = SKY_AIR;
+    12316  boss   e.skyT = SKY_AIR;
+    12317  boss   e.skyT = SKY_AIR;
+    12318  boss   if((e.skyT -= dt) <= 0){
+    12319  boss   e.skyT = e.skyUp ? SKY_AIR : SKY_LAND;
+    23355  qa     b.skyT = SKY_AIR;
+    23389  qa     b.skyT = 99;
+    23393  qa     b.skyT = SKY_LAND*.25; b.skyUp = !up;
+
+### skyUp   [boss/qa] boolean
+    11931  boss   be.skyUp = true; be.skyH = SKY_H; be.skyT = SKY_AIR;
+    12315  boss   e.skyUp = false;
+    12316  boss   if(e.rise > 0){ e.skyUp = true; e.skyH = SKY_H; e.skyT = SKY_AIR; return; }
+    12317  boss   if(e.skyT === undefined){ e.skyUp = true; e.skyT = SKY_AIR; e.skyH = SKY_H; }
+    12319  boss   e.skyUp = !e.skyUp; e.skyT = e.skyUp ? SKY_AIR : SKY_LAND;
+    23355  qa     b.skyUp = true;
+    23389  qa     b.skyUp = up; b.skyH = up ? SKY_H : 0; b.skyT = 99;
+    23393  qa     b.skyUp = !up;
+    23411  qa     b.skyUp = false;
+
+### snap   [enemy] number
+    13591  enemy  e.snap = tb < .06 ? tb / .06 : Math.max(0, 1 - (tb - .06) / .25);
+
+### spitTell   [enemy] number
+    13385  enemy  e.spitTell = (e.atk < SPIT_TELL && d < e.def.ranged.r + 3) ? 1 - Math.max(0, e.atk) / SPIT_TELL : 0;
+
+### stoopY   [enemy] number
+    10672  enemy  e.stoopY = 0;
+
+### stq   [enemy] number
+    13610  enemy  e.stq = 1 - e.pre*.11 + e.snap*.07 + .10*e.tauntE - .12*e.hdlE;
+
+### taunt   [enemy] number
+    10654  enemy  e.taunt = 0;
+    10674  enemy  e.taunt = 0;
+    13285  enemy  e.taunt = 0;
+    13295  enemy  e.taunt = e.rout > (e.routT || 0) * .66 ? 1 : 0;
+    13363  enemy  e.taunt = e.rest <= 0 ? 1 : 0;
+
+### tauntE   [enemy] number
+    13603  enemy  e.tauntE = (e.tauntE || 0) + ((e.taunt || 0) - (e.tauntE || 0)) * Math.min(1, dt * 12);
+
+## Reads that distinguish an absent key
+
+    _rr      4068  undefined-check  enemy  function routRoll(e){ return e._rr === undefined ? (e._rr = ...) : e._rr; }
+    _dr      4156  undefined-check  enemy  function digRoll(e){ return e._dr === undefined ? (e._dr = ...) : e._dr; }
+    _sr      4204  undefined-check  enemy  function stoopRoll(e){ return e._sr === undefined ? (e._sr = ...) : e._sr; }
+    _hr      4259  undefined-check  enemy  function hdlRoll(e){ return e._hr === undefined ? (e._hr = ...) : e._hr; }
+    ft       4590  undefined-check  corpse if(e.dead && e.ft !== undefined){ splay = deathPose(e.ft / e.fd).drop; ...
+    ft       4705  undefined-check  corpse const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;
+    ft       4801  undefined-check  corpse const dsp = (e.dead && e.ft !== undefined) ? deathPose(e.ft / e.fd).drop : 0;
+    hd       18605  undefined-check  enemy  const face = e.hd === undefined ? Math.atan2(P.x-e.x, P.z-e.z) : e.hd;
+    fgap     18982  undefined-check  corpse const take = wCapWant && !wCapOut, first = e.fgap === undefined;
+    born     10722  undefined-check  boss   if(!e.final && e.born !== undefined){ lastBossRate = e.maxhp / Math.max(1, T - e.born - BOSS_RISE); ... }
+    hd       10769  undefined-check  corpse e.fhd = e.hd === undefined ? Math.atan2(P.x-e.x, P.z-e.z) : e.hd;
+    skyT     12317  undefined-check  boss   if(e.skyT === undefined){ e.skyUp = true; e.skyT = SKY_AIR; e.skyH = SKY_H; }
+    rest     13357  undefined-check  enemy  e.rest = (e.rest === undefined) ? 3.0 : e.rest - dt;
+    denRef   13444  null-check       enemy  if(e.dead && e.denRef === null && !e.boss){ enemies.splice(i,1); continue; }
+    dvT      13476  other            enemy  const reach = d < e.rad + .75 && !(aloft() && e.dvT <= 0) && !sksAloft(SKY_ON, e);
+    hd       13568  undefined-check  enemy  if(e.hd === undefined) e.hd = Math.atan2(px, pz);
+    _s       13613  undefined-check  enemy  function rndSeed(e){ if(e._s===undefined) e._s = rnd(.88,1.12); return e._s; }
+    hd       21104  undefined-check  qa     hd:e.hd === undefined ? null : +e.hd.toFixed(4),
+    rest     21109  undefined-check  qa     rest:e.rest === undefined ? null : +e.rest.toFixed(3),
+    dvX      25040  undefined-check  qa     if(!(b.dvX !== undefined && b.dvZ !== undefined)) bad.push(`THE STOOP'S DIVE HAS NO AIM POINT...`)
+    dvZ      25040  undefined-check  qa     if(!(b.dvX !== undefined && b.dvZ !== undefined))
+    hdl      24012  json             qa     const x0 = e.x, z0 = e.z, L0 = JSON.stringify(L); P.x += 5;   (L = e.hdl, the lane sub-object)
+    hdl      24017  json             qa     if(e.hdl && JSON.stringify(e.hdl) !== L0) bad.push(`THE LANE FOLLOWS YOU...`)
+    hdl      24169  other            qa     if(e.hdlW > 0 || e.hdlT > 0 || e.hdl) bad.push(`THE SWITCH OFF LEAVES A LANE UP`);
+    hdl      23917  other            qa     lanes:enemies.filter(e => !e.dead && e.hdl && (e.hdlW > 0 || e.hdlT > 0))
+    hdl      24165  other            qa     if(e.hdl && hdlInLane(e.hdl, P.x + bv[0]*P.spd, P.z + bv[1]*P.spd, e.rad + .75))
+    ab       20583  other            qa     ab:b.ab ? { phase:b.ab.phase, kind:b.ab.kind, t:+b.ab.t.toFixed(3) } : null
+    ab       20591  other            qa     b.ab = { phase, kind, dir:b.ab ? b.ab.dir : 0, n:b.ab ? b.ab.n : 1, ... }
+    ab       20601  other            qa     phase:b.ab ? b.ab.phase : null, t:b.ab ? +b.ab.t.toFixed(3) : null
+    ab       23638  other            qa     if(b.ab && b.ab.kind === "inhale" && b.ab.phase === "act" && px0 === null)
+    ab       25201  other            qa     phase:b.ab?b.ab.phase:null, kind:b.ab?b.ab.kind:null
+    ward     20641  other            qa     warded:!!(e.ward && !e.ward.dead)
+    ward     20741  other            qa     warden:!!e.warden, warded:!!(e.ward && !e.ward.dead),
+    ward     22615  other            qa     if(!inR.ward)  bad.push(`WARD DOES NOT REACH...`); if(outR.ward) bad.push(`WARD OVERREACHES...`)
+    ward     22629  other            qa     const still = enemies.filter(e=>e.ward).length;
+    wards    20790  other            qa     holds:(w.wards||[]).filter(o=>o && !o.dead).map(o=>o.type)
+    calfOf   22669  other            qa     live:enemies.filter(e=>e.calfOf && !e.dead).length,
+    bt       21107  other            qa     btu:+((e.bt && e.bt.u) || 0).toFixed(3),
+    seenR    20858  other            qa     for(const e of enemies) if(e.crowd && !e.seenR){ e.seenR = 1; ... }
+    dug      23896  other            qa     coming:enemies.filter(e=>e.dug && e.rise > 0 && !e.dead).length, spent:enemies.filter(e=>e.dug && !e.dead).length
+    stooped  23904  other            qa     spent:enemies.filter(e=>e.stooped && !e.dead).length
+    final    20581  other            qa     ph:b.ph|0, phNm:b.final?BOSS_PHASES[b.ph|0].nm:"",
+
+## The readers' notes
+
+: RANGE 5001-10000 CONTAINS NO BODY PROPERTY WRITES AND NO SENSITIVE READS OF THE LISTED KINDS. Read the whole range line by line and confirmed with greps (property-write regex over every receiver; sensitive-read regex for === undefined / == null / in / hasOwnProperty / Object.keys|entries|assign / spread / JSON.stringify / for-in / typeof).
+
+What the range holds:
+- 5001-5340: tail of the ENEMY body-plan table (end of glimmerfowl, matriarch, thornback, skysplitter, terravore, generic). These take a body `e` and only READ it: e.x/e.z (5040, 5246, 5263), e.bob (5059, 5136, 5203, 5254), e.bt (5066, 5144, 5202, 5253), e.dead/e.ft/e.fd (5261). No writes.
+- 5341-5751: MTYPE/STAGEPAL/monPal/EVO_AT/LINES tables, CHARS loop (writes c.type/c.st/c.move/c.line/c.nm at 5604-5605 - `c` is a CHARS roster entry, NOT a body), UNLOCKS (u.what at 5666 - UNLOCKS entry, not a body), save/load (Object.assign(save,s) 5678, JSON.stringify(save) 5681, save.motion/sound/dev === undefined at 5688/5690/5749 - all on `save`, not bodies).
+- 5752-5771: state declarations incl. `let enemies=[] ...` (5761); 9658 `let corpses = []`. Declarations only, no element writes.
+- 5786-9635: BODY = { plain, scrap, volt, stone, rot, tally, echo, surge, pyre } - the PLAYER monster body plans, each taking a drawing context D (mb/chain/blob/...), not an enemy body. No body objects touched. (At 9433/9494/9612 `const e = pts[...]` is a point array, not a body.)
+- 9636-9745: capture-hook lets, FLY_/SURGE_/RUSH_ constants, airborne(), rushMul() (reads P only).
+- 9747-9924: ANIM object, atkPose/strike/resetAnim/stepAnim - writes only ANIM.* and locals; 9894 `nearest(P.x,P.z,18)` returns a body and 9897 reads tgt.x/tgt.z (plain reads, not sensitive).
+- 9925-10000: death beat (ANIM.*), flags, kitDps (for-in over P.kit at 9988 - P is the player, not a body).
+
+Near-misses worth flagging for the from-birth-default work (not in the listed kinds, so not reported as sensitiveReads):
+1. `const bt = e.bt || BT0` at 5066 (matriarch), 5144 (thornback), 5202 (skysplitter), 5253 (terravore). Truthiness fallback: a birth default of null/undefined/0 is safe; a birth default of {} would be truthy and make bt.u/bt.act undefined -> NaN geometry. BT0 (defined at 3771) is { kind:null, u:0, act:0, sq:1, lf:0, pt:0, rc:0 } - if `bt` is defaulted at spawn, default it to BT0 (or a same-shaped object), not {}.
+2. 5261 (terravore): `const mk = e.dead ? Math.max(0, 1 - e.ft / (e.fd*.35)) : 1;` - reads ft/fd only when dead is truthy; if fd were defaulted to 0 and dead could be true before fell() sets ft/fd, this divides by zero (ft/0 -> NaN or Infinity; Math.max(0, NaN) = NaN). Default fd to a positive number or keep the dead->fell() ordering.
+3. e.bob is read as a number in every plan here (Math.sin(T*k + e.bob)); a numeric default is required (already in the spawn literal).
+
+No QA-hook / window.__g code is in this range.
+
+: RANGE 1-5000: lines 1-916 are CSS/SVG/HTML (no script); the <script> opens at 917. Everything from 917 to ~4490 is constants, GL setup, audio, world generation, terrain, palette tables and content tables (WEAPONS/PASSIVES/ENEMIES/BOSSES/CHARS/SHOP); the only body-touching code in the range is confineIn (1389-1394), the four per-body hash rolls (4068, 4156, 4204, 4259), hdlCan/hdlLand (4280-4295) and the enemy draw helpers eb/eleg/etp/eey + the first five EBODY plans (4498-5000, continues past 5000).
+
+ASSIGNMENT DETAILS
+- 1391/1393 confineIn(o,...): `o` is a body at every call site (13277, 13308, 13371, 13447 inside the enemies update loop; 10819 is the HEADLONG carcass slide in the corpse step, so that one caller hands it a corpse). Keys x,z are spawn-literal keys; value type number.
+- 4069/4157/4205/4260: lazily-cached per-body rolls keyed off e.eid, numbers in [0,1). The `=== undefined` guard is the memoisation - if _rr/_dr/_sr/_hr were given a default at spawn, the default must be `undefined` (or the roll must be computed eagerly at spawn from eid), otherwise a numeric default would be returned forever and the roll never computed. All four bodyKind enemy (routRoll/digRoll/stoopRoll are called from the walker/flier update; hdlRoll from hdlCan on a live ceratop).
+- 4293 hdlLand(e, carcass): e.hdlHit = 1. Called at 13280 with a live body (carcass=false) and at 10821 with a corpse (carcass=true), so the key is written on both enemies and corpses; recorded once as enemy. Readers at 10821/13280 use `!e.hdlHit`, so a default of 0/false is safe.
+
+SENSITIVE READ DETAILS
+- 4590 (eleg), 4705 (EBODY.terrapin), 4801 (EBODY.pterling): `e.dead && e.ft !== undefined`. Guarded by e.dead, so it only bites on a dead body (a corpse, or a dead entry still sitting in enemies before it is moved). If ft were present from birth with a numeric default, a freshly-dead body would immediately take deathPose(ft/fd) instead of skipping the splay until the fall clock is set - so the default would need to be undefined, or these three sites changed to test e.dead alone / ft >= 0. e.fd is read raw as the divisor (4591, 4705, 4734, 4801, 4982) - a 0 default would divide by zero (Infinity/NaN), so fd needs a non-zero default or must be set with ft.
+- Not counted as sensitive but worth knowing (they are fine with a 0/false/null default, would NOT be fine with an object/{} default): hdlCan 4281-4285 tests `!e.denRef && !e.calfOf` (truthiness) and `!(e.rout > 0)`, `!(e.dig > 0)`, `!(e.rise > 0)`, `!(e.stoop > 0)`, `!(e.hdlW > 0)`, `!(e.hdlT > 0)`, `!(e.hdlR > 0)`; e.def.hdl read from the def table.
+
+OTHER BODY KEYS READ (no write, no sensitive read) IN THIS RANGE - useful for the from-birth list and their implied defaults:
+- eb 4521-4532: e.pt, e.pt2, e.rc, e.rc2 (`|| 0`, default 0 fine), e.pH (`|| 1`, default 1 or 0 both fine), e.py (raw arithmetic - must be a number when drawn, no || guard), e.sq (compared `!== 1`; literal key), e.lf, e.lr (truthiness then raw arithmetic - default 0).
+- pterling 4734-4743: e.dvW (`> 0`), e.dvT (`> 0`), e.dvE (`|| 0`), e.ft/e.fd (see above). glimmerfowl 4982: e.ft/e.fd raw when e.dead.
+- stride/strideV/hopOf 4541-4558: e.gt, e.bob, e.amp, e.def, e.boss (all literal keys).
+- 4498 eb reads e.x, e.z; 4751 e.y.
+- 3711 bossPhase: `(e && e.ph) || 0`; 3712 bossDmgMul: `e && e.final` (falsy-safe). 3514 BLOOD_HEAL: e.boss, e.elite. 1659 drawMap: e.boss, e.dead over enemies. 1672: enemies.some(e => trvAnchored(...)).
+- The parameter `e` at 1219 (catch), 3012 (DOM event), 2131 (a number) and the `o` at 1225 (oscillator) are NOT bodies and were excluded. `p` in springDodge (3476) is the player. `m` at 2021 is a mark (m.boon = ... is a marks write, not a body). `L0.y` at 1894 is a lake. `c.calfOf`/`e.calves` (12035) and `o.routT/o.rout/o.routS` (12052) are outside my range and not reported.
+- No Object.assign/spread/JSON.stringify/for-in/hasOwnProperty/`in` on a body anywhere in 1-5000 (the only Object.entries/for-in hits are BEZEL_REACH_BY_FRAME at 2558 and SFX at 1348). No `[e.a, e.b] = ...` destructuring assignment in range (the 1385 hit is a comment describing the removed form). No QA-hook code in this range.
+
+: RANGE 15001-20000 read in full (step() tail, finish, menu, drawMonBody, portraits, sky, render, HUD, loop, start of QA helpers). Body-touching code is confined to: the crowd spawner (15302-15311), the HEADLONG lane draw (18453-18456), the horde pass (18573-18746), the tether/calf/sky/inhale passes (18762-18920), the corpse pass (18929-18993), hud() (19650-19654, 19783) and qaHurtTo (19994).
+
+TWO SENSITIVE READS, BOTH LOAD-BEARING:
+- 18605 `e.hd === undefined`: hd IS in the spawn literal per the brief, so if it is born as a number (e.g. 0) instead of undefined, every body that walk() has not yet given a heading draws facing yaw 0 instead of facing the player. If spawn currently sets hd:undefined this is already the same hidden-class shape; if you give it a numeric default, rewrite this read (e.g. a separate boolean, or NaN + Number.isNaN, or initialise hd at spawn to atan2 toward P).
+- 18982 `first = e.fgap === undefined` (corpses): the first-frame flier drop gap is measured only when fgap is absent. A default of 0 from birth means `first` is never true, wCap is never armed for it, and a flier corpse (SKYSPLITTER especially) dies hovering - the exact bug the comment at 18966-18979 describes. If you pre-set fgap, use a sentinel (null with `=== null`, or -1 with `< 0`) and update 18980's `(e.fgap || 0)` accordingly.
+
+TRUTHINESS READS worth a default-value sanity check (not in the sensitive-kind list, so not reported above): 18453/18455 `e.hdl && ...` and `e.hdlSlide > 0 && e.hdl` (hdl must default to null/undefined, never {}); 18625 `e.snap || 0`, `e.pre || 0`; 18635/18957 `(e.stq || 1)` (a default of 0 or 1 both behave the same; anything else changes the squash); 18686 `e.riseMax || BOSS_RISE`; 18764 `!w.wards || !w.wards.length`; 18788 `!w.calves || !w.calves.length` ([] or null both fine); 18860 `!(e.skyH > .3)`; 18911 `!e.ab || e.ab.kind !== "inhale"` (null or {} both skip); 19650-19654 `fb.ab && fb.ab.phase === "break"`, `BOSS_PHASES[fb.ph|0]`; 18980 `(e.fgap || 0)`; 18627 `bt.pt || 0`, `bt.rc || 0` (bt is the beat object, not the body).
+
+KEYS READ ON BODIES IN THIS RANGE (for the spawn-literal inventory; a read of a key not in the literal implies some other range writes it): live enemies: dead, boss, def, x, y, z, sz, hd, kx, kz, snap, pre, amp, bk, sq, stq, elite, flash, rise, riseMax, hp, maxhp, bob, warden, wards, calves, hdl, hdlW, hdlT, skyH, final, ab (ab.kind, ab.phase), ph, rad, crowd, xp. Corpses: def, sz, boss, x, y, z, ft, fd, fhd, gt, bob, amp, kx, kz, fx, fz, snap, bk, sq, stq, elite, fgap, hdl, hdlSlide, rad. Keys written here that are NOT in the quoted spawn literals: crowd, bt, pH, pt2, rc2, lf, lr, py, fgap (plus hdl/hdlW/hdlT/hdlSlide, snap, stq, skyH, ab, ph, ft, fd, fhd, fx, fz, calves are read but written elsewhere).
+
+NOT BODIES, deliberately excluded: line 18566 `EBODY.raptor({ x, z, y, py, bob, gt, amp, sq, lf, lr }, ...)` passes a fresh stub literal for the brood pet into an enemy body PLAN - if any plan writes to its first argument, this stub takes the write, so keep the stub's keys in step with what plans read/write (pets themselves are not bodies). 19016 `tw.P.x/.y/.z/.face` are the twin's portrait P stub. 16001/17029/17032/17033 `P.headSplay/legSpan/headSpan/headBoxes` are writes on the drawMonBody P parameter (player, twin P, or portrait stub), not bodies. 15054/15128 `P.lastBId`/`P.faceWant !== undefined`, 17147 `p.faceFix !== undefined` (portrait), 16664/16704 `o.out/o.glow === undefined` (eye options), 19192 `p.e === undefined` (pops), 19609 `L.n.vis !== undefined` (nums) are undefined-checks on non-body objects. Function calls in range that hand a body to code outside the range (may write to it there): bossBeat(e) 18585, hopOf(e) 18613, plan(e, ...) 18693/18984 (EBODY plans), trvAnchored(TRV_ON, e, trvMaw) 18881, hurt(e, ...) 19994, hdlDraw(e.hdl, ...) 18454/18456. No Object.assign/spread/Object.keys/JSON.stringify/for-in/hasOwnProperty/destructuring-assign on any body in this range (grep-confirmed). qaHurtTo at 19994 sits before the "QA hook" marker but is a QA helper, hence bodyKind qa.
+
+: Range 10001-15000 read in full. No QA-hook code in this range (marker is at line 20519); no window.__g-only functions here.
+
+SPAWN LITERALS (not listed as assignments, they are creation): spawnEnemy literal 11795-11820 and spawnBoss literal 11914-11925. Types worth pinning: `burrow` (11807) is a boolean (an && chain of booleans ending in R()<BURROW_SHARE); `wards` is array|null (warden ? [] : null), `ward` is null; `hd` is number; boss-only `born` (number), `ph` (number), `final` (boolean). spawnBoss sets skyUp/skyH/skyT on the sks boss right after the push (11929-11932) - a post-birth add on the boss body only.
+
+SENSITIVE READ DETAILS:
+- 13476 `e.dvT <= 0` (kind other): `undefined <= 0` is false, `0 <= 0` is true. Today a non-diver (dvT absent) evaluates `!(aloft() && false)` = true, so a WALKER CAN REACH AN ALOFT PLAYER; with dvT defaulted to 0 at birth, walkers cannot reach an aloft player (which is what the comment at 13471-13472 says was intended). Giving dvT a default of 0 changes behaviour here. All the other dvT reads (13110, 13116, 13133, 13395, 13484, 13594, 14594) are `> 0` forms and are robust.
+- 13444 `e.denRef === null` is effectively dead code (e.dead bodies are spliced at 13088 before reaching it), but a default of undefined vs null for denRef flips its result; denRef is written as an object (mark) at 12822 and as null at 12876; other reads are truthiness (10647, 10714, 13445, hdlCan at 4280).
+- 10722 `e.born !== undefined`: born is only ever set in the spawnBoss literal (number T). If spawnEnemy bodies got born as a default, this branch would only ever run for e.boss anyway (it is inside if(e.boss)); a default of 0 vs undefined matters only if a boss body were made without born.
+- 12317 `e.skyT === undefined` is the SKYSPLITTER window bootstrap: with skyT defaulted to 0 at birth, the bootstrap is skipped and `(e.skyT -= dt) <= 0` fires on the first tick, flipping skyUp immediately - behaviour change. (spawnBoss already sets skyT=SKY_AIR for sks bosses at 11931, so the bootstrap is a fallback; still, a numeric default changes it.)
+- 13357 `e.rest === undefined` is the flee-body (COLLECTOR) rest timer bootstrap: a default of 0 would skip the 3.0 seed and start it gloating (taunt=1, rest<=0) at once.
+- 13568 / 10769 `e.hd === undefined`: hd is now in the spawn literal (11817) so these fallbacks are already dead for spawnEnemy bodies but LIVE for spawnBoss bodies (the boss literal has no hd) - a boss's first walk() call sets it.
+- 13613 `e._s === undefined` (rndSeed, called at 13118 and 13517): a numeric default of e.g. 1 would silence the per-body speed/bite jitter; the default would have to be undefined, or the roll moved to spawn (which would consume a seeded rnd() per spawn and shift every pinned run).
+- Not listed but adjacent: routRoll/digRoll/stoopRoll/hdlRoll (lines 4068/4156/4204/~4230, outside range) do the same `e._rr === undefined` pattern on _rr/_dr/_sr(/_hr) and are called from in-range lines 10651, 10669, 13322, 13324, 13340 - for the auditor of that range.
+- 11998 `c.calfOf === e` is an identity compare, not a presence check (default null/undefined both behave the same).
+
+ROBUST READS SEEN (default-safe, listed so nobody re-checks): `!(e.dvT > 0)` 13110/13116; `(e.alarm||0)` 10706/13321; `(e.ramT||0) > T` 11330; `(e.routT||0)` 13295; `e.skyH||0` 12329/13452; `(e.ph||0)` 12524 and `(e.ph|0)` 12438; `e.wards||[]` 10746; `if(!e.ab)` 12518; `if(!e.calves)` 12025; `e.hdlW>0||e.hdlT>0` 10615/10647/13078/13606/14810; `!(c.hdlSlide>0)` 10777; `e.hdl &&` 10773/10812/13258/13271/14810-14811; `e.crowd && !e.xp` 10710; `e.wuT || BITE_WIND` and `e.spitTell || 0` 13583; `(e.pre||0)`, `(e.dvE||0)`, `(e.tauntE||0)`, `(e.taunt||0)`, `(e.hdlE||0)` 13584-13607; `e.lead || 0` 13510.
+
+VALUE TYPES PER POST-BIRTH KEY (from this range): hdl = object {x,z,dx,dz,len} (13341) | null (10822, 13258, 13281) -> mixed; ward = object (a warden body, 13063) | null; denRef = object (mark) | null; calfOf = object (boss body); calves = array of bodies; ab = object {phase:string,t:number,kind:string|null,dir:number,n:number}; skyUp = boolean; skyH, skyT, ph, born = number; alarm, alarmT, rout, routT, routS(+1/-1), taunt(0/1), rest, spitTell, ramT, dv, dvT, dvW, dvS(0/1), dvX, dvZ, dvE, hdlW, hdlT, hdlR, hdlHit(0 here; 1 in hdlLand at 4289), hdlSlide, hdlE, tauntE, pre, snap, stq, stoopY, _s = number; fall record fx, fz, ft, fd, fhd = number. Keys already in the literal are only ever written as numbers/booleans consistent with birth, except: burrow written true (13169, 12033) - consistent with boolean; elite written true at 12828 (den, consistent).
+
+WRITES THROUGH HELPERS / NESTED: confineIn(e,...) (header line 1389) writes o.x/o.z - included as x/z entries at 10819, 13277, 13308, 13371, 13447. hdlLand(e, carcass) (line 4289, outside range) writes e.hdlHit = 1; called from 10821 (corpse) and 13280. Nested writes on e.ab (A.phase/A.t/A.kind/A.dir/A.n at 12526-12556, 12567, 12602, 12612, 12629, 12645) and array mutations e.calves.push (12035), w.wards.push (13063) mutate sub-objects, not body keys.
+
+NON-BODY `e`/`w`/`b` RECEIVERS EXCLUDED: events (spawnEvent/updateEvents 12905-13021: e.x, e.z, e.life, e.tick, e.chg, e.bob, e.ref - only e.ref.* are body writes and those are listed), DOM/touch events (10206-10382), weapons w in fireWeapons/updateOrbiters (w.t, w.hist, w.echo, w.echoT, w.phase, w.cool), warden w in wardPass IS a body (13061 listed), bolts b in updateProjectiles, pets p2 in updateBrood, twin t/twin.P in stepTwin/splitTwin (not bodies), hazards h, marks m, monuments M. Bodies killed without killEnemy/fell: 12876 (den retire) and 12942 (collector escaped) set dead=true directly and never enter corpses.
+
+: SCOPE. Every line in 20001-25300 is test harness: 20001-20518 are qaArm/qaStations/sightGate/unlockNameGate/numGate/voiceGate (gate functions, no play path calls them), and 20519 onward is the `window.__g = {...}` literal, which runs on to 25300 and past it. So every entry above is bodyKind "qa"; there is no play-path write in this range.
+
+KEYS WRITTEN HERE THAT ARE NOT IN THE spawnEnemy/spawnBoss LITERALS (the ones the L41 shape work has to add at birth): seenR (20858, number 1, only crowdGate writes it), crowd (20895, number 1), ramT (23743, number 0), routT/routS (24134, numbers), denRef (24135 object / 24143 null), alarm/alarmT (24146, 24496, 24570, 24589, 24600, numbers), stooped (24206, number 1), dvW (24206, number), dig/dug/stoop/rout (many, numbers; dug is written as 0 and 1 here, never boolean), skyUp (boolean) / skyH / skyT (numbers) on the SKYSPLITTER boss (23355, 23389, 23393, 23411), ph (23610, number, boss), ab (20591, object, boss), wd (already in literal), calves (22874-22880 - written on a plain stand-in object bx, not on a spawned body; matShielded reads bx.calves as an array of calf objects each carrying calfOf). Keys READ here but never written in this range, which therefore must be born somewhere else: hdl (object with x,z,dx,dz,len), hdlW, hdlT, hdlSlide, hd, rest, tauntE, stq, dvE, dv, dvX, dvZ, bt (object with .u), spitTell, calfOf, born (22708, boss), routS, ft/fd/fx/fz/fhd (corpse-only keys read by corpses() at 21007-21011 with .toFixed - they would THROW if a corpse lacked them, so they must exist on every corpse, though a numeric default is safe), _hr (hdlCan's probe at 23975 seeds `_hr:0`, so hdlCan at line 4280 reads e._hr).
+
+PRESENCE CHECKS THAT A BIRTH DEFAULT WOULD FLIP: 21104 `e.hd === undefined ? null` (gait() would print 0 instead of null once hd is born - harmless to play, but any bench comparing gait().hd to null changes); 21109 `e.rest === undefined ? null` (same); 25040 `b.dvX !== undefined && b.dvZ !== undefined` in stoopGate clause 6b - if dvX/dvZ are born as 0 this clause can no longer fail (it becomes vacuous), so the clause needs rewriting to test the aim point another way, e.g. that the dive committed to a point distinct from the player or that a flag was set. 24012/24017 JSON.stringify(e.hdl) compares the lane sub-object to itself, unaffected by body-level defaults unless hdl is born as {} rather than null (then 24169 `|| e.hdl` and 23917/24165 truthiness reads flip). Object-valued truthiness reads (ab, ward, wards, hdl, calfOf, bt, denRef) are all safe with a null default and all break with an {} or [] default; wards is the exception (20790 tolerates either; 20794 and 22607 assign []). seenR/dug/stooped truthiness (20858, 23896, 23904) are safe with 0/false.
+
+Identity compares, not presence checks, but worth knowing: 22625 `e.ward === w`, 22953/22976 `e.calfOf === b`.
+
+STAND-IN OBJECTS fed to pure helpers (not bodies, but they document what those helpers read): chargeAim 22731 {x,z,dead,boss}; tellDue 22770 {x,z,rad,wu,dvT,dead,boss,def} plus patches def.ranged and ab.phase; matShielded 22873 {boss,x,z,calves:[{x,z,dead,calfOf}]}; sksAloft 23280-23285 {def.sks, skyUp, rise}; trvAnchored 23486-23493 {final, def.trv, ph, dead}; hdlCan 23975 {def, boss, dead, eid, _hr} plus patches rout/dig/rise/stoop/calfOf.
+
+Type notes for the shape table: dug is number here (0 at 22788, 1 at 24491) while roster() prints !!e.dug; stooped is number 1 at 24206 and printed as !!e.stooped; denRef takes both an object and null; ward is assigned null at 20794 (spawn literal also gives null); wards is [] here and the spawn literal gives `warden ? [] : null`, so wards is mixed null/array at birth already.
+
+Also read on bodies in range, unconditional (would throw on undefined but fine with any numeric default): e.bob (21081 as an id), e.gt/e.amp/e.bk/e.lg/e.sq/e.kx/e.kz (21102-21111), b.born (22708), corpse ft/fd/fx/fz/fhd/amp/lg/bk (21007-21011).

@@ -1,0 +1,102 @@
+crowd-pays-in-full: trial 1258.70/158/95854 in 311 s; enemies array same across start: false, across the run: true, 6 bodies there at the hook; 96028 bodies wrapped; at the end 0/0 enemies and 0/0 corpses are wrapped
+own-keys walks over a body: none
+
+key        set on  types                  first set from                                             read unset  read-unset from
+_dr          2017  number                 digRoll:4157 x2017                                               2017  digRoll:4156 x40
+_hr          2014  number                 hdlRoll:4260 x2014                                               2014  hdlRoll:4259 x40
+_rr         21050  number                 routRoll:4069 x21050                                            21050  routRoll:4068 x40
+_s          95166  number                 rndSeed:13613 x95166                                            95166  rndSeed:13613 x40
+_sr           119  number                 stoopRoll:4205 x119                                               119  stoopRoll:4204 x40
+ab              4  object                 bossAI:12518 x4                                                115754  hurt:10553 x40
+alarm       70117  number                 ?:10706 x70117                                                2879385  updateEnemies:13321 x40
+alarmT      70117  number                 ?:10706 x70117                                                2913405  updateEnemies:13254 x40
+amp         96028  number                 literal x96028                                                      0  
+atk         96028  number                 literal x96028                                                      0  
+bk          96028  number                 literal x96028                                                      0  
+bob         96028  number                 literal x96028                                                      0  
+born            4  number                 literal x4                                                          0  
+boss        96028  boolean                literal x96028                                                      0  
+burnCd      96028  number                 literal x96028                                                      0  
+burnN       96028  number                 literal x96028                                                      0  
+burrow      96024  boolean                literal x96024                                                    364  updateEnemies:13245 x40
+calfOf          0                                                                                        192936  hdlCan:4281 x40
+calves          0                                                                                        117127  hurt:10594 x40
+crowd           0                                                                                         17034  killEnemy:10710 x40
+dead        96028  boolean                literal x96028                                                      0  
+def         96028  object                 literal x96028                                                      0  
+denRef          0                                                                                       3739444  updateEnemies:13445 x40
+dig         96024  number                 literal x96024                                                  13317  updateEnemies:13162 x40
+dmg         96028  number                 literal x96028                                                      0  
+dug         96024  number                 literal x96024                                                      0  
+dv           9522  number                 updateEnemies:13132 x9522                                        9522  updateEnemies:13132 x40
+dvE         90934  number                 walk:13599 x90934                                              272802  walk:13599 x40
+dvS          9522  number                 updateEnemies:13150 x9274; updateEnemies:13142 x248               248  updateEnemies:13142 x40
+dvT            72  number                 updateEnemies:13144 x63; hurt:10673 x9                       22356986  updateEnemies:13110 x8; updateEnemies:13116 x8; updateEnemies:13395 x8
+dvW          9522  number                 updateEnemies:13150 x9274; updateEnemies:13141 x248           3834475  walk:13597 x40
+dvX            72  number                 updateEnemies:13147 x63; updateEnemies:13215 x9                     0  
+dvZ            72  number                 updateEnemies:13147 x63; updateEnemies:13215 x9                     0  
+eid         96024  number                 literal x96024                                                      0  
+elite       96028  boolean                literal x96028                                                      0  
+fd          95854  number                 fell:10768 x95854                                                   0  
+fhd         95854  number                 fell:10769 x95854                                                   0  
+final           4  boolean                literal x4                                                     115750  vigilMul:14946 x40
+flash       96028  number                 literal x96028                                                      0  
+ft          95854  number                 fell:10767 x95854                                                   0  
+fx          95854  number                 fell:10766 x95854                                                   0  
+fz          95854  number                 fell:10766 x95854                                                   0  
+gt          96028  number                 literal x96028                                                      0  
+hd          96028  number                 literal x96024; walk:13568 x4                                       4  walk:13568 x4
+hdl           991  object/null            updateEnemies:13341 x991                                      9685642  botVector:14810 x20; updateEnemies:13258 x20  | type change: object->null
+hdlE        90934  number                 walk:13607 x90934                                              181868  walk:13607 x40
+hdlHit        277  number                 updateEnemies:13263 x277                                            0  
+hdlR            7  number                 updateEnemies:13281 x7                                        3646964  updateEnemies:13339 x40
+hdlSlide      270  number                 fell:10773 x270                                               6156544  updateEnemies:13081 x15; stepCorpses:10812 x13; botVector:14811 x12
+hdlT          277  number                 updateEnemies:13263 x277                                     14342207  updateEnemies:13078 x14; updateEnemies:13274 x13; walk:13606 x13
+hdlW          991  number                 updateEnemies:13341 x991                                     14341493  updateEnemies:13078 x14; updateEnemies:13259 x13; walk:13606 x13
+hp          96028  number                 literal x96028                                                      0  
+kx          96028  number                 literal x96028                                                      0  
+kz          96028  number                 literal x96028                                                      0  
+lead        96028  number                 literal x96028                                                      0  
+lg          96028  number                 literal x96028                                                      0  
+maxhp       96028  number                 literal x96028                                                      0  
+ph              4  number                 literal x4                                                          0  
+plague      96028  number                 literal x96028                                                      0  
+plagueT     96028  number                 literal x96028                                                      0  
+pre         96028  number                 literal x96028                                                      0  
+pt          96028  number                 literal x96028                                                      0  
+rad         96028  number                 literal x96028                                                      0  
+ramT         3527  number                 ?:11332 x3527                                                    3527  ?:11330 x40
+rc          96028  number                 literal x96028                                                      0  
+rest            2  number                 updateEnemies:13357 x2                                              2  updateEnemies:13357 x2
+rise        96028  number                 literal x96028                                                      0  
+riseMax     96028  number                 literal x96028                                                      0  
+rout        21280  number                 updateEnemies:13325 x21046; hurt:10654 x175; trvFall:12497    7008455  updateEnemies:13285 x20; updateEnemies:13286 x20
+routS       21100  number                 updateEnemies:13326 x21050; trvFall:12497 x39; matFall:120          0  
+routT       21100  number                 updateEnemies:13325 x21050; trvFall:12497 x39; matFall:120          0  
+skyH            1  number                 spawnBoss:11931 x1                                                  0  
+skyT            1  number                 spawnBoss:11931 x1                                                  0  
+skyUp           1  boolean                spawnBoss:11931 x1                                                  0  
+slowT       96028  number                 literal x96028                                                      0  
+snap        90934  number                 walk:13591 x90934                                                   0  
+spdMul      96028  number                 literal x96028                                                      0  
+spitTell     1031  number                 updateEnemies:13385 x1031                                     4184411  walk:13583 x40
+sq          96028  number                 literal x96028                                                      0  
+stoop       96024  number                 literal x96024                                                  13317  updateEnemies:13182 x40
+stoopY          9  number                 hurt:10672 x9                                                       0  
+stooped     96024  number                 literal x96024                                                      0  
+stq         90934  number                 walk:13610 x90934                                                   0  
+sz          96028  number                 literal x96028                                                      0  
+taunt       21019  number                 updateEnemies:13295 x20833; hurt:10654 x175; hurt:10674 x9    3429583  walk:13603 x40
+tauntE      90934  number                 walk:13603 x90934                                              181868  walk:13603 x40
+type        96028  string                 literal x96028                                                      0  
+ward        96024  null/object            literal x96024                                                  12580  wardPass:13051 x40  | type change: null->object,object->null
+warden      96024  boolean                literal x96024                                                  11203  wardPass:13053 x40
+wards       96024  null/array             literal x96024                                                      0  
+wd          96028  number                 literal x96028                                                      0  
+wu          96028  number                 literal x96028                                                      0  
+wuT         96028  number                 literal x96028                                                      0  
+x           96028  number                 literal x96028                                                      0  
+xp          96028  number                 literal x96028                                                      0  
+y           96028  number                 literal x96028                                                      0  
+z           96028  number                 literal x96028                                                      0  
+ERRS 0 

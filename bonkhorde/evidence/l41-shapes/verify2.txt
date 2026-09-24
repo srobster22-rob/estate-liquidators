@@ -1,0 +1,38 @@
+### verify2 13:37:34 on b0654d66
+--- clean trial (expect 585.00/37/19418)
+clean: AC state running -> running, 44100 Hz, save.sound undefined; trial 585.00/37/19418; sfx: pop 4170 asked / 1736 pl
+--- crowd-pays-in-full (expect 1258.70/158/95854)
+crowd-pays-in-full: AC state running -> running, 44100 Hz, save.sound undefined; trial 1258.70/158/95854; sfx: pop 96119 asked / 9
+--- flat-out step allocation, L41 work copy
+clean @m41/work/bonkhorde: settled at t=300 (lvl 27, 1159 kills, 53 bodies, 44 gems, 0 hazards, 0 events) in 6 s; 600 steps to t=310.5 in 1.0 s: 132.0 MB sampled = 225.2 KB/step
+  touched: nearestCells 0.0 KB, confine 32.0 KB, confineIn 176.1 KB, botVector 24201.8 KB, updateEnemies 23368.6 KB, updateGems 1408.5 KB, groundY 12372.5 KB, walk 24329.2 KB, hypot 11145.0 KB, next 5459.3 KB
+  by function:
+--- PACED (as played) step allocation, L40 build
+/home/user/estate-liquidators/bonkhorde: 257 warm-up steps in 5.0 s, then 1063 paced steps in 20.0 s (53 a second) to t=337.6, 64 bodies: 378.6 MB sampled = 364.7 KB a step
+  walk 69433.4 KB, updateEnemies 58471.1 KB, groundY 42911.7 KB, botVector 14186.2 KB, hypot 30747.3 KB, min 5586.1 KB, next 10534.4 KB  (per step: walk 65.3, updateEnemies 55.0, groundY 40.4)
+  by function:
+      69433.4 KB   17.9%  walk
+      58471.1 KB   15.1%  updateEnemies
+      42911.7 KB   11.1%  groundY
+      30747.3 KB    7.9%  hypot
+      21399.9 KB    5.5%  near
+      17815.6 KB    4.6%  render
+      14186.2 KB    3.7%  botVector
+      12036.4 KB    3.1%  eb
+      11852.5 KB    3.1%  wardPass
+      10534.4 KB    2.7%  next
+--- PACED (as played) step allocation, L41 work copy
+m41/work/bonkhorde: 248 warm-up steps in 5.0 s, then 1084 paced steps in 20.0 s (54 a second) to t=337.7, 62 bodies: 358.5 MB sampled = 338.7 KB a step
+  walk 67288.6 KB, updateEnemies 59062.2 KB, groundY 38318.1 KB, botVector 15223.5 KB, hypot 30731.4 KB, min 2785.1 KB, next 11078.7 KB  (per step: walk 62.1, updateEnemies 54.5, groundY 35.3)
+  by function:
+      67288.6 KB   18.3%  walk
+      59062.2 KB   16.1%  updateEnemies
+      38318.1 KB   10.4%  groundY
+      30731.4 KB    8.4%  hypot
+      16406.5 KB    4.5%  render
+      15349.6 KB    4.2%  near
+      15223.5 KB    4.1%  botVector
+      11372.8 KB    3.1%  wardPass
+      11078.7 KB    3.0%  next
+       9187.4 KB    2.5%  eb
+### verify2 done 13:40:15

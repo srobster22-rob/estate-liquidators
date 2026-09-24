@@ -1,0 +1,33 @@
+### verify4 13:45:28 test.js b25dccf0
+--- section 101 clean, run 1
+  PASS  L40's step: nearestCells answers in one shared array - under 64 KB sampled under it over 600 settled steps  0.0 KB sampled under nearestCells (2,340 KB before L40)
+  PASS  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together  confineIn 64.0 KB, confine 16.0 KB (1,522 KB before; 1,666 KB with the pair put back)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector  0.0 KB of iterator results under botVector (9,606 KB before L40)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  205.7 KB a step over 600 steps from t=300 to 310.6 (74 bodies, 42 gems); the largest: updateEnemies 20983.7, walk 20343.7, botVector 20056.3, groundY 12740.7, 
+  PASS  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  77 bodies (1 boss): 1 signature(s) among the field [76], 1 key set(s) overall,
+        (boxed doubles, not asserted: walk 20343.7 KB, updateEnemies 20983.7 KB, groundY 12740.7 KB over the 600 steps)
+clean: 5 passed, 0 failed in 6 s
+--- section 101 clean, run 2
+  PASS  L40's step: nearestCells answers in one shared array - under 64 KB sampled under it over 600 settled steps  0.0 KB sampled under nearestCells (2,340 KB before L40)
+  PASS  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together  confineIn 80.0 KB, confine 0.0 KB (1,522 KB before; 1,666 KB with the pair put back)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector  0.0 KB of iterator results under botVector (9,606 KB before L40)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  192.2 KB a step over 600 steps from t=300 to 310.5 (75 bodies, 44 gems); the largest: walk 22248.2, updateEnemies 20183.4, groundY 12532.6, botVector 12230.1, 
+  PASS  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  81 bodies (1 boss): 1 signature(s) among the field [80], 1 key set(s) overall,
+        (boxed doubles, not asserted: walk 22248.2 KB, updateEnemies 20183.4 KB, groundY 12532.6 KB over the 600 steps)
+clean: 5 passed, 0 failed in 7 s
+-- the-cells-are-answered-fresh
+  FAIL  L40's step: nearestCells answers in one shared array - under 64 KB sampled under it over 600 settled steps  2083.5 KB sampled under nearestCells (2,340 KB before L40)
+the-cells-are-answered-fresh: 4 passed, 1 failed in 7 s
+-- the-clamp-still-makes-a-pair
+  FAIL  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together  confineIn 96.0 KB, confine 1553.9 KB (1,522 KB before; 1,666 KB with the pair put back)
+the-clamp-still-makes-a-pair: 4 passed, 1 failed in 7 s
+-- the-bot-reads-the-field-through-an-iterator
+  FAIL  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector  704.4 KB of iterator results under botVector (9,606 KB before L40)
+the-bot-reads-the-field-through-an-iterator: 4 passed, 1 failed in 6 s
+-- a-body-still-grows-its-shape
+  FAIL  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  81 bodies (1 boss): 2 signature(s) among the field [17,63], 2 key set(s) overa
+a-body-still-grows-its-shape: 4 passed, 1 failed in 6 s
+-- the-boss-keeps-its-old-shape
+  FAIL  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  77 bodies (1 boss): 1 signature(s) among the field [76], 2 key set(s) overall,
+the-boss-keeps-its-old-shape: 4 passed, 1 failed in 6 s
+### verify4 done 13:46:38

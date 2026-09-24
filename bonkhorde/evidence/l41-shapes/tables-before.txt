@@ -1,0 +1,49 @@
+ENEMIES defs: 6 objects, 6 signature(s)
+   1x [nm,hp,spd,dmg,r,xp,c,h,w,body]
+   1x [nm,hp,spd,dmg,r,xp,c,h,w,body,dive,flier]
+   1x [nm,hp,spd,dmg,r,xp,c,h,w,bite,body,hdl]
+   1x [nm,hp,spd,dmg,r,xp,c,h,w,ranged,body]
+   1x [nm,hp,spd,dmg,r,xp,c,h,w,bite,body]
+   1x [nm,hp,spd,dmg,r,xp,c,h,w,flee,body]
+BOSSES defs: 4 objects, 4 signature(s)
+   1x [t,nm,hp,spd,dmg,r,xp,c,h,w,ai,body,mat]
+   1x [t,nm,hp,spd,dmg,r,xp,c,h,w,ai,body,thn]
+   1x [t,nm,hp,spd,dmg,r,xp,c,h,w,ai,body,flier,sks]
+   1x [t,nm,hp,spd,dmg,r,xp,c,h,w,ai,body,trv]
+BIOMES: 10 objects, 2 signature(s)
+   1x [id,nm,ds,story,a,b,amp,lift,mon,mod]
+   9x [id,nm,ds,story,a,b,amp,lift,mon,mod,fauna]
+BIOMES[].mod: 10 objects, 10 signature(s)
+   1x []
+   1x [tough]
+   1x [spd]
+   1x [slide]
+   1x [mag]
+   1x [xp]
+   1x [dmg]
+   1x [reach]
+   1x [swarm]
+   1x [regen]
+BIOMES[].fauna: 10 objects, 9 signature(s)
+   1x [runner]
+   1x [brute,skitter]
+   1x [runner,brute]
+   1x [skitter]
+   1x [spitter,skitter]
+   1x [spitter]
+   1x [skitter,runner]
+   1x [skitter,shambler]
+   1x [shambler]
+BIOMES[].mon: 10 objects, 1 signature(s)
+   10x [nm,sh]
+cells: 14 objects, 1 signature(s)
+   14x [x,z,b]
+cells[].b: 14 objects, 2 signature(s)
+   1x [id,nm,ds,story,a,b,amp,lift,mon,mod]
+   13x [id,nm,ds,story,a,b,amp,lift,mon,mod,fauna]
+curMon().st (stages): 5 objects, 5 signature(s)
+   1x [nm]
+   1x [nm,mods]
+   1x [nm,mods,fly,sig,sigDs]
+   1x [nm,mods,fly,apex,sig,sigDs]
+   1x [nm,air,mods,fly,apex,final,sig,sigDs]
