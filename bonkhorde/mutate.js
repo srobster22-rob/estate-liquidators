@@ -1511,7 +1511,13 @@ for (const m of run) {
         maxBuffer: 32 << 20, timeout: 55 * 60e3 });
   } catch (e) {
     out = String(e.stdout || "") + String(e.stderr || "");
-    if (e.killed || e.signal) crash = `killed (${e.signal || "timeout"})`;
+    // ETIMEDOUT as well as the kill flags: the child is Playwright's, which
+    // catches the SIGTERM this timeout sends, closes its browser and exits
+    // with a status of its own - so a 55-minute hang came back with no signal
+    // and read "the suite did not finish", the wording for a crash. It was a
+    // hang (whiptail-lashes-a-boss, L36's verdicts), and the row must say so.
+    if (e.killed || e.signal || e.code === "ETIMEDOUT")
+      crash = `killed (${e.code === "ETIMEDOUT" ? "timeout, 55 min" : e.signal})`;
   }
   // The suite's own RESULT line is the verdict. Its absence means the run died
   // before finishing, which is neither caught nor survived - it is no data.
