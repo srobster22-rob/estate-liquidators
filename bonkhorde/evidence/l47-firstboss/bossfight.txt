@@ -1,0 +1,156 @@
+twin   clumsy 21 DEAD 367s lvl 19 | boss@300 THE MATRIARCH hp 45600 (kitDps 4472, x10 s) you 84/91 lvl 15 -> NOT killed, took 122, trough -2% | died WITH A BOSS UP, last 30 s: contact 0 spit 18 hazard 40
+twin   clumsy 22 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 5113, x9 s) you 125/125 lvl 17 -> killed in 113.4 s, took 154, trough 8%
+twin   clumsy 23 DEAD 418s lvl 23 | boss@300 THE MATRIARCH hp 45600 (kitDps 6616, x7 s) you 86/91 lvl 16 -> killed in 71.9 s, took 95, trough 13% | died no boss up, last 30 s: contact 43 spit 0 hazard 0
+twin   clumsy 24 alive     lvl 37 | boss@300 THE MATRIARCH hp 37676 (kitDps 1884, x20 s) you 166/166 lvl 17 -> killed in 58.5 s, took 71, trough 70%
+twin   clumsy 25 DEAD 519s lvl 32 | boss@300 THE MATRIARCH hp 45600 (kitDps 7475, x6 s) you 91/91 lvl 18 -> killed in 55.8 s, took 108, trough 21% | died no boss up, last 30 s: contact 57 spit 25 hazard 0
+twin   clumsy 26 DEAD 477s lvl 31 | boss@300 THE MATRIARCH hp 45600 (kitDps 10117, x5 s) you 91/91 lvl 18 -> killed in 30.6 s, took 44, trough 52% | died no boss up, last 30 s: contact 110 spit 59 hazard 0
+twin   clumsy 27 alive     lvl 36 | boss@300 THE MATRIARCH hp 45600 (kitDps 3332, x14 s) you 91/91 lvl 17 -> killed in 55.7 s, took 88, trough 31%
+twin   clumsy 28 DEAD 329s lvl 20 | boss@300 THE MATRIARCH hp 45600 (kitDps 4798, x10 s) you 52/55 lvl 18 -> NOT killed, took 79, trough -8% | died WITH A BOSS UP, last 30 s: contact 0 spit 8 hazard 71
+twin   clumsy 29 DEAD 350s lvl 18 | boss@300 THE MATRIARCH hp 45600 (kitDps 5797, x8 s) you 108/125 lvl 15 -> NOT killed, took 135, trough -18% | died WITH A BOSS UP, last 30 s: contact 80 spit 17 hazard 38
+twin   clumsy 30 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 6033, x8 s) you 146/146 lvl 18 -> killed in 60.5 s, took 103, trough 37%
+twin   clumsy 31 alive     lvl 42 | boss@300 THE MATRIARCH hp 45600 (kitDps 5604, x8 s) you 109/109 lvl 21 -> killed in 23.8 s, took 42, trough 69%
+twin   clumsy 32 DEAD 537s lvl 30 | boss@300 THE MATRIARCH hp 45600 (kitDps 7726, x6 s) you 91/91 lvl 17 -> killed in 30.3 s, took 66, trough 64% | died no boss up, last 30 s: contact 132 spit 13 hazard 0
+twin   clumsy 33 alive     lvl 35 | boss@300 THE MATRIARCH hp 45600 (kitDps 8095, x6 s) you 107/119 lvl 16 -> killed in 23.8 s, took 0, trough 90%
+twin   clumsy 34 alive     lvl 35 | boss@300 THE MATRIARCH hp 45600 (kitDps 6614, x7 s) you 91/91 lvl 18 -> killed in 51.1 s, took 18, trough 91%
+twin   clumsy 35 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 9658, x5 s) you 87/91 lvl 16 -> killed in 18.9 s, took 8, trough 91%
+twin   clumsy 36 DEAD 354s lvl 20 | boss@300 THE MATRIARCH hp 45600 (kitDps 3100, x15 s) you 91/91 lvl 16 -> NOT killed, took 137, trough -26% | died WITH A BOSS UP, last 30 s: contact 40 spit 17 hazard 0
+twin   clumsy 37 DEAD 542s lvl 32 | boss@300 THE MATRIARCH hp 45600 (kitDps 14516, x3 s) you 142/143 lvl 20 -> killed in 28.0 s, took 53, trough 66% | died no boss up, last 30 s: contact 71 spit 23 hazard 0
+twin   clumsy 38 DEAD 540s lvl 35 | boss@300 THE MATRIARCH hp 45600 (kitDps 8288, x6 s) you 82/91 lvl 17 -> killed in 45.2 s, took 50, trough 51% | died no boss up, last 30 s: contact 37 spit 45 hazard 0
+twin   clumsy 39 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 9930, x5 s) you 91/91 lvl 17 -> killed in 21.1 s, took 70, trough 47%
+twin   clumsy 40 alive     lvl 35 | boss@300 THE MATRIARCH hp 45600 (kitDps 8182, x6 s) you 86/91 lvl 16 -> killed in 33.3 s, took 85, trough 53%
+twin   clumsy 41 alive     lvl 34 | boss@300 THE MATRIARCH hp 45600 (kitDps 8502, x5 s) you 91/91 lvl 16 -> killed in 21.9 s, took 38, trough 58%
+twin   clumsy 42 DEAD 357s lvl 22 | boss@300 THE MATRIARCH hp 41866 (kitDps 2093, x20 s) you 81/91 lvl 18 -> NOT killed, took 130, trough -13% | died WITH A BOSS UP, last 30 s: contact 54 spit 8 hazard 0
+twin   clumsy 43 alive     lvl 34 | boss@300 THE MATRIARCH hp 45600 (kitDps 3529, x13 s) you 88/91 lvl 16 -> killed in 27.9 s, took 42, trough 63%
+twin   clumsy 44 alive     lvl 36 | boss@300 THE MATRIARCH hp 45600 (kitDps 8600, x5 s) you 91/91 lvl 17 -> killed in 45.3 s, took 67, trough 63%
+== twin clumsy: dead before 10:00 11/24 (5 with a boss up); first boss killed 19/24, median time to kill 33.3 s, median hp 45600, median kitDps 6616, median taken in the fight 71 of median max hp 91, median trough 52%
+
+twin   bench  21 DEAD 291s lvl 17 | no boss by 6:40 | died no boss up, last 30 s: contact 68 spit 8 hazard 0
+twin   bench  22 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 28625, x2 s) you 150/150 lvl 21 -> killed in 15.0 s, took 27, trough 82%
+twin   bench  23 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 11480, x4 s) you 125/125 lvl 20 -> killed in 22.7 s, took 33, trough 74%
+twin   bench  24 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 12812, x4 s) you 143/143 lvl 20 -> killed in 6.9 s, took 0, trough 100%
+twin   bench  25 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 18802, x2 s) you 143/143 lvl 23 -> killed in 8.0 s, took 0, trough 100%
+twin   bench  26 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 13066, x3 s) you 233/233 lvl 20 -> killed in 23.0 s, took 49, trough 80%
+twin   bench  27 alive     lvl 42 | boss@300 THE MATRIARCH hp 45600 (kitDps 11703, x4 s) you 143/143 lvl 23 -> killed in 20.7 s, took 42, trough 76%
+twin   bench  28 alive     lvl 41 | boss@300 THE MATRIARCH hp 45600 (kitDps 15237, x3 s) you 168/168 lvl 23 -> killed in 23.0 s, took 100, trough 52%
+twin   bench  29 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 9315, x5 s) you 119/119 lvl 19 -> killed in 35.7 s, took 94, trough 45%
+twin   bench  30 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 20683, x2 s) you 233/233 lvl 24 -> killed in 15.9 s, took 2, trough 100%
+twin   bench  31 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 10344, x4 s) you 93/109 lvl 21 -> killed in 7.5 s, took 0, trough 85%
+twin   bench  32 alive     lvl 41 | boss@300 THE MATRIARCH hp 45600 (kitDps 11750, x4 s) you 228/228 lvl 24 -> killed in 28.0 s, took 1, trough 100%
+twin   bench  33 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 5525, x8 s) you 91/91 lvl 18 -> killed in 35.4 s, took 72, trough 25%
+twin   bench  34 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 21784, x2 s) you 143/143 lvl 23 -> killed in 7.8 s, took 0, trough 100%
+twin   bench  35 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 5669, x8 s) you 119/119 lvl 19 -> killed in 20.9 s, took 118, trough 24%
+twin   bench  36 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 8923, x5 s) you 119/119 lvl 18 -> killed in 39.1 s, took 119, trough 40%
+twin   bench  37 DEAD 421s lvl 31 | boss@300 THE MATRIARCH hp 45600 (kitDps 28548, x2 s) you 143/143 lvl 22 -> killed in 8.0 s, took 0, trough 100% | died no boss up, last 30 s: contact 74 spit 57 hazard 0
+twin   bench  38 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 6297, x7 s) you 125/125 lvl 18 -> killed in 23.0 s, took 6, trough 96%
+twin   bench  39 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 7207, x6 s) you 51/91 lvl 19 -> killed in 15.6 s, took 80, trough 9%
+twin   bench  40 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 14035, x3 s) you 150/150 lvl 20 -> killed in 20.8 s, took 49, trough 70%
+twin   bench  41 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 18787, x2 s) you 100/100 lvl 21 -> killed in 11.3 s, took 0, trough 100%
+twin   bench  42 DEAD 521s lvl 34 | boss@300 THE MATRIARCH hp 45600 (kitDps 9511, x5 s) you 66/66 lvl 20 -> killed in 37.6 s, took 43, trough 48% | died no boss up, last 30 s: contact 113 spit 0 hazard 0
+twin   bench  43 DEAD 346s lvl 21 | boss@300 THE MATRIARCH hp 45600 (kitDps 7338, x6 s) you 108/119 lvl 18 -> NOT killed, took 157, trough -5% | died WITH A BOSS UP, last 30 s: contact 0 spit 2 hazard 79
+twin   bench  44 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 18424, x2 s) you 143/143 lvl 22 -> killed in 10.5 s, took 0, trough 100%
+== twin bench: dead before 10:00 4/24 (1 with a boss up); first boss killed 22/23, median time to kill 20.8 s, median hp 45600, median kitDps 11750, median taken in the fight 33 of median max hp 143, median trough 80%
+
+surge  clumsy 21 alive     lvl 35 | boss@300 THE MATRIARCH hp 45600 (kitDps 3069, x15 s) you 197/197 lvl 18 -> killed in 37.1 s, took 59, trough 86%
+surge  clumsy 22 alive     lvl 35 | boss@300 THE MATRIARCH hp 43394 (kitDps 2170, x20 s) you 115/115 lvl 16 -> killed in 32.2 s, took 79, trough 45%
+surge  clumsy 23 alive     lvl 38 | boss@300 THE MATRIARCH hp 36447 (kitDps 1822, x20 s) you 218/218 lvl 19 -> killed in 58.9 s, took 83, trough 79%
+surge  clumsy 24 DEAD 338s lvl 18 | boss@300 THE MATRIARCH hp 45600 (kitDps 2439, x19 s) you 84/84 lvl 16 -> NOT killed, took 102, trough -1% | died WITH A BOSS UP, last 30 s: contact 28 spit 10 hazard 32
+surge  clumsy 25 alive     lvl 34 | boss@300 THE MATRIARCH hp 19863 (kitDps 993, x20 s) you 165/165 lvl 18 -> killed in 17.9 s, took 2, trough 99%
+surge  clumsy 26 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 7962, x6 s) you 219/219 lvl 20 -> killed in 22.8 s, took 7, trough 97%
+surge  clumsy 27 alive     lvl 40 | boss@300 THE MATRIARCH hp 42166 (kitDps 2108, x20 s) you 103/115 lvl 16 -> killed in 61.0 s, took 79, trough 50%
+surge  clumsy 28 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 3713, x12 s) you 248/248 lvl 20 -> killed in 13.7 s, took 20, trough 92%
+surge  clumsy 29 alive     lvl 38 | boss@300 THE MATRIARCH hp 39168 (kitDps 1958, x20 s) you 115/115 lvl 18 -> killed in 32.7 s, took 157, trough 40%
+surge  clumsy 30 alive     lvl 34 | boss@300 THE MATRIARCH hp 45600 (kitDps 13938, x3 s) you 84/84 lvl 19 -> killed in 20.8 s, took 29, trough 66%
+surge  clumsy 31 alive     lvl 38 | boss@300 THE MATRIARCH hp 36607 (kitDps 1830, x20 s) you 190/190 lvl 17 -> killed in 52.7 s, took 103, trough 65%
+surge  clumsy 32 alive     lvl 35 | boss@300 THE MATRIARCH hp 28102 (kitDps 1405, x20 s) you 169/169 lvl 16 -> killed in 38.0 s, took 29, trough 85%
+surge  clumsy 33 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 9192, x5 s) you 115/115 lvl 18 -> killed in 16.0 s, took 42, trough 65%
+surge  clumsy 34 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 3398, x13 s) you 143/143 lvl 17 -> killed in 16.8 s, took 68, trough 54%
+surge  clumsy 35 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 4509, x10 s) you 143/143 lvl 19 -> killed in 12.1 s, took 0, trough 100%
+surge  clumsy 36 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 2938, x16 s) you 172/172 lvl 18 -> killed in 40.3 s, took 191, trough 35%
+surge  clumsy 37 DEAD 480s lvl 27 | boss@300 THE MATRIARCH hp 45600 (kitDps 2641, x17 s) you 115/115 lvl 16 -> killed in 61.9 s, took 76, trough 50% | died no boss up, last 30 s: contact 59 spit 32 hazard 0
+surge  clumsy 38 alive     lvl 36 | boss@300 THE MATRIARCH hp 45600 (kitDps 11208, x4 s) you 161/165 lvl 20 -> killed in 7.2 s, took 0, trough 98%
+surge  clumsy 39 alive     lvl 35 | boss@300 THE MATRIARCH hp 34764 (kitDps 1738, x20 s) you 138/147 lvl 18 -> killed in 28.9 s, took 137, trough 38%
+surge  clumsy 40 alive     lvl 36 | boss@300 THE MATRIARCH hp 45600 (kitDps 2851, x16 s) you 114/115 lvl 17 -> killed in 41.6 s, took 95, trough 47%
+surge  clumsy 41 alive     lvl 37 | boss@300 THE MATRIARCH hp 44887 (kitDps 2244, x20 s) you 115/115 lvl 15 -> killed in 72.0 s, took 117, trough 12%
+surge  clumsy 42 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 5679, x8 s) you 190/190 lvl 18 -> killed in 43.0 s, took 46, trough 79%
+surge  clumsy 43 alive     lvl 38 | boss@300 THE MATRIARCH hp 30496 (kitDps 1525, x20 s) you 143/143 lvl 16 -> killed in 28.8 s, took 205, trough 46%
+surge  clumsy 44 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 6290, x7 s) you 190/190 lvl 19 -> killed in 31.1 s, took 78, trough 71%
+== surge clumsy: dead before 10:00 2/24 (1 with a boss up); first boss killed 23/24, median time to kill 32.2 s, median hp 45600, median kitDps 2851, median taken in the fight 78 of median max hp 147, median trough 65%
+
+spark  clumsy 21 alive     lvl 37 | boss@300 THE MATRIARCH hp 42186 (kitDps 2109, x20 s) you 147/148 lvl 18 -> killed in 136.1 s, took 194, trough 16%
+spark  clumsy 22 alive     lvl 38 | boss@300 THE MATRIARCH hp 23928 (kitDps 1196, x20 s) you 126/126 lvl 18 -> killed in 39.0 s, took 152, trough 22%
+spark  clumsy 23 alive     lvl 38 | boss@300 THE MATRIARCH hp 23288 (kitDps 1164, x20 s) you 131/131 lvl 19 -> killed in 22.7 s, took 39, trough 75%
+spark  clumsy 24 alive     lvl 37 | boss@300 THE MATRIARCH hp 26843 (kitDps 1342, x20 s) you 148/148 lvl 18 -> killed in 45.7 s, took 64, trough 79%
+spark  clumsy 25 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 3191, x14 s) you 82/98 lvl 19 -> killed in 30.9 s, took 73, trough 34%
+spark  clumsy 26 DEAD 282s lvl 16 | no boss by 6:40 | died no boss up, last 30 s: contact 46 spit 16 hazard 0
+spark  clumsy 27 alive     lvl 36 | boss@300 THE MATRIARCH hp 30255 (kitDps 1513, x20 s) you 113/123 lvl 18 -> killed in 46.0 s, took 81, trough 56%
+spark  clumsy 28 alive     lvl 38 | boss@300 THE MATRIARCH hp 21908 (kitDps 1095, x20 s) you 91/91 lvl 20 -> killed in 13.6 s, took 42, trough 63%
+spark  clumsy 29 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 12913, x4 s) you 145/152 lvl 21 -> killed in 7.9 s, took 34, trough 74%
+spark  clumsy 30 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 3326, x14 s) you 142/142 lvl 23 -> killed in 20.4 s, took 1, trough 99%
+spark  clumsy 31 DEAD 327s lvl 19 | boss@300 THE MATRIARCH hp 34194 (kitDps 1710, x20 s) you 98/98 lvl 17 -> NOT killed, took 106, trough -4% | died WITH A BOSS UP, last 30 s: contact 98 spit 8 hazard 0
+spark  clumsy 32 alive     lvl 36 | boss@300 THE MATRIARCH hp 17257 (kitDps 863, x20 s) you 71/74 lvl 18 -> killed in 13.5 s, took 61, trough 24%
+spark  clumsy 33 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 5710, x8 s) you 118/118 lvl 21 -> killed in 20.8 s, took 0, trough 100%
+spark  clumsy 34 alive     lvl 40 | boss@300 THE MATRIARCH hp 27158 (kitDps 1358, x20 s) you 57/98 lvl 19 -> killed in 30.0 s, took 54, trough 45%
+spark  clumsy 35 alive     lvl 38 | boss@300 THE MATRIARCH hp 37586 (kitDps 1879, x20 s) you 111/118 lvl 20 -> killed in 19.9 s, took 71, trough 40%
+spark  clumsy 36 alive     lvl 38 | boss@300 THE MATRIARCH hp 36131 (kitDps 1807, x20 s) you 126/126 lvl 19 -> killed in 46.8 s, took 39, trough 80%
+spark  clumsy 37 alive     lvl 38 | boss@300 THE MATRIARCH hp 19043 (kitDps 952, x20 s) you 123/123 lvl 19 -> killed in 14.6 s, took 71, trough 68%
+spark  clumsy 38 alive     lvl 36 | boss@300 THE MATRIARCH hp 19175 (kitDps 959, x20 s) you 98/98 lvl 17 -> killed in 11.0 s, took 23, trough 84%
+spark  clumsy 39 alive     lvl 38 | boss@300 THE MATRIARCH hp 20523 (kitDps 1026, x20 s) you 99/99 lvl 18 -> killed in 32.1 s, took 77, trough 26%
+spark  clumsy 40 DEAD 468s lvl 30 | boss@300 THE MATRIARCH hp 45600 (kitDps 11204, x4 s) you 98/98 lvl 18 -> killed in 32.1 s, took 66, trough 61% | died no boss up, last 30 s: contact 54 spit 41 hazard 0
+spark  clumsy 41 alive     lvl 37 | boss@300 THE MATRIARCH hp 20906 (kitDps 1045, x20 s) you 118/118 lvl 20 -> killed in 15.6 s, took 105, trough 15%
+spark  clumsy 42 alive     lvl 38 | boss@300 THE MATRIARCH hp 42357 (kitDps 2118, x20 s) you 126/126 lvl 19 -> killed in 26.1 s, took 118, trough 29%
+spark  clumsy 43 alive     lvl 38 | boss@300 THE MATRIARCH hp 22041 (kitDps 1102, x20 s) you 100/126 lvl 19 -> killed in 24.8 s, took 117, trough 3%
+spark  clumsy 44 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 2880, x16 s) you 177/177 lvl 18 -> killed in 84.7 s, took 115, trough 61%
+== spark clumsy: dead before 10:00 3/24 (1 with a boss up); first boss killed 22/23, median time to kill 26.1 s, median hp 30255, median kitDps 1513, median taken in the fight 71 of median max hp 123, median trough 56%
+
+intern clumsy 21 DEAD 320s lvl 18 | boss@300 THE MATRIARCH hp 24393 (kitDps 1220, x20 s) you 107/133 lvl 17 -> NOT killed, took 118, trough -5% | died WITH A BOSS UP, last 30 s: contact 71 spit 9 hazard 38
+intern clumsy 22 alive     lvl 36 | boss@300 THE MATRIARCH hp 45600 (kitDps 2794, x16 s) you 124/133 lvl 18 -> killed in 51.9 s, took 122, trough 35%
+intern clumsy 23 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 3120, x15 s) you 126/130 lvl 17 -> killed in 50.7 s, took 36, trough 74%
+intern clumsy 24 DEAD 312s lvl 18 | boss@300 THE MATRIARCH hp 45600 (kitDps 10034, x5 s) you 47/80 lvl 17 -> NOT killed, took 66, trough -6% | died WITH A BOSS UP, last 30 s: contact 74 spit 8 hazard 37
+intern clumsy 25 alive     lvl 36 | boss@300 THE MATRIARCH hp 19861 (kitDps 993, x20 s) you 147/147 lvl 18 -> killed in 22.6 s, took 73, trough 56%
+intern clumsy 26 DEAD 317s lvl 18 | boss@300 THE MATRIARCH hp 35530 (kitDps 1776, x20 s) you 39/80 lvl 17 -> NOT killed, took 48, trough -5% | died WITH A BOSS UP, last 30 s: contact 25 spit 26 hazard 0
+intern clumsy 27 DEAD 312s lvl 18 | boss@300 THE MATRIARCH hp 24725 (kitDps 1236, x20 s) you 28/133 lvl 17 -> NOT killed, took 35, trough -4% | died WITH A BOSS UP, last 30 s: contact 0 spit 67 hazard 0
+intern clumsy 28 DEAD 336s lvl 19 | boss@300 THE MATRIARCH hp 45600 (kitDps 3839, x12 s) you 46/80 lvl 17 -> NOT killed, took 66, trough -6% | died WITH A BOSS UP, last 30 s: contact 0 spit 20 hazard 38
+intern clumsy 29 DEAD 383s lvl 22 | boss@300 THE MATRIARCH hp 45600 (kitDps 2695, x17 s) you 133/133 lvl 16 -> NOT killed, took 195, trough -3% | died WITH A BOSS UP, last 30 s: contact 0 spit 27 hazard 79
+intern clumsy 30 alive     lvl 38 | boss@300 THE MATRIARCH hp 19178 (kitDps 959, x20 s) you 133/133 lvl 16 -> killed in 37.2 s, took 43, trough 89%
+intern clumsy 31 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 2362, x19 s) you 158/158 lvl 20 -> killed in 37.8 s, took 51, trough 72%
+intern clumsy 32 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 2391, x19 s) you 93/95 lvl 18 -> killed in 42.7 s, took 70, trough 31%
+intern clumsy 33 alive     lvl 35 | boss@300 THE MATRIARCH hp 18005 (kitDps 900, x20 s) you 154/158 lvl 17 -> killed in 15.2 s, took 79, trough 52%
+intern clumsy 34 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 3352, x14 s) you 88/158 lvl 21 -> killed in 14.0 s, took 38, trough 45%
+intern clumsy 35 alive     lvl 38 | boss@300 THE MATRIARCH hp 45600 (kitDps 3725, x12 s) you 72/80 lvl 17 -> killed in 22.6 s, took 37, trough 48%
+intern clumsy 36 alive     lvl 36 | boss@300 THE MATRIARCH hp 23902 (kitDps 1195, x20 s) you 158/158 lvl 17 -> killed in 36.1 s, took 143, trough 77%
+intern clumsy 37 alive     lvl 35 | boss@300 THE MATRIARCH hp 45600 (kitDps 2380, x19 s) you 122/161 lvl 18 -> killed in 27.5 s, took 72, trough 38%
+intern clumsy 38 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 2627, x17 s) you 80/80 lvl 17 -> killed in 40.3 s, took 51, trough 46%
+intern clumsy 39 alive     lvl 34 | boss@300 THE MATRIARCH hp 13715 (kitDps 686, x20 s) you 187/187 lvl 17 -> killed in 53.8 s, took 103, trough 68%
+intern clumsy 40 alive     lvl 38 | boss@300 THE MATRIARCH hp 38654 (kitDps 1933, x20 s) you 133/133 lvl 17 -> killed in 60.3 s, took 167, trough 45%
+intern clumsy 41 DEAD 331s lvl 19 | boss@300 THE MATRIARCH hp 26561 (kitDps 1328, x20 s) you 60/133 lvl 17 -> NOT killed, took 90, trough -1% | died WITH A BOSS UP, last 30 s: contact 33 spit 57 hazard 0
+intern clumsy 42 alive     lvl 40 | boss@300 THE MATRIARCH hp 45600 (kitDps 3804, x12 s) you 133/133 lvl 19 -> killed in 26.1 s, took 37, trough 76%
+intern clumsy 43 alive     lvl 36 | boss@300 THE MATRIARCH hp 30418 (kitDps 1521, x20 s) you 62/133 lvl 19 -> killed in 69.4 s, took 109, trough 7%
+intern clumsy 44 DEAD 323s lvl 19 | boss@300 THE MATRIARCH hp 35417 (kitDps 1771, x20 s) you 51/80 lvl 17 -> NOT killed, took 64, trough -7% | died WITH A BOSS UP, last 30 s: contact 17 spit 16 hazard 38
+== intern clumsy: dead before 10:00 8/24 (8 with a boss up); first boss killed 16/24, median time to kill 37.8 s, median hp 45600, median kitDps 2362, median taken in the fight 70 of median max hp 133, median trough 45%
+
+ox     clumsy 21 alive     lvl 36 | boss@300 THE MATRIARCH hp 35729 (kitDps 1786, x20 s) you 206/222 lvl 17 -> killed in 85.1 s, took 142, trough 52%
+ox     clumsy 22 alive     lvl 36 | boss@300 THE MATRIARCH hp 42449 (kitDps 2122, x20 s) you 247/247 lvl 16 -> killed in 106.8 s, took 221, trough 53%
+ox     clumsy 23 alive     lvl 37 | boss@300 THE MATRIARCH hp 31058 (kitDps 1553, x20 s) you 250/250 lvl 19 -> killed in 60.6 s, took 92, trough 83%
+ox     clumsy 24 alive     lvl 35 | boss@300 THE MATRIARCH hp 25035 (kitDps 1252, x20 s) you 189/222 lvl 17 -> killed in 38.1 s, took 80, trough 57%
+ox     clumsy 25 alive     lvl 37 | boss@300 THE MATRIARCH hp 29914 (kitDps 1496, x20 s) you 148/148 lvl 17 -> killed in 51.3 s, took 134, trough 76%
+ox     clumsy 26 alive     lvl 34 | boss@300 THE MATRIARCH hp 45600 (kitDps 2994, x15 s) you 222/222 lvl 16 -> killed in 41.8 s, took 189, trough 23%
+ox     clumsy 27 alive     lvl 34 | boss@300 THE MATRIARCH hp 15849 (kitDps 792, x20 s) you 191/247 lvl 17 -> killed in 22.9 s, took 57, trough 69%
+ox     clumsy 28 alive     lvl 34 | boss@300 THE MATRIARCH hp 45600 (kitDps 3420, x13 s) you 213/222 lvl 16 -> killed in 62.5 s, took 60, trough 73%
+ox     clumsy 29 alive     lvl 34 | boss@300 THE MATRIARCH hp 12284 (kitDps 614, x20 s) you 120/133 lvl 16 -> killed in 26.6 s, took 114, trough 15%
+ox     clumsy 30 alive     lvl 36 | boss@300 THE MATRIARCH hp 18755 (kitDps 938, x20 s) you 206/222 lvl 19 -> killed in 29.9 s, took 111, trough 67%
+ox     clumsy 31 alive     lvl 36 | boss@300 THE MATRIARCH hp 12680 (kitDps 634, x20 s) you 151/222 lvl 17 -> killed in 36.8 s, took 110, trough 27%
+ox     clumsy 32 alive     lvl 35 | boss@300 THE MATRIARCH hp 33978 (kitDps 1699, x20 s) you 222/222 lvl 17 -> killed in 30.6 s, took 112, trough 53%
+ox     clumsy 33 alive     lvl 36 | boss@300 THE MATRIARCH hp 41282 (kitDps 2064, x20 s) you 218/222 lvl 19 -> killed in 22.1 s, took 33, trough 88%
+ox     clumsy 34 alive     lvl 37 | boss@300 THE MATRIARCH hp 45600 (kitDps 2355, x19 s) you 145/148 lvl 18 -> killed in 83.3 s, took 198, trough 58%
+ox     clumsy 35 alive     lvl 39 | boss@300 THE MATRIARCH hp 45600 (kitDps 4531, x10 s) you 304/304 lvl 20 -> killed in 32.2 s, took 33, trough 89%
+ox     clumsy 36 alive     lvl 35 | boss@300 THE MATRIARCH hp 36649 (kitDps 1832, x20 s) you 250/250 lvl 17 -> killed in 85.2 s, took 52, trough 85%
+ox     clumsy 37 alive     lvl 38 | boss@300 THE MATRIARCH hp 39064 (kitDps 1953, x20 s) you 213/222 lvl 19 -> killed in 32.8 s, took 156, trough 45%
+ox     clumsy 38 alive     lvl 36 | boss@300 THE MATRIARCH hp 45600 (kitDps 3148, x14 s) you 245/250 lvl 19 -> killed in 36.0 s, took 3, trough 98%
+ox     clumsy 39 DEAD 324s lvl 21 | boss@300 THE MATRIARCH hp 45600 (kitDps 2812, x16 s) you 128/162 lvl 20 -> NOT killed, took 141, trough -4% | died WITH A BOSS UP, last 30 s: contact 109 spit 0 hazard 33
+ox     clumsy 40 alive     lvl 33 | boss@300 THE MATRIARCH hp 45600 (kitDps 2491, x18 s) you 250/250 lvl 16 -> killed in 114.5 s, took 249, trough 40%
+ox     clumsy 41 alive     lvl 34 | boss@300 THE MATRIARCH hp 22291 (kitDps 1115, x20 s) you 219/222 lvl 16 -> killed in 32.0 s, took 123, trough 53%
+ox     clumsy 42 alive     lvl 35 | boss@300 THE MATRIARCH hp 24049 (kitDps 1202, x20 s) you 250/250 lvl 17 -> killed in 31.3 s, took 88, trough 68%
+ox     clumsy 43 alive     lvl 35 | boss@300 THE MATRIARCH hp 16654 (kitDps 833, x20 s) you 240/247 lvl 17 -> killed in 47.6 s, took 51, trough 86%
+ox     clumsy 44 alive     lvl 36 | boss@300 THE MATRIARCH hp 17241 (kitDps 862, x20 s) you 219/222 lvl 16 -> killed in 30.1 s, took 88, trough 65%
+== ox clumsy: dead before 10:00 1/24 (1 with a boss up); first boss killed 23/24, median time to kill 36.8 s, median hp 35729, median kitDps 1786, median taken in the fight 111 of median max hp 222, median trough 65%
+

@@ -2067,6 +2067,12 @@ its low end.
   dies before 10:00 in 11 of 24 runs for the plausible player, and THE INTERN, the character every
   new player starts with, in 13 of 48 across the two. Per-character work, measured this way, with
   both players, before any stat moves.
+- **The first boss is the one thing in the first ten minutes a plausible player loses to.**
+  THE MATRIARCH at 5:00 takes the clumsy player 26-38 s to kill with any character (the sizing
+  works) and costs it about seventy points of health with any character; THE INTERN's early deaths
+  for that player are all inside the fight (8 of 24 runs), THE TWIN's in it or just after, from a
+  quarter of its 91 (`evidence/l47-firstboss`). Whether a new player's first boss should take a
+  third of their first runs is the owner's call.
 - **The clear rates are not the ones the balance section once aimed at.** "A first run never
   clears" and "50% veteran" predate the finale sized by the kit (R237-R247); the first tier clears
   about half its runs now (56% bench bot, 48% plausible player) and veteran three in four. Nothing
