@@ -2060,10 +2060,19 @@ its low end.
   still dominates the first ten minutes for the ceiling player; it does not for a plausible one,
   and the sweeps that moved early deaths by one run in forty-two were measuring the ceiling. What
   is left of this item is per-character: THE TEMP without the hop dies in every run before 6:00.
-- **THE SCRAPPER is still the weakest character.** Its HP penalty was isolated and cleared
-  (patching `hp` back to 1.0 changes nothing — identical clears, identical median), and the
-  partner rework has lifted it further, but it remains the least reliable closer. What is
-  actually left is a per-character question rather than a systemic one.
+- **The per-character spread is real, and THE SCRAPPER is not alone at the bottom of it.** At 24
+  paired worlds a character and both players (`evidence/l46-characters`), THE OX, THE COURIER and
+  THE GHOUL clear 69-73% of their first-tier runs; THE ACCOUNTANT, THE INTERN, THE SCRAPPER and
+  THE TWIN 33-42%, and the two players agree on the order. THE TWIN - unlocked by clearing a run -
+  dies before 10:00 in 11 of 24 runs for the plausible player, and THE INTERN, the character every
+  new player starts with, in 13 of 48 across the two. Per-character work, measured this way, with
+  both players, before any stat moves.
+- **The clear rates are not the ones the balance section once aimed at.** "A first run never
+  clears" and "50% veteran" predate the finale sized by the kit (R237-R247); the first tier clears
+  about half its runs now (56% bench bot, 48% plausible player) and veteran three in four. Nothing
+  was tuned back toward the old aim, because the finale was deliberately made the same fight for
+  every kit - surviving to 20:00 is the check - and whether that is still the design is the
+  owner's call.
 - **The bench numbers move ±10 points between runs at n=5.** PLATING has read 35% and 42% dps
   on identical builds. Directionally reliable, not precise — do not tune to one decimal.
 - Weapon variety is broad but shallow — 8 weapons with one evolution each. The genre expects
