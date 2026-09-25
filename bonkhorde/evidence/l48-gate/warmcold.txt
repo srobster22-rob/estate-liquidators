@@ -1,0 +1,19 @@
+### warmcold 02:48:58 on b0654d66
+clean                                            COLD: nearestCells 0 KB, groundY 13237 KB, biomeAt 0 KB, confineIn 112 KB, confine 48 KB, botVector<next 0 KB, step total 181 KB/step; same array twice: true
+clean                                            WARM: nearestCells 17 KB, groundY 13957 KB, biomeAt 0 KB, confineIn 0 KB, confine 0 KB, botVector<next 0 KB, step total 214 KB/step; same array twice: true
+the-cells-are-answered-fresh                     COLD: nearestCells 2067 KB, groundY 15144 KB, biomeAt 737 KB, confineIn 128 KB, confine 16 KB, botVector<next 0 KB, step total 220 KB/step; same array twice: false
+the-cells-are-answered-fresh                     WARM: nearestCells 2084 KB, groundY 17273 KB, biomeAt 240 KB, confineIn 0 KB, confine 80 KB, botVector<next 0 KB, step total 223 KB/step; same array twice: false
+the-clamp-still-makes-a-pair                     COLD: nearestCells 0 KB, groundY 12405 KB, biomeAt 0 KB, confineIn 48 KB, confine 1570 KB, botVector<next 0 KB, step total 205 KB/step; same array twice: true
+the-clamp-still-makes-a-pair                     WARM: nearestCells 0 KB, groundY 14229 KB, biomeAt 0 KB, confineIn 448 KB, confine 993 KB, botVector<next 0 KB, step total 232 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator      COLD: nearestCells 0 KB, groundY 12661 KB, biomeAt 0 KB, confineIn 208 KB, confine 32 KB, botVector<next 768 KB, step total 221 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator      WARM: nearestCells 0 KB, groundY 13973 KB, biomeAt 0 KB, confineIn 0 KB, confine 0 KB, botVector<next 752 KB, step total 228 KB/step; same array twice: true
+--- escape analysis off
+clean [--no-turbo-escape]                        COLD: nearestCells 0 KB, groundY 23395 KB, biomeAt 0 KB, confineIn 224 KB, confine 16 KB, botVector<next 0 KB, step total 252 KB/step; same array twice: true
+clean [--no-turbo-escape]                        WARM: nearestCells 0 KB, groundY 30511 KB, biomeAt 0 KB, confineIn 0 KB, confine 64 KB, botVector<next 0 KB, step total 262 KB/step; same array twice: true
+the-cells-are-answered-fresh [--no-turbo-escape] COLD: nearestCells 1619 KB, groundY 26553 KB, biomeAt 1170 KB, confineIn 416 KB, confine 16 KB, botVector<next 0 KB, step total 301 KB/step; same array twice: false
+the-cells-are-answered-fresh [--no-turbo-escape] WARM: nearestCells 898 KB, groundY 36200 KB, biomeAt 1330 KB, confineIn 0 KB, confine 16 KB, botVector<next 0 KB, step total 275 KB/step; same array twice: false
+the-clamp-still-makes-a-pair [--no-turbo-escape] COLD: nearestCells 0 KB, groundY 25751 KB, biomeAt 0 KB, confineIn 16 KB, confine 1810 KB, botVector<next 0 KB, step total 234 KB/step; same array twice: true
+the-clamp-still-makes-a-pair [--no-turbo-escape] WARM: nearestCells 0 KB, groundY 30494 KB, biomeAt 0 KB, confineIn 561 KB, confine 1025 KB, botVector<next 0 KB, step total 262 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator [--no-turbo-escape] COLD: nearestCells 0 KB, groundY 25735 KB, biomeAt 0 KB, confineIn 208 KB, confine 16 KB, botVector<next 672 KB, step total 256 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator [--no-turbo-escape] WARM: nearestCells 0 KB, groundY 30847 KB, biomeAt 0 KB, confineIn 0 KB, confine 16 KB, botVector<next 849 KB, step total 257 KB/step; same array twice: true
+### warmcold done 02:57:25

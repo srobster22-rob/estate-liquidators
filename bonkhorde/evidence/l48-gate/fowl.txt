@@ -1,0 +1,9 @@
+# section 22's GLIMMERFOWL count alone, the pre-L48 check (frame difference, random birds), on the L41 build b0654d66
+clean try 0: 32.0 boxes a bird (bare 409, with 505)
+clean try 1: 32.0 boxes a bird (bare 456, with 552)
+clean try 2: 48.3 boxes a bird (bare 506, with 651)
+errors: none
+the-cells-are-answered-fresh try 0: 46.3 boxes a bird (bare 466, with 605)
+the-cells-are-answered-fresh try 1: 30.0 boxes a bird (bare 420, with 510)
+the-cells-are-answered-fresh try 2: 49.0 boxes a bird (bare 523, with 670)
+errors: none

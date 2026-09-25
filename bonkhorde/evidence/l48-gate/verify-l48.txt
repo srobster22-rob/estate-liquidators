@@ -1,0 +1,37 @@
+### verify-l48 03:37:40
+  PASS  and GLIMMERFOWL is a bird, not fifteen marker boxes  45.0 boxes each in the horde pass (3 birds), 15 of which are the marker
+clean section 22: 8 passed, 0 failed in 9 s
+  PASS  and GLIMMERFOWL is a bird, not fifteen marker boxes  41.7 boxes each in the horde pass (3 birds), 15 of which are the marker
+clean section 22: 8 passed, 0 failed in 9 s
+  PASS  and GLIMMERFOWL is a bird, not fifteen marker boxes  45.0 boxes each in the horde pass (3 birds), 15 of which are the marker
+clean section 22: 8 passed, 0 failed in 10 s
+  FAIL  and GLIMMERFOWL is a bird, not fifteen marker boxes  17.0 boxes each in the horde pass (3 birds), 15 of which are the marker
+fowl-marker-only section 22: 7 passed, 1 failed in 10 s
+  PASS  L40's step: nearestCells answers in one shared array - the same array on two calls, and under 256 KB charged to it over 600 settled steps with nothing inlined  same array twice: true; 0.0 KB charged to nearestCells (5.7-6.5 MB with a fresh array a call
+  PASS  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together with nothing inlined  confineIn 16.0 KB, confine 32.0 KB (1.7-2.9 MB with the pair put back)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector with nothing inlined  0.0 KB of iterator results under botVector (672-688 KB with a for-of over the field)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  219.1 KB a step over 600 steps from t=300 to 310.5 (75 bodies, 44 gems); the largest: walk 28282.6, updateEnemies 21335.8, botVector 18407.6, groundY 12068.4, hypot 11252.2
+  PASS  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  78 bodies (1 boss): 1 signature(s) among the field [77], 1 key set(s) overall, 105 keys a body (10 signature
+clean section 101: 5 passed, 0 failed in 18 s
+  PASS  L40's step: nearestCells answers in one shared array - the same array on two calls, and under 256 KB charged to it over 600 settled steps with nothing inlined  same array twice: true; 0.0 KB charged to nearestCells (5.7-6.5 MB with a fresh array a call
+  PASS  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together with nothing inlined  confineIn 16.0 KB, confine 64.1 KB (1.7-2.9 MB with the pair put back)
+  PASS  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector with nothing inlined  0.0 KB of iterator results under botVector (672-688 KB with a for-of over the field)
+  PASS  and the whole step allocates under 400 KB (301 KB before L40)  192.7 KB a step over 600 steps from t=300 to 310.5 (75 bodies, 44 gems); the largest: botVector 23882.1, walk 18890.2, updateEnemies 14693.4, groundY 12900.7, hypot 11099.7
+  PASS  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  78 bodies (1 boss): 1 signature(s) among the field [77], 1 key set(s) overall, 105 keys a body (10 signature
+clean section 101: 5 passed, 0 failed in 19 s
+-- the-cells-are-answered-fresh
+  FAIL  L40's step: nearestCells answers in one shared array - the same array on two calls, and under 256 KB charged to it over 600 settled steps with nothing inlined  same array twice: false; 5898.0 KB charged to nearestCells (5.7-6.5 MB with a fresh array a 
+the-cells-are-answered-fresh section 101: 4 passed, 1 failed in 18 s
+-- the-clamp-still-makes-a-pair
+  FAIL  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together with nothing inlined  confineIn 0.0 KB, confine 1361.6 KB (1.7-2.9 MB with the pair put back)
+the-clamp-still-makes-a-pair section 101: 4 passed, 1 failed in 18 s
+-- the-bot-reads-the-field-through-an-iterator
+  FAIL  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector with nothing inlined  816.5 KB of iterator results under botVector (672-688 KB with a for-of over the field)
+the-bot-reads-the-field-through-an-iterator section 101: 4 passed, 1 failed in 20 s
+-- a-body-still-grows-its-shape
+  FAIL  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  64 bodies (1 boss): 2 signature(s) among the field [17,46], 2 key set(s) overall, 105 keys a body (10 signat
+a-body-still-grows-its-shape section 101: 4 passed, 1 failed in 18 s
+-- the-boss-keeps-its-old-shape
+  FAIL  L41: every body on the field has the same shape - one key signature across the live bodies and the corpses, the boss carrying the same key set  79 bodies (1 boss): 1 signature(s) among the field [78], 2 key set(s) overall, 105 keys a body (10 signature
+the-boss-keeps-its-old-shape section 101: 4 passed, 1 failed in 18 s
+### verify-l48 done 03:41:05

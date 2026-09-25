@@ -1,0 +1,19 @@
+--- flags: --no-turbo-inlining --no-maglev-inlining
+clean [--no-turbo-inlining --no-maglev-inlining] COLD: nearestCells 0 KB, groundY 832 KB, biomeAt 0 KB, confineIn 96 KB, confine 48 KB, botVector<next 0 KB, step total 227 KB/step; same array twice: true
+clean [--no-turbo-inlining --no-maglev-inlining] WARM: nearestCells 0 KB, groundY 896 KB, biomeAt 0 KB, confineIn 0 KB, confine 32 KB, botVector<next 0 KB, step total 264 KB/step; same array twice: true
+the-cells-are-answered-fresh [--no-turbo-inlining --no-maglev-inlining] COLD: nearestCells 5690 KB, groundY 720 KB, biomeAt 0 KB, confineIn 0 KB, confine 0 KB, botVector<next 0 KB, step total 222 KB/step; same array twice: false
+the-cells-are-answered-fresh [--no-turbo-inlining --no-maglev-inlining] WARM: nearestCells 6475 KB, groundY 880 KB, biomeAt 0 KB, confineIn 0 KB, confine 0 KB, botVector<next 0 KB, step total 268 KB/step; same array twice: false
+the-clamp-still-makes-a-pair [--no-turbo-inlining --no-maglev-inlining] COLD: nearestCells 0 KB, groundY 688 KB, biomeAt 0 KB, confineIn 64 KB, confine 1650 KB, botVector<next 0 KB, step total 241 KB/step; same array twice: true
+the-clamp-still-makes-a-pair [--no-turbo-inlining --no-maglev-inlining] WARM: nearestCells 0 KB, groundY 832 KB, biomeAt 0 KB, confineIn 1008 KB, confine 1938 KB, botVector<next 0 KB, step total 261 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator [--no-turbo-inlining --no-maglev-inlining] COLD: nearestCells 0 KB, groundY 720 KB, biomeAt 0 KB, confineIn 64 KB, confine 16 KB, botVector<next 672 KB, step total 225 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator [--no-turbo-inlining --no-maglev-inlining] WARM: nearestCells 0 KB, groundY 800 KB, biomeAt 0 KB, confineIn 0 KB, confine 0 KB, botVector<next 688 KB, step total 264 KB/step; same array twice: true
+--- flags: --max-opt=2 --no-maglev-inlining
+clean [--max-opt=2 --no-maglev-inlining]         COLD: nearestCells 6722 KB, groundY 1537 KB, biomeAt 0 KB, confineIn 64 KB, confine 16 KB, botVector<next 0 KB, step total 274 KB/step; same array twice: true
+clean [--max-opt=2 --no-maglev-inlining]         WARM: nearestCells 8163 KB, groundY 1409 KB, biomeAt 0 KB, confineIn 0 KB, confine 16 KB, botVector<next 0 KB, step total 331 KB/step; same array twice: true
+the-cells-are-answered-fresh [--max-opt=2 --no-maglev-inlining] COLD: nearestCells 13709 KB, groundY 1713 KB, biomeAt 0 KB, confineIn 160 KB, confine 16 KB, botVector<next 0 KB, step total 296 KB/step; same array twice: false
+the-cells-are-answered-fresh [--max-opt=2 --no-maglev-inlining] WARM: nearestCells 13244 KB, groundY 1361 KB, biomeAt 0 KB, confineIn 0 KB, confine 48 KB, botVector<next 0 KB, step total 335 KB/step; same array twice: false
+the-clamp-still-makes-a-pair [--max-opt=2 --no-maglev-inlining] COLD: nearestCells 7891 KB, groundY 1665 KB, biomeAt 0 KB, confineIn 16 KB, confine 1858 KB, botVector<next 0 KB, step total 275 KB/step; same array twice: true
+the-clamp-still-makes-a-pair [--max-opt=2 --no-maglev-inlining] WARM: nearestCells 7603 KB, groundY 1665 KB, biomeAt 0 KB, confineIn 864 KB, confine 1538 KB, botVector<next 0 KB, step total 326 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator [--max-opt=2 --no-maglev-inlining] COLD: nearestCells 7635 KB, groundY 1889 KB, biomeAt 0 KB, confineIn 160 KB, confine 48 KB, botVector<next 528 KB, step total 281 KB/step; same array twice: true
+the-bot-reads-the-field-through-an-iterator [--max-opt=2 --no-maglev-inlining] WARM: nearestCells 8595 KB, groundY 1553 KB, biomeAt 0 KB, confineIn 0 KB, confine 16 KB, botVector<next 672 KB, step total 340 KB/step; same array twice: true
+### flagged done 03:35:51
