@@ -1621,9 +1621,17 @@ for (const m of run) {
                                    : ` - ${m.must} did NOT`)
                         : "the suite passed a broken game"}` + (QUICK ? " [quick: bezel gates skipped]" : "");
   console.log(row);
+  // WHICH ASSERTIONS, not only which sections (L48). A row that says "first in
+  // 22" for a mutation that cannot touch section 22 is either a hole in the
+  // owner or a flake in 22, and without the failing lines nobody can tell
+  // which: the-cells-are-answered-fresh came back that way and its child's
+  // output was already gone. The first failing lines travel with the row.
+  const failLines = lines.filter(l => /^\s+FAIL\s/.test(l)).slice(0, 3)
+                         .map(l => `          | ${l.trim().slice(0, 220)}`);
+  for (const l of failLines) console.log(l);
   // Append the moment it is known, not at the end: a run that dies has still
   // banked everything it measured.
-  if (RESUME) fs.appendFileSync(LOG, row + "\n");
+  if (RESUME) fs.appendFileSync(LOG, [row, ...failLines].join("\n") + "\n");
   // A mutation caught only by a section that does not own it is a hole in the
   // owning section, even though the suite went red. Count it as one.
   if (!caught || !byOwner) survived++;

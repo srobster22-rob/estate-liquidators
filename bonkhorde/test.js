@@ -2272,15 +2272,31 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
       // world. render() draws while paused, step() does not, so the count is
       // the same one and the bird stays where it was put.
       g.pause(true);
+      // COUNTED IN ITS OWN PASS, WHERE THE CAMERA LOOKS (L48). This used to
+      // subtract the whole frame's box count before the birds from the one
+      // after them, with the three birds dropped at random inside eight
+      // metres: the camera was still settling onto the placed player between
+      // the two frames, so the terrain's own change rode along in the
+      // difference, and a bird that landed behind the camera counted nothing.
+      // Run alone on an unchanged build it read 31 to 61 boxes a bird over six
+      // tries against a bound of 26, and in the audit it failed a build whose
+      // only change was how nearestCells hands back its answer. The horde pass holds nothing
+      // but the birds (spawns are frozen), and the birds stand in a row six to
+      // seven metres ahead of the player, inside the view the chase camera
+      // looks down at yaw 0.
+      g.setCam(0);
       const bare = await settle();
       g.spawn("collector", 3, 8); g.step(1/60);
-      const withFowl = await settle();
+      const E = (0, eval), P = E("P"), birds = E("enemies").filter(e => e.type === "collector");
+      birds.forEach((e, i) => { e.x = P.x + (i - 1) * 3; e.z = P.z + 6.5 - Math.abs(i - 1) * .5; e.kx = e.kz = 0; e.y = E("groundY")(e.x, e.z); });
+      await settle();
+      const withFowl = await settle(), horde = g.boxCensus().horde;
       g.pause(false);
-      return { bare, withFowl };
+      return { bare, withFowl, horde, n:birds.length };
     });
-    const per = (fowl.withFowl - fowl.bare) / 3;
+    const per = fowl.horde / Math.max(1, fowl.n);
     ok("and GLIMMERFOWL is a bird, not fifteen marker boxes",
-       per > 26, `${per.toFixed(1)} boxes each, 15 of which are the marker`);
+       fowl.n === 3 && per > 26, `${per.toFixed(1)} boxes each in the horde pass (${fowl.n} birds), 15 of which are the marker`);
 
     // The four bosses shared `generic` - one five-box plan and a scale factor -
     // for the whole life of the project, which meant the four moments the run is
@@ -10025,7 +10041,8 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     // reproduce to the kill - and this is the instrument that keeps them that
     // way: V8's own sampling heap profiler, collected objects included, around
     // 600 steps of a settled pinned run, aggregated by the allocating function
-    // (inlined frames are attributed to their own function). A site that
+    // (see L48 below: a function inlined into another is charged to the
+    // other, so the sites are read in a browser that inlines nothing). A site that
     // allocates nothing samples nothing; a site that allocates megabytes
     // cannot hide - 2.3 MB at a 16 KB sampling interval is ~140 samples, and
     // the odds of drawing none are e^-140. The whole-step number is tier-
@@ -10050,17 +10067,49 @@ const ok  = (n, c, extra="") => { c ? passes++ : fails++;
     const KB = x => (x / 1024).toFixed(1), at = n => self.get(n) || 0, botNext = under.get("botVector < next") || 0;
     const perStep = total / 600;
     const top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${KB(v)}`).join(", ");
-    // The bounds leave room for the one thing these sites still allocate in
-    // a lower tier: a function that has just deoptimized boxes the doubles it
-    // computes (confineIn read 128-176 KB in a fifth of the runs, from the
-    // steps updateEnemies spent in the baseline tier after a deopt). The
-    // objects the mutants put back are megabytes in every tier.
-    ok("L40's step: nearestCells answers in one shared array - under 64 KB sampled under it over 600 settled steps",
-       at("nearestCells") < 64 * 1024, `${KB(at("nearestCells"))} KB sampled under nearestCells (2,340 KB before L40)`);
-    ok("the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together",
-       at("confineIn") + at("confine") < 512 * 1024, `confineIn ${KB(at("confineIn"))} KB, confine ${KB(at("confine"))} KB (1,522 KB before; 1,666 KB with the pair put back)`);
-    ok("the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector",
-       botNext < 128 * 1024, `${KB(botNext)} KB of iterator results under botVector (9,606 KB before L40)`);
+    // THE SITES ARE READ IN A BROWSER THAT DOES NOT INLINE (L48). V8's
+    // sampling heap profiler charges an allocation to the physical frame it
+    // happened in, and a function TurboFan has inlined has no frame of its
+    // own: in this page, a hundred sections warm, nearestCells is inlined into
+    // groundY and confine into its callers, so the audit's
+    // the-cells-are-answered-fresh and the-clamp-still-makes-a-pair both read
+    // 0.0 KB here and passed - the fresh array's 1.7 MB turned up under
+    // groundY instead. (This section's L40 comment said inlined frames are
+    // attributed to their own function. They are not.) A second browser with
+    // --no-turbo-inlining --no-maglev-inlining keeps TurboFan and gives every
+    // function its own frame, so a site's bytes are its own, cold or warm:
+    // measured on the clean build nearestCells 0, confineIn + confine 32-144
+    // KB, iterator results 0, and with the three mutants 5.7-6.5 MB, 1.4-2.9
+    // MB and 670-820 KB. (Maglev-only is no good as a control: it boxes the
+    // shared array's doubles, 6.7-8.2 MB on the clean build.)
+    const nb = await chromium.launch({ ...LAUNCH, args:[...LAUNCH.args, "--js-flags=--no-turbo-inlining --no-maglev-inlining"] });
+    const np = await nb.newPage({ viewport:{ width:1280, height:760 } });
+    np.on("pageerror", e => errors.push("PAGEERROR (section 101, no-inlining browser): " + e.message));
+    await np.goto(FILE, { waitUntil:"load" }); await np.waitForFunction(() => !!window.__g, null, { timeout:60000 });
+    await np.evaluate(() => { const g = window.__g; g.wipeSave(); g.dev(true); g.pin(9); g.pinRun(9);
+      g.start("intern"); g.god(); g.drainPicks(true); g.bot(true);
+      let guard = 0; while(g.state().t < 300 && guard++ < 200000) g.step(30, 1/60); });
+    const ncdp = await np.context().newCDPSession(np);
+    await ncdp.send("HeapProfiler.enable");
+    await ncdp.send("HeapProfiler.startSampling", { samplingInterval:16384, includeObjectsCollectedByMajorGC:true, includeObjectsCollectedByMinorGC:true });
+    await np.evaluate(() => window.__g.step(600, 1/60));
+    const { profile:nprof } = await ncdp.send("HeapProfiler.stopSampling");
+    await nb.close();
+    const nself = new Map(), nunder = new Map();
+    const nwalk = (node, parent) => { const f = node.callFrame.functionName || "(anon)";
+      if(node.selfSize){ nself.set(f, (nself.get(f) || 0) + node.selfSize);
+        const k = parent + " < " + f; nunder.set(k, (nunder.get(k) || 0) + node.selfSize); }
+      for(const c of node.children || []) nwalk(c, f); };
+    nwalk(nprof.head, "");
+    const nat = n => nself.get(n) || 0, nNext = nunder.get("botVector < next") || 0;
+    const sameArray = await page.evaluate(() => (0, eval)("nearestCells(0, 0) === nearestCells(5, 5)"));
+    ok("L40's step: nearestCells answers in one shared array - the same array on two calls, and under 256 KB charged to it over 600 settled steps with nothing inlined",
+       sameArray === true && nat("nearestCells") < 256 * 1024,
+       `same array twice: ${sameArray}; ${KB(nat("nearestCells"))} KB charged to nearestCells (5.7-6.5 MB with a fresh array a call)`);
+    ok("the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together with nothing inlined",
+       nat("confineIn") + nat("confine") < 512 * 1024, `confineIn ${KB(nat("confineIn"))} KB, confine ${KB(nat("confine"))} KB (1.4-2.9 MB with the pair put back)`);
+    ok("the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector with nothing inlined",
+       nNext < 128 * 1024, `${KB(nNext)} KB of iterator results under botVector (670-820 KB with a for-of over the field)`);
     ok("and the whole step allocates under 400 KB (301 KB before L40)",
        perStep < 400 * 1024, `${KB(perStep)} KB a step over 600 steps from t=300 to ${st.t} (${st.bodies} bodies, ${st.gems} gems); the largest: ${top}`);
     // ONE SHAPE (L41). What was left after L40 was boxed doubles: the bodies
