@@ -133,3 +133,16 @@ its own gate. Not this round.
 - `step-alloc.txt` (both builds), `tiers.txt`, `verify3.txt` (the final build: section 101
   clean and under each mutant, both pinned trials, the step, the whole-trial
   churn, the scavenges): the numbers above, as printed.
+
+## Erratum (L48)
+
+The per-function allocation figures in this round were taken with the engine
+inlining, and V8's sampling heap profiler charges an inlined function's
+allocations to the function it was inlined into. This round's three sites were
+measured in fresh pages, where they were their own frames, so their before and
+after numbers stand; but section 101, as this round shipped it, could not see
+them in the suite's warm page and passed two of the three mutants in the full
+audit. L48 (`evidence/l48-gate`) moved the site clauses into a browser that
+inlines nothing. Also: in the Maglev tier the shared `nearestCells` array's
+doubles are boxed (6.7-8.2 MB over 600 steps on this build), so "allocates
+nothing" holds at TurboFan only.

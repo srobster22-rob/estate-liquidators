@@ -1,0 +1,15 @@
+### mutant the-cells-are-answered-fresh 05:36:44
+CAUGHT    the-cells-are-answered-fresh expected 101  1 of 848 assertion(s), first in 101 [quick: bezel gates skipped]
+          | FAIL  L40's step: nearestCells answers in one shared array - the same array on two calls, and under 256 KB charged to it over 600 settled steps with nothing inlined  same array twice: false; 6699.4 KB charged to nearestC
+### mutant the-clamp-still-makes-a-pair 06:00:02
+CAUGHT    the-clamp-still-makes-a-pair expected 101  1 of 848 assertion(s), first in 101 [quick: bezel gates skipped]
+          | FAIL  the clamp onto a body makes no pair: confineIn and confine - the spawns and arrivals only - under 512 KB together with nothing inlined  confineIn 112.9 KB, confine 1377.7 KB (1.4-2.9 MB with the pair put back)
+### mutant the-bot-reads-the-field-through-an-iterator 06:24:12
+CAUGHT    the-bot-reads-the-field-through-an-iterator expected 101  1 of 848 assertion(s), first in 101 [quick: bezel gates skipped]
+          | FAIL  the autopilot measures the field once a step and walks its arrays by index: under 128 KB of iterator results beneath botVector with nothing inlined  720.4 KB of iterator results under botVector (670-820 KB with a f
+### mutant fowl-marker-only 06:46:33
+CAUGHT    fowl-marker-only       expected 22   10 of 848 assertion(s), first in 22 [quick: bezel gates skipped]
+          | FAIL  and GLIMMERFOWL is a bird, not fifteen marker boxes  17.0 boxes each in the horde pass (3 birds), 15 of which are the marker
+          | FAIL  every trash body and every boss is a single connected object  collector: 0 parts of 0 boxes
+          | FAIL  and each one actually drew something to check  shambler 22 runner 33 brute 36 spitter 30 skitter 28 collector 0 THE MATRIARCH 67 THORNBACK 106 SKYSPLITTER 42 TERRAVORE 98
+### after-chain done 07:09:53

@@ -147,3 +147,15 @@ not reach the frame.
 - `tiers2.js`, `tiers2-*.txt`: tier residency of the hot functions as played,
   the deopts over the same window, and the step's allocation in that regime.
 - `verify*.txt`: the trials, the census and the allocation after each edit.
+
+## Erratum (L48)
+
+The function-by-function figures here were taken with the engine inlining, and
+V8's sampling heap profiler charges an inlined function's allocations to the
+function it was inlined into. With nothing inlined (L48, `evidence/l48-gate`),
+`groundY` itself allocates 0.7-0.9 MB over the 600 steps, not 12-15 MB: the rest
+was the relief noise, the shore cap and the water depth inlined into it. The
+same caution applies to the `walk` and `updateEnemies` figures and to the
+explanation of `groundY`'s bytes above. The whole-step numbers, and the
+conclusion that the shapes did not change what the step allocates as played,
+stand.
