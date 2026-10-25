@@ -23,6 +23,8 @@ function loadEngine(htmlPath) {
       genSequences, rolloutSeqReal, exactChance, chooseBest, streakBonus, greedyChoice,
       exactInit: (ms) => { if (typeof memoInit === 'function') memoInit(); else exactMemo = new Map(); exactNodes = 0; exactDeadline = Date.now() + ms; },
       exactBudgetFor,
+      // emulate a slower device: every exact wall-clock budget times f (f < 1 = slower device)
+      scaleBudgets: (f) => { const orig = exactBudgetFor; exactBudgetFor = (rem) => orig(rem) * f; },
       exactNodesUsed: () => exactNodes,
       nodeCapDeep: () => EXACT_NODE_CAP_DEEP,
       fbMargin: () => (typeof FB_MARGIN !== 'undefined' ? FB_MARGIN : 250),
