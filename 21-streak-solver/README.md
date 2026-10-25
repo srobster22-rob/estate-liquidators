@@ -79,8 +79,18 @@ Other tools:
 | `node bench/fuzz.js index.html` | legality fuzz over 325 reachable + extreme states in every mode; 0 failures required |
 | `node bench/trace.js index.html 1` | prints one self-play game move by move (rules sanity check) |
 
-A full game takes ~45 s of solver time (the exact endgame gets 3 s per move on the last 10
-cards), so 240 games on 12 workers is ~15 minutes. **Never run two benchmarks at once** — the
+`par.js` runs both sides of an A/B at once, so `--workers=W` starts `2W` threads: use half the
+cores (`--workers=2` on a 4-core box, where 480 paired games take ~35 minutes).
+
+| more tools | what it does |
+|---|---|
+| `node bench/exactcov.js index.html 10 1000` | how often the exact endgame finishes vs falls back to MC, by cards left |
+| `node bench/exactsame.js a.html b.html bench/st10.json 12 2` | proves two builds give identical exact values (for pure speed-ups) |
+| `node bench/oracle.js gen\|diff\|label\|eval ...` | decision-level grading against an unbounded exact solve (see the file header) |
+| `node bench/timing.js index.html 3` | per-move latency by cards left |
+
+A full game takes ~45 s of solver time on a loaded machine (the exact endgame gets 3 s per move
+on the last 10 cards), so 240 games on 12 workers is ~15 minutes. **Never run two benchmarks at once** — the
 exact solver's deadline is wall-clock, so an oversubscribed machine silently changes results.
 
 ## Baseline (240 games, balanced mode, end bonus OFF as in the real game)
