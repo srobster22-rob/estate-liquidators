@@ -58,4 +58,5 @@ here are comparable to runs on the PC.
 | # | hypothesis | result | verdict |
 |---|---|---|---|
 | R | A rollout that plays out the whole remaining deck still scores `stateValue` (+500 per life, +60 per stay), but this game pays nothing for either at the end. Score deck-end rollouts as the game does. | +15.8 ± 32.7 (t=0.48); **218/240 games identical**; busts 0.36 → 0.47, stays 1.21 → 1.10, perfect-lives 0.704 → 0.621 | **null at game level** — it changes only a few late decisions (it now spends a worthless last life instead of a stay). Too small for a game A/B; sent to the decision-level oracle. |
+| N | F cut sims AND exact budgets and lost 527; which half? Double the sims, SIMS 600 → 1200 (480 games). | −23 ± 111 (t=−0.21); 316/480 games differ; every secondary metric flat | **null — the Monte-Carlo search is saturated here too**, as in the parent. So F's −527 was the exact-budget cut: falling back to MC on the 9- and 10-card moves alone costs ~500/game, which says MC decisions just above the exact limit are far from optimal. Measured next with the oracle. |
 
