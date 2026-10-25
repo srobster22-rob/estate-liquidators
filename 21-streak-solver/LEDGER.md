@@ -47,3 +47,15 @@ mean 17428 ± 187   sd 2890   p10 13700   perfect-lives 0.704   bust-outs 0.008
 busts/game 0.36   stays/game 1.21   clears/game 15.00   streak bonus/game 11009   mean best streak 11.7
 ```
 
+## Round 2 — cloud session, 2026-10-25 (rebuilt copy, 4-core box, `--workers=2`)
+
+**Reproduction check.** The rebuilt `index.html` on seeds 1000-1239 scores **17,427.7**, the
+PC's figure above to the decimal, with every secondary metric identical (perfect-lives 0.704,
+bust-outs 0.008, busts 0.36, stays 1.21, clears 15.00, streak bonus 11,009, best streak 11.69).
+The exact solver's wall-clock deadline does not bind on either machine at this load, so runs
+here are comparable to runs on the PC.
+
+| # | hypothesis | result | verdict |
+|---|---|---|---|
+| R | A rollout that plays out the whole remaining deck still scores `stateValue` (+500 per life, +60 per stay), but this game pays nothing for either at the end. Score deck-end rollouts as the game does. | +15.8 ± 32.7 (t=0.48); **218/240 games identical**; busts 0.36 → 0.47, stays 1.21 → 1.10, perfect-lives 0.704 → 0.621 | **null at game level** — it changes only a few late decisions (it now spends a worthless last life instead of a stay). Too small for a game A/B; sent to the decision-level oracle. |
+
