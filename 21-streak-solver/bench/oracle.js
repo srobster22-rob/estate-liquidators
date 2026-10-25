@@ -9,7 +9,9 @@
 //   node bench/oracle.js eval  --in=bench/st11L.json --builds=index.html,bench/cand_r.html
 //
 // gen   : self-play the build and record (state, dealt card) when `rem` cards remain undealt.
-// label : exact value of every legal action (unbounded memo, no deadline, stays at every depth).
+// label : exact value of every legal action (unbounded memo, no deadline). Stays are searched as
+//         the shipped endgame does (freely in the last PASS_FULL_LIMIT=8 cards, else only when
+//         every placement busts): allowing them at every depth made an 11-card solve take >30 min.
 // eval  : each build's chooseBest() on every labelled state, Math.random seeded per state so the
 //         builds are paired; prints mean regret, how often each is optimal, and the paired diff.
 const fs = require('fs');
@@ -27,7 +29,6 @@ function makeOracleBuild() {
   const reps = [
     [/var MEMO_BITS = \d+;/, 'var MEMO_BITS = 25;'],
     [/const EXACT_NODE_CAP_DEEP = \d+;/, 'const EXACT_NODE_CAP_DEEP = 4e9;'],
-    [/const PASS_FULL_LIMIT = \d+;/, 'const PASS_FULL_LIMIT = 99;'],
     [/function exactBudgetFor\(rem\)\{[^\n]*\}/, 'function exactBudgetFor(rem){ return 1e12; }'],
   ];
   for (const [re, to] of reps) { if (!re.test(s)) throw new Error('oracle patch failed: ' + re); s = s.replace(re, to); }
