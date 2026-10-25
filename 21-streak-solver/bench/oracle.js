@@ -7,6 +7,10 @@
 //   node bench/oracle.js gen   --rem=11 --n=200 --seed0=20000 --out=bench/st11.json [--build=index.html]
 //   node bench/oracle.js label --in=bench/st11.json --out=bench/st11L.json [--workers=4]
 //   node bench/oracle.js eval  --in=bench/st11L.json --builds=index.html,bench/cand_r.html
+//   node bench/oracle.js diff  --in=bench/st11.json --builds=index.html,bench/cand_r.html --out=bench/d11.json
+//
+// For a narrow change: gen many states, `diff` keeps the ones where the builds disagree, then
+// `label` + `eval` only those (labelling costs ~2 min of CPU per rem-11 state).
 //
 // gen   : self-play the build and record (state, dealt card) when `rem` cards remain undealt.
 // label : exact value of every legal action (unbounded memo, no deadline). Stays are searched as
@@ -126,7 +130,7 @@ if (!isMainThread) {
       E.setMode('balanced'); E.setTarget(0);
       const reg = [];
       rows.forEach((r, idx) => {
-        Math.random = mulberry32(777 + idx);
+        Math.random = mulberry32(777 + (r.idx !== undefined ? r.idx : idx));   // same stream as `diff` used
         E.setState(clone(r.st));
         const a = E.chooseBest(r.card);
         const best = Math.max(...r.acts.map(x => x.v));
@@ -146,7 +150,21 @@ if (!isMainThread) {
       const sd = Math.sqrt(d.reduce((x, y) => x + (y - dm) ** 2, 0) / Math.max(1, n - 1));
       console.log(`paired: B saves ${dm.toFixed(1)} ± ${(sd / Math.sqrt(n)).toFixed(1)} pts/decision (t=${(dm / (sd / Math.sqrt(n) || 1e-9)).toFixed(2)}); differ on ${d.filter(x => Math.abs(x) > 1e-6).length}/${n}`);
     }
+  } else if (mode === 'diff') {
+    // Narrow changes alter ~1% of decisions, so labelling a random sample wastes the oracle on
+    // states where both builds agree. Keep only the disagreements; label those; the effect per
+    // decision is (mean regret difference on disagreements) x (disagreement rate).
+    const rows = JSON.parse(fs.readFileSync(path.join(ROOT, A.in), 'utf8'));
+    const builds = A.builds.split(',');
+    const Es = builds.map(b => { const E = loadEngine(path.join(ROOT, b)); E.setMode('balanced'); E.setTarget(0); return E; });
+    const out = [];
+    rows.forEach((r, idx) => {
+      const keys = Es.map(E => { Math.random = mulberry32(777 + idx); E.setState(clone(r.st)); return actKey(E.chooseBest(r.card)); });
+      if (keys[0] !== keys[1]) out.push({ ...r, idx, picks: keys });
+    });
+    fs.writeFileSync(path.join(ROOT, A.out), JSON.stringify(out));
+    console.log(`${builds.join(' vs ')}: disagree on ${out.length}/${rows.length} states -> ${A.out}`);
   } else {
-    console.log('usage: oracle.js gen|label|eval ...');
+    console.log('usage: oracle.js gen|label|eval|diff ...');
   }
 }
