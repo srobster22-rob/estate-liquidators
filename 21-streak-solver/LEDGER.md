@@ -75,3 +75,16 @@ search (`PASS_FULL_LIMIT` 8 → 0) does not fix it on its own: still 70-89% fall
 So F's −527 is explained: its smaller budgets turned the 7- and 8-card solves, which do finish,
 into MC as well.
 
+**Making it finish.** In this game 10, J, Q and K are interchangeable (only aces and 7s have
+rules), but the engine kept 13 rank counts, so drawing a J and drawing a Q reached two memo
+entries for one position. **T** folds them into one ten-class (10 value classes). Exact values
+are unchanged (`bench/exactsame.js`, 48 eight-card endgames: max difference 3.6e-12) and the
+search needs 1.43× fewer nodes. Exact completion, 40 games, seeds 1000-1039 (`bench/covsum.js`):
+
+| build | fell back at 10 | at 9 | at 8 | 10-card move, ms p50 / max (this box) |
+|---|---|---|---|---|
+| shipped | 87% | 64% | 26% | 1809 / 2730 |
+| T (ten class) | 69% | 44% | 18% | 1577 / 2720 |
+| T4 (T + stays searched only in the last 4 cards) | 69% | 38% | 15% | 1393 / 2372 |
+| TC (T + node cap 800k → 2.4M, memo 2^21 → 2^22 = ~100 MB) | 56% | 28% | 15% | 3006 / 3183 (now the 3 s clock binds) |
+
