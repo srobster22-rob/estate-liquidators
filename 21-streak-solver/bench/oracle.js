@@ -62,7 +62,6 @@ function args() {
 if (!isMainThread) {
   // label worker
   const O = loadEngine(ORACLE_HTML);
-  const out = [];
   for (const s of workerData.states) {
     const t0 = Date.now();
     const acts = legalActions(O, s.st, s.card).map(a => {
@@ -72,9 +71,9 @@ if (!isMainThread) {
       const v = post.lives <= 0 ? post.score : O.exactChance(post);
       return { key: actKey(a), v };
     });
-    out.push({ ...s, acts, ms: Date.now() - t0, nodes: O.exactNodesUsed() });
+    parentPort.postMessage({ ...s, acts, ms: Date.now() - t0, nodes: O.exactNodesUsed() });   // one state at a time
   }
-  parentPort.postMessage(out);
+  parentPort.postMessage(null);
 } else {
   const mode = process.argv[2];
   const A = args();
@@ -106,17 +105,27 @@ if (!isMainThread) {
     fs.writeFileSync(path.join(ROOT, A.out), JSON.stringify(states));
     console.log('wrote', states.length, 'states at rem', rem, '->', A.out);
   } else if (mode === 'label') {
+    // Resumable: every finished state is appended to <out>.part at once, and a re-run skips the
+    // seeds already there (a 30-minute background limit once killed 25 minutes of unsaved work).
     makeOracleBuild();
     const states = JSON.parse(fs.readFileSync(path.join(ROOT, A.in), 'utf8'));
+    const partFile = path.join(ROOT, A.out + '.part');
+    const done = fs.existsSync(partFile) ? fs.readFileSync(partFile, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)) : [];
+    const have = new Set(done.map(r => r.seed));
+    const todo = states.filter(s => !have.has(s.seed));
+    const limit = parseInt(A.max || String(todo.length), 10);
     const nw = parseInt(A.workers || '4', 10);
     const chunks = Array.from({ length: nw }, () => []);
-    states.forEach((s, i) => chunks[i % nw].push(s));
+    todo.slice(0, limit).forEach((s, i) => chunks[i % nw].push(s));
+    console.log(`label: ${done.length} already done, ${Math.min(limit, todo.length)} to do now, ${todo.length} remaining`);
     const t0 = Date.now();
     Promise.all(chunks.filter(c => c.length).map(c => new Promise((res, rej) => {
       const w = new Worker(__filename, { workerData: { states: c } });
-      w.on('message', res); w.on('error', rej);
-    }))).then(all => {
-      const rows = [].concat(...all).sort((a, b) => a.seed - b.seed);
+      w.on('message', m => { if (m === null) res(); else { fs.appendFileSync(partFile, JSON.stringify(m) + '\n'); done.push(m); } });
+      w.on('error', rej);
+    }))).then(() => {
+      const rows = done.sort((a, b) => a.seed - b.seed);
+      if (rows.length < states.length) { console.log(`partial: ${rows.length}/${states.length} labelled in ${partFile}; re-run to continue`); }
       fs.writeFileSync(path.join(ROOT, A.out), JSON.stringify(rows));
       const ms = rows.map(r => r.ms).sort((a, b) => a - b);
       console.log('labelled', rows.length, 'states in', ((Date.now() - t0) / 1000).toFixed(0), 's; per state median', ms[ms.length >> 1], 'ms, max', ms[ms.length - 1]);
@@ -126,7 +135,16 @@ if (!isMainThread) {
     const builds = A.builds.split(',');
     const res = {};
     for (const b of builds) {
-      const E = loadEngine(path.join(ROOT, b));
+      // --mc: force the Monte-Carlo path (EXACT_LIMIT 0), to grade MC on states the exact solver
+      // would normally take -- i.e. what happens when the exact solve runs out of time.
+      let file = path.join(ROOT, b);
+      if (A.mc) {
+        const src = fs.readFileSync(file, 'utf8');
+        if (!/const EXACT_LIMIT = \d+;/.test(src)) throw new Error('no EXACT_LIMIT in ' + b);
+        file = path.join(__dirname, '_mc_' + path.basename(b));
+        fs.writeFileSync(file, src.replace(/const EXACT_LIMIT = \d+;/, 'const EXACT_LIMIT = 0;'));
+      }
+      const E = loadEngine(file);
       E.setMode('balanced'); E.setTarget(0);
       const reg = [];
       rows.forEach((r, idx) => {

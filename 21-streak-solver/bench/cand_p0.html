@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>21 STREAK Solver</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:#0a0f1a; color:#e2e8f0; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; min-height:100vh; padding:12px; }
+  .wrap { max-width:520px; margin:0 auto; }
+  h1 { font-size:18px; color:#fff; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
+  .topbar > div { display:flex; gap:6px; }
+  .topbar button { background:#1e293b; color:#cbd5e1; border:1px solid #334155; border-radius:6px; padding:6px 10px; font-family:inherit; font-size:11px; cursor:pointer; }
+  .topbar button:disabled { opacity:.35; cursor:default; }
+  .stats { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; margin-bottom:10px; }
+  .stat { background:#111827; border:1px solid #1f2937; border-radius:6px; padding:5px 2px; text-align:center; }
+  .stat .lbl { font-size:8px; color:#64748b; letter-spacing:.5px; }
+  .stat .val { font-size:14px; color:#fff; font-weight:bold; margin-top:2px; }
+  .stat .val.streak { color:#fbbf24; }
+  .stat .val.hearts { color:#f87171; letter-spacing:1px; }
+  .cashout { background:#422006; border:2px solid #f59e0b; border-radius:8px; padding:10px; margin-bottom:10px; }
+  .co-title { color:#fde68a; font-size:13px; font-weight:bold; }
+  .co-sub { color:#fef3c7; font-size:11px; margin-top:4px; line-height:1.45; }
+  .rec { background:#0f172a; border:2px solid #1e293b; border-radius:10px; padding:12px; margin-bottom:10px; min-height:84px; }
+  .rec.show { border-color:#3b82f6; }
+  .thinking { color:#94a3b8; animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.4; } }
+  .cardlbl { font-size:11px; color:#94a3b8; margin-bottom:6px; }
+  .cardlbl b { color:#fff; font-size:15px; }
+  .answer { font-size:24px; font-weight:bold; color:#4ade80; line-height:1.15; }
+  .sub { font-size:11px; color:#94a3b8; margin-top:6px; line-height:1.45; }
+  .slots { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .slot { background:#111827; border:1px solid #1f2937; border-radius:8px; padding:6px; min-height:120px; }
+  .slot.flash { border-color:#4ade80; box-shadow:0 0 0 2px rgba(74,222,128,.35); }
+  .slot .head { display:flex; justify-content:space-between; font-size:9px; color:#64748b; margin-bottom:5px; }
+  .slot .name { color:#cbd5e1; font-weight:bold; }
+  .slot .cards { display:flex; flex-direction:column; gap:3px; }
+  .pcard { background:#f8fafc; color:#0f172a; border-radius:4px; padding:3px 0; text-align:center; font-weight:bold; font-size:13px; }
+  .entry { background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:8px; margin-bottom:8px; }
+  .hint { font-size:10px; color:#64748b; margin-bottom:6px; letter-spacing:.3px; }
+  .keys { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+  .keys button { position:relative; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; padding:12px 0 10px; font-family:inherit; font-size:16px; font-weight:bold; cursor:pointer; touch-action:manipulation; }
+  .keys button:active { background:#334155; }
+  .keys button:disabled { opacity:.3; cursor:default; }
+  .keys .cnt { position:absolute; right:3px; bottom:1px; font-size:8px; color:#64748b; font-weight:normal; }
+  .err { color:#fca5a5; font-size:11px; min-height:14px; margin:4px 0 8px; }
+  .log { font-size:10px; color:#94a3b8; max-height:160px; overflow-y:auto; margin-bottom:8px; }
+  .log .row { padding:2px 0; border-bottom:1px solid #111827; }
+  .log .win { color:#4ade80; font-weight:normal; }
+  .log .lose { color:#f87171; font-weight:normal; }
+  .foot { font-size:9px; color:#475569; line-height:1.5; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>21 STREAK Solver <span style="font-size:10px;color:#f59e0b">streak survives builds</span></h1>
+    <div>
+      <button id="editBtn" onclick="toggleEdit()">FIX BOARD</button>
+      <button id="undoBtn" onclick="undo()" disabled>Undo</button>
+      <button onclick="resetGame()">Reset</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="lbl">DEALT</div><div class="val" id="dealt">0/52</div></div>
+    <div class="stat"><div class="lbl">LIVES</div><div class="val hearts" id="lives">♥♥♥</div></div>
+    <div class="stat"><div class="lbl">STAYS</div><div class="val" id="passesEl">2</div></div>
+    <div class="stat"><div class="lbl">SCORE</div><div class="val" id="score">0</div></div>
+    <div class="stat"><div class="lbl">21 STREAK</div><div class="val streak" id="streak">0</div></div>
+    <div class="stat"><div class="lbl">10-VAL</div><div class="val" id="tenOdds">31%</div></div>
+  </div>
+
+  <div class="cashout" id="cashoutBanner" style="display:none">
+    <div class="co-title">CASH OUT NOW — end the game and bank your score</div>
+    <div class="co-sub" id="cashoutSub"></div>
+  </div>
+
+  <div class="rec" id="rec">
+    <div class="cardlbl">CARD: <b id="pendingCard"></b></div>
+    <div id="deadBox" style="display:none;background:#3b1418;border:2px solid #b91c1c;border-radius:8px;padding:12px;margin:0 0 10px 0">
+      <div style="color:#fca5a5;font-size:15px;font-weight:bold;letter-spacing:.5px">NO MORE POINTS POSSIBLE</div>
+      <div id="deadWhy" style="color:#fecaca;font-size:11px;margin-top:5px;line-height:1.45"></div>
+    </div>
+    <div class="answer" id="answer"></div>
+    <div class="sub" id="sub"></div>
+  </div>
+
+  <div class="slots" id="slots"></div>
+
+  <div class="entry">
+    <div class="hint" id="hint">Tap the card you were dealt</div>
+    <div class="keys" id="keys"></div>
+  </div>
+  <div class="err" id="err"></div>
+
+  <div class="log" id="log"></div>
+
+    <div id="verdictBox" style="display:none;border-radius:8px;padding:10px;margin:8px 0;border:2px solid rgba(255,255,255,0.25)">
+      <div style="color:#fff;font-size:12px;font-weight:bold" id="verdictTitle"></div>
+      <div style="color:#e2e8f0;font-size:11px;margin-top:3px" id="verdictBody"></div>
+    </div>
+    <div class="entry" style="margin-bottom:8px">
+    <div class="hint">TARGET SCORE (optional) — enter the opponent's score to maximize P(beating it); leave 0/blank for max average</div>
+    <input id="targetIn" type="number" placeholder="0 = off" onchange="setTarget()" style="width:110px;background:#1e293b;color:#fff;border:1px solid #334155;border-radius:4px;padding:4px 8px;font-family:inherit;font-size:12px;margin:4px 0"/>
+    <span id="targetLbl" style="font-size:10px;color:#64748b"></span>
+    <div class="hint" style="margin-top:6px">RULE TOGGLES (both confirmed by play; flip only if the game changes)</div>
+    <label style="display:block;font-size:11px;color:#cbd5e1;margin:3px 0"><input type="checkbox" id="rBust" checked onchange="setBustRule(this.checked)"> a BUST resets the streak</label>
+    <label style="display:block;font-size:11px;color:#cbd5e1;margin:3px 0"><input type="checkbox" id="rPerf" onchange="setPerfect(this.checked)"> +1000 end bonus for finishing with all 3 lives (this game: none)</label>
+    <div class="hint" style="margin-top:6px">PLAY MODE</div>
+    <div style="display:flex;gap:6px;margin-top:4px">
+      <button id="mSafe" onclick="setMode('safe')" style="flex:1;background:#14532d;color:#bbf7d0;border:2px solid transparent;border-radius:6px;padding:6px;font-family:inherit;font-size:11px;cursor:pointer">SAFE<br><span style="font-size:9px;color:#86efac">protect lead</span></button>
+      <button id="mBal" onclick="setMode('balanced')" style="flex:1;background:#1e3a8a;color:#bfdbfe;border:2px solid #60a5fa;border-radius:6px;padding:6px;font-family:inherit;font-size:11px;cursor:pointer">BALANCED<br><span style="font-size:9px;color:#93c5fd">max average</span></button>
+      <button id="mChase" onclick="setMode('chase')" style="flex:1;background:#7c2d12;color:#fed7aa;border:2px solid transparent;border-radius:6px;padding:6px;font-family:inherit;font-size:11px;cursor:pointer">CHASE<br><span style="font-size:9px;color:#fdba74">beat 9k+</span></button>
+    </div>
+  </div>
+  <div class="entry" style="margin-bottom:8px">
+    <div class="hint">SESSION HISTORY <button onclick="saveResult()" style="background:#1e40af;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-family:inherit;font-size:10px;cursor:pointer;margin-left:6px">Save this game's score</button> <button onclick="clearHistory()" style="background:#334155;color:#94a3b8;border:none;border-radius:4px;padding:2px 8px;font-family:inherit;font-size:10px;cursor:pointer">Clear</button></div>
+    <div id="historyLine" style="font-size:11px;color:#94a3b8"></div>
+  </div>
+  <div class="foot">Tap the dealt card — it auto-places for max expected score (~400 simulated futures per option, live deck counting). Rules modeled: slot clears on exact 21 (400), 5 cards ≤ 21 (800), 5-card 21 (1000) or 7-7-7 (600); the streak adds +250 / +500 / +1000 (x2 / x3 / x4 and beyond) to every clear and survives non-clearing placements — only a STAY (clear, 2 per game) or a bust resets it. Busting clears the slot and costs one of 3 lives. No early exit: every card must be played.</div>
+</div>
+
+<script>
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const VAL = {A:1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,J:10,Q:10,K:10};
+
+// ---- Scoring (from the real game) ----
+const PTS_21 = 400;        // confirmed: exact 21 pays 400
+const PTS_5CARD = 800;     // confirmed: 5-card stack under 21 pays 800
+const PTS_5CARD21 = 1000;  // confirmed: 5-card exact 21 paid 2000 at streak x10 = 1000 + 1000 bonus
+// ===== STREAK RULES (this game) =====
+// The streak counts consecutive clears and is broken ONLY by a STAY (clear) or a bust
+// (both confirmed by play). Building a stack with a non-clearing card does NOT break it, which
+// is why streaks of x10+ happen here and never did in the 4-slot 'any move' variant.
+const RULE_SAFE_BREAKS_STREAK = false;   // this game: a non-clearing placement keeps the streak
+let   RULE_BUST_BREAKS_STREAK = true;    // CONFIRMED by play 2026-09-14 (toggle kept in the UI)
+// There is NO early exit / cash-out in this game: every dealt card must be played.
+const PTS_777 = 600;       // confirmed: 7-7-7 pays 600 instead of 400
+
+// ===== PLAY MODES =====
+// SAFE: protect the 1000 bonus / never bust out. BALANCED: max expected score (default).
+// CHASE: max P(big score) at the cost of average — use only when you must beat 9-10k.
+let MODE = 'balanced';
+const MODES = {
+  safe:     { lifeVal: 800, hiPen: 80, chainW: 1600 },
+  balanced: { lifeVal: 500, hiPen: 60, chainW: 2000 },
+  chase:    { lifeVal: 300, hiPen: 45, chainW: 2800 }
+};
+function MP(){ return MODES[MODE] || MODES.balanced; }  // confirmed: 5-card stack equal to exactly 21 pays 1000
+// Streak payouts for a plain 21: x1 400, x2 650, x3 900, x4 1400, x5..x13+ 1400 (flat).
+// i.e. an additive bonus of +0 / +250 / +500 / +1000 (cap) on top of any clear's base.
+const STREAK_BONUS = [0, 250, 500, 1000];  // index = combo number; index 3+ = +1000 forever
+function streakBonus(streakLevel){ // streakLevel = which 21 in the chain (1=first 21, 2=first combo...)
+  const combo = streakLevel - 1;
+  if(combo <= 0) return 0;
+  return combo < STREAK_BONUS.length ? STREAK_BONUS[combo] : STREAK_BONUS[STREAK_BONUS.length-1];
+}
+const PTS_LIFE = 500;      // implicit value of keeping a life (protects the 1000 bonus)
+let PTS_PERFECT = 0;       // CONFIRMED 2026-09-14: this game pays NO all-lives end bonus (toggle kept in the UI)
+const PTS_GAMEOVER = 1500; // penalty for losing all lives
+
+let editMode=false, editSlot=-1;
+let TARGET=0; // 0 = off; >0 = maximize P(final score > TARGET)
+let slots, deck, lives, passes, score, streak, pending, history, lastMove, logRows, flashSlot, cashOut, bustRisk, forcedBustFlag, pendingForcedBust;
+
+function freshDeck(){ const d={}; RANKS.forEach(r=>d[r]=4); return d; }
+function resetGame(){
+  slots=[[],[],[],[]]; deck=freshDeck(); lives=3; passes=2; score=0; streak=0;
+  pending=null; history=[]; lastMove=null; logRows=[]; flashSlot=-1; cashOut=null; bustRisk=0; forcedBustFlag=false; pendingForcedBust=null;
+  try{ const vb=document.getElementById('verdictBox'); if(vb) vb.style.display='none'; }catch(e){}
+  render();
+}
+
+function handTotal(cards){
+  let min=0, aces=0;
+  for(const c of cards){ min+=VAL[c]; if(c==='A') aces++; }
+  let best=min;
+  for(let i=0;i<aces;i++) if(best+10<=21) best+=10;
+  return {min,best};
+}
+
+// Resolve a placement on a game state. Mutates state. Returns event string.
+function resolvePlace(st, slotIdx, card){
+  st.slots[slotIdx].push(card);
+  const cards = st.slots[slotIdx];
+  const {min,best} = handTotal(cards);
+  if(min > 21){
+    // BUST: lose a life, slot clears
+    st.slots[slotIdx] = [];
+    st.lives--;
+    if(RULE_BUST_BREAKS_STREAK) st.streak = 0;
+    return 'bust';
+  }
+  if(best === 21){
+    st.streak++;
+    if(cards.length >= 5){
+      st.score += PTS_5CARD21 + streakBonus(st.streak); // premium: 5-card exact 21
+      st.slots[slotIdx] = [];
+      return 'win5x21';
+    }
+    const is777 = cards.length===3 && cards.every(c=>c==='7');
+    st.score += (is777 ? PTS_777 : PTS_21) + streakBonus(st.streak);
+    st.slots[slotIdx] = [];
+    return is777 ? 'win777' : 'win21';
+  }
+  if(cards.length >= 5){
+    // 5 cards, min <= 21 guaranteed here. Confirmed: 5-card wins are combo links —
+    // they advance the streak and carry the combo bonus, just like a 21.
+    st.streak++;
+    st.score += PTS_5CARD + streakBonus(st.streak);
+    st.slots[slotIdx] = [];
+    return 'win5';
+  }
+  if(RULE_SAFE_BREAKS_STREAK) st.streak = 0; // this game: building keeps the streak alive
+  return 'safe';
+}
+
+// STAY: clear a slot (costs one stay, resets the streak), then the dealt card goes ANYWHERE:
+// into the cleared slot (fresh) or any other slot, where it may complete a 21 and start a new
+// streak at x1. Confirmed by play 2026-09-14. Returns 'pass', or 'pass+<event>' when the
+// placement itself clears or busts.
+const RULE_PASS_BREAKS_STREAK = true;   // confirmed by play
+const RULE_5CARD_BREAKS_STREAK = false; // confirmed: 5-card wins keep the combo going
+
+function resolvePass(st, slotIdx, card, toIdx){
+  if(toIdx===undefined) toIdx=slotIdx;
+  st.slots[slotIdx] = [];
+  st.passes--;
+  if(RULE_PASS_BREAKS_STREAK) st.streak = 0;
+  const evt = resolvePlace(st, toIdx, card);
+  return evt==='safe' ? 'pass' : 'pass+'+evt;
+}
+
+function stateValue(st){
+  let v = st.score + st.lives * MP().lifeVal + st.passes * 60;
+  if(st.lives >= 3) v += PTS_PERFECT;
+  if(st.lives <= 0) v -= PTS_GAMEOVER;
+  // partial progress credit
+  for(const cards of st.slots){
+    if(cards.length){ v += handTotal(cards).best * 0.3; }
+  }
+  return v;
+}
+
+function drawRandom(d){
+  let total=0; for(const r of RANKS) total+=d[r];
+  if(total===0) return null;
+  let pick=Math.floor(Math.random()*total);
+  for(const r of RANKS){ pick-=d[r]; if(pick<0) return r; }
+  return null;
+}
+
+// Greedy policy inside rollouts: take completions; pass instead of bust; never bust unless forced
+function greedyChoice(st, card, allowStop){
+  let bestIdx=0, bestGain=-Infinity, allBust=true;
+  let remTot2=0; for(const r of RANKS) remTot2+=st.deck[r];
+  for(let i=0;i<4;i++){
+    const cards=st.slots[i];
+    const test=[...cards, card];
+    const {min,best}=handTotal(test);
+    let gain;
+    if(min>21){ gain = -3000 + best; }
+    else { allBust=false;
+      if(best===21){ const lvl=st.streak+1; const t777 = test.length===3 && test.every(c=>c==='7'); gain = 2000 + (test.length>=5 ? PTS_5CARD21 : (t777 ? PTS_777 : PTS_21)) + streakBonus(lvl) + streakBonus(lvl+1)*0.5; }
+      else if(test.length>=5){ const lvl=st.streak+1; gain = 2000 + PTS_5CARD + streakBonus(lvl) + streakBonus(lvl+1)*0.5; }
+      else {
+        // building: low stacks with many cards are gold; 4 cards near 11 sets up a 1000-pt 5-card 21
+        gain = best*2 + test.length*10 - (best>16 ? (best-16)*MP().hiPen : 0);
+        if(test.length===4 && best>=8 && best<=11) gain += 120; // a 10-value finishes 18/19/20/21… best at 11
+        if(test.length===4 && best===11) gain += 80;            // extra: exact-21 window (31% of deck)
+        // CHAIN SETUP (coverage DELTA): reward creating one-away-from-21 states and
+        // punish destroying them — an ace or 11 parked in a slot is loaded streak ammo
+        if(remTot2>0){
+          const covOf = (total)=>{
+            const need = 21 - total; let c = 0;
+            if(need>=1 && need<=9) c = st.deck[need===1?'A':String(need)];
+            else if(need===10) c = st.deck['10']+st.deck['J']+st.deck['Q']+st.deck['K'];
+            else if(need===11) c = st.deck['A'];
+            return c;
+          };
+          const covAfter = covOf(best);
+          const covBefore = st.slots[i].length ? covOf(handTotal(st.slots[i]).best) : 0;
+          gain += ((covAfter-covBefore)/remTot2)*MP().chainW + (st.streak>0 ? (covAfter/remTot2)*(300 + streakBonus(st.streak+1)*0.4) : 0);
+        }
+      }
+    }
+    if(gain>bestGain){ bestGain=gain; bestIdx=i; }
+  }
+  if(allBust && st.passes>0){
+    let pi=0, hi=-1;
+    for(let i=0;i<4;i++){ const t=handTotal(st.slots[i]).min; if(t>hi){hi=t; pi=i;} }
+    return {type:'pass', slot:pi, to:pi};
+  }
+  return {type:'place', slot:bestIdx};
+}
+
+function rolloutSeq(st0, seq, depth, allowStop){
+  if(allowStop===undefined) allowStop=true;
+  const st = { slots: st0.slots.map(s=>[...s]), deck:{...st0.deck}, lives:st0.lives, passes:st0.passes, score:st0.score, streak:st0.streak };
+  const n = Math.min(seq.length, depth);
+  for(let k=0;k<n;k++){
+    if(st.lives<=0) break;
+    const card=seq[k];
+    st.deck[card]--;
+    const ch=greedyChoice(st, card, allowStop);
+    if(ch.type==='stop'){ st.deck[card]++; break; } // bank the score, card goes unplayed
+    if(ch.type==='pass') resolvePass(st, ch.slot, card, ch.to);
+    else resolvePlace(st, ch.slot, card);
+  }
+  return stateValue(st);
+}
+
+// Rollout that returns the REAL final score (banked points + perfect bonus), no internal bookkeeping
+function rolloutSeqReal(st0, seq){
+  const st = { slots: st0.slots.map(s=>[...s]), deck:{...st0.deck}, lives:st0.lives, passes:st0.passes, score:st0.score, streak:st0.streak };
+  for(let k=0;k<seq.length;k++){
+    if(st.lives<=0) break;
+    const card=seq[k];
+    st.deck[card]--;
+    const ch=greedyChoice(st, card, true);
+    if(ch.type==='stop'){ break; }
+    if(ch.type==='pass') resolvePass(st, ch.slot, card, ch.to);
+    else resolvePlace(st, ch.slot, card);
+  }
+  return st.score + (st.lives>=3 ? PTS_PERFECT : 0);
+}
+
+function genSequences(deckObj, n){
+  const base=[];
+  for(const r of RANKS) for(let i=0;i<deckObj[r];i++) base.push(r);
+  const total=base.length;
+  const seqs=[];
+  if(total===0) return seqs;
+  let quota=[];
+  for(const r of RANKS){ if(deckObj[r]>0) quota.push({r, n: deckObj[r]/total*n}); }
+  let alloc=quota.map(q=>({r:q.r, k:Math.floor(q.n), frac:q.n-Math.floor(q.n)}));
+  let used=alloc.reduce((a,x)=>a+x.k,0);
+  alloc.sort((a,b)=>b.frac-a.frac);
+  for(let i=0; used<n; i=(i+1)%alloc.length){ alloc[i].k++; used++; }
+  for(const {r,k} of alloc){
+    for(let m=0;m<k;m++){
+      const rest=base.slice();
+      rest.splice(rest.indexOf(r),1);
+      for(let i=rest.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=rest[i]; rest[i]=rest[j]; rest[j]=t; }
+      seqs.push([r, ...rest]);
+    }
+  }
+  for(let i=seqs.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=seqs[i]; seqs[i]=seqs[j]; seqs[j]=t; }
+  return seqs;
+}
+
+const SIMS = 600, DEPTH = 22;
+
+// ===== EXACT ENDGAME SOLVER =====
+// With few cards left the deck is fully known: enumerate every possible ending
+// (expectimax over remaining ranks, max over placements + cash-out) with memoization.
+// This sequences endgame combos PERFECTLY instead of estimating them.
+let exactMemo, exactNodes;
+// Exact-solver reach, set from MEASURED true solve costs with the fast numeric engine:
+//   9 cards: 0.04-4.3s (always finishes) | 10 cards: 0.2-21.6s (usually finishes)
+//   11 cards: 1.6-57.7s (mostly hopeless -> the old tier burned its budget then fell back)
+// Budgets are depth-scaled so the search actually COMPLETES instead of wasting the clock.
+let WIN_TARGET = 0;   // >0 => exact solver maximises P(final > WIN_TARGET), not E[score]
+const EXACT_LIMIT = 10;
+const PASS_FULL_LIMIT = 0;   // consider passing freely throughout the exact endgame
+const EXACT_FAST_LIMIT = 7;
+function exactBudgetFor(rem){ return rem>=10 ? 3000 : (rem>=8 ? 2500 : (rem===7 ? 1500 : 1000)); }
+// Memory ceiling, set from measurement: ~105 bytes/memo entry, so 500k entries ~= 55MB
+// peak heap. Exact-at-9 is only worth ~14 pts/game, while a phone tab crash costs the
+// whole game -- even a 1% crash risk outweighs the gain, so the cap is set for safety.
+const EXACT_NODE_CAP_DEEP = 800000;
+let exactDeadline = 0;        // solve exactly when this many or fewer cards remain
+const EXACT_NODE_CAP = 400000;
+
+function slotCode(cards){
+  const {min}=handTotal(cards);
+  let ace=0; for(const c of cards){ if(c==='A'){ ace=1; break; } }
+  // All-sevens MUST be part of slot identity. Without it [7,7] and [6,8] hash equal, so the
+  // candidate dedup in chooseBest would treat "make 7-7-7" and "make a plain 21" as the same
+  // move and silently discard the 600-point one. Reproduced: board [6,8]/[7,7], a 7 dealt,
+  // solver took the 400 over the 600.
+  let sev = cards.length>0 ? 1 : 0;
+  for(const c of cards){ if(c!=='7'){ sev=0; break; } }
+  return (min<<5) | (cards.length<<2) | (ace<<1) | sev;
+}
+function slotKey(cards){ return String(slotCode(cards)); }
+function stateKey(st){
+  const a=slotCode(st.slots[0]), b=slotCode(st.slots[1]), c=slotCode(st.slots[2]), d=slotCode(st.slots[3]);
+  let s0=a,s1=b,s2=c,s3=d,t;
+  if(s0>s1){t=s0;s0=s1;s1=t;} if(s2>s3){t=s2;s2=s3;s3=t;}
+  if(s0>s2){t=s0;s0=s2;s2=t;} if(s1>s3){t=s1;s1=s3;s3=t;}
+  if(s1>s2){t=s1;s1=s2;s2=t;}
+  return String.fromCharCode(
+    s0, s1, s2, s3,
+    st.deck['A'], st.deck['2'], st.deck['3'], st.deck['4'], st.deck['5'], st.deck['6'],
+    st.deck['7'], st.deck['8'], st.deck['9'], st.deck['10'], st.deck['J'], st.deck['Q'], st.deck['K'],
+    (st.lives<<6)|(st.passes<<4)|Math.min(st.streak,4)
+  );
+}
+function realVal(st){ return st.score + (st.lives>=3 ? PTS_PERFECT : 0); }
+
+// value of the state BEFORE drawing the next card (chance node)
+// ===== EXACT MEMO: open-addressing table on typed arrays =====
+// The Map-based memo cost ~100 bytes/entry, which capped the exact search at 500k nodes
+// and so at 8 cards. Packed keys + linear probing cost ~20 bytes/entry, so the same
+// memory reaches ~4x more nodes AND avoids per-entry string building, which is what made
+// the old memo slow. State packs into 4 ints: 4 slot codes (10 bits each), 13 deck counts
+// (3 bits each), lives/passes/streak, plus a target bucket for WIN_TARGET mode.
+var MEMO_BITS = 21;                       // 2^21 slots ~= 42MB, phone-safe
+var hK0, hK1, hK2, hK3, hVal, hMask, hCount=0;
+function memoInit(){
+  var cap = 1<<MEMO_BITS;
+  // Entries are keyed by the FULL state, so they stay valid across moves -- consecutive
+  // moves share most of their subtree, which is a large saving. But the table must not be
+  // allowed to fill: past ~45% load, probe chains exceed the cap, lookups miss AND fail to
+  // store, so states get re-expanded until the node cap trips and truncates the search
+  // (silently returning a too-low value). Reset at 15% load so one solve's own growth
+  // (~40% of the table at the 800k node cap) still lands inside the safe zone.
+  if(hK0){ if(hCount < cap*0.15) return; hK0.fill(0); hCount=0; return; }
+  hK0=new Int32Array(cap); hK1=new Int32Array(cap); hK2=new Int32Array(cap);
+  hK3=new Int32Array(cap); hVal=new Float64Array(cap); hMask=cap-1; hCount=0;
+}
+function memoHash(k0,k1,k2,k3){
+  var h = k0*0x9E3779B1 ^ k1*0x85EBCA77 ^ k2*0xC2B2AE3D ^ k3*0x27D4EB2F;
+  h ^= h>>>15; h = (h*0x2545F491)|0; h ^= h>>>13;
+  return h & hMask;
+}
+// returns index if present, else ~index of the free slot to fill (or -1 when full)
+function memoProbe(k0,k1,k2,k3){
+  var i = memoHash(k0,k1,k2,k3), n = 0;
+  for(;;){
+    var a = hK0[i];
+    if(a===0) return ~i;
+    if(a===k0 && hK1[i]===k1 && hK2[i]===k2 && hK3[i]===k3) return i;
+    i = (i+1) & hMask;
+    if(++n > 200) return -1;              // safety net; load factor is bounded above
+  }
+}
+
+// ===== FAST EXACT ENGINE =====
+// The exact search is allocation-bound, not logic-bound: the array-based version rebuilt
+// hand totals and cloned slot arrays at every node. Here a slot is one integer:
+//   bits [min:5][len:3][ace:1][sev:1]   (min<=21, len<=4, ace = any ace, sev = all sevens)
+// Only one ace can ever count as 11 (two would bust), so a single ace BIT is sufficient.
+// 'sev' tracks all-sevens so 7-7-7 keeps paying PTS_777. Semantics are identical to
+// resolvePlace/resolvePass; verified value-for-value against the array engine.
+var FS_AI = 0, FS_7I = 6;                 // RANKS indices of 'A' and '7'
+var FCV = [1,2,3,4,5,6,7,8,9,10,10,10,10];
+function fsMake(min,len,ace,sev){ return (min<<5)|(len<<2)|(ace<<1)|sev; }
+function fsFromCards(cards){
+  var min=0, ace=0, sev=(cards.length>0)?1:0;
+  for(var k=0;k<cards.length;k++){
+    var c=cards[k];
+    min+=VAL[c];
+    if(c==='A') ace=1;
+    if(c!=='7') sev=0;
+  }
+  return fsMake(min, cards.length, ace, sev);
+}
+function fsKey(s0,s1,s2,s3,dk,lives,passes,streak){
+  var a=s0,b=s1,c=s2,d=s3,t;
+  if(a>b){t=a;a=b;b=t;} if(c>d){t=c;c=d;d=t;}
+  if(a>c){t=a;a=c;c=t;} if(b>d){t=b;b=d;d=t;}
+  if(b>c){t=b;b=c;c=t;}
+  // Memo keys dominate peak memory, so pack them: deck counts are 0-4 (3 bits each) and
+  // lives/passes/streak are tiny, so 13 counts + game state fit in 3 chars instead of 14.
+  // 18 chars -> 7 chars per key, cutting the memo's footprint on a phone.
+  return String.fromCharCode(a,b,c,d,
+    dk[0]|(dk[1]<<3)|(dk[2]<<6)|(dk[3]<<9)|(dk[4]<<12),
+    dk[5]|(dk[6]<<3)|(dk[7]<<6)|(dk[8]<<9)|(dk[9]<<12),
+    dk[10]|(dk[11]<<3)|(dk[12]<<6)|(lives<<9)|(passes<<11)|(streak<<13));
+}
+// Chance node: average over the ranks that could come next.
+function fsFinal(score, lives){
+  const fin = score + (lives>=3 ? PTS_PERFECT : 0);
+  return WIN_TARGET>0 ? (fin > WIN_TARGET ? 1 : 0) : fin;
+}
+function fsChance(sl, dk, total, lives, passes, streak, score){
+  if(lives<=0) return WIN_TARGET>0 ? (score > WIN_TARGET ? 1 : 0) : score;
+  if(total===0) return fsFinal(score, lives);
+  if(exactNodes>EXACT_NODE_CAP_DEEP || ((exactNodes&255)===0 && exactNodes>0 && Date.now()>exactDeadline)){
+    exactNodes=EXACT_NODE_CAP_DEEP+1;
+    return fsFinal(score, lives);
+  }
+  var a=sl[0],b=sl[1],c=sl[2],d=sl[3],t;
+  if(a>b){t=a;a=b;b=t;} if(c>d){t=c;c=d;d=t;}
+  if(a>c){t=a;a=c;c=t;} if(b>d){t=b;b=d;d=t;}
+  if(b>c){t=b;b=c;c=t;}
+  var k0 = (a | (b<<10) | (c<<20)) + 1;          // +1 so a real key is never 0 (0 = empty)
+  var k1 = d | (dk[0]<<10)|(dk[1]<<13)|(dk[2]<<16)|(dk[3]<<19)|(dk[4]<<22)|(dk[5]<<25)|(dk[6]<<28);
+  var k2 = dk[7]|(dk[8]<<3)|(dk[9]<<6)|(dk[10]<<9)|(dk[11]<<12)|(dk[12]<<15)|(lives<<18)|(passes<<20)|((streak>4?4:streak)<<22);
+  var k3 = WIN_TARGET>0 ? Math.min(65535, Math.max(0, Math.round((WIN_TARGET-score)/25)+1)) : 0;
+  var idx = memoProbe(k0,k1,k2,k3);
+  if(idx>=0){ var hv=hVal[idx]; return WIN_TARGET>0 ? hv : score + hv; }
+  exactNodes++;
+  var ev=0;
+  for(var ci=0;ci<13;ci++){
+    if(dk[ci]===0) continue;
+    ev += (dk[ci]/total) * fsDecide(sl, dk, total, lives, passes, streak, score, ci);
+  }
+  if(idx!==-1 && exactNodes<=EXACT_NODE_CAP_DEEP){
+    var w = memoProbe(k0,k1,k2,k3);            // re-probe: recursion may have filled the slot
+    if(w<0 && w!==-1){ w=~w; hK0[w]=k0; hK1[w]=k1; hK2[w]=k2; hK3[w]=k3; hVal[w]= WIN_TARGET>0 ? ev : ev-score; hCount++; }
+  }
+  return ev;
+}
+// Decision node: cash out, place in any slot, or (only when every placement busts) pass.
+function fsDecide(sl, dk, total, lives, passes, streak, score, ci){
+  var best = -Infinity;   // no cash-out in this game: the card must be played
+  var v=FCV[ci], isA=(ci===FS_AI)?1:0, is7=(ci===FS_7I)?1:0;
+  dk[ci]--; total--;
+  for(var i=0;i<4;i++){
+    var c0=sl[i];
+    var omin=c0>>>5, olen=(c0>>>2)&7, oace=(c0>>>1)&1, osev=c0&1;
+    var nmin=omin+v, nlen=olen+1;
+    var nace=oace|isA;
+    var nsev=(olen===0)?is7:(osev&is7);
+    var nScore=score, nLives=lives, nStreak=streak, nCode;
+    if(nmin>21){ nCode=0; nLives=lives-1; nStreak=RULE_BUST_BREAKS_STREAK?0:streak; }
+    else {
+      var b21=(nace && nmin+10<=21) ? nmin+10 : nmin;
+      if(b21===21){
+        nStreak=streak+1;
+        nScore=score + (nlen>=5 ? PTS_5CARD21 : ((nlen===3 && nsev) ? PTS_777 : PTS_21)) + streakBonus(nStreak);
+        nCode=0;
+      } else if(nlen>=5){
+        nStreak=streak+1;
+        nScore=score + PTS_5CARD + streakBonus(nStreak);
+        nCode=0;
+      } else { nStreak=RULE_SAFE_BREAKS_STREAK?0:streak; nCode=fsMake(nmin,nlen,nace,nsev); }
+    }
+    sl[i]=nCode;
+    var val=fsChance(sl, dk, total, nLives, passes, nStreak, nScore);
+    sl[i]=c0;
+    if(val>best) best=val;
+  }
+  if(passes>0){
+    var anySafe=false;
+    for(var j=0;j<4;j++){ if(((sl[j]>>>5)+v)<=21){ anySafe=true; break; } }
+    // Passing was only ever considered when every placement busts. Measured: that pruning
+    // is suboptimal in ~2 of 3 endgame positions, costing ~138 pts on average (max 735) --
+    // resetting a cramped slot is often better than filling it. Unpruning multiplies the
+    // branching factor, so it is enabled only at shallow depths where it is affordable.
+    if(!anySafe || total<=PASS_FULL_LIMIT){
+      var pStreak = RULE_PASS_BREAKS_STREAK ? 0 : streak;
+      for(var k=0;k<4;k++){
+        if(((sl[k]>>>2)&7)===0) continue;
+        var s0=sl[k];
+        sl[k]=0;                                   // the stay empties slot k ...
+        for(var j=0;j<4;j++){                      // ... and the card may go into ANY slot
+          var cj=sl[j], jmin=cj>>>5, jlen=(cj>>>2)&7;
+          if(jmin+v>21) continue;                  // busting after a stay is dominated by the fresh slot
+          var jace=((cj>>>1)&1)|isA, jsev=(jlen===0)?is7:((cj&1)&is7);
+          var jmin2=jmin+v, jlen2=jlen+1, jScore=score, jStreak=pStreak, jCode;
+          var jb21=(jace && jmin2+10<=21) ? jmin2+10 : jmin2;
+          if(jb21===21){ jStreak=pStreak+1; jScore=score+(jlen2>=5 ? PTS_5CARD21 : ((jlen2===3 && jsev) ? PTS_777 : PTS_21))+streakBonus(jStreak); jCode=0; }
+          else if(jlen2>=5){ jStreak=pStreak+1; jScore=score+PTS_5CARD+streakBonus(jStreak); jCode=0; }
+          else jCode=fsMake(jmin2,jlen2,jace,jsev);
+          sl[j]=jCode;
+          var val2=fsChance(sl, dk, total, lives, passes-1, jStreak, jScore);
+          sl[j]=cj;
+          if(val2>best) best=val2;
+        }
+        sl[k]=s0;
+      }
+    }
+  }
+  dk[ci]++;
+  return best;
+}
+// Array-state entry point: convert once, then run entirely in the numeric engine.
+function exactChance(st){
+  var sl=[fsFromCards(st.slots[0]),fsFromCards(st.slots[1]),fsFromCards(st.slots[2]),fsFromCards(st.slots[3])];
+  var dk=new Array(13), total=0;
+  for(var i=0;i<13;i++){ dk[i]=st.deck[RANKS[i]]; total+=dk[i]; }
+  return fsChance(sl, dk, total, st.lives, st.passes, st.streak, st.score);
+}
+
+// pick the exact-optimal action for the dealt card (deck already decremented by dealCard)
+function exactBest(card){
+  let remEB=0; for(const r of RANKS) remEB+=deck[r];
+  WIN_TARGET = (typeof TARGET!=='undefined' && TARGET>0) ? TARGET : 0;   // honour TARGET in the endgame
+  memoInit(); exactNodes=0;
+  exactDeadline = Date.now() + exactBudgetFor(remEB);
+  let bestAct=null, bestV=-Infinity, bestBust=true;
+  // CERTAINTY RULE (endgame). Exact values are correct, but a guaranteed completion is
+  // worth more than its raw EV: it is banked, the next card cannot take it away, and we
+  // play to WIN matchups rather than to squeeze the last EV point. Without this the solver
+  // will trade a certain 21 (+400) for a ~100-pt edge from passing.
+  let certainV=-Infinity, certainAct=null;
+  // TIEBREAK: equal exact value must never be settled in favour of a bust. When the deck
+  // can no longer produce points, playing on and busting score the same, and the raw
+  // argmax would happily pick the bust -- which throws away a life (and the game, on the
+  // last one) for nothing. Prefer a safe placement whenever values tie.
+  for(let i=0;i<4;i++){
+    const sv={ slots:slots.map(x=>[...x]), deck:{...deck}, lives, passes, score, streak };
+    const evt=resolvePlace(sv, i, card);
+    const v=exactChance(sv);
+    const isBust = (evt==='bust');
+    if(evt==='win21' || evt==='win777' || evt==='win5' || evt==='win5x21'){
+      if(v>certainV){ certainV=v; certainAct={type:'place', slot:i, evt, ev:v}; }
+    }
+    if(v>bestV || (v===bestV && bestBust && !isBust)){
+      bestV=v; bestBust=isBust; bestAct={type:'place', slot:i, evt, ev:v};
+    }
+  }
+  if(passes>0){
+    for(let i=0;i<4;i++){
+      if(slots[i].length===0) continue;
+      for(let j=0;j<4;j++){
+        if(j!==i && handTotal([...slots[j], card]).min>21) continue;   // busting after a stay is dominated
+        const sv={ slots:slots.map(x=>[...x]), deck:{...deck}, lives, passes, score, streak };
+        const pe=resolvePass(sv, i, card, j);
+        const v=exactChance(sv);
+        // a stay never costs a life, so it also outranks a tied bust
+        if(v>bestV || (v===bestV && bestBust)){ bestV=v; bestBust=false; bestAct={type:'pass', slot:i, to:j, evt:pe, ev:v}; }
+      }
+    }
+  }
+  // cash-out comparison for the forced-bust flow happens upstream; here we return best play
+  if(exactNodes>EXACT_NODE_CAP_DEEP){ WIN_TARGET=0; return null; } // blew the budget: caller falls back to MC
+  // ABSOLUTE RULE: a guaranteed completion is ALWAYS taken. The exact solver will happily
+  // trade a certain 21 for a ~100-pt flexibility edge; that is technically EV-positive but
+  // it hands back banked points, raises variance, and is exactly the behaviour that showed
+  // up at the table. Among several completions the exact values still choose the best one.
+  if(WIN_TARGET>0){ WIN_TARGET=0; return bestAct; }   // win mode: P(win) already decided
+  // CERTAINTY WINDOW (payout-scaled): keep a guaranteed completion unless another line
+  // beats it by more than HALF its payout. Blocks the thin ~100-pt trades that showed up
+  // at the table, while letting genuinely better lines through. Measured: an ABSOLUTE rule
+  // overrode the exact optimum in 3/12 endgame positions, costing ~157 pts each (max 333).
+  // The certainty window used to override the exact optimum here, trading measured EV for
+  // a guaranteed completion. Exact values are correct by construction; trust them.
+  WIN_TARGET=0;
+  return bestAct;
+}
+
+
+// ===== DEAD-GAME DETECTION =====
+// "Can this game still score at all?" -- distinct from "is cashing out EV-optimal", which is
+// never true while lives are intact. A slot completes on an exact 21 or on a 5th card at <=21,
+// so this is an exact reachability question over the remaining deck, not a heuristic: bounded
+// subset-sum on (cards added, sum, ace-used), capped at 5 cards and a total of 21.
+// When nothing can complete, playing on cannot gain a point and can only bust you out of the
+// 1000-point all-lives bonus -- so the right move is to forfeit and start a fresh game.
+function canSlotComplete(cards, deckObj){
+  const {min} = handTotal(cards);
+  if(min > 21) return false;
+  const len = cards.length;
+  if(len >= 5) return false;
+  const room = 5 - len;
+  const hasAce = cards.some(c=>c==='A');
+  const val = new Array(11).fill(0);
+  for(const r of RANKS) val[VAL[r]] += deckObj[r];
+
+  // 5-card win: exactly `room` more cards, taking the smallest available
+  { let need = room, sum = 0, taken = 0;
+    for(let v=1; v<=10 && taken<need; v++){
+      const take = Math.min(val[v], need - taken);
+      sum += v*take; taken += take;
+    }
+    if(taken === need && min + sum <= 21) return true;
+  }
+  // exact 21: reachable sums using 1..room cards (an ace may later count as 11)
+  const reach = [];
+  for(let k=0;k<=room;k++){ const row=[]; for(let s=0;s<=21;s++) row.push([false,false]); reach.push(row); }
+  reach[0][0][hasAce?1:0] = true;
+  for(let v=1; v<=10; v++){
+    if(!val[v]) continue;
+    const maxUse = Math.min(val[v], room);
+    for(let k=room-1;k>=0;k--) for(let s=0;s<=21;s++) for(let a=0;a<2;a++){
+      if(!reach[k][s][a]) continue;
+      for(let u=1; u<=maxUse && k+u<=room; u++){
+        const ns = s + v*u;
+        if(min + ns > 21) break;
+        reach[k+u][ns][(v===1)?1:a] = true;
+      }
+    }
+  }
+  for(let k=1;k<=room;k++) for(let s=0;s<=21;s++) for(let a=0;a<2;a++){
+    if(!reach[k][s][a]) continue;
+    const fin = min + s;
+    if(fin === 21) return true;
+    if(fin === 11 && a) return true;      // the ace counts 11
+  }
+  return false;
+}
+// Conservative: returns true only when NOTHING can score. A pass resets a slot to one fresh
+// card, so that route is checked too.
+function noMorePointsPossible(sl, dk, ps){
+  let rem = 0; for(const r of RANKS) rem += dk[r];
+  if(rem === 0) return true;
+  for(let i=0;i<4;i++) if(canSlotComplete(sl[i], dk)) return false;
+  if(ps > 0){
+    for(const r of RANKS){
+      if(!dk[r]) continue;
+      const d2 = {...dk}; d2[r]--;
+      if(canSlotComplete([r], d2)) return false;
+    }
+  }
+  return true;
+}
+
+function chooseBest(card){
+  // EXACT ENDGAME: with the deck this thin, play perfectly instead of estimating
+  {
+    let remE=0; for(const r of RANKS) remE+=deck[r];
+    if(remE<=EXACT_LIMIT){
+      const ex=exactBest(card);
+      if(ex) return ex;
+    }
+  }
+
+  // HARD RULE 1: never skip guaranteed points
+  const completions = [];
+  for(let i=0;i<4;i++){
+    const test=[...slots[i], card];
+    const {min,best}=handTotal(test);
+    if(min<=21 && (best===21 || test.length>=5)) completions.push(i);
+  }
+
+  // Completions no longer pre-empt the candidate list in BALANCED/CHASE: declining a 21 to
+  // keep a slot loaded is how a combo chain gets built, and forcing the completion forbids
+  // it (worth +162/game to allow). That trade costs lives, so SAFE keeps the old rule --
+  // otherwise SAFE ends up riskier than BALANCED, which is what it exists to avoid.
+  // THIS GAME: a completion is ALWAYS taken. The old solver let a 21 go by to keep a slot
+  // loaded because back-to-back clears were the only way to earn the streak bonus there.
+  // Here the streak survives building, so a loaded slot has no chain value and a 21 in hand
+  // is 400+bonus banked plus an empty slot. Among several completions EV still picks.
+  let candidates=[];
+  if(completions.length){
+    for(const i of completions) candidates.push({type:'place', slot:i});
+  } else {
+    for(let i=0;i<4;i++) candidates.push({type:'place', slot:i});
+    if(passes>0){
+      for(let i=0;i<4;i++){
+        if(slots[i].length===0) continue;
+        for(let j=0;j<4;j++){
+          if(j!==i && handTotal([...slots[j], card]).min>21) continue;   // busting after a stay is dominated
+          candidates.push({type:'pass', slot:i, to:j});
+        }
+      }
+    }
+  }
+
+  // LEFT-TO-RIGHT: placements that produce identical board states (e.g. any empty slot)
+  // are the same move — keep only the leftmost, so equivalent choices always go left.
+  {
+    const seen=new Set();
+    candidates = candidates.filter(c => {
+      let post;
+      if(c.type==='place') post = slots.map((sl,j)=> j===c.slot ? slotKey([...sl, card]) : slotKey(sl)).sort().join('|');
+      else post = 'P'+slots.map((sl,j)=> { const base = (j===c.slot) ? [] : sl; return slotKey(j===c.to ? [...base, card] : base); }).sort().join('|');
+      if(seen.has(post)) return false;
+      seen.add(post);
+      return true;
+    });
+  }
+
+  const evalOn = (cands, seqs) => cands.map(c => {
+    const st = { slots: slots.map(s=>[...s]), deck:{...deck}, lives, passes, score, streak };
+    const evt = c.type==='pass' ? resolvePass(st, c.slot, card, c.to) : resolvePlace(st, c.slot, card);
+    let ev=0, beat=0;
+    if(TARGET>0){
+      // TARGET MODE: full-depth real-frame rollouts; rank by P(final > TARGET)
+      for(const sq of seqs){ const fin=rolloutSeqReal(st, sq); ev+=fin; if(fin>TARGET) beat++; }
+      ev/=seqs.length;
+      return {...c, evt, ev, pBeat: beat/seqs.length};
+    }
+    for(const sq of seqs) ev += rolloutSeq(st, sq, DEPTH);
+    return {...c, evt, ev:ev/seqs.length, pBeat: 0};
+  });
+
+  let remBoost=0; for(const r of RANKS) remBoost+=deck[r];
+  const simCount = remBoost<=16 ? SIMS*3 : (remBoost<=28 ? SIMS*2 : SIMS);
+  let seqs = genSequences(deck, simCount);
+  let results = evalOn(candidates, seqs);
+
+  // HARD RULE 2 relaxed for BALANCED/CHASE: a deliberate bust competes on EV like anything
+  // else. Sacrificing a dead slot -- a high total no remaining card can finish -- is
+  // sometimes worth a life when the alternative is a cascade of forced busts later.
+  // Measured +35 +/- 10 (t=3.4, 2000 games), bust-outs unchanged at zero. SAFE keeps the
+  // rule: never spending a life on purpose is the whole point of that mode.
+  let pool = results;
+  if(MODE==='safe'){
+    const safeOnly = results.filter(r=>r.evt!=='bust');
+    if(safeOnly.length) pool = safeOnly;
+  }
+  // TARGET ranking is noise-gated: win-probability only overrides EV when the
+  // difference is statistically real (>1.5%); tiny-probability noise falls back to EV.
+  // TARGET ranking used to run in the MIDGAME too, off pBeat estimated from rollouts that
+  // themselves play greedily for EV -- an estimate of the wrong policy's win probability.
+  // Measured: it cost 1090-1544 pts of mean and did NOT beat plain balanced play at either
+  // 9000 or 10500. Target chasing now happens only in the endgame, where exactBest computes
+  // P(beat) exactly (WIN_TARGET) instead of estimating it.
+  pool.sort((a,b)=> b.ev-a.ev || a.slot-b.slot);
+
+  // COMPLETIONS: rank by measured EV, full stop. This block used to re-sort by immediate
+  // payout / "keep value" whenever EV was within a hand-picked window. The same style of
+  // override in exactBest was costing 59 pts/game, so the EV is not re-litigated here.
+  if(completions.length>1 && pool.length>1){
+    const extra = genSequences(deck, SIMS*2);
+    const rerun = evalOn(pool.slice(0,2).map(r=>({type:r.type, slot:r.slot, to:r.to})), seqs.concat(extra));
+    rerun.sort((a,b)=>b.ev-a.ev || a.slot-b.slot);
+    return rerun[0];
+  }
+
+  // PLACEMENTS: adaptive rerun on close calls, then coverage tiebreak on residual ties
+  if(pool.length>1 && Math.abs(pool[0].ev - pool[1].ev) < 25){
+    const extra = genSequences(deck, SIMS);
+    const rerun = evalOn(pool.slice(0,2).map(r=>({type:r.type, slot:r.slot, to:r.to})), seqs.concat(extra));
+    rerun.sort((a,b)=>b.ev-a.ev || a.slot-b.slot);
+    // Still within noise between two PLACEMENTS → deterministic tiebreak:
+    // prefer the placement creating the most exact-21 coverage (e.g. building an 11).
+    if(rerun[0].type==='place' && rerun[1].type==='place' && Math.abs(rerun[0].ev-rerun[1].ev) < 15){
+      let remT=0; for(const r of RANKS) remT+=deck[r];
+      const covDelta = (si) => {
+        if(remT===0) return 0;
+        const covOf = (total)=>{
+          const need=21-total; let c=0;
+          if(need>=1&&need<=9) c=deck[need===1?'A':String(need)];
+          else if(need===10) c=deck['10']+deck['J']+deck['Q']+deck['K'];
+          else if(need===11) c=deck['A'];
+          return c;
+        };
+        const after = covOf(handTotal([...slots[si], card]).best);
+        const before = slots[si].length ? covOf(handTotal(slots[si]).best) : 0;
+        return after - before;
+      };
+      // forced-bust exposure: how many remaining cards would bust EVERY slot after this placement
+      const exposure = (si) => {
+        if(remT===0 || passes>0) return 0;
+        let expo=0;
+        for(const r of RANKS){
+          if(deck[r]===0) continue;
+          let anySafe=false;
+          for(let k=0;k<4;k++){
+            const cs = (k===si) ? [...slots[si], card] : slots[k];
+            if(handTotal([...cs, r]).min<=21){ anySafe=true; break; }
+          }
+          if(!anySafe) expo+=deck[r];
+        }
+        return expo;
+      };
+      rerun.sort((a,b)=> covDelta(b.slot)-covDelta(a.slot) || exposure(a.slot)-exposure(b.slot) || b.ev-a.ev || a.slot-b.slot);
+    }
+    return rerun[0];
+  }
+  return pool[0];
+}
+
+// Which slot to sacrifice when the dealt card busts every slot and no stays remain.
+// (deck already decremented by dealCard)
+function chooseForcedBust(rank){
+  let bestBust=0, bestBV=-Infinity;
+  let remSac=0; for(const r of RANKS) remSac+=deck[r];
+  const useExact = remSac<=EXACT_LIMIT;
+  let seqSac=null;
+  if(!useExact){ try{ seqSac=genSequences(deck, 300); }catch(e){ seqSac=null; } }
+  for(let i=0;i<4;i++){
+    const sv={ slots: slots.map(x=>[...x]), deck:{...deck}, lives, passes, score, streak };
+    resolvePlace(sv, i, rank);
+    let v;
+    if(sv.lives<=0) v = sv.score;
+    else if(useExact){
+      memoInit(); exactNodes=0; exactDeadline=Date.now()+exactBudgetFor(remSac);
+      v = exactChance(sv);
+      if(exactNodes>EXACT_NODE_CAP_DEEP){ v=0; const q2=genSequences(deck,300); for(const q of q2) v+=rolloutSeqReal(sv,q); v/=Math.max(1,q2.length); }
+    }
+    else if(seqSac && seqSac.length){ v=0; for(const q of seqSac) v+=rolloutSeqReal(sv, q); v/=seqSac.length; }
+    else v = stateValue(sv);
+    if(v>bestBV){ bestBV=v; bestBust=i; }
+  }
+  return bestBust;
+}
+
+function snapshot(){
+  return { slots:slots.map(s=>[...s]), deck:{...deck}, lives, passes, score, streak, logRows:[...logRows] };
+}
+
+function dealCard(rank){
+  setErr('');
+  if(editMode){ editAddCard(rank); return; }
+  if(pending){ return; }
+  if(deck[rank]<=0){ setErr('No '+rank+'s left — all 4 used.'); return; }
+  if(lives<=0){ setErr('Out of lives — reset to play again.'); return; }
+  history.push(snapshot());
+  deck[rank]--;
+  pending=rank;
+  flashSlot=-1;
+  render();
+  document.getElementById('answer').innerHTML='<span class="thinking">Simulating…</span>';
+  document.getElementById('sub').textContent='';
+  setTimeout(()=>{
+    const tSolve=Date.now();
+    try{
+    forcedBustFlag=false;
+    // FORCED BUST: the card busts every slot and no stays are left. There is no early
+    // exit in this game, so the only decision is WHICH slot to sacrifice. A low slot is the
+    // flexible one; a dead 20 will only force another bust. Evaluate every bust properly:
+    // exactly when the deck is short enough, otherwise by rollout.
+    if(passes===0){
+      let anySafe=false;
+      for(let i=0;i<4;i++){ if(handTotal([...slots[i], rank]).min<=21){ anySafe=true; break; } }
+      if(!anySafe){
+        const bestBust = chooseForcedBust(rank);
+        const stB = { slots, deck, lives, passes, score, streak };
+        resolvePlace(stB, bestBust, rank);
+        lives=stB.lives; score=stB.score; streak=stB.streak;
+        flashSlot=bestBust; forcedBustFlag=true;
+        lastMove={card:rank, text:'\u2192 SLOT '+(bestBust+1)+' (forced bust \u2014 every slot busts)',
+                  sub:(lives>0 ? 'lost a life, '+lives+' left' : 'OUT OF LIVES \u2014 game over')+(RULE_BUST_BREAKS_STREAK?' \u00b7 streak reset':'')};
+        logRows.unshift({cls:'lose', txt:'FORCED BUST slot '+(bestBust+1)+' \u2014 '+lives+' lives left'});
+        pending=null;
+        render();
+        return;
+      }
+    }
+    const best=chooseBest(rank);
+    const st = { slots, deck, lives, passes, score, streak }; // live state, resolve mutates it
+    let evt;
+    if(best.type==='pass'){
+      evt=resolvePass(st, best.slot, rank, best.to);
+    } else {
+      evt=resolvePlace(st, best.slot, rank);
+    }
+    lives=st.lives; passes=st.passes; score=st.score; streak=st.streak;
+    flashSlot=(best.type==='pass') ? best.to : best.slot;
+    let txt, sub='', logCls='', logTxt='';
+    if(best.type==='pass'){
+      const to=(best.to===undefined)?best.slot:best.to;
+      txt='→ STAY SLOT '+(best.slot+1)+', then card to SLOT '+(to+1)+(to===best.slot?' (fresh)':'');
+      const pe = evt.startsWith('pass+') ? evt.slice(5) : 'safe';
+      const win = pe==='win21' ? '21! ✓' : pe==='win777' ? 'TRIPLE 7s! 600 ✓' : pe==='win5x21' ? '5-CARD 21! ✓ +1000' : pe==='win5' ? '5-card stack ✓ +800' : pe==='bust' ? 'BUST — lost a life' : '';
+      sub=passes+' stay'+(passes===1?'':'s')+' left · streak reset'+(win?' · '+win+(streak>0?' (streak x'+streak+')':''):'');
+      logCls=(pe.startsWith('win')?'win':'lose'); logTxt='STAY cleared slot '+(best.slot+1)+', card to slot '+(to+1)+(win?' — '+win:'')+' — '+passes+' stay'+(passes===1?'':'s')+' left';
+    } else {
+      txt='→ SLOT '+(best.slot+1);
+      if(evt==='win21'){ sub='21! ✓'+(streak>1?'  (streak x'+streak+' bonus)':''); logCls='win'; logTxt='21 in slot '+(best.slot+1)+(streak>1?' — streak '+streak:''); }
+      else if(evt==='win777'){ sub='TRIPLE 7s! 600 \u2713'+(streak>1?' (streak x'+streak+')':''); logCls='win'; logTxt='TRIPLE 7s (600) in slot '+(best.slot+1); }
+      else if(evt==='win5x21'){ sub='5-CARD 21! ✓ +1000'+(streak>1?' (streak x'+streak+')':''); logCls='win'; logTxt='5-card 21 in slot '+(best.slot+1)+' — 1000 pts!'; }
+      else if(evt==='win5'){ sub='5-card stack ✓ +800'+(streak>1?' (streak x'+streak+')':''); logCls='win'; logTxt='5-card win in slot '+(best.slot+1)+(streak>1?' — streak '+streak:''); }
+      else if(evt==='bust'){ sub='deliberate bust — lost a life'+(RULE_BUST_BREAKS_STREAK?', streak reset':''); logCls='lose'; logTxt='BUST slot '+(best.slot+1)+' — '+lives+' lives left'; forcedBustFlag=true; }
+    }
+    lastMove={card:rank, text:txt, sub, ms:Date.now()-tSolve};
+    if(logTxt) logRows.unshift({cls:logCls, txt:logTxt+((evt==='win21'||evt==='win777'||evt==='win5'||evt==='win5x21')&&streakBonus(streak)>0 ? ' (+'+streakBonus(streak)+' streak)' : '')});
+    pending=null;
+    }catch(err){
+      // FAILSAFE: never stay stuck on Simulating - instant greedy placement
+      try{
+        const stF={ slots, deck, lives, passes, score, streak };
+        const chF=greedyChoice(stF, rank, false);
+        const slotF=(chF && chF.slot!==undefined)?chF.slot:0;
+        let evtF;
+        if(chF && chF.type==='pass'){ evtF=resolvePass(stF, slotF, rank); }
+        else { evtF=resolvePlace(stF, slotF, rank); }
+        lives=stF.lives; passes=stF.passes; score=stF.score; streak=stF.streak;
+        flashSlot=slotF;
+        lastMove={card:rank, text:'\u2192 SLOT '+(slotF+1), sub:(evtF==='win21'?'21! \u2713':evtF==='win5x21'?'5-CARD 21! \u2713':evtF==='win5'?'5-card \u2713':'')};
+        pending=null;
+      }catch(e2){ pending=null; setErr('Recovered from an error - undo and retry this card.'); }
+    }
+    // CASH-OUT + RISK CHECK
+    cashOut=null; bustRisk=0;
+    let remNow=0; for(const r of RANKS) remNow+=deck[r];
+    if(remNow>0 && lives>0 && (passes===0 || remNow<=12)){
+      // Risk of the NEXT draw being a forced bust (no safe slot, no passes)
+      if(passes===0){
+        let bustCt=0;
+        for(const r of RANKS){
+          if(deck[r]===0) continue;
+          let safe=false;
+          for(let i=0;i<4;i++){
+            const t=handTotal([...slots[i], r]);
+            if(t.min<=21){ safe=true; break; }
+          }
+          if(!safe) bustCt+=deck[r];
+        }
+        bustRisk = Math.round(bustCt/remNow*100);
+      }
+    }
+    render();
+  },40);
+}
+
+function toggleEdit(){
+  editMode=!editMode; editSlot=-1;
+  const b=document.getElementById('editBtn');
+  if(b){ b.textContent=editMode?'DONE FIXING':'FIX BOARD'; b.style.background=editMode?'#166534':''; }
+  setErr(editMode?'FIX MODE: tap a slot to select, tap card keys to ADD to it, tap a card in it to REMOVE. Deck stays synced.':'');
+  render();
+}
+function editSelectSlot(i){ if(!editMode) return; editSlot=i; render(); }
+function editAddCard(rank){
+  if(editSlot<0){ setErr('Tap a slot first to select it.'); return; }
+  if(deck[rank]<=0){ setErr('No '+rank+' left in deck count.'); return; }
+  slots[editSlot].push(rank); deck[rank]--;
+  render();
+}
+function editRemoveCard(si, ci){
+  if(!editMode) return;
+  const c=slots[si][ci];
+  slots[si].splice(ci,1); deck[c]++;
+  render();
+}
+function undo(){
+  const prev=history.pop();
+  if(!prev) return;
+  slots=prev.slots; deck=prev.deck; lives=prev.lives; passes=prev.passes; score=prev.score; streak=prev.streak; logRows=prev.logRows;
+  pending=null; lastMove=null; flashSlot=-1; cashOut=null; pendingForcedBust=null;
+  setErr('');
+  render();
+}
+
+function setErr(m){ document.getElementById('err').textContent=m; }
+
+function render(){
+  // FORFEIT HEADS-UP: exact check for whether ANY card still in play can complete a slot.
+  // Fires in ~28% of games and is score-neutral (measured: 0 of 1000 games changed), so it
+  // costs nothing and saves playing out cards that cannot score.
+  try{
+    const pool={...deck};
+    if(pending) pool[pending]++;                 // the card in hand is playable too
+    const remPool=RANKS.reduce((a,r)=>a+pool[r],0);
+    const box=document.getElementById('deadBox');
+    if(box){
+      if(remPool>0 && noMorePointsPossible(slots, pool, passes) && lives>0){
+        box.style.display='block';
+        document.getElementById('deadWhy').textContent=
+          'No slot can reach 21 and none can be filled to 5 cards with the '+remPool+
+          ' card'+(remPool===1?'':'s')+' left'+(passes>0?' (passes included)':'')+
+          '. Nothing left can score: just place the rest where they cannot bust.';
+      } else box.style.display='none';
+    }
+  }catch(e){}
+  const dealt=52-RANKS.reduce((a,r)=>a+deck[r],0);
+  document.getElementById('dealt').textContent=dealt+'/52';
+  document.getElementById('lives').textContent='♥'.repeat(Math.max(0,lives))+'♡'.repeat(Math.max(0,3-lives));
+  document.getElementById('passesEl').textContent=passes;
+  document.getElementById('score').textContent=score;
+  document.getElementById('streak').textContent=streak>0 ? 'x'+streak+' (next +'+streakBonus(streak+1)+')' : '0 (next +0)';
+  const rem=RANKS.reduce((a,r)=>a+deck[r],0);
+  const ten=['10','J','Q','K'].reduce((a,r)=>a+deck[r],0);
+  document.getElementById('tenOdds').textContent=rem?Math.round(ten/rem*100)+'%':'—';
+  document.getElementById('undoBtn').disabled=history.length===0;
+
+  const sEl=document.getElementById('slots');
+  sEl.innerHTML='';
+  slots.forEach((cards,i)=>{
+    const t=handTotal(cards);
+    const soft=cards.includes('A')&&t.best!==t.min;
+    const div=document.createElement('div');
+    div.className='slot'+(i===flashSlot?' flash':'');
+    if(editMode && i===editSlot) div.style.outline='2px solid #4ade80';
+    if(editMode) div.onclick=()=>editSelectSlot(i);
+    const status = cards.length===0 ? 'empty' : t.best+(soft?' (soft)':'')+' · '+cards.length+'c';
+    div.innerHTML='<div class="head"><span class="name">SLOT '+(i+1)+'</span><span class="status">'+status+'</span></div>'+
+      '<div class="cards">'+cards.map((c,ci)=>'<div class="pcard"'+(editMode?' style="outline:1px dashed #f87171;cursor:pointer" onclick="event.stopPropagation();editRemoveCard('+i+','+ci+')"':'')+'>'+c+'</div>').join('')+'</div>';
+    sEl.appendChild(div);
+  });
+
+  document.getElementById('cashoutBanner').style.display='none';
+  // show bust risk in the hint line when meaningful
+  if(!pending && bustRisk>0 && !cashOut && !forcedBustFlag){
+    document.getElementById('err').textContent = bustRisk>=20 ? ('⚠ '+bustRisk+'% of remaining cards would be a forced bust') : '';
+  }
+  const rec=document.getElementById('rec');
+  if(pending){
+    rec.classList.add('show');
+    document.getElementById('pendingCard').textContent=pending;
+    document.getElementById('hint').textContent='Thinking…';
+  } else if(lastMove){
+    rec.classList.add('show');
+    document.getElementById('pendingCard').textContent=lastMove.card;
+    document.getElementById('answer').textContent=lastMove.text;
+    document.getElementById('sub').textContent=lastMove.sub+(lastMove.ms!==undefined ? (lastMove.sub?' · ':'')+'solved in '+lastMove.ms+' ms' : '');
+    document.getElementById('hint').textContent='Tap the next card you were dealt';
+  } else {
+    rec.classList.remove('show');
+    document.getElementById('hint').textContent='Tap the card you were dealt';
+  }
+
+  const kEl=document.getElementById('keys');
+  kEl.innerHTML='';
+  RANKS.forEach(r=>{
+    const btn=document.createElement('button');
+    btn.innerHTML=r+'<span class="cnt">'+deck[r]+'</span>';
+    btn.disabled=!!pending||deck[r]===0||lives<=0;
+    btn.onclick=()=>dealCard(r);
+    kEl.appendChild(btn);
+  });
+
+  const lEl=document.getElementById('log');
+  lEl.innerHTML=logRows.map(r=>'<div class="row"><b class="'+r.cls+'">'+r.txt+'</b></div>').join('');
+}
+
+function setTarget(){
+  const v=parseInt(document.getElementById('targetIn').value)||0;
+  TARGET = v>0 ? v : 0;
+  const l=document.getElementById('targetLbl');
+  if(l) l.textContent = TARGET>0 ? ('HUNTING '+TARGET+' — decisions now maximize win probability') : '';
+}
+function setMode(m){
+  MODE=m;
+  const btns={safe:'mSafe',balanced:'mBal',chase:'mChase'};
+  for(const k in btns){ const b=document.getElementById(btns[k]); if(b) b.style.border = (k===m)?'2px solid '+(m==='safe'?'#4ade80':(m==='chase'?'#fb923c':'#60a5fa')):'2px solid transparent'; }
+  try{ localStorage.setItem('s21mode', m); }catch(e){}
+}
+function setBustRule(v){ RULE_BUST_BREAKS_STREAK=!!v; try{ localStorage.setItem('s21bust', v?'1':'0'); }catch(e){} }
+function setPerfect(v){ PTS_PERFECT = v ? 1000 : 0; try{ localStorage.setItem('s21perf', v?'1':'0'); }catch(e){} render(); }
+function loadRules(){
+  try{
+    const b=localStorage.getItem('s21bust'); if(b!==null){ RULE_BUST_BREAKS_STREAK=(b==='1'); document.getElementById('rBust').checked=RULE_BUST_BREAKS_STREAK; }
+    const p=localStorage.getItem('s21perf'); if(p!==null){ PTS_PERFECT=(p==='1')?1000:0; document.getElementById('rPerf').checked=PTS_PERFECT>0; }
+  }catch(e){}
+}
+function loadMode(){ try{ const m=localStorage.getItem('s21mode'); if(m && MODES[m]) setMode(m); }catch(e){} }
+// ===== KEEP-OR-REPLAY VERDICT =====
+// A redo is only available AFTER a game, and only while the opponent has not played yet.
+// So the only question that matters is whether this finished score is worth defending.
+const BUILD_AVG = 17400;     // measured: mean 17428 +/- 187 over 240 self-play games (bench/r_ab_force.json B side)
+function keepOrReplay(total){
+  const el=document.getElementById('verdictBox');
+  if(!el) return;
+  let tgt=0; try{ tgt=parseInt(document.getElementById('targetIn').value)||0; }catch(e){}
+  let head, body, col;
+  if(tgt>0){
+    if(total>tgt){ head='KEEP — '+total+' beats '+tgt; body='You win the matchup. Never replay a winning score.'; col='#14532d'; }
+    else { head='REPLAY — '+total+' loses to '+tgt; body='A losing score is worth nothing, so a fresh run costs you nothing and might win.'; col='#7f1d1d'; }
+  } else if(total >= BUILD_AVG){
+    head='KEEP — '+total+' is at or above par';
+    body='A fresh game averages about '+BUILD_AVG+'. Replaying this is a coin flip you do not need.';
+    col='#14532d';
+  } else {
+    head='REPLAY — '+total+' is below par';
+    body='A fresh game averages about '+BUILD_AVG+', roughly '+(BUILD_AVG-total)+' more than this. Worth another run if the redo is free.';
+    col='#7f1d1d';
+  }
+  el.style.display='block';
+  el.style.background=col;
+  document.getElementById('verdictTitle').textContent=head;
+  document.getElementById('verdictBody').textContent=body;
+}
+function saveResult(){
+  const total = score + (lives>=3 ? PTS_PERFECT : 0);
+  try{
+    const h=JSON.parse(localStorage.getItem('s21hist')||'[]');
+    h.push(total);
+    localStorage.setItem('s21hist', JSON.stringify(h.slice(-50)));
+  }catch(e){}
+  try{ keepOrReplay(total); }catch(e){}
+  renderHistory();
+}
+function clearHistory(){ try{ localStorage.removeItem('s21hist'); }catch(e){} renderHistory(); }
+function renderHistory(){
+  let h=[]; try{ h=JSON.parse(localStorage.getItem('s21hist')||'[]'); }catch(e){}
+  const el=document.getElementById('historyLine');
+  if(!el) return;
+  if(!h.length){ el.textContent='No games saved yet.'; return; }
+  const avg=(h.reduce((a,b)=>a+b,0)/h.length).toFixed(0);
+  const best=Math.max(...h);
+  el.textContent=h.length+' games | avg '+avg+' | best '+best+' | last: '+h.slice(-8).join(', ');
+}
+resetGame();
+try{ renderHistory(); loadMode(); loadRules(); }catch(e){}
+</script>
+</body>
+</html>

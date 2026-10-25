@@ -36,3 +36,5 @@ bonkhorde/_mutant.html
 # 21 STREAK solver: console logs of running benchmarks (results go to LEDGER.md and the .json rows)
 21-streak-solver/bench/*.out
 21-streak-solver/bench/oracle_build.html
+21-streak-solver/bench/_mc_*.html
+21-streak-solver/bench/*.part

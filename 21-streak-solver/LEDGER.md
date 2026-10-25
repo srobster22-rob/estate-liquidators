@@ -60,3 +60,18 @@ here are comparable to runs on the PC.
 | R | A rollout that plays out the whole remaining deck still scores `stateValue` (+500 per life, +60 per stay), but this game pays nothing for either at the end. Score deck-end rollouts as the game does. | +15.8 ± 32.7 (t=0.48); **218/240 games identical**; busts 0.36 → 0.47, stays 1.21 → 1.10, perfect-lives 0.704 → 0.621 | **null at game level** — it changes only a few late decisions (it now spends a worthless last life instead of a stay). Too small for a game A/B; sent to the decision-level oracle. |
 | N | F cut sims AND exact budgets and lost 527; which half? Double the sims, SIMS 600 → 1200 (480 games). | −23 ± 111 (t=−0.21); 316/480 games differ; every secondary metric flat | **null — the Monte-Carlo search is saturated here too**, as in the parent. So F's −527 was the exact-budget cut: falling back to MC on the 9- and 10-card moves alone costs ~500/game, which says MC decisions just above the exact limit are far from optimal. Measured next with the oracle. |
 
+**Finding: the "exact endgame" mostly does not run.** `bench/exactcov.js` (40 self-play games,
+seeds 1000-1039) records whether `exactBest` finished or `chooseBest` fell back to MC:
+
+| cards left | 10 | 9 | 8 | 7 |
+|---|---|---|---|---|
+| fell back to MC | **87%** | **64%** | 26% | 3% |
+
+Every cut-off is the 800k node cap (`EXACT_NODE_CAP_DEEP`), not the clock — which is why runs on
+the PC and here agree to the decimal. The 10- and 9-card moves spend ~1.5-2 s and then decide by
+MC anyway. The parent tuned the cap for its game; here the state space is larger (stays are
+searched freely in the last 8 cards, and with the streak in the key). Cutting STAYs out of the
+search (`PASS_FULL_LIMIT` 8 → 0) does not fix it on its own: still 70-89% fallback at 10 cards.
+So F's −527 is explained: its smaller budgets turned the 7- and 8-card solves, which do finish,
+into MC as well.
+
