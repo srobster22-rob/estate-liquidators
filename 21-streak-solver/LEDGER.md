@@ -88,3 +88,8 @@ search needs 1.43× fewer nodes. Exact completion, 40 games, seeds 1000-1039 (`b
 | T4 (T + stays searched only in the last 4 cards) | 69% | 38% | 15% | 1393 / 2372 |
 | TC (T + node cap 800k → 2.4M, memo 2^21 → 2^22 = ~100 MB) | 56% | 28% | 15% | 3006 / 3183 (now the 3 s clock binds) |
 
+| # | hypothesis | result | verdict |
+|---|---|---|---|
+| TC | If the exact solve finished more often at 9-10 cards, decisions there would improve (F lost 527 by finishing less often). | **+8.5 ± 5.4 (t=1.57), 468/480 games identical**; every secondary metric flat | **rejected** — when the exact solve now finishes where MC used to decide, it almost always picks the same move: MC at 9-10 cards is already near-exact. Not worth +1.2 s and +50 MB per game. It also means F's −527 was mostly its SIMS 600 → 300 (300 < 600 ≈ 1200), not the exact budgets. |
+| T | Fold 10/J/Q/K into one class in the exact engine. | identical exact values (max diff 3.6e-12); 1.43× fewer nodes; 10-card move p50 1809 → 1577 ms; completion at 10/9/8: 87/64/26% → 69/44/18% fallback | **accepted as a pure speed-up** — it cannot change a value, only finish more solves (TC shows that is worth ~+5) and finish them sooner. Shipped in the next build. |
+
