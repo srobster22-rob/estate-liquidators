@@ -118,3 +118,7 @@ choices at ≤10 cards, and only 3 (0.075/game) were voluntary MC stays with saf
 (e.g. x8, an ace in hand, four safe slots). Resets at x3+ of any kind: ~0.58/game ≈ 1,300 pts
 — that is the pot, and most of it is boards where all four slots sit at 12+ when a ten-card comes.
 
+| # | hypothesis | result | verdict |
+|---|---|---|---|
+| C2 | C (lifeVal 500 → 1500) was measured with the end bonus ON; retest with it off, lifeVal 500 → 1000. | −24 ± 79 (t=−0.31); busts 0.41 → **0.33**, perfect-lives 0.673 → 0.740, but stays 1.22 → 1.28 | **null** — fewer busts, more stays, and both reset the streak: the reset count is what costs, and lifeVal only moves resets between the two kinds. Flat, as in the parent. A higher stay weight (queued as S2) is the mirror image and was not run. |
+
