@@ -122,3 +122,19 @@ choices at ≤10 cards, and only 3 (0.075/game) were voluntary MC stays with saf
 |---|---|---|---|
 | C2 | C (lifeVal 500 → 1500) was measured with the end bonus ON; retest with it off, lifeVal 500 → 1000. | −24 ± 79 (t=−0.31); busts 0.41 → **0.33**, perfect-lives 0.673 → 0.740, but stays 1.22 → 1.28 | **null** — fewer busts, more stays, and both reset the streak: the reset count is what costs, and lifeVal only moves resets between the two kinds. Flat, as in the parent. A higher stay weight (queued as S2) is the mirror image and was not run. |
 
+**Auditing single decisions** (`bench/qeval.js`: the rest of the game played by the full solver
+from each action, 40 paired shuffles). The three voluntary MC stays at x3+ from the bust probe:
+
+| seed | position | verdict |
+|---|---|---|
+| 1029 | rem 18, x8, A dealt, `8 \| 9 \| Q,8 \| 10,7` — stayed slot 3 | fine: best placement −19 ± 235 |
+| 1025 | rem 21, x8, 2 dealt, `3,J \| K,Q \| 4 \| 10,6` — stayed the dead K,Q | maybe wrong: placing on slot 1 +471 ± 343 |
+| 1019 | rem 23, x5, Q dealt, `Q \| 2,J \| 5,J,5 \| 2,6,4,6` — stayed 5,J,5 and put Q on Q | **wrong**: Q on Q without the stay **+703 ± 183** (t=3.8) |
+
+Real MC errors exist, but this class is ~0.075/game, so ~25-50 pts/game at most.
+
+**Sink scan** (`bench/sinks.js`, 40 games): only 11 of ~1,590 MC placements (0.28/game) left
+all four slots at 12+ when another safe placement kept a sink. The all-high boards behind most
+high-streak resets are mostly dealt, not chosen. **The solver is on a plateau**: the errors that
+can be found are real but each class is worth tens of points, below what a 480-game A/B sees.
+
