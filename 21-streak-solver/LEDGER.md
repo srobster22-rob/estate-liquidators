@@ -105,3 +105,16 @@ mean 17432 ± 187   bust-outs 0.008   busts/game 0.37   clears/game 15.00
 Round 2 tested seven ideas on 3,120 paired games; only the speed-up survived. See LOOP_PROMPT.md
 for what is now known not to work.
 
+## Round 3 — 2026-11-22 (A = v4 unless stated, 480 games, seeds 1000-1479)
+
+| # | hypothesis | result | verdict |
+|---|---|---|---|
+| D2 | D lost because it dropped the life credit, not because of depth? Full-depth rollouts, `stateValue` still scoring the end. | −74 ± 118 (t=−0.63); busts 0.41 → 0.47, perfect-lives 0.673 → 0.621 | **null** — longer greedy rollouts add noise, not foresight; the 22-card horizon is not what limits the solver. Busts rose again. |
+
+**Bust anatomy** (`bench/busts.js`, 40 games): per game 1.23 stays, 0.28 chosen busts, 0.20
+forced busts. 17 of 49 stays came at streak x3+ (each costing ~2,250 of ramp); 11 of those 17
+had no safe slot (the card busted everything, so stay vs bust both reset), 3 were exact-solver
+choices at ≤10 cards, and only 3 (0.075/game) were voluntary MC stays with safe slots open
+(e.g. x8, an ace in hand, four safe slots). Resets at x3+ of any kind: ~0.58/game ≈ 1,300 pts
+— that is the pot, and most of it is boards where all four slots sit at 12+ when a ten-card comes.
+
