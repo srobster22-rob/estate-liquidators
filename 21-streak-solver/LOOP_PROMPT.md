@@ -53,11 +53,17 @@ the life. Clears per game (~15) are near the deck's packing ceiling.
 | D | full-depth rollouts scored by real points | −236 ± 127 (480): busts 0.41 → 0.70. **The +500/life in `stateValue` is load-bearing** |
 | K | horizon streak credit at its true size (1000/1750/2250) | −106 ± 95 (480): busts and stays up, like A. **Horizon streak credits are dead** |
 | W | drop the parent's streak-coverage term from the rollout policy | −66 ± 113 (480), null |
+| D2 | full-depth rollouts, `stateValue` (lives credit) kept at the end | −74 ± 118 (480), null: **the horizon is not the limit** |
+| C2 | lifeVal 1000 with the end bonus off | −24 ± 79 (480): busts down, stays up — **resets just move between the two kinds** |
+| L8 | exact endgame from 8 cards instead of 10 | −11.9 ± 3.9 (480) for −1.4 s/game: shipped only as the FAST ENDGAME toggle |
+| SP/NR | x3+ stay handicap 500 / 1000, or no voluntary reset at x3+ | +45 ± 85 / −40 ± 93 / +32 ± 114 per audited decision (`bench/qaudit.js`, 15 positions): null |
 
 Every change that raised busts/game lost (A, D, K); the one clear win (G) cut them. The exact
 endgame falls back to MC 69/44/18% of the time at 10/9/8 cards even with T (node cap), and that
-costs almost nothing (TC). Remaining untested levers: `lifeVal` / stays weight retuned with the
-end bonus OFF (C was measured with it ON), and anything the owner reports from the table.
+costs almost nothing (TC). Remaining levers: anything the owner reports from the table (that is how G was found), and
+anything that changes the search's design rather than its weights. Weight and horizon tweaks
+are exhausted. `bench/qaudit.js` grades one decision class precisely; use it before a game A/B
+when a change touches a rare kind of move.
 
 From the parent, still believed to hold: exact depth is exhausted at 10 cards (11-12 cost 3×
 per card for nothing); rollout-policy tuning does not transfer into the search (+953

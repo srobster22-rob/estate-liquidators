@@ -140,9 +140,9 @@ if (!isMainThread) {
       let file = path.join(ROOT, b);
       if (A.mc) {
         const src = fs.readFileSync(file, 'utf8');
-        if (!/const EXACT_LIMIT = \d+;/.test(src)) throw new Error('no EXACT_LIMIT in ' + b);
+        if (!/(?:const|let) EXACT_LIMIT = \d+;/.test(src)) throw new Error('no EXACT_LIMIT in ' + b);
         file = path.join(__dirname, '_mc_' + path.basename(b));
-        fs.writeFileSync(file, src.replace(/const EXACT_LIMIT = \d+;/, 'const EXACT_LIMIT = 0;'));
+        fs.writeFileSync(file, src.replace(/(?:const|let) EXACT_LIMIT = \d+;/, 'let EXACT_LIMIT = 0;'));
       }
       const E = loadEngine(file);
       E.setMode('balanced'); E.setTarget(0);

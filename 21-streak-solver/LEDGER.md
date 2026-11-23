@@ -147,3 +147,27 @@ occur in 60 of 360 self-play games (seeds 1040-1399, `bench/findstays.js`). Each
 `bench/qeval.js` (24 paired full-solver playouts): the chosen stay vs the MC's best non-stay
 move, which is what a "no voluntary stay at x3+" rule would play. Results in `bench/stayrule.out`.
 
+Stay audit after 15 positions (`node bench/qaudit.js --sum bench/stayaudit.jsonl`), per audited
+decision vs v4, playout noise only:
+
+| candidate | change | decisions changed |
+|---|---|---|
+| SP5 — stays at x3+ pay a 500 handicap in the MC comparison | +45 ± 85 | 12/15 |
+| SP10 — 1000 handicap | −40 ± 93 | 14/15 |
+| NR — no stay and no deliberate bust at x3+ while a safe placement exists | +32 ± 114 | 15/15 |
+
+**Null, audit stopped.** The class is genuinely mixed: some x3+ stays are right (1104: placing
+instead costs 644; 1125: 454), some are clear errors (1115: +640, 1119: +992). The MC's call is
+about as good as any simple rule, and even +45 per decision × ~0.17 such decisions per game is
+~8 pts/game. With a handicap, the MC often switches to a deliberate bust instead (same reset).
+
+## Shipped after round 3: v5 = v4 + a FAST ENDGAME toggle (off by default)
+
+The toggle sets `EXACT_LIMIT` 10 → 8 (L8 above: −11.9 ± 3.9 pts/game for ~1.4 s less solver
+time per game). With it off, v5 is v4 move for move (null control: 24/24 identical, Δ 0.0);
+fuzz 0/325; checked in Chromium: it persists in localStorage and survives a reload.
+
+Round 3: D2, C2, L8, the stay audit — four honest nulls on score. Three rounds and 13 measured
+ideas now say the same thing: this solver is at its plateau for its design; the remaining
+errors are real but each class is worth tens of points.
+

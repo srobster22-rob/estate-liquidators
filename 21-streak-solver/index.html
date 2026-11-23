@@ -108,6 +108,8 @@
     <div class="hint" style="margin-top:6px">RULE TOGGLES (both confirmed by play; flip only if the game changes)</div>
     <label style="display:block;font-size:11px;color:#cbd5e1;margin:3px 0"><input type="checkbox" id="rBust" checked onchange="setBustRule(this.checked)"> a BUST resets the streak</label>
     <label style="display:block;font-size:11px;color:#cbd5e1;margin:3px 0"><input type="checkbox" id="rPerf" onchange="setPerfect(this.checked)"> +1000 end bonus for finishing with all 3 lives (this game: none)</label>
+    <div class="hint" style="margin-top:6px">SPEED</div>
+    <label style="display:block;font-size:11px;color:#cbd5e1;margin:3px 0"><input type="checkbox" id="rFast" onchange="setFast(this.checked)"> FAST ENDGAME: ~1.5 s quicker per game, ~12 pts lower average (only if the clock is tight)</label>
     <div class="hint" style="margin-top:6px">PLAY MODE</div>
     <div style="display:flex;gap:6px;margin-top:4px">
       <button id="mSafe" onclick="setMode('safe')" style="flex:1;background:#14532d;color:#bbf7d0;border:2px solid transparent;border-radius:6px;padding:6px;font-family:inherit;font-size:11px;cursor:pointer">SAFE<br><span style="font-size:9px;color:#86efac">protect lead</span></button>
@@ -363,7 +365,10 @@ let exactMemo, exactNodes;
 //   11 cards: 1.6-57.7s (mostly hopeless -> the old tier burned its budget then fell back)
 // Budgets are depth-scaled so the search actually COMPLETES instead of wasting the clock.
 let WIN_TARGET = 0;   // >0 => exact solver maximises P(final > WIN_TARGET), not E[score]
-const EXACT_LIMIT = 10;
+// FAST ENDGAME (UI toggle, off by default): start the exact search at 8 cards instead of 10.
+// Measured: -11.9 +/- 3.9 pts/game, ~1.4 s less solver time per game on a desktop (~4 s on a
+// phone 3x slower), slowest move 1.6 -> 0.8 s. Only worth it if the 3-minute clock is tight.
+let EXACT_LIMIT = 10;
 const PASS_FULL_LIMIT = 8;   // consider passing freely throughout the exact endgame
 const EXACT_FAST_LIMIT = 7;
 function exactBudgetFor(rem){ return rem>=10 ? 3000 : (rem>=8 ? 2500 : (rem===7 ? 1500 : 1000)); }
@@ -1114,10 +1119,12 @@ function setMode(m){
 }
 function setBustRule(v){ RULE_BUST_BREAKS_STREAK=!!v; try{ localStorage.setItem('s21bust', v?'1':'0'); }catch(e){} }
 function setPerfect(v){ PTS_PERFECT = v ? 1000 : 0; try{ localStorage.setItem('s21perf', v?'1':'0'); }catch(e){} render(); }
+function setFast(v){ EXACT_LIMIT = v ? 8 : 10; try{ localStorage.setItem('s21fast', v?'1':'0'); }catch(e){} }
 function loadRules(){
   try{
     const b=localStorage.getItem('s21bust'); if(b!==null){ RULE_BUST_BREAKS_STREAK=(b==='1'); document.getElementById('rBust').checked=RULE_BUST_BREAKS_STREAK; }
     const p=localStorage.getItem('s21perf'); if(p!==null){ PTS_PERFECT=(p==='1')?1000:0; document.getElementById('rPerf').checked=PTS_PERFECT>0; }
+    const f=localStorage.getItem('s21fast'); if(f!==null){ EXACT_LIMIT=(f==='1')?8:10; document.getElementById('rFast').checked=EXACT_LIMIT===8; }
   }catch(e){}
 }
 function loadMode(){ try{ const m=localStorage.getItem('s21mode'); if(m && MODES[m]) setMode(m); }catch(e){} }
