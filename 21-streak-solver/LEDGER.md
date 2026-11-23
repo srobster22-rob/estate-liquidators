@@ -138,3 +138,12 @@ all four slots at 12+ when another safe placement kept a sink. The all-high boar
 high-streak resets are mostly dealt, not chosen. **The solver is on a plateau**: the errors that
 can be found are real but each class is worth tens of points, below what a 480-game A/B sees.
 
+| # | hypothesis | result | verdict |
+|---|---|---|---|
+| L8 | The 10- and 9-card exact solves mostly give up (node cap) and TC said finishing them is worth ~8, so start the exact endgame at 8 cards and save the time. | **−11.9 ± 3.9 (t=−3.0)**, 469/480 identical, wins 0-11; solver time per game 5.8 → 4.4 s on this box (slowest move 1.6 → 0.8 s) | **rejected as a default** — the solves that do finish are worth ~12 pts/game. Kept as the option if the 3-minute clock ever bites: ~1.4 s/game here, ~4 s on a phone 3× slower. |
+
+**Stay rule audit.** Voluntary MC stays at x3+ with a safe placement open and >10 cards left
+occur in 60 of 360 self-play games (seeds 1040-1399, `bench/findstays.js`). Each is graded with
+`bench/qeval.js` (24 paired full-solver playouts): the chosen stay vs the MC's best non-stay
+move, which is what a "no voluntary stay at x3+" rule would play. Results in `bench/stayrule.out`.
+

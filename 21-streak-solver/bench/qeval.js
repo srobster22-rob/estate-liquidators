@@ -56,6 +56,9 @@ if (!isMainThread) {
   if (!found) { console.log('no voluntary high-streak MC stay in seed', seed); process.exit(0); }
   const { snap, card, chosen } = found;
   // candidates: the chosen stay, and every placement that does not bust
+  // the rule under test ("no voluntary stay at x3+") would play the MC's best NON-stay move:
+  E.setState({ slots: snap.slots.map(x => [...x]), deck: { ...snap.deck }, lives: snap.lives, passes: 0, score: snap.score, streak: snap.streak });
+  const rulePick = E.chooseBest(card).slot;
   const acts = [{ type: 'pass', slot: chosen.slot, to: chosen.to }];
   for (let i = 0; i < 4; i++) if (E.handTotal([...snap.slots[i], card]).min <= 21) acts.push({ type: 'place', slot: i });
   const posts = acts.map(a => { const p = { slots: snap.slots.map(x => [...x]), deck: { ...snap.deck }, lives: snap.lives, passes: snap.passes, score: snap.score, streak: snap.streak };
@@ -71,7 +74,8 @@ if (!isMainThread) {
       const d = rows.map(r => r.v[i] - r.v[0]); const m = d.reduce((x, y) => x + y, 0) / d.length;
       const sd = Math.sqrt(d.reduce((x, y) => x + (y - m) ** 2, 0) / Math.max(1, d.length - 1));
       const mean = rows.reduce((x, r) => x + r.v[i], 0) / rows.length;
-      const name = a.type === 'pass' ? `STAY ${a.slot + 1}->${a.to + 1} (chosen)` : `place ${a.slot + 1}`;
+      const name = a.type === 'pass' ? `STAY ${a.slot + 1}->${a.to + 1} (chosen)` : `place ${a.slot + 1}${a.slot === rulePick ? ' (rule)' : ''}`;
+      if (a.type === 'place' && a.slot === rulePick) console.log(`RULE ${seed} ${m.toFixed(1)} ${(sd / Math.sqrt(d.length)).toFixed(1)}`);
       console.log(`  ${name.padEnd(20)} mean final ${mean.toFixed(0)}  vs chosen ${i ? (m >= 0 ? '+' : '') + m.toFixed(0) + ' ± ' + (sd / Math.sqrt(d.length)).toFixed(0) : '—'}`);
     });
   });
